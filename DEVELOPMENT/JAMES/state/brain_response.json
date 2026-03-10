@@ -1,0 +1,23 @@
+{
+  "task_id": "james-d54409b2e1a8",
+  "goal": "Manual push-to-talk validation after audio device fix",
+  "success_conditions": [
+    "James executes the generated plan without step failures.",
+    "James returns to the requested editor target when appropriate."
+  ],
+  "return_target": "Visual Studio Code",
+  "safety_level": "normal",
+  "steps": [
+    {
+      "id": "s1",
+      "action": "note",
+      "text": "Generated plan from prompt: hello James welcome to the world"
+    },
+    {
+      "id": "s2",
+      "action": "finish_task",
+      "status": "completed",
+      "note": "Generated plan executed."
+    }
+  ]
+}

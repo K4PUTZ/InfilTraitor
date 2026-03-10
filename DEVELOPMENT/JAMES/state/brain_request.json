@@ -1,0 +1,8 @@
+{
+  "task_id": "james-d54409b2e1a8",
+  "goal": "Manual push-to-talk validation after audio device fix",
+  "prompt": "hello James welcome to the world",
+  "transcript_path": "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/DEVELOPMENT/JAMES/logs/audio/james-d54409b2e1a8.wav",
+  "return_app": "Visual Studio Code",
+  "status": "pending_brain_plan"
+}

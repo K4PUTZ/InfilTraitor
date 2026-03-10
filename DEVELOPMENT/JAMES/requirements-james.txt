@@ -1,0 +1,6 @@
+pynput
+SpeechRecognition
+pyobjc-core
+pyobjc-framework-Cocoa
+pyobjc-framework-Quartz
+pyobjc-framework-Vision

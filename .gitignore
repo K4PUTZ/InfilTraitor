@@ -1,0 +1,12 @@
+.DS_Store
+
+# Godot (generated/editor cache)
+.godot/
+
+# Godot export/build outputs (if created)
+export/
+build/
+
+# Logs/temp files from tooling
+*.log
+*.tmp

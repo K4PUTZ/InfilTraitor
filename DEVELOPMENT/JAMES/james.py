@@ -7,7 +7,7 @@ from pathlib import Path
 import time
 import sys
 
-from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_frontmost_app, get_screen_size, key_combo, type_text
+from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_app_window_titles, get_frontmost_app, get_screen_size, is_app_running, key_combo, type_text
 from runtime_brain import write_brain_request
 from runtime_capture import capture_screen
 from runtime_config import list_audio_input_devices, load_config
@@ -73,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
     finish.add_argument("--note", default=None, help="Final note")
 
     sub.add_parser("status", help="Show current task state")
+
+    monitor_cmd = sub.add_parser("monitor", help="Show a live James runtime status monitor")
+    monitor_cmd.add_argument("--interval", type=float, default=1.5, help="Seconds between refreshes")
+    monitor_cmd.add_argument("--once", action="store_true", help="Print one snapshot and exit")
+    monitor_cmd.add_argument("--json", action="store_true", help="Print JSON snapshots instead of the text dashboard")
 
     sub.add_parser("execute-plan", help="Execute the structured plan in state/brain_response.json")
     sub.add_parser("generate-plan", help="Generate state/brain_response.json from state/brain_request.json")
@@ -393,6 +398,102 @@ def handle_status() -> int:
         return 0
     print(json.dumps(session.to_dict(), indent=2))
     return 0
+
+
+def _build_monitor_snapshot(config) -> dict:
+    session = get_current_task(config.runtime_state_path)
+    request_exists = config.brain_request_path.exists()
+    response_exists = config.brain_response_path.exists()
+    godot_running = is_app_running(config.osascript_path, "Godot")
+    godot_windows = get_app_window_titles(config.osascript_path, "Godot") if godot_running else []
+
+    request_task_id = None
+    if request_exists:
+        try:
+            request_task_id = json.loads(config.brain_request_path.read_text()).get("task_id")
+        except Exception:
+            request_task_id = None
+
+    response_task_id = None
+    if response_exists:
+        try:
+            response_task_id = json.loads(config.brain_response_path.read_text()).get("task_id")
+        except Exception:
+            response_task_id = None
+
+    return {
+        "frontmost_app": get_frontmost_app(config.osascript_path),
+        "audio_input": {
+            "index": config.audio_device_index,
+            "name": config.audio_device_name,
+        },
+        "godot": {
+            "running": godot_running,
+            "windows": godot_windows,
+            "project_open": any(token in title.lower() for title in godot_windows for token in ("infil-traitor", "infiltraitor")),
+        },
+        "brain": {
+            "request_exists": request_exists,
+            "request_task_id": request_task_id,
+            "response_exists": response_exists,
+            "response_task_id": response_task_id,
+        },
+        "current_task": None if not session else {
+            "task_id": session.task_id,
+            "goal": session.goal,
+            "status": session.status,
+            "updated_at": session.updated_at,
+            "last_note": session.notes[-1] if session.notes else None,
+        },
+    }
+
+
+def handle_monitor(args: argparse.Namespace) -> int:
+    config = load_config()
+    try:
+        while True:
+            snapshot = _build_monitor_snapshot(config)
+            if args.json:
+                print(json.dumps(snapshot, indent=2))
+            else:
+                print("\033[2J\033[H", end="")
+                print("JAMES MONITOR")
+                print("=" * 60)
+                print(f"Frontmost App : {snapshot['frontmost_app'] or 'unknown'}")
+                audio_name = snapshot["audio_input"]["name"] or "unknown"
+                print(f"Audio Input   : [{snapshot['audio_input']['index']}] {audio_name}")
+                print(
+                    f"Godot         : {'running' if snapshot['godot']['running'] else 'not running'}"
+                    f" | project_open={snapshot['godot']['project_open']}"
+                )
+                if snapshot["godot"]["windows"]:
+                    print(f"Godot Windows : {' | '.join(snapshot['godot']['windows'][:3])}")
+                print(
+                    f"Brain Files   : request={snapshot['brain']['request_exists']}"
+                    f" ({snapshot['brain']['request_task_id'] or '-'})"
+                    f" | response={snapshot['brain']['response_exists']}"
+                    f" ({snapshot['brain']['response_task_id'] or '-'})"
+                )
+                task = snapshot["current_task"]
+                if task:
+                    print("-" * 60)
+                    print(f"Task ID       : {task['task_id']}")
+                    print(f"Goal          : {task['goal']}")
+                    print(f"Status        : {task['status']}")
+                    print(f"Updated       : {task['updated_at']}")
+                    print(f"Last Note     : {task['last_note'] or '-'}")
+                else:
+                    print("-" * 60)
+                    print("Task          : no active task")
+                print("=" * 60)
+                print("Ctrl-C to stop monitor")
+
+            if args.once:
+                return 0
+            time.sleep(max(args.interval, 0.25))
+    except KeyboardInterrupt:
+        print("\nJames monitor stopped.")
+        return 0
 
 
 def handle_write_sample_plan(args: argparse.Namespace) -> int:
@@ -1417,6 +1518,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_finish_task(args)
     if args.command == "status":
         return handle_status()
+    if args.command == "monitor":
+        return handle_monitor(args)
     if args.command == "execute-plan":
         return handle_execute_plan()
     if args.command == "generate-plan":

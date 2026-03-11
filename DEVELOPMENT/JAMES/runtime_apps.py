@@ -55,6 +55,27 @@ def get_frontmost_app(osascript_path: str) -> str | None:
     return value or None
 
 
+def is_app_running(osascript_path: str, app_name: str) -> bool:
+    script = f'tell application "System Events" to count (application processes whose name is "{app_name}")'
+    result = _run_osascript(osascript_path, script)
+    if not result or result.returncode != 0:
+        return False
+    return result.stdout.strip() not in ("", "0")
+
+
+def get_app_window_titles(osascript_path: str, app_name: str) -> list[str]:
+    script = (
+        f'tell application "System Events" to get name of every window of application process "{app_name}"'
+    )
+    result = _run_osascript(osascript_path, script, timeout=4)
+    if not result or result.returncode != 0:
+        return []
+    raw = result.stdout.strip()
+    if not raw:
+        return []
+    return [title.strip() for title in raw.split(",") if title.strip()]
+
+
 def activate_app(osascript_path: str, app_name: str) -> bool:
     script = f'tell application "{app_name}" to activate'
     result = _run_osascript(osascript_path, script)

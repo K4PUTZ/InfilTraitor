@@ -88,6 +88,7 @@ All commands are available through `python3 james.py <command>`.
 Task and state:
 
 - `preflight`
+- `monitor [--once] [--json]`
 - `start-task <goal>`
 - `note <text>`
 - `finish-task [--status] [--note]`
@@ -152,12 +153,15 @@ Brain handoff and plan execution:
 ## Startup and Environment
 
 - `start_james.sh` now prefers the repo-level virtual environment at `../../.venv/bin/python`.
+- `start_james_operator.sh` launches James into dedicated Terminal windows for listen and monitor workflows.
 - If that interpreter is not present, it falls back to `python3` on `PATH`.
 - Audio input is auto-detected from `ffmpeg -f avfoundation -list_devices true -i ""`, skipping common virtual devices like BlackHole, Teams Audio, and Pro Tools bridge devices.
 - On this machine James currently defaults to the `C922 Pro Stream Webcam` microphone because it has been more reliable than the Philips headset input.
 - `JAMES_AUDIO_DEVICE_INDEX` overrides the auto-detected device when needed.
 - `python3 james.py audio-device` prints the selected device and the full detected input list.
 - `python3 james.py listen --goal "Voice operator request"` keeps James alive in one terminal and accepts repeated keypad `0` prompts until `Ctrl-C`.
+- `python3 james.py monitor` shows a live dashboard for task, brain file, Godot, and audio-input state.
+- `python3 launch_james_operator.py` or `./start_james_operator.sh` opens dedicated operator terminals, checks Godot, and starts listen plus monitor.
 
 ## What James Is Good At Right Now
 

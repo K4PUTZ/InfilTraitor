@@ -2,16 +2,45 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import contextlib
 import signal
 import subprocess
+import sys
 import threading
 import time
+
+try:
+    import termios
+except Exception:  # pragma: no cover - non-POSIX fallback
+    termios = None
 
 
 @dataclass
 class VoiceCaptureResult:
     transcript: str
     audio_path: Path
+
+
+@contextlib.contextmanager
+def _suppress_terminal_input():
+    if termios is None or not sys.stdin.isatty():
+        yield
+        return
+
+    fd = sys.stdin.fileno()
+    original_attrs = termios.tcgetattr(fd)
+    muted_attrs = termios.tcgetattr(fd)
+    muted_attrs[3] &= ~(termios.ECHO | termios.ICANON)
+    try:
+        termios.tcflush(fd, termios.TCIFLUSH)
+        termios.tcsetattr(fd, termios.TCSANOW, muted_attrs)
+        yield
+    finally:
+        try:
+            termios.tcflush(fd, termios.TCIFLUSH)
+            termios.tcsetattr(fd, termios.TCSANOW, original_attrs)
+        except Exception:
+            pass
 
 
 def _load_speech_recognition_module():
@@ -139,11 +168,12 @@ def capture_push_to_talk(
             done.set()
             return False
 
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
-    finished = done.wait(timeout=timeout)
-    listener.stop()
-    listener.join(timeout=2)
+    with _suppress_terminal_input():
+        listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+        listener.start()
+        finished = done.wait(timeout=timeout)
+        listener.stop()
+        listener.join(timeout=2)
 
     if not finished:
         with lock:

@@ -11,6 +11,17 @@ def _normalize_prompt(prompt: str) -> str:
     return " ".join(prompt.lower().split())
 
 
+def _build_conversational_reply(prompt: str) -> str:
+    normalized = _normalize_prompt(prompt)
+    if "can you hear my voice" in normalized or "can you hear me" in normalized:
+        return "Yes. I can hear you clearly."
+    if "how are you" in normalized:
+        return "I am here and working."
+    if any(token in normalized for token in ("hello", "hi james", "hey james")):
+        return "Hello. I heard you."
+    return f"I heard: {prompt.strip()}"
+
+
 def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
     request = json.loads(request_path.read_text())
     prompt = _normalize_prompt(request.get("prompt", ""))
@@ -120,6 +131,17 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
         steps.append({"id": f"s{step_number}", "action": "return_to_editor"})
         step_number += 1
 
+    passive_only = all(step["action"] in {"note", "finish_task"} for step in steps)
+    if passive_only:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "speak_text",
+                "text": _build_conversational_reply(request.get("prompt", "")),
+            }
+        )
+        step_number += 1
+
     steps.append(
         {
             "id": f"s{step_number}",
@@ -129,15 +151,20 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
         }
     )
 
+    passive_only = all(step["action"] in {"note", "speak_text", "finish_task"} for step in steps)
+    confidence = 0.95 if passive_only else 0.6
+    warnings = [] if passive_only else ["Heuristic plan — verify with the real brain (LLM) before relying on it in production."]
+    outcome_tips = [] if passive_only else ["Check the captured screenshots in logs/screenshots/ after execution."]
+
     plan = {
         "task_id": task_id,
         "goal": goal,
-        "confidence": 0.6,
+        "confidence": confidence,
         "better_alternative": None,
-        "warnings": ["Heuristic plan — verify with the real brain (LLM) before relying on it in production."],
+        "warnings": warnings,
         "clarification_needed": False,
         "clarification_questions": [],
-        "outcome_tips": ["Check the captured screenshots in logs/screenshots/ after execution."],
+        "outcome_tips": outcome_tips,
         "success_conditions": [
             "James executes the generated plan without step failures.",
             "James returns to the requested editor target when appropriate.",

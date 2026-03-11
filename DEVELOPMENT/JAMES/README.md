@@ -17,6 +17,8 @@ Current verified status:
 
 - `preflight` passes with all required tools and optional Python modules available.
 - Push-to-talk capture, transcription, and `brain_request.json` generation work.
+- Listen mode now uses short cue sounds for start-listen, record-start, record-stop, and error states instead of narrating the whole workflow.
+- Heuristic fallback planning can now answer simple conversational prompts directly through a `speak_text` execution step.
 - Structured plan execution with safety gates works.
 - Focus stack and return-to-editor flow work.
 - Godot launch works.
@@ -47,12 +49,11 @@ Core local tools James uses:
 Typical manual flow:
 
 1. Run `./start_james.sh` or `python3 james.py preflight`.
-2. Start a task directly or capture a spoken prompt.
-3. If using voice capture, James writes `state/brain_request.json`.
-4. Paste that request into the active LLM chat and ask for a valid James plan.
-5. Save the returned JSON to `state/brain_response.json`.
-6. Run `python3 james.py execute-plan`.
-7. James evaluates the plan safety gates, executes the steps, logs the run, captures evidence, and returns to the configured editor target when requested.
+2. Start a task directly or run `python3 james.py listen --goal "Voice operator request"`.
+3. Hold keypad `0` to speak. James writes `state/brain_request.json` after transcription.
+4. For a real external-brain workflow, paste that request into the active LLM chat and save the returned JSON to `state/brain_response.json`.
+5. For simple prompts, listen mode can locally generate and execute a heuristic fallback plan without leaving the loop.
+6. James evaluates the plan safety gates, executes the steps, logs the run, captures evidence, and returns to the configured editor target when requested.
 
 Safety gates before execution:
 
@@ -65,11 +66,10 @@ Safety gates before execution:
 
 Voice is the conversational layer.
 
-- short prompts
-- recording status
-- proceed or abort questions
-- clarification prompts
-- final status
+- cue sounds for listen-ready, recording start, recording stop, and errors
+- spoken answers and short conversational replies
+- proceed or abort questions when a plan genuinely needs confirmation
+- clarification prompts and exceptional warnings
 
 Terminal is the audit layer.
 
@@ -152,19 +152,20 @@ Brain handoff and plan execution:
 
 ## Startup and Environment
 
-- `start_james.sh` now prefers the repo-level virtual environment at `../../.venv/bin/python`.
+- `start_james.sh` now prefers the repo-level virtual environment at `../../../.venv/bin/python`.
 - `start_james_operator.sh` launches James into dedicated Terminal windows for listen and monitor workflows.
 - If that interpreter is not present, it falls back to `python3` on `PATH`.
 - Audio input is auto-detected from `ffmpeg -f avfoundation -list_devices true -i ""`, skipping common virtual devices like BlackHole, Teams Audio, and Pro Tools bridge devices.
 - On this machine James currently defaults to the `C922 Pro Stream Webcam` microphone because it has been more reliable than the Philips headset input.
 - `JAMES_AUDIO_DEVICE_INDEX` overrides the auto-detected device when needed.
 - `python3 james.py audio-device` prints the selected device and the full detected input list.
-- `python3 james.py listen --goal "Voice operator request"` keeps James alive in one terminal and accepts repeated keypad `0` prompts until `Ctrl-C`.
+- `python3 james.py listen --goal "Voice operator request"` keeps James alive in one terminal, listens only to keypad `0`, waits indefinitely by default, uses cue sounds instead of narrated capture prompts, and locally generates then executes a fallback plan after each captured prompt.
 - `python3 james.py monitor` shows a live dashboard for task, brain file, Godot, and audio-input state.
 - `python3 launch_james_operator.py` or `./start_james_operator.sh` opens dedicated operator terminals, checks Godot, and starts listen plus monitor.
 
 ## What James Is Good At Right Now
 
+- answering simple spoken prompts with a direct spoken reply through the heuristic fallback planner
 - launching and stabilizing Godot
 - switching between editor contexts and returning safely
 - capturing screenshots and OCR evidence

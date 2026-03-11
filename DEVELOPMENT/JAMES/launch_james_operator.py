@@ -65,6 +65,12 @@ def _ensure_godot_project(config, project_path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Launch James into dedicated operator terminals.")
     parser.add_argument("--goal", default="Voice operator request", help="Default goal for listen mode captures")
+    parser.add_argument(
+        "--plan-mode",
+        choices=("heuristic", "off"),
+        default="heuristic",
+        help="How the listen process handles captured requests",
+    )
     parser.add_argument("--skip-godot", action="store_true", help="Do not check or launch Godot")
     parser.add_argument("--skip-listen", action="store_true", help="Do not start the James listen terminal")
     parser.add_argument("--skip-monitor", action="store_true", help="Do not start the James monitor terminal")
@@ -85,7 +91,7 @@ def main() -> int:
 
     listen_command = (
         f"cd {shlex.quote(str(root_dir))} && "
-        f"{shlex.quote(str(python_bin))} james.py listen --goal {shlex.quote(args.goal)}"
+        f"{shlex.quote(str(python_bin))} james.py listen --goal {shlex.quote(args.goal)} --plan-mode {shlex.quote(args.plan_mode)}"
     )
     monitor_command = (
         f"cd {shlex.quote(str(root_dir))} && "

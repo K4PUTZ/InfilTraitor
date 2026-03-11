@@ -11,7 +11,7 @@ Current control loop:
 1. User starts or restores a task.
 2. User may capture a spoken prompt.
 3. James writes `brain_request.json`.
-4. External brain returns a plan.
+4. Either an external brain returns a plan or the heuristic planner generates a fallback plan.
 5. James loads the plan, applies safety gates, executes steps, logs actions, and writes final session output.
 
 ## Runtime Modules
@@ -45,6 +45,7 @@ Current behavior:
 - push-to-talk hotkey capture via `pynput`
 - keypad `0` bindings from `JamesConfig.push_to_talk_key_vks`
 - start and stop audio recording through `ffmpeg`
+- cue sounds for listener-ready, recording start, recording stop, and error states
 - record timestamped `.wav` files into `logs/audio/`
 
 ### 2. Transcription Layer
@@ -66,7 +67,7 @@ Current behavior:
 Current planning modes:
 
 - real external brain via manual copy-paste
-- heuristic fallback planner via `generate-plan`
+- heuristic fallback planner via `generate-plan`, including direct spoken replies for simple conversational prompts
 
 ### 4. Perception Layer
 
@@ -84,6 +85,7 @@ Current behavior:
 Current low-level primitives:
 
 - `activate_app`
+- `speak_text`
 - `click`
 - `double_click`
 - `drag`
@@ -145,11 +147,12 @@ Action records currently track:
 
 Voice is for short interaction.
 
-- recording prompts
+- cue sounds during capture
+- direct spoken answers when a plan includes `speak_text`
 - brief warnings
 - proceed or abort prompts
 - clarification questions
-- final completion or failure cue
+- exceptional completion or failure speech when no direct spoken response exists
 
 Terminal is for durable truth.
 

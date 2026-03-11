@@ -162,7 +162,7 @@ def load_config() -> JamesConfig:
         tesseract_path=shutil.which("tesseract"),
         ffmpeg_path=_ffmpeg,
         godot_app_path=Path("/Applications/Godot.app"),
-        push_to_talk_key_vks=(82, 29),
+        push_to_talk_key_vks=(82,),
         audio_device_index=audio_device_index,
         audio_device_name=audio_device_name,
         say_voice="Rocko (English (US))",

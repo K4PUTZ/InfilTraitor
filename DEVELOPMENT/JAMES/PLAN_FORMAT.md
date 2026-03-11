@@ -2,7 +2,7 @@
 
 James executes a structured response plan written to `state/brain_response.json`.
 
-The plan is usually written by the external planning brain in response to `state/brain_request.json`. James can also generate a lower-confidence heuristic fallback plan through `generate-plan`.
+The plan is usually written by the external planning brain in response to `state/brain_request.json`. James can also generate a heuristic fallback plan through `generate-plan`, including simple conversational reply plans that speak an answer directly.
 
 ## Required Top-Level Fields
 
@@ -29,7 +29,7 @@ James checks these fields **before executing any step**:
 1. If `clarification_needed` is `true` → print all `clarification_questions` and exit. No steps run.
 2. If `better_alternative` is set → print it prominently before proceeding.
 3. If `warnings` is non-empty → print each warning before proceeding.
-4. If `confidence` < 0.75 → print a warning and prompt `[y/N]` confirmation. If the user does not confirm, abort.
+4. If `confidence` < 0.75 → ask for confirmation by voice capture when available, otherwise fall back to terminal input. If the user does not confirm, abort.
 
 ## Step Format
 
@@ -52,6 +52,14 @@ Optional fields depend on the action.
 
 ```json
 { "id": "step-2", "action": "activate_app", "app_name": "Godot", "push_current": true }
+```
+
+### `speak_text`
+
+Speak a short response through macOS `say`. This is used for direct conversational replies and explicit spoken plan output.
+
+```json
+{ "id": "step-2b", "action": "speak_text", "text": "Yes. I can hear you clearly." }
 ```
 
 ### `launch_godot`
@@ -310,7 +318,7 @@ Capture a screenshot, run Apple Vision OCR, find the first on-screen element who
 
 ## Automatic Bridge vs Real Brain Plans
 
-`james.py generate-plan` can synthesize a first-pass plan automatically from `state/brain_request.json` using keyword heuristics. This is useful for smoke tests and common development prompts (e.g., "open Godot", "inspect the project").
+`james.py generate-plan` can synthesize a first-pass plan automatically from `state/brain_request.json` using keyword heuristics. This is useful for smoke tests, simple conversational prompts, and common development prompts (e.g., "open Godot", "inspect the project").
 
 For production tasks, use the real brain:
 

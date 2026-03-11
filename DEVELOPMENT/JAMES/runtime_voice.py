@@ -9,6 +9,8 @@ import sys
 import threading
 import time
 
+from runtime_speech import play_cue
+
 try:
     import termios
 except Exception:  # pragma: no cover - non-POSIX fallback
@@ -19,6 +21,14 @@ except Exception:  # pragma: no cover - non-POSIX fallback
 class VoiceCaptureResult:
     transcript: str
     audio_path: Path
+
+
+class PushToTalkIdleTimeout(TimeoutError):
+    pass
+
+
+class PushToTalkRecordingTimeout(TimeoutError):
+    pass
 
 
 @contextlib.contextmanager
@@ -123,10 +133,11 @@ def capture_push_to_talk(
     output_path: Path,
     on_recording_start=None,
     on_recording_stop=None,
-    timeout: float = 60,
+    timeout: float | None = 60,
 ) -> VoiceCaptureResult:
     keyboard = _load_keyboard_module()
     state = {
+        "started": False,
         "recording": False,
         "completed": False,
         "process": None,
@@ -140,6 +151,7 @@ def capture_push_to_talk(
         with lock:
             if state["recording"] or not _matches_trigger(key, trigger_vks):
                 return
+            state["started"] = True
             state["process"] = start_audio_recording(ffmpeg_path, output_path, audio_device_index)
             state["recording"] = True
             if on_recording_start:
@@ -171,16 +183,20 @@ def capture_push_to_talk(
     with _suppress_terminal_input():
         listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         listener.start()
-        finished = done.wait(timeout=timeout)
+        wait_timeout = None if timeout is None or timeout <= 0 else timeout
+        finished = done.wait(timeout=wait_timeout)
         listener.stop()
         listener.join(timeout=2)
 
     if not finished:
         with lock:
             process = state.get("process")
+            started = bool(state.get("started"))
             if process is not None:
                 stop_audio_recording(process)
-        raise TimeoutError("Timed out waiting for push-to-talk capture")
+        if started:
+            raise PushToTalkRecordingTimeout("Timed out waiting for push-to-talk capture to finish")
+        raise PushToTalkIdleTimeout("Timed out waiting for push-to-talk trigger")
 
     if state["error"]:
         raise state["error"]
@@ -208,8 +224,8 @@ def capture_voice_answer(
         audio_device_index=audio_device_index,
         trigger_vks=trigger_vks,
         output_path=output_path,
-        on_recording_start=lambda: subprocess.run([*_say_cmd, "Recording."], check=False),
-        on_recording_stop=lambda: subprocess.run([*_say_cmd, "Got it."], check=False),
+        on_recording_start=lambda: play_cue("recording_start"),
+        on_recording_stop=lambda: play_cue("recording_stop"),
         timeout=timeout,
     )
     return result.transcript

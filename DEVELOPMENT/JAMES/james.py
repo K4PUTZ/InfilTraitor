@@ -23,15 +23,15 @@ from runtime_godot import (
     wait_for_godot_editor_ready,
 )
 from runtime_logging import append_action
-from runtime_models import ActionRecord
+from runtime_models import ActionRecord, TaskSession
 from runtime_plan import load_plan, write_sample_plan
 from runtime_planner import generate_plan_from_request
 from runtime_preflight import run_preflight
 from runtime_reports import print_terminal_outcome, write_session_summary
-from runtime_speech import speak
+from runtime_speech import play_cue, speak
 from runtime_sessions import finish_task, get_current_task, restore_task, start_task, update_current_task
 from runtime_vision import find_text_center_coords, recognize_text
-from runtime_voice import capture_push_to_talk, capture_voice_answer
+from runtime_voice import PushToTalkIdleTimeout, capture_push_to_talk, capture_voice_answer
 from runtime_wait import wait_for_app, wait_for_text, wait_for_text_absent
 
 
@@ -44,6 +44,18 @@ def _format_exception(exc: Exception) -> str:
 
 def _is_unknown_value_error(exc: Exception) -> bool:
     return exc.__class__.__name__ == "UnknownValueError"
+
+
+def _persist_task_session(config, session: TaskSession) -> TaskSession:
+    persisted = restore_task(config.runtime_state_path, session.task_id, session.goal, session.return_app)
+    persisted.status = session.status
+    persisted.active_app = session.active_app
+    persisted.notes = list(session.notes)
+    persisted.evidence = list(session.evidence)
+    persisted.focus_stack = list(session.focus_stack)
+    persisted.wait_condition = session.wait_condition
+    update_current_task(config.runtime_state_path, persisted)
+    return persisted
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -143,8 +155,14 @@ def build_parser() -> argparse.ArgumentParser:
     listen_cmd = sub.add_parser("listen", help="Stay running and accept repeated push-to-talk prompts")
     listen_cmd.add_argument("--goal", default="Voice operator request", help="Default goal stored with each captured request")
     listen_cmd.add_argument("--return-app", default=None, help="App James should return to after tasks created from listen mode")
-    listen_cmd.add_argument("--timeout", type=float, default=60.0, help="Seconds to wait for each key-hold capture")
+    listen_cmd.add_argument("--timeout", type=float, default=0.0, help="Seconds to wait for each key-hold capture; 0 waits indefinitely")
     listen_cmd.add_argument("--cooldown", type=float, default=0.75, help="Seconds to pause between completed listen cycles")
+    listen_cmd.add_argument(
+        "--plan-mode",
+        choices=("heuristic", "off"),
+        default="heuristic",
+        help="How listen mode handles a saved request after capture",
+    )
 
     click_cmd = sub.add_parser("click", help="Click at logical screen coordinates")
     click_cmd.add_argument("x", type=int, help="Horizontal coordinate (logical pixels)")
@@ -520,18 +538,14 @@ def _capture_prompt_once(
     timeout: float,
     announce_instruction: bool,
 ) -> int:
-    session = start_task(config.runtime_state_path, goal, return_app)
+    session = TaskSession.create(goal=goal, return_app=return_app)
     before_app = get_frontmost_app(config.osascript_path)
     session.active_app = before_app
-    update_current_task(config.runtime_state_path, session)
 
     audio_path = config.audio_dir / f"{session.task_id}.wav"
     if config.audio_device_name:
         session.notes.append(f"Using audio input: [{config.audio_device_index}] {config.audio_device_name}")
-        update_current_task(config.runtime_state_path, session)
 
-    if announce_instruction:
-        speak(config.say_path, "Press and hold keypad zero to start recording. Release it to submit your prompt.", voice=config.say_voice)
     max_attempts = 2
     result = None
     last_error = None
@@ -542,16 +556,21 @@ def _capture_prompt_once(
                 audio_device_index=config.audio_device_index,
                 trigger_vks=config.push_to_talk_key_vks,
                 output_path=audio_path,
-                on_recording_start=lambda: speak(config.say_path, "Recording.", voice=config.say_voice),
-                on_recording_stop=lambda: speak(config.say_path, "Processing.", voice=config.say_voice),
+                on_recording_start=lambda: play_cue("recording_start"),
+                on_recording_stop=lambda: play_cue("recording_stop"),
                 timeout=timeout,
             )
             break
         except Exception as exc:
             last_error = exc
+            if isinstance(exc, PushToTalkIdleTimeout):
+                print("No push-to-talk trigger received.")
+                return 2
             if _is_unknown_value_error(exc) and attempt < max_attempts:
+                session = _persist_task_session(config, session)
                 session.notes.append("Speech was not understood on the first attempt. Retrying capture.")
                 update_current_task(config.runtime_state_path, session)
+                play_cue("error")
                 speak(config.say_path, "I did not catch that. Please try again.", voice=config.say_voice)
                 continue
             break
@@ -559,6 +578,7 @@ def _capture_prompt_once(
     if result is None:
         exc = last_error if last_error is not None else RuntimeError("Prompt capture failed without a result")
         error_text = _format_exception(exc)
+        session = _persist_task_session(config, session)
         session.status = "error"
         session.notes.append(f"Prompt capture failed: {error_text}")
         if audio_path.exists():
@@ -580,10 +600,12 @@ def _capture_prompt_once(
             ),
         )
         if _is_unknown_value_error(exc):
+            play_cue("error")
             speak(config.say_path, "I recorded audio, but I could not understand the speech.", voice=config.say_voice)
         print(f"capture failed: {error_text}")
         return 1
 
+    session = _persist_task_session(config, session)
     session.notes.append(f"Captured prompt transcript: {result.transcript}")
     session.evidence.append(str(result.audio_path))
     update_current_task(config.runtime_state_path, session)
@@ -613,6 +635,18 @@ def _capture_prompt_once(
     return 0
 
 
+def _process_saved_listen_request(config, plan_mode: str) -> int:
+    if plan_mode == "off":
+        return 0
+    if not config.brain_request_path.exists():
+        print("James: request was captured, but no brain_request.json is available to process.")
+        return 1
+
+    plan_path = generate_plan_from_request(config.brain_request_path, config.brain_response_path)
+    print(f"James: generated local plan at {plan_path}")
+    return handle_execute_plan()
+
+
 def handle_capture_prompt(args: argparse.Namespace) -> int:
     config = load_config()
     if not config.ffmpeg_path:
@@ -637,7 +671,7 @@ def handle_listen(args: argparse.Namespace) -> int:
     print("James listen mode active. Hold keypad 0 to record. Press Ctrl-C to stop.")
     if config.audio_device_name:
         print(f"Audio input: [{config.audio_device_index}] {config.audio_device_name}")
-    speak(config.say_path, "James listening mode active.", voice=config.say_voice)
+    play_cue("start_listen")
 
     announce_instruction = True
     try:
@@ -651,14 +685,19 @@ def handle_listen(args: argparse.Namespace) -> int:
             )
             announce_instruction = False
             if exit_code == 0:
-                speak(config.say_path, "Request saved. Listening for the next prompt.", voice=config.say_voice)
-                print("James: request saved. Listening for the next prompt.")
+                process_code = _process_saved_listen_request(config, args.plan_mode)
+                if process_code == 0:
+                    print("James: request complete. Listening for the next prompt.")
+                else:
+                    play_cue("error")
+                    print("James: request captured, but processing failed. Listening for the next prompt.")
+            elif exit_code == 2:
+                continue
             else:
-                speak(config.say_path, "Capture failed. Listening for the next prompt.", voice=config.say_voice)
+                play_cue("error")
                 print("James: capture failed. Listening for the next prompt.")
             time.sleep(max(args.cooldown, 0.0))
     except KeyboardInterrupt:
-        speak(config.say_path, "James listening mode stopped.", voice=config.say_voice)
         print("James listen mode stopped.")
         return 0
 
@@ -1165,6 +1204,30 @@ def _execute_step(step, config) -> int:
     if step.action == "note":
         note_args = argparse.Namespace(text=step.payload["text"])
         return handle_note(note_args)
+    if step.action == "speak_text":
+        session = _require_current_task(config)
+        before_app = get_frontmost_app(config.osascript_path)
+        text = str(step.payload["text"])
+        success = speak(config.say_path, text, voice=config.say_voice)
+        after_app = get_frontmost_app(config.osascript_path)
+        session.active_app = after_app
+        session.notes.append(f"Spoke response: {text}")
+        update_current_task(config.runtime_state_path, session)
+        append_action(
+            config.actions_log_path,
+            ActionRecord.create(
+                task_id=session.task_id,
+                step_id=step.id,
+                action_type="speak_text",
+                target=text,
+                status="ok" if success else "error",
+                frontmost_app_before=before_app,
+                frontmost_app_after=after_app,
+                error=None if success else "say command failed",
+            ),
+        )
+        print(text)
+        return 0 if success else 1
     if step.action == "activate_app":
         activate_args = argparse.Namespace(
             app_name=step.payload["app_name"],
@@ -1294,6 +1357,12 @@ def _execute_step(step, config) -> int:
 CONFIDENCE_THRESHOLD = 0.75
 
 
+def _needs_low_confidence_confirmation(plan) -> bool:
+    if plan.confidence >= CONFIDENCE_THRESHOLD:
+        return False
+    return any(step.action not in {"note", "finish_task"} for step in plan.steps)
+
+
 def _voice_or_text_answer(
     config,
     *,
@@ -1335,9 +1404,6 @@ def handle_execute_plan() -> int:
         session = restore_task(config.runtime_state_path, plan.task_id, plan.goal, plan.return_target)
         session.active_app = get_frontmost_app(config.osascript_path)
         update_current_task(config.runtime_state_path, session)
-
-    # Conversational: announce the task.
-    speak(config.say_path, f"Starting: {plan.goal}", voice=config.say_voice)
 
     # --- Gate 1: clarification required ---
     # James stops entirely and asks each question via voice.
@@ -1389,7 +1455,7 @@ def handle_execute_plan() -> int:
             print(f"  — {w}")
 
     # --- Gate 4: low confidence — confirm via voice ---
-    if plan.confidence < CONFIDENCE_THRESHOLD:
+    if _needs_low_confidence_confirmation(plan):
         confidence_pct = f"{plan.confidence:.0%}"
         question = f"Confidence is {confidence_pct}. I'm not sure this is right. Should I proceed?"
         print(f"\nJAMES: LOW CONFIDENCE ({confidence_pct}). Not sure this plan is right.")
@@ -1402,8 +1468,15 @@ def handle_execute_plan() -> int:
         )
         print(f"  You said: {answer}")
         if "yes" not in answer.lower():
+            finished = finish_task(
+                config.runtime_state_path,
+                "aborted",
+                "Execution aborted after low-confidence confirmation was declined.",
+            )
             speak(config.say_path, "Aborted.", voice=config.say_voice)
             print("Aborted.")
+            if finished:
+                print_terminal_outcome(plan, finished, config.actions_log_path)
             return 1
 
     # --- Execute steps ---
@@ -1420,7 +1493,8 @@ def handle_execute_plan() -> int:
     session = get_current_task(config.runtime_state_path)
     if session:
         status_word = "Done" if session.status in ("completed", "created") else session.status
-        speak(config.say_path, f"{status_word}. {plan.goal}", voice=config.say_voice)
+        if not any(step.action == "speak_text" for step in plan.steps):
+            speak(config.say_path, f"{status_word}. {plan.goal}", voice=config.say_voice)
         print_terminal_outcome(plan, session, config.actions_log_path)
     return 0
 

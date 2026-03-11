@@ -31,6 +31,14 @@ The full interaction layer is now available. Godot plans can use any of these st
 - `godot_stop_project` — send the Godot stop shortcut
 - `godot_capture_output` — focus the Output panel and capture a screenshot
 
+## Current Best Practices
+
+- launch Godot and wait for editor readiness before any OCR-based interaction
+- prefer workspace and panel labels before raw coordinates
+- treat OCR as a usable fallback, not a guaranteed truth source
+- capture Output evidence after important Godot workflows
+- return to the editor target when the task goal does not explicitly require staying in Godot
+
 ## Next Steps
 
 1. Add post-action verification loops so workspace switches, scene opens, and run/stop actions are confirmed instead of assumed.

@@ -2,7 +2,16 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHON_BIN="/usr/local/bin/python3.13"
+WORKSPACE_VENV="$ROOT_DIR/../../.venv/bin/python"
+
+if [ -x "$WORKSPACE_VENV" ]; then
+	PYTHON_BIN="$WORKSPACE_VENV"
+elif command -v python3 >/dev/null 2>&1; then
+	PYTHON_BIN="$(command -v python3)"
+else
+	echo "James: python3 not found on PATH."
+	exit 1
+fi
 
 cd "$ROOT_DIR"
 

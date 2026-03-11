@@ -55,28 +55,32 @@ def load_plan(path: Path) -> ExecutionPlan:
 def write_sample_plan(path: Path, task_id: str) -> Path:
     sample = {
         "task_id": task_id,
-        "goal": "Open Godot and return to VS Code",
+        "goal": "Open Godot, switch to Script workspace, capture the Output panel, and return to VS Code",
         "confidence": 0.95,
         "better_alternative": None,
         "warnings": [],
         "clarification_needed": False,
         "clarification_questions": [],
         "outcome_tips": [
-            "Check the Godot FileSystem panel for any import errors after the editor opens.",
-            "If scenes are missing, run Project > Reimport All from the Godot menu.",
+            "Check the captured Output panel screenshot for editor or import errors.",
+            "If Godot is still importing assets, wait for the import state to clear before issuing more UI actions.",
         ],
         "success_conditions": [
-            "Godot is launched",
-            "James returns to the editor",
+            "Godot is launched and the editor is ready",
+            "The Script workspace is focused",
+            "The Output panel is captured as evidence",
+            "James returns to the editor target",
         ],
         "return_target": "Visual Studio Code",
         "safety_level": "normal",
         "steps": [
             {"id": "s1", "action": "note", "text": "Starting sample execution plan."},
             {"id": "s2", "action": "launch_godot", "push_current": True},
-            {"id": "s3", "action": "wait_for_app", "app_name": "Godot", "timeout": 15},
-            {"id": "s4", "action": "return_to_editor"},
-            {"id": "s5", "action": "finish_task", "status": "completed", "note": "Sample execution plan completed."},
+            {"id": "s3", "action": "wait_for_godot_editor", "timeout": 45},
+            {"id": "s4", "action": "godot_switch_workspace", "workspace": "script"},
+            {"id": "s5", "action": "godot_capture_output", "label": "sample_output"},
+            {"id": "s6", "action": "return_to_editor"},
+            {"id": "s7", "action": "finish_task", "status": "completed", "note": "Sample execution plan completed."},
         ],
     }
     path.write_text(json.dumps(sample, indent=2, ensure_ascii=True))

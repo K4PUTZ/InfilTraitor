@@ -1,11 +1,11 @@
 # James State
 
-This directory stores runtime state snapshots for in-progress tasks.
+This directory stores the live runtime state James uses between commands.
 
-Examples:
+Current files:
 
-- focus stack
-- current task id
-- pending wait condition
-- last known active application
-- return target after external work
+- `runtime_state.json` — current task, task history, and completed tasks
+- `brain_request.json` — outbound structured request for the planning brain
+- `brain_response.json` — executable response plan returned by the planning brain
+
+`runtime_state.json` is the source of truth for task continuity across commands.

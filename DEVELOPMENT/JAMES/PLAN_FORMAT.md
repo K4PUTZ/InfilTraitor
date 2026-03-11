@@ -2,7 +2,7 @@
 
 James executes a structured response plan written to `state/brain_response.json`.
 
-The plan is written by the active LLM brain (e.g., Claude Sonnet) in response to a brain request from `state/brain_request.json`.
+The plan is usually written by the external planning brain in response to `state/brain_request.json`. James can also generate a lower-confidence heuristic fallback plan through `generate-plan`.
 
 ## Required Top-Level Fields
 
@@ -58,6 +58,66 @@ Optional fields depend on the action.
 
 ```json
 { "id": "step-3", "action": "launch_godot", "project": "/abs/path/project.godot", "push_current": true }
+```
+
+### `wait_for_godot_editor`
+
+Wait until Godot looks like a stable editor window instead of an import or loading screen.
+
+```json
+{ "id": "step-3b", "action": "wait_for_godot_editor", "timeout": 45 }
+```
+
+### `godot_switch_workspace`
+
+Click a visible Godot workspace tab by OCR label.
+
+```json
+{ "id": "step-3c", "action": "godot_switch_workspace", "workspace": "script" }
+```
+
+Supported values currently: `2d`, `3d`, `script`, `assetlib`.
+
+### `godot_focus_panel`
+
+Focus a visible Godot dock panel by OCR label.
+
+```json
+{ "id": "step-3d", "action": "godot_focus_panel", "panel": "output" }
+```
+
+Supported values currently: `scene`, `filesystem`, `inspector`, `node`, `output`, `history`.
+
+### `godot_open_scene`
+
+Try to open a scene by OCR-visible label. If OCR fails, James can fall back to Godot quick-open unless disabled.
+
+```json
+{ "id": "step-3e", "action": "godot_open_scene", "scene": "main.tscn" }
+```
+
+```json
+{ "id": "step-3f", "action": "godot_open_scene", "scene": "res://scenes/main.tscn", "no_quick_open": true }
+```
+
+### `godot_run_project`
+
+```json
+{ "id": "step-3g", "action": "godot_run_project" }
+```
+
+### `godot_stop_project`
+
+```json
+{ "id": "step-3h", "action": "godot_stop_project" }
+```
+
+### `godot_capture_output`
+
+Focus the Output panel and capture a screenshot for evidence.
+
+```json
+{ "id": "step-3i", "action": "godot_capture_output", "label": "run_output" }
 ```
 
 ### `capture_screen`
@@ -210,6 +270,12 @@ Capture a screenshot, run Apple Vision OCR, find the first on-screen element who
 { "id": "step-14", "action": "click_text", "text": "Scene", "label": "click_scene_tab" }
 ```
 
+## Execution Notes
+
+- James resolves each step by `action` name inside `james.py`.
+- Unsupported actions fail the plan immediately.
+- Some higher-level actions currently use OCR and quick timing delays internally; they are usable now, but they are not yet backed by universal verification loops.
+
 ## Example
 
 ```json
@@ -260,4 +326,4 @@ Command for heuristic fallback:
 
 - `james.py generate-plan`
 
-The bridge is heuristic-based and currently targets common development prompts such as opening Godot, inspecting the project, capturing a screenshot, and returning to the editor.
+The bridge is heuristic-based and currently understands a small set of Godot-oriented prompts such as launching Godot, switching workspace, opening a scene reference, capturing output, and returning to the editor.

@@ -1,11 +1,16 @@
 # James Skills
 
-This directory stores reusable automation patterns.
+This directory stores operator patterns and conventions that sit above the raw runtime primitives.
 
-Expected early skills:
+Today these files are documentation-first rather than executable plugins. They describe how James should approach recurring workflows and where the next first-class plan actions should come from.
 
-- Godot editor navigation
-- VS Code return-to-editor flow
-- browser verification loops
-- Finder file reveal and import routines
-- Terminal output capture routines
+Current skill areas:
+
+- Godot editor control
+- VS Code focus and terminal workflows
+
+Future likely skill areas:
+
+- Finder reveal and import flows
+- browser verification flows
+- richer terminal and build-output capture

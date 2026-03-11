@@ -2,233 +2,177 @@
 
 ## Role Split
 
-James is not the planner.
+James is the local execution operator.
 
-- James is the local execution operator.
-- The active LLM chat session (e.g., Claude Sonnet) is the planning brain.
+The planning brain is external and produces the plan James will execute. James receives intent either as a direct CLI call or as a generated request in `state/brain_request.json`, and it executes a plan from `state/brain_response.json`.
 
-The brain is not tied to any specific model or provider. Whoever is in the chat window at the time of the request is the brain. James writes a structured brain request to `state/brain_request.json`, the user submits it to the active LLM, and the LLM returns a structured plan written to `state/brain_response.json`.
+Current control loop:
 
-The control model is:
+1. User starts or restores a task.
+2. User may capture a spoken prompt.
+3. James writes `brain_request.json`.
+4. External brain returns a plan.
+5. James loads the plan, applies safety gates, executes steps, logs actions, and writes final session output.
 
-1. The user holds keypad `0`.
-2. James records audio while the key is held.
-3. The user releases the key.
-4. James transcribes the full prompt.
-5. The prompt is sent to the brain (the active LLM in chat).
-6. The brain returns a structured plan.
-7. James executes the plan with verification and logging.
-8. James returns to VS Code and reports the outcome.
+## Runtime Modules
+
+Current runtime split:
+
+- `runtime_config.py` resolves paths, tools, defaults, and audio device detection.
+- `runtime_models.py` defines task and action records.
+- `runtime_storage.py` handles JSON persistence.
+- `runtime_sessions.py` manages current and completed task state.
+- `runtime_logging.py` appends action telemetry.
+- `runtime_brain.py` writes structured requests for the planning brain.
+- `runtime_plan.py` loads execution plans and writes a sample plan.
+- `runtime_planner.py` generates heuristic fallback plans.
+- `runtime_apps.py` handles app activation, screen size, clicks, drag, type, and key combos.
+- `runtime_capture.py` captures screenshots.
+- `runtime_vision.py` performs OCR and coordinate lookup.
+- `runtime_voice.py` handles push-to-talk capture and speech recognition.
+- `runtime_speech.py` wraps `say` output.
+- `runtime_wait.py` provides polling for app state and OCR-visible or OCR-absent text.
+- `runtime_godot.py` provides higher-level Godot editor helpers.
+- `runtime_preflight.py` validates the local runtime.
+- `runtime_reports.py` prints the terminal outcome and writes session summaries.
 
 ## System Layers
 
 ### 1. Input Layer
 
-Responsibilities:
+Current behavior:
 
-- register a global push-to-talk hotkey
-- detect key down and key up reliably
-- start and stop microphone capture
-- produce a timestamped audio artifact for transcription and debugging
-
-Preferred approach:
-
-- use a global event tap or equivalent macOS key monitor
-- avoid keyword wake detection entirely
-
-Notes:
-
-- keypad `0` is the desired primary trigger
-- fallback bindings should exist in case keyboard layout or numpad availability changes
+- push-to-talk hotkey capture via `pynput`
+- keypad `0` bindings from `JamesConfig.push_to_talk_key_vks`
+- start and stop audio recording through `ffmpeg`
+- record timestamped `.wav` files into `logs/audio/`
 
 ### 2. Transcription Layer
 
-Responsibilities:
+Current behavior:
 
-- convert the recorded utterance into text
-- return confidence and timing metadata
-- keep the raw audio file linked to the session log
-
-Requirements:
-
-- must handle long utterances better than wake-word two-step capture
-- should support a pluggable backend
+- transcribe saved `.wav` audio through `SpeechRecognition`
+- attach transcript and audio artifact to the task state
+- surface capture errors without crashing the whole CLI boot path
 
 ### 3. Brain Handoff Layer
 
-Responsibilities:
+Current behavior:
 
-- package the user prompt, context, and current machine state
-- send that to the planning brain
-- receive a structured action plan, not only plain prose
+- write structured request payloads to `state/brain_request.json`
+- include task id, goal, transcript path, current app, return app, clarification answers, and instructions for the planning brain
+- load plan JSON from `state/brain_response.json`
 
-Required output format from the brain:
+Current planning modes:
 
-- `task_id`
-- `goal`
-- `steps`
-- `success_conditions`
-- `return_target`
-- `safety_level`
-
-The old `brain_request.txt` / `brain_response.txt` pattern proved the general idea but is too weak because it has no task identity, no state schema, and no result history.
+- real external brain via manual copy-paste
+- heuristic fallback planner via `generate-plan`
 
 ### 4. Perception Layer
 
-Responsibilities:
+Current behavior:
 
-- capture screenshots
-- OCR visible text
-- detect active application and frontmost window
-- classify UI state before and after actions
-
-Preferred strategy order:
-
-1. structured app information
-2. explicit UI text detection
-3. OCR-based fallback
-
-James must answer these questions before acting:
-
-- Which app is active?
-- Which window is frontmost?
-- Is the target app in the correct mode?
-- Is the intended control visible?
-- Is the field editable or only previewed?
+- capture screenshots through `screencapture`
+- OCR screenshots via Apple Vision
+- detect frontmost app through `osascript`
+- convert OCR bounding boxes into logical click coordinates
+- poll until text appears or disappears
+- detect when Godot looks editor-ready instead of still importing or loading
 
 ### 5. Action Layer
 
-Responsibilities:
+Current low-level primitives:
 
-- switch applications
-- focus windows
-- click
-- double-click
-- drag
-- type text
-- send shortcuts
-- invoke AppleScript
-- wait for visible state changes
+- `activate_app`
+- `click`
+- `double_click`
+- `drag`
+- `type_text`
+- `key_combo`
+- `click_text`
 
-**Current Implementation Status:**
+Current higher-level Godot primitives:
 
-All core action primitives are implemented and available in the plan executor:
+- `launch_godot_project`
+- `wait_for_godot_editor_ready`
+- `switch_godot_workspace`
+- `focus_godot_panel`
+- `open_godot_scene`
+- `run_godot_project`
+- `stop_godot_project`
+- `capture_godot_panel`
 
-| Action | Implementation | Notes |
-|---|---|---|
-| `activate_app` | `osascript` | fires-and-returns; no focus verification |
-| `click` | `cliclick c:x,y` | logical screen coordinates |
-| `double_click` | `cliclick dc:x,y` | logical screen coordinates |
-| `drag` | `cliclick dd:x1,y1 du:x2,y2` | full press-drag-release |
-| `type_text` | `osascript` System Events keystroke | handles special chars and multi-byte input |
-| `key_combo` | `osascript` System Events keystroke + modifiers | command, shift, option, control |
-| `click_text` | screencapture → Vision OCR → coordinate conversion → cliclick | for UI buttons/labels where coords are unknown |
+Important current limitation:
 
-Action policy:
-
-- structured commands first (`activate_app`, `key_combo`)
-- OCR click (`click_text`) as the fallback when coordinates are not known
-- never click the first fuzzy text match without confidence checks and screen verification
+- most actions are not yet universally self-verifying after execution
 
 ### 6. Workflow Layer
 
-Responsibilities:
+Current workflow features:
 
-- execute multi-step tasks
-- maintain a focus stack
-- pause while external tools work
-- poll for completion conditions
-- resume and return to VS Code with results
+- persistent `current_task`
+- task restoration by `task_id`
+- focus stack for app return flow
+- plan execution with safety gates
+- wait steps and evidence capture steps
+- end-of-run outcome summary in terminal and markdown session file
 
-This layer is what makes James suitable for Godot production instead of simple form automation.
+### 7. Logging Layer
 
-Minimum workflow concepts:
+Current outputs:
 
-- `current_task`
-- `task_state`
-- `active_app`
-- `return_app`
-- `wait_condition`
-- `retry_budget`
-- `verification_required`
+- `logs/actions.jsonl` for machine-readable action history
+- `logs/screenshots/` for screenshot evidence
+- `logs/audio/` for push-to-talk artifacts
+- `sessions/*.md` for human-readable summaries
+- `state/runtime_state.json` for runtime state
 
-### 7. Logging & Memory Layer
+Action records currently track:
 
-Responsibilities:
+- timestamp
+- task id
+- step id
+- action type
+- target
+- status
+- app before and after
+- free-form parameters
+- screenshot paths
+- verification result
+- error text
 
-- persist every action and result
-- save screenshots linked to actions
-- store task summaries
-- record failures in a searchable format
-- make patterns reusable later as skills
+## Communication Model
 
-Recommended logging format:
+Voice is for short interaction.
 
-- `logs/actions.jsonl` for machine-readable action traces
-- `sessions/YYYY-MM-DD_HHMM_task.md` for human-readable summaries
+- recording prompts
+- brief warnings
+- proceed or abort prompts
+- clarification questions
+- final completion or failure cue
 
-Suggested action schema:
+Terminal is for durable truth.
 
-- `timestamp`
-- `task_id`
-- `step_id`
-- `frontmost_app_before`
-- `action_type`
-- `target`
-- `parameters`
-- `screenshot_before`
-- `screenshot_after`
-- `verification_result`
-- `frontmost_app_after`
-- `status`
-- `error`
+- warnings
+- better alternatives
+- failure details
+- evidence paths
+- final task outcome
 
-## Godot-Specific Requirements
+## Current Architectural Strengths
 
-James is meant to help game production, so he needs Godot-specific skills beyond general GUI control.
+- clean module separation
+- lazy handling of optional OCR and voice imports so `preflight` and `--help` still work
+- auditable task and action trail
+- Godot-specific higher-level helpers instead of only raw click primitives
 
-Examples:
+## Current Architectural Gaps
 
-- launch Godot project
-- switch to the 2D editor
-- open a scene
-- focus the output panel
-- wait for project import to finish
-- return to VS Code with a summary
-- capture build or runtime errors for the brain
+- no universal verification framework after UI actions
+- heuristic planner remains shallow
+- no direct LLM integration
+- no first-class VS Code workflow layer yet
 
-## Communication Channels
+## Hard Requirement
 
-James uses two channels. Each has a distinct purpose and they do not overlap.
-
-### Voice (audio in / audio out)
-
-Used for conversational, real-time interaction during task execution.
-
-- James speaks brief status cues via `say` using the **Rocko (English US)** voice — deep, gravelly, operator-weight. Voice is configurable via `JamesConfig.say_voice`.
-- For objective questions (yes/no, proceed/abort, short clarifications), James speaks the question and captures the answer via push-to-talk.
-- Voice answers to clarification questions are recorded and embedded back into the brain request so the LLM can generate a better plan on the next resubmit.
-- Keep voice output short. One sentence per cue. No verbose narration.
-
-### Terminal (text out)
-
-Used for structured, persistent, reference data.
-
-- Full outcome report after every `execute-plan` run: status, task ID, goal, confidence, warnings, better alternatives, session notes, evidence paths, tips, log path.
-- All warnings and better-alternative suggestions are printed in full.
-- Clarification Q&A is echoed to the terminal for reference.
-- Errors and failure details are always printed — never only spoken.
-- Progress steps are not narrated in the terminal; the action log captures them.
-
-The rule of thumb: audio is the conversational layer; the terminal is the audit layer.
-
-
-
-If James leaves VS Code to perform work elsewhere, he must come back with:
-
-- the result status
-- key evidence
-- paths to logs or screenshots
-- next blocking issue, if any
-
-That is a hard requirement, not a convenience feature.
+If James leaves the editor to perform work, it must come back with enough state for the user and the planning brain to understand what happened.

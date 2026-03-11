@@ -135,6 +135,12 @@ def build_parser() -> argparse.ArgumentParser:
     prompt.add_argument("--return-app", default=None, help="App James should return to after the task")
     prompt.add_argument("--timeout", type=float, default=60.0, help="Seconds to wait for the key-hold capture")
 
+    listen_cmd = sub.add_parser("listen", help="Stay running and accept repeated push-to-talk prompts")
+    listen_cmd.add_argument("--goal", default="Voice operator request", help="Default goal stored with each captured request")
+    listen_cmd.add_argument("--return-app", default=None, help="App James should return to after tasks created from listen mode")
+    listen_cmd.add_argument("--timeout", type=float, default=60.0, help="Seconds to wait for each key-hold capture")
+    listen_cmd.add_argument("--cooldown", type=float, default=0.75, help="Seconds to pause between completed listen cycles")
+
     click_cmd = sub.add_parser("click", help="Click at logical screen coordinates")
     click_cmd.add_argument("x", type=int, help="Horizontal coordinate (logical pixels)")
     click_cmd.add_argument("y", type=int, help="Vertical coordinate (logical pixels)")
@@ -405,13 +411,15 @@ def handle_generate_plan() -> int:
     return 0
 
 
-def handle_capture_prompt(args: argparse.Namespace) -> int:
-    config = load_config()
-    if not config.ffmpeg_path:
-        raise SystemExit("ffmpeg is required for push-to-talk capture")
-
-    return_app = args.return_app or config.default_return_app
-    session = start_task(config.runtime_state_path, args.goal, return_app)
+def _capture_prompt_once(
+    config,
+    *,
+    goal: str,
+    return_app: str,
+    timeout: float,
+    announce_instruction: bool,
+) -> int:
+    session = start_task(config.runtime_state_path, goal, return_app)
     before_app = get_frontmost_app(config.osascript_path)
     session.active_app = before_app
     update_current_task(config.runtime_state_path, session)
@@ -421,7 +429,8 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
         session.notes.append(f"Using audio input: [{config.audio_device_index}] {config.audio_device_name}")
         update_current_task(config.runtime_state_path, session)
 
-    speak(config.say_path, "Press and hold keypad zero to start recording. Release it to submit your prompt.", voice=config.say_voice)
+    if announce_instruction:
+        speak(config.say_path, "Press and hold keypad zero to start recording. Release it to submit your prompt.", voice=config.say_voice)
     max_attempts = 2
     result = None
     last_error = None
@@ -461,7 +470,7 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
                 task_id=session.task_id,
                 step_id="capture-prompt",
                 action_type="capture_prompt",
-                target=args.goal,
+                target=goal,
                 status="error",
                 frontmost_app_before=before_app,
                 frontmost_app_after=get_frontmost_app(config.osascript_path),
@@ -480,7 +489,7 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
     request_path = write_brain_request(
         config.brain_request_path,
         task_id=session.task_id,
-        goal=args.goal,
+        goal=goal,
         prompt=result.transcript,
         transcript_path=str(result.audio_path),
         return_app=return_app,
@@ -492,7 +501,7 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
             task_id=session.task_id,
             step_id="capture-prompt",
             action_type="capture_prompt",
-            target=args.goal,
+                target=goal,
             status="ok",
             frontmost_app_before=before_app,
             frontmost_app_after=get_frontmost_app(config.osascript_path),
@@ -501,6 +510,56 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
     )
     print(json.dumps({"task_id": session.task_id, "transcript": result.transcript, "brain_request_path": str(request_path)}, indent=2))
     return 0
+
+
+def handle_capture_prompt(args: argparse.Namespace) -> int:
+    config = load_config()
+    if not config.ffmpeg_path:
+        raise SystemExit("ffmpeg is required for push-to-talk capture")
+
+    return_app = args.return_app or config.default_return_app
+    return _capture_prompt_once(
+        config,
+        goal=args.goal,
+        return_app=return_app,
+        timeout=args.timeout,
+        announce_instruction=True,
+    )
+
+
+def handle_listen(args: argparse.Namespace) -> int:
+    config = load_config()
+    if not config.ffmpeg_path:
+        raise SystemExit("ffmpeg is required for push-to-talk capture")
+
+    return_app = args.return_app or config.default_return_app
+    print("James listen mode active. Hold keypad 0 to record. Press Ctrl-C to stop.")
+    if config.audio_device_name:
+        print(f"Audio input: [{config.audio_device_index}] {config.audio_device_name}")
+    speak(config.say_path, "James listening mode active.", voice=config.say_voice)
+
+    announce_instruction = True
+    try:
+        while True:
+            exit_code = _capture_prompt_once(
+                config,
+                goal=args.goal,
+                return_app=return_app,
+                timeout=args.timeout,
+                announce_instruction=announce_instruction,
+            )
+            announce_instruction = False
+            if exit_code == 0:
+                speak(config.say_path, "Request saved. Listening for the next prompt.", voice=config.say_voice)
+                print("James: request saved. Listening for the next prompt.")
+            else:
+                speak(config.say_path, "Capture failed. Listening for the next prompt.", voice=config.say_voice)
+                print("James: capture failed. Listening for the next prompt.")
+            time.sleep(max(args.cooldown, 0.0))
+    except KeyboardInterrupt:
+        speak(config.say_path, "James listening mode stopped.", voice=config.say_voice)
+        print("James listen mode stopped.")
+        return 0
 
 
 def handle_ocr_screen(args: argparse.Namespace) -> int:
@@ -1394,6 +1453,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_godot_capture_output(args)
     if args.command == "capture-prompt":
         return handle_capture_prompt(args)
+    if args.command == "listen":
+        return handle_listen(args)
     if args.command == "click":
         return handle_click(args)
     if args.command == "double-click":

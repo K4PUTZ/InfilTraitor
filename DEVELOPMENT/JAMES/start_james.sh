@@ -24,6 +24,7 @@ echo "James: Audio input selection:"
 
 echo ""
 echo "James: Ready. Example next commands:"
+echo "  $PYTHON_BIN james.py listen --goal \"Voice operator request\""
 echo "  $PYTHON_BIN james.py capture-prompt \"Open Godot and inspect the project\""
 echo "  $PYTHON_BIN james.py audio-device"
 echo "  $PYTHON_BIN james.py start-task \"Manual Godot workflow\""

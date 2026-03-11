@@ -41,6 +41,10 @@ def _format_exception(exc: Exception) -> str:
     return exc.__class__.__name__
 
 
+def _is_unknown_value_error(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "UnknownValueError"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="James operator runtime")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -387,20 +391,38 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
     audio_path = config.audio_dir / f"{session.task_id}.wav"
 
     speak(config.say_path, "Press and hold keypad zero to start recording. Release it to submit your prompt.", voice=config.say_voice)
-    try:
-        result = capture_push_to_talk(
-            ffmpeg_path=config.ffmpeg_path,
-            audio_device_index=config.audio_device_index,
-            trigger_vks=config.push_to_talk_key_vks,
-            output_path=audio_path,
-            on_recording_start=lambda: speak(config.say_path, "Recording.", voice=config.say_voice),
-            on_recording_stop=lambda: speak(config.say_path, "Processing.", voice=config.say_voice),
-            timeout=args.timeout,
-        )
-    except Exception as exc:
+    max_attempts = 2
+    result = None
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = capture_push_to_talk(
+                ffmpeg_path=config.ffmpeg_path,
+                audio_device_index=config.audio_device_index,
+                trigger_vks=config.push_to_talk_key_vks,
+                output_path=audio_path,
+                on_recording_start=lambda: speak(config.say_path, "Recording.", voice=config.say_voice),
+                on_recording_stop=lambda: speak(config.say_path, "Processing.", voice=config.say_voice),
+                timeout=args.timeout,
+            )
+            break
+        except Exception as exc:
+            last_error = exc
+            if _is_unknown_value_error(exc) and attempt < max_attempts:
+                session.notes.append("Speech was not understood on the first attempt. Retrying capture.")
+                update_current_task(config.runtime_state_path, session)
+                speak(config.say_path, "I did not catch that. Please try again.", voice=config.say_voice)
+                continue
+            break
+
+    if result is None:
+        exc = last_error if last_error is not None else RuntimeError("Prompt capture failed without a result")
         error_text = _format_exception(exc)
         session.status = "error"
         session.notes.append(f"Prompt capture failed: {error_text}")
+        if audio_path.exists():
+            session.evidence.append(str(audio_path))
+            session.notes.append(f"Audio captured at: {audio_path}")
         update_current_task(config.runtime_state_path, session)
         append_action(
             config.actions_log_path,
@@ -412,9 +434,12 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
                 status="error",
                 frontmost_app_before=before_app,
                 frontmost_app_after=get_frontmost_app(config.osascript_path),
+                parameters={"audio_path": str(audio_path)} if audio_path.exists() else None,
                 error=error_text,
             ),
         )
+        if _is_unknown_value_error(exc):
+            speak(config.say_path, "I recorded audio, but I could not understand the speech.", voice=config.say_voice)
         print(f"capture failed: {error_text}")
         return 1
 

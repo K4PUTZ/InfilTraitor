@@ -96,6 +96,7 @@ Task and state:
 Capture and waiting:
 
 - `capture-screen <label>`
+- `audio-device`
 - `ocr-screen <label>`
 - `wait-for-app <name>`
 - `wait-for-text <label> <text>`
@@ -151,8 +152,10 @@ Brain handoff and plan execution:
 
 - `start_james.sh` now prefers the repo-level virtual environment at `../../.venv/bin/python`.
 - If that interpreter is not present, it falls back to `python3` on `PATH`.
-- Audio input is auto-detected from `ffmpeg -f avfoundation -list_devices true -i ""`, skipping common virtual devices like BlackHole and Soundflower.
+- Audio input is auto-detected from `ffmpeg -f avfoundation -list_devices true -i ""`, skipping common virtual devices like BlackHole, Teams Audio, and Pro Tools bridge devices.
+- On this machine James currently defaults to the `C922 Pro Stream Webcam` microphone because it has been more reliable than the Philips headset input.
 - `JAMES_AUDIO_DEVICE_INDEX` overrides the auto-detected device when needed.
+- `python3 james.py audio-device` prints the selected device and the full detected input list.
 
 ## What James Is Good At Right Now
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import time
 import sys
@@ -9,7 +10,7 @@ import sys
 from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_frontmost_app, get_screen_size, key_combo, type_text
 from runtime_brain import write_brain_request
 from runtime_capture import capture_screen
-from runtime_config import load_config
+from runtime_config import list_audio_input_devices, load_config
 from runtime_focus import pop_focus, push_focus
 from runtime_godot import (
     capture_godot_panel,
@@ -50,6 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("preflight", help="Run tool and dependency checks")
+    audio_device_cmd = sub.add_parser("audio-device", help="Show the selected audio input device and all detected inputs")
+    audio_device_cmd.add_argument("--selected-only", action="store_true", help="Print only the selected input device summary")
 
     start = sub.add_parser("start-task", help="Create a new task session")
     start.add_argument("goal", help="Task goal")
@@ -178,6 +181,31 @@ def handle_preflight() -> int:
     config = load_config()
     report = run_preflight(config)
     print(json.dumps(report, indent=2))
+    return 0
+
+
+def handle_audio_device(args: argparse.Namespace) -> int:
+    config = load_config()
+    devices = list_audio_input_devices(config.ffmpeg_path)
+    if args.selected_only:
+        selected_name = config.audio_device_name or "unknown"
+        print(f"[{config.audio_device_index}] {selected_name}")
+        return 0
+    payload = {
+        "selected_index": config.audio_device_index,
+        "selected_name": config.audio_device_name,
+        "override_active": "JAMES_AUDIO_DEVICE_INDEX" in os.environ,
+        "devices": [
+            {
+                "index": device.index,
+                "name": device.name,
+                "score": device.score,
+                "selected": device.index == config.audio_device_index,
+            }
+            for device in devices
+        ],
+    }
+    print(json.dumps(payload, indent=2))
     return 0
 
 
@@ -389,6 +417,9 @@ def handle_capture_prompt(args: argparse.Namespace) -> int:
     update_current_task(config.runtime_state_path, session)
 
     audio_path = config.audio_dir / f"{session.task_id}.wav"
+    if config.audio_device_name:
+        session.notes.append(f"Using audio input: [{config.audio_device_index}] {config.audio_device_name}")
+        update_current_task(config.runtime_state_path, session)
 
     speak(config.say_path, "Press and hold keypad zero to start recording. Release it to submit your prompt.", voice=config.say_voice)
     max_attempts = 2
@@ -1311,6 +1342,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "preflight":
         return handle_preflight()
+    if args.command == "audio-device":
+        return handle_audio_device(args)
     if args.command == "start-task":
         return handle_start_task(args)
     if args.command == "note":

@@ -19,7 +19,12 @@ echo "James: Running preflight..."
 "$PYTHON_BIN" james.py preflight
 
 echo ""
+echo "James: Audio input selection:"
+"$PYTHON_BIN" james.py audio-device --selected-only
+
+echo ""
 echo "James: Ready. Example next commands:"
 echo "  $PYTHON_BIN james.py capture-prompt \"Open Godot and inspect the project\""
+echo "  $PYTHON_BIN james.py audio-device"
 echo "  $PYTHON_BIN james.py start-task \"Manual Godot workflow\""
 echo "  $PYTHON_BIN james.py launch-godot --push-current"

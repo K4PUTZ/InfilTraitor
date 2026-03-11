@@ -32,7 +32,15 @@ class JamesConfig:
     godot_app_path: Path
     push_to_talk_key_vks: tuple[int, ...]
     audio_device_index: str
+    audio_device_name: str | None
     say_voice: str
+
+
+@dataclass(frozen=True)
+class AudioInputDevice:
+    index: str
+    name: str
+    score: int | None
 
 
 def _score_audio_device(name: str) -> int | None:
@@ -60,6 +68,44 @@ def _score_audio_device(name: str) -> int | None:
     return score
 
 
+def list_audio_input_devices(ffmpeg_path: str | None) -> list[AudioInputDevice]:
+    if not ffmpeg_path:
+        return []
+    try:
+        result = subprocess.run(
+            [ffmpeg_path, "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except Exception:
+        return []
+
+    devices: list[AudioInputDevice] = []
+    in_audio_section = False
+    for line in result.stderr.splitlines():
+        lower = line.lower()
+        if "audio devices" in lower:
+            in_audio_section = True
+            continue
+        if not in_audio_section:
+            continue
+        m = re.search(r"\[(\d+)\]\s+(.+)", line)
+        if not m:
+            continue
+        index, name = m.group(1), m.group(2)
+        devices.append(AudioInputDevice(index=index, name=name, score=_score_audio_device(name)))
+    return devices
+
+
+def get_audio_input_device_name(ffmpeg_path: str | None, index: str) -> str | None:
+    for device in list_audio_input_devices(ffmpeg_path):
+        if device.index == index:
+            return device.name
+    return None
+
+
 def _detect_audio_device_index(ffmpeg_path: str | None) -> str:
     """Probe ffmpeg for audio input devices and return the best real microphone index.
 
@@ -69,28 +115,7 @@ def _detect_audio_device_index(ffmpeg_path: str | None) -> str:
     if not ffmpeg_path:
         return "0"
     try:
-        candidates: list[tuple[int, str]] = []
-        result = subprocess.run(
-            [ffmpeg_path, "-f", "avfoundation", "-list_devices", "true", "-i", ""],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-        in_audio_section = False
-        for line in result.stderr.splitlines():
-            lower = line.lower()
-            if "audio devices" in lower:
-                in_audio_section = True
-                continue
-            if not in_audio_section:
-                continue
-            m = re.search(r"\[(\d+)\]\s+(.+)", line)
-            if m:
-                idx, name = m.group(1), m.group(2)
-                score = _score_audio_device(name)
-                if score is not None:
-                    candidates.append((score, idx))
+        candidates = [(device.score, device.index) for device in list_audio_input_devices(ffmpeg_path) if device.score is not None]
         if candidates:
             candidates.sort(reverse=True)
             return candidates[0][1]
@@ -114,6 +139,7 @@ def load_config() -> JamesConfig:
     _ffmpeg = shutil.which("ffmpeg")
     # Env var takes priority; fall back to auto-detection from ffmpeg device list.
     audio_device_index = os.environ.get("JAMES_AUDIO_DEVICE_INDEX") or _detect_audio_device_index(_ffmpeg)
+    audio_device_name = get_audio_input_device_name(_ffmpeg, audio_device_index)
 
     return JamesConfig(
         root_dir=root_dir,
@@ -138,5 +164,6 @@ def load_config() -> JamesConfig:
         godot_app_path=Path("/Applications/Godot.app"),
         push_to_talk_key_vks=(82, 29),
         audio_device_index=audio_device_index,
+        audio_device_name=audio_device_name,
         say_voice="Rocko (English (US))",
     )

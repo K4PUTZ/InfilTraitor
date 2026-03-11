@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORKSPACE_VENV="$ROOT_DIR/../../.venv/bin/python"
+WORKSPACE_VENV="$ROOT_DIR/../../../.venv/bin/python"
 
 if [ -x "$WORKSPACE_VENV" ]; then
 	PYTHON_BIN="$WORKSPACE_VENV"

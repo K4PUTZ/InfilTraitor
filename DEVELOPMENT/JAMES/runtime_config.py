@@ -51,12 +51,12 @@ def _score_audio_device(name: str) -> int | None:
         return None
 
     score = 1
-    if any(keyword in lower for keyword in ("airpods", "buds", "earbuds", "headset", "headphones", "philips")):
+    if any(keyword in lower for keyword in ("webcam", "c922")):
         score += 8
+    if any(keyword in lower for keyword in ("airpods", "buds", "earbuds", "headset", "headphones", "philips")):
+        score += 4
     if any(keyword in lower for keyword in ("microphone", "mic", "macbook", "built-in")):
         score += 5
-    if any(keyword in lower for keyword in ("webcam", "c922")):
-        score += 3
     return score
 
 

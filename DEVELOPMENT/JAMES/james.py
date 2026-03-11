@@ -443,7 +443,7 @@ def _capture_prompt_once(
                 output_path=audio_path,
                 on_recording_start=lambda: speak(config.say_path, "Recording.", voice=config.say_voice),
                 on_recording_stop=lambda: speak(config.say_path, "Processing.", voice=config.say_voice),
-                timeout=args.timeout,
+                timeout=timeout,
             )
             break
         except Exception as exc:

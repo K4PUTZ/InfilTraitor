@@ -3,11 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 import struct
 
-import Vision
-from Foundation import NSURL
+
+def _load_vision_modules():
+    try:
+        import Vision
+        from Foundation import NSURL
+    except Exception as exc:
+        raise RuntimeError(f"Apple Vision OCR is unavailable: {exc}") from exc
+    return Vision, NSURL
 
 
 def recognize_text(image_path: Path) -> list[dict[str, object]]:
+    Vision, NSURL = _load_vision_modules()
     input_url = NSURL.fileURLWithPath_(str(image_path))
     handler = Vision.VNImageRequestHandler.alloc().initWithURL_options_(input_url, None)
 

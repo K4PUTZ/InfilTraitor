@@ -3,7 +3,12 @@
 ## Current Scope
 
 - launch the INFILTRAITOR Godot project via `open -a Godot.app`
-- bring Godot to the foreground via `activate_app`
+- wait until the Godot editor is stable enough to interact with
+- switch Godot workspaces by visible tab label
+- focus key Godot dock panels by visible label
+- open visible scenes by OCR label, with quick-open fallback
+- run and stop the project via Godot shortcuts
+- capture the Output panel for evidence and OCR follow-up
 - return to VS Code after external work using the focus stack
 
 ## Available Primitives (ready to use in plans)
@@ -17,22 +22,32 @@ The full interaction layer is now available. Godot plans can use any of these st
 - `drag` — drag in the Godot canvas or scene tree
 - `capture_screen` — capture evidence at any step
 - `wait_for_text` — poll OCR until expected text appears (useful for import dialogs)
+- `wait_for_text_absent` — wait until blocking text like `Importing` disappears
+- `wait_for_godot_editor` — wait until Godot looks stable enough to manipulate
+- `godot_switch_workspace` — switch to `2d`, `3d`, `script`, or `assetlib`
+- `godot_focus_panel` — click `scene`, `filesystem`, `inspector`, `node`, `output`, or `history`
+- `godot_open_scene` — open a scene by label with quick-open fallback
+- `godot_run_project` — send the Godot run shortcut
+- `godot_stop_project` — send the Godot stop shortcut
+- `godot_capture_output` — focus the Output panel and capture a screenshot
 
 ## Next Steps
 
-1. **`wait_for_import`** — after launch, poll OCR for "Import" or "Importing…" text to clear before sending any click. Prevent timing errors caused by clicking while the editor is still loading.
-2. **`godot_open_scene <path>`** — use `click_text` on the FileSystem panel to navigate to a scene, or use `key_combo` (Ctrl+O) to open the file browser, then `type_text` the path.
-3. **`godot_switch_workspace <2d|3d|script>`** — click the workspace tab buttons at the top of the editor (`click_text` on "2D", "3D", or "Script").
-4. **`godot_capture_output`** — screenshot the Output panel after a test run. OCR for errors.
-5. **`godot_stop_game`** — send the Stop shortcut (`key_combo` F8 or the Stop button via `click_text`).
+1. Add post-action verification loops so workspace switches, scene opens, and run/stop actions are confirmed instead of assumed.
+2. Improve scene opening beyond visible labels by integrating FileSystem search or a stronger quick-open routine.
+3. Package common editor workflows like open-scene-then-run, import-wait, and output-error-capture as reusable higher-level actions.
+4. Add richer Godot output analysis so James can summarize errors directly for the planning brain.
 
 ## Plan Step Integration
 
-These would map to new plan step action types once packaged as higher-level steps:
+These capabilities now map directly to plan step action types:
 
-- `wait_for_godot_import`
-- `godot_open_scene`
+- `wait_for_godot_editor`
 - `godot_switch_workspace`
+- `godot_focus_panel`
+- `godot_open_scene`
+- `godot_run_project`
+- `godot_stop_project`
 - `godot_capture_output`
 
-For now they can be composed directly from the available primitives (`click_text`, `wait_for_text`, `key_combo`).
+The next layer should package these into reusable multi-step workflows with verification.

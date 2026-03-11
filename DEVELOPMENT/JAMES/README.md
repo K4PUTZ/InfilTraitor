@@ -121,12 +121,20 @@ All commands are available via `python3 james.py <command>`:
 | `activate-app <name>` | Switch to a named macOS application |
 | `return-to-editor` | Return to the last pushed app or the default editor |
 | `launch-godot [--project <path>]` | Open the INFILTRAITOR Godot project |
+| `wait-for-godot-editor [--timeout]` | Wait until Godot looks stable enough to interact with |
+| `godot-switch-workspace <2d|3d|script|assetlib>` | Click a Godot workspace tab by OCR label |
+| `godot-focus-panel <scene|filesystem|inspector|node|output|history>` | Focus a Godot dock panel by OCR label |
+| `godot-open-scene <scene>` | Open a scene by visible label, with quick-open fallback |
+| `godot-run-project` | Send the Godot Run Project shortcut |
+| `godot-stop-project` | Send the Godot Stop shortcut |
+| `godot-capture-output [--label]` | Focus the Output panel and capture a screenshot |
 | `capture-prompt <goal>` | Push-to-talk capture → transcription → `state/brain_request.json` |
 | `generate-plan` | Heuristic bridge: synthesise a plan from `state/brain_request.json` |
 | `write-sample-plan <task_id>` | Write a sample plan to `state/brain_response.json` |
 | `execute-plan` | Run all steps from `state/brain_response.json` |
 | `wait-for-app <name>` | Poll until the named app is frontmost (partial name match) |
 | `wait-for-text <label> <text>` | Poll OCR until the text appears on screen |
+| `wait-for-text-absent <label> <text>` | Poll OCR until the text disappears |
 | `ocr-screen <label>` | Capture and OCR the current screen |
 | `click <x> <y>` | Click at logical screen coordinates |
 | `double-click <x> <y>` | Double-click at logical screen coordinates |
@@ -272,12 +280,20 @@ All commands are available via `james.py <command>`:
 - `activate-app <name>` — switch to a named macOS application
 - `return-to-editor` — return to the last pushed app or the default editor
 - `launch-godot [--project <path>]` — open the INFILTRAITOR Godot project
+- `wait-for-godot-editor [--timeout]` — wait until Godot looks stable enough to interact with
+- `godot-switch-workspace <2d|3d|script|assetlib>` — click a Godot workspace tab by OCR label
+- `godot-focus-panel <scene|filesystem|inspector|node|output|history>` — focus a Godot dock panel by OCR label
+- `godot-open-scene <scene>` — open a scene by visible label, with quick-open fallback
+- `godot-run-project` — send the Godot Run Project shortcut
+- `godot-stop-project` — send the Godot Stop shortcut
+- `godot-capture-output [--label]` — focus the Output panel and capture a screenshot
 - `capture-prompt <goal>` — push-to-talk capture → transcription → `state/brain_request.json`
 - `generate-plan` — heuristic bridge: synthesize a plan from `state/brain_request.json`
 - `write-sample-plan <task_id>` — write a sample plan to `state/brain_response.json`
 - `execute-plan` — run all steps from `state/brain_response.json`
 - `wait-for-app <name>` — poll until the named app is frontmost
 - `wait-for-text <label> <text>` — poll OCR until the text appears on screen
+- `wait-for-text-absent <label> <text>` — poll OCR until the text disappears
 - `ocr-screen <label>` — capture and OCR the current screen
 - `finish-task [--status] [--note]` — close the task and write a session summary
 - `status` — print the current task state as JSON

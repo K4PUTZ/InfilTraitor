@@ -31,6 +31,21 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
     wants_inspect = any(token in prompt for token in ("inspect", "check", "look", "see", "verify"))
     wants_screen = any(token in prompt for token in ("screen", "screenshot", "capture"))
     wants_return = any(token in prompt for token in ("return", "come back", "back to code", "back to editor", "vscode"))
+    wants_output = any(token in prompt for token in ("output", "errors", "console", "log"))
+    wants_run = any(token in prompt for token in ("run project", "play", "test run", "run game"))
+    wants_scene_open = any(token in prompt for token in ("open scene", ".tscn", "scene "))
+
+    workspace = None
+    for candidate in ("2d", "3d", "script", "assetlib"):
+        if candidate in prompt:
+            workspace = candidate
+            break
+
+    scene_name = None
+    for token in request.get("prompt", "").split():
+        if token.endswith(".tscn"):
+            scene_name = token.strip('"\'.,')
+            break
 
     step_number = 2
     if wants_godot or wants_open:
@@ -46,9 +61,37 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
         steps.append(
             {
                 "id": f"s{step_number}",
-                "action": "wait_for_app",
-                "app_name": "Godot",
-                "timeout": 15,
+                "action": "wait_for_godot_editor",
+                "timeout": 45,
+            }
+        )
+        step_number += 1
+
+    if workspace:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "godot_switch_workspace",
+                "workspace": workspace,
+            }
+        )
+        step_number += 1
+
+    if wants_scene_open and scene_name:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "godot_open_scene",
+                "scene": scene_name,
+            }
+        )
+        step_number += 1
+
+    if wants_run:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "godot_run_project",
             }
         )
         step_number += 1
@@ -59,6 +102,16 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
                 "id": f"s{step_number}",
                 "action": "capture_screen",
                 "label": "inspection",
+            }
+        )
+        step_number += 1
+
+    if wants_output:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "godot_capture_output",
+                "label": "godot_output",
             }
         )
         step_number += 1

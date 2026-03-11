@@ -7,9 +7,6 @@ import subprocess
 import threading
 import time
 
-import speech_recognition as sr
-from pynput import keyboard
-
 
 @dataclass
 class VoiceCaptureResult:
@@ -17,7 +14,23 @@ class VoiceCaptureResult:
     audio_path: Path
 
 
-def _matches_trigger(key: keyboard.Key | keyboard.KeyCode, trigger_vks: tuple[int, ...]) -> bool:
+def _load_speech_recognition_module():
+    try:
+        import speech_recognition as sr
+    except Exception as exc:
+        raise RuntimeError(f"SpeechRecognition is unavailable: {exc}") from exc
+    return sr
+
+
+def _load_keyboard_module():
+    try:
+        from pynput import keyboard
+    except Exception as exc:
+        raise RuntimeError(f"pynput keyboard capture is unavailable: {exc}") from exc
+    return keyboard
+
+
+def _matches_trigger(key: object, trigger_vks: tuple[int, ...]) -> bool:
     vk = getattr(key, "vk", None)
     return vk in trigger_vks
 
@@ -66,6 +79,7 @@ def stop_audio_recording(process: subprocess.Popen[str], timeout: float = 5) -> 
 
 
 def transcribe_audio(audio_path: Path) -> str:
+    sr = _load_speech_recognition_module()
     recognizer = sr.Recognizer()
     with sr.AudioFile(str(audio_path)) as source:
         audio = recognizer.record(source)
@@ -82,6 +96,7 @@ def capture_push_to_talk(
     on_recording_stop=None,
     timeout: float = 60,
 ) -> VoiceCaptureResult:
+    keyboard = _load_keyboard_module()
     state = {
         "recording": False,
         "completed": False,

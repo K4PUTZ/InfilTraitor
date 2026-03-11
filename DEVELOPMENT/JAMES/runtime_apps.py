@@ -3,6 +3,33 @@ from __future__ import annotations
 import subprocess
 
 
+SPECIAL_KEY_CODES = {
+    "return": 36,
+    "enter": 36,
+    "tab": 48,
+    "space": 49,
+    "delete": 51,
+    "escape": 53,
+    "esc": 53,
+    "left": 123,
+    "right": 124,
+    "down": 125,
+    "up": 126,
+    "f1": 122,
+    "f2": 120,
+    "f3": 99,
+    "f4": 118,
+    "f5": 96,
+    "f6": 97,
+    "f7": 98,
+    "f8": 100,
+    "f9": 101,
+    "f10": 109,
+    "f11": 103,
+    "f12": 111,
+}
+
+
 def _run_osascript(osascript_path: str, script: str, timeout: float = 2) -> subprocess.CompletedProcess[str] | None:
     try:
         return subprocess.run(
@@ -100,11 +127,19 @@ def key_combo(osascript_path: str, key: str, modifiers: list[str]) -> bool:
         key_combo(osascript_path, "z", ["command", "shift"])  → ⌘⇧Z
         key_combo(osascript_path, "return", [])           → Enter
     """
-    safe_key = key.replace("\\", "\\\\").replace('"', '\\"')
-    if not modifiers:
-        script = f'tell application "System Events" to keystroke "{safe_key}"'
+    normalized_key = key.strip().lower()
+    mod_list = ", ".join(f"{m} down" for m in modifiers)
+    special_key_code = SPECIAL_KEY_CODES.get(normalized_key)
+    if special_key_code is not None:
+        if modifiers:
+            script = f'tell application "System Events" to key code {special_key_code} using {{{mod_list}}}'
+        else:
+            script = f'tell application "System Events" to key code {special_key_code}'
     else:
-        mod_list = " & ".join(f"{m} down" for m in modifiers)
-        script = f'tell application "System Events" to keystroke "{safe_key}" using {{{mod_list}}}'
+        safe_key = key.replace("\\", "\\\\").replace('"', '\\"')
+        if not modifiers:
+            script = f'tell application "System Events" to keystroke "{safe_key}"'
+        else:
+            script = f'tell application "System Events" to keystroke "{safe_key}" using {{{mod_list}}}'
     result = _run_osascript(osascript_path, script, timeout=3)
     return bool(result and result.returncode == 0)

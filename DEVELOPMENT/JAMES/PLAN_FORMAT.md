@@ -78,6 +78,70 @@ Optional fields depend on the action.
 { "id": "step-4c", "action": "wait_for_text", "label": "godot_ui", "text": "Scene", "timeout": 15 }
 ```
 
+### `wait_for_text_absent`
+
+```json
+{ "id": "step-4d", "action": "wait_for_text_absent", "label": "godot_loading", "text": "Importing", "timeout": 30 }
+```
+
+### `wait_for_godot_editor`
+
+Poll screenshots until Godot looks stable enough to interact with. James waits for editor markers like `Scene`, `FileSystem`, or `Inspector`, and rejects screenshots that still look like import/loading screens.
+
+```json
+{ "id": "step-4e", "action": "wait_for_godot_editor", "timeout": 45 }
+```
+
+### `godot_switch_workspace`
+
+```json
+{ "id": "step-4f", "action": "godot_switch_workspace", "workspace": "2d" }
+```
+
+Supported workspaces currently: `2d`, `3d`, `script`, `assetlib`.
+
+### `godot_focus_panel`
+
+```json
+{ "id": "step-4g", "action": "godot_focus_panel", "panel": "output" }
+```
+
+Supported panels currently: `scene`, `filesystem`, `inspector`, `node`, `output`, `history`.
+
+### `godot_open_scene`
+
+James first tries to OCR-match the visible scene name in the Godot UI and double-click it. If that fails, James can fall back to Godot quick-open.
+
+```json
+{ "id": "step-4h", "action": "godot_open_scene", "scene": "main.tscn" }
+```
+
+Disable the quick-open fallback when needed:
+
+```json
+{ "id": "step-4i", "action": "godot_open_scene", "scene": "res://scenes/main.tscn", "no_quick_open": true }
+```
+
+### `godot_run_project`
+
+```json
+{ "id": "step-4j", "action": "godot_run_project" }
+```
+
+### `godot_stop_project`
+
+```json
+{ "id": "step-4k", "action": "godot_stop_project" }
+```
+
+### `godot_capture_output`
+
+Focus the Godot Output panel and capture a screenshot for evidence or OCR follow-up.
+
+```json
+{ "id": "step-4l", "action": "godot_capture_output", "label": "run_output" }
+```
+
 ### `return_to_editor`
 
 ```json
@@ -169,9 +233,11 @@ Capture a screenshot, run Apple Vision OCR, find the first on-screen element who
   "steps": [
     { "id": "s1", "action": "note", "text": "Starting plan." },
     { "id": "s2", "action": "launch_godot", "push_current": true },
-    { "id": "s3", "action": "wait_for_app", "app_name": "Godot", "timeout": 15 },
-    { "id": "s4", "action": "return_to_editor" },
-    { "id": "s5", "action": "finish_task", "status": "completed", "note": "Executor validation complete." }
+    { "id": "s3", "action": "wait_for_godot_editor", "timeout": 45 },
+    { "id": "s4", "action": "godot_switch_workspace", "workspace": "script" },
+    { "id": "s5", "action": "godot_capture_output", "label": "script_workspace" },
+    { "id": "s6", "action": "return_to_editor" },
+    { "id": "s7", "action": "finish_task", "status": "completed", "note": "Executor validation complete." }
   ]
 }
 ```

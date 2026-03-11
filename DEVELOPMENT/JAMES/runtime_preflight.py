@@ -29,7 +29,6 @@ def _tool_check(label: str, path: str | None) -> CheckResult:
 
 
 def _voice_check(say_path: str, voice_name: str) -> CheckResult:
-    """Verify that the configured say voice exists on this system."""
     try:
         result = subprocess.run(
             [say_path, "-v", voice_name, ""],
@@ -43,13 +42,13 @@ def _voice_check(say_path: str, voice_name: str) -> CheckResult:
         return CheckResult(
             f"say voice: {voice_name}",
             False,
-            f"voice not found. Run 'say -v ?' to list available voices.",
+            "voice not found. Run 'say -v ?' to list available voices.",
         )
     except Exception as exc:
         return CheckResult(f"say voice: {voice_name}", False, str(exc))
 
 
-
+def run_preflight(config: JamesConfig) -> dict[str, object]:
     required_tools = [
         _tool_check("osascript", config.osascript_path),
         _tool_check("screencapture", config.screencapture_path),
@@ -58,11 +57,7 @@ def _voice_check(say_path: str, voice_name: str) -> CheckResult:
         _tool_check("cliclick", config.cliclick_path),
         _tool_check("tesseract", config.tesseract_path),
         _tool_check("ffmpeg", config.ffmpeg_path),
-        CheckResult(
-            "Godot.app",
-            config.godot_app_path.exists(),
-            str(config.godot_app_path),
-        ),
+        CheckResult("Godot.app", config.godot_app_path.exists(), str(config.godot_app_path)),
     ]
 
     optional_modules = [

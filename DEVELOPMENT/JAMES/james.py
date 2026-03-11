@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import time
 import sys
 
 from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_frontmost_app, get_screen_size, key_combo, type_text
@@ -10,7 +11,16 @@ from runtime_brain import write_brain_request
 from runtime_capture import capture_screen
 from runtime_config import load_config
 from runtime_focus import pop_focus, push_focus
-from runtime_godot import launch_godot_project
+from runtime_godot import (
+    capture_godot_panel,
+    focus_godot_panel,
+    launch_godot_project,
+    open_godot_scene,
+    run_godot_project,
+    stop_godot_project,
+    switch_godot_workspace,
+    wait_for_godot_editor_ready,
+)
 from runtime_logging import append_action
 from runtime_models import ActionRecord
 from runtime_plan import load_plan, write_sample_plan
@@ -21,7 +31,7 @@ from runtime_speech import speak
 from runtime_sessions import finish_task, get_current_task, restore_task, start_task, update_current_task
 from runtime_vision import find_text_center_coords, recognize_text
 from runtime_voice import capture_push_to_talk, capture_voice_answer
-from runtime_wait import wait_for_app, wait_for_text
+from runtime_wait import wait_for_app, wait_for_text, wait_for_text_absent
 
 
 def _format_exception(exc: Exception) -> str:
@@ -75,6 +85,11 @@ def build_parser() -> argparse.ArgumentParser:
     wait_text_cmd.add_argument("text", help="Text to wait for")
     wait_text_cmd.add_argument("--timeout", type=float, default=15.0, help="Seconds to wait")
 
+    wait_text_absent_cmd = sub.add_parser("wait-for-text-absent", help="Wait until OCR no longer sees text on screen")
+    wait_text_absent_cmd.add_argument("label", help="Label prefix for screenshots")
+    wait_text_absent_cmd.add_argument("text", help="Text that must disappear")
+    wait_text_absent_cmd.add_argument("--timeout", type=float, default=15.0, help="Seconds to wait")
+
     activate = sub.add_parser("activate-app", help="Activate an application by name")
     activate.add_argument("app_name", help="Application name as seen by macOS")
     activate.add_argument("--push-current", action="store_true", help="Push the current frontmost app before switching")
@@ -88,6 +103,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the Godot project.godot file",
     )
     godot.add_argument("--push-current", action="store_true", help="Push the current frontmost app before switching")
+
+    wait_godot = sub.add_parser("wait-for-godot-editor", help="Wait until Godot editor UI is stable and ready")
+    wait_godot.add_argument("--timeout", type=float, default=45.0, help="Seconds to wait")
+
+    godot_workspace = sub.add_parser("godot-switch-workspace", help="Switch Godot to a workspace tab by visible label")
+    godot_workspace.add_argument("workspace", help="Workspace name: 2d, 3d, script, assetlib")
+
+    godot_panel = sub.add_parser("godot-focus-panel", help="Focus a Godot dock panel by visible label")
+    godot_panel.add_argument("panel", help="Panel name: scene, filesystem, inspector, node, output, history")
+
+    godot_scene = sub.add_parser("godot-open-scene", help="Open a Godot scene by OCR label or quick-open fallback")
+    godot_scene.add_argument("scene", help="Scene filename or path, for example main.tscn")
+    godot_scene.add_argument("--no-quick-open", action="store_true", help="Disable the quick-open fallback if OCR cannot find the scene")
+
+    sub.add_parser("godot-run-project", help="Run the current Godot project")
+    sub.add_parser("godot-stop-project", help="Stop the currently running Godot project")
+
+    godot_output = sub.add_parser("godot-capture-output", help="Focus the Godot Output panel and capture a screenshot")
+    godot_output.add_argument("--label", default="godot_output", help="Label for the screenshot file")
 
     prompt = sub.add_parser("capture-prompt", help="Capture a push-to-talk prompt and write a brain request")
     prompt.add_argument("goal", help="Goal associated with the spoken prompt")
@@ -520,6 +554,42 @@ def handle_wait_for_text(args: argparse.Namespace) -> int:
     return 0 if matched else 1
 
 
+def handle_wait_for_text_absent(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+    matched, shot_path = wait_for_text_absent(
+        config.screencapture_path,
+        config.screenshots_dir,
+        session.task_id,
+        args.label,
+        args.text,
+        timeout=args.timeout,
+    )
+    after_app = get_frontmost_app(config.osascript_path)
+    if shot_path:
+        session.evidence.append(str(shot_path))
+        update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id=f"wait-text-absent-{args.label}",
+            action_type="wait_for_text_absent",
+            target=args.text,
+            status="ok" if matched else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            parameters={"timeout": args.timeout, "label": args.label},
+            screenshot_after=str(shot_path) if shot_path else None,
+            verification_result=f"absent={matched}",
+            error=None if matched else f"Timed out waiting for text to disappear: {args.text}",
+        ),
+    )
+    print(str(shot_path) if shot_path else ("cleared" if matched else "timed out"))
+    return 0 if matched else 1
+
+
 def handle_activate_app(args: argparse.Namespace) -> int:
     config = load_config()
     session = _require_current_task(config)
@@ -614,6 +684,267 @@ def handle_launch_godot(args: argparse.Namespace) -> int:
     return 0 if success else 1
 
 
+def handle_wait_for_godot_editor(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+    matched, shot_path, detail = wait_for_godot_editor_ready(
+        config.screencapture_path,
+        config.screenshots_dir,
+        session.task_id,
+        timeout=args.timeout,
+    )
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(detail)
+    if shot_path:
+        session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="wait-for-godot-editor",
+            action_type="wait_for_godot_editor",
+            target="Godot editor",
+            status="ok" if matched else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            parameters={"timeout": args.timeout},
+            screenshot_after=str(shot_path) if shot_path else None,
+            verification_result=detail,
+            error=None if matched else detail,
+        ),
+    )
+    print(detail)
+    return 0 if matched else 1
+
+
+def handle_godot_switch_workspace(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.cliclick_path:
+        raise SystemExit("cliclick is required for Godot workspace switching")
+    before_app = get_frontmost_app(config.osascript_path)
+    output_path = config.screenshots_dir / f"{session.task_id}_godot_workspace_{args.workspace}.png"
+    try:
+        success, shot_path, detail = switch_godot_workspace(
+            config.cliclick_path,
+            config.screencapture_path,
+            config.osascript_path,
+            output_path,
+            args.workspace,
+        )
+    except Exception as exc:
+        success, shot_path, detail = False, output_path, _format_exception(exc)
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(detail)
+    session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-switch-workspace",
+            action_type="godot_switch_workspace",
+            target=args.workspace,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path),
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_godot_focus_panel(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.cliclick_path:
+        raise SystemExit("cliclick is required for Godot panel focus")
+    before_app = get_frontmost_app(config.osascript_path)
+    output_path = config.screenshots_dir / f"{session.task_id}_godot_panel_{args.panel}.png"
+    try:
+        success, shot_path, detail = focus_godot_panel(
+            config.cliclick_path,
+            config.screencapture_path,
+            config.osascript_path,
+            output_path,
+            args.panel,
+        )
+    except Exception as exc:
+        success, shot_path, detail = False, output_path, _format_exception(exc)
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(detail)
+    session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-focus-panel",
+            action_type="godot_focus_panel",
+            target=args.panel,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path),
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_godot_open_scene(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.cliclick_path:
+        raise SystemExit("cliclick is required for Godot scene opening")
+    before_app = get_frontmost_app(config.osascript_path)
+    output_path = config.screenshots_dir / f"{session.task_id}_godot_scene_{Path(args.scene).stem}.png"
+    try:
+        success, shot_path, detail = open_godot_scene(
+            config.cliclick_path,
+            config.screencapture_path,
+            config.osascript_path,
+            output_path,
+            args.scene,
+            use_quick_open=not args.no_quick_open,
+        )
+    except Exception as exc:
+        success, shot_path, detail = False, output_path, _format_exception(exc)
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(detail)
+    session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-open-scene",
+            action_type="godot_open_scene",
+            target=args.scene,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path),
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    if success:
+        time.sleep(0.5)
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_godot_run_project() -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+    success = run_godot_project(config.osascript_path)
+    after_app = get_frontmost_app(config.osascript_path)
+    detail = "sent Godot Run Project shortcut (F5)" if success else "failed to send Godot Run Project shortcut (F5)"
+    session.active_app = after_app
+    session.notes.append(detail)
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-run-project",
+            action_type="godot_run_project",
+            target="F5",
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_godot_stop_project() -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+    success = stop_godot_project(config.osascript_path)
+    after_app = get_frontmost_app(config.osascript_path)
+    detail = "sent Godot Stop shortcut (F8)" if success else "failed to send Godot Stop shortcut (F8)"
+    session.active_app = after_app
+    session.notes.append(detail)
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-stop-project",
+            action_type="godot_stop_project",
+            target="F8",
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_godot_capture_output(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.cliclick_path:
+        raise SystemExit("cliclick is required for Godot output capture")
+    before_app = get_frontmost_app(config.osascript_path)
+    focus_shot = config.screenshots_dir / f"{session.task_id}_{args.label}_focus.png"
+    capture_shot = config.screenshots_dir / f"{session.task_id}_{args.label}.png"
+    try:
+        success, shot_path, detail = capture_godot_panel(
+            config.cliclick_path,
+            config.screencapture_path,
+            config.osascript_path,
+            focus_shot,
+            capture_shot,
+            "output",
+        )
+    except Exception as exc:
+        success, shot_path, detail = False, focus_shot, _format_exception(exc)
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(detail)
+    session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="godot-capture-output",
+            action_type="godot_capture_output",
+            target=args.label,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path),
+            verification_result=detail,
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
 def _execute_step(step, config) -> int:
     if step.action == "note":
         note_args = argparse.Namespace(text=step.payload["text"])
@@ -633,6 +964,28 @@ def _execute_step(step, config) -> int:
             push_current=step.payload.get("push_current", False),
         )
         return handle_launch_godot(godot_args)
+    if step.action == "wait_for_godot_editor":
+        wait_godot_args = argparse.Namespace(timeout=float(step.payload.get("timeout", 45.0)))
+        return handle_wait_for_godot_editor(wait_godot_args)
+    if step.action == "godot_switch_workspace":
+        workspace_args = argparse.Namespace(workspace=step.payload["workspace"])
+        return handle_godot_switch_workspace(workspace_args)
+    if step.action == "godot_focus_panel":
+        panel_args = argparse.Namespace(panel=step.payload["panel"])
+        return handle_godot_focus_panel(panel_args)
+    if step.action == "godot_open_scene":
+        open_scene_args = argparse.Namespace(
+            scene=step.payload["scene"],
+            no_quick_open=bool(step.payload.get("no_quick_open", False)),
+        )
+        return handle_godot_open_scene(open_scene_args)
+    if step.action == "godot_run_project":
+        return handle_godot_run_project()
+    if step.action == "godot_stop_project":
+        return handle_godot_stop_project()
+    if step.action == "godot_capture_output":
+        capture_output_args = argparse.Namespace(label=step.payload.get("label", "godot_output"))
+        return handle_godot_capture_output(capture_output_args)
     if step.action == "capture_screen":
         capture_args = argparse.Namespace(label=step.payload["label"])
         return handle_capture_screen(capture_args)
@@ -649,6 +1002,13 @@ def _execute_step(step, config) -> int:
             timeout=float(step.payload.get("timeout", 15.0)),
         )
         return handle_wait_for_text(wait_text_args)
+    if step.action == "wait_for_text_absent":
+        wait_text_absent_args = argparse.Namespace(
+            label=step.payload["label"],
+            text=step.payload["text"],
+            timeout=float(step.payload.get("timeout", 15.0)),
+        )
+        return handle_wait_for_text_absent(wait_text_absent_args)
     if step.action == "return_to_editor":
         return handle_return_to_editor()
     if step.action == "finish_task":
@@ -952,12 +1312,28 @@ def main(argv: list[str] | None = None) -> int:
         return handle_wait_for_app(args)
     if args.command == "wait-for-text":
         return handle_wait_for_text(args)
+    if args.command == "wait-for-text-absent":
+        return handle_wait_for_text_absent(args)
     if args.command == "activate-app":
         return handle_activate_app(args)
     if args.command == "return-to-editor":
         return handle_return_to_editor()
     if args.command == "launch-godot":
         return handle_launch_godot(args)
+    if args.command == "wait-for-godot-editor":
+        return handle_wait_for_godot_editor(args)
+    if args.command == "godot-switch-workspace":
+        return handle_godot_switch_workspace(args)
+    if args.command == "godot-focus-panel":
+        return handle_godot_focus_panel(args)
+    if args.command == "godot-open-scene":
+        return handle_godot_open_scene(args)
+    if args.command == "godot-run-project":
+        return handle_godot_run_project()
+    if args.command == "godot-stop-project":
+        return handle_godot_stop_project()
+    if args.command == "godot-capture-output":
+        return handle_godot_capture_output(args)
     if args.command == "capture-prompt":
         return handle_capture_prompt(args)
     if args.command == "click":

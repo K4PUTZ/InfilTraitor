@@ -35,15 +35,41 @@ class JamesConfig:
     say_voice: str
 
 
-def _detect_audio_device_index(ffmpeg_path: str | None) -> str:
-    """Probe ffmpeg for audio input devices and return the index of the first real microphone.
+def _score_audio_device(name: str) -> int | None:
+    lower = name.lower()
+    rejected_keywords = (
+        "blackhole",
+        "soundflower",
+        "loopback",
+        "aggregate",
+        "teams audio",
+        "zoom audio",
+        "audio bridge",
+        "pro tools",
+    )
+    if any(keyword in lower for keyword in rejected_keywords):
+        return None
 
-    Skips known virtual/loopback devices (BlackHole, Soundflower, Loopback).
+    score = 1
+    if any(keyword in lower for keyword in ("airpods", "buds", "earbuds", "headset", "headphones", "philips")):
+        score += 8
+    if any(keyword in lower for keyword in ("microphone", "mic", "macbook", "built-in")):
+        score += 5
+    if any(keyword in lower for keyword in ("webcam", "c922")):
+        score += 3
+    return score
+
+
+def _detect_audio_device_index(ffmpeg_path: str | None) -> str:
+    """Probe ffmpeg for audio input devices and return the best real microphone index.
+
+    Prefers likely physical microphones and skips known virtual, conferencing, and bridge devices.
     Returns "0" if detection fails or no suitable device is found.
     """
     if not ffmpeg_path:
         return "0"
     try:
+        candidates: list[tuple[int, str]] = []
         result = subprocess.run(
             [ffmpeg_path, "-f", "avfoundation", "-list_devices", "true", "-i", ""],
             capture_output=True,
@@ -61,10 +87,13 @@ def _detect_audio_device_index(ffmpeg_path: str | None) -> str:
                 continue
             m = re.search(r"\[(\d+)\]\s+(.+)", line)
             if m:
-                idx, name = m.group(1), m.group(2).lower()
-                _virtual = ("blackhole", "soundflower", "loopback", "aggregate")
-                if not any(skip in name for skip in _virtual):
-                    return idx
+                idx, name = m.group(1), m.group(2)
+                score = _score_audio_device(name)
+                if score is not None:
+                    candidates.append((score, idx))
+        if candidates:
+            candidates.sort(reverse=True)
+            return candidates[0][1]
     except Exception:
         pass
     return "0"

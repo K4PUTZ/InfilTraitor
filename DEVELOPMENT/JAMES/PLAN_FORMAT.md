@@ -134,6 +134,36 @@ Focus the Output panel and capture a screenshot for evidence.
 { "id": "step-4", "action": "capture_screen", "label": "godot_after_launch" }
 ```
 
+### `delegate_code_edit`
+
+Write a structured handoff file for the coding agent when the workflow needs direct source edits. This is the preferred bridge for semantic code changes. By default, James pauses execution after writing the handoff so the coding agent can edit files directly and a later James plan can resume with validation.
+
+```json
+{
+  "id": "step-4a",
+  "action": "delegate_code_edit",
+  "summary": "Update the player script to react to the new scene node.",
+  "instructions": "Read the relevant script directly from the workspace and implement the behavior change without using blind UI typing.",
+  "relevant_files": ["res://scripts/player.gd"],
+  "acceptance_criteria": [
+    "The script compiles and contains the requested behavior.",
+    "The change is minimal and consistent with the existing style."
+  ],
+  "context_notes": [
+    "James has already created or opened the relevant Godot scene.",
+    "A follow-up James plan should validate the result inside Godot."
+  ],
+  "pause_after": true
+}
+```
+
+Operator follow-up after the coding agent finishes:
+
+- inspect the request with `python3 james.py code-agent-request`
+- inspect the completion payload with `python3 james.py code-agent-result`
+- record completion with `python3 james.py complete-code-edit "summary of the direct edit" --changed-file <path> --follow-up-note "what James should validate next"`
+- prepare the next validation request with `python3 james.py prepare-followup-plan`
+
 ### `wait_for_app`
 
 ```json

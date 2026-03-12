@@ -22,6 +22,8 @@ class JamesConfig:
     runtime_state_path: Path
     brain_request_path: Path
     brain_response_path: Path
+    code_agent_request_path: Path
+    code_agent_result_path: Path
     default_return_app: str
     osascript_path: str
     screencapture_path: str
@@ -154,6 +156,8 @@ def load_config() -> JamesConfig:
         runtime_state_path=state_dir / "runtime_state.json",
         brain_request_path=state_dir / "brain_request.json",
         brain_response_path=state_dir / "brain_response.json",
+        code_agent_request_path=state_dir / "code_agent_request.json",
+        code_agent_result_path=state_dir / "code_agent_result.json",
         default_return_app="Visual Studio Code",
         osascript_path=shutil.which("osascript") or "/usr/bin/osascript",
         screencapture_path=shutil.which("screencapture") or "/usr/sbin/screencapture",

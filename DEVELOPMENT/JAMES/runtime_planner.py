@@ -22,8 +22,95 @@ def _build_conversational_reply(prompt: str) -> str:
     return f"I heard: {prompt.strip()}"
 
 
+def _build_post_code_edit_validation_plan(request: dict, response_path: Path) -> Path:
+    task_id = request["task_id"]
+    goal = request.get("goal", "James generated task")
+    return_target = request.get("return_app", "Visual Studio Code")
+    context = request.get("workflow_context") or {}
+    handoff = context.get("code_agent_request") or {}
+    result = context.get("code_agent_result") or {}
+    changed_files = [str(item) for item in (result.get("changed_files") or [])]
+    follow_up_notes = [str(item) for item in (result.get("follow_up_notes") or [])]
+    summary = str(result.get("summary") or handoff.get("summary") or "Direct code edits completed.")
+
+    steps: list[dict[str, object]] = [
+        {
+            "id": "s1",
+            "action": "note",
+            "text": f"Post-code-edit validation requested: {summary}",
+        },
+        {
+            "id": "s2",
+            "action": "launch_godot",
+            "project": DEFAULT_PROJECT_PATH,
+            "push_current": True,
+        },
+        {
+            "id": "s3",
+            "action": "wait_for_godot_editor",
+            "timeout": 45,
+        },
+        {
+            "id": "s4",
+            "action": "capture_screen",
+            "label": "post_code_edit_validation",
+        },
+        {
+            "id": "s5",
+            "action": "godot_capture_output",
+            "label": "post_code_edit_output",
+        },
+        {
+            "id": "s6",
+            "action": "return_to_editor",
+        },
+        {
+            "id": "s7",
+            "action": "finish_task",
+            "status": "completed",
+            "note": "Post-code-edit validation plan executed.",
+        },
+    ]
+
+    outcome_tips = [
+        "Review the validation screenshot and captured Godot output for regressions after the direct code edit.",
+    ]
+    if changed_files:
+        outcome_tips.append("Changed files recorded for this phase: " + ", ".join(changed_files))
+    if follow_up_notes:
+        outcome_tips.append("Requested validation focus: " + " | ".join(follow_up_notes))
+
+    plan = {
+        "task_id": task_id,
+        "goal": goal,
+        "confidence": 0.8,
+        "better_alternative": None,
+        "warnings": [
+            "Heuristic post-edit validation plan — prefer the external brain when the follow-up needs scene-specific or UI-specific checks."
+        ],
+        "clarification_needed": False,
+        "clarification_questions": [],
+        "outcome_tips": outcome_tips,
+        "success_conditions": [
+            "Godot is launched and stable enough to inspect.",
+            "James captures validation evidence after the direct code edits.",
+            "James returns to the requested editor target.",
+        ],
+        "return_target": return_target,
+        "safety_level": "normal",
+        "steps": steps,
+    }
+
+    response_path.write_text(json.dumps(plan, indent=2, ensure_ascii=True))
+    return response_path
+
+
 def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
     request = json.loads(request_path.read_text())
+    workflow_stage = request.get("workflow_stage")
+    if workflow_stage == "post_code_edit_validation":
+        return _build_post_code_edit_validation_plan(request, response_path)
+
     prompt = _normalize_prompt(request.get("prompt", ""))
     task_id = request["task_id"]
     goal = request.get("goal", "James generated task")

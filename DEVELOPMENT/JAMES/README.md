@@ -30,6 +30,7 @@ Current important limits:
 - James still lacks general post-action verification loops. Many actions succeed in practice, but they are not yet universally self-verifying.
 - The built-in planner is still heuristic. Production use should rely on an external brain-generated plan.
 - VS Code automation is still mostly a composition of low-level primitives rather than dedicated first-class actions.
+- Mixed workflows are only partially integrated today. James can now pause and emit a structured code-agent handoff, but direct source editing still happens outside James.
 
 ## Why James Exists
 
@@ -53,7 +54,9 @@ Typical manual flow:
 3. Hold keypad `0` to speak. James writes `state/brain_request.json` after transcription.
 4. For a real external-brain workflow, paste that request into the active LLM chat and save the returned JSON to `state/brain_response.json`.
 5. For simple prompts, listen mode can locally generate and execute a heuristic fallback plan without leaving the loop.
-6. James evaluates the plan safety gates, executes the steps, logs the run, captures evidence, and returns to the configured editor target when requested.
+6. For mixed GUI plus coding tasks, the plan can now emit `delegate_code_edit` to write `state/code_agent_request.json` and pause cleanly for direct file edits by the coding agent.
+7. After the coding agent finishes, record the result with `complete-code-edit` and run `prepare-followup-plan` to write a fresh `state/brain_request.json` for James validation or follow-up GUI work.
+8. James evaluates the plan safety gates, executes the steps, logs the run, captures evidence, and returns to the configured editor target when requested.
 
 Safety gates before execution:
 
@@ -93,6 +96,10 @@ Task and state:
 - `note <text>`
 - `finish-task [--status] [--note]`
 - `status`
+- `code-agent-request [--json]`
+- `code-agent-result [--json]`
+- `complete-code-edit <summary> [--changed-file PATH] [--follow-up-note TEXT]`
+- `prepare-followup-plan`
 
 Capture and waiting:
 
@@ -144,6 +151,8 @@ Brain handoff and plan execution:
 - `runtime_*.py` files implement the runtime subsystems.
 - `state/brain_request.json` is the outbound request to the planning brain.
 - `state/brain_response.json` is the executable plan James consumes.
+- `state/code_agent_request.json` is the structured handoff James can write when a workflow needs direct source edits by the coding agent.
+- `state/code_agent_result.json` records that the coding agent finished the direct edit phase and can include changed files plus follow-up notes for the next James plan.
 - `state/runtime_state.json` stores current and completed task state.
 - `logs/actions.jsonl` stores machine-readable action records.
 - `logs/screenshots/` and `logs/audio/` store evidence artifacts.
@@ -162,6 +171,8 @@ Brain handoff and plan execution:
 - `python3 james.py listen --goal "Voice operator request"` keeps James alive in one terminal, listens only to keypad `0`, waits indefinitely by default, uses cue sounds instead of narrated capture prompts, and locally generates then executes a fallback plan after each captured prompt.
 - `python3 james.py monitor` shows a live dashboard for task, brain file, Godot, and audio-input state.
 - `python3 launch_james_operator.py` or `./start_james_operator.sh` opens dedicated operator terminals, checks Godot, and starts listen plus monitor.
+- For mixed workflows, use `python3 james.py code-agent-request` to inspect the current handoff, `python3 james.py complete-code-edit ...` to record the coding-agent result, and `python3 james.py prepare-followup-plan` to generate the next `brain_request.json` for James validation.
+- If no external brain is available for that follow-up phase, the heuristic planner now recognizes `workflow_stage="post_code_edit_validation"` and generates a validation-oriented fallback plan instead of treating the request like a generic prompt.
 
 ## What James Is Good At Right Now
 
@@ -171,6 +182,9 @@ Brain handoff and plan execution:
 - capturing screenshots and OCR evidence
 - clicking and typing into macOS applications
 - executing structured, auditable GUI workflows
+- pausing mixed workflows and handing direct source edits to the coding agent through a structured request file
+- recording when the coding agent has finished a direct edit phase so James can resume with validation work
+- preparing a fresh post-edit brain request with the handoff and result context embedded for the next James phase
 - surfacing warnings, alternatives, and failure context instead of silently guessing
 
 ## What Still Needs Work
@@ -179,6 +193,7 @@ Brain handoff and plan execution:
 - richer Godot workflows like guaranteed scene navigation and error summarization
 - stronger VS Code-specific first-class actions
 - direct brain integration instead of manual copy-paste between request and response files
+- automatic resume after the coding agent finishes a direct file edit handoff
 
 ## Recommended Next Development Priorities
 

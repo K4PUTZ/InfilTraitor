@@ -55,21 +55,20 @@ def load_plan(path: Path) -> ExecutionPlan:
 def write_sample_plan(path: Path, task_id: str) -> Path:
     sample = {
         "task_id": task_id,
-        "goal": "Open Godot, switch to Script workspace, capture the Output panel, and return to VS Code",
+        "goal": "Open Godot, switch to Script workspace, then prepare a direct code-edit handoff for the coding agent",
         "confidence": 0.95,
         "better_alternative": None,
         "warnings": [],
         "clarification_needed": False,
         "clarification_questions": [],
         "outcome_tips": [
-            "Check the captured Output panel screenshot for editor or import errors.",
-            "If Godot is still importing assets, wait for the import state to clear before issuing more UI actions.",
+            "After the handoff file is written, give it to the coding agent instead of making James type code through the UI.",
+            "After the edit is done, create a fresh James plan to validate the result inside Godot.",
         ],
         "success_conditions": [
             "Godot is launched and the editor is ready",
             "The Script workspace is focused",
-            "The Output panel is captured as evidence",
-            "James returns to the editor target",
+            "A code-agent handoff request is written with enough detail for direct file edits",
         ],
         "return_target": "Visual Studio Code",
         "safety_level": "normal",
@@ -78,9 +77,24 @@ def write_sample_plan(path: Path, task_id: str) -> Path:
             {"id": "s2", "action": "launch_godot", "push_current": True},
             {"id": "s3", "action": "wait_for_godot_editor", "timeout": 45},
             {"id": "s4", "action": "godot_switch_workspace", "workspace": "script"},
-            {"id": "s5", "action": "godot_capture_output", "label": "sample_output"},
-            {"id": "s6", "action": "return_to_editor"},
-            {"id": "s7", "action": "finish_task", "status": "completed", "note": "Sample execution plan completed."},
+            {
+                "id": "s5",
+                "action": "delegate_code_edit",
+                "summary": "Update the active Godot gameplay script directly in the workspace.",
+                "instructions": "Read the relevant script, implement the requested gameplay change directly in code, and keep the change minimal and consistent with the existing style.",
+                "relevant_files": [
+                    "res://scripts/player.gd"
+                ],
+                "acceptance_criteria": [
+                    "The script contains the requested behavior change.",
+                    "The code remains valid GDScript and matches the existing project style."
+                ],
+                "context_notes": [
+                    "Godot has already been opened and the Script workspace is active.",
+                    "Use direct file edits through the coding agent, not blind UI typing."
+                ],
+                "pause_after": True
+            }
         ],
     }
     path.write_text(json.dumps(sample, indent=2, ensure_ascii=True))

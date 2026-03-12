@@ -18,6 +18,12 @@ _BRAIN_INSTRUCTIONS = {
         "task_id", "goal", "confidence", "steps",
         "success_conditions", "return_target", "safety_level",
     ],
+    "mixed_workflow_guidance": [
+        "James is good at local GUI execution, screenshots, OCR, focus management, and Godot actions.",
+        "James is not the coding agent. Do not force James to type large semantic code edits through the UI unless there is no better option.",
+        "If the task needs direct source edits, emit a delegate_code_edit step with a concise summary, explicit instructions, relevant_files, acceptance_criteria, and any context_notes.",
+        "When delegate_code_edit pauses execution, the coding agent should perform the edit directly in the workspace and a later James plan can resume with validation or follow-up GUI steps.",
+    ],
     "field_descriptions": {
         "confidence": (
             "Float 0.0–1.0. How certain are you this plan achieves the goal safely? "
@@ -59,6 +65,8 @@ def write_brain_request(
     return_app: str,
     current_app: str | None = None,
     clarification_answers: list[dict] | None = None,
+    workflow_stage: str | None = None,
+    workflow_context: dict | None = None,
 ) -> Path:
     payload = {
         "task_id": task_id,
@@ -71,5 +79,9 @@ def write_brain_request(
         "clarification_answers": clarification_answers or [],
         "instructions_for_brain": _BRAIN_INSTRUCTIONS,
     }
+    if workflow_stage:
+        payload["workflow_stage"] = workflow_stage
+    if workflow_context:
+        payload["workflow_context"] = workflow_context
     write_json(output_path, payload)
     return output_path

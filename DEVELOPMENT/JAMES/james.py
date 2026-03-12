@@ -10,6 +10,7 @@ import sys
 from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_app_window_titles, get_frontmost_app, get_screen_size, is_app_running, key_combo, type_text
 from runtime_brain import write_brain_request
 from runtime_capture import capture_screen
+from runtime_code_agent import write_code_agent_request, write_code_agent_result
 from runtime_config import list_audio_input_devices, load_config
 from runtime_focus import pop_focus, push_focus
 from runtime_godot import (
@@ -90,6 +91,33 @@ def build_parser() -> argparse.ArgumentParser:
     monitor_cmd.add_argument("--interval", type=float, default=1.5, help="Seconds between refreshes")
     monitor_cmd.add_argument("--once", action="store_true", help="Print one snapshot and exit")
     monitor_cmd.add_argument("--json", action="store_true", help="Print JSON snapshots instead of the text dashboard")
+
+    code_request_cmd = sub.add_parser("code-agent-request", help="Show the current code-agent handoff request")
+    code_request_cmd.add_argument("--json", action="store_true", help="Print the raw JSON payload")
+
+    code_result_cmd = sub.add_parser("code-agent-result", help="Show the current code-agent completion result")
+    code_result_cmd.add_argument("--json", action="store_true", help="Print the raw JSON payload")
+
+    complete_code_cmd = sub.add_parser("complete-code-edit", help="Record that the coding agent finished the direct file-edit phase")
+    complete_code_cmd.add_argument("summary", help="Short summary of what the coding agent changed")
+    complete_code_cmd.add_argument(
+        "--changed-file",
+        dest="changed_files",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="Path changed by the coding agent (repeat for multiple)",
+    )
+    complete_code_cmd.add_argument(
+        "--follow-up-note",
+        dest="follow_up_notes",
+        action="append",
+        default=[],
+        metavar="TEXT",
+        help="Follow-up note for the next James plan (repeat for multiple)",
+    )
+
+    sub.add_parser("prepare-followup-plan", help="Write a fresh brain request for James validation after the code-edit phase")
 
     sub.add_parser("execute-plan", help="Execute the structured plan in state/brain_response.json")
     sub.add_parser("generate-plan", help="Generate state/brain_response.json from state/brain_request.json")
@@ -422,6 +450,8 @@ def _build_monitor_snapshot(config) -> dict:
     session = get_current_task(config.runtime_state_path)
     request_exists = config.brain_request_path.exists()
     response_exists = config.brain_response_path.exists()
+    code_request_exists = config.code_agent_request_path.exists()
+    code_result_exists = config.code_agent_result_path.exists()
     godot_running = is_app_running(config.osascript_path, "Godot")
     godot_windows = get_app_window_titles(config.osascript_path, "Godot") if godot_running else []
 
@@ -439,6 +469,20 @@ def _build_monitor_snapshot(config) -> dict:
         except Exception:
             response_task_id = None
 
+    code_request_task_id = None
+    if code_request_exists:
+        try:
+            code_request_task_id = json.loads(config.code_agent_request_path.read_text()).get("task_id")
+        except Exception:
+            code_request_task_id = None
+
+    code_result_task_id = None
+    if code_result_exists:
+        try:
+            code_result_task_id = json.loads(config.code_agent_result_path.read_text()).get("task_id")
+        except Exception:
+            code_result_task_id = None
+
     return {
         "frontmost_app": get_frontmost_app(config.osascript_path),
         "audio_input": {
@@ -455,6 +499,12 @@ def _build_monitor_snapshot(config) -> dict:
             "request_task_id": request_task_id,
             "response_exists": response_exists,
             "response_task_id": response_task_id,
+        },
+        "code_agent": {
+            "request_exists": code_request_exists,
+            "request_task_id": code_request_task_id,
+            "result_exists": code_result_exists,
+            "result_task_id": code_result_task_id,
         },
         "current_task": None if not session else {
             "task_id": session.task_id,
@@ -492,6 +542,12 @@ def handle_monitor(args: argparse.Namespace) -> int:
                     f" | response={snapshot['brain']['response_exists']}"
                     f" ({snapshot['brain']['response_task_id'] or '-'})"
                 )
+                print(
+                    f"Code Handoff  : request={snapshot['code_agent']['request_exists']}"
+                    f" ({snapshot['code_agent']['request_task_id'] or '-'})"
+                    f" | result={snapshot['code_agent']['result_exists']}"
+                    f" ({snapshot['code_agent']['result_task_id'] or '-'})"
+                )
                 task = snapshot["current_task"]
                 if task:
                     print("-" * 60)
@@ -512,6 +568,198 @@ def handle_monitor(args: argparse.Namespace) -> int:
     except KeyboardInterrupt:
         print("\nJames monitor stopped.")
         return 0
+
+
+def handle_code_agent_request(args: argparse.Namespace) -> int:
+    config = load_config()
+    if not config.code_agent_request_path.exists():
+        raise SystemExit("No code_agent_request.json found.")
+    payload = json.loads(config.code_agent_request_path.read_text())
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("JAMES CODE-AGENT HANDOFF")
+    print("=" * 60)
+    print(f"Task ID      : {payload.get('task_id')}")
+    print(f"Goal         : {payload.get('goal')}")
+    print(f"Status       : {payload.get('status')}")
+    print(f"Summary      : {payload.get('summary')}")
+    print(f"Instructions : {payload.get('instructions')}")
+    print(f"Return App   : {payload.get('return_app')}")
+    relevant_files = payload.get("relevant_files") or []
+    acceptance = payload.get("acceptance_criteria") or []
+    notes = payload.get("context_notes") or []
+    if relevant_files:
+        print("Relevant Files:")
+        for item in relevant_files:
+            print(f"  - {item}")
+    if acceptance:
+        print("Acceptance:")
+        for item in acceptance:
+            print(f"  - {item}")
+    if notes:
+        print("Context Notes:")
+        for item in notes:
+            print(f"  - {item}")
+    print("=" * 60)
+    return 0
+
+
+def handle_code_agent_result(args: argparse.Namespace) -> int:
+    config = load_config()
+    if not config.code_agent_result_path.exists():
+        raise SystemExit("No code_agent_result.json found.")
+    payload = json.loads(config.code_agent_result_path.read_text())
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("JAMES CODE-AGENT RESULT")
+    print("=" * 60)
+    print(f"Task ID      : {payload.get('task_id')}")
+    print(f"Status       : {payload.get('status')}")
+    print(f"Completed At : {payload.get('completed_at')}")
+    print(f"Summary      : {payload.get('summary')}")
+    changed_files = payload.get("changed_files") or []
+    follow_up_notes = payload.get("follow_up_notes") or []
+    if changed_files:
+        print("Changed Files:")
+        for item in changed_files:
+            print(f"  - {item}")
+    if follow_up_notes:
+        print("Follow-Up Notes:")
+        for item in follow_up_notes:
+            print(f"  - {item}")
+    print("=" * 60)
+    return 0
+
+
+def handle_complete_code_edit(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.code_agent_request_path.exists():
+        raise SystemExit("No code_agent_request.json found.")
+    request_payload = json.loads(config.code_agent_request_path.read_text())
+    if str(request_payload.get("task_id")) != session.task_id:
+        raise SystemExit("Current task does not match code_agent_request.json.")
+
+    result_path = write_code_agent_result(
+        config.code_agent_result_path,
+        task_id=session.task_id,
+        status="completed",
+        summary=args.summary,
+        changed_files=[str(item) for item in (args.changed_files or [])],
+        follow_up_notes=[str(item) for item in (args.follow_up_notes or [])],
+    )
+    before_app = get_frontmost_app(config.osascript_path)
+    session.active_app = before_app
+    session.status = "code_agent_completed"
+    session.notes.append(f"Code-agent phase completed: {args.summary}")
+    for item in args.follow_up_notes or []:
+        session.notes.append(f"Code follow-up: {item}")
+    update_current_task(config.runtime_state_path, session)
+
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="complete-code-edit",
+            action_type="complete_code_edit",
+            target=args.summary,
+            status="ok",
+            frontmost_app_before=before_app,
+            frontmost_app_after=before_app,
+            parameters={
+                "result_path": str(result_path),
+                "changed_files": [str(item) for item in (args.changed_files or [])],
+                "follow_up_notes": [str(item) for item in (args.follow_up_notes or [])],
+            },
+            verification_result="Code-agent completion recorded.",
+        ),
+    )
+    print(result_path)
+    return 0
+
+
+def handle_prepare_followup_plan() -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    if not config.code_agent_request_path.exists():
+        raise SystemExit("No code_agent_request.json found.")
+    if not config.code_agent_result_path.exists():
+        raise SystemExit("No code_agent_result.json found.")
+
+    request_payload = json.loads(config.code_agent_request_path.read_text())
+    result_payload = json.loads(config.code_agent_result_path.read_text())
+    task_ids = {str(request_payload.get("task_id")), str(result_payload.get("task_id")), session.task_id}
+    if len(task_ids) != 1:
+        raise SystemExit("Task mismatch between current task, code_agent_request.json, and code_agent_result.json.")
+
+    follow_up_notes = [str(item) for item in (result_payload.get("follow_up_notes") or [])]
+    changed_files = [str(item) for item in (result_payload.get("changed_files") or [])]
+    prompt_parts = [
+        "The coding agent has completed the direct file-edit phase for this task.",
+        f"Original task goal: {session.goal}",
+        f"Code-edit handoff summary: {request_payload.get('summary', '')}",
+        f"Code-edit completion summary: {result_payload.get('summary', '')}",
+    ]
+    if changed_files:
+        prompt_parts.append("Changed files: " + ", ".join(changed_files))
+    if follow_up_notes:
+        prompt_parts.append("Follow-up notes: " + " | ".join(follow_up_notes))
+    prompt_parts.append(
+        "Prepare a James follow-up plan that validates or continues the task using GUI actions, runtime checks, screenshots, OCR, Godot actions, or app focus changes as needed. Prefer validation and evidence capture over more direct code editing."
+    )
+    prompt = "\n".join(prompt_parts)
+    before_app = get_frontmost_app(config.osascript_path)
+
+    request_path = write_brain_request(
+        config.brain_request_path,
+        task_id=session.task_id,
+        goal=session.goal,
+        prompt=prompt,
+        transcript_path=None,
+        return_app=session.return_app,
+        current_app=before_app,
+        workflow_stage="post_code_edit_validation",
+        workflow_context={
+            "code_agent_request": request_payload,
+            "code_agent_result": result_payload,
+        },
+    )
+    if config.brain_response_path.exists():
+        config.brain_response_path.unlink()
+    if config.code_agent_request_path.exists():
+        config.code_agent_request_path.unlink()
+    if config.code_agent_result_path.exists():
+        config.code_agent_result_path.unlink()
+
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.status = "pending_brain_plan"
+    session.notes.append(f"Prepared follow-up brain request after code-agent completion: {request_path}")
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="prepare-followup-plan",
+            action_type="prepare_followup_plan",
+            target=session.goal,
+            status="ok",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            parameters={
+                "brain_request_path": str(request_path),
+                "changed_files": changed_files,
+                "follow_up_notes": follow_up_notes,
+            },
+            verification_result="Follow-up brain request written.",
+        ),
+    )
+    print(request_path)
+    return 0
 
 
 def handle_write_sample_plan(args: argparse.Namespace) -> int:
@@ -1268,6 +1516,8 @@ def _execute_step(step, config) -> int:
     if step.action == "capture_screen":
         capture_args = argparse.Namespace(label=step.payload["label"])
         return handle_capture_screen(capture_args)
+    if step.action == "delegate_code_edit":
+        return _handle_delegate_code_edit(step, config)
     if step.action == "wait_for_app":
         wait_args = argparse.Namespace(
             app_name=step.payload["app_name"],
@@ -1355,12 +1605,71 @@ def _execute_step(step, config) -> int:
 
 
 CONFIDENCE_THRESHOLD = 0.75
+CODE_AGENT_HANDOFF_EXIT = 10
 
 
 def _needs_low_confidence_confirmation(plan) -> bool:
     if plan.confidence >= CONFIDENCE_THRESHOLD:
         return False
     return any(step.action not in {"note", "finish_task"} for step in plan.steps)
+
+
+def _handle_delegate_code_edit(step, config) -> int:
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+    summary = str(step.payload["summary"])
+    instructions = str(step.payload.get("instructions", summary))
+    relevant_files = [str(entry) for entry in step.payload.get("relevant_files", [])]
+    acceptance_criteria = [str(entry) for entry in step.payload.get("acceptance_criteria", [])]
+    context_notes = [str(entry) for entry in step.payload.get("context_notes", [])]
+    pause_after = bool(step.payload.get("pause_after", True))
+
+    request_path = write_code_agent_request(
+        config.code_agent_request_path,
+        task_id=session.task_id,
+        goal=session.goal,
+        summary=summary,
+        instructions=instructions,
+        relevant_files=relevant_files,
+        acceptance_criteria=acceptance_criteria,
+        context_notes=context_notes,
+        return_app=session.return_app,
+        source_step_id=step.id,
+    )
+
+    after_app = get_frontmost_app(config.osascript_path)
+    session.active_app = after_app
+    session.notes.append(f"Prepared code-agent handoff: {summary}")
+    if pause_after:
+        session.status = "pending_code_agent"
+        session.notes.append(f"Waiting on direct file edits via {request_path}.")
+    update_current_task(config.runtime_state_path, session)
+
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id=step.id,
+            action_type="delegate_code_edit",
+            target=summary,
+            status="handoff",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            parameters={
+                "request_path": str(request_path),
+                "relevant_files": relevant_files,
+                "acceptance_criteria": acceptance_criteria,
+                "pause_after": pause_after,
+            },
+            verification_result="Code-agent handoff written.",
+        ),
+    )
+
+    print(f"JAMES: code-agent handoff written to {request_path}")
+    if pause_after:
+        print("JAMES: execution paused for direct file edits. Resume later with a fresh James plan.")
+        return CODE_AGENT_HANDOFF_EXIT
+    return 0
 
 
 def _voice_or_text_answer(
@@ -1482,6 +1791,12 @@ def handle_execute_plan() -> int:
     # --- Execute steps ---
     for step in plan.steps:
         exit_code = _execute_step(step, config)
+        if exit_code == CODE_AGENT_HANDOFF_EXIT:
+            session = get_current_task(config.runtime_state_path)
+            if session:
+                speak(config.say_path, "Code handoff ready. Continue in the coding agent.", voice=config.say_voice)
+                print_terminal_outcome(plan, session, config.actions_log_path)
+            return 0
         if exit_code != 0:
             speak(config.say_path, "A step failed. Check the terminal.", voice=config.say_voice)
             print(f"\nJAMES: Plan failed at step {step.id} ({step.action}).")
@@ -1594,6 +1909,14 @@ def main(argv: list[str] | None = None) -> int:
         return handle_status()
     if args.command == "monitor":
         return handle_monitor(args)
+    if args.command == "code-agent-request":
+        return handle_code_agent_request(args)
+    if args.command == "code-agent-result":
+        return handle_code_agent_result(args)
+    if args.command == "complete-code-edit":
+        return handle_complete_code_edit(args)
+    if args.command == "prepare-followup-plan":
+        return handle_prepare_followup_plan()
     if args.command == "execute-plan":
         return handle_execute_plan()
     if args.command == "generate-plan":

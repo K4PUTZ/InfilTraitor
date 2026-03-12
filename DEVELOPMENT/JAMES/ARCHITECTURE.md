@@ -12,7 +12,10 @@ Current control loop:
 2. User may capture a spoken prompt.
 3. James writes `brain_request.json`.
 4. Either an external brain returns a plan or the heuristic planner generates a fallback plan.
-5. James loads the plan, applies safety gates, executes steps, logs actions, and writes final session output.
+5. For mixed GUI plus coding workflows, James can write `code_agent_request.json` and pause when the plan reaches a direct source-edit handoff.
+6. After the coding agent finishes its direct file edits, James can record `code_agent_result.json` and prepare for a follow-up validation plan.
+7. James can then write a fresh `brain_request.json` for the next phase using the original handoff plus the code-agent result as context.
+8. James loads the plan, applies safety gates, executes steps, logs actions, and writes final session output.
 
 ## Runtime Modules
 
@@ -24,6 +27,7 @@ Current runtime split:
 - `runtime_sessions.py` manages current and completed task state.
 - `runtime_logging.py` appends action telemetry.
 - `runtime_brain.py` writes structured requests for the planning brain.
+- `runtime_code_agent.py` writes structured handoff requests for the coding agent.
 - `runtime_plan.py` loads execution plans and writes a sample plan.
 - `runtime_planner.py` generates heuristic fallback plans.
 - `runtime_apps.py` handles app activation, screen size, clicks, drag, type, and key combos.
@@ -63,11 +67,14 @@ Current behavior:
 - write structured request payloads to `state/brain_request.json`
 - include task id, goal, transcript path, current app, return app, clarification answers, and instructions for the planning brain
 - load plan JSON from `state/brain_response.json`
+- when needed, write `state/code_agent_request.json` so direct file edits move to the coding agent instead of being forced through UI typing
+- after the coding agent completes its work, write `state/code_agent_result.json` so the next James plan can resume with validation or follow-up GUI actions
+- prepare a new `state/brain_request.json` for the next James phase using both the original handoff and the code-agent result
 
 Current planning modes:
 
 - real external brain via manual copy-paste
-- heuristic fallback planner via `generate-plan`, including direct spoken replies for simple conversational prompts
+- heuristic fallback planner via `generate-plan`, including direct spoken replies for simple conversational prompts and a dedicated post-code-edit validation fallback when `workflow_stage` is set
 
 ### 4. Perception Layer
 
@@ -92,6 +99,7 @@ Current low-level primitives:
 - `type_text`
 - `key_combo`
 - `click_text`
+- `delegate_code_edit` as a workflow bridge to direct source edits by the coding agent
 
 Current higher-level Godot primitives:
 
@@ -116,6 +124,8 @@ Current workflow features:
 - task restoration by `task_id`
 - focus stack for app return flow
 - plan execution with safety gates
+- pause points for `pending_code_agent` handoff when the plan needs direct source edits
+- operator-visible commands to inspect the current handoff and mark the direct-edit phase complete
 - wait steps and evidence capture steps
 - end-of-run outcome summary in terminal and markdown session file
 
@@ -128,6 +138,8 @@ Current outputs:
 - `logs/audio/` for push-to-talk artifacts
 - `sessions/*.md` for human-readable summaries
 - `state/runtime_state.json` for runtime state
+- `state/code_agent_request.json` for structured source-edit handoff to the coding agent
+- `state/code_agent_result.json` for recording completion of the direct source-edit phase
 
 Action records currently track:
 

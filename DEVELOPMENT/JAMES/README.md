@@ -21,7 +21,7 @@ Current verified status:
 - Heuristic fallback planning can now answer simple conversational prompts directly through a `speak_text` execution step.
 - Structured plan execution with safety gates works.
 - Focus stack and return-to-editor flow work.
-- Godot launch works.
+- Godot launch works and now reuses an already running Godot instance instead of opening duplicate project windows.
 - Higher-level Godot actions now work: wait for editor readiness, switch workspace, focus panel, capture Output panel, run project, stop project, and open scenes with OCR plus quick-open fallback.
 - OCR-based click targeting works through Apple Vision.
 
@@ -31,6 +31,7 @@ Current important limits:
 - The built-in planner is still heuristic. Production use should rely on an external brain-generated plan.
 - VS Code automation is still mostly a composition of low-level primitives rather than dedicated first-class actions.
 - Mixed workflows are only partially integrated today. James can now pause and emit a structured code-agent handoff, but direct source editing still happens outside James.
+- When Godot is already running, James now prefers reusing that app instance over opening another project window. That avoids duplicate editors, but it does not yet prove the already-open window is the exact target project.
 
 ## Why James Exists
 
@@ -119,7 +120,7 @@ Focus and app control:
 
 Godot-specific commands:
 
-- `launch-godot [--project <path>]`
+- `launch-godot [--project <path>]` reuses an already running Godot instance instead of opening another project window
 - `wait-for-godot-editor [--timeout]`
 - `godot-switch-workspace <2d|3d|script|assetlib>`
 - `godot-focus-panel <scene|filesystem|inspector|node|output|history>`

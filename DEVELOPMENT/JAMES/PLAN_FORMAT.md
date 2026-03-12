@@ -64,6 +64,8 @@ Speak a short response through macOS `say`. This is used for direct conversation
 
 ### `launch_godot`
 
+Open the requested Godot project when Godot is not running yet. If Godot is already running, James reuses the existing app instance instead of opening another project window.
+
 ```json
 { "id": "step-3", "action": "launch_godot", "project": "/abs/path/project.godot", "push_current": true }
 ```

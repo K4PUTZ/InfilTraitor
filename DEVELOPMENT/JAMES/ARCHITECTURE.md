@@ -112,6 +112,11 @@ Current higher-level Godot primitives:
 - `stop_godot_project`
 - `capture_godot_panel`
 
+Current Godot launch rule:
+
+- if Godot is already running, James activates and reuses that app instance instead of asking macOS to open another project window
+- this enforces a single-instance workflow on this machine, but it is still weaker than a verified same-project check
+
 Important current limitation:
 
 - most actions are not yet universally self-verifying after execution

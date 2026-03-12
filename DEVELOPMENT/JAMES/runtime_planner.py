@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 
 DEFAULT_PROJECT_PATH = "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/infil-traitor/project.godot"
@@ -20,6 +21,26 @@ def _build_conversational_reply(prompt: str) -> str:
     if any(token in normalized for token in ("hello", "hi james", "hey james")):
         return "Hello. I heard you."
     return f"I heard: {prompt.strip()}"
+
+
+def _extract_vscode_task_label(raw_prompt: str) -> str:
+    quoted = re.search(r"run\s+task\s+[\"']([^\"']+)[\"']", raw_prompt, flags=re.IGNORECASE)
+    if quoted:
+        candidate = quoted.group(1).strip()
+        if candidate:
+            return candidate
+
+    plain = re.search(r"run\s+task\s+([A-Za-z0-9_:\- .]+)", raw_prompt, flags=re.IGNORECASE)
+    if plain:
+        candidate = plain.group(1).strip()
+        # Trim common continuation words after the task label.
+        for separator in (" and ", " then ", ",", "."):
+            if separator in candidate.lower():
+                candidate = candidate.split(separator, 1)[0].strip()
+        if candidate:
+            return candidate
+
+    return "pytest small selection"
 
 
 def _build_post_code_edit_validation_plan(request: dict, response_path: Path) -> Path:
@@ -125,13 +146,22 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
     ]
 
     wants_godot = any(token in prompt for token in ("godot", "project", "scene"))
-    wants_open = any(token in prompt for token in ("open", "launch", "start"))
+    wants_open_any = any(token in prompt for token in ("open", "launch", "start"))
+    wants_open_godot = wants_godot and wants_open_any
     wants_inspect = any(token in prompt for token in ("inspect", "check", "look", "see", "verify"))
     wants_screen = any(token in prompt for token in ("screen", "screenshot", "capture"))
     wants_return = any(token in prompt for token in ("return", "come back", "back to code", "back to editor", "vscode"))
-    wants_output = any(token in prompt for token in ("output", "errors", "console", "log"))
+    wants_output_signal = any(token in prompt for token in ("errors", "console", "log")) or (
+        "output" in prompt and "output panel" not in prompt
+    )
+    wants_output = wants_godot and wants_output_signal
     wants_run = any(token in prompt for token in ("run project", "play", "test run", "run game"))
     wants_scene_open = any(token in prompt for token in ("open scene", ".tscn", "scene "))
+    wants_vscode_terminal = any(token in prompt for token in ("vscode terminal", "vs code terminal", "focus terminal", "open terminal"))
+    wants_vscode_problems = any(token in prompt for token in ("problems panel", "open problems", "focus problems"))
+    wants_vscode_output = any(token in prompt for token in ("output panel", "focus output panel", "open output panel"))
+    wants_vscode_explorer = any(token in prompt for token in ("explorer panel", "focus explorer", "open explorer"))
+    wants_run_task = "run task" in prompt
 
     workspace = None
     for candidate in ("2d", "3d", "script", "assetlib"):
@@ -146,7 +176,7 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
             break
 
     step_number = 2
-    if wants_godot or wants_open:
+    if wants_godot or wants_open_godot:
         steps.append(
             {
                 "id": f"s{step_number}",
@@ -214,7 +244,65 @@ def generate_plan_from_request(request_path: Path, response_path: Path) -> Path:
         )
         step_number += 1
 
-    if wants_return or wants_godot or wants_open:
+    if wants_vscode_terminal:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "vscode_focus_terminal",
+                "timeout": 8,
+            }
+        )
+        step_number += 1
+
+    if wants_vscode_explorer:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "vscode_focus_panel",
+                "panel": "explorer",
+                "timeout": 8,
+            }
+        )
+        step_number += 1
+
+    if wants_vscode_problems:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "vscode_focus_panel",
+                "panel": "problems",
+                "timeout": 8,
+            }
+        )
+        step_number += 1
+
+    if wants_vscode_output:
+        steps.append(
+            {
+                "id": f"s{step_number}",
+                "action": "vscode_focus_panel",
+                "panel": "output",
+                "timeout": 8,
+            }
+        )
+        step_number += 1
+
+    if wants_run_task:
+        task_label = _extract_vscode_task_label(request.get("prompt", ""))
+        task_payload: dict[str, object] = {
+            "id": f"s{step_number}",
+            "action": "vscode_run_task",
+            "label": task_label,
+        }
+        if "pytest" in task_label.lower():
+            task_payload["expect_text"] = "passed"
+            task_payload["timeout"] = 25
+        steps.append(
+            task_payload
+        )
+        step_number += 1
+
+    if wants_return or wants_godot or wants_open_godot:
         steps.append({"id": f"s{step_number}", "action": "return_to_editor"})
         step_number += 1
 

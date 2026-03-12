@@ -4,7 +4,8 @@
 
 - push current focus before leaving the editor
 - return to the editor through the focus stack or default return app
-- use low-level keyboard and OCR primitives to drive common editor actions when needed
+- use first-class VS Code actions for terminal focus, panel focus, and task runs
+- use low-level keyboard and OCR primitives for fallback interactions when needed
 
 ## Available Primitives (ready to use in plans)
 
@@ -18,19 +19,19 @@ VS Code plans can use any of the general interaction primitives:
 
 ## Next Steps
 
-1. **`focus_terminal`** — `key_combo` with `` Ctrl+` `` to open/focus the integrated terminal. Verify with `wait_for_text` on the prompt character.
-2. **`focus_panel <explorer|problems|output>`** — open a named sidebar or bottom panel via `key_combo` (e.g. Ctrl+Shift+U for Output) then verify with `wait_for_text`.
-3. **`run_task <label>`** — open the Command Palette (`key_combo` Ctrl+Shift+P), `type_text` "Run Task", Enter, then `type_text` the task name and Enter.
-4. **`inject_summary <text>`** — use `click_text` to focus the terminal, then `type_text` the outcome summary.
+1. Add first-class command variants for `inject_summary` and terminal output capture.
+2. Add first-class action for running a task and waiting for a specific terminal output marker.
+3. Add richer verification so VS Code panel actions can validate specific UI state, not just labels.
+4. Add problem-summary extraction workflow from the Problems panel.
 
 ## Current Limitation
 
-These are still patterns rather than dedicated first-class James actions. VS Code control is workable now, but less mature than the Godot layer.
+VS Code terminal/panel/task actions are now first-class, but deeper editor workflows are still less mature than the Godot layer.
 
 ## Plan Step Integration
 
-These can currently be composed from existing primitives. Once stable, they would be packaged as named plan step action types:
+These are now available as named plan step action types:
 
 - `vscode_focus_terminal`
 - `vscode_focus_panel`
-- `vscode_run_task`
+- `vscode_run_task` (supports optional `expect_text` and `timeout` for marker verification)

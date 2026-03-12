@@ -40,6 +40,21 @@
       "task_id": "james-b0db18e4892e",
       "goal": "Godot operator smoke test",
       "created_at": "2026-03-11T00:13:08.441971+00:00"
+    },
+    {
+      "task_id": "james-aaa7a95eaa37",
+      "goal": "Basic stability smoke",
+      "created_at": "2026-03-12T21:26:48.517852+00:00"
+    },
+    {
+      "task_id": "james-stability-exec-001",
+      "goal": "Execution smoke test",
+      "created_at": "2026-03-12T21:27:43.733842+00:00"
+    },
+    {
+      "task_id": "james-stability-exec-002",
+      "goal": "Execution smoke test after report fix",
+      "created_at": "2026-03-12T21:28:59.645915+00:00"
     }
   ],
   "completed_tasks": [
@@ -176,6 +191,56 @@
         "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/DEVELOPMENT/JAMES/logs/screenshots/james-b0db18e4892e_godot_workspace_script.png",
         "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/DEVELOPMENT/JAMES/logs/screenshots/james-b0db18e4892e_smoke_output.png"
       ],
+      "focus_stack": [],
+      "wait_condition": null
+    },
+    {
+      "task_id": "james-aaa7a95eaa37",
+      "goal": "Basic stability smoke",
+      "status": "completed",
+      "created_at": "2026-03-12T21:26:48.517852+00:00",
+      "updated_at": "2026-03-12T21:26:50.563002+00:00",
+      "return_app": "Visual Studio Code",
+      "active_app": "Google Chrome",
+      "notes": [
+        "Smoke note",
+        "Smoke done"
+      ],
+      "evidence": [],
+      "focus_stack": [],
+      "wait_condition": null
+    },
+    {
+      "task_id": "james-stability-exec-001",
+      "goal": "Execution smoke test",
+      "status": "completed",
+      "created_at": "2026-03-12T21:27:43.733842+00:00",
+      "updated_at": "2026-03-12T21:27:45.433679+00:00",
+      "return_app": "Visual Studio Code",
+      "active_app": "Code",
+      "notes": [
+        "Execution smoke note",
+        "Step s1 verification: no verification requested",
+        "Execution smoke done"
+      ],
+      "evidence": [],
+      "focus_stack": [],
+      "wait_condition": null
+    },
+    {
+      "task_id": "james-stability-exec-002",
+      "goal": "Execution smoke test after report fix",
+      "status": "completed",
+      "created_at": "2026-03-12T21:28:59.645915+00:00",
+      "updated_at": "2026-03-12T21:29:01.367276+00:00",
+      "return_app": "Visual Studio Code",
+      "active_app": "Code",
+      "notes": [
+        "Execution smoke note 2",
+        "Step s1 verification: no verification requested",
+        "Execution smoke done 2"
+      ],
+      "evidence": [],
       "focus_stack": [],
       "wait_condition": null
     }

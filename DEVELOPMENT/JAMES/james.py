@@ -4,12 +4,15 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import time
 import sys
+import traceback
 
 from runtime_apps import activate_app, click_at, double_click_at, drag_from_to, get_app_window_titles, get_frontmost_app, get_screen_size, is_app_running, key_combo, type_text
 from runtime_brain import write_brain_request
 from runtime_capture import capture_screen
+from runtime_cleanup import cleanup_runtime_artifacts
 from runtime_code_agent import write_code_agent_request, write_code_agent_result
 from runtime_config import list_audio_input_devices, load_config
 from runtime_focus import pop_focus, push_focus
@@ -30,7 +33,7 @@ from runtime_planner import generate_plan_from_request
 from runtime_preflight import run_preflight
 from runtime_reports import print_terminal_outcome, write_session_summary
 from runtime_speech import play_cue, speak
-from runtime_sessions import finish_task, get_current_task, restore_task, start_task, update_current_task
+from runtime_sessions import finish_task, get_current_task, load_runtime_state, restore_task, start_task, update_current_task
 from runtime_vision import find_text_center_coords, recognize_text
 from runtime_voice import PushToTalkIdleTimeout, capture_push_to_talk, capture_voice_answer
 from runtime_wait import wait_for_app, wait_for_text, wait_for_text_absent
@@ -57,6 +60,93 @@ def _persist_task_session(config, session: TaskSession) -> TaskSession:
     persisted.wait_condition = session.wait_condition
     update_current_task(config.runtime_state_path, persisted)
     return persisted
+
+
+def _step_safe_label(step_id: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", step_id)
+
+
+_AUTO_VERIFY_ACTIONS = {
+    "click",
+    "double_click",
+    "drag",
+    "type_text",
+    "key_combo",
+    "click_text",
+    "vscode_focus_terminal",
+    "vscode_focus_panel",
+    "vscode_run_task",
+}
+
+
+def _verify_step_outcome(step, config, session: TaskSession, pre_step_app: str | None = None) -> tuple[bool, str, str | None]:
+    """Run optional post-step verification checks declared in the step payload.
+
+    Supported optional fields:
+      - verify_frontmost_app: substring expected in frontmost app name
+      - verify_text_present: OCR text that must appear
+      - verify_text_absent: OCR text that must disappear
+      - verify_timeout: seconds for OCR waits (default 8)
+      - auto_verify: set false to disable automatic frontmost-app stability checks
+      - auto_verify_timeout: timeout in seconds for automatic checks (default 5)
+      - allow_frontmost_change: set true when a high-risk step is expected to switch apps
+    """
+    payload = step.payload
+    verify_app = payload.get("verify_frontmost_app")
+    verify_present = payload.get("verify_text_present")
+    verify_absent = payload.get("verify_text_absent")
+    timeout = float(payload.get("verify_timeout", 8.0))
+    auto_verify_enabled = bool(payload.get("auto_verify", True))
+    auto_timeout = float(payload.get("auto_verify_timeout", 5.0))
+    allow_frontmost_change = bool(payload.get("allow_frontmost_change", False))
+
+    if not any((verify_app, verify_present, verify_absent)):
+        if not auto_verify_enabled:
+            return True, "auto verification disabled", None
+        if step.action in _AUTO_VERIFY_ACTIONS:
+            app_now = get_frontmost_app(config.osascript_path) or ""
+            if pre_step_app and app_now and not allow_frontmost_change and pre_step_app.lower() != app_now.lower():
+                return False, f"automatic app-stability check failed: before '{pre_step_app}', after '{app_now}'", None
+            if auto_timeout > 0:
+                # Keep a tiny wait so rapid app-focus jitter after key events can settle.
+                time.sleep(min(auto_timeout, 0.2))
+            return True, "automatic verification passed (frontmost app stable)", None
+        return True, "no verification requested", None
+
+    if verify_app:
+        app_now = get_frontmost_app(config.osascript_path) or ""
+        if str(verify_app).lower() not in app_now.lower():
+            return False, f"frontmost app mismatch: expected contains '{verify_app}', got '{app_now or 'unknown'}'", None
+
+    if verify_present:
+        matched, shot_path = wait_for_text(
+            config.screencapture_path,
+            config.screenshots_dir,
+            session.task_id,
+            f"verify_{_step_safe_label(step.id)}",
+            str(verify_present),
+            timeout=timeout,
+        )
+        if not matched:
+            return False, f"expected text did not appear: {verify_present}", str(shot_path) if shot_path else None
+        if shot_path:
+            session.evidence.append(str(shot_path))
+
+    if verify_absent:
+        matched, shot_path = wait_for_text_absent(
+            config.screencapture_path,
+            config.screenshots_dir,
+            session.task_id,
+            f"verify_absent_{_step_safe_label(step.id)}",
+            str(verify_absent),
+            timeout=timeout,
+        )
+        if not matched:
+            return False, f"text did not disappear: {verify_absent}", str(shot_path) if shot_path else None
+        if shot_path:
+            session.evidence.append(str(shot_path))
+
+    return True, "verification passed", None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -86,6 +176,18 @@ def build_parser() -> argparse.ArgumentParser:
     finish.add_argument("--note", default=None, help="Final note")
 
     sub.add_parser("status", help="Show current task state")
+
+    cleanup_cmd = sub.add_parser("cleanup", help="Prune runtime artifacts to keep JAMES lightweight")
+    cleanup_cmd.add_argument("--dry-run", action="store_true", help="Show what would be cleaned without deleting files")
+    cleanup_cmd.add_argument("--hard", action="store_true", help="Delete all screenshots/audio and truncate action log")
+    cleanup_cmd.add_argument("--include-sessions", action="store_true", help="Also prune session markdown files")
+    cleanup_cmd.add_argument("--json", action="store_true", help="Print cleanup report as JSON")
+    cleanup_cmd.add_argument("--screenshots-days", type=int, default=None, help="Retention days for screenshots")
+    cleanup_cmd.add_argument("--audio-days", type=int, default=None, help="Retention days for audio captures")
+    cleanup_cmd.add_argument("--sessions-days", type=int, default=None, help="Retention days for sessions (when --include-sessions)")
+    cleanup_cmd.add_argument("--keep-recent", type=int, default=None, help="Always keep this many newest files per artifact bucket")
+    cleanup_cmd.add_argument("--actions-max-lines", type=int, default=None, help="Rotate actions log when above this line count")
+    cleanup_cmd.add_argument("--actions-keep-lines", type=int, default=None, help="When rotating, keep this many newest action lines")
 
     monitor_cmd = sub.add_parser("monitor", help="Show a live James runtime status monitor")
     monitor_cmd.add_argument("--interval", type=float, default=1.5, help="Seconds between refreshes")
@@ -119,7 +221,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("prepare-followup-plan", help="Write a fresh brain request for James validation after the code-edit phase")
 
-    sub.add_parser("execute-plan", help="Execute the structured plan in state/brain_response.json")
+    execute_plan_cmd = sub.add_parser("execute-plan", help="Execute the structured plan in state/brain_response.json")
+    execute_plan_cmd.add_argument(
+        "--no-failure-capture",
+        action="store_true",
+        help="Disable automatic screenshot capture when a plan step fails",
+    )
+    execute_plan_cmd.add_argument(
+        "--debug-errors",
+        action="store_true",
+        help="Print Python tracebacks for step and listen-loop exceptions",
+    )
     sub.add_parser("generate-plan", help="Generate state/brain_response.json from state/brain_request.json")
 
     sample_plan = sub.add_parser("write-sample-plan", help="Write a sample executable plan to state/brain_response.json")
@@ -191,6 +303,20 @@ def build_parser() -> argparse.ArgumentParser:
         default="heuristic",
         help="How listen mode handles a saved request after capture",
     )
+    listen_cmd.add_argument(
+        "--stop-on-error",
+        action="store_true",
+        help="Stop listen mode after an unexpected processing error instead of continuing",
+    )
+    listen_cmd.add_argument(
+        "--debug-errors",
+        action="store_true",
+        help="Print Python tracebacks for unexpected listen-loop errors",
+    )
+
+    doctor_cmd = sub.add_parser("doctor", help="Run runtime diagnostics and summarize recent failures")
+    doctor_cmd.add_argument("--json", action="store_true", help="Print full diagnostic payload as JSON")
+    doctor_cmd.add_argument("--tail", type=int, default=30, help="Number of recent action records to inspect")
 
     click_cmd = sub.add_parser("click", help="Click at logical screen coordinates")
     click_cmd.add_argument("x", type=int, help="Horizontal coordinate (logical pixels)")
@@ -223,6 +349,18 @@ def build_parser() -> argparse.ArgumentParser:
     click_text_cmd = sub.add_parser("click-text", help="Screenshot, OCR, and click the first match for a text string")
     click_text_cmd.add_argument("text", help="Text to find and click")
     click_text_cmd.add_argument("--label", default="click_text", help="Label for the screenshot file")
+
+    vscode_terminal = sub.add_parser("vscode-focus-terminal", help="Focus VS Code integrated terminal")
+    vscode_terminal.add_argument("--timeout", type=float, default=8.0, help="Seconds to verify terminal label in OCR")
+
+    vscode_panel = sub.add_parser("vscode-focus-panel", help="Focus a VS Code panel")
+    vscode_panel.add_argument("panel", choices=("explorer", "problems", "output"), help="Panel to focus")
+    vscode_panel.add_argument("--timeout", type=float, default=8.0, help="Seconds to verify panel label in OCR")
+
+    vscode_task = sub.add_parser("vscode-run-task", help="Run a VS Code task by label via command palette")
+    vscode_task.add_argument("label", help="Exact task label to run")
+    vscode_task.add_argument("--expect-text", default=None, help="Optional OCR text marker expected after task launch")
+    vscode_task.add_argument("--timeout", type=float, default=12.0, help="Seconds to wait for --expect-text marker")
 
     return parser
 
@@ -446,6 +584,102 @@ def handle_status() -> int:
     return 0
 
 
+def handle_cleanup(args: argparse.Namespace) -> int:
+    config = load_config()
+    stats = cleanup_runtime_artifacts(
+        config,
+        dry_run=bool(args.dry_run),
+        hard=bool(args.hard),
+        include_sessions=bool(args.include_sessions),
+        screenshots_keep_days=(
+            int(args.screenshots_days)
+            if args.screenshots_days is not None
+            else int(config.cleanup_keep_days_screenshots)
+        ),
+        audio_keep_days=(
+            int(args.audio_days)
+            if args.audio_days is not None
+            else int(config.cleanup_keep_days_audio)
+        ),
+        sessions_keep_days=(
+            int(args.sessions_days)
+            if args.sessions_days is not None
+            else int(config.cleanup_keep_days_sessions)
+        ),
+        keep_recent_per_bucket=(
+            int(args.keep_recent)
+            if args.keep_recent is not None
+            else int(config.cleanup_keep_recent_per_bucket)
+        ),
+        actions_max_lines=(
+            int(args.actions_max_lines)
+            if args.actions_max_lines is not None
+            else int(config.cleanup_actions_max_lines)
+        ),
+        actions_keep_lines=(
+            int(args.actions_keep_lines)
+            if args.actions_keep_lines is not None
+            else int(config.cleanup_actions_keep_lines)
+        ),
+    )
+
+    payload = {
+        "dry_run": bool(args.dry_run),
+        "hard": bool(args.hard),
+        "include_sessions": bool(args.include_sessions),
+        "deleted_files": stats.deleted_files,
+        "deleted_bytes": stats.deleted_bytes,
+        "scanned_files": stats.scanned_files,
+        "log_rotated": stats.log_rotated,
+        "log_lines_before": stats.log_lines_before,
+        "log_lines_after": stats.log_lines_after,
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("JAMES CLEANUP")
+    print("=" * 60)
+    print(f"Dry Run         : {payload['dry_run']}")
+    print(f"Hard Mode       : {payload['hard']}")
+    print(f"Include Sessions: {payload['include_sessions']}")
+    print(f"Scanned Files   : {payload['scanned_files']}")
+    print(f"Deleted Files   : {payload['deleted_files']}")
+    print(f"Deleted Bytes   : {payload['deleted_bytes']}")
+    print(
+        f"Action Log      : rotated={payload['log_rotated']} "
+        f"({payload['log_lines_before']} -> {payload['log_lines_after']})"
+    )
+    print("=" * 60)
+    return 0
+
+
+def _run_startup_cleanup_if_enabled(command: str) -> None:
+    # Never run startup cleanup inside the cleanup command itself.
+    if command == "cleanup":
+        return
+    config = load_config()
+    if not config.auto_cleanup_on_startup:
+        return
+    stats = cleanup_runtime_artifacts(
+        config,
+        dry_run=False,
+        hard=False,
+        include_sessions=False,
+        screenshots_keep_days=config.cleanup_keep_days_screenshots,
+        audio_keep_days=config.cleanup_keep_days_audio,
+        sessions_keep_days=config.cleanup_keep_days_sessions,
+        keep_recent_per_bucket=config.cleanup_keep_recent_per_bucket,
+        actions_max_lines=config.cleanup_actions_max_lines,
+        actions_keep_lines=config.cleanup_actions_keep_lines,
+    )
+    if stats.deleted_files > 0 or stats.log_rotated:
+        print(
+            "James: startup cleanup pruned "
+            f"{stats.deleted_files} files and rotated_log={stats.log_rotated}."
+        )
+
+
 def _build_monitor_snapshot(config) -> dict:
     session = get_current_task(config.runtime_state_path)
     request_exists = config.brain_request_path.exists()
@@ -568,6 +802,115 @@ def handle_monitor(args: argparse.Namespace) -> int:
     except KeyboardInterrupt:
         print("\nJames monitor stopped.")
         return 0
+
+
+def handle_doctor(args: argparse.Namespace) -> int:
+    config = load_config()
+    preflight = run_preflight(config)
+    runtime_state = load_runtime_state(config.runtime_state_path)
+
+    current_task = runtime_state.get("current_task") or None
+    completed_tasks = runtime_state.get("completed_tasks") or []
+    recent_records: list[dict] = []
+    recent_failures: list[dict] = []
+    parse_errors = 0
+
+    if config.actions_log_path.exists():
+        lines = config.actions_log_path.read_text(encoding="utf-8").splitlines()
+        tail_count = max(int(args.tail), 1)
+        for line in lines[-tail_count:]:
+            try:
+                rec = json.loads(line)
+            except Exception:
+                parse_errors += 1
+                continue
+            recent_records.append(rec)
+
+    for rec in recent_records:
+        status = str(rec.get("status", "")).lower()
+        if status in {"error", "failed", "aborted"}:
+            recent_failures.append(
+                {
+                    "timestamp": rec.get("timestamp"),
+                    "step_id": rec.get("step_id"),
+                    "action_type": rec.get("action_type"),
+                    "error": rec.get("error"),
+                    "task_id": rec.get("task_id"),
+                }
+            )
+
+    active_task_id = current_task.get("task_id") if isinstance(current_task, dict) else None
+    request_task_id = None
+    response_task_id = None
+    if config.brain_request_path.exists():
+        try:
+            request_task_id = json.loads(config.brain_request_path.read_text(encoding="utf-8")).get("task_id")
+        except Exception:
+            request_task_id = None
+    if config.brain_response_path.exists():
+        try:
+            response_task_id = json.loads(config.brain_response_path.read_text(encoding="utf-8")).get("task_id")
+        except Exception:
+            response_task_id = None
+
+    diagnosis = {
+        "ready_for_runtime": preflight.get("ready_for_runtime"),
+        "ready_for_full_operator": preflight.get("ready_for_full_operator"),
+        "active_task_id": active_task_id,
+        "completed_task_count": len(completed_tasks),
+        "brain_request_exists": config.brain_request_path.exists(),
+        "brain_request_task_id": request_task_id,
+        "brain_response_exists": config.brain_response_path.exists(),
+        "brain_response_task_id": response_task_id,
+        "log_records_scanned": len(recent_records),
+        "log_parse_errors": parse_errors,
+        "recent_failures": recent_failures[-10:],
+        "hints": [],
+    }
+
+    if not preflight.get("ready_for_runtime"):
+        diagnosis["hints"].append("Runtime dependencies are missing. Run preflight and resolve missing required tools first.")
+    if parse_errors > 0:
+        diagnosis["hints"].append("Some action log lines could not be parsed; check logs/actions.jsonl for corruption.")
+    if active_task_id and request_task_id and str(active_task_id) != str(request_task_id):
+        diagnosis["hints"].append("Active task and brain_request task_id differ; regenerate the request before planning.")
+    if active_task_id and response_task_id and str(active_task_id) != str(response_task_id):
+        diagnosis["hints"].append("Active task and brain_response task_id differ; regenerate plan to avoid cross-task execution.")
+    if recent_failures:
+        diagnosis["hints"].append("Recent action failures detected; inspect sessions markdown and screenshots tied to failing step IDs.")
+
+    if args.json:
+        print(json.dumps(diagnosis, indent=2))
+        return 0
+
+    print("JAMES DOCTOR")
+    print("=" * 60)
+    print(f"Runtime Ready     : {diagnosis['ready_for_runtime']}")
+    print(f"Full Operator     : {diagnosis['ready_for_full_operator']}")
+    print(f"Active Task       : {diagnosis['active_task_id'] or '-'}")
+    print(f"Completed Tasks   : {diagnosis['completed_task_count']}")
+    print(
+        f"Brain Files       : request={diagnosis['brain_request_exists']} ({diagnosis['brain_request_task_id'] or '-'})"
+        f" | response={diagnosis['brain_response_exists']} ({diagnosis['brain_response_task_id'] or '-'})"
+    )
+    print(f"Action Scan       : {diagnosis['log_records_scanned']} records, parse_errors={diagnosis['log_parse_errors']}")
+    if diagnosis["recent_failures"]:
+        print("Recent Failures:")
+        for item in diagnosis["recent_failures"]:
+            print(
+                f"  - {item.get('timestamp') or '-'} | {item.get('action_type') or '-'}"
+                f" ({item.get('step_id') or '-'}) | {item.get('error') or 'no error text'}"
+            )
+    else:
+        print("Recent Failures   : none in scanned log range")
+    if diagnosis["hints"]:
+        print("Hints:")
+        for hint in diagnosis["hints"]:
+            print(f"  - {hint}")
+    else:
+        print("Hints             : no immediate issues detected")
+    print("=" * 60)
+    return 0
 
 
 def handle_code_agent_request(args: argparse.Namespace) -> int:
@@ -883,16 +1226,21 @@ def _capture_prompt_once(
     return 0
 
 
-def _process_saved_listen_request(config, plan_mode: str) -> int:
+def _process_saved_listen_request(config, plan_mode: str, debug_errors: bool = False) -> tuple[int, str]:
     if plan_mode == "off":
-        return 0
+        return 0, "plan processing disabled"
     if not config.brain_request_path.exists():
-        print("James: request was captured, but no brain_request.json is available to process.")
-        return 1
+        return 1, "request was captured, but no brain_request.json is available to process"
 
-    plan_path = generate_plan_from_request(config.brain_request_path, config.brain_response_path)
-    print(f"James: generated local plan at {plan_path}")
-    return handle_execute_plan()
+    try:
+        plan_path = generate_plan_from_request(config.brain_request_path, config.brain_response_path)
+        print(f"James: generated local plan at {plan_path}")
+        plan_args = argparse.Namespace(no_failure_capture=False, debug_errors=debug_errors)
+        return handle_execute_plan(plan_args), "request processed"
+    except Exception as exc:
+        if debug_errors:
+            traceback.print_exc()
+        return 1, f"request processing failed: {_format_exception(exc)}"
 
 
 def handle_capture_prompt(args: argparse.Namespace) -> int:
@@ -924,30 +1272,52 @@ def handle_listen(args: argparse.Namespace) -> int:
     announce_instruction = True
     try:
         while True:
-            exit_code = _capture_prompt_once(
-                config,
-                goal=args.goal,
-                return_app=return_app,
-                timeout=args.timeout,
-                announce_instruction=announce_instruction,
-            )
-            announce_instruction = False
-            if exit_code == 0:
-                process_code = _process_saved_listen_request(config, args.plan_mode)
-                if process_code == 0:
-                    print("James: request complete. Listening for the next prompt.")
+            try:
+                exit_code = _capture_prompt_once(
+                    config,
+                    goal=args.goal,
+                    return_app=return_app,
+                    timeout=args.timeout,
+                    announce_instruction=announce_instruction,
+                )
+                announce_instruction = False
+                if exit_code == 0:
+                    process_code, process_message = _process_saved_listen_request(config, args.plan_mode, args.debug_errors)
+                    if process_code == 0:
+                        print("James: request complete. Listening for the next prompt.")
+                    else:
+                        play_cue("error")
+                        print(f"James: request captured, but processing failed: {process_message}. Listening for the next prompt.")
+                elif exit_code == 2:
+                    continue
                 else:
                     play_cue("error")
-                    print("James: request captured, but processing failed. Listening for the next prompt.")
-            elif exit_code == 2:
-                continue
-            else:
+                    print("James: capture failed. Listening for the next prompt.")
+            except Exception as exc:
+                if args.debug_errors:
+                    traceback.print_exc()
                 play_cue("error")
-                print("James: capture failed. Listening for the next prompt.")
+                print(f"James: unexpected listen-loop error: {_format_exception(exc)}")
+                if args.stop_on_error:
+                    print("James: stopping due to --stop-on-error.")
+                    return 1
             time.sleep(max(args.cooldown, 0.0))
     except KeyboardInterrupt:
         print("James listen mode stopped.")
         return 0
+
+
+def _capture_failure_evidence(config, session: TaskSession, step_id: str) -> str | None:
+    label = f"failed_{_step_safe_label(step_id)}"
+    output_path = config.screenshots_dir / f"{session.task_id}_{label}.png"
+    try:
+        capture_screen(config.screencapture_path, output_path)
+        session.evidence.append(str(output_path))
+        session.notes.append(f"Captured failure screenshot: {output_path}")
+        update_current_task(config.runtime_state_path, session)
+        return str(output_path)
+    except Exception:
+        return None
 
 
 def handle_ocr_screen(args: argparse.Namespace) -> int:
@@ -1148,6 +1518,171 @@ def handle_return_to_editor() -> int:
         ),
     )
     print(after_app or target_app)
+    return 0 if success else 1
+
+
+def _activate_vscode(config) -> bool:
+    current = get_frontmost_app(config.osascript_path) or ""
+    if "code" in current.lower():
+        return True
+    return activate_app(config.osascript_path, "Visual Studio Code") or activate_app(config.osascript_path, "Code")
+
+
+def handle_vscode_focus_terminal(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+
+    activated = _activate_vscode(config)
+    toggled = key_combo(config.osascript_path, "`", ["control"])
+    matched, shot_path = wait_for_text(
+        config.screencapture_path,
+        config.screenshots_dir,
+        session.task_id,
+        "vscode_terminal",
+        "terminal",
+        timeout=args.timeout,
+    )
+    after_app = get_frontmost_app(config.osascript_path)
+    success = activated and toggled and matched
+    detail = "focused VS Code terminal" if success else "failed to focus VS Code terminal"
+
+    session.active_app = after_app
+    session.notes.append(detail)
+    if shot_path:
+        session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="vscode-focus-terminal",
+            action_type="vscode_focus_terminal",
+            target="terminal",
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path) if shot_path else None,
+            verification_result=f"activated={activated}, toggled={toggled}, matched={matched}",
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_vscode_focus_panel(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+
+    panel_map = {
+        "explorer": ("e", ["command", "shift"], "explorer"),
+        "problems": ("m", ["command", "shift"], "problems"),
+        "output": ("u", ["command", "shift"], "output"),
+    }
+    key, modifiers, verify_text = panel_map[args.panel]
+    activated = _activate_vscode(config)
+    switched = key_combo(config.osascript_path, key, modifiers)
+    matched, shot_path = wait_for_text(
+        config.screencapture_path,
+        config.screenshots_dir,
+        session.task_id,
+        f"vscode_panel_{args.panel}",
+        verify_text,
+        timeout=args.timeout,
+    )
+    after_app = get_frontmost_app(config.osascript_path)
+    success = activated and switched and matched
+    detail = f"focused VS Code {args.panel} panel" if success else f"failed to focus VS Code {args.panel} panel"
+
+    session.active_app = after_app
+    session.notes.append(detail)
+    if shot_path:
+        session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id=f"vscode-focus-panel-{args.panel}",
+            action_type="vscode_focus_panel",
+            target=args.panel,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path) if shot_path else None,
+            verification_result=f"activated={activated}, switched={switched}, matched={matched}",
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
+    return 0 if success else 1
+
+
+def handle_vscode_run_task(args: argparse.Namespace) -> int:
+    config = load_config()
+    session = _require_current_task(config)
+    before_app = get_frontmost_app(config.osascript_path)
+
+    activated = _activate_vscode(config)
+    opened_palette = key_combo(config.osascript_path, "p", ["command", "shift"])
+    time.sleep(0.15)
+    typed_action = type_text(config.osascript_path, "Tasks: Run Task")
+    confirmed_action = key_combo(config.osascript_path, "return", [])
+    time.sleep(0.2)
+    typed_label = type_text(config.osascript_path, args.label)
+    confirmed_task = key_combo(config.osascript_path, "return", [])
+
+    expect_text = (args.expect_text or "").strip() or None
+    matched = None
+    shot_path = None
+    if expect_text:
+        matched, shot_path = wait_for_text(
+            config.screencapture_path,
+            config.screenshots_dir,
+            session.task_id,
+            f"vscode_task_{_step_safe_label(args.label)}",
+            expect_text,
+            timeout=max(args.timeout, 1.0),
+        )
+
+    after_app = get_frontmost_app(config.osascript_path)
+    command_success = all((activated, opened_palette, typed_action, confirmed_action, typed_label, confirmed_task))
+    success = command_success and (True if expect_text is None else bool(matched))
+    if success:
+        detail = f"requested VS Code task: {args.label}"
+    elif expect_text and command_success:
+        detail = f"requested VS Code task but marker was not seen: {expect_text}"
+    else:
+        detail = f"failed to request VS Code task: {args.label}"
+
+    session.active_app = after_app
+    session.notes.append(detail)
+    if shot_path:
+        session.evidence.append(str(shot_path))
+    update_current_task(config.runtime_state_path, session)
+    append_action(
+        config.actions_log_path,
+        ActionRecord.create(
+            task_id=session.task_id,
+            step_id="vscode-run-task",
+            action_type="vscode_run_task",
+            target=args.label,
+            status="ok" if success else "error",
+            frontmost_app_before=before_app,
+            frontmost_app_after=after_app,
+            screenshot_after=str(shot_path) if shot_path else None,
+            parameters={"expect_text": expect_text, "timeout": args.timeout},
+            verification_result=(
+                f"activated={activated}, palette={opened_palette}, typed_action={typed_action}, "
+                f"confirm_action={confirmed_action}, typed_label={typed_label}, confirm_task={confirmed_task}, "
+                f"expect_text={expect_text}, matched={matched}"
+            ),
+            error=None if success else detail,
+        ),
+    )
+    print(detail)
     return 0 if success else 1
 
 
@@ -1598,6 +2133,22 @@ def _execute_step(step, config) -> int:
             return 1
         success = click_at(config.cliclick_path, coords[0], coords[1])
         return 0 if success else 1
+    if step.action == "vscode_focus_terminal":
+        terminal_args = argparse.Namespace(timeout=float(step.payload.get("timeout", 8.0)))
+        return handle_vscode_focus_terminal(terminal_args)
+    if step.action == "vscode_focus_panel":
+        panel_args = argparse.Namespace(
+            panel=str(step.payload["panel"]).lower(),
+            timeout=float(step.payload.get("timeout", 8.0)),
+        )
+        return handle_vscode_focus_panel(panel_args)
+    if step.action == "vscode_run_task":
+        task_args = argparse.Namespace(
+            label=str(step.payload["label"]),
+            expect_text=step.payload.get("expect_text"),
+            timeout=float(step.payload.get("timeout", 12.0)),
+        )
+        return handle_vscode_run_task(task_args)
     print(f"JAMES: unknown step action '{step.action}' — skipping step {step.id}")
     return 1
 
@@ -1700,7 +2251,9 @@ def _voice_or_text_answer(
         return ""
 
 
-def handle_execute_plan() -> int:
+def handle_execute_plan(args: argparse.Namespace | None = None) -> int:
+    if args is None:
+        args = argparse.Namespace(no_failure_capture=False, debug_errors=False)
     config = load_config()
     if not config.brain_response_path.exists():
         raise SystemExit("No brain_response.json plan found.")
@@ -1788,7 +2341,36 @@ def handle_execute_plan() -> int:
 
     # --- Execute steps ---
     for step in plan.steps:
-        exit_code = _execute_step(step, config)
+        step_before_app = get_frontmost_app(config.osascript_path)
+        try:
+            exit_code = _execute_step(step, config)
+        except Exception as exc:
+            if args.debug_errors:
+                traceback.print_exc()
+            session = get_current_task(config.runtime_state_path)
+            if session:
+                session.notes.append(f"Step {step.id} raised exception: {_format_exception(exc)}")
+                screenshot_path = None if args.no_failure_capture else _capture_failure_evidence(config, session, step.id)
+                append_action(
+                    config.actions_log_path,
+                    ActionRecord.create(
+                        task_id=session.task_id,
+                        step_id=f"{step.id}-exception",
+                        action_type=f"{step.action}_exception",
+                        target=step.id,
+                        status="error",
+                        frontmost_app_before=step_before_app,
+                        frontmost_app_after=get_frontmost_app(config.osascript_path),
+                        screenshot_after=screenshot_path,
+                        error=_format_exception(exc),
+                    ),
+                )
+                update_current_task(config.runtime_state_path, session)
+                speak(config.say_path, "A step raised an error. Check the terminal.", voice=config.say_voice)
+                print(f"\nJAMES: Step {step.id} raised an exception: {_format_exception(exc)}")
+                print_terminal_outcome(plan, session, config.actions_log_path)
+                return 1
+            raise
         if exit_code == CODE_AGENT_HANDOFF_EXIT:
             session = get_current_task(config.runtime_state_path)
             if session:
@@ -1800,10 +2382,49 @@ def handle_execute_plan() -> int:
             print(f"\nJAMES: Plan failed at step {step.id} ({step.action}).")
             session = get_current_task(config.runtime_state_path)
             if session:
+                if not args.no_failure_capture:
+                    _capture_failure_evidence(config, session, step.id)
                 print_terminal_outcome(plan, session, config.actions_log_path)
             return exit_code
 
+        # Optional post-step verification checks keep plans from assuming success.
+        session = get_current_task(config.runtime_state_path)
+        if session:
+            verified, verification_note, verification_shot = _verify_step_outcome(step, config, session, step_before_app)
+            verification_after_app = get_frontmost_app(config.osascript_path)
+            session.notes.append(f"Step {step.id} verification: {verification_note}")
+            update_current_task(config.runtime_state_path, session)
+            append_action(
+                config.actions_log_path,
+                ActionRecord.create(
+                    task_id=session.task_id,
+                    step_id=f"{step.id}-verify",
+                    action_type=f"{step.action}_verify",
+                    target=step.id,
+                    status="ok" if verified else "error",
+                    frontmost_app_before=step_before_app,
+                    frontmost_app_after=verification_after_app,
+                    screenshot_after=verification_shot,
+                    verification_result=verification_note,
+                    error=None if verified else verification_note,
+                ),
+            )
+            if not verified:
+                speak(config.say_path, "Step verification failed. Check the terminal.", voice=config.say_voice)
+                print(f"\nJAMES: Verification failed after step {step.id} ({step.action}).")
+                if not args.no_failure_capture:
+                    _capture_failure_evidence(config, session, step.id)
+                print_terminal_outcome(plan, session, config.actions_log_path)
+                return 1
+
     session = get_current_task(config.runtime_state_path)
+    if not session:
+        # finish_task clears current_task; recover the just-completed session for final reporting.
+        state = load_runtime_state(config.runtime_state_path)
+        for completed in reversed(state.get("completed_tasks", [])):
+            if completed.get("task_id") == plan.task_id:
+                session = TaskSession(**completed)
+                break
     if session:
         status_word = "Done" if session.status in ("completed", "created") else session.status
         if not any(step.action == "speak_text" for step in plan.steps):
@@ -1886,6 +2507,7 @@ def handle_click_text(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    _run_startup_cleanup_if_enabled(args.command)
 
     if args.command == "preflight":
         return handle_preflight()
@@ -1905,6 +2527,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_finish_task(args)
     if args.command == "status":
         return handle_status()
+    if args.command == "cleanup":
+        return handle_cleanup(args)
     if args.command == "monitor":
         return handle_monitor(args)
     if args.command == "code-agent-request":
@@ -1916,7 +2540,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "prepare-followup-plan":
         return handle_prepare_followup_plan()
     if args.command == "execute-plan":
-        return handle_execute_plan()
+        return handle_execute_plan(args)
     if args.command == "generate-plan":
         return handle_generate_plan()
     if args.command == "write-sample-plan":
@@ -1953,6 +2577,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_capture_prompt(args)
     if args.command == "listen":
         return handle_listen(args)
+    if args.command == "doctor":
+        return handle_doctor(args)
     if args.command == "click":
         return handle_click(args)
     if args.command == "double-click":
@@ -1965,6 +2591,12 @@ def main(argv: list[str] | None = None) -> int:
         return handle_drag(args)
     if args.command == "click-text":
         return handle_click_text(args)
+    if args.command == "vscode-focus-terminal":
+        return handle_vscode_focus_terminal(args)
+    if args.command == "vscode-focus-panel":
+        return handle_vscode_focus_panel(args)
+    if args.command == "vscode-run-task":
+        return handle_vscode_run_task(args)
 
     parser.error(f"Unknown command: {args.command}")
     return 2

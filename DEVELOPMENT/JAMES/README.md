@@ -20,16 +20,19 @@ Current verified status:
 - Listen mode now uses short cue sounds for start-listen, record-start, record-stop, and error states instead of narrating the whole workflow.
 - Heuristic fallback planning can now answer simple conversational prompts directly through a `speak_text` execution step.
 - Structured plan execution with safety gates works.
+- Optional post-step verification gates now work through plan fields (`verify_frontmost_app`, `verify_text_present`, `verify_text_absent`, `verify_timeout`).
+- High-risk UI actions now get automatic frontmost-app stability checks by default; plans can override with `auto_verify`, `auto_verify_timeout`, and `allow_frontmost_change`.
 - Focus stack and return-to-editor flow work.
 - Godot launch works and now reuses an already running Godot instance instead of opening duplicate project windows.
 - Higher-level Godot actions now work: wait for editor readiness, switch workspace, focus panel, capture Output panel, run project, stop project, and open scenes with OCR plus quick-open fallback.
+- First-class VS Code actions now work: focus terminal, focus panel, and run task by label.
 - OCR-based click targeting works through Apple Vision.
 
 Current important limits:
 
-- James still lacks general post-action verification loops. Many actions succeed in practice, but they are not yet universally self-verifying.
+- Not every action self-verifies by default. Verification is now available, but plans must explicitly request checks when outcome certainty matters.
 - The built-in planner is still heuristic. Production use should rely on an external brain-generated plan.
-- VS Code automation is still mostly a composition of low-level primitives rather than dedicated first-class actions.
+- VS Code automation is still less mature than the Godot layer, but first-class VS Code actions now exist.
 - Mixed workflows are only partially integrated today. James can now pause and emit a structured code-agent handoff, but direct source editing still happens outside James.
 - When Godot is already running, James now prefers reusing that app instance over opening another project window. That avoids duplicate editors, but it does not yet prove the already-open window is the exact target project.
 
@@ -92,7 +95,9 @@ All commands are available through `python3 james.py <command>`.
 Task and state:
 
 - `preflight`
+- `doctor [--tail N] [--json]`
 - `monitor [--once] [--json]`
+- `cleanup [--dry-run] [--hard] [--include-sessions] [--json]`
 - `start-task <goal>`
 - `note <text>`
 - `finish-task [--status] [--note]`
@@ -138,13 +143,19 @@ Low-level interaction primitives:
 - `key-combo <key> [--modifier MOD]`
 - `click-text <text> [--label <label>]`
 
+VS Code-specific commands:
+
+- `vscode-focus-terminal [--timeout <seconds>]`
+- `vscode-focus-panel <explorer|problems|output> [--timeout <seconds>]`
+- `vscode-run-task <label> [--expect-text <marker>] [--timeout <seconds>]`
+
 Brain handoff and plan execution:
 
-- `listen [--goal ...]`
+- `listen [--goal ...] [--stop-on-error] [--debug-errors]`
 - `capture-prompt <goal>`
 - `generate-plan`
 - `write-sample-plan <task_id>`
-- `execute-plan`
+- `execute-plan [--no-failure-capture] [--debug-errors]`
 
 ## Data Layout
 
@@ -170,10 +181,25 @@ Brain handoff and plan execution:
 - `JAMES_AUDIO_DEVICE_INDEX` overrides the auto-detected device when needed.
 - `python3 james.py audio-device` prints the selected device and the full detected input list.
 - `python3 james.py listen --goal "Voice operator request"` keeps James alive in one terminal, listens only to keypad `0`, waits indefinitely by default, uses cue sounds instead of narrated capture prompts, and locally generates then executes a fallback plan after each captured prompt.
+- `python3 james.py listen --debug-errors` prints tracebacks for unexpected capture/processing failures while keeping listen mode alive.
+- `python3 james.py doctor --tail 30` summarizes runtime readiness, task/brain-file consistency, and recent action failures from `logs/actions.jsonl`.
+- Startup now runs a safe retention cleanup by default (screenshots/audio/session retention policy plus action-log rotation) to keep runtime footprint light without deleting state continuity files.
+- `python3 james.py cleanup --dry-run` previews what would be deleted.
+- `python3 james.py cleanup --hard` removes all screenshots/audio and truncates `logs/actions.jsonl`; add `--include-sessions` only when you intentionally want to discard session markdown history.
 - `python3 james.py monitor` shows a live dashboard for task, brain file, Godot, and audio-input state.
 - `python3 launch_james_operator.py` or `./start_james_operator.sh` opens dedicated operator terminals, checks Godot, and starts listen plus monitor.
 - For mixed workflows, use `python3 james.py code-agent-request` to inspect the current handoff, `python3 james.py complete-code-edit ...` to record the coding-agent result, and `python3 james.py prepare-followup-plan` to generate the next `brain_request.json` for James validation.
 - If no external brain is available for that follow-up phase, the heuristic planner now recognizes `workflow_stage="post_code_edit_validation"` and generates a validation-oriented fallback plan instead of treating the request like a generic prompt.
+
+Cleanup tuning via environment variables:
+
+- `JAMES_AUTO_CLEANUP=1|0` enable/disable startup retention cleanup (default on)
+- `JAMES_CLEANUP_KEEP_DAYS_SCREENSHOTS` retention window for screenshots (default 7)
+- `JAMES_CLEANUP_KEEP_DAYS_AUDIO` retention window for audio captures (default 7)
+- `JAMES_CLEANUP_KEEP_DAYS_SESSIONS` retention window for sessions when session pruning is requested (default 30)
+- `JAMES_CLEANUP_KEEP_RECENT` minimum newest files to always preserve per bucket (default 25)
+- `JAMES_CLEANUP_ACTIONS_MAX_LINES` rotate action log when line count exceeds this value (default 5000)
+- `JAMES_CLEANUP_ACTIONS_KEEP_LINES` newest lines preserved during action-log rotation (default 2000)
 
 ## What James Is Good At Right Now
 
@@ -190,17 +216,17 @@ Brain handoff and plan execution:
 
 ## What Still Needs Work
 
-- universal verification after UI actions
 - richer Godot workflows like guaranteed scene navigation and error summarization
-- stronger VS Code-specific first-class actions
+- stronger verification defaults so more plans verify outcomes automatically without manual fields
+- richer VS Code actions beyond terminal/panel/task primitives
 - direct brain integration instead of manual copy-paste between request and response files
 - automatic resume after the coding agent finishes a direct file edit handoff
 
 ## Recommended Next Development Priorities
 
-1. Add verification loops after `click`, `key_combo`, `type_text`, and the higher-level Godot actions.
-2. Add richer Godot scene navigation and Output-panel analysis.
-3. Expand VS Code actions into first-class plan steps.
+1. Add richer Godot scene navigation and Output-panel analysis.
+2. Expand verification defaults so high-risk UI actions require less manual verification wiring in plans.
+3. Expand VS Code actions beyond focus and run-task (for example terminal output capture and problem summarization).
 4. Replace or supplement the heuristic planner with direct LLM integration.
 
 ## Non-Negotiable Safety Rules

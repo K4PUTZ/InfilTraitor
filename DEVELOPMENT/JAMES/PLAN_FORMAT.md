@@ -40,6 +40,30 @@ Each step must include:
 
 Optional fields depend on the action.
 
+### Optional Verification Fields (any step)
+
+You can request post-step verification on most actions. James runs these checks after the step returns success and fails the plan if verification fails.
+
+- `verify_frontmost_app` — expected substring in the frontmost app name
+- `verify_text_present` — OCR text that must appear on screen
+- `verify_text_absent` — OCR text that must disappear from screen
+- `verify_timeout` — timeout in seconds for OCR verification checks (default `8`)
+- `auto_verify` — set `false` to disable automatic verification defaults for high-risk UI actions
+- `auto_verify_timeout` — timeout budget for automatic verification checks (default `5`)
+- `allow_frontmost_change` — set `true` when the step is expected to switch frontmost app
+
+Example:
+
+```json
+{
+  "id": "s4",
+  "action": "godot_switch_workspace",
+  "workspace": "script",
+  "verify_text_present": "Script",
+  "verify_timeout": 10
+}
+```
+
 ## Supported Actions In The Current Executor
 
 ### `note`
@@ -242,6 +266,47 @@ Focus the Godot Output panel and capture a screenshot for evidence or OCR follow
 { "id": "step-4l", "action": "godot_capture_output", "label": "run_output" }
 ```
 
+### `vscode_focus_terminal`
+
+Focus VS Code integrated terminal with the keyboard shortcut and verify by OCR.
+
+```json
+{ "id": "step-4m", "action": "vscode_focus_terminal", "timeout": 8 }
+```
+
+### `vscode_focus_panel`
+
+Focus a supported VS Code panel.
+
+```json
+{ "id": "step-4n", "action": "vscode_focus_panel", "panel": "problems", "timeout": 8 }
+```
+
+Supported values currently: `explorer`, `problems`, `output`.
+
+### `vscode_run_task`
+
+Open VS Code command palette and request a task run by label.
+
+```json
+{ "id": "step-4o", "action": "vscode_run_task", "label": "pytest small selection" }
+```
+
+Optional follow-up verification fields for this action:
+
+- `expect_text` — OCR text marker expected after launching the task (for example `"passed"`)
+- `timeout` — seconds to wait for that marker (default `12`)
+
+```json
+{
+  "id": "step-4p",
+  "action": "vscode_run_task",
+  "label": "pytest small selection",
+  "expect_text": "passed",
+  "timeout": 25
+}
+```
+
 ### `return_to_editor`
 
 ```json
@@ -314,7 +379,8 @@ Capture a screenshot, run Apple Vision OCR, find the first on-screen element who
 
 - James resolves each step by `action` name inside `james.py`.
 - Unsupported actions fail the plan immediately.
-- Some higher-level actions currently use OCR and quick timing delays internally; they are usable now, but they are not yet backed by universal verification loops.
+- If verification fields are present, James runs post-step verification and fails fast when checks do not match reality.
+- Some higher-level actions still rely on OCR and timing internally, so robust plans should combine action steps with explicit verification fields.
 
 ## Example
 

@@ -36,6 +36,13 @@ class JamesConfig:
     audio_device_index: str
     audio_device_name: str | None
     say_voice: str
+    auto_cleanup_on_startup: bool
+    cleanup_keep_days_screenshots: int
+    cleanup_keep_days_audio: int
+    cleanup_keep_days_sessions: int
+    cleanup_keep_recent_per_bucket: int
+    cleanup_actions_max_lines: int
+    cleanup_actions_keep_lines: int
 
 
 @dataclass(frozen=True)
@@ -143,6 +150,20 @@ def load_config() -> JamesConfig:
     audio_device_index = os.environ.get("JAMES_AUDIO_DEVICE_INDEX") or _detect_audio_device_index(_ffmpeg)
     audio_device_name = get_audio_input_device_name(_ffmpeg, audio_device_index)
 
+    def _env_int(name: str, default: int) -> int:
+        try:
+            return int(os.environ.get(name, str(default)))
+        except ValueError:
+            return default
+
+    auto_cleanup_on_startup = os.environ.get("JAMES_AUTO_CLEANUP", "1").strip().lower() not in {"0", "false", "no", "off"}
+    cleanup_keep_days_screenshots = _env_int("JAMES_CLEANUP_KEEP_DAYS_SCREENSHOTS", 7)
+    cleanup_keep_days_audio = _env_int("JAMES_CLEANUP_KEEP_DAYS_AUDIO", 7)
+    cleanup_keep_days_sessions = _env_int("JAMES_CLEANUP_KEEP_DAYS_SESSIONS", 30)
+    cleanup_keep_recent_per_bucket = _env_int("JAMES_CLEANUP_KEEP_RECENT", 25)
+    cleanup_actions_max_lines = _env_int("JAMES_CLEANUP_ACTIONS_MAX_LINES", 5000)
+    cleanup_actions_keep_lines = _env_int("JAMES_CLEANUP_ACTIONS_KEEP_LINES", 2000)
+
     return JamesConfig(
         root_dir=root_dir,
         logs_dir=logs_dir,
@@ -170,4 +191,11 @@ def load_config() -> JamesConfig:
         audio_device_index=audio_device_index,
         audio_device_name=audio_device_name,
         say_voice="Rocko (English (US))",
+        auto_cleanup_on_startup=auto_cleanup_on_startup,
+        cleanup_keep_days_screenshots=cleanup_keep_days_screenshots,
+        cleanup_keep_days_audio=cleanup_keep_days_audio,
+        cleanup_keep_days_sessions=cleanup_keep_days_sessions,
+        cleanup_keep_recent_per_bucket=cleanup_keep_recent_per_bucket,
+        cleanup_actions_max_lines=cleanup_actions_max_lines,
+        cleanup_actions_keep_lines=cleanup_actions_keep_lines,
     )

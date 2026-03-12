@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import time
 
-from runtime_apps import click_at, double_click_at, get_screen_size, key_combo, type_text
+from runtime_apps import activate_app, click_at, double_click_at, get_app_window_titles, get_screen_size, is_app_running, key_combo, type_text
 from runtime_capture import capture_screen
 from runtime_vision import find_text_center_coords, recognize_text
 
@@ -29,16 +29,53 @@ PANEL_LABELS = {
 }
 
 
-def launch_godot_project(godot_app_path: Path, project_path: Path) -> bool:
-    if not godot_app_path.exists() or not project_path.exists():
+def _normalize_window_text(value: str) -> str:
+    return "".join(ch for ch in value.lower() if ch.isalnum())
+
+
+def _project_window_tokens(project_path: Path) -> tuple[str, ...]:
+    candidates = [project_path.parent.name, project_path.parent.name.replace("-", ""), project_path.parent.name.replace("_", "")]
+    normalized = []
+    for candidate in candidates:
+        token = _normalize_window_text(candidate)
+        if token and token not in normalized:
+            normalized.append(token)
+    return tuple(normalized)
+
+
+def is_godot_project_open(osascript_path: str, project_path: Path) -> bool:
+    titles = get_app_window_titles(osascript_path, "Godot")
+    tokens = _project_window_tokens(project_path)
+    if not tokens:
         return False
+    for title in titles:
+        normalized_title = _normalize_window_text(title)
+        if any(token in normalized_title for token in tokens):
+            return True
+    return False
+
+
+def launch_godot_project(godot_app_path: Path, project_path: Path, osascript_path: str) -> tuple[bool, bool, str]:
+    if not godot_app_path.exists() or not project_path.exists():
+        return False, False, "Godot app or project path does not exist."
+
+    if is_app_running(osascript_path, "Godot"):
+        activated = activate_app(osascript_path, "Godot")
+        if activated:
+            if is_godot_project_open(osascript_path, project_path):
+                return True, False, f"Reused existing Godot window for {project_path.parent.name}."
+            return True, False, "Godot was already running, so James reused the existing instance instead of opening another project window."
+        return False, False, "Godot is already running, but activating it failed."
+
     result = subprocess.run(
         ["open", "-a", str(godot_app_path), str(project_path)],
         capture_output=True,
         text=True,
         check=False,
     )
-    return result.returncode == 0
+    if result.returncode != 0:
+        return False, False, result.stderr.strip() or f"Could not open Godot project at {project_path}."
+    return True, True, f"Launched Godot project at {project_path}."
 
 
 def _recognize_text_blob(image_path: Path) -> str:

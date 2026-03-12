@@ -1159,15 +1159,12 @@ def handle_launch_godot(args: argparse.Namespace) -> int:
         push_focus(session, before_app)
 
     project_path = Path(args.project)
-    success = launch_godot_project(config.godot_app_path, project_path)
+    success, launched, detail = launch_godot_project(config.godot_app_path, project_path, config.osascript_path)
     if success:
         activate_app(config.osascript_path, "Godot")
     after_app = get_frontmost_app(config.osascript_path)
     session.active_app = after_app
-    if success:
-        session.notes.append(f"Launched Godot project at {project_path}.")
-    else:
-        session.notes.append(f"Failed to launch Godot project at {project_path}.")
+    session.notes.append(detail)
     update_current_task(config.runtime_state_path, session)
     append_action(
         config.actions_log_path,
@@ -1179,8 +1176,9 @@ def handle_launch_godot(args: argparse.Namespace) -> int:
             status="ok" if success else "error",
             frontmost_app_before=before_app,
             frontmost_app_after=after_app,
-            parameters={"push_current": args.push_current},
-            error=None if success else f"Could not launch Godot project at {project_path}",
+            parameters={"push_current": args.push_current, "launched_new_instance": launched},
+            verification_result=detail if success else None,
+            error=None if success else detail,
         ),
     )
     print(after_app or str(project_path))

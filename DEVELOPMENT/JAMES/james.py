@@ -1097,7 +1097,7 @@ def handle_activate_app(args: argparse.Namespace) -> int:
     config = load_config()
     session = _require_current_task(config)
     before_app = get_frontmost_app(config.osascript_path)
-    if args.push_current:
+    if args.push_current and before_app and before_app != args.app_name:
         push_focus(session, before_app)
 
     success = activate_app(config.osascript_path, args.app_name)
@@ -1155,7 +1155,7 @@ def handle_launch_godot(args: argparse.Namespace) -> int:
     config = load_config()
     session = _require_current_task(config)
     before_app = get_frontmost_app(config.osascript_path)
-    if args.push_current:
+    if args.push_current and before_app and before_app != "Godot":
         push_focus(session, before_app)
 
     project_path = Path(args.project)

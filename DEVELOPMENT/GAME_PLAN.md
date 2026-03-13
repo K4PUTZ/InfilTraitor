@@ -332,7 +332,7 @@ Gadgets have **limited charges** per level; charges refill between levels or can
   - hold while speaking,
   - release to stop recording and submit the prompt.
 - A critical James requirement is **return-to-editor discipline**: if James leaves VS Code to perform work in Godot or another app, he must return with a result, evidence, and a clear task outcome.
-- James lives under `DEVELOPMENT/JAMES/` and should evolve as a production-support system, not as game runtime code.
+- James has been moved to a standalone repo at https://github.com/K4PUTZ/JAMES.git and lives as a peer directory (`../JAMES/`). It is project-agnostic and can be used for any development workflow.
 
 ### 7.1 Asset Generation Tooling (Stable Diffusion)
 

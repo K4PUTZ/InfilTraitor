@@ -19,19 +19,21 @@ Current prototype direction:
 
 - `infil-traitor/` — Godot project folder (open `project.godot`)
 - `DEVELOPMENT/` — design + tooling
-- `DEVELOPMENT/JAMES/` — internal operator scaffold for macOS-driven game production automation
 - `infiltraitor3d.html` — Three.js web prototype (standalone HTML)
 
 ## Development Operator
 
-`DEVELOPMENT/JAMES/` defines James, the local macOS operator that will manipulate Godot, VS Code, browsers, Finder, and Terminal during production tasks.
+James (the local macOS development operator) has been moved to its own standalone repo:
+
+- **Repo:** https://github.com/K4PUTZ/JAMES.git
+- **Local path:** `../JAMES/` (peer directory)
+
+James is project-agnostic and can automate any macOS development workflow. To use it with INFILTRAITOR, set `godot_project` in James's `config.ini` to point to this project's `infil-traitor/project.godot`.
 
 Role split:
 
 - James provides local eyes, ears, hands, logging, and task-state management.
-- GitHub Copilot using GPT-5.4 acts as the planning brain.
-
-James is intended to replace the wake-word-based `Agent_Operator` approach with push-to-talk capture and a more reliable task-and-verification workflow.
+- The LLM brain (GitHub Models / OpenAI) provides reasoning and task planning.
 
 ## Quick start
 

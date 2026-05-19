@@ -1,4 +1,5 @@
 {
+  "godotTools.editorPath.godot4": "/Applications/Godot.app/Contents/MacOS/Godot",
   "files.associations": {
     "*.gd": "gdscript",
     "*.gdshader": "gdshader",

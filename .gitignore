@@ -1,0 +1,15 @@
+.DS_Store
+
+# Local-only reference archive (558MB, not needed for development)
+ARCHIVE/
+
+# Godot (generated/editor cache)
+.godot/
+
+# Godot export/build outputs (if created)
+export/
+build/
+
+# Logs/temp files from tooling
+*.log
+*.tmp

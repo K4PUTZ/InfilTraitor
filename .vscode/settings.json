@@ -1,0 +1,10 @@
+{
+  "files.associations": {
+    "*.gd": "gdscript",
+    "*.gdshader": "gdshader",
+    "*.gdshaderinc": "gdshader",
+    "*.tscn": "ini",
+    "*.tres": "ini",
+    "*.godot": "ini"
+  }
+}

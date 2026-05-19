@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Play Game (Godot)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "/Applications/Godot.app/Contents/MacOS/Godot --path .",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Rebuild TileSet (headless)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -20,17 +20,34 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Pre-Alpha** — design complete, assets organized, Godot project not yet started.
+**Alpha 0** — first visual prototype running in-engine. 9×9 isometric room rendering with 240-tile TileSet. Agent movement and turn manager not yet implemented.
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
-| M1 — Godot prototype (one room, movement) | ⏳ Next |
-| M2 — Dungeon: room graph + navigation | |
-| M3 — Procedural generation | |
-| M4 — Stealth AI (guard patrol / detection) | |
-| M5 — Combat & gadgets | |
-| M6 — Meta-progression | |
+| M1 — Godot prototype (one room, movement) | 🔄 In Progress |
+| M1.5 — Tactical UI (tap-to-select, path preview) | |
+| M2 — Threats & combat (guards, detection) | |
+| M3 — Procedural floor builder | |
+| M4 — Vertical slice | |
+| M5 — Monetisation | |
+| M6 — Content expansion | |
+| M7 — Polish & launch | |
+
+### Alpha 0 — what's working (2026-05-19)
+
+- Godot 4.6 project scaffold (portrait 390×844, Mobile renderer)
+- 240-tile isometric TileSet generated from `blocks-prototype` pack
+- Custom data per tile: `tile_name`, `walkable`, `cover`, `interactive`
+- 9×9 test room rendered from name-based tile placement (`room.gd`)
+- TileRegistry: name → source_id lookup (auto-generated)
+- VS Code dev workflow: **F5** launches the game, **⌘⇧B** rebuilds the TileSet
+
+### Next up (M1 remainder)
+
+- Agent placeholder on the grid (tap to move)
+- 2 AP per turn system + turn manager
+- Entrance / exit rooms and room transitions
 
 ---
 

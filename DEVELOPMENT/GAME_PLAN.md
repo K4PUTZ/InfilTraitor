@@ -477,7 +477,7 @@ Narrative is **light and non-intrusive** — the focus is on gameplay. Story is 
 | # | Milestone | Scope | Target |
 |---|---|---|---|
 | **M0** | Game Plan & documentation | This document ✅ | 2026-02-20 |
-| **M1** | Prototype — grid + room flow | Godot project, TileMap, entrance room, exit room, room transitions, agent movement (2 AP/turn), turn manager | TBD |
+| **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, test room ✅ — agent movement, turn manager, room transitions pending | 🔄 In Progress |
 | **M1.5** | Prototype — tactical UI | Tap-to-select tile, contextual action menu, path preview, 1 AP / 2 AP movement overlays | TBD |
 | **M2** | Prototype — threats & combat | Guard patrols, vision cones, detection meter, enemy AI phase, basic brute-force attack option | TBD |
 | **M2.5** | Prototype — room objectives | Room quest system, reward pickup flow, objective tracker, progression gate to next room/floor | TBD |
@@ -524,6 +524,7 @@ Narrative is **light and non-intrusive** — the focus is on gameplay. Story is 
 | 2026-03-09 | — | Added James as the internal development operator for production tooling. Documented the push-to-talk control model, the split between James and the external GPT-5.4 planning brain, and the requirement to log actions and return to VS Code with results after tasks performed in Godot or other desktop applications. |
 | 2026-05-18 | — | Confirmed engine as **Godot 4** (closing Phaser.js / Three.js experiments). Confirmed **isometric 2.5D** rendering style: dimetric projection, 45° horizontal / 26.57° elevation, square tile grid via Godot `TileMap` in isometric mode. Added §8.4 Visual References (Emperor, StarCraft, XCOM). Added planned Godot project folder structure to README. Rewrote README to reflect actual project state. Added new reference screenshots to `REFERENCES/`. |
 | 2026-05-19 | — | Full asset reorganization completed. `TILESETS/` → `ASSETS/ISOMETRIC/` (8 Kenney packs with clean names). `OTHER ASSETS/` → `ARCHIVE/` (textures, fonts, FX, sprites-2d). Characters split into `ASSETS/CHARACTERS/humans/`. Orthographic angle renders → `ASSETS/REFERENCE/`. Deleted space-themed, flat-2D, and non-isometric packs. Created `DEVELOPMENT/ASSET_MAP.md` — full tile catalogue, chapter-theme mapping, and procedural generation guide. Updated README project layout. |
+| 2026-05-19 | — | **Alpha 0** — first visual prototype running in-engine. Godot 4.6 project scaffolded (`project.godot`, `room.tscn`, `room.gd`, `agent.gd`, `tilemap_helper.gd`). TileSet builder (`build_tileset.gd`) implemented as headless `SceneTree` script; runs from terminal without Godot editor. Generates `tileset_blocks.tres` (240 tiles, blocks-prototype pack) with 4 custom data layers per tile (`tile_name`, `walkable`, `cover`, `interactive`) and `tile_registry.gd` (name→source_id lookup). 9×9 isometric test room rendering confirmed in-engine. VS Code dev workflow established: F5 launches game via `node-terminal` launch config, ⌘⇧B rebuilds TileSet via task. Tagged as `alpha-0` and pushed to GitHub. |
 
 ---
 

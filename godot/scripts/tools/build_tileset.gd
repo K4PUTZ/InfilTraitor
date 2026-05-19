@@ -1,10 +1,9 @@
-@tool
-extends EditorScript
+extends SceneTree
 ## TileSet builder for INFILTRAITOR — blocks-prototype pack
 ##
-## HOW TO RUN:
-##   Open Godot editor once (to import assets), then:
-##   Script Editor → File → Run  (or Ctrl+Shift+X)
+## HOW TO RUN (terminal, from the project root):
+##   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd
+## NOTE: Open Godot editor once first so PNGs are imported into .godot/imported/
 ##
 ## OUTPUT:
 ##   godot/resources/tilesets/tileset_blocks.tres  ← used by TileMapLayer nodes
@@ -102,7 +101,12 @@ const TILE_PROPS: Dictionary = {
 }
 
 
-func _run() -> void:
+func _initialize() -> void:
+	_build()
+	quit()
+
+
+func _build() -> void:
 	print("[build_tileset] Starting...")
 
 	# ── Create TileSet ────────────────────────────────────────────────────────
@@ -167,6 +171,11 @@ func _run() -> void:
 		source.texture_region_size = PNG_SIZE
 
 		source.create_tile(Vector2i(0, 0))
+
+		# Add to TileSet FIRST so TileData gets the tile_set reference —
+		# set_custom_data() requires it.
+		tile_set.add_source(source, source_id)
+
 		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
 
 		# Align floor plane with TileMap cell.
@@ -180,7 +189,6 @@ func _run() -> void:
 		td.set_custom_data("cover",       props.get("cover",       false))
 		td.set_custom_data("interactive", props.get("interactive", false))
 
-		tile_set.add_source(source, source_id)
 		registry_entries.append('\t"%s": %d,' % [tile_name, source_id])
 		source_id += 1
 

@@ -1,6 +1,10 @@
 ; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
-; but the file format allows this.
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -18,11 +22,6 @@ config/icon="res://icon.svg"
 window/size/viewport_width=390
 window/size/viewport_height=844
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
-
-[rendering]
-
-renderer/rendering_method="mobile"
 
 [layer_names]
 
@@ -30,3 +29,7 @@ renderer/rendering_method="mobile"
 2d_render/layer_2="structure"
 2d_render/layer_3="entities"
 2d_render/layer_4="ui"
+
+[rendering]
+
+renderer/rendering_method="mobile"

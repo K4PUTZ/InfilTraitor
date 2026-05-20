@@ -4,9 +4,9 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-04-28  
-> **Status:** Pre-production / Design phase  
-> **Engine:** Phaser.js (2D, isometric)  
+> **Last updated:** 2026-05-19  
+> **Status:** M1 complete — AP/movement system prototype working in-engine  
+> **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
 **Repository (source of truth):**

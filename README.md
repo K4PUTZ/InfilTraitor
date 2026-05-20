@@ -20,12 +20,12 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha 0** — first visual prototype running in-engine. 9×9 isometric room rendering with 240-tile TileSet. Agent movement and turn manager not yet implemented.
+**Alpha 1** — AP/turn system, movement overlay and animated movement working in-engine.
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
-| M1 — Godot prototype (one room, movement) | 🔄 In Progress |
+| M1 — Godot prototype (one room, movement) | ✅ Complete |
 | M1.5 — Tactical UI (tap-to-select, path preview) | |
 | M2 — Threats & combat (guards, detection) | |
 | M3 — Procedural floor builder | |
@@ -34,6 +34,17 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M6 — Content expansion | |
 | M7 — Polish & launch | |
 
+### Alpha 1 — what's working (2026-05-19)
+
+- **TurnManager** autoload singleton — PLAYER / ENEMY phase cycle
+- **2 AP per turn** system with Dijkstra movement range (zone1 = 1 AP / zone2 = 2 AP / dash = 2 AP + bonus tile)
+- **MoveOverlay** — perimeter outline per zone with glow effect (faint fill + thick antialiased border); hides during movement, re-appears on arrival
+- **Click-to-move** with AP cost awareness; End Turn button triggers enemy phase (stub: resolves immediately)
+- **Movement animation** — 0.30 s Tween (QUAD/EASE_OUT); camera follows agent's animated position
+- **55×55 room** with oriented border walls and floor variety (floorHalf mixed at 20%)
+- **Decorative props** (crates, columns, pole groups) scattered as visual landmarks (~4.5% of tiles)
+- VS Code dev workflow: **F5** launches the game, **⌘⇧B** rebuilds the TileSet
+
 ### Alpha 0 — what's working (2026-05-19)
 
 - Godot 4.6 project scaffold (portrait 390×844, Mobile renderer)
@@ -41,13 +52,13 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Custom data per tile: `tile_name`, `walkable`, `cover`, `interactive`
 - 9×9 test room rendered from name-based tile placement (`room.gd`)
 - TileRegistry: name → source_id lookup (auto-generated)
-- VS Code dev workflow: **F5** launches the game, **⌘⇧B** rebuilds the TileSet
 
-### Next up (M1 remainder)
+### Next up (M1.5)
 
-- Agent placeholder on the grid (tap to move)
-- 2 AP per turn system + turn manager
-- Entrance / exit rooms and room transitions
+- Agent AP bar UI (pip indicators draining as AP is spent)
+- Room shape: corridor + side passages (replace open rectangle)
+- Entrance / exit tiles and room transitions
+- Enemy placeholder with cone of vision
 
 ---
 

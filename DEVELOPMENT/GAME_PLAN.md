@@ -4,7 +4,7 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-19  
+> **Last updated:** 2026-05-19 (brainstorm: zones, narrative, fog of war, retention, adaptive difficulty)  
 > **Status:** M1 complete — AP/movement system prototype working in-engine  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
@@ -19,7 +19,9 @@
 
 ## 1. High-Level Concept
 
-**INFILTRAITOR** is a mobile **turn-based** stealth tactics game with RPG progression, inspired by the tactical readability of *XCOM* and the clean top-down room navigation of classic **Zelda-style** dungeon design. The player controls a secret agent viewed from a **top-down/isometric perspective** on a **square tile grid** in **portrait orientation**. A Phaser.js engine renders all scenarios com gráficos isométricos baseados em tiles. The camera is zoomed in to show a portion of the dungeon; the map **scrolls to follow the agent** as they move from room to room.
+**INFILTRAITOR** is a mobile **turn-based** stealth tactics game with RPG progression, inspired by the tactical readability of *XCOM* and the clean top-down room navigation of classic **Zelda-style** dungeon design. The player controls a secret agent viewed from a **top-down/isometric perspective** on a **square tile grid** in **portrait orientation**. Godot 4 renders all scenarios with isometric 2.5D tiles. The camera is zoomed in to show a portion of the dungeon; the map **scrolls to follow the agent** as they move from room to room.
+
+The defining mechanic: **information is the primary resource**, not health or ammunition. The agent is a spy — success depends on *knowing* without being known. Fog of war, noise propagation, and enemy unpredictability make every run fresh and every action consequential.
 
 Each run begins at an **entrance room** and progresses through a chain of connected rooms generated from handcrafted templates. Rooms contain **objectives / quests**, enemies, hazards, rewards, and finally a path to the **exit / next level**. The game blends **tactical puzzle-solving** (choosing a path through threats), **room-based dungeon progression** (clear, survive, extract, unlock), and **character growth** (new skills, gadgets, weapons, and equipment unlocked over time). Each turn the agent has **two action points (AP)** that can be spent on movement, gadget use, skills, combat actions, or interactions — forcing meaningful choices every turn.
 
@@ -35,6 +37,7 @@ Each run begins at an **entrance room** and progresses through a chain of connec
 | **Procedural replayability** | Dungeon layouts are generated from authored building blocks so each run feels fresh but fair. |
 | **Progressive mastery** | New abilities open up previously impossible routes and strategies. |
 | **Session-friendly** | Levels are short enough (1–3 min) for mobile play sessions. |
+| **Information asymmetry** | Fog of war, noise propagation, and limited vision make knowledge the scarcest resource. The player must gather intel before acting — and act before being known. |
 | **Fair monetisation** | Ads + optional cosmetics; never pay-to-win. |
 
 ---
@@ -101,9 +104,32 @@ Tiles are not all equal — terrain type affects movement cost, stealth, and can
 Terrain modifiers are displayed via **subtle tile overlays** (e.g., arrows for currents/wind, wavy lines for water) so the player can plan around them.
 
 ### 3.4 Vision & Fog of War
-- The player has limited forward vision.
-- Tiles outside vision range are dimmed / fogged.
-- Certain gadgets (periscope, drone) can reveal tiles ahead.
+
+Information asymmetry is the core strategic layer — the player never has complete knowledge, and that tension *is* the game.
+
+**Visibility tiers:**
+
+| Tier | Behaviour |
+|---|---|
+| **Unexplored** | Never visited. Fully dark overlay. Layout completely unknown. |
+| **Explored** | Visited at least once. Layout visible; enemy positions not updated (last-known only). |
+| **Currently visible** | Within sight radius (default ≤ 5 Manhattan distance from agent). Full live detail. |
+
+**Enemy positions:**
+- Visible only when within sight range.
+- Last known position shown as a dimmed icon when an enemy exits sight.
+- `?` marker displayed when an enemy was known to be in the area but has since moved.
+
+**Noise propagation:**
+- Each tile has a `noise_cost` (standard floor = 0, metal grating = 2, gravel = 3, broken glass = 4).
+- Each agent move generates noise equal to the destination tile’s `noise_cost`.
+- Guards with `hearing_radius > 0` raise alert if noise this turn exceeds their threshold within range.
+- This creates a parallel stealth layer: route choice involves both vision cones *and* noise budget.
+
+**Intel gathering:**
+- Gadgets (mini-drone, periscope) and terminal hacks permanently reveal tile areas.
+- The **Informant NPC** (§3.7.4) provides one guaranteed intel piece per map.
+- Fog clears permanently on visit — giving a memory advantage on retry.
 
 ### 3.5 Threat Types
 
@@ -189,6 +215,98 @@ These room quests provide short-term goals inside the larger dungeon progression
 | **Multi-floor** | Stairs/ladders connect vertical layers (future feature). |
 
 The camera **scrolls to follow the agent** in any direction, but the natural pull is bottom-to-top in most levels.
+
+#### 3.7.4 The Informant — guaranteed intel NPC
+
+Every map may contain an **Informant**: a friendly Network contact embedded in the location. Reaching the Informant tile (1 AP interaction) before being detected grants one of three guaranteed intel pieces — player’s choice:
+
+- Exact position of the primary objective
+- Patrol route of one specific guard (displayed as a dotted path overlay for 5 turns)
+- Location of the nearest secret room
+
+The Informant is never on the critical path — reaching them requires a detour, making the choice a meaningful trade-off: time/AP vs. information.
+
+#### 3.7.5 Zones & Thematic Chapters
+
+Zones are high-level thematic chapters, each with a **unique tileset, enemy faction, and ambient aesthetic**. Each zone is a self-contained campaign chapter that connects into the main story arc.
+
+| Zone | Theme | Tileset style | Faction |
+|---|---|---|---|
+| **1 — Corporate HQ** | Urban office tower | Concrete, glass, carpet | Agency security |
+| **2 — Research Facility** | Underground sci-fi lab | White tile, neon accents | Research division |
+| **3 — Jungle Outpost** | Remote military camp | Wood, dirt, vegetation | Paramilitary contractors |
+| **4 — Arctic Base** | Ice/snow facility | Steel, ice tiles | Black-ops unit |
+| **5 — Space Station** | Orbital platform | Hull panels, vacuum vents | Elite agency division |
+| **6 — Underground Bunker** | Network HQ + final confrontation | Mixed salvage | Agency command |
+
+Zone unlocks are linear (1 → 6) but each zone can be replayed in higher difficulty tiers (Standard / Shadow / Ghost) for max stars and exclusive cosmetics.
+
+---
+
+## 3.8 Retention & Replayability Systems
+
+### 3.8.1 Daily Challenge (Seed-based)
+
+Every player worldwide faces the identical procedurally-generated map each day:
+
+```gdscript
+rng.seed = Time.get_date_dict_from_system().hash()
+```
+
+A global leaderboard ranks by turns used + alert level reached. Community discussion of “today’s map” is a free engagement loop. Zero server infrastructure required — the seed is the date.
+
+### 3.8.2 Pre-mission Skill Selection
+
+Before each mission, the player is shown **4 randomly drawn skills/gadgets** from their unlocked pool and picks 2 to bring. Same mission with a different loadout = a genuinely different run. Forces adaptation instead of relying on a memorized “best build”. Implementation: one pre-mission selection screen drawn from the agent’s unlocked skill set.
+
+### 3.8.3 Ghost Run — Par Timer
+
+Each map has a **par turn count**. Completing in:
+- ≤ par → 3 stars + Ghost badge
+- par +1 to par +5 → 2 stars
+- above par +5 → 1 star (mission complete)
+
+Stars never block progression but drive the obsession to optimize. The player knows a perfect run exists — and wants to find it.
+
+### 3.8.4 Death Replay
+
+On mission failure, the game replays the **last 3 turns** as a semi-transparent ghost overlay before showing the retry screen. The player sees exactly where the mistake was made — turning frustration into a learning moment.
+
+```gdscript
+# Append agent Vector2i position to history Array each turn.
+# On failure: replay last 3 entries as tweened ghost at 50% alpha.
+```
+
+### 3.8.5 Mastery Statistics
+
+After each run, display a brief stats card:
+- Tiles moved in stealth vs. total tiles moved (% stealth rating)
+- Total noise generated
+- Turns used vs. par
+- Peak alert level reached
+
+These numbers give a tangible sense of improvement independent of mission outcome.
+
+---
+
+## 3.9 Adaptive Difficulty & Counter System
+
+As the agent unlocks capabilities, the opposition evolves in response. The counter appears in the **next zone**, not the next mission — zone-gated, not ability-gated, to avoid punishing the player immediately for a new unlock.
+
+| Agent capability | Counter introduced in next zone |
+|---|---|
+| Smoke bomb (blinds guards) | Guard with gas mask (immune to smoke) |
+| Hack terminal (disables cameras) | Camera with physical backup switch (adjacent tile interaction required) |
+| Sprint / dash movement | Pressure-plate corridors (noise-triggered alarm) |
+| Overwatch stance | Shield-bearing guard (absorbs overwatch reaction, advances on agent) |
+| Invisibility skill | Thermal-imaging guard (detects heat signature, ignores optical stealth) |
+| Silent takedown | Guards patrolling in pairs (takedown triggers partner alert) |
+
+**Mathematical balancing model:**
+- Target metric: **Expected Actions to Complete (EAC)** — average actions an experienced player needs per map.
+- Zone 1 EAC ≈ 12 actions. Zone 6 EAC ≈ 28 actions.
+- Difficulty grows by adding *simultaneous variables* (patrol density, camera overlap, noise sensitivity) rather than inflating raw enemy stats.
+- Guard HP and damage remain constant across zones. Complexity scales; numbers do not.
 
 ---
 
@@ -445,22 +563,61 @@ Output is saved to `DEVELOPMENT/concept_art/` with auto-incrementing filenames.
 
 ## 9. Narrative & Story
 
-### 9.1 Philosophy
-Narrative is **light and non-intrusive** — the focus is on gameplay. Story is delivered in small, digestible pieces that never block the player for long.
+### 9.1 Core Concept
 
-### 9.2 Delivery Methods
+The name is the story: **INFILTRAITOR** — the agent is *both* an infiltrator *and* a traitor.
+
+The player controls a highly skilled field operative who discovers they have been serving the wrong side. The narrative arc is a **slow awakening** — inspired by *The Matrix* — from loyal instrument of the system to active agent of resistance from within. The twist: the game's title describes what the player *becomes*, not just what they *do*.
+
+### 9.2 The Two Factions
+
+| Faction | Public face | True nature |
+|---|---|---|
+| **The Agency** | Stability. Prevents wars, protects global order. | Achieves stability through surveillance, manipulation of governments, and the suppression of dissent. Genuinely prevents catastrophes — and genuinely silences innocents. |
+| **The Network** | Transparency. Freedom of information. Resistance. | Leaks classified data; sabotages surveillance infrastructure. Genuinely fights for freedom — and genuinely endangers operatives and civilians with indiscriminate exposure. |
+
+**Neither faction is purely heroic.** The player must choose their complicity — and live with the consequences.
+
+### 9.3 The Story Arc
+
+```
+ACT 1 — The Asset (Zones 1–2)
+  Tutorial missions. The agent is effective, trusted, professional.
+  Unknown to them, their successful missions are being used to eliminate
+  Network contacts. One mission ends with civilian casualties that HQ
+  quietly erases from the record. The agent notices the discrepancy.
+
+ACT 2 — The Fracture (Zones 3–4)
+  First contact with a Network informant embedded in a target location.
+  The agent begins passing double intelligence — completing Agency missions
+  while feeding the Network parallel data. The Agency's internal
+  surveillance closes in. The handler starts asking unusual questions.
+
+ACT 3 — The Traitor (Zones 5–6)
+  The Agency burns the agent's cover. Now both hunter and hunted,
+  operating from inside the system they are dismantling, the agent must
+  penetrate the Agency's most secure locations to expose the full operation.
+  Final mission: destroy the Agency from within — or go public with
+  everything and let the world decide.
+```
+
+### 9.4 Narrative Delivery
+
+Narrative is **light and non-intrusive** — gameplay is primary. Story arrives in small, skippable pieces that never block turn flow.
+
 | Method | When | Details |
 |---|---|---|
-| **Artistic intro screens** | Game start / new chapter | 2–3 illustrated panels introducing the character, mission context, or new villain. Skippable. |
-| **Tutorial level** | First play session | A short, guided level that teaches movement, AP, context menu, and basic detection — woven into a narrative setup ("your first field assignment"). |
-| **In-game text dialogs** | During gameplay | Short speech bubbles or comm-link messages (1–2 lines) triggered by reaching specific tiles or events. Do not pause the turn flow. |
-| **Victory screen** | Level complete | Brief narrative outcome ("Intel secured — HQ sends new orders") + stats + rewards. |
-| **Defeat screen** | Mission failed | Narrative consequence ("Agent compromised — extraction team en route") + retry / ad-continue options. |
-| **Dossier / intel log** | Between levels (menu) | Collected intel pieces build a deeper backstory for players who want it — entirely optional. |
+| **Mission briefing** | Before each level | 2–3 lines from the handler or a Network contact. Skippable. |
+| **Comm-link messages** | During gameplay | 1–2 line speech bubbles triggered by specific tiles or events. Non-blocking. |
+| **Intel fragments** | Collectible in each map | Optional lore objects — documents, recordings, data packets. Build the deeper backstory for players who want it. |
+| **Victory / defeat screen** | After each level | Brief narrative outcome + stats + rewards. |
+| **Dossier log** | Between levels (menu) | Accumulated intel fragments form an optional expanded narrative. |
 
-### 9.3 Tone
-- Espionage thriller — tense but not grim. Occasional dry humour in comm-link dialog.
-- The agent is a professional; the stakes feel real but the vibe is closer to *Mission: Impossible* than *le Carré*.
+**LLM-generated briefings (future):** With a fixed template — location + target type + extraction window + faction context — an LLM produces unique, coherent mission briefings for every procedurally generated run. Each mission feels personally authored.
+
+### 9.5 Tone
+
+Espionage thriller — tense but not grim. Dry humour from Network contacts; cold professionalism from the Agency handler. Moral ambiguity is real and never resolved neatly — the player decides what justice looks like. Closer to *Tinker Tailor Soldier Spy* in stakes, *Mission: Impossible* in pacing.
 
 ---
 
@@ -477,7 +634,7 @@ Narrative is **light and non-intrusive** — the focus is on gameplay. Story is 
 | # | Milestone | Scope | Target |
 |---|---|---|---|
 | **M0** | Game Plan & documentation | This document ✅ | 2026-02-20 |
-| **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, test room ✅ — agent movement, turn manager, room transitions pending | 🔄 In Progress |
+| **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, 55×55 room ✅, AP/turn system ✅, movement overlay ✅, animated movement ✅ | ✅ Complete |
 | **M1.5** | Prototype — tactical UI | Tap-to-select tile, contextual action menu, path preview, 1 AP / 2 AP movement overlays | TBD |
 | **M2** | Prototype — threats & combat | Guard patrols, vision cones, detection meter, enemy AI phase, basic brute-force attack option | TBD |
 | **M2.5** | Prototype — room objectives | Room quest system, reward pickup flow, objective tracker, progression gate to next room/floor | TBD |

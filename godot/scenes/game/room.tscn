@@ -1,33 +1,50 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cpoucrt1wnox6"]
 
-[ext_resource type="Script" path="res://godot/scripts/game/room.gd" id="1_room"]
-[ext_resource type="Script" path="res://godot/scripts/game/agent.gd" id="2_agent"]
-[ext_resource type="Script" path="res://godot/scripts/game/move_overlay.gd" id="3_overlay"]
+[ext_resource type="Script" uid="uid://bg1vhp4vuujdp" path="res://godot/scripts/game/room.gd" id="1_room"]
+[ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/game/selection_overlay.gd" id="2_sel"]
+[ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/game/tile_labels_overlay.gd" id="3_labels"]
 
-[node name="Room" type="Node2D"]
+[node name="Room" type="Node2D" unique_id=144188552]
 script = ExtResource("1_room")
 
-[node name="Camera2D" type="Camera2D" parent="."]
-zoom = Vector2(0.35, 0.35)
+[node name="Camera2D" type="Camera2D" parent="." unique_id=2050405450]
+zoom = Vector2(0.5, 0.5)
 
-[node name="FloorLayer" type="TileMapLayer" parent="."]
-y_sort_enabled = false
+[node name="FloorLayer" type="TileMapLayer" parent="." unique_id=1365023476]
 
-[node name="MoveOverlay" type="Node2D" parent="."]
-script = ExtResource("3_overlay")
+[node name="SelectionOverlay" type="Node2D" parent="." unique_id=945163989]
+script = ExtResource("2_sel")
 
-[node name="StructureLayer" type="TileMapLayer" parent="."]
-y_sort_enabled = true
+[node name="TileLabelsOverlay" type="Node2D" parent="." unique_id=657068080]
+script = ExtResource("3_labels")
 
-[node name="Agent" type="Node2D" parent="."]
-script = ExtResource("2_agent")
+[node name="HUD" type="CanvasLayer" parent="." unique_id=979929563]
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="TopBar" type="PanelContainer" parent="HUD" unique_id=2073143929]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 172.0
+offset_bottom = 68.0
 
-[node name="EndTurnBtn" type="Button" parent="UI"]
-offset_left = 200.0
-offset_top = 780.0
-offset_right = 385.0
-offset_bottom = 835.0
-text = "End Turn"
+[node name="Row" type="HBoxContainer" parent="HUD/TopBar" unique_id=1960800847]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
 
+[node name="BtnNumbers" type="Button" parent="HUD/TopBar/Row" unique_id=1536072207]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+tooltip_text = "Coordenadas ON/OFF"
+text = "#"
+
+[node name="BtnFullscreen" type="Button" parent="HUD/TopBar/Row" unique_id=2089223585]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+tooltip_text = "Tela cheia"
+text = "[ ]"
+
+[node name="BtnViewport" type="Button" parent="HUD/TopBar/Row" unique_id=656667469]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+tooltip_text = "Alternar viewport"
+text = "M"

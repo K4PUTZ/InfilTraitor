@@ -1,213 +1,241 @@
 extends Node2D
-## Room controller — M1 prototype
-##
-## Grid math:
-##   - 1 logical cell = Vector2i(col, row)
-##   - Screen size: 256 × 128 px per cell (2:1 isometric diamond)
-##   - map_to_local(cell) → world position at the CENTER of that diamond
-##   - No sub-tiles: each cell is floor, wall, or empty
-##   - wall_N/E/S/W = thin panel (~1/4 visual depth of a block cube)
-##   - Wall orientation per edge:
-##       top row (y=0)   → wall_N  (back-left face, visible to camera)
-##       right col (x=W) → wall_E  (back-right face, visible to camera)
-##       bottom/left     → wall_S/W (front-facing, add depth)
-##       4 outer corners → wallCorner_N / _E / _S / _W
-##
-## TileMapLayer nodes expected as children:
-##   FloorLayer     — walkable floor tiles  (y_sort_enabled = false)
-##   StructureLayer — walls, obstacles, props (y_sort_enabled = true)
-##   Agent          — plain Node2D child, rendered above both layers
+## Minimal room — isometric grid with pink tile selection.
+## Milestone 0: tile picking only. No agent, no AP, no popup.
 
-
-@onready var floor_layer:     TileMapLayer = $FloorLayer
-@onready var structure_layer: TileMapLayer = $StructureLayer
-@onready var camera:          Camera2D     = $Camera2D
-@onready var agent:           Node2D       = $Agent
-@onready var move_overlay:    Node2D       = $MoveOverlay
-@onready var end_turn_btn:    Button       = $UI/EndTurnBtn
-
-## tile_name → TileSet source_id  (built from TileSet custom data at startup)
-var tiles: Dictionary = {}
-
-## Walkable cells → movement cost (1 = normal, 2 = difficult terrain)
-var _walkable: Dictionary = {}
-
-## Current movement range result (refreshed after each agent move).
-var _range = null
-
-const MovementRange = preload("res://godot/scripts/game/movement_range.gd")
+@onready var floor_layer:         TileMapLayer = $FloorLayer
+@onready var selection_overlay:   Node2D       = $SelectionOverlay
+@onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
+@onready var camera:              Camera2D     = $Camera2D
+@onready var btn_numbers:         Button       = $HUD/TopBar/Row/BtnNumbers
+@onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
+@onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
 
 const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
-const ROOM_W := 55   # colunas  (W+H ≈ 110 → ~3 telas de altura a zoom 0.35)
-const ROOM_H := 55   # linhas
 
-## Floor tile variants (floor_N appears 4× more = 80% plain, 20% floorHalf)
-const _FLOOR_VARS := ["floor_N", "floor_N", "floor_N", "floor_N", "floorHalf_N"]
-## Decorative prop tiles scattered as visual landmarks (non-walkable)
-const _PROPS := ["crate_N", "crate_E", "column_N", "poleGroup_N"]
+const ROOM_W := 17   # columns
+const ROOM_H := 17   # rows
+
+## tile_name → TileSet source_id
+var _tile_ids: Dictionary = {}
+
+## Camera drag state (left mouse — drag vs click distinguished by threshold)
+const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
+
+var _left_down:        bool    = false
+var _drag_started:     bool    = false
+var _drag_start_mouse: Vector2 = Vector2.ZERO
+var _drag_start_cam:   Vector2 = Vector2.ZERO
+
+## Zoom limits and step
+const ZOOM_MIN  := 0.20
+const ZOOM_MAX  := 1.20
+const ZOOM_STEP := 0.06
+
+## Pinch-zoom state (mobile two-finger)
+var _touches:         Dictionary = {}   ## finger_index → screen position
+var _pinch_last_dist: float      = 0.0
+
+## Viewport toggle state
+var _is_desktop_viewport: bool = false
 
 
 func _ready() -> void:
-	var tile_set: TileSet = load(TILESET_PATH)
-	if tile_set == null:
-		push_error("TileSet not found at %s — run build_tileset.gd first." % TILESET_PATH)
+	var ts: TileSet = load(TILESET_PATH)
+	if ts == null:
+		push_error("TileSet not found: " + TILESET_PATH)
 		return
 
-	floor_layer.tile_set     = tile_set
-	structure_layer.tile_set = tile_set
+	floor_layer.tile_set = ts
+	_build_registry(ts)
+	_build_room()
 
-	_build_registry(tile_set)
-	_make_test_room(ROOM_W, ROOM_H)
+	## Center camera on the visual centre of the room.
+	## map_to_local returns the TOP vertex; +Vector2(0,64) is the visual centre.
+	@warning_ignore("integer_division")
+	var centre_cell  := Vector2i(ROOM_W / 2, ROOM_H / 2)
+	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0)
+	camera.global_position = centre_world
 
-	# Place agent at room center
-	var center := Vector2i(ROOM_W / 2, ROOM_H / 2)
-	agent.initialize(center, floor_layer)
+	## Give overlays their references.
+	selection_overlay.floor_layer   = floor_layer
+	tile_labels_overlay.floor_layer = floor_layer
+	tile_labels_overlay.room_w      = ROOM_W
+	tile_labels_overlay.room_h      = ROOM_H
 
-	# Snap camera to agent on first frame
-	camera.global_position = agent.global_position
+	btn_numbers.pressed.connect(_on_btn_numbers)
+	btn_fullscreen.pressed.connect(_on_btn_fullscreen)
+	btn_viewport.pressed.connect(_on_btn_viewport)
 
-	# Wire up overlay and turn signals
-	move_overlay.setup(floor_layer)
-	TurnManager.phase_changed.connect(_on_phase_changed)
-	end_turn_btn.pressed.connect(_on_end_turn_pressed)
-
-	# Show movement range for the first player turn
-	_refresh_overlay()
-
-
-func _process(_delta: float) -> void:
-	camera.global_position = agent.global_position
+	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
+	_on_btn_viewport()
 
 
-## Build name→id lookup from TileSet custom data.
-func _build_registry(tile_set: TileSet) -> void:
-	for i in tile_set.get_source_count():
-		var sid := tile_set.get_source_id(i)
-		var src := tile_set.get_source(sid) as TileSetAtlasSource
+func _on_btn_numbers() -> void:
+	tile_labels_overlay.visible = not tile_labels_overlay.visible
+	btn_numbers.modulate = Color.WHITE if tile_labels_overlay.visible else Color(1.0, 1.0, 1.0, 0.35)
+
+
+func _on_btn_fullscreen() -> void:
+	var mode := DisplayServer.window_get_mode()
+	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _on_btn_viewport() -> void:
+	_is_desktop_viewport = not _is_desktop_viewport
+	var target := Vector2i(1280, 720) if _is_desktop_viewport else Vector2i(390, 844)
+	btn_viewport.text   = "D" if _is_desktop_viewport else "M"
+
+	## Exit fullscreen first — can't resize while in fullscreen.
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+
+	## Resize the OS window.
+	DisplayServer.window_set_size(target)
+
+	## Change the logical canvas resolution so the camera sees the right world area.
+	## Without this, canvas_items stretch just scales the fixed 390×844 base to fill the window.
+	get_tree().root.content_scale_size = target
+
+	## Center on screen after resize.
+	var screen_size := DisplayServer.screen_get_size()
+	DisplayServer.window_set_position((screen_size - target) / 2)
+
+
+## Build a name → source_id dictionary from TileSet custom data.
+func _build_registry(ts: TileSet) -> void:
+	for i in ts.get_source_count():
+		var sid := ts.get_source_id(i)
+		var src := ts.get_source(sid) as TileSetAtlasSource
 		if src == null:
 			continue
 		var td := src.get_tile_data(Vector2i(0, 0), 0)
 		if td:
-			tiles[td.get_custom_data("tile_name")] = sid
-	print("[Room] Registry built: %d tiles loaded." % tiles.size())
+			_tile_ids[td.get_custom_data("tile_name")] = sid
+	print("[Room] %d tiles registered." % _tile_ids.size())
 
 
-## Place a single tile on a layer. Logs a warning for unknown names.
-func place(layer: TileMapLayer, cell: Vector2i, tile_name: String) -> void:
-	var sid: int = tiles.get(tile_name, -1)
-	if sid == -1:
-		push_warning("[Room] Unknown tile: '%s'" % tile_name)
+## Place a named tile at cell. Silent no-op for unknown names.
+func _place(cell: Vector2i, tile_name: String) -> void:
+	var sid: int = _tile_ids.get(tile_name, -1)
+	if sid != -1:
+		floor_layer.set_cell(cell, sid, Vector2i(0, 0))
+
+
+## Fill grid: block_N border, floor_N interior.
+func _build_room() -> void:
+	for x in range(ROOM_W):
+		for y in range(ROOM_H):
+			var cell      := Vector2i(x, y)
+			var is_border := x == 0 or x == ROOM_W - 1 or y == 0 or y == ROOM_H - 1
+			_place(cell, "block_N" if is_border else "floor_N")
+
+
+## Convert a screen-space press position to the tile cell underneath it.
+## local_to_map uses the TOP VERTEX as anchor, so it only gives the correct
+## cell when clicking the top quadrant. The 3×3 search over visual CENTERs
+## (map_to_local + Vector2(0,64)) finds the diamond that truly contains the
+## click — this corrects the other three quadrants.
+func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
+	var ct: Transform2D = get_viewport().get_canvas_transform()
+	var lp: Vector2     = floor_layer.to_local(ct.affine_inverse() * screen_pos)
+	var tile_seed: Vector2i = floor_layer.local_to_map(lp)
+	var best            := tile_seed
+	var best_dist       := INF
+	for dc: int in [-1, 0, 1]:
+		for dr: int in [-1, 0, 1]:
+			var c      := tile_seed + Vector2i(dc, dr)
+			var center := floor_layer.map_to_local(c) + Vector2(0.0, 64.0)
+			var d      := lp - center
+			var dist   := absf(d.x) / 128.0 + absf(d.y) / 64.0
+			if dist < best_dist:
+				best_dist = dist
+				best = c
+	return best
+
+
+## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.
+func _apply_zoom(new_z: float) -> void:
+	camera.zoom = Vector2(new_z, new_z)
+
+
+## Unified input: wheel zoom · pinch zoom · motion drag.
+## Left mouse button (press/release) lives in _unhandled_input so GUI
+## controls (Buttons) can consume their clicks before game logic runs.
+func _input(event: InputEvent) -> void:
+
+	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_touches[st.index] = st.position
+		else:
+			_touches.erase(st.index)
+			_pinch_last_dist = 0.0
+		if _touches.size() >= 2:
+			_left_down    = false
+			_drag_started = false
+		get_viewport().set_input_as_handled()
 		return
-	layer.set_cell(cell, sid, Vector2i(0, 0))
+
+	if event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		_touches[sd.index] = sd.position
+		if _touches.size() == 2:
+			var keys := _touches.keys()
+			var dist := (_touches[keys[0]] as Vector2).distance_to(_touches[keys[1]])
+			if _pinch_last_dist > 0.0:
+				var delta := (dist - _pinch_last_dist) * 0.001
+				_apply_zoom(clampf(camera.zoom.x + delta, ZOOM_MIN, ZOOM_MAX))
+			_pinch_last_dist = dist
+			get_viewport().set_input_as_handled()
+		return
+
+	## ── Mouse wheel zoom ─────────────────────────────────────────────────
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
+			_apply_zoom(clampf(camera.zoom.x + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
+			get_viewport().set_input_as_handled()
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
+			_apply_zoom(clampf(camera.zoom.x - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
+			get_viewport().set_input_as_handled()
+		return
+
+	## ── Mouse motion: pan when dragging ─────────────────────────────────
+	if event is InputEventMouseMotion and _left_down and _touches.size() < 2:
+		var mm       := event as InputEventMouseMotion
+		var moved_sq := (mm.position - _drag_start_mouse).length_squared()
+		if not _drag_started and moved_sq > DRAG_THRESHOLD_SQ:
+			_drag_started = true
+		if _drag_started:
+			var delta := (mm.position - _drag_start_mouse) / camera.zoom.x
+			camera.global_position = _drag_start_cam - delta
+			get_viewport().set_input_as_handled()
 
 
-## Choose the correct thin-wall tile for each border cell.
-## N/E face the camera (most visible); S/W face forward (add depth at front).
-func _wall_tile_for(x: int, y: int, W: int, H: int) -> String:
-	var top    := (y == 0)
-	var bottom := (y == H - 1)
-	var left   := (x == 0)
-	var right  := (x == W - 1)
-
-	if top    and left:  return "wallCorner_N"
-	if top    and right: return "wallCorner_E"
-	if bottom and right: return "wallCorner_S"
-	if bottom and left:  return "wallCorner_W"
-
-	if top:    return "wall_N"
-	if right:  return "wall_E"
-	if bottom: return "wall_S"
-	if left:   return "wall_W"
-	return "floor_N"  # fallback (unreachable)
-
-
-## Generate a rectangular room (W×H cells).
-## Border → oriented thin wall tiles.  Interior → floor tiles + scattered props.
-func _make_test_room(W: int, H: int) -> void:
-	_walkable.clear()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7331  # fixed seed → reproducible layout
-	for x in range(W):
-		for y in range(H):
-			var cell := Vector2i(x, y)
-			var is_border := (x == 0 or x == W - 1 or y == 0 or y == H - 1)
-			if is_border:
-				place(structure_layer, cell, _wall_tile_for(x, y, W, H))
-			else:
-				# Mix floor variants for visual variety
-				place(floor_layer, cell, _FLOOR_VARS[rng.randi() % _FLOOR_VARS.size()])
-				# Scatter props as visual landmarks (Chebyshev distance > 5 from agent start)
-				var dist := maxi(abs(x - W / 2), abs(y - H / 2))
-				if dist > 5 and rng.randf() < 0.045:
-					place(structure_layer, cell, _PROPS[rng.randi() % _PROPS.size()])
-					# prop cell: not walkable (omit from _walkable)
-				else:
-					_walkable[cell] = 1
-	print("[Room] Test room generated: %d×%d." % [W, H])
-
-
-## Returns true if the agent may move to this cell.
-func _is_walkable(cell: Vector2i) -> bool:
-	return _walkable.has(cell)
-
-
-## Recompute movement zones from agent's current position and show the overlay.
-func _refresh_overlay() -> void:
-	_range = MovementRange.compute(agent.cell, _walkable, agent.ap)
-	move_overlay.show_range(_range)
-
-
-## TurnManager callback.
-func _on_phase_changed(new_phase: TurnManager.Phase) -> void:
-	match new_phase:
-		TurnManager.Phase.PLAYER:
-			agent.reset_turn()
-			end_turn_btn.disabled = false
-			_refresh_overlay()
-		TurnManager.Phase.ENEMY:
-			move_overlay.hide_range()
-			end_turn_btn.disabled = true
-
-
-func _on_end_turn_pressed() -> void:
-	TurnManager.end_player_turn()
-
-
-## Click to move — resolves which AP zone was clicked and spends accordingly.
+## Left mouse: only runs when no GUI Control consumed the event first.
+## This lets HUD buttons work while still handling pan + tile selection.
 func _unhandled_input(event: InputEvent) -> void:
-	if TurnManager.phase != TurnManager.Phase.PLAYER:
+	if not event is InputEventMouseButton:
 		return
-	if agent.is_moving:
-		return  # block clicks during movement animation
-	if not (event is InputEventMouseButton
-			and event.pressed
-			and event.button_index == MOUSE_BUTTON_LEFT):
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or _touches.size() >= 2:
 		return
 
-	var world_pos := get_global_mouse_position()
-	var local_pos := floor_layer.to_local(world_pos)
-	var clicked   := floor_layer.local_to_map(local_pos)
-
-	if _range == null:
-		return
-
-	# Determine AP cost from which zone was clicked.
-	var ap_cost: int
-	if _range.zone1.has(clicked):
-		ap_cost = 1
-	elif _range.zone2.has(clicked) or _range.dash.has(clicked):
-		ap_cost = 2
+	if mb.pressed:
+		_left_down        = true
+		_drag_started     = false
+		_drag_start_mouse = mb.position
+		_drag_start_cam   = camera.global_position
 	else:
-		return   # cell not reachable this turn
-
-	if agent.ap < ap_cost:
-		return
-
-	# Hide overlay during movement; show updated range once agent arrives.
-	agent.spend_ap(ap_cost)
-	move_overlay.hide_range()
-	_range = null
-	agent.move_to(clicked, floor_layer, func() -> void:
-		if agent.ap > 0:
-			_refresh_overlay()
-	)
+		if not _drag_started:
+			var cell := _screen_to_tile(mb.position)
+			if floor_layer.get_cell_source_id(cell) != -1:
+				selection_overlay.set_selected(cell)
+			else:
+				selection_overlay.clear_selected()
+		_left_down    = false
+		_drag_started = false

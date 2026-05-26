@@ -17,10 +17,6 @@ run/main_scene="res://godot/scenes/game/room.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
-[autoload]
-
-TurnManager="*res://godot/scripts/core/turn_manager.gd"
-
 [display]
 
 window/size/viewport_width=390
@@ -37,3 +33,4 @@ window/stretch/mode="canvas_items"
 [rendering]
 
 renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

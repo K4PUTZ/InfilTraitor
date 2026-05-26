@@ -2,6 +2,16 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Start Godot Editor (LSP)",
+      "type": "shell",
+      // Abre o Godot em background sem roubar o foco; macOS não abre segunda instância se já estiver rodando
+      "command": "open -gj /Applications/Godot.app --args --path '${workspaceFolder}'",
+      "runOptions": { "runOn": "folderOpen" },
+      "isBackground": true,
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
       "label": "Rebuild TileSet",
       "type": "shell",
       "command": "/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd",

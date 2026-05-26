@@ -20,12 +20,13 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha 1** — AP/turn system, movement overlay and animated movement working in-engine.
+**Alpha 2** — Clean room rewrite: correct isometric tile picking, camera pan/zoom, HUD toolbar, coordinate overlay.
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
-| M1 — Godot prototype (one room, movement) | ✅ Complete |
+| M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
+| M1-rewrite — Stable interactive map foundation | ✅ Complete |
 | M1.5 — Tactical UI (tap-to-select, path preview) | |
 | M2 — Threats & combat (guards, detection) | |
 | M3 — Procedural floor builder | |
@@ -33,6 +34,22 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M5 — Monetisation | |
 | M6 — Content expansion | |
 | M7 — Polish & launch | |
+
+### Alpha 2 — what's working (2026-05-26)
+
+- **Complete room rewrite** — deleted all M1 scripts/scenes; rebuilt from scratch with a clean 3-file architecture
+- **Correct isometric tile picking** — 3×3 nearest-neighbour search comparing to visual centres (`map_to_local + Vector2(0,64)`); click any quadrant of any tile, always selects the correct cell
+- **Pink diamond selection outline** — `SelectionOverlay` draws in world space, zero lag
+- **17×17 room** with block border and floor interior
+- **Camera pan** — left-drag with threshold (> 8 px = pan, short release = tile select)
+- **Mouse-wheel zoom** — scroll up/down ±0.06 per tick, clamped 0.20–1.20
+- **Pinch-to-zoom** — two-finger gesture via `InputEventScreenTouch` / `InputEventScreenDrag`; conflicts with single-finger pan suppressed automatically
+- **Tile coordinate overlay** — `TileLabelsOverlay` draws `x,y` with drop shadow at each tile's visual centre
+- **HUD toolbar** (`#` / `[]` / `M|D`):
+  - `#` — toggle coordinate overlay (dims to 35 % when off)
+  - `[]` — toggle fullscreen / windowed
+  - `M / D` — switch between mobile (390×844) and desktop (1280×720) with correct `content_scale_size` update so camera FOV changes accordingly
+- **Default launch in desktop 1280×720**
 
 ### Alpha 1 — what's working (2026-05-19)
 

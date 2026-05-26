@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-19 (brainstorm: zones, narrative, fog of war, retention, adaptive difficulty)  
-> **Status:** M1 complete — AP/movement system prototype working in-engine  
+> **Last updated:** 2026-05-26 (Alpha 2: room rewrite, tile picking, camera controls, HUD toolbar)  
+> **Status:** M1-rewrite complete — stable interactive map with correct isometric tile picking, pan/zoom, coordinate overlay and HUD  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 

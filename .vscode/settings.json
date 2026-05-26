@@ -1,5 +1,7 @@
 {
   "godotTools.editorPath.godot4": "/Applications/Godot.app/Contents/MacOS/Godot",
+  // LSP: 0 tentativas = sem popup de reconexão quando o Godot não está aberto
+  "godotTools.lsp.autoReconnect.attempts": 0,
   "files.associations": {
     "*.gd": "gdscript",
     "*.gdshader": "gdshader",

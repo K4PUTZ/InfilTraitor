@@ -15,6 +15,11 @@ const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 const ROOM_W := 17   # columns
 const ROOM_H := 17   # rows
 
+## The TileMap renders the current 512px-tall source tiles lower than the
+## logical grid used by map_to_local/local_to_map. Compensate with one fixed
+## visual offset so camera, labels, selection and picking all agree.
+const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
+
 ## tile_name → TileSet source_id
 var _tile_ids: Dictionary = {}
 
@@ -53,12 +58,14 @@ func _ready() -> void:
 	## map_to_local returns the TOP vertex; +Vector2(0,64) is the visual centre.
 	@warning_ignore("integer_division")
 	var centre_cell  := Vector2i(ROOM_W / 2, ROOM_H / 2)
-	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0)
+	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	camera.global_position = centre_world
 
 	## Give overlays their references.
 	selection_overlay.floor_layer   = floor_layer
+	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.floor_layer = floor_layer
+	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w      = ROOM_W
 	tile_labels_overlay.room_h      = ROOM_H
 
@@ -101,7 +108,8 @@ func _on_btn_viewport() -> void:
 
 	## Center on screen after resize.
 	var screen_size := DisplayServer.screen_get_size()
-	DisplayServer.window_set_position((screen_size - target) / 2)
+	var centered := Vector2(screen_size - target) / 2.0
+	DisplayServer.window_set_position(Vector2i(centered.round()))
 
 
 ## Build a name → source_id dictionary from TileSet custom data.
@@ -124,13 +132,15 @@ func _place(cell: Vector2i, tile_name: String) -> void:
 		floor_layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
-## Fill grid: block_N border, floor_N interior.
+## Fill grid: low slab border, floor_N interior.
+## block_N is visually too tall for this debug room and makes the rendered
+## board look detached from the logical grid / picking overlay.
 func _build_room() -> void:
 	for x in range(ROOM_W):
 		for y in range(ROOM_H):
 			var cell      := Vector2i(x, y)
 			var is_border := x == 0 or x == ROOM_W - 1 or y == 0 or y == ROOM_H - 1
-			_place(cell, "block_N" if is_border else "floor_N")
+			_place(cell, "slab_N" if is_border else "floor_N")
 
 
 ## Convert a screen-space press position to the tile cell underneath it.
@@ -141,19 +151,24 @@ func _build_room() -> void:
 func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	var ct: Transform2D = get_viewport().get_canvas_transform()
 	var lp: Vector2     = floor_layer.to_local(ct.affine_inverse() * screen_pos)
-	var tile_seed: Vector2i = floor_layer.local_to_map(lp)
+	var logical_lp := lp - VISUAL_GRID_OFFSET
+	var tile_seed: Vector2i = floor_layer.local_to_map(logical_lp)
 	var best            := tile_seed
 	var best_dist       := INF
+	var found_inside    := false
 	for dc: int in [-1, 0, 1]:
 		for dr: int in [-1, 0, 1]:
 			var c      := tile_seed + Vector2i(dc, dr)
-			var center := floor_layer.map_to_local(c) + Vector2(0.0, 64.0)
+			var center := floor_layer.map_to_local(c) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 			var d      := lp - center
 			var dist   := absf(d.x) / 128.0 + absf(d.y) / 64.0
-			if dist < best_dist:
+			if dist <= 1.0 and dist < best_dist:
 				best_dist = dist
 				best = c
-	return best
+				found_inside = true
+	if found_inside:
+		return best
+	return Vector2i(-9999, -9999)
 
 
 ## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.
@@ -233,7 +248,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		if not _drag_started:
 			var cell := _screen_to_tile(mb.position)
-			if floor_layer.get_cell_source_id(cell) != -1:
+			if cell != Vector2i(-9999, -9999) and floor_layer.get_cell_source_id(cell) != -1:
 				selection_overlay.set_selected(cell)
 			else:
 				selection_overlay.clear_selected()

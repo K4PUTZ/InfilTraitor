@@ -24,6 +24,15 @@ See `REFERENCES/` for screenshots.
 - Game plan: [GAME_PLAN.md](GAME_PLAN.md)
 - Repo: https://github.com/K4PUTZ/InfilTraitor.git
 
+## Current implementation snapshot (2026-05-26)
+
+- **M1-rewrite is complete** — the active runtime is a single interactive debug room under `godot/`
+- **17×17 debug board** with floor interior and low slab border for easier visual reading of the grid edges
+- **Camera controls** — pan, wheel zoom, pinch zoom, fullscreen toggle, mobile/desktop viewport toggle
+- **Tile picking stabilized** — 3×3 nearest-neighbour search around `local_to_map`, followed by a strict diamond hit-test so empty space above the board no longer selects cells
+- **Visual/logical alignment compensation** — `VISUAL_GRID_OFFSET` is shared by camera centering, coordinate labels, selection overlay and picking so the rendered board and the logical numbered grid occupy the same place on screen
+- **Current limitation** — this compensation is runtime-side for now; a future cleanup can move ownership into TileSet generation if the same correction is needed outside this debug room
+
 ## Prototype direction
 
 - Zelda-like top-down room-to-room dungeon flow on a square isometric grid
@@ -47,62 +56,40 @@ INFILTRAITOR/
     REFERENCE/         ← orthographic renders + alt tilesets (not for gameplay)
   ARCHIVE/             ← flat textures, fonts, FX sprites (reference / future use)
   TEST/                ← scratch space
+  godot/               ← active Godot project (scene, scripts, TileSet resource)
+  export/              ← web export output
 ```
 
 See [ASSET_MAP.md](ASSET_MAP.md) for the full tile catalogue and procedural generation guide.
 
-## Planned Godot project structure (M1)
+## Current Godot project structure (Alpha 2.1)
 
 ```
 godot/
   project.godot
-  assets/
-    tilesets/          ← isometric tile atlases (sourced from ASSETS/ISOMETRIC/)
-    sprites/           ← agent, enemies, interactive objects
-    ui/                ← HUD elements, icons, fonts
-    audio/             ← music tracks, SFX
   scenes/
-    main.tscn          ← entry point
     game/
-      game.tscn        ← main game scene
-    map/
-      room.tscn        ← base room template
-      tilemap.tscn     ← isometric TileMap node
-    entities/
-      agent.tscn
-      guard.tscn
-    ui/
-      hud.tscn
-      context_menu.tscn
-      alert_meter.tscn
+      room.tscn        ← current interactive debug room
   scripts/
-    core/
-      turn_manager.gd
-      grid.gd
-      pathfinder.gd
-    entities/
-      agent.gd
-      guard.gd
-    map/
-      room.gd
-      dungeon_generator.gd
-    ui/
-      hud.gd
-      context_menu.gd
+    game/
+      room.gd                ← room setup, camera, input, tile picking
+      selection_overlay.gd   ← pink selection diamond
+      tile_labels_overlay.gd ← numbered grid overlay
+    tools/
+      build_tileset.gd       ← headless TileSet builder
   resources/
-    rooms/             ← room template .tres definitions
-    tiles/             ← TileSet resources
-  data/
-    rooms/             ← JSON room templates
-    skills/
-    gadgets/
+    tilesets/
+      tileset_blocks.tres    ← generated TileSet resource
+  shaders/
 ```
+
+Likely next structural additions during M1.5: `agent.gd`, turn manager, movement overlay, path preview, and contextual action UI.
 
 ## Milestones
 
 See [GAME_PLAN.md §11](GAME_PLAN.md) for the full roadmap.
 
-**Next: M1** — Godot project setup; isometric TileMap; entrance/exit room; agent movement (2 AP/turn); TurnManager.
+**Next: M1.5** — add the agent layer, AP-aware movement overlays, path preview, and contextual interaction on top of the now-stabilized interactive map foundation.
 
 ## Contributing
 

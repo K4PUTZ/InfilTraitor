@@ -20,14 +20,14 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha 2.1** — Clean room rewrite plus board-alignment stabilization: correct isometric tile picking, visual/logical grid alignment, camera pan/zoom, HUD toolbar, coordinate overlay.
+**Alpha 2.2** — Tactical movement prototype on top of the stabilized room rewrite: agent, AP, movement overlays, path preview, structure layer, obstacles, and two-tap movement confirmation.
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
-| M1.5 — Tactical UI (tap-to-select, path preview) | |
+| M1.5 — Tactical UI (tap-to-select, path preview) | ⧖ In progress |
 | M2 — Threats & combat (guards, detection) | |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
@@ -35,25 +35,32 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M6 — Content expansion | |
 | M7 — Polish & launch | |
 
-### Alpha 2.1 — what's working (2026-05-26)
+### Alpha 2.2 — what's working (2026-05-26)
 
 - **Complete room rewrite** — deleted all M1 scripts/scenes; rebuilt from scratch with a clean 3-file architecture
 - **Correct isometric tile picking** — 3×3 nearest-neighbour search comparing to visual centres (`map_to_local + Vector2(0,64)`); click any quadrant of any tile, always selects the correct cell
 - **Visual/logical grid alignment stabilized** — shared `VISUAL_GRID_OFFSET` compensation keeps camera centering, coordinate labels, selection outline, and picking aligned to the rendered 512 px tile sprites
 - **Strict diamond hit-test** — clicks outside the tile diamond no longer select cells in the empty area above the board
+- **17×17 tactical debug room** — floor tiles live in `FloorLayer`; border slabs and crates live in `StructureLayer` above the path overlays
+- **Blocking props and blocked border** — crate cells and border cells are inaccessible and excluded from movement range / selection
+- **Debug agent on grid** — lightweight in-engine agent node with 1.0 s movement tween to the chosen destination cell
+- **2 AP movement prototype** — AP label, manual `END` button, and optional auto-end checkbox inside the `END` control
+- **Movement range overlay** — reachable 1 AP / 2 AP bands recomputed from the agent cell with blocked cells respected
+- **Path preview and two-tap confirmation** — first tap selects a destination tile, second tap on the same tile commits movement or interaction
 - **Pink diamond selection outline** — `SelectionOverlay` draws in world space, zero lag
-- **17×17 room** with low slab border and floor interior for a cleaner debug read of the grid
 - **Camera pan** — left-drag with threshold (> 8 px = pan, short release = tile select)
 - **Mouse-wheel zoom** — scroll up/down ±0.06 per tick, clamped 0.20–1.20
 - **Pinch-to-zoom** — two-finger gesture via `InputEventScreenTouch` / `InputEventScreenDrag`; conflicts with single-finger pan suppressed automatically
-- **Tile coordinate overlay** — `TileLabelsOverlay` draws `x,y` with drop shadow at each tile's visual centre
-- **HUD toolbar** (`#` / `[]` / `M|D`):
+- **Tile coordinate overlay** — `TileLabelsOverlay` draws `x,y` with drop shadow at each tile's visual centre; starts OFF by default
+- **HUD toolbar** (`#` / `[]` / `M|D` / `AP` / `END`):
   - `#` — toggle coordinate overlay (dims to 35 % when off)
   - `[]` — toggle fullscreen / windowed
   - `M / D` — switch between mobile (390×844) and desktop (1280×720) with correct `content_scale_size` update so camera FOV changes accordingly
 - **Default launch in desktop 1280×720**
 
-Current note: the alignment correction lives in runtime scripts for the current debug room; if generalized later, it should move into TileSet generation so the compensation is owned by the asset pipeline rather than the scene controller.
+Current notes:
+- Movement currently resolves as a single tween to the chosen destination cell, not a step-by-step traversal along the previewed path.
+- The visual alignment correction still lives in runtime scripts for the debug room; if generalized later, it should move into TileSet generation so the compensation is owned by the asset pipeline rather than the scene controller.
 
 ### Alpha 1 — historical snapshot (superseded by the M1-rewrite)
 
@@ -76,10 +83,10 @@ Current note: the alignment correction lives in runtime scripts for the current 
 
 ### Next up (M1.5)
 
-- Agent AP bar UI (pip indicators draining as AP is spent)
+- Stepwise movement along the previewed path instead of a single destination tween
+- Contextual action menu on the second tap for move / interact / wait choices
 - Room shape: corridor + side passages (replace open rectangle)
 - Entrance / exit tiles and room transitions
-- Enemy placeholder with cone of vision
 
 ---
 

@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-26 (Alpha 2.1: board alignment stabilization, stricter tile picking)  
-> **Status:** M1-rewrite complete — stable interactive map with corrected visual/logical grid alignment, correct isometric tile picking, pan/zoom, coordinate overlay and HUD  
+> **Last updated:** 2026-05-26 (Alpha 2.2: tactical movement prototype, structure layer, obstacles)  
+> **Status:** M1.5 in progress — agent/AP movement prototype with corrected visual/logical grid alignment, tactical overlays, obstacles, and HUD controls  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
@@ -635,7 +635,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 |---|---|---|---|
 | **M0** | Game Plan & documentation | This document ✅ | 2026-02-20 |
 | **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, 55×55 room ✅, AP/turn system ✅, movement overlay ✅, animated movement ✅ | ✅ Complete |
-| **M1.5** | Prototype — tactical UI | Tap-to-select tile, contextual action menu, path preview, 1 AP / 2 AP movement overlays | TBD |
+| **M1.5** | Prototype — tactical UI | Tap-to-select tile, contextual action menu, path preview, 1 AP / 2 AP movement overlays | ⧖ In progress |
 | **M2** | Prototype — threats & combat | Guard patrols, vision cones, detection meter, enemy AI phase, basic brute-force attack option | TBD |
 | **M2.5** | Prototype — room objectives | Room quest system, reward pickup flow, objective tracker, progression gate to next room/floor | TBD |
 | **M3** | Prototype — procedural floor builder | Room templates, connectors, solvable entrance-to-exit generation, reward / quest placement rules | TBD |
@@ -683,6 +683,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 | 2026-05-19 | — | Full asset reorganization completed. `TILESETS/` → `ASSETS/ISOMETRIC/` (8 Kenney packs with clean names). `OTHER ASSETS/` → `ARCHIVE/` (textures, fonts, FX, sprites-2d). Characters split into `ASSETS/CHARACTERS/humans/`. Orthographic angle renders → `ASSETS/REFERENCE/`. Deleted space-themed, flat-2D, and non-isometric packs. Created `DEVELOPMENT/ASSET_MAP.md` — full tile catalogue, chapter-theme mapping, and procedural generation guide. Updated README project layout. |
 | 2026-05-19 | — | **Alpha 0** — first visual prototype running in-engine. Godot 4.6 project scaffolded (`project.godot`, `room.tscn`, `room.gd`, `agent.gd`, `tilemap_helper.gd`). TileSet builder (`build_tileset.gd`) implemented as headless `SceneTree` script; runs from terminal without Godot editor. Generates `tileset_blocks.tres` (240 tiles, blocks-prototype pack) with 4 custom data layers per tile (`tile_name`, `walkable`, `cover`, `interactive`) and `tile_registry.gd` (name→source_id lookup). 9×9 isometric test room rendering confirmed in-engine. VS Code dev workflow established: F5 launches game via `node-terminal` launch config, ⌘⇧B rebuilds TileSet via task. Tagged as `alpha-0` and pushed to GitHub. |
 | 2026-05-26 | — | **Alpha 2.1** — stabilized the mismatch between the rendered board and the logical numbered grid. Added a shared runtime visual-offset compensation so camera centering, coordinate labels, selection overlay, and tile picking all reference the same board position. Tightened tile picking to require clicks inside the isometric diamond, eliminating selection in empty space above the board. Swapped the tall debug border blocks for low slabs to improve visual readability while the alignment compensation is in place. |
+| 2026-05-26 | — | **Alpha 2.2** — advanced into the M1.5 tactical UI slice. Added a debug agent, AP/end-turn control, movement range overlays, selected-destination path preview, two-tap confirmation flow, and an auto-end checkbox inside the `END` button. Introduced blocked crate obstacles and a dedicated structure layer so walls/props render above tactical overlays while the path remains visible only over floor tiles. Set the coordinate overlay to start disabled by default. |
 
 ---
 

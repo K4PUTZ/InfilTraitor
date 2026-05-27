@@ -3,17 +3,39 @@ extends Node2D
 ## Milestone 0: tile picking only. No agent, no AP, no popup.
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
+@onready var turn_manager = $TurnManager
+@onready var movement_overlay = $MovementOverlay
+@onready var path_preview = $PathPreview
+@onready var structure_layer:     TileMapLayer = $StructureLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
+@onready var agent = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
 @onready var camera:              Camera2D     = $Camera2D
 @onready var btn_numbers:         Button       = $HUD/TopBar/Row/BtnNumbers
 @onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
+@onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
+@onready var chk_auto_end_turn:   CheckBox     = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
+@onready var btn_end_turn:        Button       = $HUD/TopBar/Row/BtnEndTurn
 
 const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 
 const ROOM_W := 17   # columns
 const ROOM_H := 17   # rows
+const INVALID_CELL := Vector2i(-9999, -9999)
+const AGENT_START_CELL := Vector2i(8, 12)
+const CRATE_VARIANTS := ["crate_N", "crate_E", "crate_S", "crate_W"]
+const CRATE_CELLS := [
+	Vector2i(3, 4),
+	Vector2i(4, 9),
+	Vector2i(5, 13),
+	Vector2i(7, 6),
+	Vector2i(8, 3),
+	Vector2i(10, 8),
+	Vector2i(12, 5),
+	Vector2i(13, 10),
+	Vector2i(14, 7),
+]
 
 ## The TileMap renders the current 512px-tall source tiles lower than the
 ## logical grid used by map_to_local/local_to_map. Compensate with one fixed
@@ -42,6 +64,8 @@ var _pinch_last_dist: float      = 0.0
 
 ## Viewport toggle state
 var _is_desktop_viewport: bool = false
+var _pending_auto_end_turn: bool = false
+var _selected_cell: Vector2i = INVALID_CELL
 
 
 func _ready() -> void:
@@ -51,6 +75,7 @@ func _ready() -> void:
 		return
 
 	floor_layer.tile_set = ts
+	structure_layer.tile_set = ts
 	_build_registry(ts)
 	_build_room()
 
@@ -62,16 +87,29 @@ func _ready() -> void:
 	camera.global_position = centre_world
 
 	## Give overlays their references.
+	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+	movement_overlay.set_blocked_cells(_build_blocked_cells())
+	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
 	selection_overlay.floor_layer   = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
+	agent.setup(floor_layer, VISUAL_GRID_OFFSET, AGENT_START_CELL)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w      = ROOM_W
 	tile_labels_overlay.room_h      = ROOM_H
+	tile_labels_overlay.visible     = false
+	btn_numbers.modulate = Color(1.0, 1.0, 1.0, 0.35)
 
+	turn_manager.ap_changed.connect(_on_ap_changed)
+	agent.move_started.connect(_on_agent_move_started)
+	agent.move_finished.connect(_on_agent_move_finished)
+	btn_end_turn.pressed.connect(_on_btn_end_turn)
 	btn_numbers.pressed.connect(_on_btn_numbers)
 	btn_fullscreen.pressed.connect(_on_btn_fullscreen)
 	btn_viewport.pressed.connect(_on_btn_viewport)
+	_selected_cell = agent.cell
+	selection_overlay.set_selected(agent.cell)
+	turn_manager.reset_player_turn()
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
 	_on_btn_viewport()
@@ -88,6 +126,13 @@ func _on_btn_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _on_btn_end_turn() -> void:
+	if agent.is_moving:
+		return
+	_pending_auto_end_turn = false
+	turn_manager.end_turn()
 
 
 func _on_btn_viewport() -> void:
@@ -112,6 +157,117 @@ func _on_btn_viewport() -> void:
 	DisplayServer.window_set_position(Vector2i(centered.round()))
 
 
+func _on_ap_changed(current_ap: int, max_ap: int) -> void:
+	lbl_ap.text = "AP %d/%d" % [current_ap, max_ap]
+	if not agent.is_moving:
+		_refresh_tactical_state()
+
+
+func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
+	selection_overlay.set_selected(to_cell)
+	movement_overlay.clear_overlay()
+	path_preview.clear_path()
+
+
+func _on_agent_move_finished(_cell: Vector2i) -> void:
+	_selected_cell = agent.cell
+	selection_overlay.set_selected(agent.cell)
+	if _pending_auto_end_turn:
+		_pending_auto_end_turn = false
+		turn_manager.end_turn()
+		return
+	_refresh_tactical_state()
+
+
+func _refresh_tactical_state() -> void:
+	movement_overlay.rebuild(agent.cell, turn_manager.get_max_move_points())
+	_update_selected_preview()
+
+
+func _update_selected_preview() -> void:
+	if _selected_cell == INVALID_CELL or _selected_cell == agent.cell:
+		path_preview.clear_path()
+		return
+
+	if not movement_overlay.is_reachable(_selected_cell):
+		path_preview.clear_path()
+		return
+
+	var path: Array[Vector2i] = movement_overlay.build_path_to(_selected_cell)
+	if path.size() < 2:
+		path_preview.clear_path()
+		return
+
+	path_preview.set_path(path, movement_overlay.get_ap_cost(_selected_cell))
+
+
+func _build_border_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for x in range(ROOM_W):
+		for y in range(ROOM_H):
+			var cell := Vector2i(x, y)
+			if _is_border_cell(cell):
+				cells.append(cell)
+	return cells
+
+
+func _build_blocked_cells() -> Array[Vector2i]:
+	var cells := _build_border_cells()
+	for cell in _get_crate_cells():
+		if not cells.has(cell):
+			cells.append(cell)
+	return cells
+
+
+func _is_border_cell(cell: Vector2i) -> bool:
+	return cell.x <= 0 or cell.x >= ROOM_W - 1 or cell.y <= 0 or cell.y >= ROOM_H - 1
+
+
+func _is_selectable_cell(cell: Vector2i) -> bool:
+	if cell == INVALID_CELL or _is_border_cell(cell):
+		return false
+	return floor_layer.get_cell_source_id(cell) != -1
+
+
+func _set_selected_cell(cell: Vector2i) -> void:
+	if not _is_selectable_cell(cell):
+		return
+	_selected_cell = cell
+	selection_overlay.set_selected(cell)
+	_update_selected_preview()
+
+
+func _handle_tile_click(cell: Vector2i) -> void:
+	if not _is_selectable_cell(cell):
+		path_preview.clear_path()
+		return
+
+	if _selected_cell != cell:
+		_set_selected_cell(cell)
+		return
+
+	if cell != agent.cell and _try_move_to(cell):
+		return
+
+	_update_selected_preview()
+
+
+func _try_move_to(cell: Vector2i) -> bool:
+	if agent.is_moving or cell == INVALID_CELL or cell == agent.cell:
+		return false
+	if not movement_overlay.is_reachable(cell):
+		return false
+
+	var path_cost: int = movement_overlay.get_cost(cell)
+	if not turn_manager.spend_for_path_cost(path_cost):
+		return false
+
+	_selected_cell = cell
+	_pending_auto_end_turn = chk_auto_end_turn.button_pressed and int(turn_manager.current_ap) <= 0
+	agent.move_to_cell(cell)
+	return true
+
+
 ## Build a name → source_id dictionary from TileSet custom data.
 func _build_registry(ts: TileSet) -> void:
 	for i in ts.get_source_count():
@@ -126,10 +282,10 @@ func _build_registry(ts: TileSet) -> void:
 
 
 ## Place a named tile at cell. Silent no-op for unknown names.
-func _place(cell: Vector2i, tile_name: String) -> void:
+func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = floor_layer) -> void:
 	var sid: int = _tile_ids.get(tile_name, -1)
 	if sid != -1:
-		floor_layer.set_cell(cell, sid, Vector2i(0, 0))
+		layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
 ## Fill grid: low slab border, floor_N interior.
@@ -140,7 +296,28 @@ func _build_room() -> void:
 		for y in range(ROOM_H):
 			var cell      := Vector2i(x, y)
 			var is_border := x == 0 or x == ROOM_W - 1 or y == 0 or y == ROOM_H - 1
-			_place(cell, "slab_N" if is_border else "floor_N")
+			if is_border:
+				_place(cell, "slab_N", structure_layer)
+			else:
+				_place(cell, "floor_N")
+	_place_crates()
+
+
+func _place_crates() -> void:
+	var crate_cells := _get_crate_cells()
+	for i in range(crate_cells.size()):
+		var cell: Vector2i = crate_cells[i]
+		var tile_name: String = CRATE_VARIANTS[i % CRATE_VARIANTS.size()]
+		_place(cell, tile_name, structure_layer)
+
+
+func _get_crate_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for cell in CRATE_CELLS:
+		if cell == AGENT_START_CELL or _is_border_cell(cell):
+			continue
+		cells.append(cell)
+	return cells
 
 
 ## Convert a screen-space press position to the tile cell underneath it.
@@ -168,7 +345,7 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 				found_inside = true
 	if found_inside:
 		return best
-	return Vector2i(-9999, -9999)
+	return INVALID_CELL
 
 
 ## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.
@@ -229,6 +406,7 @@ func _input(event: InputEvent) -> void:
 			var delta := (mm.position - _drag_start_mouse) / camera.zoom.x
 			camera.global_position = _drag_start_cam - delta
 			get_viewport().set_input_as_handled()
+		return
 
 
 ## Left mouse: only runs when no GUI Control consumed the event first.
@@ -248,9 +426,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		if not _drag_started:
 			var cell := _screen_to_tile(mb.position)
-			if cell != Vector2i(-9999, -9999) and floor_layer.get_cell_source_id(cell) != -1:
-				selection_overlay.set_selected(cell)
-			else:
-				selection_overlay.clear_selected()
+			_handle_tile_click(cell)
 		_left_down    = false
 		_drag_started = false

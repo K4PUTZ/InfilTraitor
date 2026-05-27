@@ -26,12 +26,15 @@ See `REFERENCES/` for screenshots.
 
 ## Current implementation snapshot (2026-05-26)
 
-- **M1-rewrite is complete** — the active runtime is a single interactive debug room under `godot/`
-- **17×17 debug board** with floor interior and low slab border for easier visual reading of the grid edges
+- **M1.5 is in progress** — the active runtime is now a tactical movement prototype, not just a static debug board
+- **17×17 debug room split into layers** — floor tiles on `FloorLayer`; slabs, walls and crates on `StructureLayer` above the path overlays
+- **Agent + AP slice implemented** — in-engine debug agent, AP label, end-turn button, and auto-end checkbox embedded inside `END`
+- **Movement UX implemented** — 1 AP / 2 AP movement overlay, path preview, blocked border cells, blocked crate cells, and two-tap confirmation on the same tile before movement triggers
+- **Coordinate overlay starts OFF by default** — still available from the `#` HUD button when needed for debugging
 - **Camera controls** — pan, wheel zoom, pinch zoom, fullscreen toggle, mobile/desktop viewport toggle
 - **Tile picking stabilized** — 3×3 nearest-neighbour search around `local_to_map`, followed by a strict diamond hit-test so empty space above the board no longer selects cells
 - **Visual/logical alignment compensation** — `VISUAL_GRID_OFFSET` is shared by camera centering, coordinate labels, selection overlay and picking so the rendered board and the logical numbered grid occupy the same place on screen
-- **Current limitation** — this compensation is runtime-side for now; a future cleanup can move ownership into TileSet generation if the same correction is needed outside this debug room
+- **Current limitations** — movement currently uses a single tween to the destination instead of stepping cell-by-cell along the previewed path; the alignment correction is still runtime-side rather than TileSet-owned
 
 ## Prototype direction
 
@@ -62,7 +65,7 @@ INFILTRAITOR/
 
 See [ASSET_MAP.md](ASSET_MAP.md) for the full tile catalogue and procedural generation guide.
 
-## Current Godot project structure (Alpha 2.1)
+## Current Godot project structure (Alpha 2.2)
 
 ```
 godot/
@@ -72,7 +75,11 @@ godot/
       room.tscn        ← current interactive debug room
   scripts/
     game/
-      room.gd                ← room setup, camera, input, tile picking
+      room.gd                ← room setup, layers, input, selection, movement flow
+      agent.gd               ← debug agent node + movement tween
+      turn_manager.gd        ← minimal AP / end-turn controller
+      movement_overlay.gd    ← reachable tiles with blocked-cell support
+      path_preview.gd        ← selected-destination path preview
       selection_overlay.gd   ← pink selection diamond
       tile_labels_overlay.gd ← numbered grid overlay
     tools/
@@ -83,13 +90,13 @@ godot/
   shaders/
 ```
 
-Likely next structural additions during M1.5: `agent.gd`, turn manager, movement overlay, path preview, and contextual action UI.
+Likely next structural additions during M1.5: contextual action UI, stepwise movement execution along the previewed path, and first enemy placeholder systems.
 
 ## Milestones
 
 See [GAME_PLAN.md §11](GAME_PLAN.md) for the full roadmap.
 
-**Next: M1.5** — add the agent layer, AP-aware movement overlays, path preview, and contextual interaction on top of the now-stabilized interactive map foundation.
+**Next: M1.5** — keep the current tactical slice and add contextual interaction plus stepwise movement execution on top of the stabilized interactive map foundation.
 
 ## Contributing
 

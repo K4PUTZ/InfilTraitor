@@ -3,6 +3,10 @@
 [ext_resource type="Script" uid="uid://bg1vhp4vuujdp" path="res://godot/scripts/game/room.gd" id="1_room"]
 [ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/game/selection_overlay.gd" id="2_sel"]
 [ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/game/tile_labels_overlay.gd" id="3_labels"]
+[ext_resource type="Script" path="res://godot/scripts/game/turn_manager.gd" id="4_turn"]
+[ext_resource type="Script" path="res://godot/scripts/game/movement_overlay.gd" id="5_move"]
+[ext_resource type="Script" path="res://godot/scripts/game/path_preview.gd" id="6_path"]
+[ext_resource type="Script" path="res://godot/scripts/game/agent.gd" id="7_agent"]
 
 [node name="Room" type="Node2D" unique_id=144188552]
 script = ExtResource("1_room")
@@ -12,8 +16,22 @@ zoom = Vector2(0.5, 0.5)
 
 [node name="FloorLayer" type="TileMapLayer" parent="." unique_id=1365023476]
 
+[node name="TurnManager" type="Node" parent="." unique_id=1600001001]
+script = ExtResource("4_turn")
+
+[node name="MovementOverlay" type="Node2D" parent="." unique_id=1600001002]
+script = ExtResource("5_move")
+
+[node name="PathPreview" type="Node2D" parent="." unique_id=1600001003]
+script = ExtResource("6_path")
+
+[node name="StructureLayer" type="TileMapLayer" parent="." unique_id=1600001010]
+
 [node name="SelectionOverlay" type="Node2D" parent="." unique_id=945163989]
 script = ExtResource("2_sel")
+
+[node name="Agent" type="Node2D" parent="." unique_id=1600001004]
+script = ExtResource("7_agent")
 
 [node name="TileLabelsOverlay" type="Node2D" parent="." unique_id=657068080]
 script = ExtResource("3_labels")
@@ -23,7 +41,7 @@ script = ExtResource("3_labels")
 [node name="TopBar" type="PanelContainer" parent="HUD" unique_id=2073143929]
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 172.0
+offset_right = 404.0
 offset_bottom = 68.0
 
 [node name="Row" type="HBoxContainer" parent="HUD/TopBar" unique_id=1960800847]
@@ -48,3 +66,40 @@ custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 tooltip_text = "Alternar viewport"
 text = "M"
+
+[node name="LblAp" type="Label" parent="HUD/TopBar/Row" unique_id=1600001005]
+custom_minimum_size = Vector2(78, 48)
+layout_mode = 2
+text = "AP 2/2"
+vertical_alignment = 1
+
+[node name="BtnEndTurn" type="Button" parent="HUD/TopBar/Row" unique_id=1600001006]
+custom_minimum_size = Vector2(136, 48)
+layout_mode = 2
+tooltip_text = "Encerrar turno"
+text = ""
+
+[node name="Content" type="HBoxContainer" parent="HUD/TopBar/Row/BtnEndTurn" unique_id=1600001008]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_right = -10.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ChkAutoEndTurn" type="CheckBox" parent="HUD/TopBar/Row/BtnEndTurn/Content" unique_id=1600001007]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+tooltip_text = "Encerrar turno automaticamente quando o AP chegar a zero"
+button_pressed = true
+text = ""
+
+[node name="LblEndTurn" type="Label" parent="HUD/TopBar/Row/BtnEndTurn/Content" unique_id=1600001009]
+layout_mode = 2
+mouse_filter = 2
+text = "END"
+vertical_alignment = 1

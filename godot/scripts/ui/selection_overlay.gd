@@ -7,7 +7,7 @@ var visual_offset: Vector2 = Vector2.ZERO
 var _cell: Vector2i = Vector2i(-9999, -9999)
 
 const COLOR_PINK := Color(0.90, 0.10, 0.45, 1.0)
-const LINE_W     := 4.0
+const LINE_W := 4.0
 
 
 func set_selected(cell: Vector2i) -> void:
@@ -28,12 +28,12 @@ func _draw() -> void:
 
 	## map_to_local returns the TOP vertex of the DIAMOND_DOWN diamond.
 	## Tile size 256×128 → half-width = 128, half-height = 64.
-	var top    := floor_layer.map_to_local(_cell) + visual_offset
-	var right  := top + Vector2( 128.0,  64.0)
-	var bottom := top + Vector2(   0.0, 128.0)
-	var left   := top + Vector2(-128.0,  64.0)
+	var top := floor_layer.map_to_local(_cell) + visual_offset
+	var right := top + Vector2(128.0, 64.0)
+	var bottom := top + Vector2(0.0, 128.0)
+	var left := top + Vector2(-128.0, 64.0)
 
-	draw_line(top,    right,  COLOR_PINK, LINE_W)
-	draw_line(right,  bottom, COLOR_PINK, LINE_W)
-	draw_line(bottom, left,   COLOR_PINK, LINE_W)
-	draw_line(left,   top,    COLOR_PINK, LINE_W)
+	draw_line(top, right, COLOR_PINK, LINE_W)
+	draw_line(right, bottom, COLOR_PINK, LINE_W)
+	draw_line(bottom, left, COLOR_PINK, LINE_W)
+	draw_line(left, top, COLOR_PINK, LINE_W)

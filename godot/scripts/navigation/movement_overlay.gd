@@ -11,6 +11,7 @@ var max_path_cost: int = 0
 var _costs: Dictionary = {}
 var _came_from: Dictionary = {}
 var _blocked_cells: Dictionary = {}
+var _blocked_edges: Dictionary = {}
 
 const TILE_TOP_TO_CENTER := Vector2(0.0, 64.0)
 
@@ -29,6 +30,14 @@ func set_blocked_cells(cells: Array[Vector2i]) -> void:
 	_blocked_cells.clear()
 	for cell in cells:
 		_blocked_cells[cell] = true
+
+
+func set_blocked_edges(edges: Array[Dictionary]) -> void:
+	_blocked_edges.clear()
+	for edge in edges:
+		var from_cell: Vector2i = edge.get("from", Vector2i.ZERO)
+		var to_cell: Vector2i = edge.get("to", Vector2i.ZERO)
+		_blocked_edges[_edge_key(from_cell, to_cell)] = true
 
 
 func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:
@@ -53,6 +62,8 @@ func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:
 
 		for step in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var next_cell: Vector2i = current + step
+			if _is_edge_blocked(current, next_cell):
+				continue
 			if not _is_traversable(next_cell):
 				continue
 
@@ -148,6 +159,16 @@ func _is_traversable(cell: Vector2i) -> bool:
 	if tile_data == null:
 		return false
 	return bool(tile_data.get_custom_data("walkable"))
+
+
+func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i) -> bool:
+	return _blocked_edges.has(_edge_key(from_cell, to_cell))
+
+
+func _edge_key(a: Vector2i, b: Vector2i) -> String:
+	if a.x < b.x or (a.x == b.x and a.y <= b.y):
+		return "%d,%d|%d,%d" % [a.x, a.y, b.x, b.y]
+	return "%d,%d|%d,%d" % [b.x, b.y, a.x, a.y]
 
 
 func _movement_cost(_cell: Vector2i) -> int:

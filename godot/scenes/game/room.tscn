@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://cpoucrt1wnox6"]
 
-[ext_resource type="Script" uid="uid://bg1vhp4vuujdp" path="res://godot/scripts/game/room.gd" id="1_room"]
-[ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/game/selection_overlay.gd" id="2_sel"]
-[ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/game/tile_labels_overlay.gd" id="3_labels"]
-[ext_resource type="Script" path="res://godot/scripts/game/turn_manager.gd" id="4_turn"]
-[ext_resource type="Script" path="res://godot/scripts/game/movement_overlay.gd" id="5_move"]
-[ext_resource type="Script" path="res://godot/scripts/game/path_preview.gd" id="6_path"]
-[ext_resource type="Script" path="res://godot/scripts/game/agent.gd" id="7_agent"]
+[ext_resource type="Script" uid="uid://bg1vhp4vuujdp" path="res://godot/scripts/world/room.gd" id="1_room"]
+[ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/ui/selection_overlay.gd" id="2_sel"]
+[ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/ui/tile_labels_overlay.gd" id="3_labels"]
+[ext_resource type="Script" path="res://godot/scripts/systems/turn_manager.gd" id="4_turn"]
+[ext_resource type="Script" path="res://godot/scripts/navigation/movement_overlay.gd" id="5_move"]
+[ext_resource type="Script" path="res://godot/scripts/navigation/path_preview.gd" id="6_path"]
+[ext_resource type="Script" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
 
 [node name="Room" type="Node2D" unique_id=144188552]
 script = ExtResource("1_room")
@@ -24,6 +24,8 @@ script = ExtResource("5_move")
 
 [node name="PathPreview" type="Node2D" parent="." unique_id=1600001003]
 script = ExtResource("6_path")
+
+[node name="StructureWallLayer" type="TileMapLayer" parent="." unique_id=1600001011]
 
 [node name="StructureLayer" type="TileMapLayer" parent="." unique_id=1600001010]
 

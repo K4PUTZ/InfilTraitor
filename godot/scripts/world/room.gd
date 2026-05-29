@@ -1,12 +1,14 @@
 extends Node2D
-## Minimal room — isometric grid with pink tile selection.
-## Milestone 0: tile picking only. No agent, no AP, no popup.
+## Tactical room controller: input, UI wiring, agent turns and scene setup.
+
+const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager = $TurnManager
 @onready var movement_overlay = $MovementOverlay
 @onready var path_preview = $PathPreview
-@onready var structure_layer:     TileMapLayer = $StructureLayer
+@onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
+@onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
@@ -19,23 +21,7 @@ extends Node2D
 @onready var btn_end_turn:        Button       = $HUD/TopBar/Row/BtnEndTurn
 
 const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
-
-const ROOM_W := 17   # columns
-const ROOM_H := 17   # rows
 const INVALID_CELL := Vector2i(-9999, -9999)
-const AGENT_START_CELL := Vector2i(8, 12)
-const CRATE_VARIANTS := ["crate_N", "crate_E", "crate_S", "crate_W"]
-const CRATE_CELLS := [
-	Vector2i(3, 4),
-	Vector2i(4, 9),
-	Vector2i(5, 13),
-	Vector2i(7, 6),
-	Vector2i(8, 3),
-	Vector2i(10, 8),
-	Vector2i(12, 5),
-	Vector2i(13, 10),
-	Vector2i(14, 7),
-]
 
 ## The TileMap renders the current 512px-tall source tiles lower than the
 ## logical grid used by map_to_local/local_to_map. Compensate with one fixed
@@ -44,6 +30,8 @@ const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 
 ## tile_name → TileSet source_id
 var _tile_ids: Dictionary = {}
+var _room_size: Vector2i = Vector2i.ZERO
+var _blocked_cells: Dictionary = {}
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -75,29 +63,35 @@ func _ready() -> void:
 		return
 
 	floor_layer.tile_set = ts
+	structure_wall_layer.tile_set = ts
 	structure_layer.tile_set = ts
 	_build_registry(ts)
-	_build_room()
 
-	## Center camera on the visual centre of the room.
-	## map_to_local returns the TOP vertex; +Vector2(0,64) is the visual centre.
-	@warning_ignore("integer_division")
-	var centre_cell  := Vector2i(ROOM_W / 2, ROOM_H / 2)
-	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
-	camera.global_position = centre_world
+	var layout_builder = RoomLayoutBuilder.new()
+	var layout: Dictionary = layout_builder.build_layout()
+	_room_size = layout.get("size", Vector2i.ZERO)
+	if _room_size == Vector2i.ZERO:
+		push_error("Room layout did not provide a valid map size.")
+		return
+
+	_build_room(layout)
+	_center_camera()
 
 	## Give overlays their references.
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
-	movement_overlay.set_blocked_cells(_build_blocked_cells())
+	movement_overlay.set_blocked_cells(_get_blocked_cells_array())
+	movement_overlay.set_blocked_edges(layout.get("blocked_edges", []))
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
-	selection_overlay.floor_layer   = floor_layer
+	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
-	agent.setup(floor_layer, VISUAL_GRID_OFFSET, AGENT_START_CELL)
+
+	var agent_start_cell: Vector2i = layout.get("agent_start_cell", Vector2i.ZERO)
+	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
-	tile_labels_overlay.room_w      = ROOM_W
-	tile_labels_overlay.room_h      = ROOM_H
-	tile_labels_overlay.visible     = false
+	tile_labels_overlay.room_w = _room_size.x
+	tile_labels_overlay.room_h = _room_size.y
+	tile_labels_overlay.visible = false
 	btn_numbers.modulate = Color(1.0, 1.0, 1.0, 0.35)
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
@@ -113,6 +107,13 @@ func _ready() -> void:
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
 	_on_btn_viewport()
+
+
+func _center_camera() -> void:
+	@warning_ignore("integer_division")
+	var centre_cell := Vector2i(_room_size.x / 2, _room_size.y / 2)
+	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	camera.global_position = centre_world
 
 
 func _on_btn_numbers() -> void:
@@ -138,7 +139,7 @@ func _on_btn_end_turn() -> void:
 func _on_btn_viewport() -> void:
 	_is_desktop_viewport = not _is_desktop_viewport
 	var target := Vector2i(1280, 720) if _is_desktop_viewport else Vector2i(390, 844)
-	btn_viewport.text   = "D" if _is_desktop_viewport else "M"
+	btn_viewport.text = "D" if _is_desktop_viewport else "M"
 
 	## Exit fullscreen first — can't resize while in fullscreen.
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
@@ -201,30 +202,8 @@ func _update_selected_preview() -> void:
 	path_preview.set_path(path, movement_overlay.get_ap_cost(_selected_cell))
 
 
-func _build_border_cells() -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for x in range(ROOM_W):
-		for y in range(ROOM_H):
-			var cell := Vector2i(x, y)
-			if _is_border_cell(cell):
-				cells.append(cell)
-	return cells
-
-
-func _build_blocked_cells() -> Array[Vector2i]:
-	var cells := _build_border_cells()
-	for cell in _get_crate_cells():
-		if not cells.has(cell):
-			cells.append(cell)
-	return cells
-
-
-func _is_border_cell(cell: Vector2i) -> bool:
-	return cell.x <= 0 or cell.x >= ROOM_W - 1 or cell.y <= 0 or cell.y >= ROOM_H - 1
-
-
 func _is_selectable_cell(cell: Vector2i) -> bool:
-	if cell == INVALID_CELL or _is_border_cell(cell):
+	if cell == INVALID_CELL or _blocked_cells.has(cell):
 		return false
 	return floor_layer.get_cell_source_id(cell) != -1
 
@@ -288,34 +267,38 @@ func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = floor_layer
 		layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
-## Fill grid: low slab border, floor_N interior.
-## block_N is visually too tall for this debug room and makes the rendered
-## board look detached from the logical grid / picking overlay.
-func _build_room() -> void:
-	for x in range(ROOM_W):
-		for y in range(ROOM_H):
-			var cell      := Vector2i(x, y)
-			var is_border := x == 0 or x == ROOM_W - 1 or y == 0 or y == ROOM_H - 1
-			if is_border:
-				_place(cell, "slab_N", structure_layer)
-			else:
-				_place(cell, "floor_N")
-	_place_crates()
+func _build_room(layout: Dictionary) -> void:
+	floor_layer.clear()
+	structure_wall_layer.clear()
+	structure_layer.clear()
 
+	var floor_tile_name := String(layout.get("floor_tile_name", "floor_N"))
+	for x in range(_room_size.x):
+		for y in range(_room_size.y):
+			_place(Vector2i(x, y), floor_tile_name)
 
-func _place_crates() -> void:
-	var crate_cells := _get_crate_cells()
-	for i in range(crate_cells.size()):
-		var cell: Vector2i = crate_cells[i]
-		var tile_name: String = CRATE_VARIANTS[i % CRATE_VARIANTS.size()]
+	for structure_entry in layout.get("wall_tiles", []):
+		var wall_cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
+		var wall_tile_name := String(structure_entry.get("tile_name", ""))
+		_place(wall_cell, wall_tile_name, structure_wall_layer)
+
+	for structure_entry in layout.get("structure_tiles", []):
+		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
+		var tile_name := String(structure_entry.get("tile_name", ""))
 		_place(cell, tile_name, structure_layer)
 
+	_cache_blocked_cells(layout)
 
-func _get_crate_cells() -> Array[Vector2i]:
+
+func _cache_blocked_cells(layout: Dictionary) -> void:
+	_blocked_cells.clear()
+	for cell in layout.get("blocked_cells", []):
+		_blocked_cells[cell] = true
+
+
+func _get_blocked_cells_array() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
-	for cell in CRATE_CELLS:
-		if cell == AGENT_START_CELL or _is_border_cell(cell):
-			continue
+	for cell in _blocked_cells.keys():
 		cells.append(cell)
 	return cells
 
@@ -327,18 +310,18 @@ func _get_crate_cells() -> Array[Vector2i]:
 ## click — this corrects the other three quadrants.
 func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	var ct: Transform2D = get_viewport().get_canvas_transform()
-	var lp: Vector2     = floor_layer.to_local(ct.affine_inverse() * screen_pos)
+	var lp: Vector2 = floor_layer.to_local(ct.affine_inverse() * screen_pos)
 	var logical_lp := lp - VISUAL_GRID_OFFSET
 	var tile_seed: Vector2i = floor_layer.local_to_map(logical_lp)
-	var best            := tile_seed
-	var best_dist       := INF
-	var found_inside    := false
+	var best := tile_seed
+	var best_dist := INF
+	var found_inside := false
 	for dc: int in [-1, 0, 1]:
 		for dr: int in [-1, 0, 1]:
-			var c      := tile_seed + Vector2i(dc, dr)
+			var c := tile_seed + Vector2i(dc, dr)
 			var center := floor_layer.map_to_local(c) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
-			var d      := lp - center
-			var dist   := absf(d.x) / 128.0 + absf(d.y) / 64.0
+			var d := lp - center
+			var dist := absf(d.x) / 128.0 + absf(d.y) / 64.0
 			if dist <= 1.0 and dist < best_dist:
 				best_dist = dist
 				best = c
@@ -367,7 +350,7 @@ func _input(event: InputEvent) -> void:
 			_touches.erase(st.index)
 			_pinch_last_dist = 0.0
 		if _touches.size() >= 2:
-			_left_down    = false
+			_left_down = false
 			_drag_started = false
 		get_viewport().set_input_as_handled()
 		return
@@ -398,7 +381,7 @@ func _input(event: InputEvent) -> void:
 
 	## ── Mouse motion: pan when dragging ─────────────────────────────────
 	if event is InputEventMouseMotion and _left_down and _touches.size() < 2:
-		var mm       := event as InputEventMouseMotion
+		var mm := event as InputEventMouseMotion
 		var moved_sq := (mm.position - _drag_start_mouse).length_squared()
 		if not _drag_started and moved_sq > DRAG_THRESHOLD_SQ:
 			_drag_started = true
@@ -419,13 +402,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if mb.pressed:
-		_left_down        = true
-		_drag_started     = false
+		_left_down = true
+		_drag_started = false
 		_drag_start_mouse = mb.position
-		_drag_start_cam   = camera.global_position
+		_drag_start_cam = camera.global_position
 	else:
 		if not _drag_started:
 			var cell := _screen_to_tile(mb.position)
 			_handle_tile_click(cell)
-		_left_down    = false
+		_left_down = false
 		_drag_started = false

@@ -7,11 +7,11 @@ extends SceneTree
 ##
 ## OUTPUT:
 ##   godot/resources/tilesets/tileset_blocks.tres  ← used by TileMapLayer nodes
-##   godot/scripts/game/tile_registry.gd           ← auto-generated name→id lookup
+##   godot/scripts/world/tile_registry.gd          ← auto-generated name→id lookup
 
 const TILES_PATH    := "res://ASSETS/ISOMETRIC/blocks-prototype/Isometric/"
 const TILESET_OUT   := "res://godot/resources/tilesets/tileset_blocks.tres"
-const REGISTRY_OUT  := "res://godot/scripts/game/tile_registry.gd"
+const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
 
 ## Tile cell dimensions (the isometric diamond base, 2:1 ratio)
 const CELL_SIZE     := Vector2i(256, 128)
@@ -20,6 +20,18 @@ const PNG_SIZE      := Vector2i(256, 512)
 ## Sprite Y-offset: shifts PNG up so bottom 128px (floor diamond) aligns with cell
 ## floor diamond occupies PNG rows 384–512 → shift up by 384px
 const SPRITE_OFFSET := Vector2i(0, -384)
+## Each wall sits on the OUTER edge of its boundary tile, straddling it with the
+## adjacent outside tile. In diamond-down isometric (cell 256×128):
+##   North outer edge (NE diagonal): half-step north  = screen (+64, -32)
+##   South outer edge (SW diagonal): half-step south  = screen (-64, +32)
+##   East  outer edge (SE diagonal): half-step east   = screen (+64, +32)
+##   West  outer edge (NW diagonal): half-step west   = screen (-64, -32)
+const EDGE_VISUAL_OFFSETS := {
+	"N": Vector2i(64, -32),
+	"S": Vector2i(-64, 32),
+	"E": Vector2i(64, 32),
+	"W": Vector2i(-64, -32),
+}
 
 ## Tile properties keyed by base name (without _N/_S/_E/_W suffix).
 ## walkable   → agent/guard can move onto this tile
@@ -99,6 +111,27 @@ const TILE_PROPS: Dictionary = {
 	"arrow":                  {walkable=true,  cover=false, interactive=false},
 	"arrowWall":              {walkable=false, cover=false, interactive=false},
 }
+
+## Base names whose sprites need a half-step shift to sit on the outer edge.
+## Simple "wall" includes wallHalf but NOT the compound variants below.
+const EDGE_ALIGNED_PREFIXES := [
+	"arrowWall",
+	"door",
+	"fence",
+	"switchWall",
+	"wall",
+	"window",
+]
+
+## These base names start with a prefix above but must NOT receive an edge
+## offset — their corner / curve geometry is already at the correct vertex.
+const EDGE_ALIGNED_EXCLUSIONS := [
+	"wallCorner",
+	"wallCornerHalf",
+	"wallCurve",
+	"wallCurveHalf",
+	"wallBattlement",
+]
 
 
 func _initialize() -> void:
@@ -182,7 +215,7 @@ func _build() -> void:
 		# SPRITE_OFFSET shifts the 512px-tall sprite UP so its bottom 128px
 		# (the isometric floor diamond) sits exactly at the cell boundary.
 		# Adjust this constant if tiles appear too high or low in the editor.
-		td.texture_origin = SPRITE_OFFSET
+		td.texture_origin = _get_texture_origin(tile_name, base_name)
 
 		td.set_custom_data("tile_name",   tile_name)
 		td.set_custom_data("walkable",    props.get("walkable",    true))
@@ -222,3 +255,28 @@ func _build() -> void:
 	fa.close()
 	print("[build_tileset] Saved registry → " + REGISTRY_OUT)
 	print("[build_tileset] Done.")
+
+
+func _get_texture_origin(tile_name: String, base_name: String) -> Vector2i:
+	var offset := SPRITE_OFFSET
+	if not _is_edge_aligned_tile(base_name):
+		return offset
+
+	var parts := tile_name.rsplit("_", true, 1)
+	if parts.size() < 2:
+		return offset
+
+	var direction := parts[1]
+	if not EDGE_VISUAL_OFFSETS.has(direction):
+		return offset
+
+	return offset + EDGE_VISUAL_OFFSETS[direction]
+
+
+func _is_edge_aligned_tile(base_name: String) -> bool:
+	if base_name in EDGE_ALIGNED_EXCLUSIONS:
+		return false
+	for prefix in EDGE_ALIGNED_PREFIXES:
+		if base_name.begins_with(prefix):
+			return true
+	return false

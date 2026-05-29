@@ -245,14 +245,14 @@
 texture = ExtResource("1_ndkf3")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "arrowWall_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mpthi"]
 texture = ExtResource("2_lcavy")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "arrowWall_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4m516"]
@@ -1039,7 +1039,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("100_iva67")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "switchWallOff_E"
 0:0/0/custom_data_3 = true
 
@@ -1047,7 +1047,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("101_ourpe")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "switchWallOff_N"
 0:0/0/custom_data_3 = true
 
@@ -1063,7 +1063,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("103_8sg70")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "switchWallOff_S"
 0:0/0/custom_data_3 = true
 
@@ -1071,7 +1071,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("104_wdjcg")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "switchWallOff_W"
 0:0/0/custom_data_3 = true
 
@@ -1079,7 +1079,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("105_w1pus")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "switchWallOn_E"
 0:0/0/custom_data_3 = true
 
@@ -1087,7 +1087,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("106_0m5m2")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "switchWallOn_N"
 0:0/0/custom_data_3 = true
 
@@ -1095,7 +1095,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("107_0gicc")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "switchWallOn_S"
 0:0/0/custom_data_3 = true
 
@@ -1103,7 +1103,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("108_kia4o")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "switchWallOn_W"
 0:0/0/custom_data_3 = true
 
@@ -1143,7 +1143,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("113_i2i5i")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "arrowWall_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ttpq3"]
@@ -1294,7 +1294,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("132_ekmom")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "wallHalf_E"
 0:0/0/custom_data_2 = true
 
@@ -1302,7 +1302,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("133_ukd1j")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "wallHalf_N"
 0:0/0/custom_data_2 = true
 
@@ -1310,7 +1310,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("134_etlwe")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "wallHalf_S"
 0:0/0/custom_data_2 = true
 
@@ -1318,7 +1318,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("135_qhowk")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "wallHalf_W"
 0:0/0/custom_data_2 = true
 
@@ -1334,7 +1334,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("137_w2dkm")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "wall_E"
 0:0/0/custom_data_2 = true
 
@@ -1342,7 +1342,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("138_unlrn")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "wall_N"
 0:0/0/custom_data_2 = true
 
@@ -1350,7 +1350,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("139_ia7p3")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "wall_S"
 0:0/0/custom_data_2 = true
 
@@ -1358,7 +1358,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("140_mtu6y")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "wall_W"
 0:0/0/custom_data_2 = true
 
@@ -1366,42 +1366,42 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("141_r6jp5")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "windowLeft_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_sr2rg"]
 texture = ExtResource("142_qppua")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "windowLeft_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_btun8"]
 texture = ExtResource("143_j7s3n")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "windowLeft_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_dywl3"]
 texture = ExtResource("144_cmdge")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "windowLeft_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_5a1vm"]
 texture = ExtResource("145_brp7j")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "windowMiddle_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mo1mv"]
 texture = ExtResource("146_w1rp1")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "windowMiddle_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_idko5"]
@@ -1416,70 +1416,70 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("148_q008l")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "windowMiddle_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2cibq"]
 texture = ExtResource("149_th1qg")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "windowMiddle_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hl7rp"]
 texture = ExtResource("150_h1pyh")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "windowRight_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ui3ad"]
 texture = ExtResource("151_di8hk")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "windowRight_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8ycvg"]
 texture = ExtResource("152_qr0ap")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "windowRight_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_64677"]
 texture = ExtResource("153_0w1v4")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "windowRight_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_lt4cv"]
 texture = ExtResource("154_srp7e")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "window_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_acfc4"]
 texture = ExtResource("155_xw7n2")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "window_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_wnnol"]
 texture = ExtResource("156_rn7cf")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "window_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_vtj5t"]
 texture = ExtResource("157_mjhfi")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "window_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_nmcrw"]
@@ -1528,7 +1528,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("164_vo8cy")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "arrowWall_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_pu2q2"]
@@ -1621,7 +1621,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("176_h31yc")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorClosed_E"
 0:0/0/custom_data_3 = true
 
@@ -1629,7 +1629,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("177_wq5sc")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorClosed_N"
 0:0/0/custom_data_3 = true
 
@@ -1637,7 +1637,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("178_3wyrt")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorClosed_S"
 0:0/0/custom_data_3 = true
 
@@ -1645,7 +1645,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("179_ko3vw")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorClosed_W"
 0:0/0/custom_data_3 = true
 
@@ -1653,7 +1653,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("180_gf4cf")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorOpen_E"
 0:0/0/custom_data_1 = true
 0:0/0/custom_data_3 = true
@@ -1662,7 +1662,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("181_8d31j")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorOpen_N"
 0:0/0/custom_data_1 = true
 0:0/0/custom_data_3 = true
@@ -1671,7 +1671,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("182_6wsjx")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorOpen_S"
 0:0/0/custom_data_1 = true
 0:0/0/custom_data_3 = true
@@ -1680,7 +1680,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("183_ugnwf")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorOpen_W"
 0:0/0/custom_data_1 = true
 0:0/0/custom_data_3 = true
@@ -1689,7 +1689,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("184_mgcsl")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayBottom_E"
 0:0/0/custom_data_1 = true
 
@@ -1697,7 +1697,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("185_vt4b7")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayBottom_N"
 0:0/0/custom_data_1 = true
 
@@ -1713,7 +1713,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("187_j0hrl")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayBottom_S"
 0:0/0/custom_data_1 = true
 
@@ -1721,7 +1721,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("188_varoo")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayBottom_W"
 0:0/0/custom_data_1 = true
 
@@ -1729,7 +1729,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("189_fnbck")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayCenter_E"
 0:0/0/custom_data_1 = true
 
@@ -1737,7 +1737,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("190_b8w2q")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayCenter_N"
 0:0/0/custom_data_1 = true
 
@@ -1745,7 +1745,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("191_elqrg")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayCenter_S"
 0:0/0/custom_data_1 = true
 
@@ -1753,7 +1753,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("192_qwb8i")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayCenter_W"
 0:0/0/custom_data_1 = true
 
@@ -1761,7 +1761,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("193_1igte")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayLeftBottom_E"
 0:0/0/custom_data_1 = true
 
@@ -1769,7 +1769,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("194_wbfjj")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayLeftBottom_N"
 0:0/0/custom_data_1 = true
 
@@ -1777,7 +1777,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("195_qixsl")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayLeftBottom_S"
 0:0/0/custom_data_1 = true
 
@@ -1785,7 +1785,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("196_p2xqh")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayLeftBottom_W"
 0:0/0/custom_data_1 = true
 
@@ -1801,7 +1801,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("198_ypefo")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayLeft_E"
 0:0/0/custom_data_1 = true
 
@@ -1809,7 +1809,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("199_b07bx")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayLeft_N"
 0:0/0/custom_data_1 = true
 
@@ -1817,7 +1817,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("200_0h54b")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayLeft_S"
 0:0/0/custom_data_1 = true
 
@@ -1825,7 +1825,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("201_eivaf")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayLeft_W"
 0:0/0/custom_data_1 = true
 
@@ -1833,7 +1833,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("202_8kkpf")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayMiddleBottom_E"
 0:0/0/custom_data_1 = true
 
@@ -1841,7 +1841,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("203_y6fli")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayMiddleBottom_N"
 0:0/0/custom_data_1 = true
 
@@ -1849,7 +1849,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("204_uj10u")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayMiddleBottom_S"
 0:0/0/custom_data_1 = true
 
@@ -1857,7 +1857,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("205_ev7sl")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayMiddleBottom_W"
 0:0/0/custom_data_1 = true
 
@@ -1865,7 +1865,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("206_giw6m")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayMiddle_E"
 0:0/0/custom_data_1 = true
 
@@ -1873,7 +1873,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("207_wo5p7")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayMiddle_N"
 0:0/0/custom_data_1 = true
 
@@ -1889,7 +1889,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("209_or1ff")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayMiddle_S"
 0:0/0/custom_data_1 = true
 
@@ -1897,7 +1897,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("210_5kvam")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayMiddle_W"
 0:0/0/custom_data_1 = true
 
@@ -1905,7 +1905,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("211_mp45h")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayRightBottom_E"
 0:0/0/custom_data_1 = true
 
@@ -1913,7 +1913,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("212_eyfgp")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayRightBottom_N"
 0:0/0/custom_data_1 = true
 
@@ -1921,7 +1921,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("213_k0150")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayRightBottom_S"
 0:0/0/custom_data_1 = true
 
@@ -1929,7 +1929,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("214_tkw3i")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayRightBottom_W"
 0:0/0/custom_data_1 = true
 
@@ -1937,7 +1937,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("215_gcg1k")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorwayRight_E"
 0:0/0/custom_data_1 = true
 
@@ -1945,7 +1945,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("216_s22ki")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorwayRight_N"
 0:0/0/custom_data_1 = true
 
@@ -1953,7 +1953,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("217_d5c2h")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorwayRight_S"
 0:0/0/custom_data_1 = true
 
@@ -1961,7 +1961,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("218_qw8nc")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorwayRight_W"
 0:0/0/custom_data_1 = true
 
@@ -1977,7 +1977,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("220_3ksfm")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "doorway_E"
 0:0/0/custom_data_1 = true
 
@@ -1985,7 +1985,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("221_5q87x")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "doorway_N"
 0:0/0/custom_data_1 = true
 
@@ -1993,7 +1993,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("222_7766s")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "doorway_S"
 0:0/0/custom_data_1 = true
 
@@ -2001,7 +2001,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("223_1kpc1")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "doorway_W"
 0:0/0/custom_data_1 = true
 
@@ -2009,28 +2009,28 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("224_2nar3")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -352)
 0:0/0/custom_data_0 = "fence_E"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_oq3dj"]
 texture = ExtResource("225_plp2s")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(64, -416)
 0:0/0/custom_data_0 = "fence_N"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3sitt"]
 texture = ExtResource("226_pniex")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -352)
 0:0/0/custom_data_0 = "fence_S"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mb4aq"]
 texture = ExtResource("227_s0te1")
 texture_region_size = Vector2i(256, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-64, -416)
 0:0/0/custom_data_0 = "fence_W"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6aoe0"]

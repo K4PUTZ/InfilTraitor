@@ -1,29 +1,29 @@
 extends RefCounted
 ## Builds a single segment layout for the InfilTraitor segment system.
-## Segment: W=9, H=27 (W+H=36 → 4608×2304 px screen space).
-## Interior: 7×25 tiles. Border: 1 tile wide on all sides.
+## Segment: W=18, H=36 (W+H=54 → 6912×3456 px screen space).
+## Interior: 16×34 tiles. Border: 1 tile wide on all sides.
 ## Access points replace border slabs with passable floor tiles.
 
-const MAP_SIZE         := Vector2i(9, 27)
-const AGENT_START_CELL := Vector2i(4, 25)   ## First interior row from south border, centre column
+const MAP_SIZE         := Vector2i(18, 36)
+const AGENT_START_CELL := Vector2i(9, 34)   ## First interior row from south border, centre column
 const FLOOR_TILE       := "floor_N"
 const BORDER_TILE      := "slab_N"
 const CRATE_VARIANTS   := ["crate_N", "crate_E", "crate_S", "crate_W"]
 const CRATE_CELLS := [
-	Vector2i(2,  4),
-	Vector2i(6,  4),
-	Vector2i(2, 13),
-	Vector2i(6, 13),
-	Vector2i(4, 10),
-	Vector2i(3, 20),
-	Vector2i(5, 20),
+	Vector2i( 4,  5),
+	Vector2i(13,  5),
+	Vector2i( 4, 14),
+	Vector2i(13, 14),
+	Vector2i( 9, 11),
+	Vector2i( 5, 26),
+	Vector2i(12, 26),
 ]
 
 ## Access points: border cells replaced with passable floor (open passages).
 ## "type": "main" | "secondary" | "secret"
 const ACCESS_POINTS := [
-	{ "cell": Vector2i(4, 26), "side": "south", "type": "main" },  ## Agent entry from south
-	{ "cell": Vector2i(4,  0), "side": "north", "type": "main" },  ## Exit to next segment
+	{ "cell": Vector2i(9, 35), "side": "south", "type": "main" },  ## Agent entry from south
+	{ "cell": Vector2i(9,  0), "side": "north", "type": "main" },  ## Exit to next segment
 ]
 
 

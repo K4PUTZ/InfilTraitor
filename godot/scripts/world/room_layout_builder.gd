@@ -58,8 +58,9 @@ func _add_border(structure_map: Dictionary, blocked_map: Dictionary) -> void:
 func _add_access_points(structure_map: Dictionary, blocked_map: Dictionary) -> void:
 	for ap in ACCESS_POINTS:
 		var cell: Vector2i = ap["cell"]
-		## Override border slab → passable floor tile (open passage)
-		_set_structure_tile(structure_map, blocked_map, cell, FLOOR_TILE, false)
+		## Remove border slab → open floor passage (no structure tile, not blocked)
+		structure_map.erase(cell)
+		blocked_map.erase(cell)
 
 
 func _add_crates(structure_map: Dictionary, blocked_map: Dictionary) -> void:

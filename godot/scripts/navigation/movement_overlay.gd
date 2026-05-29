@@ -12,6 +12,7 @@ var _costs: Dictionary = {}
 var _came_from: Dictionary = {}
 var _blocked_cells: Dictionary = {}
 var _blocked_edges: Dictionary = {}
+var _points_per_ap: int = 3   ## Kept in sync with TurnManager.MOVE_POINTS_PER_AP
 
 const TILE_TOP_TO_CENTER := Vector2(0.0, 64.0)
 
@@ -21,9 +22,10 @@ const TWO_AP_FILL := Color(0.05, 0.31, 0.92, 0.22)
 const TWO_AP_LINE := Color(0.27, 0.56, 1.0, 0.95)
 
 
-func setup(tile_layer: TileMapLayer, offset: Vector2) -> void:
+func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:
 	floor_layer = tile_layer
 	visual_offset = offset
+	_points_per_ap = points_per_ap
 
 
 func set_blocked_cells(cells: Array[Vector2i]) -> void:
@@ -100,7 +102,7 @@ func get_ap_cost(cell: Vector2i) -> int:
 	var cost := get_cost(cell)
 	if cost <= 0:
 		return 0
-	return int(ceili(float(cost) / 3.0))
+	return int(ceili(float(cost) / float(_points_per_ap)))
 
 
 func build_path_to(target: Vector2i) -> Array[Vector2i]:
@@ -126,8 +128,8 @@ func _draw() -> void:
 			continue
 
 		var cost := int(_costs[cell])
-		var fill := ONE_AP_FILL if cost <= 3 else TWO_AP_FILL
-		var line := ONE_AP_LINE if cost <= 3 else TWO_AP_LINE
+		var fill := ONE_AP_FILL if cost <= _points_per_ap else TWO_AP_FILL
+		var line := ONE_AP_LINE if cost <= _points_per_ap else TWO_AP_LINE
 		var diamond := _diamond_points(cell)
 		draw_colored_polygon(diamond, fill)
 		draw_polyline(diamond + PackedVector2Array([diamond[0]]), line, 2.0, true)

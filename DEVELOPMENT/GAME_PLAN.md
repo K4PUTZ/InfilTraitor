@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-26 (Alpha 2.2: tactical movement prototype, structure layer, obstacles)  
-> **Status:** M1.5 in progress — agent/AP movement prototype with corrected visual/logical grid alignment, tactical overlays, obstacles, and HUD controls  
+> **Last updated:** 2026-05-29 (Segment system design locked: 3×3 grid, 9×27 tiles/segment, access points, teleport, fog of war, AP reset; segment prototype implementation started)  
+> **Status:** M1.5 in progress — segment system designed and prototype started; wall generation reset; StructureWallLayer unified; access points implemented  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
@@ -243,6 +243,53 @@ Zone unlocks are linear (1 → 6) but each zone can be replayed in higher diffic
 
 ---
 
+#### 3.7.6 Segment System — Map Structure *(locked 2026-05-29)*
+
+All missions use a **segment-based macro structure** instead of an open floor grid.
+
+**Segment dimensions (locked):**
+- W=9, H=27, W+H=36 → **4608 × 2304 px** screen space (2:1 always).
+- Interior playable area: **7 × 25 tiles** (1-tile slab border on all sides).
+- Odd W gives a natural centre column at col 4 (symmetry for default access points).
+- Natural 3×3 internal sub-grid of **3×9-tile zones** (useful for placement and pacing).
+
+**Mission map grid:**
+- Each mission is a **3 × 3 grid of segments** (27 × 81 tiles total).
+- Progress direction varies per mission (south→north, west→east, diagonal, etc.).
+- Full adjacency: lateral + vertical neighbours are all accessible.
+- **Free backtracking** — the player can revisit any visited segment.
+- No prior map visibility — only the agent's visited segments are shown; the rest is fog of war.
+
+**Access points:**
+- Any border tile can be an access point (open passage replacing the border slab).
+- Per active border: **1 main** (always open) + **1 secondary** (gated / requires condition) + **1 secret** (hidden until discovered).
+- Access point positions are defined in `ACCESS_POINTS` const in `room_layout_builder.gd`.
+
+**Teleport mechanic:**
+- Stepping on an access point tile teleports the agent to the adjacent segment.
+- **Arrival uses mirrored offset**: exit at col 3 of north border → arrive at col 3 of south border of the next segment. X-position is preserved; Y flips to the opposite border.
+- **No extra AP cost** — arriving on the border row organically costs 1 movement tile to reach the interior (natural consequence of where the agent lands, not a tax).
+- **Safe zone**: the border row + 1 interior tile are guaranteed encounter-free, giving room to retreat or attempt stealth without being immediately threatened.
+- **Full AP reset** on segment entry (arrival in a new segment restores AP to maximum).
+
+**Camera & visibility:**
+- Camera always stays within the **active segment** only.
+- Unvisited segments render as **fog of war**.
+- Strategic zoom ~30% — portrait device shows ~28% of segment width at a time.
+- The segment is never fully visible on screen — exploration is always required.
+
+**Anti-linear design rule:**
+- Every mission must have **≥1 critical blocker** (door, guard, obstacle) whose unlock is in a **non-adjacent segment**, forcing lateral exploration.
+- Multiple paths through the 3×3 grid, each favouring a different strategy.
+
+**Events:**
+- **On segment entry** — ambient setup, enemy patrol start, narrative beat.
+- **On zone/tile** — triggered when agent enters a specific tile or zone.
+- **On player interaction** — triggered by explicit agent action (examine, hack, talk).
+- All three event types coexist within a single segment.
+
+---
+
 ## 3.8 Retention & Replayability Systems
 
 ### 3.8.1 Daily Challenge (Seed-based)
@@ -377,8 +424,8 @@ Gadgets have **limited charges** per level; charges refill between levels or can
 
 ## 5. Level Design Guidelines
 
-1. **Grid size:** Start small (8 × 12 tiles) and expand to (12 × 20) in later chapters.
-2. **Visible area:** Portrait orientation shows roughly 8 × 10 tiles at a time; the rest is revealed by scrolling.
+1. **Segment size:** Each segment is **9 × 27 tiles** (odd W gives centre column at col 4; W+H=36 → 4608×2304 px screen space). A mission map is a **3 × 3 grid of segments** (27 × 81 tiles total). Interior playable area per segment: **7 × 25 tiles** (1-tile slab border on all sides).
+2. **Visible area:** Portrait orientation at strategic zoom (~30%) shows roughly 28% of segment width at a time. Players pan freely within the active segment. Adjacent segments display fog of war until visited.
 3. **Critical path:** Every level must have at least one solvable path with base skills.
 4. **Entrance / exit clarity:** Every generated floor must clearly communicate where the player started, where progression is blocked, and where the next-floor exit is located.
 5. **Room purpose clarity:** A player should be able to infer whether a room is combat-heavy, stealth-heavy, objective-heavy, or reward-heavy from its layout and props.
@@ -665,7 +712,11 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 - [ ] How many trap types at launch? Balance between trap-play and stealth-play.
 - [ ] Cooperative friend system — platform integration (Game Center, Google Play Games, or custom)?
 - [ ] Multi-floor / elevation system — scope and priority.
-- [ ] Portrait aspect ratio targets — phone vs tablet scaling strategy.
+- [x] ~~Portrait aspect ratio targets~~ → **Segment is 4608×2304 px screen space; portrait device shows ~28% of segment width at ~30% zoom. Tablet vs phone: same segment geometry, different zoom bounds.** ✅
+- [ ] Segment theme catalogue — what themes exist and how are they assigned per mission?
+- [ ] Access point data model — how are access point positions stored and communicated between adjacent segments?
+- [ ] Blocker design rules — minimum distance between a critical blocker and its unlock location across the 3×3 grid?
+- [ ] Fog of war visual style — darkened tiles, greyed-out sprites, or full black mask?
 
 ---
 
@@ -683,6 +734,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 | 2026-05-19 | — | Full asset reorganization completed. `TILESETS/` → `ASSETS/ISOMETRIC/` (8 Kenney packs with clean names). `OTHER ASSETS/` → `ARCHIVE/` (textures, fonts, FX, sprites-2d). Characters split into `ASSETS/CHARACTERS/humans/`. Orthographic angle renders → `ASSETS/REFERENCE/`. Deleted space-themed, flat-2D, and non-isometric packs. Created `DEVELOPMENT/ASSET_MAP.md` — full tile catalogue, chapter-theme mapping, and procedural generation guide. Updated README project layout. |
 | 2026-05-19 | — | **Alpha 0** — first visual prototype running in-engine. Godot 4.6 project scaffolded (`project.godot`, `room.tscn`, `room.gd`, `agent.gd`, `tilemap_helper.gd`). TileSet builder (`build_tileset.gd`) implemented as headless `SceneTree` script; runs from terminal without Godot editor. Generates `tileset_blocks.tres` (240 tiles, blocks-prototype pack) with 4 custom data layers per tile (`tile_name`, `walkable`, `cover`, `interactive`) and `tile_registry.gd` (name→source_id lookup). 9×9 isometric test room rendering confirmed in-engine. VS Code dev workflow established: F5 launches game via `node-terminal` launch config, ⌘⇧B rebuilds TileSet via task. Tagged as `alpha-0` and pushed to GitHub. |
 | 2026-05-26 | — | **Alpha 2.1** — stabilized the mismatch between the rendered board and the logical numbered grid. Added a shared runtime visual-offset compensation so camera centering, coordinate labels, selection overlay, and tile picking all reference the same board position. Tightened tile picking to require clicks inside the isometric diamond, eliminating selection in empty space above the board. Swapped the tall debug border blocks for low slabs to improve visual readability while the alignment compensation is in place. |
+| 2026-05-29 | — | **Segment system design locked** (see §3.7.6). Map structure: 3×3 grid of 9×27-tile segments. Interior: 7×25 tiles. Natural 3×3 sub-grid of 3×9-tile zones. Access points: 1 main + 1 secondary (gated) + 1 secret per active border. Teleport: mirrored-offset arrival (exit col C north → arrive col C south of next segment). AP mechanic clarified: no extra cost — arriving on border row costs 1 natural movement tile to reach interior; 2-tile safe zone (border row + first interior tile) guaranteed encounter-free. Full AP reset on segment entry. Camera confined to active segment; fog of war on unvisited. Anti-linear rule: ≥1 critical blocker with unlock in non-adjacent segment. Events: on-entry, on-zone/tile, on-interaction. Code changes: wall generation deleted from `room_layout_builder.gd`; `StructureWallLayer` unified (single layer in `room.gd` + `room.tscn`); `EDGE_ALIGNED_EXCLUSIONS` added to `build_tileset.gd`. Segment prototype: `MAP_SIZE` → `Vector2i(9, 27)`, `AGENT_START_CELL` → `Vector2i(4, 25)`, `ACCESS_POINTS` const + `_add_access_points()` added. Camera now focuses on agent spawn cell. |
 | 2026-05-26 | — | **Alpha 2.2** — advanced into the M1.5 tactical UI slice. Added a debug agent, AP/end-turn control, movement range overlays, selected-destination path preview, two-tap confirmation flow, and an auto-end checkbox inside the `END` button. Introduced blocked crate obstacles and a dedicated structure layer so walls/props render above tactical overlays while the path remains visible only over floor tiles. Set the coordinate overlay to start disabled by default. |
 
 ---

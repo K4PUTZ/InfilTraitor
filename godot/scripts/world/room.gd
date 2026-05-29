@@ -75,7 +75,8 @@ func _ready() -> void:
 		return
 
 	_build_room(layout)
-	_center_camera()
+	var agent_start_cell: Vector2i = layout.get("agent_start_cell", Vector2i.ZERO)
+	_center_camera(agent_start_cell)
 
 	## Give overlays their references.
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
@@ -85,7 +86,6 @@ func _ready() -> void:
 	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
 
-	var agent_start_cell: Vector2i = layout.get("agent_start_cell", Vector2i.ZERO)
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
@@ -109,10 +109,8 @@ func _ready() -> void:
 	_on_btn_viewport()
 
 
-func _center_camera() -> void:
-	@warning_ignore("integer_division")
-	var centre_cell := Vector2i(_room_size.x / 2, _room_size.y / 2)
-	var centre_world := floor_layer.map_to_local(centre_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+func _center_camera(focus_cell: Vector2i) -> void:
+	var centre_world := floor_layer.map_to_local(focus_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	camera.global_position = centre_world
 
 

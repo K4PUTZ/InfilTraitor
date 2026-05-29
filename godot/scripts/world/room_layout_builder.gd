@@ -1,48 +1,29 @@
 extends RefCounted
-## Builds the larger multi-room tactical test layout.
+## Builds a single segment layout for the InfilTraitor segment system.
+## Segment: W=9, H=27 (W+H=36 → 4608×2304 px screen space).
+## Interior: 7×25 tiles. Border: 1 tile wide on all sides.
+## Access points replace border slabs with passable floor tiles.
 
-const MAP_SIZE := Vector2i(29, 23)
-const AGENT_START_CELL := Vector2i(6, 18)
-const FLOOR_TILE := "floor_N"
-const BORDER_TILE := "slab_N"
-const CRATE_VARIANTS := ["crate_N", "crate_E", "crate_S", "crate_W"]
+const MAP_SIZE         := Vector2i(9, 27)
+const AGENT_START_CELL := Vector2i(4, 25)   ## First interior row from south border, centre column
+const FLOOR_TILE       := "floor_N"
+const BORDER_TILE      := "slab_N"
+const CRATE_VARIANTS   := ["crate_N", "crate_E", "crate_S", "crate_W"]
 const CRATE_CELLS := [
-	Vector2i(6, 5),
-	Vector2i(19, 5),
-	Vector2i(8, 16),
-	Vector2i(21, 15),
-	Vector2i(12, 11),
-	Vector2i(15, 17),
-	Vector2i(23, 8),
+	Vector2i(2,  4),
+	Vector2i(6,  4),
+	Vector2i(2, 13),
+	Vector2i(6, 13),
+	Vector2i(4, 10),
+	Vector2i(3, 20),
+	Vector2i(5, 20),
 ]
-const ROOM_LAYOUTS := [
-	{
-		"rect": Rect2i(3, 3, 8, 6),
-		"doors": [
-			{"side": "south", "offset": 3},
-		],
-	},
-	{
-		"rect": Rect2i(16, 3, 9, 6),
-		"doors": [
-			{"side": "west", "offset": 2},
-			{"side": "south", "offset": 4},
-		],
-	},
-	{
-		"rect": Rect2i(4, 13, 7, 6),
-		"doors": [
-			{"side": "north", "offset": 3},
-			{"side": "east", "offset": 2},
-		],
-	},
-	{
-		"rect": Rect2i(16, 12, 9, 7),
-		"doors": [
-			{"side": "west", "offset": 3},
-			{"side": "north", "offset": 4},
-		],
-	},
+
+## Access points: border cells replaced with passable floor (open passages).
+## "type": "main" | "secondary" | "secret"
+const ACCESS_POINTS := [
+	{ "cell": Vector2i(4, 26), "side": "south", "type": "main" },  ## Agent entry from south
+	{ "cell": Vector2i(4,  0), "side": "north", "type": "main" },  ## Exit to next segment
 ]
 
 
@@ -52,6 +33,7 @@ func build_layout() -> Dictionary:
 	var blocked_edges_map: Dictionary = {}
 
 	_add_border(structure_map, blocked_map)
+	_add_access_points(structure_map, blocked_map)
 	_add_crates(structure_map, blocked_map)
 
 	return {
@@ -71,6 +53,13 @@ func _add_border(structure_map: Dictionary, blocked_map: Dictionary) -> void:
 			if x != 0 and x != MAP_SIZE.x - 1 and y != 0 and y != MAP_SIZE.y - 1:
 				continue
 			_set_structure_tile(structure_map, blocked_map, Vector2i(x, y), BORDER_TILE, true)
+
+
+func _add_access_points(structure_map: Dictionary, blocked_map: Dictionary) -> void:
+	for ap in ACCESS_POINTS:
+		var cell: Vector2i = ap["cell"]
+		## Override border slab → passable floor tile (open passage)
+		_set_structure_tile(structure_map, blocked_map, cell, FLOOR_TILE, false)
 
 
 func _add_crates(structure_map: Dictionary, blocked_map: Dictionary) -> void:

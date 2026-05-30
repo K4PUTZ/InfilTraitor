@@ -160,6 +160,23 @@ The FOW and the vision gradient serve different purposes for enemy rendering:
 - Last known position shown as a dimmed icon when an enemy exits sight.
 - `?` marker displayed when an enemy was known to be in the area but has since moved.
 
+**Animated decoration rule *(locked 2026-05-30):***
+
+All decorative animated objects (fire, flickering lights, screens, neon signs, smoke, water, animals, fans, etc.) are **frozen outside the clear vision zone** and come alive as the player approaches.
+
+| Zone | Animation state |
+|---|---|
+| **Clear zone** (within `VISION_TILE_RADIUS`) | **Active** — full animation running |
+| **Transition / gradient zone** | **Activating** — begins playing as object enters zone |
+| **Revealed but beyond gradient** | **Frozen** — static first frame; no process tick |
+| **Unexplored** | **Dormant** — not instantiated or process disabled |
+
+Implementation intent:
+- Each animated decoration sets `process_mode = PROCESS_MODE_DISABLED` when outside the clear zone. On crossing the threshold (agent moves and distance ≤ `VISION_TILE_RADIUS`), `process_mode` is restored to `PROCESS_MODE_INHERIT`.
+- **Memory management**: decorations beyond `FOW_REVEAL_RADIUS` + a small buffer can be freed from the scene tree and re-instantiated from a template when the player approaches. This keeps the active node count low on mobile.
+- The activation sweep runs once per agent move (not every frame) — same event that triggers FOW reveal.
+- Frozen decorations display their **rest pose** (frame 0 or a designated idle frame), so they are visually coherent without being animated.
+
 **Noise propagation:**
 - Each tile has a `noise_cost` (standard floor = 0, metal grating = 2, gravel = 3, broken glass = 4).
 - Each agent move generates noise equal to the destination tile’s `noise_cost`.

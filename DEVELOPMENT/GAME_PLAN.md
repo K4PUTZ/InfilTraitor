@@ -127,17 +127,33 @@ The in-game visibility is rendered by three independent, overlapping systems tha
 
 **FOW reveal shape:** Euclidean disc in tile space (radius = `VISION_TILE_RADIUS` tiles). Projects to a 2:1 ellipse on screen matching the isometric floor plane.
 
-**FOW opacity — graduated rings with geometric progression:**
-- The 10 tiles immediately outside the reveal boundary are drawn with increasing opacity.
-- Formula: `alpha(ring) = FOG_COLOR.a × 0.02 × 50^((ring-1)/9)`
-- This gives a **geometric progression from ≈2% to 100%** — nearly invisible at ring 1, sharply opaque by ring 10.
-- **Per-vertex feathering**: each diamond vertex blends its ring alpha with the alpha of the neighbouring tile in that direction. Revealed neighbours pull the vertex toward transparent; different-ring neighbours blend smoothly. Result: no stair-step artefacts at ring boundaries.
+**FOW opacity — graduated rings with smoothstep ease-out *(updated 2026-05-30):***
+- 12 rings of partial opacity between the reveal boundary and full darkness.
+- Formula: `alpha(ring) = FOG_COLOR.a × t²(3 − 2t)` where `t = ring / 12`
+- Gives a smooth **ease-in/ease-out S-curve from ≈2% (ring 1) to 100% (ring 12)**.
+- **Per-vertex feathering**: each diamond vertex blends its ring alpha with the cardinal neighbour’s alpha. Revealed neighbours pull toward transparent; different-ring neighbours blend smoothly. No stair-step artefacts.
 
 **Distance fog shader parameters (current tuning):**
-- `VISION_TILE_RADIUS = 9` tiles (Euclidean reveal radius)
-- Shader inner clear zone: `radius − 3` tiles from agent
-- Shader outer (full darkness): `radius + 9` tiles from agent
-- The shader gradient therefore extends 9 tiles *past* the FOW reveal boundary, overlapping the partially-transparent FOW rings and merging the two layers into a single continuous fade.
+- `VISION_TILE_RADIUS = 5` tiles — shader clear zone only (independent of FOW)
+- `FOW_REVEAL_RADIUS = 9` tiles — Euclidean reveal radius and camera leash hard limit
+- Shader inner clear zone: `VISION_TILE_RADIUS − 3` tiles from agent
+- Shader outer (full darkness): `VISION_TILE_RADIUS + 9` tiles from agent
+- The gradient extends 9 tiles beyond the shader boundary, overlapping the FOW rings.
+
+**Enemy visibility rule *(locked 2026-05-30):***
+
+The FOW and the vision gradient serve different purposes for enemy rendering:
+
+| Zone | Terrain visible? | Enemy visible? |
+|---|---|---|
+| **Clear zone** (within `VISION_TILE_RADIUS`) | Yes — full detail | **Yes — fully visible** |
+| **Transition zone** (gradient area, beyond clear zone) | Yes — fading | **Fades out and disappears** |
+| **Revealed / explored** (beyond gradient, FOW cleared) | Yes — muted | **No** — last-known position marker only |
+| **Unexplored** (FOW fully dark) | No | No |
+
+- Enemies are visible **only within the clear shader circle** (`VISION_TILE_RADIUS`). Their alpha tracks the inverse of the fog gradient — as the fog becomes denser, the enemy sprite becomes transparent and vanishes.
+- This means the player always knows the *terrain layout* of revealed cells, but only has *live enemy intelligence* within their active sight radius.
+- **Exceptions**: certain gadgets/abilities (periscope, mini-drone, terminal hack) can grant temporary enemy visibility beyond the normal sight radius.
 
 **Enemy positions:**
 - Visible only when within sight range.

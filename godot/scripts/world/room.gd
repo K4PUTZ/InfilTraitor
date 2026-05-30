@@ -51,7 +51,7 @@ const ZOOM_STEP := 0.06
 ## Camera leash: prevents panning beyond the agent's vision radius.
 ## Soft zone = the last CAMERA_SOFT_ZONE_TILES before the hard stop; camera
 ## decelerates through it using a quadratic ease-out.
-const VISION_TILE_RADIUS     := 11     ## vision core; FOW 9-ring gradient starts here
+const VISION_TILE_RADIUS     := 9      ## vision core; FOW 10-ring gradient starts here
 const CAMERA_SOFT_ZONE_TILES := 2      ## tiles of damping before hard stop
 const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
 

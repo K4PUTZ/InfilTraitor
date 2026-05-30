@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-29 (Segment system design locked: 3×3 grid, 9×27 tiles/segment, access points, teleport, fog of war, AP reset; segment prototype implementation started)  
-> **Status:** M1.5 in progress — segment system designed and prototype started; wall generation reset; StructureWallLayer unified; access points implemented  
+> **Last updated:** 2026-05-30 (Three-layer visibility system implemented and tuned: camera leash, isometric distance-fog shader, graduated FOW with geometric-progression opacity and per-vertex feathering; segment dimensions revised to 18×36)  
+> **Status:** M1.5 in progress — segment prototype complete (18×36, access points, crates); full three-layer fog of war system live and tuned  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
@@ -113,7 +113,31 @@ Information asymmetry is the core strategic layer — the player never has compl
 |---|---|
 | **Unexplored** | Never visited. Fully dark overlay. Layout completely unknown. |
 | **Explored** | Visited at least once. Layout visible; enemy positions not updated (last-known only). |
-| **Currently visible** | Within sight radius (default ≤ 5 Manhattan distance from agent). Full live detail. |
+| **Currently visible** | Within sight radius of agent. Full live detail. |
+
+**Implemented three-layer visibility system *(locked 2026-05-30):***
+
+The in-game visibility is rendered by three independent, overlapping systems that together produce a smooth, atmospheric fog with no hard edges:
+
+| Layer | Node | Technique |
+|---|---|---|
+| **1 — Distance fog gradient** | `VisionFogOverlay` (CanvasLayer, always on) | GLSL shader (`vision_fog.gdshader`) draws a radial gradient in screen UV space. Shape is an **isometric 2:1 ellipse** (wider horizontally, matching floor perspective). Fades from transparent at the agent's core to semi-opaque at the FOW boundary and beyond. |
+| **2 — Fog of War polygons** | `FogOfWarOverlay` (Node2D, above floor) | Draws isometric diamond polygons over every unrevealed cell. Revealed state is **persistent per segment** (never re-fogged on re-entry). |
+| **3 — Camera leash** | `room.gd` | Camera is constrained to stay within the vision radius of the agent using a soft zone (quadratic ease-out) + hard limit. Prevents the player from panning beyond their fog boundary. |
+
+**FOW reveal shape:** Euclidean disc in tile space (radius = `VISION_TILE_RADIUS` tiles). Projects to a 2:1 ellipse on screen matching the isometric floor plane.
+
+**FOW opacity — graduated rings with geometric progression:**
+- The 10 tiles immediately outside the reveal boundary are drawn with increasing opacity.
+- Formula: `alpha(ring) = FOG_COLOR.a × 0.02 × 50^((ring-1)/9)`
+- This gives a **geometric progression from ≈2% to 100%** — nearly invisible at ring 1, sharply opaque by ring 10.
+- **Per-vertex feathering**: each diamond vertex blends its ring alpha with the alpha of the neighbouring tile in that direction. Revealed neighbours pull the vertex toward transparent; different-ring neighbours blend smoothly. Result: no stair-step artefacts at ring boundaries.
+
+**Distance fog shader parameters (current tuning):**
+- `VISION_TILE_RADIUS = 9` tiles (Euclidean reveal radius)
+- Shader inner clear zone: `radius − 3` tiles from agent
+- Shader outer (full darkness): `radius + 9` tiles from agent
+- The shader gradient therefore extends 9 tiles *past* the FOW reveal boundary, overlapping the partially-transparent FOW rings and merging the two layers into a single continuous fade.
 
 **Enemy positions:**
 - Visible only when within sight range.
@@ -243,15 +267,16 @@ Zone unlocks are linear (1 → 6) but each zone can be replayed in higher diffic
 
 ---
 
-#### 3.7.6 Segment System — Map Structure *(locked 2026-05-29)*
+#### 3.7.6 Segment System — Map Structure *(locked 2026-05-30)*
 
 All missions use a **segment-based macro structure** instead of an open floor grid.
 
 **Segment dimensions (locked):**
-- W=9, H=27, W+H=36 → **4608 × 2304 px** screen space (2:1 always).
-- Interior playable area: **7 × 25 tiles** (1-tile slab border on all sides).
-- Odd W gives a natural centre column at col 4 (symmetry for default access points).
-- Natural 3×3 internal sub-grid of **3×9-tile zones** (useful for placement and pacing).
+- MAP_SIZE = **18 × 36 tiles** → **2304 × 1152 px** screen space (2:1 cell ratio maintained).
+- Interior playable area: **16 × 34 tiles** (1-tile slab border on all sides).
+- Odd centre column at col 9 (symmetry for default access points).
+- Agent spawn: `Vector2i(9, 34)` — south interior, centred.
+- 7 crates distributed in the interior at authored positions.
 
 **Mission map grid:**
 - Each mission is a **3 × 3 grid of segments** (27 × 81 tiles total).
@@ -424,7 +449,7 @@ Gadgets have **limited charges** per level; charges refill between levels or can
 
 ## 5. Level Design Guidelines
 
-1. **Segment size:** Each segment is **9 × 27 tiles** (odd W gives centre column at col 4; W+H=36 → 4608×2304 px screen space). A mission map is a **3 × 3 grid of segments** (27 × 81 tiles total). Interior playable area per segment: **7 × 25 tiles** (1-tile slab border on all sides).
+1. **Segment size:** Each segment is **18 × 36 tiles** (MAP_SIZE = `Vector2i(18, 36)`). A mission map is a **3 × 3 grid of segments**. Interior playable area per segment: **16 × 34 tiles** (1-tile slab border on all sides).
 2. **Visible area:** Portrait orientation at strategic zoom (~30%) shows roughly 28% of segment width at a time. Players pan freely within the active segment. Adjacent segments display fog of war until visited.
 3. **Critical path:** Every level must have at least one solvable path with base skills.
 4. **Entrance / exit clarity:** Every generated floor must clearly communicate where the player started, where progression is blocked, and where the next-floor exit is located.
@@ -682,7 +707,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 |---|---|---|---|
 | **M0** | Game Plan & documentation | This document ✅ | 2026-02-20 |
 | **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, 55×55 room ✅, AP/turn system ✅, movement overlay ✅, animated movement ✅ | ✅ Complete |
-| **M1.5** | Prototype — tactical UI | Tap-to-select tile, contextual action menu, path preview, 1 AP / 2 AP movement overlays | ⧖ In progress |
+| **M1.5** | Prototype — segment system + visibility | Segment layout builder (18×36, slab border, crates, access points) ✅; three-layer fog of war (distance shader, FOW polygons with geometric-progression rings and per-vertex feathering, camera leash) ✅; tap-to-select tile, path preview, 1AP/2AP zones ✅ | ⧖ In progress — enemy systems + contextual actions pending |
 | **M2** | Prototype — threats & combat | Guard patrols, vision cones, detection meter, enemy AI phase, basic brute-force attack option | TBD |
 | **M2.5** | Prototype — room objectives | Room quest system, reward pickup flow, objective tracker, progression gate to next room/floor | TBD |
 | **M3** | Prototype — procedural floor builder | Room templates, connectors, solvable entrance-to-exit generation, reward / quest placement rules | TBD |

@@ -24,17 +24,19 @@ See `REFERENCES/` for screenshots.
 - Game plan: [GAME_PLAN.md](GAME_PLAN.md)
 - Repo: https://github.com/K4PUTZ/InfilTraitor.git
 
-## Current implementation snapshot (2026-05-26)
+## Current implementation snapshot (2026-05-30)
 
-- **M1.5 is in progress** — the active runtime is now a tactical movement prototype, not just a static debug board
-- **17×17 debug room split into layers** — floor tiles on `FloorLayer`; slabs, walls and crates on `StructureLayer` above the path overlays
-- **Agent + AP slice implemented** — in-engine debug agent, AP label, end-turn button, and auto-end checkbox embedded inside `END`
-- **Movement UX implemented** — 1 AP / 2 AP movement overlay, path preview, blocked border cells, blocked crate cells, and two-tap confirmation on the same tile before movement triggers
-- **Coordinate overlay starts OFF by default** — still available from the `#` HUD button when needed for debugging
+- **M1.5 is in progress** — segment layout, movement, and a full three-layer fog-of-war system are live
+- **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map with a 1-tile slab border, 7 crates, and 2 access points; agent spawns at `Vector2i(9, 34)` (south interior, centred)
+- **Three-layer visibility system implemented and tuned:**
+  - **Camera leash** (`room.gd`) — soft zone (2 tiles, quadratic ease-out) + hard limit at `VISION_TILE_RADIUS × WORLD_TILE_PX`; keeps the view anchored to the agent's knowledge boundary
+  - **Distance fog gradient** (`vision_fog.gdshader` via `VisionFogOverlay` CanvasLayer) — isometric 2:1 ellipse; clear centre at `radius − 3` tiles, dark boundary at `radius + 9` tiles; `VISION_TILE_RADIUS = 9`
+  - **Fog of War polygons** (`fog_of_war_overlay.gd` via `FogOfWarOverlay` Node2D) — persistent reveal per segment (Euclidean disc, radius 9); unrevealed cells drawn as isometric diamonds with **10-ring geometric opacity** (`a(n) = 0.02 × 50^((n-1)/9)`, ≈2%→100%) and **per-vertex feathering** (each vertex blends with its cardinal neighbour's alpha for smooth edges)
+- **Agent + AP slice implemented** — in-engine debug agent, AP label, end-turn button, and auto-end checkbox
+- **Movement UX implemented** — 1 AP / 2 AP movement overlay, path preview, blocked cells, two-tap confirmation
+- **Coordinate overlay** — starts OFF; available from the `#` HUD button for debugging
 - **Camera controls** — pan, wheel zoom, pinch zoom, fullscreen toggle, mobile/desktop viewport toggle
-- **Tile picking stabilized** — 3×3 nearest-neighbour search around `local_to_map`, followed by a strict diamond hit-test so empty space above the board no longer selects cells
-- **Visual/logical alignment compensation** — `VISUAL_GRID_OFFSET` is shared by camera centering, coordinate labels, selection overlay and picking so the rendered board and the logical numbered grid occupy the same place on screen
-- **Current limitations** — movement currently uses a single tween to the destination instead of stepping cell-by-cell along the previewed path; the alignment correction is still runtime-side rather than TileSet-owned
+- **Tile picking stabilized** — 3×3 nearest-neighbour search + strict diamond hit-test
 
 ## Prototype direction
 
@@ -65,24 +67,39 @@ INFILTRAITOR/
 
 See [ASSET_MAP.md](ASSET_MAP.md) for the full tile catalogue and procedural generation guide.
 
-## Current Godot project structure (Alpha 2.2)
+## Current Godot project structure (Alpha 2.5)
 
 ```
 godot/
   project.godot
   scenes/
     game/
-      room.tscn        ← current interactive debug room
+      room.tscn        ← active interactive segment (18×36 tiles)
   scripts/
     game/
-      room.gd                ← room setup, layers, input, selection, movement flow
+      room.gd                ← room setup, input, AP/turn UI, movement flow, fog control
+      room_layout_builder.gd ← segment builder (18×36, slabs, crates, access points)
       agent.gd               ← debug agent node + movement tween
-      turn_manager.gd        ← minimal AP / end-turn controller
+      turn_manager.gd        ← AP / end-turn controller
+      movement_overlay.gd    ← reachable tiles with blocked-cell support
+      path_preview.gd        ← selected-destination path preview
+      selection_overlay.gd   ← selection diamond overlay
+      tile_labels_overlay.gd ← numbered grid overlay (debug)
+    ui/
+      fog_of_war_overlay.gd  ← segment-persistent FOW (diamonds, 10-ring geometric opacity, feathering)
+    tools/
+      build_tileset.gd       ← headless TileSet builder
+  shaders/
+    vision_fog.gdshader      ← isometric 2:1 ellipse distance-fog gradient (always on)
+  resources/
+    tilesets/
+      tileset_blocks.tres    ← generated TileSet resource
+```
       movement_overlay.gd    ← reachable tiles with blocked-cell support
       path_preview.gd        ← selected-destination path preview
       selection_overlay.gd   ← pink selection diamond
       tile_labels_overlay.gd ← numbered grid overlay
-    tools/
+    tools:
       build_tileset.gd       ← headless TileSet builder
   resources/
     tilesets/
@@ -96,7 +113,7 @@ Likely next structural additions during M1.5: contextual action UI, stepwise mov
 
 See [GAME_PLAN.md §11](GAME_PLAN.md) for the full roadmap.
 
-**Next: M1.5** — keep the current tactical slice and add contextual interaction plus stepwise movement execution on top of the stabilized interactive map foundation.
+**M1.5 in progress** — segment layout + three-layer fog of war complete; next: contextual action UI, stepwise movement along path, first enemy placeholders.
 
 ## Contributing
 

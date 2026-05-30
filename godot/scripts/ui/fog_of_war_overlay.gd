@@ -70,12 +70,38 @@ func _fog_alpha_for(cell: Vector2i) -> float:
 func _draw() -> void:
 	if _floor_layer == null:
 		return
+	## Pre-compute alpha for every unrevealed cell so neighbour lookups are O(1).
+	var alpha_map: Dictionary = {}
+	for x: int in range(_room_size.x):
+		for y: int in range(_room_size.y):
+			var cell := Vector2i(x, y)
+			if not _revealed.has(cell):
+				alpha_map[cell] = _fog_alpha_for(cell)
+	## Neighbour offsets that correspond to each diamond vertex:
+	##   top → tile (0,-1), right → tile (+1,0), bottom → tile (0,+1), left → tile (-1,0)
+	const NB := [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
 	for x: int in range(_room_size.x):
 		for y: int in range(_room_size.y):
 			var cell := Vector2i(x, y)
 			if _revealed.has(cell):
 				continue
-			## map_to_local returns the top vertex; add TILE_HALF_H to get the centre.
+			var cell_a: float = alpha_map[cell]
+			## Each vertex alpha = average of this cell and the neighbour in that direction.
+			## Revealed neighbour → alpha 0   → feathered fade into the visible zone.
+			## Same-ring neighbour → same alpha → no seam.
+			## Different-ring     → smooth blend between ring values.
+			var v_colors := PackedColorArray()
+			for nb: Vector2i in NB:
+				var nc := cell + nb
+				var nb_a: float
+				if _revealed.has(nc):
+					nb_a = 0.0
+				elif alpha_map.has(nc):
+					nb_a = alpha_map[nc]
+				else:
+					nb_a = cell_a   ## out-of-bounds: no feather at room edge
+				v_colors.append(Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b,
+						(cell_a + nb_a) * 0.5))
 			var centre: Vector2 = (
 				_floor_layer.map_to_local(cell)
 				+ Vector2(0.0, TILE_HALF_H)
@@ -87,6 +113,4 @@ func _draw() -> void:
 				centre + Vector2(        0.0,  TILE_HALF_H),   ## bottom
 				centre + Vector2(-TILE_HALF_W,         0.0),   ## left
 			])
-			var alpha  := _fog_alpha_for(cell)
-			var colour := Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, alpha)
-			draw_polygon(pts, PackedColorArray([colour]))
+			draw_polygon(pts, v_colors)

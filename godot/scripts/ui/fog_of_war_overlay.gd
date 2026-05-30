@@ -55,15 +55,20 @@ func reset_fog() -> void:
 
 ## Returns the alpha to use when drawing an unrevealed cell, based on the
 ## Chebyshev ring distance to the nearest revealed neighbour.
-## 9 rings at 10 % increments (10 → 90 %), ring 10+ = 100 %.
-## Very smooth 9-tile stepped gradient at the FOW boundary.
+## Geometric progression over 10 rings: a(n) = 0.02 × 50^((n-1)/9)
+##   ring  1 ≈  2 %   ring  6 ≈ 18 %
+##   ring  2 ≈  3 %   ring  7 ≈ 27 %
+##   ring  3 ≈  5 %   ring  8 ≈ 42 %
+##   ring  4 ≈  7 %   ring  9 ≈ 65 %
+##   ring  5 ≈ 11 %   ring 10 = 100 %
+## Very gentle near the boundary, sharply opaque further out.
 func _fog_alpha_for(cell: Vector2i) -> float:
-	for ring: int in range(1, 10):
+	for ring: int in range(1, 11):
 		for dx: int in range(-ring, ring + 1):
 			for dy: int in range(-ring, ring + 1):
 				if maxi(absi(dx), absi(dy)) == ring:
 					if _revealed.has(cell + Vector2i(dx, dy)):
-						return FOG_COLOR.a * (float(ring) * 0.10)
+						return FOG_COLOR.a * pow(50.0, float(ring - 1) / 9.0) * 0.02
 	return FOG_COLOR.a
 
 

@@ -365,12 +365,12 @@ func _update_vision_fog() -> void:
 	var screen_px   := canvas_t * agent_world
 	var screen_uv   := screen_px / vp_size
 	var zoom        := camera.zoom.x
-	## Gradient ends exactly at the FOW reveal boundary (outer_uv) so the hard
-	## polygon edge is hidden behind fully-opaque fog.  The clear inner zone
-	## starts 5 tiles earlier, giving a wide, soft transition.
+	## Gradient: clear zone inside 4 tiles of center, outer boundary extends 5
+	## tiles beyond the FOW reveal so the fog overlaps the partially-transparent
+	## FOW rings and the whole edge dissolves smoothly into darkness.
 	var vision_r_px := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX * zoom
-	var outer_uv    := vision_r_px / vp_size.y
-	var inner_uv    := maxf(0.0, vision_r_px - 7.0 * WORLD_TILE_PX * zoom) / vp_size.y
+	var outer_uv    := (vision_r_px + 5.0 * WORLD_TILE_PX * zoom) / vp_size.y
+	var inner_uv    := maxf(0.0, vision_r_px - 4.0 * WORLD_TILE_PX * zoom) / vp_size.y
 	mat.set_shader_parameter("agent_screen_uv", screen_uv)
 	mat.set_shader_parameter("fog_inner_uv",    inner_uv)
 	mat.set_shader_parameter("fog_outer_uv",    outer_uv)

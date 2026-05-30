@@ -20,7 +20,7 @@ void fragment() {
 	// Correct for non-square viewports so the fog is a circle, not an ellipse.
 	// SCREEN_PIXEL_SIZE = vec2(1/width, 1/height), so y/x = width/height.
 	float aspect = SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x;
-	vec2 d = (SCREEN_UV - agent_screen_uv) * vec2(aspect, 1.0);
+	vec2 d = (SCREEN_UV - agent_screen_uv) * vec2(aspect * 0.5, 1.0);
 	float dist = length(d);
 	float alpha = smoothstep(fog_inner_uv, fog_outer_uv, dist);
 	COLOR = vec4(fog_color.rgb, fog_color.a * alpha);

@@ -55,18 +55,19 @@ func reset_fog() -> void:
 
 ## Returns the alpha to use when drawing an unrevealed cell, based on the
 ## Chebyshev ring distance to the nearest revealed neighbour.
-##   ring 1 (directly adjacent to revealed zone) : 25 % opaque
-##   ring 2                                      : 50 %
-##   ring 3                                      : 75 %
-##   ring 4+                                     : 100 %
-## This produces a 3-tile soft gradient at the boundary (Diablo-style).
+##   ring 1 (directly adjacent to revealed zone) : 20 % opaque
+##   ring 2                                      : 40 %
+##   ring 3                                      : 60 %
+##   ring 4                                      : 80 %
+##   ring 5+                                     : 100 %
+## 5-step gradient gives a smoother FOW edge.
 func _fog_alpha_for(cell: Vector2i) -> float:
-	for ring: int in range(1, 4):
+	for ring: int in range(1, 6):
 		for dx: int in range(-ring, ring + 1):
 			for dy: int in range(-ring, ring + 1):
 				if maxi(absi(dx), absi(dy)) == ring:
 					if _revealed.has(cell + Vector2i(dx, dy)):
-						return FOG_COLOR.a * (float(ring) * 0.25)
+						return FOG_COLOR.a * (float(ring) * 0.20)
 	return FOG_COLOR.a
 
 

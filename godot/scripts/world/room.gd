@@ -16,6 +16,7 @@ const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder
 @onready var btn_numbers:         Button       = $HUD/TopBar/Row/BtnNumbers
 @onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
+@onready var btn_reset:           Button       = $HUD/TopBar/Row/BtnReset
 @onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
 @onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
 @onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
@@ -48,11 +49,13 @@ const ZOOM_MIN  := 0.20
 const ZOOM_MAX  := 1.20
 const ZOOM_STEP := 0.06
 
-## Camera leash: prevents panning beyond the agent's vision radius.
-## Soft zone = the last CAMERA_SOFT_ZONE_TILES before the hard stop; camera
-## decelerates through it using a quadratic ease-out.
-const VISION_TILE_RADIUS     := 9      ## vision core; FOW 10-ring gradient starts here
-const CAMERA_SOFT_ZONE_TILES := 2      ## tiles of damping before hard stop
+## Vision & FOW radii — independent of each other:
+## VISION_TILE_RADIUS  controls only the shader gradient (live clear-circle around agent).
+## FOW_REVEAL_RADIUS   controls how many tiles get permanently revealed each move,
+##                     and is also the hard limit of the camera leash.
+const VISION_TILE_RADIUS := 5      ## shader gradient radius (tiles)
+const FOW_REVEAL_RADIUS  := 9      ## FOW reveal radius + camera leash hard limit (tiles)
+const CAMERA_SOFT_ZONE_TILES := 2  ## tiles of ease-out damping before leash hard stop
 const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
 
 ## Pinch-zoom state (mobile two-finger)
@@ -66,6 +69,7 @@ var _selected_cell: Vector2i = INVALID_CELL
 
 ## Vision bonus added by agent abilities; increases leash radius and fog reveal.
 var vision_bonus_tiles: int = 0
+var _agent_start_cell: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -88,6 +92,7 @@ func _ready() -> void:
 
 	_build_room(layout)
 	var agent_start_cell: Vector2i = layout.get("agent_start_cell", Vector2i.ZERO)
+	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
 
 	## Give overlays their references.
@@ -100,7 +105,7 @@ func _ready() -> void:
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
 	fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
-	fog_of_war.reveal_around(agent_start_cell, VISION_TILE_RADIUS + vision_bonus_tiles)
+	fog_of_war.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w = _room_size.x
@@ -115,6 +120,7 @@ func _ready() -> void:
 	btn_numbers.pressed.connect(_on_btn_numbers)
 	btn_fullscreen.pressed.connect(_on_btn_fullscreen)
 	btn_viewport.pressed.connect(_on_btn_viewport)
+	btn_reset.pressed.connect(_on_btn_reset)
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
 	turn_manager.reset_player_turn()
@@ -146,6 +152,21 @@ func _on_btn_end_turn() -> void:
 		return
 	_pending_auto_end_turn = false
 	turn_manager.end_turn()
+
+
+func _on_btn_reset() -> void:
+	if agent.is_moving:
+		return
+	_pending_auto_end_turn = false
+	agent.set_cell(_agent_start_cell)
+	_selected_cell = _agent_start_cell
+	selection_overlay.set_selected(_agent_start_cell)
+	fog_of_war.reset_fog()
+	fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_center_camera(_agent_start_cell)
+	movement_overlay.clear_overlay()
+	path_preview.clear_path()
+	turn_manager.reset_player_turn()
 
 
 func _on_btn_viewport() -> void:
@@ -185,7 +206,7 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
-	fog_of_war.reveal_around(agent.cell, VISION_TILE_RADIUS + vision_bonus_tiles)
+	fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	if _pending_auto_end_turn:
 		_pending_auto_end_turn = false
 		turn_manager.end_turn()
@@ -379,7 +400,7 @@ func _update_vision_fog() -> void:
 ## Inside the soft zone the camera decelerates (quadratic ease-out);
 ## beyond the hard limit it is clamped to the boundary.
 func _get_leashed_pos(proposed: Vector2) -> Vector2:
-	var hard_radius := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX
+	var hard_radius := float(FOW_REVEAL_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX
 	var soft_radius := hard_radius - float(CAMERA_SOFT_ZONE_TILES) * WORLD_TILE_PX
 	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	var offset      := proposed - agent_world

@@ -28,13 +28,14 @@ func setup(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2
 	queue_redraw()
 
 
-## Reveal every tile within Chebyshev distance `radius` of `center`.
-## Chebyshev gives a square in tile-space that looks roughly circular on screen.
+## Reveal every tile within Euclidean distance `radius` of `center`.
+## Euclidean gives a disc in tile-space that projects to a rounded ellipse on screen.
 func reveal_around(center: Vector2i, radius: int) -> void:
+	var r2 := radius * radius
 	var changed := false
 	for dx: int in range(-radius, radius + 1):
 		for dy: int in range(-radius, radius + 1):
-			if absi(dx) > radius or absi(dy) > radius:
+			if dx * dx + dy * dy > r2:
 				continue
 			var cell := center + Vector2i(dx, dy)
 			if cell.x < 0 or cell.y < 0 or cell.x >= _room_size.x or cell.y >= _room_size.y:

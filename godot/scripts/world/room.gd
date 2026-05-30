@@ -370,7 +370,7 @@ func _update_vision_fog() -> void:
 	## starts 5 tiles earlier, giving a wide, soft transition.
 	var vision_r_px := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX * zoom
 	var outer_uv    := vision_r_px / vp_size.y
-	var inner_uv    := maxf(0.0, vision_r_px - 5.0 * WORLD_TILE_PX * zoom) / vp_size.y
+	var inner_uv    := maxf(0.0, vision_r_px - 7.0 * WORLD_TILE_PX * zoom) / vp_size.y
 	mat.set_shader_parameter("agent_screen_uv", screen_uv)
 	mat.set_shader_parameter("fog_inner_uv",    inner_uv)
 	mat.set_shader_parameter("fog_outer_uv",    outer_uv)

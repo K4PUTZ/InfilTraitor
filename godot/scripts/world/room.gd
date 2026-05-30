@@ -51,7 +51,7 @@ const ZOOM_STEP := 0.06
 ## Camera leash: prevents panning beyond the agent's vision radius.
 ## Soft zone = the last CAMERA_SOFT_ZONE_TILES before the hard stop; camera
 ## decelerates through it using a quadratic ease-out.
-const VISION_TILE_RADIUS     := 7      ## move range (6) + 1 extra scout tile
+const VISION_TILE_RADIUS     := 5      ## tight vision core; wide shader gradient covers the rest
 const CAMERA_SOFT_ZONE_TILES := 2      ## tiles of damping before hard stop
 const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
 
@@ -365,12 +365,11 @@ func _update_vision_fog() -> void:
 	var screen_px   := canvas_t * agent_world
 	var screen_uv   := screen_px / vp_size
 	var zoom        := camera.zoom.x
-	## Gradient: clear zone inside 4 tiles of center, outer boundary extends 5
-	## tiles beyond the FOW reveal so the fog overlaps the partially-transparent
-	## FOW rings and the whole edge dissolves smoothly into darkness.
+	## Gradient: tight clear center (3 tiles), outer boundary pushes 9 tiles
+	## beyond the FOW reveal for a very long, gradual fade into darkness.
 	var vision_r_px := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX * zoom
-	var outer_uv    := (vision_r_px + 5.0 * WORLD_TILE_PX * zoom) / vp_size.y
-	var inner_uv    := maxf(0.0, vision_r_px - 4.0 * WORLD_TILE_PX * zoom) / vp_size.y
+	var outer_uv    := (vision_r_px + 9.0 * WORLD_TILE_PX * zoom) / vp_size.y
+	var inner_uv    := maxf(0.0, vision_r_px - 3.0 * WORLD_TILE_PX * zoom) / vp_size.y
 	mat.set_shader_parameter("agent_screen_uv", screen_uv)
 	mat.set_shader_parameter("fog_inner_uv",    inner_uv)
 	mat.set_shader_parameter("fog_outer_uv",    outer_uv)

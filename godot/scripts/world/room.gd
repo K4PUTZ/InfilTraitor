@@ -17,8 +17,10 @@ const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder
 @onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
 @onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
-@onready var chk_auto_end_turn:   CheckBox     = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
-@onready var btn_end_turn:        Button       = $HUD/TopBar/Row/BtnEndTurn
+@onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
+@onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
+@onready var fog_of_war:          Node2D          = $FogOfWarOverlay
+@onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
 const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 const INVALID_CELL := Vector2i(-9999, -9999)
@@ -46,6 +48,13 @@ const ZOOM_MIN  := 0.20
 const ZOOM_MAX  := 1.20
 const ZOOM_STEP := 0.06
 
+## Camera leash: prevents panning beyond the agent's vision radius.
+## Soft zone = the last CAMERA_SOFT_ZONE_TILES before the hard stop; camera
+## decelerates through it using a quadratic ease-out.
+const VISION_TILE_RADIUS     := 11     ## move range (6) + 5 extra scout tiles
+const CAMERA_SOFT_ZONE_TILES := 2      ## tiles of damping before hard stop
+const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
+
 ## Pinch-zoom state (mobile two-finger)
 var _touches:         Dictionary = {}   ## finger_index → screen position
 var _pinch_last_dist: float      = 0.0
@@ -54,6 +63,9 @@ var _pinch_last_dist: float      = 0.0
 var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
+
+## Vision bonus added by agent abilities; increases leash radius and fog reveal.
+var vision_bonus_tiles: int = 0
 
 
 func _ready() -> void:
@@ -87,6 +99,8 @@ func _ready() -> void:
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
+	fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+	fog_of_war.reveal_around(agent_start_cell, VISION_TILE_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w = _room_size.x
@@ -171,6 +185,7 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
+	fog_of_war.reveal_around(agent.cell, VISION_TILE_RADIUS + vision_bonus_tiles)
 	if _pending_auto_end_turn:
 		_pending_auto_end_turn = false
 		turn_manager.end_turn()
@@ -334,6 +349,49 @@ func _apply_zoom(new_z: float) -> void:
 	camera.zoom = Vector2(new_z, new_z)
 
 
+func _process(_delta: float) -> void:
+	_update_vision_fog()
+
+
+## Update the distance-fog shader uniforms every frame so the gradient tracks
+## the agent's screen position and scales correctly with zoom and viewport size.
+func _update_vision_fog() -> void:
+	var mat := _fog_rect.material as ShaderMaterial
+	if mat == null:
+		return
+	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	var canvas_t    := get_viewport().get_canvas_transform()
+	var vp_size     := get_viewport().get_visible_rect().size
+	var screen_px   := canvas_t * agent_world
+	var screen_uv   := screen_px / vp_size
+	var zoom        := camera.zoom.x
+	## Radii in Y-UV units so they remain constant in world tiles regardless of zoom.
+	var inner_uv    := (float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX * zoom) / vp_size.y
+	var outer_uv    := inner_uv * 1.30
+	mat.set_shader_parameter("agent_screen_uv", screen_uv)
+	mat.set_shader_parameter("fog_inner_uv",    inner_uv)
+	mat.set_shader_parameter("fog_outer_uv",    outer_uv)
+
+
+## Return a camera position constrained to the vision leash around the agent.
+## Inside the soft zone the camera decelerates (quadratic ease-out);
+## beyond the hard limit it is clamped to the boundary.
+func _get_leashed_pos(proposed: Vector2) -> Vector2:
+	var hard_radius := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX
+	var soft_radius := hard_radius - float(CAMERA_SOFT_ZONE_TILES) * WORLD_TILE_PX
+	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	var offset      := proposed - agent_world
+	var dist        := offset.length()
+	if dist <= soft_radius:
+		return proposed
+	if dist >= hard_radius:
+		return agent_world + offset.normalized() * hard_radius
+	## Soft zone: quadratic ease-out — slows as camera approaches the hard limit.
+	var t      := (dist - soft_radius) / (hard_radius - soft_radius)   ## 0..1
+	var damped := soft_radius + (hard_radius - soft_radius) * t * (2.0 - t)
+	return agent_world + offset.normalized() * damped
+
+
 ## Unified input: wheel zoom · pinch zoom · motion drag.
 ## Left mouse button (press/release) lives in _unhandled_input so GUI
 ## controls (Buttons) can consume their clicks before game logic runs.
@@ -385,7 +443,7 @@ func _input(event: InputEvent) -> void:
 			_drag_started = true
 		if _drag_started:
 			var delta := (mm.position - _drag_start_mouse) / camera.zoom.x
-			camera.global_position = _drag_start_cam - delta
+			camera.global_position = _get_leashed_pos(_drag_start_cam - delta)
 			get_viewport().set_input_as_handled()
 		return
 

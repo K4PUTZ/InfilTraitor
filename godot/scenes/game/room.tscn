@@ -7,6 +7,11 @@
 [ext_resource type="Script" path="res://godot/scripts/navigation/movement_overlay.gd" id="5_move"]
 [ext_resource type="Script" path="res://godot/scripts/navigation/path_preview.gd" id="6_path"]
 [ext_resource type="Script" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
+[ext_resource type="Script" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
+[ext_resource type="Shader" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vfog"]
+shader = ExtResource("9_vfog")
 
 [node name="Room" type="Node2D" unique_id=144188552]
 script = ExtResource("1_room")
@@ -37,6 +42,21 @@ script = ExtResource("7_agent")
 
 [node name="TileLabelsOverlay" type="Node2D" parent="." unique_id=657068080]
 script = ExtResource("3_labels")
+
+[node name="FogOfWarOverlay" type="Node2D" parent="." unique_id=1600002001]
+script = ExtResource("8_fow")
+
+[node name="VisionFogOverlay" type="CanvasLayer" parent="." unique_id=1600002002]
+layer = 1
+
+[node name="FogRect" type="ColorRect" parent="VisionFogOverlay" unique_id=1600002003]
+material = SubResource("ShaderMaterial_vfog")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=979929563]
 

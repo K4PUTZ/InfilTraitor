@@ -7,6 +7,10 @@ class_name FogOfWarOverlay
 
 const TILE_HALF_W := 128.0
 const TILE_HALF_H :=  64.0
+## Maximum height of wall/block sprites above the tile origin, measured from the
+## tallest asset in the blocks-prototype pack (wall_E/S, windows = 158 px).
+## This extends the fog hexagon upward so wall faces are fully hidden.
+const WALL_HEIGHT_PX := 160.0
 
 ## Semi-opaque dark colour that hides unrevealed terrain.
 const FOG_COLOR := Color(0.04, 0.04, 0.09, 0.93)
@@ -113,10 +117,27 @@ func _draw() -> void:
 				+ Vector2(0.0, TILE_HALF_H)
 				+ _visual_offset
 			)
-			var pts := PackedVector2Array([
-				centre + Vector2(        0.0, -TILE_HALF_H),   ## top
-				centre + Vector2( TILE_HALF_W,         0.0),   ## right
-				centre + Vector2(        0.0,  TILE_HALF_H),   ## bottom
-				centre + Vector2(-TILE_HALF_W,         0.0),   ## left
+			## 6-vertex hexagon: floor diamond + wall volume above.
+			## Shoulders (right-top / left-top) use the same alpha as the adjacent
+			## floor vertex so the wall face gradient matches the floor fade.
+			var top_c    := v_colors[0]
+			var right_c  := v_colors[1]
+			var bottom_c := v_colors[2]
+			var left_c   := v_colors[3]
+			var v_colors_hex := PackedColorArray([
+				top_c,                                                           ## top-tip
+				Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, right_c.a),       ## right-top
+				right_c,                                                         ## right
+				bottom_c,                                                        ## bottom
+				left_c,                                                          ## left
+				Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, left_c.a),        ## left-top
 			])
-			draw_polygon(pts, v_colors)
+			var pts := PackedVector2Array([
+				centre + Vector2(        0.0, -TILE_HALF_H - WALL_HEIGHT_PX),  ## top-tip
+				centre + Vector2( TILE_HALF_W,              -WALL_HEIGHT_PX),  ## right-top
+				centre + Vector2( TILE_HALF_W,               0.0           ),  ## right
+				centre + Vector2(        0.0,  TILE_HALF_H               ),  ## bottom
+				centre + Vector2(-TILE_HALF_W,               0.0           ),  ## left
+				centre + Vector2(-TILE_HALF_W,              -WALL_HEIGHT_PX),  ## left-top
+			])
+			draw_polygon(pts, v_colors_hex)

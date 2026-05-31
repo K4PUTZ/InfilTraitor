@@ -98,7 +98,10 @@ func _ready() -> void:
 	## Give overlays their references.
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.MOVE_POINTS_PER_AP)
 	movement_overlay.set_blocked_cells(_get_blocked_cells_array())
-	movement_overlay.set_blocked_edges(layout.get("blocked_edges", []))
+	var blocked_edges: Array[Dictionary] = []
+	for e in layout.get("blocked_edges", []):
+		blocked_edges.append(e)
+	movement_overlay.set_blocked_edges(blocked_edges)
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
 	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET

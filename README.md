@@ -20,7 +20,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha Gameplay** — Core movement loop locked: tile-by-tile traversal along the Dijkstra path, progressive fog-of-war reveal per step, static player-controlled camera, and three-layer visibility system fully tuned.
+**Alpha Gameplay** — Core movement loop locked; tile-wall autotile system implemented; three-layer visibility system fully tuned.
 
 | Milestone | Status |
 |---|---|
@@ -41,7 +41,8 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - **Correct isometric tile picking** — 3×3 nearest-neighbour search comparing to visual centres (`map_to_local + Vector2(0,64)`); click any quadrant of any tile, always selects the correct cell
 - **Visual/logical grid alignment stabilized** — shared `VISUAL_GRID_OFFSET` compensation keeps camera centering, coordinate labels, selection outline, and picking aligned to the rendered 512 px tile sprites
 - **Strict diamond hit-test** — clicks outside the tile diamond no longer select cells in the empty area above the board
-- **17×17 tactical debug room** — floor tiles live in `FloorLayer`; border slabs and crates live in `StructureLayer` above the path overlays
+- **18×36 tactical segment** — floor tiles in `FloorLayer`; autotiled border + interior walls in `StructureWallLayer`; crates in `StructureLayer` above path overlays. 1-cell floor apron outside the border so walls sit on ground.
+- **Tile-wall autotile system** — `room_layout_builder.gd` picks `wall_N/S/E/W`, `wallCorner_*`, or `block_N` per cell via three ordered rules: (1) mid-border straight-face override; (2) open-count autotile for corners and L-junctions; (3) end-cap facing for 3-open-side cells. Eliminates T-junction notches and floating cubes at interior wall passage mouths.
 - **Blocking props and blocked border** — crate cells and border cells are inaccessible and excluded from movement range / selection
 - **Step-by-step tile movement** — agent traverses the Dijkstra path cell-by-cell at 0.13 s/tile (TRANS_SINE ease-in/out); snappy tactical feel with no slide
 - **Progressive fog-of-war reveal** — `step_finished` signal emitted on each tile arrival; fog clears as the agent walks, not all at once on arrival
@@ -86,10 +87,12 @@ Current notes:
 
 ### Next up (M1.5 continued)
 
-- Contextual action menu on the second tap — move / interact / wait choices
-- Room shape: corridor + side passages (replace open rectangle)
-- Entrance / exit tiles and first room transition
 - Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
+- Contextual action menu on second tap — move / interact / wait choices
+- Room shape: corridor + side passages (replace open rectangle)
+- Entrance / exit tiles and first segment transition
+- Enemy guard (patrol, vision cone, alert meter) — M2 start
+- Environment theme system (Phase 2): `EnvironmentTheme` resource, `GameContext` autoload, ambient/fog color per zone
 
 ---
 

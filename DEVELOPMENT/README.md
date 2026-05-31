@@ -24,18 +24,23 @@ See `REFERENCES/` for screenshots.
 - Game plan: [GAME_PLAN.md](GAME_PLAN.md)
 - Repo: https://github.com/K4PUTZ/InfilTraitor.git
 
-## Current implementation snapshot (2026-05-30 — Alpha Gameplay)
+## Current implementation snapshot (2026-05-30 — M1.5 in progress)
 
-- **M1.5 in progress** — segment layout, movement, and three-layer fog-of-war live; core movement feel locked as Alpha Gameplay
-- **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map with a 1-tile slab border, 7 crates, and 2 access points; agent spawns at `Vector2i(9, 34)`
+- **M1.5 in progress** — segment layout, movement, tile-wall autotile system, and three-layer fog-of-war live; core movement feel locked as Alpha Gameplay
+- **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map; agent spawns at `Vector2i(9, 34)`; 7 authored crates; 2 access points (north + south)
+- **Tile-wall autotile system locked** — `_pick_wall_tile()` selects from `wall_N/S/E/W`, `wallCorner_*`, and `block_N` per cell via three ordered rules:
+  1. **Mid-border override** — non-corner border cells always get their straight face tile
+  2. **Open-count autotile** — corners and L-junctions derived from open neighbour count
+  3. **End-cap facing** — 3-open-side cells show the face opposite the closed side
+- **Floor apron** — `_build_room()` floors `range(-1, MAP_SIZE.x+1)` × `range(-1, MAP_SIZE.y+1)` so border walls sit on ground, not dark background
 - **Step-by-step movement locked** — `agent.move_along_path(path)` walks the Dijkstra path cell-by-cell at 0.13 s/tile (TRANS_SINE); `step_finished(cell)` emitted per arrival
-- **Progressive FOW reveal** — `_on_agent_step_finished` calls `fog_of_war.reveal_around()` each step; fog opens as the agent walks
-- **Static camera** — player-controlled only (drag + scroll/pinch); does not follow agent during movement; destination must be visible before confirming
-- **Vision fog shader smooth tracking** — `_update_vision_fog()` uses `agent.global_position` so the clear-zone gradient follows the animated position mid-step
+- **Progressive FOW reveal** — `_on_agent_step_finished` calls `fog_of_war.reveal_around()` each step
+- **Static camera** — player-controlled only (drag + scroll/pinch); destination must be visible before confirming
+- **Vision fog shader smooth tracking** — `_update_vision_fog()` uses `agent.global_position` for mid-step smooth gradient
 - **Three-layer visibility system tuned and locked:**
-  - **Camera leash** (`room.gd`) — soft zone (2 tiles, quadratic ease-out) + hard limit at `FOW_REVEAL_RADIUS`; constrains manual panning to the agent's knowledge boundary
-  - **Distance fog gradient** (`vision_fog.gdshader` via `VisionFogOverlay` CanvasLayer) — isometric 2:1 ellipse; `VISION_TILE_RADIUS = 5`
-  - **Fog of War polygons** (`fog_of_war_overlay.gd` via `FogOfWarOverlay` Node2D) — persistent reveal; 12-ring smoothstep opacity + per-vertex feathering
+  - **Camera leash** (`room.gd`) — soft zone (2 tiles) + hard limit at `FOW_REVEAL_RADIUS`
+  - **Distance fog gradient** (`vision_fog.gdshader`) — isometric 2:1 ellipse; `VISION_TILE_RADIUS = 5`
+  - **Fog of War polygons** (`fog_of_war_overlay.gd`) — persistent reveal; 12-ring smoothstep opacity + per-vertex feathering
 - **Agent + AP slice** — draw-based placeholder (diamond + head); AP label, end-turn button, auto-end checkbox
 - **Movement UX** — 1 AP / 2 AP overlay, path preview, two-tap confirmation, blocked cells
 - **Coordinate overlay** — starts OFF; `#` HUD button toggles

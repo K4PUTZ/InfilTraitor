@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-30 (Alpha Gameplay: step-by-step tile movement locked; per-step FOW reveal; static player-controlled camera; vision fog tracks agent.global_position)
-> **Status:** M1.5 in progress — segment prototype complete (18×36); three-layer FOW live; core movement loop (tile-by-tile, progressive reveal, static camera) approved as Alpha Gameplay feel  
+> **Last updated:** 2026-05-30 (Tile-wall autotile system locked; Phase 1 border + end-cap fixes; floor apron; Phase 2 environment/biome hierarchy designed)
+> **Status:** M1.5 in progress — segment prototype (18×36) complete; tile-wall autotile system live; three-layer FOW live; core movement loop approved as Alpha Gameplay feel
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
@@ -353,6 +353,107 @@ All missions use a **segment-based macro structure** instead of an open floor gr
 - **On zone/tile** — triggered when agent enters a specific tile or zone.
 - **On player interaction** — triggered by explicit agent action (examine, hack, talk).
 - All three event types coexist within a single segment.
+
+---
+
+#### 3.7.7 Wall Autotile System *(locked 2026-05-30)*
+
+All wall tiles in a segment are resolved at runtime by `room_layout_builder.gd`'s `_pick_wall_tile()` function. The function inspects the four cardinal neighbours of each wall cell and selects one of the following Kenney blocks-prototype tiles:
+
+| Tile | Usage |
+|---|---|
+| `wall_N / _S / _E / _W` | Single open side (straight wall face) and mid-border cells |
+| `wallCorner_N / _S / _E / _W` | Two adjacent open sides (90° corner junction) |
+| `block_N` | Zero or two opposing open sides; fully enclosed or tunnel positions |
+
+**Three-rule resolution order (applied in sequence):**
+
+**Rule 1 — Mid-border override.** Non-corner border cells are always assigned their straight face tile before any open-count analysis. This eliminates T-junction notches where interior walls join the segment border, and ensures access-point-adjacent cells display a clean straight face instead of a heavy corner block.
+
+| Border position | Assigned tile |
+|---|---|
+| West border (x == 0) | `wall_E` |
+| East border (x == MAP_SIZE.x − 1) | `wall_W` |
+| North border (y == 0) | `wall_S` |
+| South border (y == MAP_SIZE.y − 1) | `wall_N` |
+
+**Rule 2 — Open-count autotile.** Count the number of open (non-wall) cardinal neighbours:
+
+| Open count | Tile selection |
+|---|---|
+| 0 | `block_N` (fully enclosed) |
+| 1 | `wall_<open_dir>` (face toward the open side) |
+| 2 — adjacent directions | `wallCorner_<opposite_corner>` (L-junction) |
+| 2 — opposing directions | `block_N` (tunnel — no exposed face) |
+| 4 | `block_N` (fully isolated island, should not occur in practice) |
+
+**Rule 3 — End-cap facing (3 open sides).** When only one cardinal side is closed, the tile represents the exposed mouth of a wall segment. A `block_N` here renders as a floating full cube; instead, the tile facing the exposed end is used:
+
+| Closed side | Assigned tile |
+|---|---|
+| North | `wall_S` |
+| South | `wall_N` |
+| East | `wall_W` |
+| West | `wall_E` |
+
+Example: cell `(6, 17)` (east end-cap of the left interior wall) has W=wall, N/E/S=floor → closed W → `wall_E` (the east-facing end-cap, visible from the passage).
+
+**Floor apron.** The floor placement loop in `room.gd`'s `_build_room()` extends 1 cell beyond the map boundary in all four directions (`range(-1, MAP_SIZE.x + 1)` × `range(-1, MAP_SIZE.y + 1)`). This creates a single-cell ring of floor tiles outside the border wall ring, grounding their outer faces so they never hover over the dark scene background. Apron cells are unreachable by game logic — the border wall ring blocks all movement paths.
+
+---
+
+#### 3.7.8 Environment Themes & Biome Hierarchy *(designed 2026-05-30 — not yet implemented)*
+
+All visual differentiation between dungeon zones is driven by a **theme resource** applied at room load time. The existing Kenney tile set stays unchanged; variation is achieved purely through **ambient color tinting, fog color, and a subtle screen overlay**.
+
+**Design hierarchy:**
+```
+Dimension → Universe → Galaxy → Planet → Environment
+```
+Each level narrows the context. The terminal node — Environment — selects a specific `EnvironmentTheme` resource that controls room atmosphere. Higher tiers signal harder difficulty through color temperature and saturation.
+
+**Difficulty tiers (planned):**
+
+| Tier | Zone / Environment | Ambient tone | Feel |
+|---|---|---|---|
+| 1 | Corporate HQ | White / neutral | Familiar, corporate, safe |
+| 2 | Research Facility | Cool blue | Clinical, sterile, precise |
+| 3 | Jungle Outpost | Warm green | Organic, humid, concealed |
+| 4 | Arctic Base | Icy blue | Cold, stark, exposed |
+| 5 | Space Station | Dark teal | Isolated, vacuum, hostile |
+| 6 | Underground Bunker | Grey-red | Industrial, grim, final |
+| 7+ | Hell | Bright red | Devilish, oppressive, intense |
+| MAX | Veteran | Burning purple | Expert-only, symbolic mastery |
+
+**Planned `EnvironmentTheme` resource:**
+```gdscript
+class_name EnvironmentTheme extends Resource
+@export var theme_id:                  String
+@export var floor_tile:                String          = "floor_N"
+@export var wall_tile_overrides:       Dictionary      = {}  ## e.g. {"wall_N": "wall_N"}
+@export var ambient_color:             Color           = Color.WHITE   ## CanvasModulate tint
+@export var fog_color:                 Color                           ## vision_fog.gdshader param
+@export var screen_tint:               Color           = Color(0,0,0,0) ## top ColorRect overlay
+@export var crate_variants:            Array[String]
+@export var available_enemy_variants:  Array[String]
+```
+
+**Planned new files:**
+- `godot/scripts/systems/environment_theme.gd` — Resource class above
+- `godot/scripts/systems/game_context.gd` — Autoload storing `dimension`, `universe`, `galaxy`, `planet`, `environment_id`; exposes `func get_theme() → EnvironmentTheme` and signal `theme_changed`
+- `godot/scripts/systems/theme_registry.gd` — loads all `.tres` from `res://godot/resources/themes/`; returns theme by `theme_id`
+- `godot/resources/themes/theme_corporate.tres`, `theme_research.tres`, `theme_hell.tres`, `theme_veteran.tres`, etc.
+
+**Planned modifications to existing files:**
+- `room.gd` — in `_ready()`, call `GameContext.get_theme()` and apply: `ambient_color` to `CanvasModulate` node; `fog_color` into the `ShaderMaterial` parameter of `VisionFogOverlay`; `screen_tint` to a top-layer `ColorRect`
+- `room_layout_builder.gd` — `func build_layout(theme: EnvironmentTheme = null) → Dictionary`; use `theme.floor_tile` if provided, `theme.wall_tile_overrides` to remap autotile names after resolution
+- `room.tscn` — add `CanvasModulate` node (ambient tint) and `CanvasLayer + ColorRect` (screen tint overlay)
+
+**Scope boundary (Phase 2):**
+- No change to game mechanics
+- No new tile sprite assets — color/lighting differentiation only for the foreseeable future
+- No actual roguelite map generation; `GameContext` coordinates set manually during development
+- Enemy and entity variants are declared in `EnvironmentTheme` but not spawned until M2
 
 ---
 
@@ -748,7 +849,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 |---|---|---|---|
 | **M0** | Game Plan & documentation | This document ✅ | 2026-02-20 |
 | **M1** | Prototype — grid + room flow | Godot project ✅, TileMap ✅, 55×55 room ✅, AP/turn system ✅, movement overlay ✅, animated movement ✅ | ✅ Complete |
-| **M1.5** | Prototype — segment system + visibility | Segment layout builder (18×36, slab border, crates, access points) ✅; three-layer fog of war (distance shader, FOW polygons with geometric-progression rings and per-vertex feathering, camera leash) ✅; tap-to-select tile, path preview, 1AP/2AP zones ✅ | ⧖ In progress — enemy systems + contextual actions pending |
+| **M1.5** | Prototype — segment system + visibility | Segment layout builder (18×36, autotile wall system, floor apron, crates, access points) ✅; three-layer fog of war (distance shader, FOW polygons with feathered rings, camera leash) ✅; tap-to-select tile, path preview, 1AP/2AP zones ✅; tile-wall autotile Phase 1 fixes ✅ | ⧖ In progress — enemy systems + contextual actions pending |
 | **M2** | Prototype — threats & combat | Guard patrols, vision cones, detection meter, enemy AI phase, basic brute-force attack option | TBD |
 | **M2.5** | Prototype — room objectives | Room quest system, reward pickup flow, objective tracker, progression gate to next room/floor | TBD |
 | **M3** | Prototype — procedural floor builder | Room templates, connectors, solvable entrance-to-exit generation, reward / quest placement rules | TBD |
@@ -802,6 +903,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 | 2026-05-26 | — | **Alpha 2.1** — stabilized the mismatch between the rendered board and the logical numbered grid. Added a shared runtime visual-offset compensation so camera centering, coordinate labels, selection overlay, and tile picking all reference the same board position. Tightened tile picking to require clicks inside the isometric diamond, eliminating selection in empty space above the board. Swapped the tall debug border blocks for low slabs to improve visual readability while the alignment compensation is in place. |
 | 2026-05-29 | — | **Segment system design locked** (see §3.7.6). Map structure: 3×3 grid of 9×27-tile segments. Interior: 7×25 tiles. Natural 3×3 sub-grid of 3×9-tile zones. Access points: 1 main + 1 secondary (gated) + 1 secret per active border. Teleport: mirrored-offset arrival (exit col C north → arrive col C south of next segment). AP mechanic clarified: no extra cost — arriving on border row costs 1 natural movement tile to reach interior; 2-tile safe zone (border row + first interior tile) guaranteed encounter-free. Full AP reset on segment entry. Camera confined to active segment; fog of war on unvisited. Anti-linear rule: ≥1 critical blocker with unlock in non-adjacent segment. Events: on-entry, on-zone/tile, on-interaction. Code changes: wall generation deleted from `room_layout_builder.gd`; `StructureWallLayer` unified (single layer in `room.gd` + `room.tscn`); `EDGE_ALIGNED_EXCLUSIONS` added to `build_tileset.gd`. Segment prototype: `MAP_SIZE` → `Vector2i(9, 27)`, `AGENT_START_CELL` → `Vector2i(4, 25)`, `ACCESS_POINTS` const + `_add_access_points()` added. Camera now focuses on agent spawn cell. |
 | 2026-05-26 | — | **Alpha 2.2** — advanced into the M1.5 tactical UI slice. Added a debug agent, AP/end-turn control, movement range overlays, selected-destination path preview, two-tap confirmation flow, and an auto-end checkbox inside the `END` button. Introduced blocked crate obstacles and a dedicated structure layer so walls/props render above tactical overlays while the path remains visible only over floor tiles. Set the coordinate overlay to start disabled by default. |
+| 2026-05-30 | — | **Tile-wall autotile system** (see §3.7.7) — replaced the placeholder slab border in `room_layout_builder.gd` with a full autotile system. `_pick_wall_tile()` selects from `wall_*`, `wallCorner_*`, and `block_N` using three ordered rules: (1) mid-border straight-face override, (2) open-count autotile for corners, (3) end-cap facing for 3-open cells. **Phase 1 fixes** (commit `c0c6d19`): Rule 1 eliminates T-junction notches where interior walls at y=17 meet the segment border at x=0 and x=17; Rule 3 fixes end-cap cells at `(6,17)` and `(11,17)` that previously rendered as floating `block_N` cubes. **Floor apron**: `_build_room()` now floors `range(-1, MAP_SIZE.x+1)` × `range(-1, MAP_SIZE.y+1)` so border wall outer faces sit on ground instead of dark background. **Environment/biome hierarchy** designed for Phase 2 — Dimension → Universe → Galaxy → Planet → Environment with 8 difficulty-coded tiers (Corporate → Veteran); see §3.7.8. |
 
 ---
 

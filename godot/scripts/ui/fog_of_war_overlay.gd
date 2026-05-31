@@ -76,18 +76,21 @@ func _fog_alpha_for(cell: Vector2i) -> float:
 func _draw() -> void:
 	if _floor_layer == null:
 		return
-	## Pre-compute alpha for every unrevealed cell so neighbour lookups are O(1).
+	## Pre-compute alpha for every unrevealed cell, including 1-tile virtual ring
+	## outside the room bounds. Those outer cells are never in _revealed, so they
+	## pick up the smoothstep gradient from adjacent revealed inner tiles —
+	## covering wall sprite tops without a hard black border.
 	var alpha_map: Dictionary = {}
-	for x: int in range(_room_size.x):
-		for y: int in range(_room_size.y):
+	for x: int in range(-1, _room_size.x + 1):
+		for y: int in range(-1, _room_size.y + 1):
 			var cell := Vector2i(x, y)
 			if not _revealed.has(cell):
 				alpha_map[cell] = _fog_alpha_for(cell)
 	## Neighbour offsets that correspond to each diamond vertex:
 	##   top → tile (0,-1), right → tile (+1,0), bottom → tile (0,+1), left → tile (-1,0)
 	const NB := [Vector2i(0,-1), Vector2i(1,0), Vector2i(0,1), Vector2i(-1,0)]
-	for x: int in range(_room_size.x):
-		for y: int in range(_room_size.y):
+	for x: int in range(-1, _room_size.x + 1):
+		for y: int in range(-1, _room_size.y + 1):
 			var cell := Vector2i(x, y)
 			if _revealed.has(cell):
 				continue
@@ -105,7 +108,7 @@ func _draw() -> void:
 				elif alpha_map.has(nc):
 					nb_a = alpha_map[nc]
 				else:
-					nb_a = cell_a   ## out-of-bounds: no feather at room edge
+					nb_a = cell_a   ## >1 tile outside room: no feather
 				v_colors.append(Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b,
 						(cell_a + nb_a) * 0.5))
 			var centre: Vector2 = (
@@ -120,21 +123,3 @@ func _draw() -> void:
 				centre + Vector2(-TILE_HALF_W,         0.0),   ## left
 			])
 			draw_polygon(pts, v_colors)
-	## 1-tile border outside the room at full opacity.
-	## These virtual tiles cover wall sprite tops that extend above the floor footprint.
-	var border_c := PackedColorArray([FOG_COLOR, FOG_COLOR, FOG_COLOR, FOG_COLOR])
-	for x: int in range(-1, _room_size.x + 1):
-		for y: int in range(-1, _room_size.y + 1):
-			if x >= 0 and x < _room_size.x and y >= 0 and y < _room_size.y:
-				continue  ## inner room — already drawn
-			var bc: Vector2 = (
-				_floor_layer.map_to_local(Vector2i(x, y))
-				+ Vector2(0.0, TILE_HALF_H)
-				+ _visual_offset
-			)
-			draw_polygon(PackedVector2Array([
-				bc + Vector2(        0.0, -TILE_HALF_H),
-				bc + Vector2( TILE_HALF_W,         0.0),
-				bc + Vector2(        0.0,  TILE_HALF_H),
-				bc + Vector2(-TILE_HALF_W,         0.0),
-			]), border_c)

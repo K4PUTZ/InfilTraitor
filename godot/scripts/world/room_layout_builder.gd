@@ -8,7 +8,7 @@ const MAP_SIZE         := Vector2i(18, 36)
 const AGENT_START_CELL := Vector2i(9, 34)   ## South interior centre
 const FLOOR_TILE       := "floor_SE"
 
-const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_WS", "crate_WN", "crate_NE"]
+const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_SW", "crate_NW", "crate_NE"]
 const CRATE_CELLS: Array[Vector2i] = [
 	Vector2i( 4,  5),
 	Vector2i(13,  5),

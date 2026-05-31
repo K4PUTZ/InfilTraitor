@@ -143,10 +143,10 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 	## out-of-bounds), so open_count = 0 → block_N without this override.
 	## Tile chosen as if the interior directions were the two open sides, keeping
 	## the mapping consistent with Rule 2's corner logic.
-	if on_west  and on_north: return "wallCorner_N"   ## NW corner — rotated 90°
-	if on_east  and on_north: return "wallCorner_E"   ## NE corner — rotated 90°
-	if on_west  and on_south: return "wallCorner_W"   ## SW corner — rotated 90°
-	if on_east  and on_south: return "wallCorner_S"   ## SE corner — rotated 90°
+	if on_west  and on_north: return "wallCorner_S"   ## NW corner — rotated -90°
+	if on_east  and on_north: return "wallCorner_W"   ## NE corner — rotated -90°
+	if on_west  and on_south: return "wallCorner_E"   ## SW corner — rotated -90°
+	if on_east  and on_south: return "wallCorner_N"   ## SE corner — rotated -90°
 
 	## ── Rule 1: mid-border override ─────────────────────────────────────────
 	## Non-corner border cells always get their straight face tile regardless of

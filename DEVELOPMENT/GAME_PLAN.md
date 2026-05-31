@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-30 (Alpha FOW milestone: three-layer visibility tuned and locked — 12-ring smoothstep, split radii, wall-sprite alignment via virtual outer ring, scene clear color; animated decoration and enemy visibility rules locked)  
-> **Status:** M1.5 in progress — segment prototype complete (18×36, access points, crates); Alpha FOW fully live and approved  
+> **Last updated:** 2026-05-30 (Alpha Gameplay: step-by-step tile movement locked; per-step FOW reveal; static player-controlled camera; vision fog tracks agent.global_position)
+> **Status:** M1.5 in progress — segment prototype complete (18×36); three-layer FOW live; core movement loop (tile-by-tile, progressive reveal, static camera) approved as Alpha Gameplay feel  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 

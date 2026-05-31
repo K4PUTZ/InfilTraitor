@@ -24,17 +24,21 @@ See `REFERENCES/` for screenshots.
 - Game plan: [GAME_PLAN.md](GAME_PLAN.md)
 - Repo: https://github.com/K4PUTZ/InfilTraitor.git
 
-## Current implementation snapshot (2026-05-30)
+## Current implementation snapshot (2026-05-30 — Alpha Gameplay)
 
-- **M1.5 is in progress** — segment layout, movement, and a full three-layer fog-of-war system are live
-- **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map with a 1-tile slab border, 7 crates, and 2 access points; agent spawns at `Vector2i(9, 34)` (south interior, centred)
-- **Three-layer visibility system implemented and tuned:**
-  - **Camera leash** (`room.gd`) — soft zone (2 tiles, quadratic ease-out) + hard limit at `VISION_TILE_RADIUS × WORLD_TILE_PX`; keeps the view anchored to the agent's knowledge boundary
-  - **Distance fog gradient** (`vision_fog.gdshader` via `VisionFogOverlay` CanvasLayer) — isometric 2:1 ellipse; clear centre at `radius − 3` tiles, dark boundary at `radius + 9` tiles; `VISION_TILE_RADIUS = 9`
-  - **Fog of War polygons** (`fog_of_war_overlay.gd` via `FogOfWarOverlay` Node2D) — persistent reveal per segment (Euclidean disc, radius 9); unrevealed cells drawn as isometric diamonds with **10-ring geometric opacity** (`a(n) = 0.02 × 50^((n-1)/9)`, ≈2%→100%) and **per-vertex feathering** (each vertex blends with its cardinal neighbour's alpha for smooth edges)
-- **Agent + AP slice implemented** — in-engine debug agent, AP label, end-turn button, and auto-end checkbox
-- **Movement UX implemented** — 1 AP / 2 AP movement overlay, path preview, blocked cells, two-tap confirmation
-- **Coordinate overlay** — starts OFF; available from the `#` HUD button for debugging
+- **M1.5 in progress** — segment layout, movement, and three-layer fog-of-war live; core movement feel locked as Alpha Gameplay
+- **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map with a 1-tile slab border, 7 crates, and 2 access points; agent spawns at `Vector2i(9, 34)`
+- **Step-by-step movement locked** — `agent.move_along_path(path)` walks the Dijkstra path cell-by-cell at 0.13 s/tile (TRANS_SINE); `step_finished(cell)` emitted per arrival
+- **Progressive FOW reveal** — `_on_agent_step_finished` calls `fog_of_war.reveal_around()` each step; fog opens as the agent walks
+- **Static camera** — player-controlled only (drag + scroll/pinch); does not follow agent during movement; destination must be visible before confirming
+- **Vision fog shader smooth tracking** — `_update_vision_fog()` uses `agent.global_position` so the clear-zone gradient follows the animated position mid-step
+- **Three-layer visibility system tuned and locked:**
+  - **Camera leash** (`room.gd`) — soft zone (2 tiles, quadratic ease-out) + hard limit at `FOW_REVEAL_RADIUS`; constrains manual panning to the agent's knowledge boundary
+  - **Distance fog gradient** (`vision_fog.gdshader` via `VisionFogOverlay` CanvasLayer) — isometric 2:1 ellipse; `VISION_TILE_RADIUS = 5`
+  - **Fog of War polygons** (`fog_of_war_overlay.gd` via `FogOfWarOverlay` Node2D) — persistent reveal; 12-ring smoothstep opacity + per-vertex feathering
+- **Agent + AP slice** — draw-based placeholder (diamond + head); AP label, end-turn button, auto-end checkbox
+- **Movement UX** — 1 AP / 2 AP overlay, path preview, two-tap confirmation, blocked cells
+- **Coordinate overlay** — starts OFF; `#` HUD button toggles
 - **Camera controls** — pan, wheel zoom, pinch zoom, fullscreen toggle, mobile/desktop viewport toggle
 - **Tile picking stabilized** — 3×3 nearest-neighbour search + strict diamond hit-test
 

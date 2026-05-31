@@ -20,14 +20,14 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha 2.2** — Tactical movement prototype on top of the stabilized room rewrite: agent, AP, movement overlays, path preview, structure layer, obstacles, and two-tap movement confirmation.
+**Alpha Gameplay** — Core movement loop locked: tile-by-tile traversal along the Dijkstra path, progressive fog-of-war reveal per step, static player-controlled camera, and three-layer visibility system fully tuned.
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
-| M1.5 — Tactical UI (tap-to-select, path preview) | ⧖ In progress |
+| M1.5 — Tactical UI + Alpha Gameplay feel | ⧖ In progress |
 | M2 — Threats & combat (guards, detection) | |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
@@ -35,7 +35,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M6 — Content expansion | |
 | M7 — Polish & launch | |
 
-### Alpha 2.2 — what's working (2026-05-26)
+### Alpha Gameplay — what's working (2026-05-30)
 
 - **Complete room rewrite** — deleted all M1 scripts/scenes; rebuilt from scratch with a clean 3-file architecture
 - **Correct isometric tile picking** — 3×3 nearest-neighbour search comparing to visual centres (`map_to_local + Vector2(0,64)`); click any quadrant of any tile, always selects the correct cell
@@ -43,10 +43,13 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - **Strict diamond hit-test** — clicks outside the tile diamond no longer select cells in the empty area above the board
 - **17×17 tactical debug room** — floor tiles live in `FloorLayer`; border slabs and crates live in `StructureLayer` above the path overlays
 - **Blocking props and blocked border** — crate cells and border cells are inaccessible and excluded from movement range / selection
-- **Debug agent on grid** — lightweight in-engine agent node with 1.0 s movement tween to the chosen destination cell
+- **Step-by-step tile movement** — agent traverses the Dijkstra path cell-by-cell at 0.13 s/tile (TRANS_SINE ease-in/out); snappy tactical feel with no slide
+- **Progressive fog-of-war reveal** — `step_finished` signal emitted on each tile arrival; fog clears as the agent walks, not all at once on arrival
+- **Static camera** — camera is fully player-controlled (drag to pan, scroll/pinch to zoom); not locked to the agent during movement; destination tile must be visible before confirming a move
+- **Vision fog shader tracks agent in real time** — gradient uses `agent.global_position` so the clear zone follows the animated sprite smoothly mid-step
 - **2 AP movement prototype** — AP label, manual `END` button, and optional auto-end checkbox inside the `END` control
 - **Movement range overlay** — reachable 1 AP / 2 AP bands recomputed from the agent cell with blocked cells respected
-- **Path preview and two-tap confirmation** — first tap selects a destination tile, second tap on the same tile commits movement or interaction
+- **Path preview and two-tap confirmation** — first tap selects a destination tile, second tap on the same tile commits movement
 - **Pink diamond selection outline** — `SelectionOverlay` draws in world space, zero lag
 - **Camera pan** — left-drag with threshold (> 8 px = pan, short release = tile select)
 - **Mouse-wheel zoom** — scroll up/down ±0.06 per tick, clamped 0.20–1.20
@@ -59,8 +62,8 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - **Default launch in desktop 1280×720**
 
 Current notes:
-- Movement currently resolves as a single tween to the chosen destination cell, not a step-by-step traversal along the previewed path.
-- The visual alignment correction still lives in runtime scripts for the debug room; if generalized later, it should move into TileSet generation so the compensation is owned by the asset pipeline rather than the scene controller.
+- Agent is still a draw-based placeholder (diamond + head polygon); character sprites come after the gameplay feel is locked.
+- The visual alignment correction lives in runtime scripts; if generalized later it should move into TileSet generation.
 
 ### Alpha 1 — historical snapshot (superseded by the M1-rewrite)
 
@@ -81,12 +84,12 @@ Current notes:
 - 9×9 test room rendered from name-based tile placement (`room.gd`)
 - TileRegistry: name → source_id lookup (auto-generated)
 
-### Next up (M1.5)
+### Next up (M1.5 continued)
 
-- Stepwise movement along the previewed path instead of a single destination tween
-- Contextual action menu on the second tap for move / interact / wait choices
+- Contextual action menu on the second tap — move / interact / wait choices
 - Room shape: corridor + side passages (replace open rectangle)
-- Entrance / exit tiles and room transitions
+- Entrance / exit tiles and first room transition
+- Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
 
 ---
 

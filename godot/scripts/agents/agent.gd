@@ -1,9 +1,10 @@
 extends Node2D
 class_name DebugAgent
-## Lightweight debug agent for the M1.5 tactical UI slice.
-## Owns its grid cell, converts cell → world position, and animates movement.
+## Lightweight debug agent — draw-based placeholder (no sprites yet).
+## Owns its grid cell, converts cell → world position, animates step-by-step.
 
 signal move_started(from_cell: Vector2i, to_cell: Vector2i)
+signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
 
 var floor_layer: TileMapLayer = null
@@ -12,12 +13,15 @@ var cell: Vector2i = Vector2i.ZERO
 var is_moving: bool = false
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
-const MOVE_DURATION := 1.0
+## Duration per tile step — snappy tactical feel.
+const STEP_DURATION := 0.13
 
 const COLOR_BODY := Color(0.16, 0.78, 0.32, 1.0)
 const COLOR_BODY_DARK := Color(0.07, 0.42, 0.18, 1.0)
 const COLOR_HEAD := Color(0.84, 0.96, 0.88, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
+
+var _path_queue: Array[Vector2i] = []
 
 
 func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:
@@ -32,24 +36,37 @@ func set_cell(new_cell: Vector2i) -> void:
 	queue_redraw()
 
 
-func move_to_cell(new_cell: Vector2i, duration: float = MOVE_DURATION) -> Tween:
-	var from_cell := cell
-	cell = new_cell
+## Animate the agent along every cell in `path` (must include the start cell).
+## Emits step_finished(cell) on each arrival; move_finished(cell) at the end.
+func move_along_path(path: Array[Vector2i]) -> void:
+	if path.size() < 2:
+		return
 	is_moving = true
-	move_started.emit(from_cell, new_cell)
+	move_started.emit(path[0], path.back())
+	_path_queue = path.duplicate()
+	_path_queue.pop_front()  ## already at path[0] — skip it
+	_step_next()
+
+
+func _step_next() -> void:
+	if _path_queue.is_empty():
+		is_moving = false
+		move_finished.emit(cell)
+		queue_redraw()
+		return
+
+	var next_cell: Vector2i = _path_queue.pop_front()
+	cell = next_cell  ## logical cell advances immediately
 
 	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "position", _cell_to_world(new_cell), duration)
-	tween.finished.connect(_finish_move)
-	return tween
-
-
-func _finish_move() -> void:
-	is_moving = false
-	move_finished.emit(cell)
-	queue_redraw()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(self, "position", _cell_to_world(next_cell), STEP_DURATION)
+	tween.finished.connect(func() -> void:
+		step_finished.emit(next_cell)
+		queue_redraw()
+		_step_next()
+	)
 
 
 func _cell_to_world(map_cell: Vector2i) -> Vector2:

@@ -10,7 +10,7 @@ const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
-@onready var agent = $Agent
+@onready var agent:               DebugAgent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
 @onready var camera:              Camera2D     = $Camera2D
 @onready var btn_numbers:         Button       = $HUD/TopBar/Row/BtnNumbers
@@ -115,6 +115,7 @@ func _ready() -> void:
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
 	agent.move_started.connect(_on_agent_move_started)
+	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
 	btn_end_turn.pressed.connect(_on_btn_end_turn)
 	btn_numbers.pressed.connect(_on_btn_numbers)
@@ -203,10 +204,13 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 	path_preview.clear_path()
 
 
+func _on_agent_step_finished(step_cell: Vector2i) -> void:
+	fog_of_war.reveal_around(step_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+
+
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
-	fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	if _pending_auto_end_turn:
 		_pending_auto_end_turn = false
 		turn_manager.end_turn()
@@ -272,12 +276,16 @@ func _try_move_to(cell: Vector2i) -> bool:
 		return false
 
 	var path_cost: int = movement_overlay.get_cost(cell)
+	## Build path before spending AP — spend triggers ap_changed → rebuild → clears _costs.
+	var path: Array[Vector2i] = movement_overlay.build_path_to(cell)
+	if path.size() < 2:
+		return false
 	if not turn_manager.spend_for_path_cost(path_cost):
 		return false
 
 	_selected_cell = cell
 	_pending_auto_end_turn = chk_auto_end_turn.button_pressed and int(turn_manager.current_ap) <= 0
-	agent.move_to_cell(cell)
+	agent.move_along_path(path)
 	return true
 
 
@@ -370,7 +378,7 @@ func _apply_zoom(new_z: float) -> void:
 	camera.zoom = Vector2(new_z, new_z)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_vision_fog()
 
 
@@ -380,7 +388,8 @@ func _update_vision_fog() -> void:
 	var mat := _fog_rect.material as ShaderMaterial
 	if mat == null:
 		return
-	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	## Use global_position so the gradient tracks the visual agent during step animation.
+	var agent_world := agent.global_position
 	var canvas_t    := get_viewport().get_canvas_transform()
 	var vp_size     := get_viewport().get_visible_rect().size
 	var screen_px   := canvas_t * agent_world

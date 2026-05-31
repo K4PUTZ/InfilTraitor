@@ -4,19 +4,18 @@ extends RefCounted
 ## Interior: 16×34 tiles. Border: 1 tile wide on all sides.
 ## Access points replace border tiles with passable floor.
 ##
-## Autotile rule (from Kenney Information.png):
-##   N = top-right vertex, E = bottom-right, S = bottom-left, W = top-left.
-##   Camera is at position N (top-right), looking inward.
+## Autotile rule (project screen-space convention):
+##   NE = top-right, SE = bottom-right, WS = bottom-left, WN = top-left.
 ##   Suffix = direction of the open (interior/floor) neighbour:
-##     open to N → wall_N   open to S → wall_S
-##     open to E → wall_E   open to W → wall_W
-##   Two adjacent open dirs → wallCorner; opposite/3+ open dirs → block_N.
+##     open to N → wall_SE   open to S → wall_WN
+##     open to E → wall_WS   open to W → wall_NE
+##   Two adjacent open dirs → wallCorner; opposite/3+ open dirs → block_SE.
 
 const MAP_SIZE         := Vector2i(18, 36)
 const AGENT_START_CELL := Vector2i(9, 34)   ## South interior centre
-const FLOOR_TILE       := "floor_N"
+const FLOOR_TILE       := "floor_SE"
 
-const CRATE_VARIANTS: Array[String] = ["crate_N", "crate_E", "crate_S", "crate_W"]
+const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_WS", "crate_WN", "crate_NE"]
 const CRATE_CELLS: Array[Vector2i] = [
 	Vector2i( 4,  5),
 	Vector2i(13,  5),
@@ -162,18 +161,18 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 	## straight wall tile that caps its border wall cleanly:
 	##   N corners → wall_S  (south face, matching north border row)
 	##   S corners → wall_N  (north face, matching south border row)
-	if on_west  and on_north: return "wall_S"   ## NW actual corner → N border cap
-	if on_east  and on_north: return "wall_S"   ## NE actual corner → N border cap
-	if on_west  and on_south: return "wall_N"   ## SW actual corner → S border cap
-	if on_east  and on_south: return "wall_N"   ## SE actual corner → S border cap
+	if on_west  and on_north: return "wall_WN"   ## NW actual corner → N border cap
+	if on_east  and on_north: return "wall_WN"   ## NE actual corner → N border cap
+	if on_west  and on_south: return "wall_SE"   ## SW actual corner → S border cap
+	if on_east  and on_south: return "wall_SE"   ## SE actual corner → S border cap
 
 	## ── Rule 1: mid-border override ─────────────────────────────────────────
 	## Non-corner border cells always get their straight face tile regardless of
 	## interior neighbours — prevents T-junction notches at the border.
-	if on_west  and not on_north and not on_south: return "wall_E"
-	if on_east  and not on_north and not on_south: return "wall_W"
-	if on_north and not on_west  and not on_east:  return "wall_S"
-	if on_south and not on_west  and not on_east:  return "wall_N"
+	if on_west  and not on_north and not on_south: return "wall_WS"
+	if on_east  and not on_north and not on_south: return "wall_NE"
+	if on_north and not on_west  and not on_east:  return "wall_WN"
+	if on_south and not on_west  and not on_east:  return "wall_SE"
 
 	## ── Rule 2: open-count autotile ─────────────────────────────────────────
 	var open_n := not _solid(cell + Vector2i( 0, -1), wall_map)
@@ -186,32 +185,32 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 	match open_count:
 		0:
 			## X-junction or fully enclosed — no tile in the Kenney pack covers this.
-			return "block_N"
+			return "block_SE"
 		1:
 			## T-junction / single face — wall faces the one open (floor) side.
-			if open_n: return "wall_N"
-			if open_s: return "wall_S"
-			if open_e: return "wall_E"
-			return "wall_W"
+			if open_n: return "wall_SE"
+			if open_s: return "wall_WN"
+			if open_e: return "wall_WS"
+			return "wall_NE"
 		2:
 			## L-junction (adjacent open) → corner; straight (opposing open) → block.
 			## Suffix = open interior quadrant; same -90° calibration as Rule 0.
-			if open_n and open_e: return "wallCorner_E"   ## interior toward NE
-			if open_n and open_w: return "wallCorner_N"   ## interior toward NW
-			if open_s and open_e: return "wallCorner_S"   ## interior toward SE
-			if open_s and open_w: return "wallCorner_W"   ## interior toward SW
-			return "block_N"   ## N+S or E+W — straight wall, both sides exposed
+			if open_n and open_e: return "wallCorner_WS"   ## interior toward NE
+			if open_n and open_w: return "wallCorner_SE"   ## interior toward NW
+			if open_s and open_e: return "wallCorner_WN"   ## interior toward SE
+			if open_s and open_w: return "wallCorner_NE"   ## interior toward SW
+			return "block_SE"   ## N+S or E+W — straight wall, both sides exposed
 		3:
 			## ── Rule 3: passage end-cap ────────────────────────────────────
 			## Three sides open; the one closed side continues the wall run.
 			## Show the face pointing opposite to the wall connection.
-			if not open_n: return "wall_S"   ## wall continues N → end-cap faces S
-			if not open_s: return "wall_N"   ## wall continues S → end-cap faces N
-			if not open_e: return "wall_W"   ## wall continues E → end-cap faces W
-			return "wall_E"                  ## wall continues W → end-cap faces E
+			if not open_n: return "wall_WN"   ## wall continues N → end-cap faces S
+			if not open_s: return "wall_SE"   ## wall continues S → end-cap faces N
+			if not open_e: return "wall_NE"   ## wall continues E → end-cap faces W
+			return "wall_WS"                  ## wall continues W → end-cap faces E
 		_:
 			## 4 open sides — isolated tile, should not occur in authored layouts.
-			return "block_N"
+			return "block_SE"
 
 
 func _solid(cell: Vector2i, wall_map: Dictionary) -> bool:

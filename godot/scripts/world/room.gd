@@ -317,7 +317,7 @@ func _build_room(layout: Dictionary) -> void:
 	structure_wall_layer.clear()
 	structure_layer.clear()
 
-	var floor_tile_name := String(layout.get("floor_tile_name", "floor_N"))
+	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
 	## Extend floor 1 cell beyond the map boundary so the outer faces of border
 	## walls sit on ground instead of floating over dark background.
 	for x in range(-1, _room_size.x + 1):

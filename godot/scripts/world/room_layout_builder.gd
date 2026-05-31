@@ -110,10 +110,26 @@ func _collect_crates(crate_map: Dictionary, blocked_map: Dictionary) -> void:
 
 
 ## ─── autotile ───────────────────────────────────────────────────────────────
-## Suffix = direction of the open (walkable-floor) neighbour.
-## Cells outside the map boundary are treated as solid (not open).
+## Special rules applied in order:
+##   1. Mid-border override — non-corner border cells always get their straight
+##      face tile, regardless of interior connections.  Prevents T-junction notch
+##      where an interior wall abuts the border.
+##   2. Open-count rules — 0/1/2/3/4 open neighbours → tile variant.
+##   3. 3-open end-cap rule — face points *opposite* to the single closed side;
+##      this is the exposed end-cap the player sees from the open passage.
 
 func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
+	## ── Rule 1: mid-border override ─────────────────────────────────────────
+	var on_west  := cell.x == 0
+	var on_east  := cell.x == MAP_SIZE.x - 1
+	var on_north := cell.y == 0
+	var on_south := cell.y == MAP_SIZE.y - 1
+	if on_west  and not on_north and not on_south: return "wall_E"
+	if on_east  and not on_north and not on_south: return "wall_W"
+	if on_north and not on_west  and not on_east:  return "wall_S"
+	if on_south and not on_west  and not on_east:  return "wall_N"
+
+	## ── Rule 2: open-count autotile ─────────────────────────────────────────
 	var open_n := not _solid(cell + Vector2i( 0, -1), wall_map)
 	var open_s := not _solid(cell + Vector2i( 0,  1), wall_map)
 	var open_e := not _solid(cell + Vector2i( 1,  0), wall_map)
@@ -135,9 +151,17 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 			if open_n and open_w: return "wallCorner_E"
 			if open_s and open_e: return "wallCorner_W"
 			if open_s and open_w: return "wallCorner_N"
-			return "block_N"   ## open_n+open_s or open_e+open_w (thin wall, both sides exposed)
+			return "block_N"   ## N+S or E+W — thin wall, both sides exposed
+		3:
+			## ── Rule 3: wall end-cap ────────────────────────────────────────
+			## Single closed side connects to the rest of the wall segment.
+			## Return the face pointing opposite to that closed side.
+			if not open_n: return "wall_S"   ## wall continues N → end-cap faces S
+			if not open_s: return "wall_N"   ## wall continues S → end-cap faces N
+			if not open_e: return "wall_W"   ## wall continues E → end-cap faces W
+			return "wall_E"                  ## wall continues W → end-cap faces E
 		_:
-			return "block_N"   ## 3+ open sides — wall cap or isolated tile
+			return "block_N"   ## 4 open sides — isolated tile
 
 
 func _solid(cell: Vector2i, wall_map: Dictionary) -> bool:

@@ -42,6 +42,17 @@ const INTERIOR_WALL_CELLS: Array[Vector2i] = [
 	Vector2i(14, 17), Vector2i(15, 17), Vector2i(16, 17),
 ]
 
+## Inner corner cells — one step diagonally inside each map corner.
+## These receive the wallCorner tile via Rule 2; the actual border corner cell
+## gets a straight wall tile (Rule 0) so the corner assembly looks like:
+##   [REPEAT border wall] [wallCorner inner] [REPEAT border wall]
+const CORNER_INNER_CELLS: Array[Vector2i] = [
+	Vector2i( 1,  1),   ## NW inner corner
+	Vector2i(16,  1),   ## NE inner corner
+	Vector2i( 1, 34),   ## SW inner corner
+	Vector2i(16, 34),   ## SE inner corner
+]
+
 
 func build_layout() -> Dictionary:
 	## wall_map: all solid wall cells (border + interior walls).
@@ -54,6 +65,7 @@ func build_layout() -> Dictionary:
 	_collect_border_walls(wall_map, blocked_map)
 	_open_access_points(wall_map, blocked_map)
 	_collect_interior_walls(wall_map, blocked_map)
+	_collect_corner_inners(wall_map, blocked_map)
 	_collect_crates(crate_map, blocked_map)
 
 	## Autotile: pick the correct Kenney wall variant for each wall cell.
@@ -100,6 +112,12 @@ func _collect_interior_walls(wall_map: Dictionary, blocked_map: Dictionary) -> v
 		blocked_map[cell] = true
 
 
+func _collect_corner_inners(wall_map: Dictionary, blocked_map: Dictionary) -> void:
+	for cell: Vector2i in CORNER_INNER_CELLS:
+		wall_map[cell] = true
+		blocked_map[cell] = true
+
+
 func _collect_crates(crate_map: Dictionary, blocked_map: Dictionary) -> void:
 	for i in range(CRATE_CELLS.size()):
 		var cell: Vector2i = CRATE_CELLS[i]
@@ -139,14 +157,15 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 	var on_south := cell.y == MAP_SIZE.y - 1
 
 	## ── Rule 0: map corners ─────────────────────────────────────────────────
-	## All 4 neighbours of a map-corner cell are solid (adjacent border walls +
-	## out-of-bounds), so open_count = 0 → block_N without this override.
-	## Tile chosen as if the interior directions were the two open sides, keeping
-	## the mapping consistent with Rule 2's corner logic.
-	if on_west  and on_north: return "wallCorner_S"   ## NW corner — rotated -90°
-	if on_east  and on_north: return "wallCorner_W"   ## NE corner — rotated -90°
-	if on_west  and on_south: return "wallCorner_E"   ## SW corner — rotated -90°
-	if on_east  and on_south: return "wallCorner_N"   ## SE corner — rotated -90°
+	## The wallCorner tile lives at the inner corner cell (CORNER_INNER_CELLS),
+	## one step diagonally inside the map. The actual border corner cell gets a
+	## straight wall tile that caps its border wall cleanly:
+	##   N corners → wall_S  (south face, matching north border row)
+	##   S corners → wall_N  (north face, matching south border row)
+	if on_west  and on_north: return "wall_S"   ## NW actual corner → N border cap
+	if on_east  and on_north: return "wall_S"   ## NE actual corner → N border cap
+	if on_west  and on_south: return "wall_N"   ## SW actual corner → S border cap
+	if on_east  and on_south: return "wall_N"   ## SE actual corner → S border cap
 
 	## ── Rule 1: mid-border override ─────────────────────────────────────────
 	## Non-corner border cells always get their straight face tile regardless of
@@ -176,10 +195,11 @@ func _pick_wall_tile(cell: Vector2i, wall_map: Dictionary) -> String:
 			return "wall_W"
 		2:
 			## L-junction (adjacent open) → corner; straight (opposing open) → block.
-			if open_n and open_e: return "wallCorner_S"
-			if open_n and open_w: return "wallCorner_E"
-			if open_s and open_e: return "wallCorner_W"
-			if open_s and open_w: return "wallCorner_N"
+			## Suffix = open interior quadrant; same -90° calibration as Rule 0.
+			if open_n and open_e: return "wallCorner_E"   ## interior toward NE
+			if open_n and open_w: return "wallCorner_N"   ## interior toward NW
+			if open_s and open_e: return "wallCorner_S"   ## interior toward SE
+			if open_s and open_w: return "wallCorner_W"   ## interior toward SW
 			return "block_N"   ## N+S or E+W — straight wall, both sides exposed
 		3:
 			## ── Rule 3: passage end-cap ────────────────────────────────────

@@ -4,8 +4,8 @@
 > **Genre:** Top-down stealth / tactical RPG  
 > **Platform:** Mobile (iOS & Android, HTML5)  
 > **Created:** 2026-02-20  
-> **Last updated:** 2026-05-30 (Three-layer visibility system implemented and tuned: camera leash, isometric distance-fog shader, graduated FOW with geometric-progression opacity and per-vertex feathering; segment dimensions revised to 18×36)  
-> **Status:** M1.5 in progress — segment prototype complete (18×36, access points, crates); full three-layer fog of war system live and tuned  
+> **Last updated:** 2026-05-30 (Alpha FOW milestone: three-layer visibility tuned and locked — 12-ring smoothstep, split radii, wall-sprite alignment via virtual outer ring, scene clear color; animated decoration and enemy visibility rules locked)  
+> **Status:** M1.5 in progress — segment prototype complete (18×36, access points, crates); Alpha FOW fully live and approved  
 > **Engine:** Godot 4.6 (GDScript), isometric 2.5D  
 > **Orientation:** Portrait
 
@@ -139,6 +139,14 @@ The in-game visibility is rendered by three independent, overlapping systems tha
 - Shader inner clear zone: `VISION_TILE_RADIUS − 3` tiles from agent
 - Shader outer (full darkness): `VISION_TILE_RADIUS + 9` tiles from agent
 - The gradient extends 9 tiles beyond the shader boundary, overlapping the FOW rings.
+
+**FOW wall-sprite alignment fix *(locked 2026-05-30):***
+Isometric wall sprites extend ~158 px above their tile-floor footprint in screen space (measured from the tallest assets in the blocks-prototype pack: `wall_E/S`, windows). The standard diamond polygon only covers the floor area and left the wall tops exposed at the fog boundary.
+
+**Solution:** The `FogOfWarOverlay` drawing loops (alpha pre-computation and polygon draw) extend **1 virtual tile** beyond the room boundary in all four directions (`range(-1, room_size+1)`). These outer tiles are never added to `_revealed`, so `_fog_alpha_for` naturally assigns them the smoothstep gradient based on proximity to the nearest revealed inner tile. The result: wall tops are covered by real FOW fog — the same S-curve fade — without any hard-coded border or alpha summation artefact.
+
+**Scene background colour *(locked 2026-05-30):***
+The Godot viewport clear colour is set to `Color(0.13, 0.13, 0.20, 1)` — a dark blue-black that matches the deep end of the FOW palette. This ensures the area beyond the virtual outer ring (pure scene background, no tile coverage) blends seamlessly with the fog instead of showing Godot's default mid-grey.
 
 **Enemy visibility rule *(locked 2026-05-30):***
 

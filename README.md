@@ -20,7 +20,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha Gameplay** — Core movement loop locked; tile-wall autotile system implemented; three-layer visibility system fully tuned.
+**Alpha Walls** — Room generation system complete; wall tile origins calibrated; all wall-face sprites pixel-perfect in all four orientations.
 
 | Milestone | Status |
 |---|---|
@@ -34,6 +34,14 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M5 — Monetisation | |
 | M6 — Content expansion | |
 | M7 — Polish & launch | |
+
+### Alpha Walls — what's working (2026-06-01)
+
+- **Rectangular room builder** — `build_room(rect, doors)` places correct autotile per cell: straight walls, corners, and door slots; returns `{wall_tiles, _blocked_map}`
+- **`place_inner_room()`** — validates fit and gap, delegates to `build_room`; supports interior barriers (e.g. mid-room wall with passage gap)
+- **Positional autotile** — `_pick_wall_tile(cell, rect)` uses edge membership to select `wallCorner_*` (2 edges), `wall_*` (1 edge) in all 4 orientations; all corners visually confirmed
+- **`LevelGraph` 3×3 segment grid** — Kruskal MST on a 3×3 segment lattice; `EXIT_CELLS` per cardinal direction; `access_points_for()` / `is_dead_end()` helpers; wired into `room.gd` via `segment_grid_pos` and `level_seed` exports
+- **Wall tile origins calibrated** — all 240 wall-face tile variants (`wall_*`, `wallHalf_*`, `arrowWall_*`, `switchWall*`, `window*`, `doorClosed_*`, `doorOpen_*`, `doorway*`) set to `texture_origin = Vector2i(0, -384)`; PNG content provides per-face visual offset natively
 
 ### Alpha Gameplay — what's working (2026-05-30)
 
@@ -87,10 +95,10 @@ Current notes:
 
 ### Next up (M1.5 continued)
 
+- Door tile visual verification and door open/close logic
+- Segment transition — spawn adjacent segment on exit, pass `segment_grid_pos` and `level_seed`
 - Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
 - Contextual action menu on second tap — move / interact / wait choices
-- Room shape: corridor + side passages (replace open rectangle)
-- Entrance / exit tiles and first segment transition
 - Enemy guard (patrol, vision cone, alert meter) — M2 start
 - Environment theme system (Phase 2): `EnvironmentTheme` resource, `GameContext` autoload, ambient/fog color per zone
 

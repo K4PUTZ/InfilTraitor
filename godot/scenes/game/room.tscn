@@ -9,7 +9,7 @@
 [ext_resource type="Script" uid="uid://bwemylf6mflmh" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
 [ext_resource type="Script" uid="uid://dtaggpell6shx" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
 [ext_resource type="Shader" uid="uid://cjrlwjb5rnhgd" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
-[ext_resource type="Script" path="res://godot/scripts/ui/compass_rose.gd" id="10_compass"]
+[ext_resource type="Script" uid="uid://4k0cna4kj3of" path="res://godot/scripts/ui/compass_rose.gd" id="10_compass"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vfog"]
 shader = ExtResource("9_vfog")
@@ -135,6 +135,7 @@ text = "END"
 vertical_alignment = 1
 
 [node name="CompassRose" type="Control" parent="HUD" unique_id=1600003001]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

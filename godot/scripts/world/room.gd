@@ -2,6 +2,7 @@ extends Node2D
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
 const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder.gd")
+const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager = $TurnManager
@@ -71,6 +72,13 @@ var _selected_cell: Vector2i = INVALID_CELL
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 
+## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
+## Set before _ready() runs (e.g. by the level controller or via the Inspector).
+## Controls which exits LevelGraph assigns; default (1,1) = centre segment (all exits open).
+@export var segment_grid_pos: Vector2i = Vector2i(1, 1)
+## Seed for the level graph random generator. Match across all 9 segments in a level.
+@export var level_seed: int = 0
+
 
 func _ready() -> void:
 	var ts: TileSet = load(TILESET_PATH)
@@ -83,8 +91,12 @@ func _ready() -> void:
 	structure_layer.tile_set = ts
 	_build_registry(ts)
 
+	var graph := LevelGraphClass.new()
+	var connections := graph.generate(level_seed)
+	var access_points := LevelGraphClass.access_points_for(connections, segment_grid_pos)
+
 	var layout_builder = RoomLayoutBuilder.new()
-	var layout: Dictionary = layout_builder.build_layout()
+	var layout: Dictionary = layout_builder.build_layout(access_points)
 	_room_size = layout.get("size", Vector2i.ZERO)
 	if _room_size == Vector2i.ZERO:
 		push_error("Room layout did not provide a valid map size.")

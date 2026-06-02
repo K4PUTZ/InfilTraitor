@@ -1196,17 +1196,17 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1ie5b"]
 texture = ExtResource("120_j87jf")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -400)
+0:0/0/texture_origin = Vector2i(-32, -400)
 0:0/0/custom_data_0 = "wallCorner_SE"
 0:0/0/custom_data_2 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_qxvdf"]
 texture = ExtResource("121_ap31o")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -368)
+0:0/0/texture_origin = Vector2i(-32, -368)
 0:0/0/custom_data_0 = "wallCorner_NW"
 0:0/0/custom_data_2 = true
 

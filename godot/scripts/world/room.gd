@@ -9,6 +9,7 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 @onready var movement_overlay = $MovementOverlay
 @onready var path_preview = $PathPreview
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
+@onready var structure_wall_upper_layer: TileMapLayer = $StructureWallUpperLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent:               DebugAgent   = $Agent
@@ -88,6 +89,7 @@ func _ready() -> void:
 
 	floor_layer.tile_set = ts
 	structure_wall_layer.tile_set = ts
+	structure_wall_upper_layer.tile_set = ts
 	structure_layer.tile_set = ts
 	_build_registry(ts)
 
@@ -327,6 +329,7 @@ func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = floor_layer
 func _build_room(layout: Dictionary) -> void:
 	floor_layer.clear()
 	structure_wall_layer.clear()
+	structure_wall_upper_layer.clear()
 	structure_layer.clear()
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
@@ -340,6 +343,12 @@ func _build_room(layout: Dictionary) -> void:
 		var wall_cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
 		var wall_tile_name := String(structure_entry.get("tile_name", ""))
 		_place(wall_cell, wall_tile_name, structure_wall_layer)
+
+	## Place upper-layer wall tiles for double-height walls
+	for structure_entry in layout.get("wall_tiles_upper", []):
+		var wall_cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
+		var wall_tile_name := String(structure_entry.get("tile_name", ""))
+		_place(wall_cell, wall_tile_name, structure_wall_upper_layer)
 
 	for structure_entry in layout.get("structure_tiles", []):
 		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)

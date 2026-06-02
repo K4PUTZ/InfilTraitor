@@ -37,6 +37,8 @@ script = ExtResource("6_path")
 
 [node name="StructureWallLayer" type="TileMapLayer" parent="." unique_id=1600001011]
 
+[node name="StructureWallUpperLayer" type="TileMapLayer" parent="." unique_id=1600001012]
+
 [node name="StructureLayer" type="TileMapLayer" parent="." unique_id=1600001010]
 
 [node name="SelectionOverlay" type="Node2D" parent="." unique_id=945163989]

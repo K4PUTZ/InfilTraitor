@@ -26,29 +26,29 @@ const DEFAULT_ACCESS_POINTS: Array[Dictionary] = [
 	{"cell": Vector2i(9,  0)},   ## NW border — north segment exit
 ]
 
-## Interior wall barrier — horizontal at y=17 with 4-tile gap at x=7..10.
-## Splits the segment into a south lobby and north target area.
-const INTERIOR_WALL_CELLS: Array[Vector2i] = [
-	Vector2i( 1, 17), Vector2i( 2, 17), Vector2i( 3, 17),
-	Vector2i( 4, 17), Vector2i( 5, 17), Vector2i( 6, 17),
-	Vector2i(11, 17), Vector2i(12, 17), Vector2i(13, 17),
-	Vector2i(14, 17), Vector2i(15, 17), Vector2i(16, 17),
-]
-
 
 ## Builds the full segment layout.
 ## access_points: pass the output of LevelGraph.access_points_for() to override defaults.
 func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> Dictionary:
 	var room      := build_room(Rect2i(Vector2i.ZERO, MAP_SIZE), access_points)
 	var blocked_map: Dictionary = room["_blocked_map"]
+	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
-	## Interior wall barrier
-	var interior_tiles: Array[Dictionary] = []
-	for cell: Vector2i in INTERIOR_WALL_CELLS:
-		if cell == AGENT_START_CELL or blocked_map.has(cell):
-			continue
-		blocked_map[cell] = true
-		interior_tiles.append({"cell": cell, "tile_name": "block_SE"})
+	## Central 7x7 interior room with 4 doors (top, bottom, left, right)
+	var inner_room_rect := Rect2i(Vector2i(6, 15), Vector2i(7, 7))
+	var inner_doors: Array[Dictionary] = [
+		{"cell": Vector2i(9, 15)},   ## Top door
+		{"cell": Vector2i(9, 21)},   ## Bottom door
+		{"cell": Vector2i(6, 18)},   ## Left door
+		{"cell": Vector2i(12, 18)},  ## Right door
+	]
+	var inner_room := place_inner_room(Rect2i(Vector2i.ZERO, MAP_SIZE), inner_room_rect, inner_doors, blocked_map)
+	if inner_room.size() > 0:
+		wall_tiles += inner_room["wall_tiles"]
+		# Merge inner room's blocked cells into main blocked map
+		var inner_blocked: Dictionary = inner_room.get("_blocked_map", {})
+		for cell: Vector2i in inner_blocked.keys():
+			blocked_map[cell] = true
 
 	## Crates
 	var crate_map: Dictionary = {}
@@ -58,7 +58,7 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		"size":             MAP_SIZE,
 		"agent_start_cell": AGENT_START_CELL,
 		"floor_tile_name":  FLOOR_TILE,
-		"wall_tiles":       room["wall_tiles"] + interior_tiles,
+		"wall_tiles":       wall_tiles,
 		"structure_tiles":  _crate_map_to_array(crate_map),
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    [],

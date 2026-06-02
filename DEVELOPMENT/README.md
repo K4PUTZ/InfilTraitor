@@ -24,14 +24,17 @@ See `REFERENCES/` for screenshots.
 - Game plan: [GAME_PLAN.md](GAME_PLAN.md)
 - Repo: https://github.com/K4PUTZ/InfilTraitor.git
 
-## Current implementation snapshot (2026-05-30 — M1.5 in progress)
+## Current implementation snapshot (2026-06-02 — M1.5 Alpha Walls Fixed)
 
-- **M1.5 in progress** — segment layout, movement, tile-wall autotile system, and three-layer fog-of-war live; core movement feel locked as Alpha Gameplay
+- **M1.5 complete** — segment layout, movement, tile-wall autotile system, three-layer fog-of-war live, and all 36 corner assets fully calibrated with Y-sorting rendering fix; core movement feel locked as Alpha Gameplay
 - **Segment prototype locked** — `room_layout_builder.gd` generates an **18 × 36** tile map; agent spawns at `Vector2i(9, 34)`; 7 authored crates; 2 access points (north + south)
 - **Tile-wall autotile system locked** — `_pick_wall_tile()` selects from `wall_N/S/E/W`, `wallCorner_*`, and `block_N` per cell via three ordered rules:
   1. **Mid-border override** — non-corner border cells always get their straight face tile
   2. **Open-count autotile** — corners and L-junctions derived from open neighbour count
   3. **End-cap facing** — 3-open-side cells show the face opposite the closed side
+- **All 36 corner assets fully calibrated** — SE/NW corners expanded to 320×512, SW/NE corners to 256×528; direction-specific texture origins prevent visual gaps; Y-sorting enabled on all TileMapLayers for correct isometric occlusion
+- **Y-sorting rendering fix locked** — `y_sort_origin = true` on Room node and all TileMapLayers; StructureLayer reordered before wall layers; crates now render correctly behind walls
+- **All 88 directional tile assets calibrated** — texture_origin standardized across 20 families (walls, corners, windows, doors, columns, crates, etc.); proper isometric alignment verified
 - **Floor apron** — `_build_room()` floors `range(-1, MAP_SIZE.x+1)` × `range(-1, MAP_SIZE.y+1)` so border walls sit on ground, not dark background
 - **Step-by-step movement locked** — `agent.move_along_path(path)` walks the Dijkstra path cell-by-cell at 0.13 s/tile (TRANS_SINE); `step_finished(cell)` emitted per arrival
 - **Progressive FOW reveal** — `_on_agent_step_finished` calls `fog_of_war.reveal_around()` each step

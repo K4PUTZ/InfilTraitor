@@ -645,9 +645,9 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_djjk8"]
 texture = ExtResource("52_wm1f7")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "sloperCornerInner_SW"
 0:0/0/custom_data_1 = true
 
@@ -655,7 +655,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("53_mpgi6")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "sloperCornerInner_SE"
 0:0/0/custom_data_1 = true
 
@@ -663,23 +663,23 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("54_rahhk")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "sloperCornerInner_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hbja2"]
 texture = ExtResource("55_wxqhi")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "sloperCornerInner_NE"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_yf4vd"]
 texture = ExtResource("56_0s2rq")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "sloperCornerOuter_SW"
 0:0/0/custom_data_1 = true
 
@@ -687,7 +687,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("57_rg68t")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "sloperCornerOuter_SE"
 0:0/0/custom_data_1 = true
 
@@ -703,23 +703,23 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("59_87man")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "sloperCornerOuter_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_kw2gg"]
 texture = ExtResource("60_0o8tt")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "sloperCornerOuter_NE"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_252yj"]
 texture = ExtResource("61_481tf")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "stairsCornerInner_SW"
 0:0/0/custom_data_1 = true
 
@@ -727,7 +727,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("62_utq3q")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "stairsCornerInner_SE"
 0:0/0/custom_data_1 = true
 
@@ -735,23 +735,23 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("63_jduh7")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "stairsCornerInner_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_jh8lj"]
 texture = ExtResource("64_hid8v")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "stairsCornerInner_NE"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_xsorl"]
 texture = ExtResource("65_ikchl")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "stairsCornerOuter_SW"
 0:0/0/custom_data_1 = true
 
@@ -759,7 +759,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("66_1fawn")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "stairsCornerOuter_SE"
 0:0/0/custom_data_1 = true
 
@@ -767,15 +767,15 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("67_o5d72")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "stairsCornerOuter_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_qae31"]
 texture = ExtResource("68_uxx6l")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "stairsCornerOuter_NE"
 0:0/0/custom_data_1 = true
 
@@ -789,9 +789,9 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_rl7yx"]
 texture = ExtResource("70_fatr5")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "stairsOpenCornerInner_SW"
 0:0/0/custom_data_1 = true
 
@@ -799,7 +799,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("71_fcjmg")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "stairsOpenCornerInner_SE"
 0:0/0/custom_data_1 = true
 
@@ -807,23 +807,23 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("72_v3c85")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "stairsOpenCornerInner_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1kxaj"]
 texture = ExtResource("73_lfhhy")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "stairsOpenCornerInner_NE"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ik3mb"]
 texture = ExtResource("74_74hhi")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "stairsOpenCornerOuter_SW"
 0:0/0/custom_data_1 = true
 
@@ -831,7 +831,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("75_i4783")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "stairsOpenCornerOuter_SE"
 0:0/0/custom_data_1 = true
 
@@ -839,15 +839,15 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("76_5kfl6")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "stairsOpenCornerOuter_NW"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_n4txk"]
 texture = ExtResource("77_uerin")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "stairsOpenCornerOuter_NE"
 0:0/0/custom_data_1 = true
 
@@ -1156,9 +1156,9 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_hdmv0"]
 texture = ExtResource("115_hudh8")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(32, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "wallCornerHalf_SW"
 0:0/0/custom_data_2 = true
 
@@ -1180,17 +1180,17 @@ texture_region_size = Vector2i(320, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ctk1b"]
 texture = ExtResource("118_jede7")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(-32, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "wallCornerHalf_NE"
 0:0/0/custom_data_2 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_qofkv"]
 texture = ExtResource("119_580mk")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(32, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "wallCorner_SW"
 0:0/0/custom_data_2 = true
 
@@ -1198,7 +1198,7 @@ texture_region_size = Vector2i(256, 512)
 texture = ExtResource("120_j87jf")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(-32, -400)
+0:0/0/texture_origin = Vector2i(0, -400)
 0:0/0/custom_data_0 = "wallCorner_SE"
 0:0/0/custom_data_2 = true
 
@@ -1206,15 +1206,15 @@ texture_region_size = Vector2i(320, 512)
 texture = ExtResource("121_ap31o")
 texture_region_size = Vector2i(320, 512)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(-32, -368)
+0:0/0/texture_origin = Vector2i(0, -368)
 0:0/0/custom_data_0 = "wallCorner_NW"
 0:0/0/custom_data_2 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_ore8m"]
 texture = ExtResource("122_nastb")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(-32, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "wallCorner_NE"
 0:0/0/custom_data_2 = true
 
@@ -1512,9 +1512,9 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_gayoe"]
 texture = ExtResource("162_hkde7")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(32, -384)
+0:0/0/texture_origin = Vector2i(32, -392)
 0:0/0/custom_data_0 = "columnCorner_SW"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_f4042"]
@@ -1540,9 +1540,9 @@ texture_region_size = Vector2i(320, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_mcflm"]
 texture = ExtResource("166_42nhq")
-texture_region_size = Vector2i(256, 512)
+texture_region_size = Vector2i(256, 528)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(-32, -384)
+0:0/0/texture_origin = Vector2i(-32, -392)
 0:0/0/custom_data_0 = "columnCorner_NE"
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_dsial"]

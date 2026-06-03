@@ -39,6 +39,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 - Core isometric room builder and wall-autotile system are stable.
 - Movement, AP tracking, fog of war, tile selection, and camera controls are implemented.
+- Perspective controls are now available via a 2x2 HUD pad (N/E/S/W), with runtime layout rotation.
 - The current prototype is a playable tactical segment with placeholder agent visuals.
 - Next internal work is door/segment transitions, action menu, character sprite, and guard AI.
 
@@ -50,6 +51,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Contextual action menu on second tap — move / interact / wait choices
 - Enemy guard (patrol, vision cone, alert meter) — M2 start
 - Environment theme system (Phase 2): `EnvironmentTheme` resource, `GameContext` autoload, ambient/fog color per zone
+- Perspective transition polish: optional animated swap between N/E/S/W viewpoints
 
 ---
 

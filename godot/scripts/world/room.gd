@@ -19,6 +19,10 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 @onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
 @onready var btn_reset:           Button       = $HUD/TopBar/Row/BtnReset
+@onready var btn_perspective_nw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNW
+@onready var btn_perspective_ne:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNE
+@onready var btn_perspective_sw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSW
+@onready var btn_perspective_se:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSE
 @onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
 @onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
 @onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
@@ -37,6 +41,7 @@ const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 var _tile_ids: Dictionary = {}
 var _room_size: Vector2i = Vector2i.ZERO
 var _blocked_cells: Dictionary = {}
+var _base_layout: Dictionary = {}
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -68,10 +73,19 @@ var _pinch_last_dist: float      = 0.0
 var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
+var _active_perspective: String = "N"
+
+const _PERSPECTIVE_SUFFIX_MAP := {
+	"N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"},
+	"E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"},
+	"S": {"NE": "SW", "SE": "NW", "SW": "NE", "NW": "SE"},
+	"W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"},
+}
 
 ## Vision bonus added by agent abilities; increases leash radius and fog reveal.
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
+var _agent_start_cell_base: Vector2i = Vector2i.ZERO
 
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
@@ -93,19 +107,23 @@ func _ready() -> void:
 	structure_layer.tile_set = ts
 	_build_registry(ts)
 
-	var graph := LevelGraphClass.new()
-	var connections := graph.generate(level_seed)
-	var access_points := LevelGraphClass.access_points_for(connections, segment_grid_pos)
+	var graph: LevelGraph = LevelGraphClass.new()
+	var connections: Dictionary = graph.generate(level_seed)
+	var access_points: Array = LevelGraphClass.access_points_for(connections, segment_grid_pos)
 
 	var layout_builder = RoomLayoutBuilder.new()
 	var layout: Dictionary = layout_builder.build_layout(access_points)
+	_base_layout = layout.duplicate(true)
+	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
 	_room_size = layout.get("size", Vector2i.ZERO)
 	if _room_size == Vector2i.ZERO:
 		push_error("Room layout did not provide a valid map size.")
 		return
 
-	_build_room(layout)
-	var agent_start_cell: Vector2i = layout.get("agent_start_cell", Vector2i.ZERO)
+	var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
+	_room_size = view_layout.get("size", _room_size)
+	_build_room(view_layout)
+	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
 
@@ -113,7 +131,7 @@ func _ready() -> void:
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.MOVE_POINTS_PER_AP)
 	movement_overlay.set_blocked_cells(_get_blocked_cells_array())
 	var blocked_edges: Array[Dictionary] = []
-	for e in layout.get("blocked_edges", []):
+	for e in view_layout.get("blocked_edges", []):
 		blocked_edges.append(e)
 	movement_overlay.set_blocked_edges(blocked_edges)
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
@@ -129,6 +147,8 @@ func _ready() -> void:
 	tile_labels_overlay.room_h = _room_size.y
 	tile_labels_overlay.visible = false
 	btn_numbers.modulate = Color(1.0, 1.0, 1.0, 0.35)
+	camera.ignore_rotation = true
+	camera.rotation_degrees = 0.0
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
 	agent.move_started.connect(_on_agent_move_started)
@@ -139,12 +159,72 @@ func _ready() -> void:
 	btn_fullscreen.pressed.connect(_on_btn_fullscreen)
 	btn_viewport.pressed.connect(_on_btn_viewport)
 	btn_reset.pressed.connect(_on_btn_reset)
+	btn_perspective_nw.pressed.connect(func() -> void: _set_perspective("W"))
+	btn_perspective_ne.pressed.connect(func() -> void: _set_perspective("N"))
+	btn_perspective_sw.pressed.connect(func() -> void: _set_perspective("S"))
+	btn_perspective_se.pressed.connect(func() -> void: _set_perspective("E"))
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
 	turn_manager.reset_player_turn()
+	_update_perspective_button_state()
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
 	_on_btn_viewport()
+
+
+func _set_perspective(direction: String) -> void:
+	if not _PERSPECTIVE_SUFFIX_MAP.has(direction):
+		return
+	if _active_perspective == direction:
+		_update_perspective_button_state()
+		return
+
+	var prev_direction := _active_perspective
+	var base_agent := _cell_to_base(agent.cell, prev_direction)
+	var has_selected := _selected_cell != INVALID_CELL
+	var base_selected := _cell_to_base(_selected_cell, prev_direction) if has_selected else INVALID_CELL
+
+	_active_perspective = direction
+	if not _base_layout.is_empty():
+		var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
+		_room_size = view_layout.get("size", _room_size)
+		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
+		_build_room(view_layout)
+		movement_overlay.set_blocked_cells(_get_blocked_cells_array())
+		var blocked_edges: Array[Dictionary] = []
+		for e in view_layout.get("blocked_edges", []):
+			blocked_edges.append(e)
+		movement_overlay.set_blocked_edges(blocked_edges)
+
+		tile_labels_overlay.room_w = _room_size.x
+		tile_labels_overlay.room_h = _room_size.y
+
+		var next_agent := _cell_from_base(base_agent, _active_perspective)
+		if not _is_cell_inside_room(next_agent):
+			next_agent = _agent_start_cell
+		agent.set_cell(next_agent)
+
+		if has_selected:
+			var next_selected := _cell_from_base(base_selected, _active_perspective)
+			_selected_cell = next_selected if _is_selectable_cell(next_selected) else next_agent
+		else:
+			_selected_cell = next_agent
+		selection_overlay.set_selected(_selected_cell)
+
+		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+		_center_camera(agent.cell)
+		_refresh_tactical_state()
+	_update_perspective_button_state()
+
+
+func _update_perspective_button_state() -> void:
+	var active_mod := Color(1.0, 1.0, 1.0, 1.0)
+	var inactive_mod := Color(1.0, 1.0, 1.0, 0.45)
+	btn_perspective_nw.modulate = active_mod if _active_perspective == "W" else inactive_mod
+	btn_perspective_ne.modulate = active_mod if _active_perspective == "N" else inactive_mod
+	btn_perspective_sw.modulate = active_mod if _active_perspective == "S" else inactive_mod
+	btn_perspective_se.modulate = active_mod if _active_perspective == "E" else inactive_mod
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -371,6 +451,104 @@ func _get_blocked_cells_array() -> Array[Vector2i]:
 	return cells
 
 
+func _is_cell_inside_room(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < _room_size.x and cell.y < _room_size.y
+
+
+func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:
+	var mapped := layout.duplicate(true)
+	var base_size: Vector2i = layout.get("size", Vector2i.ZERO)
+	var rotated_size: Vector2i = _rotated_size(base_size, direction)
+	mapped["size"] = rotated_size
+	mapped["agent_start_cell"] = _cell_from_base(layout.get("agent_start_cell", Vector2i.ZERO), direction, base_size)
+	mapped["floor_tile_name"] = _remap_tile_name_for_perspective(
+		String(layout.get("floor_tile_name", "floor_SE")), direction)
+
+	for key in ["wall_tiles", "wall_tiles_upper", "structure_tiles"]:
+		var src: Array = layout.get(key, [])
+		var dst: Array = []
+		for entry in src:
+			var out := (entry as Dictionary).duplicate(true)
+			out["cell"] = _cell_from_base(out.get("cell", INVALID_CELL), direction, base_size)
+			out["tile_name"] = _remap_tile_name_for_perspective(String(out.get("tile_name", "")), direction)
+			dst.append(out)
+		mapped[key] = dst
+
+	var blocked_cells: Array[Vector2i] = []
+	for cell in layout.get("blocked_cells", []):
+		blocked_cells.append(_cell_from_base(cell, direction, base_size))
+	mapped["blocked_cells"] = blocked_cells
+
+	var blocked_edges: Array[Dictionary] = []
+	for edge in layout.get("blocked_edges", []):
+		blocked_edges.append({
+			"from": _cell_from_base(edge.get("from", Vector2i.ZERO), direction, base_size),
+			"to": _cell_from_base(edge.get("to", Vector2i.ZERO), direction, base_size),
+		})
+	mapped["blocked_edges"] = blocked_edges
+	return mapped
+
+
+func _rotated_size(base_size: Vector2i, direction: String) -> Vector2i:
+	if direction == "E" or direction == "W":
+		return Vector2i(base_size.y, base_size.x)
+	return base_size
+
+
+func _cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
+	if base_cell == INVALID_CELL:
+		return INVALID_CELL
+	var size := base_size
+	if size == Vector2i.ZERO:
+		size = _base_layout.get("size", Vector2i.ZERO)
+	var w := size.x
+	var h := size.y
+	match direction:
+		"E":
+			return Vector2i(h - 1 - base_cell.y, base_cell.x)
+		"S":
+			return Vector2i(w - 1 - base_cell.x, h - 1 - base_cell.y)
+		"W":
+			return Vector2i(base_cell.y, w - 1 - base_cell.x)
+		_:
+			return base_cell
+
+
+func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
+	if view_cell == INVALID_CELL:
+		return INVALID_CELL
+	var size := base_size
+	if size == Vector2i.ZERO:
+		size = _base_layout.get("size", Vector2i.ZERO)
+	var w := size.x
+	var h := size.y
+	match direction:
+		"E":
+			return Vector2i(view_cell.y, h - 1 - view_cell.x)
+		"S":
+			return Vector2i(w - 1 - view_cell.x, h - 1 - view_cell.y)
+		"W":
+			return Vector2i(w - 1 - view_cell.y, view_cell.x)
+		_:
+			return view_cell
+
+
+func _remap_tile_name_for_perspective(tile_name: String, direction: String) -> String:
+	if tile_name.is_empty():
+		return tile_name
+	var i := tile_name.rfind("_")
+	if i < 0:
+		return tile_name
+	var base := tile_name.substr(0, i)
+	var suffix := tile_name.substr(i + 1)
+	if not _PERSPECTIVE_SUFFIX_MAP.has(direction):
+		return tile_name
+	var suffix_map: Dictionary = _PERSPECTIVE_SUFFIX_MAP[direction]
+	if not suffix_map.has(suffix):
+		return tile_name
+	return "%s_%s" % [base, String(suffix_map[suffix])]
+
+
 ## Convert a screen-space press position to the tile cell underneath it.
 ## local_to_map uses the TOP VERTEX as anchor, so it only gives the correct
 ## cell when clicking the top quadrant. The 3×3 search over visual CENTERs
@@ -404,7 +582,7 @@ func _apply_zoom(new_z: float) -> void:
 	camera.zoom = Vector2(new_z, new_z)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	_update_vision_fog()
 
 

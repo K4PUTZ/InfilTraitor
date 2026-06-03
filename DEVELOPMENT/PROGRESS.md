@@ -1,5 +1,48 @@
 # INFILTRAITOR — Progress Updates
 
+## Alpha Perspectivas (2026-06-03)
+
+**Status:** M1.5 Alpha Gameplay — Perspective switching integrated in HUD and runtime world view  
+**Focus:** Tactical readability while changing viewpoint without breaking gameplay state
+
+### Changes Completed
+
+#### ✅ HUD Perspective Pad (2x2)
+- Replaced the old bottom-right compass overlay with a clickable 2x2 perspective pad
+- Buttons mapped to cardinal viewpoints (N/E/S/W)
+- Active button visual state (highlight via opacity)
+
+#### ✅ Runtime Perspective Switching (Layout Rotation)
+- Perspective is now applied by rotating the room layout in cell space (not by rotating Camera2D)
+- Rotates:
+  - room tile entries (`wall_tiles`, `wall_tiles_upper`, `structure_tiles`)
+  - blocked cells
+  - blocked edges used by pathing constraints
+  - room size for rectangular segments under 90°/270° views
+- Keeps directional tile suffix remapping (`_NE/_SE/_SW/_NW`) consistent with chosen viewpoint
+
+#### ✅ Gameplay State Preservation on View Change
+- Converts current agent/selection cells to base-space and back to new view-space
+- Rebuilds movement overlay constraints after each switch
+- Reconfigures FOW overlay with rotated room dimensions and reveals around current agent cell
+
+#### ✅ Supporting Cleanup
+- LevelGraph canonical exit cells normalized to explicit constants
+- `generate(seed)` parameter renamed to `generate(seed_input)` for clearer intent
+
+### Files Updated
+
+- `godot/scenes/game/room.tscn`
+- `godot/scripts/world/room.gd`
+- `godot/scripts/world/level_graph.gd`
+- `README.md`
+
+### Notes
+
+- Camera rotation was intentionally avoided for perspective switching because it distorts tactical readability in this dimetric 2.5D setup.
+- The current implementation prioritizes deterministic gameplay consistency over visual transition effects.
+- Optional next polish step: add short crossfade/animated transition between perspectives.
+
 ## Alpha Walls Done (2026-06-02)
 
 **Status:** M1.5 Alpha Gameplay — All corner assets fully calibrated and expanded  

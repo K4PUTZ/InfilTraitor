@@ -19,10 +19,10 @@ const SEG_SIZE := Vector2i(18, 36)
 
 ## Canonical exit cell for each border side — midpoint of that border edge.
 const EXIT_CELLS: Dictionary = {
-	"NW": Vector2i(SEG_SIZE.x / 2,       0                    ),   ## (9,  0)
-	"SE": Vector2i(SEG_SIZE.x / 2,       SEG_SIZE.y - 1       ),   ## (9, 35)
-	"SW": Vector2i(0,                    (SEG_SIZE.y - 1) / 2 ),   ## (0, 17)
-	"NE": Vector2i(SEG_SIZE.x - 1,       (SEG_SIZE.y - 1) / 2),   ## (17,17)
+	"NW": Vector2i(9, 0),
+	"SE": Vector2i(9, 35),
+	"SW": Vector2i(0, 17),
+	"NE": Vector2i(17, 17),
 }
 
 var _rng    := RandomNumberGenerator.new()
@@ -31,8 +31,8 @@ var _parent: Dictionary = {}
 
 ## Generates a random spanning tree over all 9 segments, guaranteeing full connectivity.
 ## Same seed always produces the same layout.
-func generate(seed: int) -> Dictionary:
-	_rng.seed = seed
+func generate(seed_input: int) -> Dictionary:
+	_rng.seed = seed_input
 	_parent.clear()
 
 	## Initialise Union-Find

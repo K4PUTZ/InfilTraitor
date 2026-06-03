@@ -9,7 +9,6 @@
 [ext_resource type="Script" uid="uid://bwemylf6mflmh" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
 [ext_resource type="Script" uid="uid://dtaggpell6shx" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
 [ext_resource type="Shader" uid="uid://cjrlwjb5rnhgd" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
-[ext_resource type="Script" uid="uid://4k0cna4kj3of" path="res://godot/scripts/ui/compass_rose.gd" id="10_compass"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vfog"]
 shader = ExtResource("9_vfog")
@@ -140,12 +139,46 @@ layout_mode = 2
 text = "END"
 vertical_alignment = 1
 
-[node name="CompassRose" type="Control" parent="HUD" unique_id=1600003001]
+[node name="PerspectivePad" type="PanelContainer" parent="HUD" unique_id=1600003001]
 layout_mode = 3
-anchors_preset = 15
+anchors_preset = 8
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -144.0
+offset_top = -144.0
+offset_right = -12.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("10_compass")
+
+[node name="Grid" type="GridContainer" parent="HUD/PerspectivePad" unique_id=1600003002]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="BtnPerspectiveNW" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003003]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+tooltip_text = "Perspectiva Oeste"
+text = "W"
+
+[node name="BtnPerspectiveNE" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003004]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+tooltip_text = "Perspectiva Norte"
+text = "N"
+
+[node name="BtnPerspectiveSW" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003005]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+tooltip_text = "Perspectiva Sul"
+text = "S"
+
+[node name="BtnPerspectiveSE" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003006]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+tooltip_text = "Perspectiva Leste"
+text = "E"

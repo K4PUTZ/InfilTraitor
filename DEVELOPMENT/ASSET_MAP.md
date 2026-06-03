@@ -34,7 +34,8 @@ All packs use the **same 2:1 dimetric projection** and are immediately compatibl
 **Use in Godot:** `TileMap` layer 0 (structural) + layer 1 (props/interactables)  
 **Key path:** `ASSETS/ISOMETRIC/blocks-prototype/Isometric/<tiletype>_<dir>.png`
 
-Naming convention: every tile exists in 4 rotations — `_N`, `_S`, `_E`, `_W`.  
+Naming convention: every tile exists in 4 rotations — `_NE`, `_NW`, `_SE`, `_SW`.
+These diagonal suffixes match the isometric projection and are the actual filenames in the pack.
 Total: **240 tiles** (60 types × 4 directions).
 
 #### Tile catalogue by game role
@@ -258,8 +259,8 @@ The procedural dungeon builder (M3) assembles rooms from templates using the til
 ### Room assembly checklist
 
 ```
-[ ] Floor layer      → floor_N (stone/wood/dirt per theme) tiled across room area
-[ ] Perimeter walls  → block_N/S/E/W around edges; blockAngle at corners
+[ ] Floor layer      → floor_NE / floor_NW / floor_SE / floor_SW (stone/wood/dirt per theme) tiled across room area
+[ ] Perimeter walls  → block_NE/NW/SE/SW around edges; blockAngle at corners
 [ ] Entry/exit       → doorClosed_<dir> at connection points (swap to doorOpen when unlocked)
 [ ] Cover objects    → crate_<dir> at procedurally chosen interior tiles
 [ ] Pillars          → column_<dir> at room corners / grid intersections
@@ -319,7 +320,7 @@ Not used in the game directly. Keep for texture creation reference.
 When the Godot project is created in `godot/`, tile PNGs will be imported from:
 
 ```
-res://../../ASSETS/ISOMETRIC/blocks-prototype/Isometric/floor_N.png
+res://../../ASSETS/ISOMETRIC/blocks-prototype/Isometric/floor_NE.png
 ```
 
 Or, preferably, copy (or symlink) the relevant packs into the Godot project's `assets/` folder:

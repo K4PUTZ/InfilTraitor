@@ -32,6 +32,7 @@ const DEFAULT_ACCESS_POINTS: Array[Dictionary] = [
 func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> Dictionary:
 	var room      := build_room(Rect2i(Vector2i.ZERO, MAP_SIZE), access_points)
 	var blocked_map: Dictionary = room["_blocked_map"]
+	var blocked_edges: Array = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
 	## Central 7x7 interior room with 4 doors (top, bottom, left, right)
@@ -49,6 +50,9 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		var inner_blocked: Dictionary = inner_room.get("_blocked_map", {})
 		for cell: Vector2i in inner_blocked.keys():
 			blocked_map[cell] = true
+		# Merge inner room's blocked edges into main blocked edges
+		for edge in inner_room.get("blocked_edges", []):
+			blocked_edges.append(edge)
 
 	## Crates
 	var crate_map: Dictionary = {}
@@ -61,7 +65,7 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		"wall_tiles":       wall_tiles,
 		"structure_tiles":  _crate_map_to_array(crate_map),
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
-		"blocked_edges":    [],
+		"blocked_edges":    blocked_edges,
 	}
 
 
@@ -76,28 +80,28 @@ func build_room(rect: Rect2i, doors: Array[Dictionary]) -> Dictionary:
 
 	var wall_map:    Dictionary = {}
 	var blocked_map: Dictionary = {}
+	var blocked_edges: Array = []
 
 	for x in range(min_x, max_x + 1):
 		for y in range(min_y, max_y + 1):
 			if x == min_x or x == max_x or y == min_y or y == max_y:
 				wall_map[Vector2i(x, y)] = true
-				blocked_map[Vector2i(x, y)] = true
 
-	## Open door cells — remove from wall/blocked, queue for door tile
+	## Open door cells — remove from wall, queue for door tile
 	var door_set: Dictionary = {}
 	for ap: Dictionary in doors:
 		var cell: Vector2i = ap["cell"]
 		wall_map.erase(cell)
-		blocked_map.erase(cell)
 		door_set[cell] = true
 
 	var wall_tiles: Array[Dictionary] = []
 	for cell: Vector2i in wall_map.keys():
 		wall_tiles.append({"cell": cell, "tile_name": _pick_wall_tile(cell, rect)})
+		blocked_edges += _wall_cell_blocked_edges(cell, rect)
 	for cell: Vector2i in door_set.keys():
 		wall_tiles.append({"cell": cell, "tile_name": _pick_door_tile(cell, rect)})
 
-	return {"wall_tiles": wall_tiles, "_blocked_map": blocked_map}
+	return {"wall_tiles": wall_tiles, "_blocked_map": blocked_map, "blocked_edges": blocked_edges}
 
 
 ## Places an inner rectangular room inside an outer room.
@@ -172,6 +176,25 @@ func _pick_door_tile(cell: Vector2i, rect: Rect2i) -> String:
 	if cell.x == max_x: return "doorOpen_NE"
 
 	return "doorOpen_SE"   ## fallback
+
+
+func _wall_cell_blocked_edges(cell: Vector2i, rect: Rect2i) -> Array[Dictionary]:
+	var edges: Array[Dictionary] = []
+	var min_x := rect.position.x
+	var min_y := rect.position.y
+	var max_x := rect.position.x + rect.size.x - 1
+	var max_y := rect.position.y + rect.size.y - 1
+
+	if cell.x == min_x:
+		edges.append({"from": cell, "to": cell + Vector2i(-1, 0)})
+	if cell.x == max_x:
+		edges.append({"from": cell, "to": cell + Vector2i(1, 0)})
+	if cell.y == min_y:
+		edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
+	if cell.y == max_y:
+		edges.append({"from": cell, "to": cell + Vector2i(0, 1)})
+
+	return edges
 
 
 ## --- private helpers --------------------------------------------------------

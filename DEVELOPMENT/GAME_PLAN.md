@@ -141,7 +141,7 @@ The in-game visibility is rendered by three independent, overlapping systems tha
 - The gradient extends 9 tiles beyond the shader boundary, overlapping the FOW rings.
 
 **FOW wall-sprite alignment fix *(locked 2026-05-30):***
-Isometric wall sprites extend ~158 px above their tile-floor footprint in screen space (measured from the tallest assets in the blocks-prototype pack: `wall_E/S`, windows). The standard diamond polygon only covers the floor area and left the wall tops exposed at the fog boundary.
+Isometric wall sprites extend ~158 px above their tile-floor footprint in screen space (measured from the tallest assets in the blocks-prototype pack: `wall_*` variants, windows). The standard diamond polygon only covers the floor area and left the wall tops exposed at the fog boundary.
 
 **Solution:** The `FogOfWarOverlay` drawing loops (alpha pre-computation and polygon draw) extend **1 virtual tile** beyond the room boundary in all four directions (`range(-1, room_size+1)`). These outer tiles are never added to `_revealed`, so `_fog_alpha_for` naturally assigns them the smoothstep gradient based on proximity to the nearest revealed inner tile. The result: wall tops are covered by real FOW fog — the same S-curve fade — without any hard-coded border or alpha summation artefact.
 
@@ -362,9 +362,9 @@ All wall tiles in a segment are resolved at runtime by `room_layout_builder.gd`'
 
 | Tile | Usage |
 |---|---|
-| `wall_N / _S / _E / _W` | Single open side (straight wall face) and mid-border cells |
-| `wallCorner_N / _S / _E / _W` | Two adjacent open sides (90° corner junction) |
-| `block_N` | Zero or two opposing open sides; fully enclosed or tunnel positions |
+| `wall_NE / wall_NW / wall_SE / wall_SW` | Single open side (straight wall face) and mid-border cells |
+| `wallCorner_NE / wallCorner_NW / wallCorner_SE / wallCorner_SW` | Two adjacent open sides (90° corner junction) |
+| `block_*` | Zero or two opposing open sides; fully enclosed or tunnel positions |
 
 **Three-rule resolution order (applied in sequence):**
 
@@ -372,31 +372,24 @@ All wall tiles in a segment are resolved at runtime by `room_layout_builder.gd`'
 
 | Border position | Assigned tile |
 |---|---|
-| West border (x == 0) | `wall_E` |
-| East border (x == MAP_SIZE.x − 1) | `wall_W` |
-| North border (y == 0) | `wall_S` |
-| South border (y == MAP_SIZE.y − 1) | `wall_N` |
+| West border (x == 0) | `wall_SW` |
+| East border (x == MAP_SIZE.x − 1) | `wall_NE` |
+| North border (y == 0) | `wall_NW` |
+| South border (y == MAP_SIZE.y − 1) | `wall_SE` |
 
 **Rule 2 — Open-count autotile.** Count the number of open (non-wall) cardinal neighbours:
 
 | Open count | Tile selection |
 |---|---|
-| 0 | `block_N` (fully enclosed) |
-| 1 | `wall_<open_dir>` (face toward the open side) |
-| 2 — adjacent directions | `wallCorner_<opposite_corner>` (L-junction) |
-| 2 — opposing directions | `block_N` (tunnel — no exposed face) |
-| 4 | `block_N` (fully isolated island, should not occur in practice) |
+| 0 | `block_*` (fully enclosed) |
+| 1 | `wall_<diagonal>` (face toward the open side) |
+| 2 — adjacent directions | `wallCorner_<diagonal>` (L-junction) |
+| 2 — opposing directions | `block_*` (tunnel — no exposed face) |
+| 4 | `block_*` (fully isolated island, should not occur in practice) |
 
-**Rule 3 — End-cap facing (3 open sides).** When only one cardinal side is closed, the tile represents the exposed mouth of a wall segment. A `block_N` here renders as a floating full cube; instead, the tile facing the exposed end is used:
+**Rule 3 — End-cap facing (3 open sides).** When only one cardinal side is closed, the tile represents the exposed mouth of a wall segment. A `block_*` here renders as a floating full cube; instead, the tile facing the exposed end is used (one of the diagonal `wall_*` variants).
 
-| Closed side | Assigned tile |
-|---|---|
-| North | `wall_S` |
-| South | `wall_N` |
-| East | `wall_W` |
-| West | `wall_E` |
-
-Example: cell `(6, 17)` (east end-cap of the left interior wall) has W=wall, N/E/S=floor → closed W → `wall_E` (the east-facing end-cap, visible from the passage).
+Example: cell `(6, 17)` (east end-cap of the left interior wall) has W=wall, N/E/S=floor → closed W → the appropriate west-facing `wall_*` tile.
 
 **Floor apron.** The floor placement loop in `room.gd`'s `_build_room()` extends 1 cell beyond the map boundary in all four directions (`range(-1, MAP_SIZE.x + 1)` × `range(-1, MAP_SIZE.y + 1)`). This creates a single-cell ring of floor tiles outside the border wall ring, grounding their outer faces so they never hover over the dark scene background. Apron cells are unreachable by game logic — the border wall ring blocks all movement paths.
 
@@ -429,8 +422,8 @@ Each level narrows the context. The terminal node — Environment — selects a 
 ```gdscript
 class_name EnvironmentTheme extends Resource
 @export var theme_id:                  String
-@export var floor_tile:                String          = "floor_N"
-@export var wall_tile_overrides:       Dictionary      = {}  ## e.g. {"wall_N": "wall_N"}
+@export var floor_tile:                String          = "floor_NE"
+@export var wall_tile_overrides:       Dictionary      = {}  ## e.g. {"wall_NE": "wall_SW"}
 @export var ambient_color:             Color           = Color.WHITE   ## CanvasModulate tint
 @export var fog_color:                 Color                           ## vision_fog.gdshader param
 @export var screen_tint:               Color           = Color(0,0,0,0) ## top ColorRect overlay
@@ -903,7 +896,7 @@ Espionage thriller — tense but not grim. Dry humour from Network contacts; col
 | 2026-05-26 | — | **Alpha 2.1** — stabilized the mismatch between the rendered board and the logical numbered grid. Added a shared runtime visual-offset compensation so camera centering, coordinate labels, selection overlay, and tile picking all reference the same board position. Tightened tile picking to require clicks inside the isometric diamond, eliminating selection in empty space above the board. Swapped the tall debug border blocks for low slabs to improve visual readability while the alignment compensation is in place. |
 | 2026-05-29 | — | **Segment system design locked** (see §3.7.6). Map structure: 3×3 grid of 9×27-tile segments. Interior: 7×25 tiles. Natural 3×3 sub-grid of 3×9-tile zones. Access points: 1 main + 1 secondary (gated) + 1 secret per active border. Teleport: mirrored-offset arrival (exit col C north → arrive col C south of next segment). AP mechanic clarified: no extra cost — arriving on border row costs 1 natural movement tile to reach interior; 2-tile safe zone (border row + first interior tile) guaranteed encounter-free. Full AP reset on segment entry. Camera confined to active segment; fog of war on unvisited. Anti-linear rule: ≥1 critical blocker with unlock in non-adjacent segment. Events: on-entry, on-zone/tile, on-interaction. Code changes: wall generation deleted from `room_layout_builder.gd`; `StructureWallLayer` unified (single layer in `room.gd` + `room.tscn`); `EDGE_ALIGNED_EXCLUSIONS` added to `build_tileset.gd`. Segment prototype: `MAP_SIZE` → `Vector2i(9, 27)`, `AGENT_START_CELL` → `Vector2i(4, 25)`, `ACCESS_POINTS` const + `_add_access_points()` added. Camera now focuses on agent spawn cell. |
 | 2026-05-26 | — | **Alpha 2.2** — advanced into the M1.5 tactical UI slice. Added a debug agent, AP/end-turn control, movement range overlays, selected-destination path preview, two-tap confirmation flow, and an auto-end checkbox inside the `END` button. Introduced blocked crate obstacles and a dedicated structure layer so walls/props render above tactical overlays while the path remains visible only over floor tiles. Set the coordinate overlay to start disabled by default. |
-| 2026-05-30 | — | **Tile-wall autotile system** (see §3.7.7) — replaced the placeholder slab border in `room_layout_builder.gd` with a full autotile system. `_pick_wall_tile()` selects from `wall_*`, `wallCorner_*`, and `block_N` using three ordered rules: (1) mid-border straight-face override, (2) open-count autotile for corners, (3) end-cap facing for 3-open cells. **Phase 1 fixes** (commit `c0c6d19`): Rule 1 eliminates T-junction notches where interior walls at y=17 meet the segment border at x=0 and x=17; Rule 3 fixes end-cap cells at `(6,17)` and `(11,17)` that previously rendered as floating `block_N` cubes. **Floor apron**: `_build_room()` now floors `range(-1, MAP_SIZE.x+1)` × `range(-1, MAP_SIZE.y+1)` so border wall outer faces sit on ground instead of dark background. **Environment/biome hierarchy** designed for Phase 2 — Dimension → Universe → Galaxy → Planet → Environment with 8 difficulty-coded tiers (Corporate → Veteran); see §3.7.8. |
+| 2026-05-30 | — | **Tile-wall autotile system** (see §3.7.7) — replaced the placeholder slab border in `room_layout_builder.gd` with a full autotile system. `_pick_wall_tile()` selects from `wall_*`, `wallCorner_*`, and `block_*` using three ordered rules: (1) mid-border straight-face override, (2) open-count autotile for corners, (3) end-cap facing for 3-open cells. **Phase 1 fixes** (commit `c0c6d19`): Rule 1 eliminates T-junction notches where interior walls at y=17 meet the segment border at x=0 and x=17; Rule 3 fixes end-cap cells at `(6,17)` and `(11,17)` that previously rendered as floating `block_*` cubes. **Floor apron**: `_build_room()` now floors `range(-1, MAP_SIZE.x+1)` × `range(-1, MAP_SIZE.y+1)` so border wall outer faces sit on ground instead of dark background. **Environment/biome hierarchy** designed for Phase 2 — Dimension → Universe → Galaxy → Planet → Environment with 8 difficulty-coded tiers (Corporate → Veteran); see §3.7.8. |
 
 ---
 

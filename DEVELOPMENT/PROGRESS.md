@@ -1,6 +1,6 @@
 # INFILTRAITOR — Progress Updates
 
-## Alpha Walls Fixed (2026-06-02)
+## Alpha Walls Done (2026-06-02)
 
 **Status:** M1.5 Alpha Gameplay — All corner assets fully calibrated and expanded  
 **Focus:** Isometric tile rendering perfection — complete corner asset gap elimination

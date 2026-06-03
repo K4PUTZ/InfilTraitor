@@ -26,6 +26,12 @@ const DEFAULT_ACCESS_POINTS: Array[Dictionary] = [
 	{"cell": Vector2i(9,  0)},   ## NW border — north segment exit
 ]
 
+const DEFAULT_GUARD_PATROLS: Array[Array] = [
+	[Vector2i(5, 8), Vector2i(8, 8), Vector2i(11, 8), Vector2i(11, 12), Vector2i(8, 12), Vector2i(5, 12)],
+	[Vector2i(4, 23), Vector2i(8, 23), Vector2i(8, 29), Vector2i(4, 29)],
+	[Vector2i(13, 22), Vector2i(15, 22), Vector2i(15, 30), Vector2i(13, 30)],
+]
+
 
 ## Builds the full segment layout.
 ## access_points: pass the output of LevelGraph.access_points_for() to override defaults.
@@ -66,6 +72,7 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		"structure_tiles":  _crate_map_to_array(crate_map),
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
+		"enemy_defs":       _build_enemy_defs(blocked_map),
 	}
 
 
@@ -220,3 +227,29 @@ func _dict_keys_to_vec2i_array(d: Dictionary) -> Array[Vector2i]:
 	for cell: Vector2i in d.keys():
 		cells.append(cell)
 	return cells
+
+
+func _build_enemy_defs(blocked_map: Dictionary) -> Array[Dictionary]:
+	var defs: Array[Dictionary] = []
+	for i in range(DEFAULT_GUARD_PATROLS.size()):
+		var route: Array[Vector2i] = []
+		for raw in DEFAULT_GUARD_PATROLS[i]:
+			var cell: Vector2i = raw
+			if cell == AGENT_START_CELL:
+				continue
+			if blocked_map.has(cell):
+				continue
+			if cell.x < 0 or cell.y < 0 or cell.x >= MAP_SIZE.x or cell.y >= MAP_SIZE.y:
+				continue
+			route.append(cell)
+
+		if route.size() < 2:
+			continue
+
+		defs.append({
+			"id": "guard_%d" % (i + 1),
+			"route": route,
+			"start_index": 0,
+		})
+
+	return defs

@@ -1,5 +1,59 @@
 # INFILTRAITOR — Progress Updates
 
+## Alpha Enemies Deploy (2026-06-03)
+
+**Status:** M2 bootstrap complete — Enemy system integrated into tactical loop and deployment state locked
+**Focus:** First playable guard patrol + detection + enemy turn phase
+
+### Changes Completed
+
+#### ✅ Guard Enemy Actor (draw-based placeholder)
+- Added `GuardEnemy` with:
+  - patrol route support
+  - directional facing
+  - per-step tween movement
+  - cone-based visibility evaluation (warning/full severity)
+
+#### ✅ Enemy Turn Phase Controller
+- Added `EnemyPhaseController` to run enemy actions in sequence:
+  - evaluates detection before/after movement
+  - advances guards along patrol routes
+  - avoids occupied cells
+  - respects blocked map edges from room layout
+
+#### ✅ Room Integration (Turn Loop + UX)
+- `TurnManager` now has explicit phase lifecycle:
+  - `enemy_phase_started`
+  - `finish_enemy_phase()` to return control to player
+  - `is_enemy_phase` lock to block player input while enemies act
+- `room.gd` now:
+  - spawns guards from layout `enemy_defs`
+  - rotates enemy patrols with perspective switch (N/E/S/W)
+  - blocks movement into occupied enemy cells
+  - executes enemy phase on end turn
+  - updates enemy visibility fade by player vision radius
+
+#### ✅ Alert Meter (Detection Feedback)
+- Added HUD `ALERTA` meter (`LblAlert`):
+  - warning sighting increments meter moderately
+  - close/full sighting increments meter strongly
+  - on full alert, tactical reset is triggered (agent + guards + fog)
+
+### Files Updated
+
+- `godot/scripts/agents/guard_enemy.gd` (new)
+- `godot/scripts/systems/enemy_phase_controller.gd` (new)
+- `godot/scripts/systems/turn_manager.gd`
+- `godot/scripts/world/room_layout_builder.gd`
+- `godot/scripts/world/room.gd`
+- `godot/scenes/game/room.tscn`
+
+### Notes
+
+- This is an M2 bootstrap implementation designed for deterministic gameplay and easy balancing.
+- Current guard visuals are placeholder draw-based primitives, consistent with the current debug-agent stage.
+- Next iteration should add line-of-sight occlusion by walls/doors and patrol behaviour states (idle/search/alert).
+
 ## Alpha Perspectivas (2026-06-03)
 
 **Status:** M1.5 Alpha Gameplay — Perspective switching integrated in HUD and runtime world view  

@@ -28,7 +28,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
 | M1.5 — Tactical UI + Alpha Gameplay feel | ⧖ In progress |
-| M2 — Threats & combat (guards, detection) | |
+| M2 — Threats & combat (guards, detection) | ⧖ In progress |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
 | M5 — Monetisation | |

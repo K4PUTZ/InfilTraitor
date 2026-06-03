@@ -3,11 +3,14 @@ class_name TacticalTurnManager
 ## Minimal player-turn controller for the M1.5 tactical UI slice.
 
 signal ap_changed(current_ap: int, max_ap: int)
+signal enemy_phase_started
+signal player_turn_started
 
 const MAX_AP := 2
 const MOVE_POINTS_PER_AP := 3
 
 var current_ap: int = MAX_AP
+var is_enemy_phase: bool = false
 
 
 func _ready() -> void:
@@ -15,12 +18,21 @@ func _ready() -> void:
 
 
 func reset_player_turn() -> void:
+	is_enemy_phase = false
 	current_ap = MAX_AP
 	ap_changed.emit(current_ap, MAX_AP)
+	player_turn_started.emit()
 
 
 func end_turn() -> void:
-	## Enemy phase is not implemented yet, so end-turn simply refreshes AP.
+	if is_enemy_phase:
+		return
+	is_enemy_phase = true
+	ap_changed.emit(current_ap, MAX_AP)
+	enemy_phase_started.emit()
+
+
+func finish_enemy_phase() -> void:
 	reset_player_turn()
 
 
@@ -36,6 +48,8 @@ func can_afford_path_cost(path_cost: int) -> bool:
 
 
 func spend_for_path_cost(path_cost: int) -> bool:
+	if is_enemy_phase:
+		return false
 	var ap_cost := path_cost_to_ap(path_cost)
 	if ap_cost <= 0 or ap_cost > current_ap:
 		return false

@@ -4,9 +4,11 @@
 [ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/ui/selection_overlay.gd" id="2_sel"]
 [ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/ui/tile_labels_overlay.gd" id="3_labels"]
 [ext_resource type="Script" uid="uid://bbc3clydl2rby" path="res://godot/scripts/systems/turn_manager.gd" id="4_turn"]
+[ext_resource type="Script" path="res://godot/scripts/systems/enemy_phase_controller.gd" id="4_enemy_phase"]
 [ext_resource type="Script" uid="uid://byo2adjdkl0mx" path="res://godot/scripts/navigation/movement_overlay.gd" id="5_move"]
 [ext_resource type="Script" uid="uid://duy550oaob6a1" path="res://godot/scripts/navigation/path_preview.gd" id="6_path"]
 [ext_resource type="Script" uid="uid://bwemylf6mflmh" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
+[ext_resource type="Script" path="res://godot/scripts/agents/guard_enemy.gd" id="7_guard"]
 [ext_resource type="Script" uid="uid://dtaggpell6shx" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
 [ext_resource type="Shader" uid="uid://cjrlwjb5rnhgd" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
 
@@ -24,10 +26,13 @@ script = ExtResource("1_room")
 zoom = Vector2(0.5, 0.5)
 
 [node name="FloorLayer" type="TileMapLayer" parent="." unique_id=1365023476]
-y_sort_origin = true
+y_sort_origin = 1
 
 [node name="TurnManager" type="Node" parent="." unique_id=1600001001]
 script = ExtResource("4_turn")
+
+[node name="EnemyPhaseController" type="Node" parent="." unique_id=16000010013]
+script = ExtResource("4_enemy_phase")
 
 [node name="MovementOverlay" type="Node2D" parent="." unique_id=1600001002]
 script = ExtResource("5_move")
@@ -36,19 +41,21 @@ script = ExtResource("5_move")
 script = ExtResource("6_path")
 
 [node name="StructureLayer" type="TileMapLayer" parent="." unique_id=1600001010]
-y_sort_origin = true
+y_sort_origin = 1
 
 [node name="StructureWallLayer" type="TileMapLayer" parent="." unique_id=1600001011]
-y_sort_origin = true
+y_sort_origin = 1
 
 [node name="StructureWallUpperLayer" type="TileMapLayer" parent="." unique_id=1600001012]
-y_sort_origin = true
+y_sort_origin = 1
 
 [node name="SelectionOverlay" type="Node2D" parent="." unique_id=945163989]
 script = ExtResource("2_sel")
 
 [node name="Agent" type="Node2D" parent="." unique_id=1600001004]
 script = ExtResource("7_agent")
+
+[node name="Enemies" type="Node2D" parent="." unique_id=1600001013]
 
 [node name="TileLabelsOverlay" type="Node2D" parent="." unique_id=657068080]
 script = ExtResource("3_labels")
@@ -110,6 +117,13 @@ layout_mode = 2
 text = "AP 2/2"
 vertical_alignment = 1
 
+[node name="LblAlert" type="Label" parent="HUD/TopBar/Row" unique_id=1600001014]
+custom_minimum_size = Vector2(126, 48)
+layout_mode = 2
+text = "ALERTA 0%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="BtnEndTurn" type="Button" parent="HUD/TopBar/Row" unique_id=1600001006]
 custom_minimum_size = Vector2(136, 48)
 layout_mode = 2
@@ -140,8 +154,7 @@ text = "END"
 vertical_alignment = 1
 
 [node name="PerspectivePad" type="PanelContainer" parent="HUD" unique_id=1600003001]
-layout_mode = 3
-anchors_preset = 8
+anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -182,3 +195,22 @@ custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
 tooltip_text = "Perspectiva Leste"
 text = "E"
+
+[node name="EnemyTurnBanner" type="PanelContainer" parent="HUD" unique_id=1600003010]
+visible = false
+anchors_preset = 14
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 140.0
+offset_top = -66.0
+offset_right = -140.0
+offset_bottom = -12.0
+grow_vertical = 0
+
+[node name="LblEnemyTurn" type="Label" parent="HUD/EnemyTurnBanner" unique_id=1600003011]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Enemy Turn"
+horizontal_alignment = 1
+vertical_alignment = 1

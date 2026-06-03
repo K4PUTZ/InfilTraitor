@@ -3,9 +3,12 @@ extends Node2D
 
 const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
+const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager = $TurnManager
+@onready var enemy_phase_controller = $EnemyPhaseController
+@onready var enemies_root:         Node2D       = $Enemies
 @onready var movement_overlay = $MovementOverlay
 @onready var path_preview = $PathPreview
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
@@ -26,6 +29,8 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 @onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
 @onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
 @onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
+@onready var lbl_alert:           Label           = $HUD/TopBar/Row/LblAlert
+@onready var enemy_turn_banner:   Control         = $HUD/EnemyTurnBanner
 @onready var fog_of_war:          Node2D          = $FogOfWarOverlay
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
@@ -42,6 +47,8 @@ var _tile_ids: Dictionary = {}
 var _room_size: Vector2i = Vector2i.ZERO
 var _blocked_cells: Dictionary = {}
 var _base_layout: Dictionary = {}
+var _current_blocked_edges: Array[Dictionary] = []
+var _guards: Array = []
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -74,6 +81,18 @@ var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
 var _active_perspective: String = "N"
+var _alert_meter: int = 0
+
+const ALERT_MAX := 100
+const ALERT_GAIN_WARNING := 20
+const ALERT_GAIN_FULL := 45
+
+const ENEMY_INTER_TURN_DELAY := 1.0
+const ENEMY_CAMERA_TWEEN_DURATION := 0.45
+const ENEMY_PHASE_MAX_OPEN_ZOOM := 0.65
+const ACTOR_END_HOLD_DELAY := 0.5
+
+var _actor_end_pause_active: bool = false
 
 const _PERSPECTIVE_SUFFIX_MAP := {
 	"N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"},
@@ -86,6 +105,7 @@ const _PERSPECTIVE_SUFFIX_MAP := {
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
+var _debug_show_enemies: bool = false
 
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
@@ -129,16 +149,18 @@ func _ready() -> void:
 
 	## Give overlays their references.
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.MOVE_POINTS_PER_AP)
-	movement_overlay.set_blocked_cells(_get_blocked_cells_array())
+	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	var blocked_edges: Array[Dictionary] = []
 	for e in view_layout.get("blocked_edges", []):
 		blocked_edges.append(e)
+	_current_blocked_edges = blocked_edges.duplicate(true)
 	movement_overlay.set_blocked_edges(blocked_edges)
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
 	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
+	_spawn_guards(view_layout.get("enemy_defs", []))
 	fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 	fog_of_war.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
@@ -151,6 +173,7 @@ func _ready() -> void:
 	camera.rotation_degrees = 0.0
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
+	turn_manager.enemy_phase_started.connect(_on_enemy_phase_started)
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
@@ -166,6 +189,9 @@ func _ready() -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
 	turn_manager.reset_player_turn()
+	_update_alert_label()
+	enemy_turn_banner.visible = false
+	_apply_debug_vision_state()
 	_update_perspective_button_state()
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
@@ -190,10 +216,12 @@ func _set_perspective(direction: String) -> void:
 		_room_size = view_layout.get("size", _room_size)
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
 		_build_room(view_layout)
-		movement_overlay.set_blocked_cells(_get_blocked_cells_array())
+		_spawn_guards(view_layout.get("enemy_defs", []))
+		movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 		var blocked_edges: Array[Dictionary] = []
 		for e in view_layout.get("blocked_edges", []):
 			blocked_edges.append(e)
+		_current_blocked_edges = blocked_edges.duplicate(true)
 		movement_overlay.set_blocked_edges(blocked_edges)
 
 		tile_labels_overlay.room_w = _room_size.x
@@ -213,6 +241,7 @@ func _set_perspective(direction: String) -> void:
 
 		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+		_apply_debug_vision_state()
 		_center_camera(agent.cell)
 		_refresh_tactical_state()
 	_update_perspective_button_state()
@@ -246,17 +275,21 @@ func _on_btn_fullscreen() -> void:
 
 
 func _on_btn_end_turn() -> void:
-	if agent.is_moving:
+	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
 	turn_manager.end_turn()
 
 
 func _on_btn_reset() -> void:
-	if agent.is_moving:
+	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
+	enemy_turn_banner.visible = false
 	agent.set_cell(_agent_start_cell)
+	for guard in _guards:
+		if is_instance_valid(guard):
+			guard.reset_to_route_start()
 	_selected_cell = _agent_start_cell
 	selection_overlay.set_selected(_agent_start_cell)
 	fog_of_war.reset_fog()
@@ -264,6 +297,8 @@ func _on_btn_reset() -> void:
 	_center_camera(_agent_start_cell)
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
+	_alert_meter = 0
+	_update_alert_label()
 	turn_manager.reset_player_turn()
 
 
@@ -290,7 +325,7 @@ func _on_btn_viewport() -> void:
 
 
 func _on_ap_changed(current_ap: int, max_ap: int) -> void:
-	lbl_ap.text = "AP %d/%d" % [current_ap, max_ap]
+	lbl_ap.text = "INIMIGOS" if turn_manager.is_enemy_phase else "AP %d/%d" % [current_ap, max_ap]
 	if not agent.is_moving:
 		_refresh_tactical_state()
 
@@ -308,6 +343,7 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
+	_update_enemy_visibility()
 	if _pending_auto_end_turn:
 		_pending_auto_end_turn = false
 		turn_manager.end_turn()
@@ -316,8 +352,209 @@ func _on_agent_move_finished(_cell: Vector2i) -> void:
 
 
 func _refresh_tactical_state() -> void:
+	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	movement_overlay.rebuild(agent.cell, turn_manager.get_max_move_points())
 	_update_selected_preview()
+	_update_enemy_visibility()
+
+
+func _on_enemy_phase_started() -> void:
+	if _guards.is_empty():
+		turn_manager.finish_enemy_phase()
+		return
+	enemy_turn_banner.visible = true
+	movement_overlay.clear_overlay()
+	path_preview.clear_path()
+	selection_overlay.set_selected(agent.cell)
+	var first_guard := _first_valid_guard_cell()
+	if first_guard != INVALID_CELL:
+		await _focus_camera_for_enemy_phase(first_guard)
+	await _hold_actor_end_pause()
+	await _run_enemy_phase()
+	enemy_turn_banner.visible = false
+	if _alert_meter >= ALERT_MAX:
+		_alert_meter = 0
+		agent.set_cell(_agent_start_cell)
+		for guard in _guards:
+			if is_instance_valid(guard):
+				guard.reset_to_route_start()
+		_selected_cell = _agent_start_cell
+		selection_overlay.set_selected(_agent_start_cell)
+		fog_of_war.reset_fog()
+		fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_update_alert_label()
+	turn_manager.finish_enemy_phase()
+
+
+func _run_enemy_phase() -> void:
+	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
+	var occupied: Dictionary = {}
+	for guard in _guards:
+		if is_instance_valid(guard):
+			occupied[guard.cell] = guard
+
+	var max_severity := 0
+	for i in range(_guards.size()):
+		var guard = _guards[i]
+		if not is_instance_valid(guard):
+			continue
+
+		var report: Dictionary = await enemy_phase_controller.run_single_guard_turn(
+			guard,
+			agent.cell,
+			_blocked_cells,
+			blocked_edges,
+			_room_size,
+			occupied
+		)
+		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
+		await _hold_actor_end_pause()
+
+		var next_focus := _next_enemy_phase_focus_cell(i)
+		await _enemy_inter_turn_pause_with_camera(next_focus)
+
+	if max_severity == 1:
+		_alert_meter = mini(ALERT_MAX, _alert_meter + ALERT_GAIN_WARNING)
+	elif max_severity >= 2:
+		_alert_meter = mini(ALERT_MAX, _alert_meter + ALERT_GAIN_FULL)
+
+	_update_alert_label()
+	_update_enemy_visibility()
+
+
+func _enemy_inter_turn_pause_with_camera(target_cell: Vector2i) -> void:
+	var tween_time := minf(ENEMY_CAMERA_TWEEN_DURATION, ENEMY_INTER_TURN_DELAY)
+	await _focus_camera_for_enemy_phase(target_cell, tween_time)
+	var remain := ENEMY_INTER_TURN_DELAY - tween_time
+	if remain > 0.0:
+		await get_tree().create_timer(remain).timeout
+
+
+func _hold_actor_end_pause() -> void:
+	_actor_end_pause_active = true
+	await get_tree().create_timer(ACTOR_END_HOLD_DELAY).timeout
+	_actor_end_pause_active = false
+
+
+func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEMY_CAMERA_TWEEN_DURATION) -> void:
+	if target_cell == INVALID_CELL:
+		return
+	var target_world := _world_center_for_cell(target_cell)
+	var target_zoom := camera.zoom.x
+	if target_zoom > ENEMY_PHASE_MAX_OPEN_ZOOM:
+		target_zoom = ENEMY_PHASE_MAX_OPEN_ZOOM
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(camera, "global_position", target_world, duration)
+	tween.tween_property(camera, "zoom", Vector2(target_zoom, target_zoom), duration)
+	await tween.finished
+
+
+func _world_center_for_cell(cell: Vector2i) -> Vector2:
+	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+
+
+func _first_valid_guard_cell() -> Vector2i:
+	for guard in _guards:
+		if is_instance_valid(guard):
+			return guard.cell
+	return INVALID_CELL
+
+
+func _next_enemy_phase_focus_cell(current_guard_idx: int) -> Vector2i:
+	for i in range(current_guard_idx + 1, _guards.size()):
+		var next_guard = _guards[i]
+		if is_instance_valid(next_guard):
+			return next_guard.cell
+	return agent.cell
+
+
+func _update_alert_label() -> void:
+	lbl_alert.text = "ALERTA %d%%" % _alert_meter
+	var t := float(_alert_meter) / float(ALERT_MAX)
+	lbl_alert.modulate = Color(1.0, 1.0 - 0.55 * t, 1.0 - 0.75 * t, 1.0)
+
+
+func _toggle_debug_show_enemies() -> void:
+	_debug_show_enemies = not _debug_show_enemies
+	_apply_debug_vision_state()
+
+
+func _apply_debug_vision_state() -> void:
+	fog_of_war.visible = not _debug_show_enemies
+	_fog_rect.visible = not _debug_show_enemies
+	_update_enemy_visibility()
+
+
+func _spawn_guards(enemy_defs: Array) -> void:
+	for child in enemies_root.get_children():
+		child.queue_free()
+	_guards.clear()
+
+	for i in range(enemy_defs.size()):
+		var entry: Dictionary = enemy_defs[i]
+		var route: Array[Vector2i] = []
+		for c in entry.get("route", []):
+			route.append(c)
+		if route.size() < 2:
+			continue
+
+		var guard = GuardEnemyClass.new()
+		enemies_root.add_child(guard)
+		guard.setup(
+			floor_layer,
+			VISUAL_GRID_OFFSET,
+			String(entry.get("id", "guard_%d" % (i + 1))),
+			route,
+			int(entry.get("start_index", 0))
+		)
+		_guards.append(guard)
+
+	_update_enemy_visibility()
+
+
+func _build_navigation_blocked_cells() -> Array[Vector2i]:
+	var nav: Array[Vector2i] = _get_blocked_cells_array()
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		if guard.cell == agent.cell:
+			continue
+		nav.append(guard.cell)
+	return nav
+
+
+func _is_guard_cell(cell: Vector2i) -> bool:
+	for guard in _guards:
+		if is_instance_valid(guard) and guard.cell == cell:
+			return true
+	return false
+
+
+func _update_enemy_visibility() -> void:
+	if _debug_show_enemies:
+		for guard in _guards:
+			if not is_instance_valid(guard):
+				continue
+			guard.modulate.a = 1.0
+		return
+
+	var vision := float(VISION_TILE_RADIUS + vision_bonus_tiles)
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		var d: float = (guard.cell - agent.cell).length()
+		var fade_start := vision - 1.0
+		if d <= fade_start:
+			guard.modulate.a = 1.0
+		elif d >= vision + 1.0:
+			guard.modulate.a = 0.0
+		else:
+			var t: float = (d - fade_start) / 2.0
+			guard.modulate.a = clampf(1.0 - t, 0.0, 1.0)
 
 
 func _update_selected_preview() -> void:
@@ -338,7 +575,7 @@ func _update_selected_preview() -> void:
 
 
 func _is_selectable_cell(cell: Vector2i) -> bool:
-	if cell == INVALID_CELL or _blocked_cells.has(cell):
+	if cell == INVALID_CELL or _blocked_cells.has(cell) or _is_guard_cell(cell):
 		return false
 	return floor_layer.get_cell_source_id(cell) != -1
 
@@ -352,6 +589,8 @@ func _set_selected_cell(cell: Vector2i) -> void:
 
 
 func _handle_tile_click(cell: Vector2i) -> void:
+	if turn_manager.is_enemy_phase or _actor_end_pause_active:
+		return
 	if not _is_selectable_cell(cell):
 		path_preview.clear_path()
 		return
@@ -367,6 +606,10 @@ func _handle_tile_click(cell: Vector2i) -> void:
 
 
 func _try_move_to(cell: Vector2i) -> bool:
+	if _actor_end_pause_active:
+		return false
+	if turn_manager.is_enemy_phase:
+		return false
 	if agent.is_moving or cell == INVALID_CELL or cell == agent.cell:
 		return false
 	if not movement_overlay.is_reachable(cell):
@@ -486,6 +729,16 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 			"to": _cell_from_base(edge.get("to", Vector2i.ZERO), direction, base_size),
 		})
 	mapped["blocked_edges"] = blocked_edges
+
+	var enemy_defs: Array[Dictionary] = []
+	for enemy in layout.get("enemy_defs", []):
+		var out := (enemy as Dictionary).duplicate(true)
+		var route: Array[Vector2i] = []
+		for cell in enemy.get("route", []):
+			route.append(_cell_from_base(cell, direction, base_size))
+		out["route"] = route
+		enemy_defs.append(out)
+	mapped["enemy_defs"] = enemy_defs
 	return mapped
 
 
@@ -632,6 +885,11 @@ func _get_leashed_pos(proposed: Vector2) -> Vector2:
 ## Left mouse button (press/release) lives in _unhandled_input so GUI
 ## controls (Buttons) can consume their clicks before game logic runs.
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if key.pressed and not key.echo and key.keycode == KEY_V:
+			_toggle_debug_show_enemies()
+			return
 
 	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
 	if event is InputEventScreenTouch:
@@ -687,6 +945,8 @@ func _input(event: InputEvent) -> void:
 ## Left mouse: only runs when no GUI Control consumed the event first.
 ## This lets HUD buttons work while still handling pan + tile selection.
 func _unhandled_input(event: InputEvent) -> void:
+	if turn_manager.is_enemy_phase or _actor_end_pause_active:
+		return
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton

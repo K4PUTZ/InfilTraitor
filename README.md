@@ -28,7 +28,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
 | M1.5 — Tactical UI + Alpha Gameplay feel | ⧖ In progress |
-| M2 — Threats & combat (guards, detection) | ⧖ In progress |
+| M2 — Enemy visibility & guard detection | ⧖ In progress |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
 | M5 — Monetisation | |
@@ -41,6 +41,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Movement, AP tracking, fog of war, tile selection, and camera controls are implemented.
 - Perspective controls are now available via a 2x2 HUD pad (N/E/S/W), with runtime layout rotation.
 - The current prototype is a playable tactical segment with placeholder agent visuals.
+- Enemy visibility now tracks player vision radius and guard fade stages before disappearance.
 - Next internal work is door/segment transitions, action menu, character sprite, and guard AI.
 
 ### Next up (M1.5 continued)

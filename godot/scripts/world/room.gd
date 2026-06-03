@@ -30,6 +30,7 @@ const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 @onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
 @onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
 @onready var lbl_alert:           Label           = $HUD/TopBar/Row/LblAlert
+@onready var busted_dialog:       Label           = $HUD/BustedDialog
 @onready var enemy_turn_banner:   Control         = $HUD/EnemyTurnBanner
 @onready var fog_of_war:          Node2D          = $FogOfWarOverlay
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
@@ -101,7 +102,7 @@ const _PERSPECTIVE_SUFFIX_MAP := {
 	"W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"},
 }
 
-## Vision bonus added by agent abilities; increases leash radius and fog reveal.
+## Vision bonus added by agent abilities; combined with the player vision radius.
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
@@ -373,6 +374,7 @@ func _on_enemy_phase_started() -> void:
 	await _run_enemy_phase()
 	enemy_turn_banner.visible = false
 	if _alert_meter >= ALERT_MAX:
+		await _show_busted_dialog()
 		_alert_meter = 0
 		agent.set_cell(_agent_start_cell)
 		for guard in _guards:
@@ -478,6 +480,13 @@ func _update_alert_label() -> void:
 	lbl_alert.modulate = Color(1.0, 1.0 - 0.55 * t, 1.0 - 0.75 * t, 1.0)
 
 
+func _show_busted_dialog() -> void:
+	busted_dialog.text = "Busted"
+	busted_dialog.visible = true
+	await get_tree().create_timer(1.2).timeout
+	busted_dialog.visible = false
+
+
 func _toggle_debug_show_enemies() -> void:
 	_debug_show_enemies = not _debug_show_enemies
 	_apply_debug_vision_state()
@@ -535,26 +544,47 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 
 
 func _update_enemy_visibility() -> void:
+	# Update enemy alpha/saturation each frame while moving.
+	# Visibility is driven by the player's vision radius + ability bonuses.
+	# At vision distance the guard starts to desaturate, then fades out one tile later.
 	if _debug_show_enemies:
 		for guard in _guards:
 			if not is_instance_valid(guard):
 				continue
 			guard.modulate.a = 1.0
+		queue_redraw()
 		return
 
-	var vision := float(VISION_TILE_RADIUS + vision_bonus_tiles)
+	var enemy_vision := float(agent.get_vision_radius() + vision_bonus_tiles)
 	for guard in _guards:
 		if not is_instance_valid(guard):
 			continue
 		var d: float = (guard.cell - agent.cell).length()
-		var fade_start := vision - 1.0
-		if d <= fade_start:
-			guard.modulate.a = 1.0
-		elif d >= vision + 1.0:
-			guard.modulate.a = 0.0
+		var tile_distance: int = int(floor(d + 0.5))
+		if tile_distance <= int(enemy_vision) - 1:
+			guard.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		elif tile_distance == int(enemy_vision):
+			guard.modulate = Color(0.85, 0.85, 0.85, 1.0)
+		elif tile_distance == int(enemy_vision) + 1:
+			guard.modulate = Color(0.65, 0.65, 0.65, 0.5)
 		else:
-			var t: float = (d - fade_start) / 2.0
-			guard.modulate.a = clampf(1.0 - t, 0.0, 1.0)
+			guard.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	queue_redraw()
+
+
+func _draw() -> void:
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		if guard.last_known_agent_cell == INVALID_CELL:
+			continue
+		if guard.state == guard.STATE_PATROL:
+			continue
+		var world := _world_center_for_cell(guard.last_known_agent_cell)
+		draw_circle(world, 18.0, Color(1.0, 0.72, 0.18, 0.24))
+		draw_circle(world, 18.0, Color(1.0, 0.9, 0.2, 0.82), 3.0)
+		draw_line(world + Vector2(-8.0, 0.0), world + Vector2(8.0, 0.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
+		draw_line(world + Vector2(0.0, -8.0), world + Vector2(0.0, 8.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
 
 
 func _update_selected_preview() -> void:
@@ -837,6 +867,15 @@ func _apply_zoom(new_z: float) -> void:
 
 func _process(_delta: float) -> void:
 	_update_vision_fog()
+	if _has_moving_guards():
+		_update_enemy_visibility()
+
+
+func _has_moving_guards() -> bool:
+	for guard in _guards:
+		if is_instance_valid(guard) and guard.is_moving:
+			return true
+	return false
 
 
 ## Update the distance-fog shader uniforms every frame so the gradient tracks

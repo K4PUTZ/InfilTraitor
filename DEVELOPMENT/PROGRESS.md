@@ -1,9 +1,9 @@
 # INFILTRAITOR — Progress Updates
 
-## Alpha Enemies Deploy (2026-06-03)
+## Alpha Enemy Visibility (2026-06-03)
 
-**Status:** M2 bootstrap complete — Enemy system integrated into tactical loop and deployment state locked
-**Focus:** First playable guard patrol + detection + enemy turn phase
+**Status:** M2 bootstrap complete — Enemy visibility now integrated into the tactical loop
+**Focus:** Player vision radius, guard fade stages, and alert-triggered tactical reset
 
 ### Changes Completed
 

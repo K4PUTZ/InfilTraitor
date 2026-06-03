@@ -10,6 +10,8 @@ signal move_finished(cell: Vector2i)
 var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var cell: Vector2i = Vector2i.ZERO
+var vision_radius: int = 7  ## base player visibility radius in tiles; affects enemy fade thresholds
+var vision_mode: String = "normal"  ## future modes: thermal, night vision, xray
 var is_moving: bool = false
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
@@ -34,6 +36,13 @@ func set_cell(new_cell: Vector2i) -> void:
 	cell = new_cell
 	position = _cell_to_world(new_cell)
 	queue_redraw()
+
+
+func get_vision_radius() -> int:
+	return vision_radius
+
+func set_vision_radius(new_radius: int) -> void:
+	vision_radius = max(0, new_radius)
 
 
 ## Animate the agent along every cell in `path` (must include the start cell).

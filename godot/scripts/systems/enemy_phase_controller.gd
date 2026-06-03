@@ -20,7 +20,8 @@ func run_single_guard_turn(
 	var events: Array[Dictionary] = []
 	var max_severity := 0
 
-	var before: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE)
+	var before: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE, blocked_cells, blocked_edges)
+	guard.observe_player(bool(before.get("visible", false)), int(before.get("severity", 0)), player_cell)
 	if bool(before.get("visible", false)):
 		var before_severity := int(before.get("severity", 1))
 		max_severity = maxi(max_severity, before_severity)
@@ -31,11 +32,12 @@ func run_single_guard_turn(
 			"moment": "before_move",
 		})
 
-	var next_cell: Vector2i = guard.pick_next_patrol_cell(occupied, blocked_cells, blocked_edges, room_size)
+	var next_cell: Vector2i = guard.choose_next_cell(occupied, blocked_cells, blocked_edges, player_cell, room_size)
 	if next_cell != guard.cell:
 		await guard.move_to_cell_animated(next_cell)
 
-	var after: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE)
+	var after: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE, blocked_cells, blocked_edges)
+	guard.observe_player(bool(after.get("visible", false)), int(after.get("severity", 0)), player_cell)
 	if bool(after.get("visible", false)):
 		var after_severity := int(after.get("severity", 1))
 		max_severity = maxi(max_severity, after_severity)
@@ -47,6 +49,7 @@ func run_single_guard_turn(
 		})
 
 	occupied[guard.cell] = guard
+	guard.tick_state()
 
 	return {
 		"max_severity": max_severity,

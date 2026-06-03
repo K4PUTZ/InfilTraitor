@@ -15,6 +15,14 @@ const COLOR_HEAD := Color(1.0, 0.87, 0.80, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 const CARDINAL_DIRS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+const VISION_RANGE := 6
+const VISION_CONE_RADIUS := 6
+const VISION_CONE_HALF_WIDTH_TILES := 3
+const STATE_PATROL := "patrol"
+const STATE_SUSPICIOUS := "suspicious"
+const STATE_ALERT := "alert"
+const STATE_CHASE := "chase"
+const INVALID_CELL: Vector2i = Vector2i(-9999, -9999)
 
 var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
@@ -24,6 +32,9 @@ var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0
 var facing: Vector2i = Vector2i.UP
+var state: String = STATE_PATROL
+var state_timer: int = 0
+var last_known_agent_cell: Vector2i = INVALID_CELL
 var is_moving: bool = false
 var _path_queue: Array[Vector2i] = []
 
@@ -59,7 +70,7 @@ func reset_to_route_start() -> void:
 	queue_redraw()
 
 
-func evaluate_detection(player_cell: Vector2i, vision_range: int = 6, close_warning_range: int = 2) -> Dictionary:
+func evaluate_detection(player_cell: Vector2i, vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, close_warning_range: int = 2) -> Dictionary:
 	var delta: Vector2i = player_cell - cell
 	if delta == Vector2i.ZERO:
 		return {"visible": true, "severity": 2}
@@ -69,9 +80,13 @@ func evaluate_detection(player_cell: Vector2i, vision_range: int = 6, close_warn
 		return {"visible": false, "severity": 0}
 
 	var lateral := _axis_projection(delta, _orthogonal(facing))
-	var cone_width := maxi(1, int(floor(float(forward) * 0.5)))
+	var cone_width := VISION_CONE_HALF_WIDTH_TILES + int(floor(float(forward) * 0.5))
 	if abs(lateral) > cone_width:
 		return {"visible": false, "severity": 0}
+
+	if blocked_cells != null and blocked_edges != null:
+		if not can_see_cell(player_cell, blocked_cells, blocked_edges):
+			return {"visible": false, "severity": 0}
 
 	var severity := 2 if forward <= close_warning_range else 1
 	return {"visible": true, "severity": severity}
@@ -211,6 +226,125 @@ func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i, blocked_edges: Dic
 	return blocked_edges.has(key)
 
 
+func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary) -> bool:
+	var current: Vector2i = cell
+	var dx := target_cell.x - current.x
+	var dy := target_cell.y - current.y
+	var step_x: int = 0
+	if dx > 0:
+		step_x = 1
+	elif dx < 0:
+		step_x = -1
+	var step_y: int = 0
+	if dy > 0:
+		step_y = 1
+	elif dy < 0:
+		step_y = -1
+	var abs_dx: int = abs(dx)
+	var abs_dy: int = abs(dy)
+	var err: int = abs_dx - abs_dy
+
+	while current != target_cell:
+		var e2 := err * 2
+		var next_cell := current
+		if e2 > -abs_dy:
+			next_cell.x += step_x
+			err -= abs_dy
+		if e2 < abs_dx:
+			next_cell.y += step_y
+			err += abs_dx
+		if _is_edge_blocked(current, next_cell, blocked_edges):
+			return false
+		if blocked_cells.has(next_cell) and next_cell != target_cell:
+			return false
+		current = next_cell
+	return true
+
+
+func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:
+	if player_visible:
+		last_known_agent_cell = player_cell
+		if severity >= 2:
+			state = STATE_ALERT
+			state_timer = 3
+		elif state != STATE_ALERT:
+			state = STATE_SUSPICIOUS
+			state_timer = 3
+	return
+
+
+func tick_state() -> void:
+	if state == STATE_PATROL:
+		return
+	state_timer -= 1
+	if state_timer <= 0:
+		if state == STATE_ALERT:
+			state = STATE_CHASE
+			state_timer = 3
+		elif state == STATE_SUSPICIOUS:
+			state = STATE_PATROL
+			last_known_agent_cell = INVALID_CELL
+		elif state == STATE_CHASE:
+			state = STATE_SUSPICIOUS
+			state_timer = 2
+
+
+func choose_next_cell(
+		occupied_cells: Dictionary,
+		blocked_cells: Dictionary,
+		blocked_edges: Dictionary,
+		player_cell: Vector2i,
+		room_size: Vector2i
+) -> Vector2i:
+	if state == STATE_PATROL:
+		return pick_next_patrol_cell(occupied_cells, blocked_cells, blocked_edges, room_size)
+	if state == STATE_SUSPICIOUS:
+		if last_known_agent_cell != INVALID_CELL:
+			return _step_toward(last_known_agent_cell, occupied_cells, blocked_cells, blocked_edges, room_size)
+		return cell
+	if state == STATE_ALERT or state == STATE_CHASE:
+		var target := player_cell
+		if last_known_agent_cell != INVALID_CELL:
+			target = last_known_agent_cell
+		return _step_toward(target, occupied_cells, blocked_cells, blocked_edges, room_size)
+	return cell
+
+
+func _step_toward(
+		target_cell: Vector2i,
+		occupied_cells: Dictionary,
+		blocked_cells: Dictionary,
+		blocked_edges: Dictionary,
+		room_size: Vector2i
+) -> Vector2i:
+	if target_cell == cell:
+		return cell
+	var delta: Vector2i = target_cell - cell
+	var try_steps: Array[Vector2i] = []
+	if abs(delta.x) >= abs(delta.y):
+		if delta.x != 0:
+			try_steps.append(Vector2i(sign(delta.x), 0))
+		if delta.y != 0:
+			try_steps.append(Vector2i(0, sign(delta.y)))
+	else:
+		if delta.y != 0:
+			try_steps.append(Vector2i(0, sign(delta.y)))
+		if delta.x != 0:
+			try_steps.append(Vector2i(sign(delta.x), 0))
+	for step in try_steps:
+		var candidate := cell + step
+		if not _is_inside(candidate, room_size):
+			continue
+		if blocked_cells.has(candidate):
+			continue
+		if occupied_cells.has(candidate):
+			continue
+		if _is_edge_blocked(cell, candidate, blocked_edges):
+			continue
+		return candidate
+	return cell
+
+
 func _edge_key(a: Vector2i, b: Vector2i) -> String:
 	if a.x < b.x or (a.x == b.x and a.y <= b.y):
 		return "%d,%d|%d,%d" % [a.x, a.y, b.x, b.y]
@@ -218,6 +352,10 @@ func _edge_key(a: Vector2i, b: Vector2i) -> String:
 
 
 func _draw() -> void:
+	var cone := _vision_cone_points()
+	draw_colored_polygon(cone, Color(1.0, 0.9, 0.2, 0.14))
+	draw_polyline(cone + PackedVector2Array([cone[0]]), Color(1.0, 0.9, 0.3, 0.6), 2.0, true)
+
 	var shadow := PackedVector2Array([
 		Vector2(0.0, -10.0),
 		Vector2(26.0, 0.0),
@@ -239,3 +377,17 @@ func _draw() -> void:
 	var p1 := Vector2(0.0, -82.0)
 	var p2 := p1 + Vector2(facing.x * 18.0, facing.y * 12.0)
 	draw_line(p1, p2, Color(1.0, 0.9, 0.5, 0.95), 3.0)
+
+
+func _vision_cone_points() -> PackedVector2Array:
+	var base := Vector2(0.0, -62.0)
+	match facing:
+		Vector2i.UP:
+			return PackedVector2Array([base, base + Vector2(-80.0, -170.0), base + Vector2(80.0, -170.0)])
+		Vector2i.DOWN:
+			return PackedVector2Array([base, base + Vector2(80.0, 40.0), base + Vector2(-80.0, 40.0)])
+		Vector2i.LEFT:
+			return PackedVector2Array([base, base + Vector2(-170.0, -50.0), base + Vector2(-170.0, 50.0)])
+		Vector2i.RIGHT:
+			return PackedVector2Array([base, base + Vector2(170.0, 50.0), base + Vector2(170.0, -50.0)])
+	return PackedVector2Array([base, base + Vector2(-80.0, -170.0), base + Vector2(80.0, -170.0)])

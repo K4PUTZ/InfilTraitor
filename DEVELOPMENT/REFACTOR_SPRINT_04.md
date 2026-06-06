@@ -1,8 +1,9 @@
 # Refactoring Sprint 04 — Completion Report
 
-**Date:** June 5, 2026  
-**Status:** ✅ Complete — All 4 refactors merged to main  
-**Commit:** `c1151ca` — "Alpha After Refactor: 04-refactor sprint complete"
+**Date:** June 5–6, 2026  
+**Status:** ✅ Complete & Stabilized — All 4 refactors + 3 bugfixes merged to main  
+**Final Commit:** `3cd727b` — "Refactor: move_to_cell_animated() — pass all parameters, remove defaults"  
+**Release Tag:** `alpha-refactor-complete`
 
 ---
 
@@ -46,6 +47,43 @@
 
 ---
 
+## Bugfixes Applied (June 6, 2026)
+
+### ✅ Bugfix 1 — `_path_index` Initialization
+- **Issue:** Guard attempted self-movement on first A* step (index 0 pointed to start cell)
+- **Fix:** Changed initialization from `_path_index: int = 0` → `_path_index: int = 1`
+- **Locations:** Variable declaration (line 49) + reset in `_step_toward()` (line 331)
+- **Commit:** `76afb36`
+
+### ✅ Bugfix 2 — `move_to_cell_animated()` Implementation
+- **Issue:** Function still used deprecated greedy `_build_step_path_to()` instead of A* pathfinder
+- **Fix:** Replaced with `GuardPathfinder.find_path()` call with explicit pathfinding parameters
+- **Locations:** `guard_enemy.gd` (lines 139–147)
+- **Commit:** `76afb36`
+
+### ✅ Bugfix 3 — Remove Unused Helper Functions
+- **Issue:** Dead code from old greedy pathfinding (`_build_step_path_to()`, `_orthogonal()`, `_axis_projection()`)
+- **Fix:** Deleted all 3 functions; kept `_is_edge_blocked()` (still used in `pick_next_patrol_cell()` and `can_see_cell()`)
+- **Verification:** `grep -n "_axis_projection|_orthogonal|_build_step_path_to"` → 0 matches
+- **Commit:** `76afb36`
+
+### ✅ Bugfix 4 — Type Inference in `guard_pathfinder.gd`
+- **Issue:** GDScript couldn't infer type of `nb` variable (ambiguous from context)
+- **Fix:** Explicit type declaration: `var nb := current + step` → `var nb: Vector2i = current + step`
+- **Location:** Line 36
+- **Commit:** `3580eca`
+
+### ✅ Bugfix 5 — Data Flow: Remove Default Parameters
+- **Issue:** `move_to_cell_animated()` had hardcoded default values (room_size default, empty dicts)
+- **Fix:** Removed all defaults; caller must pass explicit `blocked_cells`, `blocked_edges`, `room_size`
+- **Data Flow:** `room.gd` → `enemy_phase_controller.gd` (line 37) → `guard.move_to_cell_animated()` with all parameters explicit
+- **Locations:** 
+  - `guard_enemy.gd` line 137–142 (signature)
+  - `enemy_phase_controller.gd` line 37 (call site)
+- **Commit:** `3cd727b`
+
+---
+
 ## Architecture Rules Locked
 
 ✅ **Rule 1:** Stats always data-driven (no hardcoded maxima)  
@@ -62,16 +100,20 @@
 - `godot/scripts/data/agent_stats.gd` (40 lines)
 - `godot/scripts/navigation/guard_pathfinder.gd` (87 lines)
 
-## Files Modified
-- `godot/scripts/agents/guard_enemy.gd` (+80 lines from refactors 03–04)
+## Files Modified (Including Bugfixes)
+- `godot/scripts/agents/guard_enemy.gd` (+80 from refactors 03–04, −20 from bugfixes 1–2–3–5 = net +60)
 - `godot/scripts/systems/turn_manager.gd` (7 const → var changes)
 - `godot/scripts/world/room.gd` (5 const → var changes)
 - `godot/scripts/navigation/movement_overlay.gd` (1 reference updated)
+- `godot/scripts/systems/enemy_phase_controller.gd` (1 reference updated for bugfix 5)
+- `godot/scripts/navigation/guard_pathfinder.gd` (1 type annotation added for bugfix 4)
 
-## Total Diff
-- **20 files changed** (including .uid files and BACKUP files)
-- **+1819 insertions, −88 deletions** (net +1731)
-- **3 new core files** + updates to 4 existing files
+## Total Diff (Final)
+- **Main refactor sprint:** +1819 insertions, −88 deletions (20 files changed)
+- **Bugfixes:** +10 insertions, −32 deletions (3 files changed)
+- **Net overall:** +1829 insertions, −120 deletions
+- **Core files:** 3 new + 6 modified
+- **Commit chain:** 5 commits (4 refactors + 3 bugfixes in 3 commits + data flow refactor)
 
 ---
 
@@ -94,4 +136,6 @@
 
 ---
 
-**Status:** Ready for M2 M2 continuation. Architecture is stable, extensible, and ready for procedural generation and LLM integration.
+**Status:** ✅ **REFACTOR COMPLETE** (June 6, 2026)
+
+All 4 refactors + 5 bugfixes verified and stabilized. Architecture is production-ready for M2 event-driven detection. All data flows explicit (no hardcoded constants). A* pathfinding tested and working. Ready for procedural generation and LLM integration.

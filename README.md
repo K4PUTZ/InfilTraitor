@@ -20,7 +20,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha After Refactor (2026-06-05)** — Refactor Sprint 04 complete. Core systems consolidated: WallEdgeData unified, stats data-driven, angular FOV (8-dir), A* pathfinding. Architecture stable for infinite scaling (Freelance mode, tier progression).
+**Alpha Refactor Complete (2026-06-06)** — Refactor Sprint 04 + 5 bugfixes applied. Core systems consolidated: WallEdgeData unified, stats data-driven, angular FOV (8-dir), A* pathfinding with explicit data flow. Architecture stable for infinite scaling (Freelance mode, tier progression).
 
 | Milestone | Status |
 |---|---|
@@ -44,12 +44,19 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Architecture now supports infinite scaling: data-driven stats, no hardcoded ceilings, LLM-ready (structure/content separated).
 - Next internal work is event-driven detection by tic, noise system, and confrontation mechanics.
 
-### Refactor Sprint 04 (Completed 2026-06-05)
+### Refactor Sprint 04 (Completed 2026-06-06)
 
 ✅ **Refactor 01:** WallEdgeData consolidation — unified edge key generation  
 ✅ **Refactor 02:** Data-driven stats — removed hardcoded maxima  
 ✅ **Refactor 03:** Angular FOV — 90° smooth cone (8-direction support)  
 ✅ **Refactor 04:** A* pathfinding — optimal guard navigation  
+
+✅ **Bugfixes Applied (2026-06-06):**
+- _path_index starts at 1 (guards skip start cell on pathfind)
+- move_to_cell_animated() uses GuardPathfinder (not greedy)
+- Removed dead code (_build_step_path_to, _orthogonal, _axis_projection)
+- Explicit types in guard_pathfinder.gd (nb: Vector2i)
+- Data flow explicit: no defaults, all parameters passed through chain
 
 📖 **See:** [DEVELOPMENT/REFACTOR_SPRINT_04.md](DEVELOPMENT/REFACTOR_SPRINT_04.md) for detailed report.
 

@@ -51,9 +51,13 @@ var _path_index: int = 1
 ## Dev vision mode
 var dev_vision: bool = false
 
+## Debug label for dev_vision mode
+var _debug_label: Label = null
+
 
 func set_dev_vision(enabled: bool) -> void:
 	dev_vision = enabled
+	_update_debug_label()
 	queue_redraw()
 
 
@@ -76,6 +80,18 @@ func setup(
 	position = _cell_to_world(cell)
 	_set_facing_from_route()
 	_update_facing_angle()
+	
+	## Create debug label for dev_vision mode
+	_debug_label = Label.new()
+	_debug_label.add_theme_font_size_override("font_size", 11)
+	_debug_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8))
+	_debug_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+	_debug_label.add_theme_constant_override("shadow_offset_x", 1)
+	_debug_label.add_theme_constant_override("shadow_offset_y", 1)
+	_debug_label.z_index = 100
+	_debug_label.visible = false
+	add_child(_debug_label)
+	
 	queue_redraw()
 
 
@@ -178,6 +194,7 @@ func _step_next() -> void:
 	cell = next_cell
 	facing = _snap_to_cardinal(next_cell - previous_cell)
 	_update_facing_angle()
+	_update_debug_label()
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_IN_OUT)
@@ -229,7 +246,42 @@ func _update_facing_angle() -> void:
 		facing_angle_deg = 270.0
 
 
+func _update_debug_label() -> void:
+	if _debug_label == null:
+		return
 
+	_debug_label.visible = dev_vision
+
+	if not dev_vision:
+		return
+
+	## Position: above the guard's head in local coordinates
+	## -130 in Y places label above the sprite (head is at -62)
+	_debug_label.position = Vector2(-40.0, -130.0)
+
+	var last := "—"
+	if last_known_agent_cell != INVALID_CELL:
+		last = "%d,%d" % [last_known_agent_cell.x, last_known_agent_cell.y]
+
+	_debug_label.text = (
+		"id: %s\n" % enemy_id +
+		"state: %s\n" % state +
+		"cell: %d,%d\n" % [cell.x, cell.y] +
+		"facing: %s\n" % _facing_name() +
+		"last_known: %s" % last
+	)
+
+
+func _facing_name() -> String:
+	if facing == Vector2i.UP:
+		return "N"
+	if facing == Vector2i.DOWN:
+		return "S"
+	if facing == Vector2i.RIGHT:
+		return "E"
+	if facing == Vector2i.LEFT:
+		return "W"
+	return "?"
 
 
 func _is_inside(pos: Vector2i, room_size: Vector2i) -> bool:
@@ -285,6 +337,7 @@ func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) 
 		elif state != STATE_ALERT:
 			state = STATE_SUSPICIOUS
 			state_timer = 3
+	_update_debug_label()
 	return
 
 

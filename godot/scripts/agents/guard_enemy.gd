@@ -48,6 +48,14 @@ var _cached_target: Vector2i = INVALID_CELL
 var _cached_path: Array[Vector2i] = []
 var _path_index: int = 1
 
+## Dev vision mode
+var dev_vision: bool = false
+
+
+func set_dev_vision(enabled: bool) -> void:
+	dev_vision = enabled
+	queue_redraw()
+
 
 func setup(
 		tile_layer: TileMapLayer,
@@ -377,6 +385,23 @@ func _draw() -> void:
 	var p1 := Vector2(0.0, -82.0)
 	var p2 := p1 + Vector2(facing.x * 18.0, facing.y * 12.0)
 	draw_line(p1, p2, Color(1.0, 0.9, 0.5, 0.95), 3.0)
+
+	## DEV_VISION extras — only visible when dev_vision mode is active
+	if not dev_vision:
+		return
+
+	## Highlight vision cone in dev_vision mode
+	var cone := _vision_cone_points()
+	draw_colored_polygon(cone, Color(1.0, 0.85, 0.1, 0.35))
+	draw_polyline(cone + PackedVector2Array([cone[0]]), Color(1.0, 1.0, 0.0, 0.9), 2.5, true)
+
+	## Draw patrol route as dashed line connecting waypoints
+	if patrol_route.size() >= 2:
+		for i in range(patrol_route.size()):
+			var a := _cell_to_world(patrol_route[i]) - position
+			var b := _cell_to_world(patrol_route[(i + 1) % patrol_route.size()]) - position
+			draw_dashed_line(a, b, Color(0.4, 0.8, 1.0, 0.6), 2.0, 8.0)
+			draw_circle(a, 5.0, Color(0.4, 0.8, 1.0, 0.8))
 
 
 func _vision_cone_points() -> PackedVector2Array:

@@ -106,7 +106,7 @@ const _PERSPECTIVE_SUFFIX_MAP := {
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
-var _debug_show_enemies: bool = false
+var dev_vision: bool = false
 
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
@@ -192,7 +192,7 @@ func _ready() -> void:
 	turn_manager.reset_player_turn()
 	_update_alert_label()
 	enemy_turn_banner.visible = false
-	_apply_debug_vision_state()
+	_apply_dev_vision()
 	_update_perspective_button_state()
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
@@ -242,7 +242,7 @@ func _set_perspective(direction: String) -> void:
 
 		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
-		_apply_debug_vision_state()
+		_apply_dev_vision()
 		_center_camera(agent.cell)
 		_refresh_tactical_state()
 	_update_perspective_button_state()
@@ -487,15 +487,30 @@ func _show_busted_dialog() -> void:
 	busted_dialog.visible = false
 
 
-func _toggle_debug_show_enemies() -> void:
-	_debug_show_enemies = not _debug_show_enemies
-	_apply_debug_vision_state()
+func _toggle_dev_vision() -> void:
+	dev_vision = not dev_vision
+	_apply_dev_vision()
 
 
-func _apply_debug_vision_state() -> void:
-	fog_of_war.visible = not _debug_show_enemies
-	_fog_rect.visible = not _debug_show_enemies
+func _apply_dev_vision() -> void:
+	## Toggle FOW when dev_vision is active
+	fog_of_war.visible = not dev_vision
+	_fog_rect.visible = not dev_vision
+
+	## Notify each guard of dev_vision state
+	for guard in _get_all_guards():
+		guard.set_dev_vision(dev_vision)
+
 	_update_enemy_visibility()
+
+
+func _get_all_guards() -> Array:
+	## Returns all GuardEnemy children in the enemies_root node.
+	var result: Array = []
+	for child in enemies_root.get_children():
+		if child is GuardEnemy:
+			result.append(child)
+	return result
 
 
 func _spawn_guards(enemy_defs: Array) -> void:
@@ -547,7 +562,7 @@ func _update_enemy_visibility() -> void:
 	# Update enemy alpha/saturation each frame while moving.
 	# Visibility is driven by the player's vision radius + ability bonuses.
 	# At vision distance the guard starts to desaturate, then fades out one tile later.
-	if _debug_show_enemies:
+	if dev_vision:
 		for guard in _guards:
 			if not is_instance_valid(guard):
 				continue
@@ -927,7 +942,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo and key.keycode == KEY_V:
-			_toggle_debug_show_enemies()
+			_toggle_dev_vision()
 			return
 
 	## ── Touch: track fingers for pinch-zoom ─────────────────────────────

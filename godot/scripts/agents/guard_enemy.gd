@@ -52,6 +52,7 @@ var _path_index: int = 1
 var dev_vision: bool = false
 
 ## Debug label for dev_vision mode
+var _debug_label_container: Panel = null
 var _debug_label: Label = null
 
 
@@ -81,16 +82,24 @@ func setup(
 	_set_facing_from_route()
 	_update_facing_angle()
 	
-	## Create debug label for dev_vision mode
+	## Create debug label container with background for dev_vision mode
+	_debug_label_container = Panel.new()
+	_debug_label_container.custom_minimum_size = Vector2(140, 110)
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.15, 0.15, 0.15, 0.95)  ## Dark gray background
+	panel_style.set_corner_radius_all(4)
+	panel_style.set_content_margin_all(6)
+	_debug_label_container.add_theme_stylebox_override("panel", panel_style)
+	_debug_label_container.z_index = 100
+	_debug_label_container.visible = false
+	add_child(_debug_label_container)
+	
+	## Create debug label inside container
 	_debug_label = Label.new()
-	_debug_label.add_theme_font_size_override("font_size", 11)
-	_debug_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8))
-	_debug_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
-	_debug_label.add_theme_constant_override("shadow_offset_x", 1)
-	_debug_label.add_theme_constant_override("shadow_offset_y", 1)
-	_debug_label.z_index = 100
-	_debug_label.visible = false
-	add_child(_debug_label)
+	_debug_label.add_theme_font_size_override("font_size", 14)
+	_debug_label.add_theme_color_override("font_color", Color.WHITE)
+	_debug_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_debug_label_container.add_child(_debug_label)
 	
 	queue_redraw()
 
@@ -247,17 +256,17 @@ func _update_facing_angle() -> void:
 
 
 func _update_debug_label() -> void:
-	if _debug_label == null:
+	if _debug_label_container == null:
 		return
 
-	_debug_label.visible = dev_vision
+	_debug_label_container.visible = dev_vision
 
 	if not dev_vision:
 		return
 
 	## Position: above the guard's head in local coordinates
-	## -130 in Y places label above the sprite (head is at -62)
-	_debug_label.position = Vector2(-40.0, -130.0)
+	## -170 in Y places label well above the sprite (head is at -62)
+	_debug_label_container.position = Vector2(-70.0, -170.0)
 
 	var last := "—"
 	if last_known_agent_cell != INVALID_CELL:

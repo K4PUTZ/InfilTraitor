@@ -46,7 +46,7 @@ var facing_angle_deg: float = 0.0  ## 0=UP 90=RIGHT 180=DOWN 270=LEFT
 ## A* path caching
 var _cached_target: Vector2i = INVALID_CELL
 var _cached_path: Array[Vector2i] = []
-var _path_index: int = 0
+var _path_index: int = 1
 
 
 func setup(
@@ -134,10 +134,15 @@ func pick_next_patrol_cell(
 	return cell
 
 
-func move_to_cell_animated(new_cell: Vector2i) -> void:
+func move_to_cell_animated(
+		new_cell: Vector2i,
+		blocked_cells: Dictionary = {},
+		blocked_edges: Dictionary = {},
+		room_size: Vector2i = Vector2i(18, 36)
+) -> void:
 	if new_cell == cell:
 		return
-	var path: Array[Vector2i] = _build_step_path_to(new_cell)
+	var path: Array[Vector2i] = GuardPathfinder.find_path(cell, new_cell, blocked_cells, blocked_edges, room_size)
 	if path.size() < 2:
 		return
 	move_along_path(path)
@@ -175,27 +180,7 @@ func _step_next() -> void:
 	_step_next()
 
 
-func _build_step_path_to(target_cell: Vector2i) -> Array[Vector2i]:
-	var path: Array[Vector2i] = [cell]
-	var cursor: Vector2i = cell
-	var delta: Vector2i = target_cell - cursor
-	var x_step: int = 0
-	if delta.x > 0:
-		x_step = 1
-	elif delta.x < 0:
-		x_step = -1
-	while cursor.x != target_cell.x:
-		cursor.x += x_step
-		path.append(cursor)
-	var y_step: int = 0
-	if delta.y > 0:
-		y_step = 1
-	elif delta.y < 0:
-		y_step = -1
-	while cursor.y != target_cell.y:
-		cursor.y += y_step
-		path.append(cursor)
-	return path
+
 
 
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
@@ -236,14 +221,7 @@ func _update_facing_angle() -> void:
 		facing_angle_deg = 270.0
 
 
-func _orthogonal(dir: Vector2i) -> Vector2i:
-	if dir == Vector2i.UP or dir == Vector2i.DOWN:
-		return Vector2i.RIGHT
-	return Vector2i.UP
 
-
-func _axis_projection(delta: Vector2i, axis: Vector2i) -> int:
-	return delta.x * axis.x + delta.y * axis.y
 
 
 func _is_inside(pos: Vector2i, room_size: Vector2i) -> bool:
@@ -350,7 +328,7 @@ func _step_toward(
 	if target_cell != _cached_target or _path_index >= _cached_path.size():
 		_cached_target = target_cell
 		_cached_path = GuardPathfinder.find_path(cell, target_cell, blocked_cells, blocked_edges, room_size)
-		_path_index = 0
+		_path_index = 1
 
 	## No path found
 	if _cached_path.is_empty():

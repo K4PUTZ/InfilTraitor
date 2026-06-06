@@ -33,7 +33,7 @@ static func find_path(
 		var g_cur: int = g_score[current]
 
 		for step in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var nb := current + step
+			var nb: Vector2i = current + step
 			if not _in_bounds(nb, room_size):
 				continue
 			if blocked_cells.has(nb):

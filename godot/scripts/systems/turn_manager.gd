@@ -6,21 +6,22 @@ signal ap_changed(current_ap: int, max_ap: int)
 signal enemy_phase_started
 signal player_turn_started
 
-const MAX_AP := 2
-const MOVE_POINTS_PER_AP := 3
+var max_ap: int = 2
+var move_points_per_ap: int = 3
 
-var current_ap: int = MAX_AP
+var current_ap: int
 var is_enemy_phase: bool = false
 
 
 func _ready() -> void:
-	ap_changed.emit(current_ap, MAX_AP)
+	current_ap = max_ap
+	ap_changed.emit(current_ap, max_ap)
 
 
 func reset_player_turn() -> void:
 	is_enemy_phase = false
-	current_ap = MAX_AP
-	ap_changed.emit(current_ap, MAX_AP)
+	current_ap = max_ap
+	ap_changed.emit(current_ap, max_ap)
 	player_turn_started.emit()
 
 
@@ -28,7 +29,7 @@ func end_turn() -> void:
 	if is_enemy_phase:
 		return
 	is_enemy_phase = true
-	ap_changed.emit(current_ap, MAX_AP)
+	ap_changed.emit(current_ap, max_ap)
 	enemy_phase_started.emit()
 
 
@@ -37,7 +38,7 @@ func finish_enemy_phase() -> void:
 
 
 func get_max_move_points() -> int:
-	return current_ap * MOVE_POINTS_PER_AP
+	return current_ap * move_points_per_ap
 
 
 func can_afford_path_cost(path_cost: int) -> bool:
@@ -54,11 +55,11 @@ func spend_for_path_cost(path_cost: int) -> bool:
 	if ap_cost <= 0 or ap_cost > current_ap:
 		return false
 	current_ap -= ap_cost
-	ap_changed.emit(current_ap, MAX_AP)
+	ap_changed.emit(current_ap, max_ap)
 	return true
 
 
 func path_cost_to_ap(path_cost: int) -> int:
 	if path_cost <= 0:
 		return 0
-	return int(ceili(float(path_cost) / float(MOVE_POINTS_PER_AP)))
+	return int(ceili(float(path_cost) / float(move_points_per_ap)))

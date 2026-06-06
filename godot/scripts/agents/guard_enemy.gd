@@ -38,6 +38,16 @@ var last_known_agent_cell: Vector2i = INVALID_CELL
 var is_moving: bool = false
 var _path_queue: Array[Vector2i] = []
 
+## Angular FOV detection
+var fov_degrees: float = 90.0      ## full cone width in degrees
+var fov_range: int = 8             ## max detection range in tiles
+var facing_angle_deg: float = 0.0  ## 0=UP 90=RIGHT 180=DOWN 270=LEFT
+
+## A* path caching
+var _cached_target: Vector2i = INVALID_CELL
+var _cached_path: Array[Vector2i] = []
+var _path_index: int = 0
+
 
 func setup(
 		tile_layer: TileMapLayer,
@@ -57,6 +67,7 @@ func setup(
 	cell = patrol_route[patrol_index]
 	position = _cell_to_world(cell)
 	_set_facing_from_route()
+	_update_facing_angle()
 	queue_redraw()
 
 
@@ -67,29 +78,32 @@ func reset_to_route_start() -> void:
 	cell = patrol_route[patrol_index]
 	position = _cell_to_world(cell)
 	_set_facing_from_route()
+	_update_facing_angle()
 	queue_redraw()
 
 
-func evaluate_detection(player_cell: Vector2i, vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, close_warning_range: int = 2) -> Dictionary:
-	var delta: Vector2i = player_cell - cell
+func evaluate_detection(player_cell: Vector2i, _vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, _close_warning_range: int = 2) -> Dictionary:
+	var delta := player_cell - cell
 	if delta == Vector2i.ZERO:
-		return {"visible": true, "severity": 2}
+		return {"visible": true, "severity": 2, "distance": 0, "angle_ratio": 1.0}
 
-	var forward := _axis_projection(delta, facing)
-	if forward <= 0 or forward > vision_range:
+	var dist := absi(delta.x) + absi(delta.y)
+	if dist > fov_range:
 		return {"visible": false, "severity": 0}
 
-	var lateral := _axis_projection(delta, _orthogonal(facing))
-	var cone_width := VISION_CONE_HALF_WIDTH_TILES + int(floor(float(forward) * 0.5))
-	if abs(lateral) > cone_width:
+	var to_target_angle := rad_to_deg(atan2(float(delta.x), float(-delta.y)))
+	var angle_diff := wrapf(to_target_angle - facing_angle_deg, -180.0, 180.0)
+	var half_fov := fov_degrees / 2.0
+	if absf(angle_diff) > half_fov:
 		return {"visible": false, "severity": 0}
 
 	if blocked_cells != null and blocked_edges != null:
 		if not can_see_cell(player_cell, blocked_cells, blocked_edges):
 			return {"visible": false, "severity": 0}
 
-	var severity := 2 if forward <= close_warning_range else 1
-	return {"visible": true, "severity": severity}
+	var angle_ratio := 1.0 - (absf(angle_diff) / half_fov)
+	var severity := 2 if dist <= 2 else 1
+	return {"visible": true, "severity": severity, "distance": dist, "angle_ratio": angle_ratio}
 
 
 func pick_next_patrol_cell(
@@ -150,6 +164,7 @@ func _step_next() -> void:
 	var previous_cell: Vector2i = cell
 	cell = next_cell
 	facing = _snap_to_cardinal(next_cell - previous_cell)
+	_update_facing_angle()
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_IN_OUT)
@@ -192,19 +207,33 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 func _set_facing_from_route() -> void:
 	if patrol_route.size() < 2:
 		facing = Vector2i.UP
+		_update_facing_angle()
 		return
 	var next_idx := (patrol_index + 1) % patrol_route.size()
 	var dir := patrol_route[next_idx] - patrol_route[patrol_index]
 	if dir == Vector2i.ZERO:
 		facing = Vector2i.UP
+		_update_facing_angle()
 		return
 	facing = _snap_to_cardinal(dir)
+	_update_facing_angle()
 
 
 func _snap_to_cardinal(v: Vector2i) -> Vector2i:
 	if abs(v.x) >= abs(v.y):
 		return Vector2i.RIGHT if v.x >= 0 else Vector2i.LEFT
 	return Vector2i.DOWN if v.y >= 0 else Vector2i.UP
+
+
+func _update_facing_angle() -> void:
+	if facing == Vector2i.UP:
+		facing_angle_deg = 0.0
+	elif facing == Vector2i.RIGHT:
+		facing_angle_deg = 90.0
+	elif facing == Vector2i.DOWN:
+		facing_angle_deg = 180.0
+	elif facing == Vector2i.LEFT:
+		facing_angle_deg = 270.0
 
 
 func _orthogonal(dir: Vector2i) -> Vector2i:
@@ -222,7 +251,7 @@ func _is_inside(pos: Vector2i, room_size: Vector2i) -> bool:
 
 
 func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i, blocked_edges: Dictionary) -> bool:
-	var key := _edge_key(from_cell, to_cell)
+	var key := WallEdgeData.edge_key(from_cell, to_cell)
 	return blocked_edges.has(key)
 
 
@@ -317,38 +346,31 @@ func _step_toward(
 		blocked_edges: Dictionary,
 		room_size: Vector2i
 ) -> Vector2i:
-	if target_cell == cell:
+	## Replan if target changed or path exhausted
+	if target_cell != _cached_target or _path_index >= _cached_path.size():
+		_cached_target = target_cell
+		_cached_path = GuardPathfinder.find_path(cell, target_cell, blocked_cells, blocked_edges, room_size)
+		_path_index = 0
+
+	## No path found
+	if _cached_path.is_empty():
 		return cell
-	var delta: Vector2i = target_cell - cell
-	var try_steps: Array[Vector2i] = []
-	if abs(delta.x) >= abs(delta.y):
-		if delta.x != 0:
-			try_steps.append(Vector2i(sign(delta.x), 0))
-		if delta.y != 0:
-			try_steps.append(Vector2i(0, sign(delta.y)))
-	else:
-		if delta.y != 0:
-			try_steps.append(Vector2i(0, sign(delta.y)))
-		if delta.x != 0:
-			try_steps.append(Vector2i(sign(delta.x), 0))
-	for step in try_steps:
-		var candidate := cell + step
-		if not _is_inside(candidate, room_size):
-			continue
-		if blocked_cells.has(candidate):
-			continue
-		if occupied_cells.has(candidate):
-			continue
-		if _is_edge_blocked(cell, candidate, blocked_edges):
-			continue
-		return candidate
-	return cell
+
+	## Path exhausted (shouldn't happen, but failsafe)
+	if _path_index >= _cached_path.size():
+		return cell
+
+	## Get next step from path
+	var next_cell: Vector2i = _cached_path[_path_index]
+	_path_index += 1
+
+	## Skip if occupied
+	if occupied_cells.has(next_cell):
+		return cell
+
+	return next_cell
 
 
-func _edge_key(a: Vector2i, b: Vector2i) -> String:
-	if a.x < b.x or (a.x == b.x and a.y <= b.y):
-		return "%d,%d|%d,%d" % [a.x, a.y, b.x, b.y]
-	return "%d,%d|%d,%d" % [b.x, b.y, a.x, a.y]
 
 
 func _draw() -> void:

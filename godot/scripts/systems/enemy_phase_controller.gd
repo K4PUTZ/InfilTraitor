@@ -66,11 +66,7 @@ func _build_edge_block_set(edges: Array[Dictionary]) -> Dictionary:
 	for edge in edges:
 		var from_cell: Vector2i = edge.get("from", Vector2i.ZERO)
 		var to_cell: Vector2i = edge.get("to", Vector2i.ZERO)
-		blocked[_edge_key(from_cell, to_cell)] = true
+		blocked[WallEdgeData.edge_key(from_cell, to_cell)] = true
 	return blocked
 
 
-func _edge_key(a: Vector2i, b: Vector2i) -> String:
-	if a.x < b.x or (a.x == b.x and a.y <= b.y):
-		return "%d,%d|%d,%d" % [a.x, a.y, b.x, b.y]
-	return "%d,%d|%d,%d" % [b.x, b.y, a.x, a.y]

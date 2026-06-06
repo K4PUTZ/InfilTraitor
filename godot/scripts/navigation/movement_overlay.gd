@@ -39,7 +39,7 @@ func set_blocked_edges(edges: Array[Dictionary]) -> void:
 	for edge in edges:
 		var from_cell: Vector2i = edge.get("from", Vector2i.ZERO)
 		var to_cell: Vector2i = edge.get("to", Vector2i.ZERO)
-		_blocked_edges[_edge_key(from_cell, to_cell)] = true
+		_blocked_edges[WallEdgeData.edge_key(from_cell, to_cell)] = true
 
 
 func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:
@@ -164,13 +164,9 @@ func _is_traversable(cell: Vector2i) -> bool:
 
 
 func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i) -> bool:
-	return _blocked_edges.has(_edge_key(from_cell, to_cell))
+	return _blocked_edges.has(WallEdgeData.edge_key(from_cell, to_cell))
 
 
-func _edge_key(a: Vector2i, b: Vector2i) -> String:
-	if a.x < b.x or (a.x == b.x and a.y <= b.y):
-		return "%d,%d|%d,%d" % [a.x, a.y, b.x, b.y]
-	return "%d,%d|%d,%d" % [b.x, b.y, a.x, a.y]
 
 
 func _movement_cost(_cell: Vector2i) -> int:

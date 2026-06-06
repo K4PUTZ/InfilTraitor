@@ -3,12 +3,11 @@
 [ext_resource type="Script" uid="uid://bg1vhp4vuujdp" path="res://godot/scripts/world/room.gd" id="1_room"]
 [ext_resource type="Script" uid="uid://d08qy8a0tpcxk" path="res://godot/scripts/ui/selection_overlay.gd" id="2_sel"]
 [ext_resource type="Script" uid="uid://ul0uhgdy0v33" path="res://godot/scripts/ui/tile_labels_overlay.gd" id="3_labels"]
+[ext_resource type="Script" uid="uid://ds3lgigompiu5" path="res://godot/scripts/systems/enemy_phase_controller.gd" id="4_enemy_phase"]
 [ext_resource type="Script" uid="uid://bbc3clydl2rby" path="res://godot/scripts/systems/turn_manager.gd" id="4_turn"]
-[ext_resource type="Script" path="res://godot/scripts/systems/enemy_phase_controller.gd" id="4_enemy_phase"]
 [ext_resource type="Script" uid="uid://byo2adjdkl0mx" path="res://godot/scripts/navigation/movement_overlay.gd" id="5_move"]
 [ext_resource type="Script" uid="uid://duy550oaob6a1" path="res://godot/scripts/navigation/path_preview.gd" id="6_path"]
 [ext_resource type="Script" uid="uid://bwemylf6mflmh" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
-[ext_resource type="Script" path="res://godot/scripts/agents/guard_enemy.gd" id="7_guard"]
 [ext_resource type="Script" uid="uid://dtaggpell6shx" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
 [ext_resource type="Shader" uid="uid://cjrlwjb5rnhgd" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
 
@@ -31,7 +30,7 @@ y_sort_origin = 1
 [node name="TurnManager" type="Node" parent="." unique_id=1600001001]
 script = ExtResource("4_turn")
 
-[node name="EnemyPhaseController" type="Node" parent="." unique_id=16000010013]
+[node name="EnemyPhaseController" type="Node" parent="." unique_id=-1179859171]
 script = ExtResource("4_enemy_phase")
 
 [node name="MovementOverlay" type="Node2D" parent="." unique_id=1600001002]
@@ -124,21 +123,6 @@ text = "ALERTA 0%"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BustedDialog" type="Label" parent="HUD" unique_id=1600003012]
-anchors_preset = 13
-anchor_left = 0.2
-anchor_top = 0.35
-anchor_right = 0.8
-anchor_bottom = 0.5
-custom_minimum_size = Vector2(420, 80)
-layout_mode = 2
-text = "Busted"
-horizontal_alignment = 1
-vertical_alignment = 1
-theme_override_font_sizes/font_size = 42
-modulate = Color(1.0, 0.3, 0.3, 0.95)
-visible = false
-
 [node name="BtnEndTurn" type="Button" parent="HUD/TopBar/Row" unique_id=1600001006]
 custom_minimum_size = Vector2(136, 48)
 layout_mode = 2
@@ -166,6 +150,20 @@ button_pressed = true
 [node name="LblEndTurn" type="Label" parent="HUD/TopBar/Row/BtnEndTurn/Content" unique_id=1600001009]
 layout_mode = 2
 text = "END"
+vertical_alignment = 1
+
+[node name="BustedDialog" type="Label" parent="HUD" unique_id=1600003012]
+visible = false
+modulate = Color(1, 0.3, 0.3, 0.95)
+custom_minimum_size = Vector2(420, 80)
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.35
+anchor_right = 0.8
+anchor_bottom = 0.5
+theme_override_font_sizes/font_size = 42
+text = "Busted"
+horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="PerspectivePad" type="PanelContainer" parent="HUD" unique_id=1600003001]
@@ -213,7 +211,7 @@ text = "E"
 
 [node name="EnemyTurnBanner" type="PanelContainer" parent="HUD" unique_id=1600003010]
 visible = false
-anchors_preset = 14
+anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0

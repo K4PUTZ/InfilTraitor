@@ -84,9 +84,9 @@ var _selected_cell: Vector2i = INVALID_CELL
 var _active_perspective: String = "N"
 var _alert_meter: int = 0
 
-const ALERT_MAX := 100
-const ALERT_GAIN_WARNING := 20
-const ALERT_GAIN_FULL := 45
+var _alert_max: int = 100
+var _alert_gain_warning: int = 20
+var _alert_gain_full: int = 45
 
 const ENEMY_INTER_TURN_DELAY := 1.0
 const ENEMY_CAMERA_TWEEN_DURATION := 0.45
@@ -149,7 +149,7 @@ func _ready() -> void:
 	_center_camera(agent_start_cell)
 
 	## Give overlays their references.
-	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.MOVE_POINTS_PER_AP)
+	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
 	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	var blocked_edges: Array[Dictionary] = []
 	for e in view_layout.get("blocked_edges", []):
@@ -373,7 +373,7 @@ func _on_enemy_phase_started() -> void:
 	await _hold_actor_end_pause()
 	await _run_enemy_phase()
 	enemy_turn_banner.visible = false
-	if _alert_meter >= ALERT_MAX:
+	if _alert_meter >= _alert_max:
 		await _show_busted_dialog()
 		_alert_meter = 0
 		agent.set_cell(_agent_start_cell)
@@ -416,9 +416,9 @@ func _run_enemy_phase() -> void:
 		await _enemy_inter_turn_pause_with_camera(next_focus)
 
 	if max_severity == 1:
-		_alert_meter = mini(ALERT_MAX, _alert_meter + ALERT_GAIN_WARNING)
+		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_warning)
 	elif max_severity >= 2:
-		_alert_meter = mini(ALERT_MAX, _alert_meter + ALERT_GAIN_FULL)
+		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
 
 	_update_alert_label()
 	_update_enemy_visibility()
@@ -476,7 +476,7 @@ func _next_enemy_phase_focus_cell(current_guard_idx: int) -> Vector2i:
 
 func _update_alert_label() -> void:
 	lbl_alert.text = "ALERTA %d%%" % _alert_meter
-	var t := float(_alert_meter) / float(ALERT_MAX)
+	var t := float(_alert_meter) / float(_alert_max)
 	lbl_alert.modulate = Color(1.0, 1.0 - 0.55 * t, 1.0 - 0.75 * t, 1.0)
 
 

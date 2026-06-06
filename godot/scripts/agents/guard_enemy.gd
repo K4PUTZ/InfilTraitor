@@ -84,11 +84,11 @@ func setup(
 	
 	## Create debug label container with background for dev_vision mode
 	_debug_label_container = Panel.new()
-	_debug_label_container.custom_minimum_size = Vector2(255, 210)
+	_debug_label_container.custom_minimum_size = Vector2(300, 260)
 	var panel_style = StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.15, 0.15, 0.15, 0.95)  ## Dark gray background
 	panel_style.set_corner_radius_all(4)
-	panel_style.set_content_margin_all(12)
+	panel_style.set_content_margin_all(14)
 	_debug_label_container.add_theme_stylebox_override("panel", panel_style)
 	_debug_label_container.z_index = 100
 	_debug_label_container.visible = false
@@ -96,7 +96,7 @@ func setup(
 	
 	## Create debug label inside container
 	_debug_label = Label.new()
-	_debug_label.add_theme_font_size_override("font_size", 16)
+	_debug_label.add_theme_font_size_override("font_size", 22)
 	_debug_label.add_theme_color_override("font_color", Color.WHITE)
 	_debug_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_debug_label_container.add_child(_debug_label)
@@ -265,8 +265,8 @@ func _update_debug_label() -> void:
 		return
 
 	## Position: well above the guard's head in local coordinates
-	## -210 in Y places label comfortably above the sprite
-	_debug_label_container.position = Vector2(-128.0, -210.0)
+	## -320 in Y places label far above the sprite, no overlap
+	_debug_label_container.position = Vector2(-150.0, -320.0)
 
 	var last := "—"
 	if last_known_agent_cell != INVALID_CELL:

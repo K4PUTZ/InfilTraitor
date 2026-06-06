@@ -34,7 +34,7 @@ func run_single_guard_turn(
 
 	var next_cell: Vector2i = guard.choose_next_cell(occupied, blocked_cells, blocked_edges, player_cell, room_size)
 	if next_cell != guard.cell:
-		await guard.move_to_cell_animated(next_cell)
+		await guard.move_to_cell_animated(next_cell, blocked_cells, blocked_edges, room_size)
 
 	var after: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE, blocked_cells, blocked_edges)
 	guard.observe_player(bool(after.get("visible", false)), int(after.get("severity", 0)), player_cell)

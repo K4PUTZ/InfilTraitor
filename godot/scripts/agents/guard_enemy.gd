@@ -136,9 +136,9 @@ func pick_next_patrol_cell(
 
 func move_to_cell_animated(
 		new_cell: Vector2i,
-		blocked_cells: Dictionary = {},
-		blocked_edges: Dictionary = {},
-		room_size: Vector2i = Vector2i(18, 36)
+		blocked_cells: Dictionary,
+		blocked_edges: Dictionary,
+		room_size: Vector2i
 ) -> void:
 	if new_cell == cell:
 		return

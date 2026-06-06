@@ -20,15 +20,15 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ## Project status
 
-**Alpha Walls Done** — Room generation system complete; wall tile origins calibrated; all wall-face sprites pixel-perfect in all four orientations.
+**Alpha After Refactor (2026-06-05)** — Refactor Sprint 04 complete. Core systems consolidated: WallEdgeData unified, stats data-driven, angular FOV (8-dir), A* pathfinding. Architecture stable for infinite scaling (Freelance mode, tier progression).
 
 | Milestone | Status |
 |---|---|
 | M0 — Design & asset organization | ✅ Complete |
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
-| M1.5 — Tactical UI + Alpha Gameplay feel | ⧖ In progress |
-| M2 — Enemy visibility & guard detection | ⧖ In progress |
+| M1.5 — Tactical UI + Alpha Gameplay feel | ✅ Complete (refactored) |
+| M2 — Enemy visibility & guard detection | ⧖ In progress (architecture locked) |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
 | M5 — Monetisation | |
@@ -40,14 +40,26 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Core isometric room builder and wall-autotile system are stable.
 - Movement, AP tracking, fog of war, tile selection, and camera controls are implemented.
 - Perspective controls are now available via a 2x2 HUD pad (N/E/S/W), with runtime layout rotation.
-- The current prototype is a playable tactical segment with placeholder agent visuals.
-- Enemy visibility now tracks player vision radius and guard fade stages before disappearance.
-- Next internal work is door/segment transitions, action menu, character sprite, and guard AI.
+- Enemy guard system with angular FOV detection (90°, 8 directions) and A* pathfinding.
+- Architecture now supports infinite scaling: data-driven stats, no hardcoded ceilings, LLM-ready (structure/content separated).
+- Next internal work is event-driven detection by tic, noise system, and confrontation mechanics.
 
-### Next up (M1.5 continued)
+### Refactor Sprint 04 (Completed 2026-06-05)
 
-- Door tile visual verification and door open/close logic
-- Segment transition — spawn adjacent segment on exit, pass `segment_grid_pos` and `level_seed`
+✅ **Refactor 01:** WallEdgeData consolidation — unified edge key generation  
+✅ **Refactor 02:** Data-driven stats — removed hardcoded maxima  
+✅ **Refactor 03:** Angular FOV — 90° smooth cone (8-direction support)  
+✅ **Refactor 04:** A* pathfinding — optimal guard navigation  
+
+📖 **See:** [DEVELOPMENT/REFACTOR_SPRINT_04.md](DEVELOPMENT/REFACTOR_SPRINT_04.md) for detailed report.
+
+### Next up (M2 continuation)
+
+- Event-driven detection by tic (edge-crossing) — replace turn-based evaluation
+- Noise system — terrain cost, degradation, propagation radius
+- Confrontation system — 4 cover states, flanking, peek mechanic
+- Enemy state machine — complete FSM refinement (patrol → suspicious → alert → chase)
+- Communication system — apito (local), rádio (global), alarme (site-wide)
 - Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
 - Contextual action menu on second tap — move / interact / wait choices
 - Enemy guard (patrol, vision cone, alert meter) — M2 start

@@ -391,9 +391,9 @@ func _draw() -> void:
 		return
 
 	## Highlight vision cone in dev_vision mode
-	var cone := _vision_cone_points()
-	draw_colored_polygon(cone, Color(1.0, 0.85, 0.1, 0.35))
-	draw_polyline(cone + PackedVector2Array([cone[0]]), Color(1.0, 1.0, 0.0, 0.9), 2.5, true)
+	var dev_cone := _vision_cone_points()
+	draw_colored_polygon(dev_cone, Color(1.0, 0.85, 0.1, 0.35))
+	draw_polyline(dev_cone + PackedVector2Array([dev_cone[0]]), Color(1.0, 1.0, 0.0, 0.9), 2.5, true)
 
 	## Draw patrol route as dashed line connecting waypoints
 	if patrol_route.size() >= 2:

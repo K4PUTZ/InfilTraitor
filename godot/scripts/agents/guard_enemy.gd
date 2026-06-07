@@ -51,6 +51,9 @@ var _path_index: int = 1
 ## Dev vision mode
 var dev_vision: bool = false
 
+## Dev 05: detection meter — 0.0 to 1.0, placeholder until M2 fills it
+var detection: float = 0.0
+
 ## Debug label for dev_vision mode
 var _debug_label_container: Panel = null
 var _debug_label: Label = null
@@ -84,11 +87,11 @@ func setup(
 	
 	## Create debug label container with background for dev_vision mode
 	_debug_label_container = Panel.new()
-	_debug_label_container.custom_minimum_size = Vector2(300, 260)
+	_debug_label_container.custom_minimum_size = Vector2(250, 200)
 	var panel_style = StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.15, 0.15, 0.15, 0.95)  ## Dark gray background
 	panel_style.set_corner_radius_all(4)
-	panel_style.set_content_margin_all(14)
+	panel_style.set_content_margin_all(30)
 	_debug_label_container.add_theme_stylebox_override("panel", panel_style)
 	_debug_label_container.z_index = 100
 	_debug_label_container.visible = false
@@ -96,7 +99,8 @@ func setup(
 	
 	## Create debug label inside container
 	_debug_label = Label.new()
-	_debug_label.add_theme_font_size_override("font_size", 22)
+	_debug_label.set_position(Vector2(+15, 0))
+	_debug_label.add_theme_font_size_override("font_size", 24)
 	_debug_label.add_theme_color_override("font_color", Color.WHITE)
 	_debug_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_debug_label_container.add_child(_debug_label)
@@ -215,8 +219,6 @@ func _step_next() -> void:
 
 
 
-
-
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
 	if floor_layer == null:
 		return Vector2.ZERO
@@ -266,7 +268,7 @@ func _update_debug_label() -> void:
 
 	## Position: well above the guard's head in local coordinates
 	## -320 in Y places label far above the sprite, no overlap
-	_debug_label_container.position = Vector2(-150.0, -320.0)
+	_debug_label_container.position = Vector2(-150.0, -350.0)
 
 	var last := "—"
 	if last_known_agent_cell != INVALID_CELL:
@@ -364,6 +366,20 @@ func tick_state() -> void:
 		elif state == STATE_CHASE:
 			state = STATE_SUSPICIOUS
 			state_timer = 2
+
+	## Dev 05: placeholder detection mapping — M2 will override with real detection
+	match state:
+		STATE_PATROL:
+			detection = 0.0
+		STATE_SUSPICIOUS:
+			detection = 0.35
+		STATE_ALERT:
+			detection = 0.65
+		STATE_CHASE:
+			detection = 1.0
+
+	if dev_vision:
+		queue_redraw()
 
 
 func choose_next_cell(
@@ -464,6 +480,42 @@ func _draw() -> void:
 			var b := _cell_to_world(patrol_route[(i + 1) % patrol_route.size()]) - position
 			draw_dashed_line(a, b, Color(0.4, 0.8, 1.0, 0.6), 2.0, 8.0)
 			draw_circle(a, 5.0, Color(0.4, 0.8, 1.0, 0.8))
+
+	## Dev 05: detection meter arc
+	var arc_center := Vector2(0.0, -82.0)
+	var arc_radius := 18.0
+	var arc_start := PI * 1.1        ## ~200° — opens at bottom
+	var arc_end := PI * 1.9          ## ~340° — closes at bottom
+	var arc_steps := 24
+
+	## Gray background arc
+	draw_arc(arc_center, arc_radius, arc_start, arc_end, arc_steps,
+		 Color(0.2, 0.2, 0.2, 0.7), 4.0, true)
+
+	## Colored detection fill proportional to detection value
+	if detection > 0.0:
+		var filled_end := arc_start + (arc_end - arc_start) * detection
+		var fill_color: Color
+		if detection <= 0.35:
+			fill_color = Color(1.0, 0.7, 0.1, 0.85)  ## Orange for suspicious
+		elif detection <= 0.65:
+			fill_color = Color(1.0, 0.5, 0.1, 0.85)  ## Orange-red for alert
+		else:
+			fill_color = Color(1.0, 0.2, 0.2, 0.85)  ## Red for chase
+		draw_arc(arc_center, arc_radius, arc_start, filled_end, arc_steps,
+			fill_color, 4.0, true)
+
+		## Percentage text
+		var pct_text := "%d%%" % roundi(detection * 100.0)
+		draw_string(
+			ThemeDB.fallback_font,
+			arc_center + Vector2(-12.0, 8.0),
+			pct_text,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			-1,
+			10,
+			Color(1.0, 1.0, 1.0, 0.95)
+		)
 
 
 func _vision_cone_points() -> PackedVector2Array:

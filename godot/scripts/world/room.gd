@@ -115,6 +115,7 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
+var _trail_overlay: Node2D = null
 
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
@@ -203,10 +204,10 @@ func _ready() -> void:
 	_apply_dev_vision()
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
-	var trail_overlay = Node2D.new()
-	trail_overlay.set_script(TrailOverlayClass)
-	add_child(trail_overlay)
-	trail_overlay.setup(self, floor_layer)
+	_trail_overlay = Node2D.new()
+	_trail_overlay.set_script(TrailOverlayClass)
+	add_child(_trail_overlay)
+	_trail_overlay.setup(self, floor_layer)
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
 	_dev_hover_label.add_theme_font_size_override("font_size", 13)
@@ -327,8 +328,9 @@ func _on_btn_reset() -> void:
 	_update_alert_label()
 	## Dev 04: clear trail on reset
 	_agent_trail.clear()
+	if _trail_overlay != null:
+		_trail_overlay.queue_redraw()
 	turn_manager.reset_player_turn()
-	queue_redraw()
 
 
 func _on_btn_viewport() -> void:
@@ -374,8 +376,8 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 		if _agent_trail.size() > TRAIL_MAX:
 			_agent_trail.pop_front()
 
-	if dev_vision:
-		queue_redraw()
+	if dev_vision and _trail_overlay != null:
+		_trail_overlay.queue_redraw()
 
 
 func _on_agent_move_finished(_cell: Vector2i) -> void:
@@ -540,6 +542,8 @@ func _apply_dev_vision() -> void:
 
 	_update_enemy_visibility()
 	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
+	if _trail_overlay != null:
+		_trail_overlay.queue_redraw()
 
 
 func _get_all_guards() -> Array:

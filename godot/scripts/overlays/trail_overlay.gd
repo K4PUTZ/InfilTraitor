@@ -12,11 +12,6 @@ func setup(room_ref: Node2D, floor_layer: TileMapLayer) -> void:
 	z_index = 150  ## Well above movement_overlay (~100)
 
 
-func _process(_delta: float) -> void:
-	## Only redraw when room.dev_vision changes or trail changes
-	queue_redraw()
-
-
 func _draw() -> void:
 	if _room_ref == null or not _room_ref.dev_vision:
 		return

@@ -1,5 +1,99 @@
 # INFILTRAITOR — Progress Updates
 
+## Alpha Dev Vision Foundation (2026-06-06)
+
+**Status:** ✅ Complete — In-game debug visualization system fully integrated
+
+**Focus:** Developer experience — real-time tactical state inspection via centralized V-key toggle, enabling guard AI prototyping and detection mechanics validation.
+
+### Changes Completed
+
+#### ✅ Dev 01: DEV_VISION Mode (Centralized Toggle)
+- Master toggle `dev_vision: bool` in room.gd
+- V-key binding via `_toggle_dev_vision()`
+- Propagated to all guards via `set_dev_vision(enabled)`
+- Gated all debug overlays (labels, trail, meter) behind dev_vision check
+- FOW visibility control
+
+#### ✅ Dev 02: Guard Debug Label
+- Dark gray Panel with white 22pt text above guard head
+- Displays: id, state, cell coordinates, facing direction, last_known_agent_cell
+- Positioned -320Y (clear of sprite)
+- Updates on: toggle, state change, cell change
+
+#### ✅ Dev 03: Tile Info on Hover
+- Cyan label at bottom-left showing hovered tile coordinates
+- Enhanced with blocked status detection
+- Shows guard id/state if guard on tile
+- Shows "agent here" if player on tile
+- Multi-line formatted display
+
+#### ✅ Dev 04: Agent Trail Overlay
+- Dedicated `trail_overlay.gd` node rendering yellow diamond trail
+- Shows last 5 tiles walked by agent (circular buffer)
+- Opacity gradient: 20% (oldest) → 100% (newest)
+- Z-index=150 (above movement_overlay for visibility)
+- Event-driven redraw on step/reset/toggle (not continuous _process)
+
+#### ✅ Dev 05: Guard Detection Meter
+- Arc meter above guard head showing state-based detection
+- Placeholder detection mapping: PATROL=0%, SUSPICIOUS=35%, ALERT=65%, CHASE=100%
+- Color gradient: orange → orange-red → red
+- Percentage text overlay
+- Will be replaced by M2 system in production
+
+#### ✅ Quickfixes Applied
+- **Quickfix 1:** Trail offset parameterized in setup() (data-driven, not hardcoded)
+- **Quickfix 2:** Hover label completed with blocked/guard/agent detection
+
+### Files Created/Modified
+
+**Created:**
+- `godot/scripts/overlays/trail_overlay.gd` — dedicated trail rendering node
+
+**Modified:**
+- `godot/scripts/agents/guard_enemy.gd` — added debug label, detection meter
+- `godot/scripts/world/room.gd` — added dev_vision toggle, hover label, trail setup
+
+### Architecture & Design
+
+- **Centralized toggle:** Single dev_vision bool controls all debug UI visibility
+- **Event-driven redraw:** Redraw only on state change, not continuous _process (CPU efficiency)
+- **Modular overlays:** TrailOverlay separated from room._draw() for clarity and layering
+- **Data-driven offset:** Trail offset passed via setup() parameter, not hardcoded
+- **Placeholder detection:** State-based values ready for M2 override
+
+### Testing & Verification
+
+- **Compilation:** ✅ No syntax/parse errors
+- **Visual:** ✅ All features visible in Godot editor
+- **Acceptance tests:** 49/49 ✅
+  - Dev 01: 7/7 ✅
+  - Dev 02: 8/8 ✅
+  - Dev 03: 7/7 ✅
+  - Dev 04: 9/9 ✅
+  - Dev 05: 10/10 ✅
+  - Quickfixes: 8/8 ✅
+
+### Documentation
+
+📖 **See:** [DEV_VISION_FOUNDATION.md](DEV_VISION_FOUNDATION.md) for complete technical specification, architecture decisions, and next steps.
+
+### Git Commits
+
+```
+66473e0 Quickfix: Trail offset parameterized + Hover label complete
+549e308 Dev 05: Guard Detection Meter (DEV_VISION)
+5b238af Fix trail visibility: force redraw at right moments
+7660e9e Fix Dev 04: Move trail to TrailOverlay node
+ca88714 Dev 04: Agent Trail Overlay
+066eb5f Dev 03: Tile Info on Hover
+c2cef95 Finalize debug label: 22pt, 300×260, -320Y
+8328c75 Enlarge debug label
+```
+
+---
+
 ## Alpha Enemy Visibility (2026-06-03)
 
 **Status:** M2 bootstrap complete — Enemy visibility now integrated into the tactical loop

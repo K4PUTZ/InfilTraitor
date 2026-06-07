@@ -60,6 +60,17 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 📖 **See:** [DEVELOPMENT/REFACTOR_SPRINT_04.md](DEVELOPMENT/REFACTOR_SPRINT_04.md) for detailed report.
 
+### Alpha Dev Vision Foundation (Completed 2026-06-06)
+
+✅ **Dev 01:** DEV_VISION Mode — centralized V-key toggle for all debug overlays  
+✅ **Dev 02:** Guard Debug Label — state display panel (id, state, cell, facing, last_known)  
+✅ **Dev 03:** Tile Info on Hover — cyan label showing coordinates + blocked/guard/agent metadata  
+✅ **Dev 04:** Agent Trail Overlay — yellow diamond path history (last 5 tiles), opacity gradient  
+✅ **Dev 05:** Guard Detection Meter — arc meter above guard head showing state-based detection (0% → 100%)  
+✅ **Quickfixes:** Trail offset parameterized, hover label completed with full metadata  
+
+📖 **See:** [DEVELOPMENT/DEV_VISION_FOUNDATION.md](DEVELOPMENT/DEV_VISION_FOUNDATION.md) for complete technical report.
+
 ### Next up (M2 continuation)
 
 - Event-driven detection by tic (edge-crossing) — replace turn-based evaluation

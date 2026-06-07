@@ -108,6 +108,10 @@ var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
 var dev_vision: bool = false
 
+## Dev 03: tile hover info
+var _dev_hover_label: Label = null
+var _hovered_cell: Vector2i = Vector2i(-1, -1)
+
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
 ## Controls which exits LevelGraph assigns; default (1,1) = centre segment (all exits open).
@@ -193,6 +197,17 @@ func _ready() -> void:
 	_update_alert_label()
 	enemy_turn_banner.visible = false
 	_apply_dev_vision()
+	## Dev 03: Create hover label for tile coordinates
+	_dev_hover_label = Label.new()
+	_dev_hover_label.add_theme_font_size_override("font_size", 13)
+	_dev_hover_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8, 1.0))
+	_dev_hover_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+	_dev_hover_label.add_theme_constant_override("shadow_offset_x", 1)
+	_dev_hover_label.add_theme_constant_override("shadow_offset_y", 1)
+	_dev_hover_label.position = Vector2(12.0, 80.0)   ## below TopBar
+	_dev_hover_label.z_index = 200
+	_dev_hover_label.visible = false
+	$HUD.add_child(_dev_hover_label)
 	_update_perspective_button_state()
 
 	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
@@ -511,6 +526,18 @@ func _get_all_guards() -> Array:
 		if child is GuardEnemy:
 			result.append(child)
 	return result
+
+
+func _update_dev_hover_label() -> void:
+	if _dev_hover_label == null:
+		return
+
+	_dev_hover_label.visible = dev_vision
+
+	if not dev_vision or _hovered_cell == INVALID_CELL:
+		return
+
+	_dev_hover_label.text = "%d,%d" % [_hovered_cell.x, _hovered_cell.y]
 
 
 func _spawn_guards(enemy_defs: Array) -> void:
@@ -982,6 +1009,13 @@ func _input(event: InputEvent) -> void:
 			_apply_zoom(clampf(camera.zoom.x - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
 			get_viewport().set_input_as_handled()
 		return
+
+	## ── Dev 03: track hover tile when in dev_vision mode ────────────────
+	if event is InputEventMouseMotion and not (_left_down and _touches.size() < 2):
+		if dev_vision:
+			var mm := event as InputEventMouseMotion
+			_hovered_cell = _screen_to_tile(mm.position)
+			_update_dev_hover_label()
 
 	## ── Mouse motion: pan when dragging ─────────────────────────────────
 	if event is InputEventMouseMotion and _left_down and _touches.size() < 2:

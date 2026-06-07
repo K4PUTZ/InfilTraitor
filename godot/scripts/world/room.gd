@@ -207,7 +207,7 @@ func _ready() -> void:
 	_trail_overlay = Node2D.new()
 	_trail_overlay.set_script(TrailOverlayClass)
 	add_child(_trail_overlay)
-	_trail_overlay.setup(self, floor_layer)
+	_trail_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET)
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
 	_dev_hover_label.add_theme_font_size_override("font_size", 13)
@@ -564,7 +564,18 @@ func _update_dev_hover_label() -> void:
 	if not dev_vision or _hovered_cell == INVALID_CELL:
 		return
 
-	_dev_hover_label.text = "%d,%d" % [_hovered_cell.x, _hovered_cell.y]
+	var cell := _hovered_cell
+	var info := "tile  %d , %d" % [cell.x, cell.y]
+	info += "\nblocked: %s" % ("yes" if _blocked_cells.has(cell) else "no")
+
+	for guard in _guards:
+		if is_instance_valid(guard) and guard.cell == cell:
+			info += "\nguard: %s  [%s]" % [guard.enemy_id, guard.state]
+
+	if agent.cell == cell:
+		info += "\nagent here"
+
+	_dev_hover_label.text = info
 
 
 func _spawn_guards(enemy_defs: Array) -> void:

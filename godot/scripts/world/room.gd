@@ -112,6 +112,10 @@ var dev_vision: bool = false
 var _dev_hover_label: Label = null
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
 
+## Dev 04: agent trail overlay
+const TRAIL_MAX := 5
+var _agent_trail: Array[Vector2i] = []
+
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
 ## Controls which exits LevelGraph assigns; default (1,1) = centre segment (all exits open).
@@ -315,7 +319,10 @@ func _on_btn_reset() -> void:
 	path_preview.clear_path()
 	_alert_meter = 0
 	_update_alert_label()
+	## Dev 04: clear trail on reset
+	_agent_trail.clear()
 	turn_manager.reset_player_turn()
+	queue_redraw()
 
 
 func _on_btn_viewport() -> void:
@@ -354,6 +361,15 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 
 func _on_agent_step_finished(step_cell: Vector2i) -> void:
 	fog_of_war.reveal_around(step_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+
+	## Dev 04: register trail — last position when stepping in
+	if _agent_trail.is_empty() or _agent_trail.back() != step_cell:
+		_agent_trail.append(step_cell)
+		if _agent_trail.size() > TRAIL_MAX:
+			_agent_trail.pop_front()
+
+	if dev_vision:
+		queue_redraw()
 
 
 func _on_agent_move_finished(_cell: Vector2i) -> void:
@@ -517,6 +533,7 @@ func _apply_dev_vision() -> void:
 		guard.set_dev_vision(dev_vision)
 
 	_update_enemy_visibility()
+	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
 
 
 func _get_all_guards() -> Array:
@@ -615,6 +632,26 @@ func _update_enemy_visibility() -> void:
 
 
 func _draw() -> void:
+	## Dev 04: draw agent trail
+	if dev_vision and not _agent_trail.is_empty():
+		var n := _agent_trail.size()
+		for i in range(n):
+			var trail_cell := _agent_trail[i]
+			## i=0 is oldest, i=n-1 is newest
+			var alpha := 0.2 + (float(i) / float(n - 1 if n > 1 else 1)) * 0.8
+			var color := Color(1.0, 0.85, 0.1, alpha)
+
+			## Yellow diamond centered on tile
+			var center := _world_center_for_cell(trail_cell)
+			var diamond := PackedVector2Array([
+				center + Vector2(0.0,  -22.0),
+				center + Vector2(32.0,  0.0),
+				center + Vector2(0.0,   22.0),
+				center + Vector2(-32.0, 0.0),
+			])
+			draw_colored_polygon(diamond, color)
+
+	## Draw enemy last_known markers
 	for guard in _guards:
 		if not is_instance_valid(guard):
 			continue

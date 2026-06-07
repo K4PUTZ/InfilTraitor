@@ -201,6 +201,12 @@ func _ready() -> void:
 	_update_alert_label()
 	enemy_turn_banner.visible = false
 	_apply_dev_vision()
+	## Dev 04: Create and setup trail overlay
+	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
+	var trail_overlay = Node2D.new()
+	trail_overlay.set_script(TrailOverlayClass)
+	add_child(trail_overlay)
+	trail_overlay.setup(self, floor_layer)
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
 	_dev_hover_label.add_theme_font_size_override("font_size", 13)
@@ -632,25 +638,6 @@ func _update_enemy_visibility() -> void:
 
 
 func _draw() -> void:
-	## Dev 04: draw agent trail
-	if dev_vision and not _agent_trail.is_empty():
-		var n := _agent_trail.size()
-		for i in range(n):
-			var trail_cell := _agent_trail[i]
-			## i=0 is oldest, i=n-1 is newest
-			var alpha := 0.2 + (float(i) / float(n - 1 if n > 1 else 1)) * 0.8
-			var color := Color(1.0, 0.85, 0.1, alpha)
-
-			## Yellow diamond centered on tile
-			var center := _world_center_for_cell(trail_cell)
-			var diamond := PackedVector2Array([
-				center + Vector2(0.0,  -22.0),
-				center + Vector2(32.0,  0.0),
-				center + Vector2(0.0,   22.0),
-				center + Vector2(-32.0, 0.0),
-			])
-			draw_colored_polygon(diamond, color)
-
 	## Draw enemy last_known markers
 	for guard in _guards:
 		if not is_instance_valid(guard):

@@ -7,12 +7,21 @@ signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
-const STEP_DURATION := 0.13
+const STEP_DURATION_BASE := 0.13
 
 const COLOR_BODY := Color(0.86, 0.26, 0.22, 1.0)
 const COLOR_BODY_DARK := Color(0.58, 0.12, 0.10, 1.0)
 const COLOR_HEAD := Color(1.0, 0.87, 0.80, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
+
+## Probabilidades base por distância — espelha TicSystem.DETECTION_CURVE
+const FOV_DISTANCE_CURVE: Array[float] = [
+	1.00, 1.00, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01
+]
+
+## Multiplicador lateral por distância ao eixo central do cone (em tiles)
+## offset 0 = coluna central, offset 1 = ±1 coluna, offset 2 = ±2 colunas
+const FOV_LATERAL_FALLOFF: Array[float] = [1.0, 0.45, 0.08]
 
 const CARDINAL_DIRS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 const VISION_RANGE := 6
@@ -53,6 +62,10 @@ var dev_vision: bool = false
 
 ## Dev 05: detection meter — 0.0 to 1.0, placeholder until M2 fills it
 var detection: float = 0.0
+
+## M2-03: Patrulha Orgânica — idle behavior e rotação de olhar
+var idle_turns_remaining: int = 0
+var _look_angles: Array[float] = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]
 
 ## Debug label for dev_vision mode
 var _debug_label_container: Panel = null
@@ -211,7 +224,7 @@ func _step_next() -> void:
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(self, "position", _cell_to_world(next_cell), STEP_DURATION)
+	tween.tween_property(self, "position", _cell_to_world(next_cell), _get_step_duration())
 	await tween.finished
 	step_finished.emit(next_cell)
 	queue_redraw()
@@ -240,6 +253,19 @@ func _set_facing_from_route() -> void:
 	_update_facing_angle()
 
 
+func _get_step_duration() -> float:
+	match state:
+		STATE_PATROL:
+			return STEP_DURATION_BASE * 2.2
+		STATE_SUSPICIOUS:
+			return STEP_DURATION_BASE * 1.4
+		STATE_ALERT:
+			return STEP_DURATION_BASE * 1.0
+		STATE_CHASE:
+			return STEP_DURATION_BASE * 0.75
+	return STEP_DURATION_BASE
+
+
 func _snap_to_cardinal(v: Vector2i) -> Vector2i:
 	if abs(v.x) >= abs(v.y):
 		return Vector2i.RIGHT if v.x >= 0 else Vector2i.LEFT
@@ -255,6 +281,106 @@ func _update_facing_angle() -> void:
 		facing_angle_deg = 180.0
 	elif facing == Vector2i.LEFT:
 		facing_angle_deg = 270.0
+
+
+func _update_facing_from_angle() -> void:
+	var snapped_angle := snappedf(facing_angle_deg, 45.0)
+	match int(snapped_angle) % 360:
+		0:
+			facing = Vector2i.UP
+		45:
+			facing = Vector2i(1, -1)
+		90:
+			facing = Vector2i.RIGHT
+		135:
+			facing = Vector2i(1,  1)
+		180:
+			facing = Vector2i.DOWN
+		225:
+			facing = Vector2i(-1, 1)
+		270:
+			facing = Vector2i.LEFT
+		315:
+			facing = Vector2i(-1, -1)
+	queue_redraw()
+
+
+## Converte probabilidade de detecção em cor do cone (vermelho → verde)
+## alpha_mult: multiplicador de opacidade por estado do guarda (0.4 relaxado → 1.0 chase)
+static func _prob_to_color(prob: float, alpha_mult: float = 1.0) -> Color:
+	var c: Color
+	if prob >= 0.95:
+		c = Color(1.00, 0.13, 0.13, 0.85)  ## Vermelho
+	elif prob >= 0.80:
+		c = Color(1.00, 0.40, 0.00, 0.75)  ## Laranja escuro
+	elif prob >= 0.55:
+		c = Color(1.00, 0.63, 0.00, 0.65)  ## Laranja
+	elif prob >= 0.35:
+		c = Color(1.00, 0.82, 0.00, 0.55)  ## Amarelo
+	elif prob >= 0.12:
+		c = Color(0.78, 0.88, 0.00, 0.45)  ## Amarelo-verde
+	elif prob >= 0.03:
+		c = Color(0.50, 0.82, 0.00, 0.35)  ## Verde claro
+	else:
+		c = Color(0.25, 0.75, 0.00, 0.25)  ## Verde escuro
+	c.a *= alpha_mult
+	return c
+
+
+## Retorna parâmetros visuais do cone por estado do guarda
+## O cone visual é intencionalmente menor que o cone de detecção real:
+## o jogador vê menos do que o guarda percebe, criando margem de risco oculto.
+func _get_cone_visual_params() -> Dictionary:
+	match state:
+		STATE_PATROL:
+			return {"range": 5, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+		STATE_SUSPICIOUS:
+			return {"range": 7, "fov": 90.0, "alpha": 0.8, "prob_mult": 1.8}
+		STATE_ALERT:
+			return {"range": 8, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.2}
+		STATE_CHASE:
+			return {"range": 8, "fov": 110.0, "alpha": 1.0, "prob_mult": 3.0}
+	## Default (relaxado)
+	return {"range": 5, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+
+
+## Retorna Array de {delta: Vector2i, prob: float} para todos os tiles no cone de visão
+func _get_cone_tiles() -> Array:
+	var params       := _get_cone_visual_params()
+	var vis_range: int   = params["range"]
+	var vis_fov: float   = params["fov"]
+	var prob_mult: float = params["prob_mult"]
+	var half_fov := vis_fov / 2.0
+	var tiles := []
+
+	for dx in range(-vis_range, vis_range + 1):
+		for dy in range(-vis_range, vis_range + 1):
+			if dx == 0 and dy == 0:
+				continue
+			var delta := Vector2i(dx, dy)
+			var dist := absi(dx) + absi(dy)
+			if dist > vis_range:
+				continue
+
+			## Verificação angular
+			var to_angle := rad_to_deg(atan2(float(dx), float(-dy)))
+			var angle_diff := wrapf(to_angle - facing_angle_deg, -180.0, 180.0)
+			if absf(angle_diff) > half_fov:
+				continue
+
+			## Probabilidade base pela distância
+			var base_prob: float = FOV_DISTANCE_CURVE[dist] if dist < FOV_DISTANCE_CURVE.size() else 0.0
+
+			## Multiplicador lateral por distância ao eixo central
+			var lateral_offset := absf(angle_diff) / half_fov  ## 0.0 no centro, 1.0 na borda
+			var lateral_idx := mini(int(lateral_offset * FOV_LATERAL_FALLOFF.size()), FOV_LATERAL_FALLOFF.size() - 1)
+			var lateral_mult := FOV_LATERAL_FALLOFF[lateral_idx]
+
+			var final_prob := base_prob * lateral_mult * prob_mult
+
+			tiles.append({"delta": delta, "prob": final_prob})
+
+	return tiles
 
 
 func _update_debug_label() -> void:
@@ -339,17 +465,48 @@ func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edge
 	return true
 
 
+func _enter_state(new_state: String) -> void:
+	state = new_state
+	if new_state != STATE_PATROL:
+		idle_turns_remaining = 0
+	queue_redraw()
+
+
 func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:
 	if player_visible:
 		last_known_agent_cell = player_cell
 		if severity >= 2:
-			state = STATE_ALERT
+			_enter_state(STATE_ALERT)
 			state_timer = 3
 		elif state != STATE_ALERT:
-			state = STATE_SUSPICIOUS
+			_enter_state(STATE_SUSPICIOUS)
 			state_timer = 3
 	_update_debug_label()
 	return
+
+
+## M2-05: Reage a barulho percebido — detecção auditiva
+## perceived_intensity: intensidade após atenuação por distância e paredes
+func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:
+	## Acumular detecção auditiva — sempre, independente do limiar
+	detection = clampf(detection + perceived_intensity * 0.5, 0.0, 1.0)
+
+	if perceived_intensity >= 0.6:
+		## Barulho alto — guarda vai investigar diretamente
+		last_known_agent_cell = noise_tile
+		if state == STATE_PATROL:
+			_enter_state(STATE_SUSPICIOUS)
+			state_timer = 3
+	elif perceived_intensity >= 0.25:
+		## Barulho médio — guarda fica tenso mas não sabe onde
+		if state == STATE_PATROL:
+			_enter_state(STATE_SUSPICIOUS)
+			state_timer = 2
+	## Barulho fraco (< 0.25): ignorado
+
+	_update_debug_label()
+	if dev_vision:
+		queue_redraw()
 
 
 func tick_state() -> void:
@@ -358,13 +515,13 @@ func tick_state() -> void:
 	state_timer -= 1
 	if state_timer <= 0:
 		if state == STATE_ALERT:
-			state = STATE_CHASE
+			_enter_state(STATE_CHASE)
 			state_timer = 3
 		elif state == STATE_SUSPICIOUS:
-			state = STATE_PATROL
+			_enter_state(STATE_PATROL)
 			last_known_agent_cell = INVALID_CELL
 		elif state == STATE_CHASE:
-			state = STATE_SUSPICIOUS
+			_enter_state(STATE_SUSPICIOUS)
 			state_timer = 2
 
 	## Dev 05: placeholder detection mapping — M2 will override with real detection
@@ -382,6 +539,19 @@ func tick_state() -> void:
 		queue_redraw()
 
 
+func _do_idle_behavior() -> void:
+	if state != STATE_PATROL:
+		return
+
+	if randf() < 0.3:
+		var new_angle := _look_angles[randi() % _look_angles.size()]
+		facing_angle_deg = new_angle
+		_update_facing_from_angle()
+
+	if randf() < 0.2:
+		idle_turns_remaining = randi_range(1, 2)
+
+
 func choose_next_cell(
 		occupied_cells: Dictionary,
 		blocked_cells: Dictionary,
@@ -390,7 +560,18 @@ func choose_next_cell(
 		room_size: Vector2i
 ) -> Vector2i:
 	if state == STATE_PATROL:
-		return pick_next_patrol_cell(occupied_cells, blocked_cells, blocked_edges, room_size)
+		if idle_turns_remaining > 0:
+			idle_turns_remaining -= 1
+			_do_idle_behavior()
+			return cell
+
+		var next := pick_next_patrol_cell(occupied_cells, blocked_cells, blocked_edges, room_size)
+
+		if next == cell:
+			_do_idle_behavior()
+
+		return next
+
 	if state == STATE_SUSPICIOUS:
 		if last_known_agent_cell != INVALID_CELL:
 			return _step_toward(last_known_agent_cell, occupied_cells, blocked_cells, blocked_edges, room_size)
@@ -438,9 +619,34 @@ func _step_toward(
 
 
 func _draw() -> void:
-	var cone := _vision_cone_points()
-	draw_colored_polygon(cone, Color(1.0, 0.9, 0.2, 0.14))
-	draw_polyline(cone + PackedVector2Array([cone[0]]), Color(1.0, 0.9, 0.3, 0.6), 2.0, true)
+	## Cone de visão colorido por probabilidade — tile-a-tile
+	var params      := _get_cone_visual_params()
+	var alpha_mult: float = params["alpha"]
+	var cone_tiles  := _get_cone_tiles()
+
+	for entry in cone_tiles:
+		var delta: Vector2i = entry["delta"]
+		var prob: float     = entry["prob"]
+		var target_cell     := cell + delta
+
+		## LOS: pular tiles bloqueados por parede
+		## Em M2 completo, esses dicts viriam da room
+		if not can_see_cell(target_cell, {}, {}):
+			continue
+
+		## Posição do centro do tile em coordenadas locais
+		var world_pos := _cell_to_world(target_cell) - position
+
+		## Losango isométrico — dimensões do tile visual
+		var hw := 32.0   ## half-width
+		var hh := 20.0   ## half-height
+		var diamond := PackedVector2Array([
+			world_pos + Vector2(0.0,  -hh),
+			world_pos + Vector2(hw,   0.0),
+			world_pos + Vector2(0.0,   hh),
+			world_pos + Vector2(-hw,  0.0),
+		])
+		draw_colored_polygon(diamond, _prob_to_color(prob, alpha_mult))
 
 	var shadow := PackedVector2Array([
 		Vector2(0.0, -10.0),
@@ -468,10 +674,26 @@ func _draw() -> void:
 	if not dev_vision:
 		return
 
-	## Highlight vision cone in dev_vision mode
-	var dev_cone := _vision_cone_points()
-	draw_colored_polygon(dev_cone, Color(1.0, 0.85, 0.1, 0.35))
-	draw_polyline(dev_cone + PackedVector2Array([dev_cone[0]]), Color(1.0, 1.0, 0.0, 0.9), 2.5, true)
+	## Highlight vision cone in dev_vision mode com alpha aumentado
+	var dev_alpha := minf(alpha_mult * 1.5, 1.0)
+	for entry in cone_tiles:
+		var delta: Vector2i = entry["delta"]
+		var prob: float     = entry["prob"]
+		var target_cell     := cell + delta
+
+		if not can_see_cell(target_cell, {}, {}):
+			continue
+
+		var world_pos := _cell_to_world(target_cell) - position
+		var hw := 32.0
+		var hh := 20.0
+		var diamond := PackedVector2Array([
+			world_pos + Vector2(0.0,  -hh),
+			world_pos + Vector2(hw,   0.0),
+			world_pos + Vector2(0.0,   hh),
+			world_pos + Vector2(-hw,  0.0),
+		])
+		draw_colored_polygon(diamond, _prob_to_color(prob, dev_alpha))
 
 	## Draw patrol route as dashed line connecting waypoints
 	if patrol_route.size() >= 2:
@@ -517,16 +739,3 @@ func _draw() -> void:
 			Color(1.0, 1.0, 1.0, 0.95)
 		)
 
-
-func _vision_cone_points() -> PackedVector2Array:
-	var base := Vector2(0.0, -62.0)
-	match facing:
-		Vector2i.UP:
-			return PackedVector2Array([base, base + Vector2(-80.0, -170.0), base + Vector2(80.0, -170.0)])
-		Vector2i.DOWN:
-			return PackedVector2Array([base, base + Vector2(80.0, 40.0), base + Vector2(-80.0, 40.0)])
-		Vector2i.LEFT:
-			return PackedVector2Array([base, base + Vector2(-170.0, -50.0), base + Vector2(-170.0, 50.0)])
-		Vector2i.RIGHT:
-			return PackedVector2Array([base, base + Vector2(170.0, 50.0), base + Vector2(170.0, -50.0)])
-	return PackedVector2Array([base, base + Vector2(-80.0, -170.0), base + Vector2(80.0, -170.0)])

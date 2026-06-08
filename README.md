@@ -28,7 +28,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 | M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
 | M1-rewrite — Stable interactive map foundation | ✅ Complete |
 | M1.5 — Tactical UI + Alpha Gameplay feel | ✅ Complete (refactored) |
-| M2 — Enemy visibility & guard detection | ⧖ In progress (architecture locked) |
+| M2 — Enemy visibility & guard detection | ⧖ In progress (M2-01 to M2-05 + quickfix deployed) |
 | M3 — Procedural floor builder | |
 | M4 — Vertical slice | |
 | M5 — Monetisation | |
@@ -41,8 +41,20 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Movement, AP tracking, fog of war, tile selection, and camera controls are implemented.
 - Perspective controls are now available via a 2x2 HUD pad (N/E/S/W), with runtime layout rotation.
 - Enemy guard system with angular FOV detection (90°, 8 directions) and A* pathfinding.
+- **M2 Sound System:** Event-driven tics (edge-crossing), persistent noise grid with decay, audio detection with wall attenuation, organic patrol behavior (variable speed, pauses, look rotation), probabilistic colored cone visualization.
 - Architecture now supports infinite scaling: data-driven stats, no hardcoded ceilings, LLM-ready (structure/content separated).
-- Next internal work is event-driven detection by tic, noise system, and confrontation mechanics.
+- Next internal work is confrontation mechanics (4 cover states, flanking, peek).
+
+### M2 Alpha Sound System Deploy (Completed 2026-06-07)
+
+✅ **M2-01:** Event-driven tic detection — edge-crossing replaces turn-based evaluation  
+✅ **M2-02:** Colored cone visual system — tile-by-tile probability visualization with state-based appearance  
+✅ **M2-03:** Patrulha Orgânica — variable patrol speed (0.6× to 3.0× multiplier), spontaneous pauses (20% chance, 1–2 turns), look rotation to 8 directions without movement  
+✅ **M2-04:** Sistema de Barulho — persistent noise grid with per-turn decay (0.25 rate), emission at ~20% per agent step, 3-layer cyan cone visualization  
+✅ **M2-05:** Detecção Auditiva — audio detection independent of visual LOS, wall attenuation (0.6× per wall), distance falloff (2-tile hearing radius)  
+✅ **Quickfix:** Removed duplicate constants, added detection accumulation to audio reactions, immediate UI feedback  
+
+📖 **See:** [DEVELOPMENT/PROGRESS.md](DEVELOPMENT/PROGRESS.md) for complete technical report.
 
 ### Refactor Sprint 04 (Completed 2026-06-06)
 

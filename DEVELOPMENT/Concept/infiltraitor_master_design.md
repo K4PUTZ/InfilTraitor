@@ -209,6 +209,63 @@ O engine nunca deve depender do conteúdo narrativo para resolver lógica de jog
 - **Ao atingir 100%:** agente descoberto. Fase de confronto inicia.
 - A curva de acúmulo usa uma **forma sigmoide** — nos primeiros 40% é difícil ser detectado, de 40–70% sobe rápido, acima de 70% qualquer visão adicional fecha rapidamente. Cria a sensação de "escapei por pouco".
 
+### 5.6 Cone Visual — Implementação Vetorial (Decisão)
+
+O cone de visão é **sempre vetorial**, nunca um asset sprite. Razões:
+- Probabilidades mudam por estado do guarda — vetor muda de cor dinamicamente
+- 8 direções × múltiplos estados = 32+ sprites, custo de arte desnecessário
+- Performance em mobile adequada com sistema event-driven (não loop por frame)
+
+**Matemática do cone para as 8 direções:**
+
+O mesmo template de tiles é rotacionado/espelhado. Direções cardinais têm cone de ~90° de abertura. Direções diagonais usam a mesma máscara rotacionada 45°.
+
+```
+Zonas por coluna lateral (distância ao eixo central):
+  Coluna central (facing direto):  probabilidades cheias por distância
+  Coluna ±1:  40% → 15% → 5% conforme distância aumenta
+  Coluna ±2:  5% próximo, 1% distante
+```
+
+**Cor por probabilidade (gradiente frio→quente, verde→vermelho):**
+| Probabilidade | Cor | Alpha |
+|---|---|---|
+| 100% | Vermelho `#FF2020` | 0.85 |
+| 85–95% | Laranja `#FF6600` | 0.75 |
+| 60% | Laranja-amarelo `#FFA000` | 0.65 |
+| 40% | Amarelo `#FFD000` | 0.55 |
+| 15% | Amarelo-verde `#C8E000` | 0.45 |
+| 5% | Verde claro `#80D000` | 0.35 |
+| 1% | Verde `#40C000` | 0.25 |
+
+**Progressão visual por nível do agente:**
+- Iniciante: cone monocromático (shape branco/cinza translúcido)
+- Operativo: cone com 3 zonas de cor (vermelho / amarelo / verde)
+- Especialista: cone com todas as 7 zonas de probabilidade
+- Elite: cone completo + percentuais em texto sobre cada zona
+
+### 5.7 Detecção por Evidência — O Cone Detecta Rastros
+
+O cone do guarda não detecta apenas o agente vivo no tile.
+Ele detecta **evidências** — rastros de barulho e movimento com intensidade residual.
+
+```
+Ao cruzar uma aresta (tic), o sistema verifica:
+  1. Agente está no tile? → rola dado de detecção normal
+  2. Tile tem rastro de barulho? → rola dado de detecção × intensidade do rastro
+  3. Tile tem rastro de movimento? → rola dado × opacidade do rastro
+
+Guardas seguem rastros como a cobrinha segue a maçã:
+  → Cone entra em contato com evidência no tile X
+  → Guarda transita para SUSPICIOUS, se dirige a X
+  → Em X, cone varre ao redor buscando nova evidência
+  → Encadeia até perder o rastro ou encontrar o agente
+```
+
+Gerenciar o rastro (ficar parado, usar habilidades que apagam evidências)
+é uma mecânica de gameplay real — o agente pode ter saído de uma posição
+e ainda ser rastreado pela evidência deixada.
+
 ---
 
 ## 6. SISTEMA DE BARULHO
@@ -232,6 +289,78 @@ O engine nunca deve depender do conteúdo narrativo para resolver lógica de jog
 - Som usa o **mesmo sistema de propagação** que o apito dos guardas e o alarme.
 - Paredes atenuam o som — amplitude cai 1 por parede cruzada.
 - Guardas dentro do raio ouvem e reagem conforme seu estado atual.
+
+### 6.4 Rastro de Barulho como Evidência Persistente
+- O ícone de barulho no tile não é só visual — é um **dado persistente no grid**.
+- Cada tile armazena: `noise_intensity: float` (0.0 a 1.0) e `noise_age: int` (turnos desde a geração).
+- A cada turno, `noise_intensity` decai gradualmente. Quando chega a 0, o tile fica limpo.
+- O cone do guarda verifica `noise_intensity` do tile além da presença do agente.
+- Isso permite rastreamento de rastro mesmo com o agente já tendo saído.
+
+---
+
+## 6B. PATRULHA ORGÂNICA
+
+### 6B.1 Comportamento por Estado
+Guardas não são robôs. A velocidade, atenção e comportamento variam com o estado:
+
+```
+RELAXADO (sem ameaça detectada):
+  → Anda devagar — pode gastar apenas 1 dos seus AP em movimento
+  → Faz pausas espontâneas (1–2 turnos parado com chance aleatória ~20%)
+  → Gira o olhar: muda facing_angle sem mover (~30% de chance por turno parado)
+  → Pode desviar levemente da rota planejada (±1 tile com chance ~15%)
+  → Multiplicador de detecção: 0.6× (mais difícil detectar o agente)
+
+SUSPEITO (ouviu algo, algo parece errado):
+  → Velocidade normal — usa os 2 AP normalmente
+  → Para de fazer pausas aleatórias
+  → Gira o olhar com mais frequência (~60% por turno)
+  → Multiplica detecção: 1.8×
+
+ALERTA (viu evidência clara):
+  → Velocidade normal, sem desvios
+  → Multiplicador de detecção: 2.2×
+
+PERSEGUINDO:
+  → Usa A* direto sem desvios, velocidade máxima
+  → Multiplicador de detecção: 3.0×
+```
+
+### 6B.2 Velocidade Variável — Implementação
+A velocidade do guarda é controlada por `patrol_ap_budget: int` por turno:
+
+```gdscript
+func get_patrol_ap_budget() -> int:
+    match state:
+        STATE_PATROL:     return 1 if randf() < 0.3 else 2  ## às vezes anda devagar
+        STATE_SUSPICIOUS: return 2
+        STATE_ALERT:      return 2
+        STATE_CHASE:      return 2
+    return 1
+```
+
+A animação de movimento também desacelera — o tween de translação usa duração
+proporcional ao estado: relaxado = mais lento, chase = mais rápido.
+
+### 6B.3 Pausa e Rotação de Olhar
+```gdscript
+## Chamado quando o guarda está parado no waypoint
+func _do_idle_behavior() -> void:
+    if state != STATE_PATROL:
+        return
+
+    ## Chance de girar o olhar sem mover
+    if randf() < 0.30:
+        var angles := [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]
+        facing_angle_deg = angles[randi() % angles.size()]
+        _update_facing_from_angle()
+        queue_redraw()
+
+    ## Chance de ficar parado mais um turno
+    if randf() < 0.20:
+        idle_turns_remaining += 1
+```
 
 ---
 
@@ -709,22 +838,37 @@ do que com um jogo que termina em 6 horas.
 - FOW progressivo (3 camadas: shader de distância, polígonos, camera leash)
 - Y-sorting em room root e todos os TileMapLayers
 - Calibração de origem de todos os 88+ assets direcionais
-- GuardEnemy placeholder com cone de visão, patrulha e FSM básico (patrol/suspicious/alert/chase)
+- GuardEnemy com FSM básico (patrol/suspicious/alert/chase)
 - EnemyPhaseController sequencial
 - TurnManager com fases explícitas
 - Perspectiva switching runtime (N/E/S/W) com rotação de layout
+- **[Refactor 01]** `WallEdgeData` — `edge_key()` centralizado, hooks `blocks_los()` e `blocks_sound()` prontos
+- **[Refactor 02]** Stats data-driven — `AgentStats`, sem `const` hardcoded em `turn_manager` e `room`
+- **[Refactor 03]** Cone de visão angular — FOV em graus com falloff suave nas bordas, 8 direções, `angle_ratio` no retorno
+- **[Refactor 04]** A* pathfinding — `GuardPathfinder`, guards não travam em obstáculos
+- **[DEV_VISION]** Toggle V: FOW desliga, guardas revelados, cone destacado, rota de patrulha em azul
+- **[DEV_VISION]** Guard debug label — id, state, cell, facing, last_known acima de cada guarda
+- **[DEV_VISION]** Tile hover — coordenadas, blocked, guard state, agent presence
+- **[DEV_VISION]** Agent trail overlay — últimos 5 tiles em amarelo com opacidade decrescente (Node2D filho, VISUAL_GRID_OFFSET via parâmetro)
+- **[DEV_VISION]** Detection meter arc — arco colorido acima de cada guarda, campo `detection: float` pronto para M2
 
 ### 17.2 O que precisa ser implementado (próximas fases)
-- **M1.5 pendente:** portas (visual + lógica), transição entre segmentos, sprite do agente, menu de ação contextual
-- **M2:** sistema de detecção por tics (substituir avaliação atual), sistema de barulho, LOS por edge walls, FSM completo dos guardas
+- **Próximo — M2 Detecção:**
+  - Sistema de tic event-driven por mudança de aresta
+  - Cone visual colorido por probabilidade (8 direções, vetorial)
+  - Detecção por evidência: cone detecta rastro de barulho mesmo sem agente presente
+  - Patrulha orgânica com velocidade variável por estado
+  - Sistema de barulho por tic com rastro persistente de intensidade
+- **M2 — Comunicação:** apito, rádio, alarme de parede
+- **M2 — Confronto:** cobertura, dado de acerto/dano, camadas de resistência
 - **M3:** gerador procedural de floors, templates de sala
-- **M4:** vertical slice completo
+- **M4:** vertical slice completo, portas, transição entre segmentos
 
-### 17.3 Refatorações necessárias antes do M2
-- Cone de visão: trocar projeção de eixo retangular por angular (FOV em graus)
-- Pathfinding: `_step_toward()` greedy → A* real
-- Modelo de tile: implementar wall_edges separado de blocked_cells
-- Detecção: event-driven por aresta em vez de avaliação por turno
+### 17.3 Refatorações concluídas
+- ✅ WallEdgeData consolidado (Refactor 01)
+- ✅ Stats data-driven (Refactor 02)
+- ✅ Cone de visão angular (Refactor 03)
+- ✅ A* pathfinding (Refactor 04)
 
 ---
 
@@ -740,10 +884,13 @@ Estas questões foram identificadas mas ainda não decididas:
 - [ ] **Cores do sistema de overlay:** 1 AP, 2 AP, danger, interagível, quest — definir paleta.
 - [ ] **Armas usam munição, cooldown, ou só barulho?:** a decidir.
 - [ ] **Gerador LLM de missões:** arquitetura separada de estrutura/conteúdo está definida. Integração futura.
-- [ ] **Sessões de combate: o agente morre num tiro ou tem HP?** → **DECIDIDO: 3 HP base, teto proporcional por tier, décimo tiro (relativo ao teto) sempre fatal.**
-- [ ] **Geração procedural: fixa por capítulo ou adaptativa?** → **DECIDIDO: fixa por capítulo na campanha + ciclos de escalada no modo Freelance.**
-- [ ] **Itens: encontrados ou comprados?** → **DECIDIDO: ambos — chests, NPCs, recompensas de missão.**
-- [ ] **O jogo tem fim?** → **DECIDIDO: não. Campanha de 3 capítulos é a pré-história. Modo Freelance é infinito.**
+- [ ] **Velocidade exata de decaimento do rastro de barulho:** requer playtesting.
+- [ ] **Chance exata de pausa/desvio na patrulha orgânica:** requer playtesting.
+- [x] **Cone visual: asset ou vetor?** → **DECIDIDO: sempre vetorial.** Dinâmico por estado, sem custo de arte.
+- [x] **Sessões de combate: o agente morre num tiro ou tem HP?** → **DECIDIDO: 3 HP base, teto proporcional por tier, décimo tiro (relativo ao teto) sempre fatal.**
+- [x] **Geração procedural: fixa por capítulo ou adaptativa?** → **DECIDIDO: fixa por capítulo na campanha + ciclos de escalada no modo Freelance.**
+- [x] **Itens: encontrados ou comprados?** → **DECIDIDO: ambos — chests, NPCs, recompensas de missão.**
+- [x] **O jogo tem fim?** → **DECIDIDO: não. Campanha de 3 capítulos é a pré-história. Modo Freelance é infinito.**
 
 ---
 

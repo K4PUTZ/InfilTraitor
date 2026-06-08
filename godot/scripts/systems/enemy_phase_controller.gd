@@ -11,7 +11,8 @@ func run_single_guard_turn(
 		blocked_cells: Dictionary,
 		blocked_edges: Dictionary,
 		room_size: Vector2i,
-		occupied: Dictionary
+		occupied: Dictionary,
+		tic_callback: Callable   ## novo parâmetro — room._apply_tic_result
 ) -> Dictionary:
 	if not is_instance_valid(guard):
 		return {"max_severity": 0, "events": []}
@@ -20,33 +21,37 @@ func run_single_guard_turn(
 	var events: Array[Dictionary] = []
 	var max_severity := 0
 
-	var before: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE, blocked_cells, blocked_edges)
-	guard.observe_player(bool(before.get("visible", false)), int(before.get("severity", 0)), player_cell)
-	if bool(before.get("visible", false)):
-		var before_severity := int(before.get("severity", 1))
-		max_severity = maxi(max_severity, before_severity)
-		events.append({
-			"enemy_id": guard.enemy_id,
-			"cell": guard.cell,
-			"severity": before_severity,
-			"moment": "before_move",
-		})
+	## Tic antes do movimento
+	var before := TicSystem.evaluate(guard, player_cell, blocked_cells, blocked_edges)
+	tic_callback.call(guard, before)
+	if bool(before.detected):
+		max_severity = 2
+	elif bool(before.visible):
+		max_severity = 1
+	events.append({
+		"enemy_id": guard.enemy_id,
+		"cell": guard.cell,
+		"detected": before.detected,
+		"moment": "before_move",
+	})
 
 	var next_cell: Vector2i = guard.choose_next_cell(occupied, blocked_cells, blocked_edges, player_cell, room_size)
 	if next_cell != guard.cell:
 		await guard.move_to_cell_animated(next_cell, blocked_cells, blocked_edges, room_size)
 
-	var after: Dictionary = guard.evaluate_detection(player_cell, DEFAULT_VISION_RANGE, blocked_cells, blocked_edges)
-	guard.observe_player(bool(after.get("visible", false)), int(after.get("severity", 0)), player_cell)
-	if bool(after.get("visible", false)):
-		var after_severity := int(after.get("severity", 1))
-		max_severity = maxi(max_severity, after_severity)
-		events.append({
-			"enemy_id": guard.enemy_id,
-			"cell": guard.cell,
-			"severity": after_severity,
-			"moment": "after_move",
-		})
+	## Tic depois do movimento
+	var after := TicSystem.evaluate(guard, player_cell, blocked_cells, blocked_edges)
+	tic_callback.call(guard, after)
+	if bool(after.detected):
+		max_severity = 2
+	elif bool(after.visible):
+		max_severity = maxi(max_severity, 1)
+	events.append({
+		"enemy_id": guard.enemy_id,
+		"cell": guard.cell,
+		"detected": after.detected,
+		"moment": "after_move",
+	})
 
 	occupied[guard.cell] = guard
 	guard.tick_state()

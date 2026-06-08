@@ -85,7 +85,6 @@ var _active_perspective: String = "N"
 var _alert_meter: int = 0
 
 var _alert_max: int = 100
-var _alert_gain_warning: int = 20
 var _alert_gain_full: int = 45
 
 const ENEMY_INTER_TURN_DELAY := 1.0
@@ -116,6 +115,10 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _trail_overlay: Node2D = null
+
+## M2-04: noise system and overlay
+var _noise_system = null
+var _noise_overlay: Node2D = null
 
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
@@ -208,6 +211,17 @@ func _ready() -> void:
 	_trail_overlay.set_script(TrailOverlayClass)
 	add_child(_trail_overlay)
 	_trail_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET)
+
+	## M2-04: Create and setup noise system and overlay
+	var NoiseSystemClass = preload("res://godot/scripts/systems/noise_system.gd")
+	_noise_system = NoiseSystemClass.new()
+
+	var NoiseOverlayClass = preload("res://godot/scripts/overlays/noise_overlay.gd")
+	_noise_overlay = Node2D.new()
+	_noise_overlay.set_script(NoiseOverlayClass)
+	add_child(_noise_overlay)
+	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
+
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
 	_dev_hover_label.add_theme_font_size_override("font_size", 13)
@@ -330,6 +344,11 @@ func _on_btn_reset() -> void:
 	_agent_trail.clear()
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
+	## M2-04: clear noise on reset
+	if _noise_system != null:
+		_noise_system.clear()
+	if _noise_overlay != null:
+		_noise_overlay.queue_redraw()
 	turn_manager.reset_player_turn()
 
 
@@ -379,6 +398,98 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 	if dev_vision and _trail_overlay != null:
 		_trail_overlay.queue_redraw()
 
+	## M2-04: Gerar barulho por tic — rola dado a cada passo
+	if _noise_system != null:
+		if randf() < 0.20:  ## NOISE_CHANCE_WALK from NoiseSystem
+			_noise_system.emit(step_cell, 0.5)  ## NOISE_INTENSITY_WALK from NoiseSystem
+		if _noise_overlay != null:
+			_noise_overlay.queue_redraw()
+
+	## M2-05: Detecção auditiva imediata após gerar barulho
+	_process_audio_detection()
+
+	## Tic de detecção — agente cruzou uma aresta
+	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		var result: TicSystem.TicResult = TicSystem.evaluate(
+			guard, step_cell, _blocked_cells, blocked_edges
+		)
+		_apply_tic_result(guard, result)
+
+
+## Processa resultado de um tic de detecção para um guarda.
+func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
+	## Acumula ou decai o campo detection do guarda
+	if result.visible:
+		guard.detection = clampf(
+			guard.detection + result.raw_chance * TicSystem.DETECTION_GAIN_PER_TIC,
+			0.0, 1.0
+		)
+	else:
+		## Decaimento fora do cone
+		var decay := _get_detection_decay(guard.state)
+		guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
+
+	## M2-04: Detecção por barulho — cone do guarda sobre tile ruidoso
+	if _noise_system != null:
+		var noise_intensity: float = _noise_system.get_intensity(agent.cell) if _noise_system != null else 0.0
+		if noise_intensity > 0.0 and result.visible:
+			## Barulho amplifica detecção se o guarda já vê o tile
+			var bonus: float = noise_intensity * 0.3
+			guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
+
+	if dev_vision:
+		guard.queue_redraw()
+
+	## Notifica o guarda do resultado — escalona FSM só se detectado
+	if result.detected:
+		guard.observe_player(true, 2, agent.cell)
+		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+	else:
+		guard.observe_player(false, 0, agent.cell)
+
+	_update_alert_label()
+
+
+func _get_detection_decay(state: String) -> float:
+	match state:
+		"patrol":
+			return -0.15
+		"suspicious":
+			return -0.06
+		"alert":
+			return -0.04
+		"chase":
+			return -0.01
+	return -0.10
+
+
+## M2-05: Processa detecção auditiva para todos os guardas
+func _process_audio_detection() -> void:
+	if _noise_system == null:
+		return
+
+	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(
+		_current_blocked_edges
+	)
+
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+
+		for noise_tile in _noise_system.get_noisy_tiles():
+			var intensity: float = _noise_system.get_intensity(noise_tile)
+			if intensity <= 0.0:
+				continue
+
+			var perceived: float = TicSystem.evaluate_audio(
+				guard, noise_tile, intensity, blocked_edges
+			)
+			if perceived > 0.0:
+				guard.hear_noise(noise_tile, perceived)
+
 
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
@@ -424,10 +535,20 @@ func _on_enemy_phase_started() -> void:
 		fog_of_war.reset_fog()
 		fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	_update_alert_label()
+
+	## M2-04: Decay noise at end of enemy phase
+	if _noise_system != null:
+		_noise_system.decay_all()
+	if _noise_overlay != null:
+		_noise_overlay.queue_redraw()
+
 	turn_manager.finish_enemy_phase()
 
 
 func _run_enemy_phase() -> void:
+	## M2-05: Processar barulhos persistentes antes dos guardas agirem
+	_process_audio_detection()
+
 	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
 	var occupied: Dictionary = {}
 	for guard in _guards:
@@ -446,7 +567,8 @@ func _run_enemy_phase() -> void:
 			_blocked_cells,
 			blocked_edges,
 			_room_size,
-			occupied
+			occupied,
+			_apply_tic_result   ## passa o callback
 		)
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
 		await _hold_actor_end_pause()
@@ -454,12 +576,7 @@ func _run_enemy_phase() -> void:
 		var next_focus := _next_enemy_phase_focus_cell(i)
 		await _enemy_inter_turn_pause_with_camera(next_focus)
 
-	if max_severity == 1:
-		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_warning)
-	elif max_severity >= 2:
-		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-
-	_update_alert_label()
+	## Acumulação de alerta agora acontece em _apply_tic_result() durante os tics
 	_update_enemy_visibility()
 
 

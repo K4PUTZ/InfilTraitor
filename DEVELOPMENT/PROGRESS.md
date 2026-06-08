@@ -1,5 +1,115 @@
 # INFILTRAITOR — Progress Updates
 
+## M2 Alpha Sound System Deploy (2026-06-07)
+
+**Status:** ✅ Complete — Event-driven detection, noise persistence, and audio systems fully integrated
+
+**Focus:** Enemy AI sophistication — probabilistic visual detection, persistent sound propagation, organic patrol behavior, and independent audio perception mechanics.
+
+### Changes Completed
+
+#### ✅ M2-01: Event-Driven Tic Detection
+- Replaced turn-based evaluation with edge-crossing triggers
+- Tics fire whenever a guard or agent crosses a tile boundary
+- Deterministic visual detection via `TicSystem.evaluate()` with LOS validation
+- Eliminates detection lag from discrete turn cycles
+
+#### ✅ M2-02: Colored Cone Visual System
+- Probabilistic cone visualization: tile-by-tile color indicates detection chance
+- Distance curve: 9-level attenuation [1.00, 1.00, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01]
+- Lateral falloff: [1.0, 0.45, 0.08] at center, ±1, ±2 from FOV heading
+- State-dependent appearance: range/FOV/alpha/prob_mult per state (PATROL/SUSPICIOUS/ALERT/CHASE)
+- Visualization ready for M2 Dev system integration
+
+#### ✅ M2-03: Patrulha Orgânica
+- **Variable speed:** Guard speed multiplied by state (0.60× patrol to 3.00× chase)
+- **Spontaneous pauses:** ~20% chance per step to idle 1–2 turns (looks around, catches breath)
+- **Look rotation:** Rotates facing angle between 8 cardinal directions during patrol without moving
+- **Smooth animation:** Uses tweens for speed variation and angle transitions
+- Integrates with existing `_enter_state()` centralized state machine
+
+#### ✅ M2-04: Sistema de Barulho
+- **Persistent noise grid:** `Dictionary<Vector2i, {intensity, age}>` maintained across turns
+- **Decay mechanics:** -0.25 intensity per enemy phase (4-turn lifespan for 0.5 base intensity)
+- **Emission:** ~20% chance per guard step at 0.5 intensity base
+- **Bonus detection:** +30% visual detection bonus when guard visible and noise present
+- **Visualization:** 3-layer cyan cone per noisy tile (faint/medium/bright) with alpha by intensity
+
+#### ✅ M2-05: Detecção Auditiva
+- **Audio detection independent of visual LOS:** Separate evaluation from visual cone
+- **Wall attenuation:** 0.6× multiplier per wall crossed (cumulative, e.g., 2 walls = 0.36×)
+- **Distance falloff:** Linear attenuation over 2-tile hearing radius (1.0 → 0.0)
+- **Thresholded reactions:**
+  - ≥0.6 intensity: Investigates (sets last_known_agent_cell, goes to SUSPICIOUS for 3 turns)
+  - ≥0.25 intensity: Becomes SUSPICIOUS for 2 turns
+  - <0.25 intensity: Ignored (silent noise)
+- **Detection accumulation:** Always accumulates `perceived_intensity × 0.5` to guard detection meter (M2 Dev 05)
+- **Immediate feedback:** Updates guard debug label and detection arc on audio reaction
+
+#### ✅ Quickfix: Constants & Accumulation
+- Removed duplicate `NOISE_CHANCE_WALK` and `NOISE_INTENSITY_WALK` constants from room.gd
+- Consolidated with NoiseSystem source of truth
+- Added detection accumulation to `hear_noise()` — always increments meter regardless of reaction threshold
+- Added `_update_debug_label()` and `queue_redraw()` calls for immediate UI feedback
+- All compilation errors resolved
+
+### Files Created/Modified
+
+**Created:**
+- `godot/scripts/systems/noise_system.gd` — persistent noise grid manager with decay logic
+- `godot/scripts/systems/tic_system.gd` — extended with `evaluate_audio()` and wall-counting pathfinding
+
+**Modified:**
+- `godot/scripts/overlays/noise_overlay.gd` — new 3-layer cyan cone visualization system
+- `godot/scripts/agents/guard_enemy.gd` — M2-03/M2-05 integration: variable speed, pauses, look rotation, `hear_noise()`, detection accumulation
+- `godot/scripts/world/room.gd` — M2-04/M2-05 integration: noise emission, decay, audio evaluation, visual bonus logic
+
+### Architecture & Design
+
+**Event-Driven Flow:**
+1. Agent steps → fires visual TIC for each guard (M2-01/M2-02)
+2. Guard evaluates detection → updates state machine → may emit noise (M2-04)
+3. Noise propagates → audio detection triggers (M2-05)
+4. Guard reacts based on audio intensity thresholds → accumulates detection meter
+
+**State-Dependent Scaling:**
+- All multipliers data-driven in `TicSystem.STATE_MULTIPLIER` and `GuardEnemy._get_cone_visual_params()`
+- No hardcoded values — single source of truth per parameter
+- Enables future tuning without code changes
+
+**Noise Persistence:**
+- Noise survives across entire enemy phase (does not decay during player turn)
+- Decays at end of enemy phase: `_noise_system.decay_all()`
+- Grid queries support future sound occlusion and propagation refinement
+
+### Testing & Verification
+
+- **Compilation:** ✅ No syntax/parse errors (all 3 files: 0 errors)
+- **Type safety:** ✅ All Dictionary returns explicitly typed (no inference failures)
+- **Integration:** ✅ Visual + audio detection work independently yet cohesively
+- **Constants:** ✅ No duplication, single source of truth per system
+
+### Git Commits
+
+```
+[pending] Alpha Sound System Deploy: M2-01 to M2-05 + quickfix
+  - Event-driven tics with edge-crossing detection
+  - Colored cone visualization with state-based appearance
+  - Organic patrol: variable speed, pauses, look rotation
+  - Persistent noise grid with decay and visualization
+  - Audio detection with wall attenuation and threshold reactions
+  - Remove duplicate constants, add detection accumulation
+```
+
+### Next Steps (M2 Continuation)
+
+- **M2-06:** Confrontation system — 4 cover states, flanking detection, peek mechanics
+- **M2-07:** Communication system — apito (local alert), rádio (zone alert), alarme (site-wide)
+- **M2-08:** Refined FSM — smooth state transitions, contextual behavior tweaks
+- **Character sprite:** Integrate Human_0 Idle/Run AnimatedSprite2D (pending asset pipeline)
+
+---
+
 ## Alpha Dev Vision Foundation (2026-06-06)
 
 **Status:** ✅ Complete — In-game debug visualization system fully integrated

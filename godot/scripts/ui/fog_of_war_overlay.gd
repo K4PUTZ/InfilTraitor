@@ -18,6 +18,10 @@ var _room_size: Vector2i       = Vector2i.ZERO
 ## Cells that have been revealed at least once (key = Vector2i, value = true).
 var _revealed: Dictionary = {}
 
+## M2-10: Peek temporary reveals
+var _peek_revealed: Array[Vector2i] = []
+var _fog_alpha_override: Dictionary = {}
+
 
 ## Call once from room.gd _ready, after layout is built.
 func setup(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:
@@ -50,6 +54,23 @@ func reveal_around(center: Vector2i, radius: int) -> void:
 ## Erase all revealed state (e.g. when loading a new segment).
 func reset_fog() -> void:
 	_revealed.clear()
+	_peek_revealed.clear()
+	_fog_alpha_override.clear()
+	queue_redraw()
+
+
+## M2-10: Peek mechanic internal helpers
+func add_peek_reveal(cell: Vector2i) -> void:
+	if not _revealed.has(cell):
+		_peek_revealed.append(cell)
+		_fog_alpha_override[cell] = 0.0
+	queue_redraw()
+
+
+func reset_peek_reveals() -> void:
+	for cell in _peek_revealed:
+		_fog_alpha_override.erase(cell)
+	_peek_revealed.clear()
 	queue_redraw()
 
 
@@ -63,6 +84,9 @@ func reset_fog() -> void:
 ## Near-transparent at the revealed edge (ease-in), then decelerates
 ## toward full darkness (ease-out) — no abrupt jump at the outer boundary.
 func _fog_alpha_for(cell: Vector2i) -> float:
+	if _fog_alpha_override.has(cell):
+		return _fog_alpha_override[cell]
+		
 	for ring: int in range(1, 13):
 		for dx: int in range(-ring, ring + 1):
 			for dy: int in range(-ring, ring + 1):

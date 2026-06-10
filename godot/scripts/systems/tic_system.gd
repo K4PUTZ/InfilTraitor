@@ -67,6 +67,28 @@ static func evaluate(
 	var state_mult: float = STATE_MULTIPLIER.get(guard.state, 1.0)
 	result.raw_chance = base_chance * state_mult * result.angle_ratio
 
+	## M2-10: Aplicar bônus de Sombras e Cover
+	if guard._shadow_tiles.has(target_cell):
+		result.raw_chance *= guard.SHADOW_MULT
+
+	var agent_ref = guard.get_tree().get_root().find_child("Agent", true, false)
+	if agent_ref != null and target_cell == agent_ref.cell:
+		if agent_ref.cover_state != DebugAgent.CoverType.NONE:
+			var cover_mult := 1.0
+			if agent_ref.cover_state == DebugAgent.CoverType.FULL:
+				cover_mult = DebugAgent.COVER_FULL_MULT
+			elif agent_ref.cover_state == DebugAgent.CoverType.PARTIAL:
+				cover_mult = DebugAgent.COVER_PARTIAL_MULT
+			
+			## Flanking: guard no lado oposto ao obstáculo ignora cover
+			var flank_dir: Vector2i = -agent_ref.cover_direction  ## lado exposto
+			var guard_dir: Vector2i = (guard.cell - agent_ref.cell)
+			## Se o guard está no arco de 90° do lado exposto (produto escalar > 0), cover não protege
+			if (guard_dir.x * flank_dir.x + guard_dir.y * flank_dir.y) > 0:
+				cover_mult = 1.0
+			
+			result.raw_chance *= cover_mult
+
 	## Lançar dado: 0.0 a 1.0
 	result.detected = randf() < result.raw_chance
 

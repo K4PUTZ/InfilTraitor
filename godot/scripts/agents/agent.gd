@@ -13,6 +13,15 @@ var cell: Vector2i = Vector2i.ZERO
 var vision_radius: int = 7  ## base player visibility radius in tiles; affects enemy fade thresholds
 var vision_mode: String = "normal"  ## future modes: thermal, night vision, xray
 var is_moving: bool = false
+var dev_vision: bool = false
+
+## Cover
+enum CoverType { NONE, PARTIAL, FULL }
+var cover_state: CoverType = CoverType.NONE
+var cover_direction: Vector2i = Vector2i.ZERO  ## direção para o obstáculo
+
+const COVER_FULL_MULT   := 0.20   ## probabilidade de detecção quando em cover full
+const COVER_PARTIAL_MULT := 0.55  ## cover parcial (apenas 1 adjacente bloqueado)
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 ## Duration per tile step — snappy tactical feel.
@@ -43,6 +52,29 @@ func get_vision_radius() -> int:
 
 func set_vision_radius(new_radius: int) -> void:
 	vision_radius = max(0, new_radius)
+
+
+func update_cover(blocked_cells: Dictionary) -> void:
+	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
+	var blocked_count := 0
+	var last_blocked_dir := Vector2i.ZERO
+
+	for dir in dirs:
+		if blocked_cells.has(cell + dir):
+			blocked_count += 1
+			last_blocked_dir = dir
+
+	if blocked_count == 0:
+		cover_state   = CoverType.NONE
+		cover_direction = Vector2i.ZERO
+	elif blocked_count == 1:
+		cover_state   = CoverType.PARTIAL
+		cover_direction = last_blocked_dir
+	else:
+		cover_state   = CoverType.FULL
+		cover_direction = last_blocked_dir  ## direção primária
+
+	queue_redraw()
 
 
 ## Animate the agent along every cell in `path` (must include the start cell).
@@ -103,3 +135,12 @@ func _draw() -> void:
 	draw_polyline(body + PackedVector2Array([body[0]]), COLOR_BODY_DARK, 3.0)
 
 	draw_circle(Vector2(0.0, -64.0), 10.0, COLOR_HEAD)
+
+	if dev_vision:
+		## Anel ao redor do agente com cor por nível de cover
+		var ring_color := Color.TRANSPARENT
+		match cover_state:
+			CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)
+			CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
+		if ring_color.a > 0.0:
+			draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, ring_color, 2.5)

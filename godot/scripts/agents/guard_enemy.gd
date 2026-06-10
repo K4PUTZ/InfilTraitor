@@ -6,6 +6,10 @@ signal move_started(from_cell: Vector2i, to_cell: Vector2i)
 signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
 
+## Emitidos em _enter_state() nos momentos certos
+signal whistled(origin_cell: Vector2i, last_known: Vector2i)
+signal radioed(origin_cell: Vector2i, last_known: Vector2i)
+
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 const STEP_DURATION_BASE := 0.13
 
@@ -23,6 +27,8 @@ const FOV_DISTANCE_CURVE: Array[float] = [
 ## offset 0 = coluna central, offset 1 = ±1 coluna, offset 2 = ±2 colunas
 const FOV_LATERAL_FALLOFF: Array[float] = [1.0, 0.45, 0.08]
 
+const COLOR_VISION_SMOOTH := Color(1.0, 0.9, 0.2, 0.5)
+
 const CARDINAL_DIRS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 const VISION_RANGE := 6
 const VISION_CONE_RADIUS := 6
@@ -31,11 +37,18 @@ const STATE_PATROL := "patrol"
 const STATE_SUSPICIOUS := "suspicious"
 const STATE_ALERT := "alert"
 const STATE_CHASE := "chase"
+const STATE_SEARCH := "search"
 const INVALID_CELL: Vector2i = Vector2i(-9999, -9999)
+
+const SHADOW_MULT      := 0.35   ## multiplicador de prob em tile de sombra
+const PENUMBRA_MULT    := 0.60   ## tile adjacente a sombra (borda da penumbra)
 
 var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var enemy_id: String = ""
+
+var _vision_tiles_node: Node2D = null
+var _vision_smooth_node: Node2D = null
 
 var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
@@ -52,6 +65,17 @@ var fov_degrees: float = 90.0      ## full cone width in degrees
 var fov_range: int = 8             ## max detection range in tiles
 var facing_angle_deg: float = 0.0  ## 0=UP 90=RIGHT 180=DOWN 270=LEFT
 
+## Ângulos contínuos — apenas visuais
+var body_angle: float   = 0.0
+var vision_angle: float = 0.0
+const TURN_SPEED := 4.5
+
+## Atenção contextual
+var attention: GuardAttention = GuardAttention.new()
+
+## Fundação para sombras (vazio por enquanto)
+var _shadow_tiles: Dictionary = {}
+
 ## A* path caching
 var _cached_target: Vector2i = INVALID_CELL
 var _cached_path: Array[Vector2i] = []
@@ -60,12 +84,30 @@ var _path_index: int = 1
 ## Dev vision mode
 var dev_vision: bool = false
 
+## LOS data provided by room.gd
+var _los_blocked_cells: Dictionary = {}
+var _los_blocked_edges: Dictionary = {}
+var _room_size_cached: Vector2i = Vector2i(32, 32) ## default fallback
+
 ## Dev 05: detection meter — 0.0 to 1.0, placeholder until M2 fills it
 var detection: float = 0.0
 
 ## M2-03: Patrulha Orgânica — idle behavior e rotação de olhar
 var idle_turns_remaining: int = 0
 var _look_angles: Array[float] = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]
+var _target_facing_angle: float = 0.0     ## ângulo destino da rotação
+var _is_rotating: bool = false            ## rotação em progresso
+
+## M2-07: Comportamento de Busca Ativa
+var _search_queue: Array[Vector2i] = []
+var _search_origin: Vector2i = INVALID_CELL
+const SEARCH_RADIUS := 2          ## tiles ao redor do last_known
+const SEARCH_TURNS_MAX := 6       ## turnos antes de desescalar
+var _search_turns_remaining: int = 0
+
+## M2-08: Comunicação entre Guardas
+var _comms_label_timer: float = 0.0
+const COMMS_LABEL_DURATION := 2.0
 
 ## Debug label for dev_vision mode
 var _debug_label_container: Panel = null
@@ -75,6 +117,98 @@ var _debug_label: Label = null
 func set_dev_vision(enabled: bool) -> void:
 	dev_vision = enabled
 	_update_debug_label()
+	queue_redraw()
+	if _vision_tiles_node: 
+		_vision_tiles_node.visible = enabled
+		_vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+
+
+func set_los_data(blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i = Vector2i.ZERO, shadow_tiles: Dictionary = {}) -> void:
+	_los_blocked_cells = blocked_cells
+	_los_blocked_edges = blocked_edges
+	_shadow_tiles      = shadow_tiles
+	if room_size != Vector2i.ZERO:
+		_room_size_cached = room_size
+
+
+func _build_search_queue(origin: Vector2i, blocked_cells: Dictionary, room_size: Vector2i) -> void:
+	_search_origin = origin
+	_search_queue.clear()
+
+	## Espiral quadrada ao redor da origem, distância 1 a SEARCH_RADIUS
+	for r in range(1, SEARCH_RADIUS + 1):
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				if absi(dx) != r and absi(dy) != r:
+					continue  ## apenas a borda do anel
+				var candidate := origin + Vector2i(dx, dy)
+				if candidate.x < 0 or candidate.y < 0 or candidate.x >= room_size.x or candidate.y >= room_size.y:
+					continue
+				if blocked_cells.has(candidate):
+					continue
+				_search_queue.append(candidate)
+
+	## Embaralhar para varredura não-determinística
+	_search_queue.shuffle()
+	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+
+
+func _ready() -> void:
+	## Inicializar ângulos visuais
+	body_angle = deg_to_rad(facing_angle_deg)
+	vision_angle = body_angle
+
+	_vision_tiles_node = Node2D.new()
+	_vision_tiles_node.name = "VisionTiles"
+	_vision_tiles_node.show_behind_parent = true
+	_vision_tiles_node.z_index = -5
+	var mat_mul := CanvasItemMaterial.new()
+	mat_mul.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+	_vision_tiles_node.material = mat_mul
+	_vision_tiles_node.visible = dev_vision
+	add_child(_vision_tiles_node)
+	_vision_tiles_node.draw.connect(_draw_vision_tiles)
+
+	_vision_smooth_node = Node2D.new()
+	_vision_smooth_node.name = "VisionSmooth"
+	_vision_smooth_node.show_behind_parent = true
+	_vision_smooth_node.z_index = -4
+	add_child(_vision_smooth_node)
+	_vision_smooth_node.draw.connect(_draw_vision_smooth)
+
+
+func _rotate_towards(current: float, target: float, speed: float, delta: float) -> float:
+	return lerp_angle(current, target, clampf(speed * delta, 0.0, 1.0))
+
+
+func _process(delta: float) -> void:
+	attention.update(delta)
+
+	if _comms_label_timer > 0.0:
+		_comms_label_timer -= delta
+		_update_debug_label()
+
+	## Corpo segue facing_angle_deg (discreto → contínuo)
+	body_angle = _rotate_towards(body_angle, deg_to_rad(facing_angle_deg), TURN_SPEED, delta)
+
+	## Cabeça/visão: segue corpo por padrão, diverge com atenção ativa
+	var target_vision := body_angle
+	if attention.active() and is_instance_valid(floor_layer):
+		var target_world_pos: Vector2 = floor_layer.map_to_local(attention.target_cell) + visual_offset
+		var to_focus: Vector2 = (target_world_pos - position)
+		if to_focus.length_squared() > 1.0:
+			target_vision = to_focus.angle()
+			## No espaço isométrico 2D do Godot, o ângulo 0 rad é RIGHT (+X), PI/2 é DOWN (+Y).
+			## Nosso grid logical angle 0 deg é UP (-Y grid).
+			## to_focus.angle() nos dá o ângulo visual no Room (isométrico).
+			## Isso está correto porque vision_angle é usado puramente para o desenho visual.
+	
+	vision_angle = _rotate_towards(vision_angle, target_vision, TURN_SPEED * 1.35, delta)
+
+	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 	queue_redraw()
 
 
@@ -132,7 +266,14 @@ func reset_to_route_start() -> void:
 	queue_redraw()
 
 
-func evaluate_detection(player_cell: Vector2i, _vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, _close_warning_range: int = 2) -> Dictionary:
+func evaluate_detection(
+		player_cell: Vector2i, 
+		_vision_range: int = VISION_RANGE, 
+		blocked_cells: Dictionary = {}, 
+		blocked_edges: Dictionary = {}, 
+		_close_warning_range: int = 2,
+		agent_ref: DebugAgent = null
+) -> Dictionary:
 	var delta := player_cell - cell
 	if delta == Vector2i.ZERO:
 		return {"visible": true, "severity": 2, "distance": 0, "angle_ratio": 1.0}
@@ -152,8 +293,44 @@ func evaluate_detection(player_cell: Vector2i, _vision_range: int = VISION_RANGE
 			return {"visible": false, "severity": 0}
 
 	var angle_ratio := 1.0 - (absf(angle_diff) / half_fov)
-	var severity := 2 if dist <= 2 else 1
-	return {"visible": true, "severity": severity, "distance": dist, "angle_ratio": angle_ratio}
+	
+	## Calcular probabilidade base e modificadores (sombras e cover)
+	var base_prob: float = FOV_DISTANCE_CURVE[dist] if dist < FOV_DISTANCE_CURVE.size() else 0.01
+	
+	## Multiplicador lateral
+	var lateral_offset := absf(angle_diff) / half_fov
+	var lateral_idx := mini(int(lateral_offset * FOV_LATERAL_FALLOFF.size()), FOV_LATERAL_FALLOFF.size() - 1)
+	var lateral_mult := FOV_LATERAL_FALLOFF[lateral_idx]
+	
+	var final_prob := base_prob * lateral_mult
+	
+	## Sombras
+	if _shadow_tiles.has(player_cell):
+		final_prob *= _shadow_tiles[player_cell]
+		
+	## M2-10: Cover
+	if agent_ref != null and agent_ref.cover_state != DebugAgent.CoverType.NONE:
+		var cover_mult := 1.0
+		if agent_ref.cover_state == DebugAgent.CoverType.FULL:
+			cover_mult = DebugAgent.COVER_FULL_MULT
+		elif agent_ref.cover_state == DebugAgent.CoverType.PARTIAL:
+			cover_mult = DebugAgent.COVER_PARTIAL_MULT
+			
+		## Flanking: guard no lado oposto ao obstáculo ignora cover
+		var flank_dir := -agent_ref.cover_direction  ## lado exposto
+		var guard_dir := (cell - agent_ref.cell)
+		## Se o guard está no arco de 90° do lado exposto (produto escalar > 0), cover não protege
+		if (guard_dir.x * flank_dir.x + guard_dir.y * flank_dir.y) > 0:
+			cover_mult = 1.0
+			
+		final_prob *= cover_mult
+
+	## Severity based on final probability threshold
+	var severity := 1
+	if final_prob > 0.7 or dist <= 2:
+		severity = 2
+
+	return {"visible": true, "severity": severity, "distance": dist, "angle_ratio": angle_ratio, "final_prob": final_prob}
 
 
 func pick_next_patrol_cell(
@@ -179,6 +356,10 @@ func pick_next_patrol_cell(
 		if candidate == cell:
 			continue
 		patrol_index = idx
+		
+		## Antecipação visual: foca no próximo waypoint brevemente antes de mover
+		attention.focus(candidate, 0.8, 0.35)
+		
 		return candidate
 
 	return cell
@@ -218,7 +399,7 @@ func _step_next() -> void:
 	var next_cell: Vector2i = _path_queue.pop_front()
 	var previous_cell: Vector2i = cell
 	cell = next_cell
-	facing = _snap_to_cardinal(next_cell - previous_cell)
+	facing = _snap_to_8dir(next_cell - previous_cell)
 	_update_facing_angle()
 	_update_debug_label()
 	var tween := create_tween()
@@ -228,6 +409,8 @@ func _step_next() -> void:
 	await tween.finished
 	step_finished.emit(next_cell)
 	queue_redraw()
+	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 	_step_next()
 
 
@@ -249,7 +432,7 @@ func _set_facing_from_route() -> void:
 		facing = Vector2i.UP
 		_update_facing_angle()
 		return
-	facing = _snap_to_cardinal(dir)
+	facing = _snap_to_8dir(dir)
 	_update_facing_angle()
 
 
@@ -266,21 +449,24 @@ func _get_step_duration() -> float:
 	return STEP_DURATION_BASE
 
 
-func _snap_to_cardinal(v: Vector2i) -> Vector2i:
-	if abs(v.x) >= abs(v.y):
-		return Vector2i.RIGHT if v.x >= 0 else Vector2i.LEFT
-	return Vector2i.DOWN if v.y >= 0 else Vector2i.UP
+func _snap_to_8dir(v: Vector2i) -> Vector2i:
+	if v == Vector2i.ZERO:
+		return facing  ## sem movimento, manter facing
+	## Normalizar para componentes -1, 0, 1
+	var sx := signi(v.x)
+	var sy := signi(v.y)
+	return Vector2i(sx, sy)
 
 
 func _update_facing_angle() -> void:
-	if facing == Vector2i.UP:
-		facing_angle_deg = 0.0
-	elif facing == Vector2i.RIGHT:
-		facing_angle_deg = 90.0
-	elif facing == Vector2i.DOWN:
-		facing_angle_deg = 180.0
-	elif facing == Vector2i.LEFT:
-		facing_angle_deg = 270.0
+	if facing == Vector2i.UP:           facing_angle_deg = 0.0    ## N
+	elif facing == Vector2i(1, -1):     facing_angle_deg = 45.0   ## NE
+	elif facing == Vector2i.RIGHT:      facing_angle_deg = 90.0   ## E
+	elif facing == Vector2i(1, 1):      facing_angle_deg = 135.0  ## SE
+	elif facing == Vector2i.DOWN:       facing_angle_deg = 180.0  ## S
+	elif facing == Vector2i(-1, 1):     facing_angle_deg = 225.0  ## SW
+	elif facing == Vector2i.LEFT:       facing_angle_deg = 270.0  ## W
+	elif facing == Vector2i(-1, -1):    facing_angle_deg = 315.0  ## NW
 
 
 func _update_facing_from_angle() -> void:
@@ -303,6 +489,8 @@ func _update_facing_from_angle() -> void:
 		315:
 			facing = Vector2i(-1, -1)
 	queue_redraw()
+	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 
 
 ## Converte probabilidade de detecção em cor do cone (vermelho → verde)
@@ -333,22 +521,24 @@ static func _prob_to_color(prob: float, alpha_mult: float = 1.0) -> Color:
 func _get_cone_visual_params() -> Dictionary:
 	match state:
 		STATE_PATROL:
-			return {"range": 5, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+			return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
 		STATE_SUSPICIOUS:
-			return {"range": 7, "fov": 90.0, "alpha": 0.8, "prob_mult": 1.8}
+			return {"range": 6, "fov": 90.0, "alpha": 0.8, "prob_mult": 1.8}
 		STATE_ALERT:
-			return {"range": 8, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.2}
+			return {"range": 7, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.2}
 		STATE_CHASE:
-			return {"range": 8, "fov": 110.0, "alpha": 1.0, "prob_mult": 3.0}
+			return {"range": 7, "fov": 110.0, "alpha": 1.0, "prob_mult": 3.0}
 	## Default (relaxado)
-	return {"range": 5, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+	return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
 
 
 ## Retorna Array de {delta: Vector2i, prob: float} para todos os tiles no cone de visão
-func _get_cone_tiles() -> Array:
+func _get_cone_tiles(p_range: int = -1, p_fov: float = -1, p_facing_deg: float = -1.0) -> Array:
 	var params       := _get_cone_visual_params()
-	var vis_range: int   = params["range"]
-	var vis_fov: float   = params["fov"]
+	var vis_range: int   = p_range if p_range > 0 else int(params["range"])
+	var vis_fov: float   = p_fov if p_fov > 0 else float(params["fov"])
+	var vis_facing: float = p_facing_deg if p_facing_deg >= 0 else facing_angle_deg
+	
 	var prob_mult: float = params["prob_mult"]
 	var half_fov := vis_fov / 2.0
 	var tiles := []
@@ -364,7 +554,7 @@ func _get_cone_tiles() -> Array:
 
 			## Verificação angular
 			var to_angle := rad_to_deg(atan2(float(dx), float(-dy)))
-			var angle_diff := wrapf(to_angle - facing_angle_deg, -180.0, 180.0)
+			var angle_diff := wrapf(to_angle - vis_facing, -180.0, 180.0)
 			if absf(angle_diff) > half_fov:
 				continue
 
@@ -377,6 +567,14 @@ func _get_cone_tiles() -> Array:
 			var lateral_mult := FOV_LATERAL_FALLOFF[lateral_idx]
 
 			var final_prob := base_prob * lateral_mult * prob_mult
+
+			## Aplicar modificador de sombra se tile está em penumbra
+			var target_cell := cell + delta
+			if _shadow_tiles.has(target_cell):
+				final_prob *= _shadow_tiles[target_cell]
+
+			## Clamp para evitar negativos por acumulação de multiplicadores (apesar de improváveis aqui)
+			final_prob = maxf(final_prob, 0.0)
 
 			tiles.append({"delta": delta, "prob": final_prob})
 
@@ -407,17 +605,21 @@ func _update_debug_label() -> void:
 		"facing: %s\n" % _facing_name() +
 		"last_known: %s" % last
 	)
+	
+	if _comms_label_timer > 0.0:
+		_debug_label.text += "\n📡 COMMS"
 
 
 func _facing_name() -> String:
-	if facing == Vector2i.UP:
-		return "N"
-	if facing == Vector2i.DOWN:
-		return "S"
-	if facing == Vector2i.RIGHT:
-		return "E"
-	if facing == Vector2i.LEFT:
-		return "W"
+	match facing:
+		Vector2i.UP:         return "N"
+		Vector2i(1, -1):     return "NE"
+		Vector2i.RIGHT:      return "E"
+		Vector2i(1, 1):      return "SE"
+		Vector2i.DOWN:       return "S"
+		Vector2i(-1, 1):     return "SW"
+		Vector2i.LEFT:       return "W"
+		Vector2i(-1, -1):    return "NW"
 	return "?"
 
 
@@ -434,16 +636,8 @@ func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edge
 	var current: Vector2i = cell
 	var dx := target_cell.x - current.x
 	var dy := target_cell.y - current.y
-	var step_x: int = 0
-	if dx > 0:
-		step_x = 1
-	elif dx < 0:
-		step_x = -1
-	var step_y: int = 0
-	if dy > 0:
-		step_y = 1
-	elif dy < 0:
-		step_y = -1
+	var step_x: int = signi(dx)
+	var step_y: int = signi(dy)
 	var abs_dx: int = abs(dx)
 	var abs_dy: int = abs(dy)
 	var err: int = abs_dx - abs_dy
@@ -451,14 +645,32 @@ func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edge
 	while current != target_cell:
 		var e2 := err * 2
 		var next_cell := current
+		var move_x := false
+		var move_y := false
+
 		if e2 > -abs_dy:
 			next_cell.x += step_x
 			err -= abs_dy
+			move_x = true
 		if e2 < abs_dx:
 			next_cell.y += step_y
 			err += abs_dx
+			move_y = true
+
+		## Check the direct edge of this step
 		if _is_edge_blocked(current, next_cell, blocked_edges):
 			return false
+
+		## NOVO: se o step for diagonal, checar também as duas arestas de split
+		## Evita que raios diagonais "escapem" por corners de paredes
+		if move_x and move_y:
+			var split_h := Vector2i(current.x + step_x, current.y)  ## passo só horizontal
+			var split_v := Vector2i(current.x, current.y + step_y)  ## passo só vertical
+			if _is_edge_blocked(current, split_h, blocked_edges):
+				return false
+			if _is_edge_blocked(current, split_v, blocked_edges):
+				return false
+
 		if blocked_cells.has(next_cell) and next_cell != target_cell:
 			return false
 		current = next_cell
@@ -469,7 +681,46 @@ func _enter_state(new_state: String) -> void:
 	state = new_state
 	if new_state != STATE_PATROL:
 		idle_turns_remaining = 0
+		_is_rotating = false
+	
+	if new_state == STATE_SEARCH:
+		_search_turns_remaining = SEARCH_TURNS_MAX
+		if last_known_agent_cell != INVALID_CELL:
+			_build_search_queue(last_known_agent_cell, _los_blocked_cells, _room_size_cached)
+	elif new_state == STATE_ALERT:
+		whistled.emit(cell, last_known_agent_cell)
+	elif new_state == STATE_CHASE:
+		radioed.emit(cell, last_known_agent_cell)
+
 	queue_redraw()
+	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+
+
+func receive_alert(known_cell: Vector2i, target_state: String) -> void:
+	## Não rebaixar estado — só escalar
+	var priority := {
+		STATE_PATROL:    0,
+		STATE_SUSPICIOUS: 1,
+		STATE_SEARCH:    2,
+		STATE_ALERT:     3,
+		STATE_CHASE:     4,
+	}
+	
+	var current_prio: int = priority.get(state, 0)
+	var target_prio: int = priority.get(target_state, 0)
+	
+	if target_prio > current_prio:
+		last_known_agent_cell = known_cell
+		_enter_state(target_state)
+		_comms_label_timer = COMMS_LABEL_DURATION
+		
+		## Reage imediatamente (visão/IA externa pode sobrescrever depois)
+		attention.focus(known_cell, 0.9, 0.5)
+		
+		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+		if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+		_update_debug_label()
 
 
 func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:
@@ -507,11 +758,22 @@ func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:
 	_update_debug_label()
 	if dev_vision:
 		queue_redraw()
+		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+		if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 
 
 func tick_state() -> void:
 	if state == STATE_PATROL:
 		return
+
+	if state == STATE_SEARCH:
+		_search_turns_remaining -= 1
+		if _search_turns_remaining <= 0:
+			_enter_state(STATE_SUSPICIOUS)
+			state_timer = 2
+			_search_queue.clear()
+		return
+
 	state_timer -= 1
 	if state_timer <= 0:
 		if state == STATE_ALERT:
@@ -521,8 +783,11 @@ func tick_state() -> void:
 			_enter_state(STATE_PATROL)
 			last_known_agent_cell = INVALID_CELL
 		elif state == STATE_CHASE:
-			_enter_state(STATE_SUSPICIOUS)
-			state_timer = 2
+			if last_known_agent_cell != INVALID_CELL:
+				_enter_state(STATE_SEARCH)
+			else:
+				_enter_state(STATE_SUSPICIOUS)
+				state_timer = 2
 
 	## Dev 05: placeholder detection mapping — M2 will override with real detection
 	match state:
@@ -530,6 +795,8 @@ func tick_state() -> void:
 			detection = 0.0
 		STATE_SUSPICIOUS:
 			detection = 0.35
+		STATE_SEARCH:
+			detection = 0.5
 		STATE_ALERT:
 			detection = 0.65
 		STATE_CHASE:
@@ -543,11 +810,32 @@ func _do_idle_behavior() -> void:
 	if state != STATE_PATROL:
 		return
 
-	if randf() < 0.3:
-		var new_angle := _look_angles[randi() % _look_angles.size()]
-		facing_angle_deg = new_angle
-		_update_facing_from_angle()
+	## Se já está rotacionando, avançar 45° em direção ao destino
+	if _is_rotating:
+		var diff := wrapf(_target_facing_angle - facing_angle_deg, -180.0, 180.0)
+		if absf(diff) < 1.0:
+			_is_rotating = false
+		else:
+			facing_angle_deg = wrapf(facing_angle_deg + signf(diff) * 45.0, 0.0, 360.0)
+			_update_facing_from_angle()
+		return
 
+	## Escolher novo destino aleatório se não estiver rotacionando
+	if randf() < 0.3:
+		var candidates := []
+		for a in _look_angles:
+			var diff := wrapf(a - facing_angle_deg, -180.0, 180.0)
+			if absf(diff) >= 45.0:
+				candidates.append(a)
+		if not candidates.is_empty():
+			_target_facing_angle = candidates[randi() % candidates.size()]
+			_is_rotating = true
+			
+			## Scan visual: move a cabeça ligeiramente antes do corpo
+			var scan_dir := Vector2i(roundi(sin(deg_to_rad(_target_facing_angle))), roundi(-cos(deg_to_rad(_target_facing_angle))))
+			attention.focus(cell + scan_dir, 0.9, 0.45)
+
+	## Chance de pausa extra (~20%)
 	if randf() < 0.2:
 		idle_turns_remaining = randi_range(1, 2)
 
@@ -581,6 +869,25 @@ func choose_next_cell(
 		if last_known_agent_cell != INVALID_CELL:
 			target = last_known_agent_cell
 		return _step_toward(target, occupied_cells, blocked_cells, blocked_edges, room_size)
+
+	if state == STATE_SEARCH:
+		## Fila vazia: já varreu tudo, ficar parado até tick_state desescalar
+		if _search_queue.is_empty():
+			return cell
+
+		var target := _search_queue[0]
+
+		## Ainda não chegou: mover um passo em direção ao tile alvo
+		if cell != target:
+			attention.focus(target, 0.85, 1.0)
+			return _step_toward(target, occupied_cells, blocked_cells, blocked_edges, room_size)
+
+		## Chegou ao tile: observar por um turno, depois remover da fila
+		_search_queue.remove_at(0)
+		if not _search_queue.is_empty():
+			attention.focus(_search_queue[0], 0.9, 1.2)
+		return cell
+
 	return cell
 
 
@@ -618,36 +925,94 @@ func _step_toward(
 
 
 
-func _draw() -> void:
-	## Cone de visão colorido por probabilidade — tile-a-tile
-	var params      := _get_cone_visual_params()
+func _draw_vision_tiles() -> void:
+	## Cone de visão colorido por probabilidade — tile-a-tile (MUL blending)
+	var params: Dictionary = _get_cone_visual_params()
+	var visual_facing_deg := wrapf(rad_to_deg(vision_angle) + 90.0, 0.0, 360.0)
+	
 	var alpha_mult: float = params["alpha"]
-	var cone_tiles  := _get_cone_tiles()
+	var cone_tiles  := _get_cone_tiles(params["range"], fov_degrees, visual_facing_deg)
+
+	## Dimensões do losango isométrico completo (base horizontal 256px)
+	var hw := 128.0   ## horizontal half-width
+	var hh := 64.0    ## vertical half-height
 
 	for entry in cone_tiles:
 		var delta: Vector2i = entry["delta"]
 		var prob: float     = entry["prob"]
 		var target_cell     := cell + delta
 
-		## LOS: pular tiles bloqueados por parede
-		## Em M2 completo, esses dicts viriam da room
-		if not can_see_cell(target_cell, {}, {}):
+		if not can_see_cell(target_cell, _los_blocked_cells, _los_blocked_edges):
 			continue
 
-		## Posição do centro do tile em coordenadas locais
 		var world_pos := _cell_to_world(target_cell) - position
-
-		## Losango isométrico — dimensões do tile visual
-		var hw := 32.0   ## half-width
-		var hh := 20.0   ## half-height
 		var diamond := PackedVector2Array([
 			world_pos + Vector2(0.0,  -hh),
 			world_pos + Vector2(hw,   0.0),
 			world_pos + Vector2(0.0,   hh),
 			world_pos + Vector2(-hw,  0.0),
 		])
-		draw_colored_polygon(diamond, _prob_to_color(prob, alpha_mult))
+		
+		var color := _prob_to_color(prob, alpha_mult)
+		## M2-05: Se for modo multiply, remover outline debug e pintar cor cheia
+		_vision_tiles_node.draw_colored_polygon(diamond, color)
 
+
+func _draw_vision_smooth() -> void:
+	var params: Dictionary = _get_cone_visual_params()
+	var v_fov: float  = params["fov"]
+	var visual_facing_deg := wrapf(rad_to_deg(vision_angle) + 90.0, 0.0, 360.0)
+
+	var points := PackedVector2Array()
+	var colors  := PackedColorArray()
+
+	points.append(Vector2.ZERO)
+	colors.append(COLOR_VISION_SMOOTH)
+
+	var steps := 32   ## mais suave que 24
+	var half_fov := v_fov / 2.0
+
+	for i in range(steps + 1):
+		var t: float = float(i) / float(steps)
+		## Ângulo de grade: -half_fov a +half_fov
+		var grid_ang_deg: float = visual_facing_deg + lerp(-half_fov, half_fov, t)
+		var grid_ang_rad: float = deg_to_rad(grid_ang_deg)
+
+		## Direção no grid: 0=Norte usa atan2(dx, -dy), então:
+		## dx = sin(grid_ang_rad)
+		## dy = -cos(grid_ang_rad)
+		var gdx := sin(grid_ang_rad)
+		var gdy := -cos(grid_ang_rad)
+
+		## Verificar LOS na direção deste raio — usar o tile mais próximo bloqueado
+		var hw := 128.0
+		var hh := 64.0
+		var effective_range := 0.0
+		
+		## Calcular v_range em pixels para esta direção específica
+		var max_iso_vec := Vector2((gdx - gdy) * (params["range"] - 0.5) * hw, (gdx + gdy) * (params["range"] - 0.5) * hh)
+		var max_dist := max_iso_vec.length()
+		effective_range = max_dist
+
+		for step in range(1, params["range"] + 1):
+			var check_cell := cell + Vector2i(roundi(gdx * step), roundi(gdy * step))
+			if not can_see_cell(check_cell, _los_blocked_cells, _los_blocked_edges):
+				## Cortar o alcance visual neste raio: parar na aresta (0.5 tiles de distância)
+				var cut_iso_vec := Vector2((gdx - gdy) * (float(step) - 0.5) * hw, (gdx + gdy) * (float(step) - 0.5) * hh)
+				effective_range = cut_iso_vec.length()
+				break
+
+		var iso_dir := Vector2(gdx - gdy, (gdx + gdy) * 0.5).normalized()
+		points.append(iso_dir * effective_range)
+
+		var edge_color := COLOR_VISION_SMOOTH
+		edge_color.a = 0.0
+		colors.append(edge_color)
+
+	_vision_smooth_node.draw_polygon(points, colors)
+
+
+func _draw() -> void:
 	var shadow := PackedVector2Array([
 		Vector2(0.0, -10.0),
 		Vector2(26.0, 0.0),
@@ -667,33 +1032,16 @@ func _draw() -> void:
 	draw_circle(Vector2(0.0, -62.0), 9.0, COLOR_HEAD)
 
 	var p1 := Vector2(0.0, -82.0)
-	var p2 := p1 + Vector2(facing.x * 18.0, facing.y * 12.0)
+	var fang := deg_to_rad(facing_angle_deg)
+	var fdx  := sin(fang)
+	var fdy  := -cos(fang)
+	var iso  := Vector2((fdx - fdy) * 128.0, (fdx + fdy) * 64.0).normalized()
+	var p2   := p1 + iso * 22.0
 	draw_line(p1, p2, Color(1.0, 0.9, 0.5, 0.95), 3.0)
 
 	## DEV_VISION extras — only visible when dev_vision mode is active
 	if not dev_vision:
 		return
-
-	## Highlight vision cone in dev_vision mode com alpha aumentado
-	var dev_alpha := minf(alpha_mult * 1.5, 1.0)
-	for entry in cone_tiles:
-		var delta: Vector2i = entry["delta"]
-		var prob: float     = entry["prob"]
-		var target_cell     := cell + delta
-
-		if not can_see_cell(target_cell, {}, {}):
-			continue
-
-		var world_pos := _cell_to_world(target_cell) - position
-		var hw := 32.0
-		var hh := 20.0
-		var diamond := PackedVector2Array([
-			world_pos + Vector2(0.0,  -hh),
-			world_pos + Vector2(hw,   0.0),
-			world_pos + Vector2(0.0,   hh),
-			world_pos + Vector2(-hw,  0.0),
-		])
-		draw_colored_polygon(diamond, _prob_to_color(prob, dev_alpha))
 
 	## Draw patrol route as dashed line connecting waypoints
 	if patrol_route.size() >= 2:

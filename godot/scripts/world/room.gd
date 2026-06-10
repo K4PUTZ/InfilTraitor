@@ -6,11 +6,11 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
-@onready var turn_manager = $TurnManager
-@onready var enemy_phase_controller = $EnemyPhaseController
+@onready var turn_manager:        TacticalTurnManager = $TurnManager
+@onready var enemy_phase_controller: EnemyPhaseController = $EnemyPhaseController
 @onready var enemies_root:         Node2D       = $Enemies
-@onready var movement_overlay = $MovementOverlay
-@onready var path_preview = $PathPreview
+@onready var movement_overlay:    MovementOverlay = $MovementOverlay
+@onready var path_preview:        PathPreview  = $PathPreview
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
 @onready var structure_wall_upper_layer: TileMapLayer = $StructureWallUpperLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
@@ -50,6 +50,10 @@ var _blocked_cells: Dictionary = {}
 var _base_layout: Dictionary = {}
 var _current_blocked_edges: Array[Dictionary] = []
 var _guards: Array = []
+
+var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
+const SHADOW_MULT   := 0.35
+const PENUMBRA_MULT := 0.60
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -107,6 +111,11 @@ var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
 var dev_vision: bool = false
 
+## M2-10: Peek mechanic state
+var _peek_active: bool = false
+var _peek_timer: int   = 0
+var _peek_pending: bool = false
+
 ## Dev 03: tile hover info
 var _dev_hover_label: Label = null
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
@@ -135,9 +144,13 @@ func _ready() -> void:
 		return
 
 	floor_layer.tile_set = ts
+	floor_layer.z_index = 0
 	structure_wall_layer.tile_set = ts
+	structure_wall_layer.z_index = 10
 	structure_wall_upper_layer.tile_set = ts
+	structure_wall_upper_layer.z_index = 11
 	structure_layer.tile_set = ts
+	structure_layer.z_index = 10
 	_build_registry(ts)
 
 	var graph: LevelGraph = LevelGraphClass.new()
@@ -161,6 +174,7 @@ func _ready() -> void:
 	_center_camera(agent_start_cell)
 
 	## Give overlays their references.
+	movement_overlay.z_index = 5
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
 	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	var blocked_edges: Array[Dictionary] = []
@@ -169,11 +183,15 @@ func _ready() -> void:
 	_current_blocked_edges = blocked_edges.duplicate(true)
 	movement_overlay.set_blocked_edges(blocked_edges)
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
+	path_preview.z_index = 6
 	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
+	selection_overlay.z_index = 7
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
+	agent.z_index = 10
 	_spawn_guards(view_layout.get("enemy_defs", []))
+	enemies_root.z_index = 10
 	fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 	fog_of_war.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
@@ -186,6 +204,7 @@ func _ready() -> void:
 	camera.rotation_degrees = 0.0
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
+	turn_manager.player_turn_started.connect(_on_player_turn_started)
 	turn_manager.enemy_phase_started.connect(_on_enemy_phase_started)
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
@@ -235,7 +254,8 @@ func _ready() -> void:
 	$HUD.add_child(_dev_hover_label)
 	_update_perspective_button_state()
 
-	## Start in desktop mode — _is_desktop_viewport is false, so one call switches to desktop.
+	## Centering camera/setup initial state
+	_update_guard_los_data()
 	_on_btn_viewport()
 
 
@@ -283,6 +303,7 @@ func _set_perspective(direction: String) -> void:
 		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_apply_dev_vision()
+		_update_guard_los_data()
 		_center_camera(agent.cell)
 		_refresh_tactical_state()
 	_update_perspective_button_state()
@@ -374,10 +395,65 @@ func _on_btn_viewport() -> void:
 	DisplayServer.window_set_position(Vector2i(centered.round()))
 
 
+func _update_guard_los_data() -> void:
+	var blocked_edges := enemy_phase_controller.build_blocked_edge_set(
+		_current_blocked_edges
+	)
+	for guard in _guards:
+		if is_instance_valid(guard):
+			guard.set_los_data(_blocked_cells, blocked_edges, _room_size, _shadow_tiles)
+
+
+func _draw_shadow_debug() -> void:
+	if not dev_vision:
+		return
+	for shadow_cell in _shadow_tiles.keys():
+		var mult: float = _shadow_tiles[shadow_cell]
+		var world_pos := floor_layer.map_to_local(shadow_cell) + VISUAL_GRID_OFFSET
+		var hw := 128.0   ## 256 / 2
+		var hh := 64.0    ## 128 / 2
+		var diamond := PackedVector2Array([
+			world_pos + Vector2(0.0,  -hh),
+			world_pos + Vector2(hw,   0.0),
+			world_pos + Vector2(0.0,   hh),
+			world_pos + Vector2(-hw,  0.0),
+		])
+		## Sombra direta: azul escuro. Penumbra: azul mais claro.
+		var alpha := 0.35 if mult < PENUMBRA_MULT else 0.15
+		var color := Color(0.1, 0.4, 1.0, alpha)
+		draw_colored_polygon(diamond, color)
+
+
 func _on_ap_changed(current_ap: int, max_ap: int) -> void:
 	lbl_ap.text = "INIMIGOS" if turn_manager.is_enemy_phase else "AP %d/%d" % [current_ap, max_ap]
+	movement_overlay.set_remaining_ap(current_ap)
 	if not agent.is_moving:
 		_refresh_tactical_state()
+	
+	if current_ap == 0 and not turn_manager.is_enemy_phase:
+		_peek_pending = false
+
+
+## Peek mechanic: espreitar além de um obstáculo adjacente sem mover
+func _try_peek(direction: Vector2i) -> void:
+	if turn_manager.current_ap < 1:
+		return
+	
+	var target_cell := agent.cell + direction
+	if not _blocked_cells.has(target_cell):
+		return # Só faz sentido dar peek em obstáculos
+		
+	## Revela 3 tiles adiante na direção do peek
+	for i in range(1, 4):
+		var peek_cell := agent.cell + direction * i
+		if not _is_cell_inside_room(peek_cell):
+			break
+		fog_of_war.add_peek_reveal(peek_cell)
+		
+	turn_manager.consume_ap(1)
+	_peek_active = true
+	_peek_timer = 1
+	_update_guard_los_data()
 
 
 func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
@@ -447,6 +523,8 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 	if result.detected:
 		guard.observe_player(true, 2, agent.cell)
 		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+		if _alert_meter >= _alert_max:
+			_on_guard_alarmed(guard.cell)
 	else:
 		guard.observe_player(false, 0, agent.cell)
 
@@ -494,7 +572,12 @@ func _process_audio_detection() -> void:
 func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
+	
+	## M2-10: Update cover
+	agent.update_cover(_blocked_cells)
+	
 	_update_enemy_visibility()
+	movement_overlay.set_remaining_ap(turn_manager.current_ap)
 	if _pending_auto_end_turn:
 		_pending_auto_end_turn = false
 		turn_manager.end_turn()
@@ -507,12 +590,23 @@ func _refresh_tactical_state() -> void:
 	movement_overlay.rebuild(agent.cell, turn_manager.get_max_move_points())
 	_update_selected_preview()
 	_update_enemy_visibility()
+	_update_movement_highlight()
+
+
+func _on_player_turn_started() -> void:
+	_update_guard_los_data()
+	if _peek_active:
+		_peek_timer -= 1
+		if _peek_timer <= 0:
+			_peek_active = false
+			fog_of_war.reset_peek_reveals()
 
 
 func _on_enemy_phase_started() -> void:
 	if _guards.is_empty():
 		turn_manager.finish_enemy_phase()
 		return
+	_update_guard_los_data()
 	enemy_turn_banner.visible = true
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
@@ -717,6 +811,10 @@ func _spawn_guards(enemy_defs: Array) -> void:
 			route,
 			int(entry.get("start_index", 0))
 		)
+		
+		guard.whistled.connect(_on_guard_whistled)
+		guard.radioed.connect(_on_guard_radioed)
+		
 		_guards.append(guard)
 
 	_update_enemy_visibility()
@@ -740,6 +838,42 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 	return false
 
 
+func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
+	## Apito: guards a até WHISTLE_RADIUS tiles entram em STATE_SEARCH
+	const WHISTLE_RADIUS := 4
+	if last_known == INVALID_CELL:
+		return
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		var dist: float = float((guard.cell - origin_cell).length())
+		if dist <= WHISTLE_RADIUS:
+			guard.receive_alert(last_known, GuardEnemy.STATE_SEARCH)
+
+
+func _on_guard_radioed(_origin_cell: Vector2i, last_known: Vector2i) -> void:
+	## Rádio: todos os guards da sala entram em STATE_ALERT
+	if last_known == INVALID_CELL:
+		return
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		if guard.state == GuardEnemy.STATE_PATROL or \
+		   guard.state == GuardEnemy.STATE_SUSPICIOUS:
+			guard.receive_alert(last_known, GuardEnemy.STATE_ALERT)
+
+
+func _on_guard_alarmed(_origin_cell: Vector2i) -> void:
+	## Alarme global: todos os guards entram em STATE_CHASE
+	for guard in _guards:
+		if not is_instance_valid(guard):
+			continue
+		if guard.state != GuardEnemy.STATE_CHASE:
+			guard.receive_alert(agent.cell, GuardEnemy.STATE_CHASE)
+	_alert_meter = _alert_max
+	_update_alert_label()
+
+
 func _update_enemy_visibility() -> void:
 	# Update enemy alpha/saturation each frame while moving.
 	# Visibility is driven by the player's vision radius + ability bonuses.
@@ -748,7 +882,7 @@ func _update_enemy_visibility() -> void:
 		for guard in _guards:
 			if not is_instance_valid(guard):
 				continue
-			guard.modulate.a = 1.0
+			guard.modulate = Color.WHITE
 		queue_redraw()
 		return
 
@@ -770,6 +904,8 @@ func _update_enemy_visibility() -> void:
 
 
 func _draw() -> void:
+	_draw_shadow_debug()
+
 	## Draw enemy last_known markers
 	for guard in _guards:
 		if not is_instance_valid(guard):
@@ -802,6 +938,19 @@ func _update_selected_preview() -> void:
 	path_preview.set_path(path, movement_overlay.get_ap_cost(_selected_cell))
 
 
+func _update_movement_highlight() -> void:
+	if turn_manager.is_enemy_phase or agent.is_moving:
+		return
+
+	var hovered_ap: int = movement_overlay.get_ap_cost(_hovered_cell)
+	if hovered_ap > 0:
+		movement_overlay.set_highlight_ap(hovered_ap)
+	else:
+		# If hovering origin or unreachable, default to 1 AP zone
+		# (which is usually visible at the start of the turn)
+		movement_overlay.set_highlight_ap(1)
+
+
 func _is_selectable_cell(cell: Vector2i) -> bool:
 	if cell == INVALID_CELL or _blocked_cells.has(cell) or _is_guard_cell(cell):
 		return false
@@ -814,6 +963,11 @@ func _set_selected_cell(cell: Vector2i) -> void:
 	_selected_cell = cell
 	selection_overlay.set_selected(cell)
 	_update_selected_preview()
+	
+	## Dev 03: update hover label manually on selection change if needed
+	if dev_vision:
+		_hovered_cell = cell
+		_update_dev_hover_label()
 
 
 func _handle_tile_click(cell: Vector2i) -> void:
@@ -913,6 +1067,43 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
+	_compute_shadow_tiles()
+
+
+func _compute_shadow_tiles() -> void:
+	_shadow_tiles.clear()
+
+	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
+
+	## Para cada célula bloqueada, projetar sombra nos vizinhos livres
+	for blocked_cell in _blocked_cells.keys():
+		for dir in dirs:
+			var candidate: Vector2i = (blocked_cell as Vector2i) + dir
+			if not _is_cell_inside_room(candidate):
+				continue
+			if _blocked_cells.has(candidate):
+				continue  ## vizinho também é obstáculo — não é tile jogável
+
+			## Sombra direta: tile encostado no obstáculo
+			if _shadow_tiles.has(candidate):
+				## Acumular: segundo obstáculo adjacente aprofunda a sombra
+				## (Nesta implementação simplificada, mantemos SHADOW_MULT, 
+				## mas poderíamos multiplicar por um fator de atenuação extra)
+				_shadow_tiles[candidate] = minf(_shadow_tiles[candidate], SHADOW_MULT)
+			else:
+				_shadow_tiles[candidate] = SHADOW_MULT
+
+			## Penumbra: tile a 2 passos do obstáculo na mesma direção
+			var penumbra: Vector2i = candidate + dir
+			if not _is_cell_inside_room(penumbra):
+				continue
+			if _blocked_cells.has(penumbra):
+				continue
+			if not _shadow_tiles.has(penumbra):
+				_shadow_tiles[penumbra] = PENUMBRA_MULT
+			## Não sobrescrever sombra direta com penumbra mais fraca
+	
+	queue_redraw()
 
 
 func _get_blocked_cells_array() -> Array[Vector2i]:
@@ -1124,9 +1315,34 @@ func _get_leashed_pos(proposed: Vector2) -> Vector2:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
-		if key.pressed and not key.echo and key.keycode == KEY_V:
-			_toggle_dev_vision()
-			return
+		if key.pressed and not key.echo:
+			match key.keycode:
+				KEY_V:
+					_toggle_dev_vision()
+					return
+				KEY_P:
+					_peek_pending = true
+					return
+				KEY_UP:
+					if _peek_pending: 
+						_try_peek(Vector2i.UP)
+						_peek_pending = false
+						return
+				KEY_DOWN:
+					if _peek_pending: 
+						_try_peek(Vector2i.DOWN)
+						_peek_pending = false
+						return
+				KEY_LEFT:
+					if _peek_pending: 
+						_try_peek(Vector2i.LEFT)
+						_peek_pending = false
+						return
+				KEY_RIGHT:
+					if _peek_pending: 
+						_try_peek(Vector2i.RIGHT)
+						_peek_pending = false
+						return
 
 	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
 	if event is InputEventScreenTouch:
@@ -1166,12 +1382,26 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
-	## ── Dev 03: track hover tile when in dev_vision mode ────────────────
+	## ── Mouse motion: preview path on hover ─────────────────────────────
 	if event is InputEventMouseMotion and not (_left_down and _touches.size() < 2):
-		if dev_vision:
-			var mm := event as InputEventMouseMotion
-			_hovered_cell = _screen_to_tile(mm.position)
-			_update_dev_hover_label()
+		var mm := event as InputEventMouseMotion
+		var new_hover := _screen_to_tile(mm.position)
+		if new_hover != _hovered_cell:
+			_hovered_cell = new_hover
+			if dev_vision:
+				_update_dev_hover_label()
+			_update_movement_highlight()
+			
+			## UI-01: Update selection and path preview on hover
+			if _is_selectable_cell(_hovered_cell):
+				_selected_cell = _hovered_cell
+				selection_overlay.set_selected(_hovered_cell)
+				_update_selected_preview()
+			elif _hovered_cell == agent.cell or not movement_overlay.is_reachable(_hovered_cell):
+				## Hide preview if hovering agent or unreachable zone
+				_selected_cell = agent.cell
+				selection_overlay.set_selected(agent.cell)
+				path_preview.clear_path()
 
 	## ── Mouse motion: pan when dragging ─────────────────────────────────
 	if event is InputEventMouseMotion and _left_down and _touches.size() < 2:
@@ -1194,6 +1424,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton
+
+	## ── Botão direito: executar movimento para o tile selecionado ──────
+	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+		if _selected_cell != INVALID_CELL and _selected_cell != agent.cell:
+			_try_move_to(_selected_cell)
+		get_viewport().set_input_as_handled()
+		return
+
+	## ── Botão esquerdo: pan (comportamento existente intacto) ──────────
 	if mb.button_index != MOUSE_BUTTON_LEFT or _touches.size() >= 2:
 		return
 
@@ -1205,6 +1444,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		if not _drag_started:
 			var cell := _screen_to_tile(mb.position)
-			_handle_tile_click(cell)
+			
+			## UI-02: Se clicar fora da zona, apenas selecionar (sem mover)
+			if cell != INVALID_CELL:
+				_set_selected_cell(cell)
+				
 		_left_down = false
-		_drag_started = false

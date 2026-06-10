@@ -1,5 +1,66 @@
 # INFILTRAITOR — Progress Updates
 
+## M2 Alpha Shadows Foundation (2026-06-10)
+
+**Status:** ✅ Complete — Tactical shadows, coordinated AI comms, and active search mechanics integrated
+
+**Focus:** Environment-based stealth and complex AI behaviors — guards now use tactical shadows to project detection zones and communicate alerts through room signals.
+
+### Changes Completed
+
+#### ✅ M2-06: Visão Desacoplada & Antecipação
+- **Separation of concerns:** Visual vision angle decoupled from physical facing angle
+- **Smooth Rotation:** Uses `lerp_angle` for head rotation and scanning
+- **Interest management:** `GuardAttention` system handles 3 focus modes (IDLE scanning, WAYPOINT anticipation, AGENT tracking)
+- **Scanning behavior:** Guards now scan 45° left/right while moving, making detection fields more dynamic
+
+#### ✅ M2-07: Comportamento Ativo de Busca (STATE_SEARCH)
+- **Physical Investigation:** Guards now physically move to tiles in the `_search_queue` around `last_known_agent_cell`
+- **Observational pauses:** Reached tiles trigger a pause turn with a focus sweep before moving to next point
+- **Queue management:** Coordinated evacuation of search tiles until de-escalation to SUSPICIOUS
+
+#### ✅ M2-08: Sistema de Comunicação (Comms)
+- **Whistle signal:** ALERT state triggers a local whistle broadcast (3-tile radius)
+- **Radio signal:** CHASE state triggers a global radio broadcast to all active units
+- **Signal propagation:** `room.gd` acts as a signal hub, routing alerts to neighboring guards
+- **State escalation:** Guards ignore low-priority alerts (state hierarchy validation)
+
+#### ✅ M2-09: Sistema de Sombras Táticas
+- **Shadow Projection:** Obstacles and walls project dark zones that reduce detection probability
+- **Direct Shadow:** 0.35x multiplier (65% reduction) on tiles adjacent to walls
+- **Penumbra:** 0.60x multiplier (40% reduction) on tiles 2 steps away
+- **Perspective alignment:** Shadows automatically update on room perspective rotation
+- **Visual Debug:** Blue diamond overlay highlights shadow zones in `DEV_VISION` mode
+
+#### ✅ Quickfix: Movimento Físico no SEARCH
+- FIXED: Guards in `STATE_SEARCH` were previously only scanning visually while staying stationary
+- RESOLVED: Replaced search logic to use physical pathfinding via `_step_toward(target)`
+- Added `remove_at(0)` queue consumption for robust multi-point patrolling during investigation
+
+### Files Created/Modified
+
+**Modified:**
+- `godot/scripts/world/room.gd` — Shadow calculation hub, communication router (`_on_guard_whistled`), and debug renderer
+- `godot/scripts/agents/guard_enemy.gd` — Integration of attention systems, shadow multipliers, and physical search logic
+- `godot/scripts/agents/guard_attention.gd` — Logic for decoupled vision and focus-based scanning
+
+### Architecture & Design
+
+**Tactical Synergy:**
+1. Shadow system creates "stealth lanes" near walls
+2. Guard attention makes vision cones unpredictable (scanning while walking)
+3. Search logic forces guards to actually check these stealth lanes when suspicious
+4. Communication ensures that even if you hide in shadows, a single visual contact can alert the entire floor
+
+### Testing & Verification
+
+- **Compilation:** ✅ 0 errors across 4 core files
+- **Shadow Logic:** ✅ Projections align with grid directions and perspective
+- **Comms Routing:** ✅ Whistled signals correctly reach and escalate nearby units
+- **Search Pathing:** ✅ Guards successfully consume `_search_queue` and path toward investigate targets
+
+---
+
 ## M2 Alpha Sound System Deploy (2026-06-07)
 
 **Status:** ✅ Complete — Event-driven detection, noise persistence, and audio systems fully integrated

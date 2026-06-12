@@ -45,14 +45,32 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 ---
 
 ### 📋 Production (What Gets Built)
-*Development roadmap, milestones, and production workflow.*
+*Development roadmap, milestones, production workflow, and risk management.*
 
+**Quick Start:** Start with [Production Dashboard](production/dashboard.md) for quick status
+
+#### Strategic Planning
 - **[Roadmap](production/roadmap.md)** — Macro-level development phases and timeline
-- **[Milestones](production/milestones.md)** — Detailed, executable milestone list with status
-- **[Backlog](production/backlog.md)** — Low-priority features and future ideas (to be created)
-- **[Pipeline](production/pipeline.md)** — Production workflow and department collaboration (to be created)
+- **[Estimated Timeline](production/estimated_timeline.md)** — Phase-based development roadmap ✅
+- **[Development Pipeline](production/development_pipeline.md)** — Feature development process ✅
 
-**Best for:** Understanding what gets built and when
+#### Status & Tracking
+- **[Production Dashboard](production/dashboard.md)** — Quick status snapshot ✅
+- **[Current State](production/current_state.md)** — Detailed status by domain ✅
+- **[Systems Matrix](production/systems_matrix.md)** — System implementation tracking ✅
+- **[Content Matrix](production/content_matrix.md)** — Game content inventory ✅
+- **[Milestones](production/milestones.md)** — Detailed, executable milestone list with status
+
+#### Risk & Quality
+- **[Risk Assessment](production/risk_assessment.md)** — Systemic risks and mitigation ✅
+- **[Technical Debt](production/technical_debt.md)** — Known issues and refactors ✅
+
+#### Domain Tracking
+- **[Audio Pipeline](production/audio_pipeline.md)** — Sound design roadmap ✅
+- **[Animation Pipeline](production/animation_pipeline.md)** — Animation tracking ✅
+- **[Narrative Pipeline](production/narrative_pipeline.md)** — Story roadmap ✅
+
+**Best for:** Understanding what gets built, when, and what the risks are
 
 ---
 
@@ -95,6 +113,16 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Movement & Turn | Grid, AP economy, turn resolution | 2026-06-11 | Lead Programmer |
 | Stealth & Detection | FOW, cover, evasion | 2026-06-11 | Design Lead |
 | Enemy AI | Guard FSM, decision-making | 2026-06-11 | AI Programmer |
+| Current State | Project status by domain | 2026-06-11 | Project Manager |
+| Systems Matrix | System implementation status | 2026-06-11 | Technical Lead |
+| Content Matrix | Game content inventory | 2026-06-11 | Content Manager |
+| Technical Debt | Known issues and refactors | 2026-06-11 | Technical Lead |
+| Risk Assessment | Systemic risks and mitigation | 2026-06-11 | Project Manager |
+| Development Pipeline | Feature development process | 2026-06-11 | Project Manager |
+| Estimated Timeline | Phase-based roadmap | 2026-06-11 | Project Manager |
+| Audio Pipeline | Sound design roadmap | 2026-06-11 | Audio Director |
+| Animation Pipeline | Animation tracking | 2026-06-11 | Animation Director |
+| Narrative Pipeline | Story roadmap | 2026-06-11 | Narrative Designer |
 | Architecture | System design | (to be created) | Lead Architect |
 | History | Development record | (to be created) | Project Manager |
 
@@ -160,10 +188,10 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 |----------|-----------|--------|
 | Vision | 100% | ✅ Complete |
 | Systems | 100% | ✅ Complete |
-| Production | 100% | ✅ Complete |
+| Production | 85% | 🟡 In Progress (DOC-02) |
 | Technical | 0% | ⏳ Queued |
 | History | 0% | ⏳ Queued |
-| **Overall** | **60%** | **🟡 In Progress** |
+| **Overall** | **70%** | **🟡 In Progress** |
 
 ---
 
@@ -233,7 +261,7 @@ The following documents are being migrated into this structure:
 - **Overall:** 2026-06-11
 - **Vision:** 2026-06-11 ✅
 - **Systems:** 2026-06-11 ✅
-- **Production:** 2026-06-11 ✅
+- **Production:** 2026-06-11 ✅ (DOC-02 In Progress)
 - **Technical:** Queued ⏳
 - **History:** Queued ⏳
 
@@ -241,16 +269,19 @@ The following documents are being migrated into this structure:
 
 ## 🚀 Next Steps
 
-### This Sprint (DOC-01)
+### This Sprint (DOC-01 & DOC-02)
 1. ✅ Create vision documentation (game_vision, design_philosophy, pillars)
 2. ✅ Create production documentation (roadmap, milestones)
 3. ✅ Create central index (this file)
 4. ✅ Create systems documentation (perception, lighting, noise, movement, stealth, ai)
-5. ⏳ Create technical documentation (architecture, godot_setup, performance)
-6. ⏳ Migrate history logs
-7. ⏳ Clean up old documentation
+5. 🟡 Create production tracking documentation (dashboard, current_state, matrices, debt, risk, pipelines) — IN PROGRESS
+6. ⏳ Create technical documentation (architecture, godot_setup, performance)
+7. ⏳ Migrate history logs
+8. ⏳ Clean up old documentation
 
-### Future Sprints
+### Future Sprints (Post-DOC-02)
+- Complete technical documentation (DOC-01 Phase 4)
+- Migrate and archive history logs (DOC-01 Phase 5)
 - Add backlog documentation
 - Add production pipeline documentation
 - Add technical guidelines for code organization

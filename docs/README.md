@@ -64,6 +64,7 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 #### Risk & Quality
 - **[Risk Assessment](production/risk_assessment.md)** — Systemic risks and mitigation ✅
 - **[Technical Debt](production/technical_debt.md)** — Known issues and refactors ✅
+- **[Documentation Debt](production/documentation_debt.md)** — Missing specs, diagrams, and doc gaps ✅
 
 #### Domain Tracking
 - **[Audio Pipeline](production/audio_pipeline.md)** — Sound design roadmap ✅
@@ -77,6 +78,16 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 ### 🔧 Technical (The Implementation)
 *Architecture, code organization, and technical decisions.*
 
+#### Infrastructure & Governance
+- **[Repository Structure](technical/repo_structure.md)** — Folder organization and conventions ✅
+- **[Archive Policy](technical/archive_policy.md)** — Document & code lifecycle ✅
+- **[Documentation Ownership](technical/documentation_ownership.md)** — Explicit responsibility matrix ✅
+
+#### Technical Assessments
+- **[Legacy Report](technical/legacy_report.md)** — Legacy code and technical risks ✅
+- **[Safe Cleanup](technical/safe_cleanup.md)** — Removal safety guidelines ✅
+
+#### Design & Setup (Planned)
 - **[Architecture](technical/architecture.md)** — High-level system architecture and data flow (to be created)
 - **[Godot 4.6 Setup](technical/godot_setup.md)** — Engine configuration, project structure (to be created)
 - **[Performance Guidelines](technical/performance.md)** — Optimization targets and profiling (to be created)
@@ -92,7 +103,11 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 - **[Sprint Logs](history/sprint_logs/)** — Chronological development updates and progress tracking
 
 #### Refactoring & Technical Debt
-- **[Refactor Logs](history/refactors/)** — Major refactors, architectural changes, and lessons learned
+- **[Refactor Logs](history/refactor_logs/)** — Major refactors, architectural changes, and lessons learned
+
+#### Design Evolution
+- **[Design Decisions](history/design_decisions/)** — Historical design choices and rationales
+- **[Deprecated Design](history/deprecated_design/)** — Archived designs no longer in use
 
 **Best for:** Tracing decisions over time and learning from past iterations
 
@@ -105,17 +120,20 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Game Vision | What the game is | 2026-06-11 | Design Lead |
 | Design Philosophy | Principles guiding design | 2026-06-11 | Design Lead |
 | Design Pillars | Seven pillars of gameplay | 2026-06-11 | Design Lead |
+| Documentation Principles | Doc architecture standards | 2026-06-12 | Documentation Lead |
 | Roadmap | Development timeline | 2026-06-11 | Project Manager |
 | Milestones | Executable task list | 2026-06-11 | Project Manager |
+| Production Dashboard | Quick status snapshot | 2026-06-11 | Project Manager |
+| Current State | Project status by domain | 2026-06-11 | Project Manager |
+| Systems Matrix | System implementation status | 2026-06-11 | Technical Lead |
+| Content Matrix | Game content inventory | 2026-06-11 | Content Manager |
+| Documentation Debt | Missing specs, diagrams, gaps | 2026-06-12 | Documentation Lead |
 | Perception System | How detection works | 2026-06-11 | Lead Programmer |
 | Lighting & Shadows | Shadow systems | 2026-06-11 | Graphics Programmer |
 | Noise System | Audio propagation | 2026-06-11 | Audio Programmer |
 | Movement & Turn | Grid, AP economy, turn resolution | 2026-06-11 | Lead Programmer |
 | Stealth & Detection | FOW, cover, evasion | 2026-06-11 | Design Lead |
 | Enemy AI | Guard FSM, decision-making | 2026-06-11 | AI Programmer |
-| Current State | Project status by domain | 2026-06-11 | Project Manager |
-| Systems Matrix | System implementation status | 2026-06-11 | Technical Lead |
-| Content Matrix | Game content inventory | 2026-06-11 | Content Manager |
 | Technical Debt | Known issues and refactors | 2026-06-11 | Technical Lead |
 | Risk Assessment | Systemic risks and mitigation | 2026-06-11 | Project Manager |
 | Development Pipeline | Feature development process | 2026-06-11 | Project Manager |
@@ -123,8 +141,13 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Audio Pipeline | Sound design roadmap | 2026-06-11 | Audio Director |
 | Animation Pipeline | Animation tracking | 2026-06-11 | Animation Director |
 | Narrative Pipeline | Story roadmap | 2026-06-11 | Narrative Designer |
-| Architecture | System design | (to be created) | Lead Architect |
-| History | Development record | (to be created) | Project Manager |
+| Not Yet Started | Unstarted systems catalog | 2026-06-11 | Design Lead |
+| Legacy Report | Legacy code + tech risks | 2026-06-12 | Technical Lead |
+| Safe Cleanup | Removal safety guidelines | 2026-06-12 | Technical Lead |
+| Documentation Ownership | Responsibility matrix | 2026-06-12 | Documentation Lead |
+| Repository Structure | Folder organization | 2026-06-10 | DevOps Lead |
+| Archive Policy | Document lifecycle | 2026-06-10 | DevOps Lead |
+| History | Development record | 2026-06-12 | Project Manager |
 
 ---
 

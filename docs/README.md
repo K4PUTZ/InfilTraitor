@@ -82,6 +82,7 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 - **[Repository Structure](technical/repo_structure.md)** — Folder organization and conventions ✅
 - **[Archive Policy](technical/archive_policy.md)** — Document & code lifecycle ✅
 - **[Documentation Ownership](technical/documentation_ownership.md)** — Explicit responsibility matrix ✅
+- **[Developer Setup](technical/developer_setup.md)** — SSH keys, authentication, large files, first-time setup ✅
 
 #### Technical Assessments
 - **[Legacy Report](technical/legacy_report.md)** — Legacy code and technical risks ✅
@@ -147,6 +148,7 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Documentation Ownership | Responsibility matrix | 2026-06-12 | Documentation Lead |
 | Repository Structure | Folder organization | 2026-06-10 | DevOps Lead |
 | Archive Policy | Document lifecycle | 2026-06-10 | DevOps Lead |
+| Developer Setup | SSH, authentication, setup | 2026-06-12 | DevOps Lead |
 | History | Development record | 2026-06-12 | Project Manager |
 
 ---

@@ -23,18 +23,18 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 *Detailed documentation of individual game systems.*
 
 #### Perception & Detection
-- **[Perception System](systems/perception.md)** — Visual cones, audio detection, attention, and scanning (to be created)
+- **[Perception System](systems/perception.md)** — Visual cones, audio detection, attention, and scanning ✅
 
 #### Environment & Visibility
-- **[Lighting & Shadows](systems/lighting.md)** — Baked shadows, light propagation, tactical visibility (to be created)
-- **[Noise Propagation](systems/noise.md)** — Sound propagation, decay, and audio perception (to be created)
+- **[Lighting & Shadows](systems/lighting.md)** — Baked shadows, light propagation, tactical visibility ✅
+- **[Noise Propagation](systems/noise.md)** — Sound propagation, decay, and audio perception ✅
 
 #### Gameplay Mechanics
-- **[Movement & Turn System](systems/movement.md)** — Grid navigation, AP economy, and turn resolution (to be created)
-- **[Stealth & Detection](systems/stealth.md)** — FOW, cover, and detection mechanics (to be created)
+- **[Movement & Turn System](systems/movement.md)** — Grid navigation, AP economy, and turn resolution ✅
+- **[Stealth & Detection](systems/stealth.md)** — FOW, cover, and detection mechanics ✅
 
 #### AI & Behavior
-- **[Enemy AI & Behaviors](systems/ai.md)** — Guard FSM, states, and decision-making (to be created)
+- **[Enemy AI & Behaviors](systems/ai.md)** — Guard FSM, states, and decision-making ✅
 
 #### Future Systems
 - **[Combat System](systems/combat.md)** — Combat resolution, damage, tactics (planned, to be created)
@@ -89,9 +89,12 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Design Pillars | Seven pillars of gameplay | 2026-06-11 | Design Lead |
 | Roadmap | Development timeline | 2026-06-11 | Project Manager |
 | Milestones | Executable task list | 2026-06-11 | Project Manager |
-| Perception System | How detection works | (to be created) | Lead Programmer |
-| Lighting & Shadows | Shadow systems | (to be created) | Graphics Programmer |
-| Noise System | Audio propagation | (to be created) | Audio Programmer |
+| Perception System | How detection works | 2026-06-11 | Lead Programmer |
+| Lighting & Shadows | Shadow systems | 2026-06-11 | Graphics Programmer |
+| Noise System | Audio propagation | 2026-06-11 | Audio Programmer |
+| Movement & Turn | Grid, AP economy, turn resolution | 2026-06-11 | Lead Programmer |
+| Stealth & Detection | FOW, cover, evasion | 2026-06-11 | Design Lead |
+| Enemy AI | Guard FSM, decision-making | 2026-06-11 | AI Programmer |
 | Architecture | System design | (to be created) | Lead Architect |
 | History | Development record | (to be created) | Project Manager |
 
@@ -156,11 +159,11 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 | Category | Completion | Status |
 |----------|-----------|--------|
 | Vision | 100% | ✅ Complete |
-| Systems | 0% | 🟡 In Progress |
+| Systems | 100% | ✅ Complete |
 | Production | 100% | ✅ Complete |
 | Technical | 0% | ⏳ Queued |
 | History | 0% | ⏳ Queued |
-| **Overall** | **40%** | **🟡 In Progress** |
+| **Overall** | **60%** | **🟡 In Progress** |
 
 ---
 
@@ -174,12 +177,12 @@ docs/
 │   ├── design_philosophy.md
 │   └── pillars.md
 ├── systems/
-│   ├── perception.md            (to create)
-│   ├── lighting.md              (to create)
-│   ├── noise.md                 (to create)
-│   ├── movement.md              (to create)
-│   ├── stealth.md               (to create)
-│   ├── ai.md                    (to create)
+│   ├── perception.md            ✅
+│   ├── lighting.md              ✅
+│   ├── noise.md                 ✅
+│   ├── movement.md              ✅
+│   ├── stealth.md               ✅
+│   ├── ai.md                    ✅
 │   ├── combat.md                (planned)
 │   └── progression.md            (planned)
 ├── production/
@@ -229,7 +232,7 @@ The following documents are being migrated into this structure:
 
 - **Overall:** 2026-06-11
 - **Vision:** 2026-06-11 ✅
-- **Systems:** In progress 🟡
+- **Systems:** 2026-06-11 ✅
 - **Production:** 2026-06-11 ✅
 - **Technical:** Queued ⏳
 - **History:** Queued ⏳
@@ -242,7 +245,7 @@ The following documents are being migrated into this structure:
 1. ✅ Create vision documentation (game_vision, design_philosophy, pillars)
 2. ✅ Create production documentation (roadmap, milestones)
 3. ✅ Create central index (this file)
-4. ⏳ Create systems documentation (perception, lighting, noise, movement, stealth, ai)
+4. ✅ Create systems documentation (perception, lighting, noise, movement, stealth, ai)
 5. ⏳ Create technical documentation (architecture, godot_setup, performance)
 6. ⏳ Migrate history logs
 7. ⏳ Clean up old documentation

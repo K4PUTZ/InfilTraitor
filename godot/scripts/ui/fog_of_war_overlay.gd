@@ -74,6 +74,11 @@ func reset_peek_reveals() -> void:
 	queue_redraw()
 
 
+## Check if a cell has been revealed (permanent reveal, not peek).
+func is_cell_revealed(cell: Vector2i) -> bool:
+	return _revealed.has(cell)
+
+
 ## Returns the alpha to use when drawing an unrevealed cell, based on the
 ## Chebyshev ring distance to the nearest revealed neighbour.
 ## Smoothstep ease-in/ease-out over 12 rings: t = ring/12, alpha = t²(3-2t)

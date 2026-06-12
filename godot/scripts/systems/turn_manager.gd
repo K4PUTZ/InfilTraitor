@@ -59,6 +59,11 @@ func spend_for_path_cost(path_cost: int) -> bool:
 	return true
 
 
+func consume_ap(amount: int) -> void:
+	current_ap = max(0, current_ap - amount)
+	ap_changed.emit(current_ap, max_ap)
+
+
 func path_cost_to_ap(path_cost: int) -> int:
 	if path_cost <= 0:
 		return 0

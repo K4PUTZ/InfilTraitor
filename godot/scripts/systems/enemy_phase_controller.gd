@@ -12,7 +12,8 @@ func run_single_guard_turn(
 		blocked_edges: Dictionary,
 		room_size: Vector2i,
 		occupied: Dictionary,
-		tic_callback: Callable   ## novo parâmetro — room._apply_tic_result
+		tic_callback: Callable,   ## room._apply_tic_result
+		noise_callback: Callable  ## M2-14: room._on_guard_emits_noise
 ) -> Dictionary:
 	if not is_instance_valid(guard):
 		return {"max_severity": 0, "events": []}
@@ -38,6 +39,8 @@ func run_single_guard_turn(
 	var next_cell: Vector2i = guard.choose_next_cell(occupied, blocked_cells, blocked_edges, player_cell, room_size)
 	if next_cell != guard.cell:
 		await guard.move_to_cell_animated(next_cell, blocked_cells, blocked_edges, room_size)
+		## M2-14: Emitir ruído após o guarda se mover
+		noise_callback.call(guard, next_cell)
 
 	## Tic depois do movimento
 	var after := TicSystem.evaluate(guard, player_cell, blocked_cells, blocked_edges)

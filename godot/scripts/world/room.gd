@@ -4,6 +4,24 @@ extends Node2D
 const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
+const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
+
+## M2-13: Fonte de luz para cálculo de sombras direcionais
+class LightSource:
+	var cell: Vector2i
+	var height: float
+	var radius: int
+	var intensity: float
+	var active: bool = true
+	var direction: Vector2
+	
+	func _init(p_cell: Vector2i, p_height: float, p_radius: int,
+	           p_intensity: float = 0.9, p_dir: Vector2 = Vector2.ZERO) -> void:
+		cell = p_cell
+		height = p_height
+		radius = p_radius
+		intensity = p_intensity
+		direction = p_dir
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -14,6 +32,8 @@ const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
 @onready var structure_wall_upper_layer: TileMapLayer = $StructureWallUpperLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
+@onready var shadow_full_layer:    TileMapLayer = $ShadowFullLayer
+@onready var shadow_partial_layer: TileMapLayer = $ShadowPartialLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent:               DebugAgent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
@@ -52,8 +72,22 @@ var _current_blocked_edges: Array[Dictionary] = []
 var _guards: Array = []
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
-const SHADOW_MULT   := 0.35
-const PENUMBRA_MULT := 0.60
+const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
+const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
+
+## M2-13: Altura de obstáculos (em tiles acima do plano do chão)
+const OBSTACLE_HEIGHTS: Dictionary = {
+	"crate":     1.0,
+	"wall":      2.0,
+	"block":     2.0,
+	"column":    3.0,
+	"half_wall": 1.0,
+}
+const OBSTACLE_HEIGHT_DEFAULT := 1.5
+
+## M2-13: Fontes de luz e alturas de obstáculos
+var _light_sources: Array[LightSource] = []
+var _obstacle_heights: Dictionary = {}
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -129,12 +163,35 @@ var _trail_overlay: Node2D = null
 var _noise_system = null
 var _noise_overlay: Node2D = null
 
+## M2-14: Guard noise indicator — flutuante ao redor do agente
+var _guard_noise_indicator: Node2D = null
+
+## M2-14: Chance de ruído por estado do guarda
+const GUARD_NOISE_CHANCE_BY_STATE := {
+	"patrol": 0.15,
+	"suspicious": 0.40,
+	"alert": 0.60,
+	"chase": 0.70,
+	"search": 0.50,
+}
+
+## M2-14: Intensidade de ruído por estado do guarda
+const GUARD_NOISE_INTENSITY_BY_STATE := {
+	"patrol": 0.4,
+	"suspicious": 0.6,
+	"alert": 0.9,
+	"chase": 1.0,
+	"search": 0.7,
+}
+
 ## Position of this segment in the 3×3 level grid (gx, gy in 0..2).
 ## Set before _ready() runs (e.g. by the level controller or via the Inspector).
 ## Controls which exits LevelGraph assigns; default (1,1) = centre segment (all exits open).
 @export var segment_grid_pos: Vector2i = Vector2i(1, 1)
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
+
+const WHISTLE_RADIUS := 3
 
 
 func _ready() -> void:
@@ -151,6 +208,13 @@ func _ready() -> void:
 	structure_wall_upper_layer.z_index = 11
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
+	## M2-13: Initialize shadow layers
+	shadow_full_layer.tile_set = ts
+	shadow_partial_layer.tile_set = ts
+	shadow_full_layer.z_index = 1
+	shadow_partial_layer.z_index = 1
+	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
+	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
 	_build_registry(ts)
 
 	var graph: LevelGraph = LevelGraphClass.new()
@@ -240,6 +304,15 @@ func _ready() -> void:
 	_noise_overlay.set_script(NoiseOverlayClass)
 	add_child(_noise_overlay)
 	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
+
+	## M2-14 Quickfix: Z-index ordering — floor(0) < shadow(1) < fog(2) < structures(3) < sprites(4+)
+	## Ensure fog_of_war is properly layered above shadow overlay
+	fog_of_war.z_index = 2
+
+	## M2-14: Create and setup guard noise indicator — as child of agent so it orbits naturally
+	_guard_noise_indicator = GuardNoiseIndicatorClass.new()
+	agent.add_child(_guard_noise_indicator)
+	_guard_noise_indicator.setup(floor_layer, VISUAL_GRID_OFFSET)
 
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
@@ -405,6 +478,8 @@ func _update_guard_los_data() -> void:
 
 
 func _draw_shadow_debug() -> void:
+	## M2-13: ShadowOverlay agora lida com a visualização permanente.
+	## Mantido apenas para debug técnico em DEV_VISION (azul translúcido sobreposto).
 	if not dev_vision:
 		return
 	for shadow_cell in _shadow_tiles.keys():
@@ -585,6 +660,20 @@ func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_refresh_tactical_state()
 
 
+func _try_change_posture(new_posture: DebugAgent.Posture) -> void:
+	if agent.posture == new_posture:
+		return
+	if turn_manager.is_enemy_phase:
+		return
+	if turn_manager.current_ap < DebugAgent.POSTURE_CHANGE_AP:
+		return
+		
+	turn_manager.consume_ap(DebugAgent.POSTURE_CHANGE_AP)
+	agent.set_posture(new_posture)
+	_refresh_tactical_state()
+	_update_guard_los_data()
+
+
 func _refresh_tactical_state() -> void:
 	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	movement_overlay.rebuild(agent.cell, turn_manager.get_max_move_points())
@@ -611,9 +700,8 @@ func _on_enemy_phase_started() -> void:
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
 	selection_overlay.set_selected(agent.cell)
-	var first_guard := _first_valid_guard_cell()
-	if first_guard != INVALID_CELL:
-		await _focus_camera_for_enemy_phase(first_guard)
+	## M2-14: Travar câmera no agente durante turno inimigo
+	_center_camera(agent.cell)
 	await _hold_actor_end_pause()
 	await _run_enemy_phase()
 	enemy_turn_banner.visible = false
@@ -662,13 +750,16 @@ func _run_enemy_phase() -> void:
 			blocked_edges,
 			_room_size,
 			occupied,
-			_apply_tic_result   ## passa o callback
+			_apply_tic_result,   ## passa o callback
+			_on_guard_emits_noise   ## M2-14: callback de ruído
 		)
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
-		await _hold_actor_end_pause()
 
-		var next_focus := _next_enemy_phase_focus_cell(i)
-		await _enemy_inter_turn_pause_with_camera(next_focus)
+		## Câmera segue guard apenas se o tile dele está revelado pelo FOW
+		if fog_of_war.is_cell_revealed(guard.cell):
+			await _focus_camera_for_enemy_phase(guard.cell)
+
+		await _hold_actor_end_pause()
 
 	## Acumulação de alerta agora acontece em _apply_tic_result() durante os tics
 	_update_enemy_visibility()
@@ -709,19 +800,39 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 
 
-func _first_valid_guard_cell() -> Vector2i:
-	for guard in _guards:
-		if is_instance_valid(guard):
-			return guard.cell
-	return INVALID_CELL
+## M2-14: Emitir indicador sonoro na direção do ruído (com imprecisão de ±2 tiles)
+func _emit_guard_noise_indicator(guard_cell: Vector2i, intensity: float) -> void:
+	if _guard_noise_indicator == null:
+		return
+	
+	## Imprecisão: offset aleatório de ±2 tiles para não revelar posição exata
+	var fuzzy_cell := guard_cell + Vector2i(
+		randi_range(-2, 2),
+		randi_range(-2, 2)
+	)
+	var agent_world  := floor_layer.map_to_local(agent.cell) + VISUAL_GRID_OFFSET
+	var noise_world  := floor_layer.map_to_local(fuzzy_cell) + VISUAL_GRID_OFFSET
+	
+	_guard_noise_indicator.add_indicator(agent_world, noise_world, intensity)
 
 
-func _next_enemy_phase_focus_cell(current_guard_idx: int) -> Vector2i:
-	for i in range(current_guard_idx + 1, _guards.size()):
-		var next_guard = _guards[i]
-		if is_instance_valid(next_guard):
-			return next_guard.cell
-	return agent.cell
+## M2-14: Callback: executado quando um guarda emite ruído após se mover
+func _on_guard_emits_noise(guard, guard_cell: Vector2i) -> void:
+	if _noise_system == null or guard == null:
+		return
+	
+	## Chance de ruído por estado do guarda
+	var noise_chance: float = GUARD_NOISE_CHANCE_BY_STATE.get(guard.state, 0.10) as float
+	if randf() < noise_chance:
+		## Intensidade de ruído por estado
+		var noise_intensity: float = GUARD_NOISE_INTENSITY_BY_STATE.get(guard.state, 0.5) as float
+		## Emitir no sistema de ruído global
+		_noise_system.emit(guard_cell, noise_intensity)
+		## Emitir indicador sonoro para o agente
+		_emit_guard_noise_indicator(guard_cell, noise_intensity)
+		## Redraw dos overlays para atualizar visual
+		if _noise_overlay != null:
+			_noise_overlay.queue_redraw()
 
 
 func _update_alert_label() -> void:
@@ -840,7 +951,6 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 
 func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
 	## Apito: guards a até WHISTLE_RADIUS tiles entram em STATE_SEARCH
-	const WHISTLE_RADIUS := 4
 	if last_known == INVALID_CELL:
 		return
 	for guard in _guards:
@@ -1067,10 +1177,167 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
+	_setup_light_sources(layout)
+	_populate_obstacle_heights()
 	_compute_shadow_tiles()
+	_bake_shadow_tiles()
 
 
+## M2-13: Direções isométricas quantizadas (8 direções)
+const SHADOW_DIRS: Array[Vector2i] = [
+	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
+	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
+]
+
+const SHADOW_LENGTH_MAX := 5
+
+
+## M2-13: Setup light sources from layout or defaults
+func _setup_light_sources(layout: Dictionary) -> void:
+	_light_sources.clear()
+	
+	var lights: Array = layout.get("light_sources", [])
+	if lights.is_empty():
+		lights = _default_light_sources()
+	
+	for entry in lights:
+		_light_sources.append(LightSource.new(
+			Vector2i(entry.get("x", 0), entry.get("y", 0)),
+			float(entry.get("height", 4.5)),
+			int(entry.get("radius", 7)),
+			float(entry.get("intensity", 0.9)),
+		))
+
+
+## M2-13: Default light sources for playtest mockup (3 ceiling lamps)
+func _default_light_sources() -> Array:
+	return [
+		{"x": 9, "y": 4, "height": 5.0, "radius": 8, "intensity": 0.9},
+		{"x": 9, "y": 18, "height": 5.0, "radius": 7, "intensity": 0.85},
+		{"x": 9, "y": 30, "height": 5.0, "radius": 7, "intensity": 0.85},
+	]
+
+
+## M2-13: Populate obstacle heights from tile types
+func _populate_obstacle_heights() -> void:
+	_obstacle_heights.clear()
+	for blocked_cell in _blocked_cells.keys():
+		var tile_name := _get_tile_name_at(blocked_cell)
+		var height := OBSTACLE_HEIGHT_DEFAULT
+		for key in OBSTACLE_HEIGHTS.keys():
+			if tile_name.begins_with(key):
+				height = OBSTACLE_HEIGHTS[key]
+				break
+		_obstacle_heights[blocked_cell] = height
+
+
+## M2-13: Get tile name at cell (from structure layers)
+func _get_tile_name_at(cell: Vector2i) -> String:
+	for layer in [structure_layer, structure_wall_layer]:
+		var sid: int = layer.get_cell_source_id(cell)
+		if sid >= 0:
+			var src = layer.tile_set.get_source(sid)
+			if src:
+				return str(src.resource_name)
+	return ""
+
+
+## M2-13: Compute shadow tiles with directional casting from light sources
 func _compute_shadow_tiles() -> void:
+	_shadow_tiles.clear()
+	
+	if _light_sources.is_empty():
+		_compute_shadow_tiles_fallback()
+		return
+	
+	for light in _light_sources:
+		if not light.active:
+			continue
+		_cast_shadows_from_light(light)
+
+
+## M2-13: Cast shadows from a single light source
+func _cast_shadows_from_light(light: LightSource) -> void:
+	for blocked_cell in _blocked_cells.keys():
+		var dist_vec: Vector2i = blocked_cell - light.cell
+		var dist: float = dist_vec.length()
+		if dist > light.radius or dist < 0.1:
+			continue
+		
+		## Obstacle height from dictionary
+		var obs_height: float = _obstacle_heights.get(blocked_cell, OBSTACLE_HEIGHT_DEFAULT) as float
+		if obs_height >= light.height:
+			obs_height = light.height - 0.1
+		
+		## Shadow length by cone projection geometry
+		var shadow_len: float = obs_height * (light.height - obs_height) / maxf(dist, 0.1)
+		shadow_len = minf(shadow_len * light.intensity, float(SHADOW_LENGTH_MAX))
+		
+		## Quantize direction to 8 directions
+		var dir: Vector2i = _quantize_dir(dist_vec)
+		
+		## Project shadow along quantized direction
+		for i in range(1, int(ceil(shadow_len)) + 1):
+			var shadow_cell: Vector2i = blocked_cell + dir * i
+			if not _is_cell_inside_room(shadow_cell):
+				break
+			if _blocked_cells.has(shadow_cell):
+				break
+			
+			## Linear falloff: SHADOW_MULT_DIRECT → 1.0
+			var t: float = float(i) / shadow_len
+			var mult: float = lerpf(SHADOW_MULT, 1.0, clampf(t, 0.0, 1.0))
+			
+			## Darker shadow prevails (min)
+			if _shadow_tiles.has(shadow_cell):
+				_shadow_tiles[shadow_cell] = minf(_shadow_tiles[shadow_cell], mult)
+			else:
+				_shadow_tiles[shadow_cell] = mult
+
+
+## M2-13: Quantize direction to nearest 8-direction
+func _quantize_dir(v: Vector2i) -> Vector2i:
+	var angle := atan2(float(v.y), float(v.x))
+	var idx := int(round(angle / (PI / 4.0))) % 8
+	return SHADOW_DIRS[((idx % 8) + 8) % 8]
+
+
+## M2-13: Fallback shadow computation (omnidirectional, no light sources)
+func _compute_shadow_tiles_fallback() -> void:
+	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
+	for blocked_cell in _blocked_cells.keys():
+		for dir in dirs:
+			var candidate: Vector2i = blocked_cell + dir
+			if not _is_cell_inside_room(candidate) or _blocked_cells.has(candidate):
+				continue
+			if _shadow_tiles.has(candidate):
+				_shadow_tiles[candidate] = minf(_shadow_tiles[candidate], SHADOW_MULT)
+			else:
+				_shadow_tiles[candidate] = SHADOW_MULT
+			var penumbra: Vector2i = candidate + dir
+			if _is_cell_inside_room(penumbra) and not _blocked_cells.has(penumbra):
+				if not _shadow_tiles.has(penumbra):
+					_shadow_tiles[penumbra] = PENUMBRA_MULT
+
+
+## M2-13: Bake shadow tiles onto ShadowFullLayer and ShadowPartialLayer
+func _bake_shadow_tiles() -> void:
+	shadow_full_layer.clear()
+	shadow_partial_layer.clear()
+	
+	var floor_sid: int = _tile_ids.get("floor_SE", -1)
+	if floor_sid < 0:
+		return
+	
+	for shadow_cell: Vector2i in _shadow_tiles.keys():
+		var mult: float = _shadow_tiles[shadow_cell]
+		if mult <= 0.35:
+			shadow_full_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
+		else:
+			shadow_partial_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
+
+
+func _compute_shadow_tiles_old() -> void:
 	_shadow_tiles.clear()
 
 	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
@@ -1317,6 +1584,28 @@ func _input(event: InputEvent) -> void:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo:
 			match key.keycode:
+				KEY_Z:
+					## Z abaixa: STANDING -> CROUCHING -> PRONE
+					var next_z := agent.posture
+					if agent.posture == DebugAgent.Posture.STANDING:
+						next_z = DebugAgent.Posture.CROUCHING
+					elif agent.posture == DebugAgent.Posture.CROUCHING:
+						next_z = DebugAgent.Posture.PRONE
+					
+					if next_z != agent.posture:
+						_try_change_posture(next_z)
+					return
+				KEY_X:
+					## X sobe: PRONE -> CROUCHING -> STANDING
+					var next_x := agent.posture
+					if agent.posture == DebugAgent.Posture.PRONE:
+						next_x = DebugAgent.Posture.CROUCHING
+					elif agent.posture == DebugAgent.Posture.CROUCHING:
+						next_x = DebugAgent.Posture.STANDING
+					
+					if next_x != agent.posture:
+						_try_change_posture(next_x)
+					return
 				KEY_V:
 					_toggle_dev_vision()
 					return

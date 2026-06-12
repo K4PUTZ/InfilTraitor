@@ -20,12 +20,12 @@ const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 ## Probabilidades base por distância — espelha TicSystem.DETECTION_CURVE
 const FOV_DISTANCE_CURVE: Array[float] = [
-	1.00, 1.00, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01
+	1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01
 ]
 
 ## Multiplicador lateral por distância ao eixo central do cone (em tiles)
 ## offset 0 = coluna central, offset 1 = ±1 coluna, offset 2 = ±2 colunas
-const FOV_LATERAL_FALLOFF: Array[float] = [1.0, 0.45, 0.08]
+const FOV_LATERAL_FALLOFF: Array[float] = [1.0, 0.50, 0.10]
 
 const COLOR_VISION_SMOOTH := Color(1.0, 0.9, 0.2, 0.5)
 
@@ -40,8 +40,16 @@ const STATE_CHASE := "chase"
 const STATE_SEARCH := "search"
 const INVALID_CELL: Vector2i = Vector2i(-9999, -9999)
 
-const SHADOW_MULT      := 0.35   ## multiplicador de prob em tile de sombra
-const PENUMBRA_MULT    := 0.60   ## tile adjacente a sombra (borda da penumbra)
+const SHADOW_MULT      := 0.30   ## multiplicador de prob em tile de sombra
+const PENUMBRA_MULT    := 0.55   ## tile adjacente a sombra (borda da penumbra)
+
+## Timers de estado — M2-11
+const TIMER_ALERT_TO_CHASE       := 3
+const TIMER_SUSPICIOUS_TO_PATROL := 4
+const TIMER_CHASE_TO_SEARCH      := 3
+const TIMER_SEARCH_TO_SUSPICIOUS := 2
+const TIMER_NOISE_SUSPICIOUS     := 3
+const TIMER_NOISE_SUSPICIOUS_MED := 2
 
 var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
@@ -68,7 +76,7 @@ var facing_angle_deg: float = 0.0  ## 0=UP 90=RIGHT 180=DOWN 270=LEFT
 ## Ângulos contínuos — apenas visuais
 var body_angle: float   = 0.0
 var vision_angle: float = 0.0
-const TURN_SPEED := 4.5
+const TURN_SPEED := 4.0
 
 ## Atenção contextual
 var attention: GuardAttention = GuardAttention.new()
@@ -102,7 +110,7 @@ var _is_rotating: bool = false            ## rotação em progresso
 var _search_queue: Array[Vector2i] = []
 var _search_origin: Vector2i = INVALID_CELL
 const SEARCH_RADIUS := 2          ## tiles ao redor do last_known
-const SEARCH_TURNS_MAX := 6       ## turnos antes de desescalar
+const SEARCH_TURNS_MAX := 5       ## turnos antes de desescalar
 var _search_turns_remaining: int = 0
 
 ## M2-08: Comunicação entre Guardas
@@ -308,6 +316,11 @@ func evaluate_detection(
 	if _shadow_tiles.has(player_cell):
 		final_prob *= _shadow_tiles[player_cell]
 		
+	## M2-12b: Postura do Agente
+	if agent_ref != null:
+		var posture_mult: float = DebugAgent.POSTURE_DETECTION_MULT.get(agent_ref.posture, 1.0)
+		final_prob *= posture_mult
+
 	## M2-10: Cover
 	if agent_ref != null and agent_ref.cover_state != DebugAgent.CoverType.NONE:
 		var cover_mult := 1.0
@@ -521,15 +534,15 @@ static func _prob_to_color(prob: float, alpha_mult: float = 1.0) -> Color:
 func _get_cone_visual_params() -> Dictionary:
 	match state:
 		STATE_PATROL:
-			return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+			return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.55}
 		STATE_SUSPICIOUS:
-			return {"range": 6, "fov": 90.0, "alpha": 0.8, "prob_mult": 1.8}
+			return {"range": 6, "fov": 90.0, "alpha": 0.8, "prob_mult": 1.60}
 		STATE_ALERT:
-			return {"range": 7, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.2}
+			return {"range": 7, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.00}
 		STATE_CHASE:
-			return {"range": 7, "fov": 110.0, "alpha": 1.0, "prob_mult": 3.0}
+			return {"range": 7, "fov": 110.0, "alpha": 1.0, "prob_mult": 2.80}
 	## Default (relaxado)
-	return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.6}
+	return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.55}
 
 
 ## Retorna Array de {delta: Vector2i, prob: float} para todos os tiles no cone de visão
@@ -713,6 +726,7 @@ func receive_alert(known_cell: Vector2i, target_state: String) -> void:
 	if target_prio > current_prio:
 		last_known_agent_cell = known_cell
 		_enter_state(target_state)
+		state_timer = TIMER_ALERT_TO_CHASE if target_state == STATE_ALERT else 3
 		_comms_label_timer = COMMS_LABEL_DURATION
 		
 		## Reage imediatamente (visão/IA externa pode sobrescrever depois)
@@ -728,10 +742,10 @@ func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) 
 		last_known_agent_cell = player_cell
 		if severity >= 2:
 			_enter_state(STATE_ALERT)
-			state_timer = 3
+			state_timer = TIMER_ALERT_TO_CHASE
 		elif state != STATE_ALERT:
 			_enter_state(STATE_SUSPICIOUS)
-			state_timer = 3
+			state_timer = TIMER_SUSPICIOUS_TO_PATROL
 	_update_debug_label()
 	return
 
@@ -747,12 +761,12 @@ func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:
 		last_known_agent_cell = noise_tile
 		if state == STATE_PATROL:
 			_enter_state(STATE_SUSPICIOUS)
-			state_timer = 3
+			state_timer = TIMER_NOISE_SUSPICIOUS
 	elif perceived_intensity >= 0.25:
 		## Barulho médio — guarda fica tenso mas não sabe onde
 		if state == STATE_PATROL:
 			_enter_state(STATE_SUSPICIOUS)
-			state_timer = 2
+			state_timer = TIMER_NOISE_SUSPICIOUS_MED
 	## Barulho fraco (< 0.25): ignorado
 
 	_update_debug_label()
@@ -770,7 +784,7 @@ func tick_state() -> void:
 		_search_turns_remaining -= 1
 		if _search_turns_remaining <= 0:
 			_enter_state(STATE_SUSPICIOUS)
-			state_timer = 2
+			state_timer = TIMER_SEARCH_TO_SUSPICIOUS
 			_search_queue.clear()
 		return
 
@@ -778,7 +792,7 @@ func tick_state() -> void:
 	if state_timer <= 0:
 		if state == STATE_ALERT:
 			_enter_state(STATE_CHASE)
-			state_timer = 3
+			state_timer = TIMER_ALERT_TO_CHASE
 		elif state == STATE_SUSPICIOUS:
 			_enter_state(STATE_PATROL)
 			last_known_agent_cell = INVALID_CELL
@@ -787,20 +801,7 @@ func tick_state() -> void:
 				_enter_state(STATE_SEARCH)
 			else:
 				_enter_state(STATE_SUSPICIOUS)
-				state_timer = 2
-
-	## Dev 05: placeholder detection mapping — M2 will override with real detection
-	match state:
-		STATE_PATROL:
-			detection = 0.0
-		STATE_SUSPICIOUS:
-			detection = 0.35
-		STATE_SEARCH:
-			detection = 0.5
-		STATE_ALERT:
-			detection = 0.65
-		STATE_CHASE:
-			detection = 1.0
+				state_timer = TIMER_CHASE_TO_SEARCH
 
 	if dev_vision:
 		queue_redraw()

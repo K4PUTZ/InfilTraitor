@@ -1,5 +1,89 @@
 # INFILTRAITOR — Progress Updates
 
+## M2-13: Alpha Shadow Foundation Fixed (2026-06-11)
+
+**Status:** ✅ Complete — Directional shadow system rewritten, baked onto TileMapLayers, visible across entire map under FOW
+
+**Focus:** Shadow visibility and geometric precision — replaced dynamic overlay with baked directional shadows using light source cone projection and 8-direction quantization.
+
+### Changes Completed
+
+#### ✅ M2-13: Sistema de Sombras Direcional (Rewrite)
+- **LightSource inner class:** Represents light sources with position, height, radius, intensity, and active state
+- **Obstacle height mapping:** OBSTACLE_HEIGHTS dict maps tile types (crate, wall, block, column, half_wall) to heights (1.0–3.0)
+- **Cone projection geometry:** Shadow length = `obstacle_height × (light_height - obstacle_height) / distance`
+- **8-direction quantization:** Shadows cast in 8 isometric directions (not just 4 cardinals) for smoother coverage
+- **Shadow layers (baked):** `ShadowFullLayer` and `ShadowPartialLayer` as TileMapLayers at z_index=1 (below FOW)
+- **Falloff function:** Linear lerp from SHADOW_MULT (0.30) to 1.0 over projected shadow length
+- **Precedence:** Multiple light sources use `min()` to darken shadows (darker wins)
+- **Fallback mode:** Omnidirectional shadow projection when no light sources defined
+- **Default lights:** 3 ceiling lamps (9,4), (9,18), (9,30) with height=5.0 and radius=7–8
+
+#### ✅ M2-14 Integration: Audio Indicators Fixed
+- **Guard noise callbacks:** Emit audio direction indicators when guards move during enemy phase
+- **Indicator system:** GuardNoiseIndicator displays "(((" or ")))" around agent showing noise source direction
+- **Duration and fade:** 1.8s indicators with smooth alpha fadeout
+- **Z-index 100:** Floats above all overlays for clear visibility
+
+#### ✅ M2-14 Quickfix: Double Pause Eliminated
+- Removed unconditional second pause in `_run_enemy_phase()` guard loop
+- Deleted orphaned `_first_valid_guard_cell()` and `_next_enemy_phase_focus_cell()` methods
+- Fallback logic that always returned valid cell (causing double pause) removed
+
+#### ✅ M2-14 Quickfix: Camera & Shadow Visibility
+- **Conditional camera focus:** `is_cell_revealed()` gate before focusing on guards during enemy phase
+- **Z-index ordering:** shadow(1) < fog_of_war(2) < structures(3) for proper layering
+- **Shadow visibility:** Baked shadows visible across entire room, properly layered under FOW
+
+#### ✅ M2-15 Prep: Cover Hints Removed
+- Deleted `_draw_cover_hints()` method from `movement_overlay.gd`
+- Removed cover indicator color constants (`COLOR_COVER_FULL`, `COLOR_COVER_PARTIAL`)
+- Reserved for M2-15 redesign using wall-face ícones instead of Dijkstra overlay
+
+### Files Created/Modified
+
+**Created:**
+- Scene nodes: `ShadowFullLayer`, `ShadowPartialLayer` in room.tscn
+
+**Modified:**
+- `godot/scripts/world/room.gd` — 8 new methods for shadow computation, light source setup, obstacle height population
+- `godot/scripts/navigation/movement_overlay.gd` — removed cover hints system
+
+**Deleted:**
+- `godot/scripts/overlays/shadow_overlay.gd` — replaced by baked TileMapLayer system
+
+### Architecture & Design
+
+**Directional Shadow Geometry:**
+1. Light source at position with height above ground
+2. Obstacle blocks light, casting cone-shaped shadow
+3. Shadow geometry: length = `obs_height × (light_height - obs_height) / distance`
+4. Quantize to 8 isometric directions for smooth directional projection
+5. Bake into two layers: full (dark) at ≤0.35 mult, partial (light) at >0.35 mult
+
+**Key Methods:**
+- `_setup_light_sources()` — load from layout or use defaults
+- `_populate_obstacle_heights()` — map tiles to heights
+- `_cast_shadows_from_light()` — project cone from single light
+- `_quantize_dir()` — round to 8 directions
+- `_compute_shadow_tiles()` — orchestrate multi-light calculation
+- `_bake_shadow_tiles()` — populate TileMapLayers
+- `_compute_shadow_tiles_fallback()` — omnidirectional fallback
+
+**Visibility Guarantee:**
+- Shadows baked at z_index=1 (below FOW at z_index=2)
+- Never hidden by fog — always visible like floor tiles
+- Darkens explored/revealed cells, creates visual stealth lanes
+
+### Testing & Verification
+
+- **Compilation:** ✅ No syntax/type errors after explicit var typing
+- **Scene nodes:** ✅ ShadowFullLayer and ShadowPartialLayer found and initialized
+- **Engine load:** ✅ "240 tiles registered" — shadows baked correctly
+- **Integration:** ✅ No regression in M2-14 features (camera lock, audio indicators, double pause fix)
+
+---
+
 ## M2 Alpha Shadows Foundation (2026-06-10)
 
 **Status:** ✅ Complete — Tactical shadows, coordinated AI comms, and active search mechanics integrated

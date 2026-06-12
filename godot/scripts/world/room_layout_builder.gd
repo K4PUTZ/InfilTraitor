@@ -10,26 +10,58 @@ const FLOOR_TILE       := "floor_SE"
 
 const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_SW", "crate_NW", "crate_NE"]
 const CRATE_CELLS: Array[Vector2i] = [
-	Vector2i( 4,  5),
-	Vector2i(13,  5),
-	Vector2i( 4, 14),
-	Vector2i(13, 14),
-	Vector2i( 9, 11),
-	Vector2i( 5, 26),
-	Vector2i(12, 26),
+	## Corredor de cover oeste (x=3) — sombra e abrigo ao longo do flanco
+	Vector2i(3,  8),
+	Vector2i(3, 12),
+	Vector2i(3, 17),
+	Vector2i(3, 22),
+	Vector2i(3, 27),
+	## Corredor de cover leste (x=14) — rota rápida, mais exposta
+	Vector2i(14,  6),
+	Vector2i(14, 10),
+	Vector2i(14, 15),
+	Vector2i(14, 20),
+	Vector2i(14, 25),
+	## Staging central perto do spawn — repositionamento inicial
+	Vector2i( 7, 27),
+	Vector2i( 9, 27),
+	Vector2i(11, 27),
+	Vector2i( 8, 30),
+	Vector2i(10, 30),
+	## Aproximação ao quarto objetivo
+	Vector2i( 6,  8),
+	Vector2i(11,  8),
+	Vector2i( 6,  5),
+	Vector2i(11,  5),
 ]
 
 ## Default segment exits. Override via build_layout(access_points) for dynamic level graphs.
 ## Each entry: { "cell": Vector2i } — door direction is inferred from border position.
 const DEFAULT_ACCESS_POINTS: Array[Dictionary] = [
-	{"cell": Vector2i(9, 35)},   ## SE border — south segment exit
-	{"cell": Vector2i(9,  0)},   ## NW border — north segment exit
+	{"cell": Vector2i(9, 35)},   ## entrada sul — spawn do agente
+	{"cell": Vector2i(7,  0)},   ## saída norte — assimétrica, força abordagem oeste
 ]
 
 const DEFAULT_GUARD_PATROLS: Array[Array] = [
-	[Vector2i(5, 8), Vector2i(8, 8), Vector2i(11, 8), Vector2i(11, 12), Vector2i(8, 12), Vector2i(5, 12)],
-	[Vector2i(4, 23), Vector2i(8, 23), Vector2i(8, 29), Vector2i(4, 29)],
-	[Vector2i(13, 22), Vector2i(15, 22), Vector2i(15, 30), Vector2i(13, 30)],
+	## Guarda 1 — patrulha a zona norte aberta, cruza o eixo central
+	## Inclui waypoints na mesma linha para forçar rotações em Y
+	[
+		Vector2i(4,  9), Vector2i(8,  9), Vector2i(12,  9),
+		Vector2i(12, 12), Vector2i(8, 12), Vector2i(4, 12),
+	],
+	## Guarda 2 — patrulha corredor leste (x=13..16, y=16..28)
+	## Rota rectangular que cobre toda a faixa leste
+	[
+		Vector2i(13, 16), Vector2i(16, 16),
+		Vector2i(16, 22), Vector2i(16, 28),
+		Vector2i(13, 28), Vector2i(13, 22),
+	],
+	## Guarda 3 — patrulha o perímetro externo do quarto objetivo
+	## Rota curta e apertada — força timing preciso para entrar
+	[
+		Vector2i(3, 3), Vector2i(7, 3),
+		Vector2i(7, 7), Vector2i(3, 7),
+	],
 ]
 
 
@@ -41,13 +73,13 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 	var blocked_edges: Array = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
-	## Central 7x7 interior room with 4 doors (top, bottom, left, right)
-	var inner_room_rect := Rect2i(Vector2i(6, 15), Vector2i(7, 7))
+	## Quarto objetivo — noroeste: mais difícil de acessar do leste
+	var inner_room_rect := Rect2i(Vector2i(2, 2), Vector2i(7, 7))
 	var inner_doors: Array[Dictionary] = [
-		{"cell": Vector2i(9, 15)},   ## Top door
-		{"cell": Vector2i(9, 21)},   ## Bottom door
-		{"cell": Vector2i(6, 18)},   ## Left door
-		{"cell": Vector2i(12, 18)},  ## Right door
+		{"cell": Vector2i(5, 2)},    ## porta norte (saída para exit)
+		{"cell": Vector2i(2, 5)},    ## porta oeste
+		{"cell": Vector2i(8, 5)},    ## porta leste
+		{"cell": Vector2i(5, 8)},    ## porta sul (entrada principal)
 	]
 	var inner_room := place_inner_room(Rect2i(Vector2i.ZERO, MAP_SIZE), inner_room_rect, inner_doors, blocked_map)
 	if inner_room.size() > 0:
@@ -59,6 +91,19 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		# Merge inner room's blocked edges into main blocked edges
 		for edge in inner_room.get("blocked_edges", []):
 			blocked_edges.append(edge)
+
+	## Parede-stub: fragmento de parede interior em y=13 (chokepoint)
+	## Força o agente a escolher rota antes de avançar para o norte
+	const STUB_WALL_CELLS: Array[Vector2i] = [
+		Vector2i(5, 13), Vector2i(6, 13), Vector2i(7, 13), Vector2i(8, 13),
+	]
+	for stub_cell in STUB_WALL_CELLS:
+		if not blocked_map.has(stub_cell):
+			wall_tiles.append({"cell": stub_cell, "tile_name": "block_SE"})
+			blocked_map[stub_cell] = true
+			## Registrar arestas para LOS
+			blocked_edges.append({"from": stub_cell, "to": stub_cell + Vector2i(0, -1)})
+			blocked_edges.append({"from": stub_cell, "to": stub_cell + Vector2i(0,  1)})
 
 	## Crates
 	var crate_map: Dictionary = {}

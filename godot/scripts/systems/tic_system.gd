@@ -4,26 +4,13 @@ class_name TicSystem
 ##   1. Quando o agente termina um step (tic do agente)
 ##   2. Quando um guarda termina seu movimento (tic do guarda)
 
-## Tabela de probabilidades base por distância Manhattan.
-## Índice = distância (0 = mesmo tile, 1 = adjacente, etc.)
-const DETECTION_CURVE: Array[float] = [
-	1.00,  ## dist 0 — mesmo tile
-	1.00,  ## dist 1 — adjacente
-	0.95,  ## dist 2
-	0.85,  ## dist 3
-	0.60,  ## dist 4
-	0.40,  ## dist 5
-	0.15,  ## dist 6
-	0.05,  ## dist 7
-	0.01,  ## dist 8
-]
-
 ## Multiplicadores de detecção por estado do guarda.
 const STATE_MULTIPLIER: Dictionary = {
-	"patrol":     0.60,
-	"suspicious": 1.80,
-	"alert":      2.20,
-	"chase":      3.00,
+	"patrol":     0.55,
+	"suspicious": 1.60,
+	"search":      0.80,
+	"alert":      2.00,
+	"chase":      2.80,
 }
 
 ## Ganho de detecção por tic bem-sucedido (antes de multiplicadores).
@@ -47,9 +34,17 @@ static func evaluate(
 ) -> TicResult:
 	var result := TicResult.new()
 
-	## Avaliação angular (usa o evaluate_detection refatorado)
+	## Obtém referência do agente se necessário para o pipeline de detecção (Cover)
+	var agent_ref = guard.get_tree().get_root().find_child("Agent", true, false)
+
+	## Avaliação completa delegada ao guarda (Source of Truth)
 	var eval: Dictionary = guard.evaluate_detection(
-		target_cell, guard.fov_range, blocked_cells, blocked_edges
+		target_cell, 
+		guard.fov_range, 
+		blocked_cells, 
+		blocked_edges,
+		2,
+		agent_ref
 	)
 
 	result.visible      = bool(eval.get("visible", false))
@@ -59,35 +54,12 @@ static func evaluate(
 	if not result.visible:
 		return result
 
-	## Probabilidade base pela curva de distância
-	var dist := result.distance
-	var base_chance: float = DETECTION_CURVE[dist] if dist < DETECTION_CURVE.size() else 0.0
+	## Probabilidade bruta retornada pelo guarda (inclui sombras e cover)
+	var raw_prob: float = float(eval.get("final_prob", 0.0))
 
-	## Aplicar multiplicadores: estado do guarda × ângulo do cone
+	## Aplicar multiplicador do estado do guarda
 	var state_mult: float = STATE_MULTIPLIER.get(guard.state, 1.0)
-	result.raw_chance = base_chance * state_mult * result.angle_ratio
-
-	## M2-10: Aplicar bônus de Sombras e Cover
-	if guard._shadow_tiles.has(target_cell):
-		result.raw_chance *= guard.SHADOW_MULT
-
-	var agent_ref = guard.get_tree().get_root().find_child("Agent", true, false)
-	if agent_ref != null and target_cell == agent_ref.cell:
-		if agent_ref.cover_state != DebugAgent.CoverType.NONE:
-			var cover_mult := 1.0
-			if agent_ref.cover_state == DebugAgent.CoverType.FULL:
-				cover_mult = DebugAgent.COVER_FULL_MULT
-			elif agent_ref.cover_state == DebugAgent.CoverType.PARTIAL:
-				cover_mult = DebugAgent.COVER_PARTIAL_MULT
-			
-			## Flanking: guard no lado oposto ao obstáculo ignora cover
-			var flank_dir: Vector2i = -agent_ref.cover_direction  ## lado exposto
-			var guard_dir: Vector2i = (guard.cell - agent_ref.cell)
-			## Se o guard está no arco de 90° do lado exposto (produto escalar > 0), cover não protege
-			if (guard_dir.x * flank_dir.x + guard_dir.y * flank_dir.y) > 0:
-				cover_mult = 1.0
-			
-			result.raw_chance *= cover_mult
+	result.raw_chance = raw_prob * state_mult
 
 	## Lançar dado: 0.0 a 1.0
 	result.detected = randf() < result.raw_chance

@@ -22,10 +22,6 @@ const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Azul para Zona 1 (2 AP res
 const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Laranja para Zona 2 (ou Zona 1 com 1 AP)
 const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## Base branca para o fill (será colorida no draw)
 
-## Constantes de cor para Cover
-const COLOR_COVER_FULL    := Color(0.1, 0.4, 0.9, 0.25)   ## azul tático denso
-const COLOR_COVER_PARTIAL := Color(0.2, 0.6, 1.0, 0.12)   ## azul claro suave
-
 
 func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:
 	floor_layer = tile_layer
@@ -103,19 +99,6 @@ func set_highlight_ap(ap: int) -> void:
 		queue_redraw()
 
 
-func _draw_cover_hints(target_cells: Array[Vector2i]) -> void:
-	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
-	for tile in target_cells:
-		var count := 0
-		for dir in dirs:
-			if _blocked_cells.has(tile + dir):
-				count += 1
-		if count == 0:
-			continue
-		var color := COLOR_COVER_FULL if count >= 2 else COLOR_COVER_PARTIAL
-		draw_colored_polygon(_diamond_points(tile), color)
-
-
 func set_remaining_ap(ap: int) -> void:
 	_remaining_ap = ap
 	queue_redraw()
@@ -166,9 +149,6 @@ func _draw() -> void:
 			continue
 		if get_ap_cost(cell) <= _highlighted_ap:
 			target_cells.append(cell)
-
-	## M2-10: Cover Hints
-	_draw_cover_hints(target_cells)
 
 	## Determinar cor do perímetro:
 	## Zona 1 fica laranja quando só resta 1 AP (já gastou 1)

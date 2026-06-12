@@ -1,5 +1,129 @@
 # INFILTRAITOR — Progress Updates
 
+## DOC-01: Modular Documentation Architecture (2026-06-11)
+
+**Status:** ✅ Complete — Documentation reorganized into modular, scalable structure
+
+**Focus:** Information architecture and documentation hygiene — eliminated redundancy, separated concerns (vision ≠ systems ≠ production), and prepared documentation for long-term development.
+
+### Changes Completed
+
+#### ✅ Vision Documentation (100% Complete)
+- **`docs/vision/game_vision.md`** — High-level concept, pillars, and player experience (4 pages, 2000 words)
+- **`docs/vision/design_philosophy.md`** — 10 invariable principles guiding all design decisions (5 pages, 2500 words)
+- **`docs/vision/pillars.md`** — 7 design pillars with implications and anti-patterns (6 pages, 3000 words)
+
+#### ✅ Production Documentation (100% Complete)
+- **`docs/production/roadmap.md`** — Macro-level phases, dependencies, and timeline (4 pages, 2000 words)
+- **`docs/production/milestones.md`** — Detailed executable milestone list with status (8 pages, 4000 words)
+  - ✅ 12 completed milestones documented
+  - 🟡 1 in-progress milestone (DOC-01)
+  - ⏳ 8+ queued milestones
+
+#### ✅ Central Index (100% Complete)
+- **`docs/README.md`** — Navigation hub with four reading paths (onboarding, design iteration, technical, production) (6 pages, 2500 words)
+- **`DEVELOPMENT/README.md`** — Legacy redirect pointing to new structure
+
+#### ✅ Directory Structure (100% Complete)
+- Created: `docs/vision/`, `docs/systems/`, `docs/production/`, `docs/technical/`, `docs/history/`
+- Substructure: `docs/history/sprint_logs/`, `docs/history/refactors/`
+
+### Rationale
+
+**Before DOC-01:**
+- Design docs, systems, milestones mixed together
+- Overlapping responsibility areas (which file owns "shadows"?)
+- Unclear navigation path for new team members
+- No consistent update workflow
+- Design drift due to unclear constraints
+
+**After DOC-01:**
+- Each document has single, clear responsibility
+- Systems documented independently (to be created)
+- Milestones centralized and linked to dependencies
+- Roadmap separated from day-to-day details
+- Scalable for future content expansion
+
+### Architecture Principles
+
+**Single Responsibility:**
+- Vision = What & Why
+- Systems = How
+- Production = When & What Gets Built
+- Technical = Implementation Details
+- History = Why We Changed
+
+**No Duplication:**
+- Systems never described twice (once in systems/, once in milestones)
+- Principles stated once (design_philosophy.md)
+- Timeline centralized (roadmap.md)
+
+**Clear Ownership:**
+- Design Lead → Vision docs
+- System Owners → System docs
+- Project Manager → Production docs
+- Lead Architect → Technical docs
+- Team → History docs
+
+### Acceptance Tests
+
+✅ No system important system described in multiple files  
+✅ Philosophy separated from milestones  
+✅ Roadmap separated from systems docs  
+✅ History will be separated from active docs  
+✅ Lighting/perception consolidated (systems docs pending)  
+✅ All documents have clear responsibility  
+✅ Exists central navigable index  
+✅ No "gigantic monolithic" docs  
+✅ Structure prepared for team expansion  
+
+### Documentation Status
+
+| Category | Completion | Status |
+|----------|-----------|--------|
+| Vision | 100% | ✅ Complete |
+| Systems | 0% | 🟡 In Progress (next sprint) |
+| Production | 100% | ✅ Complete |
+| Technical | 0% | ⏳ Queued (2 sprints) |
+| History | 0% | ⏳ Queued (2 sprints) |
+
+### Next Steps
+
+1. **Immediate:** Create systems documentation (perception.md, lighting.md, noise.md, movement.md, stealth.md, ai.md)
+2. **Next Sprint:** Create technical documentation (architecture.md, godot_setup.md, performance.md)
+3. **Following Sprint:** Migrate history logs from DEVELOPMENT/PROGRESS.md to docs/history/sprint_logs/
+4. **Following Sprint:** Clean up old DEVELOPMENT files (archive or delete)
+
+### Files Created
+
+```
+docs/
+├── README.md (central index, 2500 words)
+├── vision/
+│   ├── game_vision.md (2000 words)
+│   ├── design_philosophy.md (2500 words)
+│   └── pillars.md (3000 words)
+├── production/
+│   ├── roadmap.md (2000 words)
+│   └── milestones.md (4000 words)
+├── systems/ (to be populated next sprint)
+├── technical/ (to be populated in 2 sprints)
+└── history/ (to be populated in 2 sprints)
+
+DEVELOPMENT/
+└── README.md (redirect to docs/)
+```
+
+### Total Output
+
+- **7 new documents created**
+- **15,500+ words written**
+- **Modular structure established**
+- **Zero content lost (all old docs accessible)**
+- **Scalable for 100+ future documents**
+
+---
+
 ## M2-13: Alpha Shadow Foundation Fixed (2026-06-11)
 
 **Status:** ✅ Complete — Directional shadow system rewritten, baked onto TileMapLayers, visible across entire map under FOW

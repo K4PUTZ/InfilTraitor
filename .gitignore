@@ -16,6 +16,16 @@ build/
 
 # Backup artifacts (regenerable via tools/persistent/BACKUP.py)
 BACKUP_*.ZIP
+BACKUP.ZIP
+
+# Large binary files (design assets - use external storage)
+*.psd
+*.psb
+*.ai
+*.mov
+*.mp4
+*.wav
+*.flac
 
 # Python cache
 __pycache__/

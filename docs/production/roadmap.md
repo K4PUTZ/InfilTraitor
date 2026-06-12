@@ -1,330 +1,317 @@
 # INFILTRAITOR — Roadmap
 
-> **Macro-level development phases without technical detail. Each phase unlocks new gameplay possibilities.**
+> **Macro-level development phases. Cada fase tem um critério de saída claro antes de avançar.**
+
+---
+
+## Filosofia de Desenvolvimento
+
+**Foco no feeling antes do conteúdo.** Um protótipo que demonstra a essência do jogo com gráficos placeholder é mais valioso que um jogo visualmente polido com mecânicas quebradas. O loop core — observar, planejar, agir, reagir — deve ser divertido e tenso antes de qualquer outro investimento.
+
+**Fases são sequenciais e dependentes.** Não avançamos de fase enquanto os critérios de saída da fase atual não estiverem validados. Marcar milestones como completos sem validação funcional é o principal risco de desenvolvimento.
 
 ---
 
 ## Phase Overview
 
 ```
-Prototype (M1.0–M1.5)          ✅ Complete
-├─ Core grid navigation
-├─ Isometric rendering
-├─ FOW system (3 layers)
-└─ Movement mechanics
+FASE 1: Prototype Foundation (M1.0–M1.5)     ✅ COMPLETO
+├─ Navegação em grid
+├─ Renderização isométrica
+├─ FOW 3 camadas
+└─ Mecânicas de movimento
 
-Alpha: Sound System (M2.0–M2.05) ✅ Complete
-├─ Event-driven detection (TIC system)
-├─ Noise propagation & decay
-├─ Audio perception (independent of LoS)
-└─ Perception systems foundation
+FASE 2: Stealth Core Systems (M2.0–M2.12)    ⚠️ PARCIALMENTE COMPLETO
+├─ Noise system (matemático) ✅
+├─ TIC system (cálculo) ✅
+├─ Shadow baking ✅
+├─ Guard attention decoupled ✅
+├─ Guard communication (código) ✅
+└─ Guard FSM & detection ❌ BLOQUEADO
 
-Alpha: Shadows Foundation (M2.06–M2.13) 🟡 In Progress
-├─ Guard attention (decoupled vision/facing)
-├─ Tactical shadows (baked, directional)
-├─ Communication (whistles, radios)
-├─ Physical search behavior
-├─ Audio indicators
-└─ Spatial perception complete
+FASE 3: Investor Demo                         🔴 FOCO ATUAL
+├─ Corrigir guard FSM (blocker crítico)
+├─ Conectar detection meter
+├─ Tuning de game feel
+├─ Polir sala demo
+└─ → CRITÉRIO DE SAÍDA: loop de stealth divertido e convincente
 
-Alpha: Suspicion Escalation (M2.14–M2.20) ⏳ Queued
-├─ Guard suspicion meters
-├─ Investigation patterns
-├─ Coordinated guard response
-├─ Alert escalation mechanics
-└─ De-escalation strategies
+FASE 4: Production Pass (Pós-Investimento)    ⏳ QUEUED
+├─ Áudio SFX real
+├─ Sprites e animações
+├─ UI/UX polida
+├─ Suporte a múltiplas salas
+└─ Sistema de save
 
-Alpha: Combat & Confrontation (M3.0–M3.10) ⏳ Queued
-├─ Basic combat resolution
-├─ Damage modeling
-├─ Enemy tactics (flanking, covering)
-├─ Overwatch system
-└─ Trap mechanics
+FASE 5: Campaign — Chapter 1                  ⏳ QUEUED
+├─ 5–7 salas handcrafted
+├─ Progressão de dificuldade
+├─ Missão briefings
+└─ Introdução narrativa
 
-Vertical Slice: Campaign (M4.0–M4.10) ⏳ Queued
-├─ Chapter 1: Tutorial (visual perception focus)
-├─ Chapter 2: Escalation (communication focus)
-├─ Chapter 3: Confrontation (coordination focus)
-├─ Narrative integration
-└─ First full playable experience
+FASE 6: Campaign — Chapters 2 & 3            ⏳ QUEUED
+├─ Comunicação e coordenação de guards
+├─ Combate (opcional, nunca ótimo)
+├─ Clímax narrativo
+└─ Unlock de Freelance mode
 
-Beta: Freelance Mode (M5.0–M5.10) ⏳ Queued
-├─ Procedural mission generation
-├─ Difficulty scaling
-├─ Infinite progression
-├─ Leaderboards
-└─ Session-based play
+FASE 7: Freelance Mode                        ⏳ QUEUED
+├─ Geração procedural de missões
+├─ Sistema de progressão
+├─ Dificuldade escalável
+└─ Leaderboards
 
-Content & Polish (M6.0–M6.20) ⏳ Queued
-├─ Audio design (SFX, music)
-├─ Visual polish (animations, particles)
-├─ UI localization
-├─ Performance optimization
-└─ Platform-specific tuning
-
-Release Prep (M7.0–M7.10) ⏳ Queued
-├─ QA & bug fixing
-├─ Platform deployment
-├─ Soft launch
-├─ Analytics & balance tuning
-└─ Full release
+FASE 8: Polish & Release                      ⏳ QUEUED
+├─ Áudio completo (adaptativo)
+├─ Animações finais
+├─ Localização
+├─ Otimização de performance
+└─ QA & deploy (iOS, Android, Web)
 ```
 
 ---
 
 ## Detailed Phases
 
-### Phase 1: Prototype (COMPLETE ✅)
+### Fase 1: Prototype Foundation (COMPLETO ✅)
 
-**Focus:** Core navigation, rendering, and grid mechanics.
+**Focus:** Navegação core, renderização, e mecânicas de grid.
 
-**Deliverables:**
-- Top-down isometric rendering with consistent geometry
-- Tile-based grid navigation (no diagonal movement initially)
-- Three-layer fog of war (unseen/peek/revealed)
-- Basic agent movement (2 AP per turn)
-
-**Acceptance Criteria:**
-- Agent moves smoothly on grid
-- FOW updates correctly with movement
-- No camera clipping or visual glitches
-- Performance stable on target devices (60 FPS)
+**Critério de Saída (validado):**
+- Agente se move suavemente no grid
+- FOW atualiza corretamente com movimento
+- Renderização consistente e performática
+- Sem glitches visuais ou de câmera
 
 ---
 
-### Phase 2: Alpha — Sound System (COMPLETE ✅)
+### Fase 2: Stealth Core Systems (PARCIALMENTE COMPLETO ⚠️)
 
-**Focus:** Event-driven detection, noise propagation, and audio perception.
+**Focus:** Sistemas de detecção, ruído, sombras, e IA básica.
 
-**Deliverables:**
-- TIC-based visual detection (event-driven, not turn-based)
-- Colored vision cones (probabilistic detection visualization)
-- Persistent noise grid (decay over time)
-- Audio perception independent of LoS
-- Organic patrol behavior (variable speed, spontaneous pauses)
+**O que está funcional:**
+- TIC System (cálculo de probabilidade de detecção) ✅
+- Noise System (grid persistente, decay, propagação) ✅
+- Shadow baking (projeção de cone, 8 direções) ✅
+- Guard attention (decoupled vision/facing) ✅
+- Guard communication signals (código existe) ✅
+- Pathfinding A\* para guards ✅
 
-**Acceptance Criteria:**
-- Detection events trigger on guard movement
-- Noise persists and propagates correctly
-- Guards react to audio independently of visual LoS
-- Patrol behavior feels organic and unpredictable
+**O que está bloqueado:**
+- Guard FSM transitions (métodos inexistentes) ❌
+- Detection meter accumulation ❌
+- State-based guard behavior ❌
 
----
-
-### Phase 3: Alpha — Shadows Foundation (IN PROGRESS 🟡)
-
-**Focus:** Tactical shadows, guard attention, communication, and physical investigation.
-
-**Deliverables:**
-- Baked directional shadows (light source cone projection)
-- Guard attention system (decoupled vision angle from facing)
-- Communication system (whistles, radios, escalation)
-- Physical search behavior (guards move to investigate)
-- Audio direction indicators (where guard noise comes from)
-
-**Acceptance Criteria:**
-- Shadows cast from light sources in 8 directions
-- Shadows always visible (never hidden by FOW)
-- Guards show attention independently of facing angle
-- Whistles reach nearby guards; radios reach all guards
-- Guards physically patrol search zones
+**Critério de Saída (NÃO validado — fase incompleta):**
+- Guards detectam jogador e escalam estado ❌
+- Stealth é possível mas requer planejamento ❌
+- Loop de tensão demonstrável ❌
 
 ---
 
-### Phase 4: Alpha — Suspicion Escalation (QUEUED ⏳)
+### Fase 3: Investor Demo (FOCO ATUAL 🔴)
 
-**Focus:** Guard suspicion meters, investigation patterns, and coordinated response.
+**Objetivo:** Uma experiência de 5–10 minutos que demonstra a proposta central do jogo a investidores e early adopters. Gráficos placeholder aceitáveis. Sem áudio, narrativa, ou UI polida.
 
 **Deliverables:**
-- Per-guard suspicion meter (0–100%)
-- Investigation patterns (approaching last-known position)
-- Coordinated guard response (multiple guards converge)
-- Alert escalation (SUSPICIOUS → ALERT → CHASE)
-- De-escalation mechanics (guards forget over time)
 
-**Acceptance Criteria:**
-- Suspicion meter updates based on player actions
-- Investigation creates multi-guard threat
-- Alert escalation is visible and terrifying
-- De-escalation is possible but requires planning
+**ID-01 — Fix Guard FSM (esta semana)**
+- Implementar `tick_state()` com transições baseadas no detection meter
+- Corrigir chamada `choose_next_cell()` → `pick_next_patrol_cell()`
+- Implementar `accumulate_detection(gain)` em GuardEnemy
+- Conectar TicSystem output → guard.accumulate_detection()
+- Sincronizar STATE_MULTIPLIER entre tic_system.gd e guard_enemy.gd
+
+**ID-02 — Detection Tuning (semana 2)**
+- Playtest interno com guards funcionais
+- Ajustar curva de distância (DISTANCE_CURVE)
+- Ajustar multiplicadores de postura (STANDING/CROUCHING/PRONE)
+- Ajustar thresholds (SUSPICIOUS/ALERT/CHASE)
+- Ajustar decay de detecção por turno
+- Target: stealth seja genuinamente tenso, não trivial nem impossível
+
+**ID-03 — Demo Room Polish (semanas 3–4)**
+- Layout que demonstra todos os sistemas principais (sombras, noise, FOV)
+- 2–3 guards com patrulhas interessantes e não-óbvias
+- Feedback visual suficiente para observador entender o que está acontecendo
+- Reflexão de estado nos vision cones (PATROL=azul, SUSPICIOUS=amarelo, ALERT=laranja, CHASE=vermelho)
+- UI básica de estado do turno (player phase / enemy phase)
+
+**ID-04 — FSM Refactor (semana 4–5)**
+- Refatorar match/case → Strategy pattern antes de adicionar mais estados
+- Necessário antes de M3.0 (combate adicionaria novos estados)
+
+**Critério de Saída (Investor Demo):**
+- Guard em visão direta do agente escala PATROL → ALERT em 2–3 turnos
+- Guard em sombra com agente em crouch tem probabilidade baixa de detecção
+- Guards comunicam estado entre si (whistle e radio ativados)
+- Guards investigam última posição conhecida
+- Observador externo consegue entender o jogo em < 2 minutos sem explicação
+
+**Estimativa:** 3–5 semanas de desenvolvimento focado (solo)
 
 ---
 
-### Phase 5: Alpha — Combat & Confrontation (QUEUED ⏳)
+### Fase 4: Production Pass (Pós-Investimento ⏳)
 
-**Focus:** Combat resolution, enemy tactics, and reactive mechanics.
+**Pré-requisito:** Investor Demo concluído e interesse confirmado.  
+**Objetivo:** Elevar qualidade de produção para vertical slice apresentável ao público.
 
 **Deliverables:**
-- Basic combat system (ranged + melee)
-- Enemy tactics (flanking, covering fire)
-- Damage modeling and health tracking
-- Overwatch system (player can hold action)
-- Trap mechanics (place and trigger)
+- Integração de SFX (footsteps, alerts, detection events)
+- Sprites e animações de estado para guards e agente
+- UI/UX polida (HUD, menus, settings, pause)
+- Suporte a múltiplas salas (layout data-driven)
+- Sistema de save básico (checkpoint entre salas)
+- Otimização de performance (overlay O(n²) → culled)
+- Patrol system data-driven
 
-**Acceptance Criteria:**
-- Combat is viable but discouraged
-- Enemy coordination makes confrontation challenging
-- Overwatch adds tactical depth
-- Traps create meaningful decisions
+**Critério de Saída:**
+- Vertical slice jogável e apresentável para press/público
+- Áudio e visual suficientes para gameplay trailer
+
+**Estimativa:** 8–12 semanas com 2–3 pessoas
 
 ---
 
-### Phase 6: Vertical Slice — Campaign (QUEUED ⏳)
+### Fase 5: Campaign — Chapter 1 (⏳)
 
-**Focus:** Narrative integration and first complete playable experience.
+**Pré-requisito:** Fase 4 completa. Team expandido.  
+**Objetivo:** Tutorial narrativo com 5–7 salas handcrafted.
 
 **Deliverables:**
-- Chapter 1: The Asset (visual perception tutorial)
-- Chapter 2: The Frature (communication and coordination)
-- Chapter 3: The Traitor (final confrontation)
-- Mission briefings and extraction sequences
-- Narrative branching (choice-driven ending)
+- 5–7 níveis handcrafted com dificuldade progressiva
+- Introdução de mecânicas (visão → noise → sombra)
+- Mission briefings e extraction sequences
+- Narrative introduction (agency, agent background)
 
-**Acceptance Criteria:**
-- Campaign is playable from start to finish
-- Each chapter introduces new mechanics progressively
-- Narrative feels cohesive and driven by player choice
-- Campaign is ~45–60 minutes for skilled players
+**Critério de Saída:**
+- Chapter 1 jogável do início ao fim
+- Novo jogador entende o jogo sem tutorial explícito
+
+**Estimativa:** 8–10 semanas com time completo
 
 ---
 
-### Phase 7: Beta — Freelance Mode (QUEUED ⏳)
+### Fase 6: Campaign — Chapters 2 & 3 (⏳)
 
-**Focus:** Infinite progression and procedural content.
+**Pré-requisito:** Chapter 1 validado com playtesters.  
+**Focus:** Comunicação de guards, coordenação, combate opcional, clímax narrativo.
 
 **Deliverables:**
-- Procedural mission generation
-- Difficulty scaling (matches player power)
-- Leaderboards and achievement tracking
-- Session-based saving (no autosave creep)
-- Cosmetics shop (optional purchases)
+- Chapter 2: 5–7 níveis com comunicação/coordenação em foco
+- Chapter 3: 5–7 níveis com confronto, escolha moral, desfecho
+- Sistema de combate básico (viável mas não ótimo vs stealth)
+- Unlock de Freelance mode
 
-**Acceptance Criteria:**
-- Missions are procedurally unique but feel fair
-- Difficulty scales appropriately with progression
-- Players can play indefinitely without stat trivializing encounters
-- Monetization respects player time
+**Critério de Saída:**
+- Campanha jogável do início ao fim (~45–60 min)
+- Escolha final do jogador tem impacto narrativo
+
+**Estimativa:** 12–16 semanas com time completo
 
 ---
 
-### Phase 8: Content & Polish (QUEUED ⏳)
+### Fase 7: Freelance Mode (⏳)
 
-**Focus:** Audio, visual, and platform-specific optimization.
+**Pré-requisito:** Campanha completa.  
+**Focus:** Progressão infinita e geração procedural.
 
 **Deliverables:**
-- Complete sound design (SFX, music, ambiance)
-- Animation polish (guard movement, agent poses)
-- Particle effects (noise indication, detection events)
-- UI animation and responsiveness
-- Performance optimization for older devices
+- Geração procedural de layouts (templates + variação)
+- Sistema de progressão do agente (skills, gadgets)
+- Dificuldade escala com progresso
+- Leaderboards opcionais
 
-**Acceptance Criteria:**
-- Audio design supports stealth atmosphere
-- Animations feel weighty and responsive
-- Performance stable on 5-year-old target devices
-- UI feels polished and native to platform
+**Estimativa:** 8–10 semanas
 
 ---
 
-### Phase 9: Release Prep (QUEUED ⏳)
+### Fase 8: Polish & Release (⏳)
 
-**Focus:** QA, deployment, and soft launch.
+**Focus:** Qualidade final, performance, localização, deploy.
 
 **Deliverables:**
-- Comprehensive QA pass (bug fixing)
-- Platform-specific deployment (iOS, Android, Web)
-- Soft launch with analytics collection
-- Balance tuning based on early user data
-- Final polish and optimization
+- Áudio adaptativo completo (música + SFX)
+- Animações finais e VFX
+- Localização (PT/EN mínimo; ES/FR opcional)
+- Performance otimizada para iOS/Android de 4–5 anos
+- QA pass completo
+- Deploy iOS, Android, Web
 
-**Acceptance Criteria:**
-- Zero critical bugs
-- Deployment successful on all platforms
-- Soft launch metrics show player engagement
-- Final balance tuning complete
+**Estimativa:** 8–12 semanas
+
+---
+
+## Timeline Summary
+
+| Fase | Estimativa | Pré-requisito | Status |
+|------|-----------|---------------|--------|
+| Fase 1: Prototype | — | — | ✅ Completo |
+| Fase 2: Stealth Core | — | Fase 1 | ⚠️ Parcial (bloqueado) |
+| **Fase 3: Investor Demo** | **3–5 semanas** | **Fix blockers** | **🔴 Foco atual** |
+| Fase 4: Production Pass | 8–12 semanas | Investimento | ⏳ Queued |
+| Fase 5: Chapter 1 | 8–10 semanas | Fase 4 + team | ⏳ Queued |
+| Fase 6: Chapters 2–3 | 12–16 semanas | Fase 5 | ⏳ Queued |
+| Fase 7: Freelance | 8–10 semanas | Fase 6 | ⏳ Queued |
+| Fase 8: Polish & Release | 8–12 semanas | Fase 7 | ⏳ Queued |
+
+**Total estimado pós-investimento (Fase 4–8):** 12–18 meses com time de 3–5 pessoas.
+
+**Nota sobre estimativas:** As fases pós-investimento dependem do tamanho do time. Sem investimento, as estimativas não têm sentido — o objetivo agora é a Fase 3.
 
 ---
 
 ## Milestone Dependencies
 
 ```
-M1.0 (Prototype)
-  ↓
-M2.0 (Sound System)
-  ├─ M2.05 (Audio Perception)
-  ↓
-M2.06 (Shadows + Attention)
-  ├─ M2.13 (Directional Shadows)
-  ├─ M2.14 (Guard Communication)
-  ├─ M2.15 (Search Behavior)
-  ↓
-M2.20 (Suspicion Escalation)
-  ├─ M3.0 (Combat System)
-  ├─ M3.05 (Enemy Tactics)
-  ↓
-M4.0 (Campaign Narrative)
-  ├─ M4.05 (Chapter Missions)
-  ├─ M4.10 (Campaign Polish)
-  ↓
-M5.0 (Freelance Mode)
-  ├─ M5.05 (Procedural Generation)
-  ├─ M5.10 (Progression Scaling)
-  ↓
-M6.0 (Content & Polish)
-  ├─ M6.05 (Audio Design)
-  ├─ M6.10 (Visual Polish)
-  ├─ M6.15 (Localization)
-  ↓
-M7.0 (Release Prep)
-  ├─ M7.05 (QA & Deployment)
-  ├─ M7.10 (Soft Launch)
+Fase 1 (Prototype) ✅
+    ↓
+Fase 2 (Stealth Core) ⚠️
+    ↓
+ID-01 (Fix guard FSM) ← AGORA
+    ↓
+ID-02 (Detection tuning)
+    ↓
+ID-03 (Demo room polish)
+    ↓
+ID-04 (FSM refactor)
+    ↓
+Fase 3 COMPLETA → Investor Demo
+
+----- pós-investimento -----
+    ↓
+Fase 4 (Production Pass)
+    ↓
+Fase 5 (Chapter 1)
+    ↓
+Fase 6 (Chapters 2–3) + M3.0 (Combat)
+    ↓
+Fase 7 (Freelance)
+    ↓
+Fase 8 (Polish & Release)
 ```
 
 ---
 
-## Timeline Estimates
+## O Que Está Deliberadamente Fora do Scope Atual
 
-| Phase | Estimated Duration | Status |
-|-------|-------------------|--------|
-| Prototype | 2–3 weeks | ✅ Complete |
-| Sound System | 2–3 weeks | ✅ Complete |
-| Shadows Foundation | 1–2 weeks | 🟡 In Progress |
-| Suspicion Escalation | 2–3 weeks | ⏳ Queued |
-| Combat & Confrontation | 2–3 weeks | ⏳ Queued |
-| Campaign Narrative | 3–4 weeks | ⏳ Queued |
-| Freelance Mode | 2–3 weeks | ⏳ Queued |
-| Content & Polish | 4–6 weeks | ⏳ Queued |
-| Release Prep | 2–3 weeks | ⏳ Queued |
-| **Total** | **~20–28 weeks** | — |
-
----
-
-## Success Criteria Per Phase
-
-1. **Prototype** — Game is playable; grid and FOW are correct
-2. **Sound System** — Noise propagates; audio detection works independently
-3. **Shadows Foundation** — Shadows are visible; guards investigate physically
-4. **Suspicion Escalation** — Meter updates; escalation is dramatic
-5. **Combat System** — Viable but not optimal (stealth remains preferred)
-6. **Campaign** — Narrative is cohesive; all mechanics are introduced
-7. **Freelance Mode** — Infinite progression is engaging; difficulty scales
-8. **Polish** — Game feels complete; performance is smooth
-9. **Release** — No critical bugs; deployment successful; analytics positive
-
----
-
-## Next Steps
-
-See: `docs/production/milestones.md` for detailed executable milestones
-See: `docs/production/backlog.md` for future features without priority
+| Item | Razão para adiar |
+|------|-----------------|
+| Áudio SFX | Noise grid matemático suficiente para demo |
+| Sprites/animações | Tweening suficiente para demo |
+| Menu/settings UI | HUD atual suficiente para demo |
+| Sistema de save | Não necessário em demo single-room |
+| Narrativa | Requer campanha (pós-investimento) |
+| Combate (M3.0) | Requer FSM sólido; adiar até pós-refactor |
+| Geração procedural | Requer campanha (pós-investimento) |
+| Localização | Última fase |
 
 ---
 
 ## Revision History
 
-| Date | Update | Status |
-|------|--------|--------|
-| 2026-06-11 | Roadmap created from DEVELOPMENT/PROGRESS.md | Current |
-| 2026-06-10 | M2.13 (Shadows) in progress | — |
-| 2026-06-05 | M2.0 (Sound System) complete | — |
-| 2026-02-20 | M1.0 (Prototype) started | — |
+| Date | Update |
+|------|--------|
+| 2026-06-12 | Roadmap reescrito: Investor Demo como meta primária; fases pós-investimento racionalizadas; estimativas realistas; bloqueadores críticos documentados |
+| 2026-06-11 | Roadmap inicial criado a partir de DEVELOPMENT/PROGRESS.md |

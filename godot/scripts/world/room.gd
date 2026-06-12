@@ -551,8 +551,8 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 
 	## M2-04: Gerar barulho por tic — rola dado a cada passo
 	if _noise_system != null:
-		if randf() < 0.20:  ## NOISE_CHANCE_WALK from NoiseSystem
-			_noise_system.emit(step_cell, 0.5)  ## NOISE_INTENSITY_WALK from NoiseSystem
+		if randf() < NoiseSystem.NOISE_CHANCE_WALK:
+			_noise_system.emit(step_cell, NoiseSystem.NOISE_INTENSITY_WALK)
 		if _noise_overlay != null:
 			_noise_overlay.queue_redraw()
 
@@ -600,8 +600,6 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
 		if _alert_meter >= _alert_max:
 			_on_guard_alarmed(guard.cell)
-	else:
-		guard.observe_player(false, 0, agent.cell)
 
 	_update_alert_label()
 
@@ -1336,41 +1334,6 @@ func _bake_shadow_tiles() -> void:
 		else:
 			shadow_partial_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
 
-
-func _compute_shadow_tiles_old() -> void:
-	_shadow_tiles.clear()
-
-	var dirs := [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
-
-	## Para cada célula bloqueada, projetar sombra nos vizinhos livres
-	for blocked_cell in _blocked_cells.keys():
-		for dir in dirs:
-			var candidate: Vector2i = (blocked_cell as Vector2i) + dir
-			if not _is_cell_inside_room(candidate):
-				continue
-			if _blocked_cells.has(candidate):
-				continue  ## vizinho também é obstáculo — não é tile jogável
-
-			## Sombra direta: tile encostado no obstáculo
-			if _shadow_tiles.has(candidate):
-				## Acumular: segundo obstáculo adjacente aprofunda a sombra
-				## (Nesta implementação simplificada, mantemos SHADOW_MULT, 
-				## mas poderíamos multiplicar por um fator de atenuação extra)
-				_shadow_tiles[candidate] = minf(_shadow_tiles[candidate], SHADOW_MULT)
-			else:
-				_shadow_tiles[candidate] = SHADOW_MULT
-
-			## Penumbra: tile a 2 passos do obstáculo na mesma direção
-			var penumbra: Vector2i = candidate + dir
-			if not _is_cell_inside_room(penumbra):
-				continue
-			if _blocked_cells.has(penumbra):
-				continue
-			if not _shadow_tiles.has(penumbra):
-				_shadow_tiles[penumbra] = PENUMBRA_MULT
-			## Não sobrescrever sombra direta com penumbra mais fraca
-	
-	queue_redraw()
 
 
 func _get_blocked_cells_array() -> Array[Vector2i]:

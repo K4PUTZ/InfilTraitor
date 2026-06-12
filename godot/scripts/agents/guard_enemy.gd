@@ -541,6 +541,8 @@ func _get_cone_visual_params() -> Dictionary:
 			return {"range": 7, "fov": 100.0, "alpha": 0.95, "prob_mult": 2.00}
 		STATE_CHASE:
 			return {"range": 7, "fov": 110.0, "alpha": 1.0, "prob_mult": 2.80}
+		STATE_SEARCH:
+			return {"range": 5, "fov": 120.0, "alpha": 0.7, "prob_mult": 0.80}
 	## Default (relaxado)
 	return {"range": 4, "fov": 70.0, "alpha": 0.4, "prob_mult": 0.55}
 

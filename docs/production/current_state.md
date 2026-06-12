@@ -1,230 +1,248 @@
 # INFILTRAITOR — Current Project State
 
-> **Executive snapshot of the entire project. Where are we now?**
+> **Executive snapshot of the entire project. Onde estamos agora — com honestidade sobre o que funciona e o que não funciona.**
+
+---
+
+## Objetivo Atual
+
+**Meta primária:** Investor Demo — mecânicas de jogo funcionais e polidas em uma sala de demonstração.  
+Gráficos placeholder, sem áudio, sem narrativa, sem animações complexas, sem UI polida. O critério de sucesso é o *feeling*: o stealth deve ser divertido, os guards devem reagir de forma crível, e o loop de tensão deve ser perceptível para qualquer pessoa que jogar por 5 minutos.
+
+---
+
+## Estado da IA — O que funciona vs. o que está incompleto
+
+O sistema de IA é **funcional mas simplificado** em relação ao design intent.
+
+**O que funciona corretamente:**
+- Guards detectam o agente probabilisticamente via `TicSystem.evaluate()`
+- Quando detecção ocorre, guard escalona para `STATE_ALERT` e persegue
+- `tick_state()` faz de-escalação por timer (ALERT → CHASE → SEARCH → SUSPICIOUS → PATROL)
+- Audio detection via `hear_noise()` com thresholds (0.25 / 0.60)
+- Comunicação entre guards (whistle / radio) funcional via signals
+- Pathfinding A* correto e eficiente
+- `choose_next_cell()` state-aware (comportamento por estado implementado)
+
+**O que está simplificado vs. design intent:**
+- `guard.detection` meter acumula visualmente mas **não conduz transições de estado**
+- Detecção visual é **binária**: qualquer tic bem-sucedido → `STATE_ALERT` imediato (sem passar por SUSPICIOUS)
+- Design intent: escalação gradual PATROL → SUSPICIOUS → ALERT via threshold do meter
+- Audio detection já tem gradação; visual detection não
+
+**Impacto real:** O jogo é jogável e reativo. Guards respondem ao agente. A falta de gradação na detecção visual pode parecer abrupta ("guard dormiu em cima do agente e de repente foi para ALERT"), mas não quebra o stealth.
 
 ---
 
 ## Global Status Overview
 
-| Category | Status | Maturity | Progress |
-|----------|--------|----------|----------|
-| **Core Gameplay** | Functional | Beta | 60% |
-| **Lighting & Shadows** | Implemented | Alpha | 85% |
-| **Enemy AI** | Implemented | Beta | 70% |
-| **Perception System** | Implemented | Beta | 75% |
-| **Audio System** | Partial | Prototype | 40% |
-| **Animation** | Partial | Prototype | 30% |
-| **UI/UX** | Partial | Prototype | 35% |
-| **Narrative** | Not Started | — | 0% |
-| **Combat** | Not Started | — | 0% |
+| Category | Status | Maturity | Progress Real |
+|----------|--------|----------|---------------|
+| **Core Navigation & Movement** | Funcional | Beta | 90% |
+| **Turn System** | Funcional | Beta | 85% |
+| **Pathfinding (A\*)** | Funcional | Production | 95% |
+| **Noise System (matemático)** | Funcional | Beta | 80% |
+| **Lighting & Shadows** | Funcional | Alpha | 80% |
+| **Fog of War** | Funcional | Beta | 80% |
+| **Enemy AI / Guard FSM** | Funcional (simplificado) | Alpha | 65% |
+| **Detection / Stealth** | Funcional (binário) | Alpha | 55% |
+| **Perception (cálculo)** | Funcional | Beta | 75% |
+| **Audio (SFX)** | Não iniciado | — | 0% |
+| **Animation (sprites)** | Não iniciado | — | 0% |
+| **UI/UX** | Prototype | Prototype | 30% |
+| **Narrative** | Não iniciado | — | 0% |
+| **Combat** | Não iniciado | — | 0% |
 | **Content** | Sparse | Prototype | 15% |
 
 ---
 
 ## Maturity Definitions
 
-- **Prototype** — Proof of concept, may break
-- **Alpha** — Core working, known limitations
-- **Beta** — Feature-complete, refinement phase
-- **Production-Ready** — Polished, tested, stable
+- **Prototype** — Prova de conceito, pode quebrar
+- **Alpha** — Core funcionando, limitações conhecidas
+- **Beta** — Feature-complete, fase de refinamento
+- **Production-Ready** — Polido, testado, estável
 
 ---
 
 ## By Domain
 
-### Gameplay (60% — Beta)
-✅ **Implemented:**
-- Turn-based system (2 AP per turn)
-- Grid movement (4-directional)
-- Overwatch/reactive stances
-- AP economy and pathfinding
+### Core Navigation & Movement (90% — Beta)
+✅ **Funcional:**
+- Movimento em grid 4 direções com tweening suave
+- Sistema de AP (2 por turno)
+- Pathfinding Dijkstra para overlay de movimento
+- Pathfinding A* para guards (excelente qualidade)
+- Bloqueio por paredes via WallEdgeData
 
-🟡 **In Progress:**
-- Gadget integration (smoke bomb, EMP)
-- Interaction system (doors, terminals)
-- Skill tree framework
+❌ **Não implementado:**
+- Movimento diagonal
+- Terreno rugoso (modificadores de custo)
 
-❌ **Not Started:**
-- Combat system
-- Campaign progression
+---
 
-### AI & Behavior (70% — Beta)
-✅ **Implemented:**
-- Guard FSM (5 states)
-- Perception system (visual + audio)
-- Attention modes
-- Communication (whistle + radio)
+### Turn System (85% — Beta)
+✅ **Funcional:**
+- Sequência player → enemy por turno
+- AP economy
+- EnemyPhaseController (estrutura existe)
 
-🟡 **In Progress:**
-- Multi-guard coordination refinement
-- Personality variance system
-- Learning guards (future)
+⚠️ **Problema:**
+- EnemyPhaseController chama métodos inexistentes nos guards — a fase inimiga falha silenciosamente
 
-❌ **Not Started:**
-- Faction-specific AI
-- Campaign-unique behaviors
+---
 
-### Lighting & Shadows (85% — Alpha)
-✅ **Implemented:**
-- Baked shadow system
-- Cone projection geometry
-- 8-direction quantization
-- TileMapLayer population
+### Enemy AI / Guard FSM (65% — Alpha, funcional)
 
-🟡 **In Progress:**
-- Dynamic lighting (future)
-- Light source customization per-room
+✅ **Funcional:**
+- `choose_next_cell()` state-aware (PATROL → waypoint, SUSPICIOUS/ALERT/CHASE → agente, SEARCH → fila de busca)
+- `tick_state()` de-escalação por timer (ALERT→CHASE→SEARCH→SUSPICIOUS→PATROL)
+- `observe_player()` escalona estado quando detecção ocorre
+- `hear_noise()` com thresholds auditivos (intensidade ≥ 0.6 → SUSPICIOUS com last_known)
+- Comunicação (whistle alcança 3 tiles, radio é global) — sinais conectados em `_spawn_guards`
+- Pathfinding A* excelente
+- `receive_alert()` com hierarquia de estados (nunca rebaixa estado)
 
-❌ **Not Started:**
-- Real-time shadows
-- Procedural lighting
+⚠️ **Simplificado vs. design intent:**
+- Detecção visual binária: qualquer tic bem-sucedido → `STATE_ALERT` imediato
+- Detection meter acumula visualmente, mas não conduz transições (só feedback de debug)
+- Sem SUSPICIOUS intermediário para detecção visual (somente via audio/comunicação)
+- `move_to_cell_animated` é fire-and-forget: animações de múltiplos guards podem sobrepor
 
-### Audio & Sound (40% — Prototype)
-✅ **Implemented:**
-- Noise grid system
-- Noise propagation
-- Audio thresholds
-- Decay mechanics
+---
 
-🟡 **In Progress:**
-- Footstep audio (position-based)
-- Alert sounds
-- Ambient background
+### Detection / Stealth (55% — Alpha, funcional com limitações)
 
-❌ **Not Started:**
-- Music system
-- Radio chatter
-- Adaptive audio
-- Environmental sounds
+✅ **Funcional:**
+- Detecção visual probabilística (cone + distância + LOS + sombras + postura + cover)
+- `_apply_tic_result` acumula `guard.detection` E escalona estado via `observe_player()`
+- Detecção auditiva com atenuação por paredes e distância
+- Guards reagem ao agente (fugir para sombras, agachar tem efeito real)
+- FOW oculta guards não revelados
 
-### Animation (30% — Prototype)
-✅ **Implemented:**
-- Guard movement tweening
-- Agent movement animation
-- Pause/scanning states
+⚠️ **Incompleto:**
+- Escalação visual é binária (detecção → ALERT diretamente, sem gradação)
+- `guard.detection` meter não conduz transições (apenas visual debug)
+- Curva de distância não validada com playtesters
 
-🟡 **In Progress:**
-- Guard state-based animations
-- Attention focus animations
+---
 
-❌ **Not Started:**
-- Combat animations
-- Interaction animations
-- Death/injury animations
-- Gadget usage animations
+### Noise System — Matemático (80% — Beta)
+✅ **Funcional:**
+- Noise grid persistente com decay por turno
+- Emissão ~20% por passo
+- Atenuação por paredes (0.6× por parede)
+- Visualização (círculos cyan)
+- Indicadores de direção em guards
 
-### UI & Presentation (35% — Prototype)
-✅ **Implemented:**
-- Overlay visualization (FOW, perception)
-- Turn indicator
-- AP display
-- Movement overlay (Dijkstra)
+⚠️ **Não conectado:**
+- Noise calculado corretamente, mas guards não reagem (bloqueio)
 
-🟡 **In Progress:**
-- Gadget UI
-- Inventory system
-- HUD refinement
+---
 
-❌ **Not Started:**
-- Menu system
-- Settings UI
-- Tutorial UI
-- Campaign UI
+### Lighting & Shadows (80% — Alpha)
+✅ **Funcional:**
+- Projeção de cone de sombra com geometria correta
+- 8 direções quantizadas
+- Camadas baked (ShadowFullLayer, ShadowPartialLayer)
+- Multipliers aplicados na detecção (DIRECT 0.30×, PENUMBRA 0.55×)
+- Sombras visíveis mesmo sob FOW
 
-### Narrative (0% — Not Started)
-❌ **All Narrative Systems:**
-- World lore undefined
-- Mission structure empty
-- Faction design empty
-- Player role vague
-- No dialogue system
-- No intel fragment system
+⚠️ **Limitações:**
+- Light sources hardcoded (3 por sala, configuração fixa)
+- Não customizável por sala sem editar código
 
-**Note:** Narrative is intentionally deprioritized until gameplay core stabilizes.
+---
+
+### Fog of War (80% — Beta)
+✅ **Funcional:**
+- 3 camadas (unseen/peek/revealed)
+- Revelação com movimento do agente
+- Guards ocultados atrás do FOW
+
+⚠️ **Dívida técnica:**
+- Algoritmo O(n²) — pode ser lento em mapas grandes
+
+---
+
+### Perception — Cálculo (60% — Alpha)
+✅ **O cálculo está correto:**
+- Cone visual com ângulo, distância, e falloff lateral
+- LOS verificado via WallEdgeData
+- Multiplicadores: postura, sombra, cobertura, flanco
+
+🚨 **Não conectado:**
+- Resultado do cálculo não é usado para mudar estado dos guards
+
+---
+
+### Audio SFX (0% — Não Iniciado)
+Deliberadamente deprioritizado. Noise grid matemático funciona; SFX real aguarda pós-demo.
+
+---
+
+### Animation / Sprites (0% — Não Iniciado)
+Tweening de movimento funciona adequadamente para demo. Sprites com animações aguardam pós-demo.
+
+---
+
+### UI & Presentation (30% — Prototype)
+✅ **Implementado:**
+- Overlay de movimento (Dijkstra)
+- FOW overlay
+- Indicador de turno
+- Display de AP
+- Indicadores de noise
+
+❌ **Não implementado:**
+- Menu principal
+- Settings
+- Tutorial
+- Tela de pausa
+
+---
+
+### Narrative (0% — Não Iniciado)
+Intencionalmente deprioritizado. Aguarda pós-investimento.
+
+---
 
 ### Content (15% — Prototype)
-✅ **Implemented:**
-- Guard archetypes (basic)
-- Single mission template
-- Basic tileset (test room)
+✅ **Implementado:**
+- 1 sala de teste
+- 1 arquétipo de guard
+- 1 tileset básico
 
-🟡 **In Progress:**
-- Additional tilesets
-- Guard variety
-- Objective types
-
-❌ **Not Started:**
-- Mission generation
-- Campaign content
-- Narrative content
-- Audio content (SFX library)
-- Environmental hazards
-- Interactive props
+❌ **Não implementado:**
+- Múltiplas salas
+- Variedade de guards
+- Objetivos
+- Conteúdo de campanha
 
 ---
 
 ## Infrastructure & Tooling (50% — Alpha)
-✅ **Implemented:**
-- Godot 4.6 project structure
-- Build pipeline
-- Source control (git)
-- Documentation system (DOC-01)
-
-🟡 **In Progress:**
-- Testing framework
-- Profiling tools
-- Build automation
-
-❌ **Not Started:**
-- CI/CD pipeline
-- Analytics system
-- Crash reporting
-- Crash analytics
+✅ Godot 4.6, git, documentação estruturada  
+⚠️ Sem CI/CD, sem testes automatizados, sem analytics
 
 ---
 
-## Known Limitations
+## Path to Investor Demo
 
-### Technical Debt
-- Hardcoded patrol timings (should be data-driven)
-- Guard FSM lacks personality variance framework
-- Overlay performance on large maps (TBD)
-- No save system yet
+O jogo já é funcional. Os guards detectam e reagem. Para uma demo convincente:
 
-### Design Constraints
-- Mobile readability (still unvalidated with real players)
-- Search AI complexity may spike unexpectedly
-- Audio propagation rules need playtesting
+| Item | Esforço | Impacto |
+|------|---------|---------|
+| Conectar detection meter às thresholds de estado | 1–2 semanas | Alto (game feel) |
+| Tuning de curva de detecção (distância, sombra, postura) | 3–5 dias | Alto (fairness) |
+| Polir sala demo (layout, patrulhas interessantes) | 3–5 dias | Alto (primeira impressão) |
+| Feedback visual de estado do guard (cores do cone já mudam) | 1–2 dias | Médio |
+| Testes e ajustes de dificuldade | 3–5 dias | Médio |
 
-### Production Constraints
-- Small team (solo/duo engineering)
-- Audio and animation outsourced (TBD contractor availability)
-- Narrative scope undefined
+**Estimativa total para demo convincente: 2–4 semanas de desenvolvimento focado.**
 
 ---
 
-## Next Immediate Steps
-
-1. **Audio Pass** — Integrate footstep/alert sounds (In Progress)
-2. **Animation Expansion** — State-based guard animations (Queued)
-3. **UI Polish** — Menu and settings UI (Queued)
-4. **Content Expansion** — Additional guards, gadgets, objectives (Queued)
-5. **Gameplay Balancing** — Playtest feedback integration (Queued)
-
----
-
-## Project Velocity
-
-| Phase | Duration | Status |
-|-------|----------|--------|
-| Prototype | 8 weeks | ✅ Complete |
-| Core Systems | 12 weeks | 🟡 In Progress (M2-08 to M2-13) |
-| Gameplay Polish | TBD | ⏳ Queued |
-| Content Creation | TBD | ⏳ Queued |
-| Release Prep | TBD | ⏳ Queued |
-
----
-
-**Last Updated:** 2026-06-11  
+**Last Updated:** 2026-06-12  
 **Maintained By:** Project Management  
-**Status:** Active 🟢
+**Status:** BLOQUEADO — guards não reagem ao jogador

@@ -16,363 +16,225 @@ Technical debt is code/architecture that:
 
 ---
 
-## Critical Debt 🔴
+## Critical Debt 🔴 (Bloqueia escalabilidade futura)
 
-### 1. FSM Scaling Risk
+### 1. Detection Escalation é Binária (sem gradação SUSPICIOUS)
+
+**Severity:** HIGH  
+**Impact:** HIGH — design intent não refletido em código  
+**Estimated Fix:** 1–2 semanas
+
+**Problem:**  
+O `guard.detection` meter acumula corretamente, mas nunca é usado para transições de estado. Quando `TicSystem` retorna `detected=true`, `_apply_tic_result` chama:
+
+```gdscript
+guard.observe_player(true, 2, agent.cell)   ## severity sempre 2
+```
+
+O que resulta em `_enter_state(STATE_ALERT)` imediato — sem passar por `STATE_SUSPICIOUS`.  
+
+Consequência: qualquer frame de detecção bem-sucedida lança o guard direto para ALERT. O detection meter existe no guard e acumula visualmente, mas não conduz transições.
+
+**Design Intent:**  
+PATROL → SUSPICIOUS (baixa detecção) → ALERT (alta detecção) → CHASE
+
+**Current Behavior:**  
+PATROL → ALERT (qualquer detecção bem-sucedida, independente de probabilidade)
+
+**Solution (ID-01 — Investor Demo):**  
+- Conectar detection meter às thresholds de estado: 0.30 = SUSPICIOUS, 0.60 = ALERT, 1.00 = CHASE
+- Substituir `observe_player(severity=2)` hardcoded por `accumulate_detection(gain)` com transições baseadas em threshold
+- Audio detection (via `hear_noise`) já tem thresholds — unificar o modelo
+
+**Timeline:** Antes de playtesting externo
+
+---
+
+### 2. FSM Scaling Risk
 **Severity:** HIGH  
 **Impact:** HIGH  
 **Estimated Fix:** 1–2 weeks
 
 **Problem:**  
-Guard FSM (5 states + transitions) is manageable now, but will explode with:
+Guard FSM (5 estados + transitions) é gerenciável agora, mas vai escalar mal com:
 - Personality variance
 - Faction-specific states
 - Learning behaviors
-- Cooperative tactics
 
 **Current Code:**
 ```gdscript
 match guard.state:
     STATE_PATROL: patrol_decision()
     STATE_SUSPICIOUS: suspicious_decision()
-    STATE_ALERT: alert_decision()
-    STATE_CHASE: chase_decision()
-    STATE_SEARCH: search_decision()
+    ...
 ```
 
-**Problem:** Adding 10+ more states will make this unmaintainable.
+**Solution (Queued):**  
+Refatorar para Strategy pattern ou behavior tree antes de adicionar combate (M3.0).
 
-**Solution (Queued):**
-- Refactor to Strategy pattern or behavior tree
-- Decouple state logic into individual classes
-- Enable composition of behaviors
-
-**Timeline:** Post-M2-15, pre-M3.00
+**Timeline:** Pré-M3.0
 
 ---
 
-### 2. Hardcoded Patrol Timings
+### 3. Hardcoded Patrol Timings
 **Severity:** HIGH  
 **Impact:** MEDIUM  
 **Estimated Fix:** 3–5 days
 
-**Problem:**  
-Guard patrol patterns are hardcoded in room layout:
-```gdscript
-const PATROL_POINTS = [
-    Vector2i(5, 5), Vector2i(15, 5), 
-    Vector2i(15, 15), Vector2i(5, 15)
-]
-const PATROL_SPEED_MODIFIER = 0.60
-```
+Padrões de patrulha hardcoded em room layout. Necessário mover para configuração data-driven antes de suportar múltiplas salas.
 
-**Issues:**
-- Cannot change patrols without code recompile
-- No procedural patrol generation
-- Mission designers blocked
-
-**Solution (Queued):**
-- Move patrols to layout configuration
-- Add data-driven patrol system
-- Enable per-room customization
-
-**Timeline:** M3-00 (Objectives & Missions)
+**Timeline:** Pré-campanha
 
 ---
 
-### 3. Overlay Performance on Large Maps
+### 4. Overlay Performance on Large Maps
 **Severity:** HIGH  
 **Impact:** MEDIUM  
 **Estimated Fix:** 1–2 weeks
 
-**Problem:**  
-Movement overlay (Dijkstra visualization) and FOW overlay use full map iteration:
-```gdscript
-func _draw():
-    for x in range(map_size.x):
-        for y in range(map_size.y):
-            # Draw every tile
-            draw_rect(...)
-```
+Movement overlay (Dijkstra) e FOW overlay usam O(n²) iteration por frame. 36×36 = 1296 tiles por frame. Risco de FPS drop em mobile.
 
-**Issues:**
-- O(n²) complexity per frame
-- 36×36 room = 1296 tiles per frame
-- May drop FPS on 5-year-old devices
-
-**Solution (Queued):**
-- Implement tile culling (only visible tiles)
-- Use precomputed LayerMasks
-- Batch rendering
-
-**Timeline:** M2-16 (Optimization pass)
+**Timeline:** Antes de playtesting em dispositivos mobile reais
 
 ---
 
 ## High Priority Debt 🟠
 
-### 4. Audio System Not Integrated
+### 5. `await guard.move_to_cell_animated()` não é coroutine
 **Severity:** MEDIUM  
-**Impact:** HIGH  
-**Estimated Fix:** 2–3 weeks
+**Impact:** MEDIUM  
+**Estimated Fix:** 1–2 days
 
-**Problem:**  
-- Noise grid exists mathematically
-- No actual audio playback
-- No SFX library
-- No adaptive music
+`move_to_cell_animated()` é void function — `await` em `EnemyPhaseController` retorna imediatamente. Movimento de todos os guards dispara em background (fire-and-forget). Logicamente correto (cell atualiza antes da animação), mas pode causar animações sobrepostas em turnos futuros com múltiplos guards.
 
-**Issues:**
-- Gameplay feels silent and unresponsive
-- Detection meter ticks silently
-- Alerts have no audio feedback
+**Fix:** Declarar `move_to_cell_animated` como coroutine que aguarda `move_finished` signal, ou conectar o controller ao signal diretamente.
 
-**Solution (In Progress):**
-- Integrate AudioStreamPlayer nodes
-- Create SFX library
-- Add footstep triggers
-- Add alert sounds
-
-**Timeline:** This sprint (M2-14 second pass)
+**Timeline:** Antes de testar com 3+ guards simultâneos
 
 ---
 
-### 5. No Save System
+### 6. Audio System Not Integrated (SFX)
+**Severity:** MEDIUM  
+**Impact:** HIGH (produto final) / Baixo (Investor Demo)  
+**Estimated Fix:** 2–3 weeks
+
+Noise grid matemático funcional. SFX real deliberadamente deprioritizado para demo.
+
+**Timeline:** Pós-Investor Demo (Fase 4)
+
+---
+
+### 7. No Save System
 **Severity:** MEDIUM  
 **Impact:** MEDIUM  
 **Estimated Fix:** 1–2 weeks
 
-**Problem:**  
-- No save/load functionality
-- No mission progress tracking
-- No permanent state
+Não necessário para demo single-room. Necessário antes de campanha.
 
-**Issues:**
-- Players can't resume mid-mission
-- No campaign progression
-- Testing requires replaying missions
-
-**Solution (Queued):**
-- Implement mission save files
-- Add checkpoint system
-- Serialize agent/guard state
-
-**Timeline:** M3-00 (Objectives & Missions)
+**Timeline:** Fase 4
 
 ---
 
-### 6. Animation System Underdeveloped
+### 8. Animation System Underdeveloped
 **Severity:** MEDIUM  
-**Impact:** MEDIUM  
-**Estimated Fix:** 2–3 weeks
+**Impact:** MEDIUM (produto final) / Baixo (Investor Demo)
 
-**Problem:**  
-- Only basic tweening
-- No sprite-based animations
-- No state-based animation switching
-
-**Issues:**
-- Guards look stiff
-- No feedback on state changes
-- Combat/interaction animations missing
-
-**Solution (In Progress):**
-- Build sprite animation system
-- Create guard sprite sets
-- Link animations to FSM states
-
-**Timeline:** This sprint (M2-14)
-
----
-
-### 7. UI System Incomplete
-**Severity:** MEDIUM  
-**Impact:** MEDIUM  
-**Estimated Fix:** 1–2 weeks
-
-**Problem:**  
-- No main menu
-- No settings UI
-- Minimal HUD
-
-**Issues:**
-- Game feels unpolished
-- Players can't adjust settings
-- No input customization
-
-**Solution (Queued):**
-- Create menu framework
-- Add settings panel
-- Build pause screen
-
-**Timeline:** M2-16 (Polish)
+Tweening funcional para demo. Sprites reais aguardam pós-demo.
 
 ---
 
 ## Medium Priority Debt 🟡
 
-### 8. Perception Distance Curve Not Validated
+### 9. Perception Distance Curve Not Validated
 **Severity:** MEDIUM  
-**Impact:** MEDIUM  
 **Estimated Fix:** 1 week (playtesting)
 
-**Problem:**  
 ```gdscript
 DISTANCE_CURVE = [1.0, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01]
 ```
 
-**Issues:**
-- Curve designed theoretically, not tested
-- May be too forgiving or too punishing
-- Shadow multipliers may need adjustment
+Curva projetada teoricamente, não testada com jogadores.
 
-**Solution (Queued):**
-- Playtest with real players
-- Collect detection data
-- Adjust curve based on feedback
-
-**Timeline:** M2-16 (Playtesting)
+**Timeline:** Primeiro playtest
 
 ---
 
-### 9. No Personality Variance Framework
-**Severity:** MEDIUM  
-**Impact:** LOW  
-**Estimated Fix:** 1–2 weeks
+### 10. STATE_SEARCH sem visual params próprios
+**Severity:** LOW  
+**Estimated Fix:** 30 min
 
-**Problem:**  
-All guards are identical:
-```gdscript
-# All guards use same decision logic
-class GuardPersonality:  # Planned but not implemented
-    var aggression: float
-    var intelligence: float
-    var patience: float
-```
+`_get_cone_visual_params()` não tem case para `STATE_SEARCH`, cai no default (patrol params). Guard em busca parece visualmente em patrulha.
 
-**Issues:**
-- Guards feel repetitive
-- No faction differentiation
-- Combat becomes predictable
-
-**Solution (Queued):**
-- Implement personality traits
-- Modulate thresholds per guard
-- Add faction-specific behaviors
-
-**Timeline:** M3-01 (Campaign Content)
-
----
-
-### 10. Hardcoded Light Sources
-**Severity:** MEDIUM  
-**Impact:** LOW  
-**Estimated Fix:** 3–5 days
-
-**Problem:**  
-Light positions hardcoded:
-```gdscript
-_light_sources = [
-    LightSource.new(Vector2i(9, 4), 5.0, 8, 0.90),
-    LightSource.new(Vector2i(9, 18), 5.0, 7, 0.85),
-    # ...
-]
-```
-
-**Issues:**
-- Different rooms need custom lighting
-- No designer control
-
-**Solution (Planned):**
-- Move to layout configuration
-- Add per-room light definitions
-
-**Timeline:** M3-00 (Content expansion)
+**Timeline:** Quick fix (esta sessão)
 
 ---
 
 ## Low Priority Debt 🟢
 
 ### 11. Documentation Maintenance
-**Severity:** LOW  
-**Impact:** MEDIUM  
-**Estimated Fix:** Ongoing
+**Severity:** LOW — Ongoing
 
-**Problem:**  
-- Docs get out of sync with code
-- Legacy DEVELOPMENT docs still exist
-- No doc review process
-
-**Solution (Ongoing):**
-- DOC-01 establishes patterns
-- Plan quarterly reviews
-- Archive old docs
-
-**Timeline:** Ongoing (post-DOC-02)
+Docs devem refletir estado real do código. Atualização em andamento (2026-06-12).
 
 ---
 
 ### 12. Debug Code Mixed With Production
 **Severity:** LOW  
-**Impact:** LOW  
 **Estimated Fix:** 3–5 days
 
-**Problem:**  
-```gdscript
-if DEV_VISION:
-    draw_detection_overlay()
-    draw_noise_visualization()
-    # ... 20+ debug draws
-```
+`DEV_VISION` flag e código de debug misturado com lógica. Funcional para dev, problemático para release.
 
-**Issues:**
-- Debug code clutters logic
-- May affect release build size
-- Performance implications
+---
 
-**Solution (Queued):**
-- Extract to separate DebugDraw module
-- Improve conditional compilation
-- Add cleaner toggle system
+### 13. Dead code `_compute_shadow_tiles_old()` em room.gd
+**Severity:** LOW  
+**Estimated Fix:** Remover imediatamente
 
-**Timeline:** M2-16 (Pre-release polish)
+Função antiga de shadow substituída por `_compute_shadow_tiles()` + `_cast_shadows_from_light()`. Linhas ~1340–1373 de room.gd.
+
+---
+
+### 14. Hardcoded noise values em room.gd
+**Severity:** LOW  
+**Estimated Fix:** Quick fix
+
+`room.gd` usa `0.20` e `0.5` hardcoded em vez de `NoiseSystem.NOISE_CHANCE_WALK` / `NoiseSystem.NOISE_INTENSITY_WALK`.
 
 ---
 
 ## Planned Refactors
 
-| Refactor | Current Scope | Target | ETA |
-|----------|---------------|--------|-----|
-| **FSM Architecture** | 5 states → behavior tree | Post-M2-15 | 1–2 weeks |
-| **Patrol System** | Hardcoded → data-driven | M3-00 | 3–5 days |
-| **Overlay Performance** | O(n²) → culled | M2-16 | 1–2 weeks |
-| **Audio Integration** | Math-only → live SFX | This sprint | 2–3 weeks |
-| **Animation System** | Tween-based → sprite anim | This sprint | 2–3 weeks |
+| Refactor | Prioridade | Target | ETA |
+|----------|-----------|--------|-----|
+| **Detection escalation gradual** | 🔴 Pré-playtest | guard_enemy.gd + room.gd | 1–2 semanas |
+| **FSM → Strategy/BTree** | Pré-M3.0 | guard_enemy.gd | 1–2 semanas |
+| **Patrol data-driven** | Pré-campanha | room_layout_builder.gd | 3–5 dias |
+| **Overlay O(n²) → culled** | Pré-mobile test | fog_of_war_overlay.gd | 1–2 semanas |
+| **move_to_cell_animated coroutine** | Pré-3+ guards | guard_enemy.gd | 1–2 dias |
 
 ---
 
-## Debt Metrics
+## Debt Metrics (atualizado 2026-06-12)
 
 | Metric | Value |
 |--------|-------|
-| **Critical Issues** | 3 |
-| **High Priority Issues** | 5 |
-| **Medium Priority Issues** | 5 |
-| **Low Priority Issues** | 2 |
-| **Total Estimated Effort** | 8–12 weeks |
-| **Current Debt Level** | Medium (sustainable) |
+| **Critical Issues** | 4 |
+| **High Priority Issues** | 4 |
+| **Medium Priority Issues** | 2 |
+| **Low Priority Issues** | 4 |
+| **Esforço Total Estimado** | 8–12 semanas |
+| **Current Debt Level** | Médio — jogo funcional, design intent parcialmente realizado |
 
 ---
 
 ## Debt Management Policy
 
-1. **Critical debt** must be addressed before next major release
-2. **High-priority debt** should be addressed in current phase
-3. **Medium-priority debt** queued for next sprint
-4. **Low-priority debt** addressed during polish phase
+1. **Critical debt** endereçado antes de playtesting externo
+2. **High-priority debt** queued para pós-Investor Demo
+3. **Medium/Low-priority debt** durante polish phase
 
 ---
 
-**Last Updated:** 2026-06-11  
+**Last Updated:** 2026-06-12  
 **Maintained By:** Technical Lead  
-**Status:** Active 🟢
+**Status:** Funcional com limitações conhecidas

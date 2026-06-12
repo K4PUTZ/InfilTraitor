@@ -13,3 +13,16 @@ build/
 # Logs/temp files from tooling
 *.log
 *.tmp
+
+# Backup artifacts (regenerable via tools/persistent/BACKUP.py)
+BACKUP_*.ZIP
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor temp files
+.vscode/
+*.swp
+*.swo

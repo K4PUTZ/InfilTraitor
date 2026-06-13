@@ -1,111 +1,93 @@
 extends RefCounted
-## Builds segment and room layouts for the InfilTraitor level system.
-## Segment: W=18, H=36 tiles (6912x3456 px screen space).
-## Interior: 16x34 tiles. Border: 1 tile wide on all sides.
-## Access points are placed as doorOpen_XX tiles and remain passable.
+## MAP SIGMA-01 — Mapa de testes sistemático para INFILTRAITOR.
+## Grade 18×36. Interior: 16×34 tiles (x=1–16, y=1–34).
+## 4 zonas, 3 paredes-divisórias, fontes de luz posicionadas.
+## Prompt A: geometria e iluminação (sem guardas).
+## Prompt B: adiciona DEFAULT_GUARD_PATROLS com 4 guardas.
 
 const MAP_SIZE         := Vector2i(18, 36)
-const AGENT_START_CELL := Vector2i(9, 34)   ## South interior centre
+const AGENT_START_CELL := Vector2i(9, 34)   ## Sul interior central
 const FLOOR_TILE       := "floor_SE"
 
 const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_SW", "crate_NW", "crate_NE"]
+
 const CRATE_CELLS: Array[Vector2i] = [
-	## Corredor de cover oeste (x=3) — sombra e abrigo ao longo do flanco
-	Vector2i(3,  8),
-	Vector2i(3, 12),
-	Vector2i(3, 17),
-	Vector2i(3, 22),
-	Vector2i(3, 27),
-	## Corredor de cover leste (x=14) — rota rápida, mais exposta
-	Vector2i(14,  6),
-	Vector2i(14, 10),
-	Vector2i(14, 15),
-	Vector2i(14, 20),
-	Vector2i(14, 25),
-	## Staging central perto do spawn — repositionamento inicial
-	Vector2i( 7, 27),
-	Vector2i( 9, 27),
-	Vector2i(11, 27),
-	Vector2i( 8, 30),
-	Vector2i(10, 30),
-	## Aproximação ao quarto objetivo
-	Vector2i( 6,  8),
-	Vector2i(11,  8),
-	Vector2i( 6,  5),
-	Vector2i(11,  5),
+	## Zona 0 — cover inicial (entrada)
+	Vector2i(3,  32), Vector2i(14, 32),
+	## Zona B — caixas centrais (cover atrás de caixa)
+	Vector2i(7,  21), Vector2i(10, 21),
+	## Zona B — armazém (shadow zone direita)
+	Vector2i(15, 13), Vector2i(16, 13), Vector2i(15, 14),
+	## Zona B — pilares (bloqueiam LOS, criam penumbra)
+	Vector2i(5,  17), Vector2i(13, 17),
 ]
 
-## Default segment exits. Override via build_layout(access_points) for dynamic level graphs.
-## Each entry: { "cell": Vector2i } — door direction is inferred from border position.
-const DEFAULT_ACCESS_POINTS: Array[Dictionary] = [
+## Pontos de acesso fixos do SIGMA-01 — ignora LevelGraph para mapa de testes
+const SIGMA_ACCESS_POINTS: Array[Dictionary] = [
 	{"cell": Vector2i(9, 35)},   ## entrada sul — spawn do agente
-	{"cell": Vector2i(7,  0)},   ## saída norte — assimétrica, força abordagem oeste
+	{"cell": Vector2i(9,  0)},   ## saída norte — extração
 ]
 
-const DEFAULT_GUARD_PATROLS: Array[Array] = [
-	## Guarda 1 — patrulha a zona norte aberta, cruza o eixo central
-	## Inclui waypoints na mesma linha para forçar rotações em Y
-	[
-		Vector2i(4,  9), Vector2i(8,  9), Vector2i(12,  9),
-		Vector2i(12, 12), Vector2i(8, 12), Vector2i(4, 12),
-	],
-	## Guarda 2 — patrulha corredor leste (x=13..16, y=16..28)
-	## Rota rectangular que cobre toda a faixa leste
-	[
-		Vector2i(13, 16), Vector2i(16, 16),
-		Vector2i(16, 22), Vector2i(16, 28),
-		Vector2i(13, 28), Vector2i(13, 22),
-	],
-	## Guarda 3 — patrulha o perímetro externo do quarto objetivo
-	## Rota curta e apertada — força timing preciso para entrar
-	[
-		Vector2i(3, 3), Vector2i(7, 3),
-		Vector2i(7, 7), Vector2i(3, 7),
-	],
+## Guardas — vazio no Prompt A; preenchido no Prompt B
+const DEFAULT_GUARD_PATROLS: Array[Array] = []
+
+## Parede-divisória entre ZONA C e ZONA B (y=9)
+## Portão esquerdo: x=4–5  |  Portão direito: x=12–13
+const SIGMA_DIVIDER_A: Array[Vector2i] = [
+	Vector2i(1, 9), Vector2i(2, 9), Vector2i(3, 9),
+	Vector2i(6, 9), Vector2i(7, 9), Vector2i(8, 9), Vector2i(9, 9),
+	Vector2i(10, 9), Vector2i(11, 9),
+	Vector2i(14, 9), Vector2i(15, 9), Vector2i(16, 9),
 ]
 
+## Parede-divisória entre ZONA B e ZONA A (y=25)
+## Portão esquerdo: x=2–3  |  Portão direito: x=14–15  |  SEM passagem central
+const SIGMA_DIVIDER_B: Array[Vector2i] = [
+	Vector2i(1, 25),
+	Vector2i(4, 25), Vector2i(5, 25), Vector2i(6, 25), Vector2i(7, 25),
+	Vector2i(8, 25), Vector2i(9, 25), Vector2i(10, 25), Vector2i(11, 25),
+	Vector2i(12, 25), Vector2i(13, 25),
+	Vector2i(16, 25),
+]
 
-## Builds the full segment layout.
-## access_points: pass the output of LevelGraph.access_points_for() to override defaults.
-func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> Dictionary:
-	var room      := build_room(Rect2i(Vector2i.ZERO, MAP_SIZE), access_points)
-	var blocked_map: Dictionary = room["_blocked_map"]
-	var blocked_edges: Array = room.get("blocked_edges", [])
+## Parede-divisória entre ZONA A e ZONA 0 (y=30)
+## Portão único central: x=8–9
+const SIGMA_DIVIDER_C: Array[Vector2i] = [
+	Vector2i(1, 30), Vector2i(2, 30), Vector2i(3, 30), Vector2i(4, 30),
+	Vector2i(5, 30), Vector2i(6, 30), Vector2i(7, 30),
+	Vector2i(10, 30), Vector2i(11, 30), Vector2i(12, 30), Vector2i(13, 30),
+	Vector2i(14, 30), Vector2i(15, 30), Vector2i(16, 30),
+]
+
+## Fontes de luz SIGMA-01 — passadas ao room.gd via chave "light_sources" no layout dict
+## room.gd lê em _setup_light_sources() e usa em _compute_shadow_tiles()
+const SIGMA_LIGHT_SOURCES: Array[Dictionary] = [
+	{"x": 9, "y":  5, "height": 5.0, "radius": 8, "intensity": 0.9},    ## Zona C
+	{"x": 9, "y": 17, "height": 5.0, "radius": 7, "intensity": 0.85},   ## Zona B
+	{"x": 9, "y": 28, "height": 5.0, "radius": 6, "intensity": 0.85},   ## Zona A
+]
+
+## Builds the SIGMA-01 test map layout.
+## O parâmetro access_points é ignorado — usa SIGMA_ACCESS_POINTS fixos.
+func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
+	var room          := build_room(Rect2i(Vector2i.ZERO, MAP_SIZE), SIGMA_ACCESS_POINTS)
+	var blocked_map: Dictionary       = room["_blocked_map"]
+	var blocked_edges: Array          = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
-	## Quarto objetivo — noroeste: mais difícil de acessar do leste
-	var inner_room_rect := Rect2i(Vector2i(2, 2), Vector2i(7, 7))
-	var inner_doors: Array[Dictionary] = [
-		{"cell": Vector2i(5, 2)},    ## porta norte (saída para exit)
-		{"cell": Vector2i(2, 5)},    ## porta oeste
-		{"cell": Vector2i(8, 5)},    ## porta leste
-		{"cell": Vector2i(5, 8)},    ## porta sul (entrada principal)
-	]
-	var inner_room := place_inner_room(Rect2i(Vector2i.ZERO, MAP_SIZE), inner_room_rect, inner_doors, blocked_map)
-	if inner_room.size() > 0:
-		wall_tiles += inner_room["wall_tiles"]
-		# Merge inner room's blocked cells into main blocked map
-		var inner_blocked: Dictionary = inner_room.get("_blocked_map", {})
-		for cell: Vector2i in inner_blocked.keys():
+	## Adicionar três paredes-divisórias horizontais com gaps de porta
+	var divider_cells: Array[Vector2i] = []
+	divider_cells.append_array(SIGMA_DIVIDER_C)
+	divider_cells.append_array(SIGMA_DIVIDER_B)
+	divider_cells.append_array(SIGMA_DIVIDER_A)
+	for cell: Vector2i in divider_cells:
+		if not blocked_map.has(cell):
+			wall_tiles.append({"cell": cell, "tile_name": "block_SE"})
 			blocked_map[cell] = true
-		# Merge inner room's blocked edges into main blocked edges
-		for edge in inner_room.get("blocked_edges", []):
-			blocked_edges.append(edge)
+			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
+			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})
 
-	## Parede-stub: fragmento de parede interior em y=13 (chokepoint)
-	## Força o agente a escolher rota antes de avançar para o norte
-	const STUB_WALL_CELLS: Array[Vector2i] = [
-		Vector2i(5, 13), Vector2i(6, 13), Vector2i(7, 13), Vector2i(8, 13),
-	]
-	for stub_cell in STUB_WALL_CELLS:
-		if not blocked_map.has(stub_cell):
-			wall_tiles.append({"cell": stub_cell, "tile_name": "block_SE"})
-			blocked_map[stub_cell] = true
-			## Registrar arestas para LOS
-			blocked_edges.append({"from": stub_cell, "to": stub_cell + Vector2i(0, -1)})
-			blocked_edges.append({"from": stub_cell, "to": stub_cell + Vector2i(0,  1)})
-
-	## Crates
+	## Caixas e pilares como structure_tiles
 	var crate_map: Dictionary = {}
 	_collect_crates(crate_map, blocked_map)
 
@@ -118,6 +100,7 @@ func build_layout(access_points: Array[Dictionary] = DEFAULT_ACCESS_POINTS) -> D
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       _build_enemy_defs(blocked_map),
+		"light_sources":    SIGMA_LIGHT_SOURCES,
 	}
 
 

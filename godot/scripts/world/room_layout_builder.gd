@@ -107,26 +107,18 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 				if not exit_set.has(border_cell) and not blocked_map.has(border_cell):
 					blocked_map[border_cell] = true
 
-	## Registrar arestas bloqueadas para todos os tiles de borda
-	## (saída ou não). Impede sair do mapa.
-	for bx in range(MAP_SIZE.x):
-		for by in range(MAP_SIZE.y):
-			if bx == 0 or bx == MAP_SIZE.x - 1 or by == 0 or by == MAP_SIZE.y - 1:
-				var border_cell := Vector2i(bx, by)
-				if blocked_map.has(border_cell):
-					## Arestas bidirecionais perpendiculares à borda
-					if bx == 0:
-						blocked_edges.append({"from": border_cell, "to": border_cell + Vector2i(-1, 0)})
-						blocked_edges.append({"from": border_cell + Vector2i(-1, 0), "to": border_cell})
-					if bx == MAP_SIZE.x - 1:
-						blocked_edges.append({"from": border_cell, "to": border_cell + Vector2i(1, 0)})
-						blocked_edges.append({"from": border_cell + Vector2i(1, 0), "to": border_cell})
-					if by == 0:
-						blocked_edges.append({"from": border_cell, "to": border_cell + Vector2i(0, -1)})
-						blocked_edges.append({"from": border_cell + Vector2i(0, -1), "to": border_cell})
-					if by == MAP_SIZE.y - 1:
-						blocked_edges.append({"from": border_cell, "to": border_cell + Vector2i(0, 1)})
-						blocked_edges.append({"from": border_cell + Vector2i(0, 1), "to": border_cell})
+	## Parede invisível além de cada saída — bloqueia o tile de extensão de chão
+	## que fica fora do MAP_SIZE mas ainda existe visualmente (piso estendido 1 tile).
+	## Sem tile visual: apenas blocked_map. Mantém a saída passável internamente.
+	for ap: Dictionary in SIGMA_ACCESS_POINTS:
+		var exit_cell: Vector2i = ap["cell"]
+		var outward := Vector2i.ZERO
+		if exit_cell.y == 0:               outward = Vector2i(0, -1)   ## borda norte
+		elif exit_cell.y == MAP_SIZE.y - 1: outward = Vector2i(0,  1)  ## borda sul
+		elif exit_cell.x == 0:             outward = Vector2i(-1, 0)   ## borda oeste
+		elif exit_cell.x == MAP_SIZE.x - 1: outward = Vector2i(1,  0)  ## borda leste
+		if outward != Vector2i.ZERO:
+			blocked_map[exit_cell + outward] = true
 
 	## Adicionar três paredes-divisórias horizontais com gaps de porta
 	var divider_cells: Array[Vector2i] = []

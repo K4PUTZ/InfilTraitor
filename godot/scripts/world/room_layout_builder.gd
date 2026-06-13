@@ -128,13 +128,17 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 	for ap: Dictionary in SIGMA_ACCESS_POINTS:
 		exit_cells.append(ap["cell"])
 
+	var blocked_cells_array = _dict_keys_to_vec2i_array(blocked_map)
+	print("[RoomLayoutBuilder] MAP_SIZE=%s, blocked_cells=%d, exit_cells=%s" % [MAP_SIZE, blocked_cells_array.size(), exit_cells])
+	print("[RoomLayoutBuilder] Border check sample: (0,0) blocked=%s, (9,35) blocked=%s" % [blocked_map.has(Vector2i(0,0)), blocked_map.has(Vector2i(9,35))])
+	
 	return {
 		"size":             MAP_SIZE,
 		"agent_start_cell": AGENT_START_CELL,
 		"floor_tile_name":  FLOOR_TILE,
 		"wall_tiles":       wall_tiles,
 		"structure_tiles":  _crate_map_to_array(crate_map),
-		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
+		"blocked_cells":    blocked_cells_array,
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       _build_enemy_defs(blocked_map),
 		"light_sources":    SIGMA_LIGHT_SOURCES,

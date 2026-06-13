@@ -489,6 +489,8 @@ func _draw_exit_markers() -> void:
 	## Desenhado em _draw() do nó Room — renderiza abaixo do fog_of_war.
 	## Revelado naturalmente quando o FOW descobre a área. Visível em DEV_VISION
 	## porque o fog fica oculto (fog_of_war.visible = false).
+	if _exit_cells.is_empty():
+		return
 	for cell: Vector2i in _exit_cells:
 		var world := _world_center_for_cell(cell)
 		var hw := 90.0
@@ -1273,6 +1275,8 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))
+	print("[Room] Loaded %d exit cells: %s" % [_exit_cells.size(), _exit_cells])
+	print("[Room] Total blocked cells: %d" % _blocked_cells.size())
 	_setup_light_sources(layout)
 	_populate_obstacle_heights()
 	_compute_shadow_tiles()

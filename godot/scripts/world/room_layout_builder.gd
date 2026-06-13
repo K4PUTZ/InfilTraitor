@@ -95,6 +95,18 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 	var blocked_edges: Array          = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
+	## Bloquear toda a borda externa exceto os tiles de saída (doorOpen).
+	## Impede o jogador de contornar as paredes pelos fundos do mapa.
+	var exit_set: Dictionary = {}
+	for ap: Dictionary in SIGMA_ACCESS_POINTS:
+		exit_set[ap["cell"]] = true
+	for bx in range(MAP_SIZE.x):
+		for by in range(MAP_SIZE.y):
+			if bx == 0 or bx == MAP_SIZE.x - 1 or by == 0 or by == MAP_SIZE.y - 1:
+				var border_cell := Vector2i(bx, by)
+				if not exit_set.has(border_cell) and not blocked_map.has(border_cell):
+					blocked_map[border_cell] = true
+
 	## Adicionar três paredes-divisórias horizontais com gaps de porta
 	var divider_cells: Array[Vector2i] = []
 	divider_cells.append_array(SIGMA_DIVIDER_C)
@@ -111,6 +123,11 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 	var crate_map: Dictionary = {}
 	_collect_crates(crate_map, blocked_map)
 
+	## Extrair posições das saídas para o overlay em room.gd
+	var exit_cells: Array[Vector2i] = []
+	for ap: Dictionary in SIGMA_ACCESS_POINTS:
+		exit_cells.append(ap["cell"])
+
 	return {
 		"size":             MAP_SIZE,
 		"agent_start_cell": AGENT_START_CELL,
@@ -121,6 +138,7 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       _build_enemy_defs(blocked_map),
 		"light_sources":    SIGMA_LIGHT_SOURCES,
+		"exit_cells":       exit_cells,
 	}
 
 

@@ -72,6 +72,7 @@ var _current_blocked_edges: Array[Dictionary] = []
 var _guards: Array = []
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
+var _exit_cells: Array[Vector2i] = []  ## Tiles de saída do segmento (doorOpen_*)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
 
@@ -482,6 +483,49 @@ func _update_guard_los_data() -> void:
 		if is_instance_valid(guard):
 			guard.set_los_data(_blocked_cells, blocked_edges, _room_size, _shadow_tiles)
 
+
+func _draw_exit_markers() -> void:
+	## Diamante roxo em cada tile de saída do segmento.
+	## Desenhado em _draw() do nó Room — renderiza abaixo do fog_of_war.
+	## Revelado naturalmente quando o FOW descobre a área. Visível em DEV_VISION
+	## porque o fog fica oculto (fog_of_war.visible = false).
+	for cell: Vector2i in _exit_cells:
+		var world := _world_center_for_cell(cell)
+		var hw := 90.0
+		var hh := 45.0
+		var pts := PackedVector2Array([
+			world + Vector2(0.0, -hh),
+			world + Vector2(hw,  0.0),
+			world + Vector2(0.0,  hh),
+			world + Vector2(-hw, 0.0),
+		])
+		draw_colored_polygon(pts, Color(0.55, 0.10, 0.90, 0.28))
+		draw_polyline(
+			PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
+			Color(0.72, 0.25, 1.00, 0.82), 3.0
+		)
+
+func _draw_spawn_marker() -> void:
+	## Diamante escuro no ponto de spawn — DEV_VISION apenas.
+	## Permite identificar rapidamente o AGENT_START_CELL ao testar mapas.
+	if not dev_vision:
+		return
+	if _agent_start_cell == INVALID_CELL:
+		return
+	var world := _world_center_for_cell(_agent_start_cell)
+	var hw := 55.0
+	var hh := 28.0
+	var pts := PackedVector2Array([
+		world + Vector2(0.0, -hh),
+		world + Vector2(hw,  0.0),
+		world + Vector2(0.0,  hh),
+		world + Vector2(-hw, 0.0),
+	])
+	draw_colored_polygon(pts, Color(0.05, 0.05, 0.05, 0.45))
+	draw_polyline(
+		PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
+		Color(0.22, 0.22, 0.22, 0.80), 2.0
+	)
 
 func _draw_shadow_debug() -> void:
 	## M2-13: ShadowOverlay agora lida com a visualização permanente.
@@ -1060,6 +1104,8 @@ func _update_enemy_visibility() -> void:
 
 
 func _draw() -> void:
+	_draw_exit_markers()
+	_draw_spawn_marker()
 	_draw_shadow_debug()
 
 	## Draw enemy last_known markers
@@ -1223,6 +1269,10 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
+	## Saídas do segmento — usadas pelo overlay roxo em _draw()
+	_exit_cells.clear()
+	for raw in layout.get("exit_cells", []):
+		_exit_cells.append(Vector2i(raw))
 	_setup_light_sources(layout)
 	_populate_obstacle_heights()
 	_compute_shadow_tiles()

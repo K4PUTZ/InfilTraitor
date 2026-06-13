@@ -109,6 +109,7 @@ const ZOOM_STEP := 0.06
 const VISION_TILE_RADIUS := 5      ## shader gradient radius (tiles)
 const FOW_REVEAL_RADIUS  := 9      ## FOW reveal radius + camera leash hard limit (tiles)
 const CAMERA_SOFT_ZONE_TILES := 2  ## tiles of ease-out damping before leash hard stop
+const CAMERA_MAX_BORDER_TILES := 4  ## max tiles camera can see outside scenario boundary
 const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
 
 ## Pinch-zoom state (mobile two-finger)
@@ -124,6 +125,11 @@ var _alert_meter: int = 0
 
 var _alert_max: int = 100
 var _alert_gain_full: int = 45
+
+## ID-01: Thresholds do detection meter para transições de estado
+const DETECTION_THRESHOLD_SUSPICIOUS := 0.30
+const DETECTION_THRESHOLD_ALERT      := 0.60
+const DETECTION_THRESHOLD_CHASE      := 1.00
 
 const ENEMY_INTER_TURN_DELAY := 1.0
 const ENEMY_CAMERA_TWEEN_DURATION := 0.45
@@ -583,23 +589,31 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 		var decay := _get_detection_decay(guard.state)
 		guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
 
-	## M2-04: Detecção por barulho — cone do guarda sobre tile ruidoso
+	## M2-04: Barulho amplifica detecção se o guarda já vê o tile
 	if _noise_system != null:
-		var noise_intensity: float = _noise_system.get_intensity(agent.cell) if _noise_system != null else 0.0
+		var noise_intensity: float = _noise_system.get_intensity(agent.cell)
 		if noise_intensity > 0.0 and result.visible:
-			## Barulho amplifica detecção se o guarda já vê o tile
 			var bonus: float = noise_intensity * 0.3
 			guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
 
 	if dev_vision:
 		guard.queue_redraw()
 
-	## Notifica o guarda do resultado — escalona FSM só se detectado
-	if result.detected:
-		guard.observe_player(true, 2, agent.cell)
-		_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-		if _alert_meter >= _alert_max:
-			_on_guard_alarmed(guard.cell)
+	## ID-01: Escalação gradual por threshold — só quando agente está visível
+	if result.visible:
+		if guard.detection >= DETECTION_THRESHOLD_CHASE:
+			guard.observe_player(true, 3, agent.cell)
+			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+			if _alert_meter >= _alert_max:
+				_on_guard_alarmed(guard.cell)
+		elif guard.detection >= DETECTION_THRESHOLD_ALERT:
+			guard.observe_player(true, 2, agent.cell)
+			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+			if _alert_meter >= _alert_max:
+				_on_guard_alarmed(guard.cell)
+		elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
+			guard.observe_player(true, 1, agent.cell)
+		## Abaixo de DETECTION_THRESHOLD_SUSPICIOUS: meter acumula, sem mudança de estado
 
 	_update_alert_label()
 
@@ -705,15 +719,7 @@ func _on_enemy_phase_started() -> void:
 	enemy_turn_banner.visible = false
 	if _alert_meter >= _alert_max:
 		await _show_busted_dialog()
-		_alert_meter = 0
-		agent.set_cell(_agent_start_cell)
-		for guard in _guards:
-			if is_instance_valid(guard):
-				guard.reset_to_route_start()
-		_selected_cell = _agent_start_cell
-		selection_overlay.set_selected(_agent_start_cell)
-		fog_of_war.reset_fog()
-		fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+		_reset_room_state()
 	_update_alert_label()
 
 	## M2-04: Decay noise at end of enemy phase
@@ -721,6 +727,9 @@ func _on_enemy_phase_started() -> void:
 		_noise_system.decay_all()
 	if _noise_overlay != null:
 		_noise_overlay.queue_redraw()
+
+	## Retornar câmera para o agente ao final do turno inimigo
+	_center_camera(agent.cell)
 
 	turn_manager.finish_enemy_phase()
 
@@ -844,6 +853,45 @@ func _show_busted_dialog() -> void:
 	busted_dialog.visible = true
 	await get_tree().create_timer(1.2).timeout
 	busted_dialog.visible = false
+
+
+## ID-02: Flush completo de memória — reseta todos os estados quando a sala precisa reiniciar
+func _reset_room_state() -> void:
+	## Zera alerta global
+	_alert_meter = 0
+
+	## Reseta posição do agente
+	agent.set_cell(_agent_start_cell)
+	_selected_cell = _agent_start_cell
+	selection_overlay.set_selected(_agent_start_cell)
+
+	## Reseta todos os guardas para rotas iniciais
+	for guard in _guards:
+		if is_instance_valid(guard):
+			guard.reset_to_route_start()
+
+	## Limpa trail do agente
+	_agent_trail.clear()
+
+	## Reseta FOW
+	fog_of_war.reset_fog()
+	fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+
+	## Limpa sistema de ruído
+	if _noise_system != null:
+		_noise_system.clear()
+
+	## Reseta overlays visuais
+	if _noise_overlay != null:
+		_noise_overlay.queue_redraw()
+	if _trail_overlay != null:
+		_trail_overlay.queue_redraw()
+
+	## Centra câmera no agente
+	_center_camera(agent.cell)
+
+	## Force UI update
+	_update_alert_label()
 
 
 func _toggle_dev_vision() -> void:
@@ -1523,8 +1571,13 @@ func _update_vision_fog() -> void:
 ## Return a camera position constrained to the vision leash around the agent.
 ## Inside the soft zone the camera decelerates (quadratic ease-out);
 ## beyond the hard limit it is clamped to the boundary.
+## In DEV_VISION mode, no constraints are applied.
 func _get_leashed_pos(proposed: Vector2) -> Vector2:
-	var hard_radius := float(FOW_REVEAL_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX
+	## DEV_VISION: liberar todas as travas
+	if dev_vision:
+		return proposed
+	
+	var hard_radius := float(CAMERA_MAX_BORDER_TILES) * WORLD_TILE_PX
 	var soft_radius := hard_radius - float(CAMERA_SOFT_ZONE_TILES) * WORLD_TILE_PX
 	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	var offset      := proposed - agent_world

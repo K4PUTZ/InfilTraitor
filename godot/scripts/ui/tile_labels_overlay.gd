@@ -7,9 +7,9 @@ var visual_offset: Vector2 = Vector2.ZERO
 var room_w: int = 0
 var room_h: int = 0
 
-const FONT_SIZE := 14
-const COLOR_LABEL := Color(1.0, 1.0, 1.0, 0.85)
-const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.60)
+const FONT_SIZE := 40
+const COLOR_LABEL := Color(0.0, 0.0, 0.0, 1.0)
+const COLOR_SHADOW := Color(1.0, 1.0, 1.0, 0.60)
 
 
 func _draw() -> void:

@@ -739,17 +739,50 @@ func receive_alert(known_cell: Vector2i, target_state: String) -> void:
 		_update_debug_label()
 
 
+## ID-01: Recebe notificação de detecção visual com escalação por severidade.
+## severity 1 → SUSPICIOUS · severity 2 → ALERT · severity 3 → CHASE
+## Nunca rebaixa o estado — apenas escala (ou refresha o timer no mesmo nível).
 func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:
-	if player_visible:
-		last_known_agent_cell = player_cell
-		if severity >= 2:
-			_enter_state(STATE_ALERT)
-			state_timer = TIMER_ALERT_TO_CHASE
-		elif state != STATE_ALERT:
-			_enter_state(STATE_SUSPICIOUS)
-			state_timer = TIMER_SUSPICIOUS_TO_PATROL
+	if not player_visible:
+		_update_debug_label()
+		return
+
+	last_known_agent_cell = player_cell
+
+	var _state_priority := {
+		STATE_PATROL:     0,
+		STATE_SUSPICIOUS: 1,
+		STATE_SEARCH:     2,
+		STATE_ALERT:      3,
+		STATE_CHASE:      4,
+	}
+
+	var target_state: String
+	var target_timer: int
+	match severity:
+		3:
+			target_state = STATE_CHASE
+			target_timer = TIMER_CHASE_TO_SEARCH
+		2:
+			target_state = STATE_ALERT
+			target_timer = TIMER_ALERT_TO_CHASE
+		_:  ## severity 1
+			target_state = STATE_SUSPICIOUS
+			target_timer = TIMER_SUSPICIOUS_TO_PATROL
+
+	var current_prio: int = _state_priority.get(state, 0)
+	var target_prio: int  = _state_priority.get(target_state, 0)
+
+	if target_prio > current_prio:
+		## Escalar para novo estado
+		_enter_state(target_state)
+		state_timer = target_timer
+	elif target_prio == current_prio:
+		## Mesmo estado: refresh do timer previne de-escalação enquanto agente visível
+		state_timer = target_timer
+	## target_prio < current_prio: nunca downgrade
+
 	_update_debug_label()
-	return
 
 
 ## M2-05: Reage a barulho percebido — detecção auditiva

@@ -91,6 +91,7 @@ godot/scripts/
   overlays/
     trail_overlay.gd            rastro amarelo do agente (DEV_VISION)
     noise_overlay.gd            ondas sonoras persistentes no grid
+    guard_noise_indicator.gd    indicadores flutuantes de direção sonora
   systems/
     tic_system.gd               detecção event-driven por cruzamento de aresta
     noise_system.gd             barulho persistente por tile com decaimento
@@ -116,28 +117,56 @@ godot/scripts/
 ### Detecção Visual (TicSystem)
 Event-driven: dispara ao cruzar aresta, não por frame ou turno.
 ```
-DETECTION_CURVE:      [1.0, 1.0, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01]
-STATE_MULTIPLIER:     patrol=0.6 · suspicious=1.8 · alert=2.2 · chase=3.0
+FOV_DISTANCE_CURVE:   [1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01]
+FOV_LATERAL_FALLOFF:  [1.0, 0.50, 0.10]  (offset 0/±1/±2 colunas do eixo central)
+STATE_MULTIPLIER:     patrol=0.55 · suspicious=1.60 · search=0.80 · alert=2.00 · chase=2.80
 DETECTION_GAIN_PER_TIC: 0.4
 ```
 Retorno de `TicSystem.evaluate()`: `{detected, visible, raw_chance, angle_ratio, distance}`
 
+O campo `guard.detection` (float 0.0–1.0) acumula via `raw_chance * DETECTION_GAIN_PER_TIC`
+quando o agente está visível, e decai fora do cone via `_get_detection_decay()`.
+Thresholds de transição de estado em `room.gd`:
+```
+DETECTION_THRESHOLD_SUSPICIOUS := 0.30
+DETECTION_THRESHOLD_ALERT      := 0.60
+DETECTION_THRESHOLD_CHASE      := 1.00
+```
+
 ### Detecção Auditiva (NoiseSystem + TicSystem.evaluate_audio)
 ```
-NOISE_CHANCE_WALK:    0.20   (20% de chance de barulho ao andar)
+NOISE_CHANCE_WALK:    0.20
 NOISE_INTENSITY_WALK: 0.5
-NOISE_DECAY_PER_TURN: 0.25  (tile limpo após ~4 turnos sem novo barulho)
-HEARING_RADIUS:       2 tiles (atenuado por paredes via WallEdgeData)
+NOISE_DECAY_PER_TURN: 0.25  (tile limpo após ~4 turnos)
+NOISE_RADIUS:         2 tiles (NoiseSystem — propagação do grid)
+HEARING_RADIUS:       2 tiles (TicSystem — raio de percepção do guarda)
+Atenuação por parede: 0.6× por parede cruzada
+```
+Thresholds em `guard.hear_noise()`:
+```
+perceived_intensity >= 0.60 → SUSPICIOUS + last_known atualizado
+perceived_intensity >= 0.25 → SUSPICIOUS (sem last_known)
+perceived_intensity  < 0.25 → ignorado
+```
+
+### Multiplicadores de Detecção
+```
+Sombra direta (SHADOW_MULT):    0.30×   (tile bloqueado por sombra)
+Penumbra (PENUMBRA_MULT):       0.55×   (borda da sombra)
+Postura agente (DebugAgent.POSTURE_DETECTION_MULT): STANDING=1.0 · CROUCHING<1.0
+Cover FULL:     DebugAgent.COVER_FULL_MULT
+Cover PARTIAL:  DebugAgent.COVER_PARTIAL_MULT
+Cover flanking: guard no arco exposto ignora cover (produto escalar da direção)
 ```
 
 ### Cone Visual do Guarda
 Vetorial, tile-a-tile, cor por probabilidade (vermelho=alto risco → verde=baixo).
-Varia por estado:
 ```
-patrol:     5 tiles · 70°  · alpha 0.40
-suspicious: 7 tiles · 90°  · alpha 0.80
-alert:      8 tiles · 100° · alpha 0.95
-chase:      8 tiles · 110° · alpha 1.00
+patrol:     range 4 · fov 70°  · alpha 0.40 · prob_mult 0.55
+suspicious: range 6 · fov 90°  · alpha 0.80 · prob_mult 1.60
+alert:      range 7 · fov 100° · alpha 0.95 · prob_mult 2.00
+chase:      range 7 · fov 110° · alpha 1.00 · prob_mult 2.80
+search:     range 5 · fov 120° · alpha 0.70 · prob_mult 0.80
 ```
 
 ### FSM do Guarda
@@ -146,18 +175,49 @@ const STATE_PATROL     := "patrol"
 const STATE_SUSPICIOUS := "suspicious"
 const STATE_ALERT      := "alert"
 const STATE_CHASE      := "chase"
+const STATE_SEARCH     := "search"
 ```
+Timers de de-escalação (em turnos):
+```
+TIMER_ALERT_TO_CHASE       := 3
+TIMER_SUSPICIOUS_TO_PATROL := 4
+TIMER_CHASE_TO_SEARCH      := 3
+TIMER_SEARCH_TO_SUSPICIOUS := 2
+TIMER_NOISE_SUSPICIOUS     := 3
+TIMER_NOISE_SUSPICIOUS_MED := 2
+```
+Prioridade de estados (nunca rebaixar):
+```
+PATROL(0) < SUSPICIOUS(1) < SEARCH(2) < ALERT(3) < CHASE(4)
+```
+
+### Comunicação entre Guardas
+Roteada exclusivamente via signals em `room.gd` — nunca guard-to-guard direto.
+```
+guard.whistled → _on_guard_whistled → guards a ≤ 3 tiles entram em STATE_SEARCH
+guard.radioed  → _on_guard_radioed  → todos os guards da sala entram em STATE_ALERT
+_on_guard_alarmed               → todos os guards entram em STATE_CHASE
+```
+Signals emitidos em `_enter_state()`: `whistled` ao entrar em ALERT, `radioed` ao entrar em CHASE.
 
 ### Métodos Públicos do Guarda
 ```gdscript
-guard.setup(id, floor_layer, visual_offset, route, start_index, room_size)
-guard.evaluate_detection(player_cell, vision_range, blocked_cells, blocked_edges) → Dict
-guard.observe_player(visible: bool, severity: int, player_cell: Vector2i)
-guard.hear_noise(noise_tile: Vector2i, perceived_intensity: float)
-guard.choose_next_cell(occupied, blocked_cells, blocked_edges, player_cell, room_size) → Vector2i
-guard.move_to_cell_animated(new_cell, blocked_cells, blocked_edges, room_size)
-guard.tick_state()
+guard.setup(tile_layer: TileMapLayer, offset: Vector2, id: String,
+            route: Array[Vector2i], start_index: int = 0)
+guard.set_los_data(blocked_cells, blocked_edges, room_size, shadow_tiles)
 guard.set_dev_vision(enabled: bool)
+guard.evaluate_detection(player_cell, vision_range, blocked_cells, blocked_edges,
+                         close_warning_range, agent_ref) → Dict
+guard.observe_player(visible: bool, severity: int, player_cell: Vector2i)
+    ## severity 1 → SUSPICIOUS · 2 → ALERT · 3 → CHASE · nunca rebaixa
+guard.hear_noise(noise_tile: Vector2i, perceived_intensity: float)
+guard.receive_alert(known_cell: Vector2i, target_state: String)
+guard.choose_next_cell(occupied_cells, blocked_cells, blocked_edges,
+                       player_cell, room_size) → Vector2i
+guard.move_to_cell_animated(new_cell, blocked_cells, blocked_edges, room_size)
+    ## ATENÇÃO: void (fire-and-forget) — await retorna imediatamente
+guard.tick_state()
+guard.reset_to_route_start()
 ```
 
 ### Fluxo de Turno
@@ -165,18 +225,19 @@ guard.set_dev_vision(enabled: bool)
 TURNO DO AGENTE
   passo do agente
     → step_finished
-    → tic visual (TicSystem.evaluate) para cada guarda
+    → tic visual (TicSystem.evaluate) para cada guarda → _apply_tic_result()
     → geração de barulho (NoiseSystem.emit, 20% chance)
-    → detecção auditiva imediata se barulho gerado
+    → detecção auditiva imediata (_process_audio_detection)
   agente encerra turno
     → _run_enemy_phase()
 
 FASE INIMIGA
   _process_audio_detection()     ← barulhos persistentes afetam guardas
   para cada guarda:
-    TicSystem.evaluate (tic antes)
-    guarda move (A* via GuardPathfinder)
-    TicSystem.evaluate (tic depois)
+    TicSystem.evaluate (tic antes) → _apply_tic_result()
+    guarda move (choose_next_cell + move_to_cell_animated)
+    guarda emite barulho (GUARD_NOISE_CHANCE_BY_STATE)
+    TicSystem.evaluate (tic depois) → _apply_tic_result()
     guard.tick_state()
   NoiseSystem.decay_all()
   turn_manager.finish_enemy_phase()
@@ -194,7 +255,13 @@ Ativa overlay completo de debug:
 
 ### Z-index dos Overlays
 ```
-movement_overlay:  ~100
+shadow layers:      1
+fog_of_war:         2
+structures:         3+
+movement_overlay:   5
+path_preview:       6
+selection_overlay:  7
+agent / guards:     10
 noise_overlay:      140
 trail_overlay:      150
 debug_label:        200
@@ -229,6 +296,7 @@ debug_label:        200
 - Não hardcodar `VISUAL_GRID_OFFSET` dentro de overlays
 - Não atribuir `state =` diretamente — sempre `_enter_state()`
 - Não acumular `_alert_meter` fora de `_apply_tic_result()`
+- Não rotear comunicação entre guards diretamente — sempre via signals em `room.gd`
 - Não tomar decisões de design sem consultar o diretor
 - Não criar novos sistemas sem prompt aprovado pelo diretor
 - Não remover acceptance tests do prompt original ao implementar

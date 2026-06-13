@@ -1275,8 +1275,12 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))
-	print("[Room] Loaded %d exit cells: %s" % [_exit_cells.size(), _exit_cells])
-	print("[Room] Total blocked cells: %d" % _blocked_cells.size())
+	print("[Room] Cache: %d blocked_cells, %d exit_cells" % [_blocked_cells.size(), _exit_cells.size()])
+	print("[Room] Border check: (0,0)=%s (17,0)=%s (0,35)=%s (17,35)=%s (9,0)=%s (9,35)=%s" % [
+		_blocked_cells.has(Vector2i(0,0)), _blocked_cells.has(Vector2i(17,0)),
+		_blocked_cells.has(Vector2i(0,35)), _blocked_cells.has(Vector2i(17,35)),
+		_blocked_cells.has(Vector2i(9,0)), _blocked_cells.has(Vector2i(9,35))
+	])
 	_setup_light_sources(layout)
 	_populate_obstacle_heights()
 	_compute_shadow_tiles()

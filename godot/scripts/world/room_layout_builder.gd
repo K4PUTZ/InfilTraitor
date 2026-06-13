@@ -28,8 +28,28 @@ const SIGMA_ACCESS_POINTS: Array[Dictionary] = [
 	{"cell": Vector2i(9,  0)},   ## saída norte — extração
 ]
 
-## Guardas — vazio no Prompt A; preenchido no Prompt B
-const DEFAULT_GUARD_PATROLS: Array[Array] = []
+## Guardas — definidos no Prompt B com 4 rotas cobrindo todos os cenários de teste
+const DEFAULT_GUARD_PATROLS: Array[Array] = [
+	## ALPHA (α) — ZONA A, corredor iluminado, patrulha E-W completa
+	## Cria janelas de timing previsíveis; shadow x=1-2 e x=15-16 são rotas seguras
+	[Vector2i(2, 28), Vector2i(15, 28)],
+
+	## BRAVO (β) — ZONA B centro iluminado, patrulha retangular
+	## Passa próximo das caixas em y=21; cruza o raio whistle de CHARLIE no extremo oeste
+	[
+		Vector2i(4,  11), Vector2i(13, 11),
+		Vector2i(13, 22), Vector2i(4,  22),
+	],
+
+	## CHARLIE (γ) — ZONA B shadow esquerda, patrulha curta N-S
+	## A ~3 tiles de BRAVO quando BRAVO está em (4,11)–(4,22): raio whistle ativo
+	## Detecta passos do agente na Zona A pelo portão de (2–3, 25)
+	[Vector2i(2, 14), Vector2i(2, 18)],
+
+	## DELTA (δ) — ZONA C sala superior, patrulha E-W longa
+	## Sightlines longas; último desafio antes da extração em (9, 0)
+	[Vector2i(2, 5), Vector2i(15, 5)],
+]
 
 ## Parede-divisória entre ZONA C e ZONA B (y=9)
 ## Portão esquerdo: x=4–5  |  Portão direito: x=12–13

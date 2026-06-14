@@ -42,7 +42,7 @@ O sistema de IA é **funcional mas simplificado** em relação ao design intent.
 | **Turn System** | Funcional | Beta | 85% |
 | **Pathfinding (A\*)** | Funcional | Production | 95% |
 | **Noise System (matemático)** | Funcional | Beta | 80% |
-| **Lighting & Shadows** | Funcional | Alpha | 80% |
+| **Lighting & Shadows** | Funcional + Semantic Design | Alpha→Beta | 85% |
 | **Fog of War** | Funcional | Beta | 80% |
 | **Enemy AI / Guard FSM** | Funcional (simplificado) | Alpha | 65% |
 | **Detection / Stealth** | Funcional (binário) | Alpha | 55% |
@@ -140,13 +140,33 @@ O sistema de IA é **funcional mas simplificado** em relação ao design intent.
 
 ---
 
-### Lighting & Shadows (80% — Alpha)
-✅ **Funcional:**
+### Lighting & Shadows (85% — Semantic Alpha, Implementation Ready)
+
+✅ **Funcional (Runtime):**
 - Projeção de cone de sombra com geometria correta
 - 8 direções quantizadas
 - Camadas baked (ShadowFullLayer, ShadowPartialLayer)
 - Multipliers aplicados na detecção (DIRECT 0.30×, PENUMBRA 0.55×)
 - Sombras visíveis mesmo sob FOW
+
+✅ **Semantic Foundation (L-DOC Series — Completed 2026-06-14):**
+- **L-DOC-01:** Lighting Taxonomy & Semantic Visibility Classes
+  - 5 discrete visibility classes (FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW)
+  - Detection multiplier model (2.0× to 0.2×)
+  - 7 light source types with behavior specifications
+  - Separated tactical (gameplay) from visual (rendering)
+- **L-DOC-02:** Vertical Lighting Topology & Height Semantics
+  - 4 semantic vertical layers (L0–L3)
+  - 5 discrete height classes for deterministic shadow casting
+  - Shadow projection formula + 8-direction quantization
+  - Shadow ownership matrix (walls cast, agents receive)
+  - Runtime philosophy: grid-based, deterministic, low-overhead, gameplay-first
+- **L-DOC-03:** Shadow System Calibration & Visual Polish (planned M2-14)
+
+⚠️ **Next Phases:**
+- M2-13: Geometric shadow projection & baking (implementation spec)
+- M2-14: Shadow system calibration & visual polish (L-DOC-03)
+- M2-15: Advanced overlays & tactical visualization (movement, noise, markers)
 
 ⚠️ **Limitações:**
 - Light sources hardcoded (3 por sala, configuração fixa)

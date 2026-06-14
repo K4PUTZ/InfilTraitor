@@ -101,12 +101,12 @@ func _draw_label(cell: Vector2i, _vis_class: int) -> void:
 
 ## Convert grid cell to screen position (dimetric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	# Dimetric: 45° horizontal, 26.57° elevation
-	var x_offset = float(cell.x) * tile_size.x / 2.0
-	var y_offset = float(cell.y) * tile_size.y / 2.0
-	var dimetric_x = x_offset - y_offset
-	var dimetric_y = (x_offset + y_offset) / 2.0
-	return Vector2(dimetric_x, dimetric_y) + visual_offset
+	# Isometric projection: (x, y) -> (x * tile_width/2 - y * tile_width/2, x * tile_height/2 + y * tile_height/2)
+	var x = float(cell.x)
+	var y = float(cell.y)
+	var screen_x = (x - y) * tile_size.x * 0.5
+	var screen_y = (x + y) * tile_size.y * 0.5
+	return Vector2(screen_x, screen_y) + visual_offset
 
 ## ============================================================================
 ## Debugging

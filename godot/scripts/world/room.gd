@@ -1770,7 +1770,10 @@ func _setup_debug_lights() -> void:
 	light3.owner_name = "torch_01"
 	_light_registry.register_light(light3)
 	
-	print("[Room] Light registry initialized with %d test lights" % _light_registry.get_light_count())
+	var all_lights = _light_registry.get_all_lights()
+	print("[Room] Light registry initialized with %d test lights:" % all_lights.size())
+	for light in all_lights:
+		print("  - %s @ cell(%d,%d) radius=%d type=%s" % [light.light_id, light.cell.x, light.cell.y, light.radius, light.light_type])
 
 
 ## L-IMP-01: Setup light overlay for DEV_VISION debugging
@@ -1849,6 +1852,10 @@ func _setup_exposure_system() -> void:
 	
 	if all_results.size() > 0:
 		_exposure_system.rebuild_from_results(all_results)
+		var stats = _exposure_system.get_exposure_stats()
+		print("[Room] Exposure system rebuilt: full_lit=%d, dim=%d, penumbra=%d, shadow=%d, deep_shadow=%d" % [
+			stats["full_lit"], stats["dim"], stats["penumbra"], stats["shadow"], stats["deep_shadow"]
+		])
 	
 	print("[Room] Exposure system initialized with %d light projections" % all_results.size())
 

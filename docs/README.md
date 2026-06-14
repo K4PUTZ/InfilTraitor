@@ -26,7 +26,10 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 - **[Perception System](systems/perception.md)** — Visual cones, audio detection, attention, and scanning ✅
 
 #### Environment & Visibility
-- **[Lighting & Shadows](systems/lighting.md)** — Baked shadows, light propagation, tactical visibility ✅
+- **[Lighting & Shadows](systems/lighting.md)** — Comprehensive L-DOC semantic lighting series ✅
+  - **L-DOC-01** — Lighting Taxonomy & Semantic Visibility Classes (5 discrete classes, detection multipliers)
+  - **L-DOC-02** — Vertical Lighting Topology & Height Semantics (4 layers, 5 height classes, shadow rules)
+  - **L-DOC-03** — Shadow System Calibration & Visual Polish (planned M2-14)
 - **[Noise Propagation](systems/noise.md)** — Sound propagation, decay, and audio perception ✅
 
 #### Gameplay Mechanics

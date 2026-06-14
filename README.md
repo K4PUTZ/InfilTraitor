@@ -83,8 +83,28 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 📖 **See:** [DEVELOPMENT/DEV_VISION_FOUNDATION.md](DEVELOPMENT/DEV_VISION_FOUNDATION.md) for complete technical report.
 
+### Alpha Lighting Taxonomy & Vertical Depth Foundation (Completed 2026-06-14)
+
+✅ **L-DOC-01:** Lighting Taxonomy & Semantic Visibility Classes
+- 5 discrete visibility classes (FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW)
+- Detection multiplier model (2.0× to 0.2× guards' baseline detection)
+- 7 light source types (Omni, Directional, Cone, Ambient, Intermittent, Emergency, Mobile)
+- Separated tactical (gameplay) from visual (rendering) lighting
+
+✅ **L-DOC-02:** Vertical Lighting Topology & Height Semantics
+- 4 semantic vertical layers (L0–L3): Subfloor, Playable, Structural, Overhead
+- 5 discrete height classes (0–4) for deterministic shadow casting
+- Shadow projection formula with 8-direction quantization
+- Shadow ownership matrix: walls cast shadows, guards/agents receive shadows
+- Runtime philosophy: grid-based, deterministic, low-overhead, gameplay-first
+
+📖 **See:** [docs/systems/lighting.md](docs/systems/lighting.md) for L-DOC-01 & L-DOC-02 (671 lines, pure semantic architecture)
+
 ### Next up (M2 continuation)
 
+- **M2-13:** Geometric shadow projection & baking — implement cone shadow casting, deterministic shadow grids per room
+- **M2-14:** Shadow system calibration & visual polish — threshold tuning, edge smoothing, per-guard detection customization (L-DOC-03)
+- **M2-15:** Advanced overlays & tactical visualization — movement preview (PRIO_MOVEMENT), noise heatmap, objective markers
 - Event-driven detection by tic (edge-crossing) — replace turn-based evaluation
 - Noise system — terrain cost, degradation, propagation radius
 - Confrontation system — 4 cover states, flanking, peek mechanic

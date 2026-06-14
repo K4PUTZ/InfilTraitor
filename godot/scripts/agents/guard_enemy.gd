@@ -1,6 +1,6 @@
 extends Node2D
-const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 class_name GuardEnemy
+const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 ## Patrol guard placeholder: draw-based enemy with directional vision checks.
 
 signal move_started(from_cell: Vector2i, to_cell: Vector2i)

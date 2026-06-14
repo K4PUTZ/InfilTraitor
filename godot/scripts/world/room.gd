@@ -12,6 +12,8 @@ const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_r
 const ShadowProjectorClass = preload("res://godot/scripts/systems/lighting/shadow_projector.gd")
 const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
 const ShadowOverlayClass = preload("res://godot/scripts/overlays/shadow_overlay.gd")
+const ExposureSystemClass = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
+const ExposureOverlayClass = preload("res://godot/scripts/overlays/exposure_overlay.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -169,6 +171,10 @@ var _light_overlay: Node2D = null
 var _shadow_projector = null
 var _shadow_overlay: Node2D = null
 
+## L-IMP-03: Tactical exposure and stealth semantics
+var _exposure_system = null
+var _exposure_overlay: Node2D = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -226,10 +232,6 @@ func _ready() -> void:
 	_setup_debug_lights()
 	_setup_light_overlay()
 	
-	## L-IMP-02: Initialize shadow projection
-	_setup_shadow_projector()
-	_setup_shadow_overlay()
-
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
 	var access_points: Array = LevelGraphClass.access_points_for(connections, segment_grid_pos)
@@ -246,6 +248,15 @@ func _ready() -> void:
 	var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
 	_room_size = view_layout.get("size", _room_size)
 	_build_room(view_layout)
+	
+	## L-IMP-02: Initialize shadow projection (after _build_room sets _blocked_cells and _room_size)
+	_setup_shadow_projector()
+	_setup_shadow_overlay()
+	
+	## L-IMP-03: Initialize tactical exposure system (after shadow projector ready)
+	_setup_exposure_system()
+	_setup_exposure_overlay()
+	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
@@ -989,6 +1000,10 @@ func _apply_dev_vision() -> void:
 	if _shadow_overlay != null:
 		_shadow_overlay.visible = dev_vision
 		_shadow_overlay.set_dev_vision(dev_vision)
+	## L-IMP-03: Toggle exposure overlay with dev_vision
+	if _exposure_overlay != null:
+		_exposure_overlay.visible = dev_vision
+		_exposure_overlay.set_dev_vision(dev_vision)
 	
 	## M2-14: Update overlay markers for dev_vision
 	if _tile_game != null:
@@ -1811,3 +1826,44 @@ func _get_obstacle_heights() -> Dictionary:
 		heights[cell] = 2  # HEIGHT_HUMAN
 	
 	return heights
+
+
+## L-IMP-03: Setup exposure system for tactical visibility classification
+func _setup_exposure_system() -> void:
+	if _shadow_projector == null or _light_registry == null:
+		return
+	
+	_exposure_system = ExposureSystemClass.new()
+	_exposure_system.set_room_size(_room_size)
+	add_child(_exposure_system)
+	
+	# Rebuild exposure from first available shadow result
+	# For now, we generate a single merged result from all lights
+	var all_lights = _light_registry.get_all_lights()
+	var all_results: Array = []
+	
+	for light in all_lights:
+		var result = _shadow_projector.project_light(light)
+		if result:
+			all_results.append(result)
+	
+	if all_results.size() > 0:
+		_exposure_system.rebuild_from_results(all_results)
+	
+	print("[Room] Exposure system initialized with %d light projections" % all_results.size())
+
+
+## L-IMP-03: Setup exposure overlay for DEV_VISION debugging
+func _setup_exposure_overlay() -> void:
+	if _exposure_system == null:
+		return
+	
+	_exposure_overlay = ExposureOverlayClass.new()
+	_exposure_overlay.exposure_system = _exposure_system
+	_exposure_overlay.tile_size = Vector2(128, 64)
+	_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_exposure_overlay)
+	_exposure_overlay.z_index = 22  # Above both light and shadow overlays
+	_exposure_overlay.visible = dev_vision
+	
+	print("[Room] Exposure overlay initialized")

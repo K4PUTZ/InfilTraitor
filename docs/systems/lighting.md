@@ -1116,3 +1116,403 @@ godot/scripts/overlays/
 **Maintained By:** Runtime Systems / Lighting Subsystem  
 **Status:** Active 🟢
 
+---
+
+## L-IMP-03: Visibility Classification & Tactical Exposure Foundation
+
+### Overview
+
+**Purpose:**
+Convert geometric lighting projection into discrete **tactical visibility classes** usable by stealth gameplay and AI perception.
+
+**Key Distinction:**
+```
+L-IMP-02: "Where are the shadows cast?"  (geometry)
+L-IMP-03: "How exposed is the agent?"     (gameplay state)
+```
+
+This milestone:
+- ✅ Does NOT alter guard perception (yet)
+- ✅ Does NOT control AI detection (yet)
+- ✅ Does NOT implement stealth progression mechanics (yet)
+
+It **only**:
+- Interprets shadow topology as stealth semantics
+- Provides queries for future gameplay systems
+- Establishes the bridge between lighting and stealth
+
+### Architecture
+
+#### ExposureSystem — Semantic Visibility Interpreter
+
+**File:** `scripts/systems/lighting/exposure_system.gd`  
+**Type:** RefCounted (non-rendering service)  
+**Responsibility:** Convert `ShadowResult` into discrete visibility classes
+
+```gdscript
+class_name ExposureSystem
+extends Node
+
+const FULL_LIT    := 4    # High risk
+const DIM         := 3    # Moderate risk
+const PENUMBRA    := 2    # Low risk
+const SHADOW      := 1    # Minimal risk
+const DEEP_SHADOW := 0    # Hidden
+```
+
+#### Exposure Grid
+
+**Structure:**
+```gdscript
+var _exposure_grid: Dictionary = {}  # Vector2i -> int (visibility class)
+```
+
+**Semantics:**
+- Each tile maps to exactly one visibility class (0-4)
+- Unclassified tiles default to `DEEP_SHADOW` (safest for stealth)
+- Grid rebuilt whenever shadow topology changes
+
+**State:**
+```
+_exposure_grid[Vector2i(10, 5)] = ExposureSystem.SHADOW  # This tile is in shadow
+```
+
+### Visibility Classes — Tactical Semantics
+
+| Class | Value | Meaning | Guard Detection Risk |
+|-------|-------|---------|----------------------|
+| **DEEP_SHADOW** | 0 | Hidden from light | Negligible (~0%) |
+| **SHADOW** | 1 | Concealed | Minimal (~5%) |
+| **PENUMBRA** | 2 | Edge of shadow | Low (~25%) |
+| **DIM** | 3 | Dimly lit | Moderate (~50%) |
+| **FULL_LIT** | 4 | Fully illuminated | High (~80%) |
+
+**Key Property:**
+- Classes are **discrete**, not continuous
+- No interpolation between states
+- Clear threshold semantics for AI logic
+
+### Conversion from ShadowResult
+
+**Method:** `rebuild_from_shadow_result(result: ShadowResult) -> void`
+
+**Conversion Rules:**
+```
+ShadowResult visibility class → ExposureSystem class
+fully_lit                      → FULL_LIT (4)
+dim                            → DIM (3)
+penumbra                       → PENUMBRA (2)
+shadow                         → SHADOW (1)
+deep_shadow                    → DEEP_SHADOW (0)
+```
+
+**Process:**
+1. Iterate tiles in each ShadowResult visibility class
+2. Map to ExposureSystem class
+3. Store in `_exposure_grid`
+4. All other tiles default to DEEP_SHADOW
+
+**Example:**
+```gdscript
+var shadow_result = shadow_projector.project_light(test_light)
+exposure_system.rebuild_from_shadow_result(shadow_result)
+
+# Now exposure grid contains tactical visibility for this light
+assert exposure_system.is_hidden(Vector2i(10, 10)) == true  # If in shadow
+```
+
+### Multiple Lights: Exposure Merging
+
+**Method:** `rebuild_from_results(results: Array) -> void`
+
+**Strategy:**
+- Merge multiple `ShadowResult` objects into single exposure grid
+- Conservatively approach: highest risk (most visible) per tile wins
+- Tile gets the **highest** visibility class across all lights
+
+**Example:**
+```
+Tile (10, 10) with 3 lights:
+  Light A: SHADOW
+  Light B: DIM
+  Light C: PENUMBRA
+  
+Result: DIM (3) — most visible state across all lights
+```
+
+**Rationale:**
+- Guard can see from any light source
+- Tile is as exposed as the brightest light reaching it
+- Conservative for stealth gameplay
+
+### Query Interface — Gameplay API
+
+ExposureSystem provides semantic queries for gameplay and AI:
+
+```gdscript
+# Get visibility class for a tile
+var exposure_class = exposure_system.get_visibility_class(cell: Vector2i) -> int
+
+# Quick stealth check
+var is_safe = exposure_system.is_hidden(cell: Vector2i) -> bool  # shadow or deeper
+
+# Human-readable label
+var label = exposure_system.get_exposure_label(cell: Vector2i) -> String
+# Returns: "FULL_LIT", "DIM", "PENUMBRA", "SHADOW", "DEEP_SHADOW"
+
+# Batch queries
+var hidden_tiles = exposure_system.get_tiles_by_class(SHADOW: int) -> Array
+
+# Statistics (for debugging/balancing)
+var stats = exposure_system.get_exposure_stats() -> Dictionary
+# Returns: {full_lit: 45, dim: 120, penumbra: 89, shadow: 156, deep_shadow: 234}
+```
+
+**Design Principle:**
+```
+AI and gameplay consult ExposureSystem, never ShadowProjector directly.
+```
+
+### ExposureOverlay — DEV_VISION Tactical Display
+
+**File:** `scripts/overlays/exposure_overlay.gd`  
+**Type:** Node2D (debugging visualization)  
+**Purpose:** Visualize tactical visibility classification (NOT visual brightness)
+
+**Color Palette (Stealth Semantics):**
+| Class | Color | RGB | Meaning |
+|-------|-------|-----|---------|
+| **FULL_LIT** | Bright Yellow | (1.0, 1.0, 0.0) | High risk zone |
+| **DIM** | Orange | (1.0, 0.6, 0.0) | Moderate risk |
+| **PENUMBRA** | Blue | (0.3, 0.7, 1.0) | Low risk edge |
+| **SHADOW** | Purple | (0.8, 0.4, 1.0) | Safe zone (minimal risk) |
+| **DEEP_SHADOW** | Dark Blue | (0.1, 0.1, 0.3) | Hidden (safest) |
+
+**Display:** Per-tile colored rectangles (dimetric grid projection)  
+**Optional:** Semantic labels ("SHADOW", "DEEP_SHADOW", etc.)  
+**Update:** Real-time as dev_vision toggles  
+**Z-Index:** 22 (above light and shadow overlays)
+
+**Usage:**
+```
+Press V to toggle DEV_VISION
+Observe colored exposure grid
+Each color represents stealth risk tier
+```
+
+### Integration in room.gd
+
+**Initialization Order:**
+```
+1. LightRegistry created → stores light sources
+2. ShadowProjector initialized → computes shadow geometry
+3. ExposureSystem initialized → converts shadow to visibility classes
+4. ExposureOverlay created → displays for DEV_VISION
+```
+
+**Code Flow:**
+```gdscript
+# In room.gd _ready() after _build_room():
+_setup_shadow_projector()     # Computes shadow geometry
+_setup_shadow_overlay()       # Visualization
+
+_setup_exposure_system()      # Converts to visibility classes
+_setup_exposure_overlay()     # Visualization
+
+# In _apply_dev_vision():
+if _exposure_overlay != null:
+    _exposure_overlay.visible = dev_vision
+    _exposure_overlay.set_dev_vision(dev_vision)
+```
+
+**Data Flow:**
+```
+LightRegistry
+    ↓
+  Light objects (cell, radius, height_class)
+    ↓
+ShadowProjector
+    ↓
+  ShadowResult (fully_lit, dim, penumbra, shadow, deep_shadow tiles)
+    ↓
+ExposureSystem
+    ↓
+  _exposure_grid (Vector2i → visibility class 0-4)
+    ↓
+ExposureOverlay (DEV_VISION)
+    ↓
+  Colored tile display
+```
+
+### Example Scenario
+
+**Setup:**
+- Light A: Omnidirectional @ (10, 10), radius=6, height=2 (human level)
+- Obstacle at (12, 10), height=2
+
+**Shadow Projection (L-IMP-02):**
+- ShadowResult marks (14, 10) through (20, 10) as shadow tiles
+
+**Exposure Classification (L-IMP-03):**
+- Tiles (10, 7) to (15, 13) → FULL_LIT (4)
+- Tiles around edge → DIM (3)
+- Penumbra tiles → PENUMBRA (2)
+- Behind obstacle → SHADOW (1)
+- Distant unlit areas → DEEP_SHADOW (0)
+
+**Gameplay Query:**
+```gdscript
+if exposure_system.is_hidden(agent.cell):
+    # Agent is safe from this light (shadow or deeper)
+    guard.detection_chance *= 0.2  # Reduced visibility
+else:
+    # Agent is exposed (DIM or FULL_LIT)
+    guard.detection_chance *= 1.0  # Normal detection
+```
+
+### Performance Characteristics
+
+**ExposureSystem (L-IMP-03):**
+- **Grid Size:** O(n) where n = map tiles (28×46 = 1,288 tiles)
+- **Rebuild Cost:** O(m) where m = shadow result tiles (~200-300 per light)
+- **Query Cost:** O(1) for individual lookups
+- **Memory:** ~1.5 KB per light (exposure grid dictionary)
+
+**Optimization Strategy:**
+- No caching (grid rebuilt on light changes)
+- No GPU computation (CPU-first for determinism)
+- Lazy evaluation (queries computed on-demand)
+
+**Future M2-13 Optimization:**
+- Static baking for unchanging light sources
+- Per-light caches with invalidation
+- Batch query optimization for large agent counts
+
+### Known Limitations
+
+1. **Penumbra Approximation (L-IMP-03 MVP)**
+   - Penumbra tiles are simplified from ShadowResult
+   - Soft shadow edges not yet implemented
+   - Future refinement: L-IMP-04 (soft shadows)
+
+2. **No Height Gradation in Exposure**
+   - All height classes mapped to single visibility class
+   - Overhead lights don't reduce ground exposure
+   - Future: L-IMP-05 (vertical visibility refinement)
+
+3. **No Environmental Modifiers**
+   - Fog, dust, smoke not yet implemented
+   - Rain/weather doesn't affect visibility
+   - Future: M2-15 (environmental effects)
+
+4. **No Absorption or Reflection**
+   - Light passes through all unblocked areas equally
+   - No bouncing/diffuse lighting
+   - Future: M2-16 (advanced light modeling)
+
+### Future Gameplay Integrations
+
+This milestone establishes the **interface** for:
+
+#### Guard Perception (L-IMP-04)
+```gdscript
+guard.detection_chance = detection_multiplier[exposure_class]
+# FULL_LIT: 80%, DIM: 50%, PENUMBRA: 25%, SHADOW: 5%, DEEP_SHADOW: 0%
+```
+
+#### Stealth Progression (L-IMP-05)
+```gdscript
+if exposure_system.is_hidden(cell):
+    agent.stealth_rating += 1  # Building cover bonus
+```
+
+#### Equipment Upgrades (M2-14)
+- **Thermal Optics:** See through PENUMBRA tier
+- **Low-Light Vision:** Elevate SHADOW → DIM
+- **Adaptive Camouflage:** Reduce exposure tier by 1
+
+#### Tactical Awareness (M2-15)
+```gdscript
+var threat_map = {} # cell → detection probability
+for cell in exposed_cells:
+    threat_map[cell] = calculate_guard_threat(cell)
+```
+
+#### Noise Interaction (M2-16)
+```gdscript
+noise_volume = base_noise * exposure_class_modifier[cell]
+# Moving in SHADOW: 0.5× noise
+# Moving in FULL_LIT: 2.0× noise
+```
+
+#### Search Escalation (M2-17)
+```gdscript
+if guard.alert_level > THRESHOLD:
+    exposure_system.apply_spotlight()  # Override shadows temporarily
+```
+
+### Testing & Validation (L-IMP-03)
+
+**Acceptance Criteria:**
+- ✅ ExposureSystem exists and compiles
+- ✅ Visibility classes (0-4) function correctly
+- ✅ Exposure grid generated from ShadowResult
+- ✅ Semantic queries return correct classifications
+- ✅ DEV_VISION overlay displays correctly
+- ✅ room.gd integrates ExposureSystem successfully
+- ✅ System remains decoupled from rendering
+- ✅ Tactical exposure is independent of visual appearance
+
+**Debugging Commands (Future):**
+```gdscript
+# Print exposure statistics
+print(exposure_system.get_exposure_stats())
+
+# Query specific tile
+var class = exposure_system.get_visibility_class(Vector2i(10, 10))
+print(exposure_system.get_exposure_label(Vector2i(10, 10)))
+
+# Find all hidden tiles
+var safe_zones = exposure_system.get_tiles_by_class(ExposureSystem.SHADOW)
+```
+
+### Sign-Off (L-IMP-03)
+
+**Document:** L-IMP-03 — Visibility Classification & Tactical Exposure Foundation  
+**Date:** June 14, 2026  
+**Status:** Semantic exposure classification system established  
+**Next Phase:** L-IMP-04 (Guard perception multipliers & detection probability)  
+**Maintained By:** Runtime Systems / Lighting Subsystem  
+**Status:** Active 🟢
+
+---
+
+## Architecture Evolution & Future Phases
+
+### Completed Phases
+
+**L-DOC-01/02:** Lighting taxonomy, visibility classes, shadow semantics (documentation)  
+**L-IMP-01:** Runtime light source foundation (LightSource, LightRegistry)  
+**L-IMP-02:** Grid shadow projection prototype (ShadowProjector, height semantics)  
+**L-IMP-03:** Tactical exposure classification (ExposureSystem, semantic queries)
+
+### Planned Phases
+
+| Phase | Title | Scope | Status |
+|-------|-------|-------|--------|
+| L-IMP-04 | Guard Perception Multipliers | Detection probability from exposure | Planned |
+| L-IMP-05 | Vertical Visibility Refinement | Height-dependent exposure calculations | Planned |
+| M2-13 | Performance Optimization | Baking, caching, culling | Planned |
+| M2-14 | Visual Polish & FX | Soft shadows, light bloom, ambient glow | Planned |
+| M2-15 | Equipment Upgrades | Thermal optics, low-light vision, camouflage | Planned |
+| M2-16 | Advanced Light Modeling | Absorption, reflection, diffuse lighting | Planned |
+| M2-17 | Search Escalation | Spotlight override, emergency lighting | Planned |
+
+### Architectural Principles
+
+1. **Decoupling:** Exposure ≠ Rendering (gameplay-first)
+2. **Determinism:** Same position always same visibility
+3. **Auditability:** Player understands visibility state
+4. **Semantics:** Discrete classes, not continuous values
+5. **Extensibility:** Modular phases build on previous phases
+

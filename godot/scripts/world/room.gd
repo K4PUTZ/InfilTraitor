@@ -14,6 +14,12 @@ const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_r
 const ShadowOverlayClass = preload("res://godot/scripts/overlays/shadow_overlay.gd")
 const ExposureSystemClass = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
 const ExposureOverlayClass = preload("res://godot/scripts/overlays/exposure_overlay.gd")
+const TileRiskOverlayClass = preload("res://godot/scripts/overlays/tile_risk_overlay.gd")
+const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
+const LightAnchorClass = preload("res://godot/scripts/systems/lighting/light_anchor.gd")
+const HeightOverlayClass = preload("res://godot/scripts/overlays/height_overlay.gd")
+const TemporalOverlayClass = preload("res://godot/scripts/overlays/temporal_overlay.gd")
+const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -175,6 +181,20 @@ var _shadow_overlay: Node2D = null
 var _exposure_system = null
 var _exposure_overlay: Node2D = null
 
+## L-IMP-04: Tactical risk heatmap overlay
+var _tile_risk_overlay: Node2D = null
+
+## L-IMP-05: Worldbuilding semantics and height authoring
+var _tile_semantics_map: Dictionary = {}      ## cell → TileSemantics
+var _light_anchors: Array = []                ## Authored light placement sockets
+var _height_overlay: Node2D = null            ## DEV visualization of height classes
+
+## L-IMP-06: Dynamic lighting and temporal effects
+var _temporal_overlay: Node2D = null          ## DEV visualization of temporal light states
+
+## L-IMP-07: Advanced shadow semantics and elite vision
+var _elite_exposure_overlay: Node2D = null    ## DEV visualization of shadow depth and confidence
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -256,6 +276,19 @@ func _ready() -> void:
 	## L-IMP-03: Initialize tactical exposure system (after shadow projector ready)
 	_setup_exposure_system()
 	_setup_exposure_overlay()
+	
+	## L-IMP-04: Initialize tactical risk heatmap (after exposure system ready)
+	_setup_tile_risk_overlay()
+	
+	## L-IMP-05: Initialize worldbuilding semantics and height authoring (after all systems ready)
+	_setup_tile_semantics()
+	_setup_height_overlay()
+	
+	## L-IMP-06: Initialize temporal lighting visualization
+	_setup_temporal_overlay()
+	
+	## L-IMP-07: Initialize elite exposure visualization
+	_setup_elite_exposure_overlay()
 	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
@@ -1005,6 +1038,26 @@ func _apply_dev_vision() -> void:
 		_exposure_overlay.visible = dev_vision
 		_exposure_overlay.set_dev_vision(dev_vision)
 	
+	## L-IMP-04: Toggle tile risk overlay with dev_vision
+	if _tile_risk_overlay != null:
+		_tile_risk_overlay.visible = dev_vision
+		_tile_risk_overlay.set_dev_vision(dev_vision)
+	
+	## L-IMP-05: Toggle height overlay with dev_vision
+	if _height_overlay != null:
+		_height_overlay.visible = dev_vision
+		_height_overlay.set_dev_vision(dev_vision)
+	
+	## L-IMP-06: Toggle temporal overlay with dev_vision
+	if _temporal_overlay != null:
+		_temporal_overlay.visible = dev_vision
+		_temporal_overlay.set_dev_vision(dev_vision)
+	
+	## L-IMP-07: Toggle elite exposure overlay with dev_vision
+	if _elite_exposure_overlay != null:
+		_elite_exposure_overlay.visible = dev_vision
+		_elite_exposure_overlay.set_dev_vision(dev_vision)
+	
 	## M2-14: Update overlay markers for dev_vision
 	if _tile_game != null:
 		if dev_vision:
@@ -1502,9 +1555,47 @@ func _apply_zoom(new_z: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Update temporal lighting effects (flicker, pulse, rotation)
+	_update_temporal_lights(_delta)
+	
 	_update_vision_fog()
 	if _has_moving_guards():
 		_update_enemy_visibility()
+
+
+## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)
+func _update_temporal_lights(delta: float) -> void:
+	if _light_registry == null:
+		return
+	
+	var changed_lights: Array = _light_registry.update_temporal_all(delta)
+	
+	# If any lights changed this frame, rebuild shadow and exposure
+	if changed_lights.size() > 0:
+		_rebuild_all_shadows_and_exposure()
+
+
+## Rebuild shadow and exposure projections for all lights.
+## Called when any light's temporal state changes.
+func _rebuild_all_shadows_and_exposure() -> void:
+	if _shadow_projector == null or _exposure_system == null:
+		return
+	
+	# Rebuild shadows for all active lights
+	var all_shadow_results: Array = []
+	for light in _light_registry.get_active_lights():
+		var shadow_result = _shadow_projector.project_light(light)
+		all_shadow_results.append(shadow_result)
+	
+	# Rebuild exposure from merged shadows
+	_exposure_system.rebuild_from_results(all_shadow_results)
+	
+	# Refresh overlays if visible
+	if _shadow_overlay != null and _shadow_overlay.visible:
+		_shadow_overlay.load_shadow_results(all_shadow_results)
+	
+	if _exposure_overlay != null and _exposure_overlay.visible:
+		_exposure_overlay.update_display()
 
 
 func _has_moving_guards() -> bool:
@@ -1874,3 +1965,130 @@ func _setup_exposure_overlay() -> void:
 	_exposure_overlay.visible = dev_vision
 	
 	print("[Room] Exposure overlay initialized")
+
+
+## L-IMP-04: Setup tile risk heatmap overlay for tactical threat visualization
+func _setup_tile_risk_overlay() -> void:
+	if _exposure_system == null:
+		return
+	
+	_tile_risk_overlay = TileRiskOverlayClass.new()
+	_tile_risk_overlay.exposure_system = _exposure_system
+	_tile_risk_overlay.tile_size = Vector2(256, 128)
+	_tile_risk_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_tile_risk_overlay)
+	_tile_risk_overlay.z_index = 23  # Above exposure overlay for risk heatmap
+	_tile_risk_overlay.visible = dev_vision
+	
+	print("[Room] Tile risk heatmap overlay initialized")
+
+
+## L-IMP-05: Initialize tile semantics for worldbuilding
+func _setup_tile_semantics() -> void:
+	_tile_semantics_map.clear()
+	_light_anchors.clear()
+	
+	# Populate semantics from blocked_cells and structural data
+	for cell in _blocked_cells.keys():
+		var semantics = TileSemanticsClass.make_floor()  # Default: floor
+		
+		# Infer from blocked_cells flags
+		var blocked = _blocked_cells[cell]
+		if blocked is Dictionary:
+			# Extract semantic data if available
+			if blocked.get("blocks_los", false):
+				if blocked.get("height", 1) >= 3:
+					semantics = TileSemanticsClass.make_wall()
+				else:
+					semantics = TileSemanticsClass.make_low_cover()
+			if blocked.get("blocks_light", false):
+				semantics.blocks_light = true
+		
+		_tile_semantics_map[cell] = semantics
+	
+	# Add authored light anchors (sample: create anchors at strategic positions)
+	_create_sample_light_anchors()
+	
+	print("[Room] Tile semantics initialized with %d tiles, %d light anchors" % [
+		_tile_semantics_map.size(),
+		_light_anchors.size()
+	])
+
+
+## L-IMP-05: Create sample light anchors for authoring (can be replaced with authored data)
+func _create_sample_light_anchors() -> void:
+	# Example: create ceiling anchors at strategic positions
+	# In production, these would be loaded from saved level data or metadata
+	
+	# Create a few sample anchors for visualization
+	if _room_size.x > 0 and _room_size.y > 0:
+		# Ceiling anchor at room center
+		var center_x = int(float(_room_size.x) * 0.5)
+		var center_y = int(float(_room_size.y) * 0.5)
+		var center_anchor = LightAnchorClass.make_ceiling(
+			Vector2i(center_x, center_y),
+			4
+		)
+		center_anchor.description = "Room center ceiling light"
+		_light_anchors.append(center_anchor)
+		
+		# Corner anchors
+		for offset_x in [-3, 3]:
+			for offset_y in [-3, 3]:
+				var corner_cell = Vector2i(
+					center_x + offset_x,
+					center_y + offset_y
+				)
+				if _is_cell_inside_room(corner_cell):
+					var anchor = LightAnchorClass.make_ceiling(corner_cell, 3)
+					anchor.description = "Corner ceiling light"
+					_light_anchors.append(anchor)
+
+
+## L-IMP-05: Setup height overlay for DEV visualization of semantic layers
+func _setup_height_overlay() -> void:
+	if _tile_semantics_map.is_empty():
+		return
+	
+	_height_overlay = HeightOverlayClass.new()
+	_height_overlay.load_semantics(_tile_semantics_map)
+	_height_overlay.load_anchors(_light_anchors)
+	_height_overlay.tile_size = Vector2(256, 128)
+	_height_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_height_overlay)
+	_height_overlay.z_index = 24  # Above all other overlays for semantic visualization
+	_height_overlay.visible = dev_vision
+	
+	print("[Room] Height overlay initialized with %d anchors" % [_light_anchors.size()])
+
+
+## L-IMP-06: Setup temporal overlay for DEV visualization of temporal lighting effects
+func _setup_temporal_overlay() -> void:
+	if _light_registry == null or _light_registry.is_empty():
+		return
+	
+	_temporal_overlay = TemporalOverlayClass.new()
+	_temporal_overlay.load_lights(_light_registry)
+	_temporal_overlay.tile_size = Vector2(256, 128)
+	_temporal_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_temporal_overlay)
+	_temporal_overlay.z_index = 25  # Above height overlay for temporal visualization
+	_temporal_overlay.visible = dev_vision
+	
+	print("[Room] Temporal overlay initialized: %s" % [_temporal_overlay.debug_info()])
+
+
+## L-IMP-07: Setup elite exposure overlay for advanced shadow semantics visualization
+func _setup_elite_exposure_overlay() -> void:
+	if _exposure_system == null:
+		return
+	
+	_elite_exposure_overlay = EliteExposureOverlayClass.new()
+	_elite_exposure_overlay.load_exposure_system(_exposure_system)
+	_elite_exposure_overlay.tile_size = Vector2(256, 128)
+	_elite_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_elite_exposure_overlay)
+	_elite_exposure_overlay.z_index = 26  # Above temporal overlay for elite tactical vision
+	_elite_exposure_overlay.visible = dev_vision
+	
+	print("[Room] Elite exposure overlay initialized: %s" % [_elite_exposure_overlay.debug_info()])

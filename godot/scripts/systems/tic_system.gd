@@ -26,11 +26,14 @@ class TicResult:
 
 ## Processa um tic: avalia um único guarda contra uma única célula-alvo.
 ## Retorna TicResult com o resultado desta verificação.
+##
+## L-IMP-04: Added exposure_system parameter for tactical exposure integration
 static func evaluate(
 	guard,                          ## GuardEnemy
 	target_cell: Vector2i,
 	blocked_cells: Dictionary,
-	blocked_edges: Dictionary
+	blocked_edges: Dictionary,
+	exposure_system = null          ## ExposureSystem (optional, L-IMP-04)
 ) -> TicResult:
 	var result := TicResult.new()
 
@@ -59,7 +62,13 @@ static func evaluate(
 
 	## Aplicar multiplicador do estado do guarda
 	var state_mult: float = STATE_MULTIPLIER.get(guard.state, 1.0)
-	result.raw_chance = raw_prob * state_mult
+	
+	## L-IMP-04: Apply tactical exposure modifier
+	var exposure_mult: float = 1.0
+	if exposure_system != null:
+		exposure_mult = exposure_system.get_detection_multiplier(target_cell)
+	
+	result.raw_chance = raw_prob * state_mult * exposure_mult
 
 	## Lançar dado: 0.0 a 1.0
 	result.detected = randf() < result.raw_chance

@@ -1780,7 +1780,7 @@ func _setup_light_overlay() -> void:
 	
 	_light_overlay = LightOverlayClass.new()
 	_light_overlay.light_registry = _light_registry
-	_light_overlay.tile_size = Vector2(128, 64)
+	_light_overlay.tile_size = Vector2(256, 128)
 	_light_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_light_overlay)
 	_light_overlay.z_index = 20  # Above all other overlays
@@ -1808,7 +1808,7 @@ func _setup_shadow_overlay() -> void:
 	_shadow_overlay = ShadowOverlayClass.new()
 	_shadow_overlay.shadow_projector = _shadow_projector
 	_shadow_overlay.light_registry = _light_registry
-	_shadow_overlay.tile_size = Vector2(128, 64)
+	_shadow_overlay.tile_size = Vector2(256, 128)
 	_shadow_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_shadow_overlay)
 	_shadow_overlay.z_index = 21  # Just above light overlay
@@ -1860,7 +1860,7 @@ func _setup_exposure_overlay() -> void:
 	
 	_exposure_overlay = ExposureOverlayClass.new()
 	_exposure_overlay.exposure_system = _exposure_system
-	_exposure_overlay.tile_size = Vector2(128, 64)
+	_exposure_overlay.tile_size = Vector2(256, 128)
 	_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_exposure_overlay)
 	_exposure_overlay.z_index = 22  # Above both light and shadow overlays

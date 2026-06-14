@@ -6,23 +6,9 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
-
-## M2-13: Fonte de luz para cálculo de sombras direcionais
-class LightSource:
-	var cell: Vector2i
-	var height: float
-	var radius: int
-	var intensity: float
-	var active: bool = true
-	var direction: Vector2
-	
-	func _init(p_cell: Vector2i, p_height: float, p_radius: int,
-	           p_intensity: float = 0.9, p_dir: Vector2 = Vector2.ZERO) -> void:
-		cell = p_cell
-		height = p_height
-		radius = p_radius
-		intensity = p_intensity
-		direction = p_dir
+const LightOverlayClass = preload("res://godot/scripts/overlays/light_overlay.gd")
+const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
+const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -86,10 +72,6 @@ const OBSTACLE_HEIGHTS: Dictionary = {
 	"half_wall": 1.0,
 }
 const OBSTACLE_HEIGHT_DEFAULT := 1.5
-
-## M2-13: Fontes de luz e alturas de obstáculos
-var _light_sources: Array[LightSource] = []
-var _obstacle_heights: Dictionary = {}
 
 ## Camera drag state (left mouse — drag vs click distinguished by threshold)
 const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
@@ -176,6 +158,10 @@ var _noise_overlay: Node2D = null
 ## M2-14: Guard noise indicator — flutuante ao redor do agente
 var _guard_noise_indicator: Node2D = null
 
+## L-IMP-01: Light registry and overlay
+var _light_registry = null
+var _light_overlay: Node2D = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -226,6 +212,12 @@ func _ready() -> void:
 	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
 	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
 	_build_registry(ts)
+	
+	## L-IMP-01: Initialize light registry and overlay
+	_light_registry = LightRegistryClass.new()
+	add_child(_light_registry)
+	_setup_debug_lights()
+	_setup_light_overlay()
 
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
@@ -978,6 +970,10 @@ func _apply_dev_vision() -> void:
 	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
+	## L-IMP-01: Toggle light overlay with dev_vision
+	if _light_overlay != null:
+		_light_overlay.visible = dev_vision
+		_light_overlay.queue_redraw()
 	
 	## M2-14: Update overlay markers for dev_vision
 	if _tile_game != null:
@@ -1394,7 +1390,7 @@ func _compute_shadow_tiles() -> void:
 
 
 ## M2-13: Cast shadows from a single light source
-func _cast_shadows_from_light(light: LightSource) -> void:
+func _cast_shadows_from_light(light) -> void:
 	for blocked_cell in _blocked_cells.keys():
 		var dist_vec: Vector2i = blocked_cell - light.cell
 		var dist: float = dist_vec.length()
@@ -1842,3 +1838,64 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_selected_cell(cell)
 				
 		_left_down = false
+
+
+## L-IMP-01: Create hardcoded test lights for validation
+func _setup_debug_lights() -> void:
+	if _light_registry == null:
+		return
+	
+	# Test light 1: Overhead ambient at (10, 10)
+	var light1 = LightSourceClass.new()
+	light1.cell = Vector2i(10, 10)
+	light1.height_class = 4  # HEIGHT_OVERHEAD
+	light1.light_type = "omni"
+	light1.radius = 6
+	light1.tactical_energy = 1.0
+	light1.active = true
+	light1.light_id = "test_omni_1"
+	light1.owner_name = "overhead_lamp_01"
+	_light_registry.register_light(light1)
+	
+	# Test light 2: Cone light (directional) at (15, 8)
+	var light2 = LightSourceClass.new()
+	light2.cell = Vector2i(15, 8)
+	light2.height_class = 2  # HEIGHT_HUMAN
+	light2.light_type = "cone"
+	light2.radius = 5
+	light2.direction_angle = PI * 0.75  # 135 degrees
+	light2.cone_angle = 60.0
+	light2.tactical_energy = 0.8
+	light2.active = true
+	light2.light_id = "test_cone_1"
+	light2.owner_name = "guard_spotlight"
+	_light_registry.register_light(light2)
+	
+	# Test light 3: Directional light (guard torch) at (8, 15)
+	var light3 = LightSourceClass.new()
+	light3.cell = Vector2i(8, 15)
+	light3.height_class = 2  # HEIGHT_HUMAN
+	light3.light_type = "directional"
+	light3.radius = 4
+	light3.direction_angle = PI * 0.25  # 45 degrees
+	light3.tactical_energy = 0.6
+	light3.active = true
+	light3.light_id = "test_directional_1"
+	light3.owner_name = "torch_01"
+	_light_registry.register_light(light3)
+	
+	print("[Room] Light registry initialized with %d test lights" % _light_registry.get_light_count())
+
+
+## L-IMP-01: Setup light overlay for DEV_VISION debugging
+func _setup_light_overlay() -> void:
+	if _light_registry == null:
+		return
+	
+	_light_overlay = LightOverlayClass.new()
+	_light_overlay.light_registry = _light_registry
+	_light_overlay.tile_size = Vector2(128, 64)
+	_light_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_light_overlay)
+	_light_overlay.z_index = 20  # Above all other overlays
+	_light_overlay.visible = dev_vision

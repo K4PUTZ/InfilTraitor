@@ -669,3 +669,206 @@ The vertical lighting system prioritizes:
 **Maintained By:** Game Designer / Stealth Systems  
 **Status:** Active 🟢
 
+---
+
+## L-IMP-01: Runtime Light Source Foundation
+
+### Implementation Overview
+
+**Purpose:**
+- Establish explicit light ownership in the runtime
+- Create central registry for light queries
+- Enable debug visualization of light sources (DEV_VISION)
+- Prepare foundation for tactical visibility queries (M2-13)
+
+**Scope:**
+- ✅ LightSource class with semantic fields
+- ✅ LightRegistry for central management
+- ✅ Debug visualization overlay (DEV_VISION toggle)
+- ✅ Hardcoded test lights for validation
+- ⏳ Shadow projection integration (M2-13)
+- ⏳ Exposure calculation (M2-13)
+
+### Architecture
+
+#### LightSource (RefCounted)
+```gdscript
+class_name LightSource
+extends RefCounted
+
+# Spatial & semantic properties
+var cell: Vector2i
+var height_class: int  # 0-4 (Floor, Low Cover, Human, Tall Structure, Overhead)
+var light_type: String  # omni, directional, cone, ambient, intermittent, emergency, mobile
+var radius: int
+var active: bool
+
+# Direction (for directional/cone types)
+var direction_angle: float  # Radians
+var cone_angle: float  # Degrees
+
+# Energy levels
+var tactical_energy: float  # Affects shadow strength and detection multiplier [0..1]
+var visual_energy: float  # Affects brightness (not used for gameplay)
+
+# Metadata
+var light_id: String  # Unique identifier
+var owner_name: String  # "lamp_01", "guard_torch", etc.
+```
+
+#### LightRegistry (Node)
+```gdscript
+class_name LightRegistry
+extends Node
+
+# Public methods
+func register_light(light: LightSource) -> void
+func remove_light(light_id: String) -> void
+func get_all_lights() -> Array
+func get_active_lights() -> Array
+func get_lights_by_type(light_type: String) -> Array
+func get_lights_affecting_cell(target_cell: Vector2i) -> Array  # Radius check only
+func get_lights_at_cell(cell: Vector2i) -> Array
+func get_light(light_id: String) -> LightSource
+func is_empty() -> bool
+func clear_all() -> void
+
+# Signals
+signal light_registered(light)
+signal light_removed(light)
+```
+
+**Responsibilities:**
+- Store and retrieve lights by ID
+- Index lights by cell position for spatial queries
+- Emit signals on registration/removal
+- Provide simple radius-based queries (no occlusion/shadow calc)
+
+**Does NOT:**
+- Calculate shadows
+- Compute exposure/visibility
+- Render or animate lights
+- Manage visual effects
+
+#### LightOverlay (Node2D, DEV_VISION only)
+**Purpose:** Debug visualization of light sources in DEV_VISION mode
+
+**Display:**
+- Filled circle (translucent) showing light radius
+- Central marker showing light position
+- Directional arrow for cone/directional lights
+- Type indicator and height class
+- Active/inactive state (dimmed if inactive)
+
+**Colors by Type:**
+- Omni: Yellow (1.0, 1.0, 0.5)
+- Directional: Cyan (0.5, 1.0, 1.0)
+- Cone: Magenta (1.0, 0.5, 1.0)
+- Ambient: Gray (0.8, 0.8, 0.8)
+- Intermittent: Orange (1.0, 0.5, 0.0)
+- Emergency: Red (1.0, 0.0, 0.0)
+- Mobile: Green (0.0, 1.0, 0.0)
+
+**Integration:**
+- Automatically toggled with `dev_vision` (press V in room)
+- Z-index 20 (above all other overlays)
+
+### Integration Points
+
+#### room.gd
+```gdscript
+# Preload classes
+const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
+const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
+
+# Initialize in _ready()
+_light_registry = LightRegistryClass.new()
+add_child(_light_registry)
+_setup_debug_lights()
+_setup_light_overlay()
+
+# DEV_VISION toggle includes overlay
+func _apply_dev_vision() -> void:
+    # ... existing FOW and guard code ...
+    if _light_overlay != null:
+        _light_overlay.visible = dev_vision
+        _light_overlay.queue_redraw()
+```
+
+### Test Lights
+
+Three hardcoded test lights validate the architecture:
+
+1. **Test Omni** — Overhead lamp at (10, 10)
+   - Type: Omni
+   - Height: Overhead (class 4)
+   - Radius: 6 tiles
+   - Energy: 1.0 (full strength)
+
+2. **Test Cone** — Spotlight at (15, 8)
+   - Type: Cone
+   - Height: Human (class 2)
+   - Radius: 5 tiles
+   - Direction: 135° (southwest)
+   - Cone spread: 60°
+
+3. **Test Directional** — Guard torch at (8, 15)
+   - Type: Directional
+   - Height: Human (class 2)
+   - Radius: 4 tiles
+   - Direction: 45° (northeast)
+
+**Validation:**
+- Press V to toggle DEV_VISION
+- See colored circles showing light coverage
+- Verify lights activate/deactivate correctly
+- Check registry print statement in console
+
+### File Locations
+
+```
+godot/scripts/systems/lighting/
+├── light_source.gd      (RefCounted light entity)
+└── light_registry.gd    (Central light management)
+
+godot/scripts/overlays/
+└── light_overlay.gd     (Debug visualization)
+```
+
+### Future Integration (M2-13)
+
+**L-IMP-02 will add:**
+- Shadow projection from LightRegistry queries
+- Tactical exposure calculation per light
+- Visibility class assignment per tile
+- Guard detection probability multipliers
+- Performance optimization (baking, caching)
+
+**Query Pattern:**
+```gdscript
+var lights_here = _light_registry.get_lights_affecting_cell(agent_cell)
+for light in lights_here:
+    var visibility_class = _calculate_exposure(light, agent_cell)
+    # ... apply detection multipliers ...
+```
+
+### Status
+
+- ✅ Classes implemented (L-IMP-01 steps 1-2)
+- ✅ Registry integration in room.gd (L-IMP-01 step 3)
+- ✅ Hardcoded test lights (L-IMP-01 step 4)
+- ✅ Light overlay visualization (L-IMP-01 steps 5-6)
+- ✅ DEV_VISION integration (L-IMP-01 step 6)
+- ⏳ Advanced queries (L-IMP-01 step 7) — planned for M2-13
+- 📝 Documentation (L-IMP-01 step 8) — **THIS SECTION**
+- 🧪 Acceptance tests (L-IMP-01 step 9) — compile verification + visual validation
+
+### Sign-Off (L-IMP-01)
+
+**Document:** L-IMP-01 — Runtime Light Source Foundation  
+**Date:** June 14, 2026  
+**Status:** Foundation implementation (queries & shadow calc in M2-13)  
+**Next Phase:** M2-13 (Shadow projection & exposure calculation)  
+**Maintained By:** Runtime Systems / Lighting Subsystem  
+**Status:** Active 🟢
+

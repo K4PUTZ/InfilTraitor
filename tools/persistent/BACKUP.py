@@ -54,6 +54,18 @@ EXCLUDE_EXTENSIONS = {
     ".pyo",
     ".pyd",
     ".so",
+    # Imagens — exclusão para manter backup enxuto (código + docs textuais)
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".svg",
+    ".ico",
+    ".icns",
 }
 
 

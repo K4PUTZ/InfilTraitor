@@ -364,27 +364,303 @@ Shadows are pre-calculated per room and stored on dedicated TileMapLayers.
 
 ---
 
-## Architecture Notes
+# L-DOC-02: Vertical Lighting Topology & Height Semantics
 
-### What This Document Does NOT Define
+> **Semantic vertical architecture. Defines layer structure, height classes, and shadow projection rules. Does NOT implement runtime shadow casting, shaders, or optimizations.**
 
-- Geometric shadow projection implementation
-- Height-based occlusion (vertical layers, elevation)
-- Shader implementation details
-- Performance optimization strategies
-- Real-time dynamic calculations (vs. baked)
+---
 
-### What This Document DOES Define
+## Vertical Topology
 
-- **Semantic meaning** of visibility classes
-- **How AI interprets** lighting for gameplay
-- **How player sees** and understands stealth progression
-- **Discrete boundaries** between classes
-- **Future extensibility** for gadgets, upgrades, mechanics
+The lighting system recognizes **4 semantic vertical layers**, stacked to create depth without requiring full 3D pathfinding.
+
+### Design Rationale
+
+**Avoided:** Multi-floor traditional gameplay, vertical navigation complexity  
+**Instead:** Semantic planes with rich shadow projection and tactical depth
+
+**Enables:**
+- Visual profundity
+- Complex shadow casting
+- Tactical verticality
+- Auditable gameplay semantics
+
+**Does NOT enable:**
+- True 3D pathfinding
+- Vertical entity traversal
+- Multi-level patrolling
+- Elevation-based movement costs (future extensions only)
+
+---
+
+## Vertical Layers
+
+### Layer Definitions
+
+| Layer | Semantic Purpose | Examples | Height Range |
+|-------|------------------|----------|---------------|
+| **L3 — Overhead** | Infrastructure above playable space | Suspended lights, rails, drones, ventilation, moving lights, catwalks | 4.5–8.0 units |
+| **L2 — Structural** | Elevated solid obstacles | Tall walls, pillars, stacked crates, containers, machinery | 2.0–4.5 units |
+| **L1 — Playable** | Agent/guard movement and interaction | Agents, guards, interactive objects, ground-level cover | 0.0–2.0 units |
+| **L0 — Subfloor** | Atmospheric and beneath-ground effects | Lava, smoke vents, electrical discharges, water, underground installations | −2.0–0.0 units |
+
+### Layer Interactions
+
+```
+L3 (Overhead)      ← Casts shadows DOWN onto L2, L1
+    ↓
+L2 (Structural)    ← Blocks light FROM L3, casts shadows onto L1, L0
+    ↓
+L1 (Playable)      ← Where agents/guards move; receives all shadow cast
+    ↓
+L0 (Subfloor)      ← Beneath visibility; receives shadow but rarely interacts
+```
+
+---
+
+## Height Semantics
+
+### Height Classes
+
+Each entity has a **semantic height class** (discrete, not continuous):
+
+| Class | Height | Semantic Meaning | Examples |
+|-------|--------|------------------|----------|
+| **0 — Floor** | 0.0 units | Base level; no occlusion; no shadow casting | Floor decals, marks, minor terrain features |
+| **1 — Low Cover** | 0.5–1.0 units | Small obstacles; limited shadow; crouching equivalent | Small crates, floor-level rubble, low walls |
+| **2 — Human Height** | 1.5–2.0 units | Standard entity height; generates shadow; receives shadow | Agents, guards, pillars, standard crates |
+| **3 — Tall Structure** | 2.5–3.5 units | Elevated obstacles; long shadow cast; blocks overhead light | Tall containers, wall stacks, machinery |
+| **4 — Overhead** | 4.5+ units | Lights, catwalks, suspended infrastructure; never receives shadow | Lamps, drones, ventilation systems, bridges |
+
+### Discrete-by-Design
+
+```
+The system uses DISCRETE semantic heights.
+Continuous physical simulation is intentionally AVOIDED.
+```
+
+**Why?**
+- Eliminates physics complexity
+- Makes shadow projection auditable (no interpolation)
+- Supports caching (discrete heights = discrete shadow sets)
+- Simplifies AI reasoning (no continuous height checks)
+
+---
+
+## Shadow Projection Rules
+
+### Basic Rule
+
+```
+IF light.height > obstacle.height:
+    THEN obstacle casts shadow
+ELSE
+    obstacle does NOT cast shadow
+```
+
+### Projection Distance
+
+Shadow length depends on:
+1. **Light height** — higher light = longer shadow
+2. **Obstacle height** — taller obstacle = longer shadow
+3. **Obstacle distance from light** — closer = shorter shadow
+4. **Light intensity** — brighter = longer shadow (boosted via multiplier)
+
+### Formula (Discrete Approximation)
+
+$$\text{shadow\_length} = \frac{\text{obstacle\_height} \times (\text{light\_height} - \text{obstacle\_height})}{\text{distance} + 1}$$
+
+**Clamped:** Shadow never exceeds `SHADOW_LENGTH_MAX` (5–8 tiles)
+
+### Discrete Quantization
+
+Shadows project in **8 directions** (not continuous angle):
+
+```
+Directions (isometric):
+0: UP          (0, -1)
+1: NE-UP       (1, -1)
+2: RIGHT       (1,  0)
+3: SE-DOWN     (1,  1)
+4: DOWN        (0,  1)
+5: SW-DOWN     (-1,  1)
+6: LEFT        (-1,  0)
+7: NW-UP       (-1, -1)
+```
+
+Direction is determined by `quantize_dir(light_pos - obstacle_pos)`
+
+### Determinism Requirement
+
+```
+Same light + obstacle + distance = ALWAYS same shadow
+No randomness. No interpolation. No frame-dependent variation.
+```
+
+---
+
+## Shadow Ownership
+
+### Who Casts Shadow?
+
+| Entity Type | Casts Shadow? | Receives Shadow? | Notes |
+|-------------|---------------|------------------|-------|
+| **Wall** | ✅ Yes (L2) | ❌ No | Structural barriers; full occlusion |
+| **Tall Crate Stack** | ✅ Yes (L2–L3) | ✅ Yes | Can be stacked; dynamic obstacle |
+| **Guard** | ❌ No (future) | ✅ Yes | Future extension for advanced AI |
+| **Agent** | ❌ No | ✅ Yes | Player-controlled; no self-shadowing |
+| **Floor Decal** | ❌ No (L0) | ✅ Yes | Atmospheric; receives ambient shadow |
+| **Suspended Lamp** | ❌ No (L3) | ❌ No | Light source; overhead infrastructure |
+| **Pillar** | ✅ Yes (L2) | ✅ Yes | Structural; prominent shadow caster |
+
+### Shadow Responsibility
+
+- **Light** — Determines shadow extent and falloff
+- **Obstacle** — Defines shadow volume (via its height and position)
+- **Receiver** — Consumes visibility class based on shadow coverage
+
+---
+
+## Tactical Exposure
+
+### Definition
+
+**Tactical Exposure** is the **likelihood a guard can detect the agent**, derived from:
+
+1. **Visibility Class** — FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW
+2. **Position relative to light** — Inside/outside light cone; penumbra edge
+3. **Structural coverage** — Behind wall, under overhang, etc.
+4. **Future stealth modifiers** — Gadgets, upgrades, equipment (not yet implemented)
+
+### NOT Visual Brightness
+
+```
+Tactical Exposure ≠ Shader Brightness
+
+Example:
+Agent in SHADOW visibility class may visually appear dim or bright.
+The TACTICAL CLASS is what matters for guard detection.
+Visual appearance is secondary.
+```
+
+### Exposure Flow
+
+```
+Guard searches for agent
+    ↓
+Guard queries: "What is agent's visibility class?"
+    ↓
+System returns: SHADOW (or other class)
+    ↓
+Guard applies detection probability: base_prob × visibility_multiplier
+    ↓
+Result: Agent has ~24% chance of detection (if visibility_multiplier = 0.4)
+```
+
+---
+
+## Runtime Philosophy
+
+The vertical lighting system prioritizes:
+
+### Core Principles
+
+```
+✓ Grid-based       — Tile/layer aligned; no sub-tile computation
+✓ Deterministic    — Same input = same shadow; no variation
+✓ Low-Overhead     — O(n) shadow queries per turn
+✓ Cache-Friendly   — Shadow sets pre-computed; stored as sparse dictionary
+✓ Auditable        — Designer can predict shadow behavior
+✓ Gameplay-First   — Tactical clarity over visual realism
+```
+
+### Explicitly Avoided
+
+```
+✗ Raytracing       — Too expensive; not needed for gameplay clarity
+✗ Continuous Physics — Complexity not justified for stealth game
+✗ Volumetric Simulation — GPU overhead defeats purpose
+✗ GPU-Dependent Logic — Gameplay must work on any hardware
+✗ Dynamic Recalculation — All shadows pre-baked per room
+✗ Sub-Pixel Precision — Grid-based only; no interpolation
+```
+
+### Performance Target
+
+- **Per-room bake time:** ~20–50 ms (all shadows pre-computed)
+- **Per-turn query time:** < 1 ms (sparse lookup)
+- **Memory footprint:** < 50 KB per room (shadow dictionary)
+- **Runtime cost:** Negligible (all lookups, no simulation)
+
+---
+
+## Future Vertical Extensions
+
+### M2 (Current Phase)
+
+- [x] Discrete vertical layers defined
+- [x] Height semantics registered
+- [x] Shadow projection rules established
+- [ ] M2-13: Geometric shadow baking (cone projection + clamping)
+- [ ] M2-15: Advanced overlays (movement preview, noise map)
+
+### M3 (Mid-term)
+
+- [ ] **Catwalk Shadows** — Suspended structures cast complex overlapping shadows
+- [ ] **Moving Overhead Lights** — Animated light sources (sweeping searchlights)
+- [ ] **Elevated Searchlights** — Guard-mounted lights on scaffolding
+- [ ] **Ceiling Fans** — Spinning obstacles; time-varying shadow patterns
+- [ ] **Steam Occlusion** — Volumetric smoke affecting visibility (gameplay-semantic, not visual)
+
+### M4+ (Long-term)
+
+- [ ] **Volumetric Smoke** — Expanded smoke system with height-aware propagation
+- [ ] **Multi-Height Stealth** — Agents on elevated platforms (M4+)
+- [ ] **Vertical Guard Patrol** — Guards climbing/descending (advanced AI)
+- [ ] **Light Bridges** — Hazards formed by shadow boundaries (tactical geometry)
+- [ ] **Reflective Surfaces** — Mirrors/light redirectors affecting shadow distribution
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Vertical Layer** | Semantic height band (L0–L3) for gameplay organization |
+| **Height Class** | Discrete entity height (0–4, not continuous) |
+| **Shadow Cast** | Process of obstacle blocking light and creating shadow zone |
+| **Tactical Exposure** | Likelihood of guard detection; based on visibility class + position |
+| **Overhead Infrastructure** | L3 layer; lights, rails, drones, structures above play space |
+| **Structural Height** | L2 layer; elevated obstacles casting shadows downward |
+| **Playable Grid** | L1 layer; where agents and guards move and interact |
+| **Subfloor** | L0 layer; atmospheric effects, underground installations |
+| **Deterministic Shadow** | Same light + obstacle = always same shadow (no variation) |
+| **Discrete Quantization** | Shadow direction rounded to 8 isometric directions |
 
 ---
 
 ## Sign-Off
+
+**Document:** L-DOC-02 — Vertical Lighting Topology & Height Semantics  
+**Date:** June 14, 2026  
+**Status:** Semantic definition (not implementation)  
+**Next Phase:** M2-13 (Geometric shadow baking) + M2-15 (Advanced overlays)  
+**Maintained By:** Game Designer / Stealth Systems  
+**Status:** Active 🟢
+
+---
+
+## References (L-DOC Series)
+
+- **L-DOC-01** — Lighting Taxonomy & Semantic Visibility Classes (5 discrete classes, detection multipliers)
+- **L-DOC-02** — Vertical Lighting Topology & Height Semantics (4 layers, height classes, shadow rules) ← **YOU ARE HERE**
+- **L-DOC-03** — Shadow System Calibration & Visual Polish (thresholds, edge smoothing, per-guard customization) — *planned M2-14*
+- **M2-13** — Geometric Shadow Projection & Baking (implementation spec)
+- **M2-15** — Advanced Overlays & Tactical Visualization (movement, noise, objective markers)
+
+---
+
+## Sign-Off (L-DOC-01)
 
 **Document:** L-DOC-01 — Lighting Taxonomy & Semantic Visibility Classes  
 **Date:** June 14, 2026  

@@ -1,4 +1,5 @@
 extends Node2D
+const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 class_name GuardEnemy
 ## Patrol guard placeholder: draw-based enemy with directional vision checks.
 
@@ -172,9 +173,9 @@ func _ready() -> void:
 	_vision_tiles_node.name = "VisionTiles"
 	_vision_tiles_node.show_behind_parent = true
 	_vision_tiles_node.z_index = -5
-	var mat_mul := CanvasItemMaterial.new()
-	mat_mul.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
-	_vision_tiles_node.material = mat_mul
+	var mat_mix := CanvasItemMaterial.new()
+	mat_mix.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
+	_vision_tiles_node.material = mat_mix
 	_vision_tiles_node.visible = dev_vision
 	add_child(_vision_tiles_node)
 	_vision_tiles_node.draw.connect(_draw_vision_tiles)
@@ -509,21 +510,9 @@ func _update_facing_from_angle() -> void:
 ## Converte probabilidade de detecção em cor do cone (vermelho → verde)
 ## alpha_mult: multiplicador de opacidade por estado do guarda (0.4 relaxado → 1.0 chase)
 static func _prob_to_color(prob: float, alpha_mult: float = 1.0) -> Color:
-	var c: Color
-	if prob >= 0.95:
-		c = Color(1.00, 0.13, 0.13, 0.85)  ## Vermelho
-	elif prob >= 0.80:
-		c = Color(1.00, 0.40, 0.00, 0.75)  ## Laranja escuro
-	elif prob >= 0.55:
-		c = Color(1.00, 0.63, 0.00, 0.65)  ## Laranja
-	elif prob >= 0.35:
-		c = Color(1.00, 0.82, 0.00, 0.55)  ## Amarelo
-	elif prob >= 0.12:
-		c = Color(0.78, 0.88, 0.00, 0.45)  ## Amarelo-verde
-	elif prob >= 0.03:
-		c = Color(0.50, 0.82, 0.00, 0.35)  ## Verde claro
-	else:
-		c = Color(0.25, 0.75, 0.00, 0.25)  ## Verde escuro
+	## Paleta unificada TileOverlay — BLEND_MODE_MIX → cores vivas sobre tile.
+	## 5 bandas: detect_0 (verde) → detect_4 (vermelho).
+	var c: Color = TileOverlayClass.detect_color_for(prob)
 	c.a *= alpha_mult
 	return c
 

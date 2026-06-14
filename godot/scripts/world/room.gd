@@ -9,6 +9,9 @@ const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const LightOverlayClass = preload("res://godot/scripts/overlays/light_overlay.gd")
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
+const ShadowProjectorClass = preload("res://godot/scripts/systems/lighting/shadow_projector.gd")
+const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
+const ShadowOverlayClass = preload("res://godot/scripts/overlays/shadow_overlay.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -162,6 +165,10 @@ var _guard_noise_indicator: Node2D = null
 var _light_registry = null
 var _light_overlay: Node2D = null
 
+## L-IMP-02: Shadow projection and visualization
+var _shadow_projector = null
+var _shadow_overlay: Node2D = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -218,6 +225,10 @@ func _ready() -> void:
 	add_child(_light_registry)
 	_setup_debug_lights()
 	_setup_light_overlay()
+	
+	## L-IMP-02: Initialize shadow projection
+	_setup_shadow_projector()
+	_setup_shadow_overlay()
 
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
@@ -974,6 +985,10 @@ func _apply_dev_vision() -> void:
 	if _light_overlay != null:
 		_light_overlay.visible = dev_vision
 		_light_overlay.queue_redraw()
+	## L-IMP-02: Toggle shadow overlay with dev_vision
+	if _shadow_overlay != null:
+		_shadow_overlay.visible = dev_vision
+		_shadow_overlay.set_dev_vision(dev_vision)
 	
 	## M2-14: Update overlay markers for dev_vision
 	if _tile_game != null:
@@ -1755,3 +1770,44 @@ func _setup_light_overlay() -> void:
 	add_child(_light_overlay)
 	_light_overlay.z_index = 20  # Above all other overlays
 	_light_overlay.visible = dev_vision
+
+
+## L-IMP-02: Setup shadow projector
+func _setup_shadow_projector() -> void:
+	_shadow_projector = ShadowProjectorClass.new()
+	add_child(_shadow_projector)
+	
+	# Provide reference data
+	_shadow_projector.set_blocked_cells(_blocked_cells)
+	_shadow_projector.set_obstacle_heights(_get_obstacle_heights())
+	_shadow_projector.set_room_size(_room_size)
+	
+	print("[Room] Shadow projector initialized")
+
+
+## L-IMP-02: Setup shadow overlay for DEV_VISION debugging
+func _setup_shadow_overlay() -> void:
+	if _shadow_projector == null or _light_registry == null:
+		return
+	
+	_shadow_overlay = ShadowOverlayClass.new()
+	_shadow_overlay.shadow_projector = _shadow_projector
+	_shadow_overlay.light_registry = _light_registry
+	_shadow_overlay.tile_size = Vector2(128, 64)
+	_shadow_overlay.visual_offset = VISUAL_GRID_OFFSET
+	add_child(_shadow_overlay)
+	_shadow_overlay.z_index = 21  # Just above light overlay
+	_shadow_overlay.visible = dev_vision
+	
+	print("[Room] Shadow overlay initialized")
+
+
+## Helper: Build obstacle heights dictionary from blocked cells
+func _get_obstacle_heights() -> Dictionary:
+	var heights: Dictionary = {}
+	
+	# Default: all blocked cells are human-height obstacles
+	for cell in _blocked_cells.keys():
+		heights[cell] = 2  # HEIGHT_HUMAN
+	
+	return heights

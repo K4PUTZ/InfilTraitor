@@ -21,6 +21,13 @@ extends Node2D
 const TILE_HW := 128.0   ## half-width  — horizontal
 const TILE_HH :=  64.0   ## half-height — vertical
 
+## Prioridades de renderização — ordenadas de menor (desenhado primeiro) para maior
+const PRIO_SHADOW   := 1    ## Sombras — desenhadas abaixo de tudo
+const PRIO_DETECT   := 2    ## Cone de detecção
+const PRIO_MOVEMENT := 3    ## Preview de movimento/pathfinding
+const PRIO_NAV      := 4    ## Navegação — saídas, objetivos
+const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
+
 ## Paleta de cores (multiply, alpha=0.80 embutido)
 ## Branco puro (1,1,1,1) = sem efeito visual; negro (0,0,0,x) = tile completamente preto.
 const PALETTE: Dictionary = {
@@ -40,6 +47,7 @@ const PALETTE: Dictionary = {
 	## Saídas e marcadores
 	"exit":          Color(0.55, 0.10, 0.90, 0.28),  ## roxo puro — saídas do segmento
 	"spawn":         Color(0.20, 0.20, 0.20, 0.40),  ## cinza escuro — posição spawn
+	"spawn_dev":     Color(0.20, 0.20, 0.20, 0.40),  ## cinza escuro — spawn em DEV_VISION
 
 	## Objetivos
 	"objective":     Color(0.90, 0.75, 0.20, 0.75),  ## ouro/amber — objetivo primário
@@ -53,11 +61,16 @@ var _visual_offset: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	_floor_layer = get_parent().find_child("floor")
 	_visual_offset = get_parent().position if get_parent() else Vector2.ZERO
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
 	material = mat
+
+
+func setup(floor_layer: TileMapLayer, visual_offset: Vector2 = Vector2.ZERO) -> void:
+	## Configura referências de renderização. Chamado por room.gd após add_child().
+	_floor_layer = floor_layer
+	_visual_offset = visual_offset
 
 
 ## ─── API Pública ───────────────────────────────────────────────────────────

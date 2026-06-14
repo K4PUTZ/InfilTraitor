@@ -5,6 +5,7 @@ const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
+const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 
 ## M2-13: Fonte de luz para cálculo de sombras direcionais
 class LightSource:
@@ -164,6 +165,8 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
+var _tile_shadow: Node2D = null  ## TileOverlay para sombras (z=1, multiply)
+var _tile_game: Node2D = null   ## TileOverlay para jogo visual (z=3, mix)
 var _trail_overlay: Node2D = null
 
 ## M2-04: noise system and overlay
@@ -311,6 +314,23 @@ func _ready() -> void:
 	_noise_overlay.set_script(NoiseOverlayClass)
 	add_child(_noise_overlay)
 	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
+
+	## M2-14: Create and setup TileOverlay instances for shadow and game visuals
+	_tile_shadow = Node2D.new()
+	_tile_shadow.set_script(TileOverlayClass)
+	_tile_shadow.z_index = 1  ## Renders below (shadow)
+	add_child(_tile_shadow)
+	_tile_shadow.material = CanvasItemMaterial.new()
+	_tile_shadow.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+	_tile_shadow.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	_tile_game = Node2D.new()
+	_tile_game.set_script(TileOverlayClass)
+	_tile_game.z_index = 3  ## Renders above noise/detection
+	add_child(_tile_game)
+	_tile_game.material = CanvasItemMaterial.new()
+	_tile_game.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
+	_tile_game.setup(floor_layer, VISUAL_GRID_OFFSET)
 
 	## M2-14 Quickfix: Z-index ordering — floor(0) < shadow(1) < fog(2) < structures(3) < sprites(4+)
 	## Ensure fog_of_war is properly layered above shadow overlay
@@ -958,6 +978,19 @@ func _apply_dev_vision() -> void:
 	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
+	
+	## M2-14: Update overlay markers for dev_vision
+	if _tile_game != null:
+		if dev_vision:
+			## Paint exit cells with purple marker
+			_tile_game.set_cells_named(_exit_cells, "exit", TileOverlayClass.PRIO_NAV)
+			## Paint spawn position with gray marker
+			_tile_game.paint_named(_agent_start_cell_base, "spawn_dev", TileOverlayClass.PRIO_DEV)
+		else:
+			## Clear all dev-only markers when exiting dev_vision
+			_tile_game.clear_priority(TileOverlayClass.PRIO_NAV)
+			_tile_game.clear_priority(TileOverlayClass.PRIO_DEV)
+		_tile_game.queue_redraw()
 
 
 func _get_all_guards() -> Array:
@@ -1426,19 +1459,15 @@ func _compute_shadow_tiles_fallback() -> void:
 
 ## M2-13: Bake shadow tiles onto ShadowFullLayer and ShadowPartialLayer
 func _bake_shadow_tiles() -> void:
-	shadow_full_layer.clear()
-	shadow_partial_layer.clear()
-	
-	var floor_sid: int = _tile_ids.get("floor_SE", -1)
-	if floor_sid < 0:
+	if _tile_shadow == null:
 		return
+	
+	_tile_shadow.clear_priority(TileOverlayClass.PRIO_SHADOW)
 	
 	for shadow_cell: Vector2i in _shadow_tiles.keys():
 		var mult: float = _shadow_tiles[shadow_cell]
-		if mult <= 0.35:
-			shadow_full_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
-		else:
-			shadow_partial_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
+		var shadow_color := TileOverlayClass.shadow_color_for(mult)
+		_tile_shadow.paint(shadow_cell, shadow_color, TileOverlayClass.PRIO_SHADOW)
 
 
 

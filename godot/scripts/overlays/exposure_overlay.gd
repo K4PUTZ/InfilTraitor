@@ -76,14 +76,9 @@ func _draw_exposure_tile(cell: Vector2i, vis_class: int) -> void:
 	var color = _exposure_colors[vis_class]
 	
 	# Draw filled rectangle (dimetric tile shape approximation)
-	# For simplicity, use a square; precise dimetric would use parallelogram
-	var half_size = tile_size / 2
-	draw_colored_polygon([
-		screen_pos,
-		screen_pos + Vector2(half_size.x, 0),
-		screen_pos + half_size,
-		screen_pos + Vector2(half_size.x, 0)
-	], color)
+	# Use draw_rect for simplicity (no invalid polygon issues)
+	var rect = Rect2(screen_pos, tile_size)
+	draw_rect(rect, color)
 	
 	# Optional: Draw label with semantic name
 	if _show_labels:
@@ -91,6 +86,9 @@ func _draw_exposure_tile(cell: Vector2i, vis_class: int) -> void:
 
 ## Draw semantic label (FULL_LIT, DIM, etc.)
 func _draw_label(cell: Vector2i, _vis_class: int) -> void:
+	if not _label_font or not exposure_system:
+		return
+	
 	var screen_pos = _cell_to_screen(cell)
 	var label_text = exposure_system.get_exposure_label(cell)
 	

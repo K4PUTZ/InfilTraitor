@@ -1,126 +1,113 @@
 extends RefCounted
 ## MAP SIGMA-01 — Mapa de testes sistemático para INFILTRAITOR.
-## Grade 18×36. Interior: 16×34 tiles (x=1–16, y=1–34).
-## 4 zonas, 3 paredes-divisórias, fontes de luz posicionadas.
-## Prompt A: geometria e iluminação (sem guardas).
-## Prompt B: adiciona DEFAULT_GUARD_PATROLS com 4 guardas.
+##
+## ARQUITETURA DE BUFFER:
+## MAP_SIZE (28×46) inclui 5 tiles de buffer em cada borda além do segmento jogável
+## (INNER_SIZE 18×36). O buffer substitui a extensão negativa de piso, garantindo
+## que todos os tiles fiquem dentro do grid numerado e controlado pelo pathfinder.
+##
+## Segmento jogável: x=5..22, y=5..40
+## Buffer bloqueado em blocked_map. Tiles de borda da sala bloqueados por tile type.
+## Nenhuma coordenada negativa gerada.
 
-const MAP_SIZE         := Vector2i(18, 36)
-const AGENT_START_CELL := Vector2i(9, 34)   ## Sul interior central
+const BUFFER       := 5
+const INNER_SIZE   := Vector2i(18, 36)
+const MAP_SIZE     := Vector2i(28, 46)   ## INNER_SIZE + 2*BUFFER em cada eixo
+const INNER_ORIGIN := Vector2i(BUFFER, BUFFER)
+
+const AGENT_START_CELL := Vector2i(14, 39)   ## (9+5, 34+5)
 const FLOOR_TILE       := "floor_SE"
 
 const CRATE_VARIANTS: Array[String] = ["crate_SE", "crate_SW", "crate_NW", "crate_NE"]
 
 const CRATE_CELLS: Array[Vector2i] = [
-	## Zona 0 — cover inicial (entrada)
-	Vector2i(3,  32), Vector2i(14, 32),
-	## Zona B — caixas centrais (cover atrás de caixa)
-	Vector2i(7,  21), Vector2i(10, 21),
+	## Zona 0 — cover inicial
+	Vector2i(8,  37), Vector2i(19, 37),
+	## Zona B — caixas centrais
+	Vector2i(12, 26), Vector2i(15, 26),
 	## Zona B — armazém (shadow zone direita)
-	Vector2i(15, 13), Vector2i(16, 13), Vector2i(15, 14),
-	## Zona B — pilares (bloqueiam LOS, criam penumbra)
-	Vector2i(5,  17), Vector2i(13, 17),
+	Vector2i(20, 18), Vector2i(21, 18), Vector2i(20, 19),
+	## Zona B — pilares
+	Vector2i(10, 22), Vector2i(18, 22),
 ]
 
-## Pontos de acesso fixos do SIGMA-01 — ignora LevelGraph para mapa de testes
+## Pontos de acesso fixos — ignoram parâmetro access_points do LevelGraph
 const SIGMA_ACCESS_POINTS: Array[Dictionary] = [
-	{"cell": Vector2i(9, 35)},   ## entrada sul — spawn do agente
-	{"cell": Vector2i(9,  0)},   ## saída norte — extração
+	{"cell": Vector2i(14, 40)},   ## saída sul  — y=40 = borda sul da sala
+	{"cell": Vector2i(14,  5)},   ## saída norte — y=5  = borda norte da sala
 ]
 
-## Guardas — definidos no Prompt B com 4 rotas cobrindo todos os cenários de teste
 const DEFAULT_GUARD_PATROLS: Array[Array] = [
-	## ALPHA (α) — ZONA A, corredor iluminado, patrulha E-W completa
-	## Cria janelas de timing previsíveis; shadow x=1-2 e x=15-16 são rotas seguras
-	[Vector2i(2, 28), Vector2i(15, 28)],
+	## ALPHA (α) — Zona A, corredor iluminado, E-W
+	[Vector2i(7, 33), Vector2i(20, 33)],
 
-	## BRAVO (β) — ZONA B centro iluminado, patrulha retangular
-	## Passa próximo das caixas em y=21; cruza o raio whistle de CHARLIE no extremo oeste
+	## BRAVO (β) — Zona B centro iluminado, retangular
 	[
-		Vector2i(4,  11), Vector2i(13, 11),
-		Vector2i(13, 22), Vector2i(4,  22),
+		Vector2i(9,  16), Vector2i(18, 16),
+		Vector2i(18, 27), Vector2i(9,  27),
 	],
 
-	## CHARLIE (γ) — ZONA B shadow esquerda, patrulha curta N-S
-	## A ~3 tiles de BRAVO quando BRAVO está em (4,11)–(4,22): raio whistle ativo
-	## Detecta passos do agente na Zona A pelo portão de (2–3, 25)
-	[Vector2i(2, 14), Vector2i(2, 18)],
+	## CHARLIE (γ) — Zona B shadow esquerda, N-S curto
+	[Vector2i(7, 19), Vector2i(7, 23)],
 
-	## DELTA (δ) — ZONA C sala superior, patrulha E-W longa
-	## Sightlines longas; último desafio antes da extração em (9, 0)
-	[Vector2i(2, 5), Vector2i(15, 5)],
+	## DELTA (δ) — Zona C sala superior, E-W
+	[Vector2i(7, 10), Vector2i(20, 10)],
 ]
 
-## Parede-divisória entre ZONA C e ZONA B (y=9)
-## Portão esquerdo: x=4–5  |  Portão direito: x=12–13
+## Divisória Zona C ↔ Zona B (y=14)
+## Portão esquerdo: x=9-10  |  Portão direito: x=17-18
 const SIGMA_DIVIDER_A: Array[Vector2i] = [
-	Vector2i(1, 9), Vector2i(2, 9), Vector2i(3, 9),
-	Vector2i(6, 9), Vector2i(7, 9), Vector2i(8, 9), Vector2i(9, 9),
-	Vector2i(10, 9), Vector2i(11, 9),
-	Vector2i(14, 9), Vector2i(15, 9), Vector2i(16, 9),
+	Vector2i(6, 14), Vector2i(7, 14), Vector2i(8, 14),
+	Vector2i(11, 14), Vector2i(12, 14), Vector2i(13, 14),
+	Vector2i(14, 14), Vector2i(15, 14), Vector2i(16, 14),
+	Vector2i(19, 14), Vector2i(20, 14), Vector2i(21, 14),
 ]
 
-## Parede-divisória entre ZONA B e ZONA A (y=25)
-## Portão esquerdo: x=2–3  |  Portão direito: x=14–15  |  SEM passagem central
+## Divisória Zona B ↔ Zona A (y=30)
+## Portão esquerdo: x=7-8  |  Portão direito: x=19-20  |  SEM passagem central
 const SIGMA_DIVIDER_B: Array[Vector2i] = [
-	Vector2i(1, 25),
-	Vector2i(4, 25), Vector2i(5, 25), Vector2i(6, 25), Vector2i(7, 25),
-	Vector2i(8, 25), Vector2i(9, 25), Vector2i(10, 25), Vector2i(11, 25),
-	Vector2i(12, 25), Vector2i(13, 25),
-	Vector2i(16, 25),
+	Vector2i(6,  30),
+	Vector2i(9,  30), Vector2i(10, 30), Vector2i(11, 30), Vector2i(12, 30),
+	Vector2i(13, 30), Vector2i(14, 30), Vector2i(15, 30), Vector2i(16, 30),
+	Vector2i(17, 30), Vector2i(18, 30),
+	Vector2i(21, 30),
 ]
 
-## Parede-divisória entre ZONA A e ZONA 0 (y=30)
-## Portão único central: x=8–9
+## Divisória Zona A ↔ Zona 0 (y=35)
+## Portão único central: x=13-14
 const SIGMA_DIVIDER_C: Array[Vector2i] = [
-	Vector2i(1, 30), Vector2i(2, 30), Vector2i(3, 30), Vector2i(4, 30),
-	Vector2i(5, 30), Vector2i(6, 30), Vector2i(7, 30),
-	Vector2i(10, 30), Vector2i(11, 30), Vector2i(12, 30), Vector2i(13, 30),
-	Vector2i(14, 30), Vector2i(15, 30), Vector2i(16, 30),
+	Vector2i(6,  35), Vector2i(7,  35), Vector2i(8,  35),
+	Vector2i(9,  35), Vector2i(10, 35), Vector2i(11, 35), Vector2i(12, 35),
+	Vector2i(15, 35), Vector2i(16, 35), Vector2i(17, 35), Vector2i(18, 35),
+	Vector2i(19, 35), Vector2i(20, 35), Vector2i(21, 35),
 ]
 
-## Fontes de luz SIGMA-01 — passadas ao room.gd via chave "light_sources" no layout dict
-## room.gd lê em _setup_light_sources() e usa em _compute_shadow_tiles()
 const SIGMA_LIGHT_SOURCES: Array[Dictionary] = [
-	{"x": 9, "y":  5, "height": 5.0, "radius": 8, "intensity": 0.9},    ## Zona C
-	{"x": 9, "y": 17, "height": 5.0, "radius": 7, "intensity": 0.85},   ## Zona B
-	{"x": 9, "y": 28, "height": 5.0, "radius": 6, "intensity": 0.85},   ## Zona A
+	{"x": 14, "y": 10, "height": 5.0, "radius": 8,  "intensity": 0.90},  ## Zona C
+	{"x": 14, "y": 22, "height": 5.0, "radius": 7,  "intensity": 0.85},  ## Zona B
+	{"x": 14, "y": 33, "height": 5.0, "radius": 6,  "intensity": 0.85},  ## Zona A
 ]
 
 ## Builds the SIGMA-01 test map layout.
-## O parâmetro access_points é ignorado — usa SIGMA_ACCESS_POINTS fixos.
+## Ignora o parâmetro access_points — usa SIGMA_ACCESS_POINTS fixos.
 func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
-	var room          := build_room(Rect2i(Vector2i.ZERO, MAP_SIZE), SIGMA_ACCESS_POINTS)
+	## Sala jogável começa em INNER_ORIGIN (5,5), não em (0,0)
+	var room          := build_room(Rect2i(INNER_ORIGIN, INNER_SIZE), SIGMA_ACCESS_POINTS)
 	var blocked_map: Dictionary       = room["_blocked_map"]
 	var blocked_edges: Array          = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
 
-	## Bloquear toda a borda externa exceto os tiles de saída (doorOpen).
-	## Impede o jogador de contornar as paredes pelos fundos do mapa.
-	var exit_set: Dictionary = {}
-	for ap: Dictionary in SIGMA_ACCESS_POINTS:
-		exit_set[ap["cell"]] = true
-	for bx in range(MAP_SIZE.x):
-		for by in range(MAP_SIZE.y):
-			if bx == 0 or bx == MAP_SIZE.x - 1 or by == 0 or by == MAP_SIZE.y - 1:
-				var border_cell := Vector2i(bx, by)
-				if not exit_set.has(border_cell) and not blocked_map.has(border_cell):
-					blocked_map[border_cell] = true
+	## Bloquear toda a zona de buffer — tiles de chão fora do segmento jogável.
+	## Impede o pathfinder de usar tiles além das paredes externas da sala.
+	for bx: int in range(MAP_SIZE.x):
+		for by: int in range(MAP_SIZE.y):
+			if bx < BUFFER or bx >= MAP_SIZE.x - BUFFER or \
+			   by < BUFFER or by >= MAP_SIZE.y - BUFFER:
+				var buf_cell := Vector2i(bx, by)
+				if not blocked_map.has(buf_cell):
+					blocked_map[buf_cell] = true
 
-	## Parede invisível além de cada saída — bloqueia o tile de extensão de chão
-	## que fica fora do MAP_SIZE mas ainda existe visualmente (piso estendido 1 tile).
-	## Sem tile visual: apenas blocked_map. Mantém a saída passável internamente.
-	for ap: Dictionary in SIGMA_ACCESS_POINTS:
-		var exit_cell: Vector2i = ap["cell"]
-		var outward := Vector2i.ZERO
-		if exit_cell.y == 0:               outward = Vector2i(0, -1)   ## borda norte
-		elif exit_cell.y == MAP_SIZE.y - 1: outward = Vector2i(0,  1)  ## borda sul
-		elif exit_cell.x == 0:             outward = Vector2i(-1, 0)   ## borda oeste
-		elif exit_cell.x == MAP_SIZE.x - 1: outward = Vector2i(1,  0)  ## borda leste
-		if outward != Vector2i.ZERO:
-			blocked_map[exit_cell + outward] = true
-
-	## Adicionar três paredes-divisórias horizontais com gaps de porta
+	## Três paredes-divisórias internas com gaps de porta
 	var divider_cells: Array[Vector2i] = []
 	divider_cells.append_array(SIGMA_DIVIDER_C)
 	divider_cells.append_array(SIGMA_DIVIDER_B)
@@ -132,11 +119,11 @@ func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})
 
-	## Caixas e pilares como structure_tiles
+	## Caixas e pilares
 	var crate_map: Dictionary = {}
 	_collect_crates(crate_map, blocked_map)
 
-	## Extrair posições das saídas para o overlay em room.gd
+	## Saídas para o overlay roxo em room.gd
 	var exit_cells: Array[Vector2i] = []
 	for ap: Dictionary in SIGMA_ACCESS_POINTS:
 		exit_cells.append(ap["cell"])

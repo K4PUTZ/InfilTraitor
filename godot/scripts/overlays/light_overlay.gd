@@ -35,11 +35,6 @@ func _ready() -> void:
 		push_error("LightOverlay: light_registry not assigned")
 		return
 
-func _process(_delta: float) -> void:
-	if Input.is_action_just_pressed("dev_toggle"):  # Assuming 'V' key mapped to dev_toggle
-		_dev_vision_enabled = not _dev_vision_enabled
-		queue_redraw()
-
 func set_dev_vision(enabled: bool) -> void:
 	_dev_vision_enabled = enabled
 	queue_redraw()

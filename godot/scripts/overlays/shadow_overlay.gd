@@ -36,13 +36,6 @@ func _ready() -> void:
 		push_error("ShadowOverlay: shadow_projector and light_registry must be assigned")
 		return
 
-func _process(_delta: float) -> void:
-	# Toggle with DEV_VISION
-	if Input.is_action_just_pressed("dev_toggle"):
-		_dev_vision_enabled = not _dev_vision_enabled
-		_update_projections()
-		queue_redraw()
-
 func set_dev_vision(enabled: bool) -> void:
 	_dev_vision_enabled = enabled
 	_update_projections()

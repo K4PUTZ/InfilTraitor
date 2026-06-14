@@ -1,360 +1,395 @@
-# INFILTRAITOR — Lighting & Shadows
+# INFILTRAITOR — Lighting System
 
-> **Baked shadows, light sources, and tactical visibility mechanics.**
+> **Semantic taxonomy of illumination, visibility, and tactical stealth. Gameplay-first design with discrete, auditable visibility classes.**
 
 ---
 
 ## Overview
 
-The lighting system creates **tactical shadow zones** that reduce enemy detection probability. Shadows are **baked** (pre-calculated) onto TileMapLayers using light source cone projection geometry, ensuring they're always visible and never hidden by fog of war.
+The lighting system is **not visual decoration**. It is a core gameplay and stealth mechanic.
 
-Shadows are a **core stealth mechanic** — they are not cosmetic.
+**Primary Purpose:**
+- Define **tactical visibility** — how exposed the agent is to guard detection
+- Enable **stealth progression** — shadows as safe zones, light as danger zones
+- Support **AI perception** — guards detect based on light exposure
+- Provide **readable feedback** — player understands visibility state instantly
+
+**Key Principle:**
+```
+visual brightness  ≠  tactical visibility
+```
+
+The appearance of light on screen is **secondary** to the gameplay state it represents.
 
 ---
 
-## Light Sources
+## Design Goals
 
-### LightSource Model
+### 1. Gameplay-First Architecture
 
-Each light source is defined by:
-
-```gdscript
-class LightSource:
-    var cell: Vector2i              # Position on grid
-    var height: float               # Height above ground
-    var radius: int                 # Projection radius in tiles
-    var intensity: float            # Brightness (0.0–1.0)
-    var active: bool = true         # Can be toggled on/off
-    var direction: Vector2 = Vector2.ZERO  # Optional, for spotlights
-```
-
-**Default Light Sources (Playtest Mockup):**
-```
-Light 1: cell=(9, 4),   height=5.0, radius=8, intensity=0.90
-Light 2: cell=(9, 18),  height=5.0, radius=7, intensity=0.85
-Light 3: cell=(9, 30),  height=5.0, radius=7, intensity=0.85
-```
-
-### Light Customization
-
-Lights can be per-room via layout configuration:
+Lighting is **not** derived from visual rendering or shaders. It is a **discrete game state**:
 
 ```gdscript
-# In room layout (future)
-var layout = {
-    "light_sources": [
-        {"x": 9, "y": 4, "height": 5.0, "radius": 8, "intensity": 0.9},
-        {"x": 9, "y": 18, "height": 5.0, "radius": 7, "intensity": 0.85},
-        # ... more lights
-    ]
-}
+var visibility_class: String = "SHADOW"  ## Semantic state, independent of renderer
 ```
+
+Visual lighting is then **styled** to match this state, not the reverse.
+
+### 2. Core Principles
+
+| Principle | Meaning |
+|-----------|---------|
+| **Deterministic** | Same position always produces same visibility (no random flicker) |
+| **Grid-Based** | Visibility is per-tile, not per-pixel or per-position |
+| **Auditable** | Player can always understand *why* they are in a given visibility class |
+| **Semantic** | Classes have clear meaning: SHADOW = stealth, FULL_LIT = danger |
+| **Discrete** | 5 visibility classes, not continuous values (avoids ambiguity) |
+| **Stealth-Oriented** | Light/shadow fundamentally changes guard detection probability |
+
+### 3. Design Constraints
+
+- Visibility must be **consistent** across all observers (all guards see same exposure)
+- Visibility must **change smoothly** at tile boundaries (no hard edges except walls)
+- Visibility must be **computable in real-time** (shadows baked, not streamed)
+- Visibility must be **independent of camera** (tactical, not visual)
+
+### 3. Design Constraints
+
+- Visibility must be **consistent** across all observers (all guards see same exposure)
+- Visibility must **change smoothly** at tile boundaries (no hard edges except walls)
+- Visibility must be **computable in real-time** (shadows baked, not streamed)
+- Visibility must be **independent of camera** (tactical, not visual)
 
 ---
 
-## Shadow Projection Geometry
+## Lighting Taxonomy
 
-### Cone Projection Formula
+### Light Source Types
+
+| Type | Description | Range | Behavior | Example |
+|------|-------------|-------|----------|---------|
+| **Omni** | Radial illumination from point source | 1–8 tiles | Emits equally in all directions | Torch, lamp, emergency exit sign |
+| **Directional** | Linear incidence from fixed direction | Entire tile layer | Sunlight, moon, global ambient | Daylight, moon glow |
+| **Cone** | Focused beam with falloff (FOV-like) | 3–6 tiles | Directional with angle attenuation | Spotlight, guard flashlight, lighthouse beam |
+| **Ambient** | Global weak illumination (no source) | Entire level | Uniform floor illumination | Base light level, faint glow |
+| **Intermittent** | Pulsing or flickering light | 1–4 tiles | Rhythmic on/off cycles | Alarm light, strobe, malfunctioning lamp |
+| **Emergency** | High-intensity alert lighting | 2–6 tiles | Triggered by alerts, full intensity | Lockdown searchlight, alert override |
+| **Mobile** | Light coupled to entity (AI, player) | Local to entity | Moves with entity, independent of level | Guard's torch, player's equipped light |
+
+### Light Quality Types
+
+| Quality | Intensity | Detection Bonus | Tactical Use | Example |
+|---------|-----------|-----------------|--------------|---------|
+| **Full Bright** | 100% | +100% (max exposure) | Danger zones, enforced spaces | Main corridor under spotlight |
+| **Bright** | 70–85% | +60% detection | Active monitoring zones | Guard post, command center |
+| **Normal** | 40–60% | +20% detection | Standard patrolled areas | Corridor, stairwell |
+| **Dim** | 15–30% | -30% detection | Semi-safe zones | Storage room, side passages |
+| **Dark** | 2–10% | -70% detection | Stealth zones | Shadows, alcoves, blind corners |
+
+---
+
+## Visibility Classes
+
+### Definition
+
+**Visibility Class** is a **semantic label** that describes the agent's exposure at a given tile. It determines:
+
+- How easily guards detect the agent
+- What stealth bonuses apply
+- What visual feedback the player sees
+- What audio/UI cues are triggered
+
+### The Five Visibility Classes
+
+| Class | Exposure Level | Guard Detection Bonus | Tactical Meaning | Visual Appearance |
+|-------|---------------|-----------------------|------------------|-------------------|
+| **FULL_LIT** | Maximum exposure | +100% (multiplier: 2.0) | Detected easily; avoid | Bright, high saturation, no shadows |
+| **DIM** | Partial exposure | +20% (multiplier: 1.2) | Visible but forgiving | Well-lit, some shadows, readable |
+| **PENUMBRA** | Degraded perception | -30% (multiplier: 0.7) | Detected reluctantly | Mixed light/shadow, ambiguous edges |
+| **SHADOW** | Strong concealment | -60% (multiplier: 0.4) | Effective stealth | Dark, sharp shadows, low readability |
+| **DEEP_SHADOW** | Maximum concealment | -80% (multiplier: 0.2) | Expert stealth | Near-black, detailed shadows, dev-only |
+
+### Discrete by Design
+
+These 5 classes are **mutually exclusive** per tile. No intermediate states.
+
+**Why?**
+- Eliminates ambiguity for player
+- Makes AI decision-making simpler (each class has clear behavior)
+- Reduces shader complexity (5 discrete materials vs. continuous blending)
+- Auditable: player can predict visibility by tile appearance
+
+---
+
+## Gameplay Semantics
+
+### How Guards Interpret Visibility
+
+Guards use visibility class as a **multiplier on their base detection probability**:
+
+```gdscript
+func get_detection_probability(agent_tile: Vector2i, distance: float) -> float:
+    var base_prob = distance_curve(distance)  ## Intrinsic detection based on distance
+    var visibility_mult = visibility_multiplier(agent_tile)  ## Lighting modifier
+    return base_prob * visibility_mult
+```
+
+**Multiplier Table:**
+
+| Visibility Class | Multiplier | Example Detection |
+|------------------|------------|-------------------|
+| FULL_LIT | 2.0 | 60% base → **120%** (capped at 100% = guaranteed) |
+| DIM | 1.2 | 60% base → **72%** |
+| PENUMBRA | 0.7 | 60% base → **42%** |
+| SHADOW | 0.4 | 60% base → **24%** |
+| DEEP_SHADOW | 0.2 | 60% base → **12%** (nearly invisible) |
+
+### UI & Player Feedback
+
+**Visibility Indicator (HUD):**
+- Show current class + danger level (0–100%)
+- Update in real-time as agent moves
+- Change color per class (green SHADOW → red FULL_LIT)
+
+**Audio Cues:**
+- FULL_LIT: High-alert beep (110 Hz tone)
+- DIM: Neutral ambient sound continues
+- SHADOW: Quiet, minimal feedback (stealth is "silent")
+
+**Visual Feedback:**
+- Tile highlight or aura when agent moves to new class
+- Smooth fade between classes at tile boundaries
+- DEV_VISION overlay for tactical visibility map
+
+---
+
+## Tactical Lighting vs Visual Lighting
+
+### Critical Separation
+
+**Tactical Lighting** (Gameplay):
+- Computed from light sources, obstacles, and shadows
+- Determines visibility class per tile
+- Affects guard detection probability
+- **Independent of renderer**
+
+**Visual Lighting** (Rendering):
+- Shaders, bloom, HDR, post-processing
+- Creates atmospheric appearance
+- Styled to match tactical lighting but not required to match exactly
+- Can be disabled (e.g., colorblind mode, dev mode)
+
+### Why This Matters
+
+**Problem:** If gameplay depends on visual rendering:
+- Shader bugs → gameplay bugs
+- Performance optimization (reduce shaders) → stealth broken
+- Accessibility features break gameplay
+
+**Solution:** Tactical lighting is a **discrete game state**, separate from rendering.
+
+**Example:**
+```gdscript
+## Tactical: What game engine computes
+visibility_class = "SHADOW"  ## This is what matters for gameplay
+
+## Visual: What renderer displays (can be customized)
+shader_brightness = 0.2     ## Visual appearance
+shader_saturation = 0.5
+hdr_bloom = false
+```
+
+A player could be in SHADOW (stealth) with a visual that appears darker or lighter—the **tactical class** is what guards see.
+
+---
+
+## DEV_VISION
+
+### Philosophy
+
+In **DEV_VISION** (toggled with `V` key), the system displays:
+
+- **Visibility class per tile:** Color-coded overlay (green SHADOW, red FULL_LIT)
+- **Guard detection map:** Heatmap showing where guards are focused
+- **Light source projection:** Circles/cones showing light coverage
+- **Tactical flow map:** Recommended safe routes
+- **Shader layers:** Separate toggles for shadow, highlight, normal rendering
+
+### Purpose
+
+DEV_VISION is **not** for player use. It is for:
+- Level design verification (ensuring shadows align with design intent)
+- AI debugging (seeing why guards move certain ways)
+- Performance profiling (which overlays cost most)
+- Educational feedback (teaching player how stealth works)
+
+### Runtime (Non-DEV) Display
+
+During normal gameplay:
+- Minimal UI (only essential threat indicators)
+- Clean visual (no debug overlays)
+- No tactical maps (player must infer from environment)
+- Ambient audio only (no debug beeps)
+
+---
+
+## Tactical Visibility Tiers
+
+### How Guards Use Visibility Class
+
+#### Tier 1: Can Agent Be Detected?
+
+```
+FULL_LIT or DIM    → YES, easily
+PENUMBRA           → YES, possible
+SHADOW             → NO, unlikely
+DEEP_SHADOW        → NO, almost impossible
+```
+
+#### Tier 2: How Fast Is Detection?
+
+```
+FULL_LIT           → Instant (same turn)
+DIM                → 1–2 turns
+PENUMBRA           → 2–4 turns
+SHADOW             → 4+ turns (slow accumulation)
+DEEP_SHADOW        → 8+ turns (negligible)
+```
+
+#### Tier 3: What Happens After Detection?
+
+Once agent is **detected** (not just visible):
+- Detection probability becomes **irrelevant** (already caught)
+- Guard enters **CHASE** state
+- Lighting advantage is **lost**
+- Combat/escape is the only option
+
+---
+
+## Light Source Positioning Rules
+
+### How Lights Distribute Visibility
+
+1. **Omni Sources:** Concentric circles of decreasing visibility
+   - Center (0–1 tile): FULL_LIT
+   - Inner ring (2–3): DIM
+   - Mid ring (4–5): PENUMBRA
+   - Outer ring (6–8): SHADOW
+   - Beyond: unlit
+
+2. **Directional Sources:** Linear gradient
+   - Direct path: FULL_LIT
+   - 45° falloff: DIM
+   - 90° falloff: PENUMBRA
+   - Behind: DEEP_SHADOW
+
+3. **Ambient:** All tiles uniform unless overridden
+   - Typical: DIM (safe but not stealthy)
+   - Can be lowered to PENUMBRA (night scene)
+   - Cannot be FULL_LIT (that requires specific light sources)
+
+4. **Obstacles Block Light:**
+   - Walls: Hard shadow (DEEP_SHADOW behind)
+   - Pillars: Soft shadow (PENUMBRA behind)
+   - Furniture: Partial block (gradient around)
+
+---
+
+## Planned Extensions
+
+### Near-term (M2)
+
+- **Tactical Visibility Overlay:** Real-time map of visibility per tile (DEV_VISION)
+- **Dynamic Shadows:** Baked shadows update when player moves obstacles
+- **Alert Lighting:** Emergency lights trigger when alert level rises
+
+### Medium-term (M3)
+
+- **Night Vision Upgrade:** Gadget that shifts SHADOW → DIM (tactical advantage)
+- **Light Manipulation:** Player can disable/redirect light sources
+- **Thermal Optics:** Alternative visibility system (heat instead of light)
+- **Adaptive Stealth Gear:** Equipment that reduces detection in specific classes
+
+### Long-term (M4+)
+
+- **Moving Spotlights:** Animated cone lights (guards with flashlights)
+- **Light Puzzles:** Environmental challenges using shadow geometry
+- **Power Systems:** Lights tied to facility power (disrupt = darkness)
+- **Alarm Lighting:** Special red alert mode with high-intensity lighting
+- **Guard Reinforcement Waves:** Each wave adds more lighting coverage
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Visibility Class** | Discrete semantic label for agent exposure (5 classes) |
+| **Tactical Lighting** | Game state computation (gameplay-relevant) |
+| **Visual Lighting** | Renderer output (appearance, shaders) |
+| **Light Source** | Origin of illumination (omni, directional, cone, ambient, etc.) |
+| **Shadow** | Region where visibility class is reduced |
+| **Detection Multiplier** | How visibility class scales guard detection probability |
+| **DEV_VISION** | Debug overlay showing tactical lighting map |
+| **Tactical Visibility Map** | Grid showing visibility class per tile (DEV_VISION only) |
+| **Ambient Light** | Global baseline lighting (no specific source) |
+| **Stealth Zone** | Area where visibility class is SHADOW or better |
+
+---
+
+## Technical Implementation (M2-13+)
+
+### Shadow Projection Geometry
 
 When an obstacle blocks a light source, it casts a shadow **cone** in the direction away from the light:
 
 $$\text{shadow\_length} = \frac{\text{obstacle\_height} \times (\text{light\_height} - \text{obstacle\_height})}{\text{distance}}$$
 
-**Example:**
-- Light at height 5.0
-- Obstacle at height 1.5 (crate)
-- Distance 3 tiles from light
-- Shadow length = $\frac{1.5 \times (5.0 - 1.5)}{3} = \frac{1.5 \times 3.5}{3} = 1.75$ tiles
+(Details: See M2-13 implementation document)
 
-The shadow extends approximately **2 tiles** in the direction away from the light.
+### Baked Shadow System
 
-### Obstacle Heights
+Shadows are pre-calculated per room and stored on dedicated TileMapLayers.
 
-Tile types map to obstruction heights:
-
-```gdscript
-const OBSTACLE_HEIGHTS: Dictionary = {
-    "crate":     1.0,      # Small boxes
-    "wall":      2.0,      # Full-height walls
-    "block":     2.0,      # Blocks
-    "column":    3.0,      # Pillars (taller obstruction)
-    "half_wall": 1.0,      # Partial walls
-}
-const OBSTACLE_HEIGHT_DEFAULT := 1.5
-```
+**Current Status:** Shadows rendered via `TileOverlay` system (Prompt H) with 3-level gradation.
 
 ---
 
-## 8-Direction Shadow Quantization
+## References
 
-Shadows are cast in **8 isometric directions** (not just 4 cardinals) for smooth coverage:
-
-```
-Direction Indices:
-0: UP       (-0, -1)
-1: NE       (+1, -1)
-2: RIGHT    (+1,  0)
-3: SE       (+1, +1)
-4: DOWN     ( 0, +1)
-5: SW       (-1, +1)
-6: LEFT     (-1,  0)
-7: NW       (-1, -1)
-```
-
-For each light source, the direction is **quantized** to the nearest 8-direction:
-
-```gdscript
-func quantize_direction(vector: Vector2i) -> Vector2i:
-    var angle = atan2(float(vector.y), float(vector.x))
-    var index = int(round(angle / (PI / 4.0))) % 8
-    return SHADOW_DIRS[((index % 8) + 8) % 8]
-```
+- **Perception System:** `docs/systems/perception.md` — How guards use visibility
+- **Rendering System:** `docs/systems/rendering.md` — Shadow and overlay rendering
+- **Tactical Semantics:** `docs/systems/ai.md` — Guard AI uses visibility classes
+- **Code:** `godot/scripts/systems/lighting_system.gd` (planned M2-13)
 
 ---
 
-## Shadow Rendering Layers
+## Architecture Notes
 
-### Two Shadow Layers
+### What This Document Does NOT Define
 
-Shadows are rendered on two distinct **TileMapLayer**s for visual variety:
+- Geometric shadow projection implementation
+- Height-based occlusion (vertical layers, elevation)
+- Shader implementation details
+- Performance optimization strategies
+- Real-time dynamic calculations (vs. baked)
 
-1. **ShadowFullLayer** — Dark shadows (multiplier ≤ 0.35)
-   - Modulate: Color(0.58, 0.58, 0.58, 1.0) — 58% brightness
-   - Gives strong visual indication of deep shadow
+### What This Document DOES Define
 
-2. **ShadowPartialLayer** — Light shadows (multiplier > 0.35)
-   - Modulate: Color(0.78, 0.78, 0.78, 1.0) — 78% brightness
-   - More subtle penumbra effect
-
-### Z-Index Ordering
-
-```
-Z-Index 0:  FloorLayer (base)
-Z-Index 1:  ShadowFullLayer, ShadowPartialLayer (baked shadows)
-Z-Index 2:  FogOfWarOverlay (fog of war)
-Z-Index 3:  StructureLayer, StructureWallLayer (walls, objects)
-Z-Index 4+: Sprites (agent, guards, etc.)
-```
-
-**Key:** Shadows are **always below fog of war**, so they're always visible (never hidden).
+- **Semantic meaning** of visibility classes
+- **How AI interprets** lighting for gameplay
+- **How player sees** and understands stealth progression
+- **Discrete boundaries** between classes
+- **Future extensibility** for gadgets, upgrades, mechanics
 
 ---
 
-## Shadow Calculation Pipeline
+## Sign-Off
 
-### 1. Setup Light Sources
-
-```gdscript
-func _setup_light_sources(layout: Dictionary) -> void:
-    _light_sources.clear()
-    var lights = layout.get("light_sources", [])
-    
-    if lights.is_empty():
-        lights = _default_light_sources()
-    
-    for entry in lights:
-        _light_sources.append(LightSource.new(
-            Vector2i(entry.get("x", 0), entry.get("y", 0)),
-            float(entry.get("height", 4.5)),
-            int(entry.get("radius", 7)),
-            float(entry.get("intensity", 0.9))
-        ))
-```
-
-### 2. Populate Obstacle Heights
-
-```gdscript
-func _populate_obstacle_heights() -> void:
-    _obstacle_heights.clear()
-    for blocked_cell in _blocked_cells.keys():
-        var tile_name = _get_tile_name_at(blocked_cell)
-        var height = OBSTACLE_HEIGHT_DEFAULT
-        
-        for key in OBSTACLE_HEIGHTS.keys():
-            if tile_name.begins_with(key):
-                height = OBSTACLE_HEIGHTS[key]
-                break
-        
-        _obstacle_heights[blocked_cell] = height
-```
-
-### 3. Compute Shadow Tiles (Multi-Light)
-
-```gdscript
-func _compute_shadow_tiles() -> void:
-    _shadow_tiles.clear()
-    
-    if _light_sources.is_empty():
-        _compute_shadow_tiles_fallback()
-        return
-    
-    for light in _light_sources:
-        if not light.active:
-            continue
-        _cast_shadows_from_light(light)
-```
-
-### 4. Cast Shadows from Single Light
-
-```gdscript
-func _cast_shadows_from_light(light: LightSource) -> void:
-    for blocked_cell in _blocked_cells.keys():
-        var dist_vec: Vector2i = blocked_cell - light.cell
-        var dist: float = dist_vec.length()
-        
-        if dist > light.radius or dist < 0.1:
-            continue
-        
-        # Obstacle height with safety check
-        var obs_height: float = _obstacle_heights.get(blocked_cell, OBSTACLE_HEIGHT_DEFAULT) as float
-        if obs_height >= light.height:
-            obs_height = light.height - 0.1
-        
-        # Cone projection length
-        var shadow_len: float = obs_height * (light.height - obs_height) / maxf(dist, 0.1)
-        shadow_len = minf(shadow_len * light.intensity, float(SHADOW_LENGTH_MAX))
-        
-        # Quantize to 8 directions
-        var dir: Vector2i = _quantize_dir(dist_vec)
-        
-        # Project shadow along direction
-        for i in range(1, int(ceil(shadow_len)) + 1):
-            var shadow_cell: Vector2i = blocked_cell + dir * i
-            if not _is_cell_inside_room(shadow_cell):
-                break
-            if _blocked_cells.has(shadow_cell):
-                break
-            
-            # Linear falloff: SHADOW_MULT_DIRECT → 1.0
-            var t: float = float(i) / shadow_len
-            var mult: float = lerpf(SHADOW_MULT, 1.0, clampf(t, 0.0, 1.0))
-            
-            # Min function: darker shadows win
-            if _shadow_tiles.has(shadow_cell):
-                _shadow_tiles[shadow_cell] = minf(_shadow_tiles[shadow_cell], mult)
-            else:
-                _shadow_tiles[shadow_cell] = mult
-```
-
-### 5. Bake to TileMapLayers
-
-```gdscript
-func _bake_shadow_tiles() -> void:
-    shadow_full_layer.clear()
-    shadow_partial_layer.clear()
-    
-    var floor_sid: int = _tile_ids.get("floor_SE", -1)
-    if floor_sid < 0:
-        return
-    
-    for shadow_cell: Vector2i in _shadow_tiles.keys():
-        var mult: float = _shadow_tiles[shadow_cell]
-        if mult <= 0.35:
-            shadow_full_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
-        else:
-            shadow_partial_layer.set_cell(shadow_cell, floor_sid, Vector2i.ZERO)
-```
-
----
-
-## Shadow Multipliers & Detection
-
-### Multiplier Effect on Detection
-
-Detection calculation includes shadow multiplier:
-
-```gdscript
-var base_detection = get_base_detection_chance(guard, agent_tile)
-var shadow_mult = get_shadow_multiplier(agent_tile)  # 0.30, 0.55, or 1.0
-var final_detection = base_detection * shadow_mult
-```
-
-| Shadow Tier | Multiplier | Detection Reduction | Effect |
-|-------------|-----------|-------------------|--------|
-| **Direct Shadow** | 0.30× | 70% reduction | Very hard to detect |
-| **Penumbra** | 0.55× | 45% reduction | Moderately hard |
-| **Open Floor** | 1.00× | 0% reduction | Normal detection |
-
----
-
-## Fallback Mode (No Light Sources)
-
-If no light sources are defined, a simple **omnidirectional fallback** is used:
-
-```gdscript
-func _compute_shadow_tiles_fallback() -> void:
-    var dirs = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
-    for blocked_cell in _blocked_cells.keys():
-        for dir in dirs:
-            var candidate: Vector2i = blocked_cell + dir
-            if not _is_cell_inside_room(candidate) or _blocked_cells.has(candidate):
-                continue
-            
-            # Direct shadow (adjacent)
-            if _shadow_tiles.has(candidate):
-                _shadow_tiles[candidate] = minf(_shadow_tiles[candidate], SHADOW_MULT)
-            else:
-                _shadow_tiles[candidate] = SHADOW_MULT
-            
-            # Penumbra (2 steps away)
-            var penumbra: Vector2i = candidate + dir
-            if _is_cell_inside_room(penumbra) and not _blocked_cells.has(penumbra):
-                if not _shadow_tiles.has(penumbra):
-                    _shadow_tiles[penumbra] = PENUMBRA_MULT
-```
-
----
-
-## Constants Reference
-
-```gdscript
-# Shadow multipliers
-const SHADOW_MULT := 0.30          # Direct shadow (adjacent)
-const PENUMBRA_MULT := 0.55        # Penumbra (2 tiles away)
-const SHADOW_LENGTH_MAX := 5        # Max shadow projection (tiles)
-const OBSTACLE_HEIGHT_DEFAULT := 1.5
-
-# 8-direction vectors (isometric)
-const SHADOW_DIRS: Array[Vector2i] = [
-    Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
-    Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
-]
-
-# Light source defaults
-const DEFAULT_LIGHT_HEIGHT := 5.0
-const DEFAULT_LIGHT_RADIUS := 7
-const DEFAULT_LIGHT_INTENSITY := 0.85
-```
-
----
-
-## Performance Notes
-
-- **Baking:** Done once per room initialization (~20 ms for 36×36 room)
-- **Update:** Shadows persist; no per-frame recalculation
-- **Memory:** Shadow tiles stored as Dictionary (sparse representation)
-- **Rendering:** Two TileMapLayers, ~100–200 shadow tiles per room typical
-
----
-
-## Visual Design Goals
-
-1. **Readability:** Shadows are clearly visible as darker tiles
-2. **Tactical:** Players naturally move toward shadows for stealth
-3. **Realistic:** Cone geometry is physically plausible
-4. **Performance:** Baked, not dynamic
-
----
-
-## See Also
-
-- `docs/systems/perception.md` — How shadows affect detection
-- `docs/systems/stealth.md` — Tactical positioning using shadows
-- `docs/systems/movement.md` — Movement patterns and tactical awareness
-- `DEVELOPMENT/LIGHTING_DESIGN.md` — Historical design notes (legacy)
-
----
-
-**Last Updated:** 2026-06-11  
-**Maintained By:** Graphics Programmer  
+**Document:** L-DOC-01 — Lighting Taxonomy & Semantic Visibility Classes  
+**Date:** June 14, 2026  
+**Status:** Semantic definition (not implementation)  
+**Next Phase:** M2-13 (Geometric shadow projection and baking)  
+**Maintained By:** Game Designer / Stealth Systems  
 **Status:** Active 🟢
+

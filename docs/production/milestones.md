@@ -4,15 +4,15 @@
 
 ---
 
-## ⚠️ Nota de Revisão (2026-06-12)
+## ⚠️ Nota de Revisão (2026-06-14)
 
-Revisão pós-auditoria de código: o sistema de IA é funcional. Guards detectam e reagem ao agente. A distinção importante para leitura dos milestones:
+Auditoria de código (2026-06-14): o sistema de IA é funcional com detecção GRADUAL implementada. Guards detectam e reagem ao agente com escalação correta.
 
 - **Código existe e funciona** — `choose_next_cell()`, `tick_state()`, `observe_player()`, `hear_noise()`, comunicação via signals
-- **Funcional mas simplificado** — M2.07 (Search) e M2.08 (Communication) funcionam, mas dependem de o guard atingir STATE_ALERT/CHASE
-- **Design gap (não blocker)** — Detecção visual é binária: qualquer tic bem-sucedido → STATE_ALERT imediato, sem gradação SUSPICIOUS → ALERT
+- **Detecção é gradual** — Thresholds (0.30 SUSPICIOUS, 0.60 ALERT, 1.00 CHASE) implementados em `room.gd:_apply_tic_result()`
+- **Funcional para demo** — M2.07 (Search) e M2.08 (Communication) funcionam, guards reagem ao agente
 
-Os milestones ID-01 a ID-04 representam refinamentos de design, não correções de bugs críticos.
+Os milestones ID-01 a ID-04 representam refinamentos de integração, não correções de bugs críticos.
 
 ---
 
@@ -328,31 +328,33 @@ Os milestones ID-01 a ID-04 representam refinamentos de design, não correções
 
 ## In-Progress Milestones
 
-### 🟡 ID-01 — Detection Escalation Gradual
-**Objective:** Conectar o detection meter às thresholds de estado para escalação gradual (PATROL → SUSPICIOUS → ALERT), substituindo a detecção binária atual.
+### ✅ ID-01 — Detection Escalation Gradual — IMPLEMENTED
 
-**Dependencies:** Sistema funcional existente (guard FSM, TicSystem, `_apply_tic_result` todos funcionando)
+**Objective:** Conectar o detection meter às thresholds de estado para escalação gradual (PATROL → SUSPICIOUS → ALERT).
 
-**Status:** 🟡 Queued — não é bloqueador, é refinamento de design
+**Status:** ✅ RESOLVED (Implementado em 2026-06-14)
 
-**Context:** Guards atualmente detectam e reagem ao agente. O problema é que qualquer tic de detecção bem-sucedido dispara STATE_ALERT imediatamente. O design intent é gradação: exposição baixa → SUSPICIOUS, exposição alta → ALERT.
+**Resolution Details:**
+Auditoria de código confirmou que detection escalation gradual **JÁ ESTÁ IMPLEMENTADA** em `room.gd:_apply_tic_result()`:
+- Thresholds definidos: `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`, `ALERT := 0.60`, `CHASE := 1.00`
+- Detection meter acumula por tic e conduz transições de estado
+- De-escalação automática via `_get_detection_decay()` funciona por estado
+- Audio detection integrado com mesmo modelo de thresholds
 
-**Deliverables:**
-- Em `room._apply_tic_result()`: substituir `observe_player(true, 2, ...)` por `guard.accumulate_detection(gain)` baseado na probabilidade do tic
-- Em `guard_enemy.gd`: implementar thresholds no `accumulate_detection()` → 0.30 = SUSPICIOUS, 0.60 = ALERT, 1.00 = CHASE
-- Manter de-escalação automática via `_get_detection_decay()` já existente
-- Unificar modelo de audio detection (`hear_noise`) com modelo visual
+```gdscript
+if guard.detection >= DETECTION_THRESHOLD_CHASE:
+    guard.observe_player(true, 3, agent.cell)  # STATE_CHASE
+elif guard.detection >= DETECTION_THRESHOLD_ALERT:
+    guard.observe_player(true, 2, agent.cell)  # STATE_ALERT
+elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
+    guard.observe_player(true, 1, agent.cell)  # STATE_SUSPICIOUS
+```
 
-**Validation:**
-- Guard a 6 tiles, agente em pé, área iluminada: escalona PATROL → SUSPICIOUS em 1–2 turnos, ALERT em 2–3
-- Guard a 3 tiles, agente em crouch + sombra: detecção muito mais lenta
-- De-escalação: guard volta ao patrulhamento se agente se esconde e para de ser visto
-
-**Estimated Duration:** 1–2 semanas
-
----
-
-### 🟡 DOC-01 — Documentation Refactoring
+**Validation:** ✅ Complete
+- Guards detectam e escalam gradualmente
+- De-escalação por timer funciona
+- Audio + visual detection integrados
+- IA funcional para Investor Demo
 **Objective:** Reorganize documentation into modular, scalable structure.
 
 **Dependencies:** None (orthogonal to gameplay)

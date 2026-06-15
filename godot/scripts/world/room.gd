@@ -145,6 +145,7 @@ var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
 var dev_vision: bool = false
+var light_vision: bool = false
 
 ## M2-10: Peek mechanic state
 var _peek_active: bool = false
@@ -269,7 +270,11 @@ func _ready() -> void:
 	_room_size = view_layout.get("size", _room_size)
 	_build_room(view_layout)
 	
-	## L-IMP-02: Initialize shadow projection (after _build_room sets _blocked_cells and _room_size)
+	## L-IMP-02a: Initialize tile semantics BEFORE shadow projection (needs _tile_semantics_map for heights)
+	_setup_tile_semantics()
+	_setup_height_overlay()
+	
+	## L-IMP-02b: Initialize shadow projection (after _build_room sets _blocked_cells and _room_size, after _setup_tile_semantics)
 	_setup_shadow_projector()
 	_setup_shadow_overlay()
 	
@@ -279,10 +284,6 @@ func _ready() -> void:
 	
 	## L-IMP-04: Initialize tactical risk heatmap (after exposure system ready)
 	_setup_tile_risk_overlay()
-	
-	## L-IMP-05: Initialize worldbuilding semantics and height authoring (after all systems ready)
-	_setup_tile_semantics()
-	_setup_height_overlay()
 	
 	## L-IMP-06: Initialize temporal lighting visualization
 	_setup_temporal_overlay()
@@ -424,6 +425,17 @@ func _set_perspective(direction: String) -> void:
 		_room_size = view_layout.get("size", _room_size)
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
 		_build_room(view_layout)
+		
+		# Update tile semantics and shadow heights for new layout (LIGHT-FIX-03)
+		_setup_tile_semantics()
+		if _shadow_projector != null:
+			_shadow_projector.set_obstacle_heights(_get_obstacle_heights())
+		
+		# Update structural data for exposure OCCLUDED_VOID detection (LIGHT-FIX-04)
+		if _exposure_system != null:
+			var blocked_edges_dict = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
+			_exposure_system.set_structural_data(_blocked_cells, blocked_edges_dict)
+		
 		_spawn_guards(view_layout.get("enemy_defs", []))
 		movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 		var blocked_edges: Array[Dictionary] = []
@@ -1011,11 +1023,14 @@ func _toggle_dev_vision() -> void:
 	dev_vision = not dev_vision
 	_apply_dev_vision()
 
+func _toggle_light_vision() -> void:
+	light_vision = not light_vision
+	_apply_light_vision()
 
 func _apply_dev_vision() -> void:
-	## Toggle FOW when dev_vision is active
-	fog_of_war.visible = not dev_vision
-	_fog_rect.visible = not dev_vision
+	## Toggle FOW when dev_vision OR light_vision is active (OVERLAY-SPLIT-01)
+	fog_of_war.visible = not (dev_vision or light_vision)
+	_fog_rect.visible = not (dev_vision or light_vision)
 
 	## Notify each guard of dev_vision state
 	for guard in _get_all_guards():
@@ -1025,14 +1040,6 @@ func _apply_dev_vision() -> void:
 	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
-	## L-IMP-01: Toggle light overlay with dev_vision
-	if _light_overlay != null:
-		_light_overlay.visible = dev_vision
-		_light_overlay.queue_redraw()
-	## L-IMP-02: Toggle shadow overlay with dev_vision
-	if _shadow_overlay != null:
-		_shadow_overlay.visible = dev_vision
-		_shadow_overlay.set_dev_vision(dev_vision)
 	## L-IMP-03: Toggle exposure overlay with dev_vision
 	if _exposure_overlay != null:
 		_exposure_overlay.visible = dev_vision
@@ -1043,17 +1050,7 @@ func _apply_dev_vision() -> void:
 		_tile_risk_overlay.visible = dev_vision
 		_tile_risk_overlay.set_dev_vision(dev_vision)
 	
-	## L-IMP-05: Toggle height overlay with dev_vision
-	if _height_overlay != null:
-		_height_overlay.visible = dev_vision
-		_height_overlay.set_dev_vision(dev_vision)
-	
-	## L-IMP-06: Toggle temporal overlay with dev_vision
-	if _temporal_overlay != null:
-		_temporal_overlay.visible = dev_vision
-		_temporal_overlay.set_dev_vision(dev_vision)
-	
-	## L-IMP-07: Toggle elite exposure overlay with dev_vision
+	## L-IMP-???: Toggle elite exposure overlay with dev_vision
 	if _elite_exposure_overlay != null:
 		_elite_exposure_overlay.visible = dev_vision
 		_elite_exposure_overlay.set_dev_vision(dev_vision)
@@ -1068,8 +1065,29 @@ func _apply_dev_vision() -> void:
 		else:
 			## Clear all dev-only markers when exiting dev_vision
 			_tile_game.clear_priority(TileOverlayClass.PRIO_NAV)
-			_tile_game.clear_priority(TileOverlayClass.PRIO_DEV)
-		_tile_game.queue_redraw()
+
+func _apply_light_vision() -> void:
+	## Toggle FOW when dev_vision OR light_vision is active (OVERLAY-SPLIT-01)
+	fog_of_war.visible = not (dev_vision or light_vision)
+	_fog_rect.visible = not (dev_vision or light_vision)
+	
+	## L-IMP-01: Toggle light overlay with light_vision
+	if _light_overlay != null:
+		_light_overlay.visible = light_vision
+		_light_overlay.queue_redraw()
+	## L-IMP-02: Toggle shadow overlay with light_vision
+	if _shadow_overlay != null:
+		_shadow_overlay.visible = light_vision
+		_shadow_overlay.set_dev_vision(light_vision)
+	## L-IMP-05: Toggle height overlay with light_vision
+	if _height_overlay != null:
+		_height_overlay.visible = light_vision
+		_height_overlay.set_dev_vision(light_vision)
+	
+	## L-IMP-06: Toggle temporal overlay with light_vision
+	if _temporal_overlay != null:
+		_temporal_overlay.visible = light_vision
+		_temporal_overlay.set_dev_vision(light_vision)
 
 
 func _get_all_guards() -> Array:
@@ -1685,6 +1703,9 @@ func _input(event: InputEvent) -> void:
 				KEY_V:
 					_toggle_dev_vision()
 					return
+				KEY_L:
+					_toggle_light_vision()
+					return
 				KEY_P:
 					_peek_pending = true
 					return
@@ -1888,6 +1909,7 @@ func _setup_shadow_projector() -> void:
 	
 	# Provide reference data
 	_shadow_projector.set_blocked_cells(_blocked_cells)
+	_shadow_projector.set_blocked_edges(enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges))
 	_shadow_projector.set_obstacle_heights(_get_obstacle_heights())
 	_shadow_projector.set_room_size(_room_size)
 	
@@ -1915,9 +1937,12 @@ func _setup_shadow_overlay() -> void:
 func _get_obstacle_heights() -> Dictionary:
 	var heights: Dictionary = {}
 	
-	# Default: all blocked cells are human-height obstacles
+	# Read heights from tile semantics map; fallback to HEIGHT_HUMAN if not in semantics
 	for cell in _blocked_cells.keys():
-		heights[cell] = 2  # HEIGHT_HUMAN
+		if _tile_semantics_map.has(cell):
+			heights[cell] = _tile_semantics_map[cell].height_class
+		else:
+			heights[cell] = TileSemanticsClass.HEIGHT_HUMAN  # Fallback
 	
 	return heights
 
@@ -1929,6 +1954,11 @@ func _setup_exposure_system() -> void:
 	
 	_exposure_system = ExposureSystemClass.new()
 	_exposure_system.set_room_size(_room_size)
+	
+	# Provide structural data for OCCLUDED_VOID detection (LIGHT-FIX-04)
+	var blocked_edges = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
+	_exposure_system.set_structural_data(_blocked_cells, blocked_edges)
+	
 	add_child(_exposure_system)
 	
 	# Rebuild exposure from first available shadow result

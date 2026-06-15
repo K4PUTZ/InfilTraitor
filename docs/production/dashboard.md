@@ -13,48 +13,45 @@ Critério: qualquer pessoa que jogar por 5–10 minutos consegue sentir a tensã
 
 ## 📊 Current Status Snapshot
 
-**Project Phase:** Investor Demo Preparation (🔴 BLOQUEADO)  
-**Overall Progress:** 55% complete (reestimado)  
-**Last Updated:** 2026-06-12
+**Project Phase:** Investor Demo Preparation (� IA funcional, integração de sistemas em progresso)  
+**Overall Progress:** 65% complete (reestimado com IA funcional)  
+**Last Updated:** 2026-06-14
 
 ---
 
 ## ⚠️ Active Design Gaps (sem bloqueadores críticos)
 
-| Gap | Arquivo | ETA Fix |
-|-----|---------|---------|
-| Detection meter não conduz transições de estado | `guard_enemy.gd` / `room.gd` | 1–2 semanas |
-| Detecção visual binária (sem SUSPICIOUS intermediário) | `room.gd:_apply_tic_result` | junto com item acima |
-| `move_to_cell_animated` não é awaitable | `guard_enemy.gd` | 1–2 dias |
-| STATE_SEARCH sem cone visual próprio | `guard_enemy.gd:_get_cone_visual_params` | 30 min |
+| Gap | Arquivo | Status |
+|-----|---------|--------|
+| `move_to_cell_animated` não é awaitable (fire-and-forget) | `guard_enemy.gd` | Abre risco de animações sobrepostas com 3+ guards |
+| ShadowProjector: luz direta sem LOS, altura invertida, direção quantizada | `shadow_projector.gd` | Funcional para demo, refinamento pós-investimento |
+| ExposureSystem: 6 classes definidas, 2 usadas; stability/confidence não populadas | `exposure_system.gd` | Spec completa, implementação parcial esperada |
 
-**Status:** O jogo é funcional. Guards detectam e reagem ao agente. Os gaps acima afetam o game feel (escalação abrupta em vez de gradual) mas não impedem o stealth de funcionar.
+**Status:** Guards detectam, reagem, e escalam gradualmente. IA funcional para demo. Refinamentos acima são qualidade/arquitetura, não blockers.
 
 ---
 
 ## 🎯 Current Priority
 
-**PRIMARY FOCUS:** Corrigir blockers da IA — guards devem detectar e reagir ao jogador  
-**SECONDARY FOCUS:** Tuning de detecção para bom game feel (tensão + fairness)  
-**TERTIARY:** Polir sala demo para apresentação a investidores
-
-**Deliberadamente adiado:** Áudio SFX, sprites/animações, narrativa, UI de menu, múltiplas salas, sistema de save, sistema de combate.
+**PRIMARY FOCUS:** Integração de percepção (lighting/LOS) com IA (verificação auditiva + visual)  
+**SECONDARY FOCUS:** Refinamento de game feel (tuning de curves de detecção)  
+**TERTIARY:** Demo polish e apresentação a investidores
 
 ---
 
 ## 📈 Domain Status (revisado)
 
 ### Gameplay (G-xx) — 75% Beta
-✅ Movimento em grid, turn system, AP economy, pathfinding A\*  
-🚨 Guards não reagem (blocker) — overwatch/gadgets aguardam guards funcionais  
-⏳ Objetivos, combate (pós-demo)
+✅ Movimento em grid, turn system, AP economy, pathfinding A*  
+✅ Guards detectam e reagem ao agente (funcional)  
+⏳ Objetivos, combate, overwatch/gadgets (pós-demo)
 
-### AI & Behavior (A-xx) — 65% Alpha
+### AI & Behavior (A-xx) — 75% Alpha
 ✅ Guards detectam e reagem ao agente (funcional)  
 ✅ FSM com 5 estados e de-escalação por timer  
-✅ Pathfinding A\* excelente  
+✅ Detecção visual com escalação gradual (thresholds 0.30/0.60/1.00)  
+✅ Pathfinding A* excelente  
 ✅ Comunicação (whistle/radio) funcional via signals  
-⚠️ Detecção visual binária (sem gradação SUSPICIOUS — design gap, não bloqueador)  
 ⏳ Multi-guard coordination refinement, personality variance (pós-demo)
 
 ### Lighting & Visibility (L-xx) — 80% Alpha

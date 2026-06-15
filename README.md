@@ -1,39 +1,7 @@
-# INFILTRAITOR — Alpha GTP Spatial Perception Foundation
+# INFILTRAITOR
 
-> **Semantic-first stealth game architecture with formal tactical lighting systems.**
->
 > Mobile turn-based stealth tactics game  
 > **Engine:** Godot 4 · **Rendering:** Isometric 2.5D · **Platform:** iOS / Android / HTML5
-
----
-
-## 🚀 Latest Release: Alpha GTP Spatial Perception Foundation (2026-06-14)
-
-**Status:** 🟢 Complete & Ready for Integration
-
-This release represents the **complete formal architecture for INFILTRAITOR's spatial perception and tactical lighting systems**. All systems are integrated with 0 compilation errors and ready for content expansion and tooling development.
-
-### What's New in This Release
-
-✅ **Complete Lighting System** (L-IMP-01 through L-IMP-07)
-- Shadow projection with height semantics
-- 6 discrete visibility classes (OCCLUDED_VOID → FULL_LIT)
-- Guard detection integration
-- Temporal effects (flicker, pulse, rotation)
-- Elite tactical vision for advanced players
-
-✅ **Three Architecture Specifications** (L-ARCH-01 through L-ARCH-03)
-- Lighting Runtime Pipeline & Invalidation Rules (L-ARCH-01, 700+ lines)
-- Occlusion Semantics & Structural Blocking Model (L-ARCH-02, 600+ lines)
-- Lighting Authoring Pipeline & Serialization Model (L-ARCH-03, 800+ lines)
-
-✅ **8000+ Lines of Formal Documentation**
-- [ALPHA_RELEASE.md](ALPHA_RELEASE.md) — Release notes, roadmap, technical specs
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Complete system overview
-- [All L-ARCH documents](docs/systems/) — Detailed specifications
-
-**→ [ALPHA_RELEASE.md](ALPHA_RELEASE.md) for complete release notes**  
-**→ [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system overview**
 
 ---
 
@@ -58,21 +26,19 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 | Link | Purpose | Audience |
 |------|---------|----------|
-| [ALPHA_RELEASE.md](ALPHA_RELEASE.md) | Release overview, roadmap | Everyone |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Central system hub | Everyone |
-| [docs/systems/lighting.md](docs/systems/lighting.md) | Lighting feature spec (4400+ lines) | Designers, Programmers |
-| [docs/systems/lighting_runtime_pipeline.md](docs/systems/lighting_runtime_pipeline.md) | Runtime system architecture (L-ARCH-01) | Programmers, Architects |
-| [docs/systems/occlusion.md](docs/systems/occlusion.md) | Occlusion semantics (L-ARCH-02) | Designers, Programmers |
-| [docs/pipelines/lighting_authoring_pipeline.md](docs/pipelines/lighting_authoring_pipeline.md) | Level design workflow (L-ARCH-03) | Designers, Leads |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture overview | Everyone |
+| [docs/systems/lighting.md](docs/systems/lighting.md) | Lighting feature spec | Designers, Programmers |
+| [docs/systems/lighting_runtime_pipeline.md](docs/systems/lighting_runtime_pipeline.md) | Runtime system architecture | Programmers, Architects |
+| [docs/systems/perception.md](docs/systems/perception.md) | AI & detection systems | Designers, Programmers |
+| [docs/production/current_state.md](docs/production/current_state.md) | Project status & gaps | Leads, Programmers |
 
-### Key Architecture Phases
+### Key Systems
 
-- **L-IMP-01 through L-IMP-07** — Lighting system implementation (complete)
-- **L-ARCH-01** — Lighting Runtime Pipeline & Invalidation Rules (complete, 700+ lines)
-- **L-ARCH-02** — Occlusion Semantics & Structural Blocking (complete, 600+ lines)
-- **L-ARCH-03** — Lighting Authoring Pipeline & Serialization (complete, 800+ lines)
-- **L-ARCH-04** — Tooling (designed, ready for implementation)
-- **L-IMP-08+** — Advanced integration (prepared)
+- **Lighting System** — Shadow projection with height semantics
+- **Guard AI & Detection** — Probabilistic vision with audio perception
+- **Turn System** — 2 AP per turn with A* pathfinding
+- **Fog of War** — Three-layer revelation (unseen/peek/revealed)
+- **Perception** — LOS calculation with multiplicators (cover, posture, shadows)
 
 ---
 

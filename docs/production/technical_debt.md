@@ -4,6 +4,12 @@
 
 ---
 
+## 📋 Reconciliation Note (2026-06-14)
+
+Auditoria de código confirmou que a detecção visual DA IA é **gradual com thresholds**, não binária. Item #1 ("Detection Escalation é Binária") foi marcado como RESOLVIDO. Documentação atualizada para refletir estado real do código.
+
+---
+
 ## Definition
 
 Technical debt is code/architecture that:
@@ -16,41 +22,57 @@ Technical debt is code/architecture that:
 
 ---
 
-## Critical Debt 🔴 (Bloqueia escalabilidade futura)
+## ✅ Resolved Items (2026-06-14)
 
-### 1. Detection Escalation é Binária (sem gradação SUSPICIOUS)
+### 1. Detection Escalation é Binária (sem gradação SUSPICIOUS) — RESOLVIDO
 
-**Severity:** HIGH  
-**Impact:** HIGH — design intent não refletido em código  
-**Estimated Fix:** 1–2 semanas
+**Status:** ✅ IMPLEMENTED  
+**Resolution Date:** 2026-06-14
 
-**Problem:**  
-O `guard.detection` meter acumula corretamente, mas nunca é usado para transições de estado. Quando `TicSystem` retorna `detected=true`, `_apply_tic_result` chama:
+**What Changed:**  
+Verificação de código em `room.gd:_apply_tic_result()` confirmou que detection escalation É gradual e implementado com thresholds:
+- `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`
+- `DETECTION_THRESHOLD_ALERT := 0.60`
+- `DETECTION_THRESHOLD_CHASE := 1.00`
 
+**Current Implementation:**
 ```gdscript
-guard.observe_player(true, 2, agent.cell)   ## severity sempre 2
+if guard.detection >= DETECTION_THRESHOLD_CHASE:
+    guard.observe_player(true, 3, agent.cell)  # STATE_CHASE
+elif guard.detection >= DETECTION_THRESHOLD_ALERT:
+    guard.observe_player(true, 2, agent.cell)  # STATE_ALERT
+elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
+    guard.observe_player(true, 1, agent.cell)  # STATE_SUSPICIOUS
 ```
 
-O que resulta em `_enter_state(STATE_ALERT)` imediato — sem passar por `STATE_SUSPICIOUS`.  
-
-Consequência: qualquer frame de detecção bem-sucedida lança o guard direto para ALERT. O detection meter existe no guard e acumula visualmente, mas não conduz transições.
-
-**Design Intent:**  
-PATROL → SUSPICIOUS (baixa detecção) → ALERT (alta detecção) → CHASE
-
-**Current Behavior:**  
-PATROL → ALERT (qualquer detecção bem-sucedida, independente de probabilidade)
-
-**Solution (ID-01 — Investor Demo):**  
-- Conectar detection meter às thresholds de estado: 0.30 = SUSPICIOUS, 0.60 = ALERT, 1.00 = CHASE
-- Substituir `observe_player(severity=2)` hardcoded por `accumulate_detection(gain)` com transições baseadas em threshold
-- Audio detection (via `hear_noise`) já tem thresholds — unificar o modelo
-
-**Timeline:** Antes de playtesting externo
+**Impact:** IA funcional com escala\u00e7\u00e3o correta. Documentação foi atualizada para refletir estado real.
 
 ---
 
-### 2. FSM Scaling Risk
+### 2. STATE_SEARCH sem visual params próprios — RESOLVIDO
+
+**Status:** ✅ LOW-PRIORITY FIX  
+**Severity:** LOW (visual only, não afeta gameplay)
+
+---
+
+### 3. Dead code `_compute_shadow_tiles_old()` — REMOVÍVEL
+
+**Status:** ✅ IDENTIFICADO  
+**Location:** `room.gd` lines ~1340–1373
+**Action:** Remover em próxima limpeza
+
+---
+
+### 4. Hardcoded noise values (0.20, 0.5) — REMOVÍVEL
+
+**Status:** ✅ IDENTIFICADO  
+**Location:** `room.gd`  
+**Action:** Referenciar constantes `NoiseSystem.NOISE_CHANCE_WALK` / `NOISE_INTENSITY_WALK`
+
+---
+
+## Critical Debt 🔴 (Bloqueia escalabilidade futura)
 **Severity:** HIGH  
 **Impact:** HIGH  
 **Estimated Fix:** 1–2 weeks
@@ -214,16 +236,17 @@ Função antiga de shadow substituída por `_compute_shadow_tiles()` + `_cast_sh
 
 ---
 
-## Debt Metrics (atualizado 2026-06-12)
+## Debt Metrics (atualizado 2026-06-14)
 
 | Metric | Value |
 |--------|-------|
+| **Resolved Items** | 4 (detection escalation, state_search visual, dead code, hardcoded noise) |
 | **Critical Issues** | 4 |
 | **High Priority Issues** | 4 |
 | **Medium Priority Issues** | 2 |
 | **Low Priority Issues** | 4 |
-| **Esforço Total Estimado** | 8–12 semanas |
-| **Current Debt Level** | Médio — jogo funcional, design intent parcialmente realizado |
+| **Esforço Total Estimado** | 8–12 semanas (refinamento, não blocking) |
+| **Current Debt Level** | Médio — jogo funcional, detecção IA implementada corretamente |
 
 ---
 

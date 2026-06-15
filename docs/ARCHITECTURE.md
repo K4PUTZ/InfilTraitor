@@ -8,6 +8,39 @@
 
 ---
 
+## 📊 Implementation Status (2026-06-14)
+
+**Important:** This documentation describes the **TARGET DESIGN** for INFILTRAITOR systems. The current codebase implements **core gameplay loops** with **simplified systems** for Investor Demo phase.
+
+### Specification vs. Current Implementation
+
+| System | Spec Status | Implementation Status | Notes |
+|--------|-------------|----------------------|-------|
+| **Guard AI & Detection** | Complete (L-ARCH) | ✅ Functional (gradual escalation) | Detection uses thresholds (0.30/0.60/1.00), works as designed |
+| **Shadow Projection** | Complete (L-ARCH-01) | ✅ Partial (binary lit/shadow) | No LOS calculation, no height semantics yet |
+| **Exposure System** | Complete (L-ARCH-01) | 🟡 Partial (6 classes defined, 2 used) | Stability/confidence layers not populated |
+| **Noise Propagation** | Complete (docs) | ✅ Functional (grid with decay) | Used by guards for audio detection |
+| **Pathfinding (A*)** | Complete (docs) | ✅ Functional (optimal) | Guards and player movement both implemented |
+| **Perception/LOS** | Complete (docs) | ✅ Functional (cone + distance) | Multiplicators working (cover, posture, shadows) |
+
+### What's Ready for Integration
+
+✅ **Complete:** AI perception, guard FSM, turn system, movement, pathfinding  
+✅ **Ready:** Lighting specification (design frozen)  
+🟡 **In Progress:** LOS/perception integration with lighting  
+⏳ **Planned:** Dynamic lighting, advanced AI behaviors
+
+### What's Simplified for Demo
+
+- Shadows are binary (lit/shadow) not graduated  
+- Light sources hardcoded (not data-driven)  
+- Exposure classes defined but simplified in practice  
+- LOS doesn't account for height semantics yet
+
+**→ See [docs/production/current_state.md](production/current_state.md) for detailed status breakdown**
+
+---
+
 ## Architecture Overview
 
 INFILTRAITOR is built on **semantic-first game design**. Rather than inferring gameplay behavior from visual appearance or physics simulation, gameplay semantics are explicitly authored and systematically connected.

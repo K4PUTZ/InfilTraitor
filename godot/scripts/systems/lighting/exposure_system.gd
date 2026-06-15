@@ -103,6 +103,16 @@ var _exposure_confidence: Dictionary = {}
 ## Room size for bounds checking
 var _room_size: Vector2i = Vector2i.ZERO
 
+## Structural reference data (populated by room.gd)
+var blocked_cells: Dictionary = {}
+var blocked_edges: Dictionary = {}
+
+## Confidence tunables (stability → reliability)
+var confidence_static: float = 0.90      ## Structural shadow: high confidence
+var confidence_dynamic: float = 0.50     ## Moving light: moderate confidence
+var confidence_temporal: float = 0.25    ## Flickering light: low confidence
+var confidence_occluded: float = 1.00    ## Sealed void: perfect confidence
+
 ## ============================================================================
 ## Initialization & Setup
 ## ============================================================================
@@ -112,6 +122,11 @@ func _init() -> void:
 
 func set_room_size(size: Vector2i) -> void:
 	_room_size = size
+
+## Set structural data for OCCLUDED_VOID detection
+func set_structural_data(cells: Dictionary, edges: Dictionary) -> void:
+	blocked_cells = cells
+	blocked_edges = edges
 
 ## ============================================================================
 ## Core Exposure Calculation
@@ -164,26 +179,45 @@ func rebuild_from_shadow_result(result) -> void:
 ## Future refinement: apply detection multipliers from L-DOC-01.
 func rebuild_from_results(results: Array) -> void:
 	_exposure_grid.clear()
+	_shadow_stability.clear()
+	_exposure_confidence.clear()
 	
 	# Track maximum exposure per tile (most "visible" across all lights)
 	var max_exposure: Dictionary = {}
 	
+	# Track stability and source lights per tile
+	var tile_lights: Dictionary = {}  # cell → [lights]
+	
 	for result in results:
+		var source_light = result.source_light if result.has_method("get") or result.source_light != null else null
+		
 		# Accumulate visibility from each light
 		var fully_lit_tiles = result.get_tiles_by_class("fully_lit")
 		for cell in fully_lit_tiles:
 			if cell not in max_exposure or max_exposure[cell] < FULL_LIT:
 				max_exposure[cell] = FULL_LIT
+			if cell not in tile_lights:
+				tile_lights[cell] = []
+			if source_light not in tile_lights[cell]:
+				tile_lights[cell].append(source_light)
 		
 		var dim_tiles = result.get_tiles_by_class("dim")
 		for cell in dim_tiles:
 			if cell not in max_exposure or max_exposure[cell] < DIM:
 				max_exposure[cell] = DIM
+			if cell not in tile_lights:
+				tile_lights[cell] = []
+			if source_light not in tile_lights[cell]:
+				tile_lights[cell].append(source_light)
 		
 		var penumbra_tiles = result.get_tiles_by_class("penumbra")
 		for cell in penumbra_tiles:
 			if cell not in max_exposure or max_exposure[cell] < PENUMBRA:
 				max_exposure[cell] = PENUMBRA
+			if cell not in tile_lights:
+				tile_lights[cell] = []
+			if source_light not in tile_lights[cell]:
+				tile_lights[cell].append(source_light)
 		
 		var shadow_tiles = result.get_tiles_by_class("shadow")
 		for cell in shadow_tiles:
@@ -196,6 +230,113 @@ func rebuild_from_results(results: Array) -> void:
 				max_exposure[cell] = DEEP_SHADOW
 	
 	_exposure_grid = max_exposure
+	
+	# Phase 2: Populate stability and confidence
+	_populate_stability_and_confidence(tile_lights)
+	
+	# Phase 3: Detect OCCLUDED_VOID (sealed, unlit niches)
+	_detect_occluded_void()
+
+## Determine stability classification for a light source (LIGHT-FIX-04)
+func _light_stability(light) -> String:
+	if light == null:
+		return STABILITY_STATIC
+	
+	# Check temporal flags
+	if (light.has_method("get") or light.flicker_enabled != null) and light.flicker_enabled:
+		return STABILITY_TEMPORAL
+	if (light.has_method("get") or light.pulse_enabled != null) and light.pulse_enabled:
+		return STABILITY_TEMPORAL
+	
+	# Check dynamic properties
+	if (light.has_method("get") or light.rotation_speed != null) and light.rotation_speed != 0.0:
+		return STABILITY_DYNAMIC
+	if (light.has_method("get") or light.light_type != null) and light.light_type == "mobile":
+		return STABILITY_DYNAMIC
+	
+	# Default: structural
+	return STABILITY_STATIC
+
+## Populate _shadow_stability and _exposure_confidence from tile lights
+func _populate_stability_and_confidence(tile_lights: Dictionary) -> void:
+	# For each illuminated tile, determine stability (least stable among lights)
+	for cell in tile_lights.keys():
+		var lights = tile_lights[cell]
+		var tile_stability = STABILITY_STATIC
+		
+		# Find most unstable light affecting this tile (TEMPORAL > DYNAMIC > STATIC)
+		for light in lights:
+			var light_stab = _light_stability(light)
+			if light_stab == STABILITY_TEMPORAL:
+				tile_stability = STABILITY_TEMPORAL
+				break
+			elif light_stab == STABILITY_DYNAMIC and tile_stability != STABILITY_TEMPORAL:
+				tile_stability = STABILITY_DYNAMIC
+			elif light_stab == STABILITY_STATIC and tile_stability == STABILITY_STATIC:
+				tile_stability = STABILITY_STATIC
+		
+		_shadow_stability[cell] = tile_stability
+		
+		# Map stability to confidence
+		match tile_stability:
+			STABILITY_STATIC:
+				_exposure_confidence[cell] = confidence_static
+			STABILITY_TEMPORAL:
+				_exposure_confidence[cell] = confidence_temporal
+			STABILITY_DYNAMIC:
+				_exposure_confidence[cell] = confidence_dynamic
+			STABILITY_OCCLUDED:
+				_exposure_confidence[cell] = confidence_occluded
+	
+	# Unlit tiles (not in tile_lights) default to STATIC stability
+	for cell in _exposure_grid.keys():
+		if cell not in tile_lights:
+			if cell not in _shadow_stability:
+				_shadow_stability[cell] = STABILITY_STATIC
+			if cell not in _exposure_confidence:
+				_exposure_confidence[cell] = confidence_static
+
+## Detect and classify sealed, unlit niches as OCCLUDED_VOID (v1 conservative)
+func _detect_occluded_void() -> void:
+	var WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")
+	
+	# Scan all cells in room
+	for x in range(_room_size.x):
+		for y in range(_room_size.y):
+			var cell = Vector2i(x, y)
+			
+			# Skip blocked cells
+			if blocked_cells.has(cell):
+				continue
+			
+			# Skip illuminated cells
+			if cell in _exposure_grid:
+				continue
+			
+			# Check if structurally sealed (no open neighbors)
+			var is_sealed = true
+			var orthogonal_neighbors = [
+				cell + Vector2i.UP,
+				cell + Vector2i.DOWN,
+				cell + Vector2i.LEFT,
+				cell + Vector2i.RIGHT,
+			]
+			
+			for neighbor in orthogonal_neighbors:
+				# "Open" = in room, not-blocked, no edge blocking
+				if (neighbor.x >= 0 and neighbor.x < _room_size.x and
+					neighbor.y >= 0 and neighbor.y < _room_size.y and
+					not blocked_cells.has(neighbor)):
+					# Check if edge between cell and neighbor is blocked
+					if not WallEdgeDataClass.is_edge_blocked(cell, neighbor, blocked_edges):
+						is_sealed = false
+						break
+			
+			# If sealed and unlit, mark as OCCLUDED_VOID
+			if is_sealed:
+				_exposure_grid[cell] = OCCLUDED_VOID
+				_shadow_stability[cell] = STABILITY_OCCLUDED
+				_exposure_confidence[cell] = confidence_occluded
 
 ## ============================================================================
 ## Query Methods — Gameplay Stealth Interface

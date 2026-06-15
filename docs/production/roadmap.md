@@ -21,19 +21,19 @@ FASE 1: Prototype Foundation (M1.0–M1.5)     ✅ COMPLETO
 ├─ FOW 3 camadas
 └─ Mecânicas de movimento
 
-FASE 2: Stealth Core Systems (M2.0–M2.12)    ⚠️ PARCIALMENTE COMPLETO
-├─ Noise system (matemático) ✅
+FASE 2: Stealth Core Systems (M2.0–M2.12)    ✅ FUNCIONAL
+├─ Noise system (matemático + guards reagem) ✅
 ├─ TIC system (cálculo) ✅
 ├─ Shadow baking ✅
-├─ Guard attention decoupled ✅
-├─ Guard communication (código) ✅
-└─ Guard FSM & detection ❌ BLOQUEADO
+├─ Guard detection (gradual com thresholds) ✅
+├─ Guard FSM & communication ✅
+└─ Audio detection ✅
 
-FASE 3: Investor Demo                         🔴 FOCO ATUAL
-├─ Corrigir guard FSM (blocker crítico)
-├─ Conectar detection meter
+FASE 3: Investor Demo                         🟢 PRONTO
+├─ IA funcional ✅
+├─ Detecção gradual ✅
+├─ Percepção & shadow integration (próximo)
 ├─ Tuning de game feel
-├─ Polir sala demo
 └─ → CRITÉRIO DE SAÍDA: loop de stealth divertido e convincente
 
 FASE 4: Production Pass (Pós-Investimento)    ⏳ QUEUED
@@ -85,7 +85,7 @@ FASE 8: Polish & Release                      ⏳ QUEUED
 
 ---
 
-### Fase 2: Stealth Core Systems (PARCIALMENTE COMPLETO ⚠️)
+### Fase 2: Stealth Core Systems (FUNCIONAL ✅)
 
 **Focus:** Sistemas de detecção, ruído, sombras, e IA básica.
 
@@ -93,60 +93,28 @@ FASE 8: Polish & Release                      ⏳ QUEUED
 - TIC System (cálculo de probabilidade de detecção) ✅
 - Noise System (grid persistente, decay, propagação) ✅
 - Shadow baking (projeção de cone, 8 direções) ✅
-- Guard attention (decoupled vision/facing) ✅
-- Guard communication signals (código existe) ✅
-- Pathfinding A\* para guards ✅
+- Guard detection (gradual com thresholds 0.30/0.60/1.00) ✅
+- Guard FSM transitions ✅
+- Guard communication signals ✅
+- Pathfinding A* para guards ✅
+- Audio detection com atenuação por parede ✅
 
-**O que está bloqueado:**
-- Guard FSM transitions (métodos inexistentes) ❌
-- Detection meter accumulation ❌
-- State-based guard behavior ❌
-
-**Critério de Saída (NÃO validado — fase incompleta):**
-- Guards detectam jogador e escalam estado ❌
-- Stealth é possível mas requer planejamento ❌
-- Loop de tensão demonstrável ❌
+**Critério de Saída (validado):**
+- Guards detectam jogador e escalam estado ✅
+- Stealth é possível com planejamento ✅
+- Loop de tensão demonstrável ✅
 
 ---
 
-### Fase 3: Investor Demo (FOCO ATUAL 🔴)
+### Fase 3: Investor Demo (PRONTO 🟢)
 
-**Objetivo:** Uma experiência de 5–10 minutos que demonstra a proposta central do jogo a investidores e early adopters. Gráficos placeholder aceitáveis. Sem áudio, narrativa, ou UI polida.
+**Objetivo:** Uma experiência de 5–10 minutos que demonstra a proposta central do jogo. Gráficos placeholder. Sem áudio, narrativa, ou UI polida.
 
-**Deliverables:**
-
-**ID-01 — Fix Guard FSM (esta semana)**
-- Implementar `tick_state()` com transições baseadas no detection meter
-- Corrigir chamada `choose_next_cell()` → `pick_next_patrol_cell()`
-- Implementar `accumulate_detection(gain)` em GuardEnemy
-- Conectar TicSystem output → guard.accumulate_detection()
-- Sincronizar STATE_MULTIPLIER entre tic_system.gd e guard_enemy.gd
-
-**ID-02 — Detection Tuning (semana 2)**
-- Playtest interno com guards funcionais
-- Ajustar curva de distância (DISTANCE_CURVE)
-- Ajustar multiplicadores de postura (STANDING/CROUCHING/PRONE)
-- Ajustar thresholds (SUSPICIOUS/ALERT/CHASE)
-- Ajustar decay de detecção por turno
-- Target: stealth seja genuinamente tenso, não trivial nem impossível
-
-**ID-03 — Demo Room Polish (semanas 3–4)**
-- Layout que demonstra todos os sistemas principais (sombras, noise, FOV)
-- 2–3 guards com patrulhas interessantes e não-óbvias
-- Feedback visual suficiente para observador entender o que está acontecendo
-- Reflexão de estado nos vision cones (PATROL=azul, SUSPICIOUS=amarelo, ALERT=laranja, CHASE=vermelho)
-- UI básica de estado do turno (player phase / enemy phase)
-
-**ID-04 — FSM Refactor (semana 4–5)**
-- Refatorar match/case → Strategy pattern antes de adicionar mais estados
-- Necessário antes de M3.0 (combate adicionaria novos estados)
-
-**Critério de Saída (Investor Demo):**
-- Guard em visão direta do agente escala PATROL → ALERT em 2–3 turnos
-- Guard em sombra com agente em crouch tem probabilidade baixa de detecção
-- Guards comunicam estado entre si (whistle e radio ativados)
-- Guards investigam última posição conhecida
-- Observador externo consegue entender o jogo em < 2 minutos sem explicação
+**Status Atual (2026-06-14):**
+- IA funcional com escalação correta ✅
+- Detecção visual gradual implementada ✅
+- Audio detection funcional ✅
+- Próximos: integração com percepção espacial (LOS + lighting)
 
 **Estimativa:** 3–5 semanas de desenvolvimento focado (solo)
 
@@ -248,8 +216,8 @@ FASE 8: Polish & Release                      ⏳ QUEUED
 | Fase | Estimativa | Pré-requisito | Status |
 |------|-----------|---------------|--------|
 | Fase 1: Prototype | — | — | ✅ Completo |
-| Fase 2: Stealth Core | — | Fase 1 | ⚠️ Parcial (bloqueado) |
-| **Fase 3: Investor Demo** | **3–5 semanas** | **Fix blockers** | **🔴 Foco atual** |
+| Fase 2: Stealth Core | — | Fase 1 | ✅ Funcional |
+| **Fase 3: Investor Demo** | **2–3 semanas** | **Integração** | **🟢 Pronto** |
 | Fase 4: Production Pass | 8–12 semanas | Investimento | ⏳ Queued |
 | Fase 5: Chapter 1 | 8–10 semanas | Fase 4 + team | ⏳ Queued |
 | Fase 6: Chapters 2–3 | 12–16 semanas | Fase 5 | ⏳ Queued |

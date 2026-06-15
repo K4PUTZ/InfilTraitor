@@ -17,20 +17,19 @@ O sistema de IA é **funcional mas simplificado** em relação ao design intent.
 
 **O que funciona corretamente:**
 - Guards detectam o agente probabilisticamente via `TicSystem.evaluate()`
-- Quando detecção ocorre, guard escalona para `STATE_ALERT` e persegue
-- `tick_state()` faz de-escalação por timer (ALERT → CHASE → SEARCH → SUSPICIOUS → PATROL)
-- Audio detection via `hear_noise()` com thresholds (0.25 / 0.60)
+- Quando detecção ocorre, guard escalona para `STATE_SUSPICIOUS` (detection ≥ 0.30), `STATE_ALERT` (≥ 0.60), ou `STATE_CHASE` (≥ 1.00)
+- Escalação é gradual, baseada no acúmulo do meter `guard.detection`
+- `tick_state()` faz de-escalação por timer (CHASE → ALERT → SEARCH → SUSPICIOUS → PATROL)
+- Audio detection via `hear_noise()` com thresholds integrados
 - Comunicação entre guards (whistle / radio) funcional via signals
 - Pathfinding A* correto e eficiente
 - `choose_next_cell()` state-aware (comportamento por estado implementado)
 
-**O que está simplificado vs. design intent:**
-- `guard.detection` meter acumula visualmente mas **não conduz transições de estado**
-- Detecção visual é **binária**: qualquer tic bem-sucedido → `STATE_ALERT` imediato (sem passar por SUSPICIOUS)
-- Design intent: escalação gradual PATROL → SUSPICIOUS → ALERT via threshold do meter
-- Audio detection já tem gradação; visual detection não
-
-**Impacto real:** O jogo é jogável e reativo. Guards respondem ao agente. A falta de gradação na detecção visual pode parecer abrupta ("guard dormiu em cima do agente e de repente foi para ALERT"), mas não quebra o stealth.
+**Implementação da Escalação Visual:**
+- Código em `room.gd:_apply_tic_result()` acumula `guard.detection` por tic
+- Thresholds definidos: `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`, `ALERT := 0.60`, `CHASE := 1.00`
+- Transições de estado ocorrem quando meter ultrapassa threshold enquanto agente está visível
+- Meter decai lentamente quando agente sai do cone (diferente taxa por estado)
 
 ---
 
@@ -44,8 +43,8 @@ O sistema de IA é **funcional mas simplificado** em relação ao design intent.
 | **Noise System (matemático)** | Funcional | Beta | 80% |
 | **Lighting & Shadows** | Funcional + Semantic Design | Alpha→Beta | 85% |
 | **Fog of War** | Funcional | Beta | 80% |
-| **Enemy AI / Guard FSM** | Funcional (simplificado) | Alpha | 65% |
-| **Detection / Stealth** | Funcional (binário) | Alpha | 55% |
+| **Enemy AI / Guard FSM** | Funcional (escalação gradual) | Alpha | 75% |
+| **Detection / Stealth** | Funcional (probabilístico com gradação) | Alpha | 70% |
 | **Perception (cálculo)** | Funcional | Beta | 75% |
 | **Audio (SFX)** | Não iniciado | — | 0% |
 | **Animation (sprites)** | Não iniciado | — | 0% |
@@ -134,9 +133,7 @@ O sistema de IA é **funcional mas simplificado** em relação ao design intent.
 - Atenuação por paredes (0.6× por parede)
 - Visualização (círculos cyan)
 - Indicadores de direção em guards
-
-⚠️ **Não conectado:**
-- Noise calculado corretamente, mas guards não reagem (bloqueio)
+- **Guards reagem via `hear_noise()`** — detecção auditiva com limiar (≥0.60 → SUSPICIOUS)
 
 ---
 
@@ -263,6 +260,6 @@ O jogo já é funcional. Os guards detectam e reagem. Para uma demo convincente:
 
 ---
 
-**Last Updated:** 2026-06-12  
+**Last Updated:** 2026-06-14  
 **Maintained By:** Project Management  
-**Status:** BLOQUEADO — guards não reagem ao jogador
+**Status:** ✅ IA FUNCIONAL — Guards reagem com escala\u00e7\u00e3o gradual; integra\u00e7\u00e3o com percep\u00e7\u00e3o espacial em progresso

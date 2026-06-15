@@ -18,6 +18,7 @@ const LightAnchorClass = preload("res://godot/scripts/systems/lighting/light_anc
 ## References
 var tile_semantics_map: Dictionary = {}   ## cell → TileSemantics
 var light_anchors: Array = []             ## LightAnchor instances
+var floor_layer: TileMapLayer = null
 var tile_size: Vector2 = Vector2(256, 128)
 var visual_offset: Vector2 = Vector2.ZERO
 
@@ -156,7 +157,7 @@ func _draw_blockers() -> void:
 func _draw_anchors() -> void:
 	for anchor in light_anchors:
 		var screen_pos = _cell_to_screen(anchor.anchor_cell)
-		var center = screen_pos + tile_size * 0.5
+		var center = screen_pos
 		
 		# Draw anchor symbol based on type
 		match anchor.anchor_type:
@@ -191,10 +192,18 @@ func _draw_anchors() -> void:
 
 func _draw_tile_rect(cell: Vector2i, color: Color) -> void:
 	var screen_pos = _cell_to_screen(cell)
-	draw_rect(Rect2(screen_pos, tile_size), color)
+	var half_w = tile_size.x * 0.5
+	var half_h = tile_size.y * 0.5
+	var points = PackedVector2Array([
+		screen_pos + Vector2(half_w, 0.0),
+		screen_pos + Vector2(0.0, half_h),
+		screen_pos + Vector2(-half_w, 0.0),
+		screen_pos + Vector2(0.0, -half_h),
+	])
+	draw_colored_polygon(points, color)
 
 func _draw_height_label(cell: Vector2i, height_class: int) -> void:
-	var screen_pos = _cell_to_screen(cell) + tile_size * 0.5
+	var screen_pos = _cell_to_screen(cell)
 	var label = TileSemanticsClass.HEIGHT_NAMES.get(height_class, "?")
 	draw_string(
 		ThemeDB.fallback_font,
@@ -207,7 +216,7 @@ func _draw_height_label(cell: Vector2i, height_class: int) -> void:
 	)
 
 func _draw_struct_label(cell: Vector2i, struct_type: String) -> void:
-	var screen_pos = _cell_to_screen(cell) + tile_size * 0.5
+	var screen_pos = _cell_to_screen(cell)
 	var label = TileSemanticsClass.STRUCT_NAMES.get(struct_type, "?")
 	draw_string(
 		ThemeDB.fallback_font,
@@ -229,6 +238,8 @@ func _draw_direction_arrow(center: Vector2, direction: Vector2i, color: Color) -
 ## ============================================================================
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
+	if floor_layer != null:
+		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

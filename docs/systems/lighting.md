@@ -1629,14 +1629,32 @@ With exposure multipliers active, guard detection now has three stages:
 
 ### Debugging & Visualization
 
-#### DEV_VISION Overlay Hierarchy
+#### Overlay Modes & Hierarchy
 
-When DEV_VISION is enabled, four overlays are visible:
+The lighting visualization is split across three independent toggles:
 
-1. **Light Overlay (z=20)** — Light source positions and directions
-2. **Shadow Overlay (z=21)** — Shadow projection geometry
-3. **Exposure Overlay (z=22)** — Visibility class colors (per-tile classification)
-4. **Tile Risk Overlay (z=23)** — Detection risk heatmap (red = danger, blue = safe)
+- **V — DEV_VISION**
+  - guard debug labels
+  - tile hover/debug info
+  - agent trail
+  - detection meter arc
+  - patrol route debug
+- **L — LIGHT_VISION**
+  - light overlay
+  - shadow overlay
+  - height overlay
+  - temporal overlay
+- **H — HEAT_VISION**
+  - exposure overlay
+  - tile risk overlay
+  - elite exposure overlay
+
+Current stack order in the room:
+
+1. **Exposure / Heat overlays** — tactical classification
+2. **Light Overlay (z=27)** — light source positions and directions
+3. **Shadow Overlay (z=28)** — shadow projection geometry
+4. **DEV overlays** — guard labels, arcs, trail, hover, etc.
 
 #### Query Methods for Debugging
 
@@ -1675,7 +1693,9 @@ var label = exposure_system.get_tile_debug_info(cell)
 - [x] Exposure multipliers computed correctly
 - [x] TicSystem integration passes optional parameter gracefully
 - [x] Overlay displays risk gradient without errors
-- [x] DEV_VISION toggles all four lighting overlays
+- [x] DEV_VISION toggles AI/debug overlays only
+- [x] LIGHT_VISION toggles light/shadow/height/temporal overlays
+- [x] HEAT_VISION toggles exposure/risk/elite overlays
 - [x] No performance regression (measured ~1ms per 500 tiles)
 - [x] Compilation clean (0 errors in Godot 4.6)
 
@@ -3002,4 +3022,3 @@ exposure_system.exposure_changed.connect(_on_exposure_changed)
 **Document Status:** Architecture planning document for future AI integration  
 **Maintained By:** Design / Lighting & AI Integration  
 **Status:** Concept 🟡
-

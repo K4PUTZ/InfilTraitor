@@ -51,6 +51,7 @@ var overlay_opacity: float = 0.4
 
 # Reference to exposure system (set externally)
 var exposure_system = null
+var floor_layer: TileMapLayer = null
 
 # Tile size and offset (for isometric projection)
 var tile_size: Vector2 = Vector2(256, 128)
@@ -188,6 +189,8 @@ func toggle_mode(mode: String) -> void:
 			show_safe_corridors = not show_safe_corridors
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
+	if floor_layer != null:
+		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	# Isometric projection: (x-y)*256/2, (x+y)*128/2
 	var x: float = float(cell.x)
 	var y: float = float(cell.y)

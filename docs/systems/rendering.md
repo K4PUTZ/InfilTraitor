@@ -4,6 +4,15 @@
 
 ---
 
+## Grid Geometry
+
+- **Source tile art:** `256x128` px
+- **Rendered isometric tile:** `128x64` px half-extents (`TILE_HW=128`, `TILE_HH=64`)
+- **Canonical center:** `floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET`
+- **Global visual offset:** `VISUAL_GRID_OFFSET = Vector2(0.0, 512.0)`
+
+Use this as the shared reference for all overlay drawing code.
+
 ## Overview
 
 The rendering system provides a **unified tile overlay framework** for all visual feedback:

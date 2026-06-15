@@ -9,6 +9,7 @@ extends Node2D
 
 ## References
 var exposure_system
+var floor_layer: TileMapLayer = null
 var tile_size: Vector2 = Vector2(256, 128)
 var visual_offset: Vector2 = Vector2.ZERO
 
@@ -61,10 +62,16 @@ func _draw() -> void:
 func _draw_risk_tile(cell: Vector2i, risk: float) -> void:
 	var screen_pos = _cell_to_screen(cell)
 	var color = _get_risk_color(risk)
-	
-	# Draw filled rectangle
-	var rect = Rect2(screen_pos, tile_size)
-	draw_rect(rect, color)
+
+	var half_w = tile_size.x * 0.5
+	var half_h = tile_size.y * 0.5
+	var points = PackedVector2Array([
+		screen_pos + Vector2(half_w, 0.0),
+		screen_pos + Vector2(0.0, half_h),
+		screen_pos + Vector2(-half_w, 0.0),
+		screen_pos + Vector2(0.0, -half_h),
+	])
+	draw_colored_polygon(points, color)
 
 ## Get color from risk value (0.0-1.0).
 func _get_risk_color(risk: float) -> Color:
@@ -85,6 +92,8 @@ func _get_risk_color(risk: float) -> Color:
 
 ## Convert grid cell to screen position (isometric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:
+	if floor_layer != null:
+		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

@@ -146,6 +146,7 @@ var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
 var dev_vision: bool = false
 var light_vision: bool = false
+var heat_vision: bool = false
 
 ## M2-10: Peek mechanic state
 var _peek_active: bool = false
@@ -1027,10 +1028,14 @@ func _toggle_light_vision() -> void:
 	light_vision = not light_vision
 	_apply_light_vision()
 
+func _toggle_heat_vision() -> void:
+	heat_vision = not heat_vision
+	_apply_heat_vision()
+	_apply_fow_visibility()
+
 func _apply_dev_vision() -> void:
-	## Toggle FOW when dev_vision OR light_vision is active (OVERLAY-SPLIT-01)
-	fog_of_war.visible = not (dev_vision or light_vision)
-	_fog_rect.visible = not (dev_vision or light_vision)
+	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
+	_apply_fow_visibility()
 
 	## Notify each guard of dev_vision state
 	for guard in _get_all_guards():
@@ -1040,21 +1045,6 @@ func _apply_dev_vision() -> void:
 	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
-	## L-IMP-03: Toggle exposure overlay with dev_vision
-	if _exposure_overlay != null:
-		_exposure_overlay.visible = dev_vision
-		_exposure_overlay.set_dev_vision(dev_vision)
-	
-	## L-IMP-04: Toggle tile risk overlay with dev_vision
-	if _tile_risk_overlay != null:
-		_tile_risk_overlay.visible = dev_vision
-		_tile_risk_overlay.set_dev_vision(dev_vision)
-	
-	## L-IMP-???: Toggle elite exposure overlay with dev_vision
-	if _elite_exposure_overlay != null:
-		_elite_exposure_overlay.visible = dev_vision
-		_elite_exposure_overlay.set_dev_vision(dev_vision)
-	
 	## M2-14: Update overlay markers for dev_vision
 	if _tile_game != null:
 		if dev_vision:
@@ -1067,9 +1057,8 @@ func _apply_dev_vision() -> void:
 			_tile_game.clear_priority(TileOverlayClass.PRIO_NAV)
 
 func _apply_light_vision() -> void:
-	## Toggle FOW when dev_vision OR light_vision is active (OVERLAY-SPLIT-01)
-	fog_of_war.visible = not (dev_vision or light_vision)
-	_fog_rect.visible = not (dev_vision or light_vision)
+	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
+	_apply_fow_visibility()
 	
 	## L-IMP-01: Toggle light overlay with light_vision
 	if _light_overlay != null:
@@ -1088,6 +1077,26 @@ func _apply_light_vision() -> void:
 	if _temporal_overlay != null:
 		_temporal_overlay.visible = light_vision
 		_temporal_overlay.set_dev_vision(light_vision)
+
+func _apply_heat_vision() -> void:
+	if _exposure_overlay != null:
+		_exposure_overlay.visible = heat_vision
+		_exposure_overlay.set_dev_vision(heat_vision)
+		_exposure_overlay.queue_redraw()
+	if _tile_risk_overlay != null:
+		_tile_risk_overlay.visible = heat_vision
+		_tile_risk_overlay.set_dev_vision(heat_vision)
+		_tile_risk_overlay.queue_redraw()
+	if _elite_exposure_overlay != null:
+		_elite_exposure_overlay.visible = heat_vision
+		_elite_exposure_overlay.set_dev_vision(heat_vision)
+		_elite_exposure_overlay.queue_redraw()
+
+func _apply_fow_visibility() -> void:
+	if fog_of_war != null:
+		fog_of_war.visible = not (dev_vision or light_vision or heat_vision)
+	if _fog_rect != null:
+		_fog_rect.visible = not (dev_vision or light_vision or heat_vision)
 
 
 func _get_all_guards() -> Array:
@@ -1706,6 +1715,9 @@ func _input(event: InputEvent) -> void:
 				KEY_L:
 					_toggle_light_vision()
 					return
+				KEY_H:
+					_toggle_heat_vision()
+					return
 				KEY_P:
 					_peek_pending = true
 					return
@@ -1895,10 +1907,10 @@ func _setup_light_overlay() -> void:
 	
 	_light_overlay = LightOverlayClass.new()
 	_light_overlay.light_registry = _light_registry
-	_light_overlay.tile_size = Vector2(256, 128)
+	_light_overlay.tile_size = Vector2(128, 64)
 	_light_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_light_overlay)
-	_light_overlay.z_index = 20  # Above all other overlays
+	_light_overlay.z_index = 27  # Above HEAT overlays
 	_light_overlay.visible = dev_vision
 
 
@@ -1924,10 +1936,10 @@ func _setup_shadow_overlay() -> void:
 	_shadow_overlay = ShadowOverlayClass.new()
 	_shadow_overlay.shadow_projector = _shadow_projector
 	_shadow_overlay.light_registry = _light_registry
-	_shadow_overlay.tile_size = Vector2(256, 128)
+	_shadow_overlay.tile_size = Vector2(128, 64)
 	_shadow_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_shadow_overlay)
-	_shadow_overlay.z_index = 21  # Just above light overlay
+	_shadow_overlay.z_index = 28  # Above light overlay and HEAT overlays
 	_shadow_overlay.visible = dev_vision
 	
 	print("[Room] Shadow overlay initialized")
@@ -1988,6 +2000,7 @@ func _setup_exposure_overlay() -> void:
 	
 	_exposure_overlay = ExposureOverlayClass.new()
 	_exposure_overlay.exposure_system = _exposure_system
+	_exposure_overlay.floor_layer = floor_layer
 	_exposure_overlay.tile_size = Vector2(256, 128)
 	_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_exposure_overlay)
@@ -2004,6 +2017,7 @@ func _setup_tile_risk_overlay() -> void:
 	
 	_tile_risk_overlay = TileRiskOverlayClass.new()
 	_tile_risk_overlay.exposure_system = _exposure_system
+	_tile_risk_overlay.floor_layer = floor_layer
 	_tile_risk_overlay.tile_size = Vector2(256, 128)
 	_tile_risk_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_tile_risk_overlay)
@@ -2083,6 +2097,7 @@ func _setup_height_overlay() -> void:
 	_height_overlay = HeightOverlayClass.new()
 	_height_overlay.load_semantics(_tile_semantics_map)
 	_height_overlay.load_anchors(_light_anchors)
+	_height_overlay.floor_layer = floor_layer
 	_height_overlay.tile_size = Vector2(256, 128)
 	_height_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_height_overlay)
@@ -2099,7 +2114,7 @@ func _setup_temporal_overlay() -> void:
 	
 	_temporal_overlay = TemporalOverlayClass.new()
 	_temporal_overlay.load_lights(_light_registry)
-	_temporal_overlay.tile_size = Vector2(256, 128)
+	_temporal_overlay.tile_size = Vector2(128, 64)
 	_temporal_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_temporal_overlay)
 	_temporal_overlay.z_index = 25  # Above height overlay for temporal visualization
@@ -2115,6 +2130,7 @@ func _setup_elite_exposure_overlay() -> void:
 	
 	_elite_exposure_overlay = EliteExposureOverlayClass.new()
 	_elite_exposure_overlay.load_exposure_system(_exposure_system)
+	_elite_exposure_overlay.floor_layer = floor_layer
 	_elite_exposure_overlay.tile_size = Vector2(256, 128)
 	_elite_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_elite_exposure_overlay)

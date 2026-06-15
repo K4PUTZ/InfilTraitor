@@ -15,6 +15,18 @@ Engine: Godot 4.6 · Linguagem: GDScript · Grid: isométrico 2.5D via `TileMapL
 O agente tem 2 AP por turno. Qualidade de código e arquitetura limpa são
 prioridade — não há deadline.
 
+### Geometria do grid
+
+- **Tile source / asset size:** `256x128` px
+- **Diamond on-screen:** `128x64` px por meia-célula, formando um losango de `256x128` visual
+- **Centro canônico do tile:** `floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET`
+- **Offset visual fixo:** `VISUAL_GRID_OFFSET = Vector2(0.0, 512.0)`
+
+Regra prática:
+- use `map_to_local()` quando o overlay estiver preso ao `TileMapLayer`
+- use `TILE_HW=128` e `TILE_HH=64` para desenhar o losango
+- não duplique `VISUAL_GRID_OFFSET` em overlays filhos
+
 ---
 
 ## Arquitetura — Regras Invioláveis
@@ -243,8 +255,10 @@ FASE INIMIGA
   turn_manager.finish_enemy_phase()
 ```
 
-### DEV_VISION (tecla V)
-Ativa overlay completo de debug:
+### DEV_VISION / LIGHT_VISION / HEAT_VISION
+
+**DEV_VISION (tecla V)**
+Ativa só o debug de IA:
 - FOW desligado, guardas sempre visíveis
 - Cone do guarda mais opaco (alpha ×1.5)
 - Debug label acima de cada guarda (id, state, cell, facing, last_known)
@@ -252,6 +266,19 @@ Ativa overlay completo de debug:
 - Trail amarelo do agente (últimos 5 tiles, opacidade decrescente)
 - Detection arc acima de cada guarda (verde→vermelho, 0–100%)
 - Rota de patrulha em azul tracejado
+
+**LIGHT_VISION (tecla L)**
+Ativa só a leitura estrutural de luz:
+- Light overlay
+- Shadow overlay
+- Height overlay
+- Temporal overlay
+
+**HEAT_VISION (tecla H)**
+Ativa só a leitura tática de exposição:
+- Exposure overlay
+- Tile risk overlay
+- Elite exposure overlay
 
 ### Z-index dos Overlays
 ```
@@ -265,6 +292,11 @@ agent / guards:     10
 noise_overlay:      140
 trail_overlay:      150
 debug_label:        200
+
+Recommended runtime visual stack:
+- `HEAT_VISION` overlays below `LIGHT_VISION` overlays
+- `LIGHT_VISION` overlays below `DEV_VISION` overlays
+- `V`, `L`, and `H` may be enabled independently
 ```
 
 ---

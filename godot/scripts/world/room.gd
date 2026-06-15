@@ -14,6 +14,7 @@ const ExposureSystemClass = preload("res://godot/scripts/systems/lighting/exposu
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const LightAnchorClass = preload("res://godot/scripts/systems/lighting/light_anchor.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
+const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -179,6 +180,9 @@ var _light_anchors: Array = []                ## Authored light placement socket
 ## MODULARIZE-01: VisionController para gerenciar overlays de debug/análise
 var _vision_controller: Node2D = null
 
+## MODULARIZE-02: HudController para gerenciar fiação de UI
+var _hud_controller: Node = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -267,6 +271,30 @@ func _ready() -> void:
 	add_child(_vision_controller)
 	_vision_controller.setup(self, fog_of_war)
 	
+	## MODULARIZE-02: Initialize HudController (after nodes ready)
+	_hud_controller = HudControllerClass.new()
+	_hud_controller.name = "HudController"
+	add_child(_hud_controller)
+	_hud_controller.setup({
+		"btn_end_turn": btn_end_turn,
+		"btn_reset": btn_reset,
+		"btn_fullscreen": btn_fullscreen,
+		"btn_viewport": btn_viewport,
+		"btn_numbers": btn_numbers,
+		"chk_auto_end_turn": chk_auto_end_turn,
+		"lbl_ap": lbl_ap,
+		"lbl_alert": lbl_alert,
+		"busted_dialog": busted_dialog,
+		"enemy_turn_banner": enemy_turn_banner,
+	})
+	
+	## Connect HudController signals to room handlers
+	_hud_controller.end_turn_requested.connect(_on_hud_end_turn_requested)
+	_hud_controller.reset_requested.connect(_on_hud_reset_requested)
+	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
+	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
+	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
+	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
@@ -307,11 +335,6 @@ func _ready() -> void:
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
-	btn_end_turn.pressed.connect(_on_btn_end_turn)
-	btn_numbers.pressed.connect(_on_btn_numbers)
-	btn_fullscreen.pressed.connect(_on_btn_fullscreen)
-	btn_viewport.pressed.connect(_on_btn_viewport)
-	btn_reset.pressed.connect(_on_btn_reset)
 	btn_perspective_nw.pressed.connect(func() -> void: _set_perspective("W"))
 	btn_perspective_ne.pressed.connect(func() -> void: _set_perspective("N"))
 	btn_perspective_sw.pressed.connect(func() -> void: _set_perspective("S"))
@@ -379,7 +402,7 @@ func _ready() -> void:
 
 	## Centering camera/setup initial state
 	_update_guard_los_data()
-	_on_btn_viewport()
+	_on_hud_viewport_toggled()
 
 
 func _set_perspective(direction: String) -> void:
@@ -456,31 +479,28 @@ func _center_camera(focus_cell: Vector2i) -> void:
 	camera.global_position = centre_world
 
 
-func _on_btn_numbers() -> void:
+func _on_hud_numbers_toggled() -> void:
 	tile_labels_overlay.visible = not tile_labels_overlay.visible
-	btn_numbers.modulate = Color.WHITE if tile_labels_overlay.visible else Color(1.0, 1.0, 1.0, 0.35)
+	_hud_controller.set_numbers_button_active(tile_labels_overlay.visible)
 
 
-func _on_btn_fullscreen() -> void:
-	var mode := DisplayServer.window_get_mode()
-	if mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+func _on_hud_fullscreen_toggled(enabled: bool) -> void:
+	var target_mode := DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED
+	DisplayServer.window_set_mode(target_mode)
 
 
-func _on_btn_end_turn() -> void:
+func _on_hud_end_turn_requested() -> void:
 	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
 	turn_manager.end_turn()
 
 
-func _on_btn_reset() -> void:
+func _on_hud_reset_requested() -> void:
 	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
-	enemy_turn_banner.visible = false
+	_hud_controller.hide_enemy_banner()
 	agent.set_cell(_agent_start_cell)
 	for guard in _guards:
 		if is_instance_valid(guard):
@@ -506,10 +526,10 @@ func _on_btn_reset() -> void:
 	turn_manager.reset_player_turn()
 
 
-func _on_btn_viewport() -> void:
+func _on_hud_viewport_toggled() -> void:
 	_is_desktop_viewport = not _is_desktop_viewport
 	var target := Vector2i(1280, 720) if _is_desktop_viewport else Vector2i(390, 844)
-	btn_viewport.text = "D" if _is_desktop_viewport else "M"
+	_hud_controller.set_viewport_button_text("D" if _is_desktop_viewport else "M")
 
 	## Exit fullscreen first — can't resize while in fullscreen.
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
@@ -605,7 +625,7 @@ func _draw_shadow_debug() -> void:
 
 
 func _on_ap_changed(current_ap: int, max_ap: int) -> void:
-	lbl_ap.text = "INIMIGOS" if turn_manager.is_enemy_phase else "AP %d/%d" % [current_ap, max_ap]
+	_hud_controller.update_ap(current_ap, max_ap, turn_manager.is_enemy_phase)
 	movement_overlay.set_remaining_ap(current_ap)
 	if not agent.is_moving:
 		_refresh_tactical_state()
@@ -807,7 +827,7 @@ func _on_enemy_phase_started() -> void:
 		turn_manager.finish_enemy_phase()
 		return
 	_update_guard_los_data()
-	enemy_turn_banner.visible = true
+	_hud_controller.show_enemy_banner()
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
 	selection_overlay.set_selected(agent.cell)
@@ -815,7 +835,7 @@ func _on_enemy_phase_started() -> void:
 	_center_camera(agent.cell)
 	await _hold_actor_end_pause()
 	await _run_enemy_phase()
-	enemy_turn_banner.visible = false
+	_hud_controller.hide_enemy_banner()
 	if _alert_meter >= _alert_max:
 		await _show_busted_dialog()
 		_reset_room_state()
@@ -942,16 +962,14 @@ func _on_guard_emits_noise(guard, guard_cell: Vector2i) -> void:
 
 
 func _update_alert_label() -> void:
-	lbl_alert.text = "ALERTA %d%%" % _alert_meter
-	var t := float(_alert_meter) / float(_alert_max)
-	lbl_alert.modulate = Color(1.0, 1.0 - 0.55 * t, 1.0 - 0.75 * t, 1.0)
+	var pct := float(_alert_meter) / float(_alert_max)
+	_hud_controller.update_alert(pct)
 
 
 func _show_busted_dialog() -> void:
-	busted_dialog.text = "Busted"
-	busted_dialog.visible = true
+	_hud_controller.show_busted("Busted")
 	await get_tree().create_timer(1.2).timeout
-	busted_dialog.visible = false
+	_hud_controller.hide_busted()
 
 
 ## ID-02: Flush completo de memória — reseta todos os estados quando a sala precisa reiniciar
@@ -1243,7 +1261,7 @@ func _try_move_to(cell: Vector2i) -> bool:
 		return false
 
 	_selected_cell = cell
-	_pending_auto_end_turn = chk_auto_end_turn.button_pressed and int(turn_manager.current_ap) <= 0
+	_pending_auto_end_turn = _hud_controller.is_auto_end_turn_enabled() and int(turn_manager.current_ap) <= 0
 	agent.move_along_path(path)
 	return true
 

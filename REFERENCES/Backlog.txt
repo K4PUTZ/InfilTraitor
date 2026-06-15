@@ -1,0 +1,29 @@
+- O agente poderia jogar pedras, bater nas paredes, criar barulhos para atrair os guardas.
+
+- Capa com Capuz aciona em modo stealth (cosmetico/indicativo).
+
+- Checkpoints no mapa para não voltar sempre pro inicio (o game não vai ter save, apenas o progresso do personagem vai sendo salvo automaticamente).
+
+- Extender tiles externos não jogáveis em volta do mapa para servir de cenário.
+
+- Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
+
+
+
+
+
+Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em frente fica pintado de roxo. Quando o agente subir no tile, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
+
+
+
+
+- Fazendo o play test, está facil demais, os guardas não escutam nada, não enxergam nada, a não ser que eu entre na frente deles. Atravessam o player sem mudar de estado, etc. Na realidade precisamos calibrar melhor o sistema para oferecer dificuldade real. Guardas ouvem suficientemente longe, e estar em pé exposto causa praticamente detecção automática. Provavelmente vamos ter que extender mais longe o overlay no chão, com as chances e probabilidades de detecção mais punitivas - e as cores precisam refletir isso. Lembrando que o cone amarelo é só uma indicação visual da direção em que o guarda olha, e pode continuar mais curto pois não interfere na detecção. Porém o Busted só pode ser acionado quando os agentes perseguem e alcançam o agente. Não basta detectar a presença dele.
+
+
+
+
+
+O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura
+
+
+Perdão, antes de aplicar o level design, a gente vai precisar fazer uma refatoração importante do código, que é MODULARIZAR room.gd

@@ -2004,7 +2004,10 @@ func _setup_exposure_overlay() -> void:
 	_exposure_overlay.tile_size = Vector2(256, 128)
 	_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_exposure_overlay)
-	_exposure_overlay.z_index = 22  # Above both light and shadow overlays
+	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
+	move_child(_exposure_overlay, _get_floor_layer_index() + 1)
+	_exposure_overlay.z_index = 0
+	_exposure_overlay.z_as_relative = true
 	_exposure_overlay.visible = dev_vision
 	
 	print("[Room] Exposure overlay initialized")
@@ -2021,7 +2024,10 @@ func _setup_tile_risk_overlay() -> void:
 	_tile_risk_overlay.tile_size = Vector2(256, 128)
 	_tile_risk_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_tile_risk_overlay)
-	_tile_risk_overlay.z_index = 23  # Above exposure overlay for risk heatmap
+	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
+	move_child(_tile_risk_overlay, _get_floor_layer_index() + 1)
+	_tile_risk_overlay.z_index = 0
+	_tile_risk_overlay.z_as_relative = true
 	_tile_risk_overlay.visible = dev_vision
 	
 	print("[Room] Tile risk heatmap overlay initialized")
@@ -2134,7 +2140,15 @@ func _setup_elite_exposure_overlay() -> void:
 	_elite_exposure_overlay.tile_size = Vector2(256, 128)
 	_elite_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
 	add_child(_elite_exposure_overlay)
-	_elite_exposure_overlay.z_index = 26  # Above temporal overlay for elite tactical vision
+	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
+	move_child(_elite_exposure_overlay, _get_floor_layer_index() + 1)
+	_elite_exposure_overlay.z_index = 0
+	_elite_exposure_overlay.z_as_relative = true
 	_elite_exposure_overlay.visible = dev_vision
 	
 	print("[Room] Elite exposure overlay initialized: %s" % [_elite_exposure_overlay.debug_info()])
+
+
+## OVERLAY-ZORDER-FIX-01: Helper to get FloorLayer position in child tree
+func _get_floor_layer_index() -> int:
+	return floor_layer.get_index()

@@ -140,11 +140,12 @@ func _apply_fow_visibility() -> void:
 # ── Setup de overlays ─────────────────────────────────────────────────────────
 
 func _setup_light_overlay() -> void:
-	if _room._light_registry == null:
+	var light_registry = _room._lighting_controller.get_light_registry()
+	if light_registry == null:
 		return
 	
 	_light_overlay = LightOverlayClass.new()
-	_light_overlay.light_registry = _room._light_registry
+	_light_overlay.light_registry = light_registry
 	_light_overlay.tile_size = Vector2(128, 64)
 	_light_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_light_overlay)
@@ -153,12 +154,13 @@ func _setup_light_overlay() -> void:
 
 
 func _setup_shadow_overlay() -> void:
-	if _room._shadow_projector == null or _room._light_registry == null:
+	var light_registry = _room._lighting_controller.get_light_registry()
+	if light_registry == null:
 		return
 	
 	_shadow_overlay = ShadowOverlayClass.new()
-	_shadow_overlay.shadow_projector = _room._shadow_projector
-	_shadow_overlay.light_registry = _room._light_registry
+	_shadow_overlay.shadow_projector = _room._lighting_controller._shadow_projector
+	_shadow_overlay.light_registry = light_registry
 	_shadow_overlay.tile_size = Vector2(128, 64)
 	_shadow_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_shadow_overlay)
@@ -169,11 +171,12 @@ func _setup_shadow_overlay() -> void:
 
 
 func _setup_exposure_overlay() -> void:
-	if _room._exposure_system == null:
+	var exposure_system = _room._lighting_controller.get_exposure_system()
+	if exposure_system == null:
 		return
 	
 	_exposure_overlay = ExposureOverlayClass.new()
-	_exposure_overlay.exposure_system = _room._exposure_system
+	_exposure_overlay.exposure_system = exposure_system
 	_exposure_overlay.floor_layer = _room.floor_layer
 	_exposure_overlay.tile_size = Vector2(256, 128)
 	_exposure_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
@@ -188,11 +191,12 @@ func _setup_exposure_overlay() -> void:
 
 
 func _setup_tile_risk_overlay() -> void:
-	if _room._exposure_system == null:
+	var exposure_system = _room._lighting_controller.get_exposure_system()
+	if exposure_system == null:
 		return
 	
 	_tile_risk_overlay = TileRiskOverlayClass.new()
-	_tile_risk_overlay.exposure_system = _room._exposure_system
+	_tile_risk_overlay.exposure_system = exposure_system
 	_tile_risk_overlay.floor_layer = _room.floor_layer
 	_tile_risk_overlay.tile_size = Vector2(256, 128)
 	_tile_risk_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
@@ -224,11 +228,12 @@ func _setup_height_overlay() -> void:
 
 
 func _setup_temporal_overlay() -> void:
-	if _room._light_registry == null or _room._light_registry.is_empty():
+	var light_registry = _room._lighting_controller.get_light_registry()
+	if light_registry == null or light_registry.is_empty():
 		return
 	
 	_temporal_overlay = TemporalOverlayClass.new()
-	_temporal_overlay.load_lights(_room._light_registry)
+	_temporal_overlay.load_lights(light_registry)
 	_temporal_overlay.tile_size = Vector2(128, 64)
 	_temporal_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_temporal_overlay)
@@ -239,11 +244,12 @@ func _setup_temporal_overlay() -> void:
 
 
 func _setup_elite_exposure_overlay() -> void:
-	if _room._exposure_system == null:
+	var exposure_system = _room._lighting_controller.get_exposure_system()
+	if exposure_system == null:
 		return
 	
 	_elite_exposure_overlay = EliteExposureOverlayClass.new()
-	_elite_exposure_overlay.load_exposure_system(_room._exposure_system)
+	_elite_exposure_overlay.load_exposure_system(exposure_system)
 	_elite_exposure_overlay.floor_layer = _room.floor_layer
 	_elite_exposure_overlay.tile_size = Vector2(256, 128)
 	_elite_exposure_overlay.visual_offset = _room.VISUAL_GRID_OFFSET

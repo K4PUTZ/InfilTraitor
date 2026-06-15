@@ -208,13 +208,14 @@ func _setup_tile_semantics() -> void:
 		
 		_tile_semantics_map[cell] = semantics
 	
-	# Find and register light anchor points
-	# These would normally come from structured data in the layout.
-	# For now, we check if any existing lights are placed:
+	# Find and register light anchor points from all registered lights
+	# Create LightAnchorClass objects with proper structure
 	if _light_registry != null:
 		for light in _light_registry.get_all_lights():
-			if not _light_anchors.has(light.cell):
-				_light_anchors.append(light.cell)
+			# Create anchor at light position with appropriate height class
+			var anchor = LightAnchorClass.make_ceiling(light.cell, light.height_class)
+			anchor.description = "Light anchor: %s" % light.owner_name
+			_light_anchors.append(anchor)
 	
 	print("[Room] Tile semantics initialized with %d tiles, %d light anchors" % [
 		_tile_semantics_map.size(), _light_anchors.size()

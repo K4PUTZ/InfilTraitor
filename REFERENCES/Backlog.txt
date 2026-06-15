@@ -12,8 +12,9 @@
 
 
 
-Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em frente fica pintado de roxo. Quando o agente subir no tile, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
+DOCUMENTACAO AUTOMATICA
 
+Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em frente fica pintado de roxo. Quando o agente subir no tile, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
 
 
@@ -21,9 +22,4 @@ Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em fre
 
 
 
-
-
-O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura
-
-
-Perdão, antes de aplicar o level design, a gente vai precisar fazer uma refatoração importante do código, que é MODULARIZAR room.gd
+O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.

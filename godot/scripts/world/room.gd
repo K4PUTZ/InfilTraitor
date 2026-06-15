@@ -6,20 +6,14 @@ const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
-const LightOverlayClass = preload("res://godot/scripts/overlays/light_overlay.gd")
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 const ShadowProjectorClass = preload("res://godot/scripts/systems/lighting/shadow_projector.gd")
 const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
-const ShadowOverlayClass = preload("res://godot/scripts/overlays/shadow_overlay.gd")
 const ExposureSystemClass = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
-const ExposureOverlayClass = preload("res://godot/scripts/overlays/exposure_overlay.gd")
-const TileRiskOverlayClass = preload("res://godot/scripts/overlays/tile_risk_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const LightAnchorClass = preload("res://godot/scripts/systems/lighting/light_anchor.gd")
-const HeightOverlayClass = preload("res://godot/scripts/overlays/height_overlay.gd")
-const TemporalOverlayClass = preload("res://godot/scripts/overlays/temporal_overlay.gd")
-const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")
+const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -144,9 +138,7 @@ const _PERSPECTIVE_SUFFIX_MAP := {
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
 var _agent_start_cell_base: Vector2i = Vector2i.ZERO
-var dev_vision: bool = false
-var light_vision: bool = false
-var heat_vision: bool = false
+
 
 ## M2-10: Peek mechanic state
 var _peek_active: bool = false
@@ -173,29 +165,19 @@ var _guard_noise_indicator: Node2D = null
 
 ## L-IMP-01: Light registry and overlay
 var _light_registry = null
-var _light_overlay: Node2D = null
 
 ## L-IMP-02: Shadow projection and visualization
 var _shadow_projector = null
-var _shadow_overlay: Node2D = null
 
 ## L-IMP-03: Tactical exposure and stealth semantics
 var _exposure_system = null
-var _exposure_overlay: Node2D = null
-
-## L-IMP-04: Tactical risk heatmap overlay
-var _tile_risk_overlay: Node2D = null
 
 ## L-IMP-05: Worldbuilding semantics and height authoring
 var _tile_semantics_map: Dictionary = {}      ## cell → TileSemantics
 var _light_anchors: Array = []                ## Authored light placement sockets
-var _height_overlay: Node2D = null            ## DEV visualization of height classes
 
-## L-IMP-06: Dynamic lighting and temporal effects
-var _temporal_overlay: Node2D = null          ## DEV visualization of temporal light states
-
-## L-IMP-07: Advanced shadow semantics and elite vision
-var _elite_exposure_overlay: Node2D = null    ## DEV visualization of shadow depth and confidence
+## MODULARIZE-01: VisionController para gerenciar overlays de debug/análise
+var _vision_controller: Node2D = null
 
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
@@ -252,7 +234,6 @@ func _ready() -> void:
 	_light_registry = LightRegistryClass.new()
 	add_child(_light_registry)
 	_setup_debug_lights()
-	_setup_light_overlay()
 	
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
@@ -273,24 +254,18 @@ func _ready() -> void:
 	
 	## L-IMP-02a: Initialize tile semantics BEFORE shadow projection (needs _tile_semantics_map for heights)
 	_setup_tile_semantics()
-	_setup_height_overlay()
 	
 	## L-IMP-02b: Initialize shadow projection (after _build_room sets _blocked_cells and _room_size, after _setup_tile_semantics)
 	_setup_shadow_projector()
-	_setup_shadow_overlay()
 	
 	## L-IMP-03: Initialize tactical exposure system (after shadow projector ready)
 	_setup_exposure_system()
-	_setup_exposure_overlay()
 	
-	## L-IMP-04: Initialize tactical risk heatmap (after exposure system ready)
-	_setup_tile_risk_overlay()
-	
-	## L-IMP-06: Initialize temporal lighting visualization
-	_setup_temporal_overlay()
-	
-	## L-IMP-07: Initialize elite exposure visualization
-	_setup_elite_exposure_overlay()
+	## MODULARIZE-01: Initialize VisionController (after systems ready, before final _ready() wiring)
+	_vision_controller = VisionControllerClass.new()
+	_vision_controller.name = "VisionController"
+	add_child(_vision_controller)
+	_vision_controller.setup(self, fog_of_war)
 	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
@@ -346,7 +321,6 @@ func _ready() -> void:
 	turn_manager.reset_player_turn()
 	_update_alert_label()
 	enemy_turn_banner.visible = false
-	_apply_dev_vision()
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
 	_trail_overlay = Node2D.new()
@@ -462,7 +436,6 @@ func _set_perspective(direction: String) -> void:
 
 		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
-		_apply_dev_vision()
 		_update_guard_los_data()
 		_center_camera(agent.cell)
 		_refresh_tactical_state()
@@ -590,7 +563,7 @@ func _draw_exit_markers() -> void:
 func _draw_spawn_marker() -> void:
 	## Diamante escuro no ponto de spawn — DEV_VISION apenas.
 	## Permite identificar rapidamente o AGENT_START_CELL ao testar mapas.
-	if not dev_vision:
+	if not _vision_controller.dev_vision:
 		return
 	if _agent_start_cell == INVALID_CELL:
 		return
@@ -612,7 +585,7 @@ func _draw_spawn_marker() -> void:
 func _draw_shadow_debug() -> void:
 	## M2-13: ShadowOverlay agora lida com a visualização permanente.
 	## Mantido apenas para debug técnico em DEV_VISION (azul translúcido sobreposto).
-	if not dev_vision:
+	if not _vision_controller.dev_vision:
 		return
 	for shadow_cell in _shadow_tiles.keys():
 		var mult: float = _shadow_tiles[shadow_cell]
@@ -678,7 +651,7 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 		if _agent_trail.size() > TRAIL_MAX:
 			_agent_trail.pop_front()
 
-	if dev_vision and _trail_overlay != null:
+	if _vision_controller.dev_vision and _trail_overlay != null:
 		_trail_overlay.queue_redraw()
 
 	## M2-04: Gerar barulho por tic — rola dado a cada passo
@@ -722,7 +695,7 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 			var bonus: float = noise_intensity * 0.3
 			guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
 
-	if dev_vision:
+	if _vision_controller.dev_vision:
 		guard.queue_redraw()
 
 	## ID-01: Escalação gradual por threshold — só quando agente está visível
@@ -1020,85 +993,6 @@ func _reset_room_state() -> void:
 	_update_alert_label()
 
 
-func _toggle_dev_vision() -> void:
-	dev_vision = not dev_vision
-	_apply_dev_vision()
-
-func _toggle_light_vision() -> void:
-	light_vision = not light_vision
-	_apply_light_vision()
-
-func _toggle_heat_vision() -> void:
-	heat_vision = not heat_vision
-	_apply_heat_vision()
-	_apply_fow_visibility()
-
-func _apply_dev_vision() -> void:
-	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
-	_apply_fow_visibility()
-
-	## Notify each guard of dev_vision state
-	for guard in _get_all_guards():
-		guard.set_dev_vision(dev_vision)
-
-	_update_enemy_visibility()
-	queue_redraw()  ## Dev 04: redraw trail when toggling dev_vision
-	if _trail_overlay != null:
-		_trail_overlay.queue_redraw()
-	## M2-14: Update overlay markers for dev_vision
-	if _tile_game != null:
-		if dev_vision:
-			## Paint exit cells with purple marker
-			_tile_game.set_cells_named(_exit_cells, "exit", TileOverlayClass.PRIO_NAV)
-			## Paint spawn position with gray marker
-			_tile_game.paint_named(_agent_start_cell_base, "spawn_dev", TileOverlayClass.PRIO_DEV)
-		else:
-			## Clear all dev-only markers when exiting dev_vision
-			_tile_game.clear_priority(TileOverlayClass.PRIO_NAV)
-
-func _apply_light_vision() -> void:
-	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
-	_apply_fow_visibility()
-	
-	## L-IMP-01: Toggle light overlay with light_vision
-	if _light_overlay != null:
-		_light_overlay.visible = light_vision
-		_light_overlay.queue_redraw()
-	## L-IMP-02: Toggle shadow overlay with light_vision
-	if _shadow_overlay != null:
-		_shadow_overlay.visible = light_vision
-		_shadow_overlay.set_dev_vision(light_vision)
-	## L-IMP-05: Toggle height overlay with light_vision
-	if _height_overlay != null:
-		_height_overlay.visible = light_vision
-		_height_overlay.set_dev_vision(light_vision)
-	
-	## L-IMP-06: Toggle temporal overlay with light_vision
-	if _temporal_overlay != null:
-		_temporal_overlay.visible = light_vision
-		_temporal_overlay.set_dev_vision(light_vision)
-
-func _apply_heat_vision() -> void:
-	if _exposure_overlay != null:
-		_exposure_overlay.visible = heat_vision
-		_exposure_overlay.set_dev_vision(heat_vision)
-		_exposure_overlay.queue_redraw()
-	if _tile_risk_overlay != null:
-		_tile_risk_overlay.visible = heat_vision
-		_tile_risk_overlay.set_dev_vision(heat_vision)
-		_tile_risk_overlay.queue_redraw()
-	if _elite_exposure_overlay != null:
-		_elite_exposure_overlay.visible = heat_vision
-		_elite_exposure_overlay.set_dev_vision(heat_vision)
-		_elite_exposure_overlay.queue_redraw()
-
-func _apply_fow_visibility() -> void:
-	if fog_of_war != null:
-		fog_of_war.visible = not (dev_vision or light_vision or heat_vision)
-	if _fog_rect != null:
-		_fog_rect.visible = not (dev_vision or light_vision or heat_vision)
-
-
 func _get_all_guards() -> Array:
 	## Returns all GuardEnemy children in the enemies_root node.
 	var result: Array = []
@@ -1112,9 +1006,9 @@ func _update_dev_hover_label() -> void:
 	if _dev_hover_label == null:
 		return
 
-	_dev_hover_label.visible = dev_vision
+	_dev_hover_label.visible = _vision_controller.dev_vision
 
-	if not dev_vision or _hovered_cell == INVALID_CELL:
+	if not _vision_controller.dev_vision or _hovered_cell == INVALID_CELL:
 		return
 
 	var cell := _hovered_cell
@@ -1219,7 +1113,7 @@ func _update_enemy_visibility() -> void:
 	# Update enemy alpha/saturation each frame while moving.
 	# Visibility is driven by the player's vision radius + ability bonuses.
 	# At vision distance the guard starts to desaturate, then fades out one tile later.
-	if dev_vision:
+	if _vision_controller.dev_vision:
 		for guard in _guards:
 			if not is_instance_valid(guard):
 				continue
@@ -1308,7 +1202,7 @@ func _set_selected_cell(cell: Vector2i) -> void:
 	_update_selected_preview()
 	
 	## Dev 03: update hover label manually on selection change if needed
-	if dev_vision:
+	if _vision_controller.dev_vision:
 		_hovered_cell = cell
 		_update_dev_hover_label()
 
@@ -1618,11 +1512,11 @@ func _rebuild_all_shadows_and_exposure() -> void:
 	_exposure_system.rebuild_from_results(all_shadow_results)
 	
 	# Refresh overlays if visible
-	if _shadow_overlay != null and _shadow_overlay.visible:
-		_shadow_overlay.load_shadow_results(all_shadow_results)
+	if _vision_controller._vision_controller._shadow_overlay != null and _vision_controller._vision_controller._shadow_overlay.visible:
+		_vision_controller._vision_controller._shadow_overlay.load_shadow_results(all_shadow_results)
 	
-	if _exposure_overlay != null and _exposure_overlay.visible:
-		_exposure_overlay.update_display()
+	if _vision_controller._vision_controller._exposure_overlay != null and _vision_controller._vision_controller._exposure_overlay.visible:
+		_vision_controller._vision_controller._exposure_overlay.update_display()
 
 
 func _has_moving_guards() -> bool:
@@ -1661,7 +1555,7 @@ func _update_vision_fog() -> void:
 ## In DEV_VISION mode, no constraints are applied.
 func _get_leashed_pos(proposed: Vector2) -> Vector2:
 	## DEV_VISION: liberar todas as travas
-	if dev_vision:
+	if _vision_controller.dev_vision:
 		return proposed
 	
 	var hard_radius := float(CAMERA_MAX_BORDER_TILES) * WORLD_TILE_PX
@@ -1710,13 +1604,13 @@ func _input(event: InputEvent) -> void:
 						_try_change_posture(next_x)
 					return
 				KEY_V:
-					_toggle_dev_vision()
+					_vision_controller.toggle_dev()
 					return
 				KEY_L:
-					_toggle_light_vision()
+					_vision_controller.toggle_light()
 					return
 				KEY_H:
-					_toggle_heat_vision()
+					_vision_controller.toggle_heat()
 					return
 				KEY_P:
 					_peek_pending = true
@@ -1786,7 +1680,7 @@ func _input(event: InputEvent) -> void:
 		var new_hover := _screen_to_tile(mm.position)
 		if new_hover != _hovered_cell:
 			_hovered_cell = new_hover
-			if dev_vision:
+			if _vision_controller.dev_vision:
 				_update_dev_hover_label()
 			_update_movement_highlight()
 			
@@ -1901,19 +1795,6 @@ func _setup_debug_lights() -> void:
 
 
 ## L-IMP-01: Setup light overlay for DEV_VISION debugging
-func _setup_light_overlay() -> void:
-	if _light_registry == null:
-		return
-	
-	_light_overlay = LightOverlayClass.new()
-	_light_overlay.light_registry = _light_registry
-	_light_overlay.tile_size = Vector2(128, 64)
-	_light_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_light_overlay)
-	_light_overlay.z_index = 27  # Above HEAT overlays
-	_light_overlay.visible = dev_vision
-
-
 ## L-IMP-02: Setup shadow projector
 func _setup_shadow_projector() -> void:
 	_shadow_projector = ShadowProjectorClass.new()
@@ -1926,23 +1807,6 @@ func _setup_shadow_projector() -> void:
 	_shadow_projector.set_room_size(_room_size)
 	
 	print("[Room] Shadow projector initialized")
-
-
-## L-IMP-02: Setup shadow overlay for DEV_VISION debugging
-func _setup_shadow_overlay() -> void:
-	if _shadow_projector == null or _light_registry == null:
-		return
-	
-	_shadow_overlay = ShadowOverlayClass.new()
-	_shadow_overlay.shadow_projector = _shadow_projector
-	_shadow_overlay.light_registry = _light_registry
-	_shadow_overlay.tile_size = Vector2(128, 64)
-	_shadow_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_shadow_overlay)
-	_shadow_overlay.z_index = 28  # Above light overlay and HEAT overlays
-	_shadow_overlay.visible = dev_vision
-	
-	print("[Room] Shadow overlay initialized")
 
 
 ## Helper: Build obstacle heights dictionary from blocked cells
@@ -1994,44 +1858,6 @@ func _setup_exposure_system() -> void:
 
 
 ## L-IMP-03: Setup exposure overlay for DEV_VISION debugging
-func _setup_exposure_overlay() -> void:
-	if _exposure_system == null:
-		return
-	
-	_exposure_overlay = ExposureOverlayClass.new()
-	_exposure_overlay.exposure_system = _exposure_system
-	_exposure_overlay.floor_layer = floor_layer
-	_exposure_overlay.tile_size = Vector2(256, 128)
-	_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_exposure_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	move_child(_exposure_overlay, _get_floor_layer_index() + 1)
-	_exposure_overlay.z_index = 0
-	_exposure_overlay.z_as_relative = true
-	_exposure_overlay.visible = dev_vision
-	
-	print("[Room] Exposure overlay initialized")
-
-
-## L-IMP-04: Setup tile risk heatmap overlay for tactical threat visualization
-func _setup_tile_risk_overlay() -> void:
-	if _exposure_system == null:
-		return
-	
-	_tile_risk_overlay = TileRiskOverlayClass.new()
-	_tile_risk_overlay.exposure_system = _exposure_system
-	_tile_risk_overlay.floor_layer = floor_layer
-	_tile_risk_overlay.tile_size = Vector2(256, 128)
-	_tile_risk_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_tile_risk_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	move_child(_tile_risk_overlay, _get_floor_layer_index() + 1)
-	_tile_risk_overlay.z_index = 0
-	_tile_risk_overlay.z_as_relative = true
-	_tile_risk_overlay.visible = dev_vision
-	
-	print("[Room] Tile risk heatmap overlay initialized")
-
 
 ## L-IMP-05: Initialize tile semantics for worldbuilding
 func _setup_tile_semantics() -> void:
@@ -2095,60 +1921,3 @@ func _create_sample_light_anchors() -> void:
 					_light_anchors.append(anchor)
 
 
-## L-IMP-05: Setup height overlay for DEV visualization of semantic layers
-func _setup_height_overlay() -> void:
-	if _tile_semantics_map.is_empty():
-		return
-	
-	_height_overlay = HeightOverlayClass.new()
-	_height_overlay.load_semantics(_tile_semantics_map)
-	_height_overlay.load_anchors(_light_anchors)
-	_height_overlay.floor_layer = floor_layer
-	_height_overlay.tile_size = Vector2(256, 128)
-	_height_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_height_overlay)
-	_height_overlay.z_index = 24  # Above all other overlays for semantic visualization
-	_height_overlay.visible = dev_vision
-	
-	print("[Room] Height overlay initialized with %d anchors" % [_light_anchors.size()])
-
-
-## L-IMP-06: Setup temporal overlay for DEV visualization of temporal lighting effects
-func _setup_temporal_overlay() -> void:
-	if _light_registry == null or _light_registry.is_empty():
-		return
-	
-	_temporal_overlay = TemporalOverlayClass.new()
-	_temporal_overlay.load_lights(_light_registry)
-	_temporal_overlay.tile_size = Vector2(128, 64)
-	_temporal_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_temporal_overlay)
-	_temporal_overlay.z_index = 25  # Above height overlay for temporal visualization
-	_temporal_overlay.visible = dev_vision
-	
-	print("[Room] Temporal overlay initialized: %s" % [_temporal_overlay.debug_info()])
-
-
-## L-IMP-07: Setup elite exposure overlay for advanced shadow semantics visualization
-func _setup_elite_exposure_overlay() -> void:
-	if _exposure_system == null:
-		return
-	
-	_elite_exposure_overlay = EliteExposureOverlayClass.new()
-	_elite_exposure_overlay.load_exposure_system(_exposure_system)
-	_elite_exposure_overlay.floor_layer = floor_layer
-	_elite_exposure_overlay.tile_size = Vector2(256, 128)
-	_elite_exposure_overlay.visual_offset = VISUAL_GRID_OFFSET
-	add_child(_elite_exposure_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	move_child(_elite_exposure_overlay, _get_floor_layer_index() + 1)
-	_elite_exposure_overlay.z_index = 0
-	_elite_exposure_overlay.z_as_relative = true
-	_elite_exposure_overlay.visible = dev_vision
-	
-	print("[Room] Elite exposure overlay initialized: %s" % [_elite_exposure_overlay.debug_info()])
-
-
-## OVERLAY-ZORDER-FIX-01: Helper to get FloorLayer position in child tree
-func _get_floor_layer_index() -> int:
-	return floor_layer.get_index()

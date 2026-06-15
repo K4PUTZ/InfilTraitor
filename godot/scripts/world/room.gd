@@ -10,6 +10,7 @@ const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd"
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
 const LightingControllerClass = preload("res://godot/scripts/controllers/lighting_controller.gd")
+const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -74,32 +75,12 @@ const OBSTACLE_HEIGHTS: Dictionary = {
 }
 const OBSTACLE_HEIGHT_DEFAULT := 1.5
 
-## Camera drag state (left mouse — drag vs click distinguished by threshold)
-const DRAG_THRESHOLD_SQ := 64.0   ## 8 px squared
-
-var _left_down:        bool    = false
-var _drag_started:     bool    = false
-var _drag_start_mouse: Vector2 = Vector2.ZERO
-var _drag_start_cam:   Vector2 = Vector2.ZERO
-
-## Zoom limits and step
-const ZOOM_MIN  := 0.20
-const ZOOM_MAX  := 1.20
-const ZOOM_STEP := 0.06
-
 ## Vision & FOW radii — independent of each other:
 ## VISION_TILE_RADIUS  controls only the shader gradient (live clear-circle around agent).
-## FOW_REVEAL_RADIUS   controls how many tiles get permanently revealed each move,
-##                     and is also the hard limit of the camera leash.
+## FOW_REVEAL_RADIUS   controls how many tiles get permanently revealed each move.
 const VISION_TILE_RADIUS := 5      ## shader gradient radius (tiles)
-const FOW_REVEAL_RADIUS  := 9      ## FOW reveal radius + camera leash hard limit (tiles)
-const CAMERA_SOFT_ZONE_TILES := 2  ## tiles of ease-out damping before leash hard stop
-const CAMERA_MAX_BORDER_TILES := 4  ## max tiles camera can see outside scenario boundary
-const WORLD_TILE_PX          := 128.0  ## horizontal px per isometric tile step
-
-## Pinch-zoom state (mobile two-finger)
-var _touches:         Dictionary = {}   ## finger_index → screen position
-var _pinch_last_dist: float      = 0.0
+const FOW_REVEAL_RADIUS  := 9      ## FOW reveal radius (tiles)
+const WORLD_TILE_PX      := 128.0  ## horizontal px per isometric tile step (used by vision fog shader)
 
 ## Viewport toggle state
 var _is_desktop_viewport: bool = false
@@ -164,6 +145,9 @@ var _vision_controller: Node2D = null
 
 ## MODULARIZE-02: HudController para gerenciar fiação de UI
 var _hud_controller: Node = null
+
+## MODULARIZE-04: CameraController para gerenciar drag, zoom, perspectiva
+var _camera_controller: Node = null
 
 ## MODULARIZE-03: LightingController para gerenciar sistemas de iluminação
 var _lighting_controller: Node = null
@@ -247,6 +231,7 @@ func _ready() -> void:
 	_vision_controller.name = "VisionController"
 	add_child(_vision_controller)
 	_vision_controller.setup(self, fog_of_war)
+	set_meta("vision_controller", _vision_controller)
 	
 	## Connect LightingController signal to VisionController for overlay updates
 	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
@@ -274,6 +259,12 @@ func _ready() -> void:
 	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
 	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
 	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
+	
+	## MODULARIZE-04: Initialize CameraController (after camera ready)
+	_camera_controller = CameraControllerClass.new()
+	_camera_controller.name = "CameraController"
+	add_child(_camera_controller)
+	_camera_controller.setup(camera, self)
 	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
@@ -315,10 +306,7 @@ func _ready() -> void:
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
-	btn_perspective_nw.pressed.connect(func() -> void: _set_perspective("W"))
-	btn_perspective_ne.pressed.connect(func() -> void: _set_perspective("N"))
-	btn_perspective_sw.pressed.connect(func() -> void: _set_perspective("S"))
-	btn_perspective_se.pressed.connect(func() -> void: _set_perspective("E"))
+	## Perspective button connections now in CameraController
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
 	turn_manager.reset_player_turn()
@@ -1461,9 +1449,6 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	return INVALID_CELL
 
 
-## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.
-func _apply_zoom(new_z: float) -> void:
-	camera.zoom = Vector2(new_z, new_z)
 
 
 func _process(_delta: float) -> void:
@@ -1521,34 +1506,14 @@ func _update_vision_fog() -> void:
 	mat.set_shader_parameter("fog_outer_uv",    outer_uv)
 
 
-## Return a camera position constrained to the vision leash around the agent.
-## Inside the soft zone the camera decelerates (quadratic ease-out);
-## beyond the hard limit it is clamped to the boundary.
-## In DEV_VISION mode, no constraints are applied.
-func _get_leashed_pos(proposed: Vector2) -> Vector2:
-	## DEV_VISION: liberar todas as travas
-	if _vision_controller.dev_vision:
-		return proposed
-	
-	var hard_radius := float(CAMERA_MAX_BORDER_TILES) * WORLD_TILE_PX
-	var soft_radius := hard_radius - float(CAMERA_SOFT_ZONE_TILES) * WORLD_TILE_PX
-	var agent_world := floor_layer.map_to_local(agent.cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
-	var offset      := proposed - agent_world
-	var dist        := offset.length()
-	if dist <= soft_radius:
-		return proposed
-	if dist >= hard_radius:
-		return agent_world + offset.normalized() * hard_radius
-	## Soft zone: quadratic ease-out — slows as camera approaches the hard limit.
-	var t      := (dist - soft_radius) / (hard_radius - soft_radius)   ## 0..1
-	var damped := soft_radius + (hard_radius - soft_radius) * t * (2.0 - t)
-	return agent_world + offset.normalized() * damped
-
-
-## Unified input: wheel zoom · pinch zoom · motion drag.
-## Left mouse button (press/release) lives in _unhandled_input so GUI
-## controls (Buttons) can consume their clicks before game logic runs.
+## Unified input: keyboard · wheel zoom · motion drag.
+## Camera input handled first; if CameraController consumes it, done.
 func _input(event: InputEvent) -> void:
+	## Camera has priority
+	if _camera_controller and _camera_controller.handle_input(event):
+		return
+	
+	## Keyboard gameplay input
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo:
@@ -1608,77 +1573,6 @@ func _input(event: InputEvent) -> void:
 						_peek_pending = false
 						return
 
-	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
-	if event is InputEventScreenTouch:
-		var st := event as InputEventScreenTouch
-		if st.pressed:
-			_touches[st.index] = st.position
-		else:
-			_touches.erase(st.index)
-			_pinch_last_dist = 0.0
-		if _touches.size() >= 2:
-			_left_down = false
-			_drag_started = false
-		get_viewport().set_input_as_handled()
-		return
-
-	if event is InputEventScreenDrag:
-		var sd := event as InputEventScreenDrag
-		_touches[sd.index] = sd.position
-		if _touches.size() == 2:
-			var keys := _touches.keys()
-			var dist := (_touches[keys[0]] as Vector2).distance_to(_touches[keys[1]])
-			if _pinch_last_dist > 0.0:
-				var delta := (dist - _pinch_last_dist) * 0.001
-				_apply_zoom(clampf(camera.zoom.x + delta, ZOOM_MIN, ZOOM_MAX))
-			_pinch_last_dist = dist
-			get_viewport().set_input_as_handled()
-		return
-
-	## ── Mouse wheel zoom ─────────────────────────────────────────────────
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			_apply_zoom(clampf(camera.zoom.x + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
-			get_viewport().set_input_as_handled()
-		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			_apply_zoom(clampf(camera.zoom.x - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
-			get_viewport().set_input_as_handled()
-		return
-
-	## ── Mouse motion: preview path on hover ─────────────────────────────
-	if event is InputEventMouseMotion and not (_left_down and _touches.size() < 2):
-		var mm := event as InputEventMouseMotion
-		var new_hover := _screen_to_tile(mm.position)
-		if new_hover != _hovered_cell:
-			_hovered_cell = new_hover
-			if _vision_controller.dev_vision:
-				_update_dev_hover_label()
-			_update_movement_highlight()
-			
-			## UI-01: Update selection and path preview on hover
-			if _is_selectable_cell(_hovered_cell):
-				_selected_cell = _hovered_cell
-				selection_overlay.set_selected(_hovered_cell)
-				_update_selected_preview()
-			elif _hovered_cell == agent.cell or not movement_overlay.is_reachable(_hovered_cell):
-				## Hide preview if hovering agent or unreachable zone
-				_selected_cell = agent.cell
-				selection_overlay.set_selected(agent.cell)
-				path_preview.clear_path()
-
-	## ── Mouse motion: pan when dragging ─────────────────────────────────
-	if event is InputEventMouseMotion and _left_down and _touches.size() < 2:
-		var mm := event as InputEventMouseMotion
-		var moved_sq := (mm.position - _drag_start_mouse).length_squared()
-		if not _drag_started and moved_sq > DRAG_THRESHOLD_SQ:
-			_drag_started = true
-		if _drag_started:
-			var delta := (mm.position - _drag_start_mouse) / camera.zoom.x
-			camera.global_position = _get_leashed_pos(_drag_start_cam - delta)
-			get_viewport().set_input_as_handled()
-		return
-
 
 ## Left mouse: only runs when no GUI Control consumed the event first.
 ## This lets HUD buttons work while still handling pan + tile selection.
@@ -1696,25 +1590,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	## ── Botão esquerdo: pan (comportamento existente intacto) ──────────
-	if mb.button_index != MOUSE_BUTTON_LEFT or _touches.size() >= 2:
+	## ── Botão esquerdo: click para selecionar (camera pan delegado ao CameraController) ──────────
+	if mb.button_index != MOUSE_BUTTON_LEFT:
 		return
 
-	if mb.pressed:
-		_left_down = true
-		_drag_started = false
-		_drag_start_mouse = mb.position
-		_drag_start_cam = camera.global_position
-	else:
-		if not _drag_started:
-			var cell := _screen_to_tile(mb.position)
-			
-			## UI-02: Se clicar fora da zona, apenas selecionar (sem mover)
-			if cell != INVALID_CELL:
-				_set_selected_cell(cell)
-				
-		_left_down = false
-
-
-	# Lighting system now delegated to LightingController
+	if not mb.pressed:
+		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
+		var cell := _screen_to_tile(mb.position)
+		
+		## UI-02: Se clicar fora da zona, apenas selecionar (sem mover)
+		if cell != INVALID_CELL:
+			_set_selected_cell(cell)
 

@@ -1573,6 +1573,27 @@ func _input(event: InputEvent) -> void:
 						_peek_pending = false
 						return
 
+	## ── Mouse motion: preview path on hover ─────────────────────────────
+	if event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		var new_hover := _screen_to_tile(mm.position)
+		if new_hover != _hovered_cell:
+			_hovered_cell = new_hover
+			if _vision_controller.dev_vision:
+				_update_dev_hover_label()
+			_update_movement_highlight()
+			
+			## UI-01: Update selection and path preview on hover
+			if _is_selectable_cell(_hovered_cell):
+				_selected_cell = _hovered_cell
+				selection_overlay.set_selected(_hovered_cell)
+				_update_selected_preview()
+			elif _hovered_cell == agent.cell or not movement_overlay.is_reachable(_hovered_cell):
+				## Hide preview if hovering agent or unreachable zone
+				_selected_cell = agent.cell
+				selection_overlay.set_selected(agent.cell)
+				path_preview.clear_path()
+
 
 ## Left mouse: only runs when no GUI Control consumed the event first.
 ## This lets HUD buttons work while still handling pan + tile selection.

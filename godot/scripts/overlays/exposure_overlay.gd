@@ -12,8 +12,8 @@
 
 extends Node2D
 
-## Preload ExposureSystem to access visibility class constants
-var ExposureSystem = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
+## Preload ExposureSystem to access visibility class constants (use const to avoid shadowing)
+const ExposureSystem = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
 
 ## References
 var exposure_system

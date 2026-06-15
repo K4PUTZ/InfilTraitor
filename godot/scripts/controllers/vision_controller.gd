@@ -211,12 +211,15 @@ func _setup_tile_risk_overlay() -> void:
 
 
 func _setup_height_overlay() -> void:
-	if _room._tile_semantics_map.is_empty():
+	var tile_semantics_map = _room._lighting_controller.get_tile_semantics_map()
+	var light_anchors = _room._lighting_controller.get_light_anchors()
+	
+	if tile_semantics_map.is_empty():
 		return
 	
 	_height_overlay = HeightOverlayClass.new()
-	_height_overlay.load_semantics(_room._tile_semantics_map)
-	_height_overlay.load_anchors(_room._light_anchors)
+	_height_overlay.load_semantics(tile_semantics_map)
+	_height_overlay.load_anchors(light_anchors)
 	_height_overlay.floor_layer = _room.floor_layer
 	_height_overlay.tile_size = Vector2(256, 128)
 	_height_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
@@ -224,7 +227,7 @@ func _setup_height_overlay() -> void:
 	_height_overlay.z_index = 24  # Above all other overlays for semantic visualization
 	_height_overlay.visible = light_vision
 	
-	print("[VisionController] Height overlay initialized with %d anchors" % [_room._light_anchors.size()])
+	print("[VisionController] Height overlay initialized with %d anchors" % [light_anchors.size()])
 
 
 func _setup_temporal_overlay() -> void:

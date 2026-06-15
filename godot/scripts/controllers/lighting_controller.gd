@@ -20,6 +20,7 @@ var _room: Node2D
 var _light_registry          ## instância de LightRegistry
 var _shadow_projector        ## instância de ShadowProjector
 var _exposure_system         ## instância de ExposureSystem
+var _tile_semantics_map: Dictionary = {}  ## cell → TileSemantics
 var _light_anchors: Array = []
 
 
@@ -28,12 +29,21 @@ func setup(room_ref: Node2D) -> void:
 	_init_systems()
 
 
+## Public accessors for other controllers
+func get_light_registry():
+	return _light_registry
+
+
 func get_exposure_system():
 	return _exposure_system
 
 
-func get_light_registry():
-	return _light_registry
+func get_tile_semantics_map() -> Dictionary:
+	return _tile_semantics_map
+
+
+func get_light_anchors() -> Array:
+	return _light_anchors
 
 
 func rebuild() -> void:
@@ -133,8 +143,8 @@ func _get_obstacle_heights() -> Dictionary:
 	
 	# Read heights from tile semantics map; fallback to HEIGHT_HUMAN if not in semantics
 	for cell in _room._blocked_cells.keys():
-		if _room._tile_semantics_map.has(cell):
-			heights[cell] = _room._tile_semantics_map[cell].height_class
+		if _tile_semantics_map.has(cell):
+			heights[cell] = _tile_semantics_map[cell].height_class
 		else:
 			heights[cell] = TileSemanticsClass.HEIGHT_HUMAN  # Fallback
 	
@@ -177,7 +187,7 @@ func _setup_exposure_system() -> void:
 
 ## L-IMP-05: Initialize tile semantics for worldbuilding
 func _setup_tile_semantics() -> void:
-	_room._tile_semantics_map.clear()
+	_tile_semantics_map.clear()
 	_light_anchors.clear()
 	
 	# Populate semantics from blocked_cells and structural data
@@ -196,7 +206,7 @@ func _setup_tile_semantics() -> void:
 			if blocked.get("blocks_light", false):
 				semantics.blocks_light = true
 		
-		_room._tile_semantics_map[cell] = semantics
+		_tile_semantics_map[cell] = semantics
 	
 	# Find and register light anchor points
 	# These would normally come from structured data in the layout.
@@ -207,7 +217,7 @@ func _setup_tile_semantics() -> void:
 				_light_anchors.append(light.cell)
 	
 	print("[Room] Tile semantics initialized with %d tiles, %d light anchors" % [
-		_room._tile_semantics_map.size(), _light_anchors.size()
+		_tile_semantics_map.size(), _light_anchors.size()
 	])
 
 

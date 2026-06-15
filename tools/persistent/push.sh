@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Level Design Test 01 — Multi-floor Industrial Depot"
+TAG="Alpha Push - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

@@ -12,8 +12,8 @@
 
 extends Node2D
 
-## Preload ExposureSystem to access visibility class constants (use const to avoid shadowing)
-const ExposureSystem = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
+## Preload ExposureSystem script to access visibility class constants (rename to avoid shadowing)
+const EXPOSURE_SYSTEM_CLASS = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
 
 ## References
 var exposure_system
@@ -48,12 +48,12 @@ func _process(_delta: float) -> void:
 func _initialize_color_map() -> void:
 	## Map ExposureSystem visibility classes to tactical colors
 	_exposure_colors = {
-		ExposureSystem.FULL_LIT: Color(1.0, 1.0, 0.0, 0.6),      # Yellow: high risk
-		ExposureSystem.DIM: Color(1.0, 0.6, 0.0, 0.6),           # Orange: moderate risk
-		ExposureSystem.PENUMBRA: Color(0.3, 0.7, 1.0, 0.6),      # Blue: low risk
-		ExposureSystem.SHADOW: Color(0.8, 0.4, 1.0, 0.6),        # Purple: minimal risk
-		ExposureSystem.DEEP_SHADOW: Color(0.1, 0.1, 0.3, 0.6),   # Dark blue: hidden
-		ExposureSystem.OCCLUDED_VOID: Color(0.02, 0.02, 0.05, 0.7), # Near-black: sealed niche
+		EXPOSURE_SYSTEM_CLASS.FULL_LIT: Color(1.0, 1.0, 0.0, 0.6),      # Yellow: high risk
+		EXPOSURE_SYSTEM_CLASS.DIM: Color(1.0, 0.6, 0.0, 0.6),           # Orange: moderate risk
+		EXPOSURE_SYSTEM_CLASS.PENUMBRA: Color(0.3, 0.7, 1.0, 0.6),      # Blue: low risk
+		EXPOSURE_SYSTEM_CLASS.SHADOW: Color(0.8, 0.4, 1.0, 0.6),        # Purple: minimal risk
+		EXPOSURE_SYSTEM_CLASS.DEEP_SHADOW: Color(0.1, 0.1, 0.3, 0.6),   # Dark blue: hidden
+		EXPOSURE_SYSTEM_CLASS.OCCLUDED_VOID: Color(0.02, 0.02, 0.05, 0.7), # Near-black: sealed niche
 	}
 
 ## ============================================================================

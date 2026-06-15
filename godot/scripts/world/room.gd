@@ -54,6 +54,10 @@ const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_ex
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
 const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
+
+## LEVEL-DESIGN-TEST-01: Select which layout to use
+## Options: "sigma-01" (default) or "ldt-01" (Depósito Industrial em L)
+const ACTIVE_LAYOUT := "ldt-01"
 const INVALID_CELL := Vector2i(-9999, -9999)
 
 ## The TileMap renders the current 512px-tall source tiles lower than the
@@ -259,7 +263,15 @@ func _ready() -> void:
 	var access_points: Array = LevelGraphClass.access_points_for(connections, segment_grid_pos)
 
 	var layout_builder = RoomLayoutBuilder.new()
-	var layout: Dictionary = layout_builder.build_layout(access_points)
+	var layout: Dictionary
+	
+	# LEVEL-DESIGN-TEST-01: Select layout based on ACTIVE_LAYOUT
+	if ACTIVE_LAYOUT == "ldt-01":
+		layout = layout_builder.build_layout_ldt01(access_points)
+		print("[Room] Using LDT-01 layout: Depósito Industrial em L")
+	else:
+		layout = layout_builder.build_layout(access_points)
+		print("[Room] Using SIGMA-01 layout")
 	_base_layout = layout.duplicate(true)
 	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
 	_room_size = layout.get("size", Vector2i.ZERO)
@@ -2056,6 +2068,9 @@ func _setup_tile_semantics() -> void:
 		
 		_tile_semantics_map[cell] = semantics
 	
+	# LDT-01: Apply layout-specific height semantics
+	_apply_ldt01_semantics()
+	
 	# Add authored light anchors (sample: create anchors at strategic positions)
 	_create_sample_light_anchors()
 	
@@ -2063,6 +2078,39 @@ func _setup_tile_semantics() -> void:
 		_tile_semantics_map.size(),
 		_light_anchors.size()
 	])
+
+
+## LDT-01: Apply layout-specific height and semantic definitions
+func _apply_ldt01_semantics() -> void:
+	if ACTIVE_LAYOUT != "ldt-01":
+		return
+	
+	# Pilares — HEIGHT_TALL_STRUCTURE (3) — criam sombra longa
+	for cell in RoomLayoutBuilder.LDT01_PILLARS:
+		if _tile_semantics_map.has(cell):
+			_tile_semantics_map[cell].height_class = TileSemanticsClass.HEIGHT_TALL_STRUCTURE
+			_tile_semantics_map[cell].blocks_light = true
+	
+	# Caixas — HEIGHT_LOW_COVER (1)
+	for cell in RoomLayoutBuilder.LDT01_CRATES:
+		if _tile_semantics_map.has(cell):
+			_tile_semantics_map[cell].height_class = TileSemanticsClass.HEIGHT_LOW_COVER
+			_tile_semantics_map[cell].blocks_light = true
+	
+	# Muro do corredor — HEIGHT_HUMAN (2)
+	for cell in RoomLayoutBuilder.LDT01_CORRIDOR_WALL:
+		if _tile_semantics_map.has(cell):
+			_tile_semantics_map[cell].height_class = TileSemanticsClass.HEIGHT_HUMAN
+			_tile_semantics_map[cell].blocks_light = true
+	
+	# Mezanino — HEIGHT_LOW_COVER (1)
+	var mezzanine_rect = RoomLayoutBuilder.LDT01_MEZZANINE_RECT
+	for x in range(mezzanine_rect.position.x, mezzanine_rect.position.x + mezzanine_rect.size.x):
+		for y in range(mezzanine_rect.position.y, mezzanine_rect.position.y + mezzanine_rect.size.y):
+			var cell := Vector2i(x, y)
+			if _tile_semantics_map.has(cell):
+				_tile_semantics_map[cell].height_class = TileSemanticsClass.HEIGHT_LOW_COVER
+				_tile_semantics_map[cell].blocks_light = true
 
 
 ## L-IMP-05: Create sample light anchors for authoring (can be replaced with authored data)

@@ -88,6 +88,57 @@ const SIGMA_LIGHT_SOURCES: Array[Dictionary] = [
 	{"x": 14, "y": 33, "height": 5.0, "radius": 6,  "intensity": 0.85},  ## Zona A
 ]
 
+## LDT-01: LEVEL-DESIGN-TEST-01 — Depósito Industrial em L
+## Cenário com multi-floor, luz/sombra estratégicas, e corredores
+const LDT01_MAP_SIZE      := Vector2i(25, 25)
+const LDT01_AGENT_START   := Vector2i(5, 20)
+const LDT01_BUFFER        := 2
+
+## Pilares (height=2, criam sombra longa)
+const LDT01_PILLARS: Array[Vector2i] = [
+	Vector2i(8, 8), Vector2i(12, 8),
+	Vector2i(8, 12), Vector2i(12, 12),
+]
+
+## Caixas (height=1, cover)
+const LDT01_CRATES: Array[Vector2i] = [
+	Vector2i(5, 5), Vector2i(6, 5),
+	Vector2i(14, 14), Vector2i(15, 14),
+]
+
+## Muro do corredor (height=2, divide corredor de área aberta)
+const LDT01_CORRIDOR_WALL: Array[Vector2i] = [
+	Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8),
+]
+
+## Mezanino (canto NE, ~6×6, height=1)
+const LDT01_MEZZANINE_RECT := Rect2i(Vector2i(16, 3), Vector2i(6, 6))
+
+## Fontes de luz para LDT-01
+const LDT01_LIGHT_SOURCES: Array[Dictionary] = [
+	{"x": 10, "y": 10, "height": 5.0, "radius": 6,  "intensity": 0.90},  ## Luz principal — área aberta
+	{"x": 19, "y": 5,  "height": 4.0, "radius": 4,  "intensity": 0.75},  ## Luz do mezanino
+	{"x": 2,  "y": 12, "height": 3.0, "radius": 3,  "intensity": 0.60},  ## Luz fraca do corredor
+]
+
+## Patrulhas de guarda para LDT-01
+const LDT01_GUARD_PATROLS: Array[Array] = [
+	## ALPHA (α) — Corredor, N-S
+	[Vector2i(2, 5), Vector2i(2, 15)],
+	
+	## BRAVO (β) — Área aberta, retangular
+	[Vector2i(7, 10), Vector2i(14, 10), Vector2i(14, 18), Vector2i(7, 18)],
+	
+	## CHARLIE (γ) — Mezanino, estático facing S
+	[Vector2i(19, 7)],
+]
+
+## Pontos de acesso (saídas)
+const LDT01_ACCESS_POINTS: Array[Dictionary] = [
+	{"cell": Vector2i(2, 22)},   ## Saída oeste
+	{"cell": Vector2i(22, 12)},  ## Saída leste
+]
+
 ## Builds the SIGMA-01 test map layout.
 ## Ignora o parâmetro access_points — usa SIGMA_ACCESS_POINTS fixos.
 func build_layout(_access_points: Array[Dictionary] = []) -> Dictionary:
@@ -319,3 +370,111 @@ func _build_enemy_defs(blocked_map: Dictionary) -> Array[Dictionary]:
 		})
 
 	return defs
+
+
+## LDT-01: Build the LEVEL-DESIGN-TEST-01 layout — Depósito Industrial em L
+func build_layout_ldt01(_access_points: Array[Dictionary] = []) -> Dictionary:
+	var blocked_map: Dictionary = {}
+	var wall_tiles: Array[Dictionary] = []
+	var structure_tiles: Array[Dictionary] = []
+	var blocked_edges: Array = []
+	
+	# Buffer bloqueado
+	for bx in range(LDT01_MAP_SIZE.x):
+		for by in range(LDT01_MAP_SIZE.y):
+			if bx < LDT01_BUFFER or bx >= LDT01_MAP_SIZE.x - LDT01_BUFFER or \
+			   by < LDT01_BUFFER or by >= LDT01_MAP_SIZE.y - LDT01_BUFFER:
+				blocked_map[Vector2i(bx, by)] = true
+	
+	# Paredes externas (oeste, leste, norte, sul)
+	for x in range(LDT01_MAP_SIZE.x):
+		# Parede norte
+		var north_cell := Vector2i(x, LDT01_BUFFER)
+		wall_tiles.append({"cell": north_cell, "tile_name": "block_SE"})
+		blocked_map[north_cell] = true
+		blocked_edges.append({"from": north_cell, "to": north_cell + Vector2i(0, -1)})
+		
+		# Parede sul
+		var south_cell := Vector2i(x, LDT01_MAP_SIZE.y - 1 - LDT01_BUFFER)
+		wall_tiles.append({"cell": south_cell, "tile_name": "block_SE"})
+		blocked_map[south_cell] = true
+		blocked_edges.append({"from": south_cell, "to": south_cell + Vector2i(0, 1)})
+	
+	for y in range(LDT01_MAP_SIZE.y):
+		# Parede oeste
+		var west_cell := Vector2i(LDT01_BUFFER, y)
+		wall_tiles.append({"cell": west_cell, "tile_name": "block_SE"})
+		blocked_map[west_cell] = true
+		blocked_edges.append({"from": west_cell, "to": west_cell + Vector2i(-1, 0)})
+		
+		# Parede leste
+		var east_cell := Vector2i(LDT01_MAP_SIZE.x - 1 - LDT01_BUFFER, y)
+		wall_tiles.append({"cell": east_cell, "tile_name": "block_SE"})
+		blocked_map[east_cell] = true
+		blocked_edges.append({"from": east_cell, "to": east_cell + Vector2i(1, 0)})
+	
+	# Muro do corredor (divide corredor de área aberta)
+	for cell in LDT01_CORRIDOR_WALL:
+		if not blocked_map.has(cell):
+			wall_tiles.append({"cell": cell, "tile_name": "block_SE"})
+			blocked_map[cell] = true
+			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
+			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, 1)})
+	
+	# Pilares (height=2, criam sombra)
+	for cell in LDT01_PILLARS:
+		if not blocked_map.has(cell):
+			structure_tiles.append({"cell": cell, "tile_name": "column_SE"})
+			blocked_map[cell] = true
+	
+	# Caixas (height=1, cover)
+	for cell in LDT01_CRATES:
+		if not blocked_map.has(cell):
+			structure_tiles.append({"cell": cell, "tile_name": "crate_SE"})
+			blocked_map[cell] = true
+	
+	# Mezanino (marcado como bloqueado para pathfinding; visualmente renderizado por height)
+	for x in range(LDT01_MEZZANINE_RECT.position.x, LDT01_MEZZANINE_RECT.position.x + LDT01_MEZZANINE_RECT.size.x):
+		for y in range(LDT01_MEZZANINE_RECT.position.y, LDT01_MEZZANINE_RECT.position.y + LDT01_MEZZANINE_RECT.size.y):
+			var cell := Vector2i(x, y)
+			if not blocked_map.has(cell):
+				structure_tiles.append({"cell": cell, "tile_name": "block_SE"})
+				blocked_map[cell] = true
+	
+	# Construir defs de guarda
+	var guard_defs: Array[Dictionary] = []
+	for i in range(LDT01_GUARD_PATROLS.size()):
+		var route: Array[Vector2i] = []
+		for cell in LDT01_GUARD_PATROLS[i]:
+			if not blocked_map.has(cell) and cell != LDT01_AGENT_START:
+				route.append(cell)
+		
+		if route.size() < 1:
+			continue
+		
+		# Se only 1 cell, duplicar para que pathfinding funcione (patrulha estática)
+		if route.size() == 1:
+			route.append(route[0])
+		
+		guard_defs.append({
+			"id": "guard_%d" % (i + 1),
+			"route": route,
+			"start_index": 0,
+		})
+	
+	var exit_cells: Array[Vector2i] = []
+	for ap in LDT01_ACCESS_POINTS:
+		exit_cells.append(ap["cell"])
+	
+	return {
+		"size": LDT01_MAP_SIZE,
+		"agent_start_cell": LDT01_AGENT_START,
+		"floor_tile_name": FLOOR_TILE,
+		"wall_tiles": wall_tiles,
+		"structure_tiles": structure_tiles,
+		"blocked_cells": _dict_keys_to_vec2i_array(blocked_map),
+		"blocked_edges": blocked_edges,
+		"enemy_defs": guard_defs,
+		"light_sources": LDT01_LIGHT_SOURCES,
+		"exit_cells": exit_cells,
+	}

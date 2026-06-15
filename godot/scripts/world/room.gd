@@ -11,6 +11,7 @@ const VisionControllerClass = preload("res://godot/scripts/controllers/vision_co
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
 const LightingControllerClass = preload("res://godot/scripts/controllers/lighting_controller.gd")
 const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
+const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -152,6 +153,9 @@ var _camera_controller: Node = null
 ## MODULARIZE-03: LightingController para gerenciar sistemas de iluminação
 var _lighting_controller: Node = null
 
+## MODULARIZE-05: FowController para gerenciar reveal e parâmetros do shader
+var _fow_controller: Node = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -266,6 +270,12 @@ func _ready() -> void:
 	add_child(_camera_controller)
 	_camera_controller.setup(camera, self)
 	
+	## MODULARIZE-05: Initialize FowController (before fog operations)
+	_fow_controller = FowControllerClass.new()
+	_fow_controller.name = "FowController"
+	add_child(_fow_controller)
+	_fow_controller.setup(self, fog_of_war, _fog_rect)
+	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
@@ -289,8 +299,8 @@ func _ready() -> void:
 	agent.z_index = 10
 	_spawn_guards(view_layout.get("enemy_defs", []))
 	enemies_root.z_index = 10
-	fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
-	fog_of_war.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w = _room_size.x
@@ -418,8 +428,8 @@ func _set_perspective(direction: String) -> void:
 			_selected_cell = next_agent
 		selection_overlay.set_selected(_selected_cell)
 
-		fog_of_war.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
-		fog_of_war.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_update_guard_los_data()
 		_center_camera(agent.cell)
 		_refresh_tactical_state()
@@ -468,8 +478,8 @@ func _on_hud_reset_requested() -> void:
 			guard.reset_to_route_start()
 	_selected_cell = _agent_start_cell
 	selection_overlay.set_selected(_agent_start_cell)
-	fog_of_war.reset_fog()
-	fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_fow_controller.reset_fog()
+	_fow_controller.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	_center_camera(_agent_start_cell)
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
@@ -609,7 +619,7 @@ func _try_peek(direction: Vector2i) -> void:
 		var peek_cell := agent.cell + direction * i
 		if not _is_cell_inside_room(peek_cell):
 			break
-		fog_of_war.add_peek_reveal(peek_cell)
+		_fow_controller.add_peek_reveal(peek_cell)
 		
 	turn_manager.consume_ap(1)
 	_peek_active = true
@@ -624,7 +634,7 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 
 
 func _on_agent_step_finished(step_cell: Vector2i) -> void:
-	fog_of_war.reveal_around(step_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_fow_controller.reveal_around(step_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 
 	## Dev 04: register trail — last position when stepping in
 	if _agent_trail.is_empty() or _agent_trail.back() != step_cell:
@@ -780,7 +790,7 @@ func _on_player_turn_started() -> void:
 		_peek_timer -= 1
 		if _peek_timer <= 0:
 			_peek_active = false
-			fog_of_war.reset_peek_reveals()
+			_fow_controller.reset_peek_reveals()
 
 
 func _on_enemy_phase_started() -> void:
@@ -843,7 +853,7 @@ func _run_enemy_phase() -> void:
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
 
 		## Câmera segue guard apenas se o tile dele está revelado pelo FOW
-		if fog_of_war.is_cell_revealed(guard.cell):
+		if _fow_controller.is_cell_revealed(guard.cell):
 			await _focus_camera_for_enemy_phase(guard.cell)
 
 		await _hold_actor_end_pause()
@@ -952,8 +962,8 @@ func _reset_room_state() -> void:
 	_agent_trail.clear()
 
 	## Reseta FOW
-	fog_of_war.reset_fog()
-	fog_of_war.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	_fow_controller.reset_fog()
+	_fow_controller.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 
 	## Limpa sistema de ruído
 	if _noise_system != null:
@@ -1486,24 +1496,18 @@ func _has_moving_guards() -> bool:
 ## Update the distance-fog shader uniforms every frame so the gradient tracks
 ## the agent's screen position and scales correctly with zoom and viewport size.
 func _update_vision_fog() -> void:
-	var mat := _fog_rect.material as ShaderMaterial
-	if mat == null:
+	if _fow_controller == null:
 		return
-	## Use global_position so the gradient tracks the visual agent during step animation.
+	
 	var agent_world := agent.global_position
 	var canvas_t    := get_viewport().get_canvas_transform()
 	var vp_size     := get_viewport().get_visible_rect().size
 	var screen_px   := canvas_t * agent_world
 	var screen_uv   := screen_px / vp_size
 	var zoom        := camera.zoom.x
-	## Gradient: tight clear center (3 tiles), outer boundary pushes 9 tiles
-	## beyond the FOW reveal for a very long, gradual fade into darkness.
-	var vision_r_px := float(VISION_TILE_RADIUS + vision_bonus_tiles) * WORLD_TILE_PX * zoom
-	var outer_uv    := (vision_r_px + 9.0 * WORLD_TILE_PX * zoom) / vp_size.y
-	var inner_uv    := maxf(0.0, vision_r_px - 3.0 * WORLD_TILE_PX * zoom) / vp_size.y
-	mat.set_shader_parameter("agent_screen_uv", screen_uv)
-	mat.set_shader_parameter("fog_inner_uv",    inner_uv)
-	mat.set_shader_parameter("fog_outer_uv",    outer_uv)
+	var vision_r_tiles := float(VISION_TILE_RADIUS + vision_bonus_tiles)
+	
+	_fow_controller.update_vision_center(agent_world, screen_uv, vision_r_tiles, zoom, vp_size)
 
 
 ## Unified input: keyboard · wheel zoom · motion drag.

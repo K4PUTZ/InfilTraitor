@@ -14,7 +14,7 @@ func setup(room_ref: Node2D, floor_layer: TileMapLayer, visual_offset: Vector2) 
 
 
 func _draw() -> void:
-	if _room_ref == null or not _room_ref.dev_vision:
+	if _room_ref == null or not _room_ref._vision_controller.dev_vision:
 		return
 
 	var agent_trail: Array = _room_ref._agent_trail

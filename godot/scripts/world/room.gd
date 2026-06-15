@@ -12,6 +12,7 @@ const HudControllerClass = preload("res://godot/scripts/controllers/hud_controll
 const LightingControllerClass = preload("res://godot/scripts/controllers/lighting_controller.gd")
 const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
 const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
+const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -156,6 +157,9 @@ var _lighting_controller: Node = null
 ## MODULARIZE-05: FowController para gerenciar reveal e parâmetros do shader
 var _fow_controller: Node = null
 
+## MODULARIZE-06: GuardCoordinator para rotear sinais de coordenação entre guards
+var _guard_coordinator: Node = null
+
 ## M2-14: Chance de ruído por estado do guarda
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
@@ -275,6 +279,12 @@ func _ready() -> void:
 	_fow_controller.name = "FowController"
 	add_child(_fow_controller)
 	_fow_controller.setup(self, fog_of_war, _fog_rect)
+	
+	## MODULARIZE-06: Initialize GuardCoordinator (after fow controller)
+	_guard_coordinator = GuardCoordinatorClass.new()
+	_guard_coordinator.name = "GuardCoordinator"
+	add_child(_guard_coordinator)
+	_guard_coordinator.setup(self)
 	
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
@@ -695,12 +705,12 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 			guard.observe_player(true, 3, agent.cell)
 			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
 			if _alert_meter >= _alert_max:
-				_on_guard_alarmed(guard.cell)
+				_guard_coordinator._on_guard_alarmed(guard.cell)
 		elif guard.detection >= DETECTION_THRESHOLD_ALERT:
 			guard.observe_player(true, 2, agent.cell)
 			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
 			if _alert_meter >= _alert_max:
-				_on_guard_alarmed(guard.cell)
+				_guard_coordinator._on_guard_alarmed(guard.cell)
 		elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 			guard.observe_player(true, 1, agent.cell)
 		## Abaixo de DETECTION_THRESHOLD_SUSPICIOUS: meter acumula, sem mudança de estado
@@ -848,7 +858,7 @@ func _run_enemy_phase() -> void:
 			_room_size,
 			occupied,
 			_apply_tic_result,   ## passa o callback
-			_on_guard_emits_noise   ## M2-14: callback de ruído
+			_guard_coordinator._on_guard_emits_noise   ## M2-14: callback de ruído
 		)
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
 
@@ -914,22 +924,6 @@ func _emit_guard_noise_indicator(guard_cell: Vector2i, intensity: float) -> void
 
 
 ## M2-14: Callback: executado quando um guarda emite ruído após se mover
-func _on_guard_emits_noise(guard, guard_cell: Vector2i) -> void:
-	if _noise_system == null or guard == null:
-		return
-	
-	## Chance de ruído por estado do guarda
-	var noise_chance: float = GUARD_NOISE_CHANCE_BY_STATE.get(guard.state, 0.10) as float
-	if randf() < noise_chance:
-		## Intensidade de ruído por estado
-		var noise_intensity: float = GUARD_NOISE_INTENSITY_BY_STATE.get(guard.state, 0.5) as float
-		## Emitir no sistema de ruído global
-		_noise_system.emit(guard_cell, noise_intensity)
-		## Emitir indicador sonoro para o agente
-		_emit_guard_noise_indicator(guard_cell, noise_intensity)
-		## Redraw dos overlays para atualizar visual
-		if _noise_overlay != null:
-			_noise_overlay.queue_redraw()
 
 
 func _update_alert_label() -> void:
@@ -1037,9 +1031,7 @@ func _spawn_guards(enemy_defs: Array) -> void:
 			int(entry.get("start_index", 0))
 		)
 		
-		guard.whistled.connect(_on_guard_whistled)
-		guard.radioed.connect(_on_guard_radioed)
-		
+		_guard_coordinator.register_guard(guard)
 		_guards.append(guard)
 
 	_update_enemy_visibility()
@@ -1063,39 +1055,7 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 	return false
 
 
-func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
-	## Apito: guards a até WHISTLE_RADIUS tiles entram em STATE_SEARCH
-	if last_known == INVALID_CELL:
-		return
-	for guard in _guards:
-		if not is_instance_valid(guard):
-			continue
-		var dist: float = float((guard.cell - origin_cell).length())
-		if dist <= WHISTLE_RADIUS:
-			guard.receive_alert(last_known, GuardEnemy.STATE_SEARCH)
 
-
-func _on_guard_radioed(_origin_cell: Vector2i, last_known: Vector2i) -> void:
-	## Rádio: todos os guards da sala entram em STATE_ALERT
-	if last_known == INVALID_CELL:
-		return
-	for guard in _guards:
-		if not is_instance_valid(guard):
-			continue
-		if guard.state == GuardEnemy.STATE_PATROL or \
-		   guard.state == GuardEnemy.STATE_SUSPICIOUS:
-			guard.receive_alert(last_known, GuardEnemy.STATE_ALERT)
-
-
-func _on_guard_alarmed(_origin_cell: Vector2i) -> void:
-	## Alarme global: todos os guards entram em STATE_CHASE
-	for guard in _guards:
-		if not is_instance_valid(guard):
-			continue
-		if guard.state != GuardEnemy.STATE_CHASE:
-			guard.receive_alert(agent.cell, GuardEnemy.STATE_CHASE)
-	_alert_meter = _alert_max
-	_update_alert_label()
 
 
 func _update_enemy_visibility() -> void:

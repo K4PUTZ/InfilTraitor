@@ -124,6 +124,26 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 📖 **See:** [docs/systems/lighting.md](docs/systems/lighting.md) for L-DOC-01 & L-DOC-02 (671 lines, pure semantic architecture)
 
+### Alpha Light Vision Mode & Overlay Refinement (Completed 2026-06-14)
+
+✅ **OVERLAY-SPLIT-01:** Separate DEV VISION (V) from LIGHT VISION (L)
+- Added `light_vision` toggle mode (L key)
+- V key → Mechanics overlays: guards, exposure/risk/elite layers, markers
+- L key → Light overlays: light sources, shadow topology, height semantics, temporal state
+- Both can be active simultaneously; FOW hidden if either enabled
+- Foundation for light system debugging independent of mechanics
+
+✅ **EXPOSURE-COLOR-FIX-01:** Realign overlays to 6-class enum
+- Updated `exposure_overlay.gd` to map all 6 visibility classes with named constants
+- Removed `tile_risk_overlay.gd` guard on OCCLUDED_VOID class (now draws when risk > 0)
+- Fixed integer mismatch: FULL_LIT(5) now renders yellow (not offset as FULL_LIT(4))
+- All overlays now use enum constants instead of magic numbers
+
+✅ **Status:** All 6 exposure classes (FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW, OCCLUDED_VOID) properly displayed
+- 0 compilation errors
+- 0 shadowing warnings
+- Color mapping coherent with stealth risk
+
 ### Next up (M2 continuation)
 
 - **M2-13:** Geometric shadow projection & baking — implement cone shadow casting, deterministic shadow grids per room

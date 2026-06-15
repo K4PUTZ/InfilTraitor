@@ -12,6 +12,9 @@
 
 extends Node2D
 
+## Preload ExposureSystem to access visibility class constants
+var ExposureSystem = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
+
 ## References
 var exposure_system
 var tile_size: Vector2 = Vector2(256, 128)
@@ -22,13 +25,8 @@ var _show_labels: bool = false
 var _label_font: Font = null
 
 ## Tactical color palette (stealth semantics, not visual brightness)
-var _exposure_colors := {
-	4: Color(1.0, 1.0, 0.0, 0.6),      # FULL_LIT: Bright yellow (high risk)
-	3: Color(1.0, 0.6, 0.0, 0.6),      # DIM: Orange (moderate risk)
-	2: Color(0.3, 0.7, 1.0, 0.6),      # PENUMBRA: Blue (low risk)
-	1: Color(0.8, 0.4, 1.0, 0.6),      # SHADOW: Purple (minimal risk)
-	0: Color(0.1, 0.1, 0.3, 0.6),      # DEEP_SHADOW: Dark blue (hidden)
-}
+## Maps ExposureSystem visibility classes to colors
+var _exposure_colors := {}
 
 ## ============================================================================
 ## Lifecycle
@@ -37,10 +35,26 @@ var _exposure_colors := {
 func _ready() -> void:
 	_label_font = ThemeDB.fallback_font
 	set_visibility_layer(20)
+	_initialize_color_map()
 
 func _process(_delta: float) -> void:
 	if visible:
 		queue_redraw()
+
+## ============================================================================
+## Initialization
+## ============================================================================
+
+func _initialize_color_map() -> void:
+	## Map ExposureSystem visibility classes to tactical colors
+	_exposure_colors = {
+		ExposureSystem.FULL_LIT: Color(1.0, 1.0, 0.0, 0.6),      # Yellow: high risk
+		ExposureSystem.DIM: Color(1.0, 0.6, 0.0, 0.6),           # Orange: moderate risk
+		ExposureSystem.PENUMBRA: Color(0.3, 0.7, 1.0, 0.6),      # Blue: low risk
+		ExposureSystem.SHADOW: Color(0.8, 0.4, 1.0, 0.6),        # Purple: minimal risk
+		ExposureSystem.DEEP_SHADOW: Color(0.1, 0.1, 0.3, 0.6),   # Dark blue: hidden
+		ExposureSystem.OCCLUDED_VOID: Color(0.02, 0.02, 0.05, 0.7), # Near-black: sealed niche
+	}
 
 ## ============================================================================
 ## Control Interface
@@ -73,6 +87,9 @@ func _draw() -> void:
 ## Draw a single tile with its exposure class color.
 func _draw_exposure_tile(cell: Vector2i, vis_class: int) -> void:
 	var screen_pos = _cell_to_screen(cell)
+	## Only draw if we have a color mapping for this class
+	if not vis_class in _exposure_colors:
+		return
 	var color = _exposure_colors[vis_class]
 	
 	# Draw filled rectangle (dimetric tile shape approximation)

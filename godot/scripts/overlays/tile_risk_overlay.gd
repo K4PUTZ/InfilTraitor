@@ -48,13 +48,8 @@ func _draw() -> void:
 	if not exposure_system:
 		return
 	
-	# Iterate over all tiles in exposure grid
-	var all_tiles = exposure_system.get_tiles_by_class(0)  # Get any tile to know grid
-	if all_tiles.is_empty():
-		# No tiles in grid; draw something minimal
-		return
-	
-	# Draw all tiles by risk
+	# Draw all tiles by risk (no guard; loop+check handles empty grid)
+	# Iterate over approximate room bounds
 	for x in range(-5, 50):  # Approximate room coverage
 		for y in range(-5, 50):
 			var cell = Vector2i(x, y)

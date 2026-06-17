@@ -65,10 +65,10 @@ All overlays are instances of `TileOverlayClass` with independent material stack
 ### Priority Constants
 
 ```gdscript
-const PRIO_SHADOW   := 1    ## Sombras — desenhadas abaixo de tudo
-const PRIO_DETECT   := 2    ## Cone de detecção
-const PRIO_MOVEMENT := 3    ## Preview de movimento/pathfinding
-const PRIO_NAV      := 4    ## Navegação — saídas, objetivos
+const PRIO_SHADOW   := 1    ## Shadows — drawn below everything
+const PRIO_DETECT   := 2    ## Detection cone
+const PRIO_MOVEMENT := 3    ## Movement/pathfinding preview
+const PRIO_NAV      := 4    ## Navigation — exits, objectives
 const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
 ```
 

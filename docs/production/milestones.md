@@ -4,15 +4,15 @@
 
 ---
 
-## ⚠️ Nota de Revisão (2026-06-14)
+## ⚠️ Revision Note (2026-06-14)
 
-Auditoria de código (2026-06-14): o sistema de IA é funcional com detecção GRADUAL implementada. Guards detectam e reagem ao agente com escalação correta.
+Code audit (2026-06-14): the AI system is functional with GRADUAL detection implemented. Guards detect and react to the agent with correct escalation.
 
-- **Código existe e funciona** — `choose_next_cell()`, `tick_state()`, `observe_player()`, `hear_noise()`, comunicação via signals
-- **Detecção é gradual** — Thresholds (0.30 SUSPICIOUS, 0.60 ALERT, 1.00 CHASE) implementados em `room.gd:_apply_tic_result()`
-- **Funcional para demo** — M2.07 (Search) e M2.08 (Communication) funcionam, guards reagem ao agente
+- **Code exists and works** — `choose_next_cell()`, `tick_state()`, `observe_player()`, `hear_noise()`, communication via signals
+- **Detection is gradual** — Thresholds (0.30 SUSPICIOUS, 0.60 ALERT, 1.00 CHASE) implemented in `room.gd:_apply_tic_result()`
+- **Functional for the demo** — M2.07 (Search) and M2.08 (Communication) work, guards react to the agent
 
-Os milestones ID-01 a ID-04 representam refinamentos de integração, não correções de bugs críticos.
+Milestones ID-01 through ID-04 represent integration refinements, not critical bug fixes.
 
 ---
 
@@ -330,16 +330,16 @@ Os milestones ID-01 a ID-04 representam refinamentos de integração, não corre
 
 ### ✅ ID-01 — Detection Escalation Gradual — IMPLEMENTED
 
-**Objective:** Conectar o detection meter às thresholds de estado para escalação gradual (PATROL → SUSPICIOUS → ALERT).
+**Objective:** Connect the detection meter to the state thresholds for gradual escalation (PATROL → SUSPICIOUS → ALERT).
 
-**Status:** ✅ RESOLVED (Implementado em 2026-06-14)
+**Status:** ✅ RESOLVED (Implemented on 2026-06-14)
 
 **Resolution Details:**
-Auditoria de código confirmou que detection escalation gradual **JÁ ESTÁ IMPLEMENTADA** em `room.gd:_apply_tic_result()`:
-- Thresholds definidos: `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`, `ALERT := 0.60`, `CHASE := 1.00`
-- Detection meter acumula por tic e conduz transições de estado
-- De-escalação automática via `_get_detection_decay()` funciona por estado
-- Audio detection integrado com mesmo modelo de thresholds
+A code audit confirmed that gradual detection escalation **IS ALREADY IMPLEMENTED** in `room.gd:_apply_tic_result()`:
+- Defined thresholds: `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`, `ALERT := 0.60`, `CHASE := 1.00`
+- The detection meter accumulates per tic and drives state transitions
+- Automatic de-escalation via `_get_detection_decay()` works per state
+- Audio detection integrated with the same threshold model
 
 ```gdscript
 if guard.detection >= DETECTION_THRESHOLD_CHASE:
@@ -351,10 +351,10 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 ```
 
 **Validation:** ✅ Complete
-- Guards detectam e escalam gradualmente
-- De-escalação por timer funciona
-- Audio + visual detection integrados
-- IA funcional para Investor Demo
+- Guards detect and escalate gradually
+- Timer-based de-escalation works
+- Audio + visual detection integrated
+- Functional AI for the Investor Demo
 **Objective:** Reorganize documentation into modular, scalable structure.
 
 **Dependencies:** None (orthogonal to gameplay)
@@ -391,75 +391,75 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 ---
 
 ### ⏳ ID-02 — Detection Tuning & Game Feel
-**Objective:** Calibrar os parâmetros de detecção para que o stealth seja genuinamente tenso e fair.
+**Objective:** Calibrate the detection parameters so that stealth is genuinely tense and fair.
 
 **Dependencies:** ID-01
 
-**Estimated Duration:** 1–2 semanas
+**Estimated Duration:** 1–2 weeks
 
 **Deliverables:**
-- Playtest interno com guards funcionais (pelo menos 10 sessões)
-- Ajuste da DISTANCE_CURVE com base em feedback
-- Ajuste dos multiplicadores de postura (STANDING/CROUCHING/PRONE)
-- Ajuste dos shadow multipliers (DIRECT/PENUMBRA)
-- Ajuste dos thresholds de escalação (SUSPICIOUS/ALERT/CHASE)
-- Ajuste do decay rate por turno
+- Internal playtest with functional guards (at least 10 sessions)
+- Adjust the DISTANCE_CURVE based on feedback
+- Adjust the posture multipliers (STANDING/CROUCHING/PRONE)
+- Adjust the shadow multipliers (DIRECT/PENUMBRA)
+- Adjust the escalation thresholds (SUSPICIOUS/ALERT/CHASE)
+- Adjust the per-turn decay rate
 
 **Acceptance Criteria:**
-- Agente em pé, iluminado, a 2 tiles de um guard = detectado em ~2 turnos
-- Agente agachado, em sombra, a 4+ tiles = detecção < 15% por turno
-- Possível completar a sala demo sem ser detectado (mas requer esforço)
-- De-escalação possível (guard volta ao estado normal se agente some)
+- Agent standing, lit, 2 tiles from a guard = detected in ~2 turns
+- Agent crouched, in shadow, 4+ tiles away = detection < 15% per turn
+- Possible to complete the demo room undetected (but it takes effort)
+- De-escalation possible (guard returns to normal state if the agent disappears)
 
 ---
 
 ### ⏳ ID-03 — Demo Room Polish
-**Objective:** Criar uma sala de demonstração que mostre todos os sistemas ao mesmo tempo.
+**Objective:** Create a demo room that showcases all systems at once.
 
 **Dependencies:** ID-02
 
-**Estimated Duration:** 1–2 semanas
+**Estimated Duration:** 1–2 weeks
 
 **Deliverables:**
-- Layout com múltiplas sombras, corredores, e posições de cover
-- 2–3 guards com patrulhas distintas e não-triviais
-- Ao menos 1 guard com patrulha que cruza área iluminada
-- Vision cones coloridos por estado (azul/amarelo/laranja/vermelho)
-- Noise indicator visível e legível
-- Objetivo básico (alcançar tile de extração)
-- UI mínima: fase do turno, AP do agente, estado de detecção geral
+- Layout with multiple shadows, corridors, and cover positions
+- 2–3 guards with distinct, non-trivial patrols
+- At least 1 guard with a patrol that crosses a lit area
+- Vision cones colored by state (blue/yellow/orange/red)
+- Visible, readable noise indicator
+- Basic objective (reach the extraction tile)
+- Minimal UI: turn phase, agent AP, overall detection state
 
 **Acceptance Criteria:**
-- Observador sem contexto consegue entender a situação em < 2 minutos
-- Sala demonstra: stealth via sombra, evasão de cone de visão, noise management
-- Guards comunicam alerta entre si quando detectam agente
+- An observer with no context can understand the situation in < 2 minutes
+- The room demonstrates: stealth via shadow, vision-cone evasion, noise management
+- Guards communicate alerts to each other when they detect the agent
 
 ---
 
 ### ⏳ ID-04 — FSM Architecture Refactor
-**Objective:** Refatorar o match/case do GuardEnemy para Strategy pattern antes de adicionar combate.
+**Objective:** Refactor GuardEnemy's match/case to a Strategy pattern before adding combat.
 
-**Dependencies:** ID-01 (guards funcionando), antes de M3.0
+**Dependencies:** ID-01 (guards working), before M3.0
 
-**Estimated Duration:** 1–2 semanas
+**Estimated Duration:** 1–2 weeks
 
 **Deliverables:**
-- Cada estado do guard como classe separada (GuardStatePatrol, GuardStateSuspicious, etc.)
-- Interface comum (decide(), enter(), exit())
-- GuardEnemy delega ao state object atual
-- Personality traits como modificadores (não como novos estados)
+- Each guard state as a separate class (GuardStatePatrol, GuardStateSuspicious, etc.)
+- Common interface (decide(), enter(), exit())
+- GuardEnemy delegates to the current state object
+- Personality traits as modifiers (not as new states)
 
 **Acceptance Criteria:**
-- Adicionar novo estado = criar nova classe, sem tocar em if/match existente
-- Comportamento atual preservado (sem regressão)
-- Código mais legível (cada estado em ~50 linhas, não 200+ linhas no match)
+- Adding a new state = create a new class, without touching the existing if/match
+- Current behavior preserved (no regression)
+- More readable code (each state ~50 lines, not 200+ lines in the match)
 
 ---
 
-### ⏳ M2.13 — Suspicion Meter Integration (INCORPORADO EM ID-01)
+### ⏳ M2.13 — Suspicion Meter Integration (MERGED INTO ID-01)
 **Objective:** Per-guard suspicion tracking and escalation mechanics.
 
-**Dependencies:** ID-01 (esta funcionalidade foi incorporada ao ID-01)
+**Dependencies:** ID-01 (this functionality was merged into ID-01)
 
 **Estimated Duration:** (covered by ID-01)
 
@@ -724,26 +724,26 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 | Milestone | Blocker | Status | Mitigation |
 |-----------|---------|--------|-----------|
-| **ID-01** | `choose_next_cell()` não existe | 🚨 ATIVO | Implementar/renomear esta semana |
-| **ID-01** | `tick_state()` não existe | 🚨 ATIVO | Implementar esta semana |
-| **ID-01** | Detection meter não conectado | 🚨 ATIVO | Conectar TicSystem → guard |
-| ID-02 | ID-01 completo | Aguardando ID-01 | — |
-| ID-03 | ID-02 completo | Aguardando ID-02 | — |
-| ID-04 | ID-01 completo | Aguardando ID-01 | — |
-| M3.0 (Combat) | ID-04 completo | Aguarda refactor | Não iniciar antes do refactor |
-| M4.0 (Campaign) | Investimento | Aguarda investor demo | — |
-| M5.0 (Procedural) | Algoritmo de geração | At risk | Templates inicialmente |
-| M6.0 (Audio) | Recursos de áudio | At risk | Contratar externo se necessário |
+| **ID-01** | `choose_next_cell()` does not exist | 🚨 ACTIVE | Implement/rename this week |
+| **ID-01** | `tick_state()` does not exist | 🚨 ACTIVE | Implement this week |
+| **ID-01** | Detection meter not connected | 🚨 ACTIVE | Connect TicSystem → guard |
+| ID-02 | ID-01 complete | Waiting on ID-01 | — |
+| ID-03 | ID-02 complete | Waiting on ID-02 | — |
+| ID-04 | ID-01 complete | Waiting on ID-01 | — |
+| M3.0 (Combat) | ID-04 complete | Waiting on refactor | Do not start before the refactor |
+| M4.0 (Campaign) | Investment | Waiting on investor demo | — |
+| M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
+| M6.0 (Audio) | Audio assets | At risk | Hire externally if needed |
 
 ---
 
 ## Next Steps
 
-1. **Agora (esta semana):** ID-01 — Fix guard FSM (guards devem detectar e reagir)
-2. **Semana 2:** ID-02 — Tuning de detecção para bom game feel
-3. **Semanas 3–4:** ID-03 — Polir sala demo para apresentação
-4. **Semanas 4–5:** ID-04 — Refatorar FSM antes de adicionar combate
-5. **Pós-investimento:** Production pass (áudio, animações, UI, múltiplas salas)
+1. **Now (this week):** ID-01 — Fix guard FSM (guards must detect and react)
+2. **Week 2:** ID-02 — Detection tuning for good game feel
+3. **Weeks 3–4:** ID-03 — Polish the demo room for presentation
+4. **Weeks 4–5:** ID-04 — Refactor the FSM before adding combat
+5. **Post-investment:** Production pass (audio, animations, UI, multiple rooms)
 
-See: `docs/production/roadmap.md` para visão macro das fases
-See: `docs/production/technical_debt.md` para detalhe dos blockers
+See: `docs/production/roadmap.md` for the macro view of the phases
+See: `docs/production/technical_debt.md` for blocker details

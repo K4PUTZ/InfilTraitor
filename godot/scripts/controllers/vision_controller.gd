@@ -1,8 +1,8 @@
 extends Node2D
 
-## Gerencia os três modos de visualização (DEV, LIGHT, HEAT) e todos os overlays
-## de debug e análise. É filho de room.gd na scene tree.
-## Comunicação: room.gd chama métodos diretamente; este módulo não emite signals.
+## Manages the three visualization modes (DEV, LIGHT, HEAT) and all debug/analysis
+## overlays. Child of room.gd in the scene tree.
+## Communication: room.gd calls methods directly; this module emits no signals.
 
 # ── Preloads ──────────────────────────────────────────────────────────────────
 const LightOverlayClass = preload("res://godot/scripts/overlays/light_overlay.gd")
@@ -13,16 +13,16 @@ const HeightOverlayClass = preload("res://godot/scripts/overlays/height_overlay.
 const TemporalOverlayClass = preload("res://godot/scripts/overlays/temporal_overlay.gd")
 const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")
 
-# ── Estado de visão ───────────────────────────────────────────────────────────
+# ── Vision state ───────────────────────────────────────────────────────────────
 var dev_vision: bool = false
 var light_vision: bool = false
 var heat_vision: bool = false
 
-# ── Referências externas ──────────────────────────────────────────────────────
-var _room: Node2D          ## referência ao room.gd — acesso somente leitura
-var _fog_of_war: Node2D    ## node FogOfWarOverlay da cena
+# ── External references ─────────────────────────────────────────────────────────
+var _room: Node2D          ## reference to room.gd — read-only access
+var _fog_of_war: Node2D    ## FogOfWarOverlay node from the scene
 
-# ── Instâncias dos overlays ───────────────────────────────────────────────────
+# ── Overlay instances ─────────────────────────────────────────────────────────
 var _light_overlay: Node2D = null
 var _shadow_overlay: Node2D = null
 var _exposure_overlay: Node2D = null
@@ -31,7 +31,7 @@ var _height_overlay: Node2D = null            ## DEV visualization of height cla
 var _temporal_overlay: Node2D = null          ## DEV visualization of temporal light states
 var _elite_exposure_overlay: Node2D = null    ## DEV visualization of shadow depth and confidence
 
-# ── API pública ───────────────────────────────────────────────────────────────
+# ── Public API ─────────────────────────────────────────────────────────────────
 
 func setup(room_ref: Node2D, fog_of_war_ref: Node2D) -> void:
 	_room = room_ref
@@ -52,18 +52,18 @@ func toggle_heat() -> void:
 	_apply_fow_visibility()
 
 func request_redraw() -> void:
-	## Chamado por room.gd após qualquer rebuild de iluminação.
-	## Força todos os overlays ativos a se redesenharem.
+	## Called by room.gd after any lighting rebuild.
+	## Forces all active overlays to redraw themselves.
 	if light_vision:
 		_apply_light_vision()
 	if heat_vision:
 		_apply_heat_vision()
 
-# ── Privado ───────────────────────────────────────────────────────────────────
+# ── Private ───────────────────────────────────────────────────────────────────
 
 func _init_overlays() -> void:
-	## Instancia os overlays, adiciona à scene tree com z-order correto,
-	## e faz o setup inicial de cada um.
+	## Instantiates the overlays, adds them to the scene tree with the correct
+	## z-order, and runs the initial setup of each one.
 	_setup_light_overlay()
 	_setup_shadow_overlay()
 	_setup_exposure_overlay()
@@ -137,7 +137,7 @@ func _apply_fow_visibility() -> void:
 	if _room._fog_rect != null:
 		_room._fog_rect.visible = not (dev_vision or light_vision or heat_vision)
 
-# ── Setup de overlays ─────────────────────────────────────────────────────────
+# ── Overlay setup ─────────────────────────────────────────────────────────────
 
 func _setup_light_overlay() -> void:
 	var light_registry = _room._lighting_controller.get_light_registry()

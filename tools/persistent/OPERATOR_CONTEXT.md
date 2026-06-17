@@ -7,6 +7,8 @@ https://github.com/K4PUTZ/InfilTraitor
 
 Seu papel é implementar funcionalidades em GDScript para Godot 4.6, seguindo instruções precisas do diretor de design. Você não toma decisões de design — apenas executa com qualidade, faz perguntas técnicas quando necessário, e reporta problemas encontrados.
 
+IMPORTANTE: Ao final de cada tarefa finalizada, executar um smoke test, observando o output e corrigindo problemas.
+
 ---
 
 ## O Projeto
@@ -86,6 +88,19 @@ Não acumular alerta global em outros lugares do código.
 Lógica de jogo nunca depende de texto para funcionar.
 `MissionData` (estrutura) e `MissionNarrative` (texto) são objetos separados.
 
+**7. Mapas são autorados em coordenadas internas (playable), nunca raw**
+Todo `MapSpec` usa o espaço do segmento jogável (`inner_size`, ex. 18×36,
+o mesmo espaço do `LevelGraph`). O offset de buffer é aplicado em **um único
+lugar**: `MapCompiler`. Nunca somar `+ buffer` (ex. `+5`) dentro de uma definição
+de mapa.
+```gdscript
+## CORRETO em qualquer *_map.gd:
+"agent_start": Vector2i(9, 34)        # coord interna
+
+## ERRADO:
+"agent_start": Vector2i(14, 39)       # (9+5, 34+5) — buffer hardcoded
+```
+
 ---
 
 ## Mapa de Arquivos
@@ -116,16 +131,69 @@ godot/scripts/
     tile_labels_overlay.gd      coordenadas de tile (dev)
     compass_rose.gd             rosa dos ventos
   world/
-    room.gd                     controlador principal da cena
-    room_layout_builder.gd      construção de layout, autotile de paredes
+    room.gd                     controlador principal da cena (renderiza o layout dict)
     wall_edge_data.gd           edge_key(), is_edge_blocked(), blocks_los/sound()
     tile_registry.gd            registro de tiles
     level_graph.gd              grafo de segmentos do nível
+    maps/
+      map_geometry.gd           primitivas puras: paredes, portas, arestas (static)
+      map_compiler.gd           MapSpec → layout dict (único dono do offset de buffer)
+      map_catalog.gd            map_id → MapSpec (roteamento de mapas)
+      definitions/
+        playground_map.gd       mapa de referência de artwork (mockup)
+        sigma_01_map.gd         mapa de teste SIGMA-01 (migrado, coords internas)
+        procedural_map.gd       stub do gerador procedural (próxima fase)
 ```
 
 ---
 
-## Sistemas Implementados
+## Sistema de Mapas
+
+Pipeline data-driven: o `room.gd` é apenas um **renderer** que consome um `layout`
+dict; ele não sabe como o mapa foi produzido. Mapas permanentes (hardcoded) e o
+gerador procedural (futuro) compartilham o mesmo vocabulário (`MapSpec`) e o mesmo
+compilador.
+
+```
+room.gd  @export map_id ("PLAYGROUND" | "SIGMA_01" | "PROCEDURAL")
+   │
+   ├─ LevelGraph.generate(seed) ─► connections   (só para specs access_from_graph)
+   │
+   ├─ MapCatalog.get_spec(map_id, {connections, segment_grid_pos, seed})
+   │        PLAYGROUND → PlaygroundMap.spec()
+   │        SIGMA_01   → Sigma01Map.spec()
+   │        PROCEDURAL → ProceduralMap.generate(seed)
+   │              │  MapSpec (coords internas / segmento)
+   │
+   ├─ MapCompiler.compile(spec, context)   ◄ único dono do offset de buffer
+   │        size = inner_size + 2*buffer · offset de cada célula · MapGeometry.build_room()
+   │        anel de buffer bloqueado · divisores+portões · props · luzes · patrulhas · saídas
+   │              │  layout dict (coords raw/grid)
+   │
+   └─ _build_room(layout) / _cache_blocked_cells(layout)   ◄ renderer (inalterado)
+```
+
+**MapSpec** (Dictionary, coords internas) — chaves:
+```
+id · inner_size · buffer · floor_tile · agent_start
+access_points: [{cell}]   OU   access_from_graph: true   (puxa do LevelGraph)
+rooms:    [{rect, doors}]          # salas internas opcionais
+dividers: [{cells:[Vector2i...]}]  # paredes internas (block_SE) com gaps de portão
+props:    [{cell, tile}]           # crate_*/column_* etc.
+lights:   [{x,y,height,radius,intensity}]
+patrols:  [[Vector2i, ...]]        # rotas de guarda
+```
+
+**Contrato do layout dict** (saída do compilador, coords raw):
+`{size, agent_start_cell, floor_tile_name, wall_tiles, structure_tiles,
+blocked_cells, blocked_edges, enemy_defs, light_sources, exit_cells}`
+
+Notas:
+- **Paredes externas não entram em `blocked_cells`** — bloqueiam só via `blocked_edges`
+  (interior delimitado por arestas). Comportamento herdado do SIGMA-01.
+- Adicionar mapa permanente: criar `definitions/<nome>_map.gd` com `static func spec()`
+  e adicionar um branch em `MapCatalog`.
+- Selecionar mapa: `@export var map_id` no nó Room (Inspector).
 
 ### Detecção Visual (TicSystem)
 Event-driven: dispara ao cruzar aresta, não por frame ou turno.

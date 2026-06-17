@@ -1,10 +1,10 @@
 extends Node
-## HudController — Gerencia toda a fiação de UI: botões, labels, banners, checkboxes.
-## 
-## Os nodes @onready permanecem em room.gd. Este controller recebe referências
-## no setup() e emite signals para ações do usuário.
+## HudController — Manages all UI wiring: buttons, labels, banners, checkboxes.
 ##
-## room.gd conecta aos signals deste controller e executa a lógica de gameplay.
+## The @onready nodes remain in room.gd. This controller receives references
+## in setup() and emits signals for user actions.
+##
+## room.gd connects to this controller's signals and runs the gameplay logic.
 
 signal end_turn_requested()
 signal reset_requested()
@@ -25,7 +25,7 @@ var _enemy_turn_banner: Control
 
 
 func setup(refs: Dictionary) -> void:
-	## refs contém os @onready nodes de room.gd passados por nome.
+	## refs holds the @onready nodes from room.gd, passed by name.
 	_btn_end_turn = refs.get("btn_end_turn")
 	_btn_reset = refs.get("btn_reset")
 	_btn_fullscreen = refs.get("btn_fullscreen")
@@ -39,86 +39,86 @@ func setup(refs: Dictionary) -> void:
 	_connect_buttons()
 
 
-## Atualiza label de AP com valor atual e máximo
+## Updates the AP label with the current and max value
 func update_ap(current: int, max_ap: int, is_enemy_phase: bool = false) -> void:
 	if _lbl_ap:
-		_lbl_ap.text = "INIMIGOS" if is_enemy_phase else "AP %d/%d" % [current, max_ap]
+		_lbl_ap.text = "ENEMIES" if is_enemy_phase else "AP %d/%d" % [current, max_ap]
 
 
-## Atualiza label de alerta com percentual (0.0 - 1.0)
+## Updates the alert label with a percentage (0.0 - 1.0)
 func update_alert(pct: float) -> void:
 	if _lbl_alert:
 		var alert_int := int(pct * 100)
-		_lbl_alert.text = "ALERTA %d%%" % alert_int
-		# Modular cor conforme alerta sobe
+		_lbl_alert.text = "ALERT %d%%" % alert_int
+		# Modulate the color as the alert rises
 		var t := pct
 		_lbl_alert.modulate = Color(1.0, 1.0 - 0.55 * t, 1.0 - 0.75 * t, 1.0)
 
 
-## Mostra banner de turno inimigo
+## Shows the enemy-turn banner
 func show_enemy_banner() -> void:
 	if _enemy_turn_banner:
 		_enemy_turn_banner.visible = true
 
 
-## Esconde banner de turno inimigo
+## Hides the enemy-turn banner
 func hide_enemy_banner() -> void:
 	if _enemy_turn_banner:
 		_enemy_turn_banner.visible = false
 
 
-## Mostra dialog de "Busted"
+## Shows the "Busted" dialog
 func show_busted(text: String = "Busted") -> void:
 	if _busted_dialog:
 		_busted_dialog.text = text
 		_busted_dialog.visible = true
 
 
-## Esconde dialog de "Busted"
+## Hides the "Busted" dialog
 func hide_busted() -> void:
 	if _busted_dialog:
 		_busted_dialog.visible = false
 
 
-## Ativa/desativa botão de fim de turno
+## Enables/disables the end-turn button
 func set_end_turn_enabled(value: bool) -> void:
 	if _btn_end_turn:
 		_btn_end_turn.disabled = not value
 
 
-## Verifica se auto-end-turn está ativo
+## Checks whether auto-end-turn is enabled
 func is_auto_end_turn_enabled() -> bool:
 	if _chk_auto_end_turn:
 		return _chk_auto_end_turn.button_pressed
 	return false
 
 
-## Atualiza modulate do botão de números (toggle)
+## Updates the modulate of the numbers button (toggle)
 func set_numbers_button_active(active: bool) -> void:
 	if _btn_numbers:
 		_btn_numbers.modulate = Color.WHITE if active else Color(1.0, 1.0, 1.0, 0.35)
 
 
-## Atualiza modulate do botão de viewport
+## Updates the modulate of the viewport button
 func set_viewport_button_text(text: String) -> void:
 	if _btn_viewport:
 		_btn_viewport.text = text
 
 
-## Conecta os sinais dos botões
+## Connects the button signals
 func _connect_buttons() -> void:
 	if _btn_end_turn:
 		_btn_end_turn.pressed.connect(func() -> void: end_turn_requested.emit())
-	
+
 	if _btn_reset:
 		_btn_reset.pressed.connect(func() -> void: reset_requested.emit())
-	
+
 	if _btn_fullscreen:
 		_btn_fullscreen.pressed.connect(_on_fullscreen_pressed)
-	
+
 	if _btn_viewport:
 		_btn_viewport.pressed.connect(func() -> void: viewport_toggled.emit())
-	
+
 	if _btn_numbers:
 		_btn_numbers.pressed.connect(func() -> void: numbers_toggled.emit())
 

@@ -1,10 +1,10 @@
 class_name TicSystem
-## Processa um tic de detecção sempre que um ator muda de tile.
-## Chamado por room.gd em dois momentos:
-##   1. Quando o agente termina um step (tic do agente)
-##   2. Quando um guarda termina seu movimento (tic do guarda)
+## Processes a detection tic whenever an actor changes tile.
+## Called by room.gd at two moments:
+##   1. When the agent finishes a step (agent tic)
+##   2. When a guard finishes its move (guard tic)
 
-## Multiplicadores de detecção por estado do guarda.
+## Detection multipliers per guard state.
 const STATE_MULTIPLIER: Dictionary = {
 	"patrol":     0.55,
 	"suspicious": 1.60,
@@ -13,19 +13,19 @@ const STATE_MULTIPLIER: Dictionary = {
 	"chase":      2.80,
 }
 
-## Ganho de detecção por tic bem-sucedido (antes de multiplicadores).
+## Detection gain per successful tic (before multipliers).
 const DETECTION_GAIN_PER_TIC := 0.4
 
-## Resultado de um tic de detecção.
+## Result of a detection tic.
 class TicResult:
-	var detected: bool = false       ## visível + dado passou
-	var visible: bool = false        ## apenas na linha de visão
-	var raw_chance: float = 0.0      ## probabilidade antes do dado
-	var angle_ratio: float = 0.0     ## 1.0 = centro do cone, 0.0 = borda
+	var detected: bool = false       ## visible + dice roll passed
+	var visible: bool = false        ## in line of sight only
+	var raw_chance: float = 0.0      ## probability before the dice roll
+	var angle_ratio: float = 0.0     ## 1.0 = cone center, 0.0 = edge
 	var distance: int = 0
 
-## Processa um tic: avalia um único guarda contra uma única célula-alvo.
-## Retorna TicResult com o resultado desta verificação.
+## Process a tic: evaluate a single guard against a single target cell.
+## Returns a TicResult with the outcome of this check.
 ##
 ## L-IMP-04: Added exposure_system parameter for tactical exposure integration
 static func evaluate(
@@ -37,14 +37,14 @@ static func evaluate(
 ) -> TicResult:
 	var result := TicResult.new()
 
-	## Obtém referência do agente se necessário para o pipeline de detecção (Cover)
+	## Get the agent reference if needed for the detection pipeline (Cover)
 	var agent_ref = guard.get_tree().get_root().find_child("Agent", true, false)
 
-	## Avaliação completa delegada ao guarda (Source of Truth)
+	## Full evaluation delegated to the guard (Source of Truth)
 	var eval: Dictionary = guard.evaluate_detection(
-		target_cell, 
-		guard.fov_range, 
-		blocked_cells, 
+		target_cell,
+		guard.fov_range,
+		blocked_cells,
 		blocked_edges,
 		2,
 		agent_ref
@@ -57,27 +57,27 @@ static func evaluate(
 	if not result.visible:
 		return result
 
-	## Probabilidade bruta retornada pelo guarda (inclui sombras e cover)
+	## Raw probability returned by the guard (includes shadows and cover)
 	var raw_prob: float = float(eval.get("final_prob", 0.0))
 
-	## Aplicar multiplicador do estado do guarda
+	## Apply the guard state multiplier
 	var state_mult: float = STATE_MULTIPLIER.get(guard.state, 1.0)
-	
+
 	## L-IMP-04: Apply tactical exposure modifier
 	var exposure_mult: float = 1.0
 	if exposure_system != null:
 		exposure_mult = exposure_system.get_detection_multiplier(target_cell)
-	
+
 	result.raw_chance = raw_prob * state_mult * exposure_mult
 
-	## Lançar dado: 0.0 a 1.0
+	## Roll the dice: 0.0 to 1.0
 	result.detected = randf() < result.raw_chance
 
 	return result
 
 
-## Avalia se um guarda ouve o barulho num tile.
-## Retorna intensidade percebida (0.0 = não ouviu).
+## Evaluate whether a guard hears the noise on a tile.
+## Returns perceived intensity (0.0 = not heard).
 const HEARING_RADIUS := 2
 static func evaluate_audio(
 	guard,
@@ -92,10 +92,10 @@ static func evaluate_audio(
 	if dist > HEARING_RADIUS:
 		return 0.0
 
-	## Atenuação por distância
+	## Distance attenuation
 	var distance_factor := 1.0 - (float(dist) / float(HEARING_RADIUS + 1))
 
-	## Atenuação por paredes — cada parede cruzada reduz 40%
+	## Wall attenuation — each wall crossed reduces by 40%
 	var wall_penalty := _count_walls_between(guard.cell, noise_tile, blocked_edges)
 	var wall_factor := pow(0.6, wall_penalty)
 
@@ -107,7 +107,7 @@ static func _count_walls_between(
 	to_cell: Vector2i,
 	blocked_edges: Dictionary
 ) -> int:
-	## Conta paredes ao longo do caminho direto (Bresenham simplificado)
+	## Count walls along the direct path (simplified Bresenham)
 	var walls := 0
 	var current := from_cell
 	var dx := signi(to_cell.x - from_cell.x)

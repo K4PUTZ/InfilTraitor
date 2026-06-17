@@ -1,13 +1,13 @@
 extends Node
-## LightingController — Gerencia o pipeline completo de iluminação:
+## LightingController — Manages the full lighting pipeline:
 ## LightRegistry, ShadowProjector, ExposureSystem.
 ##
-## Emite lighting_rebuilt quando qualquer rebuild ocorre, permitindo que
-## VisionController atualize os overlays de iluminação/heatmap.
+## Emits lighting_rebuilt whenever a rebuild occurs, letting the
+## VisionController refresh the lighting/heatmap overlays.
 
 signal lighting_rebuilt()
 
-# Preloads — movidos de room.gd
+# Preloads — moved from room.gd
 const LightRegistryClass   = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 const ShadowProjectorClass = preload("res://godot/scripts/systems/lighting/shadow_projector.gd")
 const ExposureSystemClass  = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
@@ -17,10 +17,10 @@ const ShadowResultClass    = preload("res://godot/scripts/systems/lighting/shado
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 
 var _room: Node2D
-var _light_registry          ## instância de LightRegistry
-var _shadow_projector        ## instância de ShadowProjector
-var _exposure_system         ## instância de ExposureSystem
-var _tile_semantics_map: Dictionary = {}  ## cell → TileSemantics
+var _light_registry          ## LightRegistry instance
+var _shadow_projector        ## ShadowProjector instance
+var _exposure_system         ## ExposureSystem instance
+var _tile_semantics_map: Dictionary = {}  ## cell -> TileSemantics
 var _light_anchors: Array = []
 
 
@@ -49,7 +49,7 @@ func get_light_anchors() -> Array:
 func rebuild() -> void:
 	## Rebuild all shadows and exposure systems
 	_rebuild_all_shadows_and_exposure()
-	## Emitir signal para que overlays se atualizem
+	## Emit signal so overlays refresh themselves
 	lighting_rebuilt.emit()
 
 

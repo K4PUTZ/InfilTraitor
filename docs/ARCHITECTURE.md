@@ -1,455 +1,476 @@
-# INFILTRAITOR — System Architecture Documentation
+# INFILTRAITOR — System Architecture
 
-> **Formal specification of all INFILTRAITOR gameplay systems. Establishes semantic foundation, runtime behavior, and authoring workflows for core stealth mechanics.**
+> **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
-**Release:** Alpha GTP Spatial Perception Foundation  
-**Date:** 2026-06-14  
-**Status:** 🟢 Complete & Frozen for Integration  
-
----
-
-## 📊 Implementation Status (2026-06-14)
-
-**Important:** This documentation describes the **TARGET DESIGN** for INFILTRAITOR systems. The current codebase implements **core gameplay loops** with **simplified systems** for Investor Demo phase.
-
-### Specification vs. Current Implementation
-
-| System | Spec Status | Implementation Status | Notes |
-|--------|-------------|----------------------|-------|
-| **Guard AI & Detection** | Complete (L-ARCH) | ✅ Functional (gradual escalation) | Detection uses thresholds (0.30/0.60/1.00), works as designed |
-| **Shadow Projection** | Complete (L-ARCH-01) | ✅ Partial (binary lit/shadow) | No LOS calculation, no height semantics yet |
-| **Exposure System** | Complete (L-ARCH-01) | 🟡 Partial (6 classes defined, 2 used) | Stability/confidence layers not populated |
-| **Noise Propagation** | Complete (docs) | ✅ Functional (grid with decay) | Used by guards for audio detection |
-| **Pathfinding (A*)** | Complete (docs) | ✅ Functional (optimal) | Guards and player movement both implemented |
-| **Perception/LOS** | Complete (docs) | ✅ Functional (cone + distance) | Multiplicators working (cover, posture, shadows) |
-
-### What's Ready for Integration
-
-✅ **Complete:** AI perception, guard FSM, turn system, movement, pathfinding  
-✅ **Ready:** Lighting specification (design frozen)  
-🟡 **In Progress:** LOS/perception integration with lighting  
-⏳ **Planned:** Dynamic lighting, advanced AI behaviors
-
-### What's Simplified for Demo
-
-- Shadows are binary (lit/shadow) not graduated  
-- Light sources hardcoded (not data-driven)  
-- Exposure classes defined but simplified in practice  
-- LOS doesn't account for height semantics yet
-
-**→ See [docs/production/current_state.md](production/current_state.md) for detailed status breakdown**
+**Source of truth:** `godot/scripts/`
+**Last reconciled with code:** 2026-06-17
+**Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
 ---
 
-## Architecture Overview
+## How to read this document
 
-INFILTRAITOR is built on **semantic-first game design**. Rather than inferring gameplay behavior from visual appearance or physics simulation, gameplay semantics are explicitly authored and systematically connected.
+Each system is tagged with an explicit status:
+
+- **Implemented** — present in code and exercised at runtime.
+- **Partial** — present in code, but with a meaningful gap (not wired into gameplay, hardcoded data, or a dead path).
+- **Planned** — described in design docs, no functional code path yet.
+
+Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocabulary (`L-IMP-xx`, `L-ARCH-xx`, `M2-xx`). Those tags survive only as comment markers in the source. They describe **intent**, not guaranteed runtime behavior. This file supersedes the roadmap framing in those documents for anything concerning *what the code actually does*.
+
+---
+
+## 1. Runtime Architecture
+
+**Status: Implemented**
+
+INFILTRAITOR is a single-scene tactical prototype. The scene root is `room.gd` (`Node2D`), instantiated from `room.tscn`. It is both the level container and the orchestration hub.
+
+### Boot sequence (`room.gd::_ready`)
+
+1. Load the shared `TileSet`, assign it to every `TileMapLayer`, and set per-layer `z_index`.
+2. Generate the macro level: `LevelGraph.generate(level_seed)` → `MapCatalog.get_spec(map_id, …)` resolves the active map to a `MapSpec` (authored in inner/segment coords) → `MapCompiler.compile(spec, …)` applies the buffer offset and produces the base layout dictionary (size, floor/wall/structure tiles, blocked cells, blocked edges, enemy defs, exits). See **Map pipeline** below.
+3. Apply the active perspective (`_layout_with_perspective`) and build the tilemaps (`_build_room`).
+4. Instantiate the six controllers as children of `room`, in dependency order:
+   `LightingController` → `VisionController` → `HudController` → `CameraController` → `FowController` → `GuardCoordinator`.
+5. Wire signals (HUD → room handlers; `LightingController.lighting_rebuilt` → `VisionController.request_redraw`; turn manager → room; agent → room).
+6. Set up the remaining overlays created directly by room (trail, noise, tile overlays, guard-noise indicator, hover label).
+7. Spawn guards, initialize fog, center the camera, start the player turn.
+
+### Map pipeline (`world/maps/`)
+
+`room.gd` is a **renderer**: it consumes a `layout` dictionary and paints tilemaps, with
+no knowledge of how the map was produced. Permanent (hand-authored) maps and the future
+procedural generator share one vocabulary (`MapSpec`) and one compiler.
 
 ```
-Semantic Intent → Gameplay Data → Runtime Calculation → Player Experience
-   (Designer)       (Stored)      (Deterministic)     (Auditable)
+@export map_id ──► MapCatalog.get_spec(map_id, {connections, segment_grid_pos, seed})
+                        PLAYGROUND → PlaygroundMap.spec()
+                        SIGMA_01   → Sigma01Map.spec()
+                        PROCEDURAL → ProceduralMap.generate(seed)   (stub)
+                              │  MapSpec (inner/segment coords)
+                              ▼
+                   MapCompiler.compile(spec, context)   ◄ sole owner of the buffer offset
+                              │  layout dict (raw/grid coords) — unchanged contract
+                              ▼
+                   room.gd _build_room / _cache_blocked_cells   (renderer, untouched)
 ```
 
-### Core Principles
+- **`MapGeometry`** — pure, coordinate-agnostic primitives (`build_room`, `place_inner_room`,
+  wall/door tile picking, wall blocked-edges). The single source of wall logic.
+- **`MapCompiler`** — translates a `MapSpec` (authored in the 18×36 inner/segment space, same
+  as `LevelGraph`) into the render-ready layout dict, applying the buffer offset in one place.
+  Specs that set `access_from_graph` pull their doors from `LevelGraph` connections; otherwise
+  they declare explicit `access_points`.
+- **`MapCatalog`** — resolves `map_id` → `MapSpec`; unknown ids fall back to `PLAYGROUND`.
+- **`definitions/*_map.gd`** — one `static func spec()` per permanent map. `PLAYGROUND` is the
+  reference artwork mockup; `SIGMA_01` is the migrated test map; `ProceduralMap` is a stub.
+- Note: outer walls block movement via `blocked_edges` only — they are **not** added to
+  `blocked_cells` (interior bounded by edges). To add a map: author a definition + one
+  `MapCatalog` branch. Map selection is the exported `map_id` on the Room node.
 
-- **Semantic-Driven:** Gameplay meaning defined first, visuals applied second
-- **Deterministic:** Same input always produces same output (auditability)
-- **Discrete:** Finite states and classes, not continuous simulation
-- **Grid-Based:** All data organized on game grid (no per-pixel)
-- **Auditable:** Players and designers understand system behavior completely
-- **Systemic:** All systems connect through common semantic foundation
-
----
-
-## Architecture Layers
-
-### Layer 1: Core Systems
-
-**These systems define how the game works at fundamental level.**
-
-#### [L-IMP-01 through L-IMP-07: Lighting Implementation Phases](systems/lighting.md)
-
-The lighting system is the foundation for tactical stealth gameplay:
-
-- **L-IMP-01** — Shadow Projection Foundation
-- **L-IMP-02** — Exposure Mapping & Visibility Classes
-- **L-IMP-03** — Risk Heatmaps & Tactical Awareness
-- **L-IMP-04** — Guard Detection Integration
-- **L-IMP-05** — Height Painting & Semantic Authoring
-- **L-IMP-06** — Temporal Effects & Dynamic Lighting
-- **L-IMP-07** — Elite Tactical Vision & Shadow Semantics
-
-[→ Full Lighting Specification](systems/lighting.md)
-
-#### [L-IMP-08+: Future Integration Phases](systems/lighting.md)
-
-- **L-IMP-08** — ShadowProjector Semantic Integration
-- **L-IMP-09** — AI Pathfinding & Guard Behavior Integration
-- **L-IMP-10+** — Advanced Stealth Mechanics
-
----
-
-### Layer 2: Architecture Specifications
-
-**These documents formalize how systems interact and evolve.**
-
-#### [L-ARCH-01: Lighting Runtime Pipeline & Invalidation Rules](systems/lighting_runtime_pipeline.md)
-
-**Purpose:** Formal specification of runtime behavior and system ownership
-
-**Defines:**
-- Official pipeline flow (unidirectional data movement)
-- System ownership matrix (who owns each calculation)
-- 7 invalidation source patterns (when rebuilds happen)
-- Rebuild philosophy (correctness over optimization)
-- Overlay rules and information layers
-- Performance constraints and budgets
-- AI integration hooks (prepared for L-IMP-09+)
-
-**Key Invariants:**
-- ✓ Data flows downward only (LightSource → Shadow → Exposure → Gameplay)
-- ✓ Each system owns ONE calculation (no duplication)
-- ✓ No circular dependencies
-- ✓ Auditability ensured (all decisions traceable)
-
-[→ Full L-ARCH-01 Specification](systems/lighting_runtime_pipeline.md)
-
----
-
-#### [L-ARCH-02: Occlusion Semantics & Structural Blocking Model](systems/occlusion.md)
-
-**Purpose:** Formal specification of how structures interact with light, LOS, and future systems
-
-**Defines:**
-- 4 discrete occlusion classes (SOLID, TRANSPARENT, DIFFUSE, PERFORATED)
-- Structural semantics (mapping structures to occlusion classes)
-- Light & LOS interaction patterns
-- Partial visibility & degradation model
-- Interaction matrix (occlusion across all systems)
-- Dynamic occlusion preparation (smoke, destruction, etc.)
-
-**Key Properties:**
-- ✓ SOLID blocks both light and LOS (100%)
-- ✓ TRANSPARENT passes both (0% degradation)
-- ✓ DIFFUSE reduces both (50% degradation)
-- ✓ PERFORATED partially blocks both (50% with structure pattern)
-
-**System Integration:**
-- Lighting uses occlusion for shadow projection
-- Perception uses occlusion for LOS calculation
-- Future ballistics will use occlusion for cover
-- Future audio will use occlusion for sound propagation
-
-[→ Full L-ARCH-02 Specification](systems/occlusion.md)
-
----
-
-#### [L-ARCH-03: Lighting Authoring Pipeline & Serialization Model](pipelines/lighting_authoring_pipeline.md)
-
-**Purpose:** Formal specification of level design workflow and data persistence
-
-**Defines:**
-- Authoring philosophy (semantic-first design)
-- Per-tile structural metadata (height, structure, occlusion, light properties)
-- Height painting workflow (5-step process)
-- Light placement workflow (5-step process)
-- 4-tier serialization model (JSON-based persistence)
-- Data ownership matrix (designer vs system)
-- Mapping constraints (readability, clutter, silhouettes, strategy support)
-- Future tooling specifications (height painter, light painter, validators, etc.)
-
-**Key Workflows:**
-- ✓ Height Painting: Define vertical topology independently of sprites
-- ✓ Light Placement: Explicitly author tactical lighting decisions
-- ✓ Serialization: Persist all semantic data in version-controlled format
-- ✓ Validation: Ensure consistency across all authored data
-
-**Data Structure:**
-```
-Tier 1: Map Metadata      (global level information)
-Tier 2: Tile Semantics    (per-cell metadata)
-Tier 3: Light Sources     (all light source definitions)
-Tier 4: Structural Anchors (light socket positions)
-```
-
-[→ Full L-ARCH-03 Specification](pipelines/lighting_authoring_pipeline.md)
-
----
-
-### Layer 3: Feature Specifications
-
-**These documents define specific gameplay features.**
-
-#### [Lighting System: Complete Specification](systems/lighting.md)
-
-Comprehensive documentation of all lighting features:
-
-- Visibility classes (6 levels: OCCLUDED_VOID → FULL_LIT)
-- Shadow semantics and stability classification
-- Exposure confidence (reliability metrics)
-- Detection multipliers (how exposure affects guard perception)
-- Temporal lighting effects (flicker, pulse, rotation)
-- Elite tactical vision (depth, confidence, stability, contours, safe corridors)
-- Future extensions (dynamic lighting, environmental effects)
-
-[→ Full Lighting Specification](systems/lighting.md)
-
----
-
-#### [Perception System: Guard Detection & Vision](systems/perception.md)
-
-Guard vision, detection, and perception mechanics:
-
-- Visual detection via probabilistic vision cones
-- Distance and angle-based detection
-- Exposure integration (how lighting affects detection)
-- Occlusion integration (how structures block vision)
-- Audio detection (future)
-- Attention management (realistic, reactive behavior)
-
-[→ Full Perception Specification](systems/perception.md)
-
----
-
-### Layer 4: Implementation References
-
-**These are the actual GDScript implementations.**
-
-#### Implemented Components
-
-**Core Lighting Systems:**
-- [tile_semantics.gd](../godot/scripts/world/tile_semantics.gd) — Height and structure encoding (L-IMP-05)
-- [light_anchor.gd](../godot/scripts/systems/lighting/light_anchor.gd) — Light socket placement (L-IMP-05)
-- [light_source.gd](../godot/scripts/systems/lighting/light_source.gd) — Light source definition (L-IMP-06 temporal effects)
-- [light_registry.gd](../godot/scripts/systems/lighting/light_registry.gd) — Light collection management
-- [shadow_projector.gd](../godot/scripts/systems/lighting/shadow_projector.gd) — Shadow calculation engine
-- [exposure_system.gd](../godot/scripts/systems/lighting/exposure_system.gd) — Exposure mapping & visibility classes
-
-**Visualization Overlays:**
-- [height_overlay.gd](../godot/scripts/overlays/height_overlay.gd) — Height visualization (L-IMP-05)
-- [temporal_overlay.gd](../godot/scripts/overlays/temporal_overlay.gd) — Temporal effect visualization (L-IMP-06)
-- [elite_exposure_overlay.gd](../godot/scripts/overlays/elite_exposure_overlay.gd) — Advanced tactical vision (L-IMP-07)
-
-**Integration Points:**
-- [room.gd](../godot/scripts/world/room.gd) — Main level manager, initializes all systems
-
----
-
-## Document Hierarchy
+### Node topology (as built)
 
 ```
-ARCHITECTURE.md (this file)
-├── LAYER 1: Core Systems
-│   ├── systems/lighting.md (L-IMP-01 through L-IMP-07)
-│   └── systems/perception.md (Guard detection)
+Room (room.gd, Node2D)              ← orchestrator + God Object (§13)
+├── FloorLayer / StructureWall* / Structure* / Shadow* (TileMapLayer)
+├── TurnManager            (TacticalTurnManager)   — scene node
+├── EnemyPhaseController   (EnemyPhaseController)   — scene node
+├── Agent                 (DebugAgent)
+├── Enemies               (Node2D)  → GuardEnemy*  (spawned at runtime)
+├── MovementOverlay / PathPreview / SelectionOverlay / TileLabelsOverlay
+├── FogOfWarOverlay / VisionFogOverlay(FogRect)
+├── Camera2D
+├── HUD (buttons, labels, banners)
 │
-├── LAYER 2: Architecture Specifications
-│   ├── systems/lighting_runtime_pipeline.md (L-ARCH-01)
-│   ├── systems/occlusion.md (L-ARCH-02)
-│   └── pipelines/lighting_authoring_pipeline.md (L-ARCH-03)
-│
-├── LAYER 3: Feature Specifications
-│   ├── Additional gameplay systems (future)
-│   └── Mechanics documentation (future)
-│
-└── LAYER 4: Implementation
-    ├── godot/scripts/world/
-    ├── godot/scripts/systems/lighting/
-    ├── godot/scripts/overlays/
-    └── godot/scripts/entities/
+│   ── Controllers (added in code, not in .tscn) ──
+├── LightingController     → LightRegistry, ShadowProjector, ExposureSystem
+├── VisionController       → 7 debug/analysis overlays
+├── HudController
+├── CameraController
+├── FowController
+└── GuardCoordinator
 ```
 
----
+### Control-flow model
 
-## Quick Reference: Architecture Decisions
+- **Input:** `room._input` gives the `CameraController` first refusal (`handle_input` returns `true` when it consumes the event); otherwise room handles keyboard gameplay and hover. `room._unhandled_input` handles tile clicks / right-click move.
+- **Per-frame:** `room._process` advances temporal lights, updates the vision-fog shader, and refreshes enemy visibility while guards animate.
+- **Turn loop:** player spends AP to move → optionally ends turn → `TurnManager` emits `enemy_phase_started` → `room._run_enemy_phase` drives `EnemyPhaseController` over each guard → `finish_enemy_phase` returns control.
 
-### Why Semantic-First?
-
-| Question | Answer | Rationale |
-|----------|--------|-----------|
-| Why not visual-first? | Visuals should express gameplay meaning, not define it | Auditability: designer intent is always clear |
-| Why not physics-based? | Physics doesn't match gameplay requirements | Performance: discrete calculations beat simulation |
-| Why grid-based? | Consistent with game design and player understanding | Clarity: grid alignment is intuitive |
-| Why discrete classes? | Continuous values create ambiguity | Auditability: "SHADOW" is clearer than 0.342 |
-
-### Why These Systems?
-
-| System | Purpose | Integration |
-|--------|---------|-------------|
-| **Lighting** | Core stealth mechanic (exposure = danger) | Detection probability determined by exposure |
-| **Occlusion** | Shared semantic for all blocking | Light, LOS, sound, ballistics all use same model |
-| **Authoring Pipeline** | Standardize how designers create maps | Enables team collaboration and tooling |
-
-### Why These Invariants?
-
-| Invariant | Prevents | Enables |
-|-----------|----------|---------|
-| **Downward data flow** | System coupling | Easy debugging, clear causality |
-| **Single owner per calc** | Duplicate work | Optimization opportunities |
-| **No circular deps** | Infinite loops | Determinism, correctness proof |
-| **Auditability** | Hidden assumptions | Player understanding, designer intent |
+Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposure → overlays), but **not** for gameplay: controllers read and mutate room state directly (see §13).
 
 ---
 
-## Roadmap: Future Architecture Phases
+## 2. Controller Architecture
 
-### Next Phase (L-ARCH-04): Tooling
+**Status: Implemented** (extraction from the former monolith is in progress — see §13)
 
-**Scope:** Implement visual editors for authoring workflow
+Six controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series). They share a common pattern: `room` instantiates them, calls `setup()` with references, and they either expose direct methods or emit signals. **None of them is fully decoupled** — most hold a `_room` back-reference and read room's underscore-prefixed members.
 
-Tools Prepared:
-- Height Painter — Visual editor for height painting
-- Light Painter — Visual editor for light placement
-- Semantic Validator — Map consistency verification
-- Exposure Preview — Real-time exposure visualization
-- Stealth Analyzer — Design readability metrics
+| Controller | Base | Comms style | Owns |
+|---|---|---|---|
+| VisionController | `Node2D` | Direct calls (no signals) | 7 overlays, vision-mode state |
+| HudController | `Node` | Emits signals | UI node references |
+| LightingController | `Node` | Emits `lighting_rebuilt` | LightRegistry, ShadowProjector, ExposureSystem |
+| CameraController | `Node` | `handle_input()` returns bool | Camera state, perspective buttons |
+| FowController | `Node` | Direct calls | Reveal delegation + shader params |
+| GuardCoordinator | `Node` | Emits signals; routes to guards | Nothing (operates on `_room._guards`) |
 
-**Entry Point:** [L-ARCH-03: Authoring Pipeline](pipelines/lighting_authoring_pipeline.md)
+### 2.1 VisionController — `controllers/vision_controller.gd`
 
-### Future Phase (L-ARCH-05): Content Guidelines
+- **Responsibilities:** owns the three debug vision modes (`dev_vision`, `light_vision`, `heat_vision`) and instantiates/positions the seven analysis overlays (§12). Toggling a mode shows/hides the relevant overlays and the fog, and pushes `dev_vision` state into each guard.
+- **Dependencies:** `_room` (read/write), `_fog_of_war` node, and `LightingController` accessors (`get_light_registry`, `get_exposure_system`, `get_tile_semantics_map`, `get_light_anchors`). It reaches through room into the projector: `_room._lighting_controller._shadow_projector`.
+- **Events/signals:** none emitted. Receives `LightingController.lighting_rebuilt` (connected by room to `request_redraw`).
+- **Room integration:** tight. It mutates `_room._tile_game`, `_room._trail_overlay`, `_room._fog_rect`, calls `_room._get_all_guards()`, `_room._update_enemy_visibility()`, and repaints room dev markers. This is the most room-coupled controller.
 
-**Scope:** Team standards and best practices
+### 2.2 HudController — `controllers/hud_controller.gd`
 
-Specifications Prepared:
-- Asset naming conventions
-- Spritelists and visual styles
-- Level design templates
-- Difficulty curves
-- Narrative integration
+- **Responsibilities:** UI wiring only. Holds button/label/banner references, connects button presses, and formats text (AP label, alert %, busted dialog, enemy-turn banner).
+- **Dependencies:** the `@onready` UI nodes, passed in as a dictionary by `room`.
+- **Events/signals:** `end_turn_requested`, `reset_requested`, `fullscreen_toggled(enabled)`, `viewport_toggled`, `numbers_toggled(enabled)`. Room connects these to its handlers.
+- **Room integration:** clean-ish. The nodes still live in `room`'s scene tree; the controller only borrows references. The cleanest of the six.
 
----
+### 2.3 LightingController — `controllers/lighting_controller.gd`
 
-## Phase Completion Summary
+- **Responsibilities:** owns the entire lighting pipeline — creates `LightRegistry`, `ShadowProjector`, `ExposureSystem`; builds `tile_semantics_map` and `light_anchors`; runs the initial projection; rebuilds shadows+exposure on demand.
+- **Dependencies:** `_room` for structural data (`_blocked_cells`, `_room_size`, `_current_blocked_edges`, `enemy_phase_controller.build_blocked_edge_set`).
+- **Events/signals:** emits `lighting_rebuilt` after every `rebuild()` so overlays refresh. `rebuild_deferred()` defers a rebuild to the next idle frame (used by temporal lights).
+- **Room integration:** moderate. Reads room structural state; exposes accessors so VisionController never touches the systems directly (in principle — VisionController still reaches `_shadow_projector` through it).
+- **Note:** the test lights are **hardcoded** here (`_setup_debug_lights`), and `tile_semantics_map` is **inferred** from `blocked_cells`, not authored (§9, §10).
 
-| Phase | Scope | Status | Key Document |
-|-------|-------|--------|--------------|
-| **L-IMP-01-07** | Lighting system implementation | 🟢 Complete | [lighting.md](systems/lighting.md) |
-| **L-ARCH-01** | Runtime pipeline formalization | 🟢 Complete | [lighting_runtime_pipeline.md](systems/lighting_runtime_pipeline.md) |
-| **L-ARCH-02** | Occlusion semantics | 🟢 Complete | [occlusion.md](systems/occlusion.md) |
-| **L-ARCH-03** | Authoring pipeline formalization | 🟢 Complete | [lighting_authoring_pipeline.md](pipelines/lighting_authoring_pipeline.md) |
-| **L-ARCH-04** | Tooling implementation | 🟡 Designed | [lighting_authoring_pipeline.md](pipelines/lighting_authoring_pipeline.md) (tools section) |
-| **L-IMP-08+** | Advanced integration | 🟡 Designed | All L-ARCH documents |
+### 2.4 CameraController — `controllers/camera_controller.gd`
 
----
+- **Responsibilities:** all camera interaction — left-drag pan, mouse-wheel zoom, two-finger pinch-zoom, an agent-centered leash with a quadratic soft-zone ease-out, and the four perspective buttons.
+- **Dependencies:** the `Camera2D`, `_room`, and (deferred) the `VisionController` (to release the leash in `dev_vision`). Reads `_room.agent`, `_room.btn_perspective_*`.
+- **Events/signals:** none. Exposes `handle_input(event) -> bool`; room calls it first in `_input`. Perspective buttons call `_room._set_perspective(dir)` directly.
+- **Room integration:** moderate. Leash logic depends on `room.agent`; perspective is delegated back to room.
 
-## Key Files for New Contributors
+### 2.5 FowController — `controllers/fow_controller.gd`
 
-**Start Here:**
-1. [ARCHITECTURE.md](ARCHITECTURE.md) — This file (overview)
-2. [lighting.md](systems/lighting.md) — Core system specification
-3. [lighting_runtime_pipeline.md](systems/lighting_runtime_pipeline.md) — How it all works together
+- **Responsibilities:** owns *reveal bookkeeping* and the *vision-fog shader parameters*. Wraps `FogOfWarOverlay` (reveal_around, reset, peek reveals, is_cell_revealed) and computes the shader gradient uniforms (`update_vision_center`).
+- **Dependencies:** `FogOfWarOverlay`, the `FogRect` ColorRect's `ShaderMaterial`, and `_room.WORLD_TILE_PX`.
+- **Events/signals:** none.
+- **Room integration:** thin. **Explicitly does NOT control FOW node visibility** — that belongs to `VisionController` (`_apply_fow_visibility`). This split is intentional but easy to trip over.
 
-**For Implementation:**
-1. [tile_semantics.gd](../godot/scripts/world/tile_semantics.gd) — Data encoding
-2. [light_source.gd](../godot/scripts/systems/lighting/light_source.gd) — Light definition
-3. [exposure_system.gd](../godot/scripts/systems/lighting/exposure_system.gd) — Main calculation engine
+### 2.6 GuardCoordinator — `controllers/guard_coordinator.gd`
 
-**For Level Design:**
-1. [lighting_authoring_pipeline.md](pipelines/lighting_authoring_pipeline.md) — Design workflow
-2. [occlusion.md](systems/occlusion.md) — Structural semantics
-3. [lighting.md](systems/lighting.md#mapping-level-design-guides) — Design guidelines
-
----
-
-## Validation Checklist
-
-Every architecture document includes:
-
-- ✅ Clear philosophical foundation
-- ✅ Formal specification (tables, diagrams, code)
-- ✅ System ownership definitions
-- ✅ Integration points
-- ✅ Acceptance criteria
-- ✅ Future extension preparation
-- ✅ Complete examples
-
-Every implementation:
-
-- ✅ Compiles without errors (0 compilation errors)
-- ✅ Follows architecture contracts
-- ✅ Is fully integrated with other systems
-- ✅ Includes dev visualization support
-- ✅ Is documented and auditable
+- **Responsibilities:** routes inter-guard coordination — whistle (nearby guards → SEARCH), radio (patrolling/suspicious guards → ALERT), alarm (all guards → CHASE + max alert), and per-move guard noise emission.
+- **Dependencies:** operates on `_room._guards`, `_room._noise_system`, `_room._alert_meter`, `_room.agent`, and constants like `_room.WHISTLE_RADIUS`, `GUARD_NOISE_CHANCE_BY_STATE`.
+- **Events/signals:** emits `guard_whistled`, `guard_radioed`, `alarm_raised`, `all_guards_alerted`. Connects each guard's `whistled`/`radioed` signals in `register_guard`.
+- **Room integration:** tight. It owns no state; it is effectively a method-bag operating on room's arrays. `_on_guard_alarmed` and `_on_guard_emits_noise` are invoked directly from room's tic logic and enemy phase.
 
 ---
 
-## Document Status
+## 3. Guard AI
 
-**Release:** Alpha GTP Spatial Perception Foundation  
-**Date:** 2026-06-14  
-**Version:** 1.0  
-**Status:** 🟢 Complete & Frozen for Integration  
+**Status: Implemented** · file: `agents/guard_enemy.gd` (~1,114 lines — see §13)
 
-**Frozen Meaning:**
-- Core architecture is stable (no breaking changes expected)
-- All systems are interconnected and tested
-- Ready for content expansion
-- Ready for tooling implementation
-- Ready for team collaboration
+A finite-state machine driven once per enemy phase plus continuous visual interpolation.
 
-**Not Frozen:**
-- Future phases (L-ARCH-04+) will extend architecture
-- New features will follow established patterns
-- Performance optimizations will be conducted separately
-- Platform-specific implementations will adapt to targets
+### States & transitions
 
----
+States: `PATROL`, `SUSPICIOUS`, `SEARCH`, `ALERT`, `CHASE`. Escalation is **monotonic** — `receive_alert` and `observe_player` use an explicit priority map (`PATROL 0 < SUSPICIOUS 1 < SEARCH 2 < ALERT 3 < CHASE 4`) and never downgrade; de-escalation happens only via timers in `tick_state`.
 
-## Getting Help
+| From | Trigger | To |
+|---|---|---|
+| PATROL | severity-1 sighting / med noise | SUSPICIOUS |
+| PATROL | high noise (≥0.6) | SUSPICIOUS (faster timer) |
+| any | severity-2 sighting | ALERT |
+| any | severity-3 sighting (detection ≥ 1.0) | CHASE |
+| ALERT | `state_timer` expiry | CHASE |
+| CHASE | timer + known last position | SEARCH |
+| SEARCH | `_search_turns_remaining` exhausted | SUSPICIOUS |
+| SUSPICIOUS | timer expiry | PATROL (clears last-known) |
 
-**Questions about architecture?**
-- Refer to relevant L-ARCH document
-- Check related feature specification
-- Look at implementation reference code
+Entering ALERT emits `whistled`; entering CHASE emits `radioed` — these feed the `GuardCoordinator`.
 
-**Need to add new feature?**
-- Start with architectural principles (semantic-first)
-- Follow established ownership rules
-- Document design decisions
-- Validate against constraints
+### Behaviors
 
-**Need to modify existing system?**
-- Verify change doesn't violate invariants
-- Check all downstream systems
-- Update documentation to match
-- Validate against acceptance criteria
+- **Organic patrol** (`_do_idle_behavior`): random idle pauses and 45°-stepped look rotation while patrolling.
+- **Active search** (`_build_search_queue`): shuffled square-spiral of cells (radius `SEARCH_RADIUS=2`) around the last-known cell; walks and inspects each.
+- **Movement:** A* via `GuardPathfinder.find_path`, with per-target path caching (`_step_toward`) and animated stepping (`move_along_path` / `_step_next`, tween per step; step duration scales with state).
+- **Attention** (`GuardAttention`): decoupled head/vision angle that diverges toward a focus cell (next waypoint, alert source, search target) and decays.
+- **Detection** (`evaluate_detection`): the single source of truth for "can this guard detect this cell" (see §4).
 
 ---
 
-## Contact & Maintenance
+## 4. Detection System
 
-**Architecture Lead:** Architecture / Lighting Systems  
-**Last Updated:** 2026-06-14  
-**Review Cycle:** Major phases (L-ARCH-04+)  
-**Maintenance:** Continuous (bug fixes, clarifications)
+**Status: Implemented** (visual + audio) · **Partial** (exposure not wired)
+
+Detection is **tic-based**: a discrete check fires whenever an actor crosses a tile. `TicSystem.evaluate` (`systems/tic_system.gd`) is called:
+
+- on every agent step (`room._on_agent_step_finished`, per guard), and
+- before and after each guard move (`EnemyPhaseController.run_single_guard_turn`).
+
+### Pipeline (per tic)
+
+1. `TicSystem.evaluate` delegates the geometric/probabilistic check to `guard.evaluate_detection(target, range, blocked_cells, blocked_edges, …, agent_ref)`.
+2. `evaluate_detection` computes:
+   - **Manhattan distance** gate (`fov_range`),
+   - **angular** gate (`fov_degrees` half-cone vs `facing_angle_deg`),
+   - **LOS** via `can_see_cell` (Bresenham with diagonal corner checks against blocked cells/edges),
+   - base probability from `FOV_DISTANCE_CURVE`, scaled by `FOV_LATERAL_FALLOFF` (axis offset),
+   - **shadow** multiplier from `_shadow_tiles` (see caveat below),
+   - **posture** multiplier (`DebugAgent.POSTURE_DETECTION_MULT`: standing 1.0 / crouch 0.55 / prone 0.20),
+   - **cover** multiplier (`COVER_FULL_MULT 0.20`, `COVER_PARTIAL_MULT 0.55`) with **flanking** that nullifies cover when the guard is on the exposed arc.
+3. `TicSystem` applies a **state multiplier** (`STATE_MULTIPLIER`: patrol 0.55 … chase 2.80) and rolls `randf() < raw_chance` → `detected`.
+4. `room._apply_tic_result` accumulates `guard.detection` (`DETECTION_GAIN_PER_TIC = 0.4`) or decays it (state-dependent), then escalates the guard via thresholds (`SUSPICIOUS 0.30`, `ALERT 0.60`, `CHASE 1.00`) and the global `_alert_meter`.
+
+### Exposure integration — **Partial / not wired**
+
+`TicSystem.evaluate` accepts an optional `exposure_system` parameter and, if provided, multiplies by `exposure_system.get_detection_multiplier(target_cell)`. **Every caller passes only four arguments** (`room.gd:673`, `enemy_phase_controller.gd:26,46`), so `exposure_system` is always `null`. The full ExposureSystem (§7) is computed and rendered by overlays but **does not currently affect guard detection**.
+
+### `_shadow_tiles` — **dead data path**
+
+`room._shadow_tiles` is declared, passed to guards via `set_los_data`, and read in `evaluate_detection`/`_draw_shadow_debug` — but **never populated** (`grep` confirms: declared `{}`, only read, never written). The shadow detection modifier in `evaluate_detection` is therefore inert. Tactical concealment currently comes from posture, cover, distance, and LOS — **not** from the lighting/shadow systems.
 
 ---
 
-## Appendix: Glossary
+## 5. Noise System
 
-### Key Terms
+**Status: Implemented** · file: `systems/noise_system.gd`
 
-**Occlusion Class** — Semantic classification of how structure blocks light/LOS  
-**Height Class** — Semantic classification of vertical structure position  
-**Tactical Energy** — Numerical representation of how dangerous light is (0.0-1.0)  
-**Exposure Class** — Resulting visibility state (OCCLUDED_VOID through FULL_LIT)  
-**Exposure Confidence** — Reliability metric (0.0-1.0) for exposure value  
-**Shadow Stability** — Classification of shadow reliability (STATIC, TEMPORAL, DYNAMIC, OCCLUDED)  
-**Light Socket** — Valid anchor point for light placement  
-**Structural Depth** — How deeply hidden a tile is within structure  
-**Detection Multiplier** — Guard detection probability modifier (0.0-1.0x)  
+A persistent grid of noise intensities with per-turn decay.
 
-### Abbreviations
-
-- **L-IMP-XX** — Lighting Implementation phase
-- **L-ARCH-XX** — Lighting Architecture specification
-- **M2-XX** — Milestone 2 (future phases)
-- **LOS** — Line of Sight
-- **FOV** — Field of View
-- **DEV_VISION** — Development overlay toggle
+- **Emission:** the agent rolls `NOISE_CHANCE_WALK = 0.20` per step (`NOISE_INTENSITY_WALK = 0.5`). Guards emit on move via `GuardCoordinator._on_guard_emits_noise`, with per-state chance/intensity tables (`GUARD_NOISE_CHANCE_BY_STATE`, `GUARD_NOISE_INTENSITY_BY_STATE`).
+- **Storage:** `Vector2i → {intensity, age}`; `emit` keeps the max; `decay_all` subtracts `NOISE_DECAY_PER_TURN = 0.25` at end of enemy phase and prunes zeros.
+- **Perception:** `TicSystem.evaluate_audio` attenuates by distance (`HEARING_RADIUS = 2`) and by walls (`pow(0.6, walls_crossed)` along a Bresenham path). `room._process_audio_detection` feeds the result to `guard.hear_noise`, which raises `detection` and can push PATROL→SUSPICIOUS.
+- **Feedback:** `NoiseOverlay` renders sound waves (gameplay-visible, not dev-only); `GuardNoiseIndicator` shows a fuzzy (±2 tile) directional cue around the agent when a guard makes noise.
 
 ---
 
-## End of Architecture Documentation
+## 6. Exposure System — Classes, Stability, Confidence
 
-**Next: Refer to specific L-ARCH or feature documents for detailed specifications.**
+**Status: Partial** — fully computed, consumed only by overlays · file: `systems/lighting/exposure_system.gd`
+
+ExposureSystem converts merged shadow topology into discrete tactical classes. It is built and rebuilt by `LightingController` and queried by the heat-vision overlays. It is **not** queried by detection (§4).
+
+### Visibility classes (actual enum values)
+
+| Class | Value | Detection mult (`DETECTION_MULT`) | Meaning |
+|---|---|---|---|
+| `FULL_LIT` | 5 | 1.00 | Maximum exposure |
+| `DIM` | 4 | 0.80 | Dimly lit |
+| `PENUMBRA` | 3 | 0.55 | Shadow edge |
+| `SHADOW` | 2 | 0.30 | Concealed |
+| `DEEP_SHADOW` | 1 | 0.10 | Hidden |
+| `OCCLUDED_VOID` | 0 | 0.01 | Structurally sealed niche |
+
+> Naming note: the design brief refers to a `VOID` class; the implemented constant is **`OCCLUDED_VOID`** (value 0). There is no separate `VOID`. Unclassified tiles default to `DEEP_SHADOW`.
+
+`rebuild_from_results` merges multiple `ShadowResult`s by **most-visible-wins** per tile, then runs two extra passes:
+
+### Shadow Stability — **Implemented**
+
+`_populate_stability_and_confidence` assigns each tile a stability class based on the least-stable light touching it:
+
+| Constant | Value | Source |
+|---|---|---|
+| `STABILITY_STATIC` | `"static"` | structural / steady light |
+| `STABILITY_TEMPORAL` | `"temporal"` | flicker or pulse enabled |
+| `STABILITY_DYNAMIC` | `"dynamic"` | rotating or `mobile` light |
+| `STABILITY_OCCLUDED` | `"occluded"` | sealed void |
+
+### Exposure Confidence — **Implemented, limited inputs**
+
+Per-cell `float` derived directly from stability (`confidence_static 0.90`, `confidence_dynamic 0.50`, `confidence_temporal 0.25`, `confidence_occluded 1.00`).
+- **Current use:** read only by `EliteExposureOverlay` for the confidence/stability visualization.
+- **Limitations:** purely a function of stability class — no temporal sampling, no per-frame variance, no gameplay consumer. With the current hardcoded static test lights, nearly everything resolves to `STATIC`/0.90.
+
+### OCCLUDED_VOID detection — **Implemented (conservative v1)**
+
+`_detect_occluded_void` scans every in-room, unblocked, unlit cell and marks it `OCCLUDED_VOID` only if **all four orthogonal neighbors are blocked or edge-sealed**. Conservative: only fully boxed-in cells qualify.
+
+---
+
+## 7. Shadow System
+
+**Status: Implemented** · file: `systems/lighting/shadow_projector.gd`
+
+`ShadowProjector` computes a per-light `ShadowResult` via LOS classification (not binary). Three phases:
+
+1. **LOS classification** — for each cell in radius: cone/directional angle filter, then Bresenham LOS (`_los_blocked`) with **height-aware occlusion** (`_obstacle_blocks_light`: low cover doesn't block overhead light, etc.) and wall-edge checks. Lit cells split into `fully_lit` (within `near_band_ratio = 0.65` of radius) vs `dim`.
+2. **Penumbra pass** — shadow cells orthogonally adjacent to `fully_lit` become `penumbra`.
+3. **Deep-shadow pass** — shadow cells with no lit cell in Chebyshev `deep_shadow_radius = 2` become `deep_shadow`.
+
+Results carry five classes (`ShadowResult`: fully_lit / dim / penumbra / shadow / deep_shadow). The projector does **not** merge multiple lights or render — merging is ExposureSystem's job, rendering is the overlays'. Shadows are graduated and LOS-correct in code; the earlier "binary lit/shadow" framing in legacy docs is outdated. The gap is downstream: results feed overlays, **not** detection (§4).
+
+---
+
+## 8. Lighting System
+
+**Status: Partial** — full runtime model, hardcoded data
+
+- **`LightSource`** (RefCounted): position, `height_class`, `light_type` (omni/directional/cone/ambient/intermittent/emergency/mobile), radius, direction/cone angle, tactical energy, and temporal flags.
+- **`LightRegistry`** (Node): id/cell-indexed storage; `get_all_lights`, `get_active_lights`, `get_lights_by_type`, `get_lights_affecting_cell` (radius-only, no occlusion), `update_temporal_all(delta)`.
+- **Temporal effects — Implemented:** `LightSource.update_temporal_state` animates flicker, pulse, and rotation. `room._process` → `update_temporal_all` → if any light changed, `LightingController.rebuild_deferred()` re-projects shadows and exposure that frame. `TemporalOverlay` visualizes states.
+- **Data authoring — Planned/absent:** all lights are created by `LightingController._setup_debug_lights` (three hardcoded test lights). There is **no** data-driven light placement, serialization, or anchor authoring at runtime, despite the `L-ARCH-03` authoring-pipeline spec. `LightAnchor` objects are synthesized from existing lights, not loaded.
+
+---
+
+## 9. Height Semantics
+
+**Status: Partial** — model implemented, data inferred
+
+- **`TileSemantics`** (RefCounted) defines height classes (`HEIGHT_FLOOR 0` … `HEIGHT_OVERHEAD 4`), structural categories (floor/low_cover/wall/tall/overhead), and vertical layers (`LAYER_SUBFLOOR..LAYER_OVERHEAD`), plus `blocks_light` / occluder flags.
+- **Runtime use:** `LightingController._setup_tile_semantics` builds `tile_semantics_map` by **inferring** semantics from `blocked_cells` flags (`blocks_los`, `height`, `blocks_light`) — not from authored per-tile metadata. Heights feed `ShadowProjector` occlusion (`_get_obstacle_heights`) and `HeightOverlay`.
+- **Limitation:** no height-painting workflow exists; semantics are reconstructed heuristically each build. `room.OBSTACLE_HEIGHTS` (crate/wall/column/…) is a separate legacy constant table not directly tied to the semantics map.
+
+---
+
+## 10. Fog of War
+
+**Status: Implemented**
+
+Two independent layers:
+
+1. **`FogOfWarOverlay`** (`ui/fog_of_war_overlay.gd`) — segment-scoped, **persistent** discrete reveal. All tiles start hidden; `reveal_around(center, radius)` (Euclidean) marks cells permanently revealed for the segment. Supports temporary **peek** reveals (`add_peek_reveal` / `reset_peek_reveals`) used by the peek mechanic.
+2. **Vision-fog shader** (`VisionFogOverlay/FogRect`) — a live screen-space gradient that tracks the agent and scales with zoom/viewport. Driven each frame by `FowController.update_vision_center` (inner/outer UV radii).
+
+`FowController` owns reveal bookkeeping and shader params; `VisionController` owns whether the fog nodes are visible (hidden in any dev/light/heat mode). Reveal radius = `FOW_REVEAL_RADIUS (9) + vision_bonus_tiles`; shader gradient radius = `VISION_TILE_RADIUS (5) + bonus`.
+
+---
+
+## 11. Tactical Overlays
+
+**Status: Implemented**
+
+Two groups. **Analysis overlays** are owned by `VisionController` and gated by vision mode; **gameplay/util overlays** are created directly by `room`.
+
+### Analysis overlays (VisionController)
+
+| Overlay | File | Mode | Shows |
+|---|---|---|---|
+| `LightOverlay` | `overlays/light_overlay.gd` | LIGHT | light positions, radius, direction |
+| `ShadowOverlay` | `overlays/shadow_overlay.gd` | LIGHT | projected shadow topology (5 classes) |
+| `HeightOverlay` | `overlays/height_overlay.gd` | LIGHT | height classes, structure, anchors |
+| `TemporalOverlay` | `overlays/temporal_overlay.gd` | LIGHT | live temporal light states |
+| `ExposureOverlay` | `overlays/exposure_overlay.gd` | HEAT | visibility class per tile |
+| `TileRiskOverlay` | `overlays/tile_risk_overlay.gd` | HEAT | detection-risk heatmap |
+| `EliteExposureOverlay` | `overlays/elite_exposure_overlay.gd` | HEAT | shadow depth, confidence, stability |
+
+`EliteExposureOverlay` is the **only** consumer of stability/confidence (§6). HEAT overlays are inserted just above `FloorLayer`; LIGHT overlays render above structures.
+
+### Gameplay / utility overlays (room)
+
+`MovementOverlay`, `PathPreview`, `SelectionOverlay`, `TileLabelsOverlay`, `NoiseOverlay` (gameplay-visible), `GuardNoiseIndicator`, `TrailOverlay` (dev), and two `TileOverlay` instances (`_tile_shadow` MUL blend z=1, `_tile_game` MIX blend z=3) used for shadow tinting and markers. Each guard also draws its own vision cone (`_draw_vision_tiles` / `_draw_vision_smooth`) and dev debug label.
+
+---
+
+## 12. Camera & Perspective System
+
+**Status: Implemented** · file: `controllers/camera_controller.gd` + `room._set_perspective`
+
+- **Interaction:** left-drag pan with an 8px drag threshold, mouse-wheel zoom (`ZOOM_MIN 0.20 … ZOOM_MAX 1.20`, step 0.06), two-finger pinch-zoom.
+- **Leash:** agent-centered hard radius `CAMERA_MAX_BORDER_TILES = 4` tiles with a 2-tile quadratic soft-zone ease-out; fully released in `dev_vision`.
+- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room: `_layout_with_perspective` rotates every cell/edge/route and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`, then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, and re-centers. Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation.
+- **Isometric picking:** `_screen_to_tile` does a 3×3 diamond-center search to resolve the clicked tile across all four diamond quadrants.
+
+---
+
+## 13. Turn System
+
+**Status: Implemented** · files: `systems/turn_manager.gd`, `systems/enemy_phase_controller.gd`
+
+- **`TacticalTurnManager`**: AP economy — `max_ap = 2`, `move_points_per_ap = 3`. `spend_for_path_cost` converts path cost → AP (`ceil`); `consume_ap` for fixed costs (posture change, peek). Signals: `ap_changed`, `player_turn_started`, `enemy_phase_started`.
+- **Player → enemy handoff:** `end_turn()` flips `is_enemy_phase` and emits `enemy_phase_started`; `room._on_enemy_phase_started` shows the banner, locks the camera, awaits the enemy phase, handles the busted/reset path, decays noise, and calls `finish_enemy_phase()` → `reset_player_turn()`.
+- **`EnemyPhaseController.run_single_guard_turn`** runs each guard **sequentially and deterministically**: tic before move → `choose_next_cell` → animated move (+noise callback) → tic after move → `tick_state`. Tic results route back through `room._apply_tic_result` (passed as a `Callable`).
+
+---
+
+## 14. Guard Coordination
+
+**Status: Implemented** · file: `controllers/guard_coordinator.gd` (see §2.6)
+
+- **Whistle:** a guard entering ALERT emits `whistled`; guards within `WHISTLE_RADIUS = 3` are pushed to SEARCH at the last-known cell.
+- **Radio:** a guard entering CHASE emits `radioed`; all PATROL/SUSPICIOUS guards escalate to ALERT.
+- **Alarm:** when `_alert_meter` saturates (`_alert_max = 100`), `_on_guard_alarmed` puts every guard into CHASE on the agent's cell and emits `alarm_raised` / `all_guards_alerted`.
+- **Noise:** `_on_guard_emits_noise` rolls per-state chance and feeds the global noise system + indicator.
+
+All coordination operates directly on `room._guards`; the coordinator stores no guard list of its own.
+
+---
+
+## 15. Current Technical Debt
+
+This section is descriptive, not aspirational. These are real properties of the code today.
+
+### 15.1 `room.gd` is a residual God Object (~1,590 lines)
+
+Despite the `MODULARIZE-01..06` extractions, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and escalation thresholds, audio detection, alert metering, busted/reset flows, perspective rotation math, isometric picking, guard spawning, LOS data fan-out, navigation blocked-cell assembly, temporal-light pumping, and most overlay creation. The controllers orbit it rather than replacing it.
+
+### 15.2 `guard_enemy.gd` is oversized (~1,114 lines)
+
+A single class mixes: FSM logic, A* movement + caching, detection math, attention, organic patrol, active search, comms emission, audio reaction, and three separate `_draw` routines (body, cone tiles, smooth cone, dev HUD). The detection/geometry core and the rendering/visual-interpolation concerns are strong candidates for separation.
+
+### 15.3 Controller ↔ room coupling
+
+Controllers are **not** isolated modules. They hold `_room` back-references and read/write room's underscore-prefixed members directly:
+- `VisionController` mutates `_room._tile_game`, `_room._trail_overlay`, `_room._fog_rect`, and reaches `_room._lighting_controller._shadow_projector` (two-level reach-through).
+- `GuardCoordinator` operates entirely on `_room._guards` / `_room._alert_meter` and is invoked from room's tic code.
+- `CameraController` depends on `room.agent` and delegates perspective back to room.
+Encapsulation is partial; these are extracted *responsibilities*, not yet *boundaries*.
+
+### 15.4 Computed-but-unused lighting/exposure pipeline
+
+The most significant integration gap: ShadowProjector → ExposureSystem produces a full, graduated, stability-aware tactical map every build, but **detection never consumes it** (the `exposure_system` arg to `TicSystem.evaluate` is always `null`), and the legacy `_shadow_tiles` modifier is a dead path (declared, never populated). The lighting stack currently drives **only visualization**. Wiring `ExposureSystem.get_detection_multiplier` into the tic callers is the single highest-leverage integration task.
+
+### 15.5 Hardcoded / inferred data
+
+- Lights: three test lights hardcoded in `LightingController`.
+- Tile semantics / heights: inferred from `blocked_cells`, not authored.
+- No serialization or authoring tooling exists for either, despite the `L-ARCH-03` spec.
+
+### 15.6 Pending modularization targets
+
+- Extract a `DetectionController` / tic pipeline out of `room.gd` and wire exposure into it.
+- Split `guard_enemy.gd` into FSM + movement + rendering.
+- Give controllers real interfaces (pass data in, emit results out) instead of `_room` reach-through.
+- Replace direct `_room._lighting_controller._shadow_projector` access with an accessor.
+
+---
+
+## 16. System Status Matrix
+
+| System | Status | Maturity | Notes |
+|---|---|---|---|
+| Runtime / scene orchestration | Implemented | Functional | room.gd hub; boot sequence stable, but God Object (§15.1) |
+| Controller architecture | Implemented | Functional | 6 controllers extracted; coupling to room remains (§15.3) |
+| Guard AI (FSM) | Implemented | Functional | 5 states, monotonic escalation, search + patrol behaviors |
+| Detection — visual | Implemented | Functional | tic-based; cone + LOS + posture + cover + flanking |
+| Detection — audio | Implemented | Functional | distance + wall attenuation, hearing radius 2 |
+| Detection — exposure link | Partial | Experimental | `exposure_system` arg never passed; `_shadow_tiles` dead |
+| Noise system | Implemented | Functional | grid intensity, decay, agent + guard emission |
+| Exposure system | Partial | Functional | 6 classes + stability + confidence computed; overlay-only consumer |
+| Shadow projection | Implemented | Functional | LOS, height-aware, penumbra/deep passes; not wired to gameplay |
+| Lighting (runtime) | Partial | Functional | temporal effects live; lights hardcoded, no authoring |
+| Height semantics | Partial | Experimental | model exists; data inferred from blocked_cells |
+| Fog of war | Implemented | Functional | persistent reveal + live vision-fog shader + peek |
+| Tactical overlays | Implemented | Functional | 7 analysis + several gameplay/util overlays |
+| Camera & perspective | Implemented | Functional | leash, zoom/pinch, 4-way perspective re-layout |
+| Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
+| Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
+| Light/semantic authoring & serialization | Planned | — | specced (L-ARCH-03), no runtime code path |
+
+---
+
+## Appendix: File Map
+
+| Concern | File |
+|---|---|
+| Orchestrator | `world/room.gd` |
+| Controllers | `controllers/{vision,hud,lighting,camera,fow}_controller.gd`, `controllers/guard_coordinator.gd` |
+| Guard AI | `agents/guard_enemy.gd`, `agents/guard_attention.gd` |
+| Agent | `agents/agent.gd` |
+| Detection | `systems/tic_system.gd` |
+| Turns | `systems/turn_manager.gd`, `systems/enemy_phase_controller.gd` |
+| Noise | `systems/noise_system.gd` |
+| Lighting core | `systems/lighting/{light_source,light_registry,shadow_projector,shadow_result,exposure_system,light_anchor}.gd` |
+| World semantics | `world/{tile_semantics,wall_edge_data,tile_registry,level_graph}.gd` |
+| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
+| Navigation | `navigation/{guard_pathfinder,movement_overlay,path_preview}.gd` |
+| Overlays | `overlays/*.gd`, `ui/fog_of_war_overlay.gd` |
+
+> Legacy specification docs (`docs/systems/*`, `docs/pipelines/*`) describe intended design and use phase tags (`L-IMP/L-ARCH/M2`). Treat them as design intent; treat **this document and the code** as the description of current behavior.

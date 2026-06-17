@@ -6,7 +6,7 @@
 
 ## 📋 Reconciliation Note (2026-06-14)
 
-Auditoria de código confirmou que a detecção visual DA IA é **gradual com thresholds**, não binária. Item #1 ("Detection Escalation é Binária") foi marcado como RESOLVIDO. Documentação atualizada para refletir estado real do código.
+A code audit confirmed that the AI's visual detection is **gradual with thresholds**, not binary. Item #1 ("Detection Escalation is Binary") was marked RESOLVED. Documentation updated to reflect the real state of the code.
 
 ---
 
@@ -24,13 +24,13 @@ Technical debt is code/architecture that:
 
 ## ✅ Resolved Items (2026-06-14)
 
-### 1. Detection Escalation é Binária (sem gradação SUSPICIOUS) — RESOLVIDO
+### 1. Detection Escalation is Binary (no SUSPICIOUS gradation) — RESOLVED
 
-**Status:** ✅ IMPLEMENTED  
+**Status:** ✅ IMPLEMENTED
 **Resolution Date:** 2026-06-14
 
-**What Changed:**  
-Verificação de código em `room.gd:_apply_tic_result()` confirmou que detection escalation É gradual e implementado com thresholds:
+**What Changed:**
+A code review of `room.gd:_apply_tic_result()` confirmed that detection escalation IS gradual and implemented with thresholds:
 - `DETECTION_THRESHOLD_SUSPICIOUS := 0.30`
 - `DETECTION_THRESHOLD_ALERT := 0.60`
 - `DETECTION_THRESHOLD_CHASE := 1.00`
@@ -45,40 +45,40 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
     guard.observe_player(true, 1, agent.cell)  # STATE_SUSPICIOUS
 ```
 
-**Impact:** IA funcional com escala\u00e7\u00e3o correta. Documentação foi atualizada para refletir estado real.
+**Impact:** Functional AI with correct escalation. Documentation was updated to reflect the real state.
 
 ---
 
-### 2. STATE_SEARCH sem visual params próprios — RESOLVIDO
+### 2. STATE_SEARCH has no visual params of its own — RESOLVED
 
-**Status:** ✅ LOW-PRIORITY FIX  
-**Severity:** LOW (visual only, não afeta gameplay)
+**Status:** ✅ LOW-PRIORITY FIX
+**Severity:** LOW (visual only, does not affect gameplay)
 
 ---
 
-### 3. Dead code `_compute_shadow_tiles_old()` — REMOVÍVEL
+### 3. Dead code `_compute_shadow_tiles_old()` — REMOVABLE
 
-**Status:** ✅ IDENTIFICADO  
+**Status:** ✅ IDENTIFIED
 **Location:** `room.gd` lines ~1340–1373
-**Action:** Remover em próxima limpeza
+**Action:** Remove in the next cleanup
 
 ---
 
-### 4. Hardcoded noise values (0.20, 0.5) — REMOVÍVEL
+### 4. Hardcoded noise values (0.20, 0.5) — REMOVABLE
 
-**Status:** ✅ IDENTIFICADO  
-**Location:** `room.gd`  
-**Action:** Referenciar constantes `NoiseSystem.NOISE_CHANCE_WALK` / `NOISE_INTENSITY_WALK`
+**Status:** ✅ IDENTIFIED
+**Location:** `room.gd`
+**Action:** Reference the constants `NoiseSystem.NOISE_CHANCE_WALK` / `NOISE_INTENSITY_WALK`
 
 ---
 
-## Critical Debt 🔴 (Bloqueia escalabilidade futura)
-**Severity:** HIGH  
-**Impact:** HIGH  
+## Critical Debt 🔴 (Blocks future scalability)
+**Severity:** HIGH
+**Impact:** HIGH
 **Estimated Fix:** 1–2 weeks
 
-**Problem:**  
-Guard FSM (5 estados + transitions) é gerenciável agora, mas vai escalar mal com:
+**Problem:**
+The Guard FSM (5 states + transitions) is manageable now, but will scale poorly with:
 - Personality variance
 - Faction-specific states
 - Learning behaviors
@@ -91,103 +91,103 @@ match guard.state:
     ...
 ```
 
-**Solution (Queued):**  
-Refatorar para Strategy pattern ou behavior tree antes de adicionar combate (M3.0).
+**Solution (Queued):**
+Refactor to a Strategy pattern or behavior tree before adding combat (M3.0).
 
-**Timeline:** Pré-M3.0
+**Timeline:** Pre-M3.0
 
 ---
 
 ### 3. Hardcoded Patrol Timings
-**Severity:** HIGH  
-**Impact:** MEDIUM  
+**Severity:** HIGH
+**Impact:** MEDIUM
 **Estimated Fix:** 3–5 days
 
-Padrões de patrulha hardcoded em room layout. Necessário mover para configuração data-driven antes de suportar múltiplas salas.
+Patrol patterns hardcoded in the room layout. Must move to a data-driven configuration before supporting multiple rooms.
 
-**Timeline:** Pré-campanha
+**Timeline:** Pre-campaign
 
 ---
 
 ### 4. Overlay Performance on Large Maps
-**Severity:** HIGH  
-**Impact:** MEDIUM  
+**Severity:** HIGH
+**Impact:** MEDIUM
 **Estimated Fix:** 1–2 weeks
 
-Movement overlay (Dijkstra) e FOW overlay usam O(n²) iteration por frame. 36×36 = 1296 tiles por frame. Risco de FPS drop em mobile.
+The movement overlay (Dijkstra) and FOW overlay use O(n²) iteration per frame. 36×36 = 1296 tiles per frame. Risk of FPS drop on mobile.
 
-**Timeline:** Antes de playtesting em dispositivos mobile reais
+**Timeline:** Before playtesting on real mobile devices
 
 ---
 
 ## High Priority Debt 🟠
 
-### 5. `await guard.move_to_cell_animated()` não é coroutine
-**Severity:** MEDIUM  
-**Impact:** MEDIUM  
+### 5. `await guard.move_to_cell_animated()` is not a coroutine
+**Severity:** MEDIUM
+**Impact:** MEDIUM
 **Estimated Fix:** 1–2 days
 
-`move_to_cell_animated()` é void function — `await` em `EnemyPhaseController` retorna imediatamente. Movimento de todos os guards dispara em background (fire-and-forget). Logicamente correto (cell atualiza antes da animação), mas pode causar animações sobrepostas em turnos futuros com múltiplos guards.
+`move_to_cell_animated()` is a void function — `await` in `EnemyPhaseController` returns immediately. All guard movement fires in the background (fire-and-forget). Logically correct (the cell updates before the animation), but can cause overlapping animations in future turns with multiple guards.
 
-**Fix:** Declarar `move_to_cell_animated` como coroutine que aguarda `move_finished` signal, ou conectar o controller ao signal diretamente.
+**Fix:** Declare `move_to_cell_animated` as a coroutine that awaits the `move_finished` signal, or connect the controller to the signal directly.
 
-**Timeline:** Antes de testar com 3+ guards simultâneos
+**Timeline:** Before testing with 3+ simultaneous guards
 
 ---
 
 ### 6. Audio System Not Integrated (SFX)
-**Severity:** MEDIUM  
-**Impact:** HIGH (produto final) / Baixo (Investor Demo)  
+**Severity:** MEDIUM
+**Impact:** HIGH (final product) / Low (Investor Demo)
 **Estimated Fix:** 2–3 weeks
 
-Noise grid matemático funcional. SFX real deliberadamente deprioritizado para demo.
+The math noise grid is functional. Real SFX deliberately deprioritized for the demo.
 
-**Timeline:** Pós-Investor Demo (Fase 4)
+**Timeline:** Post-Investor Demo (Phase 4)
 
 ---
 
 ### 7. No Save System
-**Severity:** MEDIUM  
-**Impact:** MEDIUM  
+**Severity:** MEDIUM
+**Impact:** MEDIUM
 **Estimated Fix:** 1–2 weeks
 
-Não necessário para demo single-room. Necessário antes de campanha.
+Not needed for the single-room demo. Needed before the campaign.
 
-**Timeline:** Fase 4
+**Timeline:** Phase 4
 
 ---
 
 ### 8. Animation System Underdeveloped
-**Severity:** MEDIUM  
-**Impact:** MEDIUM (produto final) / Baixo (Investor Demo)
+**Severity:** MEDIUM
+**Impact:** MEDIUM (final product) / Low (Investor Demo)
 
-Tweening funcional para demo. Sprites reais aguardam pós-demo.
+Tweening is functional for the demo. Real sprites await post-demo.
 
 ---
 
 ## Medium Priority Debt 🟡
 
 ### 9. Perception Distance Curve Not Validated
-**Severity:** MEDIUM  
+**Severity:** MEDIUM
 **Estimated Fix:** 1 week (playtesting)
 
 ```gdscript
 DISTANCE_CURVE = [1.0, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01]
 ```
 
-Curva projetada teoricamente, não testada com jogadores.
+The curve was designed theoretically, not tested with players.
 
-**Timeline:** Primeiro playtest
+**Timeline:** First playtest
 
 ---
 
-### 10. STATE_SEARCH sem visual params próprios
-**Severity:** LOW  
+### 10. STATE_SEARCH has no visual params of its own
+**Severity:** LOW
 **Estimated Fix:** 30 min
 
-`_get_cone_visual_params()` não tem case para `STATE_SEARCH`, cai no default (patrol params). Guard em busca parece visualmente em patrulha.
+`_get_cone_visual_params()` has no case for `STATE_SEARCH`, so it falls back to the default (patrol params). A searching guard looks visually like it is patrolling.
 
-**Timeline:** Quick fix (esta sessão)
+**Timeline:** Quick fix (this session)
 
 ---
 
@@ -196,47 +196,47 @@ Curva projetada teoricamente, não testada com jogadores.
 ### 11. Documentation Maintenance
 **Severity:** LOW — Ongoing
 
-Docs devem refletir estado real do código. Atualização em andamento (2026-06-12).
+Docs must reflect the real state of the code. Update in progress (2026-06-12).
 
 ---
 
 ### 12. Debug Code Mixed With Production
-**Severity:** LOW  
+**Severity:** LOW
 **Estimated Fix:** 3–5 days
 
-`DEV_VISION` flag e código de debug misturado com lógica. Funcional para dev, problemático para release.
+The `DEV_VISION` flag and debug code are mixed with the logic. Functional for dev, problematic for release.
 
 ---
 
-### 13. Dead code `_compute_shadow_tiles_old()` em room.gd
-**Severity:** LOW  
-**Estimated Fix:** Remover imediatamente
+### 13. Dead code `_compute_shadow_tiles_old()` in room.gd
+**Severity:** LOW
+**Estimated Fix:** Remove immediately
 
-Função antiga de shadow substituída por `_compute_shadow_tiles()` + `_cast_shadows_from_light()`. Linhas ~1340–1373 de room.gd.
+Old shadow function replaced by `_compute_shadow_tiles()` + `_cast_shadows_from_light()`. Lines ~1340–1373 of room.gd.
 
 ---
 
-### 14. Hardcoded noise values em room.gd
-**Severity:** LOW  
+### 14. Hardcoded noise values in room.gd
+**Severity:** LOW
 **Estimated Fix:** Quick fix
 
-`room.gd` usa `0.20` e `0.5` hardcoded em vez de `NoiseSystem.NOISE_CHANCE_WALK` / `NoiseSystem.NOISE_INTENSITY_WALK`.
+`room.gd` uses hardcoded `0.20` and `0.5` instead of `NoiseSystem.NOISE_CHANCE_WALK` / `NoiseSystem.NOISE_INTENSITY_WALK`.
 
 ---
 
 ## Planned Refactors
 
-| Refactor | Prioridade | Target | ETA |
-|----------|-----------|--------|-----|
-| **Detection escalation gradual** | 🔴 Pré-playtest | guard_enemy.gd + room.gd | 1–2 semanas |
-| **FSM → Strategy/BTree** | Pré-M3.0 | guard_enemy.gd | 1–2 semanas |
-| **Patrol data-driven** | Pré-campanha | room_layout_builder.gd | 3–5 dias |
-| **Overlay O(n²) → culled** | Pré-mobile test | fog_of_war_overlay.gd | 1–2 semanas |
-| **move_to_cell_animated coroutine** | Pré-3+ guards | guard_enemy.gd | 1–2 dias |
+| Refactor | Priority | Target | ETA |
+|----------|----------|--------|-----|
+| **Gradual detection escalation** | 🔴 Pre-playtest | guard_enemy.gd + room.gd | 1–2 weeks |
+| **FSM → Strategy/BTree** | Pre-M3.0 | guard_enemy.gd | 1–2 weeks |
+| **Data-driven patrols** (now `MapSpec.patrols` in `world/maps/definitions/*_map.gd`; remaining: external resource authoring) | Pre-campaign | world/maps/ | 2–3 days |
+| **Overlay O(n²) → culled** | Pre-mobile test | fog_of_war_overlay.gd | 1–2 weeks |
+| **move_to_cell_animated coroutine** | Pre-3+ guards | guard_enemy.gd | 1–2 days |
 
 ---
 
-## Debt Metrics (atualizado 2026-06-14)
+## Debt Metrics (updated 2026-06-14)
 
 | Metric | Value |
 |--------|-------|
@@ -245,19 +245,19 @@ Função antiga de shadow substituída por `_compute_shadow_tiles()` + `_cast_sh
 | **High Priority Issues** | 4 |
 | **Medium Priority Issues** | 2 |
 | **Low Priority Issues** | 4 |
-| **Esforço Total Estimado** | 8–12 semanas (refinamento, não blocking) |
-| **Current Debt Level** | Médio — jogo funcional, detecção IA implementada corretamente |
+| **Total Estimated Effort** | 8–12 weeks (refinement, not blocking) |
+| **Current Debt Level** | Medium — game functional, AI detection implemented correctly |
 
 ---
 
 ## Debt Management Policy
 
-1. **Critical debt** endereçado antes de playtesting externo
-2. **High-priority debt** queued para pós-Investor Demo
-3. **Medium/Low-priority debt** durante polish phase
+1. **Critical debt** addressed before external playtesting
+2. **High-priority debt** queued for post-Investor Demo
+3. **Medium/Low-priority debt** during the polish phase
 
 ---
 
-**Last Updated:** 2026-06-12  
-**Maintained By:** Technical Lead  
-**Status:** Funcional com limitações conhecidas
+**Last Updated:** 2026-06-12
+**Maintained By:** Technical Lead
+**Status:** Functional with known limitations

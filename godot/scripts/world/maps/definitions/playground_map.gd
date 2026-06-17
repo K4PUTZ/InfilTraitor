@@ -1,0 +1,66 @@
+class_name PlaygroundMap
+extends RefCounted
+## PLAYGROUND — the reference artwork mockup.
+##
+## A hand-authored "default" level whose only job is to exercise EVERY artwork case so
+## the director can verify the tiles behave before any procedural generation exists.
+## Authored in PLAYABLE / INNER coordinates (18×36); MapCompiler applies the buffer.
+##
+## Artwork coverage:
+##   • Outer room  → all 4 wall corners (NW/NE/SW/SE) + 4 straight edges automatically.
+##   • Doors       → one on each of the 4 sides (doorOpen_NW/SE/SW/NE).
+##   • Divider     → block_SE internal wall with two gate gaps.
+##   • Crates      → all 4 orientations in a row (south cluster).
+##   • Columns     → all 4 orientations in a row (north cluster) — the "pillar" artwork.
+##   • Lights      → north + south sources so the prop clusters cast shadow/penumbra.
+##   • Guards      → one patrol each side of the divider, lit lanes.
+##
+## Coordinates are tunable by the director; only the structure is fixed.
+
+
+static func spec() -> Dictionary:
+	return {
+		"id":            "PLAYGROUND",
+		"inner_size":    Vector2i(18, 36),
+		"buffer":        5,
+		"floor_tile":    "floor_SE",
+		"agent_start":   Vector2i(9, 33),
+		## One door per side — exercises every doorOpen_* variant.
+		"access_points": [
+			{"cell": Vector2i(9, 0)},    ## NW (top)
+			{"cell": Vector2i(9, 35)},   ## SE (bottom)
+			{"cell": Vector2i(0, 17)},   ## SW (left)
+			{"cell": Vector2i(17, 17)},  ## NE (right)
+		],
+		"dividers": [
+			## Mid divider at y=18 — gates at x=4-5 and x=12-13.
+			{"cells": [
+				Vector2i(1, 18), Vector2i(2, 18), Vector2i(3, 18),
+				Vector2i(6, 18), Vector2i(7, 18), Vector2i(8, 18),
+				Vector2i(9, 18), Vector2i(10, 18), Vector2i(11, 18),
+				Vector2i(14, 18), Vector2i(15, 18), Vector2i(16, 18),
+			]},
+		],
+		"props": [
+			## North cluster — all 4 column orientations (pillars).
+			{"cell": Vector2i(4, 7),  "tile": "column_SE"},
+			{"cell": Vector2i(6, 7),  "tile": "column_SW"},
+			{"cell": Vector2i(8, 7),  "tile": "column_NW"},
+			{"cell": Vector2i(10, 7), "tile": "column_NE"},
+			## South cluster — all 4 crate orientations.
+			{"cell": Vector2i(4, 30),  "tile": "crate_SE"},
+			{"cell": Vector2i(6, 30),  "tile": "crate_SW"},
+			{"cell": Vector2i(8, 30),  "tile": "crate_NW"},
+			{"cell": Vector2i(10, 30), "tile": "crate_NE"},
+		],
+		"lights": [
+			{"x": 9, "y": 6,  "height": 5.0, "radius": 8, "intensity": 0.90},  ## north
+			{"x": 9, "y": 29, "height": 5.0, "radius": 8, "intensity": 0.90},  ## south
+		],
+		"patrols": [
+			## North room — E-W
+			[Vector2i(2, 10), Vector2i(15, 10)],
+			## South room — E-W
+			[Vector2i(2, 26), Vector2i(15, 26)],
+		],
+	}

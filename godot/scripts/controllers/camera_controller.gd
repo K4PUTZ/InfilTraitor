@@ -1,10 +1,10 @@
 extends Node
-## CameraController — Gerencia câmera: drag, zoom, pinch-zoom, leash, perspectiva.
+## CameraController — Manages the camera: drag, zoom, pinch-zoom, leash, perspective.
 ##
-## Expõe handle_input() para consumir eventos antes de room.gd processar gameplay input.
-## room.gd chama isso primeiro; se retorna true, o evento foi consumido.
+## Exposes handle_input() to consume events before room.gd processes gameplay input.
+## room.gd calls this first; if it returns true, the event was consumed.
 
-# Camera constants — movidos de room.gd
+# Camera constants — moved from room.gd
 const DRAG_THRESHOLD_SQ        := 64.0       ## 8 px squared
 const ZOOM_MIN                 := 0.20
 const ZOOM_MAX                 := 1.20
@@ -47,8 +47,8 @@ func _cache_vision_controller() -> void:
 
 
 func handle_input(event: InputEvent) -> bool:
-	## Processa eventos de câmera. Retorna true se o evento foi consumido.
-	## room.gd chama isso antes de processar qualquer outro input.
+	## Processes camera events. Returns true if the event was consumed.
+	## room.gd calls this before processing any other input.
 	
 	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
 	if event is InputEventScreenTouch:
@@ -160,7 +160,7 @@ func _get_leashed_pos(desired_pos: Vector2) -> Vector2:
 	if not is_instance_valid(_room) or not is_instance_valid(_room.agent):
 		return desired_pos
 	
-	# DEV_VISION: liberar todas as travas
+	# DEV_VISION: release all constraints
 	if _vision_controller and _vision_controller.dev_vision:
 		return desired_pos
 	

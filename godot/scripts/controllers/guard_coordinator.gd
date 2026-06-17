@@ -1,8 +1,8 @@
 extends Node
 
-## MODULARIZE-06: Roteia sinais de coordenação entre guards via room.gd.
-## NÃO se comunica diretamente com outro controller.
-## _guards[] pertence a room.gd; acessa via _room._guards.
+## MODULARIZE-06: Routes coordination signals between guards via room.gd.
+## Does NOT communicate directly with another controller.
+## _guards[] belongs to room.gd; accessed via _room._guards.
 
 signal guard_whistled(origin_cell: Vector2i, last_known: Vector2i)
 signal guard_radioed(origin_cell: Vector2i, last_known: Vector2i)
@@ -16,8 +16,8 @@ func setup(room_ref: Node2D) -> void:
 	_room = room_ref
 
 
-## Conecta os sinais de um guard a este coordinator.
-## Chamado por room.gd quando um guard é criado em _spawn_guards().
+## Connects a guard's signals to this coordinator.
+## Called by room.gd when a guard is created in _spawn_guards().
 func register_guard(guard: Object) -> void:
 	if guard == null:
 		return
@@ -26,16 +26,16 @@ func register_guard(guard: Object) -> void:
 
 
 ## ─────────────────────────────────────────────────────────────────────
-## HANDLER: APITO (Whistle)
+## HANDLER: WHISTLE
 ## ─────────────────────────────────────────────────────────────────────
 
-## Apito: guards a até WHISTLE_RADIUS tiles entram em STATE_SEARCH
+## Whistle: guards within WHISTLE_RADIUS tiles enter STATE_SEARCH
 func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
 	if last_known == _room.INVALID_CELL:
 		return
-	
+
 	guard_whistled.emit(origin_cell, last_known)
-	
+
 	for guard in _room._guards:
 		if not is_instance_valid(guard):
 			continue
@@ -45,16 +45,16 @@ func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
 
 
 ## ─────────────────────────────────────────────────────────────────────
-## HANDLER: RÁDIO (Radio)
+## HANDLER: RADIO
 ## ─────────────────────────────────────────────────────────────────────
 
-## Rádio: todos os guards em PATROL/SUSPICIOUS entram em STATE_ALERT
+## Radio: all guards in PATROL/SUSPICIOUS enter STATE_ALERT
 func _on_guard_radioed(_origin_cell: Vector2i, last_known: Vector2i) -> void:
 	if last_known == _room.INVALID_CELL:
 		return
-	
+
 	guard_radioed.emit(_origin_cell, last_known)
-	
+
 	for guard in _room._guards:
 		if not is_instance_valid(guard):
 			continue
@@ -64,45 +64,45 @@ func _on_guard_radioed(_origin_cell: Vector2i, last_known: Vector2i) -> void:
 
 
 ## ─────────────────────────────────────────────────────────────────────
-## HANDLER: ALARME (Alarm)
+## HANDLER: ALARM
 ## ─────────────────────────────────────────────────────────────────────
 
-## Alarme global: todos os guards entram em STATE_CHASE + HUD atualiza
+## Global alarm: all guards enter STATE_CHASE + HUD updates
 func _on_guard_alarmed(origin_cell: Vector2i) -> void:
-	## Todos os guards não em chase entram em STATE_CHASE
+	## All guards not already chasing enter STATE_CHASE
 	for guard in _room._guards:
 		if not is_instance_valid(guard):
 			continue
 		if guard.state != guard.STATE_CHASE:
 			guard.receive_alert(_room.agent.cell, guard.STATE_CHASE)
-	
-	## Seta alert meter para máximo
+
+	## Set alert meter to maximum
 	_room._alert_meter = _room._alert_max
 	_room._update_alert_label()
-	
-	## Emite sinal para room.gd coordenar resposta
+
+	## Emit signal so room.gd can coordinate the response
 	alarm_raised.emit(origin_cell)
 	all_guards_alerted.emit()
 
 
 ## ─────────────────────────────────────────────────────────────────────
-## HANDLER: EMISSÃO DE RUÍDO (Guard Noise)
+## HANDLER: GUARD NOISE EMISSION
 ## ─────────────────────────────────────────────────────────────────────
 
-## Emite ruído quando um guard se move (callback de enemy_phase_controller)
+## Emit noise when a guard moves (callback from enemy_phase_controller)
 func _on_guard_emits_noise(guard: Object, guard_cell: Vector2i) -> void:
 	if _room._noise_system == null or guard == null:
 		return
-	
-	## Chance de ruído por estado do guarda
+
+	## Noise chance per guard state
 	var noise_chance: float = _room.GUARD_NOISE_CHANCE_BY_STATE.get(guard.state, 0.10) as float
 	if randf() < noise_chance:
-		## Intensidade de ruído por estado
+		## Noise intensity per guard state
 		var noise_intensity: float = _room.GUARD_NOISE_INTENSITY_BY_STATE.get(guard.state, 0.5) as float
-		## Emitir no sistema de ruído global
+		## Emit into the global noise system
 		_room._noise_system.emit(guard_cell, noise_intensity)
-		## Emitir indicador sonoro para o agente
+		## Emit a sound indicator toward the agent
 		_room._emit_guard_noise_indicator(guard_cell, noise_intensity)
-		## Redraw dos overlays para atualizar visual
+		## Redraw overlays to update the visuals
 		if _room._noise_overlay != null:
 			_room._noise_overlay.queue_redraw()

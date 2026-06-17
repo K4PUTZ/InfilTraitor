@@ -1,7 +1,8 @@
 extends Node2D
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
-const RoomLayoutBuilder = preload("res://godot/scripts/world/room_layout_builder.gd")
+const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
+const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
@@ -63,11 +64,11 @@ var _current_blocked_edges: Array[Dictionary] = []
 var _guards: Array = []
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
-var _exit_cells: Array[Vector2i] = []  ## Tiles de saída do segmento (doorOpen_*)
+var _exit_cells: Array[Vector2i] = []  ## Segment exit tiles (doorOpen_*)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
 
-## M2-13: Altura de obstáculos (em tiles acima do plano do chão)
+## M2-13: Obstacle heights (in tiles above the floor plane)
 const OBSTACLE_HEIGHTS: Dictionary = {
 	"crate":     1.0,
 	"wall":      2.0,
@@ -94,7 +95,7 @@ var _alert_meter: int = 0
 var _alert_max: int = 100
 var _alert_gain_full: int = 45
 
-## ID-01: Thresholds do detection meter para transições de estado
+## ID-01: Detection meter thresholds for state transitions
 const DETECTION_THRESHOLD_SUSPICIOUS := 0.30
 const DETECTION_THRESHOLD_ALERT      := 0.60
 const DETECTION_THRESHOLD_CHASE      := 1.00
@@ -131,7 +132,7 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
-var _tile_shadow: Node2D = null  ## TileOverlay para sombras (z=1, multiply)
+var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _tile_game: Node2D = null   ## TileOverlay para jogo visual (z=3, mix)
 var _trail_overlay: Node2D = null
 
@@ -142,25 +143,25 @@ var _noise_overlay: Node2D = null
 ## M2-14: Guard noise indicator — flutuante ao redor do agente
 var _guard_noise_indicator: Node2D = null
 
-## MODULARIZE-01: VisionController para gerenciar overlays de debug/análise
+## MODULARIZE-01: VisionController to manage debug/analysis overlays
 var _vision_controller: Node2D = null
 
-## MODULARIZE-02: HudController para gerenciar fiação de UI
+## MODULARIZE-02: HudController to manage UI wiring
 var _hud_controller: Node = null
 
-## MODULARIZE-04: CameraController para gerenciar drag, zoom, perspectiva
+## MODULARIZE-04: CameraController to manage drag, zoom, perspective
 var _camera_controller: Node = null
 
-## MODULARIZE-03: LightingController para gerenciar sistemas de iluminação
+## MODULARIZE-03: LightingController to manage lighting systems
 var _lighting_controller: Node = null
 
-## MODULARIZE-05: FowController para gerenciar reveal e parâmetros do shader
+## MODULARIZE-05: FowController to manage reveal and shader parameters
 var _fow_controller: Node = null
 
-## MODULARIZE-06: GuardCoordinator para rotear sinais de coordenação entre guards
+## MODULARIZE-06: GuardCoordinator to route coordination signals between guards
 var _guard_coordinator: Node = null
 
-## M2-14: Chance de ruído por estado do guarda
+## M2-14: Noise chance per guard state
 const GUARD_NOISE_CHANCE_BY_STATE := {
 	"patrol": 0.15,
 	"suspicious": 0.40,
@@ -169,7 +170,7 @@ const GUARD_NOISE_CHANCE_BY_STATE := {
 	"search": 0.50,
 }
 
-## M2-14: Intensidade de ruído por estado do guarda
+## M2-14: Noise intensity per guard state
 const GUARD_NOISE_INTENSITY_BY_STATE := {
 	"patrol": 0.4,
 	"suspicious": 0.6,
@@ -184,6 +185,8 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 @export var segment_grid_pos: Vector2i = Vector2i(1, 1)
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
+## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
+@export var map_id: String = "PLAYGROUND"
 
 const WHISTLE_RADIUS := 3
 
@@ -213,10 +216,20 @@ func _ready() -> void:
 	
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
-	var access_points: Array = LevelGraphClass.access_points_for(connections, segment_grid_pos)
 
-	var layout_builder = RoomLayoutBuilder.new()
-	var layout: Dictionary = layout_builder.build_layout(access_points)
+	## Resolve the active map to a MapSpec, then compile it into the render-ready
+	## layout dict. The compiler owns the buffer offset; graph-driven specs use
+	## `connections` for their access points.
+	var spec: Dictionary = MapCatalogClass.get_spec(map_id, {
+		"connections":      connections,
+		"segment_grid_pos": segment_grid_pos,
+		"seed":             level_seed,
+	})
+	var layout: Dictionary = MapCompilerClass.compile(spec, {
+		"connections":      connections,
+		"segment_grid_pos": segment_grid_pos,
+		"seed":             level_seed,
+	})
 	_base_layout = layout.duplicate(true)
 	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
 	_room_size = layout.get("size", Vector2i.ZERO)
@@ -539,10 +552,10 @@ func _update_guard_los_data() -> void:
 
 
 func _draw_exit_markers() -> void:
-	## Diamante roxo em cada tile de saída do segmento.
-	## Desenhado em _draw() do nó Room — renderiza abaixo do fog_of_war.
-	## Revelado naturalmente quando o FOW descobre a área. Visível em DEV_VISION
-	## porque o fog fica oculto (fog_of_war.visible = false).
+	## Purple diamond on each segment exit tile.
+	## Drawn in the Room node's _draw() — renders below fog_of_war.
+	## Revealed naturally when the FOW uncovers the area. Visible in DEV_VISION
+	## because the fog is hidden (fog_of_war.visible = false).
 	if _exit_cells.is_empty():
 		return
 	for cell: Vector2i in _exit_cells:
@@ -562,8 +575,8 @@ func _draw_exit_markers() -> void:
 		)
 
 func _draw_spawn_marker() -> void:
-	## Diamante escuro no ponto de spawn — DEV_VISION apenas.
-	## Permite identificar rapidamente o AGENT_START_CELL ao testar mapas.
+	## Dark diamond on the spawn point — DEV_VISION only.
+	## Lets you quickly identify the AGENT_START_CELL when testing maps.
 	if not _vision_controller.dev_vision:
 		return
 	if _agent_start_cell == INVALID_CELL:
@@ -584,8 +597,8 @@ func _draw_spawn_marker() -> void:
 	)
 
 func _draw_shadow_debug() -> void:
-	## M2-13: ShadowOverlay agora lida com a visualização permanente.
-	## Mantido apenas para debug técnico em DEV_VISION (azul translúcido sobreposto).
+	## M2-13: ShadowOverlay now handles the permanent visualization.
+	## Kept only for technical debug in DEV_VISION (translucent blue overlay).
 	if not _vision_controller.dev_vision:
 		return
 	for shadow_cell in _shadow_tiles.keys():
@@ -599,7 +612,7 @@ func _draw_shadow_debug() -> void:
 			world_pos + Vector2(0.0,   hh),
 			world_pos + Vector2(-hw,  0.0),
 		])
-		## Sombra direta: azul escuro. Penumbra: azul mais claro.
+		## Direct shadow: dark blue. Penumbra: lighter blue.
 		var alpha := 0.35 if mult < PENUMBRA_MULT else 0.15
 		var color := Color(0.1, 0.4, 1.0, alpha)
 		draw_colored_polygon(diamond, color)
@@ -615,16 +628,16 @@ func _on_ap_changed(current_ap: int, max_ap: int) -> void:
 		_peek_pending = false
 
 
-## Peek mechanic: espreitar além de um obstáculo adjacente sem mover
+## Peek mechanic: look past an adjacent obstacle without moving
 func _try_peek(direction: Vector2i) -> void:
 	if turn_manager.current_ap < 1:
 		return
 	
 	var target_cell := agent.cell + direction
 	if not _blocked_cells.has(target_cell):
-		return # Só faz sentido dar peek em obstáculos
-		
-	## Revela 3 tiles adiante na direção do peek
+		return # Peeking only makes sense against obstacles
+
+	## Reveal 3 tiles ahead in the peek direction
 	for i in range(1, 4):
 		var peek_cell := agent.cell + direction * i
 		if not _is_cell_inside_room(peek_cell):
@@ -655,17 +668,17 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 	if _vision_controller.dev_vision and _trail_overlay != null:
 		_trail_overlay.queue_redraw()
 
-	## M2-04: Gerar barulho por tic — rola dado a cada passo
+	## M2-04: Generate noise per tic — roll the dice on each step
 	if _noise_system != null:
 		if randf() < NoiseSystem.NOISE_CHANCE_WALK:
 			_noise_system.emit(step_cell, NoiseSystem.NOISE_INTENSITY_WALK)
 		if _noise_overlay != null:
 			_noise_overlay.queue_redraw()
 
-	## M2-05: Detecção auditiva imediata após gerar barulho
+	## M2-05: Immediate auditory detection after generating noise
 	_process_audio_detection()
 
-	## Tic de detecção — agente cruzou uma aresta
+	## Detection tic — the agent crossed an edge
 	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
 	for guard in _guards:
 		if not is_instance_valid(guard):
@@ -676,20 +689,20 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 		_apply_tic_result(guard, result)
 
 
-## Processa resultado de um tic de detecção para um guarda.
+## Processes the result of a detection tic for a guard.
 func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
-	## Acumula ou decai o campo detection do guarda
+	## Accumulate or decay the guard's detection field
 	if result.visible:
 		guard.detection = clampf(
 			guard.detection + result.raw_chance * TicSystem.DETECTION_GAIN_PER_TIC,
 			0.0, 1.0
 		)
 	else:
-		## Decaimento fora do cone
+		## Decay outside the cone
 		var decay := _get_detection_decay(guard.state)
 		guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
 
-	## M2-04: Barulho amplifica detecção se o guarda já vê o tile
+	## M2-04: Noise amplifies detection if the guard already sees the tile
 	if _noise_system != null:
 		var noise_intensity: float = _noise_system.get_intensity(agent.cell)
 		if noise_intensity > 0.0 and result.visible:
@@ -699,7 +712,7 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 	if _vision_controller.dev_vision:
 		guard.queue_redraw()
 
-	## ID-01: Escalação gradual por threshold — só quando agente está visível
+	## ID-01: Gradual threshold-based escalation — only when the agent is visible
 	if result.visible:
 		if guard.detection >= DETECTION_THRESHOLD_CHASE:
 			guard.observe_player(true, 3, agent.cell)
@@ -713,7 +726,7 @@ func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
 				_guard_coordinator._on_guard_alarmed(guard.cell)
 		elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 			guard.observe_player(true, 1, agent.cell)
-		## Abaixo de DETECTION_THRESHOLD_SUSPICIOUS: meter acumula, sem mudança de estado
+		## Below DETECTION_THRESHOLD_SUSPICIOUS: meter accumulates, no state change
 
 	_update_alert_label()
 
@@ -731,7 +744,7 @@ func _get_detection_decay(state: String) -> float:
 	return -0.10
 
 
-## M2-05: Processa detecção auditiva para todos os guardas
+## M2-05: Processes auditory detection for all guards
 func _process_audio_detection() -> void:
 	if _noise_system == null:
 		return
@@ -812,7 +825,7 @@ func _on_enemy_phase_started() -> void:
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
 	selection_overlay.set_selected(agent.cell)
-	## M2-14: Travar câmera no agente durante turno inimigo
+	## M2-14: Lock the camera on the agent during the enemy turn
 	_center_camera(agent.cell)
 	await _hold_actor_end_pause()
 	await _run_enemy_phase()
@@ -828,14 +841,14 @@ func _on_enemy_phase_started() -> void:
 	if _noise_overlay != null:
 		_noise_overlay.queue_redraw()
 
-	## Retornar câmera para o agente ao final do turno inimigo
+	## Return the camera to the agent at the end of the enemy turn
 	_center_camera(agent.cell)
 
 	turn_manager.finish_enemy_phase()
 
 
 func _run_enemy_phase() -> void:
-	## M2-05: Processar barulhos persistentes antes dos guardas agirem
+	## M2-05: Process persistent noise before the guards act
 	_process_audio_detection()
 
 	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
@@ -858,17 +871,17 @@ func _run_enemy_phase() -> void:
 			_room_size,
 			occupied,
 			_apply_tic_result,   ## passa o callback
-			_guard_coordinator._on_guard_emits_noise   ## M2-14: callback de ruído
+			_guard_coordinator._on_guard_emits_noise   ## M2-14: noise callback
 		)
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
 
-		## Câmera segue guard apenas se o tile dele está revelado pelo FOW
+		## Camera follows the guard only if its tile is revealed by the FOW
 		if _fow_controller.is_cell_revealed(guard.cell):
 			await _focus_camera_for_enemy_phase(guard.cell)
 
 		await _hold_actor_end_pause()
 
-	## Acumulação de alerta agora acontece em _apply_tic_result() durante os tics
+	## Alert accumulation now happens in _apply_tic_result() during the tics
 	_update_enemy_visibility()
 
 
@@ -907,12 +920,12 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 
 
-## M2-14: Emitir indicador sonoro na direção do ruído (com imprecisão de ±2 tiles)
+## M2-14: Emit a sound indicator toward the noise direction (with ±2 tile imprecision)
 func _emit_guard_noise_indicator(guard_cell: Vector2i, intensity: float) -> void:
 	if _guard_noise_indicator == null:
 		return
 	
-	## Imprecisão: offset aleatório de ±2 tiles para não revelar posição exata
+	## Imprecision: random ±2 tile offset to avoid revealing the exact position
 	var fuzzy_cell := guard_cell + Vector2i(
 		randi_range(-2, 2),
 		randi_range(-2, 2)
@@ -923,7 +936,7 @@ func _emit_guard_noise_indicator(guard_cell: Vector2i, intensity: float) -> void
 	_guard_noise_indicator.add_indicator(agent_world, noise_world, intensity)
 
 
-## M2-14: Callback: executado quando um guarda emite ruído após se mover
+## M2-14: Callback: runs when a guard emits noise after moving
 
 
 func _update_alert_label() -> void:
@@ -937,39 +950,39 @@ func _show_busted_dialog() -> void:
 	_hud_controller.hide_busted()
 
 
-## ID-02: Flush completo de memória — reseta todos os estados quando a sala precisa reiniciar
+## ID-02: Full memory flush — resets all state when the room needs to restart
 func _reset_room_state() -> void:
-	## Zera alerta global
+	## Zero the global alert
 	_alert_meter = 0
 
-	## Reseta posição do agente
+	## Reset the agent position
 	agent.set_cell(_agent_start_cell)
 	_selected_cell = _agent_start_cell
 	selection_overlay.set_selected(_agent_start_cell)
 
-	## Reseta todos os guardas para rotas iniciais
+	## Reset all guards to their starting routes
 	for guard in _guards:
 		if is_instance_valid(guard):
 			guard.reset_to_route_start()
 
-	## Limpa trail do agente
+	## Clear the agent trail
 	_agent_trail.clear()
 
-	## Reseta FOW
+	## Reset FOW
 	_fow_controller.reset_fog()
 	_fow_controller.reveal_around(_agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 
-	## Limpa sistema de ruído
+	## Clear the noise system
 	if _noise_system != null:
 		_noise_system.clear()
 
-	## Reseta overlays visuais
+	## Reset visual overlays
 	if _noise_overlay != null:
 		_noise_overlay.queue_redraw()
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
 
-	## Centra câmera no agente
+	## Center the camera on the agent
 	_center_camera(agent.cell)
 
 	## Force UI update
@@ -1224,8 +1237,8 @@ func _build_room(layout: Dictionary) -> void:
 	structure_layer.clear()
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
-	## Preenche exatamente o grid MAP_SIZE. O buffer de 5 tiles no layout builder
-	## substitui a antiga extensão negativa — sem coordenadas fora do range [0, MAP_SIZE).
+	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
+	## replaces the old negative extension — no coordinates outside the range [0, MAP_SIZE).
 	for x in range(0, _room_size.x):
 		for y in range(0, _room_size.y):
 			_place(Vector2i(x, y), floor_tile_name)
@@ -1253,7 +1266,7 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
-	## Saídas do segmento — usadas pelo overlay roxo em _draw()
+	## Segment exits — used by the purple overlay in _draw()
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))
@@ -1267,7 +1280,7 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	## (Old M2-13 functions removed; queries handled by registry.get_lights_affecting_cell)
 
 
-## M2-13: Direções isométricas quantizadas (8 direções)
+## M2-13: Quantized isometric directions (8 directions)
 const SHADOW_DIRS: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
 	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
@@ -1568,14 +1581,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var mb := event as InputEventMouseButton
 
-	## ── Botão direito: executar movimento para o tile selecionado ──────
+	## ── Right button: execute movement to the selected tile ──────
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 		if _selected_cell != INVALID_CELL and _selected_cell != agent.cell:
 			_try_move_to(_selected_cell)
 		get_viewport().set_input_as_handled()
 		return
 
-	## ── Botão esquerdo: click para selecionar (camera pan delegado ao CameraController) ──────────
+	## ── Left button: click to select (camera pan delegated to CameraController) ──────────
 	if mb.button_index != MOUSE_BUTTON_LEFT:
 		return
 
@@ -1583,7 +1596,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
 		var cell := _screen_to_tile(mb.position)
 		
-		## UI-02: Se clicar fora da zona, apenas selecionar (sem mover)
+		## UI-02: If clicking outside the zone, just select (no move)
 		if cell != INVALID_CELL:
 			_set_selected_cell(cell)
 

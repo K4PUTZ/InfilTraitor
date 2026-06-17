@@ -1,60 +1,60 @@
 extends Node2D
-## TileOverlay — sistema unificado de pintura de tiles com multiply blend.
+## TileOverlay — unified tile painting system using multiply blend.
 ##
-## Usado por: sombras, cone de detecção, saídas/entradas, objetivos, luz (DEV).
-## Cada instância opera em um z_index específico — múltiplas instâncias possíveis.
+## Used by: shadows, detection cone, exits/entrances, objectives, light (DEV).
+## Each instance operates on a specific z_index — multiple instances possible.
 ##
 ## API:
-##   paint(cell, color)           — pinta tile com Color específica
-##   paint_named(cell, key)       — pinta tile usando cor da PALETTE
-##   unpaint(cell)                — remove overlay de um tile
-##   clear_priority(p)            — remove todos os tiles de uma prioridade
-##   clear_all()                  — limpa tudo
-##   shadow_color_for(mult)       — retorna cor de sombra para multiplicador float
+##   paint(cell, color)           — paint a tile with a specific Color
+##   paint_named(cell, key)       — paint a tile using a PALETTE color
+##   unpaint(cell)                — remove the overlay from a tile
+##   clear_priority(p)            — remove all tiles of a given priority
+##   clear_all()                  — clear everything
+##   shadow_color_for(mult)       — return the shadow color for a float multiplier
 ##
 ## Blend mode: MULTIPLY (CanvasItemMaterial.BLEND_MODE_MUL).
-## Efeito: overlay_color × tile_texture_color → preserva detalhes visuais.
-## Cores próximas de branco = quase sem efeito; cores escuras = tile escurece;
-## cores saturadas = tinge o tile preservando textura.
+## Effect: overlay_color × tile_texture_color → preserves visual detail.
+## Colors near white = almost no effect; dark colors = tile darkens;
+## saturated colors = tint the tile while preserving texture.
 
-## Dimensões padrão do tile isométrico INFILTRAITOR (TileSet: 256×128 px)
+## Default INFILTRAITOR isometric tile dimensions (TileSet: 256×128 px)
 const TILE_HW := 128.0   ## half-width  — horizontal
 const TILE_HH :=  64.0   ## half-height — vertical
 
-## Prioridades de renderização — ordenadas de menor (desenhado primeiro) para maior
-const PRIO_SHADOW   := 1    ## Sombras — desenhadas abaixo de tudo
-const PRIO_DETECT   := 2    ## Cone de detecção
-const PRIO_MOVEMENT := 3    ## Preview de movimento/pathfinding
-const PRIO_NAV      := 4    ## Navegação — saídas, objetivos
+## Render priorities — ordered from lowest (drawn first) to highest
+const PRIO_SHADOW   := 1    ## Shadows — drawn below everything
+const PRIO_DETECT   := 2    ## Detection cone
+const PRIO_MOVEMENT := 3    ## Movement/pathfinding preview
+const PRIO_NAV      := 4    ## Navigation — exits, objectives
 const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
 
-## Paleta de cores (multiply, alpha=0.80 embutido)
-## Branco puro (1,1,1,1) = sem efeito visual; negro (0,0,0,x) = tile completamente preto.
+## Color palette (multiply, alpha=0.80 baked in)
+## Pure white (1,1,1,1) = no visual effect; black (0,0,0,x) = fully black tile.
 const PALETTE: Dictionary = {
-	## Sombras — escurecem com tom azul-frio (mapeado por _shadow_tiles float)
+	## Shadows — darken with a cool-blue tone (mapped by _shadow_tiles float)
 	"shadow_full":   Color(0.18, 0.18, 0.30, 0.80),  ## mult ≤ 0.35
 	"shadow_mid":    Color(0.45, 0.45, 0.58, 0.80),  ## 0.35 < mult < 0.55
 	"shadow_lite":   Color(0.70, 0.70, 0.82, 0.80),  ## mult ≥ 0.55, <1.0
-	"lit":           Color(1.00, 1.00, 1.00, 0.00),  ## mult = 1.0 (sem overlay)
+	"lit":           Color(1.00, 1.00, 1.00, 0.00),  ## mult = 1.0 (no overlay)
 
-	## Cone de detecção — 5 bandas de probabilidade
-	"detect_0":      Color(0.30, 1.00, 0.30, 0.70),  ## 0.0–0.2   verde claro
+	## Detection cone — 5 probability bands
+	"detect_0":      Color(0.30, 1.00, 0.30, 0.70),  ## 0.0–0.2   light green
 	"detect_1":      Color(0.60, 0.95, 0.50, 0.75),  ## 0.2–0.4
-	"detect_2":      Color(1.00, 0.95, 0.30, 0.75),  ## 0.4–0.6   amarelo
-	"detect_3":      Color(1.00, 0.60, 0.30, 0.75),  ## 0.6–0.8   laranja
-	"detect_4":      Color(1.00, 0.20, 0.20, 0.80),  ## 0.8–1.0   vermelho
+	"detect_2":      Color(1.00, 0.95, 0.30, 0.75),  ## 0.4–0.6   yellow
+	"detect_3":      Color(1.00, 0.60, 0.30, 0.75),  ## 0.6–0.8   orange
+	"detect_4":      Color(1.00, 0.20, 0.20, 0.80),  ## 0.8–1.0   red
 
-	## Saídas e marcadores
-	"exit":          Color(0.55, 0.10, 0.90, 0.28),  ## roxo puro — saídas do segmento
-	"spawn":         Color(0.20, 0.20, 0.20, 0.40),  ## cinza escuro — posição spawn
-	"spawn_dev":     Color(0.20, 0.20, 0.20, 0.40),  ## cinza escuro — spawn em DEV_VISION
+	## Exits and markers
+	"exit":          Color(0.55, 0.10, 0.90, 0.28),  ## pure purple — segment exits
+	"spawn":         Color(0.20, 0.20, 0.20, 0.40),  ## dark gray — spawn position
+	"spawn_dev":     Color(0.20, 0.20, 0.20, 0.40),  ## dark gray — spawn in DEV_VISION
 
-	## Objetivos
-	"objective":     Color(0.90, 0.75, 0.20, 0.75),  ## ouro/amber — objetivo primário
-	"secondary":     Color(0.75, 0.75, 0.75, 0.60),  ## cinza claro — secundário
+	## Objectives
+	"objective":     Color(0.90, 0.75, 0.20, 0.75),  ## gold/amber — primary objective
+	"secondary":     Color(0.75, 0.75, 0.75, 0.60),  ## light gray — secondary
 }
 
-## Estado interno
+## Internal state
 var _entries: Dictionary = {}        ## Vector2i → {"color": Color, "prio": int}
 var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
@@ -68,33 +68,33 @@ func _ready() -> void:
 
 
 func setup(floor_layer: TileMapLayer, visual_offset: Vector2 = Vector2.ZERO) -> void:
-	## Configura referências de renderização. Chamado por room.gd após add_child().
+	## Configures rendering references. Called by room.gd after add_child().
 	_floor_layer = floor_layer
 	_visual_offset = visual_offset
 
 
-## ─── API Pública ───────────────────────────────────────────────────────────
+## ─── Public API ───────────────────────────────────────────────────────────
 
 func paint(cell: Vector2i, color: Color, priority: int = 0) -> void:
-	## Pinta um tile com uma Color explícita.
+	## Paints a tile with an explicit Color.
 	_entries[cell] = {"color": color, "prio": priority}
 	queue_redraw()
 
 
 func paint_named(cell: Vector2i, palette_key: String, priority: int = 0) -> void:
-	## Pinta um tile usando uma entrada da PALETTE.
+	## Paints a tile using a PALETTE entry.
 	paint(cell, PALETTE.get(palette_key, Color.WHITE), priority)
 
 
 func unpaint(cell: Vector2i) -> void:
-	## Remove o overlay de um tile específico.
+	## Removes the overlay from a specific tile.
 	if _entries.erase(cell):
 		queue_redraw()
 
 
 func clear_priority(priority: int) -> void:
-	## Remove todos os tiles com uma prioridade específica.
-	## Útil para limpar apenas o cone de detecção sem afetar sombras, por exemplo.
+	## Removes all tiles of a specific priority.
+	## Useful to clear only the detection cone without affecting shadows, for example.
 	var to_erase: Array[Vector2i] = []
 	for cell: Vector2i in _entries:
 		if (_entries[cell] as Dictionary)["prio"] == priority:
@@ -106,7 +106,7 @@ func clear_priority(priority: int) -> void:
 
 
 func clear_all() -> void:
-	## Remove todos os overlays.
+	## Removes all overlays.
 	if _entries.is_empty():
 		return
 	_entries.clear()
@@ -114,8 +114,8 @@ func clear_all() -> void:
 
 
 func set_cells(cells: Array[Vector2i], color: Color, priority: int = 0) -> void:
-	## Atalho: pinta um array inteiro de tiles de uma vez.
-	## Mais eficiente que chamar paint() em loop (queue_redraw uma vez).
+	## Shortcut: paints a whole array of tiles at once.
+	## More efficient than calling paint() in a loop (queue_redraw once).
 	for cell: Vector2i in cells:
 		_entries[cell] = {"color": color, "prio": priority}
 	if not cells.is_empty():
@@ -129,8 +129,8 @@ func set_cells_named(cells: Array[Vector2i], palette_key: String, priority: int 
 ## ─── Helpers ───────────────────────────────────────────────────────────────
 
 static func shadow_color_for(shadow_mult: float) -> Color:
-	## Retorna a cor de sombra correta para um valor de _shadow_tiles.
-	## shadow_mult: float de room.gd (SHADOW_MULT≈0.30, PENUMBRA≈0.55, lit=1.0)
+	## Returns the correct shadow color for a _shadow_tiles value.
+	## shadow_mult: float from room.gd (SHADOW_MULT≈0.30, PENUMBRA≈0.55, lit=1.0)
 	if shadow_mult <= 0.35:
 		return PALETTE["shadow_full"]
 	elif shadow_mult < 0.55:
@@ -142,13 +142,13 @@ static func shadow_color_for(shadow_mult: float) -> Color:
 
 
 static func detect_color_for(probability: float) -> Color:
-	## Retorna a cor de detecção para uma probabilidade [0.0, 1.0].
-	## Mapeada sobre 5 bandas uniformes da PALETTE detect_0..detect_4.
+	## Returns the detection color for a probability [0.0, 1.0].
+	## Mapped over 5 uniform bands of the PALETTE detect_0..detect_4.
 	var idx := clampi(int(probability * 5.0), 0, 4)
 	return PALETTE["detect_%d" % idx]
 
 
-## ─── Desenho ───────────────────────────────────────────────────────────────
+## ─── Drawing ───────────────────────────────────────────────────────────────
 
 func _tile_center(cell: Vector2i) -> Vector2:
 	return _floor_layer.map_to_local(cell) + Vector2(0.0, TILE_HH) + _visual_offset
@@ -166,13 +166,13 @@ func _tile_diamond(world: Vector2) -> PackedVector2Array:
 func _draw() -> void:
 	if _entries.is_empty() or _floor_layer == null:
 		return
-	## Ordenar por prioridade (menor prio desenhado primeiro → fica abaixo)
+	## Sort by priority (lower prio drawn first → ends up below)
 	var sorted: Array = []
 	for cell: Vector2i in _entries:
 		sorted.append([cell, _entries[cell]])
 	sorted.sort_custom(func(a, b): return a[1]["prio"] < b[1]["prio"])
 
-	## Desenhar diamante para cada tile
+	## Draw a diamond for each tile
 	for item in sorted:
 		var cell: Vector2i = item[0]
 		var entry: Dictionary = item[1]

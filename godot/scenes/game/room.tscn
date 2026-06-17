@@ -95,25 +95,25 @@ alignment = 1
 [node name="BtnNumbers" type="Button" parent="HUD/TopBar/Row" unique_id=1536072207]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Coordenadas ON/OFF"
+tooltip_text = "Coordinates ON/OFF"
 text = "#"
 
 [node name="BtnFullscreen" type="Button" parent="HUD/TopBar/Row" unique_id=2089223585]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Tela cheia"
+tooltip_text = "Fullscreen"
 text = "[ ]"
 
 [node name="BtnViewport" type="Button" parent="HUD/TopBar/Row" unique_id=656667469]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Alternar viewport"
+tooltip_text = "Toggle viewport"
 text = "M"
 
 [node name="BtnReset" type="Button" parent="HUD/TopBar/Row" unique_id=1700000001]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Reiniciar"
+tooltip_text = "Reset"
 text = "↺"
 
 [node name="LblAp" type="Label" parent="HUD/TopBar/Row" unique_id=1600001005]
@@ -125,14 +125,14 @@ vertical_alignment = 1
 [node name="LblAlert" type="Label" parent="HUD/TopBar/Row" unique_id=1600001014]
 custom_minimum_size = Vector2(126, 48)
 layout_mode = 2
-text = "ALERTA 0%"
+text = "ALERT 0%"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BtnEndTurn" type="Button" parent="HUD/TopBar/Row" unique_id=1600001006]
 custom_minimum_size = Vector2(136, 48)
 layout_mode = 2
-tooltip_text = "Encerrar turno"
+tooltip_text = "End turn"
 
 [node name="Content" type="HBoxContainer" parent="HUD/TopBar/Row/BtnEndTurn" unique_id=1600001008]
 layout_mode = 1
@@ -150,7 +150,7 @@ alignment = 1
 [node name="ChkAutoEndTurn" type="CheckBox" parent="HUD/TopBar/Row/BtnEndTurn/Content" unique_id=1600001007]
 custom_minimum_size = Vector2(24, 24)
 layout_mode = 2
-tooltip_text = "Encerrar turno automaticamente quando o AP chegar a zero"
+tooltip_text = "Automatically end the turn when AP reaches zero"
 button_pressed = true
 
 [node name="LblEndTurn" type="Label" parent="HUD/TopBar/Row/BtnEndTurn/Content" unique_id=1600001009]
@@ -194,25 +194,25 @@ columns = 2
 [node name="BtnPerspectiveNW" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003003]
 custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
-tooltip_text = "Perspectiva Oeste"
+tooltip_text = "West perspective"
 text = "W"
 
 [node name="BtnPerspectiveNE" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003004]
 custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
-tooltip_text = "Perspectiva Norte"
+tooltip_text = "North perspective"
 text = "N"
 
 [node name="BtnPerspectiveSW" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003005]
 custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
-tooltip_text = "Perspectiva Sul"
+tooltip_text = "South perspective"
 text = "S"
 
 [node name="BtnPerspectiveSE" type="Button" parent="HUD/PerspectivePad/Grid" unique_id=1600003006]
 custom_minimum_size = Vector2(56, 56)
 layout_mode = 2
-tooltip_text = "Perspectiva Leste"
+tooltip_text = "East perspective"
 text = "E"
 
 [node name="EnemyTurnBanner" type="PanelContainer" parent="HUD" unique_id=1600003010]

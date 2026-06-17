@@ -10,35 +10,35 @@ signal posture_changed(new_posture: Posture)
 
 enum Posture { STANDING, CROUCHING, PRONE }
 
-## Estado atual
+## Current state
 var posture: Posture = Posture.STANDING
 
-## Custo de AP para mudar de postura
+## AP cost to change posture
 const POSTURE_CHANGE_AP := 1
 
-## Multiplicadores de detecção visual por postura
+## Visual detection multipliers per posture
 const POSTURE_DETECTION_MULT: Dictionary = {
 	Posture.STANDING:  1.00,
 	Posture.CROUCHING: 0.55,
 	Posture.PRONE:     0.20,
 }
 
-## Custo de movimento extra por postura (tiles adicionais de AP)
-## Agachado: +1 AP por tile. Deitado: não pode mover nesse turno.
+## Extra movement cost per posture (additional AP tiles)
+## Crouching: +1 AP per tile. Prone: cannot move this turn.
 const POSTURE_MOVE_AP_COST: Dictionary = {
 	Posture.STANDING:  0,
-	Posture.CROUCHING: 1,   ## cada tile custa +1 AP extra
-	Posture.PRONE:     99,  ## impossível mover (99 = bloqueio efetivo)
+	Posture.CROUCHING: 1,   ## each tile costs +1 extra AP
+	Posture.PRONE:     99,  ## cannot move (99 = effective block)
 }
 
-## Cores temporárias por postura (substituídas por sprites em M3+)
+## Temporary colors per posture (replaced by sprites in M3+)
 const POSTURE_COLORS: Dictionary = {
-	Posture.STANDING:  Color(0.16, 0.78, 0.32, 1.0),   ## verde — cor atual
-	Posture.CROUCHING: Color(0.90, 0.75, 0.10, 1.0),   ## amarelo
-	Posture.PRONE:     Color(0.90, 0.35, 0.10, 1.0),   ## laranja
+	Posture.STANDING:  Color(0.16, 0.78, 0.32, 1.0),   ## green — current color
+	Posture.CROUCHING: Color(0.90, 0.75, 0.10, 1.0),   ## yellow
+	Posture.PRONE:     Color(0.90, 0.35, 0.10, 1.0),   ## orange
 }
 
-## Declaradas para M3+ (combate) — não utilizadas agora
+## Declared for M3+ (combat) — not used yet
 const POSTURE_HIT_MULT: Dictionary = {
 	Posture.STANDING:  1.00,
 	Posture.CROUCHING: 0.50,
@@ -61,10 +61,10 @@ var dev_vision: bool = false
 ## Cover
 enum CoverType { NONE, PARTIAL, FULL }
 var cover_state: CoverType = CoverType.NONE
-var cover_direction: Vector2i = Vector2i.ZERO  ## direção para o obstáculo
+var cover_direction: Vector2i = Vector2i.ZERO  ## direction toward the obstacle
 
-const COVER_FULL_MULT   := 0.20   ## probabilidade de detecção quando em cover full
-const COVER_PARTIAL_MULT := 0.55  ## cover parcial (apenas 1 adjacente bloqueado)
+const COVER_FULL_MULT   := 0.20   ## detection probability when in full cover
+const COVER_PARTIAL_MULT := 0.55  ## partial cover (only 1 adjacent blocked)
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 ## Duration per tile step — snappy tactical feel.
@@ -123,7 +123,7 @@ func update_cover(blocked_cells: Dictionary) -> void:
 		cover_direction = last_blocked_dir
 	else:
 		cover_state   = CoverType.FULL
-		cover_direction = last_blocked_dir  ## direção primária
+		cover_direction = last_blocked_dir  ## primary direction
 
 	queue_redraw()
 
@@ -179,10 +179,10 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(shadow, COLOR_SHADOW)
 
-	## Corpo — forma muda com postura
+	## Body — shape changes with posture
 	match posture:
 		Posture.STANDING:
-			## Diamond vertical alto — forma atual
+			## Tall vertical diamond — current shape
 			var body := PackedVector2Array([
 				Vector2(0.0, -56.0), Vector2(22.0, -30.0),
 				Vector2(0.0,  -6.0), Vector2(-22.0, -30.0),
@@ -192,7 +192,7 @@ func _draw() -> void:
 			draw_circle(Vector2(0.0, -64.0), 10.0, COLOR_HEAD)
 
 		Posture.CROUCHING:
-			## Diamond menor e mais baixo
+			## Smaller, lower diamond
 			var body := PackedVector2Array([
 				Vector2(0.0, -36.0), Vector2(20.0, -18.0),
 				Vector2(0.0,  -4.0), Vector2(-20.0, -18.0),
@@ -202,7 +202,7 @@ func _draw() -> void:
 			draw_circle(Vector2(0.0, -44.0), 8.0, COLOR_HEAD)
 
 		Posture.PRONE:
-			## Elipse horizontal — deitado
+			## Horizontal ellipse — lying down
 			var body := PackedVector2Array([
 				Vector2(0.0, -14.0), Vector2(30.0, -6.0),
 				Vector2(0.0,   2.0), Vector2(-30.0, -6.0),
@@ -212,7 +212,7 @@ func _draw() -> void:
 			draw_circle(Vector2(26.0, -10.0), 7.0, COLOR_HEAD)
 
 	if dev_vision:
-		## Anel ao redor do agente com cor por nível de cover
+		## Ring around the agent colored by cover level
 		var ring_color := Color.TRANSPARENT
 		match cover_state:
 			CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)

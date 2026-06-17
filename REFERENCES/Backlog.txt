@@ -23,3 +23,9 @@ Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em fre
 
 
 O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.
+
+
+
+Ok excelent. So I wish that you always ignore that I am speaking Portuguese. Reply and write everything in English from now on, forever. By the way, can you show me your current skills and attributes?
+
+Alpha English Refactor

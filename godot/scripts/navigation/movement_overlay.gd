@@ -18,8 +18,8 @@ var _remaining_ap: int = 2     ## Remaining AP to determine colors
 
 const TILE_TOP_TO_CENTER := Vector2(0.0, 64.0)
 
-const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Azul para Zona 1 (2 AP restantes)
-const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Laranja para Zona 2 (ou Zona 1 com 1 AP)
+const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Blue for Zone 1 (2 AP remaining)
+const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Orange for Zone 2 (or Zone 1 with 1 AP)
 const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## Base branca para o fill (será colorida no draw)
 
 
@@ -135,7 +135,7 @@ func build_path_to(target: Vector2i) -> Array[Vector2i]:
 
 func _get_fill_alpha(cell: Vector2i) -> float:
 	var dist := absi(cell.x - origin_cell.x) + absi(cell.y - origin_cell.y)
-	## Aumenta 0.05 (5%) a cada 1 tile de distância, após o primeiro tile.
+	## Increases by 0.05 (5%) per tile of distance, after the first tile.
 	return clampf(float(dist - 1) * 0.05, 0.0, 0.40)
 
 
@@ -150,8 +150,8 @@ func _draw() -> void:
 		if get_ap_cost(cell) <= _highlighted_ap:
 			target_cells.append(cell)
 
-	## Determinar cor do perímetro:
-	## Zona 1 fica laranja quando só resta 1 AP (já gastou 1)
+	## Determine the perimeter color:
+	## Zone 1 turns orange when only 1 AP remains (already spent 1)
 	var line_color: Color
 	if _highlighted_ap == 2:
 		line_color = ORANGE_LINE

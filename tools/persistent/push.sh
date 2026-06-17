@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Push - $(date +%Y-%m-%d)"
+TAG="Alpha BIG BUG - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

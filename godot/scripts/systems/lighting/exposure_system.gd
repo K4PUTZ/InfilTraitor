@@ -237,6 +237,20 @@ func rebuild_from_results(results: Array) -> void:
 	# Phase 3: Detect OCCLUDED_VOID (sealed, unlit niches)
 	_detect_occluded_void()
 
+## Cells currently classified at a given exposure level (for world rendering).
+func get_cells_by_exposure(level: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for cell in _exposure_grid:
+		if _exposure_grid[cell] == level:
+			out.append(cell)
+	return out
+
+func get_shadow_cells() -> Array[Vector2i]:
+	return get_cells_by_exposure(SHADOW)
+
+func get_penumbra_cells() -> Array[Vector2i]:
+	return get_cells_by_exposure(PENUMBRA)
+
 ## Determine stability classification for a light source (LIGHT-FIX-04)
 func _light_stability(light) -> String:
 	if light == null:

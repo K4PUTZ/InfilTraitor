@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**51 scripts · 9616 lines total** (under `godot/scripts/`)
+**51 scripts · 9653 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -719,7 +719,7 @@ extends `Node2D` · 43 lines
 
 ### `exposure_system.gd`
 
-`class_name ExposureSystem` · extends `Node` · 539 lines
+`class_name ExposureSystem` · extends `Node` · 553 lines
 
 `godot/scripts/systems/lighting/exposure_system.gd`
 
@@ -753,6 +753,9 @@ extends `Node2D` · 43 lines
 - `func set_structural_data(cells: Dictionary, edges: Dictionary) -> void:`
 - `func rebuild_from_shadow_result(result) -> void:`
 - `func rebuild_from_results(results: Array) -> void:`
+- `func get_cells_by_exposure(level: int) -> Array[Vector2i]:`
+- `func get_shadow_cells() -> Array[Vector2i]:`
+- `func get_penumbra_cells() -> Array[Vector2i]:`
 - `func get_visibility_class(cell: Vector2i) -> int:`
 - `func is_hidden(cell: Vector2i) -> bool:`
 - `func get_exposure_label(cell: Vector2i) -> String:`
@@ -1214,7 +1217,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1698 lines
+extends `Node2D` · 1721 lines
 
 `godot/scripts/world/room.gd`
 

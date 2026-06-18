@@ -540,7 +540,12 @@ fade machine.
   omni + overhead); legacy `height` float reconciled; directional angle rotates with
   perspective. Cone-gating acceptance tests pass; playground has a demo cone spot.
   Unlocks the "not restrictive" branch — sun rays / spots / fire / candles.
-- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or shadow/ceiling tuning.
+- ✅ **Shadows are world-visible** (`_tile_shadow` ← `ExposureSystem`): geometric floor
+  shadows now render always-on (multiply-blend), not only in LIGHT/HEAT vision — shadows
+  are real-world elements. Ceiling lamp lift raised ~0.75 storey. Shadow tone/length
+  still open for tuning; true "5th-floor" verticality needs taller storeys (pair with
+  view occlusion so taller walls don't hide the interior).
+- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or shadow tuning.
 
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.

@@ -273,6 +273,9 @@ func _ready() -> void:
 	
 	## Connect LightingController signal to VisionController for overlay updates
 	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
+	## Geometric floor shadows are real-world elements → repaint the always-on
+	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
+	_lighting_controller.lighting_rebuilt.connect(_repaint_world_shadows)
 	
 	## MODULARIZE-02: Initialize HudController (after nodes ready)
 	_hud_controller = HudControllerClass.new()
@@ -396,6 +399,9 @@ func _ready() -> void:
 	_tile_game.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
 	_tile_game.setup(floor_layer, VISUAL_GRID_OFFSET)
 
+	## Paint the initial always-on world shadows from the geometric exposure.
+	_repaint_world_shadows()
+
 	## M2-14 Quickfix: Z-index ordering — floor(0) < shadow(1) < fog(2) < structures(3) < sprites(4+)
 	## Ensure fog_of_war is properly layered above shadow overlay
 	fog_of_war.z_index = 2
@@ -411,7 +417,10 @@ func _ready() -> void:
 	add_child(_ceiling_overlay)
 	var ceil_floors: int = int(_base_layout.get("max_floors", 1))
 	_ceiling_overlay.z_index = WALL_BASE_Z_INDEX + ceil_floors + 1
-	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, WALL_FLOOR_STEP_PX * float(ceil_floors))
+	## Lift to ceiling height: top of the wall stack + ~0.75 storey so fixtures read
+	## as mounted overhead. True "5th-floor" verticality needs taller storeys (pairs
+	## with the view-occlusion slice, else taller walls hide the interior).
+	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, WALL_FLOOR_STEP_PX * (float(ceil_floors) + 0.75))
 	_ceiling_overlay.set_lights(_current_light_sources)
 
 	## Dev 03: Create hover label for tile coordinates
@@ -633,6 +642,20 @@ func _draw_spawn_marker() -> void:
 		PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
 		Color(0.22, 0.22, 0.22, 0.80), 2.0
 	)
+
+## Paint the always-on world shadow layer from the geometric exposure result.
+## Floor shadows are real-world elements (always visible), not a debug overlay:
+## the multiply-blend `_tile_shadow` darkens shadowed floor under every vision mode.
+func _repaint_world_shadows() -> void:
+	if _tile_shadow == null:
+		return
+	var exposure = _lighting_controller.get_exposure_system()
+	if exposure == null:
+		return
+	_tile_shadow.clear_all()
+	_tile_shadow.set_cells_named(exposure.get_shadow_cells(), "shadow_full", TileOverlayClass.PRIO_SHADOW)
+	_tile_shadow.set_cells_named(exposure.get_penumbra_cells(), "shadow_lite", TileOverlayClass.PRIO_SHADOW)
+
 
 func _draw_shadow_debug() -> void:
 	## M2-13: ShadowOverlay now handles the permanent visualization.

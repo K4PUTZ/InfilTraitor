@@ -136,13 +136,19 @@ func _refresh_shadow_projector_inputs() -> void:
 func _get_obstacle_heights() -> Dictionary:
 	var heights: Dictionary = {}
 	
-	# Read heights from tile semantics map; fallback to HEIGHT_HUMAN if not in semantics
+	# A blocked cell is a solid object → at least HUMAN height for shadow casting.
+	# Use a richer semantic height only when one is actually known (>0). Today
+	# blocked_cells carry no per-tile height (stored as bare `true`), so most
+	# resolve to HUMAN. TODO(VIS-01): derive real per-prop heights from tile type
+	# (column = tall, crate = human) so columns cast longer shadows than crates.
 	for cell in _room._blocked_cells.keys():
+		var h: int = TileSemanticsClass.HEIGHT_HUMAN
 		if _tile_semantics_map.has(cell):
-			heights[cell] = _tile_semantics_map[cell].height_class
-		else:
-			heights[cell] = TileSemanticsClass.HEIGHT_HUMAN  # Fallback
-	
+			var sem_h: int = _tile_semantics_map[cell].height_class
+			if sem_h > 0:
+				h = sem_h
+		heights[cell] = h
+
 	return heights
 
 

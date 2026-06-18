@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**50 scripts · 9536 lines total** (under `godot/scripts/`)
+**50 scripts · 9496 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -275,7 +275,7 @@ extends `Node` · 129 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 233 lines
+extends `Node` · 239 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -892,17 +892,16 @@ extends `Node2D` · 43 lines
 
 ### `shadow_projector.gd`
 
-`class_name ShadowProjector` · extends `Node` · 299 lines
+`class_name ShadowProjector` · extends `Node` · 253 lines
 
 `godot/scripts/systems/lighting/shadow_projector.gd`
 
-> ShadowProjector — Line-of-Sight based shadow projection engine Computes shadow topology for a single light source using LOS classification. Core rule: A cell in light range is fully_lit if LOS to it is clear, shadow if LOS is blocked by obstacle or wall edge. Features: - LOS-based occlusion (not quantized ray casting) - Wall edge checking via WallEdgeData - Cone/directional angle filtering - Penumbra pass for adjacent transitions - Auditable tile-by-tile results Does NOT: - blend shadows from multiple lights (caller does merge) - cache results (caller manages ShadowResult lifetime) - render visualization (that's ShadowOverlay's job) - perform soft/volumetric effects (future M2-15)
+> ShadowProjector — Geometric (tiered + penumbra) floor-shadow projection For each light, classifies reachable cells (clear LOS within radius) as fully_lit / dim, then casts a *geometric* shadow from each occluding object: the shadow falls in the grid direction away from the light, with a length derived from object-height tier × light-height factor × a mild distance stretch (deterministic, not random). The shadow tip softens to penumbra. Slice 1 (VIS-01): object shadows from blocked_cells. Wall-edge floor shadows and multi-tile silhouette width are future work. Does NOT: - blend shadows from multiple lights (ExposureSystem max-merges per cell) - cache results (caller manages ShadowResult lifetime) - render visualization (that's ShadowOverlay's job)
 
 **Constants / tuning**
 - `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
-- `OBSTACLE_HEIGHT_DEFAULT` = `1.5`
 
 **Public vars**
 - `var blocked_cells: Dictionary = {}`
@@ -910,7 +909,18 @@ extends `Node2D` · 43 lines
 - `var room_size: Vector2i = Vector2i.ZERO`
 - `var obstacle_heights: Dictionary = {}`
 - `var near_band_ratio: float = 0.65`
-- `var deep_shadow_radius: int = 2`
+- `var min_blocker_height: int = 1`
+- `var height_tier_length: Dictionary = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}`
+- `var light_height_factor: Dictionary = {0: 1.6, 1: 1.4, 2: 1.2, 3: 0.9, 4: 0.6}`
+- `var distance_stretch: float = 0.06`
+- `var max_shadow_length: int = 6`
+
+**Public API**
+- `func project_light(light):`
+- `func set_blocked_cells(cells: Dictionary) -> void:`
+- `func set_blocked_edges(edges: Dictionary) -> void:`
+- `func set_obstacle_heights(heights: Dictionary) -> void:`
+- `func set_room_size(size: Vector2i) -> void:`
 
 ---
 

@@ -354,11 +354,27 @@ Once agent is **detected** (not just visible):
 
 ### Shadow Projection Geometry
 
-When an obstacle blocks a light source, it casts a shadow **cone** in the direction away from the light:
+Implemented in `godot/scripts/systems/lighting/shadow_projector.gd` (VIS-01,
+geometric Slice 1). For each light, reachable cells (clear LOS within radius) are
+classified `fully_lit` / `dim`; then every occluding object casts a **geometric
+shadow** away from the light:
 
-$$\text{shadow\_length} = \frac{\text{obstacle\_height} \times (\text{light\_height} - \text{obstacle\_height})}{\text{distance}}$$
+```
+shadow_length = clamp(height_tier[object] × light_factor[light] × distance_stretch, 1, MAX)
+direction     = away from the light (grid space)
+tip           = penumbra (soft edge);  core = shadow
+```
 
-(Details: See M2-13 implementation document)
+Deterministic by design (not random): a higher light casts a shorter shadow, a
+taller object a longer one, with mild lengthening over distance. The tunables
+(`height_tier_length`, `light_height_factor`, `distance_stretch`,
+`max_shadow_length`) are `var` so they scale with difficulty tiers. Multiple
+lights merge in `ExposureSystem` via per-cell **max exposure (lit wins over
+shadow)**.
+
+> Earlier drafts specified a physical similar-triangles formula; the shipped model
+> is the **hybrid tiered + penumbra** one above (uniform, mobile-cheap). See the
+> VIS-01 milestone for the decision record.
 
 ### Baked Shadow System
 

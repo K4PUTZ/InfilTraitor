@@ -511,6 +511,26 @@ fade machine.
    populate maps (lamps, conduits, pipes, vents); defer gameplay hooks (security
    cameras as detectors, flicker → `temporal_overlay` shadow) to their own IDs.
 
+**Locked architecture decisions (2026-06-18):**
+- **Shadow model = hybrid (tiered + penumbra):** deterministic length
+  `= height_tier[object] × light_factor[light] × distance_stretch`, direction away
+  from the light, tip softens to penumbra. Not physical similar-triangles (kept
+  uniform / mobile-cheap, "not random").
+- **Light placement = tracks + anchors, with exceptions:** normal lights snap to
+  canonical `MapSpec` tracks (uniform shadows, clean merge); special lights
+  (sun / spot / fire) may be placed freely.
+
+**Progress:**
+- ✅ **Floor shadow projection — geometric Slice 1** (`shadow_projector.gd`):
+  replaced the LOS-occlusion classifier with geometric per-object casting; tunable
+  `height_tier_length` / `light_height_factor` / `distance_stretch`. Acceptance
+  tests pass (direction away from light; taller object & lower light → longer;
+  floor-height → none); playground smoke: 8 props → shadow=8, penumbra=2.
+  - Fix: blocked cells now default to HUMAN height for casting (were floor=0).
+  - Next refinements: per-prop height by tile type; lateral penumbra; multi-tile
+    silhouette width; wall-edge floor shadows.
+- ⏳ Next: **Slice 2 — `MapSpec` light tracks / anchors**.
+
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.
 - Cover-bearing walls remain perceivable even when cut (faded/stub, not gone).

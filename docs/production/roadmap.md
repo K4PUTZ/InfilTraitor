@@ -29,11 +29,11 @@ PHASE 2: Stealth Core Systems (M2.0–M2.12)    ✅ FUNCTIONAL
 ├─ Guard FSM & communication ✅
 └─ Audio detection ✅
 
-PHASE 3: Investor Demo                         🟢 READY
-├─ Functional AI ✅
-├─ Gradual detection ✅
-├─ Perception & shadow integration (next)
-├─ Game-feel tuning
+PHASE 3: Investor Demo                         🟡 IN PROGRESS
+├─ Provisional AI ⏸ (deferred until visuals done)
+├─ Visual system: wall occlusion + floor shadow projection ← NOW (VIS-01)
+├─ Ceiling / overhead layer (VIS-01)
+├─ AI tuning resumes after the visuals
 └─ → EXIT CRITERION: a fun, convincing stealth loop
 
 PHASE 4: Production Pass (Post-Investment)     ⏳ QUEUED
@@ -114,7 +114,7 @@ PHASE 8: Polish & Release                      ⏳ QUEUED
 - Functional AI with correct escalation ✅
 - Gradual visual detection implemented ✅
 - Functional audio detection ✅
-- Next: integration with spatial perception (LOS + lighting)
+- **Now: the visual system (VIS-01 — wall view occlusion + floor shadow projection).** Guard AI is provisional and deferred until the visuals are complete.
 
 **Estimate:** 3–5 weeks of focused (solo) development
 
@@ -237,13 +237,11 @@ Phase 1 (Prototype) ✅
     ↓
 Phase 2 (Stealth Core) ⚠️
     ↓
-AI-01 (Fix guard FSM) ← NOW
+VIS-01 (Visual system: wall occlusion + floor shadow projection) ← NOW
     ↓
-AI-02 (Detection tuning)
+AI track [DEFERRED until VIS-01]: AI-01 fix FSM → AI-02 tuning → AI-03 refactor
     ↓
 CONTENT-01 (Demo room polish)
-    ↓
-AI-03 (FSM refactor)
     ↓
 Phase 3 COMPLETE → Investor Demo
 

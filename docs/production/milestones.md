@@ -17,6 +17,18 @@ represent integration refinements, not critical bug fixes.
 
 ---
 
+## ⏸️ AI Track Deferred (2026-06-18)
+
+The current guard AI is **provisional / placeholder**. All AI refinement
+(AI-01, AI-02, AI-03) is **deferred until the visual system is complete** —
+wall **view occlusion** and **floor shadow projection** (VIS-01 + the LIGHT
+shadow rendering). Detection tuning depends on reading shadows and cover *on
+screen*, so it cannot be calibrated before the visuals exist.
+
+**VIS-01 is the current priority. The AI track resumes only after it.**
+
+---
+
 ## Completed Milestones
 
 ### ✅ M1.0 — Prototype Foundation
@@ -391,7 +403,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ AI-02 — Detection Tuning & Game Feel
+### ⏸️ AI-02 — Detection Tuning & Game Feel — DEFERRED (provisional AI; resumes after VIS-01)
 **Objective:** Calibrate the detection parameters so that stealth is genuinely tense and fair.
 
 **Dependencies:** AI-01
@@ -414,7 +426,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ CONTENT-01 — Demo Room Polish
+### ⏸️ CONTENT-01 — Demo Room Polish — DEFERRED (gated by the AI track + VIS-01)
 **Objective:** Create a demo room that showcases all systems at once.
 
 **Dependencies:** AI-02
@@ -437,7 +449,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ AI-03 — FSM Architecture Refactor
+### ⏸️ AI-03 — FSM Architecture Refactor — DEFERRED (provisional AI; resumes after VIS-01)
 **Objective:** Refactor GuardEnemy's match/case to a Strategy pattern before adding combat.
 
 **Dependencies:** AI-01 (guards working), before GAME-01
@@ -777,13 +789,10 @@ fade machine.
 
 | Milestone | Blocker | Status | Mitigation |
 |-----------|---------|--------|-----------|
-| **AI-01** | `choose_next_cell()` does not exist | 🚨 ACTIVE | Implement/rename this week |
-| **AI-01** | `tick_state()` does not exist | 🚨 ACTIVE | Implement this week |
-| **AI-01** | Detection meter not connected | 🚨 ACTIVE | Connect TicSystem → guard |
-| AI-02 | AI-01 complete | Waiting on AI-01 | — |
-| CONTENT-01 | AI-02 complete | Waiting on AI-02 | — |
-| AI-03 | AI-01 complete | Waiting on AI-01 | — |
-| GAME-01 (Combat) | AI-03 complete | Waiting on refactor | Do not start before the refactor |
+| **VIS-01** | — | 🟢 ACTIVE PRIORITY | Build the visual system first (wall occlusion + floor shadow projection) |
+| AI-01 / AI-02 / AI-03 | Visual system (VIS-01) | ⏸ DEFERRED | Provisional AI; resumes only after the visual system is complete |
+| CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Demo room showcases AI + visuals; gated by both |
+| GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
 | M6.0 (Audio) | Audio assets | At risk | Hire externally if needed |
@@ -792,11 +801,10 @@ fade machine.
 
 ## Next Steps
 
-1. **Now (this week):** AI-01 — Fix guard FSM (guards must detect and react)
-2. **Week 2:** AI-02 — Detection tuning for good game feel
-3. **Weeks 3–4:** CONTENT-01 — Polish the demo room for presentation
-4. **Weeks 4–5:** AI-03 — Refactor the FSM before adding combat
-5. **Post-investment:** Production pass (audio, animations, UI, multiple rooms)
+1. **Now:** VIS-01 — Overhead visual engine: wall view occlusion + floor shadow projection
+2. **After VIS-01:** AI track resumes — AI-01 (fix FSM), AI-02 (tuning), AI-03 (refactor). Provisional until then.
+3. **Then:** CONTENT-01 — Demo room polish (showcases tuned AI + visuals)
+4. **Post-investment:** Production pass (audio, animations, UI, multiple rooms)
 
 See: `docs/production/roadmap.md` for the macro view of the phases
 See: `docs/production/technical_debt.md` for blocker details

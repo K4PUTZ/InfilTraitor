@@ -33,9 +33,9 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 
 ## 🎯 Current Priority
 
-**PRIMARY FOCUS:** Integrating perception (lighting/LOS) with the AI (auditory + visual checks)
-**SECONDARY FOCUS:** Game-feel refinement (tuning detection curves)
-**TERTIARY:** Demo polish and investor presentation
+**PRIMARY FOCUS:** Visual system — wall **view occlusion** + **floor shadow projection** (VIS-01)
+**SECONDARY FOCUS:** Ceiling / overhead layer (VIS-01 stages)
+**DEFERRED:** All guard AI work (provisional) — resumes only after the visual system is complete
 
 ---
 
@@ -46,7 +46,7 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 ✅ Guards detect and react to the agent (functional)
 ⏳ Objectives, combat, overwatch/gadgets (post-demo)
 
-### AI & Behavior (A-xx) — 75% Alpha
+### AI & Behavior (A-xx) — ⏸ PROVISIONAL · deferred until the visual system is done
 ✅ Guards detect and react to the agent (functional)
 ✅ FSM with 5 states and timer-based de-escalation
 ✅ Visual detection with gradual escalation (thresholds 0.30/0.60/1.00)
@@ -84,25 +84,20 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 
 ## ⏭️ Next Immediate Milestones
 
-### This Week — Fix Blockers (AI-01)
-🔴 **Fix Guard FSM Methods**
-- Implement/rename `choose_next_cell()` → `pick_next_patrol_cell()`
-- Implement `tick_state()` with real transition logic
-- Connect TicSystem → detection meter → state transitions
-- Synchronize state multipliers
-- **Criterion:** A guard facing the player should escalate PATROL → ALERT in 2–3 turns
+### Now — Visual System (VIS-01)
+🟢 **Build the overhead visual engine + view occlusion**
+- Wall **view occlusion** (keep the agent readable under walls/ceiling)
+- **Floor shadow projection** rendering
+- Ceiling / 5th-floor overhead layer
+- **Criterion:** the agent is never lost under geometry; shadows read on the floor
 
-### Next 2 Weeks — Tuning & Feel (AI-02)
-⏳ **Detection Curve Validation**
-- Internal playtest with functional guards
-- Adjust the detection curve (distance, shadow, posture)
-- Target: stealth should be possible but not trivial
+### Deferred — Guard AI (provisional)
+⏸ **All AI work parked until the visual system is complete**
+- AI-01 (fix FSM), AI-02 (detection tuning), AI-03 (FSM refactor)
+- Reason: detection tuning depends on reading shadows/cover on screen — needs the visuals first
 
-### Weeks 3–4 — Demo Room Polish (CONTENT-01)
-⏳ **Polish the demo room**
-- A layout that showcases the systems (shadows, noise, multiple guards)
-- Guards with interesting patrols
-- Enough visual feedback for the investor to understand what is happening
+### After the visuals — Demo Room Polish (CONTENT-01)
+⏳ Showcases tuned guards + the finished visuals
 
 ---
 
@@ -110,7 +105,7 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 
 | Risk | Status | Mitigation |
 |------|--------|-----------|
-| Non-functional guards (stealth useless) | 🚨 ACTIVE | Immediate fix (this week) |
+| Non-functional guards (stealth useless) | ⏸ Deferred | Provisional AI acceptable until the visual system is done |
 | Docs out of sync with code | 🚨 ACTIVE | Update in progress |
 | Mobile readability | Pending | Test on a real device post-demo |
 | Stealth difficulty balance | Pending | Playtest after the fix |

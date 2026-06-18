@@ -2,6 +2,14 @@
 
 > **Semantic taxonomy of illumination, visibility, and tactical stealth. Gameplay-first design with discrete, auditable visibility classes.**
 
+> ⚠️ **Current behavior (supersedes the hardcoded "test lights" examples below).** Lights are now
+> **map-driven**: each map's `MapSpec.lights` → `layout.light_sources` (rotated by perspective) →
+> `LightingController._setup_lights_from_layout()` registers one omni `LightSource` per entry. The
+> pipeline lives in `controllers/lighting_controller.gd` (not `room.gd`); `rebuild_all()` re-derives
+> lights + tile semantics + shadow projector inputs + exposure and emits `lighting_rebuilt`, and is
+> called on perspective change. The `_setup_debug_lights()` / hardcoded-test-light snippets in this
+> doc are **historical** (kept as design context). See `docs/ARCHITECTURE.md §8` for current behavior.
+
 **Related Documentation:**
 - [Lighting Runtime Pipeline & Invalidation Rules](lighting_runtime_pipeline.md) — Official runtime flow, ownership rules, rebuild semantics (L-ARCH-01)
 - [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures block light and LOS (L-ARCH-02)
@@ -801,6 +809,9 @@ func _apply_dev_vision() -> void:
 ```
 
 ### Test Lights
+
+> **Historical.** The hardcoded test lights below were the original L-IMP-01 validation. They are
+> **retired** — lights now come from `MapSpec.lights` (see the banner at the top of this doc).
 
 Three hardcoded test lights validate the architecture:
 

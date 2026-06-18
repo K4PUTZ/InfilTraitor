@@ -643,6 +643,11 @@ func _draw_spawn_marker() -> void:
 		Color(0.22, 0.22, 0.22, 0.80), 2.0
 	)
 
+## Artistic shadow spill: a full-shadow tile bleeds a soft 2-tile halo onto its
+## neighbours (ring 1 = 40% opacity, ring 2 = 15%). Cosmetic only — never feeds
+## gameplay, so it has no hiding value (see _repaint_world_shadows / tile_overlay).
+const SHADOW_SPILL_RADIUS := 2
+
 ## Paint the always-on world shadow layer from the geometric exposure result.
 ## Floor shadows are real-world elements (always visible), not a debug overlay:
 ## the multiply-blend `_tile_shadow` darkens shadowed floor under every vision mode.
@@ -653,8 +658,49 @@ func _repaint_world_shadows() -> void:
 	if exposure == null:
 		return
 	_tile_shadow.clear_all()
-	_tile_shadow.set_cells_named(exposure.get_shadow_cells(), "shadow_full", TileOverlayClass.PRIO_SHADOW)
-	_tile_shadow.set_cells_named(exposure.get_penumbra_cells(), "shadow_lite", TileOverlayClass.PRIO_SHADOW)
+	var full_cells: Array[Vector2i] = exposure.get_shadow_cells()
+	var penumbra_cells: Array[Vector2i] = exposure.get_penumbra_cells()
+	## Cosmetic halo first (lowest visual weight), real shadow tiles on top so the
+	## geometric silhouette stays crisp where it matters.
+	var spill: Dictionary = _compute_shadow_spill(full_cells, penumbra_cells)
+	_tile_shadow.set_cells_named(spill["far"], "shadow_spill_far", TileOverlayClass.PRIO_SHADOW)
+	_tile_shadow.set_cells_named(spill["near"], "shadow_spill_near", TileOverlayClass.PRIO_SHADOW)
+	_tile_shadow.set_cells_named(penumbra_cells, "shadow_lite", TileOverlayClass.PRIO_SHADOW)
+	_tile_shadow.set_cells_named(full_cells, "shadow_full", TileOverlayClass.PRIO_SHADOW)
+
+
+## Build the cosmetic spill halo around the FULL-shadow tiles.
+## Returns {"near": Array[Vector2i] (Chebyshev dist 1), "far": Array[Vector2i] (dist 2)}.
+## Cells already shadowed (full or penumbra) are excluded so the halo never lightens
+## a real shadow, and everything is clamped to the room bounds. Purely visual.
+func _compute_shadow_spill(full_cells: Array[Vector2i], penumbra_cells: Array[Vector2i]) -> Dictionary:
+	var occupied: Dictionary = {}  ## cells that must NOT receive spill
+	for c: Vector2i in full_cells:
+		occupied[c] = true
+	for c: Vector2i in penumbra_cells:
+		occupied[c] = true
+	var nearest: Dictionary = {}  ## Vector2i → smallest Chebyshev distance to a full cell
+	for c: Vector2i in full_cells:
+		for dy in range(-SHADOW_SPILL_RADIUS, SHADOW_SPILL_RADIUS + 1):
+			for dx in range(-SHADOW_SPILL_RADIUS, SHADOW_SPILL_RADIUS + 1):
+				if dx == 0 and dy == 0:
+					continue
+				var cell := c + Vector2i(dx, dy)
+				if occupied.has(cell):
+					continue
+				if cell.x < 0 or cell.y < 0 or cell.x >= _room_size.x or cell.y >= _room_size.y:
+					continue
+				var d := maxi(absi(dx), absi(dy))  ## Chebyshev ring (1 or 2)
+				if not nearest.has(cell) or d < nearest[cell]:
+					nearest[cell] = d
+	var near: Array[Vector2i] = []
+	var far: Array[Vector2i] = []
+	for cell: Vector2i in nearest:
+		if nearest[cell] == 1:
+			near.append(cell)
+		else:
+			far.append(cell)
+	return {"near": near, "far": far}
 
 
 func _draw_shadow_debug() -> void:

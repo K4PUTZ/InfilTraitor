@@ -44,7 +44,8 @@ All overlays are instances of `TileOverlayClass` with independent material stack
 - Z-index: 1 (below noise/detection)
 - Blend mode: `BLEND_MODE_MUL` (preserves texture detail with color tint)
 - Priority: `PRIO_SHADOW` (1)
-- Updated by: `_bake_shadow_tiles()` per frame
+- Updated by: `_repaint_world_shadows()` on each lighting rebuild (perspective
+  rotation, light changes) — always-on world shadows from the `ExposureSystem`
 
 **2. Game Visuals (`room.gd` — `_tile_game`)**
 - Z-index: 3 (above noise, below structures)
@@ -72,15 +73,54 @@ const PRIO_NAV      := 4    ## Navigation — exits, objectives
 const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
 ```
 
+### ⚠️ Multiply blend: intensity lives in RGB, NOT alpha
+
+> **This is the single most important rule for the shadow palette.**
+
+Godot's `BLEND_MODE_MUL` compiles to the blend func `(GL_DST_COLOR, GL_ZERO)`.
+The on-screen result is therefore:
+
+```
+out.rgb = floor.rgb × color.rgb          # source ALPHA is discarded
+```
+
+The source **alpha has no effect** on a multiply-blended tile. Consequences:
+
+- **Shadow intensity must be encoded in the RGB value.** Lighter RGB = less
+  darkening; pure white `(1,1,1)` = no effect; `(0.5,0.5,0.5)` keeps ~50% floor
+  brightness.
+- **Do NOT vary alpha to grade shadows.** If you keep RGB constant and only
+  change alpha (the intuitive Photoshop reflex), every band multiplies the floor
+  by the *same* factor → all shadows look identically dark with a hard, "binary"
+  edge. This exact mistake produced the flat shadow blob early in the spill work.
+- The only role alpha plays here is the `_draw()` skip test (`color.a <= 0.01`
+  is treated as "no overlay", e.g. the `lit` entry). Shadow entries use `a = 1.0`.
+- **MIX-blend palettes (detect / exit / spawn / objective) DO honour alpha** —
+  those are authored with real alpha values. The RGB-only rule applies *only* to
+  the multiply-blended shadow entries.
+
 ### Color Palettes
 
-**Shadow System (Multiply, Alpha 0.80)**
+**Shadow System (Multiply — intensity in RGB, `a = 1.0`)**
 
-| Palette Key | RGB | Purpose | Visual |
-|-------------|-----|---------|--------|
-| `shadow_full` | (0.1, 0.2, 0.4) | mult ≤ 0.35 | Dark blue, opaque shadows |
-| `shadow_mid` | (0.3, 0.4, 0.6) | 0.35 < mult ≤ 0.65 | Medium blue, half shadows |
-| `shadow_lite` | (0.5, 0.6, 0.8) | mult > 0.65 | Light blue, faint shadows |
+| Palette Key | RGB | Floor keeps | Purpose |
+|-------------|-----|-------------|---------|
+| `shadow_full` | (0.48, 0.48, 0.58) | ~48% | Full geometric shadow (core) |
+| `shadow_mid` | (0.60, 0.60, 0.68) | ~60% | Mid shadow (legacy mapping) |
+| `shadow_lite` | (0.70, 0.70, 0.78) | ~70% | Penumbra (exposure border) |
+| `shadow_spill_near` | (0.82, 0.82, 0.87) | ~82% | Spill ring 1 (≤1 tile, cosmetic) |
+| `shadow_spill_far` | (0.92, 0.92, 0.95) | ~92% | Spill ring 2 (2 tiles, cosmetic) |
+
+Cool-blue tint throughout; the descending RGB ladder is what produces a smooth
+gradient instead of a flat band. Tune brightness by moving the RGB values
+(higher = lighter), never the alpha.
+
+**Shadow spill (artistic halo)** — `_repaint_world_shadows()` paints a 2-tile
+halo around every FULL-shadow cell via `_compute_shadow_spill()` (Chebyshev
+rings, `SHADOW_SPILL_RADIUS = 2`). It is **purely cosmetic**: detection reads the
+`ExposureSystem` grid, never this overlay, so the spill softens the silhouette
+without granting any hiding value. Cells already shadowed (full/penumbra) are
+excluded so the halo never lightens a real shadow.
 
 **Detection System (Mix, Full Spectrum)**
 

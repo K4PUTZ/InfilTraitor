@@ -28,14 +28,29 @@ const PRIO_MOVEMENT := 3    ## Movement/pathfinding preview
 const PRIO_NAV      := 4    ## Navigation — exits, objectives
 const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
 
-## Color palette (multiply, alpha=0.80 baked in)
-## Pure white (1,1,1,1) = no visual effect; black (0,0,0,x) = fully black tile.
+## Color palette.
+## IMPORTANT — shadows render with BLEND_MODE_MUL, whose blend func is
+## (GL_DST_COLOR, GL_ZERO): the result is floor.rgb × color.rgb and the source
+## ALPHA IS IGNORED. So shadow INTENSITY must live in the RGB value, never in
+## alpha — lighter RGB = less darkening; pure white (1,1,1) = no effect.
+## (Varying alpha while keeping RGB equal makes every band darken identically →
+## the flat "binary" multiply look.) Mix-blend palettes below (detect/exit/etc.)
+## DO honour alpha — those keep their alpha as authored.
 const PALETTE: Dictionary = {
-	## Shadows — darken with a cool-blue tone (mapped by _shadow_tiles float)
-	"shadow_full":   Color(0.18, 0.18, 0.30, 0.80),  ## mult ≤ 0.35
-	"shadow_mid":    Color(0.45, 0.45, 0.58, 0.80),  ## 0.35 < mult < 0.55
-	"shadow_lite":   Color(0.70, 0.70, 0.82, 0.80),  ## mult ≥ 0.55, <1.0
-	"lit":           Color(1.00, 1.00, 1.00, 0.00),  ## mult = 1.0 (no overlay)
+	## Shadows — cool-blue tint, intensity encoded as the RGB multiply factor.
+	## Each step keeps a different fraction of floor brightness → smooth gradient,
+	## floor texture reads through at every level.
+	"shadow_full":   Color(0.48, 0.48, 0.58, 1.0),  ## darkest — keeps ~48% brightness
+	"shadow_mid":    Color(0.60, 0.60, 0.68, 1.0),  ## keeps ~60%
+	"shadow_lite":   Color(0.70, 0.70, 0.78, 1.0),  ## penumbra — keeps ~70%
+	"lit":           Color(1.00, 1.00, 1.00, 0.00),  ## no overlay (skipped: alpha≈0)
+
+	## Artistic shadow spill — soft cosmetic halo around full-shadow tiles.
+	## Lighter RGB than shadow_full → a gentle gradient toward lit, not a second dark
+	## band. PURELY VISUAL: detection reads the exposure grid, never this overlay —
+	## so the spill softens the silhouette without offering any hiding value.
+	"shadow_spill_near": Color(0.82, 0.82, 0.87, 1.0),  ## ring 1 (≤1 tile) — keeps ~82%
+	"shadow_spill_far":  Color(0.92, 0.92, 0.95, 1.0),  ## ring 2 (2 tiles) — keeps ~92%
 
 	## Detection cone — 5 probability bands
 	"detect_0":      Color(0.30, 1.00, 0.30, 0.70),  ## 0.0–0.2   light green

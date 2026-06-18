@@ -551,7 +551,16 @@ fade machine.
   are real-world elements. Ceiling lamp lift raised ~0.75 storey. Shadow tone/length
   still open for tuning; true "5th-floor" verticality needs taller storeys (pair with
   view occlusion so taller walls don't hide the interior).
-- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or shadow tuning.
+- ✅ **Spill Foundation** (`_repaint_world_shadows` / `_compute_shadow_spill` + palette):
+  each FULL-shadow cell now bleeds a soft cosmetic 2-tile halo (`SHADOW_SPILL_RADIUS`,
+  Chebyshev rings) — purely visual (detection reads the exposure grid, never the overlay),
+  so it softens the silhouette with zero hiding value. **Key fix:** `BLEND_MODE_MUL`
+  discards source alpha (`out.rgb = floor.rgb × color.rgb`), so the shadow ramp now
+  encodes intensity in **RGB** (0.48 → 0.70 → 0.82 → 0.92), not alpha — eliminating the
+  flat "binary" multiply look. Rule documented in `docs/systems/rendering.md`. Brightness
+  knobs are the RGB values (palette) + `SHADOW_SPILL_RADIUS` (room.gd).
+- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or floor tile
+  variety (#3, awaiting art direction) so the multiply gradient has texture to reveal.
 
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.

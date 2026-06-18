@@ -529,7 +529,10 @@ fade machine.
   - Fix: blocked cells now default to HUMAN height for casting (were floor=0).
   - Next refinements: per-prop height by tile type; lateral penumbra; multi-tile
     silhouette width; wall-edge floor shadows.
-- ⏳ Next: **Slice 2 — `MapSpec` light tracks / anchors**.
+- ✅ **Slice 2 — `MapSpec` light tracks / anchors** (`map_compiler.gd`): lights snap
+  to canonical track cells via `{track, slot}`; special lights stay free via `{x, y}`.
+  Playground migrated to a "central" rail — resolves to identical cells (no regression).
+- ⏳ Next: **Slice 3 — ceiling light render (`CeilingPropLayer`, placeholder sprite)**.
 
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.

@@ -18,7 +18,8 @@ extends RefCounted
 ##     "rooms":         Array[{"rect": Rect2i, "doors": Array}],  # optional inner rooms
 ##     "dividers":      Array[{"cells": Array[Vector2i]}],        # internal walls w/ gates
 ##     "props":         Array[{"cell": Vector2i, "tile": String}],# crates / pillars
-##     "lights":        Array[{"x","y","height","radius","intensity"}],
+##     "light_tracks":  Array[{"id": String, "cells": Array[Vector2i]}], # rails (internal coords)
+##     "lights":        Array[{"x","y" | "track","slot", "height","radius","intensity"}],
 ##     "patrols":       Array[Array[Vector2i]],
 ##   }
 ##
@@ -127,11 +128,30 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	for ap: Dictionary in access_inner:
 		exit_cells.append(Vector2i(ap["cell"]) + offset)
 
+	## Light tracks ("rails"): canonical cells (internal coords) a light snaps to
+	## via {"track": id, "slot": i} for uniform shadows. Special lights stay free
+	## via {"x","y"}. Buffer is applied here only (never in the map definition).
+	var light_tracks: Dictionary = {}
+	for track: Dictionary in spec.get("light_tracks", []):
+		light_tracks[String(track.get("id", ""))] = track.get("cells", [])
+
 	var light_sources: Array[Dictionary] = []
 	for light: Dictionary in spec.get("lights", []):
 		var l := light.duplicate()
-		l["x"] = int(light.get("x", 0)) + buffer
-		l["y"] = int(light.get("y", 0)) + buffer
+		if light.has("track"):
+			var cells: Array = light_tracks.get(String(light["track"]), [])
+			if cells.is_empty():
+				push_warning("MapCompiler: light references unknown/empty track '%s'" % light["track"])
+				continue
+			var slot: int = clampi(int(light.get("slot", 0)), 0, cells.size() - 1)
+			var src: Vector2i = Vector2i(cells[slot])
+			l["x"] = src.x + buffer
+			l["y"] = src.y + buffer
+			l.erase("track")
+			l.erase("slot")
+		else:
+			l["x"] = int(light.get("x", 0)) + buffer
+			l["y"] = int(light.get("y", 0)) + buffer
 		light_sources.append(l)
 
 	var enemy_defs := _build_enemy_defs(spec.get("patrols", []), offset, agent_start_raw, blocked_map, map_size)

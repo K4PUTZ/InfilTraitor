@@ -54,9 +54,13 @@ static func spec() -> Dictionary:
 			{"cell": Vector2i(8, 30),  "tile": "crate_NW"},
 			{"cell": Vector2i(10, 30), "tile": "crate_NE"},
 		],
+		## Central vertical rail — lights snap to slots for uniform shadows.
+		"light_tracks": [
+			{"id": "central", "cells": [Vector2i(9, 6), Vector2i(9, 17), Vector2i(9, 29)]},
+		],
 		"lights": [
-			{"x": 9, "y": 6,  "height": 5.0, "radius": 8, "intensity": 0.90},  ## north
-			{"x": 9, "y": 29, "height": 5.0, "radius": 8, "intensity": 0.90},  ## south
+			{"track": "central", "slot": 0, "height": 5.0, "radius": 8, "intensity": 0.90},  ## north
+			{"track": "central", "slot": 2, "height": 5.0, "radius": 8, "intensity": 0.90},  ## south
 		],
 		"patrols": [
 			## North room — E-W

@@ -137,14 +137,21 @@ The AI system is **functional but simplified** relative to the design intent.
 
 ---
 
-### Lighting & Shadows (85% — Semantic Alpha, Implementation Ready)
+### Lighting & Shadows (Implemented — geometric projection + world-rendered)
 
-✅ **Functional (Runtime):**
-- Shadow-cone projection with correct geometry
-- 8 quantized directions
-- Baked layers (ShadowFullLayer, ShadowPartialLayer)
-- Multipliers applied to detection (DIRECT 0.30×, PENUMBRA 0.55×)
-- Shadows visible even under FOW
+✅ **Functional (Runtime) — VIS-01 shadow/lighting foundation:**
+- **Geometric shadow projection** (`shadow_projector.gd`): per-object casting,
+  length = object-height tier × light-height factor × distance, tip → penumbra
+  (hybrid tiered + penumbra, deterministic — acceptance-tested)
+- **Always-on world shadows**: geometric floor shadows render via the multiply-blend
+  `_tile_shadow` under every vision mode — shadows are real-world elements, not debug-only
+- **Map-driven lights** (`MapSpec.lights` + `light_tracks`): types omni / cone /
+  directional, `height_class`, direction/cone, flicker — authored per map; normal
+  lights snap to canonical "rails", special lights (sun / spot / fire) are free
+- **Ceiling render**: lights drawn as overhead placeholders above the wall stack
+- Multipliers applied to detection (SHADOW 0.30×, PENUMBRA 0.55×); exposure classes
+  merged per-cell (lit wins over shadow)
+- Perspective-coherent: shadows, lights, ceiling re-derive on rotation
 
 ✅ **Semantic Foundation (L-DOC Series — Completed 2026-06-14):**
 - **L-DOC-01:** Lighting Taxonomy & Semantic Visibility Classes
@@ -160,14 +167,16 @@ The AI system is **functional but simplified** relative to the design intent.
   - Runtime philosophy: grid-based, deterministic, low-overhead, gameplay-first
 - **L-DOC-03:** Shadow System Calibration & Visual Polish (planned M2-14)
 
-⚠️ **Next Phases:**
-- M2-13: Geometric shadow projection & baking (implementation spec)
-- M2-14: Shadow system calibration & visual polish (L-DOC-03)
-- M2-15: Advanced overlays & tactical visualization (movement, noise, markers)
+⚠️ **Next (tuning + occlusion):**
+- Shadow tone/length tuning; per-prop heights (column TALL vs crate HUMAN)
+- Lateral penumbra; multi-tile silhouette width; wall-edge floor shadows
+- View occlusion (wall cutaway) — VIS-01 Slice 4
+- Taller storeys for "5th-floor" verticality (pair with view occlusion)
 
-⚠️ **Limitations:**
-- Light sources hardcoded (3 per room, fixed configuration)
-- Not customizable per room without editing code
+✅ **Resolved:**
+- Lights are no longer hardcoded — authored per map via `MapSpec` (omni/cone/
+  directional, tracks + free special lights)
+- Geometric projection (was M2-13 "next phase") is implemented and world-rendered
 
 ---
 

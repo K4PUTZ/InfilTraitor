@@ -521,6 +521,12 @@ fade machine.
   (sun / spot / fire) may be placed freely.
 
 **Progress:**
+
+> **Baked Shadows Foundation (2026-06-18):** the shadow/lighting half of the visual
+> gate is in place — geometric projection, always-on world-rendered floor shadows,
+> map-driven lights (types + rails + special), and ceiling placeholders. Remaining
+> for VIS-01: **view occlusion (wall cutaway)** + shadow tuning + verticality.
+
 - ✅ **Floor shadow projection — geometric Slice 1** (`shadow_projector.gd`):
   replaced the LOS-occlusion classifier with geometric per-object casting; tunable
   `height_tier_length` / `light_height_factor` / `distance_stretch`. Acceptance

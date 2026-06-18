@@ -84,7 +84,7 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 
 ## ⏭️ Next Immediate Milestones
 
-### This Week — Fix Blockers (ID-01)
+### This Week — Fix Blockers (AI-01)
 🔴 **Fix Guard FSM Methods**
 - Implement/rename `choose_next_cell()` → `pick_next_patrol_cell()`
 - Implement `tick_state()` with real transition logic
@@ -92,13 +92,13 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 - Synchronize state multipliers
 - **Criterion:** A guard facing the player should escalate PATROL → ALERT in 2–3 turns
 
-### Next 2 Weeks — Tuning & Feel (ID-02)
+### Next 2 Weeks — Tuning & Feel (AI-02)
 ⏳ **Detection Curve Validation**
 - Internal playtest with functional guards
 - Adjust the detection curve (distance, shadow, posture)
 - Target: stealth should be possible but not trivial
 
-### Weeks 3–4 — Demo Room Polish (ID-03)
+### Weeks 3–4 — Demo Room Polish (CONTENT-01)
 ⏳ **Polish the demo room**
 - A layout that showcases the systems (shadows, noise, multiple guards)
 - Guards with interesting patrols
@@ -114,7 +114,7 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 | Docs out of sync with code | 🚨 ACTIVE | Update in progress |
 | Mobile readability | Pending | Test on a real device post-demo |
 | Stealth difficulty balance | Pending | Playtest after the fix |
-| FSM scaling pre-M3.0 | Active | Refactor before adding combat |
+| FSM scaling pre-GAME-01 | Active | Refactor before adding combat |
 | Overlay performance | Active | Profiling before mobile |
 
 ---
@@ -150,16 +150,16 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 ### In-Progress Milestones: 1 🟡
 
 **AI & Behavior (A-xx)**
-- ID-01: Guard FSM Fix (this week) 🔴
+- AI-01: Guard FSM Fix (this week) 🔴
 
 ---
 
 ### Planned Milestones: Investor Demo Path
 
 **Investor Demo (ID-xx)**
-- ID-01: Guard FSM critical fix ⏳
-- ID-02: Detection tuning & game feel ⏳
-- ID-03: Demo room polish ⏳
+- AI-01: Guard FSM critical fix ⏳
+- AI-02: Detection tuning & game feel ⏳
+- CONTENT-01: Demo room polish ⏳
 
 **Post-Demo (PD-xx) — depends on investment/resources**
 - Audio integration

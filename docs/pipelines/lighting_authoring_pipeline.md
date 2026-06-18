@@ -3,8 +3,8 @@
 > **Official level design workflow for semantic lighting and structural metadata. Establishes authoring conventions before content expansion and future tooling integration.**
 
 **Related Documents:**
-- [Lighting Runtime Pipeline](../systems/lighting_runtime_pipeline.md) — Runtime behavior and invalidation (L-ARCH-01)
-- [Occlusion Semantics](../systems/occlusion.md) — Structural blocking model (L-ARCH-02)
+- [Lighting Runtime Pipeline](../systems/lighting_runtime_pipeline.md) — Runtime behavior and invalidation (LIGHT-01)
+- [Occlusion Semantics](../systems/occlusion.md) — Structural blocking model (LIGHT-02)
 - [Lighting System](../systems/lighting.md) — Tactical visibility specification
 - [Tile Semantics](../../INFILTRAITOR/godot/scripts/world/tile_semantics.gd) — Height and structure encoding
 
@@ -155,7 +155,7 @@ class TileMetadata:
     # Structural category (L-IMP-05)
     var structure_category: String  # FLOOR, LOW_COVER, WALL, TALL, OVERHEAD
     
-    # Occlusion behavior (L-ARCH-02)
+    # Occlusion behavior (LIGHT-02)
     var occlusion_class: String  # SOLID, TRANSPARENT, DIFFUSE, PERFORATED
     
     # Light interaction (L-IMP-05)
@@ -932,7 +932,7 @@ Purpose:
 
 Prepared for future implementation (not current scope):
 
-### Tool 1: Height Painter (L-ARCH-04)
+### Tool 1: Height Painter (LIGHT-04)
 
 ```
 Purpose: Visual editor for height painting
@@ -950,7 +950,7 @@ Output: Updated tile_metadata
 Status: Designed, not implemented
 ```
 
-### Tool 2: Light Painter (L-ARCH-04)
+### Tool 2: Light Painter (LIGHT-04)
 
 ```
 Purpose: Visual light placement editor
@@ -968,7 +968,7 @@ Output: Updated light_source_data
 Status: Designed, not implemented
 ```
 
-### Tool 3: Semantic Validator (L-ARCH-04)
+### Tool 3: Semantic Validator (LIGHT-04)
 
 ```
 Purpose: Verify map consistency
@@ -986,7 +986,7 @@ Output: Validation report + warnings
 Status: Partially implemented (in room.gd)
 ```
 
-### Tool 4: Exposure Preview (L-ARCH-04)
+### Tool 4: Exposure Preview (LIGHT-04)
 
 ```
 Purpose: Visualize exposure before runtime
@@ -1004,7 +1004,7 @@ Output: Exposure visualization overlay
 Status: Implemented via elite_exposure_overlay.gd
 ```
 
-### Tool 5: Stealth Readability Analyzer (L-ARCH-05)
+### Tool 5: Stealth Readability Analyzer (LIGHT-05)
 
 ```
 Purpose: Analyze level design for stealth clarity
@@ -1134,7 +1134,7 @@ Result: ✓ COMPLETE
 
 ---
 
-## Acceptance Criteria (L-ARCH-03)
+## Acceptance Criteria (LIGHT-03)
 
 - ✅ `lighting_authoring_pipeline.md` exists (800+ lines)
 - ✅ Authoring philosophy defined (5 principles)
@@ -1154,14 +1154,14 @@ Result: ✓ COMPLETE
 
 **Author:** Architecture / Level Design & Authoring Pipeline  
 **Date:** 2026-06-14  
-**Version:** 1.0 (L-ARCH-03)  
+**Version:** 1.0 (LIGHT-03)  
 **Status:** Complete 🟢
 
 **Purpose:** Formalize authoring pipeline and serialization before content expansion
 
 **Next Steps:**
 1. Use this pipeline for all future level authoring
-2. Reference when implementing L-ARCH-04 (tooling)
+2. Reference when implementing LIGHT-04 (tooling)
 3. Reference when expanding content
 4. Use as basis for team authoring guidelines
 5. Prepare for level editor development
@@ -1175,11 +1175,11 @@ Result: ✓ COMPLETE
 
 | Document | Focus | Scope |
 |----------|-------|-------|
-| [L-ARCH-01: Lighting Runtime Pipeline](../systems/lighting_runtime_pipeline.md) | Runtime flow, system ownership | Runtime behavior |
-| [L-ARCH-02: Occlusion Semantics](../systems/occlusion.md) | Structural blocking model | Gameplay semantics |
-| **[L-ARCH-03: Authoring Pipeline](lighting_authoring_pipeline.md)** | **Level design workflow** | **Design-time processes** |
-| L-ARCH-04: Tooling (Future) | Editor implementation | Tool development |
-| L-ARCH-05: Content Guidelines (Future) | Asset standards | Team consistency |
+| [LIGHT-01: Lighting Runtime Pipeline](../systems/lighting_runtime_pipeline.md) | Runtime flow, system ownership | Runtime behavior |
+| [LIGHT-02: Occlusion Semantics](../systems/occlusion.md) | Structural blocking model | Gameplay semantics |
+| **[LIGHT-03: Authoring Pipeline](lighting_authoring_pipeline.md)** | **Level design workflow** | **Design-time processes** |
+| LIGHT-04: Tooling (Future) | Editor implementation | Tool development |
+| LIGHT-05: Content Guidelines (Future) | Asset standards | Team consistency |
 
 ---
 

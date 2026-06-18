@@ -195,7 +195,7 @@ docs/
 │   ├── technical_debt.md
 │   ├── risk_assessment.md
 │   ├── development_pipeline.md
-│   ├── estimated_timeline.md
+│   ├── METHODOLOGY.md
 │   ├── audio_pipeline.md
 │   ├── animation_pipeline.md
 │   ├── narrative_pipeline.md

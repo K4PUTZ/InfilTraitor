@@ -53,8 +53,8 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 **Quick Start:** Start with [Production Dashboard](production/dashboard.md) for quick status
 
 #### Strategic Planning
-- **[Roadmap](production/roadmap.md)** — Macro-level development phases and timeline
-- **[Estimated Timeline](production/estimated_timeline.md)** — Phase-based development roadmap ✅
+- **[Roadmap](production/roadmap.md)** — Macro-level development phases and timeline (single source for phases)
+- **[Methodology](production/METHODOLOGY.md)** — ID nomenclature, domain enum, doc ownership ✅
 - **[Development Pipeline](production/development_pipeline.md)** — Feature development process ✅
 
 #### Status & Tracking

@@ -15,9 +15,9 @@
 - **[Not Yet Started](not_yet_started.md)** — Explicit list of unstarted systems
 
 ### 📈 Planning & Analysis
-- **[Estimated Timeline](estimated_timeline.md)** — Long-term phases and roadmap
+- **[Roadmap](roadmap.md)** — Development phases, gates, and dependencies (single source for phases)
 - **[Development Pipeline](development_pipeline.md)** — Feature development process
-- **[Roadmap](roadmap.md)** — Development phases and dependencies
+- **[Methodology](METHODOLOGY.md)** — ID nomenclature, domain enum, doc ownership
 
 ### ⚠️ Risk & Debt Management
 - **[Risk Assessment](risk_assessment.md)** — Systemic risks and mitigation
@@ -41,8 +41,8 @@ production/
 ├── content_matrix.md           → Game content inventory
 ├── milestones.md               → Detailed milestone tracking
 ├── not_yet_started.md          → Explicitly unstarted systems
-├── roadmap.md                  → Development phases
-├── estimated_timeline.md       → Phase-based timeline
+├── roadmap.md                  → Development phases (single source for phases)
+├── METHODOLOGY.md              → ID nomenclature + doc ownership convention
 ├── development_pipeline.md     → Feature development process
 ├── risk_assessment.md          → Risks and mitigation
 ├── technical_debt.md           → Known technical issues
@@ -60,7 +60,7 @@ production/
 2. Scan **[Current State](current_state.md)** by section (5 min)
 
 ### Path 2: "What gets built and when?" (20 minutes)
-1. Read **[Estimated Timeline](estimated_timeline.md)** (10 min)
+1. Read **[Roadmap](roadmap.md)** (10 min)
 2. Review **[Development Pipeline](development_pipeline.md)** (10 min)
 
 ### Path 3: "What are the risks?" (15 minutes)
@@ -155,7 +155,7 @@ production/
 
 ### For Project Managers
 - Start with **[Production Dashboard](dashboard.md)** for daily status
-- Use **[Estimated Timeline](estimated_timeline.md)** for planning
+- Use **[Roadmap](roadmap.md)** for phase planning
 - Check **[Risk Assessment](risk_assessment.md)** weekly
 
 ### For Programmers

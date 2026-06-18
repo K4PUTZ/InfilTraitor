@@ -11,9 +11,9 @@
 > doc are **historical** (kept as design context). See `docs/ARCHITECTURE.md §8` for current behavior.
 
 **Related Documentation:**
-- [Lighting Runtime Pipeline & Invalidation Rules](lighting_runtime_pipeline.md) — Official runtime flow, ownership rules, rebuild semantics (L-ARCH-01)
-- [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures block light and LOS (L-ARCH-02)
-- [Lighting Authoring Pipeline & Serialization](../pipelines/lighting_authoring_pipeline.md) — Level design workflow and data persistence (L-ARCH-03)
+- [Lighting Runtime Pipeline & Invalidation Rules](lighting_runtime_pipeline.md) — Official runtime flow, ownership rules, rebuild semantics (LIGHT-01)
+- [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures block light and LOS (LIGHT-02)
+- [Lighting Authoring Pipeline & Serialization](../pipelines/lighting_authoring_pipeline.md) — Level design workflow and data persistence (LIGHT-03)
 
 ---
 

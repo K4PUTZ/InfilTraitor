@@ -37,7 +37,7 @@
 | **Surrender** | 4–6 | Design | Combat phase | Defeated |
 | **Pain reaction** | 4 | Design | Combat phase | Hit |
 
-### Combat (Post-M3.0)
+### Combat (Post-GAME-01)
 
 | Animation | Frames | Status | ETA |
 |-----------|--------|--------|-----|
@@ -68,7 +68,7 @@
 | **Using gadget** | 6–10 | Planned | M3-01 |
 | **Taking damage** | 4–6 | Planned | Combat phase |
 
-### Combat (Post-M3.0)
+### Combat (Post-GAME-01)
 
 | Animation | Frames | Status | ETA |
 |-----------|--------|--------|-----|

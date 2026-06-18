@@ -91,7 +91,7 @@ This matrix tracks all core gameplay systems by implementation status, dependenc
 ## Planned Systems ⏳
 
 ### Gameplay Mechanics
-- **Combat System** — Direct confrontation (post-M3.0)
+- **Combat System** — Direct confrontation (post-GAME-01)
 - **Skill Tree** — Player progression (post-content phase)
 - **Objectives** — Mission structure (M3-02)
 - **Campaign System** — Multi-mission progression (M4-00)

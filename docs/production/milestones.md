@@ -12,7 +12,8 @@ Code audit (2026-06-14): the AI system is functional with GRADUAL detection impl
 - **Detection is gradual** — Thresholds (0.30 SUSPICIOUS, 0.60 ALERT, 1.00 CHASE) implemented in `room.gd:_apply_tic_result()`
 - **Functional for the demo** — M2.07 (Search) and M2.08 (Communication) work, guards react to the agent
 
-Milestones ID-01 through ID-04 represent integration refinements, not critical bug fixes.
+Milestones AI-01, AI-02, AI-03 and CONTENT-01 (the former ID-01…ID-04 series)
+represent integration refinements, not critical bug fixes.
 
 ---
 
@@ -328,7 +329,7 @@ Milestones ID-01 through ID-04 represent integration refinements, not critical b
 
 ## In-Progress Milestones
 
-### ✅ ID-01 — Detection Escalation Gradual — IMPLEMENTED
+### ✅ AI-01 — Detection Escalation Gradual — IMPLEMENTED
 
 **Objective:** Connect the detection meter to the state thresholds for gradual escalation (PATROL → SUSPICIOUS → ALERT).
 
@@ -390,10 +391,10 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ ID-02 — Detection Tuning & Game Feel
+### ⏳ AI-02 — Detection Tuning & Game Feel
 **Objective:** Calibrate the detection parameters so that stealth is genuinely tense and fair.
 
-**Dependencies:** ID-01
+**Dependencies:** AI-01
 
 **Estimated Duration:** 1–2 weeks
 
@@ -413,10 +414,10 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ ID-03 — Demo Room Polish
+### ⏳ CONTENT-01 — Demo Room Polish
 **Objective:** Create a demo room that showcases all systems at once.
 
-**Dependencies:** ID-02
+**Dependencies:** AI-02
 
 **Estimated Duration:** 1–2 weeks
 
@@ -436,10 +437,10 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ ID-04 — FSM Architecture Refactor
+### ⏳ AI-03 — FSM Architecture Refactor
 **Objective:** Refactor GuardEnemy's match/case to a Strategy pattern before adding combat.
 
-**Dependencies:** ID-01 (guards working), before M3.0
+**Dependencies:** AI-01 (guards working), before GAME-01
 
 **Estimated Duration:** 1–2 weeks
 
@@ -456,12 +457,64 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ M2.13 — Suspicion Meter Integration (MERGED INTO ID-01)
+### ⏳ VIS-01 — Overhead Visual Engine (ceiling + view occlusion)
+**Objective:** Build the topmost (5th-floor) decorative/lighting layer AND the
+view-occlusion system that keeps the agent readable under walls/ceiling. The two
+are one system: ceiling props are the worst occluders, so they share the cutaway/
+fade machine.
+
+> **Terminology:** *view occlusion* here = hiding structure from the **player's
+> camera** so they can see the agent. This is distinct from the gameplay
+> *occlusion semantics* in `docs/systems/occlusion.md` (what blocks light/LoS/
+> sound). Keep them separate.
+
+**Dependencies (already in place):**
+- Wall storeys / N-floor stacking ✅ (Alpha Wall Storeys)
+- Map-driven lights (`MapSpec.lights` → omni `LightSource`) ✅
+- Shader-based FOW (reusable cutout tech) ✅
+- 4-way perspective rotation (manual override / "escape hatch") ✅
+
+**Stages (etapas):**
+1. **`MapSpec.ceiling` vocabulary** — data layer: `ceiling: [{cell, kind, height, …}]`,
+   compiled by `MapCompiler` into `layout.ceiling_props`, rotated by perspective
+   exactly like `props`/`lights`/`exit_cells`. No buffer math outside the compiler.
+2. **`CeilingPropLayer` render** — Node2D above wall storey N (z = 10 + max_floors + 1).
+   Fixtures are **sprites/scenes, not tilemap tiles** (double-height chandelier
+   anchored at floor 5, drawn down to floor 4; cables/pipes cross cell borders).
+3. **Spot / directional light type** — extend `LightSource` (omni-only today) to
+   support cone/spot for holofotes pointing at the floor; feeds `LightingController`.
+4. **View occlusion — directional storey cutaway** — fade/lower the camera-facing
+   storeys + front ceiling props, derived analytically from `_active_perspective`
+   (front side is deterministic; no raycast needed because the camera is fixed).
+   Per-layer `modulate.a` first; per-cell shader only if precision demands it.
+   **Fade, never delete** — walls carry cover/LoS meaning and must still read.
+5. **View occlusion — proximity cutout** — dither-circle shader around the agent on
+   structure/ceiling layers (reuse FOW shader tech). "Never lose your guy."
+6. **View occlusion — hover reveal** — hovering a tile behind a wall fades that
+   segment (turn-based planning aid).
+7. **Rotation integration** — wire existing 4-perspective rotation as the manual
+   override; ceiling + occlusion re-derive per cell on perspective switch (existing
+   pattern in `_set_perspective`).
+8. **Ceiling content + tactical hooks (optional, own follow-up milestones)** —
+   populate maps (lamps, conduits, pipes, vents); defer gameplay hooks (security
+   cameras as detectors, flicker → `temporal_overlay` shadow) to their own IDs.
+
+**Acceptance Criteria (high level):**
+- Agent never fully hidden by a wall or ceiling prop from the player's view.
+- Cover-bearing walls remain perceivable even when cut (faded/stub, not gone).
+- Ceiling/occlusion stay coherent across all 4 perspective rotations.
+- Mobile-friendly (per-layer fade + one cheap fragment shader; no per-frame O(n²)).
+
+**Estimated Duration:** 3–5 weeks (staged; stages 1–2 + 4 are the minimum viable slice)
+
+---
+
+### ⏳ M2.13 — Suspicion Meter Integration (MERGED INTO AI-01)
 **Objective:** Per-guard suspicion tracking and escalation mechanics.
 
-**Dependencies:** ID-01 (this functionality was merged into ID-01)
+**Dependencies:** AI-01 (this functionality was merged into AI-01)
 
-**Estimated Duration:** (covered by ID-01)
+**Estimated Duration:** (covered by AI-01)
 
 **Deliverables:**
 - Per-guard suspicion meter (0–100%)
@@ -497,7 +550,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### ⏳ M3.0 — Combat System Foundation
+### ⏳ GAME-01 — Combat System Foundation
 **Objective:** Basic combat resolution and damage modeling.
 
 **Dependencies:** M2.14
@@ -521,7 +574,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 ### ⏳ M3.05 — Advanced Tactics
 **Objective:** Overwatch, traps, and reactive mechanics.
 
-**Dependencies:** M3.0
+**Dependencies:** GAME-01
 
 **Estimated Duration:** 1–2 weeks
 
@@ -581,7 +634,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 ### ⏳ M4.10 — Campaign Narrative: Chapter 3
 **Objective:** Final confrontation and resolution chapter.
 
-**Dependencies:** M4.05, M3.0
+**Dependencies:** M4.05, GAME-01
 
 **Estimated Duration:** 2–3 weeks
 
@@ -724,13 +777,13 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 | Milestone | Blocker | Status | Mitigation |
 |-----------|---------|--------|-----------|
-| **ID-01** | `choose_next_cell()` does not exist | 🚨 ACTIVE | Implement/rename this week |
-| **ID-01** | `tick_state()` does not exist | 🚨 ACTIVE | Implement this week |
-| **ID-01** | Detection meter not connected | 🚨 ACTIVE | Connect TicSystem → guard |
-| ID-02 | ID-01 complete | Waiting on ID-01 | — |
-| ID-03 | ID-02 complete | Waiting on ID-02 | — |
-| ID-04 | ID-01 complete | Waiting on ID-01 | — |
-| M3.0 (Combat) | ID-04 complete | Waiting on refactor | Do not start before the refactor |
+| **AI-01** | `choose_next_cell()` does not exist | 🚨 ACTIVE | Implement/rename this week |
+| **AI-01** | `tick_state()` does not exist | 🚨 ACTIVE | Implement this week |
+| **AI-01** | Detection meter not connected | 🚨 ACTIVE | Connect TicSystem → guard |
+| AI-02 | AI-01 complete | Waiting on AI-01 | — |
+| CONTENT-01 | AI-02 complete | Waiting on AI-02 | — |
+| AI-03 | AI-01 complete | Waiting on AI-01 | — |
+| GAME-01 (Combat) | AI-03 complete | Waiting on refactor | Do not start before the refactor |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
 | M6.0 (Audio) | Audio assets | At risk | Hire externally if needed |
@@ -739,10 +792,10 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ## Next Steps
 
-1. **Now (this week):** ID-01 — Fix guard FSM (guards must detect and react)
-2. **Week 2:** ID-02 — Detection tuning for good game feel
-3. **Weeks 3–4:** ID-03 — Polish the demo room for presentation
-4. **Weeks 4–5:** ID-04 — Refactor the FSM before adding combat
+1. **Now (this week):** AI-01 — Fix guard FSM (guards must detect and react)
+2. **Week 2:** AI-02 — Detection tuning for good game feel
+3. **Weeks 3–4:** CONTENT-01 — Polish the demo room for presentation
+4. **Weeks 4–5:** AI-03 — Refactor the FSM before adding combat
 5. **Post-investment:** Production pass (audio, animations, UI, multiple rooms)
 
 See: `docs/production/roadmap.md` for the macro view of the phases

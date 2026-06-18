@@ -3,7 +3,7 @@
 > **Visual detection, audio detection, guard attention, and how enemies perceive the world.**
 
 **Related Documentation:**
-- [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures affect vision (L-ARCH-02)
+- [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures affect vision (LIGHT-02)
 - [Lighting System](lighting.md) — How exposure affects detection (tactical visibility)
 
 ---

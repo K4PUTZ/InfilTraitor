@@ -16,7 +16,7 @@ Each system is tagged with an explicit status:
 - **Partial** — present in code, but with a meaningful gap (not wired into gameplay, hardcoded data, or a dead path).
 - **Planned** — described in design docs, no functional code path yet.
 
-Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocabulary (`L-IMP-xx`, `L-ARCH-xx`, `M2-xx`). Those tags survive only as comment markers in the source. They describe **intent**, not guaranteed runtime behavior. This file supersedes the roadmap framing in those documents for anything concerning *what the code actually does*.
+Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocabulary (`L-IMP-xx`, `LIGHT-xx`, `M2-xx`). Those tags survive only as comment markers in the source. They describe **intent**, not guaranteed runtime behavior. This file supersedes the roadmap framing in those documents for anything concerning *what the code actually does*.
 
 ---
 
@@ -430,7 +430,7 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 
 - Lights: now map-driven from `MapSpec.lights` (the hardcoded test lights are retired), but omni-only and no serialization/anchor-authoring tooling yet.
 - Tile semantics / heights: inferred from `blocked_cells`, not authored.
-- No authoring tooling exists for semantics/heights, despite the `L-ARCH-03` spec.
+- No authoring tooling exists for semantics/heights, despite the `LIGHT-03` spec.
 
 ### 15.6 Pending modularization targets
 
@@ -461,7 +461,7 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Camera & perspective | Implemented | Functional | leash, zoom/pinch, 4-way perspective re-layout |
 | Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
 | Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
-| Light/semantic authoring & serialization | Planned | — | specced (L-ARCH-03), no runtime code path |
+| Light/semantic authoring & serialization | Planned | — | specced (LIGHT-03), no runtime code path |
 
 ---
 

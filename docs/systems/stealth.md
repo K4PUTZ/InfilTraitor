@@ -153,7 +153,7 @@ Layout:        Benefit:
 **Planned features:**
 - Reduce detection from certain angles
 - Peek around corners
-- Fire from cover (post-M3.0 combat)
+- Fire from cover (post-GAME-01 combat)
 
 ---
 

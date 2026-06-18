@@ -92,9 +92,9 @@ match guard.state:
 ```
 
 **Solution (Queued):**
-Refactor to a Strategy pattern or behavior tree before adding combat (M3.0).
+Refactor to a Strategy pattern or behavior tree before adding combat (GAME-01).
 
-**Timeline:** Pre-M3.0
+**Timeline:** Pre-GAME-01
 
 ---
 
@@ -229,7 +229,7 @@ Old shadow function replaced by `_compute_shadow_tiles()` + `_cast_shadows_from_
 | Refactor | Priority | Target | ETA |
 |----------|----------|--------|-----|
 | **Gradual detection escalation** | 🔴 Pre-playtest | guard_enemy.gd + room.gd | 1–2 weeks |
-| **FSM → Strategy/BTree** | Pre-M3.0 | guard_enemy.gd | 1–2 weeks |
+| **FSM → Strategy/BTree** | Pre-GAME-01 | guard_enemy.gd | 1–2 weeks |
 | **Data-driven patrols** (now `MapSpec.patrols` in `world/maps/definitions/*_map.gd`; remaining: external resource authoring) | Pre-campaign | world/maps/ | 2–3 days |
 | **Overlay O(n²) → culled** | Pre-mobile test | fog_of_war_overlay.gd | 1–2 weeks |
 | **move_to_cell_animated coroutine** | Pre-3+ guards | guard_enemy.gd | 1–2 days |

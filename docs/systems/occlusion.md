@@ -4,8 +4,8 @@
 
 **Related Documents:**
 - [Lighting System](lighting.md) — Tactical visibility and exposure
-- [Lighting Runtime Pipeline](lighting_runtime_pipeline.md) — Official runtime flow (L-ARCH-01)
-- [Authoring Pipeline](../pipelines/lighting_authoring_pipeline.md) — Level design workflow (L-ARCH-03)
+- [Lighting Runtime Pipeline](lighting_runtime_pipeline.md) — Official runtime flow (LIGHT-01)
+- [Authoring Pipeline](../pipelines/lighting_authoring_pipeline.md) — Level design workflow (LIGHT-03)
 - [Perception System](perception.md) — Guard vision and detection (future)
 
 ---
@@ -618,7 +618,7 @@ Agent in steam plume:
 
 ---
 
-## Future Dynamic Occlusion (L-ARCH-03+)
+## Future Dynamic Occlusion (LIGHT-03+)
 
 Prepared for future implementation:
 
@@ -750,7 +750,7 @@ func can_see(from_pos, to_pos) -> bool:
 
 ---
 
-## Acceptance Criteria (L-ARCH-02)
+## Acceptance Criteria (LIGHT-02)
 
 - ✅ `occlusion.md` exists (this document)
 - ✅ Occlusion classes defined (4 discrete types)
@@ -769,7 +769,7 @@ func can_see(from_pos, to_pos) -> bool:
 
 **Author:** Architecture / Occlusion & Level Design  
 **Date:** 2026-06-14  
-**Version:** 1.0 (L-ARCH-02)  
+**Version:** 1.0 (LIGHT-02)  
 **Status:** Complete 🟢
 
 **Purpose:** Formalize occlusion semantics before advanced stealth, ballistics, and AI perception

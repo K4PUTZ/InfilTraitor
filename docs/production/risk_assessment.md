@@ -29,7 +29,7 @@ The game is designed for mobile but never tested with real users on mobile devic
 
 **Mitigation:**
 - Playtesting phase (M2-16) includes mobile devices
-- Early touch input testing (before M3.00)
+- Early touch input testing (before the Phase 8 freeze)
 - Performance profiling on 5-year-old iPhone
 
 **Timeline:** Validate by end of M2-15
@@ -223,7 +223,7 @@ Project scope undefined; team size unknown; contractor availability uncertain.
 **Mitigation:**
 - DOC-02 establishes clear scope
 - Define minimum viable scope
-- Set hard feature deadlines (M3.00 feature freeze)
+- Set hard feature deadlines (Phase 8 feature freeze)
 - Regular status checks
 - Hire contractors early if needed
 
@@ -246,8 +246,8 @@ New ideas, player requests, and feature additions could derail development.
 - Release pushed indefinitely
 
 **Mitigation:**
-- Feature freeze at M3.00
-- Backlog all post-M3.00 ideas
+- Feature freeze at Phase 8 (Polish & Release)
+- Backlog all post-freeze ideas (Phase 8)
 - Clear priority order
 - Regular scope review meetings
 - "No" is a complete sentence
@@ -295,9 +295,9 @@ Game may feel repetitive with only 1 mission and 1 guard archetype.
 - Campaign progression not possible
 
 **Mitigation:**
-- Commit to 12+ mission types by M3.00
-- Add 3+ guard archetypes by M3.00
-- Expand tilesets (5+) by M3.00
+- Commit to 12+ mission types by the Phase 8 freeze
+- Add 3+ guard archetypes by the Phase 8 freeze
+- Expand tilesets (5+) by the Phase 8 freeze
 - Plan content pipeline (M3-00 onwards)
 
 **Timeline:** Content expansion begins M2-15
@@ -336,7 +336,7 @@ Narrative is intentionally deprioritized, but may be needed sooner than expected
 **Status:** Monitoring
 
 **Description:**  
-Combat system planned for M3.00 but complexity unknown.
+Combat system planned for GAME-01 but complexity unknown.
 
 **Potential Outcomes:**
 - Combat takes longer than planned

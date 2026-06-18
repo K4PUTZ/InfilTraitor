@@ -232,6 +232,23 @@ Reduces draw calls for transparent/invisible entries.
 - **Guard Alert Waves** (PRIO_DETECT): Expanding detection as reinforcements arrive
 - **Noise Visualization** (PRIO_DETECT): Tile-based audio propagation heatmap
 
+### Overhead Visual Engine (VIS-01)
+
+Topmost (5th-floor) ceiling layer + **view occlusion**. Staged plan lives in
+`docs/production/milestones.md` → **VIS-01**. Two pillars sharing one fade machine:
+
+- **Ceiling layer** — `CeilingPropLayer` above wall storey N renders sprites/scenes
+  (lamps, chandeliers, holofotes/spots, conduits, pipes, vents). Authored via a new
+  `MapSpec.ceiling` key, perspective-rotated like every other layer.
+- **View occlusion** — keep the agent readable under walls/ceiling via (1) directional
+  storey cutaway keyed to `_active_perspective`, (2) proximity dither-cutout around the
+  agent, (3) hover reveal, with the existing 4-way rotation as manual override.
+  Principle: **fade, never delete** — cut walls must still read as cover.
+
+> ⚠️ **Not to be confused with `docs/systems/occlusion.md`.** That doc is gameplay
+> *occlusion semantics* (what blocks light / LoS / sound). VIS-01 *view occlusion* is
+> a **camera/UX** concern (what the player can see). Different systems, same word.
+
 ---
 
 ## Configuration & Tweaking

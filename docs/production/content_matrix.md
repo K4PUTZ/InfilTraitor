@@ -182,7 +182,7 @@ This matrix tracks all game content categories, current counts, and planned expa
 | **Alert** | Not started | 8–12 | High |
 | **Scanning** | Not started | 6–8 | Medium |
 | **Turning** | Not started | 4–6 | Medium |
-| **Combat** | Not started | 10–15 | Low (post-M3.0) |
+| **Combat** | Not started | 10–15 | Low (post-GAME-01) |
 
 ### Agent Animations
 | Animation | Status | Frames | Priority |

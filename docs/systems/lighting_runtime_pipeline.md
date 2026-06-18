@@ -4,8 +4,8 @@
 
 **Related Documents:**
 - [Lighting System](lighting.md) — Tactical visibility and exposure
-- [Occlusion Semantics](occlusion.md) — Structural blocking model (L-ARCH-02)
-- [Authoring Pipeline](../pipelines/lighting_authoring_pipeline.md) — Level design workflow (L-ARCH-03)
+- [Occlusion Semantics](occlusion.md) — Structural blocking model (LIGHT-02)
+- [Authoring Pipeline](../pipelines/lighting_authoring_pipeline.md) — Level design workflow (LIGHT-03)
 - [Perception System](perception.md) — Guard vision and detection (future)
 
 ---
@@ -864,7 +864,7 @@ Result: Elite player uses tactical information to time movement
 
 ---
 
-## Acceptance Criteria (L-ARCH-01)
+## Acceptance Criteria (LIGHT-01)
 
 - ✅ Official runtime pipeline documented
 - ✅ System ownership matrix defined
@@ -883,7 +883,7 @@ Result: Elite player uses tactical information to time movement
 
 **Author:** Architecture / Lighting System  
 **Date:** 2026-06-14  
-**Version:** 1.0 (L-ARCH-01)  
+**Version:** 1.0 (LIGHT-01)  
 **Status:** Complete 🟢
 
 **Purpose:** Formal specification before L-IMP-08+ integration

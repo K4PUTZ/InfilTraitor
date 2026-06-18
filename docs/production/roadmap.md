@@ -237,13 +237,13 @@ Phase 1 (Prototype) ✅
     ↓
 Phase 2 (Stealth Core) ⚠️
     ↓
-ID-01 (Fix guard FSM) ← NOW
+AI-01 (Fix guard FSM) ← NOW
     ↓
-ID-02 (Detection tuning)
+AI-02 (Detection tuning)
     ↓
-ID-03 (Demo room polish)
+CONTENT-01 (Demo room polish)
     ↓
-ID-04 (FSM refactor)
+AI-03 (FSM refactor)
     ↓
 Phase 3 COMPLETE → Investor Demo
 
@@ -253,7 +253,7 @@ Phase 4 (Production Pass)
     ↓
 Phase 5 (Chapter 1)
     ↓
-Phase 6 (Chapters 2–3) + M3.0 (Combat)
+Phase 6 (Chapters 2–3) + GAME-01 (Combat)
     ↓
 Phase 7 (Freelance)
     ↓
@@ -271,9 +271,35 @@ Phase 8 (Polish & Release)
 | Menu/settings UI | The current HUD is sufficient for the demo |
 | Save system | Not needed in a single-room demo |
 | Narrative | Requires a campaign (post-investment) |
-| Combat (M3.0) | Requires a solid FSM; defer until post-refactor |
+| Combat (GAME-01) | Requires a solid FSM; defer until post-refactor |
 | Procedural generation | Requires a campaign (post-investment) |
 | Localization | Final phase |
+
+---
+
+## Flexibility & Descope
+
+If **behind schedule:** descope content (fewer missions/gadgets) before extending
+the timeline; parallelize where structure allows.
+
+If **ahead:** add content, extend playtesting, or pull the next milestone forward.
+
+**Descope priority (if forced):**
+1. ✅ Keep — core stealth, AI, perception (never cut)
+2. ⏳ Reduce — combat complexity, content volume
+3. ⏳ Remove — advanced personality variance, procedural generation (push post-launch)
+
+**Contingencies:** a major bug pauses dependent phases until fixed; an unavailable
+contractor falls back to in-house + a 1–2 week extension; a platform-requirement
+change triggers a 1-week assessment + timeline adjustment.
+
+---
+
+## Post-Release (Future)
+
+- **Season 1 (3–6 months):** balance patches, accessibility, community feedback
+- **Season 2 (6–12 months):** new faction, new mission types, expanded content
+- **Long-term:** co-op/multiplayer, cross-over events, advanced AI learning
 
 ---
 
@@ -281,5 +307,6 @@ Phase 8 (Polish & Release)
 
 | Date | Update |
 |------|--------|
+| 2026-06-18 | Absorbed `estimated_timeline.md` (descope/contingency/post-release) and deleted it — single phase model; IDs migrated to `{DOMAIN}-{NN}` per METHODOLOGY.md |
 | 2026-06-12 | Roadmap rewritten: Investor Demo as the primary goal; post-investment phases rationalized; realistic estimates; critical blockers documented |
 | 2026-06-11 | Initial roadmap created from DEVELOPMENT/PROGRESS.md |

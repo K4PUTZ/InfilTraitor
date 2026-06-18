@@ -89,6 +89,28 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})
 
+	## --- wall storeys (N-floor stacking) ------------------------------------
+	## Ground course (level 0) is the full wall_tiles above (doors + dividers + inner rooms).
+	## Upper courses are the SOLID outer ring (no door gaps) so doorways stay normal height with
+	## wall above them; dividers are never stacked. Height applies to the OUTER walls only.
+	## wall_height_override (from context, > 0) wins over the map's spec value for quick testing.
+	var wall_height: int = int(context.get("wall_height_override", 0))
+	if wall_height <= 0:
+		wall_height = int(spec.get("wall_height", 1))
+	wall_height = maxi(1, wall_height)
+
+	var wall_levels: Array = [wall_tiles]
+	if wall_height > 1:
+		var solid_ring: Array = MapGeometry.build_room(outer_rect, [])["wall_tiles"]
+		for _level in range(1, wall_height):
+			var course: Array[Dictionary] = []
+			for entry: Dictionary in solid_ring:
+				course.append({
+					"cell": entry["cell"],
+					"tile_name": _upper_course_tile(String(entry["tile_name"])),
+				})
+			wall_levels.append(course)
+
 	## --- props (crates / pillars) -------------------------------------------
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset
 	var structure_tiles: Array[Dictionary] = []
@@ -117,7 +139,9 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"size":             map_size,
 		"agent_start_cell": agent_start_raw,
 		"floor_tile_name":  String(spec.get("floor_tile", "floor_SE")),
-		"wall_tiles":       wall_tiles,
+		"wall_tiles":       wall_tiles,        ## == wall_levels[0] (back-compat)
+		"wall_levels":      wall_levels,        ## [floor] -> Array[{cell, tile_name}], floor 0 = ground
+		"max_floors":       wall_levels.size(),
 		"structure_tiles":  structure_tiles,
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
@@ -128,6 +152,13 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 
 ## --- private helpers --------------------------------------------------------
+
+## Tile used for a wall cell on an UPPER course (storey ≥ 1).
+## Single switch point: if straight wall_* sprites draw a top cap that shows mid-wall when
+## stacked, return the matching solid block_* here for intermediate courses instead.
+static func _upper_course_tile(ground_tile_name: String) -> String:
+	return ground_tile_name
+
 
 static func _resolve_access_points(spec: Dictionary, context: Dictionary) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []

@@ -24,6 +24,7 @@ static func spec() -> Dictionary:
 		"inner_size":    Vector2i(18, 36),
 		"buffer":        5,
 		"floor_tile":    "floor_SE",
+		"wall_height":   2,                   ## external perimeter is double-height (second storey)
 		"agent_start":   Vector2i(9, 33),
 		## One door per side — exercises every doorOpen_* variant.
 		"access_points": [

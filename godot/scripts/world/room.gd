@@ -22,7 +22,6 @@ const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coo
 @onready var movement_overlay:    MovementOverlay = $MovementOverlay
 @onready var path_preview:        PathPreview  = $PathPreview
 @onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
-@onready var structure_wall_upper_layer: TileMapLayer = $StructureWallUpperLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var shadow_full_layer:    TileMapLayer = $ShadowFullLayer
 @onready var shadow_partial_layer: TileMapLayer = $ShadowPartialLayer
@@ -54,6 +53,19 @@ const INVALID_CELL := Vector2i(-9999, -9999)
 ## logical grid used by map_to_local/local_to_map. Compensate with one fixed
 ## visual offset so camera, labels, selection and picking all agree.
 const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
+
+## Wall storeys (N-floor stacking). Ground course is StructureWallLayer at WALL_BASE_Z_INDEX;
+## each higher course is a runtime TileMapLayer offset up by WALL_FLOOR_STEP_PX and drawn one
+## z above the previous so its top occludes sprites. WALL_FLOOR_STEP_PX is the per-storey cube
+## height in px — calibrated visually (one block tall). Reserve z=100 band for a future overhead
+## ceiling/light layer (below noise at z=140).
+const WALL_BASE_Z_INDEX := 10
+## One storey = the cube's side-face height. Measured from the art: opaque block height 286 −
+## top-diamond 128 = 158 px (block_SE and wall_NE agree). Upper courses stack on this step so a
+## cube seats exactly on the one below. Tunable.
+const WALL_FLOOR_STEP_PX := 158.0
+var _wall_tileset: TileSet = null
+var _wall_upper_layers: Array[TileMapLayer] = []
 
 ## tile_name → TileSet source_id
 var _tile_ids: Dictionary = {}
@@ -187,6 +199,8 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
 @export var map_id: String = "PLAYGROUND"
+## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
+@export var wall_height_override: int = 0
 
 const WHISTLE_RADIUS := 3
 
@@ -200,11 +214,10 @@ func _ready() -> void:
 	floor_layer.tile_set = ts
 	floor_layer.z_index = 0
 	structure_wall_layer.tile_set = ts
-	structure_wall_layer.z_index = 10
-	structure_wall_upper_layer.tile_set = ts
-	structure_wall_upper_layer.z_index = 11
+	structure_wall_layer.z_index = WALL_BASE_Z_INDEX
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
+	_wall_tileset = ts
 	## M2-13: Initialize shadow layers
 	shadow_full_layer.tile_set = ts
 	shadow_partial_layer.tile_set = ts
@@ -226,9 +239,10 @@ func _ready() -> void:
 		"seed":             level_seed,
 	})
 	var layout: Dictionary = MapCompilerClass.compile(spec, {
-		"connections":      connections,
-		"segment_grid_pos": segment_grid_pos,
-		"seed":             level_seed,
+		"connections":         connections,
+		"segment_grid_pos":    segment_grid_pos,
+		"seed":                level_seed,
+		"wall_height_override": wall_height_override,
 	})
 	_base_layout = layout.duplicate(true)
 	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
@@ -1230,10 +1244,27 @@ func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = floor_layer
 		layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
+## Ensure `count` runtime wall layers exist above the base course (storeys 1..count).
+## Each higher layer is offset up by one cube and drawn one z above the previous so its top
+## occludes sprites. Idempotent — reuses existing layers across rebuilds/perspective switches.
+func _ensure_wall_upper_layers(count: int) -> void:
+	while _wall_upper_layers.size() < count:
+		var level := _wall_upper_layers.size() + 1
+		var layer := TileMapLayer.new()
+		layer.tile_set = _wall_tileset
+		layer.y_sort_origin = 1
+		layer.position = Vector2(0.0, -WALL_FLOOR_STEP_PX * float(level))
+		layer.z_index = WALL_BASE_Z_INDEX + level
+		add_child(layer)
+		_wall_upper_layers.append(layer)
+	## Surplus layers (shorter map after a taller one) are cleared by the caller; hide them.
+	for i in range(_wall_upper_layers.size()):
+		_wall_upper_layers[i].visible = i < count
+
+
 func _build_room(layout: Dictionary) -> void:
 	floor_layer.clear()
 	structure_wall_layer.clear()
-	structure_wall_upper_layer.clear()
 	structure_layer.clear()
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
@@ -1243,16 +1274,15 @@ func _build_room(layout: Dictionary) -> void:
 		for y in range(0, _room_size.y):
 			_place(Vector2i(x, y), floor_tile_name)
 
-	for structure_entry in layout.get("wall_tiles", []):
-		var wall_cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
-		var wall_tile_name := String(structure_entry.get("tile_name", ""))
-		_place(wall_cell, wall_tile_name, structure_wall_layer)
-
-	## Place upper-layer wall tiles for double-height walls
-	for structure_entry in layout.get("wall_tiles_upper", []):
-		var wall_cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
-		var wall_tile_name := String(structure_entry.get("tile_name", ""))
-		_place(wall_cell, wall_tile_name, structure_wall_upper_layer)
+	## Wall storeys: level 0 → base layer; levels 1.. → runtime layers offset up one cube each.
+	var wall_levels: Array = layout.get("wall_levels", [layout.get("wall_tiles", [])])
+	_ensure_wall_upper_layers(maxi(0, wall_levels.size() - 1))
+	for layer in _wall_upper_layers:
+		layer.clear()
+	for level in range(wall_levels.size()):
+		var target: TileMapLayer = structure_wall_layer if level == 0 else _wall_upper_layers[level - 1]
+		for entry in wall_levels[level]:
+			_place(entry.get("cell", INVALID_CELL), String(entry.get("tile_name", "")), target)
 
 	for structure_entry in layout.get("structure_tiles", []):
 		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
@@ -1309,7 +1339,7 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 	mapped["floor_tile_name"] = _remap_tile_name_for_perspective(
 		String(layout.get("floor_tile_name", "floor_SE")), direction)
 
-	for key in ["wall_tiles", "wall_tiles_upper", "structure_tiles"]:
+	for key in ["wall_tiles", "structure_tiles"]:
 		var src: Array = layout.get(key, [])
 		var dst: Array = []
 		for entry in src:
@@ -1318,6 +1348,18 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 			out["tile_name"] = _remap_tile_name_for_perspective(String(out.get("tile_name", "")), direction)
 			dst.append(out)
 		mapped[key] = dst
+
+	## Rotate every wall storey (wall_levels[f]); wall_tiles above stays == wall_levels[0].
+	var rotated_levels: Array = []
+	for level_src in layout.get("wall_levels", []):
+		var level_dst: Array = []
+		for entry in level_src:
+			var out := (entry as Dictionary).duplicate(true)
+			out["cell"] = _cell_from_base(out.get("cell", INVALID_CELL), direction, base_size)
+			out["tile_name"] = _remap_tile_name_for_perspective(String(out.get("tile_name", "")), direction)
+			level_dst.append(out)
+		rotated_levels.append(level_dst)
+	mapped["wall_levels"] = rotated_levels
 
 	var blocked_cells: Array[Vector2i] = []
 	for cell in layout.get("blocked_cells", []):

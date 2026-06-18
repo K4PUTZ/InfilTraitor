@@ -9,6 +9,8 @@ Seu papel é implementar funcionalidades em GDScript para Godot 4.6, seguindo in
 
 IMPORTANTE: Ao final de cada tarefa finalizada, executar um smoke test, observando o output e corrigindo problemas.
 
+OBS: Manter sempre todo o projeto em Inglês, independente da nossa comunicação.
+
 ---
 
 ## O Projeto

@@ -33,12 +33,12 @@ BACKUP_FILE = PROJECT_DIR / "BACKUP.ZIP"
 EXCLUDE_DIRS = {
     "ASSETS",          # Arquivos gráficos grandes
     "ARCHIVE",         # Backup antigo
-    "Concept",         # Imagens de conceito (69 MB)
     "REFERENCES",      # Imagens de referência (1.3 MB)
     "export",          # Exportações do projeto
     ".git",            # Repositório git
     ".godot",          # Cache do Godot
-    ".vscode",         # Configurações VS Code
+    ".vscode",         # Configurações locais do VS Code
+    ".claude",         # Configurações locais do Claude Code (settings.local.json)
     "__pycache__",     # Cache Python
     ".pytest_cache",
     "node_modules",

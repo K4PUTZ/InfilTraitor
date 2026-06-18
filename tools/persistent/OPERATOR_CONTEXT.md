@@ -107,45 +107,27 @@ de mapa.
 
 ## Mapa de Arquivos
 
+O mapa de arquivos, a superfície de API (signals, funcs públicas, `@export`) e as
+tabelas de tuning (consts: timers, thresholds, FSM, curvas de FOV) são **gerados
+mecanicamente a partir do código-fonte** — ver `CODEMAP.md` (neste diretório).
+
+**Não edite `CODEMAP.md` à mão e não mantenha uma lista de arquivos aqui.** Esta
+seção existia antes como lista manual e ficou desatualizada; agora a fonte da
+verdade é o próprio código. Regenerar:
+
 ```
-godot/scripts/
-  agents/
-    agent.gd                    agente jogador (placeholder diamond verde)
-    guard_enemy.gd              guarda: FSM, cone angular, patrulha orgânica
-  data/
-    agent_stats.gd              stats data-driven (HP, AP, armor)
-  navigation/
-    guard_pathfinder.gd         A* para guardas
-    movement_overlay.gd         Dijkstra + overlay de range para agente
-    path_preview.gd             preview de rota do agente
-  overlays/
-    trail_overlay.gd            rastro amarelo do agente (DEV_VISION)
-    noise_overlay.gd            ondas sonoras persistentes no grid
-    guard_noise_indicator.gd    indicadores flutuantes de direção sonora
-  systems/
-    tic_system.gd               detecção event-driven por cruzamento de aresta
-    noise_system.gd             barulho persistente por tile com decaimento
-    enemy_phase_controller.gd   turno sequencial dos guardas
-    turn_manager.gd             AP e fases do turno do agente
-  ui/
-    fog_of_war_overlay.gd       FOW progressivo 3 camadas
-    selection_overlay.gd        seleção de tile
-    tile_labels_overlay.gd      coordenadas de tile (dev)
-    compass_rose.gd             rosa dos ventos
-  world/
-    room.gd                     controlador principal da cena (renderiza o layout dict)
-    wall_edge_data.gd           edge_key(), is_edge_blocked(), blocks_los/sound()
-    tile_registry.gd            registro de tiles
-    level_graph.gd              grafo de segmentos do nível
-    maps/
-      map_geometry.gd           primitivas puras: paredes, portas, arestas (static)
-      map_compiler.gd           MapSpec → layout dict (único dono do offset de buffer)
-      map_catalog.gd            map_id → MapSpec (roteamento de mapas)
-      definitions/
-        playground_map.gd       mapa de referência de artwork (mockup)
-        sigma_01_map.gd         mapa de teste SIGMA-01 (migrado, coords internas)
-        procedural_map.gd       stub do gerador procedural (próxima fase)
+python3 tools/persistent/gen_codemap.py        # reescreve CODEMAP.md
+python3 tools/persistent/gen_codemap.py --check # falha (exit 1) se estiver stale
 ```
+
+Um hook de pre-commit (`tools/persistent/hooks/pre-commit`, instalado via
+`git config core.hooksPath tools/persistent/hooks`) bloqueia qualquer commit com
+`CODEMAP.md` desatualizado — regenera e faz stage do arquivo automaticamente,
+abortando o commit para revisão. Drift não consegue entrar no histórico.
+
+Este documento (`OPERATOR_CONTEXT.md`) permanece **100% autoral**: papel, regras
+invioláveis e racional de design — coisas que nenhuma ferramenta consegue derivar
+do código. Para valores exatos de tuning, `CODEMAP.md` é autoritativo.
 
 ---
 

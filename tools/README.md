@@ -30,11 +30,10 @@ python3 tools/persistent/BACKUP.py
 ```
 
 **Features:**
-- Creates ZIP archives (BACKUP_YYYYMMDD_HHMMSS.zip)
-- Excludes ASSETS/, ARCHIVE/, .git, cache directories
-- Excludes large binaries and cache files
-- Preserves entire source structure (godot/, docs/, scripts)
-- Typical output: ~50KB (code + structure only)
+- Creates a single `BACKUP.ZIP` at the repo root (overwrites the previous one)
+- Excludes ASSETS/, ARCHIVE/, REFERENCES/, export/, .git, .godot, .vscode, .claude, cache directories
+- Excludes images and binaries by extension (code + textual docs only)
+- Preserves the source structure (godot/, docs/, tools/, scripts)
 
 **When to Use:**
 - Before major refactors
@@ -44,9 +43,57 @@ python3 tools/persistent/BACKUP.py
 **Configuration:**
 - Edit `EXCLUDE_DIRS` and `EXCLUDE_FILES` inside script to customize
 
-**Output:** BACKUP_*.ZIP files (gitignored)
+**Output:** `BACKUP.ZIP` (gitignored)
 
-**Maintenance:** None required (self-contained)
+**Maintenance:** None required (structure-agnostic — `rglob` + exclude lists, so new
+files are picked up automatically without editing the script)
+
+---
+
+### gen_codemap.py
+
+**Purpose:** Mechanically generate `CODEMAP.md` from the GDScript source so the
+file map / API surface / tuning tables never drift from the code
+**Category:** Documentation automation
+**Status:** ✅ Active
+
+**Usage:**
+```bash
+python3 tools/persistent/gen_codemap.py          # write CODEMAP.md
+python3 tools/persistent/gen_codemap.py --check   # exit 1 if stale (no write)
+```
+
+**Features:**
+- Extracts `class_name`, `extends`, file doc, `signal`s, top-level `const`s,
+  `@export` / public vars, and public funcs from every `godot/scripts/**/*.gd`
+- Deterministic output (no timestamps / absolute paths) so unchanged code yields
+  a byte-identical file — a plain diff is a valid freshness check
+- Mechanical extraction only: cannot hallucinate, cannot drift
+
+**Output:** `CODEMAP.md` (generated — do not edit by hand)
+
+**Related:** Design rationale + inviolable rules stay hand-authored in
+`OPERATOR_CONTEXT.md`. The two files are complementary: authored *why* vs.
+generated *what*.
+
+---
+
+### hooks/pre-commit
+
+**Purpose:** Freshness gate — blocks any commit where `CODEMAP.md` is stale,
+regenerating + staging it automatically so one retry succeeds
+**Category:** Documentation automation (git hook)
+**Status:** ✅ Active
+
+**Install (one-time, from repo root):**
+```bash
+git config core.hooksPath tools/persistent/hooks
+```
+
+**Behavior:** On commit, runs `gen_codemap.py --check`. If stale, it regenerates,
+`git add`s `CODEMAP.md`, and aborts the commit for review. Drift cannot enter
+history. `core.hooksPath` is local git config, so a fresh clone re-runs the
+install command once.
 
 ---
 
@@ -158,6 +205,8 @@ Archive/ (deprecate, move when replacing)
 | Tool | Frequency | Owner | Notes |
 |------|-----------|-------|-------|
 | BACKUP.py | As-needed | Anyone | Run before major changes |
+| gen_codemap.py | Automatic | pre-commit hook | Regenerates CODEMAP.md; never edit by hand |
+| hooks/pre-commit | One-time install | Anyone | `git config core.hooksPath tools/persistent/hooks` |
 | Migration scripts | Never (archived) | None | Reference only |
 
 ---
@@ -170,6 +219,6 @@ Archive/ (deprecate, move when replacing)
 
 ---
 
-**Last Updated:** 2026-06-12  
+**Last Updated:** 2026-06-18  
 **Maintained By:** Architecture Team  
 **Status:** Active 🟢

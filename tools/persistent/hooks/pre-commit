@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# INFILTRAITOR pre-commit hook — freshness gate for the generated CODEMAP.
+# INFILTRAITOR pre-commit hook — two gates:
+#   1. Inviolable-rule guard (check_invariants.py) — blocks code that breaks the
+#      architecture rules in OPERATOR_CONTEXT.md. Cannot auto-fix; aborts.
+#   2. CODEMAP freshness gate (gen_codemap.py) — blocks a stale generated doc.
+#      Auto-regenerates + stages it, then aborts so you can review and re-commit.
 #
-# Blocks the commit if tools/persistent/CODEMAP.md is out of date with the
-# GDScript source. To remove the friction of a manual regen, on a stale doc it
-# regenerates and stages the file for you, then aborts so you can review and
-# re-commit. The commit itself never goes through with a stale codemap.
+# Neither gate lets a bad commit reach history.
 #
 # Install (one-time, from repo root):
 #   git config core.hooksPath tools/persistent/hooks
@@ -13,22 +14,31 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+CHECK="$REPO_ROOT/tools/persistent/check_invariants.py"
 GEN="$REPO_ROOT/tools/persistent/gen_codemap.py"
 
-if [ ! -f "$GEN" ]; then
-    # Generator absent — nothing to enforce.
-    exit 0
+# ── Gate 1: inviolable-rule guard ───────────────────────────────────────────
+if [ -f "$CHECK" ]; then
+    if ! python3 "$CHECK"; then
+        echo ""
+        echo "✗ Commit aborted: architecture rule violation (see above)."
+        echo "  Fix the code, then re-run your commit."
+        exit 1
+    fi
 fi
 
-if python3 "$GEN" --check; then
-    exit 0
+# ── Gate 2: CODEMAP freshness ───────────────────────────────────────────────
+if [ -f "$GEN" ]; then
+    if ! python3 "$GEN" --check; then
+        echo ""
+        echo "CODEMAP.md was stale. Regenerating and staging it now..."
+        python3 "$GEN"
+        git add "$REPO_ROOT/tools/persistent/CODEMAP.md"
+        echo ""
+        echo "✗ Commit aborted: CODEMAP.md has been regenerated + staged."
+        echo "  Review the change, then re-run your commit."
+        exit 1
+    fi
 fi
 
-echo ""
-echo "CODEMAP.md was stale. Regenerating and staging it now..."
-python3 "$GEN"
-git add "$REPO_ROOT/tools/persistent/CODEMAP.md"
-echo ""
-echo "✗ Commit aborted: CODEMAP.md has been regenerated + staged."
-echo "  Review the change, then re-run your commit."
-exit 1
+exit 0

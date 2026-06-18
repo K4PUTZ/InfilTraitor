@@ -39,6 +39,11 @@ Regra prática:
 Estas regras existem por decisão de design e não devem ser quebradas por
 nenhum prompt, por mais conveniente que pareça:
 
+> **Enforcement automático:** as regras 1–5 são verificadas mecanicamente por
+> `tools/persistent/check_invariants.py` (rodado pelo pre-commit hook). Uma
+> violação bloqueia o commit. Regras 6–7 ainda dependem de revisão (6 não tem
+> código ainda; 7 é heurística demais para detecção sem falsos positivos).
+
 **1. Stats são sempre `var`, nunca `const`**
 Valores de gameplay (HP, dano, alcance, velocidade) precisam escalar com
 tiers de dificuldade no futuro. `const` cria tetos artificiais.

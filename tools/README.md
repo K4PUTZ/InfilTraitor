@@ -78,11 +78,36 @@ generated *what*.
 
 ---
 
+### check_invariants.py
+
+**Purpose:** Mechanically enforce the inviolable architecture rules from
+OPERATOR_CONTEXT.md so violations can't enter the codebase unnoticed
+**Category:** Code-quality automation
+**Status:** ✅ Active
+
+**Usage:**
+```bash
+python3 tools/persistent/check_invariants.py          # report + exit code
+python3 tools/persistent/check_invariants.py --quiet   # exit code only
+```
+
+**Checks (high-confidence, zero false-positive against the current tree):**
+- **R1** gameplay stats are never `const` (HP/AP/armor/move-point ceilings)
+- **R2** `VISUAL_GRID_OFFSET` is only defined in room.gd (never copied to children)
+- **R3** `_edge_key()` is only defined in wall_edge_data.gd
+- **R4** guard `state` is only assigned inside `_enter_state()` (scope-aware)
+- **R5** `_alert_meter` only *accumulates* inside `_apply_tic_result()` (scope-aware)
+
+**Not mechanized:** R6 (no mission code yet) and R7 (`+ buffer` too heuristic to
+detect without false positives) — those still rely on review.
+
+---
+
 ### hooks/pre-commit
 
-**Purpose:** Freshness gate — blocks any commit where `CODEMAP.md` is stale,
-regenerating + staging it automatically so one retry succeeds
-**Category:** Documentation automation (git hook)
+**Purpose:** Two pre-commit gates — (1) the inviolable-rule guard and (2) the
+`CODEMAP.md` freshness gate
+**Category:** Automation (git hook)
 **Status:** ✅ Active
 
 **Install (one-time, from repo root):**
@@ -90,10 +115,11 @@ regenerating + staging it automatically so one retry succeeds
 git config core.hooksPath tools/persistent/hooks
 ```
 
-**Behavior:** On commit, runs `gen_codemap.py --check`. If stale, it regenerates,
-`git add`s `CODEMAP.md`, and aborts the commit for review. Drift cannot enter
-history. `core.hooksPath` is local git config, so a fresh clone re-runs the
-install command once.
+**Behavior:** On commit it runs `check_invariants.py` first — any rule violation
+aborts the commit (no auto-fix; you fix the code). Then it runs
+`gen_codemap.py --check`; if `CODEMAP.md` is stale it regenerates + `git add`s it
+and aborts for review. Neither gate lets a bad commit reach history.
+`core.hooksPath` is local git config, so a fresh clone re-runs the install once.
 
 ---
 
@@ -206,6 +232,7 @@ Archive/ (deprecate, move when replacing)
 |------|-----------|-------|-------|
 | BACKUP.py | As-needed | Anyone | Run before major changes |
 | gen_codemap.py | Automatic | pre-commit hook | Regenerates CODEMAP.md; never edit by hand |
+| check_invariants.py | Automatic | pre-commit hook | Enforces OPERATOR_CONTEXT inviolable rules |
 | hooks/pre-commit | One-time install | Anyone | `git config core.hooksPath tools/persistent/hooks` |
 | Migration scripts | Never (archived) | None | Reference only |
 

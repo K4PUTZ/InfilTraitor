@@ -6,6 +6,7 @@ const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
+const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
@@ -78,6 +79,7 @@ var _guards: Array = []
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
 var _exit_cells: Array[Vector2i] = []  ## Segment exit tiles (doorOpen_*)
 var _current_light_sources: Array = []  ## Active (rotated) map lights for LightingController
+var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
 
@@ -403,6 +405,15 @@ func _ready() -> void:
 	agent.add_child(_guard_noise_indicator)
 	_guard_noise_indicator.setup(floor_layer, VISUAL_GRID_OFFSET)
 
+	## VIS-01 Slice 3: overhead ceiling layer (lights as placeholders for now),
+	## raised above the wall stack and drawn above the top storey.
+	_ceiling_overlay = CeilingPropOverlayClass.new()
+	add_child(_ceiling_overlay)
+	var ceil_floors: int = int(_base_layout.get("max_floors", 1))
+	_ceiling_overlay.z_index = WALL_BASE_Z_INDEX + ceil_floors + 1
+	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, WALL_FLOOR_STEP_PX * float(ceil_floors))
+	_ceiling_overlay.set_lights(_current_light_sources)
+
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
 	_dev_hover_label.add_theme_font_size_override("font_size", 13)
@@ -476,6 +487,7 @@ func _set_perspective(direction: String) -> void:
 		## cells and emits lighting_rebuilt → VisionController refreshes its analysis overlays.
 		tile_labels_overlay.queue_redraw()
 		_lighting_controller.rebuild_all()
+		_ceiling_overlay.set_lights(_current_light_sources)
 		## Dev agent trail cells are now stale under the rotation — clear it.
 		_agent_trail.clear()
 		if _trail_overlay != null:

@@ -532,7 +532,10 @@ fade machine.
 - ✅ **Slice 2 — `MapSpec` light tracks / anchors** (`map_compiler.gd`): lights snap
   to canonical track cells via `{track, slot}`; special lights stay free via `{x, y}`.
   Playground migrated to a "central" rail — resolves to identical cells (no regression).
-- ⏳ Next: **Slice 3 — ceiling light render (`CeilingPropLayer`, placeholder sprite)**.
+- ✅ **Slice 3 — ceiling light render** (`ceiling_prop_overlay.gd`): `CeilingPropOverlay`
+  draws map lights as placeholder fixtures above the wall stack (z above the top storey),
+  perspective-driven (refreshed on rotation). Lift/size tunable; real sprites later.
+- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or shadow/ceiling tuning.
 
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.

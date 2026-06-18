@@ -1415,16 +1415,29 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 		exit_cells.append(_cell_from_base(cell, direction, base_size))
 	mapped["exit_cells"] = exit_cells
 
-	## Map lights (omni {x,y,height,radius,intensity}) rotate by cell; no direction to remap.
+	## Map lights rotate by cell; directional/cone lights also rotate their angle
+	## by the same quarter-turn so the cone covers the same (rotated) cells.
+	var angle_delta_deg := _perspective_angle_delta_deg(direction)
 	var light_sources: Array = []
 	for light in layout.get("light_sources", []):
 		var out := (light as Dictionary).duplicate(true)
 		var rotated := _cell_from_base(Vector2i(int(out.get("x", 0)), int(out.get("y", 0))), direction, base_size)
 		out["x"] = rotated.x
 		out["y"] = rotated.y
+		if out.has("direction_deg"):
+			out["direction_deg"] = fmod(float(out["direction_deg"]) + angle_delta_deg + 360.0, 360.0)
 		light_sources.append(out)
 	mapped["light_sources"] = light_sources
 	return mapped
+
+
+## Quarter-turn applied to directional light angles, matching `_cell_from_base`.
+func _perspective_angle_delta_deg(direction: String) -> float:
+	match direction:
+		"E": return 90.0
+		"S": return 180.0
+		"W": return -90.0
+		_: return 0.0
 
 
 func _rotated_size(base_size: Vector2i, direction: String) -> Vector2i:

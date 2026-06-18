@@ -535,6 +535,11 @@ fade machine.
 - ✅ **Slice 3 — ceiling light render** (`ceiling_prop_overlay.gd`): `CeilingPropOverlay`
   draws map lights as placeholder fixtures above the wall stack (z above the top storey),
   perspective-driven (refreshed on rotation). Lift/size tunable; real sprites later.
+- ✅ **Light types wired** (`lighting_controller.gd`): MapSpec lights now honor
+  `type` / `height_class` / `direction_deg` / `cone_deg` / `flicker` (was hardcoded
+  omni + overhead); legacy `height` float reconciled; directional angle rotates with
+  perspective. Cone-gating acceptance tests pass; playground has a demo cone spot.
+  Unlocks the "not restrictive" branch — sun rays / spots / fire / candles.
 - ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or shadow/ceiling tuning.
 
 **Acceptance Criteria (high level):**

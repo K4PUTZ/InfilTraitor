@@ -19,7 +19,14 @@ extends RefCounted
 ##     "dividers":      Array[{"cells": Array[Vector2i]}],        # internal walls w/ gates
 ##     "props":         Array[{"cell": Vector2i, "tile": String}],# crates / pillars
 ##     "light_tracks":  Array[{"id": String, "cells": Array[Vector2i]}], # rails (internal coords)
-##     "lights":        Array[{"x","y" | "track","slot", "height","radius","intensity"}],
+##     "lights":        Array[{                                          # one of {x,y} | {track,slot}
+##                        "x","y" | "track","slot",                      #   placement
+##                        "radius","intensity",                          #   common
+##                        "type"?,            # omni(default)|cone|directional|...
+##                        "height_class"?,    # 0-4 (default OVERHEAD); legacy float "height" clamps
+##                        "direction_deg"?,"cone_deg"?,                   # for cone/directional
+##                        "flicker"?,"flicker_interval"?,                 # small/temporal (fire/candle)
+##                      }],
 ##     "patrols":       Array[Array[Vector2i]],
 ##   }
 ##

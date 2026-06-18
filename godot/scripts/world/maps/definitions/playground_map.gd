@@ -61,6 +61,10 @@ static func spec() -> Dictionary:
 		"lights": [
 			{"track": "central", "slot": 0, "height": 5.0, "radius": 8, "intensity": 0.90},  ## north
 			{"track": "central", "slot": 2, "height": 5.0, "radius": 8, "intensity": 0.90},  ## south
+			## Special (free): a cone spot over the north columns, pointing south into
+			## the room — demonstrates directional shadows + perspective angle rotation.
+			{"x": 9, "y": 9, "type": "cone", "direction_deg": 90, "cone_deg": 80,
+			 "height_class": 3, "radius": 7, "intensity": 0.85},
 		],
 		"patrols": [
 			## North room — E-W

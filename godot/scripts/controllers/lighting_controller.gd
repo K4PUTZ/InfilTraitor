@@ -98,10 +98,23 @@ func _setup_lights_from_layout() -> void:
 		var src: Dictionary = sources[i]
 		var light = LightSourceClass.new()
 		light.cell = Vector2i(int(src.get("x", 0)), int(src.get("y", 0)))
-		light.height_class = TileSemanticsClass.HEIGHT_OVERHEAD
-		light.light_type = "omni"
+		light.light_type = String(src.get("type", LightSourceClass.TYPE_OMNI))
+		## Height: prefer explicit height_class; reconcile the legacy float "height"
+		## (clamp 0–4); default OVERHEAD for ceiling lights.
+		if src.has("height_class"):
+			light.height_class = int(src["height_class"])
+		elif src.has("height"):
+			light.height_class = clampi(int(src["height"]), 0, 4)
+		else:
+			light.height_class = TileSemanticsClass.HEIGHT_OVERHEAD
 		light.radius = int(src.get("radius", 6))
 		light.tactical_energy = float(src.get("intensity", 1.0))
+		## Direction / cone for directional & cone (spot / sun) lights.
+		light.direction_angle = deg_to_rad(float(src.get("direction_deg", 0.0)))
+		light.cone_angle = float(src.get("cone_deg", light.cone_angle))
+		## Small/temporal sources (fire, candle, intermittent).
+		if bool(src.get("flicker", false)):
+			light.set_flicker(true, float(src.get("flicker_interval", 1.0)))
 		light.active = true
 		light.light_id = "map_light_%d" % (i + 1)
 		light.owner_name = "map_light_%d" % (i + 1)

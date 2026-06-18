@@ -77,6 +77,7 @@ var _guards: Array = []
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
 var _exit_cells: Array[Vector2i] = []  ## Segment exit tiles (doorOpen_*)
+var _current_light_sources: Array = []  ## Active (rotated) map lights for LightingController
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
 
@@ -469,6 +470,17 @@ func _set_perspective(direction: String) -> void:
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_update_guard_los_data()
 		_center_camera(agent.cell)
+
+		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
+		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
+		## cells and emits lighting_rebuilt → VisionController refreshes its analysis overlays.
+		tile_labels_overlay.queue_redraw()
+		_lighting_controller.rebuild_all()
+		## Dev agent trail cells are now stale under the rotation — clear it.
+		_agent_trail.clear()
+		if _trail_overlay != null:
+			_trail_overlay.queue_redraw()
+
 		_refresh_tactical_state()
 	_update_perspective_button_state()
 
@@ -1300,14 +1312,15 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))
-	print("[Room] Cache: %d blocked_cells, %d exit_cells" % [_blocked_cells.size(), _exit_cells.size()])
+	## Active (perspective-rotated) map lights — consumed by LightingController.
+	_current_light_sources = layout.get("light_sources", [])
+	print("[Room] Cache: %d blocked_cells, %d exit_cells, %d lights" % [
+		_blocked_cells.size(), _exit_cells.size(), _current_light_sources.size()])
 	print("[Room] Border check: (0,0)=%s (17,0)=%s (0,35)=%s (17,35)=%s (9,0)=%s (9,35)=%s" % [
 		_blocked_cells.has(Vector2i(0,0)), _blocked_cells.has(Vector2i(17,0)),
 		_blocked_cells.has(Vector2i(0,35)), _blocked_cells.has(Vector2i(17,35)),
 		_blocked_cells.has(Vector2i(9,0)), _blocked_cells.has(Vector2i(9,35))
 	])
-	## L-IMP-01: Light sources now managed by LightRegistry in _ready()
-	## (Old M2-13 functions removed; queries handled by registry.get_lights_affecting_cell)
 
 
 ## M2-13: Quantized isometric directions (8 directions)
@@ -1383,6 +1396,22 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 		out["route"] = route
 		enemy_defs.append(out)
 	mapped["enemy_defs"] = enemy_defs
+
+	## Exit markers rotate with the room.
+	var exit_cells: Array[Vector2i] = []
+	for cell in layout.get("exit_cells", []):
+		exit_cells.append(_cell_from_base(cell, direction, base_size))
+	mapped["exit_cells"] = exit_cells
+
+	## Map lights (omni {x,y,height,radius,intensity}) rotate by cell; no direction to remap.
+	var light_sources: Array = []
+	for light in layout.get("light_sources", []):
+		var out := (light as Dictionary).duplicate(true)
+		var rotated := _cell_from_base(Vector2i(int(out.get("x", 0)), int(out.get("y", 0))), direction, base_size)
+		out["x"] = rotated.x
+		out["y"] = rotated.y
+		light_sources.append(out)
+	mapped["light_sources"] = light_sources
 	return mapped
 
 

@@ -53,6 +53,17 @@ func rebuild() -> void:
 	lighting_rebuilt.emit()
 
 
+## Full re-derivation from the room's current (e.g. perspective-rotated) layout: re-registers
+## map lights, rebuilds tile semantics, re-feeds the shadow projector, re-projects shadows/exposure.
+## Use this when the underlying cells change (perspective switch); rebuild() only re-projects.
+func rebuild_all() -> void:
+	_setup_lights_from_layout()
+	_setup_tile_semantics()
+	_refresh_shadow_projector_inputs()
+	_rebuild_all_shadows_and_exposure()
+	lighting_rebuilt.emit()
+
+
 func rebuild_deferred() -> void:
 	call_deferred("rebuild")
 
@@ -61,7 +72,7 @@ func _init_systems() -> void:
 	## L-IMP-01: Initialize light registry and overlay
 	_light_registry = LightRegistryClass.new()
 	_room.add_child(_light_registry)
-	_setup_debug_lights()
+	_setup_lights_from_layout()
 	
 	## L-IMP-02a: Initialize tile semantics BEFORE shadow projection (needs _tile_semantics_map for heights)
 	_setup_tile_semantics()
@@ -73,52 +84,31 @@ func _init_systems() -> void:
 	_setup_exposure_system()
 
 
-## L-IMP-01: Initialize debug test lights for tactical visualization
-func _setup_debug_lights() -> void:
+## Register the map's lights from the active (perspective-rotated) layout.
+## Source: room._current_light_sources — entries {x, y, height, radius, intensity}.
+## Replaces the old hardcoded debug lights so lighting follows the map and rotates with it.
+func _setup_lights_from_layout() -> void:
 	if _light_registry == null:
 		return
-	
-	# Test light 1: Overhead ambient at (10, 10)
-	var light1 = LightSourceClass.new()
-	light1.cell = Vector2i(10, 10)
-	light1.height_class = 4  # HEIGHT_OVERHEAD
-	light1.light_type = "omni"
-	light1.radius = 6
-	light1.tactical_energy = 1.0
-	light1.active = true
-	light1.light_id = "test_omni_1"
-	light1.owner_name = "overhead_lamp_01"
-	_light_registry.register_light(light1)
-	
-	# Test light 2: Cone light (directional) at (15, 8)
-	var light2 = LightSourceClass.new()
-	light2.cell = Vector2i(15, 8)
-	light2.height_class = 2  # HEIGHT_HUMAN
-	light2.light_type = "cone"
-	light2.radius = 5
-	light2.direction_angle = PI * 0.75  # 135 degrees
-	light2.cone_angle = 60.0
-	light2.tactical_energy = 0.8
-	light2.active = true
-	light2.light_id = "test_cone_1"
-	light2.owner_name = "guard_spotlight"
-	_light_registry.register_light(light2)
-	
-	# Test light 3: Directional light (guard torch) at (8, 15)
-	var light3 = LightSourceClass.new()
-	light3.cell = Vector2i(8, 15)
-	light3.height_class = 2  # HEIGHT_HUMAN
-	light3.light_type = "directional"
-	light3.radius = 4
-	light3.direction_angle = PI * 0.25  # 45 degrees
-	light3.tactical_energy = 0.6
-	light3.active = true
-	light3.light_id = "test_directional_1"
-	light3.owner_name = "torch_01"
-	_light_registry.register_light(light3)
-	
+
+	_light_registry.clear_all()
+
+	var sources: Array = _room._current_light_sources
+	for i in range(sources.size()):
+		var src: Dictionary = sources[i]
+		var light = LightSourceClass.new()
+		light.cell = Vector2i(int(src.get("x", 0)), int(src.get("y", 0)))
+		light.height_class = TileSemanticsClass.HEIGHT_OVERHEAD
+		light.light_type = "omni"
+		light.radius = int(src.get("radius", 6))
+		light.tactical_energy = float(src.get("intensity", 1.0))
+		light.active = true
+		light.light_id = "map_light_%d" % (i + 1)
+		light.owner_name = "map_light_%d" % (i + 1)
+		_light_registry.register_light(light)
+
 	var all_lights = _light_registry.get_all_lights()
-	print("[Room] Light registry initialized with %d test lights:" % all_lights.size())
+	print("[Room] Light registry initialized with %d map lights:" % all_lights.size())
 	for light in all_lights:
 		print("  - %s @ cell(%d,%d) radius=%d type=%s" % [light.light_id, light.cell.x, light.cell.y, light.radius, light.light_type])
 
@@ -127,14 +117,19 @@ func _setup_debug_lights() -> void:
 func _setup_shadow_projector() -> void:
 	_shadow_projector = ShadowProjectorClass.new()
 	_room.add_child(_shadow_projector)
-	
-	# Provide reference data from room
+	_refresh_shadow_projector_inputs()
+	print("[Room] Shadow projector initialized")
+
+
+## (Re)feed the shadow projector with the room's current geometry. Called at setup and on
+## every rebuild (e.g. perspective change), so projections match the active layout.
+func _refresh_shadow_projector_inputs() -> void:
+	if _shadow_projector == null:
+		return
 	_shadow_projector.set_blocked_cells(_room._blocked_cells)
 	_shadow_projector.set_blocked_edges(_room.enemy_phase_controller.build_blocked_edge_set(_room._current_blocked_edges))
 	_shadow_projector.set_obstacle_heights(_get_obstacle_heights())
 	_shadow_projector.set_room_size(_room._room_size)
-	
-	print("[Room] Shadow projector initialized")
 
 
 ## Helper: Build obstacle heights dictionary from blocked cells

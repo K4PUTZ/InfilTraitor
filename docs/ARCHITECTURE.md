@@ -68,6 +68,13 @@ procedural generator share one vocabulary (`MapSpec`) and one compiler.
 - Note: outer walls block movement via `blocked_edges` only — they are **not** added to
   `blocked_cells` (interior bounded by edges). To add a map: author a definition + one
   `MapCatalog` branch. Map selection is the exported `map_id` on the Room node.
+- **Wall storeys (N-floor):** `MapSpec.wall_height` (storeys for the outer perimeter; default 1)
+  makes `MapCompiler` emit `wall_levels: Array[Array]` — `[0]` is the ground course (doors +
+  dividers), `[k≥1]` the solid perimeter ring (no door gaps) so doorways stay normal-height with
+  wall above. `room._build_room` renders level 0 on `StructureWallLayer` (z=10) and each higher
+  level on a runtime `TileMapLayer` offset up by `WALL_FLOOR_STEP_PX` (=158px, the cube's
+  side-face height) at `z=10+level`, so tops occlude sprites. `MapSpec.lights` feed the lighting
+  system (§8). `@export wall_height_override` on Room forces a height for quick testing.
 
 ### Node topology (as built)
 
@@ -135,9 +142,10 @@ Six controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series). 
 
 - **Responsibilities:** owns the entire lighting pipeline — creates `LightRegistry`, `ShadowProjector`, `ExposureSystem`; builds `tile_semantics_map` and `light_anchors`; runs the initial projection; rebuilds shadows+exposure on demand.
 - **Dependencies:** `_room` for structural data (`_blocked_cells`, `_room_size`, `_current_blocked_edges`, `enemy_phase_controller.build_blocked_edge_set`).
-- **Events/signals:** emits `lighting_rebuilt` after every `rebuild()` so overlays refresh. `rebuild_deferred()` defers a rebuild to the next idle frame (used by temporal lights).
+- **Events/signals:** emits `lighting_rebuilt` after every `rebuild()`/`rebuild_all()` so overlays refresh. `rebuild_deferred()` defers a rebuild to the next idle frame (used by temporal lights).
+- **Rebuild tiers:** `rebuild()` only re-projects shadows/exposure from the existing lights+semantics; `rebuild_all()` re-derives everything from the room's current layout — re-registers map lights (`_setup_lights_from_layout`), rebuilds `tile_semantics_map`, re-feeds the shadow projector (`_refresh_shadow_projector_inputs`), re-projects, and emits. `_set_perspective` calls `rebuild_all()` so lighting follows the rotated layout.
 - **Room integration:** moderate. Reads room structural state; exposes accessors so VisionController never touches the systems directly (in principle — VisionController still reaches `_shadow_projector` through it).
-- **Note:** the test lights are **hardcoded** here (`_setup_debug_lights`), and `tile_semantics_map` is **inferred** from `blocked_cells`, not authored (§9, §10).
+- **Note:** lights are **map-driven** — `_setup_lights_from_layout` registers one `LightSource` per `room._current_light_sources` entry (the perspective-rotated `MapSpec.lights`); the old hardcoded `_setup_debug_lights` is retired. `tile_semantics_map` is still **inferred** from `blocked_cells`, not authored (§9, §10).
 
 ### 2.4 CameraController — `controllers/camera_controller.gd`
 
@@ -301,12 +309,13 @@ Results carry five classes (`ShadowResult`: fully_lit / dim / penumbra / shadow 
 
 ## 8. Lighting System
 
-**Status: Partial** — full runtime model, hardcoded data
+**Status: Partial** — full runtime model, map-driven placement
 
 - **`LightSource`** (RefCounted): position, `height_class`, `light_type` (omni/directional/cone/ambient/intermittent/emergency/mobile), radius, direction/cone angle, tactical energy, and temporal flags.
 - **`LightRegistry`** (Node): id/cell-indexed storage; `get_all_lights`, `get_active_lights`, `get_lights_by_type`, `get_lights_affecting_cell` (radius-only, no occlusion), `update_temporal_all(delta)`.
 - **Temporal effects — Implemented:** `LightSource.update_temporal_state` animates flicker, pulse, and rotation. `room._process` → `update_temporal_all` → if any light changed, `LightingController.rebuild_deferred()` re-projects shadows and exposure that frame. `TemporalOverlay` visualizes states.
-- **Data authoring — Planned/absent:** all lights are created by `LightingController._setup_debug_lights` (three hardcoded test lights). There is **no** data-driven light placement, serialization, or anchor authoring at runtime, despite the `L-ARCH-03` authoring-pipeline spec. `LightAnchor` objects are synthesized from existing lights, not loaded.
+- **Placement — map-driven:** lights come from `MapSpec.lights` → `layout.light_sources` (rotated by perspective) → `LightingController._setup_lights_from_layout` registers one omni `LightSource` per entry (`cell`, `radius`, `tactical_energy=intensity`, `height_class=HEIGHT_OVERHEAD`). The old hardcoded test lights are retired.
+- **Authoring — still partial:** lights are placed by the map data but there is no runtime serialization/anchor-authoring tooling, and direction/cone/temporal params are not yet expressed in `MapSpec` (entries are omni `{x,y,height,radius,intensity}`). `LightAnchor` objects are synthesized from existing lights, not loaded.
 
 ---
 
@@ -365,7 +374,7 @@ Two groups. **Analysis overlays** are owned by `VisionController` and gated by v
 
 - **Interaction:** left-drag pan with an 8px drag threshold, mouse-wheel zoom (`ZOOM_MIN 0.20 … ZOOM_MAX 1.20`, step 0.06), two-finger pinch-zoom.
 - **Leash:** agent-centered hard radius `CAMERA_MAX_BORDER_TILES = 4` tiles with a 2-tile quadratic soft-zone ease-out; fully released in `dev_vision`.
-- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room: `_layout_with_perspective` rotates every cell/edge/route and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`, then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, and re-centers. Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation.
+- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room: `_layout_with_perspective` rotates every cell/edge/route — `wall_levels` (all storeys), `structure_tiles`, `blocked_cells/edges`, `enemy_defs`, **`exit_cells`, and `light_sources`** — and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`. `_set_perspective` then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, re-centers, **redraws the tile-number overlay, calls `LightingController.rebuild_all()` (lights/semantics/shadows/exposure follow the rotation, refreshing the analysis overlays via `lighting_rebuilt`), and clears the now-stale dev trail.** Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation. Principle: every per-cell system is re-derived from the rotated layout, exactly as initial `_ready` setup does.
 - **Isometric picking:** `_screen_to_tile` does a 3×3 diamond-center search to resolve the clicked tile across all four diamond quadrants.
 
 ---
@@ -419,9 +428,9 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 
 ### 15.5 Hardcoded / inferred data
 
-- Lights: three test lights hardcoded in `LightingController`.
+- Lights: now map-driven from `MapSpec.lights` (the hardcoded test lights are retired), but omni-only and no serialization/anchor-authoring tooling yet.
 - Tile semantics / heights: inferred from `blocked_cells`, not authored.
-- No serialization or authoring tooling exists for either, despite the `L-ARCH-03` spec.
+- No authoring tooling exists for semantics/heights, despite the `L-ARCH-03` spec.
 
 ### 15.6 Pending modularization targets
 
@@ -445,7 +454,7 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Noise system | Implemented | Functional | grid intensity, decay, agent + guard emission |
 | Exposure system | Partial | Functional | 6 classes + stability + confidence computed; overlay-only consumer |
 | Shadow projection | Implemented | Functional | LOS, height-aware, penumbra/deep passes; not wired to gameplay |
-| Lighting (runtime) | Partial | Functional | temporal effects live; lights hardcoded, no authoring |
+| Lighting (runtime) | Partial | Functional | temporal effects live; lights map-driven (omni), no authoring yet |
 | Height semantics | Partial | Experimental | model exists; data inferred from blocked_cells |
 | Fog of war | Implemented | Functional | persistent reveal + live vision-fog shader + peek |
 | Tactical overlays | Implemented | Functional | 7 analysis + several gameplay/util overlays |

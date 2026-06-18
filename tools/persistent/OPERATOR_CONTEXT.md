@@ -7,7 +7,7 @@ https://github.com/K4PUTZ/InfilTraitor
 
 Seu papel é implementar funcionalidades em GDScript para Godot 4.6, seguindo instruções precisas do diretor de design. Você não toma decisões de design — apenas executa com qualidade, faz perguntas técnicas quando necessário, e reporta problemas encontrados.
 
-IMPORTANTE: Ao final de cada tarefa finalizada, executar um smoke test, observando o output e corrigindo problemas.
+IMPORTANTE: Ao final de cada tarefa finalizada, executar um smoke test, observando o output e corrigindo problemas. Não fazer comit automatico.
 
 OBS: Manter sempre todo o projeto em Inglês, independente da nossa comunicação.
 
@@ -178,17 +178,18 @@ room.gd  @export map_id ("PLAYGROUND" | "SIGMA_01" | "PROCEDURAL")
 **MapSpec** (Dictionary, coords internas) — chaves:
 ```
 id · inner_size · buffer · floor_tile · agent_start
+wall_height: int                   # andares da parede externa (default 1). Ver "Andares".
 access_points: [{cell}]   OU   access_from_graph: true   (puxa do LevelGraph)
 rooms:    [{rect, doors}]          # salas internas opcionais
 dividers: [{cells:[Vector2i...]}]  # paredes internas (block_SE) com gaps de portão
 props:    [{cell, tile}]           # crate_*/column_* etc.
-lights:   [{x,y,height,radius,intensity}]
+lights:   [{x,y,height,radius,intensity}]   # luzes do mapa (omni) — alimentam o LightingController
 patrols:  [[Vector2i, ...]]        # rotas de guarda
 ```
 
 **Contrato do layout dict** (saída do compilador, coords raw):
-`{size, agent_start_cell, floor_tile_name, wall_tiles, structure_tiles,
-blocked_cells, blocked_edges, enemy_defs, light_sources, exit_cells}`
+`{size, agent_start_cell, floor_tile_name, wall_tiles, wall_levels, max_floors,
+structure_tiles, blocked_cells, blocked_edges, enemy_defs, light_sources, exit_cells}`
 
 Notas:
 - **Paredes externas não entram em `blocked_cells`** — bloqueiam só via `blocked_edges`
@@ -196,6 +197,28 @@ Notas:
 - Adicionar mapa permanente: criar `definitions/<nome>_map.gd` com `static func spec()`
   e adicionar um branch em `MapCatalog`.
 - Selecionar mapa: `@export var map_id` no nó Room (Inspector).
+
+#### Andares de parede (storeys, N-floor)
+`MapSpec.wall_height` (andares do perímetro externo; default 1) faz o `MapCompiler` emitir
+`wall_levels: Array[Array]` — `[0]` = curso térreo (com portas + divisores), `[k≥1]` = anel
+sólido do perímetro (sem vãos de porta), então portas ficam com altura normal e parede sólida
+acima. O `room._build_room` renderiza o nível 0 na `StructureWallLayer` (z=10) e cada nível
+acima numa `TileMapLayer` dinâmica deslocada `-WALL_FLOOR_STEP_PX` (=158px, a altura da face
+do cubo) em `z=10+nível`, de modo que o topo oclua os sprites. Divisores internos NÃO empilham.
+`@export var wall_height_override` no Room força a altura para teste rápido.
+
+#### Luzes vêm do mapa
+`MapSpec.lights` → `layout.light_sources` (girado pela perspectiva) → `LightingController.
+_setup_lights_from_layout` registra uma `LightSource` omni por entrada. As antigas test lights
+hardcoded foram aposentadas. `tile_semantics`/sombras/exposição derivam disso.
+
+#### Coerência na rotação de perspectiva
+`_layout_with_perspective` gira TODAS as camadas por célula — `wall_levels`, `structure_tiles`,
+`blocked_cells/edges`, `enemy_defs`, **`exit_cells` e `light_sources`**. `_set_perspective`
+re-deriva o resto: redesenha os números, chama `LightingController.rebuild_all()` (luzes/
+semantics/sombras/exposição seguem o giro e os overlays de análise atualizam via `lighting_rebuilt`)
+e limpa o trail. Princípio: na troca de perspectiva, re-derivar todo sistema por célula a partir
+do layout girado, igual ao setup do `_ready`.
 
 ### Detecção Visual (TicSystem)
 Event-driven: dispara ao cruzar aresta, não por frame ou turno.
@@ -360,6 +383,8 @@ movement_overlay:   5
 path_preview:       6
 selection_overlay:  7
 agent / guards:     10
+wall ground course: 10   (StructureWallLayer)
+wall storey k:      10+k  (camadas dinâmicas, deslocadas -WALL_FLOOR_STEP_PX*k)
 noise_overlay:      140
 trail_overlay:      150
 debug_label:        200

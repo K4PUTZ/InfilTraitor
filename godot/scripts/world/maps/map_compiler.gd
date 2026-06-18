@@ -27,6 +27,7 @@ extends RefCounted
 ##    blocked_cells, blocked_edges, enemy_defs, light_sources, exit_cells}
 
 const LevelGraphClass = preload("res://godot/scripts/world/level_graph.gd")
+const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd")
 
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
@@ -51,7 +52,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	for ap: Dictionary in access_inner:
 		doors_raw.append({"cell": Vector2i(ap["cell"]) + offset})
 
-	var room := MapGeometry.build_room(outer_rect, doors_raw)
+	var room := MapGeometryClass.build_room(outer_rect, doors_raw)
 	var blocked_map: Dictionary       = room["_blocked_map"]
 	var blocked_edges: Array          = room.get("blocked_edges", [])
 	var wall_tiles: Array[Dictionary] = room["wall_tiles"].duplicate()
@@ -72,7 +73,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var inner_doors_raw: Array[Dictionary] = []
 		for d in room_def.get("doors", []):
 			inner_doors_raw.append({"cell": Vector2i(d["cell"]) + offset})
-		var inner := MapGeometry.place_inner_room(outer_rect, rect_raw, inner_doors_raw, blocked_map)
+		var inner := MapGeometryClass.place_inner_room(outer_rect, rect_raw, inner_doors_raw, blocked_map)
 		if inner.is_empty():
 			continue
 		wall_tiles.append_array(inner["wall_tiles"])
@@ -101,7 +102,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	var wall_levels: Array = [wall_tiles]
 	if wall_height > 1:
-		var solid_ring: Array = MapGeometry.build_room(outer_rect, [])["wall_tiles"]
+		var solid_ring: Array = MapGeometryClass.build_room(outer_rect, [])["wall_tiles"]
 		for _level in range(1, wall_height):
 			var course: Array[Dictionary] = []
 			for entry: Dictionary in solid_ring:

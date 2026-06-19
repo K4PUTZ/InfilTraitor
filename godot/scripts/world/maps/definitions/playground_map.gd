@@ -10,7 +10,7 @@ extends RefCounted
 ##   • Outer room  → all 4 wall corners (NW/NE/SW/SE) + 4 straight edges automatically.
 ##   • Doors       → one on each of the 4 sides (doorOpen_NW/SE/SW/NE).
 ##   • Divider     → block_SE internal wall with two gate gaps.
-##   • Crates      → all 4 orientations in a row (south cluster).
+##   • Crates      → 4 orientations as stacks 1/2/3/4 (south cluster) — height-graded shadows.
 ##   • Columns     → all 4 orientations in a row (north cluster) — the "pillar" artwork.
 ##   • Lights      → north + south sources so the prop clusters cast shadow/penumbra.
 ##   • Guards      → one patrol each side of the divider, lit lanes.
@@ -48,11 +48,12 @@ static func spec() -> Dictionary:
 			{"cell": Vector2i(6, 7),  "tile": "column_SW"},
 			{"cell": Vector2i(8, 7),  "tile": "column_NW"},
 			{"cell": Vector2i(10, 7), "tile": "column_NE"},
-			## South cluster — all 4 crate orientations.
-			{"cell": Vector2i(4, 30),  "tile": "crate_SE"},
-			{"cell": Vector2i(6, 30),  "tile": "crate_SW"},
-			{"cell": Vector2i(8, 30),  "tile": "crate_NW"},
-			{"cell": Vector2i(10, 30), "tile": "crate_NE"},
+			## South cluster — crate stacks 1/2/3/4 to exercise height-graded shadows.
+			## `stack` N renders N crate sprites and casts a taller (longer) real shadow.
+			{"cell": Vector2i(4, 30),  "tile": "crate_SE", "stack": 1},
+			{"cell": Vector2i(6, 30),  "tile": "crate_SW", "stack": 2},
+			{"cell": Vector2i(8, 30),  "tile": "crate_NW", "stack": 3},
+			{"cell": Vector2i(10, 30), "tile": "crate_NE", "stack": 4},
 		],
 		## Central vertical rail — lights snap to slots for uniform shadows.
 		"light_tracks": [

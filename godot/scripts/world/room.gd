@@ -68,10 +68,16 @@ const WALL_FLOOR_STEP_PX := 158.0
 var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
 
+## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
+## offset up by the crate body step (smaller than a full wall cube). Tunable visually.
+var CRATE_STACK_STEP_PX: float = 96.0
+var _prop_stack_layers: Array[TileMapLayer] = []
+
 ## tile_name → TileSet source_id
 var _tile_ids: Dictionary = {}
 var _room_size: Vector2i = Vector2i.ZERO
 var _blocked_cells: Dictionary = {}
+var _prop_heights: Dictionary = {}  ## rotated cell → prop shadow height class (1-4)
 var _base_layout: Dictionary = {}
 var _current_blocked_edges: Array[Dictionary] = []
 var _guards: Array = []
@@ -643,10 +649,20 @@ func _draw_spawn_marker() -> void:
 		Color(0.22, 0.22, 0.22, 0.80), 2.0
 	)
 
-## Artistic shadow spill: a full-shadow tile bleeds a soft 2-tile halo onto its
-## neighbours (ring 1 = 40% opacity, ring 2 = 15%). Cosmetic only — never feeds
-## gameplay, so it has no hiding value (see _repaint_world_shadows / tile_overlay).
+## Artistic shadow spill: a full-shadow tile bleeds a soft halo onto its neighbours.
+## COSMETIC only — never feeds gameplay (detection reads ExposureSystem), so the spill
+## has no hiding value. Shaped two ways:
+##   • density — denser real-shadow clusters (e.g. tall crate stacks) push the halo out
+##     one extra ring per SHADOW_SPILL_DENSITY_STEP neighbours, up to SHADOW_SPILL_MAX_RADIUS.
+##   • direction — orthogonal spill tiles read slightly darker than diagonal ones, which
+##     softens the hard concentric rings.
+## All tunable (var, not gameplay stat). See _compute_shadow_spill / _spill_color.
 const SHADOW_SPILL_RADIUS := 2
+var SHADOW_SPILL_MAX_RADIUS: int = 4        ## hard cap on density-extended reach
+var SHADOW_SPILL_DENSITY_STEP: int = 2      ## +1 ring per this many clustered full cells
+var SHADOW_SPILL_BASE_DARKEN: float = 0.18  ## ring-1 orthogonal darkening (1 - keeps)
+var SHADOW_SPILL_FALLOFF: float = 0.5       ## darkening multiplier per further ring
+var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65  ## diagonal keeps lighter than orthogonal
 
 ## Paint the always-on world shadow layer from the geometric exposure result.
 ## Floor shadows are real-world elements (always visible), not a debug overlay:
@@ -663,44 +679,78 @@ func _repaint_world_shadows() -> void:
 	## Cosmetic halo first (lowest visual weight), real shadow tiles on top so the
 	## geometric silhouette stays crisp where it matters.
 	var spill: Dictionary = _compute_shadow_spill(full_cells, penumbra_cells)
-	_tile_shadow.set_cells_named(spill["far"], "shadow_spill_far", TileOverlayClass.PRIO_SHADOW)
-	_tile_shadow.set_cells_named(spill["near"], "shadow_spill_near", TileOverlayClass.PRIO_SHADOW)
+	_tile_shadow.set_cells_colored(spill, TileOverlayClass.PRIO_SHADOW)
 	_tile_shadow.set_cells_named(penumbra_cells, "shadow_lite", TileOverlayClass.PRIO_SHADOW)
 	_tile_shadow.set_cells_named(full_cells, "shadow_full", TileOverlayClass.PRIO_SHADOW)
 
 
 ## Build the cosmetic spill halo around the FULL-shadow tiles.
-## Returns {"near": Array[Vector2i] (Chebyshev dist 1), "far": Array[Vector2i] (dist 2)}.
-## Cells already shadowed (full or penumbra) are excluded so the halo never lightens
-## a real shadow, and everything is clamped to the room bounds. Purely visual.
+## Returns Vector2i → Color (multiply tint). Each spill cell's tone comes from its ring
+## distance to the nearest full cell and whether that offset is orthogonal (darker) or
+## diagonal (lighter); the reach grows with local cluster density. Cells already shadowed
+## (full/penumbra) are excluded so the halo never lightens a real shadow; clamped to room.
 func _compute_shadow_spill(full_cells: Array[Vector2i], penumbra_cells: Array[Vector2i]) -> Dictionary:
 	var occupied: Dictionary = {}  ## cells that must NOT receive spill
 	for c: Vector2i in full_cells:
 		occupied[c] = true
 	for c: Vector2i in penumbra_cells:
 		occupied[c] = true
-	var nearest: Dictionary = {}  ## Vector2i → smallest Chebyshev distance to a full cell
+	var full_set: Dictionary = {}
 	for c: Vector2i in full_cells:
-		for dy in range(-SHADOW_SPILL_RADIUS, SHADOW_SPILL_RADIUS + 1):
-			for dx in range(-SHADOW_SPILL_RADIUS, SHADOW_SPILL_RADIUS + 1):
+		full_set[c] = true
+	## best[cell] = {"level": ring, "ortho": bool}; darkest wins (lowest ring, ortho on tie).
+	var best: Dictionary = {}
+	for c: Vector2i in full_cells:
+		var reach: int = _spill_reach_for(c, full_set)
+		for dy in range(-reach, reach + 1):
+			for dx in range(-reach, reach + 1):
 				if dx == 0 and dy == 0:
+					continue
+				var level: int = maxi(absi(dx), absi(dy))  ## Chebyshev ring
+				if level > reach:
 					continue
 				var cell := c + Vector2i(dx, dy)
 				if occupied.has(cell):
 					continue
 				if cell.x < 0 or cell.y < 0 or cell.x >= _room_size.x or cell.y >= _room_size.y:
 					continue
-				var d := maxi(absi(dx), absi(dy))  ## Chebyshev ring (1 or 2)
-				if not nearest.has(cell) or d < nearest[cell]:
-					nearest[cell] = d
-	var near: Array[Vector2i] = []
-	var far: Array[Vector2i] = []
-	for cell: Vector2i in nearest:
-		if nearest[cell] == 1:
-			near.append(cell)
-		else:
-			far.append(cell)
-	return {"near": near, "far": far}
+				var ortho: bool = (dx == 0 or dy == 0)
+				if not best.has(cell):
+					best[cell] = {"level": level, "ortho": ortho}
+				else:
+					var b: Dictionary = best[cell]
+					if level < b["level"] or (level == b["level"] and ortho and not b["ortho"]):
+						best[cell] = {"level": level, "ortho": ortho}
+	var out: Dictionary = {}
+	for cell: Vector2i in best:
+		out[cell] = _spill_color(best[cell]["level"], best[cell]["ortho"])
+	return out
+
+
+## Spill reach (ring count) for a full cell: base radius + 1 per density step of clustered
+## full neighbours, capped. Denser real-shadow masses (e.g. tall crate stacks) glow wider.
+func _spill_reach_for(cell: Vector2i, full_set: Dictionary) -> int:
+	var density: int = 0
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			if full_set.has(cell + Vector2i(dx, dy)):
+				density += 1
+	return clampi(
+		SHADOW_SPILL_RADIUS + density / SHADOW_SPILL_DENSITY_STEP,
+		SHADOW_SPILL_RADIUS, SHADOW_SPILL_MAX_RADIUS)
+
+
+## Multiply tint for a spill cell at ring `level` (1 = closest), orthogonal or diagonal.
+## Darkening falls off geometrically per ring; diagonals keep lighter than orthogonals.
+## Cool-blue tone (blue darkens least), matching the shadow ramp. Returns a >0.8 keeps value.
+func _spill_color(level: int, ortho: bool) -> Color:
+	var darken: float = SHADOW_SPILL_BASE_DARKEN * pow(SHADOW_SPILL_FALLOFF, float(level - 1))
+	if not ortho:
+		darken *= SHADOW_SPILL_DIAGONAL_FACTOR
+	var keeps: float = clampf(1.0 - darken, 0.0, 1.0)
+	return Color(keeps, keeps, minf(1.0, keeps + 0.05), 1.0)
 
 
 func _draw_shadow_debug() -> void:
@@ -1355,6 +1405,23 @@ func _ensure_wall_upper_layers(count: int) -> void:
 		_wall_upper_layers[i].visible = i < count
 
 
+## Ensure `count` runtime prop-stack layers exist above structure_layer (crate stacks 1..count).
+## Mirrors _ensure_wall_upper_layers but steps by CRATE_STACK_STEP_PX so a crate seats on the
+## one below. Idempotent — reuses layers across rebuilds/perspective switches.
+func _ensure_prop_stack_layers(count: int) -> void:
+	while _prop_stack_layers.size() < count:
+		var level := _prop_stack_layers.size() + 1
+		var layer := TileMapLayer.new()
+		layer.tile_set = _wall_tileset
+		layer.y_sort_origin = 1
+		layer.position = Vector2(0.0, -CRATE_STACK_STEP_PX * float(level))
+		layer.z_index = structure_layer.z_index + level
+		add_child(layer)
+		_prop_stack_layers.append(layer)
+	for i in range(_prop_stack_layers.size()):
+		_prop_stack_layers[i].visible = i < count
+
+
 func _build_room(layout: Dictionary) -> void:
 	floor_layer.clear()
 	structure_wall_layer.clear()
@@ -1377,10 +1444,22 @@ func _build_room(layout: Dictionary) -> void:
 		for entry in wall_levels[level]:
 			_place(entry.get("cell", INVALID_CELL), String(entry.get("tile_name", "")), target)
 
+	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
+	## layers offset up by the crate body step (visual stacking). The taller stack also
+	## drives a longer real shadow via _prop_heights (see _cache_blocked_cells).
+	var max_stack := 1
+	for structure_entry in layout.get("structure_tiles", []):
+		max_stack = maxi(max_stack, int(structure_entry.get("stack", 1)))
+	_ensure_prop_stack_layers(maxi(0, max_stack - 1))
+	for stack_layer in _prop_stack_layers:
+		stack_layer.clear()
 	for structure_entry in layout.get("structure_tiles", []):
 		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
 		var tile_name := String(structure_entry.get("tile_name", ""))
 		_place(cell, tile_name, structure_layer)
+		var stack: int = maxi(1, int(structure_entry.get("stack", 1)))
+		for level in range(1, stack):
+			_place(cell, tile_name, _prop_stack_layers[level - 1])
 
 	_cache_blocked_cells(layout)
 
@@ -1389,6 +1468,13 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
+	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles.
+	## Consumed by LightingController._setup_tile_semantics so stacked props cast taller
+	## (longer) shadows. Built here so it follows perspective rotation with the layout.
+	_prop_heights.clear()
+	for entry in layout.get("structure_tiles", []):
+		if entry is Dictionary and entry.has("height"):
+			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
 	## Segment exits — used by the purple overlay in _draw()
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):

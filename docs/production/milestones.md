@@ -559,8 +559,19 @@ fade machine.
   encodes intensity in **RGB** (0.48 → 0.70 → 0.82 → 0.92), not alpha — eliminating the
   flat "binary" multiply look. Rule documented in `docs/systems/rendering.md`. Brightness
   knobs are the RGB values (palette) + `SHADOW_SPILL_RADIUS` (room.gd).
-- ⏳ Next: **Slice 4 — view occlusion (directional storey cutaway)**, or floor tile
-  variety (#3, awaiting art direction) so the multiply gradient has texture to reveal.
+- ✅ **Stacked-prop heights → bigger real shadows** (`map_compiler._prop_height_for_stack`,
+  `room._prop_heights`, `lighting_controller._setup_tile_semantics`): a prop `stack` (1-4)
+  in MapSpec now (a) renders that many stacked crate sprites (`_ensure_prop_stack_layers`,
+  `CRATE_STACK_STEP_PX`) and (b) sets a real per-prop height class so `ShadowProjector`
+  casts a longer shadow — **no projector change** (closes the VIS-01 per-prop-height TODO).
+  Playground south cluster = stacks 1/2/3/4 to show the gradation (smoke: penumbra 2→5).
+- ✅ **Spill: density + directional** (`_compute_shadow_spill` / `_spill_color`): the
+  cosmetic halo now widens with real-shadow cluster density (tall stacks glow wider) and
+  shades orthogonal tiles darker than diagonal — softer rings. Still **non-playable**
+  (detection reads `ExposureSystem`, never the overlay). All knobs are `var`s on `room.gd`.
+- ⏳ Next: **Slice C — spill onto walls/props** (per-layer modulate vs per-cell shader, plan
+  calmly) and **Slice D — graded *playable* shadow strength** (DEEP_SHADOW tiers + elite/weak
+  agent axis, separate approved prompt). Also Slice 4 view occlusion / floor tile variety (#3).
 
 **Acceptance Criteria (high level):**
 - Agent never fully hidden by a wall or ceiling prop from the player's view.

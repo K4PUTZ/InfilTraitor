@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha BIG BUG - $(date +%Y-%m-%d)"
+TAG="Alpha Spill Graduation - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

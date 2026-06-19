@@ -45,12 +45,10 @@ const PALETTE: Dictionary = {
 	"shadow_lite":   Color(0.70, 0.70, 0.78, 1.0),  ## penumbra — keeps ~70%
 	"lit":           Color(1.00, 1.00, 1.00, 0.00),  ## no overlay (skipped: alpha≈0)
 
-	## Artistic shadow spill — soft cosmetic halo around full-shadow tiles.
-	## Lighter RGB than shadow_full → a gentle gradient toward lit, not a second dark
-	## band. PURELY VISUAL: detection reads the exposure grid, never this overlay —
-	## so the spill softens the silhouette without offering any hiding value.
-	"shadow_spill_near": Color(0.82, 0.82, 0.87, 1.0),  ## ring 1 (≤1 tile) — keeps ~82%
-	"shadow_spill_far":  Color(0.92, 0.92, 0.95, 1.0),  ## ring 2 (2 tiles) — keeps ~92%
+	## Artistic shadow spill — soft cosmetic halo around full-shadow tiles. Its colors
+	## are computed PER-CELL in room._spill_color (directional + density-driven), not from
+	## fixed keys here, and painted via set_cells_colored(). PURELY VISUAL: detection reads
+	## the exposure grid, never this overlay — the spill grants no hiding value.
 
 	## Detection cone — 5 probability bands
 	"detect_0":      Color(0.30, 1.00, 0.30, 0.70),  ## 0.0–0.2   light green
@@ -139,6 +137,15 @@ func set_cells(cells: Array[Vector2i], color: Color, priority: int = 0) -> void:
 
 func set_cells_named(cells: Array[Vector2i], palette_key: String, priority: int = 0) -> void:
 	set_cells(cells, PALETTE.get(palette_key, Color.WHITE), priority)
+
+
+func set_cells_colored(colored: Dictionary, priority: int = 0) -> void:
+	## Paints a batch of tiles, each with its own Color (Vector2i → Color).
+	## Used by the shadow spill, whose per-cell color varies by ring + direction.
+	for cell: Vector2i in colored:
+		_entries[cell] = {"color": colored[cell], "prio": priority}
+	if not colored.is_empty():
+		queue_redraw()
 
 
 ## ─── Helpers ───────────────────────────────────────────────────────────────

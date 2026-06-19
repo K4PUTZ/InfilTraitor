@@ -17,7 +17,8 @@ extends RefCounted
 ##     "access_from_graph": bool,                  # pull doors from LevelGraph connections
 ##     "rooms":         Array[{"rect": Rect2i, "doors": Array}],  # optional inner rooms
 ##     "dividers":      Array[{"cells": Array[Vector2i]}],        # internal walls w/ gates
-##     "props":         Array[{"cell": Vector2i, "tile": String}],# crates / pillars
+##     "props":         Array[{"cell": Vector2i, "tile": String,    # crates / pillars
+##                        "stack"?, "height"?}],                     #   stacked sprites + shadow height
 ##     "light_tracks":  Array[{"id": String, "cells": Array[Vector2i]}], # rails (internal coords)
 ##     "lights":        Array[{                                          # one of {x,y} | {track,slot}
 ##                        "x","y" | "track","slot",                      #   placement
@@ -127,7 +128,14 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var cell: Vector2i = Vector2i(prop["cell"]) + offset
 		if cell == agent_start_raw or blocked_map.has(cell):
 			continue
-		structure_tiles.append({"cell": cell, "tile_name": String(prop.get("tile", "crate_SE"))})
+		var stack: int = maxi(1, int(prop.get("stack", 1)))
+		## Shadow height class: explicit "height" wins, else derived from the stack
+		## (1 crate ≈ HUMAN, taller stacks → TALL). Single place so it stays tunable.
+		var height: int = clampi(int(prop.get("height", _prop_height_for_stack(stack))), 1, 4)
+		structure_tiles.append({
+			"cell": cell, "tile_name": String(prop.get("tile", "crate_SE")),
+			"stack": stack, "height": height,
+		})
 		blocked_map[cell] = true
 
 	## --- exits, lights, patrols ---------------------------------------------
@@ -186,6 +194,12 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 ## stacked, return the matching solid block_* here for intermediate courses instead.
 static func _upper_course_tile(ground_tile_name: String) -> String:
 	return ground_tile_name
+
+
+## Shadow height class (1-4) for a prop stack of N sprites. Tunable single source:
+## 1 crate ≈ HUMAN(2), each extra crate adds a tier up to TALL/OVERHEAD(4).
+static func _prop_height_for_stack(stack: int) -> int:
+	return clampi(stack + 1, 1, 4)
 
 
 static func _resolve_access_points(spec: Dictionary, context: Dictionary) -> Array[Dictionary]:

@@ -9,6 +9,9 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
+Não precisa fechar o Godot quando terminar Smoke Test.
+
+
 Vamos incluir uma saida também, no final do mapa. Uma porta, onde o tile em frente fica pintado de roxo. Quando o agente subir no tile, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
 

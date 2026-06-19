@@ -115,12 +115,26 @@ Cool-blue tint throughout; the descending RGB ladder is what produces a smooth
 gradient instead of a flat band. Tune brightness by moving the RGB values
 (higher = lighter), never the alpha.
 
-**Shadow spill (artistic halo)** — `_repaint_world_shadows()` paints a 2-tile
-halo around every FULL-shadow cell via `_compute_shadow_spill()` (Chebyshev
-rings, `SHADOW_SPILL_RADIUS = 2`). It is **purely cosmetic**: detection reads the
-`ExposureSystem` grid, never this overlay, so the spill softens the silhouette
-without granting any hiding value. Cells already shadowed (full/penumbra) are
-excluded so the halo never lightens a real shadow.
+**Shadow spill (artistic halo)** — `_repaint_world_shadows()` paints a soft halo
+around every FULL-shadow cell via `_compute_shadow_spill()` → `set_cells_colored()`.
+It is **purely cosmetic**: detection reads the `ExposureSystem` grid, never this
+overlay, so the spill softens the silhouette without granting any hiding value.
+Cells already shadowed (full/penumbra) are excluded so the halo never lightens a
+real shadow. Two shaping axes (both tunable `var`s on `room.gd`, colors computed
+per-cell in `_spill_color`):
+- **Density** — base reach `SHADOW_SPILL_RADIUS = 2`; denser real-shadow clusters
+  (e.g. tall crate stacks) push the halo out +1 ring per `SHADOW_SPILL_DENSITY_STEP`
+  clustered neighbours, capped at `SHADOW_SPILL_MAX_RADIUS`.
+- **Direction** — orthogonal spill tiles read slightly darker than diagonal ones
+  (`SHADOW_SPILL_DIAGONAL_FACTOR`), softening the hard concentric rings.
+
+**Playable vs spill (separation of concerns)** — real shadow *length/strength* is the
+geometric, gameplay-relevant signal (`ShadowProjector`, scaled by object height class).
+Stacked props now carry a real height: a prop's `stack` (MapSpec) → height class
+(`map_compiler._prop_height_for_stack`) → `room._prop_heights` → tile semantics →
+longer projected shadow. The **spill is the cosmetic layer on top** and is never read
+by detection. Graded *playable* shadow strength (DEEP_SHADOW tiers, elite/weak agents)
+is deliberately deferred.
 
 **Detection System (Mix, Full Spectrum)**
 

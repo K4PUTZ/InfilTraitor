@@ -331,7 +331,7 @@ screen*, so it cannot be calibrated before the visuals exist.
 **Deliverables:**
 - Removed _draw_cover_hints() from movement_overlay.gd
 - Removed cover hint color constants
-- Reserved for M2.15 wall-face ícones redesign
+- Reserved for M2.15 wall-face icons redesign
 
 **Validation:**
 - No compilation errors

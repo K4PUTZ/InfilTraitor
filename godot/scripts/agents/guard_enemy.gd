@@ -32,8 +32,6 @@ const COLOR_VISION_SMOOTH := Color(1.0, 0.9, 0.2, 0.5)
 
 const CARDINAL_DIRS := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
 const VISION_RANGE := 6
-const VISION_CONE_RADIUS := 6
-const VISION_CONE_HALF_WIDTH_TILES := 3
 const STATE_PATROL := "patrol"
 const STATE_SUSPICIOUS := "suspicious"
 const STATE_ALERT := "alert"

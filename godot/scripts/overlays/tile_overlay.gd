@@ -18,8 +18,8 @@ extends Node2D
 ## saturated colors = tint the tile while preserving texture.
 
 ## Default INFILTRAITOR isometric tile dimensions (TileSet: 256×128 px)
-const TILE_HW := 128.0   ## half-width  — horizontal
-const TILE_HH :=  64.0   ## half-height — vertical
+const TILE_HALF_W := 128.0   ## half-width  — horizontal
+const TILE_HALF_H :=  64.0   ## half-height — vertical
 
 ## Render priorities — ordered from lowest (drawn first) to highest
 const PRIO_SHADOW   := 1    ## Shadows — drawn below everything
@@ -173,15 +173,15 @@ static func detect_color_for(probability: float) -> Color:
 ## ─── Drawing ───────────────────────────────────────────────────────────────
 
 func _tile_center(cell: Vector2i) -> Vector2:
-	return _floor_layer.map_to_local(cell) + Vector2(0.0, TILE_HH) + _visual_offset
+	return _floor_layer.map_to_local(cell) + Vector2(0.0, TILE_HALF_H) + _visual_offset
 
 
 func _tile_diamond(world: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([
-		world + Vector2(0.0,      -TILE_HH),
-		world + Vector2(TILE_HW,   0.0),
-		world + Vector2(0.0,       TILE_HH),
-		world + Vector2(-TILE_HW,  0.0),
+		world + Vector2(0.0,          -TILE_HALF_H),
+		world + Vector2(TILE_HALF_W,   0.0),
+		world + Vector2(0.0,           TILE_HALF_H),
+		world + Vector2(-TILE_HALF_W,  0.0),
 	])
 
 

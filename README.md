@@ -73,9 +73,9 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ✅ **M2-01:** Event-driven tic detection — edge-crossing replaces turn-based evaluation  
 ✅ **M2-02:** Colored cone visual system — tile-by-tile probability visualization with state-based appearance  
-✅ **M2-03:** Patrulha Orgânica — variable patrol speed (0.6× to 3.0× multiplier), spontaneous pauses (20% chance, 1–2 turns), look rotation to 8 directions without movement  
-✅ **M2-04:** Sistema de Barulho — persistent noise grid with per-turn decay (0.25 rate), emission at ~20% per agent step, 3-layer cyan cone visualization  
-✅ **M2-05:** Detecção Auditiva — audio detection independent of visual LOS, wall attenuation (0.6× per wall), distance falloff (2-tile hearing radius)  
+✅ **M2-03:** Organic Patrol — variable patrol speed (0.6× to 3.0× multiplier), spontaneous pauses (20% chance, 1–2 turns), look rotation to 8 directions without movement  
+✅ **M2-04:** Noise System — persistent noise grid with per-turn decay (0.25 rate), emission at ~20% per agent step, 3-layer cyan cone visualization  
+✅ **M2-05:** Auditory Detection — audio detection independent of visual LOS, wall attenuation (0.6× per wall), distance falloff (2-tile hearing radius)  
 ✅ **Quickfix:** Removed duplicate constants, added detection accumulation to audio reactions, immediate UI feedback  
 
 📖 **See:** [DEVELOPMENT/PROGRESS.md](DEVELOPMENT/PROGRESS.md) for complete technical report.
@@ -153,7 +153,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 - Noise system — terrain cost, degradation, propagation radius
 - Confrontation system — 4 cover states, flanking, peek mechanic
 - Enemy state machine — complete FSM refinement (patrol → suspicious → alert → chase)
-- Communication system — apito (local), rádio (global), alarme (site-wide)
+- Communication system — whistle (local), radio (global), alarm (site-wide)
 - Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
 - Contextual action menu on second tap — move / interact / wait choices
 - Enemy guard (patrol, vision cone, alert meter) — M2 start

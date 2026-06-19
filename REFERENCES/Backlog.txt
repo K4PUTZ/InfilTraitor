@@ -9,7 +9,7 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-Não precisa fechar o Godot quando terminar Smoke Test.
+
 
 Onomatpeias: dicionário de "sons" visiveis.
 
@@ -23,3 +23,4 @@ Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma mane
 
 
 O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.
+

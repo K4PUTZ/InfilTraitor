@@ -17,11 +17,19 @@ run/main_scene="res://godot/scenes/game/room.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
+[autoload]
+
+Localization="*res://godot/scripts/systems/localization/localization_manager.gd"
+
 [display]
 
 window/size/viewport_width=390
 window/size/viewport_height=844
 window/stretch/mode="canvas_items"
+
+[internationalization]
+
+locale/fallback="en"
 
 [layer_names]
 

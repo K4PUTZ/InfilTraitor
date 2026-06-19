@@ -45,6 +45,8 @@ const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coo
 @onready var lbl_alert:           Label           = $HUD/TopBar/Row/LblAlert
 @onready var busted_dialog:       Label           = $HUD/BustedDialog
 @onready var enemy_turn_banner:   Control         = $HUD/EnemyTurnBanner
+@onready var lbl_end_turn:        Label           = $HUD/TopBar/Row/BtnEndTurn/Content/LblEndTurn
+@onready var lbl_enemy_turn:      Label           = $HUD/EnemyTurnBanner/LblEnemyTurn
 @onready var fog_of_war:          Node2D          = $FogOfWarOverlay
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
@@ -155,8 +157,8 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
-var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=2)
-var _tile_game: Node2D = null   ## TileOverlay para jogo visual (z=3, mix)
+var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
+var _tile_game: Node2D = null   ## TileOverlay for visual gameplay (z=3, mix)
 var _trail_overlay: Node2D = null
 
 ## M2-04: noise system and overlay
@@ -300,6 +302,8 @@ func _ready() -> void:
 		"lbl_alert": lbl_alert,
 		"busted_dialog": busted_dialog,
 		"enemy_turn_banner": enemy_turn_banner,
+		"lbl_end_turn": lbl_end_turn,
+		"lbl_enemy_turn": lbl_enemy_turn,
 	})
 	
 	## Connect HudController signals to room handlers
@@ -1116,7 +1120,7 @@ func _update_alert_label() -> void:
 
 
 func _show_busted_dialog() -> void:
-	_hud_controller.show_busted("Busted")
+	_hud_controller.show_busted("ui.banner.busted")
 	await get_tree().create_timer(1.2).timeout
 	_hud_controller.hide_busted()
 
@@ -1761,7 +1765,7 @@ func _input(event: InputEvent) -> void:
 		if key.pressed and not key.echo:
 			match key.keycode:
 				KEY_Z:
-					## Z abaixa: STANDING -> CROUCHING -> PRONE
+					## Z lowers: STANDING -> CROUCHING -> PRONE
 					var next_z := agent.posture
 					if agent.posture == DebugAgent.Posture.STANDING:
 						next_z = DebugAgent.Posture.CROUCHING
@@ -1772,7 +1776,7 @@ func _input(event: InputEvent) -> void:
 						_try_change_posture(next_z)
 					return
 				KEY_X:
-					## X sobe: PRONE -> CROUCHING -> STANDING
+					## X raises: PRONE -> CROUCHING -> STANDING
 					var next_x := agent.posture
 					if agent.posture == DebugAgent.Posture.PRONE:
 						next_x = DebugAgent.Posture.CROUCHING
@@ -1790,6 +1794,13 @@ func _input(event: InputEvent) -> void:
 					return
 				KEY_H:
 					_vision_controller.toggle_heat()
+					return
+				KEY_K:
+					## Cycle UI language (debug helper for localization).
+					## Dynamic lookup so it resolves regardless of autoload indexing.
+					var localization: Variant = get_node_or_null("/root/Localization")
+					if localization:
+						localization.cycle_language()
 					return
 				KEY_P:
 					_peek_pending = true

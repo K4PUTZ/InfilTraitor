@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dupj27gomsgwk"
+
+[deps]
+
+files=["res://godot/localization/translations/system.en.translation", "res://godot/localization/translations/system.pt_BR.translation"]
+
+source_file="res://godot/localization/translations/system.csv"
+dest_files=["res://godot/localization/translations/system.en.translation", "res://godot/localization/translations/system.pt_BR.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

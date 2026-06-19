@@ -1,0 +1,7 @@
+keys,en,pt_BR
+ui.hud.ap_counter,AP %d/%d,PA %d/%d
+ui.hud.enemies,ENEMIES,INIMIGOS
+ui.hud.alert,ALERT %d%%,ALERTA %d%%
+ui.button.end_turn,END,FIM
+ui.banner.enemy_turn,Enemy Turn,Turno Inimigo
+ui.banner.busted,Busted,Capturado

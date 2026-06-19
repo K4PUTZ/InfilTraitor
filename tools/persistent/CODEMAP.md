@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**52 scripts · 10033 lines total** (under `godot/scripts/`)
+**53 scripts · 10245 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **data/** — agent_stats.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, noise_system.gd, tic_system.gd, turn_manager.gd
+- **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, wall_edge_data.gd
@@ -100,7 +100,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1113 lines
+`class_name GuardEnemy` · extends `Node2D` · 1111 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -124,8 +124,6 @@
 - `COLOR_VISION_SMOOTH` = `Color(1.0, 0.9, 0.2, 0.5)`
 - `CARDINAL_DIRS` = `[Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]`
 - `VISION_RANGE` = `6`
-- `VISION_CONE_RADIUS` = `6`
-- `VISION_CONE_HALF_WIDTH_TILES` = `3`
 - `STATE_PATROL` = `"patrol"`
 - `STATE_SUSPICIOUS` = `"suspicious"`
 - `STATE_ALERT` = `"alert"`
@@ -247,7 +245,7 @@ extends `Node` · 108 lines
 
 ### `hud_controller.gd`
 
-extends `Node` · 129 lines
+extends `Node` · 172 lines
 
 `godot/scripts/controllers/hud_controller.gd`
 
@@ -264,7 +262,7 @@ extends `Node` · 129 lines
 - `func update_alert(pct: float) -> void:`
 - `func show_enemy_banner() -> void:`
 - `func hide_enemy_banner() -> void:`
-- `func show_busted(text: String = "Busted") -> void:`
+- `func show_busted(text_key: String = "ui.banner.busted") -> void:`
 - `func hide_busted() -> void:`
 - `func set_end_turn_enabled(value: bool) -> void:`
 - `func is_auto_end_turn_enabled() -> bool:`
@@ -377,7 +375,7 @@ extends `Node2D` · 266 lines
 `godot/scripts/navigation/movement_overlay.gd`
 
 **Constants / tuning**
-- `TILE_TOP_TO_CENTER` = `Vector2(0.0, 64.0)`
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `BLUE_LINE` = `Color(0.25, 0.70, 1.0, 0.90)`
 - `ORANGE_LINE` = `Color(1.0, 0.60, 0.20, 0.95)`
 - `FILL_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
@@ -669,8 +667,8 @@ extends `Node2D` · 208 lines
 `godot/scripts/overlays/tile_overlay.gd`
 
 **Constants / tuning**
-- `TILE_HW` = `128.0`
-- `TILE_HH` = `64.0`
+- `TILE_HALF_W` = `128.0`
+- `TILE_HALF_H` = `64.0`
 - `PRIO_SHADOW` = `1`
 - `PRIO_DETECT` = `2`
 - `PRIO_MOVEMENT` = `3`
@@ -992,6 +990,35 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `localization_manager.gd`
+
+`class_name LocalizationManager` · extends `Node` · 160 lines
+
+`godot/scripts/systems/localization/localization_manager.gd`
+
+**Signals**
+- `signal language_changed(locale: String)`
+
+**Constants / tuning**
+- `SOURCE_DIR` = `"res://godot/localization/translations/"`
+- `SOURCE_FILES` = `["system.csv", "ui.csv"]`
+- `SETTINGS_PATH` = `"user://settings.cfg"`
+- `SETTINGS_SECTION` = `"localization"`
+- `SETTINGS_KEY` = `"locale"`
+
+**Public vars**
+- `var default_locale: String = "en"`
+- `var supported_locales: PackedStringArray = ["en", "pt_BR"]`
+
+**Public API**
+- `func get_language() -> String:`
+- `func get_supported_locales() -> PackedStringArray:`
+- `func set_language(locale: String) -> void:`
+- `func cycle_language() -> void:`
+- `func get_language_endonym(locale: String) -> String:`
+
+---
+
 ### `noise_system.gd`
 
 `class_name NoiseSystem` · 58 lines
@@ -1238,7 +1265,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1867 lines
+extends `Node2D` · 1878 lines
 
 `godot/scripts/world/room.gd`
 

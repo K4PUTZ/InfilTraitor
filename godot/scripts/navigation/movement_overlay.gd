@@ -16,11 +16,11 @@ var _points_per_ap: int = 3   ## Kept in sync with TurnManager.MOVE_POINTS_PER_A
 var _highlighted_ap: int = 1  ## Current AP zone to highlight (1 or 2)
 var _remaining_ap: int = 2     ## Remaining AP to determine colors
 
-const TILE_TOP_TO_CENTER := Vector2(0.0, 64.0)
+const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Blue for Zone 1 (2 AP remaining)
 const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Orange for Zone 2 (or Zone 1 with 1 AP)
-const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## Base branca para o fill (será colorida no draw)
+const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## White base for the fill (tinted at draw time)
 
 ## Inward offset (pixels) — shrinks losango for perimeter lines to avoid visual clash
 const PERIMETER_INSET_DISTANCE := 6.0
@@ -219,7 +219,7 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 
 func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
 	## Shrink diamond inward to avoid overlapping with shadow boundary lines
-	var center := floor_layer.map_to_local(cell) + visual_offset + Vector2(0.0, 64.0)
+	var center := floor_layer.map_to_local(cell) + visual_offset + TILE_CENTER_OFFSET
 
 	## Scale factor: reduce diamond size by moving vertices toward center
 	var scale_factor := 1.0 - (PERIMETER_INSET_DISTANCE / 128.0)  ## Normalize to tile half-width

@@ -11,6 +11,21 @@ IMPORTANTE: Ao final de cada tarefa finalizada, executar um smoke test, observan
 
 OBS: Manter sempre todo o projeto em Inglês, independente da nossa comunicação.
 
+**Workflow de Desenvolvimento:**
+- Godot sempre está aberto e conectado via Godot Tools (VS Code/IDE)
+- Quando código GDScript é modificado, Godot detecta e hot-reloads automaticamente
+- Não tente abrir/fechar o Godot — o usuário já deixa aberto
+
+**Protocolo de Verificação (antes do Smoke Test):**
+1. **Aba PROBLEMS (VS Code):** Verificar se há erros ou warnings não-esperados
+   - Erros = bloqueia smoke test, reportar e corrigir antes
+   - Warnings preexistentes = aceitar, reportar se novo
+2. **Output em Runtime:** Durante smoke test, monitorar console/debug output
+   - Verificar `push_error()`, `print_debug()`, assertions
+   - Qualquer mensagem de erro = reportar com contexto
+3. **Verificação Visual:** Comportamento esperado vs. observado
+   - Tomar screenshot se necessário para documentar issue
+
 ---
 
 ## O Projeto

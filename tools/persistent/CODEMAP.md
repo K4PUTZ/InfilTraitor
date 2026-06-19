@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**51 scripts · 9828 lines total** (under `godot/scripts/`)
+**52 scripts · 10033 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -16,7 +16,7 @@
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, noise_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
@@ -372,7 +372,7 @@ extends `Node2D` · 266 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 242 lines
+`class_name MovementOverlay` · extends `Node2D` · 260 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -381,6 +381,7 @@ extends `Node2D` · 266 lines
 - `BLUE_LINE` = `Color(0.25, 0.70, 1.0, 0.90)`
 - `ORANGE_LINE` = `Color(1.0, 0.60, 0.20, 0.95)`
 - `FILL_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
+- `PERIMETER_INSET_DISTANCE` = `6.0`
 
 **Public vars**
 - `var floor_layer: TileMapLayer = null`
@@ -589,9 +590,28 @@ extends `Node2D` · 58 lines
 
 ---
 
+### `shadow_boundary_overlay.gd`
+
+extends `Node2D` · 120 lines
+
+`godot/scripts/overlays/shadow_boundary_overlay.gd`
+
+> ShadowBoundaryOverlay — Always-visible shadow region visualization Renders two passes on shadow cells: 1. Semi-transparent fill (vignette effect) inside shadow tiles 2. Dark lines on boundaries where shadow meets non-shadow Uses pure drawing (no blend mode) so lines are not overridden by multiply blend. Updated whenever lighting rebuilds via set_shadow_cells().
+
+**@export**
+- `tile_size: Vector2 = Vector2(128, 64)`
+- `visual_offset: Vector2 = Vector2(0, 0)`
+
+**Public API**
+- `func setup(floor_layer: TileMapLayer, offset: Vector2) -> void:`
+- `func set_full_shadow_cells(cells: Array[Vector2i]) -> void:`
+- `func set_lite_shadow_cells(cells: Array[Vector2i]) -> void:`
+
+---
+
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 89 lines
+extends `Node2D` · 142 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1218,7 +1238,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1853 lines
+extends `Node2D` · 1867 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1230,6 +1250,7 @@ extends `Node2D` · 1853 lines
 - `GuardNoiseIndicatorClass` = `preload("res://godot/scripts/overlays/guard_noise_indicator.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
+- `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`

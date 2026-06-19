@@ -8,6 +8,7 @@ const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
+const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
@@ -154,6 +155,7 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
+var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=2)
 var _tile_game: Node2D = null   ## TileOverlay para jogo visual (z=3, mix)
 var _trail_overlay: Node2D = null
 
@@ -396,6 +398,13 @@ func _ready() -> void:
 	_tile_shadow.material = CanvasItemMaterial.new()
 	_tile_shadow.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
 	_tile_shadow.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## Create shadow boundary overlay (dark edges of playable shadows)
+	_shadow_boundary_overlay = Node2D.new()
+	_shadow_boundary_overlay.set_script(ShadowBoundaryOverlayClass)
+	_shadow_boundary_overlay.z_index = 4  ## Above _tile_game (z=3), well above fog_of_war (z=2)
+	add_child(_shadow_boundary_overlay)
+	_shadow_boundary_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
 
 	_tile_game = Node2D.new()
 	_tile_game.set_script(TileOverlayClass)
@@ -683,6 +692,11 @@ func _repaint_world_shadows() -> void:
 	_tile_shadow.set_cells_named(penumbra_cells, "shadow_lite", TileOverlayClass.PRIO_SHADOW)
 	_tile_shadow.set_cells_named(full_cells, "shadow_full", TileOverlayClass.PRIO_SHADOW)
 
+	## Update shadow boundary overlay with separate full and lite shadow cells
+	if _shadow_boundary_overlay != null:
+		_shadow_boundary_overlay.set_full_shadow_cells(full_cells)
+		_shadow_boundary_overlay.set_lite_shadow_cells(penumbra_cells)
+
 
 ## Build the cosmetic spill halo around the FULL-shadow tiles.
 ## Returns Vector2i → Color (multiply tint). Each spill cell's tone comes from its ring
@@ -738,7 +752,7 @@ func _spill_reach_for(cell: Vector2i, full_set: Dictionary) -> int:
 			if full_set.has(cell + Vector2i(dx, dy)):
 				density += 1
 	return clampi(
-		SHADOW_SPILL_RADIUS + density / SHADOW_SPILL_DENSITY_STEP,
+		SHADOW_SPILL_RADIUS + int(float(density) / SHADOW_SPILL_DENSITY_STEP),
 		SHADOW_SPILL_RADIUS, SHADOW_SPILL_MAX_RADIUS)
 
 

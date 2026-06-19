@@ -22,6 +22,9 @@ const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Blue for Zone 1 (2 AP rema
 const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Orange for Zone 2 (or Zone 1 with 1 AP)
 const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## Base branca para o fill (será colorida no draw)
 
+## Inward offset (pixels) — shrinks losango for perimeter lines to avoid visual clash
+const PERIMETER_INSET_DISTANCE := 6.0
+
 
 func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:
 	floor_layer = tile_layer
@@ -170,26 +173,26 @@ func _draw() -> void:
 
 	# 2. Draw Perimeters (External edges or blocked internal edges)
 	for cell in target_cells:
-		var diamond := _diamond_points(cell)
-		
+		var diamond_inset := _diamond_points_inset(cell)
+
 		# Edges: V0->V1 (TR), V1->V2 (BR), V2->V3 (BL), V3->V0 (TL)
 		# Neighbor mapping: UP(0,-1), RIGHT(1,0), DOWN(0,1), LEFT(-1,0)
-		
+
 		# Top-Right edge (V0 -> V1): Neighbor UP
 		if _should_draw_edge(cell, Vector2i.UP):
-			draw_line(diamond[0], diamond[1], line_color, 3.0, true)
-			
+			draw_line(diamond_inset[0], diamond_inset[1], line_color, 3.0, true)
+
 		# Bottom-Right edge (V1 -> V2): Neighbor RIGHT
 		if _should_draw_edge(cell, Vector2i.RIGHT):
-			draw_line(diamond[1], diamond[2], line_color, 3.0, true)
-			
+			draw_line(diamond_inset[1], diamond_inset[2], line_color, 3.0, true)
+
 		# Bottom-Left edge (V2 -> V3): Neighbor DOWN
 		if _should_draw_edge(cell, Vector2i.DOWN):
-			draw_line(diamond[2], diamond[3], line_color, 3.0, true)
-			
+			draw_line(diamond_inset[2], diamond_inset[3], line_color, 3.0, true)
+
 		# Top-Left edge (V3 -> V0): Neighbor LEFT
 		if _should_draw_edge(cell, Vector2i.LEFT):
-			draw_line(diamond[3], diamond[0], line_color, 3.0, true)
+			draw_line(diamond_inset[3], diamond_inset[0], line_color, 3.0, true)
 
 
 func _should_draw_edge(cell: Vector2i, step: Vector2i) -> bool:
@@ -212,6 +215,21 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 		top + Vector2(0.0, 128.0),
 		top + Vector2(-128.0, 64.0),
 	])
+
+
+func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
+	## Shrink diamond inward to avoid overlapping with shadow boundary lines
+	var center := floor_layer.map_to_local(cell) + visual_offset + Vector2(0.0, 64.0)
+
+	## Scale factor: reduce diamond size by moving vertices toward center
+	var scale_factor := 1.0 - (PERIMETER_INSET_DISTANCE / 128.0)  ## Normalize to tile half-width
+
+	var top = center + Vector2(0.0, -64.0) * scale_factor
+	var right = center + Vector2(128.0, 0.0) * scale_factor
+	var bottom = center + Vector2(0.0, 64.0) * scale_factor
+	var left = center + Vector2(-128.0, 0.0) * scale_factor
+
+	return PackedVector2Array([top, right, bottom, left])
 
 
 func _is_traversable(cell: Vector2i) -> bool:

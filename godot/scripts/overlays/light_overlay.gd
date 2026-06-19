@@ -14,8 +14,12 @@ const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_sou
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 
 @export var light_registry = null
-@export var tile_size: Vector2 = Vector2(128, 64)  # Isometric
+@export var floor_layer: TileMapLayer = null  ## Canonical projection source (matches lamps/floor)
+@export var tile_size: Vector2 = Vector2(128, 64)  # Fallback only when floor_layer is unset
 @export var visual_offset: Vector2 = Vector2(0, 0)
+
+## Offset from a cell's map_to_local() to its visual rhombus center (canonical placement)
+const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 var _dev_vision_enabled: bool = false
 
@@ -106,7 +110,10 @@ func _draw_light_label(light, _world_pos: Vector2, _color: Color) -> void:
 	# draw_string(font, world_pos + Vector2(10, -20), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, color)
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	# Isometric projection: (x, y) -> (x * tile_width/2 - y * tile_width/2, x * tile_height/2 + y * tile_height/2)
+	# Canonical projection (matches lamps & floor) when floor_layer is available
+	if floor_layer != null:
+		return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
+	# Fallback: legacy manual isometric projection (half-scale; only if floor_layer unset)
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

@@ -37,11 +37,9 @@ func _draw() -> void:
 		pos.y -= _ceiling_lift
 		_draw_lamp(pos, float(light.get("intensity", 1.0)), float(light.get("radius", 6)))
 
-## Placeholder ceiling lamp: a soft glow, a bright bulb, a dark rim, and a mount stem.
-func _draw_lamp(p: Vector2, intensity: float, radius: float) -> void:
-	var glow_r: float = clampf(34.0 + radius * 3.0, 40.0, 72.0)
-	draw_circle(p, glow_r, Color(1.0, 0.93, 0.62, 0.30 * intensity))
-	draw_circle(p, glow_r * 0.55, Color(1.0, 0.93, 0.62, 0.22 * intensity))
+## Placeholder ceiling lamp: a bright bulb, a dark rim, and a mount stem.
+## The soft floor glow was removed — it added clutter without information.
+func _draw_lamp(p: Vector2, intensity: float, _radius: float) -> void:
 	draw_circle(p, 20.0, Color(1.0, 0.90, 0.52, clampf(0.7 + 0.3 * intensity, 0.0, 1.0)))
 	draw_arc(p, 20.0, 0.0, TAU, 28, Color(0.14, 0.12, 0.08, 1.0), 3.5)
 	draw_line(p + Vector2(0.0, -20.0), p + Vector2(0.0, -40.0), Color(0.26, 0.26, 0.28, 1.0), 4.0)

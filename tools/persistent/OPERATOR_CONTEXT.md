@@ -373,7 +373,9 @@ Enables AI debugging only:
 - FOW off, guards always visible
 - More opaque guard cone (alpha ×1.5)
 - Debug label above each guard (id, state, cell, facing, last_known)
-- Tile hover in the corner: coordinates, blocked, guard/agent present
+- Tile hover panel (black 80% backplate): coordinates, blocked, light class +
+  detection mult + risk, shadow depth/stability/confidence, exit/light-source
+  flags, guard/agent present
 - Yellow agent trail (last 5 tiles, decreasing opacity)
 - Detection arc above each guard (green→red, 0–100%)
 - Patrol route in dashed blue

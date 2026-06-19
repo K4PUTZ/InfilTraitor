@@ -449,6 +449,18 @@ func _ready() -> void:
 	_dev_hover_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
 	_dev_hover_label.add_theme_constant_override("shadow_offset_x", 1)
 	_dev_hover_label.add_theme_constant_override("shadow_offset_y", 1)
+	## Black 80% backplate for contrast (matches other DEV/UI panels)
+	var _hover_bg := StyleBoxFlat.new()
+	_hover_bg.bg_color = Color(0.0, 0.0, 0.0, 0.8)
+	_hover_bg.content_margin_left = 8.0
+	_hover_bg.content_margin_right = 8.0
+	_hover_bg.content_margin_top = 6.0
+	_hover_bg.content_margin_bottom = 6.0
+	_hover_bg.corner_radius_top_left = 4
+	_hover_bg.corner_radius_top_right = 4
+	_hover_bg.corner_radius_bottom_left = 4
+	_hover_bg.corner_radius_bottom_right = 4
+	_dev_hover_label.add_theme_stylebox_override("normal", _hover_bg)
 	_dev_hover_label.position = Vector2(12.0, 80.0)   ## below TopBar
 	_dev_hover_label.z_index = 200
 	_dev_hover_label.visible = false
@@ -1185,6 +1197,23 @@ func _update_dev_hover_label() -> void:
 	var cell := _hovered_cell
 	var info := "tile  %d , %d" % [cell.x, cell.y]
 	info += "\nblocked: %s" % ("yes" if _blocked_cells.has(cell) else "no")
+
+	## Lighting / shadow semantics (ExposureSystem)
+	var exposure = _lighting_controller.get_exposure_system()
+	if exposure != null:
+		info += "\nlight: %s" % exposure.get_tile_debug_info(cell)
+		info += "\nshadow: depth %d · %s · conf %.2f" % [
+			exposure.get_shadow_depth(cell),
+			exposure.get_shadow_stability(cell),
+			exposure.get_exposure_confidence(cell)]
+
+	if _exit_cells.has(cell):
+		info += "\nexit tile"
+
+	for light in _current_light_sources:
+		if int(light.get("x", 0)) == cell.x and int(light.get("y", 0)) == cell.y:
+			info += "\nlight source (r%d)" % int(light.get("radius", 0))
+			break
 
 	for guard in _guards:
 		if is_instance_valid(guard) and guard.cell == cell:

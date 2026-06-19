@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**53 scripts · 10245 lines total** (under `godot/scripts/`)
+**53 scripts · 10277 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -303,7 +303,7 @@ extends `Node` · 258 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 266 lines
+extends `Node2D` · 273 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -429,7 +429,7 @@ extends `Node2D` · 266 lines
 
 ### `ceiling_prop_overlay.gd`
 
-`class_name CeilingPropOverlay` · extends `Node2D` · 47 lines
+`class_name CeilingPropOverlay` · extends `Node2D` · 45 lines
 
 `godot/scripts/overlays/ceiling_prop_overlay.gd`
 
@@ -556,7 +556,7 @@ extends `Node2D` · 258 lines
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 114 lines
+extends `Node2D` · 121 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
@@ -565,9 +565,11 @@ extends `Node2D` · 114 lines
 **Constants / tuning**
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `LightRegistryClass` = `preload("res://godot/scripts/systems/lighting/light_registry.gd")`
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
 - `light_registry = null`
+- `floor_layer: TileMapLayer = null`
 - `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
@@ -609,7 +611,7 @@ extends `Node2D` · 120 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 142 lines
+extends `Node2D` · 94 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -617,10 +619,12 @@ extends `Node2D` · 142 lines
 
 **Constants / tuning**
 - `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
 - `shadow_projector = null`
 - `light_registry = null`
+- `floor_layer: TileMapLayer = null`
 - `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
@@ -632,7 +636,7 @@ extends `Node2D` · 142 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 223 lines
+extends `Node2D` · 262 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
@@ -640,6 +644,7 @@ extends `Node2D` · 223 lines
 
 **Constants / tuning**
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public vars**
 - `var state_colors: Dictionary = { "on": Color.WHITE,           # Fully on "off": Color(0.2, 0.2, 0.2), # Off/dark "flicker": Color.YELLOW,     # Flickering "pulse": Color.CYAN,         # Pulsing }`
@@ -647,9 +652,12 @@ extends `Node2D` · 223 lines
 - `var show_state_labels: bool = true`
 - `var show_energy_bars: bool = true`
 - `var show_rotations: bool = true`
+- `var ui_scale: float = 1.5`
 - `var light_registry = null`
+- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
+- `var fixture_lift: float = 0.0`
 - `var all_lights: Array = []`
 - `var flicker_animation_phase: float = 0.0`
 
@@ -1265,7 +1273,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1878 lines
+extends `Node2D` · 1907 lines
 
 `godot/scripts/world/room.gd`
 

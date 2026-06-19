@@ -146,6 +146,7 @@ func _setup_light_overlay() -> void:
 	
 	_light_overlay = LightOverlayClass.new()
 	_light_overlay.light_registry = light_registry
+	_light_overlay.floor_layer = _room.floor_layer
 	_light_overlay.tile_size = Vector2(128, 64)
 	_light_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_light_overlay)
@@ -161,6 +162,7 @@ func _setup_shadow_overlay() -> void:
 	_shadow_overlay = ShadowOverlayClass.new()
 	_shadow_overlay.shadow_projector = _room._lighting_controller._shadow_projector
 	_shadow_overlay.light_registry = light_registry
+	_shadow_overlay.floor_layer = _room.floor_layer
 	_shadow_overlay.tile_size = Vector2(128, 64)
 	_shadow_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_shadow_overlay)
@@ -237,8 +239,13 @@ func _setup_temporal_overlay() -> void:
 	
 	_temporal_overlay = TemporalOverlayClass.new()
 	_temporal_overlay.load_lights(light_registry)
+	_temporal_overlay.floor_layer = _room.floor_layer
 	_temporal_overlay.tile_size = Vector2(128, 64)
 	_temporal_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
+	## Raise the state-knob just above the lamp glyph. Mirrors the ceiling lamp lift
+	## (room: WALL_FLOOR_STEP_PX * (max_floors + 0.75)) plus a small nudge.
+	var _max_floors: int = int(_room._base_layout.get("max_floors", 1))
+	_temporal_overlay.fixture_lift = _room.WALL_FLOOR_STEP_PX * (float(_max_floors) + 0.75) + 72.0
 	_room.add_child(_temporal_overlay)
 	_temporal_overlay.z_index = 25  # Above height overlay for temporal visualization
 	_temporal_overlay.visible = light_vision

@@ -22,6 +22,7 @@ var _shadow_projector        ## ShadowProjector instance
 var _exposure_system         ## ExposureSystem instance
 var _tile_semantics_map: Dictionary = {}  ## cell -> TileSemantics
 var _light_anchors: Array = []
+var _last_shadow_results: Array = []     ## cached per-light ShadowResults from last rebuild
 
 
 func setup(room_ref: Node2D) -> void:
@@ -44,6 +45,10 @@ func get_tile_semantics_map() -> Dictionary:
 
 func get_light_anchors() -> Array:
 	return _light_anchors
+
+
+func get_shadow_results() -> Array:
+	return _last_shadow_results
 
 
 func rebuild() -> void:
@@ -190,6 +195,7 @@ func _setup_exposure_system() -> void:
 			all_results.append(result)
 	
 	if all_results.size() > 0:
+		_last_shadow_results = all_results
 		_exposure_system.rebuild_from_results(all_results)
 		var stats = _exposure_system.get_exposure_stats()
 		print("[Room] Exposure system rebuilt: full_lit=%d, dim=%d, penumbra=%d, shadow=%d, deep_shadow=%d" % [
@@ -254,5 +260,7 @@ func _rebuild_all_shadows_and_exposure() -> void:
 		var shadow_result = _shadow_projector.project_light(light)
 		all_shadow_results.append(shadow_result)
 	
+	# Cache results for LightRayOverlay and other consumers
+	_last_shadow_results = all_shadow_results
 	# Rebuild exposure from merged shadows
 	_exposure_system.rebuild_from_results(all_shadow_results)

@@ -98,7 +98,7 @@ func _apply_dev_vision() -> void:
 func _apply_light_vision() -> void:
 	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
 	_apply_fow_visibility()
-	
+
 	## L-IMP-01: Toggle light overlay with light_vision
 	if _light_overlay != null:
 		_light_overlay.visible = light_vision
@@ -111,11 +111,13 @@ func _apply_light_vision() -> void:
 	if _height_overlay != null:
 		_height_overlay.visible = light_vision
 		_height_overlay.set_dev_vision(light_vision)
-	
 	## L-IMP-06: Toggle temporal overlay with light_vision
 	if _temporal_overlay != null:
 		_temporal_overlay.visible = light_vision
 		_temporal_overlay.set_dev_vision(light_vision)
+	## Light ray shafts — visible only in light_vision mode
+	if _room._light_ray_overlay != null:
+		_room._light_ray_overlay.visible = light_vision
 
 func _apply_heat_vision() -> void:
 	if _exposure_overlay != null:

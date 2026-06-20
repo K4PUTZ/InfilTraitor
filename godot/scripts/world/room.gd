@@ -9,6 +9,7 @@ const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noi
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
+const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
@@ -157,6 +158,7 @@ var _hovered_cell: Vector2i = Vector2i(-1, -1)
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
+var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
 var _tile_game: Node2D = null   ## TileOverlay for visual gameplay (z=3, mix)
 var _trail_overlay: Node2D = null
@@ -439,8 +441,19 @@ func _ready() -> void:
 	## Lift to ceiling height: top of the wall stack + ~0.75 storey so fixtures read
 	## as mounted overhead. True "5th-floor" verticality needs taller storeys (pairs
 	## with the view-occlusion slice, else taller walls hide the interior).
-	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, WALL_FLOOR_STEP_PX * (float(ceil_floors) + 0.75))
+	var ceiling_lift: float = WALL_FLOOR_STEP_PX * (float(ceil_floors) + 0.75)
+	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
 	_ceiling_overlay.set_lights(_current_light_sources)
+
+	## Light ray overlay — always-visible golden shafts, MIX blend, below shadow MUL (z=1).
+	## Created here (after ceil_floors) so ceiling_lift matches the CeilingPropOverlay exactly.
+	_light_ray_overlay = LightRayOverlayClass.new()
+	_light_ray_overlay.z_index = 0
+	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
+	add_child(_light_ray_overlay)
+	_light_ray_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
+	## Initial populate: _repaint_world_shadows() ran before this node existed, so feed it now.
+	_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
 
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
@@ -712,6 +725,10 @@ func _repaint_world_shadows() -> void:
 	if _shadow_boundary_overlay != null:
 		_shadow_boundary_overlay.set_full_shadow_cells(full_cells)
 		_shadow_boundary_overlay.set_lite_shadow_cells(penumbra_cells)
+
+	## Refresh light ray overlay with the latest per-light shadow projections
+	if _light_ray_overlay != null:
+		_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
 
 
 ## Build the cosmetic spill halo around the FULL-shadow tiles.

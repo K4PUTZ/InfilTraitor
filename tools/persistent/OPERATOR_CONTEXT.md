@@ -39,13 +39,27 @@ priority — there is no deadline.
 
 - **Tile source / asset size:** `256x128` px
 - **Diamond on-screen:** `128x64` px per half-cell, forming a `256x128` visual rhombus
-- **Canonical tile center:** `floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET`
 - **Fixed visual offset:** `VISUAL_GRID_OFFSET = Vector2(0.0, 512.0)`
+- **Per-storey vertical step:** `WALL_FLOOR_STEP_PX = 158.0` px (cube face height)
 
 Practical rules:
 - use `map_to_local()` when the overlay is attached to the `TileMapLayer`
 - use `TILE_HW=128` and `TILE_HH=64` to draw the rhombus
 - don't duplicate `VISUAL_GRID_OFFSET` in child overlays
+
+#### Canonical screen positions (use these — never invent empirical tables)
+
+| What | Formula | Notes |
+|---|---|---|
+| **Tile center** | `floor_layer.map_to_local(cell) + Vector2(0, 64) + VISUAL_GRID_OFFSET` | "canonical center" used everywhere |
+| **Tile N vertex** | `floor_layer.map_to_local(cell) + VISUAL_GRID_OFFSET` | top diamond corner |
+| **Tile E vertex** | `floor_layer.map_to_local(cell) + Vector2(128, 64) + VISUAL_GRID_OFFSET` | right corner |
+| **Tile S vertex** | `floor_layer.map_to_local(cell) + Vector2(0, 128) + VISUAL_GRID_OFFSET` | bottom corner |
+| **Tile W vertex** | `floor_layer.map_to_local(cell) + Vector2(-128, 64) + VISUAL_GRID_OFFSET` | left corner |
+| **Ceiling lamp** | `tile_center - Vector2(0, WALL_FLOOR_STEP_PX * (max_floors + 0.75))` | matches `CeilingPropOverlay` |
+| **Temporal fixture knob** | `tile_center - Vector2(0, WALL_FLOOR_STEP_PX * (max_floors + 0.75) + 72)` | matches `TemporalOverlay` |
+
+> **Key rule:** any overlay that needs the lamp's screen position must use `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` received from `room.gd` — never a per-`height_class` lookup table. `max_floors` comes from `_base_layout.get("max_floors", 1)`.
 
 ---
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**53 scripts · 10277 lines total** (under `godot/scripts/`)
+**54 scripts · 10405 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -16,7 +16,7 @@
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
@@ -273,7 +273,7 @@ extends `Node` · 172 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 258 lines
+extends `Node` · 266 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -295,6 +295,7 @@ extends `Node` · 258 lines
 - `func get_exposure_system():`
 - `func get_tile_semantics_map() -> Dictionary:`
 - `func get_light_anchors() -> Array:`
+- `func get_shadow_results() -> Array:`
 - `func rebuild() -> void:`
 - `func rebuild_all() -> void:`
 - `func rebuild_deferred() -> void:`
@@ -303,7 +304,7 @@ extends `Node` · 258 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 273 lines
+extends `Node2D` · 275 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -576,6 +577,31 @@ extends `Node2D` · 121 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func is_dev_vision_enabled() -> bool:`
+
+---
+
+### `light_ray_overlay.gd`
+
+extends `Node2D` · 101 lines
+
+`godot/scripts/overlays/light_ray_overlay.gd`
+
+**Constants / tuning**
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+
+**@export**
+- `floor_layer: TileMapLayer = null`
+- `visual_offset: Vector2 = Vector2.ZERO`
+
+**Public vars**
+- `var ray_color: Color       = Color(1.0, 0.82, 0.30, 1.0)`
+- `var alpha_full_lit: float  = 1.0`
+- `var alpha_dim: float       = 1.0`
+- `var ceiling_lift: float    = 0.0`
+
+**Public API**
+- `func setup(fl_layer: TileMapLayer, v_offset: Vector2, lift: float) -> void:`
+- `func refresh(shadow_results: Array) -> void:`
 
 ---
 
@@ -1273,7 +1299,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1907 lines
+extends `Node2D` · 1924 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1286,6 +1312,7 @@ extends `Node2D` · 1907 lines
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
 - `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
+- `LightRayOverlayClass` = `preload("res://godot/scripts/overlays/light_ray_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`

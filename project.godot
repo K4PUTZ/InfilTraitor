@@ -27,10 +27,6 @@ window/size/viewport_width=390
 window/size/viewport_height=844
 window/stretch/mode="canvas_items"
 
-[internationalization]
-
-locale/fallback="en"
-
 [layer_names]
 
 2d_render/layer_1="floor"

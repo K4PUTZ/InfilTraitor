@@ -160,8 +160,8 @@ func _get_leashed_pos(desired_pos: Vector2) -> Vector2:
 	if not is_instance_valid(_room) or not is_instance_valid(_room.agent):
 		return desired_pos
 	
-	# DEV_VISION: release all constraints
-	if _vision_controller and _vision_controller.dev_vision:
+	# Any analysis mode: release all constraints
+	if _vision_controller and (_vision_controller.dev_vision or _vision_controller.light_vision or _vision_controller.heat_vision):
 		return desired_pos
 	
 	var agent_world = _room.agent.global_position

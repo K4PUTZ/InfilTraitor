@@ -133,9 +133,9 @@ func _apply_heat_vision() -> void:
 
 func _apply_fow_visibility() -> void:
 	if _fog_of_war != null:
-		_fog_of_war.visible = not (dev_vision or light_vision or heat_vision)
+		_fog_of_war.visible = not dev_vision
 	if _room._fog_rect != null:
-		_room._fog_rect.visible = not (dev_vision or light_vision or heat_vision)
+		_room._fog_rect.visible = not dev_vision
 
 # ── Overlay setup ─────────────────────────────────────────────────────────────
 

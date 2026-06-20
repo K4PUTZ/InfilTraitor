@@ -1,112 +1,113 @@
 #!/usr/bin/env python3
 """
-Generate simple crate placeholders (256×512 px) for INFILTRAITOR.
-Works with existing tileset system (PNG_SIZE 256×512, SPRITE_OFFSET -384).
-Uses isometric diamond geometry matching the grid.
+Generate simple isometric crate placeholders (256x512 px) for INFILTRAITOR.
+
+These are temporary placeholders that define the *correct shape and dimensions*
+so they can guide the final artwork. Each crate is a single isometric cube whose
+floor footprint matches the 256x128 grid diamond.
+
+Geometry (must not drift):
+  - PNG is 256x512. The floor footprint diamond occupies rows 384-512 and is
+    aligned to the cell by the tileset's SPRITE_OFFSET (0, -384).
+  - The cube's vertical faces are CUBE_HEIGHT (128 px) tall, so each of the
+    2x2x2 subcubes is a true iso cube. This MUST match room.gd
+    CRATE_STACK_STEP_PX (128.0): a stacked crate seats its sprite CUBE_HEIGHT px
+    higher, so the cube body height has to equal the stack step for the stack to
+    read as a seamless tower.
+  - A symmetric cube looks identical under all 4 perspective rotations, so the
+    same image is written for NE/SE/SW/NW. NEVER rotate the iso sprite in screen
+    space (rotate(90)) -- that shears the diamond and breaks the perspective.
 """
 
 from PIL import Image, ImageDraw
 
-# Colors
-COLOR_WOOD_TOP = (180, 140, 80)       # top face (lit)
-COLOR_WOOD_LEFT = (140, 105, 60)      # left face
-COLOR_WOOD_RIGHT = (160, 120, 70)     # right face
-COLOR_DARK = (80, 60, 40)             # dark/shadow areas
-COLOR_EDGE = (40, 30, 20)             # edge lines
+# Canvas / grid geometry -----------------------------------------------------
+PNG_W, PNG_H = 256, 512
+CX = 128                  # horizontal centre of the diamond
+TILE_HW, TILE_HH = 128, 64  # diamond half-width / half-height (256x128 cell)
+FLOOR_CENTER_Y = 448      # y of the footprint-diamond centre (rows 384-512)
+CUBE_HEIGHT = 128         # vertical face height; each 2x2x2 subcube is then a true
+                          # iso cube (128x64 footprint, 64px face). Must equal room.gd
+                          # CRATE_STACK_STEP_PX so stacks seat seamlessly.
+SUBCUBES = 2              # 2x2x2 sub-cube arrangement -> one subdivision line per face axis
+
+# Colours (orange placeholder block, matching the project palette) -----------
+COLOR_TOP = (238, 150, 56)     # top face (lit)
+COLOR_LEFT = (176, 100, 30)    # left/SW face (shadowed)
+COLOR_RIGHT = (210, 126, 42)   # right/SE face (mid)
+COLOR_EDGE = (92, 50, 16)      # silhouette / corner edges
+COLOR_GRID = (120, 66, 22)     # faint plank subdivisions
 TRANSPARENT = (0, 0, 0, 0)
 
 
+def _lerp(a, b, t):
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+
+def _grid_lines(draw, a, b, c, d, color, divisions=SUBCUBES):
+    """Draw subdivision lines across the quad a-b-c-d (a-b and d-c are the rails)."""
+    for i in range(1, divisions):
+        t = i / divisions
+        # lines parallel to edge b-c
+        draw.line([_lerp(a, b, t), _lerp(d, c, t)], fill=color, width=1)
+        # lines parallel to edge a-d
+        draw.line([_lerp(a, d, t), _lerp(b, c, t)], fill=color, width=1)
+
+
 def generate_simple_crate():
-    """Generate isometric crate placeholder (256×512 px) with diamond geometry."""
-    canvas = Image.new("RGBA", (256, 512), TRANSPARENT)
+    """Generate one isometric crate cube (256x512 px)."""
+    canvas = Image.new("RGBA", (PNG_W, PNG_H), TRANSPARENT)
     draw = ImageDraw.Draw(canvas)
 
-    # The system expects:
-    # - Total height: 512 px
-    # - Diamond at bottom: rows 384–512 (128 px) for alignment
-    # - Body above: rows 0–384
+    # Footprint diamond corners (on the floor) ------------------------------
+    bN = (CX, FLOOR_CENTER_Y - TILE_HH)   # (128, 384)
+    bE = (CX + TILE_HW, FLOOR_CENTER_Y)   # (256, 448)
+    bS = (CX, FLOOR_CENTER_Y + TILE_HH)   # (128, 512)
+    bW = (CX - TILE_HW, FLOOR_CENTER_Y)   # (0,   448)
 
-    # Isometric diamond parameters
-    # Center at x=128, diamond extends ±128 in width, ±64 in height per level
-    cx = 128
+    # Top diamond corners (lifted by the cube height) -----------------------
+    lift = CUBE_HEIGHT
+    tN = (bN[0], bN[1] - lift)            # (128, 288)
+    tE = (bE[0], bE[1] - lift)            # (256, 352)
+    tS = (bS[0], bS[1] - lift)            # (128, 416)
+    tW = (bW[0], bW[1] - lift)            # (0,   352)
 
-    # Build the crate with stacked diamonds (isometric perspective)
-    # Level 1 (top of body): rows 64–192
-    top1_top = (cx, 64)
-    top1_right = (cx + 128, 128)
-    top1_bottom = (cx, 192)
-    top1_left = (cx - 128, 128)
+    # Left face (W-S side, shadowed) ----------------------------------------
+    draw.polygon([tW, tS, bS, bW], fill=COLOR_LEFT, outline=COLOR_EDGE, width=1)
+    _grid_lines(draw, tW, tS, bS, bW, COLOR_GRID)
 
-    # Draw top face (light)
-    draw.polygon([top1_top, top1_right, top1_bottom, top1_left],
-                 fill=COLOR_WOOD_TOP, outline=COLOR_EDGE, width=1)
+    # Right face (S-E side, mid) --------------------------------------------
+    draw.polygon([tS, tE, bE, bS], fill=COLOR_RIGHT, outline=COLOR_EDGE, width=1)
+    _grid_lines(draw, tS, tE, bE, bS, COLOR_GRID)
 
-    # Level 2 (middle): rows 192–320
-    mid_top = (cx, 192)
-    mid_right = (cx + 128, 256)
-    mid_bottom = (cx, 320)
-    mid_left = (cx - 128, 256)
+    # Top face (lit) -- drawn last so it sits above the side faces ----------
+    draw.polygon([tN, tE, tS, tW], fill=COLOR_TOP, outline=COLOR_EDGE, width=1)
+    _grid_lines(draw, tN, tE, tS, tW, COLOR_GRID)
 
-    # Left face of middle section
-    draw.polygon([top1_left, top1_bottom, mid_bottom, mid_left],
-                 fill=COLOR_WOOD_LEFT, outline=COLOR_EDGE, width=1)
-
-    # Right face of middle section
-    draw.polygon([top1_right, top1_bottom, mid_bottom, mid_right],
-                 fill=COLOR_WOOD_RIGHT, outline=COLOR_EDGE, width=1)
-
-    # Level 3 (bottom body): rows 320–384
-    bot_top = (cx, 320)
-    bot_right = (cx + 128, 352)
-    bot_bottom = (cx, 384)
-    bot_left = (cx - 128, 352)
-
-    # Continue left and right faces
-    draw.polygon([mid_left, mid_bottom, bot_bottom, bot_left],
-                 fill=COLOR_WOOD_LEFT, outline=COLOR_EDGE, width=1)
-    draw.polygon([mid_right, mid_bottom, bot_bottom, bot_right],
-                 fill=COLOR_WOOD_RIGHT, outline=COLOR_EDGE, width=1)
-
-    # Diamond at bottom (for alignment with cell) - rows 384–512
-    diamond_top = (cx, 384)
-    diamond_right = (256, 448)
-    diamond_bottom = (cx, 512)
-    diamond_left = (0, 448)
-
-    # Bottom diamond connects body to floor
-    draw.polygon([diamond_top, diamond_right, diamond_bottom, diamond_left],
-                 fill=COLOR_DARK, outline=COLOR_EDGE, width=1)
-
-    # Add subtle horizontal lines to show crate planks
-    for y in [96, 128, 160, 192, 224, 256, 288, 320, 352]:
-        # Draw line across the body at this height (approximately)
-        # This is a visual separation, not geometrically precise
-        if y < 384:
-            draw.line([(cx - 64, y), (cx + 64, y)], fill=COLOR_EDGE, width=1)
+    # Re-stroke the three silhouette edges meeting at the front corner so the
+    # cube reads crisply over the grid lines.
+    draw.line([tS, bS], fill=COLOR_EDGE, width=2)   # front vertical
+    draw.line([tW, tS], fill=COLOR_EDGE, width=2)   # top-left edge
+    draw.line([tS, tE], fill=COLOR_EDGE, width=2)   # top-right edge
 
     return canvas
 
 
 def generate_rotated_variants():
-    """Generate 4 rotations of the crate."""
+    """Write the cube to all 4 perspective slots (identical -- no rotation)."""
     base = generate_simple_crate()
 
-    output_dir = "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/ASSETS/ISOMETRIC/blocks-prototype/Isometric"
+    output_dir = (
+        "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
+        "/ASSETS/ISOMETRIC/blocks-prototype/Isometric"
+    )
 
-    rotations = {
-        "NE": 0,
-        "SE": 1,
-        "SW": 2,
-        "NW": 3,
-    }
-
-    for direction, num_rotations in rotations.items():
-        rotated = base.rotate(90 * num_rotations, expand=False)
+    for direction in ("NE", "SE", "SW", "NW"):
         output_path = f"{output_dir}/crate_{direction}.png"
-        rotated.save(output_path, "PNG")
+        base.save(output_path, "PNG")
         print(f"✓ {output_path}")
 
 
 if __name__ == "__main__":
     generate_rotated_variants()
-    print("\n✓ Simple crate placeholders created (256×512 px)")
+    print("\n✓ Isometric crate placeholders created (256x512 px)")

@@ -73,8 +73,9 @@ var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
-## offset up by the crate body step (smaller than a full wall cube). Tunable visually.
-var CRATE_STACK_STEP_PX: float = 96.0
+## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
+## (tools/generate_crate_simple.py) so stacked crates seat seamlessly.
+var CRATE_STACK_STEP_PX: float = 128.0
 var _prop_stack_layers: Array[TileMapLayer] = []
 
 ## tile_name → TileSet source_id

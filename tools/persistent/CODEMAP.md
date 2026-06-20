@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**54 scripts · 10405 lines total** (under `godot/scripts/`)
+**54 scripts · 10406 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1299,7 +1299,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1924 lines
+extends `Node2D` · 1925 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1350,7 +1350,7 @@ extends `Node2D` · 1924 lines
 - `map_id: String = "PLAYGROUND"`
 
 **Public vars**
-- `var CRATE_STACK_STEP_PX: float = 96.0`
+- `var CRATE_STACK_STEP_PX: float = 128.0`
 - `var vision_bonus_tiles: int = 0`
 
 ---

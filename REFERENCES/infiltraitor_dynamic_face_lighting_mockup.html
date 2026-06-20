@@ -1,0 +1,218 @@
+<h2 class="sr-only">Mockup interativo de iluminação dinâmica de faces para paredes e objetos isométricos: arraste a luz para ver topo e laterais reagirem, compare assets com sombra baked versus flat com overlay, e veja empilhamento proporcional versus crates flutuando.</h2>
+<style>
+  .stage-wrap{background:#15171f;border-radius:var(--border-radius-lg);padding:10px;overflow:hidden}
+  .ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+  .ctrl .grp{display:flex;gap:4px;align-items:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:4px}
+  .ctrl button{font-size:13px;padding:5px 10px}
+  .ctrl button.on{border-color:var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info)}
+  .lab{font-size:12px;color:var(--color-text-secondary);margin-right:2px}
+  canvas{display:block;width:100%;height:auto;border-radius:var(--border-radius-md);cursor:grab}
+  canvas.drag{cursor:grabbing}
+</style>
+
+<div class="ctrl">
+  <div class="grp"><span class="lab">Render</span>
+    <button id="m-flat" class="on">Flat + overlay</button>
+    <button id="m-baked">Baked (atual)</button>
+  </div>
+  <div class="grp"><span class="lab">Pilha</span>
+    <button id="s-prop" class="on">Proporcional</button>
+    <button id="s-float">Flutuando</button>
+  </div>
+  <div class="grp"><span class="lab">Luz</span>
+    <button id="l-on" class="on">Acesa</button>
+    <button id="l-flick">Piscando</button>
+    <button id="l-off">Quebrada</button>
+  </div>
+  <div class="grp"><span class="lab">Postura</span>
+    <button id="p-stand" class="on">Em pé</button>
+    <button id="p-crouch">Agachado</button>
+    <button id="p-prone">Rastejando</button>
+  </div>
+</div>
+
+<div class="stage-wrap"><canvas id="cv" width="1360" height="860"></canvas></div>
+
+<script>
+(function(){
+  const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  const DPR=2; const W=cv.width/DPR, H=cv.height/DPR; ctx.scale(DPR,DPR);
+  const TW=92, TH=46, STEP=58;        // tile w/h (2:1) + 1 "andar" em px
+  const ORX=W*0.5, ORY=128;
+  const COLS=6, ROWS=6;
+
+  const state={mode:'flat',stack:'prop',light:'on',posture:'stand'};
+  const lamp={gx:4.4, gy:0.4, radius:7, energy:1};
+
+  // paleta (cena física, hex fixo)
+  const FLOOR='#c9c3b4', FLOOR_LINE='#b3ad9e';
+  const CRATE='#d98a3d', CRATE_E='#a8651f';
+  const WALL='#d27e2a', WALL_E='#9c5a18';
+  const ACTOR='#3fae5e', ACTOR_E='#1f6e36';
+  const LIGHT_TINT=[255,233,168], SHADOW_TINT=[26,30,52];
+  const AMBIENT=0.30, DIFFUSE=0.20, GAIN=0.70, TOPGAIN=0.78;
+
+  function iso(gx,gy,z){return {x:ORX+(gx-gy)*TW/2, y:ORY+(gx+gy)*TH/2 - z*STEP};}
+  function clamp(v,a,b){return v<a?a:v>b?b:v;}
+  function mix(a,b,t){return a+(b-a)*t;}
+
+  function shade(base, b){
+    // base = [r,g,b]; b in [0,1] -> escurece <0.5, clareia >0.5 (overlay)
+    const r=base[0],g=base[1],bl=base[2];
+    if(b<0.5){const t=(0.5-b)*2*0.85; return rgb(mix(r,SHADOW_TINT[0],t),mix(g,SHADOW_TINT[1],t),mix(bl,SHADOW_TINT[2],t));}
+    const t=(b-0.5)*2*0.6; return rgb(mix(r,LIGHT_TINT[0],t),mix(g,LIGHT_TINT[1],t),mix(bl,LIGHT_TINT[2],t));
+  }
+  function rgb(r,g,b){return 'rgb('+Math.round(r)+','+Math.round(g)+','+Math.round(b)+')';}
+  function hexrgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+
+  function atten(gx,gy){const d=Math.hypot(lamp.gx-gx,lamp.gy-gy); return Math.max(0,1-d/lamp.radius);}
+  function energy(){return state.light==='off'?0:lamp.energy;}
+
+  function faceB(gx,gy,nx,ny){
+    if(state.mode==='baked'){ // sol fixo, não reage à luz
+      if(nx===0&&ny===0) return 0.82;            // topo
+      return (nx>0)?0.62:0.34;                    // dir clara / esq escura, sempre
+    }
+    const e=energy(); if(e<=0) return AMBIENT*0.7;
+    const dx=lamp.gx-gx, dy=lamp.gy-gy, dist=Math.hypot(dx,dy)||1e-3;
+    const at=atten(gx,gy);
+    if(nx===0&&ny===0) return clamp(AMBIENT + TOPGAIN*at*e,0,1);   // topo
+    const facing=Math.max(0,(dx/dist)*nx+(dy/dist)*ny);
+    return clamp(AMBIENT + (DIFFUSE+facing*GAIN)*at*e,0,1);
+  }
+
+  function poly(pts,fill,stroke){
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    ctx.closePath();ctx.fillStyle=fill;ctx.fill();
+    if(stroke){ctx.lineWidth=1;ctx.strokeStyle=stroke;ctx.stroke();}
+  }
+
+  function topDiamond(gx,gy,z){const c=iso(gx,gy,z);return [
+    {x:c.x,y:c.y-TH/2},{x:c.x+TW/2,y:c.y},{x:c.x,y:c.y+TH/2},{x:c.x-TW/2,y:c.y}];}
+
+  function drawFloor(){
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      poly(topDiamond(x,y,0),FLOOR,FLOOR_LINE);
+    }
+  }
+
+  // sombra de chão projetada na direção contrária à luz, comprimento ~ altura
+  function castShadow(gx,gy,hFloors){
+    const dx=gx-lamp.gx, dy=gy-lamp.gy, dist=Math.hypot(dx,dy)||1e-3;
+    const dir=[dx/dist,dy/dist];
+    const lf=(state.light==='off')?0:1;
+    const len=Math.round(hFloors*1.3*(1+dist*0.05))*lf;
+    for(let i=1;i<=len;i++){
+      const cx=gx+Math.round(dir[0]*i), cy=gy+Math.round(dir[1]*i);
+      if(cx<0||cy<0||cx>=COLS||cy>=ROWS)break;
+      const a=clamp(0.42*(1-(i-1)/(len+1)),0.08,0.42);
+      ctx.save();ctx.globalAlpha=a;poly(topDiamond(cx,cy,0),'#1a1d2e',null);ctx.restore();
+    }
+  }
+
+  function drawBox(gx,gy,z,bodyFloors,baseHex,edgeHex,topShrink){
+    const base=hexrgb(baseHex);
+    const top=topDiamond(gx,gy,z+bodyFloors);
+    // laterais (esq normal +gy, dir normal +gx)
+    const botL=iso(gx-(topShrink||0),gy,z), tl=top[3], bl=top[2];
+    const left=[tl,bl,{x:bl.x,y:bl.y+bodyFloors*STEP},{x:tl.x,y:tl.y+bodyFloors*STEP}];
+    const right=[bl,top[1],{x:top[1].x,y:top[1].y+bodyFloors*STEP},{x:bl.x,y:bl.y+bodyFloors*STEP}];
+    poly(left, shade(base,faceB(gx,gy,0,1)), edgeHex);
+    poly(right,shade(base,faceB(gx,gy,1,0)), edgeHex);
+    const tb=faceB(gx,gy,0,0);
+    poly(top, shade(base,tb), edgeHex);
+    if(state.mode==='flat' && tb>0.78 && state.light!=='off'){ // leve glow no topo iluminado
+      ctx.save();ctx.globalAlpha=(tb-0.78)*1.6;poly(top,'rgba(255,238,180,1)',null);ctx.restore();
+    }
+  }
+
+  function drawWall(gx,gy,floors){
+    const base=hexrgb(WALL);
+    const top=topDiamond(gx,gy,floors);
+    const tl=top[3],bl=top[2];
+    const left=[tl,bl,{x:bl.x,y:bl.y+floors*STEP},{x:tl.x,y:tl.y+floors*STEP}];
+    const right=[bl,top[1],{x:top[1].x,y:top[1].y+floors*STEP},{x:bl.x,y:bl.y+floors*STEP}];
+    poly(left, shade(base,faceB(gx,gy,0,1)), WALL_E);
+    poly(right,shade(base,faceB(gx,gy,1,0)), WALL_E);
+    poly(top,  shade(base,faceB(gx,gy,0,0)), WALL_E);
+  }
+
+  function drawCrateStack(gx,gy,count){
+    const body = (state.stack==='prop')?1.0:0.66;   // proporcional = 1 andar; flutuando = corpo curto
+    castShadow(gx,gy,count*body);
+    for(let i=0;i<count;i++){
+      const z=i*1.0; // sempre empilha por andar (STEP); corpo menor deixa o vão = "flutuando"
+      drawBox(gx,gy,z,body,CRATE,CRATE_E,0);
+    }
+  }
+
+  function drawActor(gx,gy){
+    const h={stand:0.9,crouch:0.5,prone:0.26}[state.posture];
+    castShadow(gx,gy,h);
+    drawBox(gx,gy,0,h,ACTOR,ACTOR_E,0);
+  }
+
+  function drawLamp(){
+    const c=iso(lamp.gx,lamp.gy,2.4);
+    const on=state.light!=='off';
+    if(on){ctx.save();ctx.globalAlpha=0.5*lamp.energy;ctx.fillStyle='rgba(255,226,140,1)';
+      ctx.beginPath();ctx.arc(c.x,c.y,26,0,7);ctx.fill();ctx.restore();}
+    ctx.beginPath();ctx.moveTo(c.x,c.y-30);ctx.lineTo(c.x,c.y-8);ctx.strokeStyle='#888';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(c.x,c.y,8,0,7);
+    ctx.fillStyle=on?(lamp.energy>0.5?'#ffe14d':'#7a6a20'):'#3a3a3a';ctx.fill();
+    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    drawFloor();
+    // ordem de pintura: do fundo (gx+gy menor) pra frente
+    drawWall(0,0,2);drawWall(1,0,2);drawWall(2,0,2);drawWall(0,1,2);drawWall(0,2,2);
+    const items=[
+      {t:'crate',gx:2,gy:1,n:1},{t:'crate',gx:3,gy:2,n:2},
+      {t:'crate',gx:4,gy:3,n:4},{t:'cover',gx:1,gy:3},
+      {t:'actor',gx:2,gy:4}
+    ];
+    items.sort((a,b)=>(a.gx+a.gy)-(b.gx+b.gy));
+    for(const it of items){
+      if(it.t==='crate')drawCrateStack(it.gx,it.gy,it.n);
+      else if(it.t==='cover')drawBox(it.gx,it.gy,0,0.45,CRATE,CRATE_E,0);
+      else drawActor(it.gx,it.gy);
+    }
+    drawLamp();
+  }
+
+  // arrastar a luz
+  let dragging=false;
+  function toGrid(px,py){
+    const x=px-ORX, y=py-ORY-( -2.4*STEP);
+    const gx=(x/(TW/2)+y/(TH/2))/2, gy=(y/(TH/2)-x/(TW/2))/2;
+    return {gx:clamp(gx,-1,COLS+1),gy:clamp(gy,-1,ROWS+1)};
+  }
+  function evt(e){const r=cv.getBoundingClientRect();const sx=W/r.width,sy=H/r.height;
+    const t=e.touches?e.touches[0]:e;return {x:(t.clientX-r.left)*sx,y:(t.clientY-r.top)*sy};}
+  function onDown(e){dragging=true;cv.classList.add('drag');onMove(e);}
+  function onMove(e){if(!dragging)return;const p=evt(e);const g=toGrid(p.x,p.y);lamp.gx=g.gx;lamp.gy=g.gy;render();e.preventDefault&&e.preventDefault();}
+  function onUp(){dragging=false;cv.classList.remove('drag');}
+  cv.addEventListener('mousedown',onDown);window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
+  cv.addEventListener('touchstart',onDown,{passive:false});cv.addEventListener('touchmove',onMove,{passive:false});window.addEventListener('touchend',onUp);
+
+  function bind(id,fn,group){document.getElementById(id).addEventListener('click',function(){
+    if(group)group.forEach(g=>document.getElementById(g).classList.remove('on'));
+    this.classList.add('on');fn();render();});}
+  bind('m-flat',()=>state.mode='flat',['m-flat','m-baked']);
+  bind('m-baked',()=>state.mode='baked',['m-flat','m-baked']);
+  bind('s-prop',()=>state.stack='prop',['s-prop','s-float']);
+  bind('s-float',()=>state.stack='float',['s-prop','s-float']);
+  bind('l-on',()=>{state.light='on';lamp.energy=1;},['l-on','l-flick','l-off']);
+  bind('l-flick',()=>state.light='flick',['l-on','l-flick','l-off']);
+  bind('l-off',()=>state.light='off',['l-on','l-flick','l-off']);
+  bind('p-stand',()=>state.posture='stand',['p-stand','p-crouch','p-prone']);
+  bind('p-crouch',()=>state.posture='crouch',['p-stand','p-crouch','p-prone']);
+  bind('p-prone',()=>state.posture='prone',['p-stand','p-crouch','p-prone']);
+
+  setInterval(()=>{if(state.light==='flick'){lamp.energy=lamp.energy>0.5?0.18:1;render();}},420);
+  render();
+})();
+</script>

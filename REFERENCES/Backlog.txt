@@ -9,7 +9,7 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-
+CONVERTER TUDO PRA VOXELS
 
 Onomatpeias: dicionário de "sons" visiveis.
 
@@ -24,3 +24,25 @@ Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma mane
 
 O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.
 
+
+
+
+
+
+
+
+Ok, é isso mesmo. Mas a gente precisa aplicar na verdade uma texturazinha no assets primeiro, pra ver se a tinta está fazendo efeito com o blending mode. Poderia ser só uma simulação de madeira pras caixas, e concreto pras paredes.  Precisamos verificar se vale o custo de simular isso com vetor diretamente no game em vez de fazer um PNG ja texturizado. 
+
+Além disso, temos que pensar na questão dos assets de paredes serem mais finos do que esses blocos. As caixas podem sumir inteiras na realidade, nnao precisaria ter essa divisão de bandas, mas vamos ter objetos e obstáculos do terreno que naturalmente vão ter altura  1/4, 2/4, etc., então vamos deixar o metodo pronto. 
+
+A questão émais complexa são as paredes, porque elas vão ser cruciais. Independente delas terem altura 2/4 ou 4/4, a gente vai querer exibir só o 1/4 de baixo, quando o personagem estiver atrás. 
+
+Portanto temos que ter os assets que permitem tanto a oclusão quanto os atores existirem naquele espaço - se apioando na parede, agachando, etc. (Posteriormente vamos fazer esse refino das poses pra todas as situações, ângulos, iluminação, etc.)
+
+Veja nas imagens em anexo: 1 parede em cada andar ocupam cerca de 1/4 de tile de espessura, e estão posicionadas nas arestas do grid, metade pra cada lado (imagem 1).
+
+Quando o personagem andar por tras das paredes e objetos, precisamos apagar os 3/4 de cima, e mais os 4/4 da parede no(s) andar(es) superior(es) (simulação - imagem 2).
+
+Nos quartos de parede que serao "apagados", vamos aplicar um blending mode multiply com 50% de opacidade (simulação - imagem 3 - talvez ampliando mais a area de oclusão com mais 1 ou 2 paredes pro lado).
+
+A questão que prevalece é se isso pode acarretar algum problema no sistema de iluminação/sombras, especialmente a questão das faces. Precisamos que seja um método eficiente e funcional.

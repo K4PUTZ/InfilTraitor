@@ -2,56 +2,87 @@
 """
 Generate simple crate placeholders (256×512 px) for INFILTRAITOR.
 Works with existing tileset system (PNG_SIZE 256×512, SPRITE_OFFSET -384).
+Uses isometric diamond geometry matching the grid.
 """
 
 from PIL import Image, ImageDraw
 
 # Colors
-COLOR_WOOD = (150, 110, 60)
-COLOR_DARK = (80, 60, 40)
-COLOR_EDGE = (40, 30, 20)
+COLOR_WOOD_TOP = (180, 140, 80)       # top face (lit)
+COLOR_WOOD_LEFT = (140, 105, 60)      # left face
+COLOR_WOOD_RIGHT = (160, 120, 70)     # right face
+COLOR_DARK = (80, 60, 40)             # dark/shadow areas
+COLOR_EDGE = (40, 30, 20)             # edge lines
 TRANSPARENT = (0, 0, 0, 0)
 
 
 def generate_simple_crate():
-    """Generate a simple crate placeholder (256×512 px)."""
+    """Generate isometric crate placeholder (256×512 px) with diamond geometry."""
     canvas = Image.new("RGBA", (256, 512), TRANSPARENT)
     draw = ImageDraw.Draw(canvas)
 
     # The system expects:
     # - Total height: 512 px
-    # - Diamond at bottom: rows 384–512 (128 px)
+    # - Diamond at bottom: rows 384–512 (128 px) for alignment
     # - Body above: rows 0–384
 
-    # Simple cube body: fill most of the canvas with a solid color + edges
-    # Draw a simple box representation of a crate
+    # Isometric diamond parameters
+    # Center at x=128, diamond extends ±128 in width, ±64 in height per level
+    cx = 128
 
-    # Main body (simplified cube)
-    # Top face
-    draw.rectangle([(64, 100), (192, 200)], fill=COLOR_WOOD, outline=COLOR_EDGE, width=2)
+    # Build the crate with stacked diamonds (isometric perspective)
+    # Level 1 (top of body): rows 64–192
+    top1_top = (cx, 64)
+    top1_right = (cx + 128, 128)
+    top1_bottom = (cx, 192)
+    top1_left = (cx - 128, 128)
 
-    # Left side
-    draw.rectangle([(20, 200), (64, 360)], fill=COLOR_DARK, outline=COLOR_EDGE, width=2)
+    # Draw top face (light)
+    draw.polygon([top1_top, top1_right, top1_bottom, top1_left],
+                 fill=COLOR_WOOD_TOP, outline=COLOR_EDGE, width=1)
 
-    # Right side
-    draw.rectangle([(192, 200), (236, 360)], fill=COLOR_WOOD, outline=COLOR_EDGE, width=2)
+    # Level 2 (middle): rows 192–320
+    mid_top = (cx, 192)
+    mid_right = (cx + 128, 256)
+    mid_bottom = (cx, 320)
+    mid_left = (cx - 128, 256)
 
-    # Front face (main)
-    draw.rectangle([(64, 200), (192, 380)], fill=COLOR_WOOD, outline=COLOR_EDGE, width=2)
+    # Left face of middle section
+    draw.polygon([top1_left, top1_bottom, mid_bottom, mid_left],
+                 fill=COLOR_WOOD_LEFT, outline=COLOR_EDGE, width=1)
 
-    # Diamond at bottom (for alignment with cell)
-    # Diamond corners (centered at x=128)
-    top = (128, 384)
-    right = (256, 448)
-    bottom = (128, 512)
-    left = (0, 448)
+    # Right face of middle section
+    draw.polygon([top1_right, top1_bottom, mid_bottom, mid_right],
+                 fill=COLOR_WOOD_RIGHT, outline=COLOR_EDGE, width=1)
 
-    draw.polygon([top, right, bottom, left], fill=COLOR_DARK, outline=COLOR_EDGE)
+    # Level 3 (bottom body): rows 320–384
+    bot_top = (cx, 320)
+    bot_right = (cx + 128, 352)
+    bot_bottom = (cx, 384)
+    bot_left = (cx - 128, 352)
 
-    # Add some edge lines for visual separation
-    draw.line([(64, 240), (192, 240)], fill=COLOR_EDGE, width=1)
-    draw.line([(64, 280), (192, 280)], fill=COLOR_EDGE, width=1)
-    draw.line([(64, 320), (192, 320)], fill=COLOR_EDGE, width=1)
+    # Continue left and right faces
+    draw.polygon([mid_left, mid_bottom, bot_bottom, bot_left],
+                 fill=COLOR_WOOD_LEFT, outline=COLOR_EDGE, width=1)
+    draw.polygon([mid_right, mid_bottom, bot_bottom, bot_right],
+                 fill=COLOR_WOOD_RIGHT, outline=COLOR_EDGE, width=1)
+
+    # Diamond at bottom (for alignment with cell) - rows 384–512
+    diamond_top = (cx, 384)
+    diamond_right = (256, 448)
+    diamond_bottom = (cx, 512)
+    diamond_left = (0, 448)
+
+    # Bottom diamond connects body to floor
+    draw.polygon([diamond_top, diamond_right, diamond_bottom, diamond_left],
+                 fill=COLOR_DARK, outline=COLOR_EDGE, width=1)
+
+    # Add subtle horizontal lines to show crate planks
+    for y in [96, 128, 160, 192, 224, 256, 288, 320, 352]:
+        # Draw line across the body at this height (approximately)
+        # This is a visual separation, not geometrically precise
+        if y < 384:
+            draw.line([(cx - 64, y), (cx + 64, y)], fill=COLOR_EDGE, width=1)
 
     return canvas
 

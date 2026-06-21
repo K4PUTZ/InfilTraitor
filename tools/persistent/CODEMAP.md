@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**54 scripts · 10406 lines total** (under `godot/scripts/`)
+**54 scripts · 10411 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1240,7 +1240,7 @@ extends `Node2D` · 34 lines
 
 ### `playground_map.gd`
 
-`class_name PlaygroundMap` · extends `RefCounted` · 76 lines
+`class_name PlaygroundMap` · extends `RefCounted` · 77 lines
 
 `godot/scripts/world/maps/definitions/playground_map.gd`
 
@@ -1278,7 +1278,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 261 lines
+`class_name MapCompiler` · extends `RefCounted` · 265 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

@@ -121,6 +121,10 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 				})
 			wall_levels.append(course)
 
+	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
+	## wall storeys. Defaults to wall_height so maps that don't set it are unchanged.
+	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", wall_height)))
+
 	## --- props (crates / pillars) -------------------------------------------
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset
 	var structure_tiles: Array[Dictionary] = []
@@ -177,7 +181,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"floor_tile_name":  String(spec.get("floor_tile", "floor_SE")),
 		"wall_tiles":       wall_tiles,        ## == wall_levels[0] (back-compat)
 		"wall_levels":      wall_levels,        ## [floor] -> Array[{cell, tile_name}], floor 0 = ground
-		"max_floors":       wall_levels.size(),
+		"max_floors":       ceiling_floors,    ## ceiling-fixture height (lamp / temporal knob), independent of physical wall storeys
 		"structure_tiles":  structure_tiles,
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,

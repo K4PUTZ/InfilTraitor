@@ -25,6 +25,7 @@ static func spec() -> Dictionary:
 		"buffer":        5,
 		"floor_tile":    "floor_SE",
 		"wall_height":   2,                   ## external perimeter is double-height (second storey)
+		"ceiling_floors": 3,                  ## ceiling lamp / temporal knob hang at 3 storeys (independent of walls)
 		"agent_start":   Vector2i(9, 33),
 		## One door per side — exercises every doorOpen_* variant.
 		"access_points": [

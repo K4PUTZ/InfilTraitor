@@ -12,11 +12,17 @@ extends SceneTree
 const TILES_PATH    := "res://ASSETS/ISOMETRIC/blocks-prototype/Isometric/"
 ## Master assets: source-of-truth artwork, organised in category subfolders
 ## (blocks/, walls/, …) under one parent. The whole parent is duplicated per
-## environment, edits preserving dimensions/structure. Each master is one
-## FLAT-LIT, direction-agnostic PNG per object (e.g. blocks/crate.png — no
-## _NE/_NW/_SE/_SW). When a master exists for a tile's base name it feeds ALL 4
-## directional slots; otherwise the provisory (shaded) PNG in TILES_PATH is used.
-## See tools/asset_generation/generate_master_crate.py.
+## environment with lighting variants painted on top.
+##
+## Two master forms are supported:
+##   • Direction-agnostic (e.g. blocks/crate.png — no suffix): feeds ALL 4
+##     directional slots. Good for symmetric objects (crates, pillars).
+##   • Directional (e.g. walls/wall_NW.png — with _NE/_NW/_SE/_SW suffix):
+##     feeds only its specific slot. Required for wall faces, whose canvas
+##     position differs per direction due to the edge-straddling system.
+##
+## Lookup priority: directional master → direction-agnostic master → provisory.
+## See tools/asset_generation/ for generation scripts.
 const MASTER_PATH   := "res://ASSETS/ISOMETRIC/master_assets/"
 const TILESET_OUT   := "res://godot/resources/tilesets/tileset_blocks.tres"
 const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
@@ -28,17 +34,55 @@ const PNG_SIZE      := Vector2i(256, 512)
 ## Sprite Y-offset: shifts PNG up so bottom 128px (floor diamond) aligns with cell
 ## floor diamond occupies PNG rows 384–512 → shift up by 384px
 const SPRITE_OFFSET := Vector2i(0, -384)
-## Each wall sits on the OUTER edge of its boundary tile, straddling it with the
-## adjacent outside tile. In diamond-down isometric (cell 256×128):
-##   North outer edge (NE diagonal): half-step north  = screen (+64, -32)
-##   South outer edge (SW diagonal): half-step south  = screen (-64, +32)
-##   East  outer edge (SE diagonal): half-step east   = screen (+64, +32)
-##   West  outer edge (NW diagonal): half-step west   = screen (-64, -32)
+## ── EDGE-STRADDLING SYSTEM ───────────────────────────────────────────────────
+## INFILTRAITOR blocks movement at EDGES between tiles, not at full tiles.
+## Walls are placed on the boundary between two adjacent tiles — half the visual
+## thickness sits in each tile. This is a permanent engine design decision.
+##
+## The master wall assets (master_assets/walls/) encode this positioning: each
+## PNG has its wall face authored near the tile edge rather than at canvas
+## centre. The texture_origin values below are the CALIBRATED offsets that shift
+## each sprite into the correct straddle position for its direction.
+##
+## ── WALL FACE OFFSETS (wall / wallHalf) ──────────────────────────────────────
+## Assets NE/NW/SE/SW are authored with the face near (but not exactly at) the
+## tile edge. A small directional nudge (±16 px X, ±8 px Y — 1/8 cell step)
+## moves the face to straddle the boundary evenly.
+##
+## ── CORNER OFFSETS (wallCorner / wallCornerHalf) ──────────────────────────────
+## Corner point coincides with a grid vertex shared by two wall faces. Because
+## both adjacent wall faces were shifted outward to straddle their edges, there
+## is a gap at the vertex. The corner sprites were extended to fill this gap:
+##   NW / SE corners → canvas widened to 320 px (extra 64 px on the right, since
+##                      Godot expands canvas to the right by default)
+##   NE / SW corners → canvas heightened to 528 px (extra 16 px at the bottom)
+## The texture_origin values below compensate for that asymmetric expansion so
+## the corner visually meets both adjacent wall faces exactly.
+##
+## Changing these values without updating the master PNG geometry will break
+## visual alignment. Calibrated in commit 924dbf0.
+## ─────────────────────────────────────────────────────────────────────────────
 const EDGE_VISUAL_OFFSETS := {
 	"N": Vector2i(64, -32),
 	"S": Vector2i(-64, 32),
 	"E": Vector2i(64, 32),
 	"W": Vector2i(-64, -32),
+	## Diagonal wall faces (NE/NW/SE/SW): straddle the boundary at half a
+	## diamond-step. Values calibrated in commit 924dbf0.
+	"NE": Vector2i(-16, -8),
+	"NW": Vector2i(-16,  8),
+	"SE": Vector2i( 16, -8),
+	"SW": Vector2i( 16,  8),
+}
+
+## wallCorner / wallCornerHalf need a distinct per-direction shift because
+## their geometry spans the full corner vertex, not just one edge face.
+## Values calibrated in commit 924dbf0.
+const CORNER_VISUAL_OFFSETS := {
+	"NE": Vector2i(-32, -8),
+	"NW": Vector2i(  0, 16),
+	"SE": Vector2i(  0,-16),
+	"SW": Vector2i( 32, -8),
 }
 
 ## Tile properties keyed by base name (without _N/_S/_E/_W suffix).
@@ -205,9 +249,9 @@ func _build() -> void:
 		var parts := tile_name.rsplit("_", true, 1)
 		var base_name: String = parts[0] if parts.size() > 1 else tile_name
 
-		# Prefer the flat-lit master (feeds all 4 directional slots); else the
-		# provisory directional PNG.
-		var texture: Texture2D = masters.get(base_name, null)
+		# Lookup priority: directional master (e.g. walls/wall_NW.png) →
+		# direction-agnostic master (e.g. blocks/crate.png) → provisory PNG.
+		var texture: Texture2D = masters.get(tile_name, masters.get(base_name, null))
 		if texture == null:
 			texture = load(TILES_PATH + file_name)
 		if texture == null:
@@ -220,7 +264,9 @@ func _build() -> void:
 		# One TileSetAtlasSource per PNG (standalone tile, not an atlas)
 		var source := TileSetAtlasSource.new()
 		source.texture             = texture
-		source.texture_region_size = PNG_SIZE
+		# Use the actual PNG dimensions so non-standard canvases (wallCorner/
+		# wallCornerHalf: 320×512 or 256×528) are registered correctly.
+		source.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
 
 		source.create_tile(Vector2i(0, 0))
 
@@ -298,32 +344,32 @@ func _scan_master_dir(path: String, out: Dictionary) -> void:
 		if dir.current_is_dir():
 			_scan_master_dir(full + "/", out)    # recurse into blocks/, walls/, …
 		elif f.ends_with(".png"):
-			var base_name: String = f.get_basename()   # no _NE/_NW/_SE/_SW suffix
+			# Key is always the full stem (no extension). This naturally supports
+			# both forms: "crate" (direction-agnostic) and "wall_NW" (directional).
+			# The lookup in _build() checks tile_name first, then base_name.
+			var key: String = f.get_basename()
 			var tex: Texture2D = load(full)
 			if tex == null:
 				push_warning("[build_tileset] Cannot load master: " + full)
-			elif out.has(base_name):
-				push_warning("[build_tileset] Duplicate master base name '%s' (%s) — keeping first" % [base_name, full])
+			elif out.has(key):
+				push_warning("[build_tileset] Duplicate master key '%s' (%s) — keeping first" % [key, full])
 			else:
-				out[base_name] = tex
+				out[key] = tex
 		f = dir.get_next()
 	dir.list_dir_end()
 
 
 func _get_texture_origin(tile_name: String, base_name: String) -> Vector2i:
-	var offset := SPRITE_OFFSET
-	if not _is_edge_aligned_tile(base_name):
-		return offset
-
 	var parts := tile_name.rsplit("_", true, 1)
-	if parts.size() < 2:
-		return offset
+	var direction := parts[1] if parts.size() > 1 else ""
 
-	var direction := parts[1]
-	if not EDGE_VISUAL_OFFSETS.has(direction):
-		return offset
+	if base_name in ["wallCorner", "wallCornerHalf"]:
+		return SPRITE_OFFSET + CORNER_VISUAL_OFFSETS.get(direction, Vector2i.ZERO)
 
-	return offset + EDGE_VISUAL_OFFSETS[direction]
+	if not _is_edge_aligned_tile(base_name):
+		return SPRITE_OFFSET
+
+	return SPRITE_OFFSET + EDGE_VISUAL_OFFSETS.get(direction, Vector2i.ZERO)
 
 
 func _is_edge_aligned_tile(base_name: String) -> bool:

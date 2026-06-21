@@ -5,6 +5,7 @@ ARCHIVE/
 
 # Godot (generated/editor cache)
 .godot/
+*.import
 
 # Godot export/build outputs (if created)
 export/

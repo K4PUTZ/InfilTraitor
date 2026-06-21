@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**54 scripts · 10411 lines total** (under `godot/scripts/`)
+**54 scripts · 10464 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1122,12 +1122,13 @@ extends `Node2D` · 43 lines
 
 ### `build_tileset.gd`
 
-extends `SceneTree` · 282 lines
+extends `SceneTree` · 335 lines
 
 `godot/scripts/tools/build_tileset.gd`
 
 **Constants / tuning**
 - `TILES_PATH` = `"res://ASSETS/ISOMETRIC/blocks-prototype/Isometric/"`
+- `MASTER_PATH` = `"res://ASSETS/ISOMETRIC/master_assets/"`
 - `TILESET_OUT` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `REGISTRY_OUT` = `"res://godot/scripts/world/tile_registry.gd"`
 - `CELL_SIZE` = `Vector2i(256, 128)`

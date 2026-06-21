@@ -10,7 +10,7 @@ Geometry (must not drift):
   - PNG is 256x512. The floor footprint diamond occupies rows 384-512 and is
     aligned to the cell by the tileset's SPRITE_OFFSET (0, -384).
   - The cube's vertical faces are CUBE_HEIGHT (128 px) tall, so each of the
-    2x2x2 subcubes is a true iso cube. This MUST match room.gd
+    4x4x4 subcubes is a true iso cube. This MUST match room.gd
     CRATE_STACK_STEP_PX (128.0): a stacked crate seats its sprite CUBE_HEIGHT px
     higher, so the cube body height has to equal the stack step for the stack to
     read as a seamless tower.
@@ -26,10 +26,10 @@ PNG_W, PNG_H = 256, 512
 CX = 128                  # horizontal centre of the diamond
 TILE_HW, TILE_HH = 128, 64  # diamond half-width / half-height (256x128 cell)
 FLOOR_CENTER_Y = 448      # y of the footprint-diamond centre (rows 384-512)
-CUBE_HEIGHT = 128         # vertical face height; each 2x2x2 subcube is then a true
-                          # iso cube (128x64 footprint, 64px face). Must equal room.gd
+CUBE_HEIGHT = 128         # vertical face height; each 4x4x4 subcube is then a true
+                          # iso cube (32x16 footprint, 32px face). Must equal room.gd
                           # CRATE_STACK_STEP_PX so stacks seat seamlessly.
-SUBCUBES = 2              # 2x2x2 sub-cube arrangement -> one subdivision line per face axis
+SUBCUBES = 4              # 4x4x4 sub-cube arrangement -> three subdivision lines per face axis
 
 # Colours (orange placeholder block, matching the project palette) -----------
 COLOR_TOP = (238, 150, 56)     # top face (lit)

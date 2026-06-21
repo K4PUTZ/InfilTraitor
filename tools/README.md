@@ -7,6 +7,7 @@
 ## Quick Navigation
 
 - **[Persistent Tools](#persistent-tools)** — Active utilities
+- **[Asset Generation](#asset-generation)** — Master/placeholder art generators
 - **[Migration Archive](#migration-archive)** — Historical scripts
 - **[Experimental Tools](#experimental-tools)** — Sandbox/testing
 - **[Archive](#archive)** — Deprecated code
@@ -120,6 +121,51 @@ aborts the commit (no auto-fix; you fix the code). Then it runs
 `gen_codemap.py --check`; if `CODEMAP.md` is stale it regenerates + `git add`s it
 and aborts for review. Neither gate lets a bad commit reach history.
 `core.hooksPath` is local git config, so a fresh clone re-runs the install once.
+
+---
+
+## Asset Generation
+
+**Procedural generators for placeholder / master art, in `asset_generation/`.**
+
+The game feeds tile art from two layers (resolved by `build_tileset.gd`):
+
+- **Master assets** — `ASSETS/ISOMETRIC/master_assets/<category>/<object>.png`
+  (e.g. `blocks/crate.png`). One **flat-lit, direction-agnostic** PNG per object:
+  no baked shadows/lit faces (the room paints faces at runtime) and no
+  `_NE/_NW/_SE/_SW` variants (one PNG feeds all 4 directional slots). The whole
+  `master_assets/` folder is duplicated per environment and the art edited,
+  preserving dimensions/structure. **Master base names must be unique across
+  categories** (the builder warns on a duplicate and keeps the first).
+- **Provisory placeholders** — `ASSETS/ISOMETRIC/blocks-prototype/Isometric/`
+  (shaded, 4 directional PNGs). Used as the fallback when no master exists for a
+  tile's base name.
+
+### generate_master_crate.py
+
+**Purpose:** Generate the flat-lit master crate (`master_assets/blocks/crate.png`)
+**Status:** ✅ Active
+
+```bash
+python3 tools/asset_generation/generate_master_crate.py
+```
+
+Outputs a 256×512 cube with a 4×4×4 subcube grid, a single neutral colour on
+every face (no baked light) and structural edges/subdivisions only.
+
+### generate_crate_simple.py
+
+**Purpose:** Generate the provisory (shaded) crate fallback — 4 directional PNGs
+in `blocks-prototype/Isometric/` (`crate_NE/NW/SE/SW.png`)
+**Status:** ✅ Active (fallback only)
+
+```bash
+python3 tools/asset_generation/generate_crate_simple.py
+```
+
+> **After regenerating any PNG:** Godot must import it before the tileset builder
+> can load it (`Godot --headless --path . --import`), then rebuild the tileset
+> (see `godot/scripts/tools/build_tileset.gd` header).
 
 ---
 
@@ -246,6 +292,6 @@ Archive/ (deprecate, move when replacing)
 
 ---
 
-**Last Updated:** 2026-06-18  
+**Last Updated:** 2026-06-20  
 **Maintained By:** Architecture Team  
 **Status:** Active 🟢

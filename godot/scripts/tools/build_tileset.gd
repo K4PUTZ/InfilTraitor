@@ -10,6 +10,14 @@ extends SceneTree
 ##   godot/scripts/world/tile_registry.gd          ← auto-generated name→id lookup
 
 const TILES_PATH    := "res://ASSETS/ISOMETRIC/blocks-prototype/Isometric/"
+## Master assets: source-of-truth artwork, organised in category subfolders
+## (blocks/, walls/, …) under one parent. The whole parent is duplicated per
+## environment, edits preserving dimensions/structure. Each master is one
+## FLAT-LIT, direction-agnostic PNG per object (e.g. blocks/crate.png — no
+## _NE/_NW/_SE/_SW). When a master exists for a tile's base name it feeds ALL 4
+## directional slots; otherwise the provisory (shaded) PNG in TILES_PATH is used.
+## See tools/asset_generation/generate_master_crate.py.
+const MASTER_PATH   := "res://ASSETS/ISOMETRIC/master_assets/"
 const TILESET_OUT   := "res://godot/resources/tilesets/tileset_blocks.tres"
 const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
 
@@ -181,20 +189,31 @@ func _build() -> void:
 	dir.list_dir_end()
 	files.sort()  # deterministic source_id ordering
 
+	# ── Index master assets (base_name → flat-lit texture) ────────────────────
+	var masters := _scan_master_textures()
+	if not masters.is_empty():
+		print("[build_tileset] Master assets found: %s" % ", ".join(masters.keys()))
+
 	# ── Register each tile ───────────────────────────────────────────────────
 	var registry_entries: Array[String] = []
 	var source_id := 0
 
 	for file_name in files:
 		var tile_name: String = file_name.get_basename()      # e.g. "floor_N"
-		var texture: Texture2D = load(TILES_PATH + file_name)
-		if texture == null:
-			push_warning("[build_tileset] Cannot load: " + file_name)
-			continue
 
 		# Parse base name: strip last "_N" / "_S" / "_E" / "_W"
 		var parts := tile_name.rsplit("_", true, 1)
 		var base_name: String = parts[0] if parts.size() > 1 else tile_name
+
+		# Prefer the flat-lit master (feeds all 4 directional slots); else the
+		# provisory directional PNG.
+		var texture: Texture2D = masters.get(base_name, null)
+		if texture == null:
+			texture = load(TILES_PATH + file_name)
+		if texture == null:
+			push_warning("[build_tileset] Cannot load: " + file_name)
+			continue
+
 		var props: Dictionary = TILE_PROPS.get(base_name,
 				{walkable=true, cover=false, interactive=false})
 
@@ -255,6 +274,40 @@ func _build() -> void:
 	fa.close()
 	print("[build_tileset] Saved registry → " + REGISTRY_OUT)
 	print("[build_tileset] Done.")
+
+
+## Scan MASTER_PATH (and its category subfolders: blocks/, walls/, …) for
+## flat-lit, direction-agnostic masters. Returns { base_name: Texture2D }, e.g.
+## {"crate": <blocks/crate.png>}. The folder is optional; a missing folder yields
+## an empty dict (full provisory fallback). Base name = PNG name (no _NE/_NW/_SE/
+## _SW suffix); names must stay unique across categories.
+func _scan_master_textures() -> Dictionary:
+	var out: Dictionary = {}
+	_scan_master_dir(MASTER_PATH, out)
+	return out
+
+
+func _scan_master_dir(path: String, out: Dictionary) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var f := dir.get_next()
+	while f != "":
+		var full := path + f
+		if dir.current_is_dir():
+			_scan_master_dir(full + "/", out)    # recurse into blocks/, walls/, …
+		elif f.ends_with(".png"):
+			var base_name: String = f.get_basename()   # no _NE/_NW/_SE/_SW suffix
+			var tex: Texture2D = load(full)
+			if tex == null:
+				push_warning("[build_tileset] Cannot load master: " + full)
+			elif out.has(base_name):
+				push_warning("[build_tileset] Duplicate master base name '%s' (%s) — keeping first" % [base_name, full])
+			else:
+				out[base_name] = tex
+		f = dir.get_next()
+	dir.list_dir_end()
 
 
 func _get_texture_origin(tile_name: String, base_name: String) -> Vector2i:

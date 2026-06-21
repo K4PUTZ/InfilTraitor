@@ -74,7 +74,7 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
 ## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
-## (tools/generate_crate_simple.py) so stacked crates seat seamlessly.
+## (tools/asset_generation/generate_*_crate.py) so stacked crates seat seamlessly.
 var CRATE_STACK_STEP_PX: float = 128.0
 var _prop_stack_layers: Array[TileMapLayer] = []
 

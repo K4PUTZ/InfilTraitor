@@ -435,6 +435,84 @@ Recommended runtime visual stack:
 
 ---
 
+## Master Assets & Asset Generation
+
+The project uses a **master asset system** to ensure reproducible, correctly-calibrated game art:
+
+### Master Assets Folder
+
+**Location:** `ASSETS/ISOMETRIC/master_assets/`
+
+Contains **source-of-truth artwork** organized by category:
+- `blocks/` — Symmetric structures (crates, pillars) — direction-agnostic (one PNG feeds all 4 slots)
+- `walls/` — Wall faces (wall_NE, wall_NW, wall_SE, wall_SW) — directional (each PNG is position-unique)
+- Future categories as needed
+
+**Critical property:** Each master PNG is **positioned on its canvas to sit on the tile edge** (edge-straddling system). This is not visual centering — it is geometric calibration.
+
+### Asset Generation Pipeline
+
+**Tools:** `tools/asset_generation/` — Python scripts that generate master assets programmatically
+
+**Guaranteed properties:**
+- **Exact dimensions** — Canvas 256×512 for walls, enforced by code
+- **Correct geometry** — Floor diamond at rows 384–512, wall heights (160 px full, 80 px half)
+- **Precise vertices** — Bottom corners `bN=(128,384)`, `bE=(256,448)`, `bS=(128,512)`, `bW=(0,448)`
+- **Depth measurements** — 32 px screen-x per direction (1/4 tile diamond step perpendicular to face)
+- **Grid subdivisions** — 4 vertical columns × 5 horizontal bands (full) or 2 (half)
+- **Silhouette** — Dark outline enforced on all edges
+
+**Why programmatic generation?**
+- Eliminates human-error position drift
+- Enables rapid iteration (change color, regenerate, done)
+- Ensures future assets follow the same proportions
+- All geometry is **calculated, not guessed**
+
+### Texture Origin Calibration (build_tileset.gd)
+
+After generation, `build_tileset.gd` applies **calibrated texture_origin offsets** per direction to shift sprites into correct straddle positions:
+
+```
+EDGE_VISUAL_OFFSETS:
+  NE: (-16, -8)   ← 1/8 cell step, direction-specific
+  NW: (-16,  8)
+  SE: ( 16, -8)
+  SW: ( 16,  8)
+
+CORNER_VISUAL_OFFSETS:
+  NE: (-32, -8)   ← Corner-specific geometry spans full vertex
+  NW: (  0, 16)
+  SE: (  0,-16)
+  SW: ( 32, -8)
+```
+
+These values were **empirically calibrated in commit 924dbf0**. Do not change without:
+1. Visual verification in Godot
+2. Measuring pixel-perfect alignment between adjacent wall faces
+3. Updating this documentation
+
+### Adding New Asset Types
+
+To add a new wall variant (e.g., `wallVine`):
+
+1. Create a generator script (copy `generate_master_walls.py`):
+   ```python
+   def generate(base_name="wallVine", wall_h=160, vcubes=5):
+       # Same vertex geometry, different colors or grid style
+       generate("wallVine", 160, 5)  # Full wall
+       generate("wallVineHalf", 80, 2)  # Half wall
+   ```
+
+2. Run it: `python3 tools/asset_generation/generate_master_walls_vine.py`
+
+3. Rebuild TileSet: `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
+
+4. Use in maps: Add `"wallVine"` to any MapSpec — it auto-gets 4 directional tiles
+
+**Critical:** Never manually edit PNGs after generation — always regenerate. The geometry is part of the code, not a one-off artifact.
+
+---
+
 ## Localization (i18n)
 
 All player-facing text goes through Godot's `TranslationServer`. The

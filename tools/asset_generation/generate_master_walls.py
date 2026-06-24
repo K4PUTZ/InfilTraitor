@@ -46,8 +46,8 @@ The end face shows the camera-visible end of the slab.
 
 ── GRID SUBDIVISIONS ─────────────────────────────────────────────────────────
 Horizontal bands (parallel to floor edge, structural — not baked light):
-  Full wall: VCUBES_FULL=5 bands × 32 px
-  Half wall: VCUBES_HALF=2 bands
+  Full wall: VCUBES_FULL=4 bands × 40 px
+  Half wall: VCUBES_HALF=2 bands × 40 px
 
 Vertical columns: HCUBES=4 columns × 32 px
 
@@ -63,10 +63,10 @@ import os
 
 # ── Canvas / grid ────────────────────────────────────────────────────────────
 PNG_W, PNG_H  = 256, 512
-WALL_HEIGHT   = 160          # 5 subcubes × 32 px
-HALF_HEIGHT   =  80          # 2.5 subcubes (wallHalf)
+WALL_HEIGHT   = 160          # 4 subcubes × 40 px
+HALF_HEIGHT   =  80          # 2 subcubes (wallHalf)
 HCUBES        =   4          # horizontal columns (128 px / 32 px)
-VCUBES_FULL   =   5          # vertical bands, full wall
+VCUBES_FULL   =   4          # vertical bands, full wall
 VCUBES_HALF   =   2          # vertical bands, half wall
 
 # ── Colors ───────────────────────────────────────────────────────────────────

@@ -9,14 +9,31 @@ Your role is to implement features in GDScript for Godot 4.6, following precise 
 
 IMPORTANT: At the end of every finished task, run a smoke test, watch the output, and fix any problems. Do not commit automatically.
 
-OBS: During development the Godot Engine will be open and the Infiltraitor project loaded. There is no need to open or close Godot, just activate the application and perform what you need. If the project is not running, I will be warned.
+⚠️  **CRITICAL: Godot Lifecycle Management**
+
+Godot will be open with the INFILTRAITOR project already loaded. **NEVER close or open Godot unnecessarily.** Godot hangs on the project selection screen when closed/reopened; this wastes time and causes workflow disruption.
+
+**Workflow for Asset Reloads:**
+1. Generate assets (Python scripts) → PNG files written to `ASSETS/ISOMETRIC/source_assets/generated/`
+2. Switch to the Godot window (it's already open)
+3. Wait 3–5 seconds for Godot to detect and relink the asset files
+4. Proceed with the next task (no manual rebuild needed; Godot handles import automatically after GUI focus)
+
+**If you must close Godot:**
+- Before closing, be absolutely certain the task requires it
+- When reopening, pass the project path to avoid the project selection screen:  
+  ```bash
+  /Applications/Godot.app/Contents/MacOS/Godot --path . 2>/dev/null &
+  ```
+- Then let it load fully before proceeding
 
 NOTE: Always keep the entire project in English, regardless of the language we use to communicate.
 
 **Development Workflow:**
 - Godot is always open and connected via Godot Tools (VS Code/IDE)
 - When GDScript code changes, Godot detects it and hot-reloads automatically
-- Don't try to open/close Godot — the user keeps it open already
+- When PNG assets are generated, switch to Godot window and wait 3–5s for reimport
+- Don't try to open/close Godot unless absolutely necessary
 
 **Verification Protocol (before the Smoke Test):**
 1. **PROBLEMS tab (VS Code):** Check for unexpected errors or warnings
@@ -435,51 +452,69 @@ Recommended runtime visual stack:
 
 ---
 
-## Master Assets & Asset Generation
+## Asset Generation & TileSet Pipeline
 
-The project uses a **master asset system** to ensure reproducible, correctly-calibrated game art:
+**Single-source principle:** All tiles originate from `ASSETS/ISOMETRIC/source_assets/` (recursive scan, no fallback).
 
-### Master Assets Folder
+### Asset Structure
 
-**Location:** `ASSETS/ISOMETRIC/master_assets/`
+```
+ASSETS/ISOMETRIC/source_assets/
+└── generated/                  ← all PNGs live here (recursive scan includes subfolders)
+    ├── wall_NW.png ... wall_SE.png
+    ├── wallHalf_NW.png ... wallHalf_SE.png
+    ├── wallFace_NW.png ... wallFace_SE.png (✨ atomic subcubes, NEW)
+    ├── wallCorner_NW.png ... wallCorner_SE.png
+    ├── wallCornerHalf_NW.png ... wallCornerHalf_SE.png
+    └── (future: floor_*, block_*, other categories as subfolders)
+```
 
-Contains **source-of-truth artwork** organized by category:
-- `blocks/` — Symmetric structures (crates, pillars) — direction-agnostic (one PNG feeds all 4 slots)
-- `walls/` — Wall faces (wall_NE, wall_NW, wall_SE, wall_SW) — directional (each PNG is position-unique)
-- Future categories as needed
-
-**Critical property:** Each master PNG is **positioned on its canvas to sit on the tile edge** (edge-straddling system). This is not visual centering — it is geometric calibration.
+Deprecated (removed):
+- `ASSETS/ISOMETRIC/master_assets/` — consolidated into `source_assets/`
+- `ASSETS/ISOMETRIC/blocks-prototype/` — Kenney pack removed
 
 ### Asset Generation Pipeline
 
-**Tools:** `tools/asset_generation/` — Python scripts that generate master assets programmatically
+**Tools:** `tools/asset_generation/` — Python scripts that generate assets programmatically
 
-**Guaranteed properties:**
+**Guaranteed properties per asset:**
 - **Exact dimensions** — Canvas 256×512 for walls, enforced by code
 - **Correct geometry** — Floor diamond at rows 384–512, wall heights (160 px full, 80 px half)
 - **Precise vertices** — Bottom corners `bN=(128,384)`, `bE=(256,448)`, `bS=(128,512)`, `bW=(0,448)`
 - **Depth measurements** — 32 px screen-x per direction (1/4 tile diamond step perpendicular to face)
-- **Grid subdivisions** — 4 vertical columns × 5 horizontal bands (full) or 2 (half)
+- **Grid subdivisions** — 4 vertical columns per direction; horizontal bands per subcube count
 - **Silhouette** — Dark outline enforced on all edges
 
 **Why programmatic generation?**
 - Eliminates human-error position drift
 - Enables rapid iteration (change color, regenerate, done)
-- Ensures future assets follow the same proportions
+- Ensures all assets follow the same proportions
 - All geometry is **calculated, not guessed**
+
+### TileSet Builder
+
+**Run:** `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
+
+**What it does:**
+1. Recursively scans `res://ASSETS/ISOMETRIC/source_assets/` for all PNG files (alphabetical order)
+2. For each PNG: creates one `TileSetAtlasSource` entry with calibrated `texture_origin` offsets
+3. Generates `godot/resources/tilesets/tileset_blocks.tres` (used by TileMapLayer nodes)
+4. Generates `godot/scripts/world/tile_registry.gd` (auto-generated name→id lookup)
+
+**Key change:** No merge, no fallback. Single-source only — if a PNG is missing, it will not build.
 
 ### Texture Origin Calibration (build_tileset.gd)
 
-After generation, `build_tileset.gd` applies **calibrated texture_origin offsets** per direction to shift sprites into correct straddle positions:
+After each PNG is registered, `build_tileset.gd` applies **calibrated texture_origin offsets** per direction to shift sprites into correct straddle positions:
 
 ```
-EDGE_VISUAL_OFFSETS:
+EDGE_VISUAL_OFFSETS (wall/wallHalf/wallFace):
   NE: (-16, -8)   ← 1/8 cell step, direction-specific
   NW: (-16,  8)
   SE: ( 16, -8)
   SW: ( 16,  8)
 
-CORNER_VISUAL_OFFSETS:
+CORNER_VISUAL_OFFSETS (wallCorner/wallCornerHalf):
   NE: (-32, -8)   ← Corner-specific geometry spans full vertex
   NW: (  0, 16)
   SE: (  0,-16)
@@ -497,13 +532,13 @@ To add a new wall variant (e.g., `wallVine`):
 
 1. Create a generator script (copy `generate_master_walls.py`):
    ```python
-   def generate(base_name="wallVine", wall_h=160, vcubes=5):
-       # Same vertex geometry, different colors or grid style
-       generate("wallVine", 160, 5)  # Full wall
+   def generate(base_name="wallVine", wall_h=160, vcubes=4):
+       generate("wallVine", 160, 4)  # Full wall
        generate("wallVineHalf", 80, 2)  # Half wall
+       generate("wallVineFace", 40, 1)  # Atomic subcube
    ```
 
-2. Run it: `python3 tools/asset_generation/generate_master_walls_vine.py`
+2. Run it: `python3 tools/asset_generation/generate_master_walls_vine.py` — outputs to `source_assets/generated/`
 
 3. Rebuild TileSet: `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
 

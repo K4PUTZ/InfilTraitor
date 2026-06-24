@@ -77,7 +77,7 @@ TRANSPARENT = (0, 0, 0, 0)
 
 OUTPUT_DIR = os.path.join(
     "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR",
-    "ASSETS/ISOMETRIC/master_assets/walls",
+    "ASSETS/ISOMETRIC/source_assets/generated",
 )
 
 # ── Floor diamond vertices (constant) ────────────────────────────────────────
@@ -134,17 +134,38 @@ def _draw_top(draw, tL, tR, offset):
     tL_back = _add(tL, offset)
     tR_back = _add(tR, offset)
     draw.polygon([tL, tR, tR_back, tL_back], fill=COLOR_FLAT, outline=COLOR_EDGE)
-    draw.line([tL, tR],         fill=COLOR_EDGE, width=2)   # front top edge
-    draw.line([tL, tL_back],    fill=COLOR_EDGE, width=1)
-    draw.line([tR, tR_back],    fill=COLOR_EDGE, width=1)
+
+    # Column lines matching the front face (HCUBES subdivisions)
+    for i in range(1, HCUBES):
+        t = i / HCUBES
+        draw.line([_lerp(tL, tR, t), _lerp(tL_back, tR_back, t)],
+                  fill=COLOR_GRID, width=1)
+
+    # Silhouette re-stroke (on top of grid lines)
+    draw.line([tL, tR],           fill=COLOR_EDGE, width=2)   # front top edge
+    draw.line([tL, tL_back],      fill=COLOR_EDGE, width=1)
+    draw.line([tR, tR_back],      fill=COLOR_EDGE, width=1)
     draw.line([tL_back, tR_back], fill=COLOR_EDGE, width=1)
 
 
-def _draw_end(draw, t_tip, b_tip, offset):
+def _draw_end(draw, t_tip, b_tip, offset, vcubes):
     """Camera-visible end face of the slab (one narrow parallelogram)."""
     t_back = _add(t_tip, offset)
     b_back = _add(b_tip, offset)
     draw.polygon([t_tip, t_back, b_back, b_tip], fill=COLOR_FLAT, outline=COLOR_EDGE)
+
+    # Horizontal bands matching the front face (vcubes subdivisions)
+    # No vertical columns — 32px depth is too narrow for readable subdivisions
+    for i in range(1, vcubes):
+        t = i / vcubes
+        draw.line([_lerp(t_tip, b_tip, t), _lerp(t_back, b_back, t)],
+                  fill=COLOR_GRID, width=1)
+
+    # Silhouette re-stroke
+    draw.line([t_tip, t_back],  fill=COLOR_EDGE, width=1)   # top edge
+    draw.line([b_tip, b_back],  fill=COLOR_EDGE, width=1)   # bottom edge
+    draw.line([t_tip, b_tip],   fill=COLOR_EDGE, width=1)   # front edge
+    draw.line([t_back, b_back], fill=COLOR_EDGE, width=1)   # back edge
 
 
 # ── Face definitions ──────────────────────────────────────────────────────────
@@ -191,12 +212,12 @@ def generate(base_name, wall_h, vcubes):
             off_bR = _add(bR, offset)
             off_bL = _add(bL, offset)
             neg    = (-offset[0], -offset[1])
-            _draw_end(draw, _add(t_tip, offset), _add(b_tip, offset), neg)
+            _draw_end(draw, _add(t_tip, offset), _add(b_tip, offset), neg, vcubes)
             _draw_top(draw, off_tL, off_tR, neg)
             _draw_front(draw, off_tL, off_tR, off_bR, off_bL, vcubes)
         else:
             # NE/SE: original edge faces the camera directly.
-            _draw_end(draw, t_tip, b_tip, offset)
+            _draw_end(draw, t_tip, b_tip, offset, vcubes)
             _draw_top(draw, tL, tR, offset)
             _draw_front(draw, tL, tR, bR, bL, vcubes)
 
@@ -210,11 +231,14 @@ def generate(base_name, wall_h, vcubes):
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("wall (160 px, 5 bands):")
+    print("wall (160 px, 4 bands):")
     generate("wall", WALL_HEIGHT, VCUBES_FULL)
 
     print("wallHalf (80 px, 2 bands):")
     generate("wallHalf", HALF_HEIGHT, VCUBES_HALF)
 
-    print("\n✓ Done — 8 master wall PNGs written to master_assets/walls/")
-    print("  Next: run build_tileset.gd to rebuild tileset_blocks.tres")
+    print("wallFace (40 px, 1 band — atomic subcube):")
+    generate("wallFace", 40, 1)
+
+    print("\n✓ Done — 12 master wall PNGs written to source_assets/generated/")
+    print("  Note: tileset rebuild happens in SUB-00-B after folder reorganization.")

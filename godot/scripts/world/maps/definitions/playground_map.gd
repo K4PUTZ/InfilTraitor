@@ -44,11 +44,11 @@ static func spec() -> Dictionary:
 			]},
 		],
 		"props": [
-			## North cluster — all 4 column orientations (pillars).
-			{"cell": Vector2i(4, 7),  "tile": "column_SE"},
-			{"cell": Vector2i(6, 7),  "tile": "column_SW"},
-			{"cell": Vector2i(8, 7),  "tile": "column_NW"},
-			{"cell": Vector2i(10, 7), "tile": "column_NE"},
+			## North cluster — all 4 block orientations (pillars).
+			{"cell": Vector2i(4, 7),  "tile": "block_SE"},
+			{"cell": Vector2i(6, 7),  "tile": "block_SW"},
+			{"cell": Vector2i(8, 7),  "tile": "block_NW"},
+			{"cell": Vector2i(10, 7), "tile": "block_NE"},
 			## South cluster — crate stacks 1/2/3/4 to exercise height-graded shadows.
 			## `stack` N renders N crate sprites and casts a taller (longer) real shadow.
 			{"cell": Vector2i(4, 30),  "tile": "crate_SE", "stack": 1},

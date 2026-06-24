@@ -1,5 +1,5 @@
 extends SceneTree
-## TileSet builder for INFILTRAITOR — blocks-prototype pack
+## TileSet builder for INFILTRAITOR — single-source asset pipeline
 ##
 ## HOW TO RUN (terminal, from the project root):
 ##   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd
@@ -9,21 +9,8 @@ extends SceneTree
 ##   godot/resources/tilesets/tileset_blocks.tres  ← used by TileMapLayer nodes
 ##   godot/scripts/world/tile_registry.gd          ← auto-generated name→id lookup
 
-const TILES_PATH    := "res://ASSETS/ISOMETRIC/blocks-prototype/Isometric/"
-## Master assets: source-of-truth artwork, organised in category subfolders
-## (blocks/, walls/, …) under one parent. The whole parent is duplicated per
-## environment with lighting variants painted on top.
-##
-## Two master forms are supported:
-##   • Direction-agnostic (e.g. blocks/crate.png — no suffix): feeds ALL 4
-##     directional slots. Good for symmetric objects (crates, pillars).
-##   • Directional (e.g. walls/wall_NW.png — with _NE/_NW/_SE/_SW suffix):
-##     feeds only its specific slot. Required for wall faces, whose canvas
-##     position differs per direction due to the edge-straddling system.
-##
-## Lookup priority: directional master → direction-agnostic master → provisory.
-## See tools/asset_generation/ for generation scripts.
-const MASTER_PATH   := "res://ASSETS/ISOMETRIC/master_assets/"
+## Single source of truth: recursive scan of this folder finds ALL asset PNGs
+const SOURCE_PATH   := "res://ASSETS/ISOMETRIC/source_assets/"
 const TILESET_OUT   := "res://godot/resources/tilesets/tileset_blocks.tres"
 const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
 
@@ -217,45 +204,31 @@ func _build() -> void:
 	tile_set.set_custom_data_layer_name(3, "interactive")
 	tile_set.set_custom_data_layer_type(3, TYPE_BOOL)
 
-	# ── Scan tile directory ───────────────────────────────────────────────────
-	var dir := DirAccess.open(TILES_PATH)
-	if dir == null:
-		push_error("[build_tileset] Cannot open: " + TILES_PATH)
+	# ── Scan SOURCE_PATH recursively for all PNGs ─────────────────────────────
+	var all_pngs: Array[String] = []
+	_scan_source_recursive(SOURCE_PATH, all_pngs)
+	all_pngs.sort()  # deterministic source_id ordering
+
+	if all_pngs.is_empty():
+		push_error("[build_tileset] No PNGs found in: " + SOURCE_PATH)
 		return
-
-	var files: Array[String] = []
-	dir.list_dir_begin()
-	var f := dir.get_next()
-	while f != "":
-		if f.ends_with(".png"):
-			files.append(f)
-		f = dir.get_next()
-	dir.list_dir_end()
-	files.sort()  # deterministic source_id ordering
-
-	# ── Index master assets (base_name → flat-lit texture) ────────────────────
-	var masters := _scan_master_textures()
-	if not masters.is_empty():
-		print("[build_tileset] Master assets found: %s" % ", ".join(masters.keys()))
+	print("[build_tileset] Found %d PNG(s) in %s" % [all_pngs.size(), SOURCE_PATH])
 
 	# ── Register each tile ───────────────────────────────────────────────────
 	var registry_entries: Array[String] = []
 	var source_id := 0
 
-	for file_name in files:
-		var tile_name: String = file_name.get_basename()      # e.g. "floor_N"
+	for png_path in all_pngs:
+		var tile_name: String = png_path.get_basename().get_file()  # e.g. "wallFace_NW"
 
 		# Parse base name: strip last "_N" / "_S" / "_E" / "_W"
 		var parts := tile_name.rsplit("_", true, 1)
 		var base_name: String = parts[0] if parts.size() > 1 else tile_name
 
-		# Lookup priority: directional master (e.g. walls/wall_NW.png) →
-		# direction-agnostic master (e.g. blocks/crate.png) → provisory PNG.
-		var texture: Texture2D = masters.get(tile_name, masters.get(base_name, null))
+		# Load texture from SOURCE_PATH (single source of truth, no fallback)
+		var texture: Texture2D = load(png_path)
 		if texture == null:
-			texture = load(TILES_PATH + file_name)
-		if texture == null:
-			push_warning("[build_tileset] Cannot load: " + file_name)
+			push_warning("[build_tileset] Cannot load: " + png_path)
 			continue
 
 		var props: Dictionary = TILE_PROPS.get(base_name,
@@ -322,18 +295,10 @@ func _build() -> void:
 	print("[build_tileset] Done.")
 
 
-## Scan MASTER_PATH (and its category subfolders: blocks/, walls/, …) for
-## flat-lit, direction-agnostic masters. Returns { base_name: Texture2D }, e.g.
-## {"crate": <blocks/crate.png>}. The folder is optional; a missing folder yields
-## an empty dict (full provisory fallback). Base name = PNG name (no _NE/_NW/_SE/
-## _SW suffix); names must stay unique across categories.
-func _scan_master_textures() -> Dictionary:
-	var out: Dictionary = {}
-	_scan_master_dir(MASTER_PATH, out)
-	return out
-
-
-func _scan_master_dir(path: String, out: Dictionary) -> void:
+## Recursively scan SOURCE_PATH (and its subfolders) for all PNG files.
+## Returns array of full resource paths sorted alphabetically.
+## Example: ["res://ASSETS/ISOMETRIC/source_assets/generated/wallFace_NW.png", ...]
+func _scan_source_recursive(path: String, out: Array[String]) -> void:
 	var dir := DirAccess.open(path)
 	if dir == null:
 		return
@@ -342,19 +307,9 @@ func _scan_master_dir(path: String, out: Dictionary) -> void:
 	while f != "":
 		var full := path + f
 		if dir.current_is_dir():
-			_scan_master_dir(full + "/", out)    # recurse into blocks/, walls/, …
+			_scan_source_recursive(full + "/", out)    # recurse into subfolders
 		elif f.ends_with(".png"):
-			# Key is always the full stem (no extension). This naturally supports
-			# both forms: "crate" (direction-agnostic) and "wall_NW" (directional).
-			# The lookup in _build() checks tile_name first, then base_name.
-			var key: String = f.get_basename()
-			var tex: Texture2D = load(full)
-			if tex == null:
-				push_warning("[build_tileset] Cannot load master: " + full)
-			elif out.has(key):
-				push_warning("[build_tileset] Duplicate master key '%s' (%s) — keeping first" % [key, full])
-			else:
-				out[key] = tex
+			out.append(full)
 		f = dir.get_next()
 	dir.list_dir_end()
 

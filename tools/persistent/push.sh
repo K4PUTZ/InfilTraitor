@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Max_Floors - $(date +%Y-%m-%d)"
+TAG="Alpha Reformed Walls - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

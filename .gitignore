@@ -28,6 +28,11 @@ BACKUP.ZIP
 *.wav
 *.flac
 
+# PNG assets — all provisional/generated; committed only when art is final
+# Generators (tools/asset_generation/*.py) reproduce everything on demand.
+*.png
+*.svg
+
 # Python cache
 __pycache__/
 *.pyc

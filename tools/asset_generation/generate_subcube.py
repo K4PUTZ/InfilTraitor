@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw
 import os
 
 BASE_PATH  = "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
-OUTPUT_DIR = os.path.join(BASE_PATH, "ASSETS/ISOMETRIC/master_assets/subcubes")
+OUTPUT_DIR = os.path.join(BASE_PATH, "ASSETS/ISOMETRIC/source_assets/subcubes")
 
 PNG_W, PNG_H = 64, 64
 TRANSPARENT  = (0, 0, 0, 0)

@@ -33,4 +33,8 @@ const TILES: Dictionary = {
 	"wall_NW": 25,
 	"wall_SE": 26,
 	"wall_SW": 27,
+	"subcube_concrete": 28,
+	"subcube_metal": 29,
+	"subcube_stone": 30,
+	"subcube_wood": 31,
 }

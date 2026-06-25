@@ -37,6 +37,7 @@ extends RefCounted
 
 const LevelGraphClass = preload("res://godot/scripts/world/level_graph.gd")
 const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd")
+const SubcubeGeometryClass = preload("res://godot/scripts/world/maps/subcube_geometry.gd")
 
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
@@ -175,7 +176,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	var enemy_defs := _build_enemy_defs(spec.get("patrols", []), offset, agent_start_raw, blocked_map, map_size)
 
-	return {
+	var result: Dictionary = {
 		"size":             map_size,
 		"agent_start_cell": agent_start_raw,
 		"floor_tile_name":  String(spec.get("floor_tile", "floor_SE")),
@@ -189,6 +190,8 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"light_sources":    light_sources,
 		"exit_cells":       exit_cells,
 	}
+	result["subcube_geometry"] = SubcubeGeometryClass.build(result)
+	return result
 
 
 ## --- private helpers --------------------------------------------------------

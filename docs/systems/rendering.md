@@ -289,15 +289,20 @@ Reduces draw calls for transparent/invisible entries.
 ### Overhead Visual Engine (VIS-01)
 
 Topmost (5th-floor) ceiling layer + **view occlusion**. Staged plan lives in
-`docs/production/milestones.md` → **VIS-01**. Two pillars sharing one fade machine:
+`docs/production/milestones.md` → **VIS-01**. Two pillars sharing one subcube-presence operation:
 
 - **Ceiling layer** — `CeilingPropLayer` above wall storey N renders sprites/scenes
   (lamps, chandeliers, holofotes/spots, conduits, pipes, vents). Authored via a new
   `MapSpec.ceiling` key, perspective-rotated like every other layer.
 - **View occlusion** — keep the agent readable under walls/ceiling via (1) directional
-  storey cutaway keyed to `_active_perspective`, (2) proximity dither-cutout around the
-  agent, (3) hover reveal, with the existing 4-way rotation as manual override.
-  Principle: **fade, never delete** — cut walls must still read as cover.
+  storey cutaway keyed to `_active_perspective` (delete the camera-facing upper subcubes),
+  (2) proximity cutaway around the agent (delete upper subcubes in a radius), (3) hover reveal,
+  with the existing 4-way rotation as manual override.
+  Principle: **delete the upper subcubes of occluding walls and keep a base stub** (default:
+  the `h=0` row), so cut walls still read as cover. Occlusion and destruction share one
+  operation: `set_subcube(cell, level) → empty; re-light`.
+
+> Canonical model: `PROMPTS/SUBCUBE_MASTER_PLAN.md` §7 (occlusion = deletion).
 
 > ⚠️ **Not to be confused with `docs/systems/occlusion.md`.** That doc is gameplay
 > *occlusion semantics* (what blocks light / LoS / sound). VIS-01 *view occlusion* is

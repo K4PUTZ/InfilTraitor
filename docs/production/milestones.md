@@ -495,15 +495,14 @@ fade machine.
    anchored at floor 5, drawn down to floor 4; cables/pipes cross cell borders).
 3. **Spot / directional light type** — extend `LightSource` (omni-only today) to
    support cone/spot for holofotes pointing at the floor; feeds `LightingController`.
-4. **View occlusion — directional storey cutaway** — fade/lower the camera-facing
-   storeys + front ceiling props, derived analytically from `_active_perspective`
+4. **View occlusion — directional storey cutaway** — delete the camera-facing upper
+   subcubes + front ceiling props, derived analytically from `_active_perspective`
    (front side is deterministic; no raycast needed because the camera is fixed).
-   Per-layer `modulate.a` first; per-cell shader only if precision demands it.
-   **Fade, never delete** — walls carry cover/LoS meaning and must still read.
-5. **View occlusion — proximity cutout** — dither-circle shader around the agent on
-   structure/ceiling layers (reuse FOW shader tech). "Never lose your guy."
-6. **View occlusion — hover reveal** — hovering a tile behind a wall fades that
-   segment (turn-based planning aid).
+   Keep a base stub (default: the `h=0` row) so walls carry cover/LoS meaning and still read.
+5. **View occlusion — proximity cutout** — delete upper subcubes in a radius around the
+   agent on structure/ceiling layers. "Never lose your guy."
+6. **View occlusion — hover reveal** — hovering a tile behind a wall deletes that
+   wall's upper subcubes (turn-based planning aid).
 7. **Rotation integration** — wire existing 4-perspective rotation as the manual
    override; ceiling + occlusion re-derive per cell on perspective switch (existing
    pattern in `_set_perspective`).
@@ -519,6 +518,19 @@ fade machine.
 - **Light placement = tracks + anchors, with exceptions:** normal lights snap to
   canonical `MapSpec` tracks (uniform shadows, clean merge); special lights
   (sun / spot / fire) may be placed freely.
+
+**Occlusion model and architecture:**
+
+Occlusion and destruction are the same operation (`set_subcube → empty`); occlusion is
+the reversible, camera-driven case. The visual engine operates on a fine **subcube render
+plane** (4×4 subcubes per gameplay unit, `SUBCUBE_SIZE = 64×32`), while the gameplay
+plane (guards, A\*, blocked_edges, TicSystem) remains unchanged on the coarse grid
+(`256×128`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md` §7–8.
+
+VIS-01's visual system maps to the Master Plan's **FASE A–C**:
+- COORD-01 — coordinate layer + map compiler seam (unit ↔ subcube conversion)
+- SUB-01 — subcube render layers
+- SUB-02 — occlusion-by-deletion
 
 **Progress:**
 

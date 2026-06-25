@@ -20,6 +20,12 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
+## Subcube Render Plane (Planned)
+
+The engine uses two coordinate spaces. The **gameplay plane** (the rest of this document, `CELL_SIZE 256×128`) is unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. A planned **geometry/render plane** (`SUBCUBE_SIZE 64×32`, 4×4 subcubes per gameplay unit) adds subcube stacking, face lighting, occlusion-by-deletion, and dynamic geometry. Conversions happen only at the seam (`map_compiler.gd`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md`.
+
+---
+
 ## 1. Runtime Architecture
 
 **Status: Implemented**

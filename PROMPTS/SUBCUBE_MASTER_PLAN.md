@@ -1,90 +1,187 @@
 # INFILTRAITOR — Subcube Architecture Master Plan
 
-> **Criado:** 2026-06-24 · **Última revisão:** 2026-06-24 (sessão 3 — grid migration)
-> Este documento é a fonte de verdade para todas as decisões arquiteturais tomadas
-> na sessão de design de 24/06/2026.
+> **Criado:** 2026-06-24 · **Última revisão:** 2026-06-25 (sessão 4 — virada para dois níveis)
+> Fonte de verdade para as decisões arquiteturais do sistema de subcubos.
+>
+> ⚠️ **Esta revisão reverte a decisão #1 da sessão 3.** O subcubo deixa de ser o
+> tile de gameplay e passa a ser um detalhe de implementação visual. Ver §1.
+
+---
+
+## Glossário de Eixos — a pegadinha dos "4×4"
+
+O número **4** (e a forma **4×4**) aparece em eixos ortogonais diferentes. Dizer
+"o 4×4" sem nomear o eixo é a causa-raiz de prompts mal especificados. **Sempre
+qualifique o eixo e use o termo nomeado.**
+
+| Termo | Eixo | Forma | Significado |
+|---|---|---|---|
+| **Gameplay Unit** | horizontal (chão) | `4×4` | footprint de 1 unidade de gameplay = 16 subcube cells no plano do piso |
+| **Storey** (andar) | vertical | `4` de altura | 1 andar = 4 subcubos empilhados; `SUBCUBES_PER_FLOOR = 4` |
+| **Wall Face** (face de parede) | elevação (2D) | `4×4` | parede de 1 andar numa borda de unidade = 4 subcubos de largura × 4 de altura |
+| **Unit Block** (bloco cheio) | volume (3D) | `4×4×4` | 1 Gameplay Unit totalmente preenchida com 1 andar = 64 subcubos |
+| **Razão de grid** | linear | `4×` | o grid fino é 4× mais denso que o grosso por eixo (16× em área, 64× em volume) |
+
+**Regra de escrita:** nunca escreva "o 4×4" sozinho. Escreva "o footprint 4×4 da
+unidade", "o andar de 4 subcubos", "a face de parede 4×4 de altura", "o bloco
+4×4×4". Em prompts pro operador, prefira os termos nomeados (Gameplay Unit,
+Storey, Wall Face, Unit Block) a números soltos.
 
 ---
 
 ## Decisões Canônicas
 
-### 1. O subcubo é o tile de gameplay
+### 1. Dois espaços de coordenadas — o subcubo NÃO é o tile de gameplay ⟵ REVISADO (sessão 4)
 
-O sub-tile (subcubo atômico) é simultaneamente a unidade visual E a unidade
-de gameplay. `CELL_SIZE` muda de `256×128` para `64×32`. O grid fica 4× mais
-fino em cada eixo — 16× mais células no total.
+O subcubo é um detalhe de implementação **visual**, invisível ao jogador. O
+gameplay continua raciocinando em **Gameplay Units** (o grid grosso atual). Dois
+planos distintos:
 
-Consequências diretas:
-- Todas as coordenadas de mapa são ×4
-- Todos os raios e ranges são ×4  
-- O agente percorre a mesma distância visual movendo 4 sub-tiles por step
-- Assets existentes (64×64 do operador) têm o tamanho correto sem retrabalho
+- **Plano de gameplay** — grid grosso existente, `CELL_SIZE = 256×128`. Dono de:
+  guard FSM, A\*, `blocked_cells` / `blocked_edges`, TicSystem (por aresta),
+  alarmes, triggers, movimento do agente, cover, lógica de missão.
+  **Código inalterado.**
+- **Plano de geometria / render** — grid fino novo, `SUBCUBE_SIZE = 64×32`,
+  `4×4` subcubos por Gameplay Unit. Dono de: empilhamento de subcubos, face
+  lighting, oclusão, sombra, geometria dinâmica (furos). **Código novo, aditivo.**
+- **A costura** — `map_compiler.gd` (já existe, 265 linhas) expande uma Gameplay
+  Unit em geometria de subcubos. Conversões `unit→subcube` (×4) e `subcube→unit`
+  (÷4 + offset) acontecem **só na fronteira**.
 
-### 2. Pipeline de assets single-source sem Kenney
+**Por quê:**
+- Preserva *verbatim* todo o código de gameplay já escrito → risco de regressão baixo.
+- A\* roda no grid grosso (~1.288 nós), não nos ~20k do grid fino → portão de
+  profiling no device some.
+- A granularidade fina fica restrita aos sistemas visuais (LOS de luz, oclusão,
+  sombra) — que é onde o objetivo de fidelidade 2.5D sempre esteve. O grid fino
+  de *gameplay* foi conflado com "quero resolução visual fina"; só a segunda era
+  o objetivo real.
 
-`blocks-prototype/` e `master_assets/` removidos. Único source:
-`source_assets/` — scan recursivo por `build_tileset.gd`. Dois tipos de asset:
-- **Atoms** (`subcubes/`) — 64×64px, gerados por Python
-- **Compostos** (`generated/`) — 256×512px ou maiores, gerados por compositor PIL
-- **Authoriados** (`authored/`) — art do diretor, qualquer tamanho
+### 2. Pipeline de assets — 🅿️ PARQUEADO (foco atual é a engine visual)
 
-### 3. Dual-mode rendering: runtime + pre-render
+Os átomos e compostos já existem e os PNGs estão OK. **Assets saem do caminho
+crítico por enquanto.** Direção futura definida nesta sessão: **atlas de cubos
+pré-fabricados** (um grande atlas em vez de scan por-PNG), o que vai reescrever a
+natureza do `build_tileset.gd`. Itens parqueados (ver auditoria da sessão 4):
+
+- `build_tileset.gd` está meio-migrado (já é single-source, mas `CELL_SIZE`/
+  `PNG_SIZE`/`SPRITE_OFFSET`/região ainda na escala antiga; sem `subcube` no
+  `TILE_PROPS`; sem registro direcional de átomos).
+- Os geradores novos (`generate_subcube.py`, `generate_wall.py`) escrevem em
+  `master_assets/` — pasta que o builder **não** escaneia (ele lê `source_assets/`).
+  Por isso o `tile_registry.gd` não tem nenhuma entrada `subcube_*`.
+- **Unblock mínimo** (pré-requisito do render layer, distinto da reescrita do
+  atlas): corrigir os dois `OUTPUT_DIR` para `source_assets/`, re-rodar o builder,
+  confirmar `subcube_*` no registry.
+
+### 3. Dual-mode rendering: runtime + pre-render (mantido — plano de render)
 
 - **Runtime stacking** — `subcube_[material]` em N `TileMapLayer`s por célula.
   Suporta oclusão por layer e face lighting por layer. Padrão para tudo.
-- **Pre-render composto** — PNG composto pelo gerador Python para props
-  complexos, superfícies texturizadas, ou variações artísticas. Vai no tileset
-  como tile único multi-layer.
+- **Pre-render composto** — PNG composto pelo gerador Python para props complexos
+  ou variações artísticas. Vai no tileset como tile único multi-layer.
 
-### 4. Agente e TicSystem
+### 4. Agente e TicSystem — por aresta, sem ×4 ⟵ REVISADO (sessão 4)
 
-- `AGENT_STEP_CELLS = 4` — agente percorre 4 sub-tiles por step
-- TicSystem traça o caminho pelos 4 sub-tiles intermediários, disparando em
-  cada aresta cruzada com peso 1/4 por cruzamento (total = 1 step completo)
-- Granularidade tática aumenta: guard ouve 4 passos por movimento do agente
+- `AGENT_STEP_CELLS = 1` (**inalterado**). O agente move 1 Gameplay Unit por step.
+- **TicSystem dispara por aresta** no grid grosso, como sempre. Sem caminho por
+  sub-tiles intermediários, sem peso 1/4 por cruzamento, sem retuning de detecção.
+- A granularidade de detecção fina (guard ouvir 4 passos por movimento) foi
+  **abandonada** — era consequência do grid de gameplay fino, que não existe mais.
 
-### 5. Vertical — andares teóricos mantidos
+### 5. Vertical — andares teóricos mantidos (plano de render)
 
-`SUBCUBES_PER_FLOOR = 4` como conveniência de design. A engine só conhece
-N sub-tiles de altura. Mapa pode ter qualquer altura; demo começa com 6-7
-andares teóricos (24-28 sub-tiles de altura máxima).
+`SUBCUBES_PER_FLOOR = 4` como convenção de design. O render layer conhece N
+subcubos de altura. Demo começa com 3 andares teóricos (12 subcubos de altura).
 
-### 6. Doorways e colunas
+### 6. Doorways e colunas — regras gerais (plano de render)
 
-- **Doorway** = ausência de sub-tiles na célula. Frame decorativo é prop separado.
-  Nenhum tile especial de doorway necessário.
-- **Colunas** = pilha de `block_[material]` em runtime. Nenhum tile Kenney.
+- **Doorway** = ausência de subcubos na geometria da célula. Frame decorativo é
+  prop separado. Nenhum tile especial de doorway.
+- **Colunas** = pilha de `block_[material]` em runtime. Nenhum tile especial.
+
+### 7. Oclusão por deleção = destruição — mesma operação ⟵ NOVO (sessão 4)
+
+**Substitui o sistema de dither (Bayer 4×4) planejado.** Quando uma parede
+oclui a câmera, o render layer **apaga os subcubos das fileiras superiores** e
+mantém um toco na base (ex.: a fileira `h=0`). É o comportamento do XCOM (corta a
+parede fora), mais legível e mais barato que fade — mata o shader de dither e o
+tween de alpha por subcubo.
+
+Oclusão e destruição são a **mesma operação**: `set_subcube(célula, altura) →
+vazio; re-light`. A diferença é só o gatilho e a reversibilidade:
+
+| | Gatilho | Reversível? |
+|---|---|---|
+| **Oclusão** | câmera / perspectiva | sim (volta ao sair da frente) |
+| **Destruição** | evento (bala, explosão) | não (permanente) |
+
+Em vez de dois sistemas, um só conceito: **presença de subcubo**. Quantas
+fileiras manter na oclusão é tuning de art director.
+
+### 8. Destruição como capacidade da engine — escopo enxuto ⟵ NOVO (sessão 4)
+
+Destruição é **capacidade arquitetural, não feature obrigatória**. Escopo desta
+fase do projeto:
+
+- ✅ **Visual + iluminação** (barato, vem de graça da geometria de subcubos):
+  remover um subcubo abre um caminho de luz, muda a sombra e a oclusão. Sem
+  sistema especial de "buraco".
+- ⏸️ **Furo que importa pro gameplay** (guard ver/atirar através) — **ADIADO**.
+  Exige LOS na resolução de subcubo enquanto a *reação* do guard fica na unidade
+  grossa ("testa fino → decide grosso"). É a costura cara; território de Infiltraitor 2.
+
+### 9. Guardrails estéticos (do conceitual)
+
+- O jogador **nunca percebe** os subcubos. Ele enxerga salas, corredores, portas,
+  janelas, cobertura, altura — tiles limpos estilo XCOM/RTS isométrico.
+- Sem geometria orgânica, sem voxel sim, sem destruição irrestrita.
+- Mapas autorados em nível **semântico** (Sala, Corredor, Laboratório), expandidos
+  pelo compilador. Nunca autorar ~20k subcubos à mão. (O `map_compiler.gd` já faz
+  isso para o grid grosso.)
+- Princípio mestre: **substituir conceitos especiais por regras gerais.**
 
 ---
 
 ## Constantes-chave
 
-| Constante | Valor anterior | Valor novo | Arquivo |
-|---|---|---|---|
-| `CELL_SIZE` | `Vector2i(256, 128)` | `Vector2i(64, 32)` | `room.gd` / TileSet |
-| `TILE_HW` | `128` | `32` | assets Python |
-| `TILE_HH` | `64` | `16` | assets Python |
-| `CUBE_HEIGHT` | `40` (wall) / `128` (crate) | `32` | assets Python |
-| `MAP_SIZE` | `Vector2i(28, 46)` | `Vector2i(112, 184)` | `room.gd` |
-| `INNER_ORIGIN` | `Vector2i(5, 5)` | `Vector2i(20, 20)` | `room.gd` |
-| `BUFFER` | `5` | `20` | `room.gd` |
-| `AGENT_STEP_CELLS` | `1` | `4` | `agent.gd` |
-| `SUBCUBES_PER_FLOOR` | `4` | `4` (inalterado) | `room.gd` |
-| `SUBCUBE_STEP_PX` | `39.5` | `39.5` (inalterado) | `room.gd` |
-| `MAX_SUBCUBES` | `28` | `28` (inalterado) | `room.gd` |
-| Light radius | N | 4N | mapas |
-| Guard vision range | N | 4N | mapas |
-| Shadow depth | N | 4N | mapas |
+### Plano de gameplay (grid grosso — INALTERADO)
 
-> **Por que `SUBCUBE_STEP_PX` não muda?** O visual permanece idêntico.
-> No sistema antigo, `WALL_FLOOR_STEP_PX = 158px` era o step de 1 storey
-> (4 subcubes). No novo sistema, 39.5px é o step de 1 sub-tile (que IS um
-> subcubo). A distância em pixels na tela é a mesma — só a granularidade
-> do grid mudou.
+| Constante | Valor | Status | Arquivo |
+|---|---|---|---|
+| `CELL_SIZE` | `Vector2i(256, 128)` | **inalterado** | `room.gd` / TileSet |
+| `MAP_SIZE` | `Vector2i(28, 46)` | **inalterado** | `room.gd` |
+| `INNER_ORIGIN` | `Vector2i(5, 5)` | **inalterado** | `room.gd` |
+| `BUFFER` | `5` | **inalterado** | `room.gd` |
+| `AGENT_STEP_CELLS` | `1` | **inalterado** | `agent.gd` |
+| TicSystem | por aresta | **inalterado** | `tic_system.gd` |
+| vision / hearing / light / shadow ranges | `N` | **inalterado** | mapas |
+| `WALL_FLOOR_STEP_PX` | `158.0` | **inalterado** (= step de 1 storey) | `room.gd` |
+
+### Plano de geometria / render (grid fino — NOVO)
+
+| Constante | Valor | Arquivo |
+|---|---|---|
+| `SUBCUBE_SIZE` | `Vector2i(64, 32)` | módulo de geometria + TileSet de render |
+| `SUBCUBES_PER_FLOOR` | `4` | render layer |
+| `SUBCUBE_STEP_PX` | `39.5` (= step por subcubo) | render layer |
+| `MAX_SUBCUBES` | `28` | render layer |
+| Razão `unit→subcube` | `×4` linear | conversão na costura |
+
+> **Storey × subcubo:** 1 storey = `SUBCUBES_PER_FLOOR × SUBCUBE_STEP_PX` =
+> `4 × 39.5` = `158px` = `WALL_FLOOR_STEP_PX`. O total em pixels na tela é o mesmo
+> de hoje — o visual não muda, só nasce um grid fino *embaixo*. Como
+> `WALL_FLOOR_STEP_PX` mantém o significado de "step de storey", o bug de
+> `ceiling_lift`/`fixture_lift` (achado na auditoria) **não se manifesta** nesta
+> arquitetura (ver Notas de Risco).
 
 ---
 
-## Asset Naming Convention
+## Assets (parqueado — referência)
+
+> Mantido como referência. Será revisado quando o atlas pré-fabricado entrar.
+
+### Naming Convention
 
 ```
 [tipo]_[material]   → atom direcional-agnostic  (subcube_concrete.png)
@@ -92,55 +189,34 @@ andares teóricos (24-28 sub-tiles de altura máxima).
 [tipo]_authored     → art do diretor             (door_frame_steel.png)
 ```
 
-**Tipos de atom:**
 - `subcube_*` — cubo 1×1×1, canvas 64×64, 3 faces flat-lit
 - `floor_*` — diamond flat, canvas 64×64, só face top
-- `block_*` — equivalente ao subcube com geometria de bloco sólido
+- `block_*` — equivalente ao subcube, geometria de bloco sólido
+- Materiais iniciais: `concrete`, `stone`, `wood`, `metal`
 
-**Materiais iniciais:** `concrete`, `stone`, `wood`, `metal`
+### Compositor PIL — Fórmulas Canônicas
 
----
-
-## Estrutura de Pastas
-
-```
-ASSETS/ISOMETRIC/
-└── source_assets/
-    ├── subcubes/          ← atoms 64×64 (generate_subcube.py)
-    │   ├── subcube_concrete.png  ✅ gerado
-    │   ├── subcube_stone.png     ✅ gerado
-    │   ├── subcube_wood.png      ✅ gerado
-    │   └── subcube_metal.png     ✅ gerado
-    ├── generated/         ← compostos PIL (shape generators)
-    │   ├── wall_concrete.png     ✅ gerado
-    │   ├── wallHalf_concrete.png ✅ gerado
-    │   └── wallFace_concrete.png ✅ gerado
-    └── authored/          ← art do diretor (futuro)
-```
-
----
-
-## Compositor PIL — Fórmulas Canônicas
-
-Canvas de saída dos compostos: `256×512` (ou maior para props especiais).
-Atom: `64×64`. Âncora = bW do floor diamond = pixel `(0, 48)` no canvas 64×64.
+Atom `64×64`. Âncora = bW do floor diamond = pixel `(0, 48)`. Canvas composto `256×512`.
 
 ```python
-# NW wall (corre na direção bW→bN do tile, runs NE in screen)
+# NW wall (corre bW→bN do tile, runs NE na tela)
 dest(u, h) = (u * 32,  400 - u * 16 - h * 32)
-# u = coluna ao longo da parede (0=esquerda, 3=direita)
-# h = altura em sub-tiles (0=base, N=topo)
-# painter's order: u decreasing (3→0), h increasing (0→N)
+#   u = coluna ao longo da parede (0=esq, 3=dir); h = altura em subcubos (0=base)
+#   painter's order: u decrescente (3→0), h crescente (0→N)
 
-# SE wall (espelho da NW)
-dest(u, h) = (u * 32,  400 + u * 16 - h * 32)
+dest_SE(u, h)  = (u * 32,  400 + u * 16 - h * 32)            # SE wall (espelho)
+dest_floor(u,v)= (u*32 + v*32,  400 - u*16 + v*16)           # Floor 4×4 (v 3→0, u 0→3)
+dest_block     = (0, 400)                                     # Block 1×1×1 (atom único)
+```
 
-# Floor 4×4 (grid plano)
-dest(u, v) = (u * 32 + v * 32,  400 - u * 16 + v * 16)
-# painter's order: v decreasing (3→0), u increasing (0→3)
+### Geometria do átomo (subcube, canvas 64×64)
 
-# Block (1×1×1)
-dest = (0, 400)   # atom único, sem loop
+```python
+# Floor diamond (NÃO desenhado — transparente para empilhamento)
+bN=(32,32); bE=(64,48); bS=(32,64); bW=(0,48)
+# Top face (elevada 32px)
+tN=(32,0); tE=(64,16); tS=(32,32); tW=(0,16)
+# Faces em painter's order: left, right, top
 ```
 
 ---
@@ -149,244 +225,176 @@ dest = (0, 400)   # atom único, sem loop
 
 ### ✅ FASE 0-ALPHA — Átomos e compositor (CONCLUÍDA)
 
-- [x] `generate_subcube.py` — 4 materiais × 64×64 canvas
+- [x] `generate_subcube.py` — 4 materiais × canvas 64×64
 - [x] `generate_wall.py` — NW wall compositor com offsets corretos
 
----
+### 🅿️ Pipeline de assets (antiga FASE 0 / SUB-00-B…E) — PARQUEADO
 
-### FASE 0 — Fundação de Assets (em andamento)
+Será reescrito em torno do atlas de cubos pré-fabricados. Mantém-se vivo apenas o
+**unblock mínimo** (corrigir `OUTPUT_DIR` → `source_assets/`, rebuild, confirmar
+`subcube_*` no registry) como pré-requisito do render layer.
 
-#### SUB-00-B — `build_tileset.gd` single-source
+### ❌ FASE 1 — Grid Migration (GRID-01-A…D) — REMOVIDA
 
-**Objetivo:** Remover TILES_PATH (Kenney), reescrever scan para single-source
-`source_assets/`. Canvas dos tiles: `Vector2i(64, 64)`.
-
-**Mudanças em `build_tileset.gd`:**
-- Remover `TILES_PATH`, `MASTER_PATH`, `_scan_master_textures`, `_scan_master_dir`
-- Novo `SOURCE_PATH = "res://ASSETS/ISOMETRIC/source_assets/"`
-- Nova `_collect_pngs(path, out)` — scan recursivo → array `{name, path}`
-- `texture_region_size = Vector2i(64, 64)` (uniforme para todos os atoms)
-- Tiles sem sufixo de direção (`subcube_concrete.png`) → registrar como
-  `subcube_concrete_NE/NW/SE/SW` com texture_origins correspondentes
-- Adicionar `"subcube"`, `"floor"`, `"block"` ao `TILE_PROPS`
-- Deletar `blocks-prototype/` e `master_assets/`
-
-**Acceptance:** `subcube_concrete` nos 4 IDs de direção no TileRegistry;
-tileset rebuilt sem errors; zero referência a Kenney no codebase.
+O modelo de dois níveis elimina a migração de grid. O gameplay permanece em
+`256×128`. **Não** há mudança de `CELL_SIZE`, `MAP_SIZE`, `AGENT_STEP_CELLS`, nem
+×4 de coordenadas/ranges, nem retuning do TicSystem.
 
 ---
 
-#### SUB-00-C — `generate_master_floor.py`
+### 🎯 FASE A — Camada de coordenadas + costura (NOVO — foco atual)
 
-**Objetivo:** Floor tile = face top do subcubo (diamond flat, sem faces verticais).
-Canvas 64×64, mesmo sistema de coordenadas dos atoms.
+#### COORD-01-A — Módulo de conversão `unit ↔ subcube`
 
-```python
-# Apenas a face top — floor diamond como topo visível
-tN=(32,0); tE=(64,16); tS=(32,32); tW=(0,16)
-draw.polygon([tN, tE, tS, tW], fill=color_flat, outline=color_edge)
-# Grid lines (4×4 subdivisions do floor)
-for i in range(1, 4):
-    t = i / 4
-    draw.line([lerp(tN,tE,t), lerp(tW,tS,t)], fill=color_grid, width=1)
-    draw.line([lerp(tN,tW,t), lerp(tE,tS,t)], fill=color_grid, width=1)
-```
+Introduzir `SUBCUBE_SIZE = Vector2i(64, 32)` e helpers puros:
+`unit_to_subcube_origin(unit) -> Vector2i` (×4) e `subcube_to_unit(sub) -> Vector2i`
+(÷4). Sem tocar no plano de gameplay. Acceptance: round-trip exato; testes de
+borda (off-by-one nas conversões).
 
-Output: `floor_concrete.png`, `floor_stone.png`, etc.
+#### COORD-01-B — `map_compiler.gd` emite geometria de subcubos
 
----
+A costura: a partir das Gameplay Units (paredes/floors/blocks já compilados),
+gerar a geometria de subcubos consumida pelo render layer. Acceptance: uma unit
+de parede vira `4×4` subcubos na borda correta; floor vira `4×4` subcubos de piso.
 
-#### SUB-00-D — `generate_master_block.py`
-
-**Objetivo:** Block = mesmo atom que subcube (ambos são 1×1×1 cubo).
-Por enquanto, `block_[material].png` é alias de `subcube_[material].png`.
-Separação existe para futura customização de geometria (chanfros, etc.).
-
-Implementação: simplesmente copiar os atoms com nome `block_*`.
-
----
-
-#### SUB-00-E — Atualizar mapas (×4 + remover Kenney)
-
-**Objetivo:** `sigma_01_map.gd` e `playground_map.gd` com coordenadas ×4.
-Remover `column_*` (→ runtime block stack) e `doorway_*` (→ gap).
-
----
-
-### FASE 1 — Grid Migration
-
-#### GRID-01-A — `CELL_SIZE` e constantes visuais
-
-**Arquivos:** `room.gd`, `build_tileset.gd`
-
-```gdscript
-# room.gd
-const CELL_SIZE: Vector2i = Vector2i(64, 32)   # era 256×128
-const MAP_SIZE:  Vector2i = Vector2i(112, 184)  # era 28×46
-const INNER_ORIGIN: Vector2i = Vector2i(20, 20) # era 5×5
-const BUFFER: int = 20                           # era 5
-const WALL_FLOOR_STEP_PX: float = 39.5          # era 158.0
-```
-
-**Acceptance:** mapa abre sem erros; tiles visualmente do tamanho correto.
-
----
-
-#### GRID-01-B — Coordenadas dos mapas ×4
-
-**Arquivos:** `sigma_01_map.gd`, `playground_map.gd`, todos os `Vector2i`
-de posição de célula.
-
-Script de migração sugerido:
-```python
-# migrate_coords.py — multiplicar todos os Vector2i de posição por 4
-# Exceto: tamanhos (wall_height, etc.) que são em sub-tiles já
-```
-
----
-
-#### GRID-01-C — Agente e TicSystem
-
-**Arquivo:** `agent.gd`, `tic_system.gd`
-
-```gdscript
-const AGENT_STEP_CELLS: int = 4
-
-# TicSystem: ao invés de teleportar para a célula destino,
-# iterar pelas 4 células intermediárias do path
-# Peso de detecção por aresta = 1/4 do atual
-```
-
----
-
-#### GRID-01-D — Valores de gameplay ×4
-
-**Arquivos:** todos os mapas, `guard.gd`, configs de LOS
-
-Varredura: `vision_range`, `hearing_range`, `light_radius`, `shadow_depth`.
-Substituição mecânica ×4. Nenhuma lógica muda.
-
----
-
-### FASE 2 — Subcube Render Layers
+### 🎯 FASE B — Subcube Render Layers (era FASE 2)
 
 #### SUB-01-A — `_ensure_subcube_layers`
 
 ```gdscript
-const SUBCUBES_PER_FLOOR: int = 4
-const SUBCUBE_STEP_PX: float   = 39.5  # = WALL_FLOOR_STEP_PX (agora é o step por sub-tile)
-const MAX_SUBCUBES: int        = 28
+const SUBCUBE_STEP_PX: float = 39.5   # step por subcubo
 var _subcube_layers: Array[TileMapLayer] = []
+# substitui _ensure_wall_upper_layers; itera subcubos (não storeys)
+# layer.position.y = -SUBCUBE_STEP_PX * nivel_subcubo
 ```
 
-#### SUB-01-B — `_build_room` emite sub-tiles
+#### SUB-01-B — render consome a geometria da costura
 
-Cada célula de parede no `wall_tiles` dict → `subcube_[material]` em
-`structure_wall_layer` (layer 0) + `_subcube_layers[1..N-1]`.
+Cada subcubo de parede/bloco da geometria (COORD-01-B) → `subcube_[material]` no
+layer de altura correspondente. O plano de gameplay segue com `blocked_edges`
+(a aresta continua bloqueada; só a *geometria* é subcubo).
 
----
+### 🎯 FASE C — Oclusão por deleção (SUBSTITUI a antiga FASE 3 dither)
 
-### FASE 3 — Wall Occlusion System
+#### SUB-02-A — `SubcubePresenceController`
 
-#### SUB-02-A — Dither shader (`wall_dither.gdshader`)
-Bayer 4×4, uniform `fade_amount` 0–1. `discard` abaixo do threshold.
+Operação única `set_subcube(célula, nível) → presente/vazio; dispara re-light`.
+Base de oclusão **e** destruição.
 
-#### SUB-02-B — `WallOcclusionController`
-Zona analítica de `_active_perspective` + `agent.cell`. 5 células frontais.
-Tween 0.5s por layer. Layer 0 nunca tocada.
+#### SUB-02-B — Oclusão dirigida pela câmera
+
+Zona analítica de `_active_perspective` + `agent.cell` (células frontais). Para
+cada parede oclusora: apagar subcubos `h ≥ base_kept`, manter o toco. Reversível
+ao sair da frente. `base_kept` é tunável (default: fileira `h=0`).
 
 #### SUB-02-C — Agent z-priority
-`z_index = WALL_BASE_Z_INDEX + MAX_SUBCUBES + 1`. Sempre visível.
 
-**Nota futura:** stroke parcial na fronteira de oclusão — shader no agente
-com uniform `occlusion_y_threshold`.
+`z_index` acima do topo do stack de subcubos. Sempre visível.
 
----
+> Removido do plano antigo: `wall_dither.gdshader` e o tween de alpha por subcubo.
 
-### FASE 4 — Face Lighting
+### FASE D — Face Lighting (era FASE 4)
 
 #### SUB-03-A — `FaceLightingController` per-layer (fast mode)
-`layer.modulate` calculado por altura e posição das luzes. Gradiente vertical
-de iluminação emergente de graça. Conectado a `lighting_rebuilt`.
+`layer.modulate` por altura e posição das luzes. Gradiente vertical emergente.
+Conectado a `lighting_rebuilt`.
 
 #### SUB-03-B — Per-tile precision mode
-Para luzes com `distance < PRECISION_RADIUS_TILES = 4`, overlay multiply-blend
-por tile individual.
+Luzes com `distância < PRECISION_RADIUS` → overlay multiply-blend por subcubo.
 
----
+### FASE E — Vertical Scene (era FASE 5)
 
-### FASE 5 — Vertical Scene
-
-#### SUB-04-A — `MapSpec.wall_subcubes`
-Substituir `wall_height` (em storeys) por `wall_subcubes` (em sub-tiles).
-Retrocompatível: `wall_subcubes = wall_height * SUBCUBES_PER_FLOOR`.
+#### SUB-04-A — Altura em subcubos
+Geometria de parede em `wall_subcubes` (subcubos), não `wall_height` (storeys).
+Retrocompatível: `wall_subcubes = wall_height × SUBCUBES_PER_FLOOR`.
 
 #### SUB-04-B — Mapas com paredes altas
-SIGMA-01 e Playground com `"wall_subcubes": 12` (3 andares teóricos).
+SIGMA-01 e Playground com paredes de 12 subcubos (3 andares).
 
----
+### FASE F — Destruição como capacidade (NOVO — escopo §8)
 
-### FASE 6 — Sistema de Paletas (futuro)
+Reusa `SubcubePresenceController` (SUB-02-A): destruição = `set_subcube(...) → vazio`
+permanente, dirigido por evento. Escopo **visual + iluminação apenas**. Furo que
+afeta gameplay LOS fica adiado.
 
-`generate_variants.py --base door_frame_steel.png --palette concrete,wood,metal`
+### FASE G — Sistema de Paletas (futuro — era FASE 6)
 
-Recebe PNG authoriado, aplica troca de `(flat_color, edge_color, grid_color)`
-via config JSON em `tools/asset_generation/palettes/`. N variações sem
-retrabalho de geometria.
+`generate_variants.py` — troca `(flat, edge, grid)` via config JSON. N variações
+sem retrabalho de geometria. Encaixa no fluxo do atlas pré-fabricado.
 
 ---
 
 ## Dependências
 
 ```
-0-ALPHA ✅ → SUB-00-B → SUB-00-C → SUB-00-D → SUB-00-E
-                │
-                ▼
-            GRID-01-A → GRID-01-B → GRID-01-C → GRID-01-D
-                │
-                ▼
-            SUB-01-A → SUB-01-B
-                │
-        ┌───────┼────────┐
-        ▼       ▼        ▼
-    SUB-02-A  SUB-03-A  SUB-04-A
-    SUB-02-B  SUB-03-B  SUB-04-B
-    SUB-02-C
+COORD-01-A → COORD-01-B → SUB-01-A → SUB-01-B
+                                          │
+                              ┌───────────┼───────────┐
+                              ▼           ▼           ▼
+                          SUB-02-A     SUB-03-A     SUB-04-A
+                          SUB-02-B     SUB-03-B     SUB-04-B
+                          SUB-02-C
+                              │
+                              ▼
+                          FASE F (destruição visual)
+
+Pré-requisito transversal: unblock mínimo de assets (subcube_* no registry).
+Paralelo/futuro: 🅿️ reescrita do pipeline (atlas) · FASE G (paletas).
 ```
 
 ---
 
-## O que NÃO muda
+## O que NÃO muda (o ganho principal)
+
+Com o modelo de dois níveis, esta tabela passa a ser **literalmente verdadeira** —
+não "mesma lógica com inputs ×4", e sim zero mudança.
 
 | Sistema | Status |
 |---|---|
-| Algoritmo de LOS | ✅ Mesma lógica, novos valores de entrada |
-| A\* pathfinding | ✅ Mesma lógica — 16× mais nós, profiling necessário em device |
+| LOS de gameplay (guard → reação) | ✅ Zero mudança (grid grosso) |
+| A\* pathfinding | ✅ Zero mudança — ~1.288 nós (risco de device resolvido) |
 | Guard FSM | ✅ Zero mudança |
-| TileMapLayer z-order | ✅ Zero mudança |
+| TicSystem | ✅ Zero mudança — segue por aresta |
+| `blocked_edges` / `blocked_cells` | ✅ Zero mudança |
+| Movimento do agente | ✅ Zero mudança |
+| Alarmes / triggers / missão | ✅ Zero mudança |
 | Sistema de perspectiva 4-dir | ✅ Zero mudança |
 | Shader de FOW | ✅ Zero mudança |
-| `blocked_edges` / `blocked_cells` | ✅ Zero mudança — coordenadas novas |
-| `ShadowProjector` | ✅ Fica mais simples com sub-tiles uniformes |
-| Assets gerados (64×64) | ✅ Tamanho correto sem retrabalho |
+| Coordenadas dos mapas | ✅ Zero mudança (sem ×4) |
+| **Novo:** LOS de luz / oclusão / sombra | 🎯 Em resolução de subcubo (plano de render) |
 
 ---
 
 ## Notas de Risco
 
-**A\* com 112×184 grid:** 20.608 nós vs 1.288 atuais (16×). Guards recalculam
-raramente — na troca de estado, não por frame. Não bloqueia. Profiling no
-device real antes de otimizar.
+**Costura `unit ↔ subcube`:** fronteiras geram off-by-one e arredondamento ("em
+qual subcubo o agente está, se ele ocupa 4×4?"). Concentrar toda conversão em
+COORD-01-A com testes de round-trip. É a maior fonte de bug nova.
 
-**TicSystem com 4 crossings por step:** valores de probabilidade de detecção
-precisam de retuning (cada crossing tem 1/4 do peso atual). Mecânico, sem
-retrabalho de código.
+**Resolução de LOS dividida:** visual/luz na resolução fina, decisão/reação na
+grossa. Separação limpa (testa fino → decide grosso), mas é onde mora a maior
+parte do trabalho real do plano de render.
 
-**`WALL_FLOOR_STEP_PX` muda de significado:** era "step de 1 storey" (158px),
-vira "step de 1 sub-tile" (39.5px). O valor da constante no `room.gd` muda.
-Qualquer código que usa `WALL_FLOOR_STEP_PX` para calcular alturas de storey
-precisa ser auditado — multiplicar por `SUBCUBES_PER_FLOOR` onde necessário.
+**`WALL_FLOOR_STEP_PX` (RESOLVIDO):** ao manter o significado de "step de storey"
+(158px) no plano de gameplay e introduzir `SUBCUBE_STEP_PX` (39.5px) separado no
+render, os sites de `ceiling_lift`/`fixture_lift` continuam corretos. O bug de
+sub-elevação só existia no plano unificado (que repurava a constante para 39.5).
+
+**A\* 20k nós (RESOLVIDO):** A\* roda no grid grosso. O profiling no device deixa
+de ser portão.
+
+**TicSystem 4 crossings (REMOVIDO):** tic segue por aresta; sem retuning de
+probabilidade.
 
 ---
 
-**Status:** 🟢 FASE 0-ALPHA concluída · SUB-00-B é o próximo prompt
+## Questões em Aberto
+
+- `base_kept` da oclusão: quantas fileiras de subcubo manter no toco (1? 2?) — art director.
+- Material default do SIGMA-01 (plano presume `concrete`).
+- Momento de des-parquear o pipeline de assets e desenhar o atlas pré-fabricado.
+
+---
+
+**Status:** 🟢 Decisões da sessão 4 registradas · Próximo: prompt de reconciliação
+da documentação do projeto, depois início da implementação (COORD-01-A).

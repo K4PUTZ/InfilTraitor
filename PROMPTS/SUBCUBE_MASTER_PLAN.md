@@ -1,324 +1,354 @@
 # INFILTRAITOR — Subcube Architecture Master Plan
 
-> **Decisões de design de 2026-06-24. Última revisão: 2026-06-24 (sessão 2).**
+> **Criado:** 2026-06-24 · **Última revisão:** 2026-06-24 (sessão 3 — grid migration)
+> Este documento é a fonte de verdade para todas as decisões arquiteturais tomadas
+> na sessão de design de 24/06/2026.
 
 ---
 
-## Contexto
+## Decisões Canônicas
 
-A conversa de design de 24/06/2026 consolidou a seguinte arquitetura:
+### 1. O subcubo é o tile de gameplay
 
-- **O mapa continua 2D** — `blocked_edges`, `blocked_cells`, LOS, pathfinding,
-  cobertura: zero mudança. A engine de gameplay não sabe de "andares" nem de subcubos.
-- **O render é 3D via subcubos** — `room._build_room` emite tiles de 1-subcubo em N
-  TileMapLayers empilhadas, criando volume isométrico sem geometria 3D real.
-- **O subcubo é a unidade atômica** — toda parede e estrutura é composta por 1 ou
-  mais subcubos idênticos. Variação de textura vem de combinação, paletas de cor, e
-  assets authoriados para casos especiais.
-- **Andares teóricos são conveniência de design** — `SUBCUBES_PER_FLOOR = 4` existe
-  só para level design ("parede de 2 andares = 8 subcubos"). A engine processa apenas
-  `N subcubes`, sem hierarquia de andares.
-- **Pack Kenney removido** — `blocks-prototype/` descontinuado. Todo asset vem de
-  `source_assets/` (gerado programaticamente ou authoriado pelo art director).
-  `build_tileset.gd` passa a single-source scan sem fallback.
+O sub-tile (subcubo atômico) é simultaneamente a unidade visual E a unidade
+de gameplay. `CELL_SIZE` muda de `256×128` para `64×32`. O grid fica 4× mais
+fino em cada eixo — 16× mais células no total.
+
+Consequências diretas:
+- Todas as coordenadas de mapa são ×4
+- Todos os raios e ranges são ×4  
+- O agente percorre a mesma distância visual movendo 4 sub-tiles por step
+- Assets existentes (64×64 do operador) têm o tamanho correto sem retrabalho
+
+### 2. Pipeline de assets single-source sem Kenney
+
+`blocks-prototype/` e `master_assets/` removidos. Único source:
+`source_assets/` — scan recursivo por `build_tileset.gd`. Dois tipos de asset:
+- **Atoms** (`subcubes/`) — 64×64px, gerados por Python
+- **Compostos** (`generated/`) — 256×512px ou maiores, gerados por compositor PIL
+- **Authoriados** (`authored/`) — art do diretor, qualquer tamanho
+
+### 3. Dual-mode rendering: runtime + pre-render
+
+- **Runtime stacking** — `subcube_[material]` em N `TileMapLayer`s por célula.
+  Suporta oclusão por layer e face lighting por layer. Padrão para tudo.
+- **Pre-render composto** — PNG composto pelo gerador Python para props
+  complexos, superfícies texturizadas, ou variações artísticas. Vai no tileset
+  como tile único multi-layer.
+
+### 4. Agente e TicSystem
+
+- `AGENT_STEP_CELLS = 4` — agente percorre 4 sub-tiles por step
+- TicSystem traça o caminho pelos 4 sub-tiles intermediários, disparando em
+  cada aresta cruzada com peso 1/4 por cruzamento (total = 1 step completo)
+- Granularidade tática aumenta: guard ouve 4 passos por movimento do agente
+
+### 5. Vertical — andares teóricos mantidos
+
+`SUBCUBES_PER_FLOOR = 4` como conveniência de design. A engine só conhece
+N sub-tiles de altura. Mapa pode ter qualquer altura; demo começa com 6-7
+andares teóricos (24-28 sub-tiles de altura máxima).
+
+### 6. Doorways e colunas
+
+- **Doorway** = ausência de sub-tiles na célula. Frame decorativo é prop separado.
+  Nenhum tile especial de doorway necessário.
+- **Colunas** = pilha de `block_[material]` em runtime. Nenhum tile Kenney.
 
 ---
 
 ## Constantes-chave
 
-| Constante | Valor | Origem |
-|---|---|---|
-| `SUBCUBES_PER_FLOOR` | `4` | decisão de design (40px × 4 = 160px = 1 andar) |
-| `SUBCUBE_FACE_HEIGHT` | `40 px` | art: `WALL_HEIGHT(160) / VCUBES_FULL(4)` |
-| `SUBCUBE_STEP_PX` | `39.5 px` | render: `WALL_FLOOR_STEP_PX(158.0) / 4` |
-| `MAX_SUBCUBES` | `28` | 7 andares teóricos × 4; reduzível por mapa |
-| `WALL_BASE_Z_INDEX` | `10` | inalterado — `room.gd` existente |
+| Constante | Valor anterior | Valor novo | Arquivo |
+|---|---|---|---|
+| `CELL_SIZE` | `Vector2i(256, 128)` | `Vector2i(64, 32)` | `room.gd` / TileSet |
+| `TILE_HW` | `128` | `32` | assets Python |
+| `TILE_HH` | `64` | `16` | assets Python |
+| `CUBE_HEIGHT` | `40` (wall) / `128` (crate) | `32` | assets Python |
+| `MAP_SIZE` | `Vector2i(28, 46)` | `Vector2i(112, 184)` | `room.gd` |
+| `INNER_ORIGIN` | `Vector2i(5, 5)` | `Vector2i(20, 20)` | `room.gd` |
+| `BUFFER` | `5` | `20` | `room.gd` |
+| `AGENT_STEP_CELLS` | `1` | `4` | `agent.gd` |
+| `SUBCUBES_PER_FLOOR` | `4` | `4` (inalterado) | `room.gd` |
+| `SUBCUBE_STEP_PX` | `39.5` | `39.5` (inalterado) | `room.gd` |
+| `MAX_SUBCUBES` | `28` | `28` (inalterado) | `room.gd` |
+| Light radius | N | 4N | mapas |
+| Guard vision range | N | 4N | mapas |
+| Shadow depth | N | 4N | mapas |
 
-> **Nota sobre o 0.5px:** `SUBCUBE_STEP_PX = 39.5` vs `SUBCUBE_FACE_HEIGHT = 40`
-> gera um overlap de 0.5px entre subcubos adjacentes — mesmo comportamento do
-> sistema atual entre storeys (`158px step` vs `160px art`). O overlap sela
-> juntas de pixel. Não alterar.
+> **Por que `SUBCUBE_STEP_PX` não muda?** O visual permanece idêntico.
+> No sistema antigo, `WALL_FLOOR_STEP_PX = 158px` era o step de 1 storey
+> (4 subcubes). No novo sistema, 39.5px é o step de 1 sub-tile (que IS um
+> subcubo). A distância em pixels na tela é a mesma — só a granularidade
+> do grid mudou.
 
 ---
 
 ## Asset Naming Convention
 
-### Regra geral
-
 ```
-[tipo][Variante]_[Direção]
+[tipo]_[material]   → atom direcional-agnostic  (subcube_concrete.png)
+[shape]_[material]  → composto pré-renderizado   (wall_concrete.png)
+[tipo]_authored     → art do diretor             (door_frame_steel.png)
 ```
 
-- `[tipo]` — papel semântico: `wallFace`, `wallCornerFace`, `floor`, `block`
-- `[Variante]` — modificador opcional para formas especiais (omitido no padrão)
-- `[Direção]` — `NW | NE | SW | SE`, omitido para assets omnidirecionais
+**Tipos de atom:**
+- `subcube_*` — cubo 1×1×1, canvas 64×64, 3 faces flat-lit
+- `floor_*` — diamond flat, canvas 64×64, só face top
+- `block_*` — equivalente ao subcube com geometria de bloco sólido
 
-### Assets canônicos por gerador
-
-| Nome | Tipo | Generator | Notas |
-|---|---|---|---|
-| `wallFace_NW/NE/SW/SE` | Parede 1-subcubo (40px) | `generate_master_walls.py` | **Unidade atômica de parede** |
-| `wall_NW/NE/SW/SE` | Parede 4-subcubos (160px) | `generate_master_walls.py` | Composta, compatibilidade |
-| `wallHalf_NW/NE/SW/SE` | Parede 2-subcubos (80px) | `generate_master_walls.py` | Composta, compatibilidade |
-| `wallCorner_NW/NE/SW/SE` | Corner parede (160px) | `generate_master_walls.py` | Geometria especial |
-| `wallCornerHalf_NW/NE/SW/SE` | Corner meia (80px) | `generate_master_walls.py` | Geometria especial |
-| `floor_NW/NE/SW/SE` | Diamante de chão | `generate_master_floor.py` | Mesmo art em todas as dirs |
-| `block_NW/NE/SW/SE` | Bloco sólido 1-subcubo | `generate_master_block.py` | 3 faces visíveis |
-| `crate` | Caixote (omnidirecional) | `generate_master_crate.py` | Existente ✅ |
-
-### Assets authoriados (art director)
-
-Ficam em `source_assets/authored/`. Naming livre mas deve seguir
-`[nome]_[Direção]` para tiles direcionais. Registrados automaticamente pelo
-scan recursivo de `build_tileset.gd`.
-
-### Sistema de paletas (planejado, não implementado)
-
-`generate_variants.py --base door_frame_NW.png --palette concrete,metal,wood`
-— recebe um PNG authoriado e aplica troca de `(flat_color, grid_color, edge_color)`,
-gerando N variações sem retrabalho de geometria. Paletas em
-`tools/asset_generation/palettes/*.json`.
+**Materiais iniciais:** `concrete`, `stone`, `wood`, `metal`
 
 ---
 
-## Estrutura de pastas
-
-`master_assets/` e `blocks-prototype/` **removidos**.
+## Estrutura de Pastas
 
 ```
 ASSETS/ISOMETRIC/
-└── source_assets/              ← único source de verdade, scan recursivo
-    ├── generated/              ← gerado por scripts Python — NÃO editar manualmente
-    │   ├── wallFace_NW.png ... wallFace_SE.png
-    │   ├── wall_NW.png ... wall_SE.png
-    │   ├── wallHalf_NW.png ... wallHalf_SE.png
-    │   ├── wallCorner_NW.png ... wallCorner_SE.png
-    │   ├── wallCornerHalf_NW.png ... wallCornerHalf_SE.png
-    │   ├── floor_NW.png ... floor_SE.png
-    │   ├── block_NW.png ... block_SE.png
-    │   └── crate.png
-    └── authored/               ← authoriado pelo art director
-        └── (futuro: door frames, props especiais, etc.)
+└── source_assets/
+    ├── subcubes/          ← atoms 64×64 (generate_subcube.py)
+    │   ├── subcube_concrete.png  ✅ gerado
+    │   ├── subcube_stone.png     ✅ gerado
+    │   ├── subcube_wood.png      ✅ gerado
+    │   └── subcube_metal.png     ✅ gerado
+    ├── generated/         ← compostos PIL (shape generators)
+    │   ├── wall_concrete.png     ✅ gerado
+    │   ├── wallHalf_concrete.png ✅ gerado
+    │   └── wallFace_concrete.png ✅ gerado
+    └── authored/          ← art do diretor (futuro)
 ```
 
-`build_tileset.gd`: remover `TILES_PATH` e `MASTER_PATH`. Novo único path:
-`SOURCE_PATH = "res://ASSETS/ISOMETRIC/source_assets/"`. Scan recursivo, sort
-alfabético, sem merge, sem fallback. O scan recursivo já trata subpastas.
+---
+
+## Compositor PIL — Fórmulas Canônicas
+
+Canvas de saída dos compostos: `256×512` (ou maior para props especiais).
+Atom: `64×64`. Âncora = bW do floor diamond = pixel `(0, 48)` no canvas 64×64.
+
+```python
+# NW wall (corre na direção bW→bN do tile, runs NE in screen)
+dest(u, h) = (u * 32,  400 - u * 16 - h * 32)
+# u = coluna ao longo da parede (0=esquerda, 3=direita)
+# h = altura em sub-tiles (0=base, N=topo)
+# painter's order: u decreasing (3→0), h increasing (0→N)
+
+# SE wall (espelho da NW)
+dest(u, h) = (u * 32,  400 + u * 16 - h * 32)
+
+# Floor 4×4 (grid plano)
+dest(u, v) = (u * 32 + v * 32,  400 - u * 16 + v * 16)
+# painter's order: v decreasing (3→0), u increasing (0→3)
+
+# Block (1×1×1)
+dest = (0, 400)   # atom único, sem loop
+```
 
 ---
 
-## Regras dos geradores Python
+## Fases de Implementação
 
-Todo gerador deve respeitar as três faces visíveis da câmera isométrica:
+### ✅ FASE 0-ALPHA — Átomos e compositor (CONCLUÍDA)
 
-- **`_draw_front`** — face vertical principal. Grades: `HCUBES` colunas +
-  `vcubes` bandas horizontais.
-- **`_draw_top`** — face superior fina mostrando espessura. Grades: `HCUBES`
-  colunas (fix aplicado em SUB-00-A). Sem bandas (face muito rasa).
-- **`_draw_end`** — face lateral câmera-visível. Grades: `vcubes` bandas
-  horizontais (fix aplicado em SUB-00-A). Sem colunas (32px de profundidade é
-  insuficiente para subdivisão vertical em mobile).
+- [x] `generate_subcube.py` — 4 materiais × 64×64 canvas
+- [x] `generate_wall.py` — NW wall compositor com offsets corretos
 
 ---
 
-## Fases e Etapas
+### FASE 0 — Fundação de Assets (em andamento)
 
-Cada etapa = um prompt de operador. Escopo pequeno, smoke test ao final.
+#### SUB-00-B — `build_tileset.gd` single-source
 
----
+**Objetivo:** Remover TILES_PATH (Kenney), reescrever scan para single-source
+`source_assets/`. Canvas dos tiles: `Vector2i(64, 64)`.
 
-### FASE 0 — Fundação de Assets
+**Mudanças em `build_tileset.gd`:**
+- Remover `TILES_PATH`, `MASTER_PATH`, `_scan_master_textures`, `_scan_master_dir`
+- Novo `SOURCE_PATH = "res://ASSETS/ISOMETRIC/source_assets/"`
+- Nova `_collect_pngs(path, out)` — scan recursivo → array `{name, path}`
+- `texture_region_size = Vector2i(64, 64)` (uniforme para todos os atoms)
+- Tiles sem sufixo de direção (`subcube_concrete.png`) → registrar como
+  `subcube_concrete_NE/NW/SE/SW` com texture_origins correspondentes
+- Adicionar `"subcube"`, `"floor"`, `"block"` ao `TILE_PROPS`
+- Deletar `blocks-prototype/` e `master_assets/`
 
-#### SUB-00-A — Fix geradores + gerar `wallFace`
-
-**Objetivo:** Corrigir `_draw_top` e `_draw_end` em `generate_master_walls.py`;
-adicionar geração de `wallFace` (40px, 1 banda). Não rebuildar tileset ainda
-(build_tileset.gd ainda depende do Kenney — SUB-00-B o substitui).
-
-**Arquivo:** `tools/asset_generation/generate_master_walls.py`
-
-Fixes: adicionar `HCUBES` colunas em `_draw_top`; adicionar parâmetro `vcubes`
-em `_draw_end` e `vcubes` bandas horizontais; adicionar
-`generate("wallFace", 40, 1, OUTPUT_FACES)` ao entry point.
-
-**Acceptance:** 4 PNGs `wallFace_*.png` gerados com face top e face end com
-grid correto. Inspeção visual confirma linhas de divisão nas 3 faces.
-
----
-
-#### SUB-00-B — `build_tileset.gd` single-source + remover Kenney
-
-**Objetivo:** Reescrever `build_tileset.gd` para scan recursivo de
-`source_assets/` sem TILES_PATH/Kenney. Mover `master_assets/` → `source_assets/generated/`.
-Deletar `blocks-prototype/`. Rebuild tileset.
-
-**Arquivos:** `build_tileset.gd`, filesystem, `OPERATOR_CONTEXT.md`, `ASSET_MAP.md`
-
-**Acceptance:** tileset rebuilt com apenas os assets em `source_assets/`;
-`wallFace_NW` aparece no `TileRegistry`; jogo abre sem erros.
+**Acceptance:** `subcube_concrete` nos 4 IDs de direção no TileRegistry;
+tileset rebuilt sem errors; zero referência a Kenney no codebase.
 
 ---
 
 #### SUB-00-C — `generate_master_floor.py`
 
-**Objetivo:** Criar gerador de floor tile. Produz `floor_NW/NE/SW/SE.png` —
-diamante isométrico flat-lit, sem faces verticais.
+**Objetivo:** Floor tile = face top do subcubo (diamond flat, sem faces verticais).
+Canvas 64×64, mesmo sistema de coordenadas dos atoms.
 
-**Arquivo:** `tools/asset_generation/generate_master_floor.py` (novo)
+```python
+# Apenas a face top — floor diamond como topo visível
+tN=(32,0); tE=(64,16); tS=(32,32); tW=(0,16)
+draw.polygon([tN, tE, tS, tW], fill=color_flat, outline=color_edge)
+# Grid lines (4×4 subdivisions do floor)
+for i in range(1, 4):
+    t = i / 4
+    draw.line([lerp(tN,tE,t), lerp(tW,tS,t)], fill=color_grid, width=1)
+    draw.line([lerp(tN,tW,t), lerp(tE,tS,t)], fill=color_grid, width=1)
+```
 
-Canvas 256×512. Diamond: `bN=(128,384)`, `bE=(256,448)`, `bS=(128,512)`,
-`bW=(0,448)`. Fill `COLOR_FLAT`, grid `HCUBES×HCUBES` linhas em `COLOR_GRID`.
-Output: `source_assets/generated/floor_NW/NE/SW/SE.png` (art idêntica,
-4 arquivos para compatibilidade com naming direcional existente).
-
-**Acceptance:** 4 PNGs gerados; `floor_SE` aparece no TileRegistry após rebuild;
-mapa SIGMA-01 renderiza chão corretamente.
+Output: `floor_concrete.png`, `floor_stone.png`, etc.
 
 ---
 
 #### SUB-00-D — `generate_master_block.py`
 
-**Objetivo:** Criar gerador de bloco sólido 1-subcubo (3 faces visíveis).
-Substitui `block_*` do Kenney e `column_*` (via empilhamento nos mapas).
+**Objetivo:** Block = mesmo atom que subcube (ambos são 1×1×1 cubo).
+Por enquanto, `block_[material].png` é alias de `subcube_[material].png`.
+Separação existe para futura customização de geometria (chanfros, etc.).
 
-**Arquivo:** `tools/asset_generation/generate_master_block.py` (novo)
-
-Mesmo canvas 256×512 e diamond base de `generate_master_walls.py`. Três faces:
-front (igual `_draw_front`), top (igual `_draw_top`), end (igual `_draw_end`).
-Produce `block_NW/NE/SW/SE.png` em `source_assets/generated/`.
-
-**Acceptance:** 4 PNGs gerados; `block_SE` no TileRegistry após rebuild;
-dividers no mapa renderizam visualmente corretos.
+Implementação: simplesmente copiar os atoms com nome `block_*`.
 
 ---
 
-#### SUB-00-E — Substituir `column_*` nos mapas
+#### SUB-00-E — Atualizar mapas (×4 + remover Kenney)
 
-**Objetivo:** Remover `column_*` de `playground_map.gd` (Kenney, sem gerador).
-Substituir por `block_*` ou remover se decorativo apenas.
-
-**Arquivo:** `godot/scripts/world/maps/definitions/playground_map.gd`
-
-**Acceptance:** playground_map abre sem tile lookup errors; props visualmente
-coerentes com o novo estilo flat-lit.
+**Objetivo:** `sigma_01_map.gd` e `playground_map.gd` com coordenadas ×4.
+Remover `column_*` (→ runtime block stack) e `doorway_*` (→ gap).
 
 ---
 
-### FASE 1 — Subcube Render Layer
+### FASE 1 — Grid Migration
 
-#### SUB-01-A — Constantes e `_ensure_subcube_layers`
+#### GRID-01-A — `CELL_SIZE` e constantes visuais
 
-**Objetivo:** Substituir `_wall_upper_layers` por `_subcube_layers` com passo
-de `SUBCUBE_STEP_PX = 39.5px`.
+**Arquivos:** `room.gd`, `build_tileset.gd`
 
-**Arquivo:** `godot/scripts/world/room.gd`
+```gdscript
+# room.gd
+const CELL_SIZE: Vector2i = Vector2i(64, 32)   # era 256×128
+const MAP_SIZE:  Vector2i = Vector2i(112, 184)  # era 28×46
+const INNER_ORIGIN: Vector2i = Vector2i(20, 20) # era 5×5
+const BUFFER: int = 20                           # era 5
+const WALL_FLOOR_STEP_PX: float = 39.5          # era 158.0
+```
+
+**Acceptance:** mapa abre sem erros; tiles visualmente do tamanho correto.
+
+---
+
+#### GRID-01-B — Coordenadas dos mapas ×4
+
+**Arquivos:** `sigma_01_map.gd`, `playground_map.gd`, todos os `Vector2i`
+de posição de célula.
+
+Script de migração sugerido:
+```python
+# migrate_coords.py — multiplicar todos os Vector2i de posição por 4
+# Exceto: tamanhos (wall_height, etc.) que são em sub-tiles já
+```
+
+---
+
+#### GRID-01-C — Agente e TicSystem
+
+**Arquivo:** `agent.gd`, `tic_system.gd`
+
+```gdscript
+const AGENT_STEP_CELLS: int = 4
+
+# TicSystem: ao invés de teleportar para a célula destino,
+# iterar pelas 4 células intermediárias do path
+# Peso de detecção por aresta = 1/4 do atual
+```
+
+---
+
+#### GRID-01-D — Valores de gameplay ×4
+
+**Arquivos:** todos os mapas, `guard.gd`, configs de LOS
+
+Varredura: `vision_range`, `hearing_range`, `light_radius`, `shadow_depth`.
+Substituição mecânica ×4. Nenhuma lógica muda.
+
+---
+
+### FASE 2 — Subcube Render Layers
+
+#### SUB-01-A — `_ensure_subcube_layers`
 
 ```gdscript
 const SUBCUBES_PER_FLOOR: int = 4
-const SUBCUBE_STEP_PX: float  = WALL_FLOOR_STEP_PX / float(SUBCUBES_PER_FLOOR)
-const MAX_SUBCUBES: int       = 28
+const SUBCUBE_STEP_PX: float   = 39.5  # = WALL_FLOOR_STEP_PX (agora é o step por sub-tile)
+const MAX_SUBCUBES: int        = 28
 var _subcube_layers: Array[TileMapLayer] = []
-
-func _ensure_subcube_layers(count: int) -> void:
-    while _subcube_layers.size() < count:
-        var idx   := _subcube_layers.size() + 1
-        var layer := TileMapLayer.new()
-        layer.name     = "SubcubeLayer_%d" % idx
-        layer.tile_set = _wall_tileset
-        layer.position = Vector2(0.0, -SUBCUBE_STEP_PX * float(idx))
-        layer.z_index  = WALL_BASE_Z_INDEX + idx
-        add_child(layer)
-        _subcube_layers.append(layer)
 ```
 
-**Acceptance:** `grep "_subcube_layers" room.gd` → match; `grep "_wall_upper_layers" room.gd` → zero.
+#### SUB-01-B — `_build_room` emite sub-tiles
+
+Cada célula de parede no `wall_tiles` dict → `subcube_[material]` em
+`structure_wall_layer` (layer 0) + `_subcube_layers[1..N-1]`.
 
 ---
 
-#### SUB-01-B — `_build_room` emite subcubos
+### FASE 3 — Wall Occlusion System
 
-**Objetivo:** Cada tile de parede emite `wallFace_*` em `structure_wall_layer`
-(subcubo 0) e em `_subcube_layers[1..N-1]`.
-
-**Arquivos:** `room.gd` (`_build_room`), `map_compiler.gd` (emitir `wall_subcubes`)
-
-**Acceptance:** SIGMA-01 renderiza paredes em múltiplas layers; nenhuma regressão
-de gameplay.
-
----
-
-### FASE 2 — Wall Occlusion System
-
-#### SUB-02-A — Dither shader
-
-**Arquivo:** `godot/shaders/wall_dither.gdshader` (novo)
-
-Bayer 4×4 ordered dithering. Uniform `fade_amount` (0.0–1.0). `discard` para
-pixels abaixo do threshold — pixels sobreviventes 100% opacos, compatíveis com
-sombras e luzes.
-
----
+#### SUB-02-A — Dither shader (`wall_dither.gdshader`)
+Bayer 4×4, uniform `fade_amount` 0–1. `discard` abaixo do threshold.
 
 #### SUB-02-B — `WallOcclusionController`
-
-**Arquivo:** `godot/scripts/controllers/wall_occlusion_controller.gd` (novo)
-
-Calcula zona de oclusão analiticamente de `_active_perspective` + `agent.cell`.
-5 células no eixo frontal. Tween 0.5s por subcubo. Subcubo 0 (`structure_wall_layer`)
-nunca tocado.
-
----
+Zona analítica de `_active_perspective` + `agent.cell`. 5 células frontais.
+Tween 0.5s por layer. Layer 0 nunca tocada.
 
 #### SUB-02-C — Agent z-priority
+`z_index = WALL_BASE_Z_INDEX + MAX_SUBCUBES + 1`. Sempre visível.
 
-**Arquivo:** `godot/scripts/agents/agent.gd`
-
-`z_index = WALL_BASE_Z_INDEX + MAX_SUBCUBES + 1`. Agente sempre visível sobre
-qualquer subcubo.
-
-**Nota futura:** stroke parcial na fronteira de oclusão — shader no agente com
-uniform `occlusion_y_threshold`. Implementar após SUB-02-C.
+**Nota futura:** stroke parcial na fronteira de oclusão — shader no agente
+com uniform `occlusion_y_threshold`.
 
 ---
 
-### FASE 3 — Face Lighting
+### FASE 4 — Face Lighting
 
-#### SUB-03-A — `FaceLightingController` modo per-layer
+#### SUB-03-A — `FaceLightingController` per-layer (fast mode)
+`layer.modulate` calculado por altura e posição das luzes. Gradiente vertical
+de iluminação emergente de graça. Conectado a `lighting_rebuilt`.
 
-Per-layer `modulate` calculado por altura e posição das luzes. Conectado a
-`lighting_rebuilt`. Gradiente de iluminação vertical de graça.
-
-#### SUB-03-B — Modo per-tile (precisão)
-
-Para luzes dentro de `PRECISION_RADIUS_TILES` do agente, overlay multiply-blend
-por tile individual. `var PRECISION_RADIUS_TILES: int = 4`.
+#### SUB-03-B — Per-tile precision mode
+Para luzes com `distance < PRECISION_RADIUS_TILES = 4`, overlay multiply-blend
+por tile individual.
 
 ---
 
-### FASE 4 — Vertical Scene
+### FASE 5 — Vertical Scene
 
 #### SUB-04-A — `MapSpec.wall_subcubes`
+Substituir `wall_height` (em storeys) por `wall_subcubes` (em sub-tiles).
+Retrocompatível: `wall_subcubes = wall_height * SUBCUBES_PER_FLOOR`.
 
-Substituir `wall_height` (storeys) por `wall_subcubes` no vocabulário MapSpec.
-Retrocompatível.
-
-#### SUB-04-B — Paredes altas nos mapas
-
-SIGMA-01 e Playground com `"wall_subcubes": 12` (3 andares teóricos) para teste
-vertical completo.
+#### SUB-04-B — Mapas com paredes altas
+SIGMA-01 e Playground com `"wall_subcubes": 12` (3 andares teóricos).
 
 ---
 
-## Dependências entre fases
+### FASE 6 — Sistema de Paletas (futuro)
+
+`generate_variants.py --base door_frame_steel.png --palette concrete,wood,metal`
+
+Recebe PNG authoriado, aplica troca de `(flat_color, edge_color, grid_color)`
+via config JSON em `tools/asset_generation/palettes/`. N variações sem
+retrabalho de geometria.
+
+---
+
+## Dependências
 
 ```
-SUB-00-A ──► SUB-00-B ──► SUB-00-C ──► SUB-00-D ──► SUB-00-E
+0-ALPHA ✅ → SUB-00-B → SUB-00-C → SUB-00-D → SUB-00-E
                 │
                 ▼
-SUB-01-A ──► SUB-01-B
+            GRID-01-A → GRID-01-B → GRID-01-C → GRID-01-D
                 │
-        ┌───────┼───────┐
-        ▼       ▼       ▼
+                ▼
+            SUB-01-A → SUB-01-B
+                │
+        ┌───────┼────────┐
+        ▼       ▼        ▼
     SUB-02-A  SUB-03-A  SUB-04-A
     SUB-02-B  SUB-03-B  SUB-04-B
     SUB-02-C
@@ -330,27 +360,33 @@ SUB-01-A ──► SUB-01-B
 
 | Sistema | Status |
 |---|---|
-| `blocked_cells` / `blocked_edges` | ✅ Zero mudança |
-| LOS / pathfinding / cobertura | ✅ Zero mudança |
-| TicSystem / detecção | ✅ Zero mudança |
+| Algoritmo de LOS | ✅ Mesma lógica, novos valores de entrada |
+| A\* pathfinding | ✅ Mesma lógica — 16× mais nós, profiling necessário em device |
 | Guard FSM | ✅ Zero mudança |
-| `MapSpec` (gameplay keys) | ✅ Apenas adição de `wall_subcubes` |
-| `ShadowProjector` | ✅ Fica mais simples com subcubos |
-| `ExposureSystem` | ✅ Opera em cells 2D, não em layers |
+| TileMapLayer z-order | ✅ Zero mudança |
+| Sistema de perspectiva 4-dir | ✅ Zero mudança |
+| Shader de FOW | ✅ Zero mudança |
+| `blocked_edges` / `blocked_cells` | ✅ Zero mudança — coordenadas novas |
+| `ShadowProjector` | ✅ Fica mais simples com sub-tiles uniformes |
+| Assets gerados (64×64) | ✅ Tamanho correto sem retrabalho |
 
 ---
 
-## Notas de design para o futuro
+## Notas de Risco
 
-- **Stroke de oclusão** — após SUB-02-C.
-- **Sistema de paletas** — `generate_variants.py` com paletas JSON. Após FASE 0 completa.
-- **Ceiling props** — `MapSpec.ceiling` vocabulary (VIS-01). Gated por SUB-04-B.
-- **Props como subcubos** — empilhamento de `block_*`. Após SUB-00-D.
-- **`MAX_SUBCUBES`** — reduzir se draw calls impactarem mobile. Profiling antes.
+**A\* com 112×184 grid:** 20.608 nós vs 1.288 atuais (16×). Guards recalculam
+raramente — na troca de estado, não por frame. Não bloqueia. Profiling no
+device real antes de otimizar.
+
+**TicSystem com 4 crossings por step:** valores de probabilidade de detecção
+precisam de retuning (cada crossing tem 1/4 do peso atual). Mecânico, sem
+retrabalho de código.
+
+**`WALL_FLOOR_STEP_PX` muda de significado:** era "step de 1 storey" (158px),
+vira "step de 1 sub-tile" (39.5px). O valor da constante no `room.gd` muda.
+Qualquer código que usa `WALL_FLOOR_STEP_PX` para calcular alturas de storey
+precisa ser auditado — multiplicar por `SUBCUBES_PER_FLOOR` onde necessário.
 
 ---
 
-**Criado em:** 2026-06-24
-**Última revisão:** 2026-06-24 (sessão 2 — remoção Kenney, single-source pipeline)
-**Status:** 🟢 Pronto para implementação
-**Próximo prompt de operador:** SUB-00-A
+**Status:** 🟢 FASE 0-ALPHA concluída · SUB-00-B é o próximo prompt

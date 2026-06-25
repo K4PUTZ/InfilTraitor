@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Reformed Walls - $(date +%Y-%m-%d)"
+TAG="Alpha Sub Grid Foundation - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

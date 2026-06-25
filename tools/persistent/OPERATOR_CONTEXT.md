@@ -459,19 +459,51 @@ Recommended runtime visual stack:
 ### Asset Structure
 
 ```
-ASSETS/ISOMETRIC/source_assets/
-└── generated/                  ← all PNGs live here (recursive scan includes subfolders)
-    ├── wall_NW.png ... wall_SE.png
-    ├── wallHalf_NW.png ... wallHalf_SE.png
-    ├── wallFace_NW.png ... wallFace_SE.png (✨ atomic subcubes, NEW)
-    ├── wallCorner_NW.png ... wallCorner_SE.png
-    ├── wallCornerHalf_NW.png ... wallCornerHalf_SE.png
-    └── (future: floor_*, block_*, other categories as subfolders)
+ASSETS/ISOMETRIC/
+├── source_assets/generated/    ← Godot tileset source (28 tiles, recursive scan)
+│   ├── block_NE/NW/SE/SW.png          (1-subcubo solid block, 3 visible faces)
+│   ├── floor_NE/NW/SE/SW.png          (omnidirectional floor, 4×4 grid)
+│   ├── wall_NE/NW/SE/SW.png           (full-storey wall, 4 subcubes tall)
+│   ├── wallHalf_NE/NW/SE/SW.png       (half-storey wall, 2 subcubes)
+│   ├── wallFace_NE/NW/SE/SW.png       (atomic face, 1 subcubo = 40px)
+│   ├── wallCorner_NE/NW/SE/SW.png
+│   └── wallCornerHalf_NE/NW/SE/SW.png
+└── master_assets/              ← Pre-render / compositor sources (not loaded by Godot)
+    ├── subcubes/               ← Atomic 1/4-tile subcubes (64×64 px, RGBA)
+    │   ├── subcube_concrete.png
+    │   ├── subcube_stone.png
+    │   ├── subcube_wood.png
+    │   └── subcube_metal.png
+    └── walls_composed/         ← Walls built by compositing subcube atoms (256×512 px)
+        ├── wallFace_concrete/stone/wood/metal.png   (1 subcube)
+        ├── wallHalf_concrete/stone/wood/metal.png   (2 subcubes)
+        └── wall_concrete/stone/wood/metal.png       (4 subcubes)
 ```
 
 Deprecated (removed):
-- `ASSETS/ISOMETRIC/master_assets/` — consolidated into `source_assets/`
 - `ASSETS/ISOMETRIC/blocks-prototype/` — Kenney pack removed
+
+### Subcube Compositor Pipeline (NEW — Alpha Subcube Foundation)
+
+Two-level asset architecture:
+
+**Level 1 — Atom (`generate_subcube.py`):**
+- Output: `master_assets/subcubes/subcube_[material].png` — 64×64 px, RGBA
+- Geometry: 1/4-tile scale — `TILE_HW=32, TILE_HH=16`, `CUBE_HEIGHT=32`
+- Canvas anchors: `bW=(0,48)`, `tS=(32,32)`, `tN=(32,0)`, `tE=(64,16)`, `tW=(0,16)`
+- Flat-lit: one `COLOR_FLAT` for all faces (no baked lighting — runtime handles it)
+- Floor diamond NOT drawn → transparent for stacking
+- 4 materials: concrete, stone, wood, metal
+
+**Level 2 — Compositor (`generate_wall.py`):**
+- Output: `master_assets/walls_composed/[preset]_[material].png` — 256×512 px, RGBA
+- Zero geometry: uses `Image.alpha_composite()` only — no vertex math
+- Isometric offset formula: `dest = (u*32, 400 - u*16 - h*32)` for NW wall
+- Painter order: u right→left (u=3 first), h bottom→top (h=0 first)
+- Presets: `wallFace`=1 subcube, `wallHalf`=2, `wall`=4
+
+**Key principle:** Geometry correctness emerges from painter's order. No recalculation needed.
+To add a new material: add one entry to `MATERIALS` in `generate_subcube.py`, re-run both scripts.
 
 ### Asset Generation Pipeline
 

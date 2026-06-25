@@ -5,16 +5,10 @@ generate_master_block.py — Generate 1-subcubo solid blocks (3 visible isometri
 DESIGN:
   - Canvas: 256×512px
   - Floor diamond: rows 384–512 (center, omnidirectional)
-  - Solid block: 1 subcubo height (40px visual)
-  - 3 visible faces: two vertical fronts (left + right) + one thin top (depth)
-  
-The block is drawn as a full 3D cube in isometric view:
-  • Left-front face (NW-SW edge): vertical parallelogram
-  • Right-front face (NE-SE edge): vertical parallelogram
-  • Top face: thin parallelogram showing cube depth
-
-Each direction (NW/NE/SW/SE) is OMNIDIRECTIONAL (same asset, rotated at runtime
-or used in all 4 orientations with the same visual).
+  - Top face: 4×4 grid (HCUBES=4)
+  - End face (right): 1 vertical band (solid)
+  - Front face: 4 vertical band (solid, 1 SUBCUBE_FACE_HEIGHT)
+  - All 3 faces share COLOR_FLAT (interior), COLOR_GRID (lines), COLOR_EDGE (outline)
 
 OUTPUT: block_NW, block_NE, block_SW, block_SE (256×512, RGBA)
 
@@ -24,95 +18,129 @@ PIPELINE POSITION: Follows SUB-00-C (floor); precedes SUB-00-E (map updates).
 from PIL import Image, ImageDraw
 import os
 
-# Spatial constants
-SUBCUBE_FACE_HEIGHT = 40  # 1 subcubo visual height
-BLOCK_DEPTH_OFFSET = (32, 16)  # depth offset for top face (isometric perspective)
+# Spatial constants (reference from OPERATOR_CONTEXT.md)
+SUBCUBES_PER_FLOOR = 4
+SUBCUBE_FACE_HEIGHT = 40  # art property; visual height per subcubo
+SUBCUBE_STEP_PX = 39.5    # render: 158.0/4, with 0.5px overlap
 
-# Canvas & floor diamond
+# Canvas & floor diamond (same as walls)
 CANVAS_WIDTH, CANVAS_HEIGHT = 256, 512
+FLOOR_TOP_ROW = 384
+FLOOR_BOTTOM_ROW = 512
 
-# Colors
-COLOR_FLAT = (230, 170, 80)      # warm tan (left + top faces)
-COLOR_SIDE = (240, 100, 80)      # warm coral (right face, distinct shading)
-COLOR_GRID = (200, 130, 40, 200) # grid lines
+# Colors (consistent with walls)
+COLOR_FLAT = (230, 170, 80)      # warm tan
+COLOR_GRID = (200, 130, 40, 200) # grid lines, slightly transparent
 COLOR_EDGE = (50, 30, 10)        # dark outline
+COLOR_FRONT = (240, 100, 80)     # warm coral (front face)
 
 # Grid divisions
-HCUBES = 4  # horizontal columns (top face)
-VCUBES = 1  # vertical bands (1 subcubo = 1 band)
+HCUBES = 4  # horizontal (top face columns)
+VCUBES = 1  # vertical (front face rows, i.e., 1 subcubo)
 
 OUTPUT_DIR = "ASSETS/ISOMETRIC/source_assets/generated"
 
 
 def _lerp(a, b, t):
-    """Linear interpolation between two points."""
-    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+    """Linear interpolation."""
+    return a + (b - a) * t
 
 
-def _add(p, offset):
-    """Add offset to point."""
-    return (p[0] + offset[0], p[1] + offset[1])
-
-
-def _draw_face_vertical(draw, tL, tR, bR, bL, hcubes, color):
+def _draw_floor_diamond(draw, tL, tR, bR, bL, hcubes):
     """
-    Draw a vertical isometric face with grid.
-    tL, tR, bR, bL = corners of the parallelogram (top-left, top-right, bottom-right, bottom-left).
-    hcubes = number of horizontal column divisions.
-    color = fill color.
+    Fill and grid a 2D floor diamond.
+    tL, tR, bR, bL = corner points (x, y).
+    hcubes = number of horizontal divisions.
     """
-    # Fill face
-    draw.polygon([tL, tR, bR, bL], fill=color)
+    # Fill diamond
+    draw.polygon([tL, tR, bR, bL], fill=COLOR_FLAT)
     
-    # Vertical columns (left-right divisions)
+    # Draw outline
+    draw.line([tL, tR, bR, bL, tL], fill=COLOR_EDGE, width=2)
+    
+    # Grid lines
     for i in range(1, hcubes):
         t = i / hcubes
-        draw.line([_lerp(tL, bL, t), _lerp(tR, bR, t)], fill=COLOR_GRID, width=1)
-    
-    # Silhouette edges (drawn last for clarity)
-    draw.line([tL, tR], fill=COLOR_EDGE, width=2)  # top edge
-    draw.line([tL, bL], fill=COLOR_EDGE, width=2)  # left edge
-    draw.line([tR, bR], fill=COLOR_EDGE, width=2)  # right edge
-    draw.line([bL, bR], fill=COLOR_EDGE, width=2)  # bottom edge
+        # Left edge → right edge
+        left_point = (_lerp(tL[0], bL[0], t), _lerp(tL[1], bL[1], t))
+        right_point = (_lerp(tR[0], bR[0], t), _lerp(tR[1], bR[1], t))
+        draw.line([left_point, right_point], fill=COLOR_GRID, width=1)
+        
+        # Top edge → bottom edge
+        top_point = (_lerp(tL[0], tR[0], t), _lerp(tL[1], tR[1], t))
+        bottom_point = (_lerp(bL[0], bR[0], t), _lerp(bL[1], bR[1], t))
+        draw.line([top_point, bottom_point], fill=COLOR_GRID, width=1)
 
 
-def _draw_face_top(draw, tL, tR, offset, hcubes):
+def _draw_top(draw, t_tip, b_tip, l_tip, r_tip, offset):
     """
-    Draw thin top face showing cube depth.
-    tL, tR = front edge (top of the vertical faces).
-    offset = (dx, dy) offset for the back edge (depth in isometric perspective).
-    hcubes = horizontal column divisions.
+    Draw top isometric face (diamond, 4×4 grid).
+    t_tip, b_tip, l_tip, r_tip = corner points.
+    offset = vertical offset from canvas top.
     """
-    tL_back = _add(tL, offset)
-    tR_back = _add(tR, offset)
+    # Draw diamond (floor)
+    _draw_floor_diamond(draw, t_tip, r_tip, b_tip, l_tip, HCUBES)
     
-    # Fill top face
-    draw.polygon([tL, tR, tR_back, tL_back], fill=COLOR_FLAT)
+    # Column lines (vertical divisions)
+    for i in range(1, HCUBES):
+        t = i / HCUBES
+        left_point = (_lerp(l_tip[0], t_tip[0], t), _lerp(l_tip[1], t_tip[1], t))
+        right_point = (_lerp(l_tip[0], b_tip[0], t), _lerp(l_tip[1], b_tip[1], t))
+        draw.line([left_point, right_point], fill=COLOR_GRID, width=1)
+
+
+def _draw_end(draw, t_tip, b_tip, offset, vcubes):
+    """
+    Draw right isometric face (end/side face, 1 vertical subcubo).
+    t_tip, b_tip = top and bottom points of diamond right edge.
+    offset = vertical offset from canvas top.
+    vcubes = number of vertical subdivisions (1 for 1-subcubo block).
+    """
+    # Right face at 1-subcubo height
+    face_height = SUBCUBE_FACE_HEIGHT
     
-    # Column lines
-    for i in range(1, hcubes):
-        t = i / hcubes
-        draw.line([_lerp(tL, tR, t), _lerp(tL_back, tR_back, t)], fill=COLOR_GRID, width=1)
+    # Right edge of diamond is vertical; extend up by face_height
+    x_right = b_tip[0]
+    y_diamond = b_tip[1]
+    y_top = y_diamond - face_height
     
-    # Silhouette edges
-    draw.line([tL, tR], fill=COLOR_EDGE, width=2)          # front edge
-    draw.line([tL_back, tR_back], fill=COLOR_EDGE, width=2)  # back edge
-    draw.line([tL, tL_back], fill=COLOR_EDGE, width=1)     # left depth
-    draw.line([tR, tR_back], fill=COLOR_EDGE, width=1)     # right depth
+    # Right face is a parallelogram (isometric)
+    top_left = (x_right, y_top)
+    top_right = (x_right + 64, y_top - 32)
+    bottom_right = (x_right + 64, y_diamond - 32)
+    bottom_left = (x_right, y_diamond)
+    
+    # Fill
+    draw.polygon([top_left, top_right, bottom_right, bottom_left], fill=COLOR_FRONT)
+    
+    # Outline
+    draw.line([top_left, top_right, bottom_right, bottom_left, top_left], 
+              fill=COLOR_EDGE, width=2)
+
+
+def _draw_front(draw, t_left, t_right, b_right, b_left):
+    """
+    Draw front isometric face (vertical face, VCUBES rows).
+    t_left, t_right, b_right, b_left = corners of front face.
+    """
+    # Fill front face
+    draw.polygon([t_left, t_right, b_right, b_left], fill=COLOR_FRONT)
+    
+    # Draw outline
+    draw.line([t_left, t_right, b_right, b_left, t_left], fill=COLOR_EDGE, width=2)
+    
+    # Horizontal grid lines (row divisions)
+    for i in range(1, VCUBES):
+        t = i / VCUBES
+        left_point = (_lerp(t_left[0], b_left[0], t), _lerp(t_left[1], b_left[1], t))
+        right_point = (_lerp(t_right[0], b_right[0], t), _lerp(t_right[1], b_right[1], t))
+        draw.line([left_point, right_point], fill=COLOR_GRID, width=1)
 
 
 def generate(tile_name=None):
     """
     Generate 4 omnidirectional block tiles.
-    Each is 256×512 with a 1-subcubo solid cube rendered in isometric view.
-    
-    Block structure (from top view):
-      • Base: diamond-shaped floor (yellow/tan)
-      • Left face: vertical parallelogram facing NW-SW (tan)
-      • Right face: vertical parallelogram facing NE-SE (coral)
-      • Top: thin depth indicator
-    
-    Order of drawing: base first (behind), then left face, then right face, then top.
+    Each is 256×512 with floor diamond + 3 visible faces.
     """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
@@ -121,89 +149,43 @@ def generate(tile_name=None):
         img = Image.new("RGBA", (CANVAS_WIDTH, CANVAS_HEIGHT), (255, 255, 255, 0))
         draw = ImageDraw.Draw(img)
         
-        # ── CUBE VERTICES ────────────────────────────────────────────────────────
+        # Isometric cube positioning
+        # Diamond (floor) center
+        d_center_x = 128
+        d_top_y = 384
         
-        # Base diamond floor (y: 384-448, 64px tall)
-        d_cx, d_y = 128, 384
-        n_base = (d_cx, d_y)              # North (top) — (128, 384)
-        e_base = (d_cx + 64, d_y + 32)    # East (right) — (192, 416)
-        s_base = (d_cx, d_y + 64)         # South (bottom) — (128, 448)
-        w_base = (d_cx - 64, d_y + 32)    # West (left) — (64, 416)
+        # Diamond corners (2.5D isometric, 128px wide, 64px tall)
+        d_left = (d_center_x - 64, d_top_y + 32)     # Left point
+        d_top = (d_center_x, d_top_y)                # Top point
+        d_right = (d_center_x + 64, d_top_y + 32)    # Right point
+        d_bottom = (d_center_x, d_top_y + 64)        # Bottom point
         
-        # Top of cube (40px above base)
-        h = SUBCUBE_FACE_HEIGHT
-        n_top = (n_base[0], n_base[1] - h)  # (128, 344)
-        e_top = (e_base[0], e_base[1] - h)  # (192, 376)
-        w_top = (w_base[0], w_base[1] - h)  # (64, 376)
+        # Draw floor diamond (base)
+        _draw_floor_diamond(draw, d_top, d_right, d_bottom, d_left, HCUBES)
         
-        # ── DRAW BLOCK ───────────────────────────────────────────────────────────
-        # Order: base → left face → right face → top (for proper occlusion)
+        # Draw 3 faces extending upward
+        # Face height = SUBCUBE_FACE_HEIGHT = 40px
         
-        # 1. BASE DIAMOND (floor, visible as the "foundation")
-        #    This is the bottom of the cube
-        base_face = [n_base, e_base, s_base, w_base]
-        draw.polygon(base_face, fill=(200, 150, 60))  # darker tan for base
+        # Front-left face (left vertical face)
+        fl_top_left = (d_left[0], d_left[1] - SUBCUBE_FACE_HEIGHT)
+        fl_top_right = (d_top[0], d_top[1] - SUBCUBE_FACE_HEIGHT)
+        fl_bottom_right = d_top
+        fl_bottom_left = d_left
+        _draw_front(draw, fl_top_left, fl_top_right, fl_bottom_right, fl_bottom_left)
         
-        # 2. LEFT FACE (NW-SW direction)
-        #    Quad from north-base up to north-top, across to west-top, down to west-base
-        left_face = [n_base, n_top, w_top, w_base]
-        draw.polygon(left_face, fill=COLOR_FLAT)
+        # Front-right face (right vertical face)
+        fr_top_left = (d_top[0], d_top[1] - SUBCUBE_FACE_HEIGHT)
+        fr_top_right = (d_right[0], d_right[1] - SUBCUBE_FACE_HEIGHT)
+        fr_bottom_right = d_right
+        fr_bottom_left = d_top
+        _draw_front(draw, fr_top_left, fr_top_right, fr_bottom_right, fr_bottom_left)
         
-        # Grid on left face (vertical columns)
-        for i in range(1, HCUBES):
-            t = i / HCUBES
-            p_top = _lerp(n_top, w_top, t)
-            p_base = _lerp(n_base, w_base, t)
-            draw.line([p_top, p_base], fill=COLOR_GRID, width=1)
-        
-        # 3. RIGHT FACE (NE-SE direction)
-        #    Quad from north-base up to north-top, across to east-top, down to east-base
-        right_face = [n_base, n_top, e_top, e_base]
-        draw.polygon(right_face, fill=COLOR_SIDE)
-        
-        # Grid on right face (vertical columns)
-        for i in range(1, HCUBES):
-            t = i / HCUBES
-            p_top = _lerp(n_top, e_top, t)
-            p_base = _lerp(n_base, e_base, t)
-            draw.line([p_top, p_base], fill=COLOR_GRID, width=1)
-        
-        # 4. TOP FACE (thin depth indicator)
-        #    Thin parallelogram showing the block extends back
-        n_top_back = _add(n_top, BLOCK_DEPTH_OFFSET)
-        e_top_back = _add(e_top, BLOCK_DEPTH_OFFSET)
-        
-        top_face = [n_top, e_top, e_top_back, n_top_back]
-        draw.polygon(top_face, fill=COLOR_FLAT)
-        
-        # Grid on top face
-        for i in range(1, HCUBES):
-            t = i / HCUBES
-            p_front = _lerp(n_top, e_top, t)
-            p_back = _lerp(n_top_back, e_top_back, t)
-            draw.line([p_front, p_back], fill=COLOR_GRID, width=1)
-        
-        # ── EDGE OUTLINES (drawn last for clarity) ─────────────────────────────────
-        
-        # Base edges
-        draw.line([n_base, e_base], fill=COLOR_EDGE, width=2)
-        draw.line([e_base, s_base], fill=COLOR_EDGE, width=2)
-        draw.line([s_base, w_base], fill=COLOR_EDGE, width=2)
-        draw.line([w_base, n_base], fill=COLOR_EDGE, width=2)
-        
-        # Vertical edges (left face)
-        draw.line([n_base, n_top], fill=COLOR_EDGE, width=2)
-        draw.line([w_base, w_top], fill=COLOR_EDGE, width=2)
-        draw.line([n_top, w_top], fill=COLOR_EDGE, width=2)
-        
-        # Vertical edges (right face)
-        draw.line([e_base, e_top], fill=COLOR_EDGE, width=2)
-        draw.line([n_top, e_top], fill=COLOR_EDGE, width=2)
-        
-        # Top back edges
-        draw.line([n_top, n_top_back], fill=COLOR_EDGE, width=1)
-        draw.line([e_top, e_top_back], fill=COLOR_EDGE, width=1)
-        draw.line([n_top_back, e_top_back], fill=COLOR_EDGE, width=1)
+        # Top face (copy of diamond logic, but higher)
+        top_left = (d_left[0], d_left[1] - SUBCUBE_FACE_HEIGHT)
+        top_right = (d_top[0], d_top[1] - SUBCUBE_FACE_HEIGHT)
+        top_bottom_right = (d_right[0], d_right[1] - SUBCUBE_FACE_HEIGHT)
+        top_bottom_left = (d_bottom[0], d_bottom[1] - SUBCUBE_FACE_HEIGHT)
+        _draw_top(draw, top_left, top_bottom_left, top_left, top_right, d_top_y)
         
         # Save
         output_path = os.path.join(OUTPUT_DIR, f"block_{direction}.png")

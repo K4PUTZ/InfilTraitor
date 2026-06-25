@@ -1,237 +1,266 @@
-# INFILTRAITOR — SUB-00-A: Fix geradores + gerar `wallFace`
-## Pipeline de assets — `generate_master_walls.py`
+# INFILTRAITOR — SUB-00-A (revisão 3): Subcubo 1/4-tile + compositor corrigido
+## Pipeline de assets — `generate_subcube.py` + `generate_wall.py`
 
-**Data:** 2026-06-24
+**Data:** 2026-06-24 (revisão 3 — escala correta do átomo)
 **Fase:** SUB-00 — Fundação de Assets
-**Prioridade:** 1 (bloqueador de todas as fases seguintes)
+
+---
+
+## PROBLEMA COM A VERSÃO ANTERIOR
+
+O subcubo foi gerado com o footprint do tile inteiro (`TILE_HW=128, TILE_HH=64`).
+4 subcubos empilhados = block 4× mais alto que um tile. Correto visualmente mas
+errado de escala: o subcubo deve ser **1/4 do tile** para que:
+- 4 subcubos lado a lado = 1 tile de largura
+- 4 subcubos empilhados = 1 storey de altura
 
 ---
 
 ## ARQUIVOS A MODIFICAR
-- `tools/asset_generation/generate_master_walls.py`
-
-## ARQUIVOS QUE NÃO DEVEM SER TOCADOS
-Todos os outros. Em especial: nenhum arquivo `.gd`, nenhum outro gerador,
-nenhum arquivo de tileset. O rebuild do tileset acontece no SUB-00-B.
+- `tools/asset_generation/generate_subcube.py` — escalar para 1/4 tile
+- `tools/asset_generation/generate_wall.py` — corrigir offsets isométricos
 
 ---
 
-## CONTEXTO
+## PASSO 1 — Corrigir `generate_subcube.py`
 
-Três mudanças precisas em `generate_master_walls.py`:
+### Mudanças nas constantes geométricas
 
-1. **Fix `_draw_top`:** a face superior do slab não tem linhas de coluna.
-   `_draw_front` tem `HCUBES` colunas — `_draw_top` deve ter as mesmas.
+```python
+# ANTES:
+TILE_HW, TILE_HH = 128, 64
+CUBE_HEIGHT       = 40
 
-2. **Fix `_draw_end`:** a face lateral câmera-visível não tem linhas de banda
-   horizontal. `_draw_front` tem `vcubes` bandas — `_draw_end` deve ter as
-   mesmas. A função precisa receber `vcubes` como parâmetro.
-   Colunas ao longo da profundidade (32px) **não são adicionadas** — 32px / 4
-   = 8px por coluna, ilegível em mobile.
+# DEPOIS:
+TILE_HW, TILE_HH = 32, 16    # 1/4 do tile completo (256x128)
+CUBE_HEIGHT       = 32        # proporção cúbica real (igual à do crate)
+```
 
-3. **Adicionar `wallFace`:** tile atômico de 1-subcubo (40px, 1 banda).
-   **Não alterar `OUTPUT_DIR` agora** — o SUB-00-B reorganiza as pastas.
+### Mudança no canvas
 
-Os fixes afetam todos os assets gerados (`wall_*`, `wallHalf_*`, `wallFace_*`).
-Isso é correto e esperado.
+O cubo agora é pequeno. Em vez do canvas 256×512, usar um canvas **64×64**
+que contém apenas o cubo. Isso simplifica os offsets no compositor.
+
+```python
+PNG_W, PNG_H = 64, 64
+```
+
+### Posicionamento no canvas 64×64
+
+Com canvas 64×64, o cubo fica posicionado de forma que seu vértice frontal
+inferior (tS) fique no centro-baixo do canvas:
+
+```python
+# Referência: bW do floor diamond fica em (0, 48) no canvas 64x64
+# Vértices do floor diamond (NOT drawn):
+bN = (32, 32)    # top  (bW.x + TILE_HW, bW.y - TILE_HH)
+bE = (64, 48)    # right
+bS = (32, 64)    # bottom (bW.x + TILE_HW, bW.y + TILE_HH)
+bW = (0,  48)    # left — âncora do sistema de composição
+
+# Topo (lifted by CUBE_HEIGHT=32):
+tN = (32, 0)
+tE = (64, 16)
+tS = (32, 32)
+tW = (0,  16)
+```
+
+### Código completo de `generate_subcube.py`
+
+```python
+"""generate_subcube.py — INFILTRAITOR 1/4-tile atomic subcube generator"""
+from PIL import Image, ImageDraw
+import os
+
+BASE_PATH  = "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
+OUTPUT_DIR = os.path.join(BASE_PATH, "ASSETS/ISOMETRIC/master_assets/subcubes")
+
+PNG_W, PNG_H = 64, 64
+TRANSPARENT  = (0, 0, 0, 0)
+
+MATERIALS = [
+    ("concrete", (195, 185, 170), (70,  62,  54)),
+    ("stone",    (152, 148, 142), (55,  52,  48)),
+    ("wood",     (175, 125,  72), (85,  50,  22)),
+    ("metal",    (158, 164, 172), (58,  62,  68)),
+]
+
+
+def generate_subcube(material_name, color_flat, color_edge):
+    canvas = Image.new("RGBA", (PNG_W, PNG_H), TRANSPARENT)
+    draw   = ImageDraw.Draw(canvas)
+
+    # Floor diamond (NOT drawn — stays transparent for stacking)
+    bN = (32, 32); bE = (64, 48); bS = (32, 64); bW = (0, 48)
+
+    # Top face (lifted by 32px)
+    tN = (32, 0); tE = (64, 16); tS = (32, 32); tW = (0, 16)
+
+    # Draw faces in painter's order
+    draw.polygon([tW, tS, bS, bW], fill=color_flat, outline=color_edge, width=1)  # left
+    draw.polygon([tS, tE, bE, bS], fill=color_flat, outline=color_edge, width=1)  # right
+    draw.polygon([tN, tE, tS, tW], fill=color_flat, outline=color_edge, width=1)  # top
+
+    # Re-stroke silhouette
+    draw.line([tS, bS], fill=color_edge, width=2)
+    draw.line([tW, tS], fill=color_edge, width=2)
+    draw.line([tS, tE], fill=color_edge, width=2)
+
+    return canvas
+
+
+if __name__ == "__main__":
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    for name, flat, edge in MATERIALS:
+        path = os.path.join(OUTPUT_DIR, f"subcube_{name}.png")
+        generate_subcube(name, flat, edge).save(path, "PNG")
+        print(f"  ✓ subcube_{name}.png")
+    print(f"\n✓ {len(MATERIALS)} subcube atoms → {OUTPUT_DIR}")
+```
 
 ---
 
-## PASSO 1 — Fix `_draw_top`
+## PASSO 2 — Corrigir `generate_wall.py`
 
-Localizar `_draw_top` (linha ~132). Corpo atual:
+### Sistema de offsets isométricos
 
+Com o átomo de 64×64px, a âncora de posicionamento é o vértice **bW** do
+floor diamond, que fica em pixel **(0, 48)** dentro do canvas 64×64.
+
+Para posicionar o bW de um subcubo em coordenada de tela **(Px, Py)**:
 ```python
-def _draw_top(draw, tL, tR, offset):
-    """Thin top face showing slab thickness from above."""
-    tL_back = _add(tL, offset)
-    tR_back = _add(tR, offset)
-    draw.polygon([tL, tR, tR_back, tL_back], fill=COLOR_FLAT, outline=COLOR_EDGE)
-    draw.line([tL, tR],         fill=COLOR_EDGE, width=2)   # front top edge
-    draw.line([tL, tL_back],    fill=COLOR_EDGE, width=1)
-    draw.line([tR, tR_back],    fill=COLOR_EDGE, width=1)
-    draw.line([tL_back, tR_back], fill=COLOR_EDGE, width=1)
+dest = (Px - 0, Py - 48)  # = (Px, Py - 48)
 ```
 
-Substituir pelo corpo corrigido — adicionar colunas ANTES do re-stroke:
+**Passos isométricos por subcubo:**
 
-```python
-def _draw_top(draw, tL, tR, offset):
-    """Thin top face showing slab thickness from above."""
-    tL_back = _add(tL, offset)
-    tR_back = _add(tR, offset)
-    draw.polygon([tL, tR, tR_back, tL_back], fill=COLOR_FLAT, outline=COLOR_EDGE)
+A parede NW corre na direção NE (de bW até bN do tile). Mover ao longo da
+parede = subir e ir para a direita em tela:
+- Mover 1 coluna ao longo da parede (u+1): bW desloca **(+32, -16)**
+- Subir 1 nível de altura (h+1): bW desloca **(0, -32)**
 
-    # Column lines matching the front face (HCUBES subdivisions)
-    for i in range(1, HCUBES):
-        t = i / HCUBES
-        draw.line([_lerp(tL, tR, t), _lerp(tL_back, tR_back, t)],
-                  fill=COLOR_GRID, width=1)
-
-    # Silhouette re-stroke (on top of grid lines)
-    draw.line([tL, tR],           fill=COLOR_EDGE, width=2)   # front top edge
-    draw.line([tL, tL_back],      fill=COLOR_EDGE, width=1)
-    draw.line([tR, tR_back],      fill=COLOR_EDGE, width=1)
-    draw.line([tL_back, tR_back], fill=COLOR_EDGE, width=1)
+```
+dest(u, h) = (u * 32,  400 - u * 16 - h * 32)
 ```
 
----
+Verificação:
+- (u=0, h=0): dest=(0,  400) → conteúdo em y∈[400,464] ✓ (base esquerda)
+- (u=3, h=0): dest=(96, 352) → conteúdo em y∈[352,416] ✓ (base direita, mais alto)
+- (u=0, h=3): dest=(0,  304) → conteúdo em y∈[304,368] ✓ (topo esquerdo)
+- (u=3, h=3): dest=(96, 256) → conteúdo em y∈[256,320] ✓ (topo direito)
 
-## PASSO 2 — Fix `_draw_end`
+Tudo dentro de 256×512. Nenhuma coordenada negativa.
 
-Localizar `_draw_end` (linha ~143). Corpo atual:
+**Ordem do pintor:** coluna mais à direita primeiro (u=3→0), dentro de cada
+coluna de baixo para cima (h=0→max). Subcubos à direita ficam ligeiramente
+mais atrás na cena → devem ser desenhados primeiro.
 
-```python
-def _draw_end(draw, t_tip, b_tip, offset):
-    """Camera-visible end face of the slab (one narrow parallelogram)."""
-    t_back = _add(t_tip, offset)
-    b_back = _add(b_tip, offset)
-    draw.polygon([t_tip, t_back, b_back, b_tip], fill=COLOR_FLAT, outline=COLOR_EDGE)
-```
-
-Substituir pela versão com parâmetro `vcubes` e bandas horizontais:
+### Código completo de `generate_wall.py`
 
 ```python
-def _draw_end(draw, t_tip, b_tip, offset, vcubes):
-    """Camera-visible end face of the slab (one narrow parallelogram)."""
-    t_back = _add(t_tip, offset)
-    b_back = _add(b_tip, offset)
-    draw.polygon([t_tip, t_back, b_back, b_tip], fill=COLOR_FLAT, outline=COLOR_EDGE)
+"""generate_wall.py — INFILTRAITOR wall compositor"""
+from PIL import Image
+import os, sys
 
-    # Horizontal bands matching the front face (vcubes subdivisions)
-    # No vertical columns — 32px depth is too narrow for readable subdivisions
-    for i in range(1, vcubes):
-        t = i / vcubes
-        draw.line([_lerp(t_tip, b_tip, t), _lerp(t_back, b_back, t)],
-                  fill=COLOR_GRID, width=1)
+sys.path.insert(0, os.path.dirname(__file__))
+from generate_subcube import generate_subcube, MATERIALS, TRANSPARENT
 
-    # Silhouette re-stroke
-    draw.line([t_tip, t_back],  fill=COLOR_EDGE, width=1)   # top edge
-    draw.line([b_tip, b_back],  fill=COLOR_EDGE, width=1)   # bottom edge
-    draw.line([t_tip, b_tip],   fill=COLOR_EDGE, width=1)   # front edge
-    draw.line([t_back, b_back], fill=COLOR_EDGE, width=1)   # back edge
-```
+BASE_PATH  = "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
+OUTPUT_DIR = os.path.join(BASE_PATH, "ASSETS/ISOMETRIC/master_assets/walls_composed")
 
-**Nota para `wallFace` (vcubes=1):** `range(1, 1)` é vazio — nenhuma banda
-é desenhada, correto para um tile de 1 subcubo.
+OUT_W, OUT_H = 256, 512
 
----
+# Wall height presets (in subcubes). 4 subcubes = 1 storey.
+WALL_PRESETS = {
+    "wallFace": 1,
+    "wallHalf": 2,
+    "wall":     4,
+}
 
-## PASSO 3 — Atualizar chamadas de `_draw_end` em `generate()`
+N_COLS = 4  # subcubes per tile width (fixed: 4 × 32px = 128px = half-tile... hmm)
 
-Localizar a função `generate(base_name, wall_h, vcubes)`. Ela chama `_draw_end`
-em dois lugares. Ambos precisam receber `vcubes`.
 
-```python
-# Ramo NW/SW — antes:
-_draw_end(draw, _add(t_tip, offset), _add(b_tip, offset), neg)
-# Depois:
-_draw_end(draw, _add(t_tip, offset), _add(b_tip, offset), neg, vcubes)
+def generate_wall_shape(subcube_img, height_subcubes, n_cols=N_COLS):
+    canvas = Image.new("RGBA", (OUT_W, OUT_H), TRANSPARENT)
 
-# Ramo NE/SE — antes:
-_draw_end(draw, t_tip, b_tip, offset)
-# Depois:
-_draw_end(draw, t_tip, b_tip, offset, vcubes)
-```
+    # Painter's order: rightmost column first (further from NW camera),
+    # bottom-to-top within each column.
+    for u in range(n_cols - 1, -1, -1):
+        for h in range(height_subcubes):
+            dest_x = u * 32
+            dest_y = 400 - u * 16 - h * 32  # NW wall: right cols go UP (-16)
+            canvas.alpha_composite(subcube_img, dest=(dest_x, dest_y))
 
-Verificar com grep após editar:
-```bash
-grep -n "_draw_end" tools/asset_generation/generate_master_walls.py
-```
-Deve retornar exatamente 3 linhas: a definição e as 2 chamadas.
+    return canvas
 
----
 
-## PASSO 4 — Adicionar `wallFace` ao entry point
-
-Localizar `if __name__ == "__main__":`. Substituir pelo bloco atualizado:
-
-```python
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("wall (160 px, 4 bands):")
-    generate("wall", WALL_HEIGHT, VCUBES_FULL)
+    for mat_name, flat, edge in MATERIALS:
+        subcube = generate_subcube(mat_name, flat, edge)
+        for preset_name, height in WALL_PRESETS.items():
+            out_name = f"{preset_name}_{mat_name}.png"
+            out_path = os.path.join(OUTPUT_DIR, out_name)
+            generate_wall_shape(subcube, height).save(out_path, "PNG")
+            print(f"  ✓ {out_name}")
 
-    print("wallHalf (80 px, 2 bands):")
-    generate("wallHalf", HALF_HEIGHT, VCUBES_HALF)
-
-    print("wallFace (40 px, 1 band — atomic subcube):")
-    generate("wallFace", 40, 1)
-
-    print("\n✓ Done — 12 master wall PNGs written to master_assets/walls/")
-    print("  Note: tileset rebuild happens in SUB-00-B after folder reorganization.")
+    total = len(MATERIALS) * len(WALL_PRESETS)
+    print(f"\n✓ {total} wall PNGs → {OUTPUT_DIR}")
 ```
-
-Corrigir também "5 bands" → "4 bands" no comentário de `wall` (era incorreto).
 
 ---
 
-## PASSO 5 — Rodar o gerador
+## PASSO 3 — Rodar
 
 ```bash
 cd "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
-python3 tools/asset_generation/generate_master_walls.py
-```
-
-Output esperado:
-```
-wall (160 px, 4 bands):
-  ✓ wall_NW.png  ✓ wall_NE.png  ✓ wall_SW.png  ✓ wall_SE.png
-wallHalf (80 px, 2 bands):
-  ✓ wallHalf_NW.png  ✓ wallHalf_NE.png  ✓ wallHalf_SW.png  ✓ wallHalf_SE.png
-wallFace (40 px, 1 band — atomic subcube):
-  ✓ wallFace_NW.png  ✓ wallFace_NE.png  ✓ wallFace_SW.png  ✓ wallFace_SE.png
-
-✓ Done — 12 master wall PNGs written to master_assets/walls/
-  Note: tileset rebuild happens in SUB-00-B after folder reorganization.
+python3 tools/asset_generation/generate_subcube.py
+python3 tools/asset_generation/generate_wall.py
 ```
 
 ---
 
 ## ACCEPTANCE TESTS
 
-**Teste 1 — wallFace PNGs gerados:**
-```bash
-ls ASSETS/ISOMETRIC/master_assets/walls/wallFace_*.png
-```
-Deve listar 4 arquivos: NE, NW, SE, SW.
+**Teste 1 — Escala visual do átomo:**
+Abrir `subcube_concrete.png` (64×64). Deve mostrar um cubo pequeno ocupando
+todo o canvas — cubo proporcional (igual largura e altura visíveis).
 
-**Teste 2 — Dimensões corretas:**
+**Teste 2 — Stacking correto:**
+Abrir `wallFace_concrete.png` e `wall_concrete.png` lado a lado.
+- [ ] `wallFace_concrete.png`: 1 subcubo, alinhado ao canto inferior-direito
+- [ ] `wallHalf_concrete.png`: 2 subcubos — borda horizontal visível entre eles
+- [ ] `wall_concrete.png`: 4 colunas × 4 filas de subcubos formando uma parede
+      isométrica — parallelogram que vai de canto inferior-direito para superior-esquerdo
+
+**Teste 3 — Alinhamento de bordas:**
+No `wall_concrete.png`, as bordas entre subcubos devem ser contínuas —
+nenhum gap nem overlap visível nas juntas horizontais ou verticais.
+
+**Teste 4 — Alpha correto:**
 ```bash
 python3 -c "
 from PIL import Image
-import glob
-for p in sorted(glob.glob('ASSETS/ISOMETRIC/master_assets/walls/wallFace_*.png')):
-    img = Image.open(p)
-    print(p.split('/')[-1], img.size)
+img = Image.open('ASSETS/ISOMETRIC/master_assets/subcubes/subcube_concrete.png')
+assert img.mode == 'RGBA'
+# Floor diamond area deve ser transparente: pixel no centro do diamond (32, 56)
+px = img.getpixel((32, 56))
+assert px[3] == 0, f'Floor não é transparente: {px}'
+print('✓ Alpha correto')
 "
 ```
-Todos devem reportar `(256, 512)`.
-
-**Teste 3 — Inspeção visual:**
-Abrir `wall_NW.png` e `wallFace_NW.png` lado a lado e verificar:
-- [ ] `wall_NW` face top: 4 linhas de coluna visíveis (fix de `_draw_top`)
-- [ ] `wall_NW` face end: 3 bandas horizontais visíveis (fix de `_draw_end`)
-- [ ] `wallFace_NW` face top: 4 linhas de coluna visíveis
-- [ ] `wallFace_NW` face end: sem bandas internas (1 subcubo = correto)
-- [ ] `wallFace_NW` face front: sem bandas internas, 4 colunas verticais
-
-**Teste 4 — Grep confirma 3 referências a `_draw_end`:**
-```bash
-grep -n "_draw_end" tools/asset_generation/generate_master_walls.py
-```
-Deve retornar exatamente 3 linhas.
 
 ---
 
 ## NOTAS PARA O OPERADOR
 
-1. **Não rodar `build_tileset.gd` neste passo.** O rebuild acontece no SUB-00-B
-   após a reorganização de pastas e reescrita do build script.
+1. **4 colunas cobre a borda NW do tile** — a parede NW vai de bW até bN do
+   diamond, que é metade do tile em x (0 a 128px). O canvas de saída 256×512
+   terá conteúdo visível de x=0 a x≈160, com o lado direito transparente. Isso
+   é correto — o sistema de edge-alignment do Godot cuida do posicionamento exato.
 
-2. **Os fixes afetam `wall_*` e `wallHalf_*` também.** Todos os PNGs serão
-   regenerados com as correções — correto e esperado.
+2. **Canvas do átomo é 64×64**, não 256×512. O compositor usa 256×512 para output.
 
-3. **`wallFace` com `vcubes=1`:** aparece como slab limpo sem bandas internas
-   na face front e end — apenas arestas de contorno e 4 colunas na face top.
+3. **Não gerar floor agora.** O gerador de floor (grid 4×4 de subcubos vistos
+   de cima) tem offsets diferentes e será o próximo prompt (SUB-00-C).

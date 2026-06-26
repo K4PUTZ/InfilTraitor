@@ -3,6 +3,8 @@ extends Node2D
 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const SubcubeGeometryClass = preload("res://godot/scripts/world/maps/subcube_geometry.gd")
+const SubcubeCoordsClass = preload("res://godot/scripts/world/subcube_coords.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
@@ -71,6 +73,14 @@ const WALL_BASE_Z_INDEX := 10
 const WALL_FLOOR_STEP_PX := 158.0
 var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
+
+## Subcube render plane (phase SUB-01): 1 storey = 4 subcube rows, each row steps by 39.5 px.
+## This stack is separate from the gameplay plane and uses the subcube tiles registered in the
+## shared tileset.
+const SUBCUBE_STEP_PX: float = 40.0
+var _subcube_tileset: TileSet = null
+var _subcube_layers: Array[TileMapLayer] = []
+var _subcube_tile_ids: Dictionary = {}
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
 ## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
@@ -242,6 +252,7 @@ func _ready() -> void:
 	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
 	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
 	_build_registry(ts)
+	_subcube_tileset = _build_subcube_tileset()
 	
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
@@ -1487,10 +1498,150 @@ func _ensure_prop_stack_layers(count: int) -> void:
 		_prop_stack_layers[i].visible = i < count
 
 
+func _build_subcube_tileset() -> TileSet:
+	var ts := TileSet.new()
+	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	ts.tile_size = Vector2i(64, 32)
+
+	ts.add_custom_data_layer()
+	ts.set_custom_data_layer_name(0, "tile_name")
+	ts.set_custom_data_layer_type(0, TYPE_STRING)
+
+	var source_id: int = 0
+	for tile_name in ["subcube_concrete", "subcube_metal", "subcube_stone", "subcube_wood"]:
+		var path := "res://ASSETS/ISOMETRIC/source_assets/subcubes/%s.png" % tile_name
+		var texture: Texture2D = load(path)
+		if texture == null:
+			push_warning("Room: missing subcube texture: %s" % path)
+			continue
+
+		var source := TileSetAtlasSource.new()
+		source.texture = texture
+		source.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
+		source.create_tile(Vector2i(0, 0))
+		ts.add_source(source, source_id)
+
+		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
+		if td != null:
+			td.texture_origin = Vector2i(0, -40)
+			td.set_custom_data("tile_name", tile_name)
+
+		_subcube_tile_ids[tile_name] = source_id
+		source_id += 1
+
+	if source_id == 0:
+		push_warning("Room: subcube tileset could not be built; subcube render will stay on fallback.")
+		return null
+	return ts
+
+
+func _ensure_subcube_layers(count: int) -> void:
+	if _subcube_tileset == null:
+		return
+	while _subcube_layers.size() < count:
+		var level := _subcube_layers.size()
+		var layer := TileMapLayer.new()
+		layer.tile_set = _subcube_tileset
+		layer.y_sort_origin = 1
+		layer.position = Vector2(VISUAL_GRID_OFFSET.x + 80, VISUAL_GRID_OFFSET.y + 12 - SUBCUBE_STEP_PX * float(level))
+		layer.z_index = WALL_BASE_Z_INDEX + level
+		add_child(layer)
+		_subcube_layers.append(layer)
+	for i in range(_subcube_layers.size()):
+		_subcube_layers[i].visible = i < count
+
+
+func _render_subcube_geometry(subcube_geometry: Dictionary, max_floors: int) -> void:
+	if _subcube_tileset == null:
+		return
+
+	var layer_count: int = maxi(1, max_floors * SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS)
+	_ensure_subcube_layers(layer_count)
+	if _subcube_layers.is_empty():
+		return
+	for layer in _subcube_layers:
+		layer.clear()
+
+	var tile_name := "subcube_concrete"
+	if not _subcube_tile_ids.has(tile_name):
+		tile_name = String(_subcube_tile_ids.keys()[0]) if not _subcube_tile_ids.is_empty() else ""
+	var source_id: int = _subcube_tile_ids.get(tile_name, -1)
+	if source_id < 0:
+		return
+
+	var blocks: Array = subcube_geometry.get("solid_blocks", [])
+	var faces: Array = subcube_geometry.get("wall_faces", [])
+	for block: Dictionary in blocks:
+		_paint_subcube_descriptor(block, source_id, layer_count)
+	for face: Dictionary in faces:
+		_paint_subcube_descriptor(face, source_id, layer_count)
+
+
+func _subcubes_on_edge(unit: Vector2i, edge_delta: Vector2i) -> Array[Vector2i]:
+	## Returns the 4 subcubes along the specified edge of a gameplay unit.
+	## edge_delta tells which direction: (0,-1)=NW, (1,0)=NE, (0,1)=SE, (-1,0)=SW.
+	var origin: Vector2i = SubcubeCoordsClass.unit_to_subcube_origin(unit)
+	var out: Array[Vector2i] = []
+
+	if edge_delta == Vector2i(0, -1):  # NW edge — northernmost row (y=0)
+		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(i, 0))
+	elif edge_delta == Vector2i(1, 0):  # NE edge — easternmost column (x=3)
+		for j in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(3, j))
+	elif edge_delta == Vector2i(0, 1):  # SE edge — southernmost row (y=3)
+		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(i, 3))
+	elif edge_delta == Vector2i(-1, 0):  # SW edge — westernmost column (x=0)
+		for j in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(0, j))
+
+	return out
+
+
+func _paint_subcube_descriptor(desc: Dictionary, source_id: int, layer_count: int) -> void:
+	var base_cell: Vector2i = INVALID_CELL
+	var edge_delta: Vector2i = INVALID_CELL
+	var is_wall_face: bool = false
+
+	if desc.has("unit"):
+		base_cell = Vector2i(desc["unit"])
+	elif desc.has("edge"):
+		var edge: Dictionary = desc["edge"]
+		base_cell = Vector2i(edge.get("from", INVALID_CELL))
+		var to_cell: Vector2i = Vector2i(edge.get("to", INVALID_CELL))
+		edge_delta = to_cell - base_cell
+		is_wall_face = true
+	else:
+		return
+
+	var storey: int = maxi(0, int(desc.get("storey", 0)))
+	var footprint: Array[Vector2i] = SubcubeCoordsClass.unit_subcubes(base_cell)
+
+	## Wall faces paint only subcubes along the edge; solid blocks fill the footprint
+	if is_wall_face:
+		footprint = _subcubes_on_edge(base_cell, edge_delta)
+
+	for local_level in range(SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS):
+		var layer_index := storey * SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS + local_level
+		if layer_index < 0 or layer_index >= layer_count:
+			continue
+		var layer := _subcube_layers[layer_index]
+		for subcell in footprint:
+			layer.set_cell(subcell, source_id, Vector2i(0, 0))
+
+
 func _build_room(layout: Dictionary) -> void:
 	floor_layer.clear()
 	structure_wall_layer.clear()
 	structure_layer.clear()
+	for layer in _wall_upper_layers:
+		layer.clear()
+		layer.visible = true
+	for layer in _subcube_layers:
+		layer.clear()
+		layer.visible = true
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
 	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
@@ -1499,15 +1650,28 @@ func _build_room(layout: Dictionary) -> void:
 		for y in range(0, _room_size.y):
 			_place(Vector2i(x, y), floor_tile_name)
 
-	## Wall storeys: level 0 → base layer; levels 1.. → runtime layers offset up one cube each.
-	var wall_levels: Array = layout.get("wall_levels", [layout.get("wall_tiles", [])])
-	_ensure_wall_upper_layers(maxi(0, wall_levels.size() - 1))
-	for layer in _wall_upper_layers:
-		layer.clear()
-	for level in range(wall_levels.size()):
-		var target: TileMapLayer = structure_wall_layer if level == 0 else _wall_upper_layers[level - 1]
-		for entry in wall_levels[level]:
-			_place(entry.get("cell", INVALID_CELL), String(entry.get("tile_name", "")), target)
+	## Subcube render plane: wall/block descriptors become stacked subcube presence.
+	## The old wall-storey layers remain as a fallback path, but the active render
+	## now comes from the seam's subcube geometry.
+	var subcube_geometry: Dictionary = layout.get("subcube_geometry", {})
+	if not subcube_geometry.is_empty() and _subcube_tileset != null:
+		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
+		_render_subcube_geometry(subcube_geometry, max_floors)
+		structure_wall_layer.visible = false
+		for layer in _wall_upper_layers:
+			layer.visible = false
+	else:
+		## Wall storeys: level 0 → base layer; levels 1.. → runtime layers offset up one cube each.
+		var wall_levels: Array = layout.get("wall_levels", [layout.get("wall_tiles", [])])
+		_ensure_wall_upper_layers(maxi(0, wall_levels.size() - 1))
+		for layer in _wall_upper_layers:
+			layer.clear()
+			layer.visible = true
+		structure_wall_layer.visible = true
+		for level in range(wall_levels.size()):
+			var target: TileMapLayer = structure_wall_layer if level == 0 else _wall_upper_layers[level - 1]
+			for entry in wall_levels[level]:
+				_place(entry.get("cell", INVALID_CELL), String(entry.get("tile_name", "")), target)
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also
@@ -1605,6 +1769,7 @@ func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictiona
 			level_dst.append(out)
 		rotated_levels.append(level_dst)
 	mapped["wall_levels"] = rotated_levels
+	mapped["subcube_geometry"] = SubcubeGeometryClass.build(mapped)
 
 	var blocked_cells: Array[Vector2i] = []
 	for cell in layout.get("blocked_cells", []):
@@ -1922,4 +2087,3 @@ func _unhandled_input(event: InputEvent) -> void:
 		## UI-02: If clicking outside the zone, just select (no move)
 		if cell != INVALID_CELL:
 			_set_selected_cell(cell)
-

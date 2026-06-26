@@ -9,7 +9,11 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-CONVERTER TUDO PRA VOXELS?
+CONVERTER TUDO PRA VOXELS? --> SIM
+
+
+Uma coisa que acho que está ficando importante é criar um glossário pra unificar os conceitos do projeto. Subcubo, tile, etc.
+
 
 Onomatpeias: dicionário de "sons" visiveis.
 

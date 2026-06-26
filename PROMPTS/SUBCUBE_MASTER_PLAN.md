@@ -164,16 +164,17 @@ fase do projeto:
 |---|---|---|
 | `SUBCUBE_SIZE` | `Vector2i(64, 32)` | módulo de geometria + TileSet de render |
 | `SUBCUBES_PER_FLOOR` | `4` | render layer |
-| `SUBCUBE_STEP_PX` | `39.5` (= step por subcubo) | render layer |
+| `SUBCUBE_STEP_PX` | `40.0` (= step por subcubo) | render layer |
 | `MAX_SUBCUBES` | `28` | render layer |
 | Razão `unit→subcube` | `×4` linear | conversão na costura |
 
 > **Storey × subcubo:** 1 storey = `SUBCUBES_PER_FLOOR × SUBCUBE_STEP_PX` =
-> `4 × 39.5` = `158px` = `WALL_FLOOR_STEP_PX`. O total em pixels na tela é o mesmo
-> de hoje — o visual não muda, só nasce um grid fino *embaixo*. Como
-> `WALL_FLOOR_STEP_PX` mantém o significado de "step de storey", o bug de
-> `ceiling_lift`/`fixture_lift` (achado na auditoria) **não se manifesta** nesta
-> arquitetura (ver Notas de Risco).
+> `4 × 40.0` = `160px`. O passo de subcubo foi atualizado (SUB-01-FIX-A) para
+> sincronizar com o canvas de 64×72 e face height 40px da geração de assets.
+> O total em pixels na tela é o mesmo de hoje — o visual não muda, só nasce um
+> grid fino *embaixo*. Como `WALL_FLOOR_STEP_PX` mantém o significado de "step de
+> storey", o bug de `ceiling_lift`/`fixture_lift` (achado na auditoria) **não se
+> manifesta** nesta arquitetura (ver Notas de Risco).
 
 ---
 
@@ -189,32 +190,33 @@ fase do projeto:
 [tipo]_authored     → art do diretor             (door_frame_steel.png)
 ```
 
-- `subcube_*` — cubo 1×1×1, canvas 64×64, 3 faces flat-lit
+- `subcube_*` — cubo 1×1×1, canvas 64×72, 3 faces flat-lit, face height 40px
 - `floor_*` — diamond flat, canvas 64×64, só face top
 - `block_*` — equivalente ao subcube, geometria de bloco sólido
 - Materiais iniciais: `concrete`, `stone`, `wood`, `metal`
 
 ### Compositor PIL — Fórmulas Canônicas
 
-Atom `64×64`. Âncora = bW do floor diamond = pixel `(0, 48)`. Canvas composto `256×512`.
+Atom `64×72` (height 40px). Âncora = bW do floor diamond. Canvas composto `256×512`.
 
 ```python
 # NW wall (corre bW→bN do tile, runs NE na tela)
-dest(u, h) = (u * 32,  400 - u * 16 - h * 32)
+dest(u, h) = (u * 32,  400 - u * 16 - h * 40)
 #   u = coluna ao longo da parede (0=esq, 3=dir); h = altura em subcubos (0=base)
 #   painter's order: u decrescente (3→0), h crescente (0→N)
+#   (passo vertical agora 40px, não 32px)
 
-dest_SE(u, h)  = (u * 32,  400 + u * 16 - h * 32)            # SE wall (espelho)
+dest_SE(u, h)  = (u * 32,  400 + u * 16 - h * 40)            # SE wall (espelho)
 dest_floor(u,v)= (u*32 + v*32,  400 - u*16 + v*16)           # Floor 4×4 (v 3→0, u 0→3)
 dest_block     = (0, 400)                                     # Block 1×1×1 (atom único)
 ```
 
-### Geometria do átomo (subcube, canvas 64×64)
+### Geometria do átomo (subcube, canvas 64×72, face height 40px)
 
 ```python
 # Floor diamond (NÃO desenhado — transparente para empilhamento)
 bN=(32,32); bE=(64,48); bS=(32,64); bW=(0,48)
-# Top face (elevada 32px)
+# Top face (elevada 40px — altura da face opaca)
 tN=(32,0); tE=(64,16); tS=(32,32); tW=(0,16)
 # Faces em painter's order: left, right, top
 ```
@@ -232,7 +234,28 @@ tN=(32,0); tE=(64,16); tS=(32,32); tW=(0,16)
 
 Será reescrito em torno do atlas de cubos pré-fabricados. Mantém-se vivo apenas o
 **unblock mínimo** (corrigir `OUTPUT_DIR` → `source_assets/`, rebuild, confirmar
-`subcube_*` no registry) como pré-requisito do render layer.
+`subcube_*` no registry) como pré-requisito do render layer. **Esse unblock já
+foi concluído na sessão anterior.**
+
+#### 🎯 SUB-01-FIX-A — Sincronizar constantes com assets 64×72 (CONCLUÍDA)
+
+Atualizar `SUBCUBE_STEP_PX` e `texture_origin` em `room.gd` para acompanhar a
+mudança do gerador de subcubos: canvas 64×72, face height 40px. Isso garante
+empilhamento seamless e posicionamento correto no TileMap isométrico.
+
+- ✅ `SUBCUBE_STEP_PX: var` → `const` (39.5 → 40.0)
+- ✅ `texture_origin` (-32 → -40) em `_build_subcube_tileset()`
+
+#### 🎯 SUB-01-FIX-B — Alinhar posição das subcube layers com VISUAL_GRID_OFFSET (CONCLUÍDA)
+
+As subcube layers eram criadas sem compensar o shift intrínseco de +512px do visual grid.
+Isso causava desalinhamento: paredes subcubo apareciam 576px abaixo do grid do floor e
+overlays (exit tiles, selection). O fix aplica `VISUAL_GRID_OFFSET` na base do cálculo
+de posição, alinhando o plano de render com o resto da visualização.
+
+- ✅ `layer.position` em `_ensure_subcube_layers()` — antes: `Vector2(0.0, -SUBCUBE_STEP_PX * level)`
+  após: `Vector2(VISUAL_GRID_OFFSET.x, VISUAL_GRID_OFFSET.y - SUBCUBE_STEP_PX * level)`
+- Resultado esperado: level 0 em +512.0, level 1 em +472.0, etc.
 
 ### ❌ FASE 1 — Grid Migration (GRID-01-A…D) — REMOVIDA
 
@@ -262,7 +285,7 @@ de parede vira `4×4` subcubos na borda correta; floor vira `4×4` subcubos de p
 #### SUB-01-A — `_ensure_subcube_layers`
 
 ```gdscript
-const SUBCUBE_STEP_PX: float = 39.5   # step por subcubo
+const SUBCUBE_STEP_PX: float = 40.0   # step por subcubo (atualizado SUB-01-FIX-A)
 var _subcube_layers: Array[TileMapLayer] = []
 # substitui _ensure_wall_upper_layers; itera subcubos (não storeys)
 # layer.position.y = -SUBCUBE_STEP_PX * nivel_subcubo
@@ -338,7 +361,7 @@ COORD-01-A → COORD-01-B → SUB-01-A → SUB-01-B
                               ▼
                           FASE F (destruição visual)
 
-Pré-requisito transversal: unblock mínimo de assets (subcube_* no registry).
+Pré-requisito transversal: asset unblock concluído (`subcube_*` no registry).
 Paralelo/futuro: 🅿️ reescrita do pipeline (atlas) · FASE G (paletas).
 ```
 
@@ -396,5 +419,5 @@ probabilidade.
 
 ---
 
-**Status:** 🟢 Decisões da sessão 4 registradas · Próximo: prompt de reconciliação
-da documentação do projeto, depois início da implementação (COORD-01-A).
+**Status:** 🟢 Decisões da sessão 4 registradas · COORD-01-A/B concluídos · asset
+unblock concluído · próximo passo real: SUB-01-A.

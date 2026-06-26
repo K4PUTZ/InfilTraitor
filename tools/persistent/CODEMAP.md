@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**58 scripts · 10513 lines total** (under `godot/scripts/`)
+**58 scripts · 10677 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1329,13 +1329,15 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1925 lines
+extends `Node2D` · 2089 lines
 
 `godot/scripts/world/room.gd`
 
 **Constants / tuning**
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `SubcubeGeometryClass` = `preload("res://godot/scripts/world/maps/subcube_geometry.gd")`
+- `SubcubeCoordsClass` = `preload("res://godot/scripts/world/subcube_coords.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
 - `GuardNoiseIndicatorClass` = `preload("res://godot/scripts/overlays/guard_noise_indicator.gd")`
@@ -1355,6 +1357,7 @@ extends `Node2D` · 1925 lines
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
+- `SUBCUBE_STEP_PX` = `40.0`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
 - `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`

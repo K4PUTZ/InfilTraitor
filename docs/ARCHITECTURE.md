@@ -3,7 +3,7 @@
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`
-**Last reconciled with code:** 2026-06-17
+**Last reconciled with code:** 2026-06-26 (SUB-01-FIX-B: layer.position VISUAL_GRID_OFFSET alignment)
 **Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
 ---
@@ -20,9 +20,11 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
-## Subcube Render Plane (Planned)
+## Subcube Render Plane (Partial)
 
 The engine uses two coordinate spaces. The **gameplay plane** (the rest of this document, `CELL_SIZE 256×128`) is unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. A planned **geometry/render plane** (`SUBCUBE_SIZE 64×32`, 4×4 subcubes per gameplay unit) adds subcube stacking, face lighting, occlusion-by-deletion, and dynamic geometry. Conversions happen only at the seam (`map_compiler.gd`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md`.
+
+`room.gd` now consumes `subcube_geometry` and instantiates a dedicated subcube layer stack as the active wall render path. **SUB-01-FIX-A** synced `SUBCUBE_STEP_PX` (40.0px) and `texture_origin` (-40) to match the 64×72 asset canvas and 40px face height. **SUB-01-FIX-B** aligned layer positions with `VISUAL_GRID_OFFSET`, ensuring the subcube render plane synchronizes with the visual grid used by floors, exits, and overlays. The later slices still need view occlusion / presence deletion / lighting refinements, so this plane is partial rather than complete.
 
 ---
 

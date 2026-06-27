@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Screenshot System (Broken) - $(date +%Y-%m-%d)"
+TAG="Alpha Screenshot System (Broken)2 - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

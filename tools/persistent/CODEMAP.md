@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**59 scripts · 10848 lines total** (under `godot/scripts/`)
+**59 scripts · 10899 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1337,7 +1337,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2219 lines
+extends `Node2D` · 2270 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1366,6 +1366,8 @@ extends `Node2D` · 2219 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `SUBCUBE_STEP_PX` = `40.0`
+- `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
+- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i( 12, -6), "NE": Vector2i( 12,  6), "SE": Vector2i(-12,  6), "SW": Vector2i(-12, -6), }`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
 - `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`

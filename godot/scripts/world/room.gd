@@ -78,6 +78,19 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 ## This stack is separate from the gameplay plane and uses the subcube tiles registered in the
 ## shared tileset.
 const SUBCUBE_STEP_PX: float = 40.0
+
+## Ponto de origem base para todos os tiles de subcubo no tileset (inalterado).
+const SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)
+
+## v3: Aumentar magnitude para ficar sobre as arestas.
+## (8,-4) ficou curto. Tentando (12,-6) = 75% do meio-passo.
+const SUBCUBE_FACE_OFFSETS: Dictionary = {
+	"NW": Vector2i( 12, -6),
+	"NE": Vector2i( 12,  6),
+	"SE": Vector2i(-12,  6),
+	"SW": Vector2i(-12, -6),
+}
+
 var _subcube_tileset: TileSet = null
 var _subcube_layers: Array[TileMapLayer] = []
 var _subcube_tile_ids: Dictionary = {}
@@ -1509,26 +1522,43 @@ func _build_subcube_tileset() -> TileSet:
 	ts.set_custom_data_layer_type(0, TYPE_STRING)
 
 	var source_id: int = 0
-	for tile_name in ["subcube_concrete", "subcube_metal", "subcube_stone", "subcube_wood"]:
-		var path := "res://ASSETS/ISOMETRIC/source_assets/subcubes/%s.png" % tile_name
+	var materials: Array[String] = ["subcube_concrete", "subcube_metal", "subcube_stone", "subcube_wood"]
+	var directions: Array[String] = ["NW", "NE", "SE", "SW"]
+
+	for mat in materials:
+		var path := "res://ASSETS/ISOMETRIC/source_assets/subcubes/%s.png" % mat
 		var texture: Texture2D = load(path)
 		if texture == null:
 			push_warning("Room: missing subcube texture: %s" % path)
 			continue
 
-		var source := TileSetAtlasSource.new()
-		source.texture = texture
-		source.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
-		source.create_tile(Vector2i(0, 0))
-		ts.add_source(source, source_id)
-
-		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
-		if td != null:
-			td.texture_origin = Vector2i(0, -40)
-			td.set_custom_data("tile_name", tile_name)
-
-		_subcube_tile_ids[tile_name] = source_id
+		## Tile base — blocos sólidos (sem offset direcional)
+		var src_base := TileSetAtlasSource.new()
+		src_base.texture = texture
+		src_base.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
+		src_base.create_tile(Vector2i(0, 0))
+		ts.add_source(src_base, source_id)
+		var td_base: TileData = src_base.get_tile_data(Vector2i(0, 0), 0)
+		if td_base != null:
+			td_base.texture_origin = SUBCUBE_BASE_ORIGIN
+			td_base.set_custom_data("tile_name", mat)
+		_subcube_tile_ids[mat] = source_id
 		source_id += 1
+
+		## Variantes direcionais — faces de parede (mesmo PNG, texture_origin diferente)
+		for dir in directions:
+			var variant_name := "%s_%s" % [mat, dir]
+			var src_dir := TileSetAtlasSource.new()
+			src_dir.texture = texture
+			src_dir.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
+			src_dir.create_tile(Vector2i(0, 0))
+			ts.add_source(src_dir, source_id)
+			var td_dir: TileData = src_dir.get_tile_data(Vector2i(0, 0), 0)
+			if td_dir != null:
+				td_dir.texture_origin = SUBCUBE_BASE_ORIGIN + SUBCUBE_FACE_OFFSETS[dir]
+				td_dir.set_custom_data("tile_name", variant_name)
+			_subcube_tile_ids[variant_name] = source_id
+			source_id += 1
 
 	if source_id == 0:
 		push_warning("Room: subcube tileset could not be built; subcube render will stay on fallback.")
@@ -1600,6 +1630,17 @@ func _subcubes_on_edge(unit: Vector2i, edge_delta: Vector2i) -> Array[Vector2i]:
 	return out
 
 
+func _edge_delta_to_dir(delta: Vector2i) -> String:
+	## Converte edge_delta de subcube_geometry para sufixo direcional (NW/NE/SE/SW).
+	## Retorna "" para deltas inválidos (não deve ocorrer em geometria válida).
+	match delta:
+		Vector2i( 0, -1): return "NW"
+		Vector2i( 1,  0): return "NE"
+		Vector2i( 0,  1): return "SE"
+		Vector2i(-1,  0): return "SW"
+	return ""
+
+
 func _paint_subcube_descriptor(desc: Dictionary, source_id: int, layer_count: int) -> void:
 	var base_cell: Vector2i = INVALID_CELL
 	var edge_delta: Vector2i = INVALID_CELL
@@ -1616,6 +1657,16 @@ func _paint_subcube_descriptor(desc: Dictionary, source_id: int, layer_count: in
 	else:
 		return
 
+	## Seleciona tile: variante direcional para faces de parede, base para blocos.
+	var active_source_id: int = source_id  ## fallback = tile base passado pelo caller
+	if is_wall_face:
+		var dir: String = _edge_delta_to_dir(edge_delta)
+		if dir != "":
+			var tile_name := "subcube_concrete_%s" % dir
+			var dir_id: int = _subcube_tile_ids.get(tile_name, -1)
+			if dir_id >= 0:
+				active_source_id = dir_id
+
 	var storey: int = maxi(0, int(desc.get("storey", 0)))
 	var footprint: Array[Vector2i] = SubcubeCoordsClass.unit_subcubes(base_cell)
 
@@ -1629,7 +1680,7 @@ func _paint_subcube_descriptor(desc: Dictionary, source_id: int, layer_count: in
 			continue
 		var layer := _subcube_layers[layer_index]
 		for subcell in footprint:
-			layer.set_cell(subcell, source_id, Vector2i(0, 0))
+			layer.set_cell(subcell, active_source_id, Vector2i(0, 0))
 
 
 func _build_room(layout: Dictionary) -> void:

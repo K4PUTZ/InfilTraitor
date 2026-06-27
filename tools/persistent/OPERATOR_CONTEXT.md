@@ -80,6 +80,35 @@ Practical rules:
 
 > **Key rule:** any overlay that needs the lamp's screen position must use `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` received from `room.gd` — never a per-`height_class` lookup table. `max_floors` comes from `_base_layout.get("max_floors", 1)`.
 
+#### Subcube wall straddle (SUB-01 phase)
+
+Wall geometry is rendered on a **separate subcube plane** (40px vertical step) to avoid interfering with the gameplay grid. Directional walls (NW/NE/SE/SW) are rendered at tile **boundaries**, making them visually divide the edge 50/50 with neighbors.
+
+**Mechanism:** Four tileset source variants per material, each with independent `texture_origin` offset:
+
+```gdscript
+SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)     # universal anchor
+SUBCUBE_FACE_OFFSETS := {
+    "NW": Vector2i( 12, -6),    # pushes sprite NW (away from tile center)
+    "NE": Vector2i( 12,  6),    # pushes sprite NE
+    "SE": Vector2i(-12,  6),    # pushes sprite SE
+    "SW": Vector2i(-12, -6),    # pushes sprite SW
+}
+# texture_origin for each variant = SUBCUBE_BASE_ORIGIN + offset
+```
+
+**Tuning:** The offsets are tuned empirically by visual feedback (≈75% half-step distance). If a direction looks misaligned:
+1. Edit `SUBCUBE_FACE_OFFSETS[dir]` in `room.gd` (lines 87–92)
+2. Call `_build_subcube_tileset()` to regenerate
+3. Reload the scene
+
+**Code locations:**
+- Constant definition: `room.gd:87–92` (`SUBCUBE_FACE_OFFSETS`)
+- Tileset construction: `room.gd:1558` (applies offset in loop)
+- Runtime selection: `room.gd:1663–1668` (selects variant based on `_edge_delta_to_dir()`)
+
+See `SUBCUBE_WALL_STRADDLE.md` for full design documentation.
+
 ---
 
 ## Architecture — Inviolable Rules

@@ -1544,7 +1544,7 @@ func _ensure_subcube_layers(count: int) -> void:
 		var layer := TileMapLayer.new()
 		layer.tile_set = _subcube_tileset
 		layer.y_sort_origin = 1
-		layer.position = Vector2(VISUAL_GRID_OFFSET.x + 80, VISUAL_GRID_OFFSET.y + 12 - SUBCUBE_STEP_PX * float(level))
+		layer.position = Vector2(VISUAL_GRID_OFFSET.x + 100, VISUAL_GRID_OFFSET.y + 2 - SUBCUBE_STEP_PX * float(level))
 		layer.z_index = WALL_BASE_Z_INDEX + level
 		add_child(layer)
 		_subcube_layers.append(layer)
@@ -2063,6 +2063,16 @@ func _input(event: InputEvent) -> void:
 ## Left mouse: only runs when no GUI Control consumed the event first.
 ## This lets HUD buttons work while still handling pan + tile selection.
 func _unhandled_input(event: InputEvent) -> void:
+	## Screenshot hotkeys
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_P:
+			if event.shift_pressed:
+				_capture_screenshot_to_file()
+			else:
+				_capture_screenshot_to_clipboard()
+			get_viewport().set_input_as_handled()
+			return
+
 	if turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	if not event is InputEventMouseButton:
@@ -2083,7 +2093,127 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not mb.pressed:
 		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
 		var cell := _screen_to_tile(mb.position)
-		
+
 		## UI-02: If clicking outside the zone, just select (no move)
 		if cell != INVALID_CELL:
 			_set_selected_cell(cell)
+
+
+func _capture_screenshot_to_clipboard() -> void:
+	var image := get_viewport().get_texture().get_image()
+	if image == null:
+		push_error("Failed to capture screenshot")
+		return
+
+	## Save to system temp directory
+	var temp_dir := OS.get_environment("TMPDIR")
+	if temp_dir.is_empty():
+		temp_dir = "/tmp" if OS.get_name() != "Windows" else OS.get_environment("TEMP")
+
+	var timestamp := Time.get_ticks_msec()
+	var temp_filename := "%s/infiltraitor_clipboard_%d.png" % [temp_dir, timestamp]
+
+	var error := image.save_png(temp_filename)
+	if error != OK:
+		push_error("Failed to save temp screenshot: error %d" % error)
+		return
+
+	## Copy PNG bitmap to clipboard using OS-specific commands
+	var os_name := OS.get_name()
+	var success := false
+
+	if os_name == "macOS":
+		## macOS: use pure AppleScript with Foundation/AppKit frameworks
+		var apple_script := """use framework "Foundation"
+use framework "AppKit"
+
+on run argv
+    set imagePath to item 1 of argv
+    set image to current application's NSImage's alloc()'s initWithContentsOfFile_(imagePath)
+    set pasteboard to current application's NSPasteboard's generalPasteboard()
+    pasteboard's clearContents()
+    pasteboard's setData_forType_(image's TIFFRepresentation(), current application's NSTIFFPboardType)
+    return "ok"
+end run"""
+		success = OS.execute("/usr/bin/osascript", ["-l", "AppleScript", "-e", apple_script, "--", temp_filename]) == 0
+
+	elif os_name == "Linux":
+		## Linux: try xclip, then xsel
+		success = OS.execute("xclip", ["-selection", "clipboard", "-t", "image/png", "-i", temp_filename]) == 0
+		if not success:
+			success = OS.execute("xsel", ["-b", "-i"], [temp_filename]) == 0
+
+	elif os_name == "Windows":
+		## Windows: PowerShell with image to clipboard
+		var ps_cmd := "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('%s'))" % temp_filename
+		success = OS.execute("powershell.exe", ["-NoProfile", "-Command", ps_cmd]) == 0
+
+	if success:
+		print("✓ Screenshot copied to clipboard (bitmap)")
+	else:
+		print_debug("Clipboard copy failed or tool unavailable. Image saved to: %s" % temp_filename)
+
+
+func _capture_screenshot_to_file() -> void:
+	var image := get_viewport().get_texture().get_image()
+	if image == null:
+		push_error("Failed to capture screenshot")
+		return
+
+	## Create REFERENCES/Screenshots directory if it doesn't exist
+	var screenshots_dir := "user://REFERENCES/Screenshots"
+	var absolute_screenshots_dir := ProjectSettings.globalize_path(screenshots_dir)
+	DirAccess.make_dir_absolute(absolute_screenshots_dir)
+
+	## Generate filename with timestamp
+	var now := Time.get_ticks_msec()
+	var timestamp := Time.get_datetime_dict_from_system()
+	var date_str := "%04d-%02d-%02d_%02d-%02d-%02d" % [
+		timestamp["year"],
+		timestamp["month"],
+		timestamp["day"],
+		timestamp["hour"],
+		timestamp["minute"],
+		timestamp["second"],
+	]
+	var filename := "%s/screenshot_%s.png" % [absolute_screenshots_dir, date_str]
+
+	## Save PNG
+	var error := image.save_png(filename)
+	if error != OK:
+		push_error("Failed to save screenshot: %s (error code: %d)" % [filename, error])
+		return
+
+	## Create metadata file
+	var metadata_filename := filename.trim_suffix(".png") + ".json"
+	var agent_cell_data: Variant = null
+	if agent != null:
+		agent_cell_data = [agent.cell.x, agent.cell.y]
+
+	var metadata := {
+		"timestamp": now,
+		"datetime": date_str,
+		"game_version": _get_game_version(),
+		"resolution": {
+			"width": image.get_width(),
+			"height": image.get_height(),
+		},
+		"map_id": _base_layout.get("id", "unknown"),
+		"agent_cell": agent_cell_data,
+		"perspective": _active_perspective,
+	}
+
+	var json_str := JSON.stringify(metadata)
+	var file := FileAccess.open(metadata_filename, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to create metadata file: %s" % metadata_filename)
+		return
+	file.store_string(json_str)
+
+	print("Screenshot saved: %s" % filename)
+
+
+func _get_game_version() -> String:
+	## TODO: Implement game versioning system
+	## For now, returns a placeholder version string
+	return "dev-build"

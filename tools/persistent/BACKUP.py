@@ -66,6 +66,12 @@ EXCLUDE_EXTENSIONS = {
     ".svg",
     ".ico",
     ".icns",
+    # Arquivos comprimidos (sessões antigas, backups)
+    ".zip",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".gz",
 }
 
 

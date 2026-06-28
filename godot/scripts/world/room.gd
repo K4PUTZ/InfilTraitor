@@ -718,6 +718,31 @@ func _draw_spawn_marker() -> void:
 		Color(0.22, 0.22, 0.22, 0.80), 2.0
 	)
 
+
+func _draw_playable_boundary() -> void:
+	## Linha vermelha fina ao redor da área jogável. Visível apenas em DEV_VISION.
+	## Traça os 4 vértices extremos do floor grid no espaço world do Room node.
+	if not _vision_controller.dev_vision:
+		return
+	if _room_size == Vector2i.ZERO or floor_layer == null:
+		return
+
+	var W: int = _room_size.x
+	var H: int = _room_size.y
+	var off: Vector2 = VISUAL_GRID_OFFSET
+
+	var n: Vector2 = floor_layer.map_to_local(Vector2i(0, 0)) + off
+	var e: Vector2 = floor_layer.map_to_local(Vector2i(W, 0)) + off
+	var s: Vector2 = floor_layer.map_to_local(Vector2i(W, H)) + off
+	var w: Vector2 = floor_layer.map_to_local(Vector2i(0, H)) + off
+
+	draw_polyline(
+		PackedVector2Array([n, e, s, w, n]),
+		Color(1.0, 0.15, 0.15, 0.90),
+		2.5,
+		true   ## antialiased
+	)
+
 ## Artistic shadow spill: a full-shadow tile bleeds a soft halo onto its neighbours.
 ## COSMETIC only — never feeds gameplay (detection reads ExposureSystem), so the spill
 ## has no hiding value. Shaped two ways:
@@ -1355,6 +1380,7 @@ func _update_enemy_visibility() -> void:
 func _draw() -> void:
 	_draw_exit_markers()
 	_draw_spawn_marker()
+	_draw_playable_boundary()
 	_draw_shadow_debug()
 
 	## Draw enemy last_known markers

@@ -1609,7 +1609,7 @@ func _ensure_subcube_layers(count: int) -> void:
 		var layer := TileMapLayer.new()
 		layer.tile_set = _subcube_tileset
 		layer.y_sort_origin = 1
-		layer.position = Vector2(VISUAL_GRID_OFFSET.x + 100, VISUAL_GRID_OFFSET.y + 2 - SUBCUBE_STEP_PX * float(level))
+		layer.position = Vector2(VISUAL_GRID_OFFSET.x, VISUAL_GRID_OFFSET.y - SUBCUBE_STEP_PX * float(level))
 		layer.z_index = WALL_BASE_Z_INDEX + level
 		add_child(layer)
 		_subcube_layers.append(layer)

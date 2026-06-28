@@ -720,27 +720,30 @@ func _draw_spawn_marker() -> void:
 
 
 func _draw_playable_boundary() -> void:
-	## Linha vermelha fina ao redor da área jogável. Visível apenas em DEV_VISION.
-	## Traça os 4 vértices extremos do floor grid no espaço world do Room node.
+	## Linha vermelha fina ao redor da área JOGÁVEL (excluindo o buffer ring).
+	## Visível apenas em DEV_VISION.
 	if not _vision_controller.dev_vision:
 		return
-	if _room_size == Vector2i.ZERO or floor_layer == null:
+	if floor_layer == null or _base_layout.is_empty():
 		return
 
-	var W: int = _room_size.x
-	var H: int = _room_size.y
-	var off: Vector2 = VISUAL_GRID_OFFSET
+	## playable_rect: Rect2i(offset, inner_size) — injetado pelo MapCompiler.
+	## Fallback para _room_size inteiro quando não disponível (mapas legados).
+	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
+	var origin: Vector2i = pr.position
+	var size:   Vector2i = pr.size
+	var off:    Vector2  = VISUAL_GRID_OFFSET
 
-	var n: Vector2 = floor_layer.map_to_local(Vector2i(0, 0)) + off
-	var e: Vector2 = floor_layer.map_to_local(Vector2i(W, 0)) + off
-	var s: Vector2 = floor_layer.map_to_local(Vector2i(W, H)) + off
-	var w: Vector2 = floor_layer.map_to_local(Vector2i(0, H)) + off
+	var n: Vector2 = floor_layer.map_to_local(origin) + off
+	var e: Vector2 = floor_layer.map_to_local(origin + Vector2i(size.x, 0)) + off
+	var s: Vector2 = floor_layer.map_to_local(origin + size) + off
+	var w: Vector2 = floor_layer.map_to_local(origin + Vector2i(0, size.y)) + off
 
 	draw_polyline(
 		PackedVector2Array([n, e, s, w, n]),
 		Color(1.0, 0.15, 0.15, 0.90),
 		2.5,
-		true   ## antialiased
+		true
 	)
 
 ## Artistic shadow spill: a full-shadow tile bleeds a soft halo onto its neighbours.

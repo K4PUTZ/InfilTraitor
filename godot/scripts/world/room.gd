@@ -2340,9 +2340,11 @@ end run"""
 		success = OS.execute("powershell.exe", ["-NoProfile", "-Command", ps_cmd]) == 0
 
 	if success:
-		print("✓ Screenshot copied to clipboard (bitmap)")
+		print("✓ Screenshot copied to clipboard")
+		_show_screenshot_toast("📋 Screenshot copiado")
 	else:
-		print_debug("Clipboard copy failed or tool unavailable. Image saved to: %s" % temp_filename)
+		print_debug("Clipboard copy failed. Image saved to: %s" % temp_filename)
+		_show_screenshot_toast("⚠ Clipboard falhou — salvo em /tmp")
 
 
 func _capture_screenshot_to_file() -> void:
@@ -2351,13 +2353,13 @@ func _capture_screenshot_to_file() -> void:
 		push_error("Failed to capture screenshot")
 		return
 
-	## Create REFERENCES/Screenshots directory if it doesn't exist
-	var screenshots_dir := "user://REFERENCES/Screenshots"
-	var absolute_screenshots_dir := ProjectSettings.globalize_path(screenshots_dir)
+	## Salva em REFERENCES/Screenshots/ dentro do diretório do projeto (res://).
+	## Mais acessível que user:// (app-data do Godot).
+	var project_root := ProjectSettings.globalize_path("res://")
+	var absolute_screenshots_dir := project_root + "REFERENCES/Screenshots"
 	DirAccess.make_dir_absolute(absolute_screenshots_dir)
 
 	## Generate filename with timestamp
-	var now := Time.get_ticks_msec()
 	var timestamp := Time.get_datetime_dict_from_system()
 	var date_str := "%04d-%02d-%02d_%02d-%02d-%02d" % [
 		timestamp["year"],
@@ -2382,7 +2384,6 @@ func _capture_screenshot_to_file() -> void:
 		agent_cell_data = [agent.cell.x, agent.cell.y]
 
 	var metadata := {
-		"timestamp": now,
 		"datetime": date_str,
 		"game_version": _get_game_version(),
 		"resolution": {
@@ -2401,10 +2402,37 @@ func _capture_screenshot_to_file() -> void:
 		return
 	file.store_string(json_str)
 
+	var short_name := filename.get_file()
 	print("Screenshot saved: %s" % filename)
+	_show_screenshot_toast("💾 %s" % short_name)
 
 
 func _get_game_version() -> String:
 	## TODO: Implement game versioning system
 	## For now, returns a placeholder version string
 	return "dev-build"
+
+
+## Exibe uma mensagem temporária no HUD (CanvasLayer $HUD).
+## Aparece no canto inferior-esquerdo e desvanece em 2 s.
+func _show_screenshot_toast(message: String) -> void:
+	var hud: CanvasLayer = get_node_or_null("HUD")
+	if hud == null:
+		return
+
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	lbl.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+	lbl.add_theme_constant_override("shadow_offset_x", 1)
+	lbl.add_theme_constant_override("shadow_offset_y", 1)
+	lbl.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	lbl.offset_bottom = -24.0
+	lbl.offset_left   =  16.0
+	hud.add_child(lbl)
+
+	var tw := lbl.create_tween()
+	tw.tween_interval(1.6)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(lbl.queue_free)

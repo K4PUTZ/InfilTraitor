@@ -1672,6 +1672,74 @@ func _build_wall_containers(subcube_geometry: Dictionary) -> void:
 		add_child(wc)
 		_wall_containers.append(wc)
 
+	## ── Corner fills ────────────────────────────────────────────────────────
+	## Offsets de corner fill = média dos FACE_CENTER_OFFSETs das duas faces
+	## adjacentes no subcubo compartilhado. Ver DIRECTION_GLOSSARY.md §5.
+	const _FILL_OFFSET: Dictionary = {
+		"NW_NE": Vector2(  0.0, -28.0),
+		"NW_SW": Vector2(-16.0, -20.0),
+		"SE_NE": Vector2( 16.0, -20.0),
+		"SE_SW": Vector2(  0.0, -12.0),
+	}
+
+	## Subcubo local compartilhado por corner (em coords de subcubo relativos à origin).
+	## Y-varying (NW/SE): contribui com x. X-varying (NE/SW): contribui com y.
+	const _FILL_SHARED_LOCAL: Dictionary = {
+		"NW_NE": Vector2i(0, 0),
+		"NW_SW": Vector2i(0, 3),
+		"SE_NE": Vector2i(3, 0),
+		"SE_SW": Vector2i(3, 3),
+	}
+
+	## Agrupar dirs por cell (em UNIT coords) para detectar corners (2 faces).
+	var cell_dirs: Dictionary = {}  ## "x,y" → {unit, dirs[], max_storey}
+
+	for key: String in face_groups:
+		var grp: Dictionary = face_groups[key]
+		var unit: Vector2i  = Vector2i()
+		# Extrair unit da key (formato: "x,y,dir")
+		var parts: PackedStringArray = key.split(",")
+		if parts.size() >= 2:
+			unit = Vector2i(int(parts[0]), int(parts[1]))
+		else:
+			continue
+
+		var cell_key: String = "%d,%d" % [unit.x, unit.y]
+		if not cell_dirs.has(cell_key):
+			cell_dirs[cell_key] = {"unit": unit, "dirs": [], "max_storey": 0}
+		cell_dirs[cell_key]["dirs"].append(grp["wall_dir"])
+		cell_dirs[cell_key]["max_storey"] = maxi(
+				cell_dirs[cell_key]["max_storey"], grp["max_storey"])
+
+	## Criar 1 corner fill por célula com 2 faces (corner cell).
+	for cell_key: String in cell_dirs:
+		var cd: Dictionary = cell_dirs[cell_key]
+		if cd["dirs"].size() != 2:
+			continue  ## não é corner
+
+		## Ordenar dirs para obter key canônica do dict de fill.
+		var sorted_dirs: Array = cd["dirs"].duplicate()
+		sorted_dirs.sort()
+		var fill_key: String = "%s_%s" % [sorted_dirs[0], sorted_dirs[1]]
+
+		if not _FILL_OFFSET.has(fill_key):
+			push_warning("WallContainer: corner fill key não reconhecida: %s" % fill_key)
+			continue
+
+		## Subcubo compartilhado em coords de subcubo absolutos.
+		var unit: Vector2i    = cd["unit"]
+		var origin: Vector2i  = SubcubeCoordsClass.unit_to_subcube_origin(unit)
+		var local: Vector2i   = _FILL_SHARED_LOCAL[fill_key]
+		var shared_sc: Vector2i = origin + local
+
+		var fill_off: Vector2   = _FILL_OFFSET[fill_key]
+		var storey_count: int   = cd["max_storey"] + 1
+
+		var wc_fill := WallContainerClass.new()
+		wc_fill.build_corner_fill(ref_layer, atom_image, shared_sc, fill_off, storey_count)
+		add_child(wc_fill)
+		_wall_containers.append(wc_fill)
+
 
 func _subcubes_on_edge(unit: Vector2i, edge_delta: Vector2i) -> Array[Vector2i]:
 	## Returns the 4 subcubes along the specified edge of a gameplay unit.

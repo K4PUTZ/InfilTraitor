@@ -87,3 +87,46 @@ func build(ref_layer: TileMapLayer, atom_image: Image,
 	sp.z_index = sc0.x + sc0.y
 
 	add_child(sp)
+
+
+## Constrói a Image de corner fill: 1 átomo de largura × N storeys de altura.
+## Posicionado no ponto médio entre os dois FACE_CENTER_OFFSETs do corner.
+##
+## ref_layer      — TileMapLayer de referência para map_to_local().
+## atom_image     — Image do átomo (64×72).
+## shared_subcell — subcell compartilhado pelos dois WallContainers do corner.
+## fill_offset    — Vector2 = média dos FACE_CENTER_OFFSETs das duas faces.
+## storey_count   — número de andares.
+func build_corner_fill(ref_layer: TileMapLayer, atom_image: Image,
+		shared_subcell: Vector2i, fill_offset: Vector2, storey_count: int) -> void:
+	dir = "CORNER"
+
+	var n: int           = storey_count
+	var baseline_y: int  = (n * SUBCUBES_PER_AXIS - 1) * int(SUBCUBE_STEP_PX)
+	var image_h: int     = baseline_y + ATOM_H
+	var anchor_y: float  = baseline_y + ATOM_H * 0.5
+
+	## ── Compor a Image (1 átomo por layer_index) ────────────────────────────
+	var image := Image.create(ATOM_W, image_h, false, Image.FORMAT_RGBA8)
+
+	## Painter's algorithm: layer_index 0 (base) primeiro, N*4−1 (topo) último.
+	for layer_index in n * SUBCUBES_PER_AXIS:
+		var blit_y: int = -layer_index * int(SUBCUBE_STEP_PX) + baseline_y
+		image.blend_rect(atom_image,
+				Rect2i(0, 0, ATOM_W, ATOM_H), Vector2i(0, blit_y))
+
+	## ── Sprite2D ────────────────────────────────────────────────────────────
+	var sp := Sprite2D.new()
+	sp.texture  = ImageTexture.create_from_image(image)
+	sp.centered = false
+
+	## Centro do fill no mundo: shared_subcell + fill_offset (sem storey offset —
+	## a Image já encode todos os andares verticalmente).
+	var cell_world: Vector2 = ref_layer.position \
+			+ ref_layer.map_to_local(shared_subcell)
+	sp.position = cell_world + fill_offset - Vector2(ATOM_W * 0.5, anchor_y)
+
+	## z_index: ligeiramente acima dos WallContainers adjacentes no mesmo corner.
+	sp.z_index = shared_subcell.x + shared_subcell.y + 1
+
+	add_child(sp)

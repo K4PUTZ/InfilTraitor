@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**60 scripts · 11068 lines total** (under `godot/scripts/`)
+**60 scripts · 11179 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1336,7 +1336,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2342 lines
+extends `Node2D` · 2410 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1478,7 +1478,7 @@ extends `Node2D` · 2342 lines
 
 ### `wall_container.gd`
 
-`class_name WallContainer` · extends `Node2D` · 89 lines
+`class_name WallContainer` · extends `Node2D` · 132 lines
 
 `godot/scripts/world/wall_container.gd`
 
@@ -1499,6 +1499,7 @@ extends `Node2D` · 2342 lines
 
 **Public API**
 - `func build(ref_layer: TileMapLayer, atom_image: Image, face_subcells: Array, wall_dir: String, storey_count: int) -> void:`
+- `func build_corner_fill(ref_layer: TileMapLayer, atom_image: Image, shared_subcell: Vector2i, fill_offset: Vector2, storey_count: int) -> void:`
 
 ---
 

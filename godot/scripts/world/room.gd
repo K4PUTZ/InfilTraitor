@@ -1676,19 +1676,19 @@ func _build_wall_containers(subcube_geometry: Dictionary) -> void:
 	## Offsets de corner fill = média dos FACE_CENTER_OFFSETs das duas faces
 	## adjacentes no subcubo compartilhado. Ver DIRECTION_GLOSSARY.md §5.
 	const _FILL_OFFSET: Dictionary = {
-		"NW_NE": Vector2(  0.0, -28.0),
-		"NW_SW": Vector2(-16.0, -20.0),
-		"SE_NE": Vector2( 16.0, -20.0),
-		"SE_SW": Vector2(  0.0, -12.0),
+		"NE_NW": Vector2(  0.0, -28.0),   ## sort: NE < NW
+		"NW_SW": Vector2(-16.0, -20.0),   ## sort: NW < SW  (inalterado)
+		"NE_SE": Vector2( 16.0, -20.0),   ## sort: NE < SE
+		"SE_SW": Vector2(  0.0, -12.0),   ## sort: SE < SW  (inalterado)
 	}
 
 	## Subcubo local compartilhado por corner (em coords de subcubo relativos à origin).
 	## Y-varying (NW/SE): contribui com x. X-varying (NE/SW): contribui com y.
 	const _FILL_SHARED_LOCAL: Dictionary = {
-		"NW_NE": Vector2i(0, 0),
-		"NW_SW": Vector2i(0, 3),
-		"SE_NE": Vector2i(3, 0),
-		"SE_SW": Vector2i(3, 3),
+		"NE_NW": Vector2i(0, 0),   ## sort: NE < NW
+		"NW_SW": Vector2i(0, 3),   ## sort: NW < SW  (inalterado)
+		"NE_SE": Vector2i(3, 0),   ## sort: NE < SE
+		"SE_SW": Vector2i(3, 3),   ## sort: SE < SW  (inalterado)
 	}
 
 	## Agrupar dirs por cell (em UNIT coords) para detectar corners (2 faces).

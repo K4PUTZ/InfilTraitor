@@ -80,6 +80,12 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 ## shared tileset.
 const SUBCUBE_STEP_PX: float = 40.0
 
+## Offset da subcube layer por tile de buffer do mapa.
+## Calibrado empiricamente para PLAYGROUND (buffer=1): resultado (100, 2).
+## Automaticamente escalado para outros buffers (SIGMA-01 buffer=5 → (500, 10)).
+## Ajustar apenas este vetor se a calibração mudar; não tocar na lógica de escala.
+const SUBCUBE_BUFFER_OFFSET_PX := Vector2(100.0, 2.0)
+
 ## Ponto de origem base para todos os tiles de subcubo no tileset (inalterado).
 const SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)
 
@@ -1609,7 +1615,10 @@ func _ensure_subcube_layers(count: int) -> void:
 		var layer := TileMapLayer.new()
 		layer.tile_set = _subcube_tileset
 		layer.y_sort_origin = 1
-		layer.position = Vector2(VISUAL_GRID_OFFSET.x, VISUAL_GRID_OFFSET.y - SUBCUBE_STEP_PX * float(level))
+		var _buf: int = int(_base_layout.get("buffer", 1))
+		layer.position = Vector2(
+				VISUAL_GRID_OFFSET.x + _buf * SUBCUBE_BUFFER_OFFSET_PX.x,
+				VISUAL_GRID_OFFSET.y + _buf * SUBCUBE_BUFFER_OFFSET_PX.y - SUBCUBE_STEP_PX * float(level))
 		layer.z_index = WALL_BASE_Z_INDEX + level
 		add_child(layer)
 		_subcube_layers.append(layer)

@@ -178,6 +178,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	var result: Dictionary = {
 		"size":             map_size,
+		"buffer":           buffer,                ## tile margin per edge; used by room.gd for subcube layer alignment
 		"playable_rect":    Rect2i(offset, inner_size),   ## inner playable area in grid coords
 		"agent_start_cell": agent_start_raw,
 		"floor_tile_name":  String(spec.get("floor_tile", "floor_SE")),

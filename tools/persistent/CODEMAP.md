@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**60 scripts · 11237 lines total** (under `godot/scripts/`)
+**60 scripts · 11247 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1303,7 +1303,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 269 lines
+`class_name MapCompiler` · extends `RefCounted` · 270 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -1336,7 +1336,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2467 lines
+extends `Node2D` · 2476 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1366,6 +1366,7 @@ extends `Node2D` · 2467 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `SUBCUBE_STEP_PX` = `40.0`
+- `SUBCUBE_BUFFER_OFFSET_PX` = `Vector2(100.0, 2.0)`
 - `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
 - `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8),   ## cima-esquerda: edge_delta (-1, 0) "NE": Vector2i(-16, -8),   ## cima-direita:  edge_delta ( 0,-1) "SE": Vector2i( 16, -8),   ## baixo-direita: edge_delta (+1, 0) "SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1) }`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`

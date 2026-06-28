@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**60 scripts · 11056 lines total** (under `godot/scripts/`)
+**60 scripts · 11068 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1161,17 +1161,17 @@ extends `SceneTree` · 89 lines
 
 ### `compass_rose.gd`
 
-extends `Control` · 56 lines
+extends `Control` · 55 lines
 
 `godot/scripts/ui/compass_rose.gd`
 
-> CompassRose — debug overlay showing isometric N/E/S/W on screen. Drawn at the bottom-right corner in screen space (CanvasLayer child). Directions assume dimetric 45° horizontal: N = upper-right  |  E = lower-right S = lower-left   |  W = upper-left
+> CompassRose — debug overlay, sistema vértice-alinhado (N=topo do diamante). N/E/S/W apontam para os vértices do tile isométrico. As faces de parede (NW, NE, SE, SW) ficam nas arestas ENTRE os vértices. Ver DIRECTION_GLOSSARY.md §2 e §8.
 
 **Constants / tuning**
 - `ARROW_LEN` = `44.0`
 - `LABEL_GAP` = `12.0`
 - `CORNER_PAD` = `Vector2(80.0, 80.0)`
-- `_DIRS` = `[ {"lbl": "N", "dir": Vector2( 1.0, -1.0)}, {"lbl": "E", "dir": Vector2( 1.0,  1.0)}, {"lbl": "S", "dir": Vector2(-1.0,  1.0)}, {"lbl": "W", "dir": Vector2(-1.0, -1.0)}, ]`
+- `_DIRS` = `[ {"lbl": "N", "dir": Vector2( 0.0, -1.0)},   ## vértice topo   (↑) {"lbl": "E", "dir": Vector2( 1.0,  0.0)},   ## vértice direita (→) {"lbl": "S", "dir": Vector2( 0.0,  1.0)},   ## vértice base   (↓) {"lbl": "W", "dir": Vector2(-1.0,  0.0)},   ## vértice esquerda (←) ]`
 - `_COL_ARROW` = `Color(1.0, 1.0, 1.0, 0.85)`
 - `_COL_LABEL` = `Color(1.0, 0.9, 0.2, 1.0)`
 - `_COL_BG` = `Color(0.0, 0.0, 0.0, 0.45)`
@@ -1317,7 +1317,7 @@ extends `Node2D` · 34 lines
 
 ### `map_geometry.gd`
 
-`class_name MapGeometry` · extends `RefCounted` · 156 lines
+`class_name MapGeometry` · extends `RefCounted` · 159 lines
 
 `godot/scripts/world/maps/map_geometry.gd`
 
@@ -1325,18 +1325,18 @@ extends `Node2D` · 34 lines
 
 ### `subcube_geometry.gd`
 
-`class_name SubcubeGeometry` · 62 lines
+`class_name SubcubeGeometry` · 64 lines
 
 `godot/scripts/world/maps/subcube_geometry.gd`
 
 **Constants / tuning**
-- `_EDGE_BY_SUFFIX` = `{ "NW": [Vector2i(0, -1)], "SE": [Vector2i(0,  1)], "SW": [Vector2i(-1, 0)], "NE": [Vector2i( 1, 0)], }`
+- `_EDGE_BY_SUFFIX` = `{ "NW": [Vector2i(-1, 0)], "NE": [Vector2i( 0,-1)], "SE": [Vector2i( 1, 0)], "SW": [Vector2i( 0, 1)], }`
 
 ---
 
 ### `room.gd`
 
-extends `Node2D` · 2339 lines
+extends `Node2D` · 2342 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1367,7 +1367,7 @@ extends `Node2D` · 2339 lines
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `SUBCUBE_STEP_PX` = `40.0`
 - `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
-- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8), "NE": Vector2i(-16, -8), "SE": Vector2i( 16, -8), "SW": Vector2i( 16,  8), }`
+- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8),   ## cima-esquerda: edge_delta (-1, 0) "NE": Vector2i(-16, -8),   ## cima-direita:  edge_delta ( 0,-1) "SE": Vector2i( 16, -8),   ## baixo-direita: edge_delta (+1, 0) "SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1) }`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
 - `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`
@@ -1478,7 +1478,7 @@ extends `Node2D` · 2339 lines
 
 ### `wall_container.gd`
 
-`class_name WallContainer` · extends `Node2D` · 84 lines
+`class_name WallContainer` · extends `Node2D` · 89 lines
 
 `godot/scripts/world/wall_container.gd`
 
@@ -1490,8 +1490,8 @@ extends `Node2D` · 2339 lines
 - `SUBCUBES_PER_AXIS` = `4`
 - `SUBCUBE_STEP_PX` = `40.0`
 - `STOREY_HEIGHT_PX` = `160.0`
-- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, -12.0), "NE": Vector2(-16.0, -28.0), "SE": Vector2( 16.0, -28.0), "SW": Vector2( 16.0, -12.0), }`
-- `ANCHOR_X_VARYING` = `Vector2(32.0,  156.0)`
+- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, -28.0),   ## cima-esquerda: straddle esquerda, aresta alta "NE": Vector2( 16.0, -28.0),   ## cima-direita:  straddle direita,  aresta alta "SE": Vector2( 16.0, -12.0),   ## baixo-direita: straddle direita,  aresta baixa "SW": Vector2(-16.0, -12.0),   ## baixo-esquerda: straddle esquerda, aresta baixa }`
+- `ANCHOR_X_VARYING` = `Vector2( 32.0, 156.0)`
 - `ANCHOR_Y_VARYING` = `Vector2(128.0, 156.0)`
 
 **Public vars**

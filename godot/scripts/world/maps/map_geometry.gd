@@ -89,52 +89,55 @@ static func _pick_wall_tiles(cell: Vector2i, rect: Rect2i) -> Array[String]:
 	var max_x := rect.position.x + rect.size.x - 1
 	var max_y := rect.position.y + rect.size.y - 1
 
-	var on_sw := cell.x == min_x   ## left column  — SW border
-	var on_ne := cell.x == max_x   ## right column — NE border
-	var on_nw := cell.y == min_y   ## top row      — NW border
-	var on_se := cell.y == max_y   ## bottom row   — SE border
+	## Bordas do rect → faces de parede (sistema vértice-alinhado, N=topo).
+	## Ver DIRECTION_GLOSSARY.md §4.
+	var on_nw := cell.x == min_x   ## coluna esquerda  — face NW (cima-esquerda)
+	var on_se := cell.x == max_x   ## coluna direita   — face SE (baixo-direita)
+	var on_ne := cell.y == min_y   ## linha topo       — face NE (cima-direita)
+	var on_sw := cell.y == max_y   ## linha base       — face SW (baixo-esquerda)
 
 	var tiles: Array[String] = []
 
-	## Corners emit two wall_* entries — one per exposed face direction.
-	## Each becomes an independent WallContainer (Node2D). No set_cell() conflict.
-	if on_nw and on_sw:
-		tiles.append("wall_NW")
-		tiles.append("wall_SW")
-	elif on_nw and on_ne:
+	## Corners: dois tiles de parede (uma face por direção exposta).
+	## Straight: um tile de parede.
+	if on_nw and on_ne:
 		tiles.append("wall_NW")
 		tiles.append("wall_NE")
-	elif on_se and on_sw:
-		tiles.append("wall_SE")
+	elif on_nw and on_sw:
+		tiles.append("wall_NW")
 		tiles.append("wall_SW")
 	elif on_se and on_ne:
 		tiles.append("wall_SE")
 		tiles.append("wall_NE")
-	## Straight edges generate one wall
+	elif on_se and on_sw:
+		tiles.append("wall_SE")
+		tiles.append("wall_SW")
 	elif on_nw:
 		tiles.append("wall_NW")
+	elif on_ne:
+		tiles.append("wall_NE")
 	elif on_se:
 		tiles.append("wall_SE")
 	elif on_sw:
 		tiles.append("wall_SW")
-	elif on_ne:
-		tiles.append("wall_NE")
 
 	return tiles
 
 
 static func _pick_door_tile(cell: Vector2i, rect: Rect2i) -> String:
+	## Sistema vértice-alinhado: porta recebe a face da borda onde está.
+	## Ver DIRECTION_GLOSSARY.md §4.
 	var min_x := rect.position.x
 	var min_y := rect.position.y
 	var max_x := rect.position.x + rect.size.x - 1
 	var max_y := rect.position.y + rect.size.y - 1
 
-	if cell.y == min_y: return "doorOpen_NW"
-	if cell.y == max_y: return "doorOpen_SE"
-	if cell.x == min_x: return "doorOpen_SW"
-	if cell.x == max_x: return "doorOpen_NE"
+	if cell.x == min_x: return "doorOpen_NW"
+	if cell.x == max_x: return "doorOpen_SE"
+	if cell.y == min_y: return "doorOpen_NE"
+	if cell.y == max_y: return "doorOpen_SW"
 
-	return "doorOpen_SE"   ## fallback
+	return "doorOpen_SW"   ## fallback
 
 
 static func _wall_cell_blocked_edges(cell: Vector2i, rect: Rect2i) -> Array[Dictionary]:

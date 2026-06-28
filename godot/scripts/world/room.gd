@@ -69,8 +69,8 @@ const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 ## ceiling/light layer (below noise at z=140).
 const WALL_BASE_Z_INDEX := 10
 ## One storey = the cube's side-face height. Measured from the art: opaque block height 286 −
-## top-diamond 128 = 158 px (block_SE and wall_NE agree). Upper courses stack on this step so a
-## cube seats exactly on the one below. Tunable.
+## top-diamond 128 = 158 px (block_SE and wall_NE — sistema vértice-alinhado).
+## Upper courses stack on this step so a cube seats exactly on the one below. Tunable.
 const WALL_FLOOR_STEP_PX := 158.0
 var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
@@ -83,13 +83,14 @@ const SUBCUBE_STEP_PX: float = 40.0
 ## Ponto de origem base para todos os tiles de subcubo no tileset (inalterado).
 const SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)
 
-## v3: Aumentar magnitude para ficar sobre as arestas.
-## (8,-4) ficou curto. Tentando (12,-6) = 75% do meio-passo.
+## Straddle offset por face de parede. Keys seguem o sistema vértice-alinhado
+## (N=topo do diamante). Ver DIRECTION_GLOSSARY.md §5.
+## NW = cima-esquerda | NE = cima-direita | SE = baixo-direita | SW = baixo-esquerda
 const SUBCUBE_FACE_OFFSETS: Dictionary = {
-	"NW": Vector2i(-16,  8),
-	"NE": Vector2i(-16, -8),
-	"SE": Vector2i( 16, -8),
-	"SW": Vector2i( 16,  8),
+	"NW": Vector2i(-16,  8),   ## cima-esquerda: edge_delta (-1, 0)
+	"NE": Vector2i(-16, -8),   ## cima-direita:  edge_delta ( 0,-1)
+	"SE": Vector2i( 16, -8),   ## baixo-direita: edge_delta (+1, 0)
+	"SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1)
 }
 
 var _subcube_tileset: TileSet = null
@@ -1674,34 +1675,36 @@ func _build_wall_containers(subcube_geometry: Dictionary) -> void:
 
 func _subcubes_on_edge(unit: Vector2i, edge_delta: Vector2i) -> Array[Vector2i]:
 	## Returns the 4 subcubes along the specified edge of a gameplay unit.
-	## edge_delta tells which direction: (0,-1)=NW, (1,0)=NE, (0,1)=SE, (-1,0)=SW.
+	## edge_delta tells which direction (sistema vértice-alinhado):
+	## (-1,0)=NW(cima-esq), (0,-1)=NE(cima-dir), (1,0)=SE(baixo-dir), (0,1)=SW(baixo-esq).
 	var origin: Vector2i = SubcubeCoordsClass.unit_to_subcube_origin(unit)
 	var out: Array[Vector2i] = []
 
-	if edge_delta == Vector2i(0, -1):  # NW edge — northernmost row (y=0)
-		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
-			out.append(origin + Vector2i(i, 0))
-	elif edge_delta == Vector2i(1, 0):  # NE edge — easternmost column (x=3)
-		for j in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
-			out.append(origin + Vector2i(3, j))
-	elif edge_delta == Vector2i(0, 1):  # SE edge — southernmost row (y=3)
-		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
-			out.append(origin + Vector2i(i, 3))
-	elif edge_delta == Vector2i(-1, 0):  # SW edge — westernmost column (x=0)
+	if edge_delta == Vector2i(-1, 0):  # NW edge — left col (x=0, y-varying)
 		for j in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
 			out.append(origin + Vector2i(0, j))
+	elif edge_delta == Vector2i(0, -1):  # NE edge — top row (y=0, x-varying)
+		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(i, 0))
+	elif edge_delta == Vector2i(1, 0):  # SE edge — right col (x=3, y-varying)
+		for j in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(3, j))
+	elif edge_delta == Vector2i(0, 1):  # SW edge — bottom row (y=3, x-varying)
+		for i in SubcubeCoordsClass.SUBCUBES_PER_UNIT_AXIS:
+			out.append(origin + Vector2i(i, 3))
 
 	return out
 
 
 func _edge_delta_to_dir(delta: Vector2i) -> String:
-	## Converte edge_delta de subcube_geometry para sufixo direcional (NW/NE/SE/SW).
-	## Retorna "" para deltas inválidos (não deve ocorrer em geometria válida).
+	## Converte edge_delta → sufixo de face (sistema vértice-alinhado, N=topo).
+	## NW=cima-esq(-1,0) | NE=cima-dir(0,-1) | SE=baixo-dir(+1,0) | SW=baixo-esq(0,+1)
+	## Ver DIRECTION_GLOSSARY.md §3.
 	match delta:
-		Vector2i( 0, -1): return "NW"
-		Vector2i( 1,  0): return "NE"
-		Vector2i( 0,  1): return "SE"
-		Vector2i(-1,  0): return "SW"
+		Vector2i(-1,  0): return "NW"
+		Vector2i( 0, -1): return "NE"
+		Vector2i( 1,  0): return "SE"
+		Vector2i( 0,  1): return "SW"
 	return ""
 
 

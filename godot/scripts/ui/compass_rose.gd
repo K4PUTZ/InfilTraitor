@@ -1,20 +1,19 @@
-## CompassRose — debug overlay showing isometric N/E/S/W on screen.
-## Drawn at the bottom-right corner in screen space (CanvasLayer child).
-## Directions assume dimetric 45° horizontal:
-##   N = upper-right  |  E = lower-right
-##   S = lower-left   |  W = upper-left
+## CompassRose — debug overlay, sistema vértice-alinhado (N=topo do diamante).
+## N/E/S/W apontam para os vértices do tile isométrico.
+## As faces de parede (NW, NE, SE, SW) ficam nas arestas ENTRE os vértices.
+## Ver DIRECTION_GLOSSARY.md §2 e §8.
 extends Control
 
 const ARROW_LEN  := 44.0
 const LABEL_GAP  := 12.0
 const CORNER_PAD := Vector2(80.0, 80.0)
 
-## Each entry: label and normalised screen-space direction vector.
+## Each entry: label and normalised screen-space direction vector (vertex-aligned).
 const _DIRS: Array = [
-	{"lbl": "N", "dir": Vector2( 1.0, -1.0)},
-	{"lbl": "E", "dir": Vector2( 1.0,  1.0)},
-	{"lbl": "S", "dir": Vector2(-1.0,  1.0)},
-	{"lbl": "W", "dir": Vector2(-1.0, -1.0)},
+	{"lbl": "N", "dir": Vector2( 0.0, -1.0)},   ## vértice topo   (↑)
+	{"lbl": "E", "dir": Vector2( 1.0,  0.0)},   ## vértice direita (→)
+	{"lbl": "S", "dir": Vector2( 0.0,  1.0)},   ## vértice base   (↓)
+	{"lbl": "W", "dir": Vector2(-1.0,  0.0)},   ## vértice esquerda (←)
 ]
 
 const _COL_ARROW := Color(1.0, 1.0, 1.0, 0.85)

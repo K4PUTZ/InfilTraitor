@@ -12,12 +12,14 @@ class_name SubcubeGeometry
 ## Vertical fica em ANDARES (storeys); o render multiplica por SUBCUBES_PER_FLOOR.
 ## Largura/footprint horizontal = SubcubeCoords.SUBCUBES_PER_UNIT_AXIS (= 4).
 
-## sufixo de borda → arestas expostas (deltas em UNIT coords)
+## Sufixo de face → edge_delta em UNIT coords (sistema vértice-alinhado, N=topo).
+## NW=cima-esq | NE=cima-dir | SE=baixo-dir | SW=baixo-esq
+## Ver DIRECTION_GLOSSARY.md §3 e §6.
 const _EDGE_BY_SUFFIX: Dictionary = {
-	"NW": [Vector2i(0, -1)],
-	"SE": [Vector2i(0,  1)],
-	"SW": [Vector2i(-1, 0)],
-	"NE": [Vector2i( 1, 0)],
+	"NW": [Vector2i(-1, 0)],
+	"NE": [Vector2i( 0,-1)],
+	"SE": [Vector2i( 1, 0)],
+	"SW": [Vector2i( 0, 1)],
 }
 
 ## Constrói os descritores a partir do dict já compilado (usa "wall_levels").

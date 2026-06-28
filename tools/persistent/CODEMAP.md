@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**59 scripts · 10899 lines total** (under `godot/scripts/`)
+**60 scripts · 11056 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd, coord_selftest.gd, subcube_geometry_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, wall_edge_data.gd
+- **world/** — level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, wall_container.gd, wall_edge_data.gd
 
 ---
 
@@ -1317,7 +1317,7 @@ extends `Node2D` · 34 lines
 
 ### `map_geometry.gd`
 
-`class_name MapGeometry` · extends `RefCounted` · 140 lines
+`class_name MapGeometry` · extends `RefCounted` · 156 lines
 
 `godot/scripts/world/maps/map_geometry.gd`
 
@@ -1325,19 +1325,18 @@ extends `Node2D` · 34 lines
 
 ### `subcube_geometry.gd`
 
-`class_name SubcubeGeometry` · 74 lines
+`class_name SubcubeGeometry` · 62 lines
 
 `godot/scripts/world/maps/subcube_geometry.gd`
 
 **Constants / tuning**
 - `_EDGE_BY_SUFFIX` = `{ "NW": [Vector2i(0, -1)], "SE": [Vector2i(0,  1)], "SW": [Vector2i(-1, 0)], "NE": [Vector2i( 1, 0)], }`
-- `_CORNER_EDGES` = `{ "NW": [Vector2i(0, -1), Vector2i(-1, 0)], "NE": [Vector2i(0, -1), Vector2i( 1, 0)], "SW": [Vector2i(0,  1), Vector2i(-1, 0)], "SE": [Vector2i(0,  1), Vector2i( 1, 0)], }`
 
 ---
 
 ### `room.gd`
 
-extends `Node2D` · 2270 lines
+extends `Node2D` · 2339 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1347,6 +1346,7 @@ extends `Node2D` · 2270 lines
 - `SubcubeGeometryClass` = `preload("res://godot/scripts/world/maps/subcube_geometry.gd")`
 - `SubcubeCoordsClass` = `preload("res://godot/scripts/world/subcube_coords.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
+- `WallContainerClass` = `preload("res://godot/scripts/world/wall_container.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
 - `GuardNoiseIndicatorClass` = `preload("res://godot/scripts/overlays/guard_noise_indicator.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
@@ -1367,7 +1367,7 @@ extends `Node2D` · 2270 lines
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `SUBCUBE_STEP_PX` = `40.0`
 - `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
-- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i( 12, -6), "NE": Vector2i( 12,  6), "SE": Vector2i(-12,  6), "SW": Vector2i(-12, -6), }`
+- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8), "NE": Vector2i(-16, -8), "SE": Vector2i( 16, -8), "SW": Vector2i( 16,  8), }`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
 - `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`
@@ -1473,6 +1473,32 @@ extends `Node2D` · 2270 lines
 - `func can_receive_light() -> bool:`
 - `func debug_string() -> String:`
 - `func debug_info() -> String:`
+
+---
+
+### `wall_container.gd`
+
+`class_name WallContainer` · extends `Node2D` · 84 lines
+
+`godot/scripts/world/wall_container.gd`
+
+**Constants / tuning**
+- `ATOM_W` = `64`
+- `ATOM_H` = `72`
+- `IMAGE_W` = `160`
+- `IMAGE_H` = `240`
+- `SUBCUBES_PER_AXIS` = `4`
+- `SUBCUBE_STEP_PX` = `40.0`
+- `STOREY_HEIGHT_PX` = `160.0`
+- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, -12.0), "NE": Vector2(-16.0, -28.0), "SE": Vector2( 16.0, -28.0), "SW": Vector2( 16.0, -12.0), }`
+- `ANCHOR_X_VARYING` = `Vector2(32.0,  156.0)`
+- `ANCHOR_Y_VARYING` = `Vector2(128.0, 156.0)`
+
+**Public vars**
+- `var dir: String = ""`
+
+**Public API**
+- `func build(ref_layer: TileMapLayer, atom_image: Image, face_subcells: Array, wall_dir: String, storey_count: int) -> void:`
 
 ---
 

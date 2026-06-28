@@ -4,10 +4,10 @@ class_name SubcubeGeometry
 ## individuais nem pixels — o render layer (SUB-01) expande os descritores e aplica
 ## o offset de straddle (espessura dividida entre tiles vizinhos).
 ##
-##   wall_* / wallCorner_*  → FACE fina ancorada na ARESTA (4 de largura × andar)
-##   block_*                → bloco SÓLIDO (footprint 4×4 × andar)
-##   doorOpen_*             → vão (nenhum descritor no andar)
-##   piso / props           → fora do escopo (render por regra / sprites)
+##   wall_*     → FACE fina ancorada na ARESTA (4 de largura × andar)
+##   block_*    → bloco SÓLIDO (footprint 4×4 × andar)
+##   doorOpen_* → vão (nenhum descritor no andar)
+##   piso / props → fora do escopo (render por regra / sprites)
 ##
 ## Vertical fica em ANDARES (storeys); o render multiplica por SUBCUBES_PER_FLOOR.
 ## Largura/footprint horizontal = SubcubeCoords.SUBCUBES_PER_UNIT_AXIS (= 4).
@@ -18,13 +18,6 @@ const _EDGE_BY_SUFFIX: Dictionary = {
 	"SE": [Vector2i(0,  1)],
 	"SW": [Vector2i(-1, 0)],
 	"NE": [Vector2i( 1, 0)],
-}
-## canto → as duas arestas expostas
-const _CORNER_EDGES: Dictionary = {
-	"NW": [Vector2i(0, -1), Vector2i(-1, 0)],
-	"NE": [Vector2i(0, -1), Vector2i( 1, 0)],
-	"SW": [Vector2i(0,  1), Vector2i(-1, 0)],
-	"SE": [Vector2i(0,  1), Vector2i( 1, 0)],
 }
 
 ## Constrói os descritores a partir do dict já compilado (usa "wall_levels").
@@ -42,11 +35,6 @@ static func build(compiled: Dictionary) -> Dictionary:
 
 			if tile_name.begins_with("doorOpen_"):
 				continue  ## vão — sem descritor neste andar
-
-			elif tile_name.begins_with("wallCorner_"):
-				var suffix: String = tile_name.trim_prefix("wallCorner_")
-				for d: Vector2i in _CORNER_EDGES.get(suffix, []):
-					wall_faces.append(_face(cell, d, storey, tile_name, SC))
 
 			elif tile_name.begins_with("wall_"):
 				var suffix: String = tile_name.trim_prefix("wall_")

@@ -39,7 +39,9 @@ static func build_room(rect: Rect2i, doors: Array[Dictionary]) -> Dictionary:
 
 	var wall_tiles: Array[Dictionary] = []
 	for cell: Vector2i in wall_map.keys():
-		wall_tiles.append({"cell": cell, "tile_name": _pick_wall_tile(cell, rect)})
+		var wall_names: Array[String] = _pick_wall_tiles(cell, rect)
+		for name in wall_names:
+			wall_tiles.append({"cell": cell, "tile_name": name})
 		blocked_edges += _wall_cell_blocked_edges(cell, rect)
 	for cell: Vector2i in door_set.keys():
 		wall_tiles.append({"cell": cell, "tile_name": _pick_door_tile(cell, rect)})
@@ -81,7 +83,7 @@ static func place_inner_room(
 
 ## --- tile picking -----------------------------------------------------------
 
-static func _pick_wall_tile(cell: Vector2i, rect: Rect2i) -> String:
+static func _pick_wall_tiles(cell: Vector2i, rect: Rect2i) -> Array[String]:
 	var min_x := rect.position.x
 	var min_y := rect.position.y
 	var max_x := rect.position.x + rect.size.x - 1
@@ -92,19 +94,33 @@ static func _pick_wall_tile(cell: Vector2i, rect: Rect2i) -> String:
 	var on_nw := cell.y == min_y   ## top row      — NW border
 	var on_se := cell.y == max_y   ## bottom row   — SE border
 
-	## Corners first
-	if on_nw and on_sw: return "wallCorner_NW"
-	if on_nw and on_ne: return "wallCorner_NE"
-	if on_se and on_sw: return "wallCorner_SW"
-	if on_se and on_ne: return "wallCorner_SE"
+	var tiles: Array[String] = []
 
-	## Straight edges
-	if on_nw: return "wall_NW"
-	if on_se: return "wall_SE"
-	if on_sw: return "wall_SW"
-	if on_ne: return "wall_NE"
+	## Corners emit two wall_* entries — one per exposed face direction.
+	## Each becomes an independent WallContainer (Node2D). No set_cell() conflict.
+	if on_nw and on_sw:
+		tiles.append("wall_NW")
+		tiles.append("wall_SW")
+	elif on_nw and on_ne:
+		tiles.append("wall_NW")
+		tiles.append("wall_NE")
+	elif on_se and on_sw:
+		tiles.append("wall_SE")
+		tiles.append("wall_SW")
+	elif on_se and on_ne:
+		tiles.append("wall_SE")
+		tiles.append("wall_NE")
+	## Straight edges generate one wall
+	elif on_nw:
+		tiles.append("wall_NW")
+	elif on_se:
+		tiles.append("wall_SE")
+	elif on_sw:
+		tiles.append("wall_SW")
+	elif on_ne:
+		tiles.append("wall_NE")
 
-	return "block_SE"   ## interior fallback (should not be reached for border cells)
+	return tiles
 
 
 static func _pick_door_tile(cell: Vector2i, rect: Rect2i) -> String:

@@ -6,6 +6,7 @@ const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.
 const SubcubeGeometryClass = preload("res://godot/scripts/world/maps/subcube_geometry.gd")
 const SubcubeCoordsClass = preload("res://godot/scripts/world/subcube_coords.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
+const WallContainerClass = preload("res://godot/scripts/world/wall_container.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
@@ -85,15 +86,19 @@ const SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)
 ## v3: Aumentar magnitude para ficar sobre as arestas.
 ## (8,-4) ficou curto. Tentando (12,-6) = 75% do meio-passo.
 const SUBCUBE_FACE_OFFSETS: Dictionary = {
-	"NW": Vector2i( 12, -6),
-	"NE": Vector2i( 12,  6),
-	"SE": Vector2i(-12,  6),
-	"SW": Vector2i(-12, -6),
+	"NW": Vector2i(-16,  8),
+	"NE": Vector2i(-16, -8),
+	"SE": Vector2i( 16, -8),
+	"SW": Vector2i( 16,  8),
 }
 
 var _subcube_tileset: TileSet = null
 var _subcube_layers: Array[TileMapLayer] = []
 var _subcube_tile_ids: Dictionary = {}
+
+## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
+## para faces de parede; blocos sólidos ainda usam TileMapLayer.
+var _wall_containers: Array = []
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
 ## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
@@ -1601,11 +1606,70 @@ func _render_subcube_geometry(subcube_geometry: Dictionary, max_floors: int) -> 
 		return
 
 	var blocks: Array = subcube_geometry.get("solid_blocks", [])
-	var faces: Array = subcube_geometry.get("wall_faces", [])
+	## Wall faces são renderizadas por WallContainers (ver _build_wall_containers).
+	## Blocos sólidos continuam no TileMapLayer.
 	for block: Dictionary in blocks:
 		_paint_subcube_descriptor(block, source_id, layer_count)
+
+
+func _build_wall_containers(subcube_geometry: Dictionary) -> void:
+	## Limpa containers anteriores (rebuild de sala).
+	for wc in _wall_containers:
+		if is_instance_valid(wc):
+			wc.queue_free()
+	_wall_containers.clear()
+
+	var faces: Array = subcube_geometry.get("wall_faces", [])
+	if faces.is_empty():
+		return
+
+	var atom_image: Image = Image.load_from_file(
+		"res://ASSETS/ISOMETRIC/source_assets/subcubes/subcube_concrete.png"
+	)
+	if atom_image == null:
+		push_warning("WallContainer: atom image not found.")
+		return
+
+	if _subcube_layers.is_empty():
+		push_warning("WallContainer: subcube layers not initialized.")
+		return
+	var ref_layer: TileMapLayer = _subcube_layers[0]
+
+	## ── Agrupar faces por (from_cell, wall_dir) ─────────────────────────────────
+	## Cada grupo = 1 WallContainer com todos os storeys dessa face.
+	var face_groups: Dictionary = {}   ## key → {face_subcells, wall_dir, max_storey}
+
 	for face: Dictionary in faces:
-		_paint_subcube_descriptor(face, source_id, layer_count)
+		var edge: Dictionary   = face.get("edge", {})
+		var from_cell: Vector2i = Vector2i(edge.get("from", Vector2i.ZERO))
+		var to_cell:   Vector2i = Vector2i(edge.get("to",   Vector2i.ZERO))
+		var edge_delta: Vector2i = to_cell - from_cell
+		var wall_dir: String   = _edge_delta_to_dir(edge_delta)
+		if wall_dir.is_empty():
+			continue
+		var storey: int = maxi(0, int(face.get("storey", 0)))
+
+		var key: String = "%d,%d,%s" % [from_cell.x, from_cell.y, wall_dir]
+
+		if not face_groups.has(key):
+			face_groups[key] = {
+				"face_subcells": _subcubes_on_edge(from_cell, edge_delta),
+				"wall_dir":      wall_dir,
+				"max_storey":    storey,
+			}
+		else:
+			face_groups[key]["max_storey"] = maxi(
+					face_groups[key]["max_storey"], storey)
+
+	## ── Criar 1 WallContainer por grupo ────────────────────────────────────────
+	for key: String in face_groups:
+		var grp: Dictionary  = face_groups[key]
+		var storey_count: int = grp["max_storey"] + 1
+		var wc := WallContainerClass.new()
+		wc.build(ref_layer, atom_image,
+				grp["face_subcells"], grp["wall_dir"], storey_count)
+		add_child(wc)
+		_wall_containers.append(wc)
 
 
 func _subcubes_on_edge(unit: Vector2i, edge_delta: Vector2i) -> Array[Vector2i]:
@@ -1707,7 +1771,8 @@ func _build_room(layout: Dictionary) -> void:
 	var subcube_geometry: Dictionary = layout.get("subcube_geometry", {})
 	if not subcube_geometry.is_empty() and _subcube_tileset != null:
 		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
-		_render_subcube_geometry(subcube_geometry, max_floors)
+		_render_subcube_geometry(subcube_geometry, max_floors)   ## blocos sólidos (TileMapLayer)
+		_build_wall_containers(subcube_geometry)     ## faces de parede (Containers)
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false
@@ -1722,7 +1787,11 @@ func _build_room(layout: Dictionary) -> void:
 		for level in range(wall_levels.size()):
 			var target: TileMapLayer = structure_wall_layer if level == 0 else _wall_upper_layers[level - 1]
 			for entry in wall_levels[level]:
-				_place(entry.get("cell", INVALID_CELL), String(entry.get("tile_name", "")), target)
+				var tile_name: String = String(entry.get("tile_name", ""))
+				## Wall tiles são renderizadas por WallContainers — pular aqui.
+				if tile_name.begins_with("wall_"):
+					continue
+				_place(entry.get("cell", INVALID_CELL), tile_name, target)
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also

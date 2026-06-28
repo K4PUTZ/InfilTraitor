@@ -269,6 +269,19 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 ---
 
-**Last Updated:** 2026-06-14
+## Render System Status (updated 2026-06-28)
+
+| Item | Status | Maturity |
+|------|--------|----------|
+| **Subcube Container system** | ✅ Implemented (wall faces + corner fills) | Alpha→Beta |
+| **Direction system (vertex-aligned)** | ✅ Renamed RENAME-01 | Beta |
+| **x/y-varying wall orientation fix** | ✅ Fixed RENAME-01b | Beta |
+| **Corner fill (triangular gap cover)** | ✅ CONTAINER-04 complete | Alpha |
+| **Dirty Flag + TIC updates** | ⏳ Planned CONTAINER-05 | — |
+| **View occlusion (wall cutaway)** | 🔲 Planned VIS-01 Slice 4 | — |
+
+---
+
+**Last Updated:** 2026-06-28
 **Maintained By:** Project Management
-**Status:** ✅ FUNCTIONAL AI — Guards react with gradual escalation; integration with spatial perception in progress
+**Status:** ✅ FUNCTIONAL CONTAINER SYSTEM — Wall rendering via discrete per-face Images + corner fills; direction system vertex-aligned; ready for live geometry updates (CONTAINER-05)

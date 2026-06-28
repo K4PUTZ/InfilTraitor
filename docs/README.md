@@ -91,8 +91,9 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 - **[Legacy Report](technical/legacy_report.md)** — Legacy code and technical risks ✅
 - **[Safe Cleanup](technical/safe_cleanup.md)** — Removal safety guidelines ✅
 
-#### Design & Setup (Planned)
-- **[Architecture](technical/architecture.md)** — High-level system architecture and data flow (to be created)
+#### Design & Setup
+- **[Architecture](ARCHITECTURE.md)** — High-level system architecture and data flow ✅ (updated 2026-06-28: Container system, direction rename)
+- **[Direction Glossary](DIRECTION_GLOSSARY.md)** — Vertex-aligned coordinate system semantics ✅ (canonical direction reference)
 - **[Godot 4.6 Setup](technical/godot_setup.md)** — Engine configuration, project structure (to be created)
 - **[Performance Guidelines](technical/performance.md)** — Optimization targets and profiling (to be created)
 
@@ -216,10 +217,10 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 |----------|-----------|--------|
 | Vision | 100% | ✅ Complete |
 | Systems | 100% | ✅ Complete |
-| Production | 85% | 🟡 In Progress (DOC-02) |
-| Technical | 0% | ⏳ Queued |
+| Production | 90% | ✅ Complete (Container system section added 2026-06-28) |
+| Technical | 50% | 🟡 In Progress (Architecture + Direction Glossary updated) |
 | History | 0% | ⏳ Queued |
-| **Overall** | **70%** | **🟡 In Progress** |
+| **Overall** | **76%** | **✅ Mostly Complete** |
 
 ---
 
@@ -286,11 +287,11 @@ The following documents are being migrated into this structure:
 
 ## ⏰ Last Updated
 
-- **Overall:** 2026-06-11
+- **Overall:** 2026-06-28
 - **Vision:** 2026-06-11 ✅
 - **Systems:** 2026-06-11 ✅
-- **Production:** 2026-06-11 ✅ (DOC-02 In Progress)
-- **Technical:** Queued ⏳
+- **Production:** 2026-06-28 ✅ (Container system section added)
+- **Technical:** 2026-06-28 ✅ (Architecture + Direction Glossary updated)
 - **History:** Queued ⏳
 
 ---
@@ -318,6 +319,6 @@ The following documents are being migrated into this structure:
 
 ---
 
-**Last Reviewed:** 2026-06-11  
+**Last Reviewed:** 2026-06-28  
 **Maintained By:** Project Management  
-**Status:** Active 🟢
+**Status:** Active 🟢 — Container system (RENAME-01, RENAME-01b, CONTAINER-04) documented

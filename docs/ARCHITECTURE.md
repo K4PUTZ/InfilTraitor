@@ -20,11 +20,33 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
-## Subcube Render Plane (Partial)
+## Subcube Render Plane (Implemented)
 
-The engine uses two coordinate spaces. The **gameplay plane** (the rest of this document, `CELL_SIZE 256×128`) is unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. A planned **geometry/render plane** (`SUBCUBE_SIZE 64×32`, 4×4 subcubes per gameplay unit) adds subcube stacking, face lighting, occlusion-by-deletion, and dynamic geometry. Conversions happen only at the seam (`map_compiler.gd`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md`.
+The engine uses two coordinate spaces. The **gameplay plane** (the rest of this document, `CELL_SIZE 256×128`) is unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The **geometry/render plane** (`SUBCUBE_SIZE 64×32`, 4×4 subcubes per gameplay unit) implements subcube stacking via the Container system. Conversions happen only at the seam (`map_compiler.gd`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md`.
 
-`room.gd` now consumes `subcube_geometry` and instantiates a dedicated subcube layer stack as the active wall render path. **SUB-01-FIX-A** synced `SUBCUBE_STEP_PX` (40.0px) and `texture_origin` (-40) to match the 64×72 asset canvas and 40px face height. **SUB-01-FIX-B** aligned layer positions with `VISUAL_GRID_OFFSET`, ensuring the subcube render plane synchronizes with the visual grid used by floors, exits, and overlays. The later slices still need view occlusion / presence deletion / lighting refinements, so this plane is partial rather than complete.
+**Completed stages (WALL-EDGE-01 series, 2026-06-28):**
+
+1. **RENAME-01** — Direction system renamed from Kenney convention (N=right) to vertex-aligned (N=top). Keys in `SUBCUBE_FACE_OFFSETS`, `_EDGE_BY_SUFFIX`, `FACE_CENTER_OFFSET`, and `_DIRS` (compass) now reflect isometric diamond semantics: NW/NE/SE/SW at edges, N/E/S/W at vertices. Offset VALUES unchanged; only semantic meaning of keys rotated 90°.
+
+2. **RENAME-01b** — Fixed critical bug in `is_x_varying` logic (in `wall_container.gd`). NE and SW edges are x-varying (horizontal, top/bottom rows); NW and SE are y-varying (vertical, left/right columns). Bug was causing 96px horizontal displacement in wall rendering.
+
+3. **WALL-EDGE-01b** — Wall rendering optimization. Per-storey stacking via discrete Image generation (4 subcubes horizontally × N storeys vertically), blit algorithm per direction, cached as Sprite2D. Z-index depth sort via cell coordinates.
+
+4. **CONTAINER-04** — Corner fill system. Cells with 2 faces (NW+NE, NW+SW, SE+NE, SE+SW) emit a 1-atom-wide corner fill Image positioned at the average of the two face offsets, z_index+1 to appear above both faces. Covers the triangular gap without requiring a special asset.
+
+**Architecture (2026-06-28 state):**
+
+- `room.gd::_build_wall_containers()` — consumes `subcube_geometry` (wall faces + solid blocks from `MapCompiler` → `SubcubeGeometry`). Groups faces by `(from_cell, wall_dir)` to emit 1 WallContainer per edge. Detects corners (2 faces per cell) and emits 1 corner fill per corner.
+- `wall_container.gd::build()` — renders 1 wall face (4 subcubes × N storeys) as a composite Image with 64×72 atoms blitted via Painter's algorithm. Configures anchors and sprite position.
+- `wall_container.gd::build_corner_fill()` — renders 1 corner fill (1 atom × N storeys, single column) at averaged offset with z_index+1.
+- Offset tuning: `FACE_CENTER_OFFSET` (§5 DIRECTION_GLOSSARY.md). Straddle: (±16.0 x, −28.0/−12.0 y).
+
+**Still needed (future slices):**
+
+- View occlusion (wall cutaway) — VIS-01 Slice 4
+- Per-face lighting/shading (face color by light, face shadowing)
+- Presence deletion for storey 0 cells with subcube detail
+- Dynamic geometry updates (Dirty Flag + TIC cycle — CONTAINER-05)
 
 ---
 

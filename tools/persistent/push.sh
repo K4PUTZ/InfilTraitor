@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha WALL-EDGE-01b - $(date +%Y-%m-%d)"
+TAG="Alpha WALLALIGN-02 - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

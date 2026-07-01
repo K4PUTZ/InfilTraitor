@@ -108,6 +108,8 @@ var _voxel_layers: Array[TileMapLayer] = []
 var _voxel_tile_ids: Dictionary = {}
 ## Slices de parede voxel actuais (VOXEL-04). Indexados pelo VoxelRegistry em VOXEL-06.
 var _voxel_wall_slices: Array = []
+## VoxelRefs de corner extra (VOXEL-05). Um por nível por corner de V-junction descoberto.
+var _voxel_junction_extras: Array = []
 
 ## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
 ## para faces de parede; blocos sólidos ainda usam TileMapLayer.
@@ -1778,6 +1780,7 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 	for layer in _voxel_layers:
 		layer.clear()
 	_voxel_wall_slices.clear()
+	_voxel_junction_extras.clear()
 
 	var faces: Array = subcube_geometry.get("wall_faces", [])
 	if faces.is_empty():
@@ -1839,6 +1842,128 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 				for level in layer_count:
 					ws.voxels.append(VoxelRef.new(pos, level))
 			_voxel_wall_slices.append(ws)
+
+	## Corner extras: preencher corners de V-junction descobertos
+	_build_voxel_junction_extras(edge_groups)
+
+
+func _build_voxel_junction_extras(edge_groups: Dictionary) -> void:
+	## Detecta corners de vértice não cobertos por nenhum outer slice e coloca
+	## uma coluna extra de voxel. Um corner está descoberto quando as suas 2 arestas
+	## cobertas estão AMBAS ausentes do edge_groups.
+	## Dual-key: cada aresta física pode ser representada por qualquer dos 2 lados.
+	## Ver VOXEL_MASTER_PLAN.md §5 e DIRECTION_GLOSSARY.md §5.
+	if _voxel_tileset == null:
+		return
+	var source_id: int = _voxel_tile_ids.get("voxel_concrete", -1)
+	if source_id < 0:
+		return
+	var tile_coord := Vector2i(0, 0)
+	var vpu: int = SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS   ## 8
+
+	## Recolher todos os vértices tocados por arestas presentes
+	var vertices: Dictionary = {}
+	for key: String in edge_groups:
+		var from_cell: Vector2i = Vector2i(edge_groups[key]["from"])
+		var delta: Vector2i     = Vector2i(edge_groups[key]["delta"])
+		match delta:
+			Vector2i(-1,  0):  ## NW: aresta esquerda
+				vertices[from_cell] = true
+				vertices[from_cell + Vector2i(0, 1)] = true
+			Vector2i( 1,  0):  ## SE: aresta direita
+				vertices[from_cell + Vector2i(1, 0)] = true
+				vertices[from_cell + Vector2i(1, 1)] = true
+			Vector2i( 0, -1):  ## NE: aresta topo
+				vertices[from_cell] = true
+				vertices[from_cell + Vector2i(1, 0)] = true
+			Vector2i( 0,  1):  ## SW: aresta base
+				vertices[from_cell + Vector2i(0, 1)] = true
+				vertices[from_cell + Vector2i(1, 1)] = true
+
+	## Para cada vértice, verificar os 4 corners diagonais
+	for vtx: Vector2i in vertices:
+		var vx: int = vtx.x
+		var vy: int = vtx.y
+
+		## As 4 arestas físicas do vértice, cada uma checável por 2 chaves
+		## (a aresta pode ser emitida pelo mapa de qualquer um dos lados adjacentes).
+		var eA_keys: Array[String] = [
+			"%d,%d,%d,%d" % [vx,   vy,    0, -1],   ## NE de GU(vx,vy)
+			"%d,%d,%d,%d" % [vx,   vy-1,  0,  1]]   ## SW de GU(vx,vy-1)
+		var eB_keys: Array[String] = [
+			"%d,%d,%d,%d" % [vx,   vy,   -1,  0],   ## NW de GU(vx,vy)
+			"%d,%d,%d,%d" % [vx-1, vy,    1,  0]]   ## SE de GU(vx-1,vy)
+		var eC_keys: Array[String] = [
+			"%d,%d,%d,%d" % [vx-1, vy,    0, -1],   ## NE de GU(vx-1,vy)
+			"%d,%d,%d,%d" % [vx-1, vy-1,  0,  1]]   ## SW de GU(vx-1,vy-1)
+		var eD_keys: Array[String] = [
+			"%d,%d,%d,%d" % [vx,   vy-1, -1,  0],   ## NW de GU(vx,vy-1)
+			"%d,%d,%d,%d" % [vx-1, vy-1,  1,  0]]   ## SE de GU(vx-1,vy-1)
+
+		var eA: bool = _has_any(edge_groups, eA_keys)
+		var eB: bool = _has_any(edge_groups, eB_keys)
+		var eC: bool = _has_any(edge_groups, eC_keys)
+		var eD: bool = _has_any(edge_groups, eD_keys)
+
+		if not (eA or eB or eC or eD):
+			continue   ## nenhuma aresta neste vértice
+
+		## storey_count: máximo de todas as arestas presentes neste vértice
+		var sc: int = _max_storey_of(edge_groups,
+				eA_keys + eB_keys + eC_keys + eD_keys)
+
+		## GU_TL corner — coberto por eC ou eD
+		if not (eC or eD):
+			_add_junction_extra(
+				Vector2i((vx-1)*vpu + vpu-1, (vy-1)*vpu + vpu-1),
+				sc, source_id, tile_coord)
+
+		## GU_BR corner — coberto por eA ou eB
+		if not (eA or eB):
+			_add_junction_extra(
+				Vector2i(vx*vpu, vy*vpu),
+				sc, source_id, tile_coord)
+
+		## GU_BL corner — coberto por eB ou eC
+		if not (eB or eC):
+			_add_junction_extra(
+				Vector2i((vx-1)*vpu + vpu-1, vy*vpu),
+				sc, source_id, tile_coord)
+
+		## GU_TR corner — coberto por eA ou eD
+		if not (eA or eD):
+			_add_junction_extra(
+				Vector2i(vx*vpu, (vy-1)*vpu + vpu-1),
+				sc, source_id, tile_coord)
+
+
+func _has_any(edge_groups: Dictionary, keys: Array[String]) -> bool:
+	## Retorna true se alguma das chaves existir em edge_groups.
+	for k: String in keys:
+		if edge_groups.has(k):
+			return true
+	return false
+
+
+func _max_storey_of(edge_groups: Dictionary, keys: Array[String]) -> int:
+	## Retorna o max storey_count das arestas presentes na lista de chaves.
+	var sc: int = 1
+	for k: String in keys:
+		if edge_groups.has(k):
+			sc = maxi(sc, int(edge_groups[k]["max_storey"]) + 1)
+	return sc
+
+
+func _add_junction_extra(voxel_pos: Vector2i, storey_count: int,
+		source_id: int, tile_coord: Vector2i) -> void:
+	## Coloca 1 coluna voxel extra num corner de V-junction descoberto.
+	## Regista VoxelRefs em _voxel_junction_extras para TIC e BakeSystem.
+	var layer_count: int = storey_count * SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS
+	_ensure_voxel_layers(layer_count)
+	for level in layer_count:
+		_voxel_layers[level].set_cell(voxel_pos, source_id, tile_coord)
+	for level in layer_count:
+		_voxel_junction_extras.append(VoxelRef.new(voxel_pos, level))
 
 
 func _build_wall_containers(subcube_geometry: Dictionary) -> void:

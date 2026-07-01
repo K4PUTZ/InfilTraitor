@@ -20,6 +20,10 @@ const LightingControllerClass = preload("res://godot/scripts/controllers/lightin
 const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
 const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
 const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
+const VoxelRegistryClass = preload("res://godot/scripts/world/voxel_registry.gd")
+const VoxelRefClass = preload("res://godot/scripts/world/voxel_ref.gd")
+const WallSliceClass = preload("res://godot/scripts/world/wall_slice.gd")
+const HighWallClass = preload("res://godot/scripts/world/high_wall.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -111,7 +115,7 @@ var _voxel_wall_slices: Array = []
 ## VoxelRefs de corner extra (VOXEL-05). Um por nível por corner de V-junction descoberto.
 var _voxel_junction_extras: Array = []
 ## VoxelRegistry — centralized index of all WallSlice/HighWall instances (VOXEL-06).
-var _voxel_registry: VoxelRegistry = null
+var _voxel_registry: RefCounted = null
 
 ## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
 ## para faces de parede; blocos sólidos ainda usam TileMapLayer.
@@ -2228,7 +2232,7 @@ func _build_room(layout: Dictionary) -> void:
 		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
 		## Initialize VoxelRegistry (VOXEL-06)
 		if _voxel_registry == null:
-			_voxel_registry = VoxelRegistry.new()
+			_voxel_registry = VoxelRegistryClass.new()
 			_voxel_registry.setup(max_floors * SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS)
 		_render_subcube_geometry(subcube_geometry, max_floors)   ## blocos sólidos (TileMapLayer)
 		_place_wall_voxels(subcube_geometry)                     ## VOXEL-04: faces de parede (voxels)

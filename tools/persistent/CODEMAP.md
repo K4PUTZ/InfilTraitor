@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**66 scripts · 12014 lines total** (under `godot/scripts/`)
+**66 scripts · 12018 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1378,7 +1378,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2826 lines
+extends `Node2D` · 2830 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1402,6 +1402,10 @@ extends `Node2D` · 2826 lines
 - `CameraControllerClass` = `preload("res://godot/scripts/controllers/camera_controller.gd")`
 - `FowControllerClass` = `preload("res://godot/scripts/controllers/fow_controller.gd")`
 - `GuardCoordinatorClass` = `preload("res://godot/scripts/controllers/guard_coordinator.gd")`
+- `VoxelRegistryClass` = `preload("res://godot/scripts/world/voxel_registry.gd")`
+- `VoxelRefClass` = `preload("res://godot/scripts/world/voxel_ref.gd")`
+- `WallSliceClass` = `preload("res://godot/scripts/world/wall_slice.gd")`
+- `HighWallClass` = `preload("res://godot/scripts/world/high_wall.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`

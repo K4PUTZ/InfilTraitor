@@ -175,20 +175,60 @@
 
 ---
 
-## VOXEL-05: Junction Detection + Extra Voxels (Pending ⏳)
+## VOXEL-05: Junction Detection + Extra Voxels (Complete ✅)
 
-**Objective:** Detect V-junctions (2 walls at vertex) and populate HighWall.junction_extras.
+**Objective:** Detect V-junctions (2 walls at vertex) and populate HighWall.junction_extras with corner-filling voxels.
 
-**Design sketch:**
-- Iterate all WallSlice pairs, detect corners where two walls meet
-- V-junction rule: place 1 extra voxel column at the uncovered outer diagonal
-- T-junction rule: no extra (3rd wall's outer slice covers gap)
-- X-junction rule: no extra (all 4 diagonals covered)
+**What was implemented:**
 
-**Planned changes:**
-- Modify `_place_wall_voxels()` to detect junctions after initial WallSlice creation
-- Create HighWall instances (grouping related WallSlices)
-- Populate junction_extras array with gap-filling voxel positions
+1. **`_voxel_junction_extras` tracking** (in `room.gd`):
+   - New array variable to accumulate VoxelRefs for corner-fill voxels
+   - Cleared on each room rebuild (alongside `_voxel_wall_slices.clear()`)
+
+2. **`_build_voxel_junction_extras(edge_groups)` — Main junction detection** (in `room.gd`):
+   - Collects all vertices touched by present wall edges (4 edges per vertex: NW/NE/SE/SW)
+   - For each vertex, checks 4 corners diagonally: GU_TL, GU_BR, GU_BL, GU_TR
+   - Corner is "uncovered" if **both** edges covering it are absent
+   - V-junction rule: uncovered corner + ≥1 adjacent edge → place 1 extra voxel column
+   - No extras for T-junction (all corners covered) or X-junction (all corners covered)
+
+3. **`_has_any(edge_groups, keys)` — Dual-key checker** (in `room.gd`):
+   - Each physical wall edge can be represented by 2 keys (from either adjacent GU)
+   - Returns true if any key exists in edge_groups dictionary
+
+4. **`_max_storey_of(edge_groups, keys)` — Height calculator** (in `room.gd`):
+   - Returns maximum storey_count of all edges covering a given list of keys
+   - Ensures junction extras match wall height
+
+5. **`_add_junction_extra(voxel_pos, storey_count, source_id, tile_coord)` — Voxel placer** (in `room.gd`):
+   - Places one extra voxel column at corner position
+   - Ensures layers exist via `_ensure_voxel_layers(layer_count)`
+   - Calls `set_cell()` for each level (Rule 8 — no Image operations)
+   - Registers all VoxelRefs in `_voxel_junction_extras` for TIC and BakeSystem
+
+**Files modified:**
+- `godot/scripts/world/room.gd` — 3 str_replace operations (variable declaration, clear operation, 4 new functions)
+
+**Validation (Acceptance Tests):**
+- **A1:** `_voxel_junction_extras` declared ✓
+- **A2:** 4 new functions present ✓ (_build_voxel_junction_extras, _has_any, _max_storey_of, _add_junction_extra)
+- **A3:** Junction call at end of `_place_wall_voxels` ✓
+- **A4:** `_voxel_junction_extras.clear()` in cleanup block ✓
+- **A5:** Dual-key arrays (eA/eB/eC/eD keys) present ✓
+- **A6:** 4 corners verified (GU_TL/GU_BR/GU_BL/GU_TR) ✓
+- **A7:** Correct delta formula for vertex calculation ✓ (4 match cases)
+- **A8:** `_add_junction_extra` uses `set_cell()` ✓
+- **A9:** Subcube system + `_build_wall_containers` preserved ✓
+- **A10:** Godot runtime clean — no parse errors or warnings ✓
+- **A11:** Git status clean (only room.gd modified) ✓
+
+**Technical notes:**
+- Dual-key logic necessary because map can emit wall edges from either adjacent GU
+- V-junction detection is crucial for proper corner filling in L-shaped wall layouts
+- No extra voxels for T/X junctions (those corners are already covered by outer slices)
+- All junction extras stored in array for future TIC and destructibility integration
+
+**Artifacts archived:** `PROMPTS/DONE/VOXEL-05.md`
 
 ---
 

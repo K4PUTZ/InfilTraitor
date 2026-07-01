@@ -130,6 +130,7 @@ var _prop_stack_layers: Array[TileMapLayer] = []
 ## tile_name → TileSet source_id
 var _tile_ids: Dictionary = {}
 var _room_size: Vector2i = Vector2i.ZERO
+var _map_buffer: int = 0   ## Buffer offset from MapCompiler (SLICE-00)
 var _blocked_cells: Dictionary = {}
 var _prop_heights: Dictionary = {}  ## rotated cell → prop shadow height class (1-4)
 var _base_layout: Dictionary = {}
@@ -266,6 +267,8 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 @export var map_id: String = "PLAYGROUND"
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
 @export var wall_height_override: int = 0
+## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
+@export var debug_probe_voxel_alignment: bool = false
 
 const WHISTLE_RADIUS := 3
 
@@ -320,6 +323,7 @@ func _ready() -> void:
 
 	var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
 	_room_size = view_layout.get("size", _room_size)
+	_map_buffer = view_layout.get("buffer", 0)  ## SLICE-00: store buffer for probe
 	_build_room(view_layout)
 	
 	## MODULARIZE-03: Initialize LightingController (before VisionController, which connects to its signals)
@@ -1647,7 +1651,7 @@ func _ensure_subcube_layers(count: int) -> void:
 
 func _build_voxel_tileset() -> TileSet:
 	## Builds the voxel TileSet at runtime from source_assets/voxels/*.png.
-	## tile_size = 32×16, texture_origin = (0,0) — no empirical offset needed.
+	## tile_size = 32×16, texture_origin = (0,10) — derived from atom layout (SLICE-00).
 	## One source per material, no directional variants.
 	## Returns null (with push_warning) if any PNG is missing; safe to call always.
 	var ts := TileSet.new()
@@ -1677,7 +1681,8 @@ func _build_voxel_tileset() -> TileSet:
 
 		var td: TileData = src.get_tile_data(Vector2i(0, 0), 0)
 		if td != null:
-			td.texture_origin = Vector2i(0, 0)              ## analytically correct — no calibration
+			## Derived from Canon 3: (atom_h - tile_h) / 2 = (36 - 16) / 2 = 10 (SLICE-00)
+			td.texture_origin = Vector2i(0, (36 - 16) / 2)
 			td.set_custom_data("tile_name", "voxel_%s" % mat)
 
 		_voxel_tile_ids["voxel_%s" % mat] = source_id
@@ -1691,19 +1696,24 @@ func _build_voxel_tileset() -> TileSet:
 
 func _ensure_voxel_layers(count: int) -> void:
 	## Creates TileMapLayers for the voxel render plane, one per vertical level.
-	## Layer k: position.y = VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX × k
-	##          z_index    = WALL_BASE_Z_INDEX + k
-	## Parallel to _ensure_subcube_layers but uses VOXEL_STEP_PX (20) instead of 40.
+	## SLICE-00 fix: Compensate for tile_size difference (floor 256×128, voxel 32×16).
+	## Voxel layer must be offset by (floor_half_size - voxel_half_size) = (128-16, 64-8) = (112, 56)
+	## to align N-vertices after set_cell() placement.
+	## Layer k: position = (VISUAL_GRID_OFFSET + offset) - (0, VOXEL_STEP_PX × k)
+	##          z_index  = WALL_BASE_Z_INDEX + k
 	if _voxel_tileset == null:
 		return
+	
+	const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)
+	
 	while _voxel_layers.size() < count:
 		var level := _voxel_layers.size()
 		var layer := TileMapLayer.new()
 		layer.tile_set     = _voxel_tileset
 		layer.y_sort_origin = 1
 		layer.position     = Vector2(
-				VISUAL_GRID_OFFSET.x,
-				VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
+				VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,
+				VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * float(level))
 		layer.z_index      = WALL_BASE_Z_INDEX + level
 		add_child(layer)
 		_voxel_layers.append(layer)
@@ -1860,6 +1870,58 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 
 	## Aggregate into HighWall instances (VOXEL-06)
 	_build_high_walls()
+	
+	## SLICE-00: measure world-space alignment of voxel plane vs canonical grid
+	_debug_probe_voxel_alignment()
+
+
+func _debug_probe_voxel_alignment() -> void:
+	## SLICE-00: measures world-space delta between the canonical GU diamond and the
+	## voxel plane's 8x8 block for a set of probe GUs. Temporary diagnostic; removed
+	## in SLICE-01. Logs via print_debug only.
+	## Uses corrected formula: adjusted = map_to_local() - half_tile_size
+	if not debug_probe_voxel_alignment:
+		return
+	if _voxel_layers.is_empty():
+		return
+	
+	# Find a floor layer cell that exists
+	var floor_cell = Vector2i.ZERO
+	var floor_found = false
+	for x in range(-5, 10):
+		for y in range(-5, 10):
+			if floor_layer.get_cell_source_id(Vector2i(x, y)) != -1:
+				floor_cell = Vector2i(x, y)
+				floor_found = true
+				break
+		if floor_found: break
+	
+	var floor_ts = floor_layer.tile_set
+	var floor_tile_size = floor_ts.tile_size
+	var floor_half_size = Vector2(floor_tile_size) / 2.0
+	
+	var vlayer = _voxel_layers[0]
+	var voxel_ts = vlayer.tile_set
+	var voxel_tile_size = voxel_ts.tile_size
+	var voxel_half_size = Vector2(voxel_tile_size) / 2.0
+	
+	## Corrected formula: adjusted = map_to_local - half_tile_size
+	var floor_map = floor_layer.map_to_local(floor_cell)
+	var floor_adjusted = floor_map - floor_half_size
+	
+	var voxel_cell = floor_cell * 8
+	var voxel_map = vlayer.map_to_local(voxel_cell)
+	var voxel_adjusted = voxel_map - voxel_half_size
+	
+	## Compare adjusted positions
+	var canon_pos = floor_adjusted + VISUAL_GRID_OFFSET
+	var voxel_pos = voxel_adjusted + vlayer.position
+	var delta = voxel_pos - canon_pos
+	
+	print_debug("[SLICE-00 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
+	print_debug("[SLICE-00 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
+	print_debug("[SLICE-00 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
+	print_debug("[SLICE-00 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
 
 
 func _build_high_walls() -> void:

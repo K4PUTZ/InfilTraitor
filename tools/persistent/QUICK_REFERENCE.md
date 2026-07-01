@@ -52,6 +52,40 @@ HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
 
 ---
 
+## Voxel Plane Alignment (SLICE-00 / Alpha OFFSET FIX)
+
+**Issue:** Voxel layer renders offset (112, 56) px from canonical grid due to tile_size difference.
+
+**Why it happens:**
+- `map_to_local()` returns **N-vertex** (diamond top), not tile origin
+- Floor: N-vertex offset = (128, 64) = half of tile_size(256, 128)
+- Voxel: N-vertex offset = (16, 8) = half of tile_size(32, 16)  
+- Visual delta = (128-16, 64-8) = (112, 56) — the offset
+
+**Fix — Two Constants:**
+
+```gdscript
+# In _build_voxel_tileset():
+td.texture_origin = Vector2i(0, 10)  # = (atom_h - tile_h) / 2 = (36 - 16) / 2
+
+# In _ensure_voxel_layers():
+const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)  # floor_half - voxel_half
+layer.position = Vector2(
+    VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,      # 0 + 112 = 112
+    VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * level)
+    # 512 + 56 - 20*k
+```
+
+**Result:** Both N-vertices align pixel-perfectly:
+- Floor: (128, 64) + (0, 512) = **(128, 576)**
+- Voxel: (16, 8) + (112, 568) = **(128, 576)** ✅
+
+**Key:** The (112, 56) offset is **intentional and correct**. It's not a bug—it's the systematic compensation required by Godot's isometric `map_to_local()` formula.
+
+**Reference:** [VOXEL_MASTER_PLAN.md §10.4 — Transform Canon](../../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md#104-slice-00--transform-canon-voxel-plane-alignment-alpha-offset-fix)
+
+---
+
 ## Inviolable Rules — Summary
 
 | # | Rule | Short enforcement |

@@ -594,13 +594,62 @@ New `TileSetAtlasSource` for voxels:
 
 ```
 tile_size:        Vector2i(32, 16)
-texture_origin:   Vector2i(0, 0)      ← NO empirical offset needed
+texture_origin:   Vector2i(0, 10)      ← SLICE-00: derived from atom geometry (VOXEL_ATOM_H - VOXEL_TILE_H) / 2 = (36 - 16) / 2 = 10
 y_sort_origin:    8                    ← half of tile_height, centers sort pivot
 layout:           DIAMOND_DOWN
 ```
 
 One `TileSetAtlasSource` entry per material variant. No special orientation variants needed
 (unlike the old subcube system with `SUBCUBE_FACE_OFFSETS`).
+
+---
+
+### 10.4 SLICE-00 — Transform Canon: Voxel Plane Alignment (Alpha OFFSET FIX)
+
+**Problem:** Early voxel rendering showed walls offset by (112, 56) px from canonical gameplay grid.
+
+**Root Cause:** Godot's `TileMapLayer.map_to_local()` returns the **N-vertex position** (diamond top) in isometric space,
+not tile origin (0,0). The offset magnitude equals `half_tile_size`:
+- **Floor layer** (tile_size = 256×128): offset = (128, 64) — half of tile_size
+- **Voxel layer** (tile_size = 32×16): offset = (16, 8) — half of tile_size
+- **Difference**: (128 - 16, 64 - 8) = **(112, 56)** — exact observed delta
+
+**Solution (SLICE-00 Canonical Fix):**
+
+Two adjustments required for pixel-perfect alignment:
+
+1. **Texture Origin Constant** (`_build_voxel_tileset()`)
+   ```gdscript
+   td.texture_origin = Vector2i(0, (36 - 16) / 2)  # = (0, 10)
+   # Derived from atom geometry: (VOXEL_ATOM_H - VOXEL_TILE_H) / 2
+   ```
+
+2. **Layer Position Offset** (`_ensure_voxel_layers()`)
+   ```gdscript
+   const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)  # floor_half - voxel_half
+   layer.position = Vector2(
+       VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,
+       VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * float(level))
+   ```
+
+**Alignment Verification:**
+After fix, both tiles render at the same screen coordinate:
+```
+Floor N-vertex  = floor_layer.map_to_local(cell) + floor_layer.position
+                = (128, 64) + (0, 512) = (128, 576)
+
+Voxel N-vertex  = voxel_layer.map_to_local(cell) + voxel_layer.position
+                = (16, 8) + (112, 568) = (128, 576) ✅
+```
+
+**Validation (T2 — Selftest):**
+- ✅ E1 formula: layer position formula holds for levels 0, 1, 7
+- ✅ Scale identity: voxel_projection ≡ floor_projection at 8× scale
+- ✅ texture_origin = (0, 10) verified against atom geometry (36−16)/2
+- ✅ Canon 4 cell-space: round-trip holds for all test GUs
+- ✅ Floor Rosetta: tileset_blocks texture_origin = (0, -384) confirmed
+
+**Impact:** All walls render pixel-aligned with canonical grid. No empirical calibration. Pure analytical geometry.
 
 ---
 

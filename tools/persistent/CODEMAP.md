@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**66 scripts · 12126 lines total** (under `godot/scripts/`)
+**67 scripts · 12304 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, slice_geometry_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, voxel_registry.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
 
@@ -1161,6 +1161,14 @@ extends `SceneTree` · 49 lines
 
 ---
 
+### `slice_geometry_selftest.gd`
+
+extends `SceneTree` · 116 lines
+
+`godot/scripts/tools/slice_geometry_selftest.gd`
+
+---
+
 ### `subcube_geometry_selftest.gd`
 
 extends `SceneTree` · 89 lines
@@ -1380,7 +1388,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2890 lines
+extends `Node2D` · 2952 lines
 
 `godot/scripts/world/room.gd`
 

@@ -1,4 +1,17 @@
-# INFILTRAITOR — Game Plan
+# ⚠️ DEPRECATED — Archived for Historical Reference
+
+**Superseded by:**
+- [docs/vision/game_vision.md](../../vision/game_vision.md) — Current game vision and concept
+- [docs/vision/pillars.md](../../vision/pillars.md) — Current game pillars
+- [docs/production/roadmap.md](../../production/roadmap.md) — Current development roadmap
+
+**Reason:** This document represents early design (Feb–May 2026). The active vision documents have evolved with the project.
+
+**Historical Value:** High — Contains early concept exploration and design rationale for the core gameplay loop.
+
+---
+
+# INFILTRAITOR — Game Plan (Archive)
 
 > **Project:** INFILTRAITOR  
 > **Genre:** Top-down stealth / tactical RPG  

@@ -1,4 +1,17 @@
-# INFILTRAITOR — Master Design Document
+# ⚠️ DEPRECATED — Archived for Historical Reference
+
+**Superseded by:**
+- [docs/ARCHITECTURE.md](../../ARCHITECTURE.md) — Current system architecture
+- [docs/vision/design_philosophy.md](../../vision/design_philosophy.md) — Current design principles
+- Master Plan documents under [docs/systems/](../../systems/) for specific subsystems
+
+**Reason:** This document consolidates early design decisions (June 2026). Active architecture is now distributed across specialized documents.
+
+**Historical Value:** High — Contains early architectural reasoning and design philosophy evolution.
+
+---
+
+# INFILTRAITOR — Master Design Document (Archive)
 > Consolidação de todas as decisões de design tomadas em sessão de brainstorming
 > Data: Junho 2026 | Status: Definido — pronto para geração de prompts de implementação
 

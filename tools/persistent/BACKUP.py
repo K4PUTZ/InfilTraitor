@@ -3,6 +3,12 @@
 Script para criar um backup ZIP do projeto INFILTRAITOR
 Exclui arquivos grandes (assets) e diretórios desnecessários
 
+Inclui: código GDScript, documentação (MD), configurações, scripts Python
+Exclui: ASSETS/, ARCHIVE/, REFERENCES/, export/, .git/, .godot/, cache
+
+Nota: Os arquivos de referência rápida em tools/persistent/ (QUICK_REFERENCE.md,
+ASSET_PIPELINE_QUICK_REFERENCE.md) são incluídos automaticamente no backup.
+
 Uso:
   python tools/persistent/BACKUP.py                    # Backup no repo root
   python tools/persistent/BACKUP.py /path/to/output   # Backup em local customizado

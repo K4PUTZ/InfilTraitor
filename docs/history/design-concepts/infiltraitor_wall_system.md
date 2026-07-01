@@ -1,4 +1,15 @@
-# Infiltraitor — Wall System Refactor: Technical Design Prompt
+# ⚠️ DEPRECATED — Archived for Historical Reference
+
+**Superseded by:**
+- [docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md](../../technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) — Current voxel rendering system (replaces wall tiling)
+
+**Reason:** This document describes the edge-based wall tiling system (early exploration). The current system uses voxel-based rendering via `TileMapLayer.set_cell()`.
+
+**Historical Value:** Medium — Documents wall system evolution and tilemap design patterns.
+
+---
+
+# Infiltraitor — Wall System Refactor: Technical Design Prompt (Archive)
 
 ## Context
 

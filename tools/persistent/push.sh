@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Voxel-05 - $(date +%Y-%m-%d)"
+TAG="Alpha Documentation-Optimization - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

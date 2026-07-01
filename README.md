@@ -18,27 +18,68 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 ---
 
-## 📚 Architecture & Documentation
+## 📚 Documentation Hierarchy
 
-**Complete formal architecture documentation for all gameplay systems:**
+**The documentation is organized into four levels. Start here, then follow the path for your task.**
 
-### Quick Navigation
+### Level 1: Your Starting Point (5 min read)
 
-| Link | Purpose | Audience |
-|------|---------|----------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture overview | Everyone |
-| [docs/systems/lighting.md](docs/systems/lighting.md) | Lighting feature spec | Designers, Programmers |
-| [docs/systems/lighting_runtime_pipeline.md](docs/systems/lighting_runtime_pipeline.md) | Runtime system architecture | Programmers, Architects |
-| [docs/systems/perception.md](docs/systems/perception.md) | AI & detection systems | Designers, Programmers |
-| [docs/production/current_state.md](docs/production/current_state.md) | Project status & gaps | Leads, Programmers |
+**I'm implementing a feature. Where do I start?**
+1. Read this README (you are here)
+2. Read [tools/persistent/OPERATOR_CONTEXT.md](tools/persistent/OPERATOR_CONTEXT.md) — development handbook with rules, workflow, and system references
+3. Identify which subsystem you're modifying
+4. Follow the link to the relevant Master Plan (see below)
 
-### Key Systems
+**The workflow is:**
+```
+README
+    ↓
+OPERATOR_CONTEXT (handbook + architectural rules)
+    ↓
+Identify subsystem
+    ↓
+Read relevant Master Plan
+    ↓
+Implement
+    ↓
+Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
+```
 
-- **Lighting System** — Shadow projection with height semantics
-- **Guard AI & Detection** — Probabilistic vision with audio perception
-- **Turn System** — 2 AP per turn with A* pathfinding
-- **Fog of War** — Three-layer revelation (unseen/peek/revealed)
-- **Perception** — LOS calculation with multiplicators (cover, posture, shadows)
+### Level 2: Master Plans (Canonical Subsystem Specifications)
+
+**Read these when modifying a specific subsystem:**
+
+| Subsystem | Master Plan | Contains |
+|-----------|-------------|----------|
+| **AI & Guard Behavior** | [docs/systems/AI_MASTER_PLAN.md](docs/systems/AI_MASTER_PLAN.md) | FSM, detection curves, communication, turn flow |
+| **Lighting & Visibility** | [docs/systems/LIGHT_MASTER_PLAN.md](docs/systems/LIGHT_MASTER_PLAN.md) | Visibility taxonomy, light sources, shadows, multipliers |
+| **Map System** | [docs/systems/MAP_MASTER_PLAN.md](docs/systems/MAP_MASTER_PLAN.md) | MapSpec, layout, wall storeys, perspective rotation |
+| **Voxel Wall Rendering** | [docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | Voxel geometry, placement, baking, dirty flag |
+| **Localization (i18n)** | [docs/technical/LOCALIZATION_REFERENCE.md](docs/technical/LOCALIZATION_REFERENCE.md) | TranslationServer, CSV format, key conventions |
+
+### Level 3: System References (Detailed Documentation)
+
+**Consult for deep dives into specific systems:**
+
+| System | Reference | Purpose |
+|--------|-----------|---------|
+| **Architecture Overview** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | High-level system relationships and philosophy |
+| **Lighting Pipeline** | [docs/systems/lighting_runtime_pipeline.md](docs/systems/lighting_runtime_pipeline.md) | Runtime flow and invalidation rules |
+| **Visual Perception** | [docs/systems/perception.md](docs/systems/perception.md) | Detection cones, LOS, geometry |
+| **Audio System** | [docs/systems/noise.md](docs/systems/noise.md) | Noise propagation, hearing, audio detection |
+| **Movement** | [docs/systems/movement.md](docs/systems/movement.md) | Grid navigation, A*, AP economy |
+| **Rendering** | [docs/systems/rendering.md](docs/systems/rendering.md) | Overlay z-index, visual systems |
+
+### Level 4: Production & Vision (Team Coordination)
+
+**For project leads and team members:**
+
+- **[docs/vision/](docs/vision/)** — Game vision, design philosophy, pillars
+- **[docs/production/](docs/production/)** — Roadmap, status, milestones, risk assessment
+
+### Historical Archive
+
+**[docs/history/](docs/history/)** — Archived design explorations and implementation logs, clearly marked as superseded
 
 ---
 

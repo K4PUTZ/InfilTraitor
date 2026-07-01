@@ -110,6 +110,8 @@ var _voxel_tile_ids: Dictionary = {}
 var _voxel_wall_slices: Array = []
 ## VoxelRefs de corner extra (VOXEL-05). Um por nível por corner de V-junction descoberto.
 var _voxel_junction_extras: Array = []
+## VoxelRegistry — centralized index of all WallSlice/HighWall instances (VOXEL-06).
+var _voxel_registry: VoxelRegistry = null
 
 ## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
 ## para faces de parede; blocos sólidos ainda usam TileMapLayer.
@@ -1842,9 +1844,37 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 				for level in layer_count:
 					ws.voxels.append(VoxelRef.new(pos, level))
 			_voxel_wall_slices.append(ws)
+			_voxel_registry.register_slice(ws)
 
 	## Corner extras: preencher corners de V-junction descobertos
 	_build_voxel_junction_extras(edge_groups)
+
+	## Aggregate into HighWall instances (VOXEL-06)
+	_build_high_walls()
+
+
+func _build_high_walls() -> void:
+	## Build HighWall aggregates from WallSlices.
+	## Grouping strategy: 1 HighWall per unique (edge_from, direction).
+	## Multiple storeys on the same edge group into one HighWall.
+	var hw_groups: Dictionary = {}  # (from_cell_str, direction) → Array[WallSlice]
+
+	for slice in _voxel_wall_slices:
+		var key: String = "%s_%s" % [slice.gu_cell, slice.direction]
+		if not hw_groups.has(key):
+			hw_groups[key] = []
+		hw_groups[key].append(slice)
+
+	## Create HighWall for each group
+	for group_key: String in hw_groups:
+		var slices: Array = hw_groups[group_key]
+		var hw := HighWallClass.new()
+		hw.id = "HW_%s" % group_key.replace(" ", "_")
+		hw.slices = slices
+		hw.junction_extras = []
+		hw.baked = false
+		hw.dirty_count = 0
+		_voxel_registry.register_high_wall(hw)
 
 
 func _build_voxel_junction_extras(edge_groups: Dictionary) -> void:
@@ -2196,6 +2226,10 @@ func _build_room(layout: Dictionary) -> void:
 	var subcube_geometry: Dictionary = layout.get("subcube_geometry", {})
 	if not subcube_geometry.is_empty() and _subcube_tileset != null:
 		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
+		## Initialize VoxelRegistry (VOXEL-06)
+		if _voxel_registry == null:
+			_voxel_registry = VoxelRegistry.new()
+			_voxel_registry.setup(max_floors * SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS)
 		_render_subcube_geometry(subcube_geometry, max_floors)   ## blocos sólidos (TileMapLayer)
 		_place_wall_voxels(subcube_geometry)                     ## VOXEL-04: faces de parede (voxels)
 		structure_wall_layer.visible = false

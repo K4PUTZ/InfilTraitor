@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**65 scripts · 11884 lines total** (under `godot/scripts/`)
+**66 scripts · 12014 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
+- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, voxel_registry.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
 
 ---
 
@@ -1378,7 +1378,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2792 lines
+extends `Node2D` · 2826 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1545,6 +1545,36 @@ extends `Node2D` · 2792 lines
 - `func set_visible(v: bool) -> void:`
 - `func set_damage(state: int) -> void:`
 - `func clear_dirty() -> void:`
+
+---
+
+### `voxel_registry.gd`
+
+`class_name VoxelRegistry` · extends `RefCounted` · 96 lines
+
+`godot/scripts/world/voxel_registry.gd`
+
+**Signals**
+- `signal slice_registered(slice)`
+- `signal high_wall_registered(high_wall)`
+
+**Constants / tuning**
+- `WallSliceClass` = `preload("res://godot/scripts/world/wall_slice.gd")`
+- `HighWallClass` = `preload("res://godot/scripts/world/high_wall.gd")`
+- `VoxelRefClass` = `preload("res://godot/scripts/world/voxel_ref.gd")`
+
+**Public API**
+- `func setup(max_voxels_per_level: int) -> void:`
+- `func register_slice(slice: WallSlice) -> void:`
+- `func register_high_wall(high_wall: HighWall) -> void:`
+- `func get_slice(slice_id: String) -> WallSlice:`
+- `func get_high_wall(high_wall_id: String) -> HighWall:`
+- `func all_slices() -> Array[WallSlice]:`
+- `func all_high_walls() -> Array[HighWall]:`
+- `func total_slices() -> int:`
+- `func total_high_walls() -> int:`
+- `func is_empty() -> bool:`
+- `func clear() -> void:`
 
 ---
 

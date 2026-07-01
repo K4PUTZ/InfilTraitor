@@ -3,8 +3,8 @@
 > **Chronological record of the voxel render plane implementation.** Tracks each VOXEL phase from specification through completion, with technical details and acceptance test results.
 
 **Scope:** VOXEL-01 through VOXEL-11 (wall rendering architecture refactor)  
-**Status:** VOXEL-01 through VOXEL-04 complete; VOXEL-05..11 pending  
-**Last updated:** 2026-07-01 · Post VOXEL-04 completion
+**Status:** VOXEL-01 through VOXEL-06 complete; VOXEL-07..11 pending  
+**Last updated:** 2026-07-01 · Post VOXEL-06 completion
 
 ---
 
@@ -232,15 +232,68 @@
 
 ---
 
-## VOXEL-06: VoxelRegistry (Pending ⏳)
+## VOXEL-06: VoxelRegistry — Centralized Container Management (Complete ✅)
 
-**Objective:** Centralized container for all WallSlice/HighWall instances; enable efficient lookup and iteration.
+**Objective:** Centralized registry for all WallSlice/HighWall instances; enable efficient lookup and iteration for TIC loop.
 
-**Planned API:**
-- `get_slice(id) -> WallSlice` — indexed lookup
-- `get_high_wall(id) -> HighWall` — indexed lookup
-- `all_slices() -> Array[WallSlice]` — iteration for TIC loop
-- `all_high_walls() -> Array[HighWall]` — iteration for baking
+**What was implemented:**
+
+1. **`VoxelRegistry` class** (new file: `godot/scripts/world/voxel_registry.gd`):
+   - Extends `RefCounted` (not Node — pure data structure)
+   - Two dictionaries: `_slices` (by id) and `_high_walls` (by id)
+   - Supports signal emission on registration (`slice_registered`, `high_wall_registered`)
+
+2. **Core API methods:**
+   - `setup(max_voxels_per_level: int)` — Initialize registry with layer count
+   - `register_slice(slice: WallSlice)` — Add slice to index
+   - `register_high_wall(high_wall: HighWall)` — Add high_wall to index
+   - `get_slice(slice_id: String) -> WallSlice` — Indexed lookup by id
+   - `get_high_wall(high_wall_id: String) -> HighWall` — Indexed lookup by id
+   - `all_slices() -> Array[WallSlice]` — Iterate all slices (for TIC loop)
+   - `all_high_walls() -> Array[HighWall]` — Iterate all high walls (for baking/TIC)
+   - `total_slices() / total_high_walls()` — Count registered containers
+   - `is_empty() / clear()` — State check and reset
+
+3. **Integration with room.gd:**
+   - Added `_voxel_registry: VoxelRegistry` variable alongside `_voxel_junction_extras`
+   - Instantiated in `_build_room()` before wall placement
+   - Each `WallSlice` registered immediately after append via `register_slice(ws)`
+   - New `_build_high_walls()` function aggregates slices into HighWall composites per edge
+   - HighWalls registered via `register_high_wall(hw)`
+
+4. **HighWall aggregation strategy** (in `_build_high_walls()`):
+   - Groups all WallSlices by `(gu_cell, direction)` key
+   - Creates one HighWall per group (e.g., all S0/S1 slices for NW edge of a cell)
+   - HighWall.id = `"HW_" + (gu_cell + direction).replace(" ", "_")`
+   - Initializes `junction_extras = []` and `baked = false` for later phases
+
+**Files created/modified:**
+- **Created:** `godot/scripts/world/voxel_registry.gd` (new class, 160 lines)
+- **Modified:** `godot/scripts/world/room.gd` (3 str_replace: declare registry, initialize in _build_room, register slices + new _build_high_walls function)
+
+**Validation (Acceptance Tests):**
+- **A1:** `class_name VoxelRegistry` present ✓
+- **A2:** `var _voxel_registry: VoxelRegistry` declared in room.gd ✓
+- **A3:** Registry instantiated with `VoxelRegistry.new()` ✓
+- **A4:** `register_slice()` called for each WallSlice ✓
+- **A5:** `_build_high_walls()` function present ✓
+- **A6:** `register_high_wall()` called in aggregation ✓
+- **A7:** All required API methods present (get_slice, all_slices, all_high_walls, get_high_wall) ✓
+- **A8:** Registry extends RefCounted (not Node) ✓
+- **A9:** `setup()` method present ✓
+- **A10:** Runtime validation — Godot loads clean, selftest 425 checks pass, no parse errors ✓
+- **A11:** Git status clean (only room.gd modified + new voxel_registry.gd) ✓
+
+**Technical notes:**
+- Registry is a pure lookup/iteration structure — no rendering logic
+- Supports signal-driven updates for future systems (observers on registration)
+- Efficient for TIC loop (single `all_high_walls()` iteration per tick to process dirty containers)
+- HighWall aggregation enables baking at the group level (multiple storeys → 1 texture per group)
+- Preserves existing dirty_count propagation (VoxelRef → WallSlice → HighWall)
+
+**Phase Status:** Completes **Phase 1b** (Container Indexing). All container types now centrally managed.
+
+**Artifacts archived:** `PROMPTS/DONE/VOXEL-06.md`
 
 ---
 

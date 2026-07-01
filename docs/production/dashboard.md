@@ -13,9 +13,9 @@ Criterion: anyone who plays for 5–10 minutes can feel the stealth tension, see
 
 ## 📊 Current Status Snapshot
 
-**Project Phase:** Investor Demo Preparation (🟡 functional AI, system integration in progress)
-**Overall Progress:** 65% complete (re-estimated with functional AI)
-**Last Updated:** 2026-06-14
+**Project Phase:** Investor Demo Preparation (� VOXEL Phase 2 complete, AI + visuals functional)
+**Overall Progress:** 68% complete (Phase 2 runtime system finalized)
+**Last Updated:** 2026-07-01
 
 ---
 

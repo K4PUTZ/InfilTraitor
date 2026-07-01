@@ -11,13 +11,13 @@ Placeholder graphics, no audio, no narrative, no complex animations, no polished
 
 ---
 
-## Voxel Rendering System — Wall Architecture Refactor (VOXEL-01..04 Complete)
+## Voxel Rendering System — Wall Architecture Refactor (VOXEL-01..07 Complete)
 
-**Status: Partially Implemented (40% of planned work complete)**
+**Status: Phase 2 Complete (Runtime System 100%)**
 
-The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_rect` system with a native `TileMapLayer`-based architecture. The old approach suffered from cascading calibration dependencies; the new system is purely analytical — no empirical offsets.
+The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_rect` system with a native `TileMapLayer`-based architecture. The old approach suffered from cascading calibration dependencies; the new system is purely analytical — no empirical offsets. Phase 2 (Runtime) is now complete with full dirty flag tracking and TIC loop integration.
 
-### What works (VOXEL-01..04)
+### What works (VOXEL-01..07)
 
 ✅ **Geometry & Asset Generation (VOXEL-01)**
 - Voxel PNG tiles regenerated with correct 3D isometric geometry (32×36 px, 3 visible faces: top + left + right)
@@ -45,32 +45,41 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - Voxels rendered via `TileMapLayer.set_cell()` — no Image operations, no legacy offsets
 - All voxel layers created on demand; rendering fully functional in Godot editor
 
-### What's pending (VOXEL-05..11)
+✅ **Junction Detection + Extra Voxels (VOXEL-05)**
+- V-junction detection identifies 2 walls at vertex
+- `_build_voxel_junction_extras()` analytically calculates gap-filling voxel positions
+- `HighWall.junction_extras` array populated with corner voxels
+- Integrated into wall rendering via separate layer; no gaps in corner walls
 
-⏳ **VOXEL-05** — Junction Detection + Extra Voxels
-- Detect V-junctions (2 walls at vertex) and place junction_extras
-- Populate `HighWall.junction_extras` array with gap-filling voxel positions
-- Integrate into `_place_wall_voxels()` workflow
+✅ **VoxelRegistry — Centralized Indexing (VOXEL-06)**
+- `VoxelRegistry.new()` creates centralized container for all WallSlice/HighWall instances
+- Indexed lookup by edge key and wall direction
+- `all_high_walls()` iteration API for TIC loop and baking pipelines
+- Integrated into `room.gd` during wall building phase
 
-⏳ **VOXEL-06** — VoxelRegistry
-- Centralized container for all WallSlice/HighWall instances
-- Indexed lookup by edge key or wall direction
-- Iteration API for TIC loop and baking pipelines
+✅ **Dirty Flag + TIC Loop Integration (VOXEL-07)**
+- Per-voxel `dirty: bool` flag with parent reference tracking
+- Per-slice and per-HighWall `dirty_count` aggregation for efficient skipping
+- `_tic_voxel_system()` processes only dirty containers — O(container_count) cost at idle
+- `_apply_voxel_state()` renders/erases voxels based on visibility + damage state
+- Runtime integration: called once per agent step via `_on_agent_step_finished()`
+- All 12 acceptance tests passing; Godot loads clean
 
-⏳ **VOXEL-07** — Dirty Flag + TIC Loop
-- Per-voxel `dirty: bool` flag; dirty_count propagation up container hierarchy
-- TIC loop processes dirty containers only — O(container_count) cost at idle
-- Runtime destructibility via `ref.visible = false` + `erase_cell()`
+### What's pending (VOXEL-08..11)
 
-⏳ **VOXEL-08..09** — Baking System
-- VOXEL-08: Primary baking per WallSlice (Crop + Multiply from TextureCatalog)
-- VOXEL-09: Secondary baking per HighWall (single large texture spanning all constituent voxels)
-- Result: `VoxelRef.face_atlas_rect` populated; rendering path unchanged
+⏳ **VOXEL-08** — Primary Baking System
+- Load-time per-WallSlice texture baking (Crop + Multiply from TextureCatalog)
+- Populate `VoxelRef.face_atlas_rect` for each voxel based on (map_id, theme, player_level)
+- Store `bake_texture` in WallSlice
+
+⏳ **VOXEL-09** — Secondary Baking System
+- Per-HighWall texture baking (single large texture spanning all constituent voxels)
+- Junction extra integration
 
 ⏳ **VOXEL-10** — Destructibility
 - Damage states: `INTACT=0`, `CRACKED=1`, `DESTROYED=2`
-- Overlay texture + visibility logic
-- Integration with TIC loop and dirty flags
+- Overlay texture + visibility logic via dirty flags
+- Integration with TIC loop
 
 ⏳ **VOXEL-11** — CODEMAP Update
 - Register all voxel wall data in project codemap
@@ -82,6 +91,7 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - **No legacy offsets:** `FACE_CENTER_OFFSET`, `SUBCUBE_FACE_OFFSETS`, `is_x_varying`, `blend_rect` all archived
 - **Preservation:** All subcube infrastructure, wall edge data, and map compiler contract remain unchanged
 - **Godot status:** Loads clean; no parse errors or warnings; voxel rendering visually validated
+- **Performance:** Dirty flag propagation is O(1) per change; TIC loop is O(container_count) at idle
 
 ---
 

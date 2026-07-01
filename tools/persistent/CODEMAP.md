@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**60 scripts · 11247 lines total** (under `godot/scripts/`)
+**65 scripts · 11759 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,9 +18,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, coord_selftest.gd, subcube_geometry_selftest.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, wall_container.gd, wall_edge_data.gd
+- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
 
 ---
 
@@ -1141,6 +1141,18 @@ extends `SceneTree` · 336 lines
 
 ---
 
+### `build_voxel_tileset.gd`
+
+extends `SceneTree` · 75 lines
+
+`godot/scripts/tools/build_voxel_tileset.gd`
+
+**Constants / tuning**
+- `SOURCE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/"`
+- `TILESET_OUT` = `"res://godot/resources/tilesets/tileset_voxels.tres"`
+
+---
+
 ### `coord_selftest.gd`
 
 extends `SceneTree` · 49 lines
@@ -1154,6 +1166,14 @@ extends `SceneTree` · 49 lines
 extends `SceneTree` · 89 lines
 
 `godot/scripts/tools/subcube_geometry_selftest.gd`
+
+---
+
+### `voxel_selftest.gd`
+
+extends `SceneTree` · 112 lines
+
+`godot/scripts/tools/voxel_selftest.gd`
 
 ---
 
@@ -1240,6 +1260,28 @@ extends `Node2D` · 34 lines
 
 ## world/
 
+### `high_wall.gd`
+
+`class_name HighWall` · 40 lines
+
+`godot/scripts/world/high_wall.gd`
+
+**Public vars**
+- `var id:              String     = ""`
+- `var slices:          Array      = []`
+- `var junction_extras: Array      = []`
+- `var bake_texture:    Texture2D  = null`
+- `var baked:           bool       = false`
+- `var dirty_count:     int        = 0`
+- `var voxel_bounds:    Rect2i     = Rect2i()`
+
+**Public API**
+- `func get_slice(slice_id: String):`
+- `func total_voxel_count() -> int:`
+- `func all_voxels() -> Array:`
+
+---
+
 ### `level_graph.gd`
 
 `class_name LevelGraph` · extends `RefCounted` · 103 lines
@@ -1257,7 +1299,7 @@ extends `Node2D` · 34 lines
 
 ### `playground_map.gd`
 
-`class_name PlaygroundMap` · extends `RefCounted` · 41 lines
+`class_name PlaygroundMap` · extends `RefCounted` · 18 lines
 
 `godot/scripts/world/maps/definitions/playground_map.gd`
 
@@ -1336,7 +1378,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2476 lines
+extends `Node2D` · 2667 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1366,9 +1408,9 @@ extends `Node2D` · 2476 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `SUBCUBE_STEP_PX` = `40.0`
-- `SUBCUBE_BUFFER_OFFSET_PX` = `Vector2(100.0, 2.0)`
 - `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
 - `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8),   ## cima-esquerda: edge_delta (-1, 0) "NE": Vector2i(-16, -8),   ## cima-direita:  edge_delta ( 0,-1) "SE": Vector2i( 16, -8),   ## baixo-direita: edge_delta (+1, 0) "SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1) }`
+- `VOXEL_STEP_PX` = `20.0`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
 - `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`
@@ -1401,12 +1443,15 @@ extends `Node2D` · 2476 lines
 
 ### `subcube_coords.gd`
 
-`class_name SubcubeCoords` · 41 lines
+`class_name SubcubeCoords` · 76 lines
 
 `godot/scripts/world/subcube_coords.gd`
 
 **Constants / tuning**
-- `SUBCUBES_PER_UNIT_AXIS` = `4`
+- `VOXELS_PER_UNIT_AXIS` = `8`
+- `SUBCUBES_PER_UNIT_AXIS` = `8`
+- `VOXEL_STEP_PX` = `20.0`
+- `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
 
 ---
 
@@ -1477,9 +1522,35 @@ extends `Node2D` · 2476 lines
 
 ---
 
+### `voxel_ref.gd`
+
+`class_name VoxelRef` · 46 lines
+
+`godot/scripts/world/voxel_ref.gd`
+
+**Constants / tuning**
+- `DAMAGE_INTACT` = `0`
+- `DAMAGE_CRACKED` = `1`
+- `DAMAGE_DESTROYED` = `2`
+
+**Public vars**
+- `var grid_pos:        Vector2i = Vector2i.ZERO`
+- `var level:           int      = 0`
+- `var visible:         bool     = true`
+- `var dirty:           bool     = false`
+- `var damage_state:    int      = DAMAGE_INTACT`
+- `var face_atlas_rect: Rect2i   = Rect2i()`
+
+**Public API**
+- `func set_visible(v: bool) -> void:`
+- `func set_damage(state: int) -> void:`
+- `func clear_dirty() -> void:`
+
+---
+
 ### `wall_container.gd`
 
-`class_name WallContainer` · extends `Node2D` · 132 lines
+`class_name WallContainer` · extends `Node2D` · 133 lines
 
 `godot/scripts/world/wall_container.gd`
 
@@ -1491,7 +1562,7 @@ extends `Node2D` · 2476 lines
 - `SUBCUBES_PER_AXIS` = `4`
 - `SUBCUBE_STEP_PX` = `40.0`
 - `STOREY_HEIGHT_PX` = `160.0`
-- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, -28.0),   ## cima-esquerda: straddle esquerda, aresta alta "NE": Vector2( 16.0, -28.0),   ## cima-direita:  straddle direita,  aresta alta "SE": Vector2( 16.0, -12.0),   ## baixo-direita: straddle direita,  aresta baixa "SW": Vector2(-16.0, -12.0),   ## baixo-esquerda: straddle esquerda, aresta baixa }`
+- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, 36.0),   ## cima-esquerda: straddle esquerda ✓ "NE": Vector2( 16.0, 36.0),   ## cima-direita:  straddle direita  ✓ "SE": Vector2( 16.0, 36.0),   ## baixo-direita: straddle direita  ✓ "SW": Vector2(-16.0, 36.0),   ## baixo-esquerda: straddle esquerda ✓ }`
 - `ANCHOR_X_VARYING` = `Vector2( 32.0, 156.0)`
 - `ANCHOR_Y_VARYING` = `Vector2(128.0, 156.0)`
 
@@ -1511,5 +1582,29 @@ extends `Node2D` · 2476 lines
 `godot/scripts/world/wall_edge_data.gd`
 
 > Consolidated edge key generation and wall blocking logic. Centralizes edge handling to prevent duplication and enable consistent future enhancements.
+
+---
+
+### `wall_slice.gd`
+
+`class_name WallSlice` · 35 lines
+
+`godot/scripts/world/wall_slice.gd`
+
+**Public vars**
+- `var id:               String   = ""`
+- `var direction:        String   = ""`
+- `var slice_index:      int      = 0`
+- `var gu_cell:          Vector2i = Vector2i.ZERO`
+- `var storey_count:     int      = 1`
+- `var voxels:           Array    = []`
+- `var dirty_count:      int      = 0`
+- `var baked:            bool     = false`
+- `var parent_high_wall: String   = ""`
+
+**Public API**
+- `func get_voxel(index: int):`
+- `func total_voxel_count() -> int:`
+- `func mark_all_dirty() -> void:`
 
 ---

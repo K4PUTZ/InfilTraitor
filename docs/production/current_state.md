@@ -11,6 +11,80 @@ Placeholder graphics, no audio, no narrative, no complex animations, no polished
 
 ---
 
+## Voxel Rendering System — Wall Architecture Refactor (VOXEL-01..04 Complete)
+
+**Status: Partially Implemented (40% of planned work complete)**
+
+The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_rect` system with a native `TileMapLayer`-based architecture. The old approach suffered from cascading calibration dependencies; the new system is purely analytical — no empirical offsets.
+
+### What works (VOXEL-01..04)
+
+✅ **Geometry & Asset Generation (VOXEL-01)**
+- Voxel PNG tiles regenerated with correct 3D isometric geometry (32×36 px, 3 visible faces: top + left + right)
+- 4 materials supported: concrete, metal, stone, wood
+- Diamond top face (bright), left/right side faces (darkened 80%)
+- All tiles visually validated in Godot
+
+✅ **Coordinate System & Constants (VOXEL-02)**
+- Voxel constants registered in `SubcubeCoordsClass`: `VOXELS_PER_UNIT_AXIS=8`, `VOXEL_TILE_SIZE=Vector2i(32,16)`, `VOXEL_STEP_PX=20.0`
+- Bidirectional coordinate conversion functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()`
+- TileSet built at runtime in `_build_voxel_tileset()`, assigned to all 8 voxel layers per storey
+- Layer positioning: `z_index = WALL_BASE_Z_INDEX + level`, `position.y = VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX × level`
+
+✅ **Data Classes & Type Safety (VOXEL-03)**
+- `VoxelRef`: individual voxel state (grid_pos, level, visible, dirty, damage_state, face_atlas_rect)
+- `WallSlice`: primary container (1 edge × 1 adjacent GU × N storeys = 64 × storey_count voxels)
+- `HighWall`: secondary container (group of WallSlices + junction_extras; unit of baking)
+- Selftest (`voxel_selftest.gd`) validates 425 correctness checks — 100% passing
+- Type hints resolved; no parse errors in Godot or headless mode
+
+✅ **Wall Voxel Placement (VOXEL-04)**
+- `_place_wall_voxels()` iterates all wall edges, creates 2 WallSlices per edge (S0 inner, S1 outer)
+- `_voxel_slice_positions()` analytically calculates 8 voxel grid positions for each slice
+- Edge directions supported: NW (-1,0), NE (0,-1), SE (1,0), SW (0,1)
+- Voxels rendered via `TileMapLayer.set_cell()` — no Image operations, no legacy offsets
+- All voxel layers created on demand; rendering fully functional in Godot editor
+
+### What's pending (VOXEL-05..11)
+
+⏳ **VOXEL-05** — Junction Detection + Extra Voxels
+- Detect V-junctions (2 walls at vertex) and place junction_extras
+- Populate `HighWall.junction_extras` array with gap-filling voxel positions
+- Integrate into `_place_wall_voxels()` workflow
+
+⏳ **VOXEL-06** — VoxelRegistry
+- Centralized container for all WallSlice/HighWall instances
+- Indexed lookup by edge key or wall direction
+- Iteration API for TIC loop and baking pipelines
+
+⏳ **VOXEL-07** — Dirty Flag + TIC Loop
+- Per-voxel `dirty: bool` flag; dirty_count propagation up container hierarchy
+- TIC loop processes dirty containers only — O(container_count) cost at idle
+- Runtime destructibility via `ref.visible = false` + `erase_cell()`
+
+⏳ **VOXEL-08..09** — Baking System
+- VOXEL-08: Primary baking per WallSlice (Crop + Multiply from TextureCatalog)
+- VOXEL-09: Secondary baking per HighWall (single large texture spanning all constituent voxels)
+- Result: `VoxelRef.face_atlas_rect` populated; rendering path unchanged
+
+⏳ **VOXEL-10** — Destructibility
+- Damage states: `INTACT=0`, `CRACKED=1`, `DESTROYED=2`
+- Overlay texture + visibility logic
+- Integration with TIC loop and dirty flags
+
+⏳ **VOXEL-11** — CODEMAP Update
+- Register all voxel wall data in project codemap
+- Enable runtime queries (e.g., "which walls can this agent see?")
+
+### Technical Notes
+
+- **Coordinate planes:** Gameplay plane (256×128 px, guards/AI unchanged) + Voxel render plane (32×16 px, 8×8 per GU)
+- **No legacy offsets:** `FACE_CENTER_OFFSET`, `SUBCUBE_FACE_OFFSETS`, `is_x_varying`, `blend_rect` all archived
+- **Preservation:** All subcube infrastructure, wall edge data, and map compiler contract remain unchanged
+- **Godot status:** Loads clean; no parse errors or warnings; voxel rendering visually validated
+
+---
+
 ## AI State — What works vs. what is incomplete
 
 The AI system is **functional but simplified** relative to the design intent.
@@ -52,6 +126,7 @@ The AI system is **functional but simplified** relative to the design intent.
 | **Narrative** | Not started | — | 0% |
 | **Combat** | Not started | — | 0% |
 | **Content** | Sparse | Prototype | 15% |
+| **Voxel Rendering System** | Partially Implemented | Alpha | 40% |
 
 ---
 

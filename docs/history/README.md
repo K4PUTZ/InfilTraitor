@@ -17,6 +17,17 @@ Refer to current docs (docs/vision/, docs/systems/, docs/production/) for decisi
 
 ---
 
+## Implementation Logs (`*_IMPLEMENTATION_LOG.md`)
+
+Per-system detailed implementation records:
+- `VOXEL_IMPLEMENTATION_LOG.md` — VOXEL-01..11 render plane refactor (VOXEL-04 complete)
+
+**Who:** Engineering  
+**Frequency:** Per-major-system-implementation  
+**Read when:** Understanding implementation phases, acceptance test results, continuation checklist
+
+---
+
 ## Structure
 
 ### Sprint Logs (`sprint_logs/`)

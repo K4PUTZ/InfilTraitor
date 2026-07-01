@@ -80,34 +80,57 @@ Practical rules:
 
 > **Key rule:** any overlay that needs the lamp's screen position must use `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` received from `room.gd` — never a per-`height_class` lookup table. `max_floors` comes from `_base_layout.get("max_floors", 1)`.
 
-#### Subcube wall straddle (SUB-01 phase)
+#### Voxel Wall System (VOXEL series)
 
-Wall geometry is rendered on a **separate subcube plane** (40px vertical step) to avoid interfering with the gameplay grid. Directional walls (NW/NE/SE/SW) are rendered at tile **boundaries**, making them visually divide the edge 50/50 with neighbors.
+Wall geometry is rendered on a **separate voxel plane** using individual Godot tiles placed
+via `TileMapLayer.set_cell()`. **1 VOXEL = 1 Godot tile.** No image compositing, no empirical
+offsets, no calibration.
 
-**Mechanism:** Four tileset source variants per material, each with independent `texture_origin` offset:
+**Voxel constants:**
 
+| Constant | Value | Derivation |
+|----------|-------|------------|
+| `VOXEL_TILE_SIZE` | `Vector2i(32, 16)` | GAME_UNIT tile_size / 8 per axis |
+| `VOXELS_PER_UNIT_AXIS` | `8` | Voxels per GAME UNIT per axis |
+| `VOXEL_STEP_PX` | `20.0` | Side face height = 1.25 × tile_h (= 1.25 × 16) |
+| `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × VOXEL_STEP_PX` — same as old system ✓ |
+
+**VoxelLayer positions** — analytically derived, no empirical offsets:
 ```gdscript
-SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)     # universal anchor
-SUBCUBE_FACE_OFFSETS := {
-    "NW": Vector2i( 12, -6),    # pushes sprite NW (away from tile center)
-    "NE": Vector2i( 12,  6),    # pushes sprite NE
-    "SE": Vector2i(-12,  6),    # pushes sprite SE
-    "SW": Vector2i(-12, -6),    # pushes sprite SW
-}
-# texture_origin for each variant = SUBCUBE_BASE_ORIGIN + offset
+layer.position = Vector2(VISUAL_GRID_OFFSET.x,
+                         VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
 ```
 
-**Tuning:** The offsets are tuned empirically by visual feedback (≈75% half-step distance). If a direction looks misaligned:
-1. Edit `SUBCUBE_FACE_OFFSETS[dir]` in `room.gd` (lines 87–92)
-2. Call `_build_subcube_tileset()` to regenerate
-3. Reload the scene
+**Wall placement** — each wall edge between two GAME UNITs generates 2 voxel slices (1 per
+adjacent unit). `WallEdgeData` is still the sole source of edge existence.
+```gdscript
+## NW wall inner slice: col 0 of GU(gc, gr)
+for j in range(VOXELS_PER_UNIT_AXIS):        # 0..7
+    var vs := Vector2i(gc * 8, gr * 8 + j)
+    for level in range(VOXELS_PER_UNIT_AXIS * storey_count):
+        _voxel_layers[level].set_cell(vs, VOXEL_SOURCE_ID, ATLAS_COORD)
+## Outer slice: col 7 of GU(gc-1, gr) — same loop, different vs
+```
 
-**Code locations:**
-- Constant definition: `room.gd:87–92` (`SUBCUBE_FACE_OFFSETS`)
-- Tileset construction: `room.gd:1558` (applies offset in loop)
-- Runtime selection: `room.gd:1663–1668` (selects variant based on `_edge_delta_to_dir()`)
+**Junction rules** (V/T/X — see `VOXEL_MASTER_PLAN.md §5`):
+- 2 walls at vertex (V) → +1 extra voxel column at the uncovered outer diagonal
+- 3 walls (T) or 4 walls (X) → no extra needed
 
-See `SUBCUBE_WALL_STRADDLE.md` for full design documentation.
+**Voxel addressing** — every voxel is addressable via hierarchy:
+```gdscript
+HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
+## Visibility change sets dirty = true, propagates dirty_count to parent containers.
+## TIC loop skips containers with dirty_count == 0.
+```
+
+**ELIMINATED — do not use in any voxel-related code:**
+- `FACE_CENTER_OFFSET` — does not exist in the voxel system
+- `blend_rect` / `Image.create()` for wall rendering — use `set_cell()` only
+- `is_x_varying` — does not exist
+- `SUBCUBE_BASE_ORIGIN`, `SUBCUBE_FACE_OFFSETS` — archived, do not recreate
+- `WallContainer.build()` / `build_corner_fill()` — archived
+
+See `docs/technical/VOXEL_MASTER_PLAN.md` for the full specification.
 
 ---
 
@@ -184,6 +207,22 @@ definition.
 ## WRONG:
 "agent_start": Vector2i(14, 39)       # (9+5, 34+5) — hardcoded buffer
 ```
+
+**8. Wall voxels placed via `set_cell()` — never via `Image` compositing**
+Wall geometry is rendered through `TileMapLayer.set_cell()` on `_voxel_layers[level]`.
+No wall code may use `blend_rect`, `Image.create()`, `ImageTexture.create_from_image()`,
+or `Sprite2D` for wall placement. The `Image` API is permitted **only** inside
+`BakeSystem` at load time for texture preparation — never at runtime for wall rendering.
+```gdscript
+## CORRECT: voxel wall placement
+_voxel_layers[level].set_cell(voxel_pos, VOXEL_SOURCE_ID, ATLAS_COORD)
+
+## WRONG: wall rendering via Image compositing
+var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+img.blend_rect(atom_image, Rect2i(0, 0, W, H), dest)
+var sp := Sprite2D.new(); sp.texture = ImageTexture.create_from_image(img)
+```
+> Rule 8 currently relies on review (no automated checker yet).
 
 ---
 
@@ -466,8 +505,9 @@ movement_overlay:      5
 path_preview:          6
 selection_overlay:     7
 agent / guards:        10
-props / wall ground:   10   (StructureLayer + StructureWallLayer)
-wall storey k:         10+k (dynamic layers, offset by -WALL_FLOOR_STEP_PX*k)
+props / structures:    10  (StructureLayer — crates, columns; StructureWallLayer removed)
+voxel layer k:         10+k (_voxel_layers[k], position.y offset = -VOXEL_STEP_PX × k)
+                             8 layers per storey (k = 0..8*N-1 for N storeys)
 guard_noise_indicator: 100
 noise_overlay:         140
 trail_overlay:         150
@@ -483,129 +523,112 @@ Recommended runtime visual stack:
 
 ## Asset Generation & TileSet Pipeline
 
-**Single-source principle:** All tiles originate from `ASSETS/ISOMETRIC/source_assets/` (recursive scan, no fallback).
+Two separate TileSets serve different rendering planes:
 
-### Asset Structure
+| TileSet | File | `tile_size` | Plane |
+|---------|------|------------|-------|
+| `tileset_blocks` | `godot/resources/tilesets/tileset_blocks.tres` | 256×128 | Floor, structures, props |
+| `tileset_voxels` | `godot/resources/tilesets/tileset_voxels.tres` | 32×16 | Voxel wall atoms (**NEW**) |
 
+**Single-source principle:** each TileSet scans a dedicated directory. No fallback.
+
+---
+
+### Voxel Asset Pipeline (VOXEL series)
+
+**Asset structure:**
 ```
-ASSETS/ISOMETRIC/
-├── source_assets/generated/    ← Godot tileset source (28 tiles, recursive scan)
-│   ├── block_NE/NW/SE/SW.png          (1-subcubo solid block, 3 visible faces)
-│   ├── floor_NE/NW/SE/SW.png          (omnidirectional floor, 4×4 grid)
-│   ├── wall_NE/NW/SE/SW.png           (full-storey wall, 4 subcubes tall)
-│   ├── wallHalf_NE/NW/SE/SW.png       (half-storey wall, 2 subcubes)
-│   ├── wallFace_NE/NW/SE/SW.png       (atomic face, 1 subcubo = 40px)
-│   ├── wallCorner_NE/NW/SE/SW.png
-│   └── wallCornerHalf_NE/NW/SE/SW.png
-└── master_assets/              ← Pre-render / compositor sources (not loaded by Godot)
-    ├── subcubes/               ← Atomic 1/4-tile subcubes (64×64 px, RGBA)
-    │   ├── subcube_concrete.png
-    │   ├── subcube_stone.png
-    │   ├── subcube_wood.png
-    │   └── subcube_metal.png
-    └── walls_composed/         ← Walls built by compositing subcube atoms (256×512 px)
-        ├── wallFace_concrete/stone/wood/metal.png   (1 subcube)
-        ├── wallHalf_concrete/stone/wood/metal.png   (2 subcubes)
-        └── wall_concrete/stone/wood/metal.png       (4 subcubes)
+ASSETS/ISOMETRIC/source_assets/voxels/
+├── voxel_concrete.png     ← 32×36 px atom (16 top face + 20 side face)
+├── voxel_metal.png
+├── voxel_stone.png
+└── voxel_wood.png
 ```
 
-Deprecated (removed):
-- `ASSETS/ISOMETRIC/blocks-prototype/` — Kenney pack removed
+**`generate_voxel.py`** — generates the 32×36 atom PNG per material:
+```python
+TILE_W  = 32; TILE_H = 16    # Godot tile_size for voxel TileSet
+SIDE_H  = 20                  # 1.25 × TILE_H — same ratio as old subcube atom
+TOTAL_H = TILE_H + SIDE_H     # 36 px total
 
-### Subcube Compositor Pipeline (NEW — Alpha Subcube Foundation)
-
-Two-level asset architecture:
-
-**Level 1 — Atom (`generate_subcube.py`):**
-- Output: `master_assets/subcubes/subcube_[material].png` — 64×64 px, RGBA
-- Geometry: 1/4-tile scale — `TILE_HW=32, TILE_HH=16`, `CUBE_HEIGHT=32`
-- Canvas anchors: `bW=(0,48)`, `tS=(32,32)`, `tN=(32,0)`, `tE=(64,16)`, `tW=(0,16)`
-- Flat-lit: one `COLOR_FLAT` for all faces (no baked lighting — runtime handles it)
-- Floor diamond NOT drawn → transparent for stacking
-- 4 materials: concrete, stone, wood, metal
-
-**Level 2 — Compositor (`generate_wall.py`):**
-- Output: `master_assets/walls_composed/[preset]_[material].png` — 256×512 px, RGBA
-- Zero geometry: uses `Image.alpha_composite()` only — no vertex math
-- Isometric offset formula: `dest = (u*32, 400 - u*16 - h*32)` for NW wall
-- Painter order: u right→left (u=3 first), h bottom→top (h=0 first)
-- Presets: `wallFace`=1 subcube, `wallHalf`=2, `wall`=4
-
-**Key principle:** Geometry correctness emerges from painter's order. No recalculation needed.
-To add a new material: add one entry to `MATERIALS` in `generate_subcube.py`, re-run both scripts.
-
-### Asset Generation Pipeline
-
-**Tools:** `tools/asset_generation/` — Python scripts that generate assets programmatically
-
-**Guaranteed properties per asset:**
-- **Exact dimensions** — Canvas 256×512 for walls, enforced by code
-- **Correct geometry** — Floor diamond at rows 384–512, wall heights (160 px full, 80 px half)
-- **Precise vertices** — Bottom corners `bN=(128,384)`, `bE=(256,448)`, `bS=(128,512)`, `bW=(0,448)`
-- **Depth measurements** — 32 px screen-x per direction (1/4 tile diamond step perpendicular to face)
-- **Grid subdivisions** — 4 vertical columns per direction; horizontal bands per subcube count
-- **Silhouette** — Dark outline enforced on all edges
-
-**Why programmatic generation?**
-- Eliminates human-error position drift
-- Enables rapid iteration (change color, regenerate, done)
-- Ensures all assets follow the same proportions
-- All geometry is **calculated, not guessed**
-
-### TileSet Builder
-
-**Run:** `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
-
-**What it does:**
-1. Recursively scans `res://ASSETS/ISOMETRIC/source_assets/` for all PNG files (alphabetical order)
-2. For each PNG: creates one `TileSetAtlasSource` entry with calibrated `texture_origin` offsets
-3. Generates `godot/resources/tilesets/tileset_blocks.tres` (used by TileMapLayer nodes)
-4. Generates `godot/scripts/world/tile_registry.gd` (auto-generated name→id lookup)
-
-**Key change:** No merge, no fallback. Single-source only — if a PNG is missing, it will not build.
-
-### Texture Origin Calibration (build_tileset.gd)
-
-After each PNG is registered, `build_tileset.gd` applies **calibrated texture_origin offsets** per direction to shift sprites into correct straddle positions:
-
-```
-EDGE_VISUAL_OFFSETS (wall/wallHalf/wallFace):
-  NE: (-16, -8)   ← 1/8 cell step, direction-specific
-  NW: (-16,  8)
-  SE: ( 16, -8)
-  SW: ( 16,  8)
-
-CORNER_VISUAL_OFFSETS (wallCorner/wallCornerHalf):
-  NE: (-32, -8)   ← Corner-specific geometry spans full vertex
-  NW: (  0, 16)
-  SE: (  0,-16)
-  SW: ( 32, -8)
+TOP  = draw_iso_diamond(TILE_W, TILE_H, base_color)      # 32×16 diamond
+SIDE = draw_rect(TILE_W, SIDE_H, darken(base_color, 0.8)) # 32×20 rectangle
+ATOM = vstack(TOP, SIDE)                                   # 32×36 output
 ```
 
-These values were **empirically calibrated in commit 924dbf0**. Do not change without:
-1. Visual verification in Godot
-2. Measuring pixel-perfect alignment between adjacent wall faces
-3. Updating this documentation
+- Flat-lit: no baked lighting in the atom itself — `BakeSystem` applies texture at load time
+- Floor diamond NOT drawn separately → the top face IS the isometric diamond
+- 4 base materials: concrete, metal, stone, wood (extend via `MATERIALS` dict)
 
-### Adding New Asset Types
+**`build_voxel_tileset.gd`** — builds `tileset_voxels.tres`:
+- Scans `source_assets/voxels/` for all PNGs
+- `tile_size = Vector2i(32, 16)`
+- `texture_origin = Vector2i(0, 0)` — **no calibration needed** (analytical geometry)
+- `y_sort_origin = 8` (half of tile_height)
+- Run: `Godot --headless --path . --script godot/scripts/tools/build_voxel_tileset.gd`
 
-To add a new wall variant (e.g., `wallVine`):
+**Guaranteed voxel atom properties:**
+- Exact dimensions: 32×36 px, enforced by `generate_voxel.py`
+- Top face: isometric diamond inscribed in 32×16 bounding box
+- Side face: flat-shaded rectangle 32×20, color = `darken(base_color, 0.8)`
+- No baked directional shadow — runtime BakeSystem handles all texture variation
+- Transparent areas use `Image.FORMAT_RGBA8` with alpha=0
 
-1. Create a generator script (copy `generate_master_walls.py`):
-   ```python
-   def generate(base_name="wallVine", wall_h=160, vcubes=4):
-       generate("wallVine", 160, 4)  # Full wall
-       generate("wallVineHalf", 80, 2)  # Half wall
-       generate("wallVineFace", 40, 1)  # Atomic subcube
-   ```
+**Adding a new voxel material:**
+1. Add entry to `MATERIALS` dict in `generate_voxel.py`
+2. Run: `python3 tools/asset_generation/generate_voxel.py`
+3. Switch to Godot window, wait 3–5s for reimport
+4. Run: `Godot --headless --path . --script godot/scripts/tools/build_voxel_tileset.gd`
+5. Add `ATLAS_COORD_{MATERIAL}` constant in `subcube_coords.gd`
+6. **No texture_origin calibration needed** — voxel tiles are analytically positioned
 
-2. Run it: `python3 tools/asset_generation/generate_master_walls_vine.py` — outputs to `source_assets/generated/`
+---
 
-3. Rebuild TileSet: `/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
+### Block TileSet Pipeline (unchanged)
 
-4. Use in maps: Add `"wallVine"` to any MapSpec — it auto-gets 4 directional tiles
+**Asset structure:**
+```
+ASSETS/ISOMETRIC/source_assets/generated/
+├── floor_NE/NW/SE/SW.png          (256×128 floor diamond)
+├── block_NE/NW/SE/SW.png          (solid 1-tile block, 3 visible faces)
+├── crate_*.png                    (props)
+└── column_*.png                   (props)
+```
 
-**Critical:** Never manually edit PNGs after generation — always regenerate. The geometry is part of the code, not a one-off artifact.
+**Wall tile series removed** — `wall_*`, `wallHalf_*`, `wallFace_*`, `wallCorner_*`,
+`wallCornerHalf_*` PNG files are no longer used. The voxel system replaces them.
+
+**`build_tileset.gd`** (existing, unchanged in contract):
+- Scans `source_assets/generated/` for non-wall PNG files
+- Builds `tileset_blocks.tres` (`tile_size = 256×128`)
+- The wall-specific `EDGE_VISUAL_OFFSETS` / `CORNER_VISUAL_OFFSETS` calibration entries
+  in `build_tileset.gd` are **eliminated** — they applied only to the old wall tile series
+
+**Guaranteed block asset properties:**
+- Canvas: 256×512 px for blocks/walls (legacy); floor: 256×128 px
+- Floor diamond: bW=(0,448), bE=(256,448), bN=(128,384), bS=(128,512)
+- Geometry is calculated, not guessed — never hand-edit generated PNGs
+
+**Adding new props or floor variants:**
+1. Create a generator (copy `generate_master_block.py` as template)
+2. Run it → PNG to `source_assets/generated/`
+3. Switch to Godot window, wait 3–5s for reimport
+4. Run: `Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
+5. Tile becomes available in `tile_registry.gd` under its base name
+
+---
+
+### TileSet Builder Reference
+
+| Builder script | Output TileSet | tile_size | When to run |
+|---|---|---|---|
+| `build_tileset.gd` | `tileset_blocks.tres` | 256×128 | After floor/block/prop PNG changes |
+| `build_voxel_tileset.gd` | `tileset_voxels.tres` | 32×16 | After voxel PNG changes |
+
+Both builders follow the same contract: single-source scan, no merge, no fallback.
+If a PNG is missing its expected file, the build fails with a clear error.
+
+---
 
 ---
 
@@ -706,4 +729,10 @@ Symbolic UI (compass `N/S/E/W`, dev buttons) is also left as-is for now.
 - Don't hardcode player-facing strings — use `tr()` with a semantic key (see Localization)
 - Don't make design decisions without consulting the director
 - Don't create new systems without a prompt approved by the director
-- Don't remove acceptance tests from the original prompt when implementing.
+- Don't remove acceptance tests from the original prompt when implementing
+- Don't use `blend_rect` or `Image.create()` for wall rendering — use `set_cell()` only (Rule 8)
+- Don't use or recreate `FACE_CENTER_OFFSET`, `SUBCUBE_FACE_OFFSETS`, or `SUBCUBE_BASE_ORIGIN` — eliminated
+- Don't use `is_x_varying` logic — eliminated
+- Don't create `Sprite2D` children for wall geometry — eliminated pattern
+- Don't add empirical pixel offsets to `_voxel_layers[].position` — position is analytically derived
+- Don't call `WallContainer.build()` or `build_corner_fill()` — archived, do not invoke

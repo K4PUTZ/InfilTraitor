@@ -2,21 +2,41 @@
 
 > **Status:** Canônico · Substitui toda documentação de direção derivada do sistema Kenney.
 > **Escopo:** Nomenclatura de direções para código, assets, documentação e UI.
+> **Atualizado:** 2026-06-29 — terminologia voxel adicionada (§1, §5, §9, §10); sistema de
+> direções NW/NE/SE/SW em si **inalterado**.
 
 ---
 
 ## 1. O Sistema de Coordenadas
 
-O motor isométrico usa tile_size `(64, 32)` em layout **DIAMOND_DOWN**.
-O grid de gameplay opera em coordenadas de tile `(col, row)`.
-O grid de subcubos opera em resolução 4× (4 subcubos por eixo por tile).
+O motor isométrico opera com **dois grids** em layout **DIAMOND_DOWN**, ambos usando o
+mesmo `VISUAL_GRID_OFFSET = Vector2(0, 512)`.
 
-A projeção em tela para a célula `(col, row)`:
+### Grid de Gameplay — GAME UNIT
+
+`tile_size = Vector2i(256, 128)` · Guards, A\*, TicSystem, `blocked_edges`, alarms.
 
 ```
-screen_x = (col - row) × 32
-screen_y = (col + row) × 16
+screen_x = (col - row) × 128
+screen_y = (col + row) × 64
 ```
+
+### Grid de Voxels — VOXEL
+
+`tile_size = Vector2i(32, 16)` · Render de paredes, containers, baking, dirty flag.
+8×8 voxels por GAME UNIT em cada eixo.
+
+```
+screen_x = (col - row) × 16
+screen_y = (col + row) × 8
+```
+
+**Conversão GAME UNIT → Voxel:** `voxel_origin = gu_cell × 8`
+(único ponto de conversão: `map_compiler.gd`)
+
+> **Nota histórica:** versões anteriores citavam `tile_size (64, 32)` — era o tile do
+> sistema de subcubos (CONTAINER-01..04, arquivado). Os offsets `×32` e `×16` na projeção
+> pertenciam a esse sistema. O sistema de voxels usa `×16` e `×8` respectivamente.
 
 ---
 
@@ -96,26 +116,47 @@ Portas seguem a mesma convenção: `doorOpen_NW`, `doorOpen_NE`, `doorOpen_SE`, 
 
 ---
 
-## 5. FACE_CENTER_OFFSET — Sprite2D de WallContainer
+## 5. Posicionamento de Paredes — Sistema Voxel
 
-Posição do centro do Sprite2D relativo a `map_to_local(face_subcells[0])`.
-Derivado de: base vertical `(0, −20)` + straddle de meia-aresta de tile.
+No sistema de voxels, paredes são posicionadas via `TileMapLayer.set_cell()` em
+`_voxel_layers[level]`. **Não existe `FACE_CENTER_OFFSET`** — o posicionamento é
+analiticamente derivado da geometria do TileSet. Sem calibração empírica.
+
+### VoxelLayer position
 
 ```gdscript
-const FACE_CENTER_OFFSET: Dictionary = {
-    "NW": Vector2(-16.0, -28.0),   ## cima-esquerda: straddle esquerda ✓
-    "NE": Vector2( 16.0, -28.0),   ## cima-direita:  straddle direita  ✓
-    "SE": Vector2( 16.0, -12.0),   ## baixo-direita: straddle direita  ✓
-    "SW": Vector2(-16.0, -12.0),   ## baixo-esquerda: straddle esquerda ✓
-}
+## Derivado analiticamente — não alterar empiricamente:
+layer.position = Vector2(
+    VISUAL_GRID_OFFSET.x,
+    VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level)
+)
+layer.z_index = WALL_BASE_Z_INDEX + level
 ```
 
-**Dois parâmetros livres para calibração:**
+### Slice placement por direção
 
-| Parâmetro | Controle | Ajuste |
-|-----------|----------|--------|
-| `base_y` (atual `−20`) | altura vertical de todas as paredes | mesmo valor para os 4 |
-| `|x|` (atual `16`) | largura do straddle lateral | NW/SW = `−|x|`, NE/SE = `+|x|` |
+Cada aresta de GAME UNIT gera 2 slices — 1 em cada GU adjacente.
+O mapping aresta → coordenada de voxel segue a tabela de `_EDGE_BY_SUFFIX` (§6):
+
+| Direção | Slice inner (S0) | Slice outer (S1) |
+|---------|-----------------|-----------------|
+| **NW** | col 0 de `(gc, gr)` | col 7 de `(gc-1, gr)` |
+| **NE** | row 0 de `(gc, gr)` | row 7 de `(gc, gr-1)` |
+| **SE** | col 7 de `(gc, gr)` | col 0 de `(gc+1, gr)` |
+| **SW** | row 7 de `(gc, gr)` | row 0 de `(gc, gr+1)` |
+
+```gdscript
+## NW inner slice — col 0 de GU (gc, gr):
+for j in range(VOXELS_PER_UNIT_AXIS):          ## 0..7
+    var vs := Vector2i(gc * 8, gr * 8 + j)
+    for level in range(VOXELS_PER_UNIT_AXIS * storey_count):
+        _voxel_layers[level].set_cell(vs, VOXEL_SOURCE_ID, ATLAS_COORD)
+```
+
+Ver `docs/technical/VOXEL_MASTER_PLAN.md` §5 para o algoritmo completo.
+
+> **Arquivado:** `FACE_CENTER_OFFSET` — constante do sistema WallContainer/Sprite2D
+> (CONTAINER-01..04). **Não recriar.** Ver §10 Termos Banidos.
 
 ---
 
@@ -166,36 +207,65 @@ visualmente entre os braços do compasso, não nos braços.
 
 ## 9. Assets de Parede
 
-Assets de parede carregam sufixo direcional `_NW`, `_NE`, `_SE`, `_SW`
-alinhados com este glossário:
+### Sistema atual — Voxels (VOXEL series)
+
+Atoms de voxel não carregam sufixo direcional — o posicionamento direcional é feito
+por coordenada no `TileMapLayer`, não por asset separado por direção.
 
 ```
-source_assets/subcubes/
-├── subcube_concrete.png     ← átomo, direction-agnostic
-├── subcube_metal.png
-├── subcube_stone.png
-└── subcube_wood.png
-
-master_assets/walls/         ← assets legados (Kenney canvas, não usados no Container system)
-├── wall_NW.png   ← aresta cima-esquerda
-├── wall_NE.png   ← aresta cima-direita
-├── wall_SE.png   ← aresta baixo-direita
-└── wall_SW.png   ← aresta baixo-esquerda
+source_assets/voxels/
+├── voxel_concrete.png     ← 32×36 px (16 top face + 20 side face), direction-agnostic
+├── voxel_metal.png
+├── voxel_stone.png
+└── voxel_wood.png
 ```
 
-> **Atenção:** Os PNGs em `master_assets/walls/` foram renomeados para este padrão.
-> Se regenerados pelo pipeline Python, usar os sufixos `_NW`, `_NE`, `_SE`, `_SW`
-> conforme este glossário.
+Gerados por `generate_voxel.py`. TileSet: `tileset_voxels.tres`, `tile_size = (32, 16)`,
+`texture_origin = (0, 0)` (sem calibração empírica).
+
+### Sufixos direcionais — floors, blocks e estruturas (inalterado)
+
+Assets de floor, block e prop continuam usando sufixo `_NW`, `_NE`, `_SE`, `_SW`
+conforme este glossário — apenas paredes voxel dispensam o sufixo.
+
+```
+source_assets/generated/
+├── floor_NW.png / floor_NE.png / floor_SE.png / floor_SW.png
+├── block_NW.png / block_NE.png / block_SE.png / block_SW.png
+└── ...
+```
+
+Portas seguem a mesma convenção: `doorOpen_NW`, `doorOpen_NE`, `doorOpen_SE`, `doorOpen_SW`.
+
+> **Arquivado:** `source_assets/subcubes/subcube_*.png` (átomo 64×72, `generate_subcube.py`,
+> sistema CONTAINER-01..04). Não referenciar nem regenerar.
 
 ---
 
 ## 10. Termos Banidos
 
-Os seguintes termos causaram confusão histórica e estão **banidos** do codebase:
+Os seguintes termos causaram confusão histórica ou pertencem a sistemas arquivados.
+Estão **banidos** do codebase e da documentação:
+
+### Banidos desde RENAME-01 (sistema Kenney)
 
 | Termo banido | Motivo | Substituto |
 |---|---|---|
 | Qualquer ref. a "Kenney offset derivation" | Sistema extinto | Este glossário |
-| `SUBCUBE_FACE_OFFSETS` com comentários "v1/v2/v3" | Histórico confuso | Glossário §5 |
+| `SUBCUBE_FACE_OFFSETS` com comentários "v1/v2/v3" | Histórico confuso | (eliminado — veja abaixo) |
 | `on_nw` significando `cell.y == min_y` | Invertia o eixo | `on_ne` (§4) |
-| "N = upper-right" em qualquer comentário | Contradiz compasso | "N = topo (vértice)" |
+| `"N = upper-right"` em qualquer comentário | Contradiz compasso | `"N = topo (vértice)"` |
+
+### Banidos desde VOXEL-00 (sistema WallContainer / subcubo)
+
+| Termo banido | Sistema de origem | Substituto |
+|---|---|---|
+| `FACE_CENTER_OFFSET` | WallContainer Sprite2D — arquivado | `_voxel_layers[level].set_cell()` (§5) |
+| `SUBCUBE_FACE_OFFSETS` | Offset empírico de subcubo — arquivado | `VOXEL_STEP_PX` (derivado analiticamente) |
+| `SUBCUBE_BASE_ORIGIN` | Anchor de subcubo — arquivado | `VoxelLayer.position` (§5) |
+| `is_x_varying` / `is_y_varying` | Lógica de orientação de WallContainer | Não existe no sistema voxel |
+| `blend_rect` para render de paredes | Image compositing de WallContainer | `set_cell()` em `_voxel_layers` |
+| `WallContainer.build()` / `.build_corner_fill()` | CONTAINER-01..04 — arquivado | `_place_wall_voxels()` (VOXEL-04) |
+| `"subcubo"` / `"subcube"` para render de paredes | Terminologia substituída | `"voxel"` |
+| `generate_subcube.py` / `generate_wall.py` | Pipeline de subcubo — arquivado | `generate_voxel.py` |
+| `tileset_blocks.tres` entries de wall | Série `wall_*`, `wallHalf_*`, `wallCorner_*` removidos | `tileset_voxels.tres` |

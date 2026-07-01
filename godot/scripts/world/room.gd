@@ -80,12 +80,6 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 ## shared tileset.
 const SUBCUBE_STEP_PX: float = 40.0
 
-## Offset da subcube layer por tile de buffer do mapa.
-## Calibrado empiricamente para PLAYGROUND (buffer=1): resultado (100, 2).
-## Automaticamente escalado para outros buffers (SIGMA-01 buffer=5 → (500, 10)).
-## Ajustar apenas este vetor se a calibração mudar; não tocar na lógica de escala.
-const SUBCUBE_BUFFER_OFFSET_PX := Vector2(100.0, 2.0)
-
 ## Ponto de origem base para todos os tiles de subcubo no tileset (inalterado).
 const SUBCUBE_BASE_ORIGIN := Vector2i(0, -40)
 
@@ -99,9 +93,21 @@ const SUBCUBE_FACE_OFFSETS: Dictionary = {
 	"SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1)
 }
 
+## Voxel render plane (VOXEL series): 1 storey = 8 voxel rows, each steps 20 px.
+## 20 = 1.25 × VOXEL_TILE_SIZE.y (16). Must match generate_voxel.py SIDE_H.
+## Invariant: 8 × VOXEL_STEP_PX (160) == 4 × SUBCUBE_STEP_PX (160). ✓
+const VOXEL_STEP_PX: float = 20.0
+
 var _subcube_tileset: TileSet = null
 var _subcube_layers: Array[TileMapLayer] = []
 var _subcube_tile_ids: Dictionary = {}
+
+## Voxel render plane (VOXEL-02). TileSet separado (tile_size 32×16), sem offsets empíricos.
+var _voxel_tileset: TileSet = null
+var _voxel_layers: Array[TileMapLayer] = []
+var _voxel_tile_ids: Dictionary = {}
+## Slices de parede voxel actuais (VOXEL-04). Indexados pelo VoxelRegistry em VOXEL-06.
+var _voxel_wall_slices: Array = []
 
 ## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
 ## para faces de parede; blocos sólidos ainda usam TileMapLayer.
@@ -278,7 +284,8 @@ func _ready() -> void:
 	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
 	_build_registry(ts)
 	_subcube_tileset = _build_subcube_tileset()
-	
+	_voxel_tileset   = _build_voxel_tileset()    ## VOXEL-02: null-safe if PNGs missing
+
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
 
@@ -1615,15 +1622,82 @@ func _ensure_subcube_layers(count: int) -> void:
 		var layer := TileMapLayer.new()
 		layer.tile_set = _subcube_tileset
 		layer.y_sort_origin = 1
-		var _buf: int = int(_base_layout.get("buffer", 1))
 		layer.position = Vector2(
-				VISUAL_GRID_OFFSET.x + _buf * SUBCUBE_BUFFER_OFFSET_PX.x,
-				VISUAL_GRID_OFFSET.y + _buf * SUBCUBE_BUFFER_OFFSET_PX.y - SUBCUBE_STEP_PX * float(level))
+				VISUAL_GRID_OFFSET.x,
+				VISUAL_GRID_OFFSET.y - SUBCUBE_STEP_PX * float(level))
 		layer.z_index = WALL_BASE_Z_INDEX + level
 		add_child(layer)
 		_subcube_layers.append(layer)
 	for i in range(_subcube_layers.size()):
 		_subcube_layers[i].visible = i < count
+
+
+## ── Voxel render plane (VOXEL series) ────────────────────────────────────────
+
+func _build_voxel_tileset() -> TileSet:
+	## Builds the voxel TileSet at runtime from source_assets/voxels/*.png.
+	## tile_size = 32×16, texture_origin = (0,0) — no empirical offset needed.
+	## One source per material, no directional variants.
+	## Returns null (with push_warning) if any PNG is missing; safe to call always.
+	var ts := TileSet.new()
+	ts.tile_shape  = TileSet.TILE_SHAPE_ISOMETRIC
+	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	ts.tile_size   = Vector2i(32, 16)
+
+	ts.add_custom_data_layer()
+	ts.set_custom_data_layer_name(0, "tile_name")
+	ts.set_custom_data_layer_type(0, TYPE_STRING)
+
+	var source_id: int = 0
+	var materials: Array[String] = ["concrete", "metal", "stone", "wood"]
+
+	for mat in materials:
+		var path     := "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png" % mat
+		var texture: Texture2D = load(path)
+		if texture == null:
+			push_warning("Room._build_voxel_tileset: missing %s — run VOXEL-01 first." % path)
+			continue
+
+		var src := TileSetAtlasSource.new()
+		src.texture             = texture
+		src.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
+		src.create_tile(Vector2i(0, 0))
+		ts.add_source(src, source_id)
+
+		var td: TileData = src.get_tile_data(Vector2i(0, 0), 0)
+		if td != null:
+			td.texture_origin = Vector2i(0, 0)              ## analytically correct — no calibration
+			td.set_custom_data("tile_name", "voxel_%s" % mat)
+
+		_voxel_tile_ids["voxel_%s" % mat] = source_id
+		source_id += 1
+
+	if source_id == 0:
+		push_warning("Room._build_voxel_tileset: no voxel textures loaded.")
+		return null
+	return ts
+
+
+func _ensure_voxel_layers(count: int) -> void:
+	## Creates TileMapLayers for the voxel render plane, one per vertical level.
+	## Layer k: position.y = VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX × k
+	##          z_index    = WALL_BASE_Z_INDEX + k
+	## Parallel to _ensure_subcube_layers but uses VOXEL_STEP_PX (20) instead of 40.
+	if _voxel_tileset == null:
+		return
+	while _voxel_layers.size() < count:
+		var level := _voxel_layers.size()
+		var layer := TileMapLayer.new()
+		layer.tile_set     = _voxel_tileset
+		layer.y_sort_origin = 1
+		layer.position     = Vector2(
+				VISUAL_GRID_OFFSET.x,
+				VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
+		layer.z_index      = WALL_BASE_Z_INDEX + level
+		add_child(layer)
+		_voxel_layers.append(layer)
+	for i in range(_voxel_layers.size()):
+		_voxel_layers[i].visible = i < count
 
 
 func _render_subcube_geometry(subcube_geometry: Dictionary, max_floors: int) -> void:
@@ -1651,10 +1725,127 @@ func _render_subcube_geometry(subcube_geometry: Dictionary, max_floors: int) -> 
 		_paint_subcube_descriptor(block, source_id, layer_count)
 
 
+## ── Voxel wall placement (VOXEL-04) ──────────────────────────────────────────
+
+func _voxel_slice_positions(from_cell: Vector2i, edge_delta: Vector2i,
+		slice_index: int) -> Array[Vector2i]:
+	## Retorna as 8 posições voxel para um slice de uma aresta de parede.
+	## slice_index 0 = inner (no from_cell), 1 = outer (no to_cell adjacente).
+	## Usa VOXELS_PER_UNIT_AXIS (= 8) de SubcubeCoordsClass.
+	## Ver VOXEL_MASTER_PLAN.md §5 e DIRECTION_GLOSSARY.md §5 para geometria.
+	var positions: Array[Vector2i] = []
+	var to_cell: Vector2i = from_cell + edge_delta
+	var vpu: int = SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS  ## 8
+
+	match edge_delta:
+		Vector2i(-1, 0):   ## NW: col fixo, j varia em from_cell ou to_cell
+			var col: int = (from_cell.x * vpu) if slice_index == 0 \
+					else (to_cell.x * vpu + vpu - 1)
+			for j in vpu:
+				positions.append(Vector2i(col, from_cell.y * vpu + j))
+
+		Vector2i(0, -1):   ## NE: row fixo, i varia
+			var row: int = (from_cell.y * vpu) if slice_index == 0 \
+					else (to_cell.y * vpu + vpu - 1)
+			for i in vpu:
+				positions.append(Vector2i(from_cell.x * vpu + i, row))
+
+		Vector2i(1, 0):    ## SE: col fixo (extremidade oposta a NW)
+			var col: int = (from_cell.x * vpu + vpu - 1) if slice_index == 0 \
+					else (to_cell.x * vpu)
+			for j in vpu:
+				positions.append(Vector2i(col, from_cell.y * vpu + j))
+
+		Vector2i(0, 1):    ## SW: row fixo (extremidade oposta a NE)
+			var row: int = (from_cell.y * vpu + vpu - 1) if slice_index == 0 \
+					else (to_cell.y * vpu)
+			for i in vpu:
+				positions.append(Vector2i(from_cell.x * vpu + i, row))
+
+	return positions
+
+
+func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
+	## Renderiza arestas de parede como tiles voxel via set_cell() em _voxel_layers[].
+	## Substitui _build_wall_containers() (arquivada — NÃO apagar).
+	## Sem junction extras ainda — vem em VOXEL-05.
+	## Cria WallSlice + VoxelRef; acumula em _voxel_wall_slices.
+	if _voxel_tileset == null:
+		push_warning("_place_wall_voxels: _voxel_tileset null — correr VOXEL-01/02 primeiro.")
+		return
+
+	## Limpar estado anterior
+	for layer in _voxel_layers:
+		layer.clear()
+	_voxel_wall_slices.clear()
+
+	var faces: Array = subcube_geometry.get("wall_faces", [])
+	if faces.is_empty():
+		return
+
+	## Agrupar faces por edge key para obter max_storey por aresta
+	var edge_groups: Dictionary = {}
+	for face in faces:
+		var edge: Dictionary     = face.get("edge", {})
+		var from_cell: Vector2i  = Vector2i(edge.get("from", Vector2i.ZERO))
+		var to_cell:   Vector2i  = Vector2i(edge.get("to",   Vector2i.ZERO))
+		var edge_delta: Vector2i = to_cell - from_cell
+		var storey: int          = maxi(0, int(face.get("storey", 0)))
+		var key: String = "%d,%d,%d,%d" % [from_cell.x, from_cell.y,
+				edge_delta.x, edge_delta.y]
+		if not edge_groups.has(key):
+			edge_groups[key] = {"from": from_cell, "delta": edge_delta,
+				"max_storey": storey}
+		else:
+			edge_groups[key]["max_storey"] = maxi(
+					edge_groups[key]["max_storey"], storey)
+
+	## Colocar voxels: 2 slices por aresta (S0 inner + S1 outer)
+	var vpu: int       = SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS
+	var source_id: int = _voxel_tile_ids.get("voxel_concrete", -1)
+	if source_id < 0:
+		push_warning("_place_wall_voxels: 'voxel_concrete' não encontrado no tileset.")
+		return
+	var tile_coord := Vector2i(0, 0)
+
+	for key: String in edge_groups:
+		var grp: Dictionary      = edge_groups[key]
+		var from_cell: Vector2i  = Vector2i(grp["from"])
+		var edge_delta: Vector2i = Vector2i(grp["delta"])
+		var storey_count: int    = int(grp["max_storey"]) + 1
+		var layer_count: int     = storey_count * vpu
+		var wall_dir: String     = _edge_delta_to_dir(edge_delta)
+		if wall_dir.is_empty():
+			continue
+		_ensure_voxel_layers(layer_count)
+
+		for si in 2:   ## 0 = inner (S0), 1 = outer (S1)
+			var positions: Array[Vector2i] = \
+					_voxel_slice_positions(from_cell, edge_delta, si)
+
+			## Colocar tiles em todas as layers verticais
+			for level in layer_count:
+				for pos in positions:
+					_voxel_layers[level].set_cell(pos, source_id, tile_coord)
+
+			## Criar WallSlice + VoxelRefs (ordem posição-maior para o BakeSystem)
+			var ws := WallSlice.new()
+			ws.id           = "%s_%s_S%d" % [key, wall_dir, si]
+			ws.direction    = wall_dir
+			ws.slice_index  = si
+			ws.gu_cell      = from_cell
+			ws.storey_count = storey_count
+			for pos in positions:
+				for level in layer_count:
+					ws.voxels.append(VoxelRef.new(pos, level))
+			_voxel_wall_slices.append(ws)
+
+
 func _build_wall_containers(subcube_geometry: Dictionary) -> void:
 	## Limpa containers anteriores (rebuild de sala).
 	for wc in _wall_containers:
 		if is_instance_valid(wc):
+			wc.hide()
 			wc.queue_free()
 	_wall_containers.clear()
 
@@ -1714,10 +1905,10 @@ func _build_wall_containers(subcube_geometry: Dictionary) -> void:
 	## Offsets de corner fill = média dos FACE_CENTER_OFFSETs das duas faces
 	## adjacentes no subcubo compartilhado. Ver DIRECTION_GLOSSARY.md §5.
 	const _FILL_OFFSET: Dictionary = {
-		"NE_NW": Vector2(  0.0, -28.0),   ## sort: NE < NW
-		"NW_SW": Vector2(-16.0, -20.0),   ## sort: NW < SW  (inalterado)
-		"NE_SE": Vector2( 16.0, -20.0),   ## sort: NE < SE
-		"SE_SW": Vector2(  0.0, -12.0),   ## sort: SE < SW  (inalterado)
+		"NE_NW": Vector2(  0.0, 36.0),   ## sort: NE < NW
+		"NW_SW": Vector2(-16.0, 36.0),   ## sort: NW < SW
+		"NE_SE": Vector2( 16.0, 36.0),   ## sort: NE < SE
+		"SE_SW": Vector2(  0.0, 36.0),   ## sort: SE < SW
 	}
 
 	## Subcubo local compartilhado por corner (em coords de subcubo relativos à origin).
@@ -1881,7 +2072,7 @@ func _build_room(layout: Dictionary) -> void:
 	if not subcube_geometry.is_empty() and _subcube_tileset != null:
 		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
 		_render_subcube_geometry(subcube_geometry, max_floors)   ## blocos sólidos (TileMapLayer)
-		_build_wall_containers(subcube_geometry)     ## faces de parede (Containers)
+		_place_wall_voxels(subcube_geometry)                     ## VOXEL-04: faces de parede (voxels)
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false

@@ -3,7 +3,7 @@
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`
-**Last reconciled with code:** 2026-06-26 (SUB-01-FIX-B: layer.position VISUAL_GRID_OFFSET alignment)
+**Last reconciled with code:** 2026-06-29 (VOXEL-00: Voxel Render Plane planned; Subcube/WallContainer system archived)
 **Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
 ---
@@ -20,33 +20,118 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
-## Subcube Render Plane (Implemented)
+## Voxel Render Plane (Partially Implemented — replacing Subcube/WallContainer)
 
-The engine uses two coordinate spaces. The **gameplay plane** (the rest of this document, `CELL_SIZE 256×128`) is unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The **geometry/render plane** (`SUBCUBE_SIZE 64×32`, 4×4 subcubes per gameplay unit) implements subcube stacking via the Container system. Conversions happen only at the seam (`map_compiler.gd`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md`.
+**Status: Partially Implemented** · Spec: `docs/technical/VOXEL_MASTER_PLAN.md`  
+**Current Phase:** VOXEL-04 complete; VOXEL-05..11 pending  
+**Last updated:** 2026-07-01
 
-**Completed stages (WALL-EDGE-01 series, 2026-06-28):**
+> **Subcube/WallContainer approach archived.** The CONTAINER-01..04 series (`WallContainer`
+> via `Image.blend_rect`) is superseded. Persistent misalignment was caused by cascading
+> empirical dependencies (`FACE_CENTER_OFFSET`, `is_x_varying`, `+100/+2` layer offsets)
+> that could not be resolved without replacing the architecture. All code in `wall_container.gd`
+> and its callers in `room.gd` is being replaced by the voxel system.
+>
+> **Implementation progress (VOXEL series):**
+> - ✅ **VOXEL-01:** Fixed geometry (flat→3D cube), regenerated PNG tiles (4 materials)
+> - ✅ **VOXEL-02:** Coordinate constants + TileSet infrastructure; `_build_voxel_tileset()`, `_ensure_voxel_layers()`
+> - ✅ **VOXEL-03:** Data classes (VoxelRef, WallSlice, HighWall) with comprehensive selftest (425 checks)
+> - ✅ **VOXEL-04:** Wall voxel placement via `set_cell()`; `_place_wall_voxels()`, `_voxel_slice_positions()`
+> - ⏳ **VOXEL-05..11:** Junction detection, registry, TIC loop, baking, destructibility pending
 
-1. **RENAME-01** — Direction system renamed from Kenney convention (N=right) to vertex-aligned (N=top). Keys in `SUBCUBE_FACE_OFFSETS`, `_EDGE_BY_SUFFIX`, `FACE_CENTER_OFFSET`, and `_DIRS` (compass) now reflect isometric diamond semantics: NW/NE/SE/SW at edges, N/E/S/W at vertices. Offset VALUES unchanged; only semantic meaning of keys rotated 90°.
+The engine uses two coordinate planes. The **gameplay plane** (`CELL_SIZE 256×128`) is
+unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The
+**voxel render plane** (`VOXEL_TILE_SIZE 32×16`, 8×8 voxels per GAME UNIT) handles all
+wall rendering via native `TileMapLayer.set_cell()` — no image compositing, no calibration.
 
-2. **RENAME-01b** — Fixed critical bug in `is_x_varying` logic (in `wall_container.gd`). NE and SW edges are x-varying (horizontal, top/bottom rows); NW and SE are y-varying (vertical, left/right columns). Bug was causing 96px horizontal displacement in wall rendering.
+### Coordinate planes
 
-3. **WALL-EDGE-01b** — Wall rendering optimization. Per-storey stacking via discrete Image generation (4 subcubes horizontally × N storeys vertically), blit algorithm per direction, cached as Sprite2D. Z-index depth sort via cell coordinates.
+| Plane | `tile_size` | Resolution | Owner |
+|-------|------------|------------|-------|
+| **Gameplay** | 256×128 px | 1 GAME UNIT | Guards, A\*, TicSystem, blocked_edges — unchanged |
+| **Voxel render** | 32×16 px | 8×8 voxels per GAME UNIT | Wall rendering, containers, baking, TIC dirty |
 
-4. **CONTAINER-04** — Corner fill system. Cells with 2 faces (NW+NE, NW+SW, SE+NE, SE+SW) emit a 1-atom-wide corner fill Image positioned at the average of the two face offsets, z_index+1 to appear above both faces. Covers the triangular gap without requiring a special asset.
+Conversions happen only at the seam (`map_compiler.gd`). Voxel coordinates are strictly
+downstream of that seam. The gameplay plane contract is invariant.
 
-**Architecture (2026-06-28 state):**
+### Voxel constants
 
-- `room.gd::_build_wall_containers()` — consumes `subcube_geometry` (wall faces + solid blocks from `MapCompiler` → `SubcubeGeometry`). Groups faces by `(from_cell, wall_dir)` to emit 1 WallContainer per edge. Detects corners (2 faces per cell) and emits 1 corner fill per corner.
-- `wall_container.gd::build()` — renders 1 wall face (4 subcubes × N storeys) as a composite Image with 64×72 atoms blitted via Painter's algorithm. Configures anchors and sprite position.
-- `wall_container.gd::build_corner_fill()` — renders 1 corner fill (1 atom × N storeys, single column) at averaged offset with z_index+1.
-- Offset tuning: `FACE_CENTER_OFFSET` (§5 DIRECTION_GLOSSARY.md). Straddle: (±16.0 x, −28.0/−12.0 y).
+| Constant | Value | Derivation |
+|----------|-------|------------|
+| `VOXEL_TILE_SIZE` | `Vector2i(32, 16)` | GAME_UNIT tile_size / 8 per axis |
+| `VOXELS_PER_UNIT_AXIS` | `8` | Voxels per GAME UNIT axis (was 4 for subcubes) |
+| `VOXEL_STEP_PX` | `20.0` | Side face height = `1.25 × tile_h = 1.25 × 16` |
+| `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × 20` — **same as old subcube system** ✓ |
 
-**Still needed (future slices):**
+### Wall placement
 
-- View occlusion (wall cutaway) — VIS-01 Slice 4
-- Per-face lighting/shading (face color by light, face shadowing)
-- Presence deletion for storey 0 cells with subcube detail
-- Dynamic geometry updates (Dirty Flag + TIC cycle — CONTAINER-05)
+Each wall edge between adjacent GAME UNITs generates **2 voxel slices** — one in each
+adjacent unit — placed via `set_cell()` on `_voxel_layers[level]`. VoxelLayer positions
+are analytically derived:
+
+```gdscript
+layer.z_index  = WALL_BASE_Z_INDEX + level
+layer.position = Vector2(VISUAL_GRID_OFFSET.x,
+                         VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
+```
+
+No `FACE_CENTER_OFFSET`. No `is_x_varying`. No empirical offsets.
+
+### Container hierarchy
+
+```
+WallSlice              primary container: 1 direction × 1 adjacent GU × N storeys (8 × 8N voxels)
+HighWall               secondary container: named group of WallSlices; unit of secondary baking
+VoxelRef               per-voxel state: visible, dirty, damage_state, face_atlas_rect
+```
+
+Voxels are addressable as: `HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false`
+
+### Junction rules
+
+- **V junction** (2 walls at vertex): +1 extra voxel column at the uncovered outer diagonal
+- **T junction** (3 walls): no extra — 3rd wall's outer slice covers the diagonal
+- **X junction** (4 walls): no extra — all 4 diagonals covered by outer slices
+
+### Baking System (Planned — VOXEL-08..09)
+
+Load-time pipeline: per-voxel Crop + Multiply blend applied from a `TextureCatalog` texture
+keyed on `(map_id, theme, player_level)`. Supports **primary baking** (per `WallSlice`) and
+**secondary baking** (per `HighWall`, single large texture spanning all constituent voxels).
+Result stored as `VoxelRef.face_atlas_rect`; rendering path unchanged between primary/secondary.
+
+### Dirty Flag + TIC (Planned — VOXEL-07)
+
+Per-voxel `dirty: bool`. State changes propagate `dirty_count` upward through the hierarchy.
+TIC loop skips containers with `dirty_count == 0` — O(container_count) cost at idle. Runtime
+destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `erase_cell()`.
+
+### Implementation sequence
+
+```
+✅ VOXEL-00 (docs)  → VOXEL-01 (generate_voxel.py)  → VOXEL-02 (TileSet + constants)
+✅ VOXEL-03 (data classes)  → VOXEL-04 (_place_wall_voxels)  → ⏳ VOXEL-05 (junction extras)
+⏳ VOXEL-06 (VoxelRegistry)  → VOXEL-07 (dirty + TIC)
+⏳ VOXEL-08 (baking primary)  → VOXEL-09 (baking secondary)
+⏳ VOXEL-10 (destructibility)  → VOXEL-11 (CODEMAP update)
+```
+
+### Files modified / created (VOXEL series)
+
+| File | Phase | Change | Status |
+|------|-------|--------|--------|
+| `tools/generate_voxel.py` | VOXEL-01 | Regenerated PNG tiles with correct 3D cube geometry (top + left/right faces) | ✅ Complete |
+| `godot/scripts/world/subcube_coords.gd` | VOXEL-02 | Added voxel coordinate functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()` | ✅ Complete |
+| `godot/scripts/world/room.gd` | VOXEL-02, -04 | Added voxel infrastructure: `_build_voxel_tileset()`, `_ensure_voxel_layers()`, `_place_wall_voxels()`, `_voxel_slice_positions()` | ✅ Complete |
+| `godot/scripts/world/voxel_ref.gd` | VOXEL-03 | Created data class for individual voxel state (visible, dirty, damage_state, face_atlas_rect) | ✅ Complete |
+| `godot/scripts/world/wall_slice.gd` | VOXEL-03 | Created primary container (8 voxels × N storeys per wall edge) | ✅ Complete |
+| `godot/scripts/world/high_wall.gd` | VOXEL-03 | Created secondary container (group of WallSlices + junction extras) | ✅ Complete |
+| `godot/scripts/tools/voxel_selftest.gd` | VOXEL-03 | Created headless selftest validating all data classes + coordinate API (425 checks) | ✅ Complete |
+
+### Archived (do not recreate)
+
+`wall_container.gd` · `FACE_CENTER_OFFSET` · `SUBCUBE_FACE_OFFSETS` · `SUBCUBE_BASE_ORIGIN`
+· `is_x_varying` logic · `blend_rect` / `Sprite2D` for walls · `CONTAINER-01..04` prompts
 
 ---
 
@@ -101,16 +186,22 @@ procedural generator share one vocabulary (`MapSpec`) and one compiler.
 - **Wall storeys (N-floor):** `MapSpec.wall_height` (storeys for the outer perimeter; default 1)
   makes `MapCompiler` emit `wall_levels: Array[Array]` — `[0]` is the ground course (doors +
   dividers), `[k≥1]` the solid perimeter ring (no door gaps) so doorways stay normal-height with
-  wall above. `room._build_room` renders level 0 on `StructureWallLayer` (z=10) and each higher
-  level on a runtime `TileMapLayer` offset up by `WALL_FLOOR_STEP_PX` (=158px, the cube's
-  side-face height) at `z=10+level`, so tops occlude sprites. `MapSpec.lights` feed the lighting
-  system (§8). `@export wall_height_override` on Room forces a height for quick testing.
+  wall above. `room._build_room` currently renders level 0 on `StructureWallLayer` (z=10) and each
+  higher level on a runtime `TileMapLayer` offset up by `WALL_FLOOR_STEP_PX` (=158px). **VOXEL-04
+  replaces this path:** `StructureWallLayer` is removed; all wall levels are rendered by
+  `_place_wall_voxels()` across `_voxel_layers[0..8N-1]` at `VOXEL_STEP_PX=20` per voxel level.
+  The `wall_levels` contract from `MapCompiler` is unchanged — only the renderer changes.
+  `MapSpec.lights` feed the lighting system (§8). `@export wall_height_override` forces height.
 
 ### Node topology (as built)
 
 ```
-Room (room.gd, Node2D)              ← orchestrator + God Object (§13)
-├── FloorLayer / StructureWall* / Structure* / Shadow* (TileMapLayer)
+Room (room.gd, Node2D)              ← orchestrator + God Object (§15)
+├── FloorLayer / Structure* / Shadow* (TileMapLayer)   ← floor, props, shadows
+│   └── [StructureWallLayer removed in VOXEL-04 — replaced by VoxelLayer[]]
+├── VoxelLayer[0..8N-1]  (TileMapLayer × 8 per storey)  ← voxel wall rendering (PLANNED — VOXEL-04)
+│     z_index = WALL_BASE_Z_INDEX + k
+│     position.y = VISUAL_GRID_OFFSET.y − VOXEL_STEP_PX × k
 ├── TurnManager            (TacticalTurnManager)   — scene node
 ├── EnemyPhaseController   (EnemyPhaseController)   — scene node
 ├── Agent                 (DebugAgent)
@@ -491,7 +582,59 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Camera & perspective | Implemented | Functional | leash, zoom/pinch, 4-way perspective re-layout |
 | Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
 | Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
+| **Voxel Render Plane** | **Planned** | — | VOXEL-00..11 series; replaces WallContainer; spec: `VOXEL_MASTER_PLAN.md` |
 | Light/semantic authoring & serialization | Planned | — | specced (LIGHT-03), no runtime code path |
+
+---
+
+## Visual Storeys
+
+The INFILTRAITOR engine is fundamentally **two-dimensional in gameplay** and **multi-layered in rendering**.
+
+Only **Storey 0** exists as a gameplay plane. Every other storey is a render-only layer whose purpose is to extend the world vertically without increasing gameplay complexity.
+
+Gameplay systems operate exclusively on Storey 0, including:
+
+- Pathfinding (A*)
+- AI and Guard FSM
+- Line of Sight (LOS)
+- Collision
+- Physics
+- Alarms
+- Tactical systems
+- `blocked_cells`
+- `blocked_edges`
+
+Additional storeys do not participate in simulation. Instead, they are used to render:
+
+- Extended walls
+- Ceilings
+- Structural beams
+- Pipes and ducts
+- Hanging lights
+- Architectural details
+- Decorative props
+- Underground scenery
+- Lava, water, smoke and atmospheric effects
+
+This separation allows environments to appear vertically complex while preserving a strictly two-dimensional gameplay model.
+
+## Vertical Rendering and Parallax
+
+Visual storeys may move independently relative to the camera through small per-layer parallax factors.
+
+This effect is intentionally subtle and is used only to reinforce depth perception.
+
+Typical usage includes:
+
+- Upper architectural levels moving slightly slower.
+- Underground layers moving slightly faster.
+- Atmospheric effects such as smoke or fog.
+- Large background structures.
+
+Future background rendering (sky, mountains, industrial skylines, distant cities, etc.) follows the same principle and should be implemented as additional render-only layers with independent parallax factors.
+
+This architecture deliberately separates **visual depth** from **gameplay depth**, allowing large vertical environments to be rendered without introducing additional navigation, AI or physics layers.
 
 ---
 
@@ -508,8 +651,13 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Noise | `systems/noise_system.gd` |
 | Lighting core | `systems/lighting/{light_source,light_registry,shadow_projector,shadow_result,exposure_system,light_anchor}.gd` |
 | World semantics | `world/{tile_semantics,wall_edge_data,tile_registry,level_graph}.gd` |
-| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
+| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog,subcube_geometry,subcube_coords}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
 | Navigation | `navigation/{guard_pathfinder,movement_overlay,path_preview}.gd` |
 | Overlays | `overlays/*.gd`, `ui/fog_of_war_overlay.gd` |
+| **Voxel system (Planned)** | |
+| Voxel data classes | `world/voxel_ref.gd`, `world/wall_slice.gd`, `world/high_wall.gd` |
+| Voxel registry | `world/voxel_registry.gd` |
+| Baking system | `systems/bake_system.gd`, `systems/texture_catalog.gd` |
+| Archived | `world/_archive/wall_container.gd` |
 
 > Legacy specification docs (`docs/systems/*`, `docs/pipelines/*`) describe intended design and use phase tags (`L-IMP/L-ARCH/M2`). Treat them as design intent; treat **this document and the code** as the description of current behavior.

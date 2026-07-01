@@ -16,14 +16,15 @@ const STOREY_HEIGHT_PX    := 160.0  ## SUBCUBES_PER_AXIS × SUBCUBE_STEP_PX
 
 ## Offset do centro do Sprite2D relativo a map_to_local(face_subcells[0]).
 ## Sistema vértice-alinhado: NW=cima-esq, NE=cima-dir, SE=baixo-dir, SW=baixo-esq.
-## Derivado: base_y(−20) + straddle de meia-aresta.
-## Calibrar apenas base_y e |x| — respeitar a simetria do glossário.
+## Y=36: posiciona o topo do átomo base na N-vertex do subcell de referência
+##   (derivado: anchor_y(156) - blit_y_base(120) = 36).
+## |x|=16: straddle lateral de meia-aresta (com subcube layer em VISUAL_GRID_OFFSET).
 ## Ver DIRECTION_GLOSSARY.md §5.
 const FACE_CENTER_OFFSET: Dictionary = {
-	"NW": Vector2(-16.0, -28.0),   ## cima-esquerda: straddle esquerda, aresta alta
-	"NE": Vector2( 16.0, -28.0),   ## cima-direita:  straddle direita,  aresta alta
-	"SE": Vector2( 16.0, -12.0),   ## baixo-direita: straddle direita,  aresta baixa
-	"SW": Vector2(-16.0, -12.0),   ## baixo-esquerda: straddle esquerda, aresta baixa
+	"NW": Vector2(-16.0, 36.0),   ## cima-esquerda: straddle esquerda ✓
+	"NE": Vector2( 16.0, 36.0),   ## cima-direita:  straddle direita  ✓
+	"SE": Vector2( 16.0, 36.0),   ## baixo-direita: straddle direita  ✓
+	"SW": Vector2(-16.0, 36.0),   ## baixo-esquerda: straddle esquerda ✓
 }
 
 ## Pixel da Image onde o CENTRO do subcubo ds=0, level=0 se encontra.

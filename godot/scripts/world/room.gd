@@ -972,6 +972,9 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 		)
 		_apply_tic_result(guard, result)
 
+	## Process voxel system dirty flags (VOXEL-07)
+	_tic_voxel_system()
+
 
 ## Processes the result of a detection tic for a guard.
 func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
@@ -1846,7 +1849,9 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 			ws.storey_count = storey_count
 			for pos in positions:
 				for level in layer_count:
-					ws.voxels.append(VoxelRef.new(pos, level))
+					var voxel := VoxelRef.new(pos, level)
+					voxel._set_parent_slice(ws)
+					ws.voxels.append(voxel)
 			_voxel_wall_slices.append(ws)
 			_voxel_registry.register_slice(ws)
 
@@ -1874,6 +1879,11 @@ func _build_high_walls() -> void:
 		var slices: Array = hw_groups[group_key]
 		var hw := HighWallClass.new()
 		hw.id = "HW_%s" % group_key.replace(" ", "_")
+		
+		## Set parent references for dirty propagation (VOXEL-07)
+		for slice in slices:
+			slice._set_parent_hw(hw)
+		
 		hw.slices = slices
 		hw.junction_extras = []
 		hw.baked = false
@@ -1969,6 +1979,56 @@ func _build_voxel_junction_extras(edge_groups: Dictionary) -> void:
 			_add_junction_extra(
 				Vector2i(vx*vpu, (vy-1)*vpu + vpu-1),
 				sc, source_id, tile_coord)
+
+
+func _tic_voxel_system() -> void:
+	## Called once per TIC by TicSystem. Process all dirty voxels (VOXEL-07).
+	## Efficient: skips containers with dirty_count == 0.
+	if _voxel_registry == null:
+		return
+
+	for hw in _voxel_registry.all_high_walls():
+		if hw.dirty_count == 0:
+			continue  ## skip idle high wall
+		
+		## Process slices
+		for slice in hw.slices:
+			if slice.dirty_count == 0:
+				continue  ## skip idle slice
+			_process_voxel_slice(slice)
+		
+		## Process junction extras (single voxels)
+		for extra in hw.junction_extras:
+			if extra.dirty:
+				_apply_voxel_state(extra)
+				extra.clear_dirty()
+		
+		hw.clear_dirty()
+
+
+func _process_voxel_slice(slice: WallSlice) -> void:
+	## Iterate slice voxels; apply state changes for dirty ones.
+	for voxel in slice.voxels:
+		if not voxel.dirty:
+			continue
+		_apply_voxel_state(voxel)
+		voxel.clear_dirty()
+	slice.dirty_count = 0
+
+
+func _apply_voxel_state(voxel: VoxelRef) -> void:
+	## Render or erase voxel based on visible + damage_state.
+	## Renders: visible AND damage_state < DESTROYED
+	## Erases: not visible OR damage_state == DESTROYED
+	var layer := _voxel_layers[voxel.level]
+	if voxel.visible and voxel.damage_state < VoxelRefClass.DAMAGE_DESTROYED:
+		## Render voxel at the face_atlas_rect coordinates
+		var source_id: int = _voxel_tile_ids.get("voxel_concrete", -1)
+		var tile_coord: Vector2i = voxel.face_atlas_rect.position
+		layer.set_cell(voxel.grid_pos, source_id, tile_coord)
+	else:
+		## Erase voxel (either invisible or destroyed)
+		layer.erase_cell(voxel.grid_pos)
 
 
 func _has_any(edge_groups: Dictionary, keys: Array[String]) -> bool:

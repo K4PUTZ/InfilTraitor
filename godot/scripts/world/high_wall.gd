@@ -38,3 +38,18 @@ func all_voxels() -> Array:
 		out.append_array(s.voxels)
 	out.append_array(junction_extras)
 	return out
+
+
+func increment_dirty() -> void:
+	## Increment dirty counter when child slice is marked dirty.
+	dirty_count += 1
+
+
+func clear_dirty() -> void:
+	## Called from TIC loop after high wall processed.
+	## Recursively clear all slice/extra dirty flags.
+	for slice in slices:
+		slice.clear_dirty()
+	for extra in junction_extras:
+		extra.clear_dirty()
+	dirty_count = 0

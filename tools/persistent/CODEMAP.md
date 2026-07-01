@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**66 scripts · 12018 lines total** (under `godot/scripts/`)
+**66 scripts · 12126 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1262,7 +1262,7 @@ extends `Node2D` · 34 lines
 
 ### `high_wall.gd`
 
-`class_name HighWall` · 40 lines
+`class_name HighWall` · 55 lines
 
 `godot/scripts/world/high_wall.gd`
 
@@ -1279,6 +1279,8 @@ extends `Node2D` · 34 lines
 - `func get_slice(slice_id: String):`
 - `func total_voxel_count() -> int:`
 - `func all_voxels() -> Array:`
+- `func increment_dirty() -> void:`
+- `func clear_dirty() -> void:`
 
 ---
 
@@ -1378,7 +1380,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2830 lines
+extends `Node2D` · 2890 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1528,7 +1530,7 @@ extends `Node2D` · 2830 lines
 
 ### `voxel_ref.gd`
 
-`class_name VoxelRef` · 46 lines
+`class_name VoxelRef` · 57 lines
 
 `godot/scripts/world/voxel_ref.gd`
 
@@ -1621,7 +1623,7 @@ extends `Node2D` · 2830 lines
 
 ### `wall_slice.gd`
 
-`class_name WallSlice` · 35 lines
+`class_name WallSlice` · 57 lines
 
 `godot/scripts/world/wall_slice.gd`
 
@@ -1640,5 +1642,7 @@ extends `Node2D` · 2830 lines
 - `func get_voxel(index: int):`
 - `func total_voxel_count() -> int:`
 - `func mark_all_dirty() -> void:`
+- `func increment_dirty() -> void:`
+- `func clear_dirty() -> void:`
 
 ---

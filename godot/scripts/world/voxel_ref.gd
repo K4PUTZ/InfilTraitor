@@ -20,26 +20,37 @@ var visible:         bool     = true
 var dirty:           bool     = false
 var damage_state:    int      = DAMAGE_INTACT
 var face_atlas_rect: Rect2i   = Rect2i()   ## set by BakeSystem (VOXEL-08)
+var _parent_slice: WallSlice  = null        ## set by WallSlice._set_parent_voxel() (VOXEL-07)
 
 func _init(pos: Vector2i, lv: int) -> void:
 	grid_pos = pos
 	level    = lv
 
+
+func _set_parent_slice(slice: WallSlice) -> void:
+	## Called from WallSlice during voxel append. Enables dirty propagation.
+	_parent_slice = slice
+
 ## Altera visibilidade. No-op se o valor não muda (não suja dirty).
-## O caller é responsável por incrementar WallSlice.dirty_count (VOXEL-07).
+## Propaga dirty_count ao WallSlice pai se existir (VOXEL-07).
 func set_visible(v: bool) -> void:
 	if visible == v:
 		return
 	visible = v
 	dirty   = true
+	if _parent_slice != null:
+		_parent_slice.increment_dirty()
+
 
 ## Aplica estado de dano. DAMAGE_DESTROYED força visible = false.
-## O caller é responsável por incrementar WallSlice.dirty_count (VOXEL-07).
+## Propaga dirty_count ao WallSlice pai se existir (VOXEL-07).
 func set_damage(state: int) -> void:
 	damage_state = clamp(state, DAMAGE_INTACT, DAMAGE_DESTROYED)
 	if damage_state == DAMAGE_DESTROYED:
 		visible = false
 	dirty = true
+	if _parent_slice != null:
+		_parent_slice.increment_dirty()
 
 ## Limpa o dirty flag após o TIC ter aplicado o estado ao TileMapLayer.
 func clear_dirty() -> void:

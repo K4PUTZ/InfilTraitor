@@ -16,6 +16,7 @@ var voxels:           Array    = []          ## Array[VoxelRef], 64 × storey_co
 var dirty_count:      int      = 0
 var baked:            bool     = false
 var parent_high_wall: String   = ""          ## id do HighWall pai; "" se standalone
+var _parent_hw: HighWall       = null        ## set by HighWall._set_parent_hw() (VOXEL-07)
 
 ## Retorna o VoxelRef no índice linear dado, ou null se fora de bounds.
 func get_voxel(index: int):
@@ -33,3 +34,24 @@ func mark_all_dirty() -> void:
 	for v in voxels:
 		v.dirty = true
 	dirty_count = voxels.size()
+
+
+func _set_parent_hw(hw: HighWall) -> void:
+	## Called from HighWall during slice append. Enables dirty propagation.
+	_parent_hw = hw
+
+
+func increment_dirty() -> void:
+	## Increment dirty counter when child voxel is marked dirty.
+	## Propagate upward to HighWall.
+	dirty_count += 1
+	if _parent_hw != null:
+		_parent_hw.increment_dirty()
+
+
+func clear_dirty() -> void:
+	## Called from TIC loop after slice processed.
+	## Recursively clear all voxel dirty flags.
+	for voxel in voxels:
+		voxel.clear_dirty()
+	dirty_count = 0

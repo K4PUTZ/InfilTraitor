@@ -3,8 +3,8 @@
 > **Chronological record of the voxel render plane implementation.** Tracks each VOXEL phase from specification through completion, with technical details and acceptance test results.
 
 **Scope:** VOXEL-01 through VOXEL-11 (wall rendering architecture refactor)  
-**Status:** VOXEL-01 through VOXEL-06 complete; VOXEL-07..11 pending  
-**Last updated:** 2026-07-01 · Post VOXEL-06 completion
+**Status:** VOXEL-01 through VOXEL-07 complete; VOXEL-08..11 pending  
+**Last updated:** 2026-07-01 · Post VOXEL-07 completion
 
 ---
 
@@ -297,14 +297,70 @@
 
 ---
 
-## VOXEL-07: Dirty Flag + TIC Loop (Pending ⏳)
+## VOXEL-07: Dirty Flag + TIC Loop Integration (Complete ✅)
 
-**Objective:** Implement per-voxel dirty tracking; update TIC loop to process only dirty containers.
+**Objective:** Implement per-voxel dirty tracking and TIC loop integration to enable efficient runtime state updates.
 
-**Planned changes:**
-- Add `dirty_count` aggregation: VoxelRef.dirty → WallSlice.dirty_count → HighWall.dirty_count
-- TIC loop: skip HighWalls with dirty_count=0 (O(container_count) cost at idle)
-- Runtime destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `erase_cell()`
+**What was implemented:**
+
+1. **Per-voxel dirty propagation** (in `voxel_ref.gd`):
+   - `_parent_slice: WallSlice` — weak back-reference to owning slice
+   - `_set_parent_slice(slice)` — called from room during voxel append
+   - `set_visible(value: bool)` — now propagates dirty upward via `increment_dirty()`
+   - `set_damage(damage: int)` — now propagates dirty upward via `increment_dirty()`
+   - `clear_dirty()` — resets dirty flag (called by TIC loop)
+
+2. **Slice-level dirty aggregation** (in `wall_slice.gd`):
+   - `_parent_hw: HighWall` — back-reference to parent HighWall
+   - `_set_parent_hw(hw)` — called from HighWall during slice append
+   - `increment_dirty()` — increments dirty_count and propagates to HighWall
+   - `clear_dirty()` — recursively clears all voxel dirty flags and resets count
+
+3. **HighWall-level dirty aggregation** (in `high_wall.gd`):
+   - `increment_dirty()` — increments dirty_count when child dirty
+   - `clear_dirty()` — recursively clears all slice/extra dirty flags and resets count
+
+4. **Parent references setup** (in `room.gd` _place_wall_voxels + _build_high_walls):
+   - Each VoxelRef calls `_set_parent_slice(ws)` during append
+   - Each WallSlice calls `_set_parent_hw(hw)` during HighWall building
+   - Enables dirty propagation chain: VoxelRef → WallSlice → HighWall
+
+5. **TIC loop implementation** (in `room.gd`):
+   - `_tic_voxel_system()` — main TIC entry point, skips idle containers (dirty_count=0)
+   - `_process_voxel_slice(slice)` — iterates slice voxels, applies state for dirty ones
+   - `_apply_voxel_state(voxel)` — renders or erases voxel based on visible + damage_state
+   - Integrated into `_on_agent_step_finished()` — called once per agent movement TIC
+
+**Files modified:**
+- `godot/scripts/world/voxel_ref.gd` — 1 str_replace (add parent ref + propagation)
+- `godot/scripts/world/wall_slice.gd` — 1 str_replace (add parent ref + increment_dirty + clear_dirty)
+- `godot/scripts/world/high_wall.gd` — 1 str_replace (add increment_dirty + clear_dirty)
+- `godot/scripts/world/room.gd` — 3 str_replace (register parent refs, add TIC functions, integrate into step TIC)
+
+**Validation (Acceptance Tests):**
+- **A1:** `set_visible()` present ✓
+- **A2:** `set_damage()` present ✓
+- **A3:** `_set_parent_slice()` present ✓
+- **A4:** `WallSlice.increment_dirty()` present ✓
+- **A5:** `HighWall.increment_dirty()` present ✓
+- **A6:** `room._tic_voxel_system()` present ✓
+- **A7:** `room._apply_voxel_state()` present ✓
+- **A8:** `room._process_voxel_slice()` present ✓
+- **A9:** Parent refs registered in _place_wall_voxels ✓
+- **A10:** Parent refs registered in _build_high_walls ✓
+- **A11:** Runtime validation — Godot loads clean, selftest 425 checks pass ✓
+- **A12:** Git status clean (4 files modified + 1 spec file) ✓
+
+**Technical notes:**
+- Dirty propagation is O(1) per state change (immediate upward cascade)
+- TIC loop is O(container_count) at idle (all dirty_count=0) — efficient skipping
+- When dirty_count > 0, loop processes only affected voxels (O(dirty_count))
+- `clear_dirty()` is called recursively from top-level HighWall down to individual voxels
+- Fully backward compatible: room._place_wall_voxels() initializes all voxels with dirty=false
+
+**Phase Status:** Completes **Phase 2** (Runtime System). Containers fully indexable and processable.
+
+**Artifacts archived:** `PROMPTS/DONE/VOXEL-07.md`
 
 ---
 

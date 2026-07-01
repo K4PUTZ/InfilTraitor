@@ -23,7 +23,7 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 ## Voxel Render Plane (Partially Implemented — replacing Subcube/WallContainer)
 
 **Status: Partially Implemented** · Spec: `docs/technical/VOXEL_MASTER_PLAN.md`  
-**Current Phase:** VOXEL-06 complete (Phase 1b: Container Indexing); VOXEL-07..11 pending  
+**Current Phase:** VOXEL-07 complete (Phase 2: Runtime System); VOXEL-08..11 pending  
 **Last updated:** 2026-07-01
 
 > **Subcube/WallContainer approach archived.** The CONTAINER-01..04 series (`WallContainer`
@@ -39,7 +39,8 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 > - ✅ **VOXEL-04:** Wall voxel placement via `set_cell()`; `_place_wall_voxels()`, `_voxel_slice_positions()`
 > - ✅ **VOXEL-05:** Junction detection + extra voxels; `_build_voxel_junction_extras()`, corner-fill logic
 > - ✅ **VOXEL-06:** VoxelRegistry centralized container index; `VoxelRegistry.new()`, lookup API
-> - ⏳ **VOXEL-07..11:** TIC loop, baking, destructibility, codemap integration pending
+> - ✅ **VOXEL-07:** Dirty flag + TIC loop; `_tic_voxel_system()`, per-voxel state updates
+> - ⏳ **VOXEL-08..11:** Baking system, destructibility, codemap integration pending
 
 The engine uses two coordinate planes. The **gameplay plane** (`CELL_SIZE 256×128`) is
 unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The

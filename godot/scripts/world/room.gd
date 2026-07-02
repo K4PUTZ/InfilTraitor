@@ -25,6 +25,13 @@ const VoxelRefClass = preload("res://godot/scripts/world/voxel_ref.gd")
 const WallSliceClass = preload("res://godot/scripts/world/wall_slice.gd")
 const HighWallClass = preload("res://godot/scripts/world/high_wall.gd")
 
+## SLICE-02: Geometry module (Edge → Slice → Voxel pipeline)
+const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
+const SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
+const JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")
+const EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")
+const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
 @onready var enemy_phase_controller: EnemyPhaseController = $EnemyPhaseController
@@ -117,6 +124,11 @@ var _voxel_junction_extras: Array = []
 ## VoxelRegistry — centralized index of all WallSlice/HighWall instances (VOXEL-06).
 var _voxel_registry: RefCounted = null
 
+## SLICE-02: New geometry module state
+var _edge_registry: EdgeRegistry = null       ## EdgeRegistry of all edges and slices
+var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
+var _voxel_renderer: VoxelRenderer = null     ## Voxel rendering engine
+
 ## Containers de parede (Node2D com Sprite2D filhos). Substituem o TileMapLayer
 ## para faces de parede; blocos sólidos ainda usam TileMapLayer.
 var _wall_containers: Array = []
@@ -205,6 +217,9 @@ var _peek_pending: bool = false
 var _dev_hover_label: Label = null
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
 
+## DEBUG-01: Map loader panel
+var _map_loader_panel: Node = null
+
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
@@ -273,36 +288,17 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 const WHISTLE_RADIUS := 3
 
 
-func _ready() -> void:
-	var ts: TileSet = load(TILESET_PATH)
-	if ts == null:
-		push_error("TileSet not found: " + TILESET_PATH)
-		return
-
-	floor_layer.tile_set = ts
-	floor_layer.z_index = 0
-	structure_wall_layer.tile_set = ts
-	structure_wall_layer.z_index = WALL_BASE_Z_INDEX
-	structure_layer.tile_set = ts
-	structure_layer.z_index = 10
-	_wall_tileset = ts
-	## M2-13: Initialize shadow layers
-	shadow_full_layer.tile_set = ts
-	shadow_partial_layer.tile_set = ts
-	shadow_full_layer.z_index = 1
-	shadow_partial_layer.z_index = 1
-	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
-	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
-	_build_registry(ts)
-	_subcube_tileset = _build_subcube_tileset()
-	_voxel_tileset   = _build_voxel_tileset()    ## VOXEL-02: null-safe if PNGs missing
+## Loads (or reloads) the given map into the already-initialized room. Safe to call
+## after _ready() — used by _ready() itself and by the F2 debug panel.
+func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: int = 0) -> void:
+	map_id = new_map_id
+	wall_height_override = new_wall_height_override
+	if new_map_id == "PROCEDURAL":
+		level_seed = new_seed
 
 	var graph: LevelGraph = LevelGraphClass.new()
 	var connections: Dictionary = graph.generate(level_seed)
 
-	## Resolve the active map to a MapSpec, then compile it into the render-ready
-	## layout dict. The compiler owns the buffer offset; graph-driven specs use
-	## `connections` for their access points.
 	var spec: Dictionary = MapCatalogClass.get_spec(map_id, {
 		"connections":      connections,
 		"segment_grid_pos": segment_grid_pos,
@@ -323,72 +319,12 @@ func _ready() -> void:
 
 	var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
 	_room_size = view_layout.get("size", _room_size)
-	_map_buffer = view_layout.get("buffer", 0)  ## SLICE-00: store buffer for probe
+	_map_buffer = view_layout.get("buffer", 0)
 	_build_room(view_layout)
-	
-	## MODULARIZE-03: Initialize LightingController (before VisionController, which connects to its signals)
-	_lighting_controller = LightingControllerClass.new()
-	_lighting_controller.name = "LightingController"
-	add_child(_lighting_controller)
-	_lighting_controller.setup(self)
-	
-	## MODULARIZE-01: Initialize VisionController (after systems ready, before final _ready() wiring)
-	_vision_controller = VisionControllerClass.new()
-	_vision_controller.name = "VisionController"
-	add_child(_vision_controller)
-	_vision_controller.setup(self, fog_of_war)
-	set_meta("vision_controller", _vision_controller)
-	
-	## Connect LightingController signal to VisionController for overlay updates
-	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
-	## Geometric floor shadows are real-world elements → repaint the always-on
-	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
-	_lighting_controller.lighting_rebuilt.connect(_repaint_world_shadows)
-	
-	## MODULARIZE-02: Initialize HudController (after nodes ready)
-	_hud_controller = HudControllerClass.new()
-	_hud_controller.name = "HudController"
-	add_child(_hud_controller)
-	_hud_controller.setup({
-		"btn_end_turn": btn_end_turn,
-		"btn_reset": btn_reset,
-		"btn_fullscreen": btn_fullscreen,
-		"btn_viewport": btn_viewport,
-		"btn_numbers": btn_numbers,
-		"chk_auto_end_turn": chk_auto_end_turn,
-		"lbl_ap": lbl_ap,
-		"lbl_alert": lbl_alert,
-		"busted_dialog": busted_dialog,
-		"enemy_turn_banner": enemy_turn_banner,
-		"lbl_end_turn": lbl_end_turn,
-		"lbl_enemy_turn": lbl_enemy_turn,
-	})
-	
-	## Connect HudController signals to room handlers
-	_hud_controller.end_turn_requested.connect(_on_hud_end_turn_requested)
-	_hud_controller.reset_requested.connect(_on_hud_reset_requested)
-	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
-	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
-	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
-	
-	## MODULARIZE-04: Initialize CameraController (after camera ready)
-	_camera_controller = CameraControllerClass.new()
-	_camera_controller.name = "CameraController"
-	add_child(_camera_controller)
-	_camera_controller.setup(camera, self)
-	
-	## MODULARIZE-05: Initialize FowController (before fog operations)
-	_fow_controller = FowControllerClass.new()
-	_fow_controller.name = "FowController"
-	add_child(_fow_controller)
-	_fow_controller.setup(self, fog_of_war, _fog_rect)
-	
-	## MODULARIZE-06: Initialize GuardCoordinator (after fow controller)
-	_guard_coordinator = GuardCoordinatorClass.new()
-	_guard_coordinator.name = "GuardCoordinator"
-	add_child(_guard_coordinator)
-	_guard_coordinator.setup(self)
-	
+
+	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
+	## previous map. Reuse whatever _ready() already does after _build_room() for
+	## agent placement, turn_manager reset, FOW rebuild, camera recenter.
 	var agent_start_cell: Vector2i = view_layout.get("agent_start_cell", Vector2i.ZERO)
 	_agent_start_cell = agent_start_cell
 	_center_camera(agent_start_cell)
@@ -423,6 +359,121 @@ func _ready() -> void:
 	camera.ignore_rotation = true
 	camera.rotation_degrees = 0.0
 
+	_selected_cell = agent.cell
+	selection_overlay.set_selected(agent.cell)
+	turn_manager.reset_player_turn()
+	_update_alert_label()
+	enemy_turn_banner.visible = false
+
+	tile_labels_overlay.queue_redraw()
+	_lighting_controller.rebuild_all()
+	_ceiling_overlay.set_lights(_current_light_sources)
+	_agent_trail.clear()
+	if _trail_overlay != null:
+		_trail_overlay.queue_redraw()
+	if _noise_system != null:
+		_noise_system.clear()
+	if _noise_overlay != null:
+		_noise_overlay.queue_redraw()
+
+	_alert_meter = 0
+	_update_alert_label()
+	_update_guard_los_data()
+
+
+func _ready() -> void:
+	var ts: TileSet = load(TILESET_PATH)
+	if ts == null:
+		push_error("TileSet not found: " + TILESET_PATH)
+		return
+
+	floor_layer.tile_set = ts
+	floor_layer.z_index = 0
+	structure_wall_layer.tile_set = ts
+	structure_wall_layer.z_index = WALL_BASE_Z_INDEX
+	structure_layer.tile_set = ts
+	structure_layer.z_index = 10
+	_wall_tileset = ts
+	## M2-13: Initialize shadow layers
+	shadow_full_layer.tile_set = ts
+	shadow_partial_layer.tile_set = ts
+	shadow_full_layer.z_index = 1
+	shadow_partial_layer.z_index = 1
+	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
+	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
+	_build_registry(ts)
+	
+	## SLICE-02: Initialize VoxelRenderer (legacy builders retained for now)
+	_voxel_renderer = VoxelRendererClass.new()
+	add_child(_voxel_renderer)
+	_voxel_renderer.setup(VISUAL_GRID_OFFSET, WALL_BASE_Z_INDEX)
+	
+	_subcube_tileset = _build_subcube_tileset()
+	_voxel_tileset   = _build_voxel_tileset()    ## VOXEL-02: null-safe if PNGs missing
+
+	## MODULARIZE-03: Initialize LightingController (before VisionController, which connects to its signals)
+	_lighting_controller = LightingControllerClass.new()
+	_lighting_controller.name = "LightingController"
+	add_child(_lighting_controller)
+	_lighting_controller.setup(self)
+
+	## MODULARIZE-01: Initialize VisionController (after systems ready, before final _ready() wiring)
+	_vision_controller = VisionControllerClass.new()
+	_vision_controller.name = "VisionController"
+	add_child(_vision_controller)
+	_vision_controller.setup(self, fog_of_war)
+	set_meta("vision_controller", _vision_controller)
+
+	## Connect LightingController signal to VisionController for overlay updates
+	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
+	## Geometric floor shadows are real-world elements → repaint the always-on
+	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
+	_lighting_controller.lighting_rebuilt.connect(_repaint_world_shadows)
+
+	## MODULARIZE-02: Initialize HudController (after nodes ready)
+	_hud_controller = HudControllerClass.new()
+	_hud_controller.name = "HudController"
+	add_child(_hud_controller)
+	_hud_controller.setup({
+		"btn_end_turn": btn_end_turn,
+		"btn_reset": btn_reset,
+		"btn_fullscreen": btn_fullscreen,
+		"btn_viewport": btn_viewport,
+		"btn_numbers": btn_numbers,
+		"chk_auto_end_turn": chk_auto_end_turn,
+		"lbl_ap": lbl_ap,
+		"lbl_alert": lbl_alert,
+		"busted_dialog": busted_dialog,
+		"enemy_turn_banner": enemy_turn_banner,
+		"lbl_end_turn": lbl_end_turn,
+		"lbl_enemy_turn": lbl_enemy_turn,
+	})
+
+	## Connect HudController signals to room handlers
+	_hud_controller.end_turn_requested.connect(_on_hud_end_turn_requested)
+	_hud_controller.reset_requested.connect(_on_hud_reset_requested)
+	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
+	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
+	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
+
+	## MODULARIZE-04: Initialize CameraController (after camera ready)
+	_camera_controller = CameraControllerClass.new()
+	_camera_controller.name = "CameraController"
+	add_child(_camera_controller)
+	_camera_controller.setup(camera, self)
+
+	## MODULARIZE-05: Initialize FowController (before fog operations)
+	_fow_controller = FowControllerClass.new()
+	_fow_controller.name = "FowController"
+	add_child(_fow_controller)
+	_fow_controller.setup(self, fog_of_war, _fog_rect)
+
+	## MODULARIZE-06: Initialize GuardCoordinator (after fow controller)
+	_guard_coordinator = GuardCoordinatorClass.new()
+	_guard_coordinator.name = "GuardCoordinator"
+	add_child(_guard_coordinator)
+	_guard_coordinator.setup(self)
+
 	turn_manager.ap_changed.connect(_on_ap_changed)
 	turn_manager.player_turn_started.connect(_on_player_turn_started)
 	turn_manager.enemy_phase_started.connect(_on_enemy_phase_started)
@@ -430,11 +481,8 @@ func _ready() -> void:
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
 	## Perspective button connections now in CameraController
-	_selected_cell = agent.cell
-	selection_overlay.set_selected(agent.cell)
-	turn_manager.reset_player_turn()
-	_update_alert_label()
-	enemy_turn_banner.visible = false
+
+	load_map(map_id, wall_height_override, level_seed)
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
 	_trail_overlay = Node2D.new()
@@ -613,6 +661,16 @@ func _update_perspective_button_state() -> void:
 	btn_perspective_ne.modulate = active_mod if _active_perspective == "N" else inactive_mod
 	btn_perspective_sw.modulate = active_mod if _active_perspective == "S" else inactive_mod
 	btn_perspective_se.modulate = active_mod if _active_perspective == "E" else inactive_mod
+
+
+func _toggle_map_loader_panel() -> void:
+	if _map_loader_panel == null:
+		var MapLoaderPanelClass = preload("res://godot/scripts/debug/map_loader_panel.gd")
+		_map_loader_panel = CanvasLayer.new()
+		_map_loader_panel.set_script(MapLoaderPanelClass)
+		add_child(_map_loader_panel)
+		_map_loader_panel.setup(self)
+	_map_loader_panel.visible = not _map_loader_panel.visible
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -1786,6 +1844,53 @@ func _voxel_slice_positions(from_cell: Vector2i, edge_delta: Vector2i,
 	return positions
 
 
+## SLICE-02: A-T2 — Render solid blocks at their correct storeys
+func _render_solid_blocks(blocks: Array) -> void:
+	if blocks.is_empty():
+		return
+	
+	var groups: Dictionary = {}
+	for block in blocks:
+		var gu_cell: Vector2i = block.get("gu_cell", Vector2i.ZERO)
+		var storey: int = int(block.get("storey", 0))
+		var material_name: String = block.get("material", "concrete")
+		var key := "%d,%d,%s" % [gu_cell.x, gu_cell.y, material_name]
+		
+		if key not in groups:
+			groups[key] = {"gu_cell": gu_cell, "material_name": material_name, "storeys": []}
+		groups[key]["storeys"].append(storey)
+	
+	for key in groups:
+		var group = groups[key]
+		var gu_cell: Vector2i = group["gu_cell"]
+		var material_name: String = group["material_name"]
+		var storeys: Array = group["storeys"]
+		
+		storeys.sort()
+		var runs: Array = []
+		var current_run: Array = []
+		
+		for i in range(storeys.size()):
+			var storey: int = storeys[i]
+			if i == 0:
+				current_run.append(storey)
+			else:
+				var prev_storey: int = storeys[i - 1]
+				if storey == prev_storey + 1:
+					current_run.append(storey)
+				else:
+					runs.append(current_run.duplicate())
+					current_run = [storey]
+		
+		if not current_run.is_empty():
+			runs.append(current_run)
+		
+		for run in runs:
+			var run_start: int = run[0]
+			var run_span: int = run.size()
+			_voxel_renderer.render_block(gu_cell, run_start, run_span, material_name)
+
+
 func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 	## Renderiza arestas de parede como tiles voxel via set_cell() em _voxel_layers[].
 	## Substitui _build_wall_containers() (arquivada — NÃO apagar).
@@ -2044,22 +2149,24 @@ func _build_voxel_junction_extras(edge_groups: Dictionary) -> void:
 
 
 func _tic_voxel_system() -> void:
-	## Called once per TIC by TicSystem. Process all dirty voxels (VOXEL-07).
-	## Efficient: skips containers with dirty_count == 0.
+	if _voxel_renderer != null and _edge_registry != null:
+		_voxel_renderer.process_dirty(_edge_registry)
+		return   ## <-- do not fall through to the legacy dirty loop
+	
+	## Legacy path — only reached if the new system was never wired for this room
+	## (mirrors the elif in _build_room; should not happen on any current map).
 	if _voxel_registry == null:
 		return
 
 	for hw in _voxel_registry.all_high_walls():
 		if hw.dirty_count == 0:
-			continue  ## skip idle high wall
+			continue
 		
-		## Process slices
 		for slice in hw.slices:
 			if slice.dirty_count == 0:
-				continue  ## skip idle slice
+				continue
 			_process_voxel_slice(slice)
 		
-		## Process junction extras (single voxels)
 		for extra in hw.junction_extras:
 			if extra.dirty:
 				_apply_voxel_state(extra)
@@ -2349,10 +2456,28 @@ func _build_room(layout: Dictionary) -> void:
 	## Subcube render plane: wall/block descriptors become stacked subcube presence.
 	## The old wall-storey layers remain as a fallback path, but the active render
 	## now comes from the seam's subcube geometry.
+	
+	## SLICE-02: New geometry module integration — edges → slices → voxels
+	var extraction: Dictionary = EdgeExtractor.extract(layout)
 	var subcube_geometry: Dictionary = layout.get("subcube_geometry", {})
-	if not subcube_geometry.is_empty() and _subcube_tileset != null:
+	
+	if not extraction.get("edges", []).is_empty():
+		## New geometry path — the only active renderer when it has data.
+		_edge_registry = EdgeRegistry.new()
+		SliceGenerator.generate(extraction["edges"], _edge_registry)
+		_junction_columns = JunctionResolver.resolve(_edge_registry)
+		_voxel_renderer.clear()
+		_voxel_renderer.render(_edge_registry, _junction_columns)
+		_render_solid_blocks(extraction.get("solid_blocks", []))
+		structure_wall_layer.visible = false
+		for layer in _wall_upper_layers:
+			layer.visible = false
+	
+	elif not subcube_geometry.is_empty() and _subcube_tileset != null:
+		## Legacy subcube path — only reached if the new extractor found nothing
+		## (should not happen on any current map; kept as a safety fallback until
+		## Stage B, per the original SLICE-01/02 plan).
 		var max_floors: int = maxi(1, int(layout.get("max_floors", 1)))
-		## Initialize VoxelRegistry (VOXEL-06)
 		if _voxel_registry == null:
 			_voxel_registry = VoxelRegistryClass.new()
 			_voxel_registry.setup(max_floors * SubcubeCoordsClass.VOXELS_PER_UNIT_AXIS)
@@ -2361,8 +2486,9 @@ func _build_room(layout: Dictionary) -> void:
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false
+	
 	else:
-		## Wall storeys: level 0 → base layer; levels 1.. → runtime layers offset up one cube each.
+		## Oldest fallback: wall_levels painted directly (pre-VOXEL-01 era).
 		var wall_levels: Array = layout.get("wall_levels", [layout.get("wall_tiles", [])])
 		_ensure_wall_upper_layers(maxi(0, wall_levels.size() - 1))
 		for layer in _wall_upper_layers:
@@ -2681,6 +2807,9 @@ func _input(event: InputEvent) -> void:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo:
 			match key.keycode:
+				KEY_F2:
+					_toggle_map_loader_panel()
+					return
 				KEY_Z:
 					## Z lowers: STANDING -> CROUCHING -> PRONE
 					var next_z := agent.posture

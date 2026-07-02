@@ -14,6 +14,11 @@ const ProceduralMapClass = preload("res://godot/scripts/world/maps/definitions/p
 const DEFAULT_MAP_ID := "PLAYGROUND"
 
 
+## Returns all map ids the catalog can resolve, in display order.
+static func list_map_ids() -> Array[String]:
+	return ["PLAYGROUND", "SIGMA_01", "PROCEDURAL"]
+
+
 ## Returns the MapSpec for map_id. Unknown ids fall back to the default.
 ## context: {connections, segment_grid_pos, seed} — forwarded to procedural/graph maps.
 static func get_spec(map_id: String, context: Dictionary = {}) -> Dictionary:

@@ -58,6 +58,7 @@ func _build_voxel_tileset() -> void:
 		
 		var atlas_source := TileSetAtlasSource.new()
 		atlas_source.texture = texture
+		atlas_source.texture_region_size = Vector2i(texture.get_width(), texture.get_height())
 		atlas_source.separation = Vector2i.ZERO
 		atlas_source.margins = Vector2i.ZERO
 		
@@ -70,8 +71,8 @@ func _build_voxel_tileset() -> void:
 		# Now get tile_data and set properties
 		var tile_data: TileData = atlas_source.get_tile_data(Vector2i.ZERO, 0)
 		if tile_data != null:
-			# Set texture_offset (Transform Canon 3)
-			tile_data.texture_offset = -GeometryCoords.voxel_texture_origin()
+			# Set texture_origin (Transform Canon 3: from SLICE-00 verification)
+			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			# Set custom_data: tile_name = material_name
 			tile_data.set_custom_data("tile_name", material_name)
 

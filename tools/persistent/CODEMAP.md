@@ -8,13 +8,14 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**80 scripts · 13566 lines total** (under `godot/scripts/`)
+**81 scripts · 13850 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
+- **debug/** — map_loader_panel.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
@@ -360,6 +361,22 @@ extends `Node2D` · 275 lines
 
 ---
 
+## debug/
+
+### `map_loader_panel.gd`
+
+extends `CanvasLayer` · 149 lines
+
+`godot/scripts/debug/map_loader_panel.gd`
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+
+**Public API**
+- `func setup(room: Node2D) -> void:`
+
+---
+
 ## geometry/
 
 ### `edge.gd`
@@ -558,7 +575,7 @@ extends `Node2D` · 275 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 198 lines
+`class_name VoxelRenderer` · extends `Node2D` · 199 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1577,7 +1594,7 @@ extends `Node2D` · 34 lines
 
 ### `map_catalog.gd`
 
-`class_name MapCatalog` · extends `RefCounted` · 29 lines
+`class_name MapCatalog` · extends `RefCounted` · 34 lines
 
 `godot/scripts/world/maps/map_catalog.gd`
 
@@ -1624,7 +1641,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2861 lines
+extends `Node2D` · 2990 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1652,6 +1669,11 @@ extends `Node2D` · 2861 lines
 - `VoxelRefClass` = `preload("res://godot/scripts/world/voxel_ref.gd")`
 - `WallSliceClass` = `preload("res://godot/scripts/world/wall_slice.gd")`
 - `HighWallClass` = `preload("res://godot/scripts/world/high_wall.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+- `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
+- `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
+- `EdgeRegistryClass` = `preload("res://godot/scripts/geometry/edge_registry.gd")`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`

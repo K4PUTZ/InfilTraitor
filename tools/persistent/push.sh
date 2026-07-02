@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Screenshot Fix - $(date +%Y-%m-%d)"
+TAG="Alpha PRE-SLICE-02 - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

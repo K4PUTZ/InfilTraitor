@@ -8,17 +8,18 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**67 scripts · 12304 lines total** (under `godot/scripts/`)
+**80 scripts · 13565 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
+- **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, slice_geometry_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, geometry_selftest.gd, slice_02_integration_selftest.gd, slice_geometry_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, voxel_registry.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
 
@@ -356,6 +357,224 @@ extends `Node2D` · 275 lines
 **Public API**
 - `func get_max_resistance() -> int:`
 - `func is_fatal_hit(hits_taken: int) -> bool:`
+
+---
+
+## geometry/
+
+### `edge.gd`
+
+`class_name Edge` · 72 lines
+
+`godot/scripts/geometry/edge.gd`
+
+> Geometry Module — Edge: logical wall between two adjacent Gameplay Units Canonical identity model: anchor = lexicographically smaller cell; face_a ∈ {SE, SW}
+
+**Public vars**
+- `var id: String`
+- `var gu_a: Vector2i`
+- `var gu_b: Vector2i`
+- `var face_a: int`
+- `var face_b: int`
+- `var storey_count: int`
+- `var material: String`
+- `var slice_a_id: String = ""`
+- `var slice_b_id: String = ""`
+
+---
+
+### `edge_extractor.gd`
+
+`class_name EdgeExtractor` · 105 lines
+
+`godot/scripts/geometry/edge_extractor.gd`
+
+> Geometry Module — Edge Extractor: converts compiled map to Edge objects Port from subcube_geometry.gd build() logic
+
+**Constants / tuning**
+- `_EDGE_BY_SUFFIX` = `{ "NW": Face.NW,  ## (-1, 0) "NE": Face.NE,  ## (0, -1) "SE": Face.SE,  ## (+1, 0) "SW": Face.SW,  ## (0, +1) }`
+
+---
+
+### `edge_registry.gd`
+
+`class_name EdgeRegistry` · 143 lines
+
+`godot/scripts/geometry/edge_registry.gd`
+
+> Geometry Module — Edge Registry: single source of truth linking model Port from voxel_registry.gd with edge tracking
+
+**Signals**
+- `signal edge_registered(edge: Edge)`
+- `signal slice_registered(slice: Slice)`
+
+**Public API**
+- `func register_edge(edge: Edge) -> void:`
+- `func register_slice(slice: Slice) -> void:`
+- `func get_edge(id: String) -> Edge:`
+- `func get_slice(id: String) -> Slice:`
+- `func slices_of_edge(edge_id: String) -> Array:`
+- `func edge_of_slice(slice_id: String) -> Edge:`
+- `func sibling_slice(slice_id: String) -> Slice:`
+- `func edges_touching_gu(gu: Vector2i) -> Array:`
+- `func all_edges() -> Array:`
+- `func all_slices() -> Array:`
+- `func dirty_slices() -> Array:`
+- `func clear() -> void:`
+- `func is_empty() -> bool:`
+- `func debug_print() -> void:`
+
+---
+
+### `face.gd`
+
+`class_name Face` · 59 lines
+
+`godot/scripts/geometry/face.gd`
+
+> Geometry Module — Face enum and helpers Single source for face semantics (per DIRECTION_GLOSSARY §3, §6)
+
+---
+
+### `geometry_coords.gd`
+
+`class_name GeometryCoords` · 58 lines
+
+`godot/scripts/geometry/geometry_coords.gd`
+
+> Geometry Module — Coordinate constants and conversions Port from subcube_coords.gd (SLICE-00 Canon confirmed)
+
+**Constants / tuning**
+- `VOXELS_PER_UNIT_AXIS` = `8`
+- `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
+- `VOXEL_STEP_PX` = `20.0`
+- `VOXEL_STOREY_HEIGHT_PX` = `160.0`
+- `VOXEL_ATOM_W` = `32`
+- `VOXEL_ATOM_H` = `36`
+- `VOXEL_TILE_H` = `16`
+
+---
+
+### `high_wall.gd`
+
+`class_name HighWallGroup` · 69 lines
+
+`godot/scripts/geometry/high_wall.gd`
+
+> Geometry Module — High Wall Group: bake-time grouping container Port from world/high_wall.gd into module namespace as HighWallGroup VOXEL-08: maximal-run regrouping strategy is deferred
+
+**Public vars**
+- `var id: String`
+- `var edge_ids: Array[String] = []`
+- `var slice_ids: Array[String] = []`
+- `var junction_columns: Array = []`
+- `var bake_texture: Texture2D`
+- `var baked: bool = false`
+- `var dirty_count: int = 0`
+- `var voxel_bounds: Rect2i`
+
+**Public API**
+- `func add_edge_with_slices(edge: Edge, slice_a: Slice, slice_b: Slice) -> void:`
+- `func add_junction_columns(columns: Array) -> void:`
+- `func total_voxel_count() -> int:`
+- `func mark_all_dirty() -> void:`
+- `func decrement_dirty() -> void:`
+- `func clear_dirty() -> void:`
+
+---
+
+### `junction_resolver.gd`
+
+`class_name JunctionResolver` · 174 lines
+
+`godot/scripts/geometry/junction_resolver.gd`
+
+> Geometry Module — Junction Resolver: fills V-junction corner columns Port from room.gd _build_voxel_junction_extras() logic
+
+---
+
+### `slice.gd`
+
+`class_name Slice` · 70 lines
+
+`godot/scripts/geometry/slice.gd`
+
+> Geometry Module — Slice: wall segment on one face of one Gameplay Unit Identity reform: B-side slice carries gu_b, not gu_a Port from wall_slice.gd
+
+**Public vars**
+- `var id: String`
+- `var gu_cell: Vector2i`
+- `var face: int`
+- `var edge_id: String`
+- `var storey_count: int`
+- `var material: String`
+- `var voxels: Array[Voxel] = []`
+- `var dirty_count: int = 0`
+- `var baked: bool = false`
+- `var bake_texture: Texture2D`
+
+**Public API**
+- `func get_voxel(index: int) -> Voxel:`
+- `func total_voxel_count() -> int:`
+- `func mark_all_dirty() -> void:`
+- `func increment_dirty() -> void:`
+- `func decrement_dirty() -> void:`
+- `func clear_all_dirty() -> void:`
+
+---
+
+### `slice_generator.gd`
+
+`class_name SliceGenerator` · 80 lines
+
+`godot/scripts/geometry/slice_generator.gd`
+
+> Geometry Module — Slice Generator: creates Slices and Voxels from Edges Port from room.gd _place_wall_voxels() and _voxel_slice_positions() logic
+
+---
+
+### `voxel.gd`
+
+`class_name Voxel` · 56 lines
+
+`godot/scripts/geometry/voxel.gd`
+
+> Geometry Module — Voxel: single 32×32 voxel in a wall slice Port from voxel_ref.gd with damage state tracking
+
+**Public vars**
+- `var grid_pos: Vector2i`
+- `var level: int`
+- `var visible: bool = true`
+- `var dirty: bool = false`
+- `var damage_state: int = DamageState.INTACT`
+- `var face_atlas_rect: Rect2i`
+
+**Public API**
+- `func set_visible(v: bool) -> void:`
+- `func set_damage(new_state: int) -> void:`
+- `func clear_dirty() -> void:`
+
+---
+
+### `voxel_renderer.gd`
+
+`class_name VoxelRenderer` · extends `Node2D` · 195 lines
+
+`godot/scripts/geometry/voxel_renderer.gd`
+
+> Geometry Module — Voxel Renderer: TileMapLayer-based voxel wall rendering Port from room.gd voxel functions, honoring Transform Canon Extends Node2D to add to scene tree
+
+**Constants / tuning**
+- `VOXEL_SOURCE_ID` = `0`
+- `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
+- `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
+
+**Public API**
+- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
+- `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
+- `func render_block(gu_cell: Vector2i, storey_count: int, material: String) -> void:`
+- `func process_dirty(registry: EdgeRegistry) -> void:`
+- `func clear() -> void:`
 
 ---
 
@@ -1161,6 +1380,26 @@ extends `SceneTree` · 49 lines
 
 ---
 
+### `geometry_selftest.gd`
+
+extends `SceneTree` · 72 lines
+
+`godot/scripts/tools/geometry_selftest.gd`
+
+> Geometry Module — Selftest: minimal validation Headless selftest Usage: godot --headless --script geometry_selftest.gd
+
+---
+
+### `slice_02_integration_selftest.gd`
+
+extends `SceneTree` · 199 lines
+
+`godot/scripts/tools/slice_02_integration_selftest.gd`
+
+> SLICE-02 Stage A: Integration Parity Test (headless)
+
+---
+
 ### `slice_geometry_selftest.gd`
 
 extends `SceneTree` · 116 lines
@@ -1388,7 +1627,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2952 lines
+extends `Node2D` · 2861 lines
 
 `godot/scripts/world/room.gd`
 

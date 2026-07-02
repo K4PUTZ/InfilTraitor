@@ -9,10 +9,6 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-CONVERTER TUDO PRA VOXELS? --> SIM
-
-
-Uma coisa que acho que está ficando importante é criar um glossário pra unificar os conceitos do projeto. Subcubo, tile, etc.
 
 
 Onomatpeias: dicionário de "sons" visiveis.
@@ -31,17 +27,4 @@ O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamen
 
 
 
-Todos os valores batem com a calibragem de 924dbf0:
-
-Tile	Antes (be62033)	Agora	Esperado (924dbf0)
-wall_NE	(0, -384)	(-16, -392)	(-16, -392) ✓
-wall_NW	(0, -384)	(-16, -376)	(-16, -376) ✓
-wall_SE	(0, -384)	(16, -392)	(16, -392) ✓
-wall_SW	(0, -384)	(16, -376)	(16, -376) ✓
-wallCorner_NE	(0, -384)	(-32, -392)	(-32, -392) ✓
-wallCorner_NW	(0, -384)	(0, -368)	(0, -368) ✓
-wallCorner_SE	(0, -384)	(0, -400)	(0, -400) ✓
-wallCorner_SW	(0, -384)	(32, -392)	(32, -392) ✓
-
-
-
+Ok, vamos descartar os mcblocks então. Eu vou criar materiais com mais qualidade. Porém precisamos criar um catalogo de texturas, começando com os materiais que vão ser necessários para os voxels individuais. Em seguida, vamos para as texturas que ocupam um slice 8x8, que vão ser meio que a base do projeto, e precisam ter bordas minimamente contínuas. Depois, talvez a gente pudesse ter texturas grandes para 100 voxels. Por que? Digamos que a gente tenha um muro bem largo: em vez de repetir os mesmos voxels a cada 4 ou 5 segmentos, aplicamos a textura que percorre 5 walls. Se a parede tiver 2 walls, ou 3 walls, o sistema simplesmente cropa o de 100 voxels e usa o quanto for necessário. Nós vamos precisar fazer um cálculo preditivo de quando isso vai ser usado mais ou menos, e quais necessidades serão mais frequentes. Por fim, temos que pensar nas dimensões exatas para cada categoria de textura, e em como elas vão ter que sofrer TRANSFORM/SKEW para assumir a perspectiva de cada face, antes do crop e do blending mode (multiply).

@@ -50,6 +50,7 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 @onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
 @onready var btn_reset:           Button       = $HUD/TopBar/Row/BtnReset
+@onready var toolbar_row:         HBoxContainer = $HUD/TopBar/Row
 @onready var btn_perspective_nw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNW
 @onready var btn_perspective_ne:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNE
 @onready var btn_perspective_sw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSW
@@ -367,7 +368,8 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 
 	tile_labels_overlay.queue_redraw()
 	_lighting_controller.rebuild_all()
-	_ceiling_overlay.set_lights(_current_light_sources)
+	if _ceiling_overlay != null:
+		_ceiling_overlay.set_lights(_current_light_sources)
 	_agent_trail.clear()
 	if _trail_overlay != null:
 		_trail_overlay.queue_redraw()
@@ -483,6 +485,10 @@ func _ready() -> void:
 	## Perspective button connections now in CameraController
 
 	load_map(map_id, wall_height_override, level_seed)
+
+	## DEBUG-01: Create map loader toolbar button
+	_create_map_loader_button()
+
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
 	_trail_overlay = Node2D.new()
@@ -666,11 +672,23 @@ func _update_perspective_button_state() -> void:
 func _toggle_map_loader_panel() -> void:
 	if _map_loader_panel == null:
 		var MapLoaderPanelClass = preload("res://godot/scripts/debug/map_loader_panel.gd")
-		_map_loader_panel = CanvasLayer.new()
+		_map_loader_panel = ConfirmationDialog.new()
 		_map_loader_panel.set_script(MapLoaderPanelClass)
 		add_child(_map_loader_panel)
 		_map_loader_panel.setup(self)
-	_map_loader_panel.visible = not _map_loader_panel.visible
+	_map_loader_panel.popup_centered_ratio(0.5)
+	print("DEBUG: Map loader panel opened")
+
+
+func _create_map_loader_button() -> void:
+	if toolbar_row == null:
+		return
+	var btn_map := Button.new()
+	btn_map.text = "🗺️"
+	btn_map.add_theme_font_size_override("font_size", 16)
+	btn_map.custom_minimum_size = Vector2(40.0, 32.0)
+	btn_map.pressed.connect(_toggle_map_loader_panel)
+	toolbar_row.add_child(btn_map)
 
 
 func _center_camera(focus_cell: Vector2i) -> void:

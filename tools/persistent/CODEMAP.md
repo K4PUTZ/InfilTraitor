@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**81 scripts · 13794 lines total** (under `godot/scripts/`)
+**81 scripts · 13853 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -575,7 +575,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 199 lines
+`class_name VoxelRenderer` · extends `Node2D` · 206 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -588,6 +588,7 @@ extends `ConfirmationDialog` · 75 lines
 
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
+- `func get_layer(level: int) -> TileMapLayer:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
 
 ---
@@ -1641,7 +1642,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3008 lines
+extends `Node2D` · 3060 lines
 
 `godot/scripts/world/room.gd`
 

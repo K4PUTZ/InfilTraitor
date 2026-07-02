@@ -33,6 +33,13 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_build_voxel_tileset()
 
 
+## Getter for voxel layer at given level (for diagnostics)
+func get_layer(level: int) -> TileMapLayer:
+	if level < 0 or level >= _voxel_layers.size():
+		return null
+	return _voxel_layers[level]
+
+
 ## Build runtime TileSet with 4 materials
 ## Honors Transform Canon: tile_size (32,16), DIAMOND_DOWN, texture_origin=(0,10)
 func _build_voxel_tileset() -> void:

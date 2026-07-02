@@ -23,7 +23,7 @@ static func generate(edges: Array, registry: EdgeRegistry) -> void:
 
 
 ## Internal: create one slice with its voxels
-static func _create_slice(edge: Edge, is_side_a: bool, registry: EdgeRegistry) -> Slice:
+static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) -> Slice:
 	var gu_cell := edge.gu_a if is_side_a else edge.gu_b
 	var face := edge.face_a if is_side_a else edge.face_b
 	

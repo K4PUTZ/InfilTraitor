@@ -12,7 +12,6 @@ func _initialize() -> void:
 	print_debug("[SLICE-00] Check 1: E1 (layer transform)")
 	var VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 	var VOXEL_STEP_PX := 20.0
-	var WALL_BASE_Z_INDEX := 10
 	var test_levels: Array[int] = [0, 1, 7]
 	for level in test_levels:
 		var expected_pos: Vector2 = VISUAL_GRID_OFFSET - Vector2(0, VOXEL_STEP_PX * float(level))
@@ -49,7 +48,7 @@ func _initialize() -> void:
 	print_debug("[SLICE-00] Check 3: Derived origin (voxel texture_origin)")
 	var VOXEL_ATOM_H := 36
 	var VOXEL_TILE_H := 16
-	var expected_origin_y: int = (VOXEL_ATOM_H - VOXEL_TILE_H) / 2
+	var expected_origin_y: int = int((VOXEL_ATOM_H - VOXEL_TILE_H) / 2.0)
 	checked += 1
 	if expected_origin_y != 10:
 		push_error("Derived origin y mismatch: expected 10, got %d" % expected_origin_y)
@@ -86,7 +85,6 @@ func _initialize() -> void:
 	else:
 		# Check for floor_SE tile (a known source to pin the floor plane)
 		var source_id: int = 0
-		var found_floor_se: bool = false
 		if floor_tileset.get_source_count() > 0:
 			var src = floor_tileset.get_source(source_id)
 			if src is TileSetAtlasSource:

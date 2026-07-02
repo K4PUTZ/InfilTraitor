@@ -48,12 +48,12 @@ func _build_voxel_tileset() -> void:
 	
 	# Create TileSetAtlasSource for each material
 	for mat_index in range(MATERIALS.size()):
-		var material: String = MATERIALS[mat_index]
-		var asset_path := VOXEL_ASSET_TEMPLATE % material
+		var material_name: String = MATERIALS[mat_index]
+		var asset_path := VOXEL_ASSET_TEMPLATE % material_name
 		
 		var texture := load(asset_path)
 		if not texture:
-			push_error("VoxelRenderer: missing texture for material '%s' at %s" % [material, asset_path])
+			push_error("VoxelRenderer: missing texture for material '%s' at %s" % [material_name, asset_path])
 			continue
 		
 		var atlas_source := TileSetAtlasSource.new()
@@ -72,8 +72,8 @@ func _build_voxel_tileset() -> void:
 		if tile_data != null:
 			# Set texture_offset (Transform Canon 3)
 			tile_data.texture_offset = -GeometryCoords.voxel_texture_origin()
-			# Set custom_data: tile_name = material
-			tile_data.set_custom_data("tile_name", material)
+			# Set custom_data: tile_name = material_name
+			tile_data.set_custom_data("tile_name", material_name)
 
 
 ## Render all slices and junction columns from registry
@@ -90,7 +90,7 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 
 ## Render a solid block (SLICE-02: A-T2)
 ## Fills all 64 voxel positions of a GU for storey_count levels
-func render_block(gu_cell: Vector2i, storey_count: int, material: String) -> void:
+func render_block(gu_cell: Vector2i, storey_count: int, material_name: String) -> void:
 	_ensure_voxel_layers(storey_count)
 	
 	# Get all voxel positions in this GU
@@ -99,7 +99,7 @@ func render_block(gu_cell: Vector2i, storey_count: int, material: String) -> voi
 	# Render each voxel at each level
 	for level in range(storey_count):
 		for voxel_pos in voxel_positions:
-			_set_voxel_cell(voxel_pos, level, material)
+			_set_voxel_cell(voxel_pos, level, material_name)
 
 
 ## Render a single slice's voxels
@@ -122,13 +122,13 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 
 
 ## Set a voxel cell on the appropriate layer
-func _set_voxel_cell(grid_pos: Vector2i, level: int, material: String) -> void:
+func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String) -> void:
 	if level < 0 or level >= _voxel_layers.size():
 		push_warning("VoxelRenderer._set_voxel_cell: level %d out of range [0, %d)" % [level, _voxel_layers.size()])
 		return
 	
 	# Find material index
-	var mat_index := MATERIALS.find(material)
+	var mat_index := MATERIALS.find(material_name)
 	if mat_index == -1:
 		mat_index = 0  # Fallback to concrete
 	

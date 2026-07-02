@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha PRE-SLICE-02 - $(date +%Y-%m-%d)"
+TAG="Alpha Load Maps - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

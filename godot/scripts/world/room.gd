@@ -1995,7 +1995,9 @@ func _place_wall_voxels(subcube_geometry: Dictionary) -> void:
 	_build_high_walls()
 	
 	## SLICE-00: measure world-space alignment of voxel plane vs canonical grid
+	push_error("[DEBUG] About to call probe, debug_probe_voxel_alignment=%s" % debug_probe_voxel_alignment)
 	_debug_probe_voxel_alignment()
+	push_error("[DEBUG] Probe complete")
 
 
 func _debug_probe_voxel_alignment() -> void:
@@ -2005,10 +2007,10 @@ func _debug_probe_voxel_alignment() -> void:
 	if not debug_probe_voxel_alignment:
 		return
 	if _voxel_renderer == null or _voxel_renderer.get_layer(0) == null:
-		print("[SLICE-02 probe] ABORT: no voxel renderer or layer 0")
+		push_error("[SLICE-02 probe] ABORT: no voxel renderer or layer 0")
 		return
 
-	print("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
+	push_error("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
 
 	# Find a floor layer cell that exists
 	var floor_cell = Vector2i.ZERO
@@ -2047,10 +2049,10 @@ func _debug_probe_voxel_alignment() -> void:
 	var voxel_pos = voxel_adjusted + vlayer.position
 	var delta = voxel_pos - canon_pos
 
-	print("[SLICE-02 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
-	print("[SLICE-02 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
-	print("[SLICE-02 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
-	print("[SLICE-02 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
+	push_error("[SLICE-02 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
+	push_error("[SLICE-02 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
+	push_error("[SLICE-02 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
+	push_error("[SLICE-02 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
 
 	## I2: Check painted voxels for solid blocks
 	if _base_layout.is_empty():
@@ -2068,11 +2070,11 @@ func _debug_probe_voxel_alignment() -> void:
 			break
 
 	if not block_found:
-		print("[SLICE-02 probe] INFO: no block_* tile found for footprint check")
+		push_error("[SLICE-02 probe] INFO: no block_* tile found for footprint check")
 		return
 
-	print("[SLICE-02 probe] === Block Footprint Check ===")
-	print("[SLICE-02 probe] block_cell (GU coords) = %s" % block_cell)
+	push_error("[SLICE-02 probe] === Block Footprint Check ===")
+	push_error("[SLICE-02 probe] block_cell (GU coords) = %s" % block_cell)
 
 	## Get expected voxel positions for this GU
 	var GeometryCoordinatesClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
@@ -2084,19 +2086,19 @@ func _debug_probe_voxel_alignment() -> void:
 		if vlayer.get_cell_source_id(vx) != -1:
 			painted_voxels.append(vx)
 
-	print("[SLICE-02 probe] expected voxel count = %d" % expected_voxels.size())
-	print("[SLICE-02 probe] painted voxel count = %d" % painted_voxels.size())
+	push_error("[SLICE-02 probe] expected voxel count = %d" % expected_voxels.size())
+	push_error("[SLICE-02 probe] painted voxel count = %d" % painted_voxels.size())
 
 	if painted_voxels.size() == expected_voxels.size():
-		print("[SLICE-02 probe] result = MATCH (all expected voxels painted)")
+		push_error("[SLICE-02 probe] result = MATCH (all expected voxels painted)")
 	else:
-		print("[SLICE-02 probe] result = MISMATCH")
+		push_error("[SLICE-02 probe] result = MISMATCH")
 		var missing: Array[Vector2i] = []
 		for ev in expected_voxels:
 			if not painted_voxels.has(ev):
 				missing.append(ev)
 		if missing.size() > 0:
-			print("[SLICE-02 probe] missing voxels: %s" % missing)
+			push_error("[SLICE-02 probe] missing voxels: %s" % missing)
 
 
 func _build_high_walls() -> void:

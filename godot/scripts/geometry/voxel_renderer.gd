@@ -89,15 +89,18 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 
 
 ## Render a solid block (SLICE-02: A-T2)
-## Fills all 64 voxel positions of a GU for storey_count levels
-func render_block(gu_cell: Vector2i, storey_count: int, material_name: String) -> void:
-	_ensure_voxel_layers(storey_count)
+## Fills all 64 voxel positions of a GU across [start_level, start_level + storey_span).
+## start_level=0 reproduces the old ground-anchored behavior; start_level>0 supports
+## floating geometry (ceiling props, chandeliers, hanging objects — any block that
+## doesn't start at floor 0).
+func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, material_name: String) -> void:
+	_ensure_voxel_layers(start_level + storey_span)
 	
 	# Get all voxel positions in this GU
 	var voxel_positions: Array[Vector2i] = GeometryCoords.gu_voxels(gu_cell)
 	
-	# Render each voxel at each level
-	for level in range(storey_count):
+	# Render each voxel at each level in the span
+	for level in range(start_level, start_level + storey_span):
 		for voxel_pos in voxel_positions:
 			_set_voxel_cell(voxel_pos, level, material_name)
 

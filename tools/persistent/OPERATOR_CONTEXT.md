@@ -38,7 +38,14 @@ NOTE: Always keep the entire project in English, regardless of the language we u
 **Verification Protocol (before the Smoke Test):**
 1. **PROBLEMS tab (VS Code):** Check for unexpected errors or warnings
    - Errors = blocks the smoke test; report and fix first
-   - Pre-existing warnings = accept, report if new
+   - **Warnings = zero-tolerance for any file touched or created in this session.**
+     Before declaring a task done, the PROBLEMS tab must show 0 warnings on every
+     file the prompt created or modified. Fix them as part of the task (rename
+     shadowed/unused params and variables, cast explicit float/int divisions, etc.)
+     — do not suppress with `@warning_ignore` unless the warning is a genuine false
+     positive that a human has explicitly approved.
+   - Pre-existing warnings in files NOT touched by this session = acceptable to
+     leave, but flag them in the report so they can be swept later.
 2. **Runtime Output:** During the smoke test, monitor the console/debug output
    - Check `push_error()`, `print_debug()`, assertions
    - Any error message = report with context

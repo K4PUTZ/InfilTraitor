@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**80 scripts · 13563 lines total** (under `godot/scripts/`)
+**80 scripts · 13566 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -558,7 +558,7 @@ extends `Node2D` · 275 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 195 lines
+`class_name VoxelRenderer` · extends `Node2D` · 198 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -572,9 +572,6 @@ extends `Node2D` · 275 lines
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
-- `func render_block(gu_cell: Vector2i, storey_count: int, material_name: String) -> void:`
-- `func process_dirty(registry: EdgeRegistry) -> void:`
-- `func clear() -> void:`
 
 ---
 

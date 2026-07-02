@@ -75,7 +75,7 @@ are analytically derived:
 ```gdscript
 layer.z_index  = WALL_BASE_Z_INDEX + level
 layer.position = Vector2(VISUAL_GRID_OFFSET.x,
-                         VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
+						 VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
 ```
 
 No `FACE_CENTER_OFFSET`. No `is_x_varying`. No empirical offsets.

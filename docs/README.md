@@ -252,8 +252,8 @@ docs/
 │   ├── godot_setup.md           (to create)
 │   └── performance.md           (to create)
 └── history/
-    ├── sprint_logs/             (to migrate)
-    └── refactors/               (to migrate)
+	├── sprint_logs/             (to migrate)
+	└── refactors/               (to migrate)
 ```
 
 ---

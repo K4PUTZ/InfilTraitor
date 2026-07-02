@@ -33,15 +33,15 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 **The workflow is:**
 ```
 README
-    ↓
+	↓
 OPERATOR_CONTEXT (handbook + architectural rules)
-    ↓
+	↓
 Identify subsystem
-    ↓
+	↓
 Read relevant Master Plan
-    ↓
+	↓
 Implement
-    ↓
+	↓
 Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 ```
 

@@ -110,6 +110,43 @@ func _initialize() -> void:
 					push_error("Floor tileset region size mismatch: expected (256, 512), got %s" % src.texture_region_size)
 					failures += 1
 
+	## ── Check N: PerspectiveMapper round-trip + parity (ENHANCE-04b) ────────
+	print_debug("[ENHANCE-04b] Perspective round-trip + rotation parity")
+	const PM = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
+	var rt_size := Vector2i(10, 6)
+	var rt_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(9, 0), Vector2i(0, 5), Vector2i(9, 5), Vector2i(4, 2)]
+	for dir in ["N", "E", "S", "W"]:
+		for cell in rt_cells:
+			var view: Vector2i = PM.cell_from_base(cell, dir, rt_size)
+			var back: Vector2i = PM.cell_to_base(view, dir, rt_size)
+			checked += 1
+			if back != cell:
+				push_error("[ENHANCE-04b] Round-trip failed dir=%s cell=%s -> view=%s -> back=%s" % [dir, cell, view, back])
+				failures += 1
+
+	## Parity: enemy route and light angle must rotate, not just start_cell/cell.
+	var rt_layout := {
+		"size": rt_size,
+		"enemy_defs": [{"start_cell": Vector2i(1, 1), "route": [Vector2i(1, 1), Vector2i(1, 4)]}],
+		"light_sources": [{"x": 2, "y": 2, "direction_deg": 0.0}],
+	}
+	var rt_rotated := PM.layout_with_perspective(rt_layout, "E")
+	checked += 1
+	var rt_route: Array = rt_rotated["enemy_defs"][0]["route"]
+	if rt_route[0] == Vector2i(1, 1) and rt_route[1] == Vector2i(1, 4):
+		push_error("[ENHANCE-04b] enemy route did not rotate under direction E")
+		failures += 1
+	else:
+		print_debug("  ✓ enemy route rotates: %s" % [rt_route])
+
+	checked += 1
+	var rt_angle: float = rt_rotated["light_sources"][0]["direction_deg"]
+	if is_equal_approx(rt_angle, 0.0):
+		push_error("[ENHANCE-04b] light direction_deg did not rotate under direction E")
+		failures += 1
+	else:
+		print_debug("  ✓ light angle rotates: %.1f deg" % rt_angle)
+
 	## ── Negative Tests: Malformed input handling (ENHANCE-02 error contract) ────
 	print_debug("[ENHANCE-02] Testing error handling with malformed specs")
 	
@@ -155,7 +192,8 @@ func _initialize() -> void:
 		failures += 1
 
 	## ── Sumário ──────────────────────────────────────────────────────────────
-	print_debug("[SLICE-00] Canon checks: %d passed" % (checked - 4))
+	print_debug("[SLICE-00] Canon checks: %d passed" % (checked - 4 - 22))
+	print_debug("[ENHANCE-04b] Perspective checks: 22 passed")
 	print_debug("[ENHANCE-02] Error handling checks: 4 passed")
 	print_debug("")
 	if failures == 0:

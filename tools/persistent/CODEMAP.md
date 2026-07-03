@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**76 scripts · 13142 lines total** (under `godot/scripts/`)
+**76 scripts · 13107 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1426,7 +1426,7 @@ extends `SceneTree` · 72 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 166 lines
+extends `SceneTree` · 204 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
@@ -1522,7 +1522,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 315 lines
+`class_name RoomBuilder` · 229 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -1743,7 +1743,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2078 lines
+extends `Node2D` · 1970 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1879,7 +1879,7 @@ extends `Node2D` · 2078 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 67 lines
+`class_name PerspectiveMapper` · 188 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

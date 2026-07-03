@@ -162,71 +162,7 @@ func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
 
 
 func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:
-	var mapped := layout.duplicate(true)
-	var base_size: Vector2i = layout.get("size", Vector2i.ZERO)
-	var rotated_size: Vector2i = _rotated_size(base_size, direction)
-	mapped["size"] = rotated_size
-	mapped["agent_start_cell"] = _cell_from_base(layout.get("agent_start_cell", Vector2i.ZERO), direction, base_size)
-	mapped["floor_tile_name"] = PerspectiveMapperClass.remap_tile_name(
-		String(layout.get("floor_tile_name", "floor_SE")), direction)
-
-	for key in ["wall_tiles", "structure_tiles"]:
-		var src: Array = layout.get(key, [])
-		var dst: Array = []
-		for entry in src:
-			var out := (entry as Dictionary).duplicate(true)
-			out["cell"] = _cell_from_base(out.get("cell", Vector2i(-1, -1)), direction, base_size)
-			out["tile_name"] = PerspectiveMapperClass.remap_tile_name(String(out.get("tile_name", "")), direction)
-			dst.append(out)
-		mapped[key] = dst
-
-	## Rotate every wall storey (wall_levels[f]); wall_tiles above stays == wall_levels[0].
-	var rotated_levels: Array = []
-	for level_src in layout.get("wall_levels", []):
-		var level_dst: Array = []
-		for entry in level_src:
-			var out := (entry as Dictionary).duplicate(true)
-			out["cell"] = _cell_from_base(out.get("cell", Vector2i(-1, -1)), direction, base_size)
-			out["tile_name"] = PerspectiveMapperClass.remap_tile_name(String(out.get("tile_name", "")), direction)
-			level_dst.append(out)
-		rotated_levels.append(level_dst)
-	mapped["wall_levels"] = rotated_levels
-
-	var blocked_cells: Array[Vector2i] = []
-	for cell in layout.get("blocked_cells", []):
-		blocked_cells.append(_cell_from_base(cell, direction, base_size))
-	mapped["blocked_cells"] = blocked_cells
-
-	var blocked_edges: Array[Dictionary] = []
-	for edge in layout.get("blocked_edges", []):
-		blocked_edges.append({
-			"from": _cell_from_base(edge.get("from", Vector2i.ZERO), direction, base_size),
-			"to": _cell_from_base(edge.get("to", Vector2i.ZERO), direction, base_size),
-		})
-	mapped["blocked_edges"] = blocked_edges
-
-	var enemy_defs: Array[Dictionary] = []
-	for def in layout.get("enemy_defs", []):
-		var out := (def as Dictionary).duplicate(true)
-		out["start_cell"] = _cell_from_base(out.get("start_cell", Vector2i.ZERO), direction, base_size)
-		enemy_defs.append(out)
-	mapped["enemy_defs"] = enemy_defs
-
-	var exit_cells: Array[Vector2i] = []
-	for cell in layout.get("exit_cells", []):
-		exit_cells.append(_cell_from_base(cell, direction, base_size))
-	mapped["exit_cells"] = exit_cells
-
-	var light_sources: Array[Dictionary] = []
-	for src_light in layout.get("light_sources", []):
-		var out := (src_light as Dictionary).duplicate(true)
-		out["cell"] = _cell_from_base(out.get("cell", Vector2i.ZERO), direction, base_size)
-		light_sources.append(out)
-	mapped["light_sources"] = light_sources
-
-	var buffer: int = layout.get("buffer", 0)
-	mapped["buffer"] = buffer
-	return mapped
+	return PerspectiveMapperClass.layout_with_perspective(layout, direction)
 
 
 ## Private helpers
@@ -286,28 +222,6 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))
 	_current_light_sources = layout.get("light_sources", [])
-
-
-func _rotated_size(base_size: Vector2i, direction: String) -> Vector2i:
-	if direction == "E" or direction == "W":
-		return Vector2i(base_size.y, base_size.x)
-	return base_size
-
-
-func _cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
-	if base_cell == Vector2i(-1, -1):
-		return Vector2i(-1, -1)
-	var w := base_size.x
-	var h := base_size.y
-	match direction:
-		"E":
-			return Vector2i(h - 1 - base_cell.y, base_cell.x)
-		"S":
-			return Vector2i(w - 1 - base_cell.x, h - 1 - base_cell.y)
-		"W":
-			return Vector2i(base_cell.y, w - 1 - base_cell.x)
-		_:
-			return base_cell
 
 
 const WALL_FLOOR_STEP_PX := 20.0

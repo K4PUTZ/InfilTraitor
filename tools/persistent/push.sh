@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Modularization Roombuilder Extraction (Broken Perspectives) - $(date +%Y-%m-%d)"
+TAG="Alpha ENHANCE PLAN DONE - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

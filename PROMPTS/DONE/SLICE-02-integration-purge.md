@@ -45,7 +45,9 @@ in `world/` and `tools/`, documentation sync. One session, two gated stages.
 2. In `_ready()` (after the tileset loads): instantiate `_voxel_renderer`, `add_child`,
    `setup(VISUAL_GRID_OFFSET)` — pass `WALL_BASE_Z_INDEX` if the setup signature takes it.
 3. In `_build_room()`, locate the block that currently branches on
-   `subcube_geometry.is_empty()` and REPLACE the entire voxel/subcube branch with:
+   `not subcube_geometry.is_empty() and _subcube_tileset != null` (the condition has a
+   second clause beyond the subcube-emptiness check — verify both before editing) and
+   REPLACE the entire voxel/subcube branch with:
 
 ```gdscript
 var extraction: Dictionary = EdgeExtractor.extract(layout)
@@ -63,14 +65,41 @@ for layer in _wall_upper_layers:
 Keep the legacy `wall_levels` else-branch INTACT during Stage A (fallback if extraction
 is empty) — it dies in Stage B.
 
-### A-T2 — Solid blocks on the voxel plane
+### A-T2 — Solid blocks on the voxel plane (floating-geometry ready)
 
-New function `_render_solid_blocks(blocks: Array) -> void` in room.gd: each block fills
-its GU footprint — all 64 voxel positions from `GeometryCoords.gu_voxels(cell)` — for
-`storey_count × 8` levels, via the renderer. Add the corresponding API to VoxelRenderer
-(`render_block(gu, storey_count, material)`) rather than reaching into its layers from
-room.gd. This replaces `_render_subcube_geometry` / `_paint_subcube_descriptor` for the
-`block_*` tiles (dividers included — verify SIGMA/PLAYGROUND dividers still render).
+`EdgeExtractor.extract()` emits `solid_blocks` as ONE ENTRY PER STOREY OCCURRENCE
+(`{"gu_cell", "storey", "material", ...}` — no merging, unlike edges). This is
+intentional: the legacy `_paint_subcube_descriptor` already paints blocks at their exact
+storey independent of floor 0 (`layer_index = storey * SUBCUBES_PER_UNIT_AXIS +
+local_level`), which is how ceiling props, chandeliers, and any future floating geometry
+will be authored — a block can exist at storey 2 with nothing at storeys 0–1. The new
+path must preserve this, not silently assume every block is ground-anchored.
+
+`VoxelRenderer.render_block(gu_cell, start_level, storey_span, material_name)` now takes
+an explicit `start_level` (already updated in the module — this is the one exception in
+DO NOT TOUCH). New function `_render_solid_blocks(blocks: Array) -> void` in room.gd:
+
+1. Group `blocks` by `(gu_cell, material)`.
+2. Within each group, sort by `storey` ascending.
+3. Split into maximal **contiguous runs** (consecutive storey values, no gaps) — e.g.
+   storeys `[0,1,2]` → one run; storeys `[0,1,3]` → two runs (`[0,1]` and `[3]`), because
+   a gap means the block is not physically continuous (a chandelier at storey 3 with
+   nothing below it must not be rendered as if it spans 0–3).
+4. For each run, call `_voxel_renderer.render_block(gu_cell, run_start_storey,
+   run.size(), material)` — one call per contiguous run, not per raw entry and not one
+   merged call per cell.
+
+This replaces `_render_subcube_geometry` / `_paint_subcube_descriptor` for the `block_*`
+tiles (dividers included — verify SIGMA/PLAYGROUND dividers still render, and that any
+current test map with a multi-storey block still renders identically). No current map is
+known to use non-contiguous blocks yet, but the grouping-by-run logic must be correct
+from this session on — do not special-case "assume storey 0" anywhere in
+`_render_solid_blocks`.
+
+**Note:** `_build_wall_containers()` (and `WallContainerClass`) is confirmed DEAD CODE
+already — it is only referenced by its own definition and by an archival comment in
+`_place_wall_voxels` ("Substitui _build_wall_containers() (arquivada — NÃO apagar)").
+It's never called. Deleting it in Stage B carries zero rendering risk.
 
 ### A-T3 — TIC rewire
 
@@ -89,6 +118,10 @@ Run the game on PLAYGROUND and SIGMA_01 with `wall_height_override` 1 and 3:
 - Toggle a voxel via registry in a debug call (`sibling_slice` of any slice →
   `get_voxel(0).set_visible(false)`) → next TIC hides exactly that voxel.
 - Screenshot each configuration.
+- No map today exercises a non-contiguous solid block (floor 0 empty, floor 2 occupied),
+  so this can't be visually verified yet — but confirm `_render_solid_blocks`'s
+  run-grouping logic (A-T2) doesn't assume storey 0 anywhere, since ceiling props and
+  chandeliers will depend on it soon.
 
 **Gate:** any parity failure → report with screenshots and STOP. Stage B forbidden.
 

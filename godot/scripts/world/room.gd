@@ -670,13 +670,13 @@ func _set_perspective(direction: String) -> void:
 		tile_labels_overlay.room_w = _room_size.x
 		tile_labels_overlay.room_h = _room_size.y
 
-		var next_agent := _cell_from_base(base_agent, _active_perspective)
+		var next_agent := PerspectiveMapperClass.cell_from_base(base_agent, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
 		if not _is_cell_inside_room(next_agent):
 			next_agent = _agent_start_cell
 		agent.set_cell(next_agent)
 
 		if has_selected:
-			var next_selected := _cell_from_base(base_selected, _active_perspective)
+			var next_selected := PerspectiveMapperClass.cell_from_base(base_selected, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
 			_selected_cell = next_selected if _is_selectable_cell(next_selected) else next_agent
 		else:
 			_selected_cell = next_agent
@@ -1658,114 +1658,6 @@ func _is_cell_inside_room(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < _room_size.x and cell.y < _room_size.y
 
 
-func _layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:
-	var mapped := layout.duplicate(true)
-	var base_size: Vector2i = layout.get("size", Vector2i.ZERO)
-	var rotated_size: Vector2i = _rotated_size(base_size, direction)
-	mapped["size"] = rotated_size
-	mapped["agent_start_cell"] = _cell_from_base(layout.get("agent_start_cell", Vector2i.ZERO), direction, base_size)
-	mapped["floor_tile_name"] = _remap_tile_name_for_perspective(
-		String(layout.get("floor_tile_name", "floor_SE")), direction)
-
-	for key in ["wall_tiles", "structure_tiles"]:
-		var src: Array = layout.get(key, [])
-		var dst: Array = []
-		for entry in src:
-			var out := (entry as Dictionary).duplicate(true)
-			out["cell"] = _cell_from_base(out.get("cell", INVALID_CELL), direction, base_size)
-			out["tile_name"] = _remap_tile_name_for_perspective(String(out.get("tile_name", "")), direction)
-			dst.append(out)
-		mapped[key] = dst
-
-	## Rotate every wall storey (wall_levels[f]); wall_tiles above stays == wall_levels[0].
-	var rotated_levels: Array = []
-	for level_src in layout.get("wall_levels", []):
-		var level_dst: Array = []
-		for entry in level_src:
-			var out := (entry as Dictionary).duplicate(true)
-			out["cell"] = _cell_from_base(out.get("cell", INVALID_CELL), direction, base_size)
-			out["tile_name"] = _remap_tile_name_for_perspective(String(out.get("tile_name", "")), direction)
-			level_dst.append(out)
-		rotated_levels.append(level_dst)
-	mapped["wall_levels"] = rotated_levels
-
-	var blocked_cells: Array[Vector2i] = []
-	for cell in layout.get("blocked_cells", []):
-		blocked_cells.append(_cell_from_base(cell, direction, base_size))
-	mapped["blocked_cells"] = blocked_cells
-
-	var blocked_edges: Array[Dictionary] = []
-	for edge in layout.get("blocked_edges", []):
-		blocked_edges.append({
-			"from": _cell_from_base(edge.get("from", Vector2i.ZERO), direction, base_size),
-			"to": _cell_from_base(edge.get("to", Vector2i.ZERO), direction, base_size),
-		})
-	mapped["blocked_edges"] = blocked_edges
-
-	var enemy_defs: Array[Dictionary] = []
-	for enemy in layout.get("enemy_defs", []):
-		var out := (enemy as Dictionary).duplicate(true)
-		var route: Array[Vector2i] = []
-		for cell in enemy.get("route", []):
-			route.append(_cell_from_base(cell, direction, base_size))
-		out["route"] = route
-		enemy_defs.append(out)
-	mapped["enemy_defs"] = enemy_defs
-
-	## Exit markers rotate with the room.
-	var exit_cells: Array[Vector2i] = []
-	for cell in layout.get("exit_cells", []):
-		exit_cells.append(_cell_from_base(cell, direction, base_size))
-	mapped["exit_cells"] = exit_cells
-
-	## Map lights rotate by cell; directional/cone lights also rotate their angle
-	## by the same quarter-turn so the cone covers the same (rotated) cells.
-	var angle_delta_deg := _perspective_angle_delta_deg(direction)
-	var light_sources: Array = []
-	for light in layout.get("light_sources", []):
-		var out := (light as Dictionary).duplicate(true)
-		var rotated := _cell_from_base(Vector2i(int(out.get("x", 0)), int(out.get("y", 0))), direction, base_size)
-		out["x"] = rotated.x
-		out["y"] = rotated.y
-		if out.has("direction_deg"):
-			out["direction_deg"] = fmod(float(out["direction_deg"]) + angle_delta_deg + 360.0, 360.0)
-		light_sources.append(out)
-	mapped["light_sources"] = light_sources
-	return mapped
-
-
-## Quarter-turn applied to directional light angles, matching `_cell_from_base`.
-func _perspective_angle_delta_deg(direction: String) -> float:
-	match direction:
-		"E": return 90.0
-		"S": return 180.0
-		"W": return -90.0
-		_: return 0.0
-
-
-func _rotated_size(base_size: Vector2i, direction: String) -> Vector2i:
-	if direction == "E" or direction == "W":
-		return Vector2i(base_size.y, base_size.x)
-	return base_size
-
-
-func _cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
-	if base_cell == INVALID_CELL:
-		return INVALID_CELL
-	var size := base_size
-	if size == Vector2i.ZERO:
-		size = _base_layout.get("size", Vector2i.ZERO)
-	var w := size.x
-	var h := size.y
-	match direction:
-		"E":
-			return Vector2i(h - 1 - base_cell.y, base_cell.x)
-		"S":
-			return Vector2i(w - 1 - base_cell.x, h - 1 - base_cell.y)
-		"W":
-			return Vector2i(base_cell.y, w - 1 - base_cell.x)
-		_:
-			return base_cell
 
 
 func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:

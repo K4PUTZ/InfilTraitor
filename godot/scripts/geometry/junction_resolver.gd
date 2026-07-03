@@ -92,8 +92,7 @@ static func _get_edge_vertices(edge: Edge) -> Array:
 static func _get_corner_gus(vertex: Vector2i) -> Array:
 	# Find which GUs touch this vertex
 	var voxel_x := vertex.x
-	var voxel_y := vertex.y
-	
+
 	var gu_x := voxel_x / 8
 	var gu_y := vertex.y / 8
 	

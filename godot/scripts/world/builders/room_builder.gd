@@ -1,0 +1,315 @@
+## RoomBuilder
+## Orchestrates room construction, tile placement, and perspective transformations.
+## Handles loading maps, building layouts, caching blocked cells, and coordinate rotations.
+
+class_name RoomBuilder
+
+var room: Node
+var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
+var _room_size: Vector2i = Vector2i.ZERO
+var _wall_tileset: TileSet = null
+var _wall_upper_layers: Array[TileMapLayer] = []
+var _prop_stack_layers: Array[TileMapLayer] = []
+var _blocked_cells: Dictionary = {}
+var _prop_heights: Dictionary = {}
+var _exit_cells: Array[Vector2i] = []
+var _current_light_sources: Array = []
+var _tile_ids: Dictionary = {}
+var _base_layout: Dictionary = {}
+
+# References to room layers
+var floor_layer: TileMapLayer = null
+var structure_layer: TileMapLayer = null
+var structure_wall_layer: TileMapLayer = null
+
+
+func _init(p_room: Node) -> void:
+	room = p_room
+
+
+func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_layer: TileMapLayer, wall_tileset: TileSet) -> void:
+	floor_layer = floor_ref
+	structure_layer = structure
+	structure_wall_layer = wall_layer
+	_wall_tileset = wall_tileset
+
+
+func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
+	_room_size = room_size
+	floor_layer.clear()
+	structure_wall_layer.clear()
+	structure_layer.clear()
+	for layer in _wall_upper_layers:
+		layer.clear()
+		layer.visible = true
+
+	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
+	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
+	## replaces the old negative extension — no coordinates outside the range [0, MAP_SIZE).
+	for x in range(0, _room_size.x):
+		for y in range(0, _room_size.y):
+			_place(Vector2i(x, y), floor_tile_name)
+
+	## Voxel render plane: wall/block descriptors become stacked voxel presence.
+	## The old wall-storey layers remain as a fallback path, but the active render
+	## now comes from the edge seam's voxel geometry integration.
+	
+	## SLICE-02: New geometry module integration — edges → slices → voxels
+	var extraction: Dictionary = EdgeExtractor.extract(layout)
+
+	if not extraction.get("edges", []).is_empty():
+		## New geometry path — the only active renderer when it has data.
+		var _edge_registry = EdgeRegistry.new()
+		SliceGenerator.generate(extraction["edges"], _edge_registry)
+		var _junction_columns = JunctionResolver.resolve(_edge_registry)
+		room._voxel_renderer.clear()
+		room._voxel_renderer.render(_edge_registry, _junction_columns)
+		_render_solid_blocks(extraction.get("solid_blocks", []))
+		structure_wall_layer.visible = false
+		for layer in _wall_upper_layers:
+			layer.visible = false
+
+	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
+	## layers offset up by the crate body step (visual stacking). The taller stack also
+	## drives a longer real shadow via _prop_heights (see _cache_blocked_cells).
+	var max_stack := 1
+	for structure_entry in layout.get("structure_tiles", []):
+		max_stack = maxi(max_stack, int(structure_entry.get("stack", 1)))
+	_clear_prop_stack_layers()
+	_ensure_prop_stack_layers(maxi(0, max_stack - 1))
+	for stack_layer in _prop_stack_layers:
+		stack_layer.clear()
+	for structure_entry in layout.get("structure_tiles", []):
+		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
+		var tile_name := String(structure_entry.get("tile_name", ""))
+		_place(cell, tile_name, structure_layer)
+		var stack: int = maxi(1, int(structure_entry.get("stack", 1)))
+		for level in range(1, stack):
+			_place(cell, tile_name, _prop_stack_layers[level - 1])
+
+	_cache_blocked_cells(layout)
+
+
+func cache_blocked_cells(layout: Dictionary) -> void:
+	_blocked_cells.clear()
+	for cell in layout.get("blocked_cells", []):
+		_blocked_cells[cell] = true
+	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles.
+	## Consumed by LightingController._setup_tile_semantics so stacked props cast taller
+	## (longer) shadows. Built here so it follows perspective rotation with the layout.
+	_prop_heights.clear()
+	for entry in layout.get("structure_tiles", []):
+		if entry is Dictionary and entry.has("height"):
+			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
+	## Segment exits — used by the purple overlay in _draw()
+	_exit_cells.clear()
+	for raw in layout.get("exit_cells", []):
+		_exit_cells.append(Vector2i(raw))
+	## Active (perspective-rotated) map lights — consumed by LightingController.
+	_current_light_sources = layout.get("light_sources", [])
+	print("[Room] Cache: %d blocked_cells, %d exit_cells, %d lights" % [
+		_blocked_cells.size(), _exit_cells.size(), _current_light_sources.size()])
+	print("[Room] Border check: (0,0)=%s (17,0)=%s (0,35)=%s (17,35)=%s (9,0)=%s (9,35)=%s" % [
+		_blocked_cells.has(Vector2i(0,0)), _blocked_cells.has(Vector2i(17,0)),
+		_blocked_cells.has(Vector2i(0,35)), _blocked_cells.has(Vector2i(17,35)),
+		_blocked_cells.has(Vector2i(9,0)), _blocked_cells.has(Vector2i(9,35))
+	])
+
+
+func get_blocked_cells() -> Dictionary:
+	return _blocked_cells
+
+
+func get_prop_heights() -> Dictionary:
+	return _prop_heights
+
+
+func get_exit_cells() -> Array[Vector2i]:
+	return _exit_cells
+
+
+func get_light_sources() -> Array:
+	return _current_light_sources
+
+
+func get_base_layout() -> Dictionary:
+	return _base_layout
+
+
+func build_registry(ts: TileSet) -> void:
+	for i in ts.get_source_count():
+		var sid := ts.get_source_id(i)
+		var src := ts.get_source(sid) as TileSetAtlasSource
+		if src == null:
+			continue
+		var td := src.get_tile_data(Vector2i(0, 0), 0)
+		if td:
+			_tile_ids[td.get_custom_data("tile_name")] = sid
+	print("[Room] %d tiles registered." % _tile_ids.size())
+
+
+func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
+	var nav: Array[Vector2i] = []
+	for cell in _blocked_cells.keys():
+		nav.append(cell)
+	for guard in guards:
+		if not is_instance_valid(guard):
+			continue
+		# NOTE: we need agent reference but it's in room
+		# For now, skip agent check — guards don't block at agent.cell anyway in the logic
+		nav.append(guard.cell)
+	return nav
+
+
+func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:
+	var mapped := layout.duplicate(true)
+	var base_size: Vector2i = layout.get("size", Vector2i.ZERO)
+	var rotated_size: Vector2i = _rotated_size(base_size, direction)
+	mapped["size"] = rotated_size
+	mapped["agent_start_cell"] = _cell_from_base(layout.get("agent_start_cell", Vector2i.ZERO), direction, base_size)
+	mapped["floor_tile_name"] = PerspectiveMapperClass.remap_tile_name(
+		String(layout.get("floor_tile_name", "floor_SE")), direction)
+
+	for key in ["wall_tiles", "structure_tiles"]:
+		var src: Array = layout.get(key, [])
+		var dst: Array = []
+		for entry in src:
+			var out := (entry as Dictionary).duplicate(true)
+			out["cell"] = _cell_from_base(out.get("cell", Vector2i(-1, -1)), direction, base_size)
+			out["tile_name"] = PerspectiveMapperClass.remap_tile_name(String(out.get("tile_name", "")), direction)
+			dst.append(out)
+		mapped[key] = dst
+
+	## Rotate every wall storey (wall_levels[f]); wall_tiles above stays == wall_levels[0].
+	var rotated_levels: Array = []
+	for level_src in layout.get("wall_levels", []):
+		var level_dst: Array = []
+		for entry in level_src:
+			var out := (entry as Dictionary).duplicate(true)
+			out["cell"] = _cell_from_base(out.get("cell", Vector2i(-1, -1)), direction, base_size)
+			out["tile_name"] = PerspectiveMapperClass.remap_tile_name(String(out.get("tile_name", "")), direction)
+			level_dst.append(out)
+		rotated_levels.append(level_dst)
+	mapped["wall_levels"] = rotated_levels
+
+	var blocked_cells: Array[Vector2i] = []
+	for cell in layout.get("blocked_cells", []):
+		blocked_cells.append(_cell_from_base(cell, direction, base_size))
+	mapped["blocked_cells"] = blocked_cells
+
+	var blocked_edges: Array[Dictionary] = []
+	for edge in layout.get("blocked_edges", []):
+		blocked_edges.append({
+			"from": _cell_from_base(edge.get("from", Vector2i.ZERO), direction, base_size),
+			"to": _cell_from_base(edge.get("to", Vector2i.ZERO), direction, base_size),
+		})
+	mapped["blocked_edges"] = blocked_edges
+
+	var enemy_defs: Array[Dictionary] = []
+	for def in layout.get("enemy_defs", []):
+		var out := (def as Dictionary).duplicate(true)
+		out["start_cell"] = _cell_from_base(out.get("start_cell", Vector2i.ZERO), direction, base_size)
+		enemy_defs.append(out)
+	mapped["enemy_defs"] = enemy_defs
+
+	var exit_cells: Array[Vector2i] = []
+	for cell in layout.get("exit_cells", []):
+		exit_cells.append(_cell_from_base(cell, direction, base_size))
+	mapped["exit_cells"] = exit_cells
+
+	var light_sources: Array[Dictionary] = []
+	for src_light in layout.get("light_sources", []):
+		var out := (src_light as Dictionary).duplicate(true)
+		out["cell"] = _cell_from_base(out.get("cell", Vector2i.ZERO), direction, base_size)
+		light_sources.append(out)
+	mapped["light_sources"] = light_sources
+
+	var buffer: int = layout.get("buffer", 0)
+	mapped["buffer"] = buffer
+	return mapped
+
+
+## Private helpers
+
+func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = null) -> void:
+	if layer == null:
+		layer = floor_layer
+	var sid: int = _tile_ids.get(tile_name, -1)
+	if sid != -1:
+		layer.set_cell(cell, sid, Vector2i(0, 0))
+
+
+func _clear_prop_stack_layers() -> void:
+	for layer in _prop_stack_layers:
+		if is_instance_valid(layer):
+			room.remove_child(layer)
+			layer.queue_free()
+	_prop_stack_layers.clear()
+
+
+func _ensure_prop_stack_layers(count: int) -> void:
+	while _prop_stack_layers.size() < count:
+		var level := _prop_stack_layers.size() + 1
+		var layer := TileMapLayer.new()
+		layer.tile_set = _wall_tileset
+		layer.y_sort_origin = 1
+		layer.position = Vector2(0.0, -WALL_FLOOR_STEP_PX * float(level))
+		layer.z_index = WALL_BASE_Z_INDEX + level
+		room.add_child(layer)
+		_prop_stack_layers.append(layer)
+
+
+func _render_solid_blocks(blocks: Array) -> void:
+	for block_entry in blocks:
+		if block_entry is not Dictionary:
+			continue
+		var cell: Vector2i = block_entry.get("cell", Vector2i(-1, -1))
+		var storeys: int = maxi(0, int(block_entry.get("storeys", 1)))
+		for level in range(0, storeys):
+			if level == 0:
+				_place(cell, "solid_full", structure_wall_layer)
+			else:
+				var layer = _wall_upper_layers[level - 1] if level - 1 < _wall_upper_layers.size() else null
+				if layer != null:
+					_place(cell, "solid_full", layer)
+
+
+func _cache_blocked_cells(layout: Dictionary) -> void:
+	_blocked_cells.clear()
+	for cell in layout.get("blocked_cells", []):
+		_blocked_cells[cell] = true
+	_prop_heights.clear()
+	for entry in layout.get("structure_tiles", []):
+		if entry is Dictionary and entry.has("height"):
+			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
+	_exit_cells.clear()
+	for raw in layout.get("exit_cells", []):
+		_exit_cells.append(Vector2i(raw))
+	_current_light_sources = layout.get("light_sources", [])
+
+
+func _rotated_size(base_size: Vector2i, direction: String) -> Vector2i:
+	if direction == "E" or direction == "W":
+		return Vector2i(base_size.y, base_size.x)
+	return base_size
+
+
+func _cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
+	if base_cell == Vector2i(-1, -1):
+		return Vector2i(-1, -1)
+	var w := base_size.x
+	var h := base_size.y
+	match direction:
+		"E":
+			return Vector2i(h - 1 - base_cell.y, base_cell.x)
+		"S":
+			return Vector2i(w - 1 - base_cell.x, h - 1 - base_cell.y)
+		"W":
+			return Vector2i(base_cell.y, w - 1 - base_cell.x)
+		_:
+			return base_cell
+
+
+const WALL_FLOOR_STEP_PX := 20.0
+const WALL_BASE_Z_INDEX := 8
+const INVALID_CELL := Vector2i(-1, -1)

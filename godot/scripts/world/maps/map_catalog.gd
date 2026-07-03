@@ -19,7 +19,7 @@ static func list_map_ids() -> Array[String]:
 	return ["PLAYGROUND", "SIGMA_01", "PROCEDURAL"]
 
 
-## Returns the MapSpec for map_id. Unknown ids fall back to the default.
+## Returns the MapSpec for map_id. Unknown ids trigger error (no silent fallback).
 ## context: {connections, segment_grid_pos, seed} — forwarded to procedural/graph maps.
 static func get_spec(map_id: String, context: Dictionary = {}) -> Dictionary:
 	match map_id:
@@ -30,5 +30,5 @@ static func get_spec(map_id: String, context: Dictionary = {}) -> Dictionary:
 		"PROCEDURAL":
 			return ProceduralMapClass.generate(int(context.get("seed", 0)))
 		_:
-			push_error("MapCatalog: unknown map_id '%s' — falling back to %s" % [map_id, DEFAULT_MAP_ID])
-			return PlaygroundMapClass.spec()
+			push_error("[MapCatalog] Unknown map_id '%s' — returning empty spec" % map_id)
+			return {}

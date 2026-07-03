@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**70 scripts · 12209 lines total** (under `godot/scripts/`)
+**75 scripts · 12831 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -22,7 +22,7 @@
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, slice_geometry_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -425,7 +425,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 105 lines
+`class_name EdgeExtractor` · 115 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -1426,9 +1426,14 @@ extends `SceneTree` · 72 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 114 lines
+extends `SceneTree` · 166 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
+
+**Constants / tuning**
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
 
 ---
 
@@ -1515,6 +1520,115 @@ extends `Node2D` · 34 lines
 
 ## world/
 
+### `room_builder.gd`
+
+`class_name RoomBuilder` · 315 lines
+
+`godot/scripts/world/builders/room_builder.gd`
+
+> RoomBuilder Orchestrates room construction, tile placement, and perspective transformations. Handles loading maps, building layouts, caching blocked cells, and coordinate rotations.
+
+**Constants / tuning**
+- `WALL_FLOOR_STEP_PX` = `20.0`
+- `WALL_BASE_Z_INDEX` = `8`
+- `INVALID_CELL` = `Vector2i(-1, -1)`
+
+**Public vars**
+- `var room: Node`
+- `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `var floor_layer: TileMapLayer = null`
+- `var structure_layer: TileMapLayer = null`
+- `var structure_wall_layer: TileMapLayer = null`
+
+**Public API**
+- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_layer: TileMapLayer, wall_tileset: TileSet) -> void:`
+- `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
+- `func cache_blocked_cells(layout: Dictionary) -> void:`
+- `func get_blocked_cells() -> Dictionary:`
+- `func get_prop_heights() -> Dictionary:`
+- `func get_exit_cells() -> Array[Vector2i]:`
+- `func get_light_sources() -> Array:`
+- `func get_base_layout() -> Dictionary:`
+- `func build_registry(ts: TileSet) -> void:`
+- `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
+- `func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:`
+
+---
+
+### `debug_tools_controller.gd`
+
+`class_name DebugToolsController` · 105 lines
+
+`godot/scripts/world/controllers/debug_tools_controller.gd`
+
+> DEBUG-02: Debug tools controller — handles F2/F3/F4 debug toggles and voxel nudging. Extracted from room.gd (Task 03 modularization). Signals room on mode changes; room holds references to debug overlays and toggles.
+
+**Public vars**
+- `var room: Node`
+
+**Public API**
+- `func toggle_map_loader_panel() -> void:`
+- `func create_map_loader_button() -> void:`
+- `func toggle_voxel_ruler_overlay() -> void:`
+- `func toggle_nudge_mode() -> void:`
+- `func apply_nudge(delta: Vector2) -> void:`
+- `func reset_nudge() -> void:`
+- `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
+- `func is_nudge_mode_active() -> bool:`
+
+---
+
+### `selection_controller.gd`
+
+`class_name SelectionController` · 103 lines
+
+`godot/scripts/world/controllers/selection_controller.gd`
+
+> Selection Controller: manages tile selection, validation, and player movement attempts. Extracted from room.gd (Task 05 modularization). Delegates to room for state access (movement_overlay, selection_overlay, etc.)
+
+**Public vars**
+- `var room: Node`
+- `var selected_cell: Vector2i = Vector2i(-1, -1)`
+
+**Public API**
+- `func is_selectable_cell(cell: Vector2i) -> bool:`
+- `func set_selected_cell(cell: Vector2i) -> void:`
+- `func handle_tile_click(cell: Vector2i) -> void:`
+- `func try_move_to(cell: Vector2i) -> bool:`
+- `func try_execute_move() -> void:`
+- `func get_selected_cell() -> Vector2i:`
+- `func reset_selection() -> void:`
+
+---
+
+### `world_markers_overlay_controller.gd`
+
+`class_name WorldMarkersOverlayController` · 165 lines
+
+`godot/scripts/world/controllers/world_markers_overlay_controller.gd`
+
+> WorldMarkersOverlayController Manages shadow spill cosmetics and marker overlays (shadow boundary, light rays). Shadow spill is a cosmetic halo that bleeds from full-shadow tiles onto neighbours. Purely visual — never feeds gameplay (ExposureSystem reads raw geometry).
+
+**Constants / tuning**
+- `SHADOW_SPILL_RADIUS` = `2`
+- `SHADOW_SPILL_MAX_RADIUS` = `4`
+- `SHADOW_SPILL_DENSITY_STEP` = `2`
+- `SHADOW_SPILL_BASE_DARKEN` = `0.18`
+- `SHADOW_SPILL_FALLOFF` = `0.5`
+- `SHADOW_SPILL_DIAGONAL_FACTOR` = `0.65`
+- `PENUMBRA_MULT` = `0.5`
+
+**Public vars**
+- `var room: Node`
+- `var floor_layer: Node2D = null`
+
+**Public API**
+- `func setup(tile_shadow: Node2D, lighting_controller: Node, shadow_boundary: Node, light_ray: Node, vision_controller: Node, floor_layer_ref: Node2D, visual_offset: Vector2, room_size: Vector2i, shadow_tiles: Dictionary) -> void:`
+- `func repaint_world_shadows() -> void:`
+- `func draw_shadow_debug() -> void:`
+
+---
+
 ### `level_graph.gd`
 
 `class_name LevelGraph` · extends `RefCounted` · 103 lines
@@ -1570,7 +1684,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 271 lines
+`class_name MapCompiler` · extends `RefCounted` · 276 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -1591,7 +1705,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2360 lines
+extends `Node2D` · 2160 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1603,6 +1717,11 @@ extends `Node2D` · 2360 lines
 - `GuardNoiseIndicatorClass` = `preload("res://godot/scripts/overlays/guard_noise_indicator.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
+- `DebugToolsControllerClass` = `preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
+- `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`
+- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
 - `LightRayOverlayClass` = `preload("res://godot/scripts/overlays/light_ray_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
@@ -1637,7 +1756,6 @@ extends `Node2D` · 2360 lines
 - `ENEMY_CAMERA_TWEEN_DURATION` = `0.45`
 - `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
 - `ACTOR_END_HOLD_DELAY` = `0.5`
-- `_PERSPECTIVE_SUFFIX_MAP` = `{ "N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"}, "E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"}, "S": {"NE": "SW", "SE": "NW", "SW": "NE", "NW": "SE"}, "W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"}, }`
 - `TRAIL_MAX` = `5`
 - `GUARD_NOISE_CHANCE_BY_STATE` = `{ "patrol": 0.15, "suspicious": 0.40, "alert": 0.60, "chase": 0.70, "search": 0.50, }`
 - `GUARD_NOISE_INTENSITY_BY_STATE` = `{ "patrol": 0.4, "suspicious": 0.6, "alert": 0.9, "chase": 1.0, "search": 0.7, }`
@@ -1717,6 +1835,19 @@ extends `Node2D` · 2360 lines
 - `func can_receive_light() -> bool:`
 - `func debug_string() -> String:`
 - `func debug_info() -> String:`
+
+---
+
+### `perspective_mapper.gd`
+
+`class_name PerspectiveMapper` · 67 lines
+
+`godot/scripts/world/utilities/perspective_mapper.gd`
+
+> Perspective Mapper: static utility for isometric perspective transformations. Handles direction-based cell coordinate conversions and tile name suffix remapping. Extracted from room.gd (Task 04 modularization).
+
+**Constants / tuning**
+- `SUFFIX_MAP` = `{ "N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"}, "E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"}, "S": {"NE": "SW", "SE": "NW", "SW": "NE", "NW": "SE"}, "W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"}, }`
 
 ---
 

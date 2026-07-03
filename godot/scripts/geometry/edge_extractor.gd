@@ -15,16 +15,26 @@ const _EDGE_BY_SUFFIX: Dictionary = {
 ## wall_levels format: [ [{"cell": Vec2i, "tile_name": "wall_NW"}, ...], [...], ... ]
 ## Each array index is a storey level; each entry is {"cell": ..., "tile_name": ...}
 ## Returns: {"edges": Array[Edge], "solid_blocks": Array[Dictionary]}
+## Guard: invalid input returns empty result (no crash, no state change)
 static func extract(compiled: Dictionary) -> Dictionary:
 	var result := {
 		"edges": [],
 		"solid_blocks": []
 	}
 	
+	# Guard: validate input structure
+	if compiled.is_empty():
+		push_error("[EdgeExtractor] extract() called with empty compiled map")
+		return result
+	
 	if not compiled.has("wall_levels"):
+		push_error("[EdgeExtractor] extract() missing required key 'wall_levels'")
 		return result
 	
 	var wall_levels: Array = compiled["wall_levels"]
+	if not (wall_levels is Array) or wall_levels.is_empty():
+		push_error("[EdgeExtractor] wall_levels is not a non-empty Array")
+		return result
 	
 	# Dictionary to merge duplicate edges by their canonical id
 	# When the same physical edge is emitted from both adjacent GUs, take the max storey

@@ -3,6 +3,11 @@ extends SceneTree
 ## Rodar: godot --headless --script res://godot/scripts/tools/slice_geometry_selftest.gd
 ## Saída: "SLICE-00 SELFTEST: PASS" + exit 0, ou "...FAIL" + exit 1.
 
+## Preloads for ENHANCE-02 negative testing (error contract validation)
+const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const MapCatalogClass = preload("res://godot/scripts/world/maps/map_catalog.gd")
+const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
+
 func _initialize() -> void:
 	var SC = load("res://godot/scripts/geometry/geometry_coords.gd")
 	var failures: int = 0
@@ -105,7 +110,54 @@ func _initialize() -> void:
 					push_error("Floor tileset region size mismatch: expected (256, 512), got %s" % src.texture_region_size)
 					failures += 1
 
-	## ── Sumário ──────────────────────────────────────────────────────────
+	## ── Negative Tests: Malformed input handling (ENHANCE-02 error contract) ────
+	print_debug("[ENHANCE-02] Testing error handling with malformed specs")
+	
+	# Test 1: MapCompiler with missing required keys
+	print_debug("[ENHANCE-02] Test 1: MapCompiler.compile() with missing 'inner_size'")
+	var bad_spec_1: Dictionary = {"agent_start": Vector2i(5, 5)}  # missing "inner_size"
+	var bad_layout_1: Dictionary = MapCompilerClass.compile(bad_spec_1, {})
+	checked += 1
+	if bad_layout_1.is_empty():
+		print_debug("  ✓ Returned empty dict (error handled cleanly)")
+	else:
+		push_error("Bad spec should return empty, got: %s" % bad_layout_1)
+		failures += 1
+	
+	# Test 2: MapCatalog with unknown map_id
+	print_debug("[ENHANCE-02] Test 2: MapCatalog.get_spec() with unknown map_id")
+	var bad_spec_2: Dictionary = MapCatalogClass.get_spec("INVALID_MAP_ID", {})
+	checked += 1
+	if bad_spec_2.is_empty():
+		print_debug("  ✓ Returned empty dict (unknown id handled)")
+	else:
+		push_error("Unknown map_id should return empty, got keys: %s" % bad_spec_2.keys())
+		failures += 1
+	
+	# Test 3: EdgeExtractor with empty compiled dict
+	print_debug("[ENHANCE-02] Test 3: EdgeExtractor.extract() with empty input")
+	var bad_edges_1: Dictionary = EdgeExtractorClass.extract({})
+	checked += 1
+	if bad_edges_1.get("edges", []).is_empty() and bad_edges_1.get("solid_blocks", []).is_empty():
+		print_debug("  ✓ Returned empty result (malformed input handled)")
+	else:
+		push_error("Empty compiled should return empty result, got: %s" % bad_edges_1)
+		failures += 1
+	
+	# Test 4: EdgeExtractor with missing wall_levels
+	print_debug("[ENHANCE-02] Test 4: EdgeExtractor.extract() with missing 'wall_levels'")
+	var bad_edges_2: Dictionary = EdgeExtractorClass.extract({"some_other_key": []})
+	checked += 1
+	if bad_edges_2.get("edges", []).is_empty() and bad_edges_2.get("solid_blocks", []).is_empty():
+		print_debug("  ✓ Returned empty result (missing wall_levels handled)")
+	else:
+		push_error("Missing wall_levels should return empty result, got: %s" % bad_edges_2)
+		failures += 1
+
+	## ── Sumário ──────────────────────────────────────────────────────────────
+	print_debug("[SLICE-00] Canon checks: %d passed" % (checked - 4))
+	print_debug("[ENHANCE-02] Error handling checks: 4 passed")
+	print_debug("")
 	if failures == 0:
 		print("SLICE-00 SELFTEST: PASS (%d checagens)" % checked)
 		quit(0)

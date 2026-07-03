@@ -139,4 +139,19 @@ spec and its reason; flag any dead code left behind for future removal.
   ```
 - All other warnings must be eliminated from files created/modified in the task (pre-existing warnings in untouched files may be flagged but don't block).
 
-**Error handling contract:** _(reserved — defined by ENHANCE-02)_
+**Error handling contract (ENHANCE-02):**
+- **`push_error("[ClassName] context: %s" % detail)`** → config/asset/spec failure; operation aborts cleanly via early return. Never leaves state partial.
+- **`push_warning("...")`** → anomaly with fallback documented (e.g., tile_name unknown → use default). Operation continues.
+- **`printerr` BANNED** — use `print_debug()` for debug output (integrates with Godot console, strip in release).
+- **`assert(condition)`** → invariant check for debug only (strips automatically in release build).
+- **Seams with guards:** `MapCatalog.get_spec()`, `MapCompiler.compile()`, `EdgeExtractor.extract()`, `load_map()`, `VoxelRenderer` (per-block errors, not global abort).
+- **validate-then-commit pattern:** `load_map()` compiles → validates → only if valid, tears down old room. Bad spec = error + old room intact.
+
+**Implementation Status (ENHANCE-02 Complete):**
+- ✅ MapCatalog.get_spec() — returns empty dict on unknown map_id, logs push_error
+- ✅ MapCompiler.compile() — _validate() uses push_error, returns empty dict on failure
+- ✅ EdgeExtractor.extract() — guards for empty/malformed compiled maps, returns empty result
+- ✅ load_map() — checks for empty layout after compile(), aborts early if invalid
+- ✅ Negative test suite — 4 checks verify error contract (malformed specs handled cleanly)
+- ✅ Zero INTEGER_DIVISION warnings
+- ✅ Zero printerr calls (replaced with print_debug)

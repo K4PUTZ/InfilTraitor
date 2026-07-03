@@ -45,8 +45,10 @@ const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 ## Compiles a MapSpec into a render-ready layout dict.
 ## context: {connections: Dictionary, segment_grid_pos: Vector2i, seed: int} — only
 ## consulted when the spec opts into access_from_graph.
+## Returns empty Dictionary if validation fails (caller must check).
 static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
-	_validate(spec)
+	if not _validate(spec):
+		return {}
 
 	var buffer: int          = int(spec.get("buffer", 5))
 	var inner_size: Vector2i = spec.get("inner_size", Vector2i(18, 36))
@@ -264,8 +266,11 @@ static func _dict_keys_to_vec2i_array(d: Dictionary) -> Array[Vector2i]:
 	return cells
 
 
-static func _validate(spec: Dictionary) -> void:
+static func _validate(spec: Dictionary) -> bool:
+	var is_valid := true
 	for key in REQUIRED_KEYS:
 		if not spec.has(key):
-			push_warning("MapCompiler: spec '%s' is missing required key '%s'" \
+			push_error("[MapCompiler] spec '%s' is missing required key '%s'" \
 					% [spec.get("id", "?"), key])
+			is_valid = false
+	return is_valid

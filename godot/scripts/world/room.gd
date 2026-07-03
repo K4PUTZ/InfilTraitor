@@ -8,6 +8,11 @@ const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
+const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")
+const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
+const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
+const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
+const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
@@ -154,15 +159,16 @@ const ACTOR_END_HOLD_DELAY := 0.5
 var _actor_end_pause_active: bool = false
 
 ## DEBUG-02: Voxel ruler overlay and nudge mode
-var _voxel_ruler_overlay: Node2D = null
-var _nudge_mode_active: bool = false
+var _debug_tools_controller: DebugToolsControllerClass = null
 
-const _PERSPECTIVE_SUFFIX_MAP := {
-	"N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"},
-	"E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"},
-	"S": {"NE": "SW", "SE": "NW", "SW": "NE", "NW": "SE"},
-	"W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"},
-}
+## Selection state management
+var _selection_controller: SelectionControllerClass = null
+
+## World markers overlay (shadows, spill, light rays)
+var _world_markers_controller: WorldMarkersOverlayControllerClass = null
+
+## Room builder (map construction, tile placement, perspective transforms)
+var _room_builder: RoomBuilderClass = null
 
 ## Vision bonus added by agent abilities; combined with the player vision radius.
 var vision_bonus_tiles: int = 0
@@ -178,9 +184,6 @@ var _peek_pending: bool = false
 ## Dev 03: tile hover info
 var _dev_hover_label: Label = null
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
-
-## DEBUG-01: Map loader panel
-var _map_loader_panel: Node = null
 
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
@@ -272,17 +275,27 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 		"seed":                level_seed,
 		"wall_height_override": wall_height_override,
 	})
+	if layout.is_empty():
+		push_error("[Room] Map compilation failed for map_id '%s' — room state unchanged" % new_map_id)
+		return
 	_base_layout = layout.duplicate(true)
 	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
-	_room_size = layout.get("size", Vector2i.ZERO)
-	if _room_size == Vector2i.ZERO:
+	var room_size: Vector2i = layout.get("size", Vector2i.ZERO)
+	if room_size == Vector2i.ZERO:
 		push_error("Room layout did not provide a valid map size.")
 		return
 
-	var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
-	_room_size = view_layout.get("size", _room_size)
+	var view_layout := _room_builder.layout_with_perspective(layout, _active_perspective)
+	room_size = view_layout.get("size", room_size)
 	_map_buffer = view_layout.get("buffer", 0)
-	_build_room(view_layout)
+	_room_builder.build_from_layout(view_layout, room_size)
+	_room_size = room_size
+
+	## Sync cached data from builder to room state
+	_blocked_cells = _room_builder.get_blocked_cells()
+	_prop_heights = _room_builder.get_prop_heights()
+	_exit_cells = _room_builder.get_exit_cells()
+	_current_light_sources = _room_builder.get_light_sources()
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -294,7 +307,7 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 	## Give overlays their references.
 	movement_overlay.z_index = 5
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
-	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
+	movement_overlay.set_blocked_cells(_room_builder.build_navigation_blocked_cells(_guards))
 	var blocked_edges: Array[Dictionary] = []
 	for e in view_layout.get("blocked_edges", []):
 		blocked_edges.append(e)
@@ -310,12 +323,12 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 	agent.z_index = 10
 	_spawn_guards(view_layout.get("enemy_defs", []))
 	enemies_root.z_index = 10
-	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, room_size)
 	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
-	tile_labels_overlay.room_w = _room_size.x
-	tile_labels_overlay.room_h = _room_size.y
+	tile_labels_overlay.room_w = room_size.x
+	tile_labels_overlay.room_h = room_size.y
 	tile_labels_overlay.visible = false
 	btn_numbers.modulate = Color(1.0, 1.0, 1.0, 0.35)
 	camera.ignore_rotation = true
@@ -364,7 +377,11 @@ func _ready() -> void:
 	shadow_partial_layer.z_index = 1
 	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
 	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
-	_build_registry(ts)
+
+	## Initialize RoomBuilder (map construction orchestrator)
+	_room_builder = RoomBuilderClass.new(self)
+	_room_builder.setup(floor_layer, structure_layer, structure_wall_layer, ts)
+	_room_builder.build_registry(ts)
 
 	## SLICE-02: Initialize VoxelRenderer
 	_voxel_renderer = VoxelRendererClass.new()
@@ -384,11 +401,47 @@ func _ready() -> void:
 	_vision_controller.setup(self, fog_of_war)
 	set_meta("vision_controller", _vision_controller)
 
+	## Create shadow boundary overlay (dark edges of playable shadows)
+	_shadow_boundary_overlay = Node2D.new()
+	_shadow_boundary_overlay.set_script(ShadowBoundaryOverlayClass)
+	_shadow_boundary_overlay.z_index = 4  ## Above _tile_game (z=3), well above fog_of_war (z=2)
+	add_child(_shadow_boundary_overlay)
+	_shadow_boundary_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## M2-14: Create and setup TileOverlay instances for shadow and game visuals
+	_tile_shadow = Node2D.new()
+	_tile_shadow.set_script(TileOverlayClass)
+	_tile_shadow.z_index = 1  ## Renders below (shadow)
+	add_child(_tile_shadow)
+	_tile_shadow.material = CanvasItemMaterial.new()
+	_tile_shadow.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
+	_tile_shadow.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	_tile_game = Node2D.new()
+	_tile_game.set_script(TileOverlayClass)
+	_tile_game.z_index = 3  ## Renders above noise/detection
+	add_child(_tile_game)
+	_tile_game.material = CanvasItemMaterial.new()
+	_tile_game.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
+	_tile_game.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## Initialize light ray overlay (before world markers controller, setup later with ceiling_lift)
+	_light_ray_overlay = LightRayOverlayClass.new()
+	_light_ray_overlay.z_index = 0
+	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
+	add_child(_light_ray_overlay)
+
+	## Initialize world markers overlay controller (shadows, spill, light rays)
+	## MUST be before signal connections to LightingController
+	_world_markers_controller = WorldMarkersOverlayControllerClass.new(self)
+	_world_markers_controller.setup(_tile_shadow, _lighting_controller, _shadow_boundary_overlay,
+		_light_ray_overlay, _vision_controller, floor_layer, VISUAL_GRID_OFFSET, _room_size, _shadow_tiles)
+
 	## Connect LightingController signal to VisionController for overlay updates
 	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
 	## Geometric floor shadows are real-world elements → repaint the always-on
 	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
-	_lighting_controller.lighting_rebuilt.connect(_repaint_world_shadows)
+	_lighting_controller.lighting_rebuilt.connect(_world_markers_controller.repaint_world_shadows)
 
 	## MODULARIZE-02: Initialize HudController (after nodes ready)
 	_hud_controller = HudControllerClass.new()
@@ -445,7 +498,12 @@ func _ready() -> void:
 	load_map(map_id, wall_height_override, level_seed)
 
 	## DEBUG-01: Create map loader toolbar button
-	_create_map_loader_button()
+	## Initialize debug tools controller
+	_debug_tools_controller = DebugToolsControllerClass.new(self)
+	_debug_tools_controller.create_map_loader_button()
+
+	## Initialize selection controller
+	_selection_controller = SelectionControllerClass.new(self)
 
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
@@ -464,32 +522,8 @@ func _ready() -> void:
 	add_child(_noise_overlay)
 	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
 
-	## M2-14: Create and setup TileOverlay instances for shadow and game visuals
-	_tile_shadow = Node2D.new()
-	_tile_shadow.set_script(TileOverlayClass)
-	_tile_shadow.z_index = 1  ## Renders below (shadow)
-	add_child(_tile_shadow)
-	_tile_shadow.material = CanvasItemMaterial.new()
-	_tile_shadow.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
-	_tile_shadow.setup(floor_layer, VISUAL_GRID_OFFSET)
-
-	## Create shadow boundary overlay (dark edges of playable shadows)
-	_shadow_boundary_overlay = Node2D.new()
-	_shadow_boundary_overlay.set_script(ShadowBoundaryOverlayClass)
-	_shadow_boundary_overlay.z_index = 4  ## Above _tile_game (z=3), well above fog_of_war (z=2)
-	add_child(_shadow_boundary_overlay)
-	_shadow_boundary_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
-
-	_tile_game = Node2D.new()
-	_tile_game.set_script(TileOverlayClass)
-	_tile_game.z_index = 3  ## Renders above noise/detection
-	add_child(_tile_game)
-	_tile_game.material = CanvasItemMaterial.new()
-	_tile_game.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
-	_tile_game.setup(floor_layer, VISUAL_GRID_OFFSET)
-
 	## Paint the initial always-on world shadows from the geometric exposure.
-	_repaint_world_shadows()
+	_world_markers_controller.repaint_world_shadows()
 
 	## M2-14 Quickfix: Z-index ordering — floor(0) < shadow(1) < fog(2) < structures(3) < sprites(4+)
 	## Ensure fog_of_war is properly layered above shadow overlay
@@ -515,10 +549,6 @@ func _ready() -> void:
 
 	## Light ray overlay — always-visible golden shafts, MIX blend, below shadow MUL (z=1).
 	## Created here (after ceil_floors) so ceiling_lift matches the CeilingPropOverlay exactly.
-	_light_ray_overlay = LightRayOverlayClass.new()
-	_light_ray_overlay.z_index = 0
-	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
-	add_child(_light_ray_overlay)
 	_light_ray_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
 	## Initial populate: _repaint_world_shadows() ran before this node existed, so feed it now.
 	_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
@@ -559,7 +589,7 @@ func _ready() -> void:
 
 
 func _set_perspective(direction: String) -> void:
-	if not _PERSPECTIVE_SUFFIX_MAP.has(direction):
+	if not PerspectiveMapperClass.is_valid_direction(direction):
 		return
 	if _active_perspective == direction:
 		_update_perspective_button_state()
@@ -572,10 +602,21 @@ func _set_perspective(direction: String) -> void:
 
 	_active_perspective = direction
 	if not _base_layout.is_empty():
-		var view_layout := _layout_with_perspective(_base_layout, _active_perspective)
-		_room_size = view_layout.get("size", _room_size)
+		var view_layout := _room_builder.layout_with_perspective(_base_layout, _active_perspective)
+		var room_size: Vector2i = view_layout.get("size", _room_size)
+		_room_builder.build_from_layout(view_layout, room_size)
+		_room_size = room_size
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
-		_build_room(view_layout)
+		
+		# Clear legacy shadow layers (migrated to _tile_shadow, but kept for compatibility)
+		shadow_full_layer.clear()
+		shadow_partial_layer.clear()
+		
+		# Update cache data from builder
+		_blocked_cells = _room_builder.get_blocked_cells()
+		_prop_heights = _room_builder.get_prop_heights()
+		_exit_cells = _room_builder.get_exit_cells()
+		_current_light_sources = _room_builder.get_light_sources()
 		
 		# Update tile semantics and shadow heights for new layout (LIGHT-FIX-03)
 		# Now delegated to LightingController
@@ -630,77 +671,6 @@ func _update_perspective_button_state() -> void:
 	btn_perspective_ne.modulate = active_mod if _active_perspective == "N" else inactive_mod
 	btn_perspective_sw.modulate = active_mod if _active_perspective == "S" else inactive_mod
 	btn_perspective_se.modulate = active_mod if _active_perspective == "E" else inactive_mod
-
-
-func _toggle_map_loader_panel() -> void:
-	if _map_loader_panel == null:
-		var MapLoaderPanelClass = preload("res://godot/scripts/debug/map_loader_panel.gd")
-		_map_loader_panel = ConfirmationDialog.new()
-		_map_loader_panel.set_script(MapLoaderPanelClass)
-		add_child(_map_loader_panel)
-		_map_loader_panel.setup(self)
-	_map_loader_panel.popup_centered_ratio(0.5)
-	print("DEBUG: Map loader panel opened")
-
-
-func _create_map_loader_button() -> void:
-	if toolbar_row == null:
-		return
-	var btn_map := Button.new()
-	btn_map.text = "🗺️"
-	btn_map.add_theme_font_size_override("font_size", 16)
-	btn_map.custom_minimum_size = Vector2(40.0, 32.0)
-	btn_map.pressed.connect(_toggle_map_loader_panel)
-	toolbar_row.add_child(btn_map)
-
-
-## DEBUG-02: Toggle voxel ruler grid overlay (F3)
-func _toggle_voxel_ruler_overlay() -> void:
-	if _voxel_ruler_overlay == null:
-		var VoxelRulerClass = preload("res://godot/scripts/debug/voxel_ruler_overlay.gd")
-		_voxel_ruler_overlay = Node2D.new()
-		_voxel_ruler_overlay.set_script(VoxelRulerClass)
-		add_child(_voxel_ruler_overlay)
-		_voxel_ruler_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
-
-	_voxel_ruler_overlay.visible_grid = not _voxel_ruler_overlay.visible_grid
-	_voxel_ruler_overlay.queue_redraw()
-	print_debug("[DEBUG-02] Voxel ruler overlay: %s" % ("ON" if _voxel_ruler_overlay.visible_grid else "OFF"))
-
-
-## DEBUG-02: Toggle nudge mode (F4)
-func _toggle_nudge_mode() -> void:
-	_nudge_mode_active = not _nudge_mode_active
-
-	if _nudge_mode_active:
-		var msg := "NUDGE MODE ON — arrows: 1px, Shift+arrows: 8px, R: reset, F4: exit"
-		print_debug("[DEBUG-02] %s" % msg)
-	else:
-		print_debug("[DEBUG-02] Nudge mode OFF")
-
-
-## DEBUG-02: Apply nudge to voxel renderer
-func _apply_nudge(delta: Vector2) -> void:
-	if _voxel_renderer == null:
-		return
-	_voxel_renderer.apply_debug_nudge(delta)
-	# Get base TILE_OFFSET from VoxelRenderer to keep nudge print truthful
-	var base_offset := Vector2(112.0, 64.0)  # Must match VoxelRenderer.TILE_OFFSET
-	print_debug("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
-		_voxel_renderer.debug_nudge.x,
-		_voxel_renderer.debug_nudge.y,
-		base_offset.x + _voxel_renderer.debug_nudge.x,
-		base_offset.y + _voxel_renderer.debug_nudge.y
-	])
-
-
-## DEBUG-02: Reset nudge to zero
-func _reset_nudge() -> void:
-	if _voxel_renderer == null:
-		return
-	var current := _voxel_renderer.debug_nudge
-	_voxel_renderer.apply_debug_nudge(-current)
-	print_debug("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 64.0)")
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -867,7 +837,7 @@ func _draw_playable_boundary() -> void:
 ##   • direction — orthogonal spill tiles read slightly darker than diagonal ones, which
 ##     softens the hard concentric rings.
 ## All tunable (var, not gameplay stat). See _compute_shadow_spill / _spill_color.
-const SHADOW_SPILL_RADIUS := 2
+## MOVED TO: WorldMarkersOverlayController
 var SHADOW_SPILL_MAX_RADIUS: int = 4        ## hard cap on density-extended reach
 var SHADOW_SPILL_DENSITY_STEP: int = 2      ## +1 ring per this many clustered full cells
 var SHADOW_SPILL_BASE_DARKEN: float = 0.18  ## ring-1 orthogonal darkening (1 - keeps)
@@ -875,123 +845,24 @@ var SHADOW_SPILL_FALLOFF: float = 0.5       ## darkening multiplier per further 
 var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65  ## diagonal keeps lighter than orthogonal
 
 ## Paint the always-on world shadow layer from the geometric exposure result.
-## Floor shadows are real-world elements (always visible), not a debug overlay:
-## the multiply-blend `_tile_shadow` darkens shadowed floor under every vision mode.
-func _repaint_world_shadows() -> void:
-	if _tile_shadow == null:
-		return
-	var exposure = _lighting_controller.get_exposure_system()
-	if exposure == null:
-		return
-	_tile_shadow.clear_all()
-	var full_cells: Array[Vector2i] = exposure.get_shadow_cells()
-	var penumbra_cells: Array[Vector2i] = exposure.get_penumbra_cells()
-	## Cosmetic halo first (lowest visual weight), real shadow tiles on top so the
-	## geometric silhouette stays crisp where it matters.
-	var spill: Dictionary = _compute_shadow_spill(full_cells, penumbra_cells)
-	_tile_shadow.set_cells_colored(spill, TileOverlayClass.PRIO_SHADOW)
-	_tile_shadow.set_cells_named(penumbra_cells, "shadow_lite", TileOverlayClass.PRIO_SHADOW)
-	_tile_shadow.set_cells_named(full_cells, "shadow_full", TileOverlayClass.PRIO_SHADOW)
-
-	## Update shadow boundary overlay with separate full and lite shadow cells
-	if _shadow_boundary_overlay != null:
-		_shadow_boundary_overlay.set_full_shadow_cells(full_cells)
-		_shadow_boundary_overlay.set_lite_shadow_cells(penumbra_cells)
-
-	## Refresh light ray overlay with the latest per-light shadow projections
-	if _light_ray_overlay != null:
-		_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
+## MOVED TO: WorldMarkersOverlayController.repaint_world_shadows()
 
 
 ## Build the cosmetic spill halo around the FULL-shadow tiles.
-## Returns Vector2i → Color (multiply tint). Each spill cell's tone comes from its ring
-## distance to the nearest full cell and whether that offset is orthogonal (darker) or
-## diagonal (lighter); the reach grows with local cluster density. Cells already shadowed
-## (full/penumbra) are excluded so the halo never lightens a real shadow; clamped to room.
-func _compute_shadow_spill(full_cells: Array[Vector2i], penumbra_cells: Array[Vector2i]) -> Dictionary:
-	var occupied: Dictionary = {}  ## cells that must NOT receive spill
-	for c: Vector2i in full_cells:
-		occupied[c] = true
-	for c: Vector2i in penumbra_cells:
-		occupied[c] = true
-	var full_set: Dictionary = {}
-	for c: Vector2i in full_cells:
-		full_set[c] = true
-	## best[cell] = {"level": ring, "ortho": bool}; darkest wins (lowest ring, ortho on tie).
-	var best: Dictionary = {}
-	for c: Vector2i in full_cells:
-		var reach: int = _spill_reach_for(c, full_set)
-		for dy in range(-reach, reach + 1):
-			for dx in range(-reach, reach + 1):
-				if dx == 0 and dy == 0:
-					continue
-				var level: int = maxi(absi(dx), absi(dy))  ## Chebyshev ring
-				if level > reach:
-					continue
-				var cell := c + Vector2i(dx, dy)
-				if occupied.has(cell):
-					continue
-				if cell.x < 0 or cell.y < 0 or cell.x >= _room_size.x or cell.y >= _room_size.y:
-					continue
-				var ortho: bool = (dx == 0 or dy == 0)
-				if not best.has(cell):
-					best[cell] = {"level": level, "ortho": ortho}
-				else:
-					var b: Dictionary = best[cell]
-					if level < b["level"] or (level == b["level"] and ortho and not b["ortho"]):
-						best[cell] = {"level": level, "ortho": ortho}
-	var out: Dictionary = {}
-	for cell: Vector2i in best:
-		out[cell] = _spill_color(best[cell]["level"], best[cell]["ortho"])
-	return out
+## MOVED TO: WorldMarkersOverlayController._compute_shadow_spill()
 
 
 ## Spill reach (ring count) for a full cell: base radius + 1 per density step of clustered
-## full neighbours, capped. Denser real-shadow masses (e.g. tall crate stacks) glow wider.
-func _spill_reach_for(cell: Vector2i, full_set: Dictionary) -> int:
-	var density: int = 0
-	for dy in range(-1, 2):
-		for dx in range(-1, 2):
-			if dx == 0 and dy == 0:
-				continue
-			if full_set.has(cell + Vector2i(dx, dy)):
-				density += 1
-	return clampi(
-		SHADOW_SPILL_RADIUS + int(float(density) / SHADOW_SPILL_DENSITY_STEP),
-		SHADOW_SPILL_RADIUS, SHADOW_SPILL_MAX_RADIUS)
+## MOVED TO: WorldMarkersOverlayController._spill_reach_for()
 
 
 ## Multiply tint for a spill cell at ring `level` (1 = closest), orthogonal or diagonal.
-## Darkening falls off geometrically per ring; diagonals keep lighter than orthogonals.
-## Cool-blue tone (blue darkens least), matching the shadow ramp. Returns a >0.8 keeps value.
-func _spill_color(level: int, ortho: bool) -> Color:
-	var darken: float = SHADOW_SPILL_BASE_DARKEN * pow(SHADOW_SPILL_FALLOFF, float(level - 1))
-	if not ortho:
-		darken *= SHADOW_SPILL_DIAGONAL_FACTOR
-	var keeps: float = clampf(1.0 - darken, 0.0, 1.0)
-	return Color(keeps, keeps, minf(1.0, keeps + 0.05), 1.0)
+## MOVED TO: WorldMarkersOverlayController._spill_color()
 
 
 func _draw_shadow_debug() -> void:
-	## M2-13: ShadowOverlay now handles the permanent visualization.
-	## Kept only for technical debug in DEV_VISION (translucent blue overlay).
-	if not _vision_controller.dev_vision:
-		return
-	for shadow_cell in _shadow_tiles.keys():
-		var mult: float = _shadow_tiles[shadow_cell]
-		var world_pos := floor_layer.map_to_local(shadow_cell) + VISUAL_GRID_OFFSET
-		var hw := 128.0   ## 256 / 2
-		var hh := 64.0    ## 128 / 2
-		var diamond := PackedVector2Array([
-			world_pos + Vector2(0.0,  -hh),
-			world_pos + Vector2(hw,   0.0),
-			world_pos + Vector2(0.0,   hh),
-			world_pos + Vector2(-hw,  0.0),
-		])
-		## Direct shadow: dark blue. Penumbra: lighter blue.
-		var alpha := 0.35 if mult < PENUMBRA_MULT else 0.15
-		var color := Color(0.1, 0.4, 1.0, alpha)
-		draw_colored_polygon(diamond, color)
+	## DEPRECATED: Moved to WorldMarkersOverlayController.draw_shadow_debug()
+	pass
 
 
 func _on_ap_changed(current_ap: int, max_ap: int) -> void:
@@ -1162,20 +1033,6 @@ func _on_agent_move_finished(_cell: Vector2i) -> void:
 		turn_manager.end_turn()
 		return
 	_refresh_tactical_state()
-
-
-func _try_change_posture(new_posture: DebugAgent.Posture) -> void:
-	if agent.posture == new_posture:
-		return
-	if turn_manager.is_enemy_phase:
-		return
-	if turn_manager.current_ap < DebugAgent.POSTURE_CHANGE_AP:
-		return
-		
-	turn_manager.consume_ap(DebugAgent.POSTURE_CHANGE_AP)
-	agent.set_posture(new_posture)
-	_refresh_tactical_state()
-	_update_guard_los_data()
 
 
 func _refresh_tactical_state() -> void:
@@ -1500,7 +1357,7 @@ func _draw() -> void:
 	_draw_exit_markers()
 	_draw_spawn_marker()
 	_draw_playable_boundary()
-	_draw_shadow_debug()
+	_world_markers_controller.draw_shadow_debug()
 
 	## Draw enemy last_known markers
 	for guard in _guards:
@@ -1548,63 +1405,31 @@ func _update_movement_highlight() -> void:
 
 
 func _is_selectable_cell(cell: Vector2i) -> bool:
-	if cell == INVALID_CELL or _blocked_cells.has(cell) or _is_guard_cell(cell):
+	if _selection_controller == null:
 		return false
-	return floor_layer.get_cell_source_id(cell) != -1
+	return _selection_controller.is_selectable_cell(cell)
 
 
 func _set_selected_cell(cell: Vector2i) -> void:
-	if not _is_selectable_cell(cell):
+	if _selection_controller == null:
 		return
-	_selected_cell = cell
-	selection_overlay.set_selected(cell)
-	_update_selected_preview()
-	
-	## Dev 03: update hover label manually on selection change if needed
-	if _vision_controller.dev_vision:
-		_hovered_cell = cell
-		_update_dev_hover_label()
+	_selection_controller.set_selected_cell(cell)
+	_selected_cell = _selection_controller.selected_cell
 
 
 func _handle_tile_click(cell: Vector2i) -> void:
-	if turn_manager.is_enemy_phase or _actor_end_pause_active:
+	if _selection_controller == null:
 		return
-	if not _is_selectable_cell(cell):
-		path_preview.clear_path()
-		return
-
-	if _selected_cell != cell:
-		_set_selected_cell(cell)
-		return
-
-	if cell != agent.cell and _try_move_to(cell):
-		return
-
-	_update_selected_preview()
+	_selection_controller.handle_tile_click(cell)
+	_selected_cell = _selection_controller.selected_cell
 
 
 func _try_move_to(cell: Vector2i) -> bool:
-	if _actor_end_pause_active:
+	if _selection_controller == null:
 		return false
-	if turn_manager.is_enemy_phase:
-		return false
-	if agent.is_moving or cell == INVALID_CELL or cell == agent.cell:
-		return false
-	if not movement_overlay.is_reachable(cell):
-		return false
-
-	var path_cost: int = movement_overlay.get_cost(cell)
-	## Build path before spending AP — spend triggers ap_changed → rebuild → clears _costs.
-	var path: Array[Vector2i] = movement_overlay.build_path_to(cell)
-	if path.size() < 2:
-		return false
-	if not turn_manager.spend_for_path_cost(path_cost):
-		return false
-
-	_selected_cell = cell
-	_pending_auto_end_turn = _hud_controller.is_auto_end_turn_enabled() and int(turn_manager.current_ap) <= 0
-	agent.move_along_path(path)
-	return true
+	var result := _selection_controller.try_move_to(cell)
+	_selected_cell = _selection_controller.selected_cell
+	return result
 
 
 ## Build a name → source_id dictionary from TileSet custom data.
@@ -2026,38 +1851,14 @@ func _cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i
 
 
 func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
-	if view_cell == INVALID_CELL:
-		return INVALID_CELL
 	var size := base_size
 	if size == Vector2i.ZERO:
 		size = _base_layout.get("size", Vector2i.ZERO)
-	var w := size.x
-	var h := size.y
-	match direction:
-		"E":
-			return Vector2i(view_cell.y, h - 1 - view_cell.x)
-		"S":
-			return Vector2i(w - 1 - view_cell.x, h - 1 - view_cell.y)
-		"W":
-			return Vector2i(w - 1 - view_cell.y, view_cell.x)
-		_:
-			return view_cell
+	return PerspectiveMapperClass.cell_to_base(view_cell, direction, size)
 
 
 func _remap_tile_name_for_perspective(tile_name: String, direction: String) -> String:
-	if tile_name.is_empty():
-		return tile_name
-	var i := tile_name.rfind("_")
-	if i < 0:
-		return tile_name
-	var base := tile_name.substr(0, i)
-	var suffix := tile_name.substr(i + 1)
-	if not _PERSPECTIVE_SUFFIX_MAP.has(direction):
-		return tile_name
-	var suffix_map: Dictionary = _PERSPECTIVE_SUFFIX_MAP[direction]
-	if not suffix_map.has(suffix):
-		return tile_name
-	return "%s_%s" % [base, String(suffix_map[suffix])]
+	return PerspectiveMapperClass.remap_tile_name(tile_name, direction)
 
 
 ## Convert a screen-space press position to the tile cell underneath it.
@@ -2152,13 +1953,13 @@ func _input(event: InputEvent) -> void:
 		if key.pressed and not key.echo:
 			match key.keycode:
 				KEY_F2:
-					_toggle_map_loader_panel()
+					_debug_tools_controller.toggle_map_loader_panel()
 					return
 				KEY_F3:
-					_toggle_voxel_ruler_overlay()
+					_debug_tools_controller.toggle_voxel_ruler_overlay()
 					return
 				KEY_F4:
-					_toggle_nudge_mode()
+					_debug_tools_controller.toggle_nudge_mode()
 					return
 				KEY_Z:
 					## Z lowers: STANDING -> CROUCHING -> PRONE
@@ -2169,7 +1970,7 @@ func _input(event: InputEvent) -> void:
 						next_z = DebugAgent.Posture.PRONE
 					
 					if next_z != agent.posture:
-						_try_change_posture(next_z)
+						_debug_tools_controller.try_change_posture(next_z)
 					return
 				KEY_X:
 					## X raises: PRONE -> CROUCHING -> STANDING
@@ -2180,7 +1981,7 @@ func _input(event: InputEvent) -> void:
 						next_x = DebugAgent.Posture.STANDING
 					
 					if next_x != agent.posture:
-						_try_change_posture(next_x)
+						_debug_tools_controller.try_change_posture(next_x)
 					return
 				KEY_V:
 					_vision_controller.toggle_dev()
@@ -2202,40 +2003,40 @@ func _input(event: InputEvent) -> void:
 					_peek_pending = true
 					return
 				KEY_R:
-					if _nudge_mode_active:
-						_reset_nudge()
+					if _debug_tools_controller.is_nudge_mode_active():
+						_debug_tools_controller.reset_nudge()
 						return
 				KEY_UP:
-					if _nudge_mode_active:
+					if _debug_tools_controller.is_nudge_mode_active():
 						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_apply_nudge(Vector2(0, -step))
+						_debug_tools_controller.apply_nudge(Vector2(0, -step))
 						return
 					if _peek_pending:
 						_try_peek(Vector2i.UP)
 						_peek_pending = false
 						return
 				KEY_DOWN:
-					if _nudge_mode_active:
+					if _debug_tools_controller.is_nudge_mode_active():
 						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_apply_nudge(Vector2(0, step))
+						_debug_tools_controller.apply_nudge(Vector2(0, step))
 						return
 					if _peek_pending:
 						_try_peek(Vector2i.DOWN)
 						_peek_pending = false
 						return
 				KEY_LEFT:
-					if _nudge_mode_active:
+					if _debug_tools_controller.is_nudge_mode_active():
 						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_apply_nudge(Vector2(-step, 0))
+						_debug_tools_controller.apply_nudge(Vector2(-step, 0))
 						return
 					if _peek_pending:
 						_try_peek(Vector2i.LEFT)
 						_peek_pending = false
 						return
 				KEY_RIGHT:
-					if _nudge_mode_active:
+					if _debug_tools_controller.is_nudge_mode_active():
 						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_apply_nudge(Vector2(step, 0))
+						_debug_tools_controller.apply_nudge(Vector2(step, 0))
 						return
 					if _peek_pending:
 						_try_peek(Vector2i.RIGHT)
@@ -2282,8 +2083,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	## ── Right button: execute movement to the selected tile ──────
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-		if _selected_cell != INVALID_CELL and _selected_cell != agent.cell:
-			_try_move_to(_selected_cell)
+		_selection_controller.try_execute_move()
 		get_viewport().set_input_as_handled()
 		return
 

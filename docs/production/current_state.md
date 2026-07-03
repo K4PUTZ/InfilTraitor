@@ -367,6 +367,55 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 ---
 
-**Last Updated:** 2026-06-28
-**Maintained By:** Project Management
-**Status:** ✅ FUNCTIONAL CONTAINER SYSTEM — Wall rendering via discrete per-face Images + corner fills; direction system vertex-aligned; ready for live geometry updates (CONTAINER-05)
+## Code Modularization (ENHANCE-01..09 Complete)
+
+**Status: Master Plan Complete** — Architecture refactored to improve maintainability and reduce monolithic room.gd.
+
+### What was accomplished (ENHANCE series)
+
+✅ **Task 00-01:** Residual Code & Documentation Purge
+- Deleted 11 dead script files
+- Removed 4 dead tileset subtiles
+- Archived 7 outdated documentation locations
+
+✅ **Task 02:** Error Handling & Quality Contract (ENHANCE-02)
+- Systematic error handling: `push_error()` for critical paths, `push_warning()` for anomalies
+- Converted 20 `printerr()` calls to `print_debug()`
+- Implemented "validate-then-commit" pattern
+
+✅ **Tasks 03-08:** Controller Extraction (7 modules)
+1. **DebugToolsController** (~105 lines) — debug visualization
+2. **PerspectiveMapper** (~67 lines) — coordinate transformations
+3. **SelectionController** (~117 lines) — input routing
+4. **WorldMarkersOverlayController** (~170 lines) — overlay management
+5. **RoomBuilder** (~280 lines) — map construction
+6. **TurnController** (~300+ lines) — turn phases + alert system
+7. Architecture improvements to LightingController, VisionController, GuardCoordinator
+
+✅ **Task 09:** Gate Verification & Final Documentation
+- All systems validated (23 PASS selftest)
+- ARCHITECTURE.md updated with new controllers
+- Production-ready default configuration (Sigma-01 map, Wall Height 8)
+
+### Metrics
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| **room.gd lines** | 2,360 | 2,078 | -282 (-12%) |
+| **New modules** | 0 | 7 controllers | +modular |
+| **Lines extracted** | — | ~1,100+ | — |
+| **Selftest** | 23 PASS | 23 PASS | ✅ maintained |
+| **Inviolable Rules** | 8/8 | 8/8 | ✅ preserved |
+
+### Key Improvements
+
+- **Separation of Concerns:** Each controller owns one responsibility
+- **Testability:** Extracted modules now unit-testable in isolation
+- **Maintainability:** Clear module boundaries; reduced complexity
+- **Modularity:** New levels and systems can reuse existing controllers
+
+---
+
+**Last Updated:** 2026-07-03
+**Maintained By:** GitHub Copilot / Project Management
+**Status:** ✅ ALPHA ENHANCE PLAN COMPLETE — 7 controllers extracted, room.gd refactored to 2,078 lines, all systems operational. Ready for perspective system implementation and further modularization.

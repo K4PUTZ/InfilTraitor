@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**75 scripts · 12831 lines total** (under `godot/scripts/`)
+**76 scripts · 13142 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -22,7 +22,7 @@
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, slice_geometry_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -1601,6 +1601,44 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `turn_controller.gd`
+
+`class_name TurnController` · 393 lines
+
+`godot/scripts/world/controllers/turn_controller.gd`
+
+> TurnController Orchestrates turn phases, enemy AI execution, and alert meter management. Handles tactical state updates, detection/alert accumulation, and camera control.
+
+**Constants / tuning**
+- `DETECTION_THRESHOLD_SUSPICIOUS` = `0.25`
+- `DETECTION_THRESHOLD_ALERT` = `0.50`
+- `DETECTION_THRESHOLD_CHASE` = `0.75`
+- `ENEMY_CAMERA_TWEEN_DURATION` = `0.4`
+- `ENEMY_PHASE_MAX_OPEN_ZOOM` = `2.0`
+- `ACTOR_END_HOLD_DELAY` = `0.2`
+- `ENEMY_INTER_TURN_DELAY` = `0.5`
+
+**Public vars**
+- `var room: Node`
+- `var turn_manager: TacticalTurnManager = null`
+- `var enemy_phase_controller: EnemyPhaseController = null`
+- `var agent: DebugAgent = null`
+- `var camera: Camera2D = null`
+- `var floor_layer: TileMapLayer = null`
+- `var VISUAL_GRID_OFFSET: Vector2 = Vector2.ZERO`
+- `var FOW_REVEAL_RADIUS: int = 0`
+- `var vision_bonus_tiles: int = 0`
+
+**Public API**
+- `func setup( p_turn_manager: TacticalTurnManager, p_enemy_phase_controller: EnemyPhaseController, p_agent: DebugAgent, p_camera: Camera2D, p_floor_layer: TileMapLayer, p_fow_controller: Object, p_hud_controller: Object, p_vision_controller: Object, p_guard_coordinator: Object, p_noise_system: Object, p_noise_overlay: Object ) -> void:`
+- `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
+- `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
+- `func get_alert_meter() -> int:`
+- `func set_alert_meter(value: int) -> void:`
+- `func set_pending_auto_end_turn(value: bool) -> void:`
+
+---
+
 ### `world_markers_overlay_controller.gd`
 
 `class_name WorldMarkersOverlayController` · 165 lines
@@ -1705,7 +1743,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2160 lines
+extends `Node2D` · 2078 lines
 
 `godot/scripts/world/room.gd`
 
@@ -1722,6 +1760,7 @@ extends `Node2D` · 2160 lines
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
+- `TurnControllerClass` = `preload("res://godot/scripts/world/controllers/turn_controller.gd")`
 - `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
 - `LightRayOverlayClass` = `preload("res://godot/scripts/overlays/light_ray_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
@@ -1763,7 +1802,7 @@ extends `Node2D` · 2160 lines
 **@export**
 - `segment_grid_pos: Vector2i = Vector2i(1, 1)`
 - `level_seed: int = 0`
-- `map_id: String = "PLAYGROUND"`
+- `map_id: String = "SIGMA_01"`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

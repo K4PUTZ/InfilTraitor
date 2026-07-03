@@ -13,6 +13,7 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
+const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
@@ -170,6 +171,9 @@ var _world_markers_controller: WorldMarkersOverlayControllerClass = null
 ## Room builder (map construction, tile placement, perspective transforms)
 var _room_builder: RoomBuilderClass = null
 
+## Turn controller (turn management, enemy phase, alert system)
+var _turn_controller: TurnControllerClass = null
+
 ## Vision bonus added by agent abilities; combined with the player vision radius.
 var vision_bonus_tiles: int = 0
 var _agent_start_cell: Vector2i = Vector2i.ZERO
@@ -244,9 +248,9 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
-@export var map_id: String = "PLAYGROUND"
+@export var map_id: String = "SIGMA_01"
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
-@export var wall_height_override: int = 0
+@export var wall_height_override: int = 8
 ## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
 @export var debug_probe_voxel_alignment: bool = true
 
@@ -323,6 +327,11 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 	agent.z_index = 10
 	_spawn_guards(view_layout.get("enemy_defs", []))
 	enemies_root.z_index = 10
+	
+	## Sync game state to TurnController
+	if _turn_controller != null:
+		_turn_controller.set_game_state(_guards, _blocked_cells, _current_blocked_edges, _room_size)
+	
 	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, room_size)
 	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	tile_labels_overlay.floor_layer = floor_layer
@@ -382,6 +391,9 @@ func _ready() -> void:
 	_room_builder = RoomBuilderClass.new(self)
 	_room_builder.setup(floor_layer, structure_layer, structure_wall_layer, ts)
 	_room_builder.build_registry(ts)
+
+	## Initialize TurnController (turn phases, enemy AI, alert system)
+	_turn_controller = TurnControllerClass.new(self)
 
 	## SLICE-02: Initialize VoxelRenderer
 	_voxel_renderer = VoxelRendererClass.new()
@@ -462,8 +474,8 @@ func _ready() -> void:
 		"lbl_enemy_turn": lbl_enemy_turn,
 	})
 
-	## Connect HudController signals to room handlers
-	_hud_controller.end_turn_requested.connect(_on_hud_end_turn_requested)
+	## Connect HudController signals to turn controller handlers
+	_hud_controller.end_turn_requested.connect(_turn_controller._on_hud_end_turn_requested)
 	_hud_controller.reset_requested.connect(_on_hud_reset_requested)
 	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
 	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
@@ -487,9 +499,31 @@ func _ready() -> void:
 	add_child(_guard_coordinator)
 	_guard_coordinator.setup(self)
 
+	## MODULARIZE-08: Setup TurnController (turn management, enemy phase, alert system)
+	_turn_controller.setup(
+		turn_manager,
+		enemy_phase_controller,
+		agent,
+		camera,
+		floor_layer,
+		_fow_controller,
+		_hud_controller,
+		_vision_controller,
+		_guard_coordinator,
+		_noise_system,
+		_noise_overlay
+	)
+	_turn_controller.set_constants(
+		VISUAL_GRID_OFFSET,
+		FOW_REVEAL_RADIUS,
+		vision_bonus_tiles,
+		_alert_max,
+		_alert_gain_full
+	)
+
 	turn_manager.ap_changed.connect(_on_ap_changed)
-	turn_manager.player_turn_started.connect(_on_player_turn_started)
-	turn_manager.enemy_phase_started.connect(_on_enemy_phase_started)
+	turn_manager.player_turn_started.connect(_turn_controller._on_player_turn_started)
+	turn_manager.enemy_phase_started.connect(_turn_controller._on_enemy_phase_started)
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
@@ -628,6 +662,10 @@ func _set_perspective(direction: String) -> void:
 			blocked_edges.append(e)
 		_current_blocked_edges = blocked_edges.duplicate(true)
 		movement_overlay.set_blocked_edges(blocked_edges)
+		
+		## Sync new game state to TurnController after perspective change
+		if _turn_controller != null:
+			_turn_controller.set_game_state(_guards, _blocked_cells, _current_blocked_edges, _room_size)
 
 		tile_labels_overlay.room_w = _room_size.x
 		tile_labels_overlay.room_h = _room_size.y
@@ -939,48 +977,73 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 	_tic_voxel_system()
 
 
-## Processes the result of a detection tic for a guard.
-func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
-	## Accumulate or decay the guard's detection field
-	if result.visible:
-		guard.detection = clampf(
-			guard.detection + result.raw_chance * TicSystem.DETECTION_GAIN_PER_TIC,
-			0.0, 1.0
+## Wrapper: processes auditory detection for all guards
+func _process_audio_detection() -> void:
+	if _turn_controller != null:
+		_turn_controller._process_audio_detection()
+	elif _noise_system != null:
+		var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(
+			_current_blocked_edges
 		)
+		for guard in _guards:
+			if not is_instance_valid(guard):
+				continue
+			for noise_tile in _noise_system.get_noisy_tiles():
+				var intensity: float = _noise_system.get_intensity(noise_tile)
+				if intensity <= 0.0:
+					continue
+				var perceived: float = TicSystem.evaluate_audio(
+					guard, noise_tile, intensity, blocked_edges
+				)
+				if perceived > 0.0:
+					guard.hear_noise(noise_tile, perceived)
+
+
+## Wrapper: processes the result of a detection tic for a guard
+func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
+	if _turn_controller != null:
+		_turn_controller._apply_tic_result(guard, result)
 	else:
-		## Decay outside the cone
-		var decay := _get_detection_decay(guard.state)
-		guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
+		## Fallback: accumulate or decay the guard's detection field
+		if result.visible:
+			guard.detection = clampf(
+				guard.detection + result.raw_chance * TicSystem.DETECTION_GAIN_PER_TIC,
+				0.0, 1.0
+			)
+		else:
+			## Decay outside the cone
+			var decay := _get_detection_decay(guard.state)
+			guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
 
-	## M2-04: Noise amplifies detection if the guard already sees the tile
-	if _noise_system != null:
-		var noise_intensity: float = _noise_system.get_intensity(agent.cell)
-		if noise_intensity > 0.0 and result.visible:
-			var bonus: float = noise_intensity * 0.3
-			guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
+		## M2-04: Noise amplifies detection if the guard already sees the tile
+		if _noise_system != null:
+			var noise_intensity: float = _noise_system.get_intensity(agent.cell)
+			if noise_intensity > 0.0 and result.visible:
+				var bonus: float = noise_intensity * 0.3
+				guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
 
-	if _vision_controller.dev_vision:
-		guard.queue_redraw()
+		if _vision_controller.dev_vision:
+			guard.queue_redraw()
 
-	## ID-01: Gradual threshold-based escalation — only when the agent is visible
-	if result.visible:
-		if guard.detection >= DETECTION_THRESHOLD_CHASE:
-			guard.observe_player(true, 3, agent.cell)
-			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-			if _alert_meter >= _alert_max:
-				_guard_coordinator._on_guard_alarmed(guard.cell)
-		elif guard.detection >= DETECTION_THRESHOLD_ALERT:
-			guard.observe_player(true, 2, agent.cell)
-			_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-			if _alert_meter >= _alert_max:
-				_guard_coordinator._on_guard_alarmed(guard.cell)
-		elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
-			guard.observe_player(true, 1, agent.cell)
-		## Below DETECTION_THRESHOLD_SUSPICIOUS: meter accumulates, no state change
+		## ID-01: Gradual threshold-based escalation — only when the agent is visible
+		if result.visible:
+			if guard.detection >= DETECTION_THRESHOLD_CHASE:
+				guard.observe_player(true, 3, agent.cell)
+				_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+				if _alert_meter >= _alert_max:
+					_guard_coordinator._on_guard_alarmed(guard.cell)
+			elif guard.detection >= DETECTION_THRESHOLD_ALERT:
+				guard.observe_player(true, 2, agent.cell)
+				_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
+				if _alert_meter >= _alert_max:
+					_guard_coordinator._on_guard_alarmed(guard.cell)
+			elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
+				guard.observe_player(true, 1, agent.cell)
 
-	_update_alert_label()
+		_update_alert_label()
 
 
+## Processes detection decay based on guard state
 func _get_detection_decay(state: String) -> float:
 	match state:
 		"patrol":
@@ -994,29 +1057,7 @@ func _get_detection_decay(state: String) -> float:
 	return -0.10
 
 
-## M2-05: Processes auditory detection for all guards
-func _process_audio_detection() -> void:
-	if _noise_system == null:
-		return
-
-	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(
-		_current_blocked_edges
-	)
-
-	for guard in _guards:
-		if not is_instance_valid(guard):
-			continue
-
-		for noise_tile in _noise_system.get_noisy_tiles():
-			var intensity: float = _noise_system.get_intensity(noise_tile)
-			if intensity <= 0.0:
-				continue
-
-			var perceived: float = TicSystem.evaluate_audio(
-				guard, noise_tile, intensity, blocked_edges
-			)
-			if perceived > 0.0:
-				guard.hear_noise(noise_tile, perceived)
+## Processes the result of a detection tic for a guard.
 
 
 func _on_agent_move_finished(_cell: Vector2i) -> void:
@@ -1043,147 +1084,7 @@ func _refresh_tactical_state() -> void:
 	_update_movement_highlight()
 
 
-func _on_player_turn_started() -> void:
-	_update_guard_los_data()
-	if _peek_active:
-		_peek_timer -= 1
-		if _peek_timer <= 0:
-			_peek_active = false
-			_fow_controller.reset_peek_reveals()
 
-
-func _on_enemy_phase_started() -> void:
-	if _guards.is_empty():
-		turn_manager.finish_enemy_phase()
-		return
-	_update_guard_los_data()
-	_hud_controller.show_enemy_banner()
-	movement_overlay.clear_overlay()
-	path_preview.clear_path()
-	selection_overlay.set_selected(agent.cell)
-	## M2-14: Lock the camera on the agent during the enemy turn
-	_center_camera(agent.cell)
-	await _hold_actor_end_pause()
-	await _run_enemy_phase()
-	_hud_controller.hide_enemy_banner()
-	if _alert_meter >= _alert_max:
-		await _show_busted_dialog()
-		_reset_room_state()
-	_update_alert_label()
-
-	## M2-04: Decay noise at end of enemy phase
-	if _noise_system != null:
-		_noise_system.decay_all()
-	if _noise_overlay != null:
-		_noise_overlay.queue_redraw()
-
-	## Return the camera to the agent at the end of the enemy turn
-	_center_camera(agent.cell)
-
-	turn_manager.finish_enemy_phase()
-
-
-func _run_enemy_phase() -> void:
-	## M2-05: Process persistent noise before the guards act
-	_process_audio_detection()
-
-	var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
-	var occupied: Dictionary = {}
-	for guard in _guards:
-		if is_instance_valid(guard):
-			occupied[guard.cell] = guard
-
-	var max_severity := 0
-	for i in range(_guards.size()):
-		var guard = _guards[i]
-		if not is_instance_valid(guard):
-			continue
-
-		var report: Dictionary = await enemy_phase_controller.run_single_guard_turn(
-			guard,
-			agent.cell,
-			_blocked_cells,
-			blocked_edges,
-			_room_size,
-			occupied,
-			_apply_tic_result,   ## passa o callback
-			_guard_coordinator._on_guard_emits_noise   ## M2-14: noise callback
-		)
-		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
-
-		## Camera follows the guard only if its tile is revealed by the FOW
-		if _fow_controller.is_cell_revealed(guard.cell):
-			await _focus_camera_for_enemy_phase(guard.cell)
-
-		await _hold_actor_end_pause()
-
-	## Alert accumulation now happens in _apply_tic_result() during the tics
-	_update_enemy_visibility()
-
-
-func _enemy_inter_turn_pause_with_camera(target_cell: Vector2i) -> void:
-	var tween_time := minf(ENEMY_CAMERA_TWEEN_DURATION, ENEMY_INTER_TURN_DELAY)
-	await _focus_camera_for_enemy_phase(target_cell, tween_time)
-	var remain := ENEMY_INTER_TURN_DELAY - tween_time
-	if remain > 0.0:
-		await get_tree().create_timer(remain).timeout
-
-
-func _hold_actor_end_pause() -> void:
-	_actor_end_pause_active = true
-	await get_tree().create_timer(ACTOR_END_HOLD_DELAY).timeout
-	_actor_end_pause_active = false
-
-
-func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEMY_CAMERA_TWEEN_DURATION) -> void:
-	if target_cell == INVALID_CELL:
-		return
-	var target_world := _world_center_for_cell(target_cell)
-	var target_zoom := camera.zoom.x
-	if target_zoom > ENEMY_PHASE_MAX_OPEN_ZOOM:
-		target_zoom = ENEMY_PHASE_MAX_OPEN_ZOOM
-
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(camera, "global_position", target_world, duration)
-	tween.tween_property(camera, "zoom", Vector2(target_zoom, target_zoom), duration)
-	await tween.finished
-
-
-func _world_center_for_cell(cell: Vector2i) -> Vector2:
-	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
-
-
-## M2-14: Emit a sound indicator toward the noise direction (with ±2 tile imprecision)
-func _emit_guard_noise_indicator(guard_cell: Vector2i, intensity: float) -> void:
-	if _guard_noise_indicator == null:
-		return
-	
-	## Imprecision: random ±2 tile offset to avoid revealing the exact position
-	var fuzzy_cell := guard_cell + Vector2i(
-		randi_range(-2, 2),
-		randi_range(-2, 2)
-	)
-	var agent_world  := floor_layer.map_to_local(agent.cell) + VISUAL_GRID_OFFSET
-	var noise_world  := floor_layer.map_to_local(fuzzy_cell) + VISUAL_GRID_OFFSET
-	
-	_guard_noise_indicator.add_indicator(agent_world, noise_world, intensity)
-
-
-## M2-14: Callback: runs when a guard emits noise after moving
-
-
-func _update_alert_label() -> void:
-	var pct := float(_alert_meter) / float(_alert_max)
-	_hud_controller.update_alert(pct)
-
-
-func _show_busted_dialog() -> void:
-	_hud_controller.show_busted("ui.banner.busted")
-	await get_tree().create_timer(1.2).timeout
-	_hud_controller.hide_busted()
 
 
 ## ID-02: Full memory flush — resets all state when the room needs to restart
@@ -1322,6 +1223,23 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 
 
 
+
+
+## Utility: converts a cell coordinate to world position
+func _world_center_for_cell(cell: Vector2i) -> Vector2:
+	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+
+
+## Wrapper: updates the HUD alert label from alert meter value
+func _update_alert_label() -> void:
+	if _hud_controller == null:
+		return
+	if _turn_controller != null:
+		var pct := float(_turn_controller.get_alert_meter()) / float(_alert_max)
+		_hud_controller.update_alert(pct)
+	else:
+		var pct := float(_alert_meter) / float(_alert_max)
+		_hud_controller.update_alert(pct)
 
 
 func _update_enemy_visibility() -> void:

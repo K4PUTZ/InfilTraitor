@@ -6,7 +6,14 @@ Welcome to the INFILTRAITOR documentation system. This repository is organized i
 
 ---
 
-## 📖 Quick Navigation
+## � Latest Release
+
+**[ALPHA: Enhanced Plan (Pre-Perspective)](ALPHA_ENHANCE_RELEASE.md)** — 2026-07-03  
+Room.gd refactored from 2,360 → 2,078 lines (-12%). 7 controllers extracted. All systems operational. Ready for testing.
+
+---
+
+## �📖 Quick Navigation
 
 ### 🎯 Vision (Start Here)
 *What the game is, why it exists, and what makes it unique.*

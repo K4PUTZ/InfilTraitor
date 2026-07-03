@@ -3,7 +3,7 @@
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`
-**Last reconciled with code:** 2026-06-29 (VOXEL-00: Voxel Render Plane planned; Subcube/WallContainer system archived)
+**Last reconciled with code:** 2026-07-03 (ENHANCE-08: TurnController extracted; room.gd down to 2,078 lines)
 **Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
 ---
@@ -149,8 +149,8 @@ INFILTRAITOR is a single-scene tactical prototype. The scene root is `room.gd` (
 1. Load the shared `TileSet`, assign it to every `TileMapLayer`, and set per-layer `z_index`.
 2. Generate the macro level: `LevelGraph.generate(level_seed)` → `MapCatalog.get_spec(map_id, …)` resolves the active map to a `MapSpec` (authored in inner/segment coords) → `MapCompiler.compile(spec, …)` applies the buffer offset and produces the base layout dictionary (size, floor/wall/structure tiles, blocked cells, blocked edges, enemy defs, exits). See **Map pipeline** below.
 3. Apply the active perspective (`_layout_with_perspective`) and build the tilemaps (`_build_room`).
-4. Instantiate the six controllers as children of `room`, in dependency order:
-   `LightingController` → `VisionController` → `HudController` → `CameraController` → `FowController` → `GuardCoordinator`.
+4. Instantiate the seven controllers as children of `room`, in dependency order:
+   `LightingController` → `VisionController` → `HudController` → `CameraController` → `FowController` → `GuardCoordinator` → `TurnController`.
 5. Wire signals (HUD → room handlers; `LightingController.lighting_rebuilt` → `VisionController.request_redraw`; turn manager → room; agent → room).
 6. Set up the remaining overlays created directly by room (trail, noise, tile overlays, guard-noise indicator, hover label).
 7. Spawn guards, initialize fog, center the camera, start the player turn.
@@ -227,7 +227,7 @@ Room (room.gd, Node2D)              ← orchestrator + God Object (§15)
 
 - **Input:** `room._input` gives the `CameraController` first refusal (`handle_input` returns `true` when it consumes the event); otherwise room handles keyboard gameplay and hover. `room._unhandled_input` handles tile clicks / right-click move.
 - **Per-frame:** `room._process` advances temporal lights, updates the vision-fog shader, and refreshes enemy visibility while guards animate.
-- **Turn loop:** player spends AP to move → optionally ends turn → `TurnManager` emits `enemy_phase_started` → `room._run_enemy_phase` drives `EnemyPhaseController` over each guard → `finish_enemy_phase` returns control.
+- **Turn loop:** player spends AP to move → optionally ends turn → `TurnManager` emits `enemy_phase_started` → `TurnController._on_enemy_phase_started()` drives `EnemyPhaseController` over each guard via `_run_enemy_phase()` → `finish_enemy_phase` returns control.
 
 Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposure → overlays), but **not** for gameplay: controllers read and mutate room state directly (see §13).
 
@@ -235,9 +235,9 @@ Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposu
 
 ## 2. Controller Architecture
 
-**Status: Implemented** (extraction from the former monolith is in progress — see §13)
+**Status: Implemented** (extraction from the former monolith completed via MODULARIZE-01..06 and ENHANCE-08)
 
-Six controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series). They share a common pattern: `room` instantiates them, calls `setup()` with references, and they either expose direct methods or emit signals. **None of them is fully decoupled** — most hold a `_room` back-reference and read room's underscore-prefixed members.
+Seven controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series, plus `ENHANCE-08: TurnController`). They share a common pattern: `room` instantiates them, calls `setup()` with references, and they either expose direct methods or emit signals. **None of them is fully decoupled** — most hold a `_room` back-reference and read room's underscore-prefixed members.
 
 | Controller | Base | Comms style | Owns |
 |---|---|---|---|
@@ -247,6 +247,7 @@ Six controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series). 
 | CameraController | `Node` | `handle_input()` returns bool | Camera state, perspective buttons |
 | FowController | `Node` | Direct calls | Reveal delegation + shader params |
 | GuardCoordinator | `Node` | Emits signals; routes to guards | Nothing (operates on `_room._guards`) |
+| TurnController | `Object` | Callable references (callbacks) | Alert meter, detection decay, turn phase flow |
 
 ### 2.1 VisionController — `controllers/vision_controller.gd`
 
@@ -291,6 +292,14 @@ Six controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series). 
 - **Dependencies:** operates on `_room._guards`, `_room._noise_system`, `_room._alert_meter`, `_room.agent`, and constants like `_room.WHISTLE_RADIUS`, `GUARD_NOISE_CHANCE_BY_STATE`.
 - **Events/signals:** emits `guard_whistled`, `guard_radioed`, `alarm_raised`, `all_guards_alerted`. Connects each guard's `whistled`/`radioed` signals in `register_guard`.
 - **Room integration:** tight. It owns no state; it is effectively a method-bag operating on room's arrays. `_on_guard_alarmed` and `_on_guard_emits_noise` are invoked directly from room's tic logic and enemy phase.
+
+### 2.7 TurnController — `controllers/turn_controller.gd`
+
+- **Responsibilities:** orchestrates turn phases, enemy AI execution, detection/alert system. Centralizes alert meter accumulation (Rule 5), detection decay, camera focus during enemy phase, and noise processing. Extracted in **ENHANCE-08**.
+- **Dependencies:** `turn_manager`, `enemy_phase_controller`, `agent`, `camera`, `floor_layer`, `_fow_controller`, `_hud_controller`, `_vision_controller`, `_guard_coordinator`, `_noise_system`, `_noise_overlay`. Operates on `_guards`, `_blocked_cells`, `_current_blocked_edges`, `_room_size`.
+- **Events/signals:** receives `turn_manager.player_turn_started` and `turn_manager.enemy_phase_started`; routes `_hud_controller.end_turn_requested`. Exposes callable references for TIC callbacks (`_apply_tic_result` function).
+- **Key invariant:** **Only `_apply_tic_result()` accumulates `_alert_meter`** — all detection thresholds (CHASE/ALERT/SUSPICIOUS) trigger alert accumulation in one place, preventing duplicate logic.
+- **Room integration:** moderate. Receives game state via `set_game_state()` after map loads or perspective changes. Most turn-phase functions are now delegated to it; room holds thin wrappers for backward compatibility.
 
 ---
 

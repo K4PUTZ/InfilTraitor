@@ -160,7 +160,9 @@ Ver `docs/technical/VOXEL_MASTER_PLAN.md` §5 para o algoritmo completo.
 
 ---
 
-## 6. _EDGE_BY_SUFFIX — subcube_geometry.gd
+## 6. _EDGE_BY_SUFFIX — Direção de aresta para delta de voxel
+
+**Localização atual:** [`godot/scripts/geometry/edge_extractor.gd`](../../godot/scripts/geometry/edge_extractor.gd)
 
 ```gdscript
 const _EDGE_BY_SUFFIX: Dictionary = {
@@ -170,6 +172,8 @@ const _EDGE_BY_SUFFIX: Dictionary = {
     "SW": [Vector2i( 0, 1)],   ## baixo-esquerda
 }
 ```
+
+**Histórico:** Originalmente em `subcube_geometry.gd` (SLICE-01). Integrada ao `EdgeExtractor` na refatoração SLICE-02 (ver [`docs/history/`](../history/)).
 
 ---
 

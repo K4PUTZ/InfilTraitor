@@ -1,5 +1,5 @@
 ## Geometry Module — Coordinate constants and conversions
-## Port from subcube_coords.gd (SLICE-00 Canon confirmed)
+## Ported from legacy coordinate system; validated by SLICE-00 Transform Canon
 class_name GeometryCoords
 
 ## Voxel grid subdivisions per Gameplay Unit
@@ -25,7 +25,7 @@ const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 ## = (36 - 16) / 2
 ## = (0, 10)
 static func voxel_texture_origin() -> Vector2i:
-	return Vector2i(0, (VOXEL_ATOM_H - VOXEL_TILE_H) / 2)
+	return Vector2i(0, int((VOXEL_ATOM_H - VOXEL_TILE_H) / 2.0))
 
 
 ## Gameplay Unit cell → voxel grid origin (Canon 4)
@@ -38,7 +38,7 @@ static func gu_to_voxel_origin(gu: Vector2i) -> Vector2i:
 ## Voxel cell → parent Gameplay Unit (inverse of above)
 ## Returns the GU containing the given voxel cell
 static func voxel_to_gu(v: Vector2i) -> Vector2i:
-	return v / VOXELS_PER_UNIT_AXIS
+	return v / float(VOXELS_PER_UNIT_AXIS)
 
 
 ## Voxel cell → local offset within its Gameplay Unit

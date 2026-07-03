@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha SLICE-02 COMPLETE - $(date +%Y-%m-%d)"
+TAG="Alpha INT_DIVISION Fix - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

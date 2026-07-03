@@ -21,11 +21,11 @@
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/wall_NW.png" id="19_8ghwk"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/wall_SE.png" id="20_cgs8a"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/wall_SW.png" id="21_mov1f"]
-[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/subcubes/subcube_concrete.png" id="22_vji0s"]
-[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/subcubes/subcube_metal.png" id="23_ti3gm"]
+[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_concrete.png" id="22_vji0s"]
+[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_metal.png" id="23_ti3gm"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/block_SW.png" id="24_sla2l"]
-[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/subcubes/subcube_stone.png" id="25_tcof2"]
-[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/subcubes/subcube_wood.png" id="26_b1ao3"]
+[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_stone.png" id="25_tcof2"]
+[ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_wood.png" id="26_b1ao3"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/floor_NE.png" id="27_xi2cb"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/floor_NW.png" id="28_6xwt6"]
 [ext_resource type="Texture2D" path="res://ASSETS/ISOMETRIC/source_assets/generated/floor_SE.png" id="29_u5eby"]
@@ -203,18 +203,18 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_htwyp"]
 texture = ExtResource("22_vji0s")
-texture_region_size = Vector2i(64, 64)
+texture_region_size = Vector2i(32, 36)
 0:0/0 = 0
 0:0/0/texture_origin = Vector2i(0, -384)
-0:0/0/custom_data_0 = "subcube_concrete"
+0:0/0/custom_data_0 = "voxel_concrete"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8uhg3"]
 texture = ExtResource("23_ti3gm")
-texture_region_size = Vector2i(64, 64)
+texture_region_size = Vector2i(32, 36)
 0:0/0 = 0
 0:0/0/texture_origin = Vector2i(0, -384)
-0:0/0/custom_data_0 = "subcube_metal"
+0:0/0/custom_data_0 = "voxel_metal"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_iyjlr"]
@@ -227,18 +227,18 @@ texture_region_size = Vector2i(256, 512)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_bypmn"]
 texture = ExtResource("25_tcof2")
-texture_region_size = Vector2i(64, 64)
+texture_region_size = Vector2i(32, 36)
 0:0/0 = 0
 0:0/0/texture_origin = Vector2i(0, -384)
-0:0/0/custom_data_0 = "subcube_stone"
+0:0/0/custom_data_0 = "voxel_stone"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_bdelp"]
 texture = ExtResource("26_b1ao3")
-texture_region_size = Vector2i(64, 64)
+texture_region_size = Vector2i(32, 36)
 0:0/0 = 0
 0:0/0/texture_origin = Vector2i(0, -384)
-0:0/0/custom_data_0 = "subcube_wood"
+0:0/0/custom_data_0 = "voxel_wood"
 0:0/0/custom_data_1 = true
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_pdq88"]

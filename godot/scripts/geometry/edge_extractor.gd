@@ -1,5 +1,5 @@
 ## Geometry Module — Edge Extractor: converts compiled map to Edge objects
-## Port from subcube_geometry.gd build() logic
+## Ported from legacy geometry system; refined by SLICE-02 refactor (docs/history/)
 class_name EdgeExtractor
 
 ## Mapping from wall tile suffix to face direction (DIRECTION_GLOSSARY §6)

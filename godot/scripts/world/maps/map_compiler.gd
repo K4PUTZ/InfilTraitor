@@ -37,7 +37,7 @@ extends RefCounted
 
 const LevelGraphClass = preload("res://godot/scripts/world/level_graph.gd")
 const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd")
-## SubcubeGeometryClass removed in Stage B legacy purge (replaced by EdgeExtractor)
+## Legacy geometry computation integrated into EdgeExtractor (SLICE-02 refactor)
 
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
@@ -178,7 +178,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	var result: Dictionary = {
 		"size":             map_size,
-		"buffer":           buffer,                ## tile margin per edge; used by room.gd for subcube layer alignment
+		"buffer":           buffer,                ## tile margin per edge; used by room.gd for voxel layer alignment
 		"playable_rect":    Rect2i(offset, inner_size),   ## inner playable area in grid coords
 		"agent_start_cell": agent_start_raw,
 		"floor_tile_name":  String(spec.get("floor_tile", "floor_SE")),
@@ -192,8 +192,8 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"light_sources":    light_sources,
 		"exit_cells":       exit_cells,
 	}
-	## Subcube geometry computation removed in Stage B (replaced by EdgeExtractor)
-	## result["subcube_geometry"] = SubcubeGeometryClass.build(result)
+	## Voxel geometry integration via EdgeExtractor (see SLICE-02 refactor)
+	## Legacy direct computation replaced by edge-driven seam building
 	return result
 
 

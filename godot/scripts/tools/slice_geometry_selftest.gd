@@ -4,7 +4,7 @@ extends SceneTree
 ## Saída: "SLICE-00 SELFTEST: PASS" + exit 0, ou "...FAIL" + exit 1.
 
 func _initialize() -> void:
-	var SC = load("res://godot/scripts/world/subcube_coords.gd")
+	var SC = load("res://godot/scripts/geometry/geometry_coords.gd")
 	var failures: int = 0
 	var checked:  int = 0
 

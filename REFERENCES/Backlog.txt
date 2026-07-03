@@ -9,6 +9,7 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
+Sistema de VERSIONAMENTO
 
 
 Onomatpeias: dicionário de "sons" visiveis.

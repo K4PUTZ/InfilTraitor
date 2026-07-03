@@ -82,7 +82,7 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 
 ## Voxel render plane (VOXEL series): 1 storey = 8 voxel rows, each steps 20 px.
 ## 20 = 1.25 × VOXEL_TILE_SIZE.y (16). Must match generate_voxel.py SIDE_H.
-## Invariant: 8 × VOXEL_STEP_PX (160) == 4 × SUBCUBE_STEP_PX (160). ✓
+## Invariant: storey height (160 px) consistency across voxel stack rendering. ✓
 const VOXEL_STEP_PX: float = 20.0
 
 
@@ -554,7 +554,7 @@ func _ready() -> void:
 
 	## SLICE-02: Run alignment probe if debug flag is set
 	if debug_probe_voxel_alignment:
-		printerr("[DEBUG] _ready() complete, starting probe")
+		print_debug("[DEBUG] _ready() complete, starting probe")
 		_debug_probe_voxel_alignment()
 
 
@@ -665,7 +665,7 @@ func _toggle_voxel_ruler_overlay() -> void:
 
 	_voxel_ruler_overlay.visible_grid = not _voxel_ruler_overlay.visible_grid
 	_voxel_ruler_overlay.queue_redraw()
-	printerr("[DEBUG-02] Voxel ruler overlay: %s" % ("ON" if _voxel_ruler_overlay.visible_grid else "OFF"))
+	print_debug("[DEBUG-02] Voxel ruler overlay: %s" % ("ON" if _voxel_ruler_overlay.visible_grid else "OFF"))
 
 
 ## DEBUG-02: Toggle nudge mode (F4)
@@ -674,9 +674,9 @@ func _toggle_nudge_mode() -> void:
 
 	if _nudge_mode_active:
 		var msg := "NUDGE MODE ON — arrows: 1px, Shift+arrows: 8px, R: reset, F4: exit"
-		printerr("[DEBUG-02] %s" % msg)
+		print_debug("[DEBUG-02] %s" % msg)
 	else:
-		printerr("[DEBUG-02] Nudge mode OFF")
+		print_debug("[DEBUG-02] Nudge mode OFF")
 
 
 ## DEBUG-02: Apply nudge to voxel renderer
@@ -686,7 +686,7 @@ func _apply_nudge(delta: Vector2) -> void:
 	_voxel_renderer.apply_debug_nudge(delta)
 	# Get base TILE_OFFSET from VoxelRenderer to keep nudge print truthful
 	var base_offset := Vector2(112.0, 64.0)  # Must match VoxelRenderer.TILE_OFFSET
-	printerr("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
+	print_debug("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
 		_voxel_renderer.debug_nudge.x,
 		_voxel_renderer.debug_nudge.y,
 		base_offset.x + _voxel_renderer.debug_nudge.x,
@@ -700,7 +700,7 @@ func _reset_nudge() -> void:
 		return
 	var current := _voxel_renderer.debug_nudge
 	_voxel_renderer.apply_debug_nudge(-current)
-	printerr("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 64.0)")
+	print_debug("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 64.0)")
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -1715,10 +1715,10 @@ func _debug_probe_voxel_alignment() -> void:
 	if not debug_probe_voxel_alignment:
 		return
 	if _voxel_renderer == null or _voxel_renderer.get_layer(0) == null:
-		printerr("[SLICE-02 probe] ABORT: no voxel renderer or layer 0")
+		print_debug("[SLICE-02 probe] ABORT: no voxel renderer or layer 0")
 		return
 
-	printerr("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
+	print_debug("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
 
 	# Find a floor layer cell that exists
 	var floor_cell = Vector2i.ZERO
@@ -1757,10 +1757,10 @@ func _debug_probe_voxel_alignment() -> void:
 	var voxel_pos = voxel_adjusted + vlayer.position
 	var delta = voxel_pos - canon_pos
 
-	printerr("[SLICE-02 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
-	printerr("[SLICE-02 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
-	printerr("[SLICE-02 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
-	printerr("[SLICE-02 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
+	print_debug("[SLICE-02 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
+	print_debug("[SLICE-02 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
+	print_debug("[SLICE-02 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
+	print_debug("[SLICE-02 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
 
 	## I2: Check painted voxels for solid blocks
 	if _base_layout.is_empty():
@@ -1778,11 +1778,11 @@ func _debug_probe_voxel_alignment() -> void:
 			break
 
 	if not block_found:
-		printerr("[SLICE-02 probe] INFO: no block_* tile found for footprint check")
+		print_debug("[SLICE-02 probe] INFO: no block_* tile found for footprint check")
 		return
 
-	printerr("[SLICE-02 probe] === Block Footprint Check ===")
-	printerr("[SLICE-02 probe] block_cell (GU coords) = %s" % block_cell)
+	print_debug("[SLICE-02 probe] === Block Footprint Check ===")
+	print_debug("[SLICE-02 probe] block_cell (GU coords) = %s" % block_cell)
 
 	## Get expected voxel positions for this GU
 	var GeometryCoordinatesClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
@@ -1794,19 +1794,19 @@ func _debug_probe_voxel_alignment() -> void:
 		if vlayer.get_cell_source_id(vx) != -1:
 			painted_voxels.append(vx)
 
-	printerr("[SLICE-02 probe] expected voxel count = %d" % expected_voxels.size())
-	printerr("[SLICE-02 probe] painted voxel count = %d" % painted_voxels.size())
+	print_debug("[SLICE-02 probe] expected voxel count = %d" % expected_voxels.size())
+	print_debug("[SLICE-02 probe] painted voxel count = %d" % painted_voxels.size())
 
 	if painted_voxels.size() == expected_voxels.size():
-		printerr("[SLICE-02 probe] result = MATCH (all expected voxels painted)")
+		print_debug("[SLICE-02 probe] result = MATCH (all expected voxels painted)")
 	else:
-		printerr("[SLICE-02 probe] result = MISMATCH")
+		print_debug("[SLICE-02 probe] result = MISMATCH")
 		var missing: Array[Vector2i] = []
 		for ev in expected_voxels:
 			if not painted_voxels.has(ev):
 				missing.append(ev)
 		if missing.size() > 0:
-			printerr("[SLICE-02 probe] missing voxels: %s" % missing)
+			print_debug("[SLICE-02 probe] missing voxels: %s" % missing)
 
 
 func _tic_voxel_system() -> void:
@@ -1830,9 +1830,9 @@ func _build_room(layout: Dictionary) -> void:
 		for y in range(0, _room_size.y):
 			_place(Vector2i(x, y), floor_tile_name)
 
-	## Subcube render plane: wall/block descriptors become stacked subcube presence.
-	## The old wall-storey layers remain as a fallback path, but the active render
-	## now comes from the seam's subcube geometry.
+## Voxel render plane: wall/block descriptors become stacked voxel presence.
+		## The old wall-storey layers remain as a fallback path, but the active render
+		## now comes from the edge seam's voxel geometry integration.
 	
 	## SLICE-02: New geometry module integration — edges → slices → voxels
 	var extraction: Dictionary = EdgeExtractor.extract(layout)

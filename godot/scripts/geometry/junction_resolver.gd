@@ -93,8 +93,8 @@ static func _get_corner_gus(vertex: Vector2i) -> Array:
 	# Find which GUs touch this vertex
 	var voxel_x := vertex.x
 
-	var gu_x := voxel_x / 8
-	var gu_y := vertex.y / 8
+	var gu_x := int(voxel_x / 8.0)
+	var gu_y := int(vertex.y / 8.0)
 	
 	# The 4 GUs are: TL, TR, BR, BL
 	var gus: Array = [

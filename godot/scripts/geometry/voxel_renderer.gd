@@ -139,13 +139,20 @@ func _render_slice(slice: Slice) -> void:
 func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	_ensure_voxel_layers(column.storey_count)
 
-	# Render a 2×2 block of voxels for better visibility, centered at corner
-	# This makes the column more prominent without breaking the geometry
+	# Render a cross pattern (+ shape) around the corner voxel for visibility
+	# Center: corner voxel; arms: ±1 in each direction
+	var corner := column.voxel_pos
+	var cross_pattern: Array[Vector2i] = [
+		corner,                                  # center
+		Vector2i(corner.x - 1, corner.y),       # left
+		Vector2i(corner.x + 1, corner.y),       # right
+		Vector2i(corner.x, corner.y - 1),       # up
+		Vector2i(corner.x, corner.y + 1),       # down
+	]
+
 	for level in range(column.storey_count):
-		for dx in range(2):
-			for dy in range(2):
-				var voxel_pos := Vector2i(column.voxel_pos.x + dx, column.voxel_pos.y + dy)
-				_set_voxel_cell(voxel_pos, level, "concrete")
+		for voxel_pos in cross_pattern:
+			_set_voxel_cell(voxel_pos, level, "concrete")
 
 
 ## Set a voxel cell on the appropriate layer

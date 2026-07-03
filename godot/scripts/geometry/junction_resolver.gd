@@ -123,21 +123,17 @@ static func _count_edges_covering_corner(corner_gu: Vector2i, edges: Array, vert
 ## Check if an edge covers a corner GU at the given vertex
 static func _edge_covers_corner(edge: Edge, corner_gu: Vector2i, vertex: Vector2i) -> bool:
 	# An edge covers a corner if:
-	# 1. One end of the edge is adjacent to corner_gu
-	# 2. The edge's vertex matches the given vertex
-	
-	# Simplified: check if either gu_a or gu_b is adjacent to corner_gu
-	# and the edge's voxel vertices include the given vertex
-	
+	# 1. The edge's vertex matches the given vertex
+	# 2. corner_gu is exactly one of the edge's two owning cells (gu_a/gu_b) —
+	#    an edge only ever touches those two GUs, never a third one nearby.
+	#    A distance-based check here over-counts: it also matches GUs the
+	#    edge doesn't actually border, which masks real V-junctions by
+	#    inflating edge_count above 1.
 	var edge_verts := _get_edge_vertices(edge)
 	if vertex not in edge_verts:
 		return false
-	
-	# Also check that one GU is actually adjacent to the corner
-	if (edge.gu_a.distance_to(corner_gu) <= 2 or edge.gu_b.distance_to(corner_gu) <= 2):
-		return true
-	
-	return false
+
+	return corner_gu == edge.gu_a or corner_gu == edge.gu_b
 
 
 ## Get max storey count from edge array

@@ -10,7 +10,15 @@ static func generate(edges: Array, registry: EdgeRegistry) -> void:
 		if not (edge is Edge):
 			push_error("SliceGenerator.generate: non-Edge object in edges array")
 			continue
-		
+
+		# Register the edge itself. Without this, EdgeRegistry.all_edges()
+		# stays empty forever — JunctionResolver.resolve() iterates it to
+		# find V-junctions, so a missing register_edge() here silently
+		# produces zero corner columns regardless of how correct the
+		# junction math is. register_edge() was defined but never called
+		# anywhere in the codebase before this fix.
+		registry.register_edge(edge)
+
 		# Create slice A (on gu_a, face_a)
 		var slice_a := _create_slice(edge, true, registry)
 		if slice_a:

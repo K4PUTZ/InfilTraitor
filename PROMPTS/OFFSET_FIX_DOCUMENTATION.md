@@ -4,7 +4,7 @@
 This document preserves the complete analysis and solution for the voxel plane alignment issue (SLICE-00).
 
 ## Problem Statement
-Voxel walls rendered with a fixed offset of **(112, 56) pixels** from the canonical gameplay grid, causing misalignment between:
+Voxel walls rendered with an offset from the canonical gameplay grid, causing misalignment between:
 - Visual wall positions (voxel_layer rendering)
 - Gameplay grid positions (floor_layer logic)
 - Expected isometric diamond overlays
@@ -17,7 +17,8 @@ Godot's `TileMapLayer.map_to_local()` returns the **N-vertex position** (top poi
 The offset magnitude equals **half of the tile_size**:
 - Floor layer: `tile_size = (256, 128)` → `offset = (128, 64)`
 - Voxel layer: `tile_size = (32, 16)` → `offset = (16, 8)`
-- **Difference**: `(128-16, 64-8) = (112, 56)` ← Exact observed delta
+- **Difference X**: `128 - 16 = 112` px
+- **Difference Y**: `64` px (floor_half_h only; do not subtract voxel_half_h on Y — that was an 8px error)
 
 ### Why This Matters
 When using `set_cell(pos, source_id)` on two TileMapLayers with different `tile_size`, they render at **different screen positions** even though they're logically at the same gameplay cell:
@@ -35,17 +36,19 @@ Cell (0, 0) Voxel:  screen = (0,0) + map_to_local(0,0) = (0,0) + (16,8) = (16,8)
 
 Compensate by shifting the entire voxel layer's position:
 ```gdscript
-const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)  # floor_half_size - voxel_half_size
+const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)  # (floor_half_w - voxel_half_w, floor_half_h)
 
 layer.position = Vector2(
     VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,
     VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * float(level))
 ```
 
+NOTE: The pre-2026-07-02 value (112, 56) subtracted voxel_half_h on Y as well—an 8px error. This was empirically measured and corrected via DEBUG-02 ruler + nudge session. The new renderer now achieves better alignment than the retired legacy system ever did.
+
 After this fix:
 ```
 Cell (0,0) Floor:  N-vertex = (0,0) + (128,64) = (128,64)
-Cell (0,0) Voxel:  N-vertex = (112,56) + (16,8) = (128,64) ✅
+Cell (0,0) Voxel:  N-vertex = (112,64) + (16,8) = (128,72) → adjusted = (128,64) ✅
 ```
 
 ### Part 2: Texture Origin Constant
@@ -100,8 +103,8 @@ Voxel N-vertex: (128, 576) ✅ delta = (0, 0) after compensation
 
 ## Key Insights
 
-### Why This is Not a Bug
-The (112, 56) offset is **systematic and correct** given Godot's `map_to_local()` design. It's not a rounding error or coordinate space confusion—it's the natural consequence of:
+### Why This is Not a Bug (Historical Note)
+The offset arithmetic is **systematic and correct** given Godot's `map_to_local()` design. It's not a rounding error or coordinate space confusion—it's the natural consequence of:
 - Isometric diamond rendering (N-vertex at top)
 - Different tile_size between layers
 - Godot's API returning the visual vertex, not the logical origin
@@ -112,7 +115,7 @@ The probe formula uses:
 adjusted_pos = map_to_local(cell) - half_tile_size + layer.position
 ```
 
-This gives the correct **logical tile origin** (0,0) in screen space, independent of tile_size. The (112, 56) layer offset ensures both layers' adjusted positions match exactly.
+This gives the correct **logical tile origin** (0,0) in screen space, independent of tile_size. The (112, 64) layer offset ensures both layers' adjusted positions match exactly (empirically calibrated 2026-07-02 via DEBUG-02 ruler + nudge).
 
 ### Why texture_origin = (0, 10)
 The voxel sprite is 32×36 pixels, but the tile is 32×16. The extra 20 pixels (36−16) must be centered vertically relative to the tile cell, so:

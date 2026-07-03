@@ -730,11 +730,13 @@ func _apply_nudge(delta: Vector2) -> void:
 	if _voxel_renderer == null:
 		return
 	_voxel_renderer.apply_debug_nudge(delta)
+	# Get base TILE_OFFSET from VoxelRenderer to keep nudge print truthful
+	var base_offset := Vector2(112.0, 64.0)  # Must match VoxelRenderer.TILE_OFFSET
 	printerr("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
 		_voxel_renderer.debug_nudge.x,
 		_voxel_renderer.debug_nudge.y,
-		112.0 + _voxel_renderer.debug_nudge.x,
-		56.0 + _voxel_renderer.debug_nudge.y
+		base_offset.x + _voxel_renderer.debug_nudge.x,
+		base_offset.y + _voxel_renderer.debug_nudge.y
 	])
 
 
@@ -744,7 +746,7 @@ func _reset_nudge() -> void:
 		return
 	var current := _voxel_renderer.debug_nudge
 	_voxel_renderer.apply_debug_nudge(-current)
-	printerr("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 56.0)")
+	printerr("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 64.0)")
 
 
 func _center_camera(focus_cell: Vector2i) -> void:

@@ -190,8 +190,12 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 		layer.name = "voxel_layer_%d" % level
 		
 		# E1 equation from Transform Canon (SLICE-00)
-		# TILE_OFFSET compensates for floor (256×128) vs voxel (32×16) tile_size ratio
-		const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)
+		# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):
+		# TILE_OFFSET = (floor_half_w − voxel_half_w, floor_half_h) = (128−16, 64) = (112, 64).
+		# NOTE: the pre-2026-07-02 value (112, 56) subtracted voxel_half_h on Y as well —
+		# an 8px error, empirically measured and corrected via DEBUG-02 ruler + nudge session
+		# (residual now zero). Do not "restore symmetry" to (112, 56); the asymmetry is correct.
+		const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
 		layer.position = Vector2(
 			_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
 			_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(level)

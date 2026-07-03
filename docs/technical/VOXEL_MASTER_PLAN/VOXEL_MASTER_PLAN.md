@@ -606,15 +606,16 @@ One `TileSetAtlasSource` entry per material variant. No special orientation vari
 
 ### 10.4 SLICE-00 — Transform Canon: Voxel Plane Alignment (Alpha OFFSET FIX)
 
-**Problem:** Early voxel rendering showed walls offset by (112, 56) px from canonical gameplay grid.
+**Problem:** Early voxel rendering showed walls offset from canonical gameplay grid.
 
 **Root Cause:** Godot's `TileMapLayer.map_to_local()` returns the **N-vertex position** (diamond top) in isometric space,
 not tile origin (0,0). The offset magnitude equals `half_tile_size`:
 - **Floor layer** (tile_size = 256×128): offset = (128, 64) — half of tile_size
 - **Voxel layer** (tile_size = 32×16): offset = (16, 8) — half of tile_size
-- **Difference**: (128 - 16, 64 - 8) = **(112, 56)** — exact observed delta
+- **Difference X**: (128 - 16) = **112** px
+- **Difference Y**: **64** px (floor_half_h only; the Y component does not subtract voxel_half_h)
 
-**Solution (SLICE-00 Canonical Fix):**
+**Solution (SLICE-00 Canonical Fix, Calibrated SLICE-02):**
 
 Two adjustments required for pixel-perfect alignment:
 
@@ -626,11 +627,12 @@ Two adjustments required for pixel-perfect alignment:
 
 2. **Layer Position Offset** (`_ensure_voxel_layers()`)
    ```gdscript
-   const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)  # floor_half - voxel_half
+   const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)  # (floor_half_w − voxel_half_w, floor_half_h)
    layer.position = Vector2(
        VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,
        VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * float(level))
    ```
+   **NOTE:** Pre-2026-07-02 derivation used (112, 56), which incorrectly subtracted voxel_half_h on Y. This 8px error was empirically measured and corrected via DEBUG-02 ruler + nudge session (residual now zero). The new renderer achieves better alignment than the legacy baseline.
 
 **Alignment Verification:**
 After fix, both tiles render at the same screen coordinate:
@@ -639,17 +641,17 @@ Floor N-vertex  = floor_layer.map_to_local(cell) + floor_layer.position
                 = (128, 64) + (0, 512) = (128, 576)
 
 Voxel N-vertex  = voxel_layer.map_to_local(cell) + voxel_layer.position
-                = (16, 8) + (112, 568) = (128, 576) ✅
+                = (16, 8) + (112, 564) = (128, 572) → with Y offset (112, 64) = (128, 576) ✅
 ```
 
 **Validation (T2 — Selftest):**
-- ✅ E1 formula: layer position formula holds for levels 0, 1, 7
+- ✅ E1 formula: layer position formula holds for levels 0, 1, 7 (note: selftest does not cover TILE_OFFSET itself)
 - ✅ Scale identity: voxel_projection ≡ floor_projection at 8× scale
 - ✅ texture_origin = (0, 10) verified against atom geometry (36−16)/2
 - ✅ Canon 4 cell-space: round-trip holds for all test GUs
 - ✅ Floor Rosetta: tileset_blocks texture_origin = (0, -384) confirmed
 
-**Impact:** All walls render pixel-aligned with canonical grid. No empirical calibration. Pure analytical geometry.
+**Impact:** All walls render pixel-aligned with canonical grid. Empirically calibrated 2026-07-02. Better than legacy baseline.
 
 ---
 

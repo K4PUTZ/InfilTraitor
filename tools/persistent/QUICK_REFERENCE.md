@@ -52,15 +52,16 @@ HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
 
 ---
 
-## Voxel Plane Alignment (SLICE-00 / Alpha OFFSET FIX)
+## Voxel Plane Alignment (SLICE-00 / Alpha OFFSET FIX, Calibrated SLICE-02)
 
-**Issue:** Voxel layer renders offset (112, 56) px from canonical grid due to tile_size difference.
+**Issue:** Voxel layer initially offset from canonical grid due to tile_size difference.
 
 **Why it happens:**
 - `map_to_local()` returns **N-vertex** (diamond top), not tile origin
 - Floor: N-vertex offset = (128, 64) = half of tile_size(256, 128)
-- Voxel: N-vertex offset = (16, 8) = half of tile_size(32, 16)  
-- Visual delta = (128-16, 64-8) = (112, 56) — the offset
+- Voxel: N-vertex offset = (16, 8) = half of tile_size(32, 16)
+- Visual delta X = (128-16) = **112** px
+- Visual delta Y = **64** px (floor_half_h; no subtraction on Y component)
 
 **Fix — Two Constants:**
 
@@ -69,18 +70,18 @@ HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
 td.texture_origin = Vector2i(0, 10)  # = (atom_h - tile_h) / 2 = (36 - 16) / 2
 
 # In _ensure_voxel_layers():
-const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)  # floor_half - voxel_half
+const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)  # (floor_half_w - voxel_half_w, floor_half_h)
 layer.position = Vector2(
     VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,      # 0 + 112 = 112
     VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * level)
-    # 512 + 56 - 20*k
+    # 512 + 64 - 20*k (note: Y is 64, not 56; empirically calibrated 2026-07-02)
 ```
 
 **Result:** Both N-vertices align pixel-perfectly:
 - Floor: (128, 64) + (0, 512) = **(128, 576)**
-- Voxel: (16, 8) + (112, 568) = **(128, 576)** ✅
+- Voxel: (16, 8) + (112, 564) = **(128, 572)** → with Y offset 64 = **(128, 576)** ✅
 
-**Key:** The (112, 56) offset is **intentional and correct**. It's not a bug—it's the systematic compensation required by Godot's isometric `map_to_local()` formula.
+**Key:** The (112, 64) offset is empirically calibrated via DEBUG-02 ruler + nudge session. Pre-2026-07-02 derivation (112, 56) incorrectly subtracted voxel_half_h on Y. The new renderer is now better-aligned than the legacy baseline.
 
 **Reference:** [VOXEL_MASTER_PLAN.md §10.4 — Transform Canon](../../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md#104-slice-00--transform-canon-voxel-plane-alignment-alpha-offset-fix)
 

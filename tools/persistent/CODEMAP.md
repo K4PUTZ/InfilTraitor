@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**81 scripts · 13856 lines total** (under `godot/scripts/`)
+**82 scripts · 14048 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
-- **debug/** — map_loader_panel.gd
+- **debug/** — map_loader_panel.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
@@ -377,6 +377,29 @@ extends `ConfirmationDialog` · 75 lines
 
 ---
 
+### `voxel_ruler_overlay.gd`
+
+`class_name VoxelRulerOverlay` · extends `Node2D` · 104 lines
+
+`godot/scripts/debug/voxel_ruler_overlay.gd`
+
+**Constants / tuning**
+- `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
+- `FLOOR_TILE_SIZE` = `Vector2i(256, 128)`
+- `VOXELS_PER_AXIS` = `8`
+- `VOXEL_LINE_COLOR` = `Color(0.0, 1.0, 1.0, 0.25)`
+- `GU_LINE_COLOR` = `Color(0.0, 1.0, 1.0, 0.5)`
+- `VOXEL_LINE_WIDTH` = `0.5`
+- `GU_LINE_WIDTH` = `1.0`
+
+**Public vars**
+- `var visible_grid: bool = false`
+
+**Public API**
+- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2, room_size: Vector2i) -> void:`
+
+---
+
 ## geometry/
 
 ### `edge.gd`
@@ -575,7 +598,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 206 lines
+`class_name VoxelRenderer` · extends `Node2D` · 217 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -586,9 +609,13 @@ extends `ConfirmationDialog` · 75 lines
 - `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 
+**Public vars**
+- `var debug_nudge: Vector2 = Vector2.ZERO`
+
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func get_layer(level: int) -> TileMapLayer:`
+- `func apply_debug_nudge(delta: Vector2) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
 
 ---
@@ -1642,7 +1669,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3063 lines
+extends `Node2D` · 3140 lines
 
 `godot/scripts/world/room.gd`
 

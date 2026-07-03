@@ -25,6 +25,9 @@ var _tileset: TileSet
 ## Visual grid offset (isometric screen space)
 var _visual_grid_offset: Vector2
 
+## DEBUG-02: Accumulated nudge offset (pixels). Applied to all layers for real-time measurement.
+var debug_nudge: Vector2 = Vector2.ZERO
+
 
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
@@ -38,6 +41,14 @@ func get_layer(level: int) -> TileMapLayer:
 	if level < 0 or level >= _voxel_layers.size():
 		return null
 	return _voxel_layers[level]
+
+
+## DEBUG-02: Apply real-time positional offset to all voxel layers.
+## Accumulates nudges and shifts existing layers; new layers inherit the offset.
+func apply_debug_nudge(delta: Vector2) -> void:
+	debug_nudge += delta
+	for layer in _voxel_layers:
+		layer.position += delta
 
 
 ## Build runtime TileSet with 4 materials
@@ -182,8 +193,8 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 		# TILE_OFFSET compensates for floor (256×128) vs voxel (32×16) tile_size ratio
 		const TILE_OFFSET: Vector2 = Vector2(112.0, 56.0)
 		layer.position = Vector2(
-			_visual_grid_offset.x + TILE_OFFSET.x,
-			_visual_grid_offset.y + TILE_OFFSET.y - GeometryCoords.VOXEL_STEP_PX * float(level)
+			_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
+			_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(level)
 		)
 		
 		# Set rendering parameters

@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha Load Maps - $(date +%Y-%m-%d)"
+TAG="Alpha Voxel Nudge Mode - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

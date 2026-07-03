@@ -196,6 +196,10 @@ const ACTOR_END_HOLD_DELAY := 0.5
 
 var _actor_end_pause_active: bool = false
 
+## DEBUG-02: Voxel ruler overlay and nudge mode
+var _voxel_ruler_overlay: Node2D = null
+var _nudge_mode_active: bool = false
+
 const _PERSPECTIVE_SUFFIX_MAP := {
 	"N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"},
 	"E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"},
@@ -694,6 +698,53 @@ func _create_map_loader_button() -> void:
 	btn_map.custom_minimum_size = Vector2(40.0, 32.0)
 	btn_map.pressed.connect(_toggle_map_loader_panel)
 	toolbar_row.add_child(btn_map)
+
+
+## DEBUG-02: Toggle voxel ruler grid overlay (F3)
+func _toggle_voxel_ruler_overlay() -> void:
+	if _voxel_ruler_overlay == null:
+		var VoxelRulerClass = preload("res://godot/scripts/debug/voxel_ruler_overlay.gd")
+		_voxel_ruler_overlay = Node2D.new()
+		_voxel_ruler_overlay.set_script(VoxelRulerClass)
+		add_child(_voxel_ruler_overlay)
+		_voxel_ruler_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+
+	_voxel_ruler_overlay.visible_grid = not _voxel_ruler_overlay.visible_grid
+	_voxel_ruler_overlay.queue_redraw()
+	printerr("[DEBUG-02] Voxel ruler overlay: %s" % ("ON" if _voxel_ruler_overlay.visible_grid else "OFF"))
+
+
+## DEBUG-02: Toggle nudge mode (F4)
+func _toggle_nudge_mode() -> void:
+	_nudge_mode_active = not _nudge_mode_active
+
+	if _nudge_mode_active:
+		var msg := "NUDGE MODE ON — arrows: 1px, Shift+arrows: 8px, R: reset, F4: exit"
+		printerr("[DEBUG-02] %s" % msg)
+	else:
+		printerr("[DEBUG-02] Nudge mode OFF")
+
+
+## DEBUG-02: Apply nudge to voxel renderer
+func _apply_nudge(delta: Vector2) -> void:
+	if _voxel_renderer == null:
+		return
+	_voxel_renderer.apply_debug_nudge(delta)
+	printerr("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
+		_voxel_renderer.debug_nudge.x,
+		_voxel_renderer.debug_nudge.y,
+		112.0 + _voxel_renderer.debug_nudge.x,
+		56.0 + _voxel_renderer.debug_nudge.y
+	])
+
+
+## DEBUG-02: Reset nudge to zero
+func _reset_nudge() -> void:
+	if _voxel_renderer == null:
+		return
+	var current := _voxel_renderer.debug_nudge
+	_voxel_renderer.apply_debug_nudge(-current)
+	printerr("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 56.0)")
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -2883,6 +2934,12 @@ func _input(event: InputEvent) -> void:
 				KEY_F2:
 					_toggle_map_loader_panel()
 					return
+				KEY_F3:
+					_toggle_voxel_ruler_overlay()
+					return
+				KEY_F4:
+					_toggle_nudge_mode()
+					return
 				KEY_Z:
 					## Z lowers: STANDING -> CROUCHING -> PRONE
 					var next_z := agent.posture
@@ -2924,23 +2981,43 @@ func _input(event: InputEvent) -> void:
 				KEY_P:
 					_peek_pending = true
 					return
+				KEY_R:
+					if _nudge_mode_active:
+						_reset_nudge()
+						return
 				KEY_UP:
-					if _peek_pending: 
+					if _nudge_mode_active:
+						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
+						_apply_nudge(Vector2(0, -step))
+						return
+					if _peek_pending:
 						_try_peek(Vector2i.UP)
 						_peek_pending = false
 						return
 				KEY_DOWN:
-					if _peek_pending: 
+					if _nudge_mode_active:
+						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
+						_apply_nudge(Vector2(0, step))
+						return
+					if _peek_pending:
 						_try_peek(Vector2i.DOWN)
 						_peek_pending = false
 						return
 				KEY_LEFT:
-					if _peek_pending: 
+					if _nudge_mode_active:
+						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
+						_apply_nudge(Vector2(-step, 0))
+						return
+					if _peek_pending:
 						_try_peek(Vector2i.LEFT)
 						_peek_pending = false
 						return
 				KEY_RIGHT:
-					if _peek_pending: 
+					if _nudge_mode_active:
+						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
+						_apply_nudge(Vector2(step, 0))
+						return
+					if _peek_pending:
 						_try_peek(Vector2i.RIGHT)
 						_peek_pending = false
 						return

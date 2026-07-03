@@ -1,196 +1,86 @@
-## Geometry Module — Junction Resolver: fills V-junction corner columns
-## Port from room.gd _build_voxel_junction_extras() logic
+## Geometry Module — Junction Resolver: fills V-junction corner columns.
+## Rewritten (JUNCTION-02): the previous version reconstructed GU cells from
+## voxel-index vertex coordinates and divided them back down by 8. That broke
+## whenever a vertex used the "+7" near-edge offset (true for one axis of
+## almost every vertex _get_edge_vertices produced) instead of a clean
+## multiple of 8 — integer division silently floored into the wrong bucket,
+## so the resolver picked a cell adjacent to the elbow instead of the true
+## diagonal notch. This version never touches voxel coordinates for the
+## detection step: it stays in GU-cell space the whole time, using the faces
+## already recorded on each Edge.
+## Scope: pure V-junctions only (exactly 2 walls meeting at one cell). T/X
+## junctions (3–4 walls at a cell) are intentionally skipped — see JUNCTION-01b.
 class_name JunctionResolver
 
 
-## Container for a corner column at a V-junction
+## Container for a corner column at a V-junction.
 class JunctionColumn:
-	var gu_cell: Vector2i         ## the corner GU that owns this column
+	var gu_cell: Vector2i         ## the diagonal GU that owns this column (outside the elbow)
 	var voxel_pos: Vector2i       ## the voxel position of the column
-	var storey_count: int         ## height (max adjacent edge storey)
+	var storey_count: int         ## height (max of the two adjacent edges' storey_count)
 	var voxels: Array[Voxel]      ## the voxel objects
-	
+
 	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int):
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
 		voxels = []
-	
+
 	func _to_string() -> String:
 		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d}" % [gu_cell, voxel_pos, storey_count]
 
 
-## Resolve V-junctions from a registry of edges
-## Returns array of JunctionColumn objects
+## Resolve V-junctions from a registry of edges.
+## Returns an Array of JunctionColumn objects, one per detected elbow.
 static func resolve(registry: EdgeRegistry) -> Array:
 	var result: Array = []
-	
-	# Collect all touched vertices and their adjacent edges
-	var vertices_to_edges: Dictionary = {}  # Vector2i (voxel vertex) → Array[Edge]
-	
+	var cells_seen: Dictionary = {}  ## Vector2i -> true; each edge touches 2 cells, visit each once
+
 	for edge in registry.all_edges():
-		var verts := _get_edge_vertices(edge)
-		for vertex in verts:
-			if vertex not in vertices_to_edges:
-				vertices_to_edges[vertex] = []
-			vertices_to_edges[vertex].append(edge)
-	
-	# For each vertex, check its 4 diagonal GU corners
-	for vertex: Vector2i in vertices_to_edges.keys():
-		var touching_edges: Array = vertices_to_edges[vertex]
+		for gu in [edge.gu_a, edge.gu_b]:
+			if cells_seen.has(gu):
+				continue
+			cells_seen[gu] = true
 
-		# V-junction filter: only process vertices with exactly 2 edges at 90°
-		# (not 1 edge for wall endpoints, not 3 or 4 for T or X junctions)
-		if touching_edges.size() != 2:
-			continue
-		if not _is_perpendicular_junction(touching_edges):
-			continue
+			## Which faces of THIS cell have a wall, and which Edge put it there.
+			var faces_at_cell: Dictionary = {}  ## face(int) -> Edge
+			for e in registry.edges_touching_gu(gu):
+				var face_here: int = e.face_a if e.gu_a == gu else e.face_b
+				faces_at_cell[face_here] = e
 
-		# Get the 4 GU cells at corners of this vertex
-		var corner_gus := _get_corner_gus(vertex)
+			## Pure V-junction only: exactly 2 walls at this cell. 1 wall =
+			## plain wall segment, nothing to close. 3–4 walls = T/X, out
+			## of scope here (see class doc comment).
+			if faces_at_cell.size() != 2:
+				continue
 
-		for corner_gu in corner_gus:
-			# Check if this corner is uncovered (missing one of its two covering edges)
-			var edge_count := _count_edges_covering_corner(corner_gu, touching_edges, vertex)
+			var faces: Array = faces_at_cell.keys()
+			var fa: int = faces[0]
+			var fb: int = faces[1]
 
-			if edge_count == 0:
-				# V-junction: no edges cover this corner (the notch to fill)
-				# Add a column with max adjacent storey count
-				var max_storey := _max_storey_of_edges(touching_edges)
-				var voxel_pos := _corner_gu_to_voxel(corner_gu, vertex)
+			## Opposite faces (NW-SE or NE-SW) = a straight wall passing
+			## through the cell, not a turn. No column needed.
+			if fb == Face.opposite(fa):
+				continue
 
-				var column := JunctionColumn.new(corner_gu, voxel_pos, max_storey)
-				result.append(column)
-	
+			var edge_a: Edge = faces_at_cell[fa]
+			var edge_b: Edge = faces_at_cell[fb]
+
+			## fa, fb adjacent and non-opposite → their deltas sum to a
+			## clean (±1, ±1): the cell diagonal to the elbow, outside both
+			## walls — the visual notch that needs the filler column.
+			var d: Vector2i = Face.delta(fa) + Face.delta(fb)
+			var diagonal_cell: Vector2i = gu + d
+			var max_storey: int = maxi(edge_a.storey_count, edge_b.storey_count)
+
+			## The one voxel inside diagonal_cell nearest the elbow — the
+			## corner of its 8×8 block that actually touches `gu`.
+			var origin := GeometryCoords.gu_to_voxel_origin(diagonal_cell)
+			var last := GeometryCoords.VOXELS_PER_UNIT_AXIS - 1
+			var local_x := last if d.x < 0 else 0
+			var local_y := last if d.y < 0 else 0
+			var voxel_pos := origin + Vector2i(local_x, local_y)
+
+			result.append(JunctionColumn.new(diagonal_cell, voxel_pos, max_storey))
+
 	return result
-
-
-## Get the 4 voxel vertices touched by an edge
-static func _get_edge_vertices(edge: Edge) -> Array:
-	# The voxel vertices are derived from the GU vertices
-	# Each GU cell corresponds to an 8×8 voxel region
-	var vertices: Array = []
-	
-	var v_a := edge.gu_a * 8
-	var v_b := edge.gu_b * 8
-	
-	# The edge connects two cells, creating 2 voxel vertices
-	match edge.face_a:
-		Face.SE:
-			# SE: right edge of gu_a
-			# Vertices: bottom-right of gu_a and bottom-left of gu_b
-			vertices = [
-				Vector2i(v_a.x + 7, v_a.y + 7),  # SE corner of gu_a
-				Vector2i(v_b.x, v_b.y + 7)       # SW corner of gu_b
-			]
-		Face.SW:
-			# SW: bottom edge of gu_a
-			# Vertices: bottom-left of gu_a and top-left of gu_b
-			vertices = [
-				Vector2i(v_a.x, v_a.y + 7),      # SW corner of gu_a
-				Vector2i(v_b.x, v_b.y)           # NW corner of gu_b
-			]
-	
-	return vertices
-
-
-## Get 4 GU cells at corners of a voxel vertex
-## The vertex is surrounded by 4 GUs in an X pattern
-static func _get_corner_gus(vertex: Vector2i) -> Array:
-	# Find which GUs touch this vertex
-	var voxel_x := vertex.x
-
-	var gu_x := int(voxel_x / 8.0)
-	var gu_y := int(vertex.y / 8.0)
-	
-	# The 4 GUs are: TL, TR, BR, BL
-	var gus: Array = [
-		Vector2i(gu_x - 1, gu_y - 1),  # Top-left
-		Vector2i(gu_x, gu_y - 1),      # Top-right
-		Vector2i(gu_x, gu_y),          # Bottom-right
-		Vector2i(gu_x - 1, gu_y),      # Bottom-left
-	]
-	
-	return gus
-
-
-## Check how many edges from the list cover a corner GU
-## An edge covers a corner if it touches one of the corner's two required edges
-static func _count_edges_covering_corner(corner_gu: Vector2i, edges: Array, vertex: Vector2i) -> int:
-	var count := 0
-	
-	for edge in edges:
-		if _edge_covers_corner(edge, corner_gu, vertex):
-			count += 1
-	
-	return count
-
-
-## Check if an edge covers a corner GU at the given vertex
-static func _edge_covers_corner(edge: Edge, corner_gu: Vector2i, vertex: Vector2i) -> bool:
-	# An edge covers a corner if:
-	# 1. The edge's vertex matches the given vertex
-	# 2. corner_gu is exactly one of the edge's two owning cells (gu_a/gu_b) —
-	#    an edge only ever touches those two GUs, never a third one nearby.
-	#    A distance-based check here over-counts: it also matches GUs the
-	#    edge doesn't actually border, which masks real V-junctions by
-	#    inflating edge_count above 1.
-	var edge_verts := _get_edge_vertices(edge)
-	if vertex not in edge_verts:
-		return false
-
-	return corner_gu == edge.gu_a or corner_gu == edge.gu_b
-
-
-## Check if two edges form a 90° perpendicular junction (not parallel)
-static func _is_perpendicular_junction(edges: Array) -> bool:
-	if edges.size() != 2:
-		return false
-	var edge_a = edges[0] as Edge
-	var edge_b = edges[1] as Edge
-	if not edge_a or not edge_b:
-		return false
-
-	# Two edges are perpendicular if they have different faces
-	# (SE/SW, SE/NW, etc. — not SE/SE or SW/SW)
-	# SE = 2, SW = 3, NW = 0, NE = 1 (Face enum)
-	var faces_a := [edge_a.face_a, edge_a.face_b]
-	var faces_b := [edge_b.face_a, edge_b.face_b]
-
-	# For perpendicularity, edges must not share any face
-	# (SE+SW = perpendicular, SE+NW = perpendicular, but SE+SE = parallel)
-	for fa in faces_a:
-		for fb in faces_b:
-			if fa == fb:
-				return false  # Same face = parallel, not perpendicular
-
-	return true
-
-
-## Get max storey count from edge array
-static func _max_storey_of_edges(edges: Array) -> int:
-	var max_storey := 0
-	for edge in edges:
-		if edge is Edge:
-			max_storey = max(max_storey, edge.storey_count)
-	return max_storey
-
-
-## Convert corner GU and vertex to voxel position
-## This is the exact voxel cell at that corner
-static func _corner_gu_to_voxel(corner_gu: Vector2i, vertex: Vector2i) -> Vector2i:
-	# The vertex defines which corner of the GU we're in.
-	# A GU corner is at coordinates (gu_x * 8, gu_y * 8) to (gu_x * 8 + 8, gu_y * 8 + 8).
-	# The voxel at that corner is the one closest to the vertex within the GU.
-	#
-	# Voxel grid: each GU contains voxels [origin, origin+7] in both axes.
-	# For a given vertex, determine if it's at the "leading" (7) or "trailing" (0) edge.
-	var origin := GeometryCoords.gu_to_voxel_origin(corner_gu)
-	var end_x: int = origin.x + 7  # GU spans [origin.x, origin.x+7] in voxel x
-	var end_y: int = origin.y + 7  # GU spans [origin.y, origin.y+7] in voxel y
-
-	# For each axis, pick the voxel at that corner based on vertex position
-	var voxel_x: int = origin.x if vertex.x <= origin.x else end_x
-	var voxel_y: int = origin.y if vertex.y <= origin.y else end_y
-
-	return Vector2i(voxel_x, voxel_y)

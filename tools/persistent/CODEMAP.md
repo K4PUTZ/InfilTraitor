@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**76 scripts · 13168 lines total** (under `godot/scripts/`)
+**76 scripts · 13086 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -525,11 +525,11 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 196 lines
+`class_name JunctionResolver` · 86 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
-> Geometry Module — Junction Resolver: fills V-junction corner columns Port from room.gd _build_voxel_junction_extras() logic
+> Geometry Module — Junction Resolver: fills V-junction corner columns. Rewritten (JUNCTION-02): the previous version reconstructed GU cells from voxel-index vertex coordinates and divided them back down by 8. That broke whenever a vertex used the "+7" near-edge offset (true for one axis of almost every vertex _get_edge_vertices produced) instead of a clean multiple of 8 — integer division silently floored into the wrong bucket, so the resolver picked a cell adjacent to the elbow instead of the true diagonal notch. This version never touches voxel coordinates for the detection step: it stays in GU-cell space the whole time, using the faces already recorded on each Edge. Scope: pure V-junctions only (exactly 2 walls meeting at one cell). T/X junctions (3–4 walls at a cell) are intentionally skipped — see JUNCTION-01b.
 
 ---
 
@@ -1416,7 +1416,7 @@ extends `SceneTree` · 75 lines
 
 ### `geometry_selftest.gd`
 
-extends `SceneTree` · 103 lines
+extends `SceneTree` · 131 lines
 
 `godot/scripts/tools/geometry_selftest.gd`
 

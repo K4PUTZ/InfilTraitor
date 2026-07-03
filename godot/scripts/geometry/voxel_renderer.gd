@@ -139,8 +139,13 @@ func _render_slice(slice: Slice) -> void:
 func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	_ensure_voxel_layers(column.storey_count)
 
+	# Render a 2×2 block of voxels for better visibility, centered at corner
+	# This makes the column more prominent without breaking the geometry
 	for level in range(column.storey_count):
-		_set_voxel_cell(column.voxel_pos, level, "concrete")
+		for dx in range(2):
+			for dy in range(2):
+				var voxel_pos := Vector2i(column.voxel_pos.x + dx, column.voxel_pos.y + dy)
+				_set_voxel_cell(voxel_pos, level, "concrete")
 
 
 ## Set a voxel cell on the appropriate layer

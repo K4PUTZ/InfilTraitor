@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**76 scripts · 13138 lines total** (under `godot/scripts/`)
+**76 scripts · 13136 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -525,7 +525,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 169 lines
+`class_name JunctionResolver` · 164 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -1416,7 +1416,7 @@ extends `SceneTree` · 75 lines
 
 ### `geometry_selftest.gd`
 
-extends `SceneTree` · 100 lines
+extends `SceneTree` · 103 lines
 
 `godot/scripts/tools/geometry_selftest.gd`
 

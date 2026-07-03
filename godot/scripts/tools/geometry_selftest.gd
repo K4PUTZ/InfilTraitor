@@ -87,9 +87,12 @@ func _ready():
 	total_count += 1
 	if l_columns.size() == 1 and l_columns[0].gu_cell == Vector2i(2, 2):
 		pass_count += 1
-		print("  ✓ L-corner (elbow at GU 3,2) produces exactly 1 column at GU (2,2): %s" % l_columns[0])
+		print("  ✓ L-corner (elbow at GU 3,2) produces exactly 1 column at GU (2,2)")
+		print("    └─ voxel_pos=%s, storey_count=%d" % [l_columns[0].voxel_pos, l_columns[0].storey_count])
 	else:
-		print("  ✗ L-corner produced %d column(s): %s — expected exactly 1 at GU (2,2)" % [l_columns.size(), l_columns])
+		print("  ✗ L-corner produced %d column(s) — expected exactly 1 at GU (2,2)" % l_columns.size())
+		for col in l_columns:
+			print("    └─ gu_cell=%s, voxel_pos=%s" % [col.gu_cell, col.voxel_pos])
 
 	# Print summary
 	print("\n" + separator)

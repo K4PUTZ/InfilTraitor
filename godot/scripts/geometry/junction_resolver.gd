@@ -147,23 +147,18 @@ static func _max_storey_of_edges(edges: Array) -> int:
 ## Convert corner GU and vertex to voxel position
 ## This is the exact voxel cell at that corner
 static func _corner_gu_to_voxel(corner_gu: Vector2i, vertex: Vector2i) -> Vector2i:
+	# The vertex defines which corner of the GU we're in.
+	# A GU corner is at coordinates (gu_x * 8, gu_y * 8) to (gu_x * 8 + 8, gu_y * 8 + 8).
+	# The voxel at that corner is the one closest to the vertex within the GU.
+	#
+	# Voxel grid: each GU contains voxels [origin, origin+7] in both axes.
+	# For a given vertex, determine if it's at the "leading" (7) or "trailing" (0) edge.
 	var origin := GeometryCoords.gu_to_voxel_origin(corner_gu)
-	
-	# Determine which corner of the GU the vertex is at
-	# and return the corresponding voxel position
-	
-	# Simple approach: the vertex maps directly to voxel coordinates
-	# (corners are aligned between GU and voxel grids due to 8×8 mapping)
-	var voxel_x := origin.x
-	var voxel_y := origin.y
-	
-	# Check if vertex is at SE, NE, NW, or SW corner
-	var local_x := vertex.x - voxel_x
-	var local_y := vertex.y - voxel_y
-	
-	if local_x >= 4:
-		voxel_x += 7
-	if local_y >= 4:
-		voxel_y += 7
-	
+	var end_x: int = origin.x + 7  # GU spans [origin.x, origin.x+7] in voxel x
+	var end_y: int = origin.y + 7  # GU spans [origin.y, origin.y+7] in voxel y
+
+	# For each axis, pick the voxel at that corner based on vertex position
+	var voxel_x: int = origin.x if vertex.x <= origin.x else end_x
+	var voxel_y: int = origin.y if vertex.y <= origin.y else end_y
+
 	return Vector2i(voxel_x, voxel_y)

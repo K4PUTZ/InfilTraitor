@@ -1822,9 +1822,6 @@ func _build_room(layout: Dictionary) -> void:
 	for layer in _wall_upper_layers:
 		layer.clear()
 		layer.visible = true
-	for layer in _subcube_layers:
-		layer.clear()
-		layer.visible = true
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
 	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder

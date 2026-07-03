@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**73 scripts · 12187 lines total** (under `godot/scripts/`)
+**74 scripts · 12455 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -22,7 +22,7 @@
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
 - **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, slice_geometry_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, wall_edge_data.gd, wall_slice.gd
+- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, wall_edge_data.gd, wall_slice.gd
 
 ---
 
@@ -1600,6 +1600,19 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `map_compiler.gd`
+
+`class_name MapCompiler` · extends `RefCounted` · 271 lines
+
+`godot/scripts/world/maps/map_compiler.gd`
+
+**Constants / tuning**
+- `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
+- `MapGeometryClass` = `preload("res://godot/scripts/world/maps/map_geometry.gd")`
+- `REQUIRED_KEYS` = `["inner_size", "agent_start"]`
+
+---
+
 ### `map_geometry.gd`
 
 `class_name MapGeometry` · extends `RefCounted` · 159 lines
@@ -1610,7 +1623,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2363 lines
+extends `Node2D` · 2360 lines
 
 `godot/scripts/world/room.gd`
 

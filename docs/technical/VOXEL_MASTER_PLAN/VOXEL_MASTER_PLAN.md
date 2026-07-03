@@ -787,6 +787,18 @@ Before VOXEL-01 begins, the following documents must be updated:
 
 ---
 
+## SLICE-02 Completion (2026-07-02)
+
+All VOXEL stages (SLICE-02-diag, DEBUG-01/02, SLICE-02 Stage A/B/Calibration) are **complete and production-ready**. See [SLICE-02 Completion Report](../SLICE-02-completion-report.md) for final status:
+
+- ✅ New geometry module (EdgeExtractor → VoxelRenderer pipeline) fully active
+- ✅ Legacy system completely purged (-2,014 lines)
+- ✅ Alignment empirically calibrated: TILE_OFFSET = (112, 64)
+- ✅ Smoke test passed; all systems operational
+- ✅ Ready for beta freeze
+
+---
+
 *This document is the canonical reference for the VOXEL system.*
 *All VOXEL-01..11 prompts derive their specifications from this document.*
-*This document must be approved before any implementation prompt is written.*
+*See SLICE-02 Completion Report for post-completion status.*

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**82 scripts · 14054 lines total** (under `godot/scripts/`)
+**73 scripts · 12187 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,9 +20,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, build_voxel_tileset.gd, coord_selftest.gd, geometry_selftest.gd, slice_02_integration_selftest.gd, slice_geometry_selftest.gd, subcube_geometry_selftest.gd, voxel_selftest.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, slice_geometry_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, subcube_geometry.gd, room.gd, subcube_coords.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, voxel_registry.gd, wall_container.gd, wall_edge_data.gd, wall_slice.gd
+- **world/** — high_wall.gd, level_graph.gd, playground_map.gd, playground_map_old.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, voxel_ref.gd, wall_edge_data.gd, wall_slice.gd
 
 ---
 
@@ -1414,14 +1414,6 @@ extends `SceneTree` · 75 lines
 
 ---
 
-### `coord_selftest.gd`
-
-extends `SceneTree` · 49 lines
-
-`godot/scripts/tools/coord_selftest.gd`
-
----
-
 ### `geometry_selftest.gd`
 
 extends `SceneTree` · 72 lines
@@ -1432,37 +1424,11 @@ extends `SceneTree` · 72 lines
 
 ---
 
-### `slice_02_integration_selftest.gd`
-
-extends `SceneTree` · 199 lines
-
-`godot/scripts/tools/slice_02_integration_selftest.gd`
-
-> SLICE-02 Stage A: Integration Parity Test (headless)
-
----
-
 ### `slice_geometry_selftest.gd`
 
 extends `SceneTree` · 114 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
-
----
-
-### `subcube_geometry_selftest.gd`
-
-extends `SceneTree` · 89 lines
-
-`godot/scripts/tools/subcube_geometry_selftest.gd`
-
----
-
-### `voxel_selftest.gd`
-
-extends `SceneTree` · 112 lines
-
-`godot/scripts/tools/voxel_selftest.gd`
 
 ---
 
@@ -1634,20 +1600,6 @@ extends `Node2D` · 34 lines
 
 ---
 
-### `map_compiler.gd`
-
-`class_name MapCompiler` · extends `RefCounted` · 270 lines
-
-`godot/scripts/world/maps/map_compiler.gd`
-
-**Constants / tuning**
-- `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
-- `MapGeometryClass` = `preload("res://godot/scripts/world/maps/map_geometry.gd")`
-- `SubcubeGeometryClass` = `preload("res://godot/scripts/world/maps/subcube_geometry.gd")`
-- `REQUIRED_KEYS` = `["inner_size", "agent_start"]`
-
----
-
 ### `map_geometry.gd`
 
 `class_name MapGeometry` · extends `RefCounted` · 159 lines
@@ -1656,30 +1608,16 @@ extends `Node2D` · 34 lines
 
 ---
 
-### `subcube_geometry.gd`
-
-`class_name SubcubeGeometry` · 64 lines
-
-`godot/scripts/world/maps/subcube_geometry.gd`
-
-**Constants / tuning**
-- `_EDGE_BY_SUFFIX` = `{ "NW": [Vector2i(-1, 0)], "NE": [Vector2i( 0,-1)], "SE": [Vector2i( 1, 0)], "SW": [Vector2i( 0, 1)], }`
-
----
-
 ### `room.gd`
 
-extends `Node2D` · 3142 lines
+extends `Node2D` · 2363 lines
 
 `godot/scripts/world/room.gd`
 
 **Constants / tuning**
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `SubcubeGeometryClass` = `preload("res://godot/scripts/world/maps/subcube_geometry.gd")`
-- `SubcubeCoordsClass` = `preload("res://godot/scripts/world/subcube_coords.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
-- `WallContainerClass` = `preload("res://godot/scripts/world/wall_container.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
 - `GuardNoiseIndicatorClass` = `preload("res://godot/scripts/overlays/guard_noise_indicator.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
@@ -1693,10 +1631,6 @@ extends `Node2D` · 3142 lines
 - `CameraControllerClass` = `preload("res://godot/scripts/controllers/camera_controller.gd")`
 - `FowControllerClass` = `preload("res://godot/scripts/controllers/fow_controller.gd")`
 - `GuardCoordinatorClass` = `preload("res://godot/scripts/controllers/guard_coordinator.gd")`
-- `VoxelRegistryClass` = `preload("res://godot/scripts/world/voxel_registry.gd")`
-- `VoxelRefClass` = `preload("res://godot/scripts/world/voxel_ref.gd")`
-- `WallSliceClass` = `preload("res://godot/scripts/world/wall_slice.gd")`
-- `HighWallClass` = `preload("res://godot/scripts/world/high_wall.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
 - `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 - `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
@@ -1707,9 +1641,6 @@ extends `Node2D` · 3142 lines
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
-- `SUBCUBE_STEP_PX` = `40.0`
-- `SUBCUBE_BASE_ORIGIN` = `Vector2i(0, -40)`
-- `SUBCUBE_FACE_OFFSETS` = `{ "NW": Vector2i(-16,  8),   ## cima-esquerda: edge_delta (-1, 0) "NE": Vector2i(-16, -8),   ## cima-direita:  edge_delta ( 0,-1) "SE": Vector2i( 16, -8),   ## baixo-direita: edge_delta (+1, 0) "SW": Vector2i( 16,  8),   ## baixo-esquerda: edge_delta (0,+1) }`
 - `VOXEL_STEP_PX` = `20.0`
 - `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
 - `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
@@ -1738,20 +1669,6 @@ extends `Node2D` · 3142 lines
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
 - `var vision_bonus_tiles: int = 0`
-
----
-
-### `subcube_coords.gd`
-
-`class_name SubcubeCoords` · 76 lines
-
-`godot/scripts/world/subcube_coords.gd`
-
-**Constants / tuning**
-- `VOXELS_PER_UNIT_AXIS` = `8`
-- `SUBCUBES_PER_UNIT_AXIS` = `8`
-- `VOXEL_STEP_PX` = `20.0`
-- `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
 
 ---
 
@@ -1845,63 +1762,6 @@ extends `Node2D` · 3142 lines
 - `func set_visible(v: bool) -> void:`
 - `func set_damage(state: int) -> void:`
 - `func clear_dirty() -> void:`
-
----
-
-### `voxel_registry.gd`
-
-`class_name VoxelRegistry` · extends `RefCounted` · 96 lines
-
-`godot/scripts/world/voxel_registry.gd`
-
-**Signals**
-- `signal slice_registered(slice)`
-- `signal high_wall_registered(high_wall)`
-
-**Constants / tuning**
-- `WallSliceClass` = `preload("res://godot/scripts/world/wall_slice.gd")`
-- `HighWallClass` = `preload("res://godot/scripts/world/high_wall.gd")`
-- `VoxelRefClass` = `preload("res://godot/scripts/world/voxel_ref.gd")`
-
-**Public API**
-- `func setup(max_voxels_per_level: int) -> void:`
-- `func register_slice(slice: WallSlice) -> void:`
-- `func register_high_wall(high_wall: HighWall) -> void:`
-- `func get_slice(slice_id: String) -> WallSlice:`
-- `func get_high_wall(high_wall_id: String) -> HighWall:`
-- `func all_slices() -> Array[WallSlice]:`
-- `func all_high_walls() -> Array[HighWall]:`
-- `func total_slices() -> int:`
-- `func total_high_walls() -> int:`
-- `func is_empty() -> bool:`
-- `func clear() -> void:`
-
----
-
-### `wall_container.gd`
-
-`class_name WallContainer` · extends `Node2D` · 133 lines
-
-`godot/scripts/world/wall_container.gd`
-
-**Constants / tuning**
-- `ATOM_W` = `64`
-- `ATOM_H` = `72`
-- `IMAGE_W` = `160`
-- `IMAGE_H` = `240`
-- `SUBCUBES_PER_AXIS` = `4`
-- `SUBCUBE_STEP_PX` = `40.0`
-- `STOREY_HEIGHT_PX` = `160.0`
-- `FACE_CENTER_OFFSET` = `{ "NW": Vector2(-16.0, 36.0),   ## cima-esquerda: straddle esquerda ✓ "NE": Vector2( 16.0, 36.0),   ## cima-direita:  straddle direita  ✓ "SE": Vector2( 16.0, 36.0),   ## baixo-direita: straddle direita  ✓ "SW": Vector2(-16.0, 36.0),   ## baixo-esquerda: straddle esquerda ✓ }`
-- `ANCHOR_X_VARYING` = `Vector2( 32.0, 156.0)`
-- `ANCHOR_Y_VARYING` = `Vector2(128.0, 156.0)`
-
-**Public vars**
-- `var dir: String = ""`
-
-**Public API**
-- `func build(ref_layer: TileMapLayer, atom_image: Image, face_subcells: Array, wall_dir: String, storey_count: int) -> void:`
-- `func build_corner_fill(ref_layer: TileMapLayer, atom_image: Image, shared_subcell: Vector2i, fill_offset: Vector2, storey_count: int) -> void:`
 
 ---
 

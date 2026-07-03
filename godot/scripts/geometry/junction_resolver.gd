@@ -38,20 +38,27 @@ static func resolve(registry: EdgeRegistry) -> Array:
 	# For each vertex, check its 4 diagonal GU corners
 	for vertex: Vector2i in vertices_to_edges.keys():
 		var touching_edges: Array = vertices_to_edges[vertex]
-		
+
+		# V-junction filter: only process vertices with exactly 2 edges at 90°
+		# (not 1 edge for wall endpoints, not 3 or 4 for T or X junctions)
+		if touching_edges.size() != 2:
+			continue
+		if not _is_perpendicular_junction(touching_edges):
+			continue
+
 		# Get the 4 GU cells at corners of this vertex
 		var corner_gus := _get_corner_gus(vertex)
-		
+
 		for corner_gu in corner_gus:
 			# Check if this corner is uncovered (missing one of its two covering edges)
 			var edge_count := _count_edges_covering_corner(corner_gu, touching_edges, vertex)
-			
-			if edge_count == 1:
-				# V-junction: exactly 1 edge covers this corner
+
+			if edge_count == 0:
+				# V-junction: no edges cover this corner (the notch to fill)
 				# Add a column with max adjacent storey count
 				var max_storey := _max_storey_of_edges(touching_edges)
 				var voxel_pos := _corner_gu_to_voxel(corner_gu, vertex)
-				
+
 				var column := JunctionColumn.new(corner_gu, voxel_pos, max_storey)
 				result.append(column)
 	
@@ -133,6 +140,31 @@ static func _edge_covers_corner(edge: Edge, corner_gu: Vector2i, vertex: Vector2
 		return false
 
 	return corner_gu == edge.gu_a or corner_gu == edge.gu_b
+
+
+## Check if two edges form a 90° perpendicular junction (not parallel)
+static func _is_perpendicular_junction(edges: Array) -> bool:
+	if edges.size() != 2:
+		return false
+	var edge_a = edges[0] as Edge
+	var edge_b = edges[1] as Edge
+	if not edge_a or not edge_b:
+		return false
+
+	# Two edges are perpendicular if they have different faces
+	# (SE/SW, SE/NW, etc. — not SE/SE or SW/SW)
+	# SE = 2, SW = 3, NW = 0, NE = 1 (Face enum)
+	var faces_a := [edge_a.face_a, edge_a.face_b]
+	var faces_b := [edge_b.face_a, edge_b.face_b]
+
+	# For perpendicularity, edges must not share any face
+	# (SE+SW = perpendicular, SE+NW = perpendicular, but SE+SE = parallel)
+	for fa in faces_a:
+		for fb in faces_b:
+			if fa == fb:
+				return false  # Same face = parallel, not perpendicular
+
+	return true
 
 
 ## Get max storey count from edge array

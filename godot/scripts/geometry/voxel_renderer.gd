@@ -138,7 +138,7 @@ func _render_slice(slice: Slice) -> void:
 ## Render a junction column
 func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	_ensure_voxel_layers(column.storey_count)
-	
+
 	for level in range(column.storey_count):
 		_set_voxel_cell(column.voxel_pos, level, "concrete")
 

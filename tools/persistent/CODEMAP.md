@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**93 scripts · 15823 lines total** (under `godot/scripts/`)
+**96 scripts · 16323 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
-- **debug/** — map_loader_panel.gd, voxel_ruler_overlay.gd
+- **debug/** — map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
+- **tools/** — bake_compositor_test.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -374,6 +374,26 @@ extends `ConfirmationDialog` · 75 lines
 
 **Public API**
 - `func setup(room: Node2D) -> void:`
+
+---
+
+### `theme_matrix_debug_view.gd`
+
+`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 197 lines
+
+`godot/scripts/debug/theme_matrix_debug_view.gd`
+
+> ThemeMatrixDebugView — Visual grid showing all materials × all themes Reveals saturation issues before they reach gameplay. Press F5 to toggle visibility.
+
+**Public vars**
+- `var is_active: bool = false`
+- `var material_registry`
+- `var theme_list: Array[Color] = []`
+
+**Public API**
+- `func toggle() -> void:`
+- `func render_matrix() -> void:`
+- `func inspect_cell(material_id: String, theme_idx: int) -> void:`
 
 ---
 
@@ -1515,6 +1535,24 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `theme_applier.gd`
+
+`class_name ThemeApplier` · 59 lines
+
+`godot/scripts/systems/theme_applier.gd`
+
+> ThemeApplier — Apply theme color tints to wall layers Themes (map-specific color tints) are applied at render time via modulate, not baked into the atlas. This buys flexibility: atlas is reusable across themes, and switching themes is instant (single modulate call).
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+**Public API**
+- `func apply(theme_color: Color) -> void:`
+- `func clear() -> void:`
+- `func get_current_theme() -> Color:`
+
+---
+
 ### `tic_system.gd`
 
 `class_name TicSystem` · 124 lines
@@ -1715,6 +1753,20 @@ extends `SceneTree` · 327 lines
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `TEST_USER_DIR` = `"user://textures_test/"`
 - `TEST_DEFAULT_DIR` = `"user://textures_defaults_test/"`
+
+---
+
+### `theme_matrix_debug_test.gd`
+
+extends `SceneTree` · 244 lines
+
+`godot/scripts/tools/theme_matrix_debug_test.gd`
+
+> BAKE-06 Selftest: ThemeApplier & ThemeMatrixDebugView (T2, Render) Tests theme application, matrix rendering, and saturation discipline audit.
+
+**Public vars**
+- `var ThemeApplierClass = preload("res://godot/scripts/systems/theme_applier.gd")`
+- `var ThemeMatrixDebugViewClass = preload("res://godot/scripts/debug/theme_matrix_debug_view.gd")`
 
 ---
 

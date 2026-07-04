@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha BAKE-04 - $(date +%Y-%m-%d)"
+TAG="Alpha BAKE-06 - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

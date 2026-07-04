@@ -43,3 +43,4 @@ __pycache__/
 *.swp
 *.swo
 .aider*
+session_*.zip

@@ -89,8 +89,8 @@ func _make_bake_key(edge, face: int, _voxel_xy: Vector2i) -> BakeCompositorClass
 
 	# Determine variant (seeded by edge + material)
 	var seed_str = str(edge.key_string() if edge.has_method("key_string") else edge) + "_" + material_id
-	var seed = hash(seed_str)
-	var variant_k = abs(seed) % 4
+	var seed_val = hash(seed_str)
+	var variant_k = abs(seed_val) % 4
 
 	# Construct BakeKey
 	var key = BakeCompositorClass.BakeKey.new()
@@ -116,8 +116,8 @@ func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 
 	# Seed variant by voxel position
 	var seed_str = str(edge.key_string() if edge.has_method("key_string") else edge) + "_" + material_id + "_" + str(voxel_xy.x) + "_" + str(voxel_xy.y)
-	var seed = hash(seed_str)
-	var variant_k = abs(seed) % 4
+	var seed_val = hash(seed_str)
+	var variant_k = abs(seed_val) % 4
 
 	# Lookup in GLOBAL_MATERIAL_ATLAS
 	var material_atlas = _get_material_atlas()

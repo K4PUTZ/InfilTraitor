@@ -153,8 +153,8 @@ func _populate_bake_set(walls: Array, resolver) -> Dictionary:
 			key.facade_id = facade_id
 			key.variant_k = variant_k
 			key.face = face
-			key.plane_col = int(origin.x) / TEX_AUTHORING_N
-			key.plane_row = int(origin.y) / TEX_AUTHORING_N
+			key.plane_col = int(float(int(origin.x)) / float(TEX_AUTHORING_N))
+			key.plane_row = int(float(int(origin.y)) / float(TEX_AUTHORING_N))
 
 			# Add to set (dedup by key)
 			bake_set[key] = null
@@ -167,8 +167,9 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 	var lookup = {}
 	var tile_index = 0
 	var region_size = Vector2i(32, 16)
-	var tiles_per_page_x = 4096 / 32  # 128
-	var tiles_per_page_y = 4096 / 16  # 256
+	# Calculate page layout; integer division is intentional (floor division)
+	var tiles_per_page_x = int(4096.0 / 32.0)  # 128
+	var tiles_per_page_y = int(4096.0 / 16.0)  # 256
 	var tiles_per_page = tiles_per_page_x * tiles_per_page_y
 
 	var registry = _get_material_registry()
@@ -176,10 +177,10 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 	var projector = PerFaceProjectorClass.new()
 
 	for bake_key in bake_set.keys():
-		var page_idx = tile_index / tiles_per_page
+		var page_idx = int(float(tile_index) / float(tiles_per_page))
 		var tile_in_page = tile_index % tiles_per_page
 		var tile_x = (tile_in_page % tiles_per_page_x) * region_size.x
-		var tile_y = (tile_in_page / tiles_per_page_x) * region_size.y
+		var tile_y = int(float(tile_in_page) / float(tiles_per_page_x)) * region_size.y
 
 		# Ensure page exists
 		while pages.size() <= page_idx:

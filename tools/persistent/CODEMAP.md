@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**80 scripts · 13993 lines total** (under `godot/scripts/`)
+**88 scripts · 14826 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, per_face_projector.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
+- **systems/** — enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1032,6 +1032,22 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `facade_sampler.gd`
+
+`class_name FacadeSampler` · 105 lines
+
+`godot/scripts/systems/facade_sampler.gd`
+
+> FacadeSampler — Sample the infinite facade plane via mirrored-repeat addressing The facade is a concrete texture (64N × 32N pixels) that defines an infinite deterministic plane via mirrored repetition. Given a coordinate in the infinite plane, return the luminance from the wrapped texture.
+
+**Public API**
+- `func sample(facade: Image, plane_x: float, plane_y: float) -> float:`
+- `func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:`
+- `func get_window_origin_isolated(edge, facade_id: String) -> Vector2i:`
+- `func get_window_bounds(origin: Vector2i, width_voxels: int, height_voxels: int, N: int) -> Rect2i:`
+
+---
+
 ### `exposure_system.gd`
 
 `class_name ExposureSystem` · extends `Node` · 553 lines
@@ -1315,6 +1331,60 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `material_atlas_generator.gd`
+
+`class_name MaterialAtlasGenerator` · 116 lines
+
+`godot/scripts/systems/material_atlas_generator.gd`
+
+> MaterialAtlasGenerator — Generate material voxel atlas at boot Generates a texture atlas containing all material tiles (K=4 variants per material, one per face orientation). Output: Image pages saved to user://debug/ for inspection.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+
+**Public API**
+- `func generate_atlas(registry: MaterialRegistryClass, N: int, face_variants: Array) -> AtlasResult:`
+
+---
+
+### `material_registry.gd`
+
+`class_name MaterialRegistry` · 56 lines
+
+`godot/scripts/systems/material_registry.gd`
+
+> MaterialRegistry — Material definitions and pattern algorithms Materials are code, not files. Each material couples a base color with a deterministic pattern algorithm that creates per-voxel luminance variation. This is the only place where pixels are created; all other baking stages operate on these pixels.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+
+**Public vars**
+- `var registry: Dictionary = {}`
+
+**Public API**
+- `func register(material: MaterialDef) -> void:`
+- `func get_material(p_id: String) -> MaterialDef:`
+- `func list_materials() -> Array:`
+- `func count() -> int:`
+
+---
+
+### `metal_pattern.gd`
+
+`class_name MetalPattern` · extends `"res://godot/scripts/systems/material_registry.gd".PatternAlgorithm` · 32 lines
+
+`godot/scripts/systems/metal_pattern.gd`
+
+> MetalPattern — Sheen band across the face Simulates reflective specular highlight; smooth gradient
+
+**Public API**
+- `func shade(voxel_xy: Vector2i, _face: int, seed_val: int) -> float:`
+
+---
+
 ### `noise_system.gd`
 
 `class_name NoiseSystem` · 58 lines
@@ -1357,6 +1427,19 @@ extends `Node2D` · 43 lines
 - `func flat_to_screen(face: int, flat_px: Vector2) -> Vector2:`
 - `func screen_to_flat(face: int, screen_px: Vector2) -> Vector2:`
 - `func is_inside_voxel(face: int, screen_px: Vector2) -> bool:`
+
+---
+
+### `stone_pattern.gd`
+
+`class_name StonePattern` · extends `"res://godot/scripts/systems/material_registry.gd".PatternAlgorithm` · 30 lines
+
+`godot/scripts/systems/stone_pattern.gd`
+
+> StonePattern — Granular per-voxel jitter Simulates natural surface granularity; grainy texture with high-frequency variation
+
+**Public API**
+- `func shade(voxel_xy: Vector2i, _face: int, seed_val: int) -> float:`
 
 ---
 
@@ -1425,6 +1508,19 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `wood_pattern.gd`
+
+`class_name WoodPattern` · extends `"res://godot/scripts/systems/material_registry.gd".PatternAlgorithm` · 32 lines
+
+`godot/scripts/systems/wood_pattern.gd`
+
+> WoodPattern — Columnar periodic grooves Simulates wood grain with vertical groove directionality
+
+**Public API**
+- `func shade(voxel_xy: Vector2i, _face: int, seed_val: int) -> float:`
+
+---
+
 ## tools/
 
 ### `build_tileset.gd`
@@ -1460,6 +1556,19 @@ extends `SceneTree` · 75 lines
 
 ---
 
+### `facade_sampler_test.gd`
+
+extends `SceneTree` · 237 lines
+
+`godot/scripts/tools/facade_sampler_test.gd`
+
+> FacadeSampler Selftest (T1, Pure Math, Headless)
+
+**Public vars**
+- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
+
+---
+
 ### `geometry_selftest.gd`
 
 extends `SceneTree` · 131 lines
@@ -1467,6 +1576,24 @@ extends `SceneTree` · 131 lines
 `godot/scripts/tools/geometry_selftest.gd`
 
 > Geometry Module — Selftest: minimal validation Headless selftest Usage: godot --headless --script geometry_selftest.gd
+
+---
+
+### `material_registry_test.gd`
+
+extends `SceneTree` · 225 lines
+
+`godot/scripts/tools/material_registry_test.gd`
+
+> MaterialRegistry Selftest (T1 & T2) Validates: 1. Pattern determinism (same input → same output) 2. Atlas generation (correct tile count and page creation) 3. Tile lookup consistency 4. Material registration
+
+**Public vars**
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+- `var StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")`
+- `var WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")`
+- `var MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")`
+- `var MaterialAtlasGeneratorClass = preload("res://godot/scripts/systems/material_atlas_generator.gd")`
+- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 
 ---
 

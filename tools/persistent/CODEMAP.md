@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**97 scripts · 16542 lines total** (under `godot/scripts/`)
+**98 scripts · 17069 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1748,6 +1748,27 @@ extends `SceneTree` · 195 lines
 **Public vars**
 - `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 - `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+---
+
+### `resolver_hardening_tests.gd`
+
+extends `SceneTree` · 527 lines
+
+`godot/scripts/tools/resolver_hardening_tests.gd`
+
+> BAKE-08: Resolver Integration Hardening End-to-end resolver tests with live user:// content. Exercises corrupt-file handling, oversized files, dimension mismatches, and tier fallback. All tiers (USER, DEFAULT, NONE) validated with console evidence.
+
+**Constants / tuning**
+- `TEST_USER_DIR` = `"user://resolver_test/"`
+- `TEST_DEFAULT_DIR` = `"user://resolver_test_defaults/"`
+- `TEX_AUTHORING_N` = `16`
+
+**Public vars**
+- `var TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `var test_passed = 0`
+- `var test_failed = 0`
 
 ---
 

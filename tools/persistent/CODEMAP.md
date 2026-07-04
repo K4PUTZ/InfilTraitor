@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**76 scripts · 13086 lines total** (under `godot/scripts/`)
+**80 scripts · 13993 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, tic_system.gd, turn_manager.gd
-- **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, slice_geometry_selftest.gd
+- **systems/** — enemy_phase_controller.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, noise_system.gd, per_face_projector.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd
+- **tools/** — build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -478,7 +478,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 58 lines
+`class_name GeometryCoords` · 63 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -489,6 +489,7 @@ extends `ConfirmationDialog` · 75 lines
 - `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
 - `VOXEL_STEP_PX` = `20.0`
 - `VOXEL_STOREY_HEIGHT_PX` = `160.0`
+- `TEX_AUTHORING_N` = `16`
 - `VOXEL_ATOM_W` = `32`
 - `VOXEL_ATOM_H` = `36`
 - `VOXEL_TILE_H` = `16`
@@ -1337,6 +1338,51 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `per_face_projector.gd`
+
+`class_name PerFaceProjector` · 214 lines
+
+`godot/scripts/systems/per_face_projector.gd`
+
+> PerFaceProjector — Isometric shear transforms for wall texture mapping Maps flat texture-space coordinates → screen-space (isometric) coordinates for the four cardinal vertical wall faces (NE, SE, SW, NW). Key invariant: All shear offsets are INTEGER pixels for the pinned N, guaranteeing one-texel-to-one-pixel fidelity under NEAREST sampling.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+**Public vars**
+- `var transforms: Dictionary = {}`
+- `var N: int`
+
+**Public API**
+- `func flat_to_screen(face: int, flat_px: Vector2) -> Vector2:`
+- `func screen_to_flat(face: int, screen_px: Vector2) -> Vector2:`
+- `func is_inside_voxel(face: int, screen_px: Vector2) -> bool:`
+
+---
+
+### `texture_resolver.gd`
+
+`class_name TextureResolver` · 166 lines
+
+`godot/scripts/systems/texture_resolver.gd`
+
+> Texture Resolver — Fallback chain for baked facade sources Part of BAKING_MASTER_PLAN: §4.2 TextureResolver See TEXTURE_CATALOG.md for the full texture contract
+
+**Constants / tuning**
+- `MAX_FILE_SIZE_BYTES` = `10 * 1024 * 1024`
+
+**Public vars**
+- `var tex_user_dir: String = "user://textures/"`
+- `var tex_default_dir: String = "res://textures/defaults/"`
+- `var log_lines: PackedStringArray = []`
+
+**Public API**
+- `func resolve(texture_id: String) -> ResolvedTexture:`
+- `func get_log() -> PackedStringArray:`
+- `func get_log_string() -> String:`
+
+---
+
 ### `tic_system.gd`
 
 `class_name TicSystem` · 124 lines
@@ -1424,6 +1470,20 @@ extends `SceneTree` · 131 lines
 
 ---
 
+### `per_face_projector_test.gd`
+
+extends `SceneTree` · 195 lines
+
+`godot/scripts/tools/per_face_projector_test.gd`
+
+> PerFaceProjector Selftest (T1) Validates: 1. Round-trip transforms (flat → screen → flat) 2. Integer shear assertion for all four faces 3. Point-in-voxel silhouette testing 4. Inverse correctness (M * M_inv = I)
+
+**Public vars**
+- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+---
+
 ### `slice_geometry_selftest.gd`
 
 extends `SceneTree` · 204 lines
@@ -1434,6 +1494,22 @@ extends `SceneTree` · 204 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
+### `texture_resolver_selftest.gd`
+
+extends `SceneTree` · 327 lines
+
+`godot/scripts/tools/texture_resolver_selftest.gd`
+
+> TextureResolver — Selftest (TEX-CATALOG-01) Validates all resolver tiers, validations, and fallback chain Usage: godot --headless --script res://godot/scripts/tools/texture_resolver_selftest.gd Output: "TEX-CATALOG-01 SELFTEST: PASS" + exit 0, or "...FAIL" + exit 1
+
+**Constants / tuning**
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `TEST_USER_DIR` = `"user://textures_test/"`
+- `TEST_DEFAULT_DIR` = `"user://textures_defaults_test/"`
 
 ---
 

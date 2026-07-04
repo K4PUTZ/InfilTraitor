@@ -5,7 +5,7 @@
 ################################################################################
 
 # === EDIT THIS FIELD ===
-TAG="Alpha ENHANCE PLAN DONE - $(date +%Y-%m-%d)"
+TAG="Alpha BAKE-01 - $(date +%Y-%m-%d)"
 # =======================
 
 echo "📦 Pushing to repository..."

@@ -155,3 +155,135 @@ spec and its reason; flag any dead code left behind for future removal.
 - ✅ Negative test suite — 4 checks verify error contract (malformed specs handled cleanly)
 - ✅ Zero INTEGER_DIVISION warnings
 - ✅ Zero printerr calls (replaced with print_debug)
+
+---
+
+## Baking System (BAKE Pipeline)
+
+### Overview
+
+The baking system composites per-wall facade textures (marble, wood grain, etc.) with material base colors at map load, producing baked TileSetAtlasSource(s). The system is **transparent to placement logic** — integration point is a single-call lookup (BakedTileLookup.resolve).
+
+### Module Checklist
+
+- [x] **TextureResolver** (§TEX-CATALOG-01): user:// → default:// → material-only fallback chain
+  * Validates: grayscale, dimensions (64N×32N for facades), file size cap (10 MB)
+  * Selftest: all tier transitions + corrupt/oversized/mismatch rejection
+- [x] **PerFaceProjector** (§BAKE-01): flat texture ↔ screen space affine transforms
+  * One transform per face orientation (NE, SE, SW, NW) + cap
+  * Integer-shear pinned (guarantees NEAREST sampling)
+  * Selftest: round-trip, integer shear, point-in-voxel validation
+- [x] **MaterialRegistry** (§BAKE-02): base_color + pattern algorithm registry
+  * StonePattern, WoodPattern, MetalPattern: v1 algorithms
+  * Generates K=4 variants per material at boot
+  * Selftest: pattern determinism, atlas generation, tile lookup
+- [x] **FacadeSampler** (§BAKE-03): mirrored-repeat plane addressing
+  * FNV-1a deterministic window origin derivation
+  * Selftest: mirror boundaries, seams, FNV determinism
+- [x] **BakeCompositor** (§BAKE-04): GPU batch composite pass
+  * Bake set construction with deduplication
+  * Per-pixel multiply: material RGB × facade luminance (NEAREST)
+  * One SubViewport frame per map load; target < 100ms
+  * Selftest: dedup, composite timing, atlas assembly
+- [x] **BakedTileLookup** (§BAKE-05): placement integration seam
+  * Single call: resolve(edge, face, voxel) → (source_id, atlas_coords)
+  * Branch-exclusive: placement uses exactly one atlas path (baked XOR generic)
+  * Selftest: toggle identical cell coords, differing sources ON/OFF
+- [x] **ThemeApplier** (§BAKE-06): render-time modulate application
+  * apply(color) sets TileMapLayer.modulate on all walls
+  * clear() resets to white (identity multiply)
+- [x] **ThemeMatrixDebugView** (§BAKE-06): F5-toggled calibration grid
+  * Material × theme cell grid (4 materials × 4 themes)
+  * inspect_cell(): HSV breakdown, saturation verdict
+  * Visual calibration for D9 grayscale discipline
+- [x] **BakeSelftest** (§BAKE-07): consolidated T1+T2 suites + invariants
+  * B1: Branch exclusivity (baked XOR generic)
+  * B2: Grayscale enforcement (facades + patterns)
+  * B4: FNV-1a determinism (pinned hash values)
+  * B6: Loud-fail validation (missing deps detected)
+- [x] **ResolverHardeningTests** (§BAKE-08): end-to-end tier fallback
+  * All 3 tiers exercised with real file states
+  * Corrupt, oversized, dimension mismatch rejection + fallthrough
+  * Real map load with mixed facade states (2 resolved + 1 material-only)
+
+### Key Invariants (B1–B6)
+
+All enforced by selftests and pre-commit hook:
+
+- **B1: Branch Exclusivity** — Placement uses exactly one atlas path (baked OR generic), never both
+- **B2: Grayscale Enforcement** — All facade and pattern sources are grayscale (R==G==B)
+- **B3: Alpha from Canon** — Silhouette never generated; alpha from material registry
+- **B4: FNV-1a Determinism** — Hash values pinned; run vs. isolated wall origin identical
+- **B5: No Re-bake on Destruction** — Exposed geometry uses material atlas fallback
+- **B6: Loud-Fail Selftests** — Assertions on missing dependencies; no silent breaks
+
+### Determinism Pinned Values
+
+- **TEX_AUTHORING_N**: 16 flat texels per voxel (pinned by BAKE-01 audit)
+- **PerFaceProjector matrices + offsets**: 4 screen-to-flat transforms extracted in BAKE-01
+- **FNV-1a test vectors**: See BAKE-03 selftest output (e.g., 0x95d22b71, 0x64879b49)
+- **MaterialRegistry variant generation**: K=4 variants per material, seeded deterministically
+
+### Integration Sequence
+
+1. **Boot (game startup)**: MaterialRegistry initialized → material atlas generated
+2. **Map load**: TextureResolver resolves facades → BakeCompositor bakes → atlases registered
+3. **Placement**: BakedTileLookup.resolve() → set_cell() (single seam)
+4. **Destruction**: erase_cell() only; exposed geometry falls back to material atlas
+5. **Render**: ThemeApplier.apply() sets modulate on walls (theme applied at render time)
+
+### Debug Views
+
+- **F5**: Theme Matrix (material × theme grid, saturation calibration)
+- **F12**: Selftest suite (all invariants, destruction, multimap scenarios)
+- (Existing F2/F3/F4 family remains available for geometry inspection)
+
+### File Locations (Baking System)
+
+**Source modules:**
+- `res://godot/scripts/systems/texture_resolver.gd`
+- `res://godot/scripts/systems/per_face_projector.gd`
+- `res://godot/scripts/systems/facade_sampler.gd`
+- `res://godot/scripts/systems/material_registry.gd`
+- `res://godot/scripts/systems/bake_compositor.gd`
+- `res://godot/scripts/systems/baked_tile_lookup.gd`
+- `res://godot/scripts/systems/bake_config.gd`
+- `res://godot/scripts/systems/theme_applier.gd`
+- `res://godot/scripts/systems/stone_pattern.gd`
+- `res://godot/scripts/systems/wood_pattern.gd`
+- `res://godot/scripts/systems/metal_pattern.gd`
+- `res://godot/scripts/systems/material_atlas_generator.gd`
+
+**Debug & Test:**
+- `res://godot/scripts/debug/theme_matrix_debug_view.gd`
+- `res://godot/scripts/tools/bake_selftest.gd`
+- `res://godot/scripts/tools/resolver_hardening_tests.gd`
+- `res://godot/scripts/tools/per_face_projector_test.gd`
+- `res://godot/scripts/tools/facade_sampler_test.gd`
+- `res://godot/scripts/tools/material_registry_test.gd`
+- `res://godot/scripts/tools/bake_compositor_test.gd`
+- `res://godot/scripts/tools/baked_tile_lookup_test.gd`
+- `res://godot/scripts/tools/texture_resolver_selftest.gd`
+- `res://godot/scripts/tools/theme_matrix_debug_test.gd`
+
+**Data directories:**
+- `res://textures/defaults/` — bundled default facades
+- `user://textures/` — downloaded/custom facades
+- `user://debug/` — bake artifacts (material_atlas_page_*.png, baked_atlas_page_*.png)
+- `user://bake_config.cfg` — master configuration (enabled, blend_mode, feature toggles)
+
+### Known Limitations (v1)
+
+- Camera zoom capped at 1× (no zoom-in cutscenes in scope)
+- Multi-storey facade placement deferred (rows 1–3 unused; row 0 only)
+- STICKER category reserved but unimplemented (v1.5)
+- Water/translucent materials deferred (would require relaxing B2 for alpha channel)
+- Per-wall theme tints not yet implemented (identified lever: alternative tiles with own modulate)
+- Download system separate from resolver (resolver defines directory contract only)
+
+### Entry Points
+
+- **Game boot**: MaterialRegistry initialized
+- **Map load**: TextureResolver → BakeCompositor → atlas registration → placement
+- **Debug (F5)**: Theme Matrix
+- **Debug (F12)**: Selftest suite (can be run headless via CI: `godot --headless --script bake_selftest.gd`)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**90 scripts · 15374 lines total** (under `godot/scripts/`)
+**93 scripts · 15823 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, wood_pattern.gd
+- **tools/** — bake_compositor_test.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1036,6 +1036,36 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `bake_config.gd`
+
+`class_name BakeConfig` · 35 lines
+
+`godot/scripts/systems/bake_config.gd`
+
+> BakeConfig — Unified bake system configuration Master kill-switch and feature toggles for the baking pipeline. Branch-exclusive (structural, not tested); values set at boot.
+
+---
+
+### `baked_tile_lookup.gd`
+
+`class_name BakedTileLookup` · 147 lines
+
+`godot/scripts/systems/baked_tile_lookup.gd`
+
+> BakedTileLookup — Single lookup seam for placement path Insertion point between placement code and tile source selection. Query for a voxel face → either baked atlas or generic material atlas. Features a fallback chain: baked → generic material atlas.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
+
+**Public API**
+- `func set_test_config(config) -> void:`
+- `func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:`
+
+---
+
 ### `enemy_phase_controller.gd`
 
 `class_name EnemyPhaseController` · extends `Node` · 80 lines
@@ -1554,6 +1584,20 @@ extends `SceneTree` · 259 lines
 - `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
+
+---
+
+### `baked_tile_lookup_test.gd`
+
+extends `SceneTree` · 267 lines
+
+`godot/scripts/tools/baked_tile_lookup_test.gd`
+
+> BAKE-05 Selftest: BakedTileLookup (T2, Render) Tests toggle behavior, fallback chain, and grep audit.
+
+**Public vars**
+- `var BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
 
 ---
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.14 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 2bfccf9 "[VERSION] Bump to 0.4.13"
+**Version:** 0.4.15 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 9061d1f "ALPHA 0.4.14 - 2026-07-05"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 9061d1f ALPHA 0.4.14 - 2026-07-05
 - 2bfccf9 [VERSION] Bump to 0.4.13
 - e2e1acb [VERSION] Bump to 0.4.12
 - 45fcc84 ALPHA 0.4.11 - 2026-07-05
 - 2bb6944 [VERSION] Bump to 0.4.9
-- e61ff4c feat(version): VERSION-08 — FIX-BAKE-09b final evidence (green run, red run, real parity check)
 <!-- AUTO:END version_history -->
 
 ---

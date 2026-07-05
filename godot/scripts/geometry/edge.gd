@@ -46,17 +46,17 @@ func _init(p_gu_a: Vector2i, p_gu_b: Vector2i, p_storey_count: int = 1, p_materi
 
 
 ## Static constructor: normalizes input cell order, validates adjacency
-static func between(cell_1: Vector2i, cell_2: Vector2i, storey_count: int = 1, material: String = "concrete") -> Edge:
+static func between(cell_1: Vector2i, cell_2: Vector2i, p_storey_count: int = 1, p_material: String = "concrete") -> Edge:
 	# Normalize to canonical order (lexicographically smaller first)
-	var gu_a := cell_1
-	var gu_b := cell_2
-	
-	if (gu_a.x > gu_b.x) or (gu_a.x == gu_b.x and gu_a.y > gu_b.y):
-		var temp := gu_a
-		gu_a = gu_b
-		gu_b = temp
-	
-	var edge := Edge.new(gu_a, gu_b, storey_count, material)
+	var canonical_a := cell_1
+	var canonical_b := cell_2
+
+	if (canonical_a.x > canonical_b.x) or (canonical_a.x == canonical_b.x and canonical_a.y > canonical_b.y):
+		var temp := canonical_a
+		canonical_a = canonical_b
+		canonical_b = temp
+
+	var edge := Edge.new(canonical_a, canonical_b, p_storey_count, p_material)
 	
 	# Validate that after canonicalization, face_a is SE or SW
 	if edge.face_a != Face.SE and edge.face_a != Face.SW:

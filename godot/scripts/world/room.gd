@@ -616,6 +616,9 @@ func _ready() -> void:
 	_update_guard_los_data()
 	_on_hud_viewport_toggled()
 
+	## Initialize debug views (S1: FIX-BAKE-06)
+	_initialize_debug_views()
+
 	## SLICE-02: Run alignment probe if debug flag is set
 	if debug_probe_voxel_alignment:
 		print_debug("[DEBUG] _ready() complete, starting probe")
@@ -1968,3 +1971,24 @@ func _show_screenshot_toast(message: String) -> void:
 	tw.tween_interval(1.6)
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(lbl.queue_free)
+
+
+## Initialize debug views (S1: FIX-BAKE-06)
+func _initialize_debug_views() -> void:
+	# Only in debug builds
+	if not (OS.is_debug_build() or Engine.is_editor_hint()):
+		return
+
+	print("[DEBUG] Initializing debug views...")
+	print("""
+	[DEBUG BINDINGS]
+	F5:  Toggle Theme Matrix (saturation calibration grid)
+	F12: (Reserved) Selftest — run headless:
+	     godot --headless --script godot/scripts/tools/bake_selftest.gd
+	""")
+
+	# Theme Matrix (F5)
+	var theme_matrix_class = preload("res://godot/scripts/debug/theme_matrix_debug_view.gd")
+	var theme_matrix = theme_matrix_class.new()
+	add_child(theme_matrix)
+	print("[DEBUG] F5: Theme Matrix viewer initialized")

@@ -13,6 +13,8 @@ Checks implemented:
   R3  `_edge_key()` is only defined in wall_edge_data.gd (single source of truth)
   R4  guard `state` is only assigned inside `_enter_state()`
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
+  B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
+  B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
 
 Not mechanized (documented for honesty):
   R6  mission structure vs narrative — no such code exists yet
@@ -43,6 +45,8 @@ R1_STAT_CONST = re.compile(
 R2_VISUAL_OFFSET = re.compile(r"^\s*const\s+VISUAL_GRID_OFFSET\b")
 R3_EDGE_KEY = re.compile(r"^\s*(static\s+)?func\s+_edge_key\b")
 R4_STATE_ASSIGN = re.compile(r"^\s+state\s*=(?!=)")
+B1_VOXEL_LAYER_SET_CELL = re.compile(r"_voxel_layers?\[?\s*[.\[]\s*set_cell\s*\(")
+B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
 FUNC_DECL = re.compile(r"^func\s+(\w+)\s*\(")
 
 
@@ -141,6 +145,26 @@ def check_file(path: Path) -> list[Violation]:
                     rel, lineno,
                     "_alert_meter may only accumulate inside _apply_tic_result()",
                 ))
+
+        # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()
+        if B1_VOXEL_LAYER_SET_CELL.search(line) and name != "voxel_renderer.gd":
+            out.append(Violation(
+                "B1 branch-exclusivity",
+                rel, lineno,
+                "_voxel_layers cells must only be set via voxel_renderer._set_voxel_cell() (seam integration)",
+            ))
+
+    # B4 — FNV-1a constants pinned in facade_sampler.gd
+    if name == "facade_sampler.gd":
+        text = "".join(lines)
+        has_offset = "2166136261" in text
+        has_prime = "16777619" in text
+        if not (has_offset and has_prime):
+            out.append(Violation(
+                "B4 fnv1a-constants",
+                rel, 0,
+                "FNV-1a offset_basis (2166136261) and prime (16777619) must be pinned in _fnv1a_hash()",
+            ))
 
     return out
 

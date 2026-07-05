@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**104 scripts · 17904 lines total** (under `godot/scripts/`)
+**104 scripts · 18045 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -379,7 +379,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `theme_matrix_debug_view.gd`
 
-`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 197 lines
+`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 213 lines
 
 `godot/scripts/debug/theme_matrix_debug_view.gd`
 
@@ -1646,25 +1646,34 @@ extends `SceneTree` · 291 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 219 lines
+extends `SceneTree` · 320 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
-> BAKE-07: BAKE Selftest Consolidation & Invariant Enforcement Consolidated selftest suite running all T1+T2 tests and invariant assertions (B1–B6). PASS criteria: all PASS lines logged, no silent failures, loud asserts on missing deps.
+> BAKE-07: BAKE Selftest Consolidation & Invariant Enforcement Consolidated selftest suite with real fail accounting: assertions can fail, counters increment, exit code reflects pass/fail. Tests B1–B6 + probe regression + dedup + resolver fallback.
+
+**Constants / tuning**
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 
 **Public vars**
-- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `var BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-- `var ThemeApplierClass = preload("res://godot/scripts/systems/theme_applier.gd")`
-- `var ThemeMatrixDebugViewClass = preload("res://godot/scripts/debug/theme_matrix_debug_view.gd")`
+- `var passed: int = 0`
+- `var failed: int = 0`
 
 **Public API**
 - `func test_B1_branch_exclusivity() -> void:`
 - `func test_B2_grayscale_enforcement() -> void:`
+- `func test_B3_alpha_from_canonical() -> void:`
 - `func test_B4_fnv1a_determinism() -> void:`
+- `func test_B5_no_rebake_on_destruction() -> void:`
 - `func test_B6_loud_fail_validation() -> void:`
+- `func test_probe_pattern_regression() -> void:`
+- `func test_dedup_consolidation() -> void:`
+- `func test_resolver_tier_fallback() -> void:`
 
 ---
 
@@ -2199,7 +2208,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 1970 lines
+extends `Node2D` · 1994 lines
 
 `godot/scripts/world/room.gd`
 

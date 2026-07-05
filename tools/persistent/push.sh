@@ -22,7 +22,7 @@ VERSION_FILE="$REPO_ROOT/VERSION"
 
 ####################
 ####################
-TAG="ALPHA FIX-BAKE-05 - $(date +%Y-%m-%d)"
+TAG="ALPHA FIX-BAKE DONE - $(date +%Y-%m-%d)"
 ####################
 ####################
 

@@ -45,11 +45,13 @@ func toggle() -> void:
 	visible = is_active
 	if is_active:
 		render_matrix()
+		print("[THEME] F5: Grid visible")
 	else:
 		# Clean up old panel
 		if _panel_container and is_instance_valid(_panel_container):
 			_panel_container.queue_free()
 			_panel_container = null
+		print("[THEME] F5: Grid hidden")
 
 
 func render_matrix() -> void:
@@ -93,6 +95,20 @@ func render_matrix() -> void:
 	title.text = "THEME MATRIX (F5 to hide)"
 	title.add_theme_font_size_override("font_size", 14)
 	vbox.add_child(title)
+
+	# Instructions text (S3: FIX-BAKE-06)
+	var instructions = Label.new()
+	instructions.text = """D9 Saturation Discipline:
+• Facade: grayscale (R=G=B)
+• Material base color: desaturated or intentional tone
+• Themes: soft tints (moderate sat, high val) or dominant filter
+• Result (cell): (base_color × theme × facade_lum)
+• If muddy (low sat, low val): reduce theme saturation"""
+	instructions.add_theme_font_size_override("font_size", 8)
+	instructions.add_theme_color_override("font_color", Color.GRAY)
+	instructions.custom_minimum_size = Vector2(0, 80)
+	instructions.clip_text = true
+	vbox.add_child(instructions)
 
 	# Header row (themes)
 	var header_hbox = HBoxContainer.new()

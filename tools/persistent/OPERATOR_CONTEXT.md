@@ -224,18 +224,20 @@ All enforced by selftests and pre-commit hook:
 - **FNV-1a test vectors**: See BAKE-03 selftest output (e.g., 0x95d22b71, 0x64879b49)
 - **MaterialRegistry variant generation**: K=4 variants per material, seeded deterministically
 
-### Integration Sequence
+### Integration Sequence (FIX-BAKE-05)
 
-1. **Boot (game startup)**: MaterialRegistry initialized → material atlas generated
-2. **Map load**: TextureResolver resolves facades → BakeCompositor bakes → atlases registered
-3. **Placement**: BakedTileLookup.resolve() → set_cell() (single seam)
-4. **Destruction**: erase_cell() only; exposed geometry falls back to material atlas
-5. **Render**: ThemeApplier.apply() sets modulate on walls (theme applied at render time)
+1. **Boot (game startup)**: MaterialRegistry initialized (on-demand, not at autoload)
+2. **Map load - Geometry phase**: room_builder compiles walls → EdgeRegistry populated
+3. **Map load - Bake phase (if BakeConfig.enabled)**: TextureResolver resolves facades → BakeCompositor bakes all walls → atlas pages registered with tileset
+4. **Placement phase**: voxel_renderer._set_voxel_cell() → BakedTileLookup.resolve(edge, face, voxel) → returns (source_id_int, atlas_coords)
+5. **Render phase**: TileMapLayer renders cells using baked or material-only sources per enable state
+6. **Destruction**: erase_cell() only; no re-bake triggered
 
 ### Debug Views
 
-- **F5**: Theme Matrix (material × theme grid, saturation calibration)
-- **F12**: Selftest suite (all invariants, destruction, multimap scenarios)
+- **F5**: Theme Matrix (in-game calibration grid; material × theme cells with saturation guidance)
+- **F12**: Reserved (not bound in-game); selftest is headless-only
+- **Selftest CLI**: `godot --headless --script godot/scripts/tools/bake_selftest.gd` (FIX-BAKE-07)
 - (Existing F2/F3/F4 family remains available for geometry inspection)
 
 ### File Locations (Baking System)
@@ -283,7 +285,8 @@ All enforced by selftests and pre-commit hook:
 
 ### Entry Points
 
-- **Game boot**: MaterialRegistry initialized
-- **Map load**: TextureResolver → BakeCompositor → atlas registration → placement
-- **Debug (F5)**: Theme Matrix
-- **Debug (F12)**: Selftest suite (can be run headless via CI: `godot --headless --script bake_selftest.gd`)
+- **Game boot**: MaterialRegistry (initialized on-demand)
+- **Map load**: room_builder.build_from_layout() → if BakeConfig.enabled, call _bake_textures() → TextureResolver → BakeCompositor → atlas registration
+- **Placement**: voxel_renderer._set_voxel_cell() calls seam (BakedTileLookup.resolve() if enabled, else material-only)
+- **Debug (F5)**: Theme Matrix (toggle with F5 key, in-game only)
+- **Selftest (CLI)**: `godot --headless --script godot/scripts/tools/bake_selftest.gd` (15 PASS / 0 FAIL with real fail accounting)

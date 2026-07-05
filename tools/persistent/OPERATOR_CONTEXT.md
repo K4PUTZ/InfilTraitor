@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.13 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 9ebaba5 "ALPHA 0.4.12 - 2026-07-05"
+**Version:** 0.4.14 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 2bfccf9 "[VERSION] Bump to 0.4.13"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

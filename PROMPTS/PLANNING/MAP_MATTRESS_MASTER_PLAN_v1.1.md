@@ -230,6 +230,7 @@ Authored directly as the first `.map.json`; one patrol guard routes through C–
 | D2 | Material base colors | ✅ table §1.3 |
 | D3 | Theme palette v1 | ✅ Neutral/Warm/Cold/Alarm |
 | D4 | Crate/cover semantics | ✅ **cover ladder §2.3**; dynamic ladder = OCCLUSION & DESTRUCTION phase |
+| D16 | Guard/patrol schema | ✅ bare array-of-routes (`[[x,y],...]`), matching `_build_enemy_defs()` natively; no wrapper dict, no `class` field yet — guard AI doesn't exist yet to need it. Not a dead end: `actors` is already a versioned section (MAPFILE-01 machinery), so richer per-guard config arrives later as a routine `v1→v2` migration, same mechanism proven in the `walls` rehearsal migration. World-building (materials, voxel objects, textures, lighting, destruction) stays the priority; guard AI schema grows when guard AI exists. |
 | D5 | Furniture route | ✅ both (.vox importer + parametric PropGen) → PropDef; deferred |
 | D6 | Map format | ✅ JSON sectioned/versioned |
 | D7 | Playground size | ✅ 28×18 |

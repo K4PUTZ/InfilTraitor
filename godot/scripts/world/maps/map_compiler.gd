@@ -124,6 +124,19 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 				})
 			wall_levels.append(course)
 
+	## --- solid GU blockers (full-cell, multi-storey, material-aware) ---------
+	for block: Dictionary in spec.get("blocks", []):
+		var cell: Vector2i = Vector2i(block.get("gu", Vector2i.ZERO)) + offset
+		if blocked_map.has(cell):
+			continue
+		var storeys: int = maxi(1, int(block.get("storeys", 1)))
+		var material: String = String(block.get("material", "concrete"))
+		for storey in range(storeys):
+			while wall_levels.size() <= storey:
+				wall_levels.append([])
+			wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
+		blocked_map[cell] = true
+
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
 	## wall storeys. Defaults to wall_height so maps that don't set it are unchanged.
 	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", wall_height)))

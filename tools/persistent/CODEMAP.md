@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**115 scripts · 19822 lines total** (under `godot/scripts/`)
+**117 scripts · 20176 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -448,7 +448,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 115 lines
+`class_name EdgeExtractor` · 151 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -1718,6 +1718,49 @@ extends `SceneTree` · 319 lines
 
 ---
 
+### `block_01_quick_test.gd`
+
+extends `SceneTree` · 68 lines
+
+`godot/scripts/tools/block_01_quick_test.gd`
+
+> Quick test to verify blocks handling works end-to-end This script runs headless and exits with code 0 on success, 1 on failure
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
+### `block_01_validation.gd`
+
+extends `Node` · 232 lines
+
+`godot/scripts/tools/block_01_validation.gd`
+
+> BLOCK-01 Validation Script Tests all 8 validation criteria: 1. Item 0 findings documented (manual, in completion report) 2. Non-regression: SIGMA_01 divider output unchanged 3. Face-culling proof: 2-cell cluster -> 6 edges (not 8) 4. Baking integration: blocks reach bake seam 5. Equivalence proof: old vs new path footprint match 6. Blocks round-trip end-to-end 7. map_lint and check_invariants pass 8. Archive evidence (manual, after tests pass)
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+- `var test_log: String = ""`
+
+**Public API**
+- `func test_criterion_2_sigma01_dividers() -> void:`
+- `func test_criterion_3_face_culling() -> void:`
+- `func test_criterion_4_baking() -> void:`
+- `func test_criterion_5_equivalence() -> void:`
+- `func test_criterion_6_blocks_roundtrip() -> void:`
+- `func cleanup() -> void:`
+
+---
+
 ### `build_tileset.gd`
 
 extends `SceneTree` · 336 lines
@@ -2298,7 +2341,7 @@ extends `Node2D` · 34 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 133 lines
+`class_name FileMapSource` · extends `RefCounted` · 138 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -2333,7 +2376,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 276 lines
+`class_name MapCompiler` · extends `RefCounted` · 289 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

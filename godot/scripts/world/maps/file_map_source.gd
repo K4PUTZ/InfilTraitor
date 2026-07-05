@@ -100,8 +100,13 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 			# Reconvert Vector2i arrays from JSON back to proper Vector2i objects
 			runtime[key] = _convert_from_json_compatible(bridge[key])
 
+	# --- Blocks section: now translatable (BLOCK-01 implementation) -----------
+	var blocks_section = sections.get("blocks", {})
+	if blocks_section.get("items", []).size() > 0:
+		runtime["blocks"] = _convert_from_json_compatible(blocks_section["items"])
+
 	# --- Loud, non-blocking warning for sections that exist but have no translator yet ---
-	for future_section in ["walls", "blocks", "props"]:
+	for future_section in ["walls", "props"]:
 		var frag = sections.get(future_section, {})
 		var items_key = "edges" if future_section == "walls" else "items"
 		if frag.get(items_key, []).size() > 0:

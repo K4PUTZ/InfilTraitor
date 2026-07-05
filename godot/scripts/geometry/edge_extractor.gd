@@ -40,7 +40,11 @@ static func extract(compiled: Dictionary) -> Dictionary:
 	# When the same physical edge is emitted from both adjacent GUs, take the max storey
 	var edge_groups: Dictionary = {}  # edge_canonical_key → {"edge_template": Edge, "max_storey": int}
 	
-	# First pass: collect all edges with storey levels
+	# Build occupancy map for solidblock_ entries: (cell, storey) -> material
+	# Used for exposure culling: a face is only emitted if the neighbor is NOT occupied
+	var solidblock_occupancy: Dictionary = {}  # (cell, storey) key -> material
+	
+	# First pass: scan all wall_levels to collect walls, solidblock occupancy, and legacy blocks
 	for storey in range(wall_levels.size()):
 		var level_data: Array = wall_levels[storey]
 		if not (level_data is Array):
@@ -82,7 +86,13 @@ static func extract(compiled: Dictionary) -> Dictionary:
 					# Update max storey
 					edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], storey)
 			
-			# Solid blocks: "block_concrete", "block_metal", etc.
+			# New real-edge solid blocks: "solidblock_stone", "solidblock_concrete", etc.
+			elif tile_name.begins_with("solidblock_"):
+				var material := tile_name.substr(11)  # Remove "solidblock_" prefix
+				solidblock_occupancy["%d,%d,%d" % [cell.x, cell.y, storey]] = material
+			
+			# Legacy solid blocks (divider convention): "block_SE", "block_NW", etc.
+			# Keep this branch untouched per Finding B (preserve legacy behavior)
 			elif tile_name.begins_with("block_"):
 				var material := tile_name.substr(6)  # Remove "block_" prefix
 				
@@ -99,7 +109,33 @@ static func extract(compiled: Dictionary) -> Dictionary:
 				}
 				result["solid_blocks"].append(block)
 	
-	# Second pass: convert grouped edges to final Edge objects with storey_count
+	# Second pass: emit edges for occupied solidblock_ cells with face culling
+	for occupancy_key: String in solidblock_occupancy.keys():
+		var parts = occupancy_key.split(",")
+		var cell = Vector2i(int(parts[0]), int(parts[1]))
+		var storey = int(parts[2])
+		var material = solidblock_occupancy[occupancy_key]
+		
+		# Check all 4 face directions for exposure culling
+		for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+			var neighbor_cell = cell + Face.delta(face)
+			var neighbor_key = "%d,%d,%d" % [neighbor_cell.x, neighbor_cell.y, storey]
+			
+			# Skip face if neighbor is also occupied by solidblock_ (buried, not exposed)
+			if neighbor_key in solidblock_occupancy:
+				continue
+			
+			# Face is exposed: emit an edge
+			var edge = Edge.between(cell, neighbor_cell, 1, material)
+			
+			# Track in edge_groups using the same dedup mechanism as walls
+			if edge.id not in edge_groups:
+				edge_groups[edge.id] = {"edge_template": edge, "max_storey": storey}
+			else:
+				# Update max storey if this edge at higher storey
+				edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], storey)
+	
+	# Third pass: convert grouped edges to final Edge objects with storey_count
 	for edge_id: String in edge_groups.keys():
 		var group = edge_groups[edge_id]
 		var edge_template: Edge = group["edge_template"]
@@ -109,7 +145,7 @@ static func extract(compiled: Dictionary) -> Dictionary:
 		var storey_count := max_storey + 1
 		
 		# Create final edge with correct storey count
-		var final_edge := Edge.new(edge_template.gu_a, edge_template.gu_b, storey_count, "concrete")
+		var final_edge := Edge.new(edge_template.gu_a, edge_template.gu_b, storey_count, edge_template.material)
 		result["edges"].append(final_edge)
 	
 	return result

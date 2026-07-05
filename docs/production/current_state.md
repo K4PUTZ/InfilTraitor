@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.12 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** e2e1acb "[VERSION] Bump to 0.4.12"
+**Version:** 0.4.13 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 9ebaba5 "ALPHA 0.4.12 - 2026-07-05"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**

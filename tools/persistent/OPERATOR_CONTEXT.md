@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.11 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** a090a4f "[DOC-HOOK-01] Complete: push.sh auto-update pipeline with marker-based docs"
+**Version:** 0.4.12 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 45fcc84 "ALPHA 0.4.11 - 2026-07-05"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

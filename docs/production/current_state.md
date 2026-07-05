@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.11 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** a090a4f "[DOC-HOOK-01] Complete: push.sh auto-update pipeline with marker-based docs"
+**Version:** 0.4.12 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 45fcc84 "ALPHA 0.4.11 - 2026-07-05"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 45fcc84 ALPHA 0.4.11 - 2026-07-05
 - 2bb6944 [VERSION] Bump to 0.4.9
 - e61ff4c feat(version): VERSION-08 — FIX-BAKE-09b final evidence (green run, red run, real parity check)
 - cdcafe1 [VERSION] Bump to 0.4.7
 - 1eeb92c [VERSION] Bump to 0.4.6
-- 935b39f [VERSION] Bump to 0.4.5
 <!-- AUTO:END version_history -->
 
 ---

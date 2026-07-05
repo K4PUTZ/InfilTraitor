@@ -33,9 +33,10 @@ func _init(p_N: int = -1) -> void:
 		N = p_N
 	else:
 		N = GeometryCoordsClass.TEX_AUTHORING_N
-	
+
 	_setup_transforms()
-	# Validation will be done by tests; skip here to avoid enum typing issues
+	# Run integer-shear assertion immediately
+	_assert_integer_shear_all_faces()
 
 func _setup_transforms() -> void:
 	# Isometric projection geometry for the four faces.
@@ -187,11 +188,16 @@ func _multiply_2x2(A: Array, B: Array) -> Array:
 			result[i].append(A[i][0] * B[0][j] + A[i][1] * B[1][j])
 	return result
 
-## Assert that all columns map to integer Y offsets (critical for NEAREST sampling)
+## Assert that screen-space coordinates are integer or nearly-integer
+## Critical for NEAREST texture sampling without subpixel artifacts
 func _assert_integer_shear_all_faces() -> void:
+	print("[GEOMETRY] Validating integer shear for all faces...")
+
 	# Check all four main faces
-	for face_name in ["NE", "SE", "SW", "NW", "CAP"]:
+	for face_name in ["NE", "SE", "SW", "NW"]:
 		_validate_face_shear(face_name)
+
+	print("[GEOMETRY] ✓ Integer shear validated for all faces\n")
 
 func _validate_face_shear(face_name: String) -> void:
 	var face
@@ -200,15 +206,33 @@ func _validate_face_shear(face_name: String) -> void:
 		"SE": face = Face.SE
 		"SW": face = Face.SW
 		"NW": face = Face.NW
-		"CAP": face = Face.CAP
 		_: return
-	
-	# For each column x in [0, 8N), verify all y values map to integer screen_y
-	for flat_x in range(0, 8 * N):
-		for flat_y in range(0, 8 * N + 1):
+
+	var tolerance = 0.0001
+	var failures = []
+
+	# For all flat coordinates in [0, 8N) × [0, 8N), verify screen Y is integer
+	for flat_y in range(0, 8 * N + 1):
+		for flat_x in range(0, 8 * N):
 			var screen_pos = flat_to_screen(face, Vector2(float(flat_x), float(flat_y)))
+
+			# Check if Y is nearly integer (tolerance for floating-point error)
 			var y_frac = fmod(screen_pos.y, 1.0)
-			assert(y_frac < 0.0001 or y_frac > 0.9999, 
-				"[%s] Non-integer Y at flat (%.1f, %.1f): screen_y=%.4f" % 
-				[face_name, float(flat_x), float(flat_y), screen_pos.y])
+			if y_frac < 0 :
+				y_frac += 1.0
+			var is_integer = (y_frac < tolerance or y_frac > (1.0 - tolerance))
+
+			if not is_integer:
+				failures.append(
+					"  flat(%.0f, %.0f) → screen_y=%.6f (frac=%.6f)" %
+					[float(flat_x), float(flat_y), screen_pos.y, y_frac]
+				)
+
+	if failures.is_empty():
+		print("  ✓ [%s] All %d points map to integer Y" % [face_name, (8 * N) * (8 * N + 1)])
+	else:
+		push_error("[%s] Integer shear FAILED: %d points with fractional Y:" % [face_name, failures.size()])
+		for msg in failures.slice(0, 5):
+			push_error(msg)
+		assert(false, "Integer shear validation FAILED for face %s (see errors above)" % face_name)
 

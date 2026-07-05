@@ -18,33 +18,13 @@ class BakeKey:
 	var facade_id: String
 	var variant_k: int           # [0, 4)
 	var face: int                # Face enum value
-	var plane_col: int           # Facade plane column (voxels)
-	var plane_row: int           # Facade plane row (voxels)
-
-	func _hash() -> int:
-		var h = 0
-		h = hash(h ^ material_id.hash())
-		h = hash(h ^ facade_id.hash())
-		h = hash(h ^ variant_k)
-		h = hash(h ^ face)
-		h = hash(h ^ plane_col)
-		h = hash(h ^ plane_row)
-		return h
-
-	func _is_equal(other: BakeKey) -> bool:
-		if other == null or not (other is BakeKey):
-			return false
-		return (material_id == other.material_id and
-				facade_id == other.facade_id and
-				variant_k == other.variant_k and
-				face == other.face and
-				plane_col == other.plane_col and
-				plane_row == other.plane_row)
+	var plane_col: int           # Facade plane column (texel units [0, 64N))
+	var plane_row: int           # Facade plane row (texel units [0, 32N))
 
 ## BakedAtlas — output of the compositor
 class BakedAtlas extends RefCounted:
 	var pages: Array  # Array of Images (4096×4096 each)
-	var lookup: Dictionary   # BakeKey → {page, atlas_coords}
+	var lookup: Dictionary   # String keys → {page, atlas_coords}
 
 	func _init() -> void:
 		pages = []
@@ -80,11 +60,20 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 					facades_by_id[facade_id] = resolved.get("image", null)
 
 	# Step 3: Render tiles (batched)
-	var start_time = Time.get_ticks_msec()
+	var start_total = Time.get_ticks_msec()
+	var start_render = Time.get_ticks_msec()
 	atlas_result = _render_batch(bake_set, facades_by_id)
-	var elapsed_ms = Time.get_ticks_msec() - start_time
+	var elapsed_render = Time.get_ticks_msec() - start_render
+	var elapsed_total = Time.get_ticks_msec() - start_total
 
-	print("[BAKE] Render complete: %d pages, %.1f ms" % [atlas_result.pages.size(), elapsed_ms])
+	print("[BAKE] Timing:")
+	print("  Render batch: %.1f ms (target: < 100 ms)" % elapsed_render)
+	print("  Total bake: %.1f ms" % elapsed_total)
+
+	if elapsed_render > 100.0:
+		push_warning("[BAKE] Render exceeded 100 ms budget; consider GPU batch (deferred)")
+
+	print("[BAKE] Render complete: %d pages" % [atlas_result.pages.size()])
 
 	# Step 4: Save debug dumps
 	for i in range(atlas_result.pages.size()):
@@ -107,6 +96,13 @@ func _extract_walls_from_spec(map_spec: Dictionary, geometry) -> Array:
 			walls.append(wall)
 
 	return walls
+
+## Serialize a BakeKey to a deterministic string for Dictionary keying
+func _bake_key_to_string(key: BakeKey) -> String:
+	return "%s|%s|%d|%d|%d|%d" % [
+		key.material_id, key.facade_id, key.variant_k,
+		key.face, key.plane_col, key.plane_row
+	]
 
 ## Populate bake set with deduplication
 func _populate_bake_set(walls: Array, resolver) -> Dictionary:
@@ -140,24 +136,25 @@ func _populate_bake_set(walls: Array, resolver) -> Dictionary:
 			if edge == null:
 				continue
 
-			# Determine window origin
-			var origin = sampler.get_window_origin_isolated(edge, facade_id)
+			# Determine window origin (now in texel units directly, no conversion needed)
+			var origin_texels = sampler.get_window_origin_isolated_texels(edge, facade_id)
 
 			# Determine variant (seeded)
 			var seed_val = hash(str(edge) + "_" + material_id)
 			var variant_k = abs(seed_val) % 4
 
-			# Construct bake key
+			# Construct bake key (plane_col/row now store texel units directly)
 			var key = BakeKey.new()
 			key.material_id = material_id
 			key.facade_id = facade_id
 			key.variant_k = variant_k
 			key.face = face
-			key.plane_col = int(float(int(origin.x)) / float(TEX_AUTHORING_N))
-			key.plane_row = int(float(int(origin.y)) / float(TEX_AUTHORING_N))
+			key.plane_col = origin_texels.x
+			key.plane_row = origin_texels.y
 
-			# Add to set (dedup by key)
-			bake_set[key] = null
+			# Add to set (dedup by string key)
+			var key_str = _bake_key_to_string(key)
+			bake_set[key_str] = null
 
 	return bake_set
 
@@ -176,7 +173,7 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 	var sampler = FacadeSamplerClass.new()
 	var projector = PerFaceProjectorClass.new()
 
-	for bake_key in bake_set.keys():
+	for key_str in bake_set.keys():
 		var page_idx = int(float(tile_index) / float(tiles_per_page))
 		var tile_in_page = tile_index % tiles_per_page
 		var tile_x = (tile_in_page % tiles_per_page_x) * region_size.x
@@ -184,7 +181,17 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 
 		# Ensure page exists
 		while pages.size() <= page_idx:
-			pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGB8))
+			pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGBA8))
+
+		# Reconstruct BakeKey from string for internal use
+		var parts = key_str.split("|")
+		var bake_key = BakeKey.new()
+		bake_key.material_id = parts[0]
+		bake_key.facade_id = parts[1]
+		bake_key.variant_k = int(parts[2])
+		bake_key.face = int(parts[3])
+		bake_key.plane_col = int(parts[4])
+		bake_key.plane_row = int(parts[5])
 
 		# Get material variant tile
 		var material = registry.get_material(bake_key.material_id)
@@ -206,8 +213,8 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 			for x in range(region_size.x):
 				pages[page_idx].set_pixel(tile_x + x, tile_y + y, composite_tile.get_pixel(x, y))
 
-		# Record lookup
-		lookup[bake_key] = {
+		# Record lookup with string key
+		lookup[key_str] = {
 			"page": page_idx,
 			"atlas_coords": Vector2i(tile_x / region_size.x, tile_y / region_size.y)
 		}
@@ -219,9 +226,38 @@ func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtla
 	result.lookup = lookup
 	return result
 
-## Get material tile from atlas
-func _get_material_tile(_material, _face: int, _variant_k: int) -> Image:
-	var tile = Image.create(32, 16, false, Image.FORMAT_RGB8)
+## Get material tile from atlas (applies pattern to base color)
+func _get_material_tile(material, _face: int, variant_k: int) -> Image:
+	if material == null:
+		return _create_white_tile()
+
+	var tile = Image.create(32, 16, false, Image.FORMAT_RGBA8)
+	var base_color = material.base_color
+
+	for screen_y in range(16):
+		for screen_x in range(32):
+			# Derive voxel position within 8×8 flat space (screen pixels map to flat voxels)
+			var voxel_x = screen_x % 8
+			var voxel_y = screen_y % 8
+			var voxel_xy = Vector2i(voxel_x, voxel_y)
+
+			# Seed for pattern determinism (variant + position)
+			var seed_val = (variant_k << 16) + (screen_y * 32 + screen_x)
+
+			# Apply pattern shade
+			var pattern_shade = material.pattern_algorithm.shade(voxel_xy, _face, seed_val)
+
+			# Multiply base color by pattern shade
+			var pixel = base_color * pattern_shade
+			pixel.a = 1.0  # Opaque (will come from canonical silhouette in composite)
+
+			tile.set_pixel(screen_x, screen_y, pixel)
+
+	return tile
+
+## Create a fallback white tile
+func _create_white_tile() -> Image:
+	var tile = Image.create(32, 16, false, Image.FORMAT_RGBA8)
 	for y in range(16):
 		for x in range(32):
 			tile.set_pixel(x, y, Color.WHITE)
@@ -235,10 +271,10 @@ func _composite_tile(
 	sampler,
 	projector
 ) -> Image:
-	var result = Image.create(32, 16, false, Image.FORMAT_RGB8)
+	var result = Image.create(32, 16, false, Image.FORMAT_RGBA8)
 
-	# Derive the crop window in the facade plane
-	var window_origin = Vector2i(bake_key.plane_col * TEX_AUTHORING_N, bake_key.plane_row * TEX_AUTHORING_N)
+	# Derive the crop window in the facade plane (origins are already in texel units)
+	var window_origin = Vector2i(bake_key.plane_col, bake_key.plane_row)
 
 	for screen_y in range(16):
 		for screen_x in range(32):

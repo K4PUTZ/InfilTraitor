@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**100 scripts · 17169 lines total** (under `godot/scripts/`)
+**104 scripts · 17904 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -556,7 +556,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 70 lines
+`class_name Slice` · 71 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -569,6 +569,7 @@ extends `ConfirmationDialog` · 75 lines
 - `var edge_id: String`
 - `var storey_count: int`
 - `var material: String`
+- `var facade_id: String = ""`
 - `var voxels: Array[Voxel] = []`
 - `var dirty_count: int = 0`
 - `var baked: bool = false`
@@ -619,7 +620,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 221 lines
+`class_name VoxelRenderer` · extends `Node2D` · 249 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1039,7 +1040,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 289 lines
+`class_name BakeCompositor` · 325 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1068,7 +1069,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 147 lines
+`class_name BakedTileLookup` · 176 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1103,7 +1104,7 @@ extends `Node2D` · 43 lines
 
 ### `facade_sampler.gd`
 
-`class_name FacadeSampler` · 105 lines
+`class_name FacadeSampler` · 123 lines
 
 `godot/scripts/systems/facade_sampler.gd`
 
@@ -1111,6 +1112,8 @@ extends `Node2D` · 43 lines
 
 **Public API**
 - `func sample(facade: Image, plane_x: float, plane_y: float) -> float:`
+- `func get_window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:`
+- `func get_window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:`
 - `func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:`
 - `func get_window_origin_isolated(edge, facade_id: String) -> Vector2i:`
 - `func get_window_bounds(origin: Vector2i, width_voxels: int, height_voxels: int, N: int) -> Rect2i:`
@@ -1479,7 +1482,7 @@ extends `Node2D` · 43 lines
 
 ### `per_face_projector.gd`
 
-`class_name PerFaceProjector` · 214 lines
+`class_name PerFaceProjector` · 238 lines
 
 `godot/scripts/systems/per_face_projector.gd`
 
@@ -1628,7 +1631,7 @@ extends `Node` · 54 lines
 
 ### `bake_compositor_test.gd`
 
-extends `SceneTree` · 259 lines
+extends `SceneTree` · 291 lines
 
 `godot/scripts/tools/bake_compositor_test.gd`
 
@@ -1667,7 +1670,7 @@ extends `SceneTree` · 219 lines
 
 ### `baked_tile_lookup_test.gd`
 
-extends `SceneTree` · 267 lines
+extends `SceneTree` · 319 lines
 
 `godot/scripts/tools/baked_tile_lookup_test.gd`
 
@@ -1714,7 +1717,7 @@ extends `SceneTree` · 75 lines
 
 ### `facade_sampler_test.gd`
 
-extends `SceneTree` · 237 lines
+extends `SceneTree` · 239 lines
 
 `godot/scripts/tools/facade_sampler_test.gd`
 
@@ -1722,6 +1725,55 @@ extends `SceneTree` · 237 lines
 
 **Public vars**
 - `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
+
+---
+
+### `fix_bake_01_test.gd`
+
+extends `SceneTree` · 96 lines
+
+`godot/scripts/tools/fix_bake_01_test.gd`
+
+> FIX-BAKE-01 TEST: String Key Deduplication Tests that BakeKey serialization to strings enables: 1. Deterministic string generation from identical keys 2. Uniqueness when keys differ 3. Dictionary deduplication with string keys 4. Lookup hits in dictionaries keyed by string
+
+---
+
+### `fix_bake_02_sampler_test.gd`
+
+extends `SceneTree` · 121 lines
+
+`godot/scripts/tools/fix_bake_02_sampler_test.gd`
+
+> FIX-BAKE-02 TEST: Units & Origins – Texel-based Window Origins Validates that FacadeSampler now returns origins in texel units [0, 64N) × [0, 32N), enabling full facade diversity (not collapsed to 4×2 buckets).
+
+**Constants / tuning**
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+---
+
+### `fix_bake_03_geometry_test.gd`
+
+extends `SceneTree` · 62 lines
+
+`godot/scripts/tools/fix_bake_03_geometry_test.gd`
+
+> FIX-BAKE-03 TEST: PerFaceProjector Integer Shear Assertion Validates that PerFaceProjector._init() runs integer-shear validation and passes with current matrices.
+
+**Constants / tuning**
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+
+---
+
+### `fix_bake_04_material_tile_test.gd`
+
+extends `SceneTree` · 172 lines
+
+`godot/scripts/tools/fix_bake_04_material_tile_test.gd`
+
+**Constants / tuning**
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 
 ---
 
@@ -1926,7 +1978,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 229 lines
+`class_name RoomBuilder` · 291 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

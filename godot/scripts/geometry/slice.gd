@@ -9,6 +9,7 @@ var face: int                    ## which face of the GU (NW, NE, SE, SW)
 var edge_id: String              ## backref to parent edge
 var storey_count: int            ## number of vertical levels
 var material: String             ## material type
+var facade_id: String = ""       ## facade id for baking (NEW: FIX-BAKE-05)
 var voxels: Array[Voxel] = []    ## all voxels in this slice (64 per storey)
 var dirty_count: int = 0         ## sum of child Voxel dirty flags
 var baked: bool = false          ## texture assigned by BakeSystem (VOXEL-08)

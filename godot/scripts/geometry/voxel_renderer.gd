@@ -100,8 +100,10 @@ func _build_voxel_tileset() -> void:
 func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	# Iterate all slices and render their voxels
 	for slice in registry.all_slices():
-		_render_slice(slice)
-	
+		# Try to get edge from registry (if available)
+		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
+		_render_slice(slice, edge)
+
 	# Render junction columns
 	for column in junction_columns:
 		_render_junction_column(column)
@@ -125,14 +127,16 @@ func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, materia
 
 
 ## Render a single slice's voxels
-func _render_slice(slice: Slice) -> void:
+func _render_slice(slice: Slice, edge = null) -> void:
 	# Ensure we have enough layers
 	_ensure_voxel_layers(slice.storey_count)
-	
+
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
 		if voxel.visible:
-			_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material)
+			# Derive local voxel position within 8×8 quad from grid position
+			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
+			_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material, edge, voxel_xy, slice.face)
 
 
 ## Render a junction column
@@ -144,39 +148,63 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 
 
 ## Set a voxel cell on the appropriate layer
-func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String) -> void:
+## SEAM: Tries baked lookup first (if enabled and edge provided), falls back to material-only
+func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
+                     edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
+                     slice_face: int = 0) -> void:
 	if level < 0 or level >= _voxel_layers.size():
 		push_warning("VoxelRenderer._set_voxel_cell: level %d out of range [0, %d)" % [level, _voxel_layers.size()])
 		return
-	
-	# Find material index
-	var mat_index := MATERIALS.find(material_name)
-	if mat_index == -1:
-		mat_index = 0  # Fallback to concrete
-	
+
 	var layer: TileMapLayer = _voxel_layers[level]
-	layer.set_cell(grid_pos, mat_index, Vector2i.ZERO)
+	var source_id: int = -1
+	var atlas_coords: Vector2i = Vector2i.ZERO
+	var alternative_id: int = 0
+
+	# SEAM: Try baked lookup first
+	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	if bake_config and bake_config.enabled and edge != null:
+		var lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
+		var result = lookup.resolve(edge, slice_face, voxel_xy)
+
+		if result and result.source_id_int >= 0:
+			source_id = result.source_id_int
+			atlas_coords = result.atlas_coords
+			alternative_id = result.alternative_id
+
+	# Fallback: material-only path
+	if source_id < 0:
+		source_id = MATERIALS.find(material_name)
+		if source_id == -1:
+			source_id = 0  # Fallback to concrete
+		atlas_coords = Vector2i.ZERO
+
+	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
 
 
 ## Process dirty slices only (TIC optimization)
 func process_dirty(registry: EdgeRegistry) -> void:
 	var dirty_slices := registry.dirty_slices()
-	
+
 	if dirty_slices.is_empty():
 		return
-	
+
 	# Update cells for dirty voxels
 	for slice in dirty_slices:
+		# Try to get edge from registry
+		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
+
 		for voxel in slice.voxels:
 			if voxel.dirty:
 				# Update cell state based on voxel visibility
 				if voxel.visible:
-					_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material)
+					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
+					_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material, edge, voxel_xy, slice.face)
 				else:
 					# Clear cell
 					if voxel.level < _voxel_layers.size():
 						_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
-		
+
 		# Clear all dirty flags in slice
 		slice.clear_all_dirty()
 

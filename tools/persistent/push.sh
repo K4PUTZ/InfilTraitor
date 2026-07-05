@@ -19,7 +19,12 @@ set -euo pipefail
 BUMP_TYPE="${1:-patch}"  # Default to patch; accept major/minor/patch as arg
 REPO_ROOT="$(dirname "$0")/../../"
 VERSION_FILE="$REPO_ROOT/VERSION"
-TAG="Manual push - $(date +%Y-%m-%d)"
+
+####################
+####################
+TAG="ALPHA FIX-BAKE-05 - $(date +%Y-%m-%d)"
+####################
+####################
 
 # Validate bump type
 if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then

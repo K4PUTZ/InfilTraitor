@@ -62,6 +62,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		var _edge_registry = EdgeRegistry.new()
 		SliceGenerator.generate(extraction["edges"], _edge_registry)
 		var _junction_columns = JunctionResolver.resolve(_edge_registry)
+
+		## Bake textures (S2: Wire baking into room_builder)
+		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
+		if bake_config and bake_config.enabled:
+			_bake_textures(extraction, _edge_registry)
+
 		room._voxel_renderer.clear()
 		room._voxel_renderer.render(_edge_registry, _junction_columns)
 		_render_solid_blocks(extraction.get("solid_blocks", []))
@@ -159,6 +165,62 @@ func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
 		# For now, skip agent check — guards don't block at agent.cell anyway in the logic
 		nav.append(guard.cell)
 	return nav
+
+
+## Bake textures (S2: FIX-BAKE-05 integration)
+func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> void:
+	print("[ROOM] Baking textures...")
+
+	# Create map spec for compositor
+	var map_spec = {
+		"walls": extraction.get("edges", []),
+		"room_geometry": extraction.get("room_geometry", {}),
+	}
+
+	# Create texture resolver
+	var resolver_class = preload("res://godot/scripts/systems/texture_resolver.gd")
+	var resolver = resolver_class.new()
+
+	# Bake
+	var compositor_class = preload("res://godot/scripts/systems/bake_compositor.gd")
+	var compositor = compositor_class.new()
+
+	var start = Time.get_ticks_msec()
+	var baked_atlas = compositor.bake(map_spec, resolver)
+	var elapsed = Time.get_ticks_msec() - start
+
+	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.pages.size()])
+
+	# Register baked atlas pages with the tileset
+	var source_ids = {}
+	for page_idx in range(baked_atlas.pages.size()):
+		var source_id = _register_baked_atlas_page(baked_atlas.pages[page_idx], page_idx)
+		source_ids[page_idx] = source_id
+		print("[ROOM] Registered baked atlas page %d as source %d" % [page_idx, source_id])
+
+	# Store lookup and source mapping for placement
+	Engine.set_meta("GLOBAL_BAKED_ATLAS", baked_atlas)
+	Engine.set_meta("BAKED_ATLAS_SOURCE_IDS", source_ids)
+	Engine.set_meta("BAKE_TIMESTAMP", Time.get_ticks_msec())
+
+
+## Register a baked atlas page as a tileset source
+func _register_baked_atlas_page(page_image: Image, page_idx: int) -> int:
+	# Create TileSetAtlasSource from the page image
+	var source = TileSetAtlasSource.new()
+	source.texture = ImageTexture.create_from_image(page_image)
+	source.texture_region_size = Vector2i(32, 16)
+
+	# Register on the wall tileset
+	var tileset = _wall_tileset
+	if tileset == null:
+		push_error("[ROOM] Wall tileset not set; cannot register baked atlas page %d" % page_idx)
+		return -1
+
+	var source_id = tileset.get_next_source_id()
+	tileset.add_source(source, source_id)
+
+	return source_id
 
 
 func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:

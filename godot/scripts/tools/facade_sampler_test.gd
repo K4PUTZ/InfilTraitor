@@ -48,13 +48,13 @@ func _test_mirror_1d_boundaries() -> bool:
 	var sampler = FacadeSamplerClass.new()
 	var success = true
 	var tests = [
-		[0.0, 4, 0.0],
-		[1.0, 4, 1.0],
-		[3.0, 4, 3.0],
-		[4.0, 4, 0.0],
-		[5.0, 4, 3.0],
-		[-1.0, 4, 1.0],
-		[-4.0, 4, 0.0],
+		[0.0, 4, 0.0],       # Start of period
+		[1.0, 4, 1.0],       # Mid
+		[3.0, 4, 3.0],       # Near end
+		[4.0, 4, 3.0],       # BOUNDARY (FIX): maps to S-1 (mirrored, not spike at 0)
+		[5.0, 4, 3.0],       # Just over (mirror back to 3)
+		[-1.0, 4, 1.0],      # Negative (mirrors to positive)
+		[-4.0, 4, 3.0],      # Boundary in negative (FIX): maps to S-1
 	]
 	for test in tests:
 		var result = sampler._mirror_1d(test[0], test[1])
@@ -127,22 +127,23 @@ func _test_fnv1a_determinism() -> bool:
 	return success
 
 func _test_window_origin_run() -> bool:
-	print("[TEST 5] window_origin_run\n")
+	print("[TEST 5] window_origin_run (texel units)\n")
 	var sampler = FacadeSamplerClass.new()
 	var success = true
 	var edge = MockEdge.new("edge_test_run_0")
-	var origin = sampler.get_window_origin_run(edge, "facade_stone_base")
-	if origin.x >= 0 and origin.x < 64:
-		print("    ✓ Origin X in range: %d" % origin.x)
+	var origin = sampler.get_window_origin_run_texels(edge, "facade_stone_base")
+	var N = 16  # TEX_AUTHORING_N
+	if origin.x >= 0 and origin.x < 64 * N:
+		print("    ✓ Origin X in texel range [0, %d): %d" % [64 * N, origin.x])
 	else:
-		print("    ✗ Origin X out of range: %d" % origin.x)
+		print("    ✗ Origin X out of range [0, %d): %d" % [64 * N, origin.x])
 		success = false
-	if origin.y >= 0 and origin.y < 32:
-		print("    ✓ Origin Y in range: %d" % origin.y)
+	if origin.y >= 0 and origin.y < 32 * N:
+		print("    ✓ Origin Y in texel range [0, %d): %d" % [32 * N, origin.y])
 	else:
-		print("    ✗ Origin Y out of range: %d" % origin.y)
+		print("    ✗ Origin Y out of range [0, %d): %d" % [32 * N, origin.y])
 		success = false
-	var origin2 = sampler.get_window_origin_run(edge, "facade_stone_base")
+	var origin2 = sampler.get_window_origin_run_texels(edge, "facade_stone_base")
 	if origin == origin2:
 		print("    ✓ Origin deterministic: (%d, %d)" % [origin.x, origin.y])
 	else:
@@ -155,22 +156,23 @@ func _test_window_origin_run() -> bool:
 	return success
 
 func _test_window_origin_isolated() -> bool:
-	print("[TEST 6] window_origin_isolated\n")
+	print("[TEST 6] window_origin_isolated (texel units)\n")
 	var sampler = FacadeSamplerClass.new()
 	var success = true
 	var edge = MockEdge.new("edge_test_isolated_0")
-	var origin = sampler.get_window_origin_isolated(edge, "facade_stone_base")
-	if origin.x >= 0 and origin.x < 64:
-		print("    ✓ Origin X in range: %d" % origin.x)
+	var origin = sampler.get_window_origin_isolated_texels(edge, "facade_stone_base")
+	var N = 16  # TEX_AUTHORING_N
+	if origin.x >= 0 and origin.x < 64 * N:
+		print("    ✓ Origin X in texel range [0, %d): %d" % [64 * N, origin.x])
 	else:
-		print("    ✗ Origin X out of range: %d" % origin.x)
+		print("    ✗ Origin X out of range [0, %d): %d" % [64 * N, origin.x])
 		success = false
-	if origin.y >= 0 and origin.y < 32:
-		print("    ✓ Origin Y in range: %d" % origin.y)
+	if origin.y >= 0 and origin.y < 32 * N:
+		print("    ✓ Origin Y in texel range [0, %d): %d" % [32 * N, origin.y])
 	else:
-		print("    ✗ Origin Y out of range: %d" % origin.y)
+		print("    ✗ Origin Y out of range [0, %d): %d" % [32 * N, origin.y])
 		success = false
-	var origin_wood = sampler.get_window_origin_isolated(edge, "facade_wood_base")
+	var origin_wood = sampler.get_window_origin_isolated_texels(edge, "facade_wood_base")
 	if origin != origin_wood:
 		print("    ✓ Different facades hash differently: stone=(%d,%d), wood=(%d,%d)" % [origin.x, origin.y, origin_wood.x, origin_wood.y])
 	else:
@@ -219,10 +221,10 @@ func _test_sample_synthetic_facade() -> bool:
 		print("    ✗ Corner (0, 31): %.2f (expected 0.30)" % val_0_31)
 		success = false
 	var val_64_0 = sampler.sample(facade, 64.0, 0.0)
-	if abs(val_64_0 - 0.2) < 0.05:
-		print("    ✓ Wrap (64, 0): %.2f ≈ 0.20 (matches (0, 0))" % val_64_0)
+	if abs(val_64_0 - 0.5) < 0.05:
+		print("    ✓ Boundary (64, 0): %.2f ≈ 0.50 (maps to S-1=(63,0), mirrored)" % val_64_0)
 	else:
-		print("    ✗ Wrap (64, 0): %.2f (expected 0.20)" % val_64_0)
+		print("    ✗ Boundary (64, 0): %.2f (expected 0.50)" % val_64_0)
 		success = false
 	var val_65_0 = sampler.sample(facade, 65.0, 0.0)
 	if abs(val_65_0 - 0.5) < 0.05:

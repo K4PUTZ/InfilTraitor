@@ -19,15 +19,23 @@ func sample(facade: Image, plane_x: float, plane_y: float) -> float:
 	# Extract luminance (V in HSV, works for grayscale)
 	return pixel.v
 
-## Get window origin for a contiguous run of edges
+## Get window origin for a contiguous run of edges (in texel units [0, 64N) × [0, 32N))
 ## Deterministic based on canonical minimum edge
-func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:
-	return _window_origin_run(canonical_min_edge, facade_id)
+func get_window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:
+	return _window_origin_run_texels(canonical_min_edge, facade_id)
 
-## Get window origin for an isolated wall
+## Get window origin for an isolated wall (in texel units [0, 64N) × [0, 32N))
 ## Randomized based on edge hash
+func get_window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
+	return _window_origin_isolated_texels(edge, facade_id)
+
+## Deprecated: use get_window_origin_run_texels instead
+func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:
+	return get_window_origin_run_texels(canonical_min_edge, facade_id)
+
+## Deprecated: use get_window_origin_isolated_texels instead
 func get_window_origin_isolated(edge, facade_id: String) -> Vector2i:
-	return _window_origin_isolated(edge, facade_id)
+	return get_window_origin_isolated_texels(edge, facade_id)
 
 ## Get window bounds from origin and dimensions
 func get_window_bounds(origin: Vector2i, width_voxels: int, height_voxels: int, N: int) -> Rect2i:
@@ -48,9 +56,9 @@ func _mirror_1d(k: float, S: int) -> float:
 	if k2 < 0:
 		k2 += 2.0 * S_int
 	
-	# Boundary case: exactly at S wraps to next period
+	# Boundary case: exactly at S wraps to S-1 (GL mirrored-repeat convention, no spike)
 	if abs(k2 - S_int) < 0.0001:
-		return 0.0
+		return S_int - 1.0
 	
 	# Reflect if in the second half of the period
 	if k2 > S_int:
@@ -59,39 +67,49 @@ func _mirror_1d(k: float, S: int) -> float:
 	return k2
 
 ## Window origin for contiguous run (all edges use same origin from canonical min)
-func _window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:
+## Returns texel units [0, 64N) × [0, 32N)
+func _window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:
 	# Get key string from edge (duck typing; expects .key_string() method or property)
 	var key_str = ""
 	if canonical_min_edge.has_method("key_string"):
 		key_str = canonical_min_edge.key_string()
 	else:
 		key_str = canonical_min_edge.key_string as String
-	
+
 	var hash_input = key_str + ":" + facade_id
 	var hash_val = _fnv1a_hash(hash_input)
-	
-	# Column offset: [0, 64N)
-	var plane_col = (hash_val % 64)
-	var plane_row = 0  # v1 uses row 0
-	
-	return Vector2i(plane_col, plane_row)
+
+	# Get N from geometry coords
+	const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+	var N = GeometryCoordsClass.TEX_AUTHORING_N
+
+	# Column offset in texel units [0, 64N)
+	var plane_col_texels = (hash_val % (64 * N))
+	var plane_row_texels = 0  # v1 uses row 0
+
+	return Vector2i(plane_col_texels, plane_row_texels)
 
 ## Window origin for isolated wall (independent hash per edge)
-func _window_origin_isolated(edge, facade_id: String) -> Vector2i:
+## Returns texel units [0, 64N) × [0, 32N)
+func _window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
 	var key_str = ""
 	if edge.has_method("key_string"):
 		key_str = edge.key_string()
 	else:
 		key_str = edge.key_string as String
-	
+
 	var hash_input = key_str + ":" + facade_id
 	var hash_val = _fnv1a_hash(hash_input)
-	
-	# Two independent hashes
-	var plane_col = ((hash_val >> 0) & 0xFF) % 64
-	var plane_row = ((hash_val >> 8) & 0xFF) % 32
-	
-	return Vector2i(plane_col, plane_row)
+
+	# Get N from geometry coords
+	const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+	var N = GeometryCoordsClass.TEX_AUTHORING_N
+
+	# Two independent hashes, in texel units [0, 64N) × [0, 32N)
+	var plane_col_texels = ((hash_val >> 0) & 0xFF) % (64 * N)
+	var plane_row_texels = ((hash_val >> 8) & 0xFF) % (32 * N)
+
+	return Vector2i(plane_col_texels, plane_row_texels)
 
 ## FNV-1a 32-bit hash
 func _fnv1a_hash(input: String) -> int:

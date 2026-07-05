@@ -9,7 +9,7 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-Hook para atualizar documentação no Push -- Current_State.md
+
 
 OCLUSÃO E DESTRUIÇÃO DAS PAREDES
 

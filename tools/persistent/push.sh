@@ -22,7 +22,7 @@ VERSION_FILE="$REPO_ROOT/VERSION"
 
 ####################
 ####################
-TAG="ALPHA FIX-BAKE9 hotfix - $(date +%Y-%m-%d)"
+TAG="ALPHA FIX-BAKE9b - $(date +%Y-%m-%d)"
 ####################
 ####################
 

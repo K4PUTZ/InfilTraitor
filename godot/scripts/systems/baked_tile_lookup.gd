@@ -15,6 +15,7 @@ const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
 
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
+var _bake_config_ref = null  # Cache BakeConfig class reference
 var _sampler = null  # Cache FacadeSampler instance
 
 ## Result of a tile lookup query
@@ -51,9 +52,10 @@ func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 	if _bake_config:
 		baking_enabled = _bake_config.is_enabled() if _bake_config.has_method("is_enabled") else _bake_config.enabled
 	else:
-		# Use global BakeConfig
-		var bc = load("res://godot/scripts/systems/bake_config.gd")
-		baking_enabled = bc.enabled if bc else false
+		# Use global BakeConfig (cache the class reference)
+		if _bake_config_ref == null:
+			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
+		baking_enabled = _bake_config_ref.enabled if _bake_config_ref else false
 
 	if not baking_enabled:
 		return _resolve_generic(edge, face, voxel_xy)

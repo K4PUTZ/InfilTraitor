@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**106 scripts · 18260 lines total** (under `godot/scripts/`)
+**107 scripts · 18488 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1086,7 +1086,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 169 lines
+`class_name BakedTileLookup` · 171 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1823,6 +1823,25 @@ extends `SceneTree` · 146 lines
 
 ---
 
+### `fix_bake_09b_e2e_test.gd`
+
+extends `SceneTree` · 237 lines
+
+`godot/scripts/tools/fix_bake_09b_e2e_test.gd`
+
+> FIX-BAKE-09b: Real End-to-End Lookup-Hit Test with Enabled Baking Exercises Items 1, 2, 3, 4, 5 together: (a) Enable baking (BakeConfig.enabled = true) (b) Build wall descriptors using BakePolicy (real Edge instances) (c) Use material that exists in MaterialRegistry (d) Run compositor.bake() and verify pages > 0 (e) Call BakedTileLookup.resolve() with the same real Edge (f) Assert BAKED_ATLAS hit (not generic fallback) (g) Verify key parity between compositor and lookup derivations
+
+**Public vars**
+- `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
+- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `var BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `var BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")`
+- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+
+---
+
 ### `geometry_selftest.gd`
 
 extends `SceneTree` · 131 lines
@@ -2024,14 +2043,13 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 314 lines
+`class_name RoomBuilder` · 303 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
 > RoomBuilder Orchestrates room construction, tile placement, and perspective transformations. Handles loading maps, building layouts, caching blocked cells, and coordinate rotations.
 
 **Constants / tuning**
-- `DEFAULT_FACADES` = `{ "concrete": "concrete_base", "stone": "stone_base", "wood": "wood_plank", "metal": "metal_sheet", }`
 - `WALL_FLOOR_STEP_PX` = `20.0`
 - `WALL_BASE_Z_INDEX` = `8`
 - `INVALID_CELL` = `Vector2i(-1, -1)`
@@ -2039,6 +2057,7 @@ extends `Node2D` · 34 lines
 **Public vars**
 - `var room: Node`
 - `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
 - `var floor_layer: TileMapLayer = null`
 - `var structure_layer: TileMapLayer = null`
 - `var structure_wall_layer: TileMapLayer = null`

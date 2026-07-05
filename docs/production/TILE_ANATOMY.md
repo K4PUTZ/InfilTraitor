@@ -223,13 +223,13 @@ The transforms were derived from the canonical tileset renderer (which already w
 
 ### Flat-space Coverage (empirical, N=16)
 
-One 32×16 screen tile samples the following regions of flat texture-space:
+One 32×16 screen tile samples the following regions of flat texture-space (executed values):
 
 ```
 [NE] flat_x ∈ [-64, -18], flat_y ∈ [98, 128]
 [SE] flat_x ∈ [-32, 30], flat_y ∈ [-30, 62]
 [SW] flat_x ∈ [-96, -50], flat_y ∈ [-128, -98]
-[NW] flat_x ∈ [-30, 32], flat_y ∈ [-62, 30]
+[NW] flat_x ∈ [-30, 32], flat_y ∈ [-30, 62]
 ```
 
 Negative flat coordinates are expected and legal (the infinite facade plane with mirrored-repeat folding handles wrapping). This window footprint is measured empirically by sweeping all 512 integer screen pixels through `screen_to_flat()`.

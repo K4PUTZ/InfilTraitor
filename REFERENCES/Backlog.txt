@@ -9,9 +9,9 @@
 - Tutorial por trechos de mapas vai mostrando como usar cada cada posição, skill, sombras, armas, feature nova.
 
 
-Sistema de VERSIONAMENTO
+Hook para atualizar documentação no Push -- Current_State.md
 
-OCLUSÃO DAS PAREDES
+OCLUSÃO E DESTRUIÇÃO DAS PAREDES
 
 Onomatpeias: dicionário de "sons" visiveis.
 
@@ -31,3 +31,7 @@ O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamen
 
 
 Mas há um gap importante: o sistema atual de Slice e Edge Registry provavelmente opera em paredes de 1 storey de altura. Multi-storey exigiria slices empilhadas ou altura paramétrica — isso é uma feature nova no placement, fora do escopo do baking. O contrato da facade já suporta multi-storey desde já e fica forward-compatible, mas preciso flaggar que o Edge Registry/Slice system atual até onde sabemos não cobre isso ainda.
+
+
+
+Leia o audit e aguarde o prompt de fix.

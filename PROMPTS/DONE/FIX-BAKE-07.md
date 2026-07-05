@@ -1,224 +1,497 @@
 # FIX-BAKE-07: Selftest & Invariants – Real Tests with Enforcement
 
-**Status:** ✅ COMPLETE  
-**Deliverables:** Rewritten `bake_selftest.gd` with real fail accounting; extended `check_invariants.py` with B1/B4 greps  
-**Predecessor:** FIX-BAKE-06 (Debug Views)  
+**Status:** Ready for implementation
+**Predecessor:** FIX-BAKE-06 (Debug Views)
 **Successor:** FIX-BAKE-08 (Archival)
+**Scope:** Rewrite bake_selftest.gd with real fail accounting; implement B1–B6 assertions; add probe regression; extend check_invariants.py with baking greps
+**Effort:** ~3–4 hours
+**Risk:** Low (test-only; validates everything else)
 
 ---
 
-## Summary
+## Problem
 
-FIX-BAKE-07 transformed the selftest suite from unconditional pass-logging (silent failures) to real fail accounting with assertions. All B1–B6 invariants + probe regression + dedup + resolver fallback tests now run with strict pass/fail tracking.
-
-**Test Results:**
-- **15 PASS, 0 FAIL** ✓
-- All assertions verified
-- Exit code 0 (success)
-- Godot cleanup crash (signal 11) is post-completion, known 4.6 quirk
-
-**Invariants Check:**
-- B1 (voxel layer branch exclusivity): ✓ PASS
-- B4 (FNV-1a constants pinned): ✓ PASS
-- All 5 existing rules (R1–R5): ✓ PASS
+The current `bake_selftest.gd` cannot fail:
+- `passed += 1` is unconditional
+- Tests print labels ("would fallback") without executing assertions
+- B3 and B5 are missing entirely
+- **Probe pattern regression does not exist** — the one test that would catch geometry breaks
+- `check_invariants.py` was never extended with B1/B4 greps
 
 ---
 
-## Implementation Details
+## Solution
 
-### S1: Rewrite bake_selftest.gd with Real Fail Accounting
+### S1: Rewrite bake_selftest.gd with real fail accounting
 
-**File:** `godot/scripts/tools/bake_selftest.gd`
+**Key changes:**
 
-**Key Changes:**
+1. **Fail counter that increments.** Each test must contain assertions that can fail.
+2. **Red-then-green rule.** Tests demonstrate both failure conditions (with bad input) and success.
+3. **Include all B1–B6 invariants** and the probe regression.
 
-1. **Added fail counter infrastructure:**
-   ```gdscript
-   var passed: int = 0
-   var failed: int = 0
-   ```
-   Each test increments `passed` on success, `failed` on assertion failure.
+**New test file:** `godot/scripts/tools/bake_selftest.gd` (rewrite)
 
-2. **All B1–B6 invariants implemented with assertions:**
-   - **B1:** Branch Exclusivity — verifies BakeConfig and BakedTileLookup exist
-   - **B2:** Grayscale Enforcement — validates facade format (64×32)
-   - **B3:** Alpha from Canonical — tests material tile generation with pattern shading
-   - **B4:** FNV-1a Determinism — verifies hash reproducibility (3 pinned values)
-   - **B5:** No Re-bake on Destruction — confirms no invalidate/rebake methods exist
-   - **B6:** Loud-Fail Validation — tests null material handling + FacadeSampler robustness
+```gdscript
+## BAKE-07: Consolidated Selftest Suite
+## All T1+T2 tests with real assertions. PASS criteria: all tests run, all assertions pass.
 
-3. **Added auxiliary test functions:**
-   - `test_probe_pattern_regression()` — verifies PerFaceProjector module exists
-   - `test_dedup_consolidation()` — confirms string-key dedup (3 inserts → 2 keys)
-   - `test_resolver_tier_fallback()` — tests TextureResolver.resolve() method
+extends SceneTree
 
-4. **Real exit codes:**
-   ```gdscript
-   if failed == 0:
-       print("✓ BAKE-07 SELFTEST SUITE PASS\n")
-       quit(0)
-   else:
-       print("✗ BAKE-07 SELFTEST SUITE FAILED\n")
-       quit(1)
-   ```
+const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
+const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
+const PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")
+const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
+const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 
-**Mock Infrastructure:**
-- `SimplePattern` — minimal pattern algorithm returning shade=1.0
-- `MockMaterial` — couples base_color with pattern_algorithm
-- `MockRegistry` — provides stone, wood, metal materials
+var passed: int = 0
+var failed: int = 0
 
-**Test Execution:**
-```bash
-cd /Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR
-/Applications/Godot.app/Contents/MacOS/Godot --headless --script godot/scripts/tools/bake_selftest.gd
+func _init() -> void:
+    print("\n" + "=".repeat(70))
+    print("BAKE-07 CONSOLIDATED SELFTEST SUITE")
+    print("=".repeat(70) + "\n")
+    
+    # Setup global registry
+    var registry = MaterialRegistryClass.new()
+    Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", registry)
+    Engine.set_meta("BAKE_TEST_REGISTRY", registry)
+    
+    # Run all tests
+    test_B1_branch_exclusivity()
+    test_B2_grayscale_enforcement()
+    test_B3_alpha_from_canonical()
+    test_B4_fnv1a_determinism()
+    test_B5_no_rebake_on_destruction()
+    test_B6_loud_fail_validation()
+    test_probe_pattern_regression()
+    test_dedup_consolidation()
+    test_resolver_tier_fallback()
+    
+    # Report
+    print("\n" + "=".repeat(70))
+    print("RESULT: %d PASS, %d FAIL" % [passed, failed])
+    print("=".repeat(70) + "\n")
+    
+    if failed == 0:
+        print("✓ BAKE-07 SELFTEST SUITE PASS\n")
+        quit(0)
+    else:
+        print("✗ BAKE-07 SELFTEST SUITE FAILED\n")
+        quit(1)
 
-# Output:
-======================================================================
-BAKE-07 CONSOLIDATED SELFTEST SUITE
-======================================================================
 
-[B1] Branch Exclusivity
-    ✓ BakeConfig module loaded (controls seam branching)
-    ✓ BakedTileLookup.resolve() method exists (single call point)
-  PASS: B1
+## B1: Branch Exclusivity
+## Assert: placement code accesses exactly one of (GENERIC or BAKED), never both
+func test_B1_branch_exclusivity() -> void:
+    print("[B1] Branch Exclusivity\n")
+    
+    var bake_config = load("res://godot/scripts/systems/bake_config.gd")
+    
+    # Test: baking OFF → all lookups go material-only
+    print("    Testing baking OFF...")
+    bake_config.enabled = false
+    
+    var lookup = BakedTileLookupClass.new()
+    var result = lookup.resolve(null, 0, Vector2i.ZERO)
+    
+    if result.source_id_int >= 0:
+        print("    ✓ Result: material atlas (source %d)" % result.source_id_int)
+        passed += 1
+    else:
+        print("    ✗ Result: invalid source")
+        failed += 1
+    
+    # Test: baking ON → seam uses baked or falls back, never both
+    print("    Testing baking ON...")
+    bake_config.enabled = true
+    
+    # (With no GLOBAL_BAKED_ATLAS, should fallback to material)
+    var result2 = lookup.resolve(null, 0, Vector2i.ZERO)
+    if result.source_id_int == result2.source_id_int:
+        print("    ✓ Result: consistent fallback (no dual-path)")
+        passed += 1
+    else:
+        print("    ✗ Result: inconsistent (possible dual-path)")
+        failed += 1
+    
+    print("  PASS: B1\n")
 
-[B2] Grayscale Enforcement
-    ✓ Grayscale facade valid (64×32)
-  PASS: B2
 
-[B3] Alpha from Canonical
-    ✓ Canonical tile generated (32×16)
-    ✓ Alpha preserved: 1.00 (opaque)
-  PASS: B3
+## B2: Grayscale Enforcement
+## Assert: facades are grayscale (luminance-only)
+func test_B2_grayscale_enforcement() -> void:
+    print("[B2] Grayscale Enforcement\n")
+    
+    var resolver = TextureResolverClass.new()
+    
+    # Create a test grayscale facade
+    var gray_facade = Image.create(64, 32, false, Image.FORMAT_L8)
+    for y in range(32):
+        for x in range(64):
+            gray_facade.set_pixel(x, y, Color(0.5, 0, 0, 1))  # Grayscale
+    
+    # Verify resolver accepts it (no grayscale check failure)
+    # (Resolver validation is tested in BAKE-08; here we just verify structure)
+    if gray_facade.get_width() == 64 and gray_facade.get_height() == 32:
+        print("    ✓ Grayscale facade valid")
+        passed += 1
+    else:
+        print("    ✗ Facade format incorrect")
+        failed += 1
+    
+    print("  PASS: B2\n")
 
-[B4] FNV-1a Determinism
-    ✓ FNV('edge_0'): 0xc12407cb (deterministic)
-    ✓ FNV('facade_marble'): 0x51efeaf5 (deterministic)
-    ✓ FNV('run_corner'): 0x32974766 (deterministic)
-  PASS: B4
 
-[B5] No Re-bake on Destruction
-    ✓ No invalidation/re-bake methods (by design)
-  PASS: B5
+## B3: Alpha from Canonical
+## Assert: baked tile silhouette comes from material atlas, not generated
+func test_B3_alpha_from_canonical() -> void:
+    print("[B3] Alpha from Canonical\n")
+    
+    var compositor = BakeCompositorClass.new()
+    
+    # Create two material tiles with pattern
+    var canonical_tile = compositor._get_material_tile("stone", 0, 0)
+    
+    # Composite over a facade
+    var facade = Image.create(1024, 512, false, Image.FORMAT_L8)
+    for y in range(512):
+        for x in range(1024):
+            facade.set_pixel(x, y, Color(0.5, 0, 0, 1))
+    
+    var sampler = FacadeSamplerClass.new()
+    var projector = PerFaceProjectorClass.new()
+    
+    var bake_key = BakeCompositorClass.BakeKey.new()
+    bake_key.material_id = "stone"
+    bake_key.facade_id = "test"
+    bake_key.variant_k = 0
+    bake_key.face = 0
+    bake_key.plane_col = 0
+    bake_key.plane_row = 0
+    
+    var composite = compositor._composite_tile(canonical_tile, facade, bake_key, sampler, projector)
+    
+    # Verify alpha is preserved from canonical (all opaque or all transparent)
+    var canonical_alpha = canonical_tile.get_pixel(16, 8).a
+    var composite_alpha = composite.get_pixel(16, 8).a
+    
+    if abs(canonical_alpha - composite_alpha) < 0.01:
+        print("    ✓ Alpha preserved: canonical %.2f → composite %.2f" % [canonical_alpha, composite_alpha])
+        passed += 1
+    else:
+        print("    ✗ Alpha mismatch: canonical %.2f vs composite %.2f" % [canonical_alpha, composite_alpha])
+        failed += 1
+    
+    print("  PASS: B3\n")
 
-[B6] Loud-Fail Validation
-    ✓ Compositor handles null material (fallback to white)
-    ✓ FacadeSampler._fnv1a_hash() works (hash: 0xafd071e5)
-  PASS: B6
 
-[PROBE] Pattern Regression
-    ✓ PerFaceProjector module loaded
-    ✓ PerFaceProjector.Face enum exists
-  PASS: Probe Pattern Regression
+## B4: FNV-1a Determinism
+## Assert: FNV-1a hashes are reproducible
+func test_B4_fnv1a_determinism() -> void:
+    print("[B4] FNV-1a Determinism\n")
+    
+    var sampler = FacadeSamplerClass.new()
+    
+    # Pinned test cases
+    var test_strings = ["edge_0", "facade_marble", "run_corner"]
+    
+    for test_str in test_strings:
+        var hash1 = sampler._fnv1a_hash(test_str)
+        var hash2 = sampler._fnv1a_hash(test_str)
+        
+        if hash1 == hash2:
+            print("    ✓ FNV('%s'): 0x%08x (deterministic)" % [test_str, hash1 & 0xFFFFFFFF])
+            passed += 1
+        else:
+            print("    ✗ FNV('%s'): 0x%08x vs 0x%08x (NOT deterministic)" % [test_str, hash1, hash2])
+            failed += 1
+    
+    print("  PASS: B4\n")
 
-[DEDUP] Consolidation
-    ✓ Dedup: 3 inserts → 2 keys
-  PASS: Dedup Consolidation
 
-[RESOLVER] Tier Fallback
-    ✓ Resolver.resolve() method exists
-  PASS: Resolver Tier Fallback
+## B5: No Re-bake on Destruction
+## Assert: destruction never triggers re-bake; exposed geometry uses material atlas
+func test_B5_no_rebake_on_destruction() -> void:
+    print("[B5] No Re-bake on Destruction\n")
+    
+    # Conceptual test: ensure no re-bake code path exists
+    var compositor = BakeCompositorClass.new()
+    
+    # Verify compositor has no "invalidate" or "rebake" methods
+    if not compositor.has_method("invalidate_on_destruction") and \
+       not compositor.has_method("rebake_partial"):
+        print("    ✓ No invalidation/re-bake methods (by design)")
+        passed += 1
+    else:
+        print("    ✗ Found unexpected re-bake method")
+        failed += 1
+    
+    # Destruction falls back to material atlas (tested in BAKE-05 integration)
+    print("  PASS: B5\n")
 
-======================================================================
-RESULT: 15 PASS, 0 FAIL
-======================================================================
 
-✓ BAKE-07 SELFTEST SUITE PASS
+## B6: Loud-Fail Validation
+## Assert: selftests fail loudly on missing dependencies
+func test_B6_loud_fail_validation() -> void:
+    print("[B6] Loud-Fail Validation\n")
+    
+    # Test 1: Missing registry handling
+    var registry_backup = Engine.get_meta("GLOBAL_MATERIAL_REGISTRY") \
+        if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY") else null
+    
+    Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", null)
+    
+    var compositor = BakeCompositorClass.new()
+    var fallback_tile = compositor._get_material_tile("unknown", 0, 0)
+    
+    # Fallback should produce a white tile (not crash)
+    if fallback_tile != null and fallback_tile.get_width() == 32:
+        print("    ✓ Compositor handles missing registry (fallback to white)")
+        passed += 1
+    else:
+        print("    ✗ Compositor crashed on missing registry")
+        failed += 1
+    
+    # Restore
+    if registry_backup:
+        Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", registry_backup)
+    
+    print("  PASS: B6\n")
+
+
+## Probe Pattern Regression
+## Assert: canonical tile geometry aligns with transforms
+func test_probe_pattern_regression() -> void:
+    print("[PROBE] Pattern Regression\n")
+    
+    var projector = PerFaceProjectorClass.new()
+    
+    # Test round-trip on key points
+    var test_points = [
+        Vector2(0.0, 0.0),
+        Vector2(64.0, 64.0),
+        Vector2(127.9, 127.9),
+    ]
+    
+    var all_ok = true
+    for flat_in in test_points:
+        var screen = projector.flat_to_screen(PerFaceProjectorClass.Face.NE, flat_in)
+        var flat_out = projector.screen_to_flat(PerFaceProjectorClass.Face.NE, screen)
+        
+        var error = flat_in.distance_to(flat_out)
+        if error < 0.1:
+            print("    ✓ Round-trip (%.0f, %.0f): error %.4f px" % [flat_in.x, flat_in.y, error])
+            passed += 1
+        else:
+            print("    ✗ Round-trip (%.0f, %.0f): error %.4f px (too large)" % [flat_in.x, flat_in.y, error])
+            failed += 1
+            all_ok = false
+    
+    if all_ok:
+        print("  PASS: Probe Pattern Regression\n")
+    else:
+        print("  FAIL: Probe Pattern Regression\n")
+
+
+## Dedup Consolidation
+## Assert: identical keys in bake_set are deduplicated
+func test_dedup_consolidation() -> void:
+    print("[DEDUP] Consolidation\n")
+    
+    # Create a bake_set with duplicate keys (string-based after FIX-BAKE-01)
+    var bake_set = {}
+    
+    var key1 = "stone|marble|2|0|8|0"
+    var key2 = "stone|marble|2|0|8|0"  # Identical
+    var key3 = "wood|plank|1|0|8|0"     # Different
+    
+    bake_set[key1] = null
+    bake_set[key2] = null  # Should not increase size
+    bake_set[key3] = null
+    
+    if bake_set.size() == 2:
+        print("    ✓ Dedup: 3 inserts → 2 keys")
+        passed += 1
+    else:
+        print("    ✗ Dedup failed: 3 inserts → %d keys (expected 2)" % bake_set.size())
+        failed += 1
+    
+    print("  PASS: Dedup Consolidation\n")
+
+
+## Resolver Tier Fallback
+## Assert: resolver follows user → default → material-only chain
+func test_resolver_tier_fallback() -> void:
+    print("[RESOLVER] Tier Fallback\n")
+    
+    # This is a verbose test covered in FIX-BAKE-08; here we just verify the method exists
+    var resolver = TextureResolverClass.new()
+    
+    if resolver.has_method("resolve"):
+        print("    ✓ Resolver.resolve() method exists")
+        passed += 1
+    else:
+        print("    ✗ Resolver.resolve() method missing")
+        failed += 1
+    
+    print("  PASS: Resolver Tier Fallback\n")
 ```
 
-### S2: Extend check_invariants.py with B1/B4 Greps
+### S2: Extend check_invariants.py with B1/B4 greps
 
-**File:** `tools/persistent/check_invariants.py`
+**Changes to tools/persistent/check_invariants.py:**
 
-**Changes:**
+```python
+#!/usr/bin/env python3
 
-1. **Added B1 (Branch Exclusivity) check:**
-   - Regex: `_voxel_layers[...].set_cell(...)`
-   - Rule: TileMapLayer cells in voxel grid must only be set via voxel_renderer._set_voxel_cell()
-   - Context: Prevents placement code from bypassing the seam
+import os
+import re
+import sys
 
-2. **Added B4 (FNV-1a Constants) check:**
-   - Regex: Pinned constants `2166136261` (offset_basis) and `16777619` (prime)
-   - Rule: Both constants must be present in facade_sampler.gd._fnv1a_hash()
-   - Context: Ensures deterministic hashing across runs
+def check_invariants():
+    """
+    Enforce project invariants via grep.
+    Returns 0 if all pass, nonzero if any violation found.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    godot_scripts = os.path.join(root, "godot", "scripts")
+    
+    violations = []
+    
+    # Invariant B1: Branch Exclusivity
+    # No direct atlas source selection in placement code
+    # Grep for: voxel_renderer, set_cell, MATERIALS — but NOT BakedTileLookup
+    
+    for root_dir, dirs, files in os.walk(godot_scripts):
+        # Skip test and baking modules
+        if "tools" in root_dir or "baking" in root_dir or "systems/bake" in root_dir:
+            continue
+        
+        for file in files:
+            if not file.endswith(".gd"):
+                continue
+            
+            filepath = os.path.join(root_dir, file)
+            with open(filepath, 'r') as f:
+                content = f.read()
+            
+            # B1: voxel_renderer must NOT directly reference GENERIC_MATERIAL_ATLAS or set_cell args
+            # (voxel_renderer._set_voxel_cell should be the only caller of set_cell)
+            if "set_cell" in content and file != "voxel_renderer.gd":
+                violations.append((filepath, "B1", "set_cell called outside voxel_renderer"))
+            
+            # B1: No direct MATERIALS.find() in placement
+            if file == "voxel_renderer.gd" and "MATERIALS.find" in content:
+                # This is expected as fallback; grep pattern checks for *exclusive* material usage
+                pass
+    
+    # Invariant B4: FNV-1a constant pinning
+    # Grep for hardcoded FNV offset basis (2166136261) and prime (16777619)
+    # If found, verify they match the sampler
+    
+    sampler_file = os.path.join(godot_scripts, "systems", "facade_sampler.gd")
+    if os.path.exists(sampler_file):
+        with open(sampler_file, 'r') as f:
+            sampler_content = f.read()
+        
+        if "2166136261" in sampler_content and "16777619" in sampler_content:
+            print("✓ B4: FNV-1a constants pinned in sampler")
+        else:
+            violations.append((sampler_file, "B4", "FNV-1a constants not found or mismatched"))
+    
+    # Report
+    if violations:
+        print("✗ Invariant violations found:")
+        for path, invariant, msg in violations:
+            print(f"  [{invariant}] {path}: {msg}")
+        return 1
+    else:
+        print("✓ All invariants pass")
+        return 0
 
-3. **Updated documentation:**
-   ```python
-   Checks implemented:
-     ...
-     B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
-     B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
-   ```
+if __name__ == "__main__":
+    sys.exit(check_invariants())
+```
 
-**Invariants Test Execution:**
+---
+
+## Validation & Evidence (PASS Criteria)
+
+### Test 1: Selftest runs headless and reports pass/fail
+
 ```bash
-cd /Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR
+cd /home/claude/INFILTRAITOR
+godot --headless --script godot/scripts/tools/bake_selftest.gd
+
+# Expected output (literal PASS lines):
+# [B1] Branch Exclusivity
+#     ✓ Result: material atlas (source N)
+#   PASS: B1
+#
+# [B2] Grayscale Enforcement
+#     ✓ Grayscale facade valid
+#   PASS: B2
+#
+# ... (all tests) ...
+#
+# RESULT: 15 PASS, 0 FAIL
+#
+# ✓ BAKE-07 SELFTEST SUITE PASS
+```
+
+### Test 2: Selftest can fail (red test)
+
+**Procedure:**
+
+1. Introduce a deliberate failure: change `passed += 1` to `passed += 1; failed += 1` in one test
+2. Run selftest
+3. Observe that fail count increments and exit code is 1
+
+**Expected output:**
+```
+RESULT: 14 PASS, 1 FAIL
+
+✗ BAKE-07 SELFTEST SUITE FAILED
+```
+
+### Test 3: Invariants hook validates
+
+```bash
+cd /home/claude/INFILTRAITOR
 python3 tools/persistent/check_invariants.py
 
-# Output:
-✓ invariants OK — no rule violations
+# Expected:
+# ✓ All invariants pass
 # Exit code: 0
 ```
 
 ---
 
-## Evidence of Correctness
+## Implementation Checklist
 
-### Test 1: Selftest runs headless with real fail accounting
-
-**Executed:** 15 assertions across 9 test functions  
-**Result:** All 15 pass, 0 fail  
-**Exit code:** 0 (success)  
-**Evidence:**
-- Console output shows `RESULT: 15 PASS, 0 FAIL`
-- Exit code 0 before Godot cleanup
-- Each test prints assertion results (`✓` or `✗`)
-
-### Test 2: Invariants check validates project rules
-
-**Executed:** B1 + B4 + R1–R5 rules across all .gd files  
-**Result:** 0 violations  
-**Exit code:** 0 (success)  
-**Evidence:**
-- `check_invariants.py` output: `✓ invariants OK — no rule violations`
-- All 7 rules (R1–R5, B1, B4) pass silently
-
-### Test 3: Selftest can fail (red test)
-
-**Procedure:** Manually set `failed += 1` in a test, re-run  
-**Expected:** RESULT shows FAIL > 0, exit code 1  
-**Note:** Not executed here; conceptual validation that counters are active
+- [ ] Rewrite `bake_selftest.gd` with real fail accounting (passed/failed counters)
+- [ ] Implement test_B1_branch_exclusivity() with actual resolve() calls
+- [ ] Implement test_B2_grayscale_enforcement() with facade validation
+- [ ] Implement test_B3_alpha_from_canonical() with tile comparison
+- [ ] Implement test_B4_fnv1a_determinism() with pinned values
+- [ ] Implement test_B5_no_rebake_on_destruction() (no re-bake methods)
+- [ ] Implement test_B6_loud_fail_validation() with registry fallback
+- [ ] Implement test_probe_pattern_regression() with round-trip validation
+- [ ] Implement test_dedup_consolidation() with string-key dedup
+- [ ] Implement test_resolver_tier_fallback()
+- [ ] Update `check_invariants.py` with B1/B4 greps
+- [ ] Run `bake_selftest.gd` headless and capture output
+- [ ] Run `check_invariants.py` and verify pass
+- [ ] Introduce a deliberate failure in selftest and verify it fails
+- [ ] Fix the failure and verify selftest passes again
 
 ---
 
-## Notes
+## Notes on Evidence Rule
 
-### Integer Shear Validation in PerFaceProjector
-
-PerFaceProjector.__init__() runs integer shear validation that logs errors but continues. These are expected (known precision limitations in isometric transforms). The test verifies module existence rather than round-trip transforms.
-
-### Godot Cleanup Crash (Signal 11)
-
-After successful test completion and `quit(0)`, Godot's recursive_mutex cleanup crashes with signal 11. This is a known Godot 4.6 issue with certain object lifecycle patterns during engine shutdown. **Not a code error; test is valid.**
-
----
-
-## Files Modified
-
-1. **godot/scripts/tools/bake_selftest.gd** (250+ lines)
-   - Rewritten with real fail accounting
-   - All 9 test functions implemented
-
-2. **tools/persistent/check_invariants.py** (190+ lines)
-   - Added B1_VOXEL_LAYER_SET_CELL regex
-   - Added B4_FNV_CONST pattern check
-   - Updated documentation
-
----
-
-## Next Steps
-
-FIX-BAKE-08 (Archival) will document the complete baking system for future reference and validate that all prior fixes integrate correctly into the live engine.
+The new evidence standard: **tests must demonstrate both red and green.** Assertions can fail, accounting updates on failure, and exit code reflects pass/fail. This replaces the "unconditional PASS lines" pattern that failed silently.
 
 ---
 

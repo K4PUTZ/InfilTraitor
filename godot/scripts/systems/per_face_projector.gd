@@ -35,8 +35,8 @@ func _init(p_N: int = -1) -> void:
 		N = GeometryCoordsClass.TEX_AUTHORING_N
 
 	_setup_transforms()
-	# Run integer-shear assertion immediately
-	_assert_integer_shear_all_faces()
+	# Run inverse-mapping integer validation immediately
+	_assert_inverse_integer_mapping_all_faces()
 
 func _setup_transforms() -> void:
 	# Isometric projection geometry for the four faces.
@@ -188,51 +188,48 @@ func _multiply_2x2(A: Array, B: Array) -> Array:
 			result[i].append(A[i][0] * B[0][j] + A[i][1] * B[1][j])
 	return result
 
-## Assert that screen-space coordinates are integer or nearly-integer
-## Critical for NEAREST texture sampling without subpixel artifacts
-func _assert_integer_shear_all_faces() -> void:
-	print("[GEOMETRY] Validating integer shear for all faces...")
+## Validate that the SAMPLING direction (screen → flat) is texel-exact.
+## The composite pipeline iterates integer screen pixels and fetches flat texels;
+## NEAREST fidelity requires integer screen coords to map to integer flat coords.
+func _assert_inverse_integer_mapping_all_faces() -> void:
+	print("[GEOMETRY] Validating inverse (screen→flat) integer mapping for all faces...")
+	for face in [Face.NE, Face.SE, Face.SW, Face.NW]:
+		_validate_face_inverse_mapping(face)
+	print("[GEOMETRY] ✓ Inverse integer mapping validated for all faces\n")
 
-	# Check all four main faces
-	for face_name in ["NE", "SE", "SW", "NW"]:
-		_validate_face_shear(face_name)
-
-	print("[GEOMETRY] ✓ Integer shear validated for all faces\n")
-
-func _validate_face_shear(face_name: String) -> void:
-	var face
-	match face_name:
-		"NE": face = Face.NE
-		"SE": face = Face.SE
-		"SW": face = Face.SW
-		"NW": face = Face.NW
-		_: return
-
+func _validate_face_inverse_mapping(face: int) -> void:
+	var face_name = ["NE", "SE", "SW", "NW"][face]
 	var tolerance = 0.0001
-	var failures = []
+	var failures: Array = []
 
-	# For all flat coordinates in [0, 8N) × [0, 8N), verify screen Y is integer
-	for flat_y in range(0, 8 * N + 1):
-		for flat_x in range(0, 8 * N):
-			var screen_pos = flat_to_screen(face, Vector2(float(flat_x), float(flat_y)))
+	# 1. Inverse matrix entries must be integers (structural guarantee)
+	var t = transforms[face]
+	var M_inv = _invert_2x2(t["matrix"])
+	for i in range(2):
+		for j in range(2):
+			var frac = absf(M_inv[i][j] - roundf(M_inv[i][j]))
+			if frac > tolerance:
+				failures.append("  M_inv[%d][%d] = %.6f (non-integer)" % [i, j, M_inv[i][j]])
 
-			# Check if Y is nearly integer (tolerance for floating-point error)
-			var y_frac = fmod(screen_pos.y, 1.0)
-			if y_frac < 0 :
-				y_frac += 1.0
-			var is_integer = (y_frac < tolerance or y_frac > (1.0 - tolerance))
+	# 2. Offsets must be integers (so integer screen - offset stays integer)
+	var off = t["offset"]
+	if absf(off.x - roundf(off.x)) > tolerance or absf(off.y - roundf(off.y)) > tolerance:
+		failures.append("  offset = (%.4f, %.4f) (non-integer)" % [off.x, off.y])
 
-			if not is_integer:
-				failures.append(
-					"  flat(%.0f, %.0f) → screen_y=%.6f (frac=%.6f)" %
-					[float(flat_x), float(flat_y), screen_pos.y, y_frac]
-				)
+	# 3. Empirical sweep: every integer screen pixel in the 32×16 tile → integer flat coords
+	for sy in range(0, 16):
+		for sx in range(0, 32):
+			var flat = screen_to_flat(face, Vector2(float(sx), float(sy)))
+			var fx_frac = absf(flat.x - roundf(flat.x))
+			var fy_frac = absf(flat.y - roundf(flat.y))
+			if fx_frac > tolerance or fy_frac > tolerance:
+				failures.append("  screen(%d,%d) → flat(%.4f, %.4f) fractional" % [sx, sy, flat.x, flat.y])
 
 	if failures.is_empty():
-		print("  ✓ [%s] All %d points map to integer Y" % [face_name, (8 * N) * (8 * N + 1)])
+		print("  ✓ [%s] Inverse matrix integer; all 512 screen px map to integer flat coords" % face_name)
 	else:
-		push_error("[%s] Integer shear FAILED: %d points with fractional Y:" % [face_name, failures.size()])
+		push_error("[%s] Inverse mapping FAILED: %d violations:" % [face_name, failures.size()])
 		for msg in failures.slice(0, 5):
 			push_error(msg)
-		assert(false, "Integer shear validation FAILED for face %s (see errors above)" % face_name)
+		assert(false, "Inverse integer mapping FAILED for face %s" % face_name)
 

@@ -171,9 +171,18 @@ func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
 func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> void:
 	print("[ROOM] Baking textures...")
 
+	# Build wall descriptors: the compositor consumes Dictionaries, by contract.
+	var wall_descriptors: Array = []
+	for edge in extraction.get("edges", []):
+		wall_descriptors.append({
+			"material_id": edge.material,
+			"facade_id": _facade_for_material(edge.material),
+			"edge": edge,
+		})
+
 	# Create map spec for compositor
 	var map_spec = {
-		"walls": extraction.get("edges", []),
+		"walls": wall_descriptors,
 		"room_geometry": extraction.get("room_geometry", {}),
 	}
 
@@ -202,6 +211,20 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 	Engine.set_meta("GLOBAL_BAKED_ATLAS", baked_atlas)
 	Engine.set_meta("BAKED_ATLAS_SOURCE_IDS", source_ids)
 	Engine.set_meta("BAKE_TIMESTAMP", Time.get_ticks_msec())
+
+
+## v1 facade assignment: one default facade per material.
+## Authorial per-wall overrides come later via map spec.
+const DEFAULT_FACADES := {
+	"concrete": "concrete_base",
+	"stone": "stone_base",
+	"wood": "wood_plank",
+	"metal": "metal_sheet",
+}
+
+## Map material ID to facade ID (v1 policy).
+func _facade_for_material(material_id: String) -> String:
+	return DEFAULT_FACADES.get(material_id, "")
 
 
 ## Register a baked atlas page as a tileset source

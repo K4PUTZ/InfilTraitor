@@ -33,7 +33,10 @@ func _init() -> void:
 	# Test 4: Inverse correctness
 	if not _test_inverse_correctness():
 		all_pass = false
-	
+
+	# Report: Flat coverage (empirical)
+	_report_flat_coverage()
+
 	print("\n" + "=".repeat(60))
 	if all_pass:
 		print("BAKE-01 SELFTEST: 4 / 4 PASS")
@@ -185,6 +188,21 @@ func _test_inverse_correctness() -> bool:
 		print("  FAIL: inverse_correctness\n")
 	
 	return success
+
+## Report: Flat-space region touched by one 32×16 screen tile
+func _report_flat_coverage() -> void:
+	print("\n[COVERAGE] Flat-space region touched by one 32×16 screen tile:")
+	var projector = PerFaceProjectorClass.new()
+	for face in [0, 1, 2, 3]:
+		var face_name = ["NE", "SE", "SW", "NW"][face]
+		var min_f = Vector2(INF, INF)
+		var max_f = Vector2(-INF, -INF)
+		for sy in range(16):
+			for sx in range(32):
+				var f = projector.screen_to_flat(face, Vector2(float(sx), float(sy)))
+				min_f = Vector2(minf(min_f.x, f.x), minf(min_f.y, f.y))
+				max_f = Vector2(maxf(max_f.x, f.x), maxf(max_f.y, f.y))
+		print("  [%s] flat_x ∈ [%.0f, %.0f], flat_y ∈ [%.0f, %.0f]" % [face_name, min_f.x, max_f.x, min_f.y, max_f.y])
 
 ## Helper: Multiply two 2×2 matrices
 func _multiply_2x2(A: Array, B: Array) -> Array:

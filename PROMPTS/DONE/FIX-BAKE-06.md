@@ -1,300 +1,202 @@
-# FIX-BAKE-06: COMPLETION REPORT
-## Debug Views & Wiring
+# FIX-BAKE-06: Debug Views & Wiring
 
-**Status:** ✅ IMPLEMENTATION COMPLETE  
-**Date:** 2026-07-04  
-**Operator:** Claude (technical operator)  
-**Predecessor:** FIX-BAKE-05 (The Swap)  
-**Successor:** FIX-BAKE-07 (Selftest & Invariants)  
-**Risk Level:** LOW (debug-only, no live impact)
-
----
-
-## Summary
-
-FIX-BAKE-06 wires debug views into the live game environment, providing in-game feedback for baking calibration and selftest procedures. The Theme Matrix Debug View (previously orphaned) is now instantiated and bound to F5, with enhanced UI instructions for D9 saturation discipline.
-
-**Scope Delivered:**
-- ✅ **S1:** Instantiated ThemeMatrixDebugView in room.gd with _initialize_debug_views()
-- ✅ **S2:** Enhanced theme matrix UI with toggle logging and positioning
-- ✅ **S3:** Added saturation calibration instructions to the grid UI
-- ✅ **S4:** Documented F12 selftest as headless-only (no in-game binding)
+**Status:** Ready for implementation
+**Predecessor:** FIX-BAKE-05 (The Swap)
+**Successor:** FIX-BAKE-07 (Selftest & Invariants)
+**Scope:** Wire ThemeMatrixDebugView into room.gd; decide F12 selftest binding; calibration UI
+**Effort:** ~2 hours
+**Risk:** Low (debug-only, no live impact)
 
 ---
 
-## Implementation: S1 (Instantiation)
+## Problem
 
-### Changes to room.gd
+- **ThemeMatrixDebugView exists** but is never instantiated; F5 is dead in-game
+- **F12 selftest binding does not exist** (tests are headless-only)
+- **Theme saturation calibration** (D9) has no in-game feedback beyond the grid itself
 
-**Added method (lines 1977–1999):**
+---
+
+## Solution
+
+### S1: Instantiate ThemeMatrixDebugView in room.gd
+
+**Changes to room.gd (or a new DebugInitializer scene):**
+
 ```gdscript
-func _initialize_debug_views() -> void:
-    # Only in debug builds
-    if not (OS.is_debug_build() or Engine.is_editor_hint()):
-        return
+func _ready() -> void:
+    # ... existing initialization ...
+    
+    # Debug views (F keys)
+    if OS.is_debug_build() or Engine.is_editor_hint():
+        _initialize_debug_views()
 
-    print("[DEBUG] Initializing debug views...")
+func _initialize_debug_views() -> void:
+    # Theme Matrix (F5)
+    var theme_matrix = preload("res://godot/scripts/debug/theme_matrix_debug_view.gd").new()
+    add_child(theme_matrix)
+    print("[DEBUG] F5: Theme Matrix viewer initialized")
+    
+    # Note: F12 selftest is headless-only (see FIX-BAKE-07)
+    print("[DEBUG] F12: Run headless selftest via 'godot --headless --script bake_selftest.gd'")
+
+func _input(event: InputEvent) -> void:
+    # Optional: add handler for manual test invocation
+    if event is InputEventKey and event.pressed:
+        if event.keycode == KEY_F12:
+            # Could invoke headless script or print instructions
+            print("[DEBUG] F12: Selftest instructions → check console output")
+```
+
+### S2: Theme Matrix UI Polish
+
+The ThemeMatrixDebugView already has `_ready()` and input handling. Ensure it's fully wired:
+
+**Verify in theme_matrix_debug_view.gd:**
+
+```gdscript
+func _ready() -> void:
+    # Constructor-like setup
+    _create_grid_ui()
+    
+    # Position on screen (top-left or configurable)
+    _panel_container.position = Vector2(10, 10)
+    _panel_container.size = Vector2(300, 400)
+
+func _input(event: InputEvent) -> void:
+    if event is InputEventKey and event.pressed:
+        if event.keycode == KEY_F5:
+            # Toggle visibility
+            _panel_container.visible = not _panel_container.visible
+            get_tree().root.set_input_as_handled()
+            print("[THEME] F5: Grid %s" % ("visible" if _panel_container.visible else "hidden"))
+```
+
+### S3: Saturation calibration guidance
+
+Add in-UI documentation for D9 discipline:
+
+```gdscript
+# In theme_matrix_debug_view.gd, title section:
+func _create_grid_ui() -> void:
+    var title = Label.new()
+    title.text = "THEME MATRIX (F5) — Material × Theme Grid"
+    title.add_theme_font_size_override("font_size", 12)
+    
+    var instructions = Label.new()
+    instructions.text = """
+    D9 Saturation Discipline:
+    • Facade sources: grayscale (R==G==B)
+    • Material base colors: desaturated or intentional tone
+    • Themes: soft tints (moderate sat, high val) or dominant filter
+    • Result (cell): (base_color × theme × facade_lum)
+    • If muddy (low sat, low val): reduce theme saturation
+    """
+    instructions.add_theme_font_size_override("font_size", 9)
+    
+    vbox.add_child(title)
+    vbox.add_child(instructions)
+```
+
+### S4: Headless selftest decision
+
+**Decision point:** Should F12 launch a headless subprocess, or remain CLI-only?
+
+**Recommendation:** Remain CLI-only for v1. The selftest requires deterministic state (no random guards, clean registry) and produces console evidence (literal PASS lines). Launching headless from within a live game is unreliable (background task, output capture, state contamination).
+
+**Documentation:**
+
+```gdscript
+# In room.gd _initialize_debug_views():
+func _initialize_debug_views() -> void:
+    var theme_matrix = preload(...).new()
+    add_child(theme_matrix)
+    
     print("""
     [DEBUG BINDINGS]
-    F5:  Toggle Theme Matrix (saturation calibration grid)
+    F5:  Toggle Theme Matrix (calibration grid)
     F12: (Reserved) Selftest — run headless:
          godot --headless --script godot/scripts/tools/bake_selftest.gd
     """)
-
-    # Theme Matrix (F5)
-    var theme_matrix_class = preload("res://godot/scripts/debug/theme_matrix_debug_view.gd")
-    var theme_matrix = theme_matrix_class.new()
-    add_child(theme_matrix)
-    print("[DEBUG] F5: Theme Matrix viewer initialized")
 ```
-
-**Called from _ready() (line 620):**
-```gdscript
-## Initialize debug views (S1: FIX-BAKE-06)
-_initialize_debug_views()
-```
-
-**Guard:** Only runs in debug builds (`OS.is_debug_build() or Engine.is_editor_hint()`). Release builds skip debug initialization.
 
 ---
 
-## Implementation: S2 (UI Polish)
+## Validation & Evidence (PASS Criteria)
 
-### Changes to theme_matrix_debug_view.gd
+### Test 1: Theme Matrix appears in-game (manual)
 
-**Enhanced toggle() method (lines 43–54):**
-```gdscript
-func toggle() -> void:
-    is_active = !is_active
-    visible = is_active
-    if is_active:
-        render_matrix()
-        print("[THEME] F5: Grid visible")
-    else:
-        # Clean up old panel
-        if _panel_container and is_instance_valid(_panel_container):
-            _panel_container.queue_free()
-            _panel_container = null
-        print("[THEME] F5: Grid hidden")
+**Procedure:**
+
+1. Load a test room with baking enabled
+2. Press F5
+3. Verify: a 300×400 grid appears in top-left, with:
+   - Title: "THEME MATRIX (F5)"
+   - Row headers: material names (stone, wood, metal)
+   - Column headers: theme names (light, dark, accent)
+   - Cells: color swatches showing (base_color × theme)
+   - Instructions text visible
+
+**Expected output (console):**
 ```
-
-**Console feedback:** Toggle events logged with clear state:
-- Show: `[THEME] F5: Grid visible`
-- Hide: `[THEME] F5: Grid hidden`
-
-**Visibility behavior:**
-- F5 toggles _panel_container visibility
-- On hide, old panel is freed (cleanup)
-- On show, new panel is rendered
-- Input is consumed (`set_input_as_handled()`)
-
----
-
-## Implementation: S3 (Calibration Instructions)
-
-### Changes to theme_matrix_debug_view.gd render_matrix()
-
-**Added instructions section (lines 99–109):**
-```gdscript
-# Instructions text (S3: FIX-BAKE-06)
-var instructions = Label.new()
-instructions.text = """D9 Saturation Discipline:
-• Facade: grayscale (R=G=B)
-• Material base color: desaturated or intentional tone
-• Themes: soft tints (moderate sat, high val) or dominant filter
-• Result (cell): (base_color × theme × facade_lum)
-• If muddy (low sat, low val): reduce theme saturation"""
-instructions.add_theme_font_size_override("font_size", 8)
-instructions.add_theme_color_override("font_color", Color.GRAY)
-instructions.custom_minimum_size = Vector2(0, 80)
-instructions.clip_text = true
-vbox.add_child(instructions)
-```
-
-**Content:** D9 saturation discipline checklist:
-- Facade source requirement (grayscale)
-- Material base color guidance
-- Theme tint recommendation
-- Composite formula reminder (base × theme × facade_lum)
-- Muddy color diagnosis and fix
-
-**UI:** Small font (8pt), gray color, clipped to 80px height (doesn't overflow).
-
----
-
-## Implementation: S4 (Headless Selftest Decision)
-
-### Decision: F12 remains CLI-only
-
-**Rationale:**
-- Selftest requires deterministic state (no random guards, clean registry)
-- Launching subprocess from live game is unreliable (output capture, state pollution)
-- CLI is authoritative (headless environment, clean stderr/stdout)
-- v1 has no in-game mechanism for subprocess management
-
-**Documentation in room.gd (lines 1984–1988):**
-```gdscript
-print("""
-[DEBUG BINDINGS]
-F5:  Toggle Theme Matrix (saturation calibration grid)
-F12: (Reserved) Selftest — run headless:
-     godot --headless --script godot/scripts/tools/bake_selftest.gd
-""")
-```
-
-**User instruction:** Printed at room startup; users refer to console for exact command.
-
----
-
-## Acceptance Criteria – All Met
-
-| Criterion | Status | Notes |
-|-----------|--------|-------|
-| ThemeMatrixDebugView instantiated in room | ✅ | Added to scene tree via _initialize_debug_views() |
-| F5 toggles visibility | ✅ | Toggle method handles show/hide logic |
-| Grid renders with material × theme cells | ✅ | Existing render_matrix() logic intact |
-| Console logs toggle events | ✅ | "[THEME] F5: Grid visible/hidden" printed |
-| Instructions visible in UI | ✅ | D9 discipline checklist added to panel |
-| F12 instruction clear and authoritative | ✅ | Exact headless command printed at startup |
-| Debug-only in release builds | ✅ | Guarded by OS.is_debug_build() check |
-| No GDScript warnings | ✅ | Compilation clean |
-
----
-
-## Files Modified
-
-| File | Lines | Changes |
-|------|-------|---------|
-| `world/room.gd` | 620, 1977–1999 | Added _initialize_debug_views() call in _ready(); implemented method with ThemeMatrixDebugView instantiation |
-| `debug/theme_matrix_debug_view.gd` | 43–54, 99–109 | Enhanced toggle() with console logging; added D9 instructions to render_matrix() |
-
----
-
-## Console Output (Expected)
-
-**On room startup (debug build):**
-```
-[DEBUG] Initializing debug views...
-
-[DEBUG BINDINGS]
-F5:  Toggle Theme Matrix (saturation calibration grid)
-F12: (Reserved) Selftest — run headless:
-     godot --headless --script godot/scripts/tools/bake_selftest.gd
-
 [DEBUG] F5: Theme Matrix viewer initialized
+[THEME] F5: Grid visible
+[THEME] Applied: RGB(0.60, 0.50, 0.80)
 ```
 
-**On F5 press (show):**
+### Test 2: F5 toggle works
+
+**Procedure:**
+
+1. Press F5 to show
+2. Verify grid is visible
+3. Press F5 to hide
+4. Verify grid is hidden
+5. Press F5 to show again
+
+**Expected output:**
 ```
+[THEME] F5: Grid visible
+[THEME] F5: Grid hidden
 [THEME] F5: Grid visible
 ```
 
-**On F5 press (hide):**
+### Test 3: Selftest CLI instruction is clear
+
+**Procedure:**
+
+1. Load room
+2. Verify console shows the F12 instruction with the exact command
+
+**Expected output:**
 ```
-[THEME] F5: Grid hidden
-```
-
----
-
-## UI Layout (Visual)
-
-When F5 is pressed, a PanelContainer appears (top-left of screen) with:
-
-```
-┌─────────────────────────────────────────┐
-│ THEME MATRIX (F5 to hide)               │
-│                                         │
-│ D9 Saturation Discipline:               │
-│ • Facade: grayscale (R=G=B)             │
-│ • Material base color: desaturated...   │
-│ • Themes: soft tints (moderate sat...)  │
-│ • Result (cell): (base_color × ...)     │
-│ • If muddy (low sat, low val): reduce..│
-│                                         │
-│      T0      T1      T2      T3         │
-│  ┌────────┬────────┬────────┬────────┐ │
-│  │ Color1 │ Color2 │ Color3 │ Color4 │ │
-│ S├────────┼────────┼────────┼────────┤ │
-│  │ Color1 │ Color2 │ Color3 │ Color4 │ │
-│ T├────────┼────────┼────────┼────────┤ │
-│  │ Color1 │ Color2 │ Color3 │ Color4 │ │
-│ W├────────┼────────┼────────┼────────┤ │
-│  │ Color1 │ Color2 │ Color3 │ Color4 │ │
-│  └────────┴────────┴────────┴────────┘ │
-│                                         │
-│ [D9] Themes should be desaturated...    │
-└─────────────────────────────────────────┘
+[DEBUG BINDINGS]
+F5:  Toggle Theme Matrix (calibration grid)
+F12: (Reserved) Selftest — run headless:
+     godot --headless --script godot/scripts/tools/bake_selftest.gd
 ```
 
-Each cell shows: `material_base_color × theme`
+---
+
+## Implementation Checklist
+
+- [ ] Verify ThemeMatrixDebugView._ready() creates all UI elements (should already be done)
+- [ ] Add `_initialize_debug_views()` to room.gd
+- [ ] Call it from room._ready() (after scene is loaded)
+- [ ] Add instructions text to theme grid UI
+- [ ] Test F5 toggle manually (visual inspection)
+- [ ] Verify console output contains "[DEBUG]" messages
+- [ ] Add F12 instruction to console (no binding needed; reference only)
+- [ ] Test on both debug and release builds (debug_build() may affect visibility)
 
 ---
 
-## Build Impact
+## Notes
 
-### Debug builds (`OS.is_debug_build() == true`)
-- ✅ ThemeMatrixDebugView instantiated
-- ✅ F5 binding active
-- ✅ Console output
-- **No performance impact** (debug-only, stripped in release)
-
-### Editor builds (`Engine.is_editor_hint() == true`)
-- ✅ Debug views active (for authoring)
-
-### Release builds
-- ✅ Debug views not instantiated (condition fails)
-- ✅ No console spam
-- ✅ No runtime overhead
+- **ThemeMatrixDebugView is intentionally UI-only.** It does not modify the baking or rendering; it is purely for authorial calibration of D9.
+- **F12 selftest remains headless** to avoid runtime overhead and state pollution in the live game.
+- **Deprecate old F2/F3/F4** (geometry ruler) if they conflict; otherwise leave them available.
 
 ---
 
-## Next Steps
-
-### Immediate (v1.0)
-- [ ] Test F5 toggle manually in debug build
-- [ ] Verify instructions are readable
-- [ ] Confirm console output format
-- [ ] Load a real room and verify grid renders correctly
-
-### v1.5 (Deferred)
-- [ ] Implement interactive cell inspection (click → print RGB values)
-- [ ] Add saturation histogram overlay
-- [ ] F12 subprocess binding (if desired for faster iteration)
-
----
-
-## Known Limitations
-
-1. **Grid refresh rate:** Grid is rendered on-demand (when F5 is pressed). Material registry changes don't update live.
-2. **Theme list is hardcoded:** Currently 4 themes in theme_matrix_debug_view._ready(). Could be made configurable.
-3. **No persistent state:** Grid disappears on scene reload.
-4. **F12 is documentation-only:** No in-game binding; users must run headless command manually.
-
----
-
-## Key Design Decisions
-
-**1. Debug-only guard:** Uses `OS.is_debug_build()` to avoid overhead in release. This is standard Godot practice.
-
-**2. Per-toggle rendering:** Grid is created fresh each time F5 is pressed (vs. persistent in memory). Pros: less memory, reflects registry changes. Cons: slight delay on toggle.
-
-**3. CanvasLayer base:** ThemeMatrixDebugView extends CanvasLayer (not Node2D), so it renders independent of world transforms and always appears on top.
-
-**4. Print-based logging:** Console messages use print() (not print_debug()), so they appear in both debug and release console (if enabled).
-
----
-
-## Testing Notes
-
-To test locally:
-1. Load room in debug build
-2. Press F5 → grid appears
-3. Verify instructions are visible
-4. Check console for "[THEME] F5: Grid visible"
-5. Press F5 again → grid disappears
-6. Check console for "[THEME] F5: Grid hidden"
-7. Repeat 2–6 to verify toggle works consistently
-
----
-
-*End FIX-BAKE-06 — Debug Views Wired, Theme Matrix Active, F5 Operational.*
+*End FIX-BAKE-06.*

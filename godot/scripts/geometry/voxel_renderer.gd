@@ -28,6 +28,10 @@ var _visual_grid_offset: Vector2
 ## DEBUG-02: Accumulated nudge offset (pixels). Applied to all layers for real-time measurement.
 var debug_nudge: Vector2 = Vector2.ZERO
 
+## Cached baking components (Item 7: caching hot-path objects)
+var _bake_config = null       # Script ref, loaded once
+var _baked_lookup = null      # BakedTileLookup instance, created once
+
 
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
@@ -161,11 +165,14 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	var atlas_coords: Vector2i = Vector2i.ZERO
 	var alternative_id: int = 0
 
-	# SEAM: Try baked lookup first
-	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	if bake_config and bake_config.enabled and edge != null:
-		var lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
-		var result = lookup.resolve(edge, slice_face, voxel_xy)
+	# SEAM: Try baked lookup first (using cached instances)
+	if _bake_config == null:
+		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	if _baked_lookup == null:
+		_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
+
+	if _bake_config and _bake_config.enabled and edge != null:
+		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy)
 
 		if result and result.source_id_int >= 0:
 			source_id = result.source_id_int

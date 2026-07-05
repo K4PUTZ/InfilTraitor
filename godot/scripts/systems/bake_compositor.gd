@@ -9,6 +9,7 @@ class_name BakeCompositor
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")
+const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
 
@@ -139,9 +140,8 @@ func _populate_bake_set(walls: Array, resolver) -> Dictionary:
 			# Determine window origin (now in texel units directly, no conversion needed)
 			var origin_texels = sampler.get_window_origin_isolated_texels(edge, facade_id)
 
-			# Determine variant (seeded)
-			var seed_val = hash(str(edge) + "_" + material_id)
-			var variant_k = abs(seed_val) % 4
+			# Determine variant (unified seeding via BakePolicy)
+			var variant_k = BakePolicyClass.variant_for(edge, material_id)
 
 			# Construct bake key (plane_col/row now store texel units directly)
 			var key = BakeKey.new()

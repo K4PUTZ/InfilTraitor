@@ -6,6 +6,8 @@
 
 class_name FacadeSampler
 
+const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+
 ## Sample facade at (plane_x, plane_y) in the infinite plane
 ## Uses mirrored-repeat addressing
 ## Returns: luminance [0, 1]
@@ -79,8 +81,6 @@ func _window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2
 	var hash_input = key_str + ":" + facade_id
 	var hash_val = _fnv1a_hash(hash_input)
 
-	# Get N from geometry coords
-	const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 	var N = GeometryCoordsClass.TEX_AUTHORING_N
 
 	# Column offset in texel units [0, 64N)
@@ -101,13 +101,11 @@ func _window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
 	var hash_input = key_str + ":" + facade_id
 	var hash_val = _fnv1a_hash(hash_input)
 
-	# Get N from geometry coords
-	const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 	var N = GeometryCoordsClass.TEX_AUTHORING_N
 
-	# Two independent hashes, in texel units [0, 64N) × [0, 32N)
-	var plane_col_texels = ((hash_val >> 0) & 0xFF) % (64 * N)
-	var plane_row_texels = ((hash_val >> 8) & 0xFF) % (32 * N)
+	# Two independent bit windows, full range (no byte masks)
+	var plane_col_texels = hash_val % (64 * N)
+	var plane_row_texels = (hash_val >> 16) % (32 * N)
 
 	return Vector2i(plane_col_texels, plane_row_texels)
 

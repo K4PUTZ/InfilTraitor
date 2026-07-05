@@ -65,6 +65,12 @@ static func between(cell_1: Vector2i, cell_2: Vector2i, storey_count: int = 1, m
 	return edge
 
 
+## Canonical string identity for hashing (baking, sampling).
+## MUST be stable across runs: derived from GU coordinates, never from instance identity.
+func key_string() -> String:
+	return "E_%d_%d__%d_%d" % [gu_a.x, gu_a.y, gu_b.x, gu_b.y]
+
+
 ## For debugging
 func _to_string() -> String:
 	return "Edge{id='%s', gu_a=%s, gu_b=%s, face=%s, storeys=%d}" % [

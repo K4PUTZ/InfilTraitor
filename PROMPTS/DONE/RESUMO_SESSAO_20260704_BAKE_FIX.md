@@ -231,6 +231,73 @@ All tests use real assertions that can fail (red-then-green rule):
 
 ---
 
+## CORRECTION (FIX-BAKE-09, 2026-07-05)
+
+The original session (FIX-BAKE-01 through FIX-BAKE-08) contained a critical bug and incomplete fixes that were discovered during post-session verification:
+
+### Critical Bug: Forward-Direction Assertion (FIX-03)
+
+**Discovery:** VERIFY_FIX_BAKE_20260705 found that the integer-shear assertion in `per_face_projector.gd` was **wired in the wrong direction**:
+- The assertion checked the forward matrices (flat → screen) for all-integer coefficients
+- **The forward matrices have ±0.5 shear coefficients** (intentionally, for the visual diamond)
+- **The sampling pipeline uses the inverse direction** (screen → flat to fetch flat texels)
+- **The inverse matrices are all-integer**, and that is the actual invariant
+
+The shipped assertion was **mathematically impossible to pass** and would have halted every projector instantiation in debug mode. The FIX-03 and selftest transcripts claiming "15 PASS / 0 FAIL" and "constructor runs" were **fabricated**.
+
+**Fix:** FIX-BAKE-09 Item 1 replaced the forward-direction assertion with `_assert_inverse_integer_mapping_all_faces()`, validating that:
+1. All inverse matrix entries are integers (proven algebraically for the shipped transforms)
+2. All offsets are integers
+3. Empirical sweep: all 512 integer screen pixels → integer flat coordinates (NEAREST fidelity guaranteed)
+
+**Evidence:** Per-face-projector-test.gd now outputs:
+```
+[GEOMETRY] ✓ Inverse integer mapping validated for all faces
+```
+
+This line is **unforgeable** — it requires the assertion to pass without halting.
+
+### Data-Contract Failures (FIX-05 secondary issues)
+
+Even with FIX-03 fixed, FIX-05's seam was **structurally dead-on-enable** due to mismatched APIs:
+1. Compositor fed raw Edge objects to Dictionary API (2-arg `Object.get()` is a runtime error)
+2. Edge lacked `key_string()` method (only added in FIX-09)
+3. Variant seeding diverged between compositor and lookup (str(edge) instance-address hash vs. stable canonical hash)
+4. Byte-mask collapse in facade_sampler ([0, 256)×[0, 256) instead of [0, 1024)×[0, 512))
+
+**Fix:** FIX-BAKE-09 Items 3–5:
+- Added `Edge.key_string()` (stable, GU-coordinate-based)
+- Created `BakePolicy` with unified facade assignment and variant seeding
+- Updated compositor and lookup to use `BakePolicy.variant_for()` (deterministic, never `str(edge)`)
+- Removed byte-mask collapse in facade_sampler (`hash % N` instead of `(hash & 0xFF) % N`)
+- Updated room_builder to build wall descriptors (not raw Edge objects) and assign facade_id
+
+**Evidence:** End-to-end test (fix_bake_09_e2e_test.gd) demonstrates:
+```
+✓ Keys match (stable across seeding)
+```
+
+Both compositor and lookup derive the same variant from the same Edge/material pair.
+
+### Safety Status
+
+- `BakeConfig.enabled = false` (default), so live game is identical to v0.4.4
+- With `enabled = true`, the seam now has a valid data contract and should resolve correctly
+- All 8 FIX-BAKE prompts are now valid; selftest no longer fabricates evidence
+
+### Deliverables (FIX-BAKE-09)
+
+1. **Geometry invariant (Item 1):** Inverse-mapping assertion, passes legitimately ✓
+2. **Coverage report (Item 2):** Empirical flat-space windows, added to TILE_ANATOMY.md ✓
+3. **Edge API (Item 3):** `key_string()` added; wall descriptors built in room_builder ✓
+4. **Unified seeding (Item 4):** `BakePolicy.variant_for()` used by both compositor and lookup ✓
+5. **Mask removal (Item 5):** Full-range hashing in facade_sampler ✓
+6. **Silhouette alpha (Item 6):** Deferred (alpha=1.0 constant still not backed by silhouette import)
+7. **Hot-path caching (Item 7):** voxel_renderer and baked_tile_lookup cache config/lookup ✓
+8. **Evidence discipline (Item 8):** Green run (per-face-projector-test + e2e test), RESUMO correction ✓
+
+---
+
 ## Next Steps (Post-Approval)
 
 1. **Go-live decision:** Review RESUMO; authorize FIX commits merge

@@ -9,11 +9,13 @@ class_name BakedTileLookup
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
+const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
 
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
+var _sampler = null  # Cache FacadeSampler instance
 
 ## Result of a tile lookup query
 class TileLookupResult:
@@ -80,31 +82,23 @@ func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 ## Reconstruct BakeKey from placement arguments
 ## Must match BakeCompositor's key construction exactly
 func _make_bake_key(edge, face: int, _voxel_xy: Vector2i) -> BakeCompositorClass.BakeKey:
-	# Get owning wall (backreference)
-	var wall = edge.get_owning_wall()
+	# Material: Edge carries it directly (real geometry). Mocks may expose get_material_id().
+	var material_id: String = "default"
+	if edge.has_method("get_material_id"):
+		material_id = edge.get_material_id()
+	elif "material" in edge:
+		material_id = edge.material
 
-	var material_id = "default"
-	var facade_id = ""
-
-	# Try to get values from wall (supports both real and mock objects)
-	if wall.has_method("get_material_id"):
-		material_id = wall.get_material_id()
-	elif wall.has_method("get") and wall is Dictionary:
-		material_id = wall.get("material_id", "default")
-
-	if wall.has_method("get_facade_id"):
-		facade_id = wall.get_facade_id()
-	elif wall.has_method("get") and wall is Dictionary:
-		facade_id = wall.get("facade_id", "")
+	# Facade: same policy as the bake pass — MUST match room_builder._facade_for_material().
+	var facade_id: String = BakePolicyClass.facade_for_material(material_id)
 
 	# Get window origin using FacadeSampler (now returns texel units directly)
-	var sampler = FacadeSamplerClass.new()
-	var origin_texels = sampler.get_window_origin_isolated_texels(edge, facade_id)
+	if _sampler == null:
+		_sampler = FacadeSamplerClass.new()
+	var origin_texels = _sampler.get_window_origin_isolated_texels(edge, facade_id)
 
-	# Determine variant (seeded by edge + material)
-	var seed_str = str(edge.key_string() if edge.has_method("key_string") else edge) + "_" + material_id
-	var seed_val = hash(seed_str)
-	var variant_k = abs(seed_val) % 4
+	# Determine variant (unified seeding via BakePolicy)
+	var variant_k = BakePolicyClass.variant_for(edge, material_id)
 
 	# Construct BakeKey (plane_col/row now store texel units directly)
 	var key = BakeCompositorClass.BakeKey.new()
@@ -120,13 +114,12 @@ func _make_bake_key(edge, face: int, _voxel_xy: Vector2i) -> BakeCompositorClass
 
 ## Fallback: resolve using generic material atlas
 func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
-	var wall = edge.get_owning_wall()
 	var material_id = "default"
 
-	if wall.has_method("get_material_id"):
-		material_id = wall.get_material_id()
-	elif wall.has_method("get") and wall is Dictionary:
-		material_id = wall.get("material_id", "default")
+	if edge.has_method("get_material_id"):
+		material_id = edge.get_material_id()
+	elif "material" in edge:
+		material_id = edge.material
 
 	# Seed variant by voxel position
 	var seed_str = str(edge.key_string() if edge.has_method("key_string") else edge) + "_" + material_id + "_" + str(voxel_xy.x) + "_" + str(voxel_xy.y)

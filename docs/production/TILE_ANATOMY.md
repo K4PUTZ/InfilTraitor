@@ -33,6 +33,21 @@ The tile anatomy audit extracts and validates the isometric projection transform
 
 ## Part B: Extracted Transforms
 
+### Critical Invariant: Inverse Mapping (screen → flat) is texel-exact
+
+The composite baking pipeline iterates integer screen pixels and calls `screen_to_flat()` to fetch flat texels. For NEAREST-filtered sampling fidelity, every integer screen pixel must map to exactly integer flat coordinates.
+
+**The shipped forward matrices (flat → screen) have ±0.5 shear coefficients.** This is correct for the visual diamond appearance. However, the pipeline **iterates the inverse direction (screen → flat)**, and that inverse has **all-integer entries**:
+
+| Face | Forward M | Inverse M⁻¹ |
+|---|---|---|
+| NE | [[1, 0.5], [0, −0.5]] | [[1, 1], [0, −2]] |
+| SE | [[0.5, 0], [0.5, 0.5]] | [[2, 0], [−2, 2]] |
+| SW | [[1, −0.5], [0, 0.5]] | [[1, 1], [0, 2]] |
+| NW | [[−0.5, 0], [−0.5, 0.5]] | [[−2, 0], [−2, 2]] |
+
+**Empirical verification (N=16):** All four faces: every integer screen pixel in the 32×16 tile maps to integer flat coordinates. ✓ Validated by `PerFaceProjector._assert_inverse_integer_mapping_all_faces()`.
+
 ### Mathematical Structure
 
 Each face orientation's transform is an affine map:
@@ -45,6 +60,8 @@ where:
 - `offset` is a translation vector
 - `flat` is a coordinate in [0, 8N) × [0, 8N)
 - `screen` is the resulting screen-space coordinate
+
+The **inverse** `screen_to_flat(screen_px) = M⁻¹ * (screen_px - offset)` is the direction used during composite rendering.
 
 ### Face NE (Northeast)
 
@@ -62,10 +79,10 @@ Offset: (0.0, 64.0)
 - X coefficient: `screen_x = 1.0 * flat_x + 0.5 * flat_y`
 - Y coefficient: `screen_y = 0.0 * flat_x - 0.5 * flat_y + 64`
 
-**Integer shear validation:** ✓
-- Shear slope on Y axis = -0.5
-- For even flat_y, offsets are integers
-- All columns map to integer screen positions
+**Inverse validation:** ✓
+- M⁻¹ = [[1, 1], [0, −2]] (all integer)
+- offset = (0, 64) (integer)
+- All 512 integer screen pixels → integer flat coordinates
 
 ### Face SE (Southeast)
 
@@ -83,10 +100,10 @@ Offset: (16.0, 0.0)
 - X coefficient: `screen_x = 0.5 * flat_x + 0.0 * flat_y + 16`
 - Y coefficient: `screen_y = 0.5 * flat_x + 0.5 * flat_y`
 
-**Integer shear validation:** ✓
-- Shear slope on X axis = 0.5
-- For even flat_x, offsets are integers
-- All columns map to integer screen positions
+**Inverse validation:** ✓
+- M⁻¹ = [[2, 0], [−2, 2]] (all integer)
+- offset = (16, 0) (integer)
+- All 512 integer screen pixels → integer flat coordinates
 
 ### Face SW (Southwest)
 
@@ -104,10 +121,10 @@ Offset: (32.0, 64.0)
 - X coefficient: `screen_x = 1.0 * flat_x - 0.5 * flat_y + 32`
 - Y coefficient: `screen_y = 0.0 * flat_x + 0.5 * flat_y + 64`
 
-**Integer shear validation:** ✓
-- Shear slope on Y axis = 0.5
-- For even flat_y, offsets are integers
-- All columns map to integer screen positions
+**Inverse validation:** ✓
+- M⁻¹ = [[1, 1], [0, 2]] (all integer)
+- offset = (32, 64) (integer)
+- All 512 integer screen pixels → integer flat coordinates
 
 ### Face NW (Northwest)
 
@@ -125,10 +142,10 @@ Offset: (16.0, 0.0)
 - X coefficient: `screen_x = -0.5 * flat_x + 0.0 * flat_y + 16`
 - Y coefficient: `screen_y = -0.5 * flat_x + 0.5 * flat_y`
 
-**Integer shear validation:** ✓
-- Shear slope on X axis = -0.5
-- For even flat_x, offsets are integers
-- All columns map to integer screen positions
+**Inverse validation:** ✓
+- M⁻¹ = [[−2, 0], [−2, 2]] (all integer)
+- offset = (16, 0) (integer)
+- All 512 integer screen pixels → integer flat coordinates
 
 ### Face CAP (Forward-compatible, not baked in v1)
 
@@ -204,12 +221,25 @@ The transforms were derived from the canonical tileset renderer (which already w
 - Shear directions match visual tilt of on-screen tiles
 - Screen dimensions (32×16 isometric) are preserved under all transforms
 
+### Flat-space Coverage (empirical, N=16)
+
+One 32×16 screen tile samples the following regions of flat texture-space:
+
+```
+[NE] flat_x ∈ [-64, -18], flat_y ∈ [98, 128]
+[SE] flat_x ∈ [-32, 30], flat_y ∈ [-30, 62]
+[SW] flat_x ∈ [-96, -50], flat_y ∈ [-128, -98]
+[NW] flat_x ∈ [-30, 32], flat_y ∈ [-62, 30]
+```
+
+Negative flat coordinates are expected and legal (the infinite facade plane with mirrored-repeat folding handles wrapping). This window footprint is measured empirically by sweeping all 512 integer screen pixels through `screen_to_flat()`.
+
 ### No Subpixel Aliasing
 
-For N=16 (flat texels per voxel), the shear offsets are:
-- **0.5 pixel** per voxel row/column (shear slope)
-- Since 8N = 128 is even, all intermediate positions are integers
+For N=16 (flat texels per voxel) with integer-valued inverse matrices:
+- All 512 screen pixels in the 32×16 tile map to integer flat coordinates
 - NEAREST texture filtering operates on clean pixel boundaries
+- No subpixel aliasing or fractional-pixel sampling artifacts
 
 ---
 

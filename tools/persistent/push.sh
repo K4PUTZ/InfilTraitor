@@ -2,14 +2,24 @@
 ################################################################################
 # INFILTRAITOR Manual Push Script with Version Bump
 #
-# Usage: ./push.sh [major|minor|patch]
-# Default: bumps patch version
+# Usage: ./push.sh [major|minor|patch] ["message"]
+#
+# Arguments:
+#   [major|minor|patch]  Version bump type (default: patch)
+#   ["message"]          Optional commit message suffix. If omitted,
+#                        defaults to "ALPHA <version> - <date>"
+#
+# Examples:
+#   ./push.sh patch
+#   ./push.sh patch "DOC-HOOK-01 test"
+#   ./push.sh minor "VOXEL-08: Baking system"
 #
 # Flow:
 #   1. Stage all changes
-#   2. Commit with tag message
-#   3. Push to remote
-#   4. On success: bump VERSION file, commit bump, push bump commit
+#   2. Update documentation (AUTO blocks in current_state.md, OPERATOR_CONTEXT.md, CODEMAP.md)
+#   3. Commit with tag message
+#   4. Push to remote
+#   5. On success: bump VERSION file, commit bump, push bump commit
 #
 # Error checking: Every stage must succeed; false success avoided.
 ################################################################################
@@ -17,19 +27,14 @@
 set -euo pipefail
 
 BUMP_TYPE="${1:-patch}"  # Default to patch; accept major/minor/patch as arg
+MESSAGE="${2:-}"         # Optional message suffix
 REPO_ROOT="$(dirname "$0")/../../"
 VERSION_FILE="$REPO_ROOT/VERSION"
-
-####################
-####################
-TAG="ALPHA FIX-BAKE9b - $(date +%Y-%m-%d)"
-####################
-####################
 
 # Validate bump type
 if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
     echo "❌ Invalid bump type: $BUMP_TYPE"
-    echo "   Usage: ./push.sh [major|minor|patch]"
+    echo "   Usage: ./push.sh [major|minor|patch] [\"message\"]"
     exit 1
 fi
 
@@ -40,6 +45,14 @@ echo "================================"
 echo "INFILTRAITOR Manual Push Script"
 echo "================================"
 echo ""
+
+# Build TAG: if no message given, use ALPHA default
+if [ -z "$MESSAGE" ]; then
+    TAG="ALPHA $(cat "$VERSION_FILE") - $(date +%Y-%m-%d)"
+else
+    TAG="$MESSAGE"
+fi
+
 echo "[CONFIG] Version bump: $BUMP_TYPE"
 echo "[CONFIG] Tag: $TAG"
 echo ""
@@ -50,6 +63,14 @@ if [ ! -f "$VERSION_FILE" ]; then
     exit 1
 fi
 echo "[VERIFY] VERSION file found"
+
+# ── STAGE 1.5: Update documentation ─────────────────────────────────────────
+echo "[DOCS] Updating generated documentation..."
+if ! python3 "$REPO_ROOT/tools/persistent/update_docs.py"; then
+    echo "[DOCS] ❌ Documentation update failed — push aborted"
+    exit 1
+fi
+echo "[DOCS] ✅ Documentation refreshed"
 
 # ── STAGE 2: Stage all changes ───────────────────────────────────────────────
 echo "[STAGE] Staging changes..."
@@ -67,7 +88,7 @@ echo "[COMMIT] ✅ Commit created: $COMMIT_HASH"
 
 # ── STAGE 4: Push ────────────────────────────────────────────────────────────
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-REMOTE=${2:-origin}  # Default to origin, can override
+REMOTE=${3:-origin}  # Can override remote (note: now $3 since $2 is message)
 echo "[PUSH] Pushing to $REMOTE/$CURRENT_BRANCH..."
 if ! git push "$REMOTE" "$CURRENT_BRANCH"; then
     echo "[PUSH] ❌ Push failed"
@@ -107,9 +128,15 @@ NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 echo "$NEW_VERSION" > "$VERSION_FILE"
 echo "[VERSION] ✅ Bumped to: $NEW_VERSION"
 
-# ── STAGE 6: Commit version bump ─────────────────────────────────────────────
-echo "[VERSION-COMMIT] Committing version bump..."
-git add "$VERSION_FILE"
+# ── STAGE 6: Update docs + Commit version bump ──────────────────────────────
+# Re-run update_docs.py so AUTO:header shows the NEW version, then include
+# refreshed docs in the bump commit (post-bump coherence).
+echo "[VERSION] Re-running doc updates for post-bump coherence..."
+if python3 "$REPO_ROOT/tools/persistent/update_docs.py"; then
+    echo "[VERSION] ✅ Docs refreshed for new version"
+fi
+echo "[VERSION-COMMIT] Committing version bump + refreshed docs..."
+git add "$VERSION_FILE" "$REPO_ROOT/docs/production/current_state.md" "$REPO_ROOT/tools/persistent/CODEMAP.md" "$REPO_ROOT/tools/persistent/OPERATOR_CONTEXT.md" 2>/dev/null || true
 if ! git commit -m "[VERSION] Bump to $NEW_VERSION"; then
     echo "[VERSION-COMMIT] ⚠️  Version commit failed (may be staged)"
     # Don't fail here; version file is already updated in working tree
@@ -119,7 +146,7 @@ else
     echo "[VERSION-COMMIT] ✅ Version commit created: $VERSION_COMMIT_HASH"
 
     # ── STAGE 7: Push version commit ─────────────────────────────────────────
-    echo "[VERSION-PUSH] Pushing version bump..."
+    echo "[VERSION-PUSH] Pushing version bump + docs..."
     if ! git push "$REMOTE" "$CURRENT_BRANCH"; then
         echo "[VERSION-PUSH] ⚠️  Version push failed"
         echo "              VERSION file updated locally; manual push may be needed"

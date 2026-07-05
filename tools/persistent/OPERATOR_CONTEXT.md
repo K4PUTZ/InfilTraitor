@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.9 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 2bb6944 "[VERSION] Bump to 0.4.9"
+**Version:** 0.4.9 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 8bdd5de "DOC-HOOK-01 test: Verify push.sh integration"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

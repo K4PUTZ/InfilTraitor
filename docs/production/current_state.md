@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.9 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 2bb6944 "[VERSION] Bump to 0.4.9"
+**Version:** 0.4.9 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 8bdd5de "DOC-HOOK-01 test: Verify push.sh integration"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -26,7 +26,7 @@
 - Test scripts: 18
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 68
+- Archived prompts: 69
 <!-- AUTO:END inventory -->
 
 ### Version History

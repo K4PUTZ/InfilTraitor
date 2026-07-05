@@ -9,6 +9,7 @@ static func register_all(registry) -> void:
 	register_blocks(registry)
 	register_props(registry)
 	register_actors(registry)
+	register_legacy_compiler(registry)
 
 static func register_board(registry) -> void:
 	var SectionOwner = registry.SectionOwner
@@ -107,4 +108,15 @@ static func register_actors(registry) -> void:
 				"agent_start": [0, 0],
 				"guards": []
 			}
+	))
+
+static func register_legacy_compiler(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"legacy_compiler",
+		1,
+		func(fragment: Dictionary) -> Dictionary: return fragment.duplicate(true),
+		func(raw: Dictionary) -> Dictionary: return raw.duplicate(true),
+		{},
+		func() -> Dictionary: return {}
 	))

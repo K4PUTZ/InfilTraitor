@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**112 scripts · 19262 lines total** (under `godot/scripts/`)
+**115 scripts · 19822 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,9 +20,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -1873,9 +1873,41 @@ extends `SceneTree` · 58 lines
 
 ---
 
+### `mapfile_export_golden.gd`
+
+extends `SceneTree` · 221 lines
+
+`godot/scripts/tools/mapfile_export_golden.gd`
+
+> mapfile_export_golden.gd — One-off export script to generate golden .map.json files from code-defined maps (PLAYGROUND and SIGMA_01). Run headless once; validates round-trip fidelity before finishing.
+
+**Constants / tuning**
+- `PlaygroundMapClass` = `preload("res://godot/scripts/world/maps/definitions/playground_map.gd")`
+- `Sigma01MapClass` = `preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")`
+- `MapSectionRegistryClass` = `preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `MapSectionsV1Class` = `preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
+- `MapFileServiceClass` = `preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+
+---
+
+### `mapfile_integration_test.gd`
+
+extends `SceneTree` · 124 lines
+
+`godot/scripts/tools/mapfile_integration_test.gd`
+
+> mapfile_integration_test.gd — Validate FileMapSource and MapCatalog integration
+
+**Constants / tuning**
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+
+---
+
 ### `mapfile_roundtrip_test.gd`
 
-extends `SceneTree` · 266 lines
+extends `SceneTree` · 322 lines
 
 `godot/scripts/tools/mapfile_roundtrip_test.gd`
 
@@ -2264,9 +2296,29 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `file_map_source.gd`
+
+`class_name FileMapSource` · extends `RefCounted` · 133 lines
+
+`godot/scripts/world/maps/file_map_source.gd`
+
+**Constants / tuning**
+- `RES_MAPS_DIR` = `"res://maps"`
+- `USER_MAPS_DIR` = `"user://maps"`
+
+**Public vars**
+- `var registry: Variant`
+- `var service: Variant`
+
+**Public API**
+- `func list_available() -> Dictionary:`
+- `func get_runtime_spec(map_id: String) -> Dictionary:`
+
+---
+
 ### `map_catalog.gd`
 
-`class_name MapCatalog` · extends `RefCounted` · 34 lines
+`class_name MapCatalog` · extends `RefCounted` · 50 lines
 
 `godot/scripts/world/maps/map_catalog.gd`
 
@@ -2274,6 +2326,7 @@ extends `Node2D` · 34 lines
 - `PlaygroundMapClass` = `preload("res://godot/scripts/world/maps/definitions/playground_map.gd")`
 - `Sigma01MapClass` = `preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")`
 - `ProceduralMapClass` = `preload("res://godot/scripts/world/maps/definitions/procedural_map.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `DEFAULT_MAP_ID` = `"PLAYGROUND"`
 
 ---
@@ -2301,7 +2354,7 @@ extends `Node2D` · 34 lines
 
 ### `map_file_service.gd`
 
-`class_name MapFileService` · extends `RefCounted` · 137 lines
+`class_name MapFileService` · extends `RefCounted` · 135 lines
 
 `godot/scripts/world/maps/persistence/map_file_service.gd`
 
@@ -2339,7 +2392,7 @@ extends `Node2D` · 34 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 110 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 122 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.12 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 45fcc84 "ALPHA 0.4.11 - 2026-07-05"
+**Version:** 0.4.12 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** e2e1acb "[VERSION] Bump to 0.4.12"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,6 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- MAPFILE-01.md
 - MAT-DEFAULTS-01.md
 <!-- AUTO:END pending_prompts -->
 
@@ -22,21 +21,21 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 90
-- Test scripts: 19
+- GDScript modules: 91
+- Test scripts: 20
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 71
+- Archived prompts: 72
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- e2e1acb [VERSION] Bump to 0.4.12
 - 45fcc84 ALPHA 0.4.11 - 2026-07-05
 - 2bb6944 [VERSION] Bump to 0.4.9
 - e61ff4c feat(version): VERSION-08 — FIX-BAKE-09b final evidence (green run, red run, real parity check)
 - cdcafe1 [VERSION] Bump to 0.4.7
-- 1eeb92c [VERSION] Bump to 0.4.6
 <!-- AUTO:END version_history -->
 
 ---

@@ -117,9 +117,7 @@ func save_file(path: String, spec: Dictionary) -> Dictionary:
 	# Ensure directory exists
 	var file_dir = path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(file_dir):
-		var dir = DirAccess.open(file_dir.get_base_dir())
-		if dir != null:
-			dir.make_dir(file_dir.get_file())
+		DirAccess.make_dir_recursive_absolute(file_dir)
 
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:

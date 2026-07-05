@@ -24,6 +24,8 @@ func _init() -> void:
 		all_pass = false
 	if not _test_migration_red_then_green():
 		all_pass = false
+	if not _test_nested_directory_save():
+		all_pass = false
 
 	print("\n" + "=".repeat(70))
 	if all_pass:
@@ -264,3 +266,57 @@ func _test_migration_red_then_green() -> bool:
 	DirAccess.remove_absolute(temp_path)
 	print("  PASS: migration_red_then_green\n")
 	return true
+
+## Test 4: Nested directory save (regression for directory creation fix in Item 5.2)
+func _test_nested_directory_save() -> bool:
+	print("[TEST 4] Nested directory save: user://maps/subtest/nested.map.json\n")
+
+	var registry = MapSectionRegistryClass.new()
+	MapSectionsV1Class.register_all(registry)
+	var service = MapFileServiceClass.new(registry)
+
+	# Create a simple spec
+	var spec = {
+		"id": "TEST_NESTED",
+		"meta": {},
+		"sections": {
+			"board": {"inner_size": [10, 10], "buffer": 1, "floor_tile": "floor_SE"},
+			"walls": {"edges": []},
+			"blocks": {"items": []},
+			"props": {"items": []},
+			"actors": {"agent_start": [0, 0], "guards": []}
+		}
+	}
+
+	# Save to nested path where parent directories don't exist yet
+	var nested_path = "user://maps/subtest/nested.map.json"
+	var save_result = service.save_file(nested_path, spec)
+	
+	if not save_result["ok"]:
+		print("  ✗ Failed to save to nested path: %s" % save_result["errors"])
+		return false
+	print("  ✓ Saved to nested path: %s" % nested_path)
+
+	# Verify file exists and is readable
+	if not FileAccess.file_exists(nested_path):
+		print("  ✗ File was not actually created at %s" % nested_path)
+		return false
+	print("  ✓ File exists at nested location")
+
+	# Round-trip load to verify it's valid
+	var load_result = service.load_file(nested_path)
+	if not load_result["ok"]:
+		print("  ✗ Failed to reload from nested path: %s" % load_result["errors"])
+		DirAccess.remove_absolute(nested_path)
+		return false
+	print("  ✓ Successfully reloaded from nested path")
+
+	# Cleanup
+	DirAccess.remove_absolute(nested_path)
+	# Clean up empty directory if possible
+	var parent_dir = nested_path.get_base_dir()
+	DirAccess.remove_absolute(parent_dir)
+	
+	print("  PASS: nested_directory_save\n")
+	return true
+

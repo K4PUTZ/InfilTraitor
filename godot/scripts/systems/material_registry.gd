@@ -10,6 +10,9 @@ class_name MaterialRegistry
 # Import constants
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")
+const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
+const WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")
+const MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")
 
 ## Base class for pattern algorithms
 class PatternAlgorithm:
@@ -54,3 +57,11 @@ func list_materials() -> Array:
 ## Get material count
 func count() -> int:
 	return registry.size()
+
+## Populate the registry with the four canon materials (MAP_MATTRESS D2).
+## Call once at boot (and at the top of any test that needs materials).
+func register_defaults() -> void:
+	register(MaterialDef.new("concrete", Color(0.62, 0.62, 0.62), StonePatternClass.new()))
+	register(MaterialDef.new("stone",    Color(0.55, 0.55, 0.58), StonePatternClass.new()))
+	register(MaterialDef.new("wood",     Color(0.66, 0.47, 0.31), WoodPatternClass.new()))
+	register(MaterialDef.new("metal",    Color(0.49, 0.53, 0.56), MetalPatternClass.new()))

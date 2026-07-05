@@ -1,0 +1,61 @@
+{
+	"format": "infiltraitor-map",
+	"schema_version": 3,
+	"id": "PLAYGROUND",
+	"meta": {
+		"title": "Playground 2.0",
+		"author": "Matt",
+		"created": "2026-07-05"
+	},
+	"sections": {
+		"board": {
+			"v": 1,
+			"inner_size": [28, 18],
+			"buffer": 1,
+			"floor_tile": "floor_SE"
+		},
+		"walls": {
+			"v": 2,
+			"edges": [
+				{
+					"a": [3, 2],
+					"b": [3, 6],
+					"material": "stone",
+					"storeys": 2,
+					"facade": null
+				}
+			]
+		},
+		"blocks": {
+			"v": 1,
+			"items": [
+				{
+					"gu": [7, 4],
+					"storeys": 2,
+					"material": "stone"
+				}
+			]
+		},
+		"props": {
+			"v": 1,
+			"items": [
+				{
+					"def": "crate_full",
+					"gu": [9, 4],
+					"vox_offset": [0, 0],
+					"rot": 0
+				}
+			]
+		},
+		"actors": {
+			"v": 1,
+			"agent_start": [1, 1],
+			"guards": [
+				{
+					"route": [[4, 4], [4, 9]],
+					"class": "patrol"
+				}
+			]
+		}
+	}
+}

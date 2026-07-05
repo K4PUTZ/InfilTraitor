@@ -7,6 +7,8 @@ extends SceneTree
 var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")
+var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 class MockTextureResolver:
 	enum Tier { NONE = -1, LOW = 0, MID = 1, HIGH = 2 }
@@ -46,9 +48,10 @@ func _init() -> void:
 	print("BAKE-04 SELFTEST: BakeCompositor")
 	print("=".repeat(60) + "\n")
 
-	# Setup mock registry
-	var mock_registry = MockRegistry.new()
-	Engine.set_meta("BAKE_TEST_REGISTRY", mock_registry)
+	# Setup real material registry with defaults
+	var material_registry = MaterialRegistryClass.new()
+	material_registry.register_defaults()
+	Engine.set_meta("BAKE_TEST_REGISTRY", material_registry)
 
 	var all_pass = true
 
@@ -58,10 +61,12 @@ func _init() -> void:
 		all_pass = false
 	if not _test_render_batch_timing():
 		all_pass = false
+	if not _test_live_shape_wiring():
+		all_pass = false
 
 	print("\n" + "=".repeat(60))
 	if all_pass:
-		print("BAKE-04 SELFTEST: 3 / 3 PASS")
+		print("BAKE-04 SELFTEST: 4 / 4 PASS")
 		print("=".repeat(60) + "\n")
 		print("✓ SELFTEST PASS")
 	else:
@@ -273,6 +278,60 @@ func _test_render_batch_timing() -> bool:
 		print("  PASS: render_batch_timing\n")
 	else:
 		print("  FAIL: render_batch_timing\n")
+	return success
+
+## Test 4: Live shape wiring (room_builder-shaped spec must bake)
+func _test_live_shape_wiring() -> bool:
+	print("[TEST 4] live_shape_wiring\n")
+	var success = true
+
+	# Build spec exactly as room_builder._bake_textures() does:
+	# top-level "walls" array of {material_id, facade_id, edge} dicts
+	var map_spec = {
+		"walls": [
+			{
+				"material_id": "stone",
+				"facade_id": "facade_stone",
+				"edge": MockEdge.new("e0")
+			}
+		]
+	}
+
+	var resolver = MockTextureResolver.new()
+	var compositor = BakeCompositorClass.new()
+
+	# Bake with live-shaped spec
+	var bake_set = compositor._populate_bake_set(map_spec["walls"], resolver)
+	var facades_by_id = {"facade_stone": Image.create(64, 32, false, Image.FORMAT_L8)}
+
+	var result = compositor._render_batch(bake_set, facades_by_id)
+
+	print("    Bake set size: %d" % bake_set.size())
+	print("    Atlas pages: %d" % result.pages.size())
+	print("    Lookup entries: %d" % result.lookup.size())
+
+	if bake_set.size() > 0:
+		print("    ✓ Bake set populated from live shape")
+	else:
+		print("    ✗ Bake set empty (G4 regression: live shape not accepted)")
+		success = false
+
+	if result.pages.size() > 0:
+		print("    ✓ Live-shaped spec produced pages: %d" % result.pages.size())
+	else:
+		print("    ✗ Live-shaped spec produced ZERO pages — G4 regression")
+		success = false
+
+	if result.lookup.size() > 0:
+		print("    ✓ Lookup entries generated: %d" % result.lookup.size())
+	else:
+		print("    ✗ Lookup empty")
+		success = false
+
+	if success:
+		print("  PASS: live_shape_wiring\n")
+	else:
+		print("  FAIL: live_shape_wiring\n")
 	return success
 
 ## Helper: Create synthetic map with walls

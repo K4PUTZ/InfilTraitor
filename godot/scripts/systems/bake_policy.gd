@@ -9,10 +9,10 @@ class_name BakePolicy
 ## v1 facade assignment: one default facade per material.
 ## Authorial per-wall overrides come later via map spec.
 const DEFAULT_FACADES := {
-	"concrete": "concrete_base",
-	"stone": "stone_base",
-	"wood": "wood_plank",
-	"metal": "metal_sheet",
+	"concrete": "facade_concrete",
+	"stone": "facade_stone",
+	"wood": "facade_wood",
+	"metal": "facade_metal",
 }
 
 ## Map material ID to facade ID (v1 policy).

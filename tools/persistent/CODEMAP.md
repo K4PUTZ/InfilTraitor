@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**107 scripts · 18488 lines total** (under `godot/scripts/`)
+**112 scripts · 19262 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,9 +20,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -1043,7 +1043,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 325 lines
+`class_name BakeCompositor` · 353 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1080,7 +1080,7 @@ extends `Node2D` · 43 lines
 > BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Facade assignment (material ID → facade ID) - Variant seeding (edge + material → [0, 4) variant)
 
 **Constants / tuning**
-- `DEFAULT_FACADES` = `{ "concrete": "concrete_base", "stone": "stone_base", "wood": "wood_plank", "metal": "metal_sheet", }`
+- `DEFAULT_FACADES` = `{ "concrete": "facade_concrete", "stone": "facade_stone", "wood": "facade_wood", "metal": "facade_metal", }`
 
 ---
 
@@ -1444,7 +1444,7 @@ extends `Node2D` · 43 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 56 lines
+`class_name MaterialRegistry` · 67 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -1453,6 +1453,9 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
+- `WoodPatternClass` = `preload("res://godot/scripts/systems/wood_pattern.gd")`
+- `MetalPatternClass` = `preload("res://godot/scripts/systems/metal_pattern.gd")`
 
 **Public vars**
 - `var registry: Dictionary = {}`
@@ -1462,6 +1465,7 @@ extends `Node2D` · 43 lines
 - `func get_material(p_id: String) -> MaterialDef:`
 - `func list_materials() -> Array:`
 - `func count() -> int:`
+- `func register_defaults() -> void:`
 
 ---
 
@@ -1538,7 +1542,7 @@ extends `Node2D` · 43 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 166 lines
+`class_name TextureResolver` · 168 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -1652,7 +1656,7 @@ extends `Node` · 54 lines
 
 ### `bake_compositor_test.gd`
 
-extends `SceneTree` · 291 lines
+extends `SceneTree` · 350 lines
 
 `godot/scripts/tools/bake_compositor_test.gd`
 
@@ -1662,6 +1666,8 @@ extends `SceneTree` · 291 lines
 - `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
 
 ---
 
@@ -1849,6 +1855,36 @@ extends `SceneTree` · 131 lines
 `godot/scripts/tools/geometry_selftest.gd`
 
 > Geometry Module — Selftest: minimal validation Headless selftest Usage: godot --headless --script geometry_selftest.gd
+
+---
+
+### `map_lint.gd`
+
+extends `SceneTree` · 58 lines
+
+`godot/scripts/tools/map_lint.gd`
+
+> map_lint.gd — Headless tool to validate all .map.json files Scans res://maps/ and user://maps/ for *.map.json files, loads each through MapFileService with full registry, and reports pass/fail with error details. Exit code: 0 if all pass, 1 if any fail.
+
+**Public vars**
+- `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `var MapSectionsV1Class = preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
+- `var MapFileServiceClass = preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+
+---
+
+### `mapfile_roundtrip_test.gd`
+
+extends `SceneTree` · 266 lines
+
+`godot/scripts/tools/mapfile_roundtrip_test.gd`
+
+> mapfile_roundtrip_test.gd — Comprehensive round-trip and migration testing Tests: 1. Basic round-trip: save spec -> load -> verify structural equality 2. Tolerant round-trip: unknown section preservation (M3) 3. Migration RED (missing migration fails loudly) + GREEN (migration present succeeds)
+
+**Public vars**
+- `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `var MapSectionsV1Class = preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
+- `var MapFileServiceClass = preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
 
 ---
 
@@ -2043,7 +2079,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 303 lines
+`class_name RoomBuilder` · 337 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2263,9 +2299,57 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `map_file_service.gd`
+
+`class_name MapFileService` · extends `RefCounted` · 137 lines
+
+`godot/scripts/world/maps/persistence/map_file_service.gd`
+
+> MapFileService — Load/save .map.json files with migration and validation Core responsibilities: 1. Load .map.json from res://maps/ or user://maps/ (user wins on ID collision) 2. Apply per-section migrations (registry delegates the heavy lifting) 3. Deserialize each section via its owner 4. Validate the result before returning 5. Save via serialize + re-emit unknown sections verbatim (tolerant round-trip)
+
+**Constants / tuning**
+- `FORMAT_TAG` = `"infiltraitor-map"`
+- `CURRENT_SCHEMA_VERSION` = `3`
+
+**Public vars**
+- `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `var registry: Variant`
+
+**Public API**
+- `func load_file(path: String) -> Dictionary:`
+- `func save_file(path: String, spec: Dictionary) -> Dictionary:`
+
+---
+
+### `map_section_registry.gd`
+
+`class_name MapSectionRegistry` · extends `RefCounted` · 65 lines
+
+`godot/scripts/world/maps/persistence/map_section_registry.gd`
+
+> MapSectionRegistry — Anti-breakage core for tolerant round-trip serialization A section owner encapsulates everything the engine knows about a given section's internal shape: serialization, deserialization, and the migration chain from prior versions. The registry is the ONLY code that special-cases sections by name; the core load/save loop (MapFileService) is generic and never touches section internals. Adding a new section = one registration; adding a field to an existing section = one migration lambda. This mechanism satisfies requirement 4: "hard to break; keeps saving correctly after new sections are invented."
+
+**Public API**
+- `func register(owner: SectionOwner) -> void:`
+- `func get_owner(section_id: String) -> SectionOwner:`
+- `func known_sections() -> Array:`
+- `func migrate_section(section_id: String, raw: Dictionary) -> Variant:`
+
+---
+
+### `map_sections_v1.gd`
+
+`class_name MapSectionsV1` · extends `RefCounted` · 110 lines
+
+`godot/scripts/world/maps/persistence/map_sections_v1.gd`
+
+> MapSectionsV1 — Registration of board, walls, blocks, props, actors sections (v1)
+
+---
+
 ### `room.gd`
 
-extends `Node2D` · 1994 lines
+extends `Node2D` · 1998 lines
 
 `godot/scripts/world/room.gd`
 

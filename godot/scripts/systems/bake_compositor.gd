@@ -91,6 +91,11 @@ func _extract_walls_from_spec(map_spec: Dictionary, geometry) -> Array:
 		for wall_tile in map_spec["wall_tiles"]:
 			walls.append(wall_tile)
 
+	# Try room_builder's actual shape (top-level "walls" key)
+	if map_spec.has("walls"):
+		for wall in map_spec["walls"]:
+			walls.append(wall)
+
 	# Try old RoomGeometry format
 	if geometry and geometry.has("walls"):
 		for wall in geometry["walls"]:
@@ -293,17 +298,40 @@ func _composite_tile(
 			# Sample facade luminance
 			var facade_lum = sampler.sample(facade, float(plane_x), float(plane_y))
 
-			# Multiply: RGB × facade_lum; keep alpha
-			var result_pixel = Color(
-				mat_pixel.r * facade_lum,
-				mat_pixel.g * facade_lum,
-				mat_pixel.b * facade_lum,
-				mat_pixel.a
-			)
+			# Branch on blend mode
+			var result_pixel: Color
+			match BakeConfig.blend_mode:
+				BakeConfig.BlendMode.LINEAR_LIGHT:
+					result_pixel = Color(
+						clampf(mat_pixel.r + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
+						clampf(mat_pixel.g + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
+						clampf(mat_pixel.b + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
+						mat_pixel.a
+					)
+				BakeConfig.BlendMode.OVERLAY_EXPERIMENTAL:
+					result_pixel = Color(
+						_overlay_channel(mat_pixel.r, facade_lum),
+						_overlay_channel(mat_pixel.g, facade_lum),
+						_overlay_channel(mat_pixel.b, facade_lum),
+						mat_pixel.a
+					)
+				_:  # MULTIPLY and anything else: preserve the original behavior exactly
+					result_pixel = Color(
+						mat_pixel.r * facade_lum,
+						mat_pixel.g * facade_lum,
+						mat_pixel.b * facade_lum,
+						mat_pixel.a
+					)
 
 			result.set_pixel(screen_x, screen_y, result_pixel)
 
 	return result
+
+## Overlay blend helper: base blend f per channel
+func _overlay_channel(base: float, f: float) -> float:
+	if base < 0.5:
+		return clampf(2.0 * base * f, 0.0, 1.0)
+	return clampf(1.0 - 2.0 * (1.0 - base) * (1.0 - f), 0.0, 1.0)
 
 ## Get global material registry
 func _get_material_registry():

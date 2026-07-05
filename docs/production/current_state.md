@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.9 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 8bdd5de "DOC-HOOK-01 test: Verify push.sh integration"
+**Version:** 0.4.11 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** a090a4f "[DOC-HOOK-01] Complete: push.sh auto-update pipeline with marker-based docs"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,11 +22,11 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 87
-- Test scripts: 18
+- GDScript modules: 90
+- Test scripts: 19
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 69
+- Archived prompts: 71
 <!-- AUTO:END inventory -->
 
 ### Version History

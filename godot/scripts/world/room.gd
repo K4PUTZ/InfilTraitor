@@ -1408,7 +1408,11 @@ func _ensure_prop_stack_layers(count: int) -> void:
 		_prop_stack_layers[i].visible = i < count
 
 ## SLICE-02: A-T2 — Render solid blocks at their correct storeys
-func _render_solid_blocks(blocks: Array) -> void:
+## [CONSOLIDATED INTO room_builder.gd per MAT-DEFAULTS-01 G3]
+## This implementation was the canonical version; it has been ported to room_builder
+## and all callers now route through room_builder._render_solid_blocks().
+## This stub is kept for reference only — callers should use room_builder version.
+func _render_solid_blocks_DEPRECATED(blocks: Array) -> void:
 	if blocks.is_empty():
 		return
 	
@@ -1590,7 +1594,7 @@ func _build_room(layout: Dictionary) -> void:
 		_junction_columns = JunctionResolver.resolve(_edge_registry)
 		_voxel_renderer.clear()
 		_voxel_renderer.render(_edge_registry, _junction_columns)
-		_render_solid_blocks(extraction.get("solid_blocks", []))
+		## Solid blocks rendering now handled by room_builder (see MAT-DEFAULTS-01 G3)
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false

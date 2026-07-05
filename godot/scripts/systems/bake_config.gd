@@ -9,8 +9,8 @@ class_name BakeConfig
 static var enabled: bool = false
 
 ## Blend mode for composite (material × facade)
-enum BlendMode { MULTIPLY, TEXTURE_ONLY, MATERIAL_ONLY, OVERLAY_EXPERIMENTAL }
-static var blend_mode: BlendMode = BlendMode.MULTIPLY
+enum BlendMode { MULTIPLY, TEXTURE_ONLY, MATERIAL_ONLY, OVERLAY_EXPERIMENTAL, LINEAR_LIGHT }
+static var blend_mode: BlendMode = BlendMode.LINEAR_LIGHT
 
 ## Feature toggles
 static var theme_enabled: bool = true

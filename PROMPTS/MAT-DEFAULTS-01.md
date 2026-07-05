@@ -63,12 +63,21 @@ Preload the three pattern classes at the top of the file (`StonePatternClass`, `
 
 ## Item 3 (G3) — Purge the `_render_solid_blocks` split-brain
 
-`grep -n "_render_solid_blocks" -r godot/scripts` currently shows both `room.gd:1411` and `room_builder.gd:283`. Per the project's established rule (single owner, no split-brain — see the `_blocked_cells` history):
+`grep -n "_render_solid_blocks" -r godot/scripts` currently shows both `room.gd:1411` and `room_builder.gd:272`. **Investigated and resolved (do not re-litigate):** these are not equivalent implementations with a cosmetic location difference — one of them is dead/broken code.
 
-1. Read both implementations fully; diff them.
-2. Keep the one in `room_builder.gd` (it's the newer consolidation target per the ongoing modularization).
-3. Delete the copy in `room.gd`; redirect any caller there to `room_builder`'s instance.
-4. If the two implementations differ in behavior (not just location), do **not** silently pick one — paste both bodies in the completion report and flag the discrepancy for authorial choice before deleting.
+**Ground truth check:** `EdgeExtractor.extract()` (`geometry/edge_extractor.gd:88–95`) is the sole producer of the `solid_blocks` array, and it emits:
+```gdscript
+{ "gu_cell": cell, "storey": storey, "voxel_origin": ..., "material": material, "tile_name": tile_name }
+```
+`room.gd`'s implementation reads `gu_cell` / `storey` / `material` — matches exactly. `room_builder.gd`'s implementation reads `cell` / `storeys` — **keys that don't exist in the real payload**; it has always silently no-op'd (sentinel cell, default storeys=1) in the one call site that feeds it. This is the same class of bug as Item 4 (G4): two producers/consumers, mismatched shape, one dead.
+
+Second, independent reason to prefer room.gd's version: it renders through `_voxel_renderer.render_block()`, which internally calls `_set_voxel_cell()` (Rule #8) — the only path that gets baking, theming, and destructibility for free per the master plan §2.1. `room_builder`'s version renders through `_place()` into `_wall_upper_layers` — the pre-voxel `TileMapLayer` fallback system, explicitly called out as legacy in `room.gd`'s own comment at line 1585 ("*the active render now comes from the edge seam's voxel geometry integration*").
+
+**Decision (ratified):**
+1. **Port** room.gd's implementation — the per-storey material grouping, contiguous-run decomposition, and `_voxel_renderer.render_block()` call — into `room_builder.gd`, replacing its broken stub. This serves the ongoing modularization (logic moves into room_builder) while fixing the field-name bug at the same time.
+2. Delete the ported-from copy in `room.gd`.
+3. Verify `_place()` and `_wall_upper_layers` (the legacy fallback layer system) have no other live callers before removing them; if they do, leave them in place and note it — don't cascade-delete beyond this function's scope.
+4. Confirm `room_builder`'s copy still fires from the same guarded call site room.gd used (`if not extraction.get("edges", []).is_empty(): ... _render_solid_blocks(extraction.get("solid_blocks", []))`) — the voxel path must remain "the only active renderer when it has data."
 
 ## Item 4 (G4) — Live bake wiring: extractor accepts the room_builder shape
 

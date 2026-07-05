@@ -36,19 +36,21 @@ func resolve(texture_id: String) -> ResolvedTexture:
 	_log("")  # blank line for readability
 	_log("Attempting to resolve: %s" % texture_id)
 	
-	# Attempt user:// tier
-	var user_path := tex_user_dir.path_join(texture_id + ".png")
-	var img := _try_load_and_validate(user_path, "USER")
-	if img:
-		_log("[RESOLVER] %s resolved from USER (dims %dx%d)" % [texture_id, img.get_width(), img.get_height()])
-		return ResolvedTexture.new(img, Tier.USER)
+	# Attempt user:// tier (try PNG first, then WebP)
+	for ext in [".png", ".webp"]:
+		var user_path := tex_user_dir.path_join(texture_id + ext)
+		var img := _try_load_and_validate(user_path, "USER")
+		if img:
+			_log("[RESOLVER] %s resolved from USER%s (dims %dx%d)" % [texture_id, ext, img.get_width(), img.get_height()])
+			return ResolvedTexture.new(img, Tier.USER)
 	
-	# Attempt res://textures/defaults/ tier
-	var default_path := tex_default_dir.path_join(texture_id + ".png")
-	img = _try_load_and_validate(default_path, "DEFAULT")
-	if img:
-		_log("[RESOLVER] %s resolved from DEFAULT (dims %dx%d)" % [texture_id, img.get_width(), img.get_height()])
-		return ResolvedTexture.new(img, Tier.DEFAULT)
+	# Attempt res://textures/defaults/ tier (try PNG first, then WebP)
+	for ext in [".png", ".webp"]:
+		var default_path := tex_default_dir.path_join(texture_id + ext)
+		var img := _try_load_and_validate(default_path, "DEFAULT")
+		if img:
+			_log("[RESOLVER] %s resolved from DEFAULT%s (dims %dx%d)" % [texture_id, ext, img.get_width(), img.get_height()])
+			return ResolvedTexture.new(img, Tier.DEFAULT)
 	
 	# Fallback: material-only
 	_log("[RESOLVER] %s UNRESOLVED; wall will use MATERIAL-ONLY rendering" % texture_id)

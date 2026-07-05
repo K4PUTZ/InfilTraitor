@@ -269,19 +269,53 @@ func _ensure_prop_stack_layers(count: int) -> void:
 		_prop_stack_layers.append(layer)
 
 
+## SLICE-02: A-T2 — Render solid blocks at their correct storeys
+## Fixed from G3: reads actual EdgeExtractor shape (gu_cell, storey, material)
+## and routes through voxel renderer for baking/theming/destructibility
 func _render_solid_blocks(blocks: Array) -> void:
-	for block_entry in blocks:
-		if block_entry is not Dictionary:
-			continue
-		var cell: Vector2i = block_entry.get("cell", Vector2i(-1, -1))
-		var storeys: int = maxi(0, int(block_entry.get("storeys", 1)))
-		for level in range(0, storeys):
-			if level == 0:
-				_place(cell, "solid_full", structure_wall_layer)
+	if blocks.is_empty():
+		return
+	
+	var groups: Dictionary = {}
+	for block in blocks:
+		var gu_cell: Vector2i = block.get("gu_cell", Vector2i.ZERO)
+		var storey: int = int(block.get("storey", 0))
+		var material_name: String = block.get("material", "concrete")
+		var key := "%d,%d,%s" % [gu_cell.x, gu_cell.y, material_name]
+		
+		if key not in groups:
+			groups[key] = {"gu_cell": gu_cell, "material_name": material_name, "storeys": []}
+		groups[key]["storeys"].append(storey)
+	
+	for key in groups:
+		var group = groups[key]
+		var gu_cell: Vector2i = group["gu_cell"]
+		var material_name: String = group["material_name"]
+		var storeys: Array = group["storeys"]
+		
+		storeys.sort()
+		var runs: Array = []
+		var current_run: Array = []
+		
+		for i in range(storeys.size()):
+			var storey: int = storeys[i]
+			if i == 0:
+				current_run.append(storey)
 			else:
-				var layer = _wall_upper_layers[level - 1] if level - 1 < _wall_upper_layers.size() else null
-				if layer != null:
-					_place(cell, "solid_full", layer)
+				var prev_storey: int = storeys[i - 1]
+				if storey == prev_storey + 1:
+					current_run.append(storey)
+				else:
+					runs.append(current_run.duplicate())
+					current_run = [storey]
+		
+		if not current_run.is_empty():
+			runs.append(current_run)
+		
+		for run in runs:
+			var run_start: int = run[0]
+			var run_span: int = run.size()
+			room._voxel_renderer.render_block(gu_cell, run_start, run_span, material_name)
 
 
 func _cache_blocked_cells(layout: Dictionary) -> void:

@@ -105,12 +105,20 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if blocks_section.get("items", []).size() > 0:
 		runtime["blocks"] = _convert_from_json_compatible(blocks_section["items"])
 
+	# --- Props section: now translatable (PROP-01 implementation) -----------
+	var props_section = sections.get("props", {})
+	if props_section.get("items", []).size() > 0:
+		var voxel_props: Array = []
+		for item in props_section["items"]:
+			voxel_props.append(item)  # already {def, gu, vox_offset, rot} shape post JSON-coercion-reversal
+		runtime["voxel_props"] = _convert_from_json_compatible(voxel_props)
+
 	# --- Loud, non-blocking warning for sections that exist but have no translator yet ---
-	for future_section in ["walls", "props"]:
+	for future_section in ["walls"]:
 		var frag = sections.get(future_section, {})
-		var items_key = "edges" if future_section == "walls" else "items"
+		var items_key = "edges"
 		if frag.get(items_key, []).size() > 0:
-			push_warning("[FileMapSource] Map '%s' has non-empty '%s' section with no MapCompiler translation yet (pending BLOCK-01/PROP-01) — ignored" %
+			push_warning("[FileMapSource] Map '%s' has non-empty '%s' section with no MapCompiler translation yet — ignored" %
 				[runtime["id"], future_section])
 
 	return runtime

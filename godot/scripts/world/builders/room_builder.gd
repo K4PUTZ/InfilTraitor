@@ -13,6 +13,7 @@ var _wall_upper_layers: Array[TileMapLayer] = []
 var _prop_stack_layers: Array[TileMapLayer] = []
 var _blocked_cells: Dictionary = {}
 var _prop_heights: Dictionary = {}
+var _prop_cover: Dictionary = {}
 var _exit_cells: Array[Vector2i] = []
 var _current_light_sources: Array = []
 var _tile_ids: Dictionary = {}
@@ -72,6 +73,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		room._voxel_renderer.clear()
 		room._voxel_renderer.render(_edge_registry, _junction_columns)
 		_render_solid_blocks(extraction.get("solid_blocks", []))
+		_render_voxel_props(layout.get("voxel_prop_instances", []))
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false
@@ -129,6 +131,10 @@ func get_blocked_cells() -> Dictionary:
 
 func get_prop_heights() -> Dictionary:
 	return _prop_heights
+
+
+func get_prop_cover() -> Dictionary:
+	return _prop_cover
 
 
 func get_exit_cells() -> Array[Vector2i]:
@@ -318,6 +324,28 @@ func _render_solid_blocks(blocks: Array) -> void:
 			room._voxel_renderer.render_block(gu_cell, run_start, run_span, material_name)
 
 
+func _render_voxel_props(instances: Array) -> void:
+	if instances.is_empty():
+		return
+	var registry = _get_prop_registry()
+	for instance in instances:
+		var prop_def: PropDef = registry.get_prop(instance.get("def_id", ""))
+		if prop_def == null:
+			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
+			continue
+		room._voxel_renderer.render_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
+		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
+
+
+func _get_prop_registry() -> PropRegistry:
+	var reg = Engine.get_meta("GLOBAL_PROP_REGISTRY", null)
+	if reg == null:
+		reg = PropRegistry.new()
+		reg.load_from_disk()
+		Engine.set_meta("GLOBAL_PROP_REGISTRY", reg)
+	return reg
+
+
 func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
@@ -326,6 +354,7 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	for entry in layout.get("structure_tiles", []):
 		if entry is Dictionary and entry.has("height"):
 			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
+	_prop_cover.clear()
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):
 		_exit_cells.append(Vector2i(raw))

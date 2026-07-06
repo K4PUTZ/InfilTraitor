@@ -141,6 +141,25 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	## wall storeys. Defaults to wall_height so maps that don't set it are unchanged.
 	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", wall_height)))
 
+	## --- voxel props (crates etc.) — native PropDef-driven, distinct from legacy sprite "props" ---
+	var voxel_prop_instances: Array = []
+	for prop_item: Dictionary in spec.get("voxel_props", []):
+		var gu_raw = prop_item.get("gu", Vector2i.ZERO)
+		var gu_cell: Vector2i = Vector2i(gu_raw) if gu_raw is Vector2i else Vector2i(int(gu_raw[0]), int(gu_raw[1]))
+		var cell: Vector2i = gu_cell + offset
+		if blocked_map.has(cell):
+			continue
+		var vox_offset_raw = prop_item.get("vox_offset", [0, 0])
+		var vox_offset: Vector2i = vox_offset_raw if vox_offset_raw is Vector2i else Vector2i(int(vox_offset_raw[0]), int(vox_offset_raw[1]))
+		voxel_prop_instances.append({
+			"gu_cell": cell,
+			"def_id": String(prop_item.get("def", "")),
+			"storey": int(prop_item.get("storey", 0)),
+			"vox_offset": vox_offset,
+			"rot": int(prop_item.get("rot", 0)),
+		})
+		blocked_map[cell] = true
+
 	## --- props (crates / pillars) -------------------------------------------
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset
 	var structure_tiles: Array[Dictionary] = []
@@ -201,6 +220,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"wall_levels":      wall_levels,        ## [floor] -> Array[{cell, tile_name}], floor 0 = ground
 		"max_floors":       ceiling_floors,    ## ceiling-fixture height (lamp / temporal knob), independent of physical wall storeys
 		"structure_tiles":  structure_tiles,
+		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       enemy_defs,

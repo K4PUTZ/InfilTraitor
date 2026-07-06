@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**122 scripts · 20825 lines total** (under `godot/scripts/`)
+**125 scripts · 21348 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, project_lint_checker.gd, project_lint_validator.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -625,7 +625,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 257 lines
+`class_name VoxelRenderer` · extends `Node2D` · 265 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -644,6 +644,8 @@ extends `ConfirmationDialog` · 75 lines
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
+- `func render_prop(gu_cell: Vector2i, start_storey: int, prop_def: PropDef) -> void:`
+- `func clear() -> void:`
 
 ---
 
@@ -1529,6 +1531,50 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `prop_def.gd`
+
+`class_name PropDef` · 39 lines
+
+`godot/scripts/systems/prop_def.gd`
+
+> PropDef — Prop definition resource Describes a voxel prop (crate, pillar, container, etc.) Schema mirrors the file format and supports future destruction phase per-voxel granularity.
+
+**Public vars**
+- `var id: String`
+- `var size_vox: Vector3i`
+- `var layers: Array`
+- `var material_zones: Dictionary`
+- `var footprint_gus: Array[Vector2i]`
+- `var storeys: int = 1`
+- `var gameplay: Dictionary`
+- `var tags: Array[String]`
+
+---
+
+### `prop_registry.gd`
+
+`class_name PropRegistry` · 66 lines
+
+`godot/scripts/systems/prop_registry.gd`
+
+> PropRegistry — Prop definitions catalog (two-tier: res:// + user://) User-tier props override res:// props on id collision, same pattern as MaterialRegistry and TextureResolver.
+
+**Constants / tuning**
+- `RES_PROPS_DIR` = `"res://props"`
+- `USER_PROPS_DIR` = `"user://props"`
+
+**Public vars**
+- `var registry: Dictionary = {}`
+
+**Public API**
+- `func register(prop_def) -> void:`
+- `func get_prop(p_id: String):`
+- `func list_props() -> Array:`
+- `func count() -> int:`
+- `func load_from_disk() -> void:`
+
+---
+
 ### `stone_pattern.gd`
 
 `class_name StonePattern` · extends `"res://godot/scripts/systems/material_registry.gd".PatternAlgorithm` · 30 lines
@@ -2096,6 +2142,33 @@ extends `SceneTree` · 97 lines
 
 ---
 
+### `prop_01_tests.gd`
+
+extends `SceneTree` · 353 lines
+
+`godot/scripts/tools/prop_01_tests.gd`
+
+> PROP-01 Acceptance Tests Tests the PropDef/PropRegistry/voxel prop rendering system
+
+**Public vars**
+- `var PropDefClass`
+- `var PropRegistryClass`
+- `var MapCompilerClass`
+- `var FileMapSourceClass`
+- `var MapCatalogClass`
+- `var VoxelRendererClass`
+
+**Public API**
+- `func test_criterion_1_propdef_from_json() -> void:`
+- `func test_criterion_2_propregistry_override() -> void:`
+- `func test_criterion_3_render_prop_footprint() -> void:`
+- `func test_criterion_4_mapcompiler_voxel_props() -> void:`
+- `func test_criterion_5_file_map_source_round_trip() -> void:`
+- `func test_criterion_6_invariants_check() -> void:`
+- `func test_criterion_7_non_regression() -> void:`
+
+---
+
 ### `resolver_hardening_tests.gd`
 
 extends `SceneTree` · 527 lines
@@ -2255,7 +2328,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 337 lines
+`class_name RoomBuilder` · 366 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2280,6 +2353,7 @@ extends `Node2D` · 34 lines
 - `func cache_blocked_cells(layout: Dictionary) -> void:`
 - `func get_blocked_cells() -> Dictionary:`
 - `func get_prop_heights() -> Dictionary:`
+- `func get_prop_cover() -> Dictionary:`
 - `func get_exit_cells() -> Array[Vector2i]:`
 - `func get_light_sources() -> Array:`
 - `func get_base_layout() -> Dictionary:`
@@ -2442,7 +2516,7 @@ extends `Node2D` · 34 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 138 lines
+`class_name FileMapSource` · extends `RefCounted` · 146 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -2477,7 +2551,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 289 lines
+`class_name MapCompiler` · extends `RefCounted` · 309 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

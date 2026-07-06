@@ -54,7 +54,70 @@ is no deadline.
 4. **Evidence rule:** acceptance criteria are marked PASS **only** with real
    execution evidence — literal console output pasted into the report. Never
    from code reading.
-5. **Do not commit automatically.** The director reviews first.
+5. **Commit and push on completion — always.** When every acceptance
+   criterion has real evidence, bump `VERSION`, commit per the convention
+   below, and push to `main` (pre-push hooks must pass). **Do not move or
+   copy the prompt file to `PROMPTS/DONE/` — Matt does that manually, only
+   when he considers the prompt genuinely closed.** Pushing is not approval —
+   review happens on the repo afterwards; the `verified/` tag is the
+   approval. See **Git & Push Protocol** below.
+
+---
+
+## Git & Push Protocol
+
+The repo (`https://github.com/K4PUTZ/InfilTraitor`) is the source of truth
+for verification. The architect (Overlord) reads it directly, at any moment —
+there is no ZIP-relay step anymore. Commit noise is an accepted cost; a stale
+or unpushed `main` is not.
+
+1. **One prompt = at least one commit, pushed at completion.** The final
+   commit for a prompt includes the `VERSION` bump and the completion report
+   written into the prompt file **in place, at its current path** (root of
+   `PROMPTS/`) — that is how completion is detected remotely. Never move or
+   copy the file into `PROMPTS/DONE/`; that move is Matt's manual call, not
+   part of any prompt's completion.
+2. **Commit message convention:**
+   - `[PROMPT-ID] <imperative summary>` — final commit of a prompt
+     (e.g. `[BLOCK-01b] Add start_storey to Edge; fix phantom ground-floor segment`)
+   - `[PROMPT-ID][WIP] <stage>` — intermediate commits on multi-stage
+     prompts (allowed and encouraged)
+   - `[VERSION] Bump to X.Y.Z` — stays as-is
+   - `[FIX]`, `[DOCS]`, `[ARCHIVE]` — out-of-prompt housekeeping
+3. **Pre-push hooks are mandatory** (`check_invariants.py`, whole-project
+   lint via `push.sh` STAGE 1.3). Automation never bypasses them; a hook
+   failure blocks the push and goes in the report.
+4. **Never force-push `main`. Never rewrite published history.** Noise is
+   fine; a broken audit trail is not.
+5. **`verified/vX.Y.Z` tags** mark architect-cleared checkpoints. The
+   Operator applies one only when explicitly instructed. Between tags,
+   `main` may be noisy — that is expected.
+
+---
+
+## PROMPTS Folder Convention
+
+`PROMPTS/` has exactly four roles. Don't invent a fifth without updating this
+section.
+
+- **`PROMPTS/` (root)** — every prompt not yet manually archived by Matt,
+  regardless of whether the Operator has finished it. **The Operator's only
+  responsibility here is: write the completion report into the prompt file,
+  in place, at its current path.** Never move it, never copy it to `DONE/`,
+  never delete the root copy — archival is entirely Matt's manual action, on
+  his own schedule (he may leave a finished prompt at root for follow-up
+  micro-fixes before closing it).
+- **`PROMPTS/PLANNING/`** — master plans only (`*_MASTER_PLAN*.md`). Not
+  prompts, not reports — the Overlord's living planning documents. The
+  Operator does not write here.
+- **`PROMPTS/DONE/`** — Matt-curated archive of prompts he's decided are
+  closed, plus every session summary (`RESUMO_SESSAO_*.md`). The Operator
+  and the Overlord do not write, move, or delete anything here.
+- **`PROMPTS/AUDITS/`** — standalone verification/audit documents, reserved
+  for the audit-trigger cases in `OVERLORD_CONTEXT.md` (blocking bug,
+  contradicted sample, Director request). Routine per-prompt verification
+  does not get its own file here — it goes inside the prompt's own
+  completion report.
 
 ---
 

@@ -1,0 +1,12 @@
+{
+  "id": "crate_full",
+  "size_vox": [8, 8, 8],
+  "layers": [
+    "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111"
+  ],
+  "material_zones": { "default": "wood" },
+  "footprint_gus": [[0, 0]],
+  "storeys": 1,
+  "gameplay": { "cover": "full", "destructible": true },
+  "tags": ["crate", "cover", "container"]
+}

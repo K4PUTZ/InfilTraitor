@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22384 lines total** (under `godot/scripts/`)
+**133 scripts · 22399 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2477,7 +2477,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 364 lines
+`class_name RoomBuilder` · 379 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2492,6 +2492,7 @@ extends `Node2D` · 34 lines
 - `var room: Node`
 - `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+- `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
 - `var floor_layer: TileMapLayer = null`

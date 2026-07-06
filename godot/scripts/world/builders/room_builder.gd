@@ -7,6 +7,7 @@ class_name RoomBuilder
 var room: Node
 var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
+var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 var _room_size: Vector2i = Vector2i.ZERO
@@ -105,13 +106,27 @@ func cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
-	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles.
+	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles and voxel_props.
 	## Consumed by LightingController._setup_tile_semantics so stacked props cast taller
 	## (longer) shadows. Built here so it follows perspective rotation with the layout.
 	_prop_heights.clear()
 	for entry in layout.get("structure_tiles", []):
 		if entry is Dictionary and entry.has("height"):
 			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
+	# Also populate from voxel_prop_instances using prop definitions' storeys
+	var prop_registry = _get_prop_registry()
+	if prop_registry:
+		for instance in layout.get("voxel_prop_instances", []):
+			if instance is Dictionary:
+				var def_id: String = instance.get("def_id", "")
+				var gu_cell: Vector2i = instance.get("gu_cell", Vector2i.ZERO)
+				var prop_def = prop_registry.get_prop(def_id)
+				if prop_def:
+					# Derive shadow height using the same convention as legacy stacked props:
+					# height = clamp(storeys + 1, 1, 4). This ensures voxel props cast
+					# shadows consistent with their visual presence (1-storey = height class 2).
+					var height: int = clampi(int(prop_def.storeys) + 1, 1, 4)
+					_prop_heights[gu_cell] = height
 	## Segment exits — used by the purple overlay in _draw()
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):

@@ -49,20 +49,20 @@ static func spec() -> Dictionary:
 				Vector2i(14, 9), Vector2i(15, 9), Vector2i(16, 9),
 			]},
 		],
-		"props": [
+		"voxel_props": [
 			## Zone 0 — initial cover
-			{"cell": Vector2i(3, 32),  "tile": "crate_SE"},
-			{"cell": Vector2i(14, 32), "tile": "crate_SW"},
+			{"def": "crate_full", "gu": [3, 32]},
+			{"def": "crate_full", "gu": [14, 32]},
 			## Zone B — central crates
-			{"cell": Vector2i(7, 21),  "tile": "crate_NW"},
-			{"cell": Vector2i(10, 21), "tile": "crate_NE"},
+			{"def": "crate_full", "gu": [7, 21]},
+			{"def": "crate_full", "gu": [10, 21]},
 			## Zone B — warehouse (right shadow zone)
-			{"cell": Vector2i(15, 13), "tile": "crate_SE"},
-			{"cell": Vector2i(16, 13), "tile": "crate_SW"},
-			{"cell": Vector2i(15, 14), "tile": "crate_NW"},
+			{"def": "crate_full", "gu": [15, 13]},
+			{"def": "crate_full", "gu": [16, 13]},
+			{"def": "crate_full", "gu": [15, 14]},
 			## Zone B — pillars
-			{"cell": Vector2i(5, 17),  "tile": "crate_NE"},
-			{"cell": Vector2i(13, 17), "tile": "crate_SE"},
+			{"def": "crate_full", "gu": [5, 17]},
+			{"def": "crate_full", "gu": [13, 17]},
 		],
 		"lights": [
 			{"x": 9, "y": 5,  "height": 5.0, "radius": 8, "intensity": 0.90},  ## Zone C

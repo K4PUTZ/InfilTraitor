@@ -4,17 +4,16 @@
 ## Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup()
 ## after ScriptServer::finish_languages() has begun dismantling the script language.
 ##
-## Strategy: Keep registries as WeakRef or initialize on-demand, avoid persistent
-## strong references that survive to Main::cleanup().
+## Strategy: Use weak references to avoid holding strong refs that prevent GC cleanup.
 
 extends Node
 
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 
-# Store one instance per registry; weak refs would work better but complicate access
-var _material_registry: MaterialRegistryClass = null
-var _prop_registry: PropRegistryClass = null
+# Store weak references to registries to avoid holding strong refs during shutdown
+var _material_registry_ref: WeakRef = null
+var _prop_registry_ref: WeakRef = null
 
 
 func _ready() -> void:
@@ -23,20 +22,32 @@ func _ready() -> void:
 
 ## Ensure material registry exists and is initialized
 func ensure_material_registry() -> MaterialRegistryClass:
-	if _material_registry == null:
-		_material_registry = MaterialRegistryClass.new()
-		_material_registry.register_defaults()
+	var reg = null
+	if _material_registry_ref != null:
+		reg = _material_registry_ref.get_ref()
+	
+	if reg == null:
+		reg = MaterialRegistryClass.new()
+		reg.register_defaults()
+		_material_registry_ref = weakref(reg)
 		print("[Registries] Material registry initialized with defaults")
-	return _material_registry
+	
+	return reg
 
 
 ## Ensure prop registry exists and is initialized
 func ensure_prop_registry() -> PropRegistryClass:
-	if _prop_registry == null:
-		_prop_registry = PropRegistryClass.new()
-		_prop_registry.load_from_disk()
+	var reg = null
+	if _prop_registry_ref != null:
+		reg = _prop_registry_ref.get_ref()
+	
+	if reg == null:
+		reg = PropRegistryClass.new()
+		reg.load_from_disk()
+		_prop_registry_ref = weakref(reg)
 		print("[Registries] Prop registry initialized from disk")
-	return _prop_registry
+	
+	return reg
 
 
 ## Get material registry (ensure called first, or handle null)
@@ -78,9 +89,19 @@ func get_bake_timestamp() -> int:
 	return _bake_timestamp
 
 
-# Expose direct property access for bake_compositor compatibility check
+# Expose property for compatibility with existing checks
 var material_registry: MaterialRegistryClass:
-	get: return _material_registry
-	set(val): _material_registry = val
+	get: 
+		if _material_registry_ref != null:
+			var ref = _material_registry_ref.get_ref()
+			if ref != null:
+				return ref
+		return null
+	set(val): 
+		if val != null:
+			_material_registry_ref = weakref(val)
+		else:
+			_material_registry_ref = null
+
 
 

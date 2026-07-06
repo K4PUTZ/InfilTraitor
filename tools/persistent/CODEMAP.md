@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22357 lines total** (under `godot/scripts/`)
+**133 scripts · 22364 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1050,7 +1050,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 352 lines
+`class_name BakeCompositor` · 359 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1064,6 +1064,7 @@ extends `Node2D` · 43 lines
 - `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
 
 **Public API**
+- `func set_material_registry(registry) -> void:`
 - `func bake(map_spec: Dictionary, resolver) -> BakedAtlas:`
 
 ---

@@ -31,8 +31,15 @@ class BakedAtlas extends RefCounted:
 		pages = []
 		lookup = {}
 
+# For dependency injection (set by room_builder before baking)
+var _material_registry = null
+
 func _init() -> void:
 	pass
+
+## Set material registry (called by room_builder for production use)
+func set_material_registry(registry) -> void:
+	_material_registry = registry
 
 ## Main entry point: bake all walls in the map
 func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
@@ -339,9 +346,9 @@ func _get_material_registry():
 	if Engine.has_meta("BAKE_TEST_REGISTRY"):
 		return Engine.get_meta("BAKE_TEST_REGISTRY")
 	
-	# Check legacy Engine.set_meta for production (primary - maintains compatibility)
-	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
-		return Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
+	# Check for injected registry (production path via dependency injection)
+	if _material_registry != null:
+		return _material_registry
 	
 	return null
 

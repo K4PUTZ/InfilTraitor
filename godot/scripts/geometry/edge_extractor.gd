@@ -2,6 +2,8 @@
 ## Ported from legacy geometry system; refined by SLICE-02 refactor (docs/history/)
 class_name EdgeExtractor
 
+const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+
 ## Mapping from wall tile suffix to face direction (DIRECTION_GLOSSARY §6)
 const _EDGE_BY_SUFFIX: Dictionary = {
 	"NW": Face.NW,  ## (-1, 0)
@@ -77,14 +79,18 @@ static func extract(compiled: Dictionary) -> Dictionary:
 				var cell_b: Vector2i = cell + Face.delta(face)
 				
 				# Normalize to canonical order for deduplication
+				# FIX-EXTERIOR-WALLS-01: exterior walls are always EXTERIOR_WALL_STOREYS tall (fixed height),
+				# not derived from how many wall_levels array slots contain them (legacy N-floor stacking).
+				# wall_levels now always has exactly one course (wall_tiles), so counting is unnecessary.
+				var wall_storeys: int = MapCompilerClass.EXTERIOR_WALL_STOREYS
 				var edge := Edge.between(cell_a, cell_b, 1, "concrete")
 				
-				# Track min and max storey for this edge (walls default to min_storey=0)
+				# Assign fixed height to every exterior wall edge
 				if edge.id not in edge_groups:
-					edge_groups[edge.id] = {"edge_template": edge, "min_storey": 0, "max_storey": storey}
+					edge_groups[edge.id] = {"edge_template": edge, "min_storey": 0, "max_storey": wall_storeys - 1}
 				else:
-					# Update max storey
-					edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], storey)
+					# If already tracked (shouldn't happen for walls, but guard anyway), ensure max_storey is wall_storeys-1
+					edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], wall_storeys - 1)
 			
 			# New real-edge solid blocks: "solidblock_stone", "solidblock_concrete", etc.
 			elif tile_name.begins_with("solidblock_"):

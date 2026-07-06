@@ -251,7 +251,7 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
 @export var map_id: String = "SIGMA_01"
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
-@export var wall_height_override: int = 8
+@export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
 ## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
 @export var debug_probe_voxel_alignment: bool = true
 
@@ -260,9 +260,8 @@ const WHISTLE_RADIUS := 3
 
 ## Loads (or reloads) the given map into the already-initialized room. Safe to call
 ## after _ready() — used by _ready() itself and by the F2 debug panel.
-func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: int = 0) -> void:
+func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	map_id = new_map_id
-	wall_height_override = new_wall_height_override
 	if new_map_id == "PROCEDURAL":
 		level_seed = new_seed
 
@@ -275,10 +274,9 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 		"seed":             level_seed,
 	})
 	var layout: Dictionary = MapCompilerClass.compile(spec, {
-		"connections":         connections,
-		"segment_grid_pos":    segment_grid_pos,
-		"seed":                level_seed,
-		"wall_height_override": wall_height_override,
+		"connections":      connections,
+		"segment_grid_pos": segment_grid_pos,
+		"seed":             level_seed,
 	})
 	if layout.is_empty():
 		push_error("[Room] Map compilation failed for map_id '%s' — room state unchanged" % new_map_id)
@@ -540,7 +538,7 @@ func _ready() -> void:
 	agent.move_finished.connect(_on_agent_move_finished)
 	## Perspective button connections now in CameraController
 
-	load_map(map_id, wall_height_override, level_seed)
+	load_map(map_id, level_seed)
 
 	## DEBUG-01: Create map loader toolbar button
 	## Initialize debug tools controller

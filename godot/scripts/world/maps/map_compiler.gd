@@ -41,6 +41,11 @@ const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd
 
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
+## Exterior perimeter walls are always this many storeys tall (fixed height, no config).
+## Verticality for scene composition; only ground floor is playable.
+## See FIX-EXTERIOR-WALLS-01 for rationale (deletion of legacy N-floor stacking).
+const EXTERIOR_WALL_STOREYS: int = 8
+
 
 ## Compiles a MapSpec into a render-ready layout dict.
 ## context: {connections: Dictionary, segment_grid_pos: Vector2i, seed: int} — only
@@ -102,27 +107,12 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})
 
-	## --- wall storeys (N-floor stacking) ------------------------------------
-	## Ground course (level 0) is the full wall_tiles above (doors + dividers + inner rooms).
-	## Upper courses are the SOLID outer ring (no door gaps) so doorways stay normal height with
-	## wall above them; dividers are never stacked. Height applies to the OUTER walls only.
-	## wall_height_override (from context, > 0) wins over the map's spec value for quick testing.
-	var wall_height: int = int(context.get("wall_height_override", 0))
-	if wall_height <= 0:
-		wall_height = int(spec.get("wall_height", 1))
-	wall_height = maxi(1, wall_height)
-
+	## --- exterior walls (fixed height, no stacking) ------------------------------------
+	## FIX-EXTERIOR-WALLS-01: exterior walls are now first-class Edges with fixed EXTERIOR_WALL_STOREYS
+	## storey height. Deleted legacy N-floor stacking mechanism (wall_height, wall_levels duplication).
+	## wall_tiles is the ground course (doors + dividers + inner rooms); it's the only course.
+	## EdgeExtractor assigns EXTERIOR_WALL_STOREYS to every exterior-wall Edge.
 	var wall_levels: Array = [wall_tiles]
-	if wall_height > 1:
-		var solid_ring: Array = MapGeometryClass.build_room(outer_rect, [])["wall_tiles"]
-		for _level in range(1, wall_height):
-			var course: Array[Dictionary] = []
-			for entry: Dictionary in solid_ring:
-				course.append({
-					"cell": entry["cell"],
-					"tile_name": _upper_course_tile(String(entry["tile_name"])),
-				})
-			wall_levels.append(course)
 
 	## --- solid GU blockers (full-cell, multi-storey, material-aware) ---------
 	for block: Dictionary in spec.get("blocks", []):
@@ -138,8 +128,12 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		blocked_map[cell] = true
 
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
-	## wall storeys. Defaults to wall_height so maps that don't set it are unchanged.
-	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", wall_height)))
+	## wall storeys. Defaults to EXTERIOR_WALL_STOREYS so maps that don't set it have
+	## the same ceiling lift height as before FIX-EXTERIOR-WALLS-01 (when wall_height defaulted to 1,
+	## maps with explicit ceiling_floors used that; maps without it defaulted to wall_height=1, hence
+	## ceiling_lift = WALL_FLOOR_STEP_PX * 1.75; now they default to EXTERIOR_WALL_STOREYS=8, so
+	## ceiling_lift = WALL_FLOOR_STEP_PX * 8.75, restoring the original intent of tall ceilings).
+	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", EXTERIOR_WALL_STOREYS)))
 
 	## --- voxel props (crates etc.) — native PropDef-driven, distinct from legacy sprite "props" ---
 	var voxel_prop_instances: Array = []
@@ -233,12 +227,6 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 
 ## --- private helpers --------------------------------------------------------
-
-## Tile used for a wall cell on an UPPER course (storey ≥ 1).
-## Single switch point: if straight wall_* sprites draw a top cap that shows mid-wall when
-## stacked, return the matching solid block_* here for intermediate courses instead.
-static func _upper_course_tile(ground_tile_name: String) -> String:
-	return ground_tile_name
 
 
 ## Shadow height class (1-4) for a prop stack of N sprites. Tunable single source:

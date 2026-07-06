@@ -5,7 +5,7 @@ const MapCatalogClass = preload("res://godot/scripts/world/maps/map_catalog.gd")
 
 var _room: Node2D = null
 var _map_list: OptionButton = null
-var _height_spinbox: SpinBox = null
+
 var _seed_spinbox: SpinBox = null
 
 
@@ -34,16 +34,6 @@ func _build_ui() -> void:
 		_map_list.add_item(map_ids[i], i)
 	_map_list.select(0)
 
-	## Wall height
-	var height_label := Label.new()
-	height_label.text = "Wall Height:"
-	vbox.add_child(height_label)
-
-	_height_spinbox = SpinBox.new()
-	_height_spinbox.min_value = 0
-	_height_spinbox.max_value = 8
-	_height_spinbox.value = 0
-	vbox.add_child(_height_spinbox)
 
 	## Seed
 	var seed_label := Label.new()
@@ -65,10 +55,9 @@ func _on_load_pressed() -> void:
 	var map_ids := MapCatalogClass.list_map_ids()
 	if selected_index >= 0 and selected_index < map_ids.size():
 		var selected_map_id := map_ids[selected_index]
-		var height := int(_height_spinbox.value)
 		var seed := int(_seed_spinbox.value)
-		print("DEBUG: Loading map '%s' with height %d, seed %d" % [selected_map_id, height, seed])
-		_room.load_map(selected_map_id, height, seed)
+		print(\"DEBUG: Loading map '%s' with seed %d\" % [selected_map_id, seed])
+		_room.load_map(selected_map_id, seed)
 
 
 func _on_cancel_pressed() -> void:

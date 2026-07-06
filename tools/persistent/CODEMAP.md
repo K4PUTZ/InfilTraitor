@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**130 scripts · 22096 lines total** (under `godot/scripts/`)
+**131 scripts · 22222 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd, voxel_height_verification.gd
+- **tools/** — bake_compositor_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -365,7 +365,7 @@ extends `Node2D` · 275 lines
 
 ### `map_loader_panel.gd`
 
-extends `ConfirmationDialog` · 75 lines
+extends `ConfirmationDialog` · 64 lines
 
 `godot/scripts/debug/map_loader_panel.gd`
 
@@ -449,13 +449,14 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 156 lines
+`class_name EdgeExtractor` · 162 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
 > Geometry Module — Edge Extractor: converts compiled map to Edge objects Ported from legacy geometry system; refined by SLICE-02 refactor (docs/history/)
 
 **Constants / tuning**
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `_EDGE_BY_SUFFIX` = `{ "NW": Face.NW,  ## (-1, 0) "NE": Face.NE,  ## (0, -1) "SE": Face.SE,  ## (+1, 0) "SW": Face.SW,  ## (0, +1) }`
 
 ---
@@ -1945,6 +1946,26 @@ extends `SceneTree` · 75 lines
 
 ---
 
+### `exterior_walls_verification.gd`
+
+extends `SceneTree` · 145 lines
+
+`godot/scripts/tools/exterior_walls_verification.gd`
+
+> !/usr/bin/env -S godot --headless --script FIX-EXTERIOR-WALLS-01: Verify exterior walls have fixed 8-storey height
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+**Public vars**
+- `var test_results: Array[String] = []`
+- `var test_pass_count: int = 0`
+- `var test_fail_count: int = 0`
+
+---
+
 ### `facade_sampler_test.gd`
 
 extends `SceneTree` · 239 lines
@@ -2641,7 +2662,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 309 lines
+`class_name MapCompiler` · extends `RefCounted` · 297 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -2649,6 +2670,7 @@ extends `Node2D` · 34 lines
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `MapGeometryClass` = `preload("res://godot/scripts/world/maps/map_geometry.gd")`
 - `REQUIRED_KEYS` = `["inner_size", "agent_start"]`
+- `EXTERIOR_WALL_STOREYS` = `8`
 
 ---
 
@@ -2710,7 +2732,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2009 lines
+extends `Node2D` · 2007 lines
 
 `godot/scripts/world/room.gd`
 

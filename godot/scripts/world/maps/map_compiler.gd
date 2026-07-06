@@ -102,11 +102,12 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	## --- internal divider walls with door gaps ------------------------------
 	for divider: Dictionary in spec.get("dividers", []):
+		var material: String = String(divider.get("material", "concrete"))
 		for raw_cell in divider.get("cells", []):
 			var cell: Vector2i = Vector2i(raw_cell) + offset
 			if blocked_map.has(cell):
 				continue
-			wall_tiles.append({"cell": cell, "tile_name": "block_SE"})
+			wall_tiles.append({"cell": cell, "tile_name": "solidblock_%s" % material})
 			blocked_map[cell] = true
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})

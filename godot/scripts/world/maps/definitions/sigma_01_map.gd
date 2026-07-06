@@ -27,14 +27,14 @@ static func spec() -> Dictionary:
 		],
 		"dividers": [
 			## Divider C — Zone A ↔ Zone 0 (single central gate x=8-9)
-			{"cells": [
+			{"material": "concrete", "cells": [
 				Vector2i(1, 30), Vector2i(2, 30), Vector2i(3, 30), Vector2i(4, 30),
 				Vector2i(5, 30), Vector2i(6, 30), Vector2i(7, 30),
 				Vector2i(10, 30), Vector2i(11, 30), Vector2i(12, 30), Vector2i(13, 30),
 				Vector2i(14, 30), Vector2i(15, 30), Vector2i(16, 30),
 			]},
 			## Divider B — Zone B ↔ Zone A (gates x=2-3, x=14-15; no central passage)
-			{"cells": [
+			{"material": "concrete", "cells": [
 				Vector2i(1, 25),
 				Vector2i(4, 25), Vector2i(5, 25), Vector2i(6, 25), Vector2i(7, 25),
 				Vector2i(8, 25), Vector2i(9, 25), Vector2i(10, 25), Vector2i(11, 25),
@@ -42,7 +42,7 @@ static func spec() -> Dictionary:
 				Vector2i(16, 25),
 			]},
 			## Divider A — Zone C ↔ Zone B (gates x=4-5, x=12-13)
-			{"cells": [
+			{"material": "concrete", "cells": [
 				Vector2i(1, 9), Vector2i(2, 9), Vector2i(3, 9),
 				Vector2i(6, 9), Vector2i(7, 9), Vector2i(8, 9),
 				Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 9),

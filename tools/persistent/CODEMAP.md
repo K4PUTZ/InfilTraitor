@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**125 scripts · 21348 lines total** (under `godot/scripts/`)
+**127 scripts · 21632 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -625,7 +625,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 265 lines
+`class_name VoxelRenderer` · extends `Node2D` · 267 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -637,6 +637,7 @@ extends `ConfirmationDialog` · 75 lines
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 
 **Public vars**
+- `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var debug_nudge: Vector2 = Vector2.ZERO`
 
 **Public API**
@@ -644,7 +645,7 @@ extends `ConfirmationDialog` · 75 lines
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
-- `func render_prop(gu_cell: Vector2i, start_storey: int, prop_def: PropDef) -> void:`
+- `func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -2110,6 +2111,39 @@ extends `SceneTree` · 213 lines
 
 ---
 
+### `playground_export_showcase.gd`
+
+extends `SceneTree` · 190 lines
+
+`godot/scripts/tools/playground_export_showcase.gd`
+
+> playground_export_showcase.gd — Generate showcase map PLAYGROUND (28×18) with 6 districts Runs headless: godot --headless --script godot/scripts/tools/playground_export_showcase.gd
+
+**Constants / tuning**
+- `MapSectionRegistryClass` = `preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `MapSectionsV1Class` = `preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
+- `MapFileServiceClass` = `preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+
+---
+
+### `playground_verification_test.gd`
+
+extends `SceneTree` · 88 lines
+
+`godot/scripts/tools/playground_verification_test.gd`
+
+> playground_verification_test.gd — Verify PLAYGROUND showcase map districts A-F Runs headless: godot --headless --script godot/scripts/tools/playground_verification_test.gd
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
 ### `project_lint_checker.gd`
 
 extends `Node` · 89 lines
@@ -2328,7 +2362,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 366 lines
+`class_name RoomBuilder` · 368 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2343,6 +2377,8 @@ extends `Node2D` · 34 lines
 - `var room: Node`
 - `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+- `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+- `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
 - `var floor_layer: TileMapLayer = null`
 - `var structure_layer: TileMapLayer = null`
 - `var structure_wall_layer: TileMapLayer = null`
@@ -2536,7 +2572,7 @@ extends `Node2D` · 34 lines
 
 ### `map_catalog.gd`
 
-`class_name MapCatalog` · extends `RefCounted` · 50 lines
+`class_name MapCatalog` · extends `RefCounted` · 52 lines
 
 `godot/scripts/world/maps/map_catalog.gd`
 

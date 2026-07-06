@@ -7,6 +7,8 @@ class_name RoomBuilder
 var room: Node
 var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
+var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
+var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 var _room_size: Vector2i = Vector2i.ZERO
 var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
@@ -329,7 +331,7 @@ func _render_voxel_props(instances: Array) -> void:
 		return
 	var registry = _get_prop_registry()
 	for instance in instances:
-		var prop_def: PropDef = registry.get_prop(instance.get("def_id", ""))
+		var prop_def = registry.get_prop(instance.get("def_id", ""))
 		if prop_def == null:
 			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
 			continue
@@ -337,10 +339,10 @@ func _render_voxel_props(instances: Array) -> void:
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 
-func _get_prop_registry() -> PropRegistry:
+func _get_prop_registry():
 	var reg = Engine.get_meta("GLOBAL_PROP_REGISTRY", null)
 	if reg == null:
-		reg = PropRegistry.new()
+		reg = PropRegistryClass.new()
 		reg.load_from_disk()
 		Engine.set_meta("GLOBAL_PROP_REGISTRY", reg)
 	return reg

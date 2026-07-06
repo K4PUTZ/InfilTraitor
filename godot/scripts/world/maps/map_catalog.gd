@@ -21,7 +21,7 @@ static var _file_source: FileMapSourceClass = null
 static func list_map_ids() -> Array[String]:
 	if _file_source == null:
 		_file_source = FileMapSourceClass.new()
-	var ids: Array[String] = ["PLAYGROUND", "SIGMA_01", "PROCEDURAL"]  # code-defined, always available
+	var ids: Array[String] = ["PLAYGROUND", "SIGMA_01", "CALIB", "PROCEDURAL"]  # code-defined, always available
 	for file_id in _file_source.list_available().keys():
 		if not ids.has(file_id):
 			ids.append(file_id)
@@ -40,6 +40,8 @@ static func get_spec(map_id: String, context: Dictionary = {}) -> Dictionary:
 
 	match map_id:
 		"PLAYGROUND":
+			return PlaygroundMapClass.spec()
+		"CALIB":
 			return PlaygroundMapClass.spec()
 		"SIGMA_01":
 			return Sigma01MapClass.spec()

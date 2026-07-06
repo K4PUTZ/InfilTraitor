@@ -4,6 +4,8 @@
 extends Node2D
 class_name VoxelRenderer
 
+var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
+
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
 
@@ -249,7 +251,7 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;
 ## sub-storey/partial-layer rendering is deferred to the destruction phase — see PROP-01 Item 0-A).
-func render_prop(gu_cell: Vector2i, start_storey: int, prop_def: PropDef) -> void:
+func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	var material_name: String = prop_def.material_zones.get("default", "concrete")
 	for footprint_offset in prop_def.footprint_gus:
 		render_block(gu_cell + footprint_offset, start_storey, prop_def.storeys, material_name)

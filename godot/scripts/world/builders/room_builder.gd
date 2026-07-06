@@ -221,10 +221,6 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 
 	# Store lookup and source mapping for placement via autoload (FIX-SHUTDOWN-CRASH-01)
 	Registries.set_baked_atlas(baked_atlas, source_ids, Time.get_ticks_msec())
-	## Also store in Engine.set_meta for read-only consumer compatibility (baked_tile_lookup)
-	## Note: headless tests will exit with code 134; windowed game closes cleanly.
-	Engine.set_meta("GLOBAL_BAKED_ATLAS", baked_atlas)
-	Engine.set_meta("BAKED_ATLAS_SOURCE_IDS", source_ids)
 
 
 

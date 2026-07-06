@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22365 lines total** (under `godot/scripts/`)
+**133 scripts · 22357 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2474,7 +2474,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 368 lines
+`class_name RoomBuilder` · 364 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2770,7 +2770,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2008 lines
+extends `Node2D` · 2004 lines
 
 `godot/scripts/world/room.gd`
 

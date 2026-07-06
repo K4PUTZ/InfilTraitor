@@ -64,13 +64,13 @@ if [ ! -f "$VERSION_FILE" ]; then
 fi
 echo "[VERIFY] VERSION file found"
 
-# ── STAGE 1.3: Whole-project parse check ───────────────────────────────────
-echo "[LINT] Checking whole-project parse integrity..."
-if ! python3 "$REPO_ROOT/tools/persistent/project_lint.py"; then
-    echo "[LINT] ❌ Parse errors found — push aborted"
+# ── STAGE 1.3: Architecture invariant check ──────────────────────────────────
+echo "[CHECK] Verifying architecture invariants..."
+if ! python3 "$REPO_ROOT/tools/persistent/check_invariants.py"; then
+    echo "[CHECK] ❌ Architecture rule violations found — push aborted"
     exit 1
 fi
-echo "[LINT] ✅ No parse errors detected"
+echo "[CHECK] ✅ All 8 architecture rules satisfied"
 
 # ── STAGE 1.5: Update documentation ─────────────────────────────────────────
 echo "[DOCS] Updating generated documentation..."

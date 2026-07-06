@@ -10,10 +10,12 @@ extends Node
 
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
+const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
 # Store weak references to registries to avoid holding strong refs during shutdown
 var _material_registry_ref: WeakRef = null
 var _prop_registry_ref: WeakRef = null
+var _file_map_source_ref: WeakRef = null
 
 
 func _ready() -> void:
@@ -58,6 +60,26 @@ func get_material_registry() -> MaterialRegistryClass:
 ## Get prop registry (ensure called first, or handle null)
 func get_prop_registry() -> PropRegistryClass:
 	return ensure_prop_registry()
+
+
+## Ensure the file-backed map source exists and is initialized.
+## Moved here from MapCatalog's own `static var _file_source` (FIX-SHUTDOWN-CRASH-01b):
+## a GDScript static var is owned by the Script resource itself, so its held RefCounted
+## instance was being torn down during GDScriptLanguage::finish() (script-server teardown),
+## the same unsafe window Engine.set_meta() writes were torn down in. Autoload Nodes are
+## freed during normal SceneTree cleanup, well before ScriptServer::finish_languages() runs,
+## so owning it here is lifecycle-safe the same way material/prop registries are.
+func ensure_file_map_source() -> FileMapSourceClass:
+	var src = null
+	if _file_map_source_ref != null:
+		src = _file_map_source_ref.get_ref()
+
+	if src == null:
+		src = FileMapSourceClass.new()
+		_file_map_source_ref = weakref(src)
+		print("[Registries] File map source initialized")
+
+	return src
 
 
 # Baked atlas storage (loaded during baking, used during render)

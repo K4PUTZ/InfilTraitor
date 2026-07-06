@@ -13,8 +13,8 @@ func _ready() -> void:
 	
 	# Wait for scene to load
 	print("Waiting for full initialization...")
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await self.process_frame
+	await self.process_frame
 	
 	print("[SHUTDOWN-TEST] Engine and scripts initialized")
 	print("[SHUTDOWN-TEST] All systems ready")

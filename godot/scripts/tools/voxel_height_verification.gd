@@ -8,8 +8,8 @@
 
 extends SceneTree
 
-const GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const VoxelRenderer = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const GeometryCoords_Class = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const VoxelRenderer_Class = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
 var test_results: Array[String] = []
 var test_pass_count: int = 0
@@ -54,13 +54,13 @@ func _run_tests() -> void:
 
 
 func _test_single_storey_block(storey_count: int) -> void:
-	var renderer = VoxelRenderer.new()
+	var renderer = VoxelRenderer_Class.new()
 	renderer.setup(Vector2(0, 0))
 	
 	# Render a single block at (0,0) with 1 storey starting at level 0
 	renderer.render_block(Vector2i(0, 0), 0, storey_count, "concrete")
 	
-	var expected_layers = storey_count * GeometryCoords.LEVELS_PER_STOREY
+	var expected_layers = storey_count * GeometryCoords_Class.LEVELS_PER_STOREY
 	var actual_layers = renderer._voxel_layers.size()
 	
 	var test_name = "storey_%d_layers" % storey_count
@@ -75,7 +75,7 @@ func _test_single_storey_block(storey_count: int) -> void:
 
 
 func _test_pixel_height(storey_count: int) -> void:
-	var renderer = VoxelRenderer.new()
+	var renderer = VoxelRenderer_Class.new()
 	renderer.setup(Vector2(0, 0))
 	
 	# Render a block

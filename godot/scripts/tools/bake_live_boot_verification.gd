@@ -111,7 +111,7 @@ func _init() -> void:
 	var all_textures_exist = true
 	for tex_path in texture_files:
 		# Check both via ResourceLoader and FileAccess (in case imports not cached yet)
-		var exists_resource = ResourceLoader.exists(tex_path)
+		var _exists_resource = ResourceLoader.exists(tex_path)
 		var exists_file = FileAccess.file_exists(tex_path)
 		if exists_file:
 			print("  ✓ %s" % tex_path.get_file())

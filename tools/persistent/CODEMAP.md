@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22364 lines total** (under `godot/scripts/`)
+**133 scripts · 22383 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1581,7 +1581,7 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 107 lines
+extends `Node` · 129 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -1590,6 +1590,7 @@ extends `Node` · 107 lines
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 **Public vars**
 - `var material_registry: MaterialRegistryClass:`
@@ -1599,6 +1600,7 @@ extends `Node` · 107 lines
 - `func ensure_prop_registry() -> PropRegistryClass:`
 - `func get_material_registry() -> MaterialRegistryClass:`
 - `func get_prop_registry() -> PropRegistryClass:`
+- `func ensure_file_map_source() -> FileMapSourceClass:`
 - `func set_baked_atlas(atlas, source_ids: Dictionary, timestamp: int) -> void:`
 - `func get_baked_atlas():`
 - `func get_baked_atlas_source_ids() -> Dictionary:`
@@ -2380,8 +2382,8 @@ extends `SceneTree` · 113 lines
 > !/usr/bin/env -S godot --headless --script FIX-VOXEL-HEIGHT-01: Isolated verification of 8-levels-per-storey fix Tests: 1. Single 1-storey block → verify _voxel_layers.size() == 8 2. Single 2-storey block → verify _voxel_layers.size() == 16 3. Pixel height: _voxel_layers[7].position.y vs _voxel_layers[0].position.y should match VOXEL_STOREY_HEIGHT_PX
 
 **Constants / tuning**
-- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRenderer` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `GeometryCoords_Class` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `VoxelRenderer_Class` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 
 **Public vars**
 - `var test_results: Array[String] = []`
@@ -2685,7 +2687,7 @@ extends `Node2D` · 34 lines
 
 ### `map_catalog.gd`
 
-`class_name MapCatalog` · extends `RefCounted` · 52 lines
+`class_name MapCatalog` · extends `RefCounted` · 49 lines
 
 `godot/scripts/world/maps/map_catalog.gd`
 
@@ -2693,7 +2695,6 @@ extends `Node2D` · 34 lines
 - `PlaygroundMapClass` = `preload("res://godot/scripts/world/maps/definitions/playground_map.gd")`
 - `Sigma01MapClass` = `preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")`
 - `ProceduralMapClass` = `preload("res://godot/scripts/world/maps/definitions/procedural_map.gd")`
-- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `DEFAULT_MAP_ID` = `"PLAYGROUND"`
 
 ---

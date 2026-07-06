@@ -55,9 +55,9 @@ func _on_load_pressed() -> void:
 	var map_ids := MapCatalogClass.list_map_ids()
 	if selected_index >= 0 and selected_index < map_ids.size():
 		var selected_map_id := map_ids[selected_index]
-		var seed := int(_seed_spinbox.value)
-		print("DEBUG: Loading map '%s' with seed %d" % [selected_map_id, seed])
-		_room.load_map(selected_map_id, seed)
+		var seed_value := int(_seed_spinbox.value)
+		print("DEBUG: Loading map '%s' with seed %d" % [selected_map_id, seed_value])
+		_room.load_map(selected_map_id, seed_value)
 
 
 func _on_cancel_pressed() -> void:

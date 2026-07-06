@@ -10,19 +10,17 @@ extends RefCounted
 const PlaygroundMapClass = preload("res://godot/scripts/world/maps/definitions/playground_map.gd")
 const Sigma01MapClass    = preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")
 const ProceduralMapClass = preload("res://godot/scripts/world/maps/definitions/procedural_map.gd")
-const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
 const DEFAULT_MAP_ID := "PLAYGROUND"
-
-static var _file_source: FileMapSourceClass = null
 
 
 ## Returns all map ids the catalog can resolve, in display order.
 static func list_map_ids() -> Array[String]:
-	if _file_source == null:
-		_file_source = FileMapSourceClass.new()
+	# File source owned by the Registries autoload, not a static var here — see
+	# Registries.ensure_file_map_source() for why (FIX-SHUTDOWN-CRASH-01b).
+	var file_source = Registries.ensure_file_map_source()
 	var ids: Array[String] = ["PLAYGROUND", "SIGMA_01", "CALIB", "PROCEDURAL"]  # code-defined, always available
-	for file_id in _file_source.list_available().keys():
+	for file_id in file_source.list_available().keys():
 		if not ids.has(file_id):
 			ids.append(file_id)
 	return ids
@@ -31,10 +29,9 @@ static func list_map_ids() -> Array[String]:
 ## Returns the MapSpec for map_id. Unknown ids trigger error (no silent fallback).
 ## context: {connections, segment_grid_pos, seed} — forwarded to procedural/graph maps.
 static func get_spec(map_id: String, context: Dictionary = {}) -> Dictionary:
-	if _file_source == null:
-		_file_source = FileMapSourceClass.new()
+	var file_source = Registries.ensure_file_map_source()
 
-	var file_spec = _file_source.get_runtime_spec(map_id)
+	var file_spec = file_source.get_runtime_spec(map_id)
 	if not file_spec.is_empty():
 		return file_spec
 

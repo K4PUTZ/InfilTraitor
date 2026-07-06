@@ -339,12 +339,11 @@ func _get_material_registry():
 	if Engine.has_meta("BAKE_TEST_REGISTRY"):
 		return Engine.get_meta("BAKE_TEST_REGISTRY")
 	
-	# Check for global registry via autoload (FIX-SHUTDOWN-CRASH-01)
-	if Registries.material_registry != null:
-		return Registries.material_registry
+	# Check legacy Engine.set_meta for production (primary - maintains compatibility)
+	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
+		return Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
 	
-	# Fallback: return autoload's registry (ensures consistency)
-	return Registries.get_material_registry()
+	return null
 
 ## Get global material atlas
 func _get_material_atlas():

@@ -1050,7 +1050,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 353 lines
+`class_name BakeCompositor` · 352 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1093,7 +1093,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 184 lines
+`class_name BakedTileLookup` · 174 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -2474,7 +2474,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 361 lines
+`class_name RoomBuilder` · 368 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2770,7 +2770,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2004 lines
+extends `Node2D` · 2008 lines
 
 `godot/scripts/world/room.gd`
 

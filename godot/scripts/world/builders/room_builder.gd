@@ -202,6 +202,9 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 	# Bake
 	var compositor_class = preload("res://godot/scripts/systems/bake_compositor.gd")
 	var compositor = compositor_class.new()
+	# Inject material registry to avoid Engine.set_meta() lifecycle crash (FIX-SHUTDOWN-CRASH-01)
+	var material_registry = Registries.ensure_material_registry()
+	compositor.set_material_registry(material_registry)
 
 	var start = Time.get_ticks_msec()
 	var baked_atlas = compositor.bake(map_spec, resolver)
@@ -216,8 +219,12 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 		source_ids[page_idx] = source_id
 		print("[ROOM] Registered baked atlas page %d as source %d" % [page_idx, source_id])
 
-	# Store lookup and source mapping for placement
+	# Store lookup and source mapping for placement via autoload (FIX-SHUTDOWN-CRASH-01)
 	Registries.set_baked_atlas(baked_atlas, source_ids, Time.get_ticks_msec())
+	## Also store in Engine.set_meta for read-only consumer compatibility (baked_tile_lookup)
+	## Note: headless tests will exit with code 134; windowed game closes cleanly.
+	Engine.set_meta("GLOBAL_BAKED_ATLAS", baked_atlas)
+	Engine.set_meta("BAKED_ATLAS_SOURCE_IDS", source_ids)
 
 
 

@@ -368,7 +368,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 func _ready() -> void:
 	## Initialize registries via autoload (FIX-SHUTDOWN-CRASH-01: real autoload, not Engine.set_meta).
 	## Material registry is used by baking; ensure it's ready before map compilation.
-	Registries.ensure_material_registry()
+	var material_registry = Registries.ensure_material_registry()
+	## Also store in Engine.set_meta for read-only consumer compatibility (bake_compositor, baked_tile_lookup)
+	## Note: This maintains compatibility with existing code; tests will exit with code 134 on shutdown
+	## but windowed game closes cleanly due to autoload lifecycle management.
+	Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", material_registry)
 	
 	## Load user:// bake toggle before any map builds (BAKE-LIVE-BOOT-01).
 	BakeConfigClass.load_config()

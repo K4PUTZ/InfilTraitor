@@ -23,6 +23,7 @@ const LightingControllerClass = preload("res://godot/scripts/controllers/lightin
 const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
 const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
 const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
+const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 
 ## SLICE-02: Geometry module (Edge → Slice → Voxel pipeline)
 const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
@@ -367,6 +368,16 @@ func load_map(new_map_id: String, new_wall_height_override: int = 0, new_seed: i
 
 
 func _ready() -> void:
+	## Real boot-time material registry (BAKE-LIVE-BOOT-01) — ensures baking has access
+	## to material definitions even outside test scripts. Guarded to avoid clobbering test-owned registries.
+	if not Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
+		var material_registry = preload("res://godot/scripts/systems/material_registry.gd").new()
+		material_registry.register_defaults()
+		Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", material_registry)
+	
+	## Load user:// bake toggle before any map builds (BAKE-LIVE-BOOT-01).
+	BakeConfigClass.load_config()
+
 	var ts: TileSet = load(TILESET_PATH)
 	if ts == null:
 		push_error("TileSet not found: " + TILESET_PATH)

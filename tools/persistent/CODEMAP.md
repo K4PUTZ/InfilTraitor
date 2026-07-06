@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**131 scripts · 22222 lines total** (under `godot/scripts/`)
+**131 scripts · 22232 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1948,11 +1948,11 @@ extends `SceneTree` · 75 lines
 
 ### `exterior_walls_verification.gd`
 
-extends `SceneTree` · 145 lines
+extends `SceneTree` · 155 lines
 
 `godot/scripts/tools/exterior_walls_verification.gd`
 
-> !/usr/bin/env -S godot --headless --script FIX-EXTERIOR-WALLS-01: Verify exterior walls have fixed 8-storey height
+> !/usr/bin/env -S godot --headless --script FIX-EXTERIOR-WALLS-01: Verify exterior walls have fixed 1-storey height (ground floor)
 
 **Constants / tuning**
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
@@ -2670,7 +2670,8 @@ extends `Node2D` · 34 lines
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `MapGeometryClass` = `preload("res://godot/scripts/world/maps/map_geometry.gd")`
 - `REQUIRED_KEYS` = `["inner_size", "agent_start"]`
-- `EXTERIOR_WALL_STOREYS` = `8`
+- `EXTERIOR_WALL_STOREYS` = `1`
+- `DEFAULT_CEILING_FLOORS` = `8`
 
 ---
 

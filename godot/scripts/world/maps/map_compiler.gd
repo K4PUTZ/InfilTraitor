@@ -42,9 +42,13 @@ const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
 ## Exterior perimeter walls are always this many storeys tall (fixed height, no config).
-## Verticality for scene composition; only ground floor is playable.
+## Exterior walls are ground floor only (1 storey). No N-floor stacking.
 ## See FIX-EXTERIOR-WALLS-01 for rationale (deletion of legacy N-floor stacking).
-const EXTERIOR_WALL_STOREYS: int = 8
+const EXTERIOR_WALL_STOREYS: int = 1
+
+## Ceiling height for lighting/scene composition, independent of wall height.
+## Maps without explicit ceiling_floors use this default.
+const DEFAULT_CEILING_FLOORS: int = 8
 
 
 ## Compiles a MapSpec into a render-ready layout dict.
@@ -128,12 +132,8 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		blocked_map[cell] = true
 
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
-	## wall storeys. Defaults to EXTERIOR_WALL_STOREYS so maps that don't set it have
-	## the same ceiling lift height as before FIX-EXTERIOR-WALLS-01 (when wall_height defaulted to 1,
-	## maps with explicit ceiling_floors used that; maps without it defaulted to wall_height=1, hence
-	## ceiling_lift = WALL_FLOOR_STEP_PX * 1.75; now they default to EXTERIOR_WALL_STOREYS=8, so
-	## ceiling_lift = WALL_FLOOR_STEP_PX * 8.75, restoring the original intent of tall ceilings).
-	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", EXTERIOR_WALL_STOREYS)))
+	## wall storeys. Defaults to DEFAULT_CEILING_FLOORS for tall scene composition.
+	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", DEFAULT_CEILING_FLOORS)))
 
 	## --- voxel props (crates etc.) — native PropDef-driven, distinct from legacy sprite "props" ---
 	var voxel_prop_instances: Array = []

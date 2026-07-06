@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**128 scripts · 21756 lines total** (under `godot/scripts/`)
+**128 scripts · 21784 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1722,7 +1722,7 @@ extends `SceneTree` · 350 lines
 
 ### `bake_live_boot_verification.gd`
 
-extends `SceneTree` · 113 lines
+extends `SceneTree` · 141 lines
 
 `godot/scripts/tools/bake_live_boot_verification.gd`
 

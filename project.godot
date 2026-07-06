@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 
 VersionInfo="*res://godot/scripts/systems/version_info.gd"
 Localization="*res://godot/scripts/systems/localization/localization_manager.gd"
+Registries="*res://godot/scripts/systems/registries_autoload.gd"
 
 [display]
 

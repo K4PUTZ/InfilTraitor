@@ -217,9 +217,7 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 		print("[ROOM] Registered baked atlas page %d as source %d" % [page_idx, source_id])
 
 	# Store lookup and source mapping for placement
-	Engine.set_meta("GLOBAL_BAKED_ATLAS", baked_atlas)
-	Engine.set_meta("BAKED_ATLAS_SOURCE_IDS", source_ids)
-	Engine.set_meta("BAKE_TIMESTAMP", Time.get_ticks_msec())
+	Registries.set_baked_atlas(baked_atlas, source_ids, Time.get_ticks_msec())
 
 
 
@@ -340,12 +338,7 @@ func _render_voxel_props(instances: Array) -> void:
 
 
 func _get_prop_registry():
-	var reg = Engine.get_meta("GLOBAL_PROP_REGISTRY", null)
-	if reg == null:
-		reg = PropRegistryClass.new()
-		reg.load_from_disk()
-		Engine.set_meta("GLOBAL_PROP_REGISTRY", reg)
-	return reg
+	return Registries.ensure_prop_registry()
 
 
 func _cache_blocked_cells(layout: Dictionary) -> void:

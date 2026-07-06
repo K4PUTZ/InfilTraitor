@@ -366,12 +366,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
-	## Real boot-time material registry (BAKE-LIVE-BOOT-01) — ensures baking has access
-	## to material definitions even outside test scripts. Guarded to avoid clobbering test-owned registries.
-	if not Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
-		var material_registry = preload("res://godot/scripts/systems/material_registry.gd").new()
-		material_registry.register_defaults()
-		Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", material_registry)
+	## Initialize registries via autoload (FIX-SHUTDOWN-CRASH-01: real autoload, not Engine.set_meta).
+	## Material registry is used by baking; ensure it's ready before map compilation.
+	Registries.ensure_material_registry()
 	
 	## Load user:// bake toggle before any map builds (BAKE-LIVE-BOOT-01).
 	BakeConfigClass.load_config()

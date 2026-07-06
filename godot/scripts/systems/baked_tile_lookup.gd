@@ -150,17 +150,30 @@ func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 
 ## Get baked atlas source id (int) for a given page
 func _get_baked_atlas_source_id(page_idx: int) -> int:
-	# Consult cached source id map (populated during bake registration)
-	if Engine.has_meta("BAKED_ATLAS_SOURCE_IDS"):
-		var source_ids = Engine.get_meta("BAKED_ATLAS_SOURCE_IDS")
+	# Consult autoload source id map (FIX-SHUTDOWN-CRASH-01)
+	var source_ids = Registries.get_baked_atlas_source_ids()
+	if not source_ids.is_empty():
 		return source_ids.get(page_idx, -1)
+	
+	# Fallback to legacy Engine.get_meta for test compatibility
+	if Engine.has_meta("BAKED_ATLAS_SOURCE_IDS"):
+		var test_source_ids = Engine.get_meta("BAKED_ATLAS_SOURCE_IDS")
+		return test_source_ids.get(page_idx, -1)
+	
 	return -1
 
 
 ## Get global baked atlas (if populated)
 func _get_baked_atlas():
+	# Check autoload first (FIX-SHUTDOWN-CRASH-01)
+	var atlas = Registries.get_baked_atlas()
+	if atlas != null:
+		return atlas
+	
+	# Fallback to legacy Engine.get_meta for test compatibility
 	if Engine.has_meta("GLOBAL_BAKED_ATLAS"):
 		return Engine.get_meta("GLOBAL_BAKED_ATLAS")
+	
 	return null
 
 

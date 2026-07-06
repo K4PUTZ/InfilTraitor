@@ -335,16 +335,16 @@ func _overlay_channel(base: float, f: float) -> float:
 
 ## Get global material registry
 func _get_material_registry():
-	# Check for global GLOBAL_MATERIAL_REGISTRY
-	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
-		return Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
-
-	# Check for test registry
+	# Check for test registry first (short-lived test scripts use this with isolation)
 	if Engine.has_meta("BAKE_TEST_REGISTRY"):
 		return Engine.get_meta("BAKE_TEST_REGISTRY")
-
-	# Fallback: create a dummy registry
-	return preload("res://godot/scripts/systems/material_registry.gd").new()
+	
+	# Check for global registry via autoload (FIX-SHUTDOWN-CRASH-01)
+	if Registries.material_registry != null:
+		return Registries.material_registry
+	
+	# Fallback: return autoload's registry (ensures consistency)
+	return Registries.get_material_registry()
 
 ## Get global material atlas
 func _get_material_atlas():

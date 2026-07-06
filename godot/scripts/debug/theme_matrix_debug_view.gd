@@ -13,12 +13,10 @@ var _panel_container: PanelContainer = null
 
 
 func _ready() -> void:
-	# Fetch material registry (global or mock)
-	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
-		material_registry = Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
-	else:
-		push_warning("[THEME MATRIX] No GLOBAL_MATERIAL_REGISTRY found; using fallback")
-		material_registry = null
+	# Fetch material registry from autoload (FIX-SHUTDOWN-CRASH-01)
+	material_registry = Registries.get_material_registry()
+	if material_registry == null:
+		push_warning("[THEME MATRIX] No material registry found; using fallback")
 
 	# Populate theme list (from map spec or predefined set)
 	theme_list = [

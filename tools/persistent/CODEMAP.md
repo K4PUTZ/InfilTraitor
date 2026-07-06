@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**131 scripts · 22232 lines total** (under `godot/scripts/`)
+**132 scripts · 22319 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_compositor_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -379,7 +379,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `theme_matrix_debug_view.gd`
 
-`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 213 lines
+`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 211 lines
 
 `godot/scripts/debug/theme_matrix_debug_view.gd`
 
@@ -1093,7 +1093,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 171 lines
+`class_name BakedTileLookup` · 184 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1575,6 +1575,33 @@ extends `Node2D` · 43 lines
 - `func list_props() -> Array:`
 - `func count() -> int:`
 - `func load_from_disk() -> void:`
+
+---
+
+### `registries_autoload.gd`
+
+extends `Node` · 86 lines
+
+`godot/scripts/systems/registries_autoload.gd`
+
+> Registries — Global autoload for MaterialRegistry and PropRegistry Replaces Engine.set_meta() pseudo-singletons with real Godot autoload. This fixes the SIGABRT crash on quit (FIX-SHUTDOWN-CRASH-01) caused by Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup() after ScriptServer::finish_languages() has begun dismantling the script language. Strategy: Keep registries as WeakRef or initialize on-demand, avoid persistent strong references that survive to Main::cleanup().
+
+**Constants / tuning**
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
+
+**Public vars**
+- `var material_registry: MaterialRegistryClass:`
+
+**Public API**
+- `func ensure_material_registry() -> MaterialRegistryClass:`
+- `func ensure_prop_registry() -> PropRegistryClass:`
+- `func get_material_registry() -> MaterialRegistryClass:`
+- `func get_prop_registry() -> PropRegistryClass:`
+- `func set_baked_atlas(atlas, source_ids: Dictionary, timestamp: int) -> void:`
+- `func get_baked_atlas():`
+- `func get_baked_atlas_source_ids() -> Dictionary:`
+- `func get_bake_timestamp() -> int:`
 
 ---
 
@@ -2437,7 +2464,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 368 lines
+`class_name RoomBuilder` · 361 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2733,7 +2760,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2007 lines
+extends `Node2D` · 2004 lines
 
 `godot/scripts/world/room.gd`
 

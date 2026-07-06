@@ -14,6 +14,10 @@ const VOXEL_STEP_PX: float = 20.0
 ## Storey height in pixels: 8 voxels × 20 px/voxel
 const VOXEL_STOREY_HEIGHT_PX: float = 160.0
 
+## Render levels per storey (vertical granularity): one storey = 8 TileMapLayer levels
+## Canonical per VOXEL_MASTER_PLAN.md line 85: "8 voxels × 8 levels = 64 VoxelRefs per slice"
+const LEVELS_PER_STOREY: int = 8
+
 ## Texture authoring resolution: flat texels per voxel
 ## Pinned by BAKE-01 Tile Anatomy Audit; example N=16 → 1024×512 facades, 128×128 slices
 ## DO NOT use hardcoded multiples (64*N, 32*N); always reference this constant.

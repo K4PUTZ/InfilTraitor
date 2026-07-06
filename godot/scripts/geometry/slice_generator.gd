@@ -42,8 +42,9 @@ static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) 
 	var voxel_positions := slice_voxel_positions(gu_cell, face)
 	
 	# Create voxels: each position × each storey level (use actual storey range)
-	for level_offset in range(edge.storey_count):
-		var level := edge.start_storey + level_offset
+	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
+	for level_offset in range(edge.storey_count * GeometryCoords.LEVELS_PER_STOREY):
+		var level := edge.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
 		for voxel_pos in voxel_positions:
 			var voxel := Voxel.new(voxel_pos, level, slice)
 			slice.voxels.append(voxel)

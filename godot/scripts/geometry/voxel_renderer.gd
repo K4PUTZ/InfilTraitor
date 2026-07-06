@@ -121,13 +121,14 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 ## floating geometry (ceiling props, chandeliers, hanging objects — any block that
 ## doesn't start at floor 0).
 func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, material_name: String) -> void:
-	_ensure_voxel_layers(start_level + storey_span)
+	# FIX-VOXEL-HEIGHT-01: multiply storey_span by LEVELS_PER_STOREY to expand to level-space
+	_ensure_voxel_layers(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
 	
 	# Get all voxel positions in this GU
 	var voxel_positions: Array[Vector2i] = GeometryCoords.gu_voxels(gu_cell)
 	
 	# Render each voxel at each level in the span
-	for level in range(start_level, start_level + storey_span):
+	for level in range(start_level * GeometryCoords.LEVELS_PER_STOREY, (start_level + storey_span) * GeometryCoords.LEVELS_PER_STOREY):
 		for voxel_pos in voxel_positions:
 			_set_voxel_cell(voxel_pos, level, material_name)
 
@@ -135,7 +136,8 @@ func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, materia
 ## Render a single slice's voxels
 func _render_slice(slice: Slice, edge = null) -> void:
 	# Ensure we have enough layers
-	_ensure_voxel_layers(slice.storey_count)
+	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
+	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
@@ -147,10 +149,11 @@ func _render_slice(slice: Slice, edge = null) -> void:
 
 ## Render a junction column
 func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
-	_ensure_voxel_layers(column.start_storey + column.storey_count)
+	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
+	_ensure_voxel_layers(column.start_storey * GeometryCoords.LEVELS_PER_STOREY + column.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 
-	for level_offset in range(column.storey_count):
-		var level := column.start_storey + level_offset
+	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
+		var level := column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
 		_set_voxel_cell(column.voxel_pos, level, "concrete")
 
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.17 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 687a264 "[VERSION] Bump to 0.4.15"
+**Version:** 0.4.18 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** f132530 "ALPHA 0.4.17 - 2026-07-05"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -33,11 +33,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- f132530 ALPHA 0.4.17 - 2026-07-05
 - 687a264 [VERSION] Bump to 0.4.15
 - 9061d1f ALPHA 0.4.14 - 2026-07-05
 - 2bfccf9 [VERSION] Bump to 0.4.13
 - e2e1acb [VERSION] Bump to 0.4.12
-- 45fcc84 ALPHA 0.4.11 - 2026-07-05
 <!-- AUTO:END version_history -->
 
 ---

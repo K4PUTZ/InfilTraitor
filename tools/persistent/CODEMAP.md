@@ -1982,7 +1982,7 @@ extends `SceneTree` · 155 lines
 
 `godot/scripts/tools/exterior_walls_verification.gd`
 
-> !/usr/bin/env -S godot --headless --script FIX-EXTERIOR-WALLS-01: Verify exterior walls have fixed 1-storey height (ground floor)
+> !/usr/bin/env -S godot --headless --script FIX-EXTERIOR-WALLS-01b: Verify exterior walls have fixed 3-storey height
 
 **Constants / tuning**
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
@@ -2709,7 +2709,7 @@ extends `Node2D` · 34 lines
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `MapGeometryClass` = `preload("res://godot/scripts/world/maps/map_geometry.gd")`
 - `REQUIRED_KEYS` = `["inner_size", "agent_start"]`
-- `EXTERIOR_WALL_STOREYS` = `1`
+- `EXTERIOR_WALL_STOREYS` = `3`
 - `DEFAULT_CEILING_FLOORS` = `8`
 
 ---

@@ -1,5 +1,5 @@
 #!/usr/bin/env -S godot --headless --script
-## FIX-EXTERIOR-WALLS-01: Verify exterior walls have fixed 1-storey height (ground floor)
+## FIX-EXTERIOR-WALLS-01b: Verify exterior walls have fixed 3-storey height
 
 extends SceneTree
 
@@ -19,19 +19,19 @@ func _init() -> void:
 
 func _run_tests() -> void:
 	print("\n" + "=".repeat(80))
-	print("FIX-EXTERIOR-WALLS-01: Exterior Walls Fixed Height Verification")
+	print("FIX-EXTERIOR-WALLS-01b: Exterior Walls Fixed Height Verification (3 Storeys)")
 	print("=".repeat(80))
 	
 	# Test 1: Constants have correct values
-	print("\n[TEST 1] EXTERIOR_WALL_STOREYS = 1, DEFAULT_CEILING_FLOORS = 8")
+	print("\n[TEST 1] EXTERIOR_WALL_STOREYS = 3, DEFAULT_CEILING_FLOORS = 8")
 	_test_constant()
 	
 	# Test 2: All maps compile
 	print("\n[TEST 2] Verify maps compile with fixed exterior wall height")
 	_test_maps_compile()
 	
-	# Test 3: Exterior walls have storey_count == 1 (ground floor only)
-	print("\n[TEST 3] Sample exterior wall Edges have storey_count == 1")
+	# Test 3: Exterior walls have storey_count == 3 (3 storeys)
+	print("\n[TEST 3] Sample exterior wall Edges have storey_count == 3")
 	_test_wall_heights()
 	
 	# Test 4: Verify ceiling_floors default
@@ -49,17 +49,17 @@ func _run_tests() -> void:
 
 
 func _test_constant() -> void:
-	var wall_storeys_ok = MapCompilerClass.EXTERIOR_WALL_STOREYS == 1
+	var wall_storeys_ok = MapCompilerClass.EXTERIOR_WALL_STOREYS == 3
 	var ceiling_ok = MapCompilerClass.DEFAULT_CEILING_FLOORS == 8
 	
 	if wall_storeys_ok:
-		test_results.append("PASS: EXTERIOR_WALL_STOREYS = 1")
+		test_results.append("PASS: EXTERIOR_WALL_STOREYS = 3")
 		test_pass_count += 1
-		print("  OK: EXTERIOR_WALL_STOREYS = 1 (ground floor only)")
+		print("  OK: EXTERIOR_WALL_STOREYS = 3 (3 storeys)")
 	else:
-		test_results.append("FAIL: EXTERIOR_WALL_STOREYS = %d (expected 1)" % MapCompilerClass.EXTERIOR_WALL_STOREYS)
+		test_results.append("FAIL: EXTERIOR_WALL_STOREYS = %d (expected 3)" % MapCompilerClass.EXTERIOR_WALL_STOREYS)
 		test_fail_count += 1
-		print("  FAIL: EXTERIOR_WALL_STOREYS = %d (expected 1)" % MapCompilerClass.EXTERIOR_WALL_STOREYS)
+		print("  FAIL: EXTERIOR_WALL_STOREYS = %d (expected 3)" % MapCompilerClass.EXTERIOR_WALL_STOREYS)
 	
 	if ceiling_ok:
 		test_results.append("PASS: DEFAULT_CEILING_FLOORS = 8")
@@ -123,14 +123,14 @@ func _test_wall_heights() -> void:
 	
 	var all_correct = true
 	for edge in wall_edges:
-		if edge.storey_count != 1:
+		if edge.storey_count != 3:
 			all_correct = false
-			print("  FAIL: Wall edge %s has storey_count=%d (expected 1)" % [edge.id, edge.storey_count])
+			print("  FAIL: Wall edge %s has storey_count=%d (expected 3)" % [edge.id, edge.storey_count])
 		else:
-			print("  OK: Wall edge %s has storey_count=1" % edge.id)
+			print("  OK: Wall edge %s has storey_count=3" % edge.id)
 	
 	if all_correct:
-		test_results.append("PASS: Sample wall edges have storey_count = 1")
+		test_results.append("PASS: Sample wall edges have storey_count = 3")
 		test_pass_count += 1
 	else:
 		test_results.append("FAIL: Some wall edges have incorrect storey_count")

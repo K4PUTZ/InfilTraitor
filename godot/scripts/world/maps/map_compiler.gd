@@ -42,9 +42,9 @@ const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
 
 ## Exterior perimeter walls are always this many storeys tall (fixed height, no config).
-## Exterior walls are ground floor only (1 storey). No N-floor stacking.
+## Exterior walls are 3 storeys. No N-floor stacking.
 ## See FIX-EXTERIOR-WALLS-01 for rationale (deletion of legacy N-floor stacking).
-const EXTERIOR_WALL_STOREYS: int = 1
+const EXTERIOR_WALL_STOREYS: int = 3
 
 ## Ceiling height for lighting/scene composition, independent of wall height.
 ## Maps without explicit ceiling_floors use this default.

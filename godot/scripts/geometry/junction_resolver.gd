@@ -17,16 +17,20 @@ class_name JunctionResolver
 class JunctionColumn:
 	var gu_cell: Vector2i         ## the diagonal GU that owns this column (outside the elbow)
 	var voxel_pos: Vector2i       ## the voxel position of the column
-	var storey_count: int         ## height (max of the two adjacent edges' storey_count)
+	var storey_count: int         ## height (span between start_storey and end)
+	var start_storey: int         ## starting storey level
 	var voxels: Array[Voxel]      ## the voxel objects
 
-	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int):
+	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0):
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
+		start_storey = p_start_storey
 		voxels = []
 
 	func _to_string() -> String:
+		if start_storey > 0:
+			return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, start=%d}" % [gu_cell, voxel_pos, storey_count, start_storey]
 		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d}" % [gu_cell, voxel_pos, storey_count]
 
 
@@ -71,7 +75,11 @@ static func resolve(registry: EdgeRegistry) -> Array:
 			## walls — the visual notch that needs the filler column.
 			var d: Vector2i = Face.delta(fa) + Face.delta(fb)
 			var diagonal_cell: Vector2i = gu + d
-			var max_storey: int = maxi(edge_a.storey_count, edge_b.storey_count)
+			
+			# Compute storey span: from min(start_storey) to max(start_storey + storey_count)
+			var min_start := mini(edge_a.start_storey, edge_b.start_storey)
+			var max_end := maxi(edge_a.start_storey + edge_a.storey_count, edge_b.start_storey + edge_b.storey_count)
+			var junction_storey_count := max_end - min_start
 
 			## The one voxel inside diagonal_cell nearest the elbow — the
 			## corner of its 8×8 block that actually touches `gu`.
@@ -81,6 +89,6 @@ static func resolve(registry: EdgeRegistry) -> Array:
 			var local_y := last if d.y < 0 else 0
 			var voxel_pos := origin + Vector2i(local_x, local_y)
 
-			result.append(JunctionColumn.new(diagonal_cell, voxel_pos, max_storey))
+			result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start))
 
 	return result

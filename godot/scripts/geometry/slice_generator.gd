@@ -36,13 +36,14 @@ static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) 
 	var face := edge.face_a if is_side_a else edge.face_b
 	
 	var slice_id := "SLICE_%d_%d_%s" % [gu_cell.x, gu_cell.y, Face.to_string_name(face)]
-	var slice := Slice.new(slice_id, gu_cell, face, edge.id, edge.storey_count, edge.material)
+	var slice := Slice.new(slice_id, gu_cell, face, edge.id, edge.storey_count, edge.material, edge.start_storey)
 	
 	# Generate voxel positions for this slice
 	var voxel_positions := slice_voxel_positions(gu_cell, face)
 	
-	# Create voxels: each position × each storey level
-	for level in range(edge.storey_count):
+	# Create voxels: each position × each storey level (use actual storey range)
+	for level_offset in range(edge.storey_count):
+		var level := edge.start_storey + level_offset
 		for voxel_pos in voxel_positions:
 			var voxel := Voxel.new(voxel_pos, level, slice)
 			slice.voxels.append(voxel)

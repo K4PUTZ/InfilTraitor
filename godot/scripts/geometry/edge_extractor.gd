@@ -37,8 +37,8 @@ static func extract(compiled: Dictionary) -> Dictionary:
 		return result
 	
 	# Dictionary to merge duplicate edges by their canonical id
-	# When the same physical edge is emitted from both adjacent GUs, take the max storey
-	var edge_groups: Dictionary = {}  # edge_canonical_key → {"edge_template": Edge, "max_storey": int}
+	# When the same physical edge is emitted from both adjacent GUs, track min and max storey
+	var edge_groups: Dictionary = {}  # edge_canonical_key → {"edge_template": Edge, "min_storey": int, "max_storey": int}
 	
 	# Build occupancy map for solidblock_ entries: (cell, storey) -> material
 	# Used for exposure culling: a face is only emitted if the neighbor is NOT occupied
@@ -79,9 +79,9 @@ static func extract(compiled: Dictionary) -> Dictionary:
 				# Normalize to canonical order for deduplication
 				var edge := Edge.between(cell_a, cell_b, 1, "concrete")
 				
-				# Track max storey for this edge
+				# Track min and max storey for this edge (walls default to min_storey=0)
 				if edge.id not in edge_groups:
-					edge_groups[edge.id] = {"edge_template": edge, "max_storey": storey}
+					edge_groups[edge.id] = {"edge_template": edge, "min_storey": 0, "max_storey": storey}
 				else:
 					# Update max storey
 					edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], storey)
@@ -129,23 +129,28 @@ static func extract(compiled: Dictionary) -> Dictionary:
 			var edge = Edge.between(cell, neighbor_cell, 1, material)
 			
 			# Track in edge_groups using the same dedup mechanism as walls
+			# For solidblock edges: BOTH min_storey and max_storey are tracked (can start at >0)
 			if edge.id not in edge_groups:
-				edge_groups[edge.id] = {"edge_template": edge, "max_storey": storey}
+				edge_groups[edge.id] = {"edge_template": edge, "min_storey": storey, "max_storey": storey}
 			else:
-				# Update max storey if this edge at higher storey
-				edge_groups[edge.id]["max_storey"] = max(edge_groups[edge.id]["max_storey"], storey)
+				# Update both min and max storey
+				edge_groups[edge.id]["min_storey"] = mini(edge_groups[edge.id]["min_storey"], storey)
+				edge_groups[edge.id]["max_storey"] = maxi(edge_groups[edge.id]["max_storey"], storey)
 	
-	# Third pass: convert grouped edges to final Edge objects with storey_count
+	# Third pass: convert grouped edges to final Edge objects with storey_count and start_storey
 	for edge_id: String in edge_groups.keys():
 		var group = edge_groups[edge_id]
 		var edge_template: Edge = group["edge_template"]
+		var min_storey: int = group["min_storey"]
 		var max_storey: int = group["max_storey"]
 		
-		# storey_count = max storey index + 1 (since storey is 0-indexed)
-		var storey_count := max_storey + 1
+		# storey_count = (max storey - min storey + 1)
+		# start_storey = min_storey (0 for walls, can be >0 for blocks)
+		var storey_count := max_storey - min_storey + 1
+		var start_storey := min_storey
 		
-		# Create final edge with correct storey count
-		var final_edge := Edge.new(edge_template.gu_a, edge_template.gu_b, storey_count, edge_template.material)
+		# Create final edge with correct storey count and start_storey
+		var final_edge := Edge.new(edge_template.gu_a, edge_template.gu_b, storey_count, edge_template.material, start_storey)
 		result["edges"].append(final_edge)
 	
 	return result

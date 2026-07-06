@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 20176 lines total** (under `godot/scripts/`)
+**122 scripts · 20821 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
+- **tools/** — bake_compositor_test.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, project_lint_checker.gd, project_lint_validator.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, version_info_test.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -424,7 +424,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 78 lines
+`class_name Edge` · 84 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -437,6 +437,7 @@ extends `ConfirmationDialog` · 75 lines
 - `var face_a: int`
 - `var face_b: int`
 - `var storey_count: int`
+- `var start_storey: int`
 - `var material: String`
 - `var slice_a_id: String = ""`
 - `var slice_b_id: String = ""`
@@ -448,7 +449,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 151 lines
+`class_name EdgeExtractor` · 156 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -549,7 +550,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 86 lines
+`class_name JunctionResolver` · 94 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -559,7 +560,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 71 lines
+`class_name Slice` · 73 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -571,6 +572,7 @@ extends `ConfirmationDialog` · 75 lines
 - `var face: int`
 - `var edge_id: String`
 - `var storey_count: int`
+- `var start_storey: int`
 - `var material: String`
 - `var facade_id: String = ""`
 - `var voxels: Array[Voxel] = []`
@@ -590,7 +592,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `slice_generator.gd`
 
-`class_name SliceGenerator` · 88 lines
+`class_name SliceGenerator` · 89 lines
 
 `godot/scripts/geometry/slice_generator.gd`
 
@@ -623,7 +625,7 @@ extends `ConfirmationDialog` · 75 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 256 lines
+`class_name VoxelRenderer` · extends `Node2D` · 257 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1761,6 +1763,73 @@ extends `Node` · 232 lines
 
 ---
 
+### `block_01b_baking_e2e_test.gd`
+
+extends `SceneTree` · 175 lines
+
+`godot/scripts/tools/block_01b_baking_e2e_test.gd`
+
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script BLOCK-01b Item 4: Real Baking E2E for Block-Derived Edges Tests that solid blocks reach the bake seam just like walls (Rule #8 compliance) Flow: (a) Enable baking (b) Create a block-derived edge via EdgeExtractor (c) Run compositor.bake() with the edge (d) Call BakedTileLookup.resolve() with the edge (e) Assert BAKED_ATLAS hit (not generic fallback) — Rule #8 compliance proven
+
+**Public vars**
+- `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `var EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")`
+- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `var BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `var BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")`
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+- `var TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")`
+
+---
+
+### `block_01b_face_culling_test.gd`
+
+extends `SceneTree` · 141 lines
+
+`godot/scripts/tools/block_01b_face_culling_test.gd`
+
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script BLOCK-01b: Isolated face-culling tests Tests: 1. Two adjacent same-storey solidblock entries produce exactly 6 edges (4+4-2 shared) 2. Mixed-height blocks with exposure only at higher storey create edges with correct start_storey Expected: Both pass (green) If failing before fix: Test 2 would show start_storey=0 with storey_count=2 (phantom floor bug)
+
+**Constants / tuning**
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+**Public vars**
+- `var test_log := ""`
+- `var passed := 0`
+- `var failed := 0`
+
+**Public API**
+- `func test_isolated_6_edges() -> void:`
+- `func test_mixed_height_regression() -> void:`
+
+---
+
+### `block_01b_voxel_dump_test.gd`
+
+extends `SceneTree` · 121 lines
+
+`godot/scripts/tools/block_01b_voxel_dump_test.gd`
+
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script BLOCK-01b Item 3: Voxel footprint comparison Tests that new edge-based rendering produces reasonable voxel counts Edge path should produce fewer total voxels (face-exposed only) compared to the full interior fill the old render_block() path would produce
+
+**Constants / tuning**
+- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+- `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
+- `EdgeRegistryClass` = `preload("res://godot/scripts/geometry/edge_registry.gd")`
+
+**Public vars**
+- `var test_log := ""`
+- `var passed := 0`
+- `var failed := 0`
+
+**Public API**
+- `func test_voxel_counts() -> void:`
+
+---
+
 ### `build_tileset.gd`
 
 extends `SceneTree` · 336 lines
@@ -1995,6 +2064,38 @@ extends `SceneTree` · 213 lines
 
 ---
 
+### `project_lint_checker.gd`
+
+extends `Node` · 89 lines
+
+`godot/scripts/tools/project_lint_checker.gd`
+
+> PROJECT_LINT_VALIDATOR — Simple GDScript parse checker (no autoload dependencies) Walks res://godot/scripts/ and loads every .gd file to check for parse errors
+
+**Public vars**
+- `var parse_errors: PackedStringArray = []`
+- `var files_checked: int = 0`
+- `var failed_files: PackedStringArray = []`
+- `var all_gd_files: PackedStringArray = []`
+
+---
+
+### `project_lint_validator.gd`
+
+extends `SceneTree` · 93 lines
+
+`godot/scripts/tools/project_lint_validator.gd`
+
+> PROJECT_LINT_VALIDATOR — Full-project GDScript parse check Walks res://godot/scripts/ and loads every .gd file, collecting parse errors
+
+**Public vars**
+- `var parse_errors: PackedStringArray = []`
+- `var files_checked: int = 0`
+- `var all_gd_files: PackedStringArray = []`
+- `var failed_files: PackedStringArray = []`
+
+---
+
 ### `resolver_hardening_tests.gd`
 
 extends `SceneTree` · 527 lines
@@ -2061,7 +2162,7 @@ extends `SceneTree` · 244 lines
 
 ### `version_info_test.gd`
 
-extends `SceneTree` · 46 lines
+extends `SceneTree` · 49 lines
 
 `godot/scripts/tools/version_info_test.gd`
 

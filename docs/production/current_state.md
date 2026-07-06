@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.15 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 9061d1f "ALPHA 0.4.14 - 2026-07-05"
+**Version:** 0.4.17 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** 687a264 "[VERSION] Bump to 0.4.15"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -14,6 +14,7 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - BLOCK-01.md
+- BLOCK-01b.md
 - MAT-DEFAULTS-01.md
 <!-- AUTO:END pending_prompts -->
 
@@ -23,20 +24,20 @@
 **Code & Test Inventory**
 
 - GDScript modules: 91
-- Test scripts: 21
+- Test scripts: 24
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 73
+- Archived prompts: 76
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 687a264 [VERSION] Bump to 0.4.15
 - 9061d1f ALPHA 0.4.14 - 2026-07-05
 - 2bfccf9 [VERSION] Bump to 0.4.13
 - e2e1acb [VERSION] Bump to 0.4.12
 - 45fcc84 ALPHA 0.4.11 - 2026-07-05
-- 2bb6944 [VERSION] Bump to 0.4.9
 <!-- AUTO:END version_history -->
 
 ---

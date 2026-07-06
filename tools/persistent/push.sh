@@ -64,6 +64,14 @@ if [ ! -f "$VERSION_FILE" ]; then
 fi
 echo "[VERIFY] VERSION file found"
 
+# ── STAGE 1.3: Whole-project parse check ───────────────────────────────────
+echo "[LINT] Checking whole-project parse integrity..."
+if ! python3 "$REPO_ROOT/tools/persistent/project_lint.py"; then
+    echo "[LINT] ❌ Parse errors found — push aborted"
+    exit 1
+fi
+echo "[LINT] ✅ No parse errors detected"
+
 # ── STAGE 1.5: Update documentation ─────────────────────────────────────────
 echo "[DOCS] Updating generated documentation..."
 if ! python3 "$REPO_ROOT/tools/persistent/update_docs.py"; then

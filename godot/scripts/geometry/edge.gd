@@ -8,15 +8,17 @@ var gu_b: Vector2i             ## gu_a + Face.delta(face_a) — the adjacent cel
 var face_a: int                ## face of gu_a toward the edge (always SE or SW)
 var face_b: int                ## opposite(face_a) — face of gu_b toward the edge (always NW or NE)
 var storey_count: int          ## number of vertical levels (height in storeys)
+var start_storey: int          ## starting storey level (0 for walls, >0 for blocks with lower gaps)
 var material: String           ## material type: "concrete", "metal", "stone", "wood"
 var slice_a_id: String = ""    ## backfilled by registry after slice A created
 var slice_b_id: String = ""    ## backfilled by registry after slice B created
 
 
-func _init(p_gu_a: Vector2i, p_gu_b: Vector2i, p_storey_count: int = 1, p_material: String = "concrete"):
+func _init(p_gu_a: Vector2i, p_gu_b: Vector2i, p_storey_count: int = 1, p_material: String = "concrete", p_start_storey: int = 0):
 	gu_a = p_gu_a
 	gu_b = p_gu_b
 	storey_count = p_storey_count
+	start_storey = p_start_storey
 	material = p_material
 	
 	# Determine face from cells
@@ -46,7 +48,7 @@ func _init(p_gu_a: Vector2i, p_gu_b: Vector2i, p_storey_count: int = 1, p_materi
 
 
 ## Static constructor: normalizes input cell order, validates adjacency
-static func between(cell_1: Vector2i, cell_2: Vector2i, p_storey_count: int = 1, p_material: String = "concrete") -> Edge:
+static func between(cell_1: Vector2i, cell_2: Vector2i, p_storey_count: int = 1, p_material: String = "concrete", p_start_storey: int = 0) -> Edge:
 	# Normalize to canonical order (lexicographically smaller first)
 	var canonical_a := cell_1
 	var canonical_b := cell_2
@@ -56,7 +58,7 @@ static func between(cell_1: Vector2i, cell_2: Vector2i, p_storey_count: int = 1,
 		canonical_a = canonical_b
 		canonical_b = temp
 
-	var edge := Edge.new(canonical_a, canonical_b, p_storey_count, p_material)
+	var edge := Edge.new(canonical_a, canonical_b, p_storey_count, p_material, p_start_storey)
 	
 	# Validate that after canonicalization, face_a is SE or SW
 	if edge.face_a != Face.SE and edge.face_a != Face.SW:
@@ -73,6 +75,10 @@ func key_string() -> String:
 
 ## For debugging
 func _to_string() -> String:
+	if start_storey > 0:
+		return "Edge{id='%s', gu_a=%s, gu_b=%s, face=%s, storeys=%d, start=%d}" % [
+			id, gu_a, gu_b, Face.to_string_name(face_a), storey_count, start_storey
+		]
 	return "Edge{id='%s', gu_a=%s, gu_b=%s, face=%s, storeys=%d}" % [
 		id, gu_a, gu_b, Face.to_string_name(face_a), storey_count
 	]

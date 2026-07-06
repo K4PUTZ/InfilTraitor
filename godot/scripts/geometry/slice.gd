@@ -8,6 +8,7 @@ var gu_cell: Vector2i            ## the GU that owns this slice (for B-side, thi
 var face: int                    ## which face of the GU (NW, NE, SE, SW)
 var edge_id: String              ## backref to parent edge
 var storey_count: int            ## number of vertical levels
+var start_storey: int            ## starting storey level (0 for walls, >0 for blocks with lower gaps)
 var material: String             ## material type
 var facade_id: String = ""       ## facade id for baking (NEW: FIX-BAKE-05)
 var voxels: Array[Voxel] = []    ## all voxels in this slice (64 per storey)
@@ -17,12 +18,13 @@ var bake_texture: Texture2D      ## reserved for VOXEL-08
 
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_face: int, p_edge_id: String,
-		   p_storey_count: int, p_material: String = "concrete"):
+		   p_storey_count: int, p_material: String = "concrete", p_start_storey: int = 0):
 	id = p_id
 	gu_cell = p_gu_cell
 	face = p_face
 	edge_id = p_edge_id
 	storey_count = p_storey_count
+	start_storey = p_start_storey
 	material = p_material
 
 

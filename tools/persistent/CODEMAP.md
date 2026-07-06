@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**122 scripts · 20821 lines total** (under `godot/scripts/`)
+**122 scripts · 20825 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2082,7 +2082,7 @@ extends `Node` · 89 lines
 
 ### `project_lint_validator.gd`
 
-extends `SceneTree` · 93 lines
+extends `SceneTree` · 97 lines
 
 `godot/scripts/tools/project_lint_validator.gd`
 

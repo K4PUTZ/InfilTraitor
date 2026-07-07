@@ -245,7 +245,7 @@ func _register_baked_atlas_page(page_image: Image, page_idx: int) -> int:
 	# Create TileSetAtlasSource from the page image
 	var source = TileSetAtlasSource.new()
 	source.texture = ImageTexture.create_from_image(page_image)
-	source.texture_region_size = Vector2i(32, 16)
+	source.texture_region_size = Vector2i(32, 36)  # Real atom size from TILE_ANATOMY.md [BAKE-FIX-01]
 
 	# Register on the wall tileset
 	var tileset = _wall_tileset

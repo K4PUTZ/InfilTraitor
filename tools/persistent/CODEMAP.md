@@ -8,10 +8,11 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**134 scripts · 22913 lines total** (under `godot/scripts/`)
+**134 scripts · 22777 lines total** (under `godot/scripts/`)
 
 ## Index
 
+- **_archive/** — material_atlas_generator.gd, per_face_projector.gd
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
@@ -19,10 +20,52 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_atlas_generator.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, per_face_projector.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_compositor_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, per_face_projector_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **tools/** — per_face_projector_test.gd, bake_compositor_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+
+---
+
+## _archive/
+
+### `material_atlas_generator.gd`
+
+`class_name MaterialAtlasGenerator` · 116 lines
+
+`godot/scripts/_archive/material_atlas_generator.gd`
+
+> MaterialAtlasGenerator — Generate material voxel atlas at boot Generates a texture atlas containing all material tiles (K=4 variants per material, one per face orientation). Output: Image pages saved to user://debug/ for inspection.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+
+**Public API**
+- `func generate_atlas(registry: MaterialRegistryClass, N: int, face_variants: Array) -> AtlasResult:`
+
+---
+
+### `per_face_projector.gd`
+
+`class_name PerFaceProjector` · 235 lines
+
+`godot/scripts/_archive/per_face_projector.gd`
+
+> PerFaceProjector — Isometric shear transforms for wall texture mapping Maps flat texture-space coordinates → screen-space (isometric) coordinates for the four cardinal vertical wall faces (NE, SE, SW, NW). Key invariant: All shear offsets are INTEGER pixels for the pinned N, guaranteeing one-texel-to-one-pixel fidelity under NEAREST sampling.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+**Public vars**
+- `var transforms: Dictionary = {}`
+- `var N: int`
+
+**Public API**
+- `func flat_to_screen(face: int, flat_px: Vector2) -> Vector2:`
+- `func screen_to_flat(face: int, screen_px: Vector2) -> Vector2:`
+- `func is_inside_voxel(face: int, screen_px: Vector2) -> bool:`
 
 ---
 
@@ -1050,18 +1093,23 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 361 lines
+`class_name BakeCompositor` · 268 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
-> BakeCompositor — Batch GPU rendering of material × facade tiles For each deduplicated (material, facade, variant, face, window_position) combo, composites a 32×16 tile by multiplying material RGB by facade luminance. The entire bake completes in one SubViewport frame (~tens of ms).
+> BakeCompositor — Master-strip baking of material × facade atoms For each unique (material, facade) combo used in the loaded map, bakes a contiguous strip of 9 real 32×36 atoms by compositing: - RGB = material base_color × pattern shade × facade luminance (rectangular crop) - Alpha = copied verbatim from the real voxel PNG (canonical silhouette) Strips are stored in a dictionary keyed by (material_id, facade_id); BAKE-FIX-02 will consume the strips via indexed lookup and mirroring.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
+- `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
+- `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
+- `VOXEL_VISIBLE_Y_START` = `16`
+- `STRIP_LENGTH` = `9`
+- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
+- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
 
 **Public API**
 - `func set_material_registry(registry) -> void:`
@@ -1432,27 +1480,9 @@ extends `Node2D` · 43 lines
 
 ---
 
-### `material_atlas_generator.gd`
-
-`class_name MaterialAtlasGenerator` · 116 lines
-
-`godot/scripts/systems/material_atlas_generator.gd`
-
-> MaterialAtlasGenerator — Generate material voxel atlas at boot Generates a texture atlas containing all material tiles (K=4 variants per material, one per face orientation). Output: Image pages saved to user://debug/ for inspection.
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
-**Public API**
-- `func generate_atlas(registry: MaterialRegistryClass, N: int, face_variants: Array) -> AtlasResult:`
-
----
-
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 67 lines
+`class_name MaterialRegistry` · 66 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -1460,7 +1490,6 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
 - `WoodPatternClass` = `preload("res://godot/scripts/systems/wood_pattern.gd")`
 - `MetalPatternClass` = `preload("res://godot/scripts/systems/metal_pattern.gd")`
@@ -1510,28 +1539,6 @@ extends `Node2D` · 43 lines
 - `func get_intensity(tile: Vector2i) -> float:`
 - `func get_noisy_tiles() -> Array:`
 - `func clear() -> void:`
-
----
-
-### `per_face_projector.gd`
-
-`class_name PerFaceProjector` · 235 lines
-
-`godot/scripts/systems/per_face_projector.gd`
-
-> PerFaceProjector — Isometric shear transforms for wall texture mapping Maps flat texture-space coordinates → screen-space (isometric) coordinates for the four cardinal vertical wall faces (NE, SE, SW, NW). Key invariant: All shear offsets are INTEGER pixels for the pinned N, guaranteeing one-texel-to-one-pixel fidelity under NEAREST sampling.
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-
-**Public vars**
-- `var transforms: Dictionary = {}`
-- `var N: int`
-
-**Public API**
-- `func flat_to_screen(face: int, flat_px: Vector2) -> Vector2:`
-- `func screen_to_flat(face: int, screen_px: Vector2) -> Vector2:`
-- `func is_inside_voxel(face: int, screen_px: Vector2) -> bool:`
 
 ---
 
@@ -1735,6 +1742,20 @@ extends `Node` · 54 lines
 
 ## tools/
 
+### `per_face_projector_test.gd`
+
+extends `SceneTree` · 213 lines
+
+`godot/scripts/tools/_archive/per_face_projector_test.gd`
+
+> PerFaceProjector Selftest (T1) Validates: 1. Round-trip transforms (flat → screen → flat) 2. Integer shear assertion for all four faces 3. Point-in-voxel silhouette testing 4. Inverse correctness (M * M_inv = I)
+
+**Public vars**
+- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+---
+
 ### `bake_compositor_test.gd`
 
 extends `SceneTree` · 350 lines
@@ -1788,19 +1809,20 @@ extends `SceneTree` · 141 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 351 lines
+extends `SceneTree` · 309 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
-> BAKE-07: BAKE Selftest Consolidation & Invariant Enforcement Consolidated selftest suite with real fail accounting: assertions can fail, counters increment, exit code reflects pass/fail. Tests B1–B6 + probe regression + dedup + resolver fallback.
+> BAKE-FIX-01: MASTER-STRIP SELFTEST Updated selftest suite for master-strip baking architecture. Tests B1–B6 with focus on real voxel alpha matching and canonical silhouette copying.
 
 **Constants / tuning**
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
+- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 
 **Public vars**
 - `var passed: int = 0`
@@ -1813,9 +1835,8 @@ extends `SceneTree` · 351 lines
 - `func test_B4_fnv1a_determinism() -> void:`
 - `func test_B5_no_rebake_on_destruction() -> void:`
 - `func test_B6_loud_fail_validation() -> void:`
-- `func test_probe_pattern_regression() -> void:`
-- `func test_dedup_consolidation() -> void:`
-- `func test_resolver_tier_fallback() -> void:`
+- `func test_real_voxel_atoms_loadable() -> void:`
+- `func test_master_strip_dimensions() -> void:`
 
 ---
 
@@ -2180,20 +2201,6 @@ extends `SceneTree` · 225 lines
 - `var MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")`
 - `var MaterialAtlasGeneratorClass = preload("res://godot/scripts/systems/material_atlas_generator.gd")`
 - `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-
----
-
-### `per_face_projector_test.gd`
-
-extends `SceneTree` · 213 lines
-
-`godot/scripts/tools/per_face_projector_test.gd`
-
-> PerFaceProjector Selftest (T1) Validates: 1. Round-trip transforms (flat → screen → flat) 2. Integer shear assertion for all four faces 3. Point-in-voxel silhouette testing 4. Inverse correctness (M * M_inv = I)
-
-**Public vars**
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 ---
 

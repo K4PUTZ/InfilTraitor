@@ -1,346 +1,255 @@
-## BakeCompositor — Batch GPU rendering of material × facade tiles
+## BakeCompositor — Master-strip baking of material × facade atoms
 ##
-## For each deduplicated (material, facade, variant, face, window_position) combo,
-## composites a 32×16 tile by multiplying material RGB by facade luminance.
-## The entire bake completes in one SubViewport frame (~tens of ms).
+## For each unique (material, facade) combo used in the loaded map,
+## bakes a contiguous strip of 9 real 32×36 atoms by compositing:
+## - RGB = material base_color × pattern shade × facade luminance (rectangular crop)
+## - Alpha = copied verbatim from the real voxel PNG (canonical silhouette)
+##
+## Strips are stored in a dictionary keyed by (material_id, facade_id);
+## BAKE-FIX-02 will consume the strips via indexed lookup and mirroring.
 
 class_name BakeCompositor
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
-const PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
+const VOXEL_ATOM_W: int = GeometryCoordsClass.VOXEL_ATOM_W         # 32
+const VOXEL_ATOM_H: int = GeometryCoordsClass.VOXEL_ATOM_H         # 36
+const VOXEL_VISIBLE_Y_START: int = 16                              # Top 16 pixels invisible, bottom 20 visible [TILE_ANATOMY.md §2]
+const STRIP_LENGTH: int = 9                                        # Master-strip atom count [TILE_ANATOMY.md §4]
 
-## BakeKey — uniquely identifies a renderable tile
-class BakeKey:
+## Real voxel atom PNGs (loaded once at init)
+const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
+const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
+
+## MasterStrip — baked strip of atoms for a (material, facade) combo
+class MasterStrip extends RefCounted:
 	var material_id: String
 	var facade_id: String
-	var variant_k: int           # [0, 4)
-	var face: int                # Face enum value
-	var plane_col: int           # Facade plane column (texel units [0, 64N))
-	var plane_row: int           # Facade plane row (texel units [0, 32N))
+	var atoms: Array  # Array of Image (32×36 each, STRIP_LENGTH items)
+
+	func _init(p_material_id: String, p_facade_id: String) -> void:
+		material_id = p_material_id
+		facade_id = p_facade_id
+		atoms = []
 
 ## BakedAtlas — output of the compositor
 class BakedAtlas extends RefCounted:
-	var pages: Array  # Array of Images (4096×4096 each)
-	var lookup: Dictionary   # String keys → {page, atlas_coords}
+	var strips: Dictionary  # (material_id, facade_id) → MasterStrip
+	var atom_pages: Array  # Array of Images (4096×4096 each for atlas fallback)
+	var lookup: Dictionary  # String keys → {page, atlas_coords} (legacy support)
 
 	func _init() -> void:
-		pages = []
+		strips = {}
+		atom_pages = []
 		lookup = {}
 
 # For dependency injection (set by room_builder before baking)
 var _material_registry = null
 
+# Real voxel atoms (loaded once per compositor instance)
+var _voxel_atoms: Dictionary = {}  # material_id → Image (32×36)
+
 func _init() -> void:
-	pass
+	_load_real_voxel_atoms()
 
 ## Set material registry (called by room_builder for production use)
 func set_material_registry(registry) -> void:
 	_material_registry = registry
 
-## Main entry point: bake all walls in the map
+## Load real voxel atom PNGs (32×36) for alpha copying
+func _load_real_voxel_atoms() -> void:
+	for material in VOXEL_MATERIALS:
+		var path = VOXEL_BASE_PATH + material + ".png"
+		var img = Image.new()
+		var error = img.load(path)
+		
+		if error != OK:
+			push_error("[BAKE] Failed to load voxel atom %s (code %d)" % [path, error])
+			continue
+		
+		if img.get_width() != VOXEL_ATOM_W or img.get_height() != VOXEL_ATOM_H:
+			push_error("[BAKE] Voxel atom %s has wrong size: %dx%d (expected %dx%d)" % [
+				path, img.get_width(), img.get_height(), VOXEL_ATOM_W, VOXEL_ATOM_H
+			])
+			continue
+		
+		_voxel_atoms[material] = img
+		print("[BAKE] Loaded voxel atom: %s (32×36)" % material)
+
+## Main entry point: bake master strips for all (material, facade) combos in the map
 func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	# Inputs: map spec (walls, themes, geometry), texture resolver
-	# Output: BakedAtlas with pages and lookup
+	# Output: BakedAtlas with strips dictionary
 
 	var atlas_result = BakedAtlas.new()
 
-	# Step 1: Populate bake set (dedup)
-	var geometry = map_spec.get("room_geometry", null)
-	var walls = _extract_walls_from_spec(map_spec, geometry)
-	var bake_set = _populate_bake_set(walls, resolver)
-	var post_dedup_count = bake_set.size()
-	var pre_dedup_count = walls.size()
+	# Step 1: Determine all unique (material, facade) combos used in map
+	var combos = _extract_unique_combos(map_spec, resolver)
+	var combo_count = combos.size()
+	print("[BAKE] Found %d unique (material, facade) combos" % combo_count)
 
-	print("[BAKE] Bake set: %d unique tiles (pre-dedup: %d)" % [post_dedup_count, pre_dedup_count])
+	if combo_count == 0:
+		print("[BAKE] No combos to bake; returning empty atlas")
+		return atlas_result
 
-	# Step 2: Load resolved facades
+	# Step 2: Load all resolved facades
 	var facades_by_id = {}
-	for wall in walls:
-		if wall.has("facade_id") and wall["facade_id"]:
-			var facade_id = wall["facade_id"]
-			if not facades_by_id.has(facade_id):
-				var resolved = resolver.resolve(facade_id)
-				if resolved.get("tier", -1) != resolver.Tier.NONE:
-					facades_by_id[facade_id] = resolved.get("image", null)
+	for combo in combos:
+		var facade_id = combo[1]
+		if not facades_by_id.has(facade_id):
+			var resolved = resolver.resolve(facade_id)
+			if resolved.get("tier", -1) != resolver.Tier.NONE:
+				facades_by_id[facade_id] = resolved.get("image", null)
 
-	# Step 3: Render tiles (batched)
-	var start_total = Time.get_ticks_msec()
-	var start_render = Time.get_ticks_msec()
-	atlas_result = _render_batch(bake_set, facades_by_id)
-	var elapsed_render = Time.get_ticks_msec() - start_render
-	var elapsed_total = Time.get_ticks_msec() - start_total
+	# Step 3: Bake strips
+	var start_time = Time.get_ticks_msec()
+	var baked_count = 0
+	
+	for combo in combos:
+		var material_id = combo[0]
+		var facade_id = combo[1]
+		var combo_key = "%s|%s" % [material_id, facade_id]
+		
+		var facade = facades_by_id.get(facade_id)
+		if facade == null:
+			print("[BAKE] Skipping %s: facade not resolved" % combo_key)
+			continue
+		
+		# Bake the master strip for this combo
+		var strip = _bake_master_strip(material_id, facade_id, facade)
+		if strip != null:
+			atlas_result.strips[combo_key] = strip
+			baked_count += 1
+	
+	var elapsed = Time.get_ticks_msec() - start_time
+	print("[BAKE] Baked %d master strips in %.1f ms" % [baked_count, elapsed])
 
-	print("[BAKE] Timing:")
-	print("  Render batch: %.1f ms (target: < 100 ms)" % elapsed_render)
-	print("  Total bake: %.1f ms" % elapsed_total)
-
-	if elapsed_render > 100.0:
-		push_warning("[BAKE] Render exceeded 100 ms budget; consider GPU batch (deferred)")
-
-	print("[BAKE] Render complete: %d pages" % [atlas_result.pages.size()])
-
-	# Step 4: Save debug dumps
-	for i in range(atlas_result.pages.size()):
-		atlas_result.pages[i].save_png("user://debug/baked_atlas_page_%d.png" % i)
+	# Step 4: For atlas page fallback (legacy support), render strips into atlas
+	_render_strips_to_pages(atlas_result)
 
 	return atlas_result
 
-## Extract walls from map spec (supports both old and new formats)
-func _extract_walls_from_spec(map_spec: Dictionary, geometry) -> Array:
-	var walls = []
-
-	# Try new format with wall_tiles
-	if map_spec.has("wall_tiles"):
-		for wall_tile in map_spec["wall_tiles"]:
-			walls.append(wall_tile)
-
-	# Try room_builder's actual shape (top-level "walls" key)
-	if map_spec.has("walls"):
-		for wall in map_spec["walls"]:
-			walls.append(wall)
-
-	# Try old RoomGeometry format
-	if geometry and geometry.has("walls"):
-		for wall in geometry["walls"]:
-			walls.append(wall)
-
-	return walls
-
-## Serialize a BakeKey to a deterministic string for Dictionary keying
-func _bake_key_to_string(key: BakeKey) -> String:
-	return "%s|%s|%d|%d|%d|%d" % [
-		key.material_id, key.facade_id, key.variant_k,
-		key.face, key.plane_col, key.plane_row
-	]
-
-## Populate bake set with deduplication
-func _populate_bake_set(walls: Array, resolver) -> Dictionary:
-	var bake_set = {}
-	var sampler = FacadeSamplerClass.new()
-	var registry = _get_material_registry()
-
-	for wall in walls:
-		# Skip walls without facade
-		var facade_id = wall.get("facade_id", "")
-		if not facade_id or facade_id == "":
-			continue
-
-		# Resolve facade
-		var resolved = resolver.resolve(facade_id)
-		if resolved.get("tier", -1) == resolver.Tier.NONE:
-			continue
-
-		# Get material (allow None for testing)
-		var material_id = wall.get("material_id", "default")
-		var material = registry.get_material(material_id)
-		if material == null:
-			# For testing, just skip instead of erroring
-			continue
-
-		# Process each face
-		var faces = [0, 1, 2, 3]  # NE, SE, SW, NW
-		for face in faces:
-			# Check if face is exposed (simplified for now)
-			var edge = wall.get("edge", null)
-			if edge == null:
-				continue
-
-			# Determine window origin (now in texel units directly, no conversion needed)
-			var origin_texels = sampler.get_window_origin_isolated_texels(edge, facade_id)
-
-			# Determine variant (unified seeding via BakePolicy)
-			var variant_k = BakePolicyClass.variant_for(edge, material_id)
-
-			# Construct bake key (plane_col/row now store texel units directly)
-			var key = BakeKey.new()
-			key.material_id = material_id
-			key.facade_id = facade_id
-			key.variant_k = variant_k
-			key.face = face
-			key.plane_col = origin_texels.x
-			key.plane_row = origin_texels.y
-
-			# Add to set (dedup by string key)
-			var key_str = _bake_key_to_string(key)
-			bake_set[key_str] = null
-
-	return bake_set
-
-## Batch render all tiles into atlas pages
-func _render_batch(bake_set: Dictionary, facades_by_id: Dictionary) -> BakedAtlas:
-	var pages = []
-	var lookup = {}
-	var tile_index = 0
-	var region_size = Vector2i(32, 16)
-	# Calculate page layout; integer division is intentional (floor division)
-	var tiles_per_page_x = int(4096.0 / 32.0)  # 128
-	var tiles_per_page_y = int(4096.0 / 16.0)  # 256
-	var tiles_per_page = tiles_per_page_x * tiles_per_page_y
-
-	var registry = _get_material_registry()
-	var sampler = FacadeSamplerClass.new()
-	var projector = PerFaceProjectorClass.new()
-
-	for key_str in bake_set.keys():
-		var page_idx = int(float(tile_index) / float(tiles_per_page))
-		var tile_in_page = tile_index % tiles_per_page
-		var tile_x = (tile_in_page % tiles_per_page_x) * region_size.x
-		var tile_y = int(float(tile_in_page) / float(tiles_per_page_x)) * region_size.y
-
-		# Ensure page exists
-		while pages.size() <= page_idx:
-			pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGBA8))
-
-		# Reconstruct BakeKey from string for internal use
-		var parts = key_str.split("|")
-		var bake_key = BakeKey.new()
-		bake_key.material_id = parts[0]
-		bake_key.facade_id = parts[1]
-		bake_key.variant_k = int(parts[2])
-		bake_key.face = int(parts[3])
-		bake_key.plane_col = int(parts[4])
-		bake_key.plane_row = int(parts[5])
-
-		# Get material variant tile
-		var material = registry.get_material(bake_key.material_id)
-		var material_tile = _get_material_tile(material, bake_key.face, bake_key.variant_k)
-
-		# Get facade
-		var facade = facades_by_id.get(bake_key.facade_id)
-		if facade == null:
-			tile_index += 1
-			continue
-
-		# Composite: material × facade
-		var composite_tile = _composite_tile(
-			material_tile, facade, bake_key, sampler, projector
-		)
-
-		# Place into page image
-		for y in range(region_size.y):
-			for x in range(region_size.x):
-				pages[page_idx].set_pixel(tile_x + x, tile_y + y, composite_tile.get_pixel(x, y))
-
-		# Record lookup with string key
-		lookup[key_str] = {
-			"page": page_idx,
-			"atlas_coords": Vector2i(tile_x / region_size.x, tile_y / region_size.y)
-		}
-
-		tile_index += 1
-
-	var result = BakedAtlas.new()
-	result.pages = pages
-	result.lookup = lookup
+## Extract unique (material, facade) combos from the map
+func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
+	var combos = {}  # String key → true (for dedup)
+	
+	# Try new format with blocks
+	if map_spec.has("sections") and map_spec["sections"].has("blocks"):
+		var blocks_section = map_spec["sections"]["blocks"]
+		if blocks_section.has("items"):
+			for block in blocks_section["items"]:
+				var material = block.get("material", "default")
+				# For now, assume each material gets a canonical facade_id (concrete→facade_concrete, etc.)
+				var facade_id = "facade_" + material
+				var combo_key = "%s|%s" % [material, facade_id]
+				combos[combo_key] = true
+	
+	# Convert dict keys to array
+	var result = []
+	for key in combos.keys():
+		var parts = key.split("|")
+		result.append([parts[0], parts[1]])
+	
 	return result
 
-## Get material tile from atlas (applies pattern to base color)
-func _get_material_tile(material, _face: int, variant_k: int) -> Image:
+## Bake a single master strip for (material, facade)
+func _bake_master_strip(material_id: String, facade_id: String, facade: Image) -> MasterStrip:
+	var strip = MasterStrip.new(material_id, facade_id)
+	var registry = _get_material_registry()
+	var material = registry.get_material(material_id)
+	
 	if material == null:
-		return _create_white_tile()
+		push_error("[BAKE] Material '%s' not found" % material_id)
+		return null
+	
+	# Bake STRIP_LENGTH atoms
+	for atom_idx in range(STRIP_LENGTH):
+		var atom_img = Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+		
+		# For each pixel in the 32×36 atom
+		for pixel_y in range(VOXEL_ATOM_H):
+			for pixel_x in range(VOXEL_ATOM_W):
+				# Get the canonical voxel alpha from the real atom PNG
+				var canonical_alpha = _get_canonical_alpha(material_id, pixel_x, pixel_y)
+				
+				# Sample facade at the position corresponding to this atom in the strip
+				# Facade column: atom_idx * 32 + pixel_x (in texels)
+				# Facade row: 16 (visible region start from TILE_ANATOMY.md)
+				var facade_col_texels = atom_idx * TEX_AUTHORING_N + int(float(pixel_x) / (float(VOXEL_ATOM_W) / float(TEX_AUTHORING_N)))
+				var facade_row_texels = VOXEL_VISIBLE_Y_START  # Start at visible region
+				
+				# Convert to facade pixel coordinates (facade is 1024×512, N=16, so each texel is 16×16 pixels)
+				# Actually, simplify: facade is 64×32 tiles of 16×16 texels each
+				# So each texel position maps directly to facade pixel position
+				var facade_pixel_x = (facade_col_texels % (64 * TEX_AUTHORING_N))
+				var facade_pixel_y = (facade_row_texels % (32 * TEX_AUTHORING_N))
+				
+				if facade_pixel_x < facade.get_width() and facade_pixel_y < facade.get_height():
+					var facade_pixel = facade.get_pixel(facade_pixel_x, facade_pixel_y)
+					var facade_lum = facade_pixel.v  # Grayscale luminance
+					
+					# Apply pattern shade
+					var voxel_xy = Vector2i(pixel_x % 8, pixel_y % 8)
+					var seed_val = (atom_idx << 16) + (pixel_y * VOXEL_ATOM_W + pixel_x)
+					var pattern_shade = material.pattern_algorithm.shade(voxel_xy, 0, seed_val)
+					
+					# Composite: base_color × pattern × facade_lum
+					var rgb = material.base_color * pattern_shade * facade_lum
+					
+					# Composite with canonical alpha
+					var pixel = Color(rgb.r, rgb.g, rgb.b, canonical_alpha)
+					atom_img.set_pixel(pixel_x, pixel_y, pixel)
+				else:
+					# Out of bounds: transparent
+					atom_img.set_pixel(pixel_x, pixel_y, Color.TRANSPARENT)
+		
+		strip.atoms.append(atom_img)
+	
+	print("[BAKE] Baked strip: %s × %s (%d atoms, 32×36 each)" % [material_id, facade_id, STRIP_LENGTH])
+	return strip
 
-	var tile = Image.create(32, 16, false, Image.FORMAT_RGBA8)
-	var base_color = material.base_color
-	var projector := PerFaceProjectorClass.new()
+## Get canonical alpha from real voxel PNG
+func _get_canonical_alpha(material_id: String, pixel_x: int, pixel_y: int) -> float:
+	var voxel_img = _voxel_atoms.get(material_id)
+	
+	if voxel_img == null:
+		return 0.0  # Transparent if atom not loaded
+	
+	if pixel_x < 0 or pixel_x >= VOXEL_ATOM_W or pixel_y < 0 or pixel_y >= VOXEL_ATOM_H:
+		return 0.0
+	
+	return voxel_img.get_pixel(pixel_x, pixel_y).a
 
-	for screen_y in range(16):
-		for screen_x in range(32):
-			# Derive voxel position within 8×8 flat space (screen pixels map to flat voxels)
-			var voxel_x = screen_x % 8
-			var voxel_y = screen_y % 8
-			var voxel_xy = Vector2i(voxel_x, voxel_y)
-
-			# Seed for pattern determinism (variant + position)
-			var seed_val = (variant_k << 16) + (screen_y * 32 + screen_x)
-
-			# Apply pattern shade
-			var pattern_shade = material.pattern_algorithm.shade(voxel_xy, _face, seed_val)
-
-			# Multiply base color by pattern shade
-			var pixel = base_color * pattern_shade
-			var screen_pos := Vector2(float(screen_x), float(screen_y))
-			pixel.a = 1.0 if projector.is_inside_voxel(_face, screen_pos) else 0.0
-
-			tile.set_pixel(screen_x, screen_y, pixel)
-
-	return tile
-
-## Create a fallback white tile
-func _create_white_tile() -> Image:
-	var tile = Image.create(32, 16, false, Image.FORMAT_RGBA8)
-	for y in range(16):
-		for x in range(32):
-			tile.set_pixel(x, y, Color.WHITE)
-	return tile
-
-## Composite material × facade for a single tile
-func _composite_tile(
-	material_tile: Image,
-	facade: Image,
-	bake_key: BakeKey,
-	sampler,
-	projector
-) -> Image:
-	var result = Image.create(32, 16, false, Image.FORMAT_RGBA8)
-
-	# Derive the crop window in the facade plane (origins are already in texel units)
-	var window_origin = Vector2i(bake_key.plane_col, bake_key.plane_row)
-
-	for screen_y in range(16):
-		for screen_x in range(32):
-			var screen_pos = Vector2(float(screen_x), float(screen_y))
-
-			# Get material pixel first
-			var mat_pixel = material_tile.get_pixel(screen_x, screen_y)
-
-			# Map screen → flat texture space
-			var flat_pos = projector.screen_to_flat(bake_key.face, screen_pos)
-
-			# Map flat → facade plane
-			var plane_x = window_origin.x + flat_pos.x
-			var plane_y = window_origin.y + flat_pos.y
-
-			# Sample facade luminance
-			var facade_lum = sampler.sample(facade, float(plane_x), float(plane_y))
-
-			# Branch on blend mode
-			var result_pixel: Color
-			match BakeConfig.blend_mode:
-				BakeConfig.BlendMode.LINEAR_LIGHT:
-					result_pixel = Color(
-						clampf(mat_pixel.r + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
-						clampf(mat_pixel.g + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
-						clampf(mat_pixel.b + 2.0 * (facade_lum - 0.5), 0.0, 1.0),
-						mat_pixel.a
+## Render strips into atlas pages for legacy support
+func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
+	# For now, just allocate one page per strip and place them sequentially
+	# This is for tile registration in room_builder
+	var page_idx = 0
+	var tiles_per_page_x = int(4096.0 / float(VOXEL_ATOM_W))  # 128
+	var _tiles_per_page_y = int(4096.0 / float(VOXEL_ATOM_H))  # ~113
+	
+	for strip_key in atlas_result.strips.keys():
+		var strip = atlas_result.strips[strip_key]
+		
+		# Allocate page if needed
+		while atlas_result.atom_pages.size() <= page_idx:
+			atlas_result.atom_pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGBA8))
+		
+		# Place strip atoms into the page
+		for atom_idx in range(strip.atoms.size()):
+			var atom_img = strip.atoms[atom_idx]
+			var tile_x = (atom_idx % tiles_per_page_x) * VOXEL_ATOM_W
+			var tile_y_in_page = int(float(atom_idx) / float(tiles_per_page_x)) * VOXEL_ATOM_H
+			
+			# Copy atom pixels into page
+			for y in range(VOXEL_ATOM_H):
+				for x in range(VOXEL_ATOM_W):
+					atlas_result.atom_pages[page_idx].set_pixel(
+						tile_x + x, tile_y_in_page + y, atom_img.get_pixel(x, y)
 					)
-				BakeConfig.BlendMode.OVERLAY_EXPERIMENTAL:
-					result_pixel = Color(
-						_overlay_channel(mat_pixel.r, facade_lum),
-						_overlay_channel(mat_pixel.g, facade_lum),
-						_overlay_channel(mat_pixel.b, facade_lum),
-						mat_pixel.a
-					)
-				_:  # MULTIPLY and anything else: preserve the original behavior exactly
-					result_pixel = Color(
-						mat_pixel.r * facade_lum,
-						mat_pixel.g * facade_lum,
-						mat_pixel.b * facade_lum,
-						mat_pixel.a
-					)
-
-			result.set_pixel(screen_x, screen_y, result_pixel)
-
-	return result
-
-## Overlay blend helper: base blend f per channel
-func _overlay_channel(base: float, f: float) -> float:
-	if base < 0.5:
-		return clampf(2.0 * base * f, 0.0, 1.0)
-	return clampf(1.0 - 2.0 * (1.0 - base) * (1.0 - f), 0.0, 1.0)
 
 ## Get global material registry
 func _get_material_registry():
@@ -352,10 +261,8 @@ func _get_material_registry():
 	if _material_registry != null:
 		return _material_registry
 	
-	return null
-
-## Get global material atlas
-func _get_material_atlas():
-	if Engine.has_meta("GLOBAL_MATERIAL_ATLAS"):
-		return Engine.get_meta("GLOBAL_MATERIAL_ATLAS")
+	# Fallback to global registry
+	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
+		return Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
+	
 	return null

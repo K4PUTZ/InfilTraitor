@@ -55,6 +55,9 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 @onready var btn_perspective_ne:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNE
 @onready var btn_perspective_sw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSW
 @onready var btn_perspective_se:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSE
+@onready var btn_view_h:          Button       = $HUD/TopBar/Row/BtnViewH
+@onready var btn_view_l:          Button       = $HUD/TopBar/Row/BtnViewL
+@onready var btn_view_v:          Button       = $HUD/TopBar/Row/BtnViewV
 @onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
 @onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
 @onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
@@ -143,6 +146,9 @@ var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
 var _active_perspective: String = "N"
+var _view_h_enabled: bool = true   ## Horizontal view (voxel rendering)
+var _view_l_enabled: bool = true   ## Lateral view (movement overlay)
+var _view_v_enabled: bool = true   ## Vertical view (labels)
 var _alert_meter: int = 0
 
 var _alert_max: int = 100
@@ -249,7 +255,7 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
-@export var map_id: String = "SIGMA_01"
+@export var map_id: String = "PLAYGROUND"
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
 @export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
 ## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
@@ -792,6 +798,27 @@ func _on_hud_viewport_toggled() -> void:
 	var screen_size := DisplayServer.screen_get_size()
 	var centered := Vector2(screen_size - target) / 2.0
 	DisplayServer.window_set_position(Vector2i(centered.round()))
+
+
+func _on_view_h_toggled(is_enabled: bool) -> void:
+	_view_h_enabled = is_enabled
+	if _voxel_renderer:
+		_voxel_renderer.visible = is_enabled
+	btn_view_h.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
+
+
+func _on_view_l_toggled(is_enabled: bool) -> void:
+	_view_l_enabled = is_enabled
+	if movement_overlay:
+		movement_overlay.visible = is_enabled
+	btn_view_l.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
+
+
+func _on_view_v_toggled(is_enabled: bool) -> void:
+	_view_v_enabled = is_enabled
+	if tile_labels_overlay:
+		tile_labels_overlay.visible = is_enabled
+	btn_view_v.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
 
 
 func _update_guard_los_data() -> void:

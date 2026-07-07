@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22532 lines total** (under `godot/scripts/`)
+**133 scripts · 22581 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -189,7 +189,7 @@
 
 ### `camera_controller.gd`
 
-extends `Node` · 182 lines
+extends `Node` · 204 lines
 
 `godot/scripts/controllers/camera_controller.gd`
 
@@ -2773,7 +2773,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2004 lines
+extends `Node2D` · 2031 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2833,7 +2833,7 @@ extends `Node2D` · 2004 lines
 **@export**
 - `segment_grid_pos: Vector2i = Vector2i(1, 1)`
 - `level_seed: int = 0`
-- `map_id: String = "SIGMA_01"`
+- `map_id: String = "PLAYGROUND"`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

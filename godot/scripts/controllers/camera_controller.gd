@@ -31,6 +31,11 @@ var _btn_perspective_ne: Button
 var _btn_perspective_sw: Button
 var _btn_perspective_se: Button
 
+# UI buttons for view toggles
+var _btn_view_h: Button
+var _btn_view_l: Button
+var _btn_view_v: Button
+
 
 func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:
 	_camera = camera_ref
@@ -39,6 +44,8 @@ func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:
 	call_deferred("_cache_vision_controller")
 	_cache_perspective_buttons()
 	_connect_perspective_buttons()
+	_cache_view_buttons()
+	_connect_view_buttons()
 
 
 func _cache_vision_controller() -> void:
@@ -147,6 +154,21 @@ func _connect_perspective_buttons() -> void:
 		_btn_perspective_sw.pressed.connect(func() -> void: _room._set_perspective("S"))
 	if _btn_perspective_se:
 		_btn_perspective_se.pressed.connect(func() -> void: _room._set_perspective("E"))
+
+
+func _cache_view_buttons() -> void:
+	_btn_view_h = _room.btn_view_h
+	_btn_view_l = _room.btn_view_l
+	_btn_view_v = _room.btn_view_v
+
+
+func _connect_view_buttons() -> void:
+	if _btn_view_h:
+		_btn_view_h.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_h_toggled(is_pressed))
+	if _btn_view_l:
+		_btn_view_l.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_l_toggled(is_pressed))
+	if _btn_view_v:
+		_btn_view_v.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_v_toggled(is_pressed))
 
 
 ## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.

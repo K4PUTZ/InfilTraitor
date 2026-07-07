@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22399 lines total** (under `godot/scripts/`)
+**133 scripts · 22516 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -449,7 +449,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 162 lines
+`class_name EdgeExtractor` · 178 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -552,11 +552,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 94 lines
+`class_name JunctionResolver` · 110 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
-> Geometry Module — Junction Resolver: fills V-junction corner columns. Rewritten (JUNCTION-02): the previous version reconstructed GU cells from voxel-index vertex coordinates and divided them back down by 8. That broke whenever a vertex used the "+7" near-edge offset (true for one axis of almost every vertex _get_edge_vertices produced) instead of a clean multiple of 8 — integer division silently floored into the wrong bucket, so the resolver picked a cell adjacent to the elbow instead of the true diagonal notch. This version never touches voxel coordinates for the detection step: it stays in GU-cell space the whole time, using the faces already recorded on each Edge. Scope: pure V-junctions only (exactly 2 walls meeting at one cell). T/X junctions (3–4 walls at a cell) are intentionally skipped — see JUNCTION-01b.
+> Geometry Module — Junction Resolver: fills V-junction corner columns. Rewritten (JUNCTION-02): the previous version reconstructed GU cells from voxel-index vertex coordinates and divided them back down by 8. That broke whenever a vertex used the "+7" near-edge offset (true for one axis of almost every vertex _get_edge_vertices produced) instead of a clean multiple of 8 — integer division silently floored into the wrong bucket, so the resolver picked a cell adjacent to the elbow instead of the true diagonal notch. This version never touches voxel coordinates for the detection step: it stays in GU-cell space the whole time, using the faces already recorded on each Edge. Scope: V-junctions (2 walls) and free-standing wall ends (3 walls, all genuinely open — e.g. a divider stopping next to a gate) both get filler columns, one per adjacent (non-opposite) pair of occupied faces at the cell. A true T-junction (a wall butting flush into another, already-solid wall) also presents as 3 faces on a naive count, but EdgeExtractor's exposure culling (see edge_extractor.gd) already removes the spurious flush-contact face before this ever sees it, so it correctly reduces to 2 opposite (straight-through) faces — 0 columns, nothing to fill. This only works because that culling fix landed first; see JUNCTION-01b prompt. X-junctions (4 walls) are intentionally skipped — assumed already covered by surrounding wall geometry; revisit only if a real gap is reported there.
 
 ---
 
@@ -2095,7 +2095,7 @@ extends `SceneTree` · 237 lines
 
 ### `geometry_selftest.gd`
 
-extends `SceneTree` · 131 lines
+extends `SceneTree` · 216 lines
 
 `godot/scripts/tools/geometry_selftest.gd`
 

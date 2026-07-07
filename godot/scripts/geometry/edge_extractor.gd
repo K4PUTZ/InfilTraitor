@@ -45,6 +45,11 @@ static func extract(compiled: Dictionary) -> Dictionary:
 	# Build occupancy map for solidblock_ entries: (cell, storey) -> material
 	# Used for exposure culling: a face is only emitted if the neighbor is NOT occupied
 	var solidblock_occupancy: Dictionary = {}  # (cell, storey) key -> material
+
+	# Cells that carry a "wall_" tile (exterior/room-perimeter walls). Used
+	# alongside solidblock_occupancy for exposure culling: a solidblock_ cell
+	# butting flush into one of these has no real gap there either.
+	var wall_cells: Dictionary = {}  # Vector2i -> true
 	
 	# First pass: scan all wall_levels to collect walls, solidblock occupancy, and legacy blocks
 	for storey in range(wall_levels.size()):
@@ -71,6 +76,8 @@ static func extract(compiled: Dictionary) -> Dictionary:
 				if suffix not in _EDGE_BY_SUFFIX:
 					push_warning("EdgeExtractor: unknown wall suffix '%s'" % suffix)
 					continue
+				
+				wall_cells[cell] = true
 				
 				var face: int = _EDGE_BY_SUFFIX[suffix]
 				
@@ -129,6 +136,15 @@ static func extract(compiled: Dictionary) -> Dictionary:
 			
 			# Skip face if neighbor is also occupied by solidblock_ (buried, not exposed)
 			if neighbor_key in solidblock_occupancy:
+				continue
+
+			# Exterior/room walls are flush, full-height (up to
+			# EXTERIOR_WALL_STOREYS) solid contact too — a solidblock_ cell
+			# butting into one has no real gap there. Without this, a
+			# divider ending flush against a wall (a true T-junction) is
+			# miscounted as having an extra open face and gets wrongly
+			# treated as a free corner needing a filler column.
+			if wall_cells.has(neighbor_cell) and storey < MapCompilerClass.EXTERIOR_WALL_STOREYS:
 				continue
 			
 			# Face is exposed: emit an edge

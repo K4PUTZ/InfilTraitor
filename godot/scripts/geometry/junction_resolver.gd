@@ -8,8 +8,17 @@
 ## diagonal notch. This version never touches voxel coordinates for the
 ## detection step: it stays in GU-cell space the whole time, using the faces
 ## already recorded on each Edge.
-## Scope: pure V-junctions only (exactly 2 walls meeting at one cell). T/X
-## junctions (3–4 walls at a cell) are intentionally skipped — see JUNCTION-01b.
+## Scope: V-junctions (2 walls) and free-standing wall ends (3 walls, all
+## genuinely open — e.g. a divider stopping next to a gate) both get filler
+## columns, one per adjacent (non-opposite) pair of occupied faces at the
+## cell. A true T-junction (a wall butting flush into another, already-solid
+## wall) also presents as 3 faces on a naive count, but EdgeExtractor's
+## exposure culling (see edge_extractor.gd) already removes the spurious
+## flush-contact face before this ever sees it, so it correctly reduces to 2
+## opposite (straight-through) faces — 0 columns, nothing to fill. This only
+## works because that culling fix landed first; see JUNCTION-01b prompt.
+## X-junctions (4 walls) are intentionally skipped — assumed already covered
+## by surrounding wall geometry; revisit only if a real gap is reported there.
 class_name JunctionResolver
 
 
@@ -52,43 +61,50 @@ static func resolve(registry: EdgeRegistry) -> Array:
 				var face_here: int = e.face_a if e.gu_a == gu else e.face_b
 				faces_at_cell[face_here] = e
 
-			## Pure V-junction only: exactly 2 walls at this cell. 1 wall =
-			## plain wall segment, nothing to close. 3–4 walls = T/X, out
-			## of scope here (see class doc comment).
-			if faces_at_cell.size() != 2:
+			## V-junction (2 walls) and free-standing wall ends (3 walls,
+			## all genuinely open — see class doc comment) both close
+			## notches, one filler column per adjacent (non-opposite) pair
+			## of occupied faces. X-junction (4 walls) stays out of scope.
+			if faces_at_cell.size() < 2 or faces_at_cell.size() > 3:
 				continue
 
 			var faces: Array = faces_at_cell.keys()
-			var fa: int = faces[0]
-			var fb: int = faces[1]
+			for i in range(faces.size()):
+				for j in range(i + 1, faces.size()):
+					var fa: int = faces[i]
+					var fb: int = faces[j]
 
-			## Opposite faces (NW-SE or NE-SW) = a straight wall passing
-			## through the cell, not a turn. No column needed.
-			if fb == Face.opposite(fa):
-				continue
+					## Opposite faces (NW-SE or NE-SW) = a straight wall
+					## passing through the cell, not a turn — including the
+					## real-T case (see class doc comment), which reduces
+					## to exactly this after EdgeExtractor's culling fix.
+					if fb == Face.opposite(fa):
+						continue
 
-			var edge_a: Edge = faces_at_cell[fa]
-			var edge_b: Edge = faces_at_cell[fb]
+					var edge_a: Edge = faces_at_cell[fa]
+					var edge_b: Edge = faces_at_cell[fb]
 
-			## fa, fb adjacent and non-opposite → their deltas sum to a
-			## clean (±1, ±1): the cell diagonal to the elbow, outside both
-			## walls — the visual notch that needs the filler column.
-			var d: Vector2i = Face.delta(fa) + Face.delta(fb)
-			var diagonal_cell: Vector2i = gu + d
-			
-			# Compute storey span: from min(start_storey) to max(start_storey + storey_count)
-			var min_start := mini(edge_a.start_storey, edge_b.start_storey)
-			var max_end := maxi(edge_a.start_storey + edge_a.storey_count, edge_b.start_storey + edge_b.storey_count)
-			var junction_storey_count := max_end - min_start
+					## fa, fb adjacent and non-opposite → their deltas sum
+					## to a clean (±1, ±1): the cell diagonal to the elbow,
+					## outside both walls — the visual notch that needs the
+					## filler column.
+					var d: Vector2i = Face.delta(fa) + Face.delta(fb)
+					var diagonal_cell: Vector2i = gu + d
 
-			## The one voxel inside diagonal_cell nearest the elbow — the
-			## corner of its 8×8 block that actually touches `gu`.
-			var origin := GeometryCoords.gu_to_voxel_origin(diagonal_cell)
-			var last := GeometryCoords.VOXELS_PER_UNIT_AXIS - 1
-			var local_x := last if d.x < 0 else 0
-			var local_y := last if d.y < 0 else 0
-			var voxel_pos := origin + Vector2i(local_x, local_y)
+					# Compute storey span: from min(start_storey) to max(start_storey + storey_count)
+					var min_start := mini(edge_a.start_storey, edge_b.start_storey)
+					var max_end := maxi(edge_a.start_storey + edge_a.storey_count, edge_b.start_storey + edge_b.storey_count)
+					var junction_storey_count := max_end - min_start
 
-			result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start))
+					## The one voxel inside diagonal_cell nearest the elbow
+					## — the corner of its 8×8 block that actually touches
+					## `gu`.
+					var origin := GeometryCoords.gu_to_voxel_origin(diagonal_cell)
+					var last := GeometryCoords.VOXELS_PER_UNIT_AXIS - 1
+					var local_x := last if d.x < 0 else 0
+					var local_y := last if d.y < 0 else 0
+					var voxel_pos := origin + Vector2i(local_x, local_y)
+
+					result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start))
 
 	return result

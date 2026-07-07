@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.18 · **Updated:** 2026-07-05 · **Branch:** main · **Last commit:** e8a65a1 "[VERSION] Bump to 0.4.18"
+**Version:** 0.4.25 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** 48baaf2 "[MAINT] Update push.sh: replace project_lint.py with check_invariants.py"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

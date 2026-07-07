@@ -63,6 +63,73 @@ func _ready():
 		else:
 			print("  ✗ %s failed to load" % name_key)
 	
+	# GROUP: EdgeExtractor — solidblock_ exposure culling against wall_ tiles
+	# (JUNCTION-01b Part 1: a divider butting flush into a wall must not
+	# expose a spurious face on that side — see edge_extractor.gd header).
+	print("\nGROUP: EdgeExtractor — solidblock/wall flush-contact culling")
+	var EdgeExtractorClass = load("res://godot/scripts/geometry/edge_extractor.gd")
+	var JunctionResolverClass2 = load("res://godot/scripts/geometry/junction_resolver.gd")
+	var EdgeRegistryClass2 = load("res://godot/scripts/geometry/edge_registry.gd")
+	var SliceGeneratorClass2 = load("res://godot/scripts/geometry/slice_generator.gd")
+
+	# Case A — a 3-cell divider (x=1,2,3 @ y=1) boxed in by a west wall at
+	# x=0 and an east wall at x=4 (both 3 rows tall, y=0..2). This is the
+	# real T-junction shape from sigma_01_map.gd's divider A meeting the
+	# perimeter wall: flush solid contact on both ends. Must produce ZERO
+	# columns anywhere — the joint is fully solid, nothing to fill.
+	var t_wall_levels: Array = [[
+		{"cell": Vector2i(0, 0), "tile_name": "wall_NW"},
+		{"cell": Vector2i(0, 1), "tile_name": "wall_NW"},
+		{"cell": Vector2i(0, 2), "tile_name": "wall_NW"},
+		{"cell": Vector2i(4, 0), "tile_name": "wall_SE"},
+		{"cell": Vector2i(4, 1), "tile_name": "wall_SE"},
+		{"cell": Vector2i(4, 2), "tile_name": "wall_SE"},
+		{"cell": Vector2i(1, 1), "tile_name": "solidblock_concrete"},
+		{"cell": Vector2i(2, 1), "tile_name": "solidblock_concrete"},
+		{"cell": Vector2i(3, 1), "tile_name": "solidblock_concrete"},
+	]]
+	var t_extraction: Dictionary = EdgeExtractorClass.extract({"wall_levels": t_wall_levels})
+	var t_reg = EdgeRegistryClass2.new()
+	SliceGeneratorClass2.generate(t_extraction["edges"], t_reg)
+	var t_junction_columns = JunctionResolverClass2.resolve(t_reg)
+	total_count += 1
+	if t_junction_columns.is_empty():
+		pass_count += 1
+		print("  ✓ Divider flush against walls on both ends (true T) produces 0 columns")
+	else:
+		print("  ✗ Divider flush against walls produced %d bogus column(s), expected 0: %s" % [t_junction_columns.size(), t_junction_columns])
+
+	# Case B — the same divider shape, but free-standing (no walls at
+	# either end, e.g. stopping next to an open gate on both sides). Each
+	# end is a genuine free corner and needs 2 filler columns (one per
+	# side), 4 total. Hand-derived: west end at (1,1) → columns at (0,0)
+	# and (0,2); east end at (2,1)... wait, at (2,1) with only 2 cells —
+	# use the 2-cell divider (x=1,2 @ y=1) so each cell IS an end:
+	# (1,1) faces {NW,NE,SW} → columns (0,0),(0,2); (2,1) faces
+	# {NE,SE,SW} → columns (3,0),(3,2).
+	var free_wall_levels: Array = [[
+		{"cell": Vector2i(1, 1), "tile_name": "solidblock_concrete"},
+		{"cell": Vector2i(2, 1), "tile_name": "solidblock_concrete"},
+	]]
+	var free_extraction: Dictionary = EdgeExtractorClass.extract({"wall_levels": free_wall_levels})
+	var free_reg = EdgeRegistryClass2.new()
+	SliceGeneratorClass2.generate(free_extraction["edges"], free_reg)
+	var free_columns = JunctionResolverClass2.resolve(free_reg)
+	var free_cells := {}
+	for col in free_columns:
+		free_cells[col.gu_cell] = true
+	var expected_free := [Vector2i(0, 0), Vector2i(0, 2), Vector2i(3, 0), Vector2i(3, 2)]
+	var free_ok: bool = free_columns.size() == 4
+	for e in expected_free:
+		if not free_cells.has(e):
+			free_ok = false
+	total_count += 1
+	if free_ok:
+		pass_count += 1
+		print("  ✓ Free-standing 2-cell divider produces exactly 4 columns at both ends: %s" % free_columns)
+	else:
+		print("  ✗ Free-standing divider produced %d column(s): %s — expected 4 at (0,0),(0,2),(3,0),(3,2)" % [free_columns.size(), free_columns])
+
 	# GROUP: JunctionResolver — V-junction corner detection (JUNCTION-02
 	# rewrite: the previous voxel-vertex approach silently picked the wrong
 	# diagonal cell — see junction_resolver.gd header. Both cases below were
@@ -121,6 +188,24 @@ func _ready():
 		print("  ✓ Straight-through wall (opposite faces) produces 0 columns")
 	else:
 		print("  ✗ Straight-through wall produced %d column(s), expected 0: %s" % [straight_columns.size(), straight_columns])
+
+	# Case 4 — X-junction regression guard: all 4 faces of (2,2) occupied
+	# (4-way intersection, all genuinely open). Must still produce 0
+	# columns — out of scope by design (see junction_resolver.gd class doc
+	# comment).
+	var x_registry = EdgeRegistryClass.new()
+	var x_west = EdgeClass.between(Vector2i(1, 2), Vector2i(2, 2), 1)   # NW face
+	var x_east = EdgeClass.between(Vector2i(2, 2), Vector2i(3, 2), 1)   # SE face
+	var x_north = EdgeClass.between(Vector2i(2, 1), Vector2i(2, 2), 1)  # NE face
+	var x_south = EdgeClass.between(Vector2i(2, 2), Vector2i(2, 3), 1)  # SW face
+	SliceGeneratorClass.generate([x_west, x_east, x_north, x_south], x_registry)
+	var x_columns = JunctionResolverClass.resolve(x_registry)
+	total_count += 1
+	if x_columns.is_empty():
+		pass_count += 1
+		print("  ✓ X-junction (all 4 faces at 2,2) produces 0 columns (out of scope)")
+	else:
+		print("  ✗ X-junction produced %d column(s), expected 0: %s" % [x_columns.size(), x_columns])
 
 	# Print summary
 	print("\n" + separator)

@@ -207,6 +207,20 @@ func _ready():
 	else:
 		print("  ✗ X-junction produced %d column(s), expected 0: %s" % [x_columns.size(), x_columns])
 
+	# Case 5 — material propagation: a metal corner must produce a column
+	# in "metal", not the old hardcoded "concrete" default.
+	var metal_registry = EdgeRegistryClass.new()
+	var metal_north = EdgeClass.between(Vector2i(2, 1), Vector2i(2, 2), 1, "metal")  # NE face of (2,2)
+	var metal_west = EdgeClass.between(Vector2i(1, 2), Vector2i(2, 2), 1, "metal")   # NW face of (2,2)
+	SliceGeneratorClass.generate([metal_north, metal_west], metal_registry)
+	var metal_columns = JunctionResolverClass.resolve(metal_registry)
+	total_count += 1
+	if metal_columns.size() == 1 and metal_columns[0].material == "metal":
+		pass_count += 1
+		print("  ✓ Metal corner produces a column with material 'metal': %s" % metal_columns[0])
+	else:
+		print("  ✗ Metal corner produced wrong material/count: %s — expected 1 column with material 'metal'" % [metal_columns])
+
 	# Print summary
 	print("\n" + separator)
 	print("SUMMARY: %d / %d checks PASS" % [pass_count, total_count])

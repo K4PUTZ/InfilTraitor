@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.25 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** 48baaf2 "[MAINT] Update push.sh: replace project_lint.py with check_invariants.py"
+**Version:** 0.4.26 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** d732174 "FIX: JUNCTION-01b — interior wall corner filler columns"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- JUNCTION-01b-interior-corners.md
+- FIX-JUNCTION-COLUMN-MATERIAL-01.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -25,17 +25,17 @@
 - Test scripts: 27
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 89
+- Archived prompts: 90
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- d732174 FIX: JUNCTION-01b — interior wall corner filler columns
 - b379edf [FIX-LEGACY-PROPS-01] Migrate SIGMA_01 sprite crates to voxel_props
 - c375fbf [FIX-DIVIDER-MATERIAL-01] Dividers become real solidblock_<material>, not fake block_SE
 - f856af2 [FIX-EXTERIOR-WALLS-01b] Exterior wall height: increase from 1 to 3 storeys
 - 33f548e [BAKE-LIVE-BOOT-01] Finalize with textures — all 6 criteria pass
-- 68bec4c [PLAYGROUND-02] Showcase map (28×18, 6 districts); fix PropDef/PropRegistry preloads
 <!-- AUTO:END version_history -->
 
 ---

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.25 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** 48baaf2 "[MAINT] Update push.sh: replace project_lint.py with check_invariants.py"
+**Version:** 0.4.26 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** d732174 "FIX: JUNCTION-01b — interior wall corner filler columns"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

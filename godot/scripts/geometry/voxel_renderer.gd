@@ -154,7 +154,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
 		var level := column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
-		_set_voxel_cell(column.voxel_pos, level, "concrete")
+		_set_voxel_cell(column.voxel_pos, level, column.material)
 
 
 ## Set a voxel cell on the appropriate layer

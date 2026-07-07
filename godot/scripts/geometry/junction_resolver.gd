@@ -28,19 +28,21 @@ class JunctionColumn:
 	var voxel_pos: Vector2i       ## the voxel position of the column
 	var storey_count: int         ## height (span between start_storey and end)
 	var start_storey: int         ## starting storey level
+	var material: String          ## material of the walls this column completes
 	var voxels: Array[Voxel]      ## the voxel objects
 
-	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0):
+	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete"):
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
 		start_storey = p_start_storey
+		material = p_material
 		voxels = []
 
 	func _to_string() -> String:
 		if start_storey > 0:
-			return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, start=%d}" % [gu_cell, voxel_pos, storey_count, start_storey]
-		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d}" % [gu_cell, voxel_pos, storey_count]
+			return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, start=%d, material=%s}" % [gu_cell, voxel_pos, storey_count, start_storey, material]
+		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, material=%s}" % [gu_cell, voxel_pos, storey_count, material]
 
 
 ## Resolve V-junctions from a registry of edges.
@@ -105,6 +107,6 @@ static func resolve(registry: EdgeRegistry) -> Array:
 					var local_y := last if d.y < 0 else 0
 					var voxel_pos := origin + Vector2i(local_x, local_y)
 
-					result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start))
+					result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start, edge_a.material))
 
 	return result

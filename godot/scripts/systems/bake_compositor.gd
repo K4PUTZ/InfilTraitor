@@ -245,6 +245,7 @@ func _get_material_tile(material, _face: int, variant_k: int) -> Image:
 
 	var tile = Image.create(32, 16, false, Image.FORMAT_RGBA8)
 	var base_color = material.base_color
+	var projector := PerFaceProjectorClass.new()
 
 	for screen_y in range(16):
 		for screen_x in range(32):
@@ -261,7 +262,8 @@ func _get_material_tile(material, _face: int, variant_k: int) -> Image:
 
 			# Multiply base color by pattern shade
 			var pixel = base_color * pattern_shade
-			pixel.a = 1.0  # Opaque (will come from canonical silhouette in composite)
+			var screen_pos := Vector2(float(screen_x), float(screen_y))
+			pixel.a = 1.0 if projector.is_inside_voxel(_face, screen_pos) else 0.0
 
 			tile.set_pixel(screen_x, screen_y, pixel)
 

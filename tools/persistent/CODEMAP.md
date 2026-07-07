@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 22575 lines total** (under `godot/scripts/`)
+**133 scripts · 22615 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1050,7 +1050,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 359 lines
+`class_name BakeCompositor` · 361 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1788,7 +1788,7 @@ extends `SceneTree` · 141 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 320 lines
+extends `SceneTree` · 351 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
@@ -2773,7 +2773,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2025 lines
+extends `Node2D` · 2032 lines
 
 `godot/scripts/world/room.gd`
 

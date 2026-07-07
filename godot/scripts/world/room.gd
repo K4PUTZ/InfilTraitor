@@ -797,22 +797,29 @@ func _on_hud_viewport_toggled() -> void:
 	DisplayServer.window_set_position(Vector2i(centered.round()))
 
 
+func _set_view_mode(which: String, btn: Button) -> void:
+	if not _vision_controller:
+		return
+	match which:
+		"dev": _vision_controller.toggle_dev()
+		"light": _vision_controller.toggle_light()
+		"heat": _vision_controller.toggle_heat()
+	var enabled: bool = _vision_controller.dev_vision if which == "dev" \
+		else (_vision_controller.light_vision if which == "light" else _vision_controller.heat_vision)
+	btn.set_pressed_no_signal(enabled)
+	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
+
+
 func _on_view_h_toggled(is_enabled: bool) -> void:
-	if _vision_controller:
-		_vision_controller.toggle_heat()
-	btn_view_h.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
+	_set_view_mode("heat", btn_view_h)
 
 
 func _on_view_l_toggled(is_enabled: bool) -> void:
-	if _vision_controller:
-		_vision_controller.toggle_light()
-	btn_view_l.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
+	_set_view_mode("light", btn_view_l)
 
 
 func _on_view_v_toggled(is_enabled: bool) -> void:
-	if _vision_controller:
-		_vision_controller.toggle_dev()
-	btn_view_v.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
+	_set_view_mode("dev", btn_view_v)
 
 
 func _update_guard_los_data() -> void:
@@ -1828,13 +1835,13 @@ func _input(event: InputEvent) -> void:
 						_debug_tools_controller.try_change_posture(next_x)
 					return
 				KEY_V:
-					_vision_controller.toggle_dev()
+					_set_view_mode("dev", btn_view_v)
 					return
 				KEY_L:
-					_vision_controller.toggle_light()
+					_set_view_mode("light", btn_view_l)
 					return
 				KEY_H:
-					_vision_controller.toggle_heat()
+					_set_view_mode("heat", btn_view_h)
 					return
 				KEY_K:
 					## Cycle UI language (debug helper for localization).

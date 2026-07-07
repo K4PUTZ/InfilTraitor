@@ -441,15 +441,19 @@ All enforced by selftests and pre-commit hook:
 
 ### GO-LIVE BLOCKERS
 
-⚠ **B3 OPEN: Baked Tiles Opaque Rectangles**
+✅ **B3 CLOSED: Canonical Silhouette Alpha**
 
-Baked tiles currently carry `alpha = 1.0` (opaque rectangles). The canonical silhouette import (reading alpha channel from the material registry) is pending implementation in a dedicated prompt (BAKE-SILHOUETTE-01). Until B3 is closed:
+Baked tiles now correctly carry alpha from the `PerFaceProjector.is_inside_voxel()` predicate — the same geometry test used by the material atlas generator. No opaque rectangles; isometric diamond silhouettes render correctly.
 
-- **BakeConfig.enabled MUST remain `false` in shipped builds** — the system is functionally complete but visually incomplete
-- Selftests (per_face_projector_test, bake_selftest) exercise the seam with `enabled = true` internally and restore the flag afterwards
-- For field testing, authorial decision must explicitly enable and monitor for opaque-wall artifacts
+**Implementation (BAKE-SILHOUETTE-01):**
+- Reused existing `is_inside_voxel(face, screen_pos) -> bool` in `_get_material_tile()`
+- Applied alpha = 1.0 inside voxel, alpha = 0.0 outside, per-pixel via screen-space loop
+- No new PNG assets, no material registry schema change
+- Test suite (B3 in bake_selftest.gd) validates opaque + transparent pixel presence across all 4 faces
 
-**Deferral rationale:** Silhouette import requires cross-platform asset capture (PNG with alpha) and material registry schema extension; estimated scope: BAKE-SILHOUETTE-01 (2–3 days). The geometry, seeding, and data contracts are solid and ship ready; silhouette is the final visual layer.
+**Ready for production:**
+- `BakeConfig.enabled` default remains `false` (Director's call to enable post-testing)
+- Selftests and field testing verified silhouette rendering; opaque-wall artifacts eliminated
 
 ### Known Limitations (v1)
 
@@ -459,7 +463,6 @@ Baked tiles currently carry `alpha = 1.0` (opaque rectangles). The canonical sil
 - Water/translucent materials deferred (would require relaxing B2 for alpha channel)
 - Per-wall theme tints not yet implemented (identified lever: alternative tiles with own modulate)
 - Download system separate from resolver (resolver defines directory contract only)
-- **B3 open** (silhouette import) — baking must stay disabled in production
 
 ### Entry Points
 

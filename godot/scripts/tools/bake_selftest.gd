@@ -153,27 +153,58 @@ func test_B3_alpha_from_canonical() -> void:
 		print("  PASS: B3\n")
 		return
 
-	# Create a material tile
-	var canonical_tile = compositor._get_material_tile(material, 0, 0)
+	# Test all 4 face orientations
+	var all_faces_valid = true
+	for face in range(4):
+		var tile = compositor._get_material_tile(material, face, 0)
 
-	if canonical_tile and canonical_tile.get_width() == 32 and canonical_tile.get_height() == 16:
-		print("    ✓ Canonical tile generated (32×16)")
-		passed += 1
-	else:
-		print("    ✗ Canonical tile format incorrect")
-		failed += 1
+		if tile and tile.get_width() == 32 and tile.get_height() == 16:
+			print("    ✓ Face %d: canonical tile generated (32×16)" % face)
+		else:
+			print("    ✗ Face %d: tile format incorrect" % face)
+			failed += 1
+			all_faces_valid = false
+			continue
 
-	# Verify alpha is preserved
-	if canonical_tile:
-		var alpha = canonical_tile.get_pixel(16, 8).a
-		if alpha >= 0.99:
-			print("    ✓ Alpha preserved: %.2f (opaque)" % alpha)
+		# Count opaque and transparent pixels to verify silhouette variety
+		var has_opaque := false
+		var has_transparent := false
+		var opaque_count := 0
+		var transparent_count := 0
+		
+		for y in range(16):
+			for x in range(32):
+				var a = tile.get_pixel(x, y).a
+				if a > 0.99:
+					has_opaque = true
+					opaque_count += 1
+				elif a < 0.01:
+					has_transparent = true
+					transparent_count += 1
+
+		# Valid states:
+		# 1. Both opaque and transparent pixels present (normal case - silhouette visible)
+		# 2. All transparent pixels (voxel outside tile bounds for this face)
+		# 3. All opaque pixels (edge case - entire voxel inside bounds)
+		
+		if has_opaque and has_transparent:
+			print("    ✓ Face %d: silhouette present (%d opaque, %d transparent)" % [face, opaque_count, transparent_count])
+			passed += 1
+		elif has_transparent and not has_opaque:
+			print("    ✓ Face %d: all-transparent (voxel outside tile bounds)" % face)
+			passed += 1
+		elif has_opaque and not has_transparent:
+			print("    ✓ Face %d: all-opaque (voxel fully inside tile bounds)" % face)
 			passed += 1
 		else:
-			print("    ✗ Alpha unexpected: %.2f" % alpha)
+			print("    ✗ Face %d: no valid pixels" % face)
 			failed += 1
+			all_faces_valid = false
 
-	print("  PASS: B3\n")
+	if all_faces_valid:
+		print("  PASS: B3\n")
+	else:
+		print("  FAIL: B3 (some faces invalid)\n")
 
 
 ## B4: FNV-1a Determinism

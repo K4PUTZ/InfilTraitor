@@ -146,9 +146,6 @@ var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
 var _active_perspective: String = "N"
-var _view_h_enabled: bool = true   ## Horizontal view (voxel rendering)
-var _view_l_enabled: bool = true   ## Lateral view (movement overlay)
-var _view_v_enabled: bool = true   ## Vertical view (labels)
 var _alert_meter: int = 0
 
 var _alert_max: int = 100
@@ -801,23 +798,20 @@ func _on_hud_viewport_toggled() -> void:
 
 
 func _on_view_h_toggled(is_enabled: bool) -> void:
-	_view_h_enabled = is_enabled
-	if _voxel_renderer:
-		_voxel_renderer.visible = is_enabled
+	if _vision_controller:
+		_vision_controller.toggle_heat()
 	btn_view_h.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
 
 
 func _on_view_l_toggled(is_enabled: bool) -> void:
-	_view_l_enabled = is_enabled
-	if movement_overlay:
-		movement_overlay.visible = is_enabled
+	if _vision_controller:
+		_vision_controller.toggle_light()
 	btn_view_l.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
 
 
 func _on_view_v_toggled(is_enabled: bool) -> void:
-	_view_v_enabled = is_enabled
-	if tile_labels_overlay:
-		tile_labels_overlay.visible = is_enabled
+	if _vision_controller:
+		_vision_controller.toggle_dev()
 	btn_view_v.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.35)
 
 

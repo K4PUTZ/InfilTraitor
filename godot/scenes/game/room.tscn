@@ -116,25 +116,22 @@ text = "↺"
 [node name="BtnViewH" type="Button" parent="HUD/TopBar/Row" unique_id=1700000002]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Toggle Horizontal view"
+tooltip_text = "Heat Map"
 text = "H"
-button_pressed = true
 toggle_mode = true
 
 [node name="BtnViewL" type="Button" parent="HUD/TopBar/Row" unique_id=1700000003]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Toggle Lateral view"
+tooltip_text = "Light Vision"
 text = "L"
-button_pressed = true
 toggle_mode = true
 
 [node name="BtnViewV" type="Button" parent="HUD/TopBar/Row" unique_id=1700000004]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-tooltip_text = "Toggle Vertical view"
+tooltip_text = "Dev Vision"
 text = "V"
-button_pressed = true
 toggle_mode = true
 
 [node name="LblAp" type="Label" parent="HUD/TopBar/Row" unique_id=1600001005]

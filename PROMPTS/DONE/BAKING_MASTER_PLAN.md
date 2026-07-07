@@ -308,3 +308,35 @@ Sequencing rationale: **math before pixels, pixels before swap.** BAKE-01..03 ar
 ---
 
 *End of plan. Upon approval (and V1–V4 resolution), the next outputs are TEX-CATALOG-01 followed by BAKE-01, per §9.*
+
+---
+
+## ADDENDUM — 2026-07-07: BAKING_SYSTEM_MASTER_FIX Implementation Notes
+
+This document served as the authoritative architectural specification for the baking system. However, implementation revealed that the original design required refinement:
+
+### What Was Superseded
+
+**Stage 5 (§3.5) Conflation:** The original plan stated `texture_region_size = VOXEL_TILE_SIZE (32×16)`, conflating this with the real atom size (32×36 pixels, the full voxel face height). Implementation clarified: the tile size stays 32×16 (canonical Godot cell size), but texture composition operates at the full voxel face scale. This is correctly reflected in `BAKING_SYSTEM_MASTER_FIX.md`.
+
+**§4.5 (PerFaceProjector) Approach:** The per-face affine shear transforms described here were designed for per-wall-face baking at placement time. The actual implementation (BAKE-FIX-01/02) achieved the same result via a **master-strip baking approach**: facade sampler operates on infinite mirrored planes, edges are grouped into runs for continuity, and the junction column implementation (BAKE-FIX-02) handles multi-edge wall silhouettes. The mathematical foundation (D5 infinite plane + FNV-1a determinism) is identical; the orchestration is simpler.
+
+**D5 Facade Model Refinement:** This document specified both "isolated" (per-wall) and "run" (contiguous) addressing modes. The implementation found that **run-continuity was the only mode wired** before BAKE-FIX-02; the isolated mode concept survived but was not previously functional. BAKE-FIX-02 completed the run grouping + junction column framework, making both modes available for future use.
+
+### What Remains Canon
+
+- **Decision D1 (MULTIPLY blend)** — Exact, implemented in `BakeCompositor`.
+- **Decision D5 (infinite deterministic plane via mirrored-repeat)** — Exact, implemented in `FacadeSampler`.
+- **Determinism via project-owned FNV-1a** — Exact, verified in multiple selftests.
+- **Alpha from canonical material tiles** — Exact, B3 invariant enforced.
+- **No re-bake on destruction** — Exact, never implemented a re-bake path.
+
+### Reference Documentation
+
+**Authoritative implementation spec:** `BAKING_SYSTEM_MASTER_FIX.md`
+- BAKE-FIX-01: Strip baking + facade sampler + run grouping
+- BAKE-FIX-02: Junction column implementation + run grouping completion
+- BAKE-FIX-03: Pixel-identical shape comparison validation (B3 closure)
+- Phase 5 (deferred): Secondary baking per HighWall (per-texture overlays)
+
+This addendum does not alter the canonical decisions or risk analysis. It clarifies the orchestration path taken during implementation.

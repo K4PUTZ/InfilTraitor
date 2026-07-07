@@ -221,6 +221,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"enemy_defs":       enemy_defs,
 		"light_sources":    light_sources,
 		"exit_cells":       exit_cells,
+		"junction_overrides": _compile_junction_overrides(spec, offset),  ## BAKE-FIX-02: junction column overrides
 	}
 	## Voxel geometry integration via EdgeExtractor (see SLICE-02 refactor)
 	## Legacy direct computation replaced by edge-driven seam building
@@ -296,3 +297,20 @@ static func _validate(spec: Dictionary) -> bool:
 					% [spec.get("id", "?"), key])
 			is_valid = false
 	return is_valid
+
+
+## BAKE-FIX-02: Compile junction overrides from MapSpec
+## Each entry in spec["junction_overrides"] contains:
+##   {"gu": Vector2i (inner coords), "material"?: String, "facade_enabled"?: bool}
+## Returns array with gu_cell converted to raw coords (with buffer applied)
+static func _compile_junction_overrides(spec: Dictionary, offset: Vector2i) -> Array:
+	var result: Array = []
+	for override in spec.get("junction_overrides", []):
+		var gu_inner = Vector2i(override.get("gu", Vector2i.ZERO))
+		var gu_raw = gu_inner + offset
+		result.append({
+			"gu_cell": gu_raw,
+			"material": override.get("material", ""),
+			"facade_enabled": override.get("facade_enabled", true),
+		})
+	return result

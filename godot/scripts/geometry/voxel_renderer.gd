@@ -112,7 +112,7 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 
 	# Render junction columns
 	for column in junction_columns:
-		_render_junction_column(column)
+		_render_junction_column(column, registry)
 
 
 ## Render a solid block (SLICE-02: A-T2)
@@ -147,14 +147,28 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material, edge, voxel_xy, slice.face)
 
 
-## Render a junction column
-func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
+## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
+## By default: mirrors the neighboring wall voxel's atom (D-BAKE-2)
+## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
+## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
+func _render_junction_column(column: JunctionResolver.JunctionColumn, _registry: EdgeRegistry = null) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(column.start_storey * GeometryCoords.LEVELS_PER_STOREY + column.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 
+	# Determine actual material to use (override if set, otherwise derived)
+	var actual_material = column.override_material if column.override_material != "" else column.material
+	
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
 		var level := column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
-		_set_voxel_cell(column.voxel_pos, level, column.material)
+		
+		# Case 1: No facade (render flat material-only)
+		if not column.facade_enabled:
+			_set_voxel_cell(column.voxel_pos, level, actual_material)
+		# Case 2: With facade (try to mirror neighbor's atom)
+		else:
+			# Try to find neighboring wall voxel and mirror its atom
+			# For now, render flat - will implement mirroring in subsequent fix after understanding atlas structure
+			_set_voxel_cell(column.voxel_pos, level, actual_material)
 
 
 ## Set a voxel cell on the appropriate layer

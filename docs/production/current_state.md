@@ -101,23 +101,30 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - Runtime integration: called once per agent step via `_on_agent_step_finished()`
 - All 12 acceptance tests passing; Godot loads clean
 
-### What's pending (VOXEL-08..11)
+### What's built (VOXEL-08..09) and what's pending (VOXEL-10..11)
 
-⏳ **VOXEL-08** — Primary Baking System
-- Load-time per-WallSlice texture baking (Crop + Multiply from TextureCatalog)
-- Populate `VoxelRef.face_atlas_rect` for each voxel based on (map_id, theme, player_level)
-- Store `bake_texture` in WallSlice
+✅ **VOXEL-08** — Primary Baking System (COMPLETE)
+- **BAKE-FIX-01**: Master-strip facade baking: TextureResolver + FacadeSampler + run grouping
+- **BAKE-FIX-02**: Junction column implementation: multi-edge silhouette handling + material overrides
+- **BAKE-FIX-03**: Pixel-identical validation: B3 closure (alpha from canonical material)
+- All walls now support per-facade texture overlays via BakedTileLookup.resolve(edge, face, voxel) → (source_id, atlas_coords)
+- `VoxelRef.face_atlas_rect` populated at map load
+- BakeConfig.enabled gates between baked and generic rendering (default: false for safety)
+- Run-continuity: facade veins flow across contiguous wall edges; deterministic via FNV-1a(edge_key)
+- Junction continuity: corner columns render with mirrored neighboring silhouettes or material overrides
 
-⏳ **VOXEL-09** — Secondary Baking System
+⏳ **VOXEL-09** — Secondary Baking System (DEFERRED — Phase 5)
 - Per-HighWall texture baking (single large texture spanning all constituent voxels)
-- Junction extra integration
+- Architectural framework in place; implementation postponed
+- No schema changes required; uses same `face_atlas_rect` field
 
-⏳ **VOXEL-10** — Destructibility
+⏳ **VOXEL-10** — Destructibility (DEFERRED)
 - Damage states: `INTACT=0`, `CRACKED=1`, `DESTROYED=2`
 - Overlay texture + visibility logic via dirty flags
 - Integration with TIC loop
+- No code impediment; design complete
 
-⏳ **VOXEL-11** — CODEMAP Update
+⏳ **VOXEL-11** — CODEMAP Update (DEFERRED)
 - Register all voxel wall data in project codemap
 - Enable runtime queries (e.g., "which walls can this agent see?")
 

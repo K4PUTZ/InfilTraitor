@@ -28,21 +28,27 @@ class JunctionColumn:
 	var voxel_pos: Vector2i       ## the voxel position of the column
 	var storey_count: int         ## height (span between start_storey and end)
 	var start_storey: int         ## starting storey level
-	var material: String          ## material of the walls this column completes
+	var material: String          ## material of the walls this column completes (or derived material)
+	var facade_enabled: bool      ## whether this column should use baked facade (default true; BAKE-FIX-02: D-BAKE-3)
+	var override_material: String ## optional override material; empty string = use derived material from edges
 	var voxels: Array[Voxel]      ## the voxel objects
 
-	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete"):
+	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = ""):
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
 		start_storey = p_start_storey
 		material = p_material
+		facade_enabled = p_facade_enabled
+		override_material = p_override_material
 		voxels = []
 
 	func _to_string() -> String:
+		var facade_str = " (no facade)" if not facade_enabled else ""
+		var override_str = " [override: %s]" % override_material if override_material != "" else ""
 		if start_storey > 0:
-			return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, start=%d, material=%s}" % [gu_cell, voxel_pos, storey_count, start_storey, material]
-		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, material=%s}" % [gu_cell, voxel_pos, storey_count, material]
+			return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, start=%d, material=%s%s%s}" % [gu_cell, voxel_pos, storey_count, start_storey, material, facade_str, override_str]
+		return "JunctionColumn{gu=%s, voxel=%s, storeys=%d, material=%s%s%s}" % [gu_cell, voxel_pos, storey_count, material, facade_str, override_str]
 
 
 ## Resolve V-junctions from a registry of edges.

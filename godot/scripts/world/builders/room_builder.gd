@@ -67,11 +67,14 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		var _edge_registry = EdgeRegistry.new()
 		SliceGenerator.generate(extraction["edges"], _edge_registry)
 		var _junction_columns = JunctionResolver.resolve(_edge_registry)
+		
+		# BAKE-FIX-02: Apply junction overrides from layout (if available)
+		_apply_junction_overrides(_junction_columns, layout)
 
 		## Bake textures (S2: Wire baking into room_builder)
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
 		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, _edge_registry)
+			_bake_textures(extraction, _edge_registry, _junction_columns)
 
 		room._voxel_renderer.clear()
 		room._voxel_renderer.render(_edge_registry, _junction_columns)
@@ -191,23 +194,166 @@ func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
 	return nav
 
 
-## Bake textures (S2: FIX-BAKE-05 integration)
-func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> void:
-	print("[ROOM] Baking textures...")
 
-	# Build wall descriptors: the compositor consumes Dictionaries, by contract.
+
+## Group consecutive collinear edges into runs (run = edges sharing material+facade, forming a continuous line)
+## Each run is a Dictionary with keys: "edges", "material_id", "facade_id", "min_edge"
+func _group_edges_into_runs(edges: Array) -> Array:
+	if edges.is_empty():
+		return []
+	
+	var runs: Array = []
+	var visited: Dictionary = {}
+	
+	for start_edge in edges:
+		if visited.has(start_edge.id):
+			continue
+		
+		# Build a run starting from this edge
+		var run_edges: Array = []
+		var current_edge = start_edge
+		
+		# Walk backward to find the true start of the run
+		while current_edge != null:
+			if visited.has(current_edge.id):
+				# Already part of another run, stop
+				break
+			
+			# Check if there's an edge before current_edge in the run
+			var prev_edge = _find_preceding_edge(current_edge, edges, visited)
+			if prev_edge == null:
+				# current_edge is the start of the run
+				break
+			
+			current_edge = prev_edge
+		
+		# Now walk forward from current_edge to collect all edges in the run
+		while current_edge != null and not visited.has(current_edge.id):
+			# Validate continuity: material and facade must match
+			if not _edges_share_material_and_facade(start_edge, current_edge):
+				break
+			
+			run_edges.append(current_edge)
+			visited[current_edge.id] = true
+			
+			# Find next edge in the run (collinear continuation)
+			var next_edge = _find_next_edge_in_run(current_edge, edges, visited)
+			current_edge = next_edge
+		
+		# Create run record
+		if not run_edges.is_empty():
+			var min_edge = _find_canonical_min_edge(run_edges)
+			runs.append({
+				"edges": run_edges,
+				"material_id": run_edges[0].material,
+				"facade_id": BakePolicyClass.facade_for_material(run_edges[0].material),
+				"min_edge": min_edge,
+			})
+	
+	return runs
+
+
+## Find the preceding edge in a run (collinear edge that ends at the start of current_edge)
+func _find_preceding_edge(edge: Edge, all_edges: Array, visited: Dictionary) -> Edge:
+	for candidate in all_edges:
+		if visited.has(candidate.id):
+			continue
+		
+		# Check if candidate.gu_b == edge.gu_a and they point in the same direction
+		if candidate.gu_b == edge.gu_a and candidate.face_a == edge.face_a:
+			if _edges_share_material_and_facade(edge, candidate):
+				return candidate
+	
+	return null
+
+
+## Find the next edge in a run (collinear edge that starts where current_edge ends)
+func _find_next_edge_in_run(edge: Edge, all_edges: Array, visited: Dictionary) -> Edge:
+	for candidate in all_edges:
+		if visited.has(candidate.id):
+			continue
+		
+		# Check if candidate.gu_a == edge.gu_b and they point in the same direction
+		if candidate.gu_a == edge.gu_b and candidate.face_a == edge.face_a:
+			if _edges_share_material_and_facade(edge, candidate):
+				return candidate
+	
+	return null
+
+
+## Check if two edges share the same material and facade
+func _edges_share_material_and_facade(edge_a: Edge, edge_b: Edge) -> bool:
+	if edge_a.material != edge_b.material:
+		return false
+	
+	var facade_a = BakePolicyClass.facade_for_material(edge_a.material)
+	var facade_b = BakePolicyClass.facade_for_material(edge_b.material)
+	
+	return facade_a == facade_b
+
+
+## Find the canonical minimum edge in a run (lexicographically smallest gu_a)
+func _find_canonical_min_edge(run_edges: Array) -> Edge:
+	var min_edge = run_edges[0]
+	for edge in run_edges:
+		if edge.gu_a.x < min_edge.gu_a.x or (edge.gu_a.x == min_edge.gu_a.x and edge.gu_a.y < min_edge.gu_a.y):
+			min_edge = edge
+	return min_edge
+
+
+## BAKE-FIX-02: Apply junction overrides from map spec to junction columns
+## Each override in layout["junction_overrides"] contains:
+##   {"gu_cell": Vector2i, "material"?: String, "facade_enabled"?: bool}
+func _apply_junction_overrides(junction_columns: Array, layout: Dictionary) -> void:
+	var overrides = layout.get("junction_overrides", [])
+	if overrides.is_empty():
+		return
+	
+	# Build lookup by gu_cell for O(1) lookup
+	var override_map: Dictionary = {}
+	for override in overrides:
+		var gu_cell = Vector2i(override.get("gu_cell", Vector2i.ZERO))
+		override_map[gu_cell] = override
+	
+	# Apply overrides to matching columns
+	for column in junction_columns:
+		if override_map.has(column.gu_cell):
+			var override = override_map[column.gu_cell]
+			if override.has("material"):
+				column.override_material = String(override["material"])
+			if override.has("facade_enabled"):
+				column.facade_enabled = bool(override["facade_enabled"])
+
+
+## Bake textures (S2: FIX-BAKE-05 integration + BAKE-FIX-02 run grouping & junction columns)
+func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = []) -> void:
+	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
+
+	# Group edges into runs (consecutive collinear edges with same material+facade)
+	var runs = _group_edges_into_runs(extraction.get("edges", []))
+	print("[ROOM] Grouped edges into %d runs" % runs.size())
+	
+	# Build wall descriptors with run information
 	var wall_descriptors: Array = []
-	for edge in extraction.get("edges", []):
-		wall_descriptors.append({
-			"material_id": edge.material,
-			"facade_id": BakePolicyClass.facade_for_material(edge.material),
-			"edge": edge,
-		})
+	for run in runs:
+		# All edges in a run share material + facade by construction
+		var edge_list = run["edges"]
+		var material_id = edge_list[0].material
+		var facade_id = BakePolicyClass.facade_for_material(material_id)
+		
+		for edge in edge_list:
+			wall_descriptors.append({
+				"material_id": material_id,
+				"facade_id": facade_id,
+				"edge": edge,
+				"run": run,  # Include run reference for strip walking
+			})
 
 	# Create map spec for compositor
 	var map_spec = {
 		"walls": wall_descriptors,
 		"room_geometry": extraction.get("room_geometry", {}),
+		"junction_columns": _junction_columns,  # Pass junction columns for override resolution
 	}
 
 	# Create texture resolver
@@ -236,8 +382,21 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry) -> voi
 
 	# Store lookup and source mapping for placement via autoload (FIX-SHUTDOWN-CRASH-01)
 	Registries.set_baked_atlas(baked_atlas, source_ids, Time.get_ticks_msec())
+	
+	# BAKE-FIX-02: Register runs with baked_tile_lookup for strip walking
+	_register_runs_with_lookup(runs, baked_atlas)
 
 
+
+
+## BAKE-FIX-02: Register runs with baked_tile_lookup for strip walking
+func _register_runs_with_lookup(runs: Array, _baked_atlas) -> void:
+	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
+	var lookup = lookup_class.new()
+	lookup.register_runs(runs)
+	
+	# Store in global registry for access during placement
+	Registries.set_baked_tile_lookup(lookup)
 
 
 ## Register a baked atlas page as a tileset source

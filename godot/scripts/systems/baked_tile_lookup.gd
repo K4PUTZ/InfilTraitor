@@ -1,7 +1,8 @@
-## BakedTileLookup — Single lookup seam for placement path
+## BakedTileLookup — Single lookup seam for placement path (BAKE-FIX-02: run-aware)
 ##
 ## Insertion point between placement code and tile source selection.
 ## Query for a voxel face → either baked atlas or generic material atlas.
+## BAKE-FIX-02: Walks master-strip dictionary with mirroring for boundary cases.
 ## Features a fallback chain: baked → generic material atlas.
 
 class_name BakedTileLookup
@@ -16,6 +17,9 @@ const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
 var _bake_config_ref = null  # Cache BakeConfig class reference
+
+# BAKE-FIX-02: Run information (edge_id -> run) for strip walking
+var _edge_run_map: Dictionary = {}  # edge.id -> {"edges": [], "min_edge": Edge, ...}
 
 ## Result of a tile lookup query
 class TileLookupResult:
@@ -36,9 +40,18 @@ func set_test_config(config) -> void:
 	_bake_config = config
 
 
+## BAKE-FIX-02: Register run information for later lookup during placement
+## Called by room_builder after grouping edges into runs
+func register_runs(runs: Array) -> void:
+	_edge_run_map.clear()
+	for run in runs:
+		var edges = run.get("edges", [])
+		for edge in edges:
+			_edge_run_map[edge.id] = run
+
+
 ## Main resolve function: placement calls this once per set_cell()
-## For now, master-strip baking (BAKE-FIX-02) is not yet integrated.
-## Always falls back to generic material atlas.
+## BAKE-FIX-02: Now run-aware for strip walking with mirroring
 func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 	# If baking is disabled, always use generic material atlas
 	var baking_enabled = false
@@ -53,9 +66,86 @@ func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 	if not baking_enabled:
 		return _resolve_generic(edge, face, voxel_xy)
 
-	# Master-strip integration (BAKE-FIX-02) will go here
-	# For now, fall back to generic
+	# BAKE-FIX-02: Try run-aware baked lookup
+	var baked_result = _resolve_baked_strip(edge, face, voxel_xy)
+	if baked_result != null:
+		return baked_result
+
+	# Fallback to generic
 	return _resolve_generic(edge, face, voxel_xy)
+
+
+## BAKE-FIX-02: Resolve using baked strip dictionary with run-aware mirroring
+## Returns null if baked atlas not available; caller will use fallback
+func _resolve_baked_strip(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
+	# Get the baked atlas and lookup dictionary
+	var baked_atlas = _get_baked_atlas()
+	if baked_atlas == null:
+		return null
+	
+	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
+	if lookup_dict.is_empty():
+		return null
+	
+	# Get material and facade for this edge
+	var material_id = "default"
+	if edge.has_method("get_material_id"):
+		material_id = edge.get_material_id()
+	elif "material" in edge:
+		material_id = edge.material
+	
+	var facade_id = BakePolicyClass.facade_for_material(material_id)
+	
+	# Get run for this edge (if available)
+	var run = _edge_run_map.get(edge.id, null)
+	if run == null:
+		# Edge not in any run - treat as isolated or use generic
+		return null
+	
+	# Get run's min edge and compute window origin
+	var min_edge = run.get("min_edge", null)
+	if min_edge == null:
+		return null
+	
+	var facade_sampler = FacadeSamplerClass.new()
+	var window_origin_texels = facade_sampler.get_window_origin_run_texels(min_edge, facade_id)
+	
+	# Compute position within run and walk the strip dictionary
+	var position_in_run = _get_edge_position_in_run(edge, run)
+	if position_in_run < 0:
+		return null
+	
+	# For now, compute the plane column/row for the voxel in the strip
+	# This will be replaced with more sophisticated strip walking once BAKE-FIX-01 dictionary is available
+	var variant_k = abs(hash(str(edge.key_string()) + str(voxel_xy))) % 4
+	
+	# Build lookup key: "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
+	# For now, use position_in_run as plane_col (simplified)
+	var plane_col = (window_origin_texels.x / TEX_AUTHORING_N + position_in_run) % (64 * TEX_AUTHORING_N)
+	var plane_row = window_origin_texels.y / TEX_AUTHORING_N
+	
+	var lookup_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
+	
+	if lookup_dict.has(lookup_key):
+		var entry = lookup_dict[lookup_key]
+		var page_idx = entry.get("page", -1)
+		var atlas_coords = entry.get("atlas_coords", Vector2i.ZERO)
+		
+		if page_idx >= 0:
+			var source_id = _get_baked_atlas_source_id(page_idx)
+			if source_id >= 0:
+				return TileLookupResult.new(source_id, "BAKED_ATLAS_%d" % page_idx, atlas_coords, 0)
+	
+	return null
+
+
+## Get the position of an edge within its run (0 = first edge, 1 = second, etc.)
+func _get_edge_position_in_run(edge, run: Dictionary) -> int:
+	var edges = run.get("edges", [])
+	for i in range(edges.size()):
+		if edges[i].id == edge.id:
+			return i
+	return -1
 
 
 ## Fallback: resolve using generic material atlas

@@ -24,7 +24,7 @@ func _initialize() -> void:
 	
 	# Task 1: Real atom canvas
 	print("## TASK 1: REAL ATOM CANVAS\n")
-	var voxel_measurements = audit_voxel_assets()
+	var _voxel_measurements = audit_voxel_assets()
 	
 	# Task 2: Facade multiply region (static analysis from code)
 	print("\n## TASK 2: FACADE MULTIPLY REGION\n")
@@ -32,7 +32,7 @@ func _initialize() -> void:
 	
 	# Task 3: Facade dimensions
 	print("\n## TASK 3: FACADE PNG DIMENSIONS\n")
-	var facade_measurements = audit_facade_assets()
+	var _facade_measurements = audit_facade_assets()
 	
 	# Task 4: Wall-run lengths
 	print("\n## TASK 4: WALL-RUN LENGTH DISTRIBUTION\n")
@@ -291,8 +291,8 @@ func get_median(arr: Array) -> int:
 	sorted.sort()
 	
 	if sorted.size() % 2 == 1:
-		return sorted[sorted.size() / 2]
+		return sorted[int(sorted.size() / 2.0)]
 	else:
-		var mid1 = sorted[sorted.size() / 2 - 1]
-		var mid2 = sorted[sorted.size() / 2]
+		var mid1 = sorted[int(sorted.size() / 2.0) - 1]
+		var mid2 = sorted[int(sorted.size() / 2.0)]
 		return (mid1 + mid2) / 2

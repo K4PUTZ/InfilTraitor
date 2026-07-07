@@ -810,15 +810,15 @@ func _set_view_mode(which: String, btn: Button) -> void:
 	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
 
 
-func _on_view_h_toggled(is_enabled: bool) -> void:
+func _on_view_h_toggled(_is_enabled: bool) -> void:
 	_set_view_mode("heat", btn_view_h)
 
 
-func _on_view_l_toggled(is_enabled: bool) -> void:
+func _on_view_l_toggled(_is_enabled: bool) -> void:
 	_set_view_mode("light", btn_view_l)
 
 
-func _on_view_v_toggled(is_enabled: bool) -> void:
+func _on_view_v_toggled(_is_enabled: bool) -> void:
 	_set_view_mode("dev", btn_view_v)
 
 

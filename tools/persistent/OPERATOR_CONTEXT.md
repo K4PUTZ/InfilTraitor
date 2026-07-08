@@ -357,5 +357,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.43 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 83df52c "[VERSION] Bump to 0.4.43"
+**Version:** 0.4.44 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** b7c87ac "[DOCS] Context architecture v0.5.0: extract bake history to BAKE_SYSTEM_REFERENCE, add injection points, codify plan-transition protocol"
 <!-- AUTO:END header -->

@@ -103,15 +103,23 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 
 ### What's built (VOXEL-08..09) and what's pending (VOXEL-10..11)
 
-✅ **VOXEL-08** — Primary Baking System (COMPLETE)
-- **BAKE-FIX-01**: Master-strip facade baking: TextureResolver + FacadeSampler + run grouping
-- **BAKE-FIX-02**: Junction column implementation: multi-edge silhouette handling + material overrides
-- **BAKE-FIX-03**: Pixel-identical validation: B3 closure (alpha from canonical material)
-- All walls now support per-facade texture overlays via BakedTileLookup.resolve(edge, face, voxel) → (source_id, atlas_coords)
+✅ **VOXEL-08** — Primary Baking System (STRUCTURALLY COMPLETE, B3 PENDING FINAL VALIDATION)
+
+**What works (BAKE-FIX-01 through BAKE-FIX-07):**
+- Master-strip facade baking: TextureResolver + FacadeSampler + run grouping (BAKE-FIX-01)
+- Dictionary lookup infrastructure + field naming fixes (BAKE-FIX-05)
+- H-flip junction mirroring + per-junction material overrides (BAKE-FIX-06, 3/3 tests PASS)
+- Dual-path rendering validation: both generic and baked compile identical layouts (BAKE-FIX-07, 9/9 tests PASS across 3 phases)
+- All walls support per-facade texture overlays via BakedTileLookup.resolve(edge, face, voxel) → (source_id, atlas_coords)
 - `VoxelRef.face_atlas_rect` populated at map load
 - BakeConfig.enabled gates between baked and generic rendering (default: false for safety)
 - Run-continuity: facade veins flow across contiguous wall edges; deterministic via FNV-1a(edge_key)
 - Junction continuity: corner columns render with mirrored neighboring silhouettes or material overrides
+
+**Pending for B3 closure:**
+- Pixel-by-pixel alpha channel comparison (BAKE-FIX-07 Phase 4): Both rendering paths must achieve 100% alpha identity
+- SubViewport rendering + image capture infrastructure
+- Status: Infrastructure validated and structurally sound; ready for Phase 4 pixel comparison
 
 ⏳ **VOXEL-09** — Secondary Baking System (DEFERRED — Phase 5)
 - Per-HighWall texture baking (single large texture spanning all constituent voxels)

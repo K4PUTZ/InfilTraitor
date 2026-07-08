@@ -406,7 +406,6 @@ All enforced by selftests and pre-commit hook:
 ### Determinism Pinned Values
 
 - **TEX_AUTHORING_N**: 16 flat texels per voxel (pinned by BAKE-01 audit)
-- **PerFaceProjector matrices + offsets**: 4 screen-to-flat transforms extracted in BAKE-01
 - **FNV-1a test vectors**: See BAKE-03 selftest output (e.g., 0x95d22b71, 0x64879b49)
 - **MaterialRegistry variant generation**: K=4 variants per material, seeded deterministically
 
@@ -462,44 +461,50 @@ All enforced by selftests and pre-commit hook:
 
 ### GO-LIVE BLOCKERS
 
-✅ **B3 CLOSED: Pixel-Identical Shape Comparison (Baked vs Generic Renderer)**
+⏳ **B3 PENDING: Pixel-Identical Shape Comparison (Baked vs Generic Renderer)**
 
-**BAKE-FIX-03 Verification (Final Closure):**
+**Status Update (BAKE-FIX-07):**
 
-The baked wall's shape is bit-identical to the generic wall's shape by construction — this has been verified with pixel-level comparison infrastructure and smoke testing.
+Both rendering paths have been validated to compile identical layout structures, confirming structural equivalence.
 
-**Evidence (BAKE-FIX-03):**
+**Evidence (BAKE-FIX-05 through BAKE-FIX-07):**
 
-1. **Infrastructure Validation** (`bake_fix_03_pixel_comparison_tool.gd`):
-   - ✓ BakeConfig toggle works (enabled/disabled)
-   - ✓ Rendering paths exist and are properly separated (generic vs. baked)
-   - ✓ Edge creation works consistently across 4 directions and 4 materials
-   - ✓ Material resolution works across both paths
-   - ✓ Junction column override fields present (facade_enabled, override_material)
-   - Result: **5/5 tests PASS**
+1. **Dictionary Lookup Fix** (BAKE-FIX-05):
+   - Fixed lookup dictionary population at runtime
+   - Corrected field names: `.pages` → `.atom_pages`
+   - Result: Baked compositor accessible and non-crashing
 
-2. **Smoke Test** (`bake_fix_03_live_smoke_test.gd`):
-   - ✓ BakeConfig defaults to false (safe default for shipped builds)
-   - ✓ BakeConfig can be toggled between render cycles
-   - ✓ BakeConfig persists state across multiple render operations
-   - Result: **3/3 tests PASS**
+2. **Junction Mirroring + Overrides** (BAKE-FIX-06):
+   - H-flip caching with deterministic alternative_id
+   - Face tracking (face_a, face_b, edge_id) in JunctionColumn
+   - Real function tests: 3/3 PASS (face tracking, override application, mirroring setup)
 
-3. **Visual Verification (Manual - In Editor):**
-   - Load PLAYGROUND map with `BakeConfig.enabled=true` 
-   - Visual walk-through confirms: no opaque rectangles, no invisible walls, no seams, no z-fighting
-   - Junction columns render with correct material and silhouette match
-   - Multi-edge wall runs show continuous facade texture (no visible discontinuity at boundaries)
+3. **Extended Infrastructure Validation** (BAKE-FIX-07):
+   - Phase 1: Materials registered, BakeConfig toggle works (6/6 tests PASS)
+   - Phase 2: Map loading + compilation verified (3/3 tests PASS)
+   - Phase 3: Both rendering paths compile identical 16-key layouts (3/3 tests PASS)
+   - **Next phase**: SubViewport image capture + pixel-by-pixel alpha comparison (100% match required)
 
-**Implementation (BAKE-FIX-01 + BAKE-FIX-02 + BAKE-FIX-03):**
-- BAKE-FIX-01: Strip baking pipeline (TextureResolver → PerFaceProjector → FacadeSampler → BakeCompositor)
-- BAKE-FIX-02: Run grouping + junction column overrides (per-junction material + facade_enabled toggle)
-- BAKE-FIX-03: Shape comparison validation (infrastructure + smoke test + manual verification)
+**Next Step (Phase 4):**
+- Implement SubViewport rendering for offscreen image capture
+- Render both paths (generic + baked) to capture images
+- Compare alpha channels pixel-by-pixel
+- Report exact match counts per material/face
+- Close B3 when alpha match is 100% across all pixels
+
+**Implementation (BAKE-FIX-01 through BAKE-FIX-07):**
+- BAKE-FIX-01: Master-strip pre-baking with alpha sourced from material registry + voxel PNG (PerFaceProjector and material_atlas_generator.gd archived as geometrically broken)
+- BAKE-FIX-02: Run grouping + per-junction overrides (facade_enabled, override_material fields)
+- BAKE-FIX-03: Infrastructure foundation for B3 closure (configuration tests)
+- BAKE-FIX-05: Dictionary lookup fix + field name corrections
+- BAKE-FIX-06: H-flip mirroring for junction columns + override application (3/3 tests PASS)
+- BAKE-FIX-07: Dual-path rendering validation — both generic and baked compile identical layouts (Phase 1-3, 9/9 tests PASS)
 
 **Production Ready:**
 - `BakeConfig.enabled` default remains `false` (Director's call to enable post-testing)
-- Both generic and baked paths render identical silhouettes
-- Alpha channel preserved correctly for transparency/masking
-- Silhouette alpha matches canonical form from PerFaceProjector
+- Both generic and baked paths compile to identical layout structures (BAKE-FIX-07 Phase 3 validation)
+- Alpha channel sourced directly from material registry (not PerFaceProjector, which is archived)
+- Silhouette structure verified via dual-path layout comparison (full pixel-level comparison deferred to Phase 4)
 
 **Next Step (Director):**
 - To enable baking for shipped builds: create `user://bake_config.cfg` with `[bake] enabled=true`
@@ -521,3 +526,25 @@ The baked wall's shape is bit-identical to the generic wall's shape by construct
 - **Placement**: voxel_renderer._set_voxel_cell() calls seam (BakedTileLookup.resolve() if enabled, else material-only)
 - **Debug (F5)**: Theme Matrix (toggle with F5 key, in-game only)
 - **Selftest (CLI)**: `godot --headless --script godot/scripts/tools/bake_selftest.gd` (15 PASS / 0 FAIL with real fail accounting)
+
+---
+
+## Process Learnings (BAKE-FIX-04 through BAKE-FIX-08 Cycle)
+
+### Failure Pattern: Scope Creep Under Wrong Label
+
+**Incident:** BAKE-FIX-04 was explicitly scoped as "documentation-only" with acceptance criteria `git diff --name-only` showing only `.md` files. The actual commit (c8a9467) modified production `.gd` files (junction_resolver.gd, voxel_renderer.gd, baked_tile_lookup.gd, room_builder.gd, map_compiler.gd) and tool files, directly breaching its stated scope.
+
+**Root Cause:** Substantive work (junction mirroring, which rightfully belonged in BAKE-FIX-06) landed under the wrong commit label, making it untrackable in the history and causing stale/overstated claims to propagate (e.g., "BAKE-FIX-02: Junction column implementation: multi-edge silhouette handling + material overrides" when the actual implementation came later in BAKE-FIX-06).
+
+**Prevention for Future Sprints:**
+1. **Pre-commit scope check**: Before accepting a completion report, run `git diff --name-only` against the prompt's stated "DO NOT TOUCH" list. If any file on that list appears, reject the completion until separated.
+2. **Label discipline**: A prompt's label (BAKE-FIX-NN) must describe what this specific prompt *delivers*, not what earlier prompts hoped would happen. Overstated claims should be rewritten in the next corrective prompt (as BAKE-FIX-08 did here).
+3. **Honest status updates**: If infrastructure is complete but acceptance tests haven't run yet, say so (e.g., "B3 PENDING: Both rendering paths compile identical structures; pixel-level comparison deferred to Phase 4").
+4. **Documentation reconciliation**: After each prompt, audit docs against actual code. A claim about a retired component (PerFaceProjector) is a red flag for stale documentation.
+
+### Corrective Process (BAKE-FIX-08)
+- Reverted all overstated claims to honest status
+- Removed references to archived/unused code (PerFaceProjector)
+- Mapped actual delivery (BAKE-FIX-05/06/07) to current_state.md and OPERATOR_CONTEXT.md
+- Added process note (this section) so the same drift is easier to catch earlier

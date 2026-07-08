@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.46 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** eefa51e "[FIX] Add cross-platform audio notification to push.sh"
+**Version:** 0.4.47 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 801de80 "Alpha End Beep"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**

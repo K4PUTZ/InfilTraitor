@@ -213,21 +213,21 @@ func _test_junction_override_application() -> bool:
 	return success
 
 
-## TEST 3: Real Junction Mirroring Rendering (BAKE-FIX-14: Task 2)
+## TEST 3: Real Junction Neighbor Borrowing and Rendering (BAKE-FIX-NOFLIP: Task 3)
 ## Calls the real public VoxelRenderer.render(registry, [column]) entry point (the
 ## same call room_builder.gd makes — NOT the private _render_junction_column(), which
 ## a prior revision of this test called directly), then reads back the real
-## TileMapLayer cell data (source_id / atlas_coords / alternative_id / flip_h) that
+## TileMapLayer cell data (source_id / atlas_coords / alternative_id) that
 ## production code actually wrote.
 ##
 ## Scope, precisely: this exercises render()-time consumption of facade_enabled /
-## override_material and the real _find_neighbor_wall_voxel() + H-flip mirroring
-## logic. It does NOT exercise override *resolution* from a MapSpec's
-## junction_overrides (Test 2 covers that real pipeline). Because BakeConfig.enabled
-## is false in this run (as it is in production by default), the mirroring path taken
-## here is the material-only H-flip fallback (voxel_renderer.gd's "Fallback or if no
-## baking" branch) — not the _baked_lookup.resolve() branch, which is covered
-## separately by bake_fix_09_e2e_test.gd.
+## override_material and the real _find_neighbor_wall_voxel() neighbor-borrowing
+## logic (columns with a real neighbor show that neighbor's exact atom/material
+## variant without H-flip mirroring). Because BakeConfig.enabled is false in this run
+## (as it is in production by default), the path taken here is the material-only
+## fallback (voxel_renderer.gd's "Fallback or if no baking" branch) — not the
+## _baked_lookup.resolve() branch, which is covered separately by
+## bake_fix_09_e2e_test.gd.
 func _test_junction_mirroring_rendering() -> bool:
 	print("[TEST 3] Real Junction Mirroring Rendering (Calling renderer.render())\n")
 
@@ -350,25 +350,19 @@ func _test_junction_mirroring_rendering() -> bool:
 
 		match case_idx:
 			0, 1:
-				# facade_enabled=true: should have used an H-flipped alternative
-				# (alt_id != 0 per _get_or_create_h_flipped_tile's "+1 to avoid 0")
-				if alt_id != 0:
-					var atlas_source = renderer.get_tileset().get_source(source_id)
-					var tile_data: TileData = atlas_source.get_tile_data(atlas_coords, alt_id) if atlas_source else null
-					if tile_data and tile_data.flip_h:
-						print("    ✓ Real mirroring confirmed: alternative_id=%d, flip_h=true\n" % alt_id)
+				# facade_enabled=true: neighbor borrowing without H-flip; alternative_id must be 0 (canonical)
+				if alt_id == 0:
+					if not neighbor_probe.is_empty():
+						print("    ✓ Neighbor borrowing confirmed: source_id/atlas_coords from neighbor, alternative_id=0 (unflipped)\n")
 					else:
-						print("    ✗ FAIL: alternative tile exists but flip_h is not true\n")
-						success = false
-				elif neighbor_probe.is_empty():
-					print("    ~ Flat fallback as expected (no neighbor voxel available in this map)\n")
+						print("    ✓ Flat fallback as expected: no neighbor voxel available in this map (alternative_id=0)\n")
 				else:
-					print("    ✗ FAIL: expected a mirrored (flipped) alternative tile, got alternative_id=0\n")
+					print("    ✗ FAIL: expected canonical tile (alternative_id=0), got %d\n" % alt_id)
 					success = false
 			2:
-				# facade_enabled=false: flat path, no baked/flip lookup — alt_id must be 0
+				# facade_enabled=false: flat path, no neighbor borrowing — alt_id must be 0
 				if alt_id == 0:
-					print("    ✓ Flat path confirmed: no mirroring applied (alternative_id=0)\n")
+					print("    ✓ Flat path confirmed: no neighbor borrowing (alternative_id=0)\n")
 				else:
 					print("    ✗ FAIL: expected flat rendering (alternative_id=0), got %d\n" % alt_id)
 					success = false

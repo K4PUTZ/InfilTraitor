@@ -34,10 +34,6 @@ var debug_nudge: Vector2 = Vector2.ZERO
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
 
-## BAKE-FIX-06: Cache for H-flipped tile alternatives (per source)
-## Dictionary[int(source_id), Dictionary[Vector2i(atlas_coords), int(alt_id)]]
-var _h_flip_alt_cache: Dictionary = {}
-
 
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
@@ -202,16 +198,18 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 						if result and result.source_id_int >= 0:
 							source_id = result.source_id_int
 							atlas_coords = result.atlas_coords
-							# Get H-flipped alternative
-							alternative_id = _get_or_create_h_flipped_tile(source_id, atlas_coords)
+							# TEST (no-flip hypothesis): also skip flip here — alternative_id stays 0
 				
-				# Fallback or if no baking: use material-only with H-flip if available
+				# TEST (no-flip hypothesis): fallback / no baked atom to mirror — use the
+				# canonical, unflipped tile (alternative_id stays 0). Flipping a generic
+				# material tile that isn't an actual mirrored neighbor atom serves no
+				# purpose and, per pixel-symmetry probe, visibly shifts the silhouette
+				# because the source art (voxel_<material>.png) isn't mirror-symmetric.
 				if source_id < 0:
 					source_id = MATERIALS.find(actual_material)
 					if source_id == -1:
 						source_id = 0
 					atlas_coords = Vector2i.ZERO
-					alternative_id = _get_or_create_h_flipped_tile(source_id, atlas_coords)
 				
 				# Set the cell with H-flipped alternative
 				var layer: TileMapLayer = _voxel_layers[level]
@@ -259,43 +257,6 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
 
 
-## BAKE-FIX-06: Get or create an H-flipped alternative tile for given atlas coords
-## Returns the alternative_id (0-based) to use with set_cell()
-## Caches per source to avoid creating infinite alternatives
-func _get_or_create_h_flipped_tile(source_id: int, atlas_coords: Vector2i) -> int:
-	if not _tileset or source_id < 0 or source_id >= _tileset.get_source_count():
-		return 0  # Fallback: no flip
-	
-	# Initialize cache for this source if needed
-	if not _h_flip_alt_cache.has(source_id):
-		_h_flip_alt_cache[source_id] = {}
-	
-	var cache = _h_flip_alt_cache[source_id]
-	
-	# Return cached alt_id if exists
-	if cache.has(atlas_coords):
-		return cache[atlas_coords]
-	
-	# Create new alternative: deterministic alt_id = hash(atlas_coords) % 1000
-	# (Use modulo to keep it reasonable; Godot allows large alternative IDs)
-	var alt_id = (hash(str(atlas_coords)) % 1000) + 1  # +1 to avoid 0 (canonical)
-	
-	var atlas_source = _tileset.get_source(source_id)
-	if not atlas_source or not atlas_source is TileSetAtlasSource:
-		return 0
-	
-	# Create alternative if it doesn't exist
-	if not atlas_source.has_alternative_tile(atlas_coords, alt_id):
-		atlas_source.create_alternative_tile(atlas_coords, alt_id)
-	
-	# Set flip_h flag
-	var tile_data = atlas_source.get_tile_data(atlas_coords, alt_id)
-	if tile_data:
-		tile_data.flip_h = true
-	
-	# Cache and return
-	cache[atlas_coords] = alt_id
-	return alt_id
 
 
 ## BAKE-FIX-06: Find the neighbor wall voxel adjacent to a junction column

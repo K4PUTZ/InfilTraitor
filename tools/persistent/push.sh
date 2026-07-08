@@ -178,3 +178,27 @@ echo "   Version: $NEW_VERSION"
 echo "   Branch: $CURRENT_BRANCH"
 echo "================================"
 echo ""
+
+# ── STAGE 8: Notification (audio beep) ───────────────────────────────────────
+# Notify operator that prompt is done (cross-platform audio)
+OS=$(uname)
+case "$OS" in
+    Darwin)
+        # macOS: use afplay
+        afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
+        sleep 0.2
+        afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
+        ;;
+    Linux)
+        # Linux: try paplay (PulseAudio), fall back to beep
+        paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || beep 2>/dev/null || echo -e '\a' || true
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        # Windows: PowerShell beep
+        powershell -c "[console]::beep()" 2>/dev/null || echo -e '\a' || true
+        ;;
+    *)
+        # Fallback: ASCII bell (works everywhere)
+        echo -e '\a' || true
+        ;;
+esac

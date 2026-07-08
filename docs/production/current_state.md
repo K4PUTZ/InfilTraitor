@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.43 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** c97dbde "BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API"
+**Version:** 0.4.43 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 83df52c "[VERSION] Bump to 0.4.43"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 83df52c [VERSION] Bump to 0.4.43
 - c97dbde BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API
 - 774910f [VERSION] Bump to 0.4.39
 - a7e6f98 ALPHA BAKE FIX 0.4.38 - 2026-07-08
 - f27a829 [BAKE-FIX-11] B3 CLOSED via contract-level verification (6/6 PASS)
-- adb1f33 [BAKE-FIX-10] Junction override authoring & real testing: end-to-end pipeline verification + neighbor-lookup validation (3/3 PASS)
 <!-- AUTO:END version_history -->
 
 ---
@@ -103,7 +103,7 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 
 ### What's built (VOXEL-08..09) and what's pending (VOXEL-10..11)
 
-✅ **VOXEL-08** — Primary Baking System (STRUCTURALLY COMPLETE, B3 PENDING FINAL VALIDATION)
+✅ **VOXEL-08** — Primary Baking System (COMPLETE — B3 CLOSED 2026-07-08, BAKE-FIX-14)
 
 **What works (BAKE-FIX-01 through BAKE-FIX-07):**
 - Master-strip facade baking: TextureResolver + FacadeSampler + run grouping (BAKE-FIX-01)
@@ -116,10 +116,12 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - Run-continuity: facade veins flow across contiguous wall edges; deterministic via FNV-1a(edge_key)
 - Junction continuity: corner columns render with mirrored neighboring silhouettes or material overrides
 
-**Pending for B3 closure:**
-- Pixel-by-pixel alpha channel comparison (BAKE-FIX-07 Phase 4): Both rendering paths must achieve 100% alpha identity
-- SubViewport rendering + image capture infrastructure
-- Status: Infrastructure validated and structurally sound; ready for Phase 4 pixel comparison
+**B3 closure (2026-07-08, BAKE-FIX-14):**
+- Pixel-by-pixel alpha comparison against the independently `load()`-ed canonical voxel texture: 41472 pixels across 4 materials, **0 alpha mismatches**
+- No SubViewport required — `Texture2D.get_image()` decodes imported resources in `--headless` mode
+- Junction mirroring verified through the public `VoxelRenderer.render()` API (3/3 PASS)
+- Full closure record, evidence, and prior false-closure history: `docs/technical/BAKE_SYSTEM_REFERENCE.md`
+- `BakeConfig.enabled` remains `false` by default; enabling in shipped builds is a Director config call (`user://bake_config.cfg`), no code change
 
 ⏳ **VOXEL-09** — Secondary Baking System (DEFERRED — Phase 5)
 - Per-HighWall texture baking (single large texture spanning all constituent voxels)
@@ -467,6 +469,6 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 ---
 
-**Last Updated:** 2026-07-03
+**Last Updated:** 2026-07-08
 **Maintained By:** GitHub Copilot / Project Management
 **Status:** ✅ ALPHA ENHANCE PLAN COMPLETE — 7 controllers extracted, room.gd refactored to 2,078 lines, all systems operational. Ready for perspective system implementation and further modularization.

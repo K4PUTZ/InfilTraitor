@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.38 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** d511aa0 "[HOTFIX] Fix bake_live_test.gd compilation errors"
+**Version:** 0.4.39 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** a7e6f98 "ALPHA BAKE FIX 0.4.38 - 2026-07-08"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- a7e6f98 ALPHA BAKE FIX 0.4.38 - 2026-07-08
 - f27a829 [BAKE-FIX-11] B3 CLOSED via contract-level verification (6/6 PASS)
 - adb1f33 [BAKE-FIX-10] Junction override authoring & real testing: end-to-end pipeline verification + neighbor-lookup validation (3/3 PASS)
 - 6b7f8b9 [BAKE-FIX-09] Reader/Writer key matching: fix lookup by aligning reader scheme with writer's deterministic logic (3/3 PASS)
 - 30d13ed [BAKE-FIX-08] Documentation correction: revert overstated claims, clarify actual delivery (BAKE-FIX-05/06/07), add process learnings
-- da8b6d4 [BAKE-FIX-06] Implement junction mirroring, override authoring, and real testing
 <!-- AUTO:END version_history -->
 
 ---

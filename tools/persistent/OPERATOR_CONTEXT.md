@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.38 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** d511aa0 "[HOTFIX] Fix bake_live_test.gd compilation errors"
+**Version:** 0.4.39 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** a7e6f98 "ALPHA BAKE FIX 0.4.38 - 2026-07-08"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

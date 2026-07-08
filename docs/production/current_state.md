@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.46 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 428d31b "[FIX] GDScript compile gate: autoload-aware project_lint wired into pre-commit (Gate 3) and push.sh (STAGE 1.4); PROBLEMS-tab rule replaced by CLI evidence in both contexts"
+**Version:** 0.4.46 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** eefa51e "[FIX] Add cross-platform audio notification to push.sh"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- e59df6d [VERSION] Bump to 0.4.46
 - eeaae99 [BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA
 - c739d20 [VERSION] Bump to 0.4.44
 - 83df52c [VERSION] Bump to 0.4.43
 - c97dbde BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API
-- 774910f [VERSION] Bump to 0.4.39
 <!-- AUTO:END version_history -->
 
 ---

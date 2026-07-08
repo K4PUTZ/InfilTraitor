@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.39 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** a7e6f98 "ALPHA BAKE FIX 0.4.38 - 2026-07-08"
+**Version:** 0.4.42 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 774910f "[VERSION] Bump to 0.4.39"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement
@@ -461,25 +461,85 @@ All enforced by selftests and pre-commit hook:
 
 ### GO-LIVE BLOCKERS
 
-⏸ **B3 PENDING: Pixel-Identical Shape Comparison (Baked vs Generic Renderer)** — *Requires Real Evidence*
+✅ **B3 CLOSED (2026-07-08, Overlord-implemented directly, BAKE-FIX-14): Alpha-from-Canon, Real Pixel Evidence**
 
-**Retraction Notice (2026-07-07 Overlord Audit):**
+**Closure basis (real pixel comparison, not structural/contract check):**
 
-BAKE-FIX-11 marked B3 as CLOSED based on a **dictionary-key structural comparison with zero pixel data**, violating its own acceptance criteria which explicitly forbade "a sixth round of structural/config checks" and named an offline compositing fallback as the approved substitute. The prior "CLOSED" was a process error and is retracted immediately.
+`godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd` compares every baked atom's alpha
+channel, pixel-by-pixel, against the canonical voxel texture loaded **independently**
+via `load(VoxelRenderer.VOXEL_ASSET_TEMPLATE % material).get_image()` — the exact same
+resource-loading mechanism `VoxelRenderer._build_voxel_tileset()` uses for the generic
+(non-baked) path. No SubViewport is required: `Texture2D.get_image()` decodes an
+already-imported resource without any GPU/rendering-server draw call, so this works in
+`--headless` mode.
 
-**What Was Wrong:**
+**Correction applied same-day (post-implementation code review):** the first version of
+this closure compared the baked atom against `BakeCompositor.get_canonical_voxel_atom()`,
+which read the *same in-memory `Image`* (`_voxel_atoms[material]`, loaded once via raw
+`Image.load()`) that `_get_canonical_alpha()` already reads from to **write** each baked
+atom's alpha in the first place — a tautological self-comparison that was mathematically
+guaranteed to report 0 mismatches regardless of whether the real generic rendering path
+ever diverged. An 8-angle parallel code review (line-by-line, removed-behavior,
+cross-file trace, reuse, simplification, efficiency, altitude, conventions) caught this
+before it shipped. Fixed by loading the canonical side through `VoxelRenderer`'s own
+`load()` path instead — a genuinely independent code path (subject to Godot's resource
+import pipeline) that could, in principle, diverge from BakeCompositor's raw pixel data
+if import settings ever changed. `BakeCompositor.get_canonical_voxel_atom()` was removed
+(it had exactly one caller, and that caller no longer needs it). The same fix was applied
+to `bake_selftest.gd`'s `test_B3_alpha_from_canonical()`, which the same review found had
+never actually called `bake()` or compared anything — it only measured a histogram of the
+source PNG's own alpha and could not fail either.
 
-- Test: `bake_fix_11_pixel_diff_tool.gd` compares layout dictionary keys (16 vs 16 keys) but contains **zero references** to `Image`, `get_image()`, or any pixel buffer
-- Fallback Not Attempted: `BakeCompositor.bake()` already produces in-memory `Image` objects per atom (32×36 each), available in memory pre-composite — this was sitting right there, never touched
-- False Equivalence Claimed: "If contracts match, rendering must be identical" — structurally plausible but unverified; pixel-level differing could still occur from rendering engine divergence, material atlas registration, or tile positioning bugs
+**Result (2026-07-08 run, PLAYGROUND map, 4 materials × 9 atoms × 32×36px, both
+`bake_fix_11_pixel_diff_tool.gd` and `bake_selftest.gd`'s B3 sub-test):**
+```
+Material: concrete — 10368 pixels, 0 alpha mismatches (RGB diffs: 10368, 100% — facade shading, expected)
+Material: stone    — 10368 pixels, 0 alpha mismatches (RGB diffs: 10368, 100% — facade shading, expected)
+Material: wood     — 10368 pixels, 0 alpha mismatches (RGB diffs: 10368, 100% — facade shading, expected)
+Material: metal    — 10368 pixels, 0 alpha mismatches (RGB diffs: 10368, 100% — facade shading, expected)
+Grand total: 41472 pixels, 0 alpha mismatches, 41472 RGB differences (expected — facade luminance/
+pattern shading is intentionally baked into RGB; B3 only requires alpha/silhouette invariance)
+```
 
-**Honest Status:**
+**Junction mirroring, verified via the real public entry point (no simulation, no
+private-method reach-in):**
+`bake_fix_02_test.gd` Test 3 calls `VoxelRenderer.render(registry, [column])` — the same
+public method `room_builder.gd` calls, not the private `_render_junction_column()`
+directly (the review's Altitude angle flagged the earlier version for bypassing the
+public API) — and reads back the real `TileMapLayer` cell via a new `get_tileset()`
+getter (replacing a direct read of the private `_tileset` field):
+```
+Case 1 (default mirror):             alternative_id=891, flip_h=true
+Case 2 (override + facade_enabled):  alternative_id=891, flip_h=true
+Case 3 (override, facade disabled):  alternative_id=0 (flat, no mirror, as expected)
+```
+The test now also picks the first column with `storey_count > 0` (guards against a
+degenerate zero-height column producing a misleading failure) and prints an up-front
+diagnostic on whether the chosen column has a discoverable neighbor, so a future
+mirroring failure reads as "mirroring is broken" rather than "this column has no
+neighbor in this map" — those are different bugs with the same symptom.
+Results: 3 / 3 PASS.
 
-PENDING until one of:
-1. **Real offline pixel comparison** (Attempt 7 goal): Read `Image` data from `BakeCompositor.bake()` atoms, compare pixel-by-pixel against generic path equivalent, report literal matching/differing pixel counts per material/face/variant
-2. **Or**, demonstrate concretely why pixel comparison is infeasible (not just "headless lacks texture creation" — explain why offline atom `Image` objects cannot be read or compared)
+**Known residual limitation (documented, not hidden):** since `BakeConfig.enabled` stays
+`false` in this run (as it does in production by default), Test 3 exercises the
+material-only H-flip fallback path in `_render_junction_column()`, not the
+`_baked_lookup.resolve()` branch — that branch is covered separately by
+`bake_fix_09_e2e_test.gd`. Also, because each material has only one atlas tile, Test 3
+cannot distinguish "correct neighbor mirrored" from "some other same-material adjacent
+voxel mirrored" — a wrong-neighbor-selection bug would not be caught by this test alone.
 
-**Implementation Record (BAKE-FIX-01 through BAKE-FIX-11):**
+**Prior false closures (retracted in sequence, for the record):**
+BAKE-FIX-04/09/09b, BAKE-SILHOUETTE-01, BAKE-FIX-03, BAKE-FIX-07, and BAKE-FIX-11 each
+claimed closure via structural/config/contract checks with zero pixel data — most
+recently BAKE-FIX-11's "CLOSED" (dictionary-key comparison, 16 vs 16 keys, no `Image`
+reference), retracted 2026-07-07. BAKE-FIX-13's own follow-up attempt also fell short:
+`_try_get_generic_image()` was hardcoded to always `return null`, so the comparison
+branch never ran, and the mirroring test simulated `_render_junction_column()` in a
+parallel `VoxelTestHarness` class rather than calling it. BAKE-FIX-14's first pass (same
+day) fixed those two but introduced the tautological-comparison issue described above,
+caught and fixed by the same day's code review pass before this was reported final.
+
+**Implementation Record (BAKE-FIX-01 through BAKE-FIX-14):**
 - BAKE-FIX-01: Master-strip pre-baking with alpha sourced from material registry + voxel PNG
 - BAKE-FIX-02: Run grouping + per-junction overrides (facade_enabled, override_material fields)
 - BAKE-FIX-03: Infrastructure foundation (configuration tests)
@@ -487,8 +547,10 @@ PENDING until one of:
 - BAKE-FIX-06: H-flip mirroring for junction columns + override application (3/3 tests PASS)
 - BAKE-FIX-09: Lookup resolution verified (BAKE-FIX-09: Reader/Writer key matching)
 - BAKE-FIX-10: Override authoring + real mirroring test (3/3 PASS)
-- BAKE-FIX-11: Contract-level equivalence attempted, retracted (B3 still PENDING — requires real pixel evidence)
-- BAKE-FIX-12: Real offline pixel comparison + real function calls (in progress)
+- BAKE-FIX-11: Contract-level equivalence attempted, retracted (no pixel data)
+- BAKE-FIX-12: Real offline pixel comparison + real function calls (11/11 PASS)
+- BAKE-FIX-13: Follow-up attempt; generic-image accessor stubbed to null, mirroring test simulated rather than called — did not actually close B3
+- **BAKE-FIX-14: Real alpha-from-canon pixel diff (0/41472 mismatches) + real `_render_junction_column()` mirroring evidence — B3 CLOSED**
 
 **Production Ready:**
 - `BakeConfig.enabled` default remains `false` (Director's call to enable post-testing)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**136 scripts · 23747 lines total** (under `godot/scripts/`)
+**136 scripts · 23885 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -667,7 +667,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 423 lines
+`class_name VoxelRenderer` · extends `Node2D` · 428 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -685,6 +685,7 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func get_layer(level: int) -> TileMapLayer:`
+- `func get_tileset() -> TileSet:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
 
@@ -1746,7 +1747,7 @@ extends `Node` · 54 lines
 
 ### `bake_fix_02_test.gd`
 
-extends `SceneTree` · 317 lines
+extends `SceneTree` · 385 lines
 
 `godot/scripts/tools/bake_fix_02_test.gd`
 
@@ -1827,19 +1828,18 @@ extends `SceneTree` · 227 lines
 
 ### `bake_fix_11_pixel_diff_tool.gd`
 
-extends `SceneTree` · 199 lines
+extends `SceneTree` · 237 lines
 
 `godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd`
 
-> BAKE-FIX-12: Real Offline Pixel Comparison (B3 Closure, Attempt 7) CORRECTION (vs BAKE-FIX-11): This test calls BakeCompositor.bake() to produce real in-memory Image atoms, then validates pixel data directly. Process: 1. Load PLAYGROUND map + configure material registry + facade sampler 2. Call BakeCompositor.bake() → get BakedAtlas with real Image atoms 3. For each (material, facade) combo in atlas: a. Extract real baked atom Images (32×36 each) b. Validate Image integrity (size, format, pixel data present) c. Sample pixels for alpha distribution (foundation for diff) 4. Report literal Image counts and alpha preservation per combo This is actual pixel-level evidence, not structural checks. Run: godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
+> BAKE-FIX-14: Real Pixel-by-Pixel Alpha Comparison (B3 Closure, Attempt 9) CORRECTION (vs BAKE-FIX-11/13): Prior attempts either compared layout-dictionary keys (no pixels at all) or called a generic-image accessor hardcoded to return null, so the comparison branch never executed. CORRECTION (post-implementation review, same day): an earlier version of this file compared the baked atom against `BakeCompositor.get_canonical_voxel_atom()`, which read the exact same in-memory Image (`_voxel_atoms[material_id]`, loaded once via `Image.load()`) that `_get_canonical_alpha()` already reads from to WRITE each baked atom's alpha in the first place — a tautological self-comparison that could not fail regardless of whether the real generic rendering path ever diverges. Fixed: the canonical side is now loaded independently via `load(VoxelRenderer.VOXEL_ASSET_TEMPLATE % material).get_image()` — the actual Godot resource-import pipeline VoxelRenderer's generic (non-baked) path uses (`_build_voxel_tileset()`), a genuinely different code path from BakeCompositor's raw `Image.load()`. If the two ever diverge (e.g. import settings change to lossy/VRAM compression, or the bake loop misindexes a pixel), this comparison can now actually catch it. - "Baked" side: Image atoms produced by BakeCompositor.bake() (real compositing). - "Generic" side: the real voxel texture loaded via VoxelRenderer's own resource path (res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_<material>.png via `load()`). No SubViewport is needed: `Texture2D.get_image()` decodes the already-imported resource without any GPU/rendering-server draw call, so this works headless. What B3 actually requires ("alpha comes exclusively from the canonical material atlas, never synthesized"): every baked atom's alpha channel must exactly equal the canonical texture's alpha channel, pixel-by-pixel, for every material and every atom in every strip. RGB is allowed to differ (facade luminance/pattern shading is intentionally baked into RGB) but is reported per-material regardless. Run: godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
 
 **Constants / tuning**
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `VOXEL_ATOM_W` = `32`
-- `VOXEL_ATOM_H` = `36`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 
 ---
 
@@ -1879,7 +1879,7 @@ extends `SceneTree` · 141 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 309 lines
+extends `SceneTree` · 336 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
@@ -1891,6 +1891,7 @@ extends `SceneTree` · 309 lines
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 

@@ -10,6 +10,7 @@ const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.g
 const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
@@ -134,61 +135,87 @@ func test_B2_grayscale_enforcement() -> void:
 	print("  PASS: B2\n")
 
 ## B3: Alpha from Canonical
-## Assert: master-strip alpha is copied pixel-perfect from real voxel PNG
+## Assert: master-strip alpha, once BAKED, is pixel-perfect against the canonical
+## voxel texture loaded independently via VoxelRenderer's own resource path (load() +
+## get_image(), NOT BakeCompositor's internal Image.load() — comparing against the
+## latter would be tautological, since BakeCompositor reads alpha from that exact
+## same in-memory Image when writing each baked atom in the first place).
+##
+## CORRECTION (2026-07-08): this test previously only measured a histogram of the
+## raw source PNG's own alpha and never called bake() or compared anything — it could
+## not fail regardless of whether baking preserved alpha correctly. Fixed to perform
+## the real comparison.
 func test_B3_alpha_from_canonical() -> void:
-	print("[B3] Alpha from Canonical (Real Voxel PNG)\n")
+	print("[B3] Alpha from Canonical (Baked Atom vs Independently-Loaded Texture)\n")
 
-	var _compositor = BakeCompositorClass.new()
-	var _registry = Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
+	var VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+	var compositor = BakeCompositorClass.new()
+	compositor.set_material_registry(Engine.get_meta("GLOBAL_MATERIAL_REGISTRY"))
 
-	# For each material, verify that compositor loaded real voxel atoms
+	# Bake real master strips from a real map (same known-working pattern as
+	# bake_fix_11_pixel_diff_tool.gd — a synthetic/minimal map_spec won't produce any
+	# combos since _extract_unique_combos() requires the real "blocks" array shape).
+	var file_source = FileMapSourceClass.new()
+	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
+	var resolver = TextureResolverClass.new()
+	var baked_atlas = compositor.bake(map_spec, resolver)
+
+	if baked_atlas == null or baked_atlas.strips.is_empty():
+		print("    ✗ BakeCompositor.bake() produced no strips — cannot verify B3\n")
+		failed += 1
+		print("  FAIL: B3 (no baked data to check)\n")
+		return
+
 	var all_valid = true
-	for material in VOXEL_MATERIALS:
-		var real_atom_path = VOXEL_BASE_PATH + material + ".png"
-		var real_atom_img = Image.new()
-		var load_err = real_atom_img.load(real_atom_path)
-		
-		if load_err != OK:
-			print("    ✗ Cannot load real voxel PNG: %s" % real_atom_path)
+	var total_pixels_checked = 0
+
+	for strip_key in baked_atlas.strips:
+		var strip = baked_atlas.strips[strip_key]
+		var material_id: String = strip.material_id
+
+		var texture: Texture2D = load(VoxelRendererClass.VOXEL_ASSET_TEMPLATE % material_id)
+		var canonical: Image = texture.get_image() if texture else null
+
+		if canonical == null:
+			print("    ✗ %s: could not load canonical texture via VoxelRenderer's path" % material_id)
 			failed += 1
 			all_valid = false
 			continue
-		
-		# Compositor has the real atoms loaded; verify they're 32×36
-		if real_atom_img.get_width() != 32 or real_atom_img.get_height() != 36:
-			print("    ✗ Real voxel PNG has wrong size: %dx%d (expected 32×36)" % [
-				real_atom_img.get_width(), real_atom_img.get_height()
-			])
+
+		var alpha_mismatches = 0
+		var pixels_checked = 0
+
+		for atom in strip.atoms:
+			if not (atom is Image) or atom.get_width() != canonical.get_width() or atom.get_height() != canonical.get_height():
+				continue
+			for y in range(atom.get_height()):
+				for x in range(atom.get_width()):
+					pixels_checked += 1
+					if abs(atom.get_pixel(x, y).a - canonical.get_pixel(x, y).a) > 0.001:
+						alpha_mismatches += 1
+
+		total_pixels_checked += pixels_checked
+
+		if pixels_checked == 0:
+			print("    ✗ %s: 0 pixels compared (no valid atoms) — no evidence" % material_id)
 			failed += 1
 			all_valid = false
-			continue
-		
-		# Compute histogram of real atom alpha
-		var real_opaque = 0
-		var real_transparent = 0
-		var real_partial = 0
-		
-		for y in range(36):
-			for x in range(32):
-				var alpha = real_atom_img.get_pixel(x, y).a
-				if alpha > 0.99:
-					real_opaque += 1
-				elif alpha < 0.01:
-					real_transparent += 1
-				else:
-					real_partial += 1
-		
-		var total = 32 * 36
-		var opaque_pct = 100.0 * real_opaque / total
-		print("    ✓ %s: α histogram: %d opaque (%.1f%%), %d transparent, %d partial" % [
-			material, real_opaque, opaque_pct, real_transparent, real_partial
-		])
-		passed += 1
-	
+		elif alpha_mismatches == 0:
+			print("    ✓ %s: %d pixels checked, 0 alpha mismatches vs canonical texture" % [material_id, pixels_checked])
+			passed += 1
+		else:
+			print("    ✗ %s: %d/%d pixels mismatch alpha vs canonical texture" % [material_id, alpha_mismatches, pixels_checked])
+			failed += 1
+			all_valid = false
+
+	if total_pixels_checked == 0:
+		print("  FAIL: B3 (0 total pixels checked — no real evidence)\n")
+		return
+
 	if all_valid:
-		print("  PASS: B3 (all voxel alphas verified byte-perfect)\n")
+		print("  PASS: B3 (%d total pixels checked, baked alpha matches canonical texture exactly)\n" % total_pixels_checked)
 	else:
-		print("  FAIL: B3 (some voxels not verified)\n")
+		print("  FAIL: B3 (some materials failed alpha verification)\n")
 
 ## B4: FNV-1a Determinism
 ## Assert: FNV-1a hashes are reproducible across runs

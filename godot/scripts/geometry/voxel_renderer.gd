@@ -53,6 +53,11 @@ func get_layer(level: int) -> TileMapLayer:
 	return _voxel_layers[level]
 
 
+## Getter for the runtime TileSet (for diagnostics/tests — e.g. reading TileData.flip_h)
+func get_tileset() -> TileSet:
+	return _tileset
+
+
 ## DEBUG-02: Apply real-time positional offset to all voxel layers.
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:

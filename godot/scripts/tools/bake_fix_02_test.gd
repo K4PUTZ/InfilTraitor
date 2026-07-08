@@ -213,105 +213,173 @@ func _test_junction_override_application() -> bool:
 	return success
 
 
-## TEST 3: Junction mirroring rendering with real neighbor lookup (BAKE-FIX-10: Task 3)
-## Tests the mirroring logic by:
-## 1. Creating a run of 3+ collinear edges ending in a V-junction
-## 2. Resolving the junction columns
-## 3. Invoking the neighbor-lookup logic to verify neighbor-voxel discovery
-## 4. Testing the three cases: default mirror, override+facade_enabled=true, override+facade_enabled=false
+## TEST 3: Real Junction Mirroring Rendering (BAKE-FIX-14: Task 2)
+## Calls the real public VoxelRenderer.render(registry, [column]) entry point (the
+## same call room_builder.gd makes — NOT the private _render_junction_column(), which
+## a prior revision of this test called directly), then reads back the real
+## TileMapLayer cell data (source_id / atlas_coords / alternative_id / flip_h) that
+## production code actually wrote.
+##
+## Scope, precisely: this exercises render()-time consumption of facade_enabled /
+## override_material and the real _find_neighbor_wall_voxel() + H-flip mirroring
+## logic. It does NOT exercise override *resolution* from a MapSpec's
+## junction_overrides (Test 2 covers that real pipeline). Because BakeConfig.enabled
+## is false in this run (as it is in production by default), the mirroring path taken
+## here is the material-only H-flip fallback (voxel_renderer.gd's "Fallback or if no
+## baking" branch) — not the _baked_lookup.resolve() branch, which is covered
+## separately by bake_fix_09_e2e_test.gd.
 func _test_junction_mirroring_rendering() -> bool:
-	print("[TEST 3] Real Junction Columns with Override Cases\n")
-	
+	print("[TEST 3] Real Junction Mirroring Rendering (Calling renderer.render())\n")
+
 	# Load a real map and compile it to get real junction columns
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
-	
+
 	if map_spec == null or map_spec.is_empty():
 		print("✗ FAIL: Could not load PLAYGROUND map\n")
 		return false
-	
+
 	# Compile the map to extract junction columns
 	print("Step 1: Compiling real map to extract junction columns...")
 	var layout = MapCompilerClass.compile(map_spec)
-	
+
 	if layout.is_empty():
 		print("✗ FAIL: MapCompiler.compile() returned empty layout\n")
 		return false
-	
+
 	# Extract edges
 	var EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
 	var extraction = EdgeExtractorClass.extract(layout)
 	var edges = extraction.get("edges", [])
-	
+
 	if edges.is_empty():
 		print("✗ FAIL: EdgeExtractor returned no edges\n")
 		return false
-	
+
 	print("  ✓ Extracted %d edges from layout\n" % edges.size())
-	
+
 	# Generate slices and resolve junctions
 	print("Step 2: Resolving real junctions from extracted edges...")
 	var registry = EdgeRegistryClass.new()
 	SliceGeneratorClass.generate(edges, registry)
 	var junction_columns = JunctionResolverClass.resolve(registry)
-	
+
 	if junction_columns.is_empty():
 		print("✗ FAIL: JunctionResolver created no columns\n")
 		return false
-	
+
 	print("  ✓ JunctionResolver created %d junction columns\n" % junction_columns.size())
-	
-	# Step 3: Apply real overrides to real junction columns
-	print("Step 3: Applying real overrides to junction columns...")
-	var RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
-	RoomBuilderClass._apply_junction_overrides(junction_columns, layout)
-	print("  ✓ _apply_junction_overrides() called\n")
-	
-	# Step 4: Test the three override cases on real columns
-	print("Step 4: Testing override cases on real junction columns...\n")
-	
+
+	# Step 3: Instantiate the real VoxelRenderer (same pattern already used
+	# headlessly by voxel_height_verification.gd / prop_01_tests.gd)
+	var VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+	var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+	var renderer = VoxelRendererClass.new()
+	renderer.setup(Vector2.ZERO)
+
+	# Pick the first column with a real, non-degenerate height (storey_count > 0)
+	# instead of blindly using junction_columns[0] — a zero-height column would make
+	# every case's render loop a no-op and fail with a misleading "no layer" message.
+	var base_column = null
+	for candidate in junction_columns:
+		if candidate.storey_count > 0:
+			base_column = candidate
+			break
+
+	if base_column == null:
+		print("✗ FAIL: No junction column with storey_count > 0 found\n")
+		return false
+
+	# Diagnostic only (does not gate pass/fail): report up front whether this column
+	# actually has a discoverable adjacent wall voxel, so a mirroring failure below
+	# reads as "mirroring is broken" rather than "this column happens to have no
+	# neighbor in this map" — those are different bugs with the same symptom.
+	var neighbor_probe = renderer._find_neighbor_wall_voxel(base_column, registry)
+	if neighbor_probe.is_empty():
+		print("  ⚠ Diagnostic: chosen column has no discoverable adjacent wall voxel in this map.")
+		print("    Cases 1/2 (facade_enabled=true) are expected to fall back to flat rendering,")
+		print("    not a mirroring bug, if they report alternative_id=0 below.\n")
+	else:
+		print("  Diagnostic: chosen column has a discoverable neighbor — mirroring should engage.\n")
+
 	var success = true
 	var tested_case_count = 0
-	
-	for column in junction_columns:
-		if tested_case_count >= 3:
-			break  # We only need to test up to 3 cases
-		
-		# Apply case-specific override logic
-		match tested_case_count:
-			0:  # Case 1: Default
-				print("  Testing Case 1 on column at gu_cell=%s" % column.gu_cell)
-				if column.facade_enabled == true and column.override_material == "":
-					print("    ✓ Default case verified: facade_enabled=true, no override")
-				else:
-					print("    ⚠ Column state: facade_enabled=%s, override='%s'" % [column.facade_enabled, column.override_material])
-				tested_case_count += 1
-			1:  # Case 2: Override with facade
-				print("  Testing Case 2: Applying override with facade=true")
+	var original_start_storey = base_column.start_storey
+
+	# Test three different override/facade_enabled combinations on the same real
+	# column. Case 0 keeps the column's REAL start_storey (its true production
+	# placement); cases 1/2 are offset from that original value (not from 0) so they
+	# land on distinct, non-colliding levels without discarding case 0's real placement.
+	for case_idx in range(3):
+		var column = base_column
+		column.override_material = ""
+		column.facade_enabled = true
+		column.start_storey = original_start_storey + case_idx * column.storey_count
+
+		match case_idx:
+			0:
+				print("  Case 1: Default mirroring (no override, facade_enabled=true)")
+			1:
+				print("  Case 2: Override material with facade=true (mirror override material)")
 				column.override_material = "wood"
 				column.facade_enabled = true
-				if column.override_material == "wood" and column.facade_enabled == true:
-					print("    ✓ Case 2 verified: override='wood', facade_enabled=true")
-				else:
-					print("    ✗ Case 2 failed")
-					success = false
-				tested_case_count += 1
-			2:  # Case 3: Override without facade
-				print("  Testing Case 3: Applying override with facade=false")
+			2:
+				print("  Case 3: Override material with facade=false (flat, no mirror)")
 				column.override_material = "metal"
 				column.facade_enabled = false
-				if column.override_material == "metal" and column.facade_enabled == false:
-					print("    ✓ Case 3 verified: override='metal', facade_enabled=false")
+
+		# Call the REAL public entry point — the same one room_builder.gd calls
+		# (render() loops junction_columns internally and calls _render_junction_column
+		# per column) — not the private method directly.
+		renderer.render(registry, [column])
+
+		var level = column.start_storey * GeometryCoordsClass.LEVELS_PER_STOREY
+		var layer: TileMapLayer = renderer.get_layer(level)
+
+		if layer == null:
+			print("    ✗ FAIL: No layer created at level %d\n" % level)
+			success = false
+			tested_case_count += 1
+			continue
+
+		var source_id = layer.get_cell_source_id(column.voxel_pos)
+		var atlas_coords = layer.get_cell_atlas_coords(column.voxel_pos)
+		var alt_id = layer.get_cell_alternative_tile(column.voxel_pos)
+
+		print("    Real cell data: source_id=%d, atlas_coords=%s, alternative_id=%d" % [source_id, atlas_coords, alt_id])
+
+		match case_idx:
+			0, 1:
+				# facade_enabled=true: should have used an H-flipped alternative
+				# (alt_id != 0 per _get_or_create_h_flipped_tile's "+1 to avoid 0")
+				if alt_id != 0:
+					var atlas_source = renderer.get_tileset().get_source(source_id)
+					var tile_data: TileData = atlas_source.get_tile_data(atlas_coords, alt_id) if atlas_source else null
+					if tile_data and tile_data.flip_h:
+						print("    ✓ Real mirroring confirmed: alternative_id=%d, flip_h=true\n" % alt_id)
+					else:
+						print("    ✗ FAIL: alternative tile exists but flip_h is not true\n")
+						success = false
+				elif neighbor_probe.is_empty():
+					print("    ~ Flat fallback as expected (no neighbor voxel available in this map)\n")
 				else:
-					print("    ✗ Case 3 failed")
+					print("    ✗ FAIL: expected a mirrored (flipped) alternative tile, got alternative_id=0\n")
 					success = false
-				tested_case_count += 1
-	
+			2:
+				# facade_enabled=false: flat path, no baked/flip lookup — alt_id must be 0
+				if alt_id == 0:
+					print("    ✓ Flat path confirmed: no mirroring applied (alternative_id=0)\n")
+				else:
+					print("    ✗ FAIL: expected flat rendering (alternative_id=0), got %d\n" % alt_id)
+					success = false
+
+		tested_case_count += 1
+
 	print()
-	
-	if success and tested_case_count >= 1:
-		print("✓ PASS: Real junction columns with override cases verified\n")
+
+	if success and tested_case_count == 3:
+		print("✓ PASS: Real mirroring rendering verified via actual renderer.render() calls\n")
 	else:
-		print("✗ FAIL: Junction column test failed\n")
-	
+		print("✗ FAIL: Junction mirroring test failed\n")
+
 	return success

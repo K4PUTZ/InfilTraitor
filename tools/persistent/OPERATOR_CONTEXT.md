@@ -370,5 +370,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.45 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** eeaae99 "[BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA"
+**Version:** 0.4.46 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 428d31b "[FIX] GDScript compile gate: autoload-aware project_lint wired into pre-commit (Gate 3) and push.sh (STAGE 1.4); PROBLEMS-tab rule replaced by CLI evidence in both contexts"
 <!-- AUTO:END header -->

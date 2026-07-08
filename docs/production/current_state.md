@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.26 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** d732174 "FIX: JUNCTION-01b — interior wall corner filler columns"
+**Version:** 0.4.38 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** d511aa0 "[HOTFIX] Fix bake_live_test.gd compilation errors"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,8 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- FIX-JUNCTION-COLUMN-MATERIAL-01.md
+- BAKE-FIX-12.md
+- BAKE-LIVE-TEST.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -22,20 +23,20 @@
 **Code & Test Inventory**
 
 - GDScript modules: 94
-- Test scripts: 27
+- Test scripts: 26
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 90
+- Archived prompts: 105
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- d732174 FIX: JUNCTION-01b — interior wall corner filler columns
-- b379edf [FIX-LEGACY-PROPS-01] Migrate SIGMA_01 sprite crates to voxel_props
-- c375fbf [FIX-DIVIDER-MATERIAL-01] Dividers become real solidblock_<material>, not fake block_SE
-- f856af2 [FIX-EXTERIOR-WALLS-01b] Exterior wall height: increase from 1 to 3 storeys
-- 33f548e [BAKE-LIVE-BOOT-01] Finalize with textures — all 6 criteria pass
+- f27a829 [BAKE-FIX-11] B3 CLOSED via contract-level verification (6/6 PASS)
+- adb1f33 [BAKE-FIX-10] Junction override authoring & real testing: end-to-end pipeline verification + neighbor-lookup validation (3/3 PASS)
+- 6b7f8b9 [BAKE-FIX-09] Reader/Writer key matching: fix lookup by aligning reader scheme with writer's deterministic logic (3/3 PASS)
+- 30d13ed [BAKE-FIX-08] Documentation correction: revert overstated claims, clarify actual delivery (BAKE-FIX-05/06/07), add process learnings
+- da8b6d4 [BAKE-FIX-06] Implement junction mirroring, override authoring, and real testing
 <!-- AUTO:END version_history -->
 
 ---

@@ -45,6 +45,13 @@ func set_test_config(config) -> void:
 	_bake_config = config
 
 
+## Set baked atlas for testing or injection
+## Stores in Engine meta for global access
+func set_baked_atlas(atlas) -> void:
+	if atlas != null:
+		Engine.set_meta("GLOBAL_BAKED_ATLAS", atlas)
+
+
 ## BAKE-FIX-02: Register run information for later lookup during placement
 ## Called by room_builder after grouping edges into runs
 func register_runs(runs: Array) -> void:

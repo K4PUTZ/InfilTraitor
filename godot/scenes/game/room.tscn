@@ -117,22 +117,22 @@ text = "↺"
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 tooltip_text = "Heat Map"
-text = "H"
 toggle_mode = true
+text = "H"
 
 [node name="BtnViewL" type="Button" parent="HUD/TopBar/Row" unique_id=1700000003]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 tooltip_text = "Light Vision"
-text = "L"
 toggle_mode = true
+text = "L"
 
 [node name="BtnViewV" type="Button" parent="HUD/TopBar/Row" unique_id=1700000004]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 tooltip_text = "Dev Vision"
-text = "V"
 toggle_mode = true
+text = "V"
 
 [node name="LblAp" type="Label" parent="HUD/TopBar/Row" unique_id=1600001005]
 custom_minimum_size = Vector2(78, 48)

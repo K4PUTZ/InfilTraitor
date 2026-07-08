@@ -48,7 +48,7 @@ echo ""
 
 # Build TAG: if no message given, use ALPHA default
 if [ -z "$MESSAGE" ]; then
-    TAG="ALPHA SHUTDOWN CRASH FIX $(cat "$VERSION_FILE") - $(date +%Y-%m-%d)"
+    TAG="ALPHA BAKE FIX $(cat "$VERSION_FILE") - $(date +%Y-%m-%d)"
 else
     TAG="$MESSAGE"
 fi

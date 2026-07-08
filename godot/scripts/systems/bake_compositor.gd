@@ -101,8 +101,9 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 		var facade_id = combo[1]
 		if not facades_by_id.has(facade_id):
 			var resolved = resolver.resolve(facade_id)
-			if resolved.get("tier", -1) != resolver.Tier.NONE:
-				facades_by_id[facade_id] = resolved.get("image", null)
+			# ResolvedTexture has image and tier properties
+			if resolved != null and resolved.tier != resolver.Tier.NONE:
+				facades_by_id[facade_id] = resolved.image
 
 	# Step 3: Bake strips
 	var start_time = Time.get_ticks_msec()
@@ -135,17 +136,25 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 ## Extract unique (material, facade) combos from the map
 func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 	var combos = {}  # String key → true (for dedup)
+	var blocks = []
 	
-	# Try new format with blocks
+	# Support both file format (sections.blocks.items) and runtime format (blocks array)
 	if map_spec.has("sections") and map_spec["sections"].has("blocks"):
+		# File format
 		var blocks_section = map_spec["sections"]["blocks"]
 		if blocks_section.has("items"):
-			for block in blocks_section["items"]:
-				var material = block.get("material", "default")
-				# For now, assume each material gets a canonical facade_id (concrete→facade_concrete, etc.)
-				var facade_id = "facade_" + material
-				var combo_key = "%s|%s" % [material, facade_id]
-				combos[combo_key] = true
+			blocks = blocks_section["items"]
+	elif map_spec.has("blocks"):
+		# Runtime format (from FileMapSource.get_runtime_spec())
+		blocks = map_spec["blocks"] if typeof(map_spec["blocks"]) == TYPE_ARRAY else []
+	
+	# Extract unique (material, facade_id) combos from blocks
+	for block in blocks:
+		var material = block.get("material", "default") if typeof(block) == TYPE_DICTIONARY else "default"
+		# For now, assume each material gets a canonical facade_id (concrete→facade_concrete, etc.)
+		var facade_id = "facade_" + material
+		var combo_key = "%s|%s" % [material, facade_id]
+		combos[combo_key] = true
 	
 	# Convert dict keys to array
 	var result = []

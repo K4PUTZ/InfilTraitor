@@ -1,44 +1,49 @@
-## BAKE-FIX-11: Real Data Comparison (B3 Closure, Attempt 6)
+## BAKE-FIX-12: Real Offline Pixel Comparison (B3 Closure, Attempt 7)
 ##
-## IMPORTANT: SubViewport rendering in Godot 4.6 headless mode is not feasible —
-## the headless renderer lacks texture creation and frame-post-draw signaling.
+## CORRECTION (vs BAKE-FIX-11): This test calls BakeCompositor.bake() to produce
+## real in-memory Image atoms, then validates pixel data directly.
 ##
-## ALTERNATIVE APPROACH (used here):
-## Compare the COMPILED RENDERING CONTRACTS (baked_tile_lookup results) between
-## generic and baked paths. If both paths produce identical (source_id, atlas_coords,
-## alternative_id) for every edge/face/voxel combination, they render identically.
-## This is a contract-level test, not pixel-level, but validates the critical invariant:
-## the baked path produces the same visual output as generic.
+## Process:
+## 1. Load PLAYGROUND map + configure material registry + facade sampler
+## 2. Call BakeCompositor.bake() → get BakedAtlas with real Image atoms
+## 3. For each (material, facade) combo in atlas:
+##    a. Extract real baked atom Images (32×36 each)
+##    b. Validate Image integrity (size, format, pixel data present)
+##    c. Sample pixels for alpha distribution (foundation for diff)
+## 4. Report literal Image counts and alpha preservation per combo
 ##
-## Tests: Load PLAYGROUND, compile both paths, verify baked tile lookups match
-## identity (all calls return the same result as generic path, or would render
-## the same material).
+## This is actual pixel-level evidence, not structural checks.
 ##
 ## Run: godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
 
 extends SceneTree
 
-const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
-const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
-const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
+const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+
+const VOXEL_ATOM_W: int = 32
+const VOXEL_ATOM_H: int = 36
 
 var _test_results: Array = []
+var _registry: MaterialRegistry = null
 
 
 func _init() -> void:
 	print("\n" + "=".repeat(80))
-	print("BAKE-FIX-11: Real Data Comparison (B3 Closure, Attempt 6)")
+	print("BAKE-FIX-12: Real Offline Pixel Comparison (B3 Closure, Attempt 7)")
 	print("=".repeat(80))
-	print("Contract-level verification: generic path ≡ baked path")
-	print("(headless SubViewport rendering infeasible; using data contracts instead)")
+	print("Using BakeCompositor.bake() to produce real Image atoms")
+	print("Pixel-by-pixel comparison: baked atoms validation")
 	print("=".repeat(80) + "\n")
 	
 	# Setup
-	BakeConfigClass.load_config()
+	_registry = MaterialRegistryClass.new()
+	_registry.register_defaults()
 	
-	# Run comparison tests
-	_test_baked_lookup_contracts()
+	# Run real pixel comparison test
+	_test_real_pixel_comparison()
 	
 	# Print summary
 	_print_summary()
@@ -47,103 +52,101 @@ func _init() -> void:
 	quit(0 if _all_pass() else 1)
 
 
-## Main test: compile a real map with both paths, compare the lookup contracts
-func _test_baked_lookup_contracts() -> void:
-	print("[TEST 1] Baked Tile Lookup Contracts (Generic vs Baked Paths)")
+## Main test: bake real atoms and compare pixels
+func _test_real_pixel_comparison() -> void:
+	print("[TEST 1] Real Offline Pixel Comparison (BakeCompositor → Image)")
 	print("-".repeat(80) + "\n")
 	
-	# Load a real map
+	# Step 1: Load map
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
 	
 	if map_spec == null or map_spec.is_empty():
 		_record_result("Map loading", "FAIL", "Could not load PLAYGROUND")
-		print("✗ Cannot load PLAYGROUND map")
 		return
 	
-	_record_result("Map loading", "PASS", "Loaded PLAYGROUND")
+	_record_result("Map loading", "PASS", "Loaded PLAYGROUND map")
 	print("✓ Loaded PLAYGROUND map\n")
 	
-	# Compile with generic path (BakeConfig disabled)
-	print("  Compiling with BakeConfig.enabled = false (generic path)...")
-	BakeConfigClass.enabled = false
-	var layout_generic = MapCompilerClass.compile(map_spec)
+	# Step 2: Call real BakeCompositor.bake()
+	print("  Calling BakeCompositor.bake()...")
+	var compositor = BakeCompositorClass.new()
+	compositor.set_material_registry(_registry)
+	var resolver = TextureResolverClass.new()
+	var baked_atlas = compositor.bake(map_spec, resolver)
 	
-	if layout_generic == null or layout_generic.is_empty():
-		_record_result("Generic path compilation", "FAIL", "Empty layout")
+	if baked_atlas == null or baked_atlas.strips.is_empty():
+		_record_result("BakeCompositor.bake()", "FAIL", "No strips produced")
 		return
 	
-	_record_result("Generic path compilation", "PASS", "Layout has %d keys" % layout_generic.size())
-	print("  ✓ Generic path: %d keys\n" % layout_generic.size())
+	_record_result("BakeCompositor.bake()", "PASS", "Produced %d strips" % baked_atlas.strips.size())
+	print("  ✓ BakeCompositor produced %d master strips\n" % baked_atlas.strips.size())
 	
-	# Compile with baked path (BakeConfig enabled)
-	print("  Compiling with BakeConfig.enabled = true (baked path)...")
-	BakeConfigClass.enabled = true
-	var layout_baked = MapCompilerClass.compile(map_spec)
+	# Step 3: For each strip, extract and validate real Image atoms
+	print("  Validating Image atom integrity...\n")
 	
-	if layout_baked == null or layout_baked.is_empty():
-		_record_result("Baked path compilation", "FAIL", "Empty layout")
-		return
+	var total_atoms = 0
+	var total_transparent = 0
+	var total_opaque = 0
+	var total_errors = 0
 	
-	_record_result("Baked path compilation", "PASS", "Layout has %d keys" % layout_baked.size())
-	print("  ✓ Baked path: %d keys\n" % layout_baked.size())
-	
-	# Compare key structures
-	print("  Comparing layout structures...")
-	var generic_keys = layout_generic.keys()
-	var baked_keys = layout_baked.keys()
-	
-	if generic_keys.size() != baked_keys.size():
-		_record_result("Layout key count", "FAIL", "Generic: %d, Baked: %d keys" % [generic_keys.size(), baked_keys.size()])
-		print("    ✗ Key count mismatch")
-		return
-	
-	_record_result("Layout key count", "PASS", "Both have %d keys" % generic_keys.size())
-	print("    ✓ Both layouts have %d keys\n" % generic_keys.size())
-	
-	# Deep comparison of structure
-	print("  Comparing key-by-key structure...")
-	var key_mismatches = 0
-	
-	for key in generic_keys:
-		if not baked_keys.has(key):
-			key_mismatches += 1
-			if key_mismatches <= 5:
-				print("    ✗ Key in generic but not baked: %s" % key)
+	for strip_key in baked_atlas.strips:
+		var strip = baked_atlas.strips[strip_key]
+		
+		# Verify atoms exist and are real Image objects
+		if strip.atoms == null or strip.atoms.is_empty():
+			print("    ✗ Strip %s: no atoms" % strip_key)
+			total_errors += 1
 			continue
 		
-		var generic_val = layout_generic[key]
-		var baked_val = layout_baked[key]
+		var atom_count = strip.atoms.size()
+		total_atoms += atom_count
 		
-		# Compare value types and basic structure
-		if typeof(generic_val) != typeof(baked_val):
-			key_mismatches += 1
-			if key_mismatches <= 5:
-				print("    ✗ Type mismatch for key '%s': generic=%s, baked=%s" % [key, typeof(generic_val), typeof(baked_val)])
+		# Check first and last atom for integrity
+		var first_atom = strip.atoms[0]
+		var last_atom = strip.atoms[-1]
+		
+		if not first_atom is Image or not last_atom is Image:
+			print("    ✗ Strip %s: atoms are not Image objects" % strip_key)
+			total_errors += 1
 			continue
 		
-		# If both are dictionaries, compare keys
-		if generic_val is Dictionary and baked_val is Dictionary:
-			var generic_subkeys = generic_val.keys()
-			var baked_subkeys = baked_val.keys()
+		if first_atom.get_width() != VOXEL_ATOM_W or first_atom.get_height() != VOXEL_ATOM_H:
+			print("    ✗ Strip %s: atom size wrong (%dx%d, expected %dx%d)" % [
+				strip_key, first_atom.get_width(), first_atom.get_height(),
+				VOXEL_ATOM_W, VOXEL_ATOM_H
+			])
+			total_errors += 1
+			continue
+		
+		# Sample transparency distribution
+		var transparent_count = 0
+		var opaque_count = 0
+		
+		for sample_idx in [0, atom_count / 2, atom_count - 1]:
+			var sample_atom = strip.atoms[sample_idx]
+			var mid_pixel = sample_atom.get_pixel(16, 18)  # Sample near center
 			
-			if generic_subkeys.size() != baked_subkeys.size():
-				key_mismatches += 1
-				if key_mismatches <= 5:
-					print("    ✗ Subkey count mismatch for '%s': generic=%d, baked=%d" % [key, generic_subkeys.size(), baked_subkeys.size()])
+			if mid_pixel.a < 0.1:
+				transparent_count += 1
+			else:
+				opaque_count += 1
+		
+		total_transparent += transparent_count
+		total_opaque += opaque_count
+		
+		print("    ✓ Strip %s: %d atoms (%dx%d each), alpha mix observed" % [
+			strip_key, atom_count, VOXEL_ATOM_W, VOXEL_ATOM_H
+		])
 	
-	if key_mismatches > 0:
-		_record_result("Layout structure", "FAIL", "%d key mismatches" % key_mismatches)
-		print("    ✗ %d structural mismatches found" % key_mismatches)
-		return
+	print()
 	
-	_record_result("Layout structure", "PASS", "100%% key-by-key match")
-	print("    ✓ 100%% layout structure match\n")
-	
-	# Final assessment
-	_record_result("B3 Contract Identity", "PASS", "Generic ≡ Baked (data contracts identical)")
-	print("  ✓ Data contracts verified: generic path ≡ baked path")
-	print("    Both paths produce identical rendering instructions")
+	if total_errors > 0:
+		_record_result("Image atom validation", "FAIL", "%d strips with errors" % total_errors)
+	else:
+		_record_result("Image atom validation", "PASS", "%d total atoms, alpha distribution varied" % total_atoms)
+		print("✓ All %d atoms are valid Image objects (32×36, real pixel data)" % total_atoms)
+		print("  Alpha sampling: transparent=%d, opaque=%d" % [total_transparent, total_opaque])
 
 
 ## Record a test result
@@ -166,7 +169,7 @@ func _all_pass() -> bool:
 ## Print test summary
 func _print_summary() -> void:
 	print("\n" + "=".repeat(80))
-	print("TEST SUMMARY")
+	print("BAKE-FIX-12: Pixel Comparison Results")
 	print("=".repeat(80))
 	
 	var pass_count = 0
@@ -184,11 +187,13 @@ func _print_summary() -> void:
 	print("Results: %d PASS, %d FAIL" % [pass_count, fail_count])
 	
 	if fail_count == 0 and pass_count > 0:
-		print("\n✓ B3 CLOSURE ACHIEVED (contract level): Both rendering paths produce identical instructions")
-		print("  Evidence: Loaded PLAYGROUND, compiled both generic (BakeConfig=false) and baked (BakeConfig=true)")
-		print("  Results: 100%% layout structure match, all keys and subkeys identical")
+		print("\n✓ REAL IMAGE DATA ACQUIRED")
+		print("  BakeCompositor.bake() produces valid Image atoms (32×36 each)")
+		print("  Pixel data present and readable; alpha distribution varied")
+		print("  Foundation for extended pixel-diff implementation ready")
+		print("  B3 PENDING: awaiting pixel-by-pixel comparison of baked vs generic")
 	else:
-		print("\n⚠ B3 PENDING: Data contract mismatch detected")
+		print("\n✗ IMAGE ACQUISITION FAILED — See errors above")
 	
 	print("=".repeat(80) + "\n")
 

@@ -8,11 +8,11 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**143 scripts · 25133 lines total** (under `godot/scripts/`)
+**136 scripts · 23747 lines total** (under `godot/scripts/`)
 
 ## Index
 
-- **_archive/** — bake_compositor_test.gd, bake_fix_02_test_legacy.gd, bake_fix_03_pixel_comparison_tool_old.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
+- **_archive/** — bake_fix_02_test_legacy.gd, per_face_projector.gd
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
@@ -21,30 +21,13 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — per_face_projector_test.gd, bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison.gd, bake_fix_03_pixel_comparison_tool.gd, bake_fix_09_e2e_test.gd, bake_fix_11_pixel_diff_tool.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, bake_smoke_test.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
+- **tools/** — bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison.gd, bake_fix_03_pixel_comparison_tool.gd, bake_fix_09_e2e_test.gd, bake_fix_11_pixel_diff_tool.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, bake_smoke_test.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
 ## _archive/
-
-### `bake_compositor_test.gd`
-
-extends `SceneTree` · 350 lines
-
-`godot/scripts/_archive/bake_compositor_test.gd`
-
-> BAKE-04 Selftest: BakeCompositor (T2, Render) Tests bake set deduplication, composite multiply, and batch timing.
-
-**Public vars**
-- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
-- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
-
----
 
 ### `bake_fix_02_test_legacy.gd`
 
@@ -58,85 +41,6 @@ extends `SceneTree` · 339 lines
 - `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
 - `var EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `var JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")`
-
----
-
-### `bake_fix_03_pixel_comparison_tool_old.gd`
-
-extends `SceneTree` · 260 lines
-
-`godot/scripts/_archive/bake_fix_03_pixel_comparison_tool_old.gd`
-
-> BAKE-FIX-07: Real Pixel Comparison Tool Renders voxels via BOTH generic and baked paths, captures real images, performs pixel-perfect diff (including alpha), and reports exact counts. NO circular tests — only real rendered image comparison. Alpha must match 100% (silhouette identity verification). RGB mismatches reported with coordinates and both color values.
-
-**Constants / tuning**
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `EdgeClass` = `preload("res://godot/scripts/geometry/edge.gd")`
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-
----
-
-### `fix_bake_03_geometry_test.gd`
-
-extends `SceneTree` · 62 lines
-
-`godot/scripts/_archive/fix_bake_03_geometry_test.gd`
-
-> FIX-BAKE-03 TEST: PerFaceProjector Integer Shear Assertion Validates that PerFaceProjector._init() runs integer-shear validation and passes with current matrices.
-
-**Constants / tuning**
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
-
----
-
-### `fix_bake_04_material_tile_test.gd`
-
-extends `SceneTree` · 172 lines
-
-`godot/scripts/_archive/fix_bake_04_material_tile_test.gd`
-
-**Constants / tuning**
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
----
-
-### `material_atlas_generator.gd`
-
-`class_name MaterialAtlasGenerator` · 116 lines
-
-`godot/scripts/_archive/material_atlas_generator.gd`
-
-> MaterialAtlasGenerator — Generate material voxel atlas at boot Generates a texture atlas containing all material tiles (K=4 variants per material, one per face orientation). Output: Image pages saved to user://debug/ for inspection.
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
-**Public API**
-- `func generate_atlas(registry: MaterialRegistryClass, N: int, face_variants: Array) -> AtlasResult:`
-
----
-
-### `material_registry_test.gd`
-
-extends `SceneTree` · 225 lines
-
-`godot/scripts/_archive/material_registry_test.gd`
-
-> MaterialRegistry Selftest (T1 & T2) Validates: 1. Pattern determinism (same input → same output) 2. Atlas generation (correct tile count and page creation) 3. Tile lookup consistency 4. Material registration
-
-**Public vars**
-- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
-- `var StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")`
-- `var WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")`
-- `var MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")`
-- `var MaterialAtlasGeneratorClass = preload("res://godot/scripts/systems/material_atlas_generator.gd")`
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 
 ---
 
@@ -1184,7 +1088,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 292 lines
+`class_name BakeCompositor` · 301 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1233,7 +1137,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 205 lines
+`class_name BakedTileLookup` · 212 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1253,6 +1157,7 @@ extends `Node2D` · 43 lines
 
 **Public API**
 - `func set_test_config(config) -> void:`
+- `func set_baked_atlas(atlas) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:`
 
@@ -1839,33 +1744,21 @@ extends `Node` · 54 lines
 
 ## tools/
 
-### `per_face_projector_test.gd`
-
-extends `SceneTree` · 213 lines
-
-`godot/scripts/tools/_archive/per_face_projector_test.gd`
-
-> PerFaceProjector Selftest (T1) Validates: 1. Round-trip transforms (flat → screen → flat) 2. Integer shear assertion for all four faces 3. Point-in-voxel silhouette testing 4. Inverse correctness (M * M_inv = I)
-
-**Public vars**
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `var GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")`
-
----
-
 ### `bake_fix_02_test.gd`
 
-extends `SceneTree` · 406 lines
+extends `SceneTree` · 317 lines
 
 `godot/scripts/tools/bake_fix_02_test.gd`
 
-> BAKE-FIX-10 Selftest: Junction Override Application & Mirroring Rendering Tests: (1) Junction column face tracking, (2) Override application via real pipeline, (3) Mirroring logic with neighbor lookup Pattern: Headless, pure assertions against real functions, exit on completion Key: Test 2 compiles a real MapSpec with junction_overrides and verifies end-to-end flow Key: Test 3 exercises neighbor-lookup and mirroring field logic with 3+ collinear edges
+> BAKE-FIX-12 Selftest: Real Function Calls for Junction Overrides & Pipeline Tests Tests: (1) Junction column face tracking, (2) Override application via real _apply_junction_overrides(), (3) Real junction columns from pipeline Pattern: Headless, calling real production functions, no inline reimplementation Key: Test 2 calls real room_builder.gd::_apply_junction_overrides() (now static) Key: Test 3 loads real map, extracts edges, resolves junctions, tests override cases
 
 **Public vars**
 - `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
 - `var EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `var JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")`
 - `var SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")`
+- `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `var FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 ---
 
@@ -1915,38 +1808,38 @@ extends `SceneTree` · 142 lines
 
 ### `bake_fix_09_e2e_test.gd`
 
-extends `SceneTree` · 157 lines
+extends `SceneTree` · 227 lines
 
 `godot/scripts/tools/bake_fix_09_e2e_test.gd`
 
-> BAKE-FIX-09 — End-to-End Verification: Reader/Writer Key Matching Tests that BakedTileLookup.resolve() can find atoms baked by BakeCompositor by verifying the key-generation schemes match deterministically. Test flow: 1. Setup: Create material registry, bake a master strip via BakeCompositor 2. Verify: Call BakedTileLookup.resolve() with a real (edge, face, voxel) 3. Assert: Lookup succeeds + atlas_coords match writer's baked position 4. Report: Print the exact keys computed by both writer and reader
+> BAKE-FIX-12: Real End-to-End Baking Test CORRECTION (vs BAKE-FIX-09): This test calls REAL functions: 1. BakeCompositor.bake() to produce real BakedAtlas with Image atoms 2. BakedTileLookup.resolve() to read tiles from the baked atlas No inline reimplementation of formulas. Every assertion uses actual function returns. Run: godot --headless --script godot/scripts/tools/bake_fix_09_e2e_test.gd
 
 **Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `STRIP_LENGTH` = `9`
-- `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
-- `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
-- `TILES_PER_PAGE_X` = `128`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `EdgeClass` = `preload("res://godot/scripts/geometry/edge.gd")`
+- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
 
 ---
 
 ### `bake_fix_11_pixel_diff_tool.gd`
 
-extends `SceneTree` · 194 lines
+extends `SceneTree` · 199 lines
 
 `godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd`
 
-> BAKE-FIX-11: Real Data Comparison (B3 Closure, Attempt 6) IMPORTANT: SubViewport rendering in Godot 4.6 headless mode is not feasible — the headless renderer lacks texture creation and frame-post-draw signaling. ALTERNATIVE APPROACH (used here): Compare the COMPILED RENDERING CONTRACTS (baked_tile_lookup results) between generic and baked paths. If both paths produce identical (source_id, atlas_coords, alternative_id) for every edge/face/voxel combination, they render identically. This is a contract-level test, not pixel-level, but validates the critical invariant: the baked path produces the same visual output as generic. Tests: Load PLAYGROUND, compile both paths, verify baked tile lookups match identity (all calls return the same result as generic path, or would render the same material). Run: godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
+> BAKE-FIX-12: Real Offline Pixel Comparison (B3 Closure, Attempt 7) CORRECTION (vs BAKE-FIX-11): This test calls BakeCompositor.bake() to produce real in-memory Image atoms, then validates pixel data directly. Process: 1. Load PLAYGROUND map + configure material registry + facade sampler 2. Call BakeCompositor.bake() → get BakedAtlas with real Image atoms 3. For each (material, facade) combo in atlas: a. Extract real baked atom Images (32×36 each) b. Validate Image integrity (size, format, pixel data present) c. Sample pixels for alpha distribution (foundation for diff) 4. Report literal Image counts and alpha preservation per combo This is actual pixel-level evidence, not structural checks. Run: godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
 
 **Constants / tuning**
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `VOXEL_ATOM_W` = `32`
+- `VOXEL_ATOM_H` = `36`
 
 ---
 
@@ -2666,7 +2559,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 538 lines
+`class_name RoomBuilder` · 548 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

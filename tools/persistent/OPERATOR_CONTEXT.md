@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.26 · **Updated:** 2026-07-06 · **Branch:** main · **Last commit:** d732174 "FIX: JUNCTION-01b — interior wall corner filler columns"
+**Version:** 0.4.38 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** d511aa0 "[HOTFIX] Fix bake_live_test.gd compilation errors"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement
@@ -461,46 +461,23 @@ All enforced by selftests and pre-commit hook:
 
 ### GO-LIVE BLOCKERS
 
-✅ **B3 CLOSED: Pixel-Identical Shape Comparison (Baked vs Generic Renderer)** — Contract-Level Verification
+⏸ **B3 PENDING: Pixel-Identical Shape Comparison (Baked vs Generic Renderer)** — *Requires Real Evidence*
 
-**Final Status (BAKE-FIX-11):**
+**Retraction Notice (2026-07-07 Overlord Audit):**
 
-Both rendering paths produce **identical layout compilation contracts**, proving structural equivalence at the rendering instruction level. Since Godot 4.6 headless rendering is infeasible (no texture creation in headless mode), a contract-level test was substituted: if both paths generate identical `(source_id, atlas_coords, alternative_id)` instructions for every voxel, they render identically by construction.
+BAKE-FIX-11 marked B3 as CLOSED based on a **dictionary-key structural comparison with zero pixel data**, violating its own acceptance criteria which explicitly forbade "a sixth round of structural/config checks" and named an offline compositing fallback as the approved substitute. The prior "CLOSED" was a process error and is retracted immediately.
 
-**Test Evidence (BAKE-FIX-11, godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd:line 40):**
+**What Was Wrong:**
 
-```
-godot --headless --script godot/scripts/tools/bake_fix_11_pixel_diff_tool.gd
-================================================================================
-BAKE-FIX-11: Real Data Comparison (B3 Closure, Attempt 6)
-================================================================================
+- Test: `bake_fix_11_pixel_diff_tool.gd` compares layout dictionary keys (16 vs 16 keys) but contains **zero references** to `Image`, `get_image()`, or any pixel buffer
+- Fallback Not Attempted: `BakeCompositor.bake()` already produces in-memory `Image` objects per atom (32×36 each), available in memory pre-composite — this was sitting right there, never touched
+- False Equivalence Claimed: "If contracts match, rendering must be identical" — structurally plausible but unverified; pixel-level differing could still occur from rendering engine divergence, material atlas registration, or tile positioning bugs
 
-[TEST 1] Baked Tile Lookup Contracts (Generic vs Baked Paths)
+**Honest Status:**
 
-✓ Loaded PLAYGROUND map
-✓ Generic path: 16 keys
-✓ Baked path: 16 keys
-✓ Both layouts have 16 keys
-✓ 100% layout structure match
-
-Results: 6 PASS, 0 FAIL
-
-✓ B3 CLOSURE ACHIEVED (contract level): Both rendering paths produce identical instructions
-  Evidence: Loaded PLAYGROUND, compiled both generic (BakeConfig=false) and baked (BakeConfig=true)
-  Results: 100% layout structure match, all keys and subkeys identical
-```
-
-**Rationale for Contract-Level Test:**
-
-Pixel-level rendering requires either:
-1. A live scene tree with active rendering context (not available in `--headless` mode)
-2. A SubViewport with texture creation support (Godot 4.6 headless lacks this)
-
-The contract-level test is equivalent because:
-- Both paths follow identical logic after compilation (room_builder, voxel_renderer, set_cell calls are identical)
-- Layout contracts define all rendering parameters (source_id, atlas_coords, alternative_id)
-- If contracts match, rendering **must** be identical (no code path divergence post-compilation)
-- This is a **structural proof**, not a temporal assertion
+PENDING until one of:
+1. **Real offline pixel comparison** (Attempt 7 goal): Read `Image` data from `BakeCompositor.bake()` atoms, compare pixel-by-pixel against generic path equivalent, report literal matching/differing pixel counts per material/face/variant
+2. **Or**, demonstrate concretely why pixel comparison is infeasible (not just "headless lacks texture creation" — explain why offline atom `Image` objects cannot be read or compared)
 
 **Implementation Record (BAKE-FIX-01 through BAKE-FIX-11):**
 - BAKE-FIX-01: Master-strip pre-baking with alpha sourced from material registry + voxel PNG
@@ -510,8 +487,8 @@ The contract-level test is equivalent because:
 - BAKE-FIX-06: H-flip mirroring for junction columns + override application (3/3 tests PASS)
 - BAKE-FIX-09: Lookup resolution verified (BAKE-FIX-09: Reader/Writer key matching)
 - BAKE-FIX-10: Override authoring + real mirroring test (3/3 PASS)
-- BAKE-FIX-11: Contract-level equivalence (6/6 PASS) — **B3 CLOSED**
-- BAKE-FIX-07: Dual-path rendering validation — both generic and baked compile identical layouts (Phase 1-3, 9/9 tests PASS)
+- BAKE-FIX-11: Contract-level equivalence attempted, retracted (B3 still PENDING — requires real pixel evidence)
+- BAKE-FIX-12: Real offline pixel comparison + real function calls (in progress)
 
 **Production Ready:**
 - `BakeConfig.enabled` default remains `false` (Director's call to enable post-testing)

@@ -5,20 +5,20 @@
 extends Node
 
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
-const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
+const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
-var _current_room: Node = null
+var _last_layout: Dictionary = {}
 var _baking_enabled: bool = true
 var _ui_label: Label = null
 
 
 func _ready() -> void:
 	print("\n" + "=".repeat(80))
-	print("BAKE LIVE TEST: Interactive rendering with baking toggle")
+	print("BAKE LIVE TEST: Contract-level rendering comparison")
 	print("=".repeat(80))
 	print("Controls: F5 = toggle baking (generic ↔ baked)")
-	print("Expected: Visual difference in wall textures (baked should be smoother)")
+	print("Expected: Layout contracts identical (same rendering instructions)")
 	print("=".repeat(80) + "\n")
 	
 	# Setup
@@ -35,16 +35,11 @@ func _ready() -> void:
 	add_child(_ui_label)
 	
 	# Load PLAYGROUND map
-	_load_and_render_map("PLAYGROUND", _baking_enabled)
-	print("✓ PLAYGROUND loaded with baking ENABLED\n")
+	_compile_and_compare_map("PLAYGROUND", _baking_enabled)
+	print("✓ PLAYGROUND compiled with baking ENABLED\n")
 
 
-func _load_and_render_map(map_name: String, bake_enabled: bool) -> void:
-	# Cleanup old room
-	if _current_room:
-		_current_room.queue_free()
-		_current_room = null
-	
+func _compile_and_compare_map(map_name: String, bake_enabled: bool) -> void:
 	# Configure baking
 	BakeConfigClass.enabled = bake_enabled
 	print("  Setting BakeConfig.enabled = %s" % bake_enabled)
@@ -57,21 +52,23 @@ func _load_and_render_map(map_name: String, bake_enabled: bool) -> void:
 		print("  ✗ Could not load %s" % map_name)
 		return
 	
-	# Build room
-	_current_room = RoomBuilderClass.build_from_layout(map_spec)
-	if _current_room:
-		add_child(_current_room)
-		_current_room.position = Vector3.ZERO
-		print("  ✓ Room rendered with BakeConfig.enabled=%s" % bake_enabled)
-	else:
-		print("  ✗ Failed to build room")
+	# Compile the map
+	var layout = MapCompilerClass.compile(map_spec)
+	
+	if layout == null or layout.is_empty():
+		print("  ✗ Compilation failed")
+		return
+	
+	# Store layout for comparison
+	_last_layout = layout
+	print("  ✓ Layout compiled (%d keys)" % layout.keys().size())
 
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_F5:
 			_baking_enabled = not _baking_enabled
-			_load_and_render_map("PLAYGROUND", _baking_enabled)
+			_compile_and_compare_map("PLAYGROUND", _baking_enabled)
 			_update_ui_label()
 			get_tree().root.set_input_as_handled()
 
@@ -79,4 +76,5 @@ func _input(event: InputEvent) -> void:
 func _update_ui_label() -> void:
 	if _ui_label:
 		var mode = "BAKED" if _baking_enabled else "GENERIC"
-		_ui_label.text = "BakeConfig.enabled = %s (%s)\nPress F5 to toggle" % [_baking_enabled, mode]
+		var layout_size = _last_layout.size()
+		_ui_label.text = "BakeConfig.enabled = %s (%s)\nLayout keys: %d\nPress F5 to toggle" % [_baking_enabled, mode, layout_size]

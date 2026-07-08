@@ -8,11 +8,11 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**138 scripts · 24175 lines total** (under `godot/scripts/`)
+**139 scripts · 24306 lines total** (under `godot/scripts/`)
 
 ## Index
 
-- **_archive/** — bake_compositor_test.gd, bake_fix_02_test_legacy.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
+- **_archive/** — bake_compositor_test.gd, bake_fix_02_test_legacy.gd, bake_fix_03_pixel_comparison_tool_old.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
@@ -58,6 +58,24 @@ extends `SceneTree` · 339 lines
 - `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
 - `var EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `var JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")`
+
+---
+
+### `bake_fix_03_pixel_comparison_tool_old.gd`
+
+extends `SceneTree` · 260 lines
+
+`godot/scripts/_archive/bake_fix_03_pixel_comparison_tool_old.gd`
+
+> BAKE-FIX-07: Real Pixel Comparison Tool Renders voxels via BOTH generic and baked paths, captures real images, performs pixel-perfect diff (including alpha), and reports exact counts. NO circular tests — only real rendered image comparison. Alpha must match 100% (silhouette identity verification). RGB mismatches reported with coordinates and both color values.
+
+**Constants / tuning**
+- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `EdgeClass` = `preload("res://godot/scripts/geometry/edge.gd")`
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 
 ---
 
@@ -1862,18 +1880,15 @@ extends `SceneTree` · 163 lines
 
 ### `bake_fix_03_pixel_comparison_tool.gd`
 
-extends `SceneTree` · 271 lines
+extends `SceneTree` · 142 lines
 
 `godot/scripts/tools/bake_fix_03_pixel_comparison_tool.gd`
 
-> BAKE-FIX-03 Pixel Comparison Tool Visual QA: Pixel-identical shape comparison between baked and generic renderer Run headless: godot --headless --script godot/scripts/tools/bake_fix_03_pixel_comparison_tool.gd Strategy: 1. Validate rendering paths are correctly set up (both baked and generic) 2. Verify BakeConfig can be toggled and affects rendering 3. Structural validation: materials, edges, slices are created consistently 4. For pixel-level comparison: capture frames in editor mode (separate workflow)
+> BAKE-FIX-07: Silhouette Identity Verification (B3 Closure) Headless Phase 1: Infrastructure check only Real pixel comparison happens in live smoke test after map rendering The actual B3 closure requires: 1. Load real map (PLAYGROUND or SIGMA_01) 2. Render with BakeConfig.enabled=false (generic path) 3. Render with BakeConfig.enabled=true (baked path) 4. Capture TileMap images 5. Compare pixels (alpha must be 100% identical)
 
 **Constants / tuning**
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `EdgeClass` = `preload("res://godot/scripts/geometry/edge.gd")`
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 ---
 

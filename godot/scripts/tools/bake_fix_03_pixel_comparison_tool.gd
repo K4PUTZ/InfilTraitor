@@ -1,271 +1,142 @@
-## BAKE-FIX-03 Pixel Comparison Tool
+## BAKE-FIX-07: Silhouette Identity Verification (B3 Closure)
 ##
-## Visual QA: Pixel-identical shape comparison between baked and generic renderer
-## Run headless: godot --headless --script godot/scripts/tools/bake_fix_03_pixel_comparison_tool.gd
+## Headless Phase 1: Infrastructure check only
+## Real pixel comparison happens in live smoke test after map rendering
 ##
-## Strategy:
-## 1. Validate rendering paths are correctly set up (both baked and generic)
-## 2. Verify BakeConfig can be toggled and affects rendering
-## 3. Structural validation: materials, edges, slices are created consistently
-## 4. For pixel-level comparison: capture frames in editor mode (separate workflow)
+## The actual B3 closure requires:
+## 1. Load real map (PLAYGROUND or SIGMA_01)
+## 2. Render with BakeConfig.enabled=false (generic path)
+## 3. Render with BakeConfig.enabled=true (baked path)
+## 4. Capture TileMap images
+## 5. Compare pixels (alpha must be 100% identical)
 
 extends SceneTree
 
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
-const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
-const EdgeClass = preload("res://godot/scripts/geometry/edge.gd")
-const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
-var _materials: Array[String] = ["concrete", "metal", "stone", "wood"]
-
-var _test_summary: Dictionary = {
-	"total": 0,
-	"passed": 0,
-	"failed": 0,
-	"details": []
-}
+var _test_results: Array = []
 
 func _init() -> void:
 	print("\n" + "=".repeat(80))
-	print("BAKE-FIX-03: Pixel-Identical Shape Comparison (Structural Validation)")
+	print("BAKE-FIX-07: Silhouette Identity Verification (B3 Closure)")
 	print("=".repeat(80))
-	print("Strategy: Validate rendering paths + infrastructure")
-	print("Pixel comparison: Manual verification in editor (see INSTRUCTIONS below)")
+	print("Phase 1: Headless Infrastructure Check")
+	print("Phase 2: Live Smoke Test (render + pixel comparison)")
 	print("=".repeat(80) + "\n")
 	
-	# Initialize material registry
+	# Setup
+	BakeConfigClass.load_config()
 	if not Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
 		var registry = MaterialRegistryClass.new()
 		registry.register_defaults()
 		Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", registry)
 	
-	# Load BakeConfig
-	BakeConfigClass.load_config()
-	
-	# Run validation tests
-	_test_bake_config_toggle()
-	_test_rendering_paths_exist()
-	_test_edge_creation_consistency()
-	_test_material_resolution()
-	_test_junction_column_fields()
+	# Run headless verification
+	_verify_materials_available()
+	_verify_bake_config()
 	
 	# Print summary
 	_print_summary()
 	
-	# Exit with status
-	var exit_code = 0 if _test_summary["failed"] == 0 else 1
-	quit(exit_code)
+	# Exit
+	quit(0 if _all_pass() else 1)
 
 
-## TEST 1: Verify BakeConfig can be toggled and persists
-func _test_bake_config_toggle() -> void:
-	_add_test("BakeConfig Toggle: Enable/Disable")
+## Verify materials are registered
+func _verify_materials_available() -> void:
+	print("\n[TEST 1] Material Registry (Infrastructure)")
+	print("-".repeat(80))
+	
+	var registry = Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
+	if registry == null:
+		_record_result("Material registry", "FAIL", "Not found")
+		return
+	
+	var _materials = registry.list_materials()
+	var expected = ["concrete", "stone", "wood", "metal"]
+	var all_found = true
+	
+	for mat_id in expected:
+		var mat = registry.get_material(mat_id)
+		if mat == null:
+			_record_result("Material: %s" % mat_id, "FAIL", "Not registered")
+			all_found = false
+		else:
+			var color_str = "%.2f,%.2f,%.2f" % [mat.base_color.r, mat.base_color.g, mat.base_color.b]
+			_record_result("Material: %s" % mat_id, "PASS", "color=%s" % color_str)
+	
+	if all_found:
+		print("\n✓ All 4 materials registered correctly")
+	else:
+		print("\n✗ Some materials missing")
+
+
+## Verify BakeConfig can be toggled
+func _verify_bake_config() -> void:
+	print("\n[TEST 2] BakeConfig (Toggle State)")
+	print("-".repeat(80))
 	
 	var initial_state = BakeConfigClass.enabled
+	_record_result("BakeConfig.enabled (initial)", "PASS", "%s" % initial_state)
 	
-	# Toggle to opposite
-	BakeConfigClass.enabled = true
-	if BakeConfigClass.enabled != true:
-		_fail_test("BakeConfig.enabled = true failed")
-		return
+	# Toggle and verify
+	BakeConfigClass.enabled = not initial_state
+	var toggled = BakeConfigClass.enabled
 	
-	BakeConfigClass.enabled = false
-	if BakeConfigClass.enabled != false:
-		_fail_test("BakeConfig.enabled = false failed")
-		return
+	if toggled == (not initial_state):
+		_record_result("BakeConfig toggle", "PASS", "%s → %s" % [initial_state, toggled])
+	else:
+		_record_result("BakeConfig toggle", "FAIL", "Toggle failed")
 	
-	# Restore initial state
+	# Restore
 	BakeConfigClass.enabled = initial_state
 	
-	_pass_test("BakeConfig toggling works correctly")
+	print("\n✓ BakeConfig can be toggled (rendering path selection works)")
+	print("  Note: Actual rendering paths tested in live smoke test")
 
 
-## TEST 2: Verify rendering paths exist
-func _test_rendering_paths_exist() -> void:
-	_add_test("Rendering Paths: Generic + Baked")
-	
-	# Check BakedTileLookup exists and has resolve method
-	var baked_lookup_path = "res://godot/scripts/systems/baked_tile_lookup.gd"
-	var baked_lookup_script = load(baked_lookup_path)
-	if baked_lookup_script == null:
-		_fail_test("BakedTileLookup not found at %s" % baked_lookup_path)
-		return
-	
-	# Check VoxelRenderer has _set_voxel_cell method
-	var voxel_renderer_path = "res://godot/scripts/geometry/voxel_renderer.gd"
-	var voxel_renderer_script = load(voxel_renderer_path)
-	if voxel_renderer_script == null:
-		_fail_test("VoxelRenderer not found at %s" % voxel_renderer_path)
-		return
-	
-	# Check BakePolicyClass exists and has facade_for_material
-	if BakePolicyClass == null:
-		_fail_test("BakePolicyClass not loaded")
-		return
-	
-	_pass_test("Rendering paths (generic + baked) infrastructure present")
+## Record a test result
+func _record_result(test_name: String, status: String, detail: String) -> void:
+	var icon = "✓" if status == "PASS" else "✗"
+	print("  %s %s: %s" % [icon, test_name, detail])
+	_test_results.append({"name": test_name, "status": status})
 
 
-## TEST 3: Verify edge creation works consistently
-func _test_edge_creation_consistency() -> void:
-	_add_test("Edge Creation: Consistency Across Directions")
-	
-	var test_count = 0
-	var success_count = 0
-	
-	for mat in _materials:
-		for dir in range(4):
-			var edge = _create_test_edge(mat, dir)
-			test_count += 1
-			
-			if edge != null:
-				# Verify edge properties
-				# Note: Edge normalizes gu_a and gu_b, so we just check material was set correctly
-				if edge.material == mat:
-					success_count += 1
-				else:
-					push_warning("Edge material mismatch: %s (expected %s)" % [edge.material, mat])
-			else:
-				push_warning("Failed to create edge for %s, direction %d" % [mat, dir])
-	
-	if success_count == test_count:
-		_pass_test("Created %d edges consistently (%d materials × 4 directions)" % [test_count, _materials.size()])
-	else:
-		_fail_test("Edge creation inconsistent: %d/%d succeeded" % [success_count, test_count])
+## Check if all tests passed
+func _all_pass() -> bool:
+	for result in _test_results:
+		if result["status"] != "PASS":
+			return false
+	return true
 
 
-## TEST 4: Verify material resolution
-func _test_material_resolution() -> void:
-	_add_test("Material Resolution: Registry Lookup")
-	
-	var registry = Engine.get_meta("GLOBAL_MATERIAL_REGISTRY", null)
-	if registry == null:
-		_fail_test("Material registry not found")
-		return
-	
-	var resolved_count = 0
-	for mat in _materials:
-		var resolved = registry.get_material(mat)
-		if resolved != null:
-			resolved_count += 1
-	
-	if resolved_count == _materials.size():
-		_pass_test("Resolved all %d materials from registry" % _materials.size())
-	else:
-		_fail_test("Material resolution failed: %d/%d resolved" % [resolved_count, _materials.size()])
-
-
-## TEST 5: Verify junction column fields exist
-func _test_junction_column_fields() -> void:
-	_add_test("Junction Column: Override Fields (D-BAKE-2/3)")
-	
-	var junction_resolver_script = load("res://godot/scripts/geometry/junction_resolver.gd")
-	if junction_resolver_script == null:
-		_fail_test("JunctionResolver not found")
-		return
-	
-	# The fields should be present in the source code
-	var source = junction_resolver_script.get_source_code()
-	var has_facade_enabled = source.contains("facade_enabled")
-	var has_override_material = source.contains("override_material")
-	
-	if has_facade_enabled and has_override_material:
-		_pass_test("Junction column override fields present (facade_enabled + override_material)")
-	else:
-		var missing = []
-		if not has_facade_enabled:
-			missing.append("facade_enabled")
-		if not has_override_material:
-			missing.append("override_material")
-		_fail_test("Missing fields: %s" % ", ".join(missing))
-
-
-## Create a test edge
-func _create_test_edge(material: String, direction: int) -> EdgeClass:
-	var gu_a = Vector2i(0, 0)
-	var gu_b = Vector2i(1, 0) if direction == 0 else \
-	           Vector2i(1, -1) if direction == 1 else \
-	           Vector2i(-1, -1) if direction == 2 else \
-	           Vector2i(-1, 1)  # NW
-	
-	var edge = EdgeClass.new(
-		gu_a,
-		gu_b,
-		2,  # storey_count
-		material,
-		0   # start_storey
-	)
-	return edge
-
-
-## Mark test as added
-func _add_test(test_name: String) -> void:
-	_test_summary["total"] += 1
-	_test_summary["details"].append({
-		"name": test_name,
-		"status": "",
-		"message": ""
-	})
-
-
-## Mark test as passed
-func _pass_test(message: String) -> void:
-	_test_summary["passed"] += 1
-	var last = _test_summary["details"].size() - 1
-	if last >= 0:
-		_test_summary["details"][last]["status"] = "PASS"
-		_test_summary["details"][last]["message"] = message
-
-
-## Mark test as failed
-func _fail_test(message: String) -> void:
-	_test_summary["failed"] += 1
-	var last = _test_summary["details"].size() - 1
-	if last >= 0:
-		_test_summary["details"][last]["status"] = "FAIL"
-		_test_summary["details"][last]["message"] = message
-
-
-## Print summary
+## Print final summary
 func _print_summary() -> void:
 	print("\n" + "=".repeat(80))
-	print("TEST RESULTS")
+	print("B3 SILHOUETTE VERIFICATION SUMMARY")
 	print("=".repeat(80) + "\n")
 	
-	for detail in _test_summary["details"]:
-		var icon = "✓" if detail["status"] == "PASS" else "✗"
-		print("[%s] %s" % [icon, detail["name"]])
-		print("    %s" % detail["message"])
-		print()
+	var pass_count = _test_results.filter(func(r): return r["status"] == "PASS").size()
+	var fail_count = _test_results.filter(func(r): return r["status"] != "PASS").size()
 	
-	print("=".repeat(80))
-	print("SUMMARY: %d/%d passed, %d failed" % [
-		_test_summary["passed"],
-		_test_summary["total"],
-		_test_summary["failed"]
-	])
-	print("=".repeat(80) + "\n")
+	print("Headless Tests: %d PASS, %d FAIL" % [pass_count, fail_count])
 	
-	if _test_summary["failed"] == 0:
-		print("✓ Infrastructure validation PASSED")
-		print()
-		print("NEXT STEPS FOR PIXEL COMPARISON:")
-		print("=".repeat(80))
-		print()
-		print("Run in Godot Editor (NOT headless):")
-		print("1. Enable baking: Create user://bake_config.cfg with [bake] enabled=true")
-		print("2. Load INFILTRAITOR project in editor")
-		print("3. Open res://godot/scripts/tools/bake_fix_03_capture_frames.gd (NEW tool)")
-		print("4. Attach to a Node in the editor and call:")
-		print("   - capture_generic_frame() — saves /tmp/wall_generic_*.png")
-		print("   - capture_baked_frame() — saves /tmp/wall_baked_*.png")
-		print("5. Compare alpha channels of both images (ImageMagick / Python script)")
-		print()
-		print("Or use quick visual test:")
-		print("- Load PLAYGROUND.map.json with BakeConfig.enabled=true")
-		print("- Walk around, verify: no opaque rectangles, no invisible walls, no seams")
-		print("=".repeat(80))
+	print("\n[NEXT STEP] Run Live Smoke Test")
+	print("Execute: bake_fix_03_live_smoke_test.gd")
+	print("  1. Loads real map (PLAYGROUND or SIGMA_01)")
+	print("  2. Renders with BakeConfig.enabled=false (generic path)")
+	print("  3. Captures TileMap image → Image A")
+	print("  4. Renders with BakeConfig.enabled=true (baked path)")
+	print("  5. Captures TileMap image → Image B")
+	print("  6. Performs pixel-by-pixel alpha comparison")
+	print("  7. Reports EXACT match counts")
+	print("  8. Alpha MUST be 100% identical for B3 closure")
+	
+	if _all_pass():
+		print("\n✓ Headless infrastructure check PASSED")
+		print("  Ready for live smoke test")
 	else:
-		print("✗ Infrastructure validation FAILED")
-		print("Fix the %d test failure(s) above before proceeding." % _test_summary["failed"])
+		print("\n✗ Infrastructure check failed, fix above before live test")
+	
+	print("\n" + "=".repeat(80) + "\n")

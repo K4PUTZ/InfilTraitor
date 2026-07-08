@@ -31,9 +31,13 @@ class JunctionColumn:
 	var material: String          ## material of the walls this column completes (or derived material)
 	var facade_enabled: bool      ## whether this column should use baked facade (default true; BAKE-FIX-02: D-BAKE-3)
 	var override_material: String ## optional override material; empty string = use derived material from edges
+	var face_a: int               ## face of first edge (NW/NE/SE/SW) — BAKE-FIX-06: for mirroring neighbor lookup
+	var face_b: int               ## face of second edge — BAKE-FIX-06: for mirroring neighbor lookup
+	var edge_a_id: String         ## first edge's ID — BAKE-FIX-06: for neighbor voxel resolution
+	var edge_b_id: String         ## second edge's ID — BAKE-FIX-06: for neighbor voxel resolution
 	var voxels: Array[Voxel]      ## the voxel objects
 
-	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = ""):
+	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = "", p_face_a: int = 0, p_face_b: int = 1, p_edge_a_id: String = "", p_edge_b_id: String = ""):
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
@@ -41,6 +45,10 @@ class JunctionColumn:
 		material = p_material
 		facade_enabled = p_facade_enabled
 		override_material = p_override_material
+		face_a = p_face_a
+		face_b = p_face_b
+		edge_a_id = p_edge_a_id
+		edge_b_id = p_edge_b_id
 		voxels = []
 
 	func _to_string() -> String:
@@ -113,6 +121,7 @@ static func resolve(registry: EdgeRegistry) -> Array:
 					var local_y := last if d.y < 0 else 0
 					var voxel_pos := origin + Vector2i(local_x, local_y)
 
-					result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start, edge_a.material))
+					# BAKE-FIX-06: Pass face_a, face_b, and edge IDs for mirroring and override lookup
+					result.append(JunctionColumn.new(diagonal_cell, voxel_pos, junction_storey_count, min_start, edge_a.material, true, "", fa, fb, edge_a.id, edge_b.id))
 
 	return result

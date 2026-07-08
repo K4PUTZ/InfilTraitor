@@ -8,11 +8,11 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**137 scripts · 23805 lines total** (under `godot/scripts/`)
+**138 scripts · 24175 lines total** (under `godot/scripts/`)
 
 ## Index
 
-- **_archive/** — bake_compositor_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
+- **_archive/** — bake_compositor_test.gd, bake_fix_02_test_legacy.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
@@ -43,6 +43,21 @@ extends `SceneTree` · 350 lines
 - `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 - `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
 - `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+
+---
+
+### `bake_fix_02_test_legacy.gd`
+
+extends `SceneTree` · 339 lines
+
+`godot/scripts/_archive/bake_fix_02_test_legacy.gd`
+
+> BAKE-FIX-02 Selftest: Run Grouping, Strip Walking, and Junction Column Overrides Tests: (1) Run grouping collinearity, (2) junction override + facade_enabled variations Pattern: Headless, pure assertions (no drawing), exit on completion
+
+**Public vars**
+- `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
+- `var EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")`
+- `var JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")`
 
 ---
 
@@ -655,7 +670,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 118 lines
+`class_name JunctionResolver` · 127 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -730,7 +745,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 284 lines
+`class_name VoxelRenderer` · extends `Node2D` · 423 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1817,16 +1832,17 @@ extends `SceneTree` · 213 lines
 
 ### `bake_fix_02_test.gd`
 
-extends `SceneTree` · 339 lines
+extends `SceneTree` · 222 lines
 
 `godot/scripts/tools/bake_fix_02_test.gd`
 
-> BAKE-FIX-02 Selftest: Run Grouping, Strip Walking, and Junction Column Overrides Tests: (1) Run grouping collinearity, (2) junction override + facade_enabled variations Pattern: Headless, pure assertions (no drawing), exit on completion
+> BAKE-FIX-06 Selftest: Junction Column Mirroring and Override Authoring Tests: (1) Real junction column creation with face tracking, (2) Override application, (3) Mirroring rendering Pattern: Headless, pure assertions against real functions, exit on completion
 
 **Public vars**
 - `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`
 - `var EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `var JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")`
+- `var SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")`
 
 ---
 

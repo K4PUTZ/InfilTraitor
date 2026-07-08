@@ -34,6 +34,10 @@ var debug_nudge: Vector2 = Vector2.ZERO
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
 
+## BAKE-FIX-06: Cache for H-flipped tile alternatives (per source)
+## Dictionary[int(source_id), Dictionary[Vector2i(atlas_coords), int(alt_id)]]
+var _h_flip_alt_cache: Dictionary = {}
+
 
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
@@ -151,7 +155,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 ## By default: mirrors the neighboring wall voxel's atom (D-BAKE-2)
 ## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
 ## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
-func _render_junction_column(column: JunctionResolver.JunctionColumn, _registry: EdgeRegistry = null) -> void:
+func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: EdgeRegistry = null) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(column.start_storey * GeometryCoords.LEVELS_PER_STOREY + column.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 
@@ -159,16 +163,57 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, _registry:
 	var actual_material = column.override_material if column.override_material != "" else column.material
 	
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
-		var level := column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
+		var level: int = column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
 		
 		# Case 1: No facade (render flat material-only)
 		if not column.facade_enabled:
 			_set_voxel_cell(column.voxel_pos, level, actual_material)
-		# Case 2: With facade (try to mirror neighbor's atom)
+		# Case 2: With facade (mirror neighbor's atom with H-flip)
 		else:
-			# Try to find neighboring wall voxel and mirror its atom
-			# For now, render flat - will implement mirroring in subsequent fix after understanding atlas structure
-			_set_voxel_cell(column.voxel_pos, level, actual_material)
+			# BAKE-FIX-06: Find neighboring wall voxel and mirror its atom
+			var neighbor_info = _find_neighbor_wall_voxel(column, registry)
+			
+			if neighbor_info:
+				var neighbor_edge: Edge = neighbor_info["edge"]
+				var neighbor_voxel: Voxel = neighbor_info["voxel"]
+				
+				# Resolve the neighbor voxel's baked atom (if baking enabled)
+				var source_id: int = -1
+				var atlas_coords: Vector2i = Vector2i.ZERO
+				var alternative_id: int = 0
+				
+				if _bake_config == null:
+					_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+				if _baked_lookup == null:
+					_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
+				
+				if _bake_config and _bake_config.enabled and neighbor_edge:
+					# Get the voxel's local position within its slice
+					var voxel_xy = Vector2i(neighbor_voxel.grid_pos.x % 8, neighbor_voxel.grid_pos.y % 8)
+					var slice = registry.get_slice(neighbor_edge.slice_a_id) if registry.get_slice(neighbor_edge.slice_a_id) and neighbor_voxel in registry.get_slice(neighbor_edge.slice_a_id).voxels else registry.get_slice(neighbor_edge.slice_b_id)
+					
+					if slice:
+						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy)
+						if result and result.source_id_int >= 0:
+							source_id = result.source_id_int
+							atlas_coords = result.atlas_coords
+							# Get H-flipped alternative
+							alternative_id = _get_or_create_h_flipped_tile(source_id, atlas_coords)
+				
+				# Fallback or if no baking: use material-only with H-flip if available
+				if source_id < 0:
+					source_id = MATERIALS.find(actual_material)
+					if source_id == -1:
+						source_id = 0
+					atlas_coords = Vector2i.ZERO
+					alternative_id = _get_or_create_h_flipped_tile(source_id, atlas_coords)
+				
+				# Set the cell with H-flipped alternative
+				var layer: TileMapLayer = _voxel_layers[level]
+				layer.set_cell(column.voxel_pos, source_id, atlas_coords, alternative_id)
+			else:
+				# No neighbor found: render flat material-only
+				_set_voxel_cell(column.voxel_pos, level, actual_material)
 
 
 ## Set a voxel cell on the appropriate layer
@@ -207,6 +252,100 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 		atlas_coords = Vector2i.ZERO
 
 	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
+
+
+## BAKE-FIX-06: Get or create an H-flipped alternative tile for given atlas coords
+## Returns the alternative_id (0-based) to use with set_cell()
+## Caches per source to avoid creating infinite alternatives
+func _get_or_create_h_flipped_tile(source_id: int, atlas_coords: Vector2i) -> int:
+	if not _tileset or source_id < 0 or source_id >= _tileset.get_source_count():
+		return 0  # Fallback: no flip
+	
+	# Initialize cache for this source if needed
+	if not _h_flip_alt_cache.has(source_id):
+		_h_flip_alt_cache[source_id] = {}
+	
+	var cache = _h_flip_alt_cache[source_id]
+	
+	# Return cached alt_id if exists
+	if cache.has(atlas_coords):
+		return cache[atlas_coords]
+	
+	# Create new alternative: deterministic alt_id = hash(atlas_coords) % 1000
+	# (Use modulo to keep it reasonable; Godot allows large alternative IDs)
+	var alt_id = (hash(str(atlas_coords)) % 1000) + 1  # +1 to avoid 0 (canonical)
+	
+	var atlas_source = _tileset.get_source(source_id)
+	if not atlas_source or not atlas_source is TileSetAtlasSource:
+		return 0
+	
+	# Create alternative if it doesn't exist
+	if not atlas_source.has_alternative_tile(atlas_coords, alt_id):
+		atlas_source.create_alternative_tile(atlas_coords, alt_id)
+	
+	# Set flip_h flag
+	var tile_data = atlas_source.get_tile_data(atlas_coords, alt_id)
+	if tile_data:
+		tile_data.flip_h = true
+	
+	# Cache and return
+	cache[atlas_coords] = alt_id
+	return alt_id
+
+
+## BAKE-FIX-06: Find the neighbor wall voxel adjacent to a junction column
+## Given the junction column and edge registry, finds the voxel belonging to one of
+## the forming edges that is adjacent (not diagonal) to the column voxel.
+## Returns: {"edge": Edge, "voxel": Voxel} or {} (empty dict) if not found
+func _find_neighbor_wall_voxel(column: JunctionResolver.JunctionColumn, registry: EdgeRegistry) -> Dictionary:
+	if not registry:
+		return {}
+	
+	# Reconstruct the elbow GU from the diagonal cell (used for validation)
+	var _elbow_gu = column.gu_cell - Face.delta(column.face_a) - Face.delta(column.face_b)
+	
+	# Get edges that created this junction
+	var edge_a = registry.get_edge(column.edge_a_id) if column.edge_a_id else null
+	var edge_b = registry.get_edge(column.edge_b_id) if column.edge_b_id else null
+	
+	if not edge_a or not edge_b:
+		return {}
+	
+	# Get slices for both edges
+	var slices_a = registry.slices_of_edge(edge_a.id)
+	var slices_b = registry.slices_of_edge(edge_b.id)
+	
+	# Look for a voxel in slice_a or slice_b that is adjacent (not diagonal) to column.voxel_pos
+	var candidate_slices = []
+	candidate_slices.append_array(slices_a)
+	candidate_slices.append_array(slices_b)
+	
+	var closest_voxel: Voxel = null
+	var closest_edge: Edge = null
+	var closest_distance: float = 999999.0
+	
+	for slice in candidate_slices:
+		if slice and slice.voxels.size() > 0:
+			for voxel in slice.voxels:
+				if not voxel.visible:
+					continue
+				
+				# Check if voxel is adjacent (not diagonal) to column.voxel_pos
+				var dx = abs(voxel.grid_pos.x - column.voxel_pos.x)
+				var dy = abs(voxel.grid_pos.y - column.voxel_pos.y)
+				
+				# Adjacent means exactly one of dx, dy is 1, the other is 0 (4-neighbor connectivity)
+				if (dx == 1 and dy == 0) or (dx == 0 and dy == 1):
+					var distance = sqrt(dx * dx + dy * dy)
+					if distance < closest_distance:
+						closest_distance = distance
+						closest_voxel = voxel
+						closest_edge = edge_a if slice in slices_a else edge_b
+	
+	if closest_voxel and closest_edge:
+		return {"edge": closest_edge, "voxel": closest_voxel}
+	
+	return {}
 
 
 ## Process dirty slices only (TIC optimization)

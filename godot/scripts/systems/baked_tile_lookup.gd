@@ -13,6 +13,11 @@ const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
+const VOXEL_ATOM_W: int = GeometryCoordsClass.VOXEL_ATOM_W  # 32
+const VOXEL_ATOM_H: int = GeometryCoordsClass.VOXEL_ATOM_H  # 36
+const STRIP_LENGTH: int = 9  # Master-strip atom count [TILE_ANATOMY.md §4]
+const PAGE_WIDTH: int = 4096  # Physical page width in pixels
+const TILES_PER_PAGE_X: int = 128  # PAGE_WIDTH / VOXEL_ATOM_W (4096 / 32)
 
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
@@ -102,29 +107,21 @@ func _resolve_baked_strip(edge, face: int, voxel_xy: Vector2i) -> TileLookupResu
 		# Edge not in any run - treat as isolated or use generic
 		return null
 	
-	# Get run's min edge and compute window origin
-	var min_edge = run.get("min_edge", null)
-	if min_edge == null:
-		return null
-	
-	var facade_sampler = FacadeSamplerClass.new()
-	var window_origin_texels = facade_sampler.get_window_origin_run_texels(min_edge, facade_id)
-	
 	# Compute position within run and walk the strip dictionary
 	var position_in_run = _get_edge_position_in_run(edge, run)
 	if position_in_run < 0:
 		return null
 	
-	# For now, compute the plane column/row for the voxel in the strip
-	# This will be replaced with more sophisticated strip walking once BAKE-FIX-01 dictionary is available
-	var variant_k = abs(hash(str(edge.key_string()) + str(voxel_xy))) % 4
+	# BAKE-FIX-09: Compute key matching writer's deterministic scheme
+	# Writer uses: variant_k=atom_idx (0-8), lookup_face=0 (master strips),
+	#              plane_col = atom_idx % TILES_PER_PAGE_X, plane_row = int(atom_idx / TILES_PER_PAGE_X)
+	var variant_k = position_in_run % STRIP_LENGTH  # Select which atom in the master strip (0-8)
+	var lookup_face = 0  # Master strips apply to all faces (writer uses face=0)
+	var plane_col = variant_k % TILES_PER_PAGE_X  # Column position on the page (0-127)
+	var plane_row = int(variant_k / TILES_PER_PAGE_X)  # Row position on the page
 	
-	# Build lookup key: "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
-	# For now, use position_in_run as plane_col (simplified)
-	var plane_col = (window_origin_texels.x / TEX_AUTHORING_N + position_in_run) % (64 * TEX_AUTHORING_N)
-	var plane_row = window_origin_texels.y / TEX_AUTHORING_N
-	
-	var lookup_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
+	# Build lookup key: "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, lookup_face, plane_col, plane_row]
+	var lookup_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, lookup_face, plane_col, plane_row]
 	
 	if lookup_dict.has(lookup_key):
 		var entry = lookup_dict[lookup_key]

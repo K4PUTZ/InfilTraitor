@@ -82,7 +82,7 @@ func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 
 ## BAKE-FIX-02: Resolve using baked strip dictionary with run-aware mirroring
 ## Returns null if baked atlas not available; caller will use fallback
-func _resolve_baked_strip(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
+func _resolve_baked_strip(edge, _face: int, _voxel_xy: Vector2i) -> TileLookupResult:
 	# Get the baked atlas and lookup dictionary
 	var baked_atlas = _get_baked_atlas()
 	if baked_atlas == null:
@@ -118,7 +118,7 @@ func _resolve_baked_strip(edge, face: int, voxel_xy: Vector2i) -> TileLookupResu
 	var variant_k = position_in_run % STRIP_LENGTH  # Select which atom in the master strip (0-8)
 	var lookup_face = 0  # Master strips apply to all faces (writer uses face=0)
 	var plane_col = variant_k % TILES_PER_PAGE_X  # Column position on the page (0-127)
-	var plane_row = int(variant_k / TILES_PER_PAGE_X)  # Row position on the page
+	var plane_row = int(float(variant_k) / TILES_PER_PAGE_X)  # Row position on the page
 	
 	# Build lookup key: "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, lookup_face, plane_col, plane_row]
 	var lookup_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, lookup_face, plane_col, plane_row]

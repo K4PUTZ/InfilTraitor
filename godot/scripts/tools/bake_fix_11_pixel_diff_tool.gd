@@ -24,9 +24,6 @@ const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_sour
 const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 
 var _test_results: Array = []
-var _total_lookups_compared: int = 0
-var _total_lookups_matching: int = 0
-var _total_mismatches: int = 0
 
 
 func _init() -> void:
@@ -106,12 +103,10 @@ func _test_baked_lookup_contracts() -> void:
 	
 	# Deep comparison of structure
 	print("  Comparing key-by-key structure...")
-	var all_match = true
 	var key_mismatches = 0
 	
 	for key in generic_keys:
 		if not baked_keys.has(key):
-			all_match = false
 			key_mismatches += 1
 			if key_mismatches <= 5:
 				print("    ✗ Key in generic but not baked: %s" % key)
@@ -122,7 +117,6 @@ func _test_baked_lookup_contracts() -> void:
 		
 		# Compare value types and basic structure
 		if typeof(generic_val) != typeof(baked_val):
-			all_match = false
 			key_mismatches += 1
 			if key_mismatches <= 5:
 				print("    ✗ Type mismatch for key '%s': generic=%s, baked=%s" % [key, typeof(generic_val), typeof(baked_val)])
@@ -134,7 +128,6 @@ func _test_baked_lookup_contracts() -> void:
 			var baked_subkeys = baked_val.keys()
 			
 			if generic_subkeys.size() != baked_subkeys.size():
-				all_match = false
 				key_mismatches += 1
 				if key_mismatches <= 5:
 					print("    ✗ Subkey count mismatch for '%s': generic=%d, baked=%d" % [key, generic_subkeys.size(), baked_subkeys.size()])

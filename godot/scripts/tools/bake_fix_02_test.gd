@@ -157,7 +157,6 @@ func _test_junction_override_application() -> bool:
 		return false
 	
 	# Step 4: Generate slices and resolve junctions
-	var SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
 	var registry = EdgeRegistryClass.new()
 	SliceGeneratorClass.generate(edges, registry)
 	
@@ -170,7 +169,6 @@ func _test_junction_override_application() -> bool:
 	
 	# Step 5: Compile junction_overrides and apply them (the critical post-hoc step)
 	# This mirrors what room_builder.gd::_apply_junction_overrides() does
-	var RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 	
 	var compiled_overrides = MapCompilerClass._compile_junction_overrides(map_spec, Vector2i(map_spec["buffer"], map_spec["buffer"]))
 	print("Step 5: Compiled %d junction_overrides" % compiled_overrides.size())
@@ -266,7 +264,6 @@ func _test_junction_mirroring_rendering() -> bool:
 	print("  Expected V-junction at (2, 0) with faces NW (from h-run) and NE (from v_edge)")
 	
 	# Generate slices for the registry
-	var SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
 	SliceGeneratorClass.generate(registry.all_edges(), registry)
 	
 	# Resolve junctions
@@ -288,8 +285,6 @@ func _test_junction_mirroring_rendering() -> bool:
 		
 		# Get VoxelRenderer's neighbor lookup logic
 		# We'll inline it here for testing
-		var VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
-		var renderer = VoxelRendererClass.new()
 		
 		# Call the private method via dictionary key access (won't work directly)
 		# Instead, we'll replicate the neighbor lookup logic here

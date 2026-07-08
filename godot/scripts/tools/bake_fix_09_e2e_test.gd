@@ -98,7 +98,7 @@ func _test_key_generation_matches() -> void:
 	var writer_variant_k = writer_atom_idx
 	var writer_face = 0
 	var writer_plane_col = int(float(writer_atom_idx % TILES_PER_PAGE_X) / 1.0)
-	var writer_plane_row = int(float(writer_atom_idx / TILES_PER_PAGE_X) / 1.0)
+	var writer_plane_row = int(float(writer_atom_idx) / TILES_PER_PAGE_X)
 	var writer_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, writer_variant_k, writer_face, writer_plane_col, writer_plane_row]
 	
 	# READER SIDE: position_in_run=0 should compute same key
@@ -106,7 +106,7 @@ func _test_key_generation_matches() -> void:
 	var reader_variant_k = reader_position_in_run % STRIP_LENGTH  # 0 % 9 = 0
 	var reader_lookup_face = 0
 	var reader_plane_col = reader_variant_k % TILES_PER_PAGE_X  # 0 % 128 = 0
-	var reader_plane_row = int(reader_variant_k / TILES_PER_PAGE_X)  # int(0 / 128) = 0
+	var reader_plane_row = int(float(reader_variant_k) / TILES_PER_PAGE_X)  # int(0 / 128) = 0
 	var reader_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, reader_variant_k, reader_lookup_face, reader_plane_col, reader_plane_row]
 	
 	# Verify they match
@@ -117,8 +117,8 @@ func _test_key_generation_matches() -> void:
 	# Test a few more positions to be thorough
 	var mismatches = []
 	for test_atom_idx in range(STRIP_LENGTH):
-		var w_key = "%s|%s|%d|0|%d|%d" % [material_id, facade_id, test_atom_idx, test_atom_idx % TILES_PER_PAGE_X, int(test_atom_idx / TILES_PER_PAGE_X)]
-		var r_key = "%s|%s|%d|0|%d|%d" % [material_id, facade_id, test_atom_idx % STRIP_LENGTH, (test_atom_idx % STRIP_LENGTH) % TILES_PER_PAGE_X, int((test_atom_idx % STRIP_LENGTH) / TILES_PER_PAGE_X)]
+		var w_key = "%s|%s|%d|0|%d|%d" % [material_id, facade_id, test_atom_idx, test_atom_idx % TILES_PER_PAGE_X, int(float(test_atom_idx) / TILES_PER_PAGE_X)]
+		var r_key = "%s|%s|%d|0|%d|%d" % [material_id, facade_id, test_atom_idx % STRIP_LENGTH, (test_atom_idx % STRIP_LENGTH) % TILES_PER_PAGE_X, int(float(test_atom_idx % STRIP_LENGTH) / TILES_PER_PAGE_X)]
 		if w_key != r_key:
 			mismatches.append("[atom_%d] writer=%s vs reader=%s" % [test_atom_idx, w_key, r_key])
 	

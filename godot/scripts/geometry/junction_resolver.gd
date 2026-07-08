@@ -61,6 +61,18 @@ class JunctionColumn:
 
 ## Resolve V-junctions from a registry of edges.
 ## Returns an Array of JunctionColumn objects, one per detected elbow.
+##
+## BAKE-FIX-10 Architecture Decision (Option B — Deliberate Post-hoc Application):
+## Junction override application is deliberately implemented as a post-processing step
+## in room_builder.gd::_apply_junction_overrides(), NOT within resolve() itself.
+## The columns are created with hardcoded facade_enabled=true, override_material=""
+## here; room_builder then applies the layout["junction_overrides"] entries after
+## resolution completes. This is a conscious architectural choice:
+## - Pro: clean separation between detection (resolve) and application (room_builder)
+## - Pro: overrides are applied consistently alongside other layout processing
+## - Pro: simpler merge of multiple data sources (map_compiler output → layout → application)
+## The post-hoc pipeline (map_compiler → room_builder::_apply_junction_overrides) is
+## now verified end-to-end by BAKE-FIX-10::Test 2 (see bake_fix_02_test.gd).
 static func resolve(registry: EdgeRegistry) -> Array:
 	var result: Array = []
 	var cells_seen: Dictionary = {}  ## Vector2i -> true; each edge touches 2 cells, visit each once

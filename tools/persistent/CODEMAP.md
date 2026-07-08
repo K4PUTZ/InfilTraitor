@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**141 scripts · 24607 lines total** (under `godot/scripts/`)
+**141 scripts · 24808 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -688,7 +688,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 127 lines
+`class_name JunctionResolver` · 139 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -1855,11 +1855,11 @@ extends `SceneTree` · 213 lines
 
 ### `bake_fix_02_test.gd`
 
-extends `SceneTree` · 222 lines
+extends `SceneTree` · 411 lines
 
 `godot/scripts/tools/bake_fix_02_test.gd`
 
-> BAKE-FIX-06 Selftest: Junction Column Mirroring and Override Authoring Tests: (1) Real junction column creation with face tracking, (2) Override application, (3) Mirroring rendering Pattern: Headless, pure assertions against real functions, exit on completion
+> BAKE-FIX-10 Selftest: Junction Override Application & Mirroring Rendering Tests: (1) Junction column face tracking, (2) Override application via real pipeline, (3) Mirroring logic with neighbor lookup Pattern: Headless, pure assertions against real functions, exit on completion Key: Test 2 compiles a real MapSpec with junction_overrides and verifies end-to-end flow Key: Test 3 exercises neighbor-lookup and mirroring field logic with 3+ collinear edges
 
 **Public vars**
 - `var EdgeClass = preload("res://godot/scripts/geometry/edge.gd")`

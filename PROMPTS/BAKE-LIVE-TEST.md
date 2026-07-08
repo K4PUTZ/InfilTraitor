@@ -24,19 +24,22 @@ godot --headless --script godot/scripts/tools/bake_smoke_test.gd
 
 #### Phase 2: Live Visual Test (Interactive Mode)
 
-**Script**: `godot/scenes/tests/bake_live_test.gd`
+**Path**: `room.tscn` (main scene) with **F6 toggle**
 
 **Features**:
-- Loads PLAYGROUND with BakeConfig.enabled=true by default
-- F5 toggle: Switch between generic (BakeConfig=false) and baked (BakeConfig=true) rendering
-- UI label shows current mode
-- Visual comparison: baked path should produce smoother wall textures
+- Open the game scene (`room.tscn`) and press **F6** during play
+- F6 flips `BakeConfig.enabled` and reloads the current map (default: PLAYGROUND)
+- Console shows bake mode state change; rendering updates live in viewport
+- Visual comparison: baked vs. generic wall/floor rendering side-by-side
 
 **How to Test**:
-1. Open Godot Editor
-2. Press F5 multiple times to compare generic vs baked rendering
-3. Observe: Wall seams, texture blending, material variations
-4. Expected: Baked rendering has pre-computed transitions, smoother appearance
+1. Open Godot Editor with the project loaded
+2. Play `room.tscn` (F5 in Editor, or use the Play button)
+3. Press **F6** multiple times to compare generic vs baked rendering
+4. Observe: Wall seams, texture blending, material variations
+5. Expected: Baked rendering has pre-computed transitions, smoother appearance
+
+**Note**: `bake_live_test.gd` is a data-only test (no rendering); the real visual QA happens via F6 in `room.tscn`.
 
 ### Quality Gates Passed
 
@@ -46,7 +49,8 @@ godot --headless --script godot/scripts/tools/bake_smoke_test.gd
 | **Both maps load** | ✅ | PLAYGROUND + SIGMA_01 both compile |
 | **Material registration** | ✅ | 16 layouts registered per map |
 | **Layout structure** | ✅ | Identical contracts (BAKE-FIX-11) |
-| **Ready for Editor** | ✅ | bake_live_test.gd interactive script ready |
+| **Live visual toggle** | ✅ | F6 in room.tscn flips bake mode and reloads map |
+| **Editor integration** | ✅ | F6 hotkey wired to DebugToolsController.toggle_bake_mode() |
 
 ## Architecture Verified
 
@@ -80,11 +84,10 @@ Both paths produce identical `(source_id, atlas_coords, alternative_id)` instruc
    enabled=true
    ```
 
-2. Or set via code:
-   ```gdscript
-   BakeConfigClass.enabled = true
-   BakeConfigClass.save_config()
-   ```
+2. **Runtime toggling in Editor**: Press **F6** during play in `room.tscn` to flip bake mode
+   and visually compare generic vs. baked rendering. This reloads the current map
+   without restarting the Editor. Bake mode does not persist to `user://bake_config.cfg`
+   — F6 is session-only toggle for visual QA.
 
 **No code changes required** — baking is config-driven.
 

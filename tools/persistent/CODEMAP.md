@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**136 scripts · 23885 lines total** (under `godot/scripts/`)
+**136 scripts · 23925 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2600,7 +2600,7 @@ extends `Node2D` · 34 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 105 lines
+`class_name DebugToolsController` · 142 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -2614,6 +2614,7 @@ extends `Node2D` · 34 lines
 - `func create_map_loader_button() -> void:`
 - `func toggle_voxel_ruler_overlay() -> void:`
 - `func toggle_nudge_mode() -> void:`
+- `func toggle_bake_mode() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
 - `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
@@ -2856,7 +2857,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2032 lines
+extends `Node2D` · 2035 lines
 
 `godot/scripts/world/room.gd`
 

@@ -62,6 +62,43 @@ func toggle_nudge_mode() -> void:
 		print_debug("[DEBUG-02] Nudge mode OFF")
 
 
+## Toggle bake mode (F6) for visual QA: flip BakeConfig.enabled and reload current map
+func toggle_bake_mode() -> void:
+	var BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
+	BakeConfigClass.enabled = not BakeConfigClass.enabled
+	
+	# Reload the current map through the full rendering pipeline
+	room.load_map(room.map_id)
+	
+	var mode_name := "BAKED" if BakeConfigClass.enabled else "GENERIC"
+	print_debug("[DEBUG-02] Bake mode: %s (enabled=%s)" % [mode_name, BakeConfigClass.enabled])
+	
+	# Show transient on-screen label
+	_show_bake_mode_label(mode_name)
+
+
+## Show a transient on-screen label displaying the bake mode
+func _show_bake_mode_label(mode_name: String) -> void:
+	var label := Label.new()
+	label.text = "Bake Mode: %s" % mode_name
+	label.add_theme_font_size_override("font_size", 20)
+	label.set("theme_override_colors/font_color", Color.WHITE)
+	label.position = Vector2(100.0, 20.0)  # Top-left, below UI
+	room.add_child(label)
+	
+	# Auto-remove after 2.5 seconds
+	var timer := Timer.new()
+	timer.wait_time = 2.5
+	timer.one_shot = true
+	timer.timeout.connect(func() -> void:
+		label.queue_free()
+		timer.queue_free()
+	)
+	room.add_child(timer)
+	timer.start()
+
+
+
 ## Apply nudge to voxel renderer
 func apply_nudge(delta: Vector2) -> void:
 	if room._voxel_renderer == null:

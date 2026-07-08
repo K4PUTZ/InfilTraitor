@@ -1812,6 +1812,9 @@ func _input(event: InputEvent) -> void:
 				KEY_F4:
 					_debug_tools_controller.toggle_nudge_mode()
 					return
+				KEY_F6:
+					_debug_tools_controller.toggle_bake_mode()
+					return
 				KEY_Z:
 					## Z lowers: STANDING -> CROUCHING -> PRONE
 					var next_z := agent.posture

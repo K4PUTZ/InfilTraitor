@@ -371,12 +371,12 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	var baked_atlas = compositor.bake(map_spec, resolver)
 	var elapsed = Time.get_ticks_msec() - start
 
-	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.pages.size()])
+	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.atom_pages.size()])
 
 	# Register baked atlas pages with the tileset
 	var source_ids = {}
-	for page_idx in range(baked_atlas.pages.size()):
-		var source_id = _register_baked_atlas_page(baked_atlas.pages[page_idx], page_idx)
+	for page_idx in range(baked_atlas.atom_pages.size()):
+		var source_id = _register_baked_atlas_page(baked_atlas.atom_pages[page_idx], page_idx)
 		source_ids[page_idx] = source_id
 		print("[ROOM] Registered baked atlas page %d as source %d" % [page_idx, source_id])
 

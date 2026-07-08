@@ -234,11 +234,19 @@ func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
 	for strip_key in atlas_result.strips.keys():
 		var strip = atlas_result.strips[strip_key]
 		
+		# Parse material_id and facade_id from strip_key (format: "material_id|facade_id")
+		var key_parts = strip_key.split("|")
+		if key_parts.size() != 2:
+			push_error("[BAKE] Malformed strip key: %s" % strip_key)
+			continue
+		var material_id = key_parts[0]
+		var facade_id = key_parts[1]
+		
 		# Allocate page if needed
 		while atlas_result.atom_pages.size() <= page_idx:
 			atlas_result.atom_pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGBA8))
 		
-		# Place strip atoms into the page
+		# Place strip atoms into the page and populate lookup dictionary
 		for atom_idx in range(strip.atoms.size()):
 			var atom_img = strip.atoms[atom_idx]
 			var tile_x = (atom_idx % tiles_per_page_x) * VOXEL_ATOM_W
@@ -250,6 +258,22 @@ func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
 					atlas_result.atom_pages[page_idx].set_pixel(
 						tile_x + x, tile_y_in_page + y, atom_img.get_pixel(x, y)
 					)
+			
+			# Populate lookup dictionary: key → {page, atlas_coords}
+			# Key format: "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
+			# For master strips: variant_k=atom_idx, face=0, plane_col/row based on tile position
+			var variant_k = atom_idx  # Each atom in the strip is a potential variant
+			var face = 0  # Master strips apply to all faces; specialized variants set face explicitly
+			var plane_col = int(float(tile_x) / float(VOXEL_ATOM_W))
+			var plane_row = int(float(tile_y_in_page) / float(VOXEL_ATOM_H))
+			
+			var lookup_key = "%s|%s|%d|%d|%d|%d" % [material_id, facade_id, variant_k, face, plane_col, plane_row]
+			var atlas_coords = Vector2i(plane_col, plane_row)
+			
+			atlas_result.lookup[lookup_key] = {
+				"page": page_idx,
+				"atlas_coords": atlas_coords
+			}
 
 ## Get global material registry
 func _get_material_registry():

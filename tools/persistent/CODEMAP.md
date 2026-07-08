@@ -8,11 +8,11 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**137 scripts · 23781 lines total** (under `godot/scripts/`)
+**137 scripts · 23805 lines total** (under `godot/scripts/`)
 
 ## Index
 
-- **_archive/** — material_atlas_generator.gd, per_face_projector.gd
+- **_archive/** — bake_compositor_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, material_atlas_generator.gd, material_registry_test.gd, per_face_projector.gd
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
@@ -21,13 +21,55 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — per_face_projector_test.gd, bake_compositor_test.gd, bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison_tool.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_03_geometry_test.gd, fix_bake_04_material_tile_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, material_registry_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
+- **tools/** — per_face_projector_test.gd, bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison_tool.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_selftest.gd, baked_tile_lookup_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_baking_e2e_test.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, selection_overlay.gd, tile_labels_overlay.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
 ## _archive/
+
+### `bake_compositor_test.gd`
+
+extends `SceneTree` · 350 lines
+
+`godot/scripts/_archive/bake_compositor_test.gd`
+
+> BAKE-04 Selftest: BakeCompositor (T2, Render) Tests bake set deduplication, composite multiply, and batch timing.
+
+**Public vars**
+- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+
+---
+
+### `fix_bake_03_geometry_test.gd`
+
+extends `SceneTree` · 62 lines
+
+`godot/scripts/_archive/fix_bake_03_geometry_test.gd`
+
+> FIX-BAKE-03 TEST: PerFaceProjector Integer Shear Assertion Validates that PerFaceProjector._init() runs integer-shear validation and passes with current matrices.
+
+**Constants / tuning**
+- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
+
+---
+
+### `fix_bake_04_material_tile_test.gd`
+
+extends `SceneTree` · 172 lines
+
+`godot/scripts/_archive/fix_bake_04_material_tile_test.gd`
+
+**Constants / tuning**
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+
+---
 
 ### `material_atlas_generator.gd`
 
@@ -44,6 +86,24 @@
 
 **Public API**
 - `func generate_atlas(registry: MaterialRegistryClass, N: int, face_variants: Array) -> AtlasResult:`
+
+---
+
+### `material_registry_test.gd`
+
+extends `SceneTree` · 225 lines
+
+`godot/scripts/_archive/material_registry_test.gd`
+
+> MaterialRegistry Selftest (T1 & T2) Validates: 1. Pattern determinism (same input → same output) 2. Atlas generation (correct tile count and page creation) 3. Tile lookup consistency 4. Material registration
+
+**Public vars**
+- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
+- `var StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")`
+- `var WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")`
+- `var MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")`
+- `var MaterialAtlasGeneratorClass = preload("res://godot/scripts/systems/material_atlas_generator.gd")`
+- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 
 ---
 
@@ -1091,7 +1151,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 268 lines
+`class_name BakeCompositor` · 292 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1755,23 +1815,6 @@ extends `SceneTree` · 213 lines
 
 ---
 
-### `bake_compositor_test.gd`
-
-extends `SceneTree` · 350 lines
-
-`godot/scripts/tools/bake_compositor_test.gd`
-
-> BAKE-04 Selftest: BakeCompositor (T2, Render) Tests bake set deduplication, composite multiply, and batch timing.
-
-**Public vars**
-- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `var FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
-- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
-- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
-
----
-
 ### `bake_fix_02_test.gd`
 
 extends `SceneTree` · 339 lines
@@ -2099,31 +2142,6 @@ extends `SceneTree` · 121 lines
 
 ---
 
-### `fix_bake_03_geometry_test.gd`
-
-extends `SceneTree` · 62 lines
-
-`godot/scripts/tools/fix_bake_03_geometry_test.gd`
-
-> FIX-BAKE-03 TEST: PerFaceProjector Integer Shear Assertion Validates that PerFaceProjector._init() runs integer-shear validation and passes with current matrices.
-
-**Constants / tuning**
-- `PerFaceProjectorClass` = `preload("res://godot/scripts/systems/per_face_projector.gd")`
-
----
-
-### `fix_bake_04_material_tile_test.gd`
-
-extends `SceneTree` · 172 lines
-
-`godot/scripts/tools/fix_bake_04_material_tile_test.gd`
-
-**Constants / tuning**
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
----
-
 ### `fix_bake_09_e2e_test.gd`
 
 extends `SceneTree` · 146 lines
@@ -2228,24 +2246,6 @@ extends `SceneTree` · 322 lines
 - `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
 - `var MapSectionsV1Class = preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
 - `var MapFileServiceClass = preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
-
----
-
-### `material_registry_test.gd`
-
-extends `SceneTree` · 225 lines
-
-`godot/scripts/tools/material_registry_test.gd`
-
-> MaterialRegistry Selftest (T1 & T2) Validates: 1. Pattern determinism (same input → same output) 2. Atlas generation (correct tile count and page creation) 3. Tile lookup consistency 4. Material registration
-
-**Public vars**
-- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
-- `var StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")`
-- `var WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")`
-- `var MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")`
-- `var MaterialAtlasGeneratorClass = preload("res://godot/scripts/systems/material_atlas_generator.gd")`
-- `var PerFaceProjectorClass = preload("res://godot/scripts/systems/per_face_projector.gd")`
 
 ---
 

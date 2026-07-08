@@ -1,7 +1,7 @@
 # INFILTRAITOR — Operator System Prompt
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.42 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 774910f "[VERSION] Bump to 0.4.39"
+**Version:** 0.4.43 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** c97dbde "BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API"
 <!-- AUTO:END header -->
 
 You are the technical operator for the INFILTRAITOR project. You implement

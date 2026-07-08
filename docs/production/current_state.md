@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.42 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 774910f "[VERSION] Bump to 0.4.39"
+**Version:** 0.4.43 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** c97dbde "BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- c97dbde BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API
 - 774910f [VERSION] Bump to 0.4.39
 - a7e6f98 ALPHA BAKE FIX 0.4.38 - 2026-07-08
 - f27a829 [BAKE-FIX-11] B3 CLOSED via contract-level verification (6/6 PASS)
 - adb1f33 [BAKE-FIX-10] Junction override authoring & real testing: end-to-end pipeline verification + neighbor-lookup validation (3/3 PASS)
-- 6b7f8b9 [BAKE-FIX-09] Reader/Writer key matching: fix lookup by aligning reader scheme with writer's deterministic logic (3/3 PASS)
 <!-- AUTO:END version_history -->
 
 ---

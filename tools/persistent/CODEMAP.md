@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**139 scripts · 24306 lines total** (under `godot/scripts/`)
+**139 scripts · 24297 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1866,15 +1866,16 @@ extends `SceneTree` · 222 lines
 
 ### `bake_fix_03_live_smoke_test.gd`
 
-extends `SceneTree` · 163 lines
+extends `SceneTree` · 154 lines
 
 `godot/scripts/tools/bake_fix_03_live_smoke_test.gd`
 
-> BAKE-FIX-03 Live Smoke Test (Simplified) Runs in headless mode: godot --headless --script godot/scripts/tools/bake_fix_03_live_smoke_test.gd Validates: 1. BakeConfig can be toggled and defaults to false 2. Infrastructure for manual smoke testing is in place 3. INSTRUCTIONS provided for manual verification in editor
+> BAKE-FIX-07: Live Smoke Test (Phase 2 — Headless) Map file loading + map compilation + BakeConfig verification. Tests infrastructure for rendering without actual rendering. Run: godot --headless --script godot/scripts/tools/bake_fix_03_live_smoke_test.gd
 
 **Constants / tuning**
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 
 ---
 

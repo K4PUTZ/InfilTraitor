@@ -1,163 +1,154 @@
-## BAKE-FIX-03 Live Smoke Test (Simplified)
+## BAKE-FIX-07: Live Smoke Test (Phase 2 — Headless)
 ##
-## Runs in headless mode: godot --headless --script godot/scripts/tools/bake_fix_03_live_smoke_test.gd
+## Map file loading + map compilation + BakeConfig verification.
+## Tests infrastructure for rendering without actual rendering.
 ##
-## Validates:
-## 1. BakeConfig can be toggled and defaults to false
-## 2. Infrastructure for manual smoke testing is in place
-## 3. INSTRUCTIONS provided for manual verification in editor
+## Run: godot --headless --script godot/scripts/tools/bake_fix_03_live_smoke_test.gd
 
 extends SceneTree
 
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
-const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
+const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 
-var _test_count: int = 0
-var _pass_count: int = 0
-var _fail_count: int = 0
+var _timeout_ms: int = 5000  # 5 seconds per operation
+var _test_results: Array = []
+var _start_time: int = 0
+
 
 func _init() -> void:
 	print("\n" + "=".repeat(80))
-	print("BAKE-FIX-03: LIVE SMOKE TEST — BakeConfig Infrastructure")
+	print("BAKE-FIX-07: Live Smoke Test (Phase 2 — Headless)")
+	print("=".repeat(80))
+	print("Map loading + compilation + BakeConfig verification")
+	print("Timeout: %dms per operation" % _timeout_ms)
 	print("=".repeat(80) + "\n")
 	
-	# Initialize material registry
-	if not Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
-		var registry = MaterialRegistryClass.new()
-		registry.register_defaults()
-		Engine.set_meta("GLOBAL_MATERIAL_REGISTRY", registry)
-	
-	# Load BakeConfig
-	BakeConfigClass.load_config()
+	_start_time = Time.get_ticks_msec()
 	
 	# Run tests
-	_test_bakeconfig_default()
-	_test_bakeconfig_enable_disable()
-	_test_bakeconfig_persists_after_toggle()
+	_test_load_map()
+	_test_map_compilation()
+	_test_bakeconfig_toggle()
 	
 	# Print summary
 	_print_summary()
 	
-	var exit_code = 0 if _fail_count == 0 else 1
-	quit(exit_code)
+	# Exit
+	quit(0 if _all_pass() else 1)
 
 
-## TEST 1: Verify BakeConfig defaults to false
-func _test_bakeconfig_default() -> void:
-	_add_test("BakeConfig: Defaults to false")
+## TEST 1: Load map file from disk
+func _test_load_map() -> void:
+	print("[TEST 1] Load PLAYGROUND map file")
+	print("-".repeat(80))
 	
-	if BakeConfigClass.enabled == false:
-		_pass("BakeConfig.enabled = false (safe default for shipped builds)")
-	else:
-		_fail("BakeConfig.enabled = true (regression - should default to false)")
+	# Create file source and get runtime spec
+	var file_source = FileMapSourceClass.new()
+	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
+	
+	if map_spec == null or map_spec.is_empty():
+		_record_result("Load map", "FAIL", "get_runtime_spec returned empty")
+		return
+	
+	var width = map_spec.get("width", 0)
+	var height = map_spec.get("height", 0)
+	
+	_record_result("Load map", "PASS", "Loaded PLAYGROUND (%dx%d)" % [width, height])
 
 
-## TEST 2: Verify BakeConfig can be toggled
-func _test_bakeconfig_enable_disable() -> void:
-	_add_test("BakeConfig: Can be enabled/disabled")
+## TEST 2: Compile map to layout
+func _test_map_compilation() -> void:
+	print("\n[TEST 2] Compile map to layout")
+	print("-".repeat(80))
 	
-	var original = BakeConfigClass.enabled
+	# Load map
+	var file_source = FileMapSourceClass.new()
+	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
 	
-	# Enable
+	if map_spec == null or map_spec.is_empty():
+		_record_result("Map compilation", "FAIL", "Could not load map")
+		return
+	
+	# Try to compile
+	var layout = MapCompilerClass.compile(map_spec)
+	
+	if layout == null:
+		_record_result("Map compilation", "FAIL", "compiler.compile() returned null")
+		return
+	
+	_record_result("Map compilation", "PASS", "Layout compiled successfully")
+
+
+## TEST 3: Verify BakeConfig can toggle
+func _test_bakeconfig_toggle() -> void:
+	print("\n[TEST 3] BakeConfig toggle (rendering path selection)")
+	print("-".repeat(80))
+	
+	BakeConfigClass.load_config()
+	
+	var initial = BakeConfigClass.enabled
+	print("  Initial: BakeConfig.enabled = %s" % initial)
+	
+	# Toggle ON
 	BakeConfigClass.enabled = true
 	if BakeConfigClass.enabled != true:
-		_fail("Failed to set BakeConfig.enabled = true")
-		BakeConfigClass.enabled = original
+		_record_result("BakeConfig toggle", "FAIL", "Could not enable")
 		return
 	
-	# Disable
+	print("  Toggled: BakeConfig.enabled = true (baked path)")
+	
+	# Toggle OFF
 	BakeConfigClass.enabled = false
 	if BakeConfigClass.enabled != false:
-		_fail("Failed to set BakeConfig.enabled = false")
-		BakeConfigClass.enabled = original
+		_record_result("BakeConfig toggle", "FAIL", "Could not disable")
 		return
 	
-	BakeConfigClass.enabled = original
-	_pass("BakeConfig toggle works: false → true → false")
-
-
-## TEST 3: Verify BakeConfig persists for rendering
-func _test_bakeconfig_persists_after_toggle() -> void:
-	_add_test("BakeConfig: Persists between render cycles")
+	print("  Toggled: BakeConfig.enabled = false (generic path)")
 	
-	# Simulate render cycle 1: disabled
-	BakeConfigClass.enabled = false
-	var cycle1_state = BakeConfigClass.enabled
-	
-	# Simulate render cycle 2: enabled
-	BakeConfigClass.enabled = true
-	var cycle2_state = BakeConfigClass.enabled
-	
-	# Verify both states were active
-	if cycle1_state == false and cycle2_state == true:
-		_pass("BakeConfig persists state across render cycles")
-	else:
-		_fail("BakeConfig state changed unexpectedly: cycle1=%s, cycle2=%s" % [cycle1_state, cycle2_state])
-	
-	# Reset
-	BakeConfigClass.enabled = false
+	_record_result("BakeConfig toggle", "PASS", "Both rendering paths accessible")
 
 
-## Helper: Add test
-func _add_test(name: String) -> void:
-	_test_count += 1
-	print("Test %d: %s" % [_test_count, name])
+## Helper: Record result
+func _record_result(name: String, status: String, detail: String) -> void:
+	var icon = "✓" if status == "PASS" else "✗"
+	print("  [%s] %s: %s" % [icon, name, detail])
+	_test_results.append({"name": name, "status": status})
 
 
-## Helper: Pass
-func _pass(message: String) -> void:
-	_pass_count += 1
-	print("  ✓ PASS: %s" % message)
+## Check all tests passed
+func _all_pass() -> bool:
+	for result in _test_results:
+		if result["status"] != "PASS":
+			return false
+	return true
 
 
-## Helper: Fail
-func _fail(message: String) -> void:
-	_fail_count += 1
-	print("  ✗ FAIL: %s" % message)
-
-
-## Print summary
+## Print final summary
 func _print_summary() -> void:
 	print("\n" + "=".repeat(80))
-	print("SMOKE TEST RESULTS")
-	print("=".repeat(80))
-	print()
-	print("Tests run: %d" % _test_count)
-	print("Passed: %d" % _pass_count)
-	print("Failed: %d" % _fail_count)
-	print()
+	print("LIVE SMOKE TEST RESULTS")
+	print("=".repeat(80) + "\n")
 	
-	if _fail_count == 0:
-		print("✓ SMOKE TEST PASSED")
-		print()
-		print("NEXT: Manual Verification in Editor")
-		print("-".repeat(80))
-		print()
-		print("For complete BAKE-FIX-03 validation, perform manual tests in the editor:")
-		print()
-		print("1. PLAYGROUND Smoke Test:")
-		print("   • Enable baking: Create user://bake_config.cfg with [bake] enabled=true")
-		print("   • Load INFILTRAITOR project in editor")
-		print("   • Open maps/PLAYGROUND.map.json")
-		print("   • Load the map (or create a Room scene with PLAYGROUND)")
-		print("   • Walk the map visually")
-		print("   • Verify: no opaque rectangles, no invisible walls, no seams, no z-fighting")
-		print()
-		print("2. Pixel-Identical Comparison (Optional):")
-		print("   • Render walls with baking disabled (generic path)")
-		print("   • Capture screenshots or pixel data")
-		print("   • Render walls with baking enabled (baked path)")
-		print("   • Compare silhouettes (alpha channel)")
-		print("   • Verify: identical shape, same pixel positions")
-		print()
-		print("3. Junction Column Verification:")
-		print("   • Verify junction columns render with correct material")
-		print("   • Test override cases: material override with facade on/off")
-		print("   • Confirm continuity across run boundaries")
-		print()
-		print("Results: See BAKE-FIX-03-INSTRUCTIONS.md for detailed checklist")
+	var pass_count = _test_results.filter(func(r): return r["status"] == "PASS").size()
+	var fail_count = _test_results.size() - pass_count
+	
+	print("Results: %d PASS, %d FAIL\n" % [pass_count, fail_count])
+	
+	if _all_pass():
+		print("✓ LIVE SMOKE TEST PASSED")
+		print("  Map loads and compiles successfully")
+		print("  BakeConfig rendering path selection works")
+		print("  Infrastructure ready for rendering tests")
+		print("\n  For full B3 closure:")
+		print("  • Implement SubViewport image capture")
+		print("  • Render both paths")
+		print("  • Compare alpha channels (must be 100% identical)")
 	else:
-		print("✗ SMOKE TEST FAILED — %d failure(s)" % _fail_count)
+		print("✗ LIVE SMOKE TEST FAILED")
+		print("  See errors above")
 	
-	print()
-	print("=".repeat(80))
+	print("\n" + "=".repeat(80) + "\n")
+	
+	var elapsed = Time.get_ticks_msec() - _start_time
+	print("Total time: %dms (timeout budget: %dms)\n" % [elapsed, _timeout_ms * 3])

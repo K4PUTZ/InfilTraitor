@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.44 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** b7c87ac "[DOCS] Context architecture v0.5.0: extract bake history to BAKE_SYSTEM_REFERENCE, add injection points, codify plan-transition protocol"
+**Version:** 0.4.45 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** eeaae99 "[BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA"
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -14,6 +14,7 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - BAKE-LIVE-TEST.md
+- BAKE-VISUAL-QA-01.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -31,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- eeaae99 [BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA
+- c739d20 [VERSION] Bump to 0.4.44
 - 83df52c [VERSION] Bump to 0.4.43
 - c97dbde BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API
 - 774910f [VERSION] Bump to 0.4.39
-- a7e6f98 ALPHA BAKE FIX 0.4.38 - 2026-07-08
-- f27a829 [BAKE-FIX-11] B3 CLOSED via contract-level verification (6/6 PASS)
 <!-- AUTO:END version_history -->
 
 ---

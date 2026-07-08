@@ -72,6 +72,14 @@ if ! python3 "$REPO_ROOT/tools/persistent/check_invariants.py"; then
 fi
 echo "[CHECK] ✅ All 8 architecture rules satisfied"
 
+# ── STAGE 1.4: Whole-project GDScript lint ───────────────────────────────────
+echo "[LINT] Checking GDScript compile integrity..."
+if ! python3 "$REPO_ROOT/tools/persistent/project_lint.py"; then
+    echo "[LINT] ❌ Real GDScript compile errors found — push aborted"
+    exit 1
+fi
+echo "[LINT] ✅ Whole-project lint passed"
+
 # ── STAGE 1.5: Update documentation ─────────────────────────────────────────
 echo "[DOCS] Updating generated documentation..."
 if ! python3 "$REPO_ROOT/tools/persistent/update_docs.py"; then

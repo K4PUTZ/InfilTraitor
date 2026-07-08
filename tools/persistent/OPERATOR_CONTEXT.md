@@ -44,12 +44,23 @@ is no deadline.
 
 ## Verification Protocol (every task, before declaring done)
 
-1. **PROBLEMS tab:** errors block the smoke test — fix first.
+1. **Compile check — the CLI is the arbiter, not the PROBLEMS tab.** Run
+   `python3 tools/persistent/project_lint.py` and **paste its literal output
+   in the report** (this is a standing acceptance criterion of every
+   prompt). Zero real compile errors required; the same check runs as
+   pre-commit Gate 3 and `push.sh` STAGE 1.4, so an error here blocks the
+   commit anyway — running it first is cheaper than discovering it at push.
+   The VS Code PROBLEMS tab is a convenience view, not evidence: it can
+   hold stale entries for deleted/unsaved files. Disambiguation rule: if a
+   listed file does not exist on disk, it is editor cache — say so and move
+   on; if it exists, fix it before anything else.
    **Warnings = zero-tolerance on every file this session created or
-   modified.** Fix them as part of the task (rename shadowed/unused params,
-   cast explicit float/int divisions, etc.). `@warning_ignore` only for a
-   genuine false positive a human explicitly approved. Pre-existing warnings
-   in untouched files may stay, but flag them in the report.
+   modified.** The lint gate catches compile errors only, not warnings —
+   warnings remain your responsibility: fix them as part of the task
+   (rename shadowed/unused params, cast explicit float/int divisions,
+   etc.). `@warning_ignore` only for a genuine false positive a human
+   explicitly approved. Pre-existing warnings in untouched files may stay,
+   but flag them in the report.
 2. **Smoke test + runtime output:** run it, watch the console
    (`push_error`, `print_debug`, assertions). Any error = report with context.
 3. **Visual check:** expected vs. observed; screenshot when documenting an issue.
@@ -86,9 +97,11 @@ or unpushed `main` is not.
      prompts (allowed and encouraged)
    - `[VERSION] Bump to X.Y.Z` — stays as-is
    - `[FIX]`, `[DOCS]`, `[ARCHIVE]` — out-of-prompt housekeeping
-3. **Pre-push hooks are mandatory** (`check_invariants.py`, whole-project
-   lint via `push.sh` STAGE 1.3). Automation never bypasses them; a hook
-   failure blocks the push and goes in the report.
+3. **Hooks and gates are mandatory.** The pre-commit hook runs three gates
+   (`check_invariants.py`, CODEMAP freshness, `project_lint.py`), and
+   `push.sh` re-runs invariants (STAGE 1.3) and the whole-project lint
+   (STAGE 1.4). Automation never bypasses them; a gate failure blocks the
+   commit/push and goes in the report.
 4. **Never force-push `main`. Never rewrite published history.** Noise is
    fine; a broken audit trail is not.
 5. **`verified/vX.Y.Z` tags** mark architect-cleared checkpoints. The
@@ -357,5 +370,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.44 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** b7c87ac "[DOCS] Context architecture v0.5.0: extract bake history to BAKE_SYSTEM_REFERENCE, add injection points, codify plan-transition protocol"
+**Version:** 0.4.45 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** eeaae99 "[BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA"
 <!-- AUTO:END header -->

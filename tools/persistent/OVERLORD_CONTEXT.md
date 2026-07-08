@@ -91,6 +91,9 @@ question or a 3-line warning now beats a wasted wave later.
   (CONTEXT / MODULE / TASK / DO NOT TOUCH / ACCEPTANCE) with ground-truth
   investigation steps and assertion-backed, unforgeable acceptance criteria.
   Quality lives *in the prompt*, so it doesn't have to be re-imposed after.
+  One criterion is standing in every implementation prompt: pasted literal
+  output of `python3 tools/persistent/project_lint.py` showing zero real
+  compile errors (the same check gates commits and pushes mechanically).
 - **The decision framer.** When a fork appears (blend modes, schema shapes,
   file formats), the Overlord lays out the options with real trade-offs and a
   recommendation; the Director ratifies. Ratified decisions get a D-number and

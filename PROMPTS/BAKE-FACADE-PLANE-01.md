@@ -269,3 +269,16 @@ One new file added (bake_fix_12_facade_2d_test.gd) recognized as partially-valid
 **Known Deferred Items:**
 - Director ratification via visual inspection (F7 blend cycling on TEXTURES wall) — not executable in headless environment, confirmed by prompt design
 - Junction column column-in-run computation (uses voxel_xy.x as run axis) — verified working; may need reverification if edge orientation assumptions change
+
+---
+
+## HOTFIX — 2026-07-09 (Post-Completion)
+
+Corrected GDScript warnings in newly-created test file (zero-tolerance policy):
+
+**Commit:** `24908f1 [FIX] Zero-tolerance warnings in bake_fix_12_facade_2d_test.gd`
+
+- **SHADOWED_GLOBAL_IDENTIFIER**: `GeometryCoords` const renamed to `_GeometryCoords` (alias for internal use only, avoiding clash with global class in geometry_coords.gd)
+- **UNUSED_VARIABLE**: `material_id` → `_material_id`, `facade_id` → `_facade_id` (parsed from key but not referenced; underscore prefix signals intent)
+
+All warnings now eliminated. Project lint: **zero real compile errors, zero warnings on modified files.**

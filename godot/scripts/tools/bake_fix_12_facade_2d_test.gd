@@ -89,8 +89,6 @@ func _test_projection() -> void:
 	var facade_sampler = FacadeSamplerClass.new()
 	var pixel_matches = 0
 	var pixel_mismatches = 0
-	var half_face_left = 0
-	var half_face_right = 0
 
 	for i in range(mini(64, stone_keys.size() * 4)):
 		var key_idx = randi_range(0, stone_keys.size() - 1)
@@ -112,11 +110,6 @@ func _test_projection() -> void:
 		var page_image = baked_atlas.atom_pages[page_idx]
 		var pixel_x = randi_range(0, VOXEL_ATOM_W - 1)
 		var pixel_y = randi_range(VOXEL_VISIBLE_Y_START, VOXEL_ATOM_H - 1)
-
-		if pixel_x < 16:
-			half_face_left += 1
-		else:
-			half_face_right += 1
 
 		var page_px = atlas_coords.x * VOXEL_ATOM_W + pixel_x
 		var page_py = atlas_coords.y * VOXEL_ATOM_H + pixel_y
@@ -236,12 +229,12 @@ func _test_performance() -> void:
 	BakeConfigClass.enabled = true
 	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
 	var start = Time.get_ticks_msec()
-	var atlas1 = compositor.bake(map_spec, resolver)
+	var _atlas1 = compositor.bake(map_spec, resolver)
 	var full_ms = Time.get_ticks_msec() - start
 
 	compositor.clear_cache()
 	start = Time.get_ticks_msec()
-	var atlas2 = compositor.bake(map_spec, resolver)
+	var _atlas2 = compositor.bake(map_spec, resolver)
 	var cache_ms = Time.get_ticks_msec() - start
 
 	_record_result("Perf: Full", "PASS" if full_ms <= 2000.0 else "FAIL", "%.0fms" % full_ms)

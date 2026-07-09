@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**140 scripts · 24787 lines total** (under `godot/scripts/`)
+**140 scripts · 24780 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1851,7 +1851,7 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 305 lines
+extends `SceneTree` · 298 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 

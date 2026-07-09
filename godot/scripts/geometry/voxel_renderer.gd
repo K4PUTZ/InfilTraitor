@@ -34,6 +34,13 @@ var debug_nudge: Vector2 = Vector2.ZERO
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
 
+## BAKE-DIAG-01: placement counters, reset at the top of each render() call
+var _diag_total_cells: int = 0
+var _diag_baked_hits: int = 0
+var _diag_generic_fallbacks: int = 0
+var _diag_null_edge_cells: int = 0
+var _diag_slice_count: int = 0
+
 
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
@@ -51,15 +58,31 @@ func set_baked_lookup(lookup) -> void:
 
 ## Register a baked atlas page as a source on this renderer's own TileSet.
 ## BAKE-LIVE-VERIFY-01-b Part 3: Fixes BUG B — pages now go on the right tileset.
+## BAKE-DIAG-01: also fixes BUG C — a TileSetAtlasSource has zero valid tiles until
+## create_tile() is called per atlas coordinate (mirrors what _build_voxel_tileset()
+## already does for the material-only sources). Without this, set_cell() on this
+## source silently no-ops visually: the cell records source_id/atlas_coords, the
+## placement-side counters see a "baked hit", but nothing draws — which is exactly
+## why every wall vanished with bake enabled while the lookup/placement counters
+## reported 100% success.
+## atlas_coords_used: every (col, row) the compositor actually wrote pixel data to.
 ## Returns the assigned source_id.
-func register_baked_atlas_page(page_image: Image) -> int:
+func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = []) -> int:
 	var source := TileSetAtlasSource.new()
 	source.texture = ImageTexture.create_from_image(page_image)
 	source.texture_region_size = Vector2i(32, 36)  # GeometryCoords.VOXEL_ATOM_W/H [BAKE-FIX-01]
-	
+
 	var source_id := _tileset.get_next_source_id()
 	_tileset.add_source(source, source_id)
-	
+
+	for coords in atlas_coords_used:
+		if source.get_tile_at_coords(coords) != Vector2i(-1, -1):
+			continue
+		source.create_tile(coords)
+		var tile_data: TileData = source.get_tile_data(coords, 0)
+		if tile_data != null:
+			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
+
 	return source_id
 
 
@@ -130,8 +153,16 @@ func _build_voxel_tileset() -> void:
 ## Render all slices and junction columns from registry
 ## Creates cells in layers based on voxel positions and levels
 func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
+	# BAKE-DIAG-01: reset placement counters for this render pass
+	_diag_total_cells = 0
+	_diag_baked_hits = 0
+	_diag_generic_fallbacks = 0
+	_diag_null_edge_cells = 0
+
+	_diag_slice_count = 0
 	# Iterate all slices and render their voxels
 	for slice in registry.all_slices():
+		_diag_slice_count += 1
 		# Try to get edge from registry (if available)
 		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
 		_render_slice(slice, edge)
@@ -139,6 +170,22 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	# Render junction columns
 	for column in junction_columns:
 		_render_junction_column(column, registry)
+
+
+## BAKE-DIAG-01: prints a summary of the last render() pass — how many cells were
+## placed, how many hit the baked lookup vs fell back to generic material, and the
+## live tileset source count. Called by room_builder when BakeConfig.debug_bake_set_dump
+## is on. This is the placement-side counterpart to the compositor/registration prints,
+## and is what actually tells us whether baked results reach the screen at all.
+func print_render_diagnostics() -> void:
+	print("[BAKE-DIAG] render() summary: %d slices, %d cells placed (%d baked hits, %d generic fallbacks, %d cells with null edge)" % [
+		_diag_slice_count, _diag_total_cells, _diag_baked_hits, _diag_generic_fallbacks, _diag_null_edge_cells
+	])
+	print("[BAKE-DIAG] voxel_renderer tileset source_count=%d, _baked_lookup=%s, _bake_config.enabled=%s" % [
+		_tileset.get_source_count() if _tileset else -1,
+		("set" if _baked_lookup != null else "NULL"),
+		(_bake_config.enabled if _bake_config else "unloaded")
+	])
 
 
 ## Render a solid block (SLICE-02: A-T2)
@@ -215,18 +262,21 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 					var slice = registry.get_slice(neighbor_edge.slice_a_id) if registry.get_slice(neighbor_edge.slice_a_id) and neighbor_voxel in registry.get_slice(neighbor_edge.slice_a_id).voxels else registry.get_slice(neighbor_edge.slice_b_id)
 					
 					if slice:
-						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy)
+						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy, level)
 						if result and result.source_id_int >= 0:
 							source_id = result.source_id_int
 							atlas_coords = result.atlas_coords
+							_diag_baked_hits += 1
 							# TEST (no-flip hypothesis): also skip flip here — alternative_id stays 0
-				
+
+				_diag_total_cells += 1
 				# TEST (no-flip hypothesis): fallback / no baked atom to mirror — use the
 				# canonical, unflipped tile (alternative_id stays 0). Flipping a generic
 				# material tile that isn't an actual mirrored neighbor atom serves no
 				# purpose and, per pixel-symmetry probe, visibly shifts the silhouette
 				# because the source art (voxel_<material>.png) isn't mirror-symmetric.
 				if source_id < 0:
+					_diag_generic_fallbacks += 1
 					source_id = MATERIALS.find(actual_material)
 					if source_id == -1:
 						source_id = 0
@@ -260,16 +310,22 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	if _baked_lookup == null:
 		_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
 
+	_diag_total_cells += 1
+	if edge == null:
+		_diag_null_edge_cells += 1
+
 	if _bake_config and _bake_config.enabled and edge != null:
-		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy)
+		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
 
 		if result and result.source_id_int >= 0:
 			source_id = result.source_id_int
 			atlas_coords = result.atlas_coords
 			alternative_id = result.alternative_id
+			_diag_baked_hits += 1
 
 	# Fallback: material-only path
 	if source_id < 0:
+		_diag_generic_fallbacks += 1
 		source_id = MATERIALS.find(material_name)
 		if source_id == -1:
 			source_id = 0  # Fallback to concrete

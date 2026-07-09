@@ -1,0 +1,39 @@
+{
+  "format": "infiltraitor-map",
+  "schema_version": 3,
+  "id": "TEXTURES",
+  "meta": {
+    "title": "Facade Texture Verification Map",
+    "description": "Single 8×4 stone wall for testing 2-D facade sampling (BAKE-FACADE-PLANE-01)"
+  },
+  "sections": {
+    "board": {
+      "v": 1,
+      "inner_size": [16, 12],
+      "buffer": 1,
+      "floor_tile": "floor_SE"
+    },
+    "actors": {
+      "v": 1,
+      "agent_start": [8, 3],
+      "guards": []
+    },
+    "legacy_compiler": {
+      "v": 1,
+      "wall_height": 1,
+      "access_points": [],
+      "dividers": [],
+      "lights": []
+    },
+    "blocks": {
+      "v": 1,
+      "items": [
+        {
+          "gu": [4, 6],
+          "material": "stone",
+          "storeys": 4
+        }
+      ]
+    }
+  }
+}

@@ -3,19 +3,19 @@
   "schema_version": 3,
   "id": "TEXTURES",
   "meta": {
-    "title": "Facade Texture Verification Map",
-    "description": "Single 8×4 stone wall for testing 2-D facade sampling (BAKE-FACADE-PLANE-01)"
+    "title": "Facade Texture Verification Map 2.0",
+    "description": "Four nested material V-pairs (stone,concrete,metal,wood) for BAKE-FACADE-PLANE-02 testing: bidirectional facade sampling, anti-banding, performance"
   },
   "sections": {
     "board": {
       "v": 1,
-      "inner_size": [16, 12],
+      "inner_size": [26, 26],
       "buffer": 1,
       "floor_tile": "floor_SE"
     },
     "actors": {
       "v": 1,
-      "agent_start": [8, 3],
+      "agent_start": [3, 13],
       "guards": []
     },
     "legacy_compiler": {
@@ -29,9 +29,88 @@
       "v": 1,
       "items": [
         {
-          "gu": [4, 6],
+          "comment": "Perimeter outer walls (2 storeys) — north",
+          "gu": [0, 0],
+          "material": "concrete",
+          "storeys": 2,
+          "size": [26, 2]
+        },
+        {
+          "comment": "Perimeter outer walls (2 storeys) — south",
+          "gu": [0, 24],
+          "material": "concrete",
+          "storeys": 2,
+          "size": [26, 2]
+        },
+        {
+          "comment": "Perimeter outer walls (2 storeys) — west",
+          "gu": [0, 0],
+          "material": "concrete",
+          "storeys": 2,
+          "size": [2, 26]
+        },
+        {
+          "comment": "Perimeter outer walls (2 storeys) — east",
+          "gu": [24, 0],
+          "material": "concrete",
+          "storeys": 2,
+          "size": [2, 26]
+        },
+        {
+          "comment": "V-pair 1 (stone): SE edge (8 GU long), 4 storeys, runs E-W at y=8",
+          "gu": [6, 8],
           "material": "stone",
-          "storeys": 4
+          "storeys": 4,
+          "size": [8, 1]
+        },
+        {
+          "comment": "V-pair 1 (stone): SW edge (8 GU long), 4 storeys, runs N-S at x=6",
+          "gu": [6, 8],
+          "material": "stone",
+          "storeys": 4,
+          "size": [1, 8]
+        },
+        {
+          "comment": "V-pair 2 (concrete): SE edge, 2 GU forward (nested depth), 8 GU long, 4 storeys",
+          "gu": [6, 10],
+          "material": "concrete",
+          "storeys": 4,
+          "size": [8, 1]
+        },
+        {
+          "comment": "V-pair 2 (concrete): SW edge, 2 GU forward, 8 GU long, 4 storeys",
+          "gu": [6, 10],
+          "material": "concrete",
+          "storeys": 4,
+          "size": [1, 8]
+        },
+        {
+          "comment": "V-pair 3 (metal): SE edge, 2 GU further forward, 8 GU long, 4 storeys",
+          "gu": [6, 12],
+          "material": "metal",
+          "storeys": 4,
+          "size": [8, 1]
+        },
+        {
+          "comment": "V-pair 3 (metal): SW edge, 2 GU further forward, 8 GU long, 4 storeys",
+          "gu": [6, 12],
+          "material": "metal",
+          "storeys": 4,
+          "size": [1, 8]
+        },
+        {
+          "comment": "V-pair 4 (wood): SE edge, 2 GU further forward, 8 GU long, 4 storeys",
+          "gu": [6, 14],
+          "material": "wood",
+          "storeys": 4,
+          "size": [8, 1]
+        },
+        {
+          "comment": "V-pair 4 (wood): SW edge, 2 GU further forward, 8 GU long, 4 storeys",
+          "gu": [6, 14],
+          "material": "wood",
+          "storeys": 4,
+          "size": [1, 8]
         }
       ]
     }

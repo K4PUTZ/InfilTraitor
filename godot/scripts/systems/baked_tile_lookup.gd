@@ -196,10 +196,21 @@ func _compute_column_in_run(edge, voxel_xy: Vector2i) -> int:
 
 
 ## Compute facade sheet key for 2-D addressing with mirrored-repeat wrapping
-func _compute_facade_key(material_id: String, facade_id: String, column_in_run: int, level: int) -> String:
-	# BAKE-FACADE-PLANE-01-b: Use mirrored indexing (matching FacadeSampler._mirror_1d)
+## BAKE-FACADE-PLANE-02-b: Added edge parameter for run-axis-based second-direction mirroring
+func _compute_facade_key(material_id: String, facade_id: String, column_in_run: int, level: int, edge = null) -> String:
+	# BAKE-FACADE-PLANE-01-b: Use mirrored indexing; for second-direction edges (Y-axis),
+	# further mirror the column to apply opposite shear (continuous facade across both axes)
 	var sheet_col = _mirror_index_1d(column_in_run, 64)
 	var sheet_row = _mirror_index_1d(level, 32)
+	
+	# BAKE-FACADE-PLANE-02-b: Detect run axis; if Y-axis (second direction), flip sheet_col horizontally
+	if edge != null:
+		var run = _edge_run_map.get(edge.id if edge.has_method("id") else edge.get("id") if typeof(edge) == TYPE_DICTIONARY else null, null)
+		if run != null:
+			var run_axis = _detect_run_axis(run)
+			if run_axis == 1:  # Y-axis run (second direction) → mirror facade horizontally
+				sheet_col = 64 - sheet_col - 1
+	
 	return "%s|%s|%d|%d" % [material_id, facade_id, sheet_col, sheet_row]
 
 
@@ -211,6 +222,7 @@ func _debug_enabled() -> bool:
 
 
 ## BAKE-FACADE-PLANE-01: Resolve using 2-D baked atom sheet
+## BAKE-FACADE-PLANE-02-b: Pass edge to compute_facade_key for run-axis detection (second-direction fix)
 ## Returns null if baked atlas not available; caller will use fallback
 func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, column_in_run: int) -> TileLookupResult:
 	# Get the baked atlas and lookup dictionary
@@ -245,7 +257,8 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 		return null
 
 	# BAKE-FACADE-PLANE-01: Compute 2-D sheet address from column_in_run and level
-	var lookup_key = _compute_facade_key(material_id, facade_id, column_in_run, level)
+	# BAKE-FACADE-PLANE-02-b: Pass edge for run-axis detection (second-direction mirroring)
+	var lookup_key = _compute_facade_key(material_id, facade_id, column_in_run, level, edge)
 
 	if lookup_dict.has(lookup_key):
 		var entry = lookup_dict[lookup_key]

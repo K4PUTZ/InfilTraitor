@@ -1,0 +1,40 @@
+#!/bin/bash
+################################################################################
+# INFILTRAITOR pre-push hook — audio notification on every push
+#
+# Fires on ANY `git push` (direct or via push.sh), because core.hooksPath
+# points at this directory. push.sh sets INFILTRAITOR_PUSH_SH=1 so its own
+# end-of-run beep (Stage 8) remains the single notification on that path.
+#
+# Note on semantics: git has no client-side post-push hook; pre-push fires
+# after local checks, just before the transfer. It signals "push under way",
+# not "server accepted" — good enough for the notification's purpose.
+################################################################################
+
+# Skip when the push comes through push.sh (it beeps on completion itself)
+if [ -n "${INFILTRAITOR_PUSH_SH:-}" ]; then
+    exit 0
+fi
+
+# Cross-platform beep, backgrounded so the push is never delayed
+(
+    OS=$(uname)
+    case "$OS" in
+        Darwin)
+            afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
+            sleep 0.2
+            afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true
+            ;;
+        Linux)
+            paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || beep 2>/dev/null || printf '\a' || true
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            powershell -c "[console]::beep()" 2>/dev/null || printf '\a' || true
+            ;;
+        *)
+            printf '\a' || true
+            ;;
+    esac
+) &
+
+exit 0

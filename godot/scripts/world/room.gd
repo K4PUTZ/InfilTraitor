@@ -256,7 +256,7 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
-@export var map_id: String = "PLAYGROUND"
+@export var map_id: String = "TEXTURES"  ## BAKE-FACADE-PLANE-02-b: Changed default from PLAYGROUND to TEXTURES 2.0
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
 @export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
 ## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.

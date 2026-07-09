@@ -312,6 +312,7 @@ Read the linked doc before modifying that system. One essential per row.
 | Baking system (modules, evidence, learnings) | [BAKE_SYSTEM_REFERENCE.md](../docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
 | AI & guard behavior | [AI_MASTER_PLAN.md](../docs/systems/AI_MASTER_PLAN.md) | FSM via Rule 4; alert meter via Rule 5; guard↔guard only via signals in `room.gd` |
 | Map system | [MAP_MASTER_PLAN.md](../docs/systems/MAP_MASTER_PLAN.md) | MapSpec contract; Rule 7 (buffer only in `MapCompiler`) |
+| MAPFILE persistence (`.map.json`) | [MAPFILE_REFERENCE.md](../docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered (new feature = new section, M1–M7); unknown sections round-trip verbatim; loud-fail load, never half-loaded |
 | Lighting & visibility | [LIGHT_MASTER_PLAN.md](../docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness ≠ tactical visibility; lights come from the map |
 | Localization | [LOCALIZATION_REFERENCE.md](../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
 | Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its dedicated directory |

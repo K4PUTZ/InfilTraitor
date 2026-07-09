@@ -26,6 +26,10 @@
 
 set -euo pipefail
 
+# Tell the pre-push hook this push goes through push.sh (Stage 8 beeps at the
+# end of the full run; the hook stays silent to avoid double notification).
+export INFILTRAITOR_PUSH_SH=1
+
 BUMP_TYPE="${1:-patch}"  # Default to patch; accept major/minor/patch as arg
 MESSAGE="${2:-}"         # Optional message suffix
 REPO_ROOT="$(dirname "$0")/../../"

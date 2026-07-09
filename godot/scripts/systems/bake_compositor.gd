@@ -100,6 +100,7 @@ func _load_real_voxel_atoms() -> void:
 
 ## Main entry point: bake master strips for all (material, facade) combos in the map
 ## BAKE-FACADE-PLANE-01-b: Caches results per blend mode for F6/F7 cycling
+## BAKE-FACADE-PLANE-02-b: Cache HIT path skips _bake_atom_sheet() entirely
 func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	# Inputs: map spec (walls, themes, geometry), texture resolver
 	# Output: BakedAtlas with strips dictionary
@@ -110,9 +111,10 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	
 	if _session_cache.has(cache_key):
 		var cached_atlas = _session_cache[cache_key]
-		print("[BAKE] Cache hit for blend_mode=%d (cached %d strips, ≤500ms expected)" % [blend_mode, cached_atlas.strips.size()])
-		return cached_atlas
+		print("[BAKE] cache HIT for blend_mode=%d (cached %d strips)" % [blend_mode, cached_atlas.strips.size()])
+		return cached_atlas  ## BAKE-FACADE-PLANE-02-b: Return immediately, skip baking
 
+	print("[BAKE] cache MISS for blend_mode=%d — full bake starting" % blend_mode)
 	var atlas_result = BakedAtlas.new()
 
 	# Step 1: Determine all unique (material, facade) combos used in map

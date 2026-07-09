@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**141 scripts · 24915 lines total** (under `godot/scripts/`)
+**141 scripts · 24930 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 411 lines
+`class_name BakeCompositor` · 413 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1161,7 +1161,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 347 lines
+`class_name BakedTileLookup` · 360 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -3003,7 +3003,7 @@ extends `Node2D` · 2051 lines
 **@export**
 - `segment_grid_pos: Vector2i = Vector2i(1, 1)`
 - `level_seed: int = 0`
-- `map_id: String = "PLAYGROUND"`
+- `map_id: String = "TEXTURES"`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

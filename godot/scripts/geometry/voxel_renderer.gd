@@ -49,6 +49,20 @@ func set_baked_lookup(lookup) -> void:
 	print("[VOXEL] Baked lookup set: %s" % ("registered" if lookup != null else "null"))
 
 
+## Register a baked atlas page as a source on this renderer's own TileSet.
+## BAKE-LIVE-VERIFY-01-b Part 3: Fixes BUG B — pages now go on the right tileset.
+## Returns the assigned source_id.
+func register_baked_atlas_page(page_image: Image) -> int:
+	var source := TileSetAtlasSource.new()
+	source.texture = ImageTexture.create_from_image(page_image)
+	source.texture_region_size = Vector2i(32, 36)  # GeometryCoords.VOXEL_ATOM_W/H [BAKE-FIX-01]
+	
+	var source_id := _tileset.get_next_source_id()
+	_tileset.add_source(source, source_id)
+	
+	return source_id
+
+
 ## Getter for voxel layer at given level (for diagnostics)
 func get_layer(level: int) -> TileMapLayer:
 	if level < 0 or level >= _voxel_layers.size():

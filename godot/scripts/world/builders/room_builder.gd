@@ -376,57 +376,26 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 
 	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.atom_pages.size()])
 
-	# Register baked atlas pages with the tileset
+	# Register baked atlas pages with the voxel renderer's own TileSet
 	var source_ids = {}
 	for page_idx in range(baked_atlas.atom_pages.size()):
-		var source_id = _register_baked_atlas_page(baked_atlas.atom_pages[page_idx], page_idx)
+		var source_id = room._voxel_renderer.register_baked_atlas_page(baked_atlas.atom_pages[page_idx])
 		source_ids[page_idx] = source_id
-		print("[ROOM] Registered baked atlas page %d as source %d" % [page_idx, source_id])
+		print("[ROOM] Registered baked atlas page %d as source %d on voxel_renderer" % [page_idx, source_id])
 
-	# Store lookup and source mapping for placement via autoload (FIX-SHUTDOWN-CRASH-01)
-	# TODO: Fix Registries reference
-	# Registries.set_baked_atlas(baked_atlas, source_ids, Time.get_ticks_msec())
-	
-	# BAKE-FIX-02: Register runs with baked_tile_lookup for strip walking
-	_register_runs_with_lookup(runs, baked_atlas)
-	# Pass the populated lookup to voxel_renderer (live rendering seam)
-	# This is critical: room_builder's lookup contains the baked atom hits;
-	# voxel_renderer must use THIS lookup, not create its own empty one
+	# BAKE-FIX-02: Register runs and populate lookup with baked atlas data
 	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 	var lookup = lookup_class.new()
 	lookup.register_runs(runs)
+	
+	# BAKE-LIVE-VERIFY-01-b Part 2: Populate lookup with baked atlas and source IDs
+	# This is critical: lookup.resolve() will now find real data instead of hitting Engine.get_meta() nulls
+	lookup.set_baked_atlas(baked_atlas)
+	lookup.set_source_ids(source_ids)
+	
+	# Pass the fully-populated lookup to voxel_renderer
 	room._voxel_renderer.set_baked_lookup(lookup)
 
-
-
-## BAKE-FIX-02: Register runs with baked_tile_lookup for strip walking
-func _register_runs_with_lookup(runs: Array, _baked_atlas) -> void:
-	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
-	var lookup = lookup_class.new()
-	lookup.register_runs(runs)
-	
-	# Store in global registry for access during placement
-	# TODO: Fix Registries reference
-	# Registries.set_baked_tile_lookup(lookup)
-
-
-## Register a baked atlas page as a tileset source
-func _register_baked_atlas_page(page_image: Image, page_idx: int) -> int:
-	# Create TileSetAtlasSource from the page image
-	var source = TileSetAtlasSource.new()
-	source.texture = ImageTexture.create_from_image(page_image)
-	source.texture_region_size = Vector2i(32, 36)  # Real atom size from TILE_ANATOMY.md [BAKE-FIX-01]
-
-	# Register on the wall tileset
-	var tileset = _wall_tileset
-	if tileset == null:
-		push_error("[ROOM] Wall tileset not set; cannot register baked atlas page %d" % page_idx)
-		return -1
-
-	var source_id = tileset.get_next_source_id()
-	tileset.add_source(source, source_id)
-
-	return source_id
 
 
 func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:

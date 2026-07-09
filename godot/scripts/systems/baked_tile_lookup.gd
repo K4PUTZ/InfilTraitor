@@ -26,6 +26,11 @@ var _bake_config_ref = null  # Cache BakeConfig class reference
 # BAKE-FIX-02: Run information (edge_id -> run) for strip walking
 var _edge_run_map: Dictionary = {}  # edge.id -> {"edges": [], "min_edge": Edge, ...}
 
+# BAKE-LIVE-VERIFY-01-b: Instance storage for baked atlas and source ID mapping
+# Populated by room_builder; takes precedence over Engine.get_meta() fallback
+var _baked_atlas = null
+var _source_ids: Dictionary = {}  # page_idx -> source_id_int
+
 ## Result of a tile lookup query
 class TileLookupResult:
 	var source_id_int: int       # Integer tileset source id (for set_cell)
@@ -46,10 +51,19 @@ func set_test_config(config) -> void:
 
 
 ## Set baked atlas for testing or injection
-## Stores in Engine meta for global access
+## Stores in Engine meta for global access (for test/legacy code)
+## Also stores as instance field (production path via room_builder)
 func set_baked_atlas(atlas) -> void:
 	if atlas != null:
+		_baked_atlas = atlas
 		Engine.set_meta("GLOBAL_BAKED_ATLAS", atlas)
+
+
+## Set source ID mapping for baked atlas pages
+## BAKE-LIVE-VERIFY-01-b: Room_builder populates this before rendering
+func set_source_ids(source_ids: Dictionary) -> void:
+	if source_ids != null:
+		_source_ids = source_ids
 
 
 ## BAKE-FIX-02: Register run information for later lookup during placement
@@ -188,6 +202,10 @@ func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 
 ## Get baked atlas source id (int) for a given page
 func _get_baked_atlas_source_id(page_idx: int) -> int:
+	# BAKE-LIVE-VERIFY-01-b: Check instance field first (production path)
+	if _source_ids.has(page_idx):
+		return _source_ids[page_idx]
+	
 	# Fallback to legacy Engine.get_meta for test/production compatibility
 	if Engine.has_meta("BAKED_ATLAS_SOURCE_IDS"):
 		var test_source_ids = Engine.get_meta("BAKED_ATLAS_SOURCE_IDS")
@@ -198,6 +216,10 @@ func _get_baked_atlas_source_id(page_idx: int) -> int:
 
 ## Get global baked atlas (if populated)
 func _get_baked_atlas():
+	# BAKE-LIVE-VERIFY-01-b: Check instance field first (production path)
+	if _baked_atlas != null:
+		return _baked_atlas
+	
 	# Check legacy Engine.get_meta for test/production compatibility
 	if Engine.has_meta("GLOBAL_BAKED_ATLAS"):
 		return Engine.get_meta("GLOBAL_BAKED_ATLAS")

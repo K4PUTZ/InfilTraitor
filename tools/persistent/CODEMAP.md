@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**139 scripts · 24135 lines total** (under `godot/scripts/`)
+**139 scripts · 24140 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -667,7 +667,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 396 lines
+`class_name VoxelRenderer` · extends `Node2D` · 410 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -685,6 +685,7 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func set_baked_lookup(lookup) -> void:`
+- `func register_baked_atlas_page(page_image: Image) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func get_tileset() -> TileSet:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
@@ -1139,7 +1140,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 212 lines
+`class_name BakedTileLookup` · 234 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1160,6 +1161,7 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func set_test_config(config) -> void:`
 - `func set_baked_atlas(atlas) -> void:`
+- `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:`
 
@@ -2598,7 +2600,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 554 lines
+`class_name RoomBuilder` · 523 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

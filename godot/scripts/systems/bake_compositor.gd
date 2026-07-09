@@ -53,8 +53,18 @@ var _material_registry = null
 # Real voxel atoms (loaded once per compositor instance)
 var _voxel_atoms: Dictionary = {}  # material_id → Image (32×36)
 
+# BAKE-FACADE-PLANE-01-b: Per-combo cache for F6/F7 cycling
+# Key: "%s|%s|%d" % [material_id, facade_id, blend_mode]
+# Value: BakedAtlas
+var _session_cache: Dictionary = {}
+
 func _init() -> void:
 	_load_real_voxel_atoms()
+
+## Clear cache (called when starting a new map or game)
+func clear_cache() -> void:
+	_session_cache.clear()
+	print("[BAKE] Session cache cleared")
 
 ## Set material registry (called by room_builder for production use)
 func set_material_registry(registry) -> void:
@@ -89,9 +99,19 @@ func _load_real_voxel_atoms() -> void:
 		print("[BAKE] Loaded voxel atom: %s (32×36)" % material)
 
 ## Main entry point: bake master strips for all (material, facade) combos in the map
+## BAKE-FACADE-PLANE-01-b: Caches results per blend mode for F6/F7 cycling
 func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	# Inputs: map spec (walls, themes, geometry), texture resolver
 	# Output: BakedAtlas with strips dictionary
+
+	# BAKE-FACADE-PLANE-01-b: Check cache by blend mode
+	var blend_mode = BakeConfigClass.blend_mode
+	var cache_key = "blend_%d" % blend_mode
+	
+	if _session_cache.has(cache_key):
+		var cached_atlas = _session_cache[cache_key]
+		print("[BAKE] Cache hit for blend_mode=%d (cached %d strips, ≤500ms expected)" % [blend_mode, cached_atlas.strips.size()])
+		return cached_atlas
 
 	var atlas_result = BakedAtlas.new()
 
@@ -139,6 +159,10 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 
 	# Step 4: For atlas page fallback (legacy support), render strips into atlas
 	_render_strips_to_pages(atlas_result)
+
+	# BAKE-FACADE-PLANE-01-b: Store in cache for F6/F7 cycling
+	_session_cache[cache_key] = atlas_result
+	print("[BAKE] Stored in session cache (key=%s)" % cache_key)
 
 	return atlas_result
 
@@ -213,40 +237,48 @@ func _bake_atom_sheet(material_id: String, facade_id: String, facade: Image) -> 
 					# Get the canonical voxel alpha from the real atom PNG (B3 untouched)
 					var canonical_alpha = _get_canonical_alpha(material_id, pixel_x, pixel_y)
 
-					# BAKE-FACADE-PLANE-01: 2-D facade sampling
-					# Atom at sheet position (sheet_col, sheet_row) samples facade rect at
-					# [origin + (sheet_col*16, sheet_row*16), 16×16 texels]
-					var facade_lum = 1.0  # Default if out of bounds
-
-					# Top face (rows 0..15): uniform (no facade detail)
-					if pixel_y < VOXEL_VISIBLE_Y_START:
-						facade_lum = 1.0  # Neutral, no texture
-					# Side face (rows 16..35): sample facade rect
-					else:
-						# Map atom pixel to facade texel coordinates
-						# Atom width 32px → 16 texels; Atom side height 20px → 16 texels
-						var texel_x = pixel_x / 2.0
-						var texel_y = (pixel_y - VOXEL_VISIBLE_Y_START) * 16.0 / 20.0
-
-						# Facade plane position (sheet_col, sheet_row) → absolute facade texel coords
-						var plane_x = sheet_col * float(TEX_AUTHORING_N) + texel_x
-						var plane_y = sheet_row * float(TEX_AUTHORING_N) + texel_y
-
-						# Sample via FacadeSampler (mirrored-repeat addressing)
-						facade_lum = facade_sampler.sample(facade, plane_x, plane_y)
-
 					# Apply pattern shade
 					var voxel_xy = Vector2i(pixel_x % 8, pixel_y % 8)
 					var seed_val = (sheet_col << 16) | (sheet_row << 8) | (pixel_y * VOXEL_ATOM_W + pixel_x)
 					var pattern_shade = material.pattern_algorithm.shade(voxel_xy, 0, seed_val)
-
-					# Blend: shaded_base × facade_lum per BakeConfig.blend_mode
 					var shaded_base: Color = material.base_color * pattern_shade
-					var rgb: Color = _apply_blend(shaded_base, facade_lum)
 
-					# Composite with canonical alpha
-					var pixel = Color(rgb.r, rgb.g, rgb.b, canonical_alpha)
-					atom_img.set_pixel(pixel_x, pixel_y, pixel)
+					# Top face (rows 0..15): use MATERIAL_ONLY treatment (shaded_base, no facade)
+					# This is a horizontal surface; vertical-plane facade does not project onto it
+					if pixel_y < VOXEL_VISIBLE_Y_START:
+						var rgb: Color = _apply_blend_material_only(shaded_base)
+						var pixel = Color(rgb.r, rgb.g, rgb.b, canonical_alpha)
+						atom_img.set_pixel(pixel_x, pixel_y, pixel)
+					# Side face (rows 16..35): isometric projection with u,v formulas per half-face
+					else:
+						# Isometric facade projection: map atom pixel (x, y) to facade texel (u, v)
+						# via half-face-specific formulas (BAKE-FACADE-PLANE-01: canonical geometry)
+						var plane_u = 0.0
+						var plane_v = 0.0
+						
+						if pixel_x < 16:
+							# LEFT half (x ∈ [0,16)): slope 1:2 parallelogram
+							# u = col·16 + x
+							# v = row·16 + (y − (8 + x/2)) · 16/20
+							plane_u = sheet_col * float(TEX_AUTHORING_N) + float(pixel_x)
+							plane_v = sheet_row * float(TEX_AUTHORING_N) + (float(pixel_y) - (8.0 + float(pixel_x) / 2.0)) * 16.0 / 20.0
+						else:
+							# RIGHT half (x ∈ [16,32)): slope -1:2 parallelogram
+							# u = col·16 + (x − 16)
+							# v = row·16 + (y − (16 − (x−16)/2)) · 16/20
+							var x_offset = float(pixel_x - 16)
+							plane_u = sheet_col * float(TEX_AUTHORING_N) + x_offset
+							plane_v = sheet_row * float(TEX_AUTHORING_N) + (float(pixel_y) - (16.0 - x_offset / 2.0)) * 16.0 / 20.0
+						
+						# Sample facade via FacadeSampler (mirrored-repeat addressing)
+						var facade_lum = facade_sampler.sample(facade, plane_u, plane_v)
+						
+						# Blend: shaded_base × facade_lum per BakeConfig.blend_mode
+						var rgb: Color = _apply_blend(shaded_base, facade_lum)
+						
+						# Composite with canonical alpha
+						var pixel = Color(rgb.r, rgb.g, rgb.b, canonical_alpha)
+						atom_img.set_pixel(pixel_x, pixel_y, pixel)
 
 			strip.atoms.append(atom_img)
 			atom_count += 1
@@ -285,6 +317,12 @@ func _apply_blend(shaded_base: Color, facade_lum: float) -> Color:
 			)
 		_:
 			return shaded_base * facade_lum
+
+
+## Apply MATERIAL_ONLY blend: return shaded_base directly (for top face)
+## Top face is a horizontal surface; vertical-plane facade does not project onto it
+func _apply_blend_material_only(shaded_base: Color) -> Color:
+	return shaded_base
 
 
 func _overlay_channel(base_c: float, tex: float) -> float:
@@ -340,12 +378,9 @@ func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
 				var tile_x = (atom_idx % tiles_per_page_x) * VOXEL_ATOM_W
 				var tile_y_in_page = int(float(atom_idx) / float(tiles_per_page_x)) * VOXEL_ATOM_H
 
-				# Copy atom pixels into page
-				for y in range(VOXEL_ATOM_H):
-					for x in range(VOXEL_ATOM_W):
-						atlas_result.atom_pages[page_idx].set_pixel(
-							tile_x + x, tile_y_in_page + y, atom_img.get_pixel(x, y)
-						)
+				# Blit atom into page (BAKE-FACADE-PLANE-01: replaces per-pixel set_pixel loop)
+				var src_rect = Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
+				atlas_result.atom_pages[page_idx].blit_rect(atom_img, src_rect, Vector2i(tile_x, tile_y_in_page))
 
 				# Populate lookup dictionary with 2-D facade keys
 				# Key format (BAKE-FACADE-PLANE-01): "%s|%s|%d|%d" % [material_id, facade_id, col, row]

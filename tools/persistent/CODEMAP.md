@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**140 scripts · 24654 lines total** (under `godot/scripts/`)
+**140 scripts · 24787 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1092,7 +1092,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 376 lines
+`class_name BakeCompositor` · 411 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1112,6 +1112,7 @@ extends `Node2D` · 43 lines
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
 
 **Public API**
+- `func clear_cache() -> void:`
 - `func set_material_registry(registry) -> void:`
 - `func bake(map_spec: Dictionary, resolver) -> BakedAtlas:`
 
@@ -1142,7 +1143,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 285 lines
+`class_name BakedTileLookup` · 347 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1850,18 +1851,16 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 269 lines
+extends `SceneTree` · 305 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
-> BAKE-FACADE-PLANE-01: Pixel-identity test for 2-D facade sampling Verifies: (1) facade pixels match expected values, (2) vertical variation exists Run: godot --headless --script godot/scripts/tools/bake_fix_12_facade_2d_test.gd
+> BAKE-FACADE-PLANE-01-b: Extended pixel-identity test for isometric projection Verifies projection u,v formulas, top-face shaded_base, run-axis, performance
 
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `RoomClass` = `preload("res://godot/scripts/world/room.gd")`
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `_GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`

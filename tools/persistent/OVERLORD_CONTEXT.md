@@ -166,6 +166,24 @@ No deadline; code quality and clean architecture outrank speed.
   is now a Director config decision (`user://bake_config.cfg`), not a code
   change. Full closure record:
   `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
+- **First live (non-synthetic) verification of the bake system happened
+  2026-07-08/09** (BAKE-LIVE-VERIFY-01 through 02) — every prior closure,
+  including B3, was headless-synthetic-test-only. It found and fixed 4 real
+  structural bugs a synthetic `map_spec` could never surface: the compositor
+  never reading the real `"walls"` shape, a reintroduced shutdown-crash
+  (`Engine.set_meta` on a RefCounted), a `TileSetAtlasSource` missing
+  `create_tile()` calls (baked cells were "placed" but invisible — the real
+  cause of walls disappearing with bake on), and `BakeConfig.blend_mode`
+  being fully dead config. Structural pipeline is now confirmed working
+  end-to-end in a real headless boot (extraction → compositor → registration
+  → placement → visible render). **Still open:** facade visual calibration —
+  walls render and blend modes are now genuinely switchable (F7), but the
+  Director does not yet see recognizable facade texture detail, only tone
+  changes. Full record + next-round pointer:
+  `docs/technical/BAKE_SYSTEM_REFERENCE.md` §"First Live Verification Round".
+  `debug_bake_set_dump=true` was left on in the Director's local
+  `user://bake_config.cfg` so `[BAKE-DIAG]` checkpoint logging is live from
+  the next session's first boot.
 - Mobile budget: procedural cost is paid at bake time, never per-fragment
   (D12). Any proposal that adds per-frame cost needs explicit Director sign-off.
 

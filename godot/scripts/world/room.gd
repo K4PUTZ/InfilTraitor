@@ -1815,6 +1815,9 @@ func _input(event: InputEvent) -> void:
 				KEY_F6:
 					_debug_tools_controller.toggle_bake_mode()
 					return
+				KEY_F7:
+					_debug_tools_controller.cycle_blend_mode()
+					return
 				KEY_Z:
 					## Z lowers: STANDING -> CROUCHING -> PRONE
 					var next_z := agent.posture
@@ -2024,6 +2027,8 @@ func _initialize_debug_views() -> void:
 	print("""
 	[DEBUG BINDINGS]
 	F5:  Toggle Theme Matrix (saturation calibration grid)
+	F6:  Toggle bake mode (BAKED / GENERIC), reloads current map
+	F7:  Cycle bake blend mode (MULTIPLY/TEXTURE_ONLY/MATERIAL_ONLY/OVERLAY/LINEAR_LIGHT), reloads current map
 	F12: (Reserved) Selftest — run headless:
 	     godot --headless --script godot/scripts/tools/bake_selftest.gd
 	""")

@@ -62,6 +62,13 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## SLICE-02: New geometry module integration — edges → slices → voxels
 	var extraction: Dictionary = EdgeExtractor.extract(layout)
 
+	var _diag_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	var _diag_on: bool = _diag_bake_config != null and _diag_bake_config.debug_bake_set_dump
+	if _diag_on:
+		print("[BAKE-DIAG] build_from_layout: extraction edges=%d, bake_enabled=%s" % [
+			extraction.get("edges", []).size(), _diag_bake_config.enabled
+		])
+
 	if not extraction.get("edges", []).is_empty():
 		## New geometry path — the only active renderer when it has data.
 		var _edge_registry = EdgeRegistry.new()
@@ -76,13 +83,25 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		if bake_config and bake_config.enabled:
 			_bake_textures(extraction, _edge_registry, _junction_columns)
 
+		if _diag_on:
+			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
+				("set" if room._voxel_renderer._baked_lookup != null else "NULL"),
+				_edge_registry.all_slices().size(), _junction_columns.size()
+			])
+
 		room._voxel_renderer.clear()
 		room._voxel_renderer.render(_edge_registry, _junction_columns)
+
+		if _diag_on and room._voxel_renderer.has_method("print_render_diagnostics"):
+			room._voxel_renderer.print_render_diagnostics()
+
 		_render_solid_blocks(extraction.get("solid_blocks", []))
 		_render_voxel_props(layout.get("voxel_prop_instances", []))
 		structure_wall_layer.visible = false
 		for layer in _wall_upper_layers:
 			layer.visible = false
+	elif _diag_on:
+		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also
@@ -356,6 +375,14 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 		"junction_columns": _junction_columns,  # Pass junction columns for override resolution
 	}
 
+	var _bt_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	var _bt_diag_on: bool = _bt_bake_config != null and _bt_bake_config.debug_bake_set_dump
+	if _bt_diag_on:
+		var mats := {}
+		for wd in wall_descriptors:
+			mats[wd["material_id"]] = mats.get(wd["material_id"], 0) + 1
+		print("[BAKE-DIAG] wall_descriptors=%d, material histogram=%s" % [wall_descriptors.size(), mats])
+
 	# Create texture resolver
 	var resolver_class = preload("res://godot/scripts/systems/texture_resolver.gd")
 	var resolver = resolver_class.new()
@@ -376,12 +403,31 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 
 	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.atom_pages.size()])
 
-	# Register baked atlas pages with the voxel renderer's own TileSet
+	if _bt_diag_on:
+		var sample_keys: Array = baked_atlas.lookup.keys()
+		sample_keys = sample_keys.slice(0, mini(3, sample_keys.size()))
+		print("[BAKE-DIAG] baked_atlas.lookup has %d keys. Sample: %s" % [baked_atlas.lookup.size(), sample_keys])
+
+	# Register baked atlas pages with the voxel renderer's own TileSet.
+	# BAKE-DIAG-01: pass the exact atlas_coords the compositor wrote to, so
+	# register_baked_atlas_page() can create_tile() each one (otherwise the
+	# source has zero valid tiles and every baked cell renders invisible).
+	var coords_by_page: Dictionary = {}  # page_idx -> Array[Vector2i]
+	for lookup_key in baked_atlas.lookup:
+		var entry = baked_atlas.lookup[lookup_key]
+		var p_idx = entry.get("page", -1)
+		if p_idx < 0:
+			continue
+		if not coords_by_page.has(p_idx):
+			coords_by_page[p_idx] = []
+		coords_by_page[p_idx].append(entry.get("atlas_coords", Vector2i.ZERO))
+
 	var source_ids = {}
 	for page_idx in range(baked_atlas.atom_pages.size()):
-		var source_id = room._voxel_renderer.register_baked_atlas_page(baked_atlas.atom_pages[page_idx])
+		var page_coords: Array = coords_by_page.get(page_idx, [])
+		var source_id = room._voxel_renderer.register_baked_atlas_page(baked_atlas.atom_pages[page_idx], page_coords)
 		source_ids[page_idx] = source_id
-		print("[ROOM] Registered baked atlas page %d as source %d on voxel_renderer" % [page_idx, source_id])
+		print("[ROOM] Registered baked atlas page %d as source %d on voxel_renderer (%d tiles created)" % [page_idx, source_id, page_coords.size()])
 
 	# BAKE-FIX-02: Register runs and populate lookup with baked atlas data
 	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")

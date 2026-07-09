@@ -114,8 +114,70 @@ func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run:
 	return _resolve_generic(edge, face, voxel_xy)
 
 
-## Compute column_in_run from edge and voxel position
+## Mirror an integer index into [0, period) using mirrored-repeat addressing
+## This matches FacadeSampler._mirror_1d() for consistent wrapping
+## Mirrored-repeat: period is 2*S, fold back at S boundary
+func _mirror_index_1d(index: int, period: int) -> int:
+	var period_2x = period * 2
+	var k2 = index % period_2x
+	
+	# Handle negative modulo results
+	if k2 < 0:
+		k2 += period_2x
+	
+	# Reflect if in the second half of the period
+	if k2 >= period:
+		k2 = period_2x - k2 - 1
+	
+	return k2
+
+
+## Detect the run axis by examining min/max coordinates of the run
+## Returns 0 if X-axis run (SE), 1 if Y-axis run (SW)
+func _detect_run_axis(run: Dictionary) -> int:
+	var edges = run.get("edges", [])
+	if edges.size() == 0:
+		return 0  # Default to X
+	
+	var min_x = 2147483647  # INT32_MAX
+	var max_x = -2147483648  # INT32_MIN
+	var min_y = 2147483647
+	var max_y = -2147483648
+	
+	for edge in edges:
+		# Edges have start and end positions in grid coords
+		# Try common property names
+		var pos_start = edge.get("pos_start", null) if typeof(edge) == TYPE_DICTIONARY else null
+		var pos_end = edge.get("pos_end", null) if typeof(edge) == TYPE_DICTIONARY else null
+		
+		# Fallback: try to use pos as Vector2i
+		if pos_start == null and "pos" in edge:
+			pos_start = edge.pos if typeof(edge.pos) == TYPE_VECTOR2I else Vector2i(edge.pos)
+		if pos_end == null and "pos" in edge:
+			pos_end = edge.pos if typeof(edge.pos) == TYPE_VECTOR2I else Vector2i(edge.pos)
+		
+		if pos_start and typeof(pos_start) == TYPE_VECTOR2I:
+			min_x = mini(min_x, pos_start.x)
+			max_x = maxi(max_x, pos_start.x)
+			min_y = mini(min_y, pos_start.y)
+			max_y = maxi(max_y, pos_start.y)
+		
+		if pos_end and typeof(pos_end) == TYPE_VECTOR2I:
+			min_x = mini(min_x, pos_end.x)
+			max_x = maxi(max_x, pos_end.x)
+			min_y = mini(min_y, pos_end.y)
+			max_y = maxi(max_y, pos_end.y)
+	
+	# Run along X if X range > Y range, else Y
+	var x_range = max_x - min_x
+	var y_range = max_y - min_y
+	
+	return 1 if y_range > x_range else 0
+
+
+## Compute column_in_run from edge and voxel position, detecting run axis
 ## column_in_run = position_in_run * 8 + voxel_offset (8 voxels per GU)
+## Detects whether run goes along X (SE edge) or Y (SW edge) and picks correct voxel component
 func _compute_column_in_run(edge, voxel_xy: Vector2i) -> int:
 	var run = _edge_run_map.get(edge.id, null)
 	if run == null:
@@ -125,19 +187,19 @@ func _compute_column_in_run(edge, voxel_xy: Vector2i) -> int:
 	if position_in_run < 0:
 		return -1
 
-	# Edges can be SE (Δ = (+1, +1)) or SW (Δ = (-1, +1))
-	# SE edges extend horizontally (ΔX > 0), so X component is the run axis
-	# SW edges extend horizontally (ΔX < 0), so X component is still the run axis (magnitude used)
-	# Assuming X is the primary run axis for now; this may need adjustment based on edge orientation
-	var voxel_offset_along_run = voxel_xy.x  # 0-7 within the 8-voxel edge
+	# Detect run axis: 0 = X-axis (SE edges), 1 = Y-axis (SW edges)
+	var run_axis = _detect_run_axis(run)
+	
+	# BAKE-FACADE-PLANE-01-b: Pick voxel component matching run axis
+	var voxel_offset_along_run = voxel_xy.y if run_axis == 1 else voxel_xy.x
 	return position_in_run * 8 + voxel_offset_along_run
 
 
-## Compute facade sheet key for 2-D addressing
+## Compute facade sheet key for 2-D addressing with mirrored-repeat wrapping
 func _compute_facade_key(material_id: String, facade_id: String, column_in_run: int, level: int) -> String:
-	# BAKE-FACADE-PLANE-01: Key is (col % 64, row % 32) for mirrored wrapping
-	var sheet_col = column_in_run % 64
-	var sheet_row = level % 32
+	# BAKE-FACADE-PLANE-01-b: Use mirrored indexing (matching FacadeSampler._mirror_1d)
+	var sheet_col = _mirror_index_1d(column_in_run, 64)
+	var sheet_row = _mirror_index_1d(level, 32)
 	return "%s|%s|%d|%d" % [material_id, facade_id, sheet_col, sheet_row]
 
 

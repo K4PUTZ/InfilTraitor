@@ -26,7 +26,10 @@ batch.
 **Phase 1 — Master-Strip Baking** (BAKE-FIX-01):
 - `TextureResolver`: Facade acquisition with user:// → default:// → material-only fallback
 - `FacadeSampler`: Infinite plane addressing with mirrored-repeat and run-aware window origins
-- `BakeCompositor`: Single-pass GPU batch composite (MULTIPLY blend)
+- `BakeCompositor`: Single-pass GPU batch composite; blend mode is
+  configurable via `BakeConfig.blend_mode` (BAKE-LIVE-VERIFY-02, see below) —
+  `MULTIPLY` / `TEXTURE_ONLY` / `MATERIAL_ONLY` / `OVERLAY_EXPERIMENTAL` /
+  `LINEAR_LIGHT`, selected by `_apply_blend()`
 - `MaterialRegistry`: Base color + pattern algorithms (K=4 variants per material)
 - `BakedTileLookup`: Placement-time lookup seam (only module live code touches)
 - `BakeConfig`: Master enable/disable toggle (default: false)
@@ -113,9 +116,35 @@ All enforced by selftests and pre-commit hook:
 ## Debug Views
 
 - **F5**: Theme Matrix (in-game calibration grid; material × theme cells with saturation guidance)
+- **F6**: Toggle `BakeConfig.enabled` (BAKED / GENERIC) and reload the current map
+- **F7**: Cycle `BakeConfig.blend_mode` through all 5 modes and reload the current map
+  (BAKE-LIVE-VERIFY-02) — for live A/B/C/D/E visual comparison without editing
+  `user://bake_config.cfg` or restarting
 - **F12**: Reserved (not bound in-game); selftest is headless-only
 - **Selftest CLI**: `godot --headless --script godot/scripts/tools/bake_selftest.gd` (FIX-BAKE-07)
 - (Existing F2/F3/F4 family remains available for geometry inspection)
+
+## Verbose Pipeline Diagnostics (BAKE-DIAG-01)
+
+`BakeConfig.debug_bake_set_dump` (a `user://bake_config.cfg` key that existed
+but was dead code before BAKE-LIVE-VERIFY-02) now gates `[BAKE-DIAG]` console
+checkpoints at every stage of a real map load, so a future "nothing renders"
+or "wrong output" report can be localized without new instrumentation:
+
+- `room_builder.gd::build_from_layout()` — edge count from `EdgeExtractor`,
+  whether the geometry path was taken at all
+- `room_builder.gd::_bake_textures()` — wall descriptor count + material
+  histogram, sample of the compositor's populated lookup keys
+- `voxel_renderer.gd::print_render_diagnostics()` — per-`render()` counters:
+  total cells placed, baked-hit count, generic-fallback count, cells with a
+  null edge, and live tileset source count
+- `baked_tile_lookup.gd::_resolve_baked_strip()` — throttled (max 5) miss
+  logging with the *specific* reason a lookup missed (no baked atlas, empty
+  lookup dict, edge not in any run, edge not found in its own run, key not in
+  dict, or no source id for the page) — previously a miss just silently fell
+  through to the generic path with no trace of why
+
+Enable with `debug_bake_set_dump=true` in `user://bake_config.cfg`.
 
 ## File Locations (Baking System)
 
@@ -243,6 +272,14 @@ caught and fixed by the same day's code review pass before this was reported fin
 - BAKE-FIX-12: Real offline pixel comparison + real function calls (11/11 PASS)
 - BAKE-FIX-13: Follow-up attempt; generic-image accessor stubbed to null, mirroring test simulated rather than called — did not actually close B3
 - **BAKE-FIX-14: Real alpha-from-canon pixel diff (0/41472 mismatches) + real `_render_junction_column()` mirroring evidence — B3 CLOSED**
+- BAKE-LIVE-VERIFY-01/01-b/01-c: First real map-load verification; found + fixed
+  the `map_spec["walls"]` combo-extraction gap (bug #1 above) and the
+  shutdown-crash reintroduction (bug #2 above)
+- BAKE-LIVE-VERIFY-02: Found + fixed the missing `create_tile()` registration
+  (bug #3 above, the real cause of "walls vanish with bake on") and wired
+  `BakeConfig.blend_mode` into real per-mode pixel math (bug #4 above), added
+  F7 live blend-mode cycling. Facade visual calibration still open — see
+  "First Live Verification Round" section above.
 
 **Production Ready:**
 - `BakeConfig.enabled` default remains `false` (Director's call to enable post-testing)
@@ -253,6 +290,81 @@ caught and fixed by the same day's code review pass before this was reported fin
 **Next Step (Director):**
 - To enable baking for shipped builds: create `user://bake_config.cfg` with `[bake] enabled=true`
 - No code changes required; config-driven toggle suffices
+
+---
+
+## First Live Verification Round (BAKE-LIVE-VERIFY-01 through 02, 2026-07-08/09)
+
+B3's closure above is real (alpha/silhouette invariant, verified with pixel
+evidence) but it was still only ever exercised through headless synthetic
+tests. **This was the first time the bake system was actually driven through
+a real map load in the real running game** — and it surfaced four real,
+independent structural bugs that no synthetic test had shape to catch,
+because every synthetic test builds its own `map_spec` already in the shape
+the code expects. Recorded here so the next round doesn't re-discover them:
+
+1. **`BakeCompositor._extract_unique_combos()` never read `map_spec["walls"]`**
+   (BAKE-LIVE-VERIFY-01-c) — it only read `map_spec["blocks"]`, a shape no
+   production caller ever populates (`room_builder.gd::_bake_textures()`
+   always builds `"walls"`). Every real map load found 0 combos and baked an
+   empty atlas, silently, regardless of wall count. Fixed by adding a
+   `"walls"` branch to the extraction loop.
+2. **`BakedTileLookup.set_baked_atlas()` wrote `Engine.set_meta("GLOBAL_BAKED_ATLAS", ...)`**
+   — the same GDScript-RefCounted-in-Engine-meta pattern `FIX-SHUTDOWN-CRASH-01`/`01b`
+   already eliminated from production code, reintroduced here by a corrective
+   prompt that called this pre-existing method without auditing its internals
+   first. Caused a SIGABRT (exit 134) on shutdown. Fixed by removing the
+   `Engine.set_meta` write; the instance-field storage added alongside it
+   (`_baked_atlas`, `_source_ids`) was already sufficient and is what
+   `_get_baked_atlas()` / `_get_baked_atlas_source_id()` check first.
+3. **`VoxelRenderer.register_baked_atlas_page()` never called `create_tile()`**
+   on the new `TileSetAtlasSource` — it set `.texture` and
+   `.texture_region_size` and registered the source, but a
+   `TileSetAtlasSource` has **zero valid tiles** until `create_tile(coords)`
+   is called per atlas coordinate (exactly what `_build_voxel_tileset()`
+   already does for the material-only sources). Without it, `set_cell()`
+   silently accepts the baked `source_id`/`atlas_coords` — placement-side
+   diagnostics report a 100% "baked hit" rate — but nothing draws. **This was
+   the actual cause of "walls vanish entirely with bake enabled"**, not a
+   lookup/dictionary problem (the dictionary was, by that point in the
+   session, already correctly populated per bug #1's fix). Fixed by having
+   `_bake_textures()` collect every `atlas_coords` the compositor wrote to
+   (from `baked_atlas.lookup`) and passing that list into
+   `register_baked_atlas_page()`, which now calls `create_tile()` +
+   sets `texture_origin` (matching the generic-source convention) for each one.
+4. **`BakeConfig.blend_mode` was pure dead config** — the enum
+   (`MULTIPLY`/`TEXTURE_ONLY`/`MATERIAL_ONLY`/`OVERLAY_EXPERIMENTAL`/`LINEAR_LIGHT`)
+   existed and was read from `user://bake_config.cfg`, but
+   `_bake_master_strip()` always ran a hardcoded `base_color × pattern_shade × facade_lum`
+   multiply regardless of the configured mode. Measured effect: baked
+   concrete averaged **95/255** brightness vs. **194/255** for the same
+   material's raw (unbaked) voxel texture — roughly half, which is why walls
+   read as near-black even after bug #3 made them visible again. Fixed by
+   implementing all 5 modes for real in `_apply_blend()` (measured average
+   brightness per mode on the same input: MULTIPLY 95, TEXTURE_ONLY 155,
+   MATERIAL_ONLY 157, OVERLAY_EXPERIMENTAL 178, LINEAR_LIGHT 210 — LINEAR_LIGHT
+   was already the `blend_mode` default in the Director's `bake_config.cfg`
+   before this fix, it just never took effect). Added an **F7** live keybind
+   (`DebugToolsController.cycle_blend_mode()`) to cycle modes and reload the
+   current map, so blend modes can be A/B compared in-editor without a
+   restart.
+
+**Open at end of this round:** bugs #1–#3 are confirmed fixed (walls render;
+100% baked-hit placement rate in real headless boot logs). Bug #4's fix
+makes the 5 blend modes genuinely distinct and F7-cyclable, and the Director
+confirmed visible change when cycling — but the Director's stated bar
+("see the facade texture") is **still not met**: cycling blend modes changes
+overall brightness/tone but does not yet read as a textured facade with
+visible pattern detail. Next round should investigate whether the facade
+source images carry meaningful spatial detail at the 32×36 voxel-atom scale
+in the first place (the `TextureResolver`-provided `res://textures/defaults/facade_*.png`
+placeholders are the ones in play — no `user://textures/facade_*.png` exist
+yet) and whether `_bake_master_strip()`'s texel-to-facade-pixel sampling math
+(the `facade_col_texels`/`facade_pixel_x/y` block) preserves that detail or
+averages it away per atom. `debug_bake_set_dump=true` and `enabled=true` were
+left ON in the Director's local `user://bake_config.cfg` specifically so the
+next round starts with diagnostics already live — see the "Verbose Pipeline
+Diagnostics" section above.
 
 ## Known Limitations (v1)
 

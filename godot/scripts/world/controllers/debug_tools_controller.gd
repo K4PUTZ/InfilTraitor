@@ -66,26 +66,42 @@ func toggle_nudge_mode() -> void:
 func toggle_bake_mode() -> void:
 	var BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 	BakeConfigClass.enabled = not BakeConfigClass.enabled
-	
+
 	# Reload the current map through the full rendering pipeline
 	room.load_map(room.map_id)
-	
+
 	var mode_name := "BAKED" if BakeConfigClass.enabled else "GENERIC"
 	print_debug("[DEBUG-02] Bake mode: %s (enabled=%s)" % [mode_name, BakeConfigClass.enabled])
-	
+
 	# Show transient on-screen label
-	_show_bake_mode_label(mode_name)
+	_show_transient_label("Bake Mode: %s" % mode_name)
 
 
-## Show a transient on-screen label displaying the bake mode
-func _show_bake_mode_label(mode_name: String) -> void:
+## BAKE-DIAG-02: Cycle bake blend mode (F7) and reload current map for live A/B comparison.
+## Only meaningful while BakeConfig.enabled is true — forces it on so the cycle is always visible.
+func cycle_blend_mode() -> void:
+	var BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
+	var mode_count: int = BakeConfigClass.BlendMode.size()
+	var next_mode: int = (int(BakeConfigClass.blend_mode) + 1) % mode_count
+	BakeConfigClass.blend_mode = next_mode
+	BakeConfigClass.enabled = true
+
+	room.load_map(room.map_id)
+
+	var mode_name: String = BakeConfigClass.BlendMode.keys()[BakeConfigClass.blend_mode]
+	print_debug("[DEBUG-02] Bake blend mode: %s (%d)" % [mode_name, BakeConfigClass.blend_mode])
+	_show_transient_label("Blend Mode: %s" % mode_name)
+
+
+## Show a transient on-screen label (used by bake mode and blend mode toggles)
+func _show_transient_label(text: String) -> void:
 	var label := Label.new()
-	label.text = "Bake Mode: %s" % mode_name
+	label.text = text
 	label.add_theme_font_size_override("font_size", 20)
 	label.set("theme_override_colors/font_color", Color.WHITE)
 	label.position = Vector2(100.0, 20.0)  # Top-left, below UI
 	room.add_child(label)
-	
+
 	# Auto-remove after 2.5 seconds
 	var timer := Timer.new()
 	timer.wait_time = 2.5

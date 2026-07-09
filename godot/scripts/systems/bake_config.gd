@@ -19,7 +19,11 @@ static var facade_enabled: bool = true
 static var material_pattern_enabled: bool = true
 
 ## Debug flags
-static var debug_bake_set_dump: bool = false  # Log every key in bake_set
+## BAKE-DIAG-01: verbose checkpoint logging across the full pipeline —
+## extraction (edge count) -> compositor (combos/facades/lookup keys) ->
+## registration (tileset source ids) -> placement (baked-hit vs generic-fallback
+## counts per render() call). Set via user://bake_config.cfg [bake] debug_bake_set_dump=true.
+static var debug_bake_set_dump: bool = false
 
 
 static func load_config() -> void:

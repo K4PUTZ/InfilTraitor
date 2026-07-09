@@ -12,12 +12,13 @@ const MapCatalogClass = preload("res://godot/scripts/world/maps/map_catalog.gd")
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 const RoomClass = preload("res://godot/scripts/world/room.gd")
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
+const _GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
 
-const TEX_AUTHORING_N: int = GeometryCoords.TEX_AUTHORING_N  # 16
-const VOXEL_ATOM_W: int = GeometryCoords.VOXEL_ATOM_W        # 32
-const VOXEL_ATOM_H: int = GeometryCoords.VOXEL_ATOM_H        # 36
+const TEX_AUTHORING_N: int = _GeometryCoords.TEX_AUTHORING_N  # 16
+const VOXEL_ATOM_W: int = _GeometryCoords.VOXEL_ATOM_W        # 32
+const VOXEL_ATOM_H: int = _GeometryCoords.VOXEL_ATOM_H        # 36
 const VOXEL_VISIBLE_Y_START: int = 16
 
 var _test_results: Array = []
@@ -118,8 +119,8 @@ func _init() -> void:
 		if parts.size() != 4:
 			continue
 
-		var material_id = parts[0]
-		var facade_id = parts[1]
+		var _material_id = parts[0]
+		var _facade_id = parts[1]
 		var col = int(parts[2])
 		var row = int(parts[3])
 

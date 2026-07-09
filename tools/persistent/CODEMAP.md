@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**140 scripts · 24654 lines total** (under `godot/scripts/`)
+**140 scripts · 24655 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1850,7 +1850,7 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 269 lines
+extends `SceneTree` · 270 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
@@ -1864,11 +1864,12 @@ extends `SceneTree` · 269 lines
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
 - `RoomClass` = `preload("res://godot/scripts/world/room.gd")`
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `_GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `TEX_AUTHORING_N` = `GeometryCoords.TEX_AUTHORING_N`
-- `VOXEL_ATOM_W` = `GeometryCoords.VOXEL_ATOM_W`
-- `VOXEL_ATOM_H` = `GeometryCoords.VOXEL_ATOM_H`
+- `TEX_AUTHORING_N` = `_GeometryCoords.TEX_AUTHORING_N`
+- `VOXEL_ATOM_W` = `_GeometryCoords.VOXEL_ATOM_W`
+- `VOXEL_ATOM_H` = `_GeometryCoords.VOXEL_ATOM_H`
 - `VOXEL_VISIBLE_Y_START` = `16`
 
 ---

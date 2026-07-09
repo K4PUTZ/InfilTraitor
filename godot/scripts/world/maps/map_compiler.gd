@@ -120,17 +120,25 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var wall_levels: Array = [wall_tiles]
 
 	## --- solid GU blockers (full-cell, multi-storey, material-aware) ---------
+	## BAKE-FACADE-PLANE-02-b: Support size field for rectangular blocks
 	for block: Dictionary in spec.get("blocks", []):
-		var cell: Vector2i = Vector2i(block.get("gu", Vector2i.ZERO)) + offset
-		if blocked_map.has(cell):
-			continue
+		var base_gu: Vector2i = Vector2i(block.get("gu", Vector2i.ZERO))
+		var size_raw = block.get("size", [1, 1])
+		var size: Vector2i = size_raw if size_raw is Vector2i else Vector2i(int(size_raw[0]), int(size_raw[1]))
 		var storeys: int = maxi(1, int(block.get("storeys", 1)))
 		var material: String = String(block.get("material", "concrete"))
-		for storey in range(storeys):
-			while wall_levels.size() <= storey:
-				wall_levels.append([])
-			wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
-		blocked_map[cell] = true
+		
+		# Expand size to fill rectangle [gu.x, gu.y] to [gu.x + size.x, gu.y + size.y)
+		for x in range(size.x):
+			for y in range(size.y):
+				var cell: Vector2i = base_gu + Vector2i(x, y) + offset
+				if blocked_map.has(cell):
+					continue
+				for storey in range(storeys):
+					while wall_levels.size() <= storey:
+						wall_levels.append([])
+					wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
+				blocked_map[cell] = true
 
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
 	## wall storeys. Defaults to DEFAULT_CEILING_FLOORS for tall scene composition.

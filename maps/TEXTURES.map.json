@@ -4,7 +4,7 @@
   "id": "TEXTURES",
   "meta": {
     "title": "Facade Texture Verification Map 2.0",
-    "description": "Four nested material V-pairs (stone,concrete,metal,wood) for BAKE-FACADE-PLANE-02 testing: bidirectional facade sampling, anti-banding, performance"
+    "description": "Four nested material V-pairs for BAKE-FACADE-PLANE-02-b testing: bidirectional facade, anti-banding, performance, blocks v2 size field"
   },
   "sections": {
     "board": {
@@ -26,88 +26,88 @@
       "lights": []
     },
     "blocks": {
-      "v": 1,
+      "v": 2,
       "items": [
         {
-          "comment": "Perimeter outer walls (2 storeys) — north",
+          "comment": "Perimeter north wall (concrete, 2 storeys, 26 GU × 2 GU)",
           "gu": [0, 0],
           "material": "concrete",
           "storeys": 2,
           "size": [26, 2]
         },
         {
-          "comment": "Perimeter outer walls (2 storeys) — south",
+          "comment": "Perimeter south wall (concrete, 2 storeys, 26 GU × 2 GU)",
           "gu": [0, 24],
           "material": "concrete",
           "storeys": 2,
           "size": [26, 2]
         },
         {
-          "comment": "Perimeter outer walls (2 storeys) — west",
+          "comment": "Perimeter west wall (concrete, 2 storeys, 2 GU × 26 GU)",
           "gu": [0, 0],
           "material": "concrete",
           "storeys": 2,
           "size": [2, 26]
         },
         {
-          "comment": "Perimeter outer walls (2 storeys) — east",
+          "comment": "Perimeter east wall (concrete, 2 storeys, 2 GU × 26 GU)",
           "gu": [24, 0],
           "material": "concrete",
           "storeys": 2,
           "size": [2, 26]
         },
         {
-          "comment": "V-pair 1 (stone): SE edge (8 GU long), 4 storeys, runs E-W at y=8",
+          "comment": "V1 stone SE edge: 8 GU long at y=8, x from 6 to 13, 4 storeys",
           "gu": [6, 8],
           "material": "stone",
           "storeys": 4,
           "size": [8, 1]
         },
         {
-          "comment": "V-pair 1 (stone): SW edge (8 GU long), 4 storeys, runs N-S at x=6",
+          "comment": "V1 stone SW edge: 8 GU tall at x=6, y from 8 to 15, 4 storeys",
           "gu": [6, 8],
           "material": "stone",
           "storeys": 4,
           "size": [1, 8]
         },
         {
-          "comment": "V-pair 2 (concrete): SE edge, 2 GU forward (nested depth), 8 GU long, 4 storeys",
-          "gu": [6, 10],
+          "comment": "V2 concrete SE edge: 8 GU long at y=10, x from 8 to 15, 4 storeys (2 GU forward of V1)",
+          "gu": [8, 10],
           "material": "concrete",
           "storeys": 4,
           "size": [8, 1]
         },
         {
-          "comment": "V-pair 2 (concrete): SW edge, 2 GU forward, 8 GU long, 4 storeys",
-          "gu": [6, 10],
+          "comment": "V2 concrete SW edge: 8 GU tall at x=8, y from 10 to 17, 4 storeys",
+          "gu": [8, 10],
           "material": "concrete",
           "storeys": 4,
           "size": [1, 8]
         },
         {
-          "comment": "V-pair 3 (metal): SE edge, 2 GU further forward, 8 GU long, 4 storeys",
-          "gu": [6, 12],
+          "comment": "V3 metal SE edge: 8 GU long at y=12, x from 10 to 17, 4 storeys (2 GU forward of V2)",
+          "gu": [10, 12],
           "material": "metal",
           "storeys": 4,
           "size": [8, 1]
         },
         {
-          "comment": "V-pair 3 (metal): SW edge, 2 GU further forward, 8 GU long, 4 storeys",
-          "gu": [6, 12],
+          "comment": "V3 metal SW edge: 8 GU tall at x=10, y from 12 to 19, 4 storeys",
+          "gu": [10, 12],
           "material": "metal",
           "storeys": 4,
           "size": [1, 8]
         },
         {
-          "comment": "V-pair 4 (wood): SE edge, 2 GU further forward, 8 GU long, 4 storeys",
-          "gu": [6, 14],
+          "comment": "V4 wood SE edge: 8 GU long at y=14, x from 12 to 19, 4 storeys (2 GU forward of V3)",
+          "gu": [12, 14],
           "material": "wood",
           "storeys": 4,
           "size": [8, 1]
         },
         {
-          "comment": "V-pair 4 (wood): SW edge, 2 GU further forward, 8 GU long, 4 storeys",
-          "gu": [6, 14],
+          "comment": "V4 wood SW edge: 8 GU tall at x=12, y from 14 to 21, 4 storeys",
+          "gu": [12, 14],
           "material": "wood",
           "storeys": 4,
           "size": [1, 8]

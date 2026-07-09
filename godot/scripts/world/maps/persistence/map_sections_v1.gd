@@ -61,14 +61,33 @@ static func register_walls(registry) -> void:
 
 static func register_blocks(registry) -> void:
 	var SectionOwner = registry.SectionOwner
+	var migrations = {}
+	# BAKE-FACADE-PLANE-02-b: Blocks v1 → v2 migration: add size field
+	migrations[1] = func(old: Dictionary) -> Dictionary:
+		var items = old.get("items", [])
+		for item in items:
+			# v1 items implicitly have size [1, 1]
+			if not item.has("size"):
+				item["size"] = [1, 1]
+		return { "items": items }
+	
 	registry.register(SectionOwner.new(
 		"blocks",
-		1,
+		2,  # BAKE-FACADE-PLANE-02-b: Bumped from v1 to v2
 		func(fragment: Dictionary) -> Dictionary:
-			return { "items": fragment.get("items", []) },
+			var items = fragment.get("items", [])
+			# Validate and provide defaults
+			for item in items:
+				if not item.has("size"):
+					item["size"] = [1, 1]
+			return { "items": items },
 		func(raw: Dictionary) -> Dictionary:
-			return { "items": raw.get("items", []) },
-		{},
+			var items = raw.get("items", [])
+			for item in items:
+				if not item.has("size"):
+					item["size"] = [1, 1]
+			return { "items": items },
+		migrations,
 		func() -> Dictionary:
 			return { "items": [] }
 	))

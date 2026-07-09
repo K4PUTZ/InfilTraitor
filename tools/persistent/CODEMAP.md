@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**141 scripts · 24930 lines total** (under `godot/scripts/`)
+**141 scripts · 24992 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 413 lines
+`class_name BakeCompositor` · 429 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -2644,7 +2644,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 569 lines
+`class_name RoomBuilder` · 588 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2871,7 +2871,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 316 lines
+`class_name MapCompiler` · extends `RefCounted` · 324 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -2932,7 +2932,7 @@ extends `Node2D` · 34 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 122 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 141 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 

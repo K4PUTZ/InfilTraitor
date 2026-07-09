@@ -168,6 +168,7 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 
 	return atlas_result
 
+
 ## Extract unique (material, facade) combos from the map
 func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 	var combos = {}  # String key → true (for dedup)
@@ -347,10 +348,12 @@ func _get_canonical_alpha(material_id: String, pixel_x: int, pixel_y: int) -> fl
 
 ## Render atom sheets into atlas pages and populate lookup with 2-D facade keys
 ## BAKE-FACADE-PLANE-01: Replaces 1-D strip key with 2-D (col, row) addressing
+## BAKE-FACADE-PLANE-02-b: FIXED — page_idx now advances per strip to prevent collision
 func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
 	var page_idx = 0
 	var tiles_per_page_x = int(4096.0 / float(VOXEL_ATOM_W))  # 128
-	var _tiles_per_page_y = int(4096.0 / float(VOXEL_ATOM_H))  # ~113
+	var tiles_per_page_y = int(4096.0 / float(VOXEL_ATOM_H))  # ~113
+	var atoms_per_page = tiles_per_page_x * tiles_per_page_y
 
 	for strip_key in atlas_result.strips.keys():
 		var strip = atlas_result.strips[strip_key]
@@ -363,38 +366,51 @@ func _render_strips_to_pages(atlas_result: BakedAtlas) -> void:
 		var material_id = key_parts[0]
 		var facade_id = key_parts[1]
 
-		# Allocate page if needed
-		while atlas_result.atom_pages.size() <= page_idx:
+		# BAKE-FACADE-PLANE-02-b: Each strip gets a fresh page (or pages if exceeding capacity)
+		# Calculate how many pages this strip needs (64×32 = 2048 atoms → typically 1 page)
+		var pages_needed = int(ceil(float(strip.atoms.size()) / float(atoms_per_page)))
+		var strip_start_page = page_idx
+		var strip_atom_offset = 0  # Offset within the strip's starting page
+
+		# Allocate pages for this strip
+		while atlas_result.atom_pages.size() < page_idx + pages_needed:
 			atlas_result.atom_pages.append(Image.create(4096, 4096, false, Image.FORMAT_RGBA8))
 
-		# Place atom sheet into the page and populate lookup dictionary
+		# Place atom sheet into the strip's allocated pages
 		# BAKE-FACADE-PLANE-01: Iterate sheet positions (64×32 = 2048 atoms)
-		var atom_idx = 0
 		for sheet_row in range(32):
 			for sheet_col in range(64):
+				var atom_idx = sheet_row * 64 + sheet_col
 				if atom_idx >= strip.atoms.size():
 					push_error("[BAKE] Atom index %d exceeds strip size %d" % [atom_idx, strip.atoms.size()])
 					break
 
 				var atom_img = strip.atoms[atom_idx]
-				var tile_x = (atom_idx % tiles_per_page_x) * VOXEL_ATOM_W
-				var tile_y_in_page = int(float(atom_idx) / float(tiles_per_page_x)) * VOXEL_ATOM_H
 
-				# Blit atom into page (BAKE-FACADE-PLANE-01: replaces per-pixel set_pixel loop)
+				# BAKE-FACADE-PLANE-02-b: Compute page and position within page
+				var current_page = strip_start_page + int(strip_atom_offset / atoms_per_page)
+				var offset_in_page = strip_atom_offset % atoms_per_page
+				var tile_x = (offset_in_page % tiles_per_page_x) * VOXEL_ATOM_W
+				var tile_y_in_page = int(float(offset_in_page) / float(tiles_per_page_x)) * VOXEL_ATOM_H
+
+				# Blit atom into page
 				var src_rect = Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
-				atlas_result.atom_pages[page_idx].blit_rect(atom_img, src_rect, Vector2i(tile_x, tile_y_in_page))
+				atlas_result.atom_pages[current_page].blit_rect(atom_img, src_rect, Vector2i(tile_x, tile_y_in_page))
 
-				# Populate lookup dictionary with 2-D facade keys
-				# Key format (BAKE-FACADE-PLANE-01): "%s|%s|%d|%d" % [material_id, facade_id, col, row]
+				# Populate lookup dictionary with 2-D facade keys + page info
 				var lookup_key = "%s|%s|%d|%d" % [material_id, facade_id, sheet_col, sheet_row]
 				var atlas_coords = Vector2i(int(float(tile_x) / float(VOXEL_ATOM_W)), int(float(tile_y_in_page) / float(VOXEL_ATOM_H)))
 
 				atlas_result.lookup[lookup_key] = {
-					"page": page_idx,
+					"page": current_page,
 					"atlas_coords": atlas_coords
 				}
 
-				atom_idx += 1
+				strip_atom_offset += 1
+
+		# BAKE-FACADE-PLANE-02-b: Advance page_idx for next strip
+		page_idx = strip_start_page + pages_needed
+		print("[BAKE] Strip %s → pages %d-%d (offset 0..%d)" % [strip_key, strip_start_page, page_idx - 1, strip_atom_offset - 1])
 
 ## Get global material registry
 func _get_material_registry():

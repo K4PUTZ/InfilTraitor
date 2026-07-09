@@ -10,6 +10,10 @@ var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
+
+# BAKE-FACADE-PLANE-02-b: Persistent bake compositor across map reloads
+var _bake_compositor: Object = null
+
 var _room_size: Vector2i = Vector2i.ZERO
 var _wall_tileset: TileSet = null
 var _wall_upper_layers: Array[TileMapLayer] = []
@@ -348,6 +352,11 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = []) -> void:
 	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
 
+	# Get current map ID for cache keying
+	var current_map_id = room.map_id if room.has_meta("map_id") else "UNKNOWN"
+	if room.has_method("get") and room.get("map_id"):
+		current_map_id = room.map_id
+
 	# Group edges into runs (consecutive collinear edges with same material+facade)
 	var runs = _group_edges_into_runs(extraction.get("edges", []))
 	print("[ROOM] Grouped edges into %d runs" % runs.size())
@@ -373,6 +382,7 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 		"walls": wall_descriptors,
 		"room_geometry": extraction.get("room_geometry", {}),
 		"junction_columns": _junction_columns,  # Pass junction columns for override resolution
+		"map_id": current_map_id,  # BAKE-FACADE-PLANE-02-b: For cache keying
 	}
 
 	var _bt_bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -387,18 +397,27 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	var resolver_class = preload("res://godot/scripts/systems/texture_resolver.gd")
 	var resolver = resolver_class.new()
 
-	# Bake
-	var compositor_class = preload("res://godot/scripts/systems/bake_compositor.gd")
-	var compositor = compositor_class.new()
-	# Inject material registry - use default material registry
-	# TODO: Fix Registries reference (FIX-SHUTDOWN-CRASH-01)
-	# var material_registry = Registries.ensure_material_registry()
-	var material_registry = preload("res://godot/scripts/systems/material_registry.gd").new()
-	material_registry.register_defaults()
-	compositor.set_material_registry(material_registry)
+	# BAKE-FACADE-PLANE-02-b: Use persistent compositor across map reloads
+	if _bake_compositor == null:
+		var compositor_class = preload("res://godot/scripts/systems/bake_compositor.gd")
+		_bake_compositor = compositor_class.new()
+		# Inject material registry
+		var material_registry = preload("res://godot/scripts/systems/material_registry.gd").new()
+		material_registry.register_defaults()
+		_bake_compositor.set_material_registry(material_registry)
+		print("[BAKE] Created persistent BakeCompositor for session")
+
+	# BAKE-FACADE-PLANE-02-b: Clear cache when switching maps (compare with previous map ID)
+	if _bake_compositor.has_meta("_last_map_id"):
+		var last_map_id = _bake_compositor.get_meta("_last_map_id")
+		if last_map_id != current_map_id:
+			print("[BAKE] Map changed %s → %s, clearing cache" % [last_map_id, current_map_id])
+			if _bake_compositor.has_method("clear_cache"):
+				_bake_compositor.clear_cache()
+	_bake_compositor.set_meta("_last_map_id", current_map_id)
 
 	var start = Time.get_ticks_msec()
-	var baked_atlas = compositor.bake(map_spec, resolver)
+	var baked_atlas = _bake_compositor.bake(map_spec, resolver)
 	var elapsed = Time.get_ticks_msec() - start
 
 	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.atom_pages.size()])

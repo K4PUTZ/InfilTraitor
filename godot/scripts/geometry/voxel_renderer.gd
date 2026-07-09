@@ -42,6 +42,13 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_build_voxel_tileset()
 
 
+## Set baked lookup (called by room_builder after baking completes)
+## This is the key link between room_builder's populated lookup and live rendering
+func set_baked_lookup(lookup) -> void:
+	_baked_lookup = lookup
+	print("[VOXEL] Baked lookup set: %s" % ("registered" if lookup != null else "null"))
+
+
 ## Getter for voxel layer at given level (for diagnostics)
 func get_layer(level: int) -> TileMapLayer:
 	if level < 0 or level >= _voxel_layers.size():

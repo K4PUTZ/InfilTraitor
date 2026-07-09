@@ -389,7 +389,13 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	
 	# BAKE-FIX-02: Register runs with baked_tile_lookup for strip walking
 	_register_runs_with_lookup(runs, baked_atlas)
-
+	# Pass the populated lookup to voxel_renderer (live rendering seam)
+	# This is critical: room_builder's lookup contains the baked atom hits;
+	# voxel_renderer must use THIS lookup, not create its own empty one
+	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
+	var lookup = lookup_class.new()
+	lookup.register_runs(runs)
+	room._voxel_renderer.set_baked_lookup(lookup)
 
 
 

@@ -60,14 +60,22 @@ func set_material_registry(registry) -> void:
 	_material_registry = registry
 
 ## Load real voxel atom PNGs (32×36) for alpha copying
+## Uses the same resource-import path as VoxelRenderer, not raw Image.load()
+## This ensures alpha channel matches what the live rendering path actually uses
 func _load_real_voxel_atoms() -> void:
 	for material in VOXEL_MATERIALS:
 		var path = VOXEL_BASE_PATH + material + ".png"
-		var img = Image.new()
-		var error = img.load(path)
 		
-		if error != OK:
-			push_error("[BAKE] Failed to load voxel atom %s (code %d)" % [path, error])
+		# Load via resource system (same as VoxelRenderer._build_voxel_tileset)
+		# to get alpha values consistent with imported resource, not raw file
+		var texture: Texture2D = load(path)
+		if texture == null:
+			push_error("[BAKE] Failed to load texture resource: %s" % path)
+			continue
+		
+		var img = texture.get_image()
+		if img == null:
+			push_error("[BAKE] Failed to get image from texture: %s" % path)
 			continue
 		
 		if img.get_width() != VOXEL_ATOM_W or img.get_height() != VOXEL_ATOM_H:

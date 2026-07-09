@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**140 scripts · 24655 lines total** (under `godot/scripts/`)
+**140 scripts · 24654 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1850,14 +1850,13 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 270 lines
+extends `SceneTree` · 269 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
 > BAKE-FACADE-PLANE-01: Pixel-identity test for 2-D facade sampling Verifies: (1) facade pixels match expected values, (2) vertical variation exists Run: godot --headless --script godot/scripts/tools/bake_fix_12_facade_2d_test.gd
 
 **Constants / tuning**
-- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`

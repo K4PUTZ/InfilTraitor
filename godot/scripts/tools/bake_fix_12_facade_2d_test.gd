@@ -5,7 +5,6 @@
 
 extends SceneTree
 
-const GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCatalogClass = preload("res://godot/scripts/world/maps/map_catalog.gd")

@@ -24,6 +24,7 @@ const CameraControllerClass = preload("res://godot/scripts/controllers/camera_co
 const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
 const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
+const DevVisionStatusPanelClass = preload("res://godot/scripts/debug/dev_vision_status_panel.gd")
 
 ## SLICE-02: Geometry module (Edge → Slice → Voxel pipeline)
 const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
@@ -192,6 +193,9 @@ var _peek_pending: bool = false
 ## Dev 03: tile hover info
 var _dev_hover_label: Label = null
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
+
+## DEV-HUD-01: dev vision status panel
+var _dev_vision_status_panel: Control = null
 
 ## Dev 04: agent trail overlay
 const TRAIL_MAX := 5
@@ -619,6 +623,13 @@ func _ready() -> void:
 	_dev_hover_label.z_index = 200
 	_dev_hover_label.visible = false
 	$HUD.add_child(_dev_hover_label)
+
+	## DEV-HUD-01: Create and setup dev vision status panel
+	_dev_vision_status_panel = DevVisionStatusPanelClass.new()
+	_dev_vision_status_panel.name = "DevVisionStatusPanel"
+	$HUD.add_child(_dev_vision_status_panel)
+	_dev_vision_status_panel.setup(self)
+
 	_update_perspective_button_state()
 
 	## Centering camera/setup initial state

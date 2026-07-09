@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**140 scripts · 24780 lines total** (under `godot/scripts/`)
+**141 scripts · 24915 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -16,7 +16,7 @@
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **data/** — agent_stats.gd
-- **debug/** — map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
+- **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
@@ -346,7 +346,7 @@ extends `Node` · 266 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 275 lines
+extends `Node2D` · 283 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -370,6 +370,8 @@ extends `Node2D` · 275 lines
 - `func toggle_light() -> void:`
 - `func toggle_heat() -> void:`
 - `func request_redraw() -> void:`
+- `func is_shadow_overlay_visible() -> bool:`
+- `func is_light_overlay_visible() -> bool:`
 
 ---
 
@@ -402,6 +404,22 @@ extends `Node2D` · 275 lines
 ---
 
 ## debug/
+
+### `dev_vision_status_panel.gd`
+
+`class_name DevVisionStatusPanel` · extends `Control` · 116 lines
+
+`godot/scripts/debug/dev_vision_status_panel.gd`
+
+> DEV-HUD-01: DEV VISION systems status panel Displays live state of bake, vision, color systems, and debug toggles. Single-source rule: reads live state from owning systems each frame (no internal state copies). Refresh: on-frame timer (fast enough for F6/F7/H/L/V feedback).
+
+**Constants / tuning**
+- `UPDATE_INTERVAL` = `0.1`
+
+**Public API**
+- `func setup(room_ref: Node) -> void:`
+
+---
 
 ### `map_loader_panel.gd`
 
@@ -2924,7 +2942,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2040 lines
+extends `Node2D` · 2051 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2952,6 +2970,7 @@ extends `Node2D` · 2040 lines
 - `FowControllerClass` = `preload("res://godot/scripts/controllers/fow_controller.gd")`
 - `GuardCoordinatorClass` = `preload("res://godot/scripts/controllers/guard_coordinator.gd")`
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `DevVisionStatusPanelClass` = `preload("res://godot/scripts/debug/dev_vision_status_panel.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
 - `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 - `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`

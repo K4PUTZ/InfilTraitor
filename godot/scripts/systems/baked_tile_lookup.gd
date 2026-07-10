@@ -87,6 +87,7 @@ func register_runs(runs: Array) -> void:
 
 ## Main resolve function: placement calls this once per set_cell()
 ## BAKE-FACADE-PLANE-01: Now 2-D — accepts level and column_in_run for sheet addressing
+## BAKE-FACADE-PLANE-02-c: MATERIAL_ONLY mode short-circuits to generic (no baking)
 func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:
 	# If baking is disabled, always use generic material atlas
 	var baking_enabled = false
@@ -97,8 +98,18 @@ func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run:
 		if _bake_config_ref == null:
 			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
 		baking_enabled = _bake_config_ref.enabled if _bake_config_ref else false
+	
+	# BAKE-FACADE-PLANE-02-c: MATERIAL_ONLY mode short-circuits to generic material atlas
+	# (MATERIAL_ONLY ignores facade by definition, so no baking needed)
+	var is_material_only = false
+	if _bake_config:
+		is_material_only = (_bake_config.blend_mode == _bake_config.BlendMode.MATERIAL_ONLY) if _bake_config.has("blend_mode") else false
+	else:
+		if _bake_config_ref == null:
+			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
+		is_material_only = (_bake_config_ref.blend_mode == _bake_config_ref.BlendMode.MATERIAL_ONLY) if _bake_config_ref else false
 
-	if not baking_enabled:
+	if not baking_enabled or is_material_only:
 		return _resolve_generic(edge, face, voxel_xy)
 
 	# If column_in_run not provided, compute it from edge and voxel_xy

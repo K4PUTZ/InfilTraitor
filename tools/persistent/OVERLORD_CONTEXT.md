@@ -176,14 +176,17 @@ No deadline; code quality and clean architecture outrank speed.
   cause of walls disappearing with bake on), and `BakeConfig.blend_mode`
   being fully dead config. Structural pipeline is now confirmed working
   end-to-end in a real headless boot (extraction → compositor → registration
-  → placement → visible render). **Still open:** facade visual calibration —
-  walls render and blend modes are now genuinely switchable (F7), but the
-  Director does not yet see recognizable facade texture detail, only tone
-  changes. Full record + next-round pointer:
-  `docs/technical/BAKE_SYSTEM_REFERENCE.md` §"First Live Verification Round".
-  `debug_bake_set_dump=true` was left on in the Director's local
-  `user://bake_config.cfg` so `[BAKE-DIAG]` checkpoint logging is live from
-  the next session's first boot.
+  → placement → visible render). **Facade visual calibration CLOSED
+  2026-07-10** (OVERLORD-FIX-01, Overlord direct implementation, Director
+  visual ratification): the continuous-plane per-direction model renders
+  recognizable, seam-continuous facade texture on both wall directions —
+  canon in `docs/technical/BAKE_SYSTEM_REFERENCE.md` §"OVERLORD-FIX-01".
+  Dev boot defaults ratified: `BakeConfig.enabled = true`,
+  `blend_mode = TEXTURE_ONLY` (shipped-default canon unchanged: flip
+  `enabled` back to false before release). `debug_bake_set_dump=true`
+  remains on in the Director's `user://bake_config.cfg`;
+  `debug_marker_facade` (synthetic diagnostic facade) is available there
+  for any future mapping investigation.
 - Mobile budget: procedural cost is paid at bake time, never per-fragment
   (D12). Any proposal that adds per-frame cost needs explicit Director sign-off.
 

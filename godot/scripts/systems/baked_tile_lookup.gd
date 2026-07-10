@@ -1,23 +1,17 @@
-## BakedTileLookup — Single lookup seam for placement path (BAKE-FIX-02: run-aware)
+## BakedTileLookup — Single lookup seam for placement path
 ##
 ## Insertion point between placement code and tile source selection.
 ## Query for a voxel face → either baked atlas or generic material atlas.
-## BAKE-FIX-02: Walks master-strip dictionary with mirroring for boundary cases.
-## Features a fallback chain: baked → generic material atlas.
+## OVERLORD-FIX-01: addresses per-direction continuous-plane sheets via
+## (material, facade, column_in_run, level, dir) keys, with mirrored-repeat
+## wrapping. Fallback chain: baked → generic material atlas.
 
 class_name BakedTileLookup
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
-const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
+# (facade_sampler/bake_compositor preloads removed in OVERLORD-FIX-01 — the
+# lookup no longer samples or bakes; it only addresses per-direction sheets)
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
-
-const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N
-const VOXEL_ATOM_W: int = GeometryCoordsClass.VOXEL_ATOM_W  # 32
-const VOXEL_ATOM_H: int = GeometryCoordsClass.VOXEL_ATOM_H  # 36
-const STRIP_LENGTH: int = 9  # Master-strip atom count [TILE_ANATOMY.md §4]
-const PAGE_WIDTH: int = 4096  # Physical page width in pixels
-const TILES_PER_PAGE_X: int = 128  # PAGE_WIDTH / VOXEL_ATOM_W (4096 / 32)
 
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
@@ -34,6 +28,8 @@ var _source_ids: Dictionary = {}  # page_idx -> source_id_int
 # BAKE-DIAG-01: throttled miss logging (avoid spamming console per-voxel)
 var _diag_miss_count: int = 0
 var _diag_miss_log_limit: int = 5
+# OVERLORD-FIX-01: throttled HIT logging (placement continuity probe)
+var _diag_hit_log_count: int = 0
 
 ## Result of a tile lookup query
 class TileLookupResult:
@@ -103,7 +99,7 @@ func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run:
 	# (MATERIAL_ONLY ignores facade by definition, so no baking needed)
 	var is_material_only = false
 	if _bake_config:
-		is_material_only = (_bake_config.blend_mode == _bake_config.BlendMode.MATERIAL_ONLY) if _bake_config.has("blend_mode") else false
+		is_material_only = (_bake_config.blend_mode == _bake_config.BlendMode.MATERIAL_ONLY) if ("blend_mode" in _bake_config) else false
 	else:
 		if _bake_config_ref == null:
 			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
@@ -143,47 +139,27 @@ func _mirror_index_1d(index: int, period: int) -> int:
 	return k2
 
 
-## Detect the run axis by examining min/max coordinates of the run
-## Returns 0 if X-axis run (SE), 1 if Y-axis run (SW)
+## Detect the run axis from the wall's intrinsic face orientation.
+## Edge.face_a is always SE or SW (extractor canon): an SE face borders the
+## +X neighbor, so an SE wall surface RUNS along Y (axis 1); an SW face
+## borders +Y, so an SW wall surface runs along X (axis 0). No positional
+## heuristics — the previous min/max probe read fields Edge doesn't have and
+## silently returned axis 0 for everything (OVERLORD-FIX-01).
 func _detect_run_axis(run: Dictionary) -> int:
 	var edges = run.get("edges", [])
-	if edges.size() == 0:
-		return 0  # Default to X
-	
-	var min_x = 2147483647  # INT32_MAX
-	var max_x = -2147483648  # INT32_MIN
-	var min_y = 2147483647
-	var max_y = -2147483648
-	
-	for edge in edges:
-		# Edges have start and end positions in grid coords
-		# Try common property names
-		var pos_start = edge.get("pos_start", null) if typeof(edge) == TYPE_DICTIONARY else null
-		var pos_end = edge.get("pos_end", null) if typeof(edge) == TYPE_DICTIONARY else null
-		
-		# Fallback: try to use pos as Vector2i
-		if pos_start == null and "pos" in edge:
-			pos_start = edge.pos if typeof(edge.pos) == TYPE_VECTOR2I else Vector2i(edge.pos)
-		if pos_end == null and "pos" in edge:
-			pos_end = edge.pos if typeof(edge.pos) == TYPE_VECTOR2I else Vector2i(edge.pos)
-		
-		if pos_start and typeof(pos_start) == TYPE_VECTOR2I:
-			min_x = mini(min_x, pos_start.x)
-			max_x = maxi(max_x, pos_start.x)
-			min_y = mini(min_y, pos_start.y)
-			max_y = maxi(max_y, pos_start.y)
-		
-		if pos_end and typeof(pos_end) == TYPE_VECTOR2I:
-			min_x = mini(min_x, pos_end.x)
-			max_x = maxi(max_x, pos_end.x)
-			min_y = mini(min_y, pos_end.y)
-			max_y = maxi(max_y, pos_end.y)
-	
-	# Run along X if X range > Y range, else Y
-	var x_range = max_x - min_x
-	var y_range = max_y - min_y
-	
-	return 1 if y_range > x_range else 0
+	if edges.is_empty():
+		return 0
+	var first = edges[0]
+	if "face_a" in first:
+		return 1 if first.face_a == Face.SE else 0
+	return 0
+
+## Map run axis to bake direction (which pre-sheared plane the sheet used).
+## dir 0 = plane descends screen-right (X-axis/SW-face runs, view N);
+## dir 1 = mirrored plane, descends screen-left (Y-axis/SE-face runs).
+## If the marker probe ever shows both directions swapped, flip ONLY this.
+func _dir_for_axis(axis: int) -> int:
+	return axis
 
 
 ## Compute column_in_run from edge and voxel position, detecting run axis
@@ -206,23 +182,16 @@ func _compute_column_in_run(edge, voxel_xy: Vector2i) -> int:
 	return position_in_run * 8 + voxel_offset_along_run
 
 
-## Compute facade sheet key for 2-D addressing with mirrored-repeat wrapping
-## BAKE-FACADE-PLANE-02-b: Added edge parameter for run-axis-based second-direction mirroring
-func _compute_facade_key(material_id: String, facade_id: String, column_in_run: int, level: int, edge = null) -> String:
-	# BAKE-FACADE-PLANE-01-b: Use mirrored indexing; for second-direction edges (Y-axis),
-	# further mirror the column to apply opposite shear (continuous facade across both axes)
+## Compute facade sheet key for 3-D addressing (col, row, direction) with
+## mirrored-repeat wrapping. OVERLORD-FIX-01: direction is part of the baked
+## key — the compositor bakes one sheet per direction with the mirroring and
+## shear already in the pixels; no key-side column flipping (the previous
+## flip hack never executed anyway: it probed `edge.has_method("id")`, but
+## `id` is a property, so the run was never found).
+func _compute_facade_key(material_id: String, facade_id: String, column_in_run: int, level: int, dir: int) -> String:
 	var sheet_col = _mirror_index_1d(column_in_run, 64)
 	var sheet_row = _mirror_index_1d(level, 32)
-	
-	# BAKE-FACADE-PLANE-02-b: Detect run axis; if Y-axis (second direction), flip sheet_col horizontally
-	if edge != null:
-		var run = _edge_run_map.get(edge.id if edge.has_method("id") else edge.get("id") if typeof(edge) == TYPE_DICTIONARY else null, null)
-		if run != null:
-			var run_axis = _detect_run_axis(run)
-			if run_axis == 1:  # Y-axis run (second direction) → mirror facade horizontally
-				sheet_col = 64 - sheet_col - 1
-	
-	return "%s|%s|%d|%d" % [material_id, facade_id, sheet_col, sheet_row]
+	return "%s|%s|%d|%d|%d" % [material_id, facade_id, sheet_col, sheet_row, dir]
 
 
 ## BAKE-DIAG-01: is verbose diagnostic logging enabled (reads BakeConfig.debug_bake_set_dump)
@@ -267,9 +236,11 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 			print("[BAKE-DIAG] lookup MISS reason=INVALID_COLUMN_IN_RUN (column=%d)" % column_in_run)
 		return null
 
-	# BAKE-FACADE-PLANE-01: Compute 2-D sheet address from column_in_run and level
-	# BAKE-FACADE-PLANE-02-b: Pass edge for run-axis detection (second-direction mirroring)
-	var lookup_key = _compute_facade_key(material_id, facade_id, column_in_run, level, edge)
+	# OVERLORD-FIX-01: sheet address = (col, row, direction); direction comes
+	# from the run's face orientation and selects the per-direction sheet
+	var run = _edge_run_map.get(edge.id, null)
+	var dir: int = _dir_for_axis(_detect_run_axis(run)) if run != null else 0
+	var lookup_key = _compute_facade_key(material_id, facade_id, column_in_run, level, dir)
 
 	if lookup_dict.has(lookup_key):
 		var entry = lookup_dict[lookup_key]
@@ -279,6 +250,11 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 		if page_idx >= 0:
 			var source_id = _get_baked_atlas_source_id(page_idx)
 			if source_id >= 0:
+				if _debug_enabled() and level == 0 and _diag_hit_log_count < 96:
+					_diag_hit_log_count += 1
+					print("[BAKE-DIAG] HIT edge=%s dir=%d col=%d level=%d key=%s coords=%s" % [
+						edge.id, dir, column_in_run, level, lookup_key, atlas_coords
+					])
 				return TileLookupResult.new(source_id, "BAKED_ATLAS_%d" % page_idx, atlas_coords, 0)
 			elif _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:
 				_diag_miss_count += 1

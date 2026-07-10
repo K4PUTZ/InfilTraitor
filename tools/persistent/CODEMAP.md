@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**141 scripts · 25086 lines total** (under `godot/scripts/`)
+**141 scripts · 25090 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -685,7 +685,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 466 lines
+`class_name VoxelRenderer` · extends `Node2D` · 469 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -703,7 +703,7 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func set_baked_lookup(lookup) -> void:`
-- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = []) -> int:`
+- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func get_tileset() -> TileSet:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
@@ -1110,35 +1110,39 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 512 lines
+`class_name BakeCompositor` · 442 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
-> BakeCompositor — Master-strip baking of material × facade atoms For each unique (material, facade) combo used in the loaded map, bakes a contiguous strip of 9 real 32×36 atoms by compositing: - RGB = material base_color × pattern shade × facade luminance (rectangular crop) - Alpha = copied verbatim from the real voxel PNG (canonical silhouette) Strips are stored in a dictionary keyed by (material_id, facade_id); BAKE-FIX-02 will consume the strips via indexed lookup and mirroring.
+> BakeCompositor — Continuous-plane facade baking (OVERLORD-FIX-01) Model (replaces every previous half-face/strip scheme): A wall run is ONE continuous inclined plane on screen. Each atom carries a 32-texel-wide window of that plane, anchored at u = col*16 — consecutive atoms' windows OVERLAP by 16 texels on purpose: the occluded halves carry the same plane content as the neighbor that covers them, so every visible mix of atom fragments (sawtooth overlaps included) is seamless by construction. Runs exist in two screen directions, so atoms are baked per direction (dir 0: plane descends screen-right; dir 1: mirrored, descends screen-left) and direction is part of the lookup key. Per atom (col, row, dir), side-face content at atom pixel (x, y): dir 0:  u = col*16 + x          y_top(x) = 8 + x/2 dir 1:  u = col*16 + (31 - x)   y_top(x) = 8 + (31 - x)/2 v = (31 - row)*16 + (y - y_top(x)) * 16/20      (row 31 = top storey) Equivalently (what the code does): pre-scale the facade ×20/16 vertically, shear it ±x/2 once per direction ("plane image" P), and every atom is an axis-aligned 32×28 crop of P at (x0, (31-row)*20 + col*8 + V_MARGIN), pasted at atom-local (0, 8) — the x-terms cancel exactly, so composition is pure blit_rect with no per-pixel sampling. RGB in pages is pure facade luminance (grayscale); blend modes are applied at registration time via per-tile modulate (TEXTURE_ONLY = white, MULTIPLY = material base color). Top faces are baked as material color. Alpha = canonical voxel silhouette via blit_rect_mask + an exact byte-level fixup of the antialiased (partial-alpha) pixels (B3: alpha verbatim).
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
 - `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
 - `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
 - `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
 - `VOXEL_VISIBLE_Y_START` = `16`
-- `STRIP_LENGTH` = `9`
+- `SHEET_COLS` = `64`
+- `SHEET_ROWS` = `32`
+- `FACADE_W` = `1024`
+- `FACADE_H` = `512`
+- `PLANE_W` = `FACADE_W + 32`
+- `V_MARGIN` = `32`
+- `SCALED_H` = `640`
+- `PLANE_H` = `1232`
+- `PAGE_W` = `4096`
+- `PAGE_TILE_COLS` = `128`
+- `PAGE_H` = `576`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
-
-**Public API**
-- `func clear_cache() -> void:`
-- `func set_material_registry(registry) -> void:`
-- `func bake(map_spec: Dictionary, resolver) -> BakedAtlas:`
 
 ---
 
 ### `bake_config.gd`
 
-`class_name BakeConfig` · 39 lines
+`class_name BakeConfig` · 53 lines
 
 `godot/scripts/systems/bake_config.gd`
 
@@ -1161,23 +1165,15 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 371 lines
+`class_name BakedTileLookup` · 347 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
-> BakedTileLookup — Single lookup seam for placement path (BAKE-FIX-02: run-aware) Insertion point between placement code and tile source selection. Query for a voxel face → either baked atlas or generic material atlas. BAKE-FIX-02: Walks master-strip dictionary with mirroring for boundary cases. Features a fallback chain: baked → generic material atlas.
+> BakedTileLookup — Single lookup seam for placement path Insertion point between placement code and tile source selection. Query for a voxel face → either baked atlas or generic material atlas. OVERLORD-FIX-01: addresses per-direction continuous-plane sheets via (material, facade, column_in_run, level, dir) keys, with mirrored-repeat wrapping. Fallback chain: baked → generic material atlas.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
-- `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
-- `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
-- `STRIP_LENGTH` = `9`
-- `PAGE_WIDTH` = `4096`
-- `TILES_PER_PAGE_X` = `128`
 
 **Public API**
 - `func set_test_config(config) -> void:`
@@ -1869,7 +1865,7 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 298 lines
+extends `SceneTree` · 360 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
@@ -1883,6 +1879,7 @@ extends `SceneTree` · 298 lines
 - `_GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TEX_AUTHORING_N` = `_GeometryCoords.TEX_AUTHORING_N`
 - `VOXEL_ATOM_W` = `_GeometryCoords.VOXEL_ATOM_W`
 - `VOXEL_ATOM_H` = `_GeometryCoords.VOXEL_ATOM_H`
@@ -1936,7 +1933,7 @@ extends `SceneTree` · 100 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 336 lines
+extends `SceneTree` · 338 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
@@ -2644,7 +2641,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 588 lines
+`class_name RoomBuilder` · 605 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

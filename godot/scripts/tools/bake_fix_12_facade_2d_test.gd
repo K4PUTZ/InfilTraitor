@@ -10,6 +10,7 @@ const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor
 const _GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 
 const TEX_AUTHORING_N: int = _GeometryCoords.TEX_AUTHORING_N
 const VOXEL_ATOM_W: int = _GeometryCoords.VOXEL_ATOM_W
@@ -90,82 +91,113 @@ func _test_projection() -> void:
 	var pixel_matches = 0
 	var pixel_mismatches = 0
 
-	for i in range(mini(64, stone_keys.size() * 4)):
-		var key_idx = randi_range(0, stone_keys.size() - 1)
-		var lookup_key = stone_keys[key_idx]
-
+	# OVERLORD-FIX-01: keys are now 5-field (mat|fac|col|row|dir) and the
+	# continuous-plane formulas replace the half-face ones. The bake path
+	# quantizes vertically (nearest ×20/16 resize + 2-px strip shear), so the
+	# expected value is accepted at v−1/v/v+1 texels; a structural error
+	# (wrong window, wrong mirror, no shear) is whole windows away and fails.
+	var samples := 0
+	while samples < 128 and stone_keys.size() > 0:
+		var lookup_key = stone_keys[randi_range(0, stone_keys.size() - 1)]
 		var parts = lookup_key.split("|")
-		if parts.size() != 4:
-			continue
-
+		if parts.size() != 5:
+			_record_result("Projection", "FAIL", "unexpected key shape: %s" % lookup_key)
+			return
 		var col = int(parts[2])
 		var row = int(parts[3])
+		var dir = int(parts[4])
 		var entry = lookup_dict[lookup_key]
 		var page_idx = entry.get("page", -1)
 		var atlas_coords = entry.get("atlas_coords", Vector2i.ZERO)
-
 		if page_idx < 0 or page_idx >= baked_atlas.atom_pages.size():
 			continue
-
 		var page_image = baked_atlas.atom_pages[page_idx]
 		var pixel_x = randi_range(0, VOXEL_ATOM_W - 1)
 		var pixel_y = randi_range(VOXEL_VISIBLE_Y_START, VOXEL_ATOM_H - 1)
-
 		var page_px = atlas_coords.x * VOXEL_ATOM_W + pixel_x
 		var page_py = atlas_coords.y * VOXEL_ATOM_H + pixel_y
 
-		if page_px >= page_image.get_width() or page_py >= page_image.get_height():
-			continue
-
-		var baked_pixel = page_image.get_pixel(page_px, page_py)
-
-		var plane_u = 0.0
-		var plane_v = 0.0
-
-		if pixel_x < 16:
+		var plane_u: float
+		var y_top: float
+		if dir == 0:
 			plane_u = col * float(TEX_AUTHORING_N) + float(pixel_x)
-			plane_v = row * float(TEX_AUTHORING_N) + (float(pixel_y) - (8.0 + float(pixel_x) / 2.0)) * 16.0 / 20.0
+			y_top = 8.0 + float(pixel_x) / 2.0
 		else:
-			var x_off = float(pixel_x - 16)
-			plane_u = col * float(TEX_AUTHORING_N) + x_off
-			plane_v = row * float(TEX_AUTHORING_N) + (float(pixel_y) - (16.0 - x_off / 2.0)) * 16.0 / 20.0
+			plane_u = col * float(TEX_AUTHORING_N) + float(31 - pixel_x)
+			y_top = 8.0 + float(31 - pixel_x) / 2.0
+		var diamond_edge: float = (8.0 + float(pixel_x) / 2.0) if pixel_x < 16 else (24.0 - float(pixel_x) / 2.0)
+		if float(pixel_y) < diamond_edge:
+			continue  # top-face paint, not facade content
+		var baked_pixel = page_image.get_pixel(page_px, page_py)
+		if baked_pixel.a <= 0.0:
+			continue  # outside silhouette
+		var plane_v = float(31 - row) * float(TEX_AUTHORING_N) + (float(pixel_y) - y_top) * 16.0 / 20.0
 
-		var expected_lum = facade_sampler.sample(_facade_image, plane_u, plane_v)
-
-		if abs(baked_pixel.r - expected_lum) < 0.01:
+		samples += 1
+		var ok := false
+		for dv in [-1.0, 0.0, 1.0]:
+			var expected_lum = facade_sampler.sample(_facade_image, plane_u, plane_v + dv)
+			if abs(baked_pixel.r - expected_lum) < 0.01:
+				ok = true
+				break
+		if ok:
 			pixel_matches += 1
 		else:
 			pixel_mismatches += 1
 
-	_record_result("Projection", "PASS" if pixel_mismatches == 0 else "FAIL",
-		"%d matches, %d mismatches" % [pixel_matches, pixel_mismatches])
+	var proj_ok: bool = pixel_mismatches == 0 and pixel_matches >= 64
+	_record_result("Projection", "PASS" if proj_ok else "FAIL",
+		"%d matches, %d mismatches (vacuous if <64 samples)" % [pixel_matches, pixel_mismatches])
 
+## OVERLORD-FIX-01: real seam check. In the continuous-plane model, adjacent
+## atoms' crops OVERLAP on purpose: atom(col) at (x+16, y) and atom(col+1) at
+## (x, y−8) sample the SAME plane pixel (dir 0; mirrored for dir 1), so the
+## page pixels must be byte-identical wherever both are inside the silhouette.
+## The old version only checked that neighbor keys existed in the dictionary
+## — no pixels were ever compared (vacuous pass).
 func _test_seams() -> void:
-	print("\n--- Seam continuity ---\n")
+	print("\n--- Seam continuity (overlap identity) ---\n")
 	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
 	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolverClass.new())
-	var lookup = atlas.lookup
 
-	var seam_tests = 0
-	var seam_passes = 0
-	for key in lookup.keys():
-		if seam_tests >= 8:
-			break
-		if not key.begins_with("stone|"):
-			continue
-		var parts = key.split("|")
-		if parts.size() != 4:
-			continue
-		var col = int(parts[2])
-		var row = int(parts[3])
-		var key2 = "%s|%s|%d|%d" % ["stone", "facade_stone", col + 1, row]
-		if lookup.has(key2):
-			seam_tests += 1
-			if lookup.get(key2, {}).has("page"):
-				seam_passes += 1
+	var pairs := 0
+	var pixel_checks := 0
+	var mismatches := 0
+	for dir in range(2):
+		for case in [[0, 5], [12, 0], [30, 20], [62, 31]]:
+			var col: int = case[0]
+			var row: int = case[1]
+			var k1 = "stone|facade_stone|%d|%d|%d" % [col, row, dir]
+			var k2 = "stone|facade_stone|%d|%d|%d" % [col + 1, row, dir]
+			if not (atlas.lookup.has(k1) and atlas.lookup.has(k2)):
+				continue
+			pairs += 1
+			var e1 = atlas.lookup[k1]
+			var e2 = atlas.lookup[k2]
+			var p1: Image = atlas.atom_pages[e1["page"]]
+			var p2: Image = atlas.atom_pages[e2["page"]]
+			var o1: Vector2i = e1["atlas_coords"] * Vector2i(VOXEL_ATOM_W, VOXEL_ATOM_H)
+			var o2: Vector2i = e2["atlas_coords"] * Vector2i(VOXEL_ATOM_W, VOXEL_ATOM_H)
+			for x in range(16):
+				for y in range(24, VOXEL_ATOM_H):
+					var a: Color
+					var b: Color
+					if dir == 0:
+						a = p1.get_pixel(o1.x + x + 16, o1.y + y)
+						b = p2.get_pixel(o2.x + x, o2.y + y - 8)
+					else:
+						a = p1.get_pixel(o1.x + x, o1.y + y)
+						b = p2.get_pixel(o2.x + x + 16, o2.y + y - 8)
+					if a.a <= 0.0 or b.a <= 0.0:
+						continue
+					pixel_checks += 1
+					if a.r != b.r or a.g != b.g or a.b != b.b:
+						mismatches += 1
 
-	_record_result("Seams", "PASS" if seam_passes >= seam_tests else "DEFERRED", "%d/%d" % [seam_passes, seam_tests])
+	var seams_ok: bool = mismatches == 0 and pixel_checks >= 500 and pairs >= 8
+	_record_result("Seams", "PASS" if seams_ok else "FAIL",
+		"%d pairs, %d overlap pixels compared, %d mismatches" % [pairs, pixel_checks, mismatches])
 
 func _test_top_face() -> void:
 	print("\n--- Top-face MATERIAL_ONLY ---\n")
@@ -200,23 +232,53 @@ func _test_top_face() -> void:
 
 	_record_result("Top-face", "PASS" if top_matches >= top_tests * 0.8 else "DEFERRED", "%d/%d" % [top_matches, top_tests])
 
+## OVERLORD-FIX-01: the old version baked SIGMA_01's runtime spec, which
+## carries no "walls" array (SIGMA walls are born in room_builder's
+## extraction) — it always found 0 combos and never touched run-axis logic.
+## This version tests what the name promises: two synthetic runs, one per
+## face orientation, must yield direction-distinct, column-advancing keys.
 func _test_run_axis() -> void:
 	print("\n--- Run-axis detection ---\n")
-	var file_source = FileMapSourceClass.new()
-	var sigma_spec = file_source.get_runtime_spec("SIGMA_01")
-	if sigma_spec == null:
-		_record_result("Run-axis", "DEFERRED", "No SIGMA_01")
-		return
-	var compositor = BakeCompositorClass.new()
-	compositor.set_material_registry(_material_registry)
-	var resolver = TextureResolverClass.new()
-	var start = Time.get_ticks_msec()
-	var atlas = compositor.bake(sigma_spec, resolver)
-	var elapsed = Time.get_ticks_msec() - start
-	if atlas == null or atlas.strips.is_empty():
-		_record_result("Run-axis", "FAIL", "SIGMA_01 failed")
-		return
-	_record_result("Run-axis", "PASS", "%d strips in %.0fms" % [atlas.strips.size(), elapsed])
+	var lookup = BakedTileLookupClass.new()
+	var runs: Array = []
+	var all_ok := true
+
+	for face_case in [[Face.SE, 1], [Face.SW, 0]]:
+		var face: int = face_case[0]
+		var expected_dir: int = face_case[1]
+		var edges: Array = []
+		for i in range(3):
+			var gu := Vector2i(2, 2 + i) if face == Face.SE else Vector2i(2 + i, 2)
+			edges.append(Edge.new(gu, gu + Face.delta(face), 1, "stone"))
+		runs.append({"edges": edges, "material_id": "stone",
+			"facade_id": "facade_stone", "min_edge": edges[0]})
+		lookup.register_runs(runs)
+
+		var axis: int = lookup._detect_run_axis(runs[runs.size() - 1])
+		if lookup._dir_for_axis(axis) != expected_dir:
+			_record_result("Run-axis", "FAIL",
+				"face %d → dir %d, expected %d" % [face, lookup._dir_for_axis(axis), expected_dir])
+			all_ok = false
+			continue
+
+		# Columns must advance across edges: edge i, in-slice offset j → i*8+j,
+		# and the lookup key must carry the direction suffix
+		for i in range(3):
+			for j in [0, 7]:
+				var vxy := Vector2i(j, 0) if face == Face.SW else Vector2i(0, j)
+				var col: int = lookup._compute_column_in_run(edges[i], vxy)
+				if col != i * 8 + j:
+					_record_result("Run-axis", "FAIL",
+						"face %d edge %d offset %d → col %d, expected %d" % [face, i, j, col, i * 8 + j])
+					all_ok = false
+				var key: String = lookup._compute_facade_key("stone", "facade_stone", col, 0, expected_dir)
+				if not key.ends_with("|%d" % expected_dir):
+					_record_result("Run-axis", "FAIL", "key missing dir suffix: %s" % key)
+					all_ok = false
+
+	if all_ok:
+		_record_result("Run-axis", "PASS",
+			"SE→dir1, SW→dir0; columns advance i*8+j across both orientations")
 
 func _test_performance() -> void:
 	print("\n--- Performance timings ---\n")

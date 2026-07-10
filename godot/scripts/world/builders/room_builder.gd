@@ -277,30 +277,37 @@ func _group_edges_into_runs(edges: Array) -> Array:
 
 
 ## Find the preceding edge in a run (collinear edge that ends at the start of current_edge)
+## OVERLORD-FIX-01: a run advances ALONG the wall surface, which is
+## perpendicular to the face normal: SE faces border the +X neighbor so the
+## surface (and the run) advances along +Y; SW faces advance along +X.
+## The previous chaining compared candidate.gu_a against edge.gu_b — but gu_b
+## is the cell ACROSS the wall (the normal direction), so almost no edge ever
+## chained and every run degenerated to a single edge (position_in_run stuck
+## at 0 → facade column never advanced past 7 on any wall).
+func _run_advance_delta(edge: Edge) -> Vector2i:
+	return Vector2i(0, 1) if edge.face_a == Face.SE else Vector2i(1, 0)
+
+
 func _find_preceding_edge(edge: Edge, all_edges: Array, visited: Dictionary) -> Edge:
+	var prev_gu: Vector2i = edge.gu_a - _run_advance_delta(edge)
 	for candidate in all_edges:
 		if visited.has(candidate.id):
 			continue
-		
-		# Check if candidate.gu_b == edge.gu_a and they point in the same direction
-		if candidate.gu_b == edge.gu_a and candidate.face_a == edge.face_a:
+		if candidate.gu_a == prev_gu and candidate.face_a == edge.face_a:
 			if _edges_share_material_and_facade(edge, candidate):
 				return candidate
-	
 	return null
 
 
-## Find the next edge in a run (collinear edge that starts where current_edge ends)
+## Find the next edge in a run (collinear continuation along the run axis)
 func _find_next_edge_in_run(edge: Edge, all_edges: Array, visited: Dictionary) -> Edge:
+	var next_gu: Vector2i = edge.gu_a + _run_advance_delta(edge)
 	for candidate in all_edges:
 		if visited.has(candidate.id):
 			continue
-		
-		# Check if candidate.gu_a == edge.gu_b and they point in the same direction
-		if candidate.gu_a == edge.gu_b and candidate.face_a == edge.face_a:
+		if candidate.gu_a == next_gu and candidate.face_a == edge.face_a:
 			if _edges_share_material_and_facade(edge, candidate):
 				return candidate
-	
 	return null
 
 
@@ -444,9 +451,19 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	var source_ids = {}
 	for page_idx in range(baked_atlas.atom_pages.size()):
 		var page_coords: Array = coords_by_page.get(page_idx, [])
-		var source_id = room._voxel_renderer.register_baked_atlas_page(baked_atlas.atom_pages[page_idx], page_coords)
+		# OVERLORD-FIX-01: per-page modulate realizes the blend mode on the
+		# grayscale baked pages (TEXTURE_ONLY = white, MULTIPLY = base color)
+		var page_modulate: Color = Color.WHITE
+		if page_idx < baked_atlas.page_modulates.size():
+			page_modulate = baked_atlas.page_modulates[page_idx]
+		var source_id = room._voxel_renderer.register_baked_atlas_page(baked_atlas.atom_pages[page_idx], page_coords, page_modulate)
 		source_ids[page_idx] = source_id
 		print("[ROOM] Registered baked atlas page %d as source %d on voxel_renderer (%d tiles created)" % [page_idx, source_id, page_coords.size()])
+		# OVERLORD-PROBE-01: dump pages to user:// for offline pixel verification
+		if _bt_diag_on:
+			var dump_path := "user://bake_debug_page_%d.png" % page_idx
+			baked_atlas.atom_pages[page_idx].save_png(dump_path)
+			print("[BAKE-DIAG] page %d saved to %s" % [page_idx, dump_path])
 
 	# BAKE-FIX-02: Register runs and populate lookup with baked atlas data
 	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")

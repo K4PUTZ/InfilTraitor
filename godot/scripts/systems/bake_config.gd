@@ -5,12 +5,16 @@
 
 class_name BakeConfig
 
-## Master kill-switch: enables baked atlas lookup in placement
-static var enabled: bool = false
+## Master kill-switch: enables baked atlas lookup in placement.
+## DEV DEFAULT = true, ratified by the Director 2026-07-09 for the facade
+## calibration phase (boot straight into baked TEXTURES). The shipped-build
+## canon remains enabled=false — flip this back before any release build.
+static var enabled: bool = true
 
 ## Blend mode for composite (material × facade)
+## DEV DEFAULT = TEXTURE_ONLY (same ratification as above).
 enum BlendMode { MULTIPLY, TEXTURE_ONLY, MATERIAL_ONLY, OVERLAY_EXPERIMENTAL, LINEAR_LIGHT }
-static var blend_mode: BlendMode = BlendMode.LINEAR_LIGHT
+static var blend_mode: BlendMode = BlendMode.TEXTURE_ONLY
 
 ## Feature toggles
 static var theme_enabled: bool = true
@@ -25,15 +29,25 @@ static var material_pattern_enabled: bool = true
 ## counts per render() call). Set via user://bake_config.cfg [bake] debug_bake_set_dump=true.
 static var debug_bake_set_dump: bool = false
 
+## OVERLORD-PROBE-01: replace every facade with a synthetic grayscale marker
+## (brightness staircase per 16-px column block + gridlines) so the on-screen
+## wall reveals exactly which facade window each placed atom displays and in
+## which reading order. Diagnostic only; never ships enabled.
+## Set via user://bake_config.cfg [bake] debug_marker_facade=true.
+static var debug_marker_facade: bool = false
+
 
 static func load_config() -> void:
 	# Load from config file if it exists
 	var config = ConfigFile.new()
 	var err = config.load("user://bake_config.cfg")
 	if err == OK:
-		enabled = config.get_value("bake", "enabled", false)
-		blend_mode = config.get_value("bake", "blend_mode", BlendMode.MULTIPLY)
-		debug_bake_set_dump = config.get_value("bake", "debug_bake_set_dump", false)
+		# Defaults mirror the static dev defaults above so a partial config
+		# file doesn't silently flip them
+		enabled = config.get_value("bake", "enabled", enabled)
+		blend_mode = config.get_value("bake", "blend_mode", blend_mode)
+		debug_bake_set_dump = config.get_value("bake", "debug_bake_set_dump", debug_bake_set_dump)
+		debug_marker_facade = config.get_value("bake", "debug_marker_facade", debug_marker_facade)
 		print("[BakeConfig] Loaded from config file")
 
 	print("[BakeConfig] Enabled: %s, Blend Mode: %d" % [enabled, blend_mode])

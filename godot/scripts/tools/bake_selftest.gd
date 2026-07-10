@@ -309,8 +309,7 @@ func test_master_strip_dimensions() -> void:
 	
 	var expected_atom_w = 32
 	var expected_atom_h = 36
-	var expected_strip_len = 9
-	
+
 	if geom_coords.VOXEL_ATOM_W == expected_atom_w:
 		print("    ✓ VOXEL_ATOM_W = %d" % expected_atom_w)
 		passed += 1
@@ -325,12 +324,15 @@ func test_master_strip_dimensions() -> void:
 		print("    ✗ VOXEL_ATOM_H = %d (expected %d)" % [geom_coords.VOXEL_ATOM_H, expected_atom_h])
 		failed += 1
 
+	# OVERLORD-FIX-01: the 9-atom master strip (STRIP_LENGTH) was superseded
+	# by the per-direction continuous-plane sheet — the pinned canon is now
+	# the full 64×32 facade plane per (material, facade, direction).
 	var bake_comp_class = load("res://godot/scripts/systems/bake_compositor.gd")
-	if bake_comp_class.STRIP_LENGTH == expected_strip_len:
-		print("    ✓ STRIP_LENGTH = %d" % expected_strip_len)
+	if bake_comp_class.SHEET_COLS == 64 and bake_comp_class.SHEET_ROWS == 32:
+		print("    ✓ SHEET_COLS×SHEET_ROWS = 64×32 (continuous-plane sheet)")
 		passed += 1
 	else:
-		print("    ✗ STRIP_LENGTH = %d (expected %d)" % [bake_comp_class.STRIP_LENGTH, expected_strip_len])
+		print("    ✗ SHEET dims = %d×%d (expected 64×32)" % [bake_comp_class.SHEET_COLS, bake_comp_class.SHEET_ROWS])
 		failed += 1
 
-	print("  PASS: Master strip dimensions verified\n")
+	print("  PASS: Sheet dimensions verified\n")

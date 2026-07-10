@@ -419,3 +419,75 @@ handling *contract* itself remains in `OPERATOR_CONTEXT.md`.
 - ✅ Negative test suite — 4 checks verify error contract (malformed specs handled cleanly)
 - ✅ Zero INTEGER_DIVISION warnings
 - ✅ Zero printerr calls (replaced with print_debug)
+
+---
+
+## OVERLORD-FIX-01 — Continuous-Plane Facade Model (2026-07-09, Overlord direct)
+
+Replaces every previous half-face/strip mapping. Full rationale in
+`bake_compositor.gd`'s header; canon summary:
+
+**Model.** A wall run is ONE continuous inclined plane on screen. Each atom
+carries a 32-texel window of that plane anchored at `u = col*16`; consecutive
+atoms' windows overlap by 16 texels ON PURPOSE — occluded halves carry the
+same plane content as the neighbor that covers them, so every visible mix of
+atom fragments (including the 8-px sawtooth overlaps) is seamless by
+construction. Atoms are baked **per direction** (dir 0 = plane descends
+screen-right = SW-face/X-axis runs; dir 1 = mirrored = SE-face/Y-axis runs)
+and direction is part of the lookup key: `mat|fac|col|row|dir`.
+
+**Formulas** (side face; `row 31 = top storey`, v flipped so facade top = wall top):
+```
+dir 0:  u = col*16 + x          y_top(x) = 8 + x/2
+dir 1:  u = col*16 + (31 - x)   y_top(x) = 8 + (31 - x)/2
+v = (31 - row)*16 + (y - y_top(x)) * 16/20
+```
+Implementation is pure `blit_rect`: facade → ×20/16 vertical resize →
+±x/2 shear (2-px strips) = plane image P per direction; every atom is an
+axis-aligned 32×28 crop of P at `((col*16 or 1024−col*16), (31−row)*20 +
+col*8 + margin)` — the x-terms cancel exactly. Blend modes ride per-tile
+`modulate` on grayscale pages (TEXTURE_ONLY = white, MULTIPLY = base color;
+LINEAR_LIGHT/OVERLAY render as TEXTURE_ONLY pending LUT variants;
+MATERIAL_ONLY short-circuits placement to the generic atlas). Alpha =
+canonical silhouette via `blit_rect_mask` + byte-exact AA fixup (B3); facade
+PNG alpha is flattened before use (it is a luminance source only).
+
+**Root causes killed this round** (all verified by probe, not report):
+1. Run grouping chained via `gu_b` (the ACROSS-wall neighbor) → 320 edges
+   became 264 single-edge runs → facade column never advanced past 7.
+   Fixed: chain along the run axis (`gu_a ± (0,1)` for SE, `± (1,0)` for SW).
+2. `_detect_run_axis` probed fields Edge doesn't have (pos_start/pos) →
+   always axis 0. Fixed: axis is intrinsic to `face_a`.
+3. The 02-b/02-c "second-direction mirror" never executed
+   (`edge.has_method("id")` — `id` is a property). Superseded by per-dir sheets.
+4. Facade PNG alpha (254-byte pixels in facade_concrete) leaked into atom
+   alpha via masked blit. Fixed: RGB8 round-trip flattens facade alpha.
+
+**Evidence (2026-07-09):** placement 128928/128928 baked hits, 0 generic
+fallbacks (TEXTURES boot); bake 4 combos × 2 dirs ≈ 420 ms (was ~21 s);
+B3 alpha 0/9,437,184 mismatches (bake_fix_11 7/7, page-derived atoms);
+bake_fix_12 9/9 incl. 128/128 projection identity vs independent facade,
+8-pair overlap-identity seam check (byte-exact), SE→dir1/SW→dir0 run-axis;
+external Python probe vs marker facade: 23,130 checks, 3 half-texel
+boundary quantization diffs, 0 structural. Dev boot defaults ratified:
+`BakeConfig.enabled = true`, `blend_mode = TEXTURE_ONLY` (flip `enabled`
+back to false before any release build — shipped-default canon unchanged).
+Director visual ratification 2026-07-10 ("Alpha Baking Base").
+
+**Diagnostic tooling** (cfg-gated via `user://bake_config.cfg [bake]`):
+- `debug_marker_facade=true` — OVERLORD-PROBE-01: replaces every facade with
+  a synthetic grayscale marker (brightness staircase per 16-px window, black
+  window seams, white row lines). The rendered wall then *reads out* which
+  window each atom shows, in which order, and whether the shear is applied.
+  Use this first in any future mapping investigation.
+- `debug_bake_set_dump=true` — checkpoint logging (extraction → compositor →
+  registration → placement HIT with dir/col/level, reasoned MISSes) + atlas
+  pages dumped to `user://bake_debug_page_*.png` for offline verification.
+
+**Known legacy-test debt** (pre-existing, fails loudly, not a regression):
+`baked_tile_lookup_test.gd` calls `_make_bake_key` and
+`block_01b_baking_e2e_test.gd` reads `atlas.pages` — BAKE-05-era APIs that
+no longer exist (and already did not exist before OVERLORD-FIX-01).
+Candidates for retirement or rewrite in a cleanup prompt. `bake_selftest.gd`
+was updated to pin the new sheet canon (SHEET_COLS×SHEET_ROWS = 64×32,
+replacing STRIP_LENGTH = 9) and passes 19/19.

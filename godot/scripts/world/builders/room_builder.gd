@@ -384,11 +384,48 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 				"run": run,  # Include run reference for strip walking
 			})
 
+	# OVERLORD-FIX-02: junction specs — each junction column's half-faces must
+	# CONTINUE the adjacent legs' facade planes. Project the junction voxel
+	# onto each leg's run axis (falls one past the run's end → mirrored-repeat
+	# yields the last column mirrored, per Director spec).
+	var edge_to_run: Dictionary = {}
+	for run in runs:
+		for e in run["edges"]:
+			edge_to_run[e.id] = run
+	var junction_specs: Array = []
+	for jc in _junction_columns:
+		if not jc.facade_enabled:
+			continue
+		var run_a = edge_to_run.get(jc.edge_a_id)
+		var run_b = edge_to_run.get(jc.edge_b_id)
+		if run_a == null or run_b == null:
+			continue  # unresolvable leg → renderer falls back to mirror path
+		var run_x = null  # X-axis leg (SW faces, dir 0)
+		var run_y = null  # Y-axis leg (SE faces, dir 1)
+		for r in [run_a, run_b]:
+			if r["edges"][0].face_a == Face.SE:
+				run_y = r
+			else:
+				run_x = r
+		if run_x == null or run_y == null:
+			continue  # parallel legs (not an elbow) → fallback path
+		var jc_material: String = jc.override_material if jc.override_material != "" else jc.material
+		junction_specs.append({
+			"voxel_pos": jc.voxel_pos,
+			"material_id": jc_material,
+			"facade_id": BakePolicyClass.facade_for_material(jc_material),
+			"col_x": jc.voxel_pos.x - run_x["edges"][0].gu_a.x * 8,
+			"col_y": jc.voxel_pos.y - run_y["edges"][0].gu_a.y * 8,
+			"level_start": jc.start_storey * GeometryCoords.LEVELS_PER_STOREY,
+			"level_end": (jc.start_storey + jc.storey_count) * GeometryCoords.LEVELS_PER_STOREY,
+		})
+
 	# Create map spec for compositor
 	var map_spec = {
 		"walls": wall_descriptors,
 		"room_geometry": extraction.get("room_geometry", {}),
 		"junction_columns": _junction_columns,  # Pass junction columns for override resolution
+		"junction_specs": junction_specs,  # OVERLORD-FIX-02: leg-continuation data
 		"map_id": current_map_id,  # BAKE-FACADE-PLANE-02-b: For cache keying
 	}
 

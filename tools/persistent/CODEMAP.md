@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**141 scripts · 25090 lines total** (under `godot/scripts/`)
+**141 scripts · 25283 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -685,7 +685,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 469 lines
+`class_name VoxelRenderer` · extends `Node2D` · 484 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 442 lines
+`class_name BakeCompositor` · 559 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1165,7 +1165,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 347 lines
+`class_name BakedTileLookup` · 365 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1181,6 +1181,7 @@ extends `Node2D` · 43 lines
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
+- `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
 
 ---
 
@@ -1865,7 +1866,7 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 360 lines
+extends `SceneTree` · 366 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
@@ -2641,7 +2642,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 605 lines
+`class_name RoomBuilder` · 642 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

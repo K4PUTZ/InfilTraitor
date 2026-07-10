@@ -484,6 +484,27 @@ Director visual ratification 2026-07-10 ("Alpha Baking Base").
   registration → placement HIT with dir/col/level, reasoned MISSes) + atlas
   pages dumped to `user://bake_debug_page_*.png` for offline verification.
 
+**OVERLORD-FIX-02 (2026-07-10) — junction leg continuation.** Junction
+columns no longer restart a facade window: each half-face continues its
+adjacent leg's plane (LEFT half = SW face, coplanar with the X-axis/dir-0
+leg; RIGHT half = SE face, coplanar with the Y-axis/dir-1 leg), cropped at
+the junction's own projected column — one past the run's end, so
+mirrored-repeat naturally yields the mirrored last column. Composed per
+bake() into per-material junction pages (map-dependent, not session-cached),
+keyed `JUNCTION|x|y|level`; placement tries `resolve_junction()` first and
+falls back to the legacy neighbor-mirror path (3 of TEXTURES' 32 junctions
+have non-elbow leg pairs and use the fallback). `bake_fix_12` sampling is
+now seeded (deterministic) and its identity contract covers true face pixels
+only (the negative-v wedge above `y_top` is occluded by construction).
+
+**Blend decision (Director, 2026-07-10):** **MULTIPLY is the chosen blend**
+— it preserves each voxel's original material color under the facade detail.
+It reads slightly dark (facade luminance averages < 1.0), compensated by
+`BakeCompositor.MULTIPLY_LUMA_LIFT = 0.25` applied to the modulate; final
+brightness authority belongs to the light/shadow projection system — retune
+or zero the lift when that lands. Junction columns confirmed correct by the
+Director in the same session ("Alpha Walls Textured" checkpoint).
+
 **Known legacy-test debt** (pre-existing, fails loudly, not a regression):
 `baked_tile_lookup_test.gd` calls `_make_bake_key` and
 `block_01b_baking_e2e_test.gd` reads `atlas.pages` — BAKE-05-era APIs that

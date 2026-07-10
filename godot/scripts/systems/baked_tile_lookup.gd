@@ -270,6 +270,24 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 	return null
 
 
+## OVERLORD-FIX-02: junction columns have dedicated baked atoms whose halves
+## continue each adjacent leg's plane. Keyed by the column's own voxel_pos +
+## level; returns null when absent (caller falls back to the mirror path).
+func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:
+	var baked_atlas = _get_baked_atlas()
+	if baked_atlas == null:
+		return null
+	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
+	var key := "JUNCTION|%d|%d|%d" % [voxel_pos.x, voxel_pos.y, level]
+	if not lookup_dict.has(key):
+		return null
+	var entry = lookup_dict[key]
+	var source_id: int = _get_baked_atlas_source_id(entry.get("page", -1))
+	if source_id < 0:
+		return null
+	return TileLookupResult.new(source_id, "BAKED_JUNCTION", entry.get("atlas_coords", Vector2i.ZERO), 0)
+
+
 ## Get the position of an edge within its run (0 = first edge, 1 = second, etc.)
 func _get_edge_position_in_run(edge, run: Dictionary) -> int:
 	var edges = run.get("edges", [])

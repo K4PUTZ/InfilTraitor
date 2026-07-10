@@ -236,12 +236,27 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 	
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
 		var level: int = column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
-		
+
 		# Case 1: No facade (render flat material-only)
 		if not column.facade_enabled:
 			_set_voxel_cell(column.voxel_pos, level, actual_material)
 		# Case 2: With facade (mirror neighbor's atom with H-flip)
 		else:
+			# OVERLORD-FIX-02: dedicated junction atoms — each half-face
+			# CONTINUES its adjacent leg's plane. Try first; the legacy
+			# neighbor-mirror path below remains the fallback.
+			if _bake_config == null:
+				_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+			if _baked_lookup == null:
+				_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
+			if _bake_config and _bake_config.enabled:
+				var junction_result = _baked_lookup.resolve_junction(column.voxel_pos, level)
+				if junction_result and junction_result.source_id_int >= 0:
+					_diag_total_cells += 1
+					_diag_baked_hits += 1
+					_voxel_layers[level].set_cell(column.voxel_pos, junction_result.source_id_int, junction_result.atlas_coords, 0)
+					continue
+
 			# BAKE-FIX-06: Find neighboring wall voxel and mirror its atom
 			var neighbor_info = _find_neighbor_wall_voxel(column, registry)
 			

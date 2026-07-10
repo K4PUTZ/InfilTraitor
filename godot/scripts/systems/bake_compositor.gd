@@ -201,10 +201,8 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 		# Per-tile modulate realizes the blend mode on grayscale pages.
 		# MATERIAL_ONLY placement short-circuits to the generic atlas, so its
 		# modulate here is irrelevant; TEXTURE_ONLY (and, for now, the two
-		# experimental modes) = white; MULTIPLY = base_color.
-		var modulate := Color.WHITE
-		if blend_mode == BakeConfigClass.BlendMode.MULTIPLY:
-			modulate = material.base_color
+		# experimental modes) = white; MULTIPLY = lifted base_color.
+		var modulate := _modulate_for_mode(blend_mode, material)
 
 		for dir in range(2):
 			var cache_key := "%s|%s|%d" % [material_id, facade_id, dir]
@@ -237,8 +235,127 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 			strip.atoms.append(dir0_page.get_region(Rect2i(rx, ry, VOXEL_ATOM_W, VOXEL_ATOM_H)))
 		atlas_result.strips["%s|%s" % [material_id, facade_id]] = strip
 
+	# OVERLORD-FIX-02: junction columns — each half-face continues its leg's
+	# plane instead of restarting a facade window (Director spec 2026-07-10).
+	# Map-dependent, so composed per bake() (not session-cached); small count.
+	_compose_junction_pages(atlas_result, map_spec.get("junction_specs", []), facades_by_id, registry, blend_mode)
+
 	print("[BAKE] Baked %d combos × 2 directions in %.1f ms" % [combos.size(), Time.get_ticks_msec() - start_time])
 	return atlas_result
+
+## OVERLORD-FIX-02: compose junction atoms. A junction voxel's LEFT half-face
+## (SW-facing, normal +y) is coplanar with the X-axis leg (dir 0 plane); its
+## RIGHT half-face (SE-facing, normal +x) is coplanar with the Y-axis leg
+## (dir 1 plane). Each half is cropped from its leg's plane at the junction's
+## own projected column — one past the run's end, so mirrored-repeat delivers
+## the "mirror the last column" continuation naturally.
+## spec: {voxel_pos, material_id, facade_id, col_x, col_y, level_start, level_end}
+func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, facades_by_id: Dictionary, registry, blend_mode: int) -> void:
+	if junction_specs.is_empty():
+		return
+
+	# Group by combo so each page has a uniform material (uniform modulate)
+	var by_combo: Dictionary = {}
+	for spec in junction_specs:
+		var combo_key: String = "%s|%s" % [spec["material_id"], spec["facade_id"]]
+		if not by_combo.has(combo_key):
+			by_combo[combo_key] = []
+		by_combo[combo_key].append(spec)
+
+	for combo_key in by_combo:
+		var specs: Array = by_combo[combo_key]
+		var parts = combo_key.split("|")
+		var material_id: String = parts[0]
+		var facade_id: String = parts[1]
+		var facade = facades_by_id.get(facade_id)
+		var material = registry.get_material(material_id) if registry else null
+		if facade == null or material == null:
+			push_error("[BAKE] Junction combo %s unresolved — columns fall back to mirror path" % combo_key)
+			continue
+
+		var plane0 := _get_plane(facade_id, facade, 0)
+		var plane1 := _get_plane(facade_id, facade, 1)
+		var canonical: Image = _voxel_atoms.get(material_id)
+		var overlay := _get_diamond_overlay(material_id, material.base_color)
+		var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
+
+		var atom_count := 0
+		for spec in specs:
+			atom_count += int(spec["level_end"]) - int(spec["level_start"])
+		var tile_rows := int(ceil(float(atom_count) / float(PAGE_TILE_COLS)))
+		var page := Image.create(PAGE_W, maxi(tile_rows, 1) * VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+		var coords_used: Array = []
+		var atom_idx := 0
+
+		for spec in specs:
+			var col_x := _mirror_index(int(spec["col_x"]), SHEET_COLS)
+			var col_y := _mirror_index(int(spec["col_y"]), SHEET_COLS)
+			var vp: Vector2i = spec["voxel_pos"]
+			for level in range(int(spec["level_start"]), int(spec["level_end"])):
+				var row := _mirror_index(level, SHEET_ROWS)
+				var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+				# LEFT half ← X-leg (dir 0) plane, left half of its window
+				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + col_x * 8 + V_MARGIN
+				atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
+				# RIGHT half ← Y-leg (dir 1) plane, right half of its window
+				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
+				atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
+				atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
+
+				var tile_col := atom_idx % PAGE_TILE_COLS
+				var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
+				var tile_pos := Vector2i(tile_col * VOXEL_ATOM_W, tile_row * VOXEL_ATOM_H)
+				if canonical != null:
+					page.blit_rect_mask(atom_content, canonical, atom_full, tile_pos)
+				else:
+					page.blit_rect(atom_content, atom_full, tile_pos)
+
+				var atlas_coords := Vector2i(tile_col, tile_row)
+				coords_used.append([atlas_coords, tile_pos])
+				atlas_result.lookup["JUNCTION|%d|%d|%d" % [vp.x, vp.y, level]] = {
+					"page": atlas_result.atom_pages.size(),
+					"atlas_coords": atlas_coords,
+				}
+				atom_idx += 1
+
+		# B3 alpha fixup on the junction page (same rule as sheet pages)
+		if canonical != null:
+			var aa_list: Array = _alpha_aa_lists.get(material_id, [])
+			if not aa_list.is_empty():
+				var data: PackedByteArray = page.get_data()
+				var page_w := page.get_width()
+				for entry in coords_used:
+					var tp: Vector2i = entry[1]
+					for aa in aa_list:
+						data[((tp.y + aa[1]) * page_w + tp.x + aa[0]) * 4 + 3] = aa[2]
+				page.set_data(page.get_width(), page.get_height(), false, Image.FORMAT_RGBA8, data)
+
+		atlas_result.atom_pages.append(page)
+		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material))
+		print("[BAKE] Composed junction page: %s (%d atoms)" % [combo_key, atom_idx])
+
+## Luma lift applied to the MULTIPLY modulate (Director, 2026-07-10: MULTIPLY
+## is the chosen blend — keeps the voxel's original color — but reads a touch
+## dark since facade luminance averages well below 1.0; the lift compensates.
+## Fine brightness control ultimately belongs to the light/shadow projection
+## system — tune or zero this once that lands).
+const MULTIPLY_LUMA_LIFT: float = 0.25
+
+## Per-tile modulate realizing the blend mode on grayscale baked pages
+func _modulate_for_mode(blend_mode: int, material) -> Color:
+	if blend_mode == BakeConfigClass.BlendMode.MULTIPLY:
+		return material.base_color.lightened(MULTIPLY_LUMA_LIFT)
+	return Color.WHITE
+
+## Mirrored-repeat index fold (matches BakedTileLookup._mirror_index_1d)
+func _mirror_index(index: int, period: int) -> int:
+	var period_2x := period * 2
+	var k2 := index % period_2x
+	if k2 < 0:
+		k2 += period_2x
+	if k2 >= period:
+		k2 = period_2x - k2 - 1
+	return k2
 
 ## Build the plane image P for one direction (see header math), via blits only.
 ## P(x, y) = S_ext(x, y − floor(x/2))               dir 0

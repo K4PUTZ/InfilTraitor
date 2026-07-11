@@ -27,7 +27,7 @@ var _lbl_end_turn: Label
 var _lbl_enemy_turn: Label
 
 # Panel references (populated in setup() if panels exist)
-var _enemy_banner_panel: Control = null
+var _enemy_banner_panel: Variant = null
 
 ## Cached so the labels can be rebuilt verbatim when the language changes.
 var _ap_current: int = 0

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.7.1 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.7.2 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,10 +13,12 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
+- HUD-PANEL-01-b.md
 - HUD-PANEL-01.md
 - INPUT-01-b.md
 - INPUT-01-c.md
 - PANEL-01-b.md
+- TOP-JUNCTION-04-b.md
 - TOP-JUNCTION-04.md
 <!-- AUTO:END pending_prompts -->
 
@@ -26,7 +28,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 100
-- Test scripts: 30
+- Test scripts: 29
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 21

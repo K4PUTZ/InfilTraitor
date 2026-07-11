@@ -90,6 +90,7 @@ var _diamond_overlays: Dictionary = {}     # material_id → Image (top-face pai
 
 ## Session caches (survive map reloads via room_builder's persistent instance)
 var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
+var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image}
 var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
 
 const BAKE_CODE_VERSION: int = 2
@@ -105,6 +106,7 @@ func set_material_registry(registry) -> void:
 ## but marker-facade toggles and tests need a full reset)
 func clear_cache() -> void:
 	_plane_cache.clear()
+	_plane_top_cache.clear()
 	_page_cache.clear()
 	print("[BAKE] Session cache cleared")
 
@@ -367,13 +369,7 @@ func _mirror_index(index: int, period: int) -> int:
 		k2 = period_2x - k2 - 1
 	return k2
 
-## Build the plane image P for one direction (see header math), via blits only.
-## P(x, y) = S_ext(x, y − floor(x/2))               dir 0
-## P(x, y) = M_ext(x, y − floor((PLANE_W−1 − x)/2)) dir 1 (M = mirrored S)
-func _get_plane(facade_id: String, facade: Image, dir: int) -> Image:
-	if _plane_cache.has(facade_id) and _plane_cache[facade_id].has(dir):
-		return _plane_cache[facade_id][dir]
-
+func _get_plane_source(facade: Image, dir: int) -> Image:
 	# S: facade scaled ×20/16 vertically (nearest), grayscale source (B2).
 	# The RGB8 round-trip flattens any alpha the facade PNG carries to 255:
 	# the facade is a luminance source only — silhouette alpha comes solely
@@ -395,10 +391,20 @@ func _get_plane(facade_id: String, facade: Image, dir: int) -> Image:
 	s_ext.blit_rect(flipped_y, Rect2i(0, total_h - 2 * V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, 0))
 	s_ext.blit_rect(flipped_y, Rect2i(0, V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, total_h - V_MARGIN))
 
-	var source := s_ext
 	if dir == 1:
-		source = s_ext.duplicate()
-		source.flip_x()
+		var mirrored := s_ext.duplicate()
+		mirrored.flip_x()
+		return mirrored
+	return s_ext
+
+## Build the plane image P for one direction (see header math), via blits only.
+## P(x, y) = S_ext(x, y − floor(x/2))               dir 0
+## P(x, y) = M_ext(x, y − floor((PLANE_W−1 − x)/2)) dir 1 (M = mirrored S)
+func _get_plane(facade_id: String, facade: Image, dir: int) -> Image:
+	if _plane_cache.has(facade_id) and _plane_cache[facade_id].has(dir):
+		return _plane_cache[facade_id][dir]
+
+	var source := _get_plane_source(facade, dir)
 
 	# Shear via 2-px column strips (shift constant within each even pair)
 	var plane := Image.create(PLANE_W, PLANE_H, false, Image.FORMAT_RGBA8)
@@ -415,6 +421,30 @@ func _get_plane(facade_id: String, facade: Image, dir: int) -> Image:
 		_plane_cache[facade_id] = {}
 	_plane_cache[facade_id][dir] = plane
 	return plane
+
+## Build the top-face plane T for one direction via the two-pass shear from the
+## prompt. The mapping contract is:
+##   T(u − v + X_OFF, (u + v)/2 + Y_MARGIN) == S_ext(u, v)
+func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
+	if _plane_top_cache.has(facade_id) and _plane_top_cache[facade_id].has(dir):
+		return _plane_top_cache[facade_id][dir]
+
+	var source := _get_plane_source(facade, dir)
+	var x_off: int = source.get_height() - 1
+	var width: int = source.get_width() + x_off
+	var height: int = int(ceil(float(source.get_width() + source.get_height()) / 2.0)) + V_MARGIN + 1
+	var plane_top := Image.create(width, height, false, Image.FORMAT_RGBA8)
+
+	for v in range(source.get_height()):
+		for u in range(source.get_width()):
+			var dst_x: int = u - v + x_off
+			var dst_y: int = int((float(u) + float(v)) / 2.0) + V_MARGIN
+			plane_top.set_pixel(dst_x, dst_y, source.get_pixel(u, v))
+
+	if not _plane_top_cache.has(facade_id):
+		_plane_top_cache[facade_id] = {}
+	_plane_top_cache[facade_id][dir] = plane_top
+	return plane_top
 
 ## Compose one full sheet page (2048 atoms) for (material, facade, dir).
 ## Pure region ops per atom: 1 crop blit + 1 diamond blend + 1 masked blit,
@@ -623,8 +653,6 @@ func _disk_cache_save(cache_key: String, page: Image) -> void:
 	var global_dir: String = ProjectSettings.globalize_path(cache_dir)
 	if not DirAccess.dir_exists_absolute(global_dir):
 		DirAccess.make_dir_absolute(global_dir)
-	var img_data = page.get_data()
-	var png_data = img_data
 	var path = global_dir + "/" + cache_key + ".png"
 	var img = Image.new()
 	img.copy_from(page)

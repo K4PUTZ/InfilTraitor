@@ -72,11 +72,31 @@ is no deadline.
    but flag them in the report.
 2. **Smoke test + runtime output:** run it, watch the console
    (`push_error`, `print_debug`, assertions). Any error = report with context.
-3. **Visual check:** expected vs. observed; screenshot when documenting an issue.
+3. **Visual check:** expected vs. observed, from a *real* capture — never a
+   written description standing in for one. `Shift+P` remains available for
+   an ad-hoc capture while working, but every commit already carries an
+   automatic one in `Screenshots/history/` (see
+   **Auto-Screenshot History**, below) — when a completion report makes a
+   visual claim, point at the relevant file there rather than describing
+   what the code should produce.
 4. **Evidence rule:** acceptance criteria are marked PASS **only** with real
    execution evidence — literal console output pasted into the report. Never
-   from code reading.
-5. **Commit and push on completion — always.** When every acceptance
+   from code reading. This explicitly includes visual claims: "the layout
+   should be unchanged" or "verified via code inspection" is not evidence —
+   a real screenshot (Shift+P or the auto-capture history) is.
+5. **Task list hygiene.** Keep the task list (`TodoWrite` or equivalent)
+   current for the prompt in progress — mark items done as they're actually
+   done, not batched at the end. A stale task list is itself a signal the
+   report may be reconstructing what happened after the fact rather than
+   reporting it as it happened.
+6. **Check the PROBLEMS tab before declaring done** — not as evidence (item
+   1 already establishes the CLI lint is the arbiter, not this tab), but as
+   a cheap triage pass: a real, non-stale entry here is often the fastest
+   way to notice something the lint gate doesn't catch (warnings in files
+   outside this task's scope, editor-visible issues). Disambiguate per item
+   1's rule (nonexistent file on disk = stale, ignore) before acting on
+   anything found.
+7. **Commit and push on completion — always.** When every acceptance
    criterion has real evidence, bump `VERSION`, commit per the convention
    below, and push to `main` (pre-push hooks must pass). **Do not move or
    copy the prompt file to `PROMPTS/DONE/` — Matt does that manually, only
@@ -116,6 +136,34 @@ or unpushed `main` is not.
 5. **`verified/vX.Y.Z` tags** mark architect-cleared checkpoints. The
    Operator applies one only when explicitly instructed. Between tags,
    `main` may be noisy — that is expected.
+
+---
+
+## Auto-Screenshot History (SCREENSHOT-HOOK-01)
+
+**Status: infrastructure ratified 2026-07-11, ships in `SCREENSHOT-HOOK-01`.**
+Once landed, every commit's pre-commit hook captures a real, unattended
+screenshot of whatever map was last loaded (`user://current_map.cfg`,
+written by `room.gd::load_map()`) and saves it to
+`Screenshots/history/`, capped at the 50 most recent files. This
+exists because three prompts in this session shipped visual/behavioral
+claims as "PASSED" without ever actually looking at the running game — the
+Director caught two real bugs manually that no report surfaced.
+
+- **`Shift+P`** (`_capture_screenshot_to_file()`, saves to
+  `Screenshots/` — no subfolder) remains the Director's personal,
+  manual tool. Never write there programmatically; never treat it as
+  something the Operator triggers as part of a task.
+- **The Operator's obligation:** none beyond committing as usual — the hook
+  captures automatically. When a completion report makes a visual claim,
+  point at the relevant file in `Screenshots/history/` (the one
+  from this task's own commit, or trigger the capture tool directly if a
+  claim needs verifying mid-task, before the commit) instead of describing
+  what the code should produce. See Verification Protocol items 3–4, above.
+- **The Overlord's obligation:** during INSPECT, check
+  `Screenshots/history/` for a capture at or after the relevant
+  commit **before** trusting a written visual description — code
+  verification complements the screenshot, it does not replace it.
 
 ---
 

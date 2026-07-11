@@ -46,3 +46,11 @@ __pycache__/
 session_*.zip
 REFERENCES/
 ASSETS/
+
+# Screenshots/ — Director's manual Shift+P captures stay local, never
+# committed. Screenshots/history/ is the exception: SCREENSHOT-HOOK-01's
+# pre-commit auto-capture, which IS meant to be versioned (see
+# OPERATOR_CONTEXT.md "Auto-Screenshot History").
+Screenshots/*
+!Screenshots/history/
+!Screenshots/history/**

@@ -305,6 +305,19 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_room_builder.build_from_layout(view_layout, room_size)
 	_room_size = room_size
 
+	## SCREENSHOT-HOOK-01: persist the last successfully loaded map id so the
+	## pre-commit auto-screenshot capture (a separate Godot process) knows
+	## which map to boot into. Written only after a load actually succeeds
+	## (past both error-return points above) so a failed load never
+	## overwrites a good last-known value.
+	var current_map_config := ConfigFile.new()
+	current_map_config.set_value("state", "map_id", new_map_id)
+	if new_map_id == "PROCEDURAL":
+		current_map_config.set_value("state", "seed", new_seed)
+	var save_err := current_map_config.save("user://current_map.cfg")
+	if save_err != OK:
+		push_warning("[Room] Could not persist current_map.cfg (error %d) — auto-screenshot will use its fallback map" % save_err)
+
 	## Sync cached data from builder to room state
 	_blocked_cells = _room_builder.get_blocked_cells()
 	_prop_heights = _room_builder.get_prop_heights()
@@ -546,6 +559,19 @@ func _ready() -> void:
 	agent.move_finished.connect(_on_agent_move_finished)
 	## Perspective button connections now in CameraController
 
+	## SCREENSHOT-HOOK-01: the auto-capture process boots straight into
+	## whatever map was last actually worked on (persisted by load_map()
+	## itself), instead of the @export default. Confined to the opt-in env
+	## var so normal play — where map_id is whatever the scene/Director set
+	## it to — is never affected.
+	if OS.get_environment("INFILTRAITOR_AUTO_SCREENSHOT") == "1":
+		var last_map_config := ConfigFile.new()
+		if last_map_config.load("user://current_map.cfg") == OK:
+			var last_map_id: String = last_map_config.get_value("state", "map_id", map_id)
+			if last_map_id != "":
+				map_id = last_map_id
+				level_seed = int(last_map_config.get_value("state", "seed", level_seed))
+
 	load_map(map_id, level_seed)
 
 	## DEBUG-01: Create map loader toolbar button
@@ -659,6 +685,15 @@ func _ready() -> void:
 	if debug_probe_voxel_alignment:
 		print_debug("[DEBUG] _ready() complete, starting probe")
 		_debug_probe_voxel_alignment()
+
+	## SCREENSHOT-HOOK-01: opt-in auto-capture for the pre-commit hook's
+	## dedicated Godot process (INFILTRAITOR_AUTO_SCREENSHOT=1). Never fires
+	## during normal play — the env var is only set by the hook's own launch
+	## command. Deferred a few frames past _ready() so the just-built map has
+	## actually been rasterized before capture (SLICE-02's own probe above
+	## proves _ready() completing does not by itself guarantee a drawn frame).
+	if OS.get_environment("INFILTRAITOR_AUTO_SCREENSHOT") == "1":
+		_run_auto_screenshot_capture()
 
 
 func _set_perspective(direction: String) -> void:
@@ -1878,10 +1913,10 @@ func _capture_screenshot_to_file() -> void:
 		push_error("Failed to capture screenshot")
 		return
 
-	## Salva em REFERENCES/Screenshots/ dentro do diretório do projeto (res://).
+	## Salva em Screenshots/ dentro do diretório do projeto (res://).
 	## Mais acessível que user:// (app-data do Godot).
 	var project_root := ProjectSettings.globalize_path("res://")
-	var absolute_screenshots_dir := project_root + "REFERENCES/Screenshots"
+	var absolute_screenshots_dir := project_root + "Screenshots"
 	DirAccess.make_dir_absolute(absolute_screenshots_dir)
 
 	## Generate filename with timestamp
@@ -1905,6 +1940,87 @@ func _capture_screenshot_to_file() -> void:
 	var short_name := filename.get_file()
 	print("Screenshot saved: %s" % filename)
 	_show_screenshot_toast("💾 %s" % short_name)
+
+
+## SCREENSHOT-HOOK-01: entry point for the pre-commit hook's dedicated,
+## off-screen Godot process. Waits for the just-loaded map to actually be
+## rasterized, captures the real viewport (same mechanism as
+## _capture_screenshot_to_file(), separate destination + retention policy),
+## prunes Screenshots/history/ to the 50 most recent files, then
+## quits the process itself — the hook does not need to kill it.
+func _run_auto_screenshot_capture() -> void:
+	## A few extra frames past _ready() so the GPU has actually drawn the
+	## map before capture (see the SCREENSHOT-HOOK-01 comment at the call site).
+	for _i in range(10):
+		await get_tree().process_frame
+
+	var image := get_viewport().get_texture().get_image()
+	if image == null:
+		push_warning("[SCREENSHOT-HOOK-01] Failed to capture auto-screenshot — image was null")
+		get_tree().quit(1)
+		return
+
+	var project_root := ProjectSettings.globalize_path("res://")
+	var history_dir := project_root + "Screenshots/history"
+	var dir_err := DirAccess.make_dir_recursive_absolute(history_dir)
+	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS:
+		push_warning("[SCREENSHOT-HOOK-01] Could not create history dir (error %d)" % dir_err)
+		get_tree().quit(1)
+		return
+
+	var timestamp := Time.get_datetime_dict_from_system()
+	var date_str := "%04d-%02d-%02d_%02d-%02d-%02d" % [
+		timestamp["year"],
+		timestamp["month"],
+		timestamp["day"],
+		timestamp["hour"],
+		timestamp["minute"],
+		timestamp["second"],
+	]
+	var filename := "%s/auto_%s.png" % [history_dir, date_str]
+
+	var save_err := image.save_png(filename)
+	if save_err != OK:
+		push_warning("[SCREENSHOT-HOOK-01] Failed to save auto-screenshot: %s (error %d)" % [filename, save_err])
+		get_tree().quit(1)
+		return
+
+	print("[SCREENSHOT-HOOK-01] Captured: %s" % filename)
+	_prune_auto_screenshot_history(history_dir)
+	get_tree().quit(0)
+
+
+## Keeps Screenshots/history/ at the 50 most recent auto_*.png
+## files (oldest-first deletion by filename, which sorts chronologically
+## since the timestamp format is zero-padded and lexicographic-safe).
+func _prune_auto_screenshot_history(history_dir: String) -> void:
+	const MAX_HISTORY_FILES := 50
+	var dir := DirAccess.open(history_dir)
+	if dir == null:
+		push_warning("[SCREENSHOT-HOOK-01] Could not open history dir for pruning: %s" % history_dir)
+		return
+
+	var files: Array[String] = []
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if not dir.current_is_dir() and entry.begins_with("auto_") and entry.ends_with(".png"):
+			files.append(entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+
+	if files.size() <= MAX_HISTORY_FILES:
+		return
+
+	files.sort()  ## chronological: zero-padded timestamp in the filename
+	var excess := files.size() - MAX_HISTORY_FILES
+	for i in range(excess):
+		var path := "%s/%s" % [history_dir, files[i]]
+		var rm_err := DirAccess.remove_absolute(path)
+		if rm_err != OK:
+			push_warning("[SCREENSHOT-HOOK-01] Could not prune old screenshot: %s (error %d)" % [path, rm_err])
+		else:
+			print("[SCREENSHOT-HOOK-01] Pruned: %s" % files[i])
 
 
 ## Exibe uma mensagem temporária no HUD (CanvasLayer $HUD).

@@ -13,13 +13,9 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- HUD-PANEL-01-b.md
-- HUD-PANEL-01.md
-- INPUT-01-b.md
-- INPUT-01-c.md
-- PANEL-01-b.md
-- TOP-JUNCTION-04-b.md
-- TOP-JUNCTION-04.md
+- HUD-PANEL-01-c.md
+- SCREENSHOT-HOOK-01.md
+- TOP-JUNCTION-05.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -31,7 +27,7 @@
 - Test scripts: 29
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 21
+- Archived prompts: 28
 <!-- AUTO:END inventory -->
 
 ### Version History

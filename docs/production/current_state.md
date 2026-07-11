@@ -35,11 +35,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 893b030 [HUD-PANEL-01] Migrate HUD onto PanelBase: TopBar/EnemyTurnBanner + delegation
 - e105f47 [TOP-JUNCTION-04] Fix: junction column vertical seam (raw col vs folded col in shear)
 - 3496d96 [INPUT-01-c] Fix: real signal-firing evidence for all 18 InputController actions
 - bea33d0 [PANEL-01-b] Fix: real background-slot swap evidence + removed triple-quote docstrings
 - e9e3322 [INPUT-01-b] Fix: InputController now dispatches via InputMap actions, not raw keycodes
-- 3bf9a43 [PANEL-01] Create PanelBase/WindowBase UI foundation, standalone test proof
 <!-- AUTO:END version_history -->
 
 ---

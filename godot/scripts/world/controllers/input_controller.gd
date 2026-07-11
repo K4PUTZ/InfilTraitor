@@ -43,79 +43,79 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _handle_key_action(key: InputEventKey) -> void:
-	## Dispatch keyboard actions based on the Input Map.
-	## This centralizes all key→action mapping.
+	## Dispatch keyboard actions based on the Input Map (via is_action_pressed).
+	## This eliminates raw keycode matching and ensures rebindability works.
 	
-	match key.keycode:
-		KEY_Z:
-			print_debug("[INPUT] Posture lower (Z) requested")
-			posture_lower_requested.emit()
-			get_viewport().set_input_as_handled()
-		KEY_X:
-			print_debug("[INPUT] Posture raise (X) requested")
-			posture_raise_requested.emit()
-			get_viewport().set_input_as_handled()
-		KEY_V:
-			print_debug("[INPUT] View mode dev (V) requested")
-			view_mode_requested.emit("dev")
-			get_viewport().set_input_as_handled()
-		KEY_L:
-			print_debug("[INPUT] View mode light (L) requested")
-			view_mode_requested.emit("light")
-			get_viewport().set_input_as_handled()
-		KEY_H:
-			print_debug("[INPUT] View mode heat (H) requested")
-			view_mode_requested.emit("heat")
-			get_viewport().set_input_as_handled()
-		KEY_P:
-			print_debug("[INPUT] Peek initiated (P)")
-			peek_initiated.emit()
-			get_viewport().set_input_as_handled()
-		KEY_UP:
-			var is_large_step := Input.is_key_pressed(KEY_SHIFT)
-			print_debug("[INPUT] Movement up (large_step=%s)" % is_large_step)
-			movement_input_requested.emit(Vector2i.UP, is_large_step)
-			get_viewport().set_input_as_handled()
-		KEY_DOWN:
-			var is_large_step := Input.is_key_pressed(KEY_SHIFT)
-			print_debug("[INPUT] Movement down (large_step=%s)" % is_large_step)
-			movement_input_requested.emit(Vector2i.DOWN, is_large_step)
-			get_viewport().set_input_as_handled()
-		KEY_LEFT:
-			var is_large_step := Input.is_key_pressed(KEY_SHIFT)
-			print_debug("[INPUT] Movement left (large_step=%s)" % is_large_step)
-			movement_input_requested.emit(Vector2i.LEFT, is_large_step)
-			get_viewport().set_input_as_handled()
-		KEY_RIGHT:
-			var is_large_step := Input.is_key_pressed(KEY_SHIFT)
-			print_debug("[INPUT] Movement right (large_step=%s)" % is_large_step)
-			movement_input_requested.emit(Vector2i.RIGHT, is_large_step)
-			get_viewport().set_input_as_handled()
-		KEY_F2:
-			print_debug("[INPUT] Debug: toggle map loader (F2)")
-			debug_command_requested.emit("toggle_map_loader")
-			get_viewport().set_input_as_handled()
-		KEY_F3:
-			print_debug("[INPUT] Debug: toggle voxel ruler (F3)")
-			debug_command_requested.emit("toggle_voxel_ruler")
-			get_viewport().set_input_as_handled()
-		KEY_F4:
-			print_debug("[INPUT] Debug: toggle nudge mode (F4)")
-			debug_command_requested.emit("toggle_nudge_mode")
-			get_viewport().set_input_as_handled()
-		KEY_F6:
-			print_debug("[INPUT] Debug: toggle bake mode (F6)")
-			debug_command_requested.emit("toggle_bake_mode")
-			get_viewport().set_input_as_handled()
-		KEY_F7:
-			print_debug("[INPUT] Debug: cycle blend mode (F7)")
-			debug_command_requested.emit("cycle_blend_mode")
-			get_viewport().set_input_as_handled()
-		KEY_K:
-			print_debug("[INPUT] Debug: cycle language (K)")
-			debug_command_requested.emit("cycle_language")
-			get_viewport().set_input_as_handled()
-		KEY_R:
-			print_debug("[INPUT] Debug: nudge reset (R)")
-			debug_command_requested.emit("nudge_reset")
-			get_viewport().set_input_as_handled()
+	# Gameplay actions
+	if key.is_action_pressed("ui_posture_lower"):
+		print_debug("[INPUT] Posture lower requested")
+		posture_lower_requested.emit()
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_posture_raise"):
+		print_debug("[INPUT] Posture raise requested")
+		posture_raise_requested.emit()
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_view_mode_dev"):
+		print_debug("[INPUT] View mode dev requested")
+		view_mode_requested.emit("dev")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_view_mode_light"):
+		print_debug("[INPUT] View mode light requested")
+		view_mode_requested.emit("light")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_view_mode_heat"):
+		print_debug("[INPUT] View mode heat requested")
+		view_mode_requested.emit("heat")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_peek"):
+		print_debug("[INPUT] Peek initiated")
+		peek_initiated.emit()
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_move_up"):
+		_emit_movement_input(Vector2i.UP)
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_move_down"):
+		_emit_movement_input(Vector2i.DOWN)
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_move_left"):
+		_emit_movement_input(Vector2i.LEFT)
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("ui_move_right"):
+		_emit_movement_input(Vector2i.RIGHT)
+		get_viewport().set_input_as_handled()
+	# Debug actions
+	elif key.is_action_pressed("debug_toggle_map_loader"):
+		print_debug("[INPUT] Debug: toggle map loader")
+		debug_command_requested.emit("toggle_map_loader")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_toggle_voxel_ruler"):
+		print_debug("[INPUT] Debug: toggle voxel ruler")
+		debug_command_requested.emit("toggle_voxel_ruler")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_toggle_nudge_mode"):
+		print_debug("[INPUT] Debug: toggle nudge mode")
+		debug_command_requested.emit("toggle_nudge_mode")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_toggle_bake_mode"):
+		print_debug("[INPUT] Debug: toggle bake mode")
+		debug_command_requested.emit("toggle_bake_mode")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_cycle_blend_mode"):
+		print_debug("[INPUT] Debug: cycle blend mode")
+		debug_command_requested.emit("cycle_blend_mode")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_cycle_language"):
+		print_debug("[INPUT] Debug: cycle language")
+		debug_command_requested.emit("cycle_language")
+		get_viewport().set_input_as_handled()
+	elif key.is_action_pressed("debug_nudge_reset"):
+		print_debug("[INPUT] Debug: nudge reset")
+		debug_command_requested.emit("nudge_reset")
+		get_viewport().set_input_as_handled()
+
+
+func _emit_movement_input(direction: Vector2i) -> void:
+	## Helper: emit movement input with Shift modifier for step size.
+	var is_large_step := Input.is_key_pressed(KEY_SHIFT)
+	print_debug("[INPUT] Movement %s (large_step=%s)" % [direction, is_large_step])
+	movement_input_requested.emit(direction, is_large_step)

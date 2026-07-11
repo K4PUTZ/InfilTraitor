@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**147 scripts · 26616 lines total** (under `godot/scripts/`)
+**148 scripts · 26732 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -21,7 +21,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — baked_tile_lookup_test.gd, block_01b_baking_e2e_test.gd, bake_cache_test.gd, bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison.gd, bake_fix_03_pixel_comparison_tool.gd, bake_fix_09_e2e_test.gd, bake_fix_11_pixel_diff_tool.gd, bake_fix_12_facade_2d_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_live_verify_part2_trace.gd, bake_selftest.gd, bake_smoke_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, debug_compare_loaders.gd, debug_metal_alpha.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, panel_base_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, top_shear_test.gd, version_info_test.gd, voxel_height_verification.gd
+- **tools/** — baked_tile_lookup_test.gd, block_01b_baking_e2e_test.gd, bake_cache_test.gd, bake_fix_02_test.gd, bake_fix_03_live_smoke_test.gd, bake_fix_03_pixel_comparison.gd, bake_fix_03_pixel_comparison_tool.gd, bake_fix_09_e2e_test.gd, bake_fix_11_pixel_diff_tool.gd, bake_fix_12_facade_2d_test.gd, bake_live_boot_01b_real_verification.gd, bake_live_boot_verification.gd, bake_live_verify_part2_trace.gd, bake_selftest.gd, bake_smoke_test.gd, block_01_quick_test.gd, block_01_validation.gd, block_01b_face_culling_test.gd, block_01b_voxel_dump_test.gd, build_tileset.gd, build_voxel_tileset.gd, debug_compare_loaders.gd, debug_metal_alpha.gd, exterior_walls_verification.gd, facade_sampler_test.gd, fix_bake_01_test.gd, fix_bake_02_sampler_test.gd, fix_bake_09_e2e_test.gd, fix_bake_09b_e2e_test.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_export_golden.gd, mapfile_integration_test.gd, mapfile_roundtrip_test.gd, panel_base_test.gd, playground_export_showcase.gd, playground_verification_test.gd, project_lint_checker.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, shutdown_test.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, theme_matrix_debug_test.gd, tile_anatomy_audit.gd, top_shear_test.gd, version_info_test.gd, voxel_height_verification.gd
 - **ui/** — compass_rose.gd, fog_of_war_overlay.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -2285,6 +2285,26 @@ extends `SceneTree` · 230 lines
 `godot/scripts/tools/geometry_selftest.gd`
 
 > Geometry Module — Selftest: minimal validation Headless selftest Usage: godot --headless --script geometry_selftest.gd
+
+---
+
+### `input_controller_test.gd`
+
+extends `SceneTree` · 116 lines
+
+`godot/scripts/tools/input_controller_test.gd`
+
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-b Test: Verify InputController dispatches all 18 actions via InputMap. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
+
+**Constants / tuning**
+- `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
+
+**Public vars**
+- `var test_passed: int = 0`
+- `var test_failed: int = 0`
+
+**Public API**
+- `func test_input_map_actions() -> void:`
 
 ---
 

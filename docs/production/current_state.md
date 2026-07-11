@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.6 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.7 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,8 +13,8 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- INPUT-01.md
-- PANEL-01.md
+- INPUT-01-b.md
+- PANEL-01-b.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -23,20 +23,20 @@
 **Code & Test Inventory**
 
 - GDScript modules: 98
-- Test scripts: 28
+- Test scripts: 29
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 19
+- Archived prompts: 21
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 3bf9a43 [PANEL-01] Create PanelBase/WindowBase UI foundation, standalone test proof
 - 48fbc6f [INPUT-01] Add Input Map actions + InputController dispatcher. No behavior change.
 - 3ca1d33 [BAKE-CACHE-PAGESIZE-01-b] Restrict compose loop to referenced atoms; close orphaned corrective
 - 0c598d7 Implement binary bake cache format
 - 2266a53 Add fast-boot bake bypass
-- b7d9be8 [VOX-BAKE-01] Alpha Top Texture — milestone closure pass
 <!-- AUTO:END version_history -->
 
 ---

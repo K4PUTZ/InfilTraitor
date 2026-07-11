@@ -95,6 +95,8 @@ var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, fr
 
 const BAKE_CODE_VERSION: int = 3
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
+const BAKE_CACHE_FORMAT_VERSION: int = 2
+const BAKE_CACHE_EXTENSION: String = ".bin"
 
 func _init() -> void:
 	_load_real_voxel_atoms()
@@ -477,6 +479,10 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 	var page := Image.create(PAGE_W, PAGE_H, false, Image.FORMAT_RGBA8)
 	var frag: Dictionary = {}   # "col|row" → atlas_coords
 	var coords: Array = []
+	var min_col: int = PAGE_TILE_COLS
+	var max_col: int = -1
+	var min_row: int = PAGE_TILE_COLS
+	var max_row: int = -1
 
 	var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
 	var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
@@ -514,6 +520,10 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 			var atlas_coords := Vector2i(tile_col, tile_row)
 			frag["%d|%d" % [col, row]] = atlas_coords
 			coords.append(atlas_coords)
+			min_col = mini(min_col, tile_col)
+			max_col = maxi(max_col, tile_col)
+			min_row = mini(min_row, tile_row)
+			max_row = maxi(max_row, tile_row)
 			atom_idx += 1
 
 	# B3 alpha fixup: write the exact canonical alpha byte at every partial-
@@ -530,7 +540,18 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 					data[idx] = aa[2]
 			page.set_data(PAGE_W, PAGE_H, false, Image.FORMAT_RGBA8, data)
 
-	return {"page": page, "coords": coords, "frag": frag}
+	var crop_x0: int = min_col * VOXEL_ATOM_W
+	var crop_y0: int = min_row * VOXEL_ATOM_H
+	var crop_w: int = (max_col - min_col + 1) * VOXEL_ATOM_W if coords.size() > 0 else VOXEL_ATOM_W
+	var crop_h: int = (max_row - min_row + 1) * VOXEL_ATOM_H if coords.size() > 0 else VOXEL_ATOM_H
+	var crop_rect := Rect2i(crop_x0, crop_y0, crop_w, crop_h)
+	var cropped_page := page.get_region(crop_rect)
+	var remapped_frag: Dictionary = {}
+	for frag_key in frag:
+		var atlas_coords: Vector2i = frag[frag_key]
+		remapped_frag[frag_key] = Vector2i(atlas_coords.x - min_col, atlas_coords.y - min_row)
+
+	return {"page": cropped_page, "coords": coords, "frag": remapped_frag, "crop_rect": crop_rect}
 
 ## Extract unique (material, facade) combos from the map
 func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
@@ -645,33 +666,82 @@ func _fnv1a_64(data: PackedByteArray) -> String:
 	return "%08x" % hash_val
 
 ## Get cache key for a page: FNV-1a hash of facade bytes + material + dir + version
-func _get_disk_cache_key(facade: Image, material_id: String, dir: int) -> String:
+func _get_disk_cache_key(facade: Image, material_id: String, dir: int, crop_rect: Rect2i = Rect2i()) -> String:
 	var facade_data: PackedByteArray = facade.get_data()
 	var key_input: PackedByteArray = PackedByteArray()
 	key_input.append_array(facade_data)
 	key_input.append_array(material_id.to_utf8_buffer())
 	key_input.push_back(dir)
 	key_input.push_back(BAKE_CODE_VERSION)
+	for value in [crop_rect.position.x, crop_rect.position.y, crop_rect.size.x, crop_rect.size.y]:
+		key_input.push_back((value >> 24) & 0xFF)
+		key_input.push_back((value >> 16) & 0xFF)
+		key_input.push_back((value >> 8) & 0xFF)
+		key_input.push_back(value & 0xFF)
 	return _fnv1a_64(key_input)
+
+func _encode_cache_image(page: Image) -> PackedByteArray:
+	var raw := page.get_data()
+	var header := PackedByteArray()
+	header.append_array(PackedByteArray([0x49, 0x46, 0x43, 0x01]))
+	header.append((BAKE_CACHE_FORMAT_VERSION >> 24) & 0xFF)
+	header.append((BAKE_CACHE_FORMAT_VERSION >> 16) & 0xFF)
+	header.append((BAKE_CACHE_FORMAT_VERSION >> 8) & 0xFF)
+	header.append(BAKE_CACHE_FORMAT_VERSION & 0xFF)
+	header.append((page.get_width() >> 24) & 0xFF)
+	header.append((page.get_width() >> 16) & 0xFF)
+	header.append((page.get_width() >> 8) & 0xFF)
+	header.append(page.get_width() & 0xFF)
+	header.append((page.get_height() >> 24) & 0xFF)
+	header.append((page.get_height() >> 16) & 0xFF)
+	header.append((page.get_height() >> 8) & 0xFF)
+	header.append(page.get_height() & 0xFF)
+	header.append(page.get_format())
+	var payload := PackedByteArray()
+	payload.append_array(header)
+	payload.append_array(raw)
+	return payload
+
+func _decode_cache_image(data: PackedByteArray) -> Image:
+	if data.size() < 16:
+		return null
+	if data[0] != 0x49 or data[1] != 0x46 or data[2] != 0x43 or data[3] != 0x01:
+		return null
+	var version := (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7]
+	if version != BAKE_CACHE_FORMAT_VERSION:
+		return null
+	var width := (data[8] << 24) | (data[9] << 16) | (data[10] << 8) | data[11]
+	var height := (data[12] << 24) | (data[13] << 16) | (data[14] << 8) | data[15]
+	var format_id := data[16]
+	var payload_start := 17
+	var payload := data.slice(payload_start, data.size())
+	var img := Image.create(width, height, false, format_id)
+	if img == null:
+		return null
+	img.set_data(width, height, false, format_id, payload)
+	return img
 
 ## Load page from disk cache; returns null on miss or corruption
 func _disk_cache_load(cache_key: String) -> Image:
-	var cache_file: String = BAKE_CACHE_PATH + cache_key + ".png"
+	var cache_file: String = BAKE_CACHE_PATH + cache_key + BAKE_CACHE_EXTENSION
 	var global_path: String = ProjectSettings.globalize_path(cache_file)
-	if not FileAccess.file_exists(global_path):
-		print("[BAKE] Disk cache MISS: file not found %s" % global_path)
+	var legacy_path: String = ProjectSettings.globalize_path(BAKE_CACHE_PATH + cache_key + ".png")
+	if FileAccess.file_exists(global_path):
+		var file_data = FileAccess.get_file_as_bytes(global_path)
+		if file_data == null or file_data.size() == 0:
+			print("[BAKE] Disk cache MISS: file empty or unreadable %s" % global_path)
+			return null
+		var img := _decode_cache_image(file_data)
+		if img == null:
+			print("[BAKE] Disk cache MISS (unsupported format): %s" % global_path)
+			return null
+		print("[BAKE] Disk cache HIT: loaded %s" % cache_key)
+		return img
+	if FileAccess.file_exists(legacy_path):
+		print("[BAKE] Disk cache MISS (legacy .png format): %s" % legacy_path)
 		return null
-	var img: Image = Image.new()
-	var file_data = FileAccess.get_file_as_bytes(global_path)
-	if file_data == null or file_data.size() == 0:
-		print("[BAKE] Disk cache MISS: file empty or unreadable %s" % global_path)
-		return null
-	var err = img.load_png_from_buffer(file_data)
-	if err != OK:
-		print("[BAKE] Disk cache MISS (corrupted): %s (load error %d)" % [global_path, err])
-		return null
-	print("[BAKE] Disk cache HIT: loaded %s" % cache_key)
-	return img
+	print("[BAKE] Disk cache MISS: file not found %s" % global_path)
+	return null
 
 ## Save page to disk cache
 func _disk_cache_save(cache_key: String, page: Image) -> void:
@@ -679,11 +749,11 @@ func _disk_cache_save(cache_key: String, page: Image) -> void:
 	var global_dir: String = ProjectSettings.globalize_path(cache_dir)
 	if not DirAccess.dir_exists_absolute(global_dir):
 		DirAccess.make_dir_absolute(global_dir)
-	var path = global_dir + "/" + cache_key + ".png"
-	var img = Image.new()
-	img.copy_from(page)
-	var err = img.save_png(path)
-	if err != OK:
+	var path = global_dir + "/" + cache_key + BAKE_CACHE_EXTENSION
+	var payload := _encode_cache_image(page)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
 		push_error("[BAKE] Failed to save disk cache image: %s" % path)
 		return
+	file.store_buffer(payload)
 	print("[BAKE] Disk cache saved: %s" % cache_key)

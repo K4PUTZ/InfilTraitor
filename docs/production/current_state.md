@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.1 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.3 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -33,11 +33,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 2266a53 Add fast-boot bake bypass
 - b7d9be8 [VOX-BAKE-01] Alpha Top Texture — milestone closure pass
 - 72ba7b2 [VERSION] Bump to 0.5.6
 - eb15ef3 [TOP-01-b] Implement two-pass isometric shear framework + BAKE-CACHE-01 disk cache system + one-shot fix
 - 366bed9 [BAKE-CACHE-01] Content-addressed disk cache for baked pages
-- 9ca7624 [TOP-01] Horizontal facade: voxel tops as continuous textured laje
 <!-- AUTO:END version_history -->
 
 ---

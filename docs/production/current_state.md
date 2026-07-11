@@ -26,7 +26,7 @@
 - Test scripts: 29
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 29
+- Archived prompts: 30
 <!-- AUTO:END inventory -->
 
 ### Version History

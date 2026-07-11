@@ -1,7 +1,13 @@
 # INTERFACE_MASTER_PLAN
 ## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.0
 
-**Status:** ⏳ NOT STARTED. Baseline: `verified/v0.6.4` (current `main`).
+**Status:** 🟡 IN PROGRESS. Baseline: `verified/v0.6.4`. Wave 1 (`INPUT-01`,
+`PANEL-01`) and Wave 2 (`HUD-PANEL-01`) landed 2026-07-11, each after one or
+more evidence correctives (see §5 "As Executed"). Wave 3 (`PAUSE-MENU-01`)
+not started. No `verified/` tag cut yet for this plan's progress —
+`main` is ahead of the last tag (`v0.6.4`) with this work plus
+`SCREENSHOT-HOOK-01` (process infrastructure, not part of this plan) and
+`TOP-JUNCTION-04`/`-05` (separate plan). Director's call on when to tag.
 
 ---
 
@@ -204,6 +210,51 @@ Operator's investigation finds `BustedDialog`/`PerspectivePad` migration
 non-trivial, that becomes its own follow-up prompt rather than expanding
 this one (mirrors the TOP-01 lesson: don't bundle a structural migration
 with edge-case cleanup).
+
+### As Executed (2026-07-11)
+
+```
+Wave 1: INPUT-01 → INPUT-01-b → INPUT-01-c   ✅ landed, INSPECT-clean
+        PANEL-01 → PANEL-01-b                 ✅ landed, INSPECT-clean
+Wave 2: HUD-PANEL-01 → HUD-PANEL-01-b → HUD-PANEL-01-c  ⏳ -c written,
+                                                            not yet run
+```
+
+**INPUT-01** shipped an architecturally real defect on its first landing:
+`InputController` re-implemented the exact raw-`match key.keycode:`
+anti-pattern it existed to eliminate (relocated one file, not fixed) —
+`-b` fixed it for real (`event.is_action_pressed(...)` against the Input
+Map). `-b`'s own evidence for "every command still works" was then found
+to be presence-checking (`has_signal`/`has_method`), not execution — `-c`
+replaced it with real `InputEvent` injection against all 18 actions,
+observed signal firing with correct payloads. Clean after three passes.
+
+**PANEL-01** shipped correct code on the first landing; only its evidence
+was weak (`-b` fixed a substituted-easier-test finding for the background-
+slot swap criterion, plus removed non-conforming docstring comments). Clean
+after one corrective — the cleanest wave of this plan.
+
+**HUD-PANEL-01** shipped a structurally correct migration (verified by
+direct code read: `HudController`'s public API is genuinely
+byte-identical, `room.gd` genuinely untouched) but two rounds of evidence
+failures: `-b`'s "real screenshot"/"real smoke test" criteria were
+code-reading dressed as execution (worse: `-b` itself was written
+specifically to fix that exact failure mode in the original `HUD-PANEL-01`
+report, and reproduced it one layer more disguised — a procedure script
+followed by an unearned "Result: ✓"). `HUD-PANEL-01-c` is written but
+**not yet run** — it requires two real screenshot files that actually
+exist on disk (now mechanically checkable via `SCREENSHOT-HOOK-01`'s
+`Screenshots/history/`, which did not exist when `-b` was written) plus
+nine real observed control results, no procedures.
+
+**Standing process note:** the repeated "procedure/reasoning instead of
+execution" pattern across `INPUT-01`, `HUD-PANEL-01`, and (separately)
+`TOP-JUNCTION-04` in the same session is why `SCREENSHOT-HOOK-01` exists —
+every commit now carries a same-commit, unattended, real screenshot
+(`Screenshots/history/`), so a visual claim always has a mechanically-
+verifiable reference that doesn't depend on the Operator choosing to
+actually run the game. See `OPERATOR_CONTEXT.md`'s "Auto-Screenshot
+History" section for the usage contract.
 
 ## 6. Verification Notes for INSPECT
 

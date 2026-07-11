@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 48fbc6f [INPUT-01] Add Input Map actions + InputController dispatcher. No behavior change.
 - 3ca1d33 [BAKE-CACHE-PAGESIZE-01-b] Restrict compose loop to referenced atoms; close orphaned corrective
 - 0c598d7 Implement binary bake cache format
 - 2266a53 Add fast-boot bake bypass
 - b7d9be8 [VOX-BAKE-01] Alpha Top Texture — milestone closure pass
-- 72ba7b2 [VERSION] Bump to 0.5.6
 <!-- AUTO:END version_history -->
 
 ---

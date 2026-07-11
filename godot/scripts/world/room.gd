@@ -9,7 +9,7 @@ const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noi
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")
-const InputController = preload("res://godot/scripts/world/controllers/input_controller.gd")
+const InputControllerClass = preload("res://godot/scripts/world/controllers/input_controller.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
@@ -169,7 +169,7 @@ var _actor_end_pause_active: bool = false
 var _debug_tools_controller: DebugToolsControllerClass = null
 
 ## INPUT-01: Input dispatcher
-var _input_controller: InputController = null
+var _input_controller: InputControllerClass = null
 
 ## Selection state management
 var _selection_controller: SelectionControllerClass = null
@@ -555,7 +555,7 @@ func _ready() -> void:
 
 	## INPUT-01: Create and setup input controller
 	set_meta("_camera_controller", _camera_controller)
-	_input_controller = InputController.new(self)
+	_input_controller = InputControllerClass.new(self)
 	add_child(_input_controller)
 	_input_controller.posture_lower_requested.connect(_on_posture_lower_requested)
 	_input_controller.posture_raise_requested.connect(_on_posture_raise_requested)

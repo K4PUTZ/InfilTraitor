@@ -3010,7 +3010,7 @@ extends `Node2D` · 2045 lines
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
 - `DebugToolsControllerClass` = `preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")`
-- `InputController` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
+- `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`

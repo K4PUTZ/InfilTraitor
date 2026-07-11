@@ -22,11 +22,23 @@
 ## must not treat that as fatal — screenshot capture is a support tool, not
 ## a correctness gate like invariants/CODEMAP/lint.
 ##
+## SCREENSHOT-HOOK-02 (2026-07-11): capture is now gated, default OFF. Every
+## commit used to pay the ~5-6s cost; that's wasted on routine architecture
+## commits, doc updates, and planning sessions. Runs only when either:
+##   (a) the session switch is ON (tools/persistent/screenshot_toggle.py
+##       --on — the Overlord flips this for a visual-heavy phase, e.g.
+##       occlusion/destruction work, and flips it back off after), or
+##   (b) INFILTRAITOR_SCREENSHOT_ONCE=1 is set for this one commit (the
+##       Overlord asks for this in a specific prompt when that prompt's
+##       work has real visual surface, even during an otherwise-OFF phase).
+##
 
 import os
 import subprocess
 import sys
 import time
+
+import screenshot_toggle
 
 GODOT_CANDIDATES = [
     "/Applications/Godot.app/Contents/MacOS/Godot",
@@ -52,6 +64,16 @@ def find_godot_binary():
 
 
 def main() -> int:
+    once = os.environ.get("INFILTRAITOR_SCREENSHOT_ONCE") == "1"
+    session_on = screenshot_toggle.is_enabled()
+    if not once and not session_on:
+        print("[AUTO-SCREENSHOT] Skipped — session capture is OFF and "
+              "INFILTRAITOR_SCREENSHOT_ONCE not set for this commit. "
+              "Enable with: python3 tools/persistent/screenshot_toggle.py --on")
+        return 1
+    reason = "one-off (INFILTRAITOR_SCREENSHOT_ONCE=1)" if once else "session switch ON"
+    print(f"[AUTO-SCREENSHOT] Capture enabled ({reason})")
+
     repo_root = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True, text=True, check=False,

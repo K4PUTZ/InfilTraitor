@@ -74,11 +74,13 @@ is no deadline.
    (`push_error`, `print_debug`, assertions). Any error = report with context.
 3. **Visual check:** expected vs. observed, from a *real* capture — never a
    written description standing in for one. `Shift+P` remains available for
-   an ad-hoc capture while working, but every commit already carries an
-   automatic one in `Screenshots/history/` (see
-   **Auto-Screenshot History**, below) — when a completion report makes a
-   visual claim, point at the relevant file there rather than describing
-   what the code should produce.
+   an ad-hoc capture while working. A prompt that has real visual surface
+   gets a same-commit auto-capture too, when the Overlord has turned it on
+   for that phase or that specific prompt (see **Auto-Screenshot History**,
+   below — this is gated, not automatic on every commit) — when a
+   completion report makes a visual claim and a capture exists, point at
+   the relevant file in `Screenshots/history/` rather than describing what
+   the code should produce.
 4. **Evidence rule:** acceptance criteria are marked PASS **only** with real
    execution evidence — literal console output pasted into the report. Never
    from code reading. This explicitly includes visual claims: "the layout
@@ -139,31 +141,61 @@ or unpushed `main` is not.
 
 ---
 
-## Auto-Screenshot History (SCREENSHOT-HOOK-01)
+## Auto-Screenshot History (SCREENSHOT-HOOK-01/02)
 
-**Status: infrastructure ratified 2026-07-11, ships in `SCREENSHOT-HOOK-01`.**
-Once landed, every commit's pre-commit hook captures a real, unattended
-screenshot of whatever map was last loaded (`user://current_map.cfg`,
-written by `room.gd::load_map()`) and saves it to
-`Screenshots/history/`, capped at the 50 most recent files. This
-exists because three prompts in this session shipped visual/behavioral
-claims as "PASSED" without ever actually looking at the running game — the
-Director caught two real bugs manually that no report surfaced.
+**Status: landed 2026-07-11.** The pre-commit hook can capture a real,
+unattended screenshot of whatever map was last loaded
+(`user://current_map.cfg`, written by `room.gd::load_map()`) to
+`Screenshots/history/`, capped at the 50 most recent files. This exists
+because three prompts in one session shipped visual/behavioral claims as
+"PASSED" without ever actually looking at the running game — the Director
+caught two real bugs manually that no report surfaced.
+
+**Gated, OFF by default (SCREENSHOT-HOOK-02, 2026-07-11).** A real capture
+costs ~5-6s (a real windowed Godot boot) — worth it while a feature has
+real visual surface, wasted on routine architecture commits, doc updates,
+or planning sessions. Two independent switches, both default OFF:
+
+- **Session switch** — `python3 tools/persistent/screenshot_toggle.py --on`
+  (and `--off` to revert, `--status` to check). Persists across commits
+  until explicitly changed. **This is the Overlord's call, not the
+  Operator's** — turned on for a whole visual-heavy phase (facade/texture
+  work, occlusion, destruction, UI/panel work) and off when leaving one.
+  A prompt that opens such a phase should say so explicitly
+  ("SCREENSHOT SESSION: turn on before starting, off when this phase
+  closes"); the Operator runs the toggle command, not a judgment call
+  on their own initiative.
+- **One-off** — `INFILTRAITOR_SCREENSHOT_ONCE=1` set for a single commit,
+  when a specific prompt's work has real visual surface but the session
+  switch should otherwise stay off (a one-line fix with a visible effect,
+  landing outside a declared visual phase). The Overlord asks for this
+  explicitly in that prompt's TASK/ACCEPTANCE section — the Operator does
+  not decide per-commit on their own whether a change "feels visual."
+- If neither is set, `auto_screenshot.py` prints one line and exits
+  immediately — no Godot boot, no delay.
 
 - **`Shift+P`** (`_capture_screenshot_to_file()`, saves to
   `Screenshots/` — no subfolder) remains the Director's personal,
-  manual tool. Never write there programmatically; never treat it as
-  something the Operator triggers as part of a task.
-- **The Operator's obligation:** none beyond committing as usual — the hook
-  captures automatically. When a completion report makes a visual claim,
-  point at the relevant file in `Screenshots/history/` (the one
-  from this task's own commit, or trigger the capture tool directly if a
-  claim needs verifying mid-task, before the commit) instead of describing
-  what the code should produce. See Verification Protocol items 3–4, above.
-- **The Overlord's obligation:** during INSPECT, check
-  `Screenshots/history/` for a capture at or after the relevant
-  commit **before** trusting a written visual description — code
-  verification complements the screenshot, it does not replace it.
+  manual tool, unaffected by either switch. Never write there
+  programmatically; never treat it as something the Operator triggers as
+  part of a task.
+- **The Operator's obligation:** run the session toggle only when a prompt
+  explicitly says to; set `INFILTRAITOR_SCREENSHOT_ONCE=1` only when a
+  prompt explicitly asks for it on that commit. Otherwise, nothing extra —
+  when a capture did happen (either switch), point a completion report's
+  visual claims at the relevant file in `Screenshots/history/` instead of
+  describing what the code should produce. See Verification Protocol
+  items 3–4, above.
+- **The Overlord's obligation:** decide and state the session switch when
+  opening or closing a visual-heavy phase; ask for a one-off capture in
+  any individual prompt whose work has real visual surface outside such a
+  phase; during INSPECT, check `Screenshots/history/` for a capture at or
+  after the relevant commit **before** trusting a written visual
+  description whenever one exists — code verification complements the
+  screenshot, it does not replace it. If a visual claim needs checking but
+  no capture exists for that commit (switch was off, no one-off asked
+  for), that's a gap to close with a follow-up capture, not a reason to
+  accept a written description instead.
 
 ---
 

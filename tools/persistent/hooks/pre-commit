@@ -7,11 +7,15 @@
 #   3. GDScript compile gate (project_lint.py) — blocks any commit while a
 #      script in godot/scripts/ has a real compile error (autoload-context
 #      headless false positives are whitelisted inside the tool).
-#   + SCREENSHOT-HOOK-01 (best-effort, never blocks): auto-captures a real
-#     screenshot of the last-worked-on map into Screenshots/history/
-#     so a visual claim always has a same-commit, unattended reference image
-#     to check against — see auto_screenshot.py and OPERATOR_CONTEXT.md's
-#     "Auto-Screenshot History" section.
+#   + SCREENSHOT-HOOK-01/02 (best-effort, never blocks, gated OFF by
+#     default): when enabled, auto-captures a real screenshot of the
+#     last-worked-on map into Screenshots/history/ so a visual claim always
+#     has a same-commit, unattended reference image to check against.
+#     OFF by default (routine commits skip it instantly) — turn on for a
+#     visual-heavy phase with `python3 tools/persistent/screenshot_toggle.py
+#     --on` (--off to revert), or set INFILTRAITOR_SCREENSHOT_ONCE=1 for a
+#     single commit. See auto_screenshot.py, screenshot_toggle.py, and
+#     OPERATOR_CONTEXT.md's "Auto-Screenshot History" section.
 #
 # No gate lets a bad commit reach history.
 #

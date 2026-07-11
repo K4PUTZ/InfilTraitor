@@ -29,6 +29,9 @@ func _init() -> void:
 func _run_tests() -> void:
 	# Test 1a: Crop-aware cache keys (new regression)
 	_test_crop_key_collision()
+
+	# Test 1b: Sparse-usage crop regression (new prompt)
+	_test_sparse_usage_crop()
 	
 	# Test 1: Transparency (compose → save → reload → byte-identical)
 	_test_transparency()
@@ -68,6 +71,60 @@ func _test_crop_key_collision() -> void:
 	
 	print("✓ Crop-aware keys differ: %s vs %s" % [key_a, key_b])
 	_add_result("TEST 1a", true, "Different crop rectangles produce different cache keys")
+
+func _test_sparse_usage_crop() -> void:
+	print("\n[TEST 1b] Sparse-usage crop: only used cells are composed")
+	print("-".repeat(70))
+	
+	var resolver = TextureResolverClass.new()
+	var compositor = BakeCompositorClass.new()
+	
+	var facade_id = "facade_concrete"
+	var resolved = resolver.resolve(facade_id)
+	var facade = resolved.image if resolved else null
+	if facade == null:
+		_add_result("TEST 1b", false, "Failed to resolve facade")
+		return
+	
+	var usage_cells: Array = []
+	for col in range(8):
+		for row in range(4):
+			usage_cells.append(Vector2i(col, row))
+	
+	var full_entry = compositor._compose_sheet_page("concrete", facade_id, facade, 0, Color.WHITE)
+	var sparse_entry = compositor._compose_sheet_page("concrete", facade_id, facade, 0, Color.WHITE, usage_cells)
+	var full_page = full_entry.get("page")
+	var sparse_page = sparse_entry.get("page")
+	
+	if sparse_page == null or full_page == null:
+		_add_result("TEST 1b", false, "Failed to compose sparse/full pages")
+		return
+	
+	var reduced = sparse_page.get_width() < full_page.get_width() or sparse_page.get_height() < full_page.get_height()
+	var mismatches = 0
+	var expected_atoms = full_entry.get("frag", {})
+	var sparse_atoms = sparse_entry.get("frag", {})
+	for frag_key in sparse_atoms:
+		var sparse_coords = sparse_atoms[frag_key]
+		var full_coords = expected_atoms.get(frag_key, Vector2i.ZERO)
+		if sparse_coords.x < 0 or sparse_coords.y < 0:
+			mismatches += 1
+		continue
+		var full_atom = full_page.get_region(Rect2i(full_coords.x * compositor.VOXEL_ATOM_W, full_coords.y * compositor.VOXEL_ATOM_H, compositor.VOXEL_ATOM_W, compositor.VOXEL_ATOM_H))
+		var sparse_atom = sparse_page.get_region(Rect2i(sparse_coords.x * compositor.VOXEL_ATOM_W, sparse_coords.y * compositor.VOXEL_ATOM_H, compositor.VOXEL_ATOM_W, compositor.VOXEL_ATOM_H))
+		var sparse_data = sparse_atom.get_data()
+		var full_data = full_atom.get_data()
+		for i in range(sparse_data.size()):
+			if sparse_data[i] != full_data[i]:
+				mismatches += 1
+				break
+	
+	if reduced and mismatches == 0:
+		print("✓ Sparse page reduced to %dx%d and matched the cropped reference" % [sparse_page.get_width(), sparse_page.get_height()])
+		_add_result("TEST 1b", true, "Sparse usage produced a smaller cropped page with matching content")
+	else:
+		print("✗ Sparse crop test failed: reduced=%s mismatches=%d" % [reduced, mismatches])
+		_add_result("TEST 1b", false, "Sparse usage did not reduce the page or did not match the reference")
 
 func _test_transparency() -> void:
 	print("\n[TEST 1] Transparency: compose → save → reload → byte-identical")

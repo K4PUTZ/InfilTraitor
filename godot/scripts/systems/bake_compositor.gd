@@ -177,6 +177,10 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 		print("[BAKE] No combos to bake; returning empty atlas")
 		return atlas_result
 
+	# Build real placement usage per combo so sparse maps compose only the
+	# (col, row) atoms that can ever be queried by lookup.resolve().
+	var combo_usage := _extract_combo_usage(map_spec)
+
 	# Resolve facade images
 	var facades_by_id = {}
 	for combo in combos:
@@ -222,7 +226,8 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 			var cache_key := "%s|%s|%d" % [material_id, facade_id, dir]
 			var entry = _page_cache.get(cache_key)
 			if entry == null:
-				entry = _compose_sheet_page(material_id, facade_id, facade, dir, material.base_color)
+				var usage_cells: Array = combo_usage.get("%s|%s" % [material_id, facade_id], [])
+				entry = _compose_sheet_page(material_id, facade_id, facade, dir, material.base_color, usage_cells)
 				_page_cache[cache_key] = entry
 				print("[BAKE] Composed sheet %s (2048 atoms)" % cache_key)
 			else:
@@ -461,10 +466,12 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 	_plane_top_cache[facade_id][dir] = plane_top
 	return plane_top
 
-## Compose one full sheet page (2048 atoms) for (material, facade, dir).
+## Compose one page for (material, facade, dir).
+## When usage_cells is provided, only the referenced (col, row) atoms are
+## composed and cropped; otherwise the full 64×32 sweep is used.
 ## Pure region ops per atom: 1 crop blit + 1 diamond blend + 1 masked blit,
 ## then a single byte-level pass fixing the antialiased alpha pixels (B3).
-func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, dir: int, base_color: Color) -> Dictionary:
+func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, dir: int, base_color: Color, usage_cells: Array = []) -> Dictionary:
 	var plane := _get_plane(facade_id, facade, dir)
 	var canonical: Image = _voxel_atoms.get(material_id)
 	if canonical == null:
@@ -487,44 +494,57 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 	var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
 	var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
 	var atom_idx := 0
-	for row in range(SHEET_ROWS):
-		for col in range(SHEET_COLS):
-			var x0: int
-			if dir == 0:
-				x0 = col * TEX_AUTHORING_N
-			else:
-				x0 = FACADE_W - col * TEX_AUTHORING_N
-			var y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
+	var cells_to_render: Array = []
+	if usage_cells != null and not usage_cells.is_empty():
+		for cell in usage_cells:
+			if cell is Vector2i:
+				cells_to_render.append(cell)
+			elif cell is Array and cell.size() >= 2:
+				cells_to_render.append(Vector2i(int(cell[0]), int(cell[1])))
+	else:
+		for row in range(SHEET_ROWS):
+			for col in range(SHEET_COLS):
+				cells_to_render.append(Vector2i(col, row))
 
-			var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
-			atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
-			if BakeConfigClass.facade_tops:
-				var u0: int = col * TEX_AUTHORING_N
-				var v0: int = row * TEX_AUTHORING_N
-				var sx0: int = u0 - v0 + x_off
-				var sy0: int = int((float(u0) + float(v0)) / 2.0) + V_MARGIN
-				var top_crop := plane_top.get_region(Rect2i(sx0 - 16, sy0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
-				if top_crop != null:
-					atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
-			else:
-				atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
+	for cell in cells_to_render:
+		var col: int = int(cell.x)
+		var row: int = int(cell.y)
+		var x0: int
+		if dir == 0:
+			x0 = col * TEX_AUTHORING_N
+		else:
+			x0 = FACADE_W - col * TEX_AUTHORING_N
+		var y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
 
-			var tile_col := atom_idx % PAGE_TILE_COLS
-			var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
-			var tile_pos := Vector2i(tile_col * VOXEL_ATOM_W, tile_row * VOXEL_ATOM_H)
-			if canonical != null:
-				page.blit_rect_mask(atom_content, canonical, atom_full, tile_pos)
-			else:
-				page.blit_rect(atom_content, atom_full, tile_pos)
+		var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+		atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
+		if BakeConfigClass.facade_tops:
+			var u0: int = col * TEX_AUTHORING_N
+			var v0: int = row * TEX_AUTHORING_N
+			var sx0: int = u0 - v0 + x_off
+			var sy0: int = int((float(u0) + float(v0)) / 2.0) + V_MARGIN
+			var top_crop := plane_top.get_region(Rect2i(sx0 - 16, sy0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+			if top_crop != null:
+				atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
+		else:
+			atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
 
-			var atlas_coords := Vector2i(tile_col, tile_row)
-			frag["%d|%d" % [col, row]] = atlas_coords
-			coords.append(atlas_coords)
-			min_col = mini(min_col, tile_col)
-			max_col = maxi(max_col, tile_col)
-			min_row = mini(min_row, tile_row)
-			max_row = maxi(max_row, tile_row)
-			atom_idx += 1
+		var tile_col := atom_idx % PAGE_TILE_COLS
+		var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
+		var tile_pos := Vector2i(tile_col * VOXEL_ATOM_W, tile_row * VOXEL_ATOM_H)
+		if canonical != null:
+			page.blit_rect_mask(atom_content, canonical, atom_full, tile_pos)
+		else:
+			page.blit_rect(atom_content, atom_full, tile_pos)
+
+		var atlas_coords := Vector2i(tile_col, tile_row)
+		frag["%d|%d" % [col, row]] = atlas_coords
+		coords.append(atlas_coords)
+		min_col = mini(min_col, tile_col)
+		max_col = maxi(max_col, tile_col)
+		min_row = mini(min_row, tile_row)
+		max_row = maxi(max_row, tile_row)
+		atom_idx += 1
 
 	# B3 alpha fixup: write the exact canonical alpha byte at every partial-
 	# alpha pixel of every atom (masked blit rounded them to opaque)
@@ -554,6 +574,69 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 	return {"page": cropped_page, "coords": coords, "frag": remapped_frag, "crop_rect": crop_rect}
 
 ## Extract unique (material, facade) combos from the map
+func _extract_combo_usage(map_spec: Dictionary) -> Dictionary:
+	var usage_by_combo: Dictionary = {}
+	if not map_spec.has("walls"):
+		return usage_by_combo
+
+	var walls = map_spec["walls"] if typeof(map_spec["walls"]) == TYPE_ARRAY else []
+	for wall in walls:
+		if typeof(wall) != TYPE_DICTIONARY:
+			continue
+		var material_id = String(wall.get("material_id", "default"))
+		var facade_id = String(wall.get("facade_id", "facade_" + material_id))
+		var combo_key := "%s|%s" % [material_id, facade_id]
+		if not usage_by_combo.has(combo_key):
+			usage_by_combo[combo_key] = {}
+		var seen: Dictionary = usage_by_combo[combo_key]
+
+		var edge = wall.get("edge")
+		var run = wall.get("run")
+		if edge == null or run == null:
+			continue
+
+		var position_in_run := _get_edge_position_in_run(edge, run)
+		if position_in_run < 0:
+			continue
+
+		var col_start := position_in_run * 8
+		var col_end := col_start + 7
+		var start_level := 0
+		var storey_count := 1
+		if edge.has_method("get_start_storey"):
+			start_level = int(edge.get_start_storey()) * GeometryCoordsClass.LEVELS_PER_STOREY
+		elif "start_storey" in edge:
+			start_level = int(edge.start_storey) * GeometryCoordsClass.LEVELS_PER_STOREY
+		if edge.has_method("get_storey_count"):
+			storey_count = int(edge.get_storey_count())
+		elif "storey_count" in edge:
+			storey_count = int(edge.storey_count)
+
+		var end_level := start_level + (storey_count * GeometryCoordsClass.LEVELS_PER_STOREY)
+		for row in range(start_level, end_level):
+			for col in range(col_start, col_end + 1):
+				var cell_key := "%d|%d" % [col, row]
+				if not seen.has(cell_key):
+					seen[cell_key] = true
+
+	var result: Dictionary = {}
+	for combo_key in usage_by_combo:
+		var seen: Dictionary = usage_by_combo[combo_key]
+		var cells: Array = []
+		for cell_key in seen.keys():
+			var parts := String(cell_key).split("|")
+			if parts.size() >= 2:
+				cells.append(Vector2i(int(parts[0]), int(parts[1])))
+		result[combo_key] = cells
+	return result
+
+func _get_edge_position_in_run(edge, run: Dictionary) -> int:
+	var edges = run.get("edges", [])
+	for i in range(edges.size()):
+		if edges[i].id == edge.id:
+			return i
+	return -1
+
 func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 	var combos = {}
 	var blocks = []

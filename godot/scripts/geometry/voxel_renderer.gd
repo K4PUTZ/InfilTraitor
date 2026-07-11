@@ -66,10 +66,10 @@ func set_baked_lookup(lookup) -> void:
 ## why every wall vanished with bake enabled while the lookup/placement counters
 ## reported 100% success.
 ## atlas_coords_used: every (col, row) the compositor actually wrote pixel data to.
-## modulate: per-tile tint realizing the blend mode on grayscale baked pages
+## tile_modulate: per-tile tint realizing the blend mode on grayscale baked pages
 ## (OVERLORD-FIX-01: TEXTURE_ONLY = white, MULTIPLY = material base color).
 ## Returns the assigned source_id.
-func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], modulate: Color = Color.WHITE) -> int:
+func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:
 	var source := TileSetAtlasSource.new()
 	source.texture = ImageTexture.create_from_image(page_image)
 	source.texture_region_size = Vector2i(32, 36)  # GeometryCoords.VOXEL_ATOM_W/H [BAKE-FIX-01]
@@ -84,7 +84,7 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 		var tile_data: TileData = source.get_tile_data(coords, 0)
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
-			tile_data.modulate = modulate
+			tile_data.modulate = tile_modulate
 
 	return source_id
 

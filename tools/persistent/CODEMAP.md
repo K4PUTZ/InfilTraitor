@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**143 scripts · 26149 lines total** (under `godot/scripts/`)
+**143 scripts · 26289 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -703,7 +703,7 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
 - `func set_baked_lookup(lookup) -> void:`
-- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], modulate: Color = Color.WHITE) -> int:`
+- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func get_tileset() -> TileSet:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 759 lines
+`class_name BakeCompositor` · 842 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1802,7 +1802,7 @@ extends `SceneTree` · 175 lines
 
 ### `bake_cache_test.gd`
 
-extends `SceneTree` · 373 lines
+extends `SceneTree` · 430 lines
 
 `godot/scripts/tools/bake_cache_test.gd`
 

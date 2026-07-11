@@ -13,9 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- BAKE-CACHE-FORMAT-01.md
-- BAKE-CACHE-PAGESIZE-01.md
-- BAKE-FASTBOOT-01.md
+- BAKE-CACHE-PAGESIZE-01-b.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -27,17 +25,17 @@
 - Test scripts: 27
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 15
+- Archived prompts: 18
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 0c598d7 Implement binary bake cache format
 - 2266a53 Add fast-boot bake bypass
 - b7d9be8 [VOX-BAKE-01] Alpha Top Texture — milestone closure pass
 - 72ba7b2 [VERSION] Bump to 0.5.6
 - eb15ef3 [TOP-01-b] Implement two-pass isometric shear framework + BAKE-CACHE-01 disk cache system + one-shot fix
-- 366bed9 [BAKE-CACHE-01] Content-addressed disk cache for baked pages
 <!-- AUTO:END version_history -->
 
 ---
@@ -147,6 +145,7 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - **Preservation:** All subcube infrastructure, wall edge data, and map compiler contract remain unchanged
 - **Godot status:** Loads clean; no parse errors or warnings; voxel rendering visually validated
 - **Performance:** Dirty flag propagation is O(1) per change; TIC loop is O(container_count) at idle
+- **Bake cache:** Sparse-usage page composition now composes only the referenced atoms for a facade page, shrinking page size for sparse maps while preserving the atlas content; the regression suite reports 7 PASS, 0 FAIL.
 
 ---
 

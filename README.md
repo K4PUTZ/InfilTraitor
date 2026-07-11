@@ -108,6 +108,7 @@ Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 - Enemy guard system with angular FOV detection (90°, 8 directions) and A* pathfinding.
 - **M2 Sound System:** Event-driven tics (edge-crossing), persistent noise grid with decay, audio detection with wall attenuation, organic patrol behavior (variable speed, pauses, look rotation), probabilistic colored cone visualization.
 - Architecture now supports infinite scaling: data-driven stats, no hardcoded ceilings, LLM-ready (structure/content separated).
+- Bake-cache composition now uses the actual referenced atom cells for sparse maps, reducing page size while preserving atlas content and passing the regression suite.
 - Next internal work is confrontation mechanics (4 cover states, flanking, peek).
 
 ### M2 Alpha Sound System Deploy (Completed 2026-06-07)

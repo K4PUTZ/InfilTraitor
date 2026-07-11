@@ -427,6 +427,10 @@ lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 - Content-addressed disk cache for baked pages (`BAKE-CACHE-01`) — cold
   bake ~0.4–1.2 s; warm-boot budget (target ≤150 ms, measured ~730–770 ms,
   PNG-decode-bound) is a known open item, not blocking
+- Sparse-usage page composition correction (`BAKE-CACHE-PAGESIZE-01-b`) — the
+  compositor now iterates only the atom cells actually referenced by the map,
+  reducing page size for sparse usages while preserving the baked atlas
+  content; bake-cache regression suite: 7 PASS, 0 FAIL
 - B3 (alpha-from-canon) closed with 0-mismatch evidence at both wall and
   page-composition granularity
 

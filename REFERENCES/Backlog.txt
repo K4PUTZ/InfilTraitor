@@ -28,10 +28,4 @@ O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamen
 
 
 
-
-
-Mas há um gap importante: o sistema atual de Slice e Edge Registry provavelmente opera em paredes de 1 storey de altura. Multi-storey exigiria slices empilhadas ou altura paramétrica — isso é uma feature nova no placement, fora do escopo do baking. O contrato da facade já suporta multi-storey desde já e fica forward-compatible, mas preciso flaggar que o Edge Registry/Slice system atual até onde sabemos não cobre isso ainda.
-
-
-
-Leia o audit e aguarde o prompt de fix.
+Ok, então primeiro vamos fazer uma limpeza em toda a documentação. Vamos iniciar um plano de atualização e arquivamento definitivo de coisas deprecadas, incluindo assets. Não precisamos mais ficar guardando todo o histórico de decisões erradas que tomamos no passo, até chegar aqui. Só precisamos manter o que funciona, é útil, ou tem potencial pro futuro. Temos muitas ferramentas e arquivos que não tem mais importância e estão só ocupando espaço, incluindo rascunhos de milestones futuras que estão só enchendo linguiça. Em seguida, dá uma varrida no código pra buscar referências, objetos, variáveis, conastantes e outros elementos desatualizados.

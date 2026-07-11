@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**151 scripts · 27218 lines total** (under `godot/scripts/`)
+**151 scripts · 27211 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -287,7 +287,7 @@ extends `Node` · 108 lines
 
 ### `hud_controller.gd`
 
-extends `Node` · 191 lines
+extends `Node` · 190 lines
 
 `godot/scripts/controllers/hud_controller.gd`
 
@@ -2782,7 +2782,7 @@ extends `Node2D` · 34 lines
 
 ### `top_bar_panel.gd`
 
-`class_name TopBarPanel` · extends `"res://godot/scripts/ui/panel_base.gd"` · 69 lines
+`class_name TopBarPanel` · extends `"res://godot/scripts/ui/panel_base.gd"` · 63 lines
 
 `godot/scripts/ui/top_bar_panel.gd`
 

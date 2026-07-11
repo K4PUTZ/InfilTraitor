@@ -20,12 +20,6 @@ var lbl_ap: Label
 var lbl_alert: Label
 var lbl_end_turn: Label
 
-# Cache for language-change rebuilds
-var _ap_current: int = 0
-var _ap_max: int = 0
-var _ap_is_enemy: bool = false
-var _alert_pct: float = 0.0
-
 
 func _ready() -> void:
 	# Find child nodes by looking through the scene tree

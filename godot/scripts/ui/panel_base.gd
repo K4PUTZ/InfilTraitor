@@ -38,19 +38,16 @@ func _ready() -> void:
 
 
 func open() -> void:
-	"""Open the panel: set visible and emit signal."""
 	visible = true
 	_is_open = true
 	opened.emit()
 
 
 func close() -> void:
-	"""Close the panel: hide and emit signal."""
 	visible = false
 	_is_open = false
 	closed.emit()
 
 
 func is_open() -> bool:
-	"""Return whether the panel is currently open."""
 	return _is_open

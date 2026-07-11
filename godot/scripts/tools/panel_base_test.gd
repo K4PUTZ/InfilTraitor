@@ -88,28 +88,69 @@ func test_window_base() -> void:
 
 
 func test_background_swap_simple() -> void:
-	print("\n[TEST 3] PanelBase design: background slot support")
+	print("\n[TEST 3] PanelBase background slot swap (real execution)")
 	
 	var panel = PanelBaseClass.new()
 	
-	# Design test: verify that PanelBase structure supports background swapping
-	# (this would be fully tested with a scene tree, but we verify the API exists)
+	# Add to scene tree so get_node() and add_child() work
+	root.add_child(panel)
 	
-	# Test basic methods exist
-	assert_true(panel.has_method("open"), "PanelBase has open() method")
-	assert_true(panel.has_method("close"), "PanelBase has close() method")
-	assert_true(panel.has_method("is_open"), "PanelBase has is_open() method")
+	# Manually call _ready() since we're headless
+	panel._ready()
 	
-	# Test that it's a Control (has add_child, move_child, etc. for background swapping)
-	assert_true(panel is Control, "PanelBase is a Control (supports add_child/move_child for background slot)")
+	# Panel starts closed
+	assert_eq(panel.is_open(), false, "Panel initially closed")
 	
-	# Test state consistency
+	# Open the panel
 	panel.open()
+	assert_eq(panel.is_open(), true, "Panel open after open() call")
+	assert_eq(panel.visible, true, "Panel visible after open()")
+	
+	# Verify background node exists before swap
+	var bg_node = panel.get_node_or_null("background")
+	if bg_node == null:
+		assert_true(false, "Background node exists before swap")
+		panel.queue_free()
+		return
+	var original_bg_class = bg_node.get_class()
+	assert_true(bg_node is ColorRect, "Original background is ColorRect (got %s)" % original_bg_class)
+	
+	# Real swap: remove old background and add new one
+	var old_bg = panel.get_node("background")
+	panel.remove_child(old_bg)
+	old_bg.free()
+	
+	var new_bg := TextureRect.new()
+	new_bg.name = "background"
+	panel.add_child(new_bg)
+	panel.move_child(new_bg, 0)  # Back of stack so title/content overlay it
+	
+	# Verify state after swap: panel is_open() should still be true
+	assert_eq(panel.is_open(), true, "Panel still open after background swap")
+	assert_eq(panel.visible, true, "Panel still visible after background swap")
+	
+	# Verify new background is in place (TextureRect, not ColorRect)
+	var swapped_bg = panel.get_node_or_null("background")
+	assert_true(swapped_bg != null, "New background node exists after swap")
+	if swapped_bg != null:
+		var bg_class = swapped_bg.get_class()
+		var is_texture_rect = swapped_bg is TextureRect
+		assert_true(is_texture_rect, "Swapped background is TextureRect (got %s)" % bg_class)
+	
+	# Test close() works after swap
+	var signal_counter := [0]  # Use array to capture by reference
+	panel.closed.connect(func(): 
+		signal_counter[0] += 1
+	)
+	
 	panel.close()
-	panel.open()
-	assert_eq(panel.is_open(), true, "PanelBase state survives multiple open/close cycles")
 	
-	print("  ✓ Background swappability tests passed")
+	assert_eq(panel.is_open(), false, "is_open() false after close() post-swap")
+	assert_eq(panel.visible, false, "Panel hidden after close() post-swap")
+	assert_eq(signal_counter[0], 1, "closed signal emitted after close() post-swap")
+	
+	panel.queue_free()
+	print("  ✓ Real background swap test passed")
 
 
 func assert_eq(actual: Variant, expected: Variant, message: String) -> void:

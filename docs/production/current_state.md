@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.7 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.8 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- e9e3322 [INPUT-01-b] Fix: InputController now dispatches via InputMap actions, not raw keycodes
 - 3bf9a43 [PANEL-01] Create PanelBase/WindowBase UI foundation, standalone test proof
 - 48fbc6f [INPUT-01] Add Input Map actions + InputController dispatcher. No behavior change.
 - 3ca1d33 [BAKE-CACHE-PAGESIZE-01-b] Restrict compose loop to referenced atoms; close orphaned corrective
 - 0c598d7 Implement binary bake cache format
-- 2266a53 Add fast-boot bake bypass
 <!-- AUTO:END version_history -->
 
 ---

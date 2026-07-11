@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**148 scripts · 26732 lines total** (under `godot/scripts/`)
+**148 scripts · 26767 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2372,7 +2372,7 @@ extends `SceneTree` · 322 lines
 
 ### `panel_base_test.gd`
 
-extends `SceneTree` · 130 lines
+extends `SceneTree` · 171 lines
 
 `godot/scripts/tools/panel_base_test.gd`
 
@@ -2681,7 +2681,7 @@ extends `Control` · 55 lines
 
 ### `panel_base.gd`
 
-`class_name PanelBase` · 56 lines
+`class_name PanelBase` · 53 lines
 
 `godot/scripts/ui/panel_base.gd`
 
@@ -2742,7 +2742,7 @@ extends `Node2D` · 34 lines
 
 ### `window_base.gd`
 
-`class_name WindowBase` · extends `"res://godot/scripts/ui/panel_base.gd"` · 26 lines
+`class_name WindowBase` · extends `"res://godot/scripts/ui/panel_base.gd"` · 23 lines
 
 `godot/scripts/ui/window_base.gd`
 

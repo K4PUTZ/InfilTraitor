@@ -20,7 +20,4 @@ func _ready() -> void:
 
 
 func request_close() -> void:
-	"""Request closure (e.g., from a close button).
-	Emits close_requested; caller typically connects this to close().
-	"""
 	close_requested.emit()

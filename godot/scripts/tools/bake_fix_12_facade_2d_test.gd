@@ -5,11 +5,11 @@ extends SceneTree
 
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
-const BakeConfig = preload("res://godot/scripts/systems/bake_config.gd")
-const BakeCompositor = preload("res://godot/scripts/systems/bake_compositor.gd")
+const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
+const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const _GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const MaterialRegistry = preload("res://godot/scripts/systems/material_registry.gd")
-const TextureResolver = preload("res://godot/scripts/systems/texture_resolver.gd")
+const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
 const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 
 const TEX_AUTHORING_N: int = _GeometryCoords.TEX_AUTHORING_N
@@ -29,7 +29,7 @@ func _init() -> void:
 	print("BAKE-FACADE-PLANE-01-b: Extended Projection Test")
 	print("=".repeat(80) + "\n")
 
-	_material_registry = MaterialRegistry.new()
+	_material_registry = MaterialRegistryClass.new()
 	_material_registry.register_defaults()
 	
 	var facade_path = "res://textures/defaults/facade_stone.png"
@@ -44,7 +44,6 @@ func _init() -> void:
 
 	_test_projection()
 	_test_seams()
-	_test_top_overlap()
 	_test_top_face()
 	_test_run_axis()
 	_test_performance()
@@ -62,8 +61,8 @@ func _init() -> void:
 func _test_projection() -> void:
 	print("\n--- Projection pixel-identity ---\n")
 
-	BakeConfig.enabled = true
-	BakeConfig.blend_mode = BakeConfig.BlendMode.TEXTURE_ONLY
+	BakeConfigClass.enabled = true
+	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
 
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("TEXTURES")
@@ -71,9 +70,9 @@ func _test_projection() -> void:
 		_record_result("Projection", "FAIL", "No TEXTURES map")
 		return
 
-	var compositor = BakeCompositor.new()
+	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
-	var resolver = TextureResolver.new()
+	var resolver = TextureResolverClass.new()
 
 	var start_time = Time.get_ticks_msec()
 	var baked_atlas = compositor.bake(map_spec, resolver)
@@ -164,9 +163,9 @@ func _test_projection() -> void:
 ## — no pixels were ever compared (vacuous pass).
 func _test_seams() -> void:
 	print("\n--- Seam continuity (overlap identity) ---\n")
-	var compositor = BakeCompositor.new()
+	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
-	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolver.new())
+	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolverClass.new())
 
 	var pairs := 0
 	var pixel_checks := 0
@@ -206,76 +205,12 @@ func _test_seams() -> void:
 	_record_result("Seams", "PASS" if seams_ok else "FAIL",
 		"%d pairs, %d overlap pixels compared, %d mismatches" % [pairs, pixel_checks, mismatches])
 
-## TOP-01: top-face overlap identity (horizontal plane T crop continuity).
-## When facade_tops is ON, each atom's top is a 32×16 crop from the T plane
-## (horizontal projection). Adjacent atoms' crops overlap by construction —
-## the overlapping pixels must be byte-identical (the T plane's edge windows
-## are shared by adjacent atoms on screen). This test verifies the same
-## overlap-identity contract for tops as for side faces (criterion 1).
-func _test_top_overlap() -> void:
-	print("\n--- Top-face overlap identity (TOP-01) ---\n")
-	
-	# Enable facade tops for this test
-	BakeConfig.facade_tops = true
-	var compositor = BakeCompositor.new()
-	compositor.set_material_registry(_material_registry)
-	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolver.new())
-
-	var pairs := 0
-	var pixel_checks := 0
-	var mismatches := 0
-	
-	# Test top crop overlap for adjacent atoms: the top regions (y=0..15) of
-	# adjacent columns in the T plane share a boundary. The overlap check
-	# mirrors the side-face seam check but targets the top-face region only.
-	for dir in range(2):
-		for case in [[0, 5], [12, 0], [30, 20], [62, 31]]:
-			var col: int = case[0]
-			var row: int = case[1]
-			var k1 = "stone|facade_stone|%d|%d|%d" % [col, row, dir]
-			var k2 = "stone|facade_stone|%d|%d|%d" % [col + 1, row, dir]
-			if not (atlas.lookup.has(k1) and atlas.lookup.has(k2)):
-				continue
-			pairs += 1
-			var e1 = atlas.lookup[k1]
-			var e2 = atlas.lookup[k2]
-			var p1: Image = atlas.atom_pages[e1["page"]]
-			var p2: Image = atlas.atom_pages[e2["page"]]
-			var o1: Vector2i = e1["atlas_coords"] * Vector2i(VOXEL_ATOM_W, VOXEL_ATOM_H)
-			var o2: Vector2i = e2["atlas_coords"] * Vector2i(VOXEL_ATOM_W, VOXEL_ATOM_H)
-			
-			# Top region: y = 0..15 (32×16 crop before diamond mask is applied)
-			# The overlap of atom(col) top at x≥16 and atom(col+1) top at x<16
-			# should be byte-identical (both sample the same T plane content).
-			for x in range(16):
-				for y in range(0, 16):
-					var a: Color
-					var b: Color
-					if dir == 0:
-						# dir 0: atom(col) right edge overlaps atom(col+1) left edge
-						a = p1.get_pixel(o1.x + x + 16, o1.y + y)
-						b = p2.get_pixel(o2.x + x, o2.y + y)
-					else:
-						# dir 1: mirrored
-						a = p1.get_pixel(o1.x + x, o1.y + y)
-						b = p2.get_pixel(o2.x + x + 16, o2.y + y)
-					
-					if a.a <= 0.0 or b.a <= 0.0:
-						continue
-					pixel_checks += 1
-					if a.r != b.r or a.g != b.g or a.b != b.b:
-						mismatches += 1
-	
-	var tops_ok: bool = mismatches == 0 and pixel_checks >= 500 and pairs >= 8
-	_record_result("Top Overlap", "PASS" if tops_ok else "FAIL",
-		"%d pairs, %d top pixels compared, %d mismatches" % [pairs, pixel_checks, mismatches])
-
 func _test_top_face() -> void:
 	print("\n--- Top-face MATERIAL_ONLY ---\n")
-	BakeConfig.blend_mode = BakeConfig.BlendMode.TEXTURE_ONLY
-	var compositor = BakeCompositor.new()
+	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
+	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
-	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolver.new())
+	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolverClass.new())
 
 	var lookup = atlas.lookup
 	var top_matches = 0
@@ -355,12 +290,12 @@ func _test_performance() -> void:
 	print("\n--- Performance timings ---\n")
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("TEXTURES")
-	var compositor = BakeCompositor.new()
+	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
-	var resolver = TextureResolver.new()
+	var resolver = TextureResolverClass.new()
 
-	BakeConfig.enabled = true
-	BakeConfig.blend_mode = BakeConfig.BlendMode.TEXTURE_ONLY
+	BakeConfigClass.enabled = true
+	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
 	var start = Time.get_ticks_msec()
 	var _atlas1 = compositor.bake(map_spec, resolver)
 	var full_ms = Time.get_ticks_msec() - start
@@ -377,20 +312,20 @@ func _test_regressions() -> void:
 	print("\n--- Regression suite ---\n")
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("TEXTURES")
-	var compositor = BakeCompositor.new()
+	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
-	var resolver = TextureResolver.new()
+	var resolver = TextureResolverClass.new()
 
 	var modes = [
-		BakeConfig.BlendMode.MULTIPLY,
-		BakeConfig.BlendMode.MATERIAL_ONLY,
-		BakeConfig.BlendMode.TEXTURE_ONLY,
+		BakeConfigClass.BlendMode.MULTIPLY,
+		BakeConfigClass.BlendMode.MATERIAL_ONLY,
+		BakeConfigClass.BlendMode.TEXTURE_ONLY,
 	]
 
 	var modes_ok = 0
 	for blend_mode in modes:
-		BakeConfig.enabled = true
-		BakeConfig.blend_mode = blend_mode
+		BakeConfigClass.enabled = true
+		BakeConfigClass.blend_mode = blend_mode
 		var atlas = compositor.bake(map_spec, resolver)
 		if atlas != null and not atlas.strips.is_empty():
 			modes_ok += 1

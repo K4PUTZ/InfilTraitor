@@ -39,6 +39,15 @@ is no deadline.
 - Generated PNGs land in `ASSETS/ISOMETRIC/source_assets/generated/`; switch
   focus to the Godot window and wait 3–5 s for automatic reimport. No manual
   rebuild.
+- **Interruption recovery (ratified 2026-07-10):** whenever the session is
+  interrupted or resumed — a Ctrl+C aborting a hung command, a side request
+  (e.g. "fix the PROBLEMS tab"), a new chat picking up in-flight work —
+  re-read the active prompt file from disk FIRST and state in one line where
+  you are ("resuming <PROMPT-ID>, criteria 1–2 done, working on 3") before
+  continuing. The prompt file + its acceptance list is the ground truth of
+  your position; your conversational memory is not. A side request does not
+  cancel the active prompt — finish or explicitly park it, never silently
+  drop it.
 
 ---
 
@@ -371,5 +380,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.5.5 · **Updated:** 2026-07-10 · **Branch:** main
+**Version:** 0.5.6 · **Updated:** 2026-07-10 · **Branch:** main
 <!-- AUTO:END header -->

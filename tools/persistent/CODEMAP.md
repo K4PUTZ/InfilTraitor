@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**142 scripts · 25904 lines total** (under `godot/scripts/`)
+**142 scripts · 25667 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 807 lines
+`class_name BakeCompositor` · 635 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1137,8 +1137,6 @@ extends `Node2D` · 43 lines
 - `PAGE_H` = `576`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
-- `BAKE_CODE_VERSION` = `2`
-- `BAKE_CACHE_PATH` = `"user://bake_cache/"`
 
 ---
 
@@ -1887,7 +1885,7 @@ extends `SceneTree` · 237 lines
 
 ### `bake_fix_12_facade_2d_test.gd`
 
-extends `SceneTree` · 431 lines
+extends `SceneTree` · 366 lines
 
 `godot/scripts/tools/bake_fix_12_facade_2d_test.gd`
 
@@ -1896,11 +1894,11 @@ extends `SceneTree` · 431 lines
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `BakeConfig` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `BakeCompositor` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `_GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `MaterialRegistry` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `TextureResolver` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TEX_AUTHORING_N` = `_GeometryCoords.TEX_AUTHORING_N`
 - `VOXEL_ATOM_W` = `_GeometryCoords.VOXEL_ATOM_W`

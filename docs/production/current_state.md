@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.5.5 · **Updated:** 2026-07-10 · **Branch:** main
+**Version:** 0.5.6 · **Updated:** 2026-07-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,10 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- TOP-01-b.md
+- TOP-00-baseline.md
+- TOP-CROP-02.md
+- TOP-JUNCTION-03.md
+- TOP-SHEAR-01.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -25,7 +28,7 @@
 - Test scripts: 28
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 3
+- Archived prompts: 4
 <!-- AUTO:END inventory -->
 
 ### Version History

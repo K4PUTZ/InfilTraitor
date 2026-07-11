@@ -20,7 +20,7 @@ static var blend_mode: BlendMode = BlendMode.TEXTURE_ONLY
 static var theme_enabled: bool = true
 static var variants_enabled: bool = true
 static var facade_enabled: bool = true
-static var facade_tops: bool = false  # TOP-01b: WIP - reverse map works but cell bounds are non-rectangular after shear
+static var facade_tops: bool = true
 static var material_pattern_enabled: bool = true
 
 ## Debug flags

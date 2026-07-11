@@ -93,7 +93,7 @@ var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
 var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image}
 var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
 
-const BAKE_CODE_VERSION: int = 2
+const BAKE_CODE_VERSION: int = 3
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 
 func _init() -> void:
@@ -287,8 +287,12 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 
 		var plane0 := _get_plane(facade_id, facade, 0)
 		var plane1 := _get_plane(facade_id, facade, 1)
+		var plane_top0 := _get_plane_top(facade_id, facade, 0)
+		var plane_source0 := _get_plane_source(facade, 0)
+		var x_off0: int = plane_source0.get_height() - 1
 		var canonical: Image = _voxel_atoms.get(material_id)
 		var overlay := _get_diamond_overlay(material_id, material.base_color)
+		var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
 		var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
 
 		var atom_count := 0
@@ -312,7 +316,16 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 				# RIGHT half ← Y-leg (dir 1) plane, right half of its window
 				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
 				atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
-				atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
+				if BakeConfigClass.facade_tops:
+					var u0: int = col_x * TEX_AUTHORING_N
+					var v0: int = row * TEX_AUTHORING_N
+					var sx0: int = u0 - v0 + x_off0
+					var sy0: int = int((float(u0) + float(v0)) / 2.0) + V_MARGIN
+					var top_crop := plane_top0.get_region(Rect2i(sx0 - 16, sy0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+					if top_crop != null:
+						atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
+				else:
+					atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
 
 				var tile_col := atom_idx % PAGE_TILE_COLS
 				var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
@@ -458,11 +471,15 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 		push_error("[BAKE] B6: no canonical voxel atom for '%s' — sheet %s|%s|%d will render unmasked rectangles" % [
 			material_id, material_id, facade_id, dir])
 	var overlay := _get_diamond_overlay(material_id, base_color)
+	var plane_top := _get_plane_top(facade_id, facade, dir)
+	var plane_source := _get_plane_source(facade, dir)
+	var x_off: int = plane_source.get_height() - 1
 	var page := Image.create(PAGE_W, PAGE_H, false, Image.FORMAT_RGBA8)
 	var frag: Dictionary = {}   # "col|row" → atlas_coords
 	var coords: Array = []
 
 	var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
+	var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
 	var atom_idx := 0
 	for row in range(SHEET_ROWS):
 		for col in range(SHEET_COLS):
@@ -475,7 +492,16 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 
 			var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
 			atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
-			atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
+			if BakeConfigClass.facade_tops:
+				var u0: int = col * TEX_AUTHORING_N
+				var v0: int = row * TEX_AUTHORING_N
+				var sx0: int = u0 - v0 + x_off
+				var sy0: int = int((float(u0) + float(v0)) / 2.0) + V_MARGIN
+				var top_crop := plane_top.get_region(Rect2i(sx0 - 16, sy0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+				if top_crop != null:
+					atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
+			else:
+				atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
 
 			var tile_col := atom_idx % PAGE_TILE_COLS
 			var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))

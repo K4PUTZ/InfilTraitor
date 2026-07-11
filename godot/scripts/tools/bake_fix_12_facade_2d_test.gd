@@ -45,6 +45,7 @@ func _init() -> void:
 	_test_projection()
 	_test_seams()
 	_test_top_face()
+	_test_junction_top_face()
 	_test_run_axis()
 	_test_performance()
 	_test_regressions()
@@ -206,15 +207,20 @@ func _test_seams() -> void:
 		"%d pairs, %d overlap pixels compared, %d mismatches" % [pairs, pixel_checks, mismatches])
 
 func _test_top_face() -> void:
-	print("\n--- Top-face MATERIAL_ONLY ---\n")
+	print("\n--- Top-face composed transform ---\n")
 	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
+	BakeConfigClass.facade_tops = true
 	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(_material_registry)
 	var atlas = compositor.bake(FileMapSourceClass.new().get_runtime_spec("TEXTURES"), TextureResolverClass.new())
 
 	var lookup = atlas.lookup
 	var top_matches = 0
-	var top_tests = 0
+	var top_mismatches = 0
+	var top_samples = 0
+	var atom_count = 0
+	var x_off := 0
+	var y_margin := 32
 
 	for key in lookup.keys():
 		if not key.begins_with("stone|"):
@@ -225,18 +231,178 @@ func _test_top_face() -> void:
 		if page_idx < 0 or page_idx >= atlas.atom_pages.size():
 			continue
 		var page_image = atlas.atom_pages[page_idx]
-		for k in range(8):
-			var px = randi_range(0, VOXEL_ATOM_W - 1)
-			var py = randi_range(0, VOXEL_VISIBLE_Y_START - 1)
+		var parts = key.split("|")
+		if parts.size() < 5:
+			continue
+		var col = int(parts[2])
+		var row = int(parts[3])
+		var dir = int(parts[4])
+		atom_count += 1
+
+		var source := _build_s_ext_for_test(_facade_image, dir)
+		x_off = source.get_height() - 1
+		var overlay := compositor._get_diamond_overlay("stone", Color.WHITE)
+		var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+		var sample_positions: Array = []
+		for py in range(VOXEL_VISIBLE_Y_START):
+			for px in range(VOXEL_ATOM_W):
+				if top_mask.get_pixel(px, py).a > 0.0:
+					sample_positions.append([px, py])
+		if sample_positions.is_empty():
+			continue
+		for sample_idx in range(min(24, sample_positions.size())):
+			var pos: Array = sample_positions[(sample_idx * 7 + sample_idx * 3) % sample_positions.size()]
+			var px: int = int(pos[0])
+			var py: int = int(pos[1])
 			var ppx = coords.x * VOXEL_ATOM_W + px
 			var ppy = coords.y * VOXEL_ATOM_H + py
-			if ppx < page_image.get_width() and ppy < page_image.get_height():
-				var pixel = page_image.get_pixel(ppx, ppy)
-				top_tests += 1
-				if pixel.r < 0.95:
-					top_matches += 1
+			if ppx >= page_image.get_width() or ppy >= page_image.get_height():
+				continue
+			var pixel = page_image.get_pixel(ppx, ppy)
+			if pixel.a <= 0.0:
+				continue
+			var u0: int = col * 16
+			var v0: int = row * 16
+			var sx0: int = u0 - v0 + x_off
+			var sy0: int = int((float(u0) + float(v0)) / 2.0) + y_margin
+			var tx: int = sx0 - 16 + px
+			var ty: int = sy0 + py
+			var u: int = int(round((float(tx) - float(x_off) + 2.0 * float(ty - y_margin)) / 2.0))
+			var v: int = int(round(2.0 * float(ty - y_margin) - float(u)))
+			if u < 0 or u >= source.get_width() or v < 0 or v >= source.get_height():
+				continue
+			var matched := false
+			for du in [-1, 0, 1]:
+				for dv in [-1, 0, 1]:
+					var cu := int(clampi(u + du, 0, source.get_width() - 1))
+					var cv := int(clampi(v + dv, 0, source.get_height() - 1))
+					var expected_lum := source.get_pixel(cu, cv).r
+					if abs(pixel.r - expected_lum) < 0.01:
+						matched = true
+						break
+				if matched:
+					break
+			top_samples += 1
+			if matched:
+				top_matches += 1
+			else:
+				top_mismatches += 1
 
-	_record_result("Top-face", "PASS" if top_matches >= top_tests * 0.8 else "DEFERRED", "%d/%d" % [top_matches, top_tests])
+	_record_result("Top-face", "PASS" if top_mismatches == 0 and top_samples >= 64 and atom_count >= 16 else "FAIL",
+			"%d samples, %d matches, %d mismatches across %d atoms" % [top_samples, top_matches, top_mismatches, atom_count])
+
+func _test_junction_top_face() -> void:
+	print("\n--- Junction top-face crops ---\n")
+	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
+	BakeConfigClass.facade_tops = true
+	var compositor = BakeCompositorClass.new()
+	compositor.set_material_registry(_material_registry)
+	var map_spec = FileMapSourceClass.new().get_runtime_spec("TEXTURES")
+	if map_spec == null:
+		_record_result("Junction Top-face", "FAIL", "No TEXTURES map")
+		return
+
+	var junction_specs: Array = []
+	var junction_by_pos: Dictionary = {}
+	for idx in range(4):
+		var spec := {
+			"voxel_pos": Vector2i(10 + idx, 6 + idx),
+			"material_id": "stone",
+			"facade_id": "facade_stone",
+			"col_x": 8 + idx * 6,
+			"col_y": 12 + idx * 5,
+			"level_start": 0,
+			"level_end": 4,
+		}
+		junction_specs.append(spec)
+		junction_by_pos[spec["voxel_pos"]] = spec
+	map_spec = map_spec.duplicate(true)
+	map_spec["junction_specs"] = junction_specs
+
+	var atlas = compositor.bake(map_spec, TextureResolverClass.new())
+	var plane_top = compositor._get_plane_top("facade_stone", _facade_image, 0)
+	var plane_source = compositor._get_plane_source(_facade_image, 0)
+	var x_off: int = plane_source.get_height() - 1
+	var overlay := compositor._get_diamond_overlay("stone", Color.WHITE)
+	var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+	var samples := 0
+	var matches := 0
+	var mismatches := 0
+	var atoms_tested := 0
+
+	for key in atlas.lookup.keys():
+		if not key.begins_with("JUNCTION|"):
+			continue
+		var parts = key.split("|")
+		if parts.size() != 4:
+			continue
+		var voxel_pos := Vector2i(int(parts[1]), int(parts[2]))
+		var spec = junction_by_pos.get(voxel_pos)
+		if spec == null:
+			continue
+		var entry = atlas.lookup[key]
+		var page_idx = entry.get("page", -1)
+		var coords = entry.get("atlas_coords", Vector2i.ZERO)
+		if page_idx < 0 or page_idx >= atlas.atom_pages.size():
+			continue
+		var page_image = atlas.atom_pages[page_idx]
+		var level := int(parts[3])
+		var row := compositor._mirror_index(level, BakeCompositorClass.SHEET_ROWS)
+		var u0: int = int(spec["col_x"]) * 16
+		var v0: int = row * 16
+		var sx0: int = u0 - v0 + x_off
+		var sy0: int = int((float(u0) + float(v0)) / 2.0) + BakeCompositorClass.V_MARGIN
+		var sample_positions: Array = [
+			[16, 0], [12, 1], [20, 2], [8, 3], [24, 4], [4, 5], [16, 6], [12, 7],
+		]
+		atoms_tested += 1
+		for pos in sample_positions:
+			var px: int = int(pos[0])
+			var py: int = int(pos[1])
+			if top_mask.get_pixel(px, py).a <= 0.0:
+				continue
+			var ppx: int = coords.x * VOXEL_ATOM_W + px
+			var ppy: int = coords.y * VOXEL_ATOM_H + py
+			if ppx >= page_image.get_width() or ppy >= page_image.get_height():
+				continue
+			var pixel = page_image.get_pixel(ppx, ppy)
+			if pixel.a <= 0.0:
+				continue
+			var expected_px := plane_top.get_pixel(sx0 - 16 + px, sy0 + py)
+			samples += 1
+			if abs(pixel.r - expected_px.r) < 0.01 and abs(pixel.g - expected_px.g) < 0.01 and abs(pixel.b - expected_px.b) < 0.01 and abs(pixel.a - expected_px.a) < 0.01:
+				matches += 1
+			else:
+				mismatches += 1
+
+	_record_result("Junction Top-face", "PASS" if mismatches == 0 and samples >= 32 and atoms_tested >= 4 else "FAIL",
+			"%d samples, %d matches, %d mismatches across %d atoms" % [samples, matches, mismatches, atoms_tested])
+
+func _build_s_ext_for_test(facade: Image, dir: int) -> Image:
+	var scaled := facade.duplicate()
+	scaled.convert(Image.FORMAT_RGB8)
+	scaled.convert(Image.FORMAT_RGBA8)
+	scaled.resize(1024, 640, Image.INTERPOLATE_NEAREST)
+
+	var plane_w := 1056
+	var v_margin := 32
+	var scaled_h := 640
+	var s_ext := Image.create(plane_w, v_margin + scaled_h + v_margin, false, Image.FORMAT_RGBA8)
+	s_ext.blit_rect(scaled, Rect2i(0, 0, 1024, scaled_h), Vector2i(0, v_margin))
+	var flipped_x := scaled.duplicate()
+	flipped_x.flip_x()
+	s_ext.blit_rect(flipped_x, Rect2i(0, 0, plane_w - 1024, scaled_h), Vector2i(1024, v_margin))
+	var flipped_y := s_ext.duplicate()
+	flipped_y.flip_y()
+	var total_h := v_margin + scaled_h + v_margin
+	s_ext.blit_rect(flipped_y, Rect2i(0, total_h - 2 * v_margin, plane_w, v_margin), Vector2i(0, 0))
+	s_ext.blit_rect(flipped_y, Rect2i(0, v_margin, plane_w, v_margin), Vector2i(0, total_h - v_margin))
+
+	if dir == 1:
+		var mirrored := s_ext.duplicate()
+		mirrored.flip_x()
+		return mirrored
+	return s_ext
 
 ## OVERLORD-FIX-01: the old version baked SIGMA_01's runtime spec, which
 ## carries no "walls" array (SIGMA walls are born in room_builder's
@@ -296,11 +462,11 @@ func _test_performance() -> void:
 
 	BakeConfigClass.enabled = true
 	BakeConfigClass.blend_mode = BakeConfigClass.BlendMode.TEXTURE_ONLY
+	compositor.clear_cache()
 	var start = Time.get_ticks_msec()
 	var _atlas1 = compositor.bake(map_spec, resolver)
 	var full_ms = Time.get_ticks_msec() - start
 
-	compositor.clear_cache()
 	start = Time.get_ticks_msec()
 	var _atlas2 = compositor.bake(map_spec, resolver)
 	var cache_ms = Time.get_ticks_msec() - start

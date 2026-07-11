@@ -424,13 +424,17 @@ lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 - MULTIPLY blend canon (preserves material color under facade detail);
   MATERIAL_ONLY/TEXTURE_ONLY as alternates; LINEAR_LIGHT/OVERLAY parked
   (render as TEXTURE_ONLY, logged) pending LUT variants
-- Content-addressed disk cache for baked pages (`BAKE-CACHE-01`) — cold
-  bake ~0.4–1.2 s; warm-boot budget (target ≤150 ms, measured ~730–770 ms,
-  PNG-decode-bound) is a known open item, not blocking
-- Sparse-usage page composition correction (`BAKE-CACHE-PAGESIZE-01-b`) — the
-  compositor now iterates only the atom cells actually referenced by the map,
-  reducing page size for sparse usages while preserving the baked atlas
-  content; bake-cache regression suite: 7 PASS, 0 FAIL
+- Content-addressed disk cache for baked pages (`BAKE-CACHE-01` →
+  `BAKE-CACHE-FORMAT-01` binary storage → `BAKE-CACHE-PAGESIZE-01-b` sparse-
+  usage page composition, the corrective for an initial version of the
+  page-size optimization that never actually shrank anything). Cold bake
+  ~0.4–1.2 s; warm boot down from the original ~730–770 ms (PNG-decode-bound)
+  to ~32 ms once both fixes landed — budget (≤150 ms) cleared. Sparse maps
+  compose only the atom cells actually referenced (verified: an 8-col×4-row
+  synthetic usage produces an 8× smaller page than the uncropped baseline;
+  full-width maps like TEXTURES are unaffected by design). Regression suite:
+  `bake_cache_test` 7/7. A production-map (non-synthetic) size-reduction
+  benchmark was not taken — open item, not blocking.
 - B3 (alpha-from-canon) closed with 0-mismatch evidence at both wall and
   page-composition granularity
 

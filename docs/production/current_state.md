@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 3ca1d33 [BAKE-CACHE-PAGESIZE-01-b] Restrict compose loop to referenced atoms; close orphaned corrective
 - 0c598d7 Implement binary bake cache format
 - 2266a53 Add fast-boot bake bypass
 - b7d9be8 [VOX-BAKE-01] Alpha Top Texture — milestone closure pass
 - 72ba7b2 [VERSION] Bump to 0.5.6
-- eb15ef3 [TOP-01-b] Implement two-pass isometric shear framework + BAKE-CACHE-01 disk cache system + one-shot fix
 <!-- AUTO:END version_history -->
 
 ---

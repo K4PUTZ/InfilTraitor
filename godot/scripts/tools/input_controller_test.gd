@@ -80,7 +80,7 @@ func test_all_actions_fire_signals() -> void:
 	print("  ✓ All action signal firing tests complete")
 
 
-func test_screenshot_signal_firing(controller: Node, action: String, expected_signal: String, expected_args: Array) -> void:
+func test_screenshot_signal_firing(controller: Node, action: String, expected_signal: String, _expected_args: Array) -> void:
 	## Test screenshot signal via _unhandled_input (different dispatch path than _handle_key_action).
 	
 	# Get the actual InputEventKey from the Input Map

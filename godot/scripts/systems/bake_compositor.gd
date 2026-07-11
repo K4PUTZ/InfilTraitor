@@ -311,18 +311,19 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 		var atom_idx := 0
 
 		for spec in specs:
-			var col_x := _mirror_index(int(spec["col_x"]), SHEET_COLS)
-			var col_y := _mirror_index(int(spec["col_y"]), SHEET_COLS)
+			var raw_col_x: int = int(spec["col_x"])
+			var raw_col_y: int = int(spec["col_y"])
+			var col_x := _mirror_index(raw_col_x, SHEET_COLS)  # For TOP-JUNCTION-03 convention only
 			var vp: Vector2i = spec["voxel_pos"]
 			for level in range(int(spec["level_start"]), int(spec["level_end"])):
 				var row := _mirror_index(level, SHEET_ROWS)
 				var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
 				# LEFT half ← X-leg (dir 0) plane, left half of its window
-				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + col_x * 8 + V_MARGIN
-				atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
+				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + raw_col_x * 8 + V_MARGIN
+				atom_content.blit_rect(plane0, Rect2i(raw_col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
 				# RIGHT half ← Y-leg (dir 1) plane, right half of its window
-				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
-				atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
+				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + raw_col_y * 8 + V_MARGIN
+				atom_content.blit_rect(plane1, Rect2i(FACADE_W - raw_col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
 				if BakeConfigClass.facade_tops:
 					var u0: int = col_x * TEX_AUTHORING_N
 					var v0: int = row * TEX_AUTHORING_N

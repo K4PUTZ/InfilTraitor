@@ -27,7 +27,7 @@ The input system is centralized in the Godot **Input Map** (`project.godot` `[in
 | `debug_cycle_blend_mode` | F7 | debug | Cycle bake blend modes (MULTIPLY, TEXTURE_ONLY, MATERIAL_ONLY, OVERLAY, LINEAR_LIGHT) |
 | `debug_cycle_language` | K | debug | Cycle UI language (localization testing) |
 | `debug_nudge_reset` | R | debug | Reset nudge offset to origin (nudge mode only) |
-| `debug_screenshot` | Shift+P | debug | Capture screenshot to `REFERENCES/Screenshots/` |
+| `debug_screenshot` | Shift+P | debug | Capture screenshot to `Screenshots/` |
 
 ## Implementation Notes
 

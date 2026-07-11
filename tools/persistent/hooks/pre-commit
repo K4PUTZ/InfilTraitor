@@ -8,7 +8,7 @@
 #      script in godot/scripts/ has a real compile error (autoload-context
 #      headless false positives are whitelisted inside the tool).
 #   + SCREENSHOT-HOOK-01 (best-effort, never blocks): auto-captures a real
-#     screenshot of the last-worked-on map into REFERENCES/Screenshots/history/
+#     screenshot of the last-worked-on map into Screenshots/history/
 #     so a visual claim always has a same-commit, unattended reference image
 #     to check against — see auto_screenshot.py and OPERATOR_CONTEXT.md's
 #     "Auto-Screenshot History" section.
@@ -83,10 +83,14 @@ fi
 # Any failure here (Godot missing, capture timeout, no map yet loaded) prints
 # a warning and the commit proceeds — this is support tooling, not a
 # correctness gate, per the Director's explicit ratification (2026-07-11).
+# Screenshots/ lives at repo root, NOT under REFERENCES/ (REFERENCES/ is
+# entirely gitignored — an earlier version of this line pointed there and
+# silently no-op'd every `git add`, so screenshots were captured on disk but
+# never actually entered any commit; fixed 2026-07-11, same session).
 AUTO_SCREENSHOT="$REPO_ROOT/tools/persistent/auto_screenshot.py"
 if [ -f "$AUTO_SCREENSHOT" ]; then
     if python3 "$AUTO_SCREENSHOT"; then
-        git add "$REPO_ROOT/REFERENCES/Screenshots/history" 2>/dev/null || true
+        git add "$REPO_ROOT/Screenshots/history" 2>/dev/null || true
     else
         echo "⚠ auto-screenshot capture failed or skipped — committing without a fresh capture (not blocking)"
     fi

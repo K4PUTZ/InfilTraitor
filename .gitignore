@@ -48,9 +48,12 @@ REFERENCES/
 ASSETS/
 
 # Screenshots/ — Director's manual Shift+P captures stay local, never
-# committed. Screenshots/history/ is the exception: SCREENSHOT-HOOK-01's
+# committed. Screenshots/history/*.png is the exception: SCREENSHOT-HOOK-01's
 # pre-commit auto-capture, which IS meant to be versioned (see
-# OPERATOR_CONTEXT.md "Auto-Screenshot History").
+# OPERATOR_CONTEXT.md "Auto-Screenshot History"). Editor-generated .import
+# sidecars stay ignored even inside history/ — the global `*.import` rule
+# above only applies until a more specific `!` re-includes the directory, so
+# this is scoped to *.png specifically rather than re-including everything.
 Screenshots/*
 !Screenshots/history/
-!Screenshots/history/**
+!Screenshots/history/*.png

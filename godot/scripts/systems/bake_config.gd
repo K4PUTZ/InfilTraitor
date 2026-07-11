@@ -61,4 +61,8 @@ static func load_config() -> void:
 		debug_clear_bake_cache = config.get_value("bake", "debug_clear_bake_cache", debug_clear_bake_cache)
 		print("[BakeConfig] Loaded from config file")
 
+	if OS.get_environment("INFILTRAITOR_FAST_BOOT") == "1":
+		enabled = false
+		print("[BakeConfig] ⚡ FAST BOOT — INFILTRAITOR_FAST_BOOT=1, baking forced OFF")
+
 	print("[BakeConfig] Enabled: %s, Blend Mode: %d, Facade Tops: %s" % [enabled, blend_mode, facade_tops])

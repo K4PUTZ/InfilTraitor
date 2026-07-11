@@ -135,16 +135,18 @@ section.
   prompts, not reports — the Overlord's living planning documents. The
   Operator does not write here.
 - **`PROMPTS/DONE/`** — Matt-curated archive of prompts he's decided are
-  closed, plus every session summary (`RESUMO_SESSAO_*.md`). The Operator
-  and the Overlord do not write, move, or delete anything here — **this
-  explicitly includes bulk reorganization** (subfolders, renames, "cleanup"
-  passes), not just single-file edits. Incident (2026-07-10): a commit
-  reorganizing `DONE/` into topic subfolders (`BAKE/`, `SLICE/`, …) as
-  renames silently dropped six `RESUMO_SESSAO_*.md` files with no
-  corresponding move — invisible in a stat summary that reads as "just
-  renames," recovered from git history at the next milestone closure. If a
-  reorganization of `DONE/` is ever genuinely warranted, propose it to Matt;
-  do not execute it inside an unrelated feature commit.
+  closed, plus every session summary (`RESUMO_SESSAO_*.md`). **Matt has full
+  authority here, including deleting anything he judges no longer useful —
+  this rule restricts the Operator and the Overlord, not him.** The Operator
+  and the Overlord do not write, move, or delete anything here, and this
+  explicitly includes bulk reorganization (subfolders, renames, "cleanup"
+  passes) done unprompted, not just single-file edits — the risk is an
+  automated pass silently dropping files inside an unrelated commit where
+  nobody notices (happened once, 2026-07-10: a `DONE/` subfolder
+  reorganization's renames silently dropped six `RESUMO_SESSAO_*.md` files
+  with no corresponding move, invisible in a stat summary). If the Operator
+  or Overlord think a reorganization is warranted, propose it to Matt and
+  let him execute or approve it — never do it inside an unrelated commit.
 - **`PROMPTS/AUDITS/`** — standalone verification/audit documents, reserved
   for the audit-trigger cases in `OVERLORD_CONTEXT.md` (blocking bug,
   contradicted sample, Director request). Routine per-prompt verification
@@ -388,5 +390,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.0 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.1 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->

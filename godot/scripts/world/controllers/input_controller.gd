@@ -39,79 +39,100 @@ func _unhandled_input(event: InputEvent) -> void:
 	## events that may be consumed by UI controls
 	if event.is_action_pressed("debug_screenshot"):
 		screenshot_requested.emit()
-		get_viewport().set_input_as_handled()
+		var viewport = get_viewport()
+		if viewport:
+			viewport.set_input_as_handled()
 
 
 func _handle_key_action(key: InputEventKey) -> void:
 	## Dispatch keyboard actions based on the Input Map (via is_action_pressed).
 	## This eliminates raw keycode matching and ensures rebindability works.
 	
+	var viewport = get_viewport()
+	
 	# Gameplay actions
 	if key.is_action_pressed("ui_posture_lower"):
 		print_debug("[INPUT] Posture lower requested")
 		posture_lower_requested.emit()
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_posture_raise"):
 		print_debug("[INPUT] Posture raise requested")
 		posture_raise_requested.emit()
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_view_mode_dev"):
 		print_debug("[INPUT] View mode dev requested")
 		view_mode_requested.emit("dev")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_view_mode_light"):
 		print_debug("[INPUT] View mode light requested")
 		view_mode_requested.emit("light")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_view_mode_heat"):
 		print_debug("[INPUT] View mode heat requested")
 		view_mode_requested.emit("heat")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_peek"):
 		print_debug("[INPUT] Peek initiated")
 		peek_initiated.emit()
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_up"):
 		_emit_movement_input(Vector2i.UP)
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_down"):
 		_emit_movement_input(Vector2i.DOWN)
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_left"):
 		_emit_movement_input(Vector2i.LEFT)
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_right"):
 		_emit_movement_input(Vector2i.RIGHT)
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	# Debug actions
 	elif key.is_action_pressed("debug_toggle_map_loader"):
 		print_debug("[INPUT] Debug: toggle map loader")
 		debug_command_requested.emit("toggle_map_loader")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_toggle_voxel_ruler"):
 		print_debug("[INPUT] Debug: toggle voxel ruler")
 		debug_command_requested.emit("toggle_voxel_ruler")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_toggle_nudge_mode"):
 		print_debug("[INPUT] Debug: toggle nudge mode")
 		debug_command_requested.emit("toggle_nudge_mode")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_toggle_bake_mode"):
 		print_debug("[INPUT] Debug: toggle bake mode")
 		debug_command_requested.emit("toggle_bake_mode")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_cycle_blend_mode"):
 		print_debug("[INPUT] Debug: cycle blend mode")
 		debug_command_requested.emit("cycle_blend_mode")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_cycle_language"):
 		print_debug("[INPUT] Debug: cycle language")
 		debug_command_requested.emit("cycle_language")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_nudge_reset"):
 		print_debug("[INPUT] Debug: nudge reset")
 		debug_command_requested.emit("nudge_reset")
-		get_viewport().set_input_as_handled()
+		if viewport:
+			viewport.set_input_as_handled()
 
 
 func _emit_movement_input(direction: Vector2i) -> void:

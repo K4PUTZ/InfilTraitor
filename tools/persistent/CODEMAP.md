@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**148 scripts · 26767 lines total** (under `godot/scripts/`)
+**148 scripts · 26947 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2290,11 +2290,11 @@ extends `SceneTree` · 230 lines
 
 ### `input_controller_test.gd`
 
-extends `SceneTree` · 116 lines
+extends `SceneTree` · 275 lines
 
 `godot/scripts/tools/input_controller_test.gd`
 
-> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-b Test: Verify InputController dispatches all 18 actions via InputMap. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-c Test: Verify InputController dispatches all 18 actions with real signal firing. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
 
 **Constants / tuning**
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
@@ -2302,9 +2302,14 @@ extends `SceneTree` · 116 lines
 **Public vars**
 - `var test_passed: int = 0`
 - `var test_failed: int = 0`
+- `var action_expectations: Dictionary = { "ui_posture_lower": ["posture_lower_requested", []], "ui_posture_raise": ["posture_raise_requested", []], "ui_view_mode_dev": ["view_mode_requested", ["dev"]], "ui_view_mode_light": ["view_mode_requested", ["light"]], "ui_view_mode_heat": ["view_mode_requested", ["heat"]], "ui_peek": ["peek_initiated", []], "ui_move_up": ["movement_input_requested", [Vector2i.UP, false]], "ui_move_down": ["movement_input_requested", [Vector2i.DOWN, false]], "ui_move_left": ["movement_input_requested", [Vector2i.LEFT, false]], "ui_move_right": ["movement_input_requested", [Vector2i.RIGHT, false]], "debug_toggle_map_loader": ["debug_command_requested", ["toggle_map_loader"]], "debug_toggle_voxel_ruler": ["debug_command_requested", ["toggle_voxel_ruler"]], "debug_toggle_nudge_mode": ["debug_command_requested", ["toggle_nudge_mode"]], "debug_toggle_bake_mode": ["debug_command_requested", ["toggle_bake_mode"]], "debug_cycle_blend_mode": ["debug_command_requested", ["cycle_blend_mode"]], "debug_cycle_language": ["debug_command_requested", ["cycle_language"]], "debug_nudge_reset": ["debug_command_requested", ["nudge_reset"]], "debug_screenshot": ["screenshot_requested", []], }`
 
 **Public API**
-- `func test_input_map_actions() -> void:`
+- `func test_all_actions_fire_signals() -> void:`
+- `func test_screenshot_signal_firing(controller: Node, action: String, expected_signal: String, expected_args: Array) -> void:`
+- `func test_action_signal_firing(controller: Node, action: String, expected_signal: String, expected_args: Array) -> void:`
+- `func assert_eq(actual: Variant, expected: Variant, message: String) -> void:`
+- `func assert_true(condition: bool, message: String) -> void:`
 
 ---
 
@@ -2828,7 +2833,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 121 lines
+`class_name InputController` · 142 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 

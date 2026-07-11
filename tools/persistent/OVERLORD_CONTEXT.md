@@ -278,9 +278,16 @@ false signal against Matt's own manual-archival workflow.
   end* (assertions, sentinels, visual fixtures) and *what is untouchable*
   (DO NOT TOUCH). It does not choreograph every edit. The Operator's
   investigation steps stay for canon-adjacent work only.
-- **Prompt sizing:** one prompt = one coherent deliverable the Director could
-  point at ("solid blocks render and bake", "MAPFILE round-trips SIGMA_01").
-  If the acceptance section needs more than ~8 hard criteria, split it.
+- **Prompt sizing (tightened 2026-07-10, Director-ratified):** one prompt =
+  ONE mechanism, aiming at **3–5 hard acceptance criteria**; more rounds are
+  explicitly cheaper than one failed big prompt. The Operator's error rate
+  rises sharply with prompt size — TOP-01 bundled a novel geometric transform
+  with flag plumbing, HUD wiring and 7 criteria, and the transform (the core)
+  got silently skipped. Split rules: a novel math/geometry transform is
+  ALWAYS its own prompt, landed and verified before anything consumes it;
+  plumbing (flags, HUD, config) is a separate follow-up prompt; never bundle
+  a corrective with a new feature. The old ~8-criteria ceiling stands only
+  as the absolute upper bound, not the target.
 - **Trust gradient:** areas where the Operator has a clean streak (MAPFILE-01
   was the first fully clean verification) get leaner prompts; areas with
   recent discipline failures (test substitution, blanket skips) keep explicit

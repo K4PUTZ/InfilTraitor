@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.47 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 801de80 "Alpha End Beep"
+**Version:** 0.5.5 · **Updated:** 2026-07-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,8 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- BAKE-LIVE-TEST.md
-- BAKE-VISUAL-QA-01.md
+- TOP-01-b.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -22,21 +21,21 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 94
-- Test scripts: 26
+- GDScript modules: 95
+- Test scripts: 28
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 107
+- Archived prompts: 3
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- e59df6d [VERSION] Bump to 0.4.46
-- eeaae99 [BAKE-VISUAL-QA-01] Add F6 bake mode toggle for visual QA
-- c739d20 [VERSION] Bump to 0.4.44
-- 83df52c [VERSION] Bump to 0.4.43
-- c97dbde BAKE-FIX-14: B3 closed with real pixel evidence (independently-loaded canonical texture, not self-comparison); junction mirroring verified via public render() API
+- eb15ef3 [TOP-01-b] Implement two-pass isometric shear framework + BAKE-CACHE-01 disk cache system + one-shot fix
+- 366bed9 [BAKE-CACHE-01] Content-addressed disk cache for baked pages
+- 9ca7624 [TOP-01] Horizontal facade: voxel tops as continuous textured laje
+- 0e9298e [OVERLORD-FIX-02] Alpha Walls Textured — junction leg continuation + MULTIPLY canon
+- 2b8b0b5 [OVERLORD-FIX-01] Alpha Baking Base — continuous-plane facade model
 <!-- AUTO:END version_history -->
 
 ---

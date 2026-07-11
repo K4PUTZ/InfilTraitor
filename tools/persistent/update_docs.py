@@ -180,14 +180,19 @@ def get_version_history(lines_count: int = 5) -> list[str]:
 
 
 def build_auto_header() -> str:
-    """Build AUTO:header content for current_state.md and OPERATOR_CONTEXT.md."""
+    """Build AUTO:header content for current_state.md and OPERATOR_CONTEXT.md.
+
+    Deliberately carries NO commit hash/subject (removed 2026-07-10, Director
+    decision): the header is regenerated at pre-commit time, so any commit it
+    could name is the PREVIOUS one — a field that is stale by construction and
+    reads as a lie ("Last commit: Alpha End Beep" weeks later). Version,
+    date and branch are accurate at commit time; for history, use git.
+    """
     version = get_version_string()
     date_str = datetime.now().strftime("%Y-%m-%d")
     branch = get_git_branch()
-    commit_hash = get_git_head_short()
-    commit_subj = get_git_head_subject()
 
-    return f"**Version:** {version} · **Updated:** {date_str} · **Branch:** {branch} · **Last commit:** {commit_hash} \"{commit_subj}\""
+    return f"**Version:** {version} · **Updated:** {date_str} · **Branch:** {branch}"
 
 
 def build_pending_prompts_block() -> str:

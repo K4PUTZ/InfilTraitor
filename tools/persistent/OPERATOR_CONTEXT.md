@@ -371,5 +371,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.4.47 · **Updated:** 2026-07-08 · **Branch:** main · **Last commit:** 801de80 "Alpha End Beep"
+**Version:** 0.5.5 · **Updated:** 2026-07-10 · **Branch:** main
 <!-- AUTO:END header -->

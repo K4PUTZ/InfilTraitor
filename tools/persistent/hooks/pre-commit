@@ -20,6 +20,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 CHECK="$REPO_ROOT/tools/persistent/check_invariants.py"
 GEN="$REPO_ROOT/tools/persistent/gen_codemap.py"
 LINT="$REPO_ROOT/tools/persistent/project_lint.py"
+DOCS="$REPO_ROOT/tools/persistent/update_docs.py"
 
 # ── Gate 1: inviolable-rule guard ───────────────────────────────────────────
 if [ -f "$CHECK" ]; then
@@ -28,6 +29,23 @@ if [ -f "$CHECK" ]; then
         echo "✗ Commit aborted: architecture rule violation (see above)."
         echo "  Fix the code, then re-run your commit."
         exit 1
+    fi
+fi
+
+# ── Gate 1.5: AUTO doc headers (Version/Updated/Branch) ────────────────────
+# Regenerates the AUTO blocks in current_state.md and OPERATOR_CONTEXT.md and
+# stages them silently — no abort: a date/version header needs no review, and
+# aborting every commit for it would train people to bypass the hook. This is
+# what keeps the context headers truthful no matter how a commit is made
+# (the old path only ran inside push.sh, which direct `git push` bypasses —
+# headers rotted for weeks). Decision: Director, 2026-07-10.
+if [ -f "$DOCS" ]; then
+    if python3 "$DOCS" > /dev/null 2>&1; then
+        git add "$REPO_ROOT/docs/production/current_state.md" \
+                "$REPO_ROOT/tools/persistent/OPERATOR_CONTEXT.md" \
+                "$REPO_ROOT/tools/persistent/CODEMAP.md" 2>/dev/null || true
+    else
+        echo "⚠ update_docs.py failed — committing with possibly stale AUTO headers (not blocking)"
     fi
 fi
 

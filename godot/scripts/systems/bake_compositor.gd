@@ -59,7 +59,7 @@ const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
 
 ## Disk cache (BAKE-CACHE-01): Content-addressed PNG files keyed by FNV-1a hash
-const BAKE_CODE_VERSION: int = 1           # Bump when _compose_sheet_page output changes
+const BAKE_CODE_VERSION: int = 2           # Bump when _compose_sheet_page output changes
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
@@ -95,6 +95,7 @@ var _diamond_overlays: Dictionary = {}     # material_id → Image (top-face pai
 ## Session caches (survive map reloads via room_builder's persistent instance)
 var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
 var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image} (horizontal planes, TOP-01-b)
+var _plane_top_reverse_map: Dictionary = {} # facade_id|dir → Image (encodes cell_index for each pixel)
 var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
 
 func _init() -> void:
@@ -108,6 +109,7 @@ func set_material_registry(registry) -> void:
 func clear_cache() -> void:
 	_plane_cache.clear()
 	_plane_top_cache.clear()
+	_plane_top_reverse_map.clear()
 	_page_cache.clear()
 	print("[BAKE] Session cache cleared")
 
@@ -455,32 +457,90 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 		source = s_ext.duplicate()
 		source.flip_x()
 
+	# Create reverse map (tracks which cell each pixel comes from)
+	# Encode as R=col, G=row for easy retrieval
+	var source_map := Image.create(PLANE_W, total_h, false, Image.FORMAT_RGBA8)
+	for row in range(SHEET_ROWS):
+		for col in range(SHEET_COLS):
+			var u0: int = col * 16
+			var v0: int = row * 16
+			var cell_color := Color8(col, row, 0, 255)
+			source_map.fill_rect(Rect2i(u0, v0 + V_MARGIN, 16, 16), cell_color)
+
 	# Pass 1: Row-strip shear (u, v) -> (u - v + H_off, v)
 	var H_off: int = FACADE_W >> 1
 	var pass1_h: int = V_MARGIN + FACADE_H + V_MARGIN
 	var pass1: Image = Image.create(PLANE_W, pass1_h, false, Image.FORMAT_RGBA8)
+	var pass1_map: Image = Image.create(PLANE_W, pass1_h, false, Image.FORMAT_RGBA8)
+	
 	for v in range(source.get_height()):
 		var shift_x: int = H_off - (v - V_MARGIN) if dir == 0 else H_off + (v - V_MARGIN)
 		shift_x = clampi(shift_x, -(FACADE_W - 1), FACADE_W)
 		pass1.blit_rect(source, Rect2i(0, v, PLANE_W, 1), Vector2i(shift_x, v))
+		pass1_map.blit_rect(source_map, Rect2i(0, v, PLANE_W, 1), Vector2i(shift_x, v))
 
 	# Pass 2: Column-strip shear (x, y) -> (x, y + floor(x/2))
 	var plane := Image.create(PLANE_W, pass1_h + (PLANE_W >> 1), false, Image.FORMAT_RGBA8)
+	var plane_map := Image.create(PLANE_W, pass1_h + (PLANE_W >> 1), false, Image.FORMAT_RGBA8)
+	
 	for x in range(0, PLANE_W, 2):
 		plane.blit_rect(pass1, Rect2i(x, 0, 2, pass1_h), Vector2i(x, x >> 1))
+		plane_map.blit_rect(pass1_map, Rect2i(x, 0, 2, pass1_h), Vector2i(x, x >> 1))
 
 	if not _plane_top_cache.has(facade_id):
 		_plane_top_cache[facade_id] = {}
 	_plane_top_cache[facade_id][dir] = plane
+	
+	# Store reverse map for later lookup
+	var map_key: String = "%s|%d" % [facade_id, dir]
+	_plane_top_reverse_map[map_key] = plane_map
+	
+	# Debug: compute and log bounds for first few cells
+	_compute_and_cache_cell_bounds(map_key, plane_map)
+	
 	return plane
 
-## Compose one full sheet page (2048 atoms) for (material, facade, dir).
-## Pure region ops per atom: 1 crop blit + 1 diamond blend + 1 masked blit,
-## then a single byte-level pass fixing the antialiased alpha pixels (B3).
+## Compute cell bounds from reverse map (iterates pixels to find min/max per cell)
+func _compute_and_cache_cell_bounds(_map_key: String, plane_map: Image) -> Dictionary:
+	var bounds_dict: Dictionary = {}
+	var plane_w = plane_map.get_width()
+	var plane_h = plane_map.get_height()
+	
+	# Initialize bounds for all cells
+	for row in range(SHEET_ROWS):
+		for col in range(SHEET_COLS):
+			bounds_dict["%d|%d" % [col, row]] = {"x_min": plane_w, "x_max": -1, "y_min": plane_h, "y_max": -1}
+	
+	# Scan pixels and track bounds
+	for py in range(plane_h):
+		for px in range(plane_w):
+			var cell_pixel = plane_map.get_pixel(px, py)
+			var cell_col = int(cell_pixel.r * 255)
+			var cell_row = int(cell_pixel.g * 255)
+			
+			if cell_col < SHEET_COLS and cell_row < SHEET_ROWS:
+				var bounds = bounds_dict["%d|%d" % [cell_col, cell_row]]
+				bounds["x_min"] = mini(bounds["x_min"], px)
+				bounds["x_max"] = maxi(bounds["x_max"], px)
+				bounds["y_min"] = mini(bounds["y_min"], py)
+				bounds["y_max"] = maxi(bounds["y_max"], py)
+	
+	# Convert to Rect2i and store
+	var result: Dictionary = {}
+	for key in bounds_dict:
+		var b = bounds_dict[key]
+		if b["x_max"] >= b["x_min"]:  # Valid bounds
+			result[key] = Rect2i(b["x_min"], b["y_min"], b["x_max"] - b["x_min"] + 1, b["y_max"] - b["y_min"] + 1)
+		else:
+			result[key] = Rect2i(0, 0, 0, 0)  # Empty
+	
+	return result
+
+
 func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, dir: int, base_color: Color) -> Dictionary:
 	var plane := _get_plane(facade_id, facade, dir)
 	var plane_top: Image = null
-	if BakeConfigClass.facade_tops:
+	if BakeConfig.facade_tops:
 		plane_top = _get_plane_top(facade_id, facade, dir)
 	var canonical: Image = _voxel_atoms.get(material_id)
 	if canonical == null:
@@ -508,15 +568,36 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 			
 			# TOP-01-b: If facade_tops enabled, composite top face + side face
 			if plane_top != null:
-				# For now, use a simpler approach: crop directly from facade at grid coords
-				# TODO: Implement proper sheared coordinate calculation
-				# Facade grid: each cell is 16×16 pixels
-				var u0: int = col * 16
-				var v0: int = row * 16
-				# Crop 32×16 (overlapping atoms use columns 0-31 from two adjacent cells)
-				if u0 + VOXEL_ATOM_W <= facade.get_width() and v0 + 16 <= facade.get_height():
-					atom_content.blit_rect(facade, Rect2i(u0, v0, VOXEL_ATOM_W, 16), Vector2i(0, 0))
-				# Side face: 32×20 crop, paste at atom y=16
+				# Use reverse map to find sheared cell position
+				var map_key: String = "%s|%d" % [facade_id, dir]
+				var reverse_map: Image = _plane_top_reverse_map.get(map_key)
+				
+				if reverse_map != null:
+					# Find pixels in reverse_map that encode this cell
+					var x_min: int = plane_top.get_width()
+					var x_max: int = -1
+					var y_min: int = reverse_map.get_height()
+					var y_max: int = -1
+					
+					# Scan reverse_map for this cell's pixels
+					for py in range(reverse_map.get_height()):
+						for px in range(reverse_map.get_width()):
+							var map_pixel = reverse_map.get_pixel(px, py)
+							var map_col = int(map_pixel.r * 255)
+							var map_row = int(map_pixel.g * 255)
+							if map_col == col and map_row == row:
+								x_min = mini(x_min, px)
+								x_max = maxi(x_max, px)
+								y_min = mini(y_min, py)
+								y_max = maxi(y_max, py)
+					
+					if x_max >= x_min and y_max >= y_min:
+						# Extract top face from sheared region
+						var src_w: int = mini(x_max - x_min + 1, VOXEL_ATOM_W)
+						var src_h: int = mini(y_max - y_min + 1, 16)
+						atom_content.blit_rect(plane_top, Rect2i(x_min, y_min, src_w, src_h), Vector2i(0, 0))
+				
+				# Side face: 32×20 crop from plane, paste at atom y=16
 				atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 20), Vector2i(0, 16))
 			else:
 				# Legacy: side face only, y=8..35 (28 pixels)

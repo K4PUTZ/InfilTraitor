@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**142 scripts · 25849 lines total** (under `godot/scripts/`)
+**142 scripts · 25930 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1110,7 +1110,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 752 lines
+`class_name BakeCompositor` · 833 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1137,7 +1137,7 @@ extends `Node2D` · 43 lines
 - `PAGE_H` = `576`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
-- `BAKE_CODE_VERSION` = `1`
+- `BAKE_CODE_VERSION` = `2`
 - `BAKE_CACHE_PATH` = `"user://bake_cache/"`
 
 ---
@@ -1777,10 +1777,10 @@ extends `SceneTree` · 293 lines
 > BAKE-CACHE-01 — Content-addressed disk cache test suite Acceptance criteria: 1. Transparency: compose cold → save → reload via disk → byte-identical 2. Invalidation: change BAKE_CODE_VERSION → different key → MISS 3. Warm-boot budget: cold + warm; warm ≤ 150ms 4. Corruption safety: truncate file → warning + MISS + recompose, no crash 5-7. Regressions + lint + version bump
 
 **Constants / tuning**
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `TextureResolver` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `MaterialRegistry` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `BakeCompositor` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `BakeConfig` = `preload("res://godot/scripts/systems/bake_config.gd")`
 
 **Public vars**
 - `var test_results: Array = []`
@@ -1896,11 +1896,11 @@ extends `SceneTree` · 431 lines
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `BakeConfig` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `BakeCompositor` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `_GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `MaterialRegistry` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `TextureResolver` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TEX_AUTHORING_N` = `_GeometryCoords.TEX_AUTHORING_N`
 - `VOXEL_ATOM_W` = `_GeometryCoords.VOXEL_ATOM_W`

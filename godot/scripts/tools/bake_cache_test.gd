@@ -9,15 +9,15 @@
 
 extends SceneTree
 
-const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
-const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
-const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
-const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
+const TextureResolver = preload("res://godot/scripts/systems/texture_resolver.gd")
+const MaterialRegistry = preload("res://godot/scripts/systems/material_registry.gd")
+const BakeCompositor = preload("res://godot/scripts/systems/bake_compositor.gd")
+const BakeConfig = preload("res://godot/scripts/systems/bake_config.gd")
 
 var test_results: Array = []
 
 func _init() -> void:
-	BakeConfigClass.load_config()
+	BakeConfig.load_config()
 	print("\n" + "=".repeat(80))
 	print("BAKE-CACHE-01 — Disk Cache Test Suite")
 	print("=".repeat(80) + "\n")
@@ -43,9 +43,9 @@ func _test_transparency() -> void:
 	print("\n[TEST 1] Transparency: compose → save → reload → byte-identical")
 	print("-".repeat(70))
 	
-	var resolver = TextureResolverClass.new()
-	var registry = MaterialRegistryClass.new()
-	var compositor = BakeCompositorClass.new()
+	var resolver = TextureResolver.new()
+	var registry = MaterialRegistry.new()
+	var compositor = BakeCompositor.new()
 	compositor.set_material_registry(registry)
 	
 	# Clear caches for a clean start
@@ -119,8 +119,8 @@ func _test_invalidation() -> void:
 	# Since we can't modify the constant at runtime, we'll verify the key generation
 	# logic: same input → same key, different version would → different key
 	
-	var resolver = TextureResolverClass.new()
-	var compositor = BakeCompositorClass.new()
+	var resolver = TextureResolver.new()
+	var compositor = BakeCompositor.new()
 	
 	var facade_id = "facade_stone"
 	var facade = resolver.resolve_facade_texture(facade_id)
@@ -151,9 +151,9 @@ func _test_warm_boot_budget() -> void:
 	print("\n[TEST 3] Warm-boot budget: cold + warm; warm ≤ 150ms")
 	print("-".repeat(70))
 	
-	var resolver = TextureResolverClass.new()
-	var registry = MaterialRegistryClass.new()
-	var compositor = BakeCompositorClass.new()
+	var resolver = TextureResolver.new()
+	var registry = MaterialRegistry.new()
+	var compositor = BakeCompositor.new()
 	compositor.set_material_registry(registry)
 	
 	# Clear everything for cold boot
@@ -215,9 +215,9 @@ func _test_corruption_safety() -> void:
 	print("\n[TEST 4] Corruption safety: truncate → warning + MISS + recompose")
 	print("-".repeat(70))
 	
-	var resolver = TextureResolverClass.new()
-	var registry = MaterialRegistryClass.new()
-	var compositor = BakeCompositorClass.new()
+	var resolver = TextureResolver.new()
+	var registry = MaterialRegistry.new()
+	var compositor = BakeCompositor.new()
 	compositor.set_material_registry(registry)
 	
 	# Create a fresh page and cache it
@@ -238,7 +238,7 @@ func _test_corruption_safety() -> void:
 	print("✓ Created and cached page with key %s" % disk_key)
 	
 	# Truncate the cached file to corrupt it
-	var cache_file = BakeCompositorClass.BAKE_CACHE_PATH + disk_key + ".png"
+	var cache_file = BakeCompositor.BAKE_CACHE_PATH + disk_key + ".png"
 	var file = FileAccess.open(cache_file, FileAccess.WRITE)
 	if file == null:
 		_add_result("TEST 4", false, "Could not open cache file for truncation")

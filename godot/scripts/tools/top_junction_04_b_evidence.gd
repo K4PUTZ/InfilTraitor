@@ -112,9 +112,6 @@ func _mirror_index_formula(index: int, period: int) -> int:
 	return k2
 
 func _record_result(test_name: String, status: String, details: String = "") -> void:
-	var msg = "[%s] %s" % [status, test_name]
-	if details:
-		msg += " — %s" % details
 	_test_results.append({"name": test_name, "status": status})
 
 func _all_passed() -> bool:

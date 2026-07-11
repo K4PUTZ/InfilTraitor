@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**151 scripts · 27201 lines total** (under `godot/scripts/`)
+**151 scripts · 27198 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2599,7 +2599,7 @@ extends `MainLoop` · 298 lines
 
 ### `top_junction_04_b_evidence.gd`
 
-extends `SceneTree` · 141 lines
+extends `SceneTree` · 138 lines
 
 `godot/scripts/tools/top_junction_04_b_evidence.gd`
 

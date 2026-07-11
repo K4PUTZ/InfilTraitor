@@ -9,6 +9,7 @@ const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noi
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")
+const InputController = preload("res://godot/scripts/world/controllers/input_controller.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
@@ -166,6 +167,9 @@ var _actor_end_pause_active: bool = false
 
 ## DEBUG-02: Voxel ruler overlay and nudge mode
 var _debug_tools_controller: DebugToolsControllerClass = null
+
+## INPUT-01: Input dispatcher
+var _input_controller: InputController = null
 
 ## Selection state management
 var _selection_controller: SelectionControllerClass = null
@@ -548,6 +552,18 @@ func _ready() -> void:
 	## Initialize debug tools controller
 	_debug_tools_controller = DebugToolsControllerClass.new(self)
 	_debug_tools_controller.create_map_loader_button()
+
+	## INPUT-01: Create and setup input controller
+	set_meta("_camera_controller", _camera_controller)
+	_input_controller = InputController.new(self)
+	add_child(_input_controller)
+	_input_controller.posture_lower_requested.connect(_on_posture_lower_requested)
+	_input_controller.posture_raise_requested.connect(_on_posture_raise_requested)
+	_input_controller.view_mode_requested.connect(_on_view_mode_requested)
+	_input_controller.peek_initiated.connect(_on_peek_initiated)
+	_input_controller.movement_input_requested.connect(_on_movement_input_requested)
+	_input_controller.debug_command_requested.connect(_on_debug_command_requested)
+	_input_controller.screenshot_requested.connect(_on_screenshot_requested)
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
@@ -1804,114 +1820,9 @@ func _update_vision_fog() -> void:
 
 ## Unified input: keyboard · wheel zoom · motion drag.
 ## Camera input handled first; if CameraController consumes it, done.
+## INPUT-01: Delegated to InputController via signals.
 func _input(event: InputEvent) -> void:
-	## Camera has priority
-	if _camera_controller and _camera_controller.handle_input(event):
-		return
-	
-	## Keyboard gameplay input
-	if event is InputEventKey:
-		var key := event as InputEventKey
-		if key.pressed and not key.echo:
-			match key.keycode:
-				KEY_F2:
-					_debug_tools_controller.toggle_map_loader_panel()
-					return
-				KEY_F3:
-					_debug_tools_controller.toggle_voxel_ruler_overlay()
-					return
-				KEY_F4:
-					_debug_tools_controller.toggle_nudge_mode()
-					return
-				KEY_F6:
-					_debug_tools_controller.toggle_bake_mode()
-					return
-				KEY_F7:
-					_debug_tools_controller.cycle_blend_mode()
-					return
-				KEY_Z:
-					## Z lowers: STANDING -> CROUCHING -> PRONE
-					var next_z := agent.posture
-					if agent.posture == DebugAgent.Posture.STANDING:
-						next_z = DebugAgent.Posture.CROUCHING
-					elif agent.posture == DebugAgent.Posture.CROUCHING:
-						next_z = DebugAgent.Posture.PRONE
-					
-					if next_z != agent.posture:
-						_debug_tools_controller.try_change_posture(next_z)
-					return
-				KEY_X:
-					## X raises: PRONE -> CROUCHING -> STANDING
-					var next_x := agent.posture
-					if agent.posture == DebugAgent.Posture.PRONE:
-						next_x = DebugAgent.Posture.CROUCHING
-					elif agent.posture == DebugAgent.Posture.CROUCHING:
-						next_x = DebugAgent.Posture.STANDING
-					
-					if next_x != agent.posture:
-						_debug_tools_controller.try_change_posture(next_x)
-					return
-				KEY_V:
-					_set_view_mode("dev", btn_view_v)
-					return
-				KEY_L:
-					_set_view_mode("light", btn_view_l)
-					return
-				KEY_H:
-					_set_view_mode("heat", btn_view_h)
-					return
-				KEY_K:
-					## Cycle UI language (debug helper for localization).
-					## Dynamic lookup so it resolves regardless of autoload indexing.
-					var localization: Variant = get_node_or_null("/root/Localization")
-					if localization:
-						localization.cycle_language()
-					return
-				KEY_P:
-					_peek_pending = true
-					return
-				KEY_R:
-					if _debug_tools_controller.is_nudge_mode_active():
-						_debug_tools_controller.reset_nudge()
-						return
-				KEY_UP:
-					if _debug_tools_controller.is_nudge_mode_active():
-						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_debug_tools_controller.apply_nudge(Vector2(0, -step))
-						return
-					if _peek_pending:
-						_try_peek(Vector2i.UP)
-						_peek_pending = false
-						return
-				KEY_DOWN:
-					if _debug_tools_controller.is_nudge_mode_active():
-						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_debug_tools_controller.apply_nudge(Vector2(0, step))
-						return
-					if _peek_pending:
-						_try_peek(Vector2i.DOWN)
-						_peek_pending = false
-						return
-				KEY_LEFT:
-					if _debug_tools_controller.is_nudge_mode_active():
-						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_debug_tools_controller.apply_nudge(Vector2(-step, 0))
-						return
-					if _peek_pending:
-						_try_peek(Vector2i.LEFT)
-						_peek_pending = false
-						return
-				KEY_RIGHT:
-					if _debug_tools_controller.is_nudge_mode_active():
-						var step := 8.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
-						_debug_tools_controller.apply_nudge(Vector2(step, 0))
-						return
-					if _peek_pending:
-						_try_peek(Vector2i.RIGHT)
-						_peek_pending = false
-						return
-
-	## ── Mouse motion: preview path on hover ─────────────────────────────
+	## Mouse motion: preview path on hover
 	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		var new_hover := _screen_to_tile(mm.position)
@@ -1936,13 +1847,6 @@ func _input(event: InputEvent) -> void:
 ## Left mouse: only runs when no GUI Control consumed the event first.
 ## This lets HUD buttons work while still handling pan + tile selection.
 func _unhandled_input(event: InputEvent) -> void:
-	## Screenshot hotkey (Shift+P only)
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_P and event.shift_pressed:
-			_capture_screenshot_to_file()
-			get_viewport().set_input_as_handled()
-			return
-
 	if turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	if not event is InputEventMouseButton:
@@ -2026,6 +1930,96 @@ func _show_screenshot_toast(message: String) -> void:
 	tw.tween_interval(1.6)
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(lbl.queue_free)
+
+
+## ── INPUT-01: Signal handlers for InputController ──────────────────────────
+
+func _on_posture_lower_requested() -> void:
+	print_debug("[ROOM] Handler: posture lower")
+	## Z lowers: STANDING -> CROUCHING -> PRONE
+	var next_posture := agent.posture
+	if agent.posture == DebugAgent.Posture.STANDING:
+		next_posture = DebugAgent.Posture.CROUCHING
+	elif agent.posture == DebugAgent.Posture.CROUCHING:
+		next_posture = DebugAgent.Posture.PRONE
+	
+	if next_posture != agent.posture:
+		_debug_tools_controller.try_change_posture(next_posture)
+
+
+func _on_posture_raise_requested() -> void:
+	print_debug("[ROOM] Handler: posture raise")
+	## X raises: PRONE -> CROUCHING -> STANDING
+	var next_posture := agent.posture
+	if agent.posture == DebugAgent.Posture.PRONE:
+		next_posture = DebugAgent.Posture.CROUCHING
+	elif agent.posture == DebugAgent.Posture.CROUCHING:
+		next_posture = DebugAgent.Posture.STANDING
+	
+	if next_posture != agent.posture:
+		_debug_tools_controller.try_change_posture(next_posture)
+
+
+func _on_view_mode_requested(mode: String) -> void:
+	print_debug("[ROOM] Handler: view mode %s" % mode)
+	## V/L/H: switch view modes
+	var btn: Node = null
+	match mode:
+		"dev":
+			btn = btn_view_v
+		"light":
+			btn = btn_view_l
+		"heat":
+			btn = btn_view_h
+	
+	if btn:
+		_set_view_mode(mode, btn)
+
+
+func _on_peek_initiated() -> void:
+	print_debug("[ROOM] Handler: peek initiated")
+	## P: set peek pending flag
+	_peek_pending = true
+
+
+func _on_movement_input_requested(direction: Vector2i, is_large_step: bool) -> void:
+	print_debug("[ROOM] Handler: movement %s (large_step=%s)" % [direction, is_large_step])
+	## Arrow keys: dual-purpose (nudge or peek, decided by state)
+	if _debug_tools_controller.is_nudge_mode_active():
+		var step := 8.0 if is_large_step else 1.0
+		_debug_tools_controller.apply_nudge(Vector2(direction) * step)
+	elif _peek_pending:
+		_try_peek(direction)
+		_peek_pending = false
+
+
+func _on_debug_command_requested(command: String) -> void:
+	print_debug("[ROOM] Handler: debug command %s" % command)
+	## F2/F3/F4/F6/F7/K/R: debug commands
+	match command:
+		"toggle_map_loader":
+			_debug_tools_controller.toggle_map_loader_panel()
+		"toggle_voxel_ruler":
+			_debug_tools_controller.toggle_voxel_ruler_overlay()
+		"toggle_nudge_mode":
+			_debug_tools_controller.toggle_nudge_mode()
+		"toggle_bake_mode":
+			_debug_tools_controller.toggle_bake_mode()
+		"cycle_blend_mode":
+			_debug_tools_controller.cycle_blend_mode()
+		"cycle_language":
+			var localization: Variant = get_node_or_null("/root/Localization")
+			if localization:
+				localization.cycle_language()
+		"nudge_reset":
+			if _debug_tools_controller.is_nudge_mode_active():
+				_debug_tools_controller.reset_nudge()
+
+
+func _on_screenshot_requested() -> void:
+	print_debug("[ROOM] Handler: screenshot requested (Shift+P)")
+	## Shift+P: capture screenshot
+	_capture_screenshot_to_file()
 
 
 ## Initialize debug views (S1: FIX-BAKE-06)

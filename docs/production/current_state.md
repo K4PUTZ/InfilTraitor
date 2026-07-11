@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.4 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.5 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,8 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- BAKE-CACHE-PAGESIZE-01-b.md
+- INPUT-01.md
+- PANEL-01.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -21,11 +22,11 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 95
+- GDScript modules: 96
 - Test scripts: 27
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 18
+- Archived prompts: 19
 <!-- AUTO:END inventory -->
 
 ### Version History

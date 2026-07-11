@@ -245,6 +245,36 @@ state.
 unprompted math replication, standalone `AUDITS/` documents for non-blocking
 findings. Findings ride inside the next prompt's CONTEXT section.
 
+### Auto-Screenshot History (SCREENSHOT-HOOK-01/02) — the Overlord's switch
+
+Ratified and built 2026-07-11 (Overlord direct implementation), after three
+prompts in one session shipped visual claims as "PASSED" on code-reading or
+reasoned arithmetic, and the Director caught two real bugs manually that no
+report surfaced. The pre-commit hook can capture a real, unattended
+screenshot of the last-worked-on map into `Screenshots/history/` — but it's
+gated OFF by default (a real capture costs ~5–6s, a real windowed Godot
+boot; wasted on routine architecture/doc commits).
+
+**Turning it on/off is the Overlord's call, stated explicitly in the
+prompt, not the Operator's judgment call:**
+- **Session switch** (`python3 tools/persistent/screenshot_toggle.py
+  --on`/`--off`) — turn on when opening a visual-heavy phase (facade/
+  texture work, occlusion, destruction, UI/panel work) and off when
+  closing it. State this explicitly in the wave's first prompt
+  ("SCREENSHOT SESSION: on for this phase") and the prompt that closes it.
+- **One-off** (`INFILTRAITOR_SCREENSHOT_ONCE=1` for a single commit) —
+  ask for this in an individual prompt's TASK/ACCEPTANCE when that
+  prompt's work has real visual surface outside a declared phase.
+- **During INSPECT:** check `Screenshots/history/` for a capture at or
+  after the relevant commit before trusting any written visual claim,
+  whenever a capture exists for that commit. If a visual claim needs
+  checking but the session switch was off and no one-off was asked for,
+  that's a gap in how the prompt was scoped, not a reason to accept a
+  written description in its place.
+
+Full contract for both roles: `OPERATOR_CONTEXT.md` → "Auto-Screenshot
+History."
+
 ---
 
 ## PROMPTS Folder Convention

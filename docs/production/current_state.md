@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.6.5 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.6 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,8 +22,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 96
-- Test scripts: 27
+- GDScript modules: 98
+- Test scripts: 28
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 19

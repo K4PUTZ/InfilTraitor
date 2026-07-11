@@ -1,0 +1,120 @@
+# TOP_TEXTURE_MASTER_PLAN
+## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
+
+**Status:** RATIFIED 2026-07-10 (Director: "vamos seguir com todas as ideias")
+**Predecessor:** `BAKING_SYSTEM_MASTER_FIX.md` (CLOSED 2026-07-10; its Phase 5
+transfers here as Part 3). As-built bake canon:
+`docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02.
+**Baseline:** tag `verified/v0.5.1` ("Alpha Walls Textured").
+
+---
+
+## 0. Purpose & Scope
+
+Extend the (now working, Director-ratified) continuous-plane facade bake from
+wall side-faces to the remaining visible surfaces and lifecycle:
+
+1. **Horizontal facades** — voxel tops of slices and junction columns read as
+   a continuous "laje" (slab/ceiling) using the same facade files.
+2. **Textured interiors** — destruction reveals logically-textured voxels,
+   not a generic shell; horizontal slices of material volumes become the
+   substrate for props (table tops, shelves).
+3. **Bake persistence** — a content-addressed disk cache makes every boot
+   after the first effectively instant, without shipping pre-baked packs.
+
+**Founding insight (recorded so nobody re-litigates performance from fear):**
+after baking, textured and flat-color tiles cost the GPU exactly the same —
+all costs live in bake time (once), atlas memory, and download size. D12
+(no per-frame procedural cost) is preserved by construction throughout.
+
+## 1. Decision Register
+
+| D | Decision | Status |
+|---|---|---|
+| D-TT1 | **MULTIPLY is the blend canon** — preserves voxel material color under facade detail; `MULTIPLY_LUMA_LIFT = 0.25` compensates darkening until the light/shadow projection system owns brightness | ✅ Ratified 2026-07-10, shipped in v0.5.1 |
+| D-TT2 | **Tops phase 1 scope**: slice tops + junction-column tops only (junction top may continue either leg — "pode ficar pra qualquer lado"). Multi-GU volumes explicitly excluded from phase 1. Behind `BakeConfig.facade_tops` (dev default ON so the Director sees it; ratification decides the final default) | ✅ Ratified 2026-07-10 |
+| D-TT3 | **Hybrid interior architecture**: exterior wall shells keep the continuous 64×32 plane mapping; interiors/props use a local-period atom set keyed (x%8, y%8, z%8) — 512 unique atoms per material, each carrying 3 faces (two sides + top). Preferred realization: **compose-on-demand at destruction time** (3 blits/atom, microseconds per event); the precomputed 512-page is the fallback if runtime atlas mutation proves awkward | ✅ Ratified 2026-07-10 (direction); realization choice = Operator finding, stop-and-report |
+| D-TT4 | **B5 amendment**: "no re-bake on destruction" becomes "destruction may compose baked interior atoms from session-cached plane images; never per-frame, never silent-fallback (B6 unchanged)". The original B5 guarded against a cost explosion that the blit architecture eliminated | ⏳ PENDING — enters the context static cores only at this plan's closure, per the baton-pass protocol |
+| D-TT5 | **Disk cache over shipped packs**: `user://bake_cache/` PNGs keyed by content hash (facade + canonical atom + bake code version). User textures (`user://textures` tier) make a runtime compositor mandatory anyway; shipped packs would create a second source of truth (pain #2). Offline pre-render is revisited only if measured numbers demand it | ✅ Ratified 2026-07-10 (in principle) |
+
+## 2. Parts
+
+### Part 1 — Horizontal facade (TOP-01)
+
+A horizontal plane in iso is the facade rotated 45° and squashed 2:1. That
+transform factors into **two strip-blit shear passes** — `(u,v) → (u−v, v)`
+by rows, then `(x,y) → (x, y + x/2)` by columns — zero per-pixel work,
+mirroring the side-face pre-shear architecture exactly:
+
+- One "diamond-plane" image **T per facade** (built once per session, ~8 MB,
+  session-cached beside P⁰/P¹; wrap margins mirrored like the side planes).
+- Each atom's top = an axis-aligned 32×16 crop of T, pasted through a
+  precomputed **diamond mask** (the top-face region above the side-face
+  edges), replacing today's flat base-color fill when `facade_tops` is on.
+- Continuity contract: along a run, top crops advance (+16, +8) in T exactly
+  as atoms advance on screen → adjacent tops are seamless **by construction**
+  (same overlap argument as OVERLORD-FIX-01; the byte-exact overlap-identity
+  test pattern applies directly).
+- Sheet keying is unchanged: top window u = col·16 along the run, v-band =
+  row·16 (deterministic; cross-run band repetition accepted in phase 1, same
+  standing as the side facade's world-position independence).
+- Junction tops: continue either leg (D-TT2) — pick one, name it in code.
+
+### Part 2 — Bake disk cache (BAKE-CACHE-01)
+
+- Key: FNV-1a (reuse the project's pinned hash discipline, B4 spirit) over
+  facade image bytes + canonical atom bytes + a `BAKE_CODE_VERSION` const
+  bumped whenever compose logic changes.
+- Store: `user://bake_cache/<key>.png` per composed page (sheets, junction
+  pages excluded — they're map-dependent and cheap).
+- Load path: cache hit = `Image.load_png_from_buffer`/`load()` + register
+  (~50 ms total); miss = compose + save. Loud log either way
+  (`[BAKE] disk cache HIT/MISS <key>`).
+- Budgets: cold boot ≤ 1.5 s total bake; warm boot ≤ 150 ms for all pages.
+- Invalidation is automatic by construction (content-addressed); a
+  `clear_bake_cache` debug affordance for the Director.
+
+### Part 3 — Textured interiors (INTERIOR-01, sequenced after destruction lands)
+
+- The 512-atom local-period dictionary per material: atom (lx, ly, lz) ∈
+  (0..7)³ carries LEFT half from P⁰ window at (lx-derived col, lz row band),
+  RIGHT half from P¹ at (ly, lz), top from T at (lx, ly). All from the
+  session-cached plane images — pure crops.
+- Preferred: compose-on-demand when destruction exposes a voxel (D-TT3),
+  appending tiles to a dynamic interior atlas source; precomputed page as
+  fallback (one 4096×144 page, ~2.3 MB, ~150 ms per material).
+- Horizontal slices of the dictionary = prop surfaces (table tops etc.) —
+  consumed by the PROP system later; this part delivers the substrate only.
+- **Blocked on:** the destruction system (MAP_MATTRESS §2.3 ladder, future
+  phase). Do not prompt this part until destruction has an implementation
+  plan; it exists here so the interface is designed before either side ships.
+
+### Part 4 — Standing guards
+
+- Perf ledger per wave: cold/warm bake ms + total atlas MB pasted in every
+  completion report touching the compositor.
+- Memory watch: pages currently ~12 × ≤9.4 MB worst case; Part 1 adds T
+  images (~8 MB/facade); flag at 150 MB total.
+- LINEAR_LIGHT / OVERLAY LUT variants remain parked (from v0.5.0, logged
+  loudly at runtime); pick up only if the Director asks post-MULTIPLY-canon.
+- Legacy-test debt (`baked_tile_lookup_test.gd`, `block_01b_baking_e2e_test.gd`)
+  retired or rewritten in whichever prompt next touches their subject matter.
+
+## 3. Prompt Sequence
+
+```
+Wave 1 (independent):  TOP-01  ·  BAKE-CACHE-01
+Wave 2 (after Director ratifies tops visually): TOP-01-b polish if needed ·
+        legacy-test retirement rider
+Wave 3 (blocked on destruction plan): INTERIOR-01
+Closure: D-TT4 (B5 amendment) + permanent canon → context static cores +
+        BAKE_SYSTEM_REFERENCE; plan archived.
+```
+
+Both Wave 1 prompts are Operator prompts at **maximal explicitness** (standing
+trust level for this subsystem after the 02-c incident): assertion-backed,
+probe-verifiable acceptance; completion report appended to the prompt file
+with per-criterion verdicts including NOT MET; numbers must satisfy their
+criteria arithmetically.
+
+*Adopted 2026-07-10. Lives at `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md`.*

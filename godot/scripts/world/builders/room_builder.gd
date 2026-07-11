@@ -451,6 +451,12 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 		_bake_compositor.set_material_registry(material_registry)
 		print("[BAKE] Created persistent BakeCompositor for session")
 
+	# TOP-01-b / BAKE-CACHE-01: One-shot disk cache clear (moved from bake_config.gd)
+	if _bt_bake_config != null and _bt_bake_config.debug_clear_bake_cache:
+		_bake_compositor.clear_disk_cache()
+		print("[BAKE] Disk cache cleared (debug_clear_bake_cache one-shot)")
+		_bt_bake_config.debug_clear_bake_cache = false
+
 	# BAKE-FACADE-PLANE-02-b: Clear cache when switching maps (compare with previous map ID)
 	if _bake_compositor.has_meta("_last_map_id"):
 		var last_map_id = _bake_compositor.get_meta("_last_map_id")

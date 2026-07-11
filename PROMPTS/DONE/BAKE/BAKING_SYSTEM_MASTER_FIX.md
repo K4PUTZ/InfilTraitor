@@ -1,8 +1,15 @@
 # BAKING_SYSTEM_MASTER_FIX
 ## Correcting the Baking Pipeline's Core Geometry — Master Plan v1.0
 
-**Status:** RATIFIED 2026-07-07 (D-BAKE-1/2/3, §3/§2.1) — ready to sequence
-implementation prompts (§4).
+**Status:** ✅ CLOSED 2026-07-10. Phases 0–4 complete: geometry corrected via
+the continuous-plane model (which superseded the master-strip design of §4 —
+see `docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02 for the
+as-built canon and closure evidence), B3 closed with 0/9,437,184 alpha
+mismatches, junction columns continue their legs, Director visual
+ratification at tags `verified/v0.5.0` ("Alpha Baking Base") and
+`verified/v0.5.1` ("Alpha Walls Textured"). Phase 5 (secondary baking /
+destructible interiors) was deferred by design and transfers to
+`TOP_TEXTURE_MASTER_PLAN.md` Part 3. Safe to archive.
 **Companion docs:** `docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md` (canon,
 2026-06-29), `PROMPTS/DONE/BAKING_MASTER_PLAN.md` (v1.0, 2026-07-04, the doc that
 introduced the bug), `tools/persistent/OPERATOR_CONTEXT.md`.

@@ -87,10 +87,11 @@ func _update_display() -> void:
 	
 	# ── BAKE FEATURES ──────────────────────────────────────────────────────────
 	var facade_str = "✓" if _bake_config_class.facade_enabled else "✗"
+	var tops_str = "✓" if _bake_config_class.facade_tops else "✗"
 	var pattern_str = "✓" if _bake_config_class.material_pattern_enabled else "✗"
 	var dump_str = "✓" if _bake_config_class.debug_bake_set_dump else "✗"
 	
-	lines.append("BAKE: %s | facade%s pattern%s dump%s" % [bake_status, facade_str, pattern_str, dump_str])
+	lines.append("BAKE: %s | facade%s tops%s pattern%s dump%s" % [bake_status, facade_str, tops_str, pattern_str, dump_str])
 	
 	# ── VISION SYSTEMS ─────────────────────────────────────────────────────────
 	var dev_str = "✓" if _vision_controller.dev_vision else "·"

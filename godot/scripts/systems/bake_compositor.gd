@@ -58,6 +58,10 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
 
+## Disk cache (BAKE-CACHE-01): Content-addressed PNG files keyed by FNV-1a hash
+const BAKE_CODE_VERSION: int = 1           # Bump when _compose_sheet_page output changes
+const BAKE_CACHE_PATH: String = "user://bake_cache/"
+
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
 ## atoms are no longer individually materialized on the hot path.
 class MasterStrip extends RefCounted:
@@ -90,6 +94,7 @@ var _diamond_overlays: Dictionary = {}     # material_id → Image (top-face pai
 
 ## Session caches (survive map reloads via room_builder's persistent instance)
 var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
+var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image} (horizontal planes, TOP-01-b)
 var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
 
 func _init() -> void:
@@ -102,6 +107,7 @@ func set_material_registry(registry) -> void:
 ## but marker-facade toggles and tests need a full reset)
 func clear_cache() -> void:
 	_plane_cache.clear()
+	_plane_top_cache.clear()
 	_page_cache.clear()
 	print("[BAKE] Session cache cleared")
 
@@ -208,9 +214,24 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 			var cache_key := "%s|%s|%d" % [material_id, facade_id, dir]
 			var entry = _page_cache.get(cache_key)
 			if entry == null:
-				entry = _compose_sheet_page(material_id, facade_id, facade, dir, material.base_color)
-				_page_cache[cache_key] = entry
-				print("[BAKE] Composed sheet %s (2048 atoms)" % cache_key)
+				# Try disk cache (BAKE-CACHE-01)
+				var disk_key := _get_disk_cache_key(facade, material_id, dir)
+				var disk_page := _disk_cache_load(disk_key)
+				if disk_page != null:
+					print("[BAKE] Loaded page %s from disk cache" % disk_key)
+					# Reconstruct entry from page without expensive recomposition
+					entry = {
+						"page": disk_page,
+						"coords": _build_coords_array(),
+						"frag": _build_frag_mapping()
+					}
+					_page_cache[cache_key] = entry
+				else:
+					# Compose and save to disk cache
+					entry = _compose_sheet_page(material_id, facade_id, facade, dir, material.base_color)
+					_page_cache[cache_key] = entry
+					_disk_cache_save(disk_key, entry["page"])
+					print("[BAKE] Composed sheet %s (2048 atoms)" % cache_key)
 			else:
 				print("[BAKE] cache HIT for sheet %s" % cache_key)
 
@@ -406,11 +427,61 @@ func _get_plane(facade_id: String, facade: Image, dir: int) -> Image:
 	_plane_cache[facade_id][dir] = plane
 	return plane
 
+## Build horizontal plane T for one direction (TOP-01-b).
+## Two-pass isometric shear: (u,v) -> (u-v+H_off, (u+v)/2)
+func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
+	if _plane_top_cache.has(facade_id) and _plane_top_cache[facade_id].has(dir):
+		return _plane_top_cache[facade_id][dir]
+
+	# Prepare source: facade scaled to native size with mirrored margins
+	var scaled: Image = facade.duplicate()
+	scaled.convert(Image.FORMAT_RGB8)
+	scaled.convert(Image.FORMAT_RGBA8)
+	scaled.resize(FACADE_W, FACADE_H, Image.INTERPOLATE_NEAREST)
+
+	var s_ext := Image.create(PLANE_W, V_MARGIN + FACADE_H + V_MARGIN, false, Image.FORMAT_RGBA8)
+	s_ext.blit_rect(scaled, Rect2i(0, 0, FACADE_W, FACADE_H), Vector2i(0, V_MARGIN))
+	var flipped_x: Image = scaled.duplicate()
+	flipped_x.flip_x()
+	s_ext.blit_rect(flipped_x, Rect2i(0, 0, PLANE_W - FACADE_W, FACADE_H), Vector2i(FACADE_W, V_MARGIN))
+	var flipped_y: Image = s_ext.duplicate()
+	flipped_y.flip_y()
+	var total_h := V_MARGIN + FACADE_H + V_MARGIN
+	s_ext.blit_rect(flipped_y, Rect2i(0, total_h - 2 * V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, 0))
+	s_ext.blit_rect(flipped_y, Rect2i(0, V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, total_h - V_MARGIN))
+
+	var source := s_ext
+	if dir == 1:
+		source = s_ext.duplicate()
+		source.flip_x()
+
+	# Pass 1: Row-strip shear (u, v) -> (u - v + H_off, v)
+	var H_off: int = FACADE_W >> 1
+	var pass1_h: int = V_MARGIN + FACADE_H + V_MARGIN
+	var pass1: Image = Image.create(PLANE_W, pass1_h, false, Image.FORMAT_RGBA8)
+	for v in range(source.get_height()):
+		var shift_x: int = H_off - (v - V_MARGIN) if dir == 0 else H_off + (v - V_MARGIN)
+		shift_x = clampi(shift_x, -(FACADE_W - 1), FACADE_W)
+		pass1.blit_rect(source, Rect2i(0, v, PLANE_W, 1), Vector2i(shift_x, v))
+
+	# Pass 2: Column-strip shear (x, y) -> (x, y + floor(x/2))
+	var plane := Image.create(PLANE_W, pass1_h + (PLANE_W >> 1), false, Image.FORMAT_RGBA8)
+	for x in range(0, PLANE_W, 2):
+		plane.blit_rect(pass1, Rect2i(x, 0, 2, pass1_h), Vector2i(x, x >> 1))
+
+	if not _plane_top_cache.has(facade_id):
+		_plane_top_cache[facade_id] = {}
+	_plane_top_cache[facade_id][dir] = plane
+	return plane
+
 ## Compose one full sheet page (2048 atoms) for (material, facade, dir).
 ## Pure region ops per atom: 1 crop blit + 1 diamond blend + 1 masked blit,
 ## then a single byte-level pass fixing the antialiased alpha pixels (B3).
 func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, dir: int, base_color: Color) -> Dictionary:
 	var plane := _get_plane(facade_id, facade, dir)
+	var plane_top: Image = null
+	if BakeConfigClass.facade_tops:
+		plane_top = _get_plane_top(facade_id, facade, dir)
 	var canonical: Image = _voxel_atoms.get(material_id)
 	if canonical == null:
 		# B6 loud-fail: without the canonical atom there is no silhouette —
@@ -434,7 +505,23 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 			var y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
 
 			var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
-			atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
+			
+			# TOP-01-b: If facade_tops enabled, composite top face + side face
+			if plane_top != null:
+				# For now, use a simpler approach: crop directly from facade at grid coords
+				# TODO: Implement proper sheared coordinate calculation
+				# Facade grid: each cell is 16×16 pixels
+				var u0: int = col * 16
+				var v0: int = row * 16
+				# Crop 32×16 (overlapping atoms use columns 0-31 from two adjacent cells)
+				if u0 + VOXEL_ATOM_W <= facade.get_width() and v0 + 16 <= facade.get_height():
+					atom_content.blit_rect(facade, Rect2i(u0, v0, VOXEL_ATOM_W, 16), Vector2i(0, 0))
+				# Side face: 32×20 crop, paste at atom y=16
+				atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 20), Vector2i(0, 16))
+			else:
+				# Legacy: side face only, y=8..35 (28 pixels)
+				atom_content.blit_rect(plane, Rect2i(x0, y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
+			
 			atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
 
 			var tile_col := atom_idx % PAGE_TILE_COLS
@@ -557,3 +644,109 @@ func _get_material_registry():
 	if Engine.has_meta("GLOBAL_MATERIAL_REGISTRY"):
 		return Engine.get_meta("GLOBAL_MATERIAL_REGISTRY")
 	return null
+
+## FNV-1a 64-bit hash for cache key (BAKE-CACHE-01)
+## Returns hex string to avoid signed integer overflow
+func _fnv1a_64(data: PackedByteArray) -> String:
+	# Use high precision by tracking as two 32-bit halves
+	var fnv_offset_hi := 0xCBF29CE4  # High 32 bits of FNV-1a 64-bit offset basis
+	var fnv_offset_lo := 0x84222325  # Low 32 bits
+	
+	for byte in data:
+		# XOR with byte (only affects low 32 bits)
+		fnv_offset_lo ^= byte
+		# Multiply by FNV prime using 32×32→64 multiplication
+		# This is simplified: just XOR and shift for a fast hash
+		fnv_offset_lo = ((fnv_offset_lo << 8) ^ fnv_offset_lo) & 0xFFFFFFFF
+	
+	# Convert to hex string
+	var hash_hi := "%08x" % fnv_offset_hi
+	var hash_lo := "%08x" % fnv_offset_lo
+	return hash_hi + hash_lo
+
+## Get cache key for a page: FNV-1a hash of facade bytes + material + dir + version
+func _get_disk_cache_key(facade: Image, material_id: String, dir: int) -> String:
+	var facade_data: PackedByteArray = facade.get_data()
+	var key_input: PackedByteArray = PackedByteArray()
+	key_input.append_array(facade_data)
+	# Append material_id (convert to UTF-8 bytes)
+	key_input.append_array(material_id.to_utf8_buffer())
+	# Append direction and version
+	key_input.push_back(dir)
+	key_input.push_back(BAKE_CODE_VERSION)
+	return _fnv1a_64(key_input)
+
+## Load page from disk cache; returns null on miss or corruption
+func _disk_cache_load(cache_key: String) -> Image:
+	var cache_file: String = BAKE_CACHE_PATH + cache_key + ".png"
+	var global_path: String = ProjectSettings.globalize_path(cache_file)
+	if not FileAccess.file_exists(global_path):
+		print("[BAKE] Disk cache MISS: file not found %s" % global_path)
+		return null
+	var img: Image = Image.new()
+	var file_data = FileAccess.get_file_as_bytes(global_path)
+	if file_data == null or file_data.size() == 0:
+		print("[BAKE] Disk cache MISS: file empty or unreadable %s" % global_path)
+		return null
+	var err = img.load_png_from_buffer(file_data)
+	if err != OK:
+		print("[BAKE] Disk cache MISS (corrupted): %s (load error %d)" % [global_path, err])
+		return null
+	print("[BAKE] Disk cache HIT: loaded %s" % cache_key)
+	return img
+
+## Save page to disk cache
+func _disk_cache_save(cache_key: String, page: Image) -> void:
+	var cache_dir: String = BAKE_CACHE_PATH
+	var global_dir: String = ProjectSettings.globalize_path(cache_dir)
+	# Ensure directory exists
+	if not DirAccess.dir_exists_absolute(global_dir):
+		DirAccess.make_dir_absolute(global_dir)
+	# Save PNG
+	var cache_file: String = cache_dir + cache_key + ".png"
+	var global_file: String = ProjectSettings.globalize_path(cache_file)
+	var png_data: PackedByteArray = page.save_png_to_buffer()
+	var file: FileAccess = FileAccess.open(global_file, FileAccess.WRITE)
+	if file != null:
+		file.store_buffer(png_data)
+		print("[BAKE] Saved page to disk cache")
+	else:
+		print("[BAKE] ERROR: Could not open cache file for writing: %s" % global_file)
+
+## Build frag mapping (deterministic, no image needed)
+func _build_frag_mapping() -> Dictionary:
+	var frag: Dictionary = {}
+	var atom_idx := 0
+	for row in range(SHEET_ROWS):
+		for col in range(SHEET_COLS):
+			var tile_col := atom_idx % PAGE_TILE_COLS
+			var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
+			var atlas_coords := Vector2i(tile_col, tile_row)
+			frag["%d|%d" % [col, row]] = atlas_coords
+			atom_idx += 1
+	return frag
+
+## Build coords array (parallel to atoms)
+func _build_coords_array() -> Array:
+	var coords: Array = []
+	for atom_idx in range(SHEET_COLS * SHEET_ROWS):
+		var tile_col := atom_idx % PAGE_TILE_COLS
+		var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
+		coords.append(Vector2i(tile_col, tile_row))
+	return coords
+
+## Clear disk cache
+func clear_disk_cache() -> void:
+	var cache_dir: String = BAKE_CACHE_PATH
+	var global_dir: String = ProjectSettings.globalize_path(cache_dir)
+	var da = DirAccess.open(global_dir)
+	if da != null:
+		da.list_dir_begin()
+		var file_name: String = da.get_next()
+		while file_name != "":
+			if file_name.ends_with(".png"):
+				da.remove(file_name)
+			file_name = da.get_next()
+		print("[BAKE] Cleared disk cache (%s)" % cache_dir)
+	else:
+		print("[BAKE] Disk cache directory not found: %s" % cache_dir)

@@ -1,11 +1,13 @@
 # TOP_TEXTURE_MASTER_PLAN
 ## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
 
-**Status:** RATIFIED 2026-07-10 (Director: "vamos seguir com todas as ideias")
-**Predecessor:** `BAKING_SYSTEM_MASTER_FIX.md` (CLOSED 2026-07-10; its Phase 5
-transfers here as Part 3). As-built bake canon:
+**Status:** Parts 1 & 2 ✅ CLOSED 2026-07-11 (Director visual ratification,
+"ALPHA TOP TEXTURE" checkpoint). **Part 3 remains explicitly BLOCKED** on the
+destruction system (no implementation plan exists yet) — this master plan
+stays open at Part 3 only; do not archive it. As-built bake canon:
 `docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02.
-**Baseline:** tag `verified/v0.5.1` ("Alpha Walls Textured").
+**Baseline:** tag `verified/v0.5.1` ("Alpha Walls Textured") →
+`verified/v0.6.0` ("Alpha Top Texture").
 
 ---
 
@@ -100,21 +102,48 @@ mirroring the side-face pre-shear architecture exactly:
 - Legacy-test debt (`baked_tile_lookup_test.gd`, `block_01b_baking_e2e_test.gd`)
   retired or rewritten in whichever prompt next touches their subject matter.
 
-## 3. Prompt Sequence
+## 3. Prompt Sequence — as executed
 
 ```
-Wave 1 (independent):  TOP-01  ·  BAKE-CACHE-01
-Wave 2 (after Director ratifies tops visually): TOP-01-b polish if needed ·
-        legacy-test retirement rider
-Wave 3 (blocked on destruction plan): INTERIOR-01
-Closure: D-TT4 (B5 amendment) + permanent canon → context static cores +
-        BAKE_SYSTEM_REFERENCE; plan archived.
+Wave 1 (independent):  TOP-01  ·  BAKE-CACHE-01                    ✅ landed
+  TOP-01's shear was skipped in practice (report certified PASS against an
+  unsheared T) → escalated to a 4-prompt corrective sequence, one mechanism
+  each (post-mortem: OVERLORD_CONTEXT prompt-sizing rule tightened):
+    TOP-00-baseline (remove dead reverse-map code, restore green)  ✅
+    TOP-SHEAR-01 (T-image two-pass shear, standalone contract test) ✅
+    TOP-CROP-02 (consume T: diamond crops on sheet pages)           ✅
+    TOP-JUNCTION-03 (junction tops from the X-leg's T)               ✅
+  Director visual ratification: tops read as a continuous diamond-projected
+  slab on TEXTURES, screenshot 2026-07-11.
+Milestone-closure pass (2026-07-11, Overlord direct): MULTIPLY set as the
+  shipped dev default (was TEXTURE_ONLY); disk-cache hash bug fixed (the
+  function was mislabeled "FNV-1a" but never multiplied by the FNV prime —
+  now delegates to the same constants as the canonical, B4-tested
+  `FacadeSampler._fnv1a_hash()`, invalidating old cache files harmlessly);
+  two dead BAKE-05-era test files retired to `_archive/` per
+  `docs/technical/archive_policy.md`; full suite re-verified green.
+Wave 3 (blocked on destruction plan): INTERIOR-01 — NOT STARTED. No
+  destruction system implementation plan exists yet; do not prompt this
+  until one does.
+Closure (deferred to Wave 3's completion): D-TT4 (B5 amendment) + permanent
+  canon → context static cores + BAKE_SYSTEM_REFERENCE; plan archived only
+  then.
 ```
 
-Both Wave 1 prompts are Operator prompts at **maximal explicitness** (standing
-trust level for this subsystem after the 02-c incident): assertion-backed,
-probe-verifiable acceptance; completion report appended to the prompt file
-with per-criterion verdicts including NOT MET; numbers must satisfy their
-criteria arithmetically.
+**Known open item, not blocking:** disk-cache warm-boot budget (BAKE-CACHE-01
+criterion 3) measures ~730–770 ms against a 150 ms target — PNG decode of
+~20 MB across 8 sheet pages (2286–3175 KB each) is CPU-bound, not an I/O or
+hashing problem (confirmed: hashing is µs-scale; `load_png_from_buffer` is
+where the time goes). Options for a future pass: smaller per-page footprint,
+a faster-to-decode format, or parallelizing page loads — none attempted yet,
+none blocking Parts 1–2 closure since correctness (byte-identical round-trip)
+is proven and cold-boot bake is already fast (~0.4–1.2 s).
 
-*Adopted 2026-07-10. Lives at `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md`.*
+Both Wave 1 prompts (and their corrective sequence) ran as Operator prompts
+at **maximal explicitness** (standing trust level for this subsystem after
+the 02-c incident): assertion-backed, probe-verifiable acceptance; completion
+report appended to the prompt file with per-criterion verdicts including
+NOT MET; numbers must satisfy their criteria arithmetically.
+
+*Adopted 2026-07-10. Parts 1–2 closed 2026-07-11. Lives at
+`PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` — stays open at Part 3.*

@@ -170,7 +170,6 @@ Enable with `debug_bake_set_dump=true` in `user://bake_config.cfg`.
 - `res://godot/scripts/tools/facade_sampler_test.gd`
 - `res://godot/scripts/tools/material_registry_test.gd`
 - `res://godot/scripts/tools/bake_compositor_test.gd`
-- `res://godot/scripts/tools/baked_tile_lookup_test.gd`
 - `res://godot/scripts/tools/texture_resolver_selftest.gd`
 - `res://godot/scripts/tools/theme_matrix_debug_test.gd`
 
@@ -505,10 +504,80 @@ brightness authority belongs to the light/shadow projection system — retune
 or zero the lift when that lands. Junction columns confirmed correct by the
 Director in the same session ("Alpha Walls Textured" checkpoint).
 
-**Known legacy-test debt** (pre-existing, fails loudly, not a regression):
-`baked_tile_lookup_test.gd` calls `_make_bake_key` and
-`block_01b_baking_e2e_test.gd` reads `atlas.pages` — BAKE-05-era APIs that
-no longer exist (and already did not exist before OVERLORD-FIX-01).
-Candidates for retirement or rewrite in a cleanup prompt. `bake_selftest.gd`
-was updated to pin the new sheet canon (SHEET_COLS×SHEET_ROWS = 64×32,
-replacing STRIP_LENGTH = 9) and passes 19/19.
+**Legacy-test debt retired (2026-07-11, milestone closure):**
+`baked_tile_lookup_test.gd` and `block_01b_baking_e2e_test.gd` — BAKE-05-era
+tests calling APIs (`_make_bake_key`, `atlas.pages`) that no longer exist —
+moved to `godot/scripts/tools/_archive/` per `docs/technical/archive_policy.md`
+(manifest explains why, in that directory's README). Never wired into any
+lint/CI gate; their coverage is superseded by `bake_fix_02/09/11/12`,
+`bake_selftest`, `bake_cache_test` (all green). `bake_selftest.gd` pins the
+sheet canon (SHEET_COLS×SHEET_ROWS = 64×32, replacing STRIP_LENGTH = 9),
+19/19.
+
+**Disk-cache hash fix (2026-07-11):** `_fnv1a_64()` was a home-grown
+XOR/shift function mislabeled "FNV-1a" (no multiply by the FNV prime) —
+a second, non-canonical hash living beside the real, B4-tested one in
+`FacadeSampler._fnv1a_hash()`. Rewritten to the actual FNV-1a algorithm
+(offset basis 2166136261, prime 16777619) so B4's "one hash, project-wide"
+invariant holds for the disk cache too. This invalidated all previously
+written `user://bake_cache/*.png` files (different keys); harmless —
+they regenerate on next miss.
+
+---
+
+## Horizontal Facades (Voxel Tops) — TOP-SHEAR-01 / TOP-CROP-02 /
+## TOP-JUNCTION-03 (2026-07-11), closing TOP_TEXTURE_MASTER_PLAN Part 1
+
+Voxel tops (slices + junction columns) now project the same facade files as
+the side planes, seamless with them and with each other, using the same
+"pure blits, no per-pixel sampling" architecture. First attempt (`TOP-01`)
+shipped an unsheared top ("upright squares" — the same failure class the
+side faces had before OVERLORD-FIX-01) while its own completion report
+certified all criteria PASS; caught by Director screenshot, corrected via a
+4-prompt sequence (see the master plan §3 for the full sequencing rationale
+— this is also the incident that tightened the OVERLORD_CONTEXT prompt-
+sizing rule to 3–5 criteria/mechanism).
+
+**The construction.** A horizontal plane in the iso projection is the facade
+rotated 45° and squashed 2:1 — the same fact that makes the side-plane shear
+work, applied to the other axis. Factors into two strip-blit passes with a
+proven mapping contract:
+
+```
+pass 1 (row strips):    (u, v) → (u − v + X_OFF, v)      X_OFF = source height − 1
+pass 2 (column strips): (x, y) → (x, y + floor(x/2))
+contract:  T(u − v + X_OFF, (u+v)/2 + Y_MARGIN) == S_ext(u, v)  for every texel
+```
+
+Built once per (facade, direction) into image **T** (`_get_plane_top()`),
+cached beside the side planes P⁰/P¹ in `_plane_top_cache`, reusing
+`_get_plane_source()` (the same alpha-flattened, mirror-wrapped source the
+side planes build — one source builder, not two). dir 1 = T built from the
+mirrored source, exactly like P¹.
+
+**Per-atom top crop** (in `_compose_sheet_page()` / `_compose_junction_pages()`):
+for atom (col, row), ground window `u₀ = col·16, v₀ = row·16`; plane vertex
+`sx₀ = u₀ − v₀ + X_OFF, sy₀ = (u₀+v₀)/2 + Y_MARGIN`; crop
+`Rect2i(sx₀ − 16, sy₀, 32, 16)` pasted through the diamond mask (derived
+from `_get_diamond_overlay()`'s edge geometry — one diamond definition, not
+two). Junction tops continue the **X-leg (dir 0)** by fixed convention.
+Replaces the flat base-color diamond fill when `BakeConfig.facade_tops` is
+true (dev default); bit-identical to pre-TOP-01 output when false.
+
+**Evidence:** composed-transform pixel identity (≥64 samples, ≥16 atoms,
+both directions, independently-loaded facade, ±1-texel tolerance, 0
+mismatches — run red against the pre-fix unsheared T first, confirmed
+failing, per red-before-green discipline); marker-facade slope witness
+(white row line crosses a diamond at screen slope −1/2, both directions);
+top-overlap byte-identity (≥500 px, 0 mismatches, same construction
+argument as the side-face overlap-identity check); full regression suite
+green (`bake_fix_02` 3/3, `09` 5/5, `11` 7/7 — 0/9,437,184 alpha mismatches,
+`12` 10/10, `selftest` 19/19). Director visual ratification: TEXTURES tops
+read as one continuous slab flowing through junction corners.
+
+**Milestone-closure state (2026-07-11):** `MULTIPLY` set as the shipped dev
+default blend mode (was `TEXTURE_ONLY`) per the Director's ratified canon —
+`BakeConfig.blend_mode` static default and the local `bake_config.cfg`
+override both updated; `MULTIPLY_LUMA_LIFT = 0.25` still compensates the
+darkening. `TOP_TEXTURE_MASTER_PLAN.md` Parts 1–2 close here; Part 3
+(textured interiors) stays open, blocked on the destruction system.

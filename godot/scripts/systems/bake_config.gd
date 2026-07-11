@@ -12,9 +12,12 @@ class_name BakeConfig
 static var enabled: bool = true
 
 ## Blend mode for composite (material × facade)
-## DEV DEFAULT = TEXTURE_ONLY (same ratification as above).
+## DEV DEFAULT = MULTIPLY, ratified by the Director 2026-07-10 as the blend
+## canon: preserves each voxel's original material color under the facade
+## detail (see MULTIPLY_LUMA_LIFT in bake_compositor.gd for the brightness
+## compensation). Superseded the earlier TEXTURE_ONLY dev default.
 enum BlendMode { MULTIPLY, TEXTURE_ONLY, MATERIAL_ONLY, OVERLAY_EXPERIMENTAL, LINEAR_LIGHT }
-static var blend_mode: BlendMode = BlendMode.TEXTURE_ONLY
+static var blend_mode: BlendMode = BlendMode.MULTIPLY
 
 ## Feature toggles
 static var theme_enabled: bool = true

@@ -625,24 +625,24 @@ func _get_material_registry():
 	return null
 
 
-## FNV-1a 64-bit hash for cache key (BAKE-CACHE-01)
-## Returns hex string to avoid signed integer overflow
+## FNV-1a 32-bit hash for cache key (BAKE-CACHE-01).
+## OVERLORD cleanup (2026-07-11): this used to be a home-grown XOR/shift
+## function *labeled* "FNV-1a" that was not FNV-1a (no multiply by the FNV
+## prime) — a second, fake hash implementation living beside the real,
+## B4-tested one in `FacadeSampler._fnv1a_hash()`. B4 pins FNV-1a
+## determinism project-wide; a differently-named non-FNV hash calling
+## itself FNV-1a is exactly the kind of drift that invariant exists to
+## prevent. Same constants as the canonical implementation (offset basis
+## 2166136261, prime 16777619) — one algorithm in the codebase, not two,
+## just inlined here because it operates on bytes, not a String.
+## Returns hex string; 32-bit key space is ample for a page-count cache.
 func _fnv1a_64(data: PackedByteArray) -> String:
-	# Use high precision by tracking as two 32-bit halves
-	var fnv_offset_hi := 0xCBF29CE4  # High 32 bits of FNV-1a 64-bit offset basis
-	var fnv_offset_lo := 0x84222325  # Low 32 bits
-	
-	for byte in data:
-		# XOR with byte (only affects low 32 bits)
-		fnv_offset_lo ^= byte
-		# Multiply by FNV prime using 32×32→64 multiplication
-		# This is simplified: just XOR and shift for a fast hash
-		fnv_offset_lo = ((fnv_offset_lo << 8) ^ fnv_offset_lo) & 0xFFFFFFFF
-	
-	# Convert to hex string
-	var hash_hi := "%08x" % fnv_offset_hi
-	var hash_lo := "%08x" % fnv_offset_lo
-	return hash_hi + hash_lo
+	var hash_val: int = 2166136261  # FNV offset basis (canon: facade_sampler.gd)
+	var fnv_prime: int = 16777619
+	for byte_val in data:
+		hash_val ^= byte_val
+		hash_val = (hash_val * fnv_prime) & 0xFFFFFFFF
+	return "%08x" % hash_val
 
 ## Get cache key for a page: FNV-1a hash of facade bytes + material + dir + version
 func _get_disk_cache_key(facade: Image, material_id: String, dir: int) -> String:

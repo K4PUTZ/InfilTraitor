@@ -136,7 +136,15 @@ section.
   Operator does not write here.
 - **`PROMPTS/DONE/`** — Matt-curated archive of prompts he's decided are
   closed, plus every session summary (`RESUMO_SESSAO_*.md`). The Operator
-  and the Overlord do not write, move, or delete anything here.
+  and the Overlord do not write, move, or delete anything here — **this
+  explicitly includes bulk reorganization** (subfolders, renames, "cleanup"
+  passes), not just single-file edits. Incident (2026-07-10): a commit
+  reorganizing `DONE/` into topic subfolders (`BAKE/`, `SLICE/`, …) as
+  renames silently dropped six `RESUMO_SESSAO_*.md` files with no
+  corresponding move — invisible in a stat summary that reads as "just
+  renames," recovered from git history at the next milestone closure. If a
+  reorganization of `DONE/` is ever genuinely warranted, propose it to Matt;
+  do not execute it inside an unrelated feature commit.
 - **`PROMPTS/AUDITS/`** — standalone verification/audit documents, reserved
   for the audit-trigger cases in `OVERLORD_CONTEXT.md` (blocking bug,
   contradicted sample, Director request). Routine per-prompt verification
@@ -380,5 +388,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.5.6 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.6.0 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->

@@ -399,6 +399,49 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
+### 🟡 VOX-BAKE-01 — Voxel Facade Baking System — PARTIALLY COMPLETE
+
+**Objective:** Bake real facade textures onto voxel walls (side faces + tops)
+with correct isometric projection, replacing flat material-color rendering,
+without per-frame procedural cost (D12).
+
+**Dependencies:** Voxel wall system (SLICE-02), texture resolver, material
+registry.
+
+**Status:** 🟡 Wall + top facades complete and Director-ratified
+(`verified/v0.6.0`, "Alpha Top Texture", 2026-07-11). **Textured interiors
+(destruction reveal) explicitly blocked on the destruction system, which has
+no implementation plan yet** — this milestone does not close until that part
+lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
+
+**Deliverables (done):**
+- Continuous-plane facade model: wall side-faces render real material
+  textures (stone, concrete, metal, wood) with correct isometric shear,
+  seamless across atoms and through junction corners (`OVERLORD-FIX-01/02`)
+- Horizontal "laje" tops: voxel tops project the same facade files through
+  the diamond-plane transform, seamless with the sides (`TOP-SHEAR-01` /
+  `TOP-CROP-02` / `TOP-JUNCTION-03`)
+- MULTIPLY blend canon (preserves material color under facade detail);
+  MATERIAL_ONLY/TEXTURE_ONLY as alternates; LINEAR_LIGHT/OVERLAY parked
+  (render as TEXTURE_ONLY, logged) pending LUT variants
+- Content-addressed disk cache for baked pages (`BAKE-CACHE-01`) — cold
+  bake ~0.4–1.2 s; warm-boot budget (target ≤150 ms, measured ~730–770 ms,
+  PNG-decode-bound) is a known open item, not blocking
+- B3 (alpha-from-canon) closed with 0-mismatch evidence at both wall and
+  page-composition granularity
+
+**Deferred (Part 3, blocked):**
+- Textured interiors / destruction-reveal substrate (512-atom local-period
+  dictionary per material; D-TT3/D-TT4 ratified in direction, not built)
+- Multi-GU volume tops (only single-voxel slice/junction tops ship)
+
+**Validation:**
+- Full bake test suite green (`bake_fix_02/09/11/12`, `bake_selftest`,
+  `bake_cache_test`) — see `docs/technical/BAKE_SYSTEM_REFERENCE.md`
+- Director visual ratification at `verified/v0.5.0`, `v0.5.1`, `v0.6.0`
+
+---
+
 ## Queued Milestones
 
 ---

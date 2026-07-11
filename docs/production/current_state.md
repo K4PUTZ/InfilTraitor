@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.7.0 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.7.1 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -25,7 +25,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 98
+- GDScript modules: 100
 - Test scripts: 30
 - Known maps: 3
 - Shipped facade files: 0
@@ -35,11 +35,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- e105f47 [TOP-JUNCTION-04] Fix: junction column vertical seam (raw col vs folded col in shear)
 - 3496d96 [INPUT-01-c] Fix: real signal-firing evidence for all 18 InputController actions
 - bea33d0 [PANEL-01-b] Fix: real background-slot swap evidence + removed triple-quote docstrings
 - e9e3322 [INPUT-01-b] Fix: InputController now dispatches via InputMap actions, not raw keycodes
 - 3bf9a43 [PANEL-01] Create PanelBase/WindowBase UI foundation, standalone test proof
-- 48fbc6f [INPUT-01] Add Input Map actions + InputController dispatcher. No behavior change.
 <!-- AUTO:END version_history -->
 
 ---

@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://duy550oaob6a1" path="res://godot/scripts/navigation/path_preview.gd" id="6_path"]
 [ext_resource type="Script" uid="uid://bwemylf6mflmh" path="res://godot/scripts/agents/agent.gd" id="7_agent"]
 [ext_resource type="Script" uid="uid://dtaggpell6shx" path="res://godot/scripts/ui/fog_of_war_overlay.gd" id="8_fow"]
+[ext_resource type="Script" uid="uid://t0pbarpa4nls" path="res://godot/scripts/ui/top_bar_panel.gd" id="10_topbar"]
+[ext_resource type="Script" uid="uid://enemybnrpnl0" path="res://godot/scripts/ui/enemy_banner_panel.gd" id="11_enemybnr"]
 [ext_resource type="Shader" uid="uid://cjrlwjb5rnhgd" path="res://godot/shaders/vision_fog.gdshader" id="9_vfog"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vfog"]
@@ -79,6 +81,7 @@ mouse_filter = 2
 [node name="HUD" type="CanvasLayer" parent="." unique_id=979929563]
 
 [node name="TopBar" type="PanelContainer" parent="HUD" unique_id=2073143929]
+script = ExtResource("10_topbar")
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 404.0
@@ -234,6 +237,7 @@ tooltip_text = "East perspective"
 text = "E"
 
 [node name="EnemyTurnBanner" type="PanelContainer" parent="HUD" unique_id=1600003010]
+script = ExtResource("11_enemybnr")
 visible = false
 anchors_preset = 12
 anchor_top = 1.0

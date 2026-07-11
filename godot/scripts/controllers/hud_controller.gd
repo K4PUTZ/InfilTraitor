@@ -1,8 +1,9 @@
 extends Node
 ## HudController — Manages all UI wiring: buttons, labels, banners, checkboxes.
 ##
-## The @onready nodes remain in room.gd. This controller receives references
-## in setup() and emits signals for user actions.
+## HUD-PANEL-01 refactor: This controller now delegates to TopBarPanel and
+## EnemyBannerPanel (if present) while maintaining backward compatibility
+## with direct node access. The @onready nodes remain in room.gd.
 ##
 ## room.gd connects to this controller's signals and runs the gameplay logic.
 
@@ -24,6 +25,10 @@ var _busted_dialog: Control
 var _enemy_turn_banner: Control
 var _lbl_end_turn: Label
 var _lbl_enemy_turn: Label
+
+# Panel references (populated in setup() if panels exist)
+var _top_bar_panel: Control = null
+var _enemy_banner_panel: Control = null
 
 ## Cached so the labels can be rebuilt verbatim when the language changes.
 var _ap_current: int = 0
@@ -48,6 +53,14 @@ func setup(refs: Dictionary) -> void:
 	_enemy_turn_banner = refs.get("enemy_turn_banner")
 	_lbl_end_turn = refs.get("lbl_end_turn")
 	_lbl_enemy_turn = refs.get("lbl_enemy_turn")
+	
+	# HUD-PANEL-01: Capture panel references if they exist (new architecture)
+	if _enemy_turn_banner:
+		_enemy_banner_panel = _enemy_turn_banner.get_parent() if _enemy_turn_banner.get_parent() else _enemy_turn_banner
+		# If the node itself is a panel (has open/close methods), use it
+		if _enemy_turn_banner.has_method("open"):
+			_enemy_banner_panel = _enemy_turn_banner
+	
 	_connect_buttons()
 	_apply_static_text()
 	## Fetched via tree path (dynamic) so it resolves regardless of autoload
@@ -79,13 +92,19 @@ func update_alert(pct: float) -> void:
 
 ## Shows the enemy-turn banner
 func show_enemy_banner() -> void:
-	if _enemy_turn_banner:
+	# Delegate to panel if available (HUD-PANEL-01 refactor)
+	if _enemy_banner_panel and _enemy_banner_panel.has_method("show_banner"):
+		_enemy_banner_panel.show_banner()
+	elif _enemy_turn_banner:
 		_enemy_turn_banner.visible = true
 
 
 ## Hides the enemy-turn banner
 func hide_enemy_banner() -> void:
-	if _enemy_turn_banner:
+	# Delegate to panel if available (HUD-PANEL-01 refactor)
+	if _enemy_banner_panel and _enemy_banner_panel.has_method("hide_banner"):
+		_enemy_banner_panel.hide_banner()
+	elif _enemy_turn_banner:
 		_enemy_turn_banner.visible = false
 
 

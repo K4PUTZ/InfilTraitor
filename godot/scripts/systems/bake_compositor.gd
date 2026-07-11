@@ -96,6 +96,7 @@ var _diamond_overlays: Dictionary = {}     # material_id → Image (top-face pai
 var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
 var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image} (horizontal planes, TOP-01-b)
 var _plane_top_reverse_map: Dictionary = {} # facade_id|dir → Image (encodes cell_index for each pixel)
+var _plane_top_cell_bounds: Dictionary = {} # facade_id|dir → {col|row: bounds_dict}
 var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
 
 func _init() -> void:
@@ -110,6 +111,7 @@ func clear_cache() -> void:
 	_plane_cache.clear()
 	_plane_top_cache.clear()
 	_plane_top_reverse_map.clear()
+	_plane_top_cell_bounds.clear()
 	_page_cache.clear()
 	print("[BAKE] Session cache cleared")
 
@@ -459,13 +461,17 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 
 	# Create reverse map (tracks which cell each pixel comes from)
 	# Encode as R=col, G=row for easy retrieval
+	# Also initialize bounds tracking for each cell
 	var source_map := Image.create(PLANE_W, total_h, false, Image.FORMAT_RGBA8)
+	var cell_bounds: Dictionary = {}
+	
 	for row in range(SHEET_ROWS):
 		for col in range(SHEET_COLS):
 			var u0: int = col * 16
 			var v0: int = row * 16
 			var cell_color := Color8(col, row, 0, 255)
 			source_map.fill_rect(Rect2i(u0, v0 + V_MARGIN, 16, 16), cell_color)
+			cell_bounds["%d|%d" % [col, row]] = {"x_min": INF, "x_max": -INF, "y_min": INF, "y_max": -INF}
 
 	# Pass 1: Row-strip shear (u, v) -> (u - v + H_off, v)
 	var H_off: int = FACADE_W >> 1
@@ -484,57 +490,38 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 	var plane_map := Image.create(PLANE_W, pass1_h + (PLANE_W >> 1), false, Image.FORMAT_RGBA8)
 	
 	for x in range(0, PLANE_W, 2):
-		plane.blit_rect(pass1, Rect2i(x, 0, 2, pass1_h), Vector2i(x, x >> 1))
-		plane_map.blit_rect(pass1_map, Rect2i(x, 0, 2, pass1_h), Vector2i(x, x >> 1))
+		var y_shift = x >> 1
+		plane.blit_rect(pass1, Rect2i(x, 0, 2, pass1_h), Vector2i(x, y_shift))
+		plane_map.blit_rect(pass1_map, Rect2i(x, 0, 2, pass1_h), Vector2i(x, y_shift))
+	
+	# Final pass: scan plane_map to find actual bounds for each cell
+	var plane_h = plane_map.get_height()
+	var plane_w = plane_map.get_width()
+	for py in range(plane_h):
+		for px in range(plane_w):
+			var cell_pixel = plane_map.get_pixel(px, py)
+			var col = int(cell_pixel.r * 255)
+			var row = int(cell_pixel.g * 255)
+			if col < SHEET_COLS and row < SHEET_ROWS:
+				var bounds_key = "%d|%d" % [col, row]
+				if cell_bounds.has(bounds_key):
+					var b = cell_bounds[bounds_key]
+					b["x_min"] = mini(b["x_min"], px)
+					b["x_max"] = maxi(b["x_max"], px)
+					b["y_min"] = mini(b["y_min"], py)
+					b["y_max"] = maxi(b["y_max"], py)
 
 	if not _plane_top_cache.has(facade_id):
 		_plane_top_cache[facade_id] = {}
 	_plane_top_cache[facade_id][dir] = plane
 	
-	# Store reverse map for later lookup
+	# Store reverse map and computed bounds for later lookup
 	var map_key: String = "%s|%d" % [facade_id, dir]
 	_plane_top_reverse_map[map_key] = plane_map
-	
-	# Debug: compute and log bounds for first few cells
-	_compute_and_cache_cell_bounds(map_key, plane_map)
+	_plane_top_cell_bounds[map_key] = cell_bounds
 	
 	return plane
 
-## Compute cell bounds from reverse map (iterates pixels to find min/max per cell)
-func _compute_and_cache_cell_bounds(_map_key: String, plane_map: Image) -> Dictionary:
-	var bounds_dict: Dictionary = {}
-	var plane_w = plane_map.get_width()
-	var plane_h = plane_map.get_height()
-	
-	# Initialize bounds for all cells
-	for row in range(SHEET_ROWS):
-		for col in range(SHEET_COLS):
-			bounds_dict["%d|%d" % [col, row]] = {"x_min": plane_w, "x_max": -1, "y_min": plane_h, "y_max": -1}
-	
-	# Scan pixels and track bounds
-	for py in range(plane_h):
-		for px in range(plane_w):
-			var cell_pixel = plane_map.get_pixel(px, py)
-			var cell_col = int(cell_pixel.r * 255)
-			var cell_row = int(cell_pixel.g * 255)
-			
-			if cell_col < SHEET_COLS and cell_row < SHEET_ROWS:
-				var bounds = bounds_dict["%d|%d" % [cell_col, cell_row]]
-				bounds["x_min"] = mini(bounds["x_min"], px)
-				bounds["x_max"] = maxi(bounds["x_max"], px)
-				bounds["y_min"] = mini(bounds["y_min"], py)
-				bounds["y_max"] = maxi(bounds["y_max"], py)
-	
-	# Convert to Rect2i and store
-	var result: Dictionary = {}
-	for key in bounds_dict:
-		var b = bounds_dict[key]
-		if b["x_max"] >= b["x_min"]:  # Valid bounds
-			result[key] = Rect2i(b["x_min"], b["y_min"], b["x_max"] - b["x_min"] + 1, b["y_max"] - b["y_min"] + 1)
-		else:
-			result[key] = Rect2i(0, 0, 0, 0)  # Empty
-	
-	return result
 
 
 func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, dir: int, base_color: Color) -> Dictionary:
@@ -568,33 +555,20 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 			
 			# TOP-01-b: If facade_tops enabled, composite top face + side face
 			if plane_top != null:
-				# Use reverse map to find sheared cell position
+				# Use pre-computed bounds from reverse map tracking
 				var map_key: String = "%s|%d" % [facade_id, dir]
-				var reverse_map: Image = _plane_top_reverse_map.get(map_key)
+				var cell_bounds_dict = _plane_top_cell_bounds.get(map_key)
+				var bounds_key = "%d|%d" % [col, row]
 				
-				if reverse_map != null:
-					# Find pixels in reverse_map that encode this cell
-					var x_min: int = plane_top.get_width()
-					var x_max: int = -1
-					var y_min: int = reverse_map.get_height()
-					var y_max: int = -1
-					
-					# Scan reverse_map for this cell's pixels
-					for py in range(reverse_map.get_height()):
-						for px in range(reverse_map.get_width()):
-							var map_pixel = reverse_map.get_pixel(px, py)
-							var map_col = int(map_pixel.r * 255)
-							var map_row = int(map_pixel.g * 255)
-							if map_col == col and map_row == row:
-								x_min = mini(x_min, px)
-								x_max = maxi(x_max, px)
-								y_min = mini(y_min, py)
-								y_max = maxi(y_max, py)
-					
-					if x_max >= x_min and y_max >= y_min:
+				if cell_bounds_dict != null and cell_bounds_dict.has(bounds_key):
+					var b = cell_bounds_dict[bounds_key]
+					# Check if bounds are valid (were set during _get_plane_top)
+					if b["x_min"] <= b["x_max"] and b["y_min"] <= b["y_max"]:
 						# Extract top face from sheared region
-						var src_w: int = mini(x_max - x_min + 1, VOXEL_ATOM_W)
-						var src_h: int = mini(y_max - y_min + 1, 16)
+						var x_min = int(b["x_min"])
+						var y_min = int(b["y_min"])
+						var src_w: int = mini(int(b["x_max"]) - x_min + 1, VOXEL_ATOM_W)
+						var src_h: int = mini(int(b["y_max"]) - y_min + 1, 16)
 						atom_content.blit_rect(plane_top, Rect2i(x_min, y_min, src_w, src_h), Vector2i(0, 0))
 				
 				# Side face: 32×20 crop from plane, paste at atom y=16

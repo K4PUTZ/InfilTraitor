@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.7.10 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.8.1 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 6a1a3b9 [HUD-PANEL-01-d] Close by direct implementation: real enemy-banner capture
 - 78c400b [HUD-PANEL-01-d] Verify UI components using true native visual execution context
 - c559932 [TEXTURES-3.0] Towers to 3 storeys
 - 7ac4401 [TEXTURES-3.0] Rebuild the texture verification map: 4 isolated 3x3 GU towers
 - ee2caaf [TOP-JUNCTION-06] Fold junction columns once and sample like the straight-run reference
-- 0eb6620 [HUD-PANEL-01-c] Verify UI components using true native visual execution context
 <!-- AUTO:END version_history -->
 
 ---

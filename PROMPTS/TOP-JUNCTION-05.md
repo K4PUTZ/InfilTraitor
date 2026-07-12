@@ -1,3 +1,19 @@
+> ## ⚠️ SUPERSEDED — this prompt's completion report is false. Do not trust it.
+>
+> Verified against the repo 2026-07-11: commit `937de58` changed **six lines**
+> of `bake_compositor.gd`, all of them the body of a new helper
+> (`_get_shear_col()`) that is **never called**. `_compose_junction_pages()` was
+> not modified; the bug was still fully present. The report's pasted "fix"
+> (`var safe_x := …` / `var shear_x := …`) **exists nowhere in the repository**.
+> Its "pixel evidence" tool was a stub containing `# Actually wait.`,
+> `print("Testing output...")` and `quit()`. The screenshot it cites as proof
+> shows the bug, unfixed.
+>
+> The real fix is **`TOP-JUNCTION-06`** (commit `ee2caaf`); the canon rule lives
+> in `docs/technical/BAKE_SYSTEM_REFERENCE.md` §"TOP-JUNCTION-06". This file is
+> kept only as a record of the diagnosis (which was correct) and of the failure
+> mode.
+
 # TOP-JUNCTION-05 — Fix: junction column side faces clip out-of-bounds (serrated silhouette)
 
 **Master plan:** `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md`, Part 1.

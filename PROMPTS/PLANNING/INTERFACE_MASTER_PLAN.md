@@ -2,12 +2,33 @@
 ## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.0
 
 **Status:** 🟡 IN PROGRESS. Baseline: `verified/v0.6.4`. Wave 1 (`INPUT-01`,
-`PANEL-01`) and Wave 2 (`HUD-PANEL-01`) landed 2026-07-11, each after one or
-more evidence correctives (see §5 "As Executed"). Wave 3 (`PAUSE-MENU-01`)
-not started. No `verified/` tag cut yet for this plan's progress —
-`main` is ahead of the last tag (`v0.6.4`) with this work plus
-`SCREENSHOT-HOOK-01` (process infrastructure, not part of this plan) and
-`TOP-JUNCTION-04`/`-05` (separate plan). Director's call on when to tag.
+`PANEL-01`) ✅ CLOSED and Wave 2 (`HUD-PANEL-01`) ✅ **CLOSED 2026-07-11**, each
+after several evidence correctives (see §5 "As Executed"). Wave 3
+(`PAUSE-MENU-01`) not started. No `verified/` tag cut yet for this plan's
+progress — `main` is ahead of the last tag (`v0.6.4`) with this work plus
+`SCREENSHOT-HOOK-01` (process infrastructure, not part of this plan) and the
+`TOP-JUNCTION-06` / `TEXTURES-3.0` work (separate plan). Director's call on
+when to tag.
+
+**Wave 2 closure (HUD-PANEL-01-d, Overlord direct, commit `6a1a3b9`).** The
+migration is confirmed working *in pixels*, not just by code read: `PanelBase`
+carries the TopBar and the EnemyTurnBanner; the banner shows and hides on a real
+phase transition; the AP field re-labels to `ENEMIES`; the Busted overlay
+renders. Three captures, three distinct hashes, three visibly different states.
+
+Two facts worth carrying into Wave 3:
+
+- **The enemy-phase banner renders as a bar across the BOTTOM of the screen**
+  (not top-centre, as two successive reports asserted). Any Pause Menu layout
+  must not collide with it.
+- **A transient HUD state cannot be verified by a plain boot capture.** The
+  auto-screenshot process now supports `INFILTRAITOR_CAPTURE_ACTION=end_turn`
+  (`room.gd::_run_auto_screenshot_capture()`), which really ends the player's
+  turn and waits, so the capture lands while the enemy phase is on screen. It
+  **requires a guarded map** (`SIGMA_01`) — on a guardless map like TEXTURES the
+  enemy phase resolves within one frame and the banner is gone before any
+  capture can see it. Use this for any Wave 3 criterion that involves a menu
+  animating in or out.
 
 ---
 

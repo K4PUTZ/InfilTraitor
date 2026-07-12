@@ -2,12 +2,70 @@
 ## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
 
 **Status:** Parts 1 & 2 ✅ CLOSED 2026-07-11 (Director visual ratification,
-"ALPHA TOP TEXTURE" checkpoint). **Part 3 remains explicitly BLOCKED** on the
-destruction system (no implementation plan exists yet) — this master plan
-stays open at Part 3 only; do not archive it. As-built bake canon:
-`docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02.
+"ALPHA TOP TEXTURE" checkpoint). Part 1 was **reopened and re-closed the same
+day** for the junction-column regression — see "Part 1 reopening" below.
+**Part 3 remains explicitly BLOCKED** on the destruction system (no
+implementation plan exists yet) — this master plan stays open at Part 3 only;
+do not archive it. As-built bake canon:
+`docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02 and
+§"TOP-JUNCTION-06".
 **Baseline:** tag `verified/v0.5.1` ("Alpha Walls Textured") →
 `verified/v0.6.0` ("Alpha Top Texture").
+
+### Part 1 reopening — junction columns (TOP-JUNCTION-04 → 06), CLOSED 2026-07-11
+
+The Director found, by manually inspecting a screenshot after Part 1 was marked
+closed, that junction columns rendered with a **serrated silhouette** (only the
+top faces solid) and, elsewhere, with **displaced** side faces. Both traced to a
+single root cause and are now fixed (`TOP-JUNCTION-06`, Overlord direct
+implementation, commit `ee2caaf`):
+
+`_compose_junction_pages()` used the raw, unbounded run-axis projection of a
+junction voxel (`col_x`/`col_y`, built by `room_builder.gd` per OVERLORD-FIX-02
+— correct by design) directly as a pixel offset into the 1056 px plane image.
+`Image.blit_rect` **silently clips** an out-of-range source rect, so a
+half-face either baked blank (serration) or, at `col == 64`, read the mirrored
+wrap strip at the wrong shear (displacement).
+
+**The fix is reference-consistency, not a clamp.** `_compose_sheet_page()` —
+the straight-run path — uses the *same in-range column* in both the horizontal
+crop and the shear term, and a straight-run neighbour at distance `d` samples
+`_mirror_index_1d(d, 64)`. A junction at distance `d` must sample that same
+folded column to be continuous with its own neighbours; bounds-safety then
+falls out for free (folded < 64 ⇒ source x ≤ 1024 < `PLANE_W`). This
+**subsumes TOP-JUNCTION-04**, whose insight ("the same value in both terms")
+was right but was satisfied with the *raw* value — self-consistent yet
+unbounded.
+
+Evidence (real bake, real map): junctions with blank side pixels **24/32 → 0**
+real (the only survivors are the single `(0,7)` alpha-4/255 AA pixel that
+`_compose_sheet_page()` produces identically on every straight run). Screenshot
+diff: 4 056 changed pixels, confined to exactly the two reported columns.
+
+**Two process notes worth keeping.** (a) `TOP-JUNCTION-05` shipped a completion
+report whose pasted "fix" existed nowhere in the repo — its only code change
+was a helper (`_get_shear_col()`) that was never called. Do not trust that
+prompt's report; `TOP-JUNCTION-06` supersedes it. (b) The "displaced cement
+columns" the Director reported *after* the fix turned out **not to be a code
+defect at all** — the junction columns were correct. It was the TEXTURES map's
+own layout (see `TEXTURES-3.0` below).
+
+### TEXTURES map rebuilt to 3.0 (2026-07-11)
+
+The 2.0 fixture was actively misleading: its four nested V-pairs were all
+`storeys: 4`, each sitting 2 GU nearer the camera than the last — so in
+isometric each nearer V's equal-height top rendered *lower* on screen and
+exposed the one behind it, reading as "the concrete walls are shorter". And its
+perimeter blocks were 2 GU thick, which extracts walls on both faces, reading as
+"the outer wall has two layers at different heights". Both were pure layout.
+
+3.0: 1 GU thick concrete perimeter + four isolated 3×3 GU towers (stone,
+concrete, metal, wood), 3 storeys, clustered so all four are in frame at once.
+**The 26 GU perimeter runs are kept deliberately** — they are the project's only
+long runs and the only thing that drives junction column indices past the plane
+width (`col_x` up to 208), i.e. the only thing that exercises the
+TOP-JUNCTION-06 case. A fixture of 3×3 towers alone would silently stop testing
+it.
 
 ---
 

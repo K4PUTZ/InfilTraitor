@@ -581,3 +581,100 @@ default blend mode (was `TEXTURE_ONLY`) per the Director's ratified canon —
 override both updated; `MULTIPLY_LUMA_LIFT = 0.25` still compensates the
 darkening. `TOP_TEXTURE_MASTER_PLAN.md` Parts 1–2 close here; Part 3
 (textured interiors) stays open, blocked on the destruction system.
+
+---
+
+## TOP-JUNCTION-06 — Junction columns sample the folded column (2026-07-11, Overlord direct)
+
+**This is the canon rule for junction half-face sampling. It supersedes
+TOP-JUNCTION-04 and TOP-JUNCTION-05.**
+
+### The rule
+
+A junction column's two half-faces are cropped from their legs' plane images at
+the **mirrored-repeat–folded** column index, and that single folded value is used
+in **both** the horizontal crop offset and the vertical shear term:
+
+```gdscript
+var col_x := _mirror_index(raw_col_x, SHEET_COLS)   # SHEET_COLS = 64
+var col_y := _mirror_index(raw_col_y, SHEET_COLS)
+var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + col_x * 8 + V_MARGIN
+atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
+var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
+atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
+```
+
+### Why — and why this is not a clamp
+
+`_compose_sheet_page()` (the straight-run path, shipping and Director-ratified)
+is the reference. It uses the **same in-range `col`** in `x0` and in `y0`, and
+that `col` is inside `[0, SHEET_COLS)` by construction. The shear term is a
+function of *the texture column being sampled*, not of physical distance along
+the wall — the plane image `P` already has the shear baked in per column
+(`_get_plane()`: `shift = x >> 1`).
+
+A straight-run neighbour at distance `d` along the run samples
+`_mirror_index_1d(d, 64)` (`BakedTileLookup._compute_facade_key`). Therefore a
+junction column at distance `d` **must sample that same folded column** to be
+seam-continuous with its own neighbours. Bounds-safety is a *consequence*, not
+the goal: folded ∈ `[0, 64)` ⇒ source x ∈ `[0, 1024]` ⇒ always inside
+`PLANE_W = 1056`.
+
+### What went wrong before (and the trap to remember)
+
+`room_builder.gd` projects a junction onto its leg's run axis as an **unbounded**
+distance (`col_x`/`col_y`, OVERLORD-FIX-02 — correct by design). Feeding that raw
+value straight into `blit_rect` as a pixel offset produced two distinct on-screen
+defects from one cause:
+
+| raw col | source x | on-screen |
+|---|---|---|
+| `-1`, or `≥ 66` | outside `[0, 1056)` | half-face **blank** → serrated column, only tops visible |
+| `64` | `1024` — lands *inside* the 32 px mirrored wrap margin | half-face reads the wrap strip at the wrong shear → **displaced** column |
+
+**`Image.blit_rect` silently clips an out-of-range source rect.** No error, no
+warning — a direct violation of B6 (loud-fail) at the Godot API boundary, and the
+reason this shipped unnoticed through two "PASSED" prompts. Any new code that
+computes a `Rect2i` into a plane image from map-derived data must bound it
+explicitly or fold it, and should assert.
+
+TOP-JUNCTION-04's insight — "the same value must appear in the crop and the shear
+term" — was correct, but it satisfied that with the *raw* value: self-consistent,
+yet unbounded and not what the neighbours sample. Folding satisfies the same
+constraint, matches the neighbours, and is bounds-safe.
+
+### Verification (real bake, real map, real pixels)
+
+- Junctions with blank side pixels: **24/32 → 0** real.
+  The only survivors are the single atom pixel `(0, 7)`, canonical alpha
+  `4/255`, on `col == 0` atoms — and `_compose_sheet_page()` produces that exact
+  pixel on every straight run (64 occurrences in one TEXTURES bake). Junctions
+  now **match the shipping reference** rather than deviating from it; this pixel
+  is a pre-existing, universal, sub-visible AA artifact and is out of scope.
+- Screenshot diff before/after: 4 056 changed pixels, confined to exactly the two
+  defective columns. No collateral change.
+- Junction materials verified, not assumed: all 32 satisfy
+  `jc.material == leg_a.material == leg_b.material`.
+
+### Diagnostics left in place (both gated, both earn their keep)
+
+- **`BakeConfig.debug_bake_set_dump`** now also prints, per junction:
+  the projected `col_x`/`col_y`, the resulting source x for each half-face, and
+  whether both land inside the plane (`in_plane`); plus a `blank_side_px` count
+  of pixels the canonical silhouette says are solid but that no plane crop
+  reached. A non-zero `blank_side_px` beyond the `(0,7)` baseline means a crop is
+  falling outside the plane again.
+- **`INFILTRAITOR_SKIP_JUNCTIONS=1`** (`VoxelRenderer.render()`) renders a map
+  with the filler columns omitted. Diffing two captures isolates exactly which
+  screen pixels belong to junction columns — the only cheap way to answer "is
+  this column doing anything?" for a given map.
+
+### Junction columns are NOT map artifacts — do not try to delete them
+
+Established while chasing an apparent "displaced column" defect that turned out
+to be map layout: `JunctionResolver` emits a filler column at **every** elbow, in
+every map — TEXTURES 32, SIGMA_01 24, PLAYGROUND 23, TEST_BLOCKS 4 — placed one
+cell diagonally out from the elbow, on a voxel that is **never** already occupied
+by a wall voxel (0 redundant across all four maps). In SIGMA they fill real
+notches at the wall elbows and are invisible because the material matches. They
+are load-bearing. Turning the feature off would break SIGMA.

@@ -148,30 +148,30 @@ Enable with `debug_bake_set_dump=true` in `user://bake_config.cfg`.
 
 ## File Locations (Baking System)
 
-**Source modules:**
-- `res://godot/scripts/systems/texture_resolver.gd`
-- `res://godot/scripts/systems/per_face_projector.gd`
-- `res://godot/scripts/systems/facade_sampler.gd`
-- `res://godot/scripts/systems/material_registry.gd`
-- `res://godot/scripts/systems/bake_compositor.gd`
-- `res://godot/scripts/systems/baked_tile_lookup.gd`
-- `res://godot/scripts/systems/bake_config.gd`
-- `res://godot/scripts/systems/theme_applier.gd`
-- `res://godot/scripts/systems/stone_pattern.gd`
-- `res://godot/scripts/systems/wood_pattern.gd`
-- `res://godot/scripts/systems/metal_pattern.gd`
-- `res://godot/scripts/systems/material_atlas_generator.gd`
+> **Verified against the tree on 2026-07-12.** Every path below exists. The previous
+> version of this list named `per_face_projector.gd`, `material_atlas_generator.gd`,
+> `per_face_projector_test.gd`, `material_registry_test.gd` and `bake_compositor_test.gd`
+> — **none of which were in the repo.** If you add a module, add it here; if a path here
+> does not resolve, that is a bug in this doc, not a missing file.
+
+**Source modules** (`res://godot/scripts/systems/`):
+- `texture_resolver.gd` · `facade_sampler.gd` · `material_registry.gd`
+- `bake_compositor.gd` · `baked_tile_lookup.gd` · `bake_config.gd`
+- `theme_applier.gd` · `stone_pattern.gd` · `wood_pattern.gd` · `metal_pattern.gd`
 
 **Debug & Test:**
 - `res://godot/scripts/debug/theme_matrix_debug_view.gd`
-- `res://godot/scripts/tools/bake_selftest.gd`
+- `res://godot/scripts/tools/bake_selftest.gd` — **the standing bake gate**
 - `res://godot/scripts/tools/resolver_hardening_tests.gd`
-- `res://godot/scripts/tools/per_face_projector_test.gd`
-- `res://godot/scripts/tools/facade_sampler_test.gd`
-- `res://godot/scripts/tools/material_registry_test.gd`
-- `res://godot/scripts/tools/bake_compositor_test.gd`
 - `res://godot/scripts/tools/texture_resolver_selftest.gd`
-- `res://godot/scripts/tools/theme_matrix_debug_test.gd`
+- `res://godot/scripts/tools/bake_cache_test.gd` — acceptance gate for BAKE-CACHE-01
+
+> **One-off tools purged 2026-07-12.** The `bake_fix_*` / `fix_bake_*` /
+> `block_01*` / `*_verification` scripts cited elsewhere in this document were
+> per-prompt evidence tools, not standing gates. They were deleted (33 scripts,
+> ~5,900 lines). **Their findings, recorded in this document, stand** — the tool was
+> the scaffold, the invariant is the product. `git show <sha>:godot/scripts/tools/<name>.gd`
+> recovers any of them.
 
 **Data directories:**
 - `res://textures/defaults/` — bundled default facades
@@ -504,15 +504,14 @@ brightness authority belongs to the light/shadow projection system — retune
 or zero the lift when that lands. Junction columns confirmed correct by the
 Director in the same session ("Alpha Walls Textured" checkpoint).
 
-**Legacy-test debt retired (2026-07-11, milestone closure):**
-`baked_tile_lookup_test.gd` and `block_01b_baking_e2e_test.gd` — BAKE-05-era
-tests calling APIs (`_make_bake_key`, `atlas.pages`) that no longer exist —
-moved to `godot/scripts/tools/_archive/` per `docs/technical/archive_policy.md`
-(manifest explains why, in that directory's README). Never wired into any
-lint/CI gate; their coverage is superseded by `bake_fix_02/09/11/12`,
-`bake_selftest`, `bake_cache_test` (all green). `bake_selftest.gd` pins the
-sheet canon (SHEET_COLS×SHEET_ROWS = 64×32, replacing STRIP_LENGTH = 9),
-19/19.
+**Legacy-test debt retired (2026-07-11; deleted 2026-07-12):**
+`baked_tile_lookup_test.gd` and `block_01b_baking_e2e_test.gd` were BAKE-05-era
+tests calling APIs (`_make_bake_key`, `atlas.pages`) that no longer exist. Never
+wired into any lint/CI gate; their coverage is superseded by `bake_selftest` and
+`bake_cache_test` (both green). First quarantined to `_archive/`, then deleted
+outright in the 2026-07-12 sweep — **an `_archive/` folder in a git repo is
+redundant with git.** `bake_selftest.gd` pins the sheet canon
+(SHEET_COLS×SHEET_ROWS = 64×32, replacing STRIP_LENGTH = 9), 19/19.
 
 **Disk-cache hash fix (2026-07-11):** `_fnv1a_64()` was a home-grown
 XOR/shift function mislabeled "FNV-1a" (no multiply by the FNV prime) —

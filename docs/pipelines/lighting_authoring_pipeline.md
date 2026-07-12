@@ -6,7 +6,7 @@
 - [Lighting Runtime Pipeline](../systems/lighting_runtime_pipeline.md) — Runtime behavior and invalidation (LIGHT-01)
 - [Occlusion Semantics](../systems/occlusion.md) — Structural blocking model (LIGHT-02)
 - [Lighting System](../systems/lighting.md) — Tactical visibility specification
-- [Tile Semantics](../../INFILTRAITOR/godot/scripts/world/tile_semantics.gd) — Height and structure encoding
+- [Tile Semantics](../../godot/scripts/world/tile_semantics.gd) — Height and structure encoding
 
 ---
 

@@ -351,7 +351,7 @@ These 8 rules exist by design decision and must not be broken:
 
 **Banned terms & eliminated patterns** (`SUBCUBE_*`, `WallContainer`,
 `FACE_CENTER_OFFSET`, `is_x_varying`, Kenney derivations, …):
-[DIRECTION_GLOSSARY.md §10](../docs/DIRECTION_GLOSSARY.md) is the single
+[DIRECTION_GLOSSARY.md §10](../../docs/DIRECTION_GLOSSARY.md) is the single
 authoritative list. Do not use or recreate anything on it.
 
 ### Bake Invariants (B1–B6) — compact canon
@@ -382,7 +382,7 @@ selftests and the pre-commit hook:
 Selftest CLI: `godot --headless --script godot/scripts/tools/bake_selftest.gd`.
 Full architecture, module checklist, file locations, B3 closure evidence, and
 process learnings:
-[BAKE_SYSTEM_REFERENCE.md](../docs/technical/BAKE_SYSTEM_REFERENCE.md).
+[BAKE_SYSTEM_REFERENCE.md](../../docs/technical/BAKE_SYSTEM_REFERENCE.md).
 
 ---
 
@@ -406,14 +406,14 @@ Read the linked doc before modifying that system. One essential per row.
 | Topic | Document | Essential |
 |---|---|---|
 | Grid, screen coords, voxel constants | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` from `room.gd`; never a per-height lookup table |
-| Directions, faces, banned terms | [DIRECTION_GLOSSARY.md](../docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
-| Voxel wall system | [VOXEL_MASTER_PLAN.md](../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |
-| Baking system (modules, evidence, learnings) | [BAKE_SYSTEM_REFERENCE.md](../docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
-| AI & guard behavior | [AI_MASTER_PLAN.md](../docs/systems/AI_MASTER_PLAN.md) | FSM via Rule 4; alert meter via Rule 5; guard↔guard only via signals in `room.gd` |
-| Map system | [MAP_MASTER_PLAN.md](../docs/systems/MAP_MASTER_PLAN.md) | MapSpec contract; Rule 7 (buffer only in `MapCompiler`) |
-| MAPFILE persistence (`.map.json`) | [MAPFILE_REFERENCE.md](../docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered (new feature = new section, M1–M7); unknown sections round-trip verbatim; loud-fail load, never half-loaded |
-| Lighting & visibility | [LIGHT_MASTER_PLAN.md](../docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness ≠ tactical visibility; lights come from the map |
-| Localization | [LOCALIZATION_REFERENCE.md](../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
+| Directions, faces, banned terms | [DIRECTION_GLOSSARY.md](../../docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
+| Voxel wall system | [VOXEL_MASTER_PLAN.md](../../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |
+| Baking system (modules, evidence, learnings) | [BAKE_SYSTEM_REFERENCE.md](../../docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
+| AI & guard behavior | [AI_MASTER_PLAN.md](../../docs/systems/AI_MASTER_PLAN.md) | FSM via Rule 4; alert meter via Rule 5; guard↔guard only via signals in `room.gd` |
+| Map system | [MAP_MASTER_PLAN.md](../../docs/systems/MAP_MASTER_PLAN.md) | MapSpec contract; Rule 7 (buffer only in `MapCompiler`) |
+| MAPFILE persistence (`.map.json`) | [MAPFILE_REFERENCE.md](../../docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered (new feature = new section, M1–M7); unknown sections round-trip verbatim; loud-fail load, never half-loaded |
+| Lighting & visibility | [LIGHT_MASTER_PLAN.md](../../docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness ≠ tactical visibility; lights come from the map |
+| Localization | [LOCALIZATION_REFERENCE.md](../../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
 | Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its dedicated directory |
 | File map, API surface, tuning tables | [CODEMAP.md](CODEMAP.md) | **Generated — never edit by hand, never mirror lists here.** Consult on demand |
 
@@ -470,5 +470,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.8.2 · **Updated:** 2026-07-12 · **Branch:** main
+**Version:** 0.9.0 · **Updated:** 2026-07-12 · **Branch:** main
 <!-- AUTO:END header -->

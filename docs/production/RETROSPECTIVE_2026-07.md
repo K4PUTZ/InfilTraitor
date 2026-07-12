@@ -201,3 +201,55 @@ to the pixel, which is the floor tile. Nobody designed that coincidence. It fell
 out of a model that is consistent with itself.
 
 What is missing is the playing.
+
+---
+
+## Postscript — the sweep, same day (2026-07-12)
+
+**The numbers above are left exactly as written.** §7 says not to let whoever was wrong
+rewrite the record; that applies to figures too. This is what changed a few hours later,
+appended rather than substituted.
+
+The Director ordered a cleanup. It removed **~55,500 lines across 276 files**:
+
+| | Before | After |
+|---|---:|---:|
+| GDScript, total | 26,318 | **20,807** |
+| `godot/scripts/tools/` | 9,512 (**36%**) | **4,093 (20%)** |
+| Scripts | 147 | **112** |
+
+The headline of §1 — *"more lines proving the game works than building the world"* — was
+**true but misread**. Those 9,512 lines were not an immune system. **They were 33 one-off,
+per-prompt evidence scripts** — `bake_fix_03_pixel_comparison.gd` *and*
+`bake_fix_03_pixel_comparison_tool.gd`, `fix_bake_09_e2e_test.gd` *and*
+`bake_fix_09_e2e_test.gd` — written to satisfy a completion report and never run again.
+The real immune system is small: **16 standing scripts**, and only one of them
+(`project_lint_validator.gd`) is wired into an automatic gate.
+
+### What the sweep found that no test could
+
+`geometry_selftest.gd` declared its entry point as **`func _ready()` on a `SceneTree`** —
+a callback that does not exist on that class. **The function never fired.** The script
+booted, printed nothing, and idled. It had never run once, in its entire life, and
+completion reports cited it as passing evidence.
+
+Renaming it to `_initialize()` made it execute — and it immediately threw a format-string
+error on line 133 that had sat there, unreachable, for weeks. Both fixed; it now reports
+**29/29 PASS**.
+
+**This is the crisis of §1 in its purest form, and it survived the very tools built to
+end it.** A test that cannot run is worse than no test: it is a *green light wired to
+nothing*. `SCREENSHOT-HOOK-01` taught us that a visual claim needs a pixel. The rule that
+follows: **a test claim needs an exit code.** A suite nobody executes is documentation
+that lies.
+
+Nothing was archived. It was **deleted** — a `_archive/` folder inside a git repo is
+redundant with git, and pretending otherwise is how the previous 55k lines accumulated.
+`git show <sha>:<path>` recovers any of it, forever.
+
+### What §5 gets right, still
+
+The debt list stands unchanged. `room.gd` is still the monolith. BAKE-CACHE-01 is still
+the release blocker. Audio, animation, narrative and combat are still zero. **And the
+loop of §7 is still open.** Deleting 55,000 lines did not make the game playable — it
+only made the engine honest about how much of it was scaffolding.

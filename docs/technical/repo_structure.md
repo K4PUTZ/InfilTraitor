@@ -188,23 +188,16 @@ docs/
 │   └── ai.md
 ├── production/                     # Development roadmap & tracking
 │   ├── README.md
-│   ├── dashboard.md
-│   ├── current_state.md
-│   ├── systems_matrix.md
-│   ├── content_matrix.md
-│   ├── technical_debt.md
-│   ├── risk_assessment.md
-│   ├── development_pipeline.md
-│   ├── METHODOLOGY.md
-│   ├── audio_pipeline.md
-│   ├── animation_pipeline.md
-│   ├── narrative_pipeline.md
-│   ├── not_yet_started.md
+│   ├── current_state.md            # AUTO header — the live status
 │   ├── milestones.md
-│   └── roadmap.md
+│   ├── roadmap.md
+│   ├── systems_matrix.md
+│   ├── technical_debt.md
+│   ├── METHODOLOGY.md
+│   ├── TILE_ANATOMY.md
+│   └── RETROSPECTIVE_2026-07.md
 ├── technical/                      # Implementation guides
 │   ├── repo_structure.md
-│   ├── archive_policy.md
 │   ├── developer_setup.md
 │   ├── asset_map.md
 │   ├── architecture.md
@@ -279,7 +272,7 @@ DEVELOPMENT/  (→ docs/history/ and docs/technical/)
 ├── REFACTOR_SPRINT_04.md → docs/history/refactor_logs/
 ├── LIGHTING_DESIGN.md → docs/systems/lighting.md (completed)
 ├── DEV_VISION_FOUNDATION.md → docs/history/deprecated_design/
-└── README.md → (will be replaced by docs/README.md)
+└── README.md
 ```
 
 **Timeline:** All content moved during CLEAN-01 sprint
@@ -407,9 +400,8 @@ Current State (CLEAN-01)          → Mature State (Year 2)
 
 ## Reference
 
-- [Archive Policy](archive_policy.md)
-- [Tools Registry](../tools/README.md)
-- [Main Documentation Hub](../docs/README.md)
+- [Tools Registry](../../tools/README.md)
+- [Main Documentation Hub](../README.md)
 
 ---
 

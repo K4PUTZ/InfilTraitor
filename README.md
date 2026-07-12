@@ -120,7 +120,6 @@ Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 ✅ **M2-05:** Auditory Detection — audio detection independent of visual LOS, wall attenuation (0.6× per wall), distance falloff (2-tile hearing radius)  
 ✅ **Quickfix:** Removed duplicate constants, added detection accumulation to audio reactions, immediate UI feedback  
 
-📖 **See:** [DEVELOPMENT/PROGRESS.md](DEVELOPMENT/PROGRESS.md) for complete technical report.
 
 ### Refactor Sprint 04 (Completed 2026-06-06)
 
@@ -136,7 +135,6 @@ Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 - Explicit types in guard_pathfinder.gd (nb: Vector2i)
 - Data flow explicit: no defaults, all parameters passed through chain
 
-📖 **See:** [DEVELOPMENT/REFACTOR_SPRINT_04.md](DEVELOPMENT/REFACTOR_SPRINT_04.md) for detailed report.
 
 ### Alpha Dev Vision Foundation (Completed 2026-06-06)
 
@@ -147,7 +145,6 @@ Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 ✅ **Dev 05:** Guard Detection Meter — arc meter above guard head showing state-based detection (0% → 100%)  
 ✅ **Quickfixes:** Trail offset parameterized, hover label completed with full metadata  
 
-📖 **See:** [DEVELOPMENT/DEV_VISION_FOUNDATION.md](DEVELOPMENT/DEV_VISION_FOUNDATION.md) for complete technical report.
 
 ### Alpha Lighting Taxonomy & Vertical Depth Foundation (Completed 2026-06-14)
 
@@ -208,9 +205,10 @@ Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
 
 | File | Contents |
 |---|---|
-| [DEVELOPMENT/GAME_PLAN.md](DEVELOPMENT/GAME_PLAN.md) | Full game design — mechanics, milestones, open questions |
-| [DEVELOPMENT/ASSET_MAP.md](DEVELOPMENT/ASSET_MAP.md) | Tile catalogue, chapter-theme mapping, procedural generation guide |
-| [DEVELOPMENT/DEVELOPER_GUIDE.md](DEVELOPMENT/DEVELOPER_GUIDE.md) | Internal developer guide: engine direction, Godot structure, implementation notes |
+| [docs/README.md](docs/README.md) | Documentation index — start here |
+| [docs/production/milestones.md](docs/production/milestones.md) | The executable milestone list |
+| [docs/technical/ASSET_MAP.md](docs/technical/ASSET_MAP.md) | Tile catalogue and asset conventions |
+| [docs/technical/BAKE_SYSTEM_REFERENCE.md](docs/technical/BAKE_SYSTEM_REFERENCE.md) | The bake canon — read before touching the render |
 
 ---
 

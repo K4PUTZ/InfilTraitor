@@ -150,7 +150,7 @@ The game feeds tile art from two layers (resolved by `build_tileset.gd`):
 python3 tools/asset_generation/generate_master_crate.py
 ```
 
-Outputs a 256×512 cube with a 4×4×4 subcube grid, a single neutral colour on
+Outputs a 256×512 cube with a 4×4×4 grid, a single neutral colour on
 every face (no baked light) and structural edges/subdivisions only.
 
 ### generate_crate_simple.py
@@ -193,7 +193,6 @@ python3 tools/asset_generation/generate_crate_simple.py
 | `fix_all_corners.py` | Comprehensive corner fix (direct approach) | ✅ Complete |
 | `update_corners_sw_ne.py` | SW/NE corner final refinement | ✅ Complete |
 
-**Documentation:** See [MIGRATION_HISTORY.md](tileset_origin_calibration/MIGRATION_HISTORY.md)
 
 **When to Use:**
 - **Reference:** Understanding how texture origins work
@@ -287,7 +286,6 @@ Archive/ (deprecate, move when replacing)
 ## Related Documentation
 
 - [Repository Structure](../docs/technical/repo_structure.md)
-- [Archive Policy](../docs/technical/archive_policy.md)
 - [Development Guide](../docs/technical/developer_setup.md)
 
 ---

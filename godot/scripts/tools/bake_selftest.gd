@@ -152,9 +152,8 @@ func test_B3_alpha_from_canonical() -> void:
 	var compositor = BakeCompositorClass.new()
 	compositor.set_material_registry(Engine.get_meta("GLOBAL_MATERIAL_REGISTRY"))
 
-	# Bake real master strips from a real map (same known-working pattern as
-	# bake_fix_11_pixel_diff_tool.gd — a synthetic/minimal map_spec won't produce any
-	# combos since _extract_unique_combos() requires the real "blocks" array shape).
+	# Bake real master strips from a real map: a synthetic/minimal map_spec won't produce
+	# any combos, because _extract_unique_combos() requires the real "blocks" array shape.
 	var file_source = FileMapSourceClass.new()
 	var map_spec = file_source.get_runtime_spec("PLAYGROUND")
 	var resolver = TextureResolverClass.new()

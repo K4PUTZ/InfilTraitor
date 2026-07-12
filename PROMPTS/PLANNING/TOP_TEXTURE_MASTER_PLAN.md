@@ -178,8 +178,8 @@ Milestone-closure pass (2026-07-11, Overlord direct): MULTIPLY set as the
   function was mislabeled "FNV-1a" but never multiplied by the FNV prime —
   now delegates to the same constants as the canonical, B4-tested
   `FacadeSampler._fnv1a_hash()`, invalidating old cache files harmlessly);
-  two dead BAKE-05-era test files retired to `_archive/` per
-  `docs/technical/archive_policy.md`; full suite re-verified green.
+  two dead BAKE-05-era test files deleted (2026-07-12 sweep);
+  full suite re-verified green.
 Wave 3 (blocked on destruction plan): INTERIOR-01 — NOT STARTED. No
   destruction system implementation plan exists yet; do not prompt this
   until one does.

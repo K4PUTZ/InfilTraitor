@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.8.2 · **Updated:** 2026-07-12 · **Branch:** main
+**Version:** 0.9.0 · **Updated:** 2026-07-12 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,10 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-- HUD-PANEL-01-c.md
-- HUD-PANEL-01-d.md
-- TOP-JUNCTION-05.md
-- TOP-JUNCTION-06.md
+(none)
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -24,11 +21,11 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 100
-- Test scripts: 29
+- GDScript modules: 96
+- Test scripts: 11
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 30
+- Archived prompts: 0
 <!-- AUTO:END inventory -->
 
 ### Version History
@@ -65,7 +62,7 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 - All tiles visually validated in Godot
 
 ✅ **Coordinate System & Constants (VOXEL-02)**
-- Voxel constants registered in `SubcubeCoordsClass`: `VOXELS_PER_UNIT_AXIS=8`, `VOXEL_TILE_SIZE=Vector2i(32,16)`, `VOXEL_STEP_PX=20.0`
+- Voxel constants registered in `GeometryCoords` (`godot/scripts/geometry/geometry_coords.gd`): `VOXELS_PER_UNIT_AXIS=8`, `VOXEL_TILE_SIZE=Vector2i(32,16)`, `VOXEL_STEP_PX=20.0`
 - Bidirectional coordinate conversion functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()`
 - TileSet built at runtime in `_build_voxel_tileset()`, assigned to all 8 voxel layers per storey
 - Layer positioning: `z_index = WALL_BASE_Z_INDEX + level`, `position.y = VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX × level`
@@ -145,7 +142,7 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 
 - **Coordinate planes:** Gameplay plane (256×128 px, guards/AI unchanged) + Voxel render plane (32×16 px, 8×8 per GU)
 - **No legacy offsets:** `FACE_CENTER_OFFSET`, `SUBCUBE_FACE_OFFSETS`, `is_x_varying`, `blend_rect` all archived
-- **Preservation:** All subcube infrastructure, wall edge data, and map compiler contract remain unchanged
+- **Preservation:** Wall edge data and the map compiler contract remain unchanged (the subcube/WallContainer renderer itself was removed)
 - **Godot status:** Loads clean; no parse errors or warnings; voxel rendering visually validated
 - **Performance:** Dirty flag propagation is O(1) per change; TIC loop is O(container_count) at idle
 - **Bake cache:** Sparse-usage page composition now composes only the referenced atoms for a facade page, shrinking page size for sparse maps while preserving the atlas content; the regression suite reports 7 PASS, 0 FAIL.
@@ -415,7 +412,7 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 | Item | Status | Maturity |
 |------|--------|----------|
-| **Subcube Container system** | ✅ Implemented (wall faces + corner fills) | Alpha→Beta |
+| **Voxel render system** (bake + slices + junctions) | ✅ Implemented — the only wall renderer | Beta |
 | **Direction system (vertex-aligned)** | ✅ Renamed RENAME-01 | Beta |
 | **x/y-varying wall orientation fix** | ✅ Fixed RENAME-01b | Beta |
 | **Corner fill (triangular gap cover)** | ✅ CONTAINER-04 complete | Alpha |

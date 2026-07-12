@@ -162,7 +162,7 @@ Ver `docs/technical/VOXEL_MASTER_PLAN.md` §5 para o algoritmo completo.
 
 ## 6. _EDGE_BY_SUFFIX — Direção de aresta para delta de voxel
 
-**Localização atual:** [`godot/scripts/geometry/edge_extractor.gd`](../../godot/scripts/geometry/edge_extractor.gd)
+**Localização atual:** [`godot/scripts/geometry/edge_extractor.gd`](../godot/scripts/geometry/edge_extractor.gd)
 
 ```gdscript
 const _EDGE_BY_SUFFIX: Dictionary = {
@@ -191,7 +191,11 @@ const _EDGE_BY_SUFFIX: Dictionary = {
 
 ---
 
-## 8. Compasso UI (compass_rose.gd)
+## 8. Compasso UI
+
+> **Nota (2026-07-12):** `compass_rose.gd` foi removido — era um overlay de debug
+> órfão (zero referências, nunca instanciado). A convenção abaixo permanece canônica
+> e vale para qualquer widget de compasso que venha a ser criado.
 
 O widget mostra os 4 pontos cardeais apontando para os vértices do diamante:
 

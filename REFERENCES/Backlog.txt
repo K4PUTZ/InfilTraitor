@@ -13,19 +13,31 @@
 
 OCLUSÃO E DESTRUIÇÃO DAS PAREDES
 
-Onomatpeias: dicionário de "sons" visiveis.
+PROJEÇÃO DE LUZES E SOMBRAS
+
+SOMBRAS JOGÁVEIS
+
+STEALTH GAMEPLAY
+
+- O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.
+
+- Onomatpeias: dicionário de "sons" visiveis.
+
+ENEMY AI
+
+- Fazendo o play test, está facil demais, os guardas não escutam nada, não enxergam nada, a não ser que eu entre na frente deles. Atravessam o player sem mudar de estado, etc. Na realidade precisamos calibrar melhor o sistema para oferecer dificuldade real. Guardas ouvem suficientemente longe, e estar em pé exposto causa praticamente detecção automática. Provavelmente vamos ter que extender mais longe o overlay no chão, com as chances e probabilidades de detecção mais punitivas - e as cores precisam refletir isso. Lembrando que o cone amarelo é só uma indicação visual da direção em que o guarda olha, e pode continuar mais curto pois não interfere na detecção. Porém o Busted só pode ser acionado quando os agentes perseguem e alcançam o agente. Não basta detectar a presença dele.
+
+COVER/COMBATE
+
+
 
 
 Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
 
 
-- Fazendo o play test, está facil demais, os guardas não escutam nada, não enxergam nada, a não ser que eu entre na frente deles. Atravessam o player sem mudar de estado, etc. Na realidade precisamos calibrar melhor o sistema para oferecer dificuldade real. Guardas ouvem suficientemente longe, e estar em pé exposto causa praticamente detecção automática. Provavelmente vamos ter que extender mais longe o overlay no chão, com as chances e probabilidades de detecção mais punitivas - e as cores precisam refletir isso. Lembrando que o cone amarelo é só uma indicação visual da direção em que o guarda olha, e pode continuar mais curto pois não interfere na detecção. Porém o Busted só pode ser acionado quando os agentes perseguem e alcançam o agente. Não basta detectar a presença dele.
 
 
 
-O FOW também vai precisar ser um pouco mais agressivo, vamos cobrir completamente zonas mais distantes com preto puro, ou talvez, mais interessante, usar um asset com textura de grade exagonal, com exagonos em alpha servindo de buracos. Ou seja, temos um pequeno exagono em alpha e todos os outros exagonos em volta são full black.  Dessa forma, repetindo os exagonoscolocamos um filtro simulando uma "grade" de exagonos por cima das areas distantres que vai ter uma pequena abertura.
 
 
-
-Ok, então primeiro vamos fazer uma limpeza em toda a documentação. Vamos iniciar um plano de atualização e arquivamento definitivo de coisas deprecadas, incluindo assets. Não precisamos mais ficar guardando todo o histórico de decisões erradas que tomamos no passo, até chegar aqui. Só precisamos manter o que funciona, é útil, ou tem potencial pro futuro. Temos muitas ferramentas e arquivos que não tem mais importância e estão só ocupando espaço, incluindo rascunhos de milestones futuras que estão só enchendo linguiça. Em seguida, dá uma varrida no código pra buscar referências, objetos, variáveis, conastantes e outros elementos desatualizados.

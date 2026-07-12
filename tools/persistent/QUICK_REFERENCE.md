@@ -38,7 +38,7 @@ temporal_fixture    = tile_center - Vector2(0, ceiling_lift + 72)
 | `VOXEL_TILE_SIZE` | `Vector2i(32, 16)` | Voxel TileSet tile_size |
 | `VOXELS_PER_UNIT_AXIS` | `8` | 8×8 voxels per GAME UNIT |
 | `VOXEL_STEP_PX` | `20.0` | Vertical pixel height per voxel layer |
-| `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × 20` — matches old subcube system |
+| `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × 20` |
 
 **VoxelLayer position** (analytically derived, no calibration):
 ```gdscript

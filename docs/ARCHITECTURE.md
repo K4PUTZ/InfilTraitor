@@ -20,17 +20,17 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
-## Voxel Render Plane (Partially Implemented — replacing Subcube/WallContainer)
+## Voxel Render Plane
 
-**Status: Partially Implemented** · Spec: `docs/technical/VOXEL_MASTER_PLAN.md`  
-**Current Phase:** VOXEL-07 complete (Phase 2: Runtime System); VOXEL-08..11 pending  
-**Last updated:** 2026-07-01
+**Status: The only wall/structure renderer.** · Spec: `docs/technical/BAKE_SYSTEM_REFERENCE.md`  
+**Last updated:** 2026-07-12
 
-> **Subcube/WallContainer approach archived.** The CONTAINER-01..04 series (`WallContainer`
-> via `Image.blend_rect`) is superseded. Persistent misalignment was caused by cascading
-> empirical dependencies (`FACE_CENTER_OFFSET`, `is_x_varying`, `+100/+2` layer offsets)
-> that could not be resolved without replacing the architecture. All code in `wall_container.gd`
-> and its callers in `room.gd` is being replaced by the voxel system.
+> **The Subcube/WallContainer approach is gone, not "being replaced".** The
+> CONTAINER-01..04 series (`WallContainer` via `Image.blend_rect`) was removed. Its
+> persistent misalignment came from cascading empirical dependencies
+> (`FACE_CENTER_OFFSET`, `is_x_varying`, `+100/+2` layer offsets) that could not be
+> resolved without replacing the architecture. Voxel positions are now derived
+> analytically — there is no calibration constant left to tune.
 >
 > **Implementation progress (VOXEL series):**
 > - ✅ **VOXEL-01:** Fixed geometry (flat→3D cube), regenerated PNG tiles (4 materials)
@@ -124,7 +124,7 @@ destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `
 | File | Phase | Change | Status |
 |------|-------|--------|--------|
 | `tools/generate_voxel.py` | VOXEL-01 | Regenerated PNG tiles with correct 3D cube geometry (top + left/right faces) | ✅ Complete |
-| `godot/scripts/world/subcube_coords.gd` | VOXEL-02 | Added voxel coordinate functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()` | ✅ Complete |
+| `godot/scripts/geometry/geometry_coords.gd` | VOXEL-02 | Added voxel coordinate functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()` | ✅ Complete |
 | `godot/scripts/world/room.gd` | VOXEL-02, -04 | Added voxel infrastructure: `_build_voxel_tileset()`, `_ensure_voxel_layers()`, `_place_wall_voxels()`, `_voxel_slice_positions()` | ✅ Complete |
 | `godot/scripts/world/voxel_ref.gd` | VOXEL-03 | Created data class for individual voxel state (visible, dirty, damage_state, face_atlas_rect) | ✅ Complete |
 | `godot/scripts/world/wall_slice.gd` | VOXEL-03 | Created primary container (8 voxels × N storeys per wall edge) | ✅ Complete |
@@ -663,7 +663,7 @@ This architecture deliberately separates **visual depth** from **gameplay depth*
 | Noise | `systems/noise_system.gd` |
 | Lighting core | `systems/lighting/{light_source,light_registry,shadow_projector,shadow_result,exposure_system,light_anchor}.gd` |
 | World semantics | `world/{tile_semantics,wall_edge_data,tile_registry,level_graph}.gd` |
-| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog,subcube_geometry,subcube_coords}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
+| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
 | Navigation | `navigation/{guard_pathfinder,movement_overlay,path_preview}.gd` |
 | Overlays | `overlays/*.gd`, `ui/fog_of_war_overlay.gd` |
 | **Voxel system (Planned)** | |

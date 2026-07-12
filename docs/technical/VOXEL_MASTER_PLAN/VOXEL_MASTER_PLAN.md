@@ -1,14 +1,30 @@
 # INFILTRAITOR — VOXEL SYSTEM MASTER PLAN
 
-> **Status:** PLANNING — Do not begin implementation before this document and `OPERATOR_CONTEXT.md`
-> are reviewed, updated, and approved.
+> **Status:** ✅ **SHIPPED** — VOXEL-01..11 landed. This is the **geometry reference**
+> for the voxel plane (atoms, slices, edges, junctions, the coordinate math), and that
+> part is still canon. Read it for *why the geometry is the way it is*.
 >
-> **Supersedes:** `PROMPTS/DONE/SUBCUBE_MASTER_PLAN.md` · WallContainer series (CONTAINER-01..04)
-> · `docs/technical/SUBCUBE_WALL_STRADDLE.md` (archived, replaced by this document)
+> **Authored:** 2026-06-29 · **Status corrected:** 2026-07-12
+> (the header read "PLANNING — do not begin implementation" for six weeks after the
+> system shipped).
 >
-> **Authored:** 2026-06-29
-> **Scope:** Complete specification of the Voxel rendering system — geometry, containers,
-> baking, dirty flag/TIC, and destructibility.
+> ### Where the live canon actually lives
+>
+> | Topic | Canonical doc |
+> |---|---|
+> | **Baking** (atlas, atoms, invariants B1–B6, themes) | `docs/technical/BAKE_SYSTEM_REFERENCE.md` |
+> | **Destruction** (damage states, Slab, dirty flag + TIC) | `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` |
+> | **Occlusion** (view ghosting, agent silhouette, cutaway) | `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` |
+> | **Directions** (NW/NE/SE/SW, banned terms) | `docs/DIRECTION_GLOSSARY.md` |
+>
+> ⚠️ **§13 (implementation order) and §14 (files to update) are a historical record of a
+> finished migration.** They name files that no longer exist (`subcube_coords.gd`,
+> `subcube_geometry.gd`) and a `VOXEL-10 destructibility` scope that is now owned by
+> `DESTRUCTION_MASTER_PLAN.md`. Do not use them as a work list.
+>
+> **Superseded by this doc:** the WallContainer series (CONTAINER-01..04) and the
+> subcube wall-straddle system. Both are gone; see `docs/DIRECTION_GLOSSARY.md` §10 for
+> the banned-terms list.
 
 ---
 
@@ -789,7 +805,7 @@ Before VOXEL-01 begins, the following documents must be updated:
 
 ## SLICE-02 Completion (2026-07-02)
 
-All VOXEL stages (SLICE-02-diag, DEBUG-01/02, SLICE-02 Stage A/B/Calibration) are **complete and production-ready**. See [SLICE-02 Completion Report](../SLICE-02-completion-report.md) for final status:
+All VOXEL stages (SLICE-02-diag, DEBUG-01/02, SLICE-02 Stage A/B/Calibration) are **complete and production-ready**.
 
 - ✅ New geometry module (EdgeExtractor → VoxelRenderer pipeline) fully active
 - ✅ Legacy system completely purged (-2,014 lines)

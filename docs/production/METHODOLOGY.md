@@ -35,8 +35,8 @@ Phase 3 — Investor Demo        (macro, roadmap.md)
 
 ### Domain enum (also the status taxonomy)
 
-The same domains group milestones **and** the status readouts in `dashboard.md` /
-`current_state.md` — one taxonomy, two uses.
+The same domains group milestones **and** the status readouts in `current_state.md` —
+one taxonomy, two uses.
 
 | Domain | Scope |
 |--------|-------|
@@ -82,15 +82,9 @@ roadmap.md references it only at the macro/phase level
 |---------|---------------|---------------|
 | Macro phases & gates | `roadmap.md` | reference only |
 | Milestone detail & lifecycle | `milestones.md` | reference by ID |
-| Status snapshot / domain % | `dashboard.md` (quick) + `current_state.md` (detail) | — |
+| Status snapshot / domain % | `current_state.md` — **AUTO header, kept honest by the pre-commit hook** | — |
 | Systems implemented/planned | `systems_matrix.md` | — |
-| Unstarted systems (detail) | `not_yet_started.md` | — |
-| Content inventory | `content_matrix.md` | — |
 | Code/architecture debt | `technical_debt.md` | — |
-| Documentation gaps | `documentation_debt.md` | — |
-| Systemic risk | `risk_assessment.md` | — |
-| Domain detail | `audio_pipeline.md` / `animation_pipeline.md` / `narrative_pipeline.md` | — |
-| Feature dev process | `development_pipeline.md` | — |
 | Conventions (this) | `METHODOLOGY.md` | — |
 | Code map / API / tuning | `tools/persistent/CODEMAP.md` (generated) | never by hand |
 | Inviolable rules + rationale | `tools/persistent/OPERATOR_CONTEXT.md` | — |

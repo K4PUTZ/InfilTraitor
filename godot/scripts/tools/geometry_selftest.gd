@@ -4,7 +4,11 @@
 extends SceneTree
 
 
-func _ready():
+## Entry point MUST be _initialize() — SceneTree has no _ready() callback (that is a Node
+## callback). From creation until 2026-07-12 this function was named _ready(), so it never
+## fired: the script booted, idled, and reported nothing. Completion reports cited it as
+## passing evidence. Renamed, and it passes for real.
+func _initialize():
 	var separator = "============================================================"
 	print("\n" + separator)
 	print("GEOMETRY MODULE SELFTEST")
@@ -126,7 +130,7 @@ func _ready():
 	total_count += 1
 	if free_ok:
 		pass_count += 1
-		print("  ✓ Free-standing 2-cell divider produces exactly 4 columns at both ends: %s" % free_columns)
+		print("  ✓ Free-standing 2-cell divider produces exactly 4 columns at both ends: %s" % [free_columns])
 	else:
 		print("  ✗ Free-standing divider produced %d column(s): %s — expected 4 at (0,0),(0,2),(3,0),(3,2)" % [free_columns.size(), free_columns])
 

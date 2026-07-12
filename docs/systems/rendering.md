@@ -288,21 +288,29 @@ Reduces draw calls for transparent/invisible entries.
 
 ### Overhead Visual Engine (VIS-01)
 
-Topmost (5th-floor) ceiling layer + **view occlusion**. Staged plan lives in
-`docs/production/milestones.md` → **VIS-01**. Two pillars sharing one subcube-presence operation:
+Topmost ceiling layer + **view occlusion**.
 
 - **Ceiling layer** — `CeilingPropLayer` above wall storey N renders sprites/scenes
   (lamps, chandeliers, holofotes/spots, conduits, pipes, vents). Authored via a new
   `MapSpec.ceiling` key, perspective-rotated like every other layer.
-- **View occlusion** — keep the agent readable under walls/ceiling via (1) directional
-  storey cutaway keyed to `_active_perspective` (delete the camera-facing upper subcubes),
-  (2) proximity cutaway around the agent (delete upper subcubes in a radius), (3) hover reveal,
-  with the existing 4-way rotation as manual override.
-  Principle: **delete the upper subcubes of occluding walls and keep a base stub** (default:
-  the `h=0` row), so cut walls still read as cover. Occlusion and destruction share one
-  operation: `set_subcube(cell, level) → empty; re-light`.
+- **View occlusion** — canonical spec: **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`**.
 
-> Canonical model: `PROMPTS/SUBCUBE_MASTER_PLAN.md` §7 (occlusion = deletion).
+> ### ⚠️ Occlusion is VIEW, not STATE
+>
+> Earlier revisions of this doc specified occlusion as *deletion* — "delete the upper
+> subcubes of occluding walls", "occlusion and destruction share one operation
+> (`set_subcube → empty`)". **That model is retired and must not be implemented.**
+>
+> `Voxel.visible` has exactly one writer: **destruction** (`set_damage()` forces
+> `visible = false` on DESTROYED). If occlusion also wrote it, then ghosting a wall,
+> rotating the camera, and releasing the occlusion would set `visible = true` again —
+> **resurrecting a destroyed voxel.** It only reproduces when someone rotates the camera
+> over a crater, which is why it would survive months of testing.
+>
+> Occlusion instead owns its own `_occluded_cells` set, never persists, never enters the
+> save, and never touches the dirty flag. It paints via **TileSet alternative tiles**
+> (per-alternative `modulate`, same atlas region → zero extra memory). See
+> `OCCLUSION_MASTER_PLAN.md` §2 (O1) for the full single-writer table.
 
 > ⚠️ **Not to be confused with `docs/systems/occlusion.md`.** That doc is gameplay
 > *occlusion semantics* (what blocks light / LoS / sound). VIS-01 *view occlusion* is

@@ -546,18 +546,10 @@ fade machine.
    anchored at floor 5, drawn down to floor 4; cables/pipes cross cell borders).
 3. **Spot / directional light type** — extend `LightSource` (omni-only today) to
    support cone/spot for holofotes pointing at the floor; feeds `LightingController`.
-4. **View occlusion — directional storey cutaway** — delete the camera-facing upper
-   subcubes + front ceiling props, derived analytically from `_active_perspective`
-   (front side is deterministic; no raycast needed because the camera is fixed).
-   Keep a base stub (default: the `h=0` row) so walls carry cover/LoS meaning and still read.
-5. **View occlusion — proximity cutout** — delete upper subcubes in a radius around the
-   agent on structure/ceiling layers. "Never lose your guy."
-6. **View occlusion — hover reveal** — hovering a tile behind a wall deletes that
-   wall's upper subcubes (turn-based planning aid).
-7. **Rotation integration** — wire existing 4-perspective rotation as the manual
-   override; ceiling + occlusion re-derive per cell on perspective switch (existing
-   pattern in `_set_perspective`).
-8. **Ceiling content + tactical hooks (optional, own follow-up milestones)** —
+4. **View occlusion** — superseded in full by
+   **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`** (Parts 1–4). See the boxed warning
+   below: the old "cutaway by deletion" staging is retired, not merely reworded.
+5. **Ceiling content + tactical hooks (optional, own follow-up milestones)** —
    populate maps (lamps, conduits, pipes, vents); defer gameplay hooks (security
    cameras as detectors, flicker → `temporal_overlay` shadow) to their own IDs.
 
@@ -572,16 +564,33 @@ fade machine.
 
 **Occlusion model and architecture:**
 
-Occlusion and destruction are the same operation (`set_subcube → empty`); occlusion is
-the reversible, camera-driven case. The visual engine operates on a fine **subcube render
-plane** (4×4 subcubes per gameplay unit, `SUBCUBE_SIZE = 64×32`), while the gameplay
-plane (guards, A\*, blocked_edges, TicSystem) remains unchanged on the coarse grid
-(`256×128`). Canonical spec: `PROMPTS/SUBCUBE_MASTER_PLAN.md` §7–8.
+Canonical spec: **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`** (ratified 2026-07-12).
 
-VIS-01's visual system maps to the Master Plan's **FASE A–C**:
-- COORD-01 — coordinate layer + map compiler seam (unit ↔ subcube conversion)
-- SUB-01 — subcube render layers
-- SUB-02 — occlusion-by-deletion
+The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\*,
+`blocked_edges`, TicSystem) vs fine geometry/render grid — but the fine plane is
+**8×8 voxels per GAME UNIT at `32×16`**, not 4×4 subcubes at `64×32`.
+
+> ### ⚠️ Retired: "occlusion = deletion"
+>
+> This section previously read: *"Occlusion and destruction are the same operation
+> (`set_subcube → empty`); occlusion is the reversible, camera-driven case."*
+> **That is retired and must not be implemented.**
+>
+> They are *not* the same operation, and conflating them produces a
+> **save-corrupting bug**: `Voxel.visible` is owned solely by destruction
+> (`set_damage()` forces `visible = false` on DESTROYED). If occlusion also wrote it,
+> releasing an occlusion after a camera rotation would set `visible = true` and
+> **resurrect a destroyed voxel** — reproducible only when someone rotates the camera
+> over a crater.
+>
+> The cadence is wrong too: a detonation is rare and capped, an agent step is constant.
+> Routing occlusion through the dirty flag would make the common case cost more than
+> the rare one.
+>
+> Occlusion is **VIEW**: its own `_occluded_cells` set, never persisted, painted with
+> TileSet alternative tiles (per-alternative `modulate`, same atlas region → zero extra
+> memory). See `OCCLUSION_MASTER_PLAN.md` §2 for the single-writer table, and
+> `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` for the destruction side.
 
 **Progress:**
 

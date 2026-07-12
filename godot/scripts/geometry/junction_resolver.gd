@@ -72,7 +72,7 @@ class JunctionColumn:
 ## - Pro: overrides are applied consistently alongside other layout processing
 ## - Pro: simpler merge of multiple data sources (map_compiler output → layout → application)
 ## The post-hoc pipeline (map_compiler → room_builder::_apply_junction_overrides) is
-## now verified end-to-end by BAKE-FIX-10::Test 2 (see bake_fix_02_test.gd).
+## now verified end-to-end by BAKE-FIX-10::Test 2.
 static func resolve(registry: EdgeRegistry) -> Array:
 	var result: Array = []
 	var cells_seen: Dictionary = {}  ## Vector2i -> true; each edge touches 2 cells, visit each once

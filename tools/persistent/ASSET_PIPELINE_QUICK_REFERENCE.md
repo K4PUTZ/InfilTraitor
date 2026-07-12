@@ -64,7 +64,7 @@ ATOM = vstack(TOP, SIDE)
 2. Run: `python3 tools/asset_generation/generate_voxel.py`
 3. Switch to Godot window, wait 3–5 seconds for reimport
 4. Run builder: `Godot --headless --path . --script godot/scripts/tools/build_voxel_tileset.gd`
-5. Add `ATLAS_COORD_{MATERIAL}` constant in `godot/scripts/world/subcube_coords.gd`
+5. Add `ATLAS_COORD_{MATERIAL}` constant in `godot/scripts/geometry/geometry_coords.gd`
 6. **No texture_origin calibration needed** — analytically positioned
 
 ---

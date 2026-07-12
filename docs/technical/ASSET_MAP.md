@@ -358,7 +358,7 @@ texture_origin = SPRITE_OFFSET + CORNER_VISUAL_OFFSETS[direction]
 
 **Why these specific values?**
 
-- **±16 X**: 1/8 of a cell step (256 px cell = 32 px per subcube = 16 px half-step)
+- **±16 X**: 1/8 of a cell step (256 px cell = 32 px per voxel = 16 px half-step)
 - **±8 Y**: 1/16 of a full-height wall (160 px / 20 = 8 px)
 - **Direction logic**: NW/NE shift left (negative X); SE/SW shift right (positive X)
 - **Vertical logic**: NW/SW shift down (positive Y — away from top); NE/SE shift up (negative Y)

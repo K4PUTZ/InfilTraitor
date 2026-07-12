@@ -81,7 +81,7 @@ GitHub recommends files under 50 MB. This project has design assets larger than 
 
 #### Option 2: Google Drive / Cloud Storage
 - Upload to shared Google Drive
-- Reference in: `docs/production/content_matrix.md`
+- Reference in: `docs/technical/ASSET_MAP.md`
 - Add access link to project wiki or README
 
 #### Option 3: Git LFS (Large File Storage)
@@ -178,7 +178,7 @@ Creates: `BACKUP_YYYY-MM-DD_HHMM.ZIP` (excludes ASSETS, ARCHIVE, .git)
 
 **Reference in:**
 - `DEVELOPMENT.archive/Concept/` (local only)
-- Linked in: `docs/production/content_matrix.md`
+- Linked in: `docs/technical/ASSET_MAP.md`
 
 ---
 
@@ -237,9 +237,6 @@ Creates: `BACKUP_YYYY-MM-DD_HHMM.ZIP` (excludes ASSETS, ARCHIVE, .git)
 ## References
 
 - [Repository Structure](repo_structure.md) — Where files belong
-- [Archive Policy](archive_policy.md) — What's archived and why
-- [Safe Cleanup](safe_cleanup.md) — Removal safety guidelines
-- [Documentation Ownership](documentation_ownership.md) — Who maintains what
 
 ---
 

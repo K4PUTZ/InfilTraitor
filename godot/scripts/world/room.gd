@@ -1954,6 +1954,18 @@ func _run_auto_screenshot_capture() -> void:
 	for _i in range(10):
 		await get_tree().process_frame
 
+	## Optional pre-capture action, for HUD states that only exist transiently
+	## mid-turn and so cannot be caught by a plain boot capture.
+	## INFILTRAITOR_CAPTURE_ACTION=end_turn really ends the player's turn (the
+	## same call the End Turn button makes) and then waits, so the capture lands
+	## while the enemy-phase banner is actually on screen. Needs a map with
+	## guards — on a guardless map the enemy phase resolves in the same frame and
+	## the banner is gone before any capture can see it.
+	if OS.get_environment("INFILTRAITOR_CAPTURE_ACTION") == "end_turn" and turn_manager != null:
+		turn_manager.end_turn()
+		for _j in range(20):
+			await get_tree().process_frame
+
 	var image := get_viewport().get_texture().get_image()
 	if image == null:
 		push_warning("[SCREENSHOT-HOOK-01] Failed to capture auto-screenshot — image was null")

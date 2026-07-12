@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.8.0 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.7.10 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 78c400b [HUD-PANEL-01-d] Verify UI components using true native visual execution context
 - c559932 [TEXTURES-3.0] Towers to 3 storeys
 - 7ac4401 [TEXTURES-3.0] Rebuild the texture verification map: 4 isolated 3x3 GU towers
 - ee2caaf [TOP-JUNCTION-06] Fold junction columns once and sample like the straight-run reference
 - 0eb6620 [HUD-PANEL-01-c] Verify UI components using true native visual execution context
-- 937de58 [TOP-JUNCTION-05] Fold and clamp col_x/y to prevent out-of-bounds crops while preserving linear junction shear
 <!-- AUTO:END version_history -->
 
 ---

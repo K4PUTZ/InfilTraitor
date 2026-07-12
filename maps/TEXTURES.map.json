@@ -87,52 +87,52 @@
           ]
         },
         {
-          "comment": "Stone tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "comment": "Stone tower: 3x3 GU, 3 storeys - 4 corners, 4 junction columns",
           "gu": [
             9,
             9
           ],
           "material": "stone",
-          "storeys": 2,
+          "storeys": 3,
           "size": [
             3,
             3
           ]
         },
         {
-          "comment": "Concrete tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "comment": "Concrete tower: 3x3 GU, 3 storeys - 4 corners, 4 junction columns",
           "gu": [
             15,
             9
           ],
           "material": "concrete",
-          "storeys": 2,
+          "storeys": 3,
           "size": [
             3,
             3
           ]
         },
         {
-          "comment": "Metal tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "comment": "Metal tower: 3x3 GU, 3 storeys - 4 corners, 4 junction columns",
           "gu": [
             9,
             15
           ],
           "material": "metal",
-          "storeys": 2,
+          "storeys": 3,
           "size": [
             3,
             3
           ]
         },
         {
-          "comment": "Wood tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "comment": "Wood tower: 3x3 GU, 3 storeys - 4 corners, 4 junction columns",
           "gu": [
             15,
             15
           ],
           "material": "wood",
-          "storeys": 2,
+          "storeys": 3,
           "size": [
             3,
             3

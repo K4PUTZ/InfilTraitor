@@ -187,7 +187,7 @@ with the existing mechanism, and it needs a guarded map (SIGMA_01).
 |---|---|---|---|
 | Default | `Screenshots/history/auto_2026-07-11_23-16-49.png` | `0ba03956…` | Top bar reads `AP 2/2`. No banner, no dialog. |
 | Enemy phase | `Screenshots/history/auto_2026-07-11_23-16-54.png` | `8fad741f…` | **Bar across the bottom of the screen reading "Enemy Turn"**, and the top bar's AP field has been replaced by `ENEMIES`. |
-| Busted | `Screenshots/screenshot_2026-07-11_23-11-52.png` | `d1f8dcd5…` | Red **"Busted"** text centred over a dimmed board. (The Operator's one real capture — kept.) |
+| Busted | `Screenshots/history/auto_2026-07-11_23-42-51.png` | `25488b5e…` | Red **"Busted"** text over the board, via `INFILTRAITOR_CAPTURE_ACTION=busted` (the same `HudController.show_busted()` the turn controller calls). Triggered directly, not reached through play — stated plainly per Evidence Rule 7; the point is that the overlay is in the pixels. |
 
 Three distinct hashes, three visibly different states, each opened and
 described from its pixels.
@@ -198,3 +198,16 @@ phase transition, the AP field really re-labels, and the busted overlay really
 renders. HUD-PANEL-01's structural correctness (already confirmed by direct
 diff of `HudController`'s API and by `room.gd` being untouched) is now backed
 by pixels. **Wave 2 of `INTERFACE_MASTER_PLAN` is closed.**
+
+### Durability note (2026-07-11, post-closure)
+
+The Busted capture originally cited here lived at `Screenshots/screenshot_*.png`
+— the **untracked** root folder (`.gitignore` keeps `Screenshots/*` and admits
+only `Screenshots/history/`). The Director cleared that folder and the citation
+became a dangling reference to a file no longer in the repo. Re-captured into
+`Screenshots/history/` (tracked) via the new `INFILTRAITOR_CAPTURE_ACTION=busted`
+hook, so the evidence survives.
+
+**Rule this establishes:** evidence screenshots must land in
+`Screenshots/history/`. A capture in `Screenshots/` root is a scratch file, not
+evidence — it is untracked and can vanish without notice.

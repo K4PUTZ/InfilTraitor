@@ -1961,8 +1961,18 @@ func _run_auto_screenshot_capture() -> void:
 	## while the enemy-phase banner is actually on screen. Needs a map with
 	## guards — on a guardless map the enemy phase resolves in the same frame and
 	## the banner is gone before any capture can see it.
-	if OS.get_environment("INFILTRAITOR_CAPTURE_ACTION") == "end_turn" and turn_manager != null:
+	## INFILTRAITOR_CAPTURE_ACTION=busted shows the busted overlay through the
+	## same HudController call the turn controller makes when a guard catches the
+	## agent. Triggered directly, not reached through play — a real capture is
+	## still the point (the overlay must be in the pixels), but reaching it
+	## organically needs a guard to actually spot the agent across several turns.
+	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
+	if capture_action == "end_turn" and turn_manager != null:
 		turn_manager.end_turn()
+		for _j in range(20):
+			await get_tree().process_frame
+	elif capture_action == "busted" and _hud_controller != null:
+		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
 

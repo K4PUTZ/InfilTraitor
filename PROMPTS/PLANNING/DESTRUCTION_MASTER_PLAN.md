@@ -52,6 +52,9 @@ Named pains this serves:
 | **D10** | **Occlusion is VIEW, not STATE.** It does not use the dirty flag, does not write `Voxel.visible`, does not persist, and never enters the save. See §3 — this is the load-bearing decision of the whole plan. | ✅ Ratified |
 | **D11** | **Generic material atlas: demoted, not deleted.** Kill it as a *silent fallback* (a baked-lookup MISS must **loud-fail** per B6 — a silent grey cell is exactly the class of bug that let `blit_rect`'s silent clipping ship twice). Keep it as `MATERIAL_ONLY`, an **explicit dev toggle** (F7) — it is the bisection tool that answers "is this a bake bug or a geometry bug?", which is the single most valuable question when the bake breaks. **The look the Director likes (material colour showing through texture) is `MULTIPLY`, a blend mode — it does not depend on this fallback and survives its demotion.** | ✅ Ratified |
 | **D12** | **Bake is the product.** Shipped default flips to `BakeConfig.enabled = true`. Consequence, stated plainly: **BAKE-CACHE-01 becomes a release blocker.** Today a slow warm boot (730–770 ms vs a 150 ms target) is tolerable because we could always ship with bake off and boot fast-and-ugly. That escape hatch closes here. | ✅ Ratified |
+| **D13** | **The floor is a 2-layer slab: top destructible, bottom fixed bedrock.** This single constraint dismantles most of the problem — max excavation depth is **1 voxel**, so there is no infinite digging, no falling through the world, and no multi-level crater geometry. The destructible floor volume collapses from 8 levels to **one** (64 voxels per GU). Cover from a crater is therefore **prone-only**, earned when >50% of a GU's top layer is destroyed (>32 of 64 voxels) — by explosives, or by dozens of shots. A constraint that buys gameplay clarity and engine cheapness at the same time. | ✅ Ratified |
+| **D14** | **Floor variety = N baked slab variants × per-cell symmetry. NOT a unique composite per GU.** The arithmetic settles it: a floor tile is 256×128 px, so a unique composite per GU on a 26×26 map costs 676 × 256×128×4 B = **88.6 MB** — dead on arrival for mobile. **16 pre-baked variants cost 2.1 MB.** Godot's TileMap carries per-cell transform flags (flip H / flip V / transpose) that live in the cell data and cost **not one pixel**: 8 symmetries × 16 variants = **128 apparent arrangements at the memory of 16**. *Implementation trap: mirroring the composite tile must mirror the 64-voxel index mapping it explodes into, or D5's pixel-perfect explosion breaks.* *(No conflict with D10's ghost alternatives: the floor never sits between agent and camera, so "ghost" and "symmetry" never meet on the same cell.)* | ✅ Ratified |
+| **D15** | **Destruction emits a signal; VFX subscribes.** `voxel_destroyed(grid_pos, level, material_id)`, emitted at the TIC alongside the dirty pass. Smoke, debris and sound are **not** the destruction system's business — with no subscriber the signal costs nothing, and the particle ceiling is the same N as D6. Add the signal **now**, while it is one line, rather than refactoring later for the hook nobody left. | ✅ Ratified |
 
 *(Numbering note: D12 here is local to this plan and unrelated to the global D12 "mobile budget" decision in `OVERLORD_CONTEXT.md`.)*
 
@@ -114,12 +117,11 @@ for infiltrating it. Comes free with D1.
 **(c) "Foreground geometry is covering the agent."**
 This is real occlusion. Mechanism:
 
-1. **Who occludes (CPU, tiny).** The set of cells whose screen projection covers
-   the agent's silhouette, plus a ±2 margin so the transparency is not a hard
-   column the exact width of the sprite. **Not "everything south of the agent"** —
-   fading the whole southern half would reveal the *neighbouring* room's interior,
-   which contradicts the design goal ("the player sees what the agent sees"). The
-   criterion is *"is it covering him"*, not *"is it south"*. Recomputed on agent
+1. **Who occludes (CPU, tiny).** An **enlarged circle around the agent**, keeping
+   only geometry that is between him and the camera. **Not "everything south of the
+   agent"** — fading the whole southern half would reveal the *neighbouring* room's
+   interior, contradicting the design goal ("the player sees what the agent sees").
+   The criterion is *"is it covering him"*, not *"is it south"*. Recomputed on agent
    step and on camera rotation; a few dozen cells.
    **"South" must be evaluated in the current view's rotated frame** — the map has
    four views and the formula rotates with them.
@@ -138,6 +140,14 @@ This is real occlusion. Mechanism:
    ```
    Ghosting that band is **changing one argument**. No shader, no per-fragment
    cost, no D12 (mobile budget) sign-off needed.
+
+   **Feathered edge — the trade-off, stated once.** A true soft gradient is a
+   **shader**, i.e. per-fragment, i.e. it needs explicit Director sign-off against
+   the mobile budget. The middle path, and the recommended v1: **three ghost
+   alternatives (5% / 25% / 50% alpha) applied in concentric rings** — a *stepped*
+   feather, which at 32 px cells reads as smooth in isometric, still costs **zero
+   memory and zero per-fragment work**. If headroom later proves plentiful, swapping
+   the rings for a shader changes nothing else: the occluded-cell set is identical.
 
 3. **Where the state lives.** In `_occluded_cells`, owned solely by the occlusion
    system. See §3.
@@ -165,6 +175,10 @@ Measured, not estimated:
 | Warm boot (BAKE-CACHE-01, open) | **730–770 ms** vs 150 ms target | prior session |
 | Floor cells, 26×26 map, fully voxelised | 676 GU × 64 = **43 264** | worst case only |
 | Floor cells, 26×26 map, intact (D5) | **676** | = today's cost |
+| Floor tile size | **256 × 128 px** | Transform Canon (SLICE-00) |
+| Floor: unique composite **per GU** (676) | **88.6 MB** | ❌ dead on arrival (D14) |
+| Floor: **16 baked slab variants** | **2.1 MB** | ✅ × 8 symmetries = 128 apparent (D14) |
+| Floor destructible volume | **1 level**, 64 voxels/GU | D13 (bedrock below) |
 
 **"Thousands of unique voxels" is bounded and small.** The number that actually
 threatens mobile is not cells and not atoms — it is **`TileMapLayer` count**

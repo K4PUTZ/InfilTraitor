@@ -3,19 +3,25 @@
   "schema_version": 3,
   "id": "TEXTURES",
   "meta": {
-    "title": "Facade Texture Verification Map 2.0",
-    "description": "Four nested material V-pairs for BAKE-FACADE-PLANE-02-b testing: bidirectional facade, anti-banding, performance, blocks v2 size field"
+    "title": "Facade Texture Verification Map 3.0",
+    "description": "Four isolated 3x3 GU material towers plus a 1 GU thick concrete perimeter. Rebuilt 2026-07-11: the 2.0 nested-V layout stacked four equal-height (4 storey) walls 2 GU apart, so each nearer V's top sat lower on screen and exposed the one behind it, and the 2 GU thick perimeter rendered as two parallel walls at different heights. Both read as height bugs and were pure layout. The perimeter's 26 GU runs are deliberate: they are the only long runs in the project (column index up to 208) and are what exercise the junction out-of-plane case fixed in TOP-JUNCTION-06."
   },
   "sections": {
     "board": {
       "v": 1,
-      "inner_size": [26, 26],
+      "inner_size": [
+        26,
+        26
+      ],
       "buffer": 1,
       "floor_tile": "floor_SE"
     },
     "actors": {
       "v": 1,
-      "agent_start": [3, 13],
+      "agent_start": [
+        12,
+        12
+      ],
       "guards": []
     },
     "legacy_compiler": {
@@ -29,88 +35,108 @@
       "v": 2,
       "items": [
         {
-          "comment": "Perimeter north wall (concrete, 2 storeys, 26 GU × 2 GU)",
-          "gu": [0, 0],
+          "comment": "Perimeter north wall (concrete, 2 storeys, 26 GU x 1 GU) - long run, exercises high column indices",
+          "gu": [
+            0,
+            0
+          ],
           "material": "concrete",
           "storeys": 2,
-          "size": [26, 2]
+          "size": [
+            26,
+            1
+          ]
         },
         {
-          "comment": "Perimeter south wall (concrete, 2 storeys, 26 GU × 2 GU)",
-          "gu": [0, 24],
+          "comment": "Perimeter south wall (concrete, 2 storeys, 26 GU x 1 GU)",
+          "gu": [
+            0,
+            25
+          ],
           "material": "concrete",
           "storeys": 2,
-          "size": [26, 2]
+          "size": [
+            26,
+            1
+          ]
         },
         {
-          "comment": "Perimeter west wall (concrete, 2 storeys, 2 GU × 26 GU)",
-          "gu": [0, 0],
+          "comment": "Perimeter west wall (concrete, 2 storeys, 1 GU x 26 GU)",
+          "gu": [
+            0,
+            0
+          ],
           "material": "concrete",
           "storeys": 2,
-          "size": [2, 26]
+          "size": [
+            1,
+            26
+          ]
         },
         {
-          "comment": "Perimeter east wall (concrete, 2 storeys, 2 GU × 26 GU)",
-          "gu": [24, 0],
+          "comment": "Perimeter east wall (concrete, 2 storeys, 1 GU x 26 GU)",
+          "gu": [
+            25,
+            0
+          ],
           "material": "concrete",
           "storeys": 2,
-          "size": [2, 26]
+          "size": [
+            1,
+            26
+          ]
         },
         {
-          "comment": "V1 stone SE edge: 8 GU long at y=8, x from 6 to 13, 4 storeys",
-          "gu": [6, 8],
+          "comment": "Stone tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "gu": [
+            9,
+            9
+          ],
           "material": "stone",
-          "storeys": 4,
-          "size": [8, 1]
+          "storeys": 2,
+          "size": [
+            3,
+            3
+          ]
         },
         {
-          "comment": "V1 stone SW edge: 8 GU tall at x=6, y from 8 to 15, 4 storeys",
-          "gu": [6, 8],
-          "material": "stone",
-          "storeys": 4,
-          "size": [1, 8]
-        },
-        {
-          "comment": "V2 concrete SE edge: 8 GU long at y=10, x from 8 to 15, 4 storeys (2 GU forward of V1)",
-          "gu": [8, 10],
+          "comment": "Concrete tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "gu": [
+            15,
+            9
+          ],
           "material": "concrete",
-          "storeys": 4,
-          "size": [8, 1]
+          "storeys": 2,
+          "size": [
+            3,
+            3
+          ]
         },
         {
-          "comment": "V2 concrete SW edge: 8 GU tall at x=8, y from 10 to 17, 4 storeys",
-          "gu": [8, 10],
-          "material": "concrete",
-          "storeys": 4,
-          "size": [1, 8]
-        },
-        {
-          "comment": "V3 metal SE edge: 8 GU long at y=12, x from 10 to 17, 4 storeys (2 GU forward of V2)",
-          "gu": [10, 12],
+          "comment": "Metal tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "gu": [
+            9,
+            15
+          ],
           "material": "metal",
-          "storeys": 4,
-          "size": [8, 1]
+          "storeys": 2,
+          "size": [
+            3,
+            3
+          ]
         },
         {
-          "comment": "V3 metal SW edge: 8 GU tall at x=10, y from 12 to 19, 4 storeys",
-          "gu": [10, 12],
-          "material": "metal",
-          "storeys": 4,
-          "size": [1, 8]
-        },
-        {
-          "comment": "V4 wood SE edge: 8 GU long at y=14, x from 12 to 19, 4 storeys (2 GU forward of V3)",
-          "gu": [12, 14],
+          "comment": "Wood tower: 3x3 GU, 2 storeys - 4 corners, 4 junction columns",
+          "gu": [
+            15,
+            15
+          ],
           "material": "wood",
-          "storeys": 4,
-          "size": [8, 1]
-        },
-        {
-          "comment": "V4 wood SW edge: 8 GU tall at x=12, y from 14 to 21, 4 storeys",
-          "gu": [12, 14],
-          "material": "wood",
-          "storeys": 4,
-          "size": [1, 8]
+          "storeys": 2,
+          "size": [
+            3,
+            3
+          ]
         }
       ]
     }

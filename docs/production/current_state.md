@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 98a889b [OCC-01] Add occluded-cell set computation (view-space, no rotation, O1/O4′/O5 compliant)
 - eb8a6c1 [CLEANUP] Delete 56.8k lines of dead docs, prompts and one-off tools; fix a test that never ran
 - ae9ae01 [DOCS] Re-anchor the Busted evidence into tracked history/
 - b0ecaf2 [DOCS] Session sweep: junction canon, plan status, TEXTURES 3.0, version fix
 - 6a1a3b9 [HUD-PANEL-01-d] Close by direct implementation: real enemy-banner capture
-- 78c400b [HUD-PANEL-01-d] Verify UI components using true native visual execution context
 <!-- AUTO:END version_history -->
 
 ---

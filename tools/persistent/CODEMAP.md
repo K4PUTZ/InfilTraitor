@@ -910,7 +910,7 @@ extends `Node2D` · 120 lines
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
-- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
@@ -1532,7 +1532,7 @@ extends `Node2D` · 43 lines
 > Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - NEVER reads _active_perspective (coordinates already rotated when entering) POLICY: O4′ — One view-space formula, no rotation applied The map is rebuilt rotated; we compute in already-rotated coordinates. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera.
 
 **Constants / tuning**
-- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
 - `var circle_radius_voxels: float = 20.0`
@@ -1546,7 +1546,7 @@ extends `Node2D` · 43 lines
 - `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`
 - `func recompute(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> void:`
-- `func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> Dictionary:`
+- `func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, _room_size: Vector2i) -> Dictionary:`
 - `func debug_print_stats() -> void:`
 
 ---
@@ -1911,8 +1911,8 @@ extends `SceneTree` · 322 lines
 > OCC-01: Occlusion Set — Headless Test Usage: godot --headless --script godot/scripts/tools/occlusion_set_test.gd
 
 **Constants / tuning**
-- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `OcclusionSet` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `OcclusionSetMod` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 
 ---
 

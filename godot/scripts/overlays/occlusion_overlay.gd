@@ -6,7 +6,7 @@
 extends Node2D
 
 const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
-const GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 ## References
 var occlusion_set: OcclusionSetClass = null

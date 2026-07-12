@@ -13,7 +13,7 @@
 
 class_name OcclusionSet
 
-const GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 ## ============================================================================
 ## TUNING (exposed as adjustable, for Director to dial against screenshots)
@@ -103,11 +103,11 @@ func recompute(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) ->
 ##     c. If both true, assign ring index by distance from agent
 ##
 ## Returns: Dictionary of voxel cells → ring index
-func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> Dictionary:
+func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, _room_size: Vector2i) -> Dictionary:
 	var result: Dictionary = {}
 	
 	# Agent position in voxel grid (gameplay → voxel origin)
-	var agent_voxel := GeometryCoords.gu_to_voxel_origin(agent_cell)
+	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
 	var agent_depth := agent_voxel.x + agent_voxel.y
 	
 	# Precompute ring distance thresholds (squared, to avoid sqrt in loop)

@@ -4,8 +4,8 @@ extends SceneTree
 
 class_name OcclusionSetTest
 
-const GeometryCoords = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const OcclusionSet = preload("res://godot/scripts/systems/occlusion_set.gd")
+const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const OcclusionSetMod = preload("res://godot/scripts/systems/occlusion_set.gd")
 
 ## Test entry point (SceneTree._initialize replaces _ready())
 func _initialize():
@@ -76,12 +76,12 @@ func _initialize():
 ## Test with deliberately wrong predicate (>= instead of >)
 ## This should FAIL to demonstrate the test catches the bug
 func _test_wrong_predicate() -> bool:
-	var occ = OcclusionSet.new()
+	var occ = OcclusionSetMod.new()
 	
 	# Setup: agent at (10, 10) in gameplay → (80, 80) in voxel space
 	var agent_cell := Vector2i(10, 10)  # Gameplay cell
-	var agent_voxel := GeometryCoords.gu_to_voxel_origin(agent_cell)
-	var agent_depth := agent_voxel.x + agent_voxel.y  # 80 + 80 = 160
+	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
+	var _agent_depth := agent_voxel.x + agent_voxel.y  # 80 + 80 = 160
 	
 	# Create test voxel cells: some on camera side, some behind
 	var voxel_cells: Array = [
@@ -107,7 +107,7 @@ func _test_wrong_predicate() -> bool:
 
 ## Basic computation test
 func _test_basic_computation() -> bool:
-	var occ = OcclusionSet.new()
+	var occ = OcclusionSetMod.new()
 	
 	# Fixture: agent at origin, voxel cells in circle around it
 	var agent_cell := Vector2i(5, 5)
@@ -130,11 +130,11 @@ func _test_basic_computation() -> bool:
 
 ## Test that all cells pass depth check: (x+y) > agent_(x+y)
 func _test_depth_ordering() -> bool:
-	var occ = OcclusionSet.new()
+	var occ = OcclusionSetMod.new()
 	
 	var agent_cell := Vector2i(10, 10)
-	var agent_voxel := GeometryCoords.gu_to_voxel_origin(agent_cell)
-	var agent_depth := agent_voxel.x + agent_voxel.y
+	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
+	var _agent_depth := agent_voxel.x + agent_voxel.y
 	
 	# Create voxel cells at different depths
 	var voxel_cells: Array = []
@@ -148,8 +148,8 @@ func _test_depth_ordering() -> bool:
 	# Verify: all cells have depth > agent_depth
 	for cell in occluded.keys():
 		var cell_depth: int = cell.x + cell.y
-		if cell_depth <= agent_depth:
-			print("    ✗ Cell %s has depth %d <= agent_depth %d" % [cell, cell_depth, agent_depth])
+		if cell_depth <= _agent_depth:
+			print("    ✗ Cell %s has depth %d <= agent_depth %d" % [cell, cell_depth, _agent_depth])
 			return false
 	
 	print("    ✓ All %d cells pass depth test: (x+y) > agent_(x+y)" % occluded.size())
@@ -157,7 +157,7 @@ func _test_depth_ordering() -> bool:
 
 ## Test ring ordering: ring index should increase with distance
 func _test_ring_ordering() -> bool:
-	var occ = OcclusionSet.new()
+	var occ = OcclusionSetMod.new()
 	
 	# Tune small radii for predictable results
 	occ.circle_radius_voxels = 25.0
@@ -166,7 +166,7 @@ func _test_ring_ordering() -> bool:
 	occ.ring_2_width = 12.0
 	
 	var agent_cell := Vector2i(10, 10)
-	var agent_voxel := GeometryCoords.gu_to_voxel_origin(agent_cell)
+	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
 	
 	# Create many test cells
 	var voxel_cells: Array = []
@@ -211,7 +211,7 @@ func _test_ring_ordering() -> bool:
 
 ## Test cardinality: should be dozens, not thousands (guards against O5 failure)
 func _test_cardinality() -> bool:
-	var occ = OcclusionSet.new()
+	var occ = OcclusionSetMod.new()
 	
 	var agent_cell := Vector2i(20, 20)
 	var voxel_cells: Array = []

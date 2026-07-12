@@ -313,17 +313,34 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 		for spec in specs:
 			var raw_col_x: int = int(spec["col_x"])
 			var raw_col_y: int = int(spec["col_y"])
-			var col_x := _mirror_index(raw_col_x, SHEET_COLS)  # For TOP-JUNCTION-03 convention only
+			# TOP-JUNCTION-06: fold ONCE into the sheet period, then use the folded
+			# column for BOTH the horizontal crop and the shear term — exactly what
+			# _compose_sheet_page() does for straight runs, where `col` is inside
+			# [0, SHEET_COLS) by construction and appears in x0 and y0 alike.
+			# room_builder projects a junction onto its leg's run axis as an
+			# UNBOUNDED distance (OVERLORD-FIX-02, correct by design), and the
+			# straight-run neighbour at that same distance samples
+			# _mirror_index_1d(distance, 64) (BakedTileLookup._compute_facade_key).
+			# Sampling the folded column is therefore what makes the junction
+			# continuous with its own neighbours — and bounds-safety falls out for
+			# free: folded ∈ [0, 64) ⇒ source x ∈ [0, 1024] ⇒ always inside PLANE_W.
+			# The raw value (TOP-JUNCTION-04) is self-consistent but unbounded, so
+			# blit_rect silently clipped it out of the plane (blank side face) or,
+			# for col == 64, read the mirrored wrap strip at the wrong shear
+			# (displaced side face).
+			var col_x := _mirror_index(raw_col_x, SHEET_COLS)
+			var col_y := _mirror_index(raw_col_y, SHEET_COLS)
 			var vp: Vector2i = spec["voxel_pos"]
+			var blank_px: int = 0
 			for level in range(int(spec["level_start"]), int(spec["level_end"])):
 				var row := _mirror_index(level, SHEET_ROWS)
 				var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
 				# LEFT half ← X-leg (dir 0) plane, left half of its window
-				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + raw_col_x * 8 + V_MARGIN
-				atom_content.blit_rect(plane0, Rect2i(raw_col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
+				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + col_x * 8 + V_MARGIN
+				atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
 				# RIGHT half ← Y-leg (dir 1) plane, right half of its window
-				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + raw_col_y * 8 + V_MARGIN
-				atom_content.blit_rect(plane1, Rect2i(FACADE_W - raw_col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
+				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
+				atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
 				if BakeConfigClass.facade_tops:
 					var u0: int = col_x * TEX_AUTHORING_N
 					var v0: int = row * TEX_AUTHORING_N
@@ -334,6 +351,20 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 						atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
 				else:
 					atom_content.blend_rect(overlay, atom_full, Vector2i.ZERO)
+
+				# TOP-JUNCTION-06: holes = pixels the canonical silhouette says are
+				# solid but that no plane crop reached. A non-zero count means a
+				# half-face crop fell outside the plane image and blit_rect
+				# silently clipped it (the serrated-silhouette defect). The one
+				# survivor is atom pixel (0, 7) on col-0 atoms, canon alpha 4/255:
+				# _compose_sheet_page produces it identically on every straight
+				# run (64 occurrences in a TEXTURES bake), so junctions now match
+				# the shipping reference exactly rather than deviating from it.
+				if BakeConfigClass.debug_bake_set_dump and canonical != null:
+					for hy in range(VOXEL_ATOM_H):
+						for hx in range(VOXEL_ATOM_W):
+							if canonical.get_pixel(hx, hy).a > 0.0 and atom_content.get_pixel(hx, hy).a == 0.0:
+								blank_px += 1
 
 				var tile_col := atom_idx % PAGE_TILE_COLS
 				var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
@@ -350,6 +381,11 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 					"atlas_coords": atlas_coords,
 				}
 				atom_idx += 1
+
+			if BakeConfigClass.debug_bake_set_dump:
+				print("[BAKE-DIAG] junction vp=%s mat=%s col_x=%d col_y=%d blank_side_px=%d" % [
+					vp, material_id, raw_col_x, raw_col_y, blank_px
+				])
 
 		# B3 alpha fixup on the junction page (same rule as sheet pages)
 		if canonical != null:
@@ -389,12 +425,6 @@ func _mirror_index(index: int, period: int) -> int:
 	if k2 >= period:
 		k2 = period_2x - k2 - 1
 	return k2
-
-
-func _get_shear_col(raw_col: int, period: int) -> int:
-	var adjacent = raw_col + 1 if raw_col < 0 else raw_col - 1
-	var wall_folded = _mirror_index(adjacent, period)
-	return wall_folded + (raw_col - adjacent)
 
 func _get_plane_source(facade: Image, dir: int) -> Image:
 	# S: facade scaled ×20/16 vertically (nearest), grayscale source (B2).

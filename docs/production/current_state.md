@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.7.6 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.7.7 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -14,7 +14,9 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - HUD-PANEL-01-c.md
+- HUD-PANEL-01-d.md
 - TOP-JUNCTION-05.md
+- TOP-JUNCTION-06.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -32,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 0eb6620 [HUD-PANEL-01-c] Verify UI components using true native visual execution context
 - 937de58 [TOP-JUNCTION-05] Fold and clamp col_x/y to prevent out-of-bounds crops while preserving linear junction shear
 - 1f7f878 [VERSION] Bump to 0.7.4
 - df7500e [VERSION] Bump to 0.7.3
 - 5cd53b1 [TOP-JUNCTION-04-b] Real evidence: red-before-green formula + manual screenshot procedure
-- 893b030 [HUD-PANEL-01] Migrate HUD onto PanelBase: TopBar/EnemyTurnBanner + delegation
 <!-- AUTO:END version_history -->
 
 ---

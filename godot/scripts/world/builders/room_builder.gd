@@ -436,6 +436,19 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 		for wd in wall_descriptors:
 			mats[wd["material_id"]] = mats.get(wd["material_id"], 0) + 1
 		print("[BAKE-DIAG] wall_descriptors=%d, material histogram=%s" % [wall_descriptors.size(), mats])
+		# TOP-JUNCTION-06: junction column projections. src_x0/src_x1 are the
+		# source-x the compositor crops each half-face from; both must land
+		# inside the plane image [0, PLANE_W=1056) or blit_rect silently
+		# clips and the half-face bakes blank.
+		for js in junction_specs:
+			var d_cx: int = int(js["col_x"])
+			var d_cy: int = int(js["col_y"])
+			var d_x0: int = d_cx * 16
+			var d_x1: int = 1024 - d_cy * 16 + 16
+			var d_ok: bool = d_x0 >= 0 and d_x0 + 16 <= 1056 and d_x1 >= 0 and d_x1 + 16 <= 1056
+			print("[BAKE-DIAG] junction vp=%s mat=%s col_x=%d col_y=%d src_x0=%d src_x1=%d in_plane=%s" % [
+				js["voxel_pos"], js["material_id"], d_cx, d_cy, d_x0, d_x1, d_ok
+			])
 
 	# Create texture resolver
 	var resolver_class = preload("res://godot/scripts/systems/texture_resolver.gd")

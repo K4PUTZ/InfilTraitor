@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.8.2 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.8.2 · **Updated:** 2026-07-12 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- ae9ae01 [DOCS] Re-anchor the Busted evidence into tracked history/
 - b0ecaf2 [DOCS] Session sweep: junction canon, plan status, TEXTURES 3.0, version fix
 - 6a1a3b9 [HUD-PANEL-01-d] Close by direct implementation: real enemy-banner capture
 - 78c400b [HUD-PANEL-01-d] Verify UI components using true native visual execution context
 - c559932 [TEXTURES-3.0] Towers to 3 storeys
-- 7ac4401 [TEXTURES-3.0] Rebuild the texture verification map: 4 isolated 3x3 GU towers
 <!-- AUTO:END version_history -->
 
 ---

@@ -141,27 +141,16 @@ The game feeds tile art from two layers (resolved by `build_tileset.gd`):
   (shaded, 4 directional PNGs). Used as the fallback when no master exists for a
   tile's base name.
 
-### generate_master_crate.py
+### ~~generate_master_crate.py~~ · ~~generate_crate_simple.py~~ — **deleted 2026-07-12**
 
-**Purpose:** Generate the flat-lit master crate (`master_assets/blocks/crate.png`)
-**Status:** ✅ Active
+**A crate is not a sprite. It is a voxel volume, authored as JSON** (`props/crate_full.json`):
+an 8×8×8 grid of `1`/`0` layers with a material zone. So is a table, a chair, or any other
+object that fits inside one GAME UNIT. There is nothing to generate — it is text.
 
-```bash
-python3 tools/asset_generation/generate_master_crate.py
-```
-
-Outputs a 256×512 cube with a 4×4×4 grid, a single neutral colour on
-every face (no baked light) and structural edges/subdivisions only.
-
-### generate_crate_simple.py
-
-**Purpose:** Generate the provisory (shaded) crate fallback — 4 directional PNGs
-in `blocks-prototype/Isometric/` (`crate_NE/NW/SE/SW.png`)
-**Status:** ✅ Active (fallback only)
-
-```bash
-python3 tools/asset_generation/generate_crate_simple.py
-```
+Both crate generators produced 256×512 PNGs for a sprite pipeline the engine no longer
+uses. Deleted along with `generate_master_walls.py` and `generate_master_block.py`.
+Removing them, their 24 PNGs and their 24 tileset entries changed **zero pixels** on
+screen. See `docs/technical/ASSET_MAP.md`.
 
 > **After regenerating any PNG:** Godot must import it before the tileset builder
 > can load it (`Godot --headless --path . --import`), then rebuild the tileset

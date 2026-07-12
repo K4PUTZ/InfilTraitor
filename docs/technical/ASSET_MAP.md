@@ -77,52 +77,33 @@ master_assets/
 
 ## Asset Generation System
 
-The **Asset Generation** pipeline (`tools/asset_generation/`) generates master assets programmatically using Python. This ensures:
+> ## ⚠️ The scenery has no sprite generators anymore
+>
+> **Everything in the scenery is voxels.** Walls, blocks, crates, containers — all of
+> them. Sprites remain only for things that are *not* scenery (characters, animations,
+> FX, UI) and, transitionally, for the **floor**.
+>
+> As of 2026-07-12 `tools/asset_generation/` contains exactly two scripts:
+>
+> | Script | Produces | Status |
+> |---|---|---|
+> | **`generate_voxel.py`** | `voxel_{material}.png` — the 32×36 voxel atom | **The base of the entire world.** Permanent. |
+> | **`generate_master_floor.py`** | `floor_{NW,NE,SE,SW}.png` | **The last sprite standing.** Dies when the double voxel slab lands (see the destruction plan). |
+>
+> The four wall/block/crate generators were deleted. See "How to Add New Wall Types"
+> below for what replaced them.
 
-- **Reproducible geometry** — Same code = same proportions every time
-- **Precise calibration** — Offsets and positions are calculated, not guessed
-- **Future extensibility** — Add new asset types by creating new generator scripts
+The two surviving generators build their PNGs programmatically, which buys:
 
-### How Asset Generation Works
+- **Reproducible geometry** — same code, same proportions, every time
+- **Analytic placement** — offsets are derived, never eyeballed
+- **No binary churn** — PNGs are gitignored and regenerated on demand
 
-1. **Generator script** (e.g. `generate_master_walls.py`) defines:
-   - Canvas dimensions (`PNG_W × PNG_H`)
-   - 3D face geometry (floor diamond vertices, wall heights, depth offsets)
-   - Grid subdivisions (horizontal bands, vertical columns)
-   - Color palette (flat fill, structural outline, grid lines)
-
-2. **Face definitions** use **canonical isometric vertices**:
-   - Floor diamond: `bN`, `bE`, `bS`, `bW` (bottom corners, on canvas at rows 384–512)
-   - Top vertices: `tN`, `tE`, `tS`, `tW` (lifted by wall height)
-   - These define the 3D slab shape in 2D projection
-
-3. **Per-direction logic** accounts for **perspective visibility**:
-   - NW/NE/SW/SE faces are visible from the camera angle
-   - NW/SW: original edge faces away; camera-facing surface is the offset (back) face
-   - NE/SE: original edge faces camera directly
-   - Generator flips and repositions accordingly
-
-4. **PNG generation** outputs 4 PNGs (one per direction) with correct:
-   - Canvas size (256×512 for full walls, 256×512 for half-walls)
-   - Face position relative to tile boundary
-   - Grid lines (subdivisions for visual detail)
-   - Silhouette (dark outline for clarity)
-
-5. **Post-generation**: Run `build_tileset.gd` to:
-   - Scan master assets
-   - Apply `texture_origin` offsets (calculated calibration values)
-   - Register tiles in TileSet
-   - Generate `tile_registry.gd` (name→ID lookup)
-
-### Running Asset Generators
+### Running the generators
 
 ```bash
-# Generate all master wall PNGs
-python3 tools/asset_generation/generate_master_walls.py
-
-# Output: 8 PNGs written to master_assets/walls/
-# wall_NE.png, wall_NW.png, wall_SE.png, wall_SW.png (full walls)
-# wallHalf_NE.png, wallHalf_NW.png, wallHalf_SE.png, wallHalf_SW.png (half walls)
+python3 tools/asset_generation/generate_voxel.py         # the voxel atom (4 materials)
+python3 tools/asset_generation/generate_master_floor.py  # floor tiles (4 directions)
 ```
 
 After generation, rebuild the TileSet in Godot:
@@ -395,36 +376,41 @@ NW (320 px wide):
 
 These are **per-corner-specific** values, not generic.
 
-### How to Add New Wall Types
+### How to Add New Wall Types — **you don't**
 
-To add a new wall variant (e.g., `wallDestroyed`, `wallVine`):
+> **Walls are not sprites. There is no wall generator.** (Director, 2026-07-12.)
+>
+> A wall is a stack of **voxels**, textured at bake time by
+> `BakeCompositor` from a facade image. To add a "destroyed wall" or a "vine wall",
+> you add a **material or a facade**, not a PNG — see
+> `docs/technical/BAKE_SYSTEM_REFERENCE.md` and `TEXTURE_CATALOG.md`.
+>
+> `generate_master_walls.py`, `generate_master_block.py`, `generate_master_crate.py`
+> and `generate_crate_simple.py` were **deleted on 2026-07-12**, along with the 24 PNGs
+> they produced and the 24 tileset entries that pointed at them. Removing all of it
+> changed **zero pixels** on screen — proof they had been dead for weeks.
 
-1. **Create a generator script** (e.g., `generate_master_walls_destroyed.py`):
-   - Copy `generate_master_walls.py` as a template
-   - Modify `COLOR_FLAT` or grid style
-   - Change `base_name` parameter in the `generate()` calls
-   - Update `OUTPUT_DIR` to point to `master_assets/walls/` (same directory)
+### How to add a solid object (crate, table, chair)
 
-2. **Define the wall geometry**:
-   - Keep the same canvas (256×512)
-   - Keep the same vertex positions (`bN`, `bE`, `bS`, `bW`, `tN`, etc.)
-   - Only change colors, grid lines, or surface texture
+**It is a JSON file, not an image.** A voxel object is a volume:
 
-3. **Run the generator**:
-   ```bash
-   python3 tools/asset_generation/generate_master_walls_destroyed.py
-   ```
+```json
+{
+  "id": "crate_full",
+  "size_vox": [8, 8, 8],
+  "layers": ["11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111"],
+  "material_zones": { "default": "wood" },
+  "footprint_gus": [[0, 0]],
+  "storeys": 1,
+  "gameplay": { "cover": "full", "destructible": true },
+  "tags": ["crate", "cover", "container"]
+}
+```
 
-4. **Rebuild TileSet**:
-   ```bash
-   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/build_tileset.gd
-   ```
+Drop it in `props/`, reference it from a map by `def`. Objects that live **entirely
+inside one GU** are easy this way — the hard case was always walls, which straddle a
+GU edge, and that case is solved by the voxel/slice/junction geometry, not by art.
 
-5. **Use in maps**: Add `"wallDestroyed"` to any map definition (it will automatically get 4 directional tiles).
-
-**Important:** Do NOT manually edit PNG files after generation — always regenerate from Python. This ensures consistency and reproducibility.
-
----
 
 ## ASSETS/ISOMETRIC/ — Tile packs
 

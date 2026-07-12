@@ -90,13 +90,16 @@ ASSETS/ISOMETRIC/source_assets/generated/
 - Builds `tileset_blocks.tres` (256×128 tile_size)
 - Contract unchanged; wall-specific calibration entries removed
 
-### Workflow: Add New Block/Prop
+### Workflow: Add New Block/Prop — **no PNG involved**
 
-1. Create generator (copy `generate_master_block.py` as template)
-2. Run it → PNG to `source_assets/generated/`
-3. Switch to Godot window, wait 3–5 seconds for reimport
-4. Run builder: `Godot --headless --path . --script godot/scripts/tools/build_tileset.gd`
-5. Tile becomes available in `tile_registry.gd` under its base name
+Blocks and props are **voxel volumes**, not sprites. Write a JSON file in `props/`
+(see `props/crate_full.json`: `size_vox`, `layers`, `material_zones`) and reference it
+from a map by `def`. No generator, no reimport, no tileset rebuild.
+
+The sprite path for blocks/crates was deleted on 2026-07-12
+(`generate_master_block.py`, `generate_master_crate.py`, `generate_crate_simple.py`,
+`generate_master_walls.py`). `tileset_blocks.tres` now holds **8 tiles**: 4 floors and
+4 voxel atoms — nothing else.
 
 ---
 
@@ -119,9 +122,8 @@ ASSETS/ISOMETRIC/source_assets/generated/
 **Step 1: Generate assets (terminal)**
 ```bash
 cd /Volumes/Expansion/"----- PESSOAL -----"/PYTHON/INFILTRAITOR
-python3 tools/asset_generation/generate_voxel.py
-# or
-python3 tools/asset_generation/generate_master_block.py
+python3 tools/asset_generation/generate_voxel.py         # the voxel atom
+python3 tools/asset_generation/generate_master_floor.py  # floor tiles (last sprite standing)
 ```
 
 **Step 2: Let Godot reimport (GUI)**

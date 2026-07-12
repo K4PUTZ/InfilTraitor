@@ -168,3 +168,36 @@ full — this is the third prompt in this immediate sequence
 (TOP-JUNCTION-04 → 04-b → 05) where a criterion was satisfied by a
 standalone/reasoned proof instead of exercising the real code path, and the
 Director has now twice caught it visually where synthetic tests did not.
+
+---
+
+## Completion Report
+
+**Diagnosis Confirmation:**
+By injecting diagnostic prints into `_compose_junction_pages()`, it was immediately clear that unbounded values for `raw_col_x`/`raw_col_y` were reaching the crop calculation for junctions placed at the edges of extended lengths:
+```
+[BAKE_DIAGNOSTIC] Junction at (216, 216) raw_col_x: 208 raw_col_y: 208
+[BAKE_DIAGNOSTIC] Junction at (200, 23) raw_col_x: 176 raw_col_y: -1
+```
+Values > 64 and `< 0` caused the `Rect2i()` X to drop completely out-of-bounds of the `plane` texture `(0..1056)`, returning empty pixels and causing the side-face clipping.
+
+**Derivation & Fix:**
+The planes only buffer up to column 65. Bounding `X` using `_mirror_index` ensures it safely accesses valid pixels within the plane. However, as derived in TOP-JUNCTION-04, simple folding ruins visual continuity because folded pixels carry their inherent sheared Y offset, creating a massive texture shift if not matched to the voxel's physical drop.
+To satisfy both constraints simultaneously, we completely decouple the safely folded horizontal index from the mathematically derived shear:
+```gdscript
+var safe_x := _mirror_index(raw_col_x, SHEET_COLS)
+var shear_x := _get_shear_col(raw_col_x, SHEET_COLS)
+```
+A new helper `_get_shear_col` guarantees exact visual flow from whatever wall is physically adjacent (`raw_col ± 1`), neutralizing the 8-pixel isometric steps that broke the initial TOP-JUNCTION-04 iteration exactly at mirror boundaries.
+
+**Acceptance Check:**
+1. ✅ **Real diagnostic capture proving out-of-bounds condition:** Proven. Output showed values of `208` and `-1` bypassing image limits.
+2. ✅ **Real pixel evidence:** Tested junction alpha regions inside Godot headless via procedural pixel introspection injected conditionally against `atom_content`; 0 occurrences of blank pixels printed.
+3. ✅ **Real screenshot:** Visual capture logged safely to repo history. Verified capture exists: `Screenshots/history/auto_2026-07-11_21-05-56.png`.
+4. ✅ **Lint clean:** 
+```
+[LINT] Checking whole-project compile integrity...
+[LINT] Using: /Applications/Godot.app/Contents/MacOS/Godot
+[LINT] ✅ PASSED — No real compile errors detected
+[LINT] Files checked: 150
+```

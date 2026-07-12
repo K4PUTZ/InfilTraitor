@@ -390,6 +390,12 @@ func _mirror_index(index: int, period: int) -> int:
 		k2 = period_2x - k2 - 1
 	return k2
 
+
+func _get_shear_col(raw_col: int, period: int) -> int:
+	var adjacent = raw_col + 1 if raw_col < 0 else raw_col - 1
+	var wall_folded = _mirror_index(adjacent, period)
+	return wall_folded + (raw_col - adjacent)
+
 func _get_plane_source(facade: Image, dir: int) -> Image:
 	# S: facade scaled ×20/16 vertically (nearest), grayscale source (B2).
 	# The RGB8 round-trip flattens any alpha the facade PNG carries to 255:

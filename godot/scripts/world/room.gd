@@ -353,7 +353,13 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	selection_overlay.z_index = 7
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
-	agent.z_index = 10
+	
+	# OCC-03: Agent renders above all voxel layers, below dev hover label (z=200)
+	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
+	agent.z_index = max_voxel_z_index + 1
+	print("[OCC-03] Agent z_index set to %d (max voxel layer z_index: %d, room size: %s)" % [agent.z_index, max_voxel_z_index, room_size])
+	assert(agent.z_index < 200, "Agent z_index must stay below dev overlay (200)")
+	
 	_spawn_guards(view_layout.get("enemy_defs", []))
 	enemies_root.z_index = 10
 	

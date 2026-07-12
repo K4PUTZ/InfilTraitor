@@ -101,6 +101,16 @@ func get_tileset() -> TileSet:
 	return _tileset
 
 
+## OCC-03: Get the highest z_index across all voxel layers (used to render agent above all geometry).
+## Returns: z_index of the topmost voxel layer, or WALL_BASE_Z_INDEX if no layers yet.
+func get_max_voxel_z_index() -> int:
+	if _voxel_layers.is_empty():
+		return _wall_base_z_index
+	# Each layer has z_index = _wall_base_z_index + level
+	# Topmost layer is at index (_voxel_layers.size() - 1)
+	return _wall_base_z_index + (_voxel_layers.size() - 1)
+
+
 ## DEBUG-02: Apply real-time positional offset to all voxel layers.
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:

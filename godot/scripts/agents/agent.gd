@@ -75,6 +75,13 @@ const COLOR_BODY_DARK := Color(0.07, 0.42, 0.18, 1.0)
 const COLOR_HEAD := Color(0.84, 0.96, 0.88, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
+## Placeholder bounding box for standing-character silhouette (O7 stroke will clip to this)
+## Dimensions tuned to enclosing rect of STANDING posture diamond
+const SILHOUETTE_WIDTH := 44.0   ## left-right span of standing character
+const SILHOUETTE_HEIGHT := 61.0  ## top-bottom span of standing character
+const SILHOUETTE_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.3)  ## semi-transparent white
+const SILHOUETTE_OUTLINE_WIDTH := 1.5
+
 var _path_queue: Array[Vector2i] = []
 
 
@@ -211,6 +218,9 @@ func _draw() -> void:
 			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 2.0)
 			draw_circle(Vector2(26.0, -10.0), 7.0, COLOR_HEAD)
 
+	# Placeholder bounding box silhouette (OCC-03) — debug rect for stroke clipping (OCC-04)
+	_draw_silhouette_placeholder()
+
 	if dev_vision:
 		## Ring around the agent colored by cover level
 		var ring_color := Color.TRANSPARENT
@@ -219,3 +229,16 @@ func _draw() -> void:
 			CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
 		if ring_color.a > 0.0:
 			draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, ring_color, 2.5)
+
+## Placeholder bounding box for silhouette — marks the extent of the agent's standing form.
+## OCC-04 will render a stroke within this rect, masked to occluded-cell region.
+func _draw_silhouette_placeholder() -> void:
+	var half_w := SILHOUETTE_WIDTH * 0.5
+	var half_h := SILHOUETTE_HEIGHT * 0.5
+	var points := PackedVector2Array([
+		Vector2(-half_w, -half_h),
+		Vector2( half_w, -half_h),
+		Vector2( half_w,  half_h),
+		Vector2(-half_w,  half_h),
+	])
+	draw_polyline(points + PackedVector2Array([points[0]]), SILHOUETTE_OUTLINE_COLOR, SILHOUETTE_OUTLINE_WIDTH)

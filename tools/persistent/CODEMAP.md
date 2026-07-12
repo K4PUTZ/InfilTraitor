@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**115 scripts · 21205 lines total** (under `godot/scripts/`)
+**115 scripts · 21244 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 221 lines
+`class_name DebugAgent` · extends `Node2D` · 244 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -54,6 +54,10 @@
 - `COLOR_BODY_DARK` = `Color(0.07, 0.42, 0.18, 1.0)`
 - `COLOR_HEAD` = `Color(0.84, 0.96, 0.88, 1.0)`
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
+- `SILHOUETTE_WIDTH` = `44.0`
+- `SILHOUETTE_HEIGHT` = `61.0`
+- `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
+- `SILHOUETTE_OUTLINE_WIDTH` = `1.5`
 
 **Public vars**
 - `var posture: Posture = Posture.STANDING`
@@ -616,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 490 lines
+`class_name VoxelRenderer` · extends `Node2D` · 500 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -637,6 +641,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
 - `func get_tileset() -> TileSet:`
+- `func get_max_voxel_z_index() -> int:`
 - `func apply_debug_nudge(delta: Vector2) -> void:`
 - `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
 - `func print_render_diagnostics() -> void:`
@@ -2539,7 +2544,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2056 lines
+extends `Node2D` · 2062 lines
 
 `godot/scripts/world/room.gd`
 

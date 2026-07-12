@@ -105,7 +105,6 @@ const VOXEL_STEP_PX: float = 20.0
 
 ## SLICE-02: New geometry module state
 var _edge_registry: EdgeRegistry = null       ## EdgeRegistry of all edges and slices
-var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_renderer: VoxelRenderer = null     ## Voxel rendering engine
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,

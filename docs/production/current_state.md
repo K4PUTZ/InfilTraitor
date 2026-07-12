@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.7.5 · **Updated:** 2026-07-11 · **Branch:** main
+**Version:** 0.7.6 · **Updated:** 2026-07-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -32,11 +32,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 937de58 [TOP-JUNCTION-05] Fold and clamp col_x/y to prevent out-of-bounds crops while preserving linear junction shear
 - 1f7f878 [VERSION] Bump to 0.7.4
 - df7500e [VERSION] Bump to 0.7.3
 - 5cd53b1 [TOP-JUNCTION-04-b] Real evidence: red-before-green formula + manual screenshot procedure
 - 893b030 [HUD-PANEL-01] Migrate HUD onto PanelBase: TopBar/EnemyTurnBanner + delegation
-- e105f47 [TOP-JUNCTION-04] Fix: junction column vertical seam (raw col vs folded col in shear)
 <!-- AUTO:END version_history -->
 
 ---

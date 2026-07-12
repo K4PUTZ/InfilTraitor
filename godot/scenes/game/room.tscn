@@ -50,9 +50,6 @@ script = ExtResource("6_path")
 [node name="StructureLayer" type="TileMapLayer" parent="." unique_id=1600001010]
 y_sort_origin = 1
 
-[node name="StructureWallLayer" type="TileMapLayer" parent="." unique_id=1600001011]
-y_sort_origin = 1
-
 [node name="SelectionOverlay" type="Node2D" parent="." unique_id=945163989]
 script = ExtResource("2_sel")
 

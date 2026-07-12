@@ -111,6 +111,9 @@ Not a renderer. A **world model**:
   tops, junctions, themes, blend modes, determinism pinned by hash.
 - **Dirty flag + TIC** — a destruction motor, fully built and wired, **which has
   never been switched on** (zero call sites for `set_visible(false)`). It waits.
+  *(Correction, 2026-07-12 — see the postscript: "fully built and wired" was **false**.
+  `room._edge_registry` was never assigned, so `_tic_voxel_system()` returned early on
+  every single TIC. The motor was severed at both ends, not idle. Now fixed.)*
 - **The two-plane model** — coarse gameplay grid, fine geometry grid — held for
   eight weeks without a single contradiction. Everything that fits it renders,
   bakes and themes for free.
@@ -247,9 +250,70 @@ Nothing was archived. It was **deleted** — a `_archive/` folder inside a git r
 redundant with git, and pretending otherwise is how the previous 55k lines accumulated.
 `git show <sha>:<path>` recovers any of it, forever.
 
+### The second sweep — the sprite pipeline, and a wire cut at both ends
+
+The Director then ruled: **the scenery is voxels, full stop.** No sprite generators for
+tiles, walls or blocks. Sprites survive only for characters, animation, FX, UI — and,
+transitionally, the floor.
+
+He allowed one exception: *keep a generator if it authors voxel objects (a crate)*. **The
+exception had no beneficiary.** A voxel object is not a PNG — `props/crate_full.json` is a
+volume (`size_vox [8,8,8]`, `layers: ["11111111/…"]`). A table or a chair is the same
+thing. There is no generator for voxel objects **because none is needed: they are text.**
+All six generators produced sprites. Four were deleted, with their 24 PNGs and the 24
+tileset entries pointing at them. `tileset_blocks.tres` went from **32 tiles to 8** — four
+floors and four voxel atoms.
+
+Removing all of it changed **zero pixels** (ImageChops diff: 0 / 921,600). The tileset had
+been loading 24 dead sprites for weeks.
+
+Then the code sweep found the one that matters.
+
+### The destruction motor was not idle. It was severed.
+
+§4 above says the dirty-flag/TIC motor is *"fully built and wired, which has never been
+switched on."* **"Wired" was false.**
+
+`room.gd::_tic_voxel_system()` is called on every TIC (`room.gd:1073`) and reads:
+
+```gdscript
+if _voxel_renderer != null and _edge_registry != null:
+    _voxel_renderer.process_dirty(_edge_registry)
+```
+
+**`_edge_registry` was always `null`.** `room_builder.build_from_layout()` built the
+registry as a **function local** — `var _edge_registry = EdgeRegistry.new()` — which
+shadowed `room.gd`'s member of the same name and was thrown away on return. The room's
+only assignment lived in `room.gd::_build_room()`: a **dead duplicate of the builder that
+was never called.**
+
+So the motor was cut at *both* ends. No producer marked voxels dirty — **and
+`process_dirty()` could not have run even if one had.** The destruction plan's Part 3
+would have marked voxels destroyed, watched nothing happen, and hunted the bug in the
+wrong system entirely.
+
+Fixed: the builder now publishes `room._edge_registry` / `room._junction_columns`. The
+motor is genuinely connected, and genuinely idle — it now lacks only a producer, which is
+what Part 3 adds.
+
+The same sweep deleted the dead `_build_room` subgraph from the monolith (`_place`,
+`_build_registry`, `_ensure_wall_upper_layers` — never called *at all* —
+`_ensure_prop_stack_layers`, `_cache_blocked_cells`, `_render_solid_blocks_DEPRECATED`,
+whose own docstring admitted *"kept for reference only"*), plus the `StructureWallLayer`
+scene node and the `_wall_upper_layers` array that was iterated twice and never populated.
+**`room.gd`: 2,183 → 2,003 lines.** Zero pixels changed.
+
+And `_place()` — the function that turns a tile name into a cell — was a **silent no-op on
+unknown names**, with a docstring that said so proudly. That is the same failure mode as
+`Image.blit_rect` silently clipping, the bug that cost a week on the junction columns. It
+went from latent to live the moment the registry shrank to 8 names. It now `push_error`s.
+
 ### What §5 gets right, still
 
-The debt list stands unchanged. `room.gd` is still the monolith. BAKE-CACHE-01 is still
-the release blocker. Audio, animation, narrative and combat are still zero. **And the
-loop of §7 is still open.** Deleting 55,000 lines did not make the game playable — it
-only made the engine honest about how much of it was scaffolding.
+The debt list stands. `room.gd` is smaller but still the monolith. BAKE-CACHE-01 is still
+the release blocker. Audio, animation, narrative and combat are still zero. **And the loop
+of §7 is still open.**
+
+Deleting 57,000 lines did not make the game playable. It made the engine honest about how
+much of it was scaffolding — and it found two live wires that the next two master plans
+would have tripped over.

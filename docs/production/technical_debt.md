@@ -261,3 +261,47 @@ Old shadow function replaced by `_compute_shadow_tiles()` + `_cast_shadows_from_
 **Last Updated:** 2026-06-12
 **Maintained By:** Technical Lead
 **Status:** Functional with known limitations
+
+---
+
+## Sweep of 2026-07-12 — what it removed, and the two live wires it found
+
+**Removed (2 commits, ~57,000 lines):** the whole `PROMPTS/DONE` corpus; 33 one-off
+per-prompt verification scripts (`godot/scripts/tools/`: 10,006 → 4,093 lines); the
+corporate-process docs (`archive_policy`, `documentation_ownership`, `development_pipeline`
+— a "tech lead / DevOps / Slack / approval matrix" process for a one-person project);
+speculative roadmaps for systems at 0%; 4 sprite generators, their 24 PNGs and 24 tileset
+entries (`tileset_blocks.tres`: 32 tiles → 8); the dead `_build_room` subgraph in `room.gd`
+(2,183 → 2,003 lines) and the `StructureWallLayer` scene node.
+
+**Nothing was archived.** An `_archive/` folder inside a git repo is redundant with git.
+`git show <sha>:<path>` recovers any of it, forever.
+
+### Two defects the sweep found — both live, both silent
+
+1. **`geometry_selftest.gd` had never run.** It declared `func _ready()` on a `SceneTree`
+   — a callback that does not exist on that class, so the function never fired. The script
+   booted, printed nothing, idled. Completion reports cited it as passing evidence.
+   Renaming it to `_initialize()` made it execute, and it immediately threw a format-string
+   error that had been unreachable for weeks. Both fixed; **29/29 PASS**.
+   > **Rule:** `SCREENSHOT-HOOK-01` established that a *visual* claim needs a pixel.
+   > A **test claim needs an exit code.** A suite nobody executes is documentation that lies.
+
+2. **The dirty-flag/TIC destruction motor was severed at both ends.**
+   `room.gd::_tic_voxel_system()` guards on `_edge_registry != null`, and
+   `_edge_registry` was **always null**: `room_builder` built it as a *function local*
+   that shadowed the room's member, and the room's only assignment lived in the dead
+   `_build_room()`. Fixed — the builder now publishes `room._edge_registry` /
+   `room._junction_columns`. See `DESTRUCTION_MASTER_PLAN.md` Part 3.
+
+3. **`RoomBuilder._place()` was a silent no-op on unknown tile names** — documented as
+   such ("Silent no-op for unknown names"). Same failure mode as `Image.blit_rect`
+   silently clipping, which cost a week on the junction columns. It went from latent to
+   live when the registry shrank to 8 names. Now `push_error`s (B6).
+
+### Still open
+
+- **`room.gd` is still the monolith** (2,003 lines).
+- **BAKE-CACHE-01** — warm boot 730–770 ms vs a 150 ms target. Release blocker under D12.
+- **The core loop is still open** — detection accumulates but does not drive transitions.
+  See `RETROSPECTIVE_2026-07.md` §7.

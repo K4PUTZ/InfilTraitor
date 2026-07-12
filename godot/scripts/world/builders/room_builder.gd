@@ -16,7 +16,6 @@ var _bake_compositor: Object = null
 
 var _room_size: Vector2i = Vector2i.ZERO
 var _wall_tileset: TileSet = null
-var _wall_upper_layers: Array[TileMapLayer] = []
 var _prop_stack_layers: Array[TileMapLayer] = []
 var _blocked_cells: Dictionary = {}
 var _prop_heights: Dictionary = {}
@@ -29,28 +28,22 @@ var _base_layout: Dictionary = {}
 # References to room layers
 var floor_layer: TileMapLayer = null
 var structure_layer: TileMapLayer = null
-var structure_wall_layer: TileMapLayer = null
 
 
 func _init(p_room: Node) -> void:
 	room = p_room
 
 
-func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_layer: TileMapLayer, wall_tileset: TileSet) -> void:
+func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:
 	floor_layer = floor_ref
 	structure_layer = structure
-	structure_wall_layer = wall_layer
 	_wall_tileset = wall_tileset
 
 
 func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	_room_size = room_size
 	floor_layer.clear()
-	structure_wall_layer.clear()
 	structure_layer.clear()
-	for layer in _wall_upper_layers:
-		layer.clear()
-		layer.visible = true
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
 	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
@@ -75,35 +68,46 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 
 	if not extraction.get("edges", []).is_empty():
 		## New geometry path — the only active renderer when it has data.
-		var _edge_registry = EdgeRegistry.new()
-		SliceGenerator.generate(extraction["edges"], _edge_registry)
-		var _junction_columns = JunctionResolver.resolve(_edge_registry)
-		
+		##
+		## The registry and the junction columns are PUBLISHED BACK TO THE ROOM, not kept
+		## local. Until 2026-07-12 these two lines read `var _edge_registry = ...` /
+		## `var _junction_columns = ...` — function locals that shadowed room.gd's members
+		## of the same name and were discarded on return. room._edge_registry therefore
+		## stayed null forever, and room.gd::_tic_voxel_system() —
+		##     if _voxel_renderer != null and _edge_registry != null:
+		##         _voxel_renderer.process_dirty(_edge_registry)
+		## — could never fire. The destruction/dirty-flag motor was not merely "built but
+		## not switched on": it was severed at both ends. OCCLUSION and DESTRUCTION both
+		## need this handle, so it is published here rather than re-derived by each.
+		var edge_registry := EdgeRegistry.new()
+		SliceGenerator.generate(extraction["edges"], edge_registry)
+		var junction_columns := JunctionResolver.resolve(edge_registry)
+
 		# BAKE-FIX-02: Apply junction overrides from layout (if available)
-		_apply_junction_overrides(_junction_columns, layout)
+		_apply_junction_overrides(junction_columns, layout)
 
 		## Bake textures (S2: Wire baking into room_builder)
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
 		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, _edge_registry, _junction_columns)
+			_bake_textures(extraction, edge_registry, junction_columns)
 
 		if _diag_on:
 			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
 				("set" if room._voxel_renderer._baked_lookup != null else "NULL"),
-				_edge_registry.all_slices().size(), _junction_columns.size()
+				edge_registry.all_slices().size(), junction_columns.size()
 			])
 
+		room._edge_registry = edge_registry
+		room._junction_columns = junction_columns
+
 		room._voxel_renderer.clear()
-		room._voxel_renderer.render(_edge_registry, _junction_columns)
+		room._voxel_renderer.render(edge_registry, junction_columns)
 
 		if _diag_on and room._voxel_renderer.has_method("print_render_diagnostics"):
 			room._voxel_renderer.print_render_diagnostics()
 
 		_render_solid_blocks(extraction.get("solid_blocks", []))
 		_render_voxel_props(layout.get("voxel_prop_instances", []))
-		structure_wall_layer.visible = false
-		for layer in _wall_upper_layers:
-			layer.visible = false
 	elif _diag_on:
 		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")
 
@@ -542,12 +546,25 @@ func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionar
 
 ## Private helpers
 
+## Place a named tile at cell. LOUD-FAILS on an unknown name (bake invariant B6).
+##
+## This used to be a silent no-op: `if sid != -1: set_cell(...)`, with the docstring
+## cheerfully calling it "silent no-op for unknown names". That is the same failure mode
+## as Image.blit_rect silently clipping an out-of-range source rect — the bug that cost a
+## week on the serrated junction columns. A tile that does not render, and says nothing
+## about it, is the most expensive kind of bug this project has met.
+##
+## It went from latent to live on 2026-07-12: the sprite purge cut tile_registry from 32
+## names to 8 (4 floors + 4 voxel atoms). Any map still asking for "crate_SE" or "wall_NW"
+## would have drawn nothing, in silence. Now it says so.
 func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = null) -> void:
 	if layer == null:
 		layer = floor_layer
 	var sid: int = _tile_ids.get(tile_name, -1)
-	if sid != -1:
-		layer.set_cell(cell, sid, Vector2i(0, 0))
+	if sid == -1:
+		push_error("[RoomBuilder] Unknown tile '%s' at %s — not in tile_registry.gd. Scenery is voxels now; only floor_* and voxel_* are sprites. See docs/technical/ASSET_MAP.md." % [tile_name, cell])
+		return
+	layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
 func _clear_prop_stack_layers() -> void:

@@ -149,6 +149,28 @@ Still no destruction — verified purely on intact geometry and on a *manually*
 carved block.
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
+
+> **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**
+>
+> This plan (and the retrospective) said the dirty-flag/TIC motor was *fully built and
+> wired, just never switched on*. That was **wrong in a way that would have cost this part
+> a whole debugging cycle.**
+>
+> `room.gd::_tic_voxel_system()` guards on `_edge_registry != null` and **`_edge_registry`
+> was always null.** `room_builder.build_from_layout()` declared the registry as a
+> **function local** (`var _edge_registry = EdgeRegistry.new()`), which shadowed
+> `room.gd`'s member of the same name and was discarded on return. The room's only
+> assignment lived in `room.gd::_build_room()` — a dead duplicate that was never called.
+>
+> So the wire was cut at **both** ends: no producer marked voxels dirty, **and**
+> `process_dirty()` could not have run even if one had. Part 3 would have marked voxels
+> destroyed, seen nothing happen, and hunted the bug in the wrong system.
+>
+> **Fixed:** `room_builder` now publishes `room._edge_registry` / `room._junction_columns`.
+> `_tic_voxel_system()` is called every TIC (`room.gd:1073`) and now has a registry to
+> process. The motor is genuinely connected and genuinely idle — the only thing still
+> missing is a producer, which is what this Part adds.
+
 Wire the idle motor: a detonation marks voxels destroyed → dirty → TIC → newly
 exposed faces composed at the tick, capped. Cover rule (>50% of a GU), noise on
 digging, rubble as noisy terrain, breach as a persistent clue, `voxel_destroyed`

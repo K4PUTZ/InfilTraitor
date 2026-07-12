@@ -40,7 +40,6 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 @onready var enemies_root:         Node2D       = $Enemies
 @onready var movement_overlay:    MovementOverlay = $MovementOverlay
 @onready var path_preview:        PathPreview  = $PathPreview
-@onready var structure_wall_layer:       TileMapLayer = $StructureWallLayer
 @onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var shadow_full_layer:    TileMapLayer = $ShadowFullLayer
 @onready var shadow_partial_layer: TileMapLayer = $ShadowPartialLayer
@@ -79,18 +78,20 @@ const INVALID_CELL := Vector2i(-9999, -9999)
 ## visual offset so camera, labels, selection and picking all agree.
 const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 
-## Wall storeys (N-floor stacking). Ground course is StructureWallLayer at WALL_BASE_Z_INDEX;
-## each higher course is a runtime TileMapLayer offset up by WALL_FLOOR_STEP_PX and drawn one
-## z above the previous so its top occludes sprites. WALL_FLOOR_STEP_PX is the per-storey cube
-## height in px — calibrated visually (one block tall). Reserve z=100 band for a future overhead
-## ceiling/light layer (below noise at z=140).
+## Wall storeys (N-floor stacking). Walls are VOXELS, not sprites: VoxelRenderer creates one
+## TileMapLayer per voxel level, z_index = WALL_BASE_Z_INDEX + level. WALL_FLOOR_STEP_PX is the
+## per-storey height in px. Reserve z=100 band for a future overhead ceiling/light layer
+## (below noise at z=140).
+##
+## The old sprite path (StructureWallLayer + runtime _wall_upper_layers) was deleted on
+## 2026-07-12: the layers were created, cleared and then hidden on every build, and nothing
+## was ever placed into them. Do not recreate them — see docs/technical/ASSET_MAP.md.
 const WALL_BASE_Z_INDEX := 10
 ## One storey = the cube's side-face height. Measured from the art: opaque block height 286 −
 ## top-diamond 128 = 158 px (block_SE and wall_NE — sistema vértice-alinhado).
 ## Upper courses stack on this step so a cube seats exactly on the one below. Tunable.
 const WALL_FLOOR_STEP_PX := 158.0
 var _wall_tileset: TileSet = null
-var _wall_upper_layers: Array[TileMapLayer] = []
 
 ## Voxel render plane (VOXEL series): 1 storey = 8 voxel rows, each steps 20 px.
 ## 20 = 1.25 × VOXEL_TILE_SIZE.y (16). Must match generate_voxel.py SIDE_H.
@@ -107,10 +108,8 @@ var _voxel_renderer: VoxelRenderer = null     ## Voxel rendering engine
 ## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
 ## (tools/asset_generation/generate_*_crate.py) so stacked crates seat seamlessly.
 var CRATE_STACK_STEP_PX: float = 128.0
-var _prop_stack_layers: Array[TileMapLayer] = []
 
 ## tile_name → TileSet source_id
-var _tile_ids: Dictionary = {}
 var _room_size: Vector2i = Vector2i.ZERO
 var _map_buffer: int = 0   ## Buffer offset from MapCompiler (SLICE-00)
 var _blocked_cells: Dictionary = {}
@@ -404,8 +403,6 @@ func _ready() -> void:
 
 	floor_layer.tile_set = ts
 	floor_layer.z_index = 0
-	structure_wall_layer.tile_set = ts
-	structure_wall_layer.z_index = WALL_BASE_Z_INDEX
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
 	_wall_tileset = ts
@@ -419,7 +416,7 @@ func _ready() -> void:
 
 	## Initialize RoomBuilder (map construction orchestrator)
 	_room_builder = RoomBuilderClass.new(self)
-	_room_builder.setup(floor_layer, structure_layer, structure_wall_layer, ts)
+	_room_builder.setup(floor_layer, structure_layer, ts)
 	_room_builder.build_registry(ts)
 
 	## Initialize TurnController (turn phases, enemy AI, alert system)
@@ -1449,109 +1446,13 @@ func _try_move_to(cell: Vector2i) -> bool:
 	return result
 
 
-## Build a name → source_id dictionary from TileSet custom data.
-func _build_registry(ts: TileSet) -> void:
-	for i in ts.get_source_count():
-		var sid := ts.get_source_id(i)
-		var src := ts.get_source(sid) as TileSetAtlasSource
-		if src == null:
-			continue
-		var td := src.get_tile_data(Vector2i(0, 0), 0)
-		if td:
-			_tile_ids[td.get_custom_data("tile_name")] = sid
-	print("[Room] %d tiles registered." % _tile_ids.size())
 
 
-## Place a named tile at cell. Silent no-op for unknown names.
-func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = floor_layer) -> void:
-	var sid: int = _tile_ids.get(tile_name, -1)
-	if sid != -1:
-		layer.set_cell(cell, sid, Vector2i(0, 0))
 
 
-## Ensure `count` runtime wall layers exist above the base course (storeys 1..count).
-## Each higher layer is offset up by one cube and drawn one z above the previous so its top
-## occludes sprites. Idempotent — reuses existing layers across rebuilds/perspective switches.
-func _ensure_wall_upper_layers(count: int) -> void:
-	while _wall_upper_layers.size() < count:
-		var level := _wall_upper_layers.size() + 1
-		var layer := TileMapLayer.new()
-		layer.tile_set = _wall_tileset
-		layer.y_sort_origin = 1
-		layer.position = Vector2(0.0, -WALL_FLOOR_STEP_PX * float(level))
-		layer.z_index = WALL_BASE_Z_INDEX + level
-		add_child(layer)
-		_wall_upper_layers.append(layer)
-	## Surplus layers (shorter map after a taller one) are cleared by the caller; hide them.
-	for i in range(_wall_upper_layers.size()):
-		_wall_upper_layers[i].visible = i < count
 
 
-## Ensure `count` runtime prop-stack layers exist above structure_layer (crate stacks 1..count).
-## Mirrors _ensure_wall_upper_layers but steps by CRATE_STACK_STEP_PX so a crate seats on the
-## one below. Idempotent — reuses layers across rebuilds/perspective switches.
-func _ensure_prop_stack_layers(count: int) -> void:
-	while _prop_stack_layers.size() < count:
-		var level := _prop_stack_layers.size() + 1
-		var layer := TileMapLayer.new()
-		layer.tile_set = _wall_tileset
-		layer.y_sort_origin = 1
-		layer.position = Vector2(0.0, -CRATE_STACK_STEP_PX * float(level))
-		layer.z_index = structure_layer.z_index + level
-		add_child(layer)
-		_prop_stack_layers.append(layer)
-	for i in range(_prop_stack_layers.size()):
-		_prop_stack_layers[i].visible = i < count
 
-## SLICE-02: A-T2 — Render solid blocks at their correct storeys
-## [CONSOLIDATED INTO room_builder.gd per MAT-DEFAULTS-01 G3]
-## This implementation was the canonical version; it has been ported to room_builder
-## and all callers now route through room_builder._render_solid_blocks().
-## This stub is kept for reference only — callers should use room_builder version.
-func _render_solid_blocks_DEPRECATED(blocks: Array) -> void:
-	if blocks.is_empty():
-		return
-	
-	var groups: Dictionary = {}
-	for block in blocks:
-		var gu_cell: Vector2i = block.get("gu_cell", Vector2i.ZERO)
-		var storey: int = int(block.get("storey", 0))
-		var material_name: String = block.get("material", "concrete")
-		var key := "%d,%d,%s" % [gu_cell.x, gu_cell.y, material_name]
-		
-		if key not in groups:
-			groups[key] = {"gu_cell": gu_cell, "material_name": material_name, "storeys": []}
-		groups[key]["storeys"].append(storey)
-	
-	for key in groups:
-		var group = groups[key]
-		var gu_cell: Vector2i = group["gu_cell"]
-		var material_name: String = group["material_name"]
-		var storeys: Array = group["storeys"]
-		
-		storeys.sort()
-		var runs: Array = []
-		var current_run: Array = []
-		
-		for i in range(storeys.size()):
-			var storey: int = storeys[i]
-			if i == 0:
-				current_run.append(storey)
-			else:
-				var prev_storey: int = storeys[i - 1]
-				if storey == prev_storey + 1:
-					current_run.append(storey)
-				else:
-					runs.append(current_run.duplicate())
-					current_run = [storey]
-		
-		if not current_run.is_empty():
-			runs.append(current_run)
-		
-		for run in runs:
-			var run_start: int = run[0]
-			var run_span: int = run.size()
-			_voxel_renderer.render_block(gu_cell, run_start, run_span, material_name)
 
 
 func _debug_probe_voxel_alignment() -> void:
@@ -1661,85 +1562,6 @@ func _tic_voxel_system() -> void:
 		return
 
 
-func _build_room(layout: Dictionary) -> void:
-	floor_layer.clear()
-	structure_wall_layer.clear()
-	structure_layer.clear()
-	for layer in _wall_upper_layers:
-		layer.clear()
-		layer.visible = true
-
-	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
-	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
-	## replaces the old negative extension — no coordinates outside the range [0, MAP_SIZE).
-	for x in range(0, _room_size.x):
-		for y in range(0, _room_size.y):
-			_place(Vector2i(x, y), floor_tile_name)
-
-## Voxel render plane: wall/block descriptors become stacked voxel presence.
-		## The old wall-storey layers remain as a fallback path, but the active render
-		## now comes from the edge seam's voxel geometry integration.
-	
-	## SLICE-02: New geometry module integration — edges → slices → voxels
-	var extraction: Dictionary = EdgeExtractor.extract(layout)
-
-	if not extraction.get("edges", []).is_empty():
-		## New geometry path — the only active renderer when it has data.
-		_edge_registry = EdgeRegistry.new()
-		SliceGenerator.generate(extraction["edges"], _edge_registry)
-		_junction_columns = JunctionResolver.resolve(_edge_registry)
-		_voxel_renderer.clear()
-		_voxel_renderer.render(_edge_registry, _junction_columns)
-		## Solid blocks rendering now handled by room_builder (see MAT-DEFAULTS-01 G3)
-		structure_wall_layer.visible = false
-		for layer in _wall_upper_layers:
-			layer.visible = false
-
-	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
-	## layers offset up by the crate body step (visual stacking). The taller stack also
-	## drives a longer real shadow via _prop_heights (see _cache_blocked_cells).
-	var max_stack := 1
-	for structure_entry in layout.get("structure_tiles", []):
-		max_stack = maxi(max_stack, int(structure_entry.get("stack", 1)))
-	_ensure_prop_stack_layers(maxi(0, max_stack - 1))
-	for stack_layer in _prop_stack_layers:
-		stack_layer.clear()
-	for structure_entry in layout.get("structure_tiles", []):
-		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
-		var tile_name := String(structure_entry.get("tile_name", ""))
-		_place(cell, tile_name, structure_layer)
-		var stack: int = maxi(1, int(structure_entry.get("stack", 1)))
-		for level in range(1, stack):
-			_place(cell, tile_name, _prop_stack_layers[level - 1])
-
-	_cache_blocked_cells(layout)
-
-
-func _cache_blocked_cells(layout: Dictionary) -> void:
-	_blocked_cells.clear()
-	for cell in layout.get("blocked_cells", []):
-		_blocked_cells[cell] = true
-	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles.
-	## Consumed by LightingController._setup_tile_semantics so stacked props cast taller
-	## (longer) shadows. Built here so it follows perspective rotation with the layout.
-	_prop_heights.clear()
-	for entry in layout.get("structure_tiles", []):
-		if entry is Dictionary and entry.has("height"):
-			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
-	## Segment exits — used by the purple overlay in _draw()
-	_exit_cells.clear()
-	for raw in layout.get("exit_cells", []):
-		_exit_cells.append(Vector2i(raw))
-	## Active (perspective-rotated) map lights — consumed by LightingController.
-	_current_light_sources = layout.get("light_sources", [])
-	print("[Room] Cache: %d blocked_cells, %d exit_cells, %d lights" % [
-		_blocked_cells.size(), _exit_cells.size(), _current_light_sources.size()])
-	print("[Room] Border check: (0,0)=%s (17,0)=%s (0,35)=%s (17,35)=%s (9,0)=%s (9,35)=%s" % [
-		_blocked_cells.has(Vector2i(0,0)), _blocked_cells.has(Vector2i(17,0)),
-		_blocked_cells.has(Vector2i(0,35)), _blocked_cells.has(Vector2i(17,35)),
-		_blocked_cells.has(Vector2i(9,0)), _blocked_cells.has(Vector2i(9,35))
-	])
-
 
 ## M2-13: Quantized isometric directions (8 directions)
 const SHADOW_DIRS: Array[Vector2i] = [
@@ -1770,8 +1592,6 @@ func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i =
 	return PerspectiveMapperClass.cell_to_base(view_cell, direction, size)
 
 
-func _remap_tile_name_for_perspective(tile_name: String, direction: String) -> String:
-	return PerspectiveMapperClass.remap_tile_name(tile_name, direction)
 
 
 ## Convert a screen-space press position to the tile cell underneath it.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**112 scripts · 20788 lines total** (under `godot/scripts/`)
+**112 scripts · 20625 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2152,7 +2152,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 661 lines
+`class_name RoomBuilder` · 678 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2172,10 +2172,9 @@ extends `Node2D` · 34 lines
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
 - `var floor_layer: TileMapLayer = null`
 - `var structure_layer: TileMapLayer = null`
-- `var structure_wall_layer: TileMapLayer = null`
 
 **Public API**
-- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_layer: TileMapLayer, wall_tileset: TileSet) -> void:`
+- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:`
 - `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
 - `func cache_blocked_cells(layout: Dictionary) -> void:`
 - `func get_blocked_cells() -> Dictionary:`
@@ -2472,7 +2471,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2183 lines
+extends `Node2D` · 2003 lines
 
 `godot/scripts/world/room.gd`
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**112 scripts · 20625 lines total** (under `godot/scripts/`)
+**115 scripts · 21206 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,9 +17,9 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
+- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — enemy_banner_panel.gd, fog_of_war_overlay.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -900,6 +900,32 @@ extends `Node2D` · 58 lines
 
 ---
 
+### `occlusion_overlay.gd`
+
+extends `Node2D` · 120 lines
+
+`godot/scripts/overlays/occlusion_overlay.gd`
+
+> Occlusion Overlay — DEV visualization of occluded geometry Displays: voxel cells that occlude the agent, color-coded by ring distance. This is the only visual output of OCC-01 (geometry computation).
+
+**Constants / tuning**
+- `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+**Public vars**
+- `var occlusion_set: OcclusionSetClass = null`
+- `var floor_layer: TileMapLayer = null`
+- `var visual_offset: Vector2 = Vector2.ZERO`
+- `var voxel_tile_size: Vector2 = Vector2(32, 16)`
+- `var ring_colors := { 0: Color(1.0, 0.0, 0.0, 0.5),   # Red — ring 0 (nearest, most transparent) 1: Color(1.0, 0.5, 0.0, 0.5),   # Orange — ring 1 (middle) 2: Color(1.0, 1.0, 0.0, 0.5),   # Yellow — ring 2 (outer, least transparent) }`
+
+**Public API**
+- `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
+- `func set_floor_layer(layer: TileMapLayer) -> void:`
+- `func set_visual_offset(offset: Vector2) -> void:`
+
+---
+
 ### `shadow_boundary_overlay.gd`
 
 extends `Node2D` · 120 lines
@@ -1497,6 +1523,34 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `occlusion_set.gd`
+
+`class_name OcclusionSet` · 165 lines
+
+`godot/scripts/systems/occlusion_set.gd`
+
+> Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - NEVER reads _active_perspective (coordinates already rotated when entering) POLICY: O4′ — One view-space formula, no rotation applied The map is rebuilt rotated; we compute in already-rotated coordinates. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera.
+
+**Constants / tuning**
+- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+
+**Public vars**
+- `var circle_radius_voxels: float = 20.0`
+- `var ring_0_width: float = 8.0`
+- `var ring_1_width: float = 8.0`
+- `var ring_2_width: float = 4.0`
+
+**Public API**
+- `func get_occluded_cells() -> Dictionary:`
+- `func get_ring_index(voxel_cell: Vector2i) -> int:`
+- `func is_occluded(voxel_cell: Vector2i) -> bool:`
+- `func get_recompute_count() -> int:`
+- `func recompute(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> void:`
+- `func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> Dictionary:`
+- `func debug_print_stats() -> void:`
+
+---
+
 ### `prop_def.gd`
 
 `class_name PropDef` · 39 lines
@@ -1845,6 +1899,20 @@ extends `SceneTree` · 322 lines
 - `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
 - `var MapSectionsV1Class = preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
 - `var MapFileServiceClass = preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+
+---
+
+### `occlusion_set_test.gd`
+
+`class_name OcclusionSetTest` · extends `SceneTree` · 237 lines
+
+`godot/scripts/tools/occlusion_set_test.gd`
+
+> OCC-01: Occlusion Set — Headless Test Usage: godot --headless --script godot/scripts/tools/occlusion_set_test.gd
+
+**Constants / tuning**
+- `GeometryCoords` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `OcclusionSet` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 
 ---
 
@@ -2216,7 +2284,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 142 lines
+`class_name InputController` · 147 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -2471,7 +2539,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2003 lines
+extends `Node2D` · 2057 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2506,6 +2574,8 @@ extends `Node2D` · 2003 lines
 - `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
 - `EdgeRegistryClass` = `preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`

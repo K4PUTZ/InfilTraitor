@@ -34,6 +34,10 @@ const JunctionResolverClass = preload("res://godot/scripts/geometry/junction_res
 const EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
+## OCC-01: Occlusion system (geometry occlusion set, view-space computation)
+const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
+const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_overlay.gd")
+
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
 @onready var enemy_phase_controller: EnemyPhaseController = $EnemyPhaseController
@@ -212,6 +216,10 @@ var _trail_overlay: Node2D = null
 ## M2-04: noise system and overlay
 var _noise_system = null
 var _noise_overlay: Node2D = null
+
+## OCC-01: Occlusion module and debug overlay
+var _occlusion_set: OcclusionSetClass = null
+var _occlusion_overlay: Node2D = null
 
 ## M2-14: Guard noise indicator — flutuante ao redor do agente
 var _guard_noise_indicator: Node2D = null
@@ -608,6 +616,16 @@ func _ready() -> void:
 	add_child(_noise_overlay)
 	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
 
+	## OCC-01: Create and setup occlusion module and debug overlay
+	_occlusion_set = OcclusionSetClass.new()
+	_occlusion_overlay = Node2D.new()
+	_occlusion_overlay.set_script(OcclusionOverlayClass)
+	_occlusion_overlay.z_index = 5  ## Above all other overlays for debugging
+	add_child(_occlusion_overlay)
+	_occlusion_overlay.set_occlusion_set(_occlusion_set)
+	_occlusion_overlay.set_floor_layer(floor_layer)
+	_occlusion_overlay.set_visual_offset(VISUAL_GRID_OFFSET)
+
 	## Paint the initial always-on world shadows from the geometric exposure.
 	_world_markers_controller.repaint_world_shadows()
 
@@ -768,6 +786,13 @@ func _set_perspective(direction: String) -> void:
 		_agent_trail.clear()
 		if _trail_overlay != null:
 			_trail_overlay.queue_redraw()
+
+		## OCC-01: Recompute occlusion set on perspective change
+		if _occlusion_set != null:
+			var voxel_cells := _collect_all_voxel_cells()
+			_occlusion_set.recompute(agent.cell, voxel_cells, _room_size)
+			if _occlusion_overlay != null:
+				_occlusion_overlay.queue_redraw()
 
 		_refresh_tactical_state()
 	_update_perspective_button_state()
@@ -1055,6 +1080,13 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 			_noise_system.emit(step_cell, NoiseSystem.NOISE_INTENSITY_WALK)
 		if _noise_overlay != null:
 			_noise_overlay.queue_redraw()
+
+	## OCC-01: Recompute occlusion set on agent step
+	if _occlusion_set != null:
+		var voxel_cells := _collect_all_voxel_cells()
+		_occlusion_set.recompute(agent.cell, voxel_cells, _room_size)
+		if _occlusion_overlay != null:
+			_occlusion_overlay.queue_redraw()
 
 	## M2-05: Immediate auditory detection after generating noise
 	_process_audio_detection()
@@ -1622,6 +1654,24 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	return INVALID_CELL
 
 
+## OCC-01: Collect all voxel cells currently placed in the renderer
+## Returns an array of Vector2i voxel-grid cells (in view-space, already rotated).
+func _collect_all_voxel_cells() -> Array:
+	var voxel_cells: Array = []
+	
+	if _voxel_renderer == null:
+		return voxel_cells
+	
+	# Iterate through all voxel levels and collect used cells
+	for level in range(8):  # GeometryCoords.LEVELS_PER_STOREY = 8
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer != null:
+			var used_cells := layer.get_used_cells()
+			for cell in used_cells:
+				if not voxel_cells.has(cell):
+					voxel_cells.append(cell)
+	
+	return voxel_cells
 
 
 func _process(_delta: float) -> void:
@@ -1953,7 +2003,7 @@ func _on_movement_input_requested(direction: Vector2i, is_large_step: bool) -> v
 
 func _on_debug_command_requested(command: String) -> void:
 	print_debug("[ROOM] Handler: debug command %s" % command)
-	## F2/F3/F4/F6/F7/K/R: debug commands
+	## F2/F3/F4/F6/F7/F17/K/R: debug commands
 	match command:
 		"toggle_map_loader":
 			_debug_tools_controller.toggle_map_loader_panel()
@@ -1969,6 +2019,10 @@ func _on_debug_command_requested(command: String) -> void:
 			var localization: Variant = get_node_or_null("/root/Localization")
 			if localization:
 				localization.cycle_language()
+		"toggle_occlusion":
+			if _occlusion_overlay != null:
+				_occlusion_overlay.visible = not _occlusion_overlay.visible
+				print_debug("[OCC-01] Occlusion overlay toggled: %s" % _occlusion_overlay.visible)
 		"nudge_reset":
 			if _debug_tools_controller.is_nudge_mode_active():
 				_debug_tools_controller.reset_nudge()

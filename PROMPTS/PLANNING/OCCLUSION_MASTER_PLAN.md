@@ -4,7 +4,7 @@
 **Status:** 🔵 DRAFTED 2026-07-12, not started. **Runs BEFORE
 `DESTRUCTION_MASTER_PLAN`** (Director's call, 2026-07-12): it is independent of
 destruction, it is the visible win, and it is the cheaper of the two.
-**Baseline:** tag `verified/v0.8.2`.
+**Baseline:** tag `verified/v0.9.0`.
 **Companions:** `DESTRUCTION_MASTER_PLAN.md` (which owns `Voxel.visible` — see §2),
 `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
 **Authored by:** the Overlord, from the Director brainstorm of 2026-07-11/12.
@@ -86,9 +86,9 @@ guarantee dies silently.** That is why it is written here.
 | **O1** | **Occlusion is VIEW, not STATE.** Never writes `Voxel.visible`, never uses the dirty flag, never persists, never enters the save. State lives in `_occluded_cells`, owned solely by the occlusion system. See §2. | ✅ Ratified |
 | **O2** | **Actors are hidden by knowledge, never by geometry** — cross-plan contract, §2. | ✅ Ratified |
 | **O3** | **The occluded region is an enlarged circle around the agent**, keeping only geometry **between him and the camera**. **Not "everything south of the agent"** — fading the whole southern half would reveal the *neighbouring* room's interior, which contradicts "the player sees what the agent sees". The criterion is **"is it covering him"**, not "is it south". | ✅ Ratified |
-| **O4** | **"Between agent and camera" is evaluated in the CURRENT VIEW'S ROTATED FRAME.** The map has four views (W/N/S/E) and the formula rotates with them. | ✅ Ratified |
+| **O4′** | **Occlusion operates in the already-rotated view frame, and the formula does NOT rotate.** *Corrects the original O4, which said the formula "rotates with the views" — it must not.* **The camera never rotates.** A view change is a full rebuild of the map into view-space: `room.gd::_set_perspective()` → `PerspectiveMapper.layout_with_perspective()` → `RoomBuilder.build_from_layout()` → `VoxelRenderer.clear()` + `render()`. Agent cell, voxel cells, lights and patrol routes are all re-emitted rotated; the isometric projection is a single fixed one. Occlusion therefore uses **one view-space formula with zero dependence on `_active_perspective`** — applying a rotation to already-rotated coordinates double-rotates, which is correct in view N and points the ghost region the wrong way in the other three. **The occlusion module never reads `_active_perspective`.** | ✅ Ratified (restated 2026-07-12, Director) |
 | **O5** | **Depth is NOT `z_index`.** `layer.z_index = _wall_base_z_index + level` encodes **storey**, not depth — a wall in front of the agent and a wall behind him, on the same storey, share a z-index. Depth in isometric comes from world position (`x + y` in the rotated frame) / y-sort. **Selecting occluders by z-index would ghost every upper storey *including everything behind the agent*** — the exact opposite of the goal. | ✅ Ratified |
-| **O6** | **Concentric ghost rings — 5% / 25% / 50% alpha — via TileSet alternative tiles.** Godot's `TileData` carries a `modulate` **per alternative tile**, and alternatives **reuse the same atlas region**: a ghost variant costs **not one extra pixel** of memory. Rings give a **stepped feather** that reads as smooth at 32 px cells — **at zero memory and zero per-fragment cost**, which means it needs no sign-off against the mobile budget (D12, `OVERLORD_CONTEXT.md`). A true gradient feather would require a **shader** (per-fragment); if headroom later proves plentiful, swapping rings for a shader changes nothing else — **the occluded-cell set is identical**. *(Director's design; the alternative-tile mechanism is what makes it free.)* | ✅ Ratified |
+| **O6** | **Concentric ghost rings — 5% / 25% / 50% alpha — via TileSet alternative tiles.** Godot's `TileData` carries a `modulate` **per alternative tile**, and alternatives **reuse the same atlas region**: a ghost variant costs **not one extra pixel** of memory. Rings give a **stepped feather** that reads as smooth at 32 px cells — **at zero memory and zero per-fragment cost**, which means it needs no sign-off against the mobile budget (D12, `OVERLORD_CONTEXT.md`). A true gradient feather would require a **shader** (per-fragment); if headroom later proves plentiful, swapping rings for a shader changes nothing else — **the occluded-cell set is identical**. *(Director's design; the alternative-tile mechanism is what makes it free.)* **Addendum 2026-07-12 (code pass):** the ghost alternatives must be minted on **every source placement can hit — the runtime-registered baked atlas pages included**, not just the four material sources. `BakeConfig.enabled` is `true` by dev default, so most wall cells land on baked pages created by `VoxelRenderer.register_baked_atlas_page()`. Two consequences: (i) a ghost's `modulate` derives from that tile's **base** modulate with alpha applied — never assume white, since MULTIPLY tints baked pages with the material colour; (ii) `create_alternative_tile()` returns a **blank** `TileData`, so `texture_origin = GeometryCoords.voxel_texture_origin()` must be re-applied per ghost or every ghosted cell jumps 10 px. The zero-memory promise is unaffected — alternatives reuse the atlas region. | ✅ Ratified |
 | **O7** | **Agent drawn on top, with a silhouette stroke over the occluded portion.** Whole silhouette behind a wall; legs-to-waist behind a crate. **No character animations exist yet** → v1 ships a **placeholder bounding box** at standing-character dimensions. The real silhouette is a future milestone. | ✅ Ratified |
 | **O8** | **Interior cutaway is DEFERRED — it depends on `Slab`**, which is `DESTRUCTION_MASTER_PLAN` D1. **No map has a ceiling today**, so there is nothing to cut away: this is a fact, not a limitation. Part 4 is written but does not start until Slabs exist. | ⏸️ Blocked (by design) |
 | **O9** | **Ceiling-hung props and foreground parallax decoration** also need occluding — same mechanism, different layer. **Not implemented yet, so not in this plan.** Future milestone. | ⏸️ Deferred |
@@ -123,12 +123,12 @@ entered are set to their ring's ghost. Nothing else in the engine is told.
 
 ## 5. Parts
 
-### Part 1 — The occluded-cell set *(O3, O4, O5)*
-Compute, per agent step and per camera rotation, the set of cells between the
-agent and the camera inside the circle, **in the rotated frame**. Pure
-computation — no rendering change, verified by a debug overlay that paints the
-set. **This is the novel geometric piece and it lands alone**, per the
-prompt-sizing rule.
+### Part 1 — The occluded-cell set *(O3, O4′, O5)*
+Compute, per agent step and per view change, the set of cells between the agent
+and the camera inside the circle, **in view-space, with a single non-rotating
+formula** (O4′). Pure computation — no rendering change, verified by a debug
+overlay that paints the set, checked in all four views. **This is the novel
+geometric piece and it lands alone**, per the prompt-sizing rule.
 
 ### Part 2 — Ghost rings *(O6)*
 Three ghost alternatives on the voxel TileSet; placement swaps the alternative
@@ -161,10 +161,16 @@ every completion report must point at a real capture in `Screenshots/history/`.
 
 ## 7. Open questions
 
-1. **Does the ghost alternative compose with per-cell transform flags?** In Godot 4,
-   flip/transpose are encoded as bit flags inside `alternative_tile`, while a
-   modulate ghost is a distinct alternative id. **They may not combine.** This does
-   not bite in v1 — walls use no symmetry variants, and floors never occlude — but
-   it must be checked before anything needs both on one cell.
+1. ~~**Does the ghost alternative compose with per-cell transform flags?**~~
+   **ANSWERED 2026-07-12 by the code pass: it cannot bite in v1, because nothing
+   uses a non-zero alternative today.** `BakedTileLookup.Result.alternative_id` is
+   declared *"For future use (always 0 for now)"* and every `set_cell()` in
+   `VoxelRenderer` passes either that value or a literal `0` — the H-flip that
+   junction columns once used was removed (the "no-flip hypothesis" comments in
+   `_render_junction_column`). The ghost alternative therefore has the whole
+   alternative axis to itself. **It becomes a live question again the moment
+   anything reintroduces a flipped or transposed cell** — at that point the ghost
+   alternative and the transform flag compete for the same integer, and the
+   occlusion system must be re-checked.
 2. **The circle's radius and ring widths** are tuning, not architecture. Expose them
    as debug-adjustable and let the Director dial them against a real screenshot.

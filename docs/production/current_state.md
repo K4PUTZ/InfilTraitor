@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.0 · **Updated:** 2026-07-12 · **Branch:** main
+**Version:** 0.9.1 · **Updated:** 2026-07-12 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,8 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-(none)
+- OCC-01.md
+- OCC-03.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -21,8 +22,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 96
-- Test scripts: 11
+- GDScript modules: 98
+- Test scripts: 12
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 0

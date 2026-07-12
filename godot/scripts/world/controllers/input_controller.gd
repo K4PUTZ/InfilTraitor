@@ -128,6 +128,11 @@ func _handle_key_action(key: InputEventKey) -> void:
 		debug_command_requested.emit("cycle_language")
 		if viewport:
 			viewport.set_input_as_handled()
+	elif key.is_action_pressed("debug_toggle_occlusion"):
+		print_debug("[INPUT] Debug: toggle occlusion")
+		debug_command_requested.emit("toggle_occlusion")
+		if viewport:
+			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_nudge_reset"):
 		print_debug("[INPUT] Debug: nudge reset")
 		debug_command_requested.emit("nudge_reset")

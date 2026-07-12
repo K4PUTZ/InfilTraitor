@@ -170,9 +170,15 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
 		_render_slice(slice, edge)
 
-	# Render junction columns
-	for column in junction_columns:
-		_render_junction_column(column, registry)
+	# Render junction columns.
+	# INFILTRAITOR_SKIP_JUNCTIONS=1 renders the map with the filler columns
+	# omitted — diff two captures to see exactly which pixels on screen belong
+	# to junction columns and nothing else. This is how TOP-JUNCTION-06's
+	# follow-up isolated their real screen footprint; keep it, it is the only
+	# cheap way to answer "is this column doing anything?" for a given map.
+	if OS.get_environment("INFILTRAITOR_SKIP_JUNCTIONS") != "1":
+		for column in junction_columns:
+			_render_junction_column(column, registry)
 
 
 ## BAKE-DIAG-01: prints a summary of the last render() pass — how many cells were

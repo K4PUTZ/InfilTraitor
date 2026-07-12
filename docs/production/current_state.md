@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- ee2caaf [TOP-JUNCTION-06] Fold junction columns once and sample like the straight-run reference
 - 0eb6620 [HUD-PANEL-01-c] Verify UI components using true native visual execution context
 - 937de58 [TOP-JUNCTION-05] Fold and clamp col_x/y to prevent out-of-bounds crops while preserving linear junction shear
 - 1f7f878 [VERSION] Bump to 0.7.4
 - df7500e [VERSION] Bump to 0.7.3
-- 5cd53b1 [TOP-JUNCTION-04-b] Real evidence: red-before-green formula + manual screenshot procedure
 <!-- AUTO:END version_history -->
 
 ---

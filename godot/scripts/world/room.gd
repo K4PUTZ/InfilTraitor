@@ -638,11 +638,25 @@ func _ready() -> void:
 	_occlusion_set = OcclusionSetClass.new()
 	_occlusion_overlay = Node2D.new()
 	_occlusion_overlay.set_script(OcclusionOverlayClass)
-	_occlusion_overlay.z_index = 5  ## Above all other overlays for debugging
+	## OCC-FIX-02: z=5 put the debug overlay UNDERNEATH the voxel layers (z = 10 + level,
+	## up to 33 on a real map) — i.e. beneath the very walls whose cells it paints. It was
+	## drawing correctly the whole time and could never be seen. A debug overlay for
+	## occlusion must sit above everything it describes; 150 clears the tallest geometry
+	## and stays below the dev hover label (200).
+	_occlusion_overlay.z_index = 150
 	add_child(_occlusion_overlay)
 	_occlusion_overlay.set_occlusion_set(_occlusion_set)
-	_occlusion_overlay.set_floor_layer(floor_layer)
-	_occlusion_overlay.set_visual_offset(VISUAL_GRID_OFFSET)
+	_occlusion_overlay.set_voxel_renderer(_voxel_renderer)
+
+	## OCC-FIX-02: seed the set for the map we just loaded.
+	##
+	## OCC-01 hooked recompute to agent step and _set_perspective only — and
+	## _set_perspective returns early when the direction is unchanged. So on boot, in
+	## the starting view, the occluded set stayed EMPTY until the player took his first
+	## step: geometry standing in front of a motionless agent ghosted nothing. The
+	## four-view harness caught it instantly (N=0 cells, E/S/W=85/97/85). Boot is the
+	## third trigger; there is no fourth.
+	_recompute_occlusion()
 
 	## Paint the initial always-on world shadows from the geometric exposure.
 	_world_markers_controller.repaint_world_shadows()
@@ -807,11 +821,7 @@ func _set_perspective(direction: String) -> void:
 			_trail_overlay.queue_redraw()
 
 		## OCC-01: Recompute occlusion set on perspective change
-		if _occlusion_set != null:
-			var voxel_cells := _collect_all_voxel_cells()
-			_occlusion_set.recompute(agent.cell, voxel_cells, _room_size)
-			if _occlusion_overlay != null:
-				_occlusion_overlay.queue_redraw()
+		_recompute_occlusion()
 
 		_refresh_tactical_state()
 	_update_perspective_button_state()
@@ -1101,11 +1111,7 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 			_noise_overlay.queue_redraw()
 
 	## OCC-01: Recompute occlusion set on agent step
-	if _occlusion_set != null:
-		var voxel_cells := _collect_all_voxel_cells()
-		_occlusion_set.recompute(agent.cell, voxel_cells, _room_size)
-		if _occlusion_overlay != null:
-			_occlusion_overlay.queue_redraw()
+	_recompute_occlusion()
 
 	## M2-05: Immediate auditory detection after generating noise
 	_process_audio_detection()
@@ -1709,6 +1715,18 @@ func _assert_geometry_rendered() -> void:
 	assert(false, "VoxelRenderer placed 0 cells for %d slices — render path broken" % slice_count)
 
 
+## OCC-FIX-02: the single recompute path for the occlusion set. Called from exactly three
+## places: map load (seed), agent step, and view change. Previously this block was copied
+## into the latter two by hand — two live copies of one truth, which is the project's
+## split-brain pain, and the copy that was missing at boot is what left the set empty.
+func _recompute_occlusion() -> void:
+	if _occlusion_set == null:
+		return
+	_occlusion_set.recompute(agent.cell, _collect_all_voxel_cells(), _room_size)
+	if _occlusion_overlay != null:
+		_occlusion_overlay.queue_redraw()
+
+
 ## OCC-01: Collect all voxel cells currently placed in the renderer
 ## Returns an array of Vector2i voxel-grid cells (in view-space, already rotated).
 func _collect_all_voxel_cells() -> Array:
@@ -1873,6 +1891,37 @@ func _capture_screenshot_to_file() -> void:
 ## _capture_screenshot_to_file(), separate destination + retention policy),
 ## prunes Screenshots/history/ to the 50 most recent files, then
 ## quits the process itself — the hook does not need to kill it.
+## OCC-FIX-02: drive the real rotation path and capture one PNG per view, overlay on.
+## Agent is left where he is — the whole point is the SAME agent under four views.
+func _capture_all_four_views() -> void:
+	if _occlusion_overlay != null:
+		_occlusion_overlay.visible = true
+
+	var project_root := ProjectSettings.globalize_path("res://")
+	var history_dir := project_root + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(history_dir)
+
+	for view in ["N", "E", "S", "W"]:
+		_set_perspective(view)
+		if _occlusion_overlay != null:
+			_occlusion_overlay.visible = true
+			_occlusion_overlay.queue_redraw()
+		for _f in range(12):
+			await get_tree().process_frame
+
+		var img := get_viewport().get_texture().get_image()
+		if img == null:
+			push_error("[OCC-FIX-02] Null image capturing view %s" % view)
+			continue
+		var path := "%s/occ_view_%s.png" % [history_dir, view]
+		img.save_png(path)
+		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s occluded_cells=%d → %s" % [
+			view, _active_perspective, agent.cell,
+			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),
+			path.get_file()
+		])
+
+
 func _run_auto_screenshot_capture() -> void:
 	## A few extra frames past _ready() so the GPU has actually drawn the
 	## map before capture (see the SCREENSHOT-HOOK-01 comment at the call site).
@@ -1891,7 +1940,23 @@ func _run_auto_screenshot_capture() -> void:
 	## agent. Triggered directly, not reached through play — a real capture is
 	## still the point (the overlay must be in the pixels), but reaching it
 	## organically needs a guard to actually spot the agent across several turns.
+	## OCC-FIX-02 — INFILTRAITOR_CAPTURE_VIEWS=1: capture the SAME agent position under
+	## all four perspectives (N/E/S/W), occlusion overlay forced on, one PNG per view.
+	##
+	## This exists because the four-view criterion was not merely unmet, it was
+	## UNMEETABLE. Rotating the view is mouse-only — the perspective pad has no key
+	## binding — so an unattended run cannot rotate the map. OCC-01-b tried to press a
+	## "Q key" that does not exist, the map never turned, and four byte-identical game
+	## windows were reported as four views. The tool was missing; asking a third time
+	## would only have produced a third fabrication.
+	##
+	## _set_perspective() is the same call the pad's buttons make, so this drives the
+	## real rotation path (full layout rebuild), not a camera trick.
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
+	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
+		await _capture_all_four_views()
+		get_tree().quit(0)
+		return
 	if capture_action == "end_turn" and turn_manager != null:
 		turn_manager.end_turn()
 		for _j in range(20):

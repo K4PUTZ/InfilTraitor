@@ -109,13 +109,21 @@ func _test_wrong_predicate() -> bool:
 func _test_basic_computation() -> bool:
 	var occ = OcclusionSetMod.new()
 	
-	# Fixture: agent at origin, voxel cells in circle around it
+	## OCC-FIX-02: fixture corrected. Agent (5,5) sits at voxel CENTRE (44, 44) — depth 88 —
+	## because he stands in the middle of his 8×8 gameplay unit, not on its corner.
+	##
+	## The old fixture listed (40,40), (41,40), (40,41), (39,41): depths 80–81, i.e. cells
+	## at the corner of the agent's OWN unit, BEHIND him. They only ever entered the set
+	## because the buggy anchor placed the agent on that same corner. Under the corrected
+	## anchor an empty set is the right answer for them — the test was encoding the bug.
+	##
+	## These cells are genuinely in front of him: depth 92–96 > 88, well inside the circle.
 	var agent_cell := Vector2i(5, 5)
 	var voxel_cells: Array = [
-		Vector2i(40, 40),  # 8 voxels per GU → 5*8+2 = 42, 5*8+2 = 42
-		Vector2i(41, 40),
-		Vector2i(40, 41),
-		Vector2i(39, 41),
+		Vector2i(46, 46),  # depth 92
+		Vector2i(47, 46),  # depth 93
+		Vector2i(46, 47),  # depth 93
+		Vector2i(48, 48),  # depth 96
 	]
 	
 	occ.recompute(agent_cell, voxel_cells, Vector2i(100, 100))

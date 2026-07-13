@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**115 scripts · 21302 lines total** (under `godot/scripts/`)
+**115 scripts · 21404 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -908,7 +908,7 @@ extends `Node2D` · 58 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 120 lines
+extends `Node2D` · 135 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -920,15 +920,13 @@ extends `Node2D` · 120 lines
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
-- `var floor_layer: TileMapLayer = null`
-- `var visual_offset: Vector2 = Vector2.ZERO`
+- `var voxel_renderer = null`
 - `var voxel_tile_size: Vector2 = Vector2(32, 16)`
 - `var ring_colors := { 0: Color(1.0, 0.0, 0.0, 0.5),   # Red — ring 0 (nearest, most transparent) 1: Color(1.0, 0.5, 0.0, 0.5),   # Orange — ring 1 (middle) 2: Color(1.0, 1.0, 0.0, 0.5),   # Yellow — ring 2 (outer, least transparent) }`
 
 **Public API**
 - `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
-- `func set_floor_layer(layer: TileMapLayer) -> void:`
-- `func set_visual_offset(offset: Vector2) -> void:`
+- `func set_voxel_renderer(renderer) -> void:`
 
 ---
 
@@ -1531,7 +1529,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 165 lines
+`class_name OcclusionSet` · 179 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1910,7 +1908,7 @@ extends `SceneTree` · 322 lines
 
 ### `occlusion_set_test.gd`
 
-`class_name OcclusionSetTest` · extends `SceneTree` · 237 lines
+`class_name OcclusionSetTest` · extends `SceneTree` · 245 lines
 
 `godot/scripts/tools/occlusion_set_test.gd`
 
@@ -2545,7 +2543,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2112 lines
+extends `Node2D` · 2177 lines
 
 `godot/scripts/world/room.gd`
 

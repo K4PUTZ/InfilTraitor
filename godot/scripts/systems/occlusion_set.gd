@@ -105,44 +105,58 @@ func recompute(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) ->
 ## Returns: Dictionary of voxel cells → ring index
 func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, _room_size: Vector2i) -> Dictionary:
 	var result: Dictionary = {}
-	
-	# Agent position in voxel grid (gameplay → voxel origin)
-	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
+
+	## OCC-FIX-02 (a): anchor on the agent's CENTRE, not his cell's corner.
+	## gu_to_voxel_origin() returns the top-left voxel of the agent's 8×8 gameplay unit.
+	## The agent stands in the MIDDLE of his cell, so using the origin put the circle's
+	## centre and the depth cut half a gameplay unit — four voxels on each axis — away
+	## from the man they are supposed to be about.
+	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
+	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
 	var agent_depth := agent_voxel.x + agent_voxel.y
-	
-	# Precompute ring distance thresholds (squared, to avoid sqrt in loop)
-	var ring_0_dist_sq := ring_0_width * ring_0_width
-	var ring_1_dist_sq := (ring_0_width + ring_1_width) * (ring_0_width + ring_1_width)
-	var ring_2_dist_sq := circle_radius_voxels * circle_radius_voxels
-	
-	# Isometric squash factor: y is halved on screen
-	const ISOMETRIC_SQUASH := 0.5
-	
-	# For each voxel cell in the layout
+
+	## OCC-FIX-02 (b): the circle must be round ON SCREEN, so measure it ON SCREEN.
+	## The previous code squashed the grid's y axis by 0.5 and called that isometric. It
+	## is not: in this projection screen-x ∝ (x − y) and screen-y ∝ (x + y), so squashing
+	## a grid axis yields an ellipse rotated 45° — a thin band along a diagonal, which is
+	## exactly what the first real four-view capture showed. Project the delta into screen
+	## pixels first, then take an honest Euclidean radius.
+	const VOXEL_HALF_W := 16.0   ## GeometryCoords.VOXEL_TILE_SIZE.x * 0.5
+	const VOXEL_HALF_H := 8.0    ## GeometryCoords.VOXEL_TILE_SIZE.y * 0.5
+
+	## Tunables stay expressed in voxels (Director dials them against a screenshot);
+	## convert once, here, into the screen-pixel radii the test actually uses.
+	var r_outer_px := circle_radius_voxels * VOXEL_HALF_W
+	var r_0_px := ring_0_width * VOXEL_HALF_W
+	var r_1_px := (ring_0_width + ring_1_width) * VOXEL_HALF_W
+	var ring_0_dist_sq := r_0_px * r_0_px
+	var ring_1_dist_sq := r_1_px * r_1_px
+	var ring_2_dist_sq := r_outer_px * r_outer_px
+
 	for voxel_cell in voxel_cells:
-		# Skip if not on camera side (depth test)
+		## Camera side only: screen-y grows with (x + y), so a greater sum is nearer the
+		## camera. Never `level` — that encodes storey, not depth (O5).
 		var cell_depth: int = voxel_cell.x + voxel_cell.y
 		if cell_depth <= agent_depth:
 			continue
-		
-		# Distance from agent in isometric space
+
 		var dx := float(voxel_cell.x - agent_voxel.x)
-		var dy := (float(voxel_cell.y - agent_voxel.y)) * ISOMETRIC_SQUASH
-		var dist_sq := dx * dx + dy * dy
-		
-		# Skip if outside the circle
+		var dy := float(voxel_cell.y - agent_voxel.y)
+		var screen_dx := (dx - dy) * VOXEL_HALF_W
+		var screen_dy := (dx + dy) * VOXEL_HALF_H
+		var dist_sq := screen_dx * screen_dx + screen_dy * screen_dy
+
 		if dist_sq > ring_2_dist_sq:
 			continue
-		
-		# Assign ring based on distance
+
 		var ring := 2
 		if dist_sq <= ring_0_dist_sq:
 			ring = 0
 		elif dist_sq <= ring_1_dist_sq:
 			ring = 1
-		
+
 		result[voxel_cell] = ring
-	
+
 	return result
 
 ## ============================================================================

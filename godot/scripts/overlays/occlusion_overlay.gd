@@ -10,8 +10,9 @@ const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.
 
 ## References
 var occlusion_set: OcclusionSetClass = null
-var floor_layer: TileMapLayer = null
-var visual_offset: Vector2 = Vector2.ZERO
+## OCC-FIX-02: the overlay asks the voxel renderer where a cell is. It does not re-derive
+## the isometric transform. See _voxel_to_screen().
+var voxel_renderer = null
 
 ## Voxel tile dimensions (must match tileset_voxels)
 var voxel_tile_size: Vector2 = Vector2(32, 16)
@@ -30,9 +31,10 @@ var ring_colors := {
 func _ready() -> void:
 	set_visibility_layer(20)  # Same layer as other debug overlays
 
-func _process(_delta: float) -> void:
-	if visible and occlusion_set != null:
-		queue_redraw()
+## OCC-FIX-02: no _process(). This overlay used to queue_redraw() every single frame while
+## visible — the exact per-frame cadence OCC-01 was written to avoid. The set only changes
+## on map load, agent step and view change, and room.gd::_recompute_occlusion() already
+## calls queue_redraw() on each. Redrawing between those events draws the same pixels again.
 
 ## ============================================================================
 ## Control Interface
@@ -41,11 +43,13 @@ func _process(_delta: float) -> void:
 func set_occlusion_set(occ_set: OcclusionSetClass) -> void:
 	occlusion_set = occ_set
 
-func set_floor_layer(layer: TileMapLayer) -> void:
-	floor_layer = layer
-
-func set_visual_offset(offset: Vector2) -> void:
-	visual_offset = offset
+## OCC-FIX-02: replaces set_floor_layer()/set_visual_offset(). The overlay used to be
+## handed the FLOOR layer and an offset, then hand-roll the isometric projection from
+## them — but occluded cells live on the VOXEL grid (8 voxels per gameplay unit), not the
+## floor grid. Two planes, one transform, wrong answer: the painted region landed on a
+## different cube entirely. The renderer owns the voxel transform; ask it.
+func set_voxel_renderer(renderer) -> void:
+	voxel_renderer = renderer
 
 ## ============================================================================
 ## Visualization
@@ -110,11 +114,22 @@ func _draw_stats() -> void:
 ## Coordinate Conversion
 ## ============================================================================
 
-## Convert voxel grid cell to screen position (isometric projection)
-## Voxel coordinates use standard isometric: screen-y ∝ (x + y)
+## Convert a voxel-grid cell to screen position by asking the layer that actually draws it.
+##
+## OCC-FIX-02. This used to hand-roll the projection:
+##     screen = ((x - y) * 16, (x + y) * 8) + visual_offset
+## which silently re-derived the Transform Canon and got it wrong — it omits TILE_OFFSET
+## (112, 64) and the layer's own texture_origin, so every painted diamond landed far from
+## the cell it claimed to mark (in the capture that caught this, on a different cube
+## entirely). The voxel TileMapLayer already knows where its cells are. Ask it, and there
+## is only one copy of the transform in the project.
+##
+## Level 0 is the right layer to query: the set is over voxel COLUMNS, and column identity
+## is the ground-level cell.
 func _voxel_to_screen(voxel_cell: Vector2i) -> Vector2:
-	var x = float(voxel_cell.x)
-	var y = float(voxel_cell.y)
-	var screen_x = (x - y) * voxel_tile_size.x * 0.5
-	var screen_y = (x + y) * voxel_tile_size.y * 0.5
-	return Vector2(screen_x, screen_y) + visual_offset
+	if voxel_renderer == null:
+		return Vector2.ZERO
+	var layer: TileMapLayer = voxel_renderer.get_layer(0)
+	if layer == null:
+		return Vector2.ZERO
+	return layer.map_to_local(voxel_cell) + layer.position

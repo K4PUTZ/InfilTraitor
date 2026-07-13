@@ -150,8 +150,8 @@ Ceiling Slab layer hidden when the agent is inside. Blocked on
 ```
 Wave 1:  Part 1 (occluded-cell set)   → ✅ CLOSED 2026-07-12 (OCC-01 + OCC-FIX-02)
          Part 3a (agent on top)       → ✅ CLOSED 2026-07-12 (OCC-03)
-Wave 2:  Part 2 (ghost rings)         → OCC-02, consumes Part 1
-         Part 3b (silhouette stroke)  → OCC-04, consumes Part 1
+Wave 2:  Part 2 (ghost rings)         → ✅ CLOSED 2026-07-12 (OCC-02, Overlord direct)
+         Part 3b (silhouette stroke)  → OCC-04, consumes Part 1 — NEXT
 Wave 4:  Part 4 (interior cutaway)    → BLOCKED until DESTRUCTION Part 1 (Slab)
 ```
 

@@ -122,3 +122,34 @@ Evidence Rule 8: the words *deferred / assumed / will / available in* disqualify
    zero real compile errors. Warnings are zero-tolerance on files you touched.
 
 Version bump, commit and push, `[OCC-02]` prefix.
+
+---
+
+## COMPLETION — 2026-07-12, Overlord direct implementation (commit `ce8b6e0`)
+
+Not delegated. Closed directly, same as OVERLORD-FIX-01.
+
+All five criteria hold. Ghost alternatives are minted on **both** tile-creation
+paths (the four material sources *and* every runtime-registered baked page);
+`texture_origin` is re-applied per ghost; the ghost's `modulate` derives from the
+tile's base modulate, so baked walls keep their colour. Restore reads the layer and
+replays the remembered alternative — placement is never re-derived.
+
+Round-trip verified on the real map (3968 columns × every level), all four views:
+
+```
+[OCC-02] view=N ghost restore round-trip: IDENTICAL
+[OCC-02] view=E ghost restore round-trip: IDENTICAL
+[OCC-02] view=S ghost restore round-trip: IDENTICAL
+[OCC-02] view=W ghost restore round-trip: IDENTICAL
+```
+
+Visual: `Screenshots/history/occ_view_S.png` — the stone cube's near-upper wedge is
+see-through, the wood cube and floor read through it, the agent is legible, the
+stone keeps its hue and the ghosted edges align with the solid part.
+
+**Open, for the Director — tuning, not a defect.** Occluded counts run N=4, E=55,
+S=66, W=55. That asymmetry is the *map*, not the formula: the nearest geometry
+actually in front of the agent measures 304 px in N against 48 px in S, and the
+circle radius is 320 px. Radius and ring widths are exposed as constants at the top
+of `occlusion_set.gd` (plan §7.2) — dial them against a capture.

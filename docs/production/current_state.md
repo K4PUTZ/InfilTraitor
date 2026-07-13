@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- ce8b6e0 [OCC-02] Ghost rings: the occluded set is now see-through
 - 3fc4360 [OCC-FIX-02] Four real views, and the four bugs they immediately found
 - 24cd048 [OCC-FIX-01] Restore _junction_columns; the "unused variable" was writing the whole world
 - 5eb5bed [OCC-03] Agent draws on top of all voxel layers with dynamic z_index calculation
 - 98a889b [OCC-01] Add occluded-cell set computation (view-space, no rotation, O1/O4′/O5 compliant)
-- eb8a6c1 [CLEANUP] Delete 56.8k lines of dead docs, prompts and one-off tools; fix a test that never ran
 <!-- AUTO:END version_history -->
 
 ---

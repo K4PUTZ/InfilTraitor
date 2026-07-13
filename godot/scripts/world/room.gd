@@ -1723,6 +1723,11 @@ func _recompute_occlusion() -> void:
 	if _occlusion_set == null:
 		return
 	_occlusion_set.recompute(agent.cell, _collect_all_voxel_cells(), _room_size)
+
+	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
+	if _voxel_renderer != null:
+		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
+
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
 
@@ -1894,8 +1899,12 @@ func _capture_screenshot_to_file() -> void:
 ## OCC-FIX-02: drive the real rotation path and capture one PNG per view, overlay on.
 ## Agent is left where he is — the whole point is the SAME agent under four views.
 func _capture_all_four_views() -> void:
+	## OCC-02: the debug overlay paints opaque diamonds over the very cells the ghosts make
+	## see-through, so it must be OFF when the thing under test is the ghosting itself.
+	## INFILTRAITOR_CAPTURE_OVERLAY=1 turns it back on for verifying the SET (OCC-01).
+	var show_overlay := OS.get_environment("INFILTRAITOR_CAPTURE_OVERLAY") == "1"
 	if _occlusion_overlay != null:
-		_occlusion_overlay.visible = true
+		_occlusion_overlay.visible = show_overlay
 
 	var project_root := ProjectSettings.globalize_path("res://")
 	var history_dir := project_root + "Screenshots/history"
@@ -1904,7 +1913,7 @@ func _capture_all_four_views() -> void:
 	for view in ["N", "E", "S", "W"]:
 		_set_perspective(view)
 		if _occlusion_overlay != null:
-			_occlusion_overlay.visible = true
+			_occlusion_overlay.visible = show_overlay
 			_occlusion_overlay.queue_redraw()
 		for _f in range(12):
 			await get_tree().process_frame
@@ -1915,8 +1924,17 @@ func _capture_all_four_views() -> void:
 			continue
 		var path := "%s/occ_view_%s.png" % [history_dir, view]
 		img.save_png(path)
-		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s occluded_cells=%d → %s" % [
-			view, _active_perspective, agent.cell,
+		## OCC-02 criterion 3: a cell that leaves the set must come back to EXACTLY the
+		## alternative it had. Checked here rather than described: snapshot every placed
+		## cell, ghost the set, release it, snapshot again, compare. A lossy restore would
+		## permanently damage the map as the agent walks, and it would do so silently.
+		var roundtrip_ok: bool = _voxel_renderer.verify_ghost_roundtrip(
+			_occlusion_set.get_occluded_cells())
+		print("[OCC-02] view=%s ghost restore round-trip: %s" % [
+			view, "IDENTICAL" if roundtrip_ok else "*** LOSSY — CELLS DAMAGED ***"])
+
+		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s collected=%d occluded_cells=%d → %s" % [
+			view, _active_perspective, agent.cell, _collect_all_voxel_cells().size(),
 			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),
 			path.get_file()
 		])

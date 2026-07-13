@@ -15,6 +15,26 @@ const MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
 
+## OCC-02 — Ghost rings (O6).
+##
+## A ghost is an ALTERNATIVE TILE, not a new texture: Godot's TileData carries a
+## `modulate` per alternative, and alternatives reuse the same atlas region. A ghost
+## therefore costs *not one extra pixel* of texture memory, and nothing per fragment —
+## which is why this needs no sign-off against the mobile budget (D12).
+##
+## Ring 0 is nearest the agent and the MOST transparent; ring 2 is outermost and the
+## least. Ghosting a cell = changing the last argument of set_cell(). Nothing else in the
+## engine is told, and Voxel.visible is never touched (O1) — occlusion is VIEW, not STATE.
+const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
+const GHOST_ALPHAS: Array[float] = [0.05, 0.25, 0.5]
+
+## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
+## the occluded set is restored to EXACTLY the alternative it had. We remember what was
+## there rather than re-deriving what "should" be there: re-running the bake lookup here
+## would be a second live copy of the placement decision, and it would diverge from the
+## real one the moment bake config changed.
+var _ghosted_cells: Dictionary = {}
+
 ## Z-index base for wall layers (from room.gd context)
 var _wall_base_z_index: int = 10
 
@@ -85,8 +105,42 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			tile_data.modulate = tile_modulate
+			## OCC-02: ghosts for baked cells, derived from THIS page's modulate.
+			_mint_ghost_alternatives(source, coords, tile_modulate)
 
 	return source_id
+
+
+## OCC-02: mint the three ghost alternatives for one tile of one source.
+##
+## Called from BOTH tile-creation paths — the four material sources AND every baked atlas
+## page registered at runtime. That is not optional: BakeConfig.enabled is true by dev
+## default, so most wall cells are placed on baked pages. A ghost minted only on the
+## material sources would do nothing on a normal boot.
+##
+## Two traps, both learned the hard way and both silent:
+##
+##  - create_alternative_tile() returns a BLANK TileData. It inherits nothing. If
+##    texture_origin is not re-applied, every ghosted cell jumps 10 px the instant it
+##    ghosts (same family as BAKE-DIAG-01: cells "placed" but wrong on screen).
+##  - the ghost's modulate must derive from the tile's BASE modulate, not white. Baked
+##    pages are tinted per page (white under TEXTURE_ONLY, the material colour under
+##    MULTIPLY). A ghost hardcoding Color(1,1,1,a) would silently recolour every baked
+##    wall it touched.
+func _mint_ghost_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
+	for ring in range(GHOST_ALT_IDS.size()):
+		var alt_id: int = GHOST_ALT_IDS[ring]
+		if source.get_tile_data(coords, alt_id) != null:
+			continue
+		source.create_alternative_tile(coords, alt_id)
+		var ghost_data: TileData = source.get_tile_data(coords, alt_id)
+		if ghost_data == null:
+			push_error("[OCC-02] Failed to create ghost alternative %d at %s" % [alt_id, coords])
+			continue
+		ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
+		var ghost_modulate := base_modulate
+		ghost_modulate.a = GHOST_ALPHAS[ring]
+		ghost_data.modulate = ghost_modulate
 
 
 ## Getter for voxel layer at given level (for diagnostics)
@@ -169,6 +223,8 @@ func _build_voxel_tileset() -> void:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			# Set custom_data: tile_name = material_name
 			tile_data.set_custom_data("tile_name", material_name)
+			## OCC-02: ghosts for the generic (non-baked) path. Base modulate is white here.
+			_mint_ghost_alternatives(atlas_source, Vector2i.ZERO, tile_data.modulate)
 
 
 ## Render all slices and junction columns from registry
@@ -433,6 +489,122 @@ func _find_neighbor_wall_voxel(column: JunctionResolver.JunctionColumn, registry
 	return {}
 
 
+## OCC-02 — apply the occluded-cell set as ghosts. THE single entry point.
+##
+## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet. Every
+## level of a ghosted column is ghosted: a wall covering the agent covers him from his
+## feet to over his head, and the upper layers draw above him regardless of y-sort.
+##
+## Full restore, then full re-apply. The set is a few dozen columns and this runs on agent
+## step / view change / map load — never per frame. Diffing would buy nothing and would
+## add a second notion of "what is currently ghosted".
+##
+## O1: this never writes Voxel.visible, never sets a dirty flag, never persists. A ghost
+## is a tile alternative and nothing more. If occlusion ever hid a voxel instead, a
+## DESTROYED voxel would come back to life the moment the player rotated the camera over
+## a crater — and that bug only reproduces under rotation, so it would survive for months.
+func apply_occlusion(occluded: Dictionary) -> void:
+	_restore_ghosted_cells()
+
+	for cell in occluded.keys():
+		var ring: int = clampi(int(occluded[cell]), 0, GHOST_ALT_IDS.size() - 1)
+		var ghost_alt: int = GHOST_ALT_IDS[ring]
+		var restore_records: Array = []
+
+		for level in range(_voxel_layers.size()):
+			var layer: TileMapLayer = _voxel_layers[level]
+			var source_id: int = layer.get_cell_source_id(cell)
+			if source_id == -1:
+				continue  ## nothing placed at this level of the column
+
+			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
+			var prev_alt: int = layer.get_cell_alternative_tile(cell)
+
+			## Guard: only ghost a cell whose source actually has the ghost alternative.
+			## A source without it would make set_cell() point at a nonexistent tile and
+			## the cell would vanish — exactly the class of silent-invisible bug that took
+			## down the walls once already (BAKE-DIAG-01's missing create_tile()).
+			var source: TileSetAtlasSource = _tileset.get_source(source_id) as TileSetAtlasSource
+			if source == null or source.get_tile_data(atlas_coords, ghost_alt) == null:
+				push_warning("[OCC-02] source %d has no ghost alt %d at %s — leaving cell opaque" % [
+					source_id, ghost_alt, atlas_coords
+				])
+				continue
+
+			restore_records.append({"level": level, "prev_alt": prev_alt})
+			layer.set_cell(cell, source_id, atlas_coords, ghost_alt)
+
+		if not restore_records.is_empty():
+			_ghosted_cells[cell] = restore_records
+
+
+## OCC-02 — prove the restore is lossless, on the real map, not by argument.
+##
+## Snapshot every placed cell's (source, atlas, alternative) across every level; ghost the
+## given set; release it; snapshot again; compare. Returns true iff the map is bit-identical
+## afterwards.
+##
+## This is the invariant that matters most in the whole prompt. Ghosting runs on every agent
+## step; if restore is lossy by even one alternative, the map degrades a little with each
+## step the player takes — a corruption that accumulates invisibly and would be blamed on
+## anything but occlusion months later.
+func verify_ghost_roundtrip(occluded: Dictionary) -> bool:
+	apply_occlusion({})          ## start from a clean, unghosted map
+	var before := _snapshot_cells()
+	apply_occlusion(occluded)
+	apply_occlusion({})          ## release everything
+	var after := _snapshot_cells()
+
+	var ok := true
+	if before.size() != after.size():
+		push_error("[OCC-02] Round-trip changed the cell COUNT: %d → %d" % [before.size(), after.size()])
+		ok = false
+	else:
+		for key in before.keys():
+			if not after.has(key) or after[key] != before[key]:
+				push_error("[OCC-02] Round-trip damaged cell %s: %s → %s" % [
+					key, before[key], after.get(key, "<missing>")])
+				ok = false
+				break
+
+	## Leave the map in the state the caller had: ghosts applied. A verification that
+	## silently un-ghosts the world would make the very capture taken to prove ghosting
+	## show none of it.
+	apply_occlusion(occluded)
+	return ok
+
+
+## OCC-02: (level, cell) → [source_id, atlas_coords, alternative] for every placed cell.
+func _snapshot_cells() -> Dictionary:
+	var snap: Dictionary = {}
+	for level in range(_voxel_layers.size()):
+		var layer: TileMapLayer = _voxel_layers[level]
+		for cell in layer.get_used_cells():
+			snap[[level, cell]] = [
+				layer.get_cell_source_id(cell),
+				layer.get_cell_atlas_coords(cell),
+				layer.get_cell_alternative_tile(cell),
+			]
+	return snap
+
+
+## OCC-02: put every ghosted cell back to the exact alternative it had before we touched
+## it. Reading the remembered value — not recomputing it — is what keeps occlusion a pure
+## view layer over whatever placement decided (baked or generic).
+func _restore_ghosted_cells() -> void:
+	for cell in _ghosted_cells.keys():
+		for record in _ghosted_cells[cell]:
+			var level: int = record["level"]
+			if level >= _voxel_layers.size():
+				continue
+			var layer: TileMapLayer = _voxel_layers[level]
+			var source_id: int = layer.get_cell_source_id(cell)
+			if source_id == -1:
+				continue  ## cell was destroyed/cleared while ghosted — do not resurrect it
+			layer.set_cell(cell, source_id, layer.get_cell_atlas_coords(cell), record["prev_alt"])
+	_ghosted_cells.clear()
+
+
 ## Process dirty slices only (TIC optimization)
 func process_dirty(registry: EdgeRegistry) -> void:
 	var dirty_slices := registry.dirty_slices()
@@ -502,6 +674,10 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 func clear() -> void:
 	for layer in _voxel_layers:
 		layer.clear()
+	## OCC-02: the cells those records point at no longer exist. Keeping them would make
+	## the next restore write stale alternatives into freshly-rebuilt geometry — the
+	## rotation path (clear() + render()) goes through here every time.
+	_ghosted_cells.clear()
 
 
 func _to_string() -> String:

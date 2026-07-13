@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**115 scripts · 21404 lines total** (under `godot/scripts/`)
+**115 scripts · 21598 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -620,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 508 lines
+`class_name VoxelRenderer` · extends `Node2D` · 684 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -630,6 +630,8 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
+- `GHOST_ALT_IDS` = `[1, 2, 3]`
+- `GHOST_ALPHAS` = `[0.05, 0.25, 0.5]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -2543,7 +2545,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2177 lines
+extends `Node2D` · 2195 lines
 
 `godot/scripts/world/room.gd`
 

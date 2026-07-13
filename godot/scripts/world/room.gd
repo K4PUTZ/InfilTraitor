@@ -105,6 +105,18 @@ const VOXEL_STEP_PX: float = 20.0
 
 ## SLICE-02: New geometry module state
 var _edge_registry: EdgeRegistry = null       ## EdgeRegistry of all edges and slices
+## Written from room_builder.gd (`room._junction_columns = junction_columns`), not from
+## this file. It looks unused to a grep confined to room.gd — it is not. Deleting it makes
+## that external write a runtime error that aborts build_from_layout() before render(),
+## and the game boots with no walls. This cost a full session on 2026-07-12. Do not
+## "clean it up"; see _assert_geometry_rendered().
+##
+## The @warning_ignore below is load-bearing: Godot's own linter reports this as
+## UNUSED_PRIVATE_CLASS_VARIABLE, because it cannot see the cross-file write either. That
+## false warning is what invited the delete in the first place. Silencing it here is the
+## fix for the *cause*, not cosmetics.
+@warning_ignore("unused_private_class_variable")
+var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_renderer: VoxelRenderer = null     ## Voxel rendering engine
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
@@ -310,6 +322,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_map_buffer = view_layout.get("buffer", 0)
 	_room_builder.build_from_layout(view_layout, room_size)
 	_room_size = room_size
+	_assert_geometry_rendered()
 
 	## SCREENSHOT-HOOK-01: persist the last successfully loaded map id so the
 	## pre-commit auto-screenshot capture (a separate Godot process) knows
@@ -734,6 +747,7 @@ func _set_perspective(direction: String) -> void:
 		var room_size: Vector2i = view_layout.get("size", _room_size)
 		_room_builder.build_from_layout(view_layout, room_size)
 		_room_size = room_size
+		_assert_geometry_rendered()
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
 		
 		# Clear legacy shadow layers (migrated to _tile_shadow, but kept for compatibility)
@@ -1657,6 +1671,42 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	if found_inside:
 		return best
 	return INVALID_CELL
+
+
+## OCC-FIX-01 — B6 loud-fail: geometry in, geometry out.
+##
+## This lives in the CALLER, not inside build_from_layout(), and that placement is the
+## whole point. On 2026-07-12 a commit deleted this file's `_junction_columns` member as
+## an "unused variable". It is not unused — room_builder.gd writes to it from the outside
+## (`room._junction_columns = junction_columns`). Deleting it turned that write into a
+## *runtime* error, which aborts build_from_layout() at that line — before clear() and
+## render() ever run. A guard placed after render() inside the builder would never have
+## executed either. Execution DOES return here, so here is where the check has to be.
+##
+## Why nothing else caught it: GDScript raises invalid-property-assignment at runtime, not
+## compile time, so project_lint.py passed clean. The floor is drawn before the failing
+## line, so the game still looked like a game. It simply had no walls — and every check
+## downstream then "passed" against that empty world, including an agent z-index derived
+## from an empty layer list.
+##
+## The invariant: if the edge registry produced slices, the renderer must have placed
+## cells. Zero cells from a non-empty registry is a broken render path, and it must be
+## loud rather than silently shipping an empty map.
+func _assert_geometry_rendered() -> void:
+	if _voxel_renderer == null or _edge_registry == null:
+		return
+	var slice_count: int = _edge_registry.all_slices().size()
+	if slice_count == 0:
+		return  ## a genuinely wall-less map is legal
+	var placed: int = _voxel_renderer.get_placed_cell_count()
+	if placed > 0:
+		return
+	push_error(
+		"[VOXEL] Render path is broken: %d slices produced 0 placed cells. " % slice_count
+		+ "The map has geometry but none of it was placed. Do not trust any visual "
+		+ "result from this build."
+	)
+	assert(false, "VoxelRenderer placed 0 cells for %d slices — render path broken" % slice_count)
 
 
 ## OCC-01: Collect all voxel cells currently placed in the renderer

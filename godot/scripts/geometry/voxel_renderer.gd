@@ -111,6 +111,14 @@ func get_max_voxel_z_index() -> int:
 	return _wall_base_z_index + (_voxel_layers.size() - 1)
 
 
+## Cells placed by the last render() pass. Reset at the top of every render().
+## The B6 loud-fail guard in RoomBuilder reads this: a registry with slices that
+## places zero cells means the render path did not run, and the game must not
+## boot into a silently empty world. See OCC-FIX-01.
+func get_placed_cell_count() -> int:
+	return _diag_total_cells
+
+
 ## DEBUG-02: Apply real-time positional offset to all voxel layers.
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:

@@ -148,11 +148,46 @@ Ceiling Slab layer hidden when the agent is inside. Blocked on
 ## 6. Wave sequencing
 
 ```
-Wave 1:  Part 1 (occluded-cell set)   → novel geometry, lands and is verified alone
-Wave 2:  Part 2 (ghost rings)         → consumes Part 1
-Wave 3:  Part 3 (agent on top)        → independent of 1–2, can run in parallel
+Wave 1:  Part 1 (occluded-cell set)   → ✅ CLOSED 2026-07-12 (OCC-01 + OCC-FIX-02)
+         Part 3a (agent on top)       → ✅ CLOSED 2026-07-12 (OCC-03)
+Wave 2:  Part 2 (ghost rings)         → OCC-02, consumes Part 1
+         Part 3b (silhouette stroke)  → OCC-04, consumes Part 1
 Wave 4:  Part 4 (interior cutaway)    → BLOCKED until DESTRUCTION Part 1 (Slab)
 ```
+
+### Wave 1 post-mortem (2026-07-12) — read this before scoping Wave 2
+
+Wave 1 landed, but **not the way it was supposed to.** Three completion reports in
+a row marked visual criteria PASS without looking at the pixels, and an unrequested
+`[CLEANUP]` commit deleted a cross-file-written variable, which aborted the build
+path and stopped **every wall in the game from rendering**. Everything downstream
+then "passed" against a world with no geometry.
+
+Four defects in Part 1 were invisible to code-reading and were found the instant a
+real four-view capture existed (`OCC-FIX-02`):
+
+- the set was **never computed at map load** (empty until the first step);
+- the debug overlay sat at `z_index = 5`, **underneath** the voxel layers (10–33) it
+  was painting — it could never be seen;
+- the overlay **hand-rolled the isometric projection** and was handed the *floor*
+  layer for *voxel* cells — a two-plane violation that put the region on the wrong
+  cube;
+- the set formula anchored the agent on his cell's **corner**, and its "isometric
+  squash" halved a *grid* axis, producing an ellipse rotated 45° instead of a circle
+  on screen.
+
+**The tool that found all four now exists and is the standing way to verify anything
+view-dependent:** `INFILTRAITOR_CAPTURE_VIEWS=1` boots, drives `_set_perspective()`
+for N/E/S/W, forces the occlusion overlay on, and writes one PNG per view. It exists
+because rotating the view is **mouse-only** — the perspective pad has no key binding —
+so an unattended run could not rotate the map at all. **Any prompt with a four-view
+claim must route through this harness; without it the criterion is not merely unmet,
+it is unmeetable.**
+
+Known limitation, stated rather than hidden: the overlay draws each occluded column
+at **level 0**, so on tall geometry the marks appear at the base of the wall rather
+than on its face. The set is over columns; ground level is the honest position for a
+column. Part 2 paints the actual voxels and does not inherit this.
 
 **Screenshot session: ON for the whole plan.** Every part of this is visual;
 every completion report must point at a real capture in `Screenshots/history/`.

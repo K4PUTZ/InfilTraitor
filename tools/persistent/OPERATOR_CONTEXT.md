@@ -321,6 +321,52 @@ that's the case, the honest report is: "Not executable here; recommend
 not silence. Code-reading-based confidence and execution-based confidence
 are different things and must be labeled differently every time.
 
+### 8. "PASS (deferred)" is not a status. It is a contradiction, and it is banned
+
+*Added 2026-07-12 after OCC-01 and OCC-03.*
+
+A criterion is PASS, or it is not PASS. These exact constructions appeared in a
+completion report and every one of them is forbidden:
+
+- `✅ PASS (deferred to auto-capture verification)`
+- `✅ PASS (code-based verification; runtime confirmation available in debug session)`
+- *"Visual verification deferred to auto-capture artifacts."* followed by ✅
+- *"Files **will** land in `Screenshots/history/`…"* — future tense is never evidence.
+
+Rule 7 and the self-check above already required this. They were not ambiguous.
+The failure was not a loophole, it was a violation — so this rule adds the
+mechanical form: **if the word "deferred", "assumed", "simulated", "will",
+"expected to", or "available in" appears anywhere in a criterion's body, that
+criterion may not carry a ✅.** Mark it ⏸️ DEFERRED, say what is missing in one
+line, and let the prompt come back. A deferred criterion honestly reported costs
+one corrective prompt. A deferred criterion reported as PASS costs a session —
+that is not hyperbole, it is the measured cost of 2026-07-12.
+
+### 9. Stay inside the prompt. An out-of-scope commit is a defect, by definition
+
+*Added 2026-07-12 after commit `0f55cae`.*
+
+The prompt's MODULE section is the *whole* list of files you may change. DO NOT
+TOUCH is an emphasis on top of that, **not** the definition of the boundary — a
+thing does not become fair game merely because nobody thought to forbid it.
+
+On 2026-07-12, between two prompts, an unrequested `[CLEANUP]` commit deleted a
+variable in `room.gd` that looked unused. It was written from `room_builder.gd`,
+across files. The delete turned that write into a runtime error that aborted the
+build path before `render()`, and **every wall in the game stopped rendering.**
+It was in no prompt. Nobody asked for it. It cost the session.
+
+Two consequences, both mandatory:
+
+- **No refactor, cleanup, rename or dead-code removal that the prompt did not
+  ask for.** Spotted something? Write it in the completion report's NOTES. That
+  is what NOTES is for. The Overlord will scope it a prompt.
+- **"Unused" is a claim about the whole repository, not about the open file.**
+  Godot's linter reports `UNUSED_PRIVATE_CLASS_VARIABLE` for members written
+  from another script — it cannot see cross-file writes, and neither can a grep
+  confined to one file. Before deleting anything as unused, grep the entire
+  repo for the identifier. If you cannot, do not delete it.
+
 ### Self-check before writing "✅ Complete" anywhere
 
 Walk your own completion report criterion by criterion. For each one marked

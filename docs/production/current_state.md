@@ -14,9 +14,7 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - OCC-01-b.md
-- OCC-01.md
 - OCC-03-b.md
-- OCC-03.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -28,7 +26,7 @@
 - Test scripts: 12
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 0
+- Archived prompts: 2
 <!-- AUTO:END inventory -->
 
 ### Version History

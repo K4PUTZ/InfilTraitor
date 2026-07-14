@@ -112,17 +112,13 @@ func get_recompute_count() -> int:
 ##     between are themselves occluded (OCC-10, see the loop below).
 func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:
 	var slices_by_edge := _group_slices_by_edge(slices)
-	var edges := compute_edge_occlusion(agent_cell, slices_by_edge, room_size)
+	var occlusion := compute_edge_occlusion(agent_cell, slices_by_edge, room_size)
+	var edges: Array = occlusion["edges"]
 
 	var new_occluded: Dictionary = {}
-	var new_edges: Array = []
 	var ring_by_edge_id: Dictionary = {}
 	for e in edges:
 		ring_by_edge_id[e["edge_id"]] = e["ring"]
-		new_edges.append({
-			"corner_a": e["corner_a"], "corner_b": e["corner_b"],
-			"min_level": e["min_level"], "max_level": e["max_level"],
-		})
 		for slice in slices_by_edge.get(e["edge_id"], []):
 			for voxel in slice.voxels:
 				## OCC-09/OCC-10: min_level travels WITH the cell — a column key
@@ -150,11 +146,11 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
-		_occluded_edges = new_edges
+		_occluded_edges = occlusion["segments"]
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
-			print_debug("[OcclusionSet] Recomputed: %d cells, %d edges (count=%d)" % [
-				_occluded_cells.size(), new_edges.size(), _recompute_count
+			print_debug("[OcclusionSet] Recomputed: %d cells, %d segments (count=%d)" % [
+				_occluded_cells.size(), _occluded_edges.size(), _recompute_count
 			])
 
 ## ============================================================================
@@ -206,10 +202,14 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## position (see BASE_VISIBLE_LEVELS doc comment for why the pixel-threshold
 ## version was dropped).
 ##
-## Returns: Array of Dictionaries, one per occluded edge:
-##   {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
-##   "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
-func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Array:
+## Returns: {"edges": Array, "segments": Array}
+##   "edges" — one Dictionary per occluded edge, the FILL's source of truth:
+##     {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
+##     "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
+##   "segments" — the wireframe's source of truth (OCC-12): every straight,
+##     same-height run of occluded edges merged into ONE hull segment — see
+##     _build_wireframe_segments().
+func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
 	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
 	var agent_depth := agent_voxel.x + agent_voxel.y
@@ -267,18 +267,21 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		## BASE_VISIBLE_LEVELS doc comment).
 		var ghost_start_level := mini(min_level + BASE_VISIBLE_LEVELS, max_level + 1)
 
+		## Adjacency graph: registered for EVERY edge, not just triggers — a
+		## non-triggering edge can still be a ring-1/ring-2 stop on the path
+		## outward from one.
+		var anchor = edge_slices[0]
+		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
+
 		edge_geom[edge_id] = {
 			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
 			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
 			"y_top": y_top, "y_bottom": y_bottom,
 			"min_level": ghost_start_level, "max_level": max_level,
+			"face": anchor.face, "vertex_a": vertices[0], "vertex_b": vertices[1],
 		}
 
-		## Adjacency graph: registered for EVERY edge, not just triggers — a
-		## non-triggering edge can still be a ring-1/ring-2 stop on the path
-		## outward from one.
-		var anchor = edge_slices[0]
-		for v in _edge_vertices(anchor.gu_cell, anchor.face):
+		for v in vertices:
 			if not vertex_to_edges.has(v):
 				vertex_to_edges[v] = []
 			vertex_to_edges[v].append(edge_id)
@@ -299,7 +302,7 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		seeds.append(edge_id)
 
 	if seeds.is_empty():
-		return []
+		return {"edges": [], "segments": []}
 
 	## Multi-source BFS along the wall's own connectivity graph, up to MAX_RING hops.
 	## Every trigger is its own ring-0 seed — there is no special-cased "the agent's
@@ -348,7 +351,7 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 			"corner_a": g["corner_a"], "corner_b": g["corner_b"],
 			"min_level": g["min_level"], "max_level": g["max_level"],
 		})
-	return result
+	return {"edges": result, "segments": _build_wireframe_segments(ring_by_edge, edge_geom)}
 
 
 ## The two grid-VERTEX corners of a (gu_cell, face) wall segment. Both faces of the
@@ -369,6 +372,79 @@ func _edge_vertices(gu_cell: Vector2i, face: int) -> Array:
 			return [Vector2i(x, y + 1), Vector2i(x + 1, y + 1)]
 		_:
 			return []
+
+
+## OCC-12 (2026-07-14): the wireframe's true hull outline. Director's brief:
+## "não se importe com slices, edges ou voxels, apenas trace as linhas que
+## representam o objeto tridimensional que foi apagado" — the wireframe should
+## trace the erased OBJECT's own outer edges and vertices, not one box per
+## internal Slice/Edge boundary. Walks the SAME connectivity graph the ring BFS
+## already builds (shared grid vertex, `_edge_vertices`), but restricted to the
+## occluded set only, merging every straight (same-face, same-height) run into
+## ONE segment. A run stops — a real corner — at a direction change, a height
+## change, a dead end, or a genuine junction (3+ occluded edges at one vertex).
+##
+## This is also the fix for the reported "diagonal seam" artifact: the OLD
+## per-edge corner_a/corner_b came from each edge's OWN independently-scanned
+## voxel min/max, which do not necessarily agree with a neighbor's at a shared
+## corner once two DIFFERENT faces are involved (their local scan axes differ).
+## Segments here use the one true shared grid VERTEX instead (`_edge_vertices`,
+## identical on both sides of a corner by construction), so two segments
+## meeting at a real corner can never disagree about where that corner is.
+##
+## V-junction columns fall out for free, no special-casing needed: a corner
+## column only ever exists (JunctionResolver) where two edges meet at a real
+## elbow, and per O11 it only ghosts when BOTH those edges are occluded — which
+## is exactly when this walk already treats that vertex as a real corner
+## joining two segments, closing the notch it would otherwise leave.
+func _build_wireframe_segments(ring_by_edge: Dictionary, edge_geom: Dictionary) -> Array:
+	var vertex_occl_edges: Dictionary = {}   ## Vector2i GU vertex -> Array[String edge_id]
+	for edge_id in ring_by_edge.keys():
+		var g: Dictionary = edge_geom[edge_id]
+		for v in [g["vertex_a"], g["vertex_b"]]:
+			if not vertex_occl_edges.has(v):
+				vertex_occl_edges[v] = []
+			vertex_occl_edges[v].append(edge_id)
+
+	var visited: Dictionary = {}
+	var segments: Array = []
+	for start_id in ring_by_edge.keys():
+		if visited.has(start_id):
+			continue
+		visited[start_id] = true
+		var g: Dictionary = edge_geom[start_id]
+		var end_a := _walk_run_end(start_id, g["vertex_a"], edge_geom, vertex_occl_edges, visited)
+		var end_b := _walk_run_end(start_id, g["vertex_b"], edge_geom, vertex_occl_edges, visited)
+		segments.append({
+			"corner_a": GeometryCoordsMod.gu_to_voxel_origin(end_a),
+			"corner_b": GeometryCoordsMod.gu_to_voxel_origin(end_b),
+			"min_level": g["min_level"], "max_level": g["max_level"],
+		})
+	return segments
+
+
+## Walks a straight run of same-face, same-height occluded edges starting at
+## `edge_id`, having just arrived via `from_vertex` (one of that edge's own two
+## vertices) — returns the FAR vertex of the whole run: either edge_id's own
+## other vertex (the run stops immediately) or, if the run continues, whatever
+## the next absorbed edge's own walk returns. Every absorbed edge is marked
+## visited so the outer loop in _build_wireframe_segments() never starts a
+## second, redundant segment from the middle of an already-merged run.
+func _walk_run_end(edge_id: String, from_vertex: Vector2i, edge_geom: Dictionary, vertex_occl_edges: Dictionary, visited: Dictionary) -> Vector2i:
+	var g: Dictionary = edge_geom[edge_id]
+	var far_vertex: Vector2i = g["vertex_b"] if from_vertex == g["vertex_a"] else g["vertex_a"]
+	var touching: Array = vertex_occl_edges.get(far_vertex, [])
+	if touching.size() != 2:
+		return far_vertex  ## dead end (1) or a real junction (3+) — stop, real corner
+	var other_id: String = touching[1] if touching[0] == edge_id else touching[0]
+	if visited.has(other_id):
+		return far_vertex  ## already consumed from the other direction — stop
+	var other_g: Dictionary = edge_geom[other_id]
+	if other_g["face"] != g["face"] or other_g["min_level"] != g["min_level"] or other_g["max_level"] != g["max_level"]:
+		return far_vertex  ## direction change or height change — real corner, stop
+	visited[other_id] = true
+	return _walk_run_end(other_id, far_vertex, edge_geom, vertex_occl_edges, visited)
+
 
 ## ============================================================================
 ## DEBUG HELPERS

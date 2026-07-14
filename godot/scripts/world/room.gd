@@ -666,11 +666,13 @@ func _ready() -> void:
 	add_child(_occlusion_wireframe_overlay)
 	_occlusion_wireframe_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_wireframe_overlay.set_voxel_renderer(_voxel_renderer)
-	## OCC-10 (2026-07-14): off for now — Director caught a real diagonal-seam
-	## artifact in its per-level panel geometry live, not yet root-caused. The
-	## recompute/refresh cadence keeps running underneath (harmless), this just
-	## stops it from drawing. Flip back once the artifact is fixed.
-	_occlusion_wireframe_overlay.visible = false
+	## OCC-12 (2026-07-14): back on — the diagonal-seam artifact was root-caused
+	## to per-edge corner_a/corner_b coming from each edge's own independently
+	## -scanned voxel bounds, which could disagree with a neighbor's at a real
+	## corner. Rebuilt on OcclusionSet's merged hull segments (true shared grid
+	## vertices, one box per straight run, not one per Slice/Edge) — see
+	## OcclusionSet._build_wireframe_segments().
+	_occlusion_wireframe_overlay.visible = true
 
 	## OCC-FIX-02: seed the set for the map we just loaded.
 	##

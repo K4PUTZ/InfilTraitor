@@ -15,25 +15,26 @@ const MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
 
-## OCC-05 — Binary flat-fill ghost (supersedes O6's 3-ring gradient, Director
-## decision 2026-07-13).
+## OCC-08 — Three-ring ghost, rings by EDGE-GRAPH hop distance (supersedes OCC-05's
+## flat single alpha, Director decision 2026-07-14).
 ##
 ## A ghost is an ALTERNATIVE TILE, not a new texture: Godot's TileData carries a
 ## `modulate` per alternative, and alternatives reuse the same atlas region. A ghost
 ## therefore costs *not one extra pixel* of texture memory, and nothing per fragment —
 ## which is why this needs no sign-off against the mobile budget (D12).
 ##
-## O6 shipped three alpha rings (5/25/50%) by distance from the agent. In real play
-## this produced a "serrated" look: adjacent faces of the same wall (top vs. side)
-## landed in different rings and stacked into a patchwork of different alphas. The
-## fix is architectural, not a tuning number — ONE flat alpha for every occluded
-## cell regardless of ring/distance. Definition is carried instead by
-## OcclusionWireframeOverlay, which draws a crisp white outline around the occluded
-## region's silhouette (see that script). Ghosting a cell is still just changing the
-## last argument of set_cell(); Voxel.visible is never touched (O1) — occlusion is
-## VIEW, not STATE.
-const HIDDEN_ALT_ID: int = 1
-const HIDDEN_FILL_ALPHA: float = 0.12
+## History: O6 shipped three alpha rings by VOXEL distance from the agent — serrated
+## in practice, adjacent faces of the same wall landing in different rings. OCC-05
+## flattened to one alpha to kill that. OCC-08 brings rings back, but the ring index
+## now comes from OcclusionSet's EDGE-GRAPH hop distance (0/1/2 hops from a triggering
+## edge, walked along the wall's own connectivity) instead of Euclidean voxel distance
+## — an entire edge (and its whole slice tower) shares one ring, so there is no
+## per-voxel patchwork to serrate in the first place. Definition is carried by
+## OcclusionWireframeOverlay regardless of ring — see that script. Ghosting a cell is
+## still just changing the last argument of set_cell(); Voxel.visible is never
+## touched (O1) — occlusion is VIEW, not STATE.
+const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
+const GHOST_ALPHAS: Array[float] = [0.03, 0.10, 0.50]
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was
@@ -151,15 +152,17 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 ## get_tile_data() was always false and only served to make Godot log a spurious
 ## ERROR per tile (TileSetAtlasSource logs on any miss, not just push a null).
 func _mint_ghost_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
-	source.create_alternative_tile(coords, HIDDEN_ALT_ID)
-	var ghost_data: TileData = source.get_tile_data(coords, HIDDEN_ALT_ID)
-	if ghost_data == null:
-		push_error("[OCC-05] Failed to create hidden alternative at %s" % [coords])
-		return
-	ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
-	var ghost_modulate := base_modulate
-	ghost_modulate.a = HIDDEN_FILL_ALPHA
-	ghost_data.modulate = ghost_modulate
+	for ring in range(GHOST_ALT_IDS.size()):
+		var alt_id: int = GHOST_ALT_IDS[ring]
+		source.create_alternative_tile(coords, alt_id)
+		var ghost_data: TileData = source.get_tile_data(coords, alt_id)
+		if ghost_data == null:
+			push_error("[OCC-08] Failed to create ghost alternative %d at %s" % [alt_id, coords])
+			continue
+		ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
+		var ghost_modulate := base_modulate
+		ghost_modulate.a = GHOST_ALPHAS[ring]
+		ghost_data.modulate = ghost_modulate
 
 
 ## Getter for voxel layer at given level (for diagnostics)
@@ -514,14 +517,14 @@ func _find_neighbor_wall_voxel(column: JunctionResolver.JunctionColumn, registry
 	return {}
 
 
-## OCC-02/OCC-05 — apply the occluded-cell set as ghosts. THE single entry point.
+## OCC-02/OCC-08 — apply the occluded-cell set as ghosts. THE single entry point.
 ##
-## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet. The ring
-## value is no longer used to pick an alpha (OCC-05 flattened that to one alpha for every
-## occluded cell — see HIDDEN_ALT_ID); it is kept in the dict shape only because
-## OcclusionSet still computes it and OcclusionWireframeOverlay may want it later. Every
-## level of a ghosted column is ghosted: a wall covering the agent covers him from his
-## feet to over his head, and the upper layers draw above him regardless of y-sort.
+## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet.
+## OCC-08: the ring is an EDGE-GRAPH hop distance (0/1/2) from a triggering edge, not
+## a voxel distance — every voxel belonging to the same edge shares one ring, so
+## there is no per-voxel patchwork within a single wall to serrate. Every level of a
+## ghosted column is ghosted: a wall covering the agent covers him from his feet to
+## over his head, and the upper layers draw above him regardless of y-sort.
 ##
 ## Full restore, then full re-apply. The set is a few dozen columns and this runs on agent
 ## step / view change / map load — never per frame. Diffing would buy nothing and would
@@ -535,7 +538,8 @@ func apply_occlusion(occluded: Dictionary) -> void:
 	_restore_ghosted_cells()
 
 	for cell in occluded.keys():
-		var ghost_alt: int = HIDDEN_ALT_ID
+		var ring: int = clampi(int(occluded[cell]), 0, GHOST_ALT_IDS.size() - 1)
+		var ghost_alt: int = GHOST_ALT_IDS[ring]
 		var restore_records: Array = []
 
 		for level in range(_voxel_layers.size()):

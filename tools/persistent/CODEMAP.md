@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**116 scripts · 21808 lines total** (under `godot/scripts/`)
+**117 scripts · 21983 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — enemy_banner_panel.gd, fog_of_war_overlay.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -620,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 726 lines
+`class_name VoxelRenderer` · extends `Node2D` · 730 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -630,8 +630,8 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
-- `HIDDEN_ALT_ID` = `1`
-- `HIDDEN_FILL_ALPHA` = `0.12`
+- `GHOST_ALT_IDS` = `[1, 2, 3]`
+- `GHOST_ALPHAS` = `[0.03, 0.10, 0.50]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -926,18 +926,39 @@ extends `Node2D` · 135 lines
 
 ---
 
+### `occlusion_slice_panel.gd`
+
+extends `Node2D` · 34 lines
+
+`godot/scripts/overlays/occlusion_slice_panel.gd`
+
+> OCC-08-b: draws one LEVEL band of an occluded slice's wireframe rectangle, at that band's own voxel-layer z_index — see occlusion_wireframe_overlay.gd for why a flat elevated z_index was wrong (it always won against opaque geometry nearer the camera at a lower level, which should have covered it). draw_top/draw_bottom default true but the manager sets them false on every band except the very top and very bottom of a slice's occluded span. A tall slice spans many levels, each its OWN z_index band (necessary — see above) — drawing every band's own top+bottom edge produced a "venetian blind" of horizontal rungs down the whole span, since each level boundary is really just an INTERNAL seam, not a real silhouette edge. The two verticals still draw on every band (that is what keeps each level individually maskable by nearer geometry), and consecutive bands' verticals share exact endpoints, so they read as one unbroken line.
+
+**Constants / tuning**
+- `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
+- `LINE_WIDTH` = `2.0`
+
+**Public vars**
+- `var bottom_a: Vector2`
+- `var bottom_b: Vector2`
+- `var top_a: Vector2`
+- `var top_b: Vector2`
+- `var draw_top: bool = true`
+- `var draw_bottom: bool = true`
+
+---
+
 ### `occlusion_wireframe_overlay.gd`
 
-extends `Node2D` · 106 lines
+extends `Node2D` · 132 lines
 
 `godot/scripts/overlays/occlusion_wireframe_overlay.gd`
 
-> Occlusion Wireframe Overlay — OCC-07 Draws a crisp white outline over each occluded Slice, reproducing that slice's own real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box. VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there. OCC-07 replaced the previous per-gameplay-cell box-with-suppressed-edges approach. That version aggregated many voxel columns into a generic diamond box per cell and had to reverse-engineer which edges were "interior" via neighbour lookups — fragile, and it still didn't match a wall's actual thin shape. A Slice already IS the shape: one face, one gameplay cell, real voxels. There is nothing left to aggregate or suppress — each occluded slice draws its own rectangle, independently, using its own voxels' real grid positions for both corners and height.
+> Occlusion Wireframe Overlay — OCC-07-b Draws a crisp white outline over each occluded Slice, reproducing that slice's own real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box. VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there. OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated z_index (150). That always won against nearer, unoccluded geometry that should have covered part of it — e.g. a ghosted back wall's outline showing straight through the box's own solid front walls, which are unaffected and nearer the camera. Director's fix: each wireframe segment must carry the z_index of the voxel layer whose slice it stands in for, not a value picked to "clear everything". Levels, not one shape: this manager splits each slice's rectangle into one horizontal band per voxel LEVEL it spans, and spawns one OcclusionSlicePanel child per band, each stamped with THAT level's real voxel-layer z_index (read directly off VoxelRenderer.get_layer(level), the same TileMapLayer the real wall cells are placed on — never re-derived). A single flat rectangle could only ever carry one z_index, which would still be wrong for any level range it didn't match; per-level bands is what lets a tall slice interleave correctly against blockers that only exist at some of its levels.
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
-- `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
-- `LINE_WIDTH` = `2.0`
+- `SlicePanelClass` = `preload("res://godot/scripts/overlays/occlusion_slice_panel.gd")`
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
@@ -1548,7 +1569,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 212 lines
+`class_name OcclusionSet` · 318 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1556,20 +1577,7 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-
-**Public vars**
-- `var silhouette_half_width_px: float = 48.0`
-- `var max_depth_voxels: float = 48.0`
-
-**Public API**
-- `func get_occluded_cells() -> Dictionary:`
-- `func get_occluded_slices() -> Array:`
-- `func get_ring_index(voxel_cell: Vector2i) -> int:`
-- `func is_occluded(voxel_cell: Vector2i) -> bool:`
-- `func get_recompute_count() -> int:`
-- `func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i) -> void:`
-- `func compute_occluded_slices(agent_cell: Vector2i, slices: Array, _room_size: Vector2i) -> Array:`
-- `func debug_print_stats() -> void:`
+- `FaceMod` = `preload("res://godot/scripts/geometry/face.gd")`
 
 ---
 
@@ -2561,7 +2569,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2219 lines
+extends `Node2D` · 2224 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2622,6 +2630,8 @@ extends `Node2D` · 2219 lines
 - `TRAIL_MAX` = `5`
 - `GUARD_NOISE_CHANCE_BY_STATE` = `{ "patrol": 0.15, "suspicious": 0.40, "alert": 0.60, "chase": 0.70, "search": 0.50, }`
 - `GUARD_NOISE_INTENSITY_BY_STATE` = `{ "patrol": 0.4, "suspicious": 0.6, "alert": 0.9, "chase": 1.0, "search": 0.7, }`
+- `SHADOW_DIRS` = `[ Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1), ]`
+- `SHADOW_LENGTH_MAX` = `5`
 
 **@export**
 - `segment_grid_pos: Vector2i = Vector2i(1, 1)`
@@ -2631,6 +2641,11 @@ extends `Node2D` · 2219 lines
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
 - `var vision_bonus_tiles: int = 0`
+- `var SHADOW_SPILL_MAX_RADIUS: int = 4`
+- `var SHADOW_SPILL_DENSITY_STEP: int = 2`
+- `var SHADOW_SPILL_BASE_DARKEN: float = 0.18`
+- `var SHADOW_SPILL_FALLOFF: float = 0.5`
+- `var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65`
 
 ---
 

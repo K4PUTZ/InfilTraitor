@@ -650,17 +650,19 @@ func _ready() -> void:
 	_occlusion_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_overlay.set_voxel_renderer(_voxel_renderer)
 
-	## OCC-07: the real, gameplay-facing occlusion visual — a silhouette outline over
+	## OCC-07-b: the real, gameplay-facing occlusion visual — a silhouette outline over
 	## the hidden geometry, one rectangle per occluded Slice (its own real shape, not
 	## a generic box). Unlike _occlusion_overlay (dev-only diamond painter, starts
 	## hidden behind a debug toggle), this one is meant to be visible from the start —
-	## it is the whole point of occluding at all. Same z_index as the debug overlay
-	## (both clear the tallest geometry, 150 stays below the dev hover label at 200).
-	## Re-enabled 2026-07-14 after the per-cell box approach (paused same day) was
-	## replaced with the per-slice rectangle approach — see OCCLUSION_MASTER_PLAN.md.
+	## it is the whole point of occluding at all.
+	## z_index stays at the default (0, relative) on THIS manager node — it no longer
+	## carries a flat elevated z_index itself. Each occluded slice spawns its own
+	## per-level child panel stamped with that level's REAL voxel-layer z_index (read
+	## off VoxelRenderer directly), so the wireframe draws in the same bucket as the
+	## geometry it stands in for and nearer, unoccluded walls correctly cover it —
+	## a flat 150 always won regardless of what should have been in front of it.
 	_occlusion_wireframe_overlay = Node2D.new()
 	_occlusion_wireframe_overlay.set_script(OcclusionWireframeOverlayClass)
-	_occlusion_wireframe_overlay.z_index = 150
 	add_child(_occlusion_wireframe_overlay)
 	_occlusion_wireframe_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_wireframe_overlay.set_voxel_renderer(_voxel_renderer)
@@ -1753,7 +1755,10 @@ func _recompute_occlusion() -> void:
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
 	if _occlusion_wireframe_overlay != null:
-		_occlusion_wireframe_overlay.queue_redraw()
+		## OCC-07-b: rebuilds the per-level panel children (each with its own
+		## z_index) — this manager no longer draws anything itself, so a plain
+		## queue_redraw() here would do nothing.
+		_occlusion_wireframe_overlay.refresh()
 
 
 ## OCC-01: Collect all voxel cells currently placed in the renderer

@@ -1,3 +1,9 @@
+> **SUPERSEDED 2026-07-13 — do not build this.** O7 was revised: occlusion moved to
+> binary hide + wireframe silhouette (O6′, `OCCLUSION_MASTER_PLAN.md`). Full-hide
+> already leaves the agent completely visible when occluded — there is nothing
+> partially covering him left to stroke. See Decision O7 and the Wave 3 build log
+> in the master plan.
+
 # OCC-04 — The silhouette stroke, only where he is actually hidden
 
 **Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 3 (O7) — **second half.**

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**115 scripts · 21598 lines total** (under `godot/scripts/`)
+**116 scripts · 21808 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — enemy_banner_panel.gd, fog_of_war_overlay.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -620,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 684 lines
+`class_name VoxelRenderer` · extends `Node2D` · 726 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -630,8 +630,8 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
-- `GHOST_ALT_IDS` = `[1, 2, 3]`
-- `GHOST_ALPHAS` = `[0.05, 0.25, 0.5]`
+- `HIDDEN_ALT_ID` = `1`
+- `HIDDEN_FILL_ALPHA` = `0.12`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -642,12 +642,6 @@ extends `ConfirmationDialog` · 64 lines
 - `func set_baked_lookup(lookup) -> void:`
 - `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
-- `func get_tileset() -> TileSet:`
-- `func get_max_voxel_z_index() -> int:`
-- `func get_placed_cell_count() -> int:`
-- `func apply_debug_nudge(delta: Vector2) -> void:`
-- `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
-- `func print_render_diagnostics() -> void:`
 
 ---
 
@@ -925,6 +919,29 @@ extends `Node2D` · 135 lines
 - `var voxel_renderer = null`
 - `var voxel_tile_size: Vector2 = Vector2(32, 16)`
 - `var ring_colors := { 0: Color(1.0, 0.0, 0.0, 0.5),   # Red — ring 0 (nearest, most transparent) 1: Color(1.0, 0.5, 0.0, 0.5),   # Orange — ring 1 (middle) 2: Color(1.0, 1.0, 0.0, 0.5),   # Yellow — ring 2 (outer, least transparent) }`
+
+**Public API**
+- `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
+- `func set_voxel_renderer(renderer) -> void:`
+
+---
+
+### `occlusion_wireframe_overlay.gd`
+
+extends `Node2D` · 106 lines
+
+`godot/scripts/overlays/occlusion_wireframe_overlay.gd`
+
+> Occlusion Wireframe Overlay — OCC-07 Draws a crisp white outline over each occluded Slice, reproducing that slice's own real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box. VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there. OCC-07 replaced the previous per-gameplay-cell box-with-suppressed-edges approach. That version aggregated many voxel columns into a generic diamond box per cell and had to reverse-engineer which edges were "interior" via neighbour lookups — fragile, and it still didn't match a wall's actual thin shape. A Slice already IS the shape: one face, one gameplay cell, real voxels. There is nothing left to aggregate or suppress — each occluded slice draws its own rectangle, independently, using its own voxels' real grid positions for both corners and height.
+
+**Constants / tuning**
+- `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
+- `LINE_WIDTH` = `2.0`
+
+**Public vars**
+- `var occlusion_set: OcclusionSetClass = null`
+- `var voxel_renderer = null`
 
 **Public API**
 - `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
@@ -1531,7 +1548,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 179 lines
+`class_name OcclusionSet` · 212 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1541,18 +1558,17 @@ extends `Node2D` · 43 lines
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
-- `var circle_radius_voxels: float = 20.0`
-- `var ring_0_width: float = 8.0`
-- `var ring_1_width: float = 8.0`
-- `var ring_2_width: float = 4.0`
+- `var silhouette_half_width_px: float = 48.0`
+- `var max_depth_voxels: float = 48.0`
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
+- `func get_occluded_slices() -> Array:`
 - `func get_ring_index(voxel_cell: Vector2i) -> int:`
 - `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`
-- `func recompute(agent_cell: Vector2i, voxel_cells: Array, room_size: Vector2i) -> void:`
-- `func compute_occluded_cells(agent_cell: Vector2i, voxel_cells: Array, _room_size: Vector2i) -> Dictionary:`
+- `func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i) -> void:`
+- `func compute_occluded_slices(agent_cell: Vector2i, slices: Array, _room_size: Vector2i) -> Array:`
 - `func debug_print_stats() -> void:`
 
 ---
@@ -2226,7 +2242,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 678 lines
+`class_name RoomBuilder` · 683 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2545,7 +2561,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2195 lines
+extends `Node2D` · 2219 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2582,6 +2598,7 @@ extends `Node2D` · 2195 lines
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 - `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`
+- `OcclusionWireframeOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_wireframe_overlay.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`

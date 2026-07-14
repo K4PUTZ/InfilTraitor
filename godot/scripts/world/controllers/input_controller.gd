@@ -76,7 +76,7 @@ func _handle_key_action(key: InputEventKey) -> void:
 		view_mode_requested.emit("heat")
 		if viewport:
 			viewport.set_input_as_handled()
-	elif key.is_action_pressed("ui_peek"):
+	elif key.is_action_pressed("ui_peek", false, true):
 		print_debug("[INPUT] Peek initiated")
 		peek_initiated.emit()
 		if viewport:

@@ -37,6 +37,7 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 ## OCC-01: Occlusion system (geometry occlusion set, view-space computation)
 const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
 const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_overlay.gd")
+const OcclusionWireframeOverlayClass = preload("res://godot/scripts/overlays/occlusion_wireframe_overlay.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -231,6 +232,7 @@ var _noise_overlay: Node2D = null
 ## OCC-01: Occlusion module and debug overlay
 var _occlusion_set: OcclusionSetClass = null
 var _occlusion_overlay: Node2D = null
+var _occlusion_wireframe_overlay: Node2D = null
 
 ## M2-14: Guard noise indicator — flutuante ao redor do agente
 var _guard_noise_indicator: Node2D = null
@@ -647,6 +649,21 @@ func _ready() -> void:
 	add_child(_occlusion_overlay)
 	_occlusion_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_overlay.set_voxel_renderer(_voxel_renderer)
+
+	## OCC-07: the real, gameplay-facing occlusion visual — a silhouette outline over
+	## the hidden geometry, one rectangle per occluded Slice (its own real shape, not
+	## a generic box). Unlike _occlusion_overlay (dev-only diamond painter, starts
+	## hidden behind a debug toggle), this one is meant to be visible from the start —
+	## it is the whole point of occluding at all. Same z_index as the debug overlay
+	## (both clear the tallest geometry, 150 stays below the dev hover label at 200).
+	## Re-enabled 2026-07-14 after the per-cell box approach (paused same day) was
+	## replaced with the per-slice rectangle approach — see OCCLUSION_MASTER_PLAN.md.
+	_occlusion_wireframe_overlay = Node2D.new()
+	_occlusion_wireframe_overlay.set_script(OcclusionWireframeOverlayClass)
+	_occlusion_wireframe_overlay.z_index = 150
+	add_child(_occlusion_wireframe_overlay)
+	_occlusion_wireframe_overlay.set_occlusion_set(_occlusion_set)
+	_occlusion_wireframe_overlay.set_voxel_renderer(_voxel_renderer)
 
 	## OCC-FIX-02: seed the set for the map we just loaded.
 	##
@@ -1722,7 +1739,12 @@ func _assert_geometry_rendered() -> void:
 func _recompute_occlusion() -> void:
 	if _occlusion_set == null:
 		return
-	_occlusion_set.recompute(agent.cell, _collect_all_voxel_cells(), _room_size)
+	## OCC-07: the occlusion decision is per-Slice now, not per raw voxel column —
+	## feed it the same EdgeRegistry the renderer itself just built from (published
+	## by RoomBuilder.build_from_layout(), see room_builder.gd's comment on why this
+	## handle is shared rather than re-derived).
+	var slices: Array = _edge_registry.all_slices() if _edge_registry != null else []
+	_occlusion_set.recompute(agent.cell, slices, _room_size)
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
 	if _voxel_renderer != null:
@@ -1730,6 +1752,8 @@ func _recompute_occlusion() -> void:
 
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
+	if _occlusion_wireframe_overlay != null:
+		_occlusion_wireframe_overlay.queue_redraw()
 
 
 ## OCC-01: Collect all voxel cells currently placed in the renderer

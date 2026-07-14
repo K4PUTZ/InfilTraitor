@@ -15,18 +15,25 @@ const MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
 
-## OCC-02 — Ghost rings (O6).
+## OCC-05 — Binary flat-fill ghost (supersedes O6's 3-ring gradient, Director
+## decision 2026-07-13).
 ##
 ## A ghost is an ALTERNATIVE TILE, not a new texture: Godot's TileData carries a
 ## `modulate` per alternative, and alternatives reuse the same atlas region. A ghost
 ## therefore costs *not one extra pixel* of texture memory, and nothing per fragment —
 ## which is why this needs no sign-off against the mobile budget (D12).
 ##
-## Ring 0 is nearest the agent and the MOST transparent; ring 2 is outermost and the
-## least. Ghosting a cell = changing the last argument of set_cell(). Nothing else in the
-## engine is told, and Voxel.visible is never touched (O1) — occlusion is VIEW, not STATE.
-const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
-const GHOST_ALPHAS: Array[float] = [0.05, 0.25, 0.5]
+## O6 shipped three alpha rings (5/25/50%) by distance from the agent. In real play
+## this produced a "serrated" look: adjacent faces of the same wall (top vs. side)
+## landed in different rings and stacked into a patchwork of different alphas. The
+## fix is architectural, not a tuning number — ONE flat alpha for every occluded
+## cell regardless of ring/distance. Definition is carried instead by
+## OcclusionWireframeOverlay, which draws a crisp white outline around the occluded
+## region's silhouette (see that script). Ghosting a cell is still just changing the
+## last argument of set_cell(); Voxel.visible is never touched (O1) — occlusion is
+## VIEW, not STATE.
+const HIDDEN_ALT_ID: int = 1
+const HIDDEN_FILL_ALPHA: float = 0.12
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was
@@ -43,6 +50,13 @@ var _voxel_layers: Array[TileMapLayer] = []
 
 ## Runtime TileSet
 var _tileset: TileSet
+
+## Source ids registered by register_baked_atlas_page() — one full set per rebuild
+## (every view rotation re-bakes). Unlike the four MATERIALS sources (built once,
+## permanent), these are transient: clear() removes them so a rebuild doesn't leave
+## the previous rotation's pages (and their minted ghosts) orphaned in _tileset
+## forever. Left unpruned, source_count grows without bound across rotations.
+var _baked_source_ids: Array[int] = []
 
 ## Visual grid offset (isometric screen space)
 var _visual_grid_offset: Vector2
@@ -96,6 +110,7 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 
 	var source_id := _tileset.get_next_source_id()
 	_tileset.add_source(source, source_id)
+	_baked_source_ids.append(source_id)
 
 	for coords in atlas_coords_used:
 		if source.get_tile_at_coords(coords) != Vector2i(-1, -1):
@@ -127,20 +142,24 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 ##    pages are tinted per page (white under TEXTURE_ONLY, the material colour under
 ##    MULTIPLY). A ghost hardcoding Color(1,1,1,a) would silently recolour every baked
 ##    wall it touched.
+##
+## No existence probe: `source` is always freshly created by both call sites (a brand
+## new TileSetAtlasSource per register_baked_atlas_page() call, or one of the four
+## material sources built exactly once in _build_voxel_tileset()), and each caller
+## already dedupes coords before calling in. A source+coords pair therefore never
+## reaches this function twice — probing "does alt_id already exist?" via
+## get_tile_data() was always false and only served to make Godot log a spurious
+## ERROR per tile (TileSetAtlasSource logs on any miss, not just push a null).
 func _mint_ghost_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
-	for ring in range(GHOST_ALT_IDS.size()):
-		var alt_id: int = GHOST_ALT_IDS[ring]
-		if source.get_tile_data(coords, alt_id) != null:
-			continue
-		source.create_alternative_tile(coords, alt_id)
-		var ghost_data: TileData = source.get_tile_data(coords, alt_id)
-		if ghost_data == null:
-			push_error("[OCC-02] Failed to create ghost alternative %d at %s" % [alt_id, coords])
-			continue
-		ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
-		var ghost_modulate := base_modulate
-		ghost_modulate.a = GHOST_ALPHAS[ring]
-		ghost_data.modulate = ghost_modulate
+	source.create_alternative_tile(coords, HIDDEN_ALT_ID)
+	var ghost_data: TileData = source.get_tile_data(coords, HIDDEN_ALT_ID)
+	if ghost_data == null:
+		push_error("[OCC-05] Failed to create hidden alternative at %s" % [coords])
+		return
+	ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
+	var ghost_modulate := base_modulate
+	ghost_modulate.a = HIDDEN_FILL_ALPHA
+	ghost_data.modulate = ghost_modulate
 
 
 ## Getter for voxel layer at given level (for diagnostics)
@@ -148,6 +167,12 @@ func get_layer(level: int) -> TileMapLayer:
 	if level < 0 or level >= _voxel_layers.size():
 		return null
 	return _voxel_layers[level]
+
+
+## Number of voxel layers currently built (for OcclusionWireframeOverlay's per-column
+## height scan — see get_layer()'s docstring for why callers must not assume LEVELS_PER_STOREY).
+func get_layer_count() -> int:
+	return _voxel_layers.size()
 
 
 ## Getter for the runtime TileSet (for diagnostics/tests — e.g. reading TileData.flip_h)
@@ -489,9 +514,12 @@ func _find_neighbor_wall_voxel(column: JunctionResolver.JunctionColumn, registry
 	return {}
 
 
-## OCC-02 — apply the occluded-cell set as ghosts. THE single entry point.
+## OCC-02/OCC-05 — apply the occluded-cell set as ghosts. THE single entry point.
 ##
-## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet. Every
+## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet. The ring
+## value is no longer used to pick an alpha (OCC-05 flattened that to one alpha for every
+## occluded cell — see HIDDEN_ALT_ID); it is kept in the dict shape only because
+## OcclusionSet still computes it and OcclusionWireframeOverlay may want it later. Every
 ## level of a ghosted column is ghosted: a wall covering the agent covers him from his
 ## feet to over his head, and the upper layers draw above him regardless of y-sort.
 ##
@@ -507,8 +535,7 @@ func apply_occlusion(occluded: Dictionary) -> void:
 	_restore_ghosted_cells()
 
 	for cell in occluded.keys():
-		var ring: int = clampi(int(occluded[cell]), 0, GHOST_ALT_IDS.size() - 1)
-		var ghost_alt: int = GHOST_ALT_IDS[ring]
+		var ghost_alt: int = HIDDEN_ALT_ID
 		var restore_records: Array = []
 
 		for level in range(_voxel_layers.size()):
@@ -678,6 +705,21 @@ func clear() -> void:
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
 	## rotation path (clear() + render()) goes through here every time.
 	_ghosted_cells.clear()
+
+
+## Remove every baked atlas source registered by the PREVIOUS bake pass, before the
+## current one registers its own. Must run before register_baked_atlas_page() is called
+## for a fresh pass — never from clear(), which runs AFTER _bake_textures() has already
+## registered this pass's new sources (removing them there would delete what was just
+## built). Without this, every view rotation left the prior rotation's pages (and their
+## minted ghost alternatives) orphaned in _tileset forever: source_count grew without
+## bound and every rotation re-triggered a full ghost-mint pass on top of the leak.
+## The four MATERIALS sources (ids assigned once in _build_voxel_tileset()) are untouched.
+func prune_baked_sources() -> void:
+	for source_id in _baked_source_ids:
+		if _tileset.has_source(source_id):
+			_tileset.remove_source(source_id)
+	_baked_source_ids.clear()
 
 
 func _to_string() -> String:

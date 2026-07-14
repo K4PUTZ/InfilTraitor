@@ -363,6 +363,11 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = []) -> void:
 	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
 
+	## Every view rotation re-bakes and re-registers baked atlas pages from scratch.
+	## Drop the previous pass's pages before this one adds its own — see
+	## VoxelRenderer.prune_baked_sources() for why this can't live in clear() instead.
+	room._voxel_renderer.prune_baked_sources()
+
 	# Get current map ID for cache keying
 	var current_map_id = room.map_id if room.has_meta("map_id") else "UNKNOWN"
 	if room.has_method("get") and room.get("map_id"):

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.8 · **Updated:** 2026-07-14 · **Branch:** main
+**Version:** 0.9.9 · **Updated:** 2026-07-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 88d238f [OCC-09] Direction/junction ring stop, vertical reveal cutoff, session close
 - 31b612d [OCC-08] Occlusion rebuilt on edges: real 2D overlap, graph-walk rings, clean wireframe
 - 958c9d3 [OCC-05..07] Occlusion rebuilt: flat hide, real wireframe, per-slice corridor
 - ce8b6e0 [OCC-02] Ghost rings: the occluded set is now see-through
 - 3fc4360 [OCC-FIX-02] Four real views, and the four bugs they immediately found
-- 24cd048 [OCC-FIX-01] Restore _junction_columns; the "unused variable" was writing the whole world
 <!-- AUTO:END version_history -->
 
 ---

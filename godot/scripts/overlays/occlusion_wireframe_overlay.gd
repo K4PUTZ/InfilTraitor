@@ -2,8 +2,9 @@
 ##
 ## Draws a crisp white outline over each occluded Slice, reproducing that slice's own
 ## real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box.
-## VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha
-## ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there.
+## VoxelRenderer.apply_occlusion() ghosts the translucent band this outlines (ring
+## alpha, OCC-08/O6); the edge's own base band underneath is left fully opaque and
+## untouched (OCC-10) — solid enough on its own that it needs no outline.
 ##
 ## OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated
 ## z_index (150). That always won against nearer, unoccluded geometry that should
@@ -21,13 +22,15 @@
 ## match; per-level bands is what lets a tall slice interleave correctly against
 ## blockers that only exist at some of its levels.
 ##
-## OCC-09 (2026-07-14): reads OcclusionSet.get_occluded_edges() — pre-computed,
-## already vertically clipped per edge (min_level may be well above that edge's
-## true base; see OcclusionSet's vertical_reveal_px) — not raw Slice objects. A
-## wall sitting at greater depth than the agent has its own ground level pushed
-## further down the screen by isometric projection alone; voxels far enough below
-## the agent's own screen-ground position are no longer drawn as occluded, and
-## this overlay must draw only the surviving range, never a slice's full span.
+## Reads OcclusionSet.get_occluded_edges() — pre-computed, not raw Slice objects.
+## "min_level" is where the TRANSLUCENT band starts (OCC-10: the edge's true base
+## plus OcclusionSet.BASE_VISIBLE_LEVELS) — this overlay only ever needs to draw
+## that band, never the always-visible base underneath it.
+##
+## OCC-10 (2026-07-14): disabled by default (see `visible = false` in room.gd) —
+## the diagonal-seam artifact reported live is a real bug in this overlay's own
+## per-level panel geometry, not investigated yet. Turn back on once that's
+## fixed; the recompute-and-refresh cadence below is unaffected either way.
 
 extends Node2D
 
@@ -64,17 +67,16 @@ func refresh() -> void:
 		_spawn_edge_panels(edge)
 
 
-## OCC-09: edge dict is already vertically clipped by OcclusionSet — "corner_a"/
-## "corner_b" (real footprint endpoints, from the edge's own voxels), "min_level"
-## (the reveal-cutoff-clipped bottom, may be above the edge's true base) and
-## "max_level" (unclipped — the cutoff only trims the bottom, never the top).
+## Edge dict fields: "corner_a"/"corner_b" (real footprint endpoints, from the
+## edge's own voxels), "min_level" (where the translucent band starts) and
+## "max_level" (the edge's own true top).
 func _spawn_edge_panels(edge: Dictionary) -> void:
 	var corner_a: Vector2i = edge["corner_a"]
 	var corner_b: Vector2i = edge["corner_b"]
 	var min_level: int = edge["min_level"]
 	var max_level: int = edge["max_level"]
 	if min_level > max_level:
-		return  ## entirely clipped below the reveal cutoff — nothing to draw
+		return  ## degenerate span — nothing to draw
 
 	## One band per level the slice actually occupies, each its own panel node at
 	## that level's own z_index — see this file's header for why. Only the very top

@@ -666,6 +666,11 @@ func _ready() -> void:
 	add_child(_occlusion_wireframe_overlay)
 	_occlusion_wireframe_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_wireframe_overlay.set_voxel_renderer(_voxel_renderer)
+	## OCC-10 (2026-07-14): off for now — Director caught a real diagonal-seam
+	## artifact in its per-level panel geometry live, not yet root-caused. The
+	## recompute/refresh cadence keeps running underneath (harmless), this just
+	## stops it from drawing. Flip back once the artifact is fixed.
+	_occlusion_wireframe_overlay.visible = false
 
 	## OCC-FIX-02: seed the set for the map we just loaded.
 	##
@@ -1746,7 +1751,7 @@ func _recompute_occlusion() -> void:
 	## by RoomBuilder.build_from_layout(), see room_builder.gd's comment on why this
 	## handle is shared rather than re-derived).
 	var slices: Array = _edge_registry.all_slices() if _edge_registry != null else []
-	_occlusion_set.recompute(agent.cell, slices, _room_size)
+	_occlusion_set.recompute(agent.cell, slices, _room_size, _junction_columns)
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
 	if _voxel_renderer != null:

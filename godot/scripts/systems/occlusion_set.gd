@@ -33,16 +33,16 @@ var silhouette_height_px: float = 61.0
 ## (3 entries) — this must stay one less than that array's size.
 const MAX_RING: int = 2
 
-## OCC-09 (2026-07-14): how far below the AGENT'S OWN ground screen position an
-## occluding edge's tower still needs to stay hidden. Director's insight: an
-## occluding wall sits further forward (greater depth) than the agent, and in
-## isometric projection that alone pushes its OWN ground level further down the
-## screen than his — even a single-storey wall's base can sit well below his feet
-## purely from that depth offset, with nothing to do with real height. Past this
-## many pixels below his own ground, a tower's lower voxels are not plausibly
-## still covering him and can stay visible. ~320px ≈ "2 more GU/storeys" per the
-## Director's own two equivalent framings (a live-tunable estimate, not derived).
-var vertical_reveal_px: float = 320.0
+## OCC-10 (2026-07-14): superseded the OCC-09 pixel-threshold reveal cutoff.
+## Director's call after seeing it live: the OCC-09 reveal (lower storeys popping
+## back to fully opaque, pixel-threshold-timed) looked worse than the ghost it
+## replaced. Simpler rule, no agent-relative math needed: an occluded edge's own
+## bottom BASE_VISIBLE_LEVELS levels (full width, both faces — a fixed 8×N×2
+## footprint) are left COMPLETELY UNTOUCHED, always reading as solid ground-truth
+## geometry; everything above that ghosts at the ring alpha exactly as it always
+## has (OCC-08/O6). Fixed, not derived — no pixel math, no agent-relative
+## geometry for this part any more.
+const BASE_VISIBLE_LEVELS: int = 2
 
 ## ============================================================================
 ## STATE (owned solely by this module)
@@ -52,12 +52,14 @@ var vertical_reveal_px: float = 320.0
 ## Key: Vector2i voxel cell (voxel-grid coordinate space)
 var _occluded_cells: Dictionary = {}
 
-## Per-occluded-edge shape data, already clipped to the vertical reveal cutoff —
-## what OcclusionWireframeOverlay draws. Each entry:
+## Per-occluded-edge shape data — what OcclusionWireframeOverlay draws. Each entry:
 ##   {"corner_a": Vector2i, "corner_b": Vector2i, "min_level": int, "max_level": int}
-## Deliberately NOT raw Slice objects any more (OCC-09): the wireframe must draw
-## only the SURVIVING level range, not a slice's full original span, and a Slice
-## itself is never partial — this is the atomic unit that can be.
+## "min_level" here is where GHOSTING STARTS (the edge's true base plus
+## BASE_VISIBLE_LEVELS) — the wireframe only ever needs to cover the translucent
+## band, never the always-visible base underneath it (OCC-10).
+## Deliberately NOT raw Slice objects (OCC-09): a Slice's own span is never
+## partial — this is the atomic unit that can be, once part of it needs to draw
+## differently (or not at all) from the rest.
 var _occluded_edges: Array = []
 
 ## Recomputation counter (for verification of cadence)
@@ -69,9 +71,10 @@ var _recompute_count: int = 0
 
 ## Query the occluded-cell set.
 ## Returns: Dictionary of voxel COLUMN (x,y only) → {"ring": int, "min_level": int}.
-## OCC-09: min_level matters here, not just ring — a column key alone cannot tell
-## VoxelRenderer.apply_occlusion() which of ITS levels actually survived the
-## vertical reveal cutoff, so the level floor has to travel with the cell.
+## "min_level" is where ghosting starts (OCC-10: the edge's true base plus
+## BASE_VISIBLE_LEVELS) — a column key alone cannot tell
+## VoxelRenderer.apply_occlusion() which of ITS levels are the always-visible
+## base versus the ghosted rest, so the level floor has to travel with the cell.
 func get_occluded_cells() -> Dictionary:
 	return _occluded_cells.duplicate()
 
@@ -104,26 +107,45 @@ func get_recompute_count() -> int:
 ##   agent_cell: Vector2i — gameplay grid cell (from agent.cell)
 ##   slices: Array[Slice] — every Slice currently rendered (room._edge_registry.all_slices())
 ##   room_size: Vector2i — size of room in gameplay grid units
-func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i) -> void:
+##   junction_columns: Array[JunctionResolver.JunctionColumn] — corner filler columns
+##     (room._junction_columns); ghosted only when BOTH walls they fill the elbow
+##     between are themselves occluded (OCC-10, see the loop below).
+func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:
 	var slices_by_edge := _group_slices_by_edge(slices)
 	var edges := compute_edge_occlusion(agent_cell, slices_by_edge, room_size)
 
 	var new_occluded: Dictionary = {}
 	var new_edges: Array = []
+	var ring_by_edge_id: Dictionary = {}
 	for e in edges:
+		ring_by_edge_id[e["edge_id"]] = e["ring"]
 		new_edges.append({
 			"corner_a": e["corner_a"], "corner_b": e["corner_b"],
-			"min_level": e["clip_min_level"], "max_level": e["max_level"],
+			"min_level": e["min_level"], "max_level": e["max_level"],
 		})
 		for slice in slices_by_edge.get(e["edge_id"], []):
 			for voxel in slice.voxels:
-				## OCC-09: min_level travels WITH the cell — a column key alone
-				## would make VoxelRenderer.apply_occlusion() ghost every level of
-				## it once ANY voxel qualifies, including ones below the cutoff
-				## (a real bug this replaced: the wireframe correctly stopped
-				## short, but the flat-alpha fill kept covering the whole column
-				## regardless, just imperceptibly at 3% alpha).
-				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": e["clip_min_level"]}
+				## OCC-09/OCC-10: min_level travels WITH the cell — a column key
+				## alone would leave VoxelRenderer.apply_occlusion() unable to tell
+				## which of a column's levels are the always-visible base versus
+				## the ghosted rest above it.
+				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": e["min_level"]}
+
+	## OCC-10 (2026-07-14): junction filler columns aren't part of any Slice/Edge
+	## of their own — Director's rule, confirmed on annotated screenshots: ghost
+	## one only when BOTH edges it fills the elbow between are occluded; a column
+	## with only one occluded neighbor stays fully visible. Always ring 0 (the
+	## minimum alpha) — it has no ring of its own to inherit, and picking between
+	## its two neighbors' rings would be an arbitrary tie-break.
+	for column in junction_columns:
+		if not (ring_by_edge_id.has(column.edge_a_id) and ring_by_edge_id.has(column.edge_b_id)):
+			continue
+		var col_base_level: int = column.start_storey * GeometryCoordsMod.LEVELS_PER_STOREY
+		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
+		new_occluded[column.voxel_pos] = {
+			"ring": 0,
+			"min_level": mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1),
+		}
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
@@ -150,12 +172,11 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 	return by_edge
 
 
-## OCC-08/OCC-09 (2026-07-14): decide occlusion per EDGE — the real wall-column
-## object (one grid boundary, every storey it has) — with a genuine 2D (screen-X
-## AND screen-Y) overlap test against the agent's own silhouette, spread outward
-## along the wall's own connectivity graph up to MAX_RING hops, and finally
-## clipped at the bottom by how far below the agent's own ground position the
-## tower's lower voxels sit. Replaces O3″ — see Decisions O3‴ and O3⁗.
+## OCC-08/OCC-09/OCC-10 (2026-07-14): decide occlusion per EDGE — the real
+## wall-column object (one grid boundary, every storey it has) — with a genuine
+## 2D (screen-X AND screen-Y) overlap test against the agent's own silhouette,
+## spread outward along the wall's own connectivity graph up to MAX_RING hops.
+## Replaces O3″ — see Decisions O3‴, O3⁗ and O3⁗′.
 ##
 ## Why per-edge, not per-slice (OCC-07): a slice is one storey of one face: a tall
 ## wall is several stacked slices on the SAME edge. Grouping by edge is what lets
@@ -178,16 +199,16 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## bounded (no separate depth cap needed) since the walk only ever follows edges
 ## that physically connect to a trigger, however many hops that takes to reach.
 ##
-## Why a vertical clip at the bottom (OCC-09): an occluding edge sits at GREATER
-## depth than the agent (that is what "camera-side" means), and in isometric
-## projection greater depth alone pushes a tower's own ground level further down
-## the screen than the agent's — independent of real height. A tower's lower
-## voxels, far enough below the agent's own screen-ground position, are not
-## plausibly still covering him; ghosting them anyway was hiding more of a wall
-## than the trigger ever justified.
+## The vertical split (OCC-10, supersedes OCC-09's pixel-threshold reveal): each
+## occluded edge's own bottom BASE_VISIBLE_LEVELS levels are left completely
+## untouched (always full opacity); everything above ghosts at the ring alpha
+## exactly as it always has — a fixed rule, not derived from the agent's screen
+## position (see BASE_VISIBLE_LEVELS doc comment for why the pixel-threshold
+## version was dropped).
 ##
 ## Returns: Array of Dictionaries, one per occluded edge:
-##   {"edge_id", "ring", "corner_a", "corner_b", "max_level", "clip_min_level"}
+##   {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
+##   "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
 func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Array:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
 	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
@@ -201,7 +222,6 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 	## relative depth*HALF_H formula every voxel layer's screen position uses.
 	var agent_screen_y_ground := float(agent_depth) * VOXEL_HALF_H
 	var agent_screen_y_head := agent_screen_y_ground - silhouette_height_px
-	var reveal_cutoff_y := agent_screen_y_ground + vertical_reveal_px
 
 	## One geometry pass per edge: real footprint + screen-X/Y span, from its own
 	## voxels across every storey it has (never a generic per-cell guess).
@@ -240,20 +260,18 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		var y_bottom := center_depth * VOXEL_HALF_H - float(min_level) * GeometryCoordsMod.VOXEL_STEP_PX
 		var y_top := center_depth * VOXEL_HALF_H - float(max_level + 1) * GeometryCoordsMod.VOXEL_STEP_PX
 
-		## OCC-09: the lowest LEVEL whose screen-Y is still at or above the reveal
-		## cutoff — i.e. the first level (going up from min_level) that stays
-		## hidden. Solve center_depth*HALF_H - level*STEP_PX <= reveal_cutoff_y for
-		## the smallest qualifying level, then clamp into [min_level, max_level+1].
-		var clip_min_level := min_level
-		if y_bottom > reveal_cutoff_y:
-			var raw := (center_depth * VOXEL_HALF_H - reveal_cutoff_y) / GeometryCoordsMod.VOXEL_STEP_PX
-			clip_min_level = clampi(ceili(raw), min_level, max_level + 1)
+		## OCC-10: fixed always-visible base band — this edge's own bottom
+		## BASE_VISIBLE_LEVELS levels are left untouched (full opacity); ghosting
+		## starts right above them and runs to the edge's own top, at the ring
+		## alpha, same as it always has. No agent-relative math any more (see
+		## BASE_VISIBLE_LEVELS doc comment).
+		var ghost_start_level := mini(min_level + BASE_VISIBLE_LEVELS, max_level + 1)
 
 		edge_geom[edge_id] = {
 			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
 			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
 			"y_top": y_top, "y_bottom": y_bottom,
-			"max_level": max_level, "clip_min_level": clip_min_level,
+			"min_level": ghost_start_level, "max_level": max_level,
 		}
 
 		## Adjacency graph: registered for EVERY edge, not just triggers — a
@@ -328,7 +346,7 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		result.append({
 			"edge_id": edge_id, "ring": ring_by_edge[edge_id],
 			"corner_a": g["corner_a"], "corner_b": g["corner_b"],
-			"max_level": g["max_level"], "clip_min_level": g["clip_min_level"],
+			"min_level": g["min_level"], "max_level": g["max_level"],
 		})
 	return result
 

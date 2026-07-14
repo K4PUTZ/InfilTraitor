@@ -33,6 +33,17 @@ var silhouette_height_px: float = 61.0
 ## (3 entries) — this must stay one less than that array's size.
 const MAX_RING: int = 2
 
+## OCC-09 (2026-07-14): how far below the AGENT'S OWN ground screen position an
+## occluding edge's tower still needs to stay hidden. Director's insight: an
+## occluding wall sits further forward (greater depth) than the agent, and in
+## isometric projection that alone pushes its OWN ground level further down the
+## screen than his — even a single-storey wall's base can sit well below his feet
+## purely from that depth offset, with nothing to do with real height. Past this
+## many pixels below his own ground, a tower's lower voxels are not plausibly
+## still covering him and can stay visible. ~320px ≈ "2 more GU/storeys" per the
+## Director's own two equivalent framings (a live-tunable estimate, not derived).
+var vertical_reveal_px: float = 320.0
+
 ## ============================================================================
 ## STATE (owned solely by this module)
 ## ============================================================================
@@ -41,9 +52,13 @@ const MAX_RING: int = 2
 ## Key: Vector2i voxel cell (voxel-grid coordinate space)
 var _occluded_cells: Dictionary = {}
 
-## Every Slice belonging to an occluded edge (any ring) — for consumers that need
-## real shape data (OcclusionWireframeOverlay), not just the flat per-voxel dict.
-var _occluded_slices: Array = []
+## Per-occluded-edge shape data, already clipped to the vertical reveal cutoff —
+## what OcclusionWireframeOverlay draws. Each entry:
+##   {"corner_a": Vector2i, "corner_b": Vector2i, "min_level": int, "max_level": int}
+## Deliberately NOT raw Slice objects any more (OCC-09): the wireframe must draw
+## only the SURVIVING level range, not a slice's full original span, and a Slice
+## itself is never partial — this is the atomic unit that can be.
+var _occluded_edges: Array = []
 
 ## Recomputation counter (for verification of cadence)
 var _recompute_count: int = 0
@@ -53,20 +68,22 @@ var _recompute_count: int = 0
 ## ============================================================================
 
 ## Query the occluded-cell set.
-## Returns: Dictionary of voxel cells → ring index
+## Returns: Dictionary of voxel COLUMN (x,y only) → {"ring": int, "min_level": int}.
+## OCC-09: min_level matters here, not just ring — a column key alone cannot tell
+## VoxelRenderer.apply_occlusion() which of ITS levels actually survived the
+## vertical reveal cutoff, so the level floor has to travel with the cell.
 func get_occluded_cells() -> Dictionary:
 	return _occluded_cells.duplicate()
 
-## The Slice objects currently occluded — for consumers that need real shape data
-## (OcclusionWireframeOverlay), not just the flat per-voxel ghosting dictionary.
-## Ring-agnostic: the wireframe outline looks the same regardless of ring, only
-## the ghost's fill alpha differs.
-func get_occluded_slices() -> Array:
-	return _occluded_slices.duplicate()
+## Per-occluded-edge shape data (already vertically clipped) — see _occluded_edges.
+func get_occluded_edges() -> Array:
+	return _occluded_edges.duplicate()
 
 ## Get the ring index for a given voxel cell, or -1 if not occluded.
 func get_ring_index(voxel_cell: Vector2i) -> int:
-	return _occluded_cells.get(voxel_cell, -1)
+	if not _occluded_cells.has(voxel_cell):
+		return -1
+	return _occluded_cells[voxel_cell]["ring"]
 
 ## Check if a voxel cell is occluded.
 func is_occluded(voxel_cell: Vector2i) -> bool:
@@ -89,25 +106,33 @@ func get_recompute_count() -> int:
 ##   room_size: Vector2i — size of room in gameplay grid units
 func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i) -> void:
 	var slices_by_edge := _group_slices_by_edge(slices)
-	var ring_by_edge := compute_edge_rings(agent_cell, slices_by_edge, room_size)
+	var edges := compute_edge_occlusion(agent_cell, slices_by_edge, room_size)
 
 	var new_occluded: Dictionary = {}
-	var new_slices: Array = []
-	for edge_id in ring_by_edge.keys():
-		var ring: int = ring_by_edge[edge_id]
-		for slice in slices_by_edge.get(edge_id, []):
-			new_slices.append(slice)
+	var new_edges: Array = []
+	for e in edges:
+		new_edges.append({
+			"corner_a": e["corner_a"], "corner_b": e["corner_b"],
+			"min_level": e["clip_min_level"], "max_level": e["max_level"],
+		})
+		for slice in slices_by_edge.get(e["edge_id"], []):
 			for voxel in slice.voxels:
-				new_occluded[voxel.grid_pos] = ring
+				## OCC-09: min_level travels WITH the cell — a column key alone
+				## would make VoxelRenderer.apply_occlusion() ghost every level of
+				## it once ANY voxel qualifies, including ones below the cutoff
+				## (a real bug this replaced: the wireframe correctly stopped
+				## short, but the flat-alpha fill kept covering the whole column
+				## regardless, just imperceptibly at 3% alpha).
+				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": e["clip_min_level"]}
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
-		_occluded_slices = new_slices
+		_occluded_edges = new_edges
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
-			print_debug("[OcclusionSet] Recomputed: %d cells, %d slices, %d edges (count=%d)" % [
-				_occluded_cells.size(), _occluded_slices.size(), ring_by_edge.size(), _recompute_count
+			print_debug("[OcclusionSet] Recomputed: %d cells, %d edges (count=%d)" % [
+				_occluded_cells.size(), new_edges.size(), _recompute_count
 			])
 
 ## ============================================================================
@@ -125,11 +150,12 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 	return by_edge
 
 
-## OCC-08 (2026-07-14): decide occlusion per EDGE — the real wall-column object
-## (one grid boundary, every storey it has) — with a genuine 2D (screen-X AND
-## screen-Y) overlap test against the agent's own silhouette, then spread outward
-## along the wall's own connectivity graph up to MAX_RING hops. Replaces O3″ — see
-## Decision O3‴.
+## OCC-08/OCC-09 (2026-07-14): decide occlusion per EDGE — the real wall-column
+## object (one grid boundary, every storey it has) — with a genuine 2D (screen-X
+## AND screen-Y) overlap test against the agent's own silhouette, spread outward
+## along the wall's own connectivity graph up to MAX_RING hops, and finally
+## clipped at the bottom by how far below the agent's own ground position the
+## tower's lower voxels sit. Replaces O3″ — see Decisions O3‴ and O3⁗.
 ##
 ## Why per-edge, not per-slice (OCC-07): a slice is one storey of one face: a tall
 ## wall is several stacked slices on the SAME edge. Grouping by edge is what lets
@@ -143,9 +169,7 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## short nearby wall and a distant but TALL structure both answer that question
 ## correctly under a real screen-Y (height) test; neither ad-hoc tunable could
 ## express "far away but tall enough to still reach over him", which is a real,
-## reported case (Director: a distant multi-storey tower must still occlude if its
-## own top storey visually covers him — "ela vai ser um edifício que está em
-## primeiríssimo plano, e não pode ficar cobrindo o agente").
+## reported case.
 ##
 ## Why a graph walk for the ring falloff, not distance: two edges are "adjacent"
 ## if they share a grid VERTEX (corner) — real wall topology, not a distance
@@ -154,8 +178,17 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## bounded (no separate depth cap needed) since the walk only ever follows edges
 ## that physically connect to a trigger, however many hops that takes to reach.
 ##
-## Returns: Dictionary of edge_id (String) → ring (int, 0/1/2).
-func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
+## Why a vertical clip at the bottom (OCC-09): an occluding edge sits at GREATER
+## depth than the agent (that is what "camera-side" means), and in isometric
+## projection greater depth alone pushes a tower's own ground level further down
+## the screen than the agent's — independent of real height. A tower's lower
+## voxels, far enough below the agent's own screen-ground position, are not
+## plausibly still covering him; ghosting them anyway was hiding more of a wall
+## than the trigger ever justified.
+##
+## Returns: Array of Dictionaries, one per occluded edge:
+##   {"edge_id", "ring", "corner_a", "corner_b", "max_level", "clip_min_level"}
+func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Array:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
 	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
 	var agent_depth := agent_voxel.x + agent_voxel.y
@@ -168,10 +201,11 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 	## relative depth*HALF_H formula every voxel layer's screen position uses.
 	var agent_screen_y_ground := float(agent_depth) * VOXEL_HALF_H
 	var agent_screen_y_head := agent_screen_y_ground - silhouette_height_px
+	var reveal_cutoff_y := agent_screen_y_ground + vertical_reveal_px
 
 	## One geometry pass per edge: real footprint + screen-X/Y span, from its own
 	## voxels across every storey it has (never a generic per-cell guess).
-	var edge_geom: Dictionary = {}        ## edge_id -> {depth, screen_x, half_width, y_top, y_bottom}
+	var edge_geom: Dictionary = {}        ## edge_id -> geometry dict (see below)
 	var vertex_to_edges: Dictionary = {}  ## Vector2i vertex -> Array[String edge_id]
 
 	for edge_id in slices_by_edge.keys():
@@ -206,9 +240,20 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 		var y_bottom := center_depth * VOXEL_HALF_H - float(min_level) * GeometryCoordsMod.VOXEL_STEP_PX
 		var y_top := center_depth * VOXEL_HALF_H - float(max_level + 1) * GeometryCoordsMod.VOXEL_STEP_PX
 
+		## OCC-09: the lowest LEVEL whose screen-Y is still at or above the reveal
+		## cutoff — i.e. the first level (going up from min_level) that stays
+		## hidden. Solve center_depth*HALF_H - level*STEP_PX <= reveal_cutoff_y for
+		## the smallest qualifying level, then clamp into [min_level, max_level+1].
+		var clip_min_level := min_level
+		if y_bottom > reveal_cutoff_y:
+			var raw := (center_depth * VOXEL_HALF_H - reveal_cutoff_y) / GeometryCoordsMod.VOXEL_STEP_PX
+			clip_min_level = clampi(ceili(raw), min_level, max_level + 1)
+
 		edge_geom[edge_id] = {
+			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
 			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
 			"y_top": y_top, "y_bottom": y_bottom,
+			"max_level": max_level, "clip_min_level": clip_min_level,
 		}
 
 		## Adjacency graph: registered for EVERY edge, not just triggers — a
@@ -221,7 +266,9 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 			vertex_to_edges[v].append(edge_id)
 
 	## Trigger test: camera-side + real 2D (screen-X and screen-Y) overlap with the
-	## agent's own silhouette rectangle.
+	## agent's own silhouette rectangle. Uses the edge's UNCLIPPED y_bottom — the
+	## vertical reveal cutoff only trims what gets ghosted afterward, it must not
+	## change whether an edge counts as a trigger in the first place.
 	var seeds: Array = []
 	for edge_id in edge_geom.keys():
 		var g: Dictionary = edge_geom[edge_id]
@@ -234,7 +281,7 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 		seeds.append(edge_id)
 
 	if seeds.is_empty():
-		return {}
+		return []
 
 	## Multi-source BFS along the wall's own connectivity graph, up to MAX_RING hops.
 	## Every trigger is its own ring-0 seed — there is no special-cased "the agent's
@@ -250,8 +297,7 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 	## edge if it continues in the SAME direction (face). A vertex with more than one
 	## other edge is a junction (a corner, a T, a 4-way meeting); a single other edge
 	## in a DIFFERENT face is a turn. Both stop the ring right there rather than
-	## wrapping onto a wall that just happens to share a corner — the case a real
-	## screenshot caught: occlusion leaking around a box's corner onto its side wall.
+	## wrapping onto a wall that just happens to share a corner.
 	for hop in range(1, MAX_RING + 1):
 		var next_frontier: Array = []
 		for edge_id in frontier:
@@ -276,7 +322,15 @@ func compute_edge_rings(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_
 				next_frontier.append(other_id)
 		frontier = next_frontier
 
-	return ring_by_edge
+	var result: Array = []
+	for edge_id in ring_by_edge.keys():
+		var g: Dictionary = edge_geom[edge_id]
+		result.append({
+			"edge_id": edge_id, "ring": ring_by_edge[edge_id],
+			"corner_a": g["corner_a"], "corner_b": g["corner_b"],
+			"max_level": g["max_level"], "clip_min_level": g["clip_min_level"],
+		})
+	return result
 
 
 ## The two grid-VERTEX corners of a (gu_cell, face) wall segment. Both faces of the
@@ -309,9 +363,10 @@ func debug_print_stats() -> void:
 		return
 
 	var ring_counts := [0, 0, 0]
-	for cell in _occluded_cells.values():
-		if cell >= 0 and cell <= 2:
-			ring_counts[cell] += 1
+	for entry in _occluded_cells.values():
+		var ring: int = entry["ring"]
+		if ring >= 0 and ring <= 2:
+			ring_counts[ring] += 1
 
 	print_debug("[OcclusionSet] Total: %d cells | Ring 0: %d | Ring 1: %d | Ring 2: %d | Recomputes: %d" % [
 		_occluded_cells.size(), ring_counts[0], ring_counts[1], ring_counts[2], _recompute_count

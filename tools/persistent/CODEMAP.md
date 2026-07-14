@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 21983 lines total** (under `godot/scripts/`)
+**117 scripts · 22045 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -620,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 730 lines
+`class_name VoxelRenderer` · extends `Node2D` · 737 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -631,7 +631,7 @@ extends `ConfirmationDialog` · 64 lines
 - `MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `GHOST_ALT_IDS` = `[1, 2, 3]`
-- `GHOST_ALPHAS` = `[0.03, 0.10, 0.50]`
+- `GHOST_ALPHAS` = `[0.03, 0.06, 0.10]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -904,7 +904,7 @@ extends `Node2D` · 58 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 135 lines
+extends `Node2D` · 139 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -950,11 +950,11 @@ extends `Node2D` · 34 lines
 
 ### `occlusion_wireframe_overlay.gd`
 
-extends `Node2D` · 132 lines
+extends `Node2D` · 128 lines
 
 `godot/scripts/overlays/occlusion_wireframe_overlay.gd`
 
-> Occlusion Wireframe Overlay — OCC-07-b Draws a crisp white outline over each occluded Slice, reproducing that slice's own real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box. VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there. OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated z_index (150). That always won against nearer, unoccluded geometry that should have covered part of it — e.g. a ghosted back wall's outline showing straight through the box's own solid front walls, which are unaffected and nearer the camera. Director's fix: each wireframe segment must carry the z_index of the voxel layer whose slice it stands in for, not a value picked to "clear everything". Levels, not one shape: this manager splits each slice's rectangle into one horizontal band per voxel LEVEL it spans, and spawns one OcclusionSlicePanel child per band, each stamped with THAT level's real voxel-layer z_index (read directly off VoxelRenderer.get_layer(level), the same TileMapLayer the real wall cells are placed on — never re-derived). A single flat rectangle could only ever carry one z_index, which would still be wrong for any level range it didn't match; per-level bands is what lets a tall slice interleave correctly against blockers that only exist at some of its levels.
+> Occlusion Wireframe Overlay — OCC-07-b Draws a crisp white outline over each occluded Slice, reproducing that slice's own real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box. VoxelRenderer.apply_occlusion() still hides the geometry (a single flat, low-alpha ghost — see HIDDEN_ALT_ID); this overlay is what tells the player a wall is there. OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated z_index (150). That always won against nearer, unoccluded geometry that should have covered part of it — e.g. a ghosted back wall's outline showing straight through the box's own solid front walls, which are unaffected and nearer the camera. Director's fix: each wireframe segment must carry the z_index of the voxel layer whose slice it stands in for, not a value picked to "clear everything". Levels, not one shape: this manager splits each edge's rectangle into one horizontal band per voxel LEVEL it spans, and spawns one OcclusionSlicePanel child per band, each stamped with THAT level's real voxel-layer z_index (read directly off VoxelRenderer.get_layer(level), the same TileMapLayer the real wall cells are placed on — never re-derived). A single flat rectangle could only ever carry one z_index, which would still be wrong for any level range it didn't match; per-level bands is what lets a tall slice interleave correctly against blockers that only exist at some of its levels. OCC-09 (2026-07-14): reads OcclusionSet.get_occluded_edges() — pre-computed, already vertically clipped per edge (min_level may be well above that edge's true base; see OcclusionSet's vertical_reveal_px) — not raw Slice objects. A wall sitting at greater depth than the agent has its own ground level pushed further down the screen by isometric projection alone; voxels far enough below the agent's own screen-ground position are no longer drawn as occluded, and this overlay must draw only the surviving range, never a slice's full span.
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
@@ -1569,7 +1569,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 318 lines
+`class_name OcclusionSet` · 373 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 

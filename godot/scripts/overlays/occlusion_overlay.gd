@@ -60,9 +60,12 @@ func _draw() -> void:
 		return
 	
 	# Draw each occluded voxel cell as a diamond, colored by ring
+	# OCC-09: get_occluded_cells() values are now {"ring": int, "min_level": int}
+	# dicts, not a bare ring int — min_level travels with the cell so
+	# VoxelRenderer can skip levels the vertical reveal cutoff excluded.
 	var occluded_cells := occlusion_set.get_occluded_cells()
 	for voxel_cell in occluded_cells.keys():
-		var ring_index: int = occluded_cells[voxel_cell]
+		var ring_index: int = occluded_cells[voxel_cell]["ring"]
 		var color = ring_colors.get(ring_index, Color.WHITE)
 		_draw_voxel_cell(voxel_cell, color)
 	
@@ -90,9 +93,10 @@ func _draw_stats() -> void:
 	
 	var occluded_cells := occlusion_set.get_occluded_cells()
 	var ring_counts := [0, 0, 0]
-	for cell in occluded_cells.values():
-		if cell >= 0 and cell <= 2:
-			ring_counts[cell] += 1
+	for entry in occluded_cells.values():
+		var ring: int = entry["ring"]
+		if ring >= 0 and ring <= 2:
+			ring_counts[ring] += 1
 	
 	var stats_text = "Occlusion: %d cells\nR0:%d R1:%d R2:%d (cnt:%d)" % [
 		occluded_cells.size(),

@@ -34,7 +34,7 @@ const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxel
 ## still just changing the last argument of set_cell(); Voxel.visible is never
 ## touched (O1) — occlusion is VIEW, not STATE.
 const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
-const GHOST_ALPHAS: Array[float] = [0.03, 0.10, 0.50]
+const GHOST_ALPHAS: Array[float] = [0.03, 0.06, 0.10]
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was
@@ -538,11 +538,18 @@ func apply_occlusion(occluded: Dictionary) -> void:
 	_restore_ghosted_cells()
 
 	for cell in occluded.keys():
-		var ring: int = clampi(int(occluded[cell]), 0, GHOST_ALT_IDS.size() - 1)
+		var entry = occluded[cell]
+		var ring: int = clampi(int(entry["ring"]), 0, GHOST_ALT_IDS.size() - 1)
+		## OCC-09: min_level travels with the cell — a column key alone can't tell
+		## us which of its levels actually survived the vertical reveal cutoff, so
+		## levels below it are skipped here rather than ghosted and restored to
+		## themselves (that would silently ghost geometry OcclusionSet decided
+		## should stay visible).
+		var min_level: int = int(entry.get("min_level", 0))
 		var ghost_alt: int = GHOST_ALT_IDS[ring]
 		var restore_records: Array = []
 
-		for level in range(_voxel_layers.size()):
+		for level in range(min_level, _voxel_layers.size()):
 			var layer: TileMapLayer = _voxel_layers[level]
 			var source_id: int = layer.get_cell_source_id(cell)
 			if source_id == -1:

@@ -12,7 +12,7 @@
 ## camera. Director's fix: each wireframe segment must carry the z_index of the
 ## voxel layer whose slice it stands in for, not a value picked to "clear everything".
 ##
-## Levels, not one shape: this manager splits each slice's rectangle into one
+## Levels, not one shape: this manager splits each edge's rectangle into one
 ## horizontal band per voxel LEVEL it spans, and spawns one OcclusionSlicePanel
 ## child per band, each stamped with THAT level's real voxel-layer z_index (read
 ## directly off VoxelRenderer.get_layer(level), the same TileMapLayer the real wall
@@ -20,6 +20,14 @@
 ## carry one z_index, which would still be wrong for any level range it didn't
 ## match; per-level bands is what lets a tall slice interleave correctly against
 ## blockers that only exist at some of its levels.
+##
+## OCC-09 (2026-07-14): reads OcclusionSet.get_occluded_edges() — pre-computed,
+## already vertically clipped per edge (min_level may be well above that edge's
+## true base; see OcclusionSet's vertical_reveal_px) — not raw Slice objects. A
+## wall sitting at greater depth than the agent has its own ground level pushed
+## further down the screen by isometric projection alone; voxels far enough below
+## the agent's own screen-ground position are no longer drawn as occluded, and
+## this overlay must draw only the surviving range, never a slice's full span.
 
 extends Node2D
 
@@ -52,33 +60,21 @@ func refresh() -> void:
 	if occlusion_set == null or voxel_renderer == null:
 		return
 
-	for slice in occlusion_set.get_occluded_slices():
-		_spawn_slice_panels(slice)
+	for edge in occlusion_set.get_occluded_edges():
+		_spawn_edge_panels(edge)
 
 
-## A slice is thin along one grid axis and spans ~8 voxels along the other (it is one
-## face of one gameplay cell) — so its own voxels' bounding min/max corners ARE its two
-## real footprint endpoints, not an approximation.
-func _spawn_slice_panels(slice) -> void:
-	if slice.voxels.is_empty():
-		return
-
-	var min_gx: int = slice.voxels[0].grid_pos.x
-	var max_gx: int = min_gx
-	var min_gy: int = slice.voxels[0].grid_pos.y
-	var max_gy: int = min_gy
-	var min_level: int = slice.voxels[0].level
-	var max_level: int = min_level
-	for voxel in slice.voxels:
-		min_gx = mini(min_gx, voxel.grid_pos.x)
-		max_gx = maxi(max_gx, voxel.grid_pos.x)
-		min_gy = mini(min_gy, voxel.grid_pos.y)
-		max_gy = maxi(max_gy, voxel.grid_pos.y)
-		min_level = mini(min_level, voxel.level)
-		max_level = maxi(max_level, voxel.level)
-
-	var corner_a := Vector2i(min_gx, min_gy)
-	var corner_b := Vector2i(max_gx, max_gy)
+## OCC-09: edge dict is already vertically clipped by OcclusionSet — "corner_a"/
+## "corner_b" (real footprint endpoints, from the edge's own voxels), "min_level"
+## (the reveal-cutoff-clipped bottom, may be above the edge's true base) and
+## "max_level" (unclipped — the cutoff only trims the bottom, never the top).
+func _spawn_edge_panels(edge: Dictionary) -> void:
+	var corner_a: Vector2i = edge["corner_a"]
+	var corner_b: Vector2i = edge["corner_b"]
+	var min_level: int = edge["min_level"]
+	var max_level: int = edge["max_level"]
+	if min_level > max_level:
+		return  ## entirely clipped below the reveal cutoff — nothing to draw
 
 	## One band per level the slice actually occupies, each its own panel node at
 	## that level's own z_index — see this file's header for why. Only the very top

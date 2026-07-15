@@ -71,23 +71,30 @@ func _draw() -> void:
 	##
 	## OCC-21g (2026-07-15): Added lateral faces (left/right sides) to fill,
 	## so the box reads as a complete solid volume, not just a front plane.
-	var fill_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
-	var fill: Color = FILL_COLOR
-	fill.a = fill_alpha
+	##
+	## OCC-21h (2026-07-15): Lateral faces use one ring level lower alpha than
+	## front face (more transparent), creating depth gradient within same box.
+	var front_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
+	var lateral_alpha: float = FILL_ALPHAS[clampi(ring - 1, 0, FILL_ALPHAS.size() - 1)]
 	
-	## Front face (near edge)
+	var fill_front: Color = FILL_COLOR
+	fill_front.a = front_alpha
+	var fill_lateral: Color = FILL_COLOR
+	fill_lateral.a = lateral_alpha
+	
+	## Front face (near edge) - uses edge's own ring alpha
 	draw_colored_polygon(
-		PackedVector2Array([bottom_near_a, bottom_near_b, top_near_b, top_near_a]), fill)
-	## Left lateral face
+		PackedVector2Array([bottom_near_a, bottom_near_b, top_near_b, top_near_a]), fill_front)
+	## Left lateral face - one ring level more transparent
 	draw_colored_polygon(
-		PackedVector2Array([bottom_near_a, bottom_far_a, top_far_a, top_near_a]), fill)
-	## Right lateral face
+		PackedVector2Array([bottom_near_a, bottom_far_a, top_far_a, top_near_a]), fill_lateral)
+	## Right lateral face - one ring level more transparent
 	draw_colored_polygon(
-		PackedVector2Array([bottom_near_b, bottom_far_b, top_far_b, top_near_b]), fill)
+		PackedVector2Array([bottom_near_b, bottom_far_b, top_far_b, top_near_b]), fill_lateral)
 	if draw_top:
-		## Top cap
+		## Top cap - uses front alpha (it's a silhouette edge)
 		draw_colored_polygon(
-			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill)
+			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill_front)
 
 	## Four verticals — the box's real corners, every band. Each panel is
 	## exactly one voxel LEVEL tall, so this is always a 2-dot line.

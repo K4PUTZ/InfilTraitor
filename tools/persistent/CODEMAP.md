@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22261 lines total** (under `godot/scripts/`)
+**117 scripts · 22268 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -929,7 +929,7 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 127 lines
+extends `Node2D` · 134 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 

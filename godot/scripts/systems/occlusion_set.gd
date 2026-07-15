@@ -289,20 +289,27 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		var anchor = edge_slices[0]
 		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
 
-		## OCC-14 (2026-07-14): the wireframe's real THICKNESS. A wall is two
-		## Slices (A/B, one per adjacent GU) sitting exactly one fine-voxel unit
-		## apart — SliceGenerator places them at that fixed 1-unit gap, never
-		## coincident (confirmed by construction: e.g. an SE-face slice's own
-		## column is always exactly one less than the matching NW-face slice's
-		## column on the neighboring GU). The scanned min/max already captures
-		## that real gap; isolate just the DEPTH axis (the one with the 1-unit
-		## range, not the 8-unit width range) as a fine-voxel offset vector.
+		## OCC-14/OCC-15 (2026-07-14): the wireframe's real THICKNESS. A wall is
+		## two Slices (A/B, one per adjacent GU) whose own real voxel COLUMNS sit
+		## exactly one fine-voxel unit apart — SliceGenerator places them at that
+		## fixed gap, never coincident (confirmed by construction: e.g. an
+		## SE-face slice's own column is always exactly one less than the
+		## matching NW-face slice's column on the neighboring GU). The scanned
+		## min/max already captures that real 1-unit CENTER-to-CENTER gap on the
+		## DEPTH axis (as opposed to the 8-unit-wide WIDTH axis). But the base
+		## block's real physical footprint (Director's own "8x2x2") is TWO full
+		## voxel cells deep, not the 1-unit gap between their centers — each
+		## Slice's own voxel column is itself a full unit wide, so the true outer
+		## span runs from slice A's own FAR edge to slice B's own FAR edge, one
+		## extra unit past the naive center-to-center delta. Doubled here (2026
+		## -07-14, Director's correction: the wireframe's depth undershot the
+		## base it sits on by exactly one voxel).
 		var depth_offset: Vector2i
 		match anchor.face:
 			FaceMod.NW, FaceMod.SE:
-				depth_offset = Vector2i(min_gx - max_gx, 0)
+				depth_offset = Vector2i(2 * (min_gx - max_gx), 0)
 			FaceMod.NE, FaceMod.SW:
-				depth_offset = Vector2i(0, min_gy - max_gy)
+				depth_offset = Vector2i(0, 2 * (min_gy - max_gy))
 			_:
 				depth_offset = Vector2i.ZERO
 

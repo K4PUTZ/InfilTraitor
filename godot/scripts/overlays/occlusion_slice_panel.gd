@@ -77,13 +77,18 @@ func _draw() -> void:
 	##
 	## OCC-21i (2026-07-15): Lateral alpha further reduced by 50% (multiply by 0.5)
 	## since overlapping lateral polygons accumulate visually and read too strong.
+	##
+	## OCC-21j (2026-07-15): Top cap filled at 25% of ring alpha (experiment).
 	var front_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
 	var lateral_alpha: float = FILL_ALPHAS[clampi(ring - 1, 0, FILL_ALPHAS.size() - 1)] * 0.5
+	var top_alpha: float = front_alpha * 0.25
 	
 	var fill_front: Color = FILL_COLOR
 	fill_front.a = front_alpha
 	var fill_lateral: Color = FILL_COLOR
 	fill_lateral.a = lateral_alpha
+	var fill_top: Color = FILL_COLOR
+	fill_top.a = top_alpha
 	
 	## Front face (near edge) - uses edge's own ring alpha
 	draw_colored_polygon(
@@ -95,9 +100,9 @@ func _draw() -> void:
 	draw_colored_polygon(
 		PackedVector2Array([bottom_near_b, bottom_far_b, top_far_b, top_near_b]), fill_lateral)
 	if draw_top:
-		## Top cap - uses front alpha (it's a silhouette edge)
+		## Top cap - uses 25% of ring alpha
 		draw_colored_polygon(
-			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill_front)
+			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill_top)
 
 	## Four verticals — the box's real corners, every band. Each panel is
 	## exactly one voxel LEVEL tall, so this is always a 2-dot line.

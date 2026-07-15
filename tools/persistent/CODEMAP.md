@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22290 lines total** (under `godot/scripts/`)
+**117 scripts · 22351 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1581,7 +1581,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 464 lines
+`class_name OcclusionSet` · 499 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1598,7 +1598,7 @@ extends `Node2D` · 43 lines
 - `func get_ring_index(voxel_cell: Vector2i) -> int:`
 - `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`
-- `func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:`
+- `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:`
 
 ---
 
@@ -2590,7 +2590,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2238 lines
+extends `Node2D` · 2264 lines
 
 `godot/scripts/world/room.gd`
 

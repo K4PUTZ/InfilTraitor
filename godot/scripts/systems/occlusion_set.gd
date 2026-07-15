@@ -100,19 +100,31 @@ func get_recompute_count() -> int:
 ## RECOMPUTATION (called from room.gd on agent step + view change)
 ## ============================================================================
 
-## Recompute the occluded-cell set given current agent position and geometry.
-## Called on: agent.step_finished signal, _set_perspective()
+## Recompute the occluded-cell set given current agent position(s) and geometry.
+## Called on: agent.step_finished signal, _set_perspective(), hover cell change
 ##
 ## Args:
-##   agent_cell: Vector2i — gameplay grid cell (from agent.cell)
+##   agent_cells: Array[Vector2i] — one or more origin cells (gameplay grid cells).
+##     First entry is always the agent's real position; subsequent entries are
+##     additional points of interest (e.g. hover cell for preview).
 ##   slices: Array[Slice] — every Slice currently rendered (room._edge_registry.all_slices())
 ##   room_size: Vector2i — size of room in gameplay grid units
 ##   junction_columns: Array[JunctionResolver.JunctionColumn] — corner filler columns
 ##     (room._junction_columns); ghosted only when BOTH walls they fill the elbow
 ##     between are themselves occluded (OCC-10, see the loop below).
-func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:
+func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:
+	## Backward compatibility: accept single Vector2i as well as Array[Vector2i]
+	var origins: Array[Vector2i] = []
+	if agent_cells is Vector2i:
+		origins = [agent_cells]
+	elif agent_cells is Array:
+		origins = agent_cells
+	else:
+		push_error("[OCC-HOVER-01] recompute() expects Vector2i or Array[Vector2i], got %s" % type_string(typeof(agent_cells)))
+		return
+	
 	var slices_by_edge := _group_slices_by_edge(slices)
-	var occlusion := compute_edge_occlusion(agent_cell, slices_by_edge, room_size)
+	var occlusion := compute_edge_occlusion(origins, slices_by_edge, room_size)
 	var edges: Array = occlusion["edges"]
 	var new_segments: Array = occlusion["segments"].duplicate()
 
@@ -187,6 +199,12 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## spread outward along the wall's own connectivity graph up to MAX_RING hops.
 ## Replaces O3″ — see Decisions O3‴, O3⁗ and O3⁗′.
 ##
+## OCC-HOVER-01 (2026-07-15): Multi-origin support — accepts array of agent cells
+## (typically [agent_pos] or [agent_pos, hover_cell]), performs trigger test from
+## EACH origin, union of seeds feeds BFS. This reveals geometry occluding ANY of
+## the provided origins, enabling hover-based occlusion preview without duplicating
+## the entire computation pipeline.
+##
 ## Why per-edge, not per-slice (OCC-07): a slice is one storey of one face: a tall
 ## wall is several stacked slices on the SAME edge. Grouping by edge is what lets
 ## "does ANY storey of this wall reach the agent's height" be answered once, for the
@@ -231,19 +249,28 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ##     wall's real one-voxel thickness (see depth_offset below), so the
 ##     wireframe box has actual depth instead of being a flat plane.
 ##     Junction-column units are appended separately in recompute().
-func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
+func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
-	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
-	var agent_depth := agent_voxel.x + agent_voxel.y
-
+	
+	## OCC-HOVER-01: Convert all agent cells to voxel space and screen positions
+	var agent_data: Array = []  ## [{"voxel": Vector2i, "depth": int, "screen_x": float, "screen_y_head": float, "screen_y_ground": float}]
 	const VOXEL_HALF_W := 16.0   ## GeometryCoords.VOXEL_TILE_SIZE.x * 0.5
 	const VOXEL_HALF_H := 8.0    ## GeometryCoords.VOXEL_TILE_SIZE.y * 0.5
-
-	var agent_screen_x := float(agent_voxel.x - agent_voxel.y) * VOXEL_HALF_W
-	## The agent "stands" at level 0, reaching up by his own height in pixels — same
-	## relative depth*HALF_H formula every voxel layer's screen position uses.
-	var agent_screen_y_ground := float(agent_depth) * VOXEL_HALF_H
-	var agent_screen_y_head := agent_screen_y_ground - silhouette_height_px
+	
+	for agent_cell in agent_cells:
+		var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
+		var agent_depth := agent_voxel.x + agent_voxel.y
+		var agent_screen_x := float(agent_voxel.x - agent_voxel.y) * VOXEL_HALF_W
+		## The agent "stands" at level 0, reaching up by his own height in pixels — same
+		## relative depth*HALF_H formula every voxel layer's screen position uses.
+		var agent_screen_y_ground := float(agent_depth) * VOXEL_HALF_H
+		var agent_screen_y_head := agent_screen_y_ground - silhouette_height_px
+		agent_data.append({
+			"voxel": agent_voxel, "depth": agent_depth,
+			"screen_x": agent_screen_x,
+			"screen_y_head": agent_screen_y_head,
+			"screen_y_ground": agent_screen_y_ground
+		})
 
 	## One geometry pass per edge: real footprint + screen-X/Y span, from its own
 	## voxels across every storey it has (never a generic per-cell guess).
@@ -336,16 +363,24 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 	## agent's own silhouette rectangle. Uses the edge's UNCLIPPED y_bottom — the
 	## vertical reveal cutoff only trims what gets ghosted afterward, it must not
 	## change whether an edge counts as a trigger in the first place.
+	##
+	## OCC-HOVER-01: Test against EACH origin — an edge triggers if it overlaps ANY
+	## of the provided agent positions. Seeds accumulate across all origins.
 	var seeds: Array = []
-	for edge_id in edge_geom.keys():
-		var g: Dictionary = edge_geom[edge_id]
-		if g["depth"] <= agent_depth:
-			continue
-		if absf(g["screen_x"] - agent_screen_x) > silhouette_half_width_px + g["half_width"]:
-			continue
-		if g["y_top"] > agent_screen_y_ground or g["y_bottom"] < agent_screen_y_head:
-			continue
-		seeds.append(edge_id)
+	var seed_set: Dictionary = {}  ## deduplication: edge_id -> true
+	for agent in agent_data:
+		for edge_id in edge_geom.keys():
+			if seed_set.has(edge_id):
+				continue  ## already triggered by a previous origin
+			var g: Dictionary = edge_geom[edge_id]
+			if g["depth"] <= agent["depth"]:
+				continue
+			if absf(g["screen_x"] - agent["screen_x"]) > silhouette_half_width_px + g["half_width"]:
+				continue
+			if g["y_top"] > agent["screen_y_ground"] or g["y_bottom"] < agent["screen_y_head"]:
+				continue
+			seeds.append(edge_id)
+			seed_set[edge_id] = true
 
 	if seeds.is_empty():
 		return {"edges": [], "segments": []}

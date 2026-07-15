@@ -1757,7 +1757,17 @@ func _recompute_occlusion() -> void:
 	## by RoomBuilder.build_from_layout(), see room_builder.gd's comment on why this
 	## handle is shared rather than re-derived).
 	var slices: Array = _edge_registry.all_slices() if _edge_registry != null else []
-	_occlusion_set.recompute(agent.cell, slices, _room_size, _junction_columns)
+	
+	## OCC-HOVER-01 (2026-07-15): Multi-origin occlusion — includes hover cell when
+	## it's within agent's reachable zone (movement_overlay.is_reachable). This
+	## reveals geometry occluding EITHER the agent OR the hover point, giving the
+	## player a preview of what they'll see after moving there.
+	var origins: Array[Vector2i] = [agent.cell]
+	if _hovered_cell != INVALID_CELL and _hovered_cell != agent.cell:
+		if movement_overlay != null and movement_overlay.is_reachable(_hovered_cell):
+			origins.append(_hovered_cell)
+	
+	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns)
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
 	if _voxel_renderer != null:
@@ -1850,7 +1860,23 @@ func _input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		var new_hover := _screen_to_tile(mm.position)
 		if new_hover != _hovered_cell:
+			## OCC-HOVER-01: Cache previous hover to detect reachability zone changes
+			var old_hover := _hovered_cell
+			var old_reachable := (old_hover != INVALID_CELL and old_hover != agent.cell 
+				and movement_overlay != null and movement_overlay.is_reachable(old_hover))
+			
 			_hovered_cell = new_hover
+			
+			## Recompute occlusion if hover moved in/out of reachable zone
+			var new_reachable := (_hovered_cell != INVALID_CELL and _hovered_cell != agent.cell
+				and movement_overlay != null and movement_overlay.is_reachable(_hovered_cell))
+			if old_reachable != new_reachable:
+				_recompute_occlusion()
+			elif new_reachable:
+				## Both old and new are reachable, but different cells — recompute to
+				## update preview. Only when inside reachable zone to avoid spam.
+				_recompute_occlusion()
+			
 			if _vision_controller.dev_vision:
 				_update_dev_hover_label()
 			_update_movement_highlight()

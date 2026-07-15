@@ -516,5 +516,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.29 · **Updated:** 2026-07-15 · **Branch:** main
+**Version:** 0.9.30 · **Updated:** 2026-07-15 · **Branch:** main
 <!-- AUTO:END header -->

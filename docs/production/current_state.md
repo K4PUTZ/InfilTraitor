@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.29 · **Updated:** 2026-07-15 · **Branch:** main
+**Version:** 0.9.30 · **Updated:** 2026-07-15 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 8b4648f [OCC-21l] Wireframe dots/lines pure white (no cyan tint)
 - 2742d8c [OCC-21k] Top cap alpha same as lateral faces
 - 84ce72d [OCC-21j] Top cap filled at 25% ring alpha (experiment)
 - 0eaaaf2 [OCC-21i] Lateral faces alpha reduced by 50% to prevent accumulation
 - 7f7aa23 [OCC-21h] Lateral faces use ring-1 alpha for depth gradient
-- 150bdf1 [OCC-21g] Add lateral face fills to wireframe box (left/right sides)
 <!-- AUTO:END version_history -->
 
 ---

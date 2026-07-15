@@ -126,6 +126,11 @@ func _apply_light_vision() -> void:
 	## Light ray shafts — visible only in light_vision mode
 	if _room._light_ray_overlay != null:
 		_room._light_ray_overlay.visible = light_vision
+	## OCC-21m (2026-07-15): Occlusion ring overlay (colored floor diamonds) now
+	## part of light_vision analysis tools, not visible in normal gameplay.
+	if _room._occlusion_overlay != null:
+		_room._occlusion_overlay.visible = light_vision
+		_room._occlusion_overlay.queue_redraw()
 
 func _apply_heat_vision() -> void:
 	if _exposure_overlay != null:

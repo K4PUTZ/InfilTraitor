@@ -649,6 +649,10 @@ func _ready() -> void:
 	add_child(_occlusion_overlay)
 	_occlusion_overlay.set_occlusion_set(_occlusion_set)
 	_occlusion_overlay.set_voxel_renderer(_voxel_renderer)
+	## OCC-21m (2026-07-15): start invisible — now controlled by light_vision, not a
+	## separate toggle. Director's call: colored ring overlay is analysis/debug, should
+	## be part of LIGHT_VISION suite, not visible in normal gameplay.
+	_occlusion_overlay.visible = false
 
 	## OCC-07-b: the real, gameplay-facing occlusion visual — a silhouette outline over
 	## the hidden geometry, one rectangle per occluded Slice (its own real shape, not
@@ -2194,9 +2198,12 @@ func _on_debug_command_requested(command: String) -> void:
 			if localization:
 				localization.cycle_language()
 		"toggle_occlusion":
-			if _occlusion_overlay != null:
-				_occlusion_overlay.visible = not _occlusion_overlay.visible
-				print_debug("[OCC-01] Occlusion overlay toggled: %s" % _occlusion_overlay.visible)
+			## OCC-21m (2026-07-15): Toggle deprecated — occlusion overlay now follows
+			## light_vision state. F2 key kept functional for backwards compat (just
+			## mirrors what L key already does), but "K" input now unmapped.
+			if _vision_controller != null:
+				_vision_controller.toggle_light()
+				print_debug("[OCC-21m] Occlusion overlay toggled via light_vision: %s" % _vision_controller.light_vision)
 		"nudge_reset":
 			if _debug_tools_controller.is_nudge_mode_active():
 				_debug_tools_controller.reset_nudge()

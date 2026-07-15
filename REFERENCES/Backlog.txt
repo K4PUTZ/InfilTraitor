@@ -13,6 +13,9 @@
 
 OCLUSÃO E DESTRUIÇÃO DAS PAREDES
 
+- Só um detalhe, o contorno colorido da oclusão no chão pode existir no LIGHT VISION, mas não no modo de game normal. 
+- Oclusão no agente E onde o mouse estiver um tile selecionado (FOW 
+
 PROJEÇÃO DE LUZES E SOMBRAS
 
 SOMBRAS JOGÁVEIS

@@ -55,7 +55,8 @@ const LINE_COLOR := Color(0.85, 0.95, 1.0, 1.0)  ## white with light cyan tint
 const DOT_ALPHA := 0.5
 const UNDERLINE_ALPHA := 0.3
 const DOT_RADIUS := 2.0
-const FILL_COLOR := Color(0.55, 0.85, 0.9)   ## gray-cyan "glass" tint
+const FILL_COLOR := Color(0.7, 0.7, 0.7)   ## neutral gray, no cyan
+const FILL_ALPHAS := [0.3, 0.5, 0.7]   ## ring 0 (center), ring 1 (mid), ring 2 (edge)
 
 
 func _draw() -> void:
@@ -65,11 +66,11 @@ func _draw() -> void:
 	## internal level boundary would double up cumulative alpha and read far
 	## stronger than the ring alpha actually calls for.
 	##
-	## OCC-21b (2026-07-14): MULTIPLY blend mode (via material) + doubled alpha
-	## for stronger visual presence against the now-erased voxels underneath.
-	var fill_alpha: float = VoxelRenderer.GHOST_ALPHAS[clampi(ring, 0, VoxelRenderer.GHOST_ALPHAS.size() - 1)]
+	## OCC-21d (2026-07-14): Ring-based alpha restored, gray fill (no cyan).
+	## 30% center (ring 0), 50% mid (ring 1), 70% edge (ring 2).
+	var fill_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
 	var fill: Color = FILL_COLOR
-	fill.a = fill_alpha * 2.0  ## doubled from original ring alpha
+	fill.a = fill_alpha
 	
 	draw_colored_polygon(
 		PackedVector2Array([bottom_near_a, bottom_near_b, top_near_b, top_near_a]), fill)

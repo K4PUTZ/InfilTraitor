@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.20 · **Updated:** 2026-07-14 · **Branch:** main
+**Version:** 0.9.21 · **Updated:** 2026-07-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- d1280de [OCC-21c] Fill at fixed 70% alpha, wireframe lighter (less cyan)
 - 97dbf74 [OCC-21b] Fill alpha doubled for stronger visual presence
 - 15ce97e [OCC-21] Erase occluded cells instead of ghosting; lightsaber wireframe re-enabled
 - d93b0ec [OCC-20b] Wireframe style: dots 50% alpha, stronger cyan, underline 30%
 - cdbb93b [OCC-20] Wireframe style refined: dots 70% alpha, cyan-tinted white
-- 84243dc [OCC-18/19] Wireframe style: dots at real voxel boundaries, plus glass fill
 <!-- AUTO:END version_history -->
 
 ---

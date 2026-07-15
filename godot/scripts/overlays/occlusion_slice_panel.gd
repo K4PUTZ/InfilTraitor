@@ -51,9 +51,9 @@ var ring: int = 0           ## edge-graph hop distance — indexes VoxelRenderer
 var draw_top: bool = true
 var draw_bottom: bool = true
 
-const LINE_COLOR := Color(0.85, 0.95, 1.0, 1.0)  ## white with cyan tint
-const DOT_ALPHA := 0.7
-const UNDERLINE_ALPHA := 0.2
+const LINE_COLOR := Color(0.7, 0.9, 1.0, 1.0)  ## white with stronger cyan tint
+const DOT_ALPHA := 0.5
+const UNDERLINE_ALPHA := 0.3
 const DOT_RADIUS := 2.0
 const FILL_COLOR := Color(0.55, 0.85, 0.9)   ## gray-cyan "glass" tint
 

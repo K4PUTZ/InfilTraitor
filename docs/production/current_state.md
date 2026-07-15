@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.16 · **Updated:** 2026-07-14 · **Branch:** main
+**Version:** 0.9.17 · **Updated:** 2026-07-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- cdbb93b [OCC-20] Wireframe style refined: dots 70% alpha, cyan-tinted white
 - 84243dc [OCC-18/19] Wireframe style: dots at real voxel boundaries, plus glass fill
 - e00b1a8 [OCC-16] Junction-column lightsaber wireframe off, A/B tested live
 - 86a0416 [OCC-15] Wireframe depth corrected to two voxels, matching the real base footprint
 - fd0a833 [OCC-14] Wireframe units are real 3D boxes now, not flat planes
-- d007eee [OCC-13] Wireframe formalized as independent per-unit design, not a merged hull
 <!-- AUTO:END version_history -->
 
 ---

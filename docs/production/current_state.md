@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.11 · **Updated:** 2026-07-14 · **Branch:** main
+**Version:** 0.9.12 · **Updated:** 2026-07-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- d007eee [OCC-13] Wireframe formalized as independent per-unit design, not a merged hull
 - b3b16b6 [OCC-12] Wireframe rebuilt as a true hull outline, not per-Slice/Edge panels
 - d738344 [OCC-10] Always-visible base band replaces the vertical reveal cutoff; junction columns occlude
 - 88d238f [OCC-09] Direction/junction ring stop, vertical reveal cutoff, session close
 - 31b612d [OCC-08] Occlusion rebuilt on edges: real 2D overlap, graph-walk rings, clean wireframe
-- 958c9d3 [OCC-05..07] Occlusion rebuilt: flat hide, real wireframe, per-slice corridor
 <!-- AUTO:END version_history -->
 
 ---

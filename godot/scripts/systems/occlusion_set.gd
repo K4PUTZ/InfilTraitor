@@ -128,18 +128,18 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 				## the ghosted rest above it.
 				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": e["min_level"]}
 
-	## OCC-10/OCC-13 (2026-07-14): junction filler columns aren't part of any
-	## Slice/Edge of their own — Director's rule, confirmed on annotated
+	## OCC-10/OCC-13/OCC-14 (2026-07-14): junction filler columns aren't part of
+	## any Slice/Edge of their own — Director's rule, confirmed on annotated
 	## screenshots: ghost one only when BOTH edges it fills the elbow between are
 	## occluded; a column with only one occluded neighbor stays fully visible.
 	## Always ring 0 (the minimum alpha) — it has no ring of its own to inherit,
 	## and picking between its two neighbors' rings would be an arbitrary
-	## tie-break. OCC-13: it also gets its own thin "lightsaber" wireframe unit
-	## — corner_a == corner_b (a single point) degenerates OcclusionSlicePanel's
-	## box into one bare vertical line, drawn at the column's own single-voxel
-	## position — Director's diagram: "EXTRA COLUMNS FILLING V JUNCTIONS MUST
-	## FOLLOW THE SAME DESIGN" (a base band below, wireframe above, just like
-	## an edge's own unit), not a special case bolted onto the edges' geometry.
+	## tie-break. It also gets its own thin "lightsaber" wireframe unit — a real
+	## 1×1-voxel box (its own actual footprint), not a flat line, per the
+	## Director's OCC-14 correction ("ainda parece que as paredes viraram folhas
+	## de papel, e os lightsabers parecem apenas uma linha"). Director's diagram:
+	## "EXTRA COLUMNS FILLING V JUNCTIONS MUST FOLLOW THE SAME DESIGN" (a base
+	## band below, wireframe above, just like an edge's own unit).
 	for column in junction_columns:
 		if not (ring_by_edge_id.has(column.edge_a_id) and ring_by_edge_id.has(column.edge_b_id)):
 			continue
@@ -148,7 +148,8 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start}
 		new_segments.append({
-			"corner_a": column.voxel_pos, "corner_b": column.voxel_pos,
+			"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
+			"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
 			"min_level": col_ghost_start, "max_level": col_max_level,
 		})
 
@@ -215,10 +216,14 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ##   "edges" — one Dictionary per occluded edge, the FILL's source of truth:
 ##     {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
 ##     "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
-##   "segments" — the wireframe's source of truth (OCC-13): one independent unit
-##     per occluded edge, corners from the edge's TRUE shared grid vertex
-##     (`_edge_vertices`) rather than its own scanned voxel min/max — two
-##     adjacent edges can never disagree about where their shared corner is.
+##   "segments" — the wireframe's source of truth (OCC-13/OCC-14): one
+##     independent unit per occluded edge, a real box with both width and
+##     depth: {"near_a", "near_b", "far_a", "far_b", "min_level", "max_level"},
+##     all four corners in fine-voxel space. "near" is the edge's TRUE shared
+##     grid vertex (`_edge_vertices`) — two adjacent edges can never disagree
+##     about where their shared corner is; "far" is "near" shifted by the
+##     wall's real one-voxel thickness (see depth_offset below), so the
+##     wireframe box has actual depth instead of being a flat plane.
 ##     Junction-column units are appended separately in recompute().
 func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
@@ -284,10 +289,27 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		var anchor = edge_slices[0]
 		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
 
+		## OCC-14 (2026-07-14): the wireframe's real THICKNESS. A wall is two
+		## Slices (A/B, one per adjacent GU) sitting exactly one fine-voxel unit
+		## apart — SliceGenerator places them at that fixed 1-unit gap, never
+		## coincident (confirmed by construction: e.g. an SE-face slice's own
+		## column is always exactly one less than the matching NW-face slice's
+		## column on the neighboring GU). The scanned min/max already captures
+		## that real gap; isolate just the DEPTH axis (the one with the 1-unit
+		## range, not the 8-unit width range) as a fine-voxel offset vector.
+		var depth_offset: Vector2i
+		match anchor.face:
+			FaceMod.NW, FaceMod.SE:
+				depth_offset = Vector2i(min_gx - max_gx, 0)
+			FaceMod.NE, FaceMod.SW:
+				depth_offset = Vector2i(0, min_gy - max_gy)
+			_:
+				depth_offset = Vector2i.ZERO
+
 		edge_geom[edge_id] = {
 			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
 			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
-			"y_top": y_top, "y_bottom": y_bottom,
+			"y_top": y_top, "y_bottom": y_bottom, "depth_offset": depth_offset,
 			"min_level": ghost_start_level, "max_level": max_level,
 			"face": anchor.face, "vertex_a": vertices[0], "vertex_b": vertices[1],
 		}
@@ -375,9 +397,14 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 			"corner_a": g["corner_a"], "corner_b": g["corner_b"],
 			"min_level": g["min_level"], "max_level": g["max_level"],
 		})
+		## OCC-14: near = the true-vertex width-aligned edge (unchanged from
+		## OCC-13); far = near shifted by the real one-voxel wall thickness, so
+		## the wireframe reads as an actual box, not a flat plane.
+		var near_a: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(g["vertex_a"])
+		var near_b: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(g["vertex_b"])
 		segments.append({
-			"corner_a": GeometryCoordsMod.gu_to_voxel_origin(g["vertex_a"]),
-			"corner_b": GeometryCoordsMod.gu_to_voxel_origin(g["vertex_b"]),
+			"near_a": near_a, "near_b": near_b,
+			"far_a": near_a + g["depth_offset"], "far_b": near_b + g["depth_offset"],
 			"min_level": g["min_level"], "max_level": g["max_level"],
 		})
 	return {"edges": result, "segments": segments}

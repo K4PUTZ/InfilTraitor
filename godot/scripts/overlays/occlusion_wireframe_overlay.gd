@@ -1,10 +1,11 @@
 ## Occlusion Wireframe Overlay — OCC-07-b
 ##
-## Draws a crisp white outline over each occluded Slice, reproducing that slice's own
-## real 2.5D panel shape (top edge, two verticals, bottom edge) — not a generic box.
-## VoxelRenderer.apply_occlusion() ghosts the translucent band this outlines (ring
-## alpha, OCC-08/O6); the edge's own base band underneath is left fully opaque and
-## untouched (OCC-10) — solid enough on its own that it needs no outline.
+## Draws a crisp white BOX outline (real width AND depth, OCC-14 — not a flat
+## plane) over each occluded edge's translucent band, reproducing that wall's own
+## real one-voxel thickness. VoxelRenderer.apply_occlusion() ghosts the band this
+## outlines (ring alpha, OCC-08/O6); the edge's own base band underneath is left
+## fully opaque and untouched (OCC-10) — solid enough on its own that it needs no
+## outline.
 ##
 ## OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated
 ## z_index (150). That always won against nearer, unoccluded geometry that should
@@ -67,12 +68,17 @@ func refresh() -> void:
 		_spawn_edge_panels(edge)
 
 
-## Edge dict fields: "corner_a"/"corner_b" (real footprint endpoints, from the
-## edge's own voxels), "min_level" (where the translucent band starts) and
-## "max_level" (the edge's own true top).
+## Edge dict fields (OCC-14): "near_a"/"near_b"/"far_a"/"far_b" — the box's four
+## real footprint corners in fine-voxel space ("near" the edge's true shared
+## grid vertex, "far" that same point shifted by the wall's real one-voxel
+## thickness — see OcclusionSet.compute_edge_occlusion()'s depth_offset), plus
+## "min_level" (where the translucent band starts) and "max_level" (the edge's
+## own true top).
 func _spawn_edge_panels(edge: Dictionary) -> void:
-	var corner_a: Vector2i = edge["corner_a"]
-	var corner_b: Vector2i = edge["corner_b"]
+	var near_a: Vector2i = edge["near_a"]
+	var near_b: Vector2i = edge["near_b"]
+	var far_a: Vector2i = edge["far_a"]
+	var far_b: Vector2i = edge["far_b"]
 	var min_level: int = edge["min_level"]
 	var max_level: int = edge["max_level"]
 	if min_level > max_level:
@@ -87,10 +93,14 @@ func _spawn_edge_panels(edge: Dictionary) -> void:
 	for level in range(min_level, max_level + 1):
 		var panel := Node2D.new()
 		panel.set_script(SlicePanelClass)
-		panel.bottom_a = _voxel_to_screen(corner_a, level)
-		panel.bottom_b = _voxel_to_screen(corner_b, level)
-		panel.top_a = _voxel_to_screen(corner_a, level + 1)
-		panel.top_b = _voxel_to_screen(corner_b, level + 1)
+		panel.bottom_near_a = _voxel_to_screen(near_a, level)
+		panel.bottom_near_b = _voxel_to_screen(near_b, level)
+		panel.bottom_far_a = _voxel_to_screen(far_a, level)
+		panel.bottom_far_b = _voxel_to_screen(far_b, level)
+		panel.top_near_a = _voxel_to_screen(near_a, level + 1)
+		panel.top_near_b = _voxel_to_screen(near_b, level + 1)
+		panel.top_far_a = _voxel_to_screen(far_a, level + 1)
+		panel.top_far_b = _voxel_to_screen(far_b, level + 1)
 		panel.draw_top = (level == max_level)
 		panel.draw_bottom = (level == min_level)
 		panel.z_index = _layer_z_index(level)

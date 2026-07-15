@@ -64,9 +64,13 @@ func _draw() -> void:
 	## cap only where a real cap edge is drawn (see header) — filling every
 	## internal level boundary would double up cumulative alpha and read far
 	## stronger than the ring alpha actually calls for.
+	##
+	## OCC-21b (2026-07-14): MULTIPLY blend mode (via material) + doubled alpha
+	## for stronger visual presence against the now-erased voxels underneath.
 	var fill_alpha: float = VoxelRenderer.GHOST_ALPHAS[clampi(ring, 0, VoxelRenderer.GHOST_ALPHAS.size() - 1)]
 	var fill: Color = FILL_COLOR
-	fill.a = fill_alpha
+	fill.a = fill_alpha * 2.0  ## doubled from original ring alpha
+	
 	draw_colored_polygon(
 		PackedVector2Array([bottom_near_a, bottom_near_b, top_near_b, top_near_a]), fill)
 	if draw_top:

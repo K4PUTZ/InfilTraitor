@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22245 lines total** (under `godot/scripts/`)
+**117 scripts · 22246 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1581,7 +1581,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 463 lines
+`class_name OcclusionSet` · 464 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 

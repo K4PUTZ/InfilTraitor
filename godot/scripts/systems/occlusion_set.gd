@@ -147,13 +147,14 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start}
-		## OCC-21 (2026-07-14): lightsaber wireframe re-enabled — Director spotted
-		## a gap at the top where junction columns should draw.
-		new_segments.append({
-			"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
-			"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
-			"min_level": col_ghost_start, "max_level": col_max_level, "ring": 0,
-		})
+		## OCC-21e (2026-07-14): lightsaber wireframe disabled again — Director's
+		## call after seeing it live. Fill ghosting above is untouched; only the
+		## wireframe segment is disabled. Re-enable by uncommenting if needed.
+		#new_segments.append({
+		#	"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
+		#	"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
+		#	"min_level": col_ghost_start, "max_level": col_max_level, "ring": 0,
+		#})
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:

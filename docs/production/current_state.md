@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 84243dc [OCC-18/19] Wireframe style: dots at real voxel boundaries, plus glass fill
 - e00b1a8 [OCC-16] Junction-column lightsaber wireframe off, A/B tested live
 - 86a0416 [OCC-15] Wireframe depth corrected to two voxels, matching the real base footprint
 - fd0a833 [OCC-14] Wireframe units are real 3D boxes now, not flat planes
 - d007eee [OCC-13] Wireframe formalized as independent per-unit design, not a merged hull
-- b3b16b6 [OCC-12] Wireframe rebuilt as a true hull outline, not per-Slice/Edge panels
 <!-- AUTO:END version_history -->
 
 ---

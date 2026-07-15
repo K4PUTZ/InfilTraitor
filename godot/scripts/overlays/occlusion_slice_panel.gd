@@ -68,13 +68,24 @@ func _draw() -> void:
 	##
 	## OCC-21d (2026-07-14): Ring-based alpha restored, gray fill (no cyan).
 	## 30% center (ring 0), 50% mid (ring 1), 70% edge (ring 2).
+	##
+	## OCC-21g (2026-07-15): Added lateral faces (left/right sides) to fill,
+	## so the box reads as a complete solid volume, not just a front plane.
 	var fill_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
 	var fill: Color = FILL_COLOR
 	fill.a = fill_alpha
 	
+	## Front face (near edge)
 	draw_colored_polygon(
 		PackedVector2Array([bottom_near_a, bottom_near_b, top_near_b, top_near_a]), fill)
+	## Left lateral face
+	draw_colored_polygon(
+		PackedVector2Array([bottom_near_a, bottom_far_a, top_far_a, top_near_a]), fill)
+	## Right lateral face
+	draw_colored_polygon(
+		PackedVector2Array([bottom_near_b, bottom_far_b, top_far_b, top_near_b]), fill)
 	if draw_top:
+		## Top cap
 		draw_colored_polygon(
 			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill)
 

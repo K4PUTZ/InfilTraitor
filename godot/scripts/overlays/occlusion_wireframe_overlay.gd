@@ -122,18 +122,22 @@ func _spawn_edge_panels(edge: Dictionary) -> void:
 		_panels.append(panel)
 
 
-## The real z_index of the voxel layer at this level — read directly off the
-## TileMapLayer the actual wall cells are placed on, never re-derived, so a panel
-## always ends up in exactly the same draw bucket as its own level's geometry. Falls
-## back to extrapolating one level past the last built layer (mirrors _voxel_to_screen).
+## OCC-21f (2026-07-14): z_index of voxel layer MINUS a fixed offset, so wireframe
+## panels always draw BEHIND visible voxels at the same level. Occluded geometry is
+## spatially behind visible geometry, so its wireframe representation must also be
+## masked by nearer walls. Offset of 5 keeps panels below all voxel layers (which
+## start at base_z_index=10 by default) while preserving correct ordering between levels.
 func _layer_z_index(level: int) -> int:
 	var layer: TileMapLayer = voxel_renderer.get_layer(level)
+	var base_z: int
 	if layer != null:
-		return layer.z_index
-	var base_layer: TileMapLayer = voxel_renderer.get_layer(0)
-	if base_layer == null:
-		return 0
-	return base_layer.z_index + level
+		base_z = layer.z_index
+	else:
+		var base_layer: TileMapLayer = voxel_renderer.get_layer(0)
+		if base_layer == null:
+			return 0
+		base_z = base_layer.z_index + level
+	return base_z - 5  ## OCC-21f: offset to stay behind visible voxels
 
 
 ## Screen position of a VOXEL-grid coordinate at a given LEVEL. Same technique

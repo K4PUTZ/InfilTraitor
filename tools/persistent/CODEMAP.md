@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22246 lines total** (under `godot/scripts/`)
+**117 scripts · 22240 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -620,7 +620,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 736 lines
+`class_name VoxelRenderer` · extends `Node2D` · 732 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -642,6 +642,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func set_baked_lookup(lookup) -> void:`
 - `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
+- `func prune_baked_sources() -> void:`
 
 ---
 
@@ -1579,7 +1580,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 465 lines
+`class_name OcclusionSet` · 463 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 

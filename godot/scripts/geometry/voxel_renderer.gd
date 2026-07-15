@@ -557,19 +557,16 @@ func apply_occlusion(occluded: Dictionary) -> void:
 			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
 			var prev_alt: int = layer.get_cell_alternative_tile(cell)
 
-			## Guard: only ghost a cell whose source actually has the ghost alternative.
-			## A source without it would make set_cell() point at a nonexistent tile and
-			## the cell would vanish — exactly the class of silent-invisible bug that took
-			## down the walls once already (BAKE-DIAG-01's missing create_tile()).
-			var source: TileSetAtlasSource = _tileset.get_source(source_id) as TileSetAtlasSource
-			if source == null or source.get_tile_data(atlas_coords, ghost_alt) == null:
-				push_warning("[OCC-02] source %d has no ghost alt %d at %s — leaving cell opaque" % [
-					source_id, ghost_alt, atlas_coords
-				])
-				continue
-
-			restore_records.append({"level": level, "prev_alt": prev_alt})
-			layer.set_cell(cell, source_id, atlas_coords, ghost_alt)
+			## OCC-21 (2026-07-14): ERASE occluded cells entirely instead of ghosting.
+			## The wireframe fill is now the sole visual representation. Store full
+			## placement data (source, atlas, alt) for complete restoration later.
+			restore_records.append({
+				"level": level,
+				"source_id": source_id,
+				"atlas_coords": atlas_coords,
+				"prev_alt": prev_alt
+			})
+			layer.erase_cell(cell)
 
 		if not restore_records.is_empty():
 			_ghosted_cells[cell] = restore_records
@@ -635,10 +632,9 @@ func _restore_ghosted_cells() -> void:
 			if level >= _voxel_layers.size():
 				continue
 			var layer: TileMapLayer = _voxel_layers[level]
-			var source_id: int = layer.get_cell_source_id(cell)
-			if source_id == -1:
-				continue  ## cell was destroyed/cleared while ghosted — do not resurrect it
-			layer.set_cell(cell, source_id, layer.get_cell_atlas_coords(cell), record["prev_alt"])
+			## OCC-21: restore from saved placement data, not current layer state
+			## (the cell was erased, so layer queries would return -1)
+			layer.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
 	_ghosted_cells.clear()
 
 

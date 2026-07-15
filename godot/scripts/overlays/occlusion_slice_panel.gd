@@ -79,9 +79,11 @@ func _draw() -> void:
 	## since overlapping lateral polygons accumulate visually and read too strong.
 	##
 	## OCC-21j (2026-07-15): Top cap filled at 25% of ring alpha (experiment).
+	##
+	## OCC-21k (2026-07-15): Top cap alpha same as lateral (both use same formula).
 	var front_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
 	var lateral_alpha: float = FILL_ALPHAS[clampi(ring - 1, 0, FILL_ALPHAS.size() - 1)] * 0.5
-	var top_alpha: float = front_alpha * 0.25
+	var top_alpha: float = lateral_alpha  ## same as lateral faces
 	
 	var fill_front: Color = FILL_COLOR
 	fill_front.a = front_alpha
@@ -100,7 +102,7 @@ func _draw() -> void:
 	draw_colored_polygon(
 		PackedVector2Array([bottom_near_b, bottom_far_b, top_far_b, top_near_b]), fill_lateral)
 	if draw_top:
-		## Top cap - uses 25% of ring alpha
+		## Top cap - uses same alpha as lateral faces
 		draw_colored_polygon(
 			PackedVector2Array([top_near_a, top_near_b, top_far_b, top_far_a]), fill_top)
 

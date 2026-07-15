@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.13 · **Updated:** 2026-07-14 · **Branch:** main
+**Version:** 0.9.14 · **Updated:** 2026-07-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 86a0416 [OCC-15] Wireframe depth corrected to two voxels, matching the real base footprint
 - fd0a833 [OCC-14] Wireframe units are real 3D boxes now, not flat planes
 - d007eee [OCC-13] Wireframe formalized as independent per-unit design, not a merged hull
 - b3b16b6 [OCC-12] Wireframe rebuilt as a true hull outline, not per-Slice/Edge panels
 - d738344 [OCC-10] Always-visible base band replaces the vertical reveal cutoff; junction columns occlude
-- 88d238f [OCC-09] Direction/junction ring stop, vertical reveal cutoff, session close
 <!-- AUTO:END version_history -->
 
 ---

@@ -147,11 +147,15 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start}
-		new_segments.append({
-			"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
-			"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
-			"min_level": col_ghost_start, "max_level": col_max_level,
-		})
+		## TEMP (2026-07-14): Director test — lightsaber wireframe unit skipped
+		## to see how the edge-only wireframe reads alone. Fill ghosting above
+		## is untouched; only this wireframe segment is disabled. Re-enable by
+		## uncommenting once the comparison is done.
+		#new_segments.append({
+		#	"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
+		#	"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
+		#	"min_level": col_ghost_start, "max_level": col_max_level,
+		#})
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22176 lines total** (under `godot/scripts/`)
+**117 scripts · 22246 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -928,15 +928,18 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 58 lines
+extends `Node2D` · 111 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 
-> OCC-08-b: draws one LEVEL band of an occluded edge's wireframe BOX, at that band's own voxel-layer z_index — see occlusion_wireframe_overlay.gd for why a flat elevated z_index was wrong (it always won against opaque geometry nearer the camera at a lower level, which should have covered it). OCC-14 (2026-07-14): a real box (4 verticals: near_a, near_b, far_a, far_b — "far" is "near" shifted by the wall's real one-voxel thickness), not a flat plane. Director's correction after seeing OCC-13 live: single-quad panels read as "sheets of paper," and the junction-column unit (near == far degenerate before this) as "just a line" — both needed actual depth to look like the solid geometry they stand in for. draw_top/draw_bottom default true but the manager sets them false on every band except the very top and very bottom of a slice's occluded span. A tall slice spans many levels, each its OWN z_index band (necessary — see above) — drawing every band's own top+bottom edge produced a "venetian blind" of horizontal rungs down the whole span, since each level boundary is really just an INTERNAL seam, not a real silhouette edge. The four verticals still draw on every band (that is what keeps each level individually maskable by nearer geometry), and consecutive bands' verticals share exact endpoints, so they read as unbroken lines.
+> OCC-08-b: draws one LEVEL band of an occluded edge's wireframe BOX, at that band's own voxel-layer z_index — see occlusion_wireframe_overlay.gd for why a flat elevated z_index was wrong (it always won against opaque geometry nearer the camera at a lower level, which should have covered it). OCC-14 (2026-07-14): a real box (4 verticals: near_a, near_b, far_a, far_b — "far" is "near" shifted by the wall's real one-voxel thickness), not a flat plane. Director's correction after seeing OCC-13 live: single-quad panels read as "sheets of paper," and the junction-column unit (near == far degenerate before this) as "just a line" — both needed actual depth to look like the solid geometry they stand in for. OCC-18 (2026-07-14): every edge drawn as DOTS at real voxel boundaries (90% alpha), with a full line underneath at 20% alpha connecting them — Director's refinement after OCC-17's dashed-line attempt looked visually incoherent (fixed pixel dash length reads sparse on a tall axis, dense on a short one, since screen-px-per-voxel differs by axis under isometric projection). Dots spaced by real VOXEL COUNT (width_voxels/depth_voxels, computed upstream from real grid coordinates, never pixels) are equal on every axis by construction. Verticals need no count — each panel is already exactly one voxel LEVEL tall (see below), so they're always a 2-dot line. OCC-19 (2026-07-14): a translucent glass FILL on the box's front and top faces, at VoxelRenderer.GHOST_ALPHAS[ring] — the SAME alpha the real ghosted material already uses, not a second independently-tuned value, so the wireframe's fill reads as a continuation of the material's own occlusion rather than a competing effect. draw_top/draw_bottom default true but the manager sets them false on every band except the very top and very bottom of a slice's occluded span. A tall slice spans many levels, each its OWN z_index band (necessary — see above) — drawing every band's own top+bottom edge produced a "venetian blind" of horizontal rungs down the whole span, since each level boundary is really just an INTERNAL seam, not a real silhouette edge. The four verticals still draw on every band (that is what keeps each level individually maskable by nearer geometry), and consecutive bands' verticals share exact endpoints, so their dots never double up.
 
 **Constants / tuning**
 - `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
-- `LINE_WIDTH` = `2.0`
+- `DOT_ALPHA` = `0.9`
+- `UNDERLINE_ALPHA` = `0.2`
+- `DOT_RADIUS` = `2.0`
+- `FILL_COLOR` = `Color(0.55, 0.85, 0.9)`
 
 **Public vars**
 - `var bottom_near_a: Vector2`
@@ -947,6 +950,9 @@ extends `Node2D` · 58 lines
 - `var top_near_b: Vector2`
 - `var top_far_a: Vector2`
 - `var top_far_b: Vector2`
+- `var width_voxels: int = 1`
+- `var depth_voxels: int = 1`
+- `var ring: int = 0`
 - `var draw_top: bool = true`
 - `var draw_bottom: bool = true`
 
@@ -954,7 +960,7 @@ extends `Node2D` · 58 lines
 
 ### `occlusion_wireframe_overlay.gd`
 
-extends `Node2D` · 140 lines
+extends `Node2D` · 154 lines
 
 `godot/scripts/overlays/occlusion_wireframe_overlay.gd`
 
@@ -1573,7 +1579,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 462 lines
+`class_name OcclusionSet` · 465 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 

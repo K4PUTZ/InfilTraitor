@@ -154,7 +154,7 @@ func recompute(agent_cell: Vector2i, slices: Array, room_size: Vector2i, junctio
 		#new_segments.append({
 		#	"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
 		#	"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
-		#	"min_level": col_ghost_start, "max_level": col_max_level,
+		#	"min_level": col_ghost_start, "max_level": col_max_level, "ring": 0,
 		#})
 
 	# Only update if the set changed
@@ -220,10 +220,13 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ##   "edges" — one Dictionary per occluded edge, the FILL's source of truth:
 ##     {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
 ##     "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
-##   "segments" — the wireframe's source of truth (OCC-13/OCC-14): one
+##   "segments" — the wireframe's source of truth (OCC-13/OCC-14/OCC-19): one
 ##     independent unit per occluded edge, a real box with both width and
-##     depth: {"near_a", "near_b", "far_a", "far_b", "min_level", "max_level"},
-##     all four corners in fine-voxel space. "near" is the edge's TRUE shared
+##     depth: {"near_a", "near_b", "far_a", "far_b", "min_level", "max_level",
+##     "ring"}, all four corners in fine-voxel space. "ring" travels with the
+##     segment so the wireframe's own glass FILL can match VoxelRenderer.
+##     GHOST_ALPHAS[ring] — the same alpha the real ghosted material already
+##     uses, not a second, independently-tuned value. "near" is the edge's TRUE shared
 ##     grid vertex (`_edge_vertices`) — two adjacent edges can never disagree
 ##     about where their shared corner is; "far" is "near" shifted by the
 ##     wall's real one-voxel thickness (see depth_offset below), so the
@@ -416,7 +419,7 @@ func compute_edge_occlusion(agent_cell: Vector2i, slices_by_edge: Dictionary, _r
 		segments.append({
 			"near_a": near_a, "near_b": near_b,
 			"far_a": near_a + g["depth_offset"], "far_b": near_b + g["depth_offset"],
-			"min_level": g["min_level"], "max_level": g["max_level"],
+			"min_level": g["min_level"], "max_level": g["max_level"], "ring": ring_by_edge[edge_id],
 		})
 	return {"edges": result, "segments": segments}
 

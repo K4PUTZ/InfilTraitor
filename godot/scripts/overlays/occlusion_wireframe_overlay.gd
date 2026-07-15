@@ -81,8 +81,19 @@ func _spawn_edge_panels(edge: Dictionary) -> void:
 	var far_b: Vector2i = edge["far_b"]
 	var min_level: int = edge["min_level"]
 	var max_level: int = edge["max_level"]
+	var ring: int = edge.get("ring", 0)
 	if min_level > max_level:
 		return  ## degenerate span — nothing to draw
+
+	## OCC-18 (2026-07-14): real VOXEL counts for the width (near_a→near_b) and
+	## depth (near_a→far_a) edges — dot markers below are spaced one per voxel
+	## boundary on every axis, never by an arbitrary pixel length. A fixed pixel
+	## dash (OCC-17) looked visually incoherent: the same absolute pixel length
+	## reads as widely-spaced on a short axis and tightly-packed on a long one,
+	## since screen-px-per-voxel already differs by axis under isometric
+	## projection. Computed from the raw fine-voxel corners, before projection.
+	var width_voxels: int = maxi(absi(near_a.x - near_b.x), absi(near_a.y - near_b.y))
+	var depth_voxels: int = maxi(absi(near_a.x - far_a.x), absi(near_a.y - far_a.y))
 
 	## One band per level the slice actually occupies, each its own panel node at
 	## that level's own z_index — see this file's header for why. Only the very top
@@ -101,6 +112,9 @@ func _spawn_edge_panels(edge: Dictionary) -> void:
 		panel.top_near_b = _voxel_to_screen(near_b, level + 1)
 		panel.top_far_a = _voxel_to_screen(far_a, level + 1)
 		panel.top_far_b = _voxel_to_screen(far_b, level + 1)
+		panel.width_voxels = width_voxels
+		panel.depth_voxels = depth_voxels
+		panel.ring = ring
 		panel.draw_top = (level == max_level)
 		panel.draw_bottom = (level == min_level)
 		panel.z_index = _layer_z_index(level)

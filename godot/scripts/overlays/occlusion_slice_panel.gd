@@ -74,8 +74,11 @@ func _draw() -> void:
 	##
 	## OCC-21h (2026-07-15): Lateral faces use one ring level lower alpha than
 	## front face (more transparent), creating depth gradient within same box.
+	##
+	## OCC-21i (2026-07-15): Lateral alpha further reduced by 50% (multiply by 0.5)
+	## since overlapping lateral polygons accumulate visually and read too strong.
 	var front_alpha: float = FILL_ALPHAS[clampi(ring, 0, FILL_ALPHAS.size() - 1)]
-	var lateral_alpha: float = FILL_ALPHAS[clampi(ring - 1, 0, FILL_ALPHAS.size() - 1)]
+	var lateral_alpha: float = FILL_ALPHAS[clampi(ring - 1, 0, FILL_ALPHAS.size() - 1)] * 0.5
 	
 	var fill_front: Color = FILL_COLOR
 	fill_front.a = front_alpha

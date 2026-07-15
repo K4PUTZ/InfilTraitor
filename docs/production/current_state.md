@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.25 · **Updated:** 2026-07-15 · **Branch:** main
+**Version:** 0.9.26 · **Updated:** 2026-07-15 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -34,11 +34,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 7f7aa23 [OCC-21h] Lateral faces use ring-1 alpha for depth gradient
 - 150bdf1 [OCC-21g] Add lateral face fills to wireframe box (left/right sides)
 - f83b72f [OCC-21f] Wireframe panels z_index offset -5 to draw behind visible voxels
 - 15a8ac2 [OCC-21e] Lightsaber wireframe disabled again (Director's call)
 - 7afe4ff [OCC-21d] Fill ring-based (30%/50%/70%), neutral gray color
-- d1280de [OCC-21c] Fill at fixed 70% alpha, wireframe lighter (less cyan)
 <!-- AUTO:END version_history -->
 
 ---

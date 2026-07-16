@@ -65,6 +65,25 @@ MATERIALS: dict[str, tuple[int, int, int]] = {
 }
 
 # ---------------------------------------------------------------------------
+# DESTRUCTION_MASTER_PLAN D2/D4 — floor/slab palette. Placeholder art: 8
+# hand-picked tone variants of one "earth" base color, generated the same
+# flat-lit way as MATERIALS above. Real art replaces these later without any
+# code change — the D4 hash-selector only cares that 8 files exist at these
+# names. NOT grayscale-constrained (B2 governs facade *pattern* sources, not
+# these flat material atoms — concrete/wood above aren't grayscale either).
+# ---------------------------------------------------------------------------
+EARTH_VARIANTS: list[tuple[int, int, int]] = [
+    (139, 105,  70),
+    (148, 112,  76),
+    (130,  98,  64),
+    (155, 118,  80),
+    (124,  92,  60),
+    (143, 108,  74),
+    (135, 100,  66),
+    (150, 114,  78),
+]
+
+# ---------------------------------------------------------------------------
 # Output (relativo à raiz do projecto)
 # ---------------------------------------------------------------------------
 OUTPUT_DIR = Path("ASSETS/ISOMETRIC/source_assets/voxels")
@@ -135,7 +154,14 @@ def main() -> None:
         img.save(path, "PNG")
         print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
 
-    print(f"\n✓ {len(MATERIALS)} voxel atom(s) → {OUTPUT_DIR}/")
+    for index, base_color in enumerate(EARTH_VARIANTS):
+        img  = generate_voxel_atom(base_color)
+        path = OUTPUT_DIR / f"voxel_earth_{index}.png"
+        img.save(path, "PNG")
+        print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
+
+    total = len(MATERIALS) + len(EARTH_VARIANTS)
+    print(f"\n✓ {total} voxel atom(s) → {OUTPUT_DIR}/")
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
 
 

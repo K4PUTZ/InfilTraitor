@@ -110,7 +110,13 @@ func _window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
 	return Vector2i(plane_col_texels, plane_row_texels)
 
 ## FNV-1a 32-bit hash
-func _fnv1a_hash(input: String) -> int:
+## Static: pure function of `input`, no instance state. Made static 2026-07-16
+## (DESTRUCTION D2/D4) so EarthVariantSelector can call it directly — B4
+## pins this exact algorithm, so it gets ONE owner, not a second copy.
+## Existing instance-call sites (e.g. `sampler._fnv1a_hash(...)` in
+## bake_selftest.gd) remain valid: GDScript allows calling a static func
+## through an instance reference.
+static func _fnv1a_hash(input: String) -> int:
 	var hash_val: int = 2166136261  # FNV offset basis
 	var fnv_prime: int = 16777619
 	

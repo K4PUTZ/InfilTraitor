@@ -50,7 +50,7 @@ Named pains this serves:
 | D | Decision | Status |
 |---|---|---|
 | **D1** | **`Slab` is the container sibling of `Slice`.** A wall voxel belongs to a `Slice` which belongs to an `Edge`; a floor voxel has no edge, so it needs its own container to hold voxels, count dirty, and be skipped when clean. Floor, ceiling and interior slab are **one class**: a ceiling *is* a Slab at level N. The interior cutaway of `OCCLUSION_MASTER_PLAN` Part 4 is blocked on this and comes free with it. | ✅ Ratified |
-| **D2** | **Solid texturing.** A voxel's atom is a function of `(x, y, depth)` inside the material volume — the texture lives *in* the material, and every object is a carve out of it. **Implement by generalizing `_compose_junction_pages()`, not by writing a new compositor**: a junction column is already a 1×1 solid column composed from `(col_x, col_y, level)`; a block is an 8×8 grid of them. | ✅ Ratified |
+| **D2** | ~~Solid texturing via generalizing `_compose_junction_pages()`.~~ **CORRECTED 2026-07-16 (Director's diagram).** Floor/slab voxels have no corners and no continuous facade plane to project — unlike walls, the junction compositor's shear/plane math (`_get_plane`, `_get_plane_top`, mirror-fold) **does not apply here at all**, and generalizing it would have been solving the wrong problem. The real mechanism is D4's, and D2 is now the same decision as D4: a small pre-authored palette (~8 flat voxel atoms per terrain material, same 32×36 format as the 4 wall materials) plus a deterministic FNV-1a hash of `(x, y, level)` picking one atom per voxel. **No compositor, no per-map bake step.** Placement reuses `_set_voxel_cell()` exactly as walls do — selecting among 8 sources instead of 1 fixed one. Consequence for §4: the linear bake-combo-scaling risk Part 0 flagged (the one real cost finding) **does not apply to floor/slab** — that risk lives entirely in the wall/junction compositor this mechanism never touches. | ✅ Ratified (corrected; see D4) |
 | **D3** | **`usage_cells` extended to the volume.** Compose only the voxels some object in the map actually uses, plus a one-layer "destruction-readiness" shell. Load cost becomes ∝ objects present, **not** ∝ material volume. This — not disk cache — is the real mitigation. *(Cache is already the bottleneck, not the solution: BAKE-CACHE-01 is 5× over budget.)* | ✅ Ratified |
 | **D4** | **Deterministic FNV-1a hash (B4) drives per-voxel variation.** ~8 base "earth" tops × ~8 shade steps, selected by `hash(x, y, level)`. Never stored, never saved, recomputed identically forever ⇒ zero memory, zero save state, **zero popping when a neighbour is destroyed**. | ✅ Ratified |
 | **D5** | **LOD by damage.** An intact GU is **one baked tile** — baked *from the same atoms, with the same hash*, so it is literally the composite of the 64 voxels it would explode into. First damage swaps 1 cell → 64 cells showing **identical pixels**, minus what was dug. The explosion is invisible; cost is paid only where destruction happens. An intact map costs exactly what it costs today. | ✅ Ratified |
@@ -224,11 +224,45 @@ Floor/ceiling voxels get a container with dirty counting and TIC skip, mirroring
   tick today. D5's "renders identically" holds because nothing renders through
   Slab yet, not because it was verified pixel-for-pixel.
 
-### Part 2 — Solid texturing *(D2, D3, D4, D7, D14)*
-Generalise `_compose_junction_pages()` to `(x, y, depth)`. Extend `usage_cells` to
-the volume. FNV-1a variation, depth shading, the 16 slab variants × symmetry.
+### Part 2 — Floor/slab texturing *(D2/D4, D3, D7, D14)*
+**Re-scoped 2026-07-16** — see corrected D2. Not a compositor generalization:
+a small pre-authored voxel palette (~8 per terrain material) placed by a
+deterministic FNV-1a hash of `(x, y, level)`, same placement call
+(`_set_voxel_cell()`) walls already use. `usage_cells` (D3), depth shading
+(D7) and the 16-variant coarse composite (D14) still apply on top of this.
 Still no destruction — verified purely on intact geometry and on a *manually*
 carved block.
+
+**Core landed 2026-07-16, Overlord direct implementation (isolated, no
+consumer yet — matches the Part 0/1 pattern):**
+- `tools/asset_generation/generate_voxel.py` extended with an `EARTH_VARIANTS`
+  palette (8 flat-lit tone variants, same generator as the 4 wall materials) →
+  `voxel_earth_0.png`..`voxel_earth_7.png`. Not committed to git — `ASSETS/` is
+  gitignored project-wide; only the generator is source of truth, matching how
+  the 4 existing material atoms already work.
+- `godot/scripts/systems/earth_variant_selector.gd` — `EarthVariantSelector.
+  variant_for(grid_pos, level) -> int`, the D4 hash-selector. Reuses
+  `FacadeSampler._fnv1a_hash()` (made `static`, zero behavior change for
+  existing callers) rather than a second copy of the pinned B4 algorithm.
+- **Evidence:** `godot/scripts/tools/earth_variant_selftest.gd`, 6/6 PASS —
+  determinism (same input forever), range, non-degenerate (not returning one
+  constant index), full 8-variant coverage across one real 8×8 GU footprint,
+  all 8 placeholder atoms load at canon 32×36, and the static/instance FNV-1a
+  refactor produces identical hashes (one algorithm, not two). `project_lint.py`:
+  124 files, 0 real errors.
+- **Not done yet, deliberately** (next wave, consumes this core): wiring
+  `variant_for()` into `VoxelRenderer`'s `TileSet` (registering the 8 earth
+  sources) and into `Slab` population from a real map — this wave is the
+  selector in isolation only, same discipline as Part 0→Part 1.
+- **Director's diagram (2026-07-16), captured for the next wave:** one GU's
+  floor is `8×2×8` voxels — matches D13 exactly (destructible top level +
+  fixed bottom level, 8×8 footprint each). The builder assigns the hash-picked
+  variant per voxel **at load time**, not at bake time — there is no per-map
+  compose step to run at all for this material class.
+- **Future, explicitly deferred (Director, 2026-07-16):** non-random decorative
+  slabs (tile/patterned floors that follow a visual layout instead of a hash) —
+  a different, later variability tier, scoped to the procedural-maps phase, not
+  this plan.
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 

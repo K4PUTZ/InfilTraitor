@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**132 scripts · 24845 lines total** (under `godot/scripts/`)
+**132 scripts · 25108 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -577,7 +577,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab_generator.gd`
 
-`class_name SlabGenerator` · 22 lines
+`class_name SlabGenerator` · 62 lines
 
 `godot/scripts/geometry/slab_generator.gd`
 
@@ -2239,7 +2239,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 171 lines
+extends `SceneTree` · 246 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -2263,7 +2263,7 @@ extends `SceneTree` · 171 lines
 
 ### `roof_slab_selftest.gd`
 
-extends `SceneTree` · 200 lines
+extends `SceneTree` · 313 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
@@ -2282,6 +2282,9 @@ extends `SceneTree` · 200 lines
 - `func test_render_slab_solid_uses_fixed_material_no_hash() -> void:`
 - `func test_each_roof_level_independently_destructible() -> void:`
 - `func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:`
+- `func test_border_expands_footprint_to_10x10_offset_by_minus_one() -> void:`
+- `func test_border_per_side_zero_skips_that_side_only() -> void:`
+- `func test_adjacent_multi_gu_roofs_do_not_self_overlap() -> void:`
 
 ---
 
@@ -2570,7 +2573,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 764 lines
+`class_name RoomBuilder` · 799 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

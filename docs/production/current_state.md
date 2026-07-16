@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.43 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.44 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- fd58e6e [DESTRUCTION-PART2-INTEGRATION] Real map load builds roofs above real blocks
 - d15d2dd [DESTRUCTION-D1-ROOF] Roof/ceiling slabs: N-level, all-destructible, existing wall materials
 - d8a0b2c [DESTRUCTION-D18b] Border GUs eagerly build the full 8-level block
 - 1c28226 [DOC] Real visual confirmation of the negative-storey floor, found via SCREENSHOT-HOOK-01
 - a352941 [DESTRUCTION-PART2-INTEGRATION] Real map load builds the negative-storey floor
-- 8deba36 [DESTRUCTION-D13] Fixed floor levels: render_fixed_earth_level(), no Slab
 <!-- AUTO:END version_history -->
 
 ---

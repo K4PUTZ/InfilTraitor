@@ -526,6 +526,52 @@ not a simulated one:
   structures. Each is its own real question, not assumed to fall out for
   free.
 
+**Border fix, same session, 2026-07-16.** Director spotted from a real
+screenshot: `SliceGenerator` puts a wall's two slices on the *own* boundary
+column of each side (`slice_a` on `gu_a`, `slice_b` one voxel further out on
+`gu_b` — see `slice_voxel_positions()`), so a roof sized to exactly its own
+GU's 8×8 footprint only ever capped the near slice, never the far one —
+visibly unfinished at every wall. **Ratified fix, real tracked geometry, not
+a cosmetic fill:** `slab_generator.gd`'s new `generate_with_border()` grows
+a roof's footprint by 1 voxel per side (8×8 → up to 10×10, origin shifted
+toward `-1,-1`), reusing the *same* `Slab`/dirty-tracking machinery, not a
+second untracked truth — Director: "a verdade nunca precisa ser lembrada."
+Per-side, not uniform: a side is bordered only when nothing already roofed
+sits there.
+
+**Real bug found and fixed via the real map, not assumed safe.** The first
+implementation computed "does this side face outside the block" only
+*within one `solid_block_instances` entry* (correct for a genuine multi-GU
+block's own internal seams) — but `roof_integration_selftest.gd`'s
+independently re-derived geometry check caught **15 of 49 real PLAYGROUND
+blocks with corrupted core voxels**: the map's own test fixture places 5
+same-material blocks as 5 *separate* 1×1 declarations in a contiguous row,
+not one multi-GU block, and GUs have **zero gap** between them — so each
+side's border landed exactly on the neighbouring declaration's own core
+row/column, not empty space. `room_builder.gd` corrected to compute
+`roofed_gu_cells` **once, across every `solid_block_instances` entry on the
+map**, then suppress a side whenever *any* roofed neighbour occupies it,
+regardless of which declaration it came from — the same fix generalizes
+correctly to both the multi-GU-single-block case and the
+separate-adjacent-blocks case.
+- **Evidence:** `roof_slab_selftest.gd` grew from 8/8 to **15/15 PASS** —
+  new: `generate_with_border()` genuinely produces a 100-voxel (10×10)
+  footprint at the correct offset; a single suppressed side produces exactly
+  90 voxels, the other 3 sides unaffected; and the load-bearing one — two
+  adjacent same-structure roof `Slab`s share **zero** voxel positions.
+  `roof_integration_selftest.gd` (real PLAYGROUND map): the border-size
+  and border-coverage checks now compute their *expected* footprint from the
+  same map-wide adjacency the real code uses (not a blanket "every 1×1 block
+  is 100 voxels" assumption, which stopped being true the moment the fix
+  correctly started suppressing shared sides) — 5/5 PASS, including a direct
+  check that **zero voxel positions are shared** between any two real,
+  adjacent, roofed block-GUs on the actual map (the exact defect the fix
+  targets). Full regression, same session: `floor_integration_selftest.gd`
+  9/9, `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
+  `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+  `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
+  `project_lint.py`: 131 files, 0 real errors.
+
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 
 > **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**

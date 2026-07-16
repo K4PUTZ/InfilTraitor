@@ -175,7 +175,35 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## ROOF_LEVEL_COUNT is a placeholder default ("2 ou mais", Director) —
 		## every level is an independent, fully destructible Slab (Role.CEILING),
 		## unlike the floor's one-destructible-level model (D13).
+		##
+		## Each GU's roof grows a 1-voxel border (SlabGenerator.generate_with_border(),
+		## Director 2026-07-16) to reach the wall's OUTER slice, which
+		## SliceGenerator places one voxel into the NEIGHBOUR GU — a same-size
+		## roof looks unfinished at every wall otherwise.
+		##
+		## Per-side, computed MAP-WIDE — corrected 2026-07-16 after
+		## roof_integration_selftest.gd caught 15/49 real PLAYGROUND blocks
+		## with corrupted core geometry. The first version only suppressed a
+		## side when it faced another GU of the SAME solid_block_instances
+		## entry (i.e. within one declared multi-GU block) — but PLAYGROUND's
+		## own test fixture places 5 same-material blocks as 5 SEPARATE 1x1
+		## declarations in a contiguous row, not one multi-GU block. GUs have
+		## ZERO gap between them, so each border reached one voxel into the
+		## next declaration's own core row/column — a real, reproducible
+		## overlap, not the rare cross-structure edge case originally assumed
+		## acceptable to leave undefended. Fix: build the set of every roofed
+		## GU across ALL block instances first, then suppress a side whenever
+		## ANY roofed neighbour exists there, regardless of which declaration
+		## it came from.
 		const ROOF_LEVEL_COUNT := 2
+		var roofed_gu_cells: Dictionary = {}
+		for block_instance: Dictionary in layout.get("solid_block_instances", []):
+			var occ_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
+			var occ_size: Vector2i = block_instance.get("size", Vector2i.ONE)
+			for ox in range(occ_size.x):
+				for oy in range(occ_size.y):
+					roofed_gu_cells[occ_gu_base + Vector2i(ox, oy)] = true
+
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
 			var block_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
@@ -186,8 +214,15 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			for rx in range(block_size.x):
 				for ry in range(block_size.y):
 					var roof_gu := block_gu_base + Vector2i(rx, ry)
+					var border_west: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(-1, 0)) else 1
+					var border_east: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(1, 0)) else 1
+					var border_north: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, -1)) else 1
+					var border_south: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, 1)) else 1
 					for roof_level in range(roof_base_level, roof_base_level + ROOF_LEVEL_COUNT):
-						var roof_slab := SlabGenerator.generate(roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry)
+						var roof_slab := SlabGenerator.generate_with_border(
+							roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry,
+							border_west, border_east, border_north, border_south,
+						)
 						room._voxel_renderer.render_slab_solid(roof_slab)
 	elif _diag_on:
 		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")

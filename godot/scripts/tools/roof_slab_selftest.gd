@@ -29,6 +29,9 @@ func _init() -> void:
 	test_render_slab_solid_uses_fixed_material_no_hash()
 	test_each_roof_level_independently_destructible()
 	test_roof_positioned_above_a_block_uses_the_blocks_own_material()
+	test_border_expands_footprint_to_10x10_offset_by_minus_one()
+	test_border_per_side_zero_skips_that_side_only()
+	test_adjacent_multi_gu_roofs_do_not_self_overlap()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -197,4 +200,114 @@ func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 		_fail("Expected 2 roof Slabs registered, got %d" % registry.all_slabs().size())
 
 	renderer.queue_free()
+	print("")
+
+
+## Director, 2026-07-16: a roof's footprint must genuinely grow to reach the
+## wall's outer slice (SliceGenerator puts it one voxel into the neighbour
+## GU) — 8x8 -> 10x10, origin shifted -1 voxel on both axes. A real, tracked
+## Slab, not a cosmetic fill: "a verdade nunca precisa ser lembrada."
+func test_border_expands_footprint_to_10x10_offset_by_minus_one() -> void:
+	print("[5] generate_with_border() — default border=1 on all sides: 10x10, origin -1,-1\n")
+
+	var registry := SlabRegistry.new()
+	var gu := Vector2i(5, 5)
+	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, 8, "concrete", registry)
+
+	if slab.voxels.size() == 100:
+		_pass("100 voxels (10x10), not 64 — the footprint genuinely grew")
+	else:
+		_fail("Expected 100 voxels, got %d" % slab.voxels.size())
+
+	var expected_origin: Vector2i = GeometryCoordsClass.gu_to_voxel_origin(gu) - Vector2i(1, 1)
+	var positions: Dictionary = {}
+	for voxel in slab.voxels:
+		positions[voxel.grid_pos] = true
+
+	var origin_present := positions.has(expected_origin)
+	var far_corner_present := positions.has(expected_origin + Vector2i(9, 9))
+	if origin_present and far_corner_present:
+		_pass("Footprint spans exactly [origin-1, origin+8] on both axes — corners %s and %s present" % [
+			expected_origin, expected_origin + Vector2i(9, 9),
+		])
+	else:
+		_fail("Expected corners missing: origin_present=%s far_corner_present=%s" % [origin_present, far_corner_present])
+
+	print("")
+
+
+## Per-side control is the actual point, not a nice-to-have: a side set to 0
+## must be excluded, independently of the other 3 sides staying at 1.
+func test_border_per_side_zero_skips_that_side_only() -> void:
+	print("[6] generate_with_border() — per-side border, one side zeroed\n")
+
+	var registry := SlabRegistry.new()
+	var gu := Vector2i(0, 0)
+	## West=0 (no border on the -x side), other 3 sides default to 1.
+	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, 8, "concrete", registry, 0)
+
+	## 9 wide (no west extension, +1 east) x 10 tall (+1 north, +1 south) = 90.
+	if slab.voxels.size() == 90:
+		_pass("90 voxels (9x10) — west border correctly suppressed, other 3 sides still expanded")
+	else:
+		_fail("Expected 90 voxels (west=0, others=1), got %d" % slab.voxels.size())
+
+	var base_origin: Vector2i = GeometryCoordsClass.gu_to_voxel_origin(gu)
+	var positions: Dictionary = {}
+	for voxel in slab.voxels:
+		positions[voxel.grid_pos] = true
+
+	if not positions.has(base_origin - Vector2i(1, 0)):
+		_pass("The west-border voxel (origin.x - 1) is genuinely absent")
+	else:
+		_fail("West-border voxel present despite border_west=0")
+
+	if positions.has(base_origin - Vector2i(0, 1)):
+		_pass("The north-border voxel (origin.y - 1) is present (border_north still defaults to 1)")
+	else:
+		_fail("North-border voxel missing even though border_north was not zeroed")
+
+	print("")
+
+
+## The whole reason per-side control exists: two GUs of the SAME multi-GU
+## structure, adjacent to each other, must not grow borders toward one
+## another — that would self-overlap deterministically, not rarely. Simulate
+## room_builder.gd's own per-side computation for a 2x1 block.
+func test_adjacent_multi_gu_roofs_do_not_self_overlap() -> void:
+	print("[7] Two adjacent same-structure roof Slabs: zero self-overlap at the shared seam\n")
+
+	var registry := SlabRegistry.new()
+	var gu_left := Vector2i(10, 10)
+	var gu_right := Vector2i(11, 10)  # block_size = Vector2i(2, 1), rx=0 and rx=1
+
+	## Mirrors room_builder.gd's per-side computation for a 2x1 block:
+	## left cell (rx=0): west=1 (true outer edge), east=0 (faces the right cell).
+	## right cell (rx=1, last): west=0 (faces the left cell), east=1 (true outer edge).
+	var slab_left := SlabGenerator.generate_with_border(gu_left, Slab.Role.CEILING, 8, "concrete", registry, 1, 0, 1, 1)
+	var slab_right := SlabGenerator.generate_with_border(gu_right, Slab.Role.CEILING, 8, "concrete", registry, 0, 1, 1, 1)
+
+	var left_positions: Dictionary = {}
+	for voxel in slab_left.voxels:
+		left_positions[voxel.grid_pos] = true
+	var right_positions: Dictionary = {}
+	for voxel in slab_right.voxels:
+		right_positions[voxel.grid_pos] = true
+
+	var overlap := 0
+	for pos in left_positions.keys():
+		if right_positions.has(pos):
+			overlap += 1
+
+	if overlap == 0:
+		_pass("Zero shared voxel positions between the two adjacent same-structure roof Slabs")
+	else:
+		_fail("%d overlapping voxel positions between adjacent roof Slabs — self-overlap bug" % overlap)
+
+	## Both still 9x10 = 90 (one side suppressed each, matching test 6's shape).
+	if slab_left.voxels.size() == 90 and slab_right.voxels.size() == 90:
+		_pass("Both cells are 90 voxels (9x10) — only their true outer sides expanded")
+	else:
+		_fail("Expected both at 90 voxels, got left=%d right=%d" % [slab_left.voxels.size(), slab_right.voxels.size()])
+
 	print("")

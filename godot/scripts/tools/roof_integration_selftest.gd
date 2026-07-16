@@ -109,10 +109,28 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	## re-derived roof — correct GU, correct level (storeys * LEVELS_PER_STOREY),
 	## correct material, and it is a genuine Slab (Role.CEILING) in the registry,
 	## not just a rendered cell.
+	## Map-wide roofed-GU set — mirrors room_builder.gd's own adjacency
+	## computation exactly, so this test's expectations track the real fix
+	## (border suppressed on any side with a real neighbour, from ANY
+	## solid_block_instances entry) instead of assuming every 1x1 block gets
+	## a full untouched border, which stopped being true the moment the
+	## adjacency fix landed (PLAYGROUND's 5-in-a-row same-material test
+	## blocks are real neighbours of each other).
+	var roofed_gu_cells: Dictionary = {}
+	for b in solid_block_instances:
+		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
+		var b_size: Vector2i = b.get("size", Vector2i.ONE)
+		for ox in range(b_size.x):
+			for oy in range(b_size.y):
+				roofed_gu_cells[b_gu + Vector2i(ox, oy)] = true
+
 	var checked_blocks := 0
 	var geometry_mismatches := 0
 	var registry_mismatches := 0
 	var material_mismatches := 0
+	var border_size_mismatches := 0
+	var border_coverage_mismatches := 0
+	var no_self_overlap_between_neighbours := true
 
 	for block_instance in solid_block_instances:
 		var block_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
@@ -143,12 +161,69 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 						geometry_mismatches += 1
 						break
 
+				## D1-ROOF border fix, corrected 2026-07-16: expected border is
+				## per-side, computed against the SAME map-wide roofed_gu_cells
+				## set room_builder.gd uses — a side is bordered (independently
+				## re-derived, not trusted from the registered Slab) only if
+				## NO other roofed GU sits there, from any block declaration.
+				var has_west: bool = roofed_gu_cells.has(roof_gu + Vector2i(-1, 0))
+				var has_east: bool = roofed_gu_cells.has(roof_gu + Vector2i(1, 0))
+				var has_north: bool = roofed_gu_cells.has(roof_gu + Vector2i(0, -1))
+				var has_south: bool = roofed_gu_cells.has(roof_gu + Vector2i(0, 1))
+				var expected_width: int = 8 + (0 if has_west else 1) + (0 if has_east else 1)
+				var expected_height: int = 8 + (0 if has_north else 1) + (0 if has_south else 1)
+				var expected_voxel_count: int = expected_width * expected_height
+				if registered_slab.voxels.size() != expected_voxel_count:
+					border_size_mismatches += 1
+
+				## Real neighbour-collision check: this GU's voxel set must
+				## share ZERO positions with any of its real roofed neighbours'
+				## Slabs — the actual bug 15/49 blocks had before the fix.
+				for neighbour_offset: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var neighbour_gu := roof_gu + neighbour_offset
+					if not roofed_gu_cells.has(neighbour_gu):
+						continue
+					var neighbour_slab_id := "SLAB_%d_%d_%s_%d" % [neighbour_gu.x, neighbour_gu.y, Slab.role_name(Slab.Role.CEILING), roof_base_level]
+					var neighbour_slab: Slab = room._slab_registry.get_slab(neighbour_slab_id)
+					if neighbour_slab == null:
+						continue
+					var own_positions: Dictionary = {}
+					for v in registered_slab.voxels:
+						own_positions[v.grid_pos] = true
+					for nv in neighbour_slab.voxels:
+						if own_positions.has(nv.grid_pos):
+							no_self_overlap_between_neighbours = false
+
+				## Only a GU whose side genuinely has no roofed neighbour needs
+				## the border-coverage (reaches into the wall's outer slice)
+				## check — a suppressed side has no border voxel to find.
+				if not has_west and not has_north:
+					var neighbour_border_voxel: Vector2i = GeometryCoordsClass.gu_to_voxel_origin(roof_gu) - Vector2i(1, 1)
+					if layer.get_cell_source_id(neighbour_border_voxel) != expected_source_id:
+						border_coverage_mismatches += 1
+
 	if checked_blocks > 0 and registry_mismatches == 0 and material_mismatches == 0 and geometry_mismatches == 0:
 		_pass("All %d block-GUs (%d raw block declarations) have a real, registered, independently-verified roof Slab at the correct level with matching material" % [checked_blocks, raw_blocks.size()])
 	else:
 		_fail("%d GUs checked: %d not registered, %d wrong material, %d geometry mismatches" % [
 			checked_blocks, registry_mismatches, material_mismatches, geometry_mismatches,
 		])
+
+	if checked_blocks > 0 and border_size_mismatches == 0 and border_coverage_mismatches == 0:
+		_pass("All %d block roofs have exactly the border footprint their real map-wide adjacency predicts, borders reach the neighbour GU's wall-slice column where genuinely external" % checked_blocks)
+	else:
+		_fail("%d/%d roofs wrong voxel count (vs. adjacency-derived expectation), %d border-coverage cells not placed" % [
+			border_size_mismatches, checked_blocks, border_coverage_mismatches,
+		])
+
+	## The actual bug this whole fix exists for: real adjacent blocks (e.g.
+	## PLAYGROUND's 5-in-a-row same-material test fixtures) must share ZERO
+	## voxel positions between their roof Slabs — this is what 15/49 blocks
+	## got wrong before the map-wide adjacency fix landed.
+	if no_self_overlap_between_neighbours:
+		_pass("Zero shared voxel positions between any two real, roofed, adjacent block-GUs on the actual map")
+	else:
+		_fail("At least one pair of real adjacent block roofs shares voxel positions — the corruption the fix was meant to prevent")
 
 	## Sanity: roof levels are independently destructible, same as the
 	## isolated selftest already proved — spot-check on one real block here.

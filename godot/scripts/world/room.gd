@@ -243,6 +243,12 @@ var _vision_controller: Node2D = null
 ## MODULARIZE-02: HudController to manage UI wiring
 var _hud_controller: Node = null
 
+## PAUSE-MENU-01: Main menu panel
+var _main_menu_panel: Node = null
+
+## PAUSE-MENU-02: Controls panel
+var _controls_panel: Node = null
+
 ## MODULARIZE-04: CameraController to manage drag, zoom, perspective
 var _camera_controller: Node = null
 
@@ -615,6 +621,21 @@ func _ready() -> void:
 	_input_controller.movement_input_requested.connect(_on_movement_input_requested)
 	_input_controller.debug_command_requested.connect(_on_debug_command_requested)
 	_input_controller.screenshot_requested.connect(_on_screenshot_requested)
+	_input_controller.pause_requested.connect(_on_pause_requested)
+
+	## PAUSE-MENU-01: Initialize main menu panel
+	var MainMenuPanelClass = preload("res://godot/scripts/ui/main_menu_panel.gd")
+	_main_menu_panel = MainMenuPanelClass.new()
+	$HUD.add_child(_main_menu_panel)
+	_main_menu_panel.reset_requested.connect(_on_hud_reset_requested)
+	_main_menu_panel.controls_requested.connect(_on_controls_requested)
+	_main_menu_panel.hide() # Hidden by default
+	
+	## PAUSE-MENU-02: Initialize controls panel
+	var ControlsPanelClass = preload("res://godot/scripts/ui/controls_panel.gd")
+	_controls_panel = ControlsPanelClass.new()
+	$HUD.add_child(_controls_panel)
+	_controls_panel.hide() # Hidden by default
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
@@ -2234,6 +2255,23 @@ func _on_debug_command_requested(command: String) -> void:
 			if _debug_tools_controller.is_nudge_mode_active():
 				_debug_tools_controller.reset_nudge()
 
+
+func _on_pause_requested() -> void:
+	# If a sub-panel is open, just close it and return to the main menu
+	if _controls_panel != null and _controls_panel.is_open():
+		_controls_panel.close()
+		return
+		
+	# Otherwise toggle the main menu and game pause state
+	if _main_menu_panel.is_open():
+		_main_menu_panel.close()
+		get_tree().paused = false
+	else:
+		_main_menu_panel.open()
+		get_tree().paused = true
+
+func _on_controls_requested() -> void:
+	_controls_panel.open()
 
 func _on_screenshot_requested() -> void:
 	print_debug("[ROOM] Handler: screenshot requested (Shift+P)")

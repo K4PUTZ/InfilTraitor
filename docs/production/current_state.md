@@ -24,11 +24,11 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 100
+- GDScript modules: 102
 - Test scripts: 12
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 4
+- Archived prompts: 5
 <!-- AUTO:END inventory -->
 
 ### Version History

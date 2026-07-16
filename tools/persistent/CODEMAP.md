@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**117 scripts · 22351 lines total** (under `godot/scripts/`)
+**119 scripts · 22618 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
-- **ui/** — enemy_banner_panel.gd, fog_of_war_overlay.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
+- **ui/** — controls_panel.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
@@ -2128,6 +2128,16 @@ extends `SceneTree` · 49 lines
 
 ## ui/
 
+### `controls_panel.gd`
+
+`class_name ControlsPanel` · extends `WindowBase` · 117 lines
+
+`godot/scripts/ui/controls_panel.gd`
+
+> PAUSE-MENU-02: Controls Panel.
+
+---
+
 ### `enemy_banner_panel.gd`
 
 `class_name EnemyBannerPanel` · extends `"res://godot/scripts/ui/window_base.gd"` · 31 lines
@@ -2161,6 +2171,21 @@ extends `SceneTree` · 49 lines
 - `func add_peek_reveal(cell: Vector2i) -> void:`
 - `func reset_peek_reveals() -> void:`
 - `func is_cell_revealed(cell: Vector2i) -> bool:`
+
+---
+
+### `main_menu_panel.gd`
+
+`class_name MainMenuPanel` · extends `WindowBase` · 100 lines
+
+`godot/scripts/ui/main_menu_panel.gd`
+
+> PAUSE-MENU-01: First concrete menu built on WindowBase.
+
+**Signals**
+- `signal reset_requested`
+- `signal settings_requested`
+- `signal controls_requested`
 
 ---
 
@@ -2335,7 +2360,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 147 lines
+`class_name InputController` · 159 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -2349,6 +2374,7 @@ extends `Node2D` · 34 lines
 - `signal movement_input_requested(direction: Vector2i, is_large_step: bool)`
 - `signal debug_command_requested(command: String)`
 - `signal screenshot_requested`
+- `signal pause_requested`
 
 **Public vars**
 - `var room: Node`
@@ -2590,7 +2616,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2264 lines
+extends `Node2D` · 2302 lines
 
 `godot/scripts/world/room.gd`
 

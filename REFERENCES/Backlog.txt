@@ -13,9 +13,6 @@
 
 OCLUSÃO E DESTRUIÇÃO DAS PAREDES
 
-- Só um detalhe, o contorno colorido da oclusão no chão pode existir no LIGHT VISION, mas não no modo de game normal. 
-- Oclusão no agente E onde o mouse estiver um tile selecionado (FOW 
-
 PROJEÇÃO DE LUZES E SOMBRAS
 
 SOMBRAS JOGÁVEIS
@@ -38,7 +35,6 @@ COVER/COMBATE
 Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
 
-Vamos terminar o interface plan. Vamos fazer o pause menu simplezinho. Poderia ser o "Main Menu" na verdade, que funciona apertando ESC e revelando uma janela com a lista de botões, NEW GAME, LOAD, OPTIONS, etc. Pode ficar tudo sem função por enquanto, mas vamos deixar o fio 
 
 
 

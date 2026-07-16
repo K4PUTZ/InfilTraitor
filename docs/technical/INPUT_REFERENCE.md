@@ -10,6 +10,7 @@ The input system is centralized in the Godot **Input Map** (`project.godot` `[in
 
 | Action Name | Default Binding | Category | Description |
 |---|---|---|---|
+| `ui_pause` | Escape | ui | Toggle pause menu |
 | `ui_posture_lower` | Z | gameplay | Lower posture: STANDING → CROUCHING → PRONE |
 | `ui_posture_raise` | X | gameplay | Raise posture: PRONE → CROUCHING → STANDING |
 | `ui_view_mode_dev` | V | gameplay/dev | Switch to dev vision overlay |

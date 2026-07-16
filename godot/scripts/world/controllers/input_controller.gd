@@ -11,13 +11,14 @@ signal peek_initiated
 signal movement_input_requested(direction: Vector2i, is_large_step: bool)
 signal debug_command_requested(command: String)
 signal screenshot_requested
-
+signal pause_requested
 var room: Node
 var _camera_controller: Node = null
 
 
 func _init(p_room: Node) -> void:
 	room = p_room
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if room and room.has_meta("_camera_controller"):
 		_camera_controller = room.get_meta("_camera_controller")
 
@@ -50,8 +51,19 @@ func _handle_key_action(key: InputEventKey) -> void:
 	
 	var viewport = get_viewport()
 	
+	# Menu actions
+	if key.is_action_pressed("ui_pause"):
+		print_debug("[INPUT] Pause requested")
+		pause_requested.emit()
+		if viewport:
+			viewport.set_input_as_handled()
+		return
+	
+	if get_tree().paused:
+		return
+	
 	# Gameplay actions
-	if key.is_action_pressed("ui_posture_lower"):
+	elif key.is_action_pressed("ui_posture_lower"):
 		print_debug("[INPUT] Posture lower requested")
 		posture_lower_requested.emit()
 		if viewport:

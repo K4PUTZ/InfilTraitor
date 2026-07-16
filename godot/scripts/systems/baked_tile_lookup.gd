@@ -270,19 +270,18 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 	return null
 
 
-## ROOF-BAKE-01: resolve a HORIZONTAL surface voxel (roof/ceiling slab).
-## The top-face plane the compositor already bakes (_get_plane_top) is an
-## isometric projection of a flat 2-D grid — T(u−v, (u+v)/2) — where walls
-## consume it as (column_in_run, level). A roof consumes the SAME sheets
-## with (u, v) = (voxel_x·16, voxel_y·16): the screen offset between two
-## horizontally adjacent roof voxels (±16, +8) equals the crop-window offset
-## in T exactly, so keying atoms by global fine-grid position yields a
-## seam-continuous top surface across the whole footprint by construction.
-## Mirrored-repeat fold: x → col (period 64), y → row (period 32) — the same
-## convention walls use along their run axis. Dir is always 0 (one sheet
-## family; roofs have no run direction). Returns null on any miss — caller
+## ROOF-BAKE-01/02c: resolve a HORIZONTAL surface voxel (roof/ceiling slab).
+## The compositor's roof page family projects the facade flat 1:1 (isotropic,
+## unlike the wall sheets' ×20/16 vertical pre-scale): the screen offset
+## between two horizontally adjacent roof voxels (±16, +8) equals the
+## crop-window offset in the roof plane exactly, so the top surface is
+## seam-continuous by construction. local_pos is the STRUCTURE-LOCAL offset
+## (voxel − Slab.texture_anchor, 02c): anchoring per connected roofed
+## component kills world-line mirror seams and keeps the pattern glued to
+## the structure across view rotations. Mirrored-repeat fold: x → col
+## (period 64), y → row (period 32). Returns null on any miss — caller
 ## falls back to the generic material atlas, same contract as resolve().
-func resolve_flat(material_id: String, voxel_pos: Vector2i) -> TileLookupResult:
+func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
 	# Same enable/MATERIAL_ONLY gates as resolve()
 	var baking_enabled = false
 	if _bake_config:
@@ -309,11 +308,15 @@ func resolve_flat(material_id: String, voxel_pos: Vector2i) -> TileLookupResult:
 	if baked_atlas == null:
 		return null
 	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
-	var lookup_key = _compute_facade_key(material_id, facade_id, voxel_pos.x, voxel_pos.y, 0)
+	# ROOF-BAKE-02c: dedicated roof page family, no direction component
+	var lookup_key = "ROOF|%s|%s|%d|%d" % [
+		material_id, facade_id,
+		_mirror_index_1d(local_pos.x, 64), _mirror_index_1d(local_pos.y, 32),
+	]
 	if not lookup_dict.has(lookup_key):
 		if _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:
 			_diag_miss_count += 1
-			print("[BAKE-DIAG] flat lookup MISS reason=KEY_NOT_IN_DICT (key=%s, voxel=%s)" % [lookup_key, voxel_pos])
+			print("[BAKE-DIAG] flat lookup MISS reason=KEY_NOT_IN_DICT (key=%s, local=%s)" % [lookup_key, local_pos])
 		return null
 	var entry = lookup_dict[lookup_key]
 	var source_id: int = _get_baked_atlas_source_id(entry.get("page", -1))

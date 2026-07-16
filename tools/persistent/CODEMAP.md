@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 25584 lines total** (under `godot/scripts/`)
+**133 scripts · 25983 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -555,7 +555,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 84 lines
+`class_name Slab` · 93 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -569,6 +569,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var material: String`
 - `var voxels: Array[Voxel] = []`
 - `var dirty_count: int = 0`
+- `var texture_anchor: Vector2i = Vector2i.ZERO`
 
 **Public API**
 - `func get_voxel(index: int) -> Voxel:`
@@ -674,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 893 lines
+`class_name VoxelRenderer` · extends `Node2D` · 897 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1176,7 +1177,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 905 lines
+`class_name BakeCompositor` · 1063 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1231,7 +1232,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 417 lines
+`class_name BakedTileLookup` · 420 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1247,7 +1248,7 @@ extends `Node2D` · 43 lines
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
-- `func resolve_flat(material_id: String, voxel_pos: Vector2i) -> TileLookupResult:`
+- `func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:`
 - `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
 
 ---
@@ -2240,11 +2241,11 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 336 lines
+extends `SceneTree` · 477 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
-> ROOF-BAKE-01 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the bake system extends to HORIZONTAL surfaces (roof slabs) through the existing mechanism: the compositor's top-face plane (_get_plane_top) is an isometric projection of a flat 2-D grid — T(u−v, (u+v)/2) — that walls consume as (column_in_run, level) and roofs consume as (voxel_x, voxel_y). Four suites: 1. A roofs-only map_spec bakes lookup entries for every (folded) roof cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity: placed atom top-diamonds equal a direct read of the continuous plane_top image at the projected offset — seamlessness is therefore by construction, verified on real pixels, not reasoning 4. Real PLAYGROUND map, bake ENABLED: every roof voxel cell carries the baked source + atlas coords its position independently predicts Every expectation is re-derived locally (own mirror-fold implementation, own key formatting) — never read back from the code under test.
+> ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the ROOF-BAKE-02 contract end-to-end: 1. A roofs-only map_spec composes the dedicated roof page family with a "ROOF|mat|fac|col|row" lookup entry for every (folded) LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct read of the roof plane (built from the UNSCALED facade — no wall ×20/16 pre-scale) at the projected offset 4. Real PLAYGROUND, bake ENABLED: every roof voxel carries the baked source + coords its STRUCTURE-LOCAL offset predicts, with component anchors re-derived by this test's own flood fill; storey-step borders follow the level-aware rule (suppress toward same-or-higher, eave over lower) 5. ROTATION (02a): building the E view puts a roof Slab of the right material at every block's ROTATED position Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
 
 **Constants / tuning**
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
@@ -2255,6 +2256,7 @@ extends `SceneTree` · 336 lines
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `ATOM_W` = `32`
 - `ATOM_H` = `36`
 - `V_MARGIN` = `32`
@@ -2267,14 +2269,15 @@ extends `SceneTree` · 336 lines
 **Public API**
 - `func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:`
 - `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
-- `func test_3_pixel_continuity_against_plane_top(fx: Dictionary) -> void:`
-- `func test_4_real_playground_roofs_are_baked() -> void:`
+- `func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:`
+- `func test_4_real_playground_local_keys_and_step_borders() -> void:`
+- `func test_5_rotated_view_roofs_follow_structures() -> void:`
 
 ---
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 257 lines
+extends `SceneTree` · 267 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -2608,7 +2611,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 831 lines
+`class_name RoomBuilder` · 871 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -3077,7 +3080,7 @@ extends `Node2D` · 2322 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 188 lines
+`class_name PerspectiveMapper` · 222 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

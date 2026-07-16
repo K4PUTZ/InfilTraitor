@@ -127,13 +127,18 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	## a full untouched border, which stopped being true the moment the
 	## adjacency fix landed (PLAYGROUND's 5-in-a-row same-material test
 	## blocks are real neighbours of each other).
-	var roofed_gu_cells: Dictionary = {}
+	## ROOF-BAKE-02b: the adjacency set became LEVEL-AWARE (gu → roof base
+	## level). A side is suppressed only toward a neighbour roofed at the SAME
+	## level or HIGHER; a lower neighbour gets an eave grown over it. This
+	## test's expectations re-derive that same rule independently below.
+	var roof_level_by_gu: Dictionary = {}
 	for b in solid_block_instances:
 		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
 		var b_size: Vector2i = b.get("size", Vector2i.ONE)
+		var b_level: int = int(b.get("storeys", 1)) * GeometryCoordsClass.LEVELS_PER_STOREY
 		for ox in range(b_size.x):
 			for oy in range(b_size.y):
-				roofed_gu_cells[b_gu + Vector2i(ox, oy)] = true
+				roof_level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
 
 	var checked_blocks := 0
 	var geometry_mismatches := 0
@@ -172,15 +177,16 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 						geometry_mismatches += 1
 						break
 
-				## D1-ROOF border fix, corrected 2026-07-16: expected border is
-				## per-side, computed against the SAME map-wide roofed_gu_cells
-				## set room_builder.gd uses — a side is bordered (independently
-				## re-derived, not trusted from the registered Slab) only if
-				## NO other roofed GU sits there, from any block declaration.
-				var has_west: bool = roofed_gu_cells.has(roof_gu + Vector2i(-1, 0))
-				var has_east: bool = roofed_gu_cells.has(roof_gu + Vector2i(1, 0))
-				var has_north: bool = roofed_gu_cells.has(roof_gu + Vector2i(0, -1))
-				var has_south: bool = roofed_gu_cells.has(roof_gu + Vector2i(0, 1))
+				## D1-ROOF border fix + ROOF-BAKE-02b: expected border is
+				## per-side and LEVEL-AWARE, independently re-derived with the
+				## same rule room_builder.gd uses — a side is suppressed only
+				## toward a neighbour roofed at the SAME level or HIGHER (the
+				## taller wall's far-slice fills that seam); a LOWER roofed
+				## neighbour gets an eave grown over it, same as no neighbour.
+				var has_west: bool = int(roof_level_by_gu.get(roof_gu + Vector2i(-1, 0), -1)) >= roof_base_level
+				var has_east: bool = int(roof_level_by_gu.get(roof_gu + Vector2i(1, 0), -1)) >= roof_base_level
+				var has_north: bool = int(roof_level_by_gu.get(roof_gu + Vector2i(0, -1), -1)) >= roof_base_level
+				var has_south: bool = int(roof_level_by_gu.get(roof_gu + Vector2i(0, 1), -1)) >= roof_base_level
 				var expected_width: int = 8 + (0 if has_west else 1) + (0 if has_east else 1)
 				var expected_height: int = 8 + (0 if has_north else 1) + (0 if has_south else 1)
 				var expected_voxel_count: int = expected_width * expected_height
@@ -192,8 +198,12 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 				## Slabs — the actual bug 15/49 blocks had before the fix.
 				for neighbour_offset: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 					var neighbour_gu := roof_gu + neighbour_offset
-					if not roofed_gu_cells.has(neighbour_gu):
+					if not roof_level_by_gu.has(neighbour_gu):
 						continue
+					## Only SAME-level neighbours can collide (the slab id below
+					## is keyed by this block's own roof_base_level; a
+					## different-height neighbour has no Slab at it — and its
+					## eave, if any, lives at ITS level, not ours).
 					var neighbour_slab_id := "SLAB_%d_%d_%s_%d" % [neighbour_gu.x, neighbour_gu.y, Slab.role_name(Slab.Role.CEILING), roof_base_level]
 					var neighbour_slab: Slab = room._slab_registry.get_slab(neighbour_slab_id)
 					if neighbour_slab == null:

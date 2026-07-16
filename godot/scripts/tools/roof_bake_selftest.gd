@@ -1,21 +1,24 @@
-## ROOF-BAKE-01 — roof/ceiling baked-surface selftest.
+## ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest.
 ## Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd
 ##
-## Proves the bake system extends to HORIZONTAL surfaces (roof slabs) through
-## the existing mechanism: the compositor's top-face plane (_get_plane_top) is
-## an isometric projection of a flat 2-D grid — T(u−v, (u+v)/2) — that walls
-## consume as (column_in_run, level) and roofs consume as (voxel_x, voxel_y).
-## Four suites:
-##   1. A roofs-only map_spec bakes lookup entries for every (folded) roof cell
+## Proves the ROOF-BAKE-02 contract end-to-end:
+##   1. A roofs-only map_spec composes the dedicated roof page family with a
+##      "ROOF|mat|fac|col|row" lookup entry for every (folded) LOCAL cell
 ##   2. resolve_flat() returns exactly the independently re-derived atom
-##   3. PIXEL continuity: placed atom top-diamonds equal a direct read of the
-##      continuous plane_top image at the projected offset — seamlessness is
-##      therefore by construction, verified on real pixels, not reasoning
-##   4. Real PLAYGROUND map, bake ENABLED: every roof voxel cell carries the
-##      baked source + atlas coords its position independently predicts
+##   3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct
+##      read of the roof plane (built from the UNSCALED facade — no wall
+##      ×20/16 pre-scale) at the projected offset
+##   4. Real PLAYGROUND, bake ENABLED: every roof voxel carries the baked
+##      source + coords its STRUCTURE-LOCAL offset predicts, with component
+##      anchors re-derived by this test's own flood fill; storey-step borders
+##      follow the level-aware rule (suppress toward same-or-higher, eave
+##      over lower)
+##   5. ROTATION (02a): building the E view puts a roof Slab of the right
+##      material at every block's ROTATED position
 ##
-## Every expectation is re-derived locally (own mirror-fold implementation,
-## own key formatting) — never read back from the code under test.
+## Every expectation is re-derived locally (own mirror fold, own key format,
+## own component flood fill, own rotation math) — never read back from the
+## code under test.
 
 extends SceneTree
 
@@ -27,6 +30,7 @@ const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 const ATOM_W: int = 32
 const ATOM_H: int = 36
@@ -63,7 +67,7 @@ var failed: int = 0
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("ROOF-BAKE-01 — Roof baked-surface SELFTEST")
+	print("ROOF-BAKE-01/02 — Roof baked-surface SELFTEST")
 	print("=".repeat(70) + "\n")
 
 	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -76,11 +80,12 @@ func _init() -> void:
 	if synthetic != null:
 		test_1_roof_cells_get_lookup_entries(synthetic)
 		test_2_resolve_flat_matches_rederived_atoms(synthetic, bake_config)
-		test_3_pixel_continuity_against_plane_top(synthetic)
+		test_3_pixel_continuity_and_isotropy(synthetic)
 	Engine.remove_meta("BAKE_TEST_REGISTRY")
 
 	bake_config.enabled = true
-	test_4_real_playground_roofs_are_baked()
+	test_4_real_playground_local_keys_and_step_borders()
+	test_5_rotated_view_roofs_follow_structures()
 
 	bake_config.enabled = saved_enabled
 	bake_config.blend_mode = saved_blend
@@ -119,13 +124,45 @@ func _fold(index: int, period: int) -> int:
 	return k
 
 
-func _roof_key(material_id: String, x: int, y: int) -> String:
-	return "%s|facade_%s|%d|%d|0" % [material_id, material_id, _fold(x, 64), _fold(y, 32)]
+func _roof_key(material_id: String, local_x: int, local_y: int) -> String:
+	return "ROOF|%s|facade_%s|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 32)]
+
+
+## Independent component anchors: own flood fill over the occupied-GU set of
+## solid_block_instances (4-adjacency), anchor = bounding-box NW corner × 8.
+func _derive_anchors(solid_block_instances: Array) -> Dictionary:
+	var occupied: Dictionary = {}
+	for b in solid_block_instances:
+		var gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
+		var size: Vector2i = b.get("size", Vector2i.ONE)
+		for ox in range(size.x):
+			for oy in range(size.y):
+				occupied[gu + Vector2i(ox, oy)] = true
+	var anchors: Dictionary = {}
+	for start: Vector2i in occupied:
+		if anchors.has(start):
+			continue
+		var stack: Array[Vector2i] = [start]
+		var seen: Dictionary = {start: true}
+		var component: Array[Vector2i] = []
+		var min_corner: Vector2i = start
+		while not stack.is_empty():
+			var gu: Vector2i = stack.pop_back()
+			component.append(gu)
+			min_corner = Vector2i(mini(min_corner.x, gu.x), mini(min_corner.y, gu.y))
+			for d: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+				var n := gu + d
+				if occupied.has(n) and not seen.has(n):
+					seen[n] = true
+					stack.append(n)
+		for gu in component:
+			anchors[gu] = min_corner * 8
+	return anchors
 
 
 ## Shared fixture: bake a roofs-only map_spec (no walls at all) covering a
-## 2×2-GU roof with a 1-voxel border — cells (-1..16) × (-1..16), negative
-## coords included, exactly the shape generate_with_border() produces.
+## 2×2-GU roof with a 1-voxel border — LOCAL cells (-1..16), negative coords
+## included, exactly the shape generate_with_border() + anchoring produces.
 func _bake_roofs_only_spec():
 	var cells: Array = []
 	for y in range(-1, 17):
@@ -143,26 +180,26 @@ func _bake_roofs_only_spec():
 	var resolver = TextureResolverClass.new()
 	var atlas = compositor.bake(map_spec, resolver)
 	if atlas == null or atlas.lookup.is_empty():
-		_fail("roofs-only bake produced no lookup entries — combo/usage extraction ignored the roofs section")
+		_fail("roofs-only bake produced no lookup entries — roof page family not composed")
 		return null
 	return {"atlas": atlas, "compositor": compositor, "resolver": resolver, "cells": cells}
 
 
 func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:
-	print("[TEST 1] Roofs-only bake registers a lookup entry for every folded roof cell")
+	print("[TEST 1] Roofs-only bake registers a ROOF| lookup entry for every folded local cell")
 	var atlas = fx["atlas"]
 	var missing := 0
 	for cell in fx["cells"]:
 		if not atlas.lookup.has(_roof_key("concrete", cell.x, cell.y)):
 			missing += 1
 	if missing == 0:
-		_pass("All %d roof cells (incl. negative border coords) have baked lookup entries under locally re-derived keys" % fx["cells"].size())
+		_pass("All %d local roof cells (incl. negative border coords) have ROOF| lookup entries under locally re-derived keys" % fx["cells"].size())
 	else:
-		_fail("%d/%d roof cells missing from baked lookup" % [missing, fx["cells"].size()])
+		_fail("%d/%d local roof cells missing from baked lookup" % [missing, fx["cells"].size()])
 
 
 func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:
-	print("[TEST 2] resolve_flat() returns the independently re-derived atom per position")
+	print("[TEST 2] resolve_flat() returns the independently re-derived atom per local offset")
 	var atlas = fx["atlas"]
 	var lookup = BakedTileLookupClass.new()
 	lookup.set_baked_atlas(atlas)
@@ -177,7 +214,6 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 		var expected = atlas.lookup.get(_roof_key("concrete", pos.x, pos.y))
 		var result = lookup.resolve_flat("concrete", pos)
 		if expected == null:
-			# (130, 70) folds to (2, 6) — present only if some raw cell folded there
 			if result != null and _fold(pos.x, 64) <= 16 and _fold(pos.y, 32) <= 16:
 				mismatches += 1  # entry should have existed via fold
 			continue
@@ -186,11 +222,10 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 				or result.source_id_int != 1000 + int(expected.get("page")):
 			mismatches += 1
 	if mismatches == 0:
-		_pass("resolve_flat matched local fold+key derivation on %d sample positions (incl. negative and far out-of-period)" % samples.size())
+		_pass("resolve_flat matched local fold+key derivation on %d sample offsets (incl. negative and far out-of-period)" % samples.size())
 	else:
 		_fail("%d resolve_flat results diverged from local derivation" % mismatches)
 
-	# Gates: no facade mapping → null; disabled → null
 	var no_facade = lookup.resolve_flat("earth_3", Vector2i(2, 2))
 	bake_config.enabled = false
 	var when_disabled = lookup.resolve_flat("concrete", Vector2i(2, 2))
@@ -201,8 +236,8 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 		_fail("resolve_flat gate failure: unmapped=%s, disabled=%s" % [no_facade, when_disabled])
 
 
-func test_3_pixel_continuity_against_plane_top(fx: Dictionary) -> void:
-	print("[TEST 3] Placed atom top-diamonds equal a direct plane_top read at the projected offset")
+func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:
+	print("[TEST 3] Atom top-diamonds equal a direct ISOTROPIC roof-plane read at the projected offset")
 	var atlas = fx["atlas"]
 	var compositor = fx["compositor"]
 	var resolved = fx["resolver"].resolve("facade_concrete")
@@ -210,9 +245,19 @@ func test_3_pixel_continuity_against_plane_top(fx: Dictionary) -> void:
 		_fail("facade_concrete unresolvable — cannot pixel-check")
 		return
 	var facade: Image = resolved.image
-	var plane_top: Image = compositor._get_plane_top("facade_concrete", facade, 0)
-	var plane_source: Image = compositor._get_plane_source(facade, 0)
-	var x_off: int = plane_source.get_height() - 1
+
+	## Isotropy: the roof source must be the UNSCALED facade + margins
+	## (32 + 512 + 32 = 576 tall), not the wall source's ×20/16 pre-scale
+	## (32 + 640 + 32 = 704 tall).
+	var roof_source: Image = compositor._get_roof_plane_source(facade)
+	var wall_source: Image = compositor._get_plane_source(facade, 0)
+	if roof_source.get_height() == 576 and wall_source.get_height() == 704:
+		_pass("Roof plane source is the unscaled facade (576 px incl. margins) — isotropic, unlike the wall source (704 px)")
+	else:
+		_fail("Source heights unexpected: roof=%d (want 576), wall=%d (want 704)" % [roof_source.get_height(), wall_source.get_height()])
+
+	var roof_top: Image = compositor._get_roof_plane_top("facade_concrete", facade)
+	var x_off: int = roof_source.get_height() - 1
 	var canonical: Image = compositor._voxel_atoms.get("concrete")
 	if canonical == null:
 		_fail("canonical concrete voxel atom unavailable")
@@ -240,30 +285,29 @@ func test_3_pixel_continuity_against_plane_top(fx: Dictionary) -> void:
 					if canonical.get_pixel(px, py).a < 1.0:
 						continue  # AA rim pixels carry fixed-up alpha, skip
 					var page_px := page.get_pixel(tile_px.x + px, tile_px.y + py)
-					var plane_px := plane_top.get_pixel(sx0 - 16 + px, sy0 + py)
+					var plane_px := roof_top.get_pixel(sx0 - 16 + px, sy0 + py)
 					compared += 1
 					luminances[snappedf(plane_px.r, 0.004)] = true
 					if page_px.r != plane_px.r or page_px.g != plane_px.g or page_px.b != plane_px.b:
 						mismatched += 1
 
 	if compared > 500 and mismatched == 0 and luminances.size() >= 2:
-		_pass("3×3 roof cells: %d opaque top-diamond pixels ALL equal the continuous plane_top read (%d distinct luminances — not a blank-vs-blank match)" % [compared, luminances.size()])
+		_pass("3×3 local cells: %d opaque top-diamond pixels ALL equal the continuous roof-plane read (%d distinct luminances — not a blank-vs-blank match)" % [compared, luminances.size()])
 	else:
 		_fail("pixel continuity: compared=%d, mismatched=%d, distinct_luminances=%d" % [compared, mismatched, luminances.size()])
 
 
-func test_4_real_playground_roofs_are_baked() -> void:
-	print("[TEST 4] Real PLAYGROUND map, bake ENABLED: every roof voxel carries its predicted baked tile")
+## Boot the real PLAYGROUND through the exact room.gd::load_map() path,
+## optionally rotated. Returns {room, renderer, layout} or empty on failure.
+func _build_playground(direction: String) -> Dictionary:
 	var file_source := FileMapSourceClass.new()
 	var spec: Dictionary = file_source.get_runtime_spec("PLAYGROUND")
 	if spec.is_empty():
 		_fail("FileMapSource.get_runtime_spec('PLAYGROUND') returned empty")
-		return
+		return {}
 	var layout: Dictionary = MapCompilerClass.compile(spec)
-	var solid_block_instances: Array = layout.get("solid_block_instances", [])
-	if solid_block_instances.is_empty():
-		_fail("PLAYGROUND has no solid_block_instances — nothing to verify")
-		return
+	if direction != "N":
+		layout = PerspectiveMapperClass.layout_with_perspective(layout, direction)
 
 	var room := MinimalRoom.new()
 	root.add_child(room)
@@ -282,6 +326,18 @@ func test_4_real_playground_roofs_are_baked() -> void:
 	builder.setup(floor_layer, structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
+	return {"room": room, "renderer": voxel_renderer, "layout": layout}
+
+
+func test_4_real_playground_local_keys_and_step_borders() -> void:
+	print("[TEST 4] Real PLAYGROUND (N), bake ENABLED: local-keyed baked tiles + level-aware step borders")
+	var built := _build_playground("N")
+	if built.is_empty():
+		return
+	var room: MinimalRoom = built["room"]
+	var voxel_renderer = built["renderer"]
+	var layout: Dictionary = built["layout"]
+	var solid_block_instances: Array = layout.get("solid_block_instances", [])
 
 	if voxel_renderer._baked_lookup == null or voxel_renderer._baked_lookup._baked_atlas == null:
 		_fail("build with bake enabled produced no baked atlas on the renderer")
@@ -289,12 +345,26 @@ func test_4_real_playground_roofs_are_baked() -> void:
 		return
 	var atlas = voxel_renderer._baked_lookup._baked_atlas
 	var source_ids: Dictionary = voxel_renderer._baked_lookup._source_ids
+	var anchors: Dictionary = _derive_anchors(solid_block_instances)
+
+	## Level map for the border expectations (own derivation)
+	var level_by_gu: Dictionary = {}
+	for b in solid_block_instances:
+		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
+		var b_size: Vector2i = b.get("size", Vector2i.ONE)
+		var b_level: int = int(b.get("storeys", 1)) * GeometryCoordsClass.LEVELS_PER_STOREY
+		for ox in range(b_size.x):
+			for oy in range(b_size.y):
+				level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
 
 	var checked := 0
 	var wrong_source := 0
 	var wrong_coords := 0
 	var not_baked_source := 0
 	var missing_entries := 0
+	var border_mismatches := 0
+	var steps_checked := 0
+
 	for block_instance in solid_block_instances:
 		var gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 		var size: Vector2i = block_instance.get("size", Vector2i.ONE)
@@ -304,33 +374,104 @@ func test_4_real_playground_roofs_are_baked() -> void:
 		for rx in range(size.x):
 			for ry in range(size.y):
 				var gu := gu_base + Vector2i(rx, ry)
+				var anchor: Vector2i = anchors.get(gu, Vector2i.ZERO)
+
+				## Level-aware border expectation (own re-derivation of 02b):
+				## suppressed toward same-or-higher, grown toward lower/none.
+				var exp_w: int = 0 if int(level_by_gu.get(gu + Vector2i(-1, 0), -1)) >= base_level else 1
+				var exp_e: int = 0 if int(level_by_gu.get(gu + Vector2i(1, 0), -1)) >= base_level else 1
+				var exp_n: int = 0 if int(level_by_gu.get(gu + Vector2i(0, -1), -1)) >= base_level else 1
+				var exp_s: int = 0 if int(level_by_gu.get(gu + Vector2i(0, 1), -1)) >= base_level else 1
+				var expected_voxels: int = (8 + exp_w + exp_e) * (8 + exp_n + exp_s)
+				for d: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var n_level: int = int(level_by_gu.get(gu + d, -1))
+					if n_level > 0 and n_level != base_level:
+						steps_checked += 1
+
 				for level in range(base_level, base_level + ROOF_LEVEL_COUNT):
 					var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x, gu.y, Slab.role_name(Slab.Role.CEILING), level]
 					var slab: Slab = room._slab_registry.get_slab(slab_id)
 					if slab == null:
-						continue  # geometry coverage is roof_integration_selftest's job
+						continue
+					if slab.voxels.size() != expected_voxels:
+						border_mismatches += 1
 					var layer: TileMapLayer = voxel_renderer.get_layer(level)
 					for voxel in slab.voxels:
 						checked += 1
-						var entry = atlas.lookup.get(_roof_key(material, voxel.grid_pos.x, voxel.grid_pos.y))
+						var local: Vector2i = voxel.grid_pos - anchor
+						var entry = atlas.lookup.get(_roof_key(material, local.x, local.y))
 						if entry == null:
 							missing_entries += 1
 							continue
 						var expected_source: int = source_ids.get(int(entry.get("page")), -1)
-						var placed_source: int = layer.get_cell_source_id(voxel.grid_pos)
-						var placed_coords: Vector2i = layer.get_cell_atlas_coords(voxel.grid_pos)
-						if placed_source != expected_source:
+						if layer.get_cell_source_id(voxel.grid_pos) != expected_source:
 							wrong_source += 1
-						if placed_coords != entry.get("atlas_coords"):
+						if layer.get_cell_atlas_coords(voxel.grid_pos) != entry.get("atlas_coords"):
 							wrong_coords += 1
-						if not voxel_renderer._baked_source_ids.has(placed_source):
+						if not voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(voxel.grid_pos)):
 							not_baked_source += 1
 
 	if checked > 0 and missing_entries == 0 and wrong_source == 0 and wrong_coords == 0 and not_baked_source == 0:
-		_pass("All %d real roof voxels (both levels, %d blocks) placed with exactly the baked source + atlas coords their global (x, y) independently predicts" % [checked, solid_block_instances.size()])
+		_pass("All %d real roof voxels placed with exactly the baked source + coords their STRUCTURE-LOCAL offset (own flood-fill anchors) predicts" % checked)
 	else:
-		_fail("%d roof voxels checked: %d missing lookup entries, %d wrong source, %d wrong coords, %d not from a baked atlas source" % [
+		_fail("%d roof voxels: %d missing entries, %d wrong source, %d wrong coords, %d not baked" % [
 			checked, missing_entries, wrong_source, wrong_coords, not_baked_source,
 		])
+
+	if border_mismatches == 0 and steps_checked > 0:
+		_pass("Every roof Slab's voxel count matches the LEVEL-AWARE border rule (%d storey-step sides on the real map exercise it)" % steps_checked)
+	elif border_mismatches == 0:
+		_pass("Every roof Slab's voxel count matches the level-aware border rule (note: map has no storey-step adjacency to exercise the eave case)")
+	else:
+		_fail("%d roof Slabs have a voxel count contradicting the level-aware border expectation" % border_mismatches)
+
+	room.queue_free()
+
+
+func test_5_rotated_view_roofs_follow_structures() -> void:
+	print("[TEST 5] E view (02a): every block's roof Slab exists at its ROTATED position with its material")
+	var file_source := FileMapSourceClass.new()
+	var spec: Dictionary = file_source.get_runtime_spec("PLAYGROUND")
+	var base_layout: Dictionary = MapCompilerClass.compile(spec)
+	var base_blocks: Array = base_layout.get("solid_block_instances", [])
+	var base_size: Vector2i = base_layout.get("size", Vector2i.ZERO)
+
+	var built := _build_playground("E")
+	if built.is_empty():
+		return
+	var room: MinimalRoom = built["room"]
+	var voxel_renderer = built["renderer"]
+
+	## Own rotation math (E = 90° CW): base (x, y) → (h−1−y, x); a rectangle's
+	## rotated NW corner = (h − y0 − sy, x0), size swaps.
+	var missing := 0
+	var wrong_material := 0
+	var baked_spot_checks := 0
+	for b in base_blocks:
+		var gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
+		var size: Vector2i = b.get("size", Vector2i.ONE)
+		var storeys: int = int(b.get("storeys", 1))
+		var material: String = String(b.get("material", "concrete"))
+		var rot_gu := Vector2i(base_size.y - gu.y - size.y, gu.x)
+		var rot_size := Vector2i(size.y, size.x)
+		var base_level: int = storeys * GeometryCoordsClass.LEVELS_PER_STOREY
+		for rx in range(rot_size.x):
+			for ry in range(rot_size.y):
+				var slab_id := "SLAB_%d_%d_%s_%d" % [rot_gu.x + rx, rot_gu.y + ry, Slab.role_name(Slab.Role.CEILING), base_level]
+				var slab: Slab = room._slab_registry.get_slab(slab_id)
+				if slab == null:
+					missing += 1
+					continue
+				if slab.material != material:
+					wrong_material += 1
+				if baked_spot_checks < 8 and not slab.voxels.is_empty():
+					var layer: TileMapLayer = voxel_renderer.get_layer(base_level)
+					if layer != null and voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(slab.voxels[0].grid_pos)):
+						baked_spot_checks += 1
+
+	if missing == 0 and wrong_material == 0 and base_blocks.size() > 0:
+		_pass("All %d blocks have a roof Slab at their independently-rotated E-view position with the correct material (%d baked-source spot checks hit)" % [base_blocks.size(), baked_spot_checks])
+	else:
+		_fail("E view: %d rotated block-GUs missing a roof Slab, %d with wrong material" % [missing, wrong_material])
 
 	room.queue_free()

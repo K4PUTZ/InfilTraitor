@@ -17,6 +17,15 @@ var level: int                   ## the horizontal plane's level (D13: floor's d
 var material: String             ## material type
 var voxels: Array[Voxel] = []    ## all voxels in this slab (64 per level, VOXELS_PER_UNIT_AXIS²)
 var dirty_count: int = 0         ## sum of child Voxel dirty flags
+## ROOF-BAKE-02c: fine-grid origin the baked roof texture is anchored to —
+## the NW-corner voxel of this slab's connected roofed-GU component, set by
+## room_builder at generation. Placement keys baked roof atoms by
+## (grid_pos − texture_anchor), so the pattern is structure-local: no
+## world-line mirror seams through a roof, identical pattern for every
+## structure of the same material, and stable under view rotation. Kept on
+## the Slab so a later re-render (dirty processing) needs no builder context.
+## Unused (zero) for FLOOR slabs, which never take the baked path.
+var texture_anchor: Vector2i = Vector2i.ZERO
 
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_role: int, p_level: int, p_material: String = "concrete"):

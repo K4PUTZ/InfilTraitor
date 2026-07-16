@@ -175,13 +175,50 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## single truth for that footprint — deriving cells a second way here
 		## would be exactly the split-brain the border fix above just killed.
 		const ROOF_LEVEL_COUNT := 2
-		var roofed_gu_cells: Dictionary = {}
+
+		## ROOF-BAKE-02b: adjacency is LEVEL-AWARE. The old boolean set made
+		## neighbours of DIFFERENT heights mutually suppress borders neither
+		## could visually provide at the other's level — a 1-voxel gap at every
+		## storey step. Rule: suppress a side when the neighbour's roof base is
+		## at the SAME level (continuous flat roof) or HIGHER (the taller
+		## block's wall far-slice already fills that seam column at our level —
+		## growing into it would double-write Slice-owned cells). Grow toward a
+		## LOWER neighbour (an eave over its roof; levels never collide, the
+		## height difference is ≥ LEVELS_PER_STOREY > ROOF_LEVEL_COUNT).
+		var roof_level_by_gu: Dictionary = {}
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
 			var occ_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var occ_size: Vector2i = block_instance.get("size", Vector2i.ONE)
+			var occ_level: int = maxi(1, int(block_instance.get("storeys", 1))) * GeometryCoords.LEVELS_PER_STOREY
 			for ox in range(occ_size.x):
 				for oy in range(occ_size.y):
-					roofed_gu_cells[occ_gu_base + Vector2i(ox, oy)] = true
+					roof_level_by_gu[occ_gu_base + Vector2i(ox, oy)] = occ_level
+
+		## ROOF-BAKE-02c: one texture anchor per CONNECTED component of roofed
+		## GUs (4-adjacency, level- and material-blind: contiguous roofs form
+		## one visual surface even across declarations — the D1-ROOF-b lesson).
+		## Anchor = voxel origin of the component's bounding-box NW corner, so
+		## the baked pattern is structure-local (see Slab.texture_anchor).
+		var roof_anchor_by_gu: Dictionary = {}
+		for start_gu: Vector2i in roof_level_by_gu:
+			if roof_anchor_by_gu.has(start_gu):
+				continue
+			var component: Array[Vector2i] = []
+			var stack: Array[Vector2i] = [start_gu]
+			var seen: Dictionary = {start_gu: true}
+			var min_corner: Vector2i = start_gu
+			while not stack.is_empty():
+				var gu: Vector2i = stack.pop_back()
+				component.append(gu)
+				min_corner = Vector2i(mini(min_corner.x, gu.x), mini(min_corner.y, gu.y))
+				for delta: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var neighbour := gu + delta
+					if roof_level_by_gu.has(neighbour) and not seen.has(neighbour):
+						seen[neighbour] = true
+						stack.append(neighbour)
+			var anchor: Vector2i = GeometryCoords.gu_to_voxel_origin(min_corner)
+			for gu in component:
+				roof_anchor_by_gu[gu] = anchor
 
 		var roof_slabs: Array[Slab] = []
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
@@ -194,19 +231,22 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			for rx in range(block_size.x):
 				for ry in range(block_size.y):
 					var roof_gu := block_gu_base + Vector2i(rx, ry)
-					var border_west: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(-1, 0)) else 1
-					var border_east: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(1, 0)) else 1
-					var border_north: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, -1)) else 1
-					var border_south: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, 1)) else 1
+					var border_west: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(-1, 0), -1)) >= roof_base_level else 1
+					var border_east: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(1, 0), -1)) >= roof_base_level else 1
+					var border_north: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(0, -1), -1)) >= roof_base_level else 1
+					var border_south: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(0, 1), -1)) >= roof_base_level else 1
 					for roof_level in range(roof_base_level, roof_base_level + ROOF_LEVEL_COUNT):
-						roof_slabs.append(SlabGenerator.generate_with_border(
+						var roof_slab := SlabGenerator.generate_with_border(
 							roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry,
 							border_west, border_east, border_north, border_south,
-						))
+						)
+						roof_slab.texture_anchor = roof_anchor_by_gu[roof_gu]
+						roof_slabs.append(roof_slab)
 
-		## ROOF-BAKE-01: per-combo roof usage for the compositor, read off the
-		## real Slab voxels. Raw fine-grid positions; the compositor owns the
-		## sheet fold (mirror period 64×32), so no folding knowledge leaks here.
+		## ROOF-BAKE-02c: per-combo roof usage for the compositor, read off the
+		## real Slab voxels as STRUCTURE-LOCAL offsets (grid_pos − anchor). The
+		## compositor owns the sheet fold (mirror period 64×32); placement uses
+		## the same local offsets, so frag keys and lookup keys agree.
 		var roof_specs: Array = []
 		var roof_cells_by_combo: Dictionary = {}
 		for roof_slab in roof_slabs:
@@ -214,7 +254,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			if not roof_cells_by_combo.has(combo_key):
 				roof_cells_by_combo[combo_key] = {}
 			for voxel in roof_slab.voxels:
-				roof_cells_by_combo[combo_key][voxel.grid_pos] = true
+				roof_cells_by_combo[combo_key][voxel.grid_pos - roof_slab.texture_anchor] = true
 		for combo_key in roof_cells_by_combo:
 			var parts: PackedStringArray = String(combo_key).split("|")
 			roof_specs.append({

@@ -454,10 +454,10 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 
 ## Set a voxel cell on the appropriate layer
 ## SEAM: Tries baked lookup first (if enabled and edge provided), falls back to material-only
-## ROOF-BAKE-01: flat_baked routes edge-less HORIZONTAL voxels (roof slabs)
-## through BakedTileLookup.resolve_flat() — same sheets, keyed by global
-## fine-grid (x, y) instead of (column_in_run, level). Same fallback contract:
-## any miss lands on the generic material atlas below.
+## ROOF-BAKE-01/02c: flat_baked routes edge-less HORIZONTAL voxels (roof
+## slabs) through BakedTileLookup.resolve_flat() — dedicated roof pages,
+## keyed by the STRUCTURE-LOCAL offset passed in voxel_xy. Same fallback
+## contract: any miss lands on the generic material atlas below.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
                      slice_face: int = 0, flat_baked: bool = false) -> void:
@@ -493,9 +493,11 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			alternative_id = result.alternative_id
 			_diag_baked_hits += 1
 
-	# ROOF-BAKE-01: horizontal (edge-less) baked surfaces — roof slabs
+	# ROOF-BAKE-01/02c: horizontal (edge-less) baked surfaces — roof slabs.
+	# voxel_xy carries the STRUCTURE-LOCAL offset here (grid_pos − anchor),
+	# the same container-local meaning it has for wall slices.
 	if source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
-		var flat_result = _baked_lookup.resolve_flat(material_name, grid_pos)
+		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy)
 		if flat_result and flat_result.source_id_int >= 0:
 			source_id = flat_result.source_id_int
 			atlas_coords = flat_result.atlas_coords
@@ -818,14 +820,16 @@ func render_slab_solid(slab: Slab) -> void:
 	else:
 		_ensure_voxel_layers(slab.level + 1)
 
-	# ROOF-BAKE-01: ceiling slabs try the flat baked lookup (top-plane sheets
-	# keyed by global fine-grid position); floor/interior solid slabs keep the
-	# generic path. Misses fall back to the material atlas inside
-	# _set_voxel_cell, so this is safe with bake disabled or combo unresolved.
+	# ROOF-BAKE-01/02c: ceiling slabs try the flat baked lookup (dedicated
+	# roof pages keyed by STRUCTURE-LOCAL offset = grid_pos − texture_anchor,
+	# carried on the Slab so re-renders need no builder context); floor/
+	# interior solid slabs keep the generic path. Misses fall back to the
+	# material atlas inside _set_voxel_cell, so this is safe with bake
+	# disabled or combo unresolved.
 	var flat_baked: bool = slab.role == Slab.Role.CEILING
 	for voxel in slab.voxels:
 		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
-				null, Vector2i.ZERO, 0, flat_baked)
+				null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 
 
 ## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,

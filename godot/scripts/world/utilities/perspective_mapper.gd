@@ -183,6 +183,40 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 		light_sources.append(out)
 	mapped["light_sources"] = light_sources
 
+	## ROOF-BAKE-02a: solid_block_instances and voxel_prop_instances used to
+	## pass through duplicate(true) UNROTATED while the walls they were
+	## expanded into (structure_tiles / wall_levels above) rotated — so
+	## anything consuming instance positions per-view (the roof slabs, first
+	## visible casualty) landed on the WRONG structure in E/S/W views.
+	##
+	## A block footprint is a rectangle (gu_cell = NW corner + size), so its
+	## rotated form is the axis-aligned box over the two rotated opposite
+	## corners: origin = component-wise min, size = rotated_size(). Quarter
+	## turns map rectangles to rectangles — no cell enumeration needed.
+	var rotated_blocks: Array[Dictionary] = []
+	for block in layout.get("solid_block_instances", []):
+		var out := (block as Dictionary).duplicate(true)
+		var base_gu: Vector2i = out.get("gu_cell", Vector2i.ZERO)
+		var block_size: Vector2i = out.get("size", Vector2i.ONE)
+		var c0 := cell_from_base(base_gu, direction, base_size)
+		var c1 := cell_from_base(base_gu + block_size - Vector2i.ONE, direction, base_size)
+		out["gu_cell"] = Vector2i(mini(c0.x, c1.x), mini(c0.y, c1.y))
+		out["size"] = rotated_size(block_size, direction)
+		rotated_blocks.append(out)
+	mapped["solid_block_instances"] = rotated_blocks
+
+	## Props rotate as points: every shipped PropDef has footprint_gus ==
+	## [(0, 0)] (1×1), so gu_cell alone places them correctly. A future
+	## multi-GU prop needs footprint-aware rotation here (the offsets live in
+	## PropDef, which this static mapper deliberately has no registry access
+	## to) — extend THIS function then, not the consumer.
+	var rotated_props: Array = []
+	for prop in layout.get("voxel_prop_instances", []):
+		var out := (prop as Dictionary).duplicate(true)
+		out["gu_cell"] = cell_from_base(out.get("gu_cell", Vector2i.ZERO), direction, base_size)
+		rotated_props.append(out)
+	mapped["voxel_prop_instances"] = rotated_props
+
 	var buffer: int = layout.get("buffer", 0)
 	mapped["buffer"] = buffer
 	return mapped

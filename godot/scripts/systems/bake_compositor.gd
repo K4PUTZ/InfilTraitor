@@ -91,7 +91,8 @@ var _diamond_overlays: Dictionary = {}     # material_id → Image (top-face pai
 ## Session caches (survive map reloads via room_builder's persistent instance)
 var _plane_cache: Dictionary = {}          # facade_id → {0: Image, 1: Image}
 var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image}
-var _page_cache: Dictionary = {}           # "mat|fac|dir" → {page, coords, frag}
+var _roof_plane_top_cache: Dictionary = {} # facade_id → Image (ROOF-BAKE-02c)
+var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → {page, coords, frag}
 
 const BAKE_CODE_VERSION: int = 3
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
@@ -109,6 +110,7 @@ func set_material_registry(registry) -> void:
 func clear_cache() -> void:
 	_plane_cache.clear()
 	_plane_top_cache.clear()
+	_roof_plane_top_cache.clear()
 	_page_cache.clear()
 	print("[BAKE] Session cache cleared")
 
@@ -174,7 +176,10 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	var combos = _extract_unique_combos(map_spec, resolver)
 	print("[BAKE] Found %d unique (material, facade) combos" % combos.size())
 	if combos.size() == 0:
-		print("[BAKE] No combos to bake; returning empty atlas")
+		# ROOF-BAKE-02c: a wall-less map can still have roofs (blocks only) —
+		# compose their dedicated pages before returning.
+		_compose_roof_pages(atlas_result, map_spec.get("roofs", []), {}, resolver, _get_material_registry(), BakeConfigClass.blend_mode)
+		print("[BAKE] No wall combos; roof-only bake produced %d lookup entries" % atlas_result.lookup.size())
 		return atlas_result
 
 	# Build real placement usage per combo so sparse maps compose only the
@@ -258,6 +263,10 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	# plane instead of restarting a facade window (Director spec 2026-07-10).
 	# Map-dependent, so composed per bake() (not session-cached); small count.
 	_compose_junction_pages(atlas_result, map_spec.get("junction_specs", []), facades_by_id, registry, blend_mode)
+
+	# ROOF-BAKE-02c: dedicated roof page family (isotropic top projection,
+	# structure-local keys) — see _compose_roof_pages
+	_compose_roof_pages(atlas_result, map_spec.get("roofs", []), facades_by_id, resolver, registry, blend_mode)
 
 	print("[BAKE] Baked %d combos × 2 directions in %.1f ms" % [combos.size(), Time.get_ticks_msec() - start_time])
 	return atlas_result
@@ -503,6 +512,180 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 	_plane_top_cache[facade_id][dir] = plane_top
 	return plane_top
 
+## ROOF-BAKE-02c: roof plane source — the facade laid flat 1:1, NO ×20/16
+## vertical pre-scale. The wall source's pre-scale exists because wall levels
+## are 20 px tall against 16-texel authoring rows; on a horizontal surface
+## both axes are ground axes at 16 texels per voxel, so the wall source reads
+## 25% stretched along y. Unscaled, the 64×32 sheet windows cover the
+## 1024×512 facade EXACTLY — full period, isotropic. Same S_ext recipe as
+## _get_plane_source dir 0 otherwise (grayscale flatten, mirrored wrap strip,
+## mirrored vertical margins).
+func _get_roof_plane_source(facade: Image) -> Image:
+	var flat: Image = facade.duplicate()
+	flat.convert(Image.FORMAT_RGB8)
+	flat.convert(Image.FORMAT_RGBA8)
+	if flat.get_width() != FACADE_W or flat.get_height() != FACADE_H:
+		flat.resize(FACADE_W, FACADE_H, Image.INTERPOLATE_NEAREST)
+
+	var s_ext := Image.create(PLANE_W, V_MARGIN + FACADE_H + V_MARGIN, false, Image.FORMAT_RGBA8)
+	s_ext.blit_rect(flat, Rect2i(0, 0, FACADE_W, FACADE_H), Vector2i(0, V_MARGIN))
+	var flipped_x: Image = flat.duplicate()
+	flipped_x.flip_x()
+	s_ext.blit_rect(flipped_x, Rect2i(0, 0, PLANE_W - FACADE_W, FACADE_H), Vector2i(FACADE_W, V_MARGIN))
+	var flipped_y: Image = s_ext.duplicate()
+	flipped_y.flip_y()
+	var total_h := V_MARGIN + FACADE_H + V_MARGIN
+	s_ext.blit_rect(flipped_y, Rect2i(0, total_h - 2 * V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, 0))
+	s_ext.blit_rect(flipped_y, Rect2i(0, V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, total_h - V_MARGIN))
+	return s_ext
+
+
+## ROOF-BAKE-02c: roof top plane — the same two-pass isometric projection as
+## _get_plane_top (identical mapping contract, identical crop formula in the
+## consumer) built from the UNSCALED roof source. One image per facade (no
+## direction: a horizontal surface has none).
+func _get_roof_plane_top(facade_id: String, facade: Image) -> Image:
+	if _roof_plane_top_cache.has(facade_id):
+		return _roof_plane_top_cache[facade_id]
+
+	var source := _get_roof_plane_source(facade)
+	var x_off: int = source.get_height() - 1
+	var width: int = source.get_width() + x_off
+	var height: int = int(ceil(float(source.get_width() + source.get_height()) / 2.0)) + V_MARGIN + 1
+	var plane_top := Image.create(width, height, false, Image.FORMAT_RGBA8)
+
+	for v in range(source.get_height()):
+		for u in range(source.get_width()):
+			var dst_x: int = u - v + x_off
+			var dst_y: int = int((float(u) + float(v)) / 2.0) + V_MARGIN
+			plane_top.set_pixel(dst_x, dst_y, source.get_pixel(u, v))
+
+	_roof_plane_top_cache[facade_id] = plane_top
+	return plane_top
+
+
+## ROOF-BAKE-02c: compose the roof page family. One page per (material,
+## facade) combo; atoms keyed "ROOF|mat|fac|col|row" where (col, row) is the
+## mirrored fold of the STRUCTURE-LOCAL voxel offset (cells arrive local from
+## room_builder; the fold happens here, in the module that owns sheet
+## periods). Atom content: top diamond from the isotropic roof plane, side
+## faces from the dir-0 wall plane at the same fold (kept textured — border
+## voxels show them; the Director judges their final treatment separately).
+func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by_id: Dictionary, resolver, registry, blend_mode: int) -> void:
+	for roof in roof_specs:
+		if typeof(roof) != TYPE_DICTIONARY:
+			continue
+		var material_id: String = String(roof.get("material_id", ""))
+		var facade_id: String = String(roof.get("facade_id", ""))
+		if facade_id == "":
+			continue
+		var facade = facades_by_id.get(facade_id)
+		if facade == null and resolver != null:
+			var resolved = resolver.resolve(facade_id)
+			if resolved != null and resolved.tier != resolver.Tier.NONE:
+				facade = resolved.image
+				facades_by_id[facade_id] = facade
+		var material = registry.get_material(material_id) if registry else null
+		if facade == null or material == null:
+			push_error("[BAKE] Roof combo %s|%s unresolved — roof falls back to generic atlas" % [material_id, facade_id])
+			continue
+
+		var cache_key := "ROOF|%s|%s" % [material_id, facade_id]
+		var entry = _page_cache.get(cache_key)
+		if entry == null:
+			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []))
+			_page_cache[cache_key] = entry
+			print("[BAKE] Composed roof page %s (%d atoms)" % [cache_key, entry["frag"].size()])
+		else:
+			print("[BAKE] cache HIT for roof page %s" % cache_key)
+
+		var page_idx: int = atlas_result.atom_pages.size()
+		atlas_result.atom_pages.append(entry["page"])
+		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material))
+		for frag_key in entry["frag"]:
+			atlas_result.lookup["ROOF|%s|%s|%s" % [material_id, facade_id, frag_key]] = {
+				"page": page_idx,
+				"atlas_coords": entry["frag"][frag_key],
+			}
+
+
+## ROOF-BAKE-02c: compose one roof page. Mirrors _compose_sheet_page's atom
+## recipe (side crop + masked top crop + canonical silhouette + B3 AA fixup)
+## with the top sourced from the isotropic roof plane; page sized to the atom
+## count like junction pages (roof usage is sparse by nature).
+func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array) -> Dictionary:
+	var folded_seen: Dictionary = {}
+	var folded_cells: Array = []
+	for cell in cells:
+		var pos: Vector2i = cell
+		var folded := Vector2i(_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_ROWS))
+		if not folded_seen.has(folded):
+			folded_seen[folded] = true
+			folded_cells.append(folded)
+
+	var plane := _get_plane(facade_id, facade, 0)
+	var roof_top := _get_roof_plane_top(facade_id, facade)
+	var roof_source := _get_roof_plane_source(facade)
+	var x_off: int = roof_source.get_height() - 1
+	var canonical: Image = _voxel_atoms.get(material_id)
+	if canonical == null:
+		push_error("[BAKE] B6: no canonical voxel atom for '%s' — roof page %s|%s will render unmasked rectangles" % [
+			material_id, material_id, facade_id])
+	var overlay := _get_diamond_overlay(material_id, base_color)
+	var top_mask := overlay.get_region(Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+	var atom_full := Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_ATOM_H)
+
+	var tile_rows := int(ceil(float(folded_cells.size()) / float(PAGE_TILE_COLS)))
+	var page := Image.create(PAGE_W, maxi(tile_rows, 1) * VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+	var frag: Dictionary = {}
+	var coords_used: Array = []
+	var atom_idx := 0
+
+	for folded in folded_cells:
+		var col: int = folded.x
+		var row: int = folded.y
+
+		var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
+		# Side faces: dir-0 wall plane at the same fold (same recipe as
+		# _compose_sheet_page — textured sides for border voxels)
+		var side_y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
+		atom_content.blit_rect(plane, Rect2i(col * TEX_AUTHORING_N, side_y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
+		# Top diamond: isotropic roof plane at the projected local position
+		var u0: int = col * TEX_AUTHORING_N
+		var v0: int = row * TEX_AUTHORING_N
+		var sx0: int = u0 - v0 + x_off
+		var sy0: int = int((float(u0) + float(v0)) / 2.0) + V_MARGIN
+		var top_crop := roof_top.get_region(Rect2i(sx0 - 16, sy0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START))
+		if top_crop != null:
+			atom_content.blit_rect_mask(top_crop, top_mask, Rect2i(0, 0, VOXEL_ATOM_W, VOXEL_VISIBLE_Y_START), Vector2i.ZERO)
+
+		var tile_col := atom_idx % PAGE_TILE_COLS
+		var tile_row := int(float(atom_idx) / float(PAGE_TILE_COLS))
+		var tile_pos := Vector2i(tile_col * VOXEL_ATOM_W, tile_row * VOXEL_ATOM_H)
+		if canonical != null:
+			page.blit_rect_mask(atom_content, canonical, atom_full, tile_pos)
+		else:
+			page.blit_rect(atom_content, atom_full, tile_pos)
+
+		var atlas_coords := Vector2i(tile_col, tile_row)
+		frag["%d|%d" % [col, row]] = atlas_coords
+		coords_used.append(tile_pos)
+		atom_idx += 1
+
+	# B3 alpha fixup (exact canonical byte at every partial-alpha pixel)
+	if canonical != null:
+		var aa_list: Array = _alpha_aa_lists.get(material_id, [])
+		if not aa_list.is_empty():
+			var data: PackedByteArray = page.get_data()
+			var page_w := page.get_width()
+			for tp in coords_used:
+				for aa in aa_list:
+					data[((tp.y + aa[1]) * page_w + tp.x + aa[0]) * 4 + 3] = aa[2]
+			page.set_data(page.get_width(), page.get_height(), false, Image.FORMAT_RGBA8, data)
+
+	return {"page": page, "coords": coords_used, "frag": frag}
+
+
 ## Compose one page for (material, facade, dir).
 ## When usage_cells is provided, only the referenced (col, row) atoms are
 ## composed and cropped; otherwise the full 64×32 sweep is used.
@@ -655,25 +838,6 @@ func _extract_combo_usage(map_spec: Dictionary) -> Dictionary:
 				if not seen.has(cell_key):
 					seen[cell_key] = true
 
-	# ROOF-BAKE-01: roof combos consume the same sheets keyed by folded global
-	# fine-grid position (x → col period 64, y → row period 32 — the same
-	# mirrored fold resolve_flat() queries with). Cells arrive raw from
-	# room_builder (read off the real Slab voxels); the fold happens HERE, in
-	# the one module that owns sheet-period knowledge, so frag keys and lookup
-	# keys agree by construction.
-	for roof in map_spec.get("roofs", []):
-		if typeof(roof) != TYPE_DICTIONARY:
-			continue
-		var roof_combo_key := "%s|%s" % [String(roof.get("material_id", "")), String(roof.get("facade_id", ""))]
-		if not usage_by_combo.has(roof_combo_key):
-			usage_by_combo[roof_combo_key] = {}
-		var roof_seen: Dictionary = usage_by_combo[roof_combo_key]
-		for cell in roof.get("cells", []):
-			var pos: Vector2i = cell
-			var folded_key := "%d|%d" % [_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_ROWS)]
-			if not roof_seen.has(folded_key):
-				roof_seen[folded_key] = true
-
 	var result: Dictionary = {}
 	for combo_key in usage_by_combo:
 		var seen: Dictionary = usage_by_combo[combo_key]
@@ -713,14 +877,8 @@ func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 			var material_id = wall.get("material_id", "default")
 			var facade_id = wall.get("facade_id", "facade_" + material_id)
 			combos["%s|%s" % [material_id, facade_id]] = true
-	# ROOF-BAKE-01: roofs register their combos too — a block whose material
-	# no wall on the map uses still needs its sheet pair composed.
-	for roof in map_spec.get("roofs", []):
-		if typeof(roof) != TYPE_DICTIONARY:
-			continue
-		var roof_facade = String(roof.get("facade_id", ""))
-		if roof_facade != "":
-			combos["%s|%s" % [String(roof.get("material_id", "")), roof_facade]] = true
+	# (ROOF-BAKE-02c: roofs no longer contribute WALL-sheet combos — they get
+	# a dedicated page family via _compose_roof_pages(), isotropic projection.)
 	var result = []
 	for key in combos.keys():
 		var parts = key.split("|")

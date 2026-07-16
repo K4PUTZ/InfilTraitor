@@ -11,13 +11,19 @@ var dirty: bool = false          ## marked for TIC processing
 var damage_state: int = DamageState.INTACT
 var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08), null until baked
 
-var _parent_slice: Slice         ## back-reference for dirty propagation
+## Back-reference for dirty propagation. Untyped on purpose: D1
+## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
+## (parent = Slice, owned by an Edge) and floor/ceiling/interior voxels (parent =
+## Slab, D1 — no edge). GDScript has no shared interface type, so this holds
+## either; both implement increment_dirty()/decrement_dirty()/id, which is the
+## only contract Voxel actually needs from its container.
+var _parent_container
 
 
-func _init(p_grid_pos: Vector2i, p_level: int, parent_slice: Slice):
+func _init(p_grid_pos: Vector2i, p_level: int, parent_container):
 	grid_pos = p_grid_pos
 	level = p_level
-	_parent_slice = parent_slice
+	_parent_container = parent_container
 
 
 ## Set visibility; no-op if unchanged; propagates dirty upward
@@ -42,14 +48,14 @@ func set_damage(new_state: int) -> void:
 func clear_dirty() -> void:
 	if dirty:
 		dirty = false
-		_parent_slice.decrement_dirty()
+		_parent_container.decrement_dirty()
 
 
 ## Internal: mark dirty and propagate
 func _set_dirty() -> void:
 	if not dirty:
 		dirty = true
-		_parent_slice.increment_dirty()
+		_parent_container.increment_dirty()
 
 
 func _to_string() -> String:

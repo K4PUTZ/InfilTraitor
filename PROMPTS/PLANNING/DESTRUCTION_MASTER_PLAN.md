@@ -1,8 +1,10 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
-**Status:** 🔵 DRAFTED 2026-07-12, not started. **Runs AFTER
-`OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12).
+**Status:** 🟢 Part 0 (spike) and Part 1 (`Slab`) both DONE 2026-07-15. Part 2
+(solid texturing) not started. **Runs AFTER `OCCLUSION_MASTER_PLAN`**
+(Director's call, 2026-07-12) — occlusion paused at Alpha Foundation
+2026-07-15, this plan is next.
 **Baseline:** tag `verified/v0.8.2`.
 **Companions:** `OCCLUSION_MASTER_PLAN.md` (occlusion lives there now — it must
 never write `Voxel.visible`, see §3), `docs/technical/BAKE_SYSTEM_REFERENCE.md`
@@ -58,7 +60,7 @@ Named pains this serves:
 | **D9** | **Speculative pre-compute is DEFERRED.** Player thinking time is free compute and could pre-compose likely blast zones — but the turn budget probably already suffices, and building a predictor to save nothing is the classic trap. Decide by measurement. | ⏸️ Deferred |
 | **D10** | *Retired here — occlusion moved to `OCCLUSION_MASTER_PLAN` (O1–O2). The binding half remains: **occlusion may never write `Voxel.visible`.** See §3.* | ↗️ Relocated |
 | **D11** | **Generic material atlas: demoted, not deleted.** Kill it as a *silent fallback* (a baked-lookup MISS must **loud-fail** per B6 — a silent grey cell is exactly the class of bug that let `blit_rect`'s silent clipping ship twice). Keep it as `MATERIAL_ONLY`, an **explicit dev toggle** (F7) — the bisection tool that answers "is this a bake bug or a geometry bug?", the most valuable question there is when the bake breaks. **The look the Director likes (material colour showing through texture) is `MULTIPLY`, a blend mode — it does not depend on this fallback and survives its demotion.** | ✅ Ratified |
-| **D12** | **Bake is the product.** Shipped default flips to `BakeConfig.enabled = true`. Consequence, stated plainly: **BAKE-CACHE-01 becomes a release blocker.** Today a slow warm boot (730–770 ms vs a 150 ms target) is tolerable because we could always ship with bake off and boot fast-and-ugly. That escape hatch closes here. | ✅ Ratified |
+| **D12** | **Bake is the product.** Shipped default flips to `BakeConfig.enabled = true`. Original consequence as stated 2026-07-12: "BAKE-CACHE-01 becomes a release blocker... today's slow warm boot is tolerable because we could always ship with bake off; that escape hatch closes here." **CORRECTED 2026-07-15: BAKE-CACHE-01 was already fixed 2026-07-11, a day before this was written** — warm boot is ~32–35 ms, not 730–770 ms (see §4). The escape-hatch argument no longer applies because there is no open cache problem to escape from. D12 itself (bake as shipped default) stands on its own merits and remains ratified — it just no longer needs BAKE-CACHE-01 as its justification. | ✅ Ratified (rationale corrected) |
 | **D13** | **The floor is a 2-layer slab: top destructible, bottom fixed bedrock.** This single constraint dismantles most of the problem — max excavation depth is **1 voxel**, so there is no infinite digging, no falling through the world, and no multi-level crater geometry. The destructible floor volume collapses from 8 levels to **one** (64 voxels per GU). Crater cover is therefore **prone-only**, earned when >50% of a GU's top layer is destroyed (>32 of 64 voxels) — by explosives, or by dozens of shots. A constraint that buys gameplay clarity and engine cheapness at the same time. | ✅ Ratified |
 | **D14** | **Floor variety = N baked slab variants × per-cell symmetry. NOT a unique composite per GU.** The arithmetic settles it: a floor tile is 256×128 px, so a unique composite per GU on a 26×26 map costs 676 × 256×128×4 B = **88.6 MB** — dead on arrival for mobile. **16 pre-baked variants cost 2.1 MB.** Godot's TileMap carries per-cell transform flags (flip H / flip V / transpose) that live in the cell data and cost **not one pixel**: 8 symmetries × 16 variants = **128 apparent arrangements at the memory of 16**. *Implementation trap: mirroring the composite tile must mirror the 64-voxel index mapping it explodes into, or D5's pixel-perfect explosion breaks.* | ✅ Ratified |
 | **D15** | **Destruction emits a signal; VFX subscribes.** `voxel_destroyed(grid_pos, level, material_id)`, emitted at the TIC alongside the dirty pass. Smoke, debris and sound are **not** the destruction system's business — with no subscriber the signal costs nothing, and the particle ceiling is the same N as D6. Add the signal **now**, while it is one line, rather than refactoring later for the hook nobody left. | ✅ Ratified |
@@ -105,7 +107,7 @@ Measured, not estimated:
 | ⇒ 4 materials × 1 storey | ≈ **one page** | — |
 | ⇒ 4 materials × 3 storeys | ≈ 3 pages ≈ **28 MB** | ← where mobile starts to hurt |
 | Bake time, 4 combos × 2 dirs (TEXTURES) | **1 104 ms** | measured 2026-07-12 |
-| Warm boot (BAKE-CACHE-01, open) | **730–770 ms** vs 150 ms target | prior session |
+| Warm boot (BAKE-CACHE-01) | ~~730–770 ms~~ **~32–35 ms**, budget cleared | **CORRECTED 2026-07-15** — resolved `2026-07-11` (`366bed9`+`3ca1d33`), one day *before* this plan was drafted; the 730–770 ms figure was already stale when D12 (below) was written. Reconfirmed live via `bake_cache_test.gd`: 35 ms. |
 | Floor cells, 26×26 map, fully voxelised | 676 GU × 64 = **43 264** | worst case only |
 | Floor cells, 26×26 map, intact (D5) | **676** | = today's cost |
 | Floor tile size | **256 × 128 px** | Transform Canon (SLICE-00) |
@@ -136,11 +138,91 @@ Deliverable: a number for each, and a go/no-go on the layer-per-level model. If
 layers are the wall, the fix (fewer layers, level encoded in the atlas, level
 batching) must be known **before** Part 1 is written.
 
+**Status: ✅ RAN 2026-07-15, Overlord direct implementation.** Headless
+Mac/CPU pass — see honesty boundary below before treating this as closing the
+device question. Tool: `res://godot/scripts/tools/destruction_part0_spike.gd`
+(one-shot investigation script, not a standing gate — mirrors the existing
+`bake_cache_test.gd` pattern). Raw run:
+
+```
+--- TEST A: TileMapLayer count scaling ---
+  layers=256  cum_time=0.87ms  cum_mem=+0.86MB   (8 layers: 0.10ms / +0.02MB)
+--- TEST B: Fully voxelised 26x26 floor, 1 destructible level (D13) ---
+  GUs=676, cells placed=43264 (matches §4 worst case)
+  placement wall time: 34.84 ms total (0.00081 ms/cell)
+  static memory delta: 10.70 MB (0.25 KB/cell)
+--- TEST C: Bake cold-compose cost, measured today ---
+  8 combos (4 materials x 2 dirs): 1170.5 ms total, 146.3 ms/combo
+  (2026-07-12 plan baseline for the same shape was ~1104 ms — same order of
+  magnitude, reproducible)
+  EXTRAPOLATION ONLY, no block-volume bake path exists yet to measure directly:
+    24 combos -> ~3.5 s cold-compose (linear projection)
+    48 combos -> ~7.0 s cold-compose (linear projection)
+```
+
+**Go/no-go: GO on Part 1.** Node-creation cost for `TileMapLayer` and raw
+cell-placement cost at the §4 worst case are both cheap on CPU — neither is
+the wall Part 0 suspected. **Honesty boundary:** headless `--headless` has no
+display driver, so this measures CPU bookkeeping only, never GPU draw/composite
+cost of many simultaneous layers — the plan's own instruction to measure "on
+the target device, not on the Mac" is **not yet satisfied** by this run. That
+on-device frame-time check is carried forward as a non-blocking follow-up
+before Part 1/2 ship broadly (see §7.1), not a blocker for starting Part 1's
+plumbing today.
+
+**The one real finding: bake cold-compose scales linearly with combo count**,
+and is the one number here that could become a user-visible stall (a few
+seconds at 48 combos) on a first boot or after a content change — **not** on
+a warm/cached boot, which BAKE-CACHE-01's disk cache already keeps at ~35 ms
+regardless of combo count. This sharpens D3 (`usage_cells` restriction) from
+"the real mitigation" to a load-bearing one: Part 2 should carry an explicit
+combo-count budget once solid texturing's real atom/page shape is known,
+rather than letting combo count grow unbounded.
+
 ### Part 1 — `Slab`, the container sibling *(D1)*
 Floor/ceiling voxels get a container with dirty counting and TIC skip, mirroring
 `Slice`. No destruction yet. Renders the existing floor identically (D5: intact GU
 = 1 tile). Legacy floor artwork stays in place, unused, until Part 4 retires it.
 **Also unblocks `OCCLUSION_MASTER_PLAN` Part 4 (interior cutaway).**
+
+**Status: ✅ DONE 2026-07-15, Overlord direct implementation. VERSION 0.9.32.**
+
+- `godot/scripts/geometry/slab.gd` — `Slab`, container sibling of `Slice`: same
+  `dirty_count`/`mark_all_dirty()`/`increment_dirty()`/`decrement_dirty()`/
+  `clear_all_dirty()` contract, none of `Slice`'s edge-specific fields (`face`,
+  `edge_id`). `Role` enum (`FLOOR`/`CEILING`/`INTERIOR`) — one class per D1, not
+  three.
+- `godot/scripts/geometry/slab_registry.gd` — `SlabRegistry`, mirrors
+  `EdgeRegistry`'s slice-half (`register_slab`/`get_slab`/`all_slabs`/
+  `dirty_slabs`/`clear`/`is_empty`); no edge-linking half, because Slab voxels
+  have no edge.
+- `godot/scripts/geometry/voxel.gd` — `Voxel._parent_slice: Slice` widened to
+  untyped `_parent_container` (GDScript has no shared interface; both `Slice`
+  and `Slab` implement `increment_dirty()`/`decrement_dirty()`). **`Voxel` itself
+  is unmodified otherwise** — one class serves both containers, per D1. Single
+  call site (`slice_generator.gd:49`) needed no change.
+- `godot/scripts/world/room.gd` — `_slab_registry: SlabRegistry` member next to
+  `_edge_registry`; `_tic_voxel_system()` now also calls `_tic_slab_system()`,
+  which clears any dirty slabs (no renderer consumer yet — that's Part 3/4).
+- `godot/scripts/world/builders/room_builder.gd` — publishes
+  `room._slab_registry = SlabRegistry.new()` the same way and for the same
+  reason `_edge_registry` is published (see that comment) — never null, empty
+  until Part 2 gives it a producer.
+- **Rule 8 amended** (`tools/persistent/OPERATOR_CONTEXT.md`, §7.3 of this plan)
+  — widened from "wall voxels" to "wall AND Slab voxels via `set_cell()`/
+  `_set_voxel_cell()` only," written now so Part 4's renderer has no excuse to
+  invent a parallel path.
+- **Evidence:** `godot/scripts/tools/slab_geometry_selftest.gd`, 15/15 PASS —
+  voxel count (64/GU), dirty propagation, `clear_all_dirty()` resets flags
+  without touching `damage_state`, the same `Voxel` class working unmodified
+  under both `Slice` and `Slab` with no cross-contamination, and the
+  `SlabRegistry.dirty_slabs()` skip contract (empty when clean, exact set when
+  dirty). `project_lint.py`: 122 files, 0 real errors.
+- **No visual/gameplay change** — by construction: nothing calls
+  `_voxel_layers`/`_set_voxel_cell` for floor/ceiling yet, `_slab_registry`
+  starts empty on every map load, so `_tic_slab_system()` early-returns every
+  tick today. D5's "renders identically" holds because nothing renders through
+  Slab yet, not because it was verified pixel-for-pixel.
 
 ### Part 2 — Solid texturing *(D2, D3, D4, D7, D14)*
 Generalise `_compose_junction_pages()` to `(x, y, depth)`. Extend `usage_cells` to
@@ -178,8 +260,11 @@ signal. **B5 amended here.**
 
 ### Part 4 — Bake becomes the product *(D11, D12)*
 Silent fallback removed (loud-fail on MISS). `MATERIAL_ONLY` kept as a dev toggle.
-Shipped default flips to `enabled = true`. **BAKE-CACHE-01 resolved — this part
-cannot close while warm boot is 5× over budget.** Legacy floor assets retired.
+Shipped default flips to `enabled = true`. Legacy floor assets retired.
+~~BAKE-CACHE-01 resolved — this part cannot close while warm boot is 5× over
+budget.~~ **Already true as of 2026-07-11 — see §4.** That precondition is
+cleared; Part 4's remaining scope is the fallback/loud-fail work and the
+default flip, not the cache.
 
 ---
 
@@ -201,8 +286,13 @@ anything consumes it; Part 3 must not be bundled with it.
 
 ## 7. Open questions
 
-1. **`TileMapLayer` count** — the one real unknown. Part 0 answers it.
+1. **`TileMapLayer` count** — the one real unknown. **Part 0 answered the
+   CPU/node-creation half 2026-07-15** (256 layers: 0.87 ms, 0.86 MB, headless
+   Mac — not the wall). **Still open: real on-device GPU frame-time cost of
+   many simultaneous layers** — headless has no display driver and cannot
+   measure this. Carry forward as a non-blocking check before Part 1/2 ship
+   broadly, not before Part 1 starts.
 2. **D9 (speculative pre-compute)** — deferred; revisit only if Part 0/3 measurements demand it.
-3. **Rule 8 amendment** — the inviolable architecture rules say `set_cell()` /
-   `_set_voxel_cell()` are for *wall/block* voxels. Slab voxels are a new class and
-   need an explicit canon amendment, not a silent widening. Author it with Part 1.
+3. ~~**Rule 8 amendment**~~ **DONE with Part 1, 2026-07-15** —
+   `tools/persistent/OPERATOR_CONTEXT.md` Rule 8 now explicitly covers Slab
+   voxels alongside wall voxels.

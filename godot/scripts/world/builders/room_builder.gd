@@ -100,6 +100,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		room._edge_registry = edge_registry
 		room._junction_columns = junction_columns
 
+		## D1/Part 1 (DESTRUCTION_MASTER_PLAN): SlabRegistry published the same way,
+		## for the same reason — a live registry from turn one, never null. Empty
+		## until Part 2 gives it a producer (floor/ceiling voxels); an empty
+		## registry's dirty_slabs() is always [], which is the whole point of TIC-skip.
+		room._slab_registry = SlabRegistry.new()
+
 		room._voxel_renderer.clear()
 		room._voxel_renderer.render(edge_registry, junction_columns)
 

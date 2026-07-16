@@ -106,6 +106,11 @@ const VOXEL_STEP_PX: float = 20.0
 
 ## SLICE-02: New geometry module state
 var _edge_registry: EdgeRegistry = null       ## EdgeRegistry of all edges and slices
+## DESTRUCTION_MASTER_PLAN D1/Part 1: SlabRegistry, the horizontal-plane sibling of
+## _edge_registry. Published from room_builder.gd the same way and for the same
+## reason (see the comment on that assignment) — empty until Part 2 gives it a
+## producer, never null, so _tic_slab_system() always has a real registry to skip.
+var _slab_registry: SlabRegistry = null
 ## Written from room_builder.gd (`room._junction_columns = junction_columns`), not from
 ## this file. It looks unused to a grep confined to room.gd — it is not. Deleting it makes
 ## that external write a runtime error that aborts build_from_layout() before render(),
@@ -1667,7 +1672,22 @@ func _debug_probe_voxel_alignment() -> void:
 func _tic_voxel_system() -> void:
 	if _voxel_renderer != null and _edge_registry != null:
 		_voxel_renderer.process_dirty(_edge_registry)
+	_tic_slab_system()
+
+
+## DESTRUCTION_MASTER_PLAN D1/Part 1: Slab's TIC-skip half. No renderer consumer
+## exists yet (Part 3 wires the destruction trigger, Part 4 wires rendering) — this
+## only clears dirty flags so a future producer's marks don't accumulate unconsumed.
+## _slab_registry stays empty until Part 2, so dirty_slabs() is always [] today; that
+## emptiness is the skip-when-clean contract already paying for itself at zero cost.
+func _tic_slab_system() -> void:
+	if _slab_registry == null:
 		return
+	var dirty_slabs: Array = _slab_registry.dirty_slabs()
+	if dirty_slabs.is_empty():
+		return
+	for slab in dirty_slabs:
+		slab.clear_all_dirty()
 
 
 

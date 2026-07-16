@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 1143930 [DESTRUCTION-PART0/1] Measurement spike + Slab container (D1)
 - 1d6f728 [OCC-HOVER-01] Multi-origin occlusion - reveals geometry occluding agent OR hover cell within reach
 - e988095 [OCC-21m] Occlusion ring overlay now part of LIGHT_VISION, not visible in normal gameplay
 - 8b4648f [OCC-21l] Wireframe dots/lines pure white (no cyan tint)
 - 2742d8c [OCC-21k] Top cap alpha same as lateral faces
-- 84ce72d [OCC-21j] Top cap filled at 25% ring alpha (experiment)
 <!-- AUTO:END version_history -->
 
 ---

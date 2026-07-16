@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**132 scripts · 25108 lines total** (under `godot/scripts/`)
+**133 scripts · 25584 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
+- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — controls_panel.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -674,7 +674,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 874 lines
+`class_name VoxelRenderer` · extends `Node2D` · 893 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1176,7 +1176,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 879 lines
+`class_name BakeCompositor` · 905 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1231,7 +1231,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 365 lines
+`class_name BakedTileLookup` · 417 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1247,6 +1247,7 @@ extends `Node2D` · 43 lines
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
+- `func resolve_flat(material_id: String, voxel_pos: Vector2i) -> TileLookupResult:`
 - `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
 
 ---
@@ -2237,9 +2238,43 @@ extends `SceneTree` · 527 lines
 
 ---
 
+### `roof_bake_selftest.gd`
+
+extends `SceneTree` · 336 lines
+
+`godot/scripts/tools/roof_bake_selftest.gd`
+
+> ROOF-BAKE-01 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the bake system extends to HORIZONTAL surfaces (roof slabs) through the existing mechanism: the compositor's top-face plane (_get_plane_top) is an isometric projection of a flat 2-D grid — T(u−v, (u+v)/2) — that walls consume as (column_in_run, level) and roofs consume as (voxel_x, voxel_y). Four suites: 1. A roofs-only map_spec bakes lookup entries for every (folded) roof cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity: placed atom top-diamonds equal a direct read of the continuous plane_top image at the projected offset — seamlessness is therefore by construction, verified on real pixels, not reasoning 4. Real PLAYGROUND map, bake ENABLED: every roof voxel cell carries the baked source + atlas coords its position independently predicts Every expectation is re-derived locally (own mirror-fold implementation, own key formatting) — never read back from the code under test.
+
+**Constants / tuning**
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `ATOM_W` = `32`
+- `ATOM_H` = `36`
+- `V_MARGIN` = `32`
+- `ROOF_LEVEL_COUNT` = `2`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:`
+- `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
+- `func test_3_pixel_continuity_against_plane_top(fx: Dictionary) -> void:`
+- `func test_4_real_playground_roofs_are_baked() -> void:`
+
+---
+
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 246 lines
+extends `SceneTree` · 257 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -2573,7 +2608,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 799 lines
+`class_name RoomBuilder` · 831 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

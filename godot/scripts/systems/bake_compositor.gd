@@ -613,10 +613,9 @@ func _compose_sheet_page(material_id: String, facade_id: String, facade: Image, 
 ## Extract unique (material, facade) combos from the map
 func _extract_combo_usage(map_spec: Dictionary) -> Dictionary:
 	var usage_by_combo: Dictionary = {}
-	if not map_spec.has("walls"):
-		return usage_by_combo
-
-	var walls = map_spec["walls"] if typeof(map_spec["walls"]) == TYPE_ARRAY else []
+	# ROOF-BAKE-01: no early return on missing "walls" — a roofs-only
+	# map_spec (headless tests) still contributes usage below.
+	var walls = map_spec.get("walls", []) if typeof(map_spec.get("walls", [])) == TYPE_ARRAY else []
 	for wall in walls:
 		if typeof(wall) != TYPE_DICTIONARY:
 			continue
@@ -655,6 +654,25 @@ func _extract_combo_usage(map_spec: Dictionary) -> Dictionary:
 				var cell_key := "%d|%d" % [col, row]
 				if not seen.has(cell_key):
 					seen[cell_key] = true
+
+	# ROOF-BAKE-01: roof combos consume the same sheets keyed by folded global
+	# fine-grid position (x → col period 64, y → row period 32 — the same
+	# mirrored fold resolve_flat() queries with). Cells arrive raw from
+	# room_builder (read off the real Slab voxels); the fold happens HERE, in
+	# the one module that owns sheet-period knowledge, so frag keys and lookup
+	# keys agree by construction.
+	for roof in map_spec.get("roofs", []):
+		if typeof(roof) != TYPE_DICTIONARY:
+			continue
+		var roof_combo_key := "%s|%s" % [String(roof.get("material_id", "")), String(roof.get("facade_id", ""))]
+		if not usage_by_combo.has(roof_combo_key):
+			usage_by_combo[roof_combo_key] = {}
+		var roof_seen: Dictionary = usage_by_combo[roof_combo_key]
+		for cell in roof.get("cells", []):
+			var pos: Vector2i = cell
+			var folded_key := "%d|%d" % [_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_ROWS)]
+			if not roof_seen.has(folded_key):
+				roof_seen[folded_key] = true
 
 	var result: Dictionary = {}
 	for combo_key in usage_by_combo:
@@ -695,6 +713,14 @@ func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 			var material_id = wall.get("material_id", "default")
 			var facade_id = wall.get("facade_id", "facade_" + material_id)
 			combos["%s|%s" % [material_id, facade_id]] = true
+	# ROOF-BAKE-01: roofs register their combos too — a block whose material
+	# no wall on the map uses still needs its sheet pair composed.
+	for roof in map_spec.get("roofs", []):
+		if typeof(roof) != TYPE_DICTIONARY:
+			continue
+		var roof_facade = String(roof.get("facade_id", ""))
+		if roof_facade != "":
+			combos["%s|%s" % [String(roof.get("material_id", "")), roof_facade]] = true
 	var result = []
 	for key in combos.keys():
 		var parts = key.split("|")

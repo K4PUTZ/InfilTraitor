@@ -139,33 +139,6 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		# BAKE-FIX-02: Apply junction overrides from layout (if available)
 		_apply_junction_overrides(junction_columns, layout)
 
-		## Bake textures (S2: Wire baking into room_builder)
-		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, edge_registry, junction_columns)
-
-		if _diag_on:
-			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
-				("set" if room._voxel_renderer._baked_lookup != null else "NULL"),
-				edge_registry.all_slices().size(), junction_columns.size()
-			])
-
-		room._edge_registry = edge_registry
-		room._junction_columns = junction_columns
-
-		## room._slab_registry and room._voxel_renderer.clear() moved to run
-		## unconditionally above (before this if-block), so the floor exists even
-		## for edge-less rooms. Do not re-add either here — re-instantiating the
-		## registry would drop the floor Slabs just registered, and re-clear()ing
-		## would erase the floor cells just placed.
-		room._voxel_renderer.render(edge_registry, junction_columns)
-
-		if _diag_on and room._voxel_renderer.has_method("print_render_diagnostics"):
-			room._voxel_renderer.print_render_diagnostics()
-
-		_render_solid_blocks(extraction.get("solid_blocks", []))
-		_render_voxel_props(layout.get("voxel_prop_instances", []))
-
 		## DESTRUCTION D1-ROOF: a roof above every real block from the map's own
 		## "blocks" section. Reuses solid_block_instances (MapCompiler forwards
 		## the ORIGINAL per-GU declaration — gu, size, storeys, material — same
@@ -195,6 +168,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## GU across ALL block instances first, then suppress a side whenever
 		## ANY roofed neighbour exists there, regardless of which declaration
 		## it came from.
+		##
+		## ROOF-BAKE-01: GENERATION hoisted above _bake_textures() (rendering
+		## stays below, after render()): the bake pass needs each roof combo's
+		## real voxel cells as sheet usage, and the actual Slab voxels are the
+		## single truth for that footprint — deriving cells a second way here
+		## would be exactly the split-brain the border fix above just killed.
 		const ROOF_LEVEL_COUNT := 2
 		var roofed_gu_cells: Dictionary = {}
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
@@ -204,6 +183,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 				for oy in range(occ_size.y):
 					roofed_gu_cells[occ_gu_base + Vector2i(ox, oy)] = true
 
+		var roof_slabs: Array[Slab] = []
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
 			var block_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
@@ -219,11 +199,62 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 					var border_north: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, -1)) else 1
 					var border_south: int = 0 if roofed_gu_cells.has(roof_gu + Vector2i(0, 1)) else 1
 					for roof_level in range(roof_base_level, roof_base_level + ROOF_LEVEL_COUNT):
-						var roof_slab := SlabGenerator.generate_with_border(
+						roof_slabs.append(SlabGenerator.generate_with_border(
 							roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry,
 							border_west, border_east, border_north, border_south,
-						)
-						room._voxel_renderer.render_slab_solid(roof_slab)
+						))
+
+		## ROOF-BAKE-01: per-combo roof usage for the compositor, read off the
+		## real Slab voxels. Raw fine-grid positions; the compositor owns the
+		## sheet fold (mirror period 64×32), so no folding knowledge leaks here.
+		var roof_specs: Array = []
+		var roof_cells_by_combo: Dictionary = {}
+		for roof_slab in roof_slabs:
+			var combo_key := "%s|%s" % [roof_slab.material, BakePolicyClass.facade_for_material(roof_slab.material)]
+			if not roof_cells_by_combo.has(combo_key):
+				roof_cells_by_combo[combo_key] = {}
+			for voxel in roof_slab.voxels:
+				roof_cells_by_combo[combo_key][voxel.grid_pos] = true
+		for combo_key in roof_cells_by_combo:
+			var parts: PackedStringArray = String(combo_key).split("|")
+			roof_specs.append({
+				"material_id": parts[0],
+				"facade_id": parts[1],
+				"cells": roof_cells_by_combo[combo_key].keys(),
+			})
+
+		## Bake textures (S2: Wire baking into room_builder)
+		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
+		if bake_config and bake_config.enabled:
+			_bake_textures(extraction, edge_registry, junction_columns, roof_specs)
+
+		if _diag_on:
+			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
+				("set" if room._voxel_renderer._baked_lookup != null else "NULL"),
+				edge_registry.all_slices().size(), junction_columns.size()
+			])
+
+		room._edge_registry = edge_registry
+		room._junction_columns = junction_columns
+
+		## room._slab_registry and room._voxel_renderer.clear() moved to run
+		## unconditionally above (before this if-block), so the floor exists even
+		## for edge-less rooms. Do not re-add either here — re-instantiating the
+		## registry would drop the floor Slabs just registered, and re-clear()ing
+		## would erase the floor cells just placed.
+		room._voxel_renderer.render(edge_registry, junction_columns)
+
+		if _diag_on and room._voxel_renderer.has_method("print_render_diagnostics"):
+			room._voxel_renderer.print_render_diagnostics()
+
+		_render_solid_blocks(extraction.get("solid_blocks", []))
+		_render_voxel_props(layout.get("voxel_prop_instances", []))
+
+		## DESTRUCTION D1-ROOF rendering. Generation moved above _bake_textures()
+		## (ROOF-BAKE-01) — see the hoisted block for the full D1-ROOF/border
+		## rationale; this loop only renders what was generated there.
+		for roof_slab in roof_slabs:
+			room._voxel_renderer.render_slab_solid(roof_slab)
 	elif _diag_on:
 		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")
 
@@ -476,7 +507,7 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 
 
 ## Bake textures (S2: FIX-BAKE-05 integration + BAKE-FIX-02 run grouping & junction columns)
-func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = []) -> void:
+func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = [], roof_specs: Array = []) -> void:
 	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
 
 	## Every view rotation re-bakes and re-registers baked atlas pages from scratch.
@@ -551,6 +582,7 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 		"room_geometry": extraction.get("room_geometry", {}),
 		"junction_columns": _junction_columns,  # Pass junction columns for override resolution
 		"junction_specs": junction_specs,  # OVERLORD-FIX-02: leg-continuation data
+		"roofs": roof_specs,  # ROOF-BAKE-01: per-combo roof voxel cells (raw fine-grid)
 		"map_id": current_map_id,  # BAKE-FACADE-PLANE-02-b: For cache keying
 	}
 

@@ -454,9 +454,13 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 
 ## Set a voxel cell on the appropriate layer
 ## SEAM: Tries baked lookup first (if enabled and edge provided), falls back to material-only
+## ROOF-BAKE-01: flat_baked routes edge-less HORIZONTAL voxels (roof slabs)
+## through BakedTileLookup.resolve_flat() — same sheets, keyed by global
+## fine-grid (x, y) instead of (column_in_run, level). Same fallback contract:
+## any miss lands on the generic material atlas below.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
-                     slice_face: int = 0) -> void:
+                     slice_face: int = 0, flat_baked: bool = false) -> void:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -487,6 +491,15 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			source_id = result.source_id_int
 			atlas_coords = result.atlas_coords
 			alternative_id = result.alternative_id
+			_diag_baked_hits += 1
+
+	# ROOF-BAKE-01: horizontal (edge-less) baked surfaces — roof slabs
+	if source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
+		var flat_result = _baked_lookup.resolve_flat(material_name, grid_pos)
+		if flat_result and flat_result.source_id_int >= 0:
+			source_id = flat_result.source_id_int
+			atlas_coords = flat_result.atlas_coords
+			alternative_id = flat_result.alternative_id
 			_diag_baked_hits += 1
 
 	# Fallback: material-only path
@@ -805,8 +818,14 @@ func render_slab_solid(slab: Slab) -> void:
 	else:
 		_ensure_voxel_layers(slab.level + 1)
 
+	# ROOF-BAKE-01: ceiling slabs try the flat baked lookup (top-plane sheets
+	# keyed by global fine-grid position); floor/interior solid slabs keep the
+	# generic path. Misses fall back to the material atlas inside
+	# _set_voxel_cell, so this is safe with bake disabled or combo unresolved.
+	var flat_baked: bool = slab.role == Slab.Role.CEILING
 	for voxel in slab.voxels:
-		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material)
+		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
+				null, Vector2i.ZERO, 0, flat_baked)
 
 
 ## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,

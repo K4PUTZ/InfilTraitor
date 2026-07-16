@@ -270,6 +270,58 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 	return null
 
 
+## ROOF-BAKE-01: resolve a HORIZONTAL surface voxel (roof/ceiling slab).
+## The top-face plane the compositor already bakes (_get_plane_top) is an
+## isometric projection of a flat 2-D grid — T(u−v, (u+v)/2) — where walls
+## consume it as (column_in_run, level). A roof consumes the SAME sheets
+## with (u, v) = (voxel_x·16, voxel_y·16): the screen offset between two
+## horizontally adjacent roof voxels (±16, +8) equals the crop-window offset
+## in T exactly, so keying atoms by global fine-grid position yields a
+## seam-continuous top surface across the whole footprint by construction.
+## Mirrored-repeat fold: x → col (period 64), y → row (period 32) — the same
+## convention walls use along their run axis. Dir is always 0 (one sheet
+## family; roofs have no run direction). Returns null on any miss — caller
+## falls back to the generic material atlas, same contract as resolve().
+func resolve_flat(material_id: String, voxel_pos: Vector2i) -> TileLookupResult:
+	# Same enable/MATERIAL_ONLY gates as resolve()
+	var baking_enabled = false
+	if _bake_config:
+		baking_enabled = _bake_config.is_enabled() if _bake_config.has_method("is_enabled") else _bake_config.enabled
+	else:
+		if _bake_config_ref == null:
+			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
+		baking_enabled = _bake_config_ref.enabled if _bake_config_ref else false
+	var is_material_only = false
+	if _bake_config:
+		is_material_only = (_bake_config.blend_mode == _bake_config.BlendMode.MATERIAL_ONLY) if ("blend_mode" in _bake_config) else false
+	else:
+		if _bake_config_ref == null:
+			_bake_config_ref = load("res://godot/scripts/systems/bake_config.gd")
+		is_material_only = (_bake_config_ref.blend_mode == _bake_config_ref.BlendMode.MATERIAL_ONLY) if _bake_config_ref else false
+	if not baking_enabled or is_material_only:
+		return null
+
+	var facade_id = BakePolicyClass.facade_for_material(material_id)
+	if facade_id == "":
+		return null
+
+	var baked_atlas = _get_baked_atlas()
+	if baked_atlas == null:
+		return null
+	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
+	var lookup_key = _compute_facade_key(material_id, facade_id, voxel_pos.x, voxel_pos.y, 0)
+	if not lookup_dict.has(lookup_key):
+		if _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:
+			_diag_miss_count += 1
+			print("[BAKE-DIAG] flat lookup MISS reason=KEY_NOT_IN_DICT (key=%s, voxel=%s)" % [lookup_key, voxel_pos])
+		return null
+	var entry = lookup_dict[lookup_key]
+	var source_id: int = _get_baked_atlas_source_id(entry.get("page", -1))
+	if source_id < 0:
+		return null
+	return TileLookupResult.new(source_id, "BAKED_FLAT", entry.get("atlas_coords", Vector2i.ZERO), 0)
+
+
 ## OVERLORD-FIX-02: junction columns have dedicated baked atoms whose halves
 ## continue each adjacent leg's plane. Keyed by the column's own voxel_pos +
 ## level; returns null when absent (caller falls back to the mirror path).

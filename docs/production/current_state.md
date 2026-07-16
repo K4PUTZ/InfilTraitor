@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.35 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.36 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- fe6adb7 [FIX] Remove dead ring/ghost_alt computation in apply_occlusion() (PROBLEMS tab)
 - a1890e0 [DESTRUCTION-PART2-CONSUMER] Wire EarthVariantSelector into VoxelRenderer + Slab
 - 6dfe5d9 [DESTRUCTION-PART2-CORE] D2/D4 corrected: hash-selected voxel palette, not a compositor
 - 1143930 [DESTRUCTION-PART0/1] Measurement spike + Slab container (D1)
 - 1d6f728 [OCC-HOVER-01] Multi-origin occlusion - reveals geometry occluding agent OR hover cell within reach
-- e988095 [OCC-21m] Occlusion ring overlay now part of LIGHT_VISION, not visible in normal gameplay
 <!-- AUTO:END version_history -->
 
 ---

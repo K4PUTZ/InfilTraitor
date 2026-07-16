@@ -390,7 +390,14 @@ These 8 rules exist by design decision and must not be broken:
 5. `_alert_meter` accumulates only in `_apply_tic_result()` (nowhere else)
 6. Mission structure independent of narrative (logic ≠ text)
 7. Maps in internal coords, never raw (buffer applied only in `MapCompiler`)
-8. Wall voxels via `set_cell()` only (never `blend_rect`/`Image`/`Sprite2D`)
+8. Wall AND Slab (floor/ceiling/interior, DESTRUCTION_MASTER_PLAN D1) voxels via
+   `set_cell()`/`_set_voxel_cell()` only (never `blend_rect`/`Image`/`Sprite2D`).
+   **Amended 2026-07-15 (Part 1):** Slab voxels are a new voxel class, not a new
+   placement mechanism — `Voxel` itself is shared unmodified between `Slice`
+   (wall, owned by an `Edge`) and `Slab` (floor/ceiling/interior, no edge). Rule
+   8 always governed *how* a voxel reaches the tilemap; it now explicitly covers
+   both containers a `Voxel` can have, so a future Slab renderer (Part 4) has no
+   excuse to invent a parallel image-compositing path this rule already forbids.
 
 **Enforcement:** Rules 1–5 auto-checked by the pre-commit hook
 (`check_invariants.py`). Rules 6–8 rely on review.
@@ -516,5 +523,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.31 · **Updated:** 2026-07-15 · **Branch:** main
+**Version:** 0.9.32 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->

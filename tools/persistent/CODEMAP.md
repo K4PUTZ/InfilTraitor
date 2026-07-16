@@ -8,18 +8,18 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**119 scripts · 22618 lines total** (under `godot/scripts/`)
+**123 scripts · 23186 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
-- **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
+- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, slab_geometry_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — controls_panel.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -553,6 +553,50 @@ extends `ConfirmationDialog` · 64 lines
 
 ---
 
+### `slab.gd`
+
+`class_name Slab` · 84 lines
+
+`godot/scripts/geometry/slab.gd`
+
+> Geometry Module — Slab: horizontal voxel container (floor, ceiling, interior) DESTRUCTION_MASTER_PLAN D1: the container sibling of Slice for the horizontal plane. A wall voxel belongs to a Slice which belongs to an Edge; a floor/ceiling voxel has no edge, so it gets this container instead — same dirty-count/TIC-skip contract as Slice, none of the edge-specific fields (face, edge_id). Floor, ceiling and interior cutaway are ONE class: a ceiling is a Slab at a different level/role, not a different type. See voxel.gd's Voxel._parent_container for why Voxel is shared unmodified between Slice and Slab.
+
+**Public vars**
+- `var id: String`
+- `var gu_cell: Vector2i`
+- `var role: int`
+- `var level: int`
+- `var material: String`
+- `var voxels: Array[Voxel] = []`
+- `var dirty_count: int = 0`
+
+**Public API**
+- `func get_voxel(index: int) -> Voxel:`
+
+---
+
+### `slab_registry.gd`
+
+`class_name SlabRegistry` · 52 lines
+
+`godot/scripts/geometry/slab_registry.gd`
+
+> Geometry Module — Slab Registry: single source of truth for Slab containers DESTRUCTION_MASTER_PLAN D1. Mirrors EdgeRegistry's slice-half (get/all/dirty/ clear); no edge-linking half exists because Slab voxels have no edge to link to.
+
+**Signals**
+- `signal slab_registered(slab: Slab)`
+
+**Public API**
+- `func register_slab(slab: Slab) -> void:`
+- `func get_slab(id: String) -> Slab:`
+- `func all_slabs() -> Array:`
+- `func dirty_slabs() -> Array:`
+- `func clear() -> void:`
+- `func is_empty() -> bool:`
+- `func debug_print() -> void:`
+
+---
+
 ### `slice.gd`
 
 `class_name Slice` · 73 lines
@@ -597,7 +641,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 56 lines
+`class_name Voxel` · 62 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -1888,6 +1932,24 @@ extends `SceneTree` · 75 lines
 
 ---
 
+### `destruction_part0_spike.gd`
+
+extends `SceneTree` · 159 lines
+
+`godot/scripts/tools/destruction_part0_spike.gd`
+
+> DESTRUCTION_MASTER_PLAN — Part 0 measurement spike. Not a standing gate, not a selftest suite. This is the one-shot investigation Part 0 calls for: "force the worst cases and measure... find where it breaks." No production code depends on this script; it exists to turn the plan's one real unknown (TileMapLayer count scaling) and its two other worst-case numbers into real, printed, reproducible evidence before Slab (Part 1) is written on top of a guess. Honesty boundary, stated once here instead of at every print: this runs `--headless` on a Mac, not on the target mobile device. Headless Godot has no display driver, so nothing here measures GPU draw cost — only the CPU-side bookkeeping cost (node creation, TileMapLayer.set_cell(), memory). The plan itself asks for target-device numbers (§5 Part 0); this script produces the Mac/CPU half of that, not a substitute for it.
+
+**Constants / tuning**
+- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `MAP_GU_SIZE` = `26`
+
+---
+
 ### `geometry_selftest.gd`
 
 extends `SceneTree` · 234 lines
@@ -2010,7 +2072,7 @@ extends `SceneTree` · 97 lines
 
 ### `prop_01_tests.gd`
 
-extends `SceneTree` · 353 lines
+extends `SceneTree` · 363 lines
 
 `godot/scripts/tools/prop_01_tests.gd`
 
@@ -2056,9 +2118,30 @@ extends `SceneTree` · 527 lines
 
 ---
 
+### `slab_geometry_selftest.gd`
+
+extends `SceneTree` · 223 lines
+
+`godot/scripts/tools/slab_geometry_selftest.gd`
+
+> DESTRUCTION_MASTER_PLAN D1/Part 1 — Slab container selftest. Rodar: godot --headless --script res://godot/scripts/tools/slab_geometry_selftest.gd Mirrors the Slice/EdgeRegistry contract Slab is built to match: dirty-count propagation from Voxel, clear-all, and the TIC-skip shape (dirty_slabs() returns only what's actually dirty, empty means truly free).
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_slab_identity_and_voxel_count() -> void:`
+- `func test_voxel_dirty_propagates_to_slab() -> void:`
+- `func test_clear_all_dirty_resets_count_and_flags() -> void:`
+- `func test_voxel_reuse_across_slice_and_slab() -> void:`
+- `func test_registry_dirty_skip_contract() -> void:`
+
+---
+
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 204 lines
+extends `SceneTree` · 212 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
@@ -2296,7 +2379,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 683 lines
+`class_name RoomBuilder` · 689 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2616,7 +2699,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2302 lines
+extends `Node2D` · 2322 lines
 
 `godot/scripts/world/room.gd`
 

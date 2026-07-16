@@ -109,14 +109,28 @@ Patrol patterns hardcoded in the room layout. Must move to a data-driven configu
 
 ---
 
-### 4. Overlay Performance on Large Maps
-**Severity:** HIGH
-**Impact:** MEDIUM
-**Estimated Fix:** 1–2 weeks
+### 4. Overlay Performance on Large Maps — CORRECTED 2026-07-15
+**Severity:** ~~HIGH~~ LOW (re-scoped, not a frame cost)
+**Impact:** ~~MEDIUM~~ LOW
+**Estimated Fix:** N/A — no fix needed as currently architected
 
-The movement overlay (Dijkstra) and FOW overlay use O(n²) iteration per frame. 36×36 = 1296 tiles per frame. Risk of FPS drop on mobile.
+**Original claim (2026-06-12, never verified against code):** the movement
+overlay (Dijkstra) and FOW overlay run O(n²) iteration **per frame**, risking
+FPS drop on mobile at 36×36 = 1296 tiles/frame.
 
-**Timeline:** Before playtesting on real mobile devices
+**Checked against the real code 2026-07-15:** neither `fog_of_war_overlay.gd`
+nor `movement_overlay.gd` has `_process()` or `_physics_process()`. Both only
+implement `_draw()`, which Godot calls exclusively after an explicit
+`queue_redraw()` — and every `queue_redraw()` call site in both files is
+gated behind a discrete gameplay event (`reveal_around()` on agent entering a
+new cell, `rebuild()`'s Dijkstra flood on player-turn start/agent move, AP
+zone changes on hover). This is the same event-driven recompute discipline
+already codified as invariant O4′ for the occlusion system (recompute only on
+`agent.step_finished` / perspective change, never per frame). In a turn-based
+game the practical firing rate is a handful of times per turn, not 60/sec.
+
+**Timeline:** None — re-open only if a future change adds a `_process()`
+loop or an unthrottled hover-driven redraw to either overlay.
 
 ---
 
@@ -302,6 +316,14 @@ entries (`tileset_blocks.tres`: 32 tiles → 8); the dead `_build_room` subgraph
 ### Still open
 
 - **`room.gd` is still the monolith** (2,003 lines).
-- **BAKE-CACHE-01** — warm boot 730–770 ms vs a 150 ms target. Release blocker under D12.
+- ~~**BAKE-CACHE-01** — warm boot 730–770 ms vs a 150 ms target. Release blocker under D12.~~
+  **RESOLVED 2026-07-11**, one day before this plan cited it as open — `366bed9`
+  (content-addressed disk cache) + `3ca1d33` (`BAKE-CACHE-PAGESIZE-01-b`, sparse-usage
+  page composition) brought warm boot to ~32 ms (`docs/production/milestones.md`
+  VOX-BAKE-01), reconfirmed live 2026-07-15 via `bake_cache_test.gd` TEST 3: **35 ms**.
+  Budget (≤150 ms) cleared; not a release blocker. The 730–770 ms figure was the
+  *original pre-fix* number, propagated stale into this doc, `DESTRUCTION_MASTER_PLAN.md`,
+  and `RETROSPECTIVE_2026-07.md` §5 after the fix had already landed — corrected here;
+  see `DESTRUCTION_MASTER_PLAN.md` §4 for the parallel correction.
 - **The core loop is still open** — detection accumulates but does not drive transitions.
   See `RETROSPECTIVE_2026-07.md` §7.

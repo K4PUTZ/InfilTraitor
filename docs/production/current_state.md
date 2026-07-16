@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.40 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.41 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 1c28226 [DOC] Real visual confirmation of the negative-storey floor, found via SCREENSHOT-HOOK-01
 - a352941 [DESTRUCTION-PART2-INTEGRATION] Real map load builds the negative-storey floor
 - 8deba36 [DESTRUCTION-D13] Fixed floor levels: render_fixed_earth_level(), no Slab
 - 2a692dc [DESTRUCTION-D17] VoxelRenderer supports negative storey levels
 - 96936ee [DOC] D13 corrected + D17/D18 added: negative-storey floor, lazy reveal
-- fe6adb7 [FIX] Remove dead ring/ghost_alt computation in apply_occlusion() (PROBLEMS tab)
 <!-- AUTO:END version_history -->
 
 ---

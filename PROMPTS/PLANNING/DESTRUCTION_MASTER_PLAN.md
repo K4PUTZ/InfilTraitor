@@ -405,6 +405,25 @@ not just in isolated tests:
   (storey −2 and below: lava/water/smoke), `usage_cells` (D3), depth shading
   (D7) and the 16-variant coarse composite (D14) remain open.
 
+**D18 amendment — border GUs eagerly build the full 8-level block, dev-only
+(Director, 2026-07-16).** The Director spotted this from the real screenshot:
+the map's outer edge shows the floor's lateral cut, and D18's lazy reveal
+left nothing built below the top level anywhere, including there — a thin
+1-voxel edge instead of a solid-looking block. **In the shipped game this is
+moot:** a buffer of non-playable GUs outside the camera's view will hide any
+lateral cut, so lazy-reveal's border gap is invisible in production by
+construction, not by this fix. But *during development* the border is
+directly visible (no buffer built yet) and the deeper cosmetic storeys
+(lava/water/smoke) need to be inspectable without waiting on Part 3's dig
+trigger to exist. **Decision:** GUs on the outer perimeter of `_room_size`
+eagerly build all 8 levels (`render_fixed_earth_level()` for −8..−2, in
+addition to the top `Slab`) at map load; interior GUs stay lazy (top level
+only). Cost is bounded by the map's *perimeter* (`O(room_size.x +
+room_size.y)`), not its area — cheap regardless of map size. **Revisit once
+the production camera buffer exists** — this eager-build becomes dead weight
+the moment border GUs are no longer near a visible camera edge, and should
+be removed then, not left as permanent scope creep.
+
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 
 > **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**

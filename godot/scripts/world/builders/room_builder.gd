@@ -96,6 +96,29 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, "earth", room._slab_registry)
 			room._voxel_renderer.render_slab(floor_slab)
 
+	## D18 amendment (Director, 2026-07-16), dev-only: the map's outer edge
+	## shows the floor's lateral cut — lazy reveal alone leaves that edge only
+	## 1 voxel thick. In the shipped game a non-playable camera-buffer zone
+	## hides this by construction, so this eager-build is temporary scaffolding
+	## for development (inspecting deeper cosmetic storeys before Part 3's dig
+	## trigger exists), not permanent scope — remove once that buffer lands.
+	## Enumerates the perimeter directly (top/bottom rows, then left/right
+	## columns excluding the corners already covered) — O(room_size.x +
+	## room_size.y), never the full area, however large the map gets.
+	var border_gus: Array[Vector2i] = []
+	for bx in range(0, _room_size.x):
+		border_gus.append(Vector2i(bx, 0))
+		if _room_size.y > 1:
+			border_gus.append(Vector2i(bx, _room_size.y - 1))
+	for by in range(1, _room_size.y - 1):
+		border_gus.append(Vector2i(0, by))
+		if _room_size.x > 1:
+			border_gus.append(Vector2i(_room_size.x - 1, by))
+
+	for border_gu in border_gus:
+		for fixed_level in range(FLOOR_TOP_LEVEL - 7, FLOOR_TOP_LEVEL):  # -8..-2
+			room._voxel_renderer.render_fixed_earth_level(border_gu, fixed_level)
+
 	if not extraction.get("edges", []).is_empty():
 		## New geometry path — the only active renderer when it has data.
 		##

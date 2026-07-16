@@ -182,5 +182,31 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	else:
 		print("  (no edges on this map/layout — wall-pipeline check skipped, not a failure)\n")
 
+	## Criterion 6: D18 border amendment (dev-only) — a corner GU (always on
+	## the perimeter) has all 8 levels; a real interior GU (room is 30x20, so
+	## (5,5) is safely inside) has only the top level, still lazy.
+	var corner_gu := Vector2i(0, 0)
+	var corner_levels_built := 0
+	for level in range(-8, 0):
+		if voxel_renderer.get_layer(level) != null:
+			var l: TileMapLayer = voxel_renderer.get_layer(level)
+			if l.get_cell_source_id(GeometryCoordsClass.gu_to_voxel_origin(corner_gu)) >= 0:
+				corner_levels_built += 1
+	if corner_levels_built == 8:
+		_pass("Corner GU (0,0) has all 8 levels built (D18 border amendment)")
+	else:
+		_fail("Corner GU (0,0) has %d/8 levels built, expected all 8" % corner_levels_built)
+
+	var interior_gu := Vector2i(5, 5)
+	var interior_fixed_built := false
+	for level in range(-8, -1):  # -8..-2, the fixed levels
+		var l: TileMapLayer = voxel_renderer.get_layer(level)
+		if l != null and l.get_cell_source_id(GeometryCoordsClass.gu_to_voxel_origin(interior_gu)) >= 0:
+			interior_fixed_built = true
+	if not interior_fixed_built:
+		_pass("Interior GU (5,5) has no fixed levels built — still lazy (D18 unaffected by the border amendment)")
+	else:
+		_fail("Interior GU (5,5) unexpectedly has a fixed level built — border amendment leaked past the perimeter")
+
 	room.queue_free()
 	print("")

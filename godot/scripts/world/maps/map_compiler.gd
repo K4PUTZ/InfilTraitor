@@ -121,13 +121,26 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	## --- solid GU blockers (full-cell, multi-storey, material-aware) ---------
 	## BAKE-FACADE-PLANE-02-b: Support size field for rectangular blocks
+	## DESTRUCTION D1-ROOF: also collected into solid_block_instances (below) —
+	## the ORIGINAL per-GU declaration (gu, size, storeys, material), offset-
+	## adjusted, forwarded in the return dict so room_builder.gd can place a
+	## roof above each real block without re-deriving footprint/height/material
+	## from the edge registry solidblock_ produces (which represents the
+	## block's WALLS, not "this GU is a block worth roofing" directly).
+	var solid_block_instances: Array[Dictionary] = []
 	for block: Dictionary in spec.get("blocks", []):
 		var base_gu: Vector2i = Vector2i(block.get("gu", Vector2i.ZERO))
 		var size_raw = block.get("size", [1, 1])
 		var size: Vector2i = size_raw if size_raw is Vector2i else Vector2i(int(size_raw[0]), int(size_raw[1]))
 		var storeys: int = maxi(1, int(block.get("storeys", 1)))
 		var material: String = String(block.get("material", "concrete"))
-		
+		solid_block_instances.append({
+			"gu_cell": base_gu + offset,
+			"size": size,
+			"storeys": storeys,
+			"material": material,
+		})
+
 		# Expand size to fill rectangle [gu.x, gu.y] to [gu.x + size.x, gu.y + size.y)
 		for x in range(size.x):
 			for y in range(size.y):
@@ -224,6 +237,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"max_floors":       ceiling_floors,    ## ceiling-fixture height (lamp / temporal knob), independent of physical wall storeys
 		"structure_tiles":  structure_tiles,
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
+		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       enemy_defs,

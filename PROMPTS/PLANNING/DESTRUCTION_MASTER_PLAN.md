@@ -473,14 +473,58 @@ session: `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
 `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
 `project_lint.py`: 130 files, 0 real errors.
 
-**Not done yet, deliberately:** no real map integration (nothing scans
-`extraction.get("solid_blocks", [])`/`voxel_prop_instances` to auto-place a
-roof above every real structure yet — this test used a simulated block, not
-a real compiled map); the bake-system experiment for continuous top-surface
-texture (Director's explicit "a princípio vamos tentar," phased *after*
-geometry on purpose); occlusion participation (roofs hidden when the player
-is inside the room); and the light/shadow pass-through-when-destroyed
-behavior. Each is its own real question, not assumed to fall out for free.
+**Real map integration landed 2026-07-16, same session, Overlord direct
+implementation.** Every real block from a map's own `"blocks"` section now
+gets a real roof at real map load — driven against the REAL PLAYGROUND map
+(49 real concrete/stone/wood/metal blocks from `maps/PLAYGROUND.map.json`),
+not a simulated one:
+- `map_compiler.gd` forwards the *original* per-GU block declaration
+  (`gu_cell` offset-adjusted, `size`, `storeys`, `material`) as
+  `solid_block_instances` in its output — new key, additive, alongside the
+  existing `voxel_prop_instances` precedent. **Why not re-derive from
+  `extraction["edges"]`/`solidblock_occupancy` instead:** those represent
+  the block's *walls*, not "this GU is a block worth roofing" as a directly
+  iterable fact — re-deriving it would be a second, error-prone copy of
+  logic `map_compiler.gd`'s own block-expansion loop already computes once.
+- `room_builder.gd::build_from_layout()` iterates `solid_block_instances`
+  (inside the same `if not extraction.edges.is_empty()` branch the wall/
+  block render already lives in, since a block's existence implies edges
+  exist) and calls `SlabGenerator.generate()` + `render_slab_solid()` for
+  `ROOF_LEVEL_COUNT` (placeholder default: 2 — "2 ou mais," Director;
+  tune later) levels starting at `storeys × LEVELS_PER_STOREY`, using the
+  block's own material.
+- **Known limitation, matching existing precedent, not a new gap:**
+  `perspective_mapper.gd`'s `layout_with_perspective()` does not rotate
+  `solid_block_instances`' `gu_cell` for non-N views — `voxel_prop_instances`
+  has the exact same limitation today (verified: absent from that file
+  entirely). Not fixed here; flagged for whoever eventually fixes it for
+  voxel props, since it's the same underlying gap.
+- **Evidence:** `roof_integration_selftest.gd`, 3/3 PASS — `map_compiler.gd`
+  forwards exactly 49 `solid_block_instances` (matching the raw spec's block
+  count 1:1); **all 49 real block-GUs have a real, registered, independently
+  re-derived roof `Slab`** at the correct level (`storeys × 8`) with the
+  correct material, confirmed by reading back real placed cells, not by
+  trusting the writer's own choice; and a real roof `Slab` from the actual
+  map is independently destructible (damaged 1/64 voxels, `dirty_count=1`,
+  registry reports exactly 1 dirty). `floor_integration_selftest.gd` updated
+  or reused stale assertion `("every Slab is at level -1")` — that was
+  written before roofs existed and needed filtering by `Role.FLOOR` once the
+  registry legitimately started holding `Role.CEILING` Slabs too; now 9/9
+  PASS, including a new check that registry total == FLOOR + CEILING (no
+  untracked third category, the two producers coexist cleanly). Full
+  regression, same session: `roof_slab_selftest.gd` 8/8,
+  `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
+  `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+  `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
+  `project_lint.py`: 131 files, 0 real errors.
+- **Still not done, deliberately:** the bake-system experiment for
+  continuous top-surface texture (Director's explicit "a princípio vamos
+  tentar," phased *after* geometry on purpose); occlusion participation
+  (roofs hidden when the player is inside the room); the light/shadow
+  pass-through-when-destroyed behavior; `voxel_prop_instances`-based
+  structures (crates etc.) don't get roofs yet, only `"blocks"`-section
+  structures. Each is its own real question, not assumed to fall out for
+  free.
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 

@@ -165,6 +165,30 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 
 		_render_solid_blocks(extraction.get("solid_blocks", []))
 		_render_voxel_props(layout.get("voxel_prop_instances", []))
+
+		## DESTRUCTION D1-ROOF: a roof above every real block from the map's own
+		## "blocks" section. Reuses solid_block_instances (MapCompiler forwards
+		## the ORIGINAL per-GU declaration — gu, size, storeys, material — same
+		## data solidblock_ tiles were expanded from) rather than re-deriving
+		## footprint/height/material from edge_registry, which represents the
+		## block's WALLS, not "this GU is a block worth roofing" directly.
+		## ROOF_LEVEL_COUNT is a placeholder default ("2 ou mais", Director) —
+		## every level is an independent, fully destructible Slab (Role.CEILING),
+		## unlike the floor's one-destructible-level model (D13).
+		const ROOF_LEVEL_COUNT := 2
+		for block_instance: Dictionary in layout.get("solid_block_instances", []):
+			var block_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
+			var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
+			var block_storeys: int = int(block_instance.get("storeys", 1))
+			var block_material: String = String(block_instance.get("material", "concrete"))
+			var roof_base_level: int = block_storeys * GeometryCoords.LEVELS_PER_STOREY
+
+			for rx in range(block_size.x):
+				for ry in range(block_size.y):
+					var roof_gu := block_gu_base + Vector2i(rx, ry)
+					for roof_level in range(roof_base_level, roof_base_level + ROOF_LEVEL_COUNT):
+						var roof_slab := SlabGenerator.generate(roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry)
+						room._voxel_renderer.render_slab_solid(roof_slab)
 	elif _diag_on:
 		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")
 

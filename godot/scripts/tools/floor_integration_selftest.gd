@@ -119,23 +119,42 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 		room.queue_free()
 		return
 
-	## Criterion 2: exactly one Slab per GU (room_size.x * room_size.y), all
-	## at the destructible top level, none anywhere else.
+	## Criterion 2: exactly one FLOOR Slab per GU (room_size.x * room_size.y),
+	## all at the destructible top level (-1), none anywhere else. Filtered by
+	## Role.FLOOR: since DESTRUCTION-D1-ROOF, the registry also legitimately
+	## holds Role.CEILING Slabs for real map blocks (2 per block-GU, at
+	## positive levels) — this criterion is about the floor's own invariant,
+	## not "the registry contains nothing else."
 	var all_slabs: Array = room._slab_registry.all_slabs()
+	var floor_slabs: Array = all_slabs.filter(func(s: Slab) -> bool: return s.role == Slab.Role.FLOOR)
 	var expected_gu_count: int = room_size.x * room_size.y
-	if all_slabs.size() == expected_gu_count:
-		_pass("SlabRegistry has exactly %d Slabs — one per GU (room_size %s)" % [all_slabs.size(), room_size])
+	if floor_slabs.size() == expected_gu_count:
+		_pass("SlabRegistry has exactly %d FLOOR Slabs — one per GU (room_size %s)" % [floor_slabs.size(), room_size])
 	else:
-		_fail("SlabRegistry has %d Slabs, expected %d (room_size %s)" % [all_slabs.size(), expected_gu_count, room_size])
+		_fail("SlabRegistry has %d FLOOR Slabs, expected %d (room_size %s)" % [floor_slabs.size(), expected_gu_count, room_size])
 
 	var all_at_top_level := true
-	for slab in all_slabs:
+	for slab in floor_slabs:
 		if slab.level != -1:
 			all_at_top_level = false
 	if all_at_top_level:
-		_pass("Every registered Slab is at level -1 (the destructible top, D13)")
+		_pass("Every registered FLOOR Slab is at level -1 (the destructible top, D13)")
 	else:
-		_fail("At least one Slab is not at level -1")
+		_fail("At least one FLOOR Slab is not at level -1")
+
+	## Sanity, not previously checked: the registry's non-floor remainder is
+	## exactly the roof Slabs DESTRUCTION-D1-ROOF adds (2 per block-GU) —
+	## confirms the two producers coexist without one silently swallowing the
+	## other's count.
+	var ceiling_slabs: Array = all_slabs.filter(func(s: Slab) -> bool: return s.role == Slab.Role.CEILING)
+	if all_slabs.size() == floor_slabs.size() + ceiling_slabs.size():
+		_pass("Registry total (%d) == FLOOR (%d) + CEILING (%d), no untracked third category" % [
+			all_slabs.size(), floor_slabs.size(), ceiling_slabs.size(),
+		])
+	else:
+		_fail("Registry total %d does not equal FLOOR %d + CEILING %d" % [
+			all_slabs.size(), floor_slabs.size(), ceiling_slabs.size(),
+		])
 
 	## Criterion 3: no Slab is dirty (nothing has been damaged) — registry
 	## population must not itself mark anything dirty.

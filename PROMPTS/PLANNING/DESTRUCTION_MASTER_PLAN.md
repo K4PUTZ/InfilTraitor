@@ -424,6 +424,64 @@ the production camera buffer exists** — this eager-build becomes dead weight
 the moment border GUs are no longer near a visible camera edge, and should
 be removed then, not left as permanent scope creep.
 
+### Part 2b — Roof/Ceiling Slabs ("Lajes") *(D1, new — 2026-07-16)*
+
+**Director's request, same session:** build actual roof/ceiling slabs —
+positioned above the existing block/prop structures already in the game,
+using the SAME `Slab` geometry as the floor, but shaped differently:
+"valores quebrados, como 2 ou mais slabs de altura, com todas as camadas
+destrutíveis" (broken/irregular heights, 2+ levels, **every** level
+destructible — unlike the floor's D13 model of 1 destructible level + 7
+fixed). Reuses the *existing wall material voxels* (concrete/metal/stone/
+wood), matched to whatever structure the roof sits above — not the earth
+palette. Not walkable (no gameplay floor forms on top), but will need to be
+occluded when the player is inside the room, and destructible in a way that
+lets light/shadow pass or block. **Director's explicit phasing:** try the
+existing wall-bake system (`facade_tops`/`_get_plane_top` — already baking
+continuous-looking tops per individual wall/junction voxel, per
+`BAKE_SYSTEM_REFERENCE.md`'s TOP-SHEAR-01 work) for the roof's appearance
+*eventually*, but geometry first, without bake, since `_get_plane_top()` is
+edge/perimeter-projected and was never built to fill an entire block's
+interior footprint as one continuous surface — extending it is a real
+open question, not assumed to just work.
+
+**Geometry landed 2026-07-16, Overlord direct implementation.** No new
+class needed — D1 already named `Role.CEILING` as one of Slab's three roles,
+so an N-level roof is just `SlabGenerator.generate()` called N times (once
+per level, each a fully independent, fully destructible `Slab`) — the
+existing container model already fits. The one real addition:
+`voxel_renderer.gd`'s `render_slab_solid(slab)`, a sibling to `render_slab()`
+— places `slab.material` directly for every voxel (no per-voxel hash), for
+Slabs that reuse one fixed existing wall material rather than picking among
+a randomized palette. `render_block()` (walls) is unchanged and still the
+right tool for a block's own body; `render_slab_solid()` is for the
+Slab-tracked, independently-destructible layers sitting on top of it.
+
+**Evidence:** `roof_slab_selftest.gd`, 8/8 PASS — a 3-level roof produces 3
+distinct, independently-registered `Slab`s (no new geometry class needed);
+`render_slab_solid()` places a real, fixed material with zero per-voxel
+variance (64/64 cells); **all levels independently destructible**, proven
+by damaging one level and confirming the other two stay at `dirty_count 0`,
+then damaging all three and confirming `SlabRegistry.dirty_slabs()` reports
+all 3 simultaneously — the exact opposite of the floor's one-destructible-
+level constraint, on purpose; and a roof positioned above a simulated
+wood block (via the existing, proven `render_block()`) renders the same
+"wood" material at the block's own top level and both roof levels above it,
+confirmed by real cell inspection, not code reading. Full regression, same
+session: `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
+`slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+`slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
+`project_lint.py`: 130 files, 0 real errors.
+
+**Not done yet, deliberately:** no real map integration (nothing scans
+`extraction.get("solid_blocks", [])`/`voxel_prop_instances` to auto-place a
+roof above every real structure yet — this test used a simulated block, not
+a real compiled map); the bake-system experiment for continuous top-surface
+texture (Director's explicit "a princípio vamos tentar," phased *after*
+geometry on purpose); occlusion participation (roofs hidden when the player
+is inside the room); and the light/shadow pass-through-when-destroyed
+behavior. Each is its own real question, not assumed to fall out for free.
+
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 
 > **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**

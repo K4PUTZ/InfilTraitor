@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.41 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.42 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,7 +22,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 106
-- Test scripts: 18
+- Test scripts: 19
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 9
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- d8a0b2c [DESTRUCTION-D18b] Border GUs eagerly build the full 8-level block
 - 1c28226 [DOC] Real visual confirmation of the negative-storey floor, found via SCREENSHOT-HOOK-01
 - a352941 [DESTRUCTION-PART2-INTEGRATION] Real map load builds the negative-storey floor
 - 8deba36 [DESTRUCTION-D13] Fixed floor levels: render_fixed_earth_level(), no Slab
 - 2a692dc [DESTRUCTION-D17] VoxelRenderer supports negative storey levels
-- 96936ee [DOC] D13 corrected + D17/D18 added: negative-storey floor, lazy reveal
 <!-- AUTO:END version_history -->
 
 ---

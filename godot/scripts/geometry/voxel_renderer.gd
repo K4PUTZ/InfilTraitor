@@ -787,6 +787,28 @@ func render_slab(slab: Slab) -> void:
 		_set_voxel_cell(voxel.grid_pos, voxel.level, material_name)
 
 
+## DESTRUCTION — render one Slab's voxels using a single FIXED material for
+## every voxel, no per-voxel hash. Sibling to render_slab() (the earth/floor
+## path, which selects a variant per voxel) — kept separate rather than
+## branching one function on material type, since the two have genuinely
+## different per-voxel logic. For roof/ceiling Slabs (Slab.Role.CEILING):
+## these reuse an EXISTING wall material 1:1 (concrete/metal/stone/wood),
+## matching whatever structure they sit above, the same way render_block()
+## already places one fixed material across a whole block — just through the
+## Slab/Voxel container so every level is independently dirty-tracked
+## (unlike a wall block, and unlike the floor's fixed-bedrock levels).
+func render_slab_solid(slab: Slab) -> void:
+	if slab.voxels.is_empty():
+		return
+	if slab.level < 0:
+		_ensure_negative_voxel_layer(slab.level)
+	else:
+		_ensure_voxel_layers(slab.level + 1)
+
+	for voxel in slab.voxels:
+		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material)
+
+
 ## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,
 ## no `Voxel`, no dirty-tracking at all. D13's 7 non-destructible levels
 ## beneath the one real (Slab) destructible top are structurally incapable of

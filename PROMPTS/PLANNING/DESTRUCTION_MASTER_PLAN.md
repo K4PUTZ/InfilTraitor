@@ -298,12 +298,42 @@ implementation.** The core above now actually renders:
   `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19 — the
   `MATERIALS` extension and `FacadeSampler._fnv1a_hash` staticization broke
   nothing. `project_lint.py`: 126 files, 0 real errors.
+**D17 (negative storey) landed 2026-07-16, same session, Overlord direct
+implementation.** `VoxelRenderer` now supports both signs:
+- `_negative_voxel_layers: Dictionary[int, TileMapLayer]` added alongside the
+  existing `_voxel_layers: Array[TileMapLayer]` — a deliberate second
+  structure, not a unification, so every existing positive-level caller
+  (walls, junctions, props, occlusion) needed **zero changes**.
+- `_build_voxel_layer_node(level)` extracted as the one formula both
+  `_ensure_voxel_layers()` (positive) and the new `_ensure_negative_voxel_layer(level)`
+  (negative, single-level, never contiguous-from-zero per D18) call — position
+  and z-index math has exactly one owner for both signs.
+- `get_layer(level)` and `_set_voxel_cell(level, ...)` are the two routing
+  points; `_set_voxel_cell` no longer hard-rejects `level < 0`, it now warns
+  only if the caller forgot to ensure the layer first (same contract as
+  positive levels always had). `render_slab()` routes to the correct ensure
+  function based on `slab.level`'s sign.
+- **Evidence:** `negative_storey_selftest.gd`, 12/12 PASS — layer creation
+  and idempotent re-ensure; position/z-index formula is sign-correct (level
+  −1 renders visually below level 0, `z_index = wall_base + level` = 9 vs 10);
+  **D18's lazy contract directly tested**: ensuring level −3 does **not**
+  create −1 or −2 along the way; `render_block()` (walls) places all 64 cells
+  correctly with negative layers present, `get_layer_count()` stays
+  positive-only; `render_slab()` with `slab.level = −1` places 64
+  independently-verified cells and creates **no** positive layer as a side
+  effect; an unensured negative level still warns instead of silently
+  no-op'ing or crashing. Full regression, same session: `slab_render_selftest.gd`
+  8/8, `earth_variant_selftest.gd` 6/6, `slab_geometry_selftest.gd` 15/15,
+  `bake_selftest.gd` 19/19 — the wall/bake/prop pipeline is untouched.
+  `project_lint.py`: 127 files, 0 real errors.
 - **Still not wired:** no real `MapSpec`/`room_builder.gd` integration yet —
   nothing in a real map load calls `SlabGenerator.generate()`. Legacy floor
   artwork (Part 4's retirement target) is still what actually renders the
-  floor in the running game. That integration, `usage_cells` (D3), depth
-  shading (D7) and the 16-variant coarse composite (D14) are the remaining
-  Part 2 scope.
+  floor in the running game. The 7 fixed levels per D13 (still no `Slab`,
+  by design) and D18's actual lazy-reveal *trigger* (something has to call
+  `_ensure_negative_voxel_layer()` in response to a real dig event — that's
+  Part 3's territory, not built yet) remain open, along with `usage_cells`
+  (D3), depth shading (D7) and the 16-variant coarse composite (D14).
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 

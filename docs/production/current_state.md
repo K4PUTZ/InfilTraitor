@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.36 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.37 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,7 +22,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 106
-- Test scripts: 15
+- Test scripts: 16
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 9
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 96936ee [DOC] D13 corrected + D17/D18 added: negative-storey floor, lazy reveal
 - fe6adb7 [FIX] Remove dead ring/ghost_alt computation in apply_occlusion() (PROBLEMS tab)
 - a1890e0 [DESTRUCTION-PART2-CONSUMER] Wire EarthVariantSelector into VoxelRenderer + Slab
 - 6dfe5d9 [DESTRUCTION-PART2-CORE] D2/D4 corrected: hash-selected voxel palette, not a compositor
 - 1143930 [DESTRUCTION-PART0/1] Measurement spike + Slab container (D1)
-- 1d6f728 [OCC-HOVER-01] Multi-origin occlusion - reveals geometry occluding agent OR hover cell within reach
 <!-- AUTO:END version_history -->
 
 ---

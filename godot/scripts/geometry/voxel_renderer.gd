@@ -60,8 +60,22 @@ var _ghosted_cells: Dictionary = {}
 ## Z-index base for wall layers (from room.gd context)
 var _wall_base_z_index: int = 10
 
-## Array of TileMapLayers [level_0, level_1, ...]
+## Array of TileMapLayers [level_0, level_1, ...] — walls/blocks/props, unchanged
+## by D17. Positive levels only; never touched by the floor work below.
 var _voxel_layers: Array[TileMapLayer] = []
+
+## DESTRUCTION D17/D18: floor/background layers, keyed by their true (negative)
+## level. A SEPARATE dictionary rather than folding into _voxel_layers above —
+## on purpose, not an oversight: GDScript's `array[-1]` means "last element",
+## not "grow downward", so unifying storage would mean every one of
+## _voxel_layers' many existing 0-indexed callers (walls, junctions, props,
+## occlusion) would need to learn to ignore negative keys. Keeping floor levels
+## in their own dictionary means ALL of that positive-level code needs zero
+## changes — D17's whole point. get_layer()/_set_voxel_cell() are the two
+## routing points that make the split invisible to every other caller.
+## Never contiguous-from-zero (D18: lazy reveal) — a level exists here only
+## once something has actually built it.
+var _negative_voxel_layers: Dictionary = {}
 
 ## Runtime TileSet
 var _tileset: TileSet
@@ -179,15 +193,21 @@ func _mint_ghost_alternatives(source: TileSetAtlasSource, coords: Vector2i, base
 		ghost_data.modulate = ghost_modulate
 
 
-## Getter for voxel layer at given level (for diagnostics)
+## Getter for voxel layer at given level (for diagnostics). D17: negative
+## levels (floor/background) route to _negative_voxel_layers; this is the
+## single point that makes the split storage invisible to every caller.
 func get_layer(level: int) -> TileMapLayer:
-	if level < 0 or level >= _voxel_layers.size():
+	if level < 0:
+		return _negative_voxel_layers.get(level)
+	if level >= _voxel_layers.size():
 		return null
 	return _voxel_layers[level]
 
 
 ## Number of voxel layers currently built (for OcclusionWireframeOverlay's per-column
 ## height scan — see get_layer()'s docstring for why callers must not assume LEVELS_PER_STOREY).
+## Positive (wall) levels only, unchanged by D17 — occlusion's column scan has
+## no reason to know about floor levels below it.
 func get_layer_count() -> int:
 	return _voxel_layers.size()
 
@@ -220,6 +240,8 @@ func get_placed_cell_count() -> int:
 func apply_debug_nudge(delta: Vector2) -> void:
 	debug_nudge += delta
 	for layer in _voxel_layers:
+		layer.position += delta
+	for layer in _negative_voxel_layers.values():
 		layer.position += delta
 
 
@@ -435,11 +457,15 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
                      slice_face: int = 0) -> void:
-	if level < 0 or level >= _voxel_layers.size():
-		push_warning("VoxelRenderer._set_voxel_cell: level %d out of range [0, %d)" % [level, _voxel_layers.size()])
+	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
+	# caller must have ensured the layer first (_ensure_voxel_layers() for
+	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
+	# as before, now honored for both signs instead of hard-rejecting negative.
+	var layer: TileMapLayer = get_layer(level)
+	if layer == null:
+		push_warning("VoxelRenderer._set_voxel_cell: level %d has no layer — call _ensure_voxel_layers()/_ensure_negative_voxel_layer() first" % level)
 		return
 
-	var layer: TileMapLayer = _voxel_layers[level]
 	var source_id: int = -1
 	var atlas_coords: Vector2i = Vector2i.ZERO
 	var alternative_id: int = 0
@@ -681,33 +707,60 @@ func process_dirty(registry: EdgeRegistry) -> void:
 
 
 ## Ensure layers exist up to storey count (E1 equation from SLICE-00)
+## Build one properly-configured voxel TileMapLayer node for a given level —
+## positive (wall) or negative (D17: floor/background). Shared by
+## _ensure_voxel_layers() and _ensure_negative_voxel_layer() so the position/
+## z-index formula has exactly one owner; the two callers differ only in
+## WHERE they file the result (_voxel_layers vs _negative_voxel_layers),
+## never in HOW a layer is built.
+func _build_voxel_layer_node(level: int) -> TileMapLayer:
+	var layer := TileMapLayer.new()
+	layer.tile_set = _tileset
+	layer.name = "voxel_layer_%d" % level
+
+	# E1 equation from Transform Canon (SLICE-00)
+	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):
+	# TILE_OFFSET = (floor_half_w − voxel_half_w, floor_half_h) = (128−16, 64) = (112, 64).
+	# NOTE: the pre-2026-07-02 value (112, 56) subtracted voxel_half_h on Y as well —
+	# an 8px error, empirically measured and corrected via DEBUG-02 ruler + nudge session
+	# (residual now zero). Do not "restore symmetry" to (112, 56); the asymmetry is correct.
+	# Formula is sign-agnostic: a negative level correctly pushes the layer DOWN
+	# on screen (subtracting a negative adds height), which is exactly D17's floor.
+	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
+	layer.position = Vector2(
+		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
+		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(level)
+	)
+
+	# Set rendering parameters
+	layer.y_sort_origin = 1
+	layer.z_index = _wall_base_z_index + level
+	layer.visible = true
+
+	# Add to scene tree
+	add_child(layer)
+	return layer
+
+
 func _ensure_voxel_layers(storey_count: int) -> void:
 	while _voxel_layers.size() < storey_count:
 		var level := _voxel_layers.size()
-		var layer := TileMapLayer.new()
-		layer.tile_set = _tileset
-		layer.name = "voxel_layer_%d" % level
-		
-		# E1 equation from Transform Canon (SLICE-00)
-		# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):
-		# TILE_OFFSET = (floor_half_w − voxel_half_w, floor_half_h) = (128−16, 64) = (112, 64).
-		# NOTE: the pre-2026-07-02 value (112, 56) subtracted voxel_half_h on Y as well —
-		# an 8px error, empirically measured and corrected via DEBUG-02 ruler + nudge session
-		# (residual now zero). Do not "restore symmetry" to (112, 56); the asymmetry is correct.
-		const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
-		layer.position = Vector2(
-			_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
-			_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(level)
-		)
-		
-		# Set rendering parameters
-		layer.y_sort_origin = 1
-		layer.z_index = _wall_base_z_index + level
-		layer.visible = true
-		
-		# Add to scene tree
-		add_child(layer)
-		_voxel_layers.append(layer)
+		_voxel_layers.append(_build_voxel_layer_node(level))
+
+
+## D17/D18: negative levels are never contiguous-from-zero and rarely all
+## exist at once — callers ensure exactly the one level they need (the top
+## destructible floor level, always; deeper fixed/cosmetic levels only once
+## something has actually dug down to them). No "ensure up to N" variant on
+## purpose: that shape would invite building a contiguous run nobody asked
+## for, which is precisely what D18 forbids.
+func _ensure_negative_voxel_layer(level: int) -> void:
+	if level >= 0:
+		push_error("VoxelRenderer._ensure_negative_voxel_layer: level %d is not negative" % level)
+		return
+	if _negative_voxel_layers.has(level):
+		return
+	_negative_voxel_layers[level] = _build_voxel_layer_node(level)
 
 
 ## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
@@ -720,10 +773,13 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 func render_slab(slab: Slab) -> void:
 	if slab.voxels.is_empty():
 		return
-	var max_level := 0
-	for voxel in slab.voxels:
-		max_level = maxi(max_level, voxel.level)
-	_ensure_voxel_layers(max_level + 1)
+	# All of one Slab's voxels share slab.level (SlabGenerator.generate()'s
+	# invariant) — one layer to ensure, not a min/max scan. D17: negative
+	# (floor) levels route to the negative-only ensure function.
+	if slab.level < 0:
+		_ensure_negative_voxel_layer(slab.level)
+	else:
+		_ensure_voxel_layers(slab.level + 1)
 
 	for voxel in slab.voxels:
 		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
@@ -742,6 +798,8 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 ## Clear all layers and voxels
 func clear() -> void:
 	for layer in _voxel_layers:
+		layer.clear()
+	for layer in _negative_voxel_layers.values():
 		layer.clear()
 	## OCC-02: the cells those records point at no longer exist. Keeping them would make
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
@@ -765,4 +823,6 @@ func prune_baked_sources() -> void:
 
 
 func _to_string() -> String:
-	return "VoxelRenderer{layers=%d, tileset=%s}" % [_voxel_layers.size(), "valid" if _tileset else "null"]
+	return "VoxelRenderer{layers=%d, negative_layers=%d, tileset=%s}" % [
+		_voxel_layers.size(), _negative_voxel_layers.size(), "valid" if _tileset else "null"
+	]

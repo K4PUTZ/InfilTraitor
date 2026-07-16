@@ -553,13 +553,14 @@ func apply_occlusion(occluded: Dictionary) -> void:
 
 	for cell in occluded.keys():
 		var entry = occluded[cell]
-		var ring: int = clampi(int(entry["ring"]), 0, GHOST_ALT_IDS.size() - 1)
 		## OCC-10: min_level is where GHOSTING STARTS — the edge's own base band
 		## (OcclusionSet.BASE_VISIBLE_LEVELS) sits below it and is never touched
 		## here at all, left at its original full-opacity tile (Director's call:
 		## the base always reads as solid footprint; only the rest ghosts).
 		var min_level: int = int(entry.get("min_level", 0))
-		var ghost_alt: int = GHOST_ALT_IDS[ring]
+		## OCC-21 dropped tile-alternative ghosting for erase+wireframe-fill (see
+		## below) — `entry["ring"]` is no longer read here; ring-based visuals now
+		## live entirely in occlusion_slice_panel.gd/occlusion_wireframe_overlay.gd.
 		var restore_records: Array = []
 
 		for level in range(min_level, _voxel_layers.size()):

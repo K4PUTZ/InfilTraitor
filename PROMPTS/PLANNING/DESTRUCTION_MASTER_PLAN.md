@@ -1,10 +1,27 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
-**Status:** 🟢 Part 0 (spike) and Part 1 (`Slab`) both DONE 2026-07-15. Part 2
-(solid texturing) not started. **Runs AFTER `OCCLUSION_MASTER_PLAN`**
-(Director's call, 2026-07-12) — occlusion paused at Alpha Foundation
-2026-07-15, this plan is next.
+**Status:** 🟢 **PAUSED at Alpha Ceiling Foundation, 2026-07-16** (same
+milestone shape as `OCCLUSION_MASTER_PLAN`'s Alpha Foundation pause). Part 0
+(spike), Part 1 (`Slab`), Part 2 core+consumer (floor: D2/D4, D17 negative
+storey, D13 fixed levels, real map integration) and Part 2b (roof/ceiling
+Slabs, D1-ROOF, real map integration + border fix) all DONE. Both floor and
+roof/ceiling render in the real running game against real maps, not just
+isolated tests. **Next up, explicitly deferred to next session (Director,
+2026-07-16):** the bake-system experiment — reuse the wall bake pipeline
+(`facade_tops`/`_get_plane_top`) for roof surfaces using the same materials
+as the walls below. **Known, expected divergence going in:** a roof's
+*lateral* (side) faces will look different from the rest of the wall below
+them — real maps will mix materials at that seam, producing realistic
+variety, not a defect to chase uniformity on. **Also flagged, not
+investigated:** the Director observed roof parts already showing some
+occlusion in a real capture — plausible (roofs are real `TileMapLayer`
+cells like any other voxel, so the *existing* wall-occlusion machinery may
+partially apply by accident) but unconfirmed; revisit when occlusion
+participation is deliberately scoped, not now.
+**Runs AFTER `OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12) —
+occlusion paused at Alpha Foundation 2026-07-15, this plan picked up next
+and is now itself paused at its own Alpha Foundation.
 **Baseline:** tag `verified/v0.8.2`.
 **Companions:** `OCCLUSION_MASTER_PLAN.md` (occlusion lives there now — it must
 never write `Voxel.visible`, see §3), `docs/technical/BAKE_SYSTEM_REFERENCE.md`

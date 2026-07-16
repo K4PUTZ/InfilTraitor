@@ -787,6 +787,30 @@ func render_slab(slab: Slab) -> void:
 		_set_voxel_cell(voxel.grid_pos, voxel.level, material_name)
 
 
+## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,
+## no `Voxel`, no dirty-tracking at all. D13's 7 non-destructible levels
+## beneath the one real (Slab) destructible top are structurally incapable of
+## ever being marked dirty precisely because they never go through Voxel in
+## the first place — this function places cells directly, the same way
+## render_block() does for wall material, just per-LEVEL (not per-storey) and
+## through the earth-variant hash instead of one fixed material, so a fixed
+## level reads as the same material family as the destructible level above it.
+##
+## D18: called once per level, on demand — never loops over a range itself.
+## Whatever eventually decides "digging exposed level -4" (Part 3, not built
+## yet) calls this once for that one level; nothing here assumes or builds a
+## contiguous stack.
+func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
+	if level < 0:
+		_ensure_negative_voxel_layer(level)
+	else:
+		_ensure_voxel_layers(level + 1)
+
+	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
+		var variant_index: int = EarthVariantSelector.variant_for(voxel_pos, level)
+		_set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index)
+
+
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;
 ## sub-storey/partial-layer rendering is deferred to the destruction phase — see PROP-01 Item 0-A).
 func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:

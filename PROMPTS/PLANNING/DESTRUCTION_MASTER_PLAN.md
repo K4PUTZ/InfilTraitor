@@ -326,14 +326,42 @@ implementation.** `VoxelRenderer` now supports both signs:
   8/8, `earth_variant_selftest.gd` 6/6, `slab_geometry_selftest.gd` 15/15,
   `bake_selftest.gd` 19/19 — the wall/bake/prop pipeline is untouched.
   `project_lint.py`: 127 files, 0 real errors.
+**D13's 7 fixed levels landed 2026-07-16, same session, Overlord direct
+implementation.** `VoxelRenderer.render_fixed_earth_level(gu_cell, level)` —
+places one level's 64 cells directly (`GeometryCoords.gu_voxels()` +
+`EarthVariantSelector.variant_for()` + `_set_voxel_cell()`), the same way
+`render_block()` places wall material, just per-level instead of per-storey
+and through the earth hash instead of one fixed material. **No `Slab`, no
+`Voxel`, no registry — on purpose.** D13's "structurally incapable of being
+marked dirty" claim now has a concrete reason: fixed levels never go through
+`Voxel` at all, so there is no `dirty` flag to ever set. Reuses the same
+earth-variant hash as the destructible top for material continuity, at zero
+extra cost (pure function, already used).
+- **Evidence:** `fixed_floor_selftest.gd`, 5/5 PASS — 64 cells on a fixed
+  level match an independently re-derived variant (same round-trip discipline
+  as the Slab render tests); an independent `SlabRegistry` stays empty after
+  a fixed-level render (nothing registered, nothing to leak); one call builds
+  only its own level, never neighbours (D18's lazy contract, same class of
+  proof as `negative_storey_selftest.gd`'s level −3 test); and **the full
+  D13 stack assembled and verified end-to-end**: one real `Slab` at level −1
+  (destructible) plus `render_fixed_earth_level()` for levels −8..−2, all 8
+  layers real, and after damaging the top voxel the registry holds **exactly
+  one** `Slab` — the fixed levels cannot appear in `dirty_slabs()` because
+  they were never able to register in the first place.
+  Full regression, same session: `negative_storey_selftest.gd` 12/12,
+  `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+  `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
+  `project_lint.py`: 128 files, 0 real errors.
 - **Still not wired:** no real `MapSpec`/`room_builder.gd` integration yet —
-  nothing in a real map load calls `SlabGenerator.generate()`. Legacy floor
-  artwork (Part 4's retirement target) is still what actually renders the
-  floor in the running game. The 7 fixed levels per D13 (still no `Slab`,
-  by design) and D18's actual lazy-reveal *trigger* (something has to call
-  `_ensure_negative_voxel_layer()` in response to a real dig event — that's
-  Part 3's territory, not built yet) remain open, along with `usage_cells`
-  (D3), depth shading (D7) and the 16-variant coarse composite (D14).
+  nothing in a real map load calls `SlabGenerator.generate()` or
+  `render_fixed_earth_level()`. Legacy floor artwork (Part 4's retirement
+  target) is still what actually renders the floor in the running game.
+  D18's actual lazy-reveal *trigger* (something has to call
+  `_ensure_negative_voxel_layer()`/`render_fixed_earth_level()` in response
+  to a real dig event — Part 3's territory, not built yet) and the deeper
+  cosmetic storeys (storey −2 and below: lava/water/smoke) remain open,
+  along with `usage_cells` (D3), depth shading (D7) and the 16-variant
+  coarse composite (D14).
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 

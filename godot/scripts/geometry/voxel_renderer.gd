@@ -9,8 +9,22 @@ var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
 
-## Materials to load (in order)
-const MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
+## Materials to load (in order). source_id == array index (see
+## _build_voxel_tileset() and _set_voxel_cell()'s MATERIALS.find() fallback),
+## so appending never disturbs the first 4 wall materials' existing ids.
+##
+## DESTRUCTION D2/D4: "earth_0".."earth_7" are the floor/slab palette —
+## EarthVariantSelector.variant_for() picks one by index, matching
+## generate_voxel.py's voxel_earth_N.png naming exactly (VOXEL_ASSET_TEMPLATE
+## below is generic over material_name, so these load through the identical
+## path the 4 wall materials already use — no new loader, per D2). They never
+## go through the baked-lookup branch: floor voxels have no edge (D1), so
+## _set_voxel_cell's `edge` argument is always null for them, same as any
+## other material-only fallback placement.
+const MATERIALS: Array[String] = [
+	"concrete", "metal", "stone", "wood",
+	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
+]
 
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
@@ -693,6 +707,27 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 		# Add to scene tree
 		add_child(layer)
 		_voxel_layers.append(layer)
+
+
+## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
+## picks its earth variant via EarthVariantSelector.variant_for(grid_pos,
+## level) — deterministic, so this is idempotent: calling it again on the
+## same Slab places the exact same cells (D5's "nothing to pop" property).
+## Not wired to any real map data yet (no MapSpec integration) — this is the
+## render-side half of Part 2's core, consumed directly by whatever builds a
+## Slab (today: only slab_generator.gd's manual/test construction).
+func render_slab(slab: Slab) -> void:
+	if slab.voxels.is_empty():
+		return
+	var max_level := 0
+	for voxel in slab.voxels:
+		max_level = maxi(max_level, voxel.level)
+	_ensure_voxel_layers(max_level + 1)
+
+	for voxel in slab.voxels:
+		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+		var material_name: String = "earth_%d" % variant_index
+		_set_voxel_cell(voxel.grid_pos, voxel.level, material_name)
 
 
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;

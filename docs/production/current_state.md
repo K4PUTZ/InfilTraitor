@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.33 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.34 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -21,8 +21,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 105
-- Test scripts: 14
+- GDScript modules: 106
+- Test scripts: 15
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 9
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 6dfe5d9 [DESTRUCTION-PART2-CORE] D2/D4 corrected: hash-selected voxel palette, not a compositor
 - 1143930 [DESTRUCTION-PART0/1] Measurement spike + Slab container (D1)
 - 1d6f728 [OCC-HOVER-01] Multi-origin occlusion - reveals geometry occluding agent OR hover cell within reach
 - e988095 [OCC-21m] Occlusion ring overlay now part of LIGHT_VISION, not visible in normal gameplay
 - 8b4648f [OCC-21l] Wireframe dots/lines pure white (no cyan tint)
-- 2742d8c [OCC-21k] Top cap alpha same as lateral faces
 <!-- AUTO:END version_history -->
 
 ---

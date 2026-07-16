@@ -264,6 +264,43 @@ consumer yet — matches the Part 0/1 pattern):**
   a different, later variability tier, scoped to the procedural-maps phase, not
   this plan.
 
+**Consumer wave landed 2026-07-16, same session, Overlord direct
+implementation.** The core above now actually renders:
+- `voxel_renderer.gd`'s `MATERIALS` extended with `earth_0`..`earth_7`,
+  appended after the 4 wall materials (source_id = array index, so wall
+  material ids 0–3 are untouched). They load through the exact same
+  `_build_voxel_tileset()` loop and `_set_voxel_cell()`'s `MATERIALS.find()`
+  fallback as the wall materials — zero new loader or resolution code, per D2.
+  Earth voxels never reach the baked-lookup branch (floor voxels have no
+  edge, D1), same as any other material-only placement.
+- `voxel_renderer.gd`'s new `render_slab(slab)` — iterates a `Slab`'s voxels,
+  calls `EarthVariantSelector.variant_for()` per voxel, places the cell.
+  Idempotent by construction (same inputs, same hash, every call).
+- `slab_generator.gd` (new) — mirrors `slice_generator.gd`: builds one
+  Slab's 64 `Voxel`s from `GeometryCoords.gu_voxels()`, registers it.
+  **D13 realized as two independent Slabs per GU**, not one 8×2×8 container —
+  destructible top level and fixed bottom level each get their own `Slab`
+  (own id, own `dirty_count`), so the bedrock level is structurally
+  incapable of ever being marked dirty by anything that touches the top.
+- **Evidence:** `slab_render_selftest.gd`, 8/8 PASS — 64-voxel generation
+  matches `gu_voxels()` exactly; **the real round-trip**: every one of 64
+  placed `TileMapLayer` cells' `source_id`, read back from the layer,
+  matches an *independently re-derived* `EarthVariantSelector.variant_for()`
+  call (not a tautological self-comparison against the writer's own choice);
+  `render_slab()` is idempotent (two calls, identical output); the two-Slab
+  D13 model has zero cross-contamination (damaging the top never touches the
+  bottom's `dirty_count`, `dirty_slabs()` reports only the top).
+  Full regression check, same session: `earth_variant_selftest.gd` 6/6,
+  `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19 — the
+  `MATERIALS` extension and `FacadeSampler._fnv1a_hash` staticization broke
+  nothing. `project_lint.py`: 126 files, 0 real errors.
+- **Still not wired:** no real `MapSpec`/`room_builder.gd` integration yet —
+  nothing in a real map load calls `SlabGenerator.generate()`. Legacy floor
+  artwork (Part 4's retirement target) is still what actually renders the
+  floor in the running game. That integration, `usage_cells` (D3), depth
+  shading (D7) and the 16-variant coarse composite (D14) are the remaining
+  Part 2 scope.
+
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 
 > **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**

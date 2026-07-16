@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.38 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.39 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,7 +22,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 106
-- Test scripts: 17
+- Test scripts: 18
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 9
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 8deba36 [DESTRUCTION-D13] Fixed floor levels: render_fixed_earth_level(), no Slab
 - 2a692dc [DESTRUCTION-D17] VoxelRenderer supports negative storey levels
 - 96936ee [DOC] D13 corrected + D17/D18 added: negative-storey floor, lazy reveal
 - fe6adb7 [FIX] Remove dead ring/ghost_alt computation in apply_occlusion() (PROBLEMS tab)
 - a1890e0 [DESTRUCTION-PART2-CONSUMER] Wire EarthVariantSelector into VoxelRenderer + Slab
-- 6dfe5d9 [DESTRUCTION-PART2-CORE] D2/D4 corrected: hash-selected voxel palette, not a compositor
 <!-- AUTO:END version_history -->
 
 ---

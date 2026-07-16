@@ -352,16 +352,50 @@ extra cost (pure function, already used).
   `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
   `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
   `project_lint.py`: 128 files, 0 real errors.
-- **Still not wired:** no real `MapSpec`/`room_builder.gd` integration yet —
-  nothing in a real map load calls `SlabGenerator.generate()` or
-  `render_fixed_earth_level()`. Legacy floor artwork (Part 4's retirement
-  target) is still what actually renders the floor in the running game.
-  D18's actual lazy-reveal *trigger* (something has to call
-  `_ensure_negative_voxel_layer()`/`render_fixed_earth_level()` in response
-  to a real dig event — Part 3's territory, not built yet) and the deeper
-  cosmetic storeys (storey −2 and below: lava/water/smoke) remain open,
-  along with `usage_cells` (D3), depth shading (D7) and the 16-variant
-  coarse composite (D14).
+**Real map integration landed 2026-07-16, same session, Overlord direct
+implementation.** `room_builder.gd::build_from_layout()` now builds the
+destructible top level (storey −1) for every GU on every real map load —
+not just in isolated tests:
+- `room._slab_registry = SlabRegistry.new()` and `room._voxel_renderer.clear()`
+  moved **out of** the `if not extraction.get("edges", []).is_empty():` block
+  to run unconditionally, alongside the legacy floor loop. **Real latent bug
+  fixed in passing:** both were previously nested inside that conditional, so
+  any edge-less room (no walls) would have left `room._slab_registry` null
+  forever — floor doesn't depend on walls existing, so it cannot depend on
+  that branch either.
+- A new unconditional loop, same `_room_size` coverage as the legacy floor
+  loop right above it, calls `SlabGenerator.generate(gu, Slab.Role.FLOOR, -1,
+  "earth", room._slab_registry)` + `room._voxel_renderer.render_slab(slab)`
+  per GU. **Only the top level** — D18's lazy reveal holds even here: the 7
+  fixed levels are not built at map load, only on an actual future dig
+  (Part 3, not built).
+- **Evidence — driven against the REAL PLAYGROUND map** (`FileMapSourceClass
+  .get_runtime_spec("PLAYGROUND")` → `MapCompilerClass.compile()` → the exact
+  same path `room.gd::load_map()` uses, not a synthetic `map_spec`), via
+  `floor_integration_selftest.gd`, 6/6 PASS: `room._slab_registry` non-null;
+  **exactly 600 Slabs** registered for the real 30×20 PLAYGROUND room (one
+  per GU, matching `room_size.x × room_size.y` precisely), all at level −1;
+  zero dirty immediately after build; 192 sample cells across 3 real GUs
+  (both corners + center) match an independently re-derived
+  `EarthVariantSelector.variant_for()` call; and the existing wall pipeline
+  is confirmed unaffected — **151 real edges, 23 real junction columns**,
+  same numbers the real bake pipeline produced (`[BAKE] Baked 4 combos × 2
+  directions in 1073.0 ms` in the same run). Full regression, same session:
+  `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
+  `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+  `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19 —
+  `room_builder.gd`'s control-flow restructure broke nothing.
+  `project_lint.py`: 129 files, 0 real errors.
+- **Still open:** legacy floor artwork (Part 4's retirement target) is still
+  what actually *renders visually* in the running game today — the new
+  negative-storey floor exists as real, verified geometry underneath it, not
+  yet visually ratified by the Director (no real screenshot yet; the
+  full-scene headless boot needed for `SCREENSHOT-HOOK-01`'s capture path
+  was unreliable this session due to a concurrently open Godot editor —
+  see the parallel note in the session's `--headless` runs). D18's actual
+  lazy-reveal *trigger* (Part 3, not built), deeper cosmetic storeys
+  (storey −2 and below: lava/water/smoke), `usage_cells` (D3), depth shading
+  (D7) and the 16-variant coarse composite (D14) remain open.
 
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 

@@ -386,13 +386,21 @@ not just in isolated tests:
   `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19 —
   `room_builder.gd`'s control-flow restructure broke nothing.
   `project_lint.py`: 129 files, 0 real errors.
-- **Still open:** legacy floor artwork (Part 4's retirement target) is still
-  what actually *renders visually* in the running game today — the new
-  negative-storey floor exists as real, verified geometry underneath it, not
-  yet visually ratified by the Director (no real screenshot yet; the
-  full-scene headless boot needed for `SCREENSHOT-HOOK-01`'s capture path
-  was unreliable this session due to a concurrently open Godot editor —
-  see the parallel note in the session's `--headless` runs). D18's actual
+- **Visually confirmed the same commit, unplanned.** A manual full-scene
+  headless boot was unreliable this session (concurrently open Godot
+  editor), but `SCREENSHOT-HOOK-01`'s own pre-commit auto-capture fired
+  normally on this commit and produced real, comparable evidence:
+  `Screenshots/history/auto_2026-07-16_14-10-30.png` (immediately prior
+  commit, same PLAYGROUND/TEXTURES fixture) shows the plain grid-pattern
+  placeholder floor; `auto_2026-07-16_14-29-06.png` (this commit) shows the
+  ground fully covered in the mottled brown earth-voxel pattern — a real,
+  unforced before/after from the exact same camera position. Not yet
+  Director-ratified as a *finished look* (placeholder art, D14's coarse
+  composite not built), but the negative-storey floor is confirmed
+  **actually rendering in the real running game**, not just in isolated
+  tests.
+- **Still open:** legacy floor artwork (Part 4's retirement target) still
+  exists and will need retiring once the new floor is ratified. D18's actual
   lazy-reveal *trigger* (Part 3, not built), deeper cosmetic storeys
   (storey −2 and below: lava/water/smoke), `usage_cells` (D3), depth shading
   (D7) and the 16-variant coarse composite (D14) remain open.

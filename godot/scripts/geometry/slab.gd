@@ -27,6 +27,14 @@ var dirty_count: int = 0         ## sum of child Voxel dirty flags
 ## Unused (zero) for FLOOR slabs, which never take the baked path.
 var texture_anchor: Vector2i = Vector2i.ZERO
 
+## ROOF-SIDE-02: per-voxel side-exposure mask (grid_pos → 2-bit mask, see
+## BakeCompositor.SIDE_MASK_*), derived by room_builder from the GLOBAL
+## same-level roof voxel set — context a lone slab cannot reconstruct (eave
+## corners meeting a neighbor roof). Carried on the Slab for the same reason
+## texture_anchor is: re-renders must resolve the same baked atom variants
+## without builder context. Empty for non-CEILING slabs.
+var side_masks: Dictionary = {}
+
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_role: int, p_level: int, p_material: String = "concrete"):
 	id = p_id

@@ -7,6 +7,7 @@ class_name RoomBuilder
 var room: Node
 var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
+var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
@@ -249,12 +250,31 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## the same local offsets, so frag keys and lookup keys agree.
 		var roof_specs: Array = []
 		var roof_cells_by_combo: Dictionary = {}
+		# ROOF-SIDE-02: global same-level roof voxel occupancy (level →
+		# {grid_pos: true}) — the neighbor-presence source for side masks.
+		var roof_voxels_by_level: Dictionary = {}
+		for roof_slab in roof_slabs:
+			if not roof_voxels_by_level.has(roof_slab.level):
+				roof_voxels_by_level[roof_slab.level] = {}
+			var occupancy: Dictionary = roof_voxels_by_level[roof_slab.level]
+			for voxel in roof_slab.voxels:
+				occupancy[voxel.grid_pos] = true
 		for roof_slab in roof_slabs:
 			var combo_key := "%s|%s" % [roof_slab.material, BakePolicyClass.facade_for_material(roof_slab.material)]
 			if not roof_cells_by_combo.has(combo_key):
 				roof_cells_by_combo[combo_key] = {}
+			# ROOF-SIDE-02: cells carry the side-exposure mask in .z so the
+			# compositor composes border atoms with sides and interior atoms
+			# without. Mask = same-level GLOBAL neighbor presence (built one
+			# loop above) — a lone slab's GU box overestimates exposure where
+			# an eave column meets another block's roof (L-shapes); the mask
+			# is also stamped onto the Slab so re-renders agree.
+			var level_set: Dictionary = roof_voxels_by_level.get(roof_slab.level, {})
 			for voxel in roof_slab.voxels:
-				roof_cells_by_combo[combo_key][voxel.grid_pos - roof_slab.texture_anchor] = true
+				var cell_mask: int = BakeCompositorClass.side_mask_for(level_set, voxel.grid_pos)
+				roof_slab.side_masks[voxel.grid_pos] = cell_mask
+				var local_cell: Vector2i = voxel.grid_pos - roof_slab.texture_anchor
+				roof_cells_by_combo[combo_key][Vector3i(local_cell.x, local_cell.y, cell_mask)] = true
 		for combo_key in roof_cells_by_combo:
 			var parts: PackedStringArray = String(combo_key).split("|")
 			roof_specs.append({

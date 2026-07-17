@@ -124,8 +124,34 @@ func _fold(index: int, period: int) -> int:
 	return k
 
 
-func _roof_key(material_id: String, local_x: int, local_y: int) -> String:
-	return "ROOF|%s|facade_%s|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 32)]
+## ROOF-SIDE-02: keys carry the 2-bit side-exposure mask (left=1 iff no +y
+## neighbor cell, right=2 iff no +x). Independent re-derivations below —
+## must NOT call the production mask helpers.
+func _roof_key(material_id: String, local_x: int, local_y: int, mask: int) -> String:
+	return "ROOF|%s|facade_%s|%d|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 32), mask]
+
+
+## Independent set-based mask (roofs-only fixture: one component, one level).
+func _mask_from_set(cell_set: Dictionary, pos: Vector2i) -> int:
+	var mask := 0
+	if not cell_set.has(pos + Vector2i(0, 1)):
+		mask |= 1
+	if not cell_set.has(pos + Vector2i(1, 0)):
+		mask |= 2
+	return mask
+
+
+## Independent real-map mask: same set semantics as _mask_from_set but over
+## the GLOBAL same-level roof voxel occupancy in absolute coords (own
+## derivation from the registry's CEILING slabs — must not read
+## Slab.side_masks, the production value under test).
+func _mask_from_level_set(level_set: Dictionary, voxel_pos: Vector2i) -> int:
+	var mask := 0
+	if not level_set.has(voxel_pos + Vector2i(0, 1)):
+		mask |= 1
+	if not level_set.has(voxel_pos + Vector2i(1, 0)):
+		mask |= 2
+	return mask
 
 
 ## Independent component anchors: own flood fill over the occupied-GU set of
@@ -188,9 +214,12 @@ func _bake_roofs_only_spec():
 func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:
 	print("[TEST 1] Roofs-only bake registers a ROOF| lookup entry for every folded local cell")
 	var atlas = fx["atlas"]
+	var cell_set: Dictionary = {}
+	for cell in fx["cells"]:
+		cell_set[cell] = true
 	var missing := 0
 	for cell in fx["cells"]:
-		if not atlas.lookup.has(_roof_key("concrete", cell.x, cell.y)):
+		if not atlas.lookup.has(_roof_key("concrete", cell.x, cell.y, _mask_from_set(cell_set, cell))):
 			missing += 1
 	if missing == 0:
 		_pass("All %d local roof cells (incl. negative border coords) have ROOF| lookup entries under locally re-derived keys" % fx["cells"].size())
@@ -208,11 +237,17 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 		fake_source_ids[p] = 1000 + p
 	lookup.set_source_ids(fake_source_ids)
 
+	var fixture_set: Dictionary = {}
+	for cell in fx["cells"]:
+		fixture_set[cell] = true
 	var samples: Array = [Vector2i(-1, -1), Vector2i(0, 0), Vector2i(7, 3), Vector2i(16, 16), Vector2i(130, 70)]
 	var mismatches := 0
 	for pos in samples:
-		var expected = atlas.lookup.get(_roof_key("concrete", pos.x, pos.y))
-		var result = lookup.resolve_flat("concrete", pos)
+		# In-fixture cells use their real set-derived mask; the far
+		# out-of-period sample folds onto an interior cell (mask 0).
+		var mask: int = _mask_from_set(fixture_set, pos) if fixture_set.has(pos) else 0
+		var expected = atlas.lookup.get(_roof_key("concrete", pos.x, pos.y, mask))
+		var result = lookup.resolve_flat("concrete", pos, mask)
 		if expected == null:
 			if result != null and _fold(pos.x, 64) <= 16 and _fold(pos.y, 32) <= 16:
 				mismatches += 1  # entry should have existed via fold
@@ -268,7 +303,7 @@ func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:
 	var luminances := {}
 	for y in range(4, 7):
 		for x in range(4, 7):
-			var entry = atlas.lookup.get(_roof_key("concrete", x, y))
+			var entry = atlas.lookup.get(_roof_key("concrete", x, y, 0))  # 4..6 = interior cells, mask 0
 			if entry == null:
 				_fail("cell (%d,%d) missing from lookup — cannot pixel-check" % [x, y])
 				return
@@ -357,6 +392,27 @@ func test_4_real_playground_local_keys_and_step_borders() -> void:
 			for oy in range(b_size.y):
 				level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
 
+	## Own global same-level roof occupancy (absolute voxel coords) for the
+	## independent side-mask derivation — prefilled over every CEILING slab
+	## the registry holds for the blocks under test.
+	var level_sets: Dictionary = {}
+	for block_instance in solid_block_instances:
+		var gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
+		var size: Vector2i = block_instance.get("size", Vector2i.ONE)
+		var base_level: int = int(block_instance.get("storeys", 1)) * GeometryCoordsClass.LEVELS_PER_STOREY
+		for rx in range(size.x):
+			for ry in range(size.y):
+				var gu := gu_base + Vector2i(rx, ry)
+				for level in range(base_level, base_level + ROOF_LEVEL_COUNT):
+					var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x, gu.y, Slab.role_name(Slab.Role.CEILING), level]
+					var slab: Slab = room._slab_registry.get_slab(slab_id)
+					if slab == null:
+						continue
+					if not level_sets.has(level):
+						level_sets[level] = {}
+					for voxel in slab.voxels:
+						level_sets[level][voxel.grid_pos] = true
+
 	var checked := 0
 	var wrong_source := 0
 	var wrong_coords := 0
@@ -399,7 +455,7 @@ func test_4_real_playground_local_keys_and_step_borders() -> void:
 					for voxel in slab.voxels:
 						checked += 1
 						var local: Vector2i = voxel.grid_pos - anchor
-						var entry = atlas.lookup.get(_roof_key(material, local.x, local.y))
+						var entry = atlas.lookup.get(_roof_key(material, local.x, local.y, _mask_from_level_set(level_sets.get(level, {}), voxel.grid_pos)))
 						if entry == null:
 							missing_entries += 1
 							continue

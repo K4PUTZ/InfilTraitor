@@ -5,6 +5,7 @@ extends Node2D
 class_name VoxelRenderer
 
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
+const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -467,7 +468,8 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 ## contract: any miss lands on the generic material atlas below.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
-                     slice_face: int = 0, flat_baked: bool = false) -> void:
+                     slice_face: int = 0, flat_baked: bool = false,
+                     flat_side_mask: int = 3) -> void:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -504,7 +506,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	# voxel_xy carries the STRUCTURE-LOCAL offset here (grid_pos − anchor),
 	# the same container-local meaning it has for wall slices.
 	if source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
-		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy)
+		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy, flat_side_mask)
 		if flat_result and flat_result.source_id_int >= 0:
 			source_id = flat_result.source_id_int
 			atlas_coords = flat_result.atlas_coords
@@ -843,9 +845,13 @@ func render_slab_solid(slab: Slab) -> void:
 	# material atlas inside _set_voxel_cell, so this is safe with bake
 	# disabled or combo unresolved.
 	var flat_baked: bool = slab.role == Slab.Role.CEILING
+	# ROOF-SIDE-02: per-voxel side-exposure mask stamped on the Slab by
+	# room_builder (global same-level derivation — texture_anchor's pattern),
+	# so re-renders resolve the same border/interior atom variants.
 	for voxel in slab.voxels:
+		var side_mask: int = int(slab.side_masks.get(voxel.grid_pos, 3)) if flat_baked else 3
 		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
-				null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
+				null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked, side_mask)
 
 
 ## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,

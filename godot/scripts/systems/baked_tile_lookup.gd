@@ -281,7 +281,12 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 ## the structure across view rotations. Mirrored-repeat fold: x → col
 ## (period 64), y → row (period 32). Returns null on any miss — caller
 ## falls back to the generic material atlas, same contract as resolve().
-func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
+## ROOF-SIDE-02: side_mask is the 2-bit exposure mask for the voxel's side
+## halves (BakeCompositor.SIDE_MASK_LEFT/RIGHT), derived by the caller from
+## the same slab's cell set via BakeCompositor.side_mask_for(). It is part
+## of the atom key: interior cells resolve to top-only atoms so their
+## painted sides can never overdraw a border neighbor's top face.
+func resolve_flat(material_id: String, local_pos: Vector2i, side_mask: int = 3) -> TileLookupResult:
 	# Same enable/MATERIAL_ONLY gates as resolve()
 	var baking_enabled = false
 	if _bake_config:
@@ -309,9 +314,10 @@ func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
 		return null
 	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
 	# ROOF-BAKE-02c: dedicated roof page family, no direction component
-	var lookup_key = "ROOF|%s|%s|%d|%d" % [
+	var lookup_key = "ROOF|%s|%s|%d|%d|%d" % [
 		material_id, facade_id,
 		_mirror_index_1d(local_pos.x, 64), _mirror_index_1d(local_pos.y, 32),
+		side_mask,
 	]
 	if not lookup_dict.has(lookup_key):
 		if _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:

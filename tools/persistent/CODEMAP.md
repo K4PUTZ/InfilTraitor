@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26096 lines total** (under `godot/scripts/`)
+**133 scripts · 26249 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -555,7 +555,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 93 lines
+`class_name Slab` · 101 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -570,6 +570,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var voxels: Array[Voxel] = []`
 - `var dirty_count: int = 0`
 - `var texture_anchor: Vector2i = Vector2i.ZERO`
+- `var side_masks: Dictionary = {}`
 
 **Public API**
 - `func get_voxel(index: int) -> Voxel:`
@@ -675,13 +676,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 913 lines
+`class_name VoxelRenderer` · extends `Node2D` · 919 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
 > Geometry Module — Voxel Renderer: TileMapLayer-based voxel wall rendering Port from room.gd voxel functions, honoring Transform Canon Extends Node2D to add to scene tree
 
 **Constants / tuning**
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
@@ -1178,7 +1180,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1073 lines
+`class_name BakeCompositor` · 1130 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1233,7 +1235,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 420 lines
+`class_name BakedTileLookup` · 426 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1249,7 +1251,7 @@ extends `Node2D` · 43 lines
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
-- `func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:`
+- `func resolve_flat(material_id: String, local_pos: Vector2i, side_mask: int = 3) -> TileLookupResult:`
 - `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
 
 ---
@@ -2242,7 +2244,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 477 lines
+extends `SceneTree` · 533 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -2612,7 +2614,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 871 lines
+`class_name RoomBuilder` · 891 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2627,6 +2629,7 @@ extends `Node2D` · 34 lines
 - `var room: Node`
 - `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
+- `var BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 25983 lines total** (under `godot/scripts/`)
+**133 scripts · 26048 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 897 lines
+`class_name VoxelRenderer` · extends `Node2D` · 906 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -983,7 +983,7 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 144 lines
+extends `Node2D` · 173 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 
@@ -996,6 +996,7 @@ extends `Node2D` · 144 lines
 - `DOT_RADIUS` = `2.0`
 - `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
 - `FILL_ALPHAS` = `[0.3, 0.5, 0.7]`
+- `DOT_BLUR_SIGMA` = `1.5`
 
 **Public vars**
 - `var bottom_near_a: Vector2`
@@ -2112,7 +2113,7 @@ extends `SceneTree` · 322 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 233 lines
+extends `SceneTree` · 239 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
@@ -2931,7 +2932,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2322 lines
+extends `Node2D` · 2343 lines
 
 `godot/scripts/world/room.gd`
 

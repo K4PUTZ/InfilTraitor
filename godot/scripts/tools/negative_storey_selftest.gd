@@ -77,9 +77,10 @@ func test_negative_layer_creation_and_lookup() -> void:
 
 
 ## The position/z-index formula must produce sane, sign-correct results for
-## negative levels — position moves further "down" (higher Y), z_index drops
-## below _wall_base_z_index, both derived from the SAME formula walls use
-## (_build_voxel_layer_node), not a parallel one.
+## negative levels — position moves further "down" (higher Y) via the same
+## formula walls use; z_index lands in the legacy floor slot (level + 1,
+## Z-SLOT-01) so floors stay under the overlay ecosystem. Both live in
+## _build_voxel_layer_node, not a parallel copy.
 func test_negative_level_position_and_zindex_formula() -> void:
 	print("[2] Negative level position/z-index — same formula, sign-correct result\n")
 
@@ -100,10 +101,15 @@ func test_negative_level_position_and_zindex_formula() -> void:
 	else:
 		_fail("Level -1 should be visually BELOW level 0: y=%f vs y=%f" % [level_neg1.position.y, level0.position.y])
 
-	if level_neg1.z_index == 10 + (-1) and level0.z_index == 10 + 0:
-		_pass("z_index: level 0 = %d, level -1 = %d (both wall_base_z_index + level)" % [level0.z_index, level_neg1.z_index])
+	## Z-SLOT-01 (2026-07-16): negative levels no longer share the wall formula's
+	## z band — they render in the LEGACY FLOOR SLOT (z = level + 1, floor top -1
+	## at z=0) so the floor-painted overlay ecosystem (shadows z=1 .. selection
+	## z=7) draws above the floor and below the walls again. Walls keep
+	## wall_base_z_index + level. See _build_voxel_layer_node.
+	if level_neg1.z_index == (-1) + 1 and level0.z_index == 10 + 0:
+		_pass("z_index: level 0 = %d (wall_base + level), level -1 = %d (floor slot: level + 1)" % [level0.z_index, level_neg1.z_index])
 	else:
-		_fail("z_index mismatch: level0=%d level_neg1=%d" % [level0.z_index, level_neg1.z_index])
+		_fail("z_index mismatch: level0=%d (want 10) level_neg1=%d (want 0)" % [level0.z_index, level_neg1.z_index])
 
 	renderer.queue_free()
 	print("")

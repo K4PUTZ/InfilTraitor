@@ -441,7 +441,10 @@ func _ready() -> void:
 		return
 
 	floor_layer.tile_set = ts
-	floor_layer.z_index = 0
+	## Legacy coarse floor plane sits UNDER the voxel earth floor (negative
+	## levels render at z = level+1 → bedrock -8..-2 occupies z -7..-1, top at
+	## 0). See VoxelRenderer._build_voxel_layer_node for the slot map.
+	floor_layer.z_index = -9
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
 	_wall_tileset = ts
@@ -2077,6 +2080,24 @@ func _run_auto_screenshot_capture() -> void:
 	##
 	## _set_perspective() is the same call the pad's buttons make, so this drives the
 	## real rotation path (full layout rebuild), not a camera trick.
+	## INFILTRAITOR_CAPTURE_AGENT_CELL="x,y" (2026-07-16): teleport the agent
+	## through the same cell setter a real move uses, reveal FOW there, and
+	## recompute occlusion — so an unattended capture can exercise ghost bands
+	## and wireframe at any chosen spot (agent_start rarely stands where a
+	## reported visual bug is). Composes with the other capture actions.
+	var agent_cell_env := OS.get_environment("INFILTRAITOR_CAPTURE_AGENT_CELL")
+	if agent_cell_env != "" and agent != null:
+		var cell_parts := agent_cell_env.split(",")
+		if cell_parts.size() == 2:
+			var forced_cell := Vector2i(cell_parts[0].to_int(), cell_parts[1].to_int())
+			agent.set_cell(forced_cell)
+			_fow_controller.reveal_around(forced_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+			_recompute_occlusion()
+			for _j in range(10):
+				await get_tree().process_frame
+		else:
+			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AGENT_CELL '%s' — expected 'x,y'" % agent_cell_env)
+
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
 		await _capture_all_four_views()

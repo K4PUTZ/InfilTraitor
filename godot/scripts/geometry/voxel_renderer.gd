@@ -749,7 +749,16 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 
 	# Set rendering parameters
 	layer.y_sort_origin = 1
-	layer.z_index = _wall_base_z_index + level
+	# Z-index: positive (wall/roof) levels stack above _wall_base_z_index as
+	# before. Negative (D17 floor/background) levels render in the LEGACY FLOOR
+	# SLOT instead: the whole floor-painted overlay ecosystem (shadows z=1,
+	# FOW z=2, game tiles z=3, AP perimeter z=5, path z=6, selection z=7) was
+	# designed against a floor at z<=0 and must draw ON the floor yet UNDER the
+	# walls (z>=10). `_wall_base_z_index + level` put the earth floor's top at
+	# z=9, burying all of them (first visible casualty: AP perimeter, Director
+	# 2026-07-16). Formula: level+1 puts the walkable top face (-1) at z=0 and
+	# bedrock (-8..-2) at -7..-1; floor_layer (legacy plane) sits below at -9.
+	layer.z_index = (_wall_base_z_index + level) if level >= 0 else (level + 1)
 	layer.visible = true
 
 	# Add to scene tree

@@ -58,6 +58,32 @@ const DOT_RADIUS := 2.0
 const FILL_COLOR := Color(0.7, 0.7, 0.7)   ## neutral gray, no cyan
 const FILL_ALPHAS := [0.3, 0.5, 0.7]   ## ring 0 (center), ring 1 (mid), ring 2 (edge)
 
+## OCC-22 (2026-07-16, Director): dots render as a PRE-BLURRED gaussian sprite
+## (solid core of DOT_RADIUS + gaussian skirt of DOT_BLUR_SIGMA), not hard
+## draw_circle discs. The blur is baked once into a tiny shared texture at
+## first draw — no runtime blur pass, no per-frame shader cost (D12).
+const DOT_BLUR_SIGMA := 1.5
+static var _dot_texture: ImageTexture = null
+
+
+## Lazily build the shared blurred-dot sprite: alpha 1.0 inside DOT_RADIUS,
+## falling off as exp(-(r - DOT_RADIUS)^2 / 2*sigma^2) outside it — a cheap,
+## close approximation of the original disc convolved with a gaussian kernel.
+static func _get_dot_texture() -> ImageTexture:
+	if _dot_texture != null:
+		return _dot_texture
+	var half := int(ceil(DOT_RADIUS + DOT_BLUR_SIGMA * 3.0))
+	var size := half * 2 + 1
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in range(size):
+		for x in range(size):
+			var r := Vector2(float(x - half), float(y - half)).length()
+			var d := maxf(r - DOT_RADIUS, 0.0)
+			var a := exp(-(d * d) / (2.0 * DOT_BLUR_SIGMA * DOT_BLUR_SIGMA))
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_dot_texture = ImageTexture.create_from_image(img)
+	return _dot_texture
+
 
 func _draw() -> void:
 	## OCC-19: glass fill first, so the dotted/underlined outline draws on top
@@ -139,6 +165,9 @@ func _draw_voxel_edge(from: Vector2, to: Vector2, voxel_count: int) -> void:
 
 	var dot := LINE_COLOR
 	dot.a = DOT_ALPHA
+	var tex := _get_dot_texture()
+	var tex_size := Vector2(tex.get_width(), tex.get_height())
 	var steps := maxi(voxel_count, 1)
 	for i in range(steps + 1):
-		draw_circle(from.lerp(to, float(i) / float(steps)), DOT_RADIUS, dot)
+		var center := from.lerp(to, float(i) / float(steps))
+		draw_texture_rect(tex, Rect2(center - tex_size * 0.5, tex_size), false, dot)

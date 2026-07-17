@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.50 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.51 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 8939340 [Z-SLOT-01 + OCC-22] Floor z-slot fix (AP perimeter + wireframe base) and gaussian-blurred wireframe dots
 - 0b5b31b [ART-SPEC-01] Art specifications manual + ART-01 milestone (Alpha->Beta window)
 - 4ca4677 Alpha Horizontal Bake Foundation
 - f88d060 [ROOF-BAKE-02] Roofs rotate with structures; level-aware borders; isotropic structure-local texture
 - c6edb71 [ROOF-BAKE-01] Roof slabs consume the bake system: horizontal (x,y)-keyed atoms
-- 6897d02 Alpha Ceiling Foundation
 <!-- AUTO:END version_history -->
 
 ---

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26048 lines total** (under `godot/scripts/`)
+**133 scripts · 26091 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 906 lines
+`class_name VoxelRenderer` · extends `Node2D` · 913 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -983,7 +983,7 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 173 lines
+extends `Node2D` · 175 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 
@@ -993,10 +993,10 @@ extends `Node2D` · 173 lines
 - `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
 - `DOT_ALPHA` = `0.5`
 - `UNDERLINE_ALPHA` = `0.3`
-- `DOT_RADIUS` = `2.0`
+- `DOT_RADIUS` = `0.75`
 - `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
 - `FILL_ALPHAS` = `[0.3, 0.5, 0.7]`
-- `DOT_BLUR_SIGMA` = `1.5`
+- `DOT_BLUR_SIGMA` = `1.0`
 
 **Public vars**
 - `var bottom_near_a: Vector2`
@@ -1178,7 +1178,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1063 lines
+`class_name BakeCompositor` · 1073 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -2699,7 +2699,7 @@ extends `Node2D` · 34 lines
 
 ### `selection_controller.gd`
 
-`class_name SelectionController` · 103 lines
+`class_name SelectionController` · 116 lines
 
 `godot/scripts/world/controllers/selection_controller.gd`
 
@@ -2715,6 +2715,7 @@ extends `Node2D` · 34 lines
 - `func handle_tile_click(cell: Vector2i) -> void:`
 - `func try_move_to(cell: Vector2i) -> bool:`
 - `func try_execute_move() -> void:`
+- `func handle_move_click(cell: Vector2i) -> void:`
 - `func get_selected_cell() -> Vector2i:`
 - `func reset_selection() -> void:`
 
@@ -2932,7 +2933,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2343 lines
+extends `Node2D` · 2354 lines
 
 `godot/scripts/world/room.gd`
 

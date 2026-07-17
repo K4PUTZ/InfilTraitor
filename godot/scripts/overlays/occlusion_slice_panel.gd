@@ -54,7 +54,9 @@ var draw_bottom: bool = true
 const LINE_COLOR := Color(1.0, 1.0, 1.0, 1.0)  ## pure white, no cyan tint
 const DOT_ALPHA := 0.5
 const UNDERLINE_ALPHA := 0.3
-const DOT_RADIUS := 2.0
+## OCC-22b (2026-07-16, Director): dots thinned to read at practically the
+## underline's own thickness (1.5 px line → 0.75 px core radius), soft skirt.
+const DOT_RADIUS := 0.75
 const FILL_COLOR := Color(0.7, 0.7, 0.7)   ## neutral gray, no cyan
 const FILL_ALPHAS := [0.3, 0.5, 0.7]   ## ring 0 (center), ring 1 (mid), ring 2 (edge)
 
@@ -62,7 +64,7 @@ const FILL_ALPHAS := [0.3, 0.5, 0.7]   ## ring 0 (center), ring 1 (mid), ring 2 
 ## (solid core of DOT_RADIUS + gaussian skirt of DOT_BLUR_SIGMA), not hard
 ## draw_circle discs. The blur is baked once into a tiny shared texture at
 ## first draw — no runtime blur pass, no per-frame shader cost (D12).
-const DOT_BLUR_SIGMA := 1.5
+const DOT_BLUR_SIGMA := 1.0
 static var _dot_texture: ImageTexture = null
 
 

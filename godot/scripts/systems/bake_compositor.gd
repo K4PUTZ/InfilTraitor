@@ -94,7 +94,8 @@ var _plane_top_cache: Dictionary = {}      # facade_id → {0: Image, 1: Image}
 var _roof_plane_top_cache: Dictionary = {} # facade_id → Image (ROOF-BAKE-02c)
 var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → {page, coords, frag}
 
-const BAKE_CODE_VERSION: int = 3
+## v4: ROOF-SIDE-01 — roof atom right half-face mirrored from the left
+const BAKE_CODE_VERSION: int = 4
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 const BAKE_CACHE_FORMAT_VERSION: int = 2
 const BAKE_CACHE_EXTENSION: String = ".bin"
@@ -650,6 +651,15 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 		# _compose_sheet_page — textured sides for border voxels)
 		var side_y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
 		atom_content.blit_rect(plane, Rect2i(col * TEX_AUTHORING_N, side_y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
+		# ROOF-SIDE-01 (2026-07-16, Director): the single 32px dir-0 crop only
+		# renders the LEFT (SW-facing) half with the correct shear — the plane's
+		# slope continues downward across the right half, which faces the OTHER
+		# way and read as a flat "lid". Mirror the correct left half onto the
+		# right half: a horizontal flip both matches the SE face's opposite
+		# shear and keeps the texture continuous at the corner seam.
+		var left_half := atom_content.get_region(Rect2i(0, 8, 16, 28))
+		left_half.flip_x()
+		atom_content.blit_rect(left_half, Rect2i(0, 0, 16, 28), Vector2i(16, 8))
 		# Top diamond: isotropic roof plane at the projected local position
 		var u0: int = col * TEX_AUTHORING_N
 		var v0: int = row * TEX_AUTHORING_N

@@ -93,6 +93,19 @@ func try_execute_move() -> void:
 		try_move_to(selected_cell)
 
 
+## INPUT-SPLIT-01 (2026-07-16, Director): desktop right-click moves DIRECTLY
+## to the clicked cell — select + move as one action, no pre-selection step.
+## Mobile keeps the tap-select / tap-again-to-move flow (handle_tile_click).
+func handle_move_click(cell: Vector2i) -> void:
+	if room.turn_manager.is_enemy_phase or room._actor_end_pause_active:
+		return
+	if not is_selectable_cell(cell):
+		return
+	set_selected_cell(cell)
+	if cell != room.agent.cell:
+		try_move_to(cell)
+
+
 ## Query current selected cell.
 func get_selected_cell() -> Vector2i:
 	return selected_cell

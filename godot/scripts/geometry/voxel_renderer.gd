@@ -429,7 +429,14 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 							source_id = result.source_id_int
 							atlas_coords = result.atlas_coords
 							_diag_baked_hits += 1
-							# TEST (no-flip hypothesis): also skip flip here — alternative_id stays 0
+							# JUNCTION-MIRROR-01 (2026-07-16, Director): a real baked
+							# neighbor atom MUST be H-flipped — that is D-BAKE-2's
+							# "mirror the last column". The no-flip TEST below stays
+							# valid only for the generic material tile (its source art
+							# isn't mirror-symmetric); leaving baked atoms unflipped
+							# made lateral V-junction columns repeat the adjacent
+							# slice's column verbatim instead of mirroring it.
+							alternative_id = TileSetAtlasSource.TRANSFORM_FLIP_H
 
 				_diag_total_cells += 1
 				# TEST (no-flip hypothesis): fallback / no baked atom to mirror — use the

@@ -1946,9 +1946,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var mb := event as InputEventMouseButton
 
-	## ── Right button: execute movement to the selected tile ──────
+	## ── Right button (desktop, INPUT-SPLIT-01): move DIRECTLY to the clicked
+	## cell — select + move in one action. Replaces the old "execute move to
+	## the previously selected tile"; touch devices have no right button, so
+	## this branch is desktop-only by nature.
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-		_selection_controller.try_execute_move()
+		var move_target := _screen_to_tile(mb.position)
+		if move_target != INVALID_CELL:
+			_selection_controller.handle_move_click(move_target)
 		get_viewport().set_input_as_handled()
 		return
 
@@ -1960,9 +1965,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
 		var cell := _screen_to_tile(mb.position)
 
-		## UI-02: If clicking outside the zone, just select (no move)
+		## UI-02 / INPUT-SPLIT-01: on TOUCH devices the (emulated) left tap
+		## drives the full mobile flow — first tap selects, tapping the
+		## selected cell again walks (handle_tile_click). On desktop the left
+		## button only ever selects; movement lives on the right button.
 		if cell != INVALID_CELL:
-			_set_selected_cell(cell)
+			if DisplayServer.is_touchscreen_available():
+				_handle_tile_click(cell)
+			else:
+				_set_selected_cell(cell)
 
 
 func _capture_screenshot_to_file() -> void:

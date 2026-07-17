@@ -45,7 +45,12 @@ __pycache__/
 .aider*
 session_*.zip
 REFERENCES/
-ASSETS/
+# ASSETS/ contents stay local (heavy binaries) — but the art specifications
+# manual is a versioned project document (Director decision 2026-07-16).
+# Note: `ASSETS/*` (not `ASSETS/`) because git cannot re-include a file
+# whose parent directory is excluded.
+ASSETS/*
+!ASSETS/ART_SPECIFICATIONS.md
 
 # Screenshots/ — Director's manual Shift+P captures stay local, never
 # committed. Screenshots/history/*.png is the exception: SCREENSHOT-HOOK-01's

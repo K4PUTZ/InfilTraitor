@@ -1,0 +1,226 @@
+# INFILTRAITOR — Art Technical Specifications
+
+**Version:** 1.0 · **Adopted:** 2026-07-16 · **Status:** LIVING DOCUMENT
+**Companion milestone:** `ART-01 — Materials & Objects Pipeline`
+(`docs/production/milestones.md`) — scheduled for the **Alpha → Beta window**,
+after scenario and gameplay are complete.
+
+This is the single authoritative manual for producing art assets for
+INFILTRAITOR. Every texture, facade, and voxel object authored for the game
+must conform to the specifications here. Sections marked **SHIPPED** describe
+systems already in production; sections marked **PLANNED (ART-01)** describe
+ratified direction whose implementation is scheduled, not built.
+
+Ground-truth constants live in code, not here — when this document cites a
+number, the code reference beside it is the canon. If they ever disagree,
+the code is right and this document has a bug (stop and report; do not
+silently fix either side).
+
+---
+
+## 1. Canonical Metrics (SHIPPED)
+
+Source of truth: `godot/scripts/geometry/geometry_coords.gd`.
+
+| Metric | Value | Constant |
+|---|---|---|
+| Voxels per Gameplay Unit (GU), per ground axis | 8 | `VOXELS_PER_UNIT_AXIS` |
+| Levels (voxel rows of height) per storey | 8 | `LEVELS_PER_STOREY` |
+| Voxel tile footprint on screen (isometric diamond) | 32×16 px | `VOXEL_TILE_SIZE` |
+| Voxel atom (full render cell: 16 px top face + 20 px side face) | 32×36 px | `VOXEL_ATOM_W/H` |
+| Screen rise per level of height | 20 px | `VOXEL_STEP_PX` |
+| Storey height on screen (8 × 20) | 160 px | `VOXEL_STOREY_HEIGHT_PX` |
+| **Texture authoring density (flat texels per voxel)** | **16 px** | `TEX_AUTHORING_N` |
+
+Derived facts every artist must internalize:
+
+- **1 GU = 8×8 voxels of footprint; 1 storey = 8 voxels of height.**
+  A GU-storey volume is 8×8×8 = 512 voxels.
+- **A slab is 1 voxel (1 level) thick.** There is no thinner unit; there does
+  not need to be — the "mini slab" is the native unit
+  (`godot/scripts/geometry/slab.gd`).
+- **All flat (unprojected) texture art is authored at 16 texels per voxel.**
+  128 px of texture = 8 voxels = 1 GU of surface. This is pinned
+  (`TEX_AUTHORING_N`); never author at another density and never pre-stretch
+  to compensate for projection — the compositor owns all projection math.
+- Each voxel is one native Godot `TileMapLayer` cell. Art is consumed by the
+  bake compositor (`godot/scripts/systems/bake_compositor.gd`), which slices
+  it into 32×36 atoms at bake time (D12: procedural cost is paid at bake
+  time, never per frame).
+
+---
+
+## 2. Wall Facades (SHIPPED)
+
+The facade system for vertical surfaces (walls, junctions) — in production
+since `verified/v0.6.0`.
+
+| Property | Specification |
+|---|---|
+| File | `textures/defaults/facade_<material>.png` |
+| Dimensions | **1024×512 px** (pinned: `FACADE_W`/`FACADE_H`, `bake_compositor.gd`) |
+| Color | **Grayscale — R==G==B on every pixel** (invariant B2). Color arrives at runtime from the material via blend mode (MULTIPLY canon). |
+| Alpha | None (fully opaque). Silhouette alpha comes from the canonical voxel texture, never from facade art (invariant B3). |
+| Coverage | 1024/16 = **64 voxel columns** wide; 512/16 = **32 voxel rows** = 4 storeys tall |
+| Wrap | Edges repeat by **mirroring**, not tiling — the pattern must tolerate being flipped at its borders without reading as broken |
+| Vertical pre-scale | The compositor stretches walls ×20/16 vertically (16-texel authoring rows onto 20 px levels). **Author flat at 16 texels/voxel; never bake this stretch into the art.** |
+
+Registration: material → facade mapping lives in
+`godot/scripts/systems/bake_policy.gd` (`DEFAULT_FACADES`). Current
+materials: `concrete`, `stone`, `wood`, `metal`.
+
+---
+
+## 3. Roof & Slab Top Textures (PLANNED — ART-01)
+
+**Ratified direction (2026-07-16):** horizontal surfaces get their own
+dedicated art family, separate from wall facades. Today (ROOF-BAKE-02c) roofs
+reuse the wall facade unscaled as a proof of mechanism; that reuse was correct
+as an experiment and is not the product.
+
+Two distinct top families are planned:
+
+- **Slab tops ("laje")** — flat utilitarian rooftops (concrete slab look).
+- **Roof tiles ("telhado")** — tiled/shingled roof art, including the stepped
+  ("staircase") sloped-roof profile (see §4).
+
+Specification (to be finalized at ART-01 kickoff; recommendation is the
+Overlord's, dimensions await Director ratification with a D-number):
+
+| Property | Specification |
+|---|---|
+| File | `textures/defaults/roof_<material>.png` (naming to be confirmed at ART-01) |
+| Dimensions | **512×512 px recommended** → a 32×32-voxel period (4×4 GUs). Hard constraint: each axis must be a **multiple of 128 px** (1 GU). |
+| Color | Grayscale (B2), same as facades |
+| Projection | **Isotropic — no vertical pre-scale.** Both axes of a horizontal surface are ground axes at 16 texels/voxel. The compositor's roof path (`_get_roof_plane_source`) already handles this. |
+| Anchoring | Structure-local: the pattern anchors to each building's connected roof component (`Slab.texture_anchor`), so identical structures render identical roofs and no world-line seams appear. Already shipped mechanism (ROOF-BAKE-02c). |
+| Wrap | Mirrored, same as facades |
+| Step faces | Stepped-roof art must design the exposed 1-voxel step face (the "testeira" band) as part of the texture concept — see §4. |
+
+Plumbing change required (small, scoped in ART-01): `BakePolicy` gains a
+separate `roof_facade_for_material` map; the compositor's pinned roof source
+dimensions move to the ratified values.
+
+---
+
+## 4. Stepped Roofs — 1-Voxel Roof Tiles (PLANNED — ART-01)
+
+Feasibility confirmed 2026-07-16 against the shipped geometry. Key facts:
+
+- A `Slab` is already exactly 1 voxel high; the current flat roof is a stack
+  of 2 slab levels (`ROOF_LEVEL_COUNT`, `room_builder.gd`). Stacked slabs at
+  successive levels are shipped, tested, and independently destructible.
+- A sloped roof is therefore **a generator concern, not a new mechanism**: a
+  "roof profile" emits slabs with partial (strip) footprints at ascending
+  levels. `SlabGenerator` already supports variable footprints (that is how
+  border growth works).
+- **Visual slope math:** one level of rise = 20 px on screen; one voxel of
+  horizontal advance = 8 px on screen. A step every 1 voxel reads near-
+  vertical; **a step every 2 voxels is the expected minimum readable pitch**.
+  Final pitch is a Director art call, decided against a PLAYGROUND fixture.
+- **Budget guard:** stepped profiles multiply roof voxel count roughly 3–4×
+  (PLAYGROUND flat baseline: 7,778 roof voxels). Cost is bake/placement/
+  memory, not per-frame (D12 holds), but ART-01 includes a measured budget
+  spike before stepped roofs become a default.
+
+---
+
+## 5. Voxel Objects — Props Dictionary (PLANNED — ART-01)
+
+**Canon (Director, 2026-07-16):** every game element other than walls,
+roofs, and floors exists as **one GU or a whole multiple of GUs**. No new
+exotic geometry. All objects (props, furniture, containers) are voxel
+objects built from dictionary materials; every voxel is a native Godot tile,
+individually destructible, predictable, verifiable.
+
+The object schema already exists — `godot/scripts/systems/prop_def.gd`
+(JSON files in `props/`, e.g. `props/crate_full.json`):
+
+| Field | Meaning | Authoring rule |
+|---|---|---|
+| `id` | Unique object id | snake_case |
+| `size_vox` | `[x, y, z]` voxel dimensions | **Every axis a multiple of 8** (GU rule) |
+| `layers` | Per-level occupancy bitmask: 8-char rows of `0`/`1`, rows separated by `/`, one string per level | Exact row/level ordering is **not yet pinned** — pinning it (with a D-number) is an ART-01 deliverable; do not author multi-layer objects before that |
+| `material_zones` | Zone → material id from the materials dictionary (§6) | Only dictionary materials |
+| `footprint_gus` | GU cells occupied, relative to anchor | Whole GUs only |
+| `storeys` | Rendered solid height | — |
+| `gameplay` | `cover` (`full/half/quarter/none`), `destructible` | — |
+| `tags` | Classification | — |
+
+**Current limitation (why this is PLANNED, not SHIPPED):** the v1 renderer
+ignores `layers` and renders props as solid GU blocks. ART-01's renderer v2
+consumes `layers` voxel-by-voxel through the existing placement pipeline
+(`_set_voxel_cell`) — which, per architecture Rule 8, grants baking, theming,
+and destruction for free. Multi-GU objects additionally require
+footprint-aware rotation in `perspective_mapper` (known gap, recorded
+2026-07-16; all shipped props are 1×1).
+
+### Open-source voxel models (.vox import)
+
+Open-source MagicaVoxel models **do not work directly** — two conversion
+gaps, both scoped in ART-01:
+
+1. **Palette → material curation.** `.vox` uses an arbitrary 256-color
+   palette; INFILTRAITOR uses a small materials dictionary. Every import
+   requires a curated palette-to-material mapping — this is editorial work
+   per asset, not automation.
+2. **Scale normalization.** Community models come in arbitrary sizes
+   (16³, 32³, 126³…). The converter must normalize to whole-GU multiples
+   (crop, pad, or downsample — per-asset decision).
+
+The converter itself (`.vox` → PropDef JSON, offline Python tool under
+`tools/`) is small; the format is simple and well documented. Licensing:
+only assets whose license permits redistribution in a commercial project
+(CC0 preferred); record source + license per imported asset in the object's
+JSON (field to be added at ART-01).
+
+---
+
+## 6. Materials Dictionary (PLANNED — ART-01)
+
+Today "what is a material" is scattered across three places:
+`BakePolicy.DEFAULT_FACADES`, the compositor's material registry, and
+`material_zones` in PropDefs. ART-01 consolidates this into a single
+authoritative **materials dictionary** — the single writer of material
+truth. Planned `MaterialDef` shape (schema finalized at ART-01):
+
+| Field | Purpose |
+|---|---|
+| `id` | Canonical material id (`concrete`, `stone`, `wood`, `metal`, …) |
+| `wall_facade` | Facade file for vertical surfaces (§2) |
+| `roof_facade` | Dedicated top texture (§3) |
+| `base_color` | Runtime tint for MULTIPLY blend |
+| Gameplay properties | HP/damage class, sound signature, debris behavior (destruction phase) |
+
+Rule: once the dictionary exists, `BakePolicy` and every other consumer
+**read** it; nobody keeps a private copy of material truth (anti-split-brain).
+
+---
+
+## 7. Invariants That Bind All Art
+
+Full detail: `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
+
+- **B2 — Grayscale:** all facade and pattern sources are grayscale
+  (R==G==B). Color is a runtime material property.
+- **B3 — Alpha from canon:** silhouette alpha always comes from the
+  canonical voxel texture; art never carries silhouettes.
+- **B6 — Loud-fail:** a missing or malformed asset must hard-assert at
+  bake, never fall back silently. Ship no asset that "mostly works."
+- **D12 — Mobile budget:** all procedural cost at bake time; art decisions
+  that would add per-frame cost need explicit Director sign-off.
+- **16 texels/voxel** (`TEX_AUTHORING_N`) is pinned. Changing it is a
+  canon change (stop-and-report), not a tuning knob.
+
+---
+
+## 8. Governance
+
+- This document lives at `ASSETS/ART_SPECIFICATIONS.md` and is owned by the
+  Director (ratification) and the Overlord (maintenance).
+- Sections marked PLANNED are ratified **direction**; numbers inside them
+  marked "recommended" await a D-number at ART-01 kickoff before any asset
+  is produced against them.
+- Amendments follow the same rule as context files: pinned values change
+  only by Director ratification, recorded in the active master plan's
+  decision register.

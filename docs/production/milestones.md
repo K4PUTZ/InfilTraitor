@@ -454,6 +454,55 @@ lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 
 ---
 
+### ⏸️ ART-01 — Materials & Objects Pipeline — SCHEDULED (Alpha → Beta window)
+**Objective:** Dedicated art for horizontal surfaces (slab tops + roof tiles,
+including stepped/sloped roofs), a single-writer materials dictionary, a voxel
+objects dictionary rendered per-voxel, and an open-source `.vox` import
+pipeline — completing the "everything is GU-multiple voxels" world model.
+
+**Window:** Explicitly scheduled for **after scenario and gameplay are
+complete — between Alpha and Beta** (Director, 2026-07-16). Not to be started
+earlier; specs are pre-written so art production can begin the moment the
+window opens.
+
+**Canonical spec:** `ASSETS/ART_SPECIFICATIONS.md` (adopted 2026-07-16) —
+the authoritative manual for all asset production under this milestone.
+Feasibility findings recorded there (§3–§6): slabs are already 1-voxel-high
+native units; stepped roofs are a generator concern, not a new mechanism;
+PropDef schema already supports per-voxel `layers` (unconsumed by v1
+renderer); `.vox` models need palette curation + GU-scale normalization.
+
+**Dependencies:** Scenario + gameplay complete (Alpha); bake system
+(VOX-BAKE-01 walls/tops — shipped); roof bake foundation (shipped
+2026-07-16, `alpha-horizontal-bake-foundation`); destruction plan Part 3
+(for prop destructibility integration).
+
+**Deliverables (dependency order):**
+1. Materials dictionary (`MaterialDef`) as single writer of material truth;
+   `BakePolicy` and compositor become readers
+2. Dedicated roof/slab texture family at Director-ratified dimensions
+   (Overlord recommendation: 512×512, 32×32-voxel period) + separate
+   roof-facade policy map
+3. Stepped-roof profile generator spike on PLAYGROUND with **measured** voxel
+   budget (flat baseline: 7,778 roof voxels) — Director ratifies pitch
+   visually
+4. Prop renderer v2: consume PropDef `layers` per-voxel through
+   `_set_voxel_cell` (Rule 8 grants bake/theming/destruction for free);
+   pin `layers` row/level ordering with a D-number
+5. `.vox` → PropDef converter (offline Python, `tools/`) + palette→material
+   curation workflow + per-asset license record
+6. Footprint-aware rotation in `perspective_mapper` for multi-GU objects
+
+**Acceptance Criteria (high level):**
+- Roofs/slabs render dedicated art in all 4 views, seam-free, structure-local
+- At least one stepped-roof fixture in PLAYGROUND, Director-ratified
+- At least one imported open-source `.vox` object rendered per-voxel, baked,
+  themed, and destructible like any wall voxel
+- No consumer holds a private copy of material truth (anti-split-brain)
+- Mobile budget spike documents voxel-count headroom before general rollout
+
+---
+
 ### ⏸️ AI-02 — Detection Tuning & Game Feel — DEFERRED (provisional AI; resumes after VIS-01)
 **Objective:** Calibrate the detection parameters so that stealth is genuinely tense and fair.
 
@@ -927,6 +976,7 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 | AI-01 / AI-02 / AI-03 | Visual system (VIS-01) | ⏸ DEFERRED | Provisional AI; resumes only after the visual system is complete |
 | CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Demo room showcases AI + visuals; gated by both |
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
+| ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; no implementation before the window |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
 | M6.0 (Audio) | Audio assets | At risk | Hire externally if needed |

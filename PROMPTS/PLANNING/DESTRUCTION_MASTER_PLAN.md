@@ -589,6 +589,53 @@ separate-adjacent-blocks case.
   `slab_geometry_selftest.gd` 15/15, `bake_selftest.gd` 19/19.
   `project_lint.py`: 131 files, 0 real errors.
 
+### Part 2c — Roof Surface Baking *(ROOF-BAKE-01/02, 2026-07-16, Overlord direct)*
+
+**The "later experiment" from Part 2b's phasing, run and CLOSED as a
+foundation.** Two commits, one session:
+
+**ROOF-BAKE-01 (`c6edb71`)** proved the mechanism: `_get_plane_top()`'s
+mapping `T(u−v, (u+v)/2)` was always an isometric projection of a flat 2-D
+grid — walls consume it as `(column_in_run, level)`, a roof consumes the
+same math as `(voxel_x, voxel_y)`. The screen offset between adjacent roof
+voxels (±16, +8) equals the crop-window offset in the plane exactly, so a
+roof top is seam-continuous **by construction**. First cut reused the wall
+sheets keyed by global fine-grid position; the Director's visual review of
+the real build (3 screenshots, 3 views) caught three real defects.
+
+**ROOF-BAKE-02 (`f88d060`)** fixed all three:
+- **02a** — `layout_with_perspective()` now rotates `solid_block_instances`
+  (rectangle via two rotated corners) and `voxel_prop_instances` (points;
+  all shipped PropDefs are 1×1). Roofs were being built in the N frame
+  while their walls rotated — wood roofs on stone buildings in E/S views.
+  Closes the old open item #7.
+- **02b** — roof border adjacency is **level-aware**: suppress toward a
+  neighbour roofed at the same level or higher (the taller wall's far-slice
+  fills that seam column); grow an **eave** over a lower neighbour. Fixes
+  the 1-voxel gap at every storey step.
+- **02c** — dedicated `ROOF|mat|fac|col|row` page family: top diamonds
+  project the **unscaled** facade (no wall ×20/16 pre-scale → isotropic,
+  the 64×32 sheet covers the 1024×512 facade exactly), keyed by
+  **structure-local** offsets (voxel − `Slab.texture_anchor`, one anchor
+  per connected roofed-GU component, NW corner). Kills the world-line
+  mirror folds (x=64k / y=32k) that crossed showcase roofs, makes
+  same-material structures texture identically, and the pattern follows
+  the structure across view rotations.
+
+Full canon (projection math, key format, anchoring rule, fallback
+contract): `docs/technical/BAKE_SYSTEM_REFERENCE.md` §"ROOF-BAKE".
+Evidence: `roof_bake_selftest.gd` 8/8 — all expectations locally
+re-derived (own fold, own flood-fill anchors, own E-rotation math); 2304
+top-diamond pixels equal to a direct roof-plane read; 7778 real PLAYGROUND
+roof voxels placed exactly as their local offset predicts; 49/49 blocks
+roofed at their rotated E-view position with the correct material.
+
+**Still open from this part** (visual polish, Director-judged): roof side
+faces of border voxels still show dir-0 wall-plane content at arbitrary
+rows (textured but wall-unaligned); per-material roof facades (metal's
+facade laid flat is honest but may want dedicated art); occlusion
+participation of roofs (Part 2b's original note stands).
+
 ### Part 3 — The trigger *(D5, D6, D8, D15)*
 
 > **⚠️ Corrected 2026-07-12 — the motor was not "idle", it was severed.**

@@ -677,3 +677,106 @@ cell diagonally out from the elbow, on a voxel that is **never** already occupie
 by a wall voxel (0 redundant across all four maps). In SIGMA they fill real
 notches at the wall elbows and are invisible because the material matches. They
 are load-bearing. Turning the feature off would break SIGMA.
+
+## ROOF-BAKE — Roof Slab Baking (ROOF-BAKE-01/02, 2026-07-16, Overlord direct)
+
+The bake system extends to HORIZONTAL surfaces (roof/ceiling `Slab`s,
+`Slab.Role.CEILING`). Canon after ROOF-BAKE-02 (`f88d060`):
+
+### The projection
+
+`_get_roof_plane_top(facade_id, facade)` builds a dedicated roof plane with
+the SAME two-pass isometric mapping as `_get_plane_top()` —
+`T(u−v+x_off, (u+v)/2+V_MARGIN) = S(u, v)` — but from
+`_get_roof_plane_source()`: the facade **unscaled** (1:1, no wall ×20/16
+vertical pre-scale), grayscale-flattened, with the standard mirrored wrap
+strip + mirrored vertical margins (source = 1056×576 vs the wall source's
+1056×704). Consequences, all load-bearing:
+
+- **Isotropic**: 16 texels per voxel on BOTH ground axes (the wall source
+  reads 25% stretched along y when laid flat — the original "stones look
+  wrong" defect).
+- **Full period**: the 64×32 sheet windows cover the 1024×512 facade
+  EXACTLY, so the mirrored-repeat fold coincides with the texture's own
+  natural boundary.
+- Screen offset between adjacent roof voxels (±16, +8) equals the
+  crop-window offset in T, so the assembled top surface is a pure
+  translation of the roof plane — **seam-continuous by construction**
+  (verified at pixel level, `roof_bake_selftest.gd` test 3).
+
+### Keys and anchoring
+
+- Lookup key: `"ROOF|<material>|<facade>|<col>|<row>"` — **no direction
+  component** (a horizontal surface has none; sides use the dir-0 wall
+  plane, see below).
+- `(col, row)` = mirrored fold (x period 64, y period 32) of the
+  **STRUCTURE-LOCAL offset** `voxel.grid_pos − Slab.texture_anchor`.
+- `texture_anchor` = voxel origin of the bounding-box NW corner of the
+  slab's **connected roofed-GU component** (4-adjacency over all
+  `solid_block_instances` GUs, level- and material-blind), computed by
+  `room_builder` at generation and stored ON the Slab so re-renders need no
+  builder context. Global keying (ROOF-BAKE-01's first cut) is banned: it
+  put mirror folds at fixed world lines (x=64k, y=32k — every 8×4 GUs)
+  through roof interiors.
+- Placement: `render_slab_solid()` → `_set_voxel_cell(..., flat_baked)` →
+  `BakedTileLookup.resolve_flat(material, local_pos)`. Fallback contract
+  identical to walls: any miss (bake off, MATERIAL_ONLY, unmapped material,
+  no atlas, key absent) lands on the generic material atlas. B5 unchanged:
+  destruction-exposed geometry falls back to the material atlas, never
+  re-bakes.
+
+### Composition
+
+`_compose_roof_pages()` runs in `bake()` after junction pages (and also on
+the wall-less early path — a blocks-only map still bakes roofs). Cells
+arrive RAW LOCAL from `room_builder` (read off the real Slab voxels — the
+single footprint truth per D1-ROOF-b); the fold happens in the compositor,
+the one module owning sheet periods. Atom recipe mirrors
+`_compose_sheet_page`: dir-0 wall-plane side crop + roof-plane top crop
+(diamond-masked) + canonical silhouette mask + B3 AA fixup; pages sized to
+atom count (junction-page pattern). Session-cached under `"ROOF|mat|fac"`.
+
+### Rotation (ROOF-BAKE-02a, closes old open item #7)
+
+`PerspectiveMapper.layout_with_perspective()` rotates
+`solid_block_instances` (rectangle: two rotated corners → min-corner origin
++ `rotated_size()`) and `voxel_prop_instances` (points — all shipped
+PropDefs are 1×1; multi-GU props need footprint-aware rotation IN THE
+MAPPER when they exist). Before this, roofs were built in the N frame while
+the walls they capped rotated — roofs landed on the wrong structures in
+E/S/W views.
+
+### Borders at storey steps (ROOF-BAKE-02b)
+
+Roof border adjacency is LEVEL-AWARE: suppress a side only toward a
+neighbour roofed at the SAME base level (flat continuity) or HIGHER (the
+taller wall's far-slice already fills that seam column at our level —
+growing into it would double-write Slice-owned cells); grow an **eave**
+over a LOWER neighbour (never collides: storey gap ≥ 5 levels >
+ROOF_LEVEL_COUNT = 2). The old boolean adjacency left a 1-voxel gap at
+every storey step.
+
+### Known limitations / Director-judged polish (open)
+
+- Border voxels' SIDE faces show dir-0 wall-plane content at arbitrary rows
+  — textured but not aligned with the walls below. Expected, not a defect
+  (recorded 2026-07-16); treatment TBD.
+- Roof tops show the WALL facade laid flat. Honest projection; per-material
+  dedicated roof art is a possible future step (metal reads most odd).
+- Slab-vs-solid-block overlap at storey steps: a lower roof's CORE column
+  overlaps the taller block's wall far-slice cells at the step (pre-existing
+  since D1-ROOF, unrelated to 02b's border rule). Invisible today;
+  a latent Part 3 (destruction trigger) conflict to resolve there.
+- Roof occlusion participation: accidental/partial, not yet deliberately
+  scoped (Part 2b note stands).
+
+### Evidence
+
+`roof_bake_selftest.gd` 8/8 — every expectation locally re-derived (own
+mirror fold, own component flood fill, own E-rotation math): 324 local
+cells incl. negative border coords; resolve_flat vs derivation incl.
+out-of-period folds; isotropy (576 vs 704 px sources); 2304 opaque
+top-diamond pixels ALL equal to a direct roof-plane read; 7778 real
+PLAYGROUND roof voxels placed exactly as predicted, 2 real storey-step
+sides exercising the eave rule; 49/49 blocks roofed at their
+independently-rotated E-view position with correct material.

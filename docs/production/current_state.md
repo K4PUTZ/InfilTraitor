@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.47 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.48 · **Updated:** 2026-07-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -25,17 +25,17 @@
 - Test scripts: 21
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 10
+- Archived prompts: 11
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- f88d060 [ROOF-BAKE-02] Roofs rotate with structures; level-aware borders; isotropic structure-local texture
 - c6edb71 [ROOF-BAKE-01] Roof slabs consume the bake system: horizontal (x,y)-keyed atoms
 - 6897d02 Alpha Ceiling Foundation
 - f697576 [DESTRUCTION-D1-ROOF-b] Roof border: real footprint growth, map-wide adjacency fix
 - fd58e6e [DESTRUCTION-PART2-INTEGRATION] Real map load builds roofs above real blocks
-- d15d2dd [DESTRUCTION-D1-ROOF] Roof/ceiling slabs: N-level, all-destructible, existing wall materials
 <!-- AUTO:END version_history -->
 
 ---

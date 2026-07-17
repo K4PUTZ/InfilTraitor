@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26249 lines total** (under `godot/scripts/`)
+**133 scripts · 26229 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -985,7 +985,7 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 175 lines
+extends `Node2D` · 155 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 
@@ -995,10 +995,9 @@ extends `Node2D` · 175 lines
 - `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
 - `DOT_ALPHA` = `0.5`
 - `UNDERLINE_ALPHA` = `0.3`
-- `DOT_RADIUS` = `0.75`
+- `DOT_WIDTH` = `1.5`
 - `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
-- `FILL_ALPHAS` = `[0.3, 0.5, 0.7]`
-- `DOT_BLUR_SIGMA` = `1.0`
+- `FILL_ALPHAS` = `[0.05, 0.08, 0.1]`
 
 **Public vars**
 - `var bottom_near_a: Vector2`

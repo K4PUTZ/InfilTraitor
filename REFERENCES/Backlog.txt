@@ -29,17 +29,35 @@ ENEMY AI
 
 COVER/COMBATE
 
-
-
-
 Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
 
 
 
 
+DESIGN:
 
 
+
+- Na oclusão, assim como as paredes tem slices empilhadas até o teto, queremos que o teto também tenha "listras" de GU horizontais. De maneira que seja possível ver o wireframe, indicando a presença do telhado (e não revelando todo o interior do aposento de uma vez), através do sistema de rings.
+
+- Os "seres vivos" por sua vez, vamos fazer alguns testes para criar com voxels. Infelizmente a granulação atual é muito grande pra fazer personagens detalhados. Porém eu queria avaliar a possibilidade de a gente dividir os voxels por 4 em cada eixo. Dessa forma seria possível construir personagens mais detalhados usando o quádruplo de voxels. Isso, obviamente aumenta muito a quantidade de processamento. Mas tem um porém. Estamos falando de game em turnos, com TIC e dirty flag. Por cima disso, nossos voxels vão existir em apenas 8 poses para cada tipo de atividade (animação), economizando mais processamento. Praticamente todos os atores vão usar as mesmas animações para se movimentar, atacar, entrar em cover, etc. 
+
+- Da mesma forma que o cenário, os voxels dos atores nascem "limpos" com os personagens, e quando houver dano recebido eles mudam de cor, ou mesmo somem. A armadura quando recebe dano, por exemplo, pode ficar com um buraco. Depois com outro tiro aparece sangue, etc. As mudanças vão acontecendo por TIC, e o "boneco" do personagem vai mudando. 
+
+- Fica a dúvida se valeria a pena criar rigging nos voxels, e animar eles de verdade, OU de repente gente criar cada pose com os mesmos voxels, em paralelo com um TWIN DIGITAL, um modelo 3D real desse manequim, que armazena o estado de cada átomo e atualiza nas outras poses. 
+
+- Vamos precisar pensar em roupas e armas também, seguindo esse modelo de voxels.
+
+- Se por acaso for realmente impossível trabalhar tudo isso, a gente recorre aos velhos sprites, afinal de contas é um game 2.5D.
+
+BUGS:
+
+- A pasta de screenshots/history supostamente teria um cap de 50 arquivos, mas tenho notado que esta enchendo com mais coisas. Precisamos de uma nomenclatura mais estável, que garanta um histórico recente dos estados do sistema, sem acumular demais. Podemos também ter um método para tirar screenshots de conferência automáticos das faces N/S/W/E usando sempre os mesmos nomes, e sobrescrevendo os antigos, já que representam um estado efêmero do sistema.
+
+
+
+- As texturas das colunas extras de V-Junctions nas laterais (não no centro) precisam ser espelhadas horizontalmente.
 
 
 

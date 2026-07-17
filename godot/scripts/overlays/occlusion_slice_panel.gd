@@ -54,37 +54,16 @@ var draw_bottom: bool = true
 const LINE_COLOR := Color(1.0, 1.0, 1.0, 1.0)  ## pure white, no cyan tint
 const DOT_ALPHA := 0.5
 const UNDERLINE_ALPHA := 0.3
-## OCC-22b (2026-07-16, Director): dots thinned to read at practically the
-## underline's own thickness (1.5 px line → 0.75 px core radius), soft skirt.
-const DOT_RADIUS := 0.75
+## OCC-24 (2026-07-17, Director): dots drawn as VECTOR circles (draw_circle),
+## not pre-blurred texture sprites. 1.5px thick strokes (same thickness as
+## the underline) — dots and line now share same thickness. No blur, removes
+## visual pollution and simplifies rendering.
+const DOT_WIDTH := 1.5  ## screen pixels, matches UNDERLINE width
 const FILL_COLOR := Color(0.7, 0.7, 0.7)   ## neutral gray, no cyan
-const FILL_ALPHAS := [0.3, 0.5, 0.7]   ## ring 0 (center), ring 1 (mid), ring 2 (edge)
-
-## OCC-22 (2026-07-16, Director): dots render as a PRE-BLURRED gaussian sprite
-## (solid core of DOT_RADIUS + gaussian skirt of DOT_BLUR_SIGMA), not hard
-## draw_circle discs. The blur is baked once into a tiny shared texture at
-## first draw — no runtime blur pass, no per-frame shader cost (D12).
-const DOT_BLUR_SIGMA := 1.0
-static var _dot_texture: ImageTexture = null
-
-
-## Lazily build the shared blurred-dot sprite: alpha 1.0 inside DOT_RADIUS,
-## falling off as exp(-(r - DOT_RADIUS)^2 / 2*sigma^2) outside it — a cheap,
-## close approximation of the original disc convolved with a gaussian kernel.
-static func _get_dot_texture() -> ImageTexture:
-	if _dot_texture != null:
-		return _dot_texture
-	var half := int(ceil(DOT_RADIUS + DOT_BLUR_SIGMA * 3.0))
-	var size := half * 2 + 1
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	for y in range(size):
-		for x in range(size):
-			var r := Vector2(float(x - half), float(y - half)).length()
-			var d := maxf(r - DOT_RADIUS, 0.0)
-			var a := exp(-(d * d) / (2.0 * DOT_BLUR_SIGMA * DOT_BLUR_SIGMA))
-			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
-	_dot_texture = ImageTexture.create_from_image(img)
-	return _dot_texture
+## OCC-25 (2026-07-17, Director): FILL_ALPHAS reduced to minimal values for
+## testing ring opacity visibility. Reduce visual pollution from overlapping
+## translucent faces on tall slices.
+const FILL_ALPHAS := [0.05, 0.08, 0.1]   ## ring 0, 1, 2 (minimum test)
 
 
 func _draw() -> void:
@@ -160,6 +139,7 @@ func _draw() -> void:
 ## at every real voxel boundary between `from` and `to` — voxel_count+1 points
 ## (fencepost), evenly interpolated in SCREEN space. voxel_count is a real
 ## grid-unit count, never derived from pixel length.
+## OCC-24: dots drawn as vector circles (1.5px strokes), not textured sprites.
 func _draw_voxel_edge(from: Vector2, to: Vector2, voxel_count: int) -> void:
 	var underline := LINE_COLOR
 	underline.a = UNDERLINE_ALPHA
@@ -167,9 +147,9 @@ func _draw_voxel_edge(from: Vector2, to: Vector2, voxel_count: int) -> void:
 
 	var dot := LINE_COLOR
 	dot.a = DOT_ALPHA
-	var tex := _get_dot_texture()
-	var tex_size := Vector2(tex.get_width(), tex.get_height())
 	var steps := maxi(voxel_count, 1)
 	for i in range(steps + 1):
 		var center := from.lerp(to, float(i) / float(steps))
-		draw_texture_rect(tex, Rect2(center - tex_size * 0.5, tex_size), false, dot)
+		## Draw a circle outline (hollow) at this voxel boundary.
+		## DOT_WIDTH is the stroke thickness (1.5px, same as underline).
+		draw_circle(center, DOT_WIDTH * 0.5, dot)

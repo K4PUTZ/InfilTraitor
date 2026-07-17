@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.52 · **Updated:** 2026-07-16 · **Branch:** main
+**Version:** 0.9.53 · **Updated:** 2026-07-17 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 0ff015e Session close 2026-07-16 (ART SPEC + VISUAL BUGS): summary, v0.9.52
 - 0fe9914 [ROOF-SIDE-01 + JUNCTION-MIRROR-01 + OCC-22b + INPUT-SPLIT-01] Roof side mirror, junction column flip, thin dots, desktop controls
 - 8939340 [Z-SLOT-01 + OCC-22] Floor z-slot fix (AP perimeter + wireframe base) and gaussian-blurred wireframe dots
 - 0b5b31b [ART-SPEC-01] Art specifications manual + ART-01 milestone (Alpha->Beta window)
 - 4ca4677 Alpha Horizontal Bake Foundation
-- f88d060 [ROOF-BAKE-02] Roofs rotate with structures; level-aware borders; isotropic structure-local texture
 <!-- AUTO:END version_history -->
 
 ---

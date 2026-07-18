@@ -99,30 +99,13 @@ var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → 
 ## v6: ROOF-SIDE-03 — roof atom right half sampled from the dir-1 wall plane
 ##     (transposed fold), so slab SE faces run in the same direction as the
 ##     wall below; roof key y-fold widened 32 → 64 to carry it
-const BAKE_CODE_VERSION: int = 6
-
-## ROOF-SIDE-02: 2-bit exposure mask for a roof atom's side halves.
-## LEFT (SW-facing) half is exposed iff the cell has no +y neighbor;
-## RIGHT (SE-facing) half iff no +x neighbor (grid +x projects screen-SE,
-## +y screen-SW — Transform Canon). Part of the ROOF| lookup key, so the
-## same fold can carry border and interior variants side by side.
-const SIDE_MASK_LEFT: int = 1
-const SIDE_MASK_RIGHT: int = 2
-
-## ROOF-SIDE-02: derive the side-exposure mask for one roof cell from a
-## same-level neighbor-presence set. A half is exposed iff the adjacent
-## cell on that side is absent: right (SE-facing) iff no +x neighbor, left
-## (SW-facing) iff no +y. Production calls this with room_builder's GLOBAL
-## per-level voxel occupancy (absolute coords, stamped onto Slab.side_masks
-## for re-renders); roofs-only fixtures call it with their single-component
-## local cell set — same semantics, different universe of cells.
-static func side_mask_for(cell_set: Dictionary, pos: Vector2i) -> int:
-	var mask := 0
-	if not cell_set.has(pos + Vector2i(0, 1)):
-		mask |= SIDE_MASK_LEFT
-	if not cell_set.has(pos + Vector2i(1, 0)):
-		mask |= SIDE_MASK_RIGHT
-	return mask
+## v7: ROOF-SIDE-04 — v5 reverted: EVERY roof atom paints both side halves
+##     again (Director, 2026-07-18). The masking cured a misdiagnosis (the
+##     real lid was v6's direction bug) and left slabs hollow — interior
+##     faces are visible whenever occlusion ghosts the front walls, and
+##     destruction will expose them for real. Solid atoms cost nothing at
+##     draw time; the once-suspected draw-order stomp never reproduced.
+const BAKE_CODE_VERSION: int = 7
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 const BAKE_CACHE_FORMAT_VERSION: int = 2
 const BAKE_CACHE_EXTENSION: String = ".bin"
@@ -651,40 +634,20 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 ## with the top sourced from the isotropic roof plane; page sized to the atom
 ## count like junction pages (roof usage is sparse by nature).
 func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array) -> Dictionary:
-	# ROOF-SIDE-02 (2026-07-17): every atom used to paint BOTH side halves
-	# unconditionally. TileMapLayer draw order lets a later-drawn inner
-	# neighbor stamp its (never actually visible) painted side over the top
-	# diamond of the voxel beside it — the serrated "lid" along the SE roof
-	# edge (the SW edge survives only because draw order favors that
-	# diagonal). Fix at bake time, not draw time: a side half is painted only
-	# when that half is a real exposed border — right half iff no +x
-	# neighbor, left half iff no +y neighbor — so covered halves are
-	# transparent and can never stomp a neighbor's top face, regardless of
-	# draw order. Atom key gains the 2-bit side mask (see side_mask_for()).
-	var folded_seen: Dictionary = {}
-	var folded_cells: Array = []
-	# Vector3i cells carry the mask in .z (production: room_builder derives
-	# it from the global same-level occupancy); bare Vector2i cells
-	# (single-component fixtures) fall back to the local cell-set derivation.
+	# ROOF-SIDE-04: every atom paints BOTH side halves — slabs are SOLID.
+	# Interior side faces are visible whenever occlusion ghosts the front
+	# walls, and destruction will expose them for real (v5's border-only
+	# masking left slabs hollow; see BAKE_CODE_VERSION history).
 	# ROOF-SIDE-03: BOTH axes fold at period 64 (SHEET_COLS) — the right
 	# half's transposed dir-1 crop consumes y as a run position, which a
 	# period-32 fold cannot carry (fold32 is derivable from fold64, never
 	# the reverse). The 32-band indices each half needs are re-derived from
-	# the 64-folds via _band_index() below.
-	var cell_set: Dictionary = {}
+	# the 64-folds via _band_index().
+	var folded_seen: Dictionary = {}
+	var folded_cells: Array = []
 	for cell in cells:
-		if cell is Vector2i:
-			cell_set[cell] = true
-	for cell in cells:
-		var pos: Vector2i
-		var mask: int
-		if cell is Vector3i:
-			pos = Vector2i(cell.x, cell.y)
-			mask = cell.z
-		else:
-			pos = cell
-			mask = side_mask_for(cell_set, pos)
-		var folded := Vector3i(_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_COLS), mask)
+		var pos: Vector2i = cell
+		var folded := Vector2i(_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_COLS))
 		if not folded_seen.has(folded):
 			folded_seen[folded] = true
 			folded_cells.append(folded)
@@ -711,7 +674,6 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 	for folded in folded_cells:
 		var col: int = folded.x   # fold64 of local x
 		var row: int = folded.y   # fold64 of local y (ROOF-SIDE-03)
-		var mask: int = folded.z
 		var row_band: int = _band_index(row)   # 32-band index for left/top math
 		var col_band: int = _band_index(col)   # 32-band index for the SE half
 
@@ -732,14 +694,6 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 		var side_y0_r: int = (SHEET_ROWS - 1 - col_band) * 20 + row * 8 + V_MARGIN
 		var x0_r: int = FACADE_W - row * TEX_AUTHORING_N
 		atom_content.blit_rect(plane1, Rect2i(x0_r + 16, side_y0_r, 16, 28), Vector2i(16, 8))
-		# ROOF-SIDE-02: erase the side halves this cell does not actually
-		# expose (covered by a same-level neighbor). The top-diamond blit
-		# below repaints the upper rows inside the diamond mask, so only
-		# genuine below-the-edge side pixels go transparent.
-		if (mask & SIDE_MASK_LEFT) == 0:
-			atom_content.fill_rect(Rect2i(0, 8, 16, 28), Color(0, 0, 0, 0))
-		if (mask & SIDE_MASK_RIGHT) == 0:
-			atom_content.fill_rect(Rect2i(16, 8, 16, 28), Color(0, 0, 0, 0))
 		# Top diamond: isotropic roof plane at the projected local position
 		var u0: int = col * TEX_AUTHORING_N
 		var v0: int = row * TEX_AUTHORING_N
@@ -758,7 +712,7 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 			page.blit_rect(atom_content, atom_full, tile_pos)
 
 		var atlas_coords := Vector2i(tile_col, tile_row)
-		frag["%d|%d|%d" % [col, row, mask]] = atlas_coords
+		frag["%d|%d" % [col, row]] = atlas_coords
 		coords_used.append(tile_pos)
 		atom_idx += 1
 

@@ -282,12 +282,7 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 ## y → row, BOTH period 64 (ROOF-SIDE-03 — the atom's SE half consumes y
 ## as a dir-1 run position). Returns null on any miss — caller
 ## falls back to the generic material atlas, same contract as resolve().
-## ROOF-SIDE-02: side_mask is the 2-bit exposure mask for the voxel's side
-## halves (BakeCompositor.SIDE_MASK_LEFT/RIGHT), derived by the caller from
-## the same slab's cell set via BakeCompositor.side_mask_for(). It is part
-## of the atom key: interior cells resolve to top-only atoms so their
-## painted sides can never overdraw a border neighbor's top face.
-func resolve_flat(material_id: String, local_pos: Vector2i, side_mask: int = 3) -> TileLookupResult:
+func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
 	# Same enable/MATERIAL_ONLY gates as resolve()
 	var baking_enabled = false
 	if _bake_config:
@@ -317,10 +312,9 @@ func resolve_flat(material_id: String, local_pos: Vector2i, side_mask: int = 3) 
 	# ROOF-BAKE-02c: dedicated roof page family, no direction component
 	# ROOF-SIDE-03: BOTH axes fold at period 64 — the atom's SE half consumes
 	# y as a dir-1 run position, which the old period-32 y-fold cannot carry.
-	var lookup_key = "ROOF|%s|%s|%d|%d|%d" % [
+	var lookup_key = "ROOF|%s|%s|%d|%d" % [
 		material_id, facade_id,
 		_mirror_index_1d(local_pos.x, 64), _mirror_index_1d(local_pos.y, 64),
-		side_mask,
 	]
 	if not lookup_dict.has(lookup_key):
 		if _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:

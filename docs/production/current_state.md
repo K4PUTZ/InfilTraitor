@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.59 · **Updated:** 2026-07-18 · **Branch:** main
+**Version:** 0.9.60 · **Updated:** 2026-07-18 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 1369827 ALPHA SLAB BAKE FIX 0.9.59 - 2026-07-18
 - 067ec70 [JUNCTION-MIRROR-02] Junction half-crops honor the mirror fold's reflection
 - 16ac6cd [ROOF-SIDE-04] Solid slabs: every roof atom paints both side halves again
 - 006c854 [ROOF-SIDE-03] Slab SE half-faces run in the wall-below direction (dir-1 transposed fold)
 - 7819a1a [VERSION] Bump to 0.9.55
-- 8d72ee8 [ROOF-SIDE-02] Roof atom side halves painted only when border-exposed
 <!-- AUTO:END version_history -->
 
 ---

@@ -62,6 +62,10 @@ ASSETS/*
 Screenshots/*
 !Screenshots/history/
 !Screenshots/history/*.png
+# SCREENSHOT-HOOK-03: .gdignore makes the Godot editor skip the whole
+# Screenshots/ tree (no .import sidecars, no resource scan) while the files
+# stay on disk for the capture/diff tooling, which uses absolute paths.
+!Screenshots/.gdignore
 
 # SCREENSHOT-HOOK-02: local session on/off state for auto-capture — not a
 # project artifact, never shared via commits (see screenshot_toggle.py).

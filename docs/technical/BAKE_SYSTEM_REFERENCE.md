@@ -487,8 +487,12 @@ Director visual ratification 2026-07-10 ("Alpha Baking Base").
 columns no longer restart a facade window: each half-face continues its
 adjacent leg's plane (LEFT half = SW face, coplanar with the X-axis/dir-0
 leg; RIGHT half = SE face, coplanar with the Y-axis/dir-1 leg), cropped at
-the junction's own projected column — one past the run's end, so
-mirrored-repeat naturally yields the mirrored last column. Composed per
+the junction's own projected column — one past the run's end. (The original
+claim that "mirrored-repeat naturally yields the mirrored last column" was
+wrong in practice: `_mirror_index()` drops the fold's reflection bit, so a
+reflected raw column sampled the plane VERBATIM and lateral V-junction
+columns repeated the adjacent wall column. Fixed by JUNCTION-MIRROR-02,
+2026-07-18 — see TOP-JUNCTION-06's section below.) Composed per
 bake() into per-material junction pages (map-dependent, not session-cached),
 keyed `JUNCTION|x|y|level`; placement tries `resolve_junction()` first and
 falls back to the legacy neighbor-mirror path (3 of TEXTURES' 32 junctions
@@ -603,6 +607,19 @@ var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
 atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
 ```
 
+**JUNCTION-MIRROR-02 addendum (2026-07-18, `067ec70`, bake v8):** the fold
+alone is not enough — `_mirror_index()` drops the fold's REFLECTION bit.
+When the raw column lands in a reflected segment (`_is_reflected_fold()`:
+e.g. raw `−1`, one before the run start — every lateral V-junction at a box
+silhouette corner — or a long perimeter's far corner, raw 208 → fold 47),
+the crop must sample the plane **mirrored in texture space**
+(`_blit_half_mirrored()`: per-column blits taking the mirrored source
+column with its shear delta compensated — a plain `flip_x` of the
+pre-sheared crop would flip the face's slope too). Verbatim sampling made
+lateral junction columns repeat the adjacent wall column (Director's
+red-circled seam, TEXTURES stone tower); center corners (raw 24,
+unreflected) were always correct and are untouched.
+
 ### Why — and why this is not a clamp
 
 `_compose_sheet_page()` (the straight-run path, shipping and Director-ratified)
@@ -707,10 +724,14 @@ strip + mirrored vertical margins (source = 1056×576 vs the wall source's
 ### Keys and anchoring
 
 - Lookup key: `"ROOF|<material>|<facade>|<col>|<row>"` — **no direction
-  component** (a horizontal surface has none; sides use the dir-0 wall
-  plane, see below).
-- `(col, row)` = mirrored fold (x period 64, y period 32) of the
-  **STRUCTURE-LOCAL offset** `voxel.grid_pos − Slab.texture_anchor`.
+  component** (a horizontal surface has none; each side half samples its
+  own wall plane, see Composition below).
+- `(col, row)` = mirrored fold of the **STRUCTURE-LOCAL offset**
+  `voxel.grid_pos − Slab.texture_anchor` — **BOTH axes period 64** since
+  ROOF-SIDE-03 (`006c854`): the SE half consumes y as a dir-1 run
+  position, which a period-32 y-fold cannot carry (fold-32 is derivable
+  from fold-64, never the reverse). The 32-band indices each half needs
+  are re-derived per axis via `_band_index()`.
 - `texture_anchor` = voxel origin of the bounding-box NW corner of the
   slab's **connected roofed-GU component** (4-adjacency over all
   `solid_block_instances` GUs, level- and material-blind), computed by
@@ -731,10 +752,32 @@ strip + mirrored vertical margins (source = 1056×576 vs the wall source's
 the wall-less early path — a blocks-only map still bakes roofs). Cells
 arrive RAW LOCAL from `room_builder` (read off the real Slab voxels — the
 single footprint truth per D1-ROOF-b); the fold happens in the compositor,
-the one module owning sheet periods. Atom recipe mirrors
-`_compose_sheet_page`: dir-0 wall-plane side crop + roof-plane top crop
-(diamond-masked) + canonical silhouette mask + B3 AA fixup; pages sized to
-atom count (junction-page pattern). Session-cached under `"ROOF|mat|fac"`.
+the one module owning sheet periods. Atom recipe: side halves (below) +
+roof-plane top crop (diamond-masked) + canonical silhouette mask + B3 AA
+fixup; pages sized to atom count (junction-page pattern). Session-cached
+under `"ROOF|mat|fac"`.
+
+**Side halves — ROOF-SIDE-01→04 (2026-07-16→18), Director's diagram
+ratified:** a slab's two visible side faces must run in the same texture
+direction as the walls below.
+
+- LEFT (SW-facing) half: dir-0 wall plane at the atom's own fold — run
+  position along the SW edge is x, exactly the wall sheet's `(col, row)`
+  roles. Always was correct.
+- RIGHT (SE-facing) half: dir-1 wall plane with the roles TRANSPOSED
+  (ROOF-SIDE-03, `006c854`, bake v6) — run position = y (dir-1 formula
+  `x0 = FACADE_W − y·16`, right half at `+16`), 20px band index = x, `·8`
+  half-step stagger = y: the exact math `_compose_sheet_page` uses for
+  dir-1 wall atoms. Its two predecessors were wrong twice over:
+  ROOF-SIDE-01 (`0fe9914`, v4) mirrored the atom's own left half — right
+  shear, wrong progression (along the SE edge only y advances; a dir-0
+  crop never consumes y), reading as a flat "lid". ROOF-SIDE-02
+  (`8d72ee8`, v5) then masked side halves to border-exposed cells only,
+  curing that misdiagnosis but leaving slabs HOLLOW — reverted in full by
+  ROOF-SIDE-04 (`16ac6cd`, v7): **every roof atom paints both side
+  halves; slabs are solid** (interior faces are visible whenever
+  occlusion ghosts the front walls, and destruction will expose them for
+  real).
 
 ### Rotation (ROOF-BAKE-02a, closes old open item #7)
 
@@ -758,9 +801,10 @@ every storey step.
 
 ### Known limitations / Director-judged polish (open)
 
-- Border voxels' SIDE faces show dir-0 wall-plane content at arbitrary rows
-  — textured but not aligned with the walls below. Expected, not a defect
-  (recorded 2026-07-16); treatment TBD.
+- ~~Border voxels' SIDE faces show dir-0 wall-plane content at arbitrary
+  rows — not aligned with the walls below.~~ **RESOLVED** by
+  ROOF-SIDE-03/04 (2026-07-18, Director: "faces laterais resolvidas") —
+  both halves now run in the wall-below direction; see Composition above.
 - Roof tops show the WALL facade laid flat. Honest projection; per-material
   dedicated roof art is a possible future step (metal reads most odd).
 - Slab-vs-solid-block overlap at storey steps: a lower roof's CORE column

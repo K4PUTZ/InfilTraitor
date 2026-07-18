@@ -138,7 +138,21 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 				## alone would leave VoxelRenderer.apply_occlusion() unable to tell
 				## which of a column's levels are the always-visible base versus
 				## the ghosted rest above it.
-				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": e["min_level"]}
+				## OCC-26 (2026-07-18): max_level travels too. The erase used to run
+				## to the top of every layer, which also ate the ROOF's 1-voxel
+				## border row sitting in the wall's own columns (levels above the
+				## wall's top) — the visible roof edge then fell back one voxel
+				## deeper, reading as a ~4-screen-px seam between the roofline and
+				## the wireframe's top cap (Director's "wireframe shifted 3-4 px",
+				## erase-diff measured). A cell claimed by two edges keeps the
+				## wider vertical span.
+				var span_min: int = e["min_level"]
+				var span_max: int = e["max_level"]
+				if new_occluded.has(voxel.grid_pos):
+					var prev: Dictionary = new_occluded[voxel.grid_pos]
+					span_min = mini(span_min, prev["min_level"])
+					span_max = maxi(span_max, prev["max_level"])
+				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": span_min, "max_level": span_max}
 
 	## OCC-10/OCC-13/OCC-14 (2026-07-14): junction filler columns aren't part of
 	## any Slice/Edge of their own — Director's rule, confirmed on annotated
@@ -158,7 +172,8 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		var col_base_level: int = column.start_storey * GeometryCoordsMod.LEVELS_PER_STOREY
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
-		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start}
+		## OCC-26: junction fillers cap their erase at their own top as well.
+		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start, "max_level": col_max_level}
 		## OCC-21e (2026-07-14): lightsaber wireframe disabled again — Director's
 		## call after seeing it live. Fill ghosting above is untouched; only the
 		## wireframe segment is disabled. Re-enable by uncommenting if needed.

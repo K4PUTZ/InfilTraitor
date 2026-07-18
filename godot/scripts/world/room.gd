@@ -1796,6 +1796,16 @@ func _assert_geometry_rendered() -> void:
 func _recompute_occlusion() -> void:
 	if _occlusion_set == null:
 		return
+	## OCC-26 capture instrument: INFILTRAITOR_OCC_DISABLE=1 forces an empty
+	## occlusion set, so a capture pair (same agent cell, occlusion on/off)
+	## isolates exactly the erased pixels — the erased-silhouette boundary is the
+	## ground truth wireframe alignment is measured against.
+	if OS.get_environment("INFILTRAITOR_OCC_DISABLE") == "1":
+		if _voxel_renderer != null:
+			_voxel_renderer.apply_occlusion({})
+		if _occlusion_wireframe_overlay != null:
+			_occlusion_wireframe_overlay.refresh()
+		return
 	## OCC-07: the occlusion decision is per-Slice now, not per raw voxel column —
 	## feed it the same EdgeRegistry the renderer itself just built from (published
 	## by RoomBuilder.build_from_layout(), see room_builder.gd's comment on why this

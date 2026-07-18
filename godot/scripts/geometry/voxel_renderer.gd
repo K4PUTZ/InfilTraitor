@@ -606,12 +606,20 @@ func apply_occlusion(occluded: Dictionary) -> void:
 		## here at all, left at its original full-opacity tile (Director's call:
 		## the base always reads as solid footprint; only the rest ghosts).
 		var min_level: int = int(entry.get("min_level", 0))
+		## OCC-26 (2026-07-18): the erase stops at the occluding structure's OWN
+		## top instead of running through every layer above it. Levels above an
+		## occluded wall belong to someone else — concretely the roof's 1-voxel
+		## border row, which the old open-ended loop erased along with the wall,
+		## pushing the visible roof edge one voxel deeper (a ~4-px roofline seam
+		## against the wireframe's top cap). Missing max_level (older callers,
+		## tests) keeps the historical erase-to-top behavior.
+		var max_level: int = int(entry.get("max_level", _voxel_layers.size() - 1))
 		## OCC-21 dropped tile-alternative ghosting for erase+wireframe-fill (see
 		## below) — `entry["ring"]` is no longer read here; ring-based visuals now
 		## live entirely in occlusion_slice_panel.gd/occlusion_wireframe_overlay.gd.
 		var restore_records: Array = []
 
-		for level in range(min_level, _voxel_layers.size()):
+		for level in range(min_level, mini(max_level + 1, _voxel_layers.size())):
 			var layer: TileMapLayer = _voxel_layers[level]
 			var source_id: int = layer.get_cell_source_id(cell)
 			if source_id == -1:

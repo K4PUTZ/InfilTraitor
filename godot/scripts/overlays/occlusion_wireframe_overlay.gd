@@ -67,6 +67,12 @@ func refresh() -> void:
 	for edge in occlusion_set.get_occluded_edges():
 		_spawn_edge_panels(edge)
 
+	## OCC-26 capture instrument: INFILTRAITOR_WF_HIDE=1 hides only this overlay,
+	## so an unattended capture pair (wireframe on/off, same agent cell) isolates
+	## exactly the wireframe's own pixels for alignment forensics.
+	if OS.get_environment("INFILTRAITOR_WF_HIDE") == "1":
+		visible = false
+
 
 ## Edge dict fields (OCC-14): "near_a"/"near_b"/"far_a"/"far_b" — the box's four
 ## real footprint corners in fine-voxel space ("near" the edge's true shared

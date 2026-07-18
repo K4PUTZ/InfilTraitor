@@ -278,8 +278,9 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 ## seam-continuous by construction. local_pos is the STRUCTURE-LOCAL offset
 ## (voxel − Slab.texture_anchor, 02c): anchoring per connected roofed
 ## component kills world-line mirror seams and keeps the pattern glued to
-## the structure across view rotations. Mirrored-repeat fold: x → col
-## (period 64), y → row (period 32). Returns null on any miss — caller
+## the structure across view rotations. Mirrored-repeat fold: x → col and
+## y → row, BOTH period 64 (ROOF-SIDE-03 — the atom's SE half consumes y
+## as a dir-1 run position). Returns null on any miss — caller
 ## falls back to the generic material atlas, same contract as resolve().
 ## ROOF-SIDE-02: side_mask is the 2-bit exposure mask for the voxel's side
 ## halves (BakeCompositor.SIDE_MASK_LEFT/RIGHT), derived by the caller from
@@ -314,9 +315,11 @@ func resolve_flat(material_id: String, local_pos: Vector2i, side_mask: int = 3) 
 		return null
 	var lookup_dict = baked_atlas.get("lookup", {}) if baked_atlas is Dictionary else baked_atlas.lookup
 	# ROOF-BAKE-02c: dedicated roof page family, no direction component
+	# ROOF-SIDE-03: BOTH axes fold at period 64 — the atom's SE half consumes
+	# y as a dir-1 run position, which the old period-32 y-fold cannot carry.
 	var lookup_key = "ROOF|%s|%s|%d|%d|%d" % [
 		material_id, facade_id,
-		_mirror_index_1d(local_pos.x, 64), _mirror_index_1d(local_pos.y, 32),
+		_mirror_index_1d(local_pos.x, 64), _mirror_index_1d(local_pos.y, 64),
 		side_mask,
 	]
 	if not lookup_dict.has(lookup_key):

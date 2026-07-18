@@ -55,7 +55,11 @@ class MockRegistry:
 		return materials.get(material_id, null)
 
 class MinimalRoom extends Node:
+	## Assigned duck-typed by room_builder during build_from_layout — the
+	## "unused" reading is a false positive.
+	@warning_ignore("unused_private_class_variable")
 	var _edge_registry
+	@warning_ignore("unused_private_class_variable")
 	var _junction_columns
 	var _slab_registry
 	var _voxel_renderer
@@ -127,8 +131,10 @@ func _fold(index: int, period: int) -> int:
 ## ROOF-SIDE-02: keys carry the 2-bit side-exposure mask (left=1 iff no +y
 ## neighbor cell, right=2 iff no +x). Independent re-derivations below —
 ## must NOT call the production mask helpers.
+## ROOF-SIDE-03: both axes fold at period 64 (the SE half consumes y as a
+## dir-1 run position).
 func _roof_key(material_id: String, local_x: int, local_y: int, mask: int) -> String:
-	return "ROOF|%s|facade_%s|%d|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 32), mask]
+	return "ROOF|%s|facade_%s|%d|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 64), mask]
 
 
 ## Independent set-based mask (roofs-only fixture: one component, one level).
@@ -240,7 +246,9 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 	var fixture_set: Dictionary = {}
 	for cell in fx["cells"]:
 		fixture_set[cell] = true
-	var samples: Array = [Vector2i(-1, -1), Vector2i(0, 0), Vector2i(7, 3), Vector2i(16, 16), Vector2i(130, 70)]
+	# ROOF-SIDE-03: far sample folds under period 64 on BOTH axes —
+	# (130, 126) → (2, 1), an interior fixture cell (mask 0).
+	var samples: Array = [Vector2i(-1, -1), Vector2i(0, 0), Vector2i(7, 3), Vector2i(16, 16), Vector2i(130, 126)]
 	var mismatches := 0
 	for pos in samples:
 		# In-fixture cells use their real set-derived mask; the far
@@ -249,7 +257,7 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 		var expected = atlas.lookup.get(_roof_key("concrete", pos.x, pos.y, mask))
 		var result = lookup.resolve_flat("concrete", pos, mask)
 		if expected == null:
-			if result != null and _fold(pos.x, 64) <= 16 and _fold(pos.y, 32) <= 16:
+			if result != null and _fold(pos.x, 64) <= 16 and _fold(pos.y, 64) <= 16:
 				mismatches += 1  # entry should have existed via fold
 			continue
 		if result == null \
@@ -311,6 +319,7 @@ func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:
 			var tile: Vector2i = entry.get("atlas_coords")
 			var tile_px := Vector2i(tile.x * ATOM_W, tile.y * ATOM_H)
 			var sx0: int = 16 * x - 16 * y + x_off
+			@warning_ignore("integer_division")  # mirrors the production crop formula
 			var sy0: int = (16 * x + 16 * y) / 2 + V_MARGIN
 			for py in range(16):
 				for px in range(ATOM_W):

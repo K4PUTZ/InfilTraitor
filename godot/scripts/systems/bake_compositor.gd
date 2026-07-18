@@ -96,7 +96,10 @@ var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → 
 
 ## v4: ROOF-SIDE-01 — roof atom right half-face mirrored from the left
 ## v5: ROOF-SIDE-02 — roof atom side halves painted only when border-exposed
-const BAKE_CODE_VERSION: int = 5
+## v6: ROOF-SIDE-03 — roof atom right half sampled from the dir-1 wall plane
+##     (transposed fold), so slab SE faces run in the same direction as the
+##     wall below; roof key y-fold widened 32 → 64 to carry it
+const BAKE_CODE_VERSION: int = 6
 
 ## ROOF-SIDE-02: 2-bit exposure mask for a roof atom's side halves.
 ## LEFT (SW-facing) half is exposed iff the cell has no +y neighbor;
@@ -460,6 +463,15 @@ func _mirror_index(index: int, period: int) -> int:
 		k2 = period_2x - k2 - 1
 	return k2
 
+
+## ROOF-SIDE-03: collapse a period-64 mirrored fold to its period-32 band
+## index — the 20px sheet band formulas only span SHEET_ROWS (32) bands.
+## Equals _mirror_index(fold64, 32) for fold64 in 0..63; kept as its own
+## named step because roof atoms carry fold64 on BOTH axes and each half
+## re-derives the 32-band index from a different axis.
+func _band_index(fold64: int) -> int:
+	return fold64 if fold64 < SHEET_ROWS else (SHEET_COLS - 1 - fold64)
+
 func _get_plane_source(facade: Image, dir: int) -> Image:
 	# S: facade scaled ×20/16 vertically (nearest), grayscale source (B2).
 	# The RGB8 round-trip flattens any alpha the facade PNG carries to 255:
@@ -654,6 +666,11 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 	# Vector3i cells carry the mask in .z (production: room_builder derives
 	# it from the global same-level occupancy); bare Vector2i cells
 	# (single-component fixtures) fall back to the local cell-set derivation.
+	# ROOF-SIDE-03: BOTH axes fold at period 64 (SHEET_COLS) — the right
+	# half's transposed dir-1 crop consumes y as a run position, which a
+	# period-32 fold cannot carry (fold32 is derivable from fold64, never
+	# the reverse). The 32-band indices each half needs are re-derived from
+	# the 64-folds via _band_index() below.
 	var cell_set: Dictionary = {}
 	for cell in cells:
 		if cell is Vector2i:
@@ -667,12 +684,13 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 		else:
 			pos = cell
 			mask = side_mask_for(cell_set, pos)
-		var folded := Vector3i(_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_ROWS), mask)
+		var folded := Vector3i(_mirror_index(pos.x, SHEET_COLS), _mirror_index(pos.y, SHEET_COLS), mask)
 		if not folded_seen.has(folded):
 			folded_seen[folded] = true
 			folded_cells.append(folded)
 
 	var plane := _get_plane(facade_id, facade, 0)
+	var plane1 := _get_plane(facade_id, facade, 1)  # ROOF-SIDE-03: SE half source
 	var roof_top := _get_roof_plane_top(facade_id, facade)
 	var roof_source := _get_roof_plane_source(facade)
 	var x_off: int = roof_source.get_height() - 1
@@ -691,24 +709,29 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 	var atom_idx := 0
 
 	for folded in folded_cells:
-		var col: int = folded.x
-		var row: int = folded.y
+		var col: int = folded.x   # fold64 of local x
+		var row: int = folded.y   # fold64 of local y (ROOF-SIDE-03)
 		var mask: int = folded.z
+		var row_band: int = _band_index(row)   # 32-band index for left/top math
+		var col_band: int = _band_index(col)   # 32-band index for the SE half
 
 		var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
-		# Side faces: dir-0 wall plane at the same fold (same recipe as
-		# _compose_sheet_page — textured sides for border voxels)
-		var side_y0: int = (SHEET_ROWS - 1 - row) * 20 + col * 8 + V_MARGIN
+		# LEFT (SW-facing) half: dir-0 wall plane at the same fold — the run
+		# position along the SW edge is x, exactly the wall sheet's own
+		# (col, row) roles, so this half always ran in the wall's direction.
+		var side_y0: int = (SHEET_ROWS - 1 - row_band) * 20 + col * 8 + V_MARGIN
 		atom_content.blit_rect(plane, Rect2i(col * TEX_AUTHORING_N, side_y0, VOXEL_ATOM_W, 28), Vector2i(0, 8))
-		# ROOF-SIDE-01 (2026-07-16, Director): the single 32px dir-0 crop only
-		# renders the LEFT (SW-facing) half with the correct shear — the plane's
-		# slope continues downward across the right half, which faces the OTHER
-		# way and read as a flat "lid". Mirror the correct left half onto the
-		# right half: a horizontal flip both matches the SE face's opposite
-		# shear and keeps the texture continuous at the corner seam.
-		var left_half := atom_content.get_region(Rect2i(0, 8, 16, 28))
-		left_half.flip_x()
-		atom_content.blit_rect(left_half, Rect2i(0, 0, 16, 28), Vector2i(16, 8))
+		# ROOF-SIDE-03 (2026-07-17, Director's diagram): the RIGHT (SE-facing)
+		# half must run in the same direction as the dir-1 wall face below it.
+		# ROOF-SIDE-01's mirror of the left half had the right shear but the
+		# wrong progression: along the SE edge only y advances, and the dir-0
+		# crop never consumes y as a run position. Transpose the roles — run
+		# position = y (dir-1 sheet formula x0 = FACADE_W − y·16, right half
+		# at +16), 20px band index = x, ·8 half-step stagger = y — the exact
+		# math _compose_sheet_page uses for dir-1 wall atoms.
+		var side_y0_r: int = (SHEET_ROWS - 1 - col_band) * 20 + row * 8 + V_MARGIN
+		var x0_r: int = FACADE_W - row * TEX_AUTHORING_N
+		atom_content.blit_rect(plane1, Rect2i(x0_r + 16, side_y0_r, 16, 28), Vector2i(16, 8))
 		# ROOF-SIDE-02: erase the side halves this cell does not actually
 		# expose (covered by a same-level neighbor). The top-diamond blit
 		# below repaints the upper rows inside the diamond mask, so only

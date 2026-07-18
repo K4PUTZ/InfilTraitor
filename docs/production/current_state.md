@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.57 · **Updated:** 2026-07-18 · **Branch:** main
+**Version:** 0.9.58 · **Updated:** 2026-07-18 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 16ac6cd [ROOF-SIDE-04] Solid slabs: every roof atom paints both side halves again
 - 006c854 [ROOF-SIDE-03] Slab SE half-faces run in the wall-below direction (dir-1 transposed fold)
 - 7819a1a [VERSION] Bump to 0.9.55
 - 8d72ee8 [ROOF-SIDE-02] Roof atom side halves painted only when border-exposed
 - 231f7ab [OCC-23] Wireframe panels draw in front of lower-level voxels
-- 0ff015e Session close 2026-07-16 (ART SPEC + VISUAL BUGS): summary, v0.9.52
 <!-- AUTO:END version_history -->
 
 ---

@@ -105,7 +105,12 @@ var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → 
 ##     faces are visible whenever occlusion ghosts the front walls, and
 ##     destruction will expose them for real. Solid atoms cost nothing at
 ##     draw time; the once-suspected draw-order stomp never reproduced.
-const BAKE_CODE_VERSION: int = 7
+## v8: JUNCTION-MIRROR-02 — junction half-crops honor the mirror fold's
+##     reflection: a raw column in a reflected segment (e.g. −1, one before
+##     the run start) samples the plane MIRRORED in texture space instead of
+##     verbatim, so lateral V-junction columns mirror the adjacent wall
+##     column instead of repeating it
+const BAKE_CODE_VERSION: int = 8
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 const BAKE_CACHE_FORMAT_VERSION: int = 2
 const BAKE_CACHE_EXTENSION: String = ".bin"
@@ -350,17 +355,32 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 			# (displaced side face).
 			var col_x := _mirror_index(raw_col_x, SHEET_COLS)
 			var col_y := _mirror_index(raw_col_y, SHEET_COLS)
+			# JUNCTION-MIRROR-02: a raw column in a reflected fold segment
+			# (e.g. −1, one before the run start; or a long perimeter's far
+			# corner) must sample its plane crop MIRRORED — the fold alone
+			# repeats the adjacent wall column verbatim (the Director's
+			# red-circled lateral V-junction seam).
+			var reflected_x := _is_reflected_fold(raw_col_x, SHEET_COLS)
+			var reflected_y := _is_reflected_fold(raw_col_y, SHEET_COLS)
 			var vp: Vector2i = spec["voxel_pos"]
 			var blank_px: int = 0
 			for level in range(int(spec["level_start"]), int(spec["level_end"])):
 				var row := _mirror_index(level, SHEET_ROWS)
 				var atom_content := Image.create(VOXEL_ATOM_W, VOXEL_ATOM_H, false, Image.FORMAT_RGBA8)
 				# LEFT half ← X-leg (dir 0) plane, left half of its window
+				# (mirrored in texture space when the fold reflected — JM-02)
 				var y0_x: int = (SHEET_ROWS - 1 - row) * 20 + col_x * 8 + V_MARGIN
-				atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
+				if reflected_x:
+					_blit_half_mirrored(atom_content, plane0, col_x * TEX_AUTHORING_N, y0_x, 0, 0)
+				else:
+					atom_content.blit_rect(plane0, Rect2i(col_x * TEX_AUTHORING_N, y0_x, 16, 28), Vector2i(0, 8))
 				# RIGHT half ← Y-leg (dir 1) plane, right half of its window
+				# (mirrored in texture space when the fold reflected — JM-02)
 				var y0_y: int = (SHEET_ROWS - 1 - row) * 20 + col_y * 8 + V_MARGIN
-				atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
+				if reflected_y:
+					_blit_half_mirrored(atom_content, plane1, FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 1)
+				else:
+					atom_content.blit_rect(plane1, Rect2i(FACADE_W - col_y * TEX_AUTHORING_N + 16, y0_y, 16, 28), Vector2i(16, 8))
 				if BakeConfigClass.facade_tops:
 					var u0: int = col_x * TEX_AUTHORING_N
 					var v0: int = row * TEX_AUTHORING_N
@@ -445,6 +465,33 @@ func _mirror_index(index: int, period: int) -> int:
 	if k2 >= period:
 		k2 = period_2x - k2 - 1
 	return k2
+
+
+## JUNCTION-MIRROR-02: true iff the mirrored-repeat fold REFLECTS at this
+## index (odd period segment). _mirror_index() gives the source column but
+## drops this bit — and reflected content must be sampled mirrored, or a
+## junction column at raw −1 repeats fold-0 verbatim instead of mirroring it.
+func _is_reflected_fold(index: int, period: int) -> bool:
+	var period_2x := period * 2
+	var k2 := index % period_2x
+	if k2 < 0:
+		k2 += period_2x
+	return k2 >= period
+
+
+## JUNCTION-MIRROR-02: blit one 16px half-face crop MIRRORED in texture
+## space. A plain flip_x of the pre-sheared crop would flip the screen shear
+## too; instead each destination column takes the mirrored source column
+## with its vertical shear delta compensated, so the face keeps its own
+## slope while the texture runs mirrored. `shear_shift(x)` must be the same
+## formula _get_plane() sheared that dir's source with.
+func _blit_half_mirrored(dest: Image, plane: Image, x0: int, y0: int, dest_x: int, dir: int) -> void:
+	for i in range(16):
+		var x_src: int = x0 + 15 - i
+		var shift_src: int = (x_src >> 1) if dir == 0 else ((PLANE_W - 1 - x_src) >> 1)
+		var shift_dst: int = ((x0 + i) >> 1) if dir == 0 else ((PLANE_W - 1 - (x0 + i)) >> 1)
+		var delta: int = shift_src - shift_dst
+		dest.blit_rect(plane, Rect2i(x_src, y0 + delta, 1, 28), Vector2i(dest_x + i, 8))
 
 
 ## ROOF-SIDE-03: collapse a period-64 mirrored fold to its period-32 band

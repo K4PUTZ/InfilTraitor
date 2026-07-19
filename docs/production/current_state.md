@@ -25,17 +25,17 @@
 - Test scripts: 21
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 13
+- Archived prompts: 14
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 3e02443 [ROOF-OCC-01] Roofs join occlusion as screen-horizontal GU stripes
 - c01f1a6 [OCC-26] Wall occlusion erase stops at the edge's own top, sparing the roof rim
 - cc0951c [SCREENSHOT-HOOK-03] Screenshots/ opts out of Godot import via .gdignore
 - 1369827 ALPHA SLAB BAKE FIX 0.9.59 - 2026-07-18
 - 067ec70 [JUNCTION-MIRROR-02] Junction half-crops honor the mirror fold's reflection
-- 16ac6cd [ROOF-SIDE-04] Solid slabs: every roof atom paints both side halves again
 <!-- AUTO:END version_history -->
 
 ---

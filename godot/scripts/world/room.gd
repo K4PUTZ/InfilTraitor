@@ -1821,7 +1821,16 @@ func _recompute_occlusion() -> void:
 		if movement_overlay != null and movement_overlay.is_reachable(_hovered_cell):
 			origins.append(_hovered_cell)
 	
-	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns)
+	## ROOF-OCC-01: ceiling slabs join the computation (screen-horizontal GU
+	## stripes) — the registry is rebuilt per view rotation, so these are
+	## already in view-space like the slices.
+	var ceiling_slabs: Array = []
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			if slab.role == Slab.Role.CEILING:
+				ceiling_slabs.append(slab)
+
+	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns, ceiling_slabs)
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
 	if _voxel_renderer != null:
@@ -2106,13 +2115,20 @@ func _run_auto_screenshot_capture() -> void:
 	## recompute occlusion — so an unattended capture can exercise ghost bands
 	## and wireframe at any chosen spot (agent_start rarely stands where a
 	## reported visual bug is). Composes with the other capture actions.
+	## ROOF-OCC-01: INFILTRAITOR_CAPTURE_REVEAL_RADIUS overrides the FOW reveal
+	## radius for the teleported capture — a large map's geometry is otherwise
+	## too dark to visually verify anything past the default radius.
 	var agent_cell_env := OS.get_environment("INFILTRAITOR_CAPTURE_AGENT_CELL")
 	if agent_cell_env != "" and agent != null:
 		var cell_parts := agent_cell_env.split(",")
 		if cell_parts.size() == 2:
 			var forced_cell := Vector2i(cell_parts[0].to_int(), cell_parts[1].to_int())
+			var reveal_radius := FOW_REVEAL_RADIUS + vision_bonus_tiles
+			var radius_env := OS.get_environment("INFILTRAITOR_CAPTURE_REVEAL_RADIUS")
+			if radius_env.is_valid_int() and radius_env.to_int() > 0:
+				reveal_radius = radius_env.to_int()
 			agent.set_cell(forced_cell)
-			_fow_controller.reveal_around(forced_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+			_fow_controller.reveal_around(forced_cell, reveal_radius)
 			_recompute_occlusion()
 			for _j in range(10):
 				await get_tree().process_frame

@@ -15,6 +15,7 @@ class_name OcclusionSet
 
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FaceMod = preload("res://godot/scripts/geometry/face.gd")
+const SlabMod = preload("res://godot/scripts/geometry/slab.gd")
 
 ## ============================================================================
 ## TUNING (exposed as adjustable, for Director to dial against screenshots)
@@ -43,6 +44,15 @@ const MAX_RING: int = 2
 ## has (OCC-08/O6). Fixed, not derived — no pixel math, no agent-relative
 ## geometry for this part any more.
 const BASE_VISIBLE_LEVELS: int = 2
+
+## ROOF-OCC-01 (2026-07-18, Director-ratified design): roof occlusion reveals a
+## roof in SCREEN-HORIZONTAL STRIPES — one stripe = every roofed GU of a
+## connected roof component sharing one gu.x + gu.y sum (an anti-diagonal in
+## grid space, which projects as a horizontal row of GU diamonds on screen).
+## A component this many stripes or fewer (the TEXTURES 3×3 towers are exactly
+## 5) is "small": it never does partial reveals — every stripe of it ghosts at
+## once, so the whole roof reads as one wireframe of the roof's own shape.
+const SMALL_ROOF_MAX_STRIPES: int = 5
 
 ## ============================================================================
 ## STATE (owned solely by this module)
@@ -112,7 +122,10 @@ func get_recompute_count() -> int:
 ##   junction_columns: Array[JunctionResolver.JunctionColumn] — corner filler columns
 ##     (room._junction_columns); ghosted only when BOTH walls they fill the elbow
 ##     between are themselves occluded (OCC-10, see the loop below).
-func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:
+##   ceiling_slabs: Array[Slab] — every Role.CEILING slab currently registered
+##     (room._slab_registry, already view-rotated by the rebuild). ROOF-OCC-01:
+##     roofs participate in occlusion as screen-horizontal GU stripes.
+func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:
 	## Backward compatibility: accept single Vector2i as well as Array[Vector2i]
 	var origins: Array[Vector2i] = []
 	if agent_cells is Vector2i:
@@ -182,6 +195,23 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		#	"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
 		#	"min_level": col_ghost_start, "max_level": col_max_level, "ring": 0,
 		#})
+
+	## ROOF-OCC-01: roofs join the set as screen-horizontal GU stripes. Runs
+	## after walls/junctions so a cell shared with a wall column (the roof's
+	## 1-voxel border row) widens that entry's vertical span instead of
+	## replacing it.
+	var roof := _compute_roof_occlusion(origins, ceiling_slabs, ring_by_edge_id, slices_by_edge)
+	for cell in roof["cells"].keys():
+		var r_entry: Dictionary = roof["cells"][cell]
+		if new_occluded.has(cell):
+			var prev: Dictionary = new_occluded[cell]
+			r_entry = {
+				"ring": mini(int(prev["ring"]), int(r_entry["ring"])),
+				"min_level": mini(int(prev["min_level"]), int(r_entry["min_level"])),
+				"max_level": maxi(int(prev["max_level"]), int(r_entry["max_level"])),
+			}
+		new_occluded[cell] = r_entry
+	new_segments.append_array(roof["segments"])
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
@@ -471,6 +501,173 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 			"min_level": g["min_level"], "max_level": g["max_level"], "ring": ring_by_edge[edge_id],
 		})
 	return {"edges": result, "segments": segments}
+
+
+## ============================================================================
+## ROOF-OCC-01 — roof occlusion as screen-horizontal GU stripes
+## ============================================================================
+
+## Decide which roof GUs ghost, given the current origins and the wall
+## occlusion outcome. Pure computation, same contract as the wall half.
+##
+## Trigger (Director's "same proximity mechanism as walls", adapted to the two
+## real cases):
+##   (a) CONTAINMENT — an origin's GU is under the roof component (agent or
+##       hover preview standing inside a roofed room);
+##   (b) WALL-COUPLING — any occluded wall edge belongs to the component's own
+##       structure (a solid block's walls just ghosted; TEXTURES towers have no
+##       walkable interior, so (a) alone would never fire there, and a roof
+##       left floating over an erased-wall glass box hides exactly the space
+##       the ghosting exists to reveal).
+##
+## Reveal: stripes of constant gu.x + gu.y (screen-horizontal rows of GU
+## diamonds). ring = |stripe depth − origin depth| (min over origins), occluded
+## only within MAX_RING — the reveal follows the agent instead of opening the
+## whole interior at once. Small components (≤ SMALL_ROOF_MAX_STRIPES) ghost
+## every stripe, ring clamped, so a small roof disappears entirely and leaves
+## a wireframe of its own shape (Director's small-roof rule).
+##
+## Returns {"cells": Dictionary voxel cell → {ring, min_level, max_level},
+##          "segments": Array} — segments in the exact wall-box dict shape
+## (near_a/near_b/far_a/far_b/min_level/max_level/ring), one box per occluded
+## GU: a stripe's GUs touch only at corners, so each GU's own slab footprint
+## (borders included, read off the real Slab voxels) is its own box unit, the
+## same independent-unit philosophy OCC-13 ratified for wall edges.
+func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
+	var result := {"cells": {}, "segments": []}
+	if ceiling_slabs.is_empty():
+		return result
+
+	## One geometry record per roofed GU, aggregated over its (usually 2) slab
+	## levels: real voxel cells, real footprint bounds, real level span.
+	var gu_info: Dictionary = {}   ## gu -> {min_level, max_level, rect_min, rect_max, cells: Array[Vector2i]}
+	for slab in ceiling_slabs:
+		if slab.role != SlabMod.Role.CEILING or slab.voxels.is_empty():
+			continue
+		var info: Dictionary
+		if gu_info.has(slab.gu_cell):
+			info = gu_info[slab.gu_cell]
+			info["min_level"] = mini(int(info["min_level"]), slab.level)
+			info["max_level"] = maxi(int(info["max_level"]), slab.level)
+		else:
+			info = {
+				"min_level": slab.level, "max_level": slab.level,
+				"rect_min": slab.voxels[0].grid_pos, "rect_max": slab.voxels[0].grid_pos,
+				"cells": {},
+			}
+			gu_info[slab.gu_cell] = info
+		for voxel in slab.voxels:
+			info["cells"][voxel.grid_pos] = true
+			info["rect_min"] = Vector2i(
+				mini(info["rect_min"].x, voxel.grid_pos.x), mini(info["rect_min"].y, voxel.grid_pos.y))
+			info["rect_max"] = Vector2i(
+				maxi(info["rect_max"].x, voxel.grid_pos.x), maxi(info["rect_max"].y, voxel.grid_pos.y))
+
+	if gu_info.is_empty():
+		return result
+
+	## Connected components over roofed GUs (4-adjacency, level- and
+	## material-blind — contiguous roofs read as one surface, the same rule
+	## ROOF-BAKE-02c uses for texture anchors).
+	var component_of: Dictionary = {}   ## gu -> component index
+	var components: Array = []          ## index -> Array[Vector2i]
+	for start_gu: Vector2i in gu_info:
+		if component_of.has(start_gu):
+			continue
+		var idx := components.size()
+		var members: Array[Vector2i] = []
+		var stack: Array[Vector2i] = [start_gu]
+		component_of[start_gu] = idx
+		while not stack.is_empty():
+			var gu: Vector2i = stack.pop_back()
+			members.append(gu)
+			for delta: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+				var neighbour := gu + delta
+				if gu_info.has(neighbour) and not component_of.has(neighbour):
+					component_of[neighbour] = idx
+					stack.append(neighbour)
+		components.append(members)
+
+	## Activation set — trigger (a): containment.
+	var active: Dictionary = {}   ## component index -> true
+	for origin: Vector2i in origins:
+		if component_of.has(origin):
+			active[component_of[origin]] = true
+
+	## Trigger (b): wall-coupling. An occluded edge belongs to a structure when
+	## either GU beside it is roofed — slices_by_edge anchors carry (gu_cell,
+	## face); the face's outward neighbour is the other side.
+	for edge_id in ring_by_edge_id.keys():
+		var anchor = slices_by_edge[edge_id][0]
+		for gu in [anchor.gu_cell, anchor.gu_cell + _face_neighbour_delta(anchor.face)]:
+			if component_of.has(gu):
+				active[component_of[gu]] = true
+
+	if active.is_empty():
+		return result
+
+	var origin_depths: Array[int] = []
+	for origin: Vector2i in origins:
+		origin_depths.append(origin.x + origin.y)
+
+	for idx in active.keys():
+		var members: Array = components[idx]
+		var stripe_depths: Dictionary = {}   ## depth sum -> true
+		for gu: Vector2i in members:
+			stripe_depths[gu.x + gu.y] = true
+		var is_small: bool = stripe_depths.size() <= SMALL_ROOF_MAX_STRIPES
+
+		for gu: Vector2i in members:
+			var ring := MAX_RING + 1
+			for d in origin_depths:
+				ring = mini(ring, absi((gu.x + gu.y) - d))
+			if is_small:
+				ring = mini(ring, MAX_RING)
+			elif ring > MAX_RING:
+				continue   ## large roof: stripe out of reveal range stays solid
+
+			var info: Dictionary = gu_info[gu]
+			for cell: Vector2i in info["cells"]:
+				var entry := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
+				if result["cells"].has(cell):
+					var prev: Dictionary = result["cells"][cell]
+					entry = {
+						"ring": mini(int(prev["ring"]), ring),
+						"min_level": mini(int(prev["min_level"]), int(entry["min_level"])),
+						"max_level": maxi(int(prev["max_level"]), int(entry["max_level"])),
+					}
+				result["cells"][cell] = entry
+
+			## Box unit: footprint corners as EXCLUSIVE lattice bounds, near
+			## edge on the camera side (larger y), far edge shifted by the
+			## footprint's own depth — the same parallelogram contract the
+			## wall segments feed OcclusionWireframeOverlay.
+			var x0: int = info["rect_min"].x
+			var y0: int = info["rect_min"].y
+			var x1: int = info["rect_max"].x + 1
+			var y1: int = info["rect_max"].y + 1
+			result["segments"].append({
+				"near_a": Vector2i(x0, y1), "near_b": Vector2i(x1, y1),
+				"far_a": Vector2i(x0, y0), "far_b": Vector2i(x1, y0),
+				"min_level": info["min_level"], "max_level": info["max_level"], "ring": ring,
+			})
+	return result
+
+
+## Outward neighbour GU across a face — the other side of a (gu_cell, face)
+## wall segment, matching _edge_vertices()'s compass.
+func _face_neighbour_delta(face: int) -> Vector2i:
+	match face:
+		FaceMod.NW:
+			return Vector2i(-1, 0)
+		FaceMod.NE:
+			return Vector2i(0, -1)
+		FaceMod.SE:
+			return Vector2i(1, 0)
+		FaceMod.SW:
+			return Vector2i(0, 1)
+		_:
+			return Vector2i.ZERO
 
 
 ## The two grid-VERTEX corners of a (gu_cell, face) wall segment. Both faces of the

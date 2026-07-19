@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26229 lines total** (under `godot/scripts/`)
+**133 scripts · 26442 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1651,7 +1651,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 514 lines
+`class_name OcclusionSet` · 711 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1660,7 +1660,9 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FaceMod` = `preload("res://godot/scripts/geometry/face.gd")`
+- `SlabMod` = `preload("res://godot/scripts/geometry/slab.gd")`
 - `BASE_VISIBLE_LEVELS` = `2`
+- `SMALL_ROOF_MAX_STRIPES` = `5`
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
@@ -1668,7 +1670,7 @@ extends `Node2D` · 43 lines
 - `func get_ring_index(voxel_cell: Vector2i) -> int:`
 - `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`
-- `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = []) -> void:`
+- `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:`
 
 ---
 
@@ -2933,7 +2935,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2364 lines
+extends `Node2D` · 2380 lines
 
 `godot/scripts/world/room.gd`
 

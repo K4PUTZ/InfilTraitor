@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.61 · **Updated:** 2026-07-18 · **Branch:** main
+**Version:** 0.9.62 · **Updated:** 2026-07-18 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- c01f1a6 [OCC-26] Wall occlusion erase stops at the edge's own top, sparing the roof rim
 - cc0951c [SCREENSHOT-HOOK-03] Screenshots/ opts out of Godot import via .gdignore
 - 1369827 ALPHA SLAB BAKE FIX 0.9.59 - 2026-07-18
 - 067ec70 [JUNCTION-MIRROR-02] Junction half-crops honor the mirror fold's reflection
 - 16ac6cd [ROOF-SIDE-04] Solid slabs: every roof atom paints both side halves again
-- 006c854 [ROOF-SIDE-03] Slab SE half-faces run in the wall-below direction (dir-1 transposed fold)
 <!-- AUTO:END version_history -->
 
 ---

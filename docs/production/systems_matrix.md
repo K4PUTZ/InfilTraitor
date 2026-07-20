@@ -1,3 +1,8 @@
+> **SUPERSEDED.** See `docs/production/current_state.md` for maintained
+> status. This file describes a team structure and feature set (Overwatch,
+> gadgets, terminal hacking) that don't reflect the project; last
+> genuinely updated 2026-06-11.
+
 # INFILTRAITOR — Systems Implementation Matrix
 
 > **Which systems exist, what state they're in, and what they depend on.**

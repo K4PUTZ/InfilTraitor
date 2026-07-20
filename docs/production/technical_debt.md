@@ -325,5 +325,10 @@ entries (`tileset_blocks.tres`: 32 tiles → 8); the dead `_build_room` subgraph
   *original pre-fix* number, propagated stale into this doc, `DESTRUCTION_MASTER_PLAN.md`,
   and `RETROSPECTIVE_2026-07.md` §5 after the fix had already landed — corrected here;
   see `DESTRUCTION_MASTER_PLAN.md` §4 for the parallel correction.
-- **The core loop is still open** — detection accumulates but does not drive transitions.
-  See `RETROSPECTIVE_2026-07.md` §7.
+- ~~**The core loop is still open** — detection accumulates but does not drive transitions.~~
+  **Not current.** `turn_controller.gd::_apply_tic_result()` (`## ID-01: Gradual
+  threshold-based escalation`) checks `guard.detection` against
+  `DETECTION_THRESHOLD_SUSPICIOUS/ALERT/CHASE` (0.30/0.60/1.00) and calls
+  `guard.observe_player(true, severity, ...)` — the meter drives transitions.
+  This claim was already reconciled once (2026-06-14 note, this file) and drifted
+  back; see `docs/production/current_state.md` for the maintained status.

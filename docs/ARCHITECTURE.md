@@ -3,8 +3,13 @@
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`
-**Last reconciled with code:** 2026-07-03 (ENHANCE-08: TurnController extracted; room.gd down to 2,078 lines)
+**Last reconciled with code:** 2026-07-20 (date/line-count refresh only; see gaps below)
 **Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
+
+**Not yet covered since the last full reconciliation (2026-07-03):** B3/bake
+closure, the SCREENSHOT-HOOK system, `OCCLUSION_MASTER_PLAN`, and
+`DESTRUCTION_MASTER_PLAN`. This document was not rewritten to incorporate
+those systems — treat sections touching them as unreconciled.
 
 ---
 
@@ -539,7 +544,7 @@ All coordination operates directly on `room._guards`; the coordinator stores no 
 
 This section is descriptive, not aspirational. These are real properties of the code today.
 
-### 15.1 `room.gd` is a residual God Object (~1,590 lines)
+### 15.1 `room.gd` is a residual God Object (~2,380 lines)
 
 Despite the `MODULARIZE-01..06` extractions, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and escalation thresholds, audio detection, alert metering, busted/reset flows, perspective rotation math, isometric picking, guard spawning, LOS data fan-out, navigation blocked-cell assembly, temporal-light pumping, and most overlay creation. The controllers orbit it rather than replacing it.
 

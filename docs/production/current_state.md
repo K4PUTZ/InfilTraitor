@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.63 · **Updated:** 2026-07-19 · **Branch:** main
+**Version:** 0.9.63 · **Updated:** 2026-07-20 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 3e4781e ALPHA CEILING WIREFRAME FOUNDATION 0.9.63 - 2026-07-19
 - 3e02443 [ROOF-OCC-01] Roofs join occlusion as screen-horizontal GU stripes
 - c01f1a6 [OCC-26] Wall occlusion erase stops at the edge's own top, sparing the roof rim
 - cc0951c [SCREENSHOT-HOOK-03] Screenshots/ opts out of Godot import via .gdignore
 - 1369827 ALPHA SLAB BAKE FIX 0.9.59 - 2026-07-18
-- 067ec70 [JUNCTION-MIRROR-02] Junction half-crops honor the mirror fold's reflection
 <!-- AUTO:END version_history -->
 
 ---
@@ -225,12 +225,12 @@ The AI system is **functional but simplified** relative to the design intent.
 - AP economy
 - EnemyPhaseController (structure exists)
 
-⚠️ **Problem:**
-- EnemyPhaseController calls non-existent methods on the guards — the enemy phase fails silently
+✅ **Verified:**
+- `EnemyPhaseController` calls `guard.choose_next_cell()`, `guard.move_to_cell_animated()`, and `guard.tick_state()` — all three exist on `GuardEnemy` (`godot/scripts/agents/guard_enemy.gd`)
 
 ---
 
-### Enemy AI / Guard FSM (65% — Alpha, functional)
+### Enemy AI / Guard FSM (75% — Alpha, functional)
 
 ✅ **Functional:**
 - `choose_next_cell()` is state-aware (PATROL → waypoint, SUSPICIOUS/ALERT/CHASE → agent, SEARCH → search queue)
@@ -242,14 +242,12 @@ The AI system is **functional but simplified** relative to the design intent.
 - `receive_alert()` with state hierarchy (never downgrades state)
 
 ⚠️ **Simplified vs. design intent:**
-- Binary visual detection: any successful tic → immediate `STATE_ALERT`
-- The detection meter accumulates visually but does not drive transitions (debug feedback only)
-- No intermediate SUSPICIOUS for visual detection (only via audio/communication)
+- Escalation is gradual and meter-driven: `turn_controller.gd::_apply_tic_result()` checks `guard.detection` against `DETECTION_THRESHOLD_SUSPICIOUS` (0.30), `DETECTION_THRESHOLD_ALERT` (0.60), and `DETECTION_THRESHOLD_CHASE` (1.00), calling `guard.observe_player(true, severity, ...)` with severity 1/2/3 respectively
 - `move_to_cell_animated` is fire-and-forget: multiple guards' animations may overlap
 
 ---
 
-### Detection / Stealth (55% — Alpha, functional with limitations)
+### Detection / Stealth (70% — Alpha, functional with limitations)
 
 ✅ **Functional:**
 - Probabilistic visual detection (cone + distance + LOS + shadows + posture + cover)
@@ -259,8 +257,7 @@ The AI system is **functional but simplified** relative to the design intent.
 - FOW hides unrevealed guards
 
 ⚠️ **Incomplete:**
-- Visual escalation is binary (detection → ALERT directly, no gradation)
-- The `guard.detection` meter does not drive transitions (visual debug only)
+- Visual escalation is gradual and meter-driven (see `turn_controller.gd::_apply_tic_result()`, thresholds 0.30/0.60/1.00) — the meter is the transition driver, not a debug overlay
 - The distance curve has not been validated with playtesters
 
 ---

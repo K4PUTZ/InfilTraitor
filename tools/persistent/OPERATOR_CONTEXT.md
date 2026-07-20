@@ -179,6 +179,19 @@ or planning sessions. Two independent switches, both default OFF:
   manual tool, unaffected by either switch. Never write there
   programmatically; never treat it as something the Operator triggers as
   part of a task.
+- **`Screenshots/.gdignore`** (SCREENSHOT-HOOK-03, 2026-07-18): makes the
+  Godot editor skip the whole `Screenshots/` tree (no `.import` sidecar per
+  PNG, no resource scan) while every file stays on disk at its real path for
+  the capture/diff tooling, which only ever uses absolute paths. The
+  history-cap-of-50 pruning was always correct; the folder's apparent
+  overflow was one `.import` sidecar generated per committed PNG — this
+  stops that at the source rather than pruning sidecars after the fact.
+- **Stable-name conference captures:** `INFILTRAITOR_CAPTURE_VIEWS=1`
+  drives the real 4-perspective rotation (N/E/S/W) and writes
+  `Screenshots/history/occ_view_{N,E,S,W}.png`, overwritten every run —
+  these represent current system state, not a point-in-time history entry,
+  so they intentionally don't consume the 50-file cap the way `auto_*.png`
+  does.
 - **The Operator's obligation:** run the session toggle only when a prompt
   explicitly says to; set `INFILTRAITOR_SCREENSHOT_ONCE=1` only when a
   prompt explicitly asks for it on that commit. Otherwise, nothing extra —
@@ -523,5 +536,5 @@ inside the AUTO markers). Do not record session state above this line.
 [TASK_INJECTION_POINT]
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.62 · **Updated:** 2026-07-18 · **Branch:** main
+**Version:** 0.9.63 · **Updated:** 2026-07-19 · **Branch:** main
 <!-- AUTO:END header -->

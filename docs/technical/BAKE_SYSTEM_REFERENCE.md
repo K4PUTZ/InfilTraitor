@@ -811,8 +811,9 @@ every storey step.
   overlaps the taller block's wall far-slice cells at the step (pre-existing
   since D1-ROOF, unrelated to 02b's border rule). Invisible today;
   a latent Part 3 (destruction trigger) conflict to resolve there.
-- Roof occlusion participation: accidental/partial, not yet deliberately
-  scoped (Part 2b note stands).
+- ~~Roof occlusion participation: accidental/partial, not yet deliberately
+  scoped (Part 2b note stands).~~ **RESOLVED** by ROOF-OCC-01
+  (2026-07-18) — see [occlusion.md § Roof Occlusion](../systems/occlusion.md#roof-occlusion-roof-occ-01).
 
 ### Evidence
 

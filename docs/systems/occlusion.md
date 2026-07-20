@@ -750,6 +750,110 @@ func can_see(from_pos, to_pos) -> bool:
 
 ---
 
+## Visual Occlusion (Wall/Roof Ghosting) — OCC-01→26, ROOF-OCC-01
+
+> **Distinct from the semantic model above.** Everything above this section
+> (LIGHT-02) governs light/LOS/sound classification. This section documents a
+> separate, later system: the runtime visual effect that erases and
+> wireframes geometry standing between the camera and the agent, so the
+> player can still see the agent through walls/roofs he's behind. Code:
+> `godot/scripts/systems/occlusion_set.gd` (`OcclusionSet`),
+> `godot/scripts/overlays/occlusion_wireframe_overlay.gd` +
+> `occlusion_slice_panel.gd`, wired from `room.gd::_recompute_occlusion()`.
+
+### What it does
+
+On every agent step, view rotation, and (for a preview) hover-cell change,
+`OcclusionSet.recompute()` decides which wall columns and roof cells sit
+between the camera and one or more **origins** (agent position, optionally
+the hover cell) and are close enough on screen to actually hide him. Those
+cells are **erased** from their `TileMapLayer` (not ghosted via alpha —
+`VoxelRenderer.apply_occlusion()`), and a dotted-white wireframe box
+(`OcclusionWireframeOverlay`) is drawn in their place so the structure's
+shape stays legible. Restoring the cell is lossless and verified on every
+capture run (`VoxelRenderer.verify_ghost_roundtrip()`).
+
+### Walls (OCC-01→26)
+
+- **Trigger:** a real 2D screen-space overlap test between an EDGE's
+  (one wall column, every storey) footprint and the origin's own silhouette
+  rectangle — not a corridor/distance heuristic. `depth = x + y` (view-space
+  isometric); an edge only triggers if it is nearer the camera than the
+  origin (`depth > origin.depth`).
+- **Ring falloff:** a multi-source BFS along the wall's own connectivity
+  graph (shared grid VERTEX = adjacency), up to `MAX_RING` hops, only through
+  simple pass-through vertices continuing the same face — corners and
+  junctions stop propagation. Ring index selects
+  `VoxelRenderer.GHOST_ALPHAS` / the wireframe fill alpha.
+- **Always-visible base:** an occluded edge's own bottom
+  `BASE_VISIBLE_LEVELS` (2) levels are never erased — reads as solid ground
+  truth footprint regardless of ring.
+- **Erase span is capped at the edge's own top** (`max_level`, OCC-26,
+  2026-07-18): earlier code erased from `min_level` through every layer in
+  the renderer, which also ate a roof's 1-voxel border row sitting in the
+  same wall columns above the wall's own top — the visible roof edge fell
+  back one voxel, a ~4-screen-px seam against the wireframe reported as
+  "wireframe shifted up." Fixed by threading `max_level` alongside
+  `min_level` in every occluded-cell entry; a cell shared by two claimants
+  (e.g. a wall column also touched by a roof stripe) keeps the wider span.
+- **Junction columns** (V-junction fillers, not part of any Edge/Slice) ghost
+  only when BOTH edges they fill the elbow between are themselves occluded;
+  always ring 0.
+
+### Roofs — ROOF-OCC-01 (2026-07-18)
+
+Roofs (`Slab.Role.CEILING`) join the same occlusion pass as **screen-
+horizontal GU stripes**: a stripe is every roofed GU sharing one
+`gu.x + gu.y` (an anti-diagonal in grid space, which projects as a
+horizontal row of GU diamonds on screen — Director-ratified orientation).
+
+- **Trigger** (either fires the whole connected roof component — 4-adjacency,
+  level-blind, the same rule `ROOF-BAKE-02c` uses for texture anchors):
+  - **(a) Containment** — an origin's GU sits inside the component's
+    footprint (agent/hover inside a roofed room).
+  - **(b) Wall-coupling** — any occluded wall edge belongs to the component's
+    own structure. Needed because a solid block (e.g. every TEXTURES tower)
+    has no walkable interior, so (a) never fires there; without (b) the roof
+    would float, solid, over a wall the player can already see through.
+- **Ring = `|stripe_depth − origin_depth|`** (min over all origins), occluded
+  only within `MAX_RING` — the reveal opens a moving window around the
+  agent rather than the whole interior at once.
+- **Small-roof rule:** a component with `≤ SMALL_ROOF_MAX_STRIPES` (5 —
+  exactly the TEXTURES 3×3 towers) ghosts every stripe regardless of ring:
+  the whole roof disappears and leaves one continuous wireframe of its own
+  shape, rather than a partial stripe reveal that would look broken on
+  something that small.
+- **Wireframe:** one box per occluded roof GU (a stripe's GUs touch only at
+  corners, so each GU's own slab footprint — border rows included, read off
+  the real `Slab.voxels`, never re-derived) is its own independent unit,
+  same philosophy as OCC-13's per-edge wall units. Segments reuse the exact
+  wall-box dict shape (`near_a/near_b/far_a/far_b/min_level/max_level/ring`),
+  so `OcclusionWireframeOverlay` needed zero changes to render them.
+- **Cell ownership:** a roof cell that is also a wall column's own cell
+  (the roof's border row) merges spans — `min(ring)`, `min(min_level)`,
+  `max(max_level)` — so a merged claimant's erase never regresses either
+  contributor's own correctness.
+
+### Capture instruments (env-gated, zero cost when unset)
+
+For unattended visual verification (`room.gd::_run_auto_screenshot_capture()`):
+
+| Env var | Effect |
+|---|---|
+| `INFILTRAITOR_CAPTURE_AGENT_CELL=x,y` | Teleport agent, reveal FOW, recompute occlusion before capture |
+| `INFILTRAITOR_CAPTURE_REVEAL_RADIUS=N` | Override the FOW reveal radius for that teleport (large maps need more than the default) |
+| `INFILTRAITOR_CAPTURE_VIEWS=1` | Drive all 4 real perspectives (N/E/S/W), one PNG each to `occ_view_*.png`, ghost round-trip verified per view |
+| `INFILTRAITOR_OCC_DISABLE=1` | Force an empty occlusion set — an opaque-geometry reference capture for diffing against the occluded one |
+| `INFILTRAITOR_WF_HIDE=1` | Hide only the wireframe overlay — isolates erase/restore pixels from wireframe pixels in a diff |
+
+Erase-diff forensics (opaque capture minus occluded capture, same agent
+cell) is the standard technique for measuring exactly which pixels an
+occlusion change touched — used to both disprove the "wireframe offset"
+read (median delta 0px at the wall base) and to locate the real roofline
+seam (OCC-26).
+
+---
+
 ## Acceptance Criteria (LIGHT-02)
 
 - ✅ `occlusion.md` exists (this document)

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.63 · **Updated:** 2026-07-21 · **Branch:** main
+**Version:** 0.9.65 · **Updated:** 2026-07-21 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -25,7 +25,7 @@
 - Test scripts: 21
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 14
+- Archived prompts: 15
 <!-- AUTO:END inventory -->
 
 ### Version History

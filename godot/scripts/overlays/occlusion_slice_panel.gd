@@ -17,10 +17,10 @@
 ## "underline + dots on every edge regardless" look that read as one
 ## continuous, cluttered mesh.
 ##
-## Fill alpha comes straight from VoxelRenderer.GHOST_ALPHAS (3%/6%/9%,
-## OCC-27) — restoring OCC-19's original intent that the wireframe's glass
-## fill uses the SAME alpha the real ghosted material already uses, not a
-## second, independently-tuned value.
+## Fill alpha comes straight from VoxelRenderer.GHOST_ALPHAS (see that
+## constant for the current per-ring values) — restoring OCC-19's original
+## intent that the wireframe's glass fill uses the SAME alpha the real
+## ghosted material already uses, not a second, independently-tuned value.
 
 extends Node2D
 

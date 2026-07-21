@@ -750,7 +750,7 @@ func can_see(from_pos, to_pos) -> bool:
 
 ---
 
-## Visual Occlusion (Wall/Roof Ghosting) — OCC-01→26, ROOF-OCC-01
+## Visual Occlusion (Wall/Roof Ghosting) — OCC-01→27, ROOF-OCC-01
 
 > **Distinct from the semantic model above.** Everything above this section
 > (LIGHT-02) governs light/LOS/sound classification. This section documents a
@@ -773,7 +773,7 @@ cells are **erased** from their `TileMapLayer` (not ghosted via alpha —
 shape stays legible. Restoring the cell is lossless and verified on every
 capture run (`VoxelRenderer.verify_ghost_roundtrip()`).
 
-### Walls (OCC-01→26)
+### Walls (OCC-01→27)
 
 - **Trigger:** a real 2D screen-space overlap test between an EDGE's
   (one wall column, every storey) footprint and the origin's own silhouette
@@ -823,16 +823,55 @@ horizontal row of GU diamonds on screen — Director-ratified orientation).
   the whole roof disappears and leaves one continuous wireframe of its own
   shape, rather than a partial stripe reveal that would look broken on
   something that small.
-- **Wireframe:** one box per occluded roof GU (a stripe's GUs touch only at
-  corners, so each GU's own slab footprint — border rows included, read off
-  the real `Slab.voxels`, never re-derived) is its own independent unit,
-  same philosophy as OCC-13's per-edge wall units. Segments reuse the exact
-  wall-box dict shape (`near_a/near_b/far_a/far_b/min_level/max_level/ring`),
-  so `OcclusionWireframeOverlay` needed zero changes to render them.
 - **Cell ownership:** a roof cell that is also a wall column's own cell
   (the roof's border row) merges spans — `min(ring)`, `min(min_level)`,
   `max(max_level)` — so a merged claimant's erase never regresses either
   contributor's own correctness.
+
+### Wireframe — OCC-27 (2026-07-21): unified hidden-face culling
+
+Walls, junction columns and roofs used to each draw their **own independent
+wireframe box** per structural unit (OCC-13: one per wall Edge, one per roof
+GU, one — disabled — per junction column), explicitly accepting the overlap
+at a unit-to-unit boundary as "expected, not a defect." In practice every
+such boundary (wall-to-wall, wall-to-junction, GU-to-GU) drew a real extra
+seam; ROOF-OCC-02 (2026-07-20, since superseded and removed) patched this
+locally for roofs only via a rectangle merge. OCC-27 replaces all of that
+with **one hidden-face-culling pass over the already-unified occluded-column
+set** (`OcclusionSet._build_wireframe_geometry()`) — the same principle
+voxel engines use for chunk meshing (only mesh a face if the neighbour
+across it isn't solid): a face is internal (never drawn) iff the
+neighbouring column is *also* occluded and its vertical range **overlaps**
+this one (interval overlap, not exact-level match — OCC-26's wall-below-
+roof-border union widens a border column's range past its own natural top,
+and an exact-level test misread that as a mismatch, drawing a false seam
+the wall's full height); external otherwise. This kills every unit-to-unit
+seam for walls, junctions and roofs alike in one pass.
+
+**Line style** (hidden-line-removal, CAD convention): a face exposed toward
++x or +y (O5: nearer camera) is this volume's own near side — drawn as a
+plain **solid** line, no dots. A face exposed toward -x or -y is the far
+side, behind the volume's own bulk from the camera's POV — drawn as **dots
+only**, no underline. The flat top rim is the one exception: nothing
+overhangs it from this camera angle regardless of direction, so it always
+draws solid. The ghosted band's own bottom is never capped — it sits
+directly on the always-visible base (`BASE_VISIBLE_LEVELS`), not a true
+external boundary.
+
+**Fill:** a translucent quad per exposed face plus the flat top (merged into
+maximal rectangles to avoid antialiasing seams between adjacent per-voxel
+quads), at `VoxelRenderer.GHOST_ALPHAS[ring]` — the same alpha the real
+ghosted material uses, restoring OCC-19's original intent after it had
+drifted to an independently-tuned 30/50/70% through the OCC-21 series.
+Currently 8%/16%/24% (retuned twice live from an initial 3%/6%/9%, both
+times Director's call: "faces read as almost invisible").
+
+**OCC-28 (2026-07-21, tried and reverted same day):** split walls+junctions
+and roofs into two independently-culled entities, so a wall's own top rim
+and a roof's own underside would draw as two separate (possibly
+overlapping) outlines instead of fusing into one. Director's verdict after
+a real capture: "não ficou muito bom" — reverted via `git revert`, back to
+OCC-27's single unified pass. Not re-attempted.
 
 ### Capture instruments (env-gated, zero cost when unset)
 

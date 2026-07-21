@@ -141,22 +141,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var occlusion := compute_edge_occlusion(origins, slices_by_edge, room_size)
 	var edges: Array = occlusion["edges"]
 
-	## OCC-28 (2026-07-21, Director's call): walls+junctions and roofs are
-	## kept as TWO SEPARATE wireframe entities — one hidden-face-culling pass
-	## each — rather than one unified pass over everything (OCC-27). A wall's
-	## own top rim and a roof's own bottom-facing edge are different SURFACES
-	## in different PLANES (vertical vs horizontal); merging them was visually
-	## "correct" (no seam) but conceptually papered over two distinct things
-	## meeting, not one continuous thing. Director's preference: let those two
-	## surfaces' own outlines overlap where they meet rather than silently
-	## fusing — only the solid/dots visibility split still matters, not
-	## whether a line happens to double up with a different entity's line.
-	## `new_occluded` (below) stays the UNIFIED erase set (unchanged purpose:
-	## VoxelRenderer.apply_occlusion() needs one true span per column so the
-	## erase itself never leaves a gap, OCC-26) — only the WIREFRAME geometry
-	## is now built from two separate, un-widened dictionaries.
-	var new_occluded: Dictionary = {}   ## erase set — union across every source (unchanged)
-	var wall_columns: Dictionary = {}   ## wireframe entity #1: walls + junction fillers only
+	var new_occluded: Dictionary = {}
 	var ring_by_edge_id: Dictionary = {}
 	for e in edges:
 		ring_by_edge_id[e["edge_id"]] = e["ring"]
@@ -182,26 +167,18 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 					span_max = maxi(span_max, prev["max_level"])
 				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": span_min, "max_level": span_max}
 
-				## wall_columns: union only with OTHER WALL/JUNCTION entries
-				## (two edges meeting at a corner still merge cleanly) — never
-				## widened by a roof sharing this same column, so a wall's own
-				## natural top stays its own natural top for wireframe purposes.
-				var wspan_min: int = e["min_level"]
-				var wspan_max: int = e["max_level"]
-				if wall_columns.has(voxel.grid_pos):
-					var wprev: Dictionary = wall_columns[voxel.grid_pos]
-					wspan_min = mini(wspan_min, wprev["min_level"])
-					wspan_max = maxi(wspan_max, wprev["max_level"])
-				wall_columns[voxel.grid_pos] = {"ring": e["ring"], "min_level": wspan_min, "max_level": wspan_max}
-
 	## OCC-10/OCC-13/OCC-14 (2026-07-14): junction filler columns aren't part of
 	## any Slice/Edge of their own — Director's rule, confirmed on annotated
 	## screenshots: ghost one only when BOTH edges it fills the elbow between are
 	## occluded; a column with only one occluded neighbor stays fully visible.
 	## Always ring 0 (the minimum alpha) — it has no ring of its own to inherit,
 	## and picking between its two neighbors' rings would be an arbitrary
-	## tie-break. It joins the wall_columns entity (OCC-27/OCC-28): a vertical
-	## filler belongs with the other vertical surfaces, not the roof.
+	## tie-break. It also gets its own thin "lightsaber" wireframe unit — a real
+	## 1×1-voxel box (its own actual footprint), not a flat line, per the
+	## Director's OCC-14 correction ("ainda parece que as paredes viraram folhas
+	## de papel, e os lightsabers parecem apenas uma linha"). Director's diagram:
+	## "EXTRA COLUMNS FILLING V JUNCTIONS MUST FOLLOW THE SAME DESIGN" (a base
+	## band below, wireframe above, just like an edge's own unit).
 	for column in junction_columns:
 		if not (ring_by_edge_id.has(column.edge_a_id) and ring_by_edge_id.has(column.edge_b_id)):
 			continue
@@ -209,36 +186,35 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		## OCC-26: junction fillers cap their erase at their own top as well.
-		var col_entry := {"ring": 0, "min_level": col_ghost_start, "max_level": col_max_level}
-		new_occluded[column.voxel_pos] = col_entry
-		wall_columns[column.voxel_pos] = col_entry
+		## OCC-27: the old "lightsaber" wireframe unit (OCC-14/OCC-21e, disabled
+		## after the Director found it visually bad as an independent box) is
+		## superseded — this column now joins the SAME unified _occluded_cells
+		## set walls and roofs already merge into, so _build_wireframe_geometry()
+		## gives it real exposed-face wireframe automatically, with no seam
+		## against a neighbouring occluded edge (the thing that made the old
+		## independent box look wrong in the first place).
+		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start, "max_level": col_max_level}
 
-	## ROOF-OCC-01: roofs join the ERASE set as screen-horizontal GU stripes
-	## (union with a wall column below, so the erase never leaves a gap —
-	## OCC-26's whole point). OCC-28: the wireframe ENTITY, `roof_columns`,
-	## keeps each roof cell's own NATURAL range instead — a roof's own
-	## min/max, un-widened by whatever wall happens to sit underneath it, so
-	## its own outline is a clean, independent plane.
+	## ROOF-OCC-01: roofs join the set as screen-horizontal GU stripes. Runs
+	## after walls/junctions so a cell shared with a wall column (the roof's
+	## 1-voxel border row) widens that entry's vertical span instead of
+	## replacing it.
 	var roof := _compute_roof_occlusion(origins, ceiling_slabs, ring_by_edge_id, slices_by_edge)
-	var roof_columns: Dictionary = roof["cells"]
-	for cell in roof_columns.keys():
-		var r_entry: Dictionary = roof_columns[cell]
-		var erase_entry: Dictionary = r_entry
+	for cell in roof["cells"].keys():
+		var r_entry: Dictionary = roof["cells"][cell]
 		if new_occluded.has(cell):
 			var prev: Dictionary = new_occluded[cell]
-			erase_entry = {
+			r_entry = {
 				"ring": mini(int(prev["ring"]), int(r_entry["ring"])),
 				"min_level": mini(int(prev["min_level"]), int(r_entry["min_level"])),
 				"max_level": maxi(int(prev["max_level"]), int(r_entry["max_level"])),
 			}
-		new_occluded[cell] = erase_entry
+		new_occluded[cell] = r_entry
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
-		var wall_geometry := _build_wireframe_geometry(wall_columns)
-		var roof_geometry := _build_wireframe_geometry(roof_columns)
-		_wireframe_by_level = _merge_wireframe_by_level(wall_geometry, roof_geometry)
+		_wireframe_by_level = _build_wireframe_geometry(new_occluded)
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
 			var line_count := 0
@@ -248,31 +224,16 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 				_occluded_cells.size(), line_count, _recompute_count
 			])
 
-## Concatenates two _build_wireframe_geometry() results (one per wireframe
-## entity, OCC-28) into one Dictionary int level -> {"lines","fills"} — each
-## entity keeps its own independent hidden-face-culled outline; this only
-## combines them for the overlay to draw, without cross-suppressing.
-func _merge_wireframe_by_level(a: Dictionary, b: Dictionary) -> Dictionary:
-	var merged: Dictionary = {}
-	for level in a:
-		merged[level] = {"lines": a[level]["lines"].duplicate(), "fills": a[level]["fills"].duplicate()}
-	for level in b:
-		if not merged.has(level):
-			merged[level] = {"lines": [], "fills": []}
-		merged[level]["lines"].append_array(b[level]["lines"])
-		merged[level]["fills"].append_array(b[level]["fills"])
-	return merged
-
 ## ============================================================================
-## OCC-27/OCC-28 — per-entity wireframe: hidden-face culling within one
-## occluded-column set at a time
+## OCC-27 (2026-07-21) — unified wireframe: hidden-face culling over the
+## shared occluded-column set
 ## ============================================================================
 
 ## The four planar neighbour directions tested per occluded column. Order
 ## doesn't matter — each is independent.
 const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
-## Director-ratified redesign (OCC-27, 2026-07-21), replacing OCC-13's "one
+## Director-ratified redesign (2026-07-21), replacing OCC-13's "one
 ## independent box per structural unit" (one per wall Edge, one per roof
 ## GU-rectangle, one disabled per junction column). OCC-13 explicitly
 ## accepted the overlap at a unit-to-unit boundary as "expected, not a
@@ -281,20 +242,17 @@ const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0
 ## edge that didn't correspond to any real silhouette, reading as a
 ## serrated/jagged line and, in aggregate, as "muito poluído" (Director,
 ## live). ROOF-OCC-02 (2026-07-20) patched this locally for roof GUs only
-## (rectangle-merge); OCC-27 replaced that with ONE real hidden-face-culling
-## pass over a shared dictionary — the same principle voxel engines use for
-## chunk meshing (Minecraft-style "only mesh a face if the neighbour across
-## it is air"): a face is INTERNAL (never drawn) iff the neighbouring column
-## is ALSO occluded and its level range overlaps this one; EXTERNAL (drawn)
-## otherwise.
-##
-## OCC-28 (2026-07-21, Director's call): walls+junctions and roofs are two
-## separate PLANES (vertical vs horizontal) meeting, not one continuous
-## thing — recompute() now calls this function ONCE PER ENTITY (wall_columns,
-## roof_columns) instead of once over everything, so each keeps its own clean
-## outline even where they touch; overlap between the two entities' own
-## lines there is fine (not re-suppressed), only within-entity internal
-## faces are culled.
+## (rectangle-merge); this supersedes that too — walls, junctions and roofs
+## already all fold into ONE shared dictionary (`occluded`, identical to
+## _occluded_cells / what VoxelRenderer.apply_occlusion() erases), so instead
+## of trusting each generator's own idea of its unit's shape, this runs ONE
+## real hidden-face-culling pass directly against that shared ground truth —
+## the same principle voxel engines use for chunk meshing (Minecraft-style
+## "only mesh a face if the neighbour across it is air"): a face is INTERNAL
+## (never drawn) iff the neighbouring column is ALSO occluded and its level
+## range covers this level; EXTERNAL (drawn) otherwise. This kills every
+## unit-to-unit seam by construction, for walls, junctions and roofs alike,
+## in one pass, rather than patching one axis at a time.
 ##
 ## Deliberately not merged into longer runs along a straight boundary: each
 ## exposed 1-voxel face only ever draws the 2 endpoints its own boundary is
@@ -303,7 +261,7 @@ const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0
 ## (solid style) or one evenly-spaced dotted line (dots style, matching the
 ## OCC-18 per-voxel-boundary dot spacing) — visually identical to an
 ## explicit run-merge, without the extra rectangle-decomposition bookkeeping
-## ROOF-OCC-02 needed and OCC-27 removed.
+## ROOF-OCC-02 needed and this now removes.
 ##
 ## Visibility/style convention (hidden-line removal, CAD tradition): O5 (top
 ## of file) fixes camera depth as x+y, greater = nearer. A face exposed
@@ -319,10 +277,9 @@ const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0
 ## LEVELS), which is not a true external boundary, just an internal render
 ## style change within the same solid structure.
 ##
-## Args: occluded — ONE wireframe entity's own column dictionary (voxel
-## column Vector2i -> {"ring","min_level","max_level"}), e.g. wall_columns
-## or roof_columns from recompute() — NOT the cross-entity-widened
-## _occluded_cells erase set (OCC-28).
+## Args: occluded — the SAME dict as _occluded_cells (voxel column Vector2i
+## -> {"ring","min_level","max_level"}), already merged across walls,
+## junctions and roofs by the time recompute() calls this.
 ## Returns: Dictionary int level -> {"lines": Array, "fills": Array}
 ##   "lines": {"a": Vector2i, "b": Vector2i, "level_a": int, "level_b": int,
 ##     "solid": bool} — the line runs from _voxel_to_screen(a, level_a) to

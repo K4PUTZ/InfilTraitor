@@ -62,15 +62,16 @@ const SMALL_ROOF_MAX_STRIPES: int = 5
 ## Key: Vector2i voxel cell (voxel-grid coordinate space)
 var _occluded_cells: Dictionary = {}
 
-## Per-occluded-edge shape data — what OcclusionWireframeOverlay draws. Each entry:
-##   {"corner_a": Vector2i, "corner_b": Vector2i, "min_level": int, "max_level": int}
-## "min_level" here is where GHOSTING STARTS (the edge's true base plus
-## BASE_VISIBLE_LEVELS) — the wireframe only ever needs to cover the translucent
-## band, never the always-visible base underneath it (OCC-10).
-## Deliberately NOT raw Slice objects (OCC-09): a Slice's own span is never
-## partial — this is the atomic unit that can be, once part of it needs to draw
-## differently (or not at all) from the rest.
-var _occluded_edges: Array = []
+## OCC-27 (2026-07-21): wireframe geometry, keyed by LEVEL — supersedes the old
+## per-structural-unit "_occluded_edges" segment list. Each entry:
+##   int level -> {"lines": Array[{"a","b","level","solid","ring"}],
+##                 "fills": Array[{"p": PackedVector2Array, "alpha": float}]}
+## Built once per recompute() by _build_wireframe_geometry(), a single hidden-
+## face-culling pass over the UNIFIED _occluded_cells set (walls, junctions and
+## roofs already all merge into that one dictionary) — not one independent box
+## per wall Edge / roof GU / junction column any more. See that function's
+## header for why.
+var _wireframe_by_level: Dictionary = {}
 
 ## Recomputation counter (for verification of cadence)
 var _recompute_count: int = 0
@@ -88,9 +89,9 @@ var _recompute_count: int = 0
 func get_occluded_cells() -> Dictionary:
 	return _occluded_cells.duplicate()
 
-## Per-occluded-edge shape data (already vertically clipped) — see _occluded_edges.
-func get_occluded_edges() -> Array:
-	return _occluded_edges.duplicate()
+## Wireframe geometry, keyed by level — see _wireframe_by_level.
+func get_wireframe_by_level() -> Dictionary:
+	return _wireframe_by_level.duplicate()
 
 ## Get the ring index for a given voxel cell, or -1 if not occluded.
 func get_ring_index(voxel_cell: Vector2i) -> int:
@@ -139,7 +140,6 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var slices_by_edge := _group_slices_by_edge(slices)
 	var occlusion := compute_edge_occlusion(origins, slices_by_edge, room_size)
 	var edges: Array = occlusion["edges"]
-	var new_segments: Array = occlusion["segments"].duplicate()
 
 	var new_occluded: Dictionary = {}
 	var ring_by_edge_id: Dictionary = {}
@@ -186,15 +186,14 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		## OCC-26: junction fillers cap their erase at their own top as well.
+		## OCC-27: the old "lightsaber" wireframe unit (OCC-14/OCC-21e, disabled
+		## after the Director found it visually bad as an independent box) is
+		## superseded — this column now joins the SAME unified _occluded_cells
+		## set walls and roofs already merge into, so _build_wireframe_geometry()
+		## gives it real exposed-face wireframe automatically, with no seam
+		## against a neighbouring occluded edge (the thing that made the old
+		## independent box look wrong in the first place).
 		new_occluded[column.voxel_pos] = {"ring": 0, "min_level": col_ghost_start, "max_level": col_max_level}
-		## OCC-21e (2026-07-14): lightsaber wireframe disabled again — Director's
-		## call after seeing it live. Fill ghosting above is untouched; only the
-		## wireframe segment is disabled. Re-enable by uncommenting if needed.
-		#new_segments.append({
-		#	"near_a": column.voxel_pos, "near_b": column.voxel_pos + Vector2i(1, 0),
-		#	"far_a": column.voxel_pos + Vector2i(0, 1), "far_b": column.voxel_pos + Vector2i(1, 1),
-		#	"min_level": col_ghost_start, "max_level": col_max_level, "ring": 0,
-		#})
 
 	## ROOF-OCC-01: roofs join the set as screen-horizontal GU stripes. Runs
 	## after walls/junctions so a cell shared with a wall column (the roof's
@@ -211,17 +210,265 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 				"max_level": maxi(int(prev["max_level"]), int(r_entry["max_level"])),
 			}
 		new_occluded[cell] = r_entry
-	new_segments.append_array(roof["segments"])
 
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
-		_occluded_edges = new_segments
+		_wireframe_by_level = _build_wireframe_geometry(new_occluded)
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
-			print_debug("[OcclusionSet] Recomputed: %d cells, %d segments (count=%d)" % [
-				_occluded_cells.size(), _occluded_edges.size(), _recompute_count
+			var line_count := 0
+			for level in _wireframe_by_level:
+				line_count += _wireframe_by_level[level]["lines"].size()
+			print_debug("[OcclusionSet] Recomputed: %d cells, %d wireframe lines (count=%d)" % [
+				_occluded_cells.size(), line_count, _recompute_count
 			])
+
+## ============================================================================
+## OCC-27 (2026-07-21) — unified wireframe: hidden-face culling over the
+## shared occluded-column set
+## ============================================================================
+
+## The four planar neighbour directions tested per occluded column. Order
+## doesn't matter — each is independent.
+const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+## Director-ratified redesign (2026-07-21), replacing OCC-13's "one
+## independent box per structural unit" (one per wall Edge, one per roof
+## GU-rectangle, one disabled per junction column). OCC-13 explicitly
+## accepted the overlap at a unit-to-unit boundary as "expected, not a
+## defect" — in practice it was: every boundary between two occluded units
+## (wall-to-wall, wall-to-junction, GU-to-GU) drew a full extra wireframe
+## edge that didn't correspond to any real silhouette, reading as a
+## serrated/jagged line and, in aggregate, as "muito poluído" (Director,
+## live). ROOF-OCC-02 (2026-07-20) patched this locally for roof GUs only
+## (rectangle-merge); this supersedes that too — walls, junctions and roofs
+## already all fold into ONE shared dictionary (`occluded`, identical to
+## _occluded_cells / what VoxelRenderer.apply_occlusion() erases), so instead
+## of trusting each generator's own idea of its unit's shape, this runs ONE
+## real hidden-face-culling pass directly against that shared ground truth —
+## the same principle voxel engines use for chunk meshing (Minecraft-style
+## "only mesh a face if the neighbour across it is air"): a face is INTERNAL
+## (never drawn) iff the neighbouring column is ALSO occluded and its level
+## range covers this level; EXTERNAL (drawn) otherwise. This kills every
+## unit-to-unit seam by construction, for walls, junctions and roofs alike,
+## in one pass, rather than patching one axis at a time.
+##
+## Deliberately not merged into longer runs along a straight boundary: each
+## exposed 1-voxel face only ever draws the 2 endpoints its own boundary is
+## entitled to, so a straight run of many contiguous exposed faces becomes
+## many collinear 1-voxel segments that already read as one continuous line
+## (solid style) or one evenly-spaced dotted line (dots style, matching the
+## OCC-18 per-voxel-boundary dot spacing) — visually identical to an
+## explicit run-merge, without the extra rectangle-decomposition bookkeeping
+## ROOF-OCC-02 needed and this now removes.
+##
+## Visibility/style convention (hidden-line removal, CAD tradition): O5 (top
+## of file) fixes camera depth as x+y, greater = nearer. A face exposed
+## toward +x or +y (EAST/SOUTH) is this volume's OWN near side — nothing of
+## its own bulk sits between that face and the camera — drawn as a plain
+## SOLID line, no dots. A face exposed toward -x or -y (WEST/NORTH) is the
+## volume's far side, behind its own bulk from the camera's POV — drawn as
+## DOTS only, no line underneath. The flat TOP rim is the one exception:
+## nothing overhangs it from this camera angle regardless of which side of
+## the rim it's on, so every top-level cap edge draws SOLID regardless of
+## direction. The ghosted band's own BOTTOM is never capped at all — it sits
+## directly on the edge's real, opaque, always-visible base (BASE_VISIBLE_
+## LEVELS), which is not a true external boundary, just an internal render
+## style change within the same solid structure.
+##
+## Args: occluded — the SAME dict as _occluded_cells (voxel column Vector2i
+## -> {"ring","min_level","max_level"}), already merged across walls,
+## junctions and roofs by the time recompute() calls this.
+## Returns: Dictionary int level -> {"lines": Array, "fills": Array}
+##   "lines": {"a": Vector2i, "b": Vector2i, "level_a": int, "level_b": int,
+##     "solid": bool} — the line runs from _voxel_to_screen(a, level_a) to
+##     _voxel_to_screen(b, level_b). Two shapes share this: a=b (same lattice
+##     point) with level_a/level_b = level/level+1 is a true VERTICAL corner
+##     (drawn only at a run's real start/end, never per interior voxel — see
+##     the width-axis run-boundary check below); a!=b with level_a==level_b
+##     is a flat top-cap rim edge (both endpoints at the same height).
+##   "fills": {"kind": "side"/"top", "a": Vector2i, "b": Vector2i, "level":
+##     int, "ring": int} — "side" is a vertical quad from level to level+1
+##     along the a-b lattice edge; "top" is the column's own flat footprint
+##     quad at level+1 (level here is always the column's own max_level+1).
+## True if `column` (assumed present in `occluded`) has an EXTERNAL
+## (exposed) face in direction `dir` — its neighbour in that direction is
+## either absent, or present but with a vertical range that never overlaps
+## this column's own (see _build_wireframe_geometry's header for why overlap,
+## not exact-level match, is the right test). Shared by the main pass and by
+## the width-axis run boundary check (a face is only a true run START/END
+## when its along-the-run neighbour does NOT share the same exposure).
+static func _is_exposed(occluded: Dictionary, column: Vector2i, dir: Vector2i) -> bool:
+	var entry: Dictionary = occluded[column]
+	var neighbour := column + dir
+	if not occluded.has(neighbour):
+		return true
+	var n: Dictionary = occluded[neighbour]
+	return not (int(n["min_level"]) <= int(entry["max_level"]) and int(n["max_level"]) >= int(entry["min_level"]))
+
+
+func _build_wireframe_geometry(occluded: Dictionary) -> Dictionary:
+	var by_level: Dictionary = {}
+
+	for column: Vector2i in occluded:
+		var entry: Dictionary = occluded[column]
+		var min_level: int = entry["min_level"]
+		var max_level: int = entry["max_level"]
+		var ring: int = entry["ring"]
+		if min_level > max_level:
+			continue
+		var cx: int = column.x
+		var cy: int = column.y
+
+		for dir: Vector2i in _FACE_DIRS:
+			if not _is_exposed(occluded, column, dir):
+				continue  ## hidden-face culling: bordered by more occluded volume
+
+			## Width axis: perpendicular to dir, the direction ALONG which many
+			## contiguous exposed voxels of the SAME face read as one boundary
+			## run. Verticals only belong at a run's true start/end (see
+			## header) — an interior voxel's own verticals would just be
+			## duplicates of its neighbours', drawn once per voxel instead of
+			## once per run, which is what made a wide wall face look like a
+			## picket fence of parallel dotted lines instead of one clean edge.
+			var width_step: Vector2i = Vector2i(0, 1) if dir.x != 0 else Vector2i(1, 0)
+			var run_start: bool = not (occluded.has(column - width_step) and _is_exposed(occluded, column - width_step, dir))
+			var run_end: bool = not (occluded.has(column + width_step) and _is_exposed(occluded, column + width_step, dir))
+
+			var p1: Vector2i
+			var p2: Vector2i
+			if dir.x == 1:
+				p1 = Vector2i(cx + 1, cy); p2 = Vector2i(cx + 1, cy + 1)
+			elif dir.x == -1:
+				p1 = Vector2i(cx, cy); p2 = Vector2i(cx, cy + 1)
+			elif dir.y == 1:
+				p1 = Vector2i(cx, cy + 1); p2 = Vector2i(cx + 1, cy + 1)
+			else:
+				p1 = Vector2i(cx, cy); p2 = Vector2i(cx + 1, cy)
+
+			var near_facing: bool = (dir.x == 1 or dir.y == 1)  ## O5: +x/+y = nearer camera
+
+			for level in range(min_level, max_level + 1):
+				var is_top: bool = (level == max_level)
+				if not by_level.has(level):
+					by_level[level] = {"lines": [], "fills": []}
+				var level_data: Dictionary = by_level[level]
+
+				## Two TRUE VERTICALS (fixed lattice point, level -> level+1),
+				## only at the run's real ends — not a "p1-to-p2" edge redrawn
+				## at every level, which drew a stack of horizontal rungs up
+				## the wall's whole height (the actual bug behind the
+				## "venetian blind"/dense-mesh look this redesign was meant
+				## to remove).
+				if run_start:
+					level_data["lines"].append({"a": p1, "b": p1, "level_a": level, "level_b": level + 1, "solid": near_facing})
+				if run_end:
+					level_data["lines"].append({"a": p2, "b": p2, "level_a": level, "level_b": level + 1, "solid": near_facing})
+
+				level_data["fills"].append({"kind": "side", "a": p1, "b": p2, "level": level, "ring": ring})
+
+				if is_top:
+					## Flat-top rim edge: always solid — nothing overhangs the
+					## top from this camera angle, regardless of direction.
+					## A real width-direction edge (both endpoints at the SAME
+					## level), unlike the verticals above.
+					level_data["lines"].append({"a": p1, "b": p2, "level_a": level + 1, "level_b": level + 1, "solid": true})
+
+	## Top fills: NOT emitted per column above. A flat roof/box top is many
+	## contiguous occluded columns sharing one (max_level, ring) — filling
+	## each column's own 1-voxel quad independently tiled hundreds of tiny
+	## translucent polygons edge-to-edge, and Godot's own polygon-edge
+	## antialiasing double-blends at every shared seam between them, reading
+	## as a fine grid printed across the whole roof (the same class of
+	## unwanted "internal line" this whole redesign exists to remove — just
+	## coming from fill antialiasing instead of wireframe geometry). Grouping
+	## by (max_level, ring) and merging each group into maximal rectangles
+	## (same row-run + vertical-merge technique ROOF-OCC-02 used, generalized
+	## to any occluded column, not just roof GUs) collapses the common flat
+	## case to one polygon — no internal seam left to antialias.
+	var top_groups: Dictionary = {}  ## "level|ring" -> Array[Vector2i]
+	for column: Vector2i in occluded:
+		var entry: Dictionary = occluded[column]
+		var key := "%d|%d" % [int(entry["max_level"]), int(entry["ring"])]
+		if not top_groups.has(key):
+			top_groups[key] = []
+		top_groups[key].append(column)
+
+	for key: String in top_groups:
+		var parts: PackedStringArray = key.split("|")
+		var level: int = int(parts[0])
+		var ring: int = int(parts[1])
+		if not by_level.has(level):
+			by_level[level] = {"lines": [], "fills": []}
+		for rect in _merge_columns_into_rects(top_groups[key]):
+			by_level[level]["fills"].append({
+				"kind": "top", "a": Vector2i(rect[0], rect[1]), "b": Vector2i(rect[2] + 1, rect[3] + 1),
+				"level": level + 1, "ring": ring,
+			})
+
+	return by_level
+
+
+## Decompose a set of grid columns into a small number of maximal axis-
+## aligned rectangles: maximal horizontal runs per row, then runs with an
+## identical x-range merged vertically across consecutive rows. Not
+## guaranteed minimal for an arbitrary polyomino, but exact (every input
+## column covered exactly once, no overlap) and collapses the common case —
+## a flat rectangular roof/box top — to a single rectangle. Row order
+## matters: rows must be walked ascending so a run only ever merges downward
+## into rows not yet visited. Returns Array of [x0, y0, x1, y1] (inclusive).
+func _merge_columns_into_rects(cells: Array) -> Array:
+	var by_row: Dictionary = {}   ## y -> Array[x]
+	for c: Vector2i in cells:
+		if not by_row.has(c.y):
+			by_row[c.y] = []
+		by_row[c.y].append(c.x)
+	for y in by_row:
+		by_row[y].sort()
+
+	var row_runs: Dictionary = {}      ## y -> Array[[x0, x1]]
+	var run_lookup: Dictionary = {}    ## "y|x0|x1" -> true, O(1) vertical-merge lookups
+	for y in by_row:
+		var xs: Array = by_row[y]
+		var runs: Array = []
+		var run_start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size()):
+			if xs[i] == prev + 1:
+				prev = xs[i]
+				continue
+			runs.append([run_start, prev])
+			run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
+			run_start = xs[i]
+			prev = xs[i]
+		runs.append([run_start, prev])
+		run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
+		row_runs[y] = runs
+
+	var rows_sorted: Array = row_runs.keys()
+	rows_sorted.sort()
+
+	var consumed: Dictionary = {}
+	var rects: Array = []
+	for y in rows_sorted:
+		for run in row_runs[y]:
+			var x0: int = run[0]
+			var x1: int = run[1]
+			var run_key := "%d|%d|%d" % [y, x0, x1]
+			if consumed.has(run_key):
+				continue
+			consumed[run_key] = true
+			var y1 := int(y)
+			while true:
+				var next_key := "%d|%d|%d" % [y1 + 1, x0, x1]
+				if run_lookup.has(next_key) and not consumed.has(next_key):
+					consumed[next_key] = true
+					y1 += 1
+				else:
+					break
+			rects.append([x0, y, x1, y1])
+	return rects
 
 ## ============================================================================
 ## CORE COMPUTATION (pure geometry, no I/O)
@@ -278,22 +525,18 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## position (see BASE_VISIBLE_LEVELS doc comment for why the pixel-threshold
 ## version was dropped).
 ##
-## Returns: {"edges": Array, "segments": Array}
-##   "edges" — one Dictionary per occluded edge, the FILL's source of truth:
-##     {"edge_id", "ring", "corner_a", "corner_b", "min_level", "max_level"}
-##     "min_level" is where ghosting STARTS (edge's true base + BASE_VISIBLE_LEVELS).
-##   "segments" — the wireframe's source of truth (OCC-13/OCC-14/OCC-19): one
-##     independent unit per occluded edge, a real box with both width and
-##     depth: {"near_a", "near_b", "far_a", "far_b", "min_level", "max_level",
-##     "ring"}, all four corners in fine-voxel space. "ring" travels with the
-##     segment so the wireframe's own glass FILL can match VoxelRenderer.
-##     GHOST_ALPHAS[ring] — the same alpha the real ghosted material already
-##     uses, not a second, independently-tuned value. "near" is the edge's TRUE shared
-##     grid vertex (`_edge_vertices`) — two adjacent edges can never disagree
-##     about where their shared corner is; "far" is "near" shifted by the
-##     wall's real one-voxel thickness (see depth_offset below), so the
-##     wireframe box has actual depth instead of being a flat plane.
-##     Junction-column units are appended separately in recompute().
+## Returns: {"edges": Array}
+##   "edges" — one Dictionary per occluded edge, the source of truth for
+##     _occluded_cells (recompute() walks each edge's own real voxels to
+##     populate it): {"edge_id", "ring", "corner_a", "corner_b", "min_level",
+##     "max_level"}. "min_level" is where ghosting STARTS (edge's true base +
+##     BASE_VISIBLE_LEVELS).
+##   OCC-27 (2026-07-21): this used to also return "segments" — one
+##     independent wireframe box per occluded edge (OCC-13/OCC-14/OCC-19).
+##     Superseded: the wireframe is now built once, for walls+junctions+roofs
+##     together, by _build_wireframe_geometry() over the merged
+##     _occluded_cells set — see that function's header for why the old
+##     per-edge box was the actual source of the reported seam artifacts.
 func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
 	
@@ -367,36 +610,11 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 		var anchor = edge_slices[0]
 		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
 
-		## OCC-14/OCC-15 (2026-07-14): the wireframe's real THICKNESS. A wall is
-		## two Slices (A/B, one per adjacent GU) whose own real voxel COLUMNS sit
-		## exactly one fine-voxel unit apart — SliceGenerator places them at that
-		## fixed gap, never coincident (confirmed by construction: e.g. an
-		## SE-face slice's own column is always exactly one less than the
-		## matching NW-face slice's column on the neighboring GU). The scanned
-		## min/max already captures that real 1-unit CENTER-to-CENTER gap on the
-		## DEPTH axis (as opposed to the 8-unit-wide WIDTH axis). But the base
-		## block's real physical footprint (Director's own "8x2x2") is TWO full
-		## voxel cells deep, not the 1-unit gap between their centers — each
-		## Slice's own voxel column is itself a full unit wide, so the true outer
-		## span runs from slice A's own FAR edge to slice B's own FAR edge, one
-		## extra unit past the naive center-to-center delta. Doubled here (2026
-		## -07-14, Director's correction: the wireframe's depth undershot the
-		## base it sits on by exactly one voxel).
-		var depth_offset: Vector2i
-		match anchor.face:
-			FaceMod.NW, FaceMod.SE:
-				depth_offset = Vector2i(2 * (min_gx - max_gx), 0)
-			FaceMod.NE, FaceMod.SW:
-				depth_offset = Vector2i(0, 2 * (min_gy - max_gy))
-			_:
-				depth_offset = Vector2i.ZERO
-
 		edge_geom[edge_id] = {
 			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
 			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
-			"y_top": y_top, "y_bottom": y_bottom, "depth_offset": depth_offset,
+			"y_top": y_top, "y_bottom": y_bottom,
 			"min_level": ghost_start_level, "max_level": max_level,
-			"face": anchor.face, "vertex_a": vertices[0], "vertex_b": vertices[1],
 		}
 
 		for v in vertices:
@@ -428,7 +646,7 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 			seed_set[edge_id] = true
 
 	if seeds.is_empty():
-		return {"edges": [], "segments": []}
+		return {"edges": []}
 
 	## Multi-source BFS along the wall's own connectivity graph, up to MAX_RING hops.
 	## Every trigger is its own ring-0 seed — there is no special-cased "the agent's
@@ -469,20 +687,13 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 				next_frontier.append(other_id)
 		frontier = next_frontier
 
-	## OCC-13 (2026-07-14): one wireframe unit per occluded EDGE — Director's
-	## formalization, replacing OCC-12's connectivity-walk merge: each edge is
-	## its own self-contained unit (base band below, wireframe above, see
-	## BASE_VISIBLE_LEVELS), and adjacent units at a V-junction are simply drawn
-	## independently — the resulting overlap at the corner is expected, not a
-	## defect, and the junction column's own unit (recompute(), see below) is
-	## what visually resolves it, per the Director's diagram. Segment corners use
-	## the edge's TRUE shared grid VERTEX (`_edge_vertices`), not its own
-	## independently-scanned voxel min/max — that mismatch (two different faces
-	## can each compute a slightly different point for what should be the same
-	## shared corner) was the actual root cause of the reported diagonal-seam
-	## artifact; fixed here regardless of the merge-vs-independent question.
+	## OCC-13 (2026-07-14) originally formalized one independent wireframe box
+	## per occluded EDGE here, accepting the overlap at a V-junction as
+	## "expected, not a defect." OCC-27 (2026-07-21) supersedes that: the
+	## overlap read as a real seam in practice, so wireframe geometry no
+	## longer comes from here at all — only the edge/ring/level bookkeeping
+	## _occluded_cells needs, consumed by recompute().
 	var result: Array = []
-	var segments: Array = []
 	for edge_id in ring_by_edge.keys():
 		var g: Dictionary = edge_geom[edge_id]
 		result.append({
@@ -490,17 +701,7 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 			"corner_a": g["corner_a"], "corner_b": g["corner_b"],
 			"min_level": g["min_level"], "max_level": g["max_level"],
 		})
-		## OCC-14: near = the true-vertex width-aligned edge (unchanged from
-		## OCC-13); far = near shifted by the real one-voxel wall thickness, so
-		## the wireframe reads as an actual box, not a flat plane.
-		var near_a: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(g["vertex_a"])
-		var near_b: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(g["vertex_b"])
-		segments.append({
-			"near_a": near_a, "near_b": near_b,
-			"far_a": near_a + g["depth_offset"], "far_b": near_b + g["depth_offset"],
-			"min_level": g["min_level"], "max_level": g["max_level"], "ring": ring_by_edge[edge_id],
-		})
-	return {"edges": result, "segments": segments}
+	return {"edges": result}
 
 
 ## ============================================================================
@@ -527,14 +728,15 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 ## every stripe, ring clamped, so a small roof disappears entirely and leaves
 ## a wireframe of its own shape (Director's small-roof rule).
 ##
-## Returns {"cells": Dictionary voxel cell → {ring, min_level, max_level},
-##          "segments": Array} — segments in the exact wall-box dict shape
-## (near_a/near_b/far_a/far_b/min_level/max_level/ring), one box per occluded
-## GU: a stripe's GUs touch only at corners, so each GU's own slab footprint
-## (borders included, read off the real Slab voxels) is its own box unit, the
-## same independent-unit philosophy OCC-13 ratified for wall edges.
+## Returns {"cells": Dictionary voxel cell → {ring, min_level, max_level}} —
+## OCC-27 (2026-07-21): this used to also return one wireframe "segments" box
+## per occluded GU (ROOF-OCC-01), then per merged rectangle of same-(ring,
+## min_level,max_level) GUs (ROOF-OCC-02). Both are superseded: "cells" alone
+## feeds the SAME unified _occluded_cells set walls and junctions merge into,
+## and _build_wireframe_geometry() derives wireframe geometry for all three
+## together from that shared set — see its header for why.
 func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
-	var result := {"cells": {}, "segments": []}
+	var result := {"cells": {}}
 	if ceiling_slabs.is_empty():
 		return result
 
@@ -610,11 +812,6 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 	for origin: Vector2i in origins:
 		origin_depths.append(origin.x + origin.y)
 
-	## gu -> {ring, min_level, max_level} for every occluded roof GU, collected
-	## across all active components. Segments (wireframe boxes) are built from
-	## this in a second pass below — never one per GU here (see ROOF-OCC-02).
-	var occluded_gu: Dictionary = {}
-
 	for idx in active.keys():
 		var members: Array = components[idx]
 		var stripe_depths: Dictionary = {}   ## depth sum -> true
@@ -632,7 +829,6 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 				continue   ## large roof: stripe out of reveal range stays solid
 
 			var info: Dictionary = gu_info[gu]
-			occluded_gu[gu] = {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
 
 			for cell: Vector2i in info["cells"]:
 				var entry := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
@@ -644,131 +840,7 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 						"max_level": maxi(int(prev["max_level"]), int(entry["max_level"])),
 					}
 				result["cells"][cell] = entry
-
-	## ROOF-OCC-02 (2026-07-20): one wireframe box per MAXIMAL RECTANGLE of
-	## contiguous occluded GUs sharing (ring, min_level, max_level) — not one
-	## box per GU. The old per-GU box drew a full 4-vertical wireframe on every
-	## internal seam between adjacent occluded roof cells (most roof GUs are
-	## edge-adjacent to a neighbour in the NEXT stripe, not just corner-adjacent
-	## within their own stripe), reading as a serrated/jagged line down what
-	## should be one clean silhouette edge. Same failure class OCC-08-b/OCC-14
-	## already fixed for per-LEVEL bands (the "venetian blind" bug) — recurring
-	## here on the GU axis because a roof surface is artificially subdivided
-	## into 8-voxel GU cells, unlike a wall Edge which is already one physical
-	## unit and never needed this merge.
-	var groups: Dictionary = {}   ## "ring|min_level|max_level" -> Array[Vector2i]
-	for gu: Vector2i in occluded_gu:
-		var g: Dictionary = occluded_gu[gu]
-		var key := "%d|%d|%d" % [int(g["ring"]), int(g["min_level"]), int(g["max_level"])]
-		if not groups.has(key):
-			groups[key] = []
-		groups[key].append(gu)
-
-	for key in groups:
-		var group_cells: Array = groups[key]
-		var sample: Dictionary = occluded_gu[group_cells[0]]
-		var ring: int = sample["ring"]
-		var min_level: int = sample["min_level"]
-		var max_level: int = sample["max_level"]
-
-		for rect in _merge_gu_rects(group_cells):
-			var gx0: int = rect[0]
-			var gy0: int = rect[1]
-			var gx1: int = rect[2]
-			var gy1: int = rect[3]
-
-			## Merged voxel-space footprint: union of every covered GU's own
-			## real footprint rect (border rows included), never re-derived
-			## from GU coordinates directly — same source OcclusionWireframeOverlay
-			## already trusts for the per-GU case.
-			var vx0 := 999999
-			var vy0 := 999999
-			var vx1 := -999999
-			var vy1 := -999999
-			for gx in range(gx0, gx1 + 1):
-				for gy in range(gy0, gy1 + 1):
-					var info: Dictionary = gu_info[Vector2i(gx, gy)]
-					vx0 = mini(vx0, info["rect_min"].x)
-					vy0 = mini(vy0, info["rect_min"].y)
-					vx1 = maxi(vx1, info["rect_max"].x)
-					vy1 = maxi(vy1, info["rect_max"].y)
-
-			## Box unit: footprint corners as EXCLUSIVE lattice bounds, near
-			## edge on the camera side (larger y), far edge shifted by the
-			## footprint's own depth — the same parallelogram contract the
-			## wall segments feed OcclusionWireframeOverlay.
-			var x0 := vx0
-			var y0 := vy0
-			var x1 := vx1 + 1
-			var y1 := vy1 + 1
-			result["segments"].append({
-				"near_a": Vector2i(x0, y1), "near_b": Vector2i(x1, y1),
-				"far_a": Vector2i(x0, y0), "far_b": Vector2i(x1, y0),
-				"min_level": min_level, "max_level": max_level, "ring": ring,
-			})
 	return result
-
-
-## Decompose a set of GU-space grid cells into a small number of maximal
-## axis-aligned rectangles: maximal horizontal runs per row, then runs with
-## an identical x-range merged vertically across consecutive rows. Not
-## guaranteed minimal for an arbitrary polyomino, but exact (every input cell
-## covered exactly once, no overlap) and collapses the common case — a
-## rectangular room's roof — to a single rectangle. Row order matters: rows
-## must be walked ascending so a run only ever merges downward into rows not
-## yet visited, never leaving a matching pair split across two separate
-## rectangles because the bottom one was visited first.
-func _merge_gu_rects(cells: Array) -> Array:
-	var by_row: Dictionary = {}   ## y -> Array[x]
-	for c: Vector2i in cells:
-		if not by_row.has(c.y):
-			by_row[c.y] = []
-		by_row[c.y].append(c.x)
-	for y in by_row:
-		by_row[y].sort()
-
-	var row_runs: Dictionary = {}      ## y -> Array[[x0, x1]]
-	var run_lookup: Dictionary = {}    ## "y|x0|x1" -> true, O(1) vertical-merge lookups
-	for y in by_row:
-		var xs: Array = by_row[y]
-		var runs: Array = []
-		var run_start: int = xs[0]
-		var prev: int = xs[0]
-		for i in range(1, xs.size()):
-			if xs[i] == prev + 1:
-				prev = xs[i]
-				continue
-			runs.append([run_start, prev])
-			run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
-			run_start = xs[i]
-			prev = xs[i]
-		runs.append([run_start, prev])
-		run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
-		row_runs[y] = runs
-
-	var rows_sorted: Array = row_runs.keys()
-	rows_sorted.sort()
-
-	var consumed: Dictionary = {}
-	var rects: Array = []
-	for y in rows_sorted:
-		for run in row_runs[y]:
-			var x0: int = run[0]
-			var x1: int = run[1]
-			var run_key := "%d|%d|%d" % [y, x0, x1]
-			if consumed.has(run_key):
-				continue
-			consumed[run_key] = true
-			var y1 := int(y)
-			while true:
-				var next_key := "%d|%d|%d" % [y1 + 1, x0, x1]
-				if run_lookup.has(next_key) and not consumed.has(next_key):
-					consumed[next_key] = true
-					y1 += 1
-				else:
-					break
-			rects.append([x0, y, x1, y1])
-	return rects
 
 
 ## Outward neighbour GU across a face — the other side of a (gu_cell, face)

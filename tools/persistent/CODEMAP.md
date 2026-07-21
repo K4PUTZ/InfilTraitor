@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26559 lines total** (under `godot/scripts/`)
+**133 scripts · 26512 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 921 lines
+`class_name VoxelRenderer` · extends `Node2D` · 927 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -686,7 +686,6 @@ extends `ConfirmationDialog` · 64 lines
 - `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `GHOST_ALT_IDS` = `[1, 2, 3]`
-- `GHOST_ALPHAS` = `[0.04, 0.08, 0.16]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -983,45 +982,32 @@ extends `Node2D` · 139 lines
 
 ### `occlusion_slice_panel.gd`
 
-extends `Node2D` · 175 lines
+extends `Node2D` · 79 lines
 
 `godot/scripts/overlays/occlusion_slice_panel.gd`
 
-> OCC-08-b: draws one LEVEL band of an occluded edge's wireframe BOX, at that band's own voxel-layer z_index — see occlusion_wireframe_overlay.gd for why a flat elevated z_index was wrong (it always won against opaque geometry nearer the camera at a lower level, which should have covered it). OCC-14 (2026-07-14): a real box (4 verticals: near_a, near_b, far_a, far_b — "far" is "near" shifted by the wall's real one-voxel thickness), not a flat plane. Director's correction after seeing OCC-13 live: single-quad panels read as "sheets of paper," and the junction-column unit (near == far degenerate before this) as "just a line" — both needed actual depth to look like the solid geometry they stand in for. OCC-18 (2026-07-14): every edge drawn as DOTS at real voxel boundaries (90% alpha), with a full line underneath at 20% alpha connecting them — Director's refinement after OCC-17's dashed-line attempt looked visually incoherent (fixed pixel dash length reads sparse on a tall axis, dense on a short one, since screen-px-per-voxel differs by axis under isometric projection). Dots spaced by real VOXEL COUNT (width_voxels/depth_voxels, computed upstream from real grid coordinates, never pixels) are equal on every axis by construction. Verticals need no count — each panel is already exactly one voxel LEVEL tall (see below), so they're always a 2-dot line. OCC-19 (2026-07-14): a translucent glass FILL on the box's front and top faces, at VoxelRenderer.GHOST_ALPHAS[ring] — the SAME alpha the real ghosted material already uses, not a second independently-tuned value, so the wireframe's fill reads as a continuation of the material's own occlusion rather than a competing effect. draw_top/draw_bottom default true but the manager sets them false on every band except the very top and very bottom of a slice's occluded span. A tall slice spans many levels, each its OWN z_index band (necessary — see above) — drawing every band's own top+bottom edge produced a "venetian blind" of horizontal rungs down the whole span, since each level boundary is really just an INTERNAL seam, not a real silhouette edge. The four verticals still draw on every band (that is what keeps each level individually maskable by nearer geometry), and consecutive bands' verticals share exact endpoints, so their dots never double up.
+> Occlusion Wireframe Panel — OCC-27 (2026-07-21) Draws ALL wireframe geometry for ONE LEVEL, at that level's own z_index (see occlusion_wireframe_overlay.gd for why z_index must track the real voxel layer). Supersedes the old per-structural-unit box panel (OCC-08-b through OCC-23): geometry now comes from OcclusionSet's own unified hidden-face-culling pass (_build_wireframe_geometry) over the shared occluded-column set, so this script no longer needs to know whether a given line/fill came from a wall, a junction column, or a roof. Simplified line style (Director, 2026-07-21 — "menos linhas sobrepostas, foco em arestas externas"): a "solid" line (this volume's own near side, nothing of its own bulk between it and the camera) draws as a plain solid line, no dots. A "dots" line (the volume's far side, behind its own bulk) draws as dots only, no underline — hidden-line-removal convention (CAD tradition: visible edges solid, hidden edges dashed), replacing the old "underline + dots on every edge regardless" look that read as one continuous, cluttered mesh. Fill alpha comes straight from VoxelRenderer.GHOST_ALPHAS (3%/6%/9%, OCC-27) — restoring OCC-19's original intent that the wireframe's glass fill uses the SAME alpha the real ghosted material already uses, not a second, independently-tuned value.
 
 **Constants / tuning**
+- `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
 - `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
 - `DOT_ALPHA` = `0.5`
-- `UNDERLINE_ALPHA` = `0.3`
 - `DOT_RADIUS` = `0.75`
-- `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
-- `FILL_ALPHAS` = `[0.3, 0.5, 0.7]`
 - `DOT_BLUR_SIGMA` = `1.0`
 
 **Public vars**
-- `var bottom_near_a: Vector2`
-- `var bottom_near_b: Vector2`
-- `var bottom_far_a: Vector2`
-- `var bottom_far_b: Vector2`
-- `var top_near_a: Vector2`
-- `var top_near_b: Vector2`
-- `var top_far_a: Vector2`
-- `var top_far_b: Vector2`
-- `var width_voxels: int = 1`
-- `var depth_voxels: int = 1`
-- `var ring: int = 0`
-- `var draw_top: bool = true`
-- `var draw_bottom: bool = true`
+- `var fills: Array = []`
+- `var lines: Array = []`
 
 ---
 
 ### `occlusion_wireframe_overlay.gd`
 
-extends `Node2D` · 169 lines
+extends `Node2D` · 140 lines
 
 `godot/scripts/overlays/occlusion_wireframe_overlay.gd`
 
-> Occlusion Wireframe Overlay — OCC-07-b Draws a crisp white BOX outline (real width AND depth, OCC-14 — not a flat plane) over each occluded edge's translucent band, reproducing that wall's own real one-voxel thickness. VoxelRenderer.apply_occlusion() ghosts the band this outlines (ring alpha, OCC-08/O6); the edge's own base band underneath is left fully opaque and untouched (OCC-10) — solid enough on its own that it needs no outline. OCC-07-b (2026-07-14): no longer a single Node2D drawing at one flat elevated z_index (150). That always won against nearer, unoccluded geometry that should have covered part of it — e.g. a ghosted back wall's outline showing straight through the box's own solid front walls, which are unaffected and nearer the camera. Director's fix: each wireframe segment must carry the z_index of the voxel layer whose slice it stands in for, not a value picked to "clear everything". Levels, not one shape: this manager splits each edge's rectangle into one horizontal band per voxel LEVEL it spans, and spawns one OcclusionSlicePanel child per band, each stamped with THAT level's real voxel-layer z_index (read directly off VoxelRenderer.get_layer(level), the same TileMapLayer the real wall cells are placed on — never re-derived). A single flat rectangle could only ever carry one z_index, which would still be wrong for any level range it didn't match; per-level bands is what lets a tall slice interleave correctly against blockers that only exist at some of its levels. Reads OcclusionSet.get_occluded_edges() — pre-computed, not raw Slice objects. "min_level" is where the TRANSLUCENT band starts (OCC-10: the edge's true base plus OcclusionSet.BASE_VISIBLE_LEVELS) — this overlay only ever needs to draw that band, never the always-visible base underneath it. OCC-10 (2026-07-14): disabled by default (see `visible = false` in room.gd) — the diagonal-seam artifact reported live is a real bug in this overlay's own per-level panel geometry, not investigated yet. Turn back on once that's fixed; the recompute-and-refresh cadence below is unaffected either way.
+> Occlusion Wireframe Overlay — OCC-27 (2026-07-21) Draws the wireframe over each occluded (erased) voxel's translucent band, reading OcclusionSet.get_wireframe_by_level() — geometry already unified across walls, junctions and roofs by OcclusionSet's own hidden-face- culling pass (see occlusion_set.gd::_build_wireframe_geometry() for why). VoxelRenderer.apply_occlusion() ghosts the band this outlines (ring alpha, OCC-08/O6); the edge's own base band underneath is left fully opaque and untouched (OCC-10) — solid enough on its own that it needs no outline. History: OCC-07-b through OCC-23 built this as one independent box PER STRUCTURAL UNIT (one per wall Edge, one per roof GU or later GU-rectangle, one disabled per junction column), each spawning its own OcclusionSlicePanel per level. OCC-27 supersedes that architecture: since the geometry is now ALREADY organized per level (one merged set of lines+fills per level, not per unit), this spawns exactly one panel PER LEVEL — no structural-unit grouping left to reason about, and far fewer nodes than before. z_index still tracks the real voxel layer per level (OCC-23): a panel for level L must draw BEHIND visible voxels at level L+1 and above, but IN FRONT of everything strictly below it (most visibly the edge's own opaque base band, OCC-10). Offset -1 puts the panel exactly between its level's layer and the one below.
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
@@ -1651,7 +1637,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 828 lines
+`class_name OcclusionSet` · 900 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1663,10 +1649,11 @@ extends `Node2D` · 43 lines
 - `SlabMod` = `preload("res://godot/scripts/geometry/slab.gd")`
 - `BASE_VISIBLE_LEVELS` = `2`
 - `SMALL_ROOF_MAX_STRIPES` = `5`
+- `_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
-- `func get_occluded_edges() -> Array:`
+- `func get_wireframe_by_level() -> Dictionary:`
 - `func get_ring_index(voxel_cell: Vector2i) -> int:`
 - `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`

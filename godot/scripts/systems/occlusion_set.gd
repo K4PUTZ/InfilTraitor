@@ -610,6 +610,11 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 	for origin: Vector2i in origins:
 		origin_depths.append(origin.x + origin.y)
 
+	## gu -> {ring, min_level, max_level} for every occluded roof GU, collected
+	## across all active components. Segments (wireframe boxes) are built from
+	## this in a second pass below — never one per GU here (see ROOF-OCC-02).
+	var occluded_gu: Dictionary = {}
+
 	for idx in active.keys():
 		var members: Array = components[idx]
 		var stripe_depths: Dictionary = {}   ## depth sum -> true
@@ -627,6 +632,8 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 				continue   ## large roof: stripe out of reveal range stays solid
 
 			var info: Dictionary = gu_info[gu]
+			occluded_gu[gu] = {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
+
 			for cell: Vector2i in info["cells"]:
 				var entry := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
 				if result["cells"].has(cell):
@@ -638,20 +645,130 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 					}
 				result["cells"][cell] = entry
 
+	## ROOF-OCC-02 (2026-07-20): one wireframe box per MAXIMAL RECTANGLE of
+	## contiguous occluded GUs sharing (ring, min_level, max_level) — not one
+	## box per GU. The old per-GU box drew a full 4-vertical wireframe on every
+	## internal seam between adjacent occluded roof cells (most roof GUs are
+	## edge-adjacent to a neighbour in the NEXT stripe, not just corner-adjacent
+	## within their own stripe), reading as a serrated/jagged line down what
+	## should be one clean silhouette edge. Same failure class OCC-08-b/OCC-14
+	## already fixed for per-LEVEL bands (the "venetian blind" bug) — recurring
+	## here on the GU axis because a roof surface is artificially subdivided
+	## into 8-voxel GU cells, unlike a wall Edge which is already one physical
+	## unit and never needed this merge.
+	var groups: Dictionary = {}   ## "ring|min_level|max_level" -> Array[Vector2i]
+	for gu: Vector2i in occluded_gu:
+		var g: Dictionary = occluded_gu[gu]
+		var key := "%d|%d|%d" % [int(g["ring"]), int(g["min_level"]), int(g["max_level"])]
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(gu)
+
+	for key in groups:
+		var group_cells: Array = groups[key]
+		var sample: Dictionary = occluded_gu[group_cells[0]]
+		var ring: int = sample["ring"]
+		var min_level: int = sample["min_level"]
+		var max_level: int = sample["max_level"]
+
+		for rect in _merge_gu_rects(group_cells):
+			var gx0: int = rect[0]
+			var gy0: int = rect[1]
+			var gx1: int = rect[2]
+			var gy1: int = rect[3]
+
+			## Merged voxel-space footprint: union of every covered GU's own
+			## real footprint rect (border rows included), never re-derived
+			## from GU coordinates directly — same source OcclusionWireframeOverlay
+			## already trusts for the per-GU case.
+			var vx0 := 999999
+			var vy0 := 999999
+			var vx1 := -999999
+			var vy1 := -999999
+			for gx in range(gx0, gx1 + 1):
+				for gy in range(gy0, gy1 + 1):
+					var info: Dictionary = gu_info[Vector2i(gx, gy)]
+					vx0 = mini(vx0, info["rect_min"].x)
+					vy0 = mini(vy0, info["rect_min"].y)
+					vx1 = maxi(vx1, info["rect_max"].x)
+					vy1 = maxi(vy1, info["rect_max"].y)
+
 			## Box unit: footprint corners as EXCLUSIVE lattice bounds, near
 			## edge on the camera side (larger y), far edge shifted by the
 			## footprint's own depth — the same parallelogram contract the
 			## wall segments feed OcclusionWireframeOverlay.
-			var x0: int = info["rect_min"].x
-			var y0: int = info["rect_min"].y
-			var x1: int = info["rect_max"].x + 1
-			var y1: int = info["rect_max"].y + 1
+			var x0 := vx0
+			var y0 := vy0
+			var x1 := vx1 + 1
+			var y1 := vy1 + 1
 			result["segments"].append({
 				"near_a": Vector2i(x0, y1), "near_b": Vector2i(x1, y1),
 				"far_a": Vector2i(x0, y0), "far_b": Vector2i(x1, y0),
-				"min_level": info["min_level"], "max_level": info["max_level"], "ring": ring,
+				"min_level": min_level, "max_level": max_level, "ring": ring,
 			})
 	return result
+
+
+## Decompose a set of GU-space grid cells into a small number of maximal
+## axis-aligned rectangles: maximal horizontal runs per row, then runs with
+## an identical x-range merged vertically across consecutive rows. Not
+## guaranteed minimal for an arbitrary polyomino, but exact (every input cell
+## covered exactly once, no overlap) and collapses the common case — a
+## rectangular room's roof — to a single rectangle. Row order matters: rows
+## must be walked ascending so a run only ever merges downward into rows not
+## yet visited, never leaving a matching pair split across two separate
+## rectangles because the bottom one was visited first.
+func _merge_gu_rects(cells: Array) -> Array:
+	var by_row: Dictionary = {}   ## y -> Array[x]
+	for c: Vector2i in cells:
+		if not by_row.has(c.y):
+			by_row[c.y] = []
+		by_row[c.y].append(c.x)
+	for y in by_row:
+		by_row[y].sort()
+
+	var row_runs: Dictionary = {}      ## y -> Array[[x0, x1]]
+	var run_lookup: Dictionary = {}    ## "y|x0|x1" -> true, O(1) vertical-merge lookups
+	for y in by_row:
+		var xs: Array = by_row[y]
+		var runs: Array = []
+		var run_start: int = xs[0]
+		var prev: int = xs[0]
+		for i in range(1, xs.size()):
+			if xs[i] == prev + 1:
+				prev = xs[i]
+				continue
+			runs.append([run_start, prev])
+			run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
+			run_start = xs[i]
+			prev = xs[i]
+		runs.append([run_start, prev])
+		run_lookup["%d|%d|%d" % [y, run_start, prev]] = true
+		row_runs[y] = runs
+
+	var rows_sorted: Array = row_runs.keys()
+	rows_sorted.sort()
+
+	var consumed: Dictionary = {}
+	var rects: Array = []
+	for y in rows_sorted:
+		for run in row_runs[y]:
+			var x0: int = run[0]
+			var x1: int = run[1]
+			var run_key := "%d|%d|%d" % [y, x0, x1]
+			if consumed.has(run_key):
+				continue
+			consumed[run_key] = true
+			var y1 := int(y)
+			while true:
+				var next_key := "%d|%d|%d" % [y1 + 1, x0, x1]
+				if run_lookup.has(next_key) and not consumed.has(next_key):
+					consumed[next_key] = true
+					y1 += 1
+				else:
+					break
+			rects.append([x0, y, x1, y1])
+	return rects
 
 
 ## Outward neighbour GU across a face — the other side of a (gu_cell, face)

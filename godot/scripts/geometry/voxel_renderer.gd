@@ -48,13 +48,15 @@ const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxel
 ## still just changing the last argument of set_cell(); Voxel.visible is never
 ## touched (O1) — occlusion is VIEW, not STATE.
 const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
-## OCC-27 (2026-07-21, Director's call): rings simplified to a flat 3%/6%/9%
-## step — the wireframe's own fill now reads straight from this array too
-## (occlusion_wireframe_overlay.gd), restoring OCC-19's original intent ("the
-## SAME alpha the real ghosted material already uses") after it had drifted
-## to an independently-tuned, much more aggressive 30/50/70% over the OCC-21
-## series.
-const GHOST_ALPHAS: Array[float] = [0.03, 0.06, 0.09]
+## OCC-27 (2026-07-21, Director's call): rings simplified to a flat step —
+## the wireframe's own fill reads straight from this array too
+## (occlusion_slice_panel.gd), restoring OCC-19's original intent ("the SAME
+## alpha the real ghosted material already uses") after it had drifted to an
+## independently-tuned, much more aggressive 30/50/70% over the OCC-21
+## series. Bumped 3/6/9% -> 6/12/18% (still same session, Director's
+## follow-up: the faces read as almost invisible at 3/6/9%, wanted "um
+## pouquinho mais de opacidade").
+const GHOST_ALPHAS: Array[float] = [0.06, 0.12, 0.18]
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26512 lines total** (under `godot/scripts/`)
+**133 scripts · 26514 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 927 lines
+`class_name VoxelRenderer` · extends `Node2D` · 929 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -689,13 +689,6 @@ extends `ConfirmationDialog` · 64 lines
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
-- `var debug_nudge: Vector2 = Vector2.ZERO`
-
-**Public API**
-- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
-- `func set_baked_lookup(lookup) -> void:`
-- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
-- `func get_layer(level: int) -> TileMapLayer:`
 
 ---
 

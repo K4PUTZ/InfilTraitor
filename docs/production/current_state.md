@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 5797213 Revert "ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21"
+- b66915c ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21
 - 3e4781e ALPHA CEILING WIREFRAME FOUNDATION 0.9.63 - 2026-07-19
 - 3e02443 [ROOF-OCC-01] Roofs join occlusion as screen-horizontal GU stripes
 - c01f1a6 [OCC-26] Wall occlusion erase stops at the edge's own top, sparing the roof rim
-- cc0951c [SCREENSHOT-HOOK-03] Screenshots/ opts out of Godot import via .gdignore
-- 1369827 ALPHA SLAB BAKE FIX 0.9.59 - 2026-07-18
 <!-- AUTO:END version_history -->
 
 ---

@@ -12,6 +12,8 @@ const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers
 const InputControllerClass = preload("res://godot/scripts/world/controllers/input_controller.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
+const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
+const DetonateContextMenuClass = preload("res://godot/scripts/ui/detonate_context_menu.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
@@ -193,6 +195,10 @@ var _input_controller: InputControllerClass = null
 
 ## Selection state management
 var _selection_controller: SelectionControllerClass = null
+
+## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
+var _test_zone_controller: TestZoneControllerClass = null
+var _context_menu: DetonateContextMenuClass = null
 
 ## World markers overlay (shadows, spill, light rays)
 var _world_markers_controller: WorldMarkersOverlayControllerClass = null
@@ -425,6 +431,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_alert_meter = 0
 	_update_alert_label()
 	_update_guard_los_data()
+	_populate_test_zone_if_playground()
 
 
 func _ready() -> void:
@@ -647,6 +654,14 @@ func _ready() -> void:
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
+
+	## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
+	_test_zone_controller = TestZoneControllerClass.new(self)
+	_context_menu = DetonateContextMenuClass.new()
+	$HUD.add_child(_context_menu)
+	_context_menu.detonate_requested.connect(_test_zone_controller.detonate_active)
+	_context_menu.cancelled.connect(_test_zone_controller.cancel_active)
+	_populate_test_zone_if_playground()
 
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
@@ -1961,6 +1976,20 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
+
+	## TEST-ZONE placeholder (2026-07-21): the context menu itself owns no
+	## input handling (see detonate_context_menu.gd) — room.gd is the single
+	## place deciding "is the menu open", so Esc and outside-clicks are
+	## handled here. A click that reaches _unhandled_input while the menu is
+	## visible never landed on the menu's own buttons (Control/Button input
+	## consumes those first), so any mouse press here is an "outside" click.
+	if _context_menu != null and _context_menu.visible:
+		if event.is_action_pressed("ui_cancel") or (event is InputEventMouseButton and event.pressed):
+			_context_menu.close()
+			_test_zone_controller.cancel_active()
+			get_viewport().set_input_as_handled()
+		return
+
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton
@@ -1970,6 +1999,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	## the previously selected tile"; touch devices have no right button, so
 	## this branch is desktop-only by nature.
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+		## TEST-ZONE placeholder (2026-07-21): right-click on a detonatable
+		## test prop opens the context menu instead of moving the agent there.
+		var grenade_index := -1
+		if _test_zone_controller != null:
+			grenade_index = _test_zone_controller.hit_test(mb.position)
+		if grenade_index != -1:
+			_test_zone_controller.open_menu_for(grenade_index)
+			get_viewport().set_input_as_handled()
+			return
 		var move_target := _screen_to_tile(mb.position)
 		if move_target != INVALID_CELL:
 			_selection_controller.handle_move_click(move_target)
@@ -2080,6 +2118,35 @@ func _capture_all_four_views() -> void:
 		])
 
 
+## TEST-ZONE placeholder (2026-07-22): open floor cell 2 GU south of each
+## wall segment's middle voxel (Director's call — clear of the block instead
+## of hugging it) on the rebuilt PLAYGROUND (maps/PLAYGROUND.map.json) — one
+## grenade per wall material (concrete/metal/stone/wood). The grenade itself
+## is a baked sprite — see TestZoneController's own header for the
+## ACTOR_MASTER_PLAN D1/D2 prototype this became. Populated via
+## TestZoneController whenever PLAYGROUND loads — see
+## _populate_test_zone_if_playground().
+const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
+	Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2)
+	Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2)
+	Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2)
+	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
+]
+
+
+## TEST-ZONE placeholder (2026-07-21): called from load_map() (real map
+## switches, e.g. the map-loader toolbar) and once from _ready() (initial
+## boot, before load_map()'s own call site can reach a controller that
+## doesn't exist yet). No-ops on every map except PLAYGROUND.
+func _populate_test_zone_if_playground() -> void:
+	if _test_zone_controller == null:
+		return
+	_test_zone_controller.clear()
+	if map_id == "PLAYGROUND":
+		for gu in TEST_ZONE_GRENADE_GUS:
+			_test_zone_controller.add_grenade(gu)
+
+
 func _run_auto_screenshot_capture() -> void:
 	## A few extra frames past _ready() so the GPU has actually drawn the
 	## map before capture (see the SCREENSHOT-HOOK-01 comment at the call site).
@@ -2148,6 +2215,48 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate") and _test_zone_controller != null:
+		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
+		## standing-tool precedent as end_turn/busted above. "test_zone_view"
+		## just frames the grenade (no click) for a plain look; "test_zone_menu"
+		## drives _unhandled_input() with a synthetic right-click at grenade
+		## 0's real hit-test position (the same call path a real click
+		## takes); "test_zone_detonate" additionally parses a real Enter
+		## InputEventKey so the focused-Button keyboard route is exercised,
+		## not assumed.
+		## Frames/reveals the whole row (4 walls, gu x=2..19) — not just one
+		## grenade — since TEST_ZONE_GRENADE_GUS now has one entry per wall.
+		var row_center := Vector2i(10, 4)
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(row_center))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(row_center, 12)
+		for _c in range(5):
+			await get_tree().process_frame
+		if capture_action != "test_zone_view":
+			var anchor: Vector2 = _test_zone_controller._top_screen_pos(_test_zone_controller._grenades[0])
+			var click := InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_RIGHT
+			click.pressed = true
+			click.position = anchor
+			_unhandled_input(click)
+			for _j in range(10):
+				await get_tree().process_frame
+		if capture_action == "test_zone_detonate":
+			## Real focus + Enter keypress path (Button.grab_focus() + a
+			## parsed InputEventKey), not a direct signal call — Input.
+			## action_press() alone never reaches Control._gui_input(), so a
+			## real queued key event is required to prove the keyboard route.
+			var key_down := InputEventKey.new()
+			key_down.keycode = KEY_ENTER
+			key_down.pressed = true
+			Input.parse_input_event(key_down)
+			var key_up := InputEventKey.new()
+			key_up.keycode = KEY_ENTER
+			key_up.pressed = false
+			Input.parse_input_event(key_up)
+			for _j in range(10):
+				await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()
 	if image == null:

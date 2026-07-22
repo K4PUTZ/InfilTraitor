@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**133 scripts · 26514 lines total** (under `godot/scripts/`)
+**136 scripts · 26986 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,9 +19,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
-- **ui/** — controls_panel.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
+- **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -1907,6 +1907,27 @@ extends `SceneTree` · 337 lines
 
 ---
 
+### `bake_voxel_sprite_3d.gd`
+
+extends `SceneTree` · 139 lines
+
+`godot/scripts/tools/bake_voxel_sprite_3d.gd`
+
+> ACTOR_MASTER_PLAN D1/D2 prototype v2 (2026-07-21) — one-off bake tool, not production tooling yet. Director's proposal: instead of a hand-rolled 2D painter's-algorithm rasterizer (bake_grenade_sprite.py, v1 — the "esquisito" result), build real BoxMesh cubes in a SubViewport, light them with a real Camera3D at the angle that matches the existing flat atom's 2:1 top-face ratio (30° elevation solves sin(theta)=TILE_H/TILE_W=0.5), and let the GPU depth buffer handle occlusion + MSAA handle edges — both weak points of v1. Must run WINDOWED (real GPU rasterizer), not --headless (dummy driver, confirmed by SCREENSHOT-HOOK-01's own auto_screenshot.py — same constraint applies here). Run via: godot --path . --position 4000,4000 --quit-after 30 \ --script res://godot/scripts/tools/bake_voxel_sprite_3d.gd VOXEL_JSON_PATH is NOT checked in (ASSETS/ is gitignored) — regenerate it from the CC0 "Free Voxel Weapon Pack" .qb (OpenGameArt) via the scratchpad parse_qb.py: json.dump([{'x','y','z','r','g','b'} per solid voxel]). Output is raw (untrimmed, oversized canvas) — autocrop + downscale to the target sprite size afterward (transparent-margin trim + ~0.25x LANCZOS resize got the shipped grenade_bake_x8.png to 38×68px, matching the agent's own silhouette scale, agent.gd SILHOUETTE_WIDTH/HEIGHT=44/61).
+
+**Constants / tuning**
+- `VOXEL_JSON_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_voxels.json"`
+- `OUT_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8_3d.png"`
+- `ANCHOR_OUT_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8_3d_anchor.json"`
+- `VIEWPORT_SIZE` = `Vector2i(240, 400)`
+- `ORTHO_SIZE` = `26.0`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+- `CAMERA_DISTANCE` = `40.0`
+- `CUBE_SIZE` = `1.0`
+
+---
+
 ### `build_tileset.gd`
 
 extends `SceneTree` · 336 lines
@@ -2436,6 +2457,25 @@ extends `SceneTree` · 49 lines
 
 ---
 
+### `detonate_context_menu.gd`
+
+`class_name DetonateContextMenu` · extends `Control` · 102 lines
+
+`godot/scripts/ui/detonate_context_menu.gd`
+
+> DetonateContextMenu — small black-box context menu for right-clicking a detonatable TEST-ZONE prop (placeholder, 2026-07-21). Two actions: "Detonar (Enter)" then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers.
+
+**Signals**
+- `signal detonate_requested`
+- `signal cancelled`
+
+**Public API**
+- `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void:`
+- `func close() -> void:`
+- `func contains_screen_point(screen_pos: Vector2) -> bool:`
+
+---
+
 ### `enemy_banner_panel.gd`
 
 `class_name EnemyBannerPanel` · extends `"res://godot/scripts/ui/window_base.gd"` · 31 lines
@@ -2703,6 +2743,28 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `test_zone_controller.gd`
+
+`class_name TestZoneController` · 122 lines
+
+`godot/scripts/world/controllers/test_zone_controller.gd`
+
+> TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop. ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a single baked sprite — a "digital twin" (the CC0 "Free Voxel Weapon Pack" Grenade matrix, OpenGameArt, license CC0) rendered once via a real Camera3D/BoxMesh SubViewport bake (godot/scripts/tools/bake_voxel_sprite_3d.gd — v2; superseded a hand-rolled 2D painter's-algorithm rasterizer, v1, whose flat shading and approximate depth-sort read as "esquisito") into ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png — displayed via Sprite2D, NOT live TileMapLayer voxel cells. Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that plan get built for real. Registry stays a plain Array[Dictionary] on purpose — scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture. Delegates to room for shared state, same extraction pattern as SelectionController.
+
+**Constants / tuning**
+- `HIT_RADIUS_PX` = `40.0`
+- `MENU_GAP_ABOVE_PX` = `30.0`
+- `GRENADE_SPRITE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png"`
+- `GRENADE_ANCHOR_PX` = `Vector2(19.19, 59.06)`
+
+**Public vars**
+- `var room: Node`
+
+**Public API**
+- `func clear() -> void:`
+
+---
+
 ### `turn_controller.gd`
 
 `class_name TurnController` · 393 lines
@@ -2915,7 +2977,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2380 lines
+extends `Node2D` · 2489 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2931,6 +2993,8 @@ extends `Node2D` · 2380 lines
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
+- `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
+- `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `TurnControllerClass` = `preload("res://godot/scripts/world/controllers/turn_controller.gd")`
@@ -2978,6 +3042,7 @@ extends `Node2D` · 2380 lines
 - `GUARD_NOISE_INTENSITY_BY_STATE` = `{ "patrol": 0.4, "suspicious": 0.6, "alert": 0.9, "chase": 1.0, "search": 0.7, }`
 - `SHADOW_DIRS` = `[ Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1), ]`
 - `SHADOW_LENGTH_MAX` = `5`
+- `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
 
 **@export**
 - `segment_grid_pos: Vector2i = Vector2i(1, 1)`

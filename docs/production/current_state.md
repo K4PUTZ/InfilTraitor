@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.65 · **Updated:** 2026-07-21 · **Branch:** main
+**Version:** 0.9.66 · **Updated:** 2026-07-22 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -21,7 +21,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 106
+- GDScript modules: 108
 - Test scripts: 21
 - Known maps: 3
 - Shipped facade files: 0
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 70bc2d0 ALPHA OCCLUSION REDUX 0.9.65 - 2026-07-21
 - 5797213 Revert "ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21"
 - b66915c ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21
 - 3e4781e ALPHA CEILING WIREFRAME FOUNDATION 0.9.63 - 2026-07-19
 - 3e02443 [ROOF-OCC-01] Roofs join occlusion as screen-horizontal GU stripes
-- c01f1a6 [OCC-26] Wall occlusion erase stops at the edge's own top, sparing the roof rim
 <!-- AUTO:END version_history -->
 
 ---

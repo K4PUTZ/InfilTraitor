@@ -13,3 +13,5 @@ ui.main_menu.options,OPTIONS,OPÇÕES
 ui.main_menu.quit,QUIT TO DESKTOP,SAIR DO JOGO
 ui.controls.title,CONTROLS,CONTROLES
 ui.controls.back,BACK,VOLTAR
+ui.context_menu.detonate,Detonate (Enter),Detonar (Enter)
+ui.context_menu.cancel,Cancel (Esc),Cancelar (Esc)

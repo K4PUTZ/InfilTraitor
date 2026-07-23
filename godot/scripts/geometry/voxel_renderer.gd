@@ -35,34 +35,61 @@ const MATERIALS: Array[String] = [
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
 
-## OCC-08 — Three-ring ghost, rings by EDGE-GRAPH hop distance (supersedes OCC-05's
-## flat single alpha, Director decision 2026-07-14).
-##
-## A ghost is an ALTERNATIVE TILE, not a new texture: Godot's TileData carries a
-## `modulate` per alternative, and alternatives reuse the same atlas region. A ghost
-## therefore costs *not one extra pixel* of texture memory, and nothing per fragment —
-## which is why this needs no sign-off against the mobile budget (D12).
-##
-## History: O6 shipped three alpha rings by VOXEL distance from the agent — serrated
-## in practice, adjacent faces of the same wall landing in different rings. OCC-05
-## flattened to one alpha to kill that. OCC-08 brings rings back, but the ring index
-## now comes from OcclusionSet's EDGE-GRAPH hop distance (0/1/2 hops from a triggering
-## edge, walked along the wall's own connectivity) instead of Euclidean voxel distance
-## — an entire edge (and its whole slice tower) shares one ring, so there is no
-## per-voxel patchwork to serrate in the first place. Definition is carried by
-## OcclusionWireframeOverlay regardless of ring — see that script. Ghosting a cell is
-## still just changing the last argument of set_cell(); Voxel.visible is never
-## touched (O1) — occlusion is VIEW, not STATE.
-const GHOST_ALT_IDS: Array[int] = [1, 2, 3]        ## ring 0, 1, 2 → alternative id
-## OCC-27 (2026-07-21, Director's call): rings simplified to a flat step —
-## the wireframe's own fill reads straight from this array too
-## (occlusion_slice_panel.gd), restoring OCC-19's original intent ("the SAME
-## alpha the real ghosted material already uses") after it had drifted to an
-## independently-tuned, much more aggressive 30/50/70% over the OCC-21
-## series. Bumped 3/6/9% -> 6/12/18% -> 8/16/24% across two follow-up asks
-## the same session (faces read as almost invisible at 3/6/9%; then "um
-## pouquinho mais de opacidade" again after 6/12/18%).
+## OCC-27 (2026-07-21, Director's call): occlusion ring alphas, consumed by the
+## wireframe fill (occlusion_slice_panel.gd). Since OCC-21 occluded cells are
+## ERASED (not ghosted), so these alphas no longer ride on tile alternatives —
+## the wireframe fill is their only consumer. Bumped 3/6/9% -> 6/12/18% ->
+## 8/16/24% across two follow-up asks the same session.
 const GHOST_ALPHAS: Array[float] = [0.08, 0.16, 0.24]
+
+## VL-01 — Six-bucket light painting (VOXEL_LIGHT_MASTER_PLAN, Director 2026-07-23).
+##
+## A lit/dark face is an ALTERNATIVE TILE, the exact mechanism OCC-02's ghosts
+## pioneered: TileData carries a `modulate` per alternative and alternatives
+## reuse the same atlas region — zero extra texture memory, nothing per
+## fragment. Occlusion stopped PLACING ghost alternatives at OCC-21 (erase +
+## wireframe fill), which left the alternative-id space free for lighting to
+## own outright:
+##
+##   alt 0                 = bucket 5 (full lit), unflipped — the base tile
+##   alt 1..5              = buckets 4..0, unflipped
+##   alt 6..10             = buckets 4..0, H-flipped (junction mirror cells)
+##   alt TRANSFORM_FLIP_H  = bucket 5, H-flipped (legacy virtual alternative,
+##                           kept so the junction placement path is untouched)
+##
+## encode_light_alt()/decode_light_*() are the ONLY owners of this mapping —
+## occlusion restore, light repaint and any future consumer round-trip through
+## them. Never hand-build an alternative id.
+const LIGHT_BUCKET_COUNT: int = 6
+const LIGHT_ALT_FLIP_BASE: int = 5   ## flipped dim alts occupy FLIP_BASE+1 .. FLIP_BASE+5
+
+## Bucket → modulate luminance. Bucket 0 must stay dark-but-readable (Director:
+## full shadow still shows texture). Tunable; changes take effect on the next
+## map load / rotation (alternatives are minted at source registration).
+var bucket_luminance: Array[float] = [0.16, 0.30, 0.45, 0.62, 0.80, 1.00]
+
+
+## VL-01: (bucket, flipped) → alternative id. Single source of truth.
+static func encode_light_alt(bucket: int, flipped: bool) -> int:
+	var b: int = clampi(bucket, 0, LIGHT_BUCKET_COUNT - 1)
+	if b == LIGHT_BUCKET_COUNT - 1:
+		return TileSetAtlasSource.TRANSFORM_FLIP_H if flipped else 0
+	var dim_alt: int = LIGHT_BUCKET_COUNT - 1 - b        ## 1..5, alt 1 = bucket 4
+	return (LIGHT_ALT_FLIP_BASE + dim_alt) if flipped else dim_alt
+
+
+## VL-01: alternative id → light bucket (0..5).
+static func decode_light_bucket(alt: int) -> int:
+	if alt == 0 or alt >= TileSetAtlasSource.TRANSFORM_FLIP_H:
+		return LIGHT_BUCKET_COUNT - 1
+	if alt <= LIGHT_ALT_FLIP_BASE:
+		return LIGHT_BUCKET_COUNT - 1 - alt
+	return LIGHT_BUCKET_COUNT - 1 - (alt - LIGHT_ALT_FLIP_BASE)
+
+
+## VL-01: alternative id → is the cell H-flipped (junction mirror)?
+static func decode_light_flipped(alt: int) -> bool:
+	return alt >= TileSetAtlasSource.TRANSFORM_FLIP_H or alt > LIGHT_ALT_FLIP_BASE
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was
@@ -163,48 +190,52 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			tile_data.modulate = tile_modulate
-			## OCC-02: ghosts for baked cells, derived from THIS page's modulate.
-			_mint_ghost_alternatives(source, coords, tile_modulate)
+			## VL-01: light-bucket alts for baked cells, from THIS page's modulate.
+			_mint_light_alternatives(source, coords, tile_modulate)
 
 	return source_id
 
 
-## OCC-02: mint the three ghost alternatives for one tile of one source.
+## VL-01: mint the ten light-bucket alternatives (buckets 0..4, unflipped +
+## H-flipped) for one tile of one source. Replaces OCC-02's ghost minting —
+## occlusion no longer places alternatives (OCC-21 erases instead).
 ##
-## Called from BOTH tile-creation paths — the four material sources AND every baked atlas
-## page registered at runtime. That is not optional: BakeConfig.enabled is true by dev
-## default, so most wall cells are placed on baked pages. A ghost minted only on the
-## material sources would do nothing on a normal boot.
+## Called from BOTH tile-creation paths — the material sources AND every baked
+## atlas page registered at runtime. That is not optional: BakeConfig.enabled
+## is true by dev default, so most wall cells are placed on baked pages. An
+## alternative minted only on the material sources would do nothing on a
+## normal boot.
 ##
-## Two traps, both learned the hard way and both silent:
+## Two traps inherited from the ghost era, both silent:
 ##
-##  - create_alternative_tile() returns a BLANK TileData. It inherits nothing. If
-##    texture_origin is not re-applied, every ghosted cell jumps 10 px the instant it
-##    ghosts (same family as BAKE-DIAG-01: cells "placed" but wrong on screen).
-##  - the ghost's modulate must derive from the tile's BASE modulate, not white. Baked
-##    pages are tinted per page (white under TEXTURE_ONLY, the material colour under
-##    MULTIPLY). A ghost hardcoding Color(1,1,1,a) would silently recolour every baked
-##    wall it touched.
+##  - create_alternative_tile() returns a BLANK TileData. It inherits nothing.
+##    If texture_origin is not re-applied, every repainted cell jumps 10 px the
+##    instant its bucket changes (same family as BAKE-DIAG-01).
+##  - the alternative's modulate must derive from the tile's BASE modulate, not
+##    white. Baked pages are tinted per page (white under TEXTURE_ONLY, the
+##    material colour under MULTIPLY). Hardcoding Color(1,1,1)*lum would
+##    silently recolour every baked wall it touched.
 ##
-## No existence probe: `source` is always freshly created by both call sites (a brand
-## new TileSetAtlasSource per register_baked_atlas_page() call, or one of the four
-## material sources built exactly once in _build_voxel_tileset()), and each caller
-## already dedupes coords before calling in. A source+coords pair therefore never
-## reaches this function twice — probing "does alt_id already exist?" via
-## get_tile_data() was always false and only served to make Godot log a spurious
-## ERROR per tile (TileSetAtlasSource logs on any miss, not just push a null).
-func _mint_ghost_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
-	for ring in range(GHOST_ALT_IDS.size()):
-		var alt_id: int = GHOST_ALT_IDS[ring]
-		source.create_alternative_tile(coords, alt_id)
-		var ghost_data: TileData = source.get_tile_data(coords, alt_id)
-		if ghost_data == null:
-			push_error("[OCC-08] Failed to create ghost alternative %d at %s" % [alt_id, coords])
-			continue
-		ghost_data.texture_origin = GeometryCoords.voxel_texture_origin()
-		var ghost_modulate := base_modulate
-		ghost_modulate.a = GHOST_ALPHAS[ring]
-		ghost_data.modulate = ghost_modulate
+## No existence probe: `source` is always freshly created by both call sites,
+## and each caller already dedupes coords — a source+coords pair never reaches
+## this function twice (probing via get_tile_data() makes Godot log a spurious
+## ERROR per tile on any miss).
+func _mint_light_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
+	for bucket in range(LIGHT_BUCKET_COUNT - 1):   ## 0..4 — bucket 5 IS the base tile
+		var lum: float = bucket_luminance[bucket]
+		var dim_modulate := Color(
+			base_modulate.r * lum, base_modulate.g * lum, base_modulate.b * lum,
+			base_modulate.a)
+		for flipped in [false, true]:
+			var alt_id: int = encode_light_alt(bucket, flipped)
+			source.create_alternative_tile(coords, alt_id)
+			var alt_data: TileData = source.get_tile_data(coords, alt_id)
+			if alt_data == null:
+				push_error("[VL-01] Failed to create light alternative %d at %s" % [alt_id, coords])
+				continue
+			alt_data.texture_origin = GeometryCoords.voxel_texture_origin()
+			alt_data.modulate = dim_modulate
+			alt_data.flip_h = flipped
 
 
 ## Getter for voxel layer at given level (for diagnostics). D17: negative
@@ -301,8 +332,8 @@ func _build_voxel_tileset() -> void:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			# Set custom_data: tile_name = material_name
 			tile_data.set_custom_data("tile_name", material_name)
-			## OCC-02: ghosts for the generic (non-baked) path. Base modulate is white here.
-			_mint_ghost_alternatives(atlas_source, Vector2i.ZERO, tile_data.modulate)
+			## VL-01: light buckets for the generic (non-baked) path. Base modulate is white here.
+			_mint_light_alternatives(atlas_source, Vector2i.ZERO, tile_data.modulate)
 
 
 ## Render all slices and junction columns from registry
@@ -721,6 +752,39 @@ func _restore_ghosted_cells() -> void:
 			## (the cell was erased, so layer queries would return -1)
 			layer.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
 	_ghosted_cells.clear()
+
+
+## VL-01 — repaint every placed voxel cell to its light bucket. Runs on
+## lighting_rebuilt (map load, perspective rotation, light changes) — never per
+## frame. Pure view layer, same contract as occlusion (O1): no Voxel state, no
+## dirty flag, no persistence — placement decisions (source, atlas coords,
+## flip) are read back from the cell and preserved; only the bucket changes.
+func apply_light_field(field) -> void:
+	if field == null:
+		return
+	for level in range(_voxel_layers.size()):
+		_apply_light_to_layer(_voxel_layers[level], level, field)
+	for level in _negative_voxel_layers.keys():
+		_apply_light_to_layer(_negative_voxel_layers[level], level, field)
+	## Occluded cells are ERASED right now (OCC-21) and will come back from
+	## _ghosted_cells records — retarget each stored alternative so releasing
+	## occlusion cannot resurrect a stale bucket.
+	for cell in _ghosted_cells.keys():
+		for record in _ghosted_cells[cell]:
+			var flipped: bool = decode_light_flipped(record["prev_alt"])
+			record["prev_alt"] = encode_light_alt(
+					field.bucket_for(cell, record["level"]), flipped)
+
+
+func _apply_light_to_layer(layer: TileMapLayer, level: int, field) -> void:
+	for cell in layer.get_used_cells():
+		var prev_alt: int = layer.get_cell_alternative_tile(cell)
+		var bucket: int = field.bucket_for(cell, level)
+		if bucket == decode_light_bucket(prev_alt):
+			continue
+		layer.set_cell(cell, layer.get_cell_source_id(cell),
+				layer.get_cell_atlas_coords(cell),
+				encode_light_alt(bucket, decode_light_flipped(prev_alt)))
 
 
 ## Process dirty slices only (TIC optimization)

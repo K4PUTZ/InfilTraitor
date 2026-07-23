@@ -445,15 +445,16 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 
 ## Luma lift applied to the MULTIPLY modulate (Director, 2026-07-10: MULTIPLY
 ## is the chosen blend — keeps the voxel's original color — but reads a touch
-## dark since facade luminance averages well below 1.0; the lift compensates.
-## Fine brightness control ultimately belongs to the light/shadow projection
-## system — tune or zero this once that lands).
-const MULTIPLY_LUMA_LIFT: float = 0.25
+## dark since facade luminance averages well below 1.0; the lift compensated).
+## VL-01 (Director, 2026-07-23): brightness authority moved to the light-bucket
+## system (VoxelRenderer.bucket_luminance) — lift retired to 0.0, kept as a
+## tunable var in case MULTIPLY needs compensation again.
+var multiply_luma_lift: float = 0.0
 
 ## Per-tile modulate realizing the blend mode on grayscale baked pages
 func _modulate_for_mode(blend_mode: int, material) -> Color:
 	if blend_mode == BakeConfigClass.BlendMode.MULTIPLY:
-		return material.base_color.lightened(MULTIPLY_LUMA_LIFT)
+		return material.base_color.lightened(multiply_luma_lift)
 	return Color.WHITE
 
 ## Mirrored-repeat index fold (matches BakedTileLookup._mirror_index_1d)

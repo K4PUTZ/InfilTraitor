@@ -114,6 +114,10 @@ func _setup_lights_from_layout() -> void:
 			light.height_class = TileSemanticsClass.HEIGHT_OVERHEAD
 		light.radius = int(src.get("radius", 6))
 		light.tactical_energy = float(src.get("intensity", 1.0))
+		## VL-01: visual brightness rides its own field ("visual_intensity",
+		## defaulting to the map's "intensity") — VoxelLightField consumes
+		## visual_energy only, keeping the visual/tactical split (canon).
+		light.visual_energy = float(src.get("visual_intensity", src.get("intensity", 1.0)))
 		## Direction / cone for directional & cone (spot / sun) lights.
 		light.direction_angle = deg_to_rad(float(src.get("direction_deg", 0.0)))
 		light.cone_angle = float(src.get("cone_deg", light.cone_angle))

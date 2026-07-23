@@ -160,15 +160,37 @@ alt_id(ghost g ∈ 0..3, bucket b ∈ 0..5) = g * 6 + (5 − b)
 
 ## 4. Phases
 
-### VL-01 — Static projection (first visible light)
-Author 2–3 omni lamps in PLAYGROUND MapSpec · `VoxelLightField` + quantizer +
+### VL-01 — Static projection (first visible light) ✅ LANDED 2026-07-23
+Author omni lamps in PLAYGROUND MapSpec · `VoxelLightField` + quantizer +
 application on `lighting_rebuilt` · unified alt encoder replacing
 `GHOST_ALT_IDS` · `MULTIPLY_LUMA_LIFT` default → 0.0.
-**Acceptance:** (1) real capture shows lamp-lit faces falling off to dark
-faces on PLAYGROUND, ratified by Director; (2) occlusion ghosting still works
-on lit AND shadowed walls (real capture); (3) perspective rotation repaints
-coherently (captures N/E); (4) mint/bake time measured and reported; (5) lint
-0 real errors + existing selftest suite green.
+**Acceptance — all met:** (1) real captures show the falloff —
+`auto_2026-07-23_17-48-29.png` (floor light-pool fading to dark) and
+`occ_view_E.png` (pool + lit block faces after rotation); headless field
+query confirms a block voxel by lamp 1 = bucket 5, far wood block = bucket 1,
+floor 5 near / 1 far. (2) ghost restore round-trip **IDENTICAL** in all four
+views (`[OCC-02]` real-map check). (3) perspective rotation coherent —
+`occ_view_N/E/S/W.png`. (4) bake **1323 ms** (was 1384 ms baseline; 10 light
+alts/tile absorbed with no regression — eager mint is fine, lazy minting NOT
+needed). (5) lint 0 real errors; bake_selftest 19/19, roof_bake 8/8,
+floor_integration 9/9, roof_integration 5/5.
+
+**Landed tuning (all `var`, Director tunes further from here):**
+`bucket_luminance = [0.16, 0.30, 0.45, 0.62, 0.80, 1.00]`,
+`ambient_intensity = 0.10`, `facing_dark_ratio = 0.60`,
+`vertical_gu_per_storey = 0.5`, `inner_full_ratio = 0.45` (binary-dominant
+plateau falloff — full strength out to 45% of radius, then a fast ramp to 0,
+per canon #4). OVERHEAD lamps anchor at the **built wall-stack top**
+(`get_layer_count()-1`), NOT the 8-storey ceiling-fixture height — the latter
+placed lamps so high the vertical falloff zeroed every contribution (the first
+bug found and fixed this session).
+
+**Map-source note (load-bearing):** PLAYGROUND loads from
+`maps/PLAYGROUND.map.json` via `FileMapSource`, NOT `playground_map.gd` (the
+code spec is only a fallback when no file exists — `MapCatalog.get_spec()`
+checks the file source first). Lamps therefore live in the JSON's
+`legacy_compiler.lights` array (the bridge section `FileMapSource` translates
+into the runtime spec). Adding lights to the code spec does nothing.
 
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state
@@ -204,13 +226,12 @@ mode implemented (explicit non-goal).
 - Vision modes themselves (VL-04 leaves the seam, nothing more).
 - Tactical semantics changes — detection math untouched.
 
-## 6. Open Canon Questions (Director)
+## 6. Canon Questions — RESOLVED (Director, 2026-07-23)
 
-- **Q1:** `height_class → anchor voxel level` mapping. Proposal: OVERHEAD
-  anchors at the top voxel level of its GU column; FLOOR=0, LOW_COVER=2,
-  HUMAN=4, TALL_STRUCTURE=6 (levels, storey 0). Ratify or adjust.
-- **Q2:** starting `BUCKET_LUMINANCE` table (§3.3) — ratify after seeing the
-  first VL-01 capture, values are vars.
-- **Q3:** facing factor in v1 — proposal keeps it (position matters, not just
-  distance, per the Director's framing), with a mild dark-side ratio so it
-  can't fake full shadow. Confirm.
+- **Q1 ✅** `height_class → anchor voxel level`: FLOOR=0, LOW_COVER=2, HUMAN=4,
+  TALL_STRUCTURE=6; OVERHEAD → top of the **built wall stack**
+  (`get_layer_count()-1`), corrected from "ceiling fixture height" during
+  implementation (see VL-01 note).
+- **Q2 ✅** `bucket_luminance = [0.16, 0.30, 0.45, 0.62, 0.80, 1.00]` — landed;
+  still a `var`, retune from captures.
+- **Q3 ✅** facing factor kept, `facing_dark_ratio = 0.60`.

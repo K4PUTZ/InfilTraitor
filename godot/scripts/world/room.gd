@@ -147,6 +147,10 @@ var _guards: Array = []
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
 var _exit_cells: Array[Vector2i] = []  ## Segment exit tiles (doorOpen_*)
 var _current_light_sources: Array = []  ## Active (rotated) map lights for LightingController
+## VL-01: per-voxel light buckets, rebuilt on every lighting_rebuilt. Kept as a
+## member (not a local) because it is the query seam future vision modes
+## (thermal / night / X-ray) consume — see VOXEL_LIGHT_MASTER_PLAN.
+var _voxel_light_field: VoxelLightField = null
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
@@ -573,6 +577,9 @@ func _ready() -> void:
 	## Geometric floor shadows are real-world elements → repaint the always-on
 	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
 	_lighting_controller.lighting_rebuilt.connect(_world_markers_controller.repaint_world_shadows)
+	## VL-01: project tactical lighting onto voxel faces (6 buckets) whenever
+	## lighting rebuilds — map load, perspective rotation, light changes.
+	_lighting_controller.lighting_rebuilt.connect(_repaint_voxel_light_buckets)
 
 	## MODULARIZE-02: Initialize HudController (after nodes ready)
 	_hud_controller = HudControllerClass.new()
@@ -1527,6 +1534,28 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 
 
 ## Wrapper: updates the HUD alert label from alert meter value
+## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
+## Connected to lighting_rebuilt: runs on map load, perspective rotation and
+## any light change. The field stays queryable on _voxel_light_field — the
+## seam future vision modes (thermal / night / X-ray) will consume.
+func _repaint_voxel_light_buckets() -> void:
+	if _voxel_renderer == null or _lighting_controller == null:
+		return
+	var registry = _lighting_controller.get_light_registry()
+	if registry == null:
+		return
+	if _voxel_light_field == null:
+		_voxel_light_field = VoxelLightField.new()
+	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
+	## 8-storey ceiling-fixture height — see VoxelLightField.build().
+	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	_voxel_light_field.build(
+			registry.get_active_lights(),
+			_lighting_controller.get_shadow_results(),
+			top_wall_level)
+	_voxel_renderer.apply_light_field(_voxel_light_field)
+
+
 func _update_alert_label() -> void:
 	if _hud_controller == null:
 		return

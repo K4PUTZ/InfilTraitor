@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**144 scripts · 28059 lines total** (under `godot/scripts/`)
+**145 scripts · 28297 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -278,7 +278,7 @@ extends `Node` · 190 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 266 lines
+extends `Node` · 270 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 977 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1041 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -688,10 +688,16 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
-- `GHOST_ALT_IDS` = `[1, 2, 3]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+- `var debug_nudge: Vector2 = Vector2.ZERO`
+
+**Public API**
+- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
+- `func set_baked_lookup(lookup) -> void:`
+- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
+- `func get_layer(level: int) -> TileMapLayer:`
 
 ---
 
@@ -1194,7 +1200,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1154 lines
+`class_name BakeCompositor` · 1155 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1226,7 +1232,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_config.gd`
 
-`class_name BakeConfig` · 68 lines
+`class_name BakeConfig` · 69 lines
 
 `godot/scripts/systems/bake_config.gd`
 
@@ -1639,6 +1645,27 @@ extends `Node2D` · 43 lines
 - `func get_tiles_by_class(visibility_class: String) -> Array[Vector2i]:`
 - `func merge(other: ShadowResult) -> void:`
 - `func clear() -> void:`
+
+---
+
+### `voxel_light_field.gd`
+
+`class_name VoxelLightField` · extends `RefCounted` · 139 lines
+
+`godot/scripts/systems/lighting/voxel_light_field.gd`
+
+> VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN). The single seam between tactical lighting (LightRegistry / ShadowProjector, GU resolution) and every VISUAL consumer. VoxelRenderer.apply_light_field() reads it to repaint faces; future vision modes (thermal / night / X-ray) query it instead of touching tilemaps. Canon split preserved: this consumes LightSource.visual_energy, never tactical_energy — visual brightness is not tactical visibility. Deterministic and discrete: same lights + same layout always produce the same bucket per (cell, level). No per-frame work — built on lighting_rebuilt, queried lazily with a cache.
+
+**Public vars**
+- `var ambient_intensity: float = 0.10`
+- `var no_lights_bucket: int = 5`
+- `var facing_dark_ratio: float = 0.60`
+- `var vertical_gu_per_storey: float = 0.5`
+- `var inner_full_ratio: float = 0.45`
+
+**Public API**
+- `func build(lights: Array, shadow_results: Array, top_wall_level: int) -> void:`
+- `func bucket_for(cell: Vector2i, level: int) -> int:`
 
 ---
 
@@ -3141,7 +3168,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2623 lines
+extends `Node2D` · 2652 lines
 
 `godot/scripts/world/room.gd`
 

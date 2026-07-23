@@ -1,103 +1,162 @@
 {
-	"format": "infiltraitor-map",
-	"schema_version": 3,
-	"id": "PLAYGROUND",
-	"meta": {
-		"title": "Destruction Test Zone",
-		"description": "One short wall per material (concrete/metal/stone/wood), a placeholder grenade in front of each (TestZoneController) — rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
-	},
-	"sections": {
-		"board": {
-			"inner_size": [
-				24,
-				16
-			],
-			"buffer": 1,
-			"floor_tile": "floor_SE",
-			"v": 1
-		},
-		"actors": {
-			"agent_start": [
-				12,
-				13
-			],
-			"guards": [],
-			"v": 1
-		},
-		"blocks": {
-			"items": [
-				{
-					"gu": [2, 2],
-					"material": "concrete",
-					"storeys": 2
-				},
-				{
-					"gu": [3, 2],
-					"material": "concrete",
-					"storeys": 2
-				},
-				{
-					"gu": [4, 2],
-					"material": "concrete",
-					"storeys": 2
-				},
-				{
-					"gu": [7, 2],
-					"material": "metal",
-					"storeys": 2
-				},
-				{
-					"gu": [8, 2],
-					"material": "metal",
-					"storeys": 2
-				},
-				{
-					"gu": [9, 2],
-					"material": "metal",
-					"storeys": 2
-				},
-				{
-					"gu": [12, 2],
-					"material": "stone",
-					"storeys": 2
-				},
-				{
-					"gu": [13, 2],
-					"material": "stone",
-					"storeys": 2
-				},
-				{
-					"gu": [14, 2],
-					"material": "stone",
-					"storeys": 2
-				},
-				{
-					"gu": [17, 2],
-					"material": "wood",
-					"storeys": 2
-				},
-				{
-					"gu": [18, 2],
-					"material": "wood",
-					"storeys": 2
-				},
-				{
-					"gu": [19, 2],
-					"material": "wood",
-					"storeys": 2
-				}
-			],
-			"v": 1
-		},
-		"props": {
-			"items": [],
-			"v": 1
-		},
-		"legacy_compiler": {
-			"wall_height": 1,
-			"access_points": [],
-			"dividers": [],
-			"v": 1
-		}
-	}
+  "format": "infiltraitor-map",
+  "schema_version": 3,
+  "id": "PLAYGROUND",
+  "meta": {
+    "title": "Destruction Test Zone",
+    "description": "One short wall per material (concrete/metal/stone/wood), a placeholder grenade in front of each (TestZoneController) \u2014 rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+  },
+  "sections": {
+    "board": {
+      "inner_size": [
+        24,
+        16
+      ],
+      "buffer": 1,
+      "floor_tile": "floor_SE",
+      "v": 1
+    },
+    "actors": {
+      "agent_start": [
+        12,
+        13
+      ],
+      "guards": [],
+      "v": 1
+    },
+    "blocks": {
+      "items": [
+        {
+          "gu": [
+            2,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            3,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            4,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            7,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            8,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            9,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            12,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            13,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            14,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            17,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            18,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            19,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        }
+      ],
+      "v": 1
+    },
+    "props": {
+      "items": [],
+      "v": 1
+    },
+    "legacy_compiler": {
+      "wall_height": 1,
+      "access_points": [],
+      "dividers": [],
+      "v": 1,
+      "lights": [
+        {
+          "x": 5,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.0
+        },
+        {
+          "x": 16,
+          "y": 3,
+          "height_class": 4,
+          "radius": 6,
+          "intensity": 0.9
+        },
+        {
+          "x": 11,
+          "y": 10,
+          "height_class": 2,
+          "radius": 7,
+          "intensity": 1.0
+        }
+      ]
+    }
+  }
 }

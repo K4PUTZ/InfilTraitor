@@ -648,18 +648,17 @@ func _ready() -> void:
 	agent.move_finished.connect(_on_agent_move_finished)
 	## Perspective button connections now in CameraController
 
-	## SCREENSHOT-HOOK-01: the auto-capture process boots straight into
-	## whatever map was last actually worked on (persisted by load_map()
-	## itself), instead of the @export default. Confined to the opt-in env
-	## var so normal play — where map_id is whatever the scene/Director set
-	## it to — is never affected.
-	if OS.get_environment("INFILTRAITOR_AUTO_SCREENSHOT") == "1":
-		var last_map_config := ConfigFile.new()
-		if last_map_config.load("user://current_map.cfg") == OK:
-			var last_map_id: String = last_map_config.get_value("state", "map_id", map_id)
-			if last_map_id != "":
-				map_id = last_map_id
-				level_seed = int(last_map_config.get_value("state", "seed", level_seed))
+	## VL-00 (Director, 2026-07-23): every boot resumes the last map actually
+	## worked on (persisted by load_map() itself into user://current_map.cfg).
+	## The @export default (PLAYGROUND) only applies when no cfg exists yet.
+	## Supersedes SCREENSHOT-HOOK-01's env-var confinement — the auto-capture
+	## process now shares the normal-boot path.
+	var last_map_config := ConfigFile.new()
+	if last_map_config.load("user://current_map.cfg") == OK:
+		var last_map_id: String = last_map_config.get_value("state", "map_id", map_id)
+		if last_map_id != "":
+			map_id = last_map_id
+			level_seed = int(last_map_config.get_value("state", "seed", level_seed))
 
 	load_map(map_id, level_seed)
 

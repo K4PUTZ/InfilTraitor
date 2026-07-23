@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.67 · **Updated:** 2026-07-22 · **Branch:** main
+**Version:** 0.9.67 · **Updated:** 2026-07-23 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- ea935bd ALPHA GRENADE FOUNDATION 0.9.67 - 2026-07-22
 - 1c46b56 ALPHA OBJECTS FOUNDATION 0.9.66 - 2026-07-22
 - 70bc2d0 ALPHA OCCLUSION REDUX 0.9.65 - 2026-07-21
 - 5797213 Revert "ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21"
 - b66915c ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21
-- 3e4781e ALPHA CEILING WIREFRAME FOUNDATION 0.9.63 - 2026-07-19
 <!-- AUTO:END version_history -->
 
 ---

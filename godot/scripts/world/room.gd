@@ -14,6 +14,7 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
 const DetonateContextMenuClass = preload("res://godot/scripts/ui/detonate_context_menu.gd")
+const ModalStackClass = preload("res://godot/scripts/ui/modal_stack.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
@@ -28,6 +29,8 @@ const FowControllerClass = preload("res://godot/scripts/controllers/fow_controll
 const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 const DevVisionStatusPanelClass = preload("res://godot/scripts/debug/dev_vision_status_panel.gd")
+const GuGridOverlayClass = preload("res://godot/scripts/overlays/gu_grid_overlay.gd")
+const BlastWireframeOverlayClass = preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")
 
 ## SLICE-02: Geometry module (Edge → Slice → Voxel pipeline)
 const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
@@ -199,6 +202,9 @@ var _selection_controller: SelectionControllerClass = null
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _test_zone_controller: TestZoneControllerClass = null
 var _context_menu: DetonateContextMenuClass = null
+## ESC-STACK-01: see modal_stack.gd — single source of truth for what Escape
+## targets next (main menu, controls sub-panel, the grenade context menu, ...).
+var _modal_stack: ModalStackClass = null
 
 ## World markers overlay (shadows, spill, light rays)
 var _world_markers_controller: WorldMarkersOverlayControllerClass = null
@@ -233,6 +239,17 @@ var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
+## GU-GRID-01: always-on per-GU floor boundary grid (GuGridOverlay) —
+## restores the reference grid the legacy floor art used to bake into its own
+## texture, lost when the earth-voxel Slab floor (DESTRUCTION_MASTER_PLAN
+## D2/D4) started painting over it. Independent of the F3 debug ruler
+## (DebugToolsController's VoxelRulerOverlay — denser, voxel-subdivided).
+var _gu_grid_overlay: Node2D = null
+## DESTRUCTION_MASTER_PLAN Part 3: red blast-radius wireframe preview, shown
+## while a grenade's context menu is open. See TestZoneController.open_menu_for().
+var _blast_wireframe_overlay: Node2D = null
+## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation. See _flash_white().
+var _flash_rect: ColorRect = null
 var _tile_game: Node2D = null   ## TileOverlay for visual gameplay (z=3, mix)
 var _trail_overlay: Node2D = null
 
@@ -297,7 +314,7 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 ## Seed for the level graph random generator. Match across all 9 segments in a level.
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
-@export var map_id: String = "TEXTURES"  ## BAKE-FACADE-PLANE-02-b: Changed default from PLAYGROUND to TEXTURES 2.0
+@export var map_id: String = "PLAYGROUND"  ## Restored default 2026-07-22 — PLAYGROUND is now the destruction test zone
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
 @export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
 ## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
@@ -342,6 +359,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_room_builder.build_from_layout(view_layout, room_size)
 	_room_size = room_size
 	_assert_geometry_rendered()
+	_refresh_gu_grid_overlay()
 
 	## SCREENSHOT-HOOK-01: persist the last successfully loaded map id so the
 	## pre-commit auto-screenshot capture (a separate Godot process) knows
@@ -435,6 +453,10 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
+	## ESC-STACK-01: created before any modal (menu panels, context menu) so
+	## every wiring below can push/pop into it unconditionally.
+	_modal_stack = ModalStackClass.new()
+
 	## Initialize registries via autoload (FIX-SHUTDOWN-CRASH-01: real autoload, not Engine.set_meta).
 	## Material registry is used by baking; ensure it's ready before map compilation.
 	Registries.ensure_material_registry()
@@ -495,6 +517,27 @@ func _ready() -> void:
 	_shadow_boundary_overlay.z_index = 4  ## Above _tile_game (z=3), well above fog_of_war (z=2)
 	add_child(_shadow_boundary_overlay)
 	_shadow_boundary_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## GU-GRID-01: always-on GU boundary grid — z_index 1 puts it above the
+	## earth-voxel floor's top level (z=0, see VoxelRenderer's negative-level
+	## z formula) and level with the shadow tint layers, so walls/shadow/fog
+	## still draw over it like they do the floor itself. room_size is not
+	## known yet at this point in _ready(); load_map() refreshes it below.
+	_gu_grid_overlay = Node2D.new()
+	_gu_grid_overlay.set_script(GuGridOverlayClass)
+	_gu_grid_overlay.z_index = 1
+	add_child(_gu_grid_overlay)
+	_gu_grid_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## DESTRUCTION_MASTER_PLAN Part 3: blast-radius preview — deliberately
+	## above walls (z=100, matching the F3 debug ruler's reasoning) since it's
+	## an active preview the player is meant to notice, not ambient floor
+	## decoration like _gu_grid_overlay.
+	_blast_wireframe_overlay = Node2D.new()
+	_blast_wireframe_overlay.set_script(BlastWireframeOverlayClass)
+	_blast_wireframe_overlay.z_index = 100
+	add_child(_blast_wireframe_overlay)
+	_blast_wireframe_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
 
 	## M2-14: Create and setup TileOverlay instances for shadow and game visuals
 	_tile_shadow = Node2D.new()
@@ -645,15 +688,37 @@ func _ready() -> void:
 	_main_menu_panel.reset_requested.connect(_on_hud_reset_requested)
 	_main_menu_panel.controls_requested.connect(_on_controls_requested)
 	_main_menu_panel.hide() # Hidden by default
-	
+	## ESC-STACK-01: pause is a side effect of the panel actually being open,
+	## not of the keypress that opened it — fires the same way whether it
+	## closed via Escape (ModalStack), "New Game", or any future close button.
+	_main_menu_panel.opened.connect(func(): _modal_stack.push(_main_menu_panel.close))
+	_main_menu_panel.closed.connect(func():
+		_modal_stack.remove(_main_menu_panel.close)
+		get_tree().paused = false
+	)
+
 	## PAUSE-MENU-02: Initialize controls panel
 	var ControlsPanelClass = preload("res://godot/scripts/ui/controls_panel.gd")
 	_controls_panel = ControlsPanelClass.new()
 	$HUD.add_child(_controls_panel)
 	_controls_panel.hide() # Hidden by default
+	## ESC-STACK-01: Controls sits ON TOP of the still-open Main Menu (see
+	## _on_controls_requested) — pushing it means the first Escape closes only
+	## Controls, revealing Main Menu still open; a second Escape closes that.
+	_controls_panel.opened.connect(func(): _modal_stack.push(_controls_panel.close))
+	_controls_panel.closed.connect(func(): _modal_stack.remove(_controls_panel.close))
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
+
+	## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
+	## Smallest possible implementation — a bare ColorRect + Tween, no new
+	## class, matching "por enquanto fica só a explosão" (fire/smoke deferred).
+	_flash_rect = ColorRect.new()
+	_flash_rect.color = Color(1, 1, 1, 0)
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	$HUD.add_child(_flash_rect)
 
 	## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 	_test_zone_controller = TestZoneControllerClass.new(self)
@@ -661,6 +726,10 @@ func _ready() -> void:
 	$HUD.add_child(_context_menu)
 	_context_menu.detonate_requested.connect(_test_zone_controller.detonate_active)
 	_context_menu.cancelled.connect(_test_zone_controller.cancel_active)
+	## ESC-STACK-01: close callable also cancels the pending grenade (matches
+	## what _unhandled_input's outside-click path and Cancelar already do).
+	_context_menu.opened.connect(func(): _modal_stack.push(_cancel_context_menu))
+	_context_menu.closed.connect(func(): _modal_stack.remove(_cancel_context_menu))
 	_populate_test_zone_if_playground()
 
 	## Dev 04: Create and setup trail overlay
@@ -836,6 +905,7 @@ func _set_perspective(direction: String) -> void:
 		_room_builder.build_from_layout(view_layout, room_size)
 		_room_size = room_size
 		_assert_geometry_rendered()
+		_refresh_gu_grid_overlay()
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
 		
 		# Clear legacy shadow layers (migrated to _tile_shadow, but kept for compatibility)
@@ -1979,14 +2049,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	## TEST-ZONE placeholder (2026-07-21): the context menu itself owns no
 	## input handling (see detonate_context_menu.gd) — room.gd is the single
-	## place deciding "is the menu open", so Esc and outside-clicks are
-	## handled here. A click that reaches _unhandled_input while the menu is
-	## visible never landed on the menu's own buttons (Control/Button input
-	## consumes those first), so any mouse press here is an "outside" click.
+	## place deciding "is the menu open". Escape is handled earlier, in
+	## _on_pause_requested() via _modal_stack (ESC-STACK-01) — InputController
+	## fires that from _input(), which runs before _unhandled_input() ever
+	## sees the event, so only the outside-click dismissal is left to do here.
+	## A click that reaches _unhandled_input while the menu is visible never
+	## landed on the menu's own buttons (Control/Button input consumes those
+	## first), so any mouse press here is an "outside" click.
 	if _context_menu != null and _context_menu.visible:
-		if event.is_action_pressed("ui_cancel") or (event is InputEventMouseButton and event.pressed):
-			_context_menu.close()
-			_test_zone_controller.cancel_active()
+		if event is InputEventMouseButton and event.pressed:
+			_cancel_context_menu()
 			get_viewport().set_input_as_handled()
 		return
 
@@ -2147,6 +2219,30 @@ func _populate_test_zone_if_playground() -> void:
 			_test_zone_controller.add_grenade(gu)
 
 
+## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
+## Called by TestZoneController.detonate_active() right before the
+## destruction pass runs, so the flash covers the frame the geometry
+## actually changes on.
+func _flash_white() -> void:
+	if _flash_rect == null:
+		return
+	var tween := create_tween()
+	tween.tween_property(_flash_rect, "color:a", 1.0, 0.03)
+	tween.tween_property(_flash_rect, "color:a", 0.0, 0.25)
+
+
+## GU-GRID-01: re-run whenever room_size can have changed — a real map load
+## (load_map()) or a perspective/rotation rebuild (_set_perspective()), both
+## of which call _room_builder.build_from_layout() with a possibly different
+## size. z_index 1 (not the F3 ruler's 100): see the creation comment in
+## _ready() for why this sits at the floor/shadow level instead of above
+## everything.
+func _refresh_gu_grid_overlay() -> void:
+	if _gu_grid_overlay == null:
+		return
+	_gu_grid_overlay.set_room_size(_room_size)
+
+
 func _run_auto_screenshot_capture() -> void:
 	## A few extra frames past _ready() so the GPU has actually drawn the
 	## map before capture (see the SCREENSHOT-HOOK-01 comment at the call site).
@@ -2215,7 +2311,23 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
-	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate") and _test_zone_controller != null:
+	elif capture_action == "escape_open_menu":
+		## ESC-STACK-01 fallback check: with nothing else open, Escape must
+		## still open the Main Menu (the ModalStack empty-stack branch of
+		## _on_pause_requested()) — the counterpart proof to test_zone_escape,
+		## which checks the non-empty-stack branch closes the top modal
+		## instead. Real Escape InputEventKey, not a direct open() call.
+		var esc_down := InputEventKey.new()
+		esc_down.keycode = KEY_ESCAPE
+		esc_down.pressed = true
+		Input.parse_input_event(esc_down)
+		var esc_up := InputEventKey.new()
+		esc_up.keycode = KEY_ESCAPE
+		esc_up.pressed = false
+		Input.parse_input_event(esc_up)
+		for _j in range(10):
+			await get_tree().process_frame
+	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _test_zone_controller != null:
 		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
 		## standing-tool precedent as end_turn/busted above. "test_zone_view"
 		## just frames the grenade (no click) for a plain look; "test_zone_menu"
@@ -2223,7 +2335,11 @@ func _run_auto_screenshot_capture() -> void:
 		## 0's real hit-test position (the same call path a real click
 		## takes); "test_zone_detonate" additionally parses a real Enter
 		## InputEventKey so the focused-Button keyboard route is exercised,
-		## not assumed.
+		## not assumed. "test_zone_escape" (ESC-STACK-01, 2026-07-22) parses a
+		## real Escape InputEventKey after opening the menu — proves the fix
+		## for "Escape opened the Main Menu instead of cancelling the context
+		## menu" through the real InputController._input() -> _on_pause_requested()
+		## -> ModalStack path, not a direct cancel_active() call.
 		## Frames/reveals the whole row (4 walls, gu x=2..19) — not just one
 		## grenade — since TEST_ZONE_GRENADE_GUS now has one entry per wall.
 		var row_center := Vector2i(10, 4)
@@ -2255,6 +2371,17 @@ func _run_auto_screenshot_capture() -> void:
 			key_up.keycode = KEY_ENTER
 			key_up.pressed = false
 			Input.parse_input_event(key_up)
+			for _j in range(10):
+				await get_tree().process_frame
+		if capture_action == "test_zone_escape":
+			var esc_down := InputEventKey.new()
+			esc_down.keycode = KEY_ESCAPE
+			esc_down.pressed = true
+			Input.parse_input_event(esc_down)
+			var esc_up := InputEventKey.new()
+			esc_up.keycode = KEY_ESCAPE
+			esc_up.pressed = false
+			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
 
@@ -2443,22 +2570,30 @@ func _on_debug_command_requested(command: String) -> void:
 				_debug_tools_controller.reset_nudge()
 
 
+## ESC-STACK-01: Escape's ONE entry point (InputController emits this
+## unconditionally on every ui_pause press, from _input() — see input_controller.gd).
+## The old body special-cased "controls open? close it" / "else toggle main
+## menu" by hand; that only ever covered two hardcoded levels and raced the
+## context menu's own Escape handling in _unhandled_input (2026-07-22 bug:
+## Escape always opened the Main Menu instead of cancelling the grenade
+## menu). _modal_stack now owns "what does Escape affect next" for any
+## number of nested modals — this function is just its empty-stack fallback.
 func _on_pause_requested() -> void:
-	# If a sub-panel is open, just close it and return to the main menu
-	if _controls_panel != null and _controls_panel.is_open():
-		_controls_panel.close()
+	if _modal_stack != null and _modal_stack.handle_escape():
 		return
-		
-	# Otherwise toggle the main menu and game pause state
-	if _main_menu_panel.is_open():
-		_main_menu_panel.close()
-		get_tree().paused = false
-	else:
-		_main_menu_panel.open()
-		get_tree().paused = true
+	_main_menu_panel.open()
+	get_tree().paused = true
 
 func _on_controls_requested() -> void:
 	_controls_panel.open()
+
+
+## ESC-STACK-01: the grenade context menu's ModalStack close callable — closes
+## the box AND cancels the pending grenade, same pairing _unhandled_input's
+## outside-click path and the menu's own "Cancelar" button already use.
+func _cancel_context_menu() -> void:
+	_context_menu.close()
+	_test_zone_controller.cancel_active()
 
 func _on_screenshot_requested() -> void:
 	print_debug("[ROOM] Handler: screenshot requested (Shift+P)")

@@ -11,8 +11,14 @@ extends Control
 
 signal detonate_requested
 signal cancelled
+## GU-GRID-01/ESC-STACK-01: mirrors PanelBase's opened/closed contract (this
+## menu extends Control directly, not PanelBase, for its custom black-box
+## layout) so room.gd can push/pop it on the same ModalStack as the WindowBase
+## panels without a special case.
+signal opened
+signal closed
 
-@onready var _panel := Panel.new()
+@onready var _panel := PanelContainer.new()
 @onready var _vbox := VBoxContainer.new()
 @onready var _btn_detonate := Button.new()
 @onready var _sep := HSeparator.new()
@@ -68,6 +74,7 @@ func _ready() -> void:
 ## centered on it. "Detonar" starts focused so Enter fires it immediately.
 func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void:
 	visible = true
+	opened.emit()
 	## Reset to a known size before measuring — a stale size from a previous
 	## open() would otherwise mis-center this one for a single frame.
 	_panel.reset_size()
@@ -81,7 +88,10 @@ func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void
 
 
 func close() -> void:
+	if not visible:
+		return
 	visible = false
+	closed.emit()
 
 
 ## True if a screen-space point falls inside the menu's own box — the

@@ -18,6 +18,8 @@
 ## SelectionController.
 class_name TestZoneController
 
+const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
+
 var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
@@ -29,6 +31,11 @@ const GRENADE_SPRITE_PATH: String = "res://ASSETS/ISOMETRIC/source_assets/actor_
 ## printed anchor_px (adjusted for the autocrop + downscale post-process),
 ## the pixel that should land on the target world point.
 const GRENADE_ANCHOR_PX: Vector2 = Vector2(19.19, 59.06)
+
+## DESTRUCTION_MASTER_PLAN Part 3: every TEST-ZONE grenade is this one bomb
+## type for now — BombRegistry/BombDef exist so a future prop/inventory
+## system can vary this per grenade instance instead of hardcoding it here.
+const BOMB_ID: String = "frag_grenade"
 
 
 func _init(p_room: Node) -> void:
@@ -103,9 +110,27 @@ func open_menu_for(index: int) -> void:
 	if index < 0 or index >= _grenades.size():
 		return
 	_active_index = index
-	room._context_menu.open_at(_top_screen_pos(_grenades[index]), MENU_GAP_ABOVE_PX)
+	var g: Dictionary = _grenades[index]
+	room._context_menu.open_at(_top_screen_pos(g), MENU_GAP_ABOVE_PX)
+
+	## DESTRUCTION_MASTER_PLAN Part 3: preview the max-range GU footprint as
+	## a red wireframe while the menu is open (Director, this session).
+	if room._blast_wireframe_overlay != null:
+		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+		if bomb_def != null:
+			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def, _blocked_edges_dict())
+			room._blast_wireframe_overlay.show_footprint(gu_rings.keys())
 
 
+## DESTRUCTION_MASTER_PLAN Part 3: the real trigger. Marks affected wall
+## Slices and roof Slabs damaged via BlastCalculator (which is the only
+## writer of Voxel.set_damage() here — see DESTRUCTION_MASTER_PLAN §3), then
+## re-renders immediately through the existing dirty-flag pipeline
+## (VoxelRenderer.process_dirty()/process_dirty_slabs()) rather than waiting
+## for the next turn's TIC — a context-menu detonate is a discrete player
+## action with no corresponding turn boundary, the same reasoning
+## apply_occlusion() already uses to render synchronously on agent
+## step/view-change instead of gating behind a tick.
 func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return
@@ -115,8 +140,56 @@ func detonate_active() -> void:
 		if sprite != null and is_instance_valid(sprite):
 			sprite.visible = false
 		g["detonated"] = true
+
+		if room.has_method("_flash_white"):
+			room._flash_white()
+
+		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
+			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def, _blocked_edges_dict())
+			var affected := BlastCalculatorClass.find_affected_containers(
+				gu_rings, room._edge_registry, room._slab_registry)
+
+			print_debug("[BLAST] gu=%s rings=%s affected_slices=%d affected_roofs=%d" %
+				[g["gu_cell"], gu_rings, affected["slices"].size(), affected["roofs"].size()])
+			for slice_id in affected["slices"]:
+				var slice: Slice = room._edge_registry.get_slice(slice_id)
+				BlastCalculatorClass.apply_container_damage(
+					slice.voxels, slice.id, slice.material, affected["slices"][slice_id],
+					slice.start_storey * GeometryCoords.LEVELS_PER_STOREY, false, bomb_def.ring_multipliers)
+				var d := 0
+				var c := 0
+				for v in slice.voxels:
+					if v.damage_state == Voxel.DamageState.DESTROYED: d += 1
+					elif v.damage_state == Voxel.DamageState.CRACKED: c += 1
+				print_debug("[BLAST]   slice=%s material=%s ring=%d destroyed=%d cracked=%d/%d" %
+					[slice.id, slice.material, affected["slices"][slice_id], d, c, slice.voxels.size()])
+			for slab_id in affected["roofs"]:
+				var slab: Slab = room._slab_registry.get_slab(slab_id)
+				BlastCalculatorClass.apply_container_damage(
+					slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
+					slab.level, true, bomb_def.ring_multipliers)
+
+			room._voxel_renderer.process_dirty(room._edge_registry)
+			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
+
+	if room._blast_wireframe_overlay != null:
+		room._blast_wireframe_overlay.clear()
 	_active_index = -1
 
 
 func cancel_active() -> void:
 	_active_index = -1
+	if room._blast_wireframe_overlay != null:
+		room._blast_wireframe_overlay.clear()
+
+
+## room._current_blocked_edges entries are {"from": Vector2i, "to": Vector2i}
+## pairs (see map_geometry.gd's _wall_cell_blocked_edges()) — folds them into
+## the keyed Dictionary shape WallEdgeData.is_edge_blocked() queries, same
+## conversion MovementOverlay.set_blocked_edges() already does.
+func _blocked_edges_dict() -> Dictionary:
+	var blocked: Dictionary = {}
+	for e in room._current_blocked_edges:
+		blocked[WallEdgeData.edge_key(e["from"], e["to"])] = true
+	return blocked

@@ -92,7 +92,6 @@ func _draw_gu_voxel_grid(gu_x: int, gu_y: int) -> void:
 
 	## Draw constant-voxel_y lines (these go diagonally SE as voxel_x increases)
 	for vy in range(VOXELS_PER_AXIS + 1):
-		var voxel_y_screen := float(vy) * (-8.0)  ## Each voxel_y step = 16 px left, 8 px down; net -16x + 8y per step
 		var p1 := canon_nw + Vector2(-float(vy) * 16.0, float(vy) * 8.0)
 		var p2 := canon_nw + Vector2(-float(vy) * 16.0 + float(VOXELS_PER_AXIS) * 16.0,
 									  float(vy) * 8.0 + float(VOXELS_PER_AXIS) * 8.0)

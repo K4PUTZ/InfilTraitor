@@ -1,27 +1,24 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
-**Status:** 🟢 **PAUSED at Alpha Ceiling Foundation, 2026-07-16** (same
-milestone shape as `OCCLUSION_MASTER_PLAN`'s Alpha Foundation pause). Part 0
-(spike), Part 1 (`Slab`), Part 2 core+consumer (floor: D2/D4, D17 negative
-storey, D13 fixed levels, real map integration) and Part 2b (roof/ceiling
-Slabs, D1-ROOF, real map integration + border fix) all DONE. Both floor and
-roof/ceiling render in the real running game against real maps, not just
-isolated tests. **Next up, explicitly deferred to next session (Director,
-2026-07-16):** the bake-system experiment — reuse the wall bake pipeline
-(`facade_tops`/`_get_plane_top`) for roof surfaces using the same materials
-as the walls below. **Known, expected divergence going in:** a roof's
-*lateral* (side) faces will look different from the rest of the wall below
-them — real maps will mix materials at that seam, producing realistic
-variety, not a defect to chase uniformity on. **Also flagged, not
-investigated:** the Director observed roof parts already showing some
-occlusion in a real capture — plausible (roofs are real `TileMapLayer`
-cells like any other voxel, so the *existing* wall-occlusion machinery may
-partially apply by accident) but unconfirmed; revisit when occlusion
-participation is deliberately scoped, not now.
+**Status:** 🟢 **PAUSED at Alpha Grenade Foundation, 2026-07-22.** Part 0
+(spike), Part 1 (`Slab`), Part 2 core+consumer (floor), Part 2b (roof/ceiling
+Slabs) and now **Part 3 (the trigger) DONE** — see Part 3's own status block
+below for the full account. The idle motor D15/D6 described is no longer
+idle: a real grenade in the real running game marks real voxels destroyed,
+through the real dirty-flag/TIC pipeline, confirmed by direct `TileMapLayer`
+cell readback (not code-reading). **Paused here, Director's call
+(2026-07-22):** lighting is the next real blocker — every voxel currently
+renders fully lit regardless of damage, so a crater's depth/shape reads as
+close to invisible even though the underlying geometry is genuinely gone.
+Destruction work resumes once lighting can actually sell the damage;
+continuing to build more destruction mechanics (blast tuning, cover/noise
+integration, fire) before that would be building on top of an effect nobody
+can see yet.
 **Runs AFTER `OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12) —
 occlusion paused at Alpha Foundation 2026-07-15, this plan picked up next
-and is now itself paused at its own Alpha Foundation.
+and is now itself paused, first at its own Alpha Ceiling Foundation
+(2026-07-16), then again here at Alpha Grenade Foundation (2026-07-22).
 **Baseline:** tag `verified/v0.8.2`.
 **Companions:** `OCCLUSION_MASTER_PLAN.md` (occlusion lives there now — it must
 never write `Voxel.visible`, see §3), `docs/technical/BAKE_SYSTEM_REFERENCE.md`
@@ -663,6 +660,105 @@ Wire the idle motor: a detonation marks voxels destroyed → dirty → TIC → n
 exposed faces composed at the tick, capped. Cover rule (>50% of a GU), noise on
 digging, rubble as noisy terrain, breach as a persistent clue, `voxel_destroyed`
 signal. **B5 amended here.**
+
+**Status: ✅ DONE (foundation) 2026-07-22, "Alpha Grenade Foundation"
+0.9.67.** Scope for this pass, ratified by the Director mid-session after a
+web research round comparing Minecraft's ray/resistance model, XCOM 2's
+ring-based falloff, Teardown's per-material toughness and Rainbow Six
+Siege's soft/reinforced wall tiers: **GU-based ring falloff** (not exact
+distance — ring 0 = the grenade's own GU, each further ring less damage),
+applied identically to wall Slices and roof Slabs (same ring table, two
+different adjacency graphs), **walls block/reduce propagation** (Director's
+explicit choice over "ignore walls, distance only"), a **material resistance
+table** converting ring damage into a destroy/crack voxel count, and
+**deterministic** (FNV-1a hash-and-rank, no RNG) selection of which voxels.
+Cover rule, noise-on-digging, rubble-as-terrain and the breach-as-clue
+gameplay layer (this Part's own original scope) are **explicitly deferred**
+— out of scope for this pass, not forgotten. Fire/smoke deferred to a later
+session by the same Director call that scoped this pass.
+
+- **Two real gaps found and closed, not assumed away:**
+  - `VoxelRenderer.process_dirty()` existed (walls only); **nothing consumed
+    `SlabRegistry.dirty_slabs()` on the render side at all** —
+    `room.gd::_tic_slab_system()` only cleared dirty flags. Without a new
+    `process_dirty_slabs()`, roof destruction (explicitly in scope —
+    "incluindo os telhados," Director) would silently no-op. Added, with a
+    landmine avoided in the process: `process_dirty()`'s own erase branch
+    indexes `_voxel_layers[level]` raw (not the sign-aware `get_layer()`
+    helper) — safe today only because it is fed exclusively by `Slice`s,
+    whose levels are never negative. `process_dirty_slabs()` must not repeat
+    that pattern (GDScript's Python-style negative array indices would
+    silently erase the wrong layer for a negative/floor level) — routes
+    through `get_layer()` instead.
+  - D15's `voxel_destroyed(grid_pos, level, material_id)` signal was
+    "✅ Ratified" in this plan's own decision register but had zero call
+    sites anywhere in the codebase — never actually added. Added now, on
+    `VoxelRenderer`, emitted from both erase branches.
+- **New files** (`godot/scripts/systems/destruction/`): `bomb_def.gd` +
+  `bomb_registry.gd` (mirror `PropDef`/`PropRegistry` exactly — two-tier
+  `res://bombs` + `user://bombs`, plain objects with a `from_json()`
+  factory, wired into `Registries` the same way material/prop registries
+  are), `material_resistance_table.gd` (fixed table, not two-tier — engine
+  tuning data, not content), `blast_calculator.gd` (the pipeline: wall-aware
+  GU-ring BFS reusing `movement_overlay.gd`'s blocked-edge gate;
+  `find_affected_containers()` — no separate "wall-run adjacency" mechanism
+  needed, the GU flood's own sideways step already IS the wall-run step, via
+  `EdgeRegistry.edges_touching_gu()`/`slices_of_edge()`; deterministic
+  hash-and-rank voxel selection mirroring `EarthVariantSelector`'s FNV-1a
+  pattern generalized from "pick 1 of 8" to "pick top N of M"). One real
+  bomb type shipped: `bombs/frag_grenade.json`
+  (`ring_multipliers: [1.0, 0.7, 0.35, 0.1]`, explicitly first-pass/tunable).
+- **Vertical ring-step asymmetry, a deliberate judgment call, not an
+  oversight:** walls advance one ring per storey (`LEVELS_PER_STOREY`, 8
+  levels); roofs advance one ring per raw level, because `ROOF_LEVEL_COUNT`
+  is only ~2 levels total — a whole-storey step would collapse every roof
+  level into ring 0 and roofs would never show falloff at all. Flagged for
+  review, not silently resolved.
+- **`BlastWireframeOverlay`** (`godot/scripts/overlays/`): red outer-
+  perimeter preview of the max-range GU footprint, shown while a grenade's
+  context menu is open (Director: outer perimeter only, not per-ring
+  opacity). Deliberately its own file, not folded into `movement_overlay.gd`
+  (that overlay owns unrelated player-turn AP-zone state) — reuses its
+  diamond-corner math and "draw an edge only if the neighbor isn't in the
+  same set" perimeter rule verbatim, both already proven correct.
+- **White screen flash** on detonation: the entire visual budget for the
+  moment itself, by design — "por enquanto fica só a explosão," fire/smoke
+  deferred. `room._flash_white()`, ~10 lines, no new class.
+- **Evidence:** `blast_calculator_selftest.gd`, 11/11 PASS — unobstructed
+  BFS ring distance, wall-blocked-edge exclusion, range capping, a real
+  `Slice` picked up at ring 0 via `SliceGenerator`-built fixtures,
+  determinism (two calls → identical subset) and non-degeneracy (different
+  salt/container → different subset) of the hash-and-rank selector, metal
+  producing mostly `CRACKED` not `DESTROYED` (38 vs 3 of 64), wood producing
+  91% `DESTROYED` at ring 0, and a voxel group beyond the bomb's own range
+  staying untouched (not clamped to the last ring). Full regression, same
+  session: `slab_geometry_selftest.gd` 15/15, `roof_slab_selftest.gd` 15/15,
+  `slab_render_selftest.gd` 8/8, `earth_variant_selftest.gd` 6/6,
+  `floor_integration_selftest.gd` 9/9, `roof_integration_selftest.gd` 5/5,
+  `negative_storey_selftest.gd` 12/12, `fixed_floor_selftest.gd` 5/5,
+  `bake_selftest.gd` 19/19 — nothing broken. `project_lint.py`: 143 files,
+  0 real errors.
+  **Real-map proof, not just synthetic fixtures**: driven against the real
+  PLAYGROUND grenades via `INFILTRAITOR_CAPTURE_ACTION=test_zone_detonate`
+  — direct `TileMapLayer.get_cell_source_id()` readback on 18 real destroyed
+  voxels across 18 real `Slice`s, all `-1` (erased), matching a real,
+  monotonically-decreasing-by-ring damage pattern (33/128 at ring 1, 14/128
+  at ring 2, 3/128 at ring 3). One honest miss: no screenshot conclusively
+  *shows* a crater — the grenade's omnidirectional blast reached a nearer,
+  unanticipated wall (a `PLAYGROUND` partition between GU (3,3)-(3,4), not
+  the intended row-2 test pillar) before several camera-reframing attempts
+  could land a frame on it. Not treated as resolved — the cell-level
+  readback is real evidence the mechanism works; the visual claim itself is
+  unverified pending either a better camera pass or, per the Director, the
+  lighting work below.
+- **Why paused here and not carried further this session (Director,
+  2026-07-22):** every voxel currently renders fully lit regardless of
+  damage state — a crater is real (proven above) but reads as nearly
+  invisible without shading to sell the depth/shape. Continuing to layer on
+  more destruction mechanics (cover/noise integration, blast tuning, fire)
+  before lighting can actually show the effect would be building on top of
+  something nobody can see yet. Resume destruction work once lighting is
+  addressed.
 
 ### Part 4 — Bake becomes the product *(D11, D12)*
 Silent fallback removed (loud-fail on MISS). `MATERIAL_ONLY` kept as a dev toggle.

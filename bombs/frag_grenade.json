@@ -1,0 +1,6 @@
+{
+  "id": "frag_grenade",
+  "ring_multipliers": [1.0, 0.7, 0.35, 0.1],
+  "gameplay": { "blast_type": "fragmentation" },
+  "tags": ["grenade", "explosive"]
+}

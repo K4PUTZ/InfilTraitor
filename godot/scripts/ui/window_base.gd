@@ -20,4 +20,5 @@ func _ready() -> void:
 
 
 func request_close() -> void:
+	close()
 	close_requested.emit()

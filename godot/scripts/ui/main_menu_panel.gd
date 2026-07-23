@@ -77,6 +77,13 @@ func _ready() -> void:
 	_btn_load.disabled = true
 	_btn_options.disabled = true
 
+## ESC-STACK-01: "New Game" starts focused so Enter advances immediately —
+## same native Button/ui_accept mechanism DetonateContextMenu already relies
+## on for its own "Enters avançam" behavior, applied here too.
+func open() -> void:
+	super.open()
+	_btn_new_game.grab_focus()
+
 func _setup_button(btn: Button, text_key: String, callable: Callable) -> void:
 	btn.text = tr(text_key)
 	btn.custom_minimum_size = Vector2(200, 44)

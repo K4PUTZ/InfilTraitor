@@ -76,6 +76,11 @@ func _ready() -> void:
 	
 	_populate_controls()
 
+## ESC-STACK-01: "Back" starts focused so Enter advances immediately.
+func open() -> void:
+	super.open()
+	_btn_back.grab_focus()
+
 func _populate_controls() -> void:
 	var actions = InputMap.get_actions()
 	var relevant_actions = []

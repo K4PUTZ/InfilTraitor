@@ -4,6 +4,12 @@
 extends Node2D
 class_name VoxelRenderer
 
+## DESTRUCTION_MASTER_PLAN D15: emitted at the TIC, alongside the dirty pass,
+## whenever a voxel is actually erased (destroyed). VFX/audio subscribe here
+## instead of the destruction system knowing about them — with no subscriber
+## this costs nothing. Never implemented until Part 3; added now.
+signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)
+
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 
 ## TileSet source ID for voxels
@@ -739,9 +745,51 @@ func process_dirty(registry: EdgeRegistry) -> void:
 					# Clear cell
 					if voxel.level < _voxel_layers.size():
 						_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
+						voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
 
 		# Clear all dirty flags in slice
 		slice.clear_all_dirty()
+
+
+## Slab-side counterpart to process_dirty() — DESTRUCTION_MASTER_PLAN Part 3.
+## Until now nothing consumed SlabRegistry.dirty_slabs() on the render side:
+## room.gd's _tic_slab_system() only cleared dirty flags. Re-render routes
+## through the SAME per-voxel call each Slab's own original render used
+## (render_slab()'s earth-hash for Role.FLOOR, render_slab_solid()'s fixed
+## material for CEILING/INTERIOR) so a re-render after partial damage is
+## pixel-identical to a fresh one for whatever voxels remain visible.
+##
+## Erase routes through get_layer() (sign-aware for both positive and
+## negative levels) — process_dirty()'s raw `_voxel_layers[level]` indexing
+## must NOT be copied here: GDScript arrays support Python-style negative
+## indices, so a floor-level Voxel destroyed through that pattern would
+## silently erase a cell from the wrong (last positive) layer instead of
+## being a safe no-op.
+func process_dirty_slabs(registry: SlabRegistry) -> void:
+	var dirty_slabs := registry.dirty_slabs()
+	if dirty_slabs.is_empty():
+		return
+
+	for slab in dirty_slabs:
+		var use_solid: bool = slab.role != Slab.Role.FLOOR
+		for voxel in slab.voxels:
+			if not voxel.dirty:
+				continue
+			if voxel.visible:
+				if use_solid:
+					var flat_baked: bool = slab.role == Slab.Role.CEILING
+					_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
+							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
+				else:
+					var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+					_set_voxel_cell(voxel.grid_pos, voxel.level, "earth_%d" % variant_index)
+			else:
+				var layer := get_layer(voxel.level)
+				if layer != null:
+					layer.erase_cell(voxel.grid_pos)
+					voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+
+		slab.clear_all_dirty()
 
 
 ## Ensure layers exist up to storey count (E1 equation from SLICE-00)

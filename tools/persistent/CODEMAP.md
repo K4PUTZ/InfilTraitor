@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**136 scripts · 26986 lines total** (under `godot/scripts/`)
+**144 scripts · 28060 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,10 +17,10 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
-- **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
+- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd
+- **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
@@ -392,7 +392,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_ruler_overlay.gd`
 
-`class_name VoxelRulerOverlay` · extends `Node2D` · 104 lines
+`class_name VoxelRulerOverlay` · extends `Node2D` · 103 lines
 
 `godot/scripts/debug/voxel_ruler_overlay.gd`
 
@@ -675,11 +675,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 929 lines
+`class_name VoxelRenderer` · extends `Node2D` · 977 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
 > Geometry Module — Voxel Renderer: TileMapLayer-based voxel wall rendering Port from room.gd voxel functions, honoring Transform Canon Extends Node2D to add to scene tree
+
+**Signals**
+- `signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)`
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
@@ -761,6 +764,24 @@ extends `ConfirmationDialog` · 64 lines
 
 ## overlays/
 
+### `blast_wireframe_overlay.gd`
+
+`class_name BlastWireframeOverlay` · extends `Node2D` · 76 lines
+
+`godot/scripts/overlays/blast_wireframe_overlay.gd`
+
+**Constants / tuning**
+- `LINE_COLOR` = `Color(1.0, 0.15, 0.15, 0.9)`
+- `LINE_WIDTH` = `3.0`
+- `PERIMETER_INSET_DISTANCE` = `6.0`
+
+**Public API**
+- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:`
+- `func show_footprint(cells) -> void:`
+- `func clear() -> void:`
+
+---
+
 ### `ceiling_prop_overlay.gd`
 
 `class_name CeilingPropOverlay` · extends `Node2D` · 45 lines
@@ -832,6 +853,22 @@ extends `Node2D` · 143 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func set_show_labels(show_labels: bool) -> void:`
+
+---
+
+### `gu_grid_overlay.gd`
+
+`class_name GuGridOverlay` · extends `Node2D` · 56 lines
+
+`godot/scripts/overlays/gu_grid_overlay.gd`
+
+**Constants / tuning**
+- `COLOR_BLACK` = `Color(0.0, 0.0, 0.0, 0.35)`
+- `LINE_WIDTH` = `1.5`
+
+**Public API**
+- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:`
+- `func set_room_size(room_size: Vector2i) -> void:`
 
 ---
 
@@ -1230,6 +1267,74 @@ extends `Node2D` · 43 lines
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
 - `func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:`
 - `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
+
+---
+
+### `blast_calculator.gd`
+
+`class_name BlastCalculator` · 141 lines
+
+`godot/scripts/systems/destruction/blast_calculator.gd`
+
+> BlastCalculator — DESTRUCTION_MASTER_PLAN Part 3 ("the trigger"). Pure/static: everything it needs is passed in (no registry ownership, same statelessness as EarthVariantSelector) so it stays testable in isolation against synthetic fixtures, matching every other Part's selftest convention. Three-stage pipeline for one detonation: 1. flood_gu_rings() — wall-aware BFS from the source GU, one ring per GU step, capped at the bomb's range. Director (this session): walls block/reduce propagation — reuses the same blocked-edge gate movement_overlay.gd already uses for movement, not a naive radius. 2. find_affected_containers() — every wall Slice and roof Slab (Role. CEILING) touching a flooded GU, ring-tagged. The GU flood step IS the "walk sideways along the wall" step (a wall's own footprint GU sits in the flood like any other GU), so no separate wall-run adjacency walk is needed here. 3. apply_container_damage() — combines a container's ring multiplier with MaterialResistanceTable to get a destroy/crack voxel COUNT, then picks WHICH voxels deterministically (FNV-1a hash-and-rank, mirroring EarthVariantSelector — no RNG, same inputs always produce the same result).
+
+**Constants / tuning**
+- `GRENADE_LEVEL` = `0`
+
+---
+
+### `bomb_def.gd`
+
+`class_name BombDef` · 37 lines
+
+`godot/scripts/systems/destruction/bomb_def.gd`
+
+> BombDef — bomb/grenade definition resource. DESTRUCTION_MASTER_PLAN Part 3 ("the trigger"). Mirrors PropDef's shape exactly (plain object + from_json() factory, not a Godot Resource) so multiple bomb types can be authored as data instead of hardcoded per detonation — "outras bombas terão um alcance maior ou menor, de acordo com o tipo, tamanho e habilidades de cada personagem" (Director, this session).
+
+**Public vars**
+- `var id: String`
+- `var ring_multipliers: Array[float] = []`
+- `var gameplay: Dictionary = {}`
+- `var tags: Array[String] = []`
+
+---
+
+### `bomb_registry.gd`
+
+`class_name BombRegistry` · 60 lines
+
+`godot/scripts/systems/destruction/bomb_registry.gd`
+
+> BombRegistry — Bomb definitions catalog (two-tier: res:// + user://). Line-for-line the PropRegistry pattern (godot/scripts/systems/prop_registry.gd): user-tier bombs override res:// bombs on id collision.
+
+**Constants / tuning**
+- `RES_BOMBS_DIR` = `"res://bombs"`
+- `USER_BOMBS_DIR` = `"user://bombs"`
+
+**Public vars**
+- `var registry: Dictionary = {}`
+
+**Public API**
+- `func register(bomb_def) -> void:`
+- `func get_bomb(p_id: String):`
+- `func list_bombs() -> Array:`
+- `func count() -> int:`
+- `func load_from_disk() -> void:`
+
+---
+
+### `material_resistance_table.gd`
+
+`class_name MaterialResistanceTable` · 34 lines
+
+`godot/scripts/systems/destruction/material_resistance_table.gd`
+
+> MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3. How much of a ring-group's voxels convert to DESTROYED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
+
+**Constants / tuning**
+- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "crack_factor": 0.6}, "stone":    {"destroy_factor": 0.3,  "crack_factor": 0.0}, "concrete": {"destroy_factor": 0.5,  "crack_factor": 0.0}, "wood":     {"destroy_factor": 0.9,  "crack_factor": 0.0}, }`
+- `DEFAULT_DESTROY_FACTOR` = `0.5`
+- `DEFAULT_CRACK_FACTOR` = `0.0`
 
 ---
 
@@ -1700,7 +1805,7 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 129 lines
+extends `Node` · 151 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -1709,6 +1814,7 @@ extends `Node` · 129 lines
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
+- `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 **Public vars**
@@ -1719,6 +1825,8 @@ extends `Node` · 129 lines
 - `func ensure_prop_registry() -> PropRegistryClass:`
 - `func get_material_registry() -> MaterialRegistryClass:`
 - `func get_prop_registry() -> PropRegistryClass:`
+- `func ensure_bomb_registry() -> BombRegistryClass:`
+- `func get_bomb_registry() -> BombRegistryClass:`
 - `func ensure_file_map_source() -> FileMapSourceClass:`
 - `func set_baked_atlas(atlas, source_ids: Dictionary, timestamp: int) -> void:`
 - `func get_baked_atlas():`
@@ -1925,6 +2033,36 @@ extends `SceneTree` · 139 lines
 - `AZIMUTH_DEG` = `45.0`
 - `CAMERA_DISTANCE` = `40.0`
 - `CUBE_SIZE` = `1.0`
+
+---
+
+### `blast_calculator_selftest.gd`
+
+extends `SceneTree` · 324 lines
+
+`godot/scripts/tools/blast_calculator_selftest.gd`
+
+> DESTRUCTION_MASTER_PLAN Part 3 — BlastCalculator selftest. Rodar: godot --headless --script res://godot/scripts/tools/blast_calculator_selftest.gd Synthetic fixtures only (SliceGenerator/SlabGenerator against a hand-built Edge list), same discipline as roof_slab_selftest.gd/slab_render_selftest.gd — no real map involved. Real-map end-to-end proof is the screenshot captures (INFILTRAITOR_CAPTURE_ACTION=test_zone_menu/test_zone_detonate).
+
+**Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
+- `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_flood_unobstructed_rings() -> void:`
+- `func test_flood_stops_at_blocked_edge() -> void:`
+- `func test_flood_capped_at_bomb_range() -> void:`
+- `func test_affected_slice_on_source_gu_boundary() -> void:`
+- `func test_deterministic_selection_is_stable() -> void:`
+- `func test_deterministic_selection_differs_by_salt_and_container() -> void:`
+- `func test_metal_container_produces_cracked_not_destroyed() -> void:`
+- `func test_wood_container_mostly_destroyed_at_ring_zero() -> void:`
+- `func test_ring_beyond_range_untouched() -> void:`
 
 ---
 
@@ -2449,17 +2587,20 @@ extends `SceneTree` · 49 lines
 
 ### `controls_panel.gd`
 
-`class_name ControlsPanel` · extends `WindowBase` · 117 lines
+`class_name ControlsPanel` · extends `WindowBase` · 122 lines
 
 `godot/scripts/ui/controls_panel.gd`
 
 > PAUSE-MENU-02: Controls Panel.
 
+**Public API**
+- `func open() -> void:`
+
 ---
 
 ### `detonate_context_menu.gd`
 
-`class_name DetonateContextMenu` · extends `Control` · 102 lines
+`class_name DetonateContextMenu` · extends `Control` · 112 lines
 
 `godot/scripts/ui/detonate_context_menu.gd`
 
@@ -2468,6 +2609,8 @@ extends `SceneTree` · 49 lines
 **Signals**
 - `signal detonate_requested`
 - `signal cancelled`
+- `signal opened`
+- `signal closed`
 
 **Public API**
 - `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void:`
@@ -2514,7 +2657,7 @@ extends `SceneTree` · 49 lines
 
 ### `main_menu_panel.gd`
 
-`class_name MainMenuPanel` · extends `WindowBase` · 100 lines
+`class_name MainMenuPanel` · extends `WindowBase` · 107 lines
 
 `godot/scripts/ui/main_menu_panel.gd`
 
@@ -2524,6 +2667,25 @@ extends `SceneTree` · 49 lines
 - `signal reset_requested`
 - `signal settings_requested`
 - `signal controls_requested`
+
+**Public API**
+- `func open() -> void:`
+
+---
+
+### `modal_stack.gd`
+
+`class_name ModalStack` · 46 lines
+
+`godot/scripts/ui/modal_stack.gd`
+
+> ModalStack — single source of truth for what Escape targets next. Root cause this replaces: Escape (`ui_pause`) was handled unconditionally in InputController._input(), which runs before room.gd's own _unhandled_input() — so a context menu's own Escape-aware check never got a chance to run, and Escape always opened the Main Menu instead of cancelling whatever was actually on top (2026-07-22 bug report). Any modal — a WindowBase panel, the grenade context menu, a future sub-menu — pushes its own close callable when it opens and is removed when it closes, by whatever path (Escape, its own Cancel/Back button, an outside click). Escape always targets the top of the stack, so nested menus (Main Menu -> Controls, or a world context menu opened over gameplay) close in the right order on successive presses instead of every Escape independently racing to open the Main Menu.
+
+**Public API**
+- `func push(close_callable: Callable) -> void:`
+- `func remove(close_callable: Callable) -> void:`
+- `func is_empty() -> bool:`
+- `func handle_escape() -> bool:`
 
 ---
 
@@ -2613,7 +2775,7 @@ extends `Node2D` · 34 lines
 
 ### `window_base.gd`
 
-`class_name WindowBase` · extends `"res://godot/scripts/ui/panel_base.gd"` · 23 lines
+`class_name WindowBase` · extends `"res://godot/scripts/ui/panel_base.gd"` · 24 lines
 
 `godot/scripts/ui/window_base.gd`
 
@@ -2745,17 +2907,19 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 122 lines
+`class_name TestZoneController` · 195 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
 > TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop. ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a single baked sprite — a "digital twin" (the CC0 "Free Voxel Weapon Pack" Grenade matrix, OpenGameArt, license CC0) rendered once via a real Camera3D/BoxMesh SubViewport bake (godot/scripts/tools/bake_voxel_sprite_3d.gd — v2; superseded a hand-rolled 2D painter's-algorithm rasterizer, v1, whose flat shading and approximate depth-sort read as "esquisito") into ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png — displayed via Sprite2D, NOT live TileMapLayer voxel cells. Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that plan get built for real. Registry stays a plain Array[Dictionary] on purpose — scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture. Delegates to room for shared state, same extraction pattern as SelectionController.
 
 **Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `HIT_RADIUS_PX` = `40.0`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `GRENADE_SPRITE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png"`
 - `GRENADE_ANCHOR_PX` = `Vector2(19.19, 59.06)`
+- `BOMB_ID` = `"frag_grenade"`
 
 **Public vars**
 - `var room: Node`
@@ -2977,7 +3141,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2489 lines
+extends `Node2D` · 2624 lines
 
 `godot/scripts/world/room.gd`
 
@@ -2995,6 +3159,7 @@ extends `Node2D` · 2489 lines
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
 - `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
+- `ModalStackClass` = `preload("res://godot/scripts/ui/modal_stack.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `TurnControllerClass` = `preload("res://godot/scripts/world/controllers/turn_controller.gd")`
@@ -3009,6 +3174,8 @@ extends `Node2D` · 2489 lines
 - `GuardCoordinatorClass` = `preload("res://godot/scripts/controllers/guard_coordinator.gd")`
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
 - `DevVisionStatusPanelClass` = `preload("res://godot/scripts/debug/dev_vision_status_panel.gd")`
+- `GuGridOverlayClass` = `preload("res://godot/scripts/overlays/gu_grid_overlay.gd")`
+- `BlastWireframeOverlayClass` = `preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
 - `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 - `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
@@ -3038,25 +3205,11 @@ extends `Node2D` · 2489 lines
 - `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
 - `ACTOR_END_HOLD_DELAY` = `0.5`
 - `TRAIL_MAX` = `5`
-- `GUARD_NOISE_CHANCE_BY_STATE` = `{ "patrol": 0.15, "suspicious": 0.40, "alert": 0.60, "chase": 0.70, "search": 0.50, }`
-- `GUARD_NOISE_INTENSITY_BY_STATE` = `{ "patrol": 0.4, "suspicious": 0.6, "alert": 0.9, "chase": 1.0, "search": 0.7, }`
-- `SHADOW_DIRS` = `[ Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1), ]`
-- `SHADOW_LENGTH_MAX` = `5`
 - `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
-
-**@export**
-- `segment_grid_pos: Vector2i = Vector2i(1, 1)`
-- `level_seed: int = 0`
-- `map_id: String = "TEXTURES"`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
 - `var vision_bonus_tiles: int = 0`
-- `var SHADOW_SPILL_MAX_RADIUS: int = 4`
-- `var SHADOW_SPILL_DENSITY_STEP: int = 2`
-- `var SHADOW_SPILL_BASE_DARKEN: float = 0.18`
-- `var SHADOW_SPILL_FALLOFF: float = 0.5`
-- `var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65`
 
 ---
 

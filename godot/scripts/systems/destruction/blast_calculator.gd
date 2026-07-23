@@ -1,0 +1,141 @@
+## BlastCalculator — DESTRUCTION_MASTER_PLAN Part 3 ("the trigger").
+##
+## Pure/static: everything it needs is passed in (no registry ownership,
+## same statelessness as EarthVariantSelector) so it stays testable in
+## isolation against synthetic fixtures, matching every other Part's
+## selftest convention.
+##
+## Three-stage pipeline for one detonation:
+##  1. flood_gu_rings() — wall-aware BFS from the source GU, one ring per
+##     GU step, capped at the bomb's range. Director (this session): walls
+##     block/reduce propagation — reuses the same blocked-edge gate
+##     movement_overlay.gd already uses for movement, not a naive radius.
+##  2. find_affected_containers() — every wall Slice and roof Slab (Role.
+##     CEILING) touching a flooded GU, ring-tagged. The GU flood step IS the
+##     "walk sideways along the wall" step (a wall's own footprint GU sits in
+##     the flood like any other GU), so no separate wall-run adjacency walk
+##     is needed here.
+##  3. apply_container_damage() — combines a container's ring multiplier with
+##     MaterialResistanceTable to get a destroy/crack voxel COUNT, then picks
+##     WHICH voxels deterministically (FNV-1a hash-and-rank, mirroring
+##     EarthVariantSelector — no RNG, same inputs always produce the same
+##     result).
+class_name BlastCalculator
+
+## Ground-anchored detonation altitude. Real per-bomb/per-throw altitude is
+## future scope — every grenade this session detonates at the wall's own
+## base level.
+const GRENADE_LEVEL := 0
+
+
+## GU cell -> ring index (0 = source GU). Wall-aware BFS, capped at
+## bomb_def.ring_multipliers.size()-1 rings. blocked_edges must already be
+## keyed via WallEdgeData.edge_key() (same shape room._current_blocked_edges
+## produces once folded through that helper).
+static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Dictionary) -> Dictionary:
+	var max_ring: int = bomb_def.ring_multipliers.size() - 1
+	var rings: Dictionary = {source_gu: 0}
+	var frontier: Array[Vector2i] = [source_gu]
+
+	while not frontier.is_empty():
+		var next_frontier: Array[Vector2i] = []
+		for current in frontier:
+			var current_ring: int = rings[current]
+			if current_ring >= max_ring:
+				continue
+			for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+				var neighbor: Vector2i = current + Face.delta(face)
+				if rings.has(neighbor):
+					continue
+				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges):
+					continue
+				rings[neighbor] = current_ring + 1
+				next_frontier.append(neighbor)
+		frontier = next_frontier
+
+	return rings
+
+
+## Every wall Slice and roof Slab touching a flooded GU, each tagged with the
+## ring of the GU it was reached through (the minimum ring, if reachable from
+## more than one side). Returns {"slices": Dictionary[String,int] (slice.id
+## -> ring), "roofs": Dictionary[String,int] (slab.id -> ring)}.
+static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRegistry,
+		slab_registry: SlabRegistry) -> Dictionary:
+	var hit_slices: Dictionary = {}
+	for gu in gu_rings:
+		var ring: int = gu_rings[gu]
+		for edge in edge_registry.edges_touching_gu(gu):
+			for slice in edge_registry.slices_of_edge(edge.id):
+				if not hit_slices.has(slice.id) or ring < hit_slices[slice.id]:
+					hit_slices[slice.id] = ring
+
+	var hit_roofs: Dictionary = {}
+	for slab in slab_registry.all_slabs():
+		if slab.role != Slab.Role.CEILING:
+			continue
+		if gu_rings.has(slab.gu_cell):
+			hit_roofs[slab.id] = gu_rings[slab.gu_cell]
+
+	return {"slices": hit_slices, "roofs": hit_roofs}
+
+
+## Applies ring falloff + material resistance to one container's (Slice or
+## Slab) voxels and writes real damage via Voxel.set_damage() — the only
+## writer of destruction state, per DESTRUCTION_MASTER_PLAN §3.
+##
+## is_roof selects the vertical ring step: walls advance one ring per
+## LEVELS_PER_STOREY (a whole storey), roofs advance one ring per raw level
+## (ROOF_LEVEL_COUNT is only ~2 levels total, so a whole-storey step would
+## collapse every roof level into ring 0 and roofs would never show falloff
+## at all). Deliberate asymmetry, not an oversight — flagged for review if a
+## real capture shows it reading wrong.
+static func apply_container_damage(voxels: Array, container_id: String, material: String,
+		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float]) -> void:
+	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
+	for voxel in voxels:
+		var level_offset: int = voxel.level - base_level
+		var vertical_ring: int
+		if is_roof:
+			vertical_ring = level_offset
+		else:
+			vertical_ring = int(floor(float(level_offset) / float(GeometryCoords.LEVELS_PER_STOREY)))
+		var ring: int = base_ring + maxi(0, vertical_ring)
+		if ring >= ring_multipliers.size():
+			continue
+		if not by_ring.has(ring):
+			by_ring[ring] = []
+		by_ring[ring].append(voxel)
+
+	for ring in by_ring:
+		var group: Array = by_ring[ring]
+		var mult: float = ring_multipliers[ring]
+		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material) * group.size()))
+		var crack_n: int = int(round(mult * MaterialResistanceTable.crack_factor(material) * group.size()))
+
+		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n)
+		var destroyed_lookup: Dictionary = {}
+		for v in destroy_set:
+			destroyed_lookup[v] = true
+		var remaining: Array = group.filter(func(v): return not destroyed_lookup.has(v))
+		var crack_set: Array = _select_deterministic(remaining, container_id, "CRACK", crack_n)
+
+		for voxel in destroy_set:
+			voxel.set_damage(Voxel.DamageState.DESTROYED)
+		for voxel in crack_set:
+			voxel.set_damage(Voxel.DamageState.CRACKED)
+
+
+## Deterministic "which N of M" — hash-and-rank, mirroring
+## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
+## inputs always produce the same subset, no RNG, nothing stored.
+static func _select_deterministic(voxels: Array, container_id: String, salt: String, n: int) -> Array:
+	if n <= 0 or voxels.is_empty():
+		return []
+	var ranked: Array = voxels.duplicate()
+	ranked.sort_custom(func(a, b) -> bool:
+		var key_a: String = "%s:%s:%d,%d,%d" % [container_id, salt, a.grid_pos.x, a.grid_pos.y, a.level]
+		var key_b: String = "%s:%s:%d,%d,%d" % [container_id, salt, b.grid_pos.x, b.grid_pos.y, b.level]
+		return FacadeSampler._fnv1a_hash(key_a) < FacadeSampler._fnv1a_hash(key_b)
+	)
+	return ranked.slice(0, mini(n, ranked.size()))

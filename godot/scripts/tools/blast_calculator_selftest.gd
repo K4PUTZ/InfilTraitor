@@ -11,6 +11,7 @@ extends SceneTree
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
 const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")
+const VoxelClass = preload("res://godot/scripts/geometry/voxel.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -30,6 +31,8 @@ func _init() -> void:
 	test_metal_container_produces_cracked_not_destroyed()
 	test_wood_container_mostly_destroyed_at_ring_zero()
 	test_ring_beyond_range_untouched()
+	test_soot_rings_spread_by_distance()
+	test_soot_min_ring_wins_between_two_holes()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -304,6 +307,66 @@ func test_ring_beyond_range_untouched() -> void:
 		_fail("A voxel beyond the bomb's own ring range was damaged")
 	else:
 		_pass("Voxels beyond ring_multipliers.size() stayed INTACT (out-of-range, not clamped)")
+	print("")
+
+
+## VL-D1 — soot rings spread outward from a hole, one ring per BFS step, and
+## stop at n_rings. A single hole in a 1×N row must tag its neighbours 0,1,2.
+func test_soot_rings_spread_by_distance() -> void:
+	print("[10] Soot rings spread by BFS distance from the hole\n")
+
+	var slab := Slab.new("SOOT_ROW", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	for x in range(7):
+		var v := VoxelClass.new(Vector2i(x, 0), 0, slab)
+		if x == 3:
+			v.visible = false
+			v.set_damage(Voxel.DamageState.DESTROYED)
+			destroyed.append(Vector3i(x, 0, 0))
+		cell_to_voxel[Vector3i(x, 0, 0)] = v
+
+	BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed, 3)
+
+	var expected := {0: 2, 1: 1, 2: 0, 3: -1, 4: 0, 5: 1, 6: 2}
+	var ok := true
+	for x in expected:
+		var got: int = cell_to_voxel[Vector3i(x, 0, 0)].soot_ring
+		if got != expected[x]:
+			_fail("x=%d expected soot_ring %d, got %d" % [x, expected[x], got])
+			ok = false
+	if ok:
+		_pass("Rings 0/1/2 tagged symmetrically outward; hole itself untagged (-1)")
+	print("")
+
+
+## VL-D1 — a voxel reachable from two holes takes the SMALLER ring (darker
+## scorch wins), so overlapping blast halos don't leave a bright seam.
+func test_soot_min_ring_wins_between_two_holes() -> void:
+	print("[11] Soot: min ring wins between two holes\n")
+
+	var slab := Slab.new("SOOT_PAIR", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	# Holes at x=0 and x=4; x=2 is 2 from each, x=1 is 1 from the left hole.
+	for x in range(5):
+		var v := VoxelClass.new(Vector2i(x, 0), 0, slab)
+		if x == 0 or x == 4:
+			v.visible = false
+			v.set_damage(Voxel.DamageState.DESTROYED)
+			destroyed.append(Vector3i(x, 0, 0))
+		cell_to_voxel[Vector3i(x, 0, 0)] = v
+
+	BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed, 3)
+
+	# x=1: ring 0 from left hole. x=3: ring 0 from right hole. x=2: ring 1 from both.
+	var r1: int = cell_to_voxel[Vector3i(1, 0, 0)].soot_ring
+	var r2: int = cell_to_voxel[Vector3i(2, 0, 0)].soot_ring
+	var r3: int = cell_to_voxel[Vector3i(3, 0, 0)].soot_ring
+	if r1 == 0 and r2 == 1 and r3 == 0:
+		_pass("x=1,3 ring 0 (adjacent to a hole); x=2 ring 1 (min of the two paths)")
+	else:
+		_fail("Expected rings [0,1,0] for x=1,2,3; got [%d,%d,%d]" % [r1, r2, r3])
 	print("")
 
 

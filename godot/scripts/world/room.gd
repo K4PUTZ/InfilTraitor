@@ -1555,9 +1555,6 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_light_ray_overlay.z_index = max_voxel_z_index + 2
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
-	if _light_ray_overlay != null and _ceiling_overlay != null:
-		print("[VL-02a] overhead z: rays=%d lamps=%d (max voxel layer z=%d)" % [
-			_light_ray_overlay.z_index, _ceiling_overlay.z_index, max_voxel_z_index])
 
 
 ## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
@@ -1579,8 +1576,34 @@ func _repaint_voxel_light_buckets() -> void:
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
-			_voxel_renderer.build_occupancy())
+			_voxel_renderer.build_occupancy(),
+			_build_soot_snapshot())
 	_voxel_renderer.apply_light_field(_voxel_light_field)
+
+
+## VL-D1 — level → {cell: soot_ring}, read off the Voxels themselves so it
+## rotates with the geometry (the soot lives on the Voxel, like damage_state).
+## Rebuilt on every repaint from the two registries; cheap next to the field
+## re-derive it feeds. Empty when nothing has been scorched.
+func _build_soot_snapshot() -> Dictionary:
+	var snapshot: Dictionary = {}
+	if _edge_registry != null:
+		for slice in _edge_registry.all_slices():
+			for v in slice.voxels:
+				_add_soot_voxel(snapshot, v)
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			for v in slab.voxels:
+				_add_soot_voxel(snapshot, v)
+	return snapshot
+
+
+func _add_soot_voxel(snapshot: Dictionary, v: Voxel) -> void:
+	if v.soot_ring < 0 or not v.visible:
+		return
+	if not snapshot.has(v.level):
+		snapshot[v.level] = {}
+	snapshot[v.level][v.grid_pos] = v.soot_ring
 
 
 func _update_alert_label() -> void:

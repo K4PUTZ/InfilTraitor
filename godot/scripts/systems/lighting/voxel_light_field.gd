@@ -46,10 +46,18 @@ var face_enclosed_factor: float = 0.30     ## nothing exposed (interior fill)
 ## the recessed ones behind them fall away, and the hole reads as depth.
 var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4/4
 
+## VL-D1 — blast soot. A per-voxel scorch that MULTIPLIES the light term, so a
+## sooted face still reads brighter in light than in shadow (soot modulates, it
+## doesn't paint flat black). Ring 0 (touching the hole) is darkest. The values
+## push a lit voxel down into the reserved dark buckets (bucket_luminance 0..1),
+## which is what makes the crater halo read; tune against a real capture.
+var soot_darkening: Array[float] = [0.10, 0.28, 0.55]  ## ring 0/1/2 multiplier
+
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult
 var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEAD anchor)
 var _occupancy: Dictionary = {}            ## level:int -> {Vector2i: true}
+var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
 
 
@@ -62,11 +70,13 @@ var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) ->
 ## far above the real walls and zero out every contribution via vertical falloff.
 ## occupancy: level -> set of occupied cells, supplied by VoxelRenderer (it owns
 ## the tilemaps). Drives the surface/AO terms above; empty = shading disabled.
+## soot: level -> {cell: ring}, from the blast (VL-D1); empty = no scorch.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
-		occupancy: Dictionary = {}) -> void:
+		occupancy: Dictionary = {}, soot: Dictionary = {}) -> void:
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
 	_occupancy = occupancy
+	_soot = soot
 	_shadow_by_light.clear()
 	_bucket_cache.clear()
 	for result in shadow_results:
@@ -118,7 +128,21 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 			intensity = maxf(intensity, lamp_energy * _falloff(d, radius))
 	## VL-02b: local geometry contrast — the term that makes craters read.
 	intensity *= surface_factor(cell, level)
+	## VL-D1: blast soot — scorch the voxels ringing a hole.
+	intensity *= soot_factor(cell, level)
 	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+
+
+## VL-D1 — soot multiplier for a voxel (1.0 = clean). Public for vision modes /
+## tests. Ring 0 (touching a hole) is darkest; missing = clean.
+func soot_factor(cell: Vector2i, level: int) -> float:
+	var level_soot = _soot.get(level)
+	if level_soot == null:
+		return 1.0
+	var ring = level_soot.get(cell, -1)
+	if ring < 0:
+		return 1.0
+	return soot_darkening[clampi(ring, 0, soot_darkening.size() - 1)]
 
 
 ## VL-02b — per-voxel surface shading from neighbour occupancy: axis factor for

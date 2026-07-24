@@ -10,6 +10,12 @@ var visible: bool = true         ## render state
 var dirty: bool = false          ## marked for TIC processing
 var damage_state: int = DamageState.INTACT
 var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08), null until baked
+## VL-D1: blast soot ring. -1 = clean; 0 = adjacent to a hole (darkest scorch),
+## rising to fainter outer rings. Set by BlastCalculator.compute_soot_rings()
+## and consumed by VoxelLightField as a per-voxel darkening on top of the light
+## bucket. Rides on the Voxel itself so it shares the damage's fate through
+## perspective rotation — soot and its hole travel together.
+var soot_ring: int = -1
 
 ## Back-reference for dirty propagation. Untyped on purpose: D1
 ## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels

@@ -153,6 +153,10 @@ func detonate_active() -> void:
 			print_debug("[BLAST] gu=%s rings=%s affected_slices=%d affected_roofs=%d affected_floors=%d" %
 				[g["gu_cell"], gu_rings, affected["slices"].size(), affected["roofs"].size(),
 				affected.get("floors", {}).size()])
+			## VL-D1: index every affected voxel by cell so the soot BFS can walk
+			## the blast's neighbourhood, and collect the holes as its seeds.
+			var cell_to_voxel: Dictionary = {}
+			var destroyed_cells: Array = []
 			for slice_id in affected["slices"]:
 				var slice: Slice = room._edge_registry.get_slice(slice_id)
 				BlastCalculatorClass.apply_container_damage(
@@ -161,6 +165,7 @@ func detonate_active() -> void:
 				var d := 0
 				var c := 0
 				for v in slice.voxels:
+					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: d += 1
 					elif v.damage_state == Voxel.DamageState.CRACKED: c += 1
 				print_debug("[BLAST]   slice=%s material=%s ring=%d destroyed=%d cracked=%d/%d" %
@@ -170,6 +175,8 @@ func detonate_active() -> void:
 				BlastCalculatorClass.apply_container_damage(
 					slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
 					slab.level, true, bomb_def.ring_multipliers)
+				for v in slab.voxels:
+					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 			## VL-02c: the ground takes the blast too. base_level = slab.level keeps
 			## the floor's single destructible plane (D13) at its source ring.
 			for slab_id in affected.get("floors", {}):
@@ -180,6 +187,7 @@ func detonate_active() -> void:
 					floor_slab.level, true, bomb_def.ring_multipliers)
 				var fd := 0
 				for v in floor_slab.voxels:
+					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
 				print_debug("[BLAST]   floor=%s material=%s ring=%d destroyed=%d/%d" %
 					[floor_slab.id, floor_slab.material, affected["floors"][slab_id],
@@ -195,6 +203,12 @@ func detonate_active() -> void:
 					room._voxel_renderer.render_fixed_earth_level(
 						floor_slab.gu_cell, floor_slab.level - 1)
 
+			## VL-D1: scorch the surviving voxels ringing every hole (up to 3
+			## rings, darkest at the hole). Must run AFTER all damage is applied so
+			## the seed set is complete, and BEFORE the repaint so the field picks
+			## the soot up in the same re-derive the detonation already triggers.
+			BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 3)
+
 			room._voxel_renderer.process_dirty(room._edge_registry)
 			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
 			## VL-02b/c: geometry just changed — re-derive the light field so the
@@ -206,6 +220,15 @@ func detonate_active() -> void:
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## VL-D1: register one voxel for the soot BFS — index it by its (x, y, level)
+## cell and, if it's a hole, record it as a BFS seed.
+func _index_voxel_for_soot(cell_to_voxel: Dictionary, destroyed_cells: Array, v: Voxel) -> void:
+	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	cell_to_voxel[key] = v
+	if v.damage_state == Voxel.DamageState.DESTROYED:
+		destroyed_cells.append(key)
 
 
 func cancel_active() -> void:

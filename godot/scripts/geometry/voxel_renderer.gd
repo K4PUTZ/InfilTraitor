@@ -69,11 +69,13 @@ const LIGHT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT - 1  ## flipped dim alts fol
 ## Bucket → modulate luminance. Bucket 0 must stay dark-but-readable (Director:
 ## full shadow still shows texture). Tunable; changes take effect on the next
 ## map load / rotation (alternatives are minted at source registration).
-## Director 2026-07-24: lift the overall brightness a touch — floor of the ramp
-## nudged up (bucket 0 still dark-but-readable per the original ask), mids
-## raised more, top pinned at 1.00.
+## Director 2026-07-24: lift the overall brightness a touch — mids raised, top
+## pinned at 1.00. VL-D1 reserves the two DARKEST buckets (0.07, 0.13) for blast
+## soot: the light term never maps below bucket 2 (ambient 0.15 → bucket 2 =
+## 0.33), so soot's ×multiplier is what pushes a voxel down into 0-1. Approved
+## light range (bucket 2+) is unchanged.
 var bucket_luminance: Array[float] = [
-	0.19, 0.26, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
+	0.07, 0.13, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 ]
 
 

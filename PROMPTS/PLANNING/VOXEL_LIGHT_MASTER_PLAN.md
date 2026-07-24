@@ -260,12 +260,27 @@ a lighting one — flagged for the Director, not silently worked around.
 
 ### VL-D — Destruction visuals (Director backlog, 2026-07-24)
 
-Queued, not yet built. Ordered roughly by dependency:
-
-1. **Soot rings around blast holes.** After a blast, add a black shade to the
-   surviving neighbour voxels' faces that pointed toward the grenade — up to 3
-   rings, strong→medium→faint. Same for the floor crater rim; the crater reads
-   far better once ringed with soot.
+1. **Soot rings around blast holes ✅ LANDED 2026-07-24 (VL-D1).**
+   `Voxel.soot_ring` (rides on the voxel, beside `damage_state`) +
+   `BlastCalculator.compute_soot_rings()` — a multi-source BFS out of every
+   DESTROYED cell tags surviving neighbours ring 0/1/2 (min wins). The field
+   multiplies the light term by `soot_darkening = [0.10, 0.28, 0.55]`, and the
+   two darkest buckets (0.07, 0.13) are reserved for it so scorch reaches near
+   black without touching the approved light range (ambient still bucket 2 =
+   0.33). Detonate collects the holes + affected voxels and re-derives the
+   field in the same pass it already runs. Walls AND floor rim both scorch.
+   - *Evidence:* `auto_2026-07-24_18-23-18.png` (blast zone reads as a burned
+     halo); blast_calculator_selftest 13/13 (2 new soot tests: rings spread by
+     distance, min-ring-wins between two holes); lint clean.
+   - *Known limitation (inherited, not introduced):* soot dies on perspective
+     rotation — but so does ALL destruction, because `build_from_layout()`
+     rebuilds the registries (and thus every Voxel) from the MapSpec on each
+     rotation. `damage_state` and `soot_ring` share that fate exactly. Fixing
+     it is a destruction-persistence task (rotate/replay damage), out of scope
+     for the soot work.
+   - *Texture note:* with the current scattered hash-ranked destruction, many
+     small holes' halos merge into one burned patch rather than crisp per-hole
+     rings — will read as distinct rings once item 2 (contiguous crater) lands.
 2. **Deeper crater.** Force extra destruction in the voxels directly under the
    grenade so the floor hole has a bowl shape, not just scatter (this is the
    DESTRUCTION-model "contiguous removal" change flagged under VL-02c).

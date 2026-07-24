@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28509 lines total** (under `godot/scripts/`)
+**145 scripts · 28700 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -652,7 +652,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 62 lines
+`class_name Voxel` · 68 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -665,6 +665,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var dirty: bool = false`
 - `var damage_state: int = DamageState.INTACT`
 - `var face_atlas_rect: Rect2i`
+- `var soot_ring: int = -1`
 
 **Public API**
 - `func set_visible(v: bool) -> void:`
@@ -675,7 +676,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1077 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1079 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1278,7 +1279,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 151 lines
+`class_name BlastCalculator` · 201 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1650,7 +1651,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 239 lines
+`class_name VoxelLightField` · extends `RefCounted` · 263 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -1666,11 +1667,6 @@ extends `Node2D` · 43 lines
 - `var face_sw_factor: float = 0.48`
 - `var face_enclosed_factor: float = 0.30`
 - `var ao_strength: float = 0.55`
-
-**Public API**
-- `func build(lights: Array, shadow_results: Array, top_wall_level: int, occupancy: Dictionary = {}) -> void:`
-- `func bucket_for(cell: Vector2i, level: int) -> int:`
-- `func surface_factor(cell: Vector2i, level: int) -> float:`
 
 ---
 
@@ -2070,7 +2066,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 324 lines
+extends `SceneTree` · 387 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2080,6 +2076,7 @@ extends `SceneTree` · 324 lines
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
+- `VoxelClass` = `preload("res://godot/scripts/geometry/voxel.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -2095,6 +2092,8 @@ extends `SceneTree` · 324 lines
 - `func test_metal_container_produces_cracked_not_destroyed() -> void:`
 - `func test_wood_container_mostly_destroyed_at_ring_zero() -> void:`
 - `func test_ring_beyond_range_untouched() -> void:`
+- `func test_soot_rings_spread_by_distance() -> void:`
+- `func test_soot_min_ring_wins_between_two_holes() -> void:`
 
 ---
 
@@ -2939,7 +2938,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 225 lines
+`class_name TestZoneController` · 248 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3173,7 +3172,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2688 lines
+extends `Node2D` · 2711 lines
 
 `godot/scripts/world/room.gd`
 

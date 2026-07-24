@@ -149,3 +149,53 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 		return FacadeSampler._fnv1a_hash(key_a) < FacadeSampler._fnv1a_hash(key_b)
 	)
 	return ranked.slice(0, mini(n, ranked.size()))
+
+
+## VL-D1 — Soot rings around blast holes.
+##
+## After damage is applied, the surviving voxels ringing each hole get scorched:
+## a multi-source BFS outward from every DESTROYED cell tags neighbours with a
+## ring index (0 = touching the hole, darkest; rising outward, fainter), which
+## VoxelLightField reads as a per-voxel darkening. This is what makes a crater
+## read as a crater — the hole plus the soot halo around it, not bare removed
+## voxels. Applied on the blast event only (not per frame): the full-field
+## re-derive it triggers is the same one a detonation already paid for.
+##
+## cell_to_voxel: Vector3i(x, y, level) → Voxel, over every voxel in the blast's
+## affected containers (walls + floors + roofs) — the BFS navigates only through
+## these, so soot stays local to the blast and never walks the whole map.
+## n_rings: how many rings to paint (Director: up to 3). min-ring wins, so a
+## voxel near two holes takes the darker scorch.
+static func compute_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array, n_rings: int) -> void:
+	if destroyed_cells.is_empty() or n_rings <= 0:
+		return
+	## Frontier BFS. Seeds are the holes themselves (they have no surviving voxel
+	## to tag); their SURVIVING neighbours become ring 0, and so on outward.
+	var visited: Dictionary = {}
+	for c in destroyed_cells:
+		visited[c] = true
+	var frontier: Array = destroyed_cells.duplicate()
+	const NEIGHBOURS: Array = [
+		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+		Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+		Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+	]
+	for ring in range(n_rings):
+		var next_frontier: Array = []
+		for cell in frontier:
+			for d in NEIGHBOURS:
+				var ncell: Vector3i = cell + d
+				if visited.has(ncell):
+					continue
+				visited[ncell] = true
+				var voxel = cell_to_voxel.get(ncell)
+				## Only surviving, visible voxels take soot — a destroyed cell is a
+				## hole (already a seed) and an absent one is empty air.
+				if voxel == null or not voxel.visible or voxel.damage_state == Voxel.DamageState.DESTROYED:
+					continue
+				if voxel.soot_ring < 0 or ring < voxel.soot_ring:
+					voxel.soot_ring = ring
+				next_frontier.append(ncell)
+		frontier = next_frontier
+		if frontier.is_empty():
+			break

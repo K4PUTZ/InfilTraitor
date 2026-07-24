@@ -51,7 +51,9 @@ var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4
 ## doesn't paint flat black). Ring 0 (touching the hole) is darkest. The values
 ## push a lit voxel down into the reserved dark buckets (bucket_luminance 0..1),
 ## which is what makes the crater halo read; tune against a real capture.
-var soot_darkening: Array[float] = [0.10, 0.28, 0.55]  ## ring 0/1/2 multiplier
+## Director 2026-07-24: soot need not go near-black — let a bit of texture show
+## through. Lifted from [0.10,0.28,0.55]; paired with the raised dark buckets.
+var soot_darkening: Array[float] = [0.16, 0.36, 0.60]  ## ring 0/1/2 multiplier
 
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult

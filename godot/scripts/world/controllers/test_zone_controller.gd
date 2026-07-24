@@ -185,7 +185,8 @@ func detonate_active() -> void:
 			var n_rings: int = bomb_def.ring_multipliers.size()
 			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
 				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
-			var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * 0.55
+			## Director 2026-07-24: crater was too wide — narrowed from 0.55 to 0.40.
+			var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * 0.40
 			var crater_core: float = crater_max * 0.4
 			for slab_id in affected.get("floors", {}):
 				var floor_slab: Slab = room._slab_registry.get_slab(slab_id)
@@ -205,8 +206,18 @@ func detonate_active() -> void:
 				## read as untouched ground. One level, on demand, per D18 — never
 				## a range.
 				if fd > 0:
+					var revealed_level: int = floor_slab.level - 1
 					room._voxel_renderer.render_fixed_earth_level(
-						floor_slab.gu_cell, floor_slab.level - 1)
+						floor_slab.gu_cell, revealed_level)
+					## VL-D2 (Director 2026-07-24): scorch the crater FLOOR too. The
+					## revealed level has no Voxel objects (render_fixed_earth_level
+					## places cells directly, D13), so its soot can't ride on a Voxel
+					## like the walls' does — it goes in room._crater_floor_soot, a
+					## plain cell→ring map the snapshot merges. Ring 0 (darkest): the
+					## bottom of a blast crater is the most burned surface there is.
+					for v in floor_slab.voxels:
+						if v.damage_state == Voxel.DamageState.DESTROYED:
+							room.add_crater_floor_soot(revealed_level, v.grid_pos, 0)
 
 			## VL-D1: scorch the surviving voxels ringing every hole (up to 3
 			## rings, darkest at the hole). Must run AFTER all damage is applied so

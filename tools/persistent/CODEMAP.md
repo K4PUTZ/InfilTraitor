@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28779 lines total** (under `godot/scripts/`)
+**145 scripts · 28816 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -676,7 +676,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1079 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1082 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1651,7 +1651,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 263 lines
+`class_name VoxelLightField` · extends `RefCounted` · 265 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -2939,7 +2939,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 253 lines
+`class_name TestZoneController` · 264 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3174,7 +3174,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2711 lines
+extends `Node2D` · 2732 lines
 
 `godot/scripts/world/room.gd`
 

@@ -151,6 +151,10 @@ var _current_light_sources: Array = []  ## Active (rotated) map lights for Light
 ## member (not a local) because it is the query seam future vision modes
 ## (thermal / night / X-ray) consume — see VOXEL_LIGHT_MASTER_PLAN.
 var _voxel_light_field: VoxelLightField = null
+## VL-D2: soot on the revealed CRATER FLOOR (level → {cell: ring}). Separate from
+## the Voxel-borne soot because the revealed level has no Voxel objects
+## (render_fixed_earth_level places cells directly). Cleared on map load.
+var _crater_floor_soot: Dictionary = {}
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
@@ -383,6 +387,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_prop_heights = _room_builder.get_prop_heights()
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
+	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -1595,6 +1600,12 @@ func _build_soot_snapshot() -> Dictionary:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
 				_add_soot_voxel(snapshot, v)
+	## VL-D2: merge the revealed crater-floor soot (non-Voxel cells).
+	for level in _crater_floor_soot.keys():
+		if not snapshot.has(level):
+			snapshot[level] = {}
+		for cell in _crater_floor_soot[level].keys():
+			snapshot[level][cell] = _crater_floor_soot[level][cell]
 	return snapshot
 
 
@@ -1604,6 +1615,16 @@ func _add_soot_voxel(snapshot: Dictionary, v: Voxel) -> void:
 	if not snapshot.has(v.level):
 		snapshot[v.level] = {}
 	snapshot[v.level][v.grid_pos] = v.soot_ring
+
+
+## VL-D2 — record soot on a revealed crater-floor cell (no Voxel to hang it on).
+## Min ring wins, same as the Voxel path.
+func add_crater_floor_soot(level: int, cell: Vector2i, ring: int) -> void:
+	if not _crater_floor_soot.has(level):
+		_crater_floor_soot[level] = {}
+	var existing = _crater_floor_soot[level].get(cell, 99)
+	if ring < existing:
+		_crater_floor_soot[level][cell] = ring
 
 
 func _update_alert_label() -> void:

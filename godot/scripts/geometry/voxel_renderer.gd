@@ -74,8 +74,11 @@ const LIGHT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT - 1  ## flipped dim alts fol
 ## soot: the light term never maps below bucket 2 (ambient 0.15 → bucket 2 =
 ## 0.33), so soot's ×multiplier is what pushes a voxel down into 0-1. Approved
 ## light range (bucket 2+) is unchanged.
+## VL-D1 reserves buckets 0-1 for blast soot; Director 2026-07-24 raised them
+## (0.07/0.13 → 0.12/0.20) so scorch keeps a little texture instead of reading
+## flat black. Light term still never maps below bucket 2 (ambient = 0.33).
 var bucket_luminance: Array[float] = [
-	0.07, 0.13, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
+	0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 ]
 
 

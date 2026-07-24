@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28816 lines total** (under `godot/scripts/`)
+**145 scripts · 28830 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -676,7 +676,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1082 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1096 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 

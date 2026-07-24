@@ -151,6 +151,11 @@ var debug_nudge: Vector2 = Vector2.ZERO
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
 
+## VL-03-PERF: Vector4i(source_id, coords.x, coords.y, alt_id) → true for every
+## light-bucket alternative already minted. Cleared when sources are rebuilt
+## (prune_baked_sources / clear) so it never points at a stale source.
+var _minted_light_alts: Dictionary = {}
+
 ## BAKE-DIAG-01: placement counters, reset at the top of each render() call
 var _diag_total_cells: int = 0
 var _diag_baked_hits: int = 0
@@ -203,52 +208,54 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			tile_data.modulate = tile_modulate
-			## VL-01: light-bucket alts for baked cells, from THIS page's modulate.
-			_mint_light_alternatives(source, coords, tile_modulate)
+			## VL-03-PERF: light-bucket alts are now minted LAZILY on first use
+			## (see _ensure_light_alt) — eager-minting all 22 per tile cost ~3s of
+			## the ~5s rotation (280k create_alternative_tile calls). Nothing to do
+			## here at build time.
 
 	return source_id
 
 
-## VL-01: mint the ten light-bucket alternatives (buckets 0..4, unflipped +
-## H-flipped) for one tile of one source. Replaces OCC-02's ghost minting —
-## occlusion no longer places alternatives (OCC-21 erases instead).
+## VL-03-PERF: mint ONE light-bucket alternative for one tile, on first use.
 ##
-## Called from BOTH tile-creation paths — the material sources AND every baked
-## atlas page registered at runtime. That is not optional: BakeConfig.enabled
-## is true by dev default, so most wall cells are placed on baked pages. An
-## alternative minted only on the material sources would do nothing on a
-## normal boot.
+## Eager-minting all 22 alternatives (buckets 0..4 × flip) for all ~13k tiles
+## cost ~3s of every rotation — over half the total — because every tile paid
+## for buckets it never displayed. Most cells sit in only a handful of distinct
+## buckets, so minting on demand is dramatically cheaper (measured below). The
+## `_minted_light_alts` set makes the check O(1) and idempotent.
+##
+## alt 0 (full-lit, base) and TRANSFORM_FLIP_H (full-lit, H-flipped) are native
+## Godot tiles — always valid, never minted here. Everything else is a dim
+## bucket alternative created lazily.
 ##
 ## Two traps inherited from the ghost era, both silent:
-##
-##  - create_alternative_tile() returns a BLANK TileData. It inherits nothing.
-##    If texture_origin is not re-applied, every repainted cell jumps 10 px the
-##    instant its bucket changes (same family as BAKE-DIAG-01).
-##  - the alternative's modulate must derive from the tile's BASE modulate, not
-##    white. Baked pages are tinted per page (white under TEXTURE_ONLY, the
-##    material colour under MULTIPLY). Hardcoding Color(1,1,1)*lum would
-##    silently recolour every baked wall it touched.
-##
-## No existence probe: `source` is always freshly created by both call sites,
-## and each caller already dedupes coords — a source+coords pair never reaches
-## this function twice (probing via get_tile_data() makes Godot log a spurious
-## ERROR per tile on any miss).
-func _mint_light_alternatives(source: TileSetAtlasSource, coords: Vector2i, base_modulate: Color) -> void:
-	for bucket in range(LIGHT_BUCKET_COUNT - 1):   ## 0..4 — bucket 5 IS the base tile
-		var lum: float = bucket_luminance[bucket]
-		var dim_modulate := Color(
-			base_modulate.r * lum, base_modulate.g * lum, base_modulate.b * lum,
-			base_modulate.a)
-		for flipped in [false, true]:
-			var alt_id: int = encode_light_alt(bucket, flipped)
-			source.create_alternative_tile(coords, alt_id)
-			var alt_data: TileData = source.get_tile_data(coords, alt_id)
-			if alt_data == null:
-				push_error("[VL-01] Failed to create light alternative %d at %s" % [alt_id, coords])
-				continue
-			alt_data.texture_origin = GeometryCoords.voxel_texture_origin()
-			alt_data.modulate = dim_modulate
-			alt_data.flip_h = flipped
+##  - create_alternative_tile() returns a BLANK TileData — texture_origin must be
+##    re-applied or the cell jumps 10 px the instant its bucket changes.
+##  - the modulate must derive from the tile's BASE modulate (baked pages are
+##    tinted per page), not hardcoded white.
+func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
+	if alt_id == 0 or alt_id == TileSetAtlasSource.TRANSFORM_FLIP_H:
+		return
+	var key := Vector4i(source_id, coords.x, coords.y, alt_id)
+	if _minted_light_alts.has(key):
+		return
+	_minted_light_alts[key] = true
+	var source: TileSetAtlasSource = _tileset.get_source(source_id)
+	if source == null:
+		return
+	var base_data: TileData = source.get_tile_data(coords, 0)
+	var base_modulate: Color = base_data.modulate if base_data != null else Color.WHITE
+	var bucket: int = decode_light_bucket(alt_id)
+	var lum: float = bucket_luminance[bucket]
+	source.create_alternative_tile(coords, alt_id)
+	var alt_data: TileData = source.get_tile_data(coords, alt_id)
+	if alt_data == null:
+		push_error("[VL-03-PERF] Failed to create light alternative %d at %s" % [alt_id, coords])
+		return
+	alt_data.texture_origin = GeometryCoords.voxel_texture_origin()
+	alt_data.modulate = Color(
+		base_modulate.r * lum, base_modulate.g * lum, base_modulate.b * lum, base_modulate.a)
+	alt_data.flip_h = decode_light_flipped(alt_id)
 
 
 ## Getter for voxel layer at given level (for diagnostics). D17: negative
@@ -345,8 +352,8 @@ func _build_voxel_tileset() -> void:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 			# Set custom_data: tile_name = material_name
 			tile_data.set_custom_data("tile_name", material_name)
-			## VL-01: light buckets for the generic (non-baked) path. Base modulate is white here.
-			_mint_light_alternatives(atlas_source, Vector2i.ZERO, tile_data.modulate)
+			## VL-03-PERF: light-bucket alts minted lazily on first use — see
+			## _ensure_light_alt (eager minting dominated rotation cost).
 
 
 ## Render all slices and junction columns from registry
@@ -823,9 +830,13 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field) -> void:
 		var bucket: int = field.bucket_for(cell, level)
 		if bucket == decode_light_bucket(prev_alt):
 			continue
-		layer.set_cell(cell, layer.get_cell_source_id(cell),
-				layer.get_cell_atlas_coords(cell),
-				encode_light_alt(bucket, decode_light_flipped(prev_alt)))
+		var source_id: int = layer.get_cell_source_id(cell)
+		var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
+		var alt_id: int = encode_light_alt(bucket, decode_light_flipped(prev_alt))
+		## VL-03-PERF: mint this bucket's alternative lazily, only now that a cell
+		## actually needs it.
+		_ensure_light_alt(source_id, atlas_coords, alt_id)
+		layer.set_cell(cell, source_id, atlas_coords, alt_id)
 
 
 ## Process dirty slices only (TIC optimization)
@@ -1074,6 +1085,9 @@ func prune_baked_sources() -> void:
 		if _tileset.has_source(source_id):
 			_tileset.remove_source(source_id)
 	_baked_source_ids.clear()
+	## VL-03-PERF: those source ids are gone; their lazy-mint records must not
+	## survive to alias a freshly-registered source at the same id next pass.
+	_minted_light_alts.clear()
 
 
 func _to_string() -> String:

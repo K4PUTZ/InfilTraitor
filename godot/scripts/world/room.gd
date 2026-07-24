@@ -2024,8 +2024,13 @@ func _update_temporal_lights(delta: float) -> void:
 		return
 	
 	var changed_lights: Array = light_registry.update_temporal_all(delta)
-	
-	# If any lights changed this frame, trigger rebuild via LightingController
+
+	# If any lights changed this frame, trigger rebuild via LightingController.
+	# VL-03 NOTE: rebuild_deferred() re-derives the WHOLE light field (~675 ms on
+	# PLAYGROUND) — fine for a one-off perspective rotation, far too heavy to run
+	# twice a second for a flickering lamp. Regime A (temporal loops) needs the
+	# incremental repaint (only the changed lamp's influence set) before flicker
+	# can be enabled in a real map. Mechanism is proven; cost is the blocker.
 	if changed_lights.size() > 0:
 		_lighting_controller.rebuild_deferred()
 

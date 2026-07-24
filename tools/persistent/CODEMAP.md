@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28493 lines total** (under `godot/scripts/`)
+**145 scripts · 28509 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1074 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1077 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1650,20 +1650,20 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 231 lines
+`class_name VoxelLightField` · extends `RefCounted` · 239 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
 > VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN). The single seam between tactical lighting (LightRegistry / ShadowProjector, GU resolution) and every VISUAL consumer. VoxelRenderer.apply_light_field() reads it to repaint faces; future vision modes (thermal / night / X-ray) query it instead of touching tilemaps. Canon split preserved: this consumes LightSource.visual_energy, never tactical_energy — visual brightness is not tactical visibility. Deterministic and discrete: same lights + same layout always produce the same bucket per (cell, level). No per-frame work — built on lighting_rebuilt, queried lazily with a cache.
 
 **Public vars**
-- `var ambient_intensity: float = 0.10`
+- `var ambient_intensity: float = 0.15`
 - `var no_lights_bucket: int = -1`
 - `var vertical_gu_per_storey: float = 0.5`
 - `var inner_full_ratio: float = 0.45`
 - `var face_top_factor: float = 1.00`
-- `var face_se_factor: float = 0.78`
-- `var face_sw_factor: float = 0.56`
+- `var face_se_factor: float = 0.74`
+- `var face_sw_factor: float = 0.48`
 - `var face_enclosed_factor: float = 0.30`
 - `var ao_strength: float = 0.55`
 
@@ -3173,7 +3173,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2683 lines
+extends `Node2D` · 2688 lines
 
 `godot/scripts/world/room.gd`
 

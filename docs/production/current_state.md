@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.69 · **Updated:** 2026-07-23 · **Branch:** main
+**Version:** 0.9.70 · **Updated:** 2026-07-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- bef0737 ALPHA VOXEL LIGHT 0.9.69 - VL-02 readability: axis shading, AO, floor blast
 - b70bd17 ALPHA VOXEL LIGHT 0.9.68 - VL-01 static 6-bucket projection
 - ea935bd ALPHA GRENADE FOUNDATION 0.9.67 - 2026-07-22
 - 1c46b56 ALPHA OBJECTS FOUNDATION 0.9.66 - 2026-07-22
 - 70bc2d0 ALPHA OCCLUSION REDUX 0.9.65 - 2026-07-21
-- 5797213 Revert "ALPHA WIREFRAME REDUX 0.9.64 - 2026-07-21"
 <!-- AUTO:END version_history -->
 
 ---

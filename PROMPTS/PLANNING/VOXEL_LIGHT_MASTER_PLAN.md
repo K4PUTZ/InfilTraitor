@@ -239,6 +239,52 @@ The blast model removes a deterministic scattered subset of voxels per ring
 craters read as bowls is a DESTRUCTION-model change (contiguous removal), not
 a lighting one — flagged for the Director, not silently worked around.
 
+### VL-02d — Tuning + flicker viability probe ✅ 2026-07-24
+
+- **Contrast/brightness tune (Director):** lateral face factors spread wider
+  (`face_se 0.78→0.74`, `face_sw 0.56→0.48`) for a stronger 3D read, and the
+  scene lifted (`ambient 0.10→0.15`, `bucket_luminance` floor 0.16→0.19 with
+  raised mids, top pinned 1.00).
+- **Flicker mechanism proven, NOT enabled.** The whole temporal chain already
+  existed (`_process → update_temporal_all → rebuild_deferred → lighting_rebuilt
+  → repaint`); the one missing link was the field reading
+  `LightSource.energy_multiplier` (it consumed only `visual_energy`). Wired that
+  (1 line). Verified two ways: a unit probe (a voxel by the lamp toggles bucket
+  **11↔2** as `energy_multiplier` goes 1↔0) and a live run (log shows
+  `energy 0.0↔1.0` firing rebuilds).
+  - **Blocker measured:** each toggle re-derives the WHOLE field — **~675 ms on
+    PLAYGROUND**. Fine for a one-off rotation, impossible twice a second. So
+    flicker stays OFF in the map until VL-03's incremental repaint (only the
+    changed lamp's influence set) lands. The `energy_multiplier` support stays
+    in — re-enabling is one `"flicker": true` in the JSON once VL-03 exists.
+
+### VL-D — Destruction visuals (Director backlog, 2026-07-24)
+
+Queued, not yet built. Ordered roughly by dependency:
+
+1. **Soot rings around blast holes.** After a blast, add a black shade to the
+   surviving neighbour voxels' faces that pointed toward the grenade — up to 3
+   rings, strong→medium→faint. Same for the floor crater rim; the crater reads
+   far better once ringed with soot.
+2. **Deeper crater.** Force extra destruction in the voxels directly under the
+   grenade so the floor hole has a bowl shape, not just scatter (this is the
+   DESTRUCTION-model "contiguous removal" change flagged under VL-02c).
+3. **Under-wall floor darkening.** Floor-slab voxels whose top was covered by a
+   wall should read darker when the wall above is blown open — either shade the
+   newly-exposed top at damage time, OR (Director's cleaner idea) **darken at
+   load** every slab voxel that has any wall voxel above it, so exposure
+   naturally reveals the pre-shaded surface. The floor↔wall skirting line is
+   where lighting coherence is judged.
+4. **Wood:** accentuate destruction on the grenade-facing side; ember animation
+   at blast → darken over a few seconds.
+5. **Stone:** barely changes, but still wants soot to show a blast happened.
+6. **Metal:** cannot shatter into removed voxels — model as **denting/warping**
+   (some zones sink) + soot; ember flash faster than wood and cool faster.
+
+Notes: items 4–6 imply a per-voxel **temporal darkening** channel (ember→char)
+distinct from the light bucket — likely a second modulate/alt dimension or a
+short-lived overlay. Ember animation shares the Regime-A cost concern (VL-03).
+
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state
 (persists across rebuilds) · TEST-ZONE trigger to toggle a lamp (context-menu

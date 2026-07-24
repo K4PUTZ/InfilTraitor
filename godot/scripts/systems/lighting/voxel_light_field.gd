@@ -15,7 +15,7 @@ class_name VoxelLightField
 extends RefCounted
 
 ## Tuning — all `var` (Rule 1). Starting values Director-ratified 2026-07-23.
-var ambient_intensity: float = 0.10        ## floor term when a map HAS lights
+var ambient_intensity: float = 0.15        ## floor term when a map HAS lights
 var no_lights_bucket: int = -1             ## <0 = top bucket; maps w/o lights stay lit
 var vertical_gu_per_storey: float = 0.5    ## level distance → GU-equivalent scale
 ## Falloff shape (canon #4: binary-dominant — mostly full-lit or full-shadow,
@@ -33,9 +33,12 @@ var inner_full_ratio: float = 0.45
 ## face, so orienting brightness by WHICH face is exposed gives the silhouette
 ## its 3D read (standard voxel practice). Top catches most light, the two lateral
 ## axes differ so the two visible sides of a block never read flat.
+## Director 2026-07-24: widen the SE↔SW spread for a stronger 3D read, lifting
+## overall brightness at the same time — so the two lateral factors move DOWN
+## for contrast while ambient/bucket floors move UP to keep the scene readable.
 var face_top_factor: float = 1.00
-var face_se_factor: float = 0.78           ## +X neighbour empty → SE-ish face shows
-var face_sw_factor: float = 0.56           ## +Y neighbour empty → SW-ish face shows
+var face_se_factor: float = 0.74           ## +X neighbour empty → SE-ish face shows
+var face_sw_factor: float = 0.48           ## +Y neighbour empty → SW-ish face shows
 var face_enclosed_factor: float = 0.30     ## nothing exposed (interior fill)
 ## Cavity AO: a voxel ringed by solid neighbours at its own level sits in a pit,
 ## so light does not reach it. This is what actually darkens the inside of a
@@ -107,7 +110,12 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 			var d_lvl := absf(float(level - _anchor_level(light))) \
 					/ float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 			var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
-			intensity = maxf(intensity, float(light.visual_energy) * _falloff(d, radius))
+			## VL-03: energy_multiplier carries the temporal state (flicker/pulse) —
+			## LightSource.update_temporal_state() drives it 1↔0 for a broken lamp,
+			## and each toggle fires lighting_rebuilt, so the faces this lamp lights
+			## go dark and back on it. Static lamps keep it at 1.0.
+			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
+			intensity = maxf(intensity, lamp_energy * _falloff(d, radius))
 	## VL-02b: local geometry contrast — the term that makes craters read.
 	intensity *= surface_factor(cell, level)
 	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)

@@ -177,21 +177,26 @@ func detonate_active() -> void:
 					slab.level, true, bomb_def.ring_multipliers)
 				for v in slab.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
-			## VL-02c: the ground takes the blast too. base_level = slab.level keeps
-			## the floor's single destructible plane (D13) at its source ring.
+			## VL-02c/D2: the ground takes the blast — as a CONTIGUOUS crater, not a
+			## ring-scattered stipple. Radii derive from the bomb's range (its ring
+			## count): a solid core, a crumbling rim, nothing beyond. Epicentre is
+			## the centre voxel of the source GU; the same epicentre is fed to every
+			## floor slab so the disc is continuous across GU borders.
+			var n_rings: int = bomb_def.ring_multipliers.size()
+			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
+			var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * 0.55
+			var crater_core: float = crater_max * 0.4
 			for slab_id in affected.get("floors", {}):
 				var floor_slab: Slab = room._slab_registry.get_slab(slab_id)
-				BlastCalculatorClass.apply_container_damage(
-					floor_slab.voxels, floor_slab.id, floor_slab.material,
-					affected["floors"][slab_id],
-					floor_slab.level, true, bomb_def.ring_multipliers)
+				BlastCalculatorClass.apply_crater_damage(
+					floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max)
 				var fd := 0
 				for v in floor_slab.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
-				print_debug("[BLAST]   floor=%s material=%s ring=%d destroyed=%d/%d" %
-					[floor_slab.id, floor_slab.material, affected["floors"][slab_id],
-					fd, floor_slab.voxels.size()])
+				print_debug("[BLAST]   floor=%s crater core=%.1f max=%.1f destroyed=%d/%d" %
+					[floor_slab.id, crater_core, crater_max, fd, floor_slab.voxels.size()])
 				## D18 lazy reveal, finally triggered: the floor's destructible plane
 				## is ONE level, and nothing had ever built the fixed level beneath
 				## it ("Part 3, not built yet" in render_fixed_earth_level's own

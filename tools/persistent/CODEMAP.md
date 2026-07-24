@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28700 lines total** (under `godot/scripts/`)
+**145 scripts · 28779 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1279,7 +1279,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 201 lines
+`class_name BlastCalculator` · 234 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2066,7 +2066,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 387 lines
+extends `SceneTree` · 428 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2094,6 +2094,7 @@ extends `SceneTree` · 387 lines
 - `func test_ring_beyond_range_untouched() -> void:`
 - `func test_soot_rings_spread_by_distance() -> void:`
 - `func test_soot_min_ring_wins_between_two_holes() -> void:`
+- `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
 
 ---
 
@@ -2938,7 +2939,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 248 lines
+`class_name TestZoneController` · 253 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -2957,6 +2958,7 @@ extends `Node2D` · 34 lines
 
 **Public API**
 - `func clear() -> void:`
+- `func cancel_active() -> void:`
 
 ---
 

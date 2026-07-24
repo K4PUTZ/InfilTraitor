@@ -136,6 +136,39 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 			voxel.set_damage(Voxel.DamageState.CRACKED)
 
 
+## VL-D2 — Contiguous crater on the ground.
+##
+## The ring/hash-rank model (apply_container_damage) scatters holes across a GU,
+## which never reads as a crater — half the floor stippled away, no shape. This
+## carves the floor RADIALLY from the grenade's epicentre instead: a solid core
+## out to core_radius (a real bowl bottom), a crumbling rim out to max_radius
+## (deterministic FNV threshold falling to 0, so the edge is ragged not a drawn
+## circle), nothing beyond. This is the "contiguous removal" flagged under
+## VL-02c; it also makes the soot rings read as rings around one hole instead of
+## merging into a stipple. Floors only — walls/roofs keep the ring model, their
+## holes already read against the wall silhouette.
+##
+## epicenter is in VOXEL coords; each affected floor slab passes its own voxels
+## and the SAME global epicentre, so the destroyed disc is contiguous across GU
+## boundaries. Deterministic (no RNG), same inputs → same crater.
+static func apply_crater_damage(voxels: Array, container_id: String,
+		epicenter: Vector2i, core_radius: float, max_radius: float) -> void:
+	var rim_span: float = maxf(max_radius - core_radius, 0.001)
+	for voxel in voxels:
+		var d: float = Vector2(voxel.grid_pos - epicenter).length()
+		if d <= core_radius:
+			voxel.set_damage(Voxel.DamageState.DESTROYED)
+		elif d <= max_radius:
+			## Probability of removal falls 1→0 across the rim; a deterministic
+			## per-voxel hash in [0,1) is compared against it, so the same voxels
+			## always go and the boundary is ragged rather than a perfect circle.
+			var keep_prob: float = 1.0 - (d - core_radius) / rim_span
+			var key: String = "%s:CRATER:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
+			var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
+			if h < keep_prob:
+				voxel.set_damage(Voxel.DamageState.DESTROYED)
+
+
 ## Deterministic "which N of M" — hash-and-rank, mirroring
 ## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
 ## inputs always produce the same subset, no RNG, nothing stored.

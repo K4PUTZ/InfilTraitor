@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.71 · **Updated:** 2026-07-24 · **Branch:** main
+**Version:** 0.9.72 · **Updated:** 2026-07-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 7e47c7e ALPHA VOXEL LIGHT 0.9.71 - VL-D1 soot rings around blast holes
 - 27cb8c8 ALPHA VOXEL LIGHT 0.9.70 - VL-02d contrast/brightness tune + flicker probe
 - bef0737 ALPHA VOXEL LIGHT 0.9.69 - VL-02 readability: axis shading, AO, floor blast
 - b70bd17 ALPHA VOXEL LIGHT 0.9.68 - VL-01 static 6-bucket projection
 - ea935bd ALPHA GRENADE FOUNDATION 0.9.67 - 2026-07-22
-- 1c46b56 ALPHA OBJECTS FOUNDATION 0.9.66 - 2026-07-22
 <!-- AUTO:END version_history -->
 
 ---

@@ -33,6 +33,7 @@ func _init() -> void:
 	test_ring_beyond_range_untouched()
 	test_soot_rings_spread_by_distance()
 	test_soot_min_ring_wins_between_two_holes()
+	test_crater_core_solid_rim_ragged_beyond_intact()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -367,6 +368,46 @@ func test_soot_min_ring_wins_between_two_holes() -> void:
 		_pass("x=1,3 ring 0 (adjacent to a hole); x=2 ring 1 (min of the two paths)")
 	else:
 		_fail("Expected rings [0,1,0] for x=1,2,3; got [%d,%d,%d]" % [r1, r2, r3])
+	print("")
+
+
+## VL-D2 — the radial crater: everything inside core_radius is DESTROYED, the
+## rim (core..max) is partially removed (deterministically), and everything
+## beyond max_radius is untouched. A 25×1 row from the epicentre makes the
+## three zones unambiguous.
+func test_crater_core_solid_rim_ragged_beyond_intact() -> void:
+	print("[12] Radial crater: solid core, ragged rim, intact beyond\n")
+
+	var slab := Slab.new("CRATER_ROW", Vector2i.ZERO, Slab.Role.FLOOR, 0, "earth")
+	var voxels: Array = []
+	for x in range(25):
+		voxels.append(VoxelClass.new(Vector2i(x, 0), 0, slab))
+	var epicenter := Vector2i(0, 0)
+	BlastCalculatorClass.apply_crater_damage(voxels, slab.id, epicenter, 7.0, 17.0)
+
+	var core_all_destroyed := true
+	var beyond_all_intact := true
+	var rim_destroyed := 0
+	var rim_intact := 0
+	for v in voxels:
+		var d: float = float(v.grid_pos.x)
+		var destroyed: bool = v.damage_state == Voxel.DamageState.DESTROYED
+		if d <= 7.0:
+			if not destroyed: core_all_destroyed = false
+		elif d <= 17.0:
+			if destroyed: rim_destroyed += 1
+			else: rim_intact += 1
+		else:
+			if destroyed: beyond_all_intact = false
+
+	if not core_all_destroyed:
+		_fail("A voxel inside core_radius survived")
+	elif not beyond_all_intact:
+		_fail("A voxel beyond max_radius was destroyed")
+	elif rim_destroyed == 0 or rim_intact == 0:
+		_fail("Rim was all-or-nothing (destroyed=%d intact=%d) — expected a mix" % [rim_destroyed, rim_intact])
+	else:
+		_pass("Core solid, beyond intact, rim mixed (%d destroyed / %d intact)" % [rim_destroyed, rim_intact])
 	print("")
 
 

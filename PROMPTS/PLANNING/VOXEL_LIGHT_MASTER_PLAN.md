@@ -281,9 +281,24 @@ a lighting one — flagged for the Director, not silently worked around.
    - *Texture note:* with the current scattered hash-ranked destruction, many
      small holes' halos merge into one burned patch rather than crisp per-hole
      rings — will read as distinct rings once item 2 (contiguous crater) lands.
-2. **Deeper crater.** Force extra destruction in the voxels directly under the
-   grenade so the floor hole has a bowl shape, not just scatter (this is the
-   DESTRUCTION-model "contiguous removal" change flagged under VL-02c).
+2. **Deeper crater ✅ LANDED 2026-07-24 (VL-D2).** The floor no longer uses the
+   ring/hash-rank scatter (which stippled ~half a GU away with no shape); it's
+   carved RADIALLY from the grenade epicentre by `BlastCalculator.
+   apply_crater_damage()` — a solid core out to `core_radius`, a crumbling rim
+   (deterministic FNV threshold falling to 0) out to `max_radius`, nothing
+   beyond. Radii derive from the bomb's range: `max = n_rings × 8 × 0.55`,
+   `core = max × 0.4` (frag → core 7, max 17.6 voxels). Epicentre = centre voxel
+   of the source GU, fed identically to every affected floor slab so the disc is
+   contiguous across GU borders. Walls/roofs keep the ring model (their holes
+   read against the wall silhouette). Verified: centre GU 51/64 destroyed
+   falling radially to 36 → 12 → 5 → 0 (was a flat ~32 scattered). Soot rings
+   now halo one contiguous hole instead of merging into stipple.
+   - *Evidence:* `auto_2026-07-24_19-31-45.png`; blast_calculator_selftest 14/14
+     (new: core solid / rim ragged / beyond intact); lint clean.
+   - *Open polish (Director's call):* the revealed crater floor and the soot are
+     both dark, so bowl-depth and scorch can blend. Distinguishing them wants
+     either a lighter revealed-substrate colour or stronger cavity AO on the
+     revealed level — a tuning pass, flagged not silently taken.
 3. **Under-wall floor darkening.** Floor-slab voxels whose top was covered by a
    wall should read darker when the wall above is blown open — either shade the
    newly-exposed top at damage time, OR (Director's cleaner idea) **darken at

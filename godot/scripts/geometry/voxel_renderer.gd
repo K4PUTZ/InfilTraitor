@@ -60,13 +60,18 @@ const GHOST_ALPHAS: Array[float] = [0.08, 0.16, 0.24]
 ## encode_light_alt()/decode_light_*() are the ONLY owners of this mapping —
 ## occlusion restore, light repaint and any future consumer round-trip through
 ## them. Never hand-build an alternative id.
-const LIGHT_BUCKET_COUNT: int = 6
-const LIGHT_ALT_FLIP_BASE: int = 5   ## flipped dim alts occupy FLIP_BASE+1 .. FLIP_BASE+5
+## VL-02b: widened 6 → 12. Six could not carry the lamp term AND the new
+## per-voxel surface/AO shading at once — axis factors collapsed into the same
+## bucket as their neighbours and blast craters stayed invisible.
+const LIGHT_BUCKET_COUNT: int = 12
+const LIGHT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT - 1  ## flipped dim alts follow the unflipped run
 
 ## Bucket → modulate luminance. Bucket 0 must stay dark-but-readable (Director:
 ## full shadow still shows texture). Tunable; changes take effect on the next
 ## map load / rotation (alternatives are minted at source registration).
-var bucket_luminance: Array[float] = [0.16, 0.30, 0.45, 0.62, 0.80, 1.00]
+var bucket_luminance: Array[float] = [
+	0.16, 0.22, 0.28, 0.35, 0.42, 0.50, 0.58, 0.66, 0.74, 0.83, 0.91, 1.00,
+]
 
 
 ## VL-01: (bucket, flipped) → alternative id. Single source of truth.
@@ -759,6 +764,34 @@ func _restore_ghosted_cells() -> void:
 ## frame. Pure view layer, same contract as occlusion (O1): no Voxel state, no
 ## dirty flag, no persistence — placement decisions (source, atlas coords,
 ## flip) are read back from the cell and preserved; only the bucket changes.
+## VL-02b — level → set of occupied cells, for the field's surface/AO shading.
+## The renderer owns the tilemaps, so it owns this snapshot; a Dictionary set
+## keeps the field's neighbour probes O(1) instead of a TileMap API call each.
+## Includes negative (floor/slab) levels so floor craters shade like wall ones.
+func build_occupancy() -> Dictionary:
+	var occupancy: Dictionary = {}
+	for level in range(_voxel_layers.size()):
+		var level_set: Dictionary = {}
+		for cell in _voxel_layers[level].get_used_cells():
+			level_set[cell] = true
+		occupancy[level] = level_set
+	for level in _negative_voxel_layers.keys():
+		var neg_set: Dictionary = {}
+		for cell in _negative_voxel_layers[level].get_used_cells():
+			neg_set[cell] = true
+		occupancy[level] = neg_set
+	## Cells hidden by occlusion are erased from the tilemap but are still SOLID
+	## geometry — omitting them would make every ghosted column read as a cavity
+	## and light up its neighbours the moment the agent walked past.
+	for cell in _ghosted_cells.keys():
+		for record in _ghosted_cells[cell]:
+			var lvl: int = record["level"]
+			if not occupancy.has(lvl):
+				occupancy[lvl] = {}
+			occupancy[lvl][cell] = true
+	return occupancy
+
+
 func apply_light_field(field) -> void:
 	if field == null:
 		return

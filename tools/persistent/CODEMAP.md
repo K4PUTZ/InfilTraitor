@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28297 lines total** (under `godot/scripts/`)
+**145 scripts · 28493 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -675,7 +675,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1041 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1074 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1278,7 +1278,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 141 lines
+`class_name BlastCalculator` · 151 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1650,7 +1650,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 139 lines
+`class_name VoxelLightField` · extends `RefCounted` · 231 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -1658,14 +1658,19 @@ extends `Node2D` · 43 lines
 
 **Public vars**
 - `var ambient_intensity: float = 0.10`
-- `var no_lights_bucket: int = 5`
-- `var facing_dark_ratio: float = 0.60`
+- `var no_lights_bucket: int = -1`
 - `var vertical_gu_per_storey: float = 0.5`
 - `var inner_full_ratio: float = 0.45`
+- `var face_top_factor: float = 1.00`
+- `var face_se_factor: float = 0.78`
+- `var face_sw_factor: float = 0.56`
+- `var face_enclosed_factor: float = 0.30`
+- `var ao_strength: float = 0.55`
 
 **Public API**
-- `func build(lights: Array, shadow_results: Array, top_wall_level: int) -> void:`
+- `func build(lights: Array, shadow_results: Array, top_wall_level: int, occupancy: Dictionary = {}) -> void:`
 - `func bucket_for(cell: Vector2i, level: int) -> int:`
+- `func surface_factor(cell: Vector2i, level: int) -> float:`
 
 ---
 
@@ -2934,7 +2939,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 195 lines
+`class_name TestZoneController` · 225 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3168,7 +3173,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2652 lines
+extends `Node2D` · 2683 lines
 
 `godot/scripts/world/room.gd`
 

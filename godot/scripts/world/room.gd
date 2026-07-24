@@ -412,6 +412,13 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
 	agent.z_index = max_voxel_z_index + 1
 	print("[OCC-03] Agent z_index set to %d (max voxel layer z_index: %d, room size: %s)" % [agent.z_index, max_voxel_z_index, room_size])
+	## VL-02a: overhead fixtures/shafts are DRAWN at ceiling_lift — above the whole
+	## wall stack on screen — so they must sort above it too. Their old z values
+	## (rays 0; lamps WALL_BASE_Z_INDEX + ceil_floors + 1 = 19) were derived from the
+	## ceiling-FIXTURE height, not the built wall height, so any voxel level above 9
+	## (z >= 20) drew over them. Recomputed per map load, like the agent's, because
+	## layer count is map-dependent. Same family as VL-01's OVERHEAD-anchor bug.
+	_apply_overhead_overlay_z(max_voxel_z_index)
 	assert(agent.z_index < 200, "Agent z_index must stay below dev overlay (200)")
 	
 	_spawn_guards(view_layout.get("enemy_defs", []))
@@ -824,6 +831,8 @@ func _ready() -> void:
 	_ceiling_overlay = CeilingPropOverlayClass.new()
 	add_child(_ceiling_overlay)
 	var ceil_floors: int = int(_base_layout.get("max_floors", 1))
+	## VL-02a: real z is assigned by _apply_overhead_overlay_z() from the built
+	## wall stack; this is only the pre-load placeholder.
 	_ceiling_overlay.z_index = WALL_BASE_Z_INDEX + ceil_floors + 1
 	## Lift to ceiling height: top of the wall stack + ~0.75 storey so fixtures read
 	## as mounted overhead. True "5th-floor" verticality needs taller storeys (pairs
@@ -837,6 +846,9 @@ func _ready() -> void:
 	_light_ray_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
 	## Initial populate: _repaint_world_shadows() ran before this node existed, so feed it now.
 	_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
+	## VL-02a: both overhead overlays exist only now — load_map()'s own call ran
+	## before they were constructed, so assign their real z here too.
+	_apply_overhead_overlay_z(_voxel_renderer.get_max_voxel_z_index())
 
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
@@ -1534,6 +1546,20 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 
 
 ## Wrapper: updates the HUD alert label from alert meter value
+## VL-02a — put the overhead light fixtures and their ray shafts above the whole
+## voxel stack (they are drawn at ceiling_lift, i.e. above it on screen) while
+## staying below the agent-adjacent dev overlays. Null-guarded: load_map() runs
+## once from _ready() BEFORE these overlays are constructed.
+func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
+	if _light_ray_overlay != null:
+		_light_ray_overlay.z_index = max_voxel_z_index + 2
+	if _ceiling_overlay != null:
+		_ceiling_overlay.z_index = max_voxel_z_index + 3
+	if _light_ray_overlay != null and _ceiling_overlay != null:
+		print("[VL-02a] overhead z: rays=%d lamps=%d (max voxel layer z=%d)" % [
+			_light_ray_overlay.z_index, _ceiling_overlay.z_index, max_voxel_z_index])
+
+
 ## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
 ## Connected to lighting_rebuilt: runs on map load, perspective rotation and
 ## any light change. The field stays queryable on _voxel_light_field — the
@@ -1552,7 +1578,8 @@ func _repaint_voxel_light_buckets() -> void:
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
-			top_wall_level)
+			top_wall_level,
+			_voxel_renderer.build_occupancy())
 	_voxel_renderer.apply_light_field(_voxel_light_field)
 
 
@@ -2399,7 +2426,11 @@ func _run_auto_screenshot_capture() -> void:
 			key_up.keycode = KEY_ENTER
 			key_up.pressed = false
 			Input.parse_input_event(key_up)
-			for _j in range(10):
+			## VL-02b: _flash_white() runs a 0.03s + 0.25s tween. Ten frames
+			## caught the capture mid-flash, washing the crater out of every
+			## detonation screenshot. Wait past the tween so the shot shows
+			## the real damage.
+			for _j in range(45):
 				await get_tree().process_frame
 		if capture_action == "test_zone_escape":
 			var esc_down := InputEventKey.new()

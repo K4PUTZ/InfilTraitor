@@ -192,6 +192,53 @@ checks the file source first). Lamps therefore live in the JSON's
 `legacy_compiler.lights` array (the bridge section `FileMapSource` translates
 into the runtime spec). Adding lights to the code spec does nothing.
 
+### VL-02a/b/c — Readability pass ✅ LANDED 2026-07-23
+
+Director feedback on the VL-01 build: overhead fixtures sorted wrong, blast
+damage was invisible, and grenades spared the ground.
+
+- **VL-02a — overhead z-order.** Ray shafts sat at `z = 0` and lamp fixtures at
+  `WALL_BASE_Z_INDEX + ceil_floors + 1 = 19`, while wall voxels reach
+  `10 + level = 33`. Both are DRAWN at `ceiling_lift` (above the stack on
+  screen) so walls covered them. Now derived from the built stack like the
+  agent's: rays `max+2`, lamps `max+3` — measured **rays=35 lamps=36 vs max
+  voxel z=33**. Recomputed per map load (layer count is map-dependent).
+- **VL-02b — surface shading (the real fix for invisible craters).** Light
+  alone could never show a hole: two voxels centimetres apart get the same lamp
+  distance, and the only occlusion available (`ShadowProjector`) is
+  GU-resolution — 8×8 voxels. Added per-voxel **axis factors** (top 1.00 /
+  SE 0.78 / SW 0.56 / enclosed 0.30, by which neighbour is empty) plus
+  **contact AO**. Buckets widened **6 → 12**; six collapsed the new terms into
+  their neighbours' bucket. VL-01's border-guess `_facing_factor` was removed —
+  it only held for slice-built walls and could not see destruction.
+  - *AO subtlety, found and corrected mid-implementation:* counting a voxel's
+    OWN lateral neighbours darkens a flush wall exactly as much as a recess
+    (a wall voxel already has solid neighbours along its plane). AO must sample
+    the geometry ringing the EMPTY cell the face looks out into. Verified on a
+    synthetic wall: flush face **0.780**, notch interior **0.566**, flush top
+    **1.000**, deep interior **0.300**.
+- **VL-02c — the ground takes the blast.** `find_affected_containers()` skipped
+  every non-CEILING slab, so floors were pristine; now FLOOR/INTERIOR slabs are
+  collected in their own bucket (different vertical ring step — a floor's
+  destructible plane is one level, D13). **24 floor slabs** hit with correct
+  falloff (ring1 22/64, ring2 11/64, ring3 3/64). Also triggered D18's lazy
+  fixed-level reveal for the first time (`render_fixed_earth_level`, whose own
+  docstring said "Part 3, not built yet") — without it the crater had no bottom
+  and the legacy floor plane showed through as untouched ground.
+- Destruction now re-derives the light field, so new cavity walls pick up their
+  shading instead of keeping the intact voxels' values.
+
+**Evidence:** lint 0 real errors; blast_calculator 11/11, bake 19/19,
+roof_bake 8/8, floor_integration 9/9, roof_integration 5/5; ghost round-trip
+IDENTICAL all four views; bake 1386 ms (vs 1323 at 6 buckets — 22 alts/tile
+costs ~60 ms).
+
+**Known limitation (honest):** a floor crater reads as SPECKLE, not a bowl.
+The blast model removes a deterministic scattered subset of voxels per ring
+(hash-and-rank, canon), so the hole has no contiguous volume to shade. Making
+craters read as bowls is a DESTRUCTION-model change (contiguous removal), not
+a lighting one — flagged for the Director, not silently worked around.
+
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state
 (persists across rebuilds) · TEST-ZONE trigger to toggle a lamp (context-menu

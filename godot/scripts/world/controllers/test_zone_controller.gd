@@ -150,8 +150,9 @@ func detonate_active() -> void:
 			var affected := BlastCalculatorClass.find_affected_containers(
 				gu_rings, room._edge_registry, room._slab_registry)
 
-			print_debug("[BLAST] gu=%s rings=%s affected_slices=%d affected_roofs=%d" %
-				[g["gu_cell"], gu_rings, affected["slices"].size(), affected["roofs"].size()])
+			print_debug("[BLAST] gu=%s rings=%s affected_slices=%d affected_roofs=%d affected_floors=%d" %
+				[g["gu_cell"], gu_rings, affected["slices"].size(), affected["roofs"].size(),
+				affected.get("floors", {}).size()])
 			for slice_id in affected["slices"]:
 				var slice: Slice = room._edge_registry.get_slice(slice_id)
 				BlastCalculatorClass.apply_container_damage(
@@ -169,9 +170,38 @@ func detonate_active() -> void:
 				BlastCalculatorClass.apply_container_damage(
 					slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
 					slab.level, true, bomb_def.ring_multipliers)
+			## VL-02c: the ground takes the blast too. base_level = slab.level keeps
+			## the floor's single destructible plane (D13) at its source ring.
+			for slab_id in affected.get("floors", {}):
+				var floor_slab: Slab = room._slab_registry.get_slab(slab_id)
+				BlastCalculatorClass.apply_container_damage(
+					floor_slab.voxels, floor_slab.id, floor_slab.material,
+					affected["floors"][slab_id],
+					floor_slab.level, true, bomb_def.ring_multipliers)
+				var fd := 0
+				for v in floor_slab.voxels:
+					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
+				print_debug("[BLAST]   floor=%s material=%s ring=%d destroyed=%d/%d" %
+					[floor_slab.id, floor_slab.material, affected["floors"][slab_id],
+					fd, floor_slab.voxels.size()])
+				## D18 lazy reveal, finally triggered: the floor's destructible plane
+				## is ONE level, and nothing had ever built the fixed level beneath
+				## it ("Part 3, not built yet" in render_fixed_earth_level's own
+				## docstring). Without this the crater has no bottom — the voxels
+				## vanish and the legacy floor plane shows through, so a real hole
+				## read as untouched ground. One level, on demand, per D18 — never
+				## a range.
+				if fd > 0:
+					room._voxel_renderer.render_fixed_earth_level(
+						floor_slab.gu_cell, floor_slab.level - 1)
 
 			room._voxel_renderer.process_dirty(room._edge_registry)
 			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
+			## VL-02b/c: geometry just changed — re-derive the light field so the
+			## new cavity walls pick up their surface/AO shading and the crater
+			## reads as depth instead of a flat recolour of intact voxels.
+			if room.has_method("_repaint_voxel_light_buckets"):
+				room._repaint_voxel_light_buckets()
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()

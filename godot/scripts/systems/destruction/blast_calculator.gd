@@ -70,14 +70,24 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 				if not hit_slices.has(slice.id) or ring < hit_slices[slice.id]:
 					hit_slices[slice.id] = ring
 
+	## VL-02c (Director, 2026-07-23): a blast cracks the GROUND as well as the
+	## walls and roof. FLOOR/INTERIOR slabs were skipped here, so a grenade left
+	## the floor pristine — the crater had no bottom. Roofs and floors are kept
+	## in separate buckets because they take different vertical ring steps in
+	## apply_container_damage(): a roof advances one ring per raw level, while a
+	## floor's destructible plane is a single level (D13) that must stay at the
+	## source ring or its one layer would fall outside the multiplier table.
 	var hit_roofs: Dictionary = {}
+	var hit_floors: Dictionary = {}
 	for slab in slab_registry.all_slabs():
-		if slab.role != Slab.Role.CEILING:
+		if not gu_rings.has(slab.gu_cell):
 			continue
-		if gu_rings.has(slab.gu_cell):
+		if slab.role == Slab.Role.CEILING:
 			hit_roofs[slab.id] = gu_rings[slab.gu_cell]
+		else:
+			hit_floors[slab.id] = gu_rings[slab.gu_cell]
 
-	return {"slices": hit_slices, "roofs": hit_roofs}
+	return {"slices": hit_slices, "roofs": hit_roofs, "floors": hit_floors}
 
 
 ## Applies ring falloff + material resistance to one container's (Slice or

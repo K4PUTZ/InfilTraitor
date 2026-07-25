@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.77 · **Updated:** 2026-07-24 · **Branch:** main
+**Version:** 0.9.78 · **Updated:** 2026-07-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- bea7916 ALPHA VOXEL LIGHT 0.9.77 - VL-PERSIST destruction survives rotation
 - 5cdd905 ALPHA VOXEL LIGHT 0.9.76 - VL-PERF-BAKE cache baked sources across rotations
 - f150079 ALPHA VOXEL LIGHT 0.9.75 - VL-PERF light-field repaint optimizations
 - 72d6b30 ALPHA VOXEL LIGHT 0.9.74 - VL-03-PERF lazy alt minting halves rotation cost
 - 7d70e68 ALPHA VOXEL LIGHT 0.9.73 - VL-D2 tuning: narrower crater, lighter soot, crater-floor soot
-- 27fe652 ALPHA VOXEL LIGHT 0.9.72 - VL-D2 contiguous radial floor crater
 <!-- AUTO:END version_history -->
 
 ---

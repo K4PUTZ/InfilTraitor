@@ -166,6 +166,14 @@ var _crater_floor_soot: Dictionary = {}
 var _base_damage: Dictionary = {}   ## base voxel key → damage_state (>0)
 var _base_soot: Dictionary = {}     ## base voxel key → soot_ring (>=0)
 
+## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
+## the INTACT layout. Recomputed each build from the freshly rendered geometry
+## (before reapply_damage), so it survives detonation and rotation on its own —
+## a floor voxel here reads darker once exposed (it never saw the sun). Not
+## base-coord: it's derived from the current view's geometry, which is rebuilt
+## intact every rotation, so recomputing per build is correct and self-consistent.
+var _under_structure: Dictionary = {}
+
 
 ## Voxel-grid size of the base (N-frame) layout — GU size × 8. The perspective
 ## rotation of a voxel coordinate is the SAME 90° rotation as a GU cell, at 8×
@@ -454,6 +462,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	room_size = view_layout.get("size", room_size)
 	_map_buffer = view_layout.get("buffer", 0)
 	_room_builder.build_from_layout(view_layout, room_size)
+	## VL-D3: floor columns under structure, from the intact just-built geometry.
+	_under_structure = _voxel_renderer.columns_with_structure()
 	_room_size = room_size
 	_assert_geometry_rendered()
 	_refresh_gu_grid_overlay()
@@ -1067,6 +1077,10 @@ func _set_perspective(direction: String) -> void:
 		_update_guard_los_data()
 		_center_camera(agent.cell)
 
+		## VL-D3: capture which floor columns are under structure from the INTACT
+		## geometry (build just rendered everything unbroken) — before reapply
+		## damage punches holes, so it reflects the ORIGINAL cover.
+		_under_structure = _voxel_renderer.columns_with_structure()
 		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
 		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
 		## soot in this view (build_from_layout rebuilt every Voxel intact).
@@ -1678,7 +1692,8 @@ func _repaint_voxel_light_buckets() -> void:
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
 			_voxel_renderer.build_occupancy(),
-			_build_soot_snapshot())
+			_build_soot_snapshot(),
+			_under_structure)
 	_voxel_renderer.apply_light_field(_voxel_light_field)
 
 

@@ -299,12 +299,21 @@ a lighting one — flagged for the Director, not silently worked around.
      both dark, so bowl-depth and scorch can blend. Distinguishing them wants
      either a lighter revealed-substrate colour or stronger cavity AO on the
      revealed level — a tuning pass, flagged not silently taken.
-3. **Under-wall floor darkening.** Floor-slab voxels whose top was covered by a
-   wall should read darker when the wall above is blown open — either shade the
-   newly-exposed top at damage time, OR (Director's cleaner idea) **darken at
-   load** every slab voxel that has any wall voxel above it, so exposure
-   naturally reveals the pre-shaded surface. The floor↔wall skirting line is
-   where lighting coherence is judged.
+3. **Under-wall floor darkening ✅ LANDED 2026-07-24 (VL-D3).** Took the
+   Director's cleaner idea: darken the floor that was under structure, so
+   exposure reveals the difference naturally. `VoxelRenderer.
+   columns_with_structure()` returns every column with a wall/block/roof voxel
+   (positive levels); `room._under_structure` is computed from it after each
+   build FROM THE INTACT geometry (before reapply_damage), so it reflects the
+   ORIGINAL cover and survives detonation + rotation (recomputed per build).
+   `VoxelLightField` multiplies floor voxels (level<0) in those columns by
+   `under_structure_factor = 0.68`. When a blast opens a wall base, the exposed
+   floor beneath reads darker than always-open floor — the skirting line now
+   reads coherent.
+   - *Evidence:* unit probe (exposed floor bucket 11 → 7 under structure); A/B
+     capture with a grenade at the concrete base — 501 px darkened along the
+     exposed under-wall floor, mean −14; bake 19/19, blast 14/14, floor 9/9,
+     persist 2/2; lint clean. All `var`, tunable.
 4. **Wood:** accentuate destruction on the grenade-facing side; ember animation
    at blast → darken over a few seconds.
 5. **Stone:** barely changes, but still wants soot to show a blast happened.

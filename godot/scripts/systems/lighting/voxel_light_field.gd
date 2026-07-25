@@ -55,11 +55,17 @@ var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4
 ## through. Lifted from [0.10,0.28,0.55]; paired with the raised dark buckets.
 var soot_darkening: Array[float] = [0.16, 0.36, 0.60]  ## ring 0/1/2 multiplier
 
+## VL-D3 — floor voxels that sat under a wall/block never saw the sun, so when a
+## blast exposes their top they read darker than always-open floor. A gentle
+## multiplier (Director: "uma sombrinha um pouco mais forte pra diferenciar").
+var under_structure_factor: float = 0.68
+
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult
 var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEAD anchor)
 var _occupancy: Dictionary = {}            ## level:int -> {Vector2i: true}
 var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
+var _under_structure: Dictionary = {}      ## {Vector2i: true} floor cols under structure (VL-D3)
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
 var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
 
@@ -74,12 +80,16 @@ var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> flo
 ## occupancy: level -> set of occupied cells, supplied by VoxelRenderer (it owns
 ## the tilemaps). Drives the surface/AO terms above; empty = shading disabled.
 ## soot: level -> {cell: ring}, from the blast (VL-D1); empty = no scorch.
+## under_structure: {cell: true} floor columns that had a wall above at load
+## (VL-D3); their floor voxels read darker once exposed.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
-		occupancy: Dictionary = {}, soot: Dictionary = {}) -> void:
+		occupancy: Dictionary = {}, soot: Dictionary = {},
+		under_structure: Dictionary = {}) -> void:
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
 	_occupancy = occupancy
 	_soot = soot
+	_under_structure = under_structure
 	_shadow_by_light.clear()
 	_bucket_cache.clear()
 	_lamp_cache.clear()
@@ -110,6 +120,9 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 	intensity *= surface_factor(cell, level)
 	## VL-D1: blast soot — scorch the voxels ringing a hole.
 	intensity *= soot_factor(cell, level)
+	## VL-D3: floor that was under a wall reads darker once exposed.
+	if level < 0 and _under_structure.has(cell):
+		intensity *= under_structure_factor
 	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
 
 

@@ -807,6 +807,19 @@ func build_occupancy() -> Dictionary:
 	return occupancy
 
 
+## VL-D3 — columns (x,y) covered by any wall/block/roof voxel (positive levels).
+## A floor voxel in such a column was never sun-exposed; when a blast opens the
+## wall above and exposes its top, it should read darker than always-open floor.
+## Computed from the INTACT geometry right after a build (before reapply_damage),
+## so it reflects the ORIGINAL cover, not the post-blast state.
+func columns_with_structure() -> Dictionary:
+	var cols: Dictionary = {}
+	for level in range(_voxel_layers.size()):
+		for cell in _voxel_layers[level].get_used_cells():
+			cols[cell] = true
+	return cols
+
+
 func apply_light_field(field) -> void:
 	if field == null:
 		return

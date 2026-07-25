@@ -315,6 +315,47 @@ Notes: items 4–6 imply a per-voxel **temporal darkening** channel (ember→cha
 distinct from the light bucket — likely a second modulate/alt dimension or a
 short-lived overlay. Ember animation shares the Regime-A cost concern (VL-03).
 
+### VL-PERF — Rotation performance (Director flagged, 2026-07-24)
+
+Rotation felt far too slow (~5.7s off-screen throttled — worse on mobile). Full
+profile of one rotation:
+
+| Stage | Before | After VL-PERF |
+|---|---|---|
+| layout_with_perspective | 1ms | 1ms |
+| build: floor slabs | 112ms | 112ms |
+| build: border fixed levels (dev scaffold) | 92ms | 92ms |
+| build: slice+junction gen | 46ms | 46ms |
+| build: **bake (compositor ~100ms + tile registration ~730ms)** | ~830ms | ~830ms |
+| build: render walls | 372ms | 372ms |
+| lighting: tactical (shadow+exposure) | 4ms | 4ms |
+| lighting: **light-field repaint** | ~675ms | **~590ms** |
+| lighting: overlays | ~270ms | ~270ms |
+| **minting light alternatives (VL-01 eager)** | **~3000ms** | **~0 (lazy)** |
+
+**Landed optimizations:**
+1. **Lazy alt minting** (VL-03-PERF, committed 0.9.74): −3000ms. Was over half
+   the rotation — VL-01 eager-minted 22 alternatives on all 13k tiles.
+2. **Lamp-term cache per (GU, level)**: −220ms. The lamp falloff is a
+   GU-resolution quantity; all 64 voxels of a column share it. Was recomputed
+   (sqrt per light) 108k× when ~5k distinct pairs exist.
+3. **surface_factor level-set hoist**: −110ms. Fetched each level's occupancy
+   set once instead of ~9× per voxel.
+
+Net: rotation ~5.7s → ~2.0s off-screen (proportionally faster with focus).
+Light-field repaint down from ~675ms to ~590ms; ghost round-trip still
+IDENTICAL, lighting visually unchanged, bake 19/19 + blast 14/14.
+
+**Biggest remaining cost — NOT yet taken:** bake **tile registration ~730ms**
+(~9k create_tile calls). The baked pages depend on (material, facade) combos,
+which are identical across rotations — only placement changes — so the sources
+could plausibly be reused instead of pruned+rebuilt each rotation. That's a
+bake-system change (riskier, outside the lighting scope), flagged for a
+decision rather than taken unilaterally. Border scaffolding (92ms) is also
+removable (dev-only).
+
+**Still pending (Director decision):** destruction persistence through rotation.
+
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state
 (persists across rebuilds) · TEST-ZONE trigger to toggle a lamp (context-menu

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.74 · **Updated:** 2026-07-24 · **Branch:** main
+**Version:** 0.9.75 · **Updated:** 2026-07-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 72d6b30 ALPHA VOXEL LIGHT 0.9.74 - VL-03-PERF lazy alt minting halves rotation cost
 - 7d70e68 ALPHA VOXEL LIGHT 0.9.73 - VL-D2 tuning: narrower crater, lighter soot, crater-floor soot
 - 27fe652 ALPHA VOXEL LIGHT 0.9.72 - VL-D2 contiguous radial floor crater
 - 7e47c7e ALPHA VOXEL LIGHT 0.9.71 - VL-D1 soot rings around blast holes
 - 27cb8c8 ALPHA VOXEL LIGHT 0.9.70 - VL-02d contrast/brightness tune + flicker probe
-- bef0737 ALPHA VOXEL LIGHT 0.9.69 - VL-02 readability: axis shading, AO, floor blast
 <!-- AUTO:END version_history -->
 
 ---

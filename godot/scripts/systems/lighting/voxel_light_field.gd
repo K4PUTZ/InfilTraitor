@@ -61,6 +61,7 @@ var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEA
 var _occupancy: Dictionary = {}            ## level:int -> {Vector2i: true}
 var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
+var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
 
 
 ## Rebuild the field from the current lighting state. Called from room on every
@@ -81,6 +82,7 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 	_soot = soot
 	_shadow_by_light.clear()
 	_bucket_cache.clear()
+	_lamp_cache.clear()
 	for result in shadow_results:
 		if result != null and result.source_light != null:
 			_shadow_by_light[result.source_light.get_instance_id()] = result
@@ -98,14 +100,29 @@ func bucket_for(cell: Vector2i, level: int) -> int:
 
 func _compute_bucket(cell: Vector2i, level: int) -> int:
 	var top_bucket: int = VoxelRenderer.LIGHT_BUCKET_COUNT - 1
-	## Lamp term. A map with no lights reads as fully lit rather than pitch black,
-	## but still takes the surface shading below — that is what gives an unlit
-	## test map its geometry read.
+	## The lamp term is a GU-resolution quantity (the falloff is measured GU→GU),
+	## so all 64 voxels of a GU column at one level share it — compute once per
+	## (GU, level) and cache. This was the repaint's hot loop: the sqrt-per-light
+	## ran 108k× when ~5k distinct (GU, level) pairs would do (VL-PERF).
+	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
+	var intensity: float = _lamp_intensity(gu, level, top_bucket)
+	## VL-02b: local geometry contrast — the term that makes craters read.
+	intensity *= surface_factor(cell, level)
+	## VL-D1: blast soot — scorch the voxels ringing a hole.
+	intensity *= soot_factor(cell, level)
+	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+
+
+## Lamp-only intensity for a GU column at one level, cached per (GU, level).
+func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
+	var key := Vector3i(gu.x, gu.y, level)
+	if _lamp_cache.has(key):
+		return _lamp_cache[key]
+	## A map with no lights reads as fully lit rather than pitch black, but still
+	## takes the surface shading in the caller — that gives an unlit test map its
+	## geometry read.
 	var intensity: float = 1.0 if no_lights_bucket < 0 else float(no_lights_bucket) / float(top_bucket)
 	if not _lights.is_empty():
-		## Voxel cell → owning GU: floor division by 8 (>> stays a floor for
-		## negative floor-plane cells, unlike integer /).
-		var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 		intensity = ambient_intensity
 		for light in _lights:
 			if not light.active:
@@ -122,17 +139,11 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 			var d_lvl := absf(float(level - _anchor_level(light))) \
 					/ float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 			var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
-			## VL-03: energy_multiplier carries the temporal state (flicker/pulse) —
-			## LightSource.update_temporal_state() drives it 1↔0 for a broken lamp,
-			## and each toggle fires lighting_rebuilt, so the faces this lamp lights
-			## go dark and back on it. Static lamps keep it at 1.0.
+			## VL-03: energy_multiplier carries the temporal state (flicker/pulse).
 			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
 			intensity = maxf(intensity, lamp_energy * _falloff(d, radius))
-	## VL-02b: local geometry contrast — the term that makes craters read.
-	intensity *= surface_factor(cell, level)
-	## VL-D1: blast soot — scorch the voxels ringing a hole.
-	intensity *= soot_factor(cell, level)
-	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+	_lamp_cache[key] = intensity
+	return intensity
 
 
 ## VL-D1 — soot multiplier for a voxel (1.0 = clean). Public for vision modes /
@@ -158,9 +169,13 @@ func soot_factor(cell: Vector2i, level: int) -> float:
 func surface_factor(cell: Vector2i, level: int) -> float:
 	if _occupancy.is_empty():
 		return 1.0
-	var exposed_top: bool = not _occupied(cell, level + 1)
-	var exposed_se: bool = not _occupied(cell + Vector2i(1, 0), level)
-	var exposed_sw: bool = not _occupied(cell + Vector2i(0, 1), level)
+	## VL-PERF: fetch each level's occupancy set ONCE (the hot loop re-fetched
+	## _occupancy.get(level) ~9× per voxel). Only 4 levels are ever touched here.
+	var s_here: Variant = _occupancy.get(level)
+	var s_above: Variant = _occupancy.get(level + 1)
+	var exposed_top: bool = s_above == null or not s_above.has(cell)
+	var exposed_se: bool = s_here == null or not s_here.has(cell + Vector2i(1, 0))
+	var exposed_sw: bool = s_here == null or not s_here.has(cell + Vector2i(0, 1))
 
 	## The brightest visible face wins — that is the one the camera actually sees.
 	var factor: float = face_enclosed_factor
@@ -204,26 +219,27 @@ func _face_occlusion(cell: Vector2i, level: int, face: int) -> float:
 			outward = cell + Vector2i(0, 1)
 			ring = [Vector2i(1, 0), Vector2i(-1, 0)]
 
+	## VL-PERF: fetch the three touched level sets once instead of per-neighbour.
+	var s_out: Variant = _occupancy.get(outward_level)
+	var s_up: Variant = _occupancy.get(outward_level + 1)
+	var s_down: Variant = _occupancy.get(outward_level - 1)
 	var blocked: int = 0
 	var total: int = ring.size() + 2
-	for delta in ring:
-		if _occupied(outward + delta, outward_level):
-			blocked += 1
-	## Vertical pair, for the lateral faces the two cells directly above/below the
+	if s_out != null:
+		for delta in ring:
+			if s_out.has(outward + delta):
+				blocked += 1
+	## Vertical pair: for the lateral faces the cells directly above/below the
 	## opening; for the top face the cell two levels up (an overhang) and the
 	## opening's own far side.
-	if _occupied(outward, outward_level + 1):
+	if s_up != null and s_up.has(outward):
 		blocked += 1
-	if _occupied(outward, outward_level - 1) and face != 0:
-		blocked += 1
-	elif face == 0 and _occupied(outward + Vector2i(1, 1), outward_level):
+	if face != 0:
+		if s_down != null and s_down.has(outward):
+			blocked += 1
+	elif s_out != null and s_out.has(outward + Vector2i(1, 1)):
 		blocked += 1
 	return float(blocked) / float(total)
-
-
-func _occupied(cell: Vector2i, level: int) -> bool:
-	var level_set = _occupancy.get(level)
-	return level_set != null and level_set.has(cell)
 
 
 ## Binary-dominant falloff (canon #4): a bright plateau out to inner_full_ratio ×

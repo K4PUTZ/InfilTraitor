@@ -362,12 +362,52 @@ lazy minting −3.0s, bake cache −0.73s, lamp cache −0.22s, surface_factor
 −0.11s. Proportionally faster with window focus (likely ~0.6–0.8s). Remaining
 cost is base geometry gen + render + the lighting re-derive.
 
-**Still pending (Director decision):** destruction persistence through rotation
-(build rebuilds every Voxel from the MapSpec). Now that rotation is ~1s, the
-"prebuild 4 views + toggle visibility" option the Director raised is viable —
-the bake cache makes the 4 views share one bake, so prebuild ≈ 4× the ~0.4s
-non-bake build ≈ ~1.6s of extra load, ~7MB extra tilemap memory; destruction
-would still need to apply to all 4 copies.
+**Destruction persistence through rotation** — being done now as "light
+persistence" (VL-PERSIST, below).
+
+### 🔖 DEFERRED to final optimization pass — Prebuild 4 views (Director, 2026-07-24)
+
+Instant rotation via prebuilding all 4 perspectives at load and toggling
+visibility. **Explicitly deferred to the game's finishing/optimization stage**,
+NOT now. Rationale (Director-ratified): prebuilding turns "1 world state → 1
+render" into "1 world state → 4 synchronized renders", a permanent sync tax on
+every future world-mutation feature (moving walls, light puzzles, fire/smoke,
+rubble, breach-as-clue…). The destruction system is still immature, so freezing
+the render architecture around 4 views now is premature. Rotation at ~1s is
+good enough for development. Revisit when world mechanics are mature AND
+instant rotation proves a real gameplay need. The VL-PERSIST base-coord damage
+registry (now) is the shared prerequisite — prebuild would swap "re-apply on
+rebuild" for "apply to all 4 copies", no rework of the registry itself.
+Cost estimate when taken: ~1.6s extra load (4 views share one cached bake),
+~7MB extra tilemap memory.
+
+### VL-PERSIST — Light destruction persistence through rotation ✅ LANDED 2026-07-24
+
+Destruction now survives perspective rotation, without prebuilding views.
+
+- **Authoritative registry in BASE (N-frame) voxel coords**: `room._base_damage`
+  / `_base_soot` keyed `Vector3i(base_vx, base_vy, level)`. A blast records every
+  affected voxel's `damage_state` + `soot_ring`, converting the view coord to
+  base via `PerspectiveMapper.cell_to_base(pos, active_view, base_size × 8)`.
+- **Key insight**: a voxel's perspective rotation is the SAME 90° rotation as
+  its GU, at 8× resolution — the mapper works directly at voxel scale, no new
+  math. Proven by `voxel_persist_selftest.gd` (round-trip exact all dirs; all 64
+  voxels of a GU land inside the rotated GU).
+- **Re-apply after rotation** (`_reapply_base_damage`, in `_set_perspective`
+  before the lighting rebuild): index the freshly rebuilt voxels by
+  (grid_pos, level), convert each base key to the current view, stamp
+  `set_damage` + `soot_ring`, re-reveal the crater floor under destroyed floor
+  voxels, `process_dirty`. Then the light repaint sees the holes.
+- Cleared on map load. The 4-view prebuild (deferred) will reuse this same
+  registry, applying it to all 4 copies instead of re-applying on rebuild.
+
+**Evidence:** detonate-on-N then rotate → **510/510 damaged voxels + 2180 soot
+re-applied in every view** (E/S/W); `occ_view_E` shows the crater/holes/soot
+in the rotated frame; voxel_persist_selftest 2/2; blast 14/14, bake 19/19,
+floor_integration 9/9; lint clean. New dev hook
+`INFILTRAITOR_CAPTURE_DETONATE_FIRST=1` (with CAPTURE_VIEWS) for regression.
+
+### VL-02 — Gameplay consequences (Regime B) status note
 
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state

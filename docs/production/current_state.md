@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.76 · **Updated:** 2026-07-24 · **Branch:** main
+**Version:** 0.9.77 · **Updated:** 2026-07-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -22,7 +22,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 116
-- Test scripts: 22
+- Test scripts: 23
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 5cdd905 ALPHA VOXEL LIGHT 0.9.76 - VL-PERF-BAKE cache baked sources across rotations
 - f150079 ALPHA VOXEL LIGHT 0.9.75 - VL-PERF light-field repaint optimizations
 - 72d6b30 ALPHA VOXEL LIGHT 0.9.74 - VL-03-PERF lazy alt minting halves rotation cost
 - 7d70e68 ALPHA VOXEL LIGHT 0.9.73 - VL-D2 tuning: narrower crater, lighter soot, crater-floor soot
 - 27fe652 ALPHA VOXEL LIGHT 0.9.72 - VL-D2 contiguous radial floor crater
-- 7e47c7e ALPHA VOXEL LIGHT 0.9.71 - VL-D1 soot rings around blast holes
 <!-- AUTO:END version_history -->
 
 ---

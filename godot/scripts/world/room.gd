@@ -155,6 +155,92 @@ var _voxel_light_field: VoxelLightField = null
 ## the Voxel-borne soot because the revealed level has no Voxel objects
 ## (render_fixed_earth_level places cells directly). Cleared on map load.
 var _crater_floor_soot: Dictionary = {}
+
+## VL-PERSIST: authoritative destruction state in BASE (N-frame) voxel coords, so
+## it survives a perspective rotation (which rebuilds every Voxel from the
+## MapSpec, dropping damage_state/soot_ring). Keyed Vector3i(base_vx, base_vy,
+## level). Recorded on detonate (view→base), re-applied after each rotation
+## rebuild (base→view). Cleared on map load. See VOXEL_LIGHT_MASTER_PLAN
+## VL-PERSIST — this is also the shared prerequisite for the deferred 4-view
+## prebuild (which would apply this same registry to all 4 copies).
+var _base_damage: Dictionary = {}   ## base voxel key → damage_state (>0)
+var _base_soot: Dictionary = {}     ## base voxel key → soot_ring (>=0)
+
+
+## Voxel-grid size of the base (N-frame) layout — GU size × 8. The perspective
+## rotation of a voxel coordinate is the SAME 90° rotation as a GU cell, at 8×
+## the resolution (the 8×8 quadrant inside a GU rotates coherently with the GU),
+## so PerspectiveMapper.cell_to_base/from_base work directly at this size.
+func _base_voxel_size() -> Vector2i:
+	return _base_layout.get("size", Vector2i.ZERO) * GeometryCoords.VOXELS_PER_UNIT_AXIS
+
+
+## VL-PERSIST — record one voxel's destruction state in base coords. grid_pos is
+## in the CURRENT view; convert to base so it re-applies correctly under any
+## later rotation. damage_state 0 and soot_ring <0 mean "nothing to persist".
+func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, soot_ring: int) -> void:
+	if damage_state <= 0 and soot_ring < 0:
+		return
+	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
+	var key := Vector3i(base_xy.x, base_xy.y, level)
+	if damage_state > 0:
+		_base_damage[key] = damage_state
+	if soot_ring >= 0:
+		var prev = _base_soot.get(key, 99)
+		if soot_ring < prev:
+			_base_soot[key] = soot_ring
+
+
+## VL-PERSIST — re-apply the base-coord destruction registry to the freshly
+## rebuilt geometry after a perspective rotation. build_from_layout() rebuilt
+## every Voxel intact from the MapSpec; this stamps the recorded damage/soot back
+## on, converting each base key to the current view. Must run after the build
+## (registries fresh) and before the light-field repaint (so it sees the holes).
+func _reapply_base_damage() -> void:
+	if _base_damage.is_empty() and _base_soot.is_empty():
+		return
+	if _edge_registry == null or _slab_registry == null:
+		return
+	var base_size_vox := _base_voxel_size()
+
+	## Index this view's voxels by (grid_pos, level) — the same shape the soot
+	## snapshot builds, cheap next to the rebuild it follows.
+	var index: Dictionary = {}
+	for slice in _edge_registry.all_slices():
+		for v in slice.voxels:
+			index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
+	for slab in _slab_registry.all_slabs():
+		for v in slab.voxels:
+			index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
+
+	_crater_floor_soot.clear()   ## rebuilt below for this view's coords
+	var reveal_below: Dictionary = {}   ## Vector2i(gu) → level to lazily reveal
+
+	for base_key in _base_damage:
+		var vxy := PerspectiveMapperClass.cell_from_base(
+				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
+		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
+		if v == null:
+			continue
+		v.set_damage(int(_base_damage[base_key]))
+		## A destroyed FLOOR voxel exposes the level beneath it — re-reveal it and
+		## scorch the revealed cell, same as the original detonation did (VL-D2).
+		if base_key.z < 0 and int(_base_damage[base_key]) == Voxel.DamageState.DESTROYED:
+			var gu := Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)
+			reveal_below[gu] = v.level - 1
+			add_crater_floor_soot(v.level - 1, v.grid_pos, 0)
+
+	for base_key in _base_soot:
+		var vxy := PerspectiveMapperClass.cell_from_base(
+				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
+		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
+		if v != null and v.soot_ring < 0:
+			v.soot_ring = int(_base_soot[base_key])
+
+	for gu in reveal_below:
+		_voxel_renderer.render_fixed_earth_level(gu, reveal_below[gu])
+	_voxel_renderer.process_dirty(_edge_registry)
+	_voxel_renderer.process_dirty_slabs(_slab_registry)
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
@@ -391,6 +477,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
+	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
+	_base_soot.clear()
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -978,6 +1066,11 @@ func _set_perspective(direction: String) -> void:
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_update_guard_los_data()
 		_center_camera(agent.cell)
+
+		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
+		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
+		## soot in this view (build_from_layout rebuilt every Voxel intact).
+		_reapply_base_damage()
 
 		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
 		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
@@ -2407,6 +2500,13 @@ func _run_auto_screenshot_capture() -> void:
 
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
+		## VL-PERSIST verification: detonate grenade 0 first, then capture all four
+		## views — the crater/soot must persist through each rotation.
+		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _test_zone_controller != null:
+			_test_zone_controller.open_menu_for(0)
+			_test_zone_controller.detonate_active()
+			for _j in range(45):
+				await get_tree().process_frame
 		await _capture_all_four_views()
 		get_tree().quit(0)
 		return

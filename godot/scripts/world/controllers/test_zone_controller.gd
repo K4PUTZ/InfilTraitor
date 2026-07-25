@@ -225,6 +225,14 @@ func detonate_active() -> void:
 			## the soot up in the same re-derive the detonation already triggers.
 			BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 3)
 
+			## VL-PERSIST: record this blast's damage + soot into the base-coord
+			## registry so it survives perspective rotation (which rebuilds every
+			## Voxel from the MapSpec). Every affected voxel is already indexed in
+			## cell_to_voxel; record after soot so both states are final.
+			for key in cell_to_voxel:
+				var av: Voxel = cell_to_voxel[key]
+				room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state, av.soot_ring)
+
 			room._voxel_renderer.process_dirty(room._edge_registry)
 			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
 			## VL-02b/c: geometry just changed — re-derive the light field so the

@@ -14,6 +14,16 @@ var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 # BAKE-FACADE-PLANE-02-b: Persistent bake compositor across map reloads
 var _bake_compositor: Object = null
 
+## VL-PERF-BAKE: baked pages/tiles depend only on the (material, facade) combos
+## present, not on the view — so a perspective rotation produces byte-identical
+## sources. Cache them keyed by (map_id, blend_mode, combo set); on a matching
+## rotation, skip prune + compositor bake + ~9k create_tile registrations
+## (~730ms) and rebuild only the cheap BakedTileLookup with the rotated runs.
+## Invalidated (full rebake) on map change, blend-mode change, or a new combo.
+var _cached_bake_key: String = ""
+var _cached_baked_atlas = null
+var _cached_source_ids: Dictionary = {}
+
 var _room_size: Vector2i = Vector2i.ZERO
 var _wall_tileset: TileSet = null
 var _prop_stack_layers: Array[TileMapLayer] = []
@@ -550,11 +560,6 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = [], roof_specs: Array = []) -> void:
 	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
 
-	## Every view rotation re-bakes and re-registers baked atlas pages from scratch.
-	## Drop the previous pass's pages before this one adds its own — see
-	## VoxelRenderer.prune_baked_sources() for why this can't live in clear() instead.
-	room._voxel_renderer.prune_baked_sources()
-
 	# Get current map ID for cache keying
 	var current_map_id = room.map_id if room.has_meta("map_id") else "UNKNOWN"
 	if room.has_method("get") and room.get("map_id"):
@@ -615,6 +620,31 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 			"level_start": jc.start_storey * GeometryCoords.LEVELS_PER_STOREY,
 			"level_end": (jc.start_storey + jc.storey_count) * GeometryCoords.LEVELS_PER_STOREY,
 		})
+
+	## VL-PERF-BAKE: if the (material, facade) combos present, the map, and the
+	## blend mode are all unchanged from the last bake, the pages and their
+	## registered sources are byte-identical — this is a perspective rotation.
+	## Reuse them and rebuild only the lookup (the runs rotated, but they map to
+	## the same per-material atlas coords). Skips prune + bake + ~9k create_tile.
+	var _cfg_for_key = load("res://godot/scripts/systems/bake_config.gd")
+	var _blend_for_key = _cfg_for_key.blend_mode if _cfg_for_key else 0
+	var _combo_set: Dictionary = {}
+	for wd in wall_descriptors:
+		_combo_set["%s|%s" % [wd["material_id"], wd["facade_id"]]] = true
+	for rs in roof_specs:
+		_combo_set["%s|%s" % [rs.get("material_id", ""), rs.get("facade_id", "")]] = true
+	var _combo_keys: Array = _combo_set.keys()
+	_combo_keys.sort()
+	var bake_key := "%s|%d|%s" % [current_map_id, _blend_for_key, "_".join(_combo_keys)]
+
+	if bake_key == _cached_bake_key and _cached_baked_atlas != null:
+		print("[ROOM] Bake cache HIT (%s) — reusing sources, rebuilding lookup only" % bake_key)
+		_wire_baked_lookup(runs, _cached_baked_atlas, _cached_source_ids)
+		return
+
+	## Full bake path (map/blend/combo changed, or first build). Drop the previous
+	## pass's pages before this one adds its own — see prune_baked_sources().
+	room._voxel_renderer.prune_baked_sources()
 
 	# Create map spec for compositor
 	var map_spec = {
@@ -718,19 +748,37 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 			baked_atlas.atom_pages[page_idx].save_png(dump_path)
 			print("[BAKE-DIAG] page %d saved to %s" % [page_idx, dump_path])
 
-	# BAKE-FIX-02: Register runs and populate lookup with baked atlas data
+	# VL-PERF-BAKE: remember this bake so a subsequent rotation (same map/blend/
+	# combos) can reuse the sources instead of re-registering them.
+	_cached_bake_key = bake_key
+	_cached_baked_atlas = baked_atlas
+	_cached_source_ids = source_ids
+
+	_wire_baked_lookup(runs, baked_atlas, source_ids)
+
+
+## VL-PERF-BAKE: build the BakedTileLookup from runs + a baked atlas + source ids
+## and hand it to the renderer. Shared by the full-bake path and the cached
+## rotation fast-path (the runs differ per view, the atlas/sources do not).
+func _wire_baked_lookup(runs: Array, baked_atlas, source_ids: Dictionary) -> void:
 	var lookup_class = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 	var lookup = lookup_class.new()
 	lookup.register_runs(runs)
-	
-	# BAKE-LIVE-VERIFY-01-b Part 2: Populate lookup with baked atlas and source IDs
-	# This is critical: lookup.resolve() will now find real data instead of hitting Engine.get_meta() nulls
+	# BAKE-LIVE-VERIFY-01-b Part 2: real baked data, not Engine.get_meta() nulls.
 	lookup.set_baked_atlas(baked_atlas)
 	lookup.set_source_ids(source_ids)
-	
-	# Pass the fully-populated lookup to voxel_renderer
 	room._voxel_renderer.set_baked_lookup(lookup)
 
+
+## VL-PERF-BAKE: force the next _bake_textures() to do a full rebake instead of
+## reusing cached sources. Called on map (re)load — a reload may be a deliberate
+## re-bake (e.g. changed facade files, F6), whereas a perspective rotation keeps
+## the cache. Map-id changes invalidate on their own via the key; this also
+## covers reloading the SAME map.
+func invalidate_bake_cache() -> void:
+	_cached_bake_key = ""
+	_cached_baked_atlas = null
+	_cached_source_ids = {}
 
 
 func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:

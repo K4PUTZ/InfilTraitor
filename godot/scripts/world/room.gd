@@ -361,6 +361,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_error("Room layout did not provide a valid map size.")
 		return
 
+	## VL-PERF-BAKE: a (re)load always does a full rebake — the rotation fast-path
+	## caches sources, but a reload may intend to pick up changed facades.
+	_room_builder.invalidate_bake_cache()
 	var view_layout := _room_builder.layout_with_perspective(layout, _active_perspective)
 	room_size = view_layout.get("size", room_size)
 	_map_buffer = view_layout.get("buffer", 0)

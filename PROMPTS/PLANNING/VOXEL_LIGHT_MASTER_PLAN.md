@@ -346,15 +346,28 @@ Net: rotation ~5.7s → ~2.0s off-screen (proportionally faster with focus).
 Light-field repaint down from ~675ms to ~590ms; ghost round-trip still
 IDENTICAL, lighting visually unchanged, bake 19/19 + blast 14/14.
 
-**Biggest remaining cost — NOT yet taken:** bake **tile registration ~730ms**
-(~9k create_tile calls). The baked pages depend on (material, facade) combos,
-which are identical across rotations — only placement changes — so the sources
-could plausibly be reused instead of pruned+rebuilt each rotation. That's a
-bake-system change (riskier, outside the lighting scope), flagged for a
-decision rather than taken unilaterally. Border scaffolding (92ms) is also
-removable (dev-only).
+**Bake source cache (VL-PERF-BAKE, Director-approved 2026-07-24): −~730ms.**
+The baked pages/tiles depend only on the (material, facade) combos present, not
+on the view — a rotation produces byte-identical sources. Cache `baked_atlas` +
+`source_ids` keyed by `(map_id, blend_mode, sorted combo set)`; on a matching
+rotation, skip prune + compositor bake + ~9k `create_tile`, and rebuild only the
+cheap `BakedTileLookup` from the rotated runs (`_wire_baked_lookup`). Full
+rebake on map (re)load (`invalidate_bake_cache()` — a reload may intend to pick
+up changed facades), blend-mode change, or a new combo. Verified: bake 19/19,
+blast 14/14, roof_bake 8/8, ghost round-trip IDENTICAL all views, detonation +
+crater + soot render correctly through a cached-rotation build.
 
-**Still pending (Director decision):** destruction persistence through rotation.
+**Rotation journey: ~5.7s → ~1.15s off-screen throttled** (−80%):
+lazy minting −3.0s, bake cache −0.73s, lamp cache −0.22s, surface_factor
+−0.11s. Proportionally faster with window focus (likely ~0.6–0.8s). Remaining
+cost is base geometry gen + render + the lighting re-derive.
+
+**Still pending (Director decision):** destruction persistence through rotation
+(build rebuilds every Voxel from the MapSpec). Now that rotation is ~1s, the
+"prebuild 4 views + toggle visibility" option the Director raised is viable —
+the bake cache makes the 4 views share one bake, so prebuild ≈ 4× the ~0.4s
+non-bake build ≈ ~1.6s of extra load, ~7MB extra tilemap memory; destruction
+would still need to apply to all 4 copies.
 
 ### VL-02 — Gameplay consequences (Regime B)
 `set_light_active()` + localized rebuild/repaint · permanent-off state

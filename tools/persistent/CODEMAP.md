@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**145 scripts · 28846 lines total** (under `godot/scripts/`)
+**145 scripts · 28897 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2828,7 +2828,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 871 lines
+`class_name RoomBuilder` · 919 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2861,6 +2861,7 @@ extends `Node2D` · 34 lines
 - `func get_base_layout() -> Dictionary:`
 - `func build_registry(ts: TileSet) -> void:`
 - `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
+- `func invalidate_bake_cache() -> void:`
 - `func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:`
 
 ---
@@ -3174,7 +3175,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2732 lines
+extends `Node2D` · 2735 lines
 
 `godot/scripts/world/room.gd`
 

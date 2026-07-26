@@ -104,35 +104,6 @@ func ensure_file_map_source() -> FileMapSourceClass:
 	return src
 
 
-# Baked atlas storage (loaded during baking, used during render)
-var _baked_atlas = null  # BakedAtlas object
-var _baked_atlas_source_ids: Dictionary = {}  # page_idx → source_id
-var _bake_timestamp: int = 0
-
-
-## Store baked atlas (called by room_builder during baking)
-func set_baked_atlas(atlas, source_ids: Dictionary, timestamp: int) -> void:
-	_baked_atlas = atlas
-	_baked_atlas_source_ids = source_ids
-	_bake_timestamp = timestamp
-	print("[Registries] Baked atlas stored: %d pages" % [source_ids.size()])
-
-
-## Get baked atlas
-func get_baked_atlas():
-	return _baked_atlas
-
-
-## Get baked atlas source IDs
-func get_baked_atlas_source_ids() -> Dictionary:
-	return _baked_atlas_source_ids
-
-
-## Get bake timestamp
-func get_bake_timestamp() -> int:
-	return _bake_timestamp
-
-
 # Expose property for compatibility with existing checks
 var material_registry: MaterialRegistryClass:
 	get: 

@@ -63,13 +63,6 @@ func slices_of_edge(edge_id: String) -> Array:
 	return result
 
 
-## Get parent edge of a slice; returns null if not found
-func edge_of_slice(slice_id: String) -> Edge:
-	var slice := get_slice(slice_id)
-	if not slice:
-		return null
-	return get_edge(slice.edge_id)
-
 
 ## Get sibling slice on the other side of the wall
 ## Returns null if slice not found or sibling not registered

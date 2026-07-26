@@ -28,12 +28,3 @@ static func blocks_los(
 	blocked_edges: Dictionary
 ) -> bool:
 	return is_edge_blocked(from_cell, to_cell, blocked_edges)
-
-
-## Returns true if sound is fully blocked between two adjacent tiles.
-static func blocks_sound(
-	from_cell: Vector2i,
-	to_cell: Vector2i,
-	blocked_edges: Dictionary
-) -> bool:
-	return is_edge_blocked(from_cell, to_cell, blocked_edges)

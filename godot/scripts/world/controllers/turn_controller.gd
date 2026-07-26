@@ -13,7 +13,6 @@ const DETECTION_THRESHOLD_CHASE: float = 0.75
 const ENEMY_CAMERA_TWEEN_DURATION: float = 0.4
 const ENEMY_PHASE_MAX_OPEN_ZOOM: float = 2.0
 const ACTOR_END_HOLD_DELAY: float = 0.2
-const ENEMY_INTER_TURN_DELAY: float = 0.5
 
 ## References to room components
 var room: Node
@@ -112,14 +111,6 @@ func set_game_state(
 
 func get_alert_meter() -> int:
 	return _alert_meter
-
-
-func set_alert_meter(value: int) -> void:
-	_alert_meter = value
-
-
-func set_pending_auto_end_turn(value: bool) -> void:
-	_pending_auto_end_turn = value
 
 
 ## Signal handlers
@@ -317,14 +308,6 @@ func _hold_actor_end_pause() -> void:
 	_actor_end_pause_active = true
 	await room.get_tree().create_timer(ACTOR_END_HOLD_DELAY).timeout
 	_actor_end_pause_active = false
-
-
-func _enemy_inter_turn_pause_with_camera(target_cell: Vector2i) -> void:
-	var tween_time := minf(ENEMY_CAMERA_TWEEN_DURATION, ENEMY_INTER_TURN_DELAY)
-	await _focus_camera_for_enemy_phase(target_cell, tween_time)
-	var remain := ENEMY_INTER_TURN_DELAY - tween_time
-	if remain > 0.0:
-		await room.get_tree().create_timer(remain).timeout
 
 
 ## Camera Control

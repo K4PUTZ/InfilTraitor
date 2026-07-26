@@ -15,11 +15,6 @@ func set_selected(cell: Vector2i) -> void:
 	queue_redraw()
 
 
-func clear_selected() -> void:
-	_cell = Vector2i(-9999, -9999)
-	queue_redraw()
-
-
 func _draw() -> void:
 	if floor_layer == null:
 		return

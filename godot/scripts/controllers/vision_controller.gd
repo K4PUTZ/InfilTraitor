@@ -64,9 +64,6 @@ func request_redraw() -> void:
 func is_shadow_overlay_visible() -> bool:
 	return _shadow_overlay != null and _shadow_overlay.visible
 
-func is_light_overlay_visible() -> bool:
-	return _light_overlay != null and _light_overlay.visible
-
 # ── Private ───────────────────────────────────────────────────────────────────
 
 func _init_overlays() -> void:

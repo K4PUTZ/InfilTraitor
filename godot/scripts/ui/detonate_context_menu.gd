@@ -94,14 +94,6 @@ func close() -> void:
 	closed.emit()
 
 
-## True if a screen-space point falls inside the menu's own box — the
-## caller (room.gd) uses this to distinguish "click on the menu" (already
-## handled by the Button itself, never reaches this) from "click elsewhere"
-## (outside-click dismiss).
-func contains_screen_point(screen_pos: Vector2) -> bool:
-	return visible and _panel.get_global_rect().has_point(screen_pos)
-
-
 func _on_detonate_pressed() -> void:
 	close()
 	detonate_requested.emit()

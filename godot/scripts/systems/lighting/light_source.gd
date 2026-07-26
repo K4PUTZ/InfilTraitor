@@ -161,41 +161,9 @@ func set_flicker(enabled: bool, interval: float = 1.0) -> void:
 	flicker_phase = 0.0
 	pulse_enabled = false
 
-## Set light to pulse state
-func set_pulse(enabled: bool, speed: float = 1.0, min_energy: float = 0.5, max_energy: float = 1.0) -> void:
-	pulse_enabled = enabled
-	pulse_speed = max(speed, 0.1)
-	pulse_min = clamp(min_energy, 0.0, 1.0)
-	pulse_max = clamp(max_energy, 0.0, 1.0)
-	pulse_phase = 0.0
-	flicker_enabled = false
-
-## Set light to rotate (for spotlight sweeps)
-func set_rotation(speed_radians_per_sec: float) -> void:
-	rotation_speed = speed_radians_per_sec
-	rotation_phase = direction_angle
-
 ## Get effective tactical energy after temporal effects
 func get_effective_tactical_energy() -> float:
 	return tactical_energy * energy_multiplier
-
-## Get debug string with temporal state
-func debug_temporal_state() -> String:
-	var effects = []
-	if flicker_enabled:
-		effects.append("flicker(%.1fs)" % flicker_interval)
-	if pulse_enabled:
-		effects.append("pulse(%.1fHz)" % pulse_speed)
-	if rotation_speed != 0.0:
-		effects.append("rotate(%.2frad/s)" % rotation_speed)
-	
-	var effects_str = ",".join(effects) if effects.size() > 0 else "static"
-	return "%s state=%s energy=%.2f effects=[%s]" % [
-		self._to_string(),
-		current_state,
-		energy_multiplier,
-		effects_str
-	]
 
 ## Check if this light affects a cell (simple radius check, no occlusion yet)
 func affects_cell(target_cell: Vector2i) -> bool:
@@ -208,7 +176,3 @@ func affects_cell(target_cell: Vector2i) -> bool:
 ## Get directional vector for this light (used by cone/directional)
 func get_direction_vector() -> Vector2:
 	return Vector2(cos(direction_angle), sin(direction_angle))
-
-## Get cone spread as fraction (0.0 = tight, 1.0 = wide)
-func get_cone_spread() -> float:
-	return clamp(cone_angle / 180.0, 0.0, 1.0)

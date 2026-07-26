@@ -21,11 +21,6 @@ func get_bomb(p_id: String):
 	return registry.get(p_id, null)
 
 
-## List all bomb IDs
-func list_bombs() -> Array:
-	return registry.keys()
-
-
 ## Get bomb count
 func count() -> int:
 	return registry.size()

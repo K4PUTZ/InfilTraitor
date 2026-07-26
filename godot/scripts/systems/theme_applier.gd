@@ -45,15 +45,3 @@ func apply(theme_color: Color) -> void:
 ## Reset to neutral (white = identity multiply)
 func clear() -> void:
 	apply(Color.WHITE)
-
-
-## Get current theme from first wall tilemap
-func get_current_theme() -> Color:
-	if _wall_tilemaps.is_empty():
-		return Color.WHITE
-
-	for tilemap in _wall_tilemaps:
-		if is_instance_valid(tilemap):
-			return tilemap.modulate
-
-	return Color.WHITE

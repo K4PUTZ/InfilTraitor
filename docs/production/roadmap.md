@@ -29,12 +29,14 @@ PHASE 2: Stealth Core Systems (M2.0–M2.12)    ✅ FUNCTIONAL
 ├─ Guard FSM & communication ✅
 └─ Audio detection ✅
 
-PHASE 3: Investor Demo                         🟡 IN PROGRESS
-├─ Provisional AI ⏸ (deferred until visuals done)
-├─ Visual system: wall occlusion + floor shadow projection ← NOW (VIS-01)
-├─ Ceiling / overhead layer (VIS-01)
-├─ AI tuning resumes after the visuals
-└─ → EXIT CRITERION: a fun, convincing stealth loop
+PHASE 3: Investor Demo                         🟡 IN PROGRESS (scope expanded)
+├─ Voxel rendering pivot (walls, bake, lighting) ✅ shipped, undocumented
+│  here until 2026-07-26 — see milestones.md "Voxel Architecture Pivot"
+├─ View occlusion + floor shadows + voxel-face lighting ✅ shipped
+├─ Destruction (grenades) ✅ foundation shipped, paused (sequencing, not blocked)
+├─ Provisional AI ⏸ (gate condition largely met — Director call to resume)
+├─ Character/animation pipeline — being discussed now, ahead of schedule
+└─ → EXIT CRITERION: a fun, convincing stealth loop (unchanged, not yet reached)
 
 PHASE 4: Production Pass (Post-Investment)     ⏳ QUEUED
 ├─ Real audio SFX
@@ -106,17 +108,38 @@ PHASE 8: Polish & Release                      ⏳ QUEUED
 
 ---
 
-### Phase 3: Investor Demo (READY 🟢)
+### Phase 3: Investor Demo (IN PROGRESS 🟡 — updated 2026-07-26)
 
 **Goal:** A 5–10 minute experience that demonstrates the game's core pitch. Placeholder graphics. No audio, narrative, or polished UI.
 
-**Current Status (2026-06-14):**
-- Functional AI with correct escalation ✅
+**What actually happened (2026-06-28 → 2026-07-26), not reflected below until
+this update:** the phase did not proceed as originally sequenced. Instead of
+AI tuning after a scoped VIS-01 visual pass, the project underwent a
+two-month **voxel architecture pivot** — replacing the flat sprite renderer
+with a native voxel-per-tile system, a bake pipeline, a view-occlusion
+system, a destruction system (grenades, real voxel damage), and a
+voxel-face lighting system. See `docs/production/milestones.md` → "The Voxel
+Architecture Pivot" for the full list, and `docs/production/current_state.md`
+for maintained per-domain status. None of that was in the original Phase 3
+scope; all of it is now largely done.
+
+**Status as of 2026-07-26:**
+- Functional AI with correct (gradual) escalation ✅ — unchanged since 2026-06-14
 - Gradual visual detection implemented ✅
 - Functional audio detection ✅
-- **Now: the visual system (VIS-01 — wall view occlusion + floor shadow projection).** Guard AI is provisional and deferred until the visuals are complete.
+- View occlusion (`OCCLUSION_MASTER_PLAN.md`) — Parts 1–3 done, paused
+- Floor shadows + voxel-face lighting — shipped
+- Destruction (grenades) — foundation shipped, paused only on Director
+  sequencing, not on any remaining blocker
+- **Open Director decisions, not yet made:** resume AI-02 tuning now vs.
+  sequence after character/animation work; when to start the
+  character/animation asset pipeline (originally "post-investment," now
+  being actively discussed); shot-based wall destruction (shotgun) has no
+  plan yet.
 
-**Estimate:** 3–5 weeks of focused (solo) development
+**Estimate:** no longer meaningful as "3–5 weeks" — the phase absorbed two
+months of unplanned engine work. Re-estimate once the open decisions above
+are made.
 
 ---
 
@@ -265,11 +288,12 @@ Phase 8 (Polish & Release)
 | Item | Reason to defer |
 |------|-----------------|
 | Audio SFX | The math noise grid is sufficient for the demo |
-| Sprites/animations | Tweening is sufficient for the demo |
+| ~~Sprites/animations~~ | **Reopened 2026-07-26** — Director is actively scoping the character/animation asset pipeline (3D-rendered low-poly sprites) ahead of the originally-planned post-investment window. No longer "deliberately out of scope"; not yet started either. |
 | Menu/settings UI | The current HUD is sufficient for the demo |
 | Save system | Not needed in a single-room demo |
 | Narrative | Requires a campaign (post-investment) |
 | Combat (GAME-01) | Requires a solid FSM; defer until post-refactor |
+| Shot-based destruction (shotgun) | Raised 2026-07-26, not yet scoped — needs its own Part in `DESTRUCTION_MASTER_PLAN.md` |
 | Procedural generation | Requires a campaign (post-investment) |
 | Localization | Final phase |
 

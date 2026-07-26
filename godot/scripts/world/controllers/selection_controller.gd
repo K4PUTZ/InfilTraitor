@@ -85,14 +85,6 @@ func try_move_to(cell: Vector2i) -> bool:
 	return true
 
 
-## Execute a move (right-click on selected cell).
-func try_execute_move() -> void:
-	if room.turn_manager.is_enemy_phase or room._actor_end_pause_active:
-		return
-	if selected_cell != Vector2i(-1, -1) and selected_cell != room.agent.cell:
-		try_move_to(selected_cell)
-
-
 ## INPUT-SPLIT-01 (2026-07-16, Director): desktop right-click moves DIRECTLY
 ## to the clicked cell — select + move as one action, no pre-selection step.
 ## Mobile keeps the tap-select / tap-again-to-move flow (handle_tile_click).
@@ -104,13 +96,3 @@ func handle_move_click(cell: Vector2i) -> void:
 	set_selected_cell(cell)
 	if cell != room.agent.cell:
 		try_move_to(cell)
-
-
-## Query current selected cell.
-func get_selected_cell() -> Vector2i:
-	return selected_cell
-
-
-## Reset selection (e.g., when perspective changes or map reloads).
-func reset_selection() -> void:
-	selected_cell = Vector2i(-1, -1)

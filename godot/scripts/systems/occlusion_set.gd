@@ -93,16 +93,6 @@ func get_occluded_cells() -> Dictionary:
 func get_wireframe_by_level() -> Dictionary:
 	return _wireframe_by_level.duplicate()
 
-## Get the ring index for a given voxel cell, or -1 if not occluded.
-func get_ring_index(voxel_cell: Vector2i) -> int:
-	if not _occluded_cells.has(voxel_cell):
-		return -1
-	return _occluded_cells[voxel_cell]["ring"]
-
-## Check if a voxel cell is occluded.
-func is_occluded(voxel_cell: Vector2i) -> bool:
-	return _occluded_cells.has(voxel_cell)
-
 ## Get the recomputation counter for verification.
 func get_recompute_count() -> int:
 	return _recompute_count
@@ -877,24 +867,3 @@ func _edge_vertices(gu_cell: Vector2i, face: int) -> Array:
 			return [Vector2i(x, y + 1), Vector2i(x + 1, y + 1)]
 		_:
 			return []
-
-
-## ============================================================================
-## DEBUG HELPERS
-## ============================================================================
-
-## Print occlusion set statistics
-func debug_print_stats() -> void:
-	if _occluded_cells.is_empty():
-		print_debug("[OcclusionSet] Empty (no occluders)")
-		return
-
-	var ring_counts := [0, 0, 0]
-	for entry in _occluded_cells.values():
-		var ring: int = entry["ring"]
-		if ring >= 0 and ring <= 2:
-			ring_counts[ring] += 1
-
-	print_debug("[OcclusionSet] Total: %d cells | Ring 0: %d | Ring 1: %d | Ring 2: %d | Recomputes: %d" % [
-		_occluded_cells.size(), ring_counts[0], ring_counts[1], ring_counts[2], _recompute_count
-	])

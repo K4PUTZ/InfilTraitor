@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- f6e68b8 ALPHA TEMPORAL LIGHT FOUNDATION 0.9.81 - VL-D5 stone soot + session close
 - 3260943 ALPHA VOXEL LIGHT 0.9.80 - VL-D4 wood: directional bias + ember-to-char glow
 - b7ac34b ALPHA VOXEL LIGHT 0.9.79 - VL-03 incremental light-field repaint; flicker ON
 - c74a146 ALPHA VOXEL LIGHT 0.9.78 - VL-D3 under-wall floor darkening
 - bea7916 ALPHA VOXEL LIGHT 0.9.77 - VL-PERSIST destruction survives rotation
-- 5cdd905 ALPHA VOXEL LIGHT 0.9.76 - VL-PERF-BAKE cache baked sources across rotations
 <!-- AUTO:END version_history -->
 
 ---
@@ -492,3 +492,9 @@ The game is already functional. Guards detect and react. For a convincing demo:
 **Last Updated:** 2026-07-08
 **Maintained By:** GitHub Copilot / Project Management
 **Status:** ✅ ALPHA ENHANCE PLAN COMPLETE — 7 controllers extracted, room.gd refactored to 2,078 lines, all systems operational. Ready for perspective system implementation and further modularization.
+
+> **2,078 lines is a point-in-time record of this milestone (2026-07-08),
+> not a current figure.** Two more months of feature work (Voxel Light
+> Foundation among others) grew `room.gd` to 2,896 lines as of 2026-07-26 —
+> still the documented monolith (see `technical_debt.md`), not a regression
+> from this refactor.

@@ -186,7 +186,12 @@ Tweening is functional for the demo. Real sprites await post-demo.
 **Estimated Fix:** 1 week (playtesting)
 
 ```gdscript
-DISTANCE_CURVE = [1.0, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01]
+## guard_enemy.gd — real current values, corrected 2026-07-26 (was quoted
+## here as DISTANCE_CURVE = [1.0, 0.95, 0.85, 0.60, 0.40, 0.15, 0.05, 0.01],
+## a stale 8-element array under the wrong name)
+const FOV_DISTANCE_CURVE: Array[float] = [
+	1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01
+]
 ```
 
 The curve was designed theoretically, not tested with players.
@@ -195,13 +200,40 @@ The curve was designed theoretically, not tested with players.
 
 ---
 
-### 10. STATE_SEARCH has no visual params of its own
-**Severity:** LOW
-**Estimated Fix:** 30 min
+### 15. Roof material falls back to default on E/S perspective rotation
+**Severity:** MEDIUM
+**Found:** 2026-07-26 (Director report + investigation)
 
-`_get_cone_visual_params()` has no case for `STATE_SEARCH`, so it falls back to the default (patrol params). A searching guard looks visually like it is patrolling.
+Some roofs (non-square footprints specifically) display the generic
+fallback material instead of their real baked texture after rotating to E
+or S. Root cause, fully diagnosed: two roof-page caches key purely on
+`material_id|facade_id` with no direction/footprint component —
+`room_builder.gd`'s bake-reuse cache (`_cached_bake_key`, ~line 589) and
+`bake_compositor.gd`'s `_page_cache` (`_compose_roof_pages()`, ~line 661).
+A roof's structure-local offset set is recomputed fresh per rotated view;
+non-square footprints request `(col,row)` pairs the frozen cache never
+baked, `BakedTileLookup.resolve_flat()` misses, and `voxel_renderer.gd`
+falls back to the generic material.
 
-**Timeline:** Quick fix (this session)
+**Why not fixed immediately:** the obvious correctness fix (key the cache by
+direction too, like walls already do) trades away exactly the cache-hit
+reuse `VL-PERF-BAKE` was built to provide — it would make every rotation
+re-bake roof pages instead of reusing them across all 4 views. The
+alternative (merge new frag keys into the existing page entry instead of
+overwriting) preserves the perf win but needs careful implementation and
+verification. **Director decision needed** on which trade-off to take before
+implementing.
+
+**Why the selftests missed it:** `roof_bake_selftest.gd` constructs a fresh
+`RoomBuilder` (and empty cache) per direction tested — it validates
+"bake fresh at N" and "bake fresh at E" in isolation, never "bake once, then
+rotate live," which is the real `room.gd` runtime path and where the bug
+actually lives. Same shape as the `geometry_selftest.gd` gap the 2026-07-12
+sweep found: a test that doesn't exercise the real code path can't catch the
+real bug.
+
+**Timeline:** Ready to fix pending the Director's call on the cache-key
+approach.
 
 ---
 
@@ -222,22 +254,6 @@ The `DEV_VISION` flag and debug code are mixed with the logic. Functional for de
 
 ---
 
-### 13. Dead code `_compute_shadow_tiles_old()` in room.gd
-**Severity:** LOW
-**Estimated Fix:** Remove immediately
-
-Old shadow function replaced by `_compute_shadow_tiles()` + `_cast_shadows_from_light()`. Lines ~1340–1373 of room.gd.
-
----
-
-### 14. Hardcoded noise values in room.gd
-**Severity:** LOW
-**Estimated Fix:** Quick fix
-
-`room.gd` uses hardcoded `0.20` and `0.5` instead of `NoiseSystem.NOISE_CHANCE_WALK` / `NoiseSystem.NOISE_INTENSITY_WALK`.
-
----
-
 ## Planned Refactors
 
 | Refactor | Priority | Target | ETA |
@@ -250,15 +266,15 @@ Old shadow function replaced by `_compute_shadow_tiles()` + `_cast_shadows_from_
 
 ---
 
-## Debt Metrics (updated 2026-06-14)
+## Debt Metrics (updated 2026-07-26)
 
 | Metric | Value |
 |--------|-------|
 | **Resolved Items** | 4 (detection escalation, state_search visual, dead code, hardcoded noise) |
-| **Critical Issues** | 4 |
+| **Critical Issues** | 2 (Guard FSM scaling; hardcoded patrol timings — Overlay Performance re-scoped to LOW 2026-07-15) |
 | **High Priority Issues** | 4 |
-| **Medium Priority Issues** | 2 |
-| **Low Priority Issues** | 4 |
+| **Medium Priority Issues** | 2 (distance curve unvalidated; roof material fallback on E/S rotation) |
+| **Low Priority Issues** | 2 |
 | **Total Estimated Effort** | 8–12 weeks (refinement, not blocking) |
 | **Current Debt Level** | Medium — game functional, AI detection implemented correctly |
 
@@ -332,3 +348,31 @@ entries (`tileset_blocks.tres`: 32 tiles → 8); the dead `_build_room` subgraph
   `guard.observe_player(true, severity, ...)` — the meter drives transitions.
   This claim was already reconciled once (2026-06-14 note, this file) and drifted
   back; see `docs/production/current_state.md` for the maintained status.
+
+---
+
+## Consistency pass, 2026-07-26
+
+Removed two items that duplicated the "Resolved Items" section above while
+still being listed as open, the same self-contradiction pattern the sweep
+notes above already describe:
+
+- **#10 "STATE_SEARCH has no visual params of its own"** (Medium Priority) —
+  duplicated Resolved Item #2 while contradicting it. Checked against the
+  real code: `guard_enemy.gd::_get_cone_visual_params()` has its own
+  `STATE_SEARCH` case (`range:5, fov:120.0, alpha:0.7, prob_mult:0.80`),
+  distinct from the patrol default. Genuinely resolved; removed the stale
+  duplicate.
+- **#13/#14 "Dead code `_compute_shadow_tiles_old()`" and "Hardcoded noise
+  values"** (Low Priority) — duplicated Resolved Items #3/#4.
+  `_compute_shadow_tiles_old()` no longer exists anywhere in `room.gd`;
+  `room.gd`'s noise emission already references
+  `NoiseSystem.NOISE_CHANCE_WALK`/`NOISE_INTENSITY_WALK`, not hardcoded
+  literals. Both confirmed resolved; removed.
+
+Debt Metrics table corrected to match: Critical Issues 4 → 2 (only the Guard
+FSM scaling problem and hardcoded patrol timings are still genuinely open;
+Overlay Performance was already re-scoped to LOW on 2026-07-15), Low Priority
+Issues 4 → 2. Numbering gaps in Critical Debt (no items 1–2) and Medium/Low
+Priority sections are pre-existing from earlier resolved-item migrations, not
+touched here — a full renumbering is out of scope for a consistency pass.

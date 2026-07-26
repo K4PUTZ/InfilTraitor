@@ -19,6 +19,7 @@
 class_name TestZoneController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
+const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
@@ -53,6 +54,10 @@ func clear() -> void:
 
 ## Place one placeholder grenade at gu_cell as a baked sprite (ground-contact
 ## anchored to the cell's center), and register it as right-click detonatable.
+## PERSPECTIVE-01: gu_cell is a view-space cell for the room's CURRENT
+## perspective at add-time — also stored converted to a base (pre-rotation)
+## cell, so reposition_for_perspective() can follow rotation the same way
+## room.gd already does for the agent and the selection cursor.
 func add_grenade(gu_cell: Vector2i) -> void:
 	var texture: Texture2D = load(GRENADE_SPRITE_PATH)
 	if texture == null:
@@ -67,9 +72,28 @@ func add_grenade(gu_cell: Vector2i) -> void:
 	room.add_child(sprite)
 	_grenades.append({
 		"gu_cell": gu_cell,
+		"base_cell": room._cell_to_base(gu_cell, room._active_perspective),
 		"sprite": sprite,
 		"detonated": false,
 	})
+
+
+## PERSPECTIVE-01: called from room.gd::_set_perspective() alongside the
+## existing agent/selection-cursor reposition block. Every live (undetonated)
+## grenade's gu_cell and sprite world position are re-derived from its
+## base_cell for the new direction — the same cell_from_base() round-trip the
+## agent already uses, generalized to any runtime-instantiated prop that
+## isn't rebuilt fresh from _base_layout on rotation.
+func reposition_for_perspective(direction: String) -> void:
+	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
+	for g in _grenades:
+		if g["detonated"]:
+			continue
+		var new_cell: Vector2i = PerspectiveMapperClass.cell_from_base(g["base_cell"], direction, base_size)
+		g["gu_cell"] = new_cell
+		var sprite: Sprite2D = g["sprite"]
+		if sprite != null and is_instance_valid(sprite):
+			sprite.position = room.agent._cell_to_world(new_cell)
 
 
 ## The sprite's own drawn rect, in world/global space — centered=false with a

@@ -86,11 +86,6 @@ static func access_points_for(connections: Dictionary, seg_pos: Vector2i) -> Arr
 	return exits
 
 
-## Returns true if the segment is a dead end (exactly 1 exit).
-static func is_dead_end(connections: Dictionary, seg_pos: Vector2i) -> bool:
-	return connections.has(seg_pos) and connections[seg_pos].size() == 1
-
-
 ## --- Union-Find -------------------------------------------------------------
 
 func _find(x: Vector2i) -> Vector2i:

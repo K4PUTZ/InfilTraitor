@@ -482,6 +482,7 @@ Read the linked doc before modifying that system. One essential per row.
 | Localization | [LOCALIZATION_REFERENCE.md](../../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
 | Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its dedicated directory |
 | File map, API surface, tuning tables | [CODEMAP.md](CODEMAP.md) | **Generated — never edit by hand, never mirror lists here.** Consult on demand |
+| Mobile device testing | [MobileTesting.md](MobileTesting.md) | Local HTTP server + ngrok tunnel; re-export `export/web` from Godot after code changes |
 
 **CODEMAP governance:** regenerate with
 `python3 tools/persistent/gen_codemap.py` (`--check` fails if stale). The

@@ -100,9 +100,6 @@ func set_cell(new_cell: Vector2i) -> void:
 func get_vision_radius() -> int:
 	return vision_radius
 
-func set_vision_radius(new_radius: int) -> void:
-	vision_radius = max(0, new_radius)
-
 
 func set_posture(new_posture: Posture) -> void:
 	if new_posture == posture:

@@ -17,7 +17,7 @@ represent integration refinements, not critical bug fixes.
 
 ---
 
-## ⏸️ AI Track Deferred (2026-06-18)
+## ⏸️ AI Track Deferred (2026-06-18) — gate re-evaluated 2026-07-26
 
 The current guard AI is **provisional / placeholder**. All AI refinement
 (AI-01, AI-02, AI-03) is **deferred until the visual system is complete** —
@@ -25,7 +25,25 @@ wall **view occlusion** and **floor shadow projection** (VIS-01 + the LIGHT
 shadow rendering). Detection tuning depends on reading shadows and cover *on
 screen*, so it cannot be calibrated before the visuals exist.
 
-**VIS-01 is the current priority. The AI track resumes only after it.**
+**This section was frozen from 2026-06-18 until this update — it predates the
+entire voxel rendering pivot** (see "The Voxel Architecture Pivot" below).
+The gate condition itself has since evolved a great deal:
+
+- View occlusion — split out into `OCCLUSION_MASTER_PLAN.md`; Parts 1–3
+  closed, paused 2026-07-21 (resume trigger: "a real map with placed
+  objects/props to occlude against" — grenades now exist as placed objects,
+  shipped 2026-07-22, one day *after* that pause; whether that satisfies the
+  trigger is the Director's call, not decided here).
+- Floor shadow projection — shipped (`shadow_projector.gd`, world-rendered,
+  always-on).
+- Voxel FACE lighting (a layer VIS-01 never anticipated) — shipped
+  (`VOXEL_LIGHT_MASTER_PLAN.md`, VL-01 → VL-D5).
+
+**Read literally, the original gate condition is largely met.** Whether AI
+tuning (AI-02) actually resumes now, or waits for something else (animation
+work, the shotgun/destruction-by-shot mechanism, content), is a sequencing
+decision only the Director can make — flagging it here so it doesn't stay
+silently stuck on a 2026-06-18 condition nobody re-checked.
 
 ---
 
@@ -410,9 +428,11 @@ registry.
 
 **Status:** 🟡 Wall + top facades complete and Director-ratified
 (`verified/v0.6.0`, "Alpha Top Texture", 2026-07-11). **Textured interiors
-(destruction reveal) explicitly blocked on the destruction system, which has
-no implementation plan yet** — this milestone does not close until that part
-lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
+(destruction reveal) blocked on the destruction system existing** — that
+blocker is now resolved (`DESTRUCTION_MASTER_PLAN.md` Parts 0–3 shipped,
+2026-07-22; see "The Voxel Architecture Pivot" below), but Part 3 of this
+plan (textured interiors specifically) has not itself been picked up. Tracked
+in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 
 **Deliverables (done):**
 - Continuous-plane facade model: wall side-faces render real material
@@ -447,6 +467,69 @@ lands. Tracked in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 - Full bake test suite green (`bake_fix_02/09/11/12`, `bake_selftest`,
   `bake_cache_test`) — see `docs/technical/BAKE_SYSTEM_REFERENCE.md`
 - Director visual ratification at `verified/v0.5.0`, `v0.5.1`, `v0.6.0`
+
+---
+
+## The Voxel Architecture Pivot (2026-06-28 → 2026-07-26) — retroactively documented 2026-07-26
+
+**This whole phase was undocumented here until now.** Two months of work —
+the majority of everything shipped since this file was last touched
+(2026-06-18) — replaced the flat sprite/`WallContainer` renderer with the
+voxel architecture and is nowhere reflected in the milestone list below.
+Detail lives in `docs/production/current_state.md` (maintained, "the live
+one") and the master plans; this entry exists so the milestone list stops
+silently pretending nothing happened between VOX-BAKE-01 and now.
+
+### ✅ VOXEL-01..08 — Wall Voxel Rendering System
+**Status:** Complete. Native `TileMapLayer`-per-voxel rendering replaced the
+legacy `WallContainer`/`Image.blend_rect` renderer entirely — no empirical
+offsets, analytically derived positions (Transform Canon). Geometry module
+(`Edge`, `Slice`, `HighWall`, `VoxelRegistry`) + dirty-flag/TIC integration +
+junction filling all shipped and selftested (`geometry_selftest.gd` 29/29).
+See `docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`.
+
+### 🟡 VOXEL-09 — Secondary (per-HighWall) Baking — DEFERRED, not started
+Architectural framework in place (`high_wall.gd`); no implementation. Not
+blocking anything currently in flight.
+
+### ✅ Bake System (BAKE-FIX-01 through 14, BAKE-CACHE-01/PAGESIZE-01-b)
+**Status:** Complete for walls + tops (B1–B6 invariants closed, B3 with real
+pixel evidence). Warm boot ~32ms (budget ≤150ms cleared, was 730-770ms).
+Textured interiors (destruction reveal) is the one open item — see
+VOX-BAKE-01 above. See `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
+
+### 🟡 Occlusion (`OCCLUSION_MASTER_PLAN.md`) — Parts 1–3 done, PAUSED 2026-07-21
+View occlusion (hiding structure from the player's camera so the agent stays
+visible under walls/roofs) — occlusion-set computation, wireframe visual, and
+agent-on-top rendering all shipped. Part 4 (interior cutaway) blocked on
+Slab/roofs, which have since landed but Part 4 hasn't been picked back up.
+Paused at the Director's call pending "a real map with placed objects to
+occlude against" — see the AI-track gate note above for why that trigger may
+now be satisfied.
+
+### 🟡 Destruction (`DESTRUCTION_MASTER_PLAN.md`) — Parts 0–3 done, UNBLOCKED 2026-07-26
+The dirty-flag/TIC destruction motor (built since the Voxel pivot, never
+switched on) now has a real trigger: a thrown grenade detonates, computes a
+wall-aware GU-ring blast via BFS, and marks real voxels destroyed through the
+real render pipeline (`blast_calculator_selftest.gd` 11/11, verified against
+the real running game via direct `TileMapLayer` cell readback, not just
+selftests). Shipped as "Alpha Grenade Foundation," 2026-07-22. Paused
+immediately after because destroyed voxels rendered fully lit regardless of
+damage (craters invisible) — **that blocker is now closed** by Voxel Light
+(below). Cover rule, noise-on-digging, rubble-as-terrain, fire/smoke remain
+explicitly deferred (never in scope for this pass). Nobody has resumed the
+plan yet.
+
+### ✅ Voxel Light (`VOXEL_LIGHT_MASTER_PLAN.md`, VL-01 → VL-D5) — SHIPPED 2026-07-23 → 2026-07-26
+"Alpha Temporal Light Foundation." Every voxel FACE (not just the floor) now
+paints to one of 12 discrete brightness buckets from lamp distance/height/
+facing + GU-level occlusion. Blast destruction reads visually: soot rings,
+contiguous radial floor crater, directional destruction bias, under-wall
+darkening, fading ember→char glow on freshly-blasted wood. Temporal lights
+(flicker/pulse) repaint only their own influence set (~75ms worst case vs.
+~590–675ms whole-map). Perspective rotation cost cut ~80%. Two items still
+open: metal denting/warping (item 6) and the 4-view prebuild optimization —
+neither blocking.
 
 ---
 
@@ -968,27 +1051,45 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 
 ---
 
-## Blockers & Risks
+## Blockers & Risks (updated 2026-07-26)
 
 | Milestone | Blocker | Status | Mitigation |
 |-----------|---------|--------|-----------|
-| **VIS-01** | — | 🟢 ACTIVE PRIORITY | Build the visual system first (wall occlusion + floor shadow projection) |
-| AI-01 / AI-02 / AI-03 | Visual system (VIS-01) | ⏸ DEFERRED | Provisional AI; resumes only after the visual system is complete |
-| CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Demo room showcases AI + visuals; gated by both |
+| **VIS-01** | — | 🟡 Largely absorbed — occlusion split into `OCCLUSION_MASTER_PLAN.md` (Parts 1-3 done, paused), floor shadows + voxel light shipped | Remaining scope (Slice C/D, item #3 view-occlusion polish) is small; no active work |
+| AI-01 / AI-02 / AI-03 | Visual system (VIS-01) | ⏸ Gate condition largely met — see re-evaluation note above | **Director decision needed:** resume AI tuning now, or sequence after animation/shotgun work? |
+| CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Still gated by AI-02 tuning specifically |
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
-| ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; no implementation before the window |
+| Destruction Part 4+ (cover/noise/fire, shot-based destruction) | Lighting (VOXEL_LIGHT) | 🟢 UNBLOCKED 2026-07-26 | Ready to resume; not yet scheduled |
+| Ranged weapon (shotgun) + shot-based wall destruction | New mechanism, no plan yet | 🔵 Not started, not scoped | Needs its own Part/prompt in `DESTRUCTION_MASTER_PLAN.md` — see engine assessment |
+| ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; **Director is now asking about character/animation work ahead of this window — see engine assessment for the sequencing question** |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
 | M6.0 (Audio) | Audio assets | At risk | Hire externally if needed |
 
 ---
 
-## Next Steps
+## Next Steps (updated 2026-07-26)
 
-1. **Now:** VIS-01 — Overhead visual engine: wall view occlusion + floor shadow projection
-2. **After VIS-01:** AI track resumes — AI-01 (fix FSM), AI-02 (tuning), AI-03 (refactor). Provisional until then.
-3. **Then:** CONTENT-01 — Demo room polish (showcases tuned AI + visuals)
-4. **Post-investment:** Production pass (audio, animations, UI, multiple rooms)
+The original sequence (VIS-01 → AI track → CONTENT-01 → Investor Demo) was
+overtaken by the two-month voxel architecture pivot — none of that work was
+AI tuning, all of it was rendering/destruction/lighting engine work. That
+work is now largely done. Concrete open decisions, in the order they were
+raised:
+
+1. **Shot-based destruction (shotgun)** — needs a new trigger analogous to
+   the grenade one (`bomb_def.gd`/`blast_calculator.gd` pattern), a shotgun
+   prop positioned at a GU, and likely a directional/cone blast shape instead
+   of the grenade's omnidirectional rings. Not scoped yet — see engine
+   assessment.
+2. **Character/animation asset pipeline** — 3D-rendered low-poly sprites,
+   per-object lighting coherent with the voxel scene, rotation-frame count.
+   See engine assessment + the design-consultation answer for the specifics.
+3. **AI tuning (AI-02) resume timing** — gate condition is largely met; needs
+   an explicit Director call on sequencing against 1–2 above.
+4. **ART-01 window** — was scheduled for "after scenario and gameplay are
+   complete." If character/animation work starts now, that changes what
+   "complete" means for this gate — flagging, not deciding.
 
 See: `docs/production/roadmap.md` for the macro view of the phases
 See: `docs/production/technical_debt.md` for blocker details
+See: `docs/production/current_state.md` for the maintained per-domain status

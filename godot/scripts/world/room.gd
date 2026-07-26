@@ -1081,6 +1081,12 @@ func _set_perspective(direction: String) -> void:
 			_selected_cell = next_agent
 		selection_overlay.set_selected(_selected_cell)
 
+		## PERSPECTIVE-01: runtime-instantiated props outside _base_layout
+		## (test-zone grenades) don't get rebuilt by build_from_layout() above —
+		## reposition them explicitly, same pattern as the agent/selection block.
+		if _test_zone_controller != null:
+			_test_zone_controller.reposition_for_perspective(_active_perspective)
+
 		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_update_guard_los_data()
@@ -1337,11 +1343,6 @@ var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65  ## diagonal keeps lighter than o
 
 ## Multiply tint for a spill cell at ring `level` (1 = closest), orthogonal or diagonal.
 ## MOVED TO: WorldMarkersOverlayController._spill_color()
-
-
-func _draw_shadow_debug() -> void:
-	## DEPRECATED: Moved to WorldMarkersOverlayController.draw_shadow_debug()
-	pass
 
 
 func _on_ap_changed(current_ap: int, max_ap: int) -> void:
@@ -1866,16 +1867,6 @@ func _handle_tile_click(cell: Vector2i) -> void:
 		return
 	_selection_controller.handle_tile_click(cell)
 	_selected_cell = _selection_controller.selected_cell
-
-
-func _try_move_to(cell: Vector2i) -> bool:
-	if _selection_controller == null:
-		return false
-	var result := _selection_controller.try_move_to(cell)
-	_selected_cell = _selection_controller.selected_cell
-	return result
-
-
 
 
 

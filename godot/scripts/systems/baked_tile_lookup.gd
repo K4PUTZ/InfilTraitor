@@ -34,13 +34,11 @@ var _diag_hit_log_count: int = 0
 ## Result of a tile lookup query
 class TileLookupResult:
 	var source_id_int: int       # Integer tileset source id (for set_cell)
-	var source_id: String        # String identifier (for debugging; deprecated)
 	var atlas_coords: Vector2i   # (col, row) within that source
 	var alternative_id: int      # For future use (always 0 for now)
 
-	func _init(p_source_id_int: int, p_source_id: String, p_atlas_coords: Vector2i, p_alternative_id: int = 0) -> void:
+	func _init(p_source_id_int: int, p_atlas_coords: Vector2i, p_alternative_id: int = 0) -> void:
 		source_id_int = p_source_id_int
-		source_id = p_source_id
 		atlas_coords = p_atlas_coords
 		alternative_id = p_alternative_id
 
@@ -255,7 +253,7 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 					print("[BAKE-DIAG] HIT edge=%s dir=%d col=%d level=%d key=%s coords=%s" % [
 						edge.id, dir, column_in_run, level, lookup_key, atlas_coords
 					])
-				return TileLookupResult.new(source_id, "BAKED_ATLAS_%d" % page_idx, atlas_coords, 0)
+				return TileLookupResult.new(source_id, atlas_coords, 0)
 			elif _debug_enabled() and _diag_miss_count < _diag_miss_log_limit:
 				_diag_miss_count += 1
 				print("[BAKE-DIAG] lookup MISS reason=NO_SOURCE_ID_FOR_PAGE (page_idx=%d, key=%s)" % [page_idx, lookup_key])
@@ -325,7 +323,7 @@ func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
 	var source_id: int = _get_baked_atlas_source_id(entry.get("page", -1))
 	if source_id < 0:
 		return null
-	return TileLookupResult.new(source_id, "BAKED_FLAT", entry.get("atlas_coords", Vector2i.ZERO), 0)
+	return TileLookupResult.new(source_id, entry.get("atlas_coords", Vector2i.ZERO), 0)
 
 
 ## OVERLORD-FIX-02: junction columns have dedicated baked atoms whose halves
@@ -343,7 +341,7 @@ func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:
 	var source_id: int = _get_baked_atlas_source_id(entry.get("page", -1))
 	if source_id < 0:
 		return null
-	return TileLookupResult.new(source_id, "BAKED_JUNCTION", entry.get("atlas_coords", Vector2i.ZERO), 0)
+	return TileLookupResult.new(source_id, entry.get("atlas_coords", Vector2i.ZERO), 0)
 
 
 ## Get the position of an edge within its run (0 = first edge, 1 = second, etc.)
@@ -375,7 +373,6 @@ func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 		var atlas_coords = material_atlas.get_coords(material_id, face, variant_k)
 		return TileLookupResult.new(
 			material_atlas.source_id_int if material_atlas.has("source_id_int") else 0,
-			material_atlas.source_id if material_atlas.has("source_id") else "MATERIAL_SOURCE",
 			atlas_coords,
 			0
 		)
@@ -383,7 +380,6 @@ func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
 	# Fallback: return material index 0
 	return TileLookupResult.new(
 		0,
-		"MATERIAL_ATLAS",
 		Vector2i(0, 0),
 		0
 	)

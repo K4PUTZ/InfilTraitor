@@ -7,7 +7,6 @@ Where the work stands and what gets built next.
 | **[current_state.md](current_state.md)** | Status by domain. **The live one.** | `update_docs.py`, via the pre-commit hook (AUTO header) |
 | **[milestones.md](milestones.md)** | The executable list — IDs, stages, status | Hand, at closure |
 | **[roadmap.md](roadmap.md)** | Macro phases and exit criteria | Hand, rarely |
-| **[systems_matrix.md](systems_matrix.md)** | Maturity % per system | Hand |
 | **[technical_debt.md](technical_debt.md)** | Known issues and pending refactors | Hand |
 | **[METHODOLOGY.md](METHODOLOGY.md)** | Prompt IDs, domain enum, Director/Overlord/Operator split | Hand |
 | **[TILE_ANATOMY.md](TILE_ANATOMY.md)** | Tile geometry, audited by `godot/scripts/tools/tile_anatomy_audit.gd` | The audit tool |
@@ -32,3 +31,8 @@ an asset — it rots silently, and then it misleads. Write the doc when the syst
 Until then the milestone entry is enough.
 
 Git still has all of it: `git show <sha>:docs/production/<file>`.
+
+On 2026-07-26 this folder also lost `systems_matrix.md`. It opened with its own
+"**SUPERSEDED.** See `current_state.md`" banner yet stayed listed here as if
+current — the same rot pattern one step earlier: a doc that knows it's dead but
+nobody removed the pointer. `current_state.md` already owns per-domain maturity.

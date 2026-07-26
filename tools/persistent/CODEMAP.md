@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**148 scripts · 29720 lines total** (under `godot/scripts/`)
+**148 scripts · 29153 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 244 lines
+`class_name DebugAgent` · extends `Node2D` · 241 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -75,7 +75,6 @@
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
-- `func set_vision_radius(new_radius: int) -> void:`
 - `func set_posture(new_posture: Posture) -> void:`
 - `func update_cover(blocked_cells: Dictionary) -> void:`
 - `func move_along_path(path: Array[Vector2i]) -> void:`
@@ -250,7 +249,7 @@ extends `Node` · 108 lines
 
 ### `hud_controller.gd`
 
-extends `Node` · 190 lines
+extends `Node` · 184 lines
 
 `godot/scripts/controllers/hud_controller.gd`
 
@@ -269,7 +268,6 @@ extends `Node` · 190 lines
 - `func hide_enemy_banner() -> void:`
 - `func show_busted(text_key: String = "ui.banner.busted") -> void:`
 - `func hide_busted() -> void:`
-- `func set_end_turn_enabled(value: bool) -> void:`
 - `func is_auto_end_turn_enabled() -> bool:`
 - `func set_numbers_button_active(active: bool) -> void:`
 - `func set_viewport_button_text(text: String) -> void:`
@@ -309,7 +307,7 @@ extends `Node` · 270 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 288 lines
+extends `Node2D` · 285 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -334,7 +332,6 @@ extends `Node2D` · 288 lines
 - `func toggle_heat() -> void:`
 - `func request_redraw() -> void:`
 - `func is_shadow_overlay_visible() -> bool:`
-- `func is_light_overlay_visible() -> bool:`
 
 ---
 
@@ -372,7 +369,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `theme_matrix_debug_view.gd`
 
-`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 211 lines
+`class_name ThemeMatrixDebugView` · extends `CanvasLayer` · 170 lines
 
 `godot/scripts/debug/theme_matrix_debug_view.gd`
 
@@ -386,7 +383,6 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func toggle() -> void:`
 - `func render_matrix() -> void:`
-- `func inspect_cell(material_id: String, theme_idx: int) -> void:`
 
 ---
 
@@ -456,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 143 lines
+`class_name EdgeRegistry` · 136 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
@@ -472,7 +468,6 @@ extends `ConfirmationDialog` · 64 lines
 - `func get_edge(id: String) -> Edge:`
 - `func get_slice(id: String) -> Slice:`
 - `func slices_of_edge(edge_id: String) -> Array:`
-- `func edge_of_slice(slice_id: String) -> Edge:`
 - `func sibling_slice(slice_id: String) -> Slice:`
 - `func edges_touching_gu(gu: Vector2i) -> Array:`
 - `func all_edges() -> Array:`
@@ -486,7 +481,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `face.gd`
 
-`class_name Face` · 59 lines
+`class_name Face` · 49 lines
 
 `godot/scripts/geometry/face.gd`
 
@@ -496,7 +491,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 67 lines
+`class_name GeometryCoords` · 61 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -676,7 +671,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1197 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1192 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1209,7 +1204,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1155 lines
+`class_name BakeCompositor` · 1116 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1264,7 +1259,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 423 lines
+`class_name BakedTileLookup` · 419 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1317,7 +1312,7 @@ extends `Node2D` · 43 lines
 
 ### `bomb_registry.gd`
 
-`class_name BombRegistry` · 60 lines
+`class_name BombRegistry` · 55 lines
 
 `godot/scripts/systems/destruction/bomb_registry.gd`
 
@@ -1333,7 +1328,6 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func register(bomb_def) -> void:`
 - `func get_bomb(p_id: String):`
-- `func list_bombs() -> Array:`
 - `func count() -> int:`
 - `func load_from_disk() -> void:`
 
@@ -1385,7 +1379,7 @@ extends `Node2D` · 43 lines
 
 ### `facade_sampler.gd`
 
-`class_name FacadeSampler` · 127 lines
+`class_name FacadeSampler` · 115 lines
 
 `godot/scripts/systems/facade_sampler.gd`
 
@@ -1398,15 +1392,12 @@ extends `Node2D` · 43 lines
 - `func sample(facade: Image, plane_x: float, plane_y: float) -> float:`
 - `func get_window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:`
 - `func get_window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:`
-- `func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:`
-- `func get_window_origin_isolated(edge, facade_id: String) -> Vector2i:`
-- `func get_window_bounds(origin: Vector2i, width_voxels: int, height_voxels: int, N: int) -> Rect2i:`
 
 ---
 
 ### `exposure_system.gd`
 
-`class_name ExposureSystem` · extends `Node` · 553 lines
+`class_name ExposureSystem` · extends `Node` · 484 lines
 
 `godot/scripts/systems/lighting/exposure_system.gd`
 
@@ -1438,13 +1429,11 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func set_room_size(size: Vector2i) -> void:`
 - `func set_structural_data(cells: Dictionary, edges: Dictionary) -> void:`
-- `func rebuild_from_shadow_result(result) -> void:`
 - `func rebuild_from_results(results: Array) -> void:`
 - `func get_cells_by_exposure(level: int) -> Array[Vector2i]:`
 - `func get_shadow_cells() -> Array[Vector2i]:`
 - `func get_penumbra_cells() -> Array[Vector2i]:`
 - `func get_visibility_class(cell: Vector2i) -> int:`
-- `func is_hidden(cell: Vector2i) -> bool:`
 - `func get_exposure_label(cell: Vector2i) -> String:`
 - `func get_tiles_by_class(target_class: int) -> Array:`
 - `func get_exposure_stats() -> Dictionary:`
@@ -1453,17 +1442,15 @@ extends `Node2D` · 43 lines
 - `func get_tile_debug_info(cell: Vector2i) -> String:`
 - `func get_shadow_depth(cell: Vector2i) -> int:`
 - `func get_exposure_confidence(cell: Vector2i) -> float:`
-- `func is_structurally_hidden(cell: Vector2i) -> bool:`
 - `func get_shadow_stability(cell: Vector2i) -> String:`
 - `func get_structurally_hidden_tiles() -> Array:`
-- `func get_tiles_by_stability(stability_type: String) -> Array:`
 - `func clear() -> void:`
 
 ---
 
 ### `light_anchor.gd`
 
-`class_name LightAnchor` · extends `RefCounted` · 136 lines
+`class_name LightAnchor` · extends `RefCounted` · 104 lines
 
 `godot/scripts/systems/lighting/light_anchor.gd`
 
@@ -1491,7 +1478,6 @@ extends `Node2D` · 43 lines
 
 **Public API**
 - `func is_valid() -> bool:`
-- `func get_expected_direction() -> Vector2i:`
 - `func debug_string() -> String:`
 - `func debug_info() -> String:`
 
@@ -1499,7 +1485,7 @@ extends `Node2D` · 43 lines
 
 ### `light_registry.gd`
 
-`class_name LightRegistry` · extends `Node` · 141 lines
+`class_name LightRegistry` · extends `Node` · 111 lines
 
 `godot/scripts/systems/lighting/light_registry.gd`
 
@@ -1517,11 +1503,6 @@ extends `Node2D` · 43 lines
 - `func remove_light(light_id: String) -> void:`
 - `func get_all_lights() -> Array:`
 - `func get_active_lights() -> Array:`
-- `func get_lights_by_type(light_type: String) -> Array:`
-- `func get_lights_affecting_cell(target_cell: Vector2i) -> Array:`
-- `func get_lights_at_cell(cell: Vector2i) -> Array:`
-- `func get_light(light_id: String):`
-- `func get_light_count() -> int:`
 - `func is_empty() -> bool:`
 - `func update_temporal_all(delta: float) -> Array:`
 - `func clear_all() -> void:`
@@ -1530,7 +1511,7 @@ extends `Node2D` · 43 lines
 
 ### `light_source.gd`
 
-`class_name LightSource` · extends `RefCounted` · 214 lines
+`class_name LightSource` · extends `RefCounted` · 178 lines
 
 `godot/scripts/systems/lighting/light_source.gd`
 
@@ -1585,13 +1566,9 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func update_temporal_state(delta: float) -> void:`
 - `func set_flicker(enabled: bool, interval: float = 1.0) -> void:`
-- `func set_pulse(enabled: bool, speed: float = 1.0, min_energy: float = 0.5, max_energy: float = 1.0) -> void:`
-- `func set_rotation(speed_radians_per_sec: float) -> void:`
 - `func get_effective_tactical_energy() -> float:`
-- `func debug_temporal_state() -> String:`
 - `func affects_cell(target_cell: Vector2i) -> bool:`
 - `func get_direction_vector() -> Vector2:`
-- `func get_cone_spread() -> float:`
 
 ---
 
@@ -1631,7 +1608,7 @@ extends `Node2D` · 43 lines
 
 ### `shadow_result.gd`
 
-`class_name ShadowResult` · extends `RefCounted` · 152 lines
+`class_name ShadowResult` · extends `RefCounted` · 144 lines
 
 `godot/scripts/systems/lighting/shadow_result.gd`
 
@@ -1648,9 +1625,7 @@ extends `Node2D` · 43 lines
 
 **Public API**
 - `func add_tile(cell: Vector2i, visibility_class: String) -> void:`
-- `func is_fully_lit(cell: Vector2i) -> bool:`
 - `func is_shadowed(cell: Vector2i) -> bool:`
-- `func is_penumbra(cell: Vector2i) -> bool:`
 - `func get_visibility_class(cell: Vector2i) -> String:`
 - `func get_tiles_by_class(visibility_class: String) -> Array[Vector2i]:`
 - `func merge(other: ShadowResult) -> void:`
@@ -1681,7 +1656,7 @@ extends `Node2D` · 43 lines
 
 ### `localization_manager.gd`
 
-`class_name LocalizationManager` · extends `Node` · 160 lines
+`class_name LocalizationManager` · extends `Node` · 145 lines
 
 `godot/scripts/systems/localization/localization_manager.gd`
 
@@ -1700,11 +1675,8 @@ extends `Node2D` · 43 lines
 - `var supported_locales: PackedStringArray = ["en", "pt_BR"]`
 
 **Public API**
-- `func get_language() -> String:`
-- `func get_supported_locales() -> PackedStringArray:`
 - `func set_language(locale: String) -> void:`
 - `func cycle_language() -> void:`
-- `func get_language_endonym(locale: String) -> String:`
 
 ---
 
@@ -1772,7 +1744,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 900 lines
+`class_name OcclusionSet` · 869 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -1789,8 +1761,6 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
 - `func get_wireframe_by_level() -> Dictionary:`
-- `func get_ring_index(voxel_cell: Vector2i) -> int:`
-- `func is_occluded(voxel_cell: Vector2i) -> bool:`
 - `func get_recompute_count() -> int:`
 - `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:`
 
@@ -1818,7 +1788,7 @@ extends `Node2D` · 43 lines
 
 ### `prop_registry.gd`
 
-`class_name PropRegistry` · 66 lines
+`class_name PropRegistry` · 61 lines
 
 `godot/scripts/systems/prop_registry.gd`
 
@@ -1834,7 +1804,6 @@ extends `Node2D` · 43 lines
 **Public API**
 - `func register(prop_def) -> void:`
 - `func get_prop(p_id: String):`
-- `func list_props() -> Array:`
 - `func count() -> int:`
 - `func load_from_disk() -> void:`
 
@@ -1842,7 +1811,7 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 151 lines
+extends `Node` · 122 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -1865,10 +1834,6 @@ extends `Node` · 151 lines
 - `func ensure_bomb_registry() -> BombRegistryClass:`
 - `func get_bomb_registry() -> BombRegistryClass:`
 - `func ensure_file_map_source() -> FileMapSourceClass:`
-- `func set_baked_atlas(atlas, source_ids: Dictionary, timestamp: int) -> void:`
-- `func get_baked_atlas():`
-- `func get_baked_atlas_source_ids() -> Dictionary:`
-- `func get_bake_timestamp() -> int:`
 
 ---
 
@@ -1910,7 +1875,7 @@ extends `Node` · 151 lines
 
 ### `theme_applier.gd`
 
-`class_name ThemeApplier` · 59 lines
+`class_name ThemeApplier` · 47 lines
 
 `godot/scripts/systems/theme_applier.gd`
 
@@ -1922,7 +1887,6 @@ extends `Node` · 151 lines
 **Public API**
 - `func apply(theme_color: Color) -> void:`
 - `func clear() -> void:`
-- `func get_current_theme() -> Color:`
 
 ---
 
@@ -1941,7 +1905,7 @@ extends `Node` · 151 lines
 
 ### `turn_manager.gd`
 
-`class_name TacticalTurnManager` · extends `Node` · 70 lines
+`class_name TacticalTurnManager` · extends `Node` · 63 lines
 
 `godot/scripts/systems/turn_manager.gd`
 
@@ -1961,7 +1925,6 @@ extends `Node` · 151 lines
 - `func end_turn() -> void:`
 - `func finish_enemy_phase() -> void:`
 - `func get_max_move_points() -> int:`
-- `func can_afford_path_cost(path_cost: int) -> bool:`
 - `func spend_for_path_cost(path_cost: int) -> bool:`
 - `func consume_ap(amount: int) -> void:`
 - `func path_cost_to_ap(path_cost: int) -> int:`
@@ -2688,7 +2651,7 @@ extends `SceneTree` · 95 lines
 
 ### `detonate_context_menu.gd`
 
-`class_name DetonateContextMenu` · extends `Control` · 112 lines
+`class_name DetonateContextMenu` · extends `Control` · 104 lines
 
 `godot/scripts/ui/detonate_context_menu.gd`
 
@@ -2703,7 +2666,6 @@ extends `SceneTree` · 95 lines
 **Public API**
 - `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void:`
 - `func close() -> void:`
-- `func contains_screen_point(screen_pos: Vector2) -> bool:`
 
 ---
 
@@ -2801,7 +2763,7 @@ extends `SceneTree` · 95 lines
 
 ### `selection_overlay.gd`
 
-extends `Node2D` · 39 lines
+extends `Node2D` · 34 lines
 
 `godot/scripts/ui/selection_overlay.gd`
 
@@ -2815,7 +2777,6 @@ extends `Node2D` · 39 lines
 
 **Public API**
 - `func set_selected(cell: Vector2i) -> void:`
-- `func clear_selected() -> void:`
 
 ---
 
@@ -2884,7 +2845,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 919 lines
+`class_name RoomBuilder` · 870 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -2908,13 +2869,10 @@ extends `Node2D` · 34 lines
 **Public API**
 - `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:`
 - `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
-- `func cache_blocked_cells(layout: Dictionary) -> void:`
 - `func get_blocked_cells() -> Dictionary:`
 - `func get_prop_heights() -> Dictionary:`
-- `func get_prop_cover() -> Dictionary:`
 - `func get_exit_cells() -> Array[Vector2i]:`
 - `func get_light_sources() -> Array:`
-- `func get_base_layout() -> Dictionary:`
 - `func build_registry(ts: TileSet) -> void:`
 - `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
 - `func invalidate_bake_cache() -> void:`
@@ -2972,7 +2930,7 @@ extends `Node2D` · 34 lines
 
 ### `selection_controller.gd`
 
-`class_name SelectionController` · 116 lines
+`class_name SelectionController` · 98 lines
 
 `godot/scripts/world/controllers/selection_controller.gd`
 
@@ -2987,16 +2945,13 @@ extends `Node2D` · 34 lines
 - `func set_selected_cell(cell: Vector2i) -> void:`
 - `func handle_tile_click(cell: Vector2i) -> void:`
 - `func try_move_to(cell: Vector2i) -> bool:`
-- `func try_execute_move() -> void:`
 - `func handle_move_click(cell: Vector2i) -> void:`
-- `func get_selected_cell() -> Vector2i:`
-- `func reset_selection() -> void:`
 
 ---
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 297 lines
+`class_name TestZoneController` · 321 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3004,6 +2959,7 @@ extends `Node2D` · 34 lines
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `HIT_RADIUS_PX` = `40.0`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `GRENADE_SPRITE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png"`
@@ -3021,7 +2977,7 @@ extends `Node2D` · 34 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 393 lines
+`class_name TurnController` · 376 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
@@ -3034,7 +2990,6 @@ extends `Node2D` · 34 lines
 - `ENEMY_CAMERA_TWEEN_DURATION` = `0.4`
 - `ENEMY_PHASE_MAX_OPEN_ZOOM` = `2.0`
 - `ACTOR_END_HOLD_DELAY` = `0.2`
-- `ENEMY_INTER_TURN_DELAY` = `0.5`
 
 **Public vars**
 - `var room: Node`
@@ -3052,8 +3007,6 @@ extends `Node2D` · 34 lines
 - `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
 - `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
 - `func get_alert_meter() -> int:`
-- `func set_alert_meter(value: int) -> void:`
-- `func set_pending_auto_end_turn(value: bool) -> void:`
 
 ---
 
@@ -3087,7 +3040,7 @@ extends `Node2D` · 34 lines
 
 ### `level_graph.gd`
 
-`class_name LevelGraph` · extends `RefCounted` · 103 lines
+`class_name LevelGraph` · extends `RefCounted` · 98 lines
 
 `godot/scripts/world/level_graph.gd`
 
@@ -3231,7 +3184,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2896 lines
+extends `Node2D` · 2887 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3322,7 +3275,7 @@ extends `Node2D` · 2896 lines
 
 ### `tile_semantics.gd`
 
-`class_name TileSemantics` · extends `RefCounted` · 222 lines
+`class_name TileSemantics` · extends `RefCounted` · 166 lines
 
 `godot/scripts/world/tile_semantics.gd`
 
@@ -3364,11 +3317,6 @@ extends `Node2D` · 2896 lines
 - `var hazard_type: String = ""`
 
 **Public API**
-- `func obstructs_light() -> bool:`
-- `func obstructs_los() -> bool:`
-- `func is_valid_light_socket() -> bool:`
-- `func can_receive_shadow() -> bool:`
-- `func can_receive_light() -> bool:`
 - `func debug_string() -> String:`
 - `func debug_info() -> String:`
 
@@ -3389,7 +3337,7 @@ extends `Node2D` · 2896 lines
 
 ### `wall_edge_data.gd`
 
-`class_name WallEdgeData` · 39 lines
+`class_name WallEdgeData` · 30 lines
 
 `godot/scripts/world/wall_edge_data.gd`
 

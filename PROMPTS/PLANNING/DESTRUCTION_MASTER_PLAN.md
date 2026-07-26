@@ -1,20 +1,24 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
-**Status:** 🟢 **PAUSED at Alpha Grenade Foundation, 2026-07-22.** Part 0
-(spike), Part 1 (`Slab`), Part 2 core+consumer (floor), Part 2b (roof/ceiling
-Slabs) and now **Part 3 (the trigger) DONE** — see Part 3's own status block
-below for the full account. The idle motor D15/D6 described is no longer
-idle: a real grenade in the real running game marks real voxels destroyed,
-through the real dirty-flag/TIC pipeline, confirmed by direct `TileMapLayer`
-cell readback (not code-reading). **Paused here, Director's call
-(2026-07-22):** lighting is the next real blocker — every voxel currently
+**Status:** 🟡 **UNBLOCKED, 2026-07-26 — ready to resume.** Paused at Alpha
+Grenade Foundation, 2026-07-22, precisely because "every voxel currently
 renders fully lit regardless of damage, so a crater's depth/shape reads as
-close to invisible even though the underlying geometry is genuinely gone.
-Destruction work resumes once lighting can actually sell the damage;
-continuing to build more destruction mechanics (blast tuning, cover/noise
-integration, fire) before that would be building on top of an effect nobody
-can see yet.
+close to invisible." `VOXEL_LIGHT_MASTER_PLAN.md` (VL-01 → VL-D5, "Alpha
+Temporal Light Foundation") shipped 2026-07-23 → 2026-07-26 and explicitly
+names this plan as the thing it was a prerequisite for — its own status
+header says so directly: **"that blocker is now closed."** Destruction craters
+now read visually (soot rings, contiguous radial floor crater, directional
+blast bias, under-wall darkening, ember→char glow on wood) — see
+`VOXEL_LIGHT_MASTER_PLAN.md` for the mechanism. Part 0 (spike), Part 1
+(`Slab`), Part 2 core+consumer (floor), Part 2b (roof/ceiling Slabs) and
+**Part 3 (the trigger) DONE** — see Part 3's own status block below for the
+full account. The idle motor D15/D6 described is no longer idle: a real
+grenade in the real running game marks real voxels destroyed, through the
+real dirty-flag/TIC pipeline, confirmed by direct `TileMapLayer` cell
+readback (not code-reading). **Nobody has resumed this plan yet** — flagging
+the unblock is not the same as picking it back up; that call is the
+Director's, same as the original pause.
 **Runs AFTER `OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12) —
 occlusion paused at Alpha Foundation 2026-07-15, this plan picked up next
 and is now itself paused, first at its own Alpha Ceiling Foundation

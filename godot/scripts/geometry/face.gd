@@ -47,13 +47,3 @@ static func to_string_name(face: int) -> String:
 		SE: return "SE"
 		SW: return "SW"
 		_: return "INVALID_%d" % face
-
-
-## String name → face (reverse lookup)
-static func from_string_name(name: String) -> int:
-	match name:
-		"NW": return NW
-		"NE": return NE
-		"SE": return SE
-		"SW": return SW
-		_: return -1

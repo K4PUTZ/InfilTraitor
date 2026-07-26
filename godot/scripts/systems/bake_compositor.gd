@@ -992,45 +992,6 @@ func _generate_marker_facade() -> Image:
 		img.fill_rect(Rect2i(0, j * 16, FACADE_W, thickness), Color(1.0, 1.0, 1.0, 1.0))
 	return img
 
-## Blend reference (kept for tests / future LUT page variants). The live path
-## realizes TEXTURE_ONLY and MULTIPLY via per-tile modulate on grayscale pages.
-func _apply_blend(shaded_base: Color, facade_lum: float) -> Color:
-	match BakeConfigClass.blend_mode:
-		BakeConfigClass.BlendMode.MULTIPLY:
-			return shaded_base * facade_lum
-		BakeConfigClass.BlendMode.TEXTURE_ONLY:
-			return Color(facade_lum, facade_lum, facade_lum)
-		BakeConfigClass.BlendMode.MATERIAL_ONLY:
-			return shaded_base
-		BakeConfigClass.BlendMode.OVERLAY_EXPERIMENTAL:
-			return Color(
-				_overlay_channel(shaded_base.r, facade_lum),
-				_overlay_channel(shaded_base.g, facade_lum),
-				_overlay_channel(shaded_base.b, facade_lum)
-			)
-		BakeConfigClass.BlendMode.LINEAR_LIGHT:
-			return Color(
-				clampf(shaded_base.r + 2.0 * facade_lum - 1.0, 0.0, 1.0),
-				clampf(shaded_base.g + 2.0 * facade_lum - 1.0, 0.0, 1.0),
-				clampf(shaded_base.b + 2.0 * facade_lum - 1.0, 0.0, 1.0)
-			)
-		_:
-			return shaded_base * facade_lum
-
-func _overlay_channel(base_c: float, tex: float) -> float:
-	if base_c < 0.5:
-		return 2.0 * base_c * tex
-	return 1.0 - 2.0 * (1.0 - base_c) * (1.0 - tex)
-
-## Get canonical alpha from real voxel PNG (B3 reference; used by tests)
-func _get_canonical_alpha(material_id: String, pixel_x: int, pixel_y: int) -> float:
-	var voxel_img = _voxel_atoms.get(material_id)
-	if voxel_img == null:
-		return 0.0
-	if pixel_x < 0 or pixel_x >= VOXEL_ATOM_W or pixel_y < 0 or pixel_y >= VOXEL_ATOM_H:
-		return 0.0
-	return voxel_img.get_pixel(pixel_x, pixel_y).a
-
 ## Get global material registry
 func _get_material_registry():
 	if Engine.has_meta("BAKE_TEST_REGISTRY"):

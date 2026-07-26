@@ -294,11 +294,6 @@ func get_layer_count() -> int:
 	return _voxel_layers.size()
 
 
-## Getter for the runtime TileSet (for diagnostics/tests — e.g. reading TileData.flip_h)
-func get_tileset() -> TileSet:
-	return _tileset
-
-
 ## OCC-03: Get the highest z_index across all voxel layers (used to render agent above all geometry).
 ## Returns: z_index of the topmost voxel layer, or WALL_BASE_Z_INDEX if no layers yet.
 func get_max_voxel_z_index() -> int:

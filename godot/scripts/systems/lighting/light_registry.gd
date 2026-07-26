@@ -76,36 +76,6 @@ func get_active_lights() -> Array:
 			result.append(light)
 	return result
 
-## Get lights by type
-func get_lights_by_type(light_type: String) -> Array:
-	var result: Array = []
-	for light in _lights.values():
-		if light.light_type == light_type:
-			result.append(light)
-	return result
-
-## Get lights affecting a specific cell (radius check only, no occlusion)
-func get_lights_affecting_cell(target_cell: Vector2i) -> Array:
-	var result: Array = []
-	for light in get_active_lights():
-		if light.affects_cell(target_cell):
-			result.append(light)
-	return result
-
-## Get lights at specific cell (exact position)
-func get_lights_at_cell(cell: Vector2i) -> Array:
-	if _lights_by_cell.has(cell):
-		return _lights_by_cell[cell].duplicate()
-	return []
-
-## Get light by ID
-func get_light(light_id: String):
-	return _lights.get(light_id, null)
-
-## Count total lights
-func get_light_count() -> int:
-	return _lights.size()
-
 ## Check if registry is empty
 func is_empty() -> bool:
 	return _lights.is_empty()

@@ -141,12 +141,6 @@ func _on_language_changed(_locale: String) -> void:
 		_busted_dialog.text = tr(_busted_key)
 
 
-## Enables/disables the end-turn button
-func set_end_turn_enabled(value: bool) -> void:
-	if _btn_end_turn:
-		_btn_end_turn.disabled = not value
-
-
 ## Checks whether auto-end-turn is enabled
 func is_auto_end_turn_enabled() -> bool:
 	if _chk_auto_end_turn:

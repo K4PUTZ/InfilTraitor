@@ -50,12 +50,6 @@ static func voxel_to_gu(v: Vector2i) -> Vector2i:
 	return v / float(VOXELS_PER_UNIT_AXIS)
 
 
-## Voxel cell → local offset within its Gameplay Unit
-## Returns offset in range [0, 7] for both x and y
-static func voxel_local(v: Vector2i) -> Vector2i:
-	return v % VOXELS_PER_UNIT_AXIS
-
-
 ## All 64 voxel cells contained in a Gameplay Unit
 ## Returns array in scan order: y varies outer, x varies inner
 static func gu_voxels(gu: Vector2i) -> Array[Vector2i]:

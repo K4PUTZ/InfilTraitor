@@ -19,7 +19,7 @@ const COLOR_BODY_DARK := Color(0.58, 0.12, 0.10, 1.0)
 const COLOR_HEAD := Color(1.0, 0.87, 0.80, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
-## Base probabilities by distance — mirrors TicSystem.DETECTION_CURVE
+## Base probabilities by distance, indexed by tile distance
 const FOV_DISTANCE_CURVE: Array[float] = [
 	1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01
 ]

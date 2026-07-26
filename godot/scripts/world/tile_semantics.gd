@@ -132,62 +132,6 @@ static func make_wall() -> TileSemantics:
 	tile.blocks_light = true
 	return tile
 
-## Create tall structure (ceiling-height, ~2.5-4.5u)
-static func make_tall() -> TileSemantics:
-	var tile = TileSemantics.new()
-	tile.height_class = HEIGHT_TALL_STRUCTURE
-	tile.structural_type = STRUCT_TALL
-	tile.layer_assignment = LAYER_STRUCTURAL
-	tile.blocks_los = true
-	tile.blocks_light = false
-	return tile
-
-## Create overhead infrastructure (ceiling, L3 layer)
-static func make_overhead() -> TileSemantics:
-	var tile = TileSemantics.new()
-	tile.height_class = HEIGHT_OVERHEAD
-	tile.structural_type = STRUCT_OVERHEAD
-	tile.layer_assignment = LAYER_OVERHEAD
-	tile.blocks_los = false
-	tile.blocks_light = true
-	return tile
-
-## Create subfloor tile (L0 effects, hazards)
-static func make_subfloor(hazard: String = "") -> TileSemantics:
-	var tile = TileSemantics.new()
-	tile.height_class = HEIGHT_FLOOR
-	tile.layer_assignment = LAYER_SUBFLOOR
-	tile.receives_light = false
-	tile.receives_shadow = false
-	if not hazard.is_empty():
-		tile.has_hazard = true
-		tile.hazard_type = hazard
-	return tile
-
-## ============================================================================
-## Query Methods
-## ============================================================================
-
-## Does this tile obstruct light propagation?
-func obstructs_light() -> bool:
-	return blocks_light
-
-## Does this tile obstruct line-of-sight?
-func obstructs_los() -> bool:
-	return blocks_los
-
-## Is this tile a valid position for light placement?
-func is_valid_light_socket() -> bool:
-	return is_light_anchor
-
-## Can shadows fall on this tile?
-func can_receive_shadow() -> bool:
-	return receives_shadow and layer_assignment == LAYER_PLAYABLE
-
-## Can light directly illuminate this tile?
-func can_receive_light() -> bool:
-	return receives_light and layer_assignment != LAYER_SUBFLOOR
-
 ## ============================================================================
 ## Debugging
 ## ============================================================================

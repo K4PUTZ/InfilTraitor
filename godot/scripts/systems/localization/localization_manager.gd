@@ -46,14 +46,6 @@ func _ready() -> void:
 
 
 ## Active locale code (e.g. "pt_BR").
-func get_language() -> String:
-	return _current_locale
-
-
-func get_supported_locales() -> PackedStringArray:
-	return supported_locales
-
-
 ## Switches the active language, persists the choice and notifies listeners.
 ## Unsupported locales are ignored with a warning (no state change).
 func set_language(locale: String) -> void:
@@ -70,13 +62,6 @@ func cycle_language() -> void:
 	var idx := supported_locales.find(_current_locale)
 	var next: String = supported_locales[(idx + 1) % supported_locales.size()]
 	set_language(next)
-
-
-## Display name of `locale` written in its own language (endonym), for pickers.
-## Falls back to the raw locale code if the key is absent.
-func get_language_endonym(locale: String) -> String:
-	var table: Dictionary = _messages.get(locale, {})
-	return table.get("language.name." + locale, locale)
 
 
 # ── internals ────────────────────────────────────────────────────────────────

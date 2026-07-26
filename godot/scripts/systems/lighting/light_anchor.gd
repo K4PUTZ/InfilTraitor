@@ -49,20 +49,6 @@ func is_valid() -> bool:
 		TYPE_COLUMN, TYPE_SPOTLIGHT, TYPE_AMBIENT
 	] and (anchor_cell != Vector2i.ZERO or anchor_type == TYPE_AMBIENT)
 
-## Get expected light emission direction (if applicable)
-func get_expected_direction() -> Vector2i:
-	match anchor_type:
-		TYPE_CEILING:
-			return Vector2i.DOWN
-		TYPE_FLOOR:
-			return Vector2i.UP
-		TYPE_WALL:
-			return emission_direction if emission_direction != Vector2i.ZERO else Vector2i.RIGHT
-		TYPE_SPOTLIGHT:
-			return emission_direction if emission_direction != Vector2i.ZERO else Vector2i.DOWN
-		_:
-			return Vector2i.ZERO
-
 ## ============================================================================
 ## Factory Methods
 ## ============================================================================
@@ -91,24 +77,6 @@ static func make_floor(cell_pos: Vector2i, light_rad: int = 3) -> LightAnchor:
 	anchor.anchor_type = TYPE_FLOOR
 	anchor.anchor_height = 0  ## HEIGHT_FLOOR
 	anchor.emission_direction = Vector2i.UP
-	anchor.light_radius = light_rad
-	return anchor
-
-static func make_column(cell_pos: Vector2i, light_rad: int = 4) -> LightAnchor:
-	var anchor = LightAnchor.new()
-	anchor.anchor_cell = cell_pos
-	anchor.anchor_type = TYPE_COLUMN
-	anchor.anchor_height = 3  ## HEIGHT_TALL_STRUCTURE
-	anchor.emission_direction = Vector2i.ZERO  ## Omnidirectional
-	anchor.light_radius = light_rad
-	return anchor
-
-static func make_spotlight(cell_pos: Vector2i, dir: Vector2i, light_rad: int = 5) -> LightAnchor:
-	var anchor = LightAnchor.new()
-	anchor.anchor_cell = cell_pos
-	anchor.anchor_type = TYPE_SPOTLIGHT
-	anchor.anchor_height = 4  ## HEIGHT_OVERHEAD
-	anchor.emission_direction = dir
 	anchor.light_radius = light_rad
 	return anchor
 

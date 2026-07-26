@@ -132,47 +132,6 @@ func set_structural_data(cells: Dictionary, edges: Dictionary) -> void:
 ## Core Exposure Calculation
 ## ============================================================================
 
-## Rebuild exposure grid from a ShadowResult.
-##
-## Converts shadow topology directly into semantic visibility classes:
-## - fully_lit -> FULL_LIT (4)
-## - dim -> DIM (3)
-## - penumbra -> PENUMBRA (2)
-## - shadow -> SHADOW (1)
-## - deep_shadow -> DEEP_SHADOW (0)
-##
-## All unclassified tiles default to DEEP_SHADOW (safest for stealth).
-func rebuild_from_shadow_result(result) -> void:
-	_exposure_grid.clear()
-	
-	# Map each visibility class from ShadowResult to enum value
-	# Note: result parameter untyped to avoid scope compilation issues
-	
-	# Fully lit tiles (highest detection risk)
-	var fully_lit_tiles = result.get_tiles_by_class("fully_lit")
-	for cell in fully_lit_tiles:
-		_exposure_grid[cell] = FULL_LIT
-	
-	# Dim tiles (moderate visibility)
-	var dim_tiles = result.get_tiles_by_class("dim")
-	for cell in dim_tiles:
-		_exposure_grid[cell] = DIM
-	
-	# Penumbra tiles (edge of shadow, low visibility)
-	var penumbra_tiles = result.get_tiles_by_class("penumbra")
-	for cell in penumbra_tiles:
-		_exposure_grid[cell] = PENUMBRA
-	
-	# Shadow tiles (concealed, minimal risk)
-	var shadow_tiles = result.get_tiles_by_class("shadow")
-	for cell in shadow_tiles:
-		_exposure_grid[cell] = SHADOW
-	
-	# Deep shadow tiles (hidden, negligible risk)
-	var deep_shadow_tiles = result.get_tiles_by_class("deep_shadow")
-	for cell in deep_shadow_tiles:
-		_exposure_grid[cell] = DEEP_SHADOW
-
 ## Rebuild from multiple shadow results (future: exposure merging for multiple lights).
 ##
 ## For now, this uses the most conservative visibility (highest risk).
@@ -365,14 +324,6 @@ func get_visibility_class(cell: Vector2i) -> int:
 		return _exposure_grid[cell]
 	return DEEP_SHADOW
 
-## Check if a tile is hidden (shadow or deeper).
-##
-## Returns true if visibility class <= SHADOW (1).
-## Useful for quick stealth checks.
-func is_hidden(cell: Vector2i) -> bool:
-	var vis_class = get_visibility_class(cell)
-	return vis_class <= SHADOW
-
 ## Get human-readable label for a visibility class.
 ##
 ## Returns semantic name: "FULL_LIT", "DIM", "PENUMBRA", "SHADOW", "DEEP_SHADOW".
@@ -488,16 +439,6 @@ func get_exposure_confidence(cell: Vector2i) -> float:
 		return _exposure_confidence[cell]
 	return 0.5  # Default: unknown reliability
 
-## Check if a tile is structurally hidden.
-##
-## Returns true only if OCCLUDED_VOID or if structurally protected.
-## Distinct from temporal concealment (flicker shadows).
-##
-## Used for pathfinding AI, cover assessment, and elite vision.
-func is_structurally_hidden(cell: Vector2i) -> bool:
-	var vis_class = get_visibility_class(cell)
-	return vis_class == OCCLUDED_VOID
-
 ## Get shadow stability classification for a tile.
 ##
 ## Returns STABILITY_STATIC, STABILITY_TEMPORAL, STABILITY_DYNAMIC, or STABILITY_OCCLUDED.
@@ -515,16 +456,6 @@ func get_structurally_hidden_tiles() -> Array:
 	var result: Array = []
 	for cell in _exposure_grid.keys():
 		if _exposure_grid[cell] == OCCLUDED_VOID:
-			result.append(cell)
-	return result
-
-## Get tiles by shadow stability classification.
-##
-## Returns array of tiles with given stability type.
-func get_tiles_by_stability(stability_type: String) -> Array:
-	var result: Array = []
-	for cell in _shadow_stability.keys():
-		if _shadow_stability[cell] == stability_type:
 			result.append(cell)
 	return result
 

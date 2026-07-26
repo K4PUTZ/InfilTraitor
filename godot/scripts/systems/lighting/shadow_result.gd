@@ -59,17 +59,9 @@ func add_tile(cell: Vector2i, visibility_class: String) -> void:
 				computed_tile_count += 1
 				_occlusion_count += 1
 
-## Query: is this tile directly lit?
-func is_fully_lit(cell: Vector2i) -> bool:
-	return fully_lit_tiles.has(cell)
-
 ## Query: is this tile in shadow?
 func is_shadowed(cell: Vector2i) -> bool:
 	return shadow_tiles.has(cell) or deep_shadow_tiles.has(cell)
-
-## Query: is this tile in penumbra zone?
-func is_penumbra(cell: Vector2i) -> bool:
-	return penumbra_tiles.has(cell)
 
 ## Query: any shadow classification for this tile
 func get_visibility_class(cell: Vector2i) -> String:

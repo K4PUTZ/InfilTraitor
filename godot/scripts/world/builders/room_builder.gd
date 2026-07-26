@@ -33,7 +33,6 @@ var _prop_cover: Dictionary = {}
 var _exit_cells: Array[Vector2i] = []
 var _current_light_sources: Array = []
 var _tile_ids: Dictionary = {}
-var _base_layout: Dictionary = {}
 
 # References to room layers
 var floor_layer: TileMapLayer = null
@@ -329,46 +328,6 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	_cache_blocked_cells(layout)
 
 
-func cache_blocked_cells(layout: Dictionary) -> void:
-	_blocked_cells.clear()
-	for cell in layout.get("blocked_cells", []):
-		_blocked_cells[cell] = true
-	## Per-prop shadow heights (rotated cell → height class 1-4) from structure_tiles and voxel_props.
-	## Consumed by LightingController._setup_tile_semantics so stacked props cast taller
-	## (longer) shadows. Built here so it follows perspective rotation with the layout.
-	_prop_heights.clear()
-	for entry in layout.get("structure_tiles", []):
-		if entry is Dictionary and entry.has("height"):
-			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
-	# Also populate from voxel_prop_instances using prop definitions' storeys
-	var prop_registry = _get_prop_registry()
-	if prop_registry:
-		for instance in layout.get("voxel_prop_instances", []):
-			if instance is Dictionary:
-				var def_id: String = instance.get("def_id", "")
-				var gu_cell: Vector2i = instance.get("gu_cell", Vector2i.ZERO)
-				var prop_def = prop_registry.get_prop(def_id)
-				if prop_def:
-					# Derive shadow height using the same convention as legacy stacked props:
-					# height = clamp(storeys + 1, 1, 4). This ensures voxel props cast
-					# shadows consistent with their visual presence (1-storey = height class 2).
-					var height: int = clampi(int(prop_def.storeys) + 1, 1, 4)
-					_prop_heights[gu_cell] = height
-	## Segment exits — used by the purple overlay in _draw()
-	_exit_cells.clear()
-	for raw in layout.get("exit_cells", []):
-		_exit_cells.append(Vector2i(raw))
-	## Active (perspective-rotated) map lights — consumed by LightingController.
-	_current_light_sources = layout.get("light_sources", [])
-	print("[Room] Cache: %d blocked_cells, %d exit_cells, %d lights" % [
-		_blocked_cells.size(), _exit_cells.size(), _current_light_sources.size()])
-	print("[Room] Border check: (0,0)=%s (17,0)=%s (0,35)=%s (17,35)=%s (9,0)=%s (9,35)=%s" % [
-		_blocked_cells.has(Vector2i(0,0)), _blocked_cells.has(Vector2i(17,0)),
-		_blocked_cells.has(Vector2i(0,35)), _blocked_cells.has(Vector2i(17,35)),
-		_blocked_cells.has(Vector2i(9,0)), _blocked_cells.has(Vector2i(9,35))
-	])
-
-
 func get_blocked_cells() -> Dictionary:
 	return _blocked_cells
 
@@ -377,20 +336,12 @@ func get_prop_heights() -> Dictionary:
 	return _prop_heights
 
 
-func get_prop_cover() -> Dictionary:
-	return _prop_cover
-
-
 func get_exit_cells() -> Array[Vector2i]:
 	return _exit_cells
 
 
 func get_light_sources() -> Array:
 	return _current_light_sources
-
-
-func get_base_layout() -> Dictionary:
-	return _base_layout
 
 
 func build_registry(ts: TileSet) -> void:

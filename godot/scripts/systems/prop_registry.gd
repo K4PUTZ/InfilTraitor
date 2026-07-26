@@ -26,11 +26,6 @@ func get_prop(p_id: String):
 	return registry.get(p_id, null)
 
 
-## List all prop IDs
-func list_props() -> Array:
-	return registry.keys()
-
-
 ## Get prop count
 func count() -> int:
 	return registry.size()

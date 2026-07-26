@@ -41,13 +41,6 @@ func get_max_move_points() -> int:
 	return current_ap * move_points_per_ap
 
 
-func can_afford_path_cost(path_cost: int) -> bool:
-	var ap_cost := path_cost_to_ap(path_cost)
-	if ap_cost <= 0:
-		return false
-	return ap_cost <= current_ap
-
-
 func spend_for_path_cost(path_cost: int) -> bool:
 	if is_enemy_phase:
 		return false

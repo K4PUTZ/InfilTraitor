@@ -37,8 +37,7 @@ ipconfig getifaddr en0
 ### Stopping the Servers
 
 ```bash
-# Kill Python server (check terminal or use Ctrl+C)
-kill 13967
+# Kill Python server (check terminal or use Ctrl+C, or: pkill -f "http.server 8080")
 
 # Stop ngrok (Ctrl+C in ngrok terminal)
 ```

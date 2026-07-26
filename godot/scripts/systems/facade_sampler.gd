@@ -31,18 +31,6 @@ func get_window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vect
 func get_window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
 	return _window_origin_isolated_texels(edge, facade_id)
 
-## Deprecated: use get_window_origin_run_texels instead
-func get_window_origin_run(canonical_min_edge, facade_id: String) -> Vector2i:
-	return get_window_origin_run_texels(canonical_min_edge, facade_id)
-
-## Deprecated: use get_window_origin_isolated_texels instead
-func get_window_origin_isolated(edge, facade_id: String) -> Vector2i:
-	return get_window_origin_isolated_texels(edge, facade_id)
-
-## Get window bounds from origin and dimensions
-func get_window_bounds(origin: Vector2i, width_voxels: int, height_voxels: int, N: int) -> Rect2i:
-	return Rect2i(origin.x, origin.y, width_voxels * N, height_voxels * N)
-
 ## Mirror 2D coordinates into texture domain
 func _mirror_2d(plane_x: float, plane_y: float, tex_width: int, tex_height: int) -> Vector2i:
 	var tx = _mirror_1d(plane_x, tex_width)

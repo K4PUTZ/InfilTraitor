@@ -30,6 +30,7 @@ These four are load-bearing. Contradicting them breaks something that is expensi
 | **[DIRECTION_GLOSSARY](DIRECTION_GLOSSARY.md)** | NW/NE/SE/SW, the two coordinate planes, **§10 banned terms** |
 | **[VOXEL_MASTER_PLAN](technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md)** | Voxel geometry: atoms, slices, edges, junctions, coordinate math |
 | **[MAPFILE_REFERENCE](technical/MAPFILE_REFERENCE.md)** | The `.map.json` schema |
+| **[VOXEL_LIGHT_MASTER_PLAN](../PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md)** | Voxel FACE lighting: 12-bucket brightness, blast soot/crater/ember visuals, destruction persistence, rotation perf |
 
 ### Active master plans
 

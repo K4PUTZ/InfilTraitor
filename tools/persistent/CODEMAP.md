@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**148 scripts · 29715 lines total** (under `godot/scripts/`)
+**148 scripts · 29720 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1660,7 +1660,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 346 lines
+`class_name VoxelLightField` · extends `RefCounted` · 351 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 

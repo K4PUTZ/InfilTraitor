@@ -53,7 +53,12 @@ var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4
 ## which is what makes the crater halo read; tune against a real capture.
 ## Director 2026-07-24: soot need not go near-black — let a bit of texture show
 ## through. Lifted from [0.10,0.28,0.55]; paired with the raised dark buckets.
-var soot_darkening: Array[float] = [0.16, 0.36, 0.60]  ## ring 0/1/2 multiplier
+## Director 2026-07-26: one more small step the same direction — stone's own
+## dark, high-detail texture already reads as "scorched enough" at full
+## strength (VL-D5 finding: the mechanism is materially strong, up to 84%
+## darkening at ring 0, correct and confirmed by probe — the ask was to ease
+## the overall opacity a touch, not to fix a broken effect).
+var soot_darkening: Array[float] = [0.20, 0.40, 0.63]  ## ring 0/1/2 multiplier
 
 ## VL-D3 — floor voxels that sat under a wall/block never saw the sun, so when a
 ## blast exposes their top they read darker than always-open floor. A gentle

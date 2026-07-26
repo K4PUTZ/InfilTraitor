@@ -252,3 +252,10 @@ func is_cell_in_shadow(cell: Vector2i) -> bool
 - **docs/systems/lighting_runtime_pipeline.md** — Runtime flow and invalidation rules
 - **docs/systems/occlusion.md** — LoS and structural blocking
 - **docs/systems/rendering.md** — Visual rendering and overlay systems
+- **PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md** — the VISUAL BRIGHTNESS half of
+  this canon: how the tactical state defined above (visibility classes,
+  shadows, exposure) gets painted onto voxel faces as 6-then-12 discrete
+  buckets, plus blast soot/ember/crater visuals and destruction persistence
+  through perspective rotation. Read that doc before touching
+  `VoxelLightField`, `VoxelRenderer.apply_light_field*()`, or `EmberOverlay` —
+  this doc's split (brightness ≠ visibility) is the canon it inherits.

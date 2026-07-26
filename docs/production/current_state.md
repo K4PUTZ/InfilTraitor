@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.80 · **Updated:** 2026-07-26 · **Branch:** main
+**Version:** 0.9.81 · **Updated:** 2026-07-26 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,7 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
-(none)
+- RESUMO_SESSAO_2026-07-26_TEMPORAL_LIGHT_FOUNDATION.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -31,11 +31,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 3260943 ALPHA VOXEL LIGHT 0.9.80 - VL-D4 wood: directional bias + ember-to-char glow
 - b7ac34b ALPHA VOXEL LIGHT 0.9.79 - VL-03 incremental light-field repaint; flicker ON
 - c74a146 ALPHA VOXEL LIGHT 0.9.78 - VL-D3 under-wall floor darkening
 - bea7916 ALPHA VOXEL LIGHT 0.9.77 - VL-PERSIST destruction survives rotation
 - 5cdd905 ALPHA VOXEL LIGHT 0.9.76 - VL-PERF-BAKE cache baked sources across rotations
-- f150079 ALPHA VOXEL LIGHT 0.9.75 - VL-PERF light-field repaint optimizations
 <!-- AUTO:END version_history -->
 
 ---
@@ -313,6 +313,28 @@ The AI system is **functional but simplified** relative to the design intent.
 - Lights are no longer hardcoded — authored per map via `MapSpec` (omni/cone/
   directional, tracks + free special lights)
 - Geometric projection (was M2-13 "next phase") is implemented and world-rendered
+
+✅ **Voxel Face Lighting (VL-01..VL-D5, 2026-07-23→26) — the VISUAL half of the
+canon above, full writeup in `PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`:**
+- Every voxel FACE (not just the floor) is painted to one of 12 discrete
+  brightness buckets from lamp distance/height/facing + GU-level occlusion
+  (`VoxelLightField` + `VoxelRenderer.apply_light_field()`), reusing the
+  tactical shadow/exposure data above — canon split (brightness ≠ tactical
+  visibility) preserved throughout
+- Blast destruction reads visually: soot rings around holes, a contiguous
+  radial floor crater (not a scatter), directional destruction bias toward
+  the blast-facing side, under-wall floor darkening, a fading ember→char glow
+  on freshly-blasted wood (`EmberOverlay`) — all material-agnostic except the
+  ember seed condition
+- Destruction (holes/soot) persists through perspective rotation via a
+  base-coordinate registry, without prebuilding all 4 views (deferred to the
+  project's finishing/optimization pass)
+- Temporal lights (flicker/pulse) repaint only their own influence set
+  (~75ms worst case) instead of the whole map (~590-675ms) — the mechanism
+  behind both the flicker demo lamp and the wood ember effect
+- Perspective rotation cost cut ~80% (~5.7s → ~1.15s off-screen throttled) via
+  lazy alt-minting, a baked-source cache across rotations, and light-field
+  caching — independent of the above, found while investigating flicker cost
 
 ---
 

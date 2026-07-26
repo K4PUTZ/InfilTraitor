@@ -1,10 +1,17 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
-> **Status:** 🟡 DRAFT — canon below ratified by the Director 2026-07-23;
-> architecture decisions surfaced here await ratification before VL-01 starts.
+> **Status:** ✅ SHIPPED (VL-01 → VL-D5, 2026-07-23 → 2026-07-26) — "Alpha
+> Temporal Light Foundation." This is the geometry/mechanism reference for the
+> voxel FACE lighting plane (buckets, blast visuals, persistence, temporal
+> repaint) — read it before touching `VoxelLightField`, `VoxelRenderer.
+> apply_light_field*()`, `EmberOverlay`, or the destruction↔lighting seam in
+> `test_zone_controller.gd`. Item 6 (metal denting/warping) and the 4-view
+> prebuild optimization are the only pieces still open — see their own
+> sections below for status.
 > **Authored:** 2026-07-23 (solo mode).
-> **Prerequisite for:** resuming `DESTRUCTION_MASTER_PLAN.md` (paused 2026-07-22
-> precisely because destruction is invisible while every voxel renders fully lit).
+> **Was prerequisite for:** resuming `DESTRUCTION_MASTER_PLAN.md` (paused
+> 2026-07-22 precisely because destruction was invisible while every voxel
+> rendered fully lit) — that blocker is now closed.
 
 This plan connects the tactical lighting pipeline (`LightRegistry →
 ShadowProjector → ExposureSystem`, GU resolution, floor-only shadows) to the
@@ -419,15 +426,56 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      underneath). Full regression green: bake 19/19, blast 16/16,
      floor_integration 9/9, roof_bake 8/8, voxel_persist 2/2, voxel_light_
      incremental 5/5; lint clean.
-5. **Stone:** barely changes, but still wants soot to show a blast happened.
-6. **Metal:** cannot shatter into removed voxels — model as **denting/warping**
-   (some zones sink) + soot; ember flash faster than wood and cool faster.
+5. **Stone ✅ LANDED 2026-07-26 (VL-D5) — turned out to already be built.**
+   The Director's ask ("barely changes, but we want soot too") was checked
+   against the EXISTING material-agnostic VL-D1 soot system before writing
+   anything new — `compute_soot_rings()` never reads material, so stone was
+   already receiving real soot rings from every blast, with no code change
+   required. Verified two ways: (1) a bucket-math probe under full light —
+   ring 0/1/2 pull a voxel from bucket 11 down to 2/4/7 (a real, strong
+   relative darkening: 67%/53%/31% less bright before this session's tuning);
+   (2) a real detonation's soot histogram — **1134 stone voxels** tagged
+   across rings 0-2 from one blast (438/373/323). Destruction stayed
+   appropriately minimal (~15-16% of any one face, `destroy_factor=0.3`),
+   matching "quase não muda."
+   - *Visibility finding, reported not silently patched:* the wall-face soot
+     is mathematically strong but hard to SEE on stone specifically — its
+     texture is dark and highly detailed to begin with, and the specific
+     faces captured were already dim from axis/AO shading before soot even
+     applied, so the multiplicative darkening compounds onto an
+     already-low base. The floor crater + floor soot stain (same mechanism,
+     lighter earth material) reads as the dominant "an explosion happened
+     here" signal in every capture, walls included. Director's call, given
+     this: no per-material soot system — instead ease the GLOBAL
+     `soot_darkening` a little further in the same direction VL-D2 already
+     moved it (Director: "menos escura, deixa ver a textura"):
+     `[0.16, 0.36, 0.60] → [0.20, 0.40, 0.63]`. Confirms this arc's running
+     theme — most of the "material-specific" backlog items are really the
+     EXISTING general machinery, checked and reported rather than
+     reimplemented.
+6. **Metal (deferred, not started):** cannot shatter into removed voxels —
+   model as **denting/warping** (some zones sink) + soot; ember flash faster
+   than wood and cool faster. Can reuse VL-D4's `EmberOverlay` directly (same
+   glow-then-reveal mechanism, different duration/colour) — no new visual
+   plumbing expected. The denting/warping GEOMETRY is the one open question
+   this arc didn't answer (wood/stone destroy into holes; metal is asked to
+   deform in place instead) — needs its own design pass before implementation.
 
-Notes: items 5–6 can reuse VL-D4's EmberOverlay directly (same glow-then-
-reveal mechanism, different duration/color per material) — no new plumbing
-expected, just tuning + wiring the soot-seed condition to stone/metal voxels
-too. Metal's denting/warping is the one open geometry question item 4 didn't
-need to answer (wood destroys into holes; metal is asked to deform instead).
+---
+
+## Session close (2026-07-26) — "Alpha Temporal Light Foundation"
+
+VL-01 through VL-D5 close here as one coherent arc: voxel face lighting
+(brightness buckets, GU-resolution occlusion reuse) → destruction visuals
+(soot, crater, directional bias, under-wall darkening, ember→char) →
+persistence through rotation → the incremental-repaint mechanism that makes
+temporal effects (flicker, ember) affordable → the rotation-performance
+investigation that fell out of chasing that same cost. Item 6 (metal) is the
+only explicitly deferred piece; the 4-view prebuild optimization is
+deliberately deferred to the project's finishing pass (see VL-PERF above).
+Full evidence trail for every landed item is inline above, in commit order;
+nothing here is asserted without a real capture, probe, or selftest cited
+next to it.
 
 ### VL-PERF — Rotation performance (Director flagged, 2026-07-24)
 

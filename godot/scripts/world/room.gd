@@ -2179,15 +2179,31 @@ func _update_temporal_lights(delta: float) -> void:
 		return
 	
 	var changed_lights: Array = light_registry.update_temporal_all(delta)
+	if changed_lights.is_empty():
+		return
 
-	# If any lights changed this frame, trigger rebuild via LightingController.
-	# VL-03 NOTE: rebuild_deferred() re-derives the WHOLE light field (~675 ms on
-	# PLAYGROUND) — fine for a one-off perspective rotation, far too heavy to run
-	# twice a second for a flickering lamp. Regime A (temporal loops) needs the
-	# incremental repaint (only the changed lamp's influence set) before flicker
-	# can be enabled in a real map. Mechanism is proven; cost is the blocker.
-	if changed_lights.size() > 0:
-		_lighting_controller.rebuild_deferred()
+	## VL-03: repaint ONLY the changed lights' influence set, never the whole
+	## map. rebuild_deferred() (the old path) re-derives EVERYTHING — shadow,
+	## exposure, and the light field — at ~590-675ms on PLAYGROUND; paying that
+	## twice a second for a flickering lamp would stall the game. Two things
+	## make the incremental path correct, not just faster:
+	##   1. Tactical shadow/exposure (_rebuild_all_shadows_and_exposure) reads
+	##      only light.active, never energy_multiplier — a flicker toggle was
+	##      ALWAYS a no-op for the tactical layer, so skipping it here loses
+	##      nothing (canon: visual brightness ≠ tactical visibility).
+	##   2. `changed_lights` holds the SAME LightSource instances the field's
+	##      _lights array already references (registry and field share
+	##      objects) — update_temporal_all() already mutated energy_multiplier
+	##      in place, so the field sees the new value the instant its caches
+	##      are cleared; no need to rebuild _lights itself.
+	if _voxel_light_field == null or _voxel_renderer == null:
+		return  ## field not built yet (pre-first lighting_rebuilt); nothing to do
+	_voxel_light_field.clear_caches()
+	var affected_gus: Dictionary = {}
+	for light in changed_lights:
+		for gu in _voxel_light_field.gus_in_light_range(light):
+			affected_gus[gu] = true
+	_voxel_renderer.apply_light_field_gus(_voxel_light_field, affected_gus.keys())
 
 
 func _has_moving_guards() -> bool:

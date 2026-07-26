@@ -258,6 +258,61 @@ a lighting one — flagged for the Director, not silently worked around.
     changed lamp's influence set) lands. The `energy_multiplier` support stays
     in — re-enabling is one `"flicker": true` in the JSON once VL-03 exists.
 
+### VL-03 — Incremental repaint ✅ LANDED 2026-07-26 — flicker ENABLED
+
+The blocker above is closed. A temporal light's toggle now repaints ONLY its
+own influence set, never the whole map.
+
+- **`VoxelRenderer._placed_by_gu`**: GU → `[{level, cell}]` for every placed
+  voxel, built as a free side-effect of each FULL `apply_light_field()` pass
+  (which already visits every cell). `apply_light_field_gus(field, gus)` uses
+  it to repaint only the given GUs — skips entirely for a GU with nothing
+  placed. Invalidated by `clear()` (rotation/reload); rebuilt by the next full
+  pass, which always follows any geometry change.
+- **`VoxelLightField.clear_caches()`**: clears only the LAMP-dependent caches
+  (`_bucket_cache`, `_lamp_cache`) — NOT `_static_factor_cache` (new: surface ×
+  soot × under-structure, per voxel). That split is the real win: those three
+  terms never depend on which lights are on, so a toggle reuses them instead of
+  re-deriving surface_factor's several occupancy lookups for every voxel in the
+  influence set. First cut (bucket-cache-only split) still cost ~84ms/toggle on
+  the demo lamp; adding the static-factor split cut it to the number below.
+- **`gus_in_light_range(light)`**: every GU within the light's radius (a flat
+  2D query — the vertical term in `_lamp_intensity` only ever makes the
+  effective distance LARGER, so 2D radius never misses a GU the light could
+  reach). `room._update_temporal_lights()` unions this over every light
+  `update_temporal_all()` reports changed, then calls
+  `apply_light_field_gus()` — replacing the old `rebuild_deferred()` (full).
+- **Correctness, not just speed:** confirmed `_rebuild_all_shadows_and_exposure()`
+  (tactical shadow/exposure) reads only `light.active`, never
+  `energy_multiplier` — a flicker toggle was ALWAYS a no-op for the tactical
+  layer, so skipping it loses nothing (canon: visual brightness ≠ tactical
+  visibility). The old full-rebuild path was doing genuinely wasted work on
+  every flicker tick, not just slow work.
+- **Measured** on PLAYGROUND's demo lamp — the worst case tested: radius 7,
+  149 GUs, 29,180 voxels, fully overlapping a dense 2-storey wall row:
+  **~75 ms/toggle steady-state**, down from ~590–675 ms for the same event
+  (~88% reduction). A smaller or more open-area light costs proportionally
+  less. Not "microseconds" — flagged honestly, not oversold.
+- **Flicker is now ENABLED** in `maps/PLAYGROUND.map.json` (lamp 0,
+  `flicker_interval=0.6`) as the landed demonstration.
+
+**Evidence:** new `voxel_light_incremental_selftest.gd`, 5/5 — (1) incremental
+toggle buckets match an independent from-scratch rebuild, both directions
+(pre-computed by hand: bucket 2 off / 11 on, matched exactly); (2) a GU outside
+`gus_in_light_range()` is proven bucket-identical regardless of this light's
+state (safe to skip, not just untested); (3) `clear_caches()` leaves
+`_occupancy`-derived shading intact (hand-computed 0.480, matched exactly).
+Real capture pair (`auto_2026-07-26_11-51-08.png` ON / `auto_2026-07-26_11-50-49.png`
+OFF-phase): lamp-region mean brightness 43.1 vs 20.0, delta 23.1, confined to
+the lamp's own area — the rest of the scene (lit by other static lamps) is
+visually unchanged between the two captures. Full regression green: bake
+19/19, blast 14/14, floor_integration 9/9, voxel_persist 2/2; lint clean.
+
+**Unblocks:** VL-D items 4–6 (wood/stone/metal ember→char decay) need exactly
+this mechanism — a short-lived, localized per-voxel temporal effect. Their
+footprint (the blast's own affected voxels) is typically far smaller than a
+room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
+
 ### VL-D — Destruction visuals (Director backlog, 2026-07-24)
 
 1. **Soot rings around blast holes ✅ LANDED 2026-07-24 (VL-D1).**

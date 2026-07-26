@@ -68,6 +68,15 @@ var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
 var _under_structure: Dictionary = {}      ## {Vector2i: true} floor cols under structure (VL-D3)
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
 var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
+## VL-03 — surface_factor × soot_factor × under_structure_factor for one voxel,
+## cached SEPARATELY from the lamp term and NOT cleared by clear_caches(). None
+## of those three terms depend on which lights are on — only geometry/soot/cover
+## do — so a temporal light toggle (which changes ONLY energy_multiplier) can
+## reuse every one of these across the toggle. Measured need: a single flicker
+## toggle over a 149-GU/29k-voxel influence set cost ~84ms recomputing this
+## exact product from scratch every time (clear_caches() used to nuke
+## _bucket_cache wholesale) — this cache is what makes the toggle cheap.
+var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) -> float
 
 
 ## Rebuild the field from the current lighting state. Called from room on every
@@ -93,9 +102,38 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 	_shadow_by_light.clear()
 	_bucket_cache.clear()
 	_lamp_cache.clear()
+	_static_factor_cache.clear()  ## geometry/soot/cover may have changed — see build() callers
 	for result in shadow_results:
 		if result != null and result.source_light != null:
 			_shadow_by_light[result.source_light.get_instance_id()] = result
+
+
+## VL-03 — clear ONLY the LAMP-dependent caches, keeping the geometry-dependent
+## _static_factor_cache untouched (surface/soot/cover did not change). Call this
+## after mutating a light in place (a temporal toggle changes energy_multiplier
+## on the SAME LightSource instance already in _lights) and before recomputing
+## buckets for its influence set — a full build() re-derives everything from
+## scratch and would also wipe _static_factor_cache, which is the ~84ms/toggle
+## this split exists to avoid paying twice a second.
+func clear_caches() -> void:
+	_bucket_cache.clear()
+	_lamp_cache.clear()
+
+
+## VL-03 — every GU within a light's radius. The vertical term only ever makes
+## the effective distance LARGER (_lamp_intensity's sqrt(d_gu²+d_lvl²) against
+## `radius`), so a flat 2D radius query on the GU plane never misses a GU this
+## light could reach — it may over-include a few at the boundary, which just
+## costs a few extra no-op repaints, never a missed one. This is what scopes an
+## incremental repaint to exactly what a temporal light's toggle can change.
+func gus_in_light_range(light) -> Array:
+	var gus: Array = []
+	var r: int = maxi(int(ceil(light.radius)), 0)
+	for dx in range(-r, r + 1):
+		for dy in range(-r, r + 1):
+			if Vector2(dx, dy).length() <= light.radius:
+				gus.append(light.cell + Vector2i(dx, dy))
+	return gus
 
 
 ## Bucket for one voxel cell at one layer level. 0 = darkest … N-1 = full lit.
@@ -116,14 +154,28 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 	## ran 108k× when ~5k distinct (GU, level) pairs would do (VL-PERF).
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 	var intensity: float = _lamp_intensity(gu, level, top_bucket)
+	intensity *= _static_factor(cell, level)
+	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+
+
+## VL-03 — surface × soot × under-structure, cached per voxel and independent of
+## which lights are on/off. Split out from _compute_bucket so a temporal light
+## toggle (clear_caches(), NOT build()) can reuse this across every voxel in its
+## influence set instead of re-deriving surface_factor's several occupancy
+## lookups from scratch on every single toggle.
+func _static_factor(cell: Vector2i, level: int) -> float:
+	var key := Vector3i(cell.x, cell.y, level)
+	if _static_factor_cache.has(key):
+		return _static_factor_cache[key]
 	## VL-02b: local geometry contrast — the term that makes craters read.
-	intensity *= surface_factor(cell, level)
+	var factor: float = surface_factor(cell, level)
 	## VL-D1: blast soot — scorch the voxels ringing a hole.
-	intensity *= soot_factor(cell, level)
+	factor *= soot_factor(cell, level)
 	## VL-D3: floor that was under a wall reads darker once exposed.
 	if level < 0 and _under_structure.has(cell):
-		intensity *= under_structure_factor
-	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+		factor *= under_structure_factor
+	_static_factor_cache[key] = factor
+	return factor
 
 
 ## Lamp-only intensity for a GU column at one level, cached per (GU, level).

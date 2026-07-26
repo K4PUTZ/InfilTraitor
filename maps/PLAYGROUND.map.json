@@ -140,7 +140,9 @@
           "y": 3,
           "height_class": 4,
           "radius": 7,
-          "intensity": 1.0
+          "intensity": 1.0,
+          "flicker": true,
+          "flicker_interval": 0.6
         },
         {
           "x": 16,

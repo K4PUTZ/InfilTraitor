@@ -820,13 +820,27 @@ func columns_with_structure() -> Dictionary:
 	return cols
 
 
+## VL-03 — GU cell → Array[{level:int, cell:Vector2i}] for every currently
+## placed voxel cell, rebuilt as a side effect of every FULL apply_light_field()
+## pass (which already visits every cell — free to attach here). This is what
+## lets apply_light_field_gus() repaint only a light's influence set without a
+## whole-map scan: temporal lights (flicker/pulse, and future ember→char decay)
+## toggle far too often to pay the full repaint's ~590ms every time. Stays
+## correct between full passes because ghosting/destruction only ERASE cells
+## (source_id -1, checked in the incremental path below) — they never add cells
+## the index wouldn't already know about; any geometry change is followed by a
+## full repaint anyway, which rebuilds this index from scratch.
+var _placed_by_gu: Dictionary = {}
+
+
 func apply_light_field(field) -> void:
 	if field == null:
 		return
+	_placed_by_gu.clear()
 	for level in range(_voxel_layers.size()):
-		_apply_light_to_layer(_voxel_layers[level], level, field)
+		_apply_light_to_layer(_voxel_layers[level], level, field, true)
 	for level in _negative_voxel_layers.keys():
-		_apply_light_to_layer(_negative_voxel_layers[level], level, field)
+		_apply_light_to_layer(_negative_voxel_layers[level], level, field, true)
 	## Occluded cells are ERASED right now (OCC-21) and will come back from
 	## _ghosted_cells records — retarget each stored alternative so releasing
 	## occlusion cannot resurrect a stale bucket.
@@ -837,8 +851,61 @@ func apply_light_field(field) -> void:
 					field.bucket_for(cell, record["level"]), flipped)
 
 
-func _apply_light_to_layer(layer: TileMapLayer, level: int, field) -> void:
+## VL-03 — repaint ONLY the cells inside the given GU cells, using the index
+## built by the last full apply_light_field() pass. For a temporal light
+## (flicker/pulse) toggling: scopes the repaint to the light's own influence
+## set instead of the whole map. Measured on PLAYGROUND's demo lamp (radius 7,
+## 149 GUs, 29,180 voxels — a worst case: the radius fully overlaps a dense
+## 2-storey wall row): ~75ms/toggle steady-state, down from the ~590-675ms a
+## full rebuild cost for the same event (~88% reduction). A smaller or
+## more open-area light touches far fewer voxels and costs proportionally
+## less. Silently no-ops for a GU the index doesn't know about (nothing was
+## ever placed there).
+func apply_light_field_gus(field, gus: Array) -> void:
+	if field == null or gus.is_empty():
+		return
+	var gu_set: Dictionary = {}
+	for gu in gus:
+		gu_set[gu] = true
+		var placements = _placed_by_gu.get(gu)
+		if placements == null:
+			continue
+		for entry in placements:
+			var level: int = entry["level"]
+			var cell: Vector2i = entry["cell"]
+			var layer: TileMapLayer = get_layer(level)
+			if layer == null:
+				continue
+			var source_id: int = layer.get_cell_source_id(cell)
+			if source_id == -1:
+				continue  ## erased — destroyed, or currently ghosted (handled below)
+			var prev_alt: int = layer.get_cell_alternative_tile(cell)
+			var bucket: int = field.bucket_for(cell, level)
+			if bucket == decode_light_bucket(prev_alt):
+				continue
+			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
+			var alt_id: int = encode_light_alt(bucket, decode_light_flipped(prev_alt))
+			_ensure_light_alt(source_id, atlas_coords, alt_id)
+			layer.set_cell(cell, source_id, atlas_coords, alt_id)
+	## Ghosted cells inside the affected GUs: retarget their stored alternative
+	## too (same reasoning as apply_light_field()'s ghost retarget loop), so
+	## un-ghosting later shows the bucket this toggle produced, not a stale one.
+	for cell in _ghosted_cells.keys():
+		if not gu_set.has(Vector2i(cell.x >> 3, cell.y >> 3)):
+			continue
+		for record in _ghosted_cells[cell]:
+			var flipped: bool = decode_light_flipped(record["prev_alt"])
+			record["prev_alt"] = encode_light_alt(
+					field.bucket_for(cell, record["level"]), flipped)
+
+
+func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: bool = false) -> void:
 	for cell in layer.get_used_cells():
+		if do_index:
+			var gu := Vector2i(cell.x >> 3, cell.y >> 3)
+			if not _placed_by_gu.has(gu):
+				_placed_by_gu[gu] = []
+			_placed_by_gu[gu].append({"level": level, "cell": cell})
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
 		var bucket: int = field.bucket_for(cell, level)
 		if bucket == decode_light_bucket(prev_alt):
@@ -1083,6 +1150,10 @@ func clear() -> void:
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
 	## rotation path (clear() + render()) goes through here every time.
 	_ghosted_cells.clear()
+	## VL-03: same reasoning — the GU index would point at cells this cleared
+	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
+	## next full pass, which always follows clear()+render() in the rebuild flow.
+	_placed_by_gu.clear()
 
 
 ## Remove every baked atlas source registered by the PREVIOUS bake pass, before the

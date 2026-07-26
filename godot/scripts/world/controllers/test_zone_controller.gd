@@ -153,38 +153,51 @@ func detonate_active() -> void:
 			print_debug("[BLAST] gu=%s rings=%s affected_slices=%d affected_roofs=%d affected_floors=%d" %
 				[g["gu_cell"], gu_rings, affected["slices"].size(), affected["roofs"].size(),
 				affected.get("floors", {}).size()])
+			## Epicentre in VOXEL coords (centre voxel of the source GU) — fed to
+			## every container so a wall/roof/floor's near side (VL-D4 directional
+			## bias) and the floor's own crater (VL-D2) agree on the same point.
+			var n_rings: int = bomb_def.ring_multipliers.size()
+			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
 			## VL-D1: index every affected voxel by cell so the soot BFS can walk
 			## the blast's neighbourhood, and collect the holes as its seeds.
 			var cell_to_voxel: Dictionary = {}
 			var destroyed_cells: Array = []
+			## VL-D4: wood voxels only, tracked separately — Voxel itself carries
+			## no material (that lives on the Slice/Slab), and soot_ring isn't
+			## populated until compute_soot_rings() runs below, so this is the
+			## seed list the ember pass reads from AFTER that call.
+			var wood_voxels: Array = []
 			for slice_id in affected["slices"]:
 				var slice: Slice = room._edge_registry.get_slice(slice_id)
+				## VL-D4 (Director, 2026-07-26): bias the destroy/crack selection
+				## toward the epicenter-facing side, so a wall's near face visibly
+				## loses more material than its far face — the flat ring model
+				## alone can't produce that (both faces of one edge share a ring).
 				BlastCalculatorClass.apply_container_damage(
 					slice.voxels, slice.id, slice.material, affected["slices"][slice_id],
-					slice.start_storey * GeometryCoords.LEVELS_PER_STOREY, false, bomb_def.ring_multipliers)
+					slice.start_storey * GeometryCoords.LEVELS_PER_STOREY, false, bomb_def.ring_multipliers,
+					epicenter)
 				var d := 0
 				var c := 0
 				for v in slice.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: d += 1
 					elif v.damage_state == Voxel.DamageState.CRACKED: c += 1
+				if slice.material == "wood":
+					wood_voxels.append_array(slice.voxels)
 				print_debug("[BLAST]   slice=%s material=%s ring=%d destroyed=%d cracked=%d/%d" %
 					[slice.id, slice.material, affected["slices"][slice_id], d, c, slice.voxels.size()])
 			for slab_id in affected["roofs"]:
 				var slab: Slab = room._slab_registry.get_slab(slab_id)
 				BlastCalculatorClass.apply_container_damage(
 					slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
-					slab.level, true, bomb_def.ring_multipliers)
+					slab.level, true, bomb_def.ring_multipliers, epicenter)
 				for v in slab.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 			## VL-02c/D2: the ground takes the blast — as a CONTIGUOUS crater, not a
 			## ring-scattered stipple. Radii derive from the bomb's range (its ring
-			## count): a solid core, a crumbling rim, nothing beyond. Epicentre is
-			## the centre voxel of the source GU; the same epicentre is fed to every
-			## floor slab so the disc is continuous across GU borders.
-			var n_rings: int = bomb_def.ring_multipliers.size()
-			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
-				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
+			## count): a solid core, a crumbling rim, nothing beyond.
 			## Director 2026-07-24: crater was too wide — narrowed from 0.55 to 0.40.
 			var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * 0.40
 			var crater_core: float = crater_max * 0.4
@@ -224,6 +237,18 @@ func detonate_active() -> void:
 			## the seed set is complete, and BEFORE the repaint so the field picks
 			## the soot up in the same re-derive the detonation already triggers.
 			BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 3)
+
+			## VL-D4 — wood: "ficar em brasa no momento da explosão, e depois de
+			## alguns segundos escurecer". Ring 0 is the wood ringing a fresh hole
+			## (already burned per VL-D1's soot); the glow overlay draws on TOP of
+			## that for a few seconds, then fades — revealing the tile's already-
+			## charred state underneath. Purely visual (EmberOverlay's own doc);
+			## no gameplay state, so no persistence/rotation concern.
+			if room._ember_overlay != null:
+				for v in wood_voxels:
+					if v.visible and v.soot_ring == 0:
+						var world_pos: Vector2 = room._voxel_renderer.voxel_world_position(v.grid_pos, v.level)
+						room._ember_overlay.add_ember(world_pos)
 
 			## VL-PERSIST: record this blast's damage + soot into the base-coord
 			## registry so it survives perspective rotation (which rebuilds every

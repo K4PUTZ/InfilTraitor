@@ -269,6 +269,23 @@ func get_layer(level: int) -> TileMapLayer:
 	return _voxel_layers[level]
 
 
+## VL-D4 — screen/world anchor of one voxel cell (its N-vertex, same anchor
+## `map_to_local()` gives for any tile), for overlays that need to draw AT a
+## specific voxel (e.g. EmberOverlay's glow) without re-deriving the layer
+## position formula themselves. Analytic, no empirical offset (project rule):
+## reuses the REAL TileMapLayer's own `position` + `map_to_local()` — the exact
+## transform Godot uses to render that cell — so this stays correct even if the
+## layer-position formula ever changes. Good enough for a soft glow blob, which
+## needs "roughly at this voxel," not pixel-exact face-centre alignment.
+## Returns Vector2.ZERO if the level has no layer (caller's cell couldn't be
+## there).
+func voxel_world_position(grid_pos: Vector2i, level: int) -> Vector2:
+	var layer := get_layer(level)
+	if layer == null:
+		return Vector2.ZERO
+	return layer.position + layer.map_to_local(grid_pos)
+
+
 ## Number of voxel layers currently built (for OcclusionWireframeOverlay's per-column
 ## height scan — see get_layer()'s docstring for why callers must not assume LEVELS_PER_STOREY).
 ## Positive (wall) levels only, unchanged by D17 — occlusion's column scan has

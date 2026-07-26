@@ -27,6 +27,12 @@ class_name BlastCalculator
 ## base level.
 const GRENADE_LEVEL := 0
 
+## VL-D4 — sentinel meaning "no directional bias" for apply_container_damage()/
+## _select_deterministic()'s optional epicenter parameter. Any real epicenter is
+## a valid in-map voxel coordinate, so an out-of-range constant is safe to use
+## as "absent" without an extra bool parameter.
+const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
+
 
 ## GU cell -> ring index (0 = source GU). Wall-aware BFS, capped at
 ## bomb_def.ring_multipliers.size()-1 rings. blocked_edges must already be
@@ -100,8 +106,19 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 ## collapse every roof level into ring 0 and roofs would never show falloff
 ## at all). Deliberate asymmetry, not an oversight — flagged for review if a
 ## real capture shows it reading wrong.
+##
+## VL-D4 (Director, 2026-07-26): "acentuar destruição na face mais próxima da
+## granada" — bias_epicenter (voxel-space; NO_EPICENTER_BIAS = off) makes
+## _select_deterministic() prefer voxels CLOSER to it within each ring group,
+## so of a wall's two faces (or a block's near/far side), the one actually
+## facing the blast visibly loses more material than the far side — a real
+## effect the flat ring model couldn't produce (ring is a per-GU distance, the
+## SAME for both faces of one edge). General-purpose, not material-gated: it
+## also sharpens concrete/stone/metal, wood is just where it reads strongest
+## (destroy_factor 0.9).
 static func apply_container_damage(voxels: Array, container_id: String, material: String,
-		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float]) -> void:
+		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float],
+		bias_epicenter: Vector2i = NO_EPICENTER_BIAS) -> void:
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
@@ -123,12 +140,12 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material) * group.size()))
 		var crack_n: int = int(round(mult * MaterialResistanceTable.crack_factor(material) * group.size()))
 
-		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n)
+		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)
 		var destroyed_lookup: Dictionary = {}
 		for v in destroy_set:
 			destroyed_lookup[v] = true
 		var remaining: Array = group.filter(func(v): return not destroyed_lookup.has(v))
-		var crack_set: Array = _select_deterministic(remaining, container_id, "CRACK", crack_n)
+		var crack_set: Array = _select_deterministic(remaining, container_id, "CRACK", crack_n, bias_epicenter)
 
 		for voxel in destroy_set:
 			voxel.set_damage(Voxel.DamageState.DESTROYED)
@@ -172,15 +189,36 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 ## Deterministic "which N of M" — hash-and-rank, mirroring
 ## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
 ## inputs always produce the same subset, no RNG, nothing stored.
-static func _select_deterministic(voxels: Array, container_id: String, salt: String, n: int) -> Array:
+##
+## VL-D4: bias_epicenter (default NO_EPICENTER_BIAS — every existing caller/test
+## is unaffected byte-for-byte) switches the sort to "closest to the epicenter
+## first," hash-ranked only as a tie-break among voxels at the same integer
+## distance — so the near side of a ring group is consistently selected before
+## the far side, while voxels genuinely equidistant still scatter the same
+## organic way the pure-hash path always has. 2D only (grid_pos.x/y): the
+## vertical axis is already the ring system's own job (LEVELS_PER_STOREY
+## steps), mixing it in here would double-count height as if it were facing.
+static func _select_deterministic(voxels: Array, container_id: String, salt: String, n: int,
+		bias_epicenter: Vector2i = NO_EPICENTER_BIAS) -> Array:
 	if n <= 0 or voxels.is_empty():
 		return []
 	var ranked: Array = voxels.duplicate()
-	ranked.sort_custom(func(a, b) -> bool:
-		var key_a: String = "%s:%s:%d,%d,%d" % [container_id, salt, a.grid_pos.x, a.grid_pos.y, a.level]
-		var key_b: String = "%s:%s:%d,%d,%d" % [container_id, salt, b.grid_pos.x, b.grid_pos.y, b.level]
-		return FacadeSampler._fnv1a_hash(key_a) < FacadeSampler._fnv1a_hash(key_b)
-	)
+	if bias_epicenter == NO_EPICENTER_BIAS:
+		ranked.sort_custom(func(a, b) -> bool:
+			var key_a: String = "%s:%s:%d,%d,%d" % [container_id, salt, a.grid_pos.x, a.grid_pos.y, a.level]
+			var key_b: String = "%s:%s:%d,%d,%d" % [container_id, salt, b.grid_pos.x, b.grid_pos.y, b.level]
+			return FacadeSampler._fnv1a_hash(key_a) < FacadeSampler._fnv1a_hash(key_b)
+		)
+	else:
+		ranked.sort_custom(func(a, b) -> bool:
+			var da: int = (a.grid_pos - bias_epicenter).length_squared()
+			var db: int = (b.grid_pos - bias_epicenter).length_squared()
+			if da != db:
+				return da < db
+			var key_a: String = "%s:%s:%d,%d,%d" % [container_id, salt, a.grid_pos.x, a.grid_pos.y, a.level]
+			var key_b: String = "%s:%s:%d,%d,%d" % [container_id, salt, b.grid_pos.x, b.grid_pos.y, b.level]
+			return FacadeSampler._fnv1a_hash(key_a) < FacadeSampler._fnv1a_hash(key_b)
+		)
 	return ranked.slice(0, mini(n, ranked.size()))
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**147 scripts · 29475 lines total** (under `godot/scripts/`)
+**148 scripts · 29715 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -676,7 +676,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1180 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1197 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -837,6 +837,14 @@ extends `Node2D` · 233 lines
 - `func load_exposure_system(sys) -> void:`
 - `func toggle_mode(mode: String) -> void:`
 - `func debug_info() -> String:`
+
+---
+
+### `ember_overlay.gd`
+
+`class_name EmberOverlay` · extends `Node2D` · 75 lines
+
+`godot/scripts/overlays/ember_overlay.gd`
 
 ---
 
@@ -1279,7 +1287,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 234 lines
+`class_name BlastCalculator` · 272 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1287,6 +1295,7 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
+- `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
 
 ---
 
@@ -2066,7 +2075,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 428 lines
+extends `SceneTree` · 483 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2095,6 +2104,8 @@ extends `SceneTree` · 428 lines
 - `func test_soot_rings_spread_by_distance() -> void:`
 - `func test_soot_min_ring_wins_between_two_holes() -> void:`
 - `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
+- `func test_bias_prefers_epicenter_facing_side() -> void:`
+- `func test_no_bias_sentinel_keeps_hash_only_behavior() -> void:`
 
 ---
 
@@ -2985,7 +2996,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 272 lines
+`class_name TestZoneController` · 297 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3220,7 +3231,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2866 lines
+extends `Node2D` · 2896 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3244,6 +3255,7 @@ extends `Node2D` · 2866 lines
 - `TurnControllerClass` = `preload("res://godot/scripts/world/controllers/turn_controller.gd")`
 - `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
 - `LightRayOverlayClass` = `preload("res://godot/scripts/overlays/light_ray_overlay.gd")`
+- `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`

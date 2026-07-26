@@ -34,6 +34,8 @@ func _init() -> void:
 	test_soot_rings_spread_by_distance()
 	test_soot_min_ring_wins_between_two_holes()
 	test_crater_core_solid_rim_ragged_beyond_intact()
+	test_bias_prefers_epicenter_facing_side()
+	test_no_bias_sentinel_keeps_hash_only_behavior()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -408,6 +410,59 @@ func test_crater_core_solid_rim_ragged_beyond_intact() -> void:
 		_fail("Rim was all-or-nothing (destroyed=%d intact=%d) — expected a mix" % [rim_destroyed, rim_intact])
 	else:
 		_pass("Core solid, beyond intact, rim mixed (%d destroyed / %d intact)" % [rim_destroyed, rim_intact])
+	print("")
+
+
+## VL-D4 — "acentuar destruição na face mais próxima da granada": within one
+## ring group, a bias_epicenter must select the NEAR side before the FAR side,
+## not scatter across both. Ten voxels split into two clusters (x=0 near the
+## epicenter, x=100 far from it) at the same ring/level; asking for exactly the
+## near cluster's size must return ONLY near-side voxels.
+func test_bias_prefers_epicenter_facing_side() -> void:
+	print("[13] Directional bias selects the epicenter-facing side first\n")
+
+	var slab := Slab.new("BIAS_TEST", Vector2i.ZERO, Slab.Role.FLOOR, 0, "wood")
+	var near_side: Array = []
+	var far_side: Array = []
+	for i in range(5):
+		near_side.append(VoxelClass.new(Vector2i(0, i), 0, slab))
+		far_side.append(VoxelClass.new(Vector2i(100, i), 0, slab))
+	var group: Array = near_side + far_side
+	var epicenter := Vector2i(-5, 2)  ## clearly closer to the x=0 cluster
+
+	var selected: Array = BlastCalculatorClass._select_deterministic(
+			group, "WALL_BIAS", "DESTROY", 5, epicenter)
+
+	var all_near := true
+	for v in selected:
+		if not near_side.has(v):
+			all_near = false
+			break
+	if all_near and selected.size() == 5:
+		_pass("All 5 selected voxels are on the epicenter-facing (near) side")
+	else:
+		var near_count := 0
+		for v in selected:
+			if near_side.has(v): near_count += 1
+		_fail("Expected 5/5 near-side voxels, got %d/5 (bias not applied correctly)" % near_count)
+	print("")
+
+
+## The default (NO_EPICENTER_BIAS) path must stay EXACTLY the pre-VL-D4 pure
+## hash-rank — every existing caller/selftest relies on this not changing.
+## Cross-checked against the untouched 4-argument call form.
+func test_no_bias_sentinel_keeps_hash_only_behavior() -> void:
+	print("[14] No bias_epicenter argument reproduces the original hash-only pick\n")
+
+	var voxels := _synthetic_voxels(20)
+	var without_arg := BlastCalculatorClass._select_deterministic(voxels, "SLICE_A", "DESTROY", 5)
+	var with_sentinel := BlastCalculatorClass._select_deterministic(
+			voxels, "SLICE_A", "DESTROY", 5, BlastCalculatorClass.NO_EPICENTER_BIAS)
+
+	if _same_voxel_set(without_arg, with_sentinel) and without_arg.size() == with_sentinel.size():
+		_pass("Omitting bias_epicenter and passing NO_EPICENTER_BIAS explicitly agree")
+	else:
+		_fail("Default and explicit-sentinel calls diverged — the 'off' path changed behavior")
 	print("")
 
 

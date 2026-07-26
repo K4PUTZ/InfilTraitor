@@ -369,15 +369,65 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      capture with a grenade at the concrete base — 501 px darkened along the
      exposed under-wall floor, mean −14; bake 19/19, blast 14/14, floor 9/9,
      persist 2/2; lint clean. All `var`, tunable.
-4. **Wood:** accentuate destruction on the grenade-facing side; ember animation
-   at blast → darken over a few seconds.
+4. **Wood ✅ LANDED 2026-07-26 (VL-D4).** Two independent mechanisms:
+   - **Directional destruction bias** (general-purpose, not wood-only —
+     wood is just where destroy_factor=0.9 makes it read strongest).
+     `BlastCalculator._select_deterministic()` gained an optional
+     `bias_epicenter` (voxel-space; `NO_EPICENTER_BIAS` sentinel = the
+     original pure-hash path, byte-identical for every existing caller/test).
+     When set, candidates within a ring group are ranked by distance to the
+     epicenter FIRST (hash only as a tie-break among equidistant voxels) — so
+     a slice's lateral span skews destruction toward whichever end is nearer
+     the blast, instead of scattering uniformly. `apply_container_damage()`
+     passes it through for both DESTROY and CRACK selection; `test_zone_
+     controller` feeds the SAME epicenter already used for the floor crater
+     (VL-D2), so walls/roofs/floor agree on one point. 2D-only by design (x/y
+     of `grid_pos`, ignoring level) — vertical falloff is already the ring
+     system's own job; mixing it in here would double-count height as facing.
+     *Caveat found and documented, not hidden:* for a THIN wall edge, the
+     inner/outer slice pair is only ~1 voxel apart — at real epicenter
+     distances that's negligible, so the bias is most visible on solid
+     blocks / long runs (a slice's own 8-wide lateral span) rather than
+     making paired thin slices visibly diverge.
+   - **Ember → char glow** (`EmberOverlay`, `godot/scripts/overlays/
+     ember_overlay.gd`): a screen-space, purely-visual glow (O1 precedent —
+     "occlusion is VIEW not STATE"; not gameplay state, doesn't survive
+     rotation/reload by design, cleared alongside `_agent_trail` on both).
+     Why an overlay and not the light-bucket tile system: a bucket
+     alternative's modulate is SHARED by every voxel placed at that
+     `(source, atlas_coords, alt_id)` — the exact sharing that makes VL-01/
+     VL-03 cheap — so it structurally cannot carry one voxel's own
+     independent, time-varying colour. `VoxelRenderer.voxel_world_position()`
+     (new, analytic — reuses the real `TileMapLayer.position +
+     map_to_local()`, no empirical offset) gives the overlay a draw point.
+     Seeded from wood-material ring-0 (`soot_ring == 0`) survivors right
+     after `compute_soot_rings()` in the detonate flow: `ADD`-blended circle,
+     `glow_duration=3.0s`, eased fade (`pow(1-t, 1.6)`). The tile underneath
+     is ALREADY in its final charred state from VL-D1's soot the instant the
+     blast lands — the glow just obscures it briefly, so "cooling" is really
+     "revealing," not a second darkening pass.
+   - *Evidence:* new `blast_calculator_selftest` cases 13–14 (bias prefers the
+     epicenter-facing side; the `NO_EPICENTER_BIAS` sentinel path is
+     byte-identical to omitting the argument) — blast suite 16/16. Real
+     capture pair via the generalized `test_zone_detonate` dev hook (now
+     accepts `INFILTRAITOR_CAPTURE_DETONATE_INDEX` to target any of the 4
+     test-zone grenades, reusing that grenade's own cell for camera framing
+     instead of the fixed row-centre, which put wood off-screen):
+     `auto_2026-07-26_13-27-43.png` (~0.75s post-blast — vivid glow across the
+     hit face) vs `auto_2026-07-26_13-28-42.png` (~2.6s post-blast — glow
+     essentially gone, revealing the charred, ragged wood silhouette
+     underneath). Full regression green: bake 19/19, blast 16/16,
+     floor_integration 9/9, roof_bake 8/8, voxel_persist 2/2, voxel_light_
+     incremental 5/5; lint clean.
 5. **Stone:** barely changes, but still wants soot to show a blast happened.
 6. **Metal:** cannot shatter into removed voxels — model as **denting/warping**
    (some zones sink) + soot; ember flash faster than wood and cool faster.
 
-Notes: items 4–6 imply a per-voxel **temporal darkening** channel (ember→char)
-distinct from the light bucket — likely a second modulate/alt dimension or a
-short-lived overlay. Ember animation shares the Regime-A cost concern (VL-03).
+Notes: items 5–6 can reuse VL-D4's EmberOverlay directly (same glow-then-
+reveal mechanism, different duration/color per material) — no new plumbing
+expected, just tuning + wiring the soot-seed condition to stone/metal voxels
+too. Metal's denting/warping is the one open geometry question item 4 didn't
+need to answer (wood destroys into holes; metal is asked to deform instead).
 
 ### VL-PERF — Rotation performance (Director flagged, 2026-07-24)
 

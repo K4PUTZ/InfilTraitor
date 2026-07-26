@@ -20,6 +20,7 @@ const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builde
 const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
+const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
@@ -340,6 +341,7 @@ const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
+var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
 ## GU-GRID-01: always-on per-GU floor boundary grid (GuGridOverlay) —
 ## restores the reference grid the legacy floor art used to bake into its own
@@ -489,6 +491,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_base_soot.clear()
+	if _ember_overlay != null:
+		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -678,6 +682,11 @@ func _ready() -> void:
 	_light_ray_overlay.z_index = 0
 	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
 	add_child(_light_ray_overlay)
+
+	## VL-D4: ember glow overlay (blast VFX). z assigned in
+	## _apply_overhead_overlay_z() once the real wall-stack height is known.
+	_ember_overlay = EmberOverlayClass.new()
+	add_child(_ember_overlay)
 
 	## Initialize world markers overlay controller (shadows, spill, light rays)
 	## MUST be before signal connections to LightingController
@@ -1096,6 +1105,11 @@ func _set_perspective(direction: String) -> void:
 		_agent_trail.clear()
 		if _trail_overlay != null:
 			_trail_overlay.queue_redraw()
+		## VL-D4: an in-flight ember's stored world position is in the OLD
+		## view's screen space — carrying it into the rotated frame would show
+		## a glow floating over the wrong voxel instead of just fading away.
+		if _ember_overlay != null:
+			_ember_overlay.clear()
 
 		## OCC-01: Recompute occlusion set on perspective change
 		_recompute_occlusion()
@@ -1670,6 +1684,11 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_light_ray_overlay.z_index = max_voxel_z_index + 2
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
+	## VL-D4: the glow must draw above whichever voxel face it's decorating —
+	## same reasoning as the two overlays above, one tick higher so it never
+	## competes with them for a pixel.
+	if _ember_overlay != null:
+		_ember_overlay.z_index = max_voxel_z_index + 4
 
 
 ## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
@@ -2531,10 +2550,14 @@ func _run_auto_screenshot_capture() -> void:
 
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
-		## VL-PERSIST verification: detonate grenade 0 first, then capture all four
-		## views — the crater/soot must persist through each rotation.
+		## VL-PERSIST verification: detonate a grenade first, then capture all four
+		## views — the crater/soot must persist through each rotation. Index
+		## defaults to 0 (concrete/metal); INFILTRAITOR_CAPTURE_DETONATE_INDEX
+		## selects another test-zone grenade (VL-D4: 3 = wood).
 		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _test_zone_controller != null:
-			_test_zone_controller.open_menu_for(0)
+			var detonate_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
+			var detonate_index := detonate_index_env.to_int() if detonate_index_env.is_valid_int() else 0
+			_test_zone_controller.open_menu_for(detonate_index)
 			_test_zone_controller.detonate_active()
 			for _j in range(45):
 				await get_tree().process_frame
@@ -2580,7 +2603,14 @@ func _run_auto_screenshot_capture() -> void:
 		## -> ModalStack path, not a direct cancel_active() call.
 		## Frames/reveals the whole row (4 walls, gu x=2..19) — not just one
 		## grenade — since TEST_ZONE_GRENADE_GUS now has one entry per wall.
+		## VL-D4: INFILTRAITOR_CAPTURE_DETONATE_INDEX also selects which of the
+		## 4 test-zone grenades this action clicks/frames (default 0, unchanged
+		## behavior for every pre-existing use of this action).
+		var tz_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
+		var tz_index := tz_index_env.to_int() if tz_index_env.is_valid_int() else 0
 		var row_center := Vector2i(10, 4)
+		if tz_index > 0 and tz_index < TEST_ZONE_GRENADE_GUS.size():
+			row_center = TEST_ZONE_GRENADE_GUS[tz_index]
 		if _camera_controller != null and agent != null:
 			_camera_controller.focus_on(agent._cell_to_world(row_center))
 		if _fow_controller != null:
@@ -2588,7 +2618,7 @@ func _run_auto_screenshot_capture() -> void:
 		for _c in range(5):
 			await get_tree().process_frame
 		if capture_action != "test_zone_view":
-			var anchor: Vector2 = _test_zone_controller._top_screen_pos(_test_zone_controller._grenades[0])
+			var anchor: Vector2 = _test_zone_controller._top_screen_pos(_test_zone_controller._grenades[tz_index])
 			var click := InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_RIGHT
 			click.pressed = true

@@ -18,7 +18,7 @@ class ResolvedTexture:
 const MAX_FILE_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 
 var tex_user_dir: String = "user://textures/"
-var tex_default_dir: String = "res://textures/defaults/"
+var tex_default_dir: String = "res://ASSETS/TEXTURES/defaults/"
 var log_lines: PackedStringArray = []
 
 ## Constructor with optional path overrides (for testing)
@@ -44,7 +44,7 @@ func resolve(texture_id: String) -> ResolvedTexture:
 			_log("[RESOLVER] %s resolved from USER%s (dims %dx%d)" % [texture_id, ext, img.get_width(), img.get_height()])
 			return ResolvedTexture.new(img, Tier.USER)
 	
-	# Attempt res://textures/defaults/ tier (try PNG first, then WebP)
+	# Attempt res://ASSETS/TEXTURES/defaults/ tier (try PNG first, then WebP)
 	for ext in [".png", ".webp"]:
 		var default_path := tex_default_dir.path_join(texture_id + ext)
 		var img := _try_load_and_validate(default_path, "DEFAULT")

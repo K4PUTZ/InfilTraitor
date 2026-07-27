@@ -1878,7 +1878,7 @@ extends `Node` · 122 lines
 
 **Public vars**
 - `var tex_user_dir: String = "user://textures/"`
-- `var tex_default_dir: String = "res://textures/defaults/"`
+- `var tex_default_dir: String = "res://ASSETS/TEXTURES/defaults/"`
 - `var log_lines: PackedStringArray = []`
 
 **Public API**
@@ -2635,7 +2635,7 @@ extends `MainLoop` · 298 lines
 **Constants / tuning**
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
-- `FACADE_BASE_PATH` = `"res://textures/defaults/facade_"`
+- `FACADE_BASE_PATH` = `"res://ASSETS/TEXTURES/defaults/facade_"`
 - `EXPECTED_VOXEL_W` = `32`
 - `EXPECTED_VOXEL_H` = `36`
 - `EXPECTED_VOXEL_TILE_H` = `16`

@@ -13,5 +13,10 @@ ui.main_menu.options,OPTIONS,OPÇÕES
 ui.main_menu.quit,QUIT TO DESKTOP,SAIR DO JOGO
 ui.controls.title,CONTROLS,CONTROLES
 ui.controls.back,BACK,VOLTAR
+ui.main_menu.showcase,SHOWCASE,VITRINE
+ui.showcase.title,SHOWCASE,VITRINE
+ui.showcase.back,BACK,VOLTAR
+ui.showcase.item.shotgun_breaching,Breaching Shotgun,Espingarda de Arrombamento
+ui.showcase.item.shotgun_breaching_desc,Short-stock pump-action. Close-range wall breaching.,Pump-action de coronha curta. Arrombamento de paredes a curta distância.
 ui.context_menu.detonate,Detonate (Enter),Detonar (Enter)
 ui.context_menu.cancel,Cancel (Esc),Cancelar (Esc)

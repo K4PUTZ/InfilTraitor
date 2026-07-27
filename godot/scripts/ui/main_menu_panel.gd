@@ -5,6 +5,7 @@ extends WindowBase
 signal reset_requested
 signal settings_requested
 signal controls_requested
+signal showcase_requested
 
 @onready var _center_container := CenterContainer.new()
 @onready var _panel_bg := Panel.new()
@@ -16,6 +17,7 @@ signal controls_requested
 @onready var _btn_new_game := Button.new()
 @onready var _btn_load := Button.new()
 @onready var _btn_controls := Button.new()
+@onready var _btn_showcase := Button.new()
 @onready var _btn_options := Button.new()
 @onready var _btn_quit := Button.new()
 
@@ -71,6 +73,7 @@ func _ready() -> void:
 	_setup_button(_btn_new_game, "ui.main_menu.new_game", _on_new_game_pressed)
 	_setup_button(_btn_load, "ui.main_menu.load", _on_load_pressed)
 	_setup_button(_btn_controls, "ui.main_menu.controls", _on_controls_pressed)
+	_setup_button(_btn_showcase, "ui.main_menu.showcase", _on_showcase_pressed)
 	_setup_button(_btn_options, "ui.main_menu.options", _on_options_pressed)
 	_setup_button(_btn_quit, "ui.main_menu.quit", _on_quit_pressed)
 	
@@ -99,6 +102,9 @@ func _on_load_pressed() -> void:
 
 func _on_controls_pressed() -> void:
 	controls_requested.emit()
+
+func _on_showcase_pressed() -> void:
+	showcase_requested.emit()
 
 func _on_options_pressed() -> void:
 	settings_requested.emit()

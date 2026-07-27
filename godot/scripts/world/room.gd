@@ -380,6 +380,7 @@ var _main_menu_panel: Node = null
 
 ## PAUSE-MENU-02: Controls panel
 var _controls_panel: Node = null
+var _showcase_panel: Node = null
 
 ## MODULARIZE-04: CameraController to manage drag, zoom, perspective
 var _camera_controller: Node = null
@@ -815,6 +816,7 @@ func _ready() -> void:
 	$HUD.add_child(_main_menu_panel)
 	_main_menu_panel.reset_requested.connect(_on_hud_reset_requested)
 	_main_menu_panel.controls_requested.connect(_on_controls_requested)
+	_main_menu_panel.showcase_requested.connect(_on_showcase_requested)
 	_main_menu_panel.hide() # Hidden by default
 	## ESC-STACK-01: pause is a side effect of the panel actually being open,
 	## not of the keypress that opened it — fires the same way whether it
@@ -835,6 +837,14 @@ func _ready() -> void:
 	## Controls, revealing Main Menu still open; a second Escape closes that.
 	_controls_panel.opened.connect(func(): _modal_stack.push(_controls_panel.close))
 	_controls_panel.closed.connect(func(): _modal_stack.remove(_controls_panel.close))
+
+	## ACTOR_MASTER_PLAN D20/Part 5a: Showcase screen (live 3D inspection window).
+	var ShowcasePanelClass = preload("res://godot/scripts/ui/showcase_panel.gd")
+	_showcase_panel = ShowcasePanelClass.new()
+	$HUD.add_child(_showcase_panel)
+	_showcase_panel.hide() # Hidden by default
+	_showcase_panel.opened.connect(func(): _modal_stack.push(_showcase_panel.close))
+	_showcase_panel.closed.connect(func(): _modal_stack.remove(_showcase_panel.close))
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
@@ -2647,6 +2657,30 @@ func _run_auto_screenshot_capture() -> void:
 			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
+	elif capture_action == "open_showcase" and _main_menu_panel != null:
+		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
+		## path (Main Menu's own _on_showcase_pressed(), same as a real click
+		## would trigger via the emitted signal), not a direct panel.open()
+		## call. Extra wait past the usual capture delay so the GLTF load +
+		## a few auto-spin frames are visibly in the captured pixels.
+		## INFILTRAITOR_CAPTURE_PORTRAIT=1 forces the OS window to the
+		## project's own mobile viewport size (390x844) before opening, so
+		## the D20 adaptive-layout breakpoint can be verified in both
+		## orientations from one capture action — --resolution alone does not
+		## survive room.gd's own boot path in this build.
+		if OS.get_environment("INFILTRAITOR_CAPTURE_PORTRAIT") == "1":
+			if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_size(Vector2i(390, 844))
+			get_tree().root.content_scale_size = Vector2i(390, 844)
+			for _j in range(5):
+				await get_tree().process_frame
+		_main_menu_panel.open()
+		for _j in range(5):
+			await get_tree().process_frame
+		_main_menu_panel._on_showcase_pressed()
+		for _j in range(40):
+			await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()
 	if image == null:
@@ -2849,6 +2883,10 @@ func _on_pause_requested() -> void:
 
 func _on_controls_requested() -> void:
 	_controls_panel.open()
+
+
+func _on_showcase_requested() -> void:
+	_showcase_panel.open()
 
 
 ## ESC-STACK-01: the grenade context menu's ModalStack close callable — closes

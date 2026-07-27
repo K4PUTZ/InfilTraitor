@@ -1,13 +1,15 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.2
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.3
 
-**Status:** 🟡 **Part 0 DONE (2026-07-26, real measured numbers). Objects
-track open to start now (Part 2 single-object bake + Part 5a Showcase);
-living-beings track (character twin, pose library, damage/clothing
-integration) deliberately deferred to a second phase, per the Director
-(2026-07-26).** Started as a pure decision register from Director
-brainstorms; now has one real spike behind it. Written down now so the
-decisions are not re-litigated when someone does pick each track up.
+**Status:** 🟡 **Part 0 DONE (2026-07-26). Part 5a (Showcase) first cut DONE
+2026-07-27 — a real shotgun renders live, auto-spinning, in a main-menu
+screen with a verified adaptive layout.** Objects track continues (Part 6
+simplification system is next, still unspecified); living-beings track
+(character twin, pose library, damage/clothing integration) deliberately
+deferred to a second phase, per the Director (2026-07-26). Started as a pure
+decision register from Director brainstorms; now has two real, working
+pieces behind it. Written down now so the decisions are not re-litigated
+when someone does pick each track up.
 **Baseline:** tag `verified/v0.9.0`. No `verified/` tag cut since — `main` is
 ahead at VERSION 0.9.81+ (includes the CC0 voxel-import feasibility spike,
 the TEST-ZONE right-click "Detonar" context menu, and the full Voxel Light
@@ -51,6 +53,17 @@ main-menu screen as Part 5's first concrete application (D20, Part 5a), and
 the shotgun collectible's render path (D21). New Part 6 (simplification
 system) is deliberately left unspecified — the next real open question, not
 solved today.
+
+**v1.3 (2026-07-27):** Part 5a built and verified for real — a CC0 shotgun
+(Quaternius "Ultimate Guns Pack," license recorded) renders live via D12's
+imported-mesh path (first exercise of that decision), auto-spinning, in a
+new Showcase screen off the main menu. D20's adaptive layout (bottom strip
+portrait / side panel landscape) confirmed with real captures at both the
+project's actual mobile viewport (390×844) and its desktop default
+(1280×720) — not code-reading. D17 (normal-map lighting) intentionally not
+touched yet, per the Director: prove the rest of the mechanism first, test
+lighting after. No decisions changed; D10/D12/D20 are now demonstrated, not
+just ratified.
 
 ---
 
@@ -283,16 +296,63 @@ since nothing is baked for this path. The screens themselves (inventory
 layout, dialogue UI) remain undesigned in general — **Showcase (Part 5a) is
 the first one that is.**
 
-### Part 5a — Showcase screen *(new 2026-07-26; OPEN — objects track, first concrete deliverable)*
+### Part 5a — Showcase screen — ✅ FIRST CUT DONE 2026-07-27
 The first named, designed Part 5 screen (D20). A button on the main menu
 opens a live `SubViewport` window (Part 5's mechanism) showing one object
-(the shotgun, first) filling most of the screen. Name + info panel occupies
-a separate area, laid out adaptively: bottom strip in portrait (9:16), side
-panel in landscape (16:9) — orientation-driven layout, not a fixed one.
-Depends only on Part 2's twin-render output (D12 imported mesh accepted) and
-Part 5's mechanism — no dependency on Part 1 (character twin data model),
-Part 6 (simplification), or any damage/clothing integration. The simplest
-possible slice that proves D10/D11/D20 end-to-end on a real object.
+filling most of the screen. Name + info panel occupies a separate area, laid
+out adaptively: bottom strip in portrait (9:16), side panel in landscape
+(16:9) — orientation-driven layout, not a fixed one. Depended only on Part
+2's twin-render output (D12 imported mesh accepted) and Part 5's mechanism —
+no dependency on Part 1 (character twin data model), Part 6 (simplification),
+or any damage/clothing integration, exactly as scoped.
+
+**Shipped:** `godot/scripts/ui/showcase_panel.gd` (`ShowcasePanel extends
+WindowBase`, same class hierarchy as `MainMenuPanel`/`ControlsPanel`), a
+`MainMenuPanel.showcase_requested` signal + button, wired into `room.gd`
+identically to the existing Controls panel (`ModalStack` push/remove on
+open/close). The object is the **Shotgun Short Stock** (D18's first
+objects-track case) — sourced from Quaternius' CC0 "Ultimate Guns Pack"
+(`ASSETS/.../quaternius_ultimate_guns_pack/`, `ATTRIBUTION.txt` records
+license), loaded at runtime via `GLTFDocument.append_from_file()` +
+`generate_scene()` — Godot's native glTF import, no editor import step,
+proving D12's imported-mesh path for real (first exercised by
+`shotgun_preview_spike.gd`, a throwaway comparison render across the pack's
+4 shotgun variants, kept alongside `bake_voxel_sprite_3d.gd` and
+`destruction_part0_spike.gd` as a one-off investigation script per this
+project's standing convention). Auto-spins slowly (D10's "auto-spin" option,
+`SPIN_DEG_PER_SEC := 14.0`) around the same elevation/azimuth angle the
+voxel bake rig uses, so the object reads consistently with the rest of the
+game's isometric visual language.
+
+**D20's adaptive layout verified with real captures, both orientations** —
+not code-reading: a new dev capture action
+(`INFILTRAITOR_CAPTURE_ACTION=open_showcase`, `INFILTRAITOR_CAPTURE_PORTRAIT=1`
+to force the project's own 390×844 mobile viewport) drives the real
+`MainMenuPanel._on_showcase_pressed()` handler — the same path a real click
+takes — then captures through the existing `SCREENSHOT-HOOK-01` pipeline.
+Landscape (1280×720, this build's desktop default): side panel, right.
+Portrait (390×844, the project's actual configured mobile viewport):
+bottom strip. Both showed the shotgun rendering correctly mid-spin, correct
+title/description text, and (matching the existing Controls-over-Main-Menu
+precedent) the Main Menu still faintly visible behind — intentional
+`WindowBase` layering, not a bug.
+
+**Known limitations, honestly scoped as first-cut, not blocking:**
+- No `ShowcaseItem` registry — the object is hardcoded (`MODEL_PATH`
+  constant), matching D19's "prove the mechanism, don't build the final data
+  layer yet." A real registry is Part 2b/6 territory.
+- Lighting is the tool's original flat ambient (pre-D17) — D17's normal-map
+  technique was explicitly deferred by the Director ("vamos seguir com as
+  outras etapas primeiro e depois testamos") until after the objects-track
+  mechanism is proven; this Part is exactly that proof.
+- `PORTRAIT_ASPECT_CUTOFF := 1.0` is a first guess, not validated against
+  real device aspect ratios (§7 open question #14 — unchanged by this cut).
+- Two nearly-identical bugs found and fixed while building this (both the
+  same root cause as `actor_part0_spike.gd`'s tier-4 bug): reading a
+  freshly-added `Node3D`'s `global_transform`/`AABB` before it had been
+  through one frame inside the tree. Worth naming as a pattern: any new
+  spike/tool in this codebase that computes geometry immediately after
+  `add_child()` needs an `await get_tree().process_frame` first.
 
 ### Part 6 — Simplification sprite system *(new 2026-07-26; UNSPECIFIED — the next real open question, not designed today)*
 The runtime, gameplay-facing representation D16 splits away from the twin:
@@ -323,12 +383,13 @@ characters.
 OBJECTS TRACK — open now
 Part 0 (spike) ✅ DONE       → go/no-go on ×8, real bake-time number (go, with caveat — §4)
 Part 2 (bake/render,
-        source + lighting)   → depends on Part 0's proof; available now for a
-                                single object (the shotgun) without Part 2b
+        source + lighting)   ✅ imported-mesh path (D12) proven — single object
+                                (shotgun) without Part 2b; lighting (D13/D17)
+                                still the tool's original flat ambient
 Part 5 (live 3D windows,
-        mechanism)           → depends on Part 2's twin-render output only
-Part 5a (Showcase screen)    → depends on Part 5 + Part 2; the first concrete
-                                deliverable (D20)
+        mechanism)           ✅ DONE — proven by Part 5a below
+Part 5a (Showcase screen)    ✅ FIRST CUT DONE 2026-07-27 — real captures,
+                                both orientations, see Part 5a's own section
 Part 6 (simplification
         system, UNSPECIFIED) → depends on Part 2's flat+normal-map output
                                 (D17); needed before the shotgun can float/

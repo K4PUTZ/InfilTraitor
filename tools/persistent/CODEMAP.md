@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**149 scripts · 29379 lines total** (under `godot/scripts/`)
+**151 scripts · 29768 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
-- **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
+- **tools/** — actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
@@ -2495,6 +2495,24 @@ extends `SceneTree` · 313 lines
 
 ---
 
+### `shotgun_preview_spike.gd`
+
+extends `SceneTree` · 141 lines
+
+`godot/scripts/tools/shotgun_preview_spike.gd`
+
+> ACTOR_MASTER_PLAN Part 2 (D12 imported-mesh path) — one-off preview render. Loads each shotgun variant from the Quaternius Ultimate Guns Pack (CC0, see ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/ ATTRIBUTION.txt) through the SAME camera/lighting rig bake_voxel_sprite_3d.gd already ships for the grenade, using Godot's runtime GLTFDocument loader instead of a voxel-JSON twin — the D12 "imported mesh" path, not yet exercised by any script until this one. Purpose: a real look at each variant at the actual isometric bake angle, to pick one before committing to Part 5a (Showcase). Not a production tool — one-off, same spirit as bake_voxel_sprite_3d.gd's own header. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/shotgun_preview_spike.gd
+
+**Constants / tuning**
+- `MODELS_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/"`
+- `OUT_DIR` = `"res://Screenshots/history/"`
+- `MODELS` = `[ "Shotgun.glb", "Shotgun-ZmPTnh7njL.glb", "Shotgun Sawed Off.glb", "Shotgun Short Stock.glb", ]`
+- `VIEWPORT_SIZE` = `Vector2i(480, 480)`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+
+---
+
 ### `slab_geometry_selftest.gd`
 
 extends `SceneTree` · 223 lines
@@ -2728,7 +2746,7 @@ extends `SceneTree` · 95 lines
 
 ### `main_menu_panel.gd`
 
-`class_name MainMenuPanel` · extends `WindowBase` · 107 lines
+`class_name MainMenuPanel` · extends `WindowBase` · 113 lines
 
 `godot/scripts/ui/main_menu_panel.gd`
 
@@ -2738,6 +2756,7 @@ extends `SceneTree` · 95 lines
 - `signal reset_requested`
 - `signal settings_requested`
 - `signal controls_requested`
+- `signal showcase_requested`
 
 **Public API**
 - `func open() -> void:`
@@ -2798,6 +2817,26 @@ extends `Node2D` · 34 lines
 
 **Public API**
 - `func set_selected(cell: Vector2i) -> void:`
+
+---
+
+### `showcase_panel.gd`
+
+`class_name ShowcasePanel` · extends `WindowBase` · 204 lines
+
+`godot/scripts/ui/showcase_panel.gd`
+
+> ACTOR_MASTER_PLAN D20/Part 5a — Showcase screen. First concrete Part 5 (live 3D inspection window) application: a live SubViewport with a real Camera3D shows an imported mesh (D12's imported-mesh path, proven by shotgun_preview_spike.gd) filling most of the screen, auto-rotating slowly (D10's "auto-spin" option). Name/info sits in a separate area, laid out adaptively — a bottom strip in portrait (9:16), a side panel in landscape (16:9) — per D20. Breakpoint value and info content are both first-cut choices, not final (§7 open question #14). The object here (Shotgun Short Stock, D18's objects-track first case) is hardcoded for this first cut — no ShowcaseItem registry exists yet; that is exactly the kind of thing D19 says not to build before proving the mechanism works.
+
+**Constants / tuning**
+- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_START_DEG` = `45.0`
+- `SPIN_DEG_PER_SEC` = `14.0`
+- `PORTRAIT_ASPECT_CUTOFF` = `1.0`
+
+**Public API**
+- `func open() -> void:`
 
 ---
 
@@ -3205,7 +3244,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2887 lines
+extends `Node2D` · 2925 lines
 
 `godot/scripts/world/room.gd`
 

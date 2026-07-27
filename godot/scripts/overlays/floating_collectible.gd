@@ -22,8 +22,19 @@ extends Node2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
 const FRAME_COUNT := 24
-const PLAYBACK_FPS := 24.0
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
+
+## Matches showcase_panel.gd's SPIN_DEG_PER_SEC exactly (Director,
+## 2026-07-27: the collectible's spin read far too fast at the bake's own
+## 24fps frame-advance rate — 360 deg/sec, a full turn per second — next to
+## the Showcase's slow, deliberate spin). This is the angular speed the
+## object visually rotates at; FRAME_COUNT (24, D14's bake budget) stays a
+## separate, unrelated decision about how many discrete angles were baked.
+const ROTATION_DEG_PER_SEC := 14.0
+
+## A modest bump over the bake's native 160x160 px (Director, 2026-07-27) —
+## the collectible read a little small next to the rest of the test zone.
+const SPRITE_SCALE := 1.15
 
 const BOB_AMPLITUDE_PX := 6.0
 const BOB_PERIOD_SEC := 2.0
@@ -76,6 +87,7 @@ func _ready() -> void:
 	_sprite = Sprite2D.new()
 	_sprite.texture = _color_frames[0]
 	_sprite.centered = true
+	_sprite.scale = Vector2.ONE * SPRITE_SCALE
 
 	var shader := load(SHADER_PATH)
 	_material = ShaderMaterial.new()
@@ -93,7 +105,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_frame_time += delta
-	var frame_index := int(_frame_time * PLAYBACK_FPS) % FRAME_COUNT
+	var rotation_deg := fmod(_frame_time * ROTATION_DEG_PER_SEC, 360.0)
+	var frame_index := int(rotation_deg / (360.0 / FRAME_COUNT)) % FRAME_COUNT
 	_sprite.texture = _color_frames[frame_index]
 	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**153 scripts · 30133 lines total** (under `godot/scripts/`)
+**153 scripts · 30146 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 163 lines
+`class_name FloatingCollectible` · extends `Node2D` · 176 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -877,19 +877,7 @@ extends `Node2D` · 143 lines
 **Constants / tuning**
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"`
 - `FRAME_COUNT` = `24`
-- `PLAYBACK_FPS` = `24.0`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
-- `BOB_AMPLITUDE_PX` = `6.0`
-- `BOB_PERIOD_SEC` = `2.0`
-- `ELEVATION_DEG` = `30.0`
-- `AZIMUTH_DEG` = `45.0`
-
-**Public vars**
-- `var room: Node = null`
-- `var gu_cell: Vector2i = Vector2i.ZERO`
-
-**Public API**
-- `func setup(p_room: Node, p_gu_cell: Vector2i) -> void:`
 
 ---
 

@@ -1,5 +1,5 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.4
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.5
 
 **Status:** 🟡 **Part 0 DONE (2026-07-26). Part 5a (Showcase) first cut DONE
 2026-07-27 — a real shotgun renders live, auto-spinning, in a main-menu
@@ -81,6 +81,23 @@ Confirmed by real captures, isolating shader correctness from the
 grid→world light-direction mapping's current limits — see D22 for the full
 finding. **New:** D22 (test result), open question #16 (perspective-aware
 light-direction mapping). No prior decision changed.
+
+**v1.5 (2026-07-27, same-day continuation):** Director feedback after
+watching the live collectible in-game: the spin read far too fast, and the
+sprite a little small. **Corrects a category error in v1.4's "24 frames at
+24fps" framing** — that number was the *bake* frame count/budget (D14,
+still correct and unchanged as a bake decision), not a visual rotation
+speed; tying the on-screen spin rate directly to the bake's frame-advance
+rate produced a full 360°/sec turn, since each of the 24 baked steps is
+15° and all 24 were being cycled every second. Decoupled the two: the
+object's visual angular speed is now its own constant
+(`ROTATION_DEG_PER_SEC := 14.0`, `floating_collectible.gd`), set to match
+`showcase_panel.gd`'s `SPIN_DEG_PER_SEC` exactly, so the twin and the
+in-world collectible read at the same, deliberate pace. Also bumped
+`SPRITE_SCALE := 1.15` (a first-guess visual nudge, same category as
+`MESH_SCALE`, §7 #17). Part 6's "Frame count/rate" bullet below is revised
+inline, not deleted — see its own flag. No decision register entry changed;
+this is an implementation correction, not a new ratified choice.
 
 ---
 
@@ -402,14 +419,30 @@ D21 chain end-to-end for one object.
   computed only after `await process_frame` — `global_transform`/`AABB` on a
   freshly-parented `Node3D` is invalid for one frame, the same lesson
   `actor_part0_spike.gd` and `showcase_panel.gd` already hit this session.
-- **Frame count/rate (D14):** 24 frames at 24fps — exactly one full
-  rotation per second, a round number and consistent with the frame rate
-  future character pose animation is expected to use, rather than assuming
-  60 just because it was the first number discussed.
-- **Scale:** `MESH_SCALE := 0.5`, a first-guess visual judgment call ("shrink
-  to the environment's scale, no need to change the mesh" — Director), tuned
-  the same iterative way Showcase's camera framing was, **not yet validated**
-  against the rest of the world's scale (§7 open question #17).
+- **Bake frame count (D14):** 24 frames (15° steps) — a round number and
+  consistent with the frame rate future character pose animation is
+  expected to use, rather than assuming 60 just because it was the first
+  number discussed. 🔄 **REVISED 2026-07-27 (v1.5):** the original text
+  here said "24 frames at 24fps — exactly one full rotation per second,"
+  conflating the bake's frame *count* (D14, still 24, unchanged) with the
+  collectible's on-screen rotation *speed* — driving visual spin directly
+  from the bake's frame-advance rate made it turn a full 360°/sec, far
+  faster than intended. The two are now separate: rotation speed is its own
+  constant, see below.
+- **Rotation speed (new, v1.5):** `ROTATION_DEG_PER_SEC := 14.0` in
+  `floating_collectible.gd`, matching `showcase_panel.gd`'s
+  `SPIN_DEG_PER_SEC` exactly, so the twin and the in-world collectible spin
+  at the same deliberate pace. Frame selection is now angle-driven
+  (`int(rotation_deg / (360/FRAME_COUNT)) % FRAME_COUNT`), not fps-driven —
+  the 24 baked angles are shown as the object slowly turns through them,
+  same frames, much slower reveal.
+- **Scale:** `MESH_SCALE := 0.5` (bake-time), a first-guess visual judgment
+  call ("shrink to the environment's scale, no need to change the mesh" —
+  Director), tuned the same iterative way Showcase's camera framing was,
+  **not yet validated** against the rest of the world's scale (§7 open
+  question #17). **Also** (new, v1.5) a runtime `SPRITE_SCALE := 1.15` on
+  top of the bake — the object read a little small in the test zone;
+  another visual nudge, not a derived number.
 - **Runtime shader:** `godot/shaders/flat_normal_relight.gdshader`
   (`canvas_item`) — reads the baked normal map, computes continuous
   (non-bucket-quantized — deliberately unlike `VoxelLightField`'s 12
@@ -417,9 +450,10 @@ D21 chain end-to-end for one object.
   on) N·L diffuse plus a Blinn-Phong specular term, driven by `light_dir`/
   `light_intensity` uniforms.
 - **Runtime node:** `godot/scripts/overlays/floating_collectible.gd`
-  (`FloatingCollectible extends Node2D`) — cycles the 24 frame pairs by
-  elapsed time × 24fps, applies a gentle vertical sine bob
-  (`BOB_AMPLITUDE_PX := 6.0`, `BOB_PERIOD_SEC := 2.0`), and each frame calls
+  (`FloatingCollectible extends Node2D`) — selects among the 24 frame pairs
+  by accumulated rotation angle at `ROTATION_DEG_PER_SEC` (v1.5, see above),
+  applies a gentle vertical sine bob (`BOB_AMPLITUDE_PX := 6.0`,
+  `BOB_PERIOD_SEC := 2.0`), and each frame calls
   `_update_light_uniform()`: queries the real `LightRegistry` for the
   strongest active `LightSource` affecting its GU (`affects_cell()` +
   `get_effective_tactical_energy()` — the same query shape D13 already
@@ -546,7 +580,8 @@ picking it up early except the Director's own priority call.
 12. **Part 6 (simplification system)'s formal design is still open**
     *(2026-07-26; first concrete exercise DONE 2026-07-27, D22)* — how
     frames are authored is now answered for the one case tried (3D bake
-    flattened via D17, 24 frames/24fps), but the general registry/data
+    flattened via D17, 24 frames spun at 14deg/sec per v1.5), but the
+    general registry/data
     layer, how many angles a non-directional floating collectible actually
     needs in general (D21 ties this to D14's budget but names no number),
     and how frame sets are packaged (sprite sheet vs. individual files) are

@@ -304,6 +304,7 @@ var _selection_controller: SelectionControllerClass = null
 
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _test_zone_controller: TestZoneControllerClass = null
+var _floating_collectible: Node = null
 var _context_menu: DetonateContextMenuClass = null
 ## ESC-STACK-01: see modal_stack.gd — single source of truth for what Escape
 ## targets next (main menu, controls sub-panel, the grenade context menu, ...).
@@ -2465,9 +2466,22 @@ func _populate_test_zone_if_playground() -> void:
 	if _test_zone_controller == null:
 		return
 	_test_zone_controller.clear()
+	if _floating_collectible != null and is_instance_valid(_floating_collectible):
+		_floating_collectible.queue_free()
+		_floating_collectible = null
 	if map_id == "PLAYGROUND":
 		for gu in TEST_ZONE_GRENADE_GUS:
 			_test_zone_controller.add_grenade(gu)
+		## ACTOR_MASTER_PLAN D17/D21 test (2026-07-27): placed near map_light_1
+		## (cell 6,4) so directional relighting against a real light is
+		## actually visible, not just a flat ambient-lit sprite floating in
+		## the dark. TEST-ZONE-style placeholder, same convention as the
+		## grenades above — not production placement logic.
+		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
+		_floating_collectible = FloatingCollectibleClass.new()
+		_floating_collectible.setup(self, Vector2i(8, 4))
+		_floating_collectible.z_index = _voxel_renderer.get_max_voxel_z_index() + 1
+		add_child(_floating_collectible)
 
 
 ## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
@@ -2680,6 +2694,19 @@ func _run_auto_screenshot_capture() -> void:
 			await get_tree().process_frame
 		_main_menu_panel._on_showcase_pressed()
 		for _j in range(40):
+			await get_tree().process_frame
+	elif capture_action == "test_collectible" and _floating_collectible != null:
+		## ACTOR_MASTER_PLAN D17/D21 dev verification: INFILTRAITOR_CAPTURE_AGENT_CELL
+		## only teleports the agent + reveals FOW, it does not recentre the
+		## camera (found the hard way — two identical "recaptures" before
+		## realizing this) — focus_on() is the real camera-move call the
+		## test_zone_* actions already use for the same reason.
+		var target_cell: Vector2i = _floating_collectible.gu_cell
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(target_cell))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(target_cell, 8)
+		for _j in range(15):
 			await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()

@@ -1,15 +1,16 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.3
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.4
 
 **Status:** 🟡 **Part 0 DONE (2026-07-26). Part 5a (Showcase) first cut DONE
 2026-07-27 — a real shotgun renders live, auto-spinning, in a main-menu
-screen with a verified adaptive layout.** Objects track continues (Part 6
-simplification system is next, still unspecified); living-beings track
-(character twin, pose library, damage/clothing integration) deliberately
-deferred to a second phase, per the Director (2026-07-26). Started as a pure
-decision register from Director brainstorms; now has two real, working
-pieces behind it. Written down now so the decisions are not re-litigated
-when someone does pick each track up.
+screen with a verified adaptive layout. Part 6's first exercise (floating/
+rotating collectible with real normal-map lighting) also DONE 2026-07-27 —
+see D22.** Objects track continues (Part 6's formal design is still open);
+living-beings track (character twin, pose library, damage/clothing
+integration) deliberately deferred to a second phase, per the Director
+(2026-07-26). Started as a pure decision register from Director
+brainstorms; now has three real, working pieces behind it. Written down now
+so the decisions are not re-litigated when someone does pick each track up.
 **Baseline:** tag `verified/v0.9.0`. No `verified/` tag cut since — `main` is
 ahead at VERSION 0.9.81+ (includes the CC0 voxel-import feasibility spike,
 the TEST-ZONE right-click "Detonar" context menu, and the full Voxel Light
@@ -64,6 +65,22 @@ project's actual mobile viewport (390×844) and its desktop default
 touched yet, per the Director: prove the rest of the mechanism first, test
 lighting after. No decisions changed; D10/D12/D20 are now demonstrated, not
 just ratified.
+
+**v1.4 (2026-07-27, same-day continuation):** D17's normal-map lighting
+tested for real — Part 6's first concrete exercise, a floating/rotating
+shotgun collectible (D21) instantiated in the PLAYGROUND test zone. New
+`actor_frame_bake_spike.gd` (24 frames × flat-color + view-space-normal-map
+pair, same fixed isometric camera as gameplay) and
+`flat_normal_relight.gdshader` (continuous per-pixel N·L + specular,
+deliberately not bucket-quantized like `VoxelLightField`) feed a new
+`FloatingCollectible` node wired to the real `LightRegistry`/`LightSource`
+data (D13's same source). Frame count/rate decided: 24 frames at 24fps (a
+round one-rotation-per-second, and the rate future character pose animation
+is expected to share — not 60, per D14's "budget it, don't assume it").
+Confirmed by real captures, isolating shader correctness from the
+grid→world light-direction mapping's current limits — see D22 for the full
+finding. **New:** D22 (test result), open question #16 (perspective-aware
+light-direction mapping). No prior decision changed.
 
 ---
 
@@ -125,6 +142,7 @@ Named pains this serves:
 | **D19** | **Authoring time is not a constraint. Only runtime/mobile cost is.** Import, 3D assembly/adjustment, rendering, and sprite export can take months if needed — the only things that matter are (a) proving the method works and (b) proving it doesn't overload the mobile system at runtime. This reframes D8's combo-budget concern: the worry was never about human authoring time, only about what ships and runs on-device. Doesn't relax D8 itself (the runtime/memory budget still needs real numbers, per Part 0's discipline) — it removes a constraint that was never the real one. | ✅ Ratified (Director, 2026-07-26) |
 | **D20** | **Showcase: a main-menu button opening a live 3D inspection screen — the first concrete Part 5 application.** The object fills most of the screen (D10's live `SubViewport`, D11's free-zoom); name and info occupy a separate area, laid out adaptively for portrait (9:16) vs. landscape (16:9) — bottom strip or side panel depending on orientation. This is Part 5's mechanism (already specified) getting its first named, designed screen; see Part 5a. | ✅ Ratified (Director, 2026-07-26) |
 | **D21** | **The floating/rotating collectible (shotgun on a GU) renders through the simplification system (D16), not the twin.** Flat, unlit sprites (D17 — lighting applied at runtime via the normal-map shader, never baked in) at whatever angle/frame set the floating-and-rotating read needs (ties to D14's frame-count budget: cheap per-object, budget in aggregate). The twin (Showcase-quality) and the in-world collectible are visually related but not the same asset — the collectible is gameplay-facing and must stay cheap at all times it's on screen, unlike the Showcase twin which is only live while that one screen is open. | ✅ Ratified (Director, 2026-07-26) |
+| **D22** | **D17's normal-map relighting is proven to work — via real captures that isolate shader correctness from the grid→view light-direction mapping's current limits.** Built `actor_frame_bake_spike.gd` (24 frames/15° steps, one flat-color + one view-space-normal-map render per frame, centered-before-rotated using the by-now-standard `await process_frame`-before-`AABB` fix) and `flat_normal_relight.gdshader` (continuous per-pixel N·L + Blinn-Phong specular — deliberately not bucket-quantized like `VoxelLightField`; a live per-pixel shader has no bake-time cost to economize on). Verified with three real captures at the same broadside rotation frame (`FloatingCollectible`, gu_cell (8,4), PLAYGROUND test zone): (a) the real light registry's computed direction (light at gu_cell (6,4), energy 1.0) — visually near-identical to ambient-only, because that light sits almost directly behind the object relative to the fixed bake camera at this particular cell-delta; (b) light forced off — matches (a), confirming the ambient-only floor; (c) a forced front-facing light direction — clearly visible directional shading and specular shine on the receiver. **Conclusion: the shader/bake technique is correct** (proven by (c)); the current grid-x→world-x/grid-y→world-z mapping (`floating_collectible.gd`'s file header, unchanged since D17) does not yet account for the fixed camera's azimuth, so it can pick an unfavorable (near-backlighting) direction for some light/object cell-deltas, as seen in (a). Not fixed here — perspective-correct light-direction mapping is follow-up work, see open question #16. | ✅ Confirmed (2026-07-27, real captures) — shader correct; grid→view mapping is a known, not-yet-solved limitation |
 
 ---
 
@@ -354,7 +372,7 @@ precedent) the Main Menu still faintly visible behind — intentional
   spike/tool in this codebase that computes geometry immediately after
   `add_child()` needs an `await get_tree().process_frame` first.
 
-### Part 6 — Simplification sprite system *(new 2026-07-26; UNSPECIFIED — the next real open question, not designed today)*
+### Part 6 — Simplification sprite system *(new 2026-07-26; first exercise DONE 2026-07-27; formal design still UNSPECIFIED)*
 The runtime, gameplay-facing representation D16 splits away from the twin:
 covers every angle/pose/situation an object or actor needs in play, at
 Moonwalker/Sonic-style fidelity — small, but well-drawn, with real
@@ -369,6 +387,70 @@ organized into a sprite sheet vs. individual files, and — once the
 living-beings track resumes — how pose/damage/clothing cues layer onto a
 simplification sprite without becoming Part 1's combo explosion by another
 name. See §7 for the full list of what's undecided here.
+
+**First exercise shipped 2026-07-27 (D22):** a real floating/rotating
+shotgun collectible, in the PLAYGROUND test zone, proving the whole D16/D17/
+D21 chain end-to-end for one object.
+
+- **Bake:** `godot/scripts/tools/actor_frame_bake_spike.gd` — 24 rotation
+  frames (15° steps) of the Showcase's own shotgun model, from the same
+  fixed isometric camera (elevation 30°, azimuth 45°) gameplay always uses.
+  Each frame gets two renders: a flat unlit color pass (today's D13-style
+  ambient-only look) and a normal-map pass (`ALBEDO = NORMAL * 0.5 + 0.5`,
+  view-space surface normal encoded as RGB via an inline unshaded override
+  shader). Centers the model on the pivot's own origin *before* rotating it,
+  computed only after `await process_frame` — `global_transform`/`AABB` on a
+  freshly-parented `Node3D` is invalid for one frame, the same lesson
+  `actor_part0_spike.gd` and `showcase_panel.gd` already hit this session.
+- **Frame count/rate (D14):** 24 frames at 24fps — exactly one full
+  rotation per second, a round number and consistent with the frame rate
+  future character pose animation is expected to use, rather than assuming
+  60 just because it was the first number discussed.
+- **Scale:** `MESH_SCALE := 0.5`, a first-guess visual judgment call ("shrink
+  to the environment's scale, no need to change the mesh" — Director), tuned
+  the same iterative way Showcase's camera framing was, **not yet validated**
+  against the rest of the world's scale (§7 open question #17).
+- **Runtime shader:** `godot/shaders/flat_normal_relight.gdshader`
+  (`canvas_item`) — reads the baked normal map, computes continuous
+  (non-bucket-quantized — deliberately unlike `VoxelLightField`'s 12
+  buckets, since a live per-pixel shader has no bake-time cost to economize
+  on) N·L diffuse plus a Blinn-Phong specular term, driven by `light_dir`/
+  `light_intensity` uniforms.
+- **Runtime node:** `godot/scripts/overlays/floating_collectible.gd`
+  (`FloatingCollectible extends Node2D`) — cycles the 24 frame pairs by
+  elapsed time × 24fps, applies a gentle vertical sine bob
+  (`BOB_AMPLITUDE_PX := 6.0`, `BOB_PERIOD_SEC := 2.0`), and each frame calls
+  `_update_light_uniform()`: queries the real `LightRegistry` for the
+  strongest active `LightSource` affecting its GU (`affects_cell()` +
+  `get_effective_tactical_energy()` — the same query shape D13 already
+  established), maps the light's grid-cell delta to a world direction
+  (explicit simplification: grid-x→world-x, grid-y→world-z, no Y term),
+  projects it into the bake camera's fixed view-space basis, and feeds the
+  shader. Instantiated for real in `room.gd`'s
+  `_populate_test_zone_if_playground()`, at gu_cell (8,4).
+- **Verified with real captures, isolating two separate claims (D22 has the
+  full account):** the shader/bake technique itself is correct — proven by
+  forcing a favorable light direction and seeing clear, unambiguous
+  directional shading + specular shine; the current grid→view mapping is
+  **not** yet perspective-aware, and for this test's actual light position
+  happened to compute a near-backlighting direction (visually close to
+  ambient-only) — a known limitation, not a shader bug, and not fixed in
+  this pass.
+- **Known limitations, honestly scoped as a first exercise, not blocking:**
+  - Grid→world light-direction mapping doesn't yet account for the active
+    N/E/S/W perspective rotation (same rotation `TestZoneController`'s
+    grenades needed `reposition_for_perspective()` for) — §7 open question
+    #16.
+  - `MESH_SCALE` is a visual first guess, not derived or validated (§7 #17).
+  - No collectible/`ShowcaseItem`-style registry — hardcoded to one shotgun,
+    one gu_cell, only in the PLAYGROUND test zone, matching D19's "prove the
+    mechanism, don't build the final data layer yet."
+  - CLI-baked PNGs never pass through the Godot editor's import scan, so
+    plain `load()` fails on them — worked around with a raw `Image.load()` +
+    `ImageTexture.create_from_image()` helper; needed again if this pattern
+    is reused elsewhere.
+  - Normal-map shader cost (D17's own open item, #13) still unmeasured on
+    any real device.
 
 ---
 
@@ -391,9 +473,11 @@ Part 5 (live 3D windows,
 Part 5a (Showcase screen)    ✅ FIRST CUT DONE 2026-07-27 — real captures,
                                 both orientations, see Part 5a's own section
 Part 6 (simplification
-        system, UNSPECIFIED) → depends on Part 2's flat+normal-map output
-                                (D17); needed before the shotgun can float/
-                                rotate as a collectible (D21); not designed yet
+        system)               ✅ FIRST EXERCISE DONE 2026-07-27 — floating/
+                                rotating shotgun collectible, real normal-map
+                                lighting confirmed (D22); formal design
+                                (registry, frame packaging, pose/damage
+                                layering) still open, see Part 6's own section
 Part 2b (mass-import
          automation)         → depends on Part 2 existing and proven on ≥1 real
                                 object; ALSO gated on "other engine fundamentals"
@@ -459,15 +543,18 @@ picking it up early except the Director's own priority call.
     approach measured ~500ms/pose at ×8 for 16,576 voxels; not disqualifying
     for a one-time bake, but heavy enough across D8's combo budget to be
     worth resolving before Part 2 is built, not after.
-12. **Part 6 (simplification system) is entirely undesigned** *(new,
-    2026-07-26)* — the biggest open item this revision creates. How frames
-    are authored (per-pose 3D bake flattened via D17, hand-drawn, or mixed),
-    how many angles a non-directional floating collectible actually needs
-    (D21 ties this to D14's budget but names no number), and how frame sets
-    are packaged (sprite sheet vs. individual files) are all undecided.
-13. **Normal-map shader cost** *(new, 2026-07-26, D17)* — not yet measured on
-    any device. Recommended before D17 becomes the default lighting
-    technique for every simplification sprite; no spike run yet.
+12. **Part 6 (simplification system)'s formal design is still open**
+    *(2026-07-26; first concrete exercise DONE 2026-07-27, D22)* — how
+    frames are authored is now answered for the one case tried (3D bake
+    flattened via D17, 24 frames/24fps), but the general registry/data
+    layer, how many angles a non-directional floating collectible actually
+    needs in general (D21 ties this to D14's budget but names no number),
+    and how frame sets are packaged (sprite sheet vs. individual files) are
+    all still undecided.
+13. **Normal-map shader cost** *(new, 2026-07-26, D17)* — **shader
+    correctness confirmed 2026-07-27 (D22)**; raw per-pixel cost on a real
+    device is still unmeasured. Recommended before D17 becomes the default
+    lighting technique for every simplification sprite; no spike run yet.
 14. **Showcase layout breakpoints** *(new, 2026-07-26, D20)* — "adapt for
     9:16 vs. 16:9" is the ratified direction; exact breakpoint values, the
     info-panel's real content (stats shown? flavor text?), and whether other
@@ -479,3 +566,14 @@ picking it up early except the Director's own priority call.
     display systems is not designed — deferred with the rest of the
     living-beings track (D18), but worth flagging now since D16 already
     assumes it works.
+16. **Perspective-aware light-direction mapping for simplification sprites**
+    *(new, 2026-07-27, D22)* — `floating_collectible.gd`'s grid→world
+    mapping (grid-x→world-x, grid-y→world-z) ignores the active N/E/S/W
+    perspective rotation, and D22's real test showed this can pick a
+    near-backlighting direction for an otherwise well-lit cell. Needs the
+    same kind of fix `TestZoneController.reposition_for_perspective()` gave
+    grenades — not designed or started here.
+17. **`MESH_SCALE` validation** *(new, 2026-07-27, Part 6)* — the floating
+    collectible's `0.5` scale factor is a first-guess visual judgment call,
+    not derived from or checked against the rest of the environment's actual
+    scale. Needs an eyes-on pass once more objects go through this pipeline.

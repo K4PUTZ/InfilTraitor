@@ -41,7 +41,7 @@ Read the plan's own status header before proposing anything in its territory.
 - **[DESTRUCTION_MASTER_PLAN](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md)** — 🟢 Paused at Alpha Grenade Foundation, 2026-07-22; Part 3 (the trigger) done. Sole writer of `Voxel.visible`.
 - **[INTERFACE_MASTER_PLAN](../PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md)** — 🟡 In progress; Waves 1–2 closed, Wave 3 not started.
 - **[TOP_TEXTURE_MASTER_PLAN](../PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md)** — Parts 1–2 closed 2026-07-11; Part 3 blocked.
-- **[ACTOR_MASTER_PLAN](../PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md)** — 🔵 Planned, not started; no code, no spike. Pipeline through Part 2b (mass-import automation) fully specified as of 2026-07-26, deliberately not executed yet.
+- **[ACTOR_MASTER_PLAN](../PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md)** — 🟡 Part 0 (measurement spike) done 2026-07-26, real numbers; Parts 1-2b specified through mass-import automation, deliberately not started yet.
 
 ---
 

@@ -1,14 +1,15 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.1
 
-**Status:** 🔵 **PLANNED, not started.** Pure decision register from Director
-brainstorms — no code, no spike, no numbers measured yet. Explicitly queued
-behind other in-flight work; written down now so the decisions are not
-re-litigated when someone does pick it up. **The pipeline (Parts 0–2b) is now
-fully specified end-to-end, deliberately not started** — mass import (Part
-2b) is explicitly sequenced *after* other engine fundamentals close, per the
-Director (2026-07-26); everything through Part 2b is written in enough detail
-to execute without re-deciding anything when that time comes.
+**Status:** 🟡 **Part 0 DONE (2026-07-26, real measured numbers); Parts 1–2b
+specified, not started.** Started as a pure decision register from Director
+brainstorms; now has one real spike behind it. Explicitly queued behind other
+in-flight work beyond Part 0 — written down now so the decisions are not
+re-litigated when someone does pick it up. **The pipeline (Parts 0–2b) is
+fully specified end-to-end** — mass import (Part 2b) is explicitly sequenced
+*after* other engine fundamentals close, per the Director (2026-07-26);
+everything through Part 2b is written in enough detail to execute without
+re-deciding anything when that time comes.
 **Baseline:** tag `verified/v0.9.0`. No `verified/` tag cut since — `main` is
 ahead at VERSION 0.9.81+ (includes the CC0 voxel-import feasibility spike,
 the TEST-ZONE right-click "Detonar" context menu, and the full Voxel Light
@@ -125,20 +126,49 @@ state) from recurring in the actor system.
 | Warm-boot bake cost, independent of combo count | ~32–35 ms | `BAKE-CACHE-01`, `DESTRUCTION_MASTER_PLAN` §4 — the reason D8's "budget it, don't guess it" is affordable to defer to a real spike rather than blocking this document |
 | Cold-compose cost, wall materials (reference point only) | 146.3 ms/combo, linear in combo count | `DESTRUCTION_MASTER_PLAN` §4 — **not** actor numbers; actor combos are unmeasured at ×8 |
 | Shipped grenade bake (one object, one frame, reference point only) | 38×68 px final sprite; SubViewport 240×400 canvas, autocropped/downscaled | `bake_voxel_sprite_3d.gd` — the closest real precedent for D14's per-object frame cost, though single-frame, flat-lit (pre-D13), and never batch-timed |
-| Azimuth-frame count for a showcase/collectible object (D14) | 60 (Director's figure) | Not yet measured in aggregate — one small object × 60 frames is expected cheap by extrapolation from the row above, not confirmed by a real batch run |
+| Azimuth-frame count for a showcase/collectible object (D14) | 60 (Director's figure) | Not yet measured in aggregate — one small object × 60 frames is expected cheap by extrapolation from the row below, not confirmed by a real batch run |
 
-**Nothing about actor bake-time cost is measured yet.** Every number above
-that isn't a wall/floor precedent is a target, not a result.
+**Part 0 real measurement (2026-07-26)** — `actor_part0_spike.gd`, windowed
+(real GPU), a synthetic placeholder humanoid (leg/torso/arm/head blocks, not
+real art), same one-`MeshInstance3D`-per-voxel approach `bake_voxel_sprite_3d.gd`
+already ships for the grenade:
+
+| Tier (S) | Voxel count | Build | Compose (scene construction) | Capture | Raw image | Static memory delta |
+|---|---:|---:|---:|---:|---:|---:|
+| ×4 | 2,072 | ~1.0 ms | ~57 ms | ~3 ms | 1.17 MB | ~+51 MB |
+| **×8 (D2 default)** | **16,576** | **~8 ms** | **~480–500 ms** | **~55 ms** | **1.17 MB** | **~+330–360 MB** |
+| ×16 | 132,608 | — | — | — | — | **SKIPPED** — no established per-node cost data past 18k voxels; extrapolated ~8× tier-8 cost (~4 s compose, ~2.7 GB) is not something to run blind |
+
+**Go/no-go on ×8 (D2): go, with a caveat.** ×8 itself completes in well under
+a second and is not disqualifying for a one-time bake. But 16,576 individual
+scene nodes for one pose of one object is not cheap, and the cost is
+per-combo (D8) — an actor with even a modest 8-combo pose/damage/clothing
+set would cost several seconds of cold-compose time with today's approach,
+before D14's azimuth-frame multiplier is even applied. **Confirms D2's ×N³
+warning in practice, not just in principle** — the ×16 tier is unmeasurable
+without a different approach, and ×8 already shows real strain. Recommend
+Part 2 evaluate `MultiMeshInstance3D` (one mesh + one material, instanced via
+a transform array) instead of one node per voxel before committing to ×8 as
+the shipping compose path — this is a node-creation-overhead problem
+specific to the "one `MeshInstance3D` per voxel" pattern, not an inherent
+cost of ×8 resolution itself; a design call for Part 2, not resolved here.
+Real capture at both measured tiers: `Screenshots/history/actor_part0_spike_s4.png`,
+`actor_part0_spike_s8.png` (recognizable humanoid silhouette — head, torso,
+two legs — at ×8, once camera framing was corrected to the object's actual
+scale; `bake_voxel_sprite_3d.gd`'s fixed framing constants, tuned for the
+much smaller grenade, cropped to a close-up of the head at first attempt).
 
 ---
 
-## 5. Parts *(none started — this is the skeleton, not a build log)*
+## 5. Parts *(Part 0 done 2026-07-26; Parts 1-2b remain skeleton, not a build log)*
 
-### Part 0 — Measurement spike
+### Part 0 — Measurement spike — ✅ DONE 2026-07-26
 Same discipline `DESTRUCTION_MASTER_PLAN` Part 0 used before committing to
 anything: build one actor's digital twin at ×8, bake one pose, measure
 compose time and texture memory for real. Go/no-go on ×8 as the runtime
-default before Part 1 gets written in earnest.
+default before Part 1 gets written in earnest. **Result: go, with a caveat**
+— see §4's real measurement table and its go/no-go note. Script:
+`godot/scripts/tools/actor_part0_spike.gd`.
 
 ### Part 1 — Digital twin data model + pose library scaffolding
 The persistent per-atom source-of-truth structure (format TBD — §7) and the
@@ -220,7 +250,7 @@ render mechanism they'd use.
 ## 6. Wave sequencing
 
 ```
-Part 0 (spike)              → go/no-go on ×8, real bake-time number
+Part 0 (spike) ✅ DONE       → go/no-go on ×8, real bake-time number (go, with caveat — §4)
 Part 1 (twin + poses)        → depends on Part 0
 Part 2 (bake pipeline,
         source + lighting)   → depends on Part 1 (nothing to bake without a twin)
@@ -250,7 +280,10 @@ only the *batch/mass* step (2b) waits.
 
 1. **Digital-twin storage format** — JSON like `PropDef` (`props/*.json`), a
    binary format, or something else. Not decided.
-2. **Real bake-time cost at ×8** — unmeasured; Part 0's actual job.
+2. ~~**Real bake-time cost at ×8** — unmeasured; Part 0's actual job.~~
+   **RESOLVED 2026-07-26** — see §4. ~500ms compose / ~360MB static memory
+   for one 16,576-voxel pose; go, but recommend `MultiMeshInstance3D` over
+   one node per voxel for Part 2 (new open question, not this one).
 3. **Bake-combo budget/cap** (D8) — no number chosen yet; needs Part 0's
    measurement first, same order Destruction's Part 0 → D3 combo-budget
    reasoning followed.
@@ -273,3 +306,8 @@ only the *batch/mass* step (2b) waits.
 10. **What exactly gates Part 2b** — §6 names candidates (shot-based
     destruction, AI-02 resume, this plan's own Parts 0-4) but the Director
     has not picked which "engine fundamentals" specifically must close first.
+11. **`MultiMeshInstance3D` vs. one node per voxel for Part 2's compose step**
+    *(new, 2026-07-26, from Part 0's real numbers)* — the grenade's per-node
+    approach measured ~500ms/pose at ×8 for 16,576 voxels; not disqualifying
+    for a one-time bake, but heavy enough across D8's combo budget to be
+    worth resolving before Part 2 is built, not after.

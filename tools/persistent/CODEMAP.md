@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**148 scripts · 29153 lines total** (under `godot/scripts/`)
+**149 scripts · 29379 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **tools/** — actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1961,6 +1961,27 @@ extends `Node` · 54 lines
 ---
 
 ## tools/
+
+### `actor_part0_spike.gd`
+
+extends `SceneTree` · 226 lines
+
+`godot/scripts/tools/actor_part0_spike.gd`
+
+> ACTOR_MASTER_PLAN — Part 0 measurement spike. "Build one actor's digital twin at ×8, bake one pose, measure compose time and texture memory for real. Go/no-go on ×8 as the runtime default before Part 1 gets written in earnest." (§5 Part 0) The twin here is a SYNTHETIC PLACEHOLDER humanoid (leg/torso/arm/head blocks in proportion, no real character art exists yet — that is Part 2b/ mass-import, explicitly deferred). This script exists only to turn D2's "×8" resolution choice from a guess into a measured number before Part 1 is written on top of it, same discipline destruction_part0_spike.gd used for DESTRUCTION_MASTER_PLAN. Honesty boundary, stated once here instead of at every print: this reuses bake_voxel_sprite_3d.gd's exact camera/lighting rig verbatim (one MeshInstance3D + BoxMesh + StandardMaterial3D per voxel — the same approach already shipped for the grenade, not a redesigned renderer). D13 (VoxelLightField reuse) is Part 2's job, not measured here — this script keeps the existing tool's flat lighting on purpose, so the numbers below measure geometry/compose cost only, not a lighting change. Must run WINDOWED (real GPU rasterizer) — `sub.get_texture().get_image()` needs a real display driver, exactly like bake_voxel_sprite_3d.gd. Run via: godot --path . --position 4000,4000 --quit-after 30 \ --script res://godot/scripts/tools/actor_part0_spike.gd
+
+**Constants / tuning**
+- `VIEWPORT_SIZE` = `Vector2i(480, 640)`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+- `CUBE_SIZE` = `1.0`
+- `BODY_HEIGHT_UNITS` = `6`
+- `BODY_WIDTH_UNITS` = `3`
+- `BODY_DEPTH_UNITS` = `2`
+- `TIERS` = `[4, 8, 16]`
+- `MAX_SAFE_VOXELS` = `18000`
+
+---
 
 ### `bake_cache_test.gd`
 

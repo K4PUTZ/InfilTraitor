@@ -16,7 +16,7 @@
 #
 # Flow:
 #   1. Stage all changes
-#   2. Update documentation (AUTO blocks in current_state.md, OPERATOR_CONTEXT.md, CODEMAP.md)
+#   2. Update documentation (AUTO blocks in current_state.md, CODEMAP.md)
 #   3. Commit with tag message
 #   4. Push to remote
 #   5. On success: bump VERSION file, commit bump, push bump commit
@@ -156,7 +156,7 @@ if python3 "$REPO_ROOT/tools/persistent/update_docs.py"; then
     echo "[VERSION] ✅ Docs refreshed for new version"
 fi
 echo "[VERSION-COMMIT] Committing version bump + refreshed docs..."
-git add "$VERSION_FILE" "$REPO_ROOT/docs/production/current_state.md" "$REPO_ROOT/tools/persistent/CODEMAP.md" "$REPO_ROOT/tools/persistent/OPERATOR_CONTEXT.md" 2>/dev/null || true
+git add "$VERSION_FILE" "$REPO_ROOT/docs/production/current_state.md" "$REPO_ROOT/tools/persistent/CODEMAP.md" 2>/dev/null || true
 if ! git commit -m "[VERSION] Bump to $NEW_VERSION"; then
     echo "[VERSION-COMMIT] ⚠️  Version commit failed (may be staged)"
     # Don't fail here; version file is already updated in working tree

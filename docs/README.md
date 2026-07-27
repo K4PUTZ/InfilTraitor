@@ -80,19 +80,27 @@ of docs rotted.
 ## History
 
 [design-concepts/](history/design-concepts/) — the original concept docs, kept for their
-vision value. Everything else that used to live here (sprint logs, refactor logs,
-deprecated designs, the subcube wall-straddle record) was deleted on 2026-07-12: it was a
-record of decisions we no longer make, and **git already keeps it** —
+vision value. Sprint logs, refactor logs, deprecated designs, and the subcube
+wall-straddle record were deleted on 2026-07-12: a record of decisions we no
+longer make, and **git already keeps it** —
 `git show <sha>:docs/history/<file>` recovers any of it.
+
+[SOLO_MODE_CONTEXT.md](history/SOLO_MODE_CONTEXT.md),
+[OPERATOR_CONTEXT.md](history/OPERATOR_CONTEXT.md),
+[OVERLORD_CONTEXT.md](history/OVERLORD_CONTEXT.md) — retired 2026-07-27,
+superseded by `CLAUDE.md` (repo root). Kept in full, not deleted: they carry
+philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
 
 ---
 
 ## Where the working docs live
 
-The operator/overlord context files are **not** in `docs/` — they are next to the tools
-that enforce them:
-
-- `tools/persistent/OPERATOR_CONTEXT.md` — the rules an operator must follow
-- `tools/persistent/OVERLORD_CONTEXT.md` — the rules for planning work
+- `CLAUDE.md` (repo root) — auto-loaded every Claude Code session; the
+  load-bearing subset of the retired files below, distilled for automatic
+  loading. Correct it to match them if they ever disagree.
+- `history/SOLO_MODE_CONTEXT.md`, `history/OPERATOR_CONTEXT.md`,
+  `history/OVERLORD_CONTEXT.md` — **retired 2026-07-27**, superseded by
+  `CLAUDE.md`. Kept for the fuller philosophy, delegation calibration, and
+  the manual-injection workflow other tools may still use.
 - `tools/persistent/CODEMAP.md` — generated; a pre-commit hook blocks a stale one
 - `tools/persistent/QUICK_REFERENCE.md` · `ASSET_PIPELINE_QUICK_REFERENCE.md`

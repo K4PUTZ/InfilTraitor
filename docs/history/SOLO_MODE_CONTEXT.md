@@ -1,5 +1,12 @@
 # INFILTRAITOR — Solo Mode Context
 
+> **Retired 2026-07-27.** Superseded by `CLAUDE.md` (repo root), which
+> auto-loads every Claude Code session and distills this file's load-bearing
+> rules. Kept here for the fuller philosophy and the manual-injection
+> workflow other tools may still use. If `CLAUDE.md` and this file disagree
+> on a rule that still applies, treat this file as the more detailed source
+> and fix `CLAUDE.md` to match.
+
 > **Static core.** Everything above `[SOLO_INJECTION_POINT]` (bottom of this
 > file) is standing law: it changes only through ratified process amendments,
 > never to record per-session or per-task state. Session state — latest

@@ -4,7 +4,6 @@
 Regenerates:
   - CODEMAP.md (via gen_codemap.py subprocess)
   - docs/production/current_state.md AUTO blocks (header, pending_prompts, inventory, version_history)
-  - tools/persistent/OPERATOR_CONTEXT.md AUTO:header
 
 Marker blocks protect hand-written prose:
   <!-- AUTO:BEGIN section_id -->...generated...<!-- AUTO:END section_id -->
@@ -180,7 +179,7 @@ def get_version_history(lines_count: int = 5) -> list[str]:
 
 
 def build_auto_header() -> str:
-    """Build AUTO:header content for current_state.md and OPERATOR_CONTEXT.md.
+    """Build AUTO:header content for docs/production/current_state.md.
 
     Deliberately carries NO commit hash/subject (removed 2026-07-10, Director
     decision): the header is regenerated at pre-commit time, so any commit it
@@ -322,45 +321,6 @@ def update_current_state_md() -> UpdateResult:
         )
 
 
-def update_operator_context_md() -> UpdateResult:
-    """Update tools/persistent/OPERATOR_CONTEXT.md AUTO:header."""
-    file_path = REPO_ROOT / "tools" / "persistent" / "OPERATOR_CONTEXT.md"
-
-    if not file_path.exists():
-        return UpdateResult(
-            file="tools/persistent/OPERATOR_CONTEXT.md",
-            updated=False,
-            reason="file not found"
-        )
-
-    content = file_path.read_text(encoding="utf-8")
-
-    try:
-        header = build_auto_header()
-        content, updated = replace_marker_block(content, "header", header)
-
-        if updated:
-            file_path.write_text(content, encoding="utf-8")
-            return UpdateResult(
-                file="tools/persistent/OPERATOR_CONTEXT.md",
-                updated=True,
-                reason="header refreshed"
-            )
-        else:
-            return UpdateResult(
-                file="tools/persistent/OPERATOR_CONTEXT.md",
-                updated=False,
-                reason="header unchanged"
-            )
-
-    except ValueError as e:
-        return UpdateResult(
-            file="tools/persistent/OPERATOR_CONTEXT.md",
-            updated=False,
-            reason=f"marker error: {e}"
-        )
-
-
 def check_version_consistency() -> bool:
     """Validate VERSION file format (MAJOR.MINOR.PATCH). Return True if valid."""
     version = get_version_string()
@@ -405,16 +365,6 @@ def main() -> int:
         return 1
     status = "✅ UPDATED" if result.updated else "⏭️  UNCHANGED"
     print(f"[current_state.md] {status} ({result.reason})")
-    print()
-
-    # Step 4: Update AUTO:header in OPERATOR_CONTEXT.md
-    print("[STEP 4] Update tools/persistent/OPERATOR_CONTEXT.md AUTO:header...")
-    result = update_operator_context_md()
-    if result.reason.startswith("marker error") or result.reason == "file not found":
-        print(f"[OPERATOR_CONTEXT.md] ❌ {result.reason}", file=sys.stderr)
-        return 1
-    status = "✅ UPDATED" if result.updated else "⏭️  UNCHANGED"
-    print(f"[OPERATOR_CONTEXT.md] {status} ({result.reason})")
     print()
 
     print("=" * 70)

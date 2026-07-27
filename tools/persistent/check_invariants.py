@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mechanically enforce INFILTRAITOR's inviolable architecture rules.
 
-These rules live (with rationale) in OPERATOR_CONTEXT.md. This script encodes
+These rules live (with rationale) in CLAUDE.md. This script encodes
 the subset that can be checked mechanically with HIGH confidence and ZERO false
 positives against the current tree — a guard, not a linter. It scans the whole
 `godot/scripts/` tree and exits non-zero on any violation, so the pre-commit
@@ -37,7 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "godot" / "scripts"
 
 # R1: const declarations of gameplay-stat names. Kept to the explicit examples
-# from OPERATOR_CONTEXT (+ close variants) to stay zero-false-positive; tuning
+# from CLAUDE.md (+ close variants) to stay zero-false-positive; tuning
 # consts like VISION_RANGE are intentionally NOT in scope here.
 R1_STAT_CONST = re.compile(
     r"^const\s+(MAX_HP|MOVE_POINTS_PER_AP|MOVE_POINTS|MAX_AP|MAX_ARMOR|MAX_MOVE)\b"
@@ -187,7 +187,7 @@ def main(argv: list[str]) -> int:
     print(f"✗ {len(violations)} invariant violation(s):", file=sys.stderr)
     for v in violations:
         print(f"  [{v.rule}] {v.file}:{v.line} — {v.text}", file=sys.stderr)
-    print("\nSee tools/persistent/OPERATOR_CONTEXT.md (Arquitetura — Regras Invioláveis).",
+    print("\nSee CLAUDE.md (Architecture — Inviolable Rules).",
           file=sys.stderr)
     return 1
 

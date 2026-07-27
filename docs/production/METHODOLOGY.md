@@ -87,7 +87,7 @@ roadmap.md references it only at the macro/phase level
 | Code/architecture debt | `technical_debt.md` | — |
 | Conventions (this) | `METHODOLOGY.md` | — |
 | Code map / API / tuning | `tools/persistent/CODEMAP.md` (generated) | never by hand |
-| Inviolable rules + rationale | `tools/persistent/OPERATOR_CONTEXT.md` | — |
+| Inviolable rules + rationale | `CLAUDE.md` (repo root) | — |
 
 **Rule:** if two docs describe the same concern, one is canonical and the other
 links to it. Never maintain the same fact in two places (that is how `roadmap.md`

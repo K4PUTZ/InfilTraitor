@@ -26,7 +26,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 
 **I'm implementing a feature. Where do I start?**
 1. Read this README (you are here)
-2. Read [tools/persistent/OPERATOR_CONTEXT.md](tools/persistent/OPERATOR_CONTEXT.md) — development handbook with rules, workflow, and system references
+2. Read [CLAUDE.md](CLAUDE.md) — development handbook with rules, workflow, and system references (Claude Code auto-loads it; other tools should read it manually)
 3. Identify which subsystem you're modifying
 4. Follow the link to the relevant Master Plan (see below)
 
@@ -34,7 +34,7 @@ Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle
 ```
 README
 	↓
-OPERATOR_CONTEXT (handbook + architectural rules)
+CLAUDE.md (handbook + architectural rules)
 	↓
 Identify subsystem
 	↓
@@ -42,7 +42,7 @@ Read relevant Master Plan
 	↓
 Implement
 	↓
-Run smoke test (OPERATOR_CONTEXT § Verification Protocol)
+Run smoke test (CLAUDE.md § Verification Protocol)
 ```
 
 ### Level 2: Master Plans (Canonical Subsystem Specifications)

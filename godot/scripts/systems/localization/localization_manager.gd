@@ -15,8 +15,8 @@ class_name LocalizationManager
 ## register them with the TranslationServer. The chosen locale is persisted to
 ## user://settings.cfg so it survives restarts.
 ##
-## See tools/persistent/OPERATOR_CONTEXT.md → "Localization (i18n)" for the
-## conventions and the step-by-step on adding strings / languages.
+## See docs/technical/LOCALIZATION_REFERENCE.md for the conventions and the
+## step-by-step on adding strings / languages.
 
 signal language_changed(locale: String)
 

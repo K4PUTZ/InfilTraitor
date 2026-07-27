@@ -274,8 +274,8 @@ execution" pattern across `INPUT-01`, `HUD-PANEL-01`, and (separately)
 every commit now carries a same-commit, unattended, real screenshot
 (`Screenshots/history/`), so a visual claim always has a mechanically-
 verifiable reference that doesn't depend on the Operator choosing to
-actually run the game. See `OPERATOR_CONTEXT.md`'s "Auto-Screenshot
-History" section for the usage contract.
+actually run the game. See `CLAUDE.md`'s "Auto-screenshot history"
+section for the usage contract.
 
 ## 6. Verification Notes for INSPECT
 

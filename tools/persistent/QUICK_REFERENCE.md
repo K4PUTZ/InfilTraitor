@@ -175,5 +175,5 @@ if WallEdgeData.is_edge_blocked(from, to, blocked_edges):
 
 - **Master Plans** (detailed subsystem specs): See [README.md](../../README.md#level-2-master-plans-canonical-subsystem-specifications)
 - **CODEMAP.md** (API surface, tuning tables): `tools/persistent/CODEMAP.md` (auto-generated, never edit by hand)
-- **Inviolable Rules detail + rationale**: [OPERATOR_CONTEXT.md](OPERATOR_CONTEXT.md#architecture--inviolable-rules)
+- **Inviolable Rules detail + rationale**: [CLAUDE.md](../../CLAUDE.md#architecture--inviolable-rules)
 - **Asset generation workflow**: [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md)

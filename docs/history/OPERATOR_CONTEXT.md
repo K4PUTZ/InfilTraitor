@@ -1,5 +1,12 @@
 # INFILTRAITOR — Operator System Prompt
 
+> **Retired 2026-07-27.** Superseded by `CLAUDE.md` (repo root), which
+> auto-loads every Claude Code session and distills this file's load-bearing
+> rules. Kept here for the fuller philosophy, delegation calibration, and
+> the manual-injection workflow other tools may still use. If `CLAUDE.md`
+> and this file disagree on a rule that still applies, treat this file as
+> the more detailed source and fix `CLAUDE.md` to match.
+
 > **Static core.** Everything above `[TASK_INJECTION_POINT]` (bottom of this
 > file) is standing law: it changes only through ratified process amendments,
 > never to record per-task or per-session state. Session state — active

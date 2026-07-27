@@ -228,7 +228,7 @@ Floor/ceiling voxels get a container with dirty counting and TIC skip, mirroring
   `room._slab_registry = SlabRegistry.new()` the same way and for the same
   reason `_edge_registry` is published (see that comment) — never null, empty
   until Part 2 gives it a producer.
-- **Rule 8 amended** (`tools/persistent/OPERATOR_CONTEXT.md`, §7.3 of this plan)
+- **Rule 8 amended** (`CLAUDE.md`, §7.3 of this plan)
   — widened from "wall voxels" to "wall AND Slab voxels via `set_cell()`/
   `_set_voxel_cell()` only," written now so Part 4's renderer has no excuse to
   invent a parallel path.
@@ -800,5 +800,5 @@ anything consumes it; Part 3 must not be bundled with it.
    broadly, not before Part 1 starts.
 2. **D9 (speculative pre-compute)** — deferred; revisit only if Part 0/3 measurements demand it.
 3. ~~**Rule 8 amendment**~~ **DONE with Part 1, 2026-07-15** —
-   `tools/persistent/OPERATOR_CONTEXT.md` Rule 8 now explicitly covers Slab
-   voxels alongside wall voxels.
+   Rule 8 (now in `CLAUDE.md`, originally `OPERATOR_CONTEXT.md`) explicitly
+   covers Slab voxels alongside wall voxels.

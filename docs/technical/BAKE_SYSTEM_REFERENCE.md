@@ -4,8 +4,8 @@
 context restructure). This document holds the full bake-pipeline architecture,
 module checklist, file locations, closure evidence, and process learnings.
 The compact canon (invariants B1–B6, the placement seam, the config default)
-stays in `OPERATOR_CONTEXT.md`; consult this document on demand before
-modifying the bake system.
+stays in `CLAUDE.md`; consult this document on demand before modifying the
+bake system.
 
 ---
 
@@ -409,7 +409,7 @@ Diagnostics" section above.
 ## Appendix — ENHANCE-02 Implementation Status (historical)
 
 Moved here 2026-07-08 from `OPERATOR_CONTEXT.md` §Quality Standards; the error
-handling *contract* itself remains in `OPERATOR_CONTEXT.md`.
+handling *contract* itself now lives in `CLAUDE.md`.
 
 - ✅ MapCatalog.get_spec() — returns empty dict on unknown map_id, logs push_error
 - ✅ MapCompiler.compile() — _validate() uses push_error, returns empty dict on failure

@@ -5,7 +5,7 @@
 > source. Regenerate with `python3 tools/persistent/gen_codemap.py`.
 > A pre-commit hook blocks commits when this file is stale.
 >
-> Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`
+> Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
 **153 scripts · 30146 lines total** (under `godot/scripts/`)

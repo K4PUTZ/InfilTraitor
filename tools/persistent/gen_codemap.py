@@ -6,7 +6,7 @@ This is a *mechanical* extractor, not a summarizer: it only reports what the
 code literally declares (class_name, extends, file doc comment, signals, top
 -level consts, @export / public config vars, public funcs). It therefore cannot
 drift from the code and cannot hallucinate. The authored design knowledge (the
-inviolable rules, the rationale) stays in OPERATOR_CONTEXT.md by hand.
+inviolable rules, the rationale) stays in CLAUDE.md by hand.
 
 Output is fully deterministic — no timestamps, no absolute paths, stable sort —
 so a fresh run on unchanged code produces a byte-identical file. That property
@@ -200,7 +200,7 @@ def render(infos: list[FileInfo]) -> str:
     a("> source. Regenerate with `python3 tools/persistent/gen_codemap.py`.")
     a("> A pre-commit hook blocks commits when this file is stale.")
     a(">")
-    a("> Design rationale and the inviolable rules live in `OPERATOR_CONTEXT.md`")
+    a("> Design rationale and the inviolable rules live in `CLAUDE.md`")
     a("> (hand-authored). This file is the mechanical mirror of the code.")
     a("")
 

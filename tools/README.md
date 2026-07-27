@@ -74,7 +74,7 @@ python3 tools/persistent/gen_codemap.py --check   # exit 1 if stale (no write)
 **Output:** `CODEMAP.md` (generated — do not edit by hand)
 
 **Related:** Design rationale + inviolable rules stay hand-authored in
-`OPERATOR_CONTEXT.md`. The two files are complementary: authored *why* vs.
+`CLAUDE.md`. The two files are complementary: authored *why* vs.
 generated *what*.
 
 ---
@@ -82,7 +82,7 @@ generated *what*.
 ### check_invariants.py
 
 **Purpose:** Mechanically enforce the inviolable architecture rules from
-OPERATOR_CONTEXT.md so violations can't enter the codebase unnoticed
+CLAUDE.md so violations can't enter the codebase unnoticed
 **Category:** Code-quality automation
 **Status:** ✅ Active
 
@@ -266,7 +266,7 @@ Archive/ (deprecate, move when replacing)
 |------|-----------|-------|-------|
 | BACKUP.py | As-needed | Anyone | Run before major changes |
 | gen_codemap.py | Automatic | pre-commit hook | Regenerates CODEMAP.md; never edit by hand |
-| check_invariants.py | Automatic | pre-commit hook | Enforces OPERATOR_CONTEXT inviolable rules |
+| check_invariants.py | Automatic | pre-commit hook | Enforces CLAUDE.md inviolable rules |
 | hooks/pre-commit | One-time install | Anyone | `git config core.hooksPath tools/persistent/hooks` |
 | Migration scripts | Never (archived) | None | Reference only |
 

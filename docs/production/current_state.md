@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.81 · **Updated:** 2026-07-28 · **Branch:** main
+**Version:** 0.9.82 · **Updated:** 2026-07-28 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -14,6 +14,7 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - RESUMO_SESSAO_2026-07-26_TEMPORAL_LIGHT_FOUNDATION.md
+- RESUMO_SESSAO_2026-07-28_FLOOR_ZONE_BAKE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

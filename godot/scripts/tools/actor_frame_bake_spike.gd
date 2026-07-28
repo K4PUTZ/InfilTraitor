@@ -170,10 +170,22 @@ func _render_pass(object_yaw_deg: float, pass_type: PassType) -> Image:
 	if is_shadow:
 		## Straight down — see file header for why a true top-down pass (not
 		## the oblique color view, squashed) is what avoids the angle-shear
-		## artifact. Up-vector is an arbitrary-but-fixed horizontal axis
-		## (view direction is parallel to world Y, so Y itself can't be "up").
+		## artifact. Up-vector is NOT arbitrary: it must be
+		## (cos(AZIMUTH_DEG), 0, sin(AZIMUTH_DEG)) exactly, derived so that
+		## FloatingCollectible's runtime transform — mirror X, then squash Y
+		## by CollectibleBakeConfig.SHADOW_SQUASH_Y (= sin(ELEVATION_DEG),
+		## the game's iso ratio) — reproduces the oblique color camera's own
+		## screen-space angle for the same object yaw exactly. (Derivation:
+		## comparing both cameras' ground-plane projections analytically —
+		## oblique's basis decomposes as Squash(sin(ELEVATION_DEG)) applied
+		## to a mirror-and-rotate-by-AZIMUTH_DEG of the straight-down
+		## silhouette; baking that rotation in here instead of applying it
+		## at runtime avoids needing a shear/skew transform Sprite2D can't
+		## express as simple scale.) A DIFFERENT up-vector (e.g. a fixed
+		## world axis) is what caused the Director-reported angle mismatch.
+		var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
 		cam.size = SHADOW_ORTHO_SIZE
-		cam.look_at_from_position(Vector3(0.0, SHADOW_CAMERA_DISTANCE, 0.0), Vector3.ZERO, Vector3(0.0, 0.0, -1.0))
+		cam.look_at_from_position(Vector3(0.0, SHADOW_CAMERA_DISTANCE, 0.0), Vector3.ZERO, Vector3(cos(azim), 0.0, sin(azim)))
 	else:
 		cam.size = ORTHO_SIZE
 		var elev := deg_to_rad(CollectibleBakeConfig.ELEVATION_DEG)

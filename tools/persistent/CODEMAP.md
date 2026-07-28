@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 31647 lines total** (under `godot/scripts/`)
+**157 scripts · 31664 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 314 lines
+`class_name FloatingCollectible` · extends `Node2D` · 319 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -2023,7 +2023,7 @@ extends `Node` · 54 lines
 
 ### `actor_frame_bake_spike.gd`
 
-extends `SceneTree` · 257 lines
+extends `SceneTree` · 269 lines
 
 `godot/scripts/tools/actor_frame_bake_spike.gd`
 

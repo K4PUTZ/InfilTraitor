@@ -30,7 +30,10 @@ class_name FloatingCollectible
 extends Node2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
-const FRAME_COUNT := 24
+## Must match actor_frame_bake_spike.gd's own FRAME_COUNT exactly — bumped
+## 24 -> 72 (Director, 2026-07-28) so the slow ROTATION_DEG_PER_SEC spin
+## reads as smooth motion instead of ~1s-per-frame jumps.
+const FRAME_COUNT := 72
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 

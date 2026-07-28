@@ -1,16 +1,19 @@
 ## TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click
 ## "Detonar" on a test prop.
 ##
-## ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a single
-## baked sprite — a "digital twin" (the CC0 "Free Voxel Weapon Pack" Grenade
-## matrix, OpenGameArt, license CC0) rendered once via a real Camera3D/BoxMesh
-## SubViewport bake (godot/scripts/tools/bake_voxel_sprite_3d.gd — v2;
-## superseded a hand-rolled 2D painter's-algorithm rasterizer, v1, whose
-## flat shading and approximate depth-sort read as "esquisito") into
-## ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png — displayed
-## via Sprite2D, NOT live TileMapLayer voxel cells. Proves the mechanism
-## ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that
-## plan get built for real.
+## ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a
+## "digital twin" (Quaternius' CC0 "Grenade" model, poly.pizza) rendered via
+## the real-3D-model + normal-map bake technique proven for the shotgun
+## (godot/scripts/tools/grenade_frame_bake_spike.gd, 2026-07-28) — displayed
+## via GrenadeProp (godot/scripts/overlays/grenade_prop.gd), NOT live
+## TileMapLayer voxel cells. Superseded the original single-angle
+## bake_voxel_sprite_3d.gd bake (grenade_bake_x8.png, a hand-placed BoxMesh
+## voxel reconstruction of a CC0 .qb — itself already a v2 over a hand-rolled
+## 2D painter's-algorithm rasterizer, v1) once that was shown to read flat
+## from some angles and to ignore the room's active N/E/S/W perspective
+## entirely, the same class of bug D22 found and fixed for the shotgun.
+## Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object
+## before Parts 0-2 of that plan get built for real.
 ##
 ## Registry stays a plain Array[Dictionary] on purpose — scaffolding for the
 ## PLAYGROUND rebuild, not a permanent prop-interaction architecture.
@@ -20,6 +23,7 @@ class_name TestZoneController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
+const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
@@ -27,11 +31,6 @@ var _active_index: int = -1
 
 const HIT_RADIUS_PX: float = 40.0
 const MENU_GAP_ABOVE_PX: float = 30.0
-const GRENADE_SPRITE_PATH: String = "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png"
-## Ground-contact anchor inside the baked PNG — bake_voxel_sprite_3d.gd's own
-## printed anchor_px (adjusted for the autocrop + downscale post-process),
-## the pixel that should land on the target world point.
-const GRENADE_ANCHOR_PX: Vector2 = Vector2(19.19, 59.06)
 
 ## DESTRUCTION_MASTER_PLAN Part 3: every TEST-ZONE grenade is this one bomb
 ## type for now — BombRegistry/BombDef exist so a future prop/inventory
@@ -59,20 +58,15 @@ func clear() -> void:
 ## cell, so reposition_for_perspective() can follow rotation the same way
 ## room.gd already does for the agent and the selection cursor.
 func add_grenade(gu_cell: Vector2i) -> void:
-	var texture: Texture2D = load(GRENADE_SPRITE_PATH)
-	if texture == null:
-		push_error("TestZoneController: missing grenade bake at %s" % GRENADE_SPRITE_PATH)
-		return
-	var sprite := Sprite2D.new()
-	sprite.texture = texture
-	sprite.centered = false
-	sprite.offset = -GRENADE_ANCHOR_PX
+	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
+	var sprite := GrenadePropClass.new()
+	sprite.setup(room, gu_cell, base_cell)
 	sprite.position = room.agent._cell_to_world(gu_cell)
 	sprite.z_index = room._voxel_renderer.get_max_voxel_z_index() + 1
 	room.add_child(sprite)
 	_grenades.append({
 		"gu_cell": gu_cell,
-		"base_cell": room._cell_to_base(gu_cell, room._active_perspective),
+		"base_cell": base_cell,
 		"sprite": sprite,
 		"detonated": false,
 	})
@@ -83,7 +77,8 @@ func add_grenade(gu_cell: Vector2i) -> void:
 ## grenade's gu_cell and sprite world position are re-derived from its
 ## base_cell for the new direction — the same cell_from_base() round-trip the
 ## agent already uses, generalized to any runtime-instantiated prop that
-## isn't rebuilt fresh from _base_layout on rotation.
+## isn't rebuilt fresh from _base_layout on rotation. GrenadeProp.update_cell()
+## also swaps to the frame baked for the new compass direction (D22 fix).
 func reposition_for_perspective(direction: String) -> void:
 	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
 	for g in _grenades:
@@ -91,9 +86,10 @@ func reposition_for_perspective(direction: String) -> void:
 			continue
 		var new_cell: Vector2i = PerspectiveMapperClass.cell_from_base(g["base_cell"], direction, base_size)
 		g["gu_cell"] = new_cell
-		var sprite: Sprite2D = g["sprite"]
+		var sprite: GrenadePropClass = g["sprite"]
 		if sprite != null and is_instance_valid(sprite):
 			sprite.position = room.agent._cell_to_world(new_cell)
+			sprite.update_cell(new_cell)
 
 
 ## The sprite's own drawn rect, in world/global space — centered=false with a

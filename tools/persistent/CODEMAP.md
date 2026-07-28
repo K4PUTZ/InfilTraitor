@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**154 scripts · 30985 lines total** (under `godot/scripts/`)
+**156 scripts · 31366 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,9 +17,9 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -879,6 +879,22 @@ extends `Node2D` · 143 lines
 - `FRAME_COUNT` = `24`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+
+---
+
+### `grenade_prop.gd`
+
+`class_name GrenadeProp` · extends `Sprite2D` · 158 lines
+
+`godot/scripts/overlays/grenade_prop.gd`
+
+> ACTOR_MASTER_PLAN objects track — grenade re-bake (2026-07-28). Replaces TestZoneController's old plain Sprite2D (a single frozen-angle bake, bake_voxel_sprite_3d.gd) with a relit prop driven by grenade_frame_bake_spike.gd's real per-direction 3D renders (one flat-color + one view-space-normal-map pair per N/E/S/W compass direction). Deliberately NOT a FloatingCollectible: this is a static ground prop, not a spinning pickup — no continuous rotation timer, no bob. The only thing that changes which of the 4 baked frames is shown is the room's active N/E/S/W perspective (the whole scene visually rotates on a perspective flip; this prop follows by swapping to the frame baked at the matching yaw, same PerspectiveMapper convention floating_collectible.gd's reposition_for_ perspective() uses). Per-pixel relighting (flat_normal_relight.gdshader) and its perspective-aware light-direction math are otherwise identical to FloatingCollectible's fixed version — see that file for the fuller rationale (ACTOR_MASTER_PLAN D22 / open question #16).
+
+**Constants / tuning**
+- `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/"`
+- `DIRECTIONS` = `["N", "E", "S", "W"]`
+- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `ANCHOR_PX` = `Vector2(48.0, 73.15551)`
 
 ---
 
@@ -2292,6 +2308,21 @@ extends `SceneTree` · 234 lines
 
 ---
 
+### `grenade_frame_bake_spike.gd`
+
+extends `SceneTree` · 227 lines
+
+`godot/scripts/tools/grenade_frame_bake_spike.gd`
+
+> ACTOR_MASTER_PLAN objects track — grenade re-bake (2026-07-28), replacing TestZoneController's old single-angle grenade_bake_x8.png (bake_voxel_ sprite_3d.gd, a hand-placed BoxMesh voxel reconstruction of a CC0 .qb) with the SAME real-3D-model + dual color/normal-map technique proven for the shotgun (actor_frame_bake_spike.gd). Unlike the shotgun's FloatingCollectible (a spinning pickup, 24 frames), the grenade is a STATIC ground prop — it never spins on its own, but the game's N/E/S/W perspective toggle visually rotates the whole scene, so it still needs one real render per compass direction (4 frames, not 24) to look correct from every perspective instead of showing a frozen single angle regardless of view (D22 finding, same root cause the FloatingCollectible perspective fix addressed). Ground-anchor technique borrowed from bake_voxel_sprite_3d.gd: the pivot recenters the mesh so its AABB center sits at the pivot's local origin, which means the AABB's bottom-center (the ground-contact point) always lands exactly on the pivot's own Y (vertical) rotation axis — invariant under yaw, so one cam.unproject_position() call gives an anchor pixel valid for all 4 frames. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/grenade_frame_bake_spike.gd
+
+**Constants / tuning**
+- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
+- `OUT_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/"`
+- `ANCHOR_OUT_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/anchor.json"`
+
+---
+
 ### `input_controller_test.gd`
 
 extends `SceneTree` · 275 lines
@@ -3079,19 +3110,18 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 321 lines
+`class_name TestZoneController` · 317 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
-> TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop. ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a single baked sprite — a "digital twin" (the CC0 "Free Voxel Weapon Pack" Grenade matrix, OpenGameArt, license CC0) rendered once via a real Camera3D/BoxMesh SubViewport bake (godot/scripts/tools/bake_voxel_sprite_3d.gd — v2; superseded a hand-rolled 2D painter's-algorithm rasterizer, v1, whose flat shading and approximate depth-sort read as "esquisito") into ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png — displayed via Sprite2D, NOT live TileMapLayer voxel cells. Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that plan get built for real. Registry stays a plain Array[Dictionary] on purpose — scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture. Delegates to room for shared state, same extraction pattern as SelectionController.
+> TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop. ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a "digital twin" (Quaternius' CC0 "Grenade" model, poly.pizza) rendered via the real-3D-model + normal-map bake technique proven for the shotgun (godot/scripts/tools/grenade_frame_bake_spike.gd, 2026-07-28) — displayed via GrenadeProp (godot/scripts/overlays/grenade_prop.gd), NOT live TileMapLayer voxel cells. Superseded the original single-angle bake_voxel_sprite_3d.gd bake (grenade_bake_x8.png, a hand-placed BoxMesh voxel reconstruction of a CC0 .qb — itself already a v2 over a hand-rolled 2D painter's-algorithm rasterizer, v1) once that was shown to read flat from some angles and to ignore the room's active N/E/S/W perspective entirely, the same class of bug D22 found and fixed for the shotgun. Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that plan get built for real. Registry stays a plain Array[Dictionary] on purpose — scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture. Delegates to room for shared state, same extraction pattern as SelectionController.
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `HIT_RADIUS_PX` = `40.0`
 - `MENU_GAP_ABOVE_PX` = `30.0`
-- `GRENADE_SPRITE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_bake_x8.png"`
-- `GRENADE_ANCHOR_PX` = `Vector2(19.19, 59.06)`
 - `BOMB_ID` = `"frag_grenade"`
 
 **Public vars**

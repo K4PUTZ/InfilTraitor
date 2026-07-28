@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 31505 lines total** (under `godot/scripts/`)
+**157 scripts · 31647 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,11 +868,11 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 281 lines
+`class_name FloatingCollectible` · extends `Node2D` · 314 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28): the SAME color frame the main sprite is currently showing, reused as a second Sprite2D — flattened (scaled down on Y) and tinted solid black — so the shadow is always the exact silhouette of the object at its current rotation, never a generic blob, with zero extra bake cost (no separate top-down render pass). Pinned to floor height independent of the bob, and scaled slightly larger when the object is at the bottom of its bob and slightly smaller at the top — "acentuando a sensação de distância entre o objeto e o chão." Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
+> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned same day after the first attempt shed reused the oblique COLOR frame, squashed on Y — that shears diagonal silhouettes and visibly rotates their apparent angle away from the real object's angle). Uses a dedicated frame_%02d_shadow.png per frame instead: a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob, and scaled slightly larger when the object is at the bottom of its bob and slightly smaller at the top — "acentuando a sensação de distância entre o objeto e o chão." A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
 
 **Constants / tuning**
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
@@ -1325,7 +1325,7 @@ extends `Node2D` · 43 lines
 
 ### `collectible_bake_config.gd`
 
-`class_name CollectibleBakeConfig` · 32 lines
+`class_name CollectibleBakeConfig` · 53 lines
 
 `godot/scripts/systems/collectible_bake_config.gd`
 
@@ -2023,11 +2023,11 @@ extends `Node` · 54 lines
 
 ### `actor_frame_bake_spike.gd`
 
-extends `SceneTree` · 174 lines
+extends `SceneTree` · 257 lines
 
 `godot/scripts/tools/actor_frame_bake_spike.gd`
 
-> ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake TEMPLATE for a FloatingCollectible. Renders N rotation frames of an imported mesh (D12's path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric camera the rest of the game uses — the OBJECT rotates around its own vertical axis between frames, the camera never moves, matching how a spinning collectible would actually be seen by the game's one fixed view. Each frame gets TWO renders: a flat, unlit color pass (today's D13-style ambient-only look, intentionally not baking any directional light in) and a normal-map pass (view-space surface normal encoded as RGB, the standard normal-bake technique) — the pair a runtime CanvasItem shader needs to relight the flat sprite per-pixel against whatever the world's real light data says for that GU, without any voxel geometry at runtime. STANDARDIZED (Director, 2026-07-28): this was the shotgun's own bake script; frame count, rotation speed, and the fixed bake-camera convention now live in CollectibleBakeConfig (godot/scripts/systems/ collectible_bake_config.gd) so every future collectible reuses the same tuned sweet spot instead of re-deriving it — see that file for the frame-swap-rate reasoning. To bake a NEW collectible: copy this file, change MODEL_PATH/OUT_DIR and re-tune the per-object knobs below (MESH_SCALE/VIEWPORT_SIZE/ORTHO_SIZE — always a visual judgment call, same convention MESH_SCALE always has been); never touch the CollectibleBake Config-sourced values. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/actor_frame_bake_spike.gd
+> ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map + shadow bake TEMPLATE for a FloatingCollectible. Renders N rotation frames of an imported mesh (D12's path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric camera the rest of the game uses — the OBJECT rotates around its own vertical axis between frames, the camera never moves, matching how a spinning collectible would actually be seen by the game's one fixed view. Each frame gets THREE renders: - color: a flat, unlit pass (today's D13-style ambient-only look, intentionally not baking any directional light in) - normal: view-space surface normal encoded as RGB (the standard normal-bake technique) — the pair a runtime CanvasItem shader needs to relight the flat sprite per-pixel against the world's real light data, without any voxel geometry at runtime - shadow: a SEPARATE straight-down (top-view) silhouette pass, NOT the color frame reused — squashing the oblique color view on Y to fake a ground shadow shears diagonal silhouettes and visibly rotates their apparent angle (Director-reported, 2026-07-28). A true top-down view has no directional foreshortening, so it can be squashed on Y to fit the isometric ground diamond without distortion. Dilated + blurred at bake time (cheaper once than every runtime frame) for a soft blob edge. STANDARDIZED (Director, 2026-07-28): this was the shotgun's own bake script; frame count, rotation speed, and the fixed bake-camera/shadow conventions now live in CollectibleBakeConfig (godot/scripts/systems/ collectible_bake_config.gd) so every future collectible reuses the same tuned sweet spot instead of re-deriving it — see that file for the frame-swap-rate and shadow-squash reasoning. To bake a NEW collectible: copy this file, change MODEL_PATH/OUT_DIR and re-tune the per-object knobs below (MESH_SCALE/VIEWPORT_SIZE/ORTHO_SIZE/SHADOW_* — always a visual judgment call, same convention MESH_SCALE always has been); never touch the CollectibleBakeConfig-sourced values. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/actor_frame_bake_spike.gd
 
 **Constants / tuning**
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
@@ -2036,6 +2036,9 @@ extends `SceneTree` · 174 lines
 - `VIEWPORT_SIZE` = `Vector2i(160, 160)`
 - `ORTHO_SIZE` = `4.0`
 - `MESH_SCALE` = `0.5`
+- `SHADOW_VIEWPORT_SIZE` = `Vector2i(80, 80)`
+- `SHADOW_ORTHO_SIZE` = `5.0`
+- `SHADOW_CAMERA_DISTANCE` = `12.0`
 - `NORMAL_BAKE_SHADER_CODE` = `"""`
 
 ---
@@ -3360,7 +3363,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2961 lines
+extends `Node2D` · 2966 lines
 
 `godot/scripts/world/room.gd`
 

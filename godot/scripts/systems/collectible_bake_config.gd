@@ -30,3 +30,24 @@ const FRAME_SWAP_HZ := ROTATION_DEG_PER_SEC * FRAME_COUNT / 360.0
 const ELEVATION_DEG := 30.0
 const AZIMUTH_DEG := 45.0
 const CAMERA_DISTANCE := 12.0
+
+## GROUND SHADOW (Director, 2026-07-28): a real straight-down top-view bake,
+## not the oblique ELEVATION_DEG=30 color frame reused-and-squashed. That
+## first attempt distorted the silhouette's apparent angle — squashing an
+## ALREADY-OBLIQUE, foreshortened view on Y is a shear, not a flatten, and
+## visibly rotates diagonal edges (confirmed: the shadow's long axis no
+## longer matched the object's own angle). A true top-down view has no
+## directional foreshortening bias, so squashing it uniformly on Y to fit
+## the isometric ground diamond is the standard, distortion-free technique.
+const SHADOW_ELEVATION_DEG := 90.0
+## The game's own iso diamond ratio (TILE_H/TILE_W = 0.5, sin(30°) —
+## QUICK_REFERENCE.md) — this is what "flat on the ground plane" means
+## everywhere else in this project, so the shadow uses the same constant
+## rather than an arbitrary squash factor.
+const SHADOW_SQUASH_Y := 0.5
+## Bake-time softening — cheaper to do once per frame at bake time than every
+## frame at runtime. Dilate widens the silhouette ("mais gordinha," Director);
+## blur softens the edge ("difusa"). Iteration counts, not literal pixel
+## radii — see actor_frame_bake_spike.gd's _dilate_alpha()/_blur_alpha().
+const SHADOW_DILATE_ITERATIONS := 3
+const SHADOW_BLUR_ITERATIONS := 4

@@ -2484,11 +2484,16 @@ func _populate_test_zone_if_playground() -> void:
 		## Bake folder + sprite scale are per-object (FloatingCollectible is
 		## reusable, standardized 2026-07-28) — frame count/rotation speed/
 		## camera convention come from CollectibleBakeConfig instead and stay
-		## identical for every object using this class.
+		## identical for every object using this class. shadow_scale_factor
+		## corrects for the shotgun bake's own SHADOW_ORTHO_SIZE(5.0)/
+		## SHADOW_VIEWPORT_SIZE.y(80) framing vs the color pass's
+		## ORTHO_SIZE(4.0)/VIEWPORT_SIZE.y(160) — (5.0/80)/(4.0/160) = 2.5
+		## (actor_frame_bake_spike.gd's own per-object knobs).
 		_floating_collectible.setup(
 			self, Vector2i(8, 4),
 			"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/",
 			1.15,
+			2.5,
 		)
 		add_child(_floating_collectible)
 

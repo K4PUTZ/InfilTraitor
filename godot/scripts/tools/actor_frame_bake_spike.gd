@@ -1,26 +1,34 @@
-## ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake TEMPLATE for a
-## FloatingCollectible. Renders N rotation frames of an imported mesh (D12's
-## path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric
-## camera the rest of the game uses — the OBJECT rotates around its own
-## vertical axis between frames, the camera never moves, matching how a
-## spinning collectible would actually be seen by the game's one fixed view.
-## Each frame gets TWO renders: a flat, unlit color pass (today's D13-style
-## ambient-only look, intentionally not baking any directional light in) and
-## a normal-map pass (view-space surface normal encoded as RGB, the standard
-## normal-bake technique) — the pair a runtime CanvasItem shader needs to
-## relight the flat sprite per-pixel against whatever the world's real light
-## data says for that GU, without any voxel geometry at runtime.
+## ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map + shadow bake
+## TEMPLATE for a FloatingCollectible. Renders N rotation frames of an
+## imported mesh (D12's path, proven by shotgun_preview_spike.gd) from the
+## SAME fixed isometric camera the rest of the game uses — the OBJECT
+## rotates around its own vertical axis between frames, the camera never
+## moves, matching how a spinning collectible would actually be seen by the
+## game's one fixed view. Each frame gets THREE renders:
+##  - color: a flat, unlit pass (today's D13-style ambient-only look,
+##    intentionally not baking any directional light in)
+##  - normal: view-space surface normal encoded as RGB (the standard
+##    normal-bake technique) — the pair a runtime CanvasItem shader needs to
+##    relight the flat sprite per-pixel against the world's real light data,
+##    without any voxel geometry at runtime
+##  - shadow: a SEPARATE straight-down (top-view) silhouette pass, NOT the
+##    color frame reused — squashing the oblique color view on Y to fake a
+##    ground shadow shears diagonal silhouettes and visibly rotates their
+##    apparent angle (Director-reported, 2026-07-28). A true top-down view
+##    has no directional foreshortening, so it can be squashed on Y to fit
+##    the isometric ground diamond without distortion. Dilated + blurred at
+##    bake time (cheaper once than every runtime frame) for a soft blob edge.
 ##
 ## STANDARDIZED (Director, 2026-07-28): this was the shotgun's own bake
-## script; frame count, rotation speed, and the fixed bake-camera convention
-## now live in CollectibleBakeConfig (godot/scripts/systems/
+## script; frame count, rotation speed, and the fixed bake-camera/shadow
+## conventions now live in CollectibleBakeConfig (godot/scripts/systems/
 ## collectible_bake_config.gd) so every future collectible reuses the same
 ## tuned sweet spot instead of re-deriving it — see that file for the
-## frame-swap-rate reasoning. To bake a NEW collectible: copy this file,
-## change MODEL_PATH/OUT_DIR and re-tune the per-object knobs below
-## (MESH_SCALE/VIEWPORT_SIZE/ORTHO_SIZE — always a visual judgment call, same
-## convention MESH_SCALE always has been); never touch the CollectibleBake
-## Config-sourced values.
+## frame-swap-rate and shadow-squash reasoning. To bake a NEW collectible:
+## copy this file, change MODEL_PATH/OUT_DIR and re-tune the per-object
+## knobs below (MESH_SCALE/VIEWPORT_SIZE/ORTHO_SIZE/SHADOW_* — always a
+## visual judgment call, same convention MESH_SCALE always has been); never
+## touch the CollectibleBakeConfig-sourced values.
 ##
 ## Must run WINDOWED (real GPU rasterizer). Run via:
 ##   godot --path . --position 4000,4000 \
@@ -36,6 +44,12 @@ const VIEWPORT_SIZE := Vector2i(160, 160)
 const ORTHO_SIZE := 4.0
 ## First-guess world scale for the imported mesh — visually tuned, not derived.
 const MESH_SCALE := 0.5
+## Top-down shadow pass — deliberately smaller canvas (cheap to dilate/blur)
+## and a generous ortho size (an elongated object's longest axis, seen from
+## directly above, needs more frustum room than the oblique 3/4 view does).
+const SHADOW_VIEWPORT_SIZE := Vector2i(80, 80)
+const SHADOW_ORTHO_SIZE := 5.0
+const SHADOW_CAMERA_DISTANCE := 12.0
 ## --- End per-object knobs ---
 
 const NORMAL_BAKE_SHADER_CODE := """
@@ -47,10 +61,12 @@ void fragment() {
 }
 """
 
+enum PassType { COLOR, NORMAL, SHADOW }
+
 
 func _init() -> void:
 	print("\n" + "=".repeat(78))
-	print("Actor frame bake spike — flat color + normal map, %d frames (%s)" % [CollectibleBakeConfig.FRAME_COUNT, Time.get_date_string_from_system()])
+	print("Actor frame bake spike — color + normal + shadow, %d frames (%s)" % [CollectibleBakeConfig.FRAME_COUNT, Time.get_date_string_from_system()])
 	print("=".repeat(78))
 
 	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
@@ -63,22 +79,27 @@ func _init() -> void:
 		var angle_deg := (360.0 / CollectibleBakeConfig.FRAME_COUNT) * i
 		await _render_frame(i, angle_deg)
 
-	print("\n[BAKE] Done — %d frame pairs in %s\n" % [CollectibleBakeConfig.FRAME_COUNT, OUT_DIR])
+	print("\n[BAKE] Done — %d frame triples in %s\n" % [CollectibleBakeConfig.FRAME_COUNT, OUT_DIR])
 	quit(0)
 
 
 func _render_frame(index: int, object_yaw_deg: float) -> void:
-	var color_img := await _render_pass(object_yaw_deg, false)
-	var normal_img := await _render_pass(object_yaw_deg, true)
+	var color_img := await _render_pass(object_yaw_deg, PassType.COLOR)
+	var normal_img := await _render_pass(object_yaw_deg, PassType.NORMAL)
+	var shadow_img := await _render_pass(object_yaw_deg, PassType.SHADOW)
+	_dilate_alpha(shadow_img, CollectibleBakeConfig.SHADOW_DILATE_ITERATIONS)
+	_blur_alpha(shadow_img, CollectibleBakeConfig.SHADOW_BLUR_ITERATIONS)
 
 	var color_path := "%sframe_%02d_color.png" % [OUT_DIR, index]
 	var normal_path := "%sframe_%02d_normal.png" % [OUT_DIR, index]
+	var shadow_path := "%sframe_%02d_shadow.png" % [OUT_DIR, index]
 	color_img.save_png(color_path)
 	normal_img.save_png(normal_path)
-	print("  frame %2d (yaw=%.1f deg) -> %s / %s" % [index, object_yaw_deg, color_path.get_file(), normal_path.get_file()])
+	shadow_img.save_png(shadow_path)
+	print("  frame %2d (yaw=%.1f deg) -> %s / %s / %s" % [index, object_yaw_deg, color_path.get_file(), normal_path.get_file(), shadow_path.get_file()])
 
 
-func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
+func _render_pass(object_yaw_deg: float, pass_type: PassType) -> Image:
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
 	var err := doc.append_from_file(MODEL_PATH, state)
@@ -87,8 +108,11 @@ func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
 		return Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	var model_root: Node = doc.generate_scene(state)
 
+	var is_shadow := pass_type == PassType.SHADOW
+	var viewport_size := SHADOW_VIEWPORT_SIZE if is_shadow else VIEWPORT_SIZE
+
 	var sub := SubViewport.new()
-	sub.size = VIEWPORT_SIZE
+	sub.size = viewport_size
 	sub.transparent_bg = true
 	sub.msaa_3d = Viewport.MSAA_4X
 	sub.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -124,22 +148,38 @@ func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
 
 	pivot.rotation_degrees.y = object_yaw_deg
 
-	if normal_pass:
+	if pass_type == PassType.NORMAL:
 		var shader := Shader.new()
 		shader.code = NORMAL_BAKE_SHADER_CODE
 		var mat := ShaderMaterial.new()
 		mat.shader = shader
 		for inst in _all_visual_instances(model_root):
 			inst.material_override = mat
+	elif is_shadow:
+		## Plain unshaded white — only the silhouette's alpha coverage matters;
+		## color/lighting are irrelevant, FloatingCollectible tints via modulate.
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(1, 1, 1, 1)
+		for inst in _all_visual_instances(model_root):
+			inst.material_override = mat
 
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = ORTHO_SIZE
-	var elev := deg_to_rad(CollectibleBakeConfig.ELEVATION_DEG)
-	var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
-	var dir := Vector3(sin(azim) * cos(elev), sin(elev), cos(azim) * cos(elev))
 	sub.add_child(cam)
-	cam.look_at_from_position(dir * CollectibleBakeConfig.CAMERA_DISTANCE, Vector3.ZERO, Vector3.UP)
+	if is_shadow:
+		## Straight down — see file header for why a true top-down pass (not
+		## the oblique color view, squashed) is what avoids the angle-shear
+		## artifact. Up-vector is an arbitrary-but-fixed horizontal axis
+		## (view direction is parallel to world Y, so Y itself can't be "up").
+		cam.size = SHADOW_ORTHO_SIZE
+		cam.look_at_from_position(Vector3(0.0, SHADOW_CAMERA_DISTANCE, 0.0), Vector3.ZERO, Vector3(0.0, 0.0, -1.0))
+	else:
+		cam.size = ORTHO_SIZE
+		var elev := deg_to_rad(CollectibleBakeConfig.ELEVATION_DEG)
+		var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
+		var dir := Vector3(sin(azim) * cos(elev), sin(elev), cos(azim) * cos(elev))
+		cam.look_at_from_position(dir * CollectibleBakeConfig.CAMERA_DISTANCE, Vector3.ZERO, Vector3.UP)
 	cam.current = true
 
 	for _i in range(4):
@@ -172,3 +212,46 @@ func _compute_aabb(node: Node) -> AABB:
 		else:
 			result = result.merge(world_box)
 	return result
+
+
+## Morphological max-filter on the alpha channel only — widens the
+## silhouette a little each iteration ("mais gordinha," Director).
+func _dilate_alpha(img: Image, iterations: int) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	for _iter in range(iterations):
+		var src := img.duplicate()
+		for y in range(h):
+			for x in range(w):
+				var max_a := 0.0
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						var nx := x + dx
+						var ny := y + dy
+						if nx >= 0 and nx < w and ny >= 0 and ny < h:
+							max_a = maxf(max_a, src.get_pixel(nx, ny).a)
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(c.r, c.g, c.b, max_a))
+
+
+## Box blur on the alpha channel only — softens the silhouette's edge
+## ("difusa nas bordas," Director) without touching RGB (kept solid white;
+## FloatingCollectible tints the whole shape via Sprite2D.modulate).
+func _blur_alpha(img: Image, iterations: int) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	for _iter in range(iterations):
+		var src := img.duplicate()
+		for y in range(h):
+			for x in range(w):
+				var sum_a := 0.0
+				var count := 0
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						var nx := x + dx
+						var ny := y + dy
+						if nx >= 0 and nx < w and ny >= 0 and ny < h:
+							sum_a += src.get_pixel(nx, ny).a
+							count += 1
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(c.r, c.g, c.b, sum_a / count))

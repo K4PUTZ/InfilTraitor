@@ -18,7 +18,14 @@ extends WindowBase
 const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"
 const ELEVATION_DEG := 30.0
 const AZIMUTH_START_DEG := 45.0
-const SPIN_DEG_PER_SEC := 14.0
+## Kept matching FloatingCollectible.ROTATION_DEG_PER_SEC exactly (see that
+## file's header) — 14.0 -> 36.0 (Director, 2026-07-28): the baked flipbook
+## needs its frame-swap rate (FRAME_COUNT / rotation-period) above ~10-12Hz
+## to read as smooth motion rather than discrete "soquinhos" jumps; 14 deg/s
+## made even 72 frames swap at only ~2.8Hz. Showcase's live 3D spin has no
+## such constraint but is kept in sync anyway for a consistent perceived
+## speed between the two views.
+const SPIN_DEG_PER_SEC := 36.0
 ## Aspect ratio below this is treated as portrait (info strip at the bottom);
 ## at or above it, landscape (info panel on the side). 1.0 = square cutoff;
 ## first-cut choice, not tuned against real device aspect ratios yet.

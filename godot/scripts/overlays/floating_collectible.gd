@@ -30,20 +30,28 @@ class_name FloatingCollectible
 extends Node2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
-## Must match actor_frame_bake_spike.gd's own FRAME_COUNT exactly — bumped
-## 24 -> 72 (Director, 2026-07-28) so the slow ROTATION_DEG_PER_SEC spin
-## reads as smooth motion instead of ~1s-per-frame jumps.
-const FRAME_COUNT := 72
+## Must match actor_frame_bake_spike.gd's own FRAME_COUNT exactly.
+##
+## SWEET-SPOT TUNING (Director, 2026-07-28): a baked flipbook reads as
+## smooth motion only when its frame-swap rate (FRAME_COUNT / rotation
+## period) clears roughly 10-12Hz — below that the eye perceives discrete
+## jumps no matter how many degrees each step covers. 24 frames @ 14deg/s
+## (26s/rotation) swapped at ~2.8Hz; bumping FRAME_COUNT alone to 72 without
+## also raising speed only reached ~2.8Hz too (frame count and speed both
+## matter — see ROTATION_DEG_PER_SEC below). 120 frames @ 36deg/s (10s/
+## rotation) swaps at 120/10 = 12Hz, clearing the threshold while staying a
+## slow, deliberate spin rather than the original blazing 1s/rotation.
+const FRAME_COUNT := 120
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 ## Matches showcase_panel.gd's SPIN_DEG_PER_SEC exactly (Director,
 ## 2026-07-27: the collectible's spin read far too fast at the bake's own
 ## 24fps frame-advance rate — 360 deg/sec, a full turn per second — next to
-## the Showcase's slow, deliberate spin). This is the angular speed the
-## object visually rotates at; FRAME_COUNT (24, D14's bake budget) stays a
-## separate, unrelated decision about how many discrete angles were baked.
-const ROTATION_DEG_PER_SEC := 14.0
+## the Showcase's slow, deliberate spin; then re-tuned 2026-07-28, see
+## FRAME_COUNT above — the frame-swap-rate math is what actually determines
+## how smooth this reads, not degrees/sec alone).
+const ROTATION_DEG_PER_SEC := 36.0
 
 ## A modest bump over the bake's native 160x160 px (Director, 2026-07-27) —
 ## the collectible read a little small next to the rest of the test zone.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**156 scripts · 31415 lines total** (under `godot/scripts/`)
+**156 scripts · 31434 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 230 lines
+`class_name FloatingCollectible` · extends `Node2D` · 238 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -876,9 +876,24 @@ extends `Node2D` · 143 lines
 
 **Constants / tuning**
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"`
-- `FRAME_COUNT` = `72`
+- `FRAME_COUNT` = `120`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `ROTATION_DEG_PER_SEC` = `36.0`
+- `SPRITE_SCALE` = `1.15`
+- `BOB_AMPLITUDE_PX` = `6.0`
+- `BOB_PERIOD_SEC` = `2.0`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+
+**Public vars**
+- `var room: Node = null`
+- `var gu_cell: Vector2i = Vector2i.ZERO`
+- `var base_cell: Vector2i = Vector2i.ZERO`
+
+**Public API**
+- `func setup(p_room: Node, p_gu_cell: Vector2i) -> void:`
+- `func reposition_for_perspective(direction: String) -> void:`
 
 ---
 
@@ -2009,16 +2024,16 @@ extends `Node` · 54 lines
 
 ### `actor_frame_bake_spike.gd`
 
-extends `SceneTree` · 182 lines
+extends `SceneTree` · 186 lines
 
 `godot/scripts/tools/actor_frame_bake_spike.gd`
 
-> ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake test. Renders N rotation frames of an imported mesh (D12's path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric camera the rest of the game uses — the OBJECT rotates around its own vertical axis between frames, the camera never moves, matching how a spinning collectible would actually be seen by the game's one fixed view. Each frame gets TWO renders: a flat, unlit color pass (today's D13-style ambient-only look, intentionally not baking any directional light in) and a normal-map pass (view-space surface normal encoded as RGB, the standard normal-bake technique) — the pair a runtime CanvasItem shader needs to relight the flat sprite per-pixel against whatever the world's real light data says for that GU, without any voxel geometry at runtime. Frame count/rate (Director, 2026-07-27): originally 24 frames (15° steps) at 24fps playback = exactly one full rotation per second — a round number, and consistent with the frame rate future character pose animation is expected to use, rather than assuming 60 just because it was the first number discussed (D14). Bumped to 72 frames (5° steps), Director 2026-07-28: the playback speed was later slowed to ROTATION_DEG_PER_SEC=14 (floating_collectible.gd, ~one full turn per 26s) WITHOUT raising FRAME_COUNT to match — each of the 24 frames stayed on-screen for ~1s, reading as discrete "soquinhos" jumps instead of a smooth spin. 3x the angular resolution at the same slow speed means each frame now holds for ~0.36s instead of ~1.07s. MESH_SCALE is a first guess, not derived from a formula — "shrink to the environment's scale, no need to change the mesh" (Director) is a visual judgment call, tuned the same iterative way Showcase's camera framing was. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/actor_frame_bake_spike.gd
+> ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake test. Renders N rotation frames of an imported mesh (D12's path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric camera the rest of the game uses — the OBJECT rotates around its own vertical axis between frames, the camera never moves, matching how a spinning collectible would actually be seen by the game's one fixed view. Each frame gets TWO renders: a flat, unlit color pass (today's D13-style ambient-only look, intentionally not baking any directional light in) and a normal-map pass (view-space surface normal encoded as RGB, the standard normal-bake technique) — the pair a runtime CanvasItem shader needs to relight the flat sprite per-pixel against whatever the world's real light data says for that GU, without any voxel geometry at runtime. Frame count/rate (Director, 2026-07-27): originally 24 frames (15° steps) at 24fps playback = exactly one full rotation per second — a round number, and consistent with the frame rate future character pose animation is expected to use, rather than assuming 60 just because it was the first number discussed (D14). Re-tuned twice more, Director 2026-07-28 — a baked flipbook's perceived smoothness is its FRAME-SWAP RATE (FRAME_COUNT / rotation-period-in-sec), not frame count or speed in isolation: 1st bump: 24 -> 72 frames (5° steps) at the still-slow 14deg/s speed — ~2.8Hz swap rate, still read as discrete jumps ("soquinhos"). 2nd bump (this one): 72 -> 120 frames (3° steps) AND speed 14 -> 36deg/s (floating_collectible.gd/showcase_panel.gd's ROTATION_DEG_PER_SEC/ SPIN_DEG_PER_SEC) = 10s/rotation, 120/10 = 12Hz swap rate — clears the ~10-12Hz threshold for motion to read as continuous, while staying a slow, deliberate spin rather than the original 1s/rotation. MESH_SCALE is a first guess, not derived from a formula — "shrink to the environment's scale, no need to change the mesh" (Director) is a visual judgment call, tuned the same iterative way Showcase's camera framing was. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/actor_frame_bake_spike.gd
 
 **Constants / tuning**
 - `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"`
 - `OUT_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"`
-- `FRAME_COUNT` = `72`
+- `FRAME_COUNT` = `120`
 - `VIEWPORT_SIZE` = `Vector2i(160, 160)`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_DEG` = `45.0`
@@ -2933,7 +2948,7 @@ extends `Node2D` · 34 lines
 
 ### `showcase_panel.gd`
 
-`class_name ShowcasePanel` · extends `WindowBase` · 204 lines
+`class_name ShowcasePanel` · extends `WindowBase` · 211 lines
 
 `godot/scripts/ui/showcase_panel.gd`
 
@@ -2943,11 +2958,6 @@ extends `Node2D` · 34 lines
 - `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_START_DEG` = `45.0`
-- `SPIN_DEG_PER_SEC` = `14.0`
-- `PORTRAIT_ASPECT_CUTOFF` = `1.0`
-
-**Public API**
-- `func open() -> void:`
 
 ---
 

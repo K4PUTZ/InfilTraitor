@@ -18,12 +18,16 @@
 ## expected to use, rather than assuming 60 just because it was the first
 ## number discussed (D14).
 ##
-## Bumped to 72 frames (5° steps), Director 2026-07-28: the playback speed
-## was later slowed to ROTATION_DEG_PER_SEC=14 (floating_collectible.gd,
-## ~one full turn per 26s) WITHOUT raising FRAME_COUNT to match — each of the
-## 24 frames stayed on-screen for ~1s, reading as discrete "soquinhos" jumps
-## instead of a smooth spin. 3x the angular resolution at the same slow
-## speed means each frame now holds for ~0.36s instead of ~1.07s.
+## Re-tuned twice more, Director 2026-07-28 — a baked flipbook's perceived
+## smoothness is its FRAME-SWAP RATE (FRAME_COUNT / rotation-period-in-sec),
+## not frame count or speed in isolation:
+##   1st bump: 24 -> 72 frames (5° steps) at the still-slow 14deg/s speed —
+##      ~2.8Hz swap rate, still read as discrete jumps ("soquinhos").
+##   2nd bump (this one): 72 -> 120 frames (3° steps) AND speed 14 -> 36deg/s
+##      (floating_collectible.gd/showcase_panel.gd's ROTATION_DEG_PER_SEC/
+##      SPIN_DEG_PER_SEC) = 10s/rotation, 120/10 = 12Hz swap rate — clears
+##      the ~10-12Hz threshold for motion to read as continuous, while
+##      staying a slow, deliberate spin rather than the original 1s/rotation.
 ##
 ## MESH_SCALE is a first guess, not derived from a formula — "shrink to the
 ## environment's scale, no need to change the mesh" (Director) is a visual
@@ -37,7 +41,7 @@ extends SceneTree
 const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"
 const OUT_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
 
-const FRAME_COUNT := 72
+const FRAME_COUNT := 120
 const VIEWPORT_SIZE := Vector2i(160, 160)
 const ELEVATION_DEG := 30.0
 const AZIMUTH_DEG := 45.0

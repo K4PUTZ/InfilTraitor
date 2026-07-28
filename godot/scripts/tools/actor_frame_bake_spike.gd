@@ -170,19 +170,27 @@ func _render_pass(object_yaw_deg: float, pass_type: PassType) -> Image:
 	if is_shadow:
 		## Straight down — see file header for why a true top-down pass (not
 		## the oblique color view, squashed) is what avoids the angle-shear
-		## artifact. Up-vector is NOT arbitrary: it must be
-		## (cos(AZIMUTH_DEG), 0, sin(AZIMUTH_DEG)) exactly, derived so that
-		## FloatingCollectible's runtime transform — mirror X, then squash Y
-		## by CollectibleBakeConfig.SHADOW_SQUASH_Y (= sin(ELEVATION_DEG),
-		## the game's iso ratio) — reproduces the oblique color camera's own
-		## screen-space angle for the same object yaw exactly. (Derivation:
-		## comparing both cameras' ground-plane projections analytically —
-		## oblique's basis decomposes as Squash(sin(ELEVATION_DEG)) applied
-		## to a mirror-and-rotate-by-AZIMUTH_DEG of the straight-down
-		## silhouette; baking that rotation in here instead of applying it
-		## at runtime avoids needing a shear/skew transform Sprite2D can't
-		## express as simple scale.) A DIFFERENT up-vector (e.g. a fixed
-		## world axis) is what caused the Director-reported angle mismatch.
+		## artifact. Up-vector is NOT arbitrary: it's (cos(AZIMUTH_DEG), 0,
+		## sin(AZIMUTH_DEG)) — bakes in the same azimuthal rotation the
+		## oblique color camera sees, so at runtime FloatingCollectible only
+		## needs a plain uniform-ish squash (scale.y *=
+		## CollectibleBakeConfig.SHADOW_SQUASH_Y, = sin(ELEVATION_DEG), the
+		## game's own iso ratio) with NO further rotation and — this part
+		## matters — NO mirror.
+		##
+		## VERIFIED (2026-07-28) by measuring the actual baked frames: PCA
+		## principal-axis angle of each frame's alpha silhouette, color vs.
+		## shadow, at 12 yaws spanning a full rotation. Plain squash (no
+		## rotation, no mirror) on this up-vector's output gives 4.3° RMS
+		## error against the color frame (consistent with PCA noise on the
+		## hook-shaped silhouette, not a real offset) — confirming this
+		## up-vector alone is correct. An earlier version of
+		## FloatingCollectible additionally mirrored the shadow on X,
+		## reasoned from an analytic derivation with an undiagnosed sign
+		## error; measured the same way, that gave 46° RMS error AND made
+		## the shadow spin the opposite direction from the object as it
+		## rotates (Director-reported) — the mirror was pure regression,
+		## not needed on top of this up-vector.
 		var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
 		cam.size = SHADOW_ORTHO_SIZE
 		cam.look_at_from_position(Vector3(0.0, SHADOW_CAMERA_DISTANCE, 0.0), Vector3.ZERO, Vector3(cos(azim), 0.0, sin(azim)))

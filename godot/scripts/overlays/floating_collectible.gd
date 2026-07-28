@@ -193,11 +193,17 @@ func _ready() -> void:
 	_shadow.centered = true
 	_shadow.modulate = Color(0.0, 0.0, 0.0, SHADOW_ALPHA)
 	var shadow_base_scale := _sprite_scale * _shadow_scale_factor
-	## Negative X mirrors the shadow horizontally — required to match the
-	## bake's up-vector convention (actor_frame_bake_spike.gd's shadow-pass
-	## comment has the full derivation); dropping this mirror is what caused
-	## the Director-reported angle mismatch even with a true top-down bake.
-	_shadow.scale = Vector2(-shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
+	## NO mirror here — see actor_frame_bake_spike.gd's shadow-pass comment.
+	## An earlier version of this line mirrored on X (negative scale.x),
+	## reasoned from an analytic derivation that turned out to have a sign
+	## error: verified by measuring the real baked frames' principal-axis
+	## angle (PCA over the alpha silhouette) at 12 yaws — mirrored gave 46°
+	## RMS error AND flipped the shadow's rotation direction opposite the
+	## object's; no-mirror (just the plain squash below) gives 4.3° RMS,
+	## consistent with PCA noise on the hook-shaped silhouette, not a real
+	## systematic offset. The bake's azimuth-derived up-vector was already
+	## correct on its own — only the runtime mirror was wrong.
+	_shadow.scale = Vector2(shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
 	add_child(_shadow)
 
 	_sprite = Sprite2D.new()
@@ -247,8 +253,8 @@ func _process(delta: float) -> void:
 	## furthest down the screen = nearest the floor) and -1 at the top.
 	var shadow_mult := lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, (bob_phase + 1.0) * 0.5)
 	var shadow_base_scale := _sprite_scale * _shadow_scale_factor * shadow_mult
-	## Negative X mirror — see the matching comment in _ready().
-	_shadow.scale = Vector2(-shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
+	## NO mirror — see the matching comment in _ready().
+	_shadow.scale = Vector2(shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
 
 	_update_light_uniform()
 

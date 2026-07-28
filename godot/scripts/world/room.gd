@@ -2138,7 +2138,25 @@ func _recompute_occlusion() -> void:
 	if _hovered_cell != INVALID_CELL and _hovered_cell != agent.cell:
 		if movement_overlay != null and movement_overlay.is_reachable(_hovered_cell):
 			origins.append(_hovered_cell)
-	
+
+	## OCC-PROP-01 (2026-07-28): TEST-ZONE props (grenades, the floating
+	## collectible) are drawn OCC-03-style — always above every voxel layer —
+	## the same way the agent is, and rely on THIS SAME multi-origin mechanism
+	## (not z_index) to get walls between them and the camera ghosted. Without
+	## adding their cells as origins here, they render on top of occluding
+	## walls with no ghosting ever applied, since OcclusionSet only ghosts
+	## geometry in front of a registered origin.
+	if _test_zone_controller != null:
+		for g in _test_zone_controller._grenades:
+			if g["detonated"]:
+				continue
+			var g_cell: Vector2i = g["gu_cell"]
+			if g_cell != INVALID_CELL and not origins.has(g_cell):
+				origins.append(g_cell)
+	if _floating_collectible != null and is_instance_valid(_floating_collectible):
+		if _floating_collectible.gu_cell != INVALID_CELL and not origins.has(_floating_collectible.gu_cell):
+			origins.append(_floating_collectible.gu_cell)
+
 	## ROOF-OCC-01: ceiling slabs join the computation (screen-horizontal GU
 	## stripes) — the registry is rebuilt per view rotation, so these are
 	## already in view-space like the slices.

@@ -26,10 +26,11 @@ const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 ## GRENADE_ANCHOR_PX constant (TestZoneController) used.
 const ANCHOR_PX: Vector2 = Vector2(48.0, 73.15551)
 
-## First-guess visual scale, not derived — tune once seen in a real capture
-## next to the rest of the test zone (same convention as FloatingCollectible's
-## SPRITE_SCALE / actor_frame_bake_spike.gd's MESH_SCALE).
-const SPRITE_SCALE := 1.0
+## Visual judgment call, same convention as FloatingCollectible's SPRITE_SCALE
+## / actor_frame_bake_spike.gd's MESH_SCALE — tuned down from the 1.0 first
+## guess (Director, 2026-07-28: read too large next to the rest of the test
+## zone).
+const SPRITE_SCALE := 0.75
 
 ## Fixed bake-camera convention (grenade_frame_bake_spike.gd) — must match
 ## exactly, since the normal maps were encoded in this camera's view space.

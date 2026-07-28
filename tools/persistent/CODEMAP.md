@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**156 scripts · 31366 lines total** (under `godot/scripts/`)
+**156 scripts · 31385 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -884,7 +884,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 158 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 159 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -895,6 +895,18 @@ extends `Node2D` · 143 lines
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `ANCHOR_PX` = `Vector2(48.0, 73.15551)`
+- `SPRITE_SCALE` = `0.75`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+
+**Public vars**
+- `var room: Node = null`
+- `var gu_cell: Vector2i = Vector2i.ZERO`
+- `var base_cell: Vector2i = Vector2i.ZERO`
+
+**Public API**
+- `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
+- `func update_cell(p_gu_cell: Vector2i) -> void:`
 
 ---
 
@@ -3342,7 +3354,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2954 lines
+extends `Node2D` · 2972 lines
 
 `godot/scripts/world/room.gd`
 

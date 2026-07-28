@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 31733 lines total** (under `godot/scripts/`)
+**157 scripts · 31735 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 356 lines
+`class_name FloatingCollectible` · extends `Node2D` · 358 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 

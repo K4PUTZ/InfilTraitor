@@ -30,8 +30,11 @@ COVER/COMBATE
 
 Quando o agente subir no tile de saída, exibimos CLEARED na tela, da mesma maneira que o BUSTED está sendo chamado. Vamos colocar um banner preto com 80% de opacidade, contendo esses textos, centralizado na tela, com um botão de 'OK' para resetar o mapa.
 
-
-
-Estou colocando dezenas de arquivos de texturas livres na raiz/texturas. Precisamos avaliar a qualidade dos arquivos, descartar o que não estiver padronizado
-
 Agora que a gente introduziu o mecanismo de tempo, precisamos ampliar o seu sistema de diagnósticos. É possível a gente introduzir pequenas capturas de video para verificação automática de eventos (ou captura de vários screenshots em sequencia)? Vamos usar uma pasta específica só pra isso, e sobrescrever sempre os mesmos arquivos.
+
+O heatmap está por baixo das camadas de concreto no chão, precisamos que ele fique acima do chão. Verificar se outros overlays em Default, Dev ou Light Vision não estão sendo cobertos também.
+
+Quando as granadas explodem, o chão com material padrão fica visível. Não é péssimo, mas já que estamos com o bake do chão pronto, não custa pintar a terceira camada com a mesma textura também.
+Vamos fazer a segunda camada do chão ser mais difícil de destruir fora da GU 0,0. A camada de cima pode manter assim.
+
+A luz piscando pode ter um efeito de neon, ficando acesa mais tempo que apagada, e dando rápidas oscilações apagando e acendendo de novo, em vez de ter um ritmo binário fixo.

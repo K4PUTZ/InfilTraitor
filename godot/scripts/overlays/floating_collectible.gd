@@ -92,12 +92,14 @@ const HOVER_HEIGHT_PX := 60.0
 ## Narrowed again same day (Director: both extremes read as "exagerado" —
 ## too crisp/small at the bottom, too blurred/big at the top; wanted the
 ## whole effect more discreet, not just a smaller/bigger swing). Alpha
-## peaks 80/50 -> 55/40 (lower overall, closer together); scale range
+## peaks 80/50 -> 55/40 (lower overall, closer together), then the top
+## peak alone lowered once more, 40 -> 28 (Director: still too visible at
+## the top of the bob). Scale range
 ## 0.85..1.05 -> 0.90..1.00 (narrower, and no longer bigger than the
 ## resting 1.0x baseline). See CollectibleBakeConfig for the matching
 ## bake-time blur/dilate narrowing.
 const SHADOW_ALPHA_SHARP_AT_BOTTOM := 0.55
-const SHADOW_ALPHA_SOFT_AT_TOP := 0.40
+const SHADOW_ALPHA_SOFT_AT_TOP := 0.28
 const SHADOW_SCALE_AT_TOP := 1.00     ## at the top of the bob
 const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 

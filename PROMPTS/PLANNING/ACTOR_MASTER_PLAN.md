@@ -1,11 +1,18 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.5
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.6
 
 **Status:** 🟡 **Part 0 DONE (2026-07-26). Part 5a (Showcase) first cut DONE
 2026-07-27 — a real shotgun renders live, auto-spinning, in a main-menu
 screen with a verified adaptive layout. Part 6's first exercise (floating/
 rotating collectible with real normal-map lighting) also DONE 2026-07-27 —
-see D22.** Objects track continues (Part 6's formal design is still open);
+see D22. 2026-07-28: open question #16 closed (D23, perspective-aware
+light-direction), the grenade moved onto the same real-3D-bake pipeline as
+the shotgun (D24), TEST-ZONE props fixed to sort by real depth instead of
+"always on top" (D25), the bake/rotation sweet spot standardized into
+`CollectibleBakeConfig` for reuse by future collectibles (D26), and a
+silhouette-accurate ground shadow with a sharp/soft depth crossfade shipped
+for the floating collectible (D27).** Objects track continues (Part 6's
+formal design is still open);
 living-beings track (character twin, pose library, damage/clothing
 integration) deliberately deferred to a second phase, per the Director
 (2026-07-26). Started as a pure decision register from Director
@@ -160,6 +167,11 @@ Named pains this serves:
 | **D20** | **Showcase: a main-menu button opening a live 3D inspection screen — the first concrete Part 5 application.** The object fills most of the screen (D10's live `SubViewport`, D11's free-zoom); name and info occupy a separate area, laid out adaptively for portrait (9:16) vs. landscape (16:9) — bottom strip or side panel depending on orientation. This is Part 5's mechanism (already specified) getting its first named, designed screen; see Part 5a. | ✅ Ratified (Director, 2026-07-26) |
 | **D21** | **The floating/rotating collectible (shotgun on a GU) renders through the simplification system (D16), not the twin.** Flat, unlit sprites (D17 — lighting applied at runtime via the normal-map shader, never baked in) at whatever angle/frame set the floating-and-rotating read needs (ties to D14's frame-count budget: cheap per-object, budget in aggregate). The twin (Showcase-quality) and the in-world collectible are visually related but not the same asset — the collectible is gameplay-facing and must stay cheap at all times it's on screen, unlike the Showcase twin which is only live while that one screen is open. | ✅ Ratified (Director, 2026-07-26) |
 | **D22** | **D17's normal-map relighting is proven to work — via real captures that isolate shader correctness from the grid→view light-direction mapping's current limits.** Built `actor_frame_bake_spike.gd` (24 frames/15° steps, one flat-color + one view-space-normal-map render per frame, centered-before-rotated using the by-now-standard `await process_frame`-before-`AABB` fix) and `flat_normal_relight.gdshader` (continuous per-pixel N·L + Blinn-Phong specular — deliberately not bucket-quantized like `VoxelLightField`; a live per-pixel shader has no bake-time cost to economize on). Verified with three real captures at the same broadside rotation frame (`FloatingCollectible`, gu_cell (8,4), PLAYGROUND test zone): (a) the real light registry's computed direction (light at gu_cell (6,4), energy 1.0) — visually near-identical to ambient-only, because that light sits almost directly behind the object relative to the fixed bake camera at this particular cell-delta; (b) light forced off — matches (a), confirming the ambient-only floor; (c) a forced front-facing light direction — clearly visible directional shading and specular shine on the receiver. **Conclusion: the shader/bake technique is correct** (proven by (c)); the current grid-x→world-x/grid-y→world-z mapping (`floating_collectible.gd`'s file header, unchanged since D17) does not yet account for the fixed camera's azimuth, so it can pick an unfavorable (near-backlighting) direction for some light/object cell-deltas, as seen in (a). Not fixed here — perspective-correct light-direction mapping is follow-up work, see open question #16. | ✅ Confirmed (2026-07-27, real captures) — shader correct; grid→view mapping is a known, not-yet-solved limitation |
+| **D23** | **Perspective-aware light-direction mapping (closes open question #16).** D22's grid-x→world-x/grid-y→world-z mapping was only valid at the default N perspective. Fix: both the light's cell and the object's own anchor cell are de-rotated to base (North) orientation via `PerspectiveMapper.cell_to_base()` before the grid→world mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. `FloatingCollectible` now also tracks a perspective-independent `base_cell` and re-derives its view-space `gu_cell` on every perspective flip (`reposition_for_perspective()`, mirrored from `TestZoneController`'s grenade handling), so `gu_cell` no longer goes stale the way it used to. | ✅ Shipped (2026-07-28) |
+| **D24** | **The grenade moved onto the shotgun's real-3D-bake pipeline, replacing `bake_voxel_sprite_3d.gd`'s single frozen-angle BoxMesh-voxel reconstruction.** That original bake (v2 over a hand-rolled 2D painter's-algorithm rasterizer, v1) was one fixed angle, unlit, and blind to the room's active N/E/S/W perspective — the same class of bug D22/D23 found and fixed for the shotgun. New source: Quaternius' CC0 "Grenade" model (poly.pizza), same provenance convention as the guns pack. `grenade_frame_bake_spike.gd` follows `actor_frame_bake_spike.gd`'s technique but bakes only 4 directions (N/E/S/W, not 24/120) since the grenade is a static ground prop, not a spinning pickup — reuses `bake_voxel_sprite_3d.gd`'s `cam.unproject_position()` ground-anchor technique, exploiting that the AABB bottom-center lands exactly on the pivot's own yaw axis (rotation-invariant, one anchor for all 4 frames). Runtime: `GrenadeProp` (`Sprite2D` drop-in), same `flat_normal_relight.gdshader` and D23's perspective-aware light math. `TestZoneController` swaps its frame on every perspective flip via `update_cell()`. | ✅ Shipped (2026-07-28) |
+| **D25** | **TEST-ZONE props (grenades, the floating collectible) sort by real depth against voxel geometry — not OCC-03's "always above everything."** Both were originally z-indexed identically to the player agent (`get_max_voxel_z_index() + 1`), which is correct *only* for the agent, whose occlusion is instead solved by `OcclusionSet` ghosting walls in front of it. Props got no such ghosting, so they simply always rendered on top of any wall/roof regardless of actual depth — most visible after a perspective rotation moved a prop under a taller structure. An interim fix tried registering props as `OcclusionSet` origins (making walls ghost in front of them too); Director's explicit call: props must **not** create occlusion, they should be hidden by geometry like anything else. Final fix: both `GrenadeProp` and `FloatingCollectible` take their z_index from the room's own ground-level (level 0) voxel `TileMapLayer` (`_voxel_renderer.get_layer(0).z_index`) instead of the agent's formula, re-applied on every perspective flip (`_set_perspective()` rebuilds every voxel layer from scratch, so a cached z_index goes stale). | ✅ Shipped (2026-07-28) |
+| **D26** | **Collectible bake/animation parameters standardized into `CollectibleBakeConfig`** (`godot/scripts/systems/collectible_bake_config.gd`) so a future collectible reuses the shotgun's tuned baseline instead of re-deriving it. Holds: `FRAME_COUNT`/`ROTATION_DEG_PER_SEC` (120 frames @ 36°/s — see the frame-swap-rate finding below), the fixed bake-camera convention (`ELEVATION_DEG`/`AZIMUTH_DEG`/`CAMERA_DISTANCE`, must match exactly or the light-direction math in D17/D23 breaks silently), and the shadow-pass constants (D27). Per-object knobs (`MESH_SCALE`, `ORTHO_SIZE`, `VIEWPORT_SIZE`, `SPRITE_SCALE`) deliberately stay OUT of the shared config — those depend on each model's own real-world size, same visual-judgment-call convention `MESH_SCALE` always has been. **Frame-swap-rate finding** (Director-driven, three iterations): a baked flipbook's perceived smoothness is `FRAME_COUNT / rotation-period-in-seconds`, not frame count or speed in isolation — 24 frames at the original 360°/s spin read fine (~24Hz swap rate) but reading it at a slower, more deliberate 14°/s (Director's later ask, "not too fast") dropped the swap rate to ~2.8Hz regardless of bumping `FRAME_COUNT` alone to 72; only raising both together (120 frames @ 36°/s = 12Hz) cleared the ~10-12Hz threshold motion needs to read as continuous. `actor_frame_bake_spike.gd` is now a copyable template referencing `CollectibleBakeConfig` instead of duplicating these tuned constants; `FloatingCollectible.setup()` takes `frames_dir`/`sprite_scale`/`shadow_scale_factor` per instance instead of hardcoded shotgun paths. | ✅ Shipped (2026-07-28) |
+| **D27** | **Ground shadow for the floating collectible: silhouette-accurate, angle-correct, depth-cued by bob height.** Three iterations, each Director-caught via a real running capture: (1) first attempt reused the oblique COLOR frame squashed on Y — squashing an already-foreshortened oblique view is a shear, not a flatten, and visibly rotated the silhouette's apparent angle; fixed with a dedicated TRUE top-down (`SHADOW_ELEVATION_DEG=90`) bake pass, squashed by `SHADOW_SQUASH_Y = sin(ELEVATION_DEG) = 0.5` (the game's own iso diamond ratio — not arbitrary). (2) The top-down bake's camera "up" vector still needed deriving from `AZIMUTH_DEG` (not a fixed world axis) to match the color camera's screen-space angle, plus a runtime mirror — the mirror turned out to be a regression from a sign error in the analytic derivation, caught by measuring the real baked frames' principal-axis angle (PCA over the alpha silhouette) at 12 yaws: mirrored gave 46° RMS error and spun opposite the object; removing the mirror gave 4.3° RMS (PCA noise, not a real offset) — the azimuth-derived up-vector was already correct alone. (3) Depth cue: two shadow layers per frame (`_shadow_sharp`/`_shadow_soft`, from ONE raw top-down render post-processed twice, not re-rendered) crossfade by the object's current bob height — small+sharp+higher-opacity near the floor, bigger+diffuse+lower-opacity at the top of the bob, both size and focus changing together (Director: "real depth needs size AND focus to change, not size alone"), narrowed twice after the first pass read as exaggerated at both extremes. Also: `HOVER_HEIGHT_PX` (a fixed lift above the floor GU point, independent of the bob — `3 * VOXEL_STEP_PX`, roughly a third of a storey) so the object visibly floats within the GU instead of hugging the floor; the shadow itself stays pinned at the true floor Y regardless. | ✅ Shipped (2026-07-28) |
 
 ---
 
@@ -486,6 +498,31 @@ D21 chain end-to-end for one object.
   - Normal-map shader cost (D17's own open item, #13) still unmeasured on
     any real device.
 
+**REVISED 2026-07-28 (D23-D27) — most of the above closed, plus a second
+object on the same pipeline:**
+- Perspective limitation above **closed** — D23.
+- Frame count/rotation speed **retuned twice** on the real frame-swap-rate
+  finding — now 120 frames @ 36°/s (`CollectibleBakeConfig.FRAME_COUNT`/
+  `ROTATION_DEG_PER_SEC`), not the original 24 @ 14°/s — D26.
+- `MESH_SCALE` (bake-time, shotgun still 0.5) and `SPRITE_SCALE` (runtime,
+  now `1.15`) are unchanged from 2026-07-27's first-guess values — #17 still
+  open, not revisited this pass.
+- `FloatingCollectible.setup()` now takes `frames_dir`/`sprite_scale`/
+  `shadow_scale_factor` per instance (no longer hardcoded to one shotgun
+  path) — still no formal registry (#8/#12 still open), but the class
+  itself is reusable now; `room.gd`'s `_populate_test_zone_if_playground()`
+  still hardcodes the one call site and gu_cell (8,4).
+- **Second object shipped on essentially the same pipeline: the grenade**
+  (D24) — a static ground prop (`GrenadeProp`), not a `FloatingCollectible`
+  (no bob/spin), but same bake technique, same relighting shader, same
+  perspective-aware light math (D23).
+- **New: a ground shadow** (D27) — silhouette-accurate (true top-down bake,
+  not the color frame reused), angle-verified via real pixel measurement,
+  crossfades sharp/small near the floor to soft/diffuse at the top of the
+  bob.
+- **New: real depth-sorting for TEST-ZONE props** (D25) — previously always
+  rendered on top of walls/roofs regardless of actual position.
+
 ---
 
 ## 6. Wave sequencing
@@ -601,14 +638,33 @@ picking it up early except the Director's own priority call.
     display systems is not designed — deferred with the rest of the
     living-beings track (D18), but worth flagging now since D16 already
     assumes it works.
-16. **Perspective-aware light-direction mapping for simplification sprites**
-    *(new, 2026-07-27, D22)* — `floating_collectible.gd`'s grid→world
-    mapping (grid-x→world-x, grid-y→world-z) ignores the active N/E/S/W
-    perspective rotation, and D22's real test showed this can pick a
-    near-backlighting direction for an otherwise well-lit cell. Needs the
-    same kind of fix `TestZoneController.reposition_for_perspective()` gave
-    grenades — not designed or started here.
+16. ~~**Perspective-aware light-direction mapping for simplification
+    sprites**~~ **RESOLVED 2026-07-28 — see D23.**
 17. **`MESH_SCALE` validation** *(new, 2026-07-27, Part 6)* — the floating
     collectible's `0.5` scale factor is a first-guess visual judgment call,
     not derived from or checked against the rest of the environment's actual
     scale. Needs an eyes-on pass once more objects go through this pipeline.
+    Still open as of 2026-07-28 — not revisited when the other bake/runtime
+    parameters were retuned (D26).
+18. **Formal collectible/prop registry** *(new, 2026-07-28, D24/D26)* —
+    `FloatingCollectible` and `GrenadeProp` are both reusable classes now,
+    but there is still no data-driven catalog of which object goes where;
+    `room.gd`'s `_populate_test_zone_if_playground()` remains a hardcoded
+    TEST-ZONE call site (one shotgun, one gu_cell, four grenade cells). Same
+    open item as #8/#12, sharper now that two real objects exist on the
+    same pipeline.
+19. **Ground-shadow constants tuned only against the shotgun's elongated
+    silhouette** *(new, 2026-07-28, D27)* — `SHADOW_SCALE_AT_TOP/BOTTOM`,
+    the alpha peaks, and the bake's dilate/blur iteration counts were all
+    eyeballed against one hook-shaped object. Unvalidated for a
+    rounder/smaller silhouette (e.g. the grenade, which does not currently
+    use this shadow system at all — `GrenadeProp` has no shadow).
+20. **`_render_pass()`'s per-frame model reload** *(new, 2026-07-28,
+    performance note from D27's bake)* — `actor_frame_bake_spike.gd` calls
+    `GLTFDocument.append_from_file()` fresh for every one of the 3 passes ×
+    120 frames (360 reloads of the same file) rather than loading the model
+    once and reusing/duplicating the scene tree. Never measured as a real
+    bottleneck (full shotgun bake completes in well under a minute) but
+    flagged here rather than silently normalized, since it is at minimum
+    wasted I/O and would compound if `FRAME_COUNT` or the per-object frame
+    count grows.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**154 scripts · 30949 lines total** (under `godot/scripts/`)
+**154 scripts · 30985 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,16 +868,17 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 176 lines
+`class_name FloatingCollectible` · extends `Node2D` · 210 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, first real test of the simplification system (Part 6, still otherwise unspecified). Cycles pre-rendered flat-color + normal-map frame pairs (actor_frame_bake_spike.gd's output) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a gentle vertical sine bob and spins continuously (Director, 2026-07-27). Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one) and does not yet account for the active N/E/S/W perspective rotation (the same rotation TestZoneController's grenades needed reposition_for_perspective() for). Good enough to prove directional relighting works at all; perspective- correctness is follow-up work, not solved here.
+> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, first real test of the simplification system (Part 6, still otherwise unspecified). Cycles pre-rendered flat-color + normal-map frame pairs (actor_frame_bake_spike.gd's output) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a gentle vertical sine bob and spins continuously (Director, 2026-07-27). Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
 
 **Constants / tuning**
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"`
 - `FRAME_COUNT` = `24`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 
 ---
 
@@ -3311,7 +3312,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2952 lines
+extends `Node2D` · 2954 lines
 
 `godot/scripts/world/room.gd`
 

@@ -1097,6 +1097,8 @@ func _set_perspective(direction: String) -> void:
 		## reposition them explicitly, same pattern as the agent/selection block.
 		if _test_zone_controller != null:
 			_test_zone_controller.reposition_for_perspective(_active_perspective)
+		if _floating_collectible != null and is_instance_valid(_floating_collectible):
+			_floating_collectible.reposition_for_perspective(_active_perspective)
 
 		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)

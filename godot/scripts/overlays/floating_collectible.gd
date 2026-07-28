@@ -12,17 +12,27 @@
 ## game has no real 3D world space — gameplay is a 2D grid + an isometric
 ## screen projection. To relight a normal map baked from a fixed 3D camera,
 ## this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit,
-## documented choice, not a derived one) and does not yet account for the
-## active N/E/S/W perspective rotation (the same rotation
-## TestZoneController's grenades needed reposition_for_perspective() for).
-## Good enough to prove directional relighting works at all; perspective-
-## correctness is follow-up work, not solved here.
+## documented choice, not a derived one).
+##
+## PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN
+## open question #16 / D22): the grid delta between light and object is
+## computed in the room's CURRENT view-space cells, then de-rotated back to
+## base (North) orientation via PerspectiveMapper.cell_to_base() before the
+## grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's
+## fixed azimuth was always derived against a canonical N view, so feeding
+## it a raw view-space delta from a rotated (E/S/W) perspective silently
+## picked the wrong world direction. Same idea as
+## TestZoneController.reposition_for_perspective(): this object also now
+## tracks its own base_cell and re-derives its view-space gu_cell on every
+## perspective flip (see reposition_for_perspective() below), so gu_cell
+## never goes stale the way it used to before this fix.
 class_name FloatingCollectible
 extends Node2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
 const FRAME_COUNT := 24
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
+const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 ## Matches showcase_panel.gd's SPIN_DEG_PER_SEC exactly (Director,
 ## 2026-07-27: the collectible's spin read far too fast at the bake's own
@@ -46,6 +56,10 @@ const AZIMUTH_DEG := 45.0
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
+## Perspective-independent anchor (North orientation) — gu_cell is derived
+## from this plus the room's active perspective, same pattern as
+## TestZoneController's grenade registry.
+var base_cell: Vector2i = Vector2i.ZERO
 
 var _sprite: Sprite2D
 var _material: ShaderMaterial
@@ -75,6 +89,19 @@ func _init() -> void:
 func setup(p_room: Node, p_gu_cell: Vector2i) -> void:
 	room = p_room
 	gu_cell = p_gu_cell
+	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
+
+
+## Mirrors TestZoneController.reposition_for_perspective(): called from
+## room.gd::_set_perspective() so this runtime-instantiated overlay follows
+## rotation the same way the test-zone grenades do, instead of gu_cell
+## silently going stale (pre-fix behavior).
+func reposition_for_perspective(direction: String) -> void:
+	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
+	gu_cell = PerspectiveMapperClass.cell_from_base(base_cell, direction, base_size)
+	if room != null and room.agent != null:
+		position = room.agent._cell_to_world(gu_cell)
+		_base_y = position.y
 
 
 func _ready() -> void:
@@ -143,7 +170,14 @@ func _update_light_uniform() -> void:
 		_material.set_shader_parameter("light_intensity", 0.0)
 		return
 
-	var grid_delta: Vector2i = best_light.cell - gu_cell
+	## De-rotate both cells from the room's CURRENT view-space back to base
+	## (North) orientation before taking the delta — the bake camera's fixed
+	## azimuth was derived against a canonical N view, so the grid-x/grid-y
+	## -> world-x/world-z mapping below is only valid in that same base
+	## orientation (see file header, D22/open question #16).
+	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
+	var base_light_cell: Vector2i = room._cell_to_base(best_light.cell, room._active_perspective, base_size)
+	var grid_delta: Vector2i = base_light_cell - base_cell
 	## Explicit grid->bake-world mapping (file header): grid-x -> world-x,
 	## grid-y -> world-z, light assumed roughly floor-height (no Y term).
 	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized()

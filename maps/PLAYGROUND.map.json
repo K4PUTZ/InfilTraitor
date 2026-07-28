@@ -129,6 +129,22 @@
       "items": [],
       "v": 1
     },
+    "floor_zones": {
+      "items": [
+        {
+          "gu": [
+            0,
+            0
+          ],
+          "size": [
+            24,
+            16
+          ],
+          "material": "ground_concrete"
+        }
+      ],
+      "v": 1
+    },
     "legacy_compiler": {
       "wall_height": 1,
       "access_points": [],

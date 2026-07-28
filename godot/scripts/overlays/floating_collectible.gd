@@ -13,15 +13,17 @@
 ## concept exactly. Floats with a vertical sine bob and spins continuously
 ## (Director, 2026-07-27).
 ##
-## GROUND SHADOW (Director, 2026-07-28, re-tuned same day after the first
-## attempt shed reused the oblique COLOR frame, squashed on Y — that shears
-## diagonal silhouettes and visibly rotates their apparent angle away from
-## the real object's angle). Uses a dedicated frame_%02d_shadow.png per
-## frame instead: a true top-down bake (actor_frame_bake_spike.gd), which
-## has no directional foreshortening to shear when squashed. Pinned to
-## floor height independent of the bob, and scaled slightly larger when the
-## object is at the bottom of its bob and slightly smaller at the top —
-## "acentuando a sensação de distância entre o objeto e o chão." A fixed
+## GROUND SHADOW (Director, 2026-07-28, re-tuned twice same day). Uses two
+## dedicated frame_%02d_shadow_{sharp,soft}.png per frame instead of the
+## oblique COLOR frame reused-and-squashed (that shears diagonal silhouettes
+## and rotates their apparent angle) — a true top-down bake
+## (actor_frame_bake_spike.gd), which has no directional foreshortening to
+## shear when squashed. Pinned to floor height independent of the bob. Two
+## Sprite2D layers crossfade by the object's CURRENT bob height (Director's
+## corrected spec, replacing an earlier "wider at bottom" misread): near the
+## floor (bottom of the bob) the shadow is small and SHARP at 80% opacity;
+## at the top of the bob it's bigger and SOFT/diffuse at 50% opacity — real
+## depth needs size AND focus to change together, not size alone. A fixed
 ## HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even
 ## at the bob's lowest point.
 ##
@@ -80,14 +82,17 @@ const HOVER_HEIGHT_PX := 60.0
 
 ## Ground-shadow tuning, same visual-judgment-call convention as
 ## SPRITE_SCALE — first guess, tune once seen in a real capture.
-const SHADOW_ALPHA := 0.45
-## At the bottom of the bob (object nearest the floor) the shadow reads
-## slightly WIDER; at the top (object at its highest) slightly smaller —
-## "acentuando a sensação de distância entre o objeto e o chão" (Director).
-## Kept close to 1.0 on purpose ("ligeiramente") — too wide a range reads as
-## the shadow itself pulsing/breathing instead of a subtle depth cue.
-const SHADOW_SCALE_AT_TOP := 0.85
-const SHADOW_SCALE_AT_BOTTOM := 1.05
+##
+## Director's corrected spec (2026-07-28): bottom of the bob (nearest the
+## floor) = small + sharp + 80% opaque; top of the bob (farthest from the
+## floor) = big + diffuse + 50% opaque. Two peak alphas, one per shadow
+## layer (_shadow_sharp/_shadow_soft) — each fades to 0 at the OTHER end of
+## the bob so only one reads as dominant at a time, with a smooth crossfade
+## through the middle.
+const SHADOW_ALPHA_SHARP_AT_BOTTOM := 0.80
+const SHADOW_ALPHA_SOFT_AT_TOP := 0.50
+const SHADOW_SCALE_AT_TOP := 1.05     ## big, at the top of the bob
+const SHADOW_SCALE_AT_BOTTOM := 0.85  ## small, at the bottom of the bob
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
@@ -105,11 +110,13 @@ var _sprite_scale: float = 1.0
 var _shadow_scale_factor: float = 1.0
 
 var _sprite: Sprite2D
-var _shadow: Sprite2D
+var _shadow_sharp: Sprite2D
+var _shadow_soft: Sprite2D
 var _material: ShaderMaterial
 var _color_frames: Array[Texture2D] = []
 var _normal_frames: Array[Texture2D] = []
-var _shadow_frames: Array[Texture2D] = []
+var _shadow_sharp_frames: Array[Texture2D] = []
+var _shadow_soft_frames: Array[Texture2D] = []
 var _frame_time := 0.0
 var _bob_time := 0.0
 ## Floor GU world Y — the shadow's fixed anchor. Distinct from _base_y
@@ -188,31 +195,28 @@ func _ready() -> void:
 	for i in range(CollectibleBakeConfig.FRAME_COUNT):
 		var color_path := "%sframe_%02d_color.png" % [_frames_dir, i]
 		var normal_path := "%sframe_%02d_normal.png" % [_frames_dir, i]
-		var shadow_path := "%sframe_%02d_shadow.png" % [_frames_dir, i]
+		var shadow_sharp_path := "%sframe_%02d_shadow_sharp.png" % [_frames_dir, i]
+		var shadow_soft_path := "%sframe_%02d_shadow_soft.png" % [_frames_dir, i]
 		_color_frames.append(_load_texture_raw(color_path))
 		_normal_frames.append(_load_texture_raw(normal_path))
-		_shadow_frames.append(_load_texture_raw(shadow_path))
+		_shadow_sharp_frames.append(_load_texture_raw(shadow_sharp_path))
+		_shadow_soft_frames.append(_load_texture_raw(shadow_soft_path))
 
-	## Added BEFORE _sprite so it draws underneath at the same z_index
-	## (Godot resolves same-z siblings in tree order) — sits on the floor,
-	## under the object, unaffected by the bob (see _process()).
-	_shadow = Sprite2D.new()
-	_shadow.texture = _shadow_frames[0]
-	_shadow.centered = true
-	_shadow.modulate = Color(0.0, 0.0, 0.0, SHADOW_ALPHA)
-	var shadow_base_scale := _sprite_scale * _shadow_scale_factor
-	## NO mirror here — see actor_frame_bake_spike.gd's shadow-pass comment.
-	## An earlier version of this line mirrored on X (negative scale.x),
-	## reasoned from an analytic derivation that turned out to have a sign
-	## error: verified by measuring the real baked frames' principal-axis
-	## angle (PCA over the alpha silhouette) at 12 yaws — mirrored gave 46°
-	## RMS error AND flipped the shadow's rotation direction opposite the
-	## object's; no-mirror (just the plain squash below) gives 4.3° RMS,
-	## consistent with PCA noise on the hook-shaped silhouette, not a real
-	## systematic offset. The bake's azimuth-derived up-vector was already
-	## correct on its own — only the runtime mirror was wrong.
-	_shadow.scale = Vector2(shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
-	add_child(_shadow)
+	## Both added BEFORE _sprite so they draw underneath at the same z_index
+	## (Godot resolves same-z siblings in tree order) — sit on the floor,
+	## under the object, unaffected by the bob (see _process()). NO mirror
+	## on either — see actor_frame_bake_spike.gd's shadow-pass comment (an
+	## earlier mirrored version measured 46° RMS angle error and spun
+	## opposite the object; verified via real baked-frame PCA measurement).
+	_shadow_soft = Sprite2D.new()
+	_shadow_soft.texture = _shadow_soft_frames[0]
+	_shadow_soft.centered = true
+	add_child(_shadow_soft)
+
+	_shadow_sharp = Sprite2D.new()
+	_shadow_sharp.texture = _shadow_sharp_frames[0]
+	_shadow_sharp.centered = true
+	add_child(_shadow_sharp)
 
 	_sprite = Sprite2D.new()
 	_sprite.texture = _color_frames[0]
@@ -241,28 +245,40 @@ func _process(delta: float) -> void:
 	var frame_index := int(rotation_deg / (360.0 / CollectibleBakeConfig.FRAME_COUNT)) % CollectibleBakeConfig.FRAME_COUNT
 	_sprite.texture = _color_frames[frame_index]
 	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
-	## Same frame index as the sprite, every frame — the shadow always
-	## matches the object's current rotation, "girando na mesma velocidade"
-	## (Director), using its OWN true top-down bake (see file header).
-	_shadow.texture = _shadow_frames[frame_index]
+	## Same frame index as the sprite, every frame — both shadow layers
+	## always match the object's current rotation, "girando na mesma
+	## velocidade" (Director), using their OWN true top-down bake (see file
+	## header).
+	_shadow_sharp.texture = _shadow_sharp_frames[frame_index]
+	_shadow_soft.texture = _shadow_soft_frames[frame_index]
 
 	_bob_time += delta
 	var bob_phase := sin((_bob_time / BOB_PERIOD_SEC) * TAU)  ## -1 (top) .. +1 (bottom)
 	var bob := bob_phase * BOB_AMPLITUDE_PX
 	position.y = _base_y + bob
-	## Counter the parent's (lifted + bobbing) position in local space so the
-	## shadow's WORLD position stays pinned exactly at the floor regardless
-	## of HOVER_HEIGHT_PX or the current bob — that fixed-vs-floating
-	## contrast is the whole point (Director: "deixar claro onde está
-	## posicionada a arma em relação ao chão").
-	_shadow.position.y = _floor_y - position.y
-	## Slightly wider at the bottom of the bob, slightly smaller at the top —
-	## bob_phase is +1 at the bottom (sin peak = position.y at its max,
-	## furthest down the screen = nearest the floor) and -1 at the top.
-	var shadow_mult := lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, (bob_phase + 1.0) * 0.5)
+	## Counter the parent's (lifted + bobbing) position in local space so
+	## both shadows' WORLD position stays pinned exactly at the floor
+	## regardless of HOVER_HEIGHT_PX or the current bob — that
+	## fixed-vs-floating contrast is the whole point (Director: "deixar
+	## claro onde está posicionada a arma em relação ao chão").
+	_shadow_sharp.position.y = _floor_y - position.y
+	_shadow_soft.position.y = _floor_y - position.y
+
+	## bottom_frac: 1.0 at the bottom of the bob (bob_phase=+1, nearest the
+	## floor), 0.0 at the top (bob_phase=-1). Both shadow layers share the
+	## same size (small at bottom, big at top); each layer's OWN opacity
+	## peaks at its end of the bob and fades to 0 at the other, so only one
+	## reads as dominant at a time with a smooth crossfade between —
+	## Director's corrected spec: small+sharp+80% at the bottom, big+soft+
+	## 50% at the top.
+	var bottom_frac := (bob_phase + 1.0) * 0.5
+	var shadow_mult := lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, bottom_frac)
 	var shadow_base_scale := _sprite_scale * _shadow_scale_factor * shadow_mult
-	## NO mirror — see the matching comment in _ready().
-	_shadow.scale = Vector2(shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
+	var shadow_scale := Vector2(shadow_base_scale, shadow_base_scale * CollectibleBakeConfig.SHADOW_SQUASH_Y)
+	_shadow_sharp.scale = shadow_scale
+	_shadow_soft.scale = shadow_scale
+	_shadow_sharp.modulate = Color(0.0, 0.0, 0.0, lerpf(0.0, SHADOW_ALPHA_SHARP_AT_BOTTOM, bottom_frac))
+	_shadow_soft.modulate = Color(0.0, 0.0, 0.0, lerpf(SHADOW_ALPHA_SOFT_AT_TOP, 0.0, bottom_frac))
 
 	_update_light_uniform()
 

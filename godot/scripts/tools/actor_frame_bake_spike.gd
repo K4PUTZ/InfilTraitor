@@ -86,17 +86,27 @@ func _init() -> void:
 func _render_frame(index: int, object_yaw_deg: float) -> void:
 	var color_img := await _render_pass(object_yaw_deg, PassType.COLOR)
 	var normal_img := await _render_pass(object_yaw_deg, PassType.NORMAL)
-	var shadow_img := await _render_pass(object_yaw_deg, PassType.SHADOW)
-	_dilate_alpha(shadow_img, CollectibleBakeConfig.SHADOW_DILATE_ITERATIONS)
-	_blur_alpha(shadow_img, CollectibleBakeConfig.SHADOW_BLUR_ITERATIONS)
+	## ONE raw top-down render, post-processed TWICE (sharp/soft) — not two
+	## separate 3D renders. FloatingCollectible crossfades between these by
+	## the object's current bob height (Director, 2026-07-28): small+sharp
+	## near the floor, big+diffuse at the top of the bob.
+	var shadow_raw := await _render_pass(object_yaw_deg, PassType.SHADOW)
+	var shadow_sharp_img: Image = shadow_raw.duplicate() as Image
+	_dilate_alpha(shadow_sharp_img, CollectibleBakeConfig.SHADOW_SHARP_DILATE_ITERATIONS)
+	_blur_alpha(shadow_sharp_img, CollectibleBakeConfig.SHADOW_SHARP_BLUR_ITERATIONS)
+	var shadow_soft_img: Image = shadow_raw.duplicate() as Image
+	_dilate_alpha(shadow_soft_img, CollectibleBakeConfig.SHADOW_SOFT_DILATE_ITERATIONS)
+	_blur_alpha(shadow_soft_img, CollectibleBakeConfig.SHADOW_SOFT_BLUR_ITERATIONS)
 
 	var color_path := "%sframe_%02d_color.png" % [OUT_DIR, index]
 	var normal_path := "%sframe_%02d_normal.png" % [OUT_DIR, index]
-	var shadow_path := "%sframe_%02d_shadow.png" % [OUT_DIR, index]
+	var shadow_sharp_path := "%sframe_%02d_shadow_sharp.png" % [OUT_DIR, index]
+	var shadow_soft_path := "%sframe_%02d_shadow_soft.png" % [OUT_DIR, index]
 	color_img.save_png(color_path)
 	normal_img.save_png(normal_path)
-	shadow_img.save_png(shadow_path)
-	print("  frame %2d (yaw=%.1f deg) -> %s / %s / %s" % [index, object_yaw_deg, color_path.get_file(), normal_path.get_file(), shadow_path.get_file()])
+	shadow_sharp_img.save_png(shadow_sharp_path)
+	shadow_soft_img.save_png(shadow_soft_path)
+	print("  frame %2d (yaw=%.1f deg) -> %s / %s / %s / %s" % [index, object_yaw_deg, color_path.get_file(), normal_path.get_file(), shadow_sharp_path.get_file(), shadow_soft_path.get_file()])
 
 
 func _render_pass(object_yaw_deg: float, pass_type: PassType) -> Image:

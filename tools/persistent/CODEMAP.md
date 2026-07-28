@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 31686 lines total** (under `godot/scripts/`)
+**157 scripts · 31722 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,11 +868,11 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 333 lines
+`class_name FloatingCollectible` · extends `Node2D` · 349 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned same day after the first attempt shed reused the oblique COLOR frame, squashed on Y — that shears diagonal silhouettes and visibly rotates their apparent angle away from the real object's angle). Uses a dedicated frame_%02d_shadow.png per frame instead: a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob, and scaled slightly larger when the object is at the bottom of its bob and slightly smaller at the top — "acentuando a sensação de distância entre o objeto e o chão." A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
+> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned twice same day). Uses two dedicated frame_%02d_shadow_{sharp,soft}.png per frame instead of the oblique COLOR frame reused-and-squashed (that shears diagonal silhouettes and rotates their apparent angle) — a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob. Two Sprite2D layers crossfade by the object's CURRENT bob height (Director's corrected spec, replacing an earlier "wider at bottom" misread): near the floor (bottom of the bob) the shadow is small and SHARP at 80% opacity; at the top of the bob it's bigger and SOFT/diffuse at 50% opacity — real depth needs size AND focus to change together, not size alone. A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
 
 **Constants / tuning**
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
@@ -1325,7 +1325,7 @@ extends `Node2D` · 43 lines
 
 ### `collectible_bake_config.gd`
 
-`class_name CollectibleBakeConfig` · 53 lines
+`class_name CollectibleBakeConfig` · 63 lines
 
 `godot/scripts/systems/collectible_bake_config.gd`
 
@@ -2023,7 +2023,7 @@ extends `Node` · 54 lines
 
 ### `actor_frame_bake_spike.gd`
 
-extends `SceneTree` · 277 lines
+extends `SceneTree` · 287 lines
 
 `godot/scripts/tools/actor_frame_bake_spike.gd`
 

@@ -46,8 +46,18 @@ const SHADOW_ELEVATION_DEG := 90.0
 ## rather than an arbitrary squash factor.
 const SHADOW_SQUASH_Y := 0.5
 ## Bake-time softening — cheaper to do once per frame at bake time than every
-## frame at runtime. Dilate widens the silhouette ("mais gordinha," Director);
-## blur softens the edge ("difusa"). Iteration counts, not literal pixel
-## radii — see actor_frame_bake_spike.gd's _dilate_alpha()/_blur_alpha().
-const SHADOW_DILATE_ITERATIONS := 3
-const SHADOW_BLUR_ITERATIONS := 4
+## frame at runtime. Dilate widens the silhouette; blur softens the edge.
+## Iteration counts, not literal pixel radii — see actor_frame_bake_spike.gd's
+## _dilate_alpha()/_blur_alpha().
+##
+## TWO variants per frame (Director, 2026-07-28, correcting an earlier
+## misread of the same request): the shadow crossfades between a small,
+## SHARP/defined look at the bottom of the object's bob (close to the floor)
+## and a bigger, SOFT/diffuse look at the top (far from the floor) — a real
+## depth cue needs both size AND focus to change, not size alone. Baking two
+## post-processed copies from the SAME raw top-down render (not re-rendering
+## the 3D scene twice) keeps this cheap.
+const SHADOW_SHARP_DILATE_ITERATIONS := 0
+const SHADOW_SHARP_BLUR_ITERATIONS := 1
+const SHADOW_SOFT_DILATE_ITERATIONS := 3
+const SHADOW_SOFT_BLUR_ITERATIONS := 4

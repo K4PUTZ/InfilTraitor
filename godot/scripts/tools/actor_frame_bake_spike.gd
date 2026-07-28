@@ -1,54 +1,42 @@
-## ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake test.
+## ACTOR_MASTER_PLAN D17/D21/D14 — flat-3D + normal-map bake TEMPLATE for a
+## FloatingCollectible. Renders N rotation frames of an imported mesh (D12's
+## path, proven by shotgun_preview_spike.gd) from the SAME fixed isometric
+## camera the rest of the game uses — the OBJECT rotates around its own
+## vertical axis between frames, the camera never moves, matching how a
+## spinning collectible would actually be seen by the game's one fixed view.
+## Each frame gets TWO renders: a flat, unlit color pass (today's D13-style
+## ambient-only look, intentionally not baking any directional light in) and
+## a normal-map pass (view-space surface normal encoded as RGB, the standard
+## normal-bake technique) — the pair a runtime CanvasItem shader needs to
+## relight the flat sprite per-pixel against whatever the world's real light
+## data says for that GU, without any voxel geometry at runtime.
 ##
-## Renders N rotation frames of an imported mesh (D12's path, proven by
-## shotgun_preview_spike.gd) from the SAME fixed isometric camera the rest of
-## the game uses — the OBJECT rotates around its own vertical axis between
-## frames, the camera never moves, matching how a spinning collectible would
-## actually be seen by the game's one fixed view. Each frame gets TWO
-## renders: a flat, unlit color pass (today's D13-style ambient-only look,
-## intentionally not baking any directional light in) and a normal-map pass
-## (view-space surface normal encoded as RGB, the standard normal-bake
-## technique) — the pair a runtime CanvasItem shader needs to relight the
-## flat sprite per-pixel against whatever the world's real light data says
-## for that GU, without any voxel geometry at runtime.
-##
-## Frame count/rate (Director, 2026-07-27): originally 24 frames (15° steps)
-## at 24fps playback = exactly one full rotation per second — a round number,
-## and consistent with the frame rate future character pose animation is
-## expected to use, rather than assuming 60 just because it was the first
-## number discussed (D14).
-##
-## Re-tuned twice more, Director 2026-07-28 — a baked flipbook's perceived
-## smoothness is its FRAME-SWAP RATE (FRAME_COUNT / rotation-period-in-sec),
-## not frame count or speed in isolation:
-##   1st bump: 24 -> 72 frames (5° steps) at the still-slow 14deg/s speed —
-##      ~2.8Hz swap rate, still read as discrete jumps ("soquinhos").
-##   2nd bump (this one): 72 -> 120 frames (3° steps) AND speed 14 -> 36deg/s
-##      (floating_collectible.gd/showcase_panel.gd's ROTATION_DEG_PER_SEC/
-##      SPIN_DEG_PER_SEC) = 10s/rotation, 120/10 = 12Hz swap rate — clears
-##      the ~10-12Hz threshold for motion to read as continuous, while
-##      staying a slow, deliberate spin rather than the original 1s/rotation.
-##
-## MESH_SCALE is a first guess, not derived from a formula — "shrink to the
-## environment's scale, no need to change the mesh" (Director) is a visual
-## judgment call, tuned the same iterative way Showcase's camera framing was.
+## STANDARDIZED (Director, 2026-07-28): this was the shotgun's own bake
+## script; frame count, rotation speed, and the fixed bake-camera convention
+## now live in CollectibleBakeConfig (godot/scripts/systems/
+## collectible_bake_config.gd) so every future collectible reuses the same
+## tuned sweet spot instead of re-deriving it — see that file for the
+## frame-swap-rate reasoning. To bake a NEW collectible: copy this file,
+## change MODEL_PATH/OUT_DIR and re-tune the per-object knobs below
+## (MESH_SCALE/VIEWPORT_SIZE/ORTHO_SIZE — always a visual judgment call, same
+## convention MESH_SCALE always has been); never touch the CollectibleBake
+## Config-sourced values.
 ##
 ## Must run WINDOWED (real GPU rasterizer). Run via:
 ##   godot --path . --position 4000,4000 \
 ##     --script res://godot/scripts/tools/actor_frame_bake_spike.gd
 extends SceneTree
 
+const CollectibleBakeConfig = preload("res://godot/scripts/systems/collectible_bake_config.gd")
+
+## --- Per-object knobs: change these when baking a different collectible ---
 const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"
 const OUT_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
-
-const FRAME_COUNT := 120
 const VIEWPORT_SIZE := Vector2i(160, 160)
-const ELEVATION_DEG := 30.0
-const AZIMUTH_DEG := 45.0
-const CAMERA_DISTANCE := 12.0
 const ORTHO_SIZE := 4.0
 ## First-guess world scale for the imported mesh — visually tuned, not derived.
 const MESH_SCALE := 0.5
+## --- End per-object knobs ---
 
 const NORMAL_BAKE_SHADER_CODE := """
 shader_type spatial;
@@ -62,7 +50,7 @@ void fragment() {
 
 func _init() -> void:
 	print("\n" + "=".repeat(78))
-	print("Actor frame bake spike — flat color + normal map, %d frames (%s)" % [FRAME_COUNT, Time.get_date_string_from_system()])
+	print("Actor frame bake spike — flat color + normal map, %d frames (%s)" % [CollectibleBakeConfig.FRAME_COUNT, Time.get_date_string_from_system()])
 	print("=".repeat(78))
 
 	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
@@ -71,11 +59,11 @@ func _init() -> void:
 		quit(1)
 		return
 
-	for i in range(FRAME_COUNT):
-		var angle_deg := (360.0 / FRAME_COUNT) * i
+	for i in range(CollectibleBakeConfig.FRAME_COUNT):
+		var angle_deg := (360.0 / CollectibleBakeConfig.FRAME_COUNT) * i
 		await _render_frame(i, angle_deg)
 
-	print("\n[BAKE] Done — %d frame pairs in %s\n" % [FRAME_COUNT, OUT_DIR])
+	print("\n[BAKE] Done — %d frame pairs in %s\n" % [CollectibleBakeConfig.FRAME_COUNT, OUT_DIR])
 	quit(0)
 
 
@@ -147,11 +135,11 @@ func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = ORTHO_SIZE
-	var elev := deg_to_rad(ELEVATION_DEG)
-	var azim := deg_to_rad(AZIMUTH_DEG)
+	var elev := deg_to_rad(CollectibleBakeConfig.ELEVATION_DEG)
+	var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
 	var dir := Vector3(sin(azim) * cos(elev), sin(elev), cos(azim) * cos(elev))
 	sub.add_child(cam)
-	cam.look_at_from_position(dir * CAMERA_DISTANCE, Vector3.ZERO, Vector3.UP)
+	cam.look_at_from_position(dir * CollectibleBakeConfig.CAMERA_DISTANCE, Vector3.ZERO, Vector3.UP)
 	cam.current = true
 
 	for _i in range(4):

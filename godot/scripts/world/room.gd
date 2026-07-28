@@ -2481,7 +2481,15 @@ func _populate_test_zone_if_playground() -> void:
 		## grenades above — not production placement logic.
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 		_floating_collectible = FloatingCollectibleClass.new()
-		_floating_collectible.setup(self, Vector2i(8, 4))
+		## Bake folder + sprite scale are per-object (FloatingCollectible is
+		## reusable, standardized 2026-07-28) — frame count/rotation speed/
+		## camera convention come from CollectibleBakeConfig instead and stay
+		## identical for every object using this class.
+		_floating_collectible.setup(
+			self, Vector2i(8, 4),
+			"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/",
+			1.15,
+		)
 		add_child(_floating_collectible)
 
 

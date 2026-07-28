@@ -1,12 +1,24 @@
-## ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, first real
-## test of the simplification system (Part 6, still otherwise unspecified).
+## ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the
+## reusable "simplification" display for any object (Part 6, still otherwise
+## unspecified). First proven with the shotgun; STANDARDIZED (Director,
+## 2026-07-28) to take its bake folder and visual scale per-instance via
+## setup(), so every future collectible reuses this same class instead of a
+## per-object copy.
 ##
-## Cycles pre-rendered flat-color + normal-map frame pairs
-## (actor_frame_bake_spike.gd's output) through a per-pixel relighting
-## shader (flat_normal_relight.gdshader) so the sprite shades directionally
-## against the world's real light data — no voxel geometry, no live 3D scene
-## at runtime, matching D16's "simplification" concept exactly. Floats with
-## a gentle vertical sine bob and spins continuously (Director, 2026-07-27).
+## Cycles pre-rendered flat-color + normal-map frame pairs (produced by a
+## bake tool following actor_frame_bake_spike.gd's template) through a
+## per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite
+## shades directionally against the world's real light data — no voxel
+## geometry, no live 3D scene at runtime, matching D16's "simplification"
+## concept exactly. Floats with a gentle vertical sine bob and spins
+## continuously (Director, 2026-07-27). A static ground ContactShadow marks
+## its floor position independent of the bob (Director, 2026-07-28).
+##
+## Frame count and rotation speed come from CollectibleBakeConfig
+## (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that
+## produced frames_dir MUST have used the exact same FRAME_COUNT/camera
+## convention, or the frame index math and the light-direction math below
+## both go wrong silently.
 ##
 ## Light-direction simplification, stated plainly rather than hidden: the
 ## game has no real 3D world space — gameplay is a 2D grid + an isometric
@@ -29,41 +41,21 @@
 class_name FloatingCollectible
 extends Node2D
 
-const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/"
-## Must match actor_frame_bake_spike.gd's own FRAME_COUNT exactly.
-##
-## SWEET-SPOT TUNING (Director, 2026-07-28): a baked flipbook reads as
-## smooth motion only when its frame-swap rate (FRAME_COUNT / rotation
-## period) clears roughly 10-12Hz — below that the eye perceives discrete
-## jumps no matter how many degrees each step covers. 24 frames @ 14deg/s
-## (26s/rotation) swapped at ~2.8Hz; bumping FRAME_COUNT alone to 72 without
-## also raising speed only reached ~2.8Hz too (frame count and speed both
-## matter — see ROTATION_DEG_PER_SEC below). 120 frames @ 36deg/s (10s/
-## rotation) swaps at 120/10 = 12Hz, clearing the threshold while staying a
-## slow, deliberate spin rather than the original blazing 1s/rotation.
-const FRAME_COUNT := 120
-const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
+const CollectibleBakeConfig = preload("res://godot/scripts/systems/collectible_bake_config.gd")
+const ContactShadowClass = preload("res://godot/scripts/overlays/contact_shadow.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
-
-## Matches showcase_panel.gd's SPIN_DEG_PER_SEC exactly (Director,
-## 2026-07-27: the collectible's spin read far too fast at the bake's own
-## 24fps frame-advance rate — 360 deg/sec, a full turn per second — next to
-## the Showcase's slow, deliberate spin; then re-tuned 2026-07-28, see
-## FRAME_COUNT above — the frame-swap-rate math is what actually determines
-## how smooth this reads, not degrees/sec alone).
-const ROTATION_DEG_PER_SEC := 36.0
-
-## A modest bump over the bake's native 160x160 px (Director, 2026-07-27) —
-## the collectible read a little small next to the rest of the test zone.
-const SPRITE_SCALE := 1.15
+const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 
 const BOB_AMPLITUDE_PX := 6.0
 const BOB_PERIOD_SEC := 2.0
 
-## Fixed bake-camera convention (actor_frame_bake_spike.gd) — must match
-## exactly, since the normal maps were encoded in this camera's view space.
-const ELEVATION_DEG := 30.0
-const AZIMUTH_DEG := 45.0
+## First-guess ground-shadow sizing, same visual-judgment-call convention as
+## SPRITE_SCALE — tuned against the shotgun, expressed as a fraction of the
+## displayed sprite so other collectibles inherit a reasonable default
+## without retuning (setup() can still override per object if needed).
+const SHADOW_RADIUS_FRACTION := 0.32
+const SHADOW_SQUASH_Y := 0.35
+const SHADOW_ALPHA := 0.4
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
@@ -72,7 +64,11 @@ var gu_cell: Vector2i = Vector2i.ZERO
 ## TestZoneController's grenade registry.
 var base_cell: Vector2i = Vector2i.ZERO
 
+var _frames_dir: String = ""
+var _sprite_scale: float = 1.0
+
 var _sprite: Sprite2D
+var _shadow: ContactShadowClass
 var _material: ShaderMaterial
 var _color_frames: Array[Texture2D] = []
 var _normal_frames: Array[Texture2D] = []
@@ -80,16 +76,17 @@ var _frame_time := 0.0
 var _bob_time := 0.0
 var _base_y := 0.0
 
-## Fixed camera basis (world-space), derived once from ELEVATION_DEG/
-## AZIMUTH_DEG — see file header for the exact derivation this mirrors.
+## Fixed camera basis (world-space), derived once from
+## CollectibleBakeConfig.ELEVATION_DEG/AZIMUTH_DEG — see file header for the
+## exact derivation this mirrors.
 var _cam_right := Vector3.ZERO
 var _cam_up := Vector3.ZERO
 var _cam_toward_viewer := Vector3.ZERO
 
 
 func _init() -> void:
-	var elev := deg_to_rad(ELEVATION_DEG)
-	var azim := deg_to_rad(AZIMUTH_DEG)
+	var elev := deg_to_rad(CollectibleBakeConfig.ELEVATION_DEG)
+	var azim := deg_to_rad(CollectibleBakeConfig.AZIMUTH_DEG)
 	var to_camera := Vector3(sin(azim) * cos(elev), sin(elev), cos(azim) * cos(elev)).normalized()
 	var forward := -to_camera  ## direction the camera looks, into the screen
 	_cam_right = forward.cross(Vector3.UP).normalized()
@@ -97,9 +94,15 @@ func _init() -> void:
 	_cam_toward_viewer = to_camera
 
 
-func setup(p_room: Node, p_gu_cell: Vector2i) -> void:
+## frames_dir: folder containing frame_%02d_color.png / frame_%02d_normal.png,
+## CollectibleBakeConfig.FRAME_COUNT of each, produced by a bake tool
+## following actor_frame_bake_spike.gd's template. sprite_scale: per-object
+## visual judgment call (same convention as the bake's own MESH_SCALE).
+func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_scale: float) -> void:
 	room = p_room
 	gu_cell = p_gu_cell
+	_frames_dir = p_frames_dir
+	_sprite_scale = p_sprite_scale
 	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
 	_apply_z_index()
 
@@ -133,16 +136,24 @@ func _apply_z_index() -> void:
 
 
 func _ready() -> void:
-	for i in range(FRAME_COUNT):
-		var color_path := "%sframe_%02d_color.png" % [FRAMES_DIR, i]
-		var normal_path := "%sframe_%02d_normal.png" % [FRAMES_DIR, i]
+	for i in range(CollectibleBakeConfig.FRAME_COUNT):
+		var color_path := "%sframe_%02d_color.png" % [_frames_dir, i]
+		var normal_path := "%sframe_%02d_normal.png" % [_frames_dir, i]
 		_color_frames.append(_load_texture_raw(color_path))
 		_normal_frames.append(_load_texture_raw(normal_path))
+
+	## Added BEFORE _sprite so it draws underneath at the same z_index
+	## (Godot resolves same-z siblings in tree order) — sits on the floor,
+	## under the object, unaffected by the bob (see _process()).
+	_shadow = ContactShadowClass.new()
+	var shadow_texture_width: float = _color_frames[0].get_width() * _sprite_scale
+	_shadow.configure(shadow_texture_width * SHADOW_RADIUS_FRACTION, SHADOW_SQUASH_Y, SHADOW_ALPHA)
+	add_child(_shadow)
 
 	_sprite = Sprite2D.new()
 	_sprite.texture = _color_frames[0]
 	_sprite.centered = true
-	_sprite.scale = Vector2.ONE * SPRITE_SCALE
+	_sprite.scale = Vector2.ONE * _sprite_scale
 
 	var shader := load(SHADER_PATH)
 	_material = ShaderMaterial.new()
@@ -160,14 +171,19 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_frame_time += delta
-	var rotation_deg := fmod(_frame_time * ROTATION_DEG_PER_SEC, 360.0)
-	var frame_index := int(rotation_deg / (360.0 / FRAME_COUNT)) % FRAME_COUNT
+	var rotation_deg := fmod(_frame_time * CollectibleBakeConfig.ROTATION_DEG_PER_SEC, 360.0)
+	var frame_index := int(rotation_deg / (360.0 / CollectibleBakeConfig.FRAME_COUNT)) % CollectibleBakeConfig.FRAME_COUNT
 	_sprite.texture = _color_frames[frame_index]
 	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
 
 	_bob_time += delta
 	var bob := sin((_bob_time / BOB_PERIOD_SEC) * TAU) * BOB_AMPLITUDE_PX
 	position.y = _base_y + bob
+	## Counter the parent's bob in local space so the shadow's WORLD position
+	## stays pinned to the floor regardless of how high the object currently
+	## floats — that fixed-vs-floating contrast is the whole point (Director:
+	## "deixar claro onde está posicionada a arma em relação ao chão").
+	_shadow.position.y = -bob
 
 	_update_light_uniform()
 

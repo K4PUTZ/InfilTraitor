@@ -79,16 +79,39 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:
 	material = _material
 
 	_apply_direction(room._active_perspective)
+	_apply_z_index()
 	set_process(true)
 
 
 ## Called by TestZoneController.reposition_for_perspective() alongside the
 ## sprite's own position update — swaps to the frame baked for the new
 ## direction. base_cell never changes (perspective-independent anchor); only
-## gu_cell (view-space) does.
+## gu_cell (view-space) does. Re-applies z_index too: _set_perspective()
+## rebuilds every voxel TileMapLayer from scratch (room_builder.gd's
+## build_from_layout), so a z_index cached before rotation could reference a
+## layer that no longer matches the new view's structure.
 func update_cell(p_gu_cell: Vector2i) -> void:
 	gu_cell = p_gu_cell
 	_apply_direction(room._active_perspective)
+	_apply_z_index()
+
+
+## D22-FOLLOWUP (2026-07-28, Director-reported): this prop sits at floor
+## height (level 0) — it must sort like level-0 voxel geometry does, not
+## "always above everything" (OCC-03's agent-only policy, wrongly copied here
+## originally). Using the SAME z_index the ground layer itself uses lets any
+## level>=1 wall/roof column that visually overlaps it on screen correctly
+## draw on top, exactly like real voxel geometry would, instead of the prop
+## punching through every wall and roof in the map after a perspective
+## rotation moved it under one. No occlusion-ghosting involved on purpose —
+## Director's call: these props should be hidden by geometry like anything
+## else, not exempted from it.
+func _apply_z_index() -> void:
+	if room == null or room._voxel_renderer == null:
+		return
+	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
+	if ground_layer != null:
+		z_index = ground_layer.z_index
 
 
 func _apply_direction(direction: String) -> void:

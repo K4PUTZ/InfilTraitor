@@ -62,7 +62,6 @@ func add_grenade(gu_cell: Vector2i) -> void:
 	var sprite := GrenadePropClass.new()
 	sprite.setup(room, gu_cell, base_cell)
 	sprite.position = room.agent._cell_to_world(gu_cell)
-	sprite.z_index = room._voxel_renderer.get_max_voxel_z_index() + 1
 	room.add_child(sprite)
 	_grenades.append({
 		"gu_cell": gu_cell,

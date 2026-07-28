@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**156 scripts · 31385 lines total** (under `godot/scripts/`)
+**156 scripts · 31405 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 210 lines
+`class_name FloatingCollectible` · extends `Node2D` · 227 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -884,7 +884,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 159 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 182 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -3122,7 +3122,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 317 lines
+`class_name TestZoneController` · 316 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3354,7 +3354,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2972 lines
+extends `Node2D` · 2953 lines
 
 `godot/scripts/world/room.gd`
 

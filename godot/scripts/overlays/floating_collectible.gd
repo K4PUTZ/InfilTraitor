@@ -90,6 +90,7 @@ func setup(p_room: Node, p_gu_cell: Vector2i) -> void:
 	room = p_room
 	gu_cell = p_gu_cell
 	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
+	_apply_z_index()
 
 
 ## Mirrors TestZoneController.reposition_for_perspective(): called from
@@ -102,6 +103,22 @@ func reposition_for_perspective(direction: String) -> void:
 	if room != null and room.agent != null:
 		position = room.agent._cell_to_world(gu_cell)
 		_base_y = position.y
+	_apply_z_index()
+
+
+## D22-FOLLOWUP (2026-07-28, Director-reported): floats at floor height —
+## must sort like level-0 voxel geometry (any level>=1 wall/roof column
+## draws over it wherever they visually overlap on screen), not "always
+## above everything" (OCC-03's agent-only policy, wrongly copied here
+## originally, same fix as GrenadeProp._apply_z_index()). _set_perspective()
+## rebuilds every voxel TileMapLayer from scratch, so this must be
+## re-applied on every rotation, not just once at setup.
+func _apply_z_index() -> void:
+	if room == null or room._voxel_renderer == null:
+		return
+	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
+	if ground_layer != null:
+		z_index = ground_layer.z_index
 
 
 func _ready() -> void:

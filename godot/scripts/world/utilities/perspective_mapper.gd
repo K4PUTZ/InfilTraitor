@@ -205,6 +205,22 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 		rotated_blocks.append(out)
 	mapped["solid_block_instances"] = rotated_blocks
 
+	## floor_zone_instances: identical {gu_cell, size} rectangle shape as
+	## solid_block_instances above — same ROOF-BAKE-02a lesson applies (must
+	## rotate explicitly, duplicate(true) alone would leave it unrotated and
+	## the flood-filled zone would land on the wrong GUs in E/S/W views).
+	var rotated_floor_zones: Array[Dictionary] = []
+	for zone in layout.get("floor_zone_instances", []):
+		var out := (zone as Dictionary).duplicate(true)
+		var base_gu: Vector2i = out.get("gu_cell", Vector2i.ZERO)
+		var zone_size: Vector2i = out.get("size", Vector2i.ONE)
+		var c0 := cell_from_base(base_gu, direction, base_size)
+		var c1 := cell_from_base(base_gu + zone_size - Vector2i.ONE, direction, base_size)
+		out["gu_cell"] = Vector2i(mini(c0.x, c1.x), mini(c0.y, c1.y))
+		out["size"] = rotated_size(zone_size, direction)
+		rotated_floor_zones.append(out)
+	mapped["floor_zone_instances"] = rotated_floor_zones
+
 	## Props rotate as points: every shipped PropDef has footprint_gus ==
 	## [(0, 0)] (1×1), so gu_cell alone places them correctly. A future
 	## multi-GU prop needs footprint-aware rotation here (the offsets live in

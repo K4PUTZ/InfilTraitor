@@ -90,6 +90,48 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## other owns.
 	room._voxel_renderer.clear()
 
+	## Floor-zone bake: author-declared material rects (layout.floor_zone_instances,
+	## MapCompiler-produced, always present even if empty) expanded to a per-GU
+	## dict. Last rect in the spec list wins on overlap. Computed unconditionally,
+	## same as the floor loop below it feeds — floor zones don't depend on the
+	## room having any edges/roof.
+	var floor_zone_by_gu: Dictionary = {}
+	for zone: Dictionary in layout.get("floor_zone_instances", []):
+		var zone_gu_base: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
+		var zone_size: Vector2i = zone.get("size", Vector2i.ONE)
+		var zone_material: String = String(zone.get("material", ""))
+		if zone_material == "":
+			continue
+		for zx in range(zone_size.x):
+			for zy in range(zone_size.y):
+				floor_zone_by_gu[zone_gu_base + Vector2i(zx, zy)] = zone_material
+
+	## Same connected-component flood-fill as the roof texture_anchor pass
+	## below, substituting "same declared zone material" for "both roofed" as
+	## the adjacency test (4-adjacency). Two disconnected regions of the same
+	## material still get independent anchors, matching roof's behavior.
+	var floor_anchor_by_gu: Dictionary = {}
+	for start_gu: Vector2i in floor_zone_by_gu:
+		if floor_anchor_by_gu.has(start_gu):
+			continue
+		var f_component: Array[Vector2i] = []
+		var f_stack: Array[Vector2i] = [start_gu]
+		var f_seen: Dictionary = {start_gu: true}
+		var f_min_corner: Vector2i = start_gu
+		var f_zone_material: String = floor_zone_by_gu[start_gu]
+		while not f_stack.is_empty():
+			var gu: Vector2i = f_stack.pop_back()
+			f_component.append(gu)
+			f_min_corner = Vector2i(mini(f_min_corner.x, gu.x), mini(f_min_corner.y, gu.y))
+			for delta: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+				var neighbour := gu + delta
+				if floor_zone_by_gu.get(neighbour, "") == f_zone_material and not f_seen.has(neighbour):
+					f_seen[neighbour] = true
+					f_stack.append(neighbour)
+		var f_anchor: Vector2i = GeometryCoords.gu_to_voxel_origin(f_min_corner)
+		for gu in f_component:
+			floor_anchor_by_gu[gu] = f_anchor
+
 	## DESTRUCTION D13/D17/D18: only the top destructible level (storey −1) is
 	## built at map load, for every GU the legacy floor loop above also covers.
 	## The 7 fixed levels beneath it (D13) stay unbuilt until something actually
@@ -98,12 +140,51 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## two floors occupy different vertical space (storey −1 vs. the legacy
 	## coarse plane) and are not in conflict, so there is no reason for their
 	## coverage to differ.
+	## NOTE: generation only here — rendering is deferred (see the render_slab()
+	## loop after the edges-conditional block below). A zoned floor Slab's
+	## flat_baked lookup needs _bake_textures() to have already run; rendering
+	## immediately here (as this loop used to, back when floor never baked
+	## anything) would query the atlas before this call's own bake pass built
+	## it, always MISS, and silently fall back to MATERIALS[0] ("concrete") —
+	## the same lesson ROOF-BAKE-01 already learned for roof_slabs, which is
+	## why those are generated here but rendered only after render(), below.
 	const FLOOR_TOP_LEVEL := -1
+	var floor_slabs_by_gu: Dictionary = {}
 	for fx in range(0, _room_size.x):
 		for fy in range(0, _room_size.y):
 			var floor_gu := Vector2i(fx, fy)
-			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, "earth", room._slab_registry)
-			room._voxel_renderer.render_slab(floor_slab)
+			var floor_material: String = floor_zone_by_gu.get(floor_gu, "earth")
+			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry)
+			if floor_material != "earth":
+				floor_slab.texture_anchor = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
+			floor_slabs_by_gu[floor_gu] = floor_slab
+
+	## Floor-zone bake spec, same shape/derivation as roof_specs below (real
+	## Slab voxels, structure-local offsets). Built unconditionally so it's
+	## ready regardless of whether the room has edges; only actually baked by
+	## _bake_textures() below when it does — an edge-less room has no
+	## edge_registry/junction infrastructure to bake against, so a floor zone
+	## declared in an edge-less room falls back to plain earth rendering
+	## (v1 scoping; matches every other roof/wall baked surface, which also
+	## requires edges to exist).
+	var floor_specs: Array = []
+	var floor_cells_by_combo: Dictionary = {}
+	for floor_gu in floor_slabs_by_gu:
+		var floor_slab: Slab = floor_slabs_by_gu[floor_gu]
+		if floor_slab.material == "earth":
+			continue
+		var floor_combo_key := "%s|%s" % [floor_slab.material, BakePolicyClass.facade_for_material(floor_slab.material)]
+		if not floor_cells_by_combo.has(floor_combo_key):
+			floor_cells_by_combo[floor_combo_key] = {}
+		for voxel in floor_slab.voxels:
+			floor_cells_by_combo[floor_combo_key][voxel.grid_pos - floor_slab.texture_anchor] = true
+	for floor_combo_key in floor_cells_by_combo:
+		var floor_parts: PackedStringArray = String(floor_combo_key).split("|")
+		floor_specs.append({
+			"material_id": floor_parts[0],
+			"facade_id": floor_parts[1],
+			"cells": floor_cells_by_combo[floor_combo_key].keys(),
+		})
 
 	## D18 amendment (Director, 2026-07-16), dev-only: the map's outer edge
 	## shows the floor's lateral cut — lazy reveal alone leaves that edge only
@@ -273,9 +354,14 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			})
 
 		## Bake textures (S2: Wire baking into room_builder)
+		## Floor-zone specs merge into the same array roof uses — namespaced
+		## material/facade ids (ground_* vs. wall ids) prevent lookup-key
+		## collisions, and the VL-PERF-BAKE cache key below already loops this
+		## combined array, so cache invalidation on floor-zone edits is
+		## automatic (see bake_compositor.gd Part C).
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
 		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, edge_registry, junction_columns, roof_specs)
+			_bake_textures(extraction, edge_registry, junction_columns, roof_specs + floor_specs)
 
 		if _diag_on:
 			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
@@ -306,6 +392,16 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			room._voxel_renderer.render_slab_solid(roof_slab)
 	elif _diag_on:
 		print("[BAKE-DIAG] build_from_layout: extraction.edges EMPTY — geometry path skipped entirely, no voxel walls will render this call")
+
+	## Floor rendering, deferred to here (generation happened earlier, before
+	## the edges-conditional) so a zoned Slab's flat_baked lookup runs AFTER
+	## _bake_textures() has had the chance to compose its page — see the
+	## generation loop's own comment. Runs unconditionally: an edge-less room
+	## never reaches _bake_textures() at all, so any zoned Slab there just
+	## MISSes the (nonexistent) lookup and _set_voxel_cell falls back to
+	## generic — matching the documented v1 edge-less-room limitation.
+	for floor_gu in floor_slabs_by_gu:
+		room._voxel_renderer.render_slab(floor_slabs_by_gu[floor_gu])
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also

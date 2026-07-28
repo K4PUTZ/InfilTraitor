@@ -1084,6 +1084,30 @@ func render_slab(slab: Slab) -> void:
 	else:
 		_ensure_voxel_layers(slab.level + 1)
 
+	# Floor-zone bake: a Slab whose material isn't the "earth" sentinel was
+	# assigned a zone material by room_builder.gd's flood-fill (texture_anchor
+	# set alongside it). Decided ONCE per Slab, not per voxel — every voxel in
+	# a floor Slab shares one gu_cell (SlabGenerator generates one Slab per GU).
+	#
+	# Gated on _bake_config.enabled here (not just left to _set_voxel_cell's
+	# own gate) because ground_* materials are deliberately absent from
+	# MATERIALS: unlike render_slab_solid()'s CEILING materials (always a
+	# real wall material — concrete/metal/stone/wood — so falling back to the
+	# unbaked version of the SAME material is a harmless miss), a ground_*
+	# name falling through to _set_voxel_cell's MATERIALS.find() would resolve
+	# to -1 and silently default to MATERIALS[0] ("concrete") — a flat gray
+	# floor instead of the expected earth look. With bake off, zoned floor
+	# always falls back to EarthVariantSelector here instead.
+	if _bake_config == null:
+		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	var is_zoned: bool = slab.material != "earth" and _bake_config != null and _bake_config.enabled
+
+	if is_zoned:
+		for voxel in slab.voxels:
+			_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
+					null, voxel.grid_pos - slab.texture_anchor, 0, true)
+		return
+
 	for voxel in slab.voxels:
 		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
 		var material_name: String = "earth_%d" % variant_index

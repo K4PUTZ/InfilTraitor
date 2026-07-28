@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**153 scripts · 30203 lines total** (under `godot/scripts/`)
+**153 scripts · 30435 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -550,7 +550,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 93 lines
+`class_name Slab` · 95 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -671,7 +671,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1192 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1216 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1219,7 +1219,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1116 lines
+`class_name BakeCompositor` · 1133 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1244,7 +1244,7 @@ extends `Node2D` · 43 lines
 - `PAGE_W` = `4096`
 - `PAGE_TILE_COLS` = `128`
 - `PAGE_H` = `576`
-- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
+- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood", "ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]`
 - `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
 
 ---
@@ -1261,14 +1261,14 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 27 lines
+`class_name BakePolicy` · 36 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
 > BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Facade assignment (material ID → facade ID) - Variant seeding (edge + material → [0, 4) variant)
 
 **Constants / tuning**
-- `DEFAULT_FACADES` = `{ "concrete": "facade_concrete", "stone": "facade_stone", "wood": "facade_wood", "metal": "facade_metal", }`
+- `DEFAULT_FACADES` = `{ "concrete": "facade_concrete", "stone": "facade_stone", "wood": "facade_wood", "metal": "facade_metal", ## Floor-zone bake (full-color, see MaterialRegistry.full_color): facade_id ## == material_id for these, since each ground material owns exactly one ## photographic source (no shared/reused facade across materials, unlike ## walls, where several materials could reuse a facade). "ground_grass": "ground_grass", "ground_concrete": "ground_concrete", "ground_dirt": "ground_dirt", "ground_gravel": "ground_gravel", "ground_sand": "ground_sand", }`
 
 ---
 
@@ -1697,7 +1697,7 @@ extends `Node2D` · 43 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 66 lines
+`class_name MaterialRegistry` · 84 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -1718,6 +1718,7 @@ extends `Node2D` · 43 lines
 - `func list_materials() -> Array:`
 - `func count() -> int:`
 - `func register_defaults() -> void:`
+- `func register_ground_defaults() -> void:`
 
 ---
 
@@ -1867,7 +1868,7 @@ extends `Node` · 122 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 168 lines
+`class_name TextureResolver` · 177 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -2942,7 +2943,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 870 lines
+`class_name RoomBuilder` · 966 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -3176,7 +3177,7 @@ extends `Node2D` · 34 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 146 lines
+`class_name FileMapSource` · extends `RefCounted` · 151 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -3210,7 +3211,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 338 lines
+`class_name MapCompiler` · extends `RefCounted` · 356 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -3271,7 +3272,7 @@ extends `Node2D` · 34 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 141 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 159 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -3421,7 +3422,7 @@ extends `Node2D` · 2952 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 222 lines
+`class_name PerspectiveMapper` · 238 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

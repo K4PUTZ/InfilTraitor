@@ -153,6 +153,23 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 					wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
 				blocked_map[cell] = true
 
+	## --- floor-zone bake regions (author-declared ground material rects) -----
+	## Mirrors solid_block_instances' shape exactly (gu_cell + size + one
+	## property), kept as a rectangle list — not pre-expanded per-GU — so
+	## perspective_mapper.gd can rotate it with the same two-corner math
+	## blocks already use. room_builder.gd expands this into a per-GU dict
+	## and flood-fills same-material regions into anchored components.
+	var floor_zone_instances: Array[Dictionary] = []
+	for zone: Dictionary in spec.get("floor_zones", []):
+		var zone_gu: Vector2i = Vector2i(zone.get("gu", Vector2i.ZERO))
+		var zone_size_raw = zone.get("size", [1, 1])
+		var zone_size: Vector2i = zone_size_raw if zone_size_raw is Vector2i else Vector2i(int(zone_size_raw[0]), int(zone_size_raw[1]))
+		floor_zone_instances.append({
+			"gu_cell": zone_gu + offset,
+			"size": zone_size,
+			"material": String(zone.get("material", "")),
+		})
+
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
 	## wall storeys. Defaults to DEFAULT_CEILING_FLOORS for tall scene composition.
 	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", DEFAULT_CEILING_FLOORS)))
@@ -238,6 +255,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"structure_tiles":  structure_tiles,
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
+		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       enemy_defs,

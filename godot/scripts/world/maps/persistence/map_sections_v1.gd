@@ -7,6 +7,7 @@ static func register_all(registry) -> void:
 	register_board(registry)
 	register_walls(registry)
 	register_blocks(registry)
+	register_floor_zones(registry)
 	register_props(registry)
 	register_actors(registry)
 	register_legacy_compiler(registry)
@@ -88,6 +89,23 @@ static func register_blocks(registry) -> void:
 					item["size"] = [1, 1]
 			return { "items": items },
 		migrations,
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## floor_zones: author-declared floor material rects (floor-zone bake).
+## Shape mirrors "blocks" ({gu, size, material}); v1, no migration needed —
+## "size" is always present from the start, unlike blocks' v1->v2 history.
+static func register_floor_zones(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"floor_zones",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
 		func() -> Dictionary:
 			return { "items": [] }
 	))

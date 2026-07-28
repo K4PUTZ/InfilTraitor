@@ -1,0 +1,85 @@
+{
+  "format": "infiltraitor-map",
+  "schema_version": 3,
+  "id": "FLOOR_ZONES_TEST",
+  "meta": {
+    "title": "Floor-Zone Bake Verification Map",
+    "description": "Minimal enclosed room (thin concrete perimeter, just to guarantee real wall edges so the bake pass actually runs) with 3 adjacent floor_zones (grass/dirt/sand) declared in the open interior, for a real visual check of the full-color floor-zone bake feature."
+  },
+  "sections": {
+    "board": {
+      "v": 1,
+      "inner_size": [14, 14],
+      "buffer": 1,
+      "floor_tile": "floor_SE"
+    },
+    "actors": {
+      "v": 1,
+      "agent_start": [5, 5],
+      "guards": []
+    },
+    "legacy_compiler": {
+      "v": 1,
+      "wall_height": 1,
+      "access_points": [],
+      "dividers": [],
+      "lights": []
+    },
+    "blocks": {
+      "v": 2,
+      "items": [
+        {
+          "comment": "Perimeter north wall",
+          "gu": [0, 0],
+          "material": "concrete",
+          "storeys": 1,
+          "size": [14, 1]
+        },
+        {
+          "comment": "Perimeter south wall",
+          "gu": [0, 13],
+          "material": "concrete",
+          "storeys": 1,
+          "size": [14, 1]
+        },
+        {
+          "comment": "Perimeter west wall",
+          "gu": [0, 0],
+          "material": "concrete",
+          "storeys": 1,
+          "size": [1, 14]
+        },
+        {
+          "comment": "Perimeter east wall",
+          "gu": [13, 0],
+          "material": "concrete",
+          "storeys": 1,
+          "size": [1, 14]
+        }
+      ]
+    },
+    "floor_zones": {
+      "v": 1,
+      "items": [
+        {
+          "comment": "Grass patch, top-left of the open interior",
+          "gu": [2, 2],
+          "size": [4, 4],
+          "material": "ground_grass"
+        },
+        {
+          "comment": "Dirt patch, adjacent to the right of grass",
+          "gu": [6, 2],
+          "size": [4, 4],
+          "material": "ground_dirt"
+        },
+        {
+          "comment": "Sand patch, adjacent below grass",
+          "gu": [2, 6],
+          "size": [4, 4],
+          "material": "ground_sand"
+        }
+      ]
+    }
+  }
+}

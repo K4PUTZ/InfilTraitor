@@ -55,7 +55,8 @@ const PAGE_W: int = 4096
 const PAGE_TILE_COLS: int = 128
 const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 
-const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
+const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
+	"ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
@@ -451,8 +452,14 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 ## tunable var in case MULTIPLY needs compensation again.
 var multiply_luma_lift: float = 0.0
 
-## Per-tile modulate realizing the blend mode on grayscale baked pages
+## Per-tile modulate realizing the blend mode on grayscale baked pages.
+## Floor-zone materials (MaterialDef.full_color) are photographic sources —
+## forcing WHITE regardless of blend_mode is the entire mechanism that keeps
+## their real RGB instead of tinting by base_color (BAKE_SYSTEM_REFERENCE.md
+## B2's floor/ground exception).
 func _modulate_for_mode(blend_mode: int, material) -> Color:
+	if material.full_color:
+		return Color.WHITE
 	if blend_mode == BakeConfigClass.BlendMode.MULTIPLY:
 		return material.base_color.lightened(multiply_luma_lift)
 	return Color.WHITE
@@ -588,21 +595,26 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 ## 1024×512 facade EXACTLY — full period, isotropic. Same S_ext recipe as
 ## _get_plane_source dir 0 otherwise (grayscale flatten, mirrored wrap strip,
 ## mirrored vertical margins).
-func _get_roof_plane_source(facade: Image) -> Image:
+## `target_h` defaults to FACADE_H (512, the wall/ceiling facade's own
+## anisotropic height) for backward compat. Floor-zone bake passes FACADE_W
+## (1024) instead — resolve_flat() folds BOTH axes at period SHEET_COLS=64,
+## so a floor source wants a genuinely isotropic 1024x1024 plane, not the
+## wall facade's inherited 2:1 aspect.
+func _get_roof_plane_source(facade: Image, target_h: int = FACADE_H) -> Image:
 	var flat: Image = facade.duplicate()
 	flat.convert(Image.FORMAT_RGB8)
 	flat.convert(Image.FORMAT_RGBA8)
-	if flat.get_width() != FACADE_W or flat.get_height() != FACADE_H:
-		flat.resize(FACADE_W, FACADE_H, Image.INTERPOLATE_NEAREST)
+	if flat.get_width() != FACADE_W or flat.get_height() != target_h:
+		flat.resize(FACADE_W, target_h, Image.INTERPOLATE_NEAREST)
 
-	var s_ext := Image.create(PLANE_W, V_MARGIN + FACADE_H + V_MARGIN, false, Image.FORMAT_RGBA8)
-	s_ext.blit_rect(flat, Rect2i(0, 0, FACADE_W, FACADE_H), Vector2i(0, V_MARGIN))
+	var s_ext := Image.create(PLANE_W, V_MARGIN + target_h + V_MARGIN, false, Image.FORMAT_RGBA8)
+	s_ext.blit_rect(flat, Rect2i(0, 0, FACADE_W, target_h), Vector2i(0, V_MARGIN))
 	var flipped_x: Image = flat.duplicate()
 	flipped_x.flip_x()
-	s_ext.blit_rect(flipped_x, Rect2i(0, 0, PLANE_W - FACADE_W, FACADE_H), Vector2i(FACADE_W, V_MARGIN))
+	s_ext.blit_rect(flipped_x, Rect2i(0, 0, PLANE_W - FACADE_W, target_h), Vector2i(FACADE_W, V_MARGIN))
 	var flipped_y: Image = s_ext.duplicate()
 	flipped_y.flip_y()
-	var total_h := V_MARGIN + FACADE_H + V_MARGIN
+	var total_h := V_MARGIN + target_h + V_MARGIN
 	s_ext.blit_rect(flipped_y, Rect2i(0, total_h - 2 * V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, 0))
 	s_ext.blit_rect(flipped_y, Rect2i(0, V_MARGIN, PLANE_W, V_MARGIN), Vector2i(0, total_h - V_MARGIN))
 	return s_ext
@@ -612,11 +624,11 @@ func _get_roof_plane_source(facade: Image) -> Image:
 ## _get_plane_top (identical mapping contract, identical crop formula in the
 ## consumer) built from the UNSCALED roof source. One image per facade (no
 ## direction: a horizontal surface has none).
-func _get_roof_plane_top(facade_id: String, facade: Image) -> Image:
+func _get_roof_plane_top(facade_id: String, facade: Image, target_h: int = FACADE_H) -> Image:
 	if _roof_plane_top_cache.has(facade_id):
 		return _roof_plane_top_cache[facade_id]
 
-	var source := _get_roof_plane_source(facade)
+	var source := _get_roof_plane_source(facade, target_h)
 	var x_off: int = source.get_height() - 1
 	var width: int = source.get_width() + x_off
 	var height: int = int(ceil(float(source.get_width() + source.get_height()) / 2.0)) + V_MARGIN + 1
@@ -661,7 +673,7 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 		var cache_key := "ROOF|%s|%s" % [material_id, facade_id]
 		var entry = _page_cache.get(cache_key)
 		if entry == null:
-			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []))
+			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []), material.full_color)
 			_page_cache[cache_key] = entry
 			print("[BAKE] Composed roof page %s (%d atoms)" % [cache_key, entry["frag"].size()])
 		else:
@@ -681,7 +693,12 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 ## recipe (side crop + masked top crop + canonical silhouette + B3 AA fixup)
 ## with the top sourced from the isotropic roof plane; page sized to the atom
 ## count like junction pages (roof usage is sparse by nature).
-func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array) -> Dictionary:
+func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array, is_floor_bake: bool = false) -> Dictionary:
+	# Floor-zone bake wants an isotropic 1024x1024 top source (see
+	# _get_roof_plane_source's doc comment); ceiling/roof keeps the
+	# wall-inherited 1024x512. Side faces (below) are unaffected either way —
+	# v1 deliberately leaves them on the wall-style plane (see plan doc).
+	var top_target_h: int = FACADE_W if is_floor_bake else FACADE_H
 	# ROOF-SIDE-04: every atom paints BOTH side halves — slabs are SOLID.
 	# Interior side faces are visible whenever occlusion ghosts the front
 	# walls, and destruction will expose them for real (v5's border-only
@@ -702,8 +719,8 @@ func _compose_roof_page(material_id: String, facade_id: String, facade: Image, b
 
 	var plane := _get_plane(facade_id, facade, 0)
 	var plane1 := _get_plane(facade_id, facade, 1)  # ROOF-SIDE-03: SE half source
-	var roof_top := _get_roof_plane_top(facade_id, facade)
-	var roof_source := _get_roof_plane_source(facade)
+	var roof_top := _get_roof_plane_top(facade_id, facade, top_target_h)
+	var roof_source := _get_roof_plane_source(facade, top_target_h)
 	var x_off: int = roof_source.get_height() - 1
 	var canonical: Image = _voxel_atoms.get(material_id)
 	if canonical == null:

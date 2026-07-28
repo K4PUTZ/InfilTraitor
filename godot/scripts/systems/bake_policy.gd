@@ -13,6 +13,15 @@ const DEFAULT_FACADES := {
 	"stone": "facade_stone",
 	"wood": "facade_wood",
 	"metal": "facade_metal",
+	## Floor-zone bake (full-color, see MaterialRegistry.full_color): facade_id
+	## == material_id for these, since each ground material owns exactly one
+	## photographic source (no shared/reused facade across materials, unlike
+	## walls, where several materials could reuse a facade).
+	"ground_grass": "ground_grass",
+	"ground_concrete": "ground_concrete",
+	"ground_dirt": "ground_dirt",
+	"ground_gravel": "ground_gravel",
+	"ground_sand": "ground_sand",
 }
 
 ## Map material ID to facade ID (v1 policy).

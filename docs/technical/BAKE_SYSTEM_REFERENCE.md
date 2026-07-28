@@ -92,7 +92,7 @@ batch.
 All enforced by selftests and pre-commit hook:
 
 - **B1: Branch Exclusivity** — Placement uses exactly one atlas path (baked OR generic), never both
-- **B2: Grayscale Enforcement** — All facade and pattern sources are grayscale (R==G==B)
+- **B2: Grayscale Enforcement** — All WALL/CEILING facade and pattern sources are grayscale (R==G==B); color comes from `MaterialDef.base_color` at bake time. Floor-zone bake (`MaterialDef.full_color`, see room_builder.gd's floor_zones flood-fill) is an intentional, scoped exception: photographic `ground_*` sources keep their real RGB (page modulate forced to `Color.WHITE`, never tinted). `TextureResolver._is_grayscale()` enforces B2 at load time for everything except `ground_`-prefixed filenames.
 - **B3: Alpha from Canon** — Silhouette never generated; alpha from material registry
 - **B4: FNV-1a Determinism** — Hash values pinned; run vs. isolated wall origin identical
 - **B5: No Re-bake on Destruction** — Exposed geometry uses material atlas fallback

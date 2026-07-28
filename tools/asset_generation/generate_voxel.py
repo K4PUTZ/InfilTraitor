@@ -84,6 +84,21 @@ EARTH_VARIANTS: list[tuple[int, int, int]] = [
 ]
 
 # ---------------------------------------------------------------------------
+# Floor-zone bake (ground_* materials, MaterialRegistry.full_color=true).
+# Same shared cube shape/alpha as MATERIALS above — only the canonical
+# silhouette matters here, since the baked page's real color comes from the
+# photographic facade source, not this atom's fill. Colors below match
+# MaterialRegistry.register_ground_defaults()'s placeholder base_color.
+# ---------------------------------------------------------------------------
+GROUND_MATERIALS: dict[str, tuple[int, int, int]] = {
+    "ground_grass":    (107, 140,  74),
+    "ground_concrete": (153, 148, 135),
+    "ground_dirt":     (128,  97,  69),
+    "ground_gravel":   (140, 133, 125),
+    "ground_sand":     (194, 171, 130),
+}
+
+# ---------------------------------------------------------------------------
 # Output (relativo à raiz do projecto)
 # ---------------------------------------------------------------------------
 OUTPUT_DIR = Path("ASSETS/ISOMETRIC/source_assets/voxels")
@@ -160,7 +175,13 @@ def main() -> None:
         img.save(path, "PNG")
         print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
 
-    total = len(MATERIALS) + len(EARTH_VARIANTS)
+    for material, base_color in GROUND_MATERIALS.items():
+        img  = generate_voxel_atom(base_color)
+        path = OUTPUT_DIR / f"voxel_{material}.png"
+        img.save(path, "PNG")
+        print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
+
+    total = len(MATERIALS) + len(EARTH_VARIANTS) + len(GROUND_MATERIALS)
     print(f"\n✓ {total} voxel atom(s) → {OUTPUT_DIR}/")
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
 

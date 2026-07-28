@@ -105,6 +105,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if blocks_section.get("items", []).size() > 0:
 		runtime["blocks"] = _convert_from_json_compatible(blocks_section["items"])
 
+	# --- Floor zones section: floor-zone bake, same shape as blocks ----------
+	var floor_zones_section = sections.get("floor_zones", {})
+	if floor_zones_section.get("items", []).size() > 0:
+		runtime["floor_zones"] = _convert_from_json_compatible(floor_zones_section["items"])
+
 	# --- Props section: now translatable (PROP-01 implementation) -----------
 	var props_section = sections.get("props", {})
 	if props_section.get("items", []).size() > 0:

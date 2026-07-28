@@ -91,8 +91,11 @@ func _try_load_and_validate(path: String, tier_name: String) -> Image:
 		_log("  [%s] Exceeds size cap (~%d MB): %s" % [tier_name, int(float(file_size_estimate) / (1024.0 * 1024.0)), path])
 		return null
 	
-	# Validate grayscale (all pixels: R == G == B)
-	if not _is_grayscale(img):
+	# Validate grayscale (all pixels: R == G == B) — B2 scopes this to wall/ceiling
+	# facades; "ground_" sources are the floor-bake full-color exception (see
+	# BAKE_SYSTEM_REFERENCE.md B2) and skip this check on purpose.
+	var is_ground_source: bool = path.get_file().begins_with("ground_")
+	if not is_ground_source and not _is_grayscale(img):
 		_log("  [%s] Not grayscale (colored facades violate D9); rejected: %s" % [tier_name, path])
 		return null
 	
@@ -138,6 +141,12 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 	elif filename.begins_with("slice_"):
 		expected_w = 8 * GeometryCoords.TEX_AUTHORING_N
 		expected_h = 8 * GeometryCoords.TEX_AUTHORING_N
+	elif filename.begins_with("ground_"):
+		# Isotropic floor-bake plane: resolve_flat() folds both axes at
+		# SHEET_COLS=64, so 64 * TEX_AUTHORING_N is the addressable domain
+		# on BOTH axes (unlike the wall facade's anisotropic 64x32).
+		expected_w = 64 * GeometryCoords.TEX_AUTHORING_N
+		expected_h = 64 * GeometryCoords.TEX_AUTHORING_N
 	else:
 		_log("    WARN: unrecognized category prefix in filename: %s" % filename)
 		return false

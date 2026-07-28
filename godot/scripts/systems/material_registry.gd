@@ -27,11 +27,16 @@ class MaterialDef:
 	var base_color: Color
 	var pattern_algorithm: PatternAlgorithm
 	var flags: int = 0
-	
-	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
+	## Floor-bake full-color exception (BAKE_SYSTEM_REFERENCE.md B2): when true,
+	## the compositor forces a WHITE page modulate instead of tinting by
+	## base_color, so a photographic facade source keeps its real RGB.
+	var full_color: bool = false
+
+	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm, p_full_color: bool = false) -> void:
 		id = p_id
 		base_color = p_color
 		pattern_algorithm = p_algo
+		full_color = p_full_color
 
 ## Material registry
 var registry: Dictionary = {}  # id → MaterialDef
@@ -64,3 +69,16 @@ func register_defaults() -> void:
 	register(MaterialDef.new("stone",    Color(0.55, 0.55, 0.58), StonePatternClass.new()))
 	register(MaterialDef.new("wood",     Color(0.66, 0.47, 0.31), WoodPatternClass.new()))
 	register(MaterialDef.new("metal",    Color(0.49, 0.53, 0.56), MetalPatternClass.new()))
+	register_ground_defaults()
+
+
+## Floor-zone bake materials (v1: 5 representative photographic ground
+## textures, full color — see MaterialDef.full_color). base_color here is
+## only a plausible placeholder for the unbaked/MATERIAL_ONLY fallback path;
+## the baked page modulate ignores it (forced WHITE).
+func register_ground_defaults() -> void:
+	register(MaterialDef.new("ground_grass",    Color(0.42, 0.55, 0.29), PatternAlgorithm.new(), true))
+	register(MaterialDef.new("ground_concrete", Color(0.60, 0.58, 0.53), PatternAlgorithm.new(), true))
+	register(MaterialDef.new("ground_dirt",     Color(0.50, 0.38, 0.27), PatternAlgorithm.new(), true))
+	register(MaterialDef.new("ground_gravel",   Color(0.55, 0.52, 0.49), PatternAlgorithm.new(), true))
+	register(MaterialDef.new("ground_sand",     Color(0.76, 0.67, 0.51), PatternAlgorithm.new(), true))

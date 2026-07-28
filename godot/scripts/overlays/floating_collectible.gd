@@ -10,9 +10,17 @@
 ## per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite
 ## shades directionally against the world's real light data — no voxel
 ## geometry, no live 3D scene at runtime, matching D16's "simplification"
-## concept exactly. Floats with a gentle vertical sine bob and spins
-## continuously (Director, 2026-07-27). A static ground ContactShadow marks
-## its floor position independent of the bob (Director, 2026-07-28).
+## concept exactly. Floats with a vertical sine bob and spins continuously
+## (Director, 2026-07-27).
+##
+## GROUND SHADOW (Director, 2026-07-28): the SAME color frame the main
+## sprite is currently showing, reused as a second Sprite2D — flattened
+## (scaled down on Y) and tinted solid black — so the shadow is always the
+## exact silhouette of the object at its current rotation, never a generic
+## blob, with zero extra bake cost (no separate top-down render pass).
+## Pinned to floor height independent of the bob, and scaled slightly larger
+## when the object is at the bottom of its bob and slightly smaller at the
+## top — "acentuando a sensação de distância entre o objeto e o chão."
 ##
 ## Frame count and rotation speed come from CollectibleBakeConfig
 ## (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that
@@ -42,20 +50,26 @@ class_name FloatingCollectible
 extends Node2D
 
 const CollectibleBakeConfig = preload("res://godot/scripts/systems/collectible_bake_config.gd")
-const ContactShadowClass = preload("res://godot/scripts/overlays/contact_shadow.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 
-const BOB_AMPLITUDE_PX := 6.0
+## Bumped 6.0 -> 18.0 (Director, 2026-07-28: "aumenta o BOB_AMPLITUDE_PX pra
+## sombra ficar mais evidente") — the previous range was too subtle to read
+## as real separation between the object and its ground shadow.
+const BOB_AMPLITUDE_PX := 18.0
 const BOB_PERIOD_SEC := 2.0
 
-## First-guess ground-shadow sizing, same visual-judgment-call convention as
-## SPRITE_SCALE — tuned against the shotgun, expressed as a fraction of the
-## displayed sprite so other collectibles inherit a reasonable default
-## without retuning (setup() can still override per object if needed).
-const SHADOW_RADIUS_FRACTION := 0.32
-const SHADOW_SQUASH_Y := 0.35
+## Ground-shadow tuning, same visual-judgment-call convention as
+## SPRITE_SCALE — first guess, tune once seen in a real capture.
+const SHADOW_SQUASH_Y := 0.4   ## flattens the silhouette into a ground "puddle"
 const SHADOW_ALPHA := 0.4
+## At the bottom of the bob (object nearest the floor) the shadow reads
+## slightly WIDER; at the top (object at its highest) slightly smaller —
+## "acentuando a sensação de distância entre o objeto e o chão" (Director).
+## Kept close to 1.0 on purpose ("ligeiramente") — too wide a range reads as
+## the shadow itself pulsing/breathing instead of a subtle depth cue.
+const SHADOW_SCALE_AT_TOP := 0.85
+const SHADOW_SCALE_AT_BOTTOM := 1.05
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
@@ -68,7 +82,7 @@ var _frames_dir: String = ""
 var _sprite_scale: float = 1.0
 
 var _sprite: Sprite2D
-var _shadow: ContactShadowClass
+var _shadow: Sprite2D
 var _material: ShaderMaterial
 var _color_frames: Array[Texture2D] = []
 var _normal_frames: Array[Texture2D] = []
@@ -144,10 +158,14 @@ func _ready() -> void:
 
 	## Added BEFORE _sprite so it draws underneath at the same z_index
 	## (Godot resolves same-z siblings in tree order) — sits on the floor,
-	## under the object, unaffected by the bob (see _process()).
-	_shadow = ContactShadowClass.new()
-	var shadow_texture_width: float = _color_frames[0].get_width() * _sprite_scale
-	_shadow.configure(shadow_texture_width * SHADOW_RADIUS_FRACTION, SHADOW_SQUASH_Y, SHADOW_ALPHA)
+	## under the object, unaffected by the bob (see _process()). Reuses
+	## _sprite's own texture (same silhouette, same current rotation frame)
+	## instead of a generic shape — kept in sync every frame in _process().
+	_shadow = Sprite2D.new()
+	_shadow.texture = _color_frames[0]
+	_shadow.centered = true
+	_shadow.modulate = Color(0.0, 0.0, 0.0, SHADOW_ALPHA)
+	_shadow.scale = Vector2(_sprite_scale, _sprite_scale * SHADOW_SQUASH_Y)
 	add_child(_shadow)
 
 	_sprite = Sprite2D.new()
@@ -175,15 +193,24 @@ func _process(delta: float) -> void:
 	var frame_index := int(rotation_deg / (360.0 / CollectibleBakeConfig.FRAME_COUNT)) % CollectibleBakeConfig.FRAME_COUNT
 	_sprite.texture = _color_frames[frame_index]
 	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
+	## Same frame as the sprite, every frame — the shadow always matches the
+	## object's current rotation, "girando na mesma velocidade" (Director).
+	_shadow.texture = _color_frames[frame_index]
 
 	_bob_time += delta
-	var bob := sin((_bob_time / BOB_PERIOD_SEC) * TAU) * BOB_AMPLITUDE_PX
+	var bob_phase := sin((_bob_time / BOB_PERIOD_SEC) * TAU)  ## -1 (top) .. +1 (bottom)
+	var bob := bob_phase * BOB_AMPLITUDE_PX
 	position.y = _base_y + bob
 	## Counter the parent's bob in local space so the shadow's WORLD position
 	## stays pinned to the floor regardless of how high the object currently
 	## floats — that fixed-vs-floating contrast is the whole point (Director:
 	## "deixar claro onde está posicionada a arma em relação ao chão").
 	_shadow.position.y = -bob
+	## Slightly wider at the bottom of the bob, slightly smaller at the top —
+	## bob_phase is +1 at the bottom (sin peak = position.y at its max,
+	## furthest down the screen = nearest the floor) and -1 at the top.
+	var shadow_mult := lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, (bob_phase + 1.0) * 0.5)
+	_shadow.scale = Vector2(_sprite_scale, _sprite_scale * SHADOW_SQUASH_Y) * shadow_mult
 
 	_update_light_uniform()
 

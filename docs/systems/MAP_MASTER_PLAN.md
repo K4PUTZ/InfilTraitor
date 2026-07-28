@@ -53,6 +53,8 @@ A MapSpec is a Dictionary containing the map data in **internal/playable coordin
 | `access_from_graph` | bool | — | `true` — pulls from LevelGraph |
 | `rooms` | Array | — | `[{rect, doors}, ...]` inner rooms |
 | `dividers` | Array | — | `[{cells: [Vector2i...]}, ...]` inner walls |
+| `blocks` | Array | — | `[{gu, size, storeys, material}, ...]` solid GU blockers (also drives ROOF-BAKE) |
+| `floor_zones` | Array | — | `[{gu, size, material}, ...]` author-declared floor-bake ground material rects (same shape as `blocks`; see BAKE_SYSTEM_REFERENCE.md FLOOR-ZONE-BAKE) |
 | `props` | Array | — | `[{cell, tile}, ...]` crate_*, column_* |
 | `lights` | Array | — | `[{x, y, height, radius, intensity}, ...]` map lights |
 | `patrols` | Array[Array] | — | `[[Vector2i, ...], [...]]` guard routes |

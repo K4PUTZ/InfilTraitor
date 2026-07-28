@@ -825,3 +825,135 @@ top-diamond pixels ALL equal to a direct roof-plane read; 7778 real
 PLAYGROUND roof voxels placed exactly as predicted, 2 real storey-step
 sides exercising the eave rule; 49/49 blocks roofed at their
 independently-rotated E-view position with correct material.
+
+## FLOOR-ZONE-BAKE — Author-Declared Ground Material Zones (FLOOR-BAKE-01, 2026-07-28, Director direct)
+
+The bake system extends to FLOOR voxels (`Slab.Role.FLOOR`), reusing
+ROOF-BAKE's flat-plane projection verbatim — same camera, same horizontal-
+surface math, LITERALLY the same `"ROOF|..."` lookup-key family and
+`_compose_roof_pages()`/`_compose_roof_page()` functions (floor specs merge
+into the same `roof_specs`-shaped array `room_builder.gd` already builds;
+namespaced material/facade ids prevent key collisions with wall/ceiling
+combos). The one geometric departure is the plane's own aspect ratio (Color
+model below is the other). Motivation: the earth-hash floor
+(`EarthVariantSelector`) reads as generic dirt everywhere and seams visually
+against baked walls/ceiling; the project's newly-catalogued photographic
+ground textures (`ASSETS/TEXTURES/source/ground/`) needed a real placement
+mechanism, but author-controlled by region (concrete over here, grass
+there), not random per-cell noise.
+
+### Color model — the one real departure from B2
+
+Walls/ceiling sample `FacadeSampler`-style GRAYSCALE facades, tinted by
+`MaterialDef.base_color` at bake time (B2). Floor-zone materials are
+photographic and keep their REAL RGB instead — `MaterialDef.full_color`
+(default `false`) short-circuits `_modulate_for_mode()` to return
+`Color.WHITE` unconditionally, before the blend_mode switch. This required
+**no per-pixel compositing change**: `_get_plane_source()`'s "grayscale
+flatten" is actually just an `Image.convert(RGB8)→convert(RGBA8)` round-trip
+that strips alpha but never collapses RGB to luminance — real color already
+survived that step for walls too. The tint was always a GPU-side per-PAGE
+`TileData.modulate`, applied at registration time
+(`voxel_renderer.gd::register_baked_atlas_page`), never a page-pixel write —
+so forcing it to WHITE for `full_color` materials is the entire mechanism.
+B2's grayscale text is scoped to wall/ceiling facades; `full_color` sources
+are the documented exception, and `TextureResolver._is_grayscale()`
+enforces this split at load time (a `ground_`-prefixed filename bypasses
+the check; everything else still must pass it).
+
+### The projection — isotropic at the source's own square aspect
+
+Floor's photographic sources are 1024×1024 (square, seamless), not the wall
+facade's inherited 1024×512. `_get_roof_plane_source()` gained an optional
+`target_h` parameter (default `FACADE_H`=512, unchanged for
+wall/ceiling) — floor callers pass `FACADE_W`=1024 instead, so the plane
+built is genuinely isotropic on both axes rather than stretched 2:1.
+`resolve_flat()` folds BOTH axes at period `SHEET_COLS`=64, and at
+`TEX_AUTHORING_N`=16 px/GU-cell, `64×16=1024` is exactly this target — no
+coincidence, the size was chosen to match the addressable domain. Side
+faces (visible only at destruction-crater edges) are a deliberate v1
+exception: they still crop from the wall-style ×20/16-prescaled plane
+(unchanged, mildly resampled aspect on a low-visibility feature) rather
+than getting their own isotropic variant — revisit only if it reads badly
+on screen.
+
+### Data model — author-declared rectangular zones
+
+New MapSpec section `floor_zones`, shape identical to `blocks`:
+`{"gu": [x,y], "size": [w,h], "material": "ground_grass"}`. Compiled into
+`layout.floor_zone_instances` (kept as rectangles, not pre-expanded per-GU —
+this is what lets `PerspectiveMapper` rotate it with the exact two-corner
+math `solid_block_instances` already has). `room_builder.gd` expands the
+rects into a per-GU dict (last rect in the list wins on overlap) and
+flood-fills 4-adjacent GUs into connected components — the SAME BFS as
+roof's `texture_anchor` pass, substituting "same declared zone material"
+for "both roofed" as the sole membership test. A GU outside every declared
+zone keeps the pre-feature behavior: `Slab.material = "earth"`,
+`texture_anchor = Vector2i.ZERO`, rendered via `EarthVariantSelector` as
+before — `render_slab()` branches on `slab.material != "earth"`.
+
+Persistence: `map_sections_v1.gd::register_floor_zones()` (v1, no
+migration, literal copy of `register_blocks()`'s shape), and
+`file_map_source.gd` needs its own `runtime["floor_zones"] = ...`
+translation block — registering a MAPFILE section is NOT sufficient by
+itself, `_translate_to_runtime_spec()` only forwards sections it explicitly
+knows about.
+
+### A real sequencing bug, and the lesson (fixed 2026-07-27)
+
+Floor Slab GENERATION happens early and unconditionally (before the
+edges-conditional block, so floor exists even in an edge-less room) — but
+the first implementation also RENDERED immediately in that same loop,
+before `_bake_textures()` had run. Every zoned voxel's `resolve_flat()`
+lookup MISSed (queried before the page existed), silently falling back to
+`MATERIALS.find("ground_grass")` = -1 → `MATERIALS[0]` = flat gray
+"concrete". A real capture (not code reading) caught it: two adjacent
+zones rendered as one undifferentiated flat gray patch instead of distinct
+photographic materials. Fixed by deferring floor's `render_slab()` calls to
+the same point roof's own render loop already uses — after `render()` and
+`_bake_textures()`, right after the edges-conditional block closes (still
+running unconditionally, so an edge-less room's floor renders too — bake
+just never ran for it, and any zone declared there falls back to `earth`,
+a documented v1 limitation, not a crash).
+
+**Process note**: `_set_voxel_cell()`'s flat_baked branch was already
+correctly gated — the bug was pure timing, invisible to a lint/invariant
+pass, only a real windowed capture + console log surfaced it
+(`[BAKE] Composed roof page ROOF|ground_grass|ground_grass` in the log
+proved the page existed; the screenshot proved the renderer wasn't
+finding it yet).
+
+### Known limitations / Director-judged polish (open)
+
+- v1 ships 5 representative materials (`ground_grass`, `ground_concrete`,
+  `ground_dirt`, `ground_gravel`, `ground_sand`) from the 66 catalogued
+  ground textures — the rest, plus a global material-naming pass, are an
+  explicitly deferred later phase (Director, 2026-07-27).
+- Edge-less rooms never bake floor zones (no `edge_registry`/junction
+  infrastructure to bake against) — a zone declared there silently
+  degrades to `earth`. Every real room in the project has walls; not
+  chased further for v1.
+- Destruction always reveals plain `earth`, never the zone's declared
+  surface (`process_dirty_slabs()` left unchanged on purpose) — the zone is
+  treated as a thin cosmetic layer over generic ground, consistent with
+  B5's wall philosophy. A stated design assumption, not a technical
+  constraint; revisit if it reads wrong once destruction and floor zones
+  are seen together in a real room.
+- Side faces at zone edges use the wall-style anisotropic plane (see The
+  projection above) — correct image, imperfect aspect, on a rarely-visible
+  feature.
+
+### Evidence
+
+`floor_zone_bake_selftest.gd` 8/8 — same rigor as roof's, every expectation
+locally re-derived: 324 local cells incl. negative border coords;
+resolve_flat vs derivation incl. out-of-period folds; isotropy (1088 vs
+576px sources, confirming the 1024-vs-512 target split) plus 2304 opaque
+top-diamond pixels equal to a direct plane read AND genuinely non-grayscale
+(2299/2304 colored pixels — rules out an accidental luminance-collapse
+regression); 3072 real zoned voxels on `maps/FLOOR_ZONES_TEST.map.json`
+placed exactly as predicted, 20 unzoned Slabs sampled clean; 3/3 zones
+floored at their independently-rotated E-view position with correct
+material. Real capture: `Screenshots/history/auto_2026-07-27_23-20-51.png`
+— true photographic grass/dirt/sand, correct boundaries, unzoned floor
+unchanged.

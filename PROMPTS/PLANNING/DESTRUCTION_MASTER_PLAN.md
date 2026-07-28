@@ -766,7 +766,13 @@ session by the same Director call that scoped this pass.
 
 ### Part 4 — Bake becomes the product *(D11, D12)*
 Silent fallback removed (loud-fail on MISS). `MATERIAL_ONLY` kept as a dev toggle.
-Shipped default flips to `enabled = true`. Legacy floor assets retired.
+Shipped default flips to `enabled = true`. ~~Legacy floor assets retired.~~
+**DONE 2026-07-27** — `generate_master_floor.py` now emits a flat placeholder
+(the sprite was provably always occluded by the voxel earth layer, z=-9 vs
+z=0; see BAKE_SYSTEM_REFERENCE.md). `floor_layer`'s coordinate/occupancy
+role stays load-bearing (~30 files depend on `map_to_local()`/
+`get_cell_source_id()`) — only the never-seen pixel content was retired, not
+the layer itself.
 ~~BAKE-CACHE-01 resolved — this part cannot close while warm boot is 5× over
 budget.~~ **Already true as of 2026-07-11 — see §4.** That precondition is
 cleared; Part 4's remaining scope is the fallback/loud-fail work and the

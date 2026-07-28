@@ -65,10 +65,18 @@ const BOB_PERIOD_SEC := 2.0
 ## Fixed lift above the floor GU point, independent of the bob — without
 ## this the sprite's resting position sits exactly ON the floor point, so
 ## even at the bottom of the bob there's no real gap for the shadow to read
-## against (Director, 2026-07-28: "aumentar um poquinho a altura Y do
-## objeto... pra dar mais um espacinho pra sombra ficar visível"). The
-## shadow itself is NOT lifted — it stays pinned at the true floor Y.
-const HOVER_HEIGHT_PX := 14.0
+## against. The shadow itself is NOT lifted — it stays pinned at the true
+## floor Y.
+##
+## 14.0 -> 60.0 (Director, 2026-07-28: 14px read as "practically stuck to
+## the ground" — wanted the object floating noticeably higher, "dentro da
+## própria GU"). 3 * GeometryCoords.VOXEL_STEP_PX (20px/voxel layer) rather
+## than an arbitrary pixel count — puts the resting height at roughly a
+## third of a storey (WALL_FLOOR_STEP_PX=158), comfortably inside the GU's
+## own vertical space instead of an arbitrary guess. Combined with
+## BOB_AMPLITUDE_PX=18, the object now never dips below floor_y - 42, so it
+## no longer touches the shadow's anchor even at the bottom of the bob.
+const HOVER_HEIGHT_PX := 60.0
 
 ## Ground-shadow tuning, same visual-judgment-call convention as
 ## SPRITE_SCALE — first guess, tune once seen in a real capture.

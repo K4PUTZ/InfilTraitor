@@ -23,6 +23,7 @@ class MockMaterial:
 	var id: String
 	var base_color: Color
 	var pattern_algorithm: Object
+	var full_color: bool = false  ## mirrors MaterialRegistry.MaterialDef's floor-bake flag
 
 	func _init(p_id: String, p_color: Color) -> void:
 		id = p_id

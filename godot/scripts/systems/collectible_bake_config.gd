@@ -57,7 +57,11 @@ const SHADOW_SQUASH_Y := 0.5
 ## depth cue needs both size AND focus to change, not size alone. Baking two
 ## post-processed copies from the SAME raw top-down render (not re-rendering
 ## the 3D scene twice) keeps this cheap.
-const SHADOW_SHARP_DILATE_ITERATIONS := 0
-const SHADOW_SHARP_BLUR_ITERATIONS := 1
-const SHADOW_SOFT_DILATE_ITERATIONS := 3
-const SHADOW_SOFT_BLUR_ITERATIONS := 4
+## Narrowed 2026-07-28 (Director: both ends read as "exagerado" — too crisp
+## at the bottom, too blurred at the top; wanted the whole effect more
+## discreet with less spread between the two extremes, not just the
+## alpha/scale range). Gap shrunk from 3/3 iterations to 1/1.
+const SHADOW_SHARP_DILATE_ITERATIONS := 1
+const SHADOW_SHARP_BLUR_ITERATIONS := 2
+const SHADOW_SOFT_DILATE_ITERATIONS := 2
+const SHADOW_SOFT_BLUR_ITERATIONS := 3

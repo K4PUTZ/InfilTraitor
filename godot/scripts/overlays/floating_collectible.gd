@@ -84,15 +84,22 @@ const HOVER_HEIGHT_PX := 60.0
 ## SPRITE_SCALE — first guess, tune once seen in a real capture.
 ##
 ## Director's corrected spec (2026-07-28): bottom of the bob (nearest the
-## floor) = small + sharp + 80% opaque; top of the bob (farthest from the
-## floor) = big + diffuse + 50% opaque. Two peak alphas, one per shadow
-## layer (_shadow_sharp/_shadow_soft) — each fades to 0 at the OTHER end of
-## the bob so only one reads as dominant at a time, with a smooth crossfade
-## through the middle.
-const SHADOW_ALPHA_SHARP_AT_BOTTOM := 0.80
-const SHADOW_ALPHA_SOFT_AT_TOP := 0.50
-const SHADOW_SCALE_AT_TOP := 1.05     ## big, at the top of the bob
-const SHADOW_SCALE_AT_BOTTOM := 0.85  ## small, at the bottom of the bob
+## floor) = small + sharp; top of the bob (farthest from the floor) = big +
+## diffuse. Two peak alphas, one per shadow layer (_shadow_sharp/
+## _shadow_soft) — each fades to 0 at the OTHER end of the bob so only one
+## reads as dominant at a time, with a smooth crossfade through the middle.
+##
+## Narrowed again same day (Director: both extremes read as "exagerado" —
+## too crisp/small at the bottom, too blurred/big at the top; wanted the
+## whole effect more discreet, not just a smaller/bigger swing). Alpha
+## peaks 80/50 -> 55/40 (lower overall, closer together); scale range
+## 0.85..1.05 -> 0.90..1.00 (narrower, and no longer bigger than the
+## resting 1.0x baseline). See CollectibleBakeConfig for the matching
+## bake-time blur/dilate narrowing.
+const SHADOW_ALPHA_SHARP_AT_BOTTOM := 0.55
+const SHADOW_ALPHA_SOFT_AT_TOP := 0.40
+const SHADOW_SCALE_AT_TOP := 1.00     ## at the top of the bob
+const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO

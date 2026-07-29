@@ -51,6 +51,16 @@
 ## tracks its own base_cell and re-derives its view-space gu_cell on every
 ## perspective flip (see reposition_for_perspective() below), so gu_cell
 ## never goes stale the way it used to before this fix.
+##
+## STATIC FACING MODE (Director, 2026-07-29 — "colocar 4 shotguns estáticas
+## [...] apontando para [os blocos]"). The bake already contains every facing:
+## actor_frame_bake_spike.gd renders FRAME_COUNT yaws of a full turn, so a prop
+## that must POINT somewhere instead of spinning is the same flipbook frozen on
+## the matching frame — no second bake, no second class. Pass a compass edge to
+## setup()'s optional p_static_facing and the object stops spinning, stops
+## bobbing, and holds the frame whose muzzle runs along that edge; everything
+## else (relighting, ground shadow, depth-aware z) is shared with the spinning
+## path byte-for-byte. See FACING_YAW_DEG for how those yaws were measured.
 class_name FloatingCollectible
 extends Node2D
 
@@ -116,15 +126,61 @@ const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 const OUTLINE_COLOR := Color(0.35, 0.72, 1.0, 1.0)
 const OUTLINE_WIDTH_TEXELS := 1.0
 
+## STATIC FACING MODE — sentinel and the measured yaw table.
+##
+## "" means "spin like a collectible", the original and still-default behaviour.
+## Any other value must be a key of FACING_YAW_DEG.
+const STATIC_FACING_NONE := ""
+
+## Compass edge -> the bake yaw whose muzzle points along that edge, at the N
+## perspective. MEASURED from the real shotgun frames on 2026-07-29, not
+## derived: a GLB's own forward axis is arbitrary art data, so there is no
+## formula to derive this from — but it is also not a guess. Method: PCA of each
+## frame's alpha silhouette gives its on-screen principal axis; the thinner end
+## (barrel, vs. the heavier stock) gives the DIRECTED muzzle vector; that was
+## matched against the screen angle each grid edge projects to
+## (docs/DIRECTION_GLOSSARY.md §1/§3 — NE = grid (0,-1) = screen (+512,-256) =
+## -26.6°). Result: frame 28 (yaw 84°) measured -26.0° for NE, and the compass
+## walks NE->SE->SW->NW in steps of -90° of yaw (frame 118 measured 28.4° vs
+## SE's 26.6°, frame 58 measured -144° vs NW's -153°; the NW/SW pair is the
+## foreshortened orientation where PCA is noisiest, hence the looser fit).
+##
+## Only the NE entry is exercised today (the test-zone bench aims north at the
+## wall row). The other three come from the measured -90° step, and the first
+## real use of one should be confirmed by a capture the same way NE was.
+const FACING_YAW_DEG := {"NE": 84.0, "SE": -6.0, "SW": -96.0, "NW": -186.0}
+
+## Active perspective -> extra yaw, so a static prop keeps aiming at the same
+## BASE-space cell while the whole scene rotates around it.
+##
+## E/W are the OPPOSITE SIGN from GrenadeProp.YAW_BY_DIRECTION, which this was
+## first written to copy. Measured, not assumed: with the grenade's signs the
+## muzzle came out 170.6° off in view E and 178.2° off in view W — aiming
+## backwards, away from the wall — while N and S were already correct. Flipping
+## E/W takes the worst error across all 4 views × 4 bench columns from 178.2°
+## to 9.4°, and the residual is the expected quantisation noise (3° of yaw is
+## many degrees of SCREEN angle near the foreshortened orientation, which is
+## exactly where S and W sit).
+##
+## GrenadeProp is NOT wrong to fix — it is wrong to notice. A grenade does not
+## POINT anywhere, so a 180° error in its yaw is invisible on screen and its
+## table was never under a test that could catch it. A weapon aiming at a
+## specific block is the first object in the project whose facing is falsifiable.
+const PERSPECTIVE_YAW_DEG := {"N": 0.0, "E": -90.0, "S": 180.0, "W": 90.0}
+
 ## FLOAT-PROP-Z-01 — inputs to the depth-aware sort in _apply_z_index().
 ##
-## Sprite half-extents in world pixels. The baked frames are 160×160 but the
-## object only fills ~66×33 of that (measured across frames 00-03); × the 1.15
-## sprite scale gives ~38 × ~19. Approximate on purpose — they only size the rect
-## used to ask "does this voxel overlap me", and the error being guarded against
-## there is off by 128px, not by 5.
-const SPRITE_HALF_WIDTH_PX := 38.0
-const SPRITE_HALF_HEIGHT_PX := 19.0
+## Sprite half-extents in world pixels, MEASURED per instance at load time from
+## the baked frames' own alpha bounds (see _measure_sprite_extents()) rather
+## than hardcoded: these two were the shotgun's numbers, and the class now
+## displays other objects (the grenade collectible fills 44×48 of its frame, not
+## 66×33), so a shared constant silently describes the wrong silhouette. The
+## constants below survive only as the fallback if measurement comes back empty.
+## Approximate on purpose either way — they only size the rect used to ask "does
+## this voxel overlap me", and the error being guarded against there is off by
+## 128px, not by 5.
+const SPRITE_HALF_WIDTH_FALLBACK_PX := 38.0
+const SPRITE_HALF_HEIGHT_FALLBACK_PX := 19.0
 ## How far the overlap scan reaches, in VOXELS (8 per GU). Two GUs in every
 ## direction: one GU sideways already moves a voxel 128px on screen against a
 ## 76px-wide sprite, so nothing past that can overlap.
@@ -155,6 +211,11 @@ var _shadow_sharp_frames: Array[Texture2D] = []
 var _shadow_soft_frames: Array[Texture2D] = []
 var _frame_time := 0.0
 var _bob_time := 0.0
+## STATIC_FACING_NONE ("") = the original spinning collectible; a FACING_YAW_DEG
+## key = a motionless prop aimed along that compass edge.
+var _static_facing: String = STATIC_FACING_NONE
+var _sprite_half_w := SPRITE_HALF_WIDTH_FALLBACK_PX
+var _sprite_half_h := SPRITE_HALF_HEIGHT_FALLBACK_PX
 ## Floor GU world Y — the shadow's fixed anchor. Distinct from _base_y
 ## (the sprite's own resting Y, lifted above the floor by HOVER_HEIGHT_PX).
 var _floor_y := 0.0
@@ -187,12 +248,22 @@ func _init() -> void:
 ## compute as (SHADOW_ORTHO_SIZE / SHADOW_VIEWPORT_SIZE.y) / (ORTHO_SIZE /
 ## VIEWPORT_SIZE.y) using the SAME bake script that produced frames_dir; 1.0
 ## if a future object's shadow bake happens to use identical framing.
-func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_scale: float, p_shadow_scale_factor: float) -> void:
+## static_facing: STATIC_FACING_NONE ("") keeps the spinning/bobbing collectible
+## behaviour every existing caller gets today; a FACING_YAW_DEG key ("NE", ...)
+## makes it a motionless prop aimed along that compass edge — see the file
+## header's STATIC FACING MODE note.
+func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_scale: float,
+		p_shadow_scale_factor: float, p_static_facing: String = STATIC_FACING_NONE) -> void:
 	room = p_room
 	gu_cell = p_gu_cell
 	_frames_dir = p_frames_dir
 	_sprite_scale = p_sprite_scale
 	_shadow_scale_factor = p_shadow_scale_factor
+	if p_static_facing != STATIC_FACING_NONE and not FACING_YAW_DEG.has(p_static_facing):
+		push_error("[FloatingCollectible] unknown static facing '%s' — expected one of %s" %
+			[p_static_facing, FACING_YAW_DEG.keys()])
+		return
+	_static_facing = p_static_facing
 	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
 	## z is NOT applied here — see the note at the end of _ready(): the sort needs
 	## a real world position, which setup() runs too early to have.
@@ -210,7 +281,39 @@ func reposition_for_perspective(direction: String) -> void:
 		_floor_y = world_pos.y
 		position = Vector2(world_pos.x, _floor_y - HOVER_HEIGHT_PX)
 		_base_y = position.y
+	## A static prop's frame encodes its aim in SCREEN space, so it has to be
+	## re-picked whenever the scene rotates or the muzzle keeps pointing where
+	## the target used to be. The spinning path re-picks every _process() frame
+	## anyway and needs nothing here.
+	_apply_frame(_current_frame_index())
 	_apply_z_index()
+
+
+## Which baked frame to show right now: the spin angle for a collectible, the
+## measured aim yaw for a static prop.
+func _current_frame_index() -> int:
+	var step := 360.0 / float(CollectibleBakeConfig.FRAME_COUNT)
+	if _static_facing != STATIC_FACING_NONE:
+		var perspective: String = "N"
+		if room != null:
+			perspective = String(room._active_perspective)
+		var view_yaw: float = float(FACING_YAW_DEG[_static_facing]) \
+			+ float(PERSPECTIVE_YAW_DEG.get(perspective, 0.0))
+		return int(round(fposmod(view_yaw, 360.0) / step)) % CollectibleBakeConfig.FRAME_COUNT
+	var rotation_deg := fmod(_frame_time * CollectibleBakeConfig.ROTATION_DEG_PER_SEC, 360.0)
+	return int(rotation_deg / step) % CollectibleBakeConfig.FRAME_COUNT
+
+
+## Point every layer at one frame index. Both shadow layers always match the
+## sprite's current rotation, "girando na mesma velocidade" (Director), using
+## their OWN true top-down bake (see file header).
+func _apply_frame(frame_index: int) -> void:
+	if _sprite == null:
+		return
+	_sprite.texture = _color_frames[frame_index]
+	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
+	_shadow_sharp.texture = _shadow_sharp_frames[frame_index]
+	_shadow_soft.texture = _shadow_soft_frames[frame_index]
 
 
 ## FLOAT-PROP-Z-01 (Director-reported 2026-07-29: "a arma está entrando dentro
@@ -250,12 +353,14 @@ func _apply_z_index() -> void:
 	var base_z: int = ground_layer.z_index
 
 	## The sprite's own world-space rect, taken at the bob's extremes so the
-	## answer doesn't flicker as the object rises and falls.
+	## answer doesn't flicker as the object rises and falls. A static prop never
+	## bobs, so its rect is just the sprite.
+	var bob_reach := 0.0 if _static_facing != STATIC_FACING_NONE else BOB_AMPLITUDE_PX
 	var sprite_rect := Rect2(
-		position.x - SPRITE_HALF_WIDTH_PX,
-		_base_y - BOB_AMPLITUDE_PX - SPRITE_HALF_HEIGHT_PX,
-		SPRITE_HALF_WIDTH_PX * 2.0,
-		(BOB_AMPLITUDE_PX + SPRITE_HALF_HEIGHT_PX) * 2.0)
+		position.x - _sprite_half_w,
+		_base_y - bob_reach - _sprite_half_h,
+		_sprite_half_w * 2.0,
+		(bob_reach + _sprite_half_h) * 2.0)
 
 	## Centre voxel of my own GU — the reference for O5 depth at voxel scale.
 	var center_voxel: Vector2i = GeometryCoords.gu_to_voxel_origin(gu_cell) \
@@ -281,15 +386,31 @@ func _apply_z_index() -> void:
 
 
 func _ready() -> void:
+	## Union of every color frame's own alpha bounds, in texels — the input to
+	## _measure_sprite_extents(). Taken here because the loop already holds each
+	## frame's Image; asking the finished Texture2D for it later would mean 120
+	## GPU readbacks to learn something the CPU just had in hand.
+	var used_union := Rect2i()
+	var have_union := false
 	for i in range(CollectibleBakeConfig.FRAME_COUNT):
 		var color_path := "%sframe_%02d_color.png" % [_frames_dir, i]
 		var normal_path := "%sframe_%02d_normal.png" % [_frames_dir, i]
 		var shadow_sharp_path := "%sframe_%02d_shadow_sharp.png" % [_frames_dir, i]
 		var shadow_soft_path := "%sframe_%02d_shadow_soft.png" % [_frames_dir, i]
-		_color_frames.append(_load_texture_raw(color_path))
+		var color_img := _load_image_raw(color_path)
+		if color_img != null:
+			var used := color_img.get_used_rect()
+			if used.size.x > 0 and used.size.y > 0:
+				used_union = used_union.merge(used) if have_union else used
+				have_union = true
+			_color_frames.append(ImageTexture.create_from_image(color_img))
+		else:
+			_color_frames.append(null)
 		_normal_frames.append(_load_texture_raw(normal_path))
 		_shadow_sharp_frames.append(_load_texture_raw(shadow_sharp_path))
 		_shadow_soft_frames.append(_load_texture_raw(shadow_soft_path))
+	if have_union and not _color_frames.is_empty() and _color_frames[0] != null:
+		_measure_sprite_extents(used_union, _color_frames[0].get_size())
 
 	## Both added BEFORE _sprite so they draw underneath at the same z_index
 	## (Godot resolves same-z siblings in tree order) — sit on the floor,
@@ -321,6 +442,8 @@ func _ready() -> void:
 	_sprite.material = _material
 	add_child(_sprite)
 
+	_apply_frame(_current_frame_index())
+
 	if room != null and room.agent != null:
 		var world_pos: Vector2 = room.agent._cell_to_world(gu_cell)
 		_floor_y = world_pos.y
@@ -337,20 +460,22 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_frame_time += delta
-	var rotation_deg := fmod(_frame_time * CollectibleBakeConfig.ROTATION_DEG_PER_SEC, 360.0)
-	var frame_index := int(rotation_deg / (360.0 / CollectibleBakeConfig.FRAME_COUNT)) % CollectibleBakeConfig.FRAME_COUNT
-	_sprite.texture = _color_frames[frame_index]
-	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
-	## Same frame index as the sprite, every frame — both shadow layers
-	## always match the object's current rotation, "girando na mesma
-	## velocidade" (Director), using their OWN true top-down bake (see file
-	## header).
-	_shadow_sharp.texture = _shadow_sharp_frames[frame_index]
-	_shadow_soft.texture = _shadow_soft_frames[frame_index]
+	var is_static := _static_facing != STATIC_FACING_NONE
+	if not is_static:
+		_frame_time += delta
+		_apply_frame(_current_frame_index())
 
-	_bob_time += delta
-	var bob_phase := sin((_bob_time / BOB_PERIOD_SEC) * TAU)  ## -1 (top) .. +1 (bottom)
+	## bob_phase: -1 (top of the bob) .. +1 (bottom, nearest the floor).
+	## Pinning it to 0.0 is the WHOLE static branch below this line — the prop
+	## then rests at exactly _base_y (= floor - HOVER_HEIGHT_PX, "na mesma
+	## altura da instância coletável", Director) and every shadow term that
+	## follows resolves to the midpoint of its own crossfade. Deliberately not
+	## a second code path: a static prop's shadow is the spinning one's, frozen
+	## halfway, so there is nothing here that can drift out of sync with it.
+	var bob_phase := 0.0
+	if not is_static:
+		_bob_time += delta
+		bob_phase = sin((_bob_time / BOB_PERIOD_SEC) * TAU)
 	var bob := bob_phase * BOB_AMPLITUDE_PX
 	position.y = _base_y + bob
 	## Counter the parent's (lifted + bobbing) position in local space so
@@ -438,9 +563,33 @@ func _update_light_uniform() -> void:
 ## normal Texture2D from there. Same fix needed if this ever runs on a
 ## machine where the editor hasn't reimported these frames.
 func _load_texture_raw(path: String) -> Texture2D:
+	var img := _load_image_raw(path)
+	if img == null:
+		return null
+	return ImageTexture.create_from_image(img)
+
+
+func _load_image_raw(path: String) -> Image:
 	var img := Image.new()
 	var err := img.load(path)
 	if err != OK:
 		push_error("[FloatingCollectible] failed to load %s (error %d)" % [path, err])
 		return null
-	return ImageTexture.create_from_image(img)
+	return img
+
+
+## FLOAT-PROP-Z-01 — half-extents of the object as actually drawn, from the
+## union of every color frame's alpha bounds.
+##
+## Measured rather than declared, because the object is NOT centred in its own
+## canvas: the sprite is centered=true, so the frame's CENTRE is what lands on
+## this node's position, and what the depth sort needs is the farthest the
+## drawn pixels reach from that centre — not the used rect's own size. Taking
+## the max of both edges' distance is what makes an off-centre bake (or a
+## future object with a very different silhouette) come out conservative
+## instead of wrong.
+func _measure_sprite_extents(used: Rect2i, frame_size: Vector2) -> void:
+	var cx := frame_size.x / 2.0
+	var cy := frame_size.y / 2.0
+	_sprite_half_w = maxf(absf(float(used.position.x) - cx), absf(float(used.end.x) - cx)) * _sprite_scale
+	_sprite_half_h = maxf(absf(float(used.position.y) - cy), absf(float(used.end.y) - cy)) * _sprite_scale

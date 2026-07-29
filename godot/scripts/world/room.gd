@@ -332,6 +332,9 @@ var _selection_controller: SelectionControllerClass = null
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _test_zone_controller: TestZoneControllerClass = null
 var _floating_collectible: Node = null
+## TEST-ZONE weapons bench (2026-07-29): static, aimed weapon props — see
+## TEST_ZONE_WEAPON_ROWS.
+var _static_weapon_props: Array[Node] = []
 var _context_menu: DetonateContextMenuClass = null
 ## ESC-STACK-01: see modal_stack.gd — single source of truth for what Escape
 ## targets next (main menu, controls sub-panel, the grenade context menu, ...).
@@ -1135,6 +1138,9 @@ func _set_perspective(direction: String) -> void:
 			_test_zone_controller.reposition_for_perspective(_active_perspective)
 		if _floating_collectible != null and is_instance_valid(_floating_collectible):
 			_floating_collectible.reposition_for_perspective(_active_perspective)
+		for weapon_prop in _static_weapon_props:
+			if weapon_prop != null and is_instance_valid(weapon_prop):
+				weapon_prop.reposition_for_perspective(_active_perspective)
 
 		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
@@ -2495,6 +2501,50 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
+## TEST-ZONE weapons bench (Director, 2026-07-29): the destructible wall row
+## becomes dedicated to guns, and collectibles move out of the firing lanes
+## entirely (see TEST_ZONE_COLLECTIBLE_GUS).
+##
+## The bench is a MATRIX, and this table is its row axis: one entry per weapon
+## type, placed once per wall material (the column axis, TEST_ZONE_WALL_GU_X) so
+## every weapon can be tried against every material. `row_y` is the distance
+## that weapon is actually meant to be used at — "na distância mais adequada
+## para utilização" — so the rows read as a range ladder marching south as
+## engagement range grows:
+##
+##   y=2  the wall row itself      y=5  ground grenades (kept)
+##   y=4  reserved: pistol         y=6  SHOTGUN (short range)  <- only row today
+##   y=8/9/11  reserved: SMG / assault rifle / sniper
+##
+## Adding the next gun is one entry here, not new placement code. Director's
+## sequencing: every weapon at its PROPER range first; inverted/inappropriate
+## distances are a deliberate second pass later.
+##
+## All weapons aim NE — the compass edge from a bench cell to the wall directly
+## "above" it (grid delta (0,-1), docs/DIRECTION_GLOSSARY.md §3). Sprite scale
+## and shadow factor are per-object, exactly as for a collectible.
+const TEST_ZONE_WALL_GU_X: Array[int] = [3, 8, 13, 18]
+const TEST_ZONE_WEAPON_ROWS: Array[Dictionary] = [
+	{
+		"id": "shotgun",
+		"row_y": 6,
+		"facing": "NE",
+		"frames_dir": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/",
+		"sprite_scale": 1.15,
+		"shadow_scale_factor": 2.5,
+	},
+]
+
+## Collectibles strip — a dedicated row well south of the bench, so nothing a
+## gun is aimed at can be confused with something you pick up, and no
+## collectible ever stands in a firing lane. Slots reserved for future pickups;
+## only the first is filled today.
+const TEST_ZONE_COLLECTIBLE_GUS: Array[Vector2i] = [
+	Vector2i(10, 13),
+	Vector2i(6, 13),
+	Vector2i(14, 13),
+]
+
 
 ## TEST-ZONE placeholder (2026-07-21): called from load_map() (real map
 ## switches, e.g. the map-loader toolbar) and once from _ready() (initial
@@ -2507,29 +2557,54 @@ func _populate_test_zone_if_playground() -> void:
 	if _floating_collectible != null and is_instance_valid(_floating_collectible):
 		_floating_collectible.queue_free()
 		_floating_collectible = null
+	for weapon_prop in _static_weapon_props:
+		if weapon_prop != null and is_instance_valid(weapon_prop):
+			weapon_prop.queue_free()
+	_static_weapon_props.clear()
 	if map_id == "PLAYGROUND":
 		for gu in TEST_ZONE_GRENADE_GUS:
 			_test_zone_controller.add_grenade(gu)
-		## ACTOR_MASTER_PLAN D17/D21 test (2026-07-27): placed near map_light_1
-		## (cell 6,4) so directional relighting against a real light is
-		## actually visible, not just a flat ambient-lit sprite floating in
-		## the dark. TEST-ZONE-style placeholder, same convention as the
-		## grenades above — not production placement logic.
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
-		_floating_collectible = FloatingCollectibleClass.new()
+
+		## The weapons bench: every row of TEST_ZONE_WEAPON_ROWS placed once per
+		## wall material. Static-facing mode reuses the collectible's own bake
+		## and class — a prop that points instead of spinning is the same
+		## flipbook frozen on the frame matching its aim, so no gun needs a
+		## second bake just to stand still (see FloatingCollectible's header).
+		for weapon in TEST_ZONE_WEAPON_ROWS:
+			for gu_x in TEST_ZONE_WALL_GU_X:
+				var weapon_prop = FloatingCollectibleClass.new()
+				weapon_prop.setup(
+					self, Vector2i(gu_x, int(weapon["row_y"])),
+					String(weapon["frames_dir"]),
+					float(weapon["sprite_scale"]),
+					float(weapon["shadow_scale_factor"]),
+					String(weapon["facing"]),
+				)
+				add_child(weapon_prop)
+				_static_weapon_props.append(weapon_prop)
+
+		## ACTOR_MASTER_PLAN D21 — the spinning pickup. Moved out of the bench
+		## (Director, 2026-07-29: collectibles get their own area so the wall row
+		## belongs to the guns) and swapped shotgun -> grenade, which is the
+		## actual point: the shotgun was the only object this class had ever
+		## displayed, so "it works for any object" was asserted, not shown. A
+		## small round grenade through the identical pipeline is the proof.
 		## Bake folder + sprite scale are per-object (FloatingCollectible is
 		## reusable, standardized 2026-07-28) — frame count/rotation speed/
 		## camera convention come from CollectibleBakeConfig instead and stay
 		## identical for every object using this class. shadow_scale_factor
-		## corrects for the shotgun bake's own SHADOW_ORTHO_SIZE(5.0)/
-		## SHADOW_VIEWPORT_SIZE.y(80) framing vs the color pass's
-		## ORTHO_SIZE(4.0)/VIEWPORT_SIZE.y(160) — (5.0/80)/(4.0/160) = 2.5
-		## (actor_frame_bake_spike.gd's own per-object knobs).
+		## corrects for the shadow pass's framing vs the color pass's —
+		## grenade_collectible_bake_spike.gd uses SHADOW_ORTHO_SIZE(4.0)/
+		## SHADOW_VIEWPORT_SIZE.y(80) against ORTHO_SIZE(4.0)/VIEWPORT_SIZE.y(160),
+		## so (4.0/80)/(4.0/160) = 2.0 (the shotgun's is 2.5: an elongated object
+		## seen from straight above needs more frustum room than a round one).
+		_floating_collectible = FloatingCollectibleClass.new()
 		_floating_collectible.setup(
-			self, Vector2i(8, 4),
-			"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/",
+			self, TEST_ZONE_COLLECTIBLE_GUS[0],
+			"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_collectible_frames/",
 			1.15,
-			2.5,
+			2.0,
 		)
 		add_child(_floating_collectible)
 

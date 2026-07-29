@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 32425 lines total** (under `godot/scripts/`)
+**158 scripts · 32911 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -859,11 +859,11 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 446 lines
+`class_name FloatingCollectible` · extends `Node2D` · 595 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned twice same day). Uses two dedicated frame_%02d_shadow_{sharp,soft}.png per frame instead of the oblique COLOR frame reused-and-squashed (that shears diagonal silhouettes and rotates their apparent angle) — a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob. Two Sprite2D layers crossfade by the object's CURRENT bob height (Director's corrected spec, replacing an earlier "wider at bottom" misread): near the floor (bottom of the bob) the shadow is small and SHARP at 80% opacity; at the top of the bob it's bigger and SOFT/diffuse at 50% opacity — real depth needs size AND focus to change together, not size alone. A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix.
+> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned twice same day). Uses two dedicated frame_%02d_shadow_{sharp,soft}.png per frame instead of the oblique COLOR frame reused-and-squashed (that shears diagonal silhouettes and rotates their apparent angle) — a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob. Two Sprite2D layers crossfade by the object's CURRENT bob height (Director's corrected spec, replacing an earlier "wider at bottom" misread): near the floor (bottom of the bob) the shadow is small and SHARP at 80% opacity; at the top of the bob it's bigger and SOFT/diffuse at 50% opacity — real depth needs size AND focus to change together, not size alone. A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.reposition_for_perspective(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix. STATIC FACING MODE (Director, 2026-07-29 — "colocar 4 shotguns estáticas [...] apontando para [os blocos]"). The bake already contains every facing: actor_frame_bake_spike.gd renders FRAME_COUNT yaws of a full turn, so a prop that must POINT somewhere instead of spinning is the same flipbook frozen on the matching frame — no second bake, no second class. Pass a compass edge to setup()'s optional p_static_facing and the object stops spinning, stops bobbing, and holds the frame whose muzzle runs along that edge; everything else (relighting, ground shadow, depth-aware z) is shared with the spinning path byte-for-byte. See FACING_YAW_DEG for how those yaws were measured.
 
 **Constants / tuning**
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
@@ -2286,6 +2286,28 @@ extends `SceneTree` · 234 lines
 
 ---
 
+### `grenade_collectible_bake_spike.gd`
+
+extends `SceneTree` · 262 lines
+
+`godot/scripts/tools/grenade_collectible_bake_spike.gd`
+
+> ACTOR_MASTER_PLAN objects track — grenade COLLECTIBLE bake (2026-07-29). Copy of actor_frame_bake_spike.gd following that file's own documented "to bake a NEW collectible" recipe: only the per-object knob block below changes, never the CollectibleBakeConfig-sourced values (frame count, camera elevation/azimuth/distance, shadow dilate/blur) — FloatingCollectible's light-direction math is derived against that exact camera convention and breaks SILENTLY if a bake drifts from it. Why a second grenade bake instead of reusing grenade_frames/: that folder holds the STATIC ground prop's 4 compass frames (N/E/S/W) and GrenadeProp still reads them — the thrown-grenade-on-the-ground representation stays, the Director wants it for "o agente arremessar as granadas ativamente". This one is the spinning pickup: the same model on the collectible's own 120-frame + shadow-pass convention, written to its own folder. This bake is also the evidence for a claim, not just an asset: the shotgun was the only object FloatingCollectible had ever displayed, so "the class works for any object" was asserted rather than shown. A second, very differently-shaped model (small, round, stubby vs. long and thin) going through the identical pipeline is what actually tests it. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/grenade_collectible_bake_spike.gd
+
+**Constants / tuning**
+- `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
+- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
+- `OUT_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_collectible_frames/"`
+- `VIEWPORT_SIZE` = `Vector2i(160, 160)`
+- `ORTHO_SIZE` = `4.0`
+- `MESH_SCALE` = `2.0`
+- `SHADOW_VIEWPORT_SIZE` = `Vector2i(80, 80)`
+- `SHADOW_ORTHO_SIZE` = `4.0`
+- `SHADOW_CAMERA_DISTANCE` = `12.0`
+- `NORMAL_BAKE_SHADER_CODE` = `"""`
+
+---
+
 ### `grenade_frame_bake_spike.gd`
 
 extends `SceneTree` · 227 lines
@@ -3341,7 +3363,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3026 lines
+extends `Node2D` · 3101 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3407,6 +3429,9 @@ extends `Node2D` · 3026 lines
 - `ACTOR_END_HOLD_DELAY` = `0.5`
 - `TRAIL_MAX` = `5`
 - `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
+- `TEST_ZONE_WALL_GU_X` = `[3, 8, 13, 18]`
+- `TEST_ZONE_WEAPON_ROWS` = `[ { "id": "shotgun", "row_y": 6, "facing": "NE", "frames_dir": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5, }, ]`
+- `TEST_ZONE_COLLECTIBLE_GUS` = `[ Vector2i(10, 13), Vector2i(6, 13), Vector2i(14, 13), ]`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

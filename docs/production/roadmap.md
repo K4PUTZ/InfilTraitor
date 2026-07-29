@@ -134,8 +134,9 @@ scope; all of it is now largely done.
 - **Open Director decisions, not yet made:** resume AI-02 tuning now vs.
   sequence after character/animation work; when to start the
   character/animation asset pipeline (originally "post-investment," now
-  being actively discussed); shot-based wall destruction (shotgun) has no
-  plan yet.
+  being actively discussed); shot-based wall destruction (shotgun) now has a
+  plan — `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`, 2026-07-29 — but only its
+  test bench is built; no shot geometry exists yet.
 
 **Estimate:** no longer meaningful as "3–5 weeks" — the phase absorbed two
 months of unplanned engine work. Re-estimate once the open decisions above
@@ -293,7 +294,7 @@ Phase 8 (Polish & Release)
 | Save system | Not needed in a single-room demo |
 | Narrative | Requires a campaign (post-investment) |
 | Combat (GAME-01) | Requires a solid FSM; defer until post-refactor |
-| Shot-based destruction (shotgun) | Raised 2026-07-26, not yet scoped — needs its own Part in `DESTRUCTION_MASTER_PLAN.md` |
+| Shot-based destruction (shotgun) | Scoped 2026-07-29 — catalog in `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` (Part 0 bench done); the CONE/LINE geometry itself is that plan's Part 2, landing in `DESTRUCTION_MASTER_PLAN.md` Part 5 |
 | Procedural generation | Requires a campaign (post-investment) |
 | Localization | Final phase |
 

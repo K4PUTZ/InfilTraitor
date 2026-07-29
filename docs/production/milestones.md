@@ -1060,7 +1060,7 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 | CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Still gated by AI-02 tuning specifically |
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
 | Destruction Part 4+ (cover/noise/fire, shot-based destruction) | Lighting (VOXEL_LIGHT) | 🟢 UNBLOCKED 2026-07-26 | Ready to resume; not yet scheduled |
-| Ranged weapon (shotgun) + shot-based wall destruction | New mechanism, no plan yet | 🔵 Not started, not scoped | Needs its own Part/prompt in `DESTRUCTION_MASTER_PLAN.md` — see engine assessment |
+| Ranged weapon (shotgun) + shot-based wall destruction | New mechanism | 🟡 Scoped 2026-07-29, Part 0 done | Catalog + four delivery shapes in `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`; test bench built (4 aimed shotguns × 4 materials). CONE/LINE geometry still unwritten — lands as `DESTRUCTION_MASTER_PLAN.md` Part 5 |
 | ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; **Director is now asking about character/animation work ahead of this window — see engine assessment for the sequencing question** |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |

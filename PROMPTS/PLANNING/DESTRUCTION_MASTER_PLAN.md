@@ -782,6 +782,41 @@ budget.~~ **Already true as of 2026-07-11 — see §4.** That precondition is
 cleared; Part 4's remaining scope is the fallback/loud-fail work and the
 default flip, not the cache.
 
+### Part 5 — Directional destruction: `CONE` and `LINE` *(NEW 2026-07-29 — OPEN, no code)*
+
+**The stub `docs/production/roadmap.md` has been asking for since 2026-07-26**
+("shot-based wall destruction... needs its own Part in
+`DESTRUCTION_MASTER_PLAN.md`). Now scoped, because the catalog that defines the
+shapes exists: [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md), D1.
+
+Every destructive input this engine has ever had is **omnidirectional**:
+`flood_gu_rings()` takes a source GU and expands outward. A fired weapon takes a
+source GU **and a facing**, which is an input this path has never carried. Two
+new shapes, siblings to `flood_gu_rings()`, not replacements:
+
+- **`CONE`** — distance bands from a muzzle GU along a facing, widening with
+  distance. Half-angle is the weapon's accuracy (tighter = more accurate).
+  Shotguns.
+- **`LINE`** — a ray from a muzzle GU, with penetration depth as its step axis.
+  Pistols (one voxel at a time), rifles (deeper and wider). Depth and the
+  multiplier over `MaterialResistanceTable.destroy_factor` are what "calibre"
+  means mechanically.
+
+**Contract that keeps this cheap:** both must return the same `{gu -> step}`
+dictionary shape `find_affected_containers()` already consumes, so
+`apply_container_damage()`, the soot BFS, VL-PERSIST recording and the whole
+dirty/TIC repaint downstream need **zero changes**. Both must be as wall-aware
+as `flood_gu_rings()` is — but see that plan's §7 #3: a bullet and a footstep do
+not obviously agree on what blocks them, and `blocked_edges` is currently the
+movement gate.
+
+**Already reusable, audited 2026-07-29:** `BlastWireframeOverlay.show_footprint()`
+takes an arbitrary `Array[Vector2i]` and outlines whatever cell set it is given —
+nothing in it is ring-shaped, so a cone preview needs no new overlay.
+
+**Not blocked by anything in this plan.** Part 4's fallback/loud-fail work and
+this are independent.
+
 ---
 
 ## 6. Wave sequencing
@@ -792,6 +827,8 @@ Wave 1:  Part 1 (Slab)             → depends on Wave 0
 Wave 2:  Part 2 (solid texturing)  → depends on Slab existing
 Wave 3:  Part 3 (the trigger)      → depends on solid texturing (nothing to expose otherwise)
 Wave 4:  Part 4 (bake as product) + BAKE-CACHE-01
+Wave 5:  Part 5 (CONE/LINE)        → independent of Wave 4; needs WEAPON_MASTER_PLAN's
+                                      WeaponDef (its Part 1) to carry facing + falloff
 ```
 
 Per the prompt-sizing rule: **a novel geometric transform is always its own

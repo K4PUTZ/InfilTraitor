@@ -224,6 +224,7 @@ Read the linked doc before modifying that system.
 | Voxel FACE lighting | [`PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`](PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md) | 12-bucket directional brightness; blast soot/crater/ember visuals; destruction persists through rotation |
 | Actor/object bakes, digital twin | [`PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md`](PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md) | Twin (showcase) vs. simplification (gameplay, D16) split; normal-map relighting (D17) |
 | Destruction | [`PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md`](PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) | Sole writer of `Voxel.visible`; dirty-flag/TIC machinery other systems (actor damage) reuse |
+| Weapons & arsenal catalog | [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md) | Four delivery shapes (RADIAL/CONE/LINE/NONE) + step falloff; owns *what* a weapon emits, never *how* voxels break; facing constants are measured from baked frames, never reasoned |
 | AI & guard behavior | [`docs/systems/AI_MASTER_PLAN.md`](docs/systems/AI_MASTER_PLAN.md) | FSM via Rule 4; alert meter via Rule 5; guard↔guard only via signals in `room.gd` |
 | Map system | [`docs/systems/MAP_MASTER_PLAN.md`](docs/systems/MAP_MASTER_PLAN.md) | `MapSpec` contract; Rule 7 (buffer only in `MapCompiler`) |
 | MAPFILE persistence (`.map.json`) | [`docs/technical/MAPFILE_REFERENCE.md`](docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered; unknown sections round-trip verbatim; loud-fail load |

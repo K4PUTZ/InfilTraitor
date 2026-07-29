@@ -87,6 +87,42 @@ layer.position = Vector2(
 
 ---
 
+## Z-Index Slots (canvas draw order)
+
+Two rules first, because three separate bugs in one day (2026-07-28/29) came from
+not knowing them:
+
+1. **Voxel layers encode HEIGHT, not depth.** Positive level `L` draws at
+   `WALL_BASE_Z_INDEX + L` (= 10 + L); negative (floor) level `L` draws at
+   `L + 1`, so the walkable top face (-1) lands on **z = 0**.
+2. **z_index cannot express depth, and y-sorting is not enabled anywhere in the
+   project** (only `y_sort_origin` is set, which does nothing on its own). Depth
+   is `OcclusionSet` POLICY O5: `(x + y)` in view space, greater = nearer. A prop
+   that must sort in front of / behind geometry asks
+   `VoxelRenderer.classify_geometry_over_rect()` — see `FloatingCollectible`.
+
+| z | occupant |
+|---|---|
+| −9 | `floor_layer` (legacy coarse plane) |
+| −7 … 0 | voxel floor levels −8 … −1 (walkable top face at 0) |
+| 1 | shadow tint layers, GU grid, `_tile_shadow`, **HEAT overlays** (same z, earlier in tree → below the others) |
+| 2 | fog of war |
+| 3 | `_tile_game` markers (exit/spawn) |
+| 4 | shadow boundary |
+| 5 / 6 / 7 | AP perimeter / path preview / selection |
+| 8 | dev cell-number labels |
+| 9 | occlusion wireframe panels (their level's z − 1) |
+| 10 + L | voxel level L — walls, blocks, roofs. Also `structure_layer`, `enemies_root` at 10 |
+| 24 / 25 / 27 / 28 | LIGHT-vision overlays: height / temporal / light / shadow |
+| `max_voxel_z` + 1 | agent (OCC-03; props must stay below this) |
+| +2 / +3 / +4 | light rays / ceiling props / embers |
+| 100 | blast wireframe, guard noise indicator |
+| 140 / 150 | noise overlay / trail + occlusion overlay |
+| 200 | dev hover label |
+
+**Anything left at the default 0 is buried by the voxel floor** — that is exactly
+how the HEAT heatmap and the dev cell labels disappeared under the concrete.
+
 ## Inviolable Rules — Summary
 
 | # | Rule | Short enforcement |

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.83 · **Updated:** 2026-07-29 · **Branch:** main
+**Version:** 0.9.84 · **Updated:** 2026-07-29 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -16,6 +16,7 @@
 - RESUMO_SESSAO_2026-07-26_TEMPORAL_LIGHT_FOUNDATION.md
 - RESUMO_SESSAO_2026-07-28_FLOOR_ZONE_BAKE.md
 - RESUMO_SESSAO_2026-07-28_SHOTGUN_SHADOW.md
+- RESUMO_SESSAO_2026-07-29_FLOOR_DEPTH_NEON_COLLECTIBLE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

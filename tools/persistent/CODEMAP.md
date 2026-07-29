@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**157 scripts · 31735 lines total** (under `godot/scripts/`)
+**158 scripts · 32046 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, build_voxel_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -307,7 +307,7 @@ extends `Node` · 270 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 285 lines
+extends `Node2D` · 297 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -319,19 +319,6 @@ extends `Node2D` · 285 lines
 - `HeightOverlayClass` = `preload("res://godot/scripts/overlays/height_overlay.gd")`
 - `TemporalOverlayClass` = `preload("res://godot/scripts/overlays/temporal_overlay.gd")`
 - `EliteExposureOverlayClass` = `preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")`
-
-**Public vars**
-- `var dev_vision: bool = false`
-- `var light_vision: bool = false`
-- `var heat_vision: bool = false`
-
-**Public API**
-- `func setup(room_ref: Node2D, fog_of_war_ref: Node2D) -> void:`
-- `func toggle_dev() -> void:`
-- `func toggle_light() -> void:`
-- `func toggle_heat() -> void:`
-- `func request_redraw() -> void:`
-- `func is_shadow_overlay_visible() -> bool:`
 
 ---
 
@@ -1569,7 +1556,7 @@ extends `Node2D` · 43 lines
 
 ### `light_source.gd`
 
-`class_name LightSource` · extends `RefCounted` · 178 lines
+`class_name LightSource` · extends `RefCounted` · 257 lines
 
 `godot/scripts/systems/lighting/light_source.gd`
 
@@ -1588,10 +1575,6 @@ extends `Node2D` · 43 lines
 - `HEIGHT_HUMAN` = `2`
 - `HEIGHT_TALL_STRUCTURE` = `3`
 - `HEIGHT_OVERHEAD` = `4`
-- `STATE_ON` = `"on"`
-- `STATE_OFF` = `"off"`
-- `STATE_FLICKER` = `"flicker"`
-- `STATE_PULSE` = `"pulse"`
 
 **Public vars**
 - `var cell: Vector2i = Vector2i.ZERO`
@@ -1603,30 +1586,6 @@ extends `Node2D` · 43 lines
 - `var cone_angle: float = 90.0`
 - `var tactical_energy: float = 1.0`
 - `var visual_energy: float = 1.0`
-- `var flicker_enabled: bool = false`
-- `var flicker_interval: float = 1.0`
-- `var flicker_phase: float = 0.0`
-- `var pulse_enabled: bool = false`
-- `var pulse_speed: float = 1.0`
-- `var pulse_phase: float = 0.0`
-- `var pulse_min: float = 0.5`
-- `var pulse_max: float = 1.0`
-- `var rotation_speed: float = 0.0`
-- `var rotation_phase: float = 0.0`
-- `var current_state: String = STATE_ON`
-- `var energy_multiplier: float = 1.0`
-- `var changed_this_frame: bool = false`
-- `var last_energy: float = 1.0`
-- `var last_angle: float = 0.0`
-- `var light_id: String = ""`
-- `var owner_name: String = ""`
-
-**Public API**
-- `func update_temporal_state(delta: float) -> void:`
-- `func set_flicker(enabled: bool, interval: float = 1.0) -> void:`
-- `func get_effective_tactical_energy() -> float:`
-- `func affects_cell(target_cell: Vector2i) -> bool:`
-- `func get_direction_vector() -> Vector2:`
 
 ---
 
@@ -2427,6 +2386,32 @@ extends `SceneTree` · 239 lines
 - `func test_positive_pipeline_unaffected() -> void:`
 - `func test_slab_render_routes_negative_level_correctly() -> void:`
 - `func test_set_voxel_cell_still_rejects_unensured_level() -> void:`
+
+---
+
+### `neon_flicker_selftest.gd`
+
+extends `SceneTree` · 187 lines
+
+`godot/scripts/tools/neon_flicker_selftest.gd`
+
+> NEON-FLICKER-01 — LightSource flicker selftest. Rodar: godot --headless --script res://godot/scripts/tools/neon_flicker_selftest.gd The flicker is a TIME-SHAPED effect: no screenshot can show that a lamp stays lit longer than it stays dark, or that its dark stretches arrive in irregular bursts instead of on a metronome. So the shape is measured here, by driving the real update_temporal_state() at a real frame delta and reading the resulting energy trace — the same call room._process() makes every frame. The repaint-rate test is not decoration: every energy change schedules an incremental relight of the lamp's GUs (room._update_temporal_lights), so an over-eager flicker is a performance bug, not just a look. That ceiling is what keeps this effect event-driven instead of per-frame analog.
+
+**Constants / tuning**
+- `FRAME_DELTA` = `1.0 / 60.0`
+- `SIM_SECONDS` = `120.0`
+- `INTERVAL` = `0.6`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_lit_far_longer_than_dark() -> void:`
+- `func test_durations_are_varied_not_binary() -> void:`
+- `func test_dark_arrives_in_bursts() -> void:`
+- `func test_deterministic_per_light_identity() -> void:`
+- `func test_repaint_rate_stays_sane() -> void:`
 
 ---
 
@@ -3363,7 +3348,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2966 lines
+extends `Node2D` · 2999 lines
 
 `godot/scripts/world/room.gd`
 

@@ -2574,6 +2574,10 @@ func _populate_test_zone_if_playground() -> void:
 		for weapon in TEST_ZONE_WEAPON_ROWS:
 			for gu_x in TEST_ZONE_WALL_GU_X:
 				var weapon_prop = FloatingCollectibleClass.new()
+				## COLLECTIBLE-OUTLINE-02: the stroke marks "you can pick this
+				## up" (Director, 2026-07-29), so a placed weapon does not get
+				## one — it is scenery an actor will eventually hold, not loot.
+				weapon_prop.outline_color = FloatingCollectibleClass.OUTLINE_DISABLED
 				weapon_prop.setup(
 					self, Vector2i(gu_x, int(weapon["row_y"])),
 					String(weapon["frames_dir"]),

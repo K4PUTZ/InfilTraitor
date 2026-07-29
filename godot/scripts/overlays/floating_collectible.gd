@@ -123,7 +123,20 @@ const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 ## the "1 pixel" asked for, and it stays proportional as the camera zooms instead
 ## of thinning out. The frames leave 43–68 px of transparent margin on every side
 ## (measured), so a stroke of this width can never be clipped by the frame edge.
-const OUTLINE_COLOR := Color(0.35, 0.72, 1.0, 1.0)
+## COLLECTIBLE-OUTLINE-02 (Director, 2026-07-29): the stroke is now a per-instance
+## COLOUR, not a fixed one — "vamos mudar de cor depois, conforme a raridade dos
+## itens, então a gente já pode deixar essa cor variável". The rarity tier → colour
+## table itself does not exist yet (WEAPON_MASTER_PLAN D9 defers rarity), so this
+## blue stands in as the default until it does; a caller sets `outline_color`
+## before add_child() to override it.
+##
+## ...and it is a COLLECTIBLE affordance, not decoration: "o stroke pode aparecer
+## só nos objetos coletáveis, as armas normais não precisa". A transparent colour
+## (alpha 0) disables it — the shader is shared (GrenadeProp relights through it
+## too), so this resolves to the width-0 default D28 already established rather
+## than to a second code path.
+const OUTLINE_COLOR_DEFAULT := Color(0.35, 0.72, 1.0, 1.0)
+const OUTLINE_DISABLED := Color(0.0, 0.0, 0.0, 0.0)
 const OUTLINE_WIDTH_TEXELS := 1.0
 
 ## STATIC FACING MODE — sentinel and the measured yaw table.
@@ -185,6 +198,10 @@ const SPRITE_HALF_HEIGHT_FALLBACK_PX := 19.0
 ## direction: one GU sideways already moves a voxel 128px on screen against a
 ## 76px-wide sprite, so nothing past that can overlap.
 const Z_SCAN_RADIUS_VOXELS := 16
+
+## Silhouette stroke colour — set before add_child(). OUTLINE_DISABLED turns it
+## off entirely (placed weapons); a rarity tier will drive it once rarity exists.
+var outline_color: Color = OUTLINE_COLOR_DEFAULT
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
@@ -437,8 +454,9 @@ func _ready() -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = shader
 	_material.set_shader_parameter("normal_tex", _normal_frames[0])
-	_material.set_shader_parameter("outline_color", OUTLINE_COLOR)
-	_material.set_shader_parameter("outline_width", OUTLINE_WIDTH_TEXELS)
+	_material.set_shader_parameter("outline_color", outline_color)
+	_material.set_shader_parameter("outline_width",
+		OUTLINE_WIDTH_TEXELS if outline_color.a > 0.0 else 0.0)
 	_sprite.material = _material
 	add_child(_sprite)
 

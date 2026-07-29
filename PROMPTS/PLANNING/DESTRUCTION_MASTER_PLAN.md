@@ -782,7 +782,24 @@ budget.~~ **Already true as of 2026-07-11 — see §4.** That precondition is
 cleared; Part 4's remaining scope is the fallback/loud-fail work and the
 default flip, not the cache.
 
-### Part 5 — Directional destruction: `CONE` and `LINE` *(NEW 2026-07-29 — OPEN, no code)*
+### Part 5 — Directional destruction: `CONE` and `LINE` *(NEW 2026-07-29 — `CONE` ✅ DONE same day, `LINE` open)*
+
+**`CONE` shipped 2026-07-29** as `BlastCalculator.flood_gu_cone()`, exactly to
+the contract below: same wall-aware BFS as `flood_gu_rings()` with an angular
+gate, returning the same `{gu -> step}` dictionary, so
+`find_affected_containers()`/`apply_container_damage()` and the entire soot /
+VL-PERSIST / dirty-repaint chain downstream needed **zero changes**.
+`apply_container_damage()` gained one trailing `destroy_multiplier` (defaulted
+1.0, so every grenade call site is byte-for-byte unaffected) to carry the
+weapon's calibre. 6 new selftests in `blast_calculator_selftest.gd`, 27/27 PASS.
+Driven for real from `WeaponBenchController` — see
+[`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) Parts 1–3 for the captures.
+**`LINE` remains unbuilt**, and open question #3 below (does a bullet stop where
+a footstep stops?) is still unanswered — `CONE` currently reuses
+`blocked_edges`, the movement gate, because consistency with the existing flood
+beat inventing a second occlusion rule on no evidence.
+
+*Original scoping text, kept:*
 
 **The stub `docs/production/roadmap.md` has been asking for since 2026-07-26**
 ("shot-based wall destruction... needs its own Part in

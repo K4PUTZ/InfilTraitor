@@ -36,6 +36,13 @@ func _init() -> void:
 	test_crater_core_solid_rim_ragged_beyond_intact()
 	test_bias_prefers_epicenter_facing_side()
 	test_no_bias_sentinel_keeps_hash_only_behavior()
+	## WEAPON_MASTER_PLAN D1 / DESTRUCTION Part 5 — the CONE shape.
+	test_cone_is_directional_not_radial()
+	test_cone_widens_with_distance()
+	test_cone_respects_range_and_half_angle()
+	test_cone_stops_at_blocked_edge()
+	test_cone_output_shape_matches_rings()
+	test_destroy_multiplier_scales_damage()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -464,6 +471,150 @@ func test_no_bias_sentinel_keeps_hash_only_behavior() -> void:
 	else:
 		_fail("Default and explicit-sentinel calls diverged — the 'off' path changed behavior")
 	print("")
+
+
+## ── WEAPON_MASTER_PLAN D1 — CONE delivery ────────────────────────────────
+## NE is grid delta (0,-1) per docs/DIRECTION_GLOSSARY.md §3; a shotgun on the
+## test bench aims along it at the wall row "above" it.
+const NE := Vector2i(0, -1)
+
+
+func test_cone_is_directional_not_radial() -> void:
+	print("TEST: cone reaches forward and NOT backward (the whole point of CONE)")
+	var cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 10), NE, 25.0, 4, {})
+	var forward_hit := cone.has(Vector2i(10, 8))
+	var backward_hit := cone.has(Vector2i(10, 12))
+	var sideways_hit := cone.has(Vector2i(14, 10))
+	if forward_hit and not backward_hit and not sideways_hit:
+		_pass("forward (10,8) in cone; backward (10,12) and broadside (14,10) excluded")
+	else:
+		_fail("directionality wrong — forward=%s backward=%s sideways=%s" %
+			[forward_hit, backward_hit, sideways_hit])
+	## The radial flood from the same source WOULD have taken all three — proving
+	## the cone is doing real work, not just producing a smaller ring set.
+	var rings := BlastCalculatorClass.flood_gu_rings(Vector2i(10, 10), _test_bomb([1.0, 1.0, 1.0, 1.0, 1.0]), {})
+	if rings.has(Vector2i(10, 12)) and rings.has(Vector2i(14, 10)):
+		_pass("same source as RADIAL does reach backward/broadside — cone is the difference")
+	else:
+		_fail("radial baseline did not reach backward/broadside; comparison is meaningless")
+	print("")
+
+
+func test_cone_widens_with_distance() -> void:
+	print("TEST: cone is a wedge — wider far from the muzzle than next to it")
+	var cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 30.0, 6, {})
+	var width_by_row: Dictionary = {}
+	for gu in cone:
+		var dy: int = 20 - gu.y
+		width_by_row[dy] = int(width_by_row.get(dy, 0)) + 1
+	var near: int = int(width_by_row.get(1, 0))
+	var far: int = int(width_by_row.get(5, 0))
+	if far > near and near >= 1:
+		_pass("row 1 holds %d cell(s), row 5 holds %d — widens with distance" % [near, far])
+	else:
+		_fail("cone did not widen: row1=%d row5=%d (%s)" % [near, far, width_by_row])
+	print("")
+
+
+func test_cone_respects_range_and_half_angle() -> void:
+	print("TEST: range caps depth; half-angle caps spread")
+	var short_cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 30.0, 3, {})
+	var too_far := short_cone.has(Vector2i(10, 16))  ## 4 steps out, range is 3
+	if not too_far:
+		_pass("nothing beyond the step cap (10,16) at range 3")
+	else:
+		_fail("cone exceeded its range cap")
+
+	var narrow := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 5.0, 5, {})
+	var wide := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 45.0, 5, {})
+	if narrow.size() < wide.size():
+		_pass("5 deg cone (%d cells) is tighter than 45 deg (%d) — accuracy is the half-angle" %
+			[narrow.size(), wide.size()])
+	else:
+		_fail("half-angle had no effect: narrow=%d wide=%d" % [narrow.size(), wide.size()])
+
+	## A near-zero half-angle must still fire straight down the axis, not produce
+	## an empty cone — a weapon with perfect accuracy still hits something.
+	var axis_only := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 1.0, 4, {})
+	if axis_only.has(Vector2i(10, 16)):
+		_pass("a 1 deg cone still reaches straight down the axis")
+	else:
+		_fail("near-zero half-angle produced no forward hit — perfect accuracy must still fire")
+	print("")
+
+
+func test_cone_stops_at_blocked_edge() -> void:
+	print("TEST: cone is wall-aware, same gate flood_gu_rings uses")
+	var blocked: Dictionary = {}
+	blocked[WallEdgeData.edge_key(Vector2i(10, 19), Vector2i(10, 18))] = true
+	var cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 5.0, 5, blocked)
+	if cone.has(Vector2i(10, 19)) and not cone.has(Vector2i(10, 18)):
+		_pass("reached (10,19), stopped at the blocked edge before (10,18)")
+	else:
+		_fail("blocked edge not honored: 19=%s 18=%s" %
+			[cone.has(Vector2i(10, 19)), cone.has(Vector2i(10, 18))])
+	print("")
+
+
+func test_cone_output_shape_matches_rings() -> void:
+	print("TEST: cone returns the SAME {gu -> step} shape find_affected_containers() consumes")
+	var cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 25.0, 4, {})
+	var ok := true
+	for key in cone:
+		if typeof(key) != TYPE_VECTOR2I or typeof(cone[key]) != TYPE_INT:
+			ok = false
+			break
+	var apex_is_zero: bool = int(cone.get(Vector2i(10, 20), -1)) == 0
+	if ok and apex_is_zero:
+		_pass("Vector2i -> int, apex at step 0 — drop-in for the existing damage path")
+	else:
+		_fail("shape mismatch (types ok=%s, apex step=%s)" % [ok, cone.get(Vector2i(10, 20), -1)])
+
+	## Steps must be monotone along the axis, or the falloff table is meaningless.
+	var s1: int = int(cone.get(Vector2i(10, 19), -1))
+	var s3: int = int(cone.get(Vector2i(10, 17), -1))
+	if s1 == 1 and s3 == 3:
+		_pass("axis steps are the real distance (1 and 3), so step_multipliers index correctly")
+	else:
+		_fail("axis steps wrong: (10,19)=%d (10,17)=%d" % [s1, s3])
+	print("")
+
+
+func test_destroy_multiplier_scales_damage() -> void:
+	print("TEST: destroy_multiplier (calibre) scales destruction, and defaults inert")
+	var full := _synthetic_voxels(64)
+	BlastCalculatorClass.apply_container_damage(full, "CAL_A", "concrete", 0, 0, false, [1.0])
+	var full_destroyed := _count_destroyed(full)
+
+	var half := _synthetic_voxels(64)
+	BlastCalculatorClass.apply_container_damage(half, "CAL_A", "concrete", 0, 0, false, [1.0],
+		BlastCalculatorClass.NO_EPICENTER_BIAS, 0.5)
+	var half_destroyed := _count_destroyed(half)
+
+	if half_destroyed < full_destroyed and half_destroyed > 0:
+		_pass("0.5x calibre destroyed %d vs %d at 1.0x — scales, without zeroing out" %
+			[half_destroyed, full_destroyed])
+	else:
+		_fail("multiplier did not scale: 0.5x=%d 1.0x=%d" % [half_destroyed, full_destroyed])
+
+	## The default must be byte-for-byte the old behavior — every grenade call
+	## site omits this argument.
+	var explicit := _synthetic_voxels(64)
+	BlastCalculatorClass.apply_container_damage(explicit, "CAL_A", "concrete", 0, 0, false, [1.0],
+		BlastCalculatorClass.NO_EPICENTER_BIAS, 1.0)
+	if _count_destroyed(explicit) == full_destroyed:
+		_pass("omitting the argument matches passing 1.0 — existing callers unaffected")
+	else:
+		_fail("default diverged from 1.0: %d vs %d" % [_count_destroyed(explicit), full_destroyed])
+	print("")
+
+
+func _count_destroyed(voxels: Array) -> int:
+	var n := 0
+	for v in voxels:
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			n += 1
+	return n
 
 
 func _synthetic_voxels(count: int) -> Array:

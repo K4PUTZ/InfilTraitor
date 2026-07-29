@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**158 scripts · 32911 lines total** (under `godot/scripts/`)
+**161 scripts · 33696 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,10 +18,10 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -859,7 +859,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 595 lines
+`class_name FloatingCollectible` · extends `Node2D` · 613 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1331,7 +1331,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 300 lines
+`class_name BlastCalculator` · 370 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1395,6 +1395,58 @@ extends `Node2D` · 43 lines
 - `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "crack_factor": 0.6}, "stone":    {"destroy_factor": 0.3,  "crack_factor": 0.0}, "concrete": {"destroy_factor": 0.5,  "crack_factor": 0.0}, "wood":     {"destroy_factor": 0.9,  "crack_factor": 0.0}, }`
 - `DEFAULT_DESTROY_FACTOR` = `0.5`
 - `DEFAULT_CRACK_FACTOR` = `0.0`
+
+---
+
+### `weapon_def.gd`
+
+`class_name WeaponDef` · 81 lines
+
+`godot/scripts/systems/destruction/weapon_def.gd`
+
+> WeaponDef — weapon definition resource. WEAPON_MASTER_PLAN Part 1 (D1/D2/D7). Mirrors BombDef's shape exactly (plain object + from_json() factory, not a Godot Resource), which itself mirrors PropDef — the fourth use of one proven pattern, not a new one. D1: a weapon that touches the scenario declares a DELIVERY SHAPE plus a STEP FALLOFF TABLE. `step_multipliers` is the generalisation of BombDef.ring_multipliers: index 0 is the weapon's own GU (full effect), each further index one step outward along whatever "outward" means for that shape, and the table's LENGTH is the weapon's range. What varies between a grenade, a shotgun and a rifle is only what one step means: RADIAL — a wall-aware BFS ring (BlastCalculator.flood_gu_rings) CONE   — the same BFS, gated to a wedge around a facing (flood_gu_cone) LINE   — penetration depth along a ray (not built yet) NONE   — no voxel damage at all; the effect belongs to perception/noise/AI Deliberately carries only fields something actually consumes today. Rarity, firerate, ammo and AP cost are NOT here — WEAPON_MASTER_PLAN D9 defers them, and a speculative field that nothing reads is a field that rots.
+
+**Constants / tuning**
+- `DELIVERY_RADIAL` = `"RADIAL"`
+- `DELIVERY_CONE` = `"CONE"`
+- `DELIVERY_LINE` = `"LINE"`
+- `DELIVERY_NONE` = `"NONE"`
+- `VALID_DELIVERIES` = `[ DELIVERY_RADIAL, DELIVERY_CONE, DELIVERY_LINE, DELIVERY_NONE, ]`
+
+**Public vars**
+- `var id: String`
+- `var delivery: String = DELIVERY_NONE`
+- `var step_multipliers: Array[float] = []`
+- `var cone_half_angle_deg: float = 0.0`
+- `var destroy_multiplier: float = 1.0`
+- `var gameplay: Dictionary = {}`
+- `var tags: Array[String] = []`
+
+**Public API**
+- `func has_range() -> bool:`
+
+---
+
+### `weapon_registry.gd`
+
+`class_name WeaponRegistry` · 57 lines
+
+`godot/scripts/systems/destruction/weapon_registry.gd`
+
+> WeaponRegistry — Weapon definitions catalog (two-tier: res:// + user://). WEAPON_MASTER_PLAN Part 1 (D7). Line-for-line the BombRegistry pattern (which is itself line-for-line PropRegistry): user-tier weapons override res:// weapons on id collision, and a new weapons/*.json needs ZERO code changes to appear.
+
+**Constants / tuning**
+- `RES_WEAPONS_DIR` = `"res://weapons"`
+- `USER_WEAPONS_DIR` = `"user://weapons"`
+
+**Public vars**
+- `var registry: Dictionary = {}`
+
+**Public API**
+- `func register(weapon_def) -> void:`
+- `func get_weapon(p_id: String):`
+- `func count() -> int:`
+- `func load_from_disk() -> void:`
 
 ---
 
@@ -1834,7 +1886,7 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 122 lines
+extends `Node` · 144 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -1844,6 +1896,7 @@ extends `Node` · 122 lines
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
+- `WeaponRegistryClass` = `preload("res://godot/scripts/systems/destruction/weapon_registry.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 **Public vars**
@@ -1856,6 +1909,8 @@ extends `Node` · 122 lines
 - `func get_prop_registry() -> PropRegistryClass:`
 - `func ensure_bomb_registry() -> BombRegistryClass:`
 - `func get_bomb_registry() -> BombRegistryClass:`
+- `func ensure_weapon_registry() -> WeaponRegistryClass:`
+- `func get_weapon_registry() -> WeaponRegistryClass:`
 - `func ensure_file_map_source() -> FileMapSourceClass:`
 
 ---
@@ -2104,7 +2159,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 483 lines
+extends `SceneTree` · 634 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2115,6 +2170,7 @@ extends `SceneTree` · 483 lines
 - `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
 - `VoxelClass` = `preload("res://godot/scripts/geometry/voxel.gd")`
+- `NE` = `Vector2i(0, -1)`
 
 **Public vars**
 - `var passed: int = 0`
@@ -2135,6 +2191,12 @@ extends `SceneTree` · 483 lines
 - `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
 - `func test_bias_prefers_epicenter_facing_side() -> void:`
 - `func test_no_bias_sentinel_keeps_hash_only_behavior() -> void:`
+- `func test_cone_is_directional_not_radial() -> void:`
+- `func test_cone_widens_with_distance() -> void:`
+- `func test_cone_respects_range_and_half_angle() -> void:`
+- `func test_cone_stops_at_blocked_edge() -> void:`
+- `func test_cone_output_shape_matches_rings() -> void:`
+- `func test_destroy_multiplier_scales_damage() -> void:`
 
 ---
 
@@ -2815,20 +2877,20 @@ extends `SceneTree` · 95 lines
 
 ### `detonate_context_menu.gd`
 
-`class_name DetonateContextMenu` · extends `Control` · 104 lines
+`class_name DetonateContextMenu` · extends `Control` · 141 lines
 
 `godot/scripts/ui/detonate_context_menu.gd`
 
-> DetonateContextMenu — small black-box context menu for right-clicking a detonatable TEST-ZONE prop (placeholder, 2026-07-21). Two actions: "Detonar (Enter)" then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers.
+> DetonateContextMenu — small black-box context menu for right-clicking an interactive TEST-ZONE prop (placeholder, 2026-07-21). One parameterised action then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers. WEAPON-FIRE-01 (2026-07-29): the action label and its handler are now passed in at open_at() time, because a second prop type needed a second verb ("Atirar" on a bench weapon vs. "Detonar" on a grenade). One shared menu INSTANCE is deliberate, not incidental: room.gd's _unhandled_input treats any click while `_context_menu.visible` as an outside-click cancel, and a second instance would need that guard to know about both. The class and file name are now historical — this is no longer detonation specific. Renaming both is a follow-up, not a silent partial rename that would leave the file and the class disagreeing.
 
 **Signals**
-- `signal detonate_requested`
+- `signal action_requested`
 - `signal cancelled`
 - `signal opened`
 - `signal closed`
 
 **Public API**
-- `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0) -> void:`
+- `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0, action_key: String = "ui.context_menu.detonate", on_confirm: Callable = Callable()) -> void:`
 - `func close() -> void:`
 
 ---
@@ -3131,7 +3193,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 347 lines
+`class_name TestZoneController` · 351 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3186,6 +3248,36 @@ extends `Node2D` · 34 lines
 - `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
 - `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
 - `func get_alert_meter() -> int:`
+
+---
+
+### `weapon_bench_controller.gd`
+
+`class_name WeaponBenchController` · 268 lines
+
+`godot/scripts/world/controllers/weapon_bench_controller.gd`
+
+> WeaponBenchController — WEAPON-FIRE-01 (Director, 2026-07-29): right-click "Atirar" on a placed weapon, producing a directional cone of destruction against whatever material it is aimed at. Sibling of TestZoneController, not an extension of it. That class is the GRENADE controller — its own header calls itself "scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture" — and a weapon differs from a grenade in every part that matters: it has a FACING, it is not consumed when used, and its damage is a wedge rather than rings. What the two share (screen-space hit-test, context-menu anchoring) is ~40 lines of geometry, which is cheaper to mirror than a premature generalisation of two things that are both explicitly temporary. The weapons themselves are FloatingCollectible instances in static-facing mode (see that class's header) — this controller owns the registry and the interaction, not the rendering.
+
+**Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+- `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
+- `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
+- `HIT_RADIUS_PX` = `40.0`
+- `MENU_GAP_ABOVE_PX` = `30.0`
+
+**Public vars**
+- `var room: Node`
+
+**Public API**
+- `func clear() -> void:`
+- `func add_weapon(gu_cell: Vector2i, facing: String, weapon_id: String, frames_dir: String, sprite_scale: float, shadow_scale_factor: float) -> void:`
+- `func reposition_for_perspective(direction: String) -> void:`
+- `func hit_test(screen_pos: Vector2) -> int:`
+- `func open_menu_for(index: int) -> void:`
+- `func cancel_active() -> void:`
+- `func fire_active() -> void:`
 
 ---
 
@@ -3363,7 +3455,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3101 lines
+extends `Node2D` · 3178 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3380,6 +3472,7 @@ extends `Node2D` · 3101 lines
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
+- `WeaponBenchControllerClass` = `preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")`
 - `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
 - `ModalStackClass` = `preload("res://godot/scripts/ui/modal_stack.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`

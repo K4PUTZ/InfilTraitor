@@ -1,7 +1,14 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.0
 
-**Status:** 🟡 **Catalog drafted 2026-07-29, mechanism NOT built.** This document
+**Status:** 🟢 **Catalog drafted AND the first shot fired, both 2026-07-29.**
+Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
+`CONE` is implemented and selftested, and right-clicking a bench shotgun opens
+"Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and
+Part 4 (the non-destructive tier) remain open, and D1/D2/D7 are now **shipped
+rather than proposed** — they were ratified by being built and captured. What
+follows below was written before any of it existed; the original wording is
+kept, per this project's no-silent-rewrite policy. This document
 exists because `docs/production/roadmap.md` and `docs/production/milestones.md`
 have both carried the same entry since 2026-07-26 — *"Ranged weapon (shotgun) +
 shot-based wall destruction | New mechanism, no plan yet | Not started, not
@@ -185,7 +192,45 @@ is one table entry. D4's static facing mode and D5's measured constants shipped
 with it. Verified by real capture in all four perspectives, plus the VL-PERSIST
 crater/soot regression re-run.
 
-### Part 1 — `WeaponDef` + `WeaponRegistry` *(D1, D2, D7 — OPEN, no code)*
+### Parts 1–3 — ✅ DONE 2026-07-29, same day as this document
+
+**Part 1 (`WeaponDef` + `WeaponRegistry`)** shipped as written below —
+`weapons/*.json`, two-tier scan, `Registries.get_weapon_registry()`. Unknown
+`delivery` values loud-fail rather than defaulting to something destructive.
+`weapons/shotgun.json` is the first entry (CONE, 5 steps, 25° half-angle, 0.6
+calibre). **§7 #1 is still open:** `BombDef` did NOT migrate — explosives stay on
+`BombDef`/`bombs/` for now, so a `frag_grenade` is still not a "weapon" in the
+data model.
+
+**Part 2 (`CONE`)** shipped as `BlastCalculator.flood_gu_cone()` — the same
+wall-aware BFS as `flood_gu_rings()`, gated to a wedge. **6 new selftests, 27/27
+total**, covering the things that could plausibly be wrong: forward-not-backward
+(compared against the radial flood from the same source, so it proves the cone is
+doing work rather than just returning fewer cells), widening with distance,
+half-angle as accuracy, a 1° cone still firing down its axis, blocked-edge
+stopping, and the `{Vector2i -> int}` output shape being a drop-in for the
+existing damage path. `destroy_multiplier` verified to scale AND to be inert at
+its default, so every grenade call site is untouched.
+
+**Part 3 (the fire trigger)** shipped as `WeaponBenchController` +
+a parameterised `DetonateContextMenu`. Two deliberate departures from the
+grenade: a weapon is **not consumed** by firing (the bench's whole purpose is
+firing the same weapon at four materials and comparing), and a shot **does not
+crater the floor** — it hits what it is aimed at.
+
+**Real evidence, not description:** one shotgun, three materials, three
+captures — metal takes a few pockmarks (destroy_factor 0.05), concrete opens a
+ragged breach (0.50), wood loses a corner (0.90). The cone preview and the shot
+both follow N/E/S/W rotation, verified analytically across all four views and by
+capture in three of them. Grenade path re-verified after the menu rewiring
+(crater + soot + wood embers intact).
+
+**Balance note, flagged not fixed:** a shotgun opening a person-sized hole in
+concrete reads STRONG. `destroy_multiplier` 0.6 and the 5-step falloff are
+first-pass placeholders in exactly the sense `MaterialResistanceTable`'s own
+header already claims for its numbers — a lever, not a researched constant.
+
+### Part 1 — `WeaponDef` + `WeaponRegistry` *(D1, D2, D7 — as originally scoped)*
 The data layer, mirroring `BombDef`/`BombRegistry` line for line (which
 themselves mirror `PropDef`/`PropRegistry` — this would be the fourth use of one
 proven pattern, not a new one). Carries `id`, `delivery` (D1's four-way enum),

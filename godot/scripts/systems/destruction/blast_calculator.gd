@@ -62,6 +62,69 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 	return rings
 
 
+## WEAPON_MASTER_PLAN D1 / DESTRUCTION_MASTER_PLAN Part 5 — the CONE shape.
+##
+## Same wall-aware BFS as flood_gu_rings(), gated to a wedge around a facing.
+## Reusing the BFS rather than rasterising a cone directly is the whole point:
+## wall-blocking, the step index, and the {gu -> step} output shape every
+## downstream consumer already expects all come for free, so
+## find_affected_containers()/apply_container_damage() need ZERO changes to
+## accept a shot instead of a blast.
+##
+## Gating during the BFS is safe because a cone is CONVEX with its apex at the
+## source: any cell inside it can be reached from the apex by going out along
+## the axis and only then stepping sideways, and the cone is widest at the far
+## end, so that path never leaves the region. A cell that is only reachable
+## through cells outside the wedge is a cell behind a corner — which should be
+## excluded anyway.
+##
+## facing_delta is a GU-space compass step (docs/DIRECTION_GLOSSARY.md §3 —
+## NE is (0,-1)). The angle test is done in GU space, not screen space: the
+## isometric projection is linear, so a GU-space wedge still projects to a
+## wedge on screen, just with a transformed apex angle — the same reason
+## movement range reads as a diamond and nobody rasterises it in pixels.
+##
+## KNOWN, deliberate: BFS depth is Manhattan distance, so a cell at the cone's
+## edge gets a HIGHER step (weaker multiplier) than its Euclidean distance
+## would give. That makes cone edges fall off faster than the centre, which is
+## both physically reasonable for a spreading shot and consistent with how
+## flood_gu_rings() already treats a grenade. Not a bug to fix later.
+static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angle_deg: float,
+		max_steps: int, blocked_edges: Dictionary) -> Dictionary:
+	var cone: Dictionary = {source_gu: 0}
+	if max_steps <= 0:
+		return cone
+	var axis := Vector2(facing_delta).normalized()
+	if axis == Vector2.ZERO:
+		push_error("[BlastCalculator] flood_gu_cone: facing_delta must not be zero")
+		return cone
+	var cos_limit := cos(deg_to_rad(clampf(half_angle_deg, 0.0, 180.0)))
+
+	var frontier: Array[Vector2i] = [source_gu]
+	while not frontier.is_empty():
+		var next_frontier: Array[Vector2i] = []
+		for current in frontier:
+			var current_step: int = cone[current]
+			if current_step >= max_steps:
+				continue
+			for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+				var neighbor: Vector2i = current + Face.delta(face)
+				if cone.has(neighbor):
+					continue
+				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges):
+					continue
+				var offset := Vector2(neighbor - source_gu)
+				## Strictly in front of the muzzle, and inside the wedge. The
+				## apex cell itself is already seeded, so offset is never zero.
+				if offset.normalized().dot(axis) < cos_limit:
+					continue
+				cone[neighbor] = current_step + 1
+				next_frontier.append(neighbor)
+		frontier = next_frontier
+
+	return cone
+
+
 ## Every wall Slice and roof Slab touching a flooded GU, each tagged with the
 ## ring of the GU it was reached through (the minimum ring, if reachable from
 ## more than one side). Returns {"slices": Dictionary[String,int] (slice.id
@@ -116,9 +179,15 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 ## SAME for both faces of one edge). General-purpose, not material-gated: it
 ## also sharpens concrete/stone/metal, wood is just where it reads strongest
 ## (destroy_factor 0.9).
+## WEAPON_MASTER_PLAN D2 — destroy_multiplier is the calibre/punch knob: it
+## scales MaterialResistanceTable's per-material destroy_factor, so a light
+## round only scratches concrete where a heavy one bites into it. Trailing and
+## defaulted to 1.0, so every pre-existing caller (all of them grenades) is
+## byte-for-byte unaffected — the same technique bias_epicenter uses above.
 static func apply_container_damage(voxels: Array, container_id: String, material: String,
 		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float],
-		bias_epicenter: Vector2i = NO_EPICENTER_BIAS) -> void:
+		bias_epicenter: Vector2i = NO_EPICENTER_BIAS,
+		destroy_multiplier: float = 1.0) -> void:
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
@@ -137,7 +206,8 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 	for ring in by_ring:
 		var group: Array = by_ring[ring]
 		var mult: float = ring_multipliers[ring]
-		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material) * group.size()))
+		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material)
+			* destroy_multiplier * group.size()))
 		var crack_n: int = int(round(mult * MaterialResistanceTable.crack_factor(material) * group.size()))
 
 		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)

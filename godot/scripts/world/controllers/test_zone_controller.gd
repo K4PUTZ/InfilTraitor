@@ -130,7 +130,11 @@ func open_menu_for(index: int) -> void:
 		return
 	_active_index = index
 	var g: Dictionary = _grenades[index]
-	room._context_menu.open_at(_top_screen_pos(g), MENU_GAP_ABOVE_PX)
+	## WEAPON-FIRE-01: the menu is shared with the weapons bench now, so the
+	## verb and its handler are passed per open instead of being wired once in
+	## room.gd. Same button, same signal, different action.
+	room._context_menu.open_at(_top_screen_pos(g), MENU_GAP_ABOVE_PX,
+		"ui.context_menu.detonate", detonate_active)
 
 	## DESTRUCTION_MASTER_PLAN Part 3: preview the max-range GU footprint as
 	## a red wireframe while the menu is open (Director, this session).

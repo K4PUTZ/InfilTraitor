@@ -13,6 +13,7 @@ const InputControllerClass = preload("res://godot/scripts/world/controllers/inpu
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
+const WeaponBenchControllerClass = preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")
 const DetonateContextMenuClass = preload("res://godot/scripts/ui/detonate_context_menu.gd")
 const ModalStackClass = preload("res://godot/scripts/ui/modal_stack.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
@@ -332,9 +333,9 @@ var _selection_controller: SelectionControllerClass = null
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _test_zone_controller: TestZoneControllerClass = null
 var _floating_collectible: Node = null
-## TEST-ZONE weapons bench (2026-07-29): static, aimed weapon props — see
-## TEST_ZONE_WEAPON_ROWS.
-var _static_weapon_props: Array[Node] = []
+## TEST-ZONE weapons bench (2026-07-29): static, aimed, right-click-firable
+## weapon props — see TEST_ZONE_WEAPON_ROWS and WeaponBenchController.
+var _weapon_bench_controller: WeaponBenchControllerClass = null
 var _context_menu: DetonateContextMenuClass = null
 ## ESC-STACK-01: see modal_stack.gd — single source of truth for what Escape
 ## targets next (main menu, controls sub-panel, the grenade context menu, ...).
@@ -899,11 +900,16 @@ func _ready() -> void:
 	$HUD.add_child(_flash_rect)
 
 	## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
+	## WEAPON-FIRE-01 (2026-07-29): and "Atirar" on a bench weapon — ONE menu
+	## instance shared by both, because _unhandled_input's outside-click guard
+	## keys off `_context_menu.visible` and a second instance would have to be
+	## taught about the first. Which verb it shows, and what confirming it does,
+	## are now passed in per open (DetonateContextMenu.open_at).
 	_test_zone_controller = TestZoneControllerClass.new(self)
+	_weapon_bench_controller = WeaponBenchControllerClass.new(self)
 	_context_menu = DetonateContextMenuClass.new()
 	$HUD.add_child(_context_menu)
-	_context_menu.detonate_requested.connect(_test_zone_controller.detonate_active)
-	_context_menu.cancelled.connect(_test_zone_controller.cancel_active)
+	_context_menu.cancelled.connect(_cancel_prop_menus)
 	## ESC-STACK-01: close callable also cancels the pending grenade (matches
 	## what _unhandled_input's outside-click path and Cancelar already do).
 	_context_menu.opened.connect(func(): _modal_stack.push(_cancel_context_menu))
@@ -1138,9 +1144,8 @@ func _set_perspective(direction: String) -> void:
 			_test_zone_controller.reposition_for_perspective(_active_perspective)
 		if _floating_collectible != null and is_instance_valid(_floating_collectible):
 			_floating_collectible.reposition_for_perspective(_active_perspective)
-		for weapon_prop in _static_weapon_props:
-			if weapon_prop != null and is_instance_valid(weapon_prop):
-				weapon_prop.reposition_for_perspective(_active_perspective)
+		if _weapon_bench_controller != null:
+			_weapon_bench_controller.reposition_for_perspective(_active_perspective)
 
 		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
@@ -2376,6 +2381,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_test_zone_controller.open_menu_for(grenade_index)
 			get_viewport().set_input_as_handled()
 			return
+		## WEAPON-FIRE-01: same pattern, second prop type. Checked AFTER the
+		## grenades because the bench sits behind them and a click that could
+		## plausibly be either should take the nearer, consumable one.
+		var weapon_index := -1
+		if _weapon_bench_controller != null:
+			weapon_index = _weapon_bench_controller.hit_test(mb.position)
+		if weapon_index != -1:
+			_weapon_bench_controller.open_menu_for(weapon_index)
+			get_viewport().set_input_as_handled()
+			return
 		var move_target := _screen_to_tile(mb.position)
 		if move_target != INVALID_CELL:
 			_selection_controller.handle_move_click(move_target)
@@ -2557,10 +2572,8 @@ func _populate_test_zone_if_playground() -> void:
 	if _floating_collectible != null and is_instance_valid(_floating_collectible):
 		_floating_collectible.queue_free()
 		_floating_collectible = null
-	for weapon_prop in _static_weapon_props:
-		if weapon_prop != null and is_instance_valid(weapon_prop):
-			weapon_prop.queue_free()
-	_static_weapon_props.clear()
+	if _weapon_bench_controller != null:
+		_weapon_bench_controller.clear()
 	if map_id == "PLAYGROUND":
 		for gu in TEST_ZONE_GRENADE_GUS:
 			_test_zone_controller.add_grenade(gu)
@@ -2573,20 +2586,14 @@ func _populate_test_zone_if_playground() -> void:
 		## second bake just to stand still (see FloatingCollectible's header).
 		for weapon in TEST_ZONE_WEAPON_ROWS:
 			for gu_x in TEST_ZONE_WALL_GU_X:
-				var weapon_prop = FloatingCollectibleClass.new()
-				## COLLECTIBLE-OUTLINE-02: the stroke marks "you can pick this
-				## up" (Director, 2026-07-29), so a placed weapon does not get
-				## one — it is scenery an actor will eventually hold, not loot.
-				weapon_prop.outline_color = FloatingCollectibleClass.OUTLINE_DISABLED
-				weapon_prop.setup(
-					self, Vector2i(gu_x, int(weapon["row_y"])),
+				_weapon_bench_controller.add_weapon(
+					Vector2i(gu_x, int(weapon["row_y"])),
+					String(weapon["facing"]),
+					String(weapon["id"]),
 					String(weapon["frames_dir"]),
 					float(weapon["sprite_scale"]),
 					float(weapon["shadow_scale_factor"]),
-					String(weapon["facing"]),
 				)
-				add_child(weapon_prop)
-				_static_weapon_props.append(weapon_prop)
 
 		## ACTOR_MASTER_PLAN D21 — the spinning pickup. Moved out of the bench
 		## (Director, 2026-07-29: collectibles get their own area so the wall row
@@ -2756,6 +2763,62 @@ func _run_auto_screenshot_capture() -> void:
 		Input.parse_input_event(esc_up)
 		for _j in range(10):
 			await get_tree().process_frame
+	elif (capture_action == "weapon_menu" or capture_action == "weapon_fire") and _weapon_bench_controller != null:
+		## WEAPON-FIRE-01 dev capture action, mirroring test_zone_menu/
+		## test_zone_detonate exactly: "weapon_menu" drives _unhandled_input()
+		## with a synthetic right-click at the bench weapon's real hit-test
+		## position (so the cone WIREFRAME PREVIEW is what gets captured);
+		## "weapon_fire" additionally parses a real Enter InputEventKey, so the
+		## focused-Button keyboard route is exercised rather than assumed, and
+		## the capture shows the real damage.
+		## INFILTRAITOR_CAPTURE_WEAPON_INDEX picks which of the bench's weapons
+		## (default 0 = the concrete column); the 4 columns are one per wall
+		## material, which is the whole point of the bench.
+		## INFILTRAITOR_CAPTURE_PERSPECTIVE rotates the room first, so a capture
+		## can prove the cone follows rotation rather than only that the sprite
+		## does — the facing is stored in BASE space and rotated per view, which
+		## is exactly the kind of thing that fails silently (the muzzle keeps
+		## pointing where the target used to be).
+		var persp_env := OS.get_environment("INFILTRAITOR_CAPTURE_PERSPECTIVE")
+		if persp_env in ["N", "E", "S", "W"]:
+			_set_perspective(persp_env)
+			for _p in range(10):
+				await get_tree().process_frame
+		var wi_env := OS.get_environment("INFILTRAITOR_CAPTURE_WEAPON_INDEX")
+		var wi := wi_env.to_int() if wi_env.is_valid_int() else 0
+		if wi < 0 or wi >= _weapon_bench_controller._weapons.size():
+			wi = 0
+		var w_cell: Vector2i = _weapon_bench_controller._weapons[wi]["gu_cell"]
+		## Frame between the weapon and the wall it is aimed at, not on the
+		## weapon itself — the point of the capture is the cone reaching its
+		## target.
+		var aim_center := Vector2i(w_cell.x, maxi(w_cell.y - 2, 0))
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(aim_center))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(aim_center, 12)
+		for _c in range(5):
+			await get_tree().process_frame
+		var w_anchor: Vector2 = _weapon_bench_controller._top_screen_pos(
+			_weapon_bench_controller._weapons[wi])
+		var w_click := InputEventMouseButton.new()
+		w_click.button_index = MOUSE_BUTTON_RIGHT
+		w_click.pressed = true
+		w_click.position = w_anchor
+		_unhandled_input(w_click)
+		for _j in range(10):
+			await get_tree().process_frame
+		if capture_action == "weapon_fire":
+			var w_key_down := InputEventKey.new()
+			w_key_down.keycode = KEY_ENTER
+			w_key_down.pressed = true
+			Input.parse_input_event(w_key_down)
+			var w_key_up := InputEventKey.new()
+			w_key_up.keycode = KEY_ENTER
+			w_key_up.pressed = false
+			Input.parse_input_event(w_key_up)
+			for _j in range(30):
+				await get_tree().process_frame
 	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _test_zone_controller != null:
 		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
 		## standing-tool precedent as end_turn/busted above. "test_zone_view"
@@ -3074,7 +3137,17 @@ func _on_showcase_requested() -> void:
 ## outside-click path and the menu's own "Cancelar" button already use.
 func _cancel_context_menu() -> void:
 	_context_menu.close()
+	_cancel_prop_menus()
+
+
+## WEAPON-FIRE-01: one menu serves two prop types, so cancelling has to clear
+## whichever one armed it. Both cancels are idempotent (each early-returns when
+## it has no active index), so calling both unconditionally is safe and avoids a
+## second "which controller opened this" variable that could go stale.
+func _cancel_prop_menus() -> void:
 	_test_zone_controller.cancel_active()
+	if _weapon_bench_controller != null:
+		_weapon_bench_controller.cancel_active()
 
 func _on_screenshot_requested() -> void:
 	print_debug("[ROOM] Handler: screenshot requested (Shift+P)")

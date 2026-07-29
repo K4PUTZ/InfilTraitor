@@ -13,6 +13,18 @@ const HeightOverlayClass = preload("res://godot/scripts/overlays/height_overlay.
 const TemporalOverlayClass = preload("res://godot/scripts/overlays/temporal_overlay.gd")
 const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")
 
+## HEAT-Z-01 (Director, 2026-07-28): the three HEAT overlays used to sit at
+## z_index 0 — which WAS "just above the floor" back when the only floor was
+## floor_layer (z=-9). D17's voxel earth floor then landed with its walkable top
+## level at z=0 too (VoxelRenderer._build_voxel_layer_node: negative levels
+## render at level+1), and since VoxelRenderer is added to the room AFTER these
+## overlays, an equal-z tie is broken by tree order — the concrete floor drew
+## straight over the whole heatmap. z=1 puts them back above the floor stack for
+## good; their tree position (moved to floor_layer's index + 1) still loses every
+## OTHER z=1 tie (shadow tint layers, GU grid, tile_shadow), so their
+## relationship to every non-floor overlay is byte-for-byte what it was.
+const HEAT_OVERLAY_Z := 1
+
 # ── Vision state ───────────────────────────────────────────────────────────────
 var dev_vision: bool = false
 var light_vision: bool = false
@@ -197,7 +209,7 @@ func _setup_exposure_overlay() -> void:
 	_room.add_child(_exposure_overlay)
 	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
 	_room.move_child(_exposure_overlay, _room.floor_layer.get_index() + 1)
-	_exposure_overlay.z_index = 0
+	_exposure_overlay.z_index = HEAT_OVERLAY_Z
 	_exposure_overlay.z_as_relative = true
 	_exposure_overlay.visible = heat_vision
 	
@@ -217,7 +229,7 @@ func _setup_tile_risk_overlay() -> void:
 	_room.add_child(_tile_risk_overlay)
 	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
 	_room.move_child(_tile_risk_overlay, _room.floor_layer.get_index() + 1)
-	_tile_risk_overlay.z_index = 0
+	_tile_risk_overlay.z_index = HEAT_OVERLAY_Z
 	_tile_risk_overlay.z_as_relative = true
 	_tile_risk_overlay.visible = heat_vision
 	
@@ -278,7 +290,7 @@ func _setup_elite_exposure_overlay() -> void:
 	_room.add_child(_elite_exposure_overlay)
 	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
 	_room.move_child(_elite_exposure_overlay, _room.floor_layer.get_index() + 1)
-	_elite_exposure_overlay.z_index = 0
+	_elite_exposure_overlay.z_index = HEAT_OVERLAY_Z
 	_elite_exposure_overlay.z_as_relative = true
 	_elite_exposure_overlay.visible = heat_vision
 	

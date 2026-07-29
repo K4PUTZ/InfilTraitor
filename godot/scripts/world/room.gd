@@ -542,6 +542,15 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	
 	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, room_size)
 	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	## HEAT-Z-01 sweep (Director, 2026-07-28): the dev cell-number overlay was the
+	## other casualty of D17's voxel earth floor reaching z=0 — it is a plain
+	## Node2D in room.tscn, so it kept the default z_index 0 and, being a scene
+	## child added BEFORE VoxelRenderer, lost the tie and disappeared under the
+	## concrete. z=8 is the top of the floor-plane band (shadows 1, FOW 2, game
+	## tiles 3, shadow boundary 4, AP 5, path 6, selection 7) and still below the
+	## walls (WALL_BASE_Z_INDEX = 10): labels are sparse text meant to be READ, so
+	## unlike the HEAT tint they go above the other floor overlays, not under them.
+	tile_labels_overlay.z_index = 8
 	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w = room_size.x
@@ -2576,6 +2585,30 @@ func _run_auto_screenshot_capture() -> void:
 				await get_tree().process_frame
 		else:
 			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AGENT_CELL '%s' — expected 'x,y'" % agent_cell_env)
+
+	## HEAT-Z-01 (2026-07-28): force one or more analysis modes ON for the capture,
+	## comma-separated ("heat", "light", "dev", "numbers" — the H / L / D / #
+	## on-screen toggles). Same standing-dev-tool precedent as the capture actions
+	## below: a z-order claim about an overlay that is hidden by default cannot be
+	## proven by any unattended capture without a way to switch it on. Routed
+	## through the SAME toggle methods the buttons call, so this exercises the real
+	## path rather than poking `visible` directly.
+	var vision_env := OS.get_environment("INFILTRAITOR_CAPTURE_VISION")
+	if vision_env != "" and _vision_controller != null:
+		for raw_mode in vision_env.split(","):
+			match raw_mode.strip_edges().to_lower():
+				"heat":
+					_vision_controller.toggle_heat()
+				"light":
+					_vision_controller.toggle_light()
+				"dev":
+					_vision_controller.toggle_dev()
+				"numbers":
+					_on_hud_numbers_toggled()
+				_:
+					push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_VISION mode '%s' — expected heat/light/dev/numbers" % raw_mode)
+		for _j in range(10):
+			await get_tree().process_frame
 
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":

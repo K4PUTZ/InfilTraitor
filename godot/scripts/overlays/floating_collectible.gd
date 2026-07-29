@@ -116,6 +116,20 @@ const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 const OUTLINE_COLOR := Color(0.35, 0.72, 1.0, 1.0)
 const OUTLINE_WIDTH_TEXELS := 1.0
 
+## FLOAT-PROP-Z-01 — inputs to the depth-aware sort in _apply_z_index().
+##
+## Sprite half-extents in world pixels. The baked frames are 160×160 but the
+## object only fills ~66×33 of that (measured across frames 00-03); × the 1.15
+## sprite scale gives ~38 × ~19. Approximate on purpose — they only size the rect
+## used to ask "does this voxel overlap me", and the error being guarded against
+## there is off by 128px, not by 5.
+const SPRITE_HALF_WIDTH_PX := 38.0
+const SPRITE_HALF_HEIGHT_PX := 19.0
+## How far the overlap scan reaches, in VOXELS (8 per GU). Two GUs in every
+## direction: one GU sideways already moves a voxel 128px on screen against a
+## 76px-wide sprite, so nothing past that can overlap.
+const Z_SCAN_RADIUS_VOXELS := 16
+
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
 ## Perspective-independent anchor (North orientation) — gu_cell is derived
@@ -180,7 +194,8 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_sca
 	_sprite_scale = p_sprite_scale
 	_shadow_scale_factor = p_shadow_scale_factor
 	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
-	_apply_z_index()
+	## z is NOT applied here — see the note at the end of _ready(): the sort needs
+	## a real world position, which setup() runs too early to have.
 
 
 ## Mirrors TestZoneController.reposition_for_perspective(): called from
@@ -198,19 +213,71 @@ func reposition_for_perspective(direction: String) -> void:
 	_apply_z_index()
 
 
-## D22-FOLLOWUP (2026-07-28, Director-reported): floats at floor height —
-## must sort like level-0 voxel geometry (any level>=1 wall/roof column
-## draws over it wherever they visually overlap on screen), not "always
-## above everything" (OCC-03's agent-only policy, wrongly copied here
-## originally, same fix as GrenadeProp._apply_z_index()). _set_perspective()
-## rebuilds every voxel TileMapLayer from scratch, so this must be
-## re-applied on every rotation, not just once at setup.
+## FLOAT-PROP-Z-01 (Director-reported 2026-07-29: "a arma está entrando dentro
+## da parede") — depth-aware sorting.
+##
+## History, because this is the third rule here and each fixed the previous one's
+## real bug. OCC-03's "always above everything" was copied from the agent and
+## rejected (D22-FOLLOWUP, 2026-07-28): the object showed through geometry it was
+## genuinely behind. That was replaced by "sort like level-0 geometry" — correct
+## while the object rested at floor height, but its premise expired the same day,
+## when HOVER_HEIGHT_PX went 14 → 60 at the Director's request. A prop floating
+## three voxel levels up, standing in the cell directly SOUTH of a 2-storey block,
+## was drawn under all 16 of that block's levels: it read as sunk into the wall.
+##
+## Neither rule could be right, because z_index in this project encodes HEIGHT
+## (level + WALL_BASE_Z_INDEX) while what a prop needs is DEPTH. The two are
+## independent, and y-sorting — which would resolve depth for free — is not
+## enabled anywhere in the project (only y_sort_origin is set, which does nothing
+## on its own).
+##
+## So depth is decided here, using OcclusionSet's POLICY O5 (canon): depth is
+## (x + y) in view space, greater sum = nearer the camera. A column NEARER than
+## the prop must cover it; a column at the same depth or FARTHER must not. Only
+## columns whose on-screen band actually overlaps the prop's sprite count — a tall
+## block two cells behind is drawn far enough up the screen to miss it entirely,
+## and one two cells in front is drawn far enough down.
+##
+## Re-applied on every rotation, not just at setup: _set_perspective() rebuilds
+## every voxel TileMapLayer from scratch AND changes which cells are behind.
 func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
-	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
-	if ground_layer != null:
-		z_index = ground_layer.z_index
+	var voxel_renderer = room._voxel_renderer
+	var ground_layer: TileMapLayer = voxel_renderer.get_layer(0)
+	if ground_layer == null:
+		return
+	var base_z: int = ground_layer.z_index
+
+	## The sprite's own world-space rect, taken at the bob's extremes so the
+	## answer doesn't flicker as the object rises and falls.
+	var sprite_rect := Rect2(
+		position.x - SPRITE_HALF_WIDTH_PX,
+		_base_y - BOB_AMPLITUDE_PX - SPRITE_HALF_HEIGHT_PX,
+		SPRITE_HALF_WIDTH_PX * 2.0,
+		(BOB_AMPLITUDE_PX + SPRITE_HALF_HEIGHT_PX) * 2.0)
+
+	## Centre voxel of my own GU — the reference for O5 depth at voxel scale.
+	var center_voxel: Vector2i = GeometryCoords.gu_to_voxel_origin(gu_cell) \
+			+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
+	var verdict: Dictionary = voxel_renderer.classify_geometry_over_rect(
+			center_voxel, sprite_rect, Z_SCAN_RADIUS_VOXELS)
+
+	if bool(verdict["covered_from_front"]):
+		## Something NEARER really overlaps me: I belong behind all of it,
+		## including its ground level. This is the case D22-FOLLOWUP protected.
+		z_index = base_z - 1
+		return
+
+	var behind_top_z: int = int(verdict["behind_top_z"])
+	if behind_top_z == voxel_renderer.EMPTY_COLUMN:
+		## Open ground: keep the old floor-level slot.
+		z_index = base_z
+		return
+
+	## Sit just above the tallest thing behind me, capped at the top voxel layer
+	## so the agent (max + 1, OCC-03) still draws over every prop.
+	z_index = mini(behind_top_z + 1, voxel_renderer.get_max_voxel_z_index())
 
 
 func _ready() -> void:
@@ -259,6 +326,12 @@ func _ready() -> void:
 		_floor_y = world_pos.y
 		position = Vector2(world_pos.x, _floor_y - HOVER_HEIGHT_PX)
 	_base_y = position.y
+
+	## AFTER position/_base_y exist: FLOAT-PROP-Z-01 builds the sprite's real
+	## world rect to test what overlaps it, and setup() runs before _ready(), when
+	## both are still zero — the scan would have been run against a rect sitting at
+	## the world origin.
+	_apply_z_index()
 
 	set_process(true)
 

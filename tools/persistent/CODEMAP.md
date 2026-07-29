@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**158 scripts · 32405 lines total** (under `godot/scripts/`)
+**158 scripts · 32543 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -660,7 +660,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1357 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1422 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -674,6 +674,7 @@ extends `ConfirmationDialog` · 64 lines
 - `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
+- `EMPTY_COLUMN` = `-9999`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -858,7 +859,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 373 lines
+`class_name FloatingCollectible` · extends `Node2D` · 446 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 

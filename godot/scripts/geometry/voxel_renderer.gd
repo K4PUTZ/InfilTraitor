@@ -323,6 +323,71 @@ func get_layer(level: int) -> TileMapLayer:
 	return _voxel_layers[level]
 
 
+## FLOAT-PROP-Z-01 — sentinel for "this GU has no wall/block geometry at all".
+## Not -1: level -1 is a real (floor) level, and a caller comparing heights would
+## silently treat an empty column as ground.
+const EMPTY_COLUMN: int = -9999
+
+
+## FLOAT-PROP-Z-01 — classify the geometry that actually overlaps a world-space
+## rect (a prop's sprite), split by whether it is NEARER or FARTHER than that
+## prop, so the caller can pick a z_index that sorts correctly against both.
+##
+## Returns {"behind_top_z": int, "covered_from_front": bool}; behind_top_z is
+## EMPTY_COLUMN when nothing farther-or-equal overlaps.
+##
+## Works at VOXEL resolution, and that is the whole point. The first version of
+## this asked "does GU X have geometry, and how tall is its column" — but walls
+## are not per-GU columns: SliceGenerator puts a wall's slice in a single 8-voxel
+## ROW, and the far slice of an edge lands one voxel INSIDE the neighbour GU. So
+## a GU-granular test reported the weapon's own cell and its neighbour as
+## "occupied to level 17" (real, but a thin row 128px off to the side) and buried
+## the prop under the map. Measured on a real run, not reasoned about.
+##
+## Depth is OcclusionSet's POLICY O5 — (x + y) in view space, greater = nearer —
+## applied at voxel scale, where it holds for the same reason it holds per GU:
+## the same diamond, 8× finer.
+##
+## The per-voxel rect is approximate (the atom is 32×36 with a 16px top face; the
+## anchor is the tile centre). ±10px of slop cannot change any answer here: the
+## error this exists to prevent is a 128px-away slice counting as an occluder.
+##
+## Cost: (2·radius+1)² × layer count lookups — ~26k for a 16-voxel radius on
+## PLAYGROUND's 24 layers. Called when a prop is placed and on every perspective
+## rotation, NEVER per frame; a rotation already rebuilds the whole map (~3 s), so
+## this is noise beside it. A per-frame caller would need a different design.
+func classify_geometry_over_rect(center_voxel: Vector2i, world_rect: Rect2, radius: int) -> Dictionary:
+	var result: Dictionary = {"behind_top_z": EMPTY_COLUMN, "covered_from_front": false}
+	var ref_depth: int = center_voxel.x + center_voxel.y
+	var atom_offset := Vector2(
+		-float(GeometryCoords.VOXEL_ATOM_W) * 0.5,
+		-float(GeometryCoords.VOXEL_ATOM_H) + float(GeometryCoords.VOXEL_TILE_H) * 0.5)
+	var atom_size := Vector2(float(GeometryCoords.VOXEL_ATOM_W), float(GeometryCoords.VOXEL_ATOM_H))
+
+	for vy in range(center_voxel.y - radius, center_voxel.y + radius + 1):
+		for vx in range(center_voxel.x - radius, center_voxel.x + radius + 1):
+			var cell := Vector2i(vx, vy)
+			var nearer: bool = (vx + vy) > ref_depth
+			## Top-down, stopping at this cell's highest OVERLAPPING voxel: that
+			## one carries the greatest z the cell can contribute.
+			for level in range(_voxel_layers.size() - 1, -1, -1):
+				var layer: TileMapLayer = _voxel_layers[level]
+				if layer == null:
+					continue
+				if layer.get_cell_source_id(cell) == -1:
+					continue
+				var anchor: Vector2 = layer.position + layer.map_to_local(cell)
+				if not Rect2(anchor + atom_offset, atom_size).intersects(world_rect):
+					continue
+				if nearer:
+					result["covered_from_front"] = true
+				else:
+					result["behind_top_z"] = maxi(int(result["behind_top_z"]), layer.z_index)
+				break
+
+	return result
+
+
 ## VL-D4 — screen/world anchor of one voxel cell (its N-vertex, same anchor
 ## `map_to_local()` gives for any tile), for overlays that need to draw AT a
 ## specific voxel (e.g. EmberOverlay's glow) without re-deriving the layer

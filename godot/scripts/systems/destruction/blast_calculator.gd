@@ -186,6 +186,17 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 				voxel.set_damage(Voxel.DamageState.DESTROYED)
 
 
+## FLOOR-DEPTH-01 (Director, 2026-07-28): "a segunda camada do chão mais difícil
+## de destruir fora da GU 0,0" — the deep ground plane cedes ONLY inside the
+## blast's own GU (ring 0), and even there only across this fraction of the
+## surface crater's radii. Two effects in one number: the hole narrows with depth
+## (a bowl, not a shaft — the same disc repeated at every level reads as a
+## punched-out cylinder), and one grenade can no longer strip the whole ground
+## stack across the GUs it merely reaches. The ring-0 gate itself lives at the
+## call site, with the rest of the per-container ring logic.
+const DEEP_FLOOR_CRATER_FACTOR := 0.5
+
+
 ## Deterministic "which N of M" — hash-and-rank, mirroring
 ## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
 ## inputs always produce the same subset, no RNG, nothing stored.

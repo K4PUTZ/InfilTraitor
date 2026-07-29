@@ -24,7 +24,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 121
-- Test scripts: 25
+- Test scripts: 26
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16
@@ -33,11 +33,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- b68abb8 [VERSION] Bump to 0.9.83
 - 09e03ee [DOCS] Session close: FLOOR-ZONE-BAKE reference, schema tables, VERSION 0.9.82
 - f6e68b8 ALPHA TEMPORAL LIGHT FOUNDATION 0.9.81 - VL-D5 stone soot + session close
 - 3260943 ALPHA VOXEL LIGHT 0.9.80 - VL-D4 wood: directional bias + ember-to-char glow
 - b7ac34b ALPHA VOXEL LIGHT 0.9.79 - VL-03 incremental light-field repaint; flicker ON
-- c74a146 ALPHA VOXEL LIGHT 0.9.78 - VL-D3 under-wall floor darkening
 <!-- AUTO:END version_history -->
 
 ---

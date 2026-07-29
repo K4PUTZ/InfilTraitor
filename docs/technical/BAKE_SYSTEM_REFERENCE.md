@@ -933,12 +933,21 @@ finding it yet).
   infrastructure to bake against) — a zone declared there silently
   degrades to `earth`. Every real room in the project has walls; not
   chased further for v1.
-- Destruction always reveals plain `earth`, never the zone's declared
-  surface (`process_dirty_slabs()` left unchanged on purpose) — the zone is
-  treated as a thin cosmetic layer over generic ground, consistent with
-  B5's wall philosophy. A stated design assumption, not a technical
-  constraint; revisit if it reads wrong once destruction and floor zones
-  are seen together in a real room.
+- ~~Destruction always reveals plain `earth`, never the zone's declared
+  surface.~~ **REVERSED 2026-07-28 (Director) — the revisit this bullet
+  asked for happened:** seen together in a real room, the exposed generic
+  earth read as a bug, not as a design. The zone now goes **three levels
+  deep** (`DESTRUCTION_MASTER_PLAN` D20): both destructible `Slab` planes
+  (−1, −2) carry the zone material, and the first FIXED level below them
+  (−3) is painted through the same baked page via
+  `VoxelRenderer.set_floor_zone()` — a per-GU `{material, anchor}` table,
+  needed because the fixed levels place cells directly and so have no
+  container to read a material off. Levels −4..−8 stay plain earth: they
+  are only ever seen on the map's outer lateral cut, where reading as raw
+  bedrock is correct. `process_dirty_slabs()` was fixed in the same pass —
+  it sent *every* `Role.FLOOR` voxel down the earth-variant path, so a
+  dirty-but-surviving voxel of a zoned floor would have come back generic
+  (latent: nothing cracks floors today, only destroys).
 - Side faces at zone edges use the wall-style anisotropic plane (see The
   projection above) — correct image, imperfect aspect, on a rarely-visible
   feature.

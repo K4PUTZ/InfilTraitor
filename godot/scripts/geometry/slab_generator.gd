@@ -11,7 +11,7 @@ class_name SlabGenerator
 ## container so the bedrock level can never be marked dirty (nothing ever
 ## calls set_visible/set_damage on voxels in a Slab destruction never touches).
 static func generate(gu_cell: Vector2i, role: int, level: int, material: String, registry: SlabRegistry) -> Slab:
-	var slab_id := "SLAB_%d_%d_%s_%d" % [gu_cell.x, gu_cell.y, Slab.role_name(role), level]
+	var slab_id := Slab.make_id(gu_cell, role, level)
 	var slab := Slab.new(slab_id, gu_cell, role, level, material)
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
@@ -44,7 +44,7 @@ static func generate_with_border(
 	gu_cell: Vector2i, role: int, level: int, material: String, registry: SlabRegistry,
 	border_west: int = 1, border_east: int = 1, border_north: int = 1, border_south: int = 1
 ) -> Slab:
-	var slab_id := "SLAB_%d_%d_%s_%d" % [gu_cell.x, gu_cell.y, Slab.role_name(role), level]
+	var slab_id := Slab.make_id(gu_cell, role, level)
 	var slab := Slab.new(slab_id, gu_cell, role, level, material)
 
 	var base_origin: Vector2i = GeometryCoords.gu_to_voxel_origin(gu_cell)

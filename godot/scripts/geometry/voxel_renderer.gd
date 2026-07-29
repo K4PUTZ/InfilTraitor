@@ -131,6 +131,17 @@ var _voxel_layers: Array[TileMapLayer] = []
 ## once something has actually built it.
 var _negative_voxel_layers: Dictionary = {}
 
+## FLOOR-DEPTH-01 (Director, 2026-07-28): GU cell → {"material", "anchor"} of the
+## floor zone declared over it, published by room_builder at build time.
+##
+## The FIXED ground levels place cells directly (render_fixed_earth_level — no
+## Slab, no Voxel, D13), so unlike the destructible planes above them they have no
+## container to read a zone material off. Without this table a crater's exposed
+## bottom always fell back to the earth-variant hash, which is exactly the "chão
+## com material padrão" the Director reported: the floor zone bake stopped at the
+## surface. Empty for unzoned GUs, which keep rendering as plain earth.
+var _floor_zone_by_gu: Dictionary = {}
+
 ## Runtime TileSet
 var _tileset: TileSet
 
@@ -963,9 +974,10 @@ func process_dirty(registry: EdgeRegistry) -> void:
 ## Until now nothing consumed SlabRegistry.dirty_slabs() on the render side:
 ## room.gd's _tic_slab_system() only cleared dirty flags. Re-render routes
 ## through the SAME per-voxel call each Slab's own original render used
-## (render_slab()'s earth-hash for Role.FLOOR, render_slab_solid()'s fixed
-## material for CEILING/INTERIOR) so a re-render after partial damage is
-## pixel-identical to a fresh one for whatever voxels remain visible.
+## (render_slab()'s split — zone bake for a zoned floor, earth-hash otherwise —
+## and render_slab_solid()'s fixed material for CEILING/INTERIOR) so a re-render
+## after partial damage is pixel-identical to a fresh one for whatever voxels
+## remain visible.
 ##
 ## Erase routes through get_layer() (sign-aware for both positive and
 ## negative levels) — process_dirty()'s raw `_voxel_layers[level]` indexing
@@ -978,14 +990,27 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 	if dirty_slabs.is_empty():
 		return
 
+	## FLOOR-ZONE fix (2026-07-28): a FLOOR Slab carrying a zone material re-renders
+	## through the zone's baked page, exactly like render_slab() does — the branch
+	## below used to send EVERY Role.FLOOR voxel down the earth-variant path, so a
+	## dirty-but-surviving voxel of a zoned floor (a CRACKED one; a DESTROYED one
+	## is erased instead) would come back as generic earth in the middle of an
+	## otherwise concrete floor. Latent rather than reported: nothing cracks floors
+	## today — apply_crater_damage only destroys — but FLOOR-DEPTH-01 puts a second
+	## floor plane through this same function, so leaving the two render paths
+	## disagreeing about what a floor voxel looks like is a trap with a fuse.
+	if _bake_config == null:
+		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	for slab in dirty_slabs:
 		var use_solid: bool = slab.role != Slab.Role.FLOOR
+		var is_zoned_floor: bool = (not use_solid) and slab.material != "earth" \
+				and _bake_config != null and _bake_config.enabled
 		for voxel in slab.voxels:
 			if not voxel.dirty:
 				continue
 			if voxel.visible:
-				if use_solid:
-					var flat_baked: bool = slab.role == Slab.Role.CEILING
+				if use_solid or is_zoned_floor:
+					var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
 					_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
 							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 				else:
@@ -1102,16 +1127,42 @@ func render_slab(slab: Slab) -> void:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	var is_zoned: bool = slab.material != "earth" and _bake_config != null and _bake_config.enabled
 
+	## FLOOR-DEPTH-01: skip voxels destruction already took. At build time this
+	## changes nothing (a freshly generated Slab is entirely visible), but the
+	## deep floor plane is now rendered ON EXPOSURE rather than at build, so this
+	## function can run against a Slab that already has holes — twice, if a second
+	## blast reaches the same GU, and once more after every perspective rotation
+	## re-applies the damage registry. Without the skip each of those would place
+	## a cell back into a hole and silently heal the crater.
 	if is_zoned:
 		for voxel in slab.voxels:
+			if not voxel.visible:
+				continue
 			_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
 					null, voxel.grid_pos - slab.texture_anchor, 0, true)
 		return
 
 	for voxel in slab.voxels:
+		if not voxel.visible:
+			continue
 		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
 		var material_name: String = "earth_%d" % variant_index
 		_set_voxel_cell(voxel.grid_pos, voxel.level, material_name)
+
+
+## FLOOR-DEPTH-01 — put a deferred-render floor plane on screen.
+##
+## The deep floor Slab (GeometryCoords.FLOOR_DEEP_LEVEL) is generated at build but
+## never rendered there: it is fully occluded by the plane above it, so its cells
+## would cost tilemap memory and full-repaint time to draw nothing. This is the
+## seam that pays that cost only once the plane above has actually opened — from
+## the blast path, and again from the post-rotation damage replay.
+##
+## Idempotent by construction (render_slab skips destroyed voxels): calling it on
+## an already-revealed, already-cratered plane re-places exactly the cells that
+## are still there and leaves the holes alone.
+func reveal_floor_slab(slab: Slab) -> void:
+	render_slab(slab)
 
 
 ## DESTRUCTION — render one Slab's voxels using a single FIXED material for
@@ -1157,15 +1208,54 @@ func render_slab_solid(slab: Slab) -> void:
 ## Whatever eventually decides "digging exposed level -4" (Part 3, not built
 ## yet) calls this once for that one level; nothing here assumes or builds a
 ## contiguous stack.
+## FLOOR-DEPTH-01: levels down to FLOOR_ZONE_PAINT_MIN_LEVEL wear the floor
+## zone's own baked texture instead of the earth hash, when the GU has a zone
+## and the bake is on (same two conditions render_slab() applies to the
+## destructible planes — a ground_* material is absent from MATERIALS, so
+## letting one through with the bake off would resolve to MATERIALS[0] and paint
+## the crater bottom flat concrete gray).
 func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
 	if level < 0:
 		_ensure_negative_voxel_layer(level)
 	else:
 		_ensure_voxel_layers(level + 1)
 
+	if _bake_config == null:
+		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	var zone: Dictionary = _floor_zone_by_gu.get(gu_cell, {})
+	var paint_zone: bool = (not zone.is_empty()) \
+			and level >= GeometryCoords.FLOOR_ZONE_PAINT_MIN_LEVEL \
+			and _bake_config != null and _bake_config.enabled
+
+	if paint_zone:
+		var zone_material: String = String(zone["material"])
+		var zone_anchor: Vector2i = zone["anchor"]
+		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
+			_set_voxel_cell(voxel_pos, level, zone_material,
+					null, voxel_pos - zone_anchor, 0, true)
+		return
+
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
 		var variant_index: int = EarthVariantSelector.variant_for(voxel_pos, level)
 		_set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index)
+
+
+## FLOOR-DEPTH-01 — publish one GU's declared floor zone, so the FIXED levels
+## beneath the Slab planes can wear the same baked texture. material is the zone
+## material ("earth" clears the entry — an unzoned GU must fall back to the
+## earth hash, never to a stale zone from a previous map).
+func set_floor_zone(gu_cell: Vector2i, material: String, anchor: Vector2i) -> void:
+	if material == "" or material == "earth":
+		_floor_zone_by_gu.erase(gu_cell)
+		return
+	_floor_zone_by_gu[gu_cell] = {"material": material, "anchor": anchor}
+
+
+## FLOOR-DEPTH-01 — drop every published floor zone. Called by room_builder at the
+## top of a build: a map switch (or a perspective rotation, which re-derives every
+## GU's zone in the new frame) must not inherit the previous layout's table.
+func clear_floor_zones() -> void:
+	_floor_zone_by_gu.clear()
 
 
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;

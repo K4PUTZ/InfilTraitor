@@ -119,8 +119,12 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 		room.queue_free()
 		return
 
-	## Criterion 2: exactly one FLOOR Slab per GU (room_size.x * room_size.y),
-	## all at the destructible top level (-1), none anywhere else. Filtered by
+	## Criterion 2: exactly TWO FLOOR Slabs per GU — the destructible surface at
+	## FLOOR_TOP_LEVEL and, since FLOOR-DEPTH-01 (Director, 2026-07-28), the deep
+	## plane at FLOOR_DEEP_LEVEL beneath it — and nothing at any other level.
+	## Updated from "exactly one at -1", which was the D13 one-plane model this
+	## replaced; the invariant being guarded is unchanged in kind (every GU gets
+	## its full ground stack, no stray levels), only in count. Filtered by
 	## Role.FLOOR: since DESTRUCTION-D1-ROOF, the registry also legitimately
 	## holds Role.CEILING Slabs for real map blocks (2 per block-GU, at
 	## positive levels) — this criterion is about the floor's own invariant,
@@ -128,19 +132,25 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	var all_slabs: Array = room._slab_registry.all_slabs()
 	var floor_slabs: Array = all_slabs.filter(func(s: Slab) -> bool: return s.role == Slab.Role.FLOOR)
 	var expected_gu_count: int = room_size.x * room_size.y
-	if floor_slabs.size() == expected_gu_count:
-		_pass("SlabRegistry has exactly %d FLOOR Slabs — one per GU (room_size %s)" % [floor_slabs.size(), room_size])
+	var expected_floor_slabs: int = expected_gu_count * 2
+	if floor_slabs.size() == expected_floor_slabs:
+		_pass("SlabRegistry has exactly %d FLOOR Slabs — two per GU (room_size %s)" % [floor_slabs.size(), room_size])
 	else:
-		_fail("SlabRegistry has %d FLOOR Slabs, expected %d (room_size %s)" % [floor_slabs.size(), expected_gu_count, room_size])
+		_fail("SlabRegistry has %d FLOOR Slabs, expected %d (room_size %s)" % [floor_slabs.size(), expected_floor_slabs, room_size])
 
-	var all_at_top_level := true
+	var level_counts: Dictionary = {}
 	for slab in floor_slabs:
-		if slab.level != -1:
-			all_at_top_level = false
-	if all_at_top_level:
-		_pass("Every registered FLOOR Slab is at level -1 (the destructible top, D13)")
+		level_counts[slab.level] = int(level_counts.get(slab.level, 0)) + 1
+	var expected_levels: Dictionary = {
+		GeometryCoordsClass.FLOOR_TOP_LEVEL: expected_gu_count,
+		GeometryCoordsClass.FLOOR_DEEP_LEVEL: expected_gu_count,
+	}
+	if level_counts == expected_levels:
+		_pass("FLOOR Slabs sit only at levels %d and %d, %d of each (one per GU)" % [
+			GeometryCoordsClass.FLOOR_TOP_LEVEL, GeometryCoordsClass.FLOOR_DEEP_LEVEL, expected_gu_count,
+		])
 	else:
-		_fail("At least one FLOOR Slab is not at level -1")
+		_fail("FLOOR Slab level distribution is %s, expected %s" % [level_counts, expected_levels])
 
 	## Sanity, not previously checked: the registry's non-floor remainder is
 	## exactly the roof Slabs DESTRUCTION-D1-ROOF adds (2 per block-GU) —
@@ -166,9 +176,28 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	## Criterion 4: real, independently re-derived cell round-trip on a
 	## sample of real GUs from the real map — same discipline as
 	## slab_render_selftest.gd, now against real map coordinates.
-	var layer: TileMapLayer = voxel_renderer.get_layer(-1)
+	##
+	## ZONE-AWARE since FLOOR-DEPTH-01 (2026-07-28). This criterion checked every
+	## sampled GU against the earth-variant hash, which stopped being true for the
+	## whole map the moment FLOOR-BAKE-01 landed PLAYGROUND's `floor_zones` concrete
+	## rect: the center GU falls inside it and renders from a baked page, so the
+	## check had been failing 64/192 on that GU alone (pre-existing red, unrelated
+	## to the two-plane floor — confirmed by running this test against the
+	## pre-change tree). The GU's real expectation is now derived the same way the
+	## builder derives it: zoned → a baked source, unzoned → the earth hash.
+	var zoned_gus: Dictionary = {}
+	for zone: Dictionary in layout.get("floor_zone_instances", []):
+		var zone_gu: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
+		var zone_size: Vector2i = zone.get("size", Vector2i.ONE)
+		if String(zone.get("material", "")) == "":
+			continue
+		for zx in range(zone_size.x):
+			for zy in range(zone_size.y):
+				zoned_gus[zone_gu + Vector2i(zx, zy)] = true
+
+	var layer: TileMapLayer = voxel_renderer.get_layer(GeometryCoordsClass.FLOOR_TOP_LEVEL)
 	if layer == null:
-		_fail("voxel_renderer.get_layer(-1) is null after a real build")
+		_fail("voxel_renderer.get_layer(%d) is null after a real build" % GeometryCoordsClass.FLOOR_TOP_LEVEL)
 	else:
 		@warning_ignore("integer_division")
 		var center_gu := Vector2i(room_size.x / 2, room_size.y / 2)
@@ -177,18 +206,50 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 		]
 		var checked := 0
 		var mismatches := 0
+		var zoned_checked := 0
 		for gu in sample_gus:
+			var is_zoned: bool = zoned_gus.has(gu)
 			for voxel_pos in GeometryCoordsClass.gu_voxels(gu):
 				checked += 1
-				var expected_variant: int = EarthVariantSelector.variant_for(voxel_pos, -1)
-				var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
 				var actual_source_id: int = layer.get_cell_source_id(voxel_pos)
-				if actual_source_id != expected_source_id:
-					mismatches += 1
+				if is_zoned:
+					## A baked page is registered AFTER the four material sources,
+					## so its id is always past the end of MATERIALS.
+					zoned_checked += 1
+					if actual_source_id < VoxelRendererClass.MATERIALS.size():
+						mismatches += 1
+				else:
+					var expected_variant: int = EarthVariantSelector.variant_for(
+							voxel_pos, GeometryCoordsClass.FLOOR_TOP_LEVEL)
+					var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
+					if actual_source_id != expected_source_id:
+						mismatches += 1
 		if checked > 0 and mismatches == 0:
-			_pass("%d cells across 3 real GUs (corners + center) match an independently re-derived variant" % checked)
+			_pass("%d cells across 3 real GUs (corners + center) match their expected source — %d from a floor-zone bake page, %d from an independently re-derived earth variant" % [
+				checked, zoned_checked, checked - zoned_checked,
+			])
 		else:
 			_fail("%d/%d cells mismatched on real PLAYGROUND floor cells" % [mismatches, checked])
+
+	## Criterion 4b (FLOOR-DEPTH-01): the deep plane is GENERATED but NOT RENDERED
+	## at build — it is fully occluded by the surface above it, and drawing it
+	## eagerly would double the floor's cell count for zero pixels. Its Slab must
+	## exist for an interior GU while its layer holds nothing there.
+	var deep_gu := Vector2i(5, 5)
+	var deep_slab: Slab = room._slab_registry.get_slab(
+			Slab.make_id(deep_gu, Slab.Role.FLOOR, GeometryCoordsClass.FLOOR_DEEP_LEVEL))
+	var deep_layer: TileMapLayer = voxel_renderer.get_layer(GeometryCoordsClass.FLOOR_DEEP_LEVEL)
+	var deep_cell_source: int = -1
+	if deep_layer != null:
+		deep_cell_source = deep_layer.get_cell_source_id(GeometryCoordsClass.gu_to_voxel_origin(deep_gu))
+	if deep_slab != null and deep_slab.voxels.size() == 64 and deep_cell_source == -1:
+		_pass("Interior GU %s has a real deep Slab (64 voxels) at level %d with no cells rendered yet — deferred render contract holds" % [
+			deep_gu, GeometryCoordsClass.FLOOR_DEEP_LEVEL,
+		])
+	else:
+		_fail("Deep plane contract broken at GU %s: slab=%s cell_source=%d (expected a 64-voxel Slab and no rendered cell)" % [
+			deep_gu, deep_slab, deep_cell_source,
+		])
 
 	## Criterion 5: the existing wall pipeline is unaffected — walls still
 	## exist on positive levels if PLAYGROUND has any, and junction columns

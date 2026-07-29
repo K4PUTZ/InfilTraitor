@@ -222,34 +222,36 @@ func detonate_active() -> void:
 			var crater_core: float = crater_max * 0.4
 			for slab_id in affected.get("floors", {}):
 				var floor_slab: Slab = room._slab_registry.get_slab(slab_id)
+				var floor_ring: int = affected["floors"][slab_id]
+				var is_deep: bool = floor_slab.level <= GeometryCoords.FLOOR_DEEP_LEVEL
+				var core: float = crater_core
+				var max_radius: float = crater_max
+				if is_deep:
+					## FLOOR-DEPTH-01: the deep plane survives outside the blast's
+					## own GU entirely (ring 0 IS the source GU), and inside it takes
+					## a tighter crater — see BlastCalculator.DEEP_FLOOR_CRATER_FACTOR.
+					if floor_ring > 0:
+						continue
+					core *= BlastCalculatorClass.DEEP_FLOOR_CRATER_FACTOR
+					max_radius *= BlastCalculatorClass.DEEP_FLOOR_CRATER_FACTOR
+					## It is rendered on exposure, so it has to be on screen before it
+					## can show a hole in itself. Idempotent if the plane above
+					## already revealed it earlier in this same loop (dictionary
+					## iteration order across the two planes is not defined).
+					room._voxel_renderer.reveal_floor_slab(floor_slab)
 				BlastCalculatorClass.apply_crater_damage(
-					floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max)
+					floor_slab.voxels, floor_slab.id, epicenter, core, max_radius)
 				var fd := 0
 				for v in floor_slab.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
-				print_debug("[BLAST]   floor=%s crater core=%.1f max=%.1f destroyed=%d/%d" %
-					[floor_slab.id, crater_core, crater_max, fd, floor_slab.voxels.size()])
-				## D18 lazy reveal, finally triggered: the floor's destructible plane
-				## is ONE level, and nothing had ever built the fixed level beneath
-				## it ("Part 3, not built yet" in render_fixed_earth_level's own
-				## docstring). Without this the crater has no bottom — the voxels
-				## vanish and the legacy floor plane shows through, so a real hole
-				## read as untouched ground. One level, on demand, per D18 — never
-				## a range.
+				print_debug("[BLAST]   floor=%s level=%d ring=%d crater core=%.1f max=%.1f destroyed=%d/%d" %
+					[floor_slab.id, floor_slab.level, floor_ring, core, max_radius, fd, floor_slab.voxels.size()])
+				## D18 lazy reveal, finally triggered: without this the crater has no
+				## bottom — the voxels vanish and the legacy floor plane shows
+				## through, so a real hole reads as untouched ground.
 				if fd > 0:
-					var revealed_level: int = floor_slab.level - 1
-					room._voxel_renderer.render_fixed_earth_level(
-						floor_slab.gu_cell, revealed_level)
-					## VL-D2 (Director 2026-07-24): scorch the crater FLOOR too. The
-					## revealed level has no Voxel objects (render_fixed_earth_level
-					## places cells directly, D13), so its soot can't ride on a Voxel
-					## like the walls' does — it goes in room._crater_floor_soot, a
-					## plain cell→ring map the snapshot merges. Ring 0 (darkest): the
-					## bottom of a blast crater is the most burned surface there is.
-					for v in floor_slab.voxels:
-						if v.damage_state == Voxel.DamageState.DESTROYED:
-							room.add_crater_floor_soot(revealed_level, v.grid_pos, 0)
+					_expose_below(floor_slab, cell_to_voxel, destroyed_cells)
 
 			## VL-D1: scorch the surviving voxels ringing every hole (up to 3
 			## rings, darkest at the hole). Must run AFTER all damage is applied so
@@ -288,6 +290,34 @@ func detonate_active() -> void:
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## FLOOR-DEPTH-01 — reveal whatever lies under a floor plane that just took holes.
+##
+## Two cases, and the difference is whether the level below is a real Slab:
+##  - FLOOR_DEEP_LEVEL is one (generated at build, rendered only here): it draws
+##    itself, and its exposed surface takes soot the ordinary way, on its own
+##    Voxels, via compute_soot_rings — which is why every one of its voxels is
+##    indexed for the BFS, not just the destroyed ones. That soot then persists
+##    through rotation for free (VL-PERSIST records per Voxel).
+##  - Below that, D13's fixed ground places cells directly with no Voxel to hang
+##    soot on, so it keeps the plain cell→ring side map (VL-D2).
+func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array) -> void:
+	var below_level: int = slab.level - 1
+	var below_slab: Slab = room._slab_registry.get_slab(
+			Slab.make_id(slab.gu_cell, Slab.Role.FLOOR, below_level))
+	if below_slab != null:
+		room._voxel_renderer.reveal_floor_slab(below_slab)
+		for v in below_slab.voxels:
+			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+		return
+
+	room._voxel_renderer.render_fixed_earth_level(slab.gu_cell, below_level)
+	## VL-D2 (Director 2026-07-24): ring 0 (darkest) — the bottom of a blast
+	## crater is the most burned surface there is.
+	for v in slab.voxels:
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			room.add_crater_floor_soot(below_level, v.grid_pos, 0)
 
 
 ## VL-D1: register one voxel for the soot BFS — index it by its (x, y, level)

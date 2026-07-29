@@ -77,6 +77,15 @@ func clear_all_dirty() -> void:
 	dirty_count = 0
 
 
+## Canonical id builder — the single place the id format lives. FLOOR-DEPTH-01
+## added callers that LOOK UP a Slab they did not create (the deep floor plane,
+## reached from a GU + level by the blast and by the post-rotation damage replay);
+## without this they would each re-spell the format string, which is how a second
+## truth starts. SlabGenerator builds its ids through here too.
+static func make_id(p_gu_cell: Vector2i, p_role: int, p_level: int) -> String:
+	return "SLAB_%d_%d_%s_%d" % [p_gu_cell.x, p_gu_cell.y, role_name(p_role), p_level]
+
+
 static func role_name(r: int) -> String:
 	match r:
 		Role.FLOOR:

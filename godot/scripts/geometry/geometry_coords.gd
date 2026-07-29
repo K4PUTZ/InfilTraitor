@@ -28,6 +28,25 @@ const VOXEL_ATOM_W: int = 32     ## width
 const VOXEL_ATOM_H: int = 36     ## height: 16 top face + 20 side face
 const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 
+## ── Ground stack (D13/D17/D18 + FLOOR-DEPTH-01, Director 2026-07-28) ──────────
+## The level map beneath the walkable plane, in one place — room_builder,
+## VoxelRenderer and the blast path all used to spell these out independently
+## (or, worse, as a bare -1 / level - 1).
+##
+##   FLOOR_TOP_LEVEL   (-1) real Slab, destructible, wears the floor-zone bake.
+##   FLOOR_DEEP_LEVEL  (-2) real Slab, destructible ONLY inside the blast's own
+##                          GU (see BlastCalculator.DEEP_FLOOR_CRATER_FACTOR).
+##                          Rendered on exposure, not at build.
+##   -3                     first FIXED level (no Slab, no Voxel); still painted
+##                          with the zone bake, so a two-plane crater never
+##                          bottoms out on generic ground.
+##   -4 .. -8               fixed cosmetic bedrock, plain earth.
+const FLOOR_TOP_LEVEL: int = -1
+const FLOOR_DEEP_LEVEL: int = -2
+## Deepest level that still gets the floor zone's baked texture instead of the
+## earth-variant hash. Director: "pintar a terceira camada com a mesma textura".
+const FLOOR_ZONE_PAINT_MIN_LEVEL: int = -3
+
 
 ## Derived texture origin constant (Transform Canon 3 from SLICE-00)
 ## = (VOXEL_ATOM_H - VOXEL_TILE_H) / 2

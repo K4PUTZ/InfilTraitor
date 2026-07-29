@@ -89,6 +89,10 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## only ADD cells on top of a cleared renderer — neither touches state the
 	## other owns.
 	room._voxel_renderer.clear()
+	## FLOOR-DEPTH-01: same reasoning one level down — the per-GU zone table the
+	## FIXED ground levels read is republished below from this build's own slabs,
+	## so a map switch or rotation must not inherit the previous layout's.
+	room._voxel_renderer.clear_floor_zones()
 
 	## Floor-zone bake: author-declared material rects (layout.floor_zone_instances,
 	## MapCompiler-produced, always present even if empty) expanded to a per-GU
@@ -148,15 +152,33 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## it, always MISS, and silently fall back to MATERIALS[0] ("concrete") —
 	## the same lesson ROOF-BAKE-01 already learned for roof_slabs, which is
 	## why those are generated here but rendered only after render(), below.
-	const FLOOR_TOP_LEVEL := -1
+	##
+	## FLOOR-DEPTH-01 (Director, 2026-07-28): the destructible ground is now TWO
+	## planes, not one — FLOOR_TOP_LEVEL as before, plus FLOOR_DEEP_LEVEL beneath
+	## it, so a crater has a second storey to dig into instead of bottoming out on
+	## indestructible bedrock the moment the surface goes. The deep plane is
+	## GENERATED here (it must exist as real Voxels to take damage, persist through
+	## rotation, and re-render through the same dirty-flag machinery as everything
+	## else) but deliberately NOT rendered at build time: it is completely occluded
+	## by the plane above it, so placing 64 cells per GU for it would double the
+	## floor's tilemap footprint and the per-cell cost of every full light-field
+	## repaint, to draw nothing. It is rendered on exposure instead — see
+	## VoxelRenderer.reveal_floor_slab().
+	const FLOOR_TOP_LEVEL := GeometryCoords.FLOOR_TOP_LEVEL
 	var floor_slabs_by_gu: Dictionary = {}
 	for fx in range(0, _room_size.x):
 		for fy in range(0, _room_size.y):
 			var floor_gu := Vector2i(fx, fy)
 			var floor_material: String = floor_zone_by_gu.get(floor_gu, "earth")
+			var floor_anchor: Vector2i = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
 			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry)
+			var deep_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, floor_material, room._slab_registry)
 			if floor_material != "earth":
-				floor_slab.texture_anchor = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
+				floor_slab.texture_anchor = floor_anchor
+				deep_slab.texture_anchor = floor_anchor
+				## Publish the zone for the FIXED levels below both Slabs (D13's
+				## direct-cell path has no container to read it from).
+				room._voxel_renderer.set_floor_zone(floor_gu, floor_material, floor_anchor)
 			floor_slabs_by_gu[floor_gu] = floor_slab
 
 	## Floor-zone bake spec, same shape/derivation as roof_specs below (real

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**158 scripts · 32046 lines total** (under `godot/scripts/`)
+**158 scripts · 32309 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -478,7 +478,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 61 lines
+`class_name GeometryCoords` · 80 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -494,6 +494,9 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_ATOM_W` = `32`
 - `VOXEL_ATOM_H` = `36`
 - `VOXEL_TILE_H` = `16`
+- `FLOOR_TOP_LEVEL` = `-1`
+- `FLOOR_DEEP_LEVEL` = `-2`
+- `FLOOR_ZONE_PAINT_MIN_LEVEL` = `-3`
 
 ---
 
@@ -537,7 +540,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 95 lines
+`class_name Slab` · 104 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -658,7 +661,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1216 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1306 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1327,7 +1330,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 272 lines
+`class_name BlastCalculator` · 283 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1336,6 +1339,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
+- `DEEP_FLOOR_CRATER_FACTOR` = `0.5`
 
 ---
 
@@ -2232,7 +2236,7 @@ extends `SceneTree` · 170 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 231 lines
+extends `SceneTree` · 292 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -3010,7 +3014,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 966 lines
+`class_name RoomBuilder` · 988 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -3116,7 +3120,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 316 lines
+`class_name TestZoneController` · 346 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3348,7 +3352,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 2999 lines
+extends `Node2D` · 3020 lines
 
 `godot/scripts/world/room.gd`
 

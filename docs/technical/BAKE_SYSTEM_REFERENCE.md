@@ -936,15 +936,19 @@ finding it yet).
 - ~~Destruction always reveals plain `earth`, never the zone's declared
   surface.~~ **REVERSED 2026-07-28 (Director) — the revisit this bullet
   asked for happened:** seen together in a real room, the exposed generic
-  earth read as a bug, not as a design. The zone now goes **three levels
-  deep** (`DESTRUCTION_MASTER_PLAN` D20): both destructible `Slab` planes
-  (−1, −2) carry the zone material, and the first FIXED level below them
-  (−3) is painted through the same baked page via
-  `VoxelRenderer.set_floor_zone()` — a per-GU `{material, anchor}` table,
-  needed because the fixed levels place cells directly and so have no
-  container to read a material off. Levels −4..−8 stay plain earth: they
-  are only ever seen on the map's outer lateral cut, where reading as raw
-  bedrock is correct. `process_dirty_slabs()` was fixed in the same pass —
+  earth read as a bug, not as a design. The zone now covers **both
+  destructible `Slab` planes** (−1, −2), painted through the baked page
+  (`DESTRUCTION_MASTER_PLAN` D20); `VoxelRenderer.set_floor_zone()` — a
+  per-GU `{material, anchor}` table — makes the same page reachable from
+  the FIXED levels, which place cells directly and so have no container to
+  read a material off. Levels −3..−8 are plain earth: Director's read is a
+  concrete slab sitting on dirt, and the earth variants are already in the
+  material atlas, so that half costs nothing. A *photographic* dirt would
+  be another baked ground material at **~18 MB of atlas** — the measured
+  size of the existing `ground_concrete` page (4096×1152 RGBA8; the whole
+  PLAYGROUND bake is 75.9 MB across 17 pages). That per-material cost, not
+  the number of ground levels, is the mobile ceiling.
+  `process_dirty_slabs()` was fixed in the same pass —
   it sent *every* `Role.FLOOR` voxel down the earth-variant path, so a
   dirty-but-surviving voxel of a zoned floor would have come back generic
   (latent: nothing cracks floors today, only destroys).

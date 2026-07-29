@@ -197,24 +197,21 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 const DEEP_FLOOR_CRATER_FACTOR := 0.5
 
 
-## FLOOR-DEPTH-02 (Director, 2026-07-28) — the faintest scorch ring, and the
-## darkest an EXPOSED CRATER FLOOR is allowed to get.
+## Soot ring stamped on a freshly exposed crater floor. Ring 0 = darkest, VL-D2's
+## original call ("the bottom of a blast crater is the most burned surface there
+## is", Director 2026-07-24).
 ##
-## Amends VL-D2's "the bottom of a blast crater is the most burned surface there
-## is" (ring 0, ×0.20), which was right about the look of ONE plane and wrong once
-## there were three: every freshly uncovered level was stamped ring 0, so the whole
-## crater interior sat at ~34/255 against ~109/255 for intact lit floor, and the
-## per-depth tone steps (VoxelRenderer.FLOOR_DEPTH_DIM) were multiplying a value
-## already crushed to near-black — measured 3 and 9 grey levels of separation, i.e.
-## none. Capping the FLOOR at ring 2 (×0.63) lifts it back to ~107/255 and lets the
-## depth dim do the layer separation it was added for (~88 at level −2, ~71 at −3).
+## Briefly raised to 2 on 2026-07-28 to let the per-depth tone steps read against a
+## brighter floor, and REVERTED the same day: lightening the crater inward looked
+## wrong. Director's ruling — soot ADDS to the per-level tone instead of competing
+## with it, everything gets darker downward, and losing the texture to shadow at
+## the bottom is acceptable. The layer separation therefore comes entirely from
+## VoxelRenderer.FLOOR_DEPTH_DIM, which was re-tuned for that job.
 ##
-## The burn itself is not reduced, only relocated to where a blast actually leaves
-## it: the crater's RIM and WALLS — the surviving voxels ringing the hole — keep the
-## full BFS rings 0-2 from compute_soot_rings(). Physically it also reads better:
-## the material under a floor was shielded by that floor until the instant it was
-## uncovered.
-const EXPOSED_FLOOR_SOOT_RING := 2
+## Kept as a named constant rather than returning to a bare literal 0: the
+## detonation path and the post-rotation replay both write it, and they must never
+## disagree or the crater would change shade when the map turns.
+const EXPOSED_FLOOR_SOOT_RING := 0
 
 
 ## Deterministic "which N of M" — hash-and-rank, mirroring

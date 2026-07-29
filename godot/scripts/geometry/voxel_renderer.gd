@@ -148,8 +148,31 @@ var _negative_voxel_layers: Dictionary = {}
 ## knob that reaches every cell of a depth: the per-tile alternatives are owned by
 ## the light-bucket system (bucket_luminance below) and the FIXED levels place
 ## cells with no Voxel at all, so neither could carry this uniformly. Composes
-## multiplicatively with both — see the depth-dim note on bucket_luminance.
-const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.82, 0.66, 0.58, 0.52]
+## multiplicatively with both — the soot ADDS to this rather than being lightened
+## out of the way (Director, 2026-07-28: darker all the way down, losing the
+## texture to shadow at the bottom is acceptable).
+##
+## Ramp chosen by measurement, not by eye — four candidates captured on the same
+## real detonation with the map's flickering lamp held off so the lighting was
+## identical across runs, then the level -2 / level -3 pixels segmented by their
+## ratio against a no-dim reference (lit floor = 161/255 in every frame):
+##
+##   ramp                     level -2        level -3     step
+##   none                  51.5 (31.9%)   54.7 (33.9%)     -3.2  ← inverted
+##   0.82 / 0.66           42.5 (26.4%)   36.3 (22.5%)      6.2
+##   0.70 / 0.45  (this)   36.8 (22.8%)   25.1 (15.6%)     11.7
+##   0.55 / 0.28           29.3 (18.1%)   15.8 ( 9.8%)     13.5
+##
+## Note the first row: with no dim the deeper level came out BRIGHTER than the one
+## above it (the soot BFS reaches it with a fainter ring), so there was not merely
+## no depth cue — there was an inverted one. The chosen ramp nearly doubles the
+## step of the gentle one; the strong one buys only 1.8 more grey levels and pays
+## for it by crushing level -3 to 9.8% of the floor, where the texture is gone.
+##
+## Deeper entries (0.34, 0.28) are for the map's outer lateral cut. When D18's
+## decorative storeys land (water, smoke, lava) they will need their own tone
+## rule: a lava level is a light SOURCE, and this ramp would dim it into mud.
+const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.70, 0.45, 0.34, 0.28]
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): GU cell → {"material", "anchor"} of the
 ## floor zone declared over it, published by room_builder at build time.

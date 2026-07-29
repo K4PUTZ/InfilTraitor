@@ -36,16 +36,22 @@ const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 ##   FLOOR_TOP_LEVEL   (-1) real Slab, destructible, wears the floor-zone bake.
 ##   FLOOR_DEEP_LEVEL  (-2) real Slab, destructible ONLY inside the blast's own
 ##                          GU (see BlastCalculator.DEEP_FLOOR_CRATER_FACTOR).
-##                          Rendered on exposure, not at build.
-##   -3                     first FIXED level (no Slab, no Voxel); still painted
-##                          with the zone bake, so a two-plane crater never
-##                          bottoms out on generic ground.
-##   -4 .. -8               fixed cosmetic bedrock, plain earth.
+##                          Rendered on exposure, not at build. Also wears the
+##                          bake: the two structural planes are the "concrete".
+##   -3 .. -8               fixed cosmetic ground (no Slab, no Voxel), plain
+##                          earth — the dirt UNDER the concrete.
 const FLOOR_TOP_LEVEL: int = -1
 const FLOOR_DEEP_LEVEL: int = -2
-## Deepest level that still gets the floor zone's baked texture instead of the
-## earth-variant hash. Director: "pintar a terceira camada com a mesma textura".
-const FLOOR_ZONE_PAINT_MIN_LEVEL: int = -3
+## Deepest level that gets the floor zone's baked texture instead of the
+## earth-variant hash.
+##
+## Was -3 for a few hours on 2026-07-28 (D20, "pintar a terceira camada com a
+## mesma textura"), moved to -2 the same day: Director asked for the first two
+## layers to read as concrete and the third as earth. This is the FREE half of
+## that request — the earth variants are already in the material atlas and cost
+## nothing to place, whereas a photographic dirt would be another baked ground
+## material at ~18 MB of atlas (measured; see D21).
+const FLOOR_ZONE_PAINT_MIN_LEVEL: int = FLOOR_DEEP_LEVEL
 
 
 ## Derived texture origin constant (Transform Canon 3 from SLICE-00)

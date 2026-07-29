@@ -249,7 +249,13 @@ func _reapply_base_damage() -> void:
 				reveal_slab_gus[gu] = true
 			else:
 				reveal_fixed[gu] = below_level
-				add_crater_floor_soot(below_level, v.grid_pos, 0)
+				## FLOOR-DEPTH-02: the SAME cap the detonation wrote — a rotation
+				## re-derives this side map from scratch, so a different ring here
+				## would repaint the crater floor a different shade every time the
+				## map turned. (The deep plane needs no equivalent: its soot rides on
+				## its Voxels and comes back through _base_soot below.)
+				add_crater_floor_soot(below_level, v.grid_pos,
+						BlastCalculator.EXPOSED_FLOOR_SOOT_RING)
 
 	for base_key in _base_soot:
 		var vxy := PerspectiveMapperClass.cell_from_base(

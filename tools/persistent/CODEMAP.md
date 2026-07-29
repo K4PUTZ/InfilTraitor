@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**158 scripts · 32309 lines total** (under `godot/scripts/`)
+**158 scripts · 32382 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -661,7 +661,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1306 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1334 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -674,6 +674,7 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_SOURCE_ID` = `0`
 - `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
+- `FLOOR_DEPTH_DIM` = `[1.0, 0.82, 0.66, 0.58, 0.52]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -1330,7 +1331,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 283 lines
+`class_name BlastCalculator` · 303 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1340,6 +1341,7 @@ extends `Node2D` · 43 lines
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
 - `DEEP_FLOOR_CRATER_FACTOR` = `0.5`
+- `EXPOSED_FLOOR_SOOT_RING` = `2`
 
 ---
 
@@ -3120,7 +3122,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 346 lines
+`class_name TestZoneController` · 365 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3352,7 +3354,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3020 lines
+extends `Node2D` · 3026 lines
 
 `godot/scripts/world/room.gd`
 

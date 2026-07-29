@@ -187,6 +187,12 @@ func detonate_active() -> void:
 			## populated until compute_soot_rings() runs below, so this is the
 			## seed list the ember pass reads from AFTER that call.
 			var wood_voxels: Array = []
+			## FLOOR-DEPTH-02: surviving voxels of a freshly UNCOVERED floor plane.
+			## Collected here and capped after the soot BFS below — the BFS would
+			## otherwise stamp every one of them ring 0 (they all sit directly under
+			## a hole), which is exactly what flattened the crater's three levels
+			## into one dark mass. See BlastCalculator.EXPOSED_FLOOR_SOOT_RING.
+			var exposed_floor_voxels: Array = []
 			for slice_id in affected["slices"]:
 				var slice: Slice = room._edge_registry.get_slice(slice_id)
 				## VL-D4 (Director, 2026-07-26): bias the destroy/crack selection
@@ -251,13 +257,21 @@ func detonate_active() -> void:
 				## bottom — the voxels vanish and the legacy floor plane shows
 				## through, so a real hole reads as untouched ground.
 				if fd > 0:
-					_expose_below(floor_slab, cell_to_voxel, destroyed_cells)
+					_expose_below(floor_slab, cell_to_voxel, destroyed_cells, exposed_floor_voxels)
 
 			## VL-D1: scorch the surviving voxels ringing every hole (up to 3
 			## rings, darkest at the hole). Must run AFTER all damage is applied so
 			## the seed set is complete, and BEFORE the repaint so the field picks
 			## the soot up in the same re-derive the detonation already triggers.
 			BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 3)
+
+			## FLOOR-DEPTH-02: cap the freshly uncovered floor at the faintest ring.
+			## AFTER the BFS on purpose — those voxels still had to participate in it
+			## (they are legitimate neighbours for the rings around them), they just
+			## must not KEEP its ring-0 verdict. maxi(), not assignment: a voxel the
+			## BFS already found fainter than the cap stays as it is.
+			for v in exposed_floor_voxels:
+				v.soot_ring = maxi(v.soot_ring, BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING)
 
 			## VL-D4 — wood: "ficar em brasa no momento da explosão, e depois de
 			## alguns segundos escurecer". Ring 0 is the wood ringing a fresh hole
@@ -299,10 +313,14 @@ func detonate_active() -> void:
 ##    itself, and its exposed surface takes soot the ordinary way, on its own
 ##    Voxels, via compute_soot_rings — which is why every one of its voxels is
 ##    indexed for the BFS, not just the destroyed ones. That soot then persists
-##    through rotation for free (VL-PERSIST records per Voxel).
+##    through rotation for free (VL-PERSIST records per Voxel). Its SURVIVING
+##    voxels also go on the exposed-floor list, to be capped at
+##    EXPOSED_FLOOR_SOOT_RING once the BFS has run (FLOOR-DEPTH-02).
 ##  - Below that, D13's fixed ground places cells directly with no Voxel to hang
-##    soot on, so it keeps the plain cell→ring side map (VL-D2).
-func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array) -> void:
+##    soot on, so it keeps the plain cell→ring side map (VL-D2) — written at the
+##    same cap, since there is no BFS to run against it.
+func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array,
+		exposed_floor_voxels: Array) -> void:
 	var below_level: int = slab.level - 1
 	var below_slab: Slab = room._slab_registry.get_slab(
 			Slab.make_id(slab.gu_cell, Slab.Role.FLOOR, below_level))
@@ -310,14 +328,15 @@ func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array
 		room._voxel_renderer.reveal_floor_slab(below_slab)
 		for v in below_slab.voxels:
 			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+			if v.visible:
+				exposed_floor_voxels.append(v)
 		return
 
 	room._voxel_renderer.render_fixed_earth_level(slab.gu_cell, below_level)
-	## VL-D2 (Director 2026-07-24): ring 0 (darkest) — the bottom of a blast
-	## crater is the most burned surface there is.
 	for v in slab.voxels:
 		if v.damage_state == Voxel.DamageState.DESTROYED:
-			room.add_crater_floor_soot(below_level, v.grid_pos, 0)
+			room.add_crater_floor_soot(below_level, v.grid_pos,
+					BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING)
 
 
 ## VL-D1: register one voxel for the soot BFS — index it by its (x, y, level)

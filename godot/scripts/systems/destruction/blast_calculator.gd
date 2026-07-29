@@ -197,6 +197,26 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 const DEEP_FLOOR_CRATER_FACTOR := 0.5
 
 
+## FLOOR-DEPTH-02 (Director, 2026-07-28) — the faintest scorch ring, and the
+## darkest an EXPOSED CRATER FLOOR is allowed to get.
+##
+## Amends VL-D2's "the bottom of a blast crater is the most burned surface there
+## is" (ring 0, ×0.20), which was right about the look of ONE plane and wrong once
+## there were three: every freshly uncovered level was stamped ring 0, so the whole
+## crater interior sat at ~34/255 against ~109/255 for intact lit floor, and the
+## per-depth tone steps (VoxelRenderer.FLOOR_DEPTH_DIM) were multiplying a value
+## already crushed to near-black — measured 3 and 9 grey levels of separation, i.e.
+## none. Capping the FLOOR at ring 2 (×0.63) lifts it back to ~107/255 and lets the
+## depth dim do the layer separation it was added for (~88 at level −2, ~71 at −3).
+##
+## The burn itself is not reduced, only relocated to where a blast actually leaves
+## it: the crater's RIM and WALLS — the surviving voxels ringing the hole — keep the
+## full BFS rings 0-2 from compute_soot_rings(). Physically it also reads better:
+## the material under a floor was shielded by that floor until the instant it was
+## uncovered.
+const EXPOSED_FLOOR_SOOT_RING := 2
+
+
 ## Deterministic "which N of M" — hash-and-rank, mirroring
 ## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
 ## inputs always produce the same subset, no RNG, nothing stored.

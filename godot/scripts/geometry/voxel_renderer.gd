@@ -77,6 +77,12 @@ const LIGHT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT - 1  ## flipped dim alts fol
 ## VL-D1 reserves buckets 0-1 for blast soot; Director 2026-07-24 raised them
 ## (0.07/0.13 → 0.12/0.20) so scorch keeps a little texture instead of reading
 ## flat black. Light term still never maps below bucket 2 (ambient = 0.33).
+## FLOOR-DEPTH-02 caveat: on a negative level these values are multiplied again
+## by FLOOR_DEPTH_DIM, so a SOOTED voxel two levels down lands near 0.08 — below
+## the readable floor this table is tuned to hold. That is why the depth dim is
+## gentle, and why the soot ring of a freshly exposed crater floor is what
+## actually governs whether its layers read apart (see the ring-by-depth note in
+## TestZoneController._expose_below).
 var bucket_luminance: Array[float] = [
 	0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 ]
@@ -130,6 +136,20 @@ var _voxel_layers: Array[TileMapLayer] = []
 ## Never contiguous-from-zero (D18: lazy reveal) — a level exists here only
 ## once something has actually built it.
 var _negative_voxel_layers: Dictionary = {}
+
+## FLOOR-DEPTH-02 (Director, 2026-07-28): depth → tone. With all three ground
+## levels wearing the same zone texture (D20), a crater lost every cue that it
+## HAS layers; each level down now renders a step darker, indexed by depth
+## (-level - 1, so FLOOR_TOP_LEVEL = index 0 = untouched). Deeper than the table
+## clamps to its last entry — bedrock at -8 must still read as bedrock, not as a
+## black hole.
+##
+## Applied as a NODE modulate on the level's own TileMapLayer, which is the only
+## knob that reaches every cell of a depth: the per-tile alternatives are owned by
+## the light-bucket system (bucket_luminance below) and the FIXED levels place
+## cells with no Voxel at all, so neither could carry this uniformly. Composes
+## multiplicatively with both — see the depth-dim note on bucket_luminance.
+const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.82, 0.66, 0.58, 0.52]
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): GU cell → {"material", "anchor"} of the
 ## floor zone declared over it, published by room_builder at build time.
@@ -1064,6 +1084,14 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	# bedrock (-8..-2) at -7..-1; floor_layer (legacy plane) sits below at -9.
 	layer.z_index = (_wall_base_z_index + level) if level >= 0 else (level + 1)
 	layer.visible = true
+
+	## FLOOR-DEPTH-02: one tone step per level down. Positive (wall) levels are
+	## never touched — depth is a ground concept, and a wall's own stack already
+	## reads through its facade shading.
+	if level < 0:
+		var depth_index: int = mini(-level - 1, FLOOR_DEPTH_DIM.size() - 1)
+		var dim: float = FLOOR_DEPTH_DIM[depth_index]
+		layer.modulate = Color(dim, dim, dim, 1.0)
 
 	# Add to scene tree
 	add_child(layer)

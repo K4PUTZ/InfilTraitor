@@ -9,8 +9,14 @@ extends SceneTree
 ##   godot/resources/tilesets/tileset_blocks.tres  ← used by TileMapLayer nodes
 ##   godot/scripts/world/tile_registry.gd          ← auto-generated name→id lookup
 
-## Single source of truth: recursive scan of this folder finds ALL asset PNGs
-const SOURCE_PATH   := "res://ASSETS/ISOMETRIC/source_assets/"
+## Single source of truth: recursive scan of this folder finds ALL asset PNGs.
+## Scoped to generated/ only (floor/block/prop) — voxel atoms build their own
+## TileSet at runtime (voxel_renderer.gd:_build_voxel_tileset()) and actor
+## bakes (grenade, shotgun) load straight from disk (FloatingCollectible),
+## neither reads this TileSet. A project-root-wide scan here used to sweep
+## both in as dead TileSetAtlasSource entries — confirmed unused via
+## TileRegistry.TILES having zero callers project-wide (2026-07-29).
+const SOURCE_PATH   := "res://ASSETS/ISOMETRIC/source_assets/generated/"
 const TILESET_OUT   := "res://godot/resources/tilesets/tileset_blocks.tres"
 const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
 

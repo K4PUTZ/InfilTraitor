@@ -9,12 +9,16 @@ Voxel and TileSet generation workflow.
 ```
 Asset Source                  Generator              Output TileSet              In-Game
 ────────────────────────────────────────────────────────────────────────────────────────
-PNG voxel atoms       →  generate_voxel.py     →  tileset_voxels.tres   →  Voxel walls
-(source_assets/voxels/)    (32×36 per material)    (32×16 tile_size)
+PNG voxel atoms       →  generate_voxel.py     →  built in memory at    →  Voxel walls
+(source_assets/voxels/)    (32×36 per material)    room load (32×16)        (VoxelRenderer)
 
 Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   →  Floor, props
 (source_assets/generated/)  (no wall series)        (256×128 tile_size)
 ```
+
+Voxel atoms have no `.tres` output — `VoxelRenderer._build_voxel_tileset()`
+scans `source_assets/voxels/` and builds the TileSet in memory on every room
+load. No separate build step, no baked resource on disk.
 
 ---
 
@@ -60,12 +64,18 @@ ATOM = vstack(TOP, SIDE)
 
 ### Workflow: Add New Voxel Material
 
+There is no voxel TileSet builder or `.tres` to run — `VoxelRenderer.setup()`
+calls `_build_voxel_tileset()` every room load, which scans
+`source_assets/voxels/` and builds the atlas in memory from the current PNGs.
+(`build_voxel_tileset.gd` / `tileset_voxels.tres` existed at one point as a
+pre-baked alternative but were never wired to anything — retired 2026-07-29,
+confirmed zero runtime callers.)
+
 1. Add entry to `MATERIALS` dict in `generate_voxel.py`
 2. Run: `python3 tools/asset_generation/generate_voxel.py`
 3. Switch to Godot window, wait 3–5 seconds for reimport
-4. Run builder: `Godot --headless --path . --script godot/scripts/tools/build_voxel_tileset.gd`
-5. Add `ATLAS_COORD_{MATERIAL}` constant in `godot/scripts/geometry/geometry_coords.gd`
-6. **No texture_origin calibration needed** — analytically positioned
+4. Add `ATLAS_COORD_{MATERIAL}` constant in `godot/scripts/geometry/geometry_coords.gd`
+5. **No texture_origin calibration needed** — analytically positioned
 
 ---
 
@@ -98,8 +108,16 @@ from a map by `def`. No generator, no reimport, no tileset rebuild.
 
 The sprite path for blocks/crates was deleted on 2026-07-12
 (`generate_master_block.py`, `generate_master_crate.py`, `generate_crate_simple.py`,
-`generate_master_walls.py`). `tileset_blocks.tres` now holds **8 tiles**: 4 floors and
-4 voxel atoms — nothing else.
+`generate_master_walls.py`). `tileset_blocks.tres` now holds **4 tiles**: just the
+floor diamonds — nothing else.
+
+`build_tileset.gd`'s `SOURCE_PATH` was `source_assets/` (recursive) until
+2026-07-29, which silently swept voxel atoms and actor-bake frames
+(grenade, shotgun) into `tileset_blocks.tres` as unused `TileSetAtlasSource`
+entries — neither is ever read back out of it (voxels build their own
+TileSet at runtime; actor bakes load straight from disk via
+`FloatingCollectible`). Confirmed via zero project-wide callers of
+`TileRegistry.TILES` before narrowing the scan back to `generated/` only.
 
 ---
 
@@ -108,10 +126,11 @@ The sprite path for blocks/crates was deleted on 2026-07-12
 | Builder script | Output | tile_size | When to run |
 |---|---|---|---|
 | `build_tileset.gd` | `tileset_blocks.tres` | 256×128 | After floor/block/prop PNG changes |
-| `build_voxel_tileset.gd` | `tileset_voxels.tres` | 32×16 | After voxel PNG changes |
 
-**Both builders:**
-- Single-source scan (dedicated directory each)
+Voxel materials have no builder — see "Add New Voxel Material" above.
+
+**`build_tileset.gd`:**
+- Single-source scan (`source_assets/generated/` only)
 - No merge, no fallback
 - Clear error if PNG missing expected file
 
@@ -131,10 +150,8 @@ python3 tools/asset_generation/generate_master_floor.py  # floor tiles (last spr
 - Wait 3–5 seconds for asset relinking
 - No manual rebuild needed; Godot handles import automatically
 
-**Step 3: Run TileSet builder**
+**Step 3: Run TileSet builder (floor/block/prop PNGs only — voxel atoms need no build step)**
 ```bash
-Godot --headless --path . --script godot/scripts/tools/build_voxel_tileset.gd
-# or
 Godot --headless --path . --script godot/scripts/tools/build_tileset.gd
 ```
 

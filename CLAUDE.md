@@ -229,7 +229,7 @@ Read the linked doc before modifying that system.
 | MAPFILE persistence (`.map.json`) | [`docs/technical/MAPFILE_REFERENCE.md`](docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered; unknown sections round-trip verbatim; loud-fail load |
 | Lighting & visibility | [`docs/systems/LIGHT_MASTER_PLAN.md`](docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness ≠ tactical visibility; lights come from the map |
 | Localization | [`docs/technical/LOCALIZATION_REFERENCE.md`](docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
-| Asset & TileSet pipeline | [`tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md`](tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its own directory |
+| Asset & TileSet pipeline | [`tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md`](tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | One on-disk TileSet (`tileset_blocks` 256×128, floor tiles only, `source_assets/generated/` scan); voxel atoms (32×16) build in memory at room load, no `.tres` |
 | Mobile device testing | [`tools/persistent/MobileTesting.md`](tools/persistent/MobileTesting.md) | Local HTTP server + ngrok tunnel; re-export `export/web` after code changes |
 | File map, API surface | [`tools/persistent/CODEMAP.md`](tools/persistent/CODEMAP.md) | **Generated — never hand-edit, never mirror lists here.** Consult on demand |
 | Full documentation index | [`docs/README.md`](docs/README.md) | Every doc that exists; a dead link there is a bug |

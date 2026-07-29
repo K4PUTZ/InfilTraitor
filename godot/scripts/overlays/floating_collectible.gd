@@ -103,6 +103,19 @@ const SHADOW_ALPHA_SOFT_AT_TOP := 0.28
 const SHADOW_SCALE_AT_TOP := 1.00     ## at the top of the bob
 const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 
+## COLLECTIBLE-OUTLINE-01 (Director, 2026-07-29): the relit sprite disappears
+## into a dark floor, so the silhouette gets a constant-colour stroke that does
+## NOT dim with the room — see the outline block in flat_normal_relight.gdshader
+## for why it lives in the shader rather than as a scaled-up second sprite.
+##
+## Width is in TEXELS of the 160×160 baked frame. The sprite draws at
+## _sprite_scale (1.15 for the shotgun), so 1 texel ≈ 1.15 screen px at 1× zoom —
+## the "1 pixel" asked for, and it stays proportional as the camera zooms instead
+## of thinning out. The frames leave 43–68 px of transparent margin on every side
+## (measured), so a stroke of this width can never be clipped by the frame edge.
+const OUTLINE_COLOR := Color(0.35, 0.72, 1.0, 1.0)
+const OUTLINE_WIDTH_TEXELS := 1.0
+
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
 ## Perspective-independent anchor (North orientation) — gu_cell is derived
@@ -236,6 +249,8 @@ func _ready() -> void:
 	_material = ShaderMaterial.new()
 	_material.shader = shader
 	_material.set_shader_parameter("normal_tex", _normal_frames[0])
+	_material.set_shader_parameter("outline_color", OUTLINE_COLOR)
+	_material.set_shader_parameter("outline_width", OUTLINE_WIDTH_TEXELS)
 	_sprite.material = _material
 	add_child(_sprite)
 

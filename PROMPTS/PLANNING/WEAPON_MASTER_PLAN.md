@@ -5,9 +5,10 @@
 brainstormed — all 2026-07-29.** The physics model (D12–D20, §5b) is **ratified
 but entirely unbuilt**, and it **supersedes D1/D2's cone-as-volume for every
 firearm** — which is the correction to what actually shipped. Nine questions
-raised against it (§7a) are queued to be unpacked one at a time; two of them (S1
-dice vs. this codebase's no-RNG determinism, S7 origin/target points) block the
-rest.
+raised against it (§7a) are queued to be unpacked one at a time. **S1 is closed**
+(D21–D23: hit roll forceable, decoration hashed not RNG); **S7 (origin/target
+points) is now the one blocker left** — D15's 360° trajectory and D18's chest
+height both need two 3-D points that do not exist yet.
 Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
 `CONE` is implemented and selftested, and right-clicking a bench shotgun opens
 "Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and
@@ -103,6 +104,9 @@ Named pains:
 | **D18** | **Shots are chest-height with an error margin, and a wall hit is ALWAYS a miss.** You cannot aim at the floor: a shot is always between the agent and an enemy (or an interactive object). The error margin runs up/down and side to side, covering one slice or more depending on the distance between target and wall. A catastrophic roll (1,1,1…) can miss badly enough to break a floor voxel near the target — the exception that proves the rule, not an aiming option. | ✅ Ratified |
 | **D19** | **Material response differs in KIND, not just in amount.** **Wood**: the round punches through more easily, destroying little around it. **Metal**: almost nothing is destroyed, but the hit voxels are strongly marked — and should visibly **dent**, sliding back about half a voxel width so the surface reads as deformed rather than broken. (See §7 — as literally described, denting collides with inviolable Rule 8.) | ✅ Ratified (mechanism open) |
 | **D20** | **Damage stacks.** A shot into already-damaged geometry applies the same effects on top, destroying more as the case warrants. There is no "already hit" state that absorbs a second round. | ✅ Ratified |
+| **D21** | **Two layers with opposite needs: the HIT ROLL is gameplay and must be forceable; everything downstream of a miss is DECORATION and only has to obey the rules.** *(Director, 2026-07-29, closing S1: "a questão determinística não é tão importante nesse caso, porque estamos falando basicamente de decoração [...] a questão que nós temos que determinar obrigatoriamente é a chance de acertar ou errar o alvo".)* Whether a shot hits is the one thing gameplay testing must pin — a dev override forces 0% or 100% so a scenario replays. Where a miss landed, and whether it broke 3 voxels or 4, are appearance: any outcome inside D16's ladder is correct. **Also ratified: the projectile does not exist in the scene** — no travel, no per-frame simulation, only its consequences are drawn (animations are later). X-COM is the named reference: statistics plus a little luck. | ✅ Ratified |
+| **D22** | **Rolls use the project's existing FNV-1a hash, not an RNG — decided by the Director's delegation ("fica ao seu critério"), on cost grounds.** `FacadeSampler._fnv1a_hash()` is already pinned by invariant **B4** and already does exactly this job for destruction: `_select_deterministic()` separates its DESTROY and CRACK picks by nothing more than a **salt** in the key. Reusing it means no RNG state, no seed plumbing through any signature, and — the load-bearing reason — **every destruction selftest can keep asserting exact voxel sets**, the way all of them do today. Pure RNG would force those tests down to asserting ranges, trading the project's whole verification discipline for decoration. It also works where a seed could not: the bench has **no turn and no shooter**, so a `(turn, shooter, projectile)` seed cannot even be formed there, while a hash accepts whatever stable identity the context has. Keys: gameplay `(turn, shooter id, shot index, projectile index)`; bench `(weapon cell, shot counter, projectile index)`; one salt per purpose (hit / how many voxels / which voxels). | ✅ Ratified (delegated decision) |
+| **D23** | **Hash-based hit rolls are save-scum resistant, and that is a design choice to make on purpose.** Save, reload, fire again → same outcome, because the key is the same. This is exactly what X-COM does deliberately, and the Director named X-COM as the reference — so it is very likely wanted. Flagged rather than assumed. **Caveat that decides whether the property is real:** it only holds if the key is built from **persisted** state (turn number, shooter id). A session-local shot counter resets on load and the resistance silently evaporates. | 🟠 Proposed — Director to confirm the intent |
 | **D9** | **Rarity, stats and progression are deliberately absent from v1.** Director: *"posteriormente iremos trabalhar mais detalhadamente em raridades, e stats como dano, firerate, accuracy, etc."* Writing a stat table now would mean inventing balance numbers before a single shot has been fired against a real wall — the same trap `MaterialResistanceTable`'s own header already flags about its placeholder values (*"first-pass placeholders — a balancing lever, not researched constants"*). | ✅ Ratified |
 
 ---
@@ -428,8 +432,17 @@ shotgun, and is a sibling of `LINE` (Part 3b) rather than part of it.
 
 ### 7a. Raised against the shot-physics brainstorm (2026-07-29) — to be unpacked one at a time
 
-**S1. "Determinístico" means the OPPOSITE thing in this codebase, and the
-collision is not cosmetic.** Here it means *no RNG*:
+**S1. ✅ CLOSED 2026-07-29 — see D21/D22/D23.** The collision dissolved once the
+question was split: the hit roll is gameplay (forceable 0%/100%), everything
+after a miss is decoration (any outcome inside D16's ladder is correct). Rolls
+use the existing FNV-1a hash rather than an RNG, so selftests keep asserting
+exact voxel sets and no seed has to be plumbed anywhere — and, decisively, a
+`(turn, shooter, projectile)` seed could not be formed on the bench at all,
+which has neither. One consequence still needs the Director's intent: hash rolls
+are save-scum resistant (D23). *Original text kept below.*
+
+"Determinístico" means the OPPOSITE thing in this codebase, and the
+collision is not cosmetic. Here it means *no RNG*:
 `BlastCalculator._select_deterministic()` picks voxels by FNV-1a hash-and-rank,
 and invariant **B4 pins that** — same inputs, same result, forever. D12's dice
 are the opposite. Dice do *work*, because destruction persistence **records** the

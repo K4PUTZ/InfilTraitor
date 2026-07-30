@@ -2,7 +2,13 @@
 ## Port from voxel_ref.gd with damage state tracking
 class_name Voxel
 
-enum DamageState { INTACT = 0, CRACKED = 1, DESTROYED = 2 }
+## CRACKED = flat surface mark, voxel stays full height ("voxel atingido ficou
+## só marcado com a textura especial da bala"). DENTED = sunken special piece,
+## more severe than CRACKED but short of DESTROYED ("1 voxel ficou meio
+## afundado, pecinha especial com textura da bala") — DESTRUCTION_MASTER_PLAN
+## D22 (Director, 2026-07-30). Appended rather than inserted so existing
+## ordinals (used in persisted base-coord damage dicts) never shift.
+enum DamageState { INTACT = 0, CRACKED = 1, DESTROYED = 2, DENTED = 3 }
 
 var grid_pos: Vector2i           ## voxel cell coordinate
 var level: int                   ## vertical storey index

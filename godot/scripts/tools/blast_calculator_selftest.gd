@@ -29,6 +29,7 @@ func _init() -> void:
 	test_deterministic_selection_is_stable()
 	test_deterministic_selection_differs_by_salt_and_container()
 	test_metal_container_produces_cracked_not_destroyed()
+	test_damage_tiers_are_mutually_exclusive()
 	test_wood_container_mostly_destroyed_at_ring_zero()
 	test_ring_beyond_range_untouched()
 	test_soot_rings_spread_by_distance()
@@ -225,10 +226,14 @@ func test_deterministic_selection_differs_by_salt_and_container() -> void:
 
 ## Director (this session): metal is "praticamente não afetado, mas pode ser
 ## distorcido" — MaterialResistanceTable gives metal destroy_factor=0.05,
-## crack_factor=0.6, so at ring 0 (multiplier 1.0) a 64-voxel group should
-## produce ~3 DESTROYED and ~38 CRACKED, not the reverse.
+## dent_factor=0.5, crack_factor=0.3, so at ring 0 (multiplier 1.0) a
+## 64-voxel group should produce barely any DESTROYED and mostly DENTED
+## (the sunken look metal was originally meant to show), with some CRACKED
+## on top. DESTRUCTION_MASTER_PLAN D22 (2026-07-30) split the old single
+## CRACKED-only "distortion" outcome into DENTED (sunken) + CRACKED (flat
+## mark) tiers, applied to every material, not just metal.
 func test_metal_container_produces_cracked_not_destroyed() -> void:
-	print("[7] Metal container: mostly CRACKED, barely any DESTROYED\n")
+	print("[7] Metal container: mostly DENTED, barely any DESTROYED\n")
 
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 1, "metal")]
@@ -243,19 +248,58 @@ func test_metal_container_produces_cracked_not_destroyed() -> void:
 		slice.voxels, slice.id, "metal", 0, 0, false, [1.0, 0.5])
 
 	var destroyed := 0
+	var dented := 0
 	var cracked := 0
 	for voxel in slice.voxels:
 		if voxel.damage_state == Voxel.DamageState.DESTROYED:
 			destroyed += 1
+		elif voxel.damage_state == Voxel.DamageState.DENTED:
+			dented += 1
 		elif voxel.damage_state == Voxel.DamageState.CRACKED:
 			cracked += 1
 
-	if cracked > destroyed and destroyed <= 6:
-		_pass("Metal slice: %d CRACKED > %d DESTROYED (out of %d voxels) — matches 'barely affected, distorted'" %
-			[cracked, destroyed, slice.voxels.size()])
+	if dented > destroyed and destroyed <= 6:
+		_pass("Metal slice: %d DENTED, %d CRACKED, %d DESTROYED (out of %d voxels) — matches 'barely affected, dented'" %
+			[dented, cracked, destroyed, slice.voxels.size()])
 	else:
-		_fail("Metal slice: %d CRACKED, %d DESTROYED (out of %d) — expected mostly CRACKED, little DESTROYED" %
-			[cracked, destroyed, slice.voxels.size()])
+		_fail("Metal slice: %d DENTED, %d CRACKED, %d DESTROYED (out of %d) — expected mostly DENTED, little DESTROYED" %
+			[dented, cracked, destroyed, slice.voxels.size()])
+	print("")
+
+
+## D22: the three damage tiers must partition the affected voxels with no
+## overlap — a voxel selected for DESTROYED can never also show up DENTED or
+## CRACKED, and DENTED must be drawn before CRACKED so the harsher tier never
+## loses a voxel to the milder one.
+func test_damage_tiers_are_mutually_exclusive() -> void:
+	print("[7b] Damage tiers (DESTROYED/DENTED/CRACKED) partition with no overlap\n")
+
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 1, "concrete")]
+	SliceGenerator.generate(edges, registry)
+	var slice: Slice = registry.get_slice("SLICE_0_0_SE")
+	if slice == null:
+		_fail("Could not resolve synthetic concrete Slice (id lookup mismatch — check Face/Edge canon)")
+		print("")
+		return
+
+	BlastCalculatorClass.apply_container_damage(
+		slice.voxels, slice.id, "concrete", 0, 0, false, [1.0, 0.5])
+
+	var counts := {
+		Voxel.DamageState.INTACT: 0, Voxel.DamageState.DESTROYED: 0,
+		Voxel.DamageState.DENTED: 0, Voxel.DamageState.CRACKED: 0,
+	}
+	for voxel in slice.voxels:
+		counts[voxel.damage_state] = counts.get(voxel.damage_state, 0) + 1
+
+	var total_tagged: int = counts[Voxel.DamageState.DESTROYED] + counts[Voxel.DamageState.DENTED] + counts[Voxel.DamageState.CRACKED]
+	if counts[Voxel.DamageState.INTACT] + total_tagged == slice.voxels.size() and counts[Voxel.DamageState.DENTED] > 0 and counts[Voxel.DamageState.CRACKED] > 0:
+		_pass("Concrete slice: destroyed=%d dented=%d cracked=%d intact=%d, sums to %d with no double-counting" %
+			[counts[Voxel.DamageState.DESTROYED], counts[Voxel.DamageState.DENTED], counts[Voxel.DamageState.CRACKED], counts[Voxel.DamageState.INTACT], slice.voxels.size()])
+	else:
+		_fail("Concrete slice tiers don't partition cleanly: destroyed=%d dented=%d cracked=%d intact=%d (voxels=%d)" %
+			[counts[Voxel.DamageState.DESTROYED], counts[Voxel.DamageState.DENTED], counts[Voxel.DamageState.CRACKED], counts[Voxel.DamageState.INTACT], slice.voxels.size()])
 	print("")
 
 

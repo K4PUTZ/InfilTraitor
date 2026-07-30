@@ -202,15 +202,17 @@ func detonate_active() -> void:
 					slice.start_storey * GeometryCoords.LEVELS_PER_STOREY, false, bomb_def.ring_multipliers,
 					epicenter)
 				var d := 0
+				var n := 0
 				var c := 0
 				for v in slice.voxels:
 					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: d += 1
+					elif v.damage_state == Voxel.DamageState.DENTED: n += 1
 					elif v.damage_state == Voxel.DamageState.CRACKED: c += 1
 				if slice.material == "wood":
 					wood_voxels.append_array(slice.voxels)
-				print_debug("[BLAST]   slice=%s material=%s ring=%d destroyed=%d cracked=%d/%d" %
-					[slice.id, slice.material, affected["slices"][slice_id], d, c, slice.voxels.size()])
+				print_debug("[BLAST]   slice=%s material=%s ring=%d destroyed=%d dented=%d cracked=%d/%d" %
+					[slice.id, slice.material, affected["slices"][slice_id], d, n, c, slice.voxels.size()])
 			for slab_id in affected["roofs"]:
 				var slab: Slab = room._slab_registry.get_slab(slab_id)
 				BlastCalculatorClass.apply_container_damage(

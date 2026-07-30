@@ -208,17 +208,29 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		var mult: float = ring_multipliers[ring]
 		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material)
 			* destroy_multiplier * group.size()))
+		var dent_n: int = int(round(mult * MaterialResistanceTable.dent_factor(material) * group.size()))
 		var crack_n: int = int(round(mult * MaterialResistanceTable.crack_factor(material) * group.size()))
 
 		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)
 		var destroyed_lookup: Dictionary = {}
 		for v in destroy_set:
 			destroyed_lookup[v] = true
-		var remaining: Array = group.filter(func(v): return not destroyed_lookup.has(v))
+		var after_destroy: Array = group.filter(func(v): return not destroyed_lookup.has(v))
+
+		## D22: DENTED (sunken, more severe) is drawn from the pool BEFORE
+		## CRACKED (flat mark, less severe), so a voxel never lands in the
+		## milder tier when it also qualified for the harsher one.
+		var dent_set: Array = _select_deterministic(after_destroy, container_id, "DENT", dent_n, bias_epicenter)
+		var dented_lookup: Dictionary = {}
+		for v in dent_set:
+			dented_lookup[v] = true
+		var remaining: Array = after_destroy.filter(func(v): return not dented_lookup.has(v))
 		var crack_set: Array = _select_deterministic(remaining, container_id, "CRACK", crack_n, bias_epicenter)
 
 		for voxel in destroy_set:
 			voxel.set_damage(Voxel.DamageState.DESTROYED)
+		for voxel in dent_set:
+			voxel.set_damage(Voxel.DamageState.DENTED)
 		for voxel in crack_set:
 			voxel.set_damage(Voxel.DamageState.CRACKED)
 

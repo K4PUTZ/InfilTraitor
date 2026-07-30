@@ -5,13 +5,15 @@
 brainstormed — all 2026-07-29.** The physics model (D12–D20, §5b) is **ratified
 but entirely unbuilt**, and it **supersedes D1/D2's cone-as-volume for every
 firearm** — which is the correction to what actually shipped. Of the nine
-questions raised against it (§7a), **S1, S3, S4, S5, S6 and S7 are now closed**
-(2026-07-29/30) — most recently **S7 by D25** (2026-07-30): a shot always
-targets an actor picked through the contextual menu, never a free-aim
-direction, so **Part 3b (`LINE`) is unblocked**. S2 has a Director
-counter-proposal to prototype (on-the-fly half-voxel swap vs. baked dent
-variants), S8 and S9 are explicitly deferred to the Actor/Combat wave, and two
-of the four pre-existing §7b questions (1 and 4) are closed alongside them.
+questions raised against it (§7a), **S1, S2, S3, S4, S5, S6 and S7 are now
+closed** (2026-07-29/30) — most recently **S7 by D25** (2026-07-30): a shot
+always targets an actor picked through the contextual menu, never a free-aim
+direction, so **Part 3b (`LINE`) is unblocked**. **S2 closed via
+`DESTRUCTION_MASTER_PLAN` D22**: a real `DENTED` damage tier, every material
+can reach every tier, logic layer shipped and selftested — the matching
+textures are still open (see that plan's §7 item 4). S8 and S9 are explicitly
+deferred to the Actor/Combat wave, and two of the four pre-existing §7b
+questions (1 and 4) are closed alongside them.
 Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
 `CONE` is implemented and selftested, and right-clicking a bench shotgun opens
 "Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and
@@ -150,7 +152,8 @@ Measured, not estimated.
 | Test-zone frame VRAM, shared + sparse | **49.8 MB** for the same 5 props (**4.8×**) | measured after `CollectibleFrameCache` |
 | Frames a STATIC prop actually needs | **4 of 120** (one per N/E/S/W) | why the bench is nearly free and the pickups are not |
 | Material resistance (destroy_factor) | metal 0.05 · stone 0.30 · concrete 0.50 · wood 0.90 | `MaterialResistanceTable` — placeholders, a balancing lever |
-| Material resistance (crack_factor) | metal 0.60, everything else 0.0 | idem — metal distorts rather than breaks |
+| Material resistance (dent_factor) | metal 0.50 · stone 0.30 · concrete 0.20 · wood 0.05 | idem — D22 (2026-07-30): every material can now dent, not just metal |
+| Material resistance (crack_factor) | metal 0.30 · stone 0.20 · concrete 0.15 · wood 0.03 | idem — flat surface mark, milder than dent, applied after it |
 | Collectible bake, per object | 120 frames × 4 passes = **480 PNGs, 4.7 MB** (shotgun) / **1.9 MB** (grenade) | on disk, 2026-07-29 |
 | Static prop bake, per object | 4 frames × 2 passes = **8 PNGs, 84 KB** | `grenade_frames/`, on disk |
 | ⇒ cost of one more *static* weapon vs. a collectible | **~56× cheaper** | D3 — the reason the arsenal can grow |
@@ -381,7 +384,8 @@ a point impact**, and the sniper is its reference case *"que vão ser a base das
 armas em linha reta"* (Director). §7a's two structural blockers are both closed
 now — S1 (dice vs. the codebase's no-RNG determinism, D21–D23) and S7
 (origin/target points, D25) — so nothing left in §7a stops implementation from
-starting; S2/S8/S9 and §7b.2/.5/.6 are open or deferred details, not gates.
+starting; S8/S9 and §7b.2/.5/.6 are open or deferred details, not gates
+(S2 also closed since, via `DESTRUCTION_MASTER_PLAN` D22).
 
 *Original scoping text, kept:*
 Five of the six bench weapons declare it and none can fire (D11). Unlike `CONE`,
@@ -460,20 +464,30 @@ and a Director-reported bug ("I fired and it opened *this*") cannot be replayed.
 `(turn, shooter id, projectile index)` — unpredictable to the player, exactly
 reproducible for us and for tests. Decide before building, not after.
 
-**S2. OPEN — Director counter-proposal added 2026-07-30, not yet chosen between
-two routes.** Metal denting as originally described is forbidden by inviolable
-Rule 8: sliding a hit voxel back half a width has no sub-tile offset to do it
-with, since voxels reach the tilemap only through `set_cell()` and
-`TileMapLayer`'s per-cell transforms are flip/transpose only. Two candidate
-routes now on record, neither prototyped: **(a)** bake "dented" atlas variants
-and select them as a damage state, the way `CRACKED` already is — deformation
-becomes art, not geometry (the agent's original proposal); **(b)** *"substituir
-um voxel por 'meio' voxel, on the fly, e ficar realmente 'amassado'"* — the
+**S2. ✅ CLOSED 2026-07-30 — logic layer shipped, see `DESTRUCTION_MASTER_PLAN`
+D22.** Metal denting as originally described (sliding a hit voxel back half a
+width) is still forbidden by inviolable Rule 8 — no sub-tile offset exists,
+`TileMapLayer`'s per-cell transforms are flip/transpose only — but the real
+answer turned out bigger than either candidate route below: `Voxel.DamageState`
+gained a real `DENTED` tier (sunken, its own baked "special piece" per
+material), distinct from `CRACKED` (flat surface mark), and **every material
+can now reach every tier** — this retracts the "stone stays whole" framing
+below. `MaterialResistanceTable.dent_factor` + `BlastCalculator`'s 3-way
+destroy→dent→crack split are shipped and selftested (28/28 PASS). **Not shipped
+yet: the actual DENTED/CRACKED textures** — see `DESTRUCTION_MASTER_PLAN` §7
+item 4 for the open question of which rendering path (baked-photographic vs.
+flat-generic) they need to join. *Original text kept below.*
+
+Metal denting as originally described is forbidden by inviolable Rule 8:
+sliding a hit voxel back half a width has no sub-tile offset to do it with,
+since voxels reach the tilemap only through `set_cell()` and `TileMapLayer`'s
+per-cell transforms are flip/transpose only. Two candidate routes were on
+record, neither prototyped: **(a)** bake "dented" atlas variants and select
+them as a damage state, the way `CRACKED` already is — deformation becomes
+art, not geometry (the agent's original proposal); **(b)** *"substituir um
+voxel por 'meio' voxel, on the fly, e ficar realmente 'amassado'"* — the
 Director's own idea, swapping the hit cell to a distinct half-height tile
-through `set_cell()` (still Rule-8-legal, since it stays a real tile asset
-rather than compositing, but needs that tile to actually exist in the atlas and
-a rule for which neighbour cell absorbs the other half). Needs a prototype
-before either is picked.
+through `set_cell()`.
 
 **S3. ✅ CLOSED 2026-07-30.** Face-local soot is ratified, and cheaper than the
 storage question below implied: *"Como a gente está trabalhando com shades,

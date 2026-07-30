@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34157 lines total** (under `godot/scripts/`)
+**163 scripts · 34235 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -637,25 +637,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 68 lines
+`class_name Voxel` · 74 lines
 
 `godot/scripts/geometry/voxel.gd`
 
 > Geometry Module — Voxel: single 32×32 voxel in a wall slice Port from voxel_ref.gd with damage state tracking
-
-**Public vars**
-- `var grid_pos: Vector2i`
-- `var level: int`
-- `var visible: bool = true`
-- `var dirty: bool = false`
-- `var damage_state: int = DamageState.INTACT`
-- `var face_atlas_rect: Rect2i`
-- `var soot_ring: int = -1`
-
-**Public API**
-- `func set_visible(v: bool) -> void:`
-- `func set_damage(new_state: int) -> void:`
-- `func clear_dirty() -> void:`
 
 ---
 
@@ -1350,7 +1336,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 370 lines
+`class_name BlastCalculator` · 382 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1404,16 +1390,14 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 34 lines
+`class_name MaterialResistanceTable` · 48 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
-> MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3. How much of a ring-group's voxels convert to DESTROYED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
+> MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
 
 **Constants / tuning**
-- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "crack_factor": 0.6}, "stone":    {"destroy_factor": 0.3,  "crack_factor": 0.0}, "concrete": {"destroy_factor": 0.5,  "crack_factor": 0.0}, "wood":     {"destroy_factor": 0.9,  "crack_factor": 0.0}, }`
-- `DEFAULT_DESTROY_FACTOR` = `0.5`
-- `DEFAULT_CRACK_FACTOR` = `0.0`
+- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, }`
 
 ---
 
@@ -2180,7 +2164,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 634 lines
+extends `SceneTree` · 678 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2205,6 +2189,7 @@ extends `SceneTree` · 634 lines
 - `func test_deterministic_selection_is_stable() -> void:`
 - `func test_deterministic_selection_differs_by_salt_and_container() -> void:`
 - `func test_metal_container_produces_cracked_not_destroyed() -> void:`
+- `func test_damage_tiers_are_mutually_exclusive() -> void:`
 - `func test_wood_container_mostly_destroyed_at_ring_zero() -> void:`
 - `func test_ring_beyond_range_untouched() -> void:`
 - `func test_soot_rings_spread_by_distance() -> void:`
@@ -3237,7 +3222,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 351 lines
+`class_name TestZoneController` · 353 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

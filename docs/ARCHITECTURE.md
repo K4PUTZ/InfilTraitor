@@ -267,8 +267,13 @@ every segment's environment while leaving the character intact.
    `Dictionary[Vector3i → int]` in **base (un-rotated) coordinates** — snapshot
    is a duplicate, restore is a replace plus the `reapply_damage` pass that
    already exists for perspective rotation. Fog of war (`FogOfWarOverlay`, already
-   described as segment-scoped and persistent) is a second such payload; enemy
-   state, doors and collected items are not yet inventoried.
+   described as segment-scoped and persistent) is a second such payload.
+   **Scope of the rest confirmed by the Director (2026-07-30): "basicamente
+   tudo que modifica o cenário"** — destruction (done), **puzzle pieces**,
+   doors, collected items, and **dead (killed) enemies**. None of these four
+   are inventoried anywhere yet; this is scope, not a mechanism — each still
+   needs its own storage shape before a snapshot/restore or commit-on-checkpoint
+   pass can cover it.
 
 Full reasoning and the open half live in
 [`DESTRUCTION_MASTER_PLAN.md`](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) §7

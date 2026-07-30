@@ -856,6 +856,19 @@ anything consumes it; Part 3 must not be bundled with it.
 
 ## 7. Open questions
 
+0. **Does a checkpoint restore undo destruction?** *(New 2026-07-29, surfaced by
+   the weapons work — see [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) D24 /
+   S10.) The Director stated the game's save model that day: **no deliberate
+   save**, short infiltration waves over a set of segments, **checkpoints** so a
+   failure does not always return you to a segment's start, and only overall
+   character progression persisting automatically. Nothing has ever asked this
+   plan what the world looks like after such a restore. VL-PERSIST records damage
+   per voxel in base coordinates — enough to survive a *perspective rotation*,
+   not enough to roll a wall back to intact, because nothing snapshots it. Two
+   coherent answers: destruction is **checkpoint-scoped** (the base-coord damage
+   map needs snapshot/restore) or **permanent for the segment run**. Cheap to
+   design in now, expensive to retrofit. Not decided.
+
 1. **`TileMapLayer` count** — the one real unknown. **Part 0 answered the
    CPU/node-creation half 2026-07-15** (256 layers: 0.87 ms, 0.86 MB, headless
    Mac — not the wall). **Still open: real on-device GPU frame-time cost of

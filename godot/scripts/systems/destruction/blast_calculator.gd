@@ -125,6 +125,183 @@ static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angl
 	return cone
 
 
+## WEAPON_MASTER_PLAN D26-D28 (Director, 2026-07-30) — replaces the
+## flood-and-graduate-by-ring damage model for CONE/LINE weapons. A shot is
+## `projectile_count` discrete pellets, each landing on exactly ONE wall
+## voxel — never an area. Bullet marks exist only at that one impact point;
+## everything else in the wedge is untouched by this call (soot, D17,
+## spreads separately from whichever voxels end up DESTROYED).
+##
+## D26: no authored range cap — max_steps should be generous (comfortably
+## past any real room), since the cone's own angular widening is what makes a
+## far shot self-limiting (thinner pellet coverage over a wider spread), not
+## a hard cutoff.
+##
+## NOT a flood-fill: an early version aggregated flood_gu_cone()'s ENTIRE
+## reachable set and picked wall-adjacent cells from all of it — which let a
+## pellet's "impact" be a wall reached by walking AROUND a narrow obstacle
+## (e.g. a 3-GU-wide bench block) via some other open path, rather than the
+## wall actually in front of that specific pellet. Real bench evidence
+## 2026-07-30: every pellet aimed at the metal column landed on the ROOM'S
+## OUTER WALL (uniformly "concrete") behind and beside it, because the flood
+## slipped past the narrow block sideways and kept going. Each pellet now
+## walks its OWN roughly-straight path (Bresenham-style lateral drift against
+## a per-pellet angle within the half-angle cone) and stops at the FIRST
+## blocked edge it personally meets — a pellet angled enough to clear an
+## obstacle's lateral extent correctly can still find something behind it,
+## but one aimed roughly at the obstacle cannot detour around it.
+##
+## `blocked_cells` (2026-07-30, added after the FIRST real-bench test of this
+## function): a solid GU block (`MapCompiler`'s `spec.blocks`, this bench's
+## own material walls) is NOT represented in `blocked_edges` at all — it
+## marks whole cells occupied (`blocked_map`/`room._blocked_cells`, the same
+## dict LOS already keys off, `guard.set_los_data()`) and never touches
+## `blocked_edges`, which only "dividers"/perimeter walls populate. A pellet
+## walking only the edge check sailed straight through the bench's own
+## blocks and kept going to whatever real wall was behind them — caught by
+## every impact coming back the SAME material (the room's outer wall)
+## regardless of which column was fired at. A step is blocked now if EITHER
+## the edge into the next cell is flagged OR that cell is itself occupied.
+##
+## Returns Array[Dictionary] of `projectile_count` {"gu": Vector2i, "face": int}
+## picks — empty entries are dropped (a pellet that never meets a wall within
+## max_steps is a clean miss, void, nothing happens, per D15). Deterministic
+## via the project's standard FNV-1a hash (no RNG, D22): each pellet's angle
+## is hashed from (salt, pellet index), not sampled from an RNG.
+static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector2i,
+		half_angle_deg: float, max_steps: int, projectile_count: int,
+		blocked_edges: Dictionary, blocked_cells: Dictionary, salt: String) -> Array:
+	var picks: Array = []
+	if facing_delta == Vector2i.ZERO or projectile_count <= 0:
+		return picks
+	## Perpendicular to facing_delta (a 90 deg rotation) — the axis a pellet
+	## drifts along as it strays from dead-centre.
+	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
+	for i in range(projectile_count):
+		var key: String = "%s:PELLET_ANGLE:%d" % [salt, i]
+		var unit: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0  ## [0,1)
+		var angle_deg: float = lerpf(-half_angle_deg, half_angle_deg, unit)
+		var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, deg_to_rad(angle_deg),
+			max_steps, blocked_edges, blocked_cells)
+		if not hit.is_empty():
+			picks.append(hit)
+	return picks
+
+
+## One pellet's own path: mostly `forward`, drifting one `lateral` step
+## whenever the accumulated tan(angle_rad) crosses a whole step (Bresenham's
+## algorithm applied to a facing axis instead of a literal line). Stops and
+## returns {"gu","face"} at the FIRST blocked edge OR occupied cell this
+## specific path meets; {} if it exhausts max_steps without meeting one
+## (void, D15).
+static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Vector2i,
+		angle_rad: float, max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary) -> Dictionary:
+	var current := source_gu
+	var lateral_accum := 0.0
+	var tan_angle := tan(angle_rad)
+	for _step in range(max_steps):
+		lateral_accum += tan_angle
+		if absf(lateral_accum) >= 1.0:
+			var step_sign: int = 1 if lateral_accum > 0.0 else -1
+			var lateral_step: Vector2i = lateral * step_sign
+			var lateral_target: Vector2i = current + lateral_step
+			if WallEdgeData.is_edge_blocked(current, lateral_target, blocked_edges) or blocked_cells.has(lateral_target):
+				return {"gu": current, "face": Face.from_delta(lateral_step)}
+			current = lateral_target
+			lateral_accum -= step_sign
+		var forward_target: Vector2i = current + forward
+		if WallEdgeData.is_edge_blocked(current, forward_target, blocked_edges) or blocked_cells.has(forward_target):
+			return {"gu": current, "face": Face.from_delta(forward)}
+		current = forward_target
+	return {}
+
+
+## Resolve one pellet's {"gu","face"} pick (from select_cone_pellet_impacts())
+## to the real Slice + voxel index it hits. Face-height placement is a
+## placeholder for D18's "chest height" — the middle level of the wall's own
+## base storey — pending a real chest-height derivation once an actor's
+## height is modelled; horizontal position within the GU's 8-voxel-wide face
+## is hash-picked for a little natural jitter rather than always dead-centre.
+## Returns {"slice": Slice, "voxel_index": int} or {} if the wall/slice can't
+## be resolved (should not happen for a pick select_cone_pellet_impacts()
+## itself produced, but callers should still check).
+static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, salt: String) -> Dictionary:
+	var gu: Vector2i = pick["gu"]
+	var face: int = pick["face"]
+	var neighbor: Vector2i = gu + Face.delta(face)
+	## Resolve the real Edge by scanning gu's own edges for the one reaching
+	## `neighbor` — WallEdgeData.edge_key() is only the blocked_edges lookup
+	## key, not an Edge id.
+	var target_slice: Slice = null
+	for edge in edge_registry.edges_touching_gu(gu):
+		if edge.gu_a == neighbor or edge.gu_b == neighbor:
+			for slice in edge_registry.slices_of_edge(edge.id):
+				if slice.gu_cell == gu:
+					target_slice = slice
+					break
+			break
+	if target_slice == null or target_slice.voxels.is_empty():
+		return {}
+	var chest_level: int = target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY \
+		+ GeometryCoords.LEVELS_PER_STOREY / 2
+	var level_offset: int = clampi(chest_level - target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY,
+		0, target_slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1)
+	var jitter_key: String = "%s:PELLET_JITTER:%s" % [salt, target_slice.id]
+	var position_index: int = FacadeSampler._fnv1a_hash(jitter_key) % GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var voxel_index: int = level_offset * GeometryCoords.VOXELS_PER_UNIT_AXIS + position_index
+	return {"slice": target_slice, "voxel_index": voxel_index}
+
+
+## WEAPON_MASTER_PLAN D28 (Director, 2026-07-30) — ONE voxel, ONE roll: the
+## per-projectile point-impact counterpart to apply_container_damage()'s
+## ring-group scatter (which stays correct for RADIAL — a blast genuinely is
+## an area effect). destroy/dent/crack_factor are read as PROBABILITIES for
+## this single voxel rather than group fractions — the same numbers mean the
+## same thing at n=1.
+##
+## Cascades exactly once if the impact voxel is fully DESTROYED: the wall's
+## sibling slice (edge_registry.sibling_slice(), same voxel index — verified
+## 2026-07-30 that SliceGenerator builds both slices of an edge with matching
+## per-level, per-position iteration order, so index i is the same physical
+## row/column on the opposite face) becomes a second roll target. A wall is
+## exactly 2 voxels thick (D16: "outer slice AND inner slice"), so the loop
+## caps at 2 — if that second voxel also fully destroys, the shot penetrated
+## clean through and there is no mark anywhere on this path, per *"se o tiro
+## atravessar a parede não tem marca de bala porque ela continuou o
+## caminho."*
+##
+## Returns Array[Voxel] actually touched (1 or 2), for the caller's soot/
+## VL-PERSIST bookkeeping — same shape callers already build from
+## destroy_set/dent_set/crack_set today.
+static func apply_point_impact(slice: Slice, voxel_index: int, material: String,
+		destroy_multiplier: float, edge_registry: EdgeRegistry, salt: String) -> Array:
+	var touched: Array = []
+	var current_slice := slice
+	var d: float = MaterialResistanceTable.destroy_factor(material) * destroy_multiplier
+	var n: float = MaterialResistanceTable.dent_factor(material)
+	var c: float = MaterialResistanceTable.crack_factor(material)
+	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
+		if current_slice == null or voxel_index < 0 or voxel_index >= current_slice.voxels.size():
+			break
+		var voxel: Voxel = current_slice.voxels[voxel_index]
+		touched.append(voxel)
+		var key: String = "%s:IMPACT:%d" % [salt, depth]
+		var roll: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
+		if roll < d:
+			voxel.set_damage(Voxel.DamageState.DESTROYED)
+			current_slice = edge_registry.sibling_slice(current_slice.id)
+			continue
+		elif roll < d + n:
+			voxel.set_damage(Voxel.DamageState.DENTED)
+		elif roll < d + n + c:
+			voxel.set_damage(Voxel.DamageState.CRACKED)
+		## else: roll missed every tier — INTACT, no mark. Matches "somente no
+		## ponto de impacto [...] QUANDO o voxel inteiro não é destruído": a
+		## clean miss on the tier roll just means nothing visible happened.
+		break
+	return touched
+
+
 ## Every wall Slice and roof Slab touching a flooded GU, each tagged with the
 ## ring of the GU it was reached through (the minimum ring, if reachable from
 ## more than one side). Returns {"slices": Dictionary[String,int] (slice.id

@@ -44,6 +44,13 @@ func _init() -> void:
 	test_cone_stops_at_blocked_edge()
 	test_cone_output_shape_matches_rings()
 	test_destroy_multiplier_scales_damage()
+	## WEAPON_MASTER_PLAN D26-D28 (2026-07-30) — per-projectile point impact.
+	test_pellet_impacts_no_hard_range_cap()
+	test_pellet_impacts_count_matches_projectile_count()
+	test_pellet_does_not_detour_around_narrow_obstacle()
+	test_point_impact_marks_only_the_impact_voxel()
+	test_point_impact_cascades_only_on_full_destroy()
+	test_pellet_selection_is_deterministic()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -676,3 +683,174 @@ func _same_voxel_set(a: Array, b: Array) -> bool:
 		if not b.has(v):
 			return false
 	return true
+
+
+## WEAPON_MASTER_PLAN D26-D28 (Director, 2026-07-30) — a shot is N discrete
+## pellet point-impacts, never a flood-filled area; no authored range cap.
+
+
+## A wall wide enough (in x) that a pellet drifting laterally within
+## half_angle_deg over `depth` forward steps still finds it — isolates the
+## count/range/determinism tests from the per-pellet angle spread, which the
+## narrow-obstacle test below exercises on purpose instead.
+func _wide_wall_registry(row_near: int, row_far: int, x_from: int, x_to: int, material: String) -> EdgeRegistry:
+	var registry := EdgeRegistry.new()
+	var edges: Array = []
+	for x in range(x_from, x_to + 1):
+		edges.append(Edge.between(Vector2i(x, row_near), Vector2i(x, row_far), 1, material))
+	SliceGenerator.generate(edges, registry)
+	return registry
+
+
+func _wide_wall_blocked(row_near: int, row_far: int, x_from: int, x_to: int) -> Dictionary:
+	var blocked: Dictionary = {}
+	for x in range(x_from, x_to + 1):
+		blocked[WallEdgeData.edge_key(Vector2i(x, row_far), Vector2i(x, row_near))] = true
+	return blocked
+
+
+func test_pellet_impacts_no_hard_range_cap() -> void:
+	print("TEST: D26 - no range cap, a wall 9 GU away still yields pellet candidates")
+	## Wide wall between y=-5 and y=-4, x=0..10: flood from (5,5) facing NE
+	## crosses 9 steps of open ground — well past the OLD ceiling
+	## (weapon_def.step_multipliers.size()-1 = 4 for the shotgun).
+	_wide_wall_registry(-5, -4, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(-5, -4, 0, 10)
+	var picks := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "RANGE_TEST")
+	if picks.size() == 8:
+		_pass("8 pellets picked against a wall 9 GU away — the old 4-step ceiling would have found nothing")
+	else:
+		_fail("expected 8 picks, got %d — did a pellet path stop short?" % picks.size())
+	print("")
+
+
+func test_pellet_impacts_count_matches_projectile_count() -> void:
+	print("TEST: pellet pick count matches projectile_count when every pellet finds the (wide) wall")
+	_wide_wall_registry(1, 2, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 10)
+	var picks3 := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 3, blocked, {}, "COUNT_A")
+	var picks8 := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "COUNT_B")
+	if picks3.size() == 3 and picks8.size() == 8:
+		_pass("3 pellets -> 3 picks, 8 pellets -> 8 picks")
+	else:
+		_fail("pick count mismatch: 3->%d, 8->%d" % [picks3.size(), picks8.size()])
+	print("")
+
+
+func test_pellet_does_not_detour_around_narrow_obstacle() -> void:
+	print("TEST: D26/D27 regression - a pellet does not walk AROUND a narrow obstacle to something behind it")
+	## Real bug, caught on the real bench 2026-07-30, TWO layers deep:
+	## (a) an earlier version aggregated flood_gu_cone()'s WHOLE reachable set
+	##     and picked wall-adjacent cells from all of it, so a pellet's
+	##     "impact" could be a wall reached by flowing sideways around a
+	##     narrow block via some other open path — fixed by giving each
+	##     pellet its own straight(ish) walk.
+	## (b) that walk only checked blocked_edges, but MapCompiler's solid GU
+	##     blocks (spec.blocks — this bench's own material walls) mark whole
+	##     CELLS occupied (room._blocked_cells, the same dict LOS already
+	##     uses) and never touch blocked_edges at all — so the straight walk
+	##     STILL sailed straight through a real block and hit the room's
+	##     outer wall behind it. Every pellet came back "concrete" regardless
+	##     of which material column was actually fired at. Both forms tested:
+	## a single-GU obstacle with nothing else blocked anywhere nearby makes a
+	## leak unmistakable either way — a dead-centre pellet (half_angle 0)
+	## must stop AT the block, not beyond it.
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "metal")]
+	SliceGenerator.generate(edges, registry)
+
+	var edge_blocked: Dictionary = {WallEdgeData.edge_key(Vector2i(5, 2), Vector2i(5, 1)): true}
+	var picks_edge := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 0.0, 40, 1, edge_blocked, {}, "NARROW_TEST_EDGE")
+	if picks_edge.size() == 1 and picks_edge[0]["gu"] == Vector2i(5, 2) and picks_edge[0]["face"] == Face.NE:
+		_pass("blocked_edges form: dead-centre pellet stopped at (5,2)/NE — did not detour past it")
+	else:
+		_fail("blocked_edges form: expected exactly one pick at (5,2)/NE, got %s" % [picks_edge])
+
+	## The form that actually broke on the real bench: the obstacle cell is
+	## OCCUPIED (blocked_cells), not edge-flagged at all.
+	var occupied: Dictionary = {Vector2i(5, 2): true}
+	var picks_cell := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 0.0, 40, 1, {}, occupied, "NARROW_TEST_CELL")
+	if picks_cell.size() == 1 and picks_cell[0]["gu"] == Vector2i(5, 3) and picks_cell[0]["face"] == Face.NE:
+		_pass("blocked_cells form: dead-centre pellet stopped at (5,3), facing the occupied (5,2) — the exact real-bench bug")
+	else:
+		_fail("blocked_cells form: expected exactly one pick at (5,3)/NE, got %s" % [picks_cell])
+	print("")
+
+
+func test_point_impact_marks_only_the_impact_voxel() -> void:
+	print("TEST: D28 - a mark exists ONLY at the impact voxel, never a neighbour")
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")]
+	SliceGenerator.generate(edges, registry)
+	var slice: Slice = registry.get_slice("SLICE_5_2_NE")
+	if slice == null:
+		_fail("Could not resolve synthetic wood Slice (id lookup mismatch)")
+		print("")
+		return
+	var touched := BlastCalculatorClass.apply_point_impact(
+		slice, 4, "wood", 1.0, registry, "ISOLATION_TEST")
+	var stray := 0
+	for i in range(slice.voxels.size()):
+		if i == 4:
+			continue
+		if slice.voxels[i].damage_state != Voxel.DamageState.INTACT:
+			stray += 1
+	if stray == 0 and touched.size() >= 1:
+		_pass("only voxel index 4 changed state (%d touched total incl. cascade) — the other 7 in-slice voxels stayed INTACT" %
+			touched.size())
+	else:
+		_fail("%d stray voxels changed state outside the impact point" % stray)
+	print("")
+
+
+func test_point_impact_cascades_only_on_full_destroy() -> void:
+	print("TEST: D28 - cascade to the sibling (behind) voxel ONLY when the impact voxel is destroyed, never more than 2 deep")
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "metal")]
+	SliceGenerator.generate(edges, registry)
+	## Metal destroy_factor 0.05: search a small salt space for a roll that
+	## survives (no cascade, touched.size()==1) alongside proving the ceiling
+	## — no call ever touches more than 2 voxels, whatever the salt.
+	var max_touched := 0
+	var found_single := false
+	for i in range(20):
+		var slice: Slice = registry.get_slice("SLICE_5_2_NE")
+		var touched := BlastCalculatorClass.apply_point_impact(
+			slice, 4, "metal", 1.0, registry, "CASCADE_TEST_%d" % i)
+		max_touched = maxi(max_touched, touched.size())
+		if touched.size() == 1:
+			found_single = true
+		slice.voxels[4].damage_state = Voxel.DamageState.INTACT
+		var sib := registry.sibling_slice(slice.id)
+		if sib != null:
+			sib.voxels[4].damage_state = Voxel.DamageState.INTACT
+	if found_single and max_touched <= 2:
+		_pass("saw a 1-voxel (no cascade) result across 20 salts, and never more than 2 touched (a wall is exactly 2 voxels thick)")
+	else:
+		_fail("found_single=%s, max_touched=%d (expected some 1s, never >2)" % [found_single, max_touched])
+	print("")
+
+
+func test_pellet_selection_is_deterministic() -> void:
+	print("TEST: pellet picks are deterministic (no RNG, D22) — identical inputs, identical picks")
+	_wide_wall_registry(1, 2, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 10)
+	var picks_a := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "DETERMINISM_TEST")
+	var picks_b := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "DETERMINISM_TEST")
+	var same := true
+	for i in range(picks_a.size()):
+		if picks_a[i]["gu"] != picks_b[i]["gu"] or picks_a[i]["face"] != picks_b[i]["face"]:
+			same = false
+			break
+	if same:
+		_pass("two calls with identical inputs picked the identical 8 pellets")
+	else:
+		_fail("identical inputs produced different pellet picks")
+	print("")

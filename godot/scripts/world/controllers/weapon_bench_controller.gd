@@ -32,6 +32,14 @@ const FACING_DELTA := {
 
 const MENU_GAP_ABOVE_PX: float = 30.0
 
+## D26 (Director, 2026-07-30): "não pode ter esse limite de 5 GUs" — there is
+## no authored range cap; a miss travels until it finds a wall, and the
+## cone's own angular widening is what makes a far shot self-limiting. This
+## replaces weapon_def.step_multipliers.size()-1 as the flood's max_steps
+## (both for the wireframe preview and the real shot) with a generous,
+## comfortably-past-any-real-room constant instead.
+const PELLET_FLOOD_MAX_STEPS: int = 40
+
 var room: Node
 var _weapons: Array[Dictionary] = []
 var _active_index: int = -1
@@ -74,6 +82,7 @@ func add_weapon(gu_cell: Vector2i, facing: String, weapon_id: String,
 		"facing": facing,
 		"weapon_id": weapon_id,
 		"sprite": sprite,
+		"shots_fired": 0,
 	})
 
 
@@ -156,7 +165,7 @@ func _cone_cells(weapon: Dictionary) -> Array:
 	var facing_delta: Vector2i = _view_facing_delta(weapon["facing"])
 	return BlastCalculatorClass.flood_gu_cone(
 		weapon["gu_cell"], facing_delta, weapon_def.cone_half_angle_deg,
-		weapon_def.step_multipliers.size() - 1, _blocked_edges_dict()).keys()
+		PELLET_FLOOD_MAX_STEPS, _blocked_edges_dict()).keys()
 
 
 ## Rotate a base-space compass edge into the active perspective. A perspective
@@ -210,40 +219,42 @@ func fire_active() -> void:
 		cancel_active()
 		return
 
-	var gu_cone := BlastCalculatorClass.flood_gu_cone(
+	## D26/D27 (Director, 2026-07-30): N discrete pellet impact points within
+	## the (now uncapped) cone, never a flood-filled area — replaces the old
+	## find_affected_containers()+apply_container_damage() ring-scatter for
+	## CONE, which is exactly what was reading as "quase como uma granada,
+	## desde o chão até o teto." A miss keeps travelling regardless of
+	## distance (D26), so max_steps is a generous constant, not a range cap.
+	var pellet_salt: String = "%s_%s_%d" % [w["weapon_id"], w["gu_cell"], int(w["shots_fired"])]
+	w["shots_fired"] = int(w["shots_fired"]) + 1
+	var pellet_picks := BlastCalculatorClass.select_cone_pellet_impacts(
 		w["gu_cell"], _view_facing_delta(w["facing"]), weapon_def.cone_half_angle_deg,
-		weapon_def.step_multipliers.size() - 1, _blocked_edges_dict())
-	var affected := BlastCalculatorClass.find_affected_containers(
-		gu_cone, room._edge_registry, room._slab_registry)
-
-	print_debug("[SHOT] weapon=%s gu=%s facing=%s cone_cells=%d slices=%d roofs=%d" %
-		[w["weapon_id"], w["gu_cell"], w["facing"], gu_cone.size(),
-		affected["slices"].size(), affected["roofs"].size()])
-
-	## Epicentre in VOXEL coords, at the MUZZLE — so VL-D4's directional bias
-	## chews the wall face actually pointed at, rather than spreading evenly
-	## through it.
-	var epicenter: Vector2i = w["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
-		+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
+		PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count, _blocked_edges_dict(),
+		room._blocked_cells, pellet_salt)
 
 	var cell_to_voxel: Dictionary = {}
 	var destroyed_cells: Array = []
-	for slice_id in affected["slices"]:
-		var slice: Slice = room._edge_registry.get_slice(slice_id)
-		BlastCalculatorClass.apply_container_damage(
-			slice.voxels, slice.id, slice.material, affected["slices"][slice_id],
-			slice.start_storey * GeometryCoords.LEVELS_PER_STOREY, false,
-			weapon_def.step_multipliers, epicenter, weapon_def.destroy_multiplier)
-		for v in slice.voxels:
+	var pellets_landed := 0
+	for i in range(pellet_picks.size()):
+		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
+			pellet_picks[i], room._edge_registry, "%s:%d" % [pellet_salt, i])
+		if resolved.is_empty():
+			continue
+		pellets_landed += 1
+		var slice: Slice = resolved["slice"]
+		var touched := BlastCalculatorClass.apply_point_impact(
+			slice, resolved["voxel_index"], slice.material, weapon_def.destroy_multiplier,
+			room._edge_registry, "%s:%d" % [pellet_salt, i])
+		for v in touched:
 			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
-	for slab_id in affected["roofs"]:
-		var slab: Slab = room._slab_registry.get_slab(slab_id)
-		BlastCalculatorClass.apply_container_damage(
-			slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
-			slab.level, true, weapon_def.step_multipliers, epicenter,
-			weapon_def.destroy_multiplier)
-		for v in slab.voxels:
-			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+
+	print_debug("[SHOT] weapon=%s gu=%s facing=%s pellets=%d/%d landed" %
+		[w["weapon_id"], w["gu_cell"], w["facing"], pellets_landed, pellet_picks.size()])
+	## No roof/ceiling branch: D18 shots are chest-height and horizontal, and
+	## the per-pellet model only ever picks WALL-facing candidates
+	## (select_cone_pellet_impacts() checks blocked_edges between horizontal
+	## neighbours only) — this is what actually fixes "desde o chão até o
+	## teto," not a parameter tweak on the old ring model.
 
 	## VL-D1: scorch what survives around each new hole. One ring, not the
 	## grenade's three — a bullet strike marks its impact, it does not blacken

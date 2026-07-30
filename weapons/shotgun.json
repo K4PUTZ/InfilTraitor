@@ -4,6 +4,7 @@
   "step_multipliers": [1.0, 0.85, 0.6, 0.35, 0.15],
   "cone_half_angle_deg": 25.0,
   "destroy_multiplier": 0.6,
+  "projectile_count": 8,
   "gameplay": { "class": "firearm", "range_band": "short" },
   "tags": ["firearm", "shotgun"]
 }

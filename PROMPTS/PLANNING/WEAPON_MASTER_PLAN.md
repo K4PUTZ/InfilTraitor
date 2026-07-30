@@ -1,10 +1,14 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.0
 
-**Status:** 🟢 **Catalog drafted, first shot fired, and the shot-physics model
-brainstormed — all 2026-07-29.** The physics model (D12–D20, §5b) is **ratified
-but entirely unbuilt**, and it **supersedes D1/D2's cone-as-volume for every
-firearm** — which is the correction to what actually shipped. Of the nine
+**Status:** 🟢 **Catalog drafted, first shot fired, shot-physics model
+brainstormed 2026-07-29 — and the CONE model itself rebuilt 2026-07-30 (D26-D28):
+per-projectile point impacts, no flood-fill, no hard range cap.** `BlastCalculator.select_cone_pellet_impacts()` +
+`apply_point_impact()` are real and selftested (35/35); the shipped `flood_gu_cone()`
++ `apply_container_damage()` area-scatter this section originally described for
+CONE is **superseded**, not merely planned to be. D12–D20 (§5b) otherwise remain
+**ratified but entirely unbuilt**, and D13 **supersedes D1/D2's cone-as-volume
+for every firearm** — which is the correction to what actually shipped. Of the nine
 questions raised against it (§7a), **S1, S2, S3, S4, S5, S6 and S7 are now
 closed** (2026-07-29/30) — most recently **S7 by D25** (2026-07-30): a shot
 always targets an actor picked through the contextual menu, never a free-aim
@@ -115,6 +119,64 @@ Named pains:
 | **D24** | **World state is segment-scoped and commits at exactly two points; only character progression persists.** *(Director, 2026-07-29 — recorded because it decides what has to be serialisable and nothing else in the docs said it. Full model now in [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §1 "Run state model"; the destruction half is answered in [`DESTRUCTION_MASTER_PLAN.md`](DESTRUCTION_MASTER_PLAN.md) §7 q0.)* **A segment IS a map**, one loaded at a time, linked by matching exits — and some puzzles require acting in one segment to collect a result in another, so changes must outlive unloading. Three tiers: **live** (lost on death — *"o agente vai voltar no tempo"*), **session** (written ONLY on stepping a checkpoint or leaving the segment; lost on quit, which reloads the whole segment set), **persistent** (character skills/stats/clothing, automatic). Destruction rewinds with the segment, holes included. | ✅ Ratified |
 | **D9** | **Rarity, stats and progression are deliberately absent from v1.** Director: *"posteriormente iremos trabalhar mais detalhadamente em raridades, e stats como dano, firerate, accuracy, etc."* Writing a stat table now would mean inventing balance numbers before a single shot has been fired against a real wall — the same trap `MaterialResistanceTable`'s own header already flags about its placeholder values (*"first-pass placeholders — a balancing lever, not researched constants"*). | ✅ Ratified |
 | **D25** | **A shot always targets a specific actor via the contextual menu — there is no free aim, and the environment does the aiming, not the player.** *(Director, 2026-07-30, closing S7.)* Origin is whichever actor is shooting — agent, enemy, turret, etc.; target is whichever actor was selected through the tap/right-click menu that already frames every other action (the XCOM reference in `docs/vision/game_vision.md`). **On hit**, the projectile stops at the target and the damage roll applies. **On miss**, it keeps travelling the same origin→target line (D15) until it meets a wall — D16's destruction ladder applies there — or leaves the level with nothing in the way, and vanishes. Because the player only ever picks a target, never a direction, a miss can land anywhere in D18's error margin (wide, high, low) without the player having "aimed wrong": *"o player É OBRIGADO a atirar na direção certa [...] mas, se ele errar, pode errar POR MUITO [...] o environment é que faz a mira, e não o jogador."* Cover and skills move the hit-chance dice, not a reticle. This is what makes D21's split hold together end to end: the hit roll stays the one forceable, deterministic-for-testing lever; everything downstream (where a miss lands, how many voxels break) stays hash-driven decoration — *"mesmo que a destruição seja realmente aleatória, o gameplay continua sendo totalmente determinístico."* | ✅ Ratified — closes S7 |
+| **D26** | **There is no hard range cap — destruction comes FROM misses, and the cone's own widening is what makes a far shotgun shot self-limiting.** *(Director, 2026-07-30, retracting the 5-step ceiling `weapons/shotgun.json`'s `step_multipliers.size()` imposed on the bench.)* *"não pode ter esse limite de 5 GUs, principalmente porque a destruição é oriunda dos erros [...] quando a shotgun estiver longe ela vai ampliar mais o cone, e a chance de dispersão aumenta bastante, o que naturalmente vai invalidar o uso da arma."* A range limit would make sense if the roll were about hitting — it is not (D12); the wall is what a MISS travels on to reach (D15/D25), and a miss can originate from a shot aimed at something close to the shooter that simply goes wide. What discourages a long shotgun shot is not a hard cutoff but the cone widening with distance (already-existing geometry, `cone_half_angle_deg`), which spreads pellets thinner and less useful the farther they travel — an emergent limit, not an authored one. Supersedes the "y=6 is the CONE's hard ceiling" finding from earlier the same day (WEAPON_MASTER_PLAN §5.1/bench comment) — that finding was correct about the CODE AS SHIPPED, not about the intended design. **Shipped same day**: `WeaponBenchController.PELLET_FLOOD_MAX_STEPS` (40) replaces `step_multipliers.size()-1` everywhere a max range was read from the falloff table. | ✅ Ratified & shipped — supersedes the bench-row range ceiling |
+| **D27** | **A shotgun shot is N independent pellet rolls (D14's projectile_count), each landing on exactly ONE voxel — never a flood-filled area.** *(Director, 2026-07-30.)* Per pellet: roll hit/miss against the target. **On hit**: damage roll applies to the target; with enough force it can continue through to a wall behind and leave a blood mark instead of a bullet mark (*"a desenvolver"* — not this pass, no target dummy exists yet, S8). **On miss**: the pellet keeps travelling in roughly its original direction, inside a horizontal spread that widens with distance travelled (*"um holofote horizontal, que aumenta com a distância. Quanto mais distante, mais longe o tiro pode acabar indo"*), until it reaches the nearest wall in that direction — that wall voxel is the pellet's own, individual impact point. This replaces D13's cone-as-footprint (which this session's shipped `flood_gu_cone()` still treats as an area to flood-damage-and-graduate-by-ring) with a literal reading of D13: **the cone bounds where impact points CAN land; it was never itself the thing that takes damage.** **Shipped same day** as `BlastCalculator.select_cone_pellet_impacts()` — see the implementation note below the table; only the MISS half is built (no target dummy exists, S8), matching this wave's own scope. | ✅ Ratified & shipped (miss path only) — supersedes the shipped `flood_gu_cone()` + `apply_container_damage()` area-scatter for CONE |
+| **D28** | **A bullet mark exists ONLY at a projectile's own impact voxel — never on neighbours, never scattered across a ring.** *(Director, 2026-07-30.)* *"Os buracos de bala não podem aparecer em qualquer lugar, somente no ponto de impacto de cada projetil."* Neighbouring voxels may still take **soot** (D17, already face-local and derived) but never their own DENTED/CRACKED texture — soot and bullet-mark are different data, D17 already got this right, D22's `apply_container_damage()` did not (it distributes DENTED/CRACKED across a whole ring group). **If the impact voxel is fully DESTROYED, the voxel immediately behind it (the wall's paired slice, `Edge.slice_a_id`/`slice_b_id` — confirmed 2026-07-30 that both slices index `voxels[]` in matching order, same level, same array index, so the "behind" voxel is a direct lookup) becomes a new roll target** — destroyed / dented / cracked / untouched, same three-tier table (D22), same cascade rule recursively. **If a shot fully penetrates (every layer destroyed), there is no mark anywhere on that path** — nothing stopped there to leave one, per *"se o tiro atravessar a parede não tem marca de bala porque ela continuou o caminho."* **Shipped same day** as `BlastCalculator.apply_point_impact()`. | ✅ Ratified & shipped — supersedes D22's ring-group DENTED/CRACKED distribution for CONE/LINE (RADIAL/grenade keeps the ring model; a blast genuinely is an area effect) |
+| **D29** | **Sniper and pistol fire one straight-line projectile each (not a pellet spread), but still miss into a dispersion zone "similar" to the shotgun's, with modifiers — unspecified.** *(Director, 2026-07-30: "vão ter uma trajetória reta, porque os tiros são individuais, mas eles podem errar em uma zona similar à da shotgun, com modificadores. Vamos trabalhar isso melhor depois.")* Explicitly deferred — not this pass. Recorded so `LINE`'s eventual build doesn't silently default to zero spread on a miss. | ⏸ Deferred (explicit) |
+
+### D26-D28 implementation note (2026-07-30) — two real bugs, caught and fixed same day
+
+**`BlastCalculator.select_cone_pellet_impacts()`** replaces the flood-fill for
+CONE: each pellet gets its own angle (uniform within `±half_angle_deg`, hashed
+from `(salt, pellet index)` — a design choice, not specified, tunable later)
+and walks it via `_walk_pellet_ray()`, a Bresenham-style lateral drift against
+the facing axis, stopping at the first thing that blocks it. `resolve_pellet_voxel()`
+turns a `{gu, face}` stop into a real `Slice` + voxel index (chest-height
+placeholder: the target slice's own base-storey midpoint, pending a real
+chest-height derivation once an actor has a modelled height — not guessed
+further than that). `apply_point_impact()` is D28's roll-and-cascade, one
+voxel then at most one sibling-slice voxel behind it.
+
+**Bug 1 — the first version was still an area operation wearing a point-shaped
+API.** It flooded the WHOLE cone (`flood_gu_cone()`, uncapped per D26) and
+picked `projectile_count` cells from every wall-adjacent cell in that entire
+reachable set. A pellet's "impact" could therefore be a wall reached by
+flowing sideways around a narrow obstacle via some other open path — not the
+wall actually in front of that pellet. Fixed by giving each pellet its own
+single walked path (above), which by construction cannot detour: an obstacle
+directly ahead stops it there, full stop.
+
+**Bug 2 — found immediately after fixing Bug 1, on the real bench: every
+pellet still landed on the room's own outer wall, uniformly "concrete",
+regardless of which material column was fired at.** Root cause, confirmed by
+reading `MapCompiler.compile()`: a solid GU block (`spec.blocks` — this bench's
+own per-material walls) marks whole CELLS occupied (`blocked_map`, surfaced to
+`room._blocked_cells`, the same dict `guard.set_los_data()` already keys LOS
+off) and **never touches `blocked_edges` at all** — only the older `dividers`
+authoring path does that (and only for its N/S neighbours, not E/W — a second,
+narrower gap, not touched here). `WallEdgeData.is_edge_blocked()` alone is
+blind to a `spec.blocks` obstacle, so the pellet walker sailed straight
+through the bench's own block and kept going. Fixed by adding a `blocked_cells`
+parameter, checked alongside `blocked_edges` at every step.
+
+**Consequence not yet addressed, flagged rather than silently left**: `flood_gu_rings()`/`flood_gu_cone()`
+themselves still only check `blocked_edges` — meaning a grenade's blast (and
+the CONE wireframe preview, `_cone_cells()`, still built on `flood_gu_cone()`)
+can very plausibly propagate straight through any `spec.blocks` obstacle the
+same way the pellet walker did before Bug 2's fix. Not fixed here — those
+functions are shared with the grenade/RADIAL path and touching them is a
+bigger blast radius than this session's bench-calibration scope. Worth its own
+check before the next real destruction capture involving a `spec.blocks`
+obstacle.
+
+**Evidence**: `blast_calculator_selftest.gd` 35/35 PASS, including 2 new
+regression tests reproducing both bugs directly (`test_pellet_does_not_detour_around_narrow_obstacle`
+covers both the `blocked_edges` and `blocked_cells` forms). Real capture,
+weapon bench index 1 (metal), post-fix: 6 of 8 pellets landed on the intended
+metal block with small, isolated marks (not a scatter — matches D28), the
+other 2 (wide-angle pellets) correctly cleared the block's lateral extent and
+landed on the wall behind it — the realistic spread behaviour D26/D27
+describe, not a bug.
 
 ---
 

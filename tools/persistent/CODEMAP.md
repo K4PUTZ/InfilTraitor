@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34319 lines total** (under `godot/scripts/`)
+**163 scripts · 34692 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1338,7 +1338,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 382 lines
+`class_name BlastCalculator` · 559 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1405,7 +1405,7 @@ extends `Node2D` · 43 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 81 lines
+`class_name WeaponDef` · 88 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -1424,6 +1424,7 @@ extends `Node2D` · 43 lines
 - `var step_multipliers: Array[float] = []`
 - `var cone_half_angle_deg: float = 0.0`
 - `var destroy_multiplier: float = 1.0`
+- `var projectile_count: int = 1`
 - `var gameplay: Dictionary = {}`
 - `var tags: Array[String] = []`
 
@@ -2166,7 +2167,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 678 lines
+extends `SceneTree` · 856 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2205,6 +2206,12 @@ extends `SceneTree` · 678 lines
 - `func test_cone_stops_at_blocked_edge() -> void:`
 - `func test_cone_output_shape_matches_rings() -> void:`
 - `func test_destroy_multiplier_scales_damage() -> void:`
+- `func test_pellet_impacts_no_hard_range_cap() -> void:`
+- `func test_pellet_impacts_count_matches_projectile_count() -> void:`
+- `func test_pellet_does_not_detour_around_narrow_obstacle() -> void:`
+- `func test_point_impact_marks_only_the_impact_voxel() -> void:`
+- `func test_point_impact_cascades_only_on_full_destroy() -> void:`
+- `func test_pellet_selection_is_deterministic() -> void:`
 
 ---
 
@@ -3283,7 +3290,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 282 lines
+`class_name WeaponBenchController` · 293 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3295,6 +3302,7 @@ extends `Node2D` · 34 lines
 - `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
 - `MENU_GAP_ABOVE_PX` = `30.0`
+- `PELLET_FLOOD_MAX_STEPS` = `40`
 
 **Public vars**
 - `var room: Node`

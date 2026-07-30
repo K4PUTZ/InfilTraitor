@@ -44,6 +44,12 @@ var cone_half_angle_deg: float = 0.0
 ## so a heavier round beats concrete where a lighter one only scratches it.
 ## 1.0 = exactly as destructive as a grenade against the same material.
 var destroy_multiplier: float = 1.0
+## D14/D27: how many independent projectiles one shot fires — sniper 1,
+## shotgun ~8, pistol 1. Each rolls its own hit, its own impact point
+## (BlastCalculator.select_cone_pellet_impacts()), its own damage tier
+## (apply_point_impact()). Default 1 covers every single-projectile weapon
+## without needing the field in every JSON.
+var projectile_count: int = 1
 var gameplay: Dictionary = {}
 var tags: Array[String] = []
 
@@ -66,6 +72,7 @@ static func from_json(data: Dictionary) -> WeaponDef:
 
 	def.cone_half_angle_deg = float(data.get("cone_half_angle_deg", 0.0))
 	def.destroy_multiplier = float(data.get("destroy_multiplier", 1.0))
+	def.projectile_count = int(data.get("projectile_count", 1))
 	def.gameplay = data.get("gameplay", {})
 
 	def.tags = []

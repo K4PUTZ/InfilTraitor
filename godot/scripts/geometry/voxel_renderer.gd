@@ -27,13 +27,59 @@ const VOXEL_SOURCE_ID: int = 0
 ## go through the baked-lookup branch: floor voxels have no edge (D1), so
 ## _set_voxel_cell's `edge` argument is always null for them, same as any
 ## other material-only fallback placement.
+##
+## D22 (2026-07-30): "glass" is the 5th wall material — DESTROYED-only per the
+## Director (no DENTED/CRACKED tier, MaterialResistanceTable keeps both
+## factors at 0 for it), so it needs nothing beyond its own base atom here.
+## The "_dented"/"_cracked" suffixed entries are impact-mark pseudo-materials,
+## one pair per non-glass material — see IMPACT_ASSET_TEMPLATE below and
+## damage_variant_material(). They load through this exact same mechanism
+## (append-only, same MATERIALS.find() source_id resolution) but from a
+## SEPARATE folder, and _set_voxel_cell() short-circuits them past the
+## baked-lookup branch entirely — an impact mark is self-contained by design
+## ("encaixado em qualquer lugar," Director), not tied to whatever facade the
+## surrounding wall happens to bake.
 const MATERIALS: Array[String] = [
-	"concrete", "metal", "stone", "wood",
+	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
+	"concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked",
+	"stone_dented", "stone_cracked", "wood_dented", "wood_cracked",
 ]
 
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
+
+## D22: impact-mark pseudo-materials load from their own folder, not
+## alongside the base material atoms — the Director's dedicated drop point
+## for the real photographic bakes ("pasta especial dentro de assets") once
+## produced; placeholder vector marks live here meanwhile (generate_voxel.py).
+## _IMPACT_SUFFIXES below is also what _set_voxel_cell() checks to bypass the
+## baked-lookup branch for these pseudo-materials.
+const IMPACT_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"
+const _IMPACT_SUFFIXES: Array[String] = ["_dented", "_cracked"]
+
+
+## D22: is `material_name` an impact-mark pseudo-material ("metal_dented" etc.)
+## rather than a real base material? Used both to pick the asset folder at
+## boot and to bypass the baked-lookup branch at render time.
+static func _is_impact_mark(material_name: String) -> bool:
+	for suffix in _IMPACT_SUFFIXES:
+		if material_name.ends_with(suffix):
+			return true
+	return false
+
+
+## D22: which pseudo-material a voxel's damage_state should actually render
+## as. INTACT and DESTROYED voxels are unaffected — DESTROYED never reaches
+## here at all (voxel.visible gates it out before _set_voxel_cell is called).
+static func damage_variant_material(base_material: String, damage_state: int) -> String:
+	match damage_state:
+		Voxel.DamageState.DENTED:
+			return base_material + "_dented"
+		Voxel.DamageState.CRACKED:
+			return base_material + "_cracked"
+		_:
+			return base_material
 
 ## OCC-27 (2026-07-21, Director's call): occlusion ring alphas, consumed by the
 ## wireframe fill (occlusion_slice_panel.gd). Since OCC-21 occluded cells are
@@ -457,7 +503,7 @@ func _build_voxel_tileset() -> void:
 	# Create TileSetAtlasSource for each material
 	for mat_index in range(MATERIALS.size()):
 		var material_name: String = MATERIALS[mat_index]
-		var asset_path := VOXEL_ASSET_TEMPLATE % material_name
+		var asset_path := (IMPACT_ASSET_TEMPLATE if _is_impact_mark(material_name) else VOXEL_ASSET_TEMPLATE) % material_name
 		
 		var texture := load(asset_path)
 		if not texture:
@@ -560,7 +606,8 @@ func _render_slice(slice: Slice, edge = null) -> void:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material, edge, voxel_xy, slice.face)
+			var render_material := damage_variant_material(slice.material, voxel.damage_state)
+			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 
 
 ## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
@@ -677,6 +724,12 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	var atlas_coords: Vector2i = Vector2i.ZERO
 	var alternative_id: int = 0
 
+	## D22: an impact-mark pseudo-material ("metal_dented" etc.) always
+	## renders through the generic path below, full stop — it is deliberately
+	## self-contained ("encaixado em qualquer lugar," Director), not tied to
+	## whatever baked facade the surrounding wall happens to use.
+	var is_impact_mark: bool = _is_impact_mark(material_name)
+
 	# SEAM: Try baked lookup first (using cached instances)
 	if _bake_config == null:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -687,7 +740,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	if edge == null:
 		_diag_null_edge_cells += 1
 
-	if _bake_config and _bake_config.enabled and edge != null:
+	if not is_impact_mark and _bake_config and _bake_config.enabled and edge != null:
 		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
 
 		if result and result.source_id_int >= 0:
@@ -699,7 +752,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	# ROOF-BAKE-01/02c: horizontal (edge-less) baked surfaces — roof slabs.
 	# voxel_xy carries the STRUCTURE-LOCAL offset here (grid_pos − anchor),
 	# the same container-local meaning it has for wall slices.
-	if source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
+	if not is_impact_mark and source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
 		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy)
 		if flat_result and flat_result.source_id_int >= 0:
 			source_id = flat_result.source_id_int
@@ -1067,7 +1120,8 @@ func process_dirty(registry: EdgeRegistry) -> void:
 				# Update cell state based on voxel visibility
 				if voxel.visible:
 					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-					_set_voxel_cell(voxel.grid_pos, voxel.level, slice.material, edge, voxel_xy, slice.face)
+					var render_material := damage_variant_material(slice.material, voxel.damage_state)
+					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 				else:
 					# Clear cell
 					if voxel.level < _voxel_layers.size():
@@ -1119,7 +1173,13 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 			if voxel.visible:
 				if use_solid or is_zoned_floor:
 					var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
-					_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
+					## D22: floor (earth-variant) voxels never carry DENTED/CRACKED
+					## today (apply_crater_damage only destroys, per the comment
+					## above) — the substitution is a no-op for them and only
+					## matters for CEILING/INTERIOR, which apply_container_damage
+					## can tag exactly like a wall.
+					var render_material := damage_variant_material(slab.material, voxel.damage_state)
+					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 				else:
 					var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)

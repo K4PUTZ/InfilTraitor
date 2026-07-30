@@ -464,19 +464,29 @@ and a Director-reported bug ("I fired and it opened *this*") cannot be replayed.
 `(turn, shooter id, projectile index)` — unpredictable to the player, exactly
 reproducible for us and for tests. Decide before building, not after.
 
-**S2. ✅ CLOSED 2026-07-30 — logic layer shipped, see `DESTRUCTION_MASTER_PLAN`
-D22.** Metal denting as originally described (sliding a hit voxel back half a
-width) is still forbidden by inviolable Rule 8 — no sub-tile offset exists,
-`TileMapLayer`'s per-cell transforms are flip/transpose only — but the real
-answer turned out bigger than either candidate route below: `Voxel.DamageState`
-gained a real `DENTED` tier (sunken, its own baked "special piece" per
-material), distinct from `CRACKED` (flat surface mark), and **every material
-can now reach every tier** — this retracts the "stone stays whole" framing
-below. `MaterialResistanceTable.dent_factor` + `BlastCalculator`'s 3-way
-destroy→dent→crack split are shipped and selftested (28/28 PASS). **Not shipped
-yet: the actual DENTED/CRACKED textures** — see `DESTRUCTION_MASTER_PLAN` §7
-item 4 for the open question of which rendering path (baked-photographic vs.
-flat-generic) they need to join. *Original text kept below.*
+**S2. ✅ CLOSED 2026-07-30 — logic AND placeholder-art layers shipped, see
+`DESTRUCTION_MASTER_PLAN` D22 + §7 item 4.** Metal denting as originally
+described (sliding a hit voxel back half a width) is still forbidden by
+inviolable Rule 8 — no sub-tile offset exists, `TileMapLayer`'s per-cell
+transforms are flip/transpose only — but the real answer turned out bigger
+than either candidate route below: `Voxel.DamageState` gained a real `DENTED`
+tier (sunken — a true alpha-cut core baked into an otherwise ordinary flat
+tile, still one `set_cell()` image, no new geometry), distinct from `CRACKED`
+(flat surface mark, fully opaque), and **every material can now reach every
+tier** — this retracts the "stone stays whole" framing below. Both tiers
+render as a dedicated, self-contained impact-mark tile that always bypasses
+the baked-facade lookup (`VoxelRenderer.damage_variant_material()` +
+`_is_impact_mark()`), loaded from its own folder
+(`ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/`) via the exact
+mechanism `earth_0..7` already proved — real photographic bakes drop in later
+at the same filenames, zero code changes. Placeholder "vector" marks ship now
+(`generate_voxel.py`'s `generate_impact_mark()`), verified by real capture:
+metal before/after (`auto_2026-07-30_16-30-54.png` /
+`auto_2026-07-30_16-29-41.png`) and concrete after
+(`auto_2026-07-30_16-31-26.png`). Glass added as a 5th wall material,
+DESTROYED-only by design (*"não vai ter dented; é buraco feito, ou não
+feito"*), registered but not yet wired into a bench row. *Original text kept
+below.*
 
 Metal denting as originally described is forbidden by inviolable Rule 8:
 sliding a hit voxel back half a width has no sub-tile offset to do it with,

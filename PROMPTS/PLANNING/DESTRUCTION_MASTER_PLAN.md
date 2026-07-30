@@ -89,7 +89,7 @@ Named pains this serves:
 | **D19** | **The destructible ground is TWO planes, and the deep one only cedes at the epicentre.** *(Director, 2026-07-28 — amends D13's "only the top level is a real `Slab`", leaves D17/D18 intact.)* `FLOOR_DEEP_LEVEL` (−2) is now a real `Slab` per GU alongside `FLOOR_TOP_LEVEL` (−1), so a crater has a second storey to dig into instead of bottoming out on bedrock the instant the surface goes. It is **harder to destroy**: it takes damage only inside the blast's own GU (ring 0) and only across `BlastCalculator.DEEP_FLOOR_CRATER_FACTOR` (0.5) of the surface crater's radii — the hole narrows with depth (a bowl, not a shaft), and one grenade can no longer strip the whole ground stack across every GU it merely reaches. The surface plane's behaviour is unchanged. Max excavation depth becomes **2 voxels**; D13's "digging can never reveal a void" still holds by construction — the 6 remaining fixed levels (−8..−3) are still never instantiated as `Slab`/`Voxel`. **D18 is respected, not weakened:** the deep plane is *generated* at build (it must be real `Voxel`s to take damage, persist through rotation, and re-render through the dirty-flag machinery) but **not rendered** — it is fully occluded by the plane above, so its cells are placed only when a hole actually exposes it (`VoxelRenderer.reveal_floor_slab()`). Intact-map cell cost is therefore still one level's worth per GU, exactly as D18 requires; the added cost is ~30 k `Voxel` objects and **+40–100 ms on a 3.2 s PLAYGROUND build** (measured, 26×18). | ✅ Ratified |
 | **D20** | **The ground bake covers the two structural planes; below them is dirt.** *(Director, 2026-07-28.)* This **reverses FLOOR-ZONE-BAKE §3b's stated assumption** ("destruction always reveals plain `earth`, never a zone's declared surface"), which was explicitly flagged as an assumption to revisit "once destruction and floor zones are actually seen together in a real played room" — they were, and the exposed generic earth read as a bug. Both `Slab` planes (−1, −2) carry the zone material, painted through the same baked page, which `VoxelRenderer.set_floor_zone()` also makes reachable from the FIXED levels (they place cells directly and have no container to read a material off). **Amended within the day**: the paint floor moved from −3 to −2 — Director asked for "as duas primeiras camadas de cimento, e a terceira de terra", which is both the better read (a concrete slab sitting on dirt) and free (the earth variants are already in the material atlas; a *photographic* dirt would be another baked ground material — see D21's measured cost). Levels −3..−8 are plain earth. | ✅ Ratified (amended) |
 | **D21** | **Depth reads as tone, and the ground-bake budget is per MATERIAL, not per level.** *(Director, 2026-07-28.)* `VoxelRenderer.FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`, a node-level modulate per negative TileMapLayer. Ramp picked by measurement, not by eye (four candidates, same real detonation, map flicker held off so lighting was identical; level −2/−3 pixels segmented against a no-dim reference): with no dim the deeper level came out *brighter* than the one above it (the soot BFS reaches it with a fainter ring) — an inverted depth cue. Soot **adds** to this rather than being lightened out of the way (an attempt at the reverse, capping the exposed floor at the faintest ring, was tried and rejected the same day — "não ficou bom clareando pra dentro"); losing the texture to shadow at the bottom is accepted. Final strata on a real lit crater: **161 / 51 / 22 of 255** (100% / 32% / 14%). **Measured bake budget** (PLAYGROUND, real boot): 17 pages, **75.9 MB RGBA8** total, of which the single `ground_concrete` floor page is **18.0 MB** (4096×1152) and each wall facade page 20.3 MB. So D18's decorative storeys (water, smoke, lava) are nearly free as *levels* — cells exist only where a hole exposes them — but cost **~18 MB of atlas per new baked ground MATERIAL**. That, not the storey count, is the mobile ceiling to watch; the mitigations (smaller tiling period for flat ground pages, VRAM compression, on-demand material bake) are unexplored. Note also that this ramp will be wrong for a lava level, which is a light *source*. | ✅ Ratified |
-| **D22** | **Non-destroyed damage is TWO tiers, not one, and every material can reach every tier.** *(Director, 2026-07-30, closing WEAPON_MASTER_PLAN §7a S2.)* `Voxel.DamageState` gains `DENTED` (sunken, its own "special piece" texture — *"1 voxel ficou meio afundado, pecinha especial com textura da bala"*) alongside the existing `CRACKED` (flat surface mark, no sinking — *"voxel atingido ficou só marcado com a textura especial da bala"*), both short of `DESTROYED` (*"2 voxels destruídos por inteiro (furou)"*). **This retracts S2's original framing** (stone stays whole, only metal dents) — *"a pedra não necessariamente precisa ficar intacta, pode afundar também, assim como o metal pode ser perfurado também. Todos os materiais podem ter todos os estados."* What decides which tier a given voxel lands in is **material durability × weapon punch × dice**, exactly D12's existing hit/damage roll model — no new probability concept, just a third bucket in it. `MaterialResistanceTable` gained `dent_factor` alongside `destroy_factor`/`crack_factor` for all four canon materials (placeholders, a balancing lever like the rest of the table); `BlastCalculator.apply_container_damage()` now draws `destroy_set` → `dent_set` → `crack_set` progressively from the same ring group's remaining pool, DENTED before CRACKED so a voxel qualifying for the harsher tier never falls through to the milder one. Every delivery shape gets this for free — `apply_container_damage()` is the single sink `RADIAL`, `CONE` and (once built) `LINE` all call. **Not yet wired to any visual**: this is the data/logic layer only, mirroring how `CRACKED` shipped with zero rendering difference for this entire session — the texture work (per-material DENTED/CRACKED art, and which rendering path it hooks into) is scoped separately, see Where this stands below. **Confirmed no other material exception right now**: glass is not a buildable material yet (only concrete/stone/wood/metal + 5 ground materials exist), and floor impacts are already the rare catastrophic-miss case (D18/WEAPON_MASTER_PLAN), so neither needs solving today. | ✅ Ratified (logic layer shipped, art layer open) |
+| **D22** | **Non-destroyed damage is TWO tiers, not one, and every material can reach every tier.** *(Director, 2026-07-30, closing WEAPON_MASTER_PLAN §7a S2.)* `Voxel.DamageState` gains `DENTED` (sunken, its own "special piece" texture — *"1 voxel ficou meio afundado, pecinha especial com textura da bala"*) alongside the existing `CRACKED` (flat surface mark, no sinking — *"voxel atingido ficou só marcado com a textura especial da bala"*), both short of `DESTROYED` (*"2 voxels destruídos por inteiro (furou)"*). **This retracts S2's original framing** (stone stays whole, only metal dents) — *"a pedra não necessariamente precisa ficar intacta, pode afundar também, assim como o metal pode ser perfurado também. Todos os materiais podem ter todos os estados."* What decides which tier a given voxel lands in is **material durability × weapon punch × dice**, exactly D12's existing hit/damage roll model — no new probability concept, just a third bucket in it. `MaterialResistanceTable` gained `dent_factor` alongside `destroy_factor`/`crack_factor` for all four canon materials (placeholders, a balancing lever like the rest of the table); `BlastCalculator.apply_container_damage()` now draws `destroy_set` → `dent_set` → `crack_set` progressively from the same ring group's remaining pool, DENTED before CRACKED so a voxel qualifying for the harsher tier never falls through to the milder one. Every delivery shape gets this for free — `apply_container_damage()` is the single sink `RADIAL`, `CONE` and (once built) `LINE` all call. **Wired to a real visual same day** (§7 item 4 below): a dedicated impact-mark tile per material/tier, placeholder "vector" art now, real photographic bakes to drop in later with zero code changes — verified by real capture, not just selftests. **Glass added as the 5th wall material, DESTROYED-only by design** (*"não vai ter dented; é buraco feito, ou não feito"*) — registered in the data tables but not yet wired into a bench row or given its wider-cascade destruction behaviour, both explicitly deferred. | ✅ Ratified — logic AND placeholder-art layers shipped 2026-07-30 |
 
 *(Numbering note: D12 here is local to this plan and unrelated to the global D12 "mobile budget" decision in `OVERLORD_CONTEXT.md`.)*
 
@@ -902,25 +902,67 @@ anything consumes it; Part 3 must not be bundled with it.
 3. ~~**Rule 8 amendment**~~ **DONE with Part 1, 2026-07-15** —
    Rule 8 (now in `CLAUDE.md`, originally `OPERATOR_CONTEXT.md`) explicitly
    covers Slab voxels alongside wall voxels.
-4. **D22's DENTED/CRACKED textures — which rendering path do they need to
-   join?** *(Opened 2026-07-30, alongside D22.)* `_set_voxel_cell()` tries the
-   baked lookup (`BakedTileLookup.resolve()`, real photographic facade
-   sampling — `facade_metal.png` etc. exist for all four materials, and
-   `BakeConfig.enabled = true` today) before falling back to the flat
-   procedural atom (`generate_voxel.py`'s solid-color cube, no texture at
-   all). Whether the bench's plain single-material walls actually resolve
-   through the baked branch or the generic fallback is unconfirmed —
-   `VoxelRenderer.print_render_diagnostics()` (`_diag_baked_hits` vs.
-   `_diag_generic_fallbacks`) answers it directly and hasn't been run yet.
-   The two answers cost very differently: a generic-fallback texture is one
-   new small PNG per material per tier, exactly like the 8 `earth_*` variants
-   already work (`MATERIALS` array append, no bake pipeline involved); a
-   baked-path texture means pre-baking a second/third atlas page per tile and
-   swapping by alternative-id at runtime — the same trick `VL-01`'s 12 light
-   buckets already use, but real new work across B1/B3. The Director's 4
-   reference photos (rusty metal puncture, splintered wood, a concrete
-   through-hole, a pockmarked plaster wall) are photographic, which points at
-   the baked path being the real target rather than the flat one.
+4. **✅ CLOSED 2026-07-30 — D22's DENTED/CRACKED textures render as a
+   dedicated, self-contained impact-mark tile that always bypasses the baked
+   lookup, never joins it.** *(Director: the mark's photographic bake "vai
+   caber exatamente na face aparente do voxel... de maneira que ele pode ser
+   encaixado em qualquer lugar" — designed to be context-independent, not
+   tied to whichever facade the surrounding wall happens to use.)* Resolves
+   the question this item originally opened (which of the two branches
+   `_set_voxel_cell()` already had) with a third option neither candidate
+   named: skip both, every time, for these pseudo-materials.
+   - **`Voxel.DamageState.DENTED`/`CRACKED` render through
+     `VoxelRenderer.damage_variant_material()`**, which maps
+     `(base_material, damage_state)` → a pseudo-material name
+     (`"metal_dented"`, `"concrete_cracked"`, …) — every call site that used
+     to pass `slice.material`/`slab.material` straight through
+     (`_render_slice`, `process_dirty`, `process_dirty_slabs`'s solid branch)
+     now resolves it first. `_set_voxel_cell()` checks `_is_impact_mark()`
+     and short-circuits past BOTH the edge-baked and flat-baked branches when
+     true, landing straight on the generic `MATERIALS.find()` path.
+   - **Loaded through the exact same append-only mechanism `earth_0..7`
+     already proved** (`MATERIALS` array, `source_id == array index`), just
+     from a second folder: `IMPACT_ASSET_TEMPLATE` points at
+     `ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/`, the Director's
+     dedicated drop point for the real photographic bakes
+     (`voxel_<material>_dented.png` / `_cracked.png`, one pair per non-glass
+     material — 8 files) — swapping in real art later is a pure file
+     replacement, zero code changes, by construction.
+   - **"Meio voxel" is a texture trick, not new geometry** — stays inside
+     Rule 8: *"um voxel inteiro com a geometria modificada pra ter metade em
+     alpha... que vai ter a marca do impacto bakeada mais pra dentro."* DENTED
+     bakes get a true alpha-cut core so whatever renders behind the tile
+     shows through (selling depth), CRACKED bakes stay fully opaque (a flat
+     graze) — still one flat PNG through `set_cell()`, never a second
+     geometry or a compositing layer.
+   - **Placeholder "vector" marks ship now, real art lands later** — per the
+     Director's explicit go-ahead (*"por enquanto pode usar só um material
+     genérico com uma marca de bala em vetor"*), `generate_voxel.py` gained
+     `generate_impact_mark()`: a dark rim + alpha-cut core for DENTED, a
+     smaller opaque disc for CRACKED, composited onto each material's own
+     existing base atom (not a flat generic blob — already material-tinted).
+     Same script also now emits `voxel_glass.png`, the 5th base material.
+   - **Real capture, not description**: `auto_2026-07-30_16-30-54.png`
+     (metal, before — smooth, no marks) vs. `auto_2026-07-30_16-29-41.png`
+     (metal, after firing — DENTED rings visible, alpha core showing the dark
+     background through the hole) and `auto_2026-07-30_16-31-26.png`
+     (concrete, after firing — a solid opaque CRACKED disc, no alpha cut).
+     `project_lint.py` 162 files clean; `blast_calculator_selftest.gd` 28/28;
+     `slab_render_selftest.gd` clean. (`bake_selftest.gd`'s 19/19 PASS is
+     followed by an exit-time segfault during Godot's own engine cleanup —
+     confirmed pre-existing and unrelated via `git stash`, same crash on the
+     commit before this work.)
+   - **Deliberately still open, not solved here**: the true low-end-device /
+     bake-failure fallback the Director described (*"o fallback pra quando
+     der erro no Baking System, ou o dispositivo do usuário for
+     fraquíssimo"*) is a distinct, explicit-toggle concern (D11's `MATERIAL_ONLY`
+     precedent, not a silent catch — B6) and deserves its own scoping rather
+     than being backed into this pass. **`glass` is registered
+     (`MaterialResistanceTable`, `MATERIALS`) but not wired into any bench
+     row** — its "grandes chances de levar vários voxels em volta, ou quebrar
+     a janela inteira" cascade is explicitly *not* modeled (`destroy_factor`
+     0.7 placeholder only); building that mechanic and a bench column for it
+     is separate follow-up work, named but not started.
 5. **Grenade soot migrates to the face-local, derived model too.** *(Director,
    2026-07-30.)* `soot_ring` is today a per-voxel BFS ring (VL-D1, this
    session's grenade regression re-verified it intact) — S3 closed 2026-07-30

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34235 lines total** (under `godot/scripts/`)
+**163 scripts · 34304 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1422 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1482 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -658,8 +658,10 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
-- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", ]`
+- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
+- `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
+- `_IMPACT_SUFFIXES` = `["_dented", "_cracked"]`
 - `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
 - `EMPTY_COLUMN` = `-9999`
 
@@ -1390,14 +1392,14 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 48 lines
+`class_name MaterialResistanceTable` · 57 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
 > MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
 
 **Constants / tuning**
-- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, }`
+- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, "glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0}, }`
 
 ---
 

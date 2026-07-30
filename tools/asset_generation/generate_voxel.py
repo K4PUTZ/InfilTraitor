@@ -62,7 +62,65 @@ MATERIALS: dict[str, tuple[int, int, int]] = {
     "metal":    (138, 148, 158),
     "stone":    (155, 150, 143),
     "wood":     (178, 138,  88),
+    # D22 (Director, 2026-07-30) — 5th wall material, DESTROYED-only (no
+    # DENTED/CRACKED tier, see MaterialResistanceTable). Pale cyan placeholder;
+    # real glass art is the Director's own future pass, not this generator's.
+    "glass":    (188, 210, 214),
 }
+
+# ---------------------------------------------------------------------------
+# D22 — impact-mark pseudo-materials (placeholder "vector" marks). Real
+# per-material photographic bakes are the Director's own pass, dropped into
+# IMPACT_OUTPUT_DIR at these exact filenames — zero code changes on swap.
+# Glass is excluded: it has no DENTED/CRACKED tier by design.
+# ---------------------------------------------------------------------------
+IMPACT_OUTPUT_DIR = Path("ASSETS/ISOMETRIC/source_assets/voxels/impact_marks")
+IMPACT_MATERIALS: list[str] = ["concrete", "metal", "stone", "wood"]
+
+# Top-face diamond center (TILE_W/2, TILE_H/2) = (16, 8); radii kept small
+# enough to stay inside the diamond's taper near its N/S points rather than
+# bleeding into the transparent corners outside the cube silhouette.
+_MARK_CENTER = (TILE_W // 2, TILE_H // 2)
+_DENT_OUTER_RADIUS = 5
+_DENT_CORE_RADIUS = 2
+_CRACK_RADIUS = 4
+
+
+def generate_impact_mark(base_img: "Image.Image", dented: bool) -> "Image.Image":
+    """
+    Overlay a placeholder bullet-impact mark onto a copy of an existing voxel
+    atom's top face.
+
+    dented=True:  a dark rim around a TRUE alpha-cut core — the "meio voxel"
+                  sunken look (Director, 2026-07-30): "um voxel inteiro com a
+                  geometria modificada pra ter metade em alpha", so whatever
+                  renders behind this tile shows through the core, selling
+                  depth without any sub-tile geometry (Rule 8 stays satisfied
+                  — still one flat PNG through set_cell()).
+    dented=False: a smaller, opaque dark mark — a flat surface graze, no
+                  sinking, no alpha.
+    """
+    img = base_img.copy()
+    draw = ImageDraw.Draw(img)
+    cx, cy = _MARK_CENTER
+    if dented:
+        draw.ellipse(
+            [cx - _DENT_OUTER_RADIUS, cy - _DENT_OUTER_RADIUS,
+             cx + _DENT_OUTER_RADIUS, cy + _DENT_OUTER_RADIUS],
+            fill=(22, 19, 17, 255),
+        )
+        draw.ellipse(
+            [cx - _DENT_CORE_RADIUS, cy - _DENT_CORE_RADIUS,
+             cx + _DENT_CORE_RADIUS, cy + _DENT_CORE_RADIUS],
+            fill=(0, 0, 0, 0),
+        )
+    else:
+        draw.ellipse(
+            [cx - _CRACK_RADIUS, cy - _CRACK_RADIUS,
+             cx + _CRACK_RADIUS, cy + _CRACK_RADIUS],
+            fill=(38, 33, 30, 235),
+        )
+    return img
 
 # ---------------------------------------------------------------------------
 # DESTRUCTION_MASTER_PLAN D2/D4 — floor/slab palette. Placeholder art: 8
@@ -183,6 +241,20 @@ def main() -> None:
 
     total = len(MATERIALS) + len(EARTH_VARIANTS) + len(GROUND_MATERIALS)
     print(f"\n✓ {total} voxel atom(s) → {OUTPUT_DIR}/")
+
+    # D22 — impact-mark placeholders (dented/cracked), one pair per non-glass
+    # wall material, built from each material's own base atom above.
+    IMPACT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    impact_count = 0
+    for material in IMPACT_MATERIALS:
+        base_img = generate_voxel_atom(MATERIALS[material])
+        for suffix, dented in (("dented", True), ("cracked", False)):
+            img  = generate_impact_mark(base_img, dented)
+            path = IMPACT_OUTPUT_DIR / f"voxel_{material}_{suffix}.png"
+            img.save(path, "PNG")
+            print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
+            impact_count += 1
+    print(f"\n✓ {impact_count} impact-mark placeholder(s) → {IMPACT_OUTPUT_DIR}/")
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
 
 

@@ -20,11 +20,20 @@ class_name MaterialResistanceTable
 ## material is hardcoded to stay whole. What used to be metal's lone
 ## crack_factor 0.6 is now split across dent_factor (the sunken look metal was
 ## originally meant to show) and a smaller crack_factor (a lighter graze).
+## "glass" (D22, 2026-07-30): DESTROYED-only, by explicit Director decision —
+## "não vai ter dented; é buraco feito, ou não feito" — dent/crack forced to
+## 0.0 rather than left to the default, so the rule reads as intentional data,
+## not an accident of an unlisted material. destroy_factor set high (glass is
+## fragile) as a first-pass placeholder; the "grandes chances de levar vários
+## voxels em volta, ou quebrar a janela inteira" cascade beyond the normal
+## ring falloff is NOT modeled here yet — flagged open in
+## DESTRUCTION_MASTER_PLAN §7 item 4, not invented on the spot.
 const TABLE := {
 	"metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3},
 	"stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2},
 	"concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15},
 	"wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03},
+	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
 }
 
 ## Defaults stay 0.0 for dent/crack (not the table's own values) so any

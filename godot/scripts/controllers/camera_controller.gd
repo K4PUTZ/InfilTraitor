@@ -171,6 +171,13 @@ func _connect_view_buttons() -> void:
 		_btn_view_v.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_v_toggled(is_pressed))
 
 
+## BENCH-VIEW-01: dev-capture zoom override (INFILTRAITOR_CAPTURE_ZOOM). Goes
+## through the same clamp as every user-driven zoom, so a capture can never ask
+## for a camera state the game itself cannot reach.
+func set_zoom_for_capture(new_z: float) -> void:
+	_apply_zoom(clampf(new_z, ZOOM_MIN, ZOOM_MAX))
+
+
 ## Apply zoom clamped between ZOOM_MIN and ZOOM_MAX.
 func _apply_zoom(new_z: float) -> void:
 	_camera.zoom = Vector2(new_z, new_z)

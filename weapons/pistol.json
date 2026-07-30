@@ -1,0 +1,8 @@
+{
+  "id": "pistol",
+  "delivery": "LINE",
+  "step_multipliers": [1.0, 0.9, 0.75, 0.55],
+  "destroy_multiplier": 0.25,
+  "gameplay": { "class": "firearm", "range_band": "short" },
+  "tags": ["firearm", "pistol", "sidearm"]
+}

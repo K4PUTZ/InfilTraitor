@@ -147,6 +147,8 @@ func _cone_cells(weapon: Dictionary) -> Array:
 	var weapon_def = Registries.get_weapon_registry().get_weapon(weapon["weapon_id"])
 	if weapon_def == null or not weapon_def.has_range():
 		return []
+	if weapon_def.delivery != WeaponDef.DELIVERY_CONE:
+		return []
 	## The facing is stored in BASE space (it is a property of how the prop was
 	## placed), so it has to be rotated into the active view the same way the
 	## cell is — otherwise the cone would keep pointing at the base-north wall
@@ -190,6 +192,18 @@ func fire_active() -> void:
 	var weapon_def = Registries.get_weapon_registry().get_weapon(w["weapon_id"])
 	if weapon_def == null:
 		push_error("[WeaponBenchController] no WeaponDef for id '%s'" % w["weapon_id"])
+		cancel_active()
+		return
+	## Dispatch on the declared delivery shape, and LOUD-FAIL on the ones that do
+	## not exist yet rather than quietly firing the wrong geometry. The rifled
+	## weapons on the bench honestly declare LINE (WEAPON_MASTER_PLAN D1) — a
+	## ray with penetration depth, which is a different mechanic from CONE, not
+	## a narrow cone. Firing a cone out of a sniper rifle because it is the only
+	## shape implemented would be exactly the kind of silent substitution this
+	## project's evidence rules ban.
+	if weapon_def.delivery != WeaponDef.DELIVERY_CONE:
+		push_error("[WeaponBenchController] '%s' declares delivery %s, which is not implemented yet — only CONE is (WEAPON_MASTER_PLAN Part 2 / DESTRUCTION_MASTER_PLAN Part 5)." %
+			[w["weapon_id"], weapon_def.delivery])
 		cancel_active()
 		return
 	if room._edge_registry == null or room._slab_registry == null:

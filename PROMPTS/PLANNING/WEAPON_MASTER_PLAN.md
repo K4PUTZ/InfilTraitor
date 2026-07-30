@@ -86,6 +86,8 @@ Named pains:
 | **D6** | **The test bench is a MATRIX: weapon type on one axis, wall material on the other.** *"4 armas repetidas (uma cópia de cada arma por parede, como as granadas), posicionadas em fila indiana, na distância mais adequada para utilização"* — so a row is one weapon at the range it is actually meant to be used at, and a column is one material. Every weapon can therefore be tried against every material at its proper range. Director's explicit sequencing: **proper ranges first**, then *"posteriormente podemos testar a destruição usando distâncias invertidas e menos apropriadas"* — the inverted-distance pass is a second experiment, not a variation to fold in now. | ✅ Ratified |
 | **D7** | **Weapons are authored as data files, exactly like bombs are.** `BombRegistry.load_from_disk()` scans `res://bombs` then `user://bombs` and registers every `*.json` it finds, user tier winning on id collision — so new definitions already need **zero code changes** to appear. A `WeaponRegistry` should be a line-for-line copy of it against a `weapons/` folder (which is itself how `BombRegistry` was written against `PropRegistry`), rather than a third pattern. Open: whether explosives migrate into `WeaponDef` or `BombDef` stays as the RADIAL specialisation — see §7. | 🟠 Proposed |
 | **D8** | **Non-destructive weapons dispatch into the systems that already own their effects — this plan never grows a second implementation of them.** Flashbang blinds → perception; EMP disables electronics → AI/alarms, and it is *already* in `noise.md`'s intensity table at 0.90; smoke blocks line of sight → occlusion, which already names it as a planned scenario; darts and distractions → noise and the guard FSM. The catalog owns the **entry and its parameters**; the effect belongs to whoever already owns that domain. This is the same boundary `DESTRUCTION_MASTER_PLAN` §3 draws around `Voxel.visible`, applied one level up. | 🟠 Proposed |
+| **D10** | **Baked frames are SHARED per bake folder, and a prop loads only the frames it can display.** *(FRAME-MEM-01, 2026-07-29 — found while sizing this arsenal, not from a bug report.)* One 120-frame set costs **48.2 MB of real VRAM**, measured on GPU. Loading it per instance meant the four bench shotguns held four identical copies — 241 MB for five props, and a projected **1447 MB** for the 6-weapons × 4-columns + pickups layout. `CollectibleFrameCache` (in the `Registries` autoload, not a `static var` — see FIX-SHUTDOWN-CRASH-01b) holds one set per `frames_dir`, and `FloatingCollectible` asks only for the indices it can ever show: all 120 for a spinning pickup, exactly **4** for a static prop (one per N/E/S/W). Measured result on the same layout: **241 → 49.8 MB**. **The arsenal's real cost ceiling is therefore the PICKUPS, not the bench** — a bench weapon is ~1.6 MB, a spinning one is ~48–58 MB, and that ratio is what should drive how many pickups a real room ever shows at once. | ✅ Shipped (measured, 2026-07-29) |
+| **D11** | **A weapon's declared `delivery` is the truth, even when the engine cannot honour it yet.** The five rifled weapons are `LINE` in their JSON because that is what they are — a ray with penetration depth, a different mechanic from a narrow `CONE`. `WeaponBenchController` dispatches on delivery and **loud-fails** on `LINE` rather than firing a cone out of a sniper rifle because a cone is what exists. Silent substitution of an implemented mechanic for a specified one is exactly what this project's evidence rules ban, and a catalog that lies about its own entries is worse than one with a visible gap. | 🟠 Proposed |
 | **D9** | **Rarity, stats and progression are deliberately absent from v1.** Director: *"posteriormente iremos trabalhar mais detalhadamente em raridades, e stats como dano, firerate, accuracy, etc."* Writing a stat table now would mean inventing balance numbers before a single shot has been fired against a real wall — the same trap `MaterialResistanceTable`'s own header already flags about its placeholder values (*"first-pass placeholders — a balancing lever, not researched constants"*). | ✅ Ratified |
 
 ---
@@ -117,8 +119,12 @@ Measured, not estimated.
 
 | Quantity | Value | Source |
 |---|---|---|
-| Destruction shapes implemented today | **1 of 4** (`RADIAL`) | `BlastCalculator.flood_gu_rings()` |
-| Weapon definitions on disk today | **1** (`bombs/frag_grenade.json`) | `ring_multipliers [1.0, 0.7, 0.35, 0.1]` — range IS the ring count |
+| Destruction shapes implemented | **2 of 4** — `RADIAL`, `CONE`. `LINE` declared by 5 weapons and **not built** | `flood_gu_rings()` / `flood_gu_cone()` |
+| Weapon definitions on disk | **6** in `weapons/` + 1 in `bombs/` | shotgun (CONE) · pistol, revolver, smg, assault_rifle, sniper_rifle (all LINE) |
+| **Baked-frame VRAM, per object** | **48.2 MB** for a 120-frame set (measured, real GPU) | FRAME-MEM-01 — the number that reshaped the bench, see below |
+| Test-zone frame VRAM, per-instance loading | **241 MB** for 5 props; **1447 MB** projected at 30 | measured / projected before the shared cache |
+| Test-zone frame VRAM, shared + sparse | **49.8 MB** for the same 5 props (**4.8×**) | measured after `CollectibleFrameCache` |
+| Frames a STATIC prop actually needs | **4 of 120** (one per N/E/S/W) | why the bench is nearly free and the pickups are not |
 | Material resistance (destroy_factor) | metal 0.05 · stone 0.30 · concrete 0.50 · wood 0.90 | `MaterialResistanceTable` — placeholders, a balancing lever |
 | Material resistance (crack_factor) | metal 0.60, everything else 0.0 | idem — metal distorts rather than breaks |
 | Collectible bake, per object | 120 frames × 4 passes = **480 PNGs, 4.7 MB** (shotgun) / **1.9 MB** (grenade) | on disk, 2026-07-29 |
@@ -144,15 +150,34 @@ rarity and stats is deliberately blank (D9).
 
 ### 5.1 Firearms — `CONE` and `LINE`
 
-| Weapon | Shape | Scenario effect | Model on disk |
-|---|---|---|---|
-| **Pistol** | `LINE` | *"pistola com mais ou menos punch, que gera um voxel de destruição por vez"* — the minimum unit of destruction. Punch varies penetration depth, not width. | ✅ 4 variants |
-| **Revolver** | `LINE` | Pistol family, higher punch — the intra-class variation D1 is meant to absorb without new code. | ✅ 3 variants |
-| **SMG** | `LINE` | Pistol-calibre, high rate — matters for firerate (D9), not for shape. | ✅ 2 variants |
-| **Shotgun** | `CONE` | *"cone mais ou menos largo"* by accuracy; heavy damage close, falling off fast. The reference case for `CONE`. | ✅ 4 variants |
-| **Assault rifle** | `LINE` | *"rifle abre um buraco maior"* — wider and deeper than a pistol's single voxel. | ✅ 3 variants |
-| **Bullpup** | `LINE` | Rifle family variant. | ✅ 1 |
-| **Sniper rifle** | `LINE` | Deepest penetration, longest range — the far end of D6's range ladder. | ✅ 4 variants |
+Bench row = the distance that weapon is meant to be used at (D6). Six are placed
+and baked as of 2026-07-29; each also appears as a spinning pickup in the
+collectibles strip, from the SAME bake (D10 — one bake, two roles).
+
+| Weapon | Shape | Bench row | Scenario effect | Status |
+|---|---|---|---|---|
+| **Shotgun** | `CONE` | **y=4** (closest) | *"cone mais ou menos largo"* by accuracy; heavy close, falling off fast. The reference case for `CONE`. | ✅ baked, placed, **fires** |
+| **Pistol** | `LINE` | y=6 | *"pistola com mais ou menos punch, que gera um voxel de destruição por vez"* — the minimum unit of destruction. Punch varies depth, not width. | ✅ baked, placed · ❌ LINE unbuilt |
+| **Revolver** | `LINE` | y=7 | Pistol family, higher punch — the intra-class variation D1 absorbs without new code. | ✅ baked, placed · ❌ LINE unbuilt |
+| **SMG** | `LINE` | y=9 | Pistol-calibre, high rate — matters for firerate (D9), not for shape. | ✅ baked, placed · ❌ LINE unbuilt |
+| **Assault rifle** | `LINE` | y=11 | *"rifle abre um buraco maior"* — wider and deeper than a pistol's single voxel. | ✅ baked, placed · ❌ LINE unbuilt |
+| **Sniper rifle** | `LINE` | y=13 (farthest) | Deepest penetration, longest range — the far end of the ladder. | ✅ baked, placed · ❌ LINE unbuilt |
+| Bullpup, and 18 further pack variants | — | — | Unbaked; adding one is a row in `weapon_frames_bake.gd` plus a `weapons/*.json`. | ⏸ available |
+
+**The bench is five-sixths inert on purpose.** Only the shotgun fires, because
+only `CONE` exists; the rifled weapons declare `LINE` truthfully and loud-fail
+when fired (D11). `LINE` is the obvious next mechanic and is not in this
+document's Part list by accident — it is DESTRUCTION_MASTER_PLAN Part 5's
+remaining half.
+
+**One shared framing for every gun** (`weapon_frames_bake.gd`): the pack's
+models share a coordinate scale (pistol 1.8 native units, shotgun 4.5, sniper up
+to 7.3), so one MESH_SCALE/ORTHO renders them at **true relative size** — a
+sniper reads long, a pistol stubby — instead of each being auto-framed to fill
+its canvas and arriving the same apparent length. The numbers are chosen so
+px-per-world-unit matches the already-shipped shotgun bake exactly
+(160/4.0 = 40 = 220/5.5), which is what lets them drop in beside it with no
+re-tuning of `SPRITE_SCALE` or the texel-width outline.
 
 ### 5.2 Explosives — `RADIAL` and `NONE`
 
@@ -265,6 +290,16 @@ direito)."* The pieces and their real state, audited 2026-07-29:
 - `TestZoneController` — its own header calls it *"scaffolding [...] not a
   permanent prop-interaction architecture"*, so a sibling controller is the
   path of least resistance, not a generalised multi-prop system.
+
+### Part 3b — `LINE`, the other rifled half *(OPEN — the next real mechanic)*
+Five of the six bench weapons declare it and none can fire (D11). Unlike `CONE`,
+`LINE` is not just a gate on the existing BFS: its step axis is **penetration
+depth through a wall's thickness**, measured in voxels, while every falloff
+table in the engine is per-GU (§7 #2 — still undecided). A first cut could take
+the cheap path (a single file of GUs along the facing, penetration expressed
+through `destroy_multiplier`, reusing everything `CONE` reuses) and leave real
+voxel-depth penetration for later; that trade is worth making explicitly rather
+than by accident.
 
 ### Part 4 — The non-destructive tier *(D8 — OPEN, and it is four systems' work)*
 Flashbang, EMP, smoke, darts, distractions. Each is a catalog entry here and an

@@ -332,6 +332,10 @@ var _selection_controller: SelectionControllerClass = null
 
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _test_zone_controller: TestZoneControllerClass = null
+## FRAME-MEM-01 / 2026-07-29: every spinning pickup in the collectibles strip.
+## _floating_collectible stays as an alias for the first of them, because the
+## test_collectible capture action and _set_perspective already reference it.
+var _collectibles: Array[Node] = []
 var _floating_collectible: Node = null
 ## TEST-ZONE weapons bench (2026-07-29): static, aimed, right-click-firable
 ## weapon props — see TEST_ZONE_WEAPON_ROWS and WeaponBenchController.
@@ -1142,8 +1146,9 @@ func _set_perspective(direction: String) -> void:
 		## reposition them explicitly, same pattern as the agent/selection block.
 		if _test_zone_controller != null:
 			_test_zone_controller.reposition_for_perspective(_active_perspective)
-		if _floating_collectible != null and is_instance_valid(_floating_collectible):
-			_floating_collectible.reposition_for_perspective(_active_perspective)
+		for pickup in _collectibles:
+			if pickup != null and is_instance_valid(pickup):
+				pickup.reposition_for_perspective(_active_perspective)
 		if _weapon_bench_controller != null:
 			_weapon_bench_controller.reposition_for_perspective(_active_perspective)
 
@@ -2527,37 +2532,69 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## para utilização" — so the rows read as a range ladder marching south as
 ## engagement range grows:
 ##
-##   y=2  the wall row itself      y=5  ground grenades (kept)
-##   y=4  reserved: pistol         y=6  SHOTGUN (short range)  <- only row today
-##   y=8/9/11  reserved: SMG / assault rifle / sniper
+##   y=2   the wall row itself     y=7   revolver
+##   y=4   shotgun (shortest)      y=9   SMG
+##   y=5   ground grenades (kept)  y=11  assault rifle
+##   y=6   pistol                  y=13  sniper rifle (longest)
 ##
 ## Adding the next gun is one entry here, not new placement code. Director's
 ## sequencing: every weapon at its PROPER range first; inverted/inappropriate
-## distances are a deliberate second pass later.
+## distances are a deliberate second pass later. The shotgun sits CLOSEST
+## because it is the shortest-range weapon in the set, which moved it from its
+## first-cut y=6 — that was chosen when it was the only gun and there was no
+## ladder for it to be wrong within.
 ##
 ## All weapons aim NE — the compass edge from a bench cell to the wall directly
 ## "above" it (grid delta (0,-1), docs/DIRECTION_GLOSSARY.md §3). Sprite scale
-## and shadow factor are per-object, exactly as for a collectible.
+## and shadow factor are per-object, exactly as for a collectible; the five
+## weapons baked together by weapon_frames_bake.gd share a framing, hence a
+## shared 2.0 shadow factor, while the shotgun keeps the 2.5 its own earlier
+## bake produced.
 const TEST_ZONE_WALL_GU_X: Array[int] = [3, 8, 13, 18]
+const BAKE_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
 const TEST_ZONE_WEAPON_ROWS: Array[Dictionary] = [
-	{
-		"id": "shotgun",
-		"row_y": 6,
-		"facing": "NE",
-		"frames_dir": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/",
-		"sprite_scale": 1.15,
-		"shadow_scale_factor": 2.5,
-	},
+	{"id": "shotgun", "row_y": 4, "facing": "NE",
+		"frames_dir": BAKE_DIR + "shotgun_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.5},
+	{"id": "pistol", "row_y": 6, "facing": "NE",
+		"frames_dir": BAKE_DIR + "pistol_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"id": "revolver", "row_y": 7, "facing": "NE",
+		"frames_dir": BAKE_DIR + "revolver_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"id": "smg", "row_y": 9, "facing": "NE",
+		"frames_dir": BAKE_DIR + "smg_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"id": "assault_rifle", "row_y": 11, "facing": "NE",
+		"frames_dir": BAKE_DIR + "assault_rifle_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"id": "sniper_rifle", "row_y": 13, "facing": "NE",
+		"frames_dir": BAKE_DIR + "sniper_rifle_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
 ]
 
-## Collectibles strip — a dedicated row well south of the bench, so nothing a
+## Collectibles strip — a dedicated row south of the whole bench, so nothing a
 ## gun is aimed at can be confused with something you pick up, and no
-## collectible ever stands in a firing lane. Slots reserved for future pickups;
-## only the first is filled today.
-const TEST_ZONE_COLLECTIBLE_GUS: Array[Vector2i] = [
-	Vector2i(10, 13),
-	Vector2i(6, 13),
-	Vector2i(14, 13),
+## collectible ever stands in a firing lane (every weapon fires NORTH, away from
+## this row). One slot per baked object: the grenade plus each bench weapon,
+## since the same 120-frame bake serves both the frozen prop and the spinning
+## pickup (Director, 2026-07-29: "nas fileiras E na faixa sul").
+const TEST_ZONE_COLLECTIBLE_ROW_Y := 15
+const TEST_ZONE_COLLECTIBLES: Array[Dictionary] = [
+	{"gu_x": 3, "frames_dir": BAKE_DIR + "grenade_collectible_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 6, "frames_dir": BAKE_DIR + "shotgun_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.5},
+	{"gu_x": 9, "frames_dir": BAKE_DIR + "pistol_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 12, "frames_dir": BAKE_DIR + "revolver_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 15, "frames_dir": BAKE_DIR + "smg_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 18, "frames_dir": BAKE_DIR + "assault_rifle_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 21, "frames_dir": BAKE_DIR + "sniper_rifle_frames/",
+		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
 ]
 
 
@@ -2569,9 +2606,11 @@ func _populate_test_zone_if_playground() -> void:
 	if _test_zone_controller == null:
 		return
 	_test_zone_controller.clear()
-	if _floating_collectible != null and is_instance_valid(_floating_collectible):
-		_floating_collectible.queue_free()
-		_floating_collectible = null
+	for pickup in _collectibles:
+		if pickup != null and is_instance_valid(pickup):
+			pickup.queue_free()
+	_collectibles.clear()
+	_floating_collectible = null
 	if _weapon_bench_controller != null:
 		_weapon_bench_controller.clear()
 	if map_id == "PLAYGROUND":
@@ -2595,29 +2634,38 @@ func _populate_test_zone_if_playground() -> void:
 					float(weapon["shadow_scale_factor"]),
 				)
 
-		## ACTOR_MASTER_PLAN D21 — the spinning pickup. Moved out of the bench
-		## (Director, 2026-07-29: collectibles get their own area so the wall row
-		## belongs to the guns) and swapped shotgun -> grenade, which is the
-		## actual point: the shotgun was the only object this class had ever
-		## displayed, so "it works for any object" was asserted, not shown. A
-		## small round grenade through the identical pipeline is the proof.
-		## Bake folder + sprite scale are per-object (FloatingCollectible is
-		## reusable, standardized 2026-07-28) — frame count/rotation speed/
-		## camera convention come from CollectibleBakeConfig instead and stay
-		## identical for every object using this class. shadow_scale_factor
-		## corrects for the shadow pass's framing vs the color pass's —
-		## grenade_collectible_bake_spike.gd uses SHADOW_ORTHO_SIZE(4.0)/
-		## SHADOW_VIEWPORT_SIZE.y(80) against ORTHO_SIZE(4.0)/VIEWPORT_SIZE.y(160),
-		## so (4.0/80)/(4.0/160) = 2.0 (the shotgun's is 2.5: an elongated object
-		## seen from straight above needs more frustum room than a round one).
-		_floating_collectible = FloatingCollectibleClass.new()
-		_floating_collectible.setup(
-			self, TEST_ZONE_COLLECTIBLE_GUS[0],
-			"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_collectible_frames/",
-			1.15,
-			2.0,
-		)
-		add_child(_floating_collectible)
+		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per baked object.
+		## Moved out of the bench (Director, 2026-07-29: collectibles get their
+		## own area so the wall row belongs to the guns). The same 120-frame bake
+		## feeds both roles — frozen on one frame for the aimed bench prop,
+		## cycled here — so a weapon costs one bake, not two.
+		##
+		## Bake folder + sprite scale + shadow_scale_factor are per-object;
+		## frame count, rotation speed and the camera convention come from
+		## CollectibleBakeConfig and must stay identical for every object, or the
+		## light-direction math breaks silently. shadow_scale_factor is
+		## (SHADOW_ORTHO/SHADOW_VIEWPORT.y)/(ORTHO/VIEWPORT.y) of whichever bake
+		## produced the folder.
+		for collectible in TEST_ZONE_COLLECTIBLES:
+			var pickup = FloatingCollectibleClass.new()
+			pickup.setup(
+				self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y),
+				String(collectible["frames_dir"]),
+				float(collectible["sprite_scale"]),
+				float(collectible["shadow_scale_factor"]),
+			)
+			add_child(pickup)
+			_collectibles.append(pickup)
+		## The first pickup keeps the _floating_collectible alias the
+		## test_collectible capture action and _set_perspective already use.
+		_floating_collectible = _collectibles[0]
+
+		## Same shape as "[Room] N tiles registered" — a placement summary that
+		## can be checked from a log instead of counted off a screenshot.
+		print("[TestZone] bench: %d weapons (%d rows x %d columns), %d pickups, %d grenades" %
+			[TEST_ZONE_WEAPON_ROWS.size() * TEST_ZONE_WALL_GU_X.size(),
+			TEST_ZONE_WEAPON_ROWS.size(), TEST_ZONE_WALL_GU_X.size(),
+			_collectibles.size(), TEST_ZONE_GRENADE_GUS.size()])
 
 
 ## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
@@ -2698,6 +2746,28 @@ func _run_auto_screenshot_capture() -> void:
 				await get_tree().process_frame
 		else:
 			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AGENT_CELL '%s' — expected 'x,y'" % agent_cell_env)
+
+	## BENCH-VIEW-01 (2026-07-29): frame an arbitrary cell, at an arbitrary zoom.
+	## AGENT_CELL above deliberately does NOT move the camera (see its own note —
+	## that was found the hard way), which is right for "put the agent here and
+	## check occlusion" but useless for "show me the whole weapons bench at once".
+	## These two are the missing half: FOCUS_CELL="x,y" recentres, and ZOOM (the
+	## CameraController's own 0.20..1.20 range, smaller = further out) pulls back
+	## far enough to fit a 10-row bench in one frame.
+	var focus_env := OS.get_environment("INFILTRAITOR_CAPTURE_FOCUS_CELL")
+	if focus_env != "" and _camera_controller != null and agent != null:
+		var focus_parts := focus_env.split(",")
+		if focus_parts.size() == 2:
+			_camera_controller.focus_on(agent._cell_to_world(
+				Vector2i(focus_parts[0].to_int(), focus_parts[1].to_int())))
+		else:
+			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_FOCUS_CELL '%s' — expected 'x,y'" % focus_env)
+	var zoom_env := OS.get_environment("INFILTRAITOR_CAPTURE_ZOOM")
+	if zoom_env.is_valid_float() and _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom_env.to_float())
+	if focus_env != "" or zoom_env != "":
+		for _j in range(10):
+			await get_tree().process_frame
 
 	## HEAT-Z-01 (2026-07-28): force one or more analysis modes ON for the capture,
 	## comma-separated ("heat", "light", "dev", "numbers" — the H / L / D / #

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**162 scripts · 33794 lines total** (under `godot/scripts/`)
+**163 scripts · 34139 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -191,7 +191,7 @@
 
 ### `camera_controller.gd`
 
-extends `Node` · 204 lines
+extends `Node` · 211 lines
 
 `godot/scripts/controllers/camera_controller.gd`
 
@@ -208,6 +208,7 @@ extends `Node` · 204 lines
 - `func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:`
 - `func handle_input(event: InputEvent) -> bool:`
 - `func focus_on(world_pos: Vector2) -> void:`
+- `func set_zoom_for_capture(new_z: float) -> void:`
 
 ---
 
@@ -2880,6 +2881,29 @@ extends `SceneTree` · 95 lines
 
 ---
 
+### `weapon_frames_bake.gd`
+
+extends `SceneTree` · 254 lines
+
+`godot/scripts/tools/weapon_frames_bake.gd`
+
+> Weapon collectible bake — WEAPON_MASTER_PLAN Part 1 support (2026-07-29). Bakes N weapons in one run instead of N copy-pasted spike scripts. This is the first, deliberately small step of ACTOR_MASTER_PLAN Part 2b (D15's manifest-driven batch tool): a table here, not a JSON manifest, and scoped to weapons only. Everything past that — arbitrary object types, per-object config files, license bookkeeping — stays unbuilt until something actually needs it. ONE SHARED FRAMING FOR EVERY GUN, which is the point of doing them together. The Quaternius pack's models share a coordinate scale (measured 2026-07-29: pistol 1.8 native units long, shotgun 4.5, sniper up to 7.3), so a single MESH_SCALE/ORTHO_SIZE renders them all at TRUE RELATIVE SIZE — a sniper reads long and a pistol reads stubby, instead of every gun being auto-framed to fill its canvas and arriving on the bench the same apparent length. The numbers are chosen so px-per-world-unit matches the already-shipped shotgun bake EXACTLY (160/4.0 = 40 = 220/5.5), which is what lets the new weapons drop in beside it with the same SPRITE_SCALE, the same outline width in texels, and no re-tuning. The canvas is bigger only so the longest sniper fits with margin; a centred sprite treats the extra as transparent padding. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/weapon_frames_bake.gd
+
+**Constants / tuning**
+- `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
+- `MODEL_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/"`
+- `OUT_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"`
+- `WEAPONS` = `[ {"model": "Pistol.glb", "out": "pistol_frames"}, {"model": "Revolver.glb", "out": "revolver_frames"}, {"model": "Submachine Gun.glb", "out": "smg_frames"}, {"model": "Assault Rifle.glb", "out": "assault_rifle_frames"}, {"model": "Sniper Rifle.glb", "out": "sniper_rifle_frames"}, ]`
+- `VIEWPORT_SIZE` = `Vector2i(220, 220)`
+- `ORTHO_SIZE` = `5.5`
+- `MESH_SCALE` = `0.5`
+- `SHADOW_VIEWPORT_SIZE` = `Vector2i(110, 110)`
+- `SHADOW_ORTHO_SIZE` = `5.5`
+- `SHADOW_CAMERA_DISTANCE` = `12.0`
+- `NORMAL_BAKE_SHADER_CODE` = `"""`
+
+---
+
 ## ui/
 
 ### `controls_panel.gd`
@@ -3273,7 +3297,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 268 lines
+`class_name WeaponBenchController` · 282 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3475,7 +3499,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3178 lines
+extends `Node2D` · 3248 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3543,8 +3567,10 @@ extends `Node2D` · 3178 lines
 - `TRAIL_MAX` = `5`
 - `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
 - `TEST_ZONE_WALL_GU_X` = `[3, 8, 13, 18]`
-- `TEST_ZONE_WEAPON_ROWS` = `[ { "id": "shotgun", "row_y": 6, "facing": "NE", "frames_dir": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5, }, ]`
-- `TEST_ZONE_COLLECTIBLE_GUS` = `[ Vector2i(10, 13), Vector2i(6, 13), Vector2i(14, 13), ]`
+- `BAKE_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"`
+- `TEST_ZONE_WEAPON_ROWS` = `[ {"id": "shotgun", "row_y": 4, "facing": "NE", "frames_dir": BAKE_DIR + "shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5}, {"id": "pistol", "row_y": 6, "facing": "NE", "frames_dir": BAKE_DIR + "pistol_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "revolver", "row_y": 7, "facing": "NE", "frames_dir": BAKE_DIR + "revolver_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "smg", "row_y": 9, "facing": "NE", "frames_dir": BAKE_DIR + "smg_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "assault_rifle", "row_y": 11, "facing": "NE", "frames_dir": BAKE_DIR + "assault_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "sniper_rifle", "row_y": 13, "facing": "NE", "frames_dir": BAKE_DIR + "sniper_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, ]`
+- `TEST_ZONE_COLLECTIBLE_ROW_Y` = `15`
+- `TEST_ZONE_COLLECTIBLES` = `[ {"gu_x": 3, "frames_dir": BAKE_DIR + "grenade_collectible_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 6, "frames_dir": BAKE_DIR + "shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5}, {"gu_x": 9, "frames_dir": BAKE_DIR + "pistol_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 12, "frames_dir": BAKE_DIR + "revolver_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 15, "frames_dir": BAKE_DIR + "smg_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 18, "frames_dir": BAKE_DIR + "assault_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 21, "frames_dir": BAKE_DIR + "sniper_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, ]`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

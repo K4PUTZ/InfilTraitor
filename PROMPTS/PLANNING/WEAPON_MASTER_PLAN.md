@@ -1,7 +1,13 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.0
 
-**Status:** 🟢 **Catalog drafted AND the first shot fired, both 2026-07-29.**
+**Status:** 🟢 **Catalog drafted, first shot fired, and the shot-physics model
+brainstormed — all 2026-07-29.** The physics model (D12–D20, §5b) is **ratified
+but entirely unbuilt**, and it **supersedes D1/D2's cone-as-volume for every
+firearm** — which is the correction to what actually shipped. Nine questions
+raised against it (§7a) are queued to be unpacked one at a time; two of them (S1
+dice vs. this codebase's no-RNG determinism, S7 origin/target points) block the
+rest.
 Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
 `CONE` is implemented and selftested, and right-clicking a bench shotgun opens
 "Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and
@@ -88,6 +94,15 @@ Named pains:
 | **D8** | **Non-destructive weapons dispatch into the systems that already own their effects — this plan never grows a second implementation of them.** Flashbang blinds → perception; EMP disables electronics → AI/alarms, and it is *already* in `noise.md`'s intensity table at 0.90; smoke blocks line of sight → occlusion, which already names it as a planned scenario; darts and distractions → noise and the guard FSM. The catalog owns the **entry and its parameters**; the effect belongs to whoever already owns that domain. This is the same boundary `DESTRUCTION_MASTER_PLAN` §3 draws around `Voxel.visible`, applied one level up. | 🟠 Proposed |
 | **D10** | **Baked frames are SHARED per bake folder, and a prop loads only the frames it can display.** *(FRAME-MEM-01, 2026-07-29 — found while sizing this arsenal, not from a bug report.)* One 120-frame set costs **48.2 MB of real VRAM**, measured on GPU. Loading it per instance meant the four bench shotguns held four identical copies — 241 MB for five props, and a projected **1447 MB** for the 6-weapons × 4-columns + pickups layout. `CollectibleFrameCache` (in the `Registries` autoload, not a `static var` — see FIX-SHUTDOWN-CRASH-01b) holds one set per `frames_dir`, and `FloatingCollectible` asks only for the indices it can ever show: all 120 for a spinning pickup, exactly **4** for a static prop (one per N/E/S/W). Measured result on the same layout: **241 → 49.8 MB**. **The arsenal's real cost ceiling is therefore the PICKUPS, not the bench** — a bench weapon is ~1.6 MB, a spinning one is ~48–58 MB, and that ratio is what should drive how many pickups a real room ever shows at once. | ✅ Shipped (measured, 2026-07-29) |
 | **D11** | **A weapon's declared `delivery` is the truth, even when the engine cannot honour it yet.** The five rifled weapons are `LINE` in their JSON because that is what they are — a ray with penetration depth, a different mechanic from a narrow `CONE`. `WeaponBenchController` dispatches on delivery and **loud-fails** on `LINE` rather than firing a cone out of a sniper rifle because a cone is what exists. Silent substitution of an implemented mechanic for a specified one is exactly what this project's evidence rules ban, and a catalog that lies about its own entries is worse than one with a visible gap. | 🟠 Proposed |
+| **D12** | **A shot resolves by DICE, in two rolls: does it hit, then how much damage.** *(Director brainstorm, 2026-07-29.)* Not a ballistics simulation and not a to-hit derived from geometry. **Being clearly visible on screen does not make a target easier to hit** — that depends on agent skills, cover, shadow, weapon level, powerups and so on. The sprite's legibility is a rendering concern; hittability is a stats concern, and the two are deliberately decoupled. Damage is a second roll against armour, resistance, distance. | ✅ Ratified |
+| **D13** | **A projectile resolves to a POINT of impact. The cone is AIM-ERROR SPREAD, never a volume of destruction.** *(Director brainstorm, 2026-07-29.)* **This reframes D1's `CONE` and D2's "accuracy = half-angle" for every firearm**, and it is the correction to what shipped: `flood_gu_cone()` destroys *everything* in the wedge, which is why the shotgun read as both too wide and floor-to-ceiling. Under this model the cone only bounds where an impact point may land; each projectile then damages the geometry at its own point. A shotgun is 8 scattered points, not one wedge. `RADIAL` (explosives) is unaffected — a blast really is a volume. | ✅ Ratified — supersedes D1/D2 for firearms |
+| **D14** | **Projectile count per shot is the weapon's signature.** Sniper 1, shotgun ~8, pistol 1. Each projectile rolls **independently** — its own hit roll, its own damage roll, its own impact point, its own chance to break a voxel. This is what makes a shotgun a shotgun without a second code path: same pipeline, run N times. | ✅ Ratified |
+| **D15** | **A miss keeps flying.** The projectile continues along the shot's own trajectory to the next wall; if nothing is in that direction, it is void and nothing happens. Trajectory is derived from **origin point and target point** in 360°, then projected into the isometric view — not snapped to the 4/8 compass directions the rest of the project uses for movement and facing. | ✅ Ratified |
+| **D16** | **Wall impact is a destruction ladder, not a fixed footprint** (concrete; other materials D19). A sniper hit **always breaks at least 1 voxel**, with a chance of up to **5 more** around the contact point, that chance scaling with weapon level, distance and powerups. If more than 3 surrounding voxels go, **one further roll** can break a voxel INWARD — taking the outer slice and the inner one, which may punch through and let light pass. Shotgun and pistol resolve per projectile: each pellet gets its own chance to break a voxel. | ✅ Ratified |
+| **D17** | **Firearm soot is FACE-LOCAL and has no rings.** Same visual language as the grenade's, but it appears only on the newly revealed faces of the voxels neighbouring the destroyed one — the inside of the hole darkens, and nothing spreads outward. A bullet marks its impact; it does not blacken the wall. | ✅ Ratified |
+| **D18** | **Shots are chest-height with an error margin, and a wall hit is ALWAYS a miss.** You cannot aim at the floor: a shot is always between the agent and an enemy (or an interactive object). The error margin runs up/down and side to side, covering one slice or more depending on the distance between target and wall. A catastrophic roll (1,1,1…) can miss badly enough to break a floor voxel near the target — the exception that proves the rule, not an aiming option. | ✅ Ratified |
+| **D19** | **Material response differs in KIND, not just in amount.** **Wood**: the round punches through more easily, destroying little around it. **Metal**: almost nothing is destroyed, but the hit voxels are strongly marked — and should visibly **dent**, sliding back about half a voxel width so the surface reads as deformed rather than broken. (See §7 — as literally described, denting collides with inviolable Rule 8.) | ✅ Ratified (mechanism open) |
+| **D20** | **Damage stacks.** A shot into already-damaged geometry applies the same effects on top, destroying more as the case warrants. There is no "already hit" state that absorbs a second round. | ✅ Ratified |
 | **D9** | **Rarity, stats and progression are deliberately absent from v1.** Director: *"posteriormente iremos trabalhar mais detalhadamente em raridades, e stats como dano, firerate, accuracy, etc."* Writing a stat table now would mean inventing balance numbers before a single shot has been fired against a real wall — the same trap `MaterialResistanceTable`'s own header already flags about its placeholder values (*"first-pass placeholders — a balancing lever, not researched constants"*). | ✅ Ratified |
 
 ---
@@ -206,6 +221,63 @@ an 8-PNG bake, not a 480-PNG one.
 
 ---
 
+## 5b. Shot physics — how one shot resolves *(Director brainstorm, 2026-07-29)*
+
+D12–D20 as an ordered pipeline, because a sequence reads badly as table rows.
+**Nothing here is built.** The sniper is the reference case — it is the simplest
+(one projectile) and every straight-line weapon is a variation on it.
+
+```
+for each projectile in weapon.projectile_count:        # sniper 1, shotgun ~8, pistol 1
+
+  1. HIT ROLL          against agent skills, cover, shadow, weapon level,
+                       powerups.  NOT against how visible the sprite is (D12).
+
+  2a. ON HIT  -> DAMAGE ROLL against armour, resistance, distance.
+                 (the projectile's story ends here — unless it penetrates, §7)
+
+  2b. ON MISS -> the projectile KEEPS FLYING (D15)
+       |
+       +-- trajectory = origin point -> target point, in 360 degrees,
+       |   projected into the isometric view. Not compass-snapped.
+       |
+       +-- nothing in that direction?            -> VOID, nothing happens
+       |
+       +-- wall within a reasonable distance?    -> IMPACT (below)
+
+  3. IMPACT, concrete (D16):
+       always            1 voxel destroyed
+       chance            up to +5 more around the contact point
+                         (scales with weapon level, distance, powerups)
+       if >3 went        one more roll: break INWARD, taking the outer slice
+                         AND the inner one -> may punch through, may let light in
+
+     wood  (D19): punches through more easily, destroys little around it
+     metal (D19): destroys almost nothing; hit voxels are strongly marked and
+                  DENT — slid back ~half a voxel width (mechanism open, §7)
+
+  4. SOOT (D17): face-local, NO rings. Only the newly revealed faces of the
+     voxels neighbouring the destroyed one. The hole darkens inside; nothing
+     spreads outward.
+```
+
+**Vertical placement (D18).** Shots sit at chest height with an error margin up,
+down and sideways, covering one slice or more depending on how far the target is
+from the wall behind it. **A shot that hits a wall is by definition a miss** —
+the wall is never the thing being aimed at. Floor damage is only reachable
+through a catastrophic roll near the target.
+
+**Stacking (D20).** Firing into already-damaged geometry re-applies everything
+above; there is no saturation state.
+
+**What this corrects.** The shipped `flood_gu_cone()` treats the cone as a volume
+and destroys every slice inside it, which is exactly why the Director saw "área
+muito larga" and a floor-to-ceiling breach (§6b). Under D13 the cone only bounds
+where impact *points* may land. That single change is expected to resolve both
+complaints, and it means §6b's calibration numbers describe a model that is
+being replaced — they stay recorded as evidence of the old behaviour, not as a
+target to tune toward.
+
 ## 6. Parts
 
 ### Part 0 — The test bench — ✅ DONE 2026-07-29 (`e98ad25`)
@@ -291,7 +363,17 @@ direito)."* The pieces and their real state, audited 2026-07-29:
   permanent prop-interaction architecture"*, so a sibling controller is the
   path of least resistance, not a generalised multi-prop system.
 
-### Part 3b — `LINE`, the other rifled half *(OPEN — the next real mechanic)*
+### Part 3b — `LINE`, the other rifled half *(OPEN — the next real mechanic, now specified by §5b)*
+
+**Re-scoped 2026-07-29 by the shot-physics brainstorm.** What follows below was
+written when `LINE` looked like "`CONE` but narrow". §5b replaces that: a
+straight-line weapon is a **hit/miss roll per projectile, then a point impact**,
+and the sniper is its reference case *"que vão ser a base das armas em linha
+reta"* (Director). The nine questions in §7a all have to be answered inside this
+Part — S1 (dice vs. the codebase's no-RNG determinism) and S7 (origin/target
+points) block the rest of it.
+
+*Original scoping text, kept:*
 Five of the six bench weapons declare it and none can fire (D11). Unlike `CONE`,
 `LINE` is not just a gate on the existing BFS: its step axis is **penetration
 depth through a wall's thickness**, measured in voxels, while every falloff
@@ -343,6 +425,69 @@ the shape of it is not yet specified. It belongs to every weapon, not just the
 shotgun, and is a sibling of `LINE` (Part 3b) rather than part of it.
 
 ## 7. Open questions
+
+### 7a. Raised against the shot-physics brainstorm (2026-07-29) — to be unpacked one at a time
+
+**S1. "Determinístico" means the OPPOSITE thing in this codebase, and the
+collision is not cosmetic.** Here it means *no RNG*:
+`BlastCalculator._select_deterministic()` picks voxels by FNV-1a hash-and-rank,
+and invariant **B4 pins that** — same inputs, same result, forever. D12's dice
+are the opposite. Dice do *work*, because destruction persistence **records** the
+outcome per voxel in base coords (VL-PERSIST) rather than recomputing it, so a
+rolled shot survives perspective rotation. But two real costs land: a shot stops
+being reproducible (every destruction selftest today asserts exact voxel sets),
+and a Director-reported bug ("I fired and it opened *this*") cannot be replayed.
+**Middle path to evaluate:** roll against a seed derived from
+`(turn, shooter id, projectile index)` — unpredictable to the player, exactly
+reproducible for us and for tests. Decide before building, not after.
+
+**S2. Metal denting, as described, is forbidden by inviolable Rule 8.** Sliding
+a hit voxel back half a width is a great visual, and there is no sub-tile offset
+to do it with: voxels reach the tilemap only through `set_cell()`, and
+`TileMapLayer`'s per-cell transforms are flip/transpose only. Rule 8 exists
+precisely to stop the `Sprite2D`-on-top / image-compositing answer. **Viable
+route:** bake "dented" atlas variants and select them as a damage state, the way
+`CRACKED` already is — deformation becomes art, not geometry.
+
+**S3. Face-local soot is a new data shape, not a parameter.** `soot_ring` today
+is **per voxel** — the BFS marks whole voxels. D17 wants **per face**. The good
+news is `VoxelLightField` already works in faces (12 directional brightness
+buckets per face), so the rendering side can express it; the storage does not
+exist yet.
+
+**S4. Noise is completely absent from the brainstorm, in a stealth game.** A shot
+is the loudest thing an agent can do. `docs/systems/noise.md` already has an
+intensity table (EMP sits at 0.90) and the retired design doc specced silenced
+pistols and rifles. Silenced vs. unsilenced is plausibly the most important
+tactical axis the arsenal has, and D8's boundary says the effect belongs to the
+noise system — but the *catalog entry* for it belongs here.
+
+**S5. What stops a projectile?** Does it pass through a target it hits — a
+penetrating sniper round could take two aligned enemies. And once it breaks
+inward through both slices (D16), is that a light hole only, or can the next
+round travel into the room beyond?
+
+**S6. Geometry in the way: hard block, or a hit-roll modifier?** A wall between
+agent and enemy should stop the shot; a railing should not. `flood_gu_cone()`
+currently reuses `blocked_edges`, which is the **movement** gate — §7 #3 below
+already flagged that a bullet and a footstep need not agree.
+
+**S7. Chest height needs an ORIGIN and a TARGET point.** D18 and the Director's
+separate "vamos limitar a altura" both depend on two 3-D points that do not exist
+yet: is the origin the agent's chest or the weapon's muzzle, and is the target
+the enemy's chest? The 360° trajectory of D15 cannot be derived without them.
+
+**S8. The bench only exercises the MISS path.** It fires at a wall with no enemy
+present, so the hit/damage half of D12 has no fixture at all. That half needs its
+own target dummy before it can be verified rather than reasoned about.
+
+**S9. Smaller, still unanswered:** maximum range at which a projectile still
+damages a wall ("distância razoável"); AP cost and shots per turn
+(`docs/systems/movement.md` has the table); ammunition; what counts as
+"environment interativo"; and whether hitting an actor produces voxel damage on
+it (`ACTOR_MASTER_PLAN` D5/D6 has a deferred progressive-damage model waiting).
+
+### 7b. Pre-existing
 
 1. **Does `BombDef` migrate into `WeaponDef`, or stay as the RADIAL
    specialisation?** Migrating means one schema and one registry, at the cost of

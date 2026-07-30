@@ -856,18 +856,40 @@ anything consumes it; Part 3 must not be bundled with it.
 
 ## 7. Open questions
 
-0. **Does a checkpoint restore undo destruction?** *(New 2026-07-29, surfaced by
-   the weapons work — see [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) D24 /
-   S10.) The Director stated the game's save model that day: **no deliberate
-   save**, short infiltration waves over a set of segments, **checkpoints** so a
-   failure does not always return you to a segment's start, and only overall
-   character progression persisting automatically. Nothing has ever asked this
-   plan what the world looks like after such a restore. VL-PERSIST records damage
-   per voxel in base coordinates — enough to survive a *perspective rotation*,
-   not enough to roll a wall back to intact, because nothing snapshots it. Two
-   coherent answers: destruction is **checkpoint-scoped** (the base-coord damage
-   map needs snapshot/restore) or **permanent for the segment run**. Cheap to
-   design in now, expensive to retrofit. Not decided.
+0. **✅ ANSWERED 2026-07-29 — destruction rewinds with the segment, and commits
+   at two points.** *(Director; surfaced by the weapons work — see
+   [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) D24 / S10. Full run-state
+   model in [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §1.)*
+
+   > *"Sim precisa de reset para o segmento todo, incluindo buracos e destruição.
+   > O agente vai voltar no tempo."*
+
+   **A segment IS a map**, one loaded at a time, connected to its neighbours by
+   matching exits — and **some puzzles need the player to act in one segment and
+   collect the result in another**, so a hole punched in segment A has to still
+   be there when they come back to it. That is what forces a commit model rather
+   than plain rollback:
+
+   - **Commit points, and only these two:** stepping on a checkpoint, and leaving
+     the segment.
+   - **Death → rewind** to the last commit (the segment's load state, if no
+     checkpoint has been reached).
+   - **Quit → everything environmental is gone**; the whole segment set reloads.
+     Only character RPG progression survives.
+
+   **Implementation, and it is cheap — the shape is already right:**
+   `room._base_damage` and `room._base_soot` are `Dictionary[Vector3i → int]` in
+   **base (un-rotated) coordinates**, so a snapshot is `duplicate()` and a
+   restore is a replace plus the `reapply_damage()` pass VL-PERSIST already runs
+   after every perspective rotation. **The one real constraint:** the store
+   cannot live on `room`, which is destroyed exactly when a segment unloads —
+   it belongs in an autoload, the same lifecycle reason `Registries` owns the
+   other registries (`FIX-SHUTDOWN-CRASH-01b`).
+
+   **Still open:** whether ember/soot decay, `_under_structure`, and any future
+   fire state ride the same snapshot; and the full inventory of *other*
+   segment-scoped state (fog of war is a known second payload; enemy state,
+   doors and collected items are not inventoried anywhere yet).
 
 1. **`TileMapLayer` count** — the one real unknown. **Part 0 answered the
    CPU/node-creation half 2026-07-15** (256 layers: 0.87 ms, 0.86 MB, headless

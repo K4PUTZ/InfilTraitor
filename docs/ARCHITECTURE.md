@@ -236,6 +236,46 @@ Room (room.gd, Node2D)              ← orchestrator + God Object (§15)
 
 Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposure → overlays), but **not** for gameplay: controllers read and mutate room state directly (see §13).
 
+### Run state model — three tiers *(Director, 2026-07-29; NOT built)*
+
+A **segment IS a map**, and only one is loaded at a time; a set of segments makes
+the larger level (`LevelGraph` → `MapCatalog.get_spec(map_id, {connections,
+segment_grid_pos, seed})`, see the Map pipeline above). Segments connect through
+matching entrances/exits, and **some puzzles require acting in one segment and
+collecting the result in another** — so what the player changed has to outlive
+unloading the segment they changed it in. There is **no deliberate save**: the
+game is played in short infiltration waves with a beginning, middle and end.
+
+| Tier | Holds | Written when | Lost when |
+|---|---|---|---|
+| **Live** | everything changed in the current segment since the last commit | continuously | **death** (rewind to the last commit) and quit |
+| **Session** | per-segment environment deltas | **only** at a checkpoint step, or on leaving the segment | **quit** — the whole segment set reloads |
+| **Persistent** | character RPG progression: skills, stats, clothing | automatically | never |
+
+So death rewinds the agent in time to the segment's last committed state (its
+load state, if no checkpoint has been reached yet); quitting mid-run discards
+every segment's environment while leaving the character intact.
+
+**Two consequences worth stating before anything is built:**
+
+1. **The commit store cannot live on `room`.** `room` is destroyed when a segment
+   unloads, which is exactly when a commit has to survive. It belongs in an
+   autoload, the same lifecycle reason `Registries` owns the material/prop/bomb
+   registries (see `FIX-SHUTDOWN-CRASH-01b`).
+2. **Destruction is already in the right shape for this**, by accident rather
+   than design: `room._base_damage` and `room._base_soot` are two
+   `Dictionary[Vector3i → int]` in **base (un-rotated) coordinates** — snapshot
+   is a duplicate, restore is a replace plus the `reapply_damage` pass that
+   already exists for perspective rotation. Fog of war (`FogOfWarOverlay`, already
+   described as segment-scoped and persistent) is a second such payload; enemy
+   state, doors and collected items are not yet inventoried.
+
+Full reasoning and the open half live in
+[`DESTRUCTION_MASTER_PLAN.md`](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) §7
+question 0. This model deserves its own system doc once someone builds it; it is
+recorded here because nothing else in the docs states it and it decides what has
+to be serialisable.
+
 ---
 
 ## 2. Controller Architecture

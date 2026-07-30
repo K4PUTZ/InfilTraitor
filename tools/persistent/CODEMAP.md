@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**161 scripts · 33696 lines total** (under `godot/scripts/`)
+**162 scripts · 33794 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -859,7 +859,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 613 lines
+`class_name FloatingCollectible` · extends `Node2D` · 604 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1326,6 +1326,24 @@ extends `Node2D` · 43 lines
 - `FRAME_COUNT` = `120`
 - `ROTATION_DEG_PER_SEC` = `36.0`
 - `FRAME_SWAP_HZ` = `ROTATION_DEG_PER_SEC * FRAME_COUNT / 360.0`
+
+---
+
+### `collectible_frame_cache.gd`
+
+`class_name CollectibleFrameCache` · 92 lines
+
+`godot/scripts/systems/collectible_frame_cache.gd`
+
+> CollectibleFrameCache — one copy of a bake's frames, shared by every prop that displays it. FRAME-MEM-01 (2026-07-29). MEASURED problem, not a suspected one: one FloatingCollectible's 480 frame textures cost **48.2 MB of real VRAM** (windowed GPU measurement). Every instance loaded its own, so the four bench shotguns held four identical copies — 241 MB for the five props already in the test zone, and a projected **1447 MB** for the 6-weapons × 4-columns + 6-pickups layout being built next. On a mobile-first project that is not a tuning problem, it is a wall. Two levers, both here: 1. SHARE per bake folder — instances of the same weapon hold one set. 2. Load only the frames a prop can actually SHOW. A spinning collectible cycles all FRAME_COUNT of them; a static prop only ever displays four (one per N/E/S/W perspective), so it has no reason to pay for 120. Frames are cached sparsely and filled in on demand, so a static prop asking for 4 and a collectible later asking for all 120 share the 4 they overlap on. Lives in the Registries autoload rather than in a `static var` on FloatingCollectible: a GDScript static var is owned by the Script resource and is torn down during GDScriptLanguage::finish(), which is exactly the unsafe window FIX-SHUTDOWN-CRASH-01b moved MapCatalog's static state out of. Autoload Nodes are freed during normal SceneTree cleanup instead.
+
+**Constants / tuning**
+- `PASSES` = `["color", "normal", "shadow_sharp", "shadow_soft"]`
+
+**Public API**
+- `func request(frames_dir: String, indices: Array) -> Dictionary:`
+- `func extents_of(frames_dir: String) -> Dictionary:`
+- `func describe() -> String:`
 
 ---
 
@@ -1886,7 +1904,7 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 144 lines
+extends `Node` · 159 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -1897,6 +1915,7 @@ extends `Node` · 144 lines
 - `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `WeaponRegistryClass` = `preload("res://godot/scripts/systems/destruction/weapon_registry.gd")`
+- `CollectibleFrameCacheClass` = `preload("res://godot/scripts/systems/collectible_frame_cache.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 **Public vars**
@@ -1911,6 +1930,7 @@ extends `Node` · 144 lines
 - `func get_bomb_registry() -> BombRegistryClass:`
 - `func ensure_weapon_registry() -> WeaponRegistryClass:`
 - `func get_weapon_registry() -> WeaponRegistryClass:`
+- `func get_frame_cache() -> CollectibleFrameCacheClass:`
 - `func ensure_file_map_source() -> FileMapSourceClass:`
 
 ---

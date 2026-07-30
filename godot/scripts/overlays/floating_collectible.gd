@@ -222,10 +222,13 @@ var _sprite: Sprite2D
 var _shadow_sharp: Sprite2D
 var _shadow_soft: Sprite2D
 var _material: ShaderMaterial
-var _color_frames: Array[Texture2D] = []
-var _normal_frames: Array[Texture2D] = []
-var _shadow_sharp_frames: Array[Texture2D] = []
-var _shadow_soft_frames: Array[Texture2D] = []
+## FRAME-MEM-01: frame_index -> Texture2D, and the textures themselves belong to
+## the shared CollectibleFrameCache, not to this instance. Sparse on purpose —
+## a static prop only ever holds the four frames it can display.
+var _color_frames: Dictionary = {}
+var _normal_frames: Dictionary = {}
+var _shadow_sharp_frames: Dictionary = {}
+var _shadow_soft_frames: Dictionary = {}
 var _frame_time := 0.0
 var _bob_time := 0.0
 ## STATIC_FACING_NONE ("") = the original spinning collectible; a FACING_YAW_DEG
@@ -325,12 +328,32 @@ func _current_frame_index() -> int:
 ## sprite's current rotation, "girando na mesma velocidade" (Director), using
 ## their OWN true top-down bake (see file header).
 func _apply_frame(frame_index: int) -> void:
-	if _sprite == null:
+	if _sprite == null or not _color_frames.has(frame_index):
 		return
 	_sprite.texture = _color_frames[frame_index]
 	_material.set_shader_parameter("normal_tex", _normal_frames[frame_index])
 	_shadow_sharp.texture = _shadow_sharp_frames[frame_index]
 	_shadow_soft.texture = _shadow_soft_frames[frame_index]
+
+
+## FRAME-MEM-01 — which frame indices this prop can EVER display.
+##
+## A collectible spins through all of them. A static prop shows exactly one per
+## N/E/S/W perspective, so it has no reason to hold the other 116 — and with 4
+## bench columns per weapon type, that is the difference between the bench
+## costing a few MB and costing hundreds.
+func _displayable_frame_indices() -> Array:
+	if _static_facing == STATIC_FACING_NONE:
+		return range(CollectibleBakeConfig.FRAME_COUNT)
+	var step := 360.0 / float(CollectibleBakeConfig.FRAME_COUNT)
+	var out: Array = []
+	for perspective in PERSPECTIVE_YAW_DEG:
+		var view_yaw: float = float(FACING_YAW_DEG[_static_facing]) \
+			+ float(PERSPECTIVE_YAW_DEG[perspective])
+		var idx: int = int(round(fposmod(view_yaw, 360.0) / step)) % CollectibleBakeConfig.FRAME_COUNT
+		if not out.has(idx):
+			out.append(idx)
+	return out
 
 
 ## FLOAT-PROP-Z-01 (Director-reported 2026-07-29: "a arma está entrando dentro
@@ -403,31 +426,22 @@ func _apply_z_index() -> void:
 
 
 func _ready() -> void:
-	## Union of every color frame's own alpha bounds, in texels — the input to
-	## _measure_sprite_extents(). Taken here because the loop already holds each
-	## frame's Image; asking the finished Texture2D for it later would mean 120
-	## GPU readbacks to learn something the CPU just had in hand.
-	var used_union := Rect2i()
-	var have_union := false
-	for i in range(CollectibleBakeConfig.FRAME_COUNT):
-		var color_path := "%sframe_%02d_color.png" % [_frames_dir, i]
-		var normal_path := "%sframe_%02d_normal.png" % [_frames_dir, i]
-		var shadow_sharp_path := "%sframe_%02d_shadow_sharp.png" % [_frames_dir, i]
-		var shadow_soft_path := "%sframe_%02d_shadow_soft.png" % [_frames_dir, i]
-		var color_img := _load_image_raw(color_path)
-		if color_img != null:
-			var used := color_img.get_used_rect()
-			if used.size.x > 0 and used.size.y > 0:
-				used_union = used_union.merge(used) if have_union else used
-				have_union = true
-			_color_frames.append(ImageTexture.create_from_image(color_img))
-		else:
-			_color_frames.append(null)
-		_normal_frames.append(_load_texture_raw(normal_path))
-		_shadow_sharp_frames.append(_load_texture_raw(shadow_sharp_path))
-		_shadow_soft_frames.append(_load_texture_raw(shadow_soft_path))
-	if have_union and not _color_frames.is_empty() and _color_frames[0] != null:
-		_measure_sprite_extents(used_union, _color_frames[0].get_size())
+	## FRAME-MEM-01: ask the shared cache for only the frames this prop can ever
+	## show, instead of reading 480 PNGs into textures nobody else can reuse.
+	var indices := _displayable_frame_indices()
+	var cache = Registries.get_frame_cache()
+	var by_pass: Dictionary = cache.request(_frames_dir, indices)
+	_color_frames = by_pass["color"]
+	_normal_frames = by_pass["normal"]
+	_shadow_sharp_frames = by_pass["shadow_sharp"]
+	_shadow_soft_frames = by_pass["shadow_soft"]
+	if _color_frames.is_empty():
+		push_error("[FloatingCollectible] no frames loaded from %s" % _frames_dir)
+		return
+	var extents: Dictionary = cache.extents_of(_frames_dir)
+	if bool(extents.get("have", false)):
+		_measure_sprite_extents(extents["used_rect"], extents["frame_size"])
+	var first_index: int = int(indices[0])
 
 	## Both added BEFORE _sprite so they draw underneath at the same z_index
 	## (Godot resolves same-z siblings in tree order) — sit on the floor,
@@ -436,24 +450,24 @@ func _ready() -> void:
 	## earlier mirrored version measured 46° RMS angle error and spun
 	## opposite the object; verified via real baked-frame PCA measurement).
 	_shadow_soft = Sprite2D.new()
-	_shadow_soft.texture = _shadow_soft_frames[0]
+	_shadow_soft.texture = _shadow_soft_frames[first_index]
 	_shadow_soft.centered = true
 	add_child(_shadow_soft)
 
 	_shadow_sharp = Sprite2D.new()
-	_shadow_sharp.texture = _shadow_sharp_frames[0]
+	_shadow_sharp.texture = _shadow_sharp_frames[first_index]
 	_shadow_sharp.centered = true
 	add_child(_shadow_sharp)
 
 	_sprite = Sprite2D.new()
-	_sprite.texture = _color_frames[0]
+	_sprite.texture = _color_frames[first_index]
 	_sprite.centered = true
 	_sprite.scale = Vector2.ONE * _sprite_scale
 
 	var shader := load(SHADER_PATH)
 	_material = ShaderMaterial.new()
 	_material.shader = shader
-	_material.set_shader_parameter("normal_tex", _normal_frames[0])
+	_material.set_shader_parameter("normal_tex", _normal_frames[first_index])
 	_material.set_shader_parameter("outline_color", outline_color)
 	_material.set_shader_parameter("outline_width",
 		OUTLINE_WIDTH_TEXELS if outline_color.a > 0.0 else 0.0)
@@ -571,29 +585,6 @@ func _update_light_uniform() -> void:
 
 	_material.set_shader_parameter("light_dir", light_dir_view)
 	_material.set_shader_parameter("light_intensity", clampf(best_energy, 0.0, 3.0))
-
-
-## actor_frame_bake_spike.gd's output has never been through the Godot
-## editor's import scan (generated by --script CLI runs, not an editor
-## session) — plain load() fails with "No loader found" for an unimported
-## resource. Image.load() reads the raw file directly, sidestepping the
-## import cache entirely; ImageTexture.create_from_image() wraps it as a
-## normal Texture2D from there. Same fix needed if this ever runs on a
-## machine where the editor hasn't reimported these frames.
-func _load_texture_raw(path: String) -> Texture2D:
-	var img := _load_image_raw(path)
-	if img == null:
-		return null
-	return ImageTexture.create_from_image(img)
-
-
-func _load_image_raw(path: String) -> Image:
-	var img := Image.new()
-	var err := img.load(path)
-	if err != OK:
-		push_error("[FloatingCollectible] failed to load %s (error %d)" % [path, err])
-		return null
-	return img
 
 
 ## FLOAT-PROP-Z-01 — half-extents of the object as actually drawn, from the

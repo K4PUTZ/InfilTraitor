@@ -4,11 +4,14 @@
 **Status:** 🟢 **Catalog drafted, first shot fired, and the shot-physics model
 brainstormed — all 2026-07-29.** The physics model (D12–D20, §5b) is **ratified
 but entirely unbuilt**, and it **supersedes D1/D2's cone-as-volume for every
-firearm** — which is the correction to what actually shipped. Nine questions
-raised against it (§7a) are queued to be unpacked one at a time. **S1 is closed**
-(D21–D23: hit roll forceable, decoration hashed not RNG); **S7 (origin/target
-points) is now the one blocker left** — D15's 360° trajectory and D18's chest
-height both need two 3-D points that do not exist yet.
+firearm** — which is the correction to what actually shipped. Of the nine
+questions raised against it (§7a), **S1, S3, S4, S5, S6 and S7 are now closed**
+(2026-07-29/30) — most recently **S7 by D25** (2026-07-30): a shot always
+targets an actor picked through the contextual menu, never a free-aim
+direction, so **Part 3b (`LINE`) is unblocked**. S2 has a Director
+counter-proposal to prototype (on-the-fly half-voxel swap vs. baked dent
+variants), S8 and S9 are explicitly deferred to the Actor/Combat wave, and two
+of the four pre-existing §7b questions (1 and 4) are closed alongside them.
 Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
 `CONE` is implemented and selftested, and right-clicking a bench shotgun opens
 "Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and
@@ -109,6 +112,7 @@ Named pains:
 | **D23** | ~~**Hash-based hit rolls are save-scum resistant, and that is a design choice to make on purpose.**~~ **RETIRED 2026-07-29, same day, by the Director: there is no save to scum.** *"o game não vai ter save, apenas o progresso geral do personagem vai sendo salvo automaticamente"* — the game is played in short infiltration waves with a beginning, middle and end inside a set of segments; **checkpoints** exist so a failure does not always return you to the start of a segment. What survives is only overall character progression, saved automatically. **The property does not disappear, it changes owner:** replaying from a checkpoint and taking *exactly* the same actions reproduces the same rolls, because turn and shot index are in the key — while acting differently changes the keys and changes the dice. That is the behaviour worth having (no retry-until-lucky, but no dead end either), and it is now a consequence of D22 rather than a decision of its own. The old caveat survives in reduced form: the key must be derivable from **checkpoint-restored** state, not from a session-local counter. | ↩️ Retired (premise false) |
 | **D24** | **World state is segment-scoped and commits at exactly two points; only character progression persists.** *(Director, 2026-07-29 — recorded because it decides what has to be serialisable and nothing else in the docs said it. Full model now in [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §1 "Run state model"; the destruction half is answered in [`DESTRUCTION_MASTER_PLAN.md`](DESTRUCTION_MASTER_PLAN.md) §7 q0.)* **A segment IS a map**, one loaded at a time, linked by matching exits — and some puzzles require acting in one segment to collect a result in another, so changes must outlive unloading. Three tiers: **live** (lost on death — *"o agente vai voltar no tempo"*), **session** (written ONLY on stepping a checkpoint or leaving the segment; lost on quit, which reloads the whole segment set), **persistent** (character skills/stats/clothing, automatic). Destruction rewinds with the segment, holes included. | ✅ Ratified |
 | **D9** | **Rarity, stats and progression are deliberately absent from v1.** Director: *"posteriormente iremos trabalhar mais detalhadamente em raridades, e stats como dano, firerate, accuracy, etc."* Writing a stat table now would mean inventing balance numbers before a single shot has been fired against a real wall — the same trap `MaterialResistanceTable`'s own header already flags about its placeholder values (*"first-pass placeholders — a balancing lever, not researched constants"*). | ✅ Ratified |
+| **D25** | **A shot always targets a specific actor via the contextual menu — there is no free aim, and the environment does the aiming, not the player.** *(Director, 2026-07-30, closing S7.)* Origin is whichever actor is shooting — agent, enemy, turret, etc.; target is whichever actor was selected through the tap/right-click menu that already frames every other action (the XCOM reference in `docs/vision/game_vision.md`). **On hit**, the projectile stops at the target and the damage roll applies. **On miss**, it keeps travelling the same origin→target line (D15) until it meets a wall — D16's destruction ladder applies there — or leaves the level with nothing in the way, and vanishes. Because the player only ever picks a target, never a direction, a miss can land anywhere in D18's error margin (wide, high, low) without the player having "aimed wrong": *"o player É OBRIGADO a atirar na direção certa [...] mas, se ele errar, pode errar POR MUITO [...] o environment é que faz a mira, e não o jogador."* Cover and skills move the hit-chance dice, not a reticle. This is what makes D21's split hold together end to end: the hit roll stays the one forceable, deterministic-for-testing lever; everything downstream (where a miss lands, how many voxels break) stays hash-driven decoration — *"mesmo que a destruição seja realmente aleatória, o gameplay continua sendo totalmente determinístico."* | ✅ Ratified — closes S7 |
 
 ---
 
@@ -370,13 +374,14 @@ direito)."* The pieces and their real state, audited 2026-07-29:
 
 ### Part 3b — `LINE`, the other rifled half *(OPEN — the next real mechanic, now specified by §5b)*
 
-**Re-scoped 2026-07-29 by the shot-physics brainstorm.** What follows below was
-written when `LINE` looked like "`CONE` but narrow". §5b replaces that: a
-straight-line weapon is a **hit/miss roll per projectile, then a point impact**,
-and the sniper is its reference case *"que vão ser a base das armas em linha
-reta"* (Director). The nine questions in §7a all have to be answered inside this
-Part — S1 (dice vs. the codebase's no-RNG determinism) and S7 (origin/target
-points) block the rest of it.
+**Re-scoped 2026-07-29 by the shot-physics brainstorm, unblocked 2026-07-30.**
+What follows below was written when `LINE` looked like "`CONE` but narrow". §5b
+replaces that: a straight-line weapon is a **hit/miss roll per projectile, then
+a point impact**, and the sniper is its reference case *"que vão ser a base das
+armas em linha reta"* (Director). §7a's two structural blockers are both closed
+now — S1 (dice vs. the codebase's no-RNG determinism, D21–D23) and S7
+(origin/target points, D25) — so nothing left in §7a stops implementation from
+starting; S2/S8/S9 and §7b.2/.5/.6 are open or deferred details, not gates.
 
 *Original scoping text, kept:*
 Five of the six bench weapons declare it and none can fire (D11). Unlike `CONE`,
@@ -455,45 +460,91 @@ and a Director-reported bug ("I fired and it opened *this*") cannot be replayed.
 `(turn, shooter id, projectile index)` — unpredictable to the player, exactly
 reproducible for us and for tests. Decide before building, not after.
 
-**S2. Metal denting, as described, is forbidden by inviolable Rule 8.** Sliding
-a hit voxel back half a width is a great visual, and there is no sub-tile offset
-to do it with: voxels reach the tilemap only through `set_cell()`, and
-`TileMapLayer`'s per-cell transforms are flip/transpose only. Rule 8 exists
-precisely to stop the `Sprite2D`-on-top / image-compositing answer. **Viable
-route:** bake "dented" atlas variants and select them as a damage state, the way
-`CRACKED` already is — deformation becomes art, not geometry.
+**S2. OPEN — Director counter-proposal added 2026-07-30, not yet chosen between
+two routes.** Metal denting as originally described is forbidden by inviolable
+Rule 8: sliding a hit voxel back half a width has no sub-tile offset to do it
+with, since voxels reach the tilemap only through `set_cell()` and
+`TileMapLayer`'s per-cell transforms are flip/transpose only. Two candidate
+routes now on record, neither prototyped: **(a)** bake "dented" atlas variants
+and select them as a damage state, the way `CRACKED` already is — deformation
+becomes art, not geometry (the agent's original proposal); **(b)** *"substituir
+um voxel por 'meio' voxel, on the fly, e ficar realmente 'amassado'"* — the
+Director's own idea, swapping the hit cell to a distinct half-height tile
+through `set_cell()` (still Rule-8-legal, since it stays a real tile asset
+rather than compositing, but needs that tile to actually exist in the atlas and
+a rule for which neighbour cell absorbs the other half). Needs a prototype
+before either is picked.
 
-**S3. Face-local soot is a new data shape, not a parameter.** `soot_ring` today
-is **per voxel** — the BFS marks whole voxels. D17 wants **per face**. The good
-news is `VoxelLightField` already works in faces (12 directional brightness
-buckets per face), so the rendering side can express it; the storage does not
-exist yet.
+**S3. ✅ CLOSED 2026-07-30.** Face-local soot is ratified, and cheaper than the
+storage question below implied: *"Como a gente está trabalhando com shades,
+acredito que o custo de memória é pequeno, e pode ser reconstruído rapidamente
+baseado nos voxels ausentes na cena."* Soot does not need its own persistent
+per-face store — it can be **derived at render/relight time from which
+neighbouring voxels are already absent**, the same way `VoxelLightField`'s
+per-face buckets are computed rather than stored per instance. VL-PERSIST
+already knows which voxels are missing; this reads that, it does not add a
+second dataset. *Original text kept below.*
 
-**S4. Noise is completely absent from the brainstorm, in a stealth game.** A shot
-is the loudest thing an agent can do. `docs/systems/noise.md` already has an
-intensity table (EMP sits at 0.90) and the retired design doc specced silenced
-pistols and rifles. Silenced vs. unsilenced is plausibly the most important
-tactical axis the arsenal has, and D8's boundary says the effect belongs to the
-noise system — but the *catalog entry* for it belongs here.
+`soot_ring` today is **per voxel** — the BFS marks whole voxels. D17 wants
+**per face**. The good news is `VoxelLightField` already works in faces (12
+directional brightness buckets per face), so the rendering side can express it;
+the storage does not exist yet.
 
-**S5. What stops a projectile?** Does it pass through a target it hits — a
-penetrating sniper round could take two aligned enemies. And once it breaks
-inward through both slices (D16), is that a light hole only, or can the next
-round travel into the room beyond?
+**S4. ✅ CLOSED 2026-07-30 — deferred, not designed here.** Noise stays owned by
+the noise system (D8) and is explicitly secondary at this point: once a firearm
+fires, stealth is already blown — the agent eats the alert-meter cost and has
+to find a way out alive, possibly abandoning the objective. *"queremos que 80%
+do tempo o jogo seja com stealth, armas não letais, dardo tranquilizante,
+distrações, etc etc. Isso não causa destruição."* The silenced-vs-not catalog
+axis is real future work — *"a questão do ruído vai ser bem definida"* — just
+not now. Confirmed alongside it: **`NONE`-delivery (non-lethal) weapons never
+cause destruction.** *Original text kept below.*
 
-**S6. Geometry in the way: hard block, or a hit-roll modifier?** A wall between
-agent and enemy should stop the shot; a railing should not. `flood_gu_cone()`
-currently reuses `blocked_edges`, which is the **movement** gate — §7 #3 below
-already flagged that a bullet and a footstep need not agree.
+A shot is the loudest thing an agent can do. `docs/systems/noise.md` already has
+an intensity table (EMP sits at 0.90) and the retired design doc specced
+silenced pistols and rifles. Silenced vs. unsilenced is plausibly the most
+important tactical axis the arsenal has, and D8's boundary says the effect
+belongs to the noise system — but the *catalog entry* for it belongs here.
 
-**S7. Chest height needs an ORIGIN and a TARGET point.** D18 and the Director's
-separate "vamos limitar a altura" both depend on two 3-D points that do not exist
-yet: is the origin the agent's chest or the weapon's muzzle, and is the target
-the enemy's chest? The 360° trajectory of D15 cannot be derived without them.
+**S5. ✅ CLOSED 2026-07-30.** No projectile object exists to "stop" — passing
+through a first target into a second, or through a target into the wall behind
+it, is a **dice/algorithm outcome** (excess force vs. the target's armour and
+resistance), never a physical continuation. And directly: **a shot that breaks
+both slices inward (D16) does not carry enough force to do anything in the room
+beyond** — *"Um tiro que quebra as duas fatias não tem força pra fazer nada no
+próximo cômodo."* It stops there, light-hole included. *Original text kept
+below.*
 
-**S8. The bench only exercises the MISS path.** It fires at a wall with no enemy
-present, so the hit/damage half of D12 has no fixture at all. That half needs its
-own target dummy before it can be verified rather than reasoned about.
+Does it pass through a target it hits — a penetrating sniper round could take
+two aligned enemies. And once it breaks inward through both slices (D16), is
+that a light hole only, or can the next round travel into the room beyond?
+
+**S6. ✅ CLOSED 2026-07-30 — also closes §7b's item 3 below (same question).**
+Intervening geometry is not a separate hard-block-or-modifier check on the miss
+path, because it never gets that far: *"geometria no caminho supostamente não
+existe, porque se o player não tiver line of sight ele não tem como escolher
+atirar."* Line-of-sight gates whether "shoot" is even offered as a menu action
+in the first place (D25); there is nothing left to stop mid-flight, because per
+D21 there is no projectile in flight to begin with. *Original text kept below.*
+
+A wall between agent and enemy should stop the shot; a railing should not.
+`flood_gu_cone()` currently reuses `blocked_edges`, which is the **movement**
+gate — §7 #3 below already flagged that a bullet and a footstep need not agree.
+
+**S7. ✅ CLOSED 2026-07-30 — see D25.** Origin and target are now defined: any
+actor (agent, enemy, turret) for either end, selected via the contextual menu,
+never by free aim. D15's 360° trajectory and D18's chest height now have two
+real points to run against.
+
+**S8. Deferred, not closed — 2026-07-30.** The hit/damage half of D12 stays
+unfixtured on purpose: *"O acerto vai ser feito depois, quando a gente tiver
+trabalhando nos atores. Por enquanto queremos fechar só a destruição do
+cenário."* This wave's scope is the destruction/miss path only; a target dummy
+for the hit path belongs to the Actor/Combat wave. *Original text kept below.*
+
+The bench only exercises the MISS path. It fires at a wall with no enemy
+present, so the hit/damage half of D12 has no fixture at all. That half needs
+its own target dummy before it can be verified rather than reasoned about.
 
 **S10. ✅ ANSWERED same day — see D24, and `DESTRUCTION_MASTER_PLAN` §7 q0 for
 the mechanism.** Destruction rewinds with the segment, holes included; state
@@ -512,38 +563,68 @@ for the whole segment run) and they cost very different amounts if chosen late.
 **Belongs to `DESTRUCTION_MASTER_PLAN`, not here** — the arsenal only surfaced
 it.
 
-**S9. Smaller, still unanswered:** maximum range at which a projectile still
-damages a wall ("distância razoável"); AP cost and shots per turn
-(`docs/systems/movement.md` has the table); ammunition; what counts as
-"environment interativo"; and whether hitting an actor produces voxel damage on
-it (`ACTOR_MASTER_PLAN` D5/D6 has a deferred progressive-damage model waiting).
+**S9. Deferred to the COMBAT wave — 2026-07-30.** Maximum range, AP cost and
+shots per turn, ammunition, what counts as "environment interativo", and
+whether hitting an actor produces voxel damage on it are explicitly
+*"vamos trabalhar depois em COMBATE"* — out of scope for the current
+destruction-focused wave. *Original text kept below.*
+
+Maximum range at which a projectile still damages a wall ("distância
+razoável"); AP cost and shots per turn (`docs/systems/movement.md` has the
+table); ammunition; what counts as "environment interativo"; and whether
+hitting an actor produces voxel damage on it (`ACTOR_MASTER_PLAN` D5/D6 has a
+deferred progressive-damage model waiting).
 
 ### 7b. Pre-existing
 
-1. **Does `BombDef` migrate into `WeaponDef`, or stay as the RADIAL
-   specialisation?** Migrating means one schema and one registry, at the cost of
+1. **✅ CLOSED 2026-07-30.** `BombDef` stays separate, not migrated into
+   `WeaponDef`: *"Bomba pode ficar numa outra categoria porque vai precisar de
+   outra interface, com o sistema de jogar de uma GU pra outra."* A thrown
+   explosive needs a GU-to-GU throw/targeting interface a stationary or
+   menu-aimed weapon does not, so unifying the schema now would blur two
+   different interaction models. *Original text kept below.*
+
+   Does `BombDef` migrate into `WeaponDef`, or stay as the RADIAL
+   specialisation? Migrating means one schema and one registry, at the cost of
    touching the one weapon that currently works. Keeping both means a
    `frag_grenade` is not a "weapon" in the data model, which will read as a wart
-   the first time inventory needs one list. Not decided.
-2. **Is a `LINE` weapon's penetration measured in voxels or in GUs?** Voxels
-   (8 per GU per axis) is the resolution destruction actually works at and is
-   what makes "one voxel per pistol shot" expressible at all — but every
-   existing falloff table is per-GU. The two do not obviously want the same
-   step unit.
-3. **What stops a shot — and does it stop the same way movement does?**
-   `flood_gu_rings()` reuses `blocked_edges`, the movement gate. A bullet and a
-   footstep do not obviously agree about what blocks them (a bullet passes a
-   railing; a guard does not), and this is the first place that distinction has
-   to be made.
-4. **Where does a weapon's facing come from once an actor holds one?** D4 gave
+   the first time inventory needs one list.
+2. **Leaning voxels, pending a real test — 2026-07-30, not fully closed.**
+   *"Não sei, temos que testar, mas acho que vai acabar sendo voxels, pra ter
+   mais precisão."* Recorded as the working hypothesis `LINE`'s first cut
+   should build against, to be confirmed once penetration is actually measured
+   against a wall — not ratified as a final answer. *Original text kept below.*
+
+   Is a `LINE` weapon's penetration measured in voxels or in GUs? Voxels (8 per
+   GU per axis) is the resolution destruction actually works at and is what
+   makes "one voxel per pistol shot" expressible at all — but every existing
+   falloff table is per-GU. The two do not obviously want the same step unit.
+3. **✅ CLOSED 2026-07-30 — see S7a's S6 above, same question, closed there.**
+   Line-of-sight gates whether "shoot" is offered at all; there is no separate
+   hard-block-vs-modifier check because there is no projectile in flight to
+   stop (D21, D25).
+4. **✅ CLOSED 2026-07-30 — for the shot-resolution half.** A weapon's aim
+   facing is the GU(origin)→GU(target) vector itself (D25), not a
+   rendering-precision concept: *"o facing é de GU (ponto de origem) pra GU
+   (alvo), não sendo necessário precisão milimétrica porque [...] o tiro não
+   percorre a trajetória de maneira física, mas sim teórica."* Whether this
+   becomes the SAME concept as an actor's gameplay facing (`_snap_to_8dir`) for
+   other purposes (movement, idle orientation, held-weapon rendering) is still
+   open — only the aim-math half is answered. *Original text kept below.*
+
+   Where does a weapon's facing come from once an actor holds one? D4 gave
    props a facing; actors already have `_snap_to_8dir` for gameplay facing.
    Whether these become one concept or stay two is undecided, and Part 0's props
    are explicitly temporary — *"no gameplay real serão empunhadas por algum
    ator"*.
-5. **The other three entries of `FACING_YAW_DEG` are derived, not measured.**
-   Only NE is exercised by the bench today; SE/SW/NW come from the measured −90°
-   step. First real use of one should be confirmed by a capture the same way NE
-   was (D5).
-6. **`GrenadeProp.YAW_BY_DIRECTION` is probably wrong in E/W too** (D5), and
-   nothing visible depends on it. Left alone deliberately. Worth a real check if
-   the thrown-grenade work ever gives a grenade a readable orientation.
+5. **Deliberately left as derived, not measured — reaffirmed 2026-07-30.** Only
+   NE is exercised by the bench today; SE/SW/NW still come from the measured
+   −90° step rather than their own capture. Director's call after review:
+   trust the derivation, and confirm each direction by capture the first time
+   it is actually used in gameplay (D5's method), rather than spending time
+   verifying all three now.
+6. **Left alone, unchanged — reaffirmed 2026-07-30.** `GrenadeProp.YAW_BY_DIRECTION`
+   is probably wrong in E/W too (D5), and nothing visible depends on it, since a
+   spinning grenade has no readable orientation. Director's call: leave it until
+   the thrown-grenade work ever gives a grenade a readable orientation, don't
+   spend time on it now.

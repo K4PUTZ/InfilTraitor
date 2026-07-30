@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34139 lines total** (under `godot/scripts/`)
+**163 scripts · 34157 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3499,7 +3499,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3248 lines
+extends `Node2D` · 3266 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3569,8 +3569,6 @@ extends `Node2D` · 3248 lines
 - `TEST_ZONE_WALL_GU_X` = `[3, 8, 13, 18]`
 - `BAKE_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"`
 - `TEST_ZONE_WEAPON_ROWS` = `[ {"id": "shotgun", "row_y": 4, "facing": "NE", "frames_dir": BAKE_DIR + "shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5}, {"id": "pistol", "row_y": 6, "facing": "NE", "frames_dir": BAKE_DIR + "pistol_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "revolver", "row_y": 7, "facing": "NE", "frames_dir": BAKE_DIR + "revolver_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "smg", "row_y": 9, "facing": "NE", "frames_dir": BAKE_DIR + "smg_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "assault_rifle", "row_y": 11, "facing": "NE", "frames_dir": BAKE_DIR + "assault_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "sniper_rifle", "row_y": 13, "facing": "NE", "frames_dir": BAKE_DIR + "sniper_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, ]`
-- `TEST_ZONE_COLLECTIBLE_ROW_Y` = `15`
-- `TEST_ZONE_COLLECTIBLES` = `[ {"gu_x": 3, "frames_dir": BAKE_DIR + "grenade_collectible_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 6, "frames_dir": BAKE_DIR + "shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5}, {"gu_x": 9, "frames_dir": BAKE_DIR + "pistol_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 12, "frames_dir": BAKE_DIR + "revolver_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 15, "frames_dir": BAKE_DIR + "smg_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 18, "frames_dir": BAKE_DIR + "assault_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"gu_x": 21, "frames_dir": BAKE_DIR + "sniper_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, ]`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

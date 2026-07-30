@@ -228,6 +228,25 @@ are made.
 - Final animations and VFX
 - Localization (PT/EN minimum; ES/FR optional)
 - Performance optimized for 4–5 year old iOS/Android
+- **Baked-frame VRAM budget (FRAME-MEM-01)** — Director-flagged 2026-07-29 for
+  this phase. All figures measured on real GPU, not estimated:
+
+  | | texture VRAM |
+  |---|---|
+  | Test-zone bench, 6 weapons × 4 frames (what ships today) | **13.6 MB** |
+  | 7 spinning pickups on top of it (built, then removed) | **+458.4 MB** |
+  | One 120-frame collectible set | **48–65 MB** (canvas-dependent) |
+
+  `CollectibleFrameCache` already shares one set per bake folder and gives
+  static props only the 4 frames they can display, which is what makes the
+  bench cheap. **The unsolved half is the spinning pickups** — one is worth
+  ~35 bench weapons, so their count is what decides whether a real room can
+  show loot at all. The collectibles strip was disabled
+  (`TEST_ZONE_COLLECTIBLES_ENABLED`) once it had proven the pipeline, precisely
+  because of this. Unexplored levers: VRAM compression on the baked PNGs, fewer
+  frames traded against `CollectibleBakeConfig`'s measured ~10–12 Hz
+  smooth-motion threshold, and instantiating pickups only when the player is
+  near. See `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` D10.
 - Full QA pass
 - Deploy iOS, Android, Web
 

@@ -2573,12 +2573,24 @@ const TEST_ZONE_WEAPON_ROWS: Array[Dictionary] = [
 		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
 ]
 
-## Collectibles strip — a dedicated row south of the whole bench, so nothing a
-## gun is aimed at can be confused with something you pick up, and no
-## collectible ever stands in a firing lane (every weapon fires NORTH, away from
-## this row). One slot per baked object: the grenade plus each bench weapon,
-## since the same 120-frame bake serves both the frozen prop and the spinning
-## pickup (Director, 2026-07-29: "nas fileiras E na faixa sul").
+## Collectibles strip — OFF (Director, 2026-07-29: "os objetos coletáveis estão
+## ótimos, pode tirar eles do cenário por enquanto, já vimos que vai
+## funcionar"). The pipeline is proven; the pickups were a demonstration, and a
+## demonstration that has landed is just cost. Real cost: a spinning pickup
+## holds all 120 baked frames (~48 MB VRAM each, measured — FRAME-MEM-01) while
+## a bench prop holds 4, so seven of them were the single most expensive thing
+## in the test zone.
+##
+## The TABLE below stays because it is DATA, not dead code — which object goes
+## in which slot, and each one's scale and shadow factor, all of which had to be
+## derived. Flip this flag to put them back.
+const TEST_ZONE_COLLECTIBLES_ENABLED := false
+
+## A dedicated row south of the whole bench, so nothing a gun is aimed at can be
+## confused with something you pick up, and no collectible ever stands in a
+## firing lane (every weapon fires NORTH, away from this row). One slot per
+## baked object: the grenade plus each bench weapon, since the same 120-frame
+## bake serves both the frozen prop and the spinning pickup.
 const TEST_ZONE_COLLECTIBLE_ROW_Y := 15
 const TEST_ZONE_COLLECTIBLES: Array[Dictionary] = [
 	{"gu_x": 3, "frames_dir": BAKE_DIR + "grenade_collectible_frames/",
@@ -2646,19 +2658,20 @@ func _populate_test_zone_if_playground() -> void:
 		## light-direction math breaks silently. shadow_scale_factor is
 		## (SHADOW_ORTHO/SHADOW_VIEWPORT.y)/(ORTHO/VIEWPORT.y) of whichever bake
 		## produced the folder.
-		for collectible in TEST_ZONE_COLLECTIBLES:
-			var pickup = FloatingCollectibleClass.new()
-			pickup.setup(
-				self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y),
-				String(collectible["frames_dir"]),
-				float(collectible["sprite_scale"]),
-				float(collectible["shadow_scale_factor"]),
-			)
-			add_child(pickup)
-			_collectibles.append(pickup)
-		## The first pickup keeps the _floating_collectible alias the
-		## test_collectible capture action and _set_perspective already use.
-		_floating_collectible = _collectibles[0]
+		if TEST_ZONE_COLLECTIBLES_ENABLED:
+			for collectible in TEST_ZONE_COLLECTIBLES:
+				var pickup = FloatingCollectibleClass.new()
+				pickup.setup(
+					self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y),
+					String(collectible["frames_dir"]),
+					float(collectible["sprite_scale"]),
+					float(collectible["shadow_scale_factor"]),
+				)
+				add_child(pickup)
+				_collectibles.append(pickup)
+			## The first pickup keeps the _floating_collectible alias the
+			## test_collectible capture action and _set_perspective already use.
+			_floating_collectible = _collectibles[0]
 
 		## Same shape as "[Room] N tiles registered" — a placement summary that
 		## can be checked from a log instead of counted off a screenshot.
@@ -2981,6 +2994,11 @@ func _run_auto_screenshot_capture() -> void:
 		_main_menu_panel._on_showcase_pressed()
 		for _j in range(40):
 			await get_tree().process_frame
+	elif capture_action == "test_collectible" and _floating_collectible == null:
+		## The strip is off (TEST_ZONE_COLLECTIBLES_ENABLED), so this action has
+		## nothing to frame. Say so — a silent no-op here would look like a
+		## broken capture rather than a disabled fixture.
+		push_warning("[SCREENSHOT-HOOK-01] test_collectible: no pickup in the scene — set TEST_ZONE_COLLECTIBLES_ENABLED to put the strip back")
 	elif capture_action == "test_collectible" and _floating_collectible != null:
 		## ACTOR_MASTER_PLAN D17/D21 dev verification: INFILTRAITOR_CAPTURE_AGENT_CELL
 		## only teleports the agent + reveals FOW, it does not recentre the

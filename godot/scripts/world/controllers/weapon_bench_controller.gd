@@ -30,7 +30,6 @@ const FACING_DELTA := {
 	"SW": Vector2i(0, 1),
 }
 
-const HIT_RADIUS_PX: float = 40.0
 const MENU_GAP_ABOVE_PX: float = 30.0
 
 var room: Node
@@ -97,22 +96,23 @@ func _sprite_global_rect(weapon: Dictionary) -> Rect2:
 		Vector2(sprite._sprite_half_w, sprite._sprite_half_h) * 2.0)
 
 
-func _center_screen_pos(weapon: Dictionary) -> Vector2:
-	var rect := _sprite_global_rect(weapon)
-	return room.get_viewport().get_canvas_transform() * (rect.position + rect.size / 2.0)
-
-
 func _top_screen_pos(weapon: Dictionary) -> Vector2:
 	var rect := _sprite_global_rect(weapon)
 	var world_top := rect.position + Vector2(rect.size.x / 2.0, 0.0)
 	return room.get_viewport().get_canvas_transform() * world_top
 
 
-## Index of the weapon whose sprite center is within HIT_RADIUS_PX of
-## screen_pos, or -1. Approximate circular hit-test, same as the grenades'.
+## Index of the weapon standing on the clicked GU cell, or -1. Director
+## (2026-07-30): the clickable hitbox for an interactive object is the FLOOR
+## CELL it occupies, not its sprite — a bench weapon is an ordinary floor
+## prop, not one of the direct-click exceptions (wall-mounted breakables,
+## ceiling lamps), so it hit-tests the same way any other floor object would.
 func hit_test(screen_pos: Vector2) -> int:
+	var cell: Vector2i = room._screen_to_tile(screen_pos)
+	if cell == room.INVALID_CELL:
+		return -1
 	for i in range(_weapons.size()):
-		if _center_screen_pos(_weapons[i]).distance_to(screen_pos) <= HIT_RADIUS_PX:
+		if _weapons[i]["gu_cell"] == cell:
 			return i
 	return -1
 

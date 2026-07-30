@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34304 lines total** (under `godot/scripts/`)
+**163 scripts · 34319 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3224,7 +3224,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 353 lines
+`class_name TestZoneController` · 351 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3234,7 +3234,6 @@ extends `Node2D` · 34 lines
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
-- `HIT_RADIUS_PX` = `40.0`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `BOMB_ID` = `"frag_grenade"`
 
@@ -3295,7 +3294,6 @@ extends `Node2D` · 34 lines
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
-- `HIT_RADIUS_PX` = `40.0`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 
 **Public vars**
@@ -3486,7 +3484,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3266 lines
+extends `Node2D` · 3283 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3553,9 +3551,6 @@ extends `Node2D` · 3266 lines
 - `ACTOR_END_HOLD_DELAY` = `0.5`
 - `TRAIL_MAX` = `5`
 - `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
-- `TEST_ZONE_WALL_GU_X` = `[3, 8, 13, 18]`
-- `BAKE_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"`
-- `TEST_ZONE_WEAPON_ROWS` = `[ {"id": "shotgun", "row_y": 4, "facing": "NE", "frames_dir": BAKE_DIR + "shotgun_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.5}, {"id": "pistol", "row_y": 6, "facing": "NE", "frames_dir": BAKE_DIR + "pistol_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "revolver", "row_y": 7, "facing": "NE", "frames_dir": BAKE_DIR + "revolver_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "smg", "row_y": 9, "facing": "NE", "frames_dir": BAKE_DIR + "smg_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "assault_rifle", "row_y": 11, "facing": "NE", "frames_dir": BAKE_DIR + "assault_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, {"id": "sniper_rifle", "row_y": 13, "facing": "NE", "frames_dir": BAKE_DIR + "sniper_rifle_frames/", "sprite_scale": 1.15, "shadow_scale_factor": 2.0}, ]`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`

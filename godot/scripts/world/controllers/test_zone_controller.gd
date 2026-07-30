@@ -29,7 +29,6 @@ var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
 
-const HIT_RADIUS_PX: float = 40.0
 const MENU_GAP_ABOVE_PX: float = 30.0
 
 ## DESTRUCTION_MASTER_PLAN Part 3: every TEST-ZONE grenade is this one bomb
@@ -99,12 +98,6 @@ func _sprite_global_rect(grenade: Dictionary) -> Rect2:
 	return Rect2(sprite.global_position + sprite.offset, sprite.texture.get_size())
 
 
-## Screen-space center of the sprite — hit-test target.
-func _center_screen_pos(grenade: Dictionary) -> Vector2:
-	var rect := _sprite_global_rect(grenade)
-	return room.get_viewport().get_canvas_transform() * (rect.position + rect.size / 2.0)
-
-
 ## Screen-space top-center of the sprite — context menu anchor.
 func _top_screen_pos(grenade: Dictionary) -> Vector2:
 	var rect := _sprite_global_rect(grenade)
@@ -112,15 +105,20 @@ func _top_screen_pos(grenade: Dictionary) -> Vector2:
 	return room.get_viewport().get_canvas_transform() * world_top
 
 
-## Index of the grenade whose sprite center is within HIT_RADIUS_PX of
-## screen_pos, or -1. Approximate circular hit-test — good enough for one
-## small prop, not a pixel-exact silhouette test.
+## Index of the grenade standing on the clicked GU cell, or -1. Director
+## (2026-07-30): the clickable hitbox for an interactive object is the FLOOR
+## CELL it occupies, not its sprite — a ground grenade is an ordinary floor
+## prop, not one of the direct-click exceptions (wall-mounted breakables,
+## ceiling lamps).
 func hit_test(screen_pos: Vector2) -> int:
+	var cell: Vector2i = room._screen_to_tile(screen_pos)
+	if cell == room.INVALID_CELL:
+		return -1
 	for i in range(_grenades.size()):
 		var g: Dictionary = _grenades[i]
 		if g["detonated"]:
 			continue
-		if _center_screen_pos(g).distance_to(screen_pos) <= HIT_RADIUS_PX:
+		if g["gu_cell"] == cell:
 			return i
 	return -1
 

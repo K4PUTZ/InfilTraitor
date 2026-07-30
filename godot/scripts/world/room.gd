@@ -2123,6 +2123,19 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	return INVALID_CELL
 
 
+## Exact inverse of _screen_to_tile(): the screen position that resolves back
+## to `cell`'s floor-GU hit-test. D22-INPUT-01 (Director, 2026-07-30): the
+## clickable hitbox for an interactive floor object is the GU cell it stands
+## on, not its sprite — anything that synthesizes "a click on this object"
+## (the dev capture harness below; any future scripted input) must target
+## this, not a sprite-derived screen position, or it silently misses the
+## object's own hit_test().
+func _tile_to_screen_center(cell: Vector2i) -> Vector2:
+	var local_center: Vector2 = floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	var global_pos: Vector2 = floor_layer.to_global(local_center)
+	return get_viewport().get_canvas_transform() * global_pos
+
+
 ## OCC-FIX-01 — B6 loud-fail: geometry in, geometry out.
 ##
 ## This lives in the CALLER, not inside build_from_layout(), and that placement is the
@@ -2521,9 +2534,13 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
-## TEST-ZONE weapons bench (Director, 2026-07-29): the destructible wall row
-## becomes dedicated to guns, and collectibles move out of the firing lanes
-## entirely (see TEST_ZONE_COLLECTIBLE_GUS).
+## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for
+## real destruction calibration — "a bancada está muito cheia [...] vai ser
+## impossível atirar diretamente na parede durante o jogo"). Revolver/SMG/
+## assault rifle dropped: they added rows without adding mechanical coverage
+## (all three are LINE, same as pistol and sniper, and LINE isn't built yet).
+## Three weapons left, one per range band: shotgun (CONE, short), pistol
+## (LINE, short), sniper rifle (LINE, long).
 ##
 ## The bench is a MATRIX, and this table is its row axis: one entry per weapon
 ## type, placed once per wall material (the column axis, TEST_ZONE_WALL_GU_X) so
@@ -2532,17 +2549,25 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## para utilização" — so the rows read as a range ladder marching south as
 ## engagement range grows:
 ##
-##   y=2   the wall row itself     y=7   revolver
-##   y=4   shotgun (shortest)      y=9   SMG
-##   y=5   ground grenades (kept)  y=11  assault rifle
-##   y=6   pistol                  y=13  sniper rifle (longest)
+##   y=2   the wall row itself
+##   y=5   ground grenades (kept, Director's explicit call — unmoved)
+##   y=6   shotgun (CONE)
+##   y=9   pistol (LINE)
+##   y=13  sniper rifle (LINE, longest)
 ##
-## Adding the next gun is one entry here, not new placement code. Director's
-## sequencing: every weapon at its PROPER range first; inverted/inappropriate
-## distances are a deliberate second pass later. The shotgun sits CLOSEST
-## because it is the shortest-range weapon in the set, which moved it from its
-## first-cut y=6 — that was chosen when it was the only gun and there was no
-## ladder for it to be wrong within.
+## Shotgun moved from y=4 to y=6 (Director: "a shotgun está muito próxima da
+## parede [...] vamos [...] trazer a shotgun mais pra trás"). y=6 is not an
+## arbitrary pullback — it is `flood_gu_cone()`'s hard ceiling: with the wall
+## at y=2 and `weapons/shotgun.json`'s step_multipliers holding 5 entries
+## (indices 0-4), a voxel only takes damage at ring <= 4
+## (apply_container_damage: `if ring >= ring_multipliers.size(): continue`),
+## and one GU-step = one row here (facing NE = grid delta (0,-1), so distance
+## in y IS distance in cone steps). y=6 -> distance 4 -> the wall is hit at the
+## cone's weakest possible ring (multiplier 0.15) and still registers damage;
+## y=7 or beyond would miss the wall entirely. If this reads as too weak once
+## captured, the fix is step_multipliers/destroy_multiplier in
+## weapons/shotgun.json, not pushing the row back further — there is no
+## further back to push it without the shot going dark.
 ##
 ## All weapons aim NE — the compass edge from a bench cell to the wall directly
 ## "above" it (grid delta (0,-1), docs/DIRECTION_GLOSSARY.md §3). Sprite scale
@@ -2553,20 +2578,11 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 const TEST_ZONE_WALL_GU_X: Array[int] = [3, 8, 13, 18]
 const BAKE_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
 const TEST_ZONE_WEAPON_ROWS: Array[Dictionary] = [
-	{"id": "shotgun", "row_y": 4, "facing": "NE",
+	{"id": "shotgun", "row_y": 6, "facing": "NE",
 		"frames_dir": BAKE_DIR + "shotgun_frames/",
 		"sprite_scale": 1.15, "shadow_scale_factor": 2.5},
-	{"id": "pistol", "row_y": 6, "facing": "NE",
+	{"id": "pistol", "row_y": 9, "facing": "NE",
 		"frames_dir": BAKE_DIR + "pistol_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"id": "revolver", "row_y": 7, "facing": "NE",
-		"frames_dir": BAKE_DIR + "revolver_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"id": "smg", "row_y": 9, "facing": "NE",
-		"frames_dir": BAKE_DIR + "smg_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"id": "assault_rifle", "row_y": 11, "facing": "NE",
-		"frames_dir": BAKE_DIR + "assault_rifle_frames/",
 		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
 	{"id": "sniper_rifle", "row_y": 13, "facing": "NE",
 		"frames_dir": BAKE_DIR + "sniper_rifle_frames/",
@@ -2882,12 +2898,12 @@ func _run_auto_screenshot_capture() -> void:
 			_fow_controller.reveal_around(aim_center, 12)
 		for _c in range(5):
 			await get_tree().process_frame
-		var w_anchor: Vector2 = _weapon_bench_controller._top_screen_pos(
-			_weapon_bench_controller._weapons[wi])
+		## D22-INPUT-01: the hitbox is the GU floor cell, not the sprite — click
+		## there, not at _top_screen_pos() (that stays the MENU anchor, below).
 		var w_click := InputEventMouseButton.new()
 		w_click.button_index = MOUSE_BUTTON_RIGHT
 		w_click.pressed = true
-		w_click.position = w_anchor
+		w_click.position = _tile_to_screen_center(w_cell)
 		_unhandled_input(w_click)
 		for _j in range(10):
 			await get_tree().process_frame
@@ -2932,11 +2948,12 @@ func _run_auto_screenshot_capture() -> void:
 		for _c in range(5):
 			await get_tree().process_frame
 		if capture_action != "test_zone_view":
-			var anchor: Vector2 = _test_zone_controller._top_screen_pos(_test_zone_controller._grenades[tz_index])
+			## D22-INPUT-01: click the GU floor cell, not the sprite.
+			var g_cell: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
 			var click := InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_RIGHT
 			click.pressed = true
-			click.position = anchor
+			click.position = _tile_to_screen_center(g_cell)
 			_unhandled_input(click)
 			for _j in range(10):
 				await get_tree().process_frame

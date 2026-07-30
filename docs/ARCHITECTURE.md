@@ -236,6 +236,42 @@ Room (room.gd, Node2D)              ← orchestrator + God Object (§15)
 
 Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposure → overlays), but **not** for gameplay: controllers read and mutate room state directly (see §13).
 
+### Interactive-object hit-testing — GU cell, not sprite *(Director, 2026-07-30)*
+
+*"O clique para acessar o menu, ou executar uma ação é sempre diretamente na
+GU, e não no objeto. O hitbox clicável fica no chão onde o objeto interativo
+ou ator está posicionado, e não no sprite em si. Com algumas exceções, como
+objetos quebráveis nas paredes ou lâmpadas no teto, que vão ser acionados por
+clique/toque direto."*
+
+**Default rule:** a floor-standing interactive object's (or actor's) click
+target is the GU cell it occupies — `room._screen_to_tile(screen_pos)` resolved
+against the object's own `gu_cell`/`cell` field — never a sprite bounding box
+or radius. Shipped 2026-07-30 for the two floor props that had their own
+sprite-radius `hit_test()`: `TestZoneController` (grenades) and
+`WeaponBenchController` (bench weapons), both now GU-exact. `room._unhandled_input()`
+is otherwise unaffected — it already resolves ordinary move-clicks through
+`_screen_to_tile()`, so this brings prop hit-testing in line with the same
+model rather than introducing a second one.
+
+**Stated exception, not yet applicable:** wall-mounted breakables and
+ceiling-mounted lamps click-test their own sprite directly — neither object
+type exists in the codebase yet, so the exception is recorded but unbuilt.
+When either is added, its `hit_test()` should NOT route through
+`_screen_to_tile()`.
+
+**Trap this closed, recorded so it isn't re-opened by accident:** a sprite
+generally extends well above its own floor tile in screen space (that is what
+"standing on a tile" looks like in isometric projection), so any code that
+*synthesizes* a click on an object — not a real mouse/touch event — must
+target the object's floor-cell screen position
+(`room._tile_to_screen_center(cell)`, the exact inverse of `_screen_to_tile()`),
+never a sprite-derived one (`_top_screen_pos()`/`_center_screen_pos()`-style
+helpers). Getting this backwards is invisible in code review and only shows up
+as a hit-test silently missing at runtime — it did, in this session's own dev
+capture harness, before `_tile_to_screen_center()` was added specifically to
+fix it.
+
 ### Run state model — three tiers *(Director, 2026-07-29; NOT built)*
 
 A **segment IS a map**, and only one is loaded at a time; a set of segments makes

@@ -177,21 +177,28 @@ rarity and stats is deliberately blank (D9).
 
 ### 5.1 Firearms — `CONE` and `LINE`
 
-Bench row = the distance that weapon is meant to be used at (D6). Six are placed
-and baked as of 2026-07-29; each also appears as a spinning pickup in the
-collectibles strip, from the SAME bake (D10 — one bake, two roles).
+Bench row = the distance that weapon is meant to be used at (D6). All six were
+baked and placed 2026-07-29; **pared to three on the bench 2026-07-30** for real
+destruction calibration (Director: *"a bancada está muito cheia [...] vai ser
+impossível atirar diretamente na parede durante o jogo, então vamos remover a
+maioria das armas"*) — revolver/SMG/assault rifle stay baked and cataloged
+(still real weapons, still available to re-place) but are off the physical
+bench, since all three are `LINE` and added rows without adding mechanical
+coverage beyond what pistol/sniper already exercise. Each of the three still on
+the bench also appears as a spinning pickup in the collectibles strip, from the
+SAME bake (D10 — one bake, two roles).
 
 | Weapon | Shape | Bench row | Scenario effect | Status |
 |---|---|---|---|---|
-| **Shotgun** | `CONE` | **y=4** (closest) | *"cone mais ou menos largo"* by accuracy; heavy close, falling off fast. The reference case for `CONE`. | ✅ baked, placed, **fires** |
-| **Pistol** | `LINE` | y=6 | *"pistola com mais ou menos punch, que gera um voxel de destruição por vez"* — the minimum unit of destruction. Punch varies depth, not width. | ✅ baked, placed · ❌ LINE unbuilt |
-| **Revolver** | `LINE` | y=7 | Pistol family, higher punch — the intra-class variation D1 absorbs without new code. | ✅ baked, placed · ❌ LINE unbuilt |
-| **SMG** | `LINE` | y=9 | Pistol-calibre, high rate — matters for firerate (D9), not for shape. | ✅ baked, placed · ❌ LINE unbuilt |
-| **Assault rifle** | `LINE` | y=11 | *"rifle abre um buraco maior"* — wider and deeper than a pistol's single voxel. | ✅ baked, placed · ❌ LINE unbuilt |
+| **Shotgun** | `CONE` | **y=6** | *"cone mais ou menos largo"* by accuracy; heavy close, falling off fast. The reference case for `CONE`. Moved back from y=4 2026-07-30 — y=6 is `flood_gu_cone()`'s hard ceiling given the wall at y=2 and 5-entry `step_multipliers`; farther and the shot stops reaching the wall at all. | ✅ baked, placed, **fires** |
+| **Pistol** | `LINE` | y=9 | *"pistola com mais ou menos punch, que gera um voxel de destruição por vez"* — the minimum unit of destruction. Punch varies depth, not width. | ✅ baked, placed · ❌ LINE unbuilt |
+| **Revolver** | `LINE` | off bench | Pistol family, higher punch — the intra-class variation D1 absorbs without new code. | ✅ baked · ⏸ not placed (2026-07-30) |
+| **SMG** | `LINE` | off bench | Pistol-calibre, high rate — matters for firerate (D9), not for shape. | ✅ baked · ⏸ not placed (2026-07-30) |
+| **Assault rifle** | `LINE` | off bench | *"rifle abre um buraco maior"* — wider and deeper than a pistol's single voxel. | ✅ baked · ⏸ not placed (2026-07-30) |
 | **Sniper rifle** | `LINE` | y=13 (farthest) | Deepest penetration, longest range — the far end of the ladder. | ✅ baked, placed · ❌ LINE unbuilt |
 | Bullpup, and 18 further pack variants | — | — | Unbaked; adding one is a row in `weapon_frames_bake.gd` plus a `weapons/*.json`. | ⏸ available |
 
-**The bench is five-sixths inert on purpose.** Only the shotgun fires, because
+**The bench is two-thirds inert on purpose.** Only the shotgun fires, because
 only `CONE` exists; the rifled weapons declare `LINE` truthfully and loud-fail
 when fired (D11). `LINE` is the obvious next mechanic and is not in this
 document's Part list by accident — it is DESTRUCTION_MASTER_PLAN Part 5's
@@ -405,6 +412,12 @@ effect *there*. Deliberately last: it depends on the AI/perception work that
 ---
 
 ## 6b. Shotgun calibration — measured, PAUSED awaiting Director instructions
+
+**Stale distance, 2026-07-30**: the bench moved the shotgun from y=4 to y=6
+since these numbers were taken (§5.1) — they describe a 2-GU shot, the bench
+now fires from 4 GU. Re-measure at the new distance before using these as a
+tuning target; the ring/step math means a farther shot lands on a weaker
+multiplier by construction, not because anything in `shotgun.json` changed.
 
 Director, 2026-07-29: *"está destruindo demais, numa area muito larga. O cone
 precisa ser mais concentrado pra frente, e não pode causar tanto estrago"* — then,

@@ -308,6 +308,40 @@ effect *there*. Deliberately last: it depends on the AI/perception work that
 
 ---
 
+## 6b. Shotgun calibration — measured, PAUSED awaiting Director instructions
+
+Director, 2026-07-29: *"está destruindo demais, numa area muito larga. O cone
+precisa ser mais concentrado pra frente, e não pode causar tanto estrago"* — then,
+after seeing the candidates below: *"vamos ter que planejar melhor isso, vou
+fornecer instruções mais detalhadas."* **Nothing was changed.**
+`weapons/shotgun.json` still holds the shipped values. The measurements are
+recorded here so the eventual instructions start from data instead of from
+scratch.
+
+Three candidates, same shot into the concrete wall from the bench's y=4 row
+(2 GU away), real captures `auto_2026-07-29_22-05-13 / -24 / -35`:
+
+| | half-angle | steps | calibre | GU cells hit | slices | reads as |
+|---|---|---|---|---|---|---|
+| **A** (shipped) | 25° | 5 | 0.60 | **6** | 12 | the whole face breached |
+| **B** | 14° | 4 | 0.35 | **4** | 8 | a narrower full-height slot |
+| **C** | 9° | 4 | 0.25 | **4** | 8 | a ragged chewed strip |
+
+**B and C hit the same cells** — at 2 GU the two angles collapse onto the same
+grid, so at this range the half-angle stops being a lever and only the damage
+multiplier separates them. Any calibration decided at this row should be
+re-checked from a farther row, where the angle starts to matter again.
+
+**The finding that is NOT calibration:** all three cut the wall floor to
+ceiling. A cone is a 2D GU footprint, so every level of a hit slice takes damage
+— `apply_container_damage()`'s vertical ring only steps once per STOREY, which
+softens the upper storey without ever bounding the shot to a height. A shotgun
+blast opening a full-height slot is very likely most of the "estrago" the
+Director saw, and no value in the JSON can fix it. Director's call, same day:
+**"vamos limitar a altura, aguarde mais detalhes"** — the mechanic is wanted,
+the shape of it is not yet specified. It belongs to every weapon, not just the
+shotgun, and is a sibling of `LINE` (Part 3b) rather than part of it.
+
 ## 7. Open questions
 
 1. **Does `BombDef` migrate into `WeaponDef`, or stay as the RADIAL

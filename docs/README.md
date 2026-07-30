@@ -38,11 +38,11 @@ Per-system status — most are paused mid-implementation, not blank slates.
 Read the plan's own status header before proposing anything in its territory.
 
 - **[OCCLUSION_MASTER_PLAN](../PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md)** — ⏸️ Paused 2026-07-21; Parts 1–3 closed. O1: occlusion is VIEW, not STATE.
-- **[DESTRUCTION_MASTER_PLAN](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md)** — 🟢 Paused at Alpha Grenade Foundation, 2026-07-22; Part 3 (the trigger) done. Sole writer of `Voxel.visible`.
+- **[DESTRUCTION_MASTER_PLAN](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md)** — 🟢 Part 3 (the trigger) done 2026-07-22; **Part 5 added 2026-07-29** — directional destruction, `CONE` shipped and `LINE` open. §7 q0 answers what a checkpoint restore does to holes. Sole writer of `Voxel.visible`.
 - **[INTERFACE_MASTER_PLAN](../PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md)** — 🟡 In progress; Waves 1–2 closed, Wave 3 not started.
 - **[TOP_TEXTURE_MASTER_PLAN](../PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md)** — Parts 1–2 closed 2026-07-11; Part 3 blocked.
-- **[ACTOR_MASTER_PLAN](../PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md)** — 🟡 v1.4: Part 5a Showcase shipped — a real CC0 shotgun renders live in a main-menu screen, adaptive layout verified both orientations. Part 6's first exercise (floating/rotating collectible, real normal-map lighting) also shipped. Living-beings track (character twin/poses/damage) deferred.
-- **[WEAPON_MASTER_PLAN](../PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md)** — 🟡 v1.0, 2026-07-29: the arsenal catalog. Four delivery shapes (RADIAL/CONE/LINE/NONE); only RADIAL exists. Part 0 (test bench) done, mechanism not built. Owns *what* weapons emit, never *how* voxels break.
+- **[ACTOR_MASTER_PLAN](../PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md)** — 🟡 v1.4: Part 5a Showcase shipped — a real CC0 shotgun renders live in a main-menu screen, adaptive layout verified both orientations. Part 6's first exercise (floating/rotating collectible, real normal-map lighting) also shipped. **D30 (2026-07-29):** the same class now covers a second object and a static-facing mode, and its frames are shared per bake rather than per instance. Living-beings track (character twin/poses/damage) deferred.
+- **[WEAPON_MASTER_PLAN](../PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md)** — 🟢 v1.0, 2026-07-29: the arsenal catalog. Six weapons on a range ladder; CONE ships and fires, LINE declared but unbuilt. **D13 supersedes the shipped cone for firearms** — a cone is aim-error spread, not a volume — so read §5b before touching `WeaponBenchController`. Owns *what* weapons emit, never *how* voxels break.
 
 ---
 

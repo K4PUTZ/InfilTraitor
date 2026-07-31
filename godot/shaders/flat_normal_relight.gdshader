@@ -42,6 +42,18 @@ uniform vec4 outline_color : source_color = vec4(0.35, 0.72, 1.0, 1.0);
 uniform float outline_width : hint_range(0.0, 4.0) = 0.0;
 uniform float outline_threshold : hint_range(0.0, 1.0) = 0.4;
 
+// COLOR-GRADE-02 (Director, 2026-07-30: "dá pra aumentar um pouquinho a
+// saturação e o contraste das armas sem refazer o bake?"). A RUNTIME nudge on
+// top of D31's baked grade (ACTOR_MASTER_PLAN), not a replacement for it —
+// the whole point is a tunable knob that needs no windowed GPU re-bake to
+// iterate on. Defaults 1.0 = no-op, same "shared shader, opt in per material"
+// contract outline_width already uses: GrenadeProp relights through this
+// shader too and never sets these, and the grenade already reads with real
+// colour (D31 measured it, deliberately left alone), so a non-1.0 default
+// here would have silently re-graded every grenade as well.
+uniform float saturation : hint_range(0.0, 3.0) = 1.0;
+uniform float contrast : hint_range(0.0, 3.0) = 1.0;
+
 void fragment() {
 	vec4 albedo = texture(TEXTURE, UV);
 
@@ -82,6 +94,15 @@ void fragment() {
 		float spec = pow(clamp(dot(n, half_vec), 0.0, 1.0), specular_shininess) * specular_strength;
 
 		vec3 lit = albedo.rgb * (ambient + ndotl * light_intensity * light_color) + spec * light_color;
+
+		// COLOR-GRADE-02: saturation first (pivot on this pixel's own luma, the
+		// standard grade formula), then contrast (pivot on mid-grey) — both
+		// no-ops at 1.0, clamped so an aggressive nudge can't wrap/invert.
+		float luma = dot(lit, vec3(0.299, 0.587, 0.114));
+		lit = mix(vec3(luma), lit, saturation);
+		lit = (lit - 0.5) * contrast + 0.5;
+		lit = clamp(lit, 0.0, 1.0);
+
 		COLOR = vec4(lit, albedo.a);
 	}
 }

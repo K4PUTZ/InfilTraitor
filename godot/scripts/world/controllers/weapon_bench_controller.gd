@@ -32,6 +32,13 @@ const FACING_DELTA := {
 
 const MENU_GAP_ABOVE_PX: float = 30.0
 
+## COLOR-GRADE-02 (Director, 2026-07-30): a runtime nudge on top of D31's
+## baked grade, tunable without a windowed GPU re-bake — change these two
+## numbers and re-capture. 1.0/1.0 would be a no-op (the shader's own
+## default); values here are the "um pouquinho" starting point.
+const WEAPON_GRADE_SATURATION := 1.3
+const WEAPON_GRADE_CONTRAST := 1.15
+
 ## D26 (Director, 2026-07-30): "não pode ter esse limite de 5 GUs" — there is
 ## no authored range cap; a miss travels until it finds a wall, and the
 ## cone's own angular widening is what makes a far shot self-limiting. This
@@ -74,6 +81,8 @@ func add_weapon(gu_cell: Vector2i, facing: String, weapon_id: String,
 	## COLLECTIBLE-OUTLINE-02: the stroke means "you can pick this up"; a placed
 	## weapon is scenery, not loot.
 	sprite.outline_color = FloatingCollectibleClass.OUTLINE_DISABLED
+	sprite.grade_saturation = WEAPON_GRADE_SATURATION
+	sprite.grade_contrast = WEAPON_GRADE_CONTRAST
 	sprite.setup(room, gu_cell, frames_dir, sprite_scale, shadow_scale_factor, facing)
 	room.add_child(sprite)
 	_weapons.append({

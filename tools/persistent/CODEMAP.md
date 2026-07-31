@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34781 lines total** (under `godot/scripts/`)
+**163 scripts · 34800 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -848,7 +848,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 604 lines
+`class_name FloatingCollectible` · extends `Node2D` · 614 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -3295,7 +3295,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 293 lines
+`class_name WeaponBenchController` · 302 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3307,6 +3307,8 @@ extends `Node2D` · 34 lines
 - `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
 - `MENU_GAP_ABOVE_PX` = `30.0`
+- `WEAPON_GRADE_SATURATION` = `1.3`
+- `WEAPON_GRADE_CONTRAST` = `1.15`
 - `PELLET_FLOOD_MAX_STEPS` = `40`
 
 **Public vars**

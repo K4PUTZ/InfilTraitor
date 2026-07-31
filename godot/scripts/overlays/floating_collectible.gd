@@ -203,6 +203,14 @@ const Z_SCAN_RADIUS_VOXELS := 16
 ## off entirely (placed weapons); a rarity tier will drive it once rarity exists.
 var outline_color: Color = OUTLINE_COLOR_DEFAULT
 
+## COLOR-GRADE-02 — set before add_child(). 1.0/1.0 = no-op, matching the
+## shader's own default; a runtime nudge on top of D31's baked grade, opt-in
+## per material the same way outline_color is (weapons only, see
+## WeaponBenchController.add_weapon() — the grenade already reads with real
+## colour and stays at the neutral default).
+var grade_saturation: float = 1.0
+var grade_contrast: float = 1.0
+
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
 ## Perspective-independent anchor (North orientation) — gu_cell is derived
@@ -471,6 +479,8 @@ func _ready() -> void:
 	_material.set_shader_parameter("outline_color", outline_color)
 	_material.set_shader_parameter("outline_width",
 		OUTLINE_WIDTH_TEXELS if outline_color.a > 0.0 else 0.0)
+	_material.set_shader_parameter("saturation", grade_saturation)
+	_material.set_shader_parameter("contrast", grade_contrast)
 	_sprite.material = _material
 	add_child(_sprite)
 

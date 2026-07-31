@@ -124,7 +124,7 @@ def generate_impact_mark(base_img: "Image.Image", dented: bool) -> "Image.Image"
 
 
 # ---------------------------------------------------------------------------
-# D32 (Director, 2026-07-30) — blast impact marks. "A granada produzindo
+# D23 (Director, 2026-07-30) — blast impact marks. "A granada produzindo
 # buracos de bala não faz sentido [...] estados intermediários do material em
 # explosões, mas não com furos redondos." Deliberately NOT drawn with
 # draw.ellipse: a jagged fixed polygon for the sunken/dented look (an
@@ -134,15 +134,26 @@ def generate_impact_mark(base_img: "Image.Image", dented: bool) -> "Image.Image"
 # room, which is the whole point. Points are hand-picked and deterministic,
 # not randomised — same reproducibility contract every generator in this
 # file already has.
+#
+# Sized to nearly fill the top-face diamond (2026-07-31, Director: the
+# apply_container_damage() ring scatter — D22, unchanged here — picks many
+# separate, non-adjacent voxels per blast, so small marks read as an isolated
+# pinprick scatter ("buracos de bala") regardless of their individual shape.
+# Widening each mark toward the diamond's own N/E/S/W edges means picks that
+# land on neighbouring voxels visually touch/merge into one blotch instead of
+# staying legible as separate dots — a texture-only fix, the scatter itself
+# (D22, shared with every RADIAL caller) is untouched.
 # ---------------------------------------------------------------------------
-_BLAST_DENT_OUTLINE = [(16, 3), (20, 5), (22, 9), (19, 12), (15, 13), (11, 11), (10, 7), (13, 4)]
-_BLAST_DENT_CHIP = [(15, 6), (19, 7), (17, 10), (13, 9)]
+_BLAST_DENT_OUTLINE = [(16, 1), (24, 5), (29, 8), (24, 12), (16, 14), (8, 12), (3, 8), (6, 5)]
+_BLAST_DENT_CHIP = [(17, 3), (23, 6), (21, 11), (13, 9)]
 _BLAST_CRACK_LINES = [
-    [(16, 8), (12, 3)],
-    [(16, 8), (21, 5)],
-    [(16, 8), (20, 12)],
-    [(16, 8), (13, 12)],
-    [(13, 12), (10, 14)],
+    [(16, 8), (9, 2)],
+    [(16, 8), (23, 3)],
+    [(16, 8), (28, 9)],
+    [(16, 8), (22, 13)],
+    [(16, 8), (14, 15)],
+    [(9, 2), (4, 7)],
+    [(23, 3), (27, 6)],
 ]
 
 
@@ -163,7 +174,7 @@ def generate_blast_mark(base_img: "Image.Image", dented: bool) -> "Image.Image":
         draw.polygon(_BLAST_DENT_CHIP, fill=(0, 0, 0, 0))
     else:
         for seg in _BLAST_CRACK_LINES:
-            draw.line(seg, fill=(35, 30, 27, 230), width=1)
+            draw.line(seg, fill=(35, 30, 27, 230), width=2)
     return img
 
 # ---------------------------------------------------------------------------

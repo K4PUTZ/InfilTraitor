@@ -387,12 +387,13 @@ func test_soot_rings_spread_by_distance() -> void:
 			destroyed.append(Vector3i(x, 0, 0))
 		cell_to_voxel[Vector3i(x, 0, 0)] = v
 
-	BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed, 3)
+	var snapshot: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, snapshot)
 
 	var expected := {0: 2, 1: 1, 2: 0, 3: -1, 4: 0, 5: 1, 6: 2}
 	var ok := true
 	for x in expected:
-		var got: int = cell_to_voxel[Vector3i(x, 0, 0)].soot_ring
+		var got: int = int(snapshot.get(0, {}).get(Vector2i(x, 0), -1))
 		if got != expected[x]:
 			_fail("x=%d expected soot_ring %d, got %d" % [x, expected[x], got])
 			ok = false
@@ -418,12 +419,13 @@ func test_soot_min_ring_wins_between_two_holes() -> void:
 			destroyed.append(Vector3i(x, 0, 0))
 		cell_to_voxel[Vector3i(x, 0, 0)] = v
 
-	BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed, 3)
+	var snapshot: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, snapshot)
 
 	# x=1: ring 0 from left hole. x=3: ring 0 from right hole. x=2: ring 1 from both.
-	var r1: int = cell_to_voxel[Vector3i(1, 0, 0)].soot_ring
-	var r2: int = cell_to_voxel[Vector3i(2, 0, 0)].soot_ring
-	var r3: int = cell_to_voxel[Vector3i(3, 0, 0)].soot_ring
+	var r1: int = int(snapshot.get(0, {}).get(Vector2i(1, 0), -1))
+	var r2: int = int(snapshot.get(0, {}).get(Vector2i(2, 0), -1))
+	var r3: int = int(snapshot.get(0, {}).get(Vector2i(3, 0), -1))
 	if r1 == 0 and r2 == 1 and r3 == 0:
 		_pass("x=1,3 ring 0 (adjacent to a hole); x=2 ring 1 (min of the two paths)")
 	else:

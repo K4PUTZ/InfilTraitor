@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34800 lines total** (under `godot/scripts/`)
+**163 scripts · 34869 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -637,7 +637,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 74 lines
+`class_name Voxel` · 88 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1482 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1496 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -658,7 +658,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
-- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", ]`
+- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
 - `_IMPACT_SUFFIXES` = `["_dented", "_cracked"]`
@@ -1338,7 +1338,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 559 lines
+`class_name BlastCalculator` · 573 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2172,7 +2172,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 856 lines
+extends `SceneTree` · 858 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3236,7 +3236,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 351 lines
+`class_name TestZoneController` · 368 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3248,6 +3248,7 @@ extends `Node2D` · 34 lines
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `BOMB_ID` = `"frag_grenade"`
+- `_EMBER_NEIGHBOURS` = `[ Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), ]`
 
 **Public vars**
 - `var room: Node`
@@ -3295,7 +3296,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 302 lines
+`class_name WeaponBenchController` · 305 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3499,7 +3500,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3283 lines
+extends `Node2D` · 3288 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3572,7 +3573,7 @@ extends `Node2D` · 3283 lines
 - `var vision_bonus_tiles: int = 0`
 
 **Public API**
-- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, soot_ring: int) -> void:`
+- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int) -> void:`
 
 ---
 

@@ -16,12 +16,20 @@ var visible: bool = true         ## render state
 var dirty: bool = false          ## marked for TIC processing
 var damage_state: int = DamageState.INTACT
 var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08), null until baked
-## VL-D1: blast soot ring. -1 = clean; 0 = adjacent to a hole (darkest scorch),
-## rising to fainter outer rings. Set by BlastCalculator.compute_soot_rings()
-## and consumed by VoxelLightField as a per-voxel darkening on top of the light
-## bucket. Rides on the Voxel itself so it shares the damage's fate through
-## perspective rotation — soot and its hole travel together.
-var soot_ring: int = -1
+## VL-D1/D24: soot is NOT a field on Voxel — it is derived fresh every repaint
+## from which nearby voxels are currently absent (room._build_soot_snapshot()
+## -> BlastCalculator.derive_soot_rings()), never stored here. A destroyed
+## voxel's absence already survives rotation via room._base_damage, so there
+## is nothing extra to persist for soot to travel with the hole.
+
+## DESTRUCTION_MASTER_PLAN D23 (Director, 2026-07-30): a DENTED/CRACKED mark
+## reads differently depending on what caused it — a bullet leaves a round
+## puncture, a blast leaves an irregular chip/crack ("a gente pode criar
+## estados intermediários do material em explosões, mas não com furos
+## redondos"). Sets which texture family VoxelRenderer.damage_variant_material()
+## picks. Irrelevant for INTACT/DESTROYED (a hole is a hole regardless of
+## cause), so only DENTED/CRACKED callers need to pass true.
+var damage_is_blast: bool = false
 
 ## Back-reference for dirty propagation. Untyped on purpose: D1
 ## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
@@ -46,11 +54,17 @@ func set_visible(v: bool) -> void:
 	_set_dirty()
 
 
-## Apply damage state; DESTROYED forces visible=false; propagates dirty upward
-func set_damage(new_state: int) -> void:
+## Apply damage state; DESTROYED forces visible=false; propagates dirty upward.
+## from_blast only matters for DENTED/CRACKED (see damage_is_blast above) and
+## is read once, on the transition into that state — reapplying the same
+## state (D20 stacking a second hit into an already-DENTED voxel, say) keeps
+## whichever source marked it first, same as the early-return already did for
+## damage_state itself.
+func set_damage(new_state: int, from_blast: bool = false) -> void:
 	if damage_state == new_state:
 		return
 	damage_state = new_state
+	damage_is_blast = from_blast
 	if new_state == DamageState.DESTROYED:
 		visible = false
 	_set_dirty()

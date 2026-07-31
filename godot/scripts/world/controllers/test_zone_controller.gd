@@ -180,14 +180,14 @@ func detonate_active() -> void:
 			var n_rings: int = bomb_def.ring_multipliers.size()
 			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
 				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
-			## VL-D1: index every affected voxel by cell so the soot BFS can walk
-			## the blast's neighbourhood, and collect the holes as its seeds.
+			## D24: index every voxel this blast touches, keyed by cell -- used
+			## for VL-PERSIST below and the ember ring-0 check. Soot itself no
+			## longer needs a seed list here: room._build_soot_snapshot()
+			## derives it fresh, globally, at the repaint this function
+			## triggers at the end.
 			var cell_to_voxel: Dictionary = {}
-			var destroyed_cells: Array = []
-			## VL-D4: wood voxels only, tracked separately — Voxel itself carries
-			## no material (that lives on the Slice/Slab), and soot_ring isn't
-			## populated until compute_soot_rings() runs below, so this is the
-			## seed list the ember pass reads from AFTER that call.
+			## VL-D4: wood voxels only, tracked separately -- Voxel itself
+			## carries no material (that lives on the Slice/Slab).
 			var wood_voxels: Array = []
 			for slice_id in affected["slices"]:
 				var slice: Slice = room._edge_registry.get_slice(slice_id)
@@ -203,7 +203,7 @@ func detonate_active() -> void:
 				var n := 0
 				var c := 0
 				for v in slice.voxels:
-					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+					_index_voxel(cell_to_voxel, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: d += 1
 					elif v.damage_state == Voxel.DamageState.DENTED: n += 1
 					elif v.damage_state == Voxel.DamageState.CRACKED: c += 1
@@ -217,7 +217,7 @@ func detonate_active() -> void:
 					slab.voxels, slab.id, slab.material, affected["roofs"][slab_id],
 					slab.level, true, bomb_def.ring_multipliers, epicenter)
 				for v in slab.voxels:
-					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+					_index_voxel(cell_to_voxel, v)
 			## VL-02c/D2: the ground takes the blast — as a CONTIGUOUS crater, not a
 			## ring-scattered stipple. Radii derive from the bomb's range (its ring
 			## count): a solid core, a crumbling rim, nothing beyond.
@@ -247,7 +247,7 @@ func detonate_active() -> void:
 					floor_slab.voxels, floor_slab.id, epicenter, core, max_radius)
 				var fd := 0
 				for v in floor_slab.voxels:
-					_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+					_index_voxel(cell_to_voxel, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
 				print_debug("[BLAST]   floor=%s level=%d ring=%d crater core=%.1f max=%.1f destroyed=%d/%d" %
 					[floor_slab.id, floor_slab.level, floor_ring, core, max_radius, fd, floor_slab.voxels.size()])
@@ -255,13 +255,12 @@ func detonate_active() -> void:
 				## bottom — the voxels vanish and the legacy floor plane shows
 				## through, so a real hole reads as untouched ground.
 				if fd > 0:
-					_expose_below(floor_slab, cell_to_voxel, destroyed_cells)
+					_expose_below(floor_slab, cell_to_voxel)
 
-			## VL-D1: scorch the surviving voxels ringing every hole (up to 3
-			## rings, darkest at the hole). Must run AFTER all damage is applied so
-			## the seed set is complete, and BEFORE the repaint so the field picks
-			## the soot up in the same re-derive the detonation already triggers.
-			BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 3)
+			## D24: soot is no longer computed here. room._build_soot_snapshot()
+			## re-derives it globally (BlastCalculator.derive_soot_rings()) from
+			## whichever voxels are absent at the repaint this function triggers
+			## below -- nothing to seed or store at detonation time any more.
 
 			## VL-D4 — wood: "ficar em brasa no momento da explosão, e depois de
 			## alguns segundos escurecer". Ring 0 is the wood ringing a fresh hole
@@ -271,17 +270,17 @@ func detonate_active() -> void:
 			## no gameplay state, so no persistence/rotation concern.
 			if room._ember_overlay != null:
 				for v in wood_voxels:
-					if v.visible and v.soot_ring == 0:
+					if v.visible and _is_freshly_scorched(v, cell_to_voxel):
 						var world_pos: Vector2 = room._voxel_renderer.voxel_world_position(v.grid_pos, v.level)
 						room._ember_overlay.add_ember(world_pos)
 
-			## VL-PERSIST: record this blast's damage + soot into the base-coord
-			## registry so it survives perspective rotation (which rebuilds every
-			## Voxel from the MapSpec). Every affected voxel is already indexed in
-			## cell_to_voxel; record after soot so both states are final.
+			## VL-PERSIST: record this blast's damage into the base-coord registry
+			## so it survives perspective rotation (which rebuilds every Voxel from
+			## the MapSpec). Soot needs no entry here any more (D24) -- it re-derives
+			## from _base_damage's absences on every repaint.
 			for key in cell_to_voxel:
 				var av: Voxel = cell_to_voxel[key]
-				room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state, av.soot_ring)
+				room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state)
 
 			room._voxel_renderer.process_dirty(room._edge_registry)
 			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
@@ -301,21 +300,22 @@ func detonate_active() -> void:
 ## Two cases, and the difference is whether the level below is a real Slab:
 ##  - FLOOR_DEEP_LEVEL is one (generated at build, rendered only here): it draws
 ##    itself, and its exposed surface takes soot the ordinary way, on its own
-##    Voxels, via compute_soot_rings — which is why every one of its voxels is
-##    indexed for the BFS, not just the destroyed ones. That soot then persists
-##    through rotation for free (VL-PERSIST records per Voxel).
+##    Voxels — D24: room._build_soot_snapshot() derives it globally on repaint,
+##    so every one of its voxels just needs to be indexed here, not just the
+##    destroyed ones. That soot then persists through rotation for free, since
+##    it's re-derived from _base_damage's absences rather than stored.
 ##  - Below that, D13's fixed ground places cells directly with no Voxel to hang
 ##    soot on, so it keeps the plain cell→ring side map (VL-D2), written at
 ##    EXPOSED_FLOOR_SOOT_RING — the same ring the BFS gives the Voxel-backed case,
 ##    so the two paths cannot drift apart.
-func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array) -> void:
+func _expose_below(slab: Slab, cell_to_voxel: Dictionary) -> void:
 	var below_level: int = slab.level - 1
 	var below_slab: Slab = room._slab_registry.get_slab(
 			Slab.make_id(slab.gu_cell, Slab.Role.FLOOR, below_level))
 	if below_slab != null:
 		room._voxel_renderer.reveal_floor_slab(below_slab)
 		for v in below_slab.voxels:
-			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+			_index_voxel(cell_to_voxel, v)
 		return
 
 	room._voxel_renderer.render_fixed_earth_level(slab.gu_cell, below_level)
@@ -325,13 +325,30 @@ func _expose_below(slab: Slab, cell_to_voxel: Dictionary, destroyed_cells: Array
 					BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING)
 
 
-## VL-D1: register one voxel for the soot BFS — index it by its (x, y, level)
-## cell and, if it's a hole, record it as a BFS seed.
-func _index_voxel_for_soot(cell_to_voxel: Dictionary, destroyed_cells: Array, v: Voxel) -> void:
+## D24: register one voxel by its (x, y, level) cell for VL-PERSIST and the
+## ember ring-0 check below. No seed list any more — room._build_soot_snapshot()
+## finds the holes itself by walking the whole map fresh on repaint.
+func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
-	if v.damage_state == Voxel.DamageState.DESTROYED:
-		destroyed_cells.append(key)
+
+
+## D24: true if `v` sits immediately next to a destroyed/absent voxel -- the
+## "ring 0" case the old stored soot_ring used to answer directly. Checked
+## right here, mid-detonation, because the ember glow needs the answer before
+## room._build_soot_snapshot() runs on the repaint at the end of this function.
+const _EMBER_NEIGHBOURS: Array = [
+	Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+	Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+	Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+]
+func _is_freshly_scorched(v: Voxel, cell_to_voxel: Dictionary) -> bool:
+	var origin := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	for d in _EMBER_NEIGHBOURS:
+		var n = cell_to_voxel.get(origin + d)
+		if n != null and (not n.visible or n.damage_state == Voxel.DamageState.DESTROYED):
+			return true
+	return false
 
 
 func cancel_active() -> void:

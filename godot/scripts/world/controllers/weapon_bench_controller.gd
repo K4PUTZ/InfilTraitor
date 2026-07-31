@@ -242,7 +242,6 @@ func fire_active() -> void:
 		room._blocked_cells, pellet_salt)
 
 	var cell_to_voxel: Dictionary = {}
-	var destroyed_cells: Array = []
 	var pellets_landed := 0
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
@@ -255,7 +254,7 @@ func fire_active() -> void:
 			slice, resolved["voxel_index"], slice.material, weapon_def.destroy_multiplier,
 			room._edge_registry, "%s:%d" % [pellet_salt, i])
 		for v in touched:
-			_index_voxel_for_soot(cell_to_voxel, destroyed_cells, v)
+			_index_voxel(cell_to_voxel, v)
 
 	print_debug("[SHOT] weapon=%s gu=%s facing=%s pellets=%d/%d landed" %
 		[w["weapon_id"], w["gu_cell"], w["facing"], pellets_landed, pellet_picks.size()])
@@ -265,16 +264,18 @@ func fire_active() -> void:
 	## neighbours only) — this is what actually fixes "desde o chão até o
 	## teto," not a parameter tweak on the old ring model.
 
-	## VL-D1: scorch what survives around each new hole. One ring, not the
-	## grenade's three — a bullet strike marks its impact, it does not blacken
-	## the whole wall.
-	BlastCalculatorClass.compute_soot_rings(cell_to_voxel, destroyed_cells, 1)
+	## D24: no explicit soot call here any more -- room._build_soot_snapshot()
+	## derives it fresh (up to 3 rings) for the whole map from whichever
+	## voxels are currently destroyed, every time _repaint_voxel_light_buckets()
+	## runs below. An isolated bullet hole naturally reads as ~1 ring (nothing
+	## further out is ALSO absent); a wide breach reads deeper on its own, no
+	## bullet/blast distinction needed for this part.
 
 	## VL-PERSIST: record into base coords so the damage survives a perspective
 	## flip, which rebuilds every Voxel from the MapSpec.
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
-		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state, av.soot_ring)
+		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state)
 
 	room._voxel_renderer.process_dirty(room._edge_registry)
 	room._voxel_renderer.process_dirty_slabs(room._slab_registry)
@@ -286,11 +287,13 @@ func fire_active() -> void:
 	_active_index = -1
 
 
-func _index_voxel_for_soot(cell_to_voxel: Dictionary, destroyed_cells: Array, v: Voxel) -> void:
+## D24: soot no longer needs a destroyed_cells seed list here -- room's own
+## repaint-time derivation (BlastCalculator.derive_soot_rings()) walks the
+## whole map fresh. This just indexes which voxels THIS shot touched, for the
+## VL-PERSIST loop above.
+func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
-	if v.damage_state == Voxel.DamageState.DESTROYED:
-		destroyed_cells.append(key)
 
 
 ## Same conversion TestZoneController._blocked_edges_dict() does — room's

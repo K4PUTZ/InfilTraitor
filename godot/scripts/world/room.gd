@@ -160,13 +160,16 @@ var _crater_floor_soot: Dictionary = {}
 
 ## VL-PERSIST: authoritative destruction state in BASE (N-frame) voxel coords, so
 ## it survives a perspective rotation (which rebuilds every Voxel from the
-## MapSpec, dropping damage_state/soot_ring). Keyed Vector3i(base_vx, base_vy,
+## MapSpec, dropping damage_state). Keyed Vector3i(base_vx, base_vy,
 ## level). Recorded on detonate (view→base), re-applied after each rotation
 ## rebuild (base→view). Cleared on map load. See VOXEL_LIGHT_MASTER_PLAN
 ## VL-PERSIST — this is also the shared prerequisite for the deferred 4-view
 ## prebuild (which would apply this same registry to all 4 copies).
+## D24 (2026-07-30): soot has no base-coord counterpart any more — it derives
+## fresh every repaint from whichever voxels damage_state already marks
+## destroyed, so persisting it separately would just be a second copy of the
+## same fact.
 var _base_damage: Dictionary = {}   ## base voxel key → damage_state (>0)
-var _base_soot: Dictionary = {}     ## base voxel key → soot_ring (>=0)
 
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
@@ -187,27 +190,25 @@ func _base_voxel_size() -> Vector2i:
 
 ## VL-PERSIST — record one voxel's destruction state in base coords. grid_pos is
 ## in the CURRENT view; convert to base so it re-applies correctly under any
-## later rotation. damage_state 0 and soot_ring <0 mean "nothing to persist".
-func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, soot_ring: int) -> void:
-	if damage_state <= 0 and soot_ring < 0:
+## later rotation. damage_state 0 means "nothing to persist". D24: no soot
+## parameter any more — soot derives fresh from damage_state at repaint time,
+## see BlastCalculator.derive_soot_rings().
+func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int) -> void:
+	if damage_state <= 0:
 		return
 	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
 	var key := Vector3i(base_xy.x, base_xy.y, level)
-	if damage_state > 0:
-		_base_damage[key] = damage_state
-	if soot_ring >= 0:
-		var prev = _base_soot.get(key, 99)
-		if soot_ring < prev:
-			_base_soot[key] = soot_ring
+	_base_damage[key] = damage_state
 
 
 ## VL-PERSIST — re-apply the base-coord destruction registry to the freshly
 ## rebuilt geometry after a perspective rotation. build_from_layout() rebuilt
-## every Voxel intact from the MapSpec; this stamps the recorded damage/soot back
+## every Voxel intact from the MapSpec; this stamps the recorded damage back
 ## on, converting each base key to the current view. Must run after the build
-## (registries fresh) and before the light-field repaint (so it sees the holes).
+## (registries fresh) and before the light-field repaint (so it sees the holes
+## that _build_soot_snapshot() needs to derive soot from).
 func _reapply_base_damage() -> void:
-	if _base_damage.is_empty() and _base_soot.is_empty():
+	if _base_damage.is_empty():
 		return
 	if _edge_registry == null or _slab_registry == null:
 		return
@@ -245,25 +246,19 @@ func _reapply_base_damage() -> void:
 			var gu := Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)
 			var below_level: int = v.level - 1
 			if below_level >= GeometryCoords.FLOOR_DEEP_LEVEL:
-				## The deep Slab draws itself and carries its own soot on its Voxels
-				## (already restored by the _base_soot loop below).
+				## The deep Slab draws itself; its exposed surface's soot is
+				## derived the ordinary way at the next repaint (D24), on its
+				## own now-restored Voxels — nothing to replay here for it.
 				reveal_slab_gus[gu] = true
 			else:
 				reveal_fixed[gu] = below_level
 				## FLOOR-DEPTH-02: the SAME cap the detonation wrote — a rotation
 				## re-derives this side map from scratch, so a different ring here
 				## would repaint the crater floor a different shade every time the
-				## map turned. (The deep plane needs no equivalent: its soot rides on
-				## its Voxels and comes back through _base_soot below.)
+				## map turned. (The deep plane needs no equivalent: D24 re-derives
+				## its soot from its own restored Voxels at the next repaint.)
 				add_crater_floor_soot(below_level, v.grid_pos,
 						BlastCalculator.EXPOSED_FLOOR_SOOT_RING)
-
-	for base_key in _base_soot:
-		var vxy := PerspectiveMapperClass.cell_from_base(
-				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
-		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
-		if v != null and v.soot_ring < 0:
-			v.soot_ring = int(_base_soot[base_key])
 
 	## Reveal AFTER the damage loop, never during it: reveal_floor_slab() skips
 	## destroyed voxels, so the deep plane must already know which of its own
@@ -527,7 +522,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_current_light_sources = _room_builder.get_light_sources()
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
-	_base_soot.clear()
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
 
@@ -1782,20 +1776,32 @@ func _repaint_voxel_light_buckets() -> void:
 	_voxel_renderer.apply_light_field(_voxel_light_field)
 
 
-## VL-D1 — level → {cell: soot_ring}, read off the Voxels themselves so it
-## rotates with the geometry (the soot lives on the Voxel, like damage_state).
-## Rebuilt on every repaint from the two registries; cheap next to the field
-## re-derive it feeds. Empty when nothing has been scorched.
+## VL-D1/D24 — level → {cell: soot_ring}, DERIVED fresh from which voxels are
+## currently absent (BlastCalculator.derive_soot_rings()) rather than read off
+## a stored field. *(Director, 2026-07-30: "queremos o sistema de derivar a
+## fuligem de acordo com os voxels faltantes, em vez de guardar a informação
+## de cada um.")* Rebuilt on every repaint from the two registries — same cost
+## baseline the old per-voxel read already paid (one pass over every voxel),
+## plus one bounded BFS from this map's current holes. A destroyed voxel's
+## absence already survives rotation via _base_damage, so nothing about soot
+## itself needs to persist separately any more. Empty when nothing is holed.
+const MAX_SOOT_RINGS := 3
+
 func _build_soot_snapshot() -> Dictionary:
-	var snapshot: Dictionary = {}
+	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
+	var destroyed_cells: Array = []      ## Vector3i seeds for the BFS
 	if _edge_registry != null:
 		for slice in _edge_registry.all_slices():
 			for v in slice.voxels:
-				_add_soot_voxel(snapshot, v)
+				_index_soot_voxel(cell_to_voxel, destroyed_cells, v)
 	if _slab_registry != null:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
-				_add_soot_voxel(snapshot, v)
+				_index_soot_voxel(cell_to_voxel, destroyed_cells, v)
+
+	var snapshot: Dictionary = {}
+	BlastCalculator.derive_soot_rings(cell_to_voxel, destroyed_cells, MAX_SOOT_RINGS, snapshot)
+
 	## VL-D2: merge the revealed crater-floor soot (non-Voxel cells).
 	for level in _crater_floor_soot.keys():
 		if not snapshot.has(level):
@@ -1805,12 +1811,11 @@ func _build_soot_snapshot() -> Dictionary:
 	return snapshot
 
 
-func _add_soot_voxel(snapshot: Dictionary, v: Voxel) -> void:
-	if v.soot_ring < 0 or not v.visible:
-		return
-	if not snapshot.has(v.level):
-		snapshot[v.level] = {}
-	snapshot[v.level][v.grid_pos] = v.soot_ring
+func _index_soot_voxel(cell_to_voxel: Dictionary, destroyed_cells: Array, v: Voxel) -> void:
+	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	cell_to_voxel[key] = v
+	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		destroyed_cells.append(key)
 
 
 ## VL-D2 — record soot on a revealed crater-floor cell (no Voxel to hang it on).

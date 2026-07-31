@@ -406,10 +406,13 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 
 		for voxel in destroy_set:
 			voxel.set_damage(Voxel.DamageState.DESTROYED)
+		## D23: this is the ring-group scatter model, used only by RADIAL — a
+		## blast's DENTED/CRACKED voxels get the irregular chip/crack texture
+		## family, never the bullet's round puncture.
 		for voxel in dent_set:
-			voxel.set_damage(Voxel.DamageState.DENTED)
+			voxel.set_damage(Voxel.DamageState.DENTED, true)
 		for voxel in crack_set:
-			voxel.set_damage(Voxel.DamageState.CRACKED)
+			voxel.set_damage(Voxel.DamageState.CRACKED, true)
 
 
 ## VL-D2 — Contiguous crater on the ground.
@@ -509,22 +512,30 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 	return ranked.slice(0, mini(n, ranked.size()))
 
 
-## VL-D1 — Soot rings around blast holes.
+## VL-D1/D24 — Soot rings around holes, DERIVED fresh every repaint from
+## which voxels are currently absent — never stored on the Voxel itself.
+## *(Director, 2026-07-30, confirming S3's closure: "queremos o sistema de
+## derivar a fuligem de acordo com os voxels faltantes, em vez de guardar a
+## informação de cada um.")*
 ##
-## After damage is applied, the surviving voxels ringing each hole get scorched:
-## a multi-source BFS outward from every DESTROYED cell tags neighbours with a
-## ring index (0 = touching the hole, darkest; rising outward, fainter), which
-## VoxelLightField reads as a per-voxel darkening. This is what makes a crater
-## read as a crater — the hole plus the soot halo around it, not bare removed
-## voxels. Applied on the blast event only (not per frame): the full-field
-## re-derive it triggers is the same one a detonation already paid for.
+## A multi-source BFS outward from every currently-DESTROYED cell tags
+## surviving neighbours with a ring index (0 = touching the hole, darkest;
+## rising outward, fainter) into `out_snapshot` — the exact
+## `{level: {grid_pos: ring}}` shape `VoxelLightField.build()` already
+## consumed when this lived on `Voxel.soot_ring`, so nothing downstream of
+## the snapshot changed. Called once per repaint from `room._build_soot_snapshot()`
+## over the WHOLE map's current voxels (not one blast's affected set) — a
+## destroyed voxel's absence already survives rotation via `_base_damage`, so
+## re-deriving from it fresh needs no separate soot persistence at all.
 ##
-## cell_to_voxel: Vector3i(x, y, level) → Voxel, over every voxel in the blast's
-## affected containers (walls + floors + roofs) — the BFS navigates only through
-## these, so soot stays local to the blast and never walks the whole map.
-## n_rings: how many rings to paint (Director: up to 3). min-ring wins, so a
-## voxel near two holes takes the darker scorch.
-static func compute_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array, n_rings: int) -> void:
+## cell_to_voxel: Vector3i(x, y, level) → Voxel, over every SURVIVING voxel to
+## consider (destroyed ones are seeds, not entries — see destroyed_cells).
+## n_rings: how many rings to paint (Director: up to 3, bullets effectively
+## self-limit to ~1 since an isolated hole has no further-out neighbours that
+## are ALSO absent). min-ring wins, so a voxel near two holes takes the
+## darker scorch.
+static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
+		n_rings: int, out_snapshot: Dictionary) -> void:
 	if destroyed_cells.is_empty() or n_rings <= 0:
 		return
 	## Frontier BFS. Seeds are the holes themselves (they have no surviving voxel
@@ -551,8 +562,11 @@ static func compute_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array
 				## hole (already a seed) and an absent one is empty air.
 				if voxel == null or not voxel.visible or voxel.damage_state == Voxel.DamageState.DESTROYED:
 					continue
-				if voxel.soot_ring < 0 or ring < voxel.soot_ring:
-					voxel.soot_ring = ring
+				if not out_snapshot.has(voxel.level):
+					out_snapshot[voxel.level] = {}
+				var existing: int = int(out_snapshot[voxel.level].get(voxel.grid_pos, -1))
+				if existing < 0 or ring < existing:
+					out_snapshot[voxel.level][voxel.grid_pos] = ring
 				next_frontier.append(ncell)
 		frontier = next_frontier
 		if frontier.is_empty():

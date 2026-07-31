@@ -122,6 +122,50 @@ def generate_impact_mark(base_img: "Image.Image", dented: bool) -> "Image.Image"
         )
     return img
 
+
+# ---------------------------------------------------------------------------
+# D32 (Director, 2026-07-30) — blast impact marks. "A granada produzindo
+# buracos de bala não faz sentido [...] estados intermediários do material em
+# explosões, mas não com furos redondos." Deliberately NOT drawn with
+# draw.ellipse: a jagged fixed polygon for the sunken/dented look (an
+# off-centre alpha-cut "missing chunk", not a clean circular hole) and
+# branching crack LINES (not a filled blob) for the flat/cracked look — reads
+# as chipped/fractured rather than punctured, at a glance, from across the
+# room, which is the whole point. Points are hand-picked and deterministic,
+# not randomised — same reproducibility contract every generator in this
+# file already has.
+# ---------------------------------------------------------------------------
+_BLAST_DENT_OUTLINE = [(16, 3), (20, 5), (22, 9), (19, 12), (15, 13), (11, 11), (10, 7), (13, 4)]
+_BLAST_DENT_CHIP = [(15, 6), (19, 7), (17, 10), (13, 9)]
+_BLAST_CRACK_LINES = [
+    [(16, 8), (12, 3)],
+    [(16, 8), (21, 5)],
+    [(16, 8), (20, 12)],
+    [(16, 8), (13, 12)],
+    [(13, 12), (10, 14)],
+]
+
+
+def generate_blast_mark(base_img: "Image.Image", dented: bool) -> "Image.Image":
+    """
+    Overlay a placeholder BLAST-damage mark (chipped/cracked, never a round
+    puncture) onto a copy of an existing voxel atom's top face.
+
+    dented=True:  a jagged polygon with a smaller, OFF-CENTRE true alpha-cut
+                  "missing chunk" — an uneven chip, not a centred bullet hole.
+    dented=False: a handful of branching crack LINES radiating from a rough
+                  centre — a fracture, not a filled dot.
+    """
+    img = base_img.copy()
+    draw = ImageDraw.Draw(img)
+    if dented:
+        draw.polygon(_BLAST_DENT_OUTLINE, fill=(24, 20, 17, 255))
+        draw.polygon(_BLAST_DENT_CHIP, fill=(0, 0, 0, 0))
+    else:
+        for seg in _BLAST_CRACK_LINES:
+            draw.line(seg, fill=(35, 30, 27, 230), width=1)
+    return img
+
 # ---------------------------------------------------------------------------
 # DESTRUCTION_MASTER_PLAN D2/D4 — floor/slab palette. Placeholder art: 8
 # hand-picked tone variants of one "earth" base color, generated the same
@@ -255,6 +299,19 @@ def main() -> None:
             print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
             impact_count += 1
     print(f"\n✓ {impact_count} impact-mark placeholder(s) → {IMPACT_OUTPUT_DIR}/")
+
+    # D32 — blast-mark placeholders (dented/cracked), same materials, own
+    # texture family (chip/crack, never a round puncture).
+    blast_count = 0
+    for material in IMPACT_MATERIALS:
+        base_img = generate_voxel_atom(MATERIALS[material])
+        for suffix, dented in (("dented", True), ("cracked", False)):
+            img  = generate_blast_mark(base_img, dented)
+            path = IMPACT_OUTPUT_DIR / f"voxel_{material}_blast_{suffix}.png"
+            img.save(path, "PNG")
+            print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
+            blast_count += 1
+    print(f"\n✓ {blast_count} blast-mark placeholder(s) → {IMPACT_OUTPUT_DIR}/")
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
 
 

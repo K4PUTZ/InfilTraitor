@@ -39,11 +39,19 @@ const VOXEL_SOURCE_ID: int = 0
 ## baked-lookup branch entirely — an impact mark is self-contained by design
 ## ("encaixado em qualquer lugar," Director), not tied to whatever facade the
 ## surrounding wall happens to bake.
+## D23 (Director, 2026-07-30): "a granada produzindo buracos de bala não faz
+## sentido [...] estados intermediários do material em explosões, mas não com
+## furos redondos" — a blast's DENTED/CRACKED voxels get their OWN texture
+## family (irregular chip/crack), never the bullet's round puncture. Same
+## append-only mechanism, same folder, just a `_blast_` infix so both families
+## sit side by side — see damage_variant_material()'s blast_sourced parameter.
 const MATERIALS: Array[String] = [
 	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
 	"concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked",
 	"stone_dented", "stone_cracked", "wood_dented", "wood_cracked",
+	"concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked",
+	"stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked",
 ]
 
 ## Voxel asset path template
@@ -56,6 +64,8 @@ const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxel
 ## _IMPACT_SUFFIXES below is also what _set_voxel_cell() checks to bypass the
 ## baked-lookup branch for these pseudo-materials.
 const IMPACT_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"
+## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
+## they match the two suffixes below without needing their own entries.
 const _IMPACT_SUFFIXES: Array[String] = ["_dented", "_cracked"]
 
 
@@ -69,15 +79,19 @@ static func _is_impact_mark(material_name: String) -> bool:
 	return false
 
 
-## D22: which pseudo-material a voxel's damage_state should actually render
-## as. INTACT and DESTROYED voxels are unaffected — DESTROYED never reaches
-## here at all (voxel.visible gates it out before _set_voxel_cell is called).
-static func damage_variant_material(base_material: String, damage_state: int) -> String:
+## D22/D23: which pseudo-material a voxel's damage_state should actually
+## render as. INTACT and DESTROYED voxels are unaffected — DESTROYED never
+## reaches here at all (voxel.visible gates it out before _set_voxel_cell is
+## called). blast_sourced (voxel.damage_is_blast) picks the irregular
+## chip/crack family instead of the bullet's round puncture — a blast's
+## "not fully destroyed" voxels should never look like they took a clean shot.
+static func damage_variant_material(base_material: String, damage_state: int, blast_sourced: bool = false) -> String:
+	var infix := "_blast" if blast_sourced else ""
 	match damage_state:
 		Voxel.DamageState.DENTED:
-			return base_material + "_dented"
+			return base_material + infix + "_dented"
 		Voxel.DamageState.CRACKED:
-			return base_material + "_cracked"
+			return base_material + infix + "_cracked"
 		_:
 			return base_material
 
@@ -606,7 +620,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var render_material := damage_variant_material(slice.material, voxel.damage_state)
+			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast)
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 
 
@@ -1120,7 +1134,7 @@ func process_dirty(registry: EdgeRegistry) -> void:
 				# Update cell state based on voxel visibility
 				if voxel.visible:
 					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-					var render_material := damage_variant_material(slice.material, voxel.damage_state)
+					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 				else:
 					# Clear cell
@@ -1178,7 +1192,7 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 					## above) — the substitution is a no-op for them and only
 					## matters for CEILING/INTERIOR, which apply_container_damage
 					## can tag exactly like a wall.
-					var render_material := damage_variant_material(slab.material, voxel.damage_state)
+					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 				else:

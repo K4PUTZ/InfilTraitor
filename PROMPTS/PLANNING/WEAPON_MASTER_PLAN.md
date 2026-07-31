@@ -178,6 +178,17 @@ other 2 (wide-angle pellets) correctly cleared the block's lateral extent and
 landed on the wall behind it — the realistic spread behaviour D26/D27
 describe, not a bug.
 
+**Same day, later in the session — `weapons/shotgun.json` `projectile_count`
+raised 8 → 24.** *(Director: "me parece que a shotgun está tirando muito
+pouco dano da parede, deveria ter mais buracos. Vamos tentar com 24
+projéteis. Depois acertamos a questão do dano durante o gameplay.")* A data
+value only (D14/D27's existing pipeline runs it N times unchanged, no code
+touched) — **per-pellet damage/falloff balance is explicitly deferred to
+gameplay tuning**, not decided here. Real capture confirms `pellets=24/24
+landed` and a visibly denser cluster of impact marks against both the
+concrete and wood test-zone walls (`Screenshots/history/auto_2026-07-30_23-34-19.png`,
+`auto_2026-07-30_23-36-21.png`).
+
 ---
 
 ## 3. Boundaries — what this plan does NOT own
@@ -583,6 +594,17 @@ neighbouring voxels are already absent**, the same way `VoxelLightField`'s
 per-face buckets are computed rather than stored per instance. VL-PERSIST
 already knows which voxels are missing; this reads that, it does not add a
 second dataset. *Original text kept below.*
+
+**Shipped same day, later in the session, as `DESTRUCTION_MASTER_PLAN.md`
+D24**: `Voxel.soot_ring` deleted; `BlastCalculator.derive_soot_rings()`
+replaces `compute_soot_rings()`, writing into a caller-supplied snapshot
+instead of mutating the Voxel; `room._build_soot_snapshot()` derives it fresh
+for the whole map every repaint. This also folded grenade soot into the same
+mechanism (`DESTRUCTION_MASTER_PLAN.md` §7 item 5), so the "no rings"
+face-local-only carve-out this section's D17 originally described no longer
+exists as a separate case — firearm soot now reuses the identical up-to-3-ring
+BFS a blast uses, just naturally shallow because an isolated hole has nothing
+further out that is also absent.
 
 `soot_ring` today is **per voxel** — the BFS marks whole voxels. D17 wants
 **per face**. The good news is `VoxelLightField` already works in faces (12

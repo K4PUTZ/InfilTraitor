@@ -173,6 +173,13 @@
           "height_class": 2,
           "radius": 7,
           "intensity": 1.0
+        },
+        {
+          "x": 10,
+          "y": 9,
+          "height_class": 4,
+          "radius": 10,
+          "intensity": 1.2
         }
       ]
     }

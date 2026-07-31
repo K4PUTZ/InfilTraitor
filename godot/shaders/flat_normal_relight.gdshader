@@ -16,7 +16,7 @@ uniform sampler2D normal_tex : source_color, filter_nearest;
 uniform vec3 light_dir = vec3(0.0, 0.0, 1.0); // camera-space, normalized
 uniform vec3 light_color : source_color = vec3(1.0, 1.0, 1.0);
 uniform float light_intensity : hint_range(0.0, 3.0) = 1.0;
-uniform float ambient : hint_range(0.0, 1.0) = 0.35;
+uniform float ambient : hint_range(0.0, 1.0) = 0.55;
 uniform float specular_strength : hint_range(0.0, 2.0) = 0.4;
 uniform float specular_shininess : hint_range(1.0, 128.0) = 16.0;
 

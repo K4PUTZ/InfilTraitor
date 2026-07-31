@@ -16,9 +16,15 @@ blast bias, under-wall darkening, ember→char glow on wood) — see
 full account. The idle motor D15/D6 described is no longer idle: a real
 grenade in the real running game marks real voxels destroyed, through the
 real dirty-flag/TIC pipeline, confirmed by direct `TileMapLayer` cell
-readback (not code-reading). **Nobody has resumed this plan yet** — flagging
-the unblock is not the same as picking it back up; that call is the
-Director's, same as the original pause.
+readback (not code-reading). **Resumed 2026-07-30/31**, alongside the parallel
+`WEAPON_MASTER_PLAN.md` firearms work: D22–D24 shipped (two non-destroyed
+damage tiers per material, DENTED-before-CRACKED ring draw, blast marks in
+their own irregular texture family distinct from bullets, soot derived fresh
+every repaint for both explosions and firearms instead of stored). §7 item 6
+is the open thread going into the next session: damage marks don't yet know
+which face of a voxel actually faced the blast — a slab above the epicentre
+marks its outward top instead of the underside that faced the explosion.
+Director is bringing a diagram to formally design the fix.
 **Runs AFTER `OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12) —
 occlusion paused at Alpha Foundation 2026-07-15, this plan picked up next
 and is now itself paused, first at its own Alpha Ceiling Foundation
@@ -991,3 +997,21 @@ anything consumes it; Part 3 must not be bundled with it.
    `_base_damage`, which soot already re-derives from). Firearm soot now
    shares the identical mechanism blast soot uses — no separate no-rings
    special case survives.
+6. **🟠 OPEN 2026-07-31 — damage marks ignore which face actually faced the
+   blast; a slab above the epicentre takes its mark on the wrong side.**
+   *(Director, real capture, two reference images.)* A grenade physically
+   blasts outward in every direction, including upward — anything above the
+   epicentre should show damage on the surface FACING the explosion (its
+   underside), the same way a wall already shows damage on whichever slice
+   faces the epicentre first. What actually renders instead: a slab's
+   damage mark appears on its outward/upward-facing top, as if the blast had
+   come from above it looking down, regardless of where the epicentre
+   actually was. Not a texture-legibility issue — D23's same-day amendment
+   (mark size) already addressed that; this is that the current mark
+   pipeline has no concept of "which face of this voxel is the one that
+   actually faced the source" to choose from in the first place. **Explicitly
+   not being fixed here**: the Director is bringing a more detailed diagram
+   to formally design a proper face-oriented "special marks" system (likely
+   touching both slabs and walls) before this gets built, rather than a
+   guessed patch now. Recorded so the finding and its real evidence aren't
+   lost before that design lands.

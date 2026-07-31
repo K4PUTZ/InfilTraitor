@@ -14,10 +14,17 @@ closed** (2026-07-29/30) — most recently **S7 by D25** (2026-07-30): a shot
 always targets an actor picked through the contextual menu, never a free-aim
 direction, so **Part 3b (`LINE`) is unblocked**. **S2 closed via
 `DESTRUCTION_MASTER_PLAN` D22**: a real `DENTED` damage tier, every material
-can reach every tier, logic layer shipped and selftested — the matching
-textures are still open (see that plan's §7 item 4). S8 and S9 are explicitly
-deferred to the Actor/Combat wave, and two of the four pre-existing §7b
-questions (1 and 4) are closed alongside them.
+can reach every tier, logic AND texture layers shipped 2026-07-30 (D22's own
+placeholder marks, then D23 same day giving blast damage its own irregular
+mark family distinct from a bullet's round one, amended 2026-07-31 for mark
+size/legibility). **S3 closed and shipped as `DESTRUCTION_MASTER_PLAN` D24**:
+soot for both explosions and firearms is now derived fresh every repaint from
+which voxels are absent, never stored. S8 and S9 are explicitly deferred to
+the Actor/Combat wave, and two of the four pre-existing §7b questions (1 and
+4) are closed alongside them. **Open going into the next session** (found
+2026-07-31, real capture): damage marks don't yet know which face of a voxel
+actually faced the blast — `DESTRUCTION_MASTER_PLAN.md` §7 item 6, pending a
+diagram from the Director before it's designed.
 Parts 0–3 are done: the bench exists, `WeaponDef`/`WeaponRegistry` are real,
 `CONE` is implemented and selftested, and right-clicking a bench shotgun opens
 "Atirar" and chews a real wedge out of a real wall. `LINE` (pistols/rifles) and

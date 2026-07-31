@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34692 lines total** (under `godot/scripts/`)
+**163 scripts · 34781 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2050,7 +2050,7 @@ extends `Node` · 54 lines
 
 ### `actor_frame_bake_spike.gd`
 
-extends `SceneTree` · 287 lines
+extends `SceneTree` · 324 lines
 
 `godot/scripts/tools/actor_frame_bake_spike.gd`
 
@@ -2067,6 +2067,11 @@ extends `SceneTree` · 287 lines
 - `SHADOW_ORTHO_SIZE` = `5.0`
 - `SHADOW_CAMERA_DISTANCE` = `12.0`
 - `NORMAL_BAKE_SHADER_CODE` = `"""`
+- `GRADE_BRIGHTNESS_GAIN` = `1.9`
+- `GRADE_BLACK_LIFT` = `0.06`
+- `GRADE_SATURATION_BOOST` = `1.8`
+- `GRADE_TINT_COLOR` = `Color(0.4, 0.55, 0.75)`
+- `GRADE_TINT_STRENGTH` = `0.22`
 
 ---
 
@@ -2877,7 +2882,7 @@ extends `SceneTree` · 95 lines
 
 ### `weapon_frames_bake.gd`
 
-extends `SceneTree` · 254 lines
+extends `SceneTree` · 306 lines
 
 `godot/scripts/tools/weapon_frames_bake.gd`
 

@@ -63,6 +63,19 @@ void fragment() {
 
 enum PassType { COLOR, NORMAL, SHADOW }
 
+## COLOR-GRADE-01 (Director, 2026-07-30) — mirrored from weapon_frames_bake.gd,
+## see that file's header for the full "why" (measured: baked albedo dark AND
+## nearly hueless, e.g. pistol frame_00 pre-grade mean RGB (47,46,45)/255;
+## runtime light/ambient cannot inject a hue that was never captured). This
+## script is the shotgun's own bake (WEAPONS array in the sibling script
+## doesn't cover it), so it needs the same grade applied separately rather
+## than silently staying the one ungraded gun on the bench.
+const GRADE_BRIGHTNESS_GAIN := 1.9
+const GRADE_BLACK_LIFT := 0.06
+const GRADE_SATURATION_BOOST := 1.8
+const GRADE_TINT_COLOR := Color(0.4, 0.55, 0.75)  ## cool gunmetal steel-blue
+const GRADE_TINT_STRENGTH := 0.22
+
 
 func _init() -> void:
 	print("\n" + "=".repeat(78))
@@ -85,6 +98,7 @@ func _init() -> void:
 
 func _render_frame(index: int, object_yaw_deg: float) -> void:
 	var color_img := await _render_pass(object_yaw_deg, PassType.COLOR)
+	_grade_color_image(color_img)
 	var normal_img := await _render_pass(object_yaw_deg, PassType.NORMAL)
 	## ONE raw top-down render, post-processed TWICE (sharp/soft) — not two
 	## separate 3D renders. FloatingCollectible crossfades between these by
@@ -242,6 +256,29 @@ func _compute_aabb(node: Node) -> AABB:
 		else:
 			result = result.merge(world_box)
 	return result
+
+
+## COLOR-GRADE-01: brightness lift+gain, HSV saturation boost, then a fixed
+## tint blended underneath — see the constants above for the "why". Opaque
+## pixels only (alpha gate), so the transparent margin never picks up a tinted
+## halo baked into supposedly-empty pixels. Mirrors weapon_frames_bake.gd's
+## function of the same name exactly.
+func _grade_color_image(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in range(h):
+		for x in range(w):
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.001:
+				continue
+			var lifted := Color(
+				clampf(c.r * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+				clampf(c.g * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+				clampf(c.b * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+			)
+			var saturated := Color.from_hsv(lifted.h, clampf(lifted.s * GRADE_SATURATION_BOOST, 0.0, 1.0), lifted.v)
+			var tinted := saturated.lerp(GRADE_TINT_COLOR, GRADE_TINT_STRENGTH)
+			img.set_pixel(x, y, Color(tinted.r, tinted.g, tinted.b, c.a))
 
 
 ## Morphological max-filter on the alpha channel only — widens the

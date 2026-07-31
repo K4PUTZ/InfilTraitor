@@ -64,6 +64,35 @@ void fragment() {
 
 enum PassType { COLOR, NORMAL, SHADOW }
 
+## COLOR-GRADE-01 (Director, 2026-07-30): "as armas estão muito escuras e
+## tristes." Measured, not assumed: the Quaternius pack's baked albedo is
+## both dark AND nearly hueless — pistol frame_00 measured mean RGB
+## (47,46,45)/255, i.e. R≈G≈B. Runtime light/ambient (flat_normal_relight.gdshader)
+## can only ever multiply that toward a BRIGHTER GRAY; it cannot inject a hue
+## that was never captured. Confirmed by testing that route first (a bench
+## light + a higher shader ambient floor) and measuring a ~0.5/255 real
+## change on the actual sprite — not the fix.
+##
+## Grades the BAKED COLOR TEXTURE itself instead, at bake time, once, so
+## nothing at runtime has to work around a flat source: brightness lift+gain,
+## then an HSV saturation boost (amplifies whatever hue-bias a given model
+## already has — the shotgun's frames read slightly warm before grading), then
+## a fixed tint blended UNDER the result so a pixel with genuinely zero
+## saturation (the pistol, measured above) still ends up with a real hue
+## instead of "brighter gray." Applied to the colour pass ONLY — never
+## normal_img (real geometry data) or the shadow images (alpha-only
+## silhouettes); grading either would corrupt data other systems read as-is.
+##
+## One shared grade for every gun, same reasoning the file header already
+## gives for one shared framing — per-weapon tint variety is a cheap follow-up
+## (swap GRADE_TINT_COLOR per WEAPONS row) if more arsenal variety is wanted
+## later, not a redesign.
+const GRADE_BRIGHTNESS_GAIN := 1.9
+const GRADE_BLACK_LIFT := 0.06
+const GRADE_SATURATION_BOOST := 1.8
+const GRADE_TINT_COLOR := Color(0.4, 0.55, 0.75)  ## cool gunmetal steel-blue
+const GRADE_TINT_STRENGTH := 0.22
+
 var _model_path: String = ""
 var _out_dir: String = ""
 
@@ -94,6 +123,7 @@ func _init() -> void:
 
 func _render_frame(index: int, object_yaw_deg: float) -> void:
 	var color_img := await _render_pass(object_yaw_deg, PassType.COLOR)
+	_grade_color_image(color_img)
 	var normal_img := await _render_pass(object_yaw_deg, PassType.NORMAL)
 	var shadow_raw := await _render_pass(object_yaw_deg, PassType.SHADOW)
 	var shadow_sharp_img: Image = shadow_raw.duplicate() as Image
@@ -214,6 +244,28 @@ func _compute_aabb(node: Node) -> AABB:
 		else:
 			result = result.merge(world_box)
 	return result
+
+
+## COLOR-GRADE-01: brightness lift+gain, HSV saturation boost, then a fixed
+## tint blended underneath — see the constants above for the "why". Opaque
+## pixels only (alpha gate), so the transparent margin never picks up a tinted
+## halo baked into supposedly-empty pixels.
+func _grade_color_image(img: Image) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in range(h):
+		for x in range(w):
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.001:
+				continue
+			var lifted := Color(
+				clampf(c.r * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+				clampf(c.g * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+				clampf(c.b * GRADE_BRIGHTNESS_GAIN + GRADE_BLACK_LIFT, 0.0, 1.0),
+			)
+			var saturated := Color.from_hsv(lifted.h, clampf(lifted.s * GRADE_SATURATION_BOOST, 0.0, 1.0), lifted.v)
+			var tinted := saturated.lerp(GRADE_TINT_COLOR, GRADE_TINT_STRENGTH)
+			img.set_pixel(x, y, Color(tinted.r, tinted.g, tinted.b, c.a))
 
 
 func _dilate_alpha(img: Image, iterations: int) -> void:

@@ -65,6 +65,39 @@ var soot_darkening: Array[float] = [0.20, 0.40, 0.63]  ## ring 0/1/2 multiplier
 ## multiplier (Director: "uma sombrinha um pouco mais forte pra diferenciar").
 var under_structure_factor: float = 0.68
 
+## FACE-READ-01 (Director, 2026-07-31) — per-voxel micro brightness variation.
+## *"Não é necessário que o material seja composto de voxels com a mesma
+## aparência exata [...] podemos diminuir um pouquinho o brilho do voxel todo
+## pra dar uma micro diferenciada."*
+##
+## Unlike the three-tone atom art (generate_voxel.py), this lives in the light
+## field, so it reaches EVERY surface including the photographically baked ones
+## — measured necessary: the atom-art change moved only 0.25% of a real
+## detonation capture, confined to the impact-mark and D25 carved voxels, which
+## are the only ones that bypass the baked lookup. A baked wall takes its pixels
+## from the facade page and never sees a change made here in art.
+##
+## Applied as a ±N step on the QUANTISED bucket index, not as a multiplier on
+## the continuous factor. Measured 2026-07-31: a 10% multiplicative jitter moved
+## only 19% of crater pixels, by a mean of 1.15/255, and actually *lowered* the
+## region's standard deviation — the 12-bucket quantisation swallowed it. One
+## index step always lands, and VoxelRenderer's bucket_luminance table is
+## non-linear, so a step is gentle in the light (0.92↔1.00) where "micro" is
+## what was asked for. Set to 0 to disable.
+##
+## SOOTED VOXELS ARE EXEMPT — see _compute_bucket(). This is not a special case
+## for tidiness; it was measured. The soot gradient is carried in this same
+## 12-bucket channel and only spans buckets 0-2, so jittering sooted voxels does
+## not enrich the crater, it erases its rings: mean luminance fell 41.1 → 26.6
+## and the mid-tone band emptied (9% → 0% of pixels). Soot and micro-variation
+## compete for one quantised channel, and the gradient wins.
+##
+## Deterministic per voxel via the project's FNV-1a hash — B4 discipline, so it
+## is stable across rebuilds and identical between an incremental and a fresh
+## build. Purely visual: LIGHT_MASTER_PLAN's canon split means brightness is
+## never tactical visibility, so this cannot move a gameplay number.
+var micro_jitter_buckets: int = 1
+
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult
 var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEAD anchor)
@@ -160,7 +193,20 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 	var intensity: float = _lamp_intensity(gu, level, top_bucket)
 	intensity *= _static_factor(cell, level)
-	return clampi(roundi(intensity * float(top_bucket)), 0, top_bucket)
+	## FACE-READ-01: nudge the QUANTISED bucket, after rounding — nudging the
+	## continuous value before it was measured to be swallowed by the rounding
+	## (see micro_jitter_buckets). Sooted voxels are deliberately EXEMPT: their
+	## read comes from the ring gradient, which lives in this same 12-bucket
+	## channel and only spans buckets 0-2, so noise there does not enrich it, it
+	## eats it. Measured 2026-07-31 on the real crater: jittering sooted voxels
+	## too dropped the region's mean luminance 41.1 → 26.6 and emptied the
+	## mid-tone band (9% → 0% of pixels), i.e. it flattened the very gradient the
+	## Director asked to preserve ("mais perto do centro da explosão, mais escura
+	## a face; quanto mais distante, menos opacidade").
+	var bucket: int = roundi(intensity * float(top_bucket))
+	if is_equal_approx(soot_factor(cell, level), 1.0):
+		bucket += micro_jitter_offset(cell, level)
+	return clampi(bucket, 0, top_bucket)
 
 
 ## VL-03 — surface × soot × under-structure, cached per voxel and independent of
@@ -181,6 +227,17 @@ func _static_factor(cell: Vector2i, level: int) -> float:
 		factor *= under_structure_factor
 	_static_factor_cache[key] = factor
 	return factor
+
+
+## FACE-READ-01 — deterministic per-voxel bucket offset in
+## [-micro_jitter_buckets, +micro_jitter_buckets]. Public so a capture/probe can
+## read it directly, same as soot_factor() and surface_factor().
+func micro_jitter_offset(cell: Vector2i, level: int) -> int:
+	if micro_jitter_buckets <= 0:
+		return 0
+	var key := "MICROJITTER:%d,%d,%d" % [cell.x, cell.y, level]
+	var span: int = micro_jitter_buckets * 2 + 1
+	return int(FacadeSampler._fnv1a_hash(key) % span) - micro_jitter_buckets
 
 
 ## Lamp-only intensity for a GU column at one level, cached per (GU, level).

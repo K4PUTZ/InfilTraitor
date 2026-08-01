@@ -28,12 +28,36 @@ class_name MaterialResistanceTable
 ## voxels em volta, ou quebrar a janela inteira" cascade beyond the normal
 ## ring falloff is NOT modeled here yet — flagged open in
 ## DESTRUCTION_MASTER_PLAN §7 item 4, not invented on the spot.
+## "earth" (FLOOR-DENT-01, 2026-08-01): consumed by the floor-dent path only —
+## apply_crater_damage()'s crater geometry ignores destroy_factor, so
+## dent_factor is the one live number: the prevalence of carved-TOP pockmarks
+## among crater-rim survivors and in the fading band beyond the crater. Same
+## first-pass placeholder status as every other row. crack_factor stays 0.0:
+## no earth crack texture exists, and the table's own rule is that a tier with
+## no texture wired stays off.
 const TABLE := {
 	"metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3},
 	"stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2},
 	"concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15},
 	"wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03},
 	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
+	"earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0},
+	## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry.
+	## register_ground_defaults()). Added with "earth" because the only floor
+	## in the real test map (PLAYGROUND) is a single ground_concrete zone
+	## covering all 24x16 GUs: without these rows the floor-dent path is
+	## reachable ONLY on plain earth and produces literally zero dents on the
+	## map it is tested against (measured: 0 dents across 42 affected floor
+	## slabs before this row existed). dent_factor mirrors each material's
+	## obvious counterpart above, same first-pass placeholder status as every
+	## other row. destroy_factor is inert for floors — apply_crater_damage()
+	## decides removal geometrically — and is listed only so the rows are not
+	## half-specified. crack_factor 0.0: no ground crack texture exists.
+	"ground_concrete": {"destroy_factor": 0.5, "dent_factor": 0.2,  "crack_factor": 0.0},
+	"ground_gravel":   {"destroy_factor": 0.5, "dent_factor": 0.3,  "crack_factor": 0.0},
+	"ground_dirt":     {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0},
+	"ground_grass":    {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0},
+	"ground_sand":     {"destroy_factor": 0.5, "dent_factor": 0.4,  "crack_factor": 0.0},
 }
 
 ## Defaults stay 0.0 for dent/crack (not the table's own values) so any

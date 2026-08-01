@@ -550,6 +550,23 @@ def main() -> None:
             img.save(path, "PNG")
             print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
             dented_count += 1
+
+    # FLOOR-DENT-01 (2026-08-01) — the floor's own carved variant. Plain-earth
+    # floors are the one ground type that dents today (MaterialResistanceTable's
+    # "earth" row; zoned ground_* materials stay dent-free until they get their
+    # own asset + table entry). A floor is only ever eaten from ABOVE, so earth
+    # gets exactly the _top carve — the same reasoning that gives ceilings only
+    # _bottom. Base colour is EARTH_VARIANTS[0]: the carved voxel reads as
+    # generic earth (the broken face dominates the read), not as one specific
+    # of the 8 floor variants.
+    earth_base = generate_voxel_atom(EARTH_VARIANTS[0])
+    earth_override = IMPACT_OUTPUT_DIR / (BROKEN_FACE_TEMPLATE % "earth")
+    earth_broken = Image.open(earth_override).convert("RGBA") if earth_override.exists() else generic_broken
+    img = generate_dented_voxel(earth_base, earth_broken, "top")
+    path = IMPACT_OUTPUT_DIR / "voxel_earth_blast_dented_top.png"
+    img.save(path, "PNG")
+    print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
+    dented_count += 1
     print(f"\n✓ {dented_count} dented half-voxel(s) → {IMPACT_OUTPUT_DIR}/")
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
 

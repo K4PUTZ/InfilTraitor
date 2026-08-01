@@ -3026,6 +3026,33 @@ func _run_auto_screenshot_capture() -> void:
 			## the real damage.
 			for _j in range(45):
 				await get_tree().process_frame
+			## FLOOR-DENT-01 (2026-08-01): rotate AFTER the blast, so a capture
+			## proves damage SURVIVES rotation instead of only that it renders
+			## once. Deliberately distinct from INFILTRAITOR_CAPTURE_PERSPECTIVE
+			## (weapon bench), which rotates BEFORE firing and therefore says
+			## nothing about persistence. This is the exact failure class that bit
+			## D23 on 2026-07-31: _base_damage stored too little, so every rotation
+			## silently replayed the wrong marks.
+			var rotate_after := OS.get_environment("INFILTRAITOR_CAPTURE_ROTATE_AFTER")
+			if rotate_after in ["N", "E", "S", "W"]:
+				## Re-read the grenade's GU here: the click block above scopes its
+				## own copy, and this runs whether or not that block ran.
+				var blast_gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+				var gu_base := PerspectiveMapperClass.cell_to_base(
+					blast_gu, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
+				_set_perspective(rotate_after)
+				for _r in range(30):
+					await get_tree().process_frame
+				## The crater moved with the map — follow it, or the capture frames
+				## whatever is now at the old screen position and proves nothing.
+				var gu_now := PerspectiveMapperClass.cell_from_base(
+					gu_base, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
+				if _camera_controller != null and agent != null:
+					_camera_controller.focus_on(agent._cell_to_world(gu_now))
+				if _fow_controller != null:
+					_fow_controller.reveal_around(gu_now, 12)
+				for _r2 in range(10):
+					await get_tree().process_frame
 		if capture_action == "test_zone_escape":
 			var esc_down := InputEventKey.new()
 			esc_down.keycode = KEY_ESCAPE

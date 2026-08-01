@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 35243 lines total** (under `godot/scripts/`)
+**163 scripts · 35600 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1558 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1601 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -658,7 +658,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
-- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ]`
+- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim ## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE, ## so earth gets exactly the _top carve — the mirror of ceilings only ever ## carving _bottom. Appended last: MATERIALS is append-only (source_id == ## index). "earth_blast_dented_top", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
 - `_IMPACT_SUFFIXES` = `[ "_dented", "_cracked", "_dented_top", "_dented_bottom", "_dented_left", "_dented_right", ]`
@@ -1339,7 +1339,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 653 lines
+`class_name BlastCalculator` · 703 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1392,14 +1392,14 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 57 lines
+`class_name MaterialResistanceTable` · 81 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
 > MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
 
 **Constants / tuning**
-- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, "glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0}, }`
+- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, "glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0}, "earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0}, ## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry. ## register_ground_defaults()). Added with "earth" because the only floor ## in the real test map (PLAYGROUND) is a single ground_concrete zone ## covering all 24x16 GUs: without these rows the floor-dent path is ## reachable ONLY on plain earth and produces literally zero dents on the ## map it is tested against (measured: 0 dents across 42 affected floor ## slabs before this row existed). dent_factor mirrors each material's ## obvious counterpart above, same first-pass placeholder status as every ## other row. destroy_factor is inert for floors — apply_crater_damage() ## decides removal geometrically — and is listed only so the rows are not ## half-specified. crack_factor 0.0: no ground crack texture exists. "ground_concrete": {"destroy_factor": 0.5, "dent_factor": 0.2,  "crack_factor": 0.0}, "ground_gravel":   {"destroy_factor": 0.5, "dent_factor": 0.3,  "crack_factor": 0.0}, "ground_dirt":     {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0}, "ground_grass":    {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0}, "ground_sand":     {"destroy_factor": 0.5, "dent_factor": 0.4,  "crack_factor": 0.0}, }`
 
 ---
 
@@ -2172,7 +2172,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 953 lines
+extends `SceneTree` · 1095 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2204,12 +2204,15 @@ extends `SceneTree` · 953 lines
 - `func test_soot_rings_spread_by_distance() -> void:`
 - `func test_soot_min_ring_wins_between_two_holes() -> void:`
 - `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
+- `func test_crater_dents_rim_and_band_by_material() -> void:`
 - `func test_bias_prefers_epicenter_facing_side() -> void:`
 - `func test_no_bias_sentinel_keeps_hash_only_behavior() -> void:`
 - `func test_cone_is_directional_not_radial() -> void:`
 - `func test_cone_widens_with_distance() -> void:`
 - `func test_cone_respects_range_and_half_angle() -> void:`
 - `func test_cone_stops_at_blocked_edge() -> void:`
+- `func test_flood_rings_stops_at_solid_block() -> void:`
+- `func test_flood_cone_stops_at_solid_block() -> void:`
 - `func test_cone_output_shape_matches_rings() -> void:`
 - `func test_destroy_multiplier_scales_damage() -> void:`
 - `func test_pellet_impacts_no_hard_range_cap() -> void:`
@@ -2746,7 +2749,7 @@ extends `SceneTree` · 223 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 189 lines
+extends `SceneTree` · 252 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
@@ -2765,6 +2768,7 @@ extends `SceneTree` · 189 lines
 - `func test_render_slab_places_cells_matching_the_hash() -> void:`
 - `func test_render_slab_idempotent() -> void:`
 - `func test_d13_two_layer_floor_independent_containers() -> void:`
+- `func test_floor_dent_places_carved_asset_on_both_branches() -> void:`
 
 ---
 
@@ -3239,7 +3243,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 369 lines
+`class_name TestZoneController` · 377 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3503,7 +3507,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3333 lines
+extends `Node2D` · 3360 lines
 
 `godot/scripts/world/room.gd`
 

@@ -25,6 +25,9 @@ func _init() -> void:
 	test_render_slab_places_cells_matching_the_hash()
 	test_render_slab_idempotent()
 	test_d13_two_layer_floor_independent_containers()
+	## FLOOR-DENT-01 (2026-08-01) — a dented floor voxel must place the carved
+	## asset, on the plain-earth AND the zoned branch.
+	test_floor_dent_places_carved_asset_on_both_branches()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -186,4 +189,64 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 	else:
 		_fail("dirty_slabs() reported the wrong set: %s" % [registry.dirty_slabs()])
 
+	print("")
+
+
+## FLOOR-DENT-01 — the render-side half, at source_id level rather than by
+## eye. A DENTED floor voxel must place the carved-TOP asset through
+## process_dirty_slabs(), and the check that matters is the ZONED branch: a
+## zoned floor composing "ground_concrete_blast_dented_top" would miss
+## MATERIALS, and _set_voxel_cell()'s MATERIALS.find() returns -1 → source_id
+## 0 → the voxel silently repaints as flat "concrete" in the middle of the
+## crater rim. Asserting "not source_id 0" alone would be a weak test (0 is
+## also a legitimate id), so both branches are compared against the
+## independently re-derived MATERIALS.find("earth_blast_dented_top").
+func test_floor_dent_places_carved_asset_on_both_branches() -> void:
+	print("[5] FLOOR-DENT — a dented floor voxel places the carved-TOP asset (both branches)\n")
+
+	var expected_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top")
+	if expected_id < 0:
+		_fail("MATERIALS has no 'earth_blast_dented_top' entry — the carved floor asset is unwired")
+		print("")
+		return
+	var concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
+
+	## material "earth" → the EarthVariantSelector branch;
+	## "ground_concrete" → the zoned/baked branch (bake enabled below).
+	for material in ["earth", "ground_concrete"]:
+		var renderer := VoxelRendererClass.new()
+		root.add_child(renderer)
+		renderer.setup(Vector2.ZERO)
+
+		var registry := SlabRegistry.new()
+		var slab := SlabGenerator.generate(Vector2i(0, 0), Slab.Role.FLOOR, 0, material, registry)
+		renderer.render_slab(slab)
+
+		var target: Voxel = slab.voxels[0]
+		target.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP)
+		renderer.process_dirty_slabs(registry)
+
+		var layer: TileMapLayer = renderer.get_layer(0)
+		var actual_id: int = layer.get_cell_source_id(target.grid_pos)
+		if actual_id == expected_id:
+			_pass("%s: dented voxel placed source_id %d (earth_blast_dented_top)" % [material, actual_id])
+		elif actual_id == concrete_id:
+			_fail("%s: dented voxel fell through to source_id %d (concrete) — the silent MATERIALS.find() miss"
+				% [material, actual_id])
+		else:
+			_fail("%s: dented voxel placed source_id %d, expected %d" % [material, actual_id, expected_id])
+
+		## A neighbouring INTACT voxel must be untouched by the dent path. Only
+		## "is not the carved asset" is asserted: what an intact ZONED voxel
+		## resolves to depends on bake pages this synthetic fixture never
+		## registers, so its exact id here is a fixture artefact, not a claim
+		## about real rendering.
+		var neighbour: Voxel = slab.voxels[1]
+		var neighbour_id: int = layer.get_cell_source_id(neighbour.grid_pos)
+		if neighbour_id != expected_id:
+			_pass("%s: the INTACT neighbour was not painted with the carved asset" % material)
+		else:
+			_fail("%s: an INTACT neighbour was also painted with the carved asset" % material)
+
+		renderer.queue_free()
 	print("")

@@ -36,6 +36,9 @@ func _init() -> void:
 	test_soot_rings_spread_by_distance()
 	test_soot_min_ring_wins_between_two_holes()
 	test_crater_core_solid_rim_ragged_beyond_intact()
+	## FLOOR-DENT-01 (2026-08-01) — crater-rim survivors dent, prevalence from
+	## the product of material dent_factor × bomb radii × distance.
+	test_crater_dents_rim_and_band_by_material()
 	test_bias_prefers_epicenter_facing_side()
 	test_no_bias_sentinel_keeps_hash_only_behavior()
 	## WEAPON_MASTER_PLAN D1 / DESTRUCTION Part 5 — the CONE shape.
@@ -478,6 +481,97 @@ func test_crater_core_solid_rim_ragged_beyond_intact() -> void:
 		_fail("Rim was all-or-nothing (destroyed=%d intact=%d) — expected a mix" % [rim_destroyed, rim_intact])
 	else:
 		_pass("Core solid, beyond intact, rim mixed (%d destroyed / %d intact)" % [rim_destroyed, rim_intact])
+	print("")
+
+
+## FLOOR-DENT-01 — floor dents: a rim voxel that survives the destroy roll,
+## and any voxel in the band one rim-width past the crater, may become a
+## carved-TOP blast DENTED pockmark. Prevalence must (a) be zero without a
+## material (backward compat — every pre-FLOOR-DENT caller), (b) never touch
+## the core (destroyed) or anything past max_radius + rim_span, (c) always
+## carry blast provenance + CarvedSide.TOP, (d) scale monotonically with the
+## material's dent_factor (same hash rolls, larger threshold ⇒ superset), and
+## (e) never change WHICH voxels the destroy roll takes.
+func test_crater_dents_rim_and_band_by_material() -> void:
+	print("[12b] FLOOR-DENT: rim survivors + fading band dent, by material factor\n")
+
+	const CORE := 7.0
+	const MAX_R := 17.0
+	const RIM_SPAN := MAX_R - CORE  ## dent band ends at MAX_R + RIM_SPAN = 27
+	var epicenter := Vector2i(0, 0)
+
+	## One 28×28 quadrant: distances 0..~38 cover core, rim, band, and beyond.
+	var make_patch := func() -> Array:
+		var slab := Slab.new("DENT_PATCH", Vector2i.ZERO, Slab.Role.FLOOR, 0, "earth")
+		var out: Array = []
+		for x in range(28):
+			for y in range(28):
+				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		return out
+
+	var count_states := func(voxels: Array) -> Dictionary:
+		var stats := {"dents": 0, "destroyed": 0, "dent_in_core": 0,
+			"dent_beyond_band": 0, "bad_provenance": 0}
+		for v in voxels:
+			var d: float = Vector2(v.grid_pos - epicenter).length()
+			if v.damage_state == Voxel.DamageState.DESTROYED:
+				stats["destroyed"] += 1
+			elif v.damage_state == Voxel.DamageState.DENTED:
+				stats["dents"] += 1
+				if d <= CORE:
+					stats["dent_in_core"] += 1
+				if d > MAX_R + RIM_SPAN:
+					stats["dent_beyond_band"] += 1
+				if not v.damage_is_blast or v.damage_carved_side != VoxelClass.CarvedSide.TOP:
+					stats["bad_provenance"] += 1
+		return stats
+
+	## (a) no material → the pre-FLOOR-DENT behaviour, zero dents.
+	var bare: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(bare, "DENT_PATCH", epicenter, CORE, MAX_R)
+	var bare_stats: Dictionary = count_states.call(bare)
+	if bare_stats["dents"] == 0:
+		_pass("no material → 0 dents (every pre-existing caller unchanged)")
+	else:
+		_fail("no material still produced %d dents" % bare_stats["dents"])
+
+	## (b)(c) earth: dents exist, only in rim/band, always blast + carved TOP.
+	var earth: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(earth, "DENT_PATCH", epicenter, CORE, MAX_R, "earth")
+	var earth_stats: Dictionary = count_states.call(earth)
+	if earth_stats["dents"] > 0 and earth_stats["dent_in_core"] == 0 \
+			and earth_stats["dent_beyond_band"] == 0:
+		_pass("earth: %d dents, none in the core, none past max+rim (%d..%d px)"
+			% [earth_stats["dents"], int(CORE), int(MAX_R + RIM_SPAN)])
+	else:
+		_fail("earth dent placement wrong: dents=%d in_core=%d beyond_band=%d"
+			% [earth_stats["dents"], earth_stats["dent_in_core"], earth_stats["dent_beyond_band"]])
+	if earth_stats["bad_provenance"] == 0:
+		_pass("every dent is blast-sourced with CarvedSide.TOP")
+	else:
+		_fail("%d dents missing blast provenance or carved TOP" % earth_stats["bad_provenance"])
+
+	## (d) dent_factor monotonicity: metal 0.5 > earth 0.3 > concrete 0.2 —
+	## same hash per voxel, larger threshold ⇒ superset ⇒ strictly ordered
+	## counts on a patch this size.
+	var metal: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(metal, "DENT_PATCH", epicenter, CORE, MAX_R, "metal")
+	var concrete: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(concrete, "DENT_PATCH", epicenter, CORE, MAX_R, "concrete")
+	var m: int = count_states.call(metal)["dents"]
+	var e: int = earth_stats["dents"]
+	var c: int = count_states.call(concrete)["dents"]
+	if m > e and e > c:
+		_pass("prevalence follows dent_factor: metal %d > earth %d > concrete %d" % [m, e, c])
+	else:
+		_fail("prevalence not monotone with dent_factor: metal=%d earth=%d concrete=%d" % [m, e, c])
+
+	## (e) the destroy roll is untouched by the material's dent factor.
+	if earth_stats["destroyed"] == bare_stats["destroyed"]:
+		_pass("destroyed count identical with and without dents (%d)" % int(bare_stats["destroyed"]))
+	else:
+		_fail("dent roll changed destruction: %d vs %d"
+			% [earth_stats["destroyed"], bare_stats["destroyed"]])
 	print("")
 
 

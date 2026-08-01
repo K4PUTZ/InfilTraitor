@@ -523,9 +523,26 @@ static func carved_side_from_base(base_xy: Vector2i, dir: Vector3i,
 ## epicenter is in VOXEL coords; each affected floor slab passes its own voxels
 ## and the SAME global epicentre, so the destroyed disc is contiguous across GU
 ## boundaries. Deterministic (no RNG), same inputs → same crater.
+##
+## FLOOR-DENT-01 (Director, 2026-08-01): "o dent no chão também, sendo mais ou
+## menos prevalente de acordo com a soma de todas as variáveis de destruição."
+## A rim voxel that SURVIVES the destroy roll — and any voxel in a band one
+## rim-width past the crater — takes a second, independent roll to become a
+## carved-TOP DENTED pockmark (D25's half-voxel; a floor is only ever eaten
+## from above, the mirror of a ceiling only ever carving BOTTOM). Prevalence is
+## the product of every variable already in play: the material's dent_factor
+## (MaterialResistanceTable — "earth" 0.3; a material with no row rolls 0 and
+## stays dent-free, the table's own no-texture rule), the bomb's size (core/
+## max radii and therefore rim_span set both the band's width and where the
+## falloff sits), and the voxel's distance (full factor out to max_radius,
+## fading linearly to zero across one further rim_span). material is trailing
+## + defaulted to "" (dent_factor 0.0) so every pre-existing caller and test
+## is byte-for-byte unaffected.
 static func apply_crater_damage(voxels: Array, container_id: String,
-		epicenter: Vector2i, core_radius: float, max_radius: float) -> void:
+		epicenter: Vector2i, core_radius: float, max_radius: float,
+		material: String = "") -> void:
 	var rim_span: float = maxf(max_radius - core_radius, 0.001)
+	var dent_f: float = MaterialResistanceTable.dent_factor(material)
 	for voxel in voxels:
 		var d: float = Vector2(voxel.grid_pos - epicenter).length()
 		if d <= core_radius:
@@ -539,6 +556,26 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 			var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 			if h < keep_prob:
 				voxel.set_damage(Voxel.DamageState.DESTROYED)
+			else:
+				_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f)
+		elif d <= max_radius + rim_span:
+			_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f)
+
+
+## FLOOR-DENT-01 — one surviving floor voxel's dent roll. Separate salt from
+## the destroy roll (":FLOORDENT:") so surviving the crater does not correlate
+## with denting; carved side is always TOP (see apply_crater_damage's doc).
+static func _roll_floor_dent(voxel, container_id: String, d: float,
+		max_radius: float, rim_span: float, dent_f: float) -> void:
+	if dent_f <= 0.0:
+		return
+	var dent_p: float = dent_f * clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0)
+	if dent_p <= 0.0:
+		return
+	var key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
+	var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
+	if h < dent_p:
+		voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP)
 
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): "a segunda camada do chão mais difícil

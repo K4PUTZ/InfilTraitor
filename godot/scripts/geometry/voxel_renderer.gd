@@ -65,6 +65,12 @@ const MATERIALS: Array[String] = [
 	"stone_blast_dented_left", "stone_blast_dented_right",
 	"wood_blast_dented_top", "wood_blast_dented_bottom",
 	"wood_blast_dented_left", "wood_blast_dented_right",
+	## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim
+	## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE,
+	## so earth gets exactly the _top carve — the mirror of ceilings only ever
+	## carving _bottom. Appended last: MATERIALS is append-only (source_id ==
+	## index).
+	"earth_blast_dented_top",
 ]
 
 ## Voxel asset path template
@@ -133,6 +139,31 @@ static func damage_variant_material(base_material: String, damage_state: int,
 			return base_material + infix + "_cracked"
 		_:
 			return base_material
+
+## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
+##
+## A floor has exactly ONE damage asset today: the carved-TOP pockmark, built on
+## earth (a floor is only ever eaten from ABOVE — the mirror of a ceiling only
+## ever carving BOTTOM). Every ground material shares it, which is D25's existing
+## rule rather than a shortcut for floors: the broken face is deliberately
+## decoupled from material colour, "one generic grey fracture serves every
+## material", overridable per material by dropping a file in impact_marks/.
+##
+## This is what keeps the zoned/baked branch honest. A zoned floor composing
+## "ground_concrete_blast_dented_top" would miss MATERIALS entirely, and
+## _set_voxel_cell()'s MATERIALS.find() returns -1 → source_id 0 → the voxel
+## silently repaints as flat "concrete" — the exact failure render_slab()'s own
+## comment warns about for ground_* names. Impact marks bypass the baked lookup
+## by construction (_is_impact_mark()), so one asset serves both branches.
+##
+## Returns "" when there is no floor damage variant (INTACT, or a tier with no
+## floor asset), meaning "keep whatever material you were going to use".
+static func floor_damage_material(damage_state: int, is_blast: bool, carved_side: int) -> String:
+	if damage_state == Voxel.DamageState.INTACT or damage_state == Voxel.DamageState.DESTROYED:
+		return ""
+	var composed := damage_variant_material("earth", damage_state, is_blast, carved_side)
+	return composed if MATERIALS.has(composed) else ""
+
 
 ## OCC-27 (2026-07-21, Director's call): occlusion ring alphas, consumed by the
 ## wireframe fill (occlusion_slice_panel.gd). Since OCC-21 occluded cells are
@@ -1210,10 +1241,9 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 	## below used to send EVERY Role.FLOOR voxel down the earth-variant path, so a
 	## dirty-but-surviving voxel of a zoned floor (a CRACKED one; a DESTROYED one
 	## is erased instead) would come back as generic earth in the middle of an
-	## otherwise concrete floor. Latent rather than reported: nothing cracks floors
-	## today — apply_crater_damage only destroys — but FLOOR-DEPTH-01 puts a second
-	## floor plane through this same function, so leaving the two render paths
-	## disagreeing about what a floor voxel looks like is a trap with a fuse.
+	## otherwise concrete floor. Latent when written (craters only destroyed);
+	## FLOOR-DENT-01 (2026-08-01) made floor damage real — crater-rim survivors
+	## now carry DENTED with a carved TOP.
 	if _bake_config == null:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	for slab in dirty_slabs:
@@ -1226,17 +1256,30 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 			if voxel.visible:
 				if use_solid or is_zoned_floor:
 					var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
-					## D22: floor (earth-variant) voxels never carry DENTED/CRACKED
-					## today (apply_crater_damage only destroys, per the comment
-					## above) — the substitution is a no-op for them and only
-					## matters for CEILING/INTERIOR, which apply_container_damage
-					## can tag exactly like a wall.
+					## D22: the substitution tags CEILING/INTERIOR exactly like a
+					## wall (apply_container_damage).
 					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
+					## FLOOR-DENT-01: a zoned floor has no per-zone damage bake —
+					## its dents route to the shared carved-TOP asset instead of
+					## composing a "ground_*_blast_dented_top" name that MATERIALS
+					## does not hold (which would repaint the voxel flat concrete).
+					if is_zoned_floor:
+						var floor_damaged := floor_damage_material(voxel.damage_state,
+							voxel.damage_is_blast, voxel.damage_carved_side)
+						if floor_damaged != "":
+							render_material = floor_damaged
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 				else:
-					var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
-					_set_voxel_cell(voxel.grid_pos, voxel.level, "earth_%d" % variant_index)
+					## FLOOR-DENT-01: a damaged floor voxel renders its carved
+					## variant instead of a pristine earth variant — this branch
+					## was unreachable for damage before (craters only destroyed)
+					## and would silently repaint a dent as intact ground.
+					var earth_material := floor_damage_material(voxel.damage_state,
+						voxel.damage_is_blast, voxel.damage_carved_side)
+					if earth_material == "":
+						earth_material = "earth_%d" % EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+					_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
 			else:
 				var layer := get_layer(voxel.level)
 				if layer != null:

@@ -245,14 +245,20 @@ func detonate_active() -> void:
 					## already revealed it earlier in this same loop (dictionary
 					## iteration order across the two planes is not defined).
 					room._voxel_renderer.reveal_floor_slab(floor_slab)
+				## FLOOR-DENT-01: material drives the dent roll (earth 0.3;
+				## zoned ground_* floors have no table row and stay dent-free).
 				BlastCalculatorClass.apply_crater_damage(
-					floor_slab.voxels, floor_slab.id, epicenter, core, max_radius)
+					floor_slab.voxels, floor_slab.id, epicenter, core, max_radius,
+					floor_slab.material)
 				var fd := 0
+				var fdent := 0
 				for v in floor_slab.voxels:
 					_index_voxel(cell_to_voxel, v)
 					if v.damage_state == Voxel.DamageState.DESTROYED: fd += 1
-				print_debug("[BLAST]   floor=%s level=%d ring=%d crater core=%.1f max=%.1f destroyed=%d/%d" %
-					[floor_slab.id, floor_slab.level, floor_ring, core, max_radius, fd, floor_slab.voxels.size()])
+					elif v.damage_state == Voxel.DamageState.DENTED: fdent += 1
+				print_debug("[BLAST]   floor=%s level=%d ring=%d crater core=%.1f max=%.1f destroyed=%d dented=%d/%d" %
+					[floor_slab.id, floor_slab.level, floor_ring, core, max_radius, fd, fdent,
+					floor_slab.voxels.size()])
 				## D18 lazy reveal, finally triggered: without this the crater has no
 				## bottom — the voxels vanish and the legacy floor plane shows
 				## through, so a real hole reads as untouched ground.

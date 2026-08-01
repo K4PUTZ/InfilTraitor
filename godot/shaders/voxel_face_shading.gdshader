@@ -47,6 +47,34 @@ uniform float face_top : hint_range(0.0, 1.0) = 1.00;
 uniform float face_se : hint_range(0.0, 1.0) = 0.975;
 uniform float face_sw : hint_range(0.0, 1.0) = 0.945;
 
+// FACE-READ-02 (Director, 2026-08-01) — *"forçar a fuligem de destruição e
+// tiros a seguir o mesmo princípio de nunca deixar um voxel existir com as 3
+// faces totalmente iguais [...] garantir que as 3 faces tem uma micro
+// diferença."*
+//
+// The multiplies above are PROPORTIONAL, so their effect shrinks with the
+// pixel value and vanishes entirely into 8-bit quantisation exactly where soot
+// lives. Measured over the real value grid (bucket_luminance x soot_darkening x
+// FLOOR_DEPTH_DIM, art pixel 4..255): 63% of combinations rendered fewer than 3
+// distinct face values, and the collapse reached mid-tones as bright as 38/255
+// — a ring-0 sooted voxel at bucket 0.12 came out [4, 4, 4], three identical
+// faces, which is precisely the state this whole shader exists to prevent.
+//
+// This term is the ABSOLUTE floor that survives quantisation: one extra 1/255
+// step subtracted per face index (top 0, SE 1, SW 2). It is deliberately an
+// offset and not a steeper multiply — a multiply large enough to survive at
+// 4/255 would read as noise at 200/255, which is the failure the bucket-jitter
+// experiment already hit and retired on 2026-07-31.
+//
+// Same measurement after: 4.7% residual, and EVERY remaining collapse has a top
+// face of at most 2/255 — a voxel that is black on screen. So the guarantee is
+// honest but bounded: three distinct faces wherever the voxel renders above
+// 2/255, and below that nothing is distinguishable from black anyway.
+//
+// Soot from blasts and from firearms share one mechanism (D24), so this covers
+// both with no separate firearm path.
+uniform float face_min_sep : hint_range(0.0, 0.02) = 0.00392;  // 1.0/255
+
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
 
@@ -56,11 +84,14 @@ void fragment() {
 			+ abs(local.y - half_top.y) / half_top.y;
 
 	float f = face_sw;
+	float sep_index = 2.0;
 	if (diamond <= 1.0) {
 		f = face_top;
+		sep_index = 0.0;
 	} else if (local.x >= half_top.x) {
 		f = face_se;
+		sep_index = 1.0;
 	}
 
-	COLOR.rgb *= f;
+	COLOR.rgb = max(COLOR.rgb * f - face_min_sep * sep_index, vec3(0.0));
 }

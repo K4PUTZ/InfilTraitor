@@ -521,6 +521,59 @@ alternative. Cost of the error: one revert plus one re-land.
 
 ---
 
+### FACE-READ-02 — The separation is now GUARANTEED, not proportional ✅ LANDED 2026-08-01
+
+**Director:** *"vamos forçar a fuligem de destruição e tiros a seguir o mesmo
+princípio de nunca deixar um voxel existir com as 3 faces totalmente iguais. Não
+precisa ter quase nada de diferença, mas garantir que as 3 faces tem uma micro
+diferença."*
+
+**The defect FACE-READ-01 still had, measured before touching anything.** Its
+face factors are MULTIPLIES, so their effect shrinks with the pixel value and
+disappears entirely into 8-bit quantisation — exactly where soot lives. Scanned
+over the real canon grid (`VoxelRenderer.bucket_luminance` ×
+`VoxelLightField.soot_darkening` × `FLOOR_DEPTH_DIM`, art pixel 4..255):
+
+| | collapsed to <3 distinct face values | brightest top face still collapsing |
+|---|---|---|
+| before | **63.0%** of combinations | **38/255** — a clearly visible mid-tone |
+| after | 4.7% | 2/255 — black on screen |
+
+The reported case, a ring-0 sooted voxel in the darkest light bucket, rendered
+literally **`[4, 4, 4]`** — three identical faces, the precise state this shader
+exists to prevent. It now renders `[4, 3, 2]`.
+
+**Shipped:** `face_min_sep` (default `1.0/255`), an ABSOLUTE offset subtracted
+per face index (top 0, SE 1, SW 2) alongside the existing multiplies. Deliberately
+an offset and not a steeper multiply: a multiply large enough to survive at 4/255
+would read as noise at 200/255 — the same failure the retired bucket-jitter
+experiment hit, so the lesson above is what chose this shape. Blast soot and
+firearm soot share one mechanism (D24), so both are covered with no separate path.
+
+**The guarantee is bounded, and stated rather than overclaimed:** three distinct
+faces wherever a voxel renders above 2/255. Below that it is black and nothing is
+distinguishable anyway.
+
+**Evidence.** `voxel_face_separation_selftest.gd` (new) reads the canon values
+from their real owners and PARSES the shader's constants out of the `.gdshader`
+rather than copying them, so retuning either side fails the test instead of
+drifting; it carries its own teeth-check (`face_min_sep = 0` must collapse
+43727/60480 with worst visible 38/255, so test 1 can never pass vacuously). Real
+pixels, against a measured noise floor — two captures of the same build differ on
+13.3% of pixels from the ember/flicker tweens but contain **zero** pixels at
+delta −1 or −2, while before→after contains **375 641 px at exactly −1 and
+142 215 px at exactly −2** (the SE and SW faces, 56% of the frame) with the same
+temporal tail. Scene brightness is unmoved (sooted-region mean 32.7 → 32.6).
+Captures `auto_2026-08-01_01-05-08.png` (before) and `auto_2026-08-01_01-16-47.png`
+(after).
+
+**Not this, and still open:** per-face soot *content* — different soot amounts on
+different faces — remains the unspiked R/G/B-channel mechanism described under
+"OPEN — Per-FACE soot and light" below. This guarantees the three faces stay
+distinct under soot; it does not make soot itself directional.
+
+---
+
 ### 🔖 OPEN — Per-FACE soot and light (Director, 2026-07-31)
 
 Asked directly at session close: *"então agora a fuligem pode ser aplicada por

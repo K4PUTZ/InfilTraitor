@@ -323,6 +323,14 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
 ### VL-D — Destruction visuals (Director backlog, 2026-07-24)
 
 1. **Soot rings around blast holes ✅ LANDED 2026-07-24 (VL-D1).**
+   > **SUPERSEDED 2026-07-30 by `DESTRUCTION_MASTER_PLAN.md` D24.** `Voxel.soot_ring`
+   > and `compute_soot_rings()` no longer exist: soot is DERIVED fresh every repaint
+   > from which voxels are currently absent (`derive_soot_rings()` writing into a
+   > caller-supplied snapshot), never stored on the voxel, and it therefore survives
+   > rotation for free — which retires the "known limitation" recorded at the end of
+   > this very item. Firearm impacts feed the same mechanism as blasts. The original
+   > text is kept below as the record of what shipped first.
+
    `Voxel.soot_ring` (rides on the voxel, beside `damage_state`) +
    `BlastCalculator.compute_soot_rings()` — a multi-source BFS out of every
    DESTROYED cell tags surviving neighbours ring 0/1/2 (min wins). The field
@@ -460,6 +468,90 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
    plumbing expected. The denting/warping GEOMETRY is the one open question
    this arc didn't answer (wood/stone destroy into holes; metal is asked to
    deform in place instead) — needs its own design pass before implementation.
+
+---
+
+### FACE-READ-01 — Per-face voxel shading ✅ LANDED 2026-07-31
+
+**Director:** *"Eu queria garantir que nunca as três faces de um voxel vão ter
+exatamente a mesma aparência [...] isso faz com que fique completamente
+explícita a arquitetura do game, cada dimensão fica totalmente visível."*
+Runs of voxels were fusing into flat blobs because a voxel had at most TWO
+tones (top, and both sides sharing one).
+
+**Shipped:** `godot/shaders/voxel_face_shading.gdshader`, one shared
+`ShaderMaterial` on every voxel `TileMapLayer`. It derives the atom-local pixel
+as `mod(UV / TEXTURE_PIXEL_SIZE, atom_size)` — valid because BOTH tile paths lay
+atoms on an exact 32×36 grid aligned to the texture origin (per-material sources
+are a single 32×36 texture with one tile at (0,0); `register_baked_atlas_page()`
+sets `texture_region_size = (32, 36)`, zero margins, zero separation) — then
+classifies top / SE / SW from the atom's canon geometry and multiplies the
+colour. Because it multiplies, the light bucket, the soot term and every tile
+modulate survive untouched underneath. Values deliberately tiny (1.00 / 0.975 /
+0.945): *"o grande segredo é só diferenciar as 3 faces de cada voxel."*
+
+**Why a shader and not art** — measured, not assumed: the same idea expressed in
+`generate_voxel.py`'s atom art moved **0.25%** of a real capture, because the
+atom art only ever reaches voxels that bypass the baked lookup (impact marks and
+D25 carved half-voxels); every photographically baked wall takes its pixels from
+a facade page. The shader moved **60.8%**. Only the shader covers both paths, and
+it needs no re-bake.
+
+**Rejected: per-voxel brightness jitter** (`VoxelLightField.micro_jitter_buckets`,
+kept in code at 0 with its measurements attached). Stepping the quantised bucket
+index cannot be "micro" in shadow, because `bucket_luminance` is compressed at
+its dark end — 0.12 → 0.20 → 0.33 is +67%, +65% per step against +8% at the top.
+Measured relative impact, stratified by brightness band: jitter 6.7% (darkest) →
+4.1% (brightest), i.e. strongest exactly where the Director reported it reading
+as noise; the shader, being multiplicative, is perceptually flat at 1.6% → 3.3%.
+A second measurement killed an earlier variant: jittering SOOTED voxels erased
+the crater rings outright (mean luminance 41.1 → 26.6, mid-tone band 9% → 0% of
+pixels), because soot lives in the same 12-bucket channel and only spans buckets
+0-2. **Soot and micro-variation compete for one quantised channel, and the
+gradient has to win.**
+
+**Process note worth keeping:** an intermediate capture was reported to the
+Director as a UV-mapping bug and the shader was reverted on that basis. It was
+not a bug — a debug build writing the atom-local coordinate out as a red/green
+gradient (`auto_2026-07-31_22-57-30.png`) showed it restarting exactly once per
+atom on both paths. The mapping had been correct all along; the values were
+simply far too strong to read as shading. The genuinely wrong formula,
+`fract(UV) * atom_size`, stays recorded in the shader header as the rejected
+alternative. Cost of the error: one revert plus one re-land.
+
+---
+
+### 🔖 OPEN — Per-FACE soot and light (Director, 2026-07-31)
+
+Asked directly at session close: *"então agora a fuligem pode ser aplicada por
+face?"* **Not yet, and the blocker is identified.** The shader differentiates
+faces by a GLOBAL uniform; soot needs per-CELL, per-FACE data, and the only
+per-cell channel today is `TileData.modulate`, delivered through a pre-minted
+alternative and carrying ONE scalar replicated across R/G/B
+(`_ensure_light_alt`: `Color(base.r * lum, base.g * lum, base.b * lum, base.a)`).
+
+**The mechanism that would work, unspiked:** those three channels are the wasted
+capacity. Encode top/SE/SW brightness in R/G/B, and have the shader pick ONE
+channel and apply it to all of RGB — so the modulate never tints, it stays a
+grayscale multiply, just chosen per face:
+
+```glsl
+vec4 tex = texture(TEXTURE, UV);
+float f = (diamond <= 1.0) ? MODULATE.r : (local.x >= half ? MODULATE.g : MODULATE.b);
+COLOR = vec4(tex.rgb * f, tex.a * MODULATE.a);
+```
+
+This would serve LIGHT per face as well as soot — the face turned toward a lamp
+reading brighter, which is the Director's original framing.
+
+**Costs to weigh before building it:** (a) the alternative-id space multiplies —
+today 12 buckets × 2 flips ≈ 24 ids; per-face soot patterns push it to roughly
+384–1536 possible, mitigated but not eliminated by the existing LAZY minting
+(`_ensure_light_alt` only creates what is actually placed, and most of a map is
+unsooted); (b) it **redefines what `modulate` means** in §3.4's unified
+alternative-tile state space, from "one light bucket per cell" to "three per-face
+brightnesses" — a canon change, not an implementation detail. Director's call at
+session close: **spike and measure before committing to it.**
 
 ---
 

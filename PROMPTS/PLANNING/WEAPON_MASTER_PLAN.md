@@ -166,15 +166,20 @@ blind to a `spec.blocks` obstacle, so the pellet walker sailed straight
 through the bench's own block and kept going. Fixed by adding a `blocked_cells`
 parameter, checked alongside `blocked_edges` at every step.
 
-**Consequence not yet addressed, flagged rather than silently left**: `flood_gu_rings()`/`flood_gu_cone()`
-themselves still only check `blocked_edges` — meaning a grenade's blast (and
-the CONE wireframe preview, `_cone_cells()`, still built on `flood_gu_cone()`)
-can very plausibly propagate straight through any `spec.blocks` obstacle the
-same way the pellet walker did before Bug 2's fix. Not fixed here — those
-functions are shared with the grenade/RADIAL path and touching them is a
-bigger blast radius than this session's bench-calibration scope. Worth its own
-check before the next real destruction capture involving a `spec.blocks`
-obstacle.
+**✅ CLOSED 2026-08-01 — the flagged consequence**: `flood_gu_rings()`/`flood_gu_cone()`
+only checked `blocked_edges`, so a grenade's blast (and the CONE wireframe
+preview, `_cone_cells()`) could propagate straight through a `spec.blocks`
+obstacle the same way the pellet walker did before Bug 2's fix. Both floods
+now take the same trailing `blocked_cells: Dictionary = {}` parameter, checked
+alongside `blocked_edges` at every BFS step — an occupied cell is never
+entered, and the block's facing slices still take damage because
+`find_affected_containers()` walks `edges_touching_gu()` of the flooded side.
+All three real callers wired with `room._blocked_cells` (test zone preview +
+detonation, bench `_cone_cells()`). Red-before-green in
+`blast_calculator_selftest.gd`: `test_flood_rings_stops_at_solid_block` /
+`test_flood_cone_stops_at_solid_block` failed with the literal leak
+(`block_in=true behind_in=true`, `RESULT: 41 PASS, 2 FAIL`) before the check
+landed, `43 PASS, 0 FAIL` after.
 
 **Evidence**: `blast_calculator_selftest.gd` 35/35 PASS, including 2 new
 regression tests reproducing both bugs directly (`test_pellet_does_not_detour_around_narrow_obstacle`

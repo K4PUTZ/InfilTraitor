@@ -43,6 +43,10 @@ func _init() -> void:
 	test_cone_widens_with_distance()
 	test_cone_respects_range_and_half_angle()
 	test_cone_stops_at_blocked_edge()
+	## 2026-08-01 — floods must honor solid GU blocks (blocked_cells), the same
+	## gap the pellet walker closed on 2026-07-30. Flagged open 2026-07-30.
+	test_flood_rings_stops_at_solid_block()
+	test_flood_cone_stops_at_solid_block()
 	test_cone_output_shape_matches_rings()
 	test_destroy_multiplier_scales_damage()
 	## WEAPON_MASTER_PLAN D26-D28 (2026-07-30) — per-projectile point impact.
@@ -610,6 +614,50 @@ func test_cone_stops_at_blocked_edge() -> void:
 	else:
 		_fail("blocked edge not honored: 19=%s 18=%s" %
 			[cone.has(Vector2i(10, 19)), cone.has(Vector2i(10, 18))])
+	print("")
+
+
+## 2026-08-01 — a solid GU block (spec.blocks / bench material walls) marks a
+## whole CELL occupied (room._blocked_cells) and never touches blocked_edges,
+## so the ring flood propagated straight through it — the exact bug the pellet
+## walker had before its 2026-07-30 blocked_cells fix, still open on the
+## RADIAL path. An occupied cell must never be entered, and cells only
+## reachable THROUGH it must stay unreached (a 2-ring bomb makes the shortest
+## legal detour, 4 steps, unreachable — same disambiguation technique
+## test_flood_stops_at_blocked_edge uses).
+func test_flood_rings_stops_at_solid_block() -> void:
+	print("TEST: ring flood does not propagate through a solid GU block (blocked_cells)")
+	var bomb := _test_bomb([1.0, 0.7, 0.4])  # max_ring=2: detour around 1 block needs 4
+	var source := Vector2i(5, 5)
+	var occupied: Dictionary = {Vector2i(6, 5): true}
+
+	var rings := BlastCalculatorClass.flood_gu_rings(source, bomb, {}, occupied)
+
+	var block_excluded: bool = not rings.has(Vector2i(6, 5))
+	var behind_excluded: bool = not rings.has(Vector2i(7, 5))
+	var open_side_ok: bool = int(rings.get(Vector2i(4, 5), -1)) == 1
+	if block_excluded and behind_excluded and open_side_ok:
+		_pass("occupied (6,5) never entered, (7,5) behind it unreached, open (4,5) still ring 1")
+	else:
+		_fail("solid block leaked: block_in=%s behind_in=%s open(4,5)=%s" %
+			[rings.has(Vector2i(6, 5)), rings.has(Vector2i(7, 5)), rings.get(Vector2i(4, 5), "MISSING")])
+	print("")
+
+
+## Same gap, CONE path — a dead-ahead cone must stop at an occupied cell, not
+## flood through it to whatever lies behind.
+func test_flood_cone_stops_at_solid_block() -> void:
+	print("TEST: cone flood does not propagate through a solid GU block (blocked_cells)")
+	var occupied: Dictionary = {Vector2i(10, 18): true}
+	var cone := BlastCalculatorClass.flood_gu_cone(Vector2i(10, 20), NE, 5.0, 5, {}, occupied)
+	var reached_before: bool = cone.has(Vector2i(10, 19))
+	var block_excluded: bool = not cone.has(Vector2i(10, 18))
+	var behind_excluded: bool = not cone.has(Vector2i(10, 17))
+	if reached_before and block_excluded and behind_excluded:
+		_pass("reached (10,19), occupied (10,18) never entered, (10,17) behind it unreached")
+	else:
+		_fail("solid block leaked: 19=%s 18=%s 17=%s" %
+			[cone.has(Vector2i(10, 19)), cone.has(Vector2i(10, 18)), cone.has(Vector2i(10, 17))])
 	print("")
 
 

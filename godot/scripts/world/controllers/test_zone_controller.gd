@@ -139,7 +139,8 @@ func open_menu_for(index: int) -> void:
 	if room._blast_wireframe_overlay != null:
 		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 		if bomb_def != null:
-			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def, _blocked_edges_dict())
+			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def,
+				_blocked_edges_dict(), room._blocked_cells)
 			room._blast_wireframe_overlay.show_footprint(gu_rings.keys())
 
 
@@ -167,7 +168,8 @@ func detonate_active() -> void:
 
 		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
-			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def, _blocked_edges_dict())
+			var gu_rings := BlastCalculatorClass.flood_gu_rings(g["gu_cell"], bomb_def,
+				_blocked_edges_dict(), room._blocked_cells)
 			var affected := BlastCalculatorClass.find_affected_containers(
 				gu_rings, room._edge_registry, room._slab_registry)
 

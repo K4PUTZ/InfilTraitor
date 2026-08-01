@@ -174,7 +174,7 @@ func _cone_cells(weapon: Dictionary) -> Array:
 	var facing_delta: Vector2i = _view_facing_delta(weapon["facing"])
 	return BlastCalculatorClass.flood_gu_cone(
 		weapon["gu_cell"], facing_delta, weapon_def.cone_half_angle_deg,
-		PELLET_FLOOD_MAX_STEPS, _blocked_edges_dict()).keys()
+		PELLET_FLOOD_MAX_STEPS, _blocked_edges_dict(), room._blocked_cells).keys()
 
 
 ## Rotate a base-space compass edge into the active perspective. A perspective

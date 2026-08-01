@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.84 · **Updated:** 2026-07-29 · **Branch:** main
+**Version:** 0.9.85 · **Updated:** 2026-07-31 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -17,6 +17,8 @@
 - RESUMO_SESSAO_2026-07-28_FLOOR_ZONE_BAKE.md
 - RESUMO_SESSAO_2026-07-28_SHOTGUN_SHADOW.md
 - RESUMO_SESSAO_2026-07-29_FLOOR_DEPTH_NEON_COLLECTIBLE.md
+- RESUMO_SESSAO_2026-07-29_WEAPONS_BENCH_ARSENAL.md
+- RESUMO_SESSAO_2026-07-30_31_DESTRUCTION_VISUALS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -34,11 +36,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 253e8cc [DOCS] Session close: weapons bench, arsenal catalog, shot physics, VERSION 0.9.85
 - 0352467 [DOCS] Session close: prop-z + floor-depth decisions, z-slot map, VERSION 0.9.84
 - b68abb8 [VERSION] Bump to 0.9.83
 - 09e03ee [DOCS] Session close: FLOOR-ZONE-BAKE reference, schema tables, VERSION 0.9.82
 - f6e68b8 ALPHA TEMPORAL LIGHT FOUNDATION 0.9.81 - VL-D5 stone soot + session close
-- 3260943 ALPHA VOXEL LIGHT 0.9.80 - VL-D4 wood: directional bias + ember-to-char glow
 <!-- AUTO:END version_history -->
 
 ---

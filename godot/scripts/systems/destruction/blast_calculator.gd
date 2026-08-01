@@ -38,7 +38,18 @@ const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
 ## bomb_def.ring_multipliers.size()-1 rings. blocked_edges must already be
 ## keyed via WallEdgeData.edge_key() (same shape room._current_blocked_edges
 ## produces once folded through that helper).
-static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Dictionary) -> Dictionary:
+##
+## blocked_cells (2026-08-01) — the same gap select_cone_pellet_impacts()
+## closed on 2026-07-30: a solid GU block (`MapCompiler`'s `spec.blocks`, a
+## bench's material walls) marks whole CELLS occupied (`room._blocked_cells`)
+## and never touches `blocked_edges`, so the flood sailed straight through
+## solid blocks and kept going. An occupied cell is never entered — the blast
+## stops at its boundary, and the block's facing slices still take damage
+## through the flooded cell's own edges (find_affected_containers() walks
+## edges_touching_gu() of the FLOODED side). Trailing + defaulted so the
+## pure-hash selftests are unaffected.
+static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Dictionary,
+		blocked_cells: Dictionary = {}) -> Dictionary:
 	var max_ring: int = bomb_def.ring_multipliers.size() - 1
 	var rings: Dictionary = {source_gu: 0}
 	var frontier: Array[Vector2i] = [source_gu]
@@ -53,7 +64,8 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 				var neighbor: Vector2i = current + Face.delta(face)
 				if rings.has(neighbor):
 					continue
-				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges):
+				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges) \
+						or blocked_cells.has(neighbor):
 					continue
 				rings[neighbor] = current_ring + 1
 				next_frontier.append(neighbor)
@@ -90,7 +102,7 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 ## both physically reasonable for a spreading shot and consistent with how
 ## flood_gu_rings() already treats a grenade. Not a bug to fix later.
 static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angle_deg: float,
-		max_steps: int, blocked_edges: Dictionary) -> Dictionary:
+		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary = {}) -> Dictionary:
 	var cone: Dictionary = {source_gu: 0}
 	if max_steps <= 0:
 		return cone
@@ -111,7 +123,8 @@ static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angl
 				var neighbor: Vector2i = current + Face.delta(face)
 				if cone.has(neighbor):
 					continue
-				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges):
+				if WallEdgeData.is_edge_blocked(current, neighbor, blocked_edges) \
+						or blocked_cells.has(neighbor):
 					continue
 				var offset := Vector2(neighbor - source_gu)
 				## Strictly in front of the muzzle, and inside the wedge. The

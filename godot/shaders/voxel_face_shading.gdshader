@@ -1,34 +1,5 @@
 shader_type canvas_item;
 
-// ============================================================================
-// STATUS 2026-07-31: WRITTEN AND SPIKED, NOT WIRED. VoxelRenderer does NOT
-// attach this to its layers yet — deliberately, see "OPEN PROBLEM" below.
-// Direction approved by the Director; the remaining blocker is one unknown
-// about Godot's own UV parameterisation, not about the design.
-//
-// WHAT THE SPIKE PROVED: attaching a ShaderMaterial to the voxel TileMapLayers
-// reaches BOTH tile paths — a real detonation capture changed 60.8% of the
-// screen, against 0.25% for the equivalent change made in the atom ART, which
-// only ever touches the voxels that bypass the baked lookup. So a shader IS the
-// right seam, and no re-bake is needed.
-//
-// OPEN PROBLEM — deriving the ATOM-LOCAL pixel from UV. Two formulas were tried
-// against the real scene and both produced artefacts, so neither is correct:
-//   1. mod(UV / TEXTURE_PIXEL_SIZE, atom_size)
-//      → fine checkerboard over every surface, including floor tops that should
-//        be uniformly face_top.
-//   2. fract(UV) * atom_size
-//      → large diagonal bands; consistent with UV being normalised over the
-//        WHOLE atlas (4096×576 for a baked page), so the entire page collapses
-//        into a single atom-sized range.
-// Next step is NOT another guess: write a debug shader that outputs UV and
-// TEXTURE_PIXEL_SIZE directly as colour, capture it, and read the actual values
-// back — then derive the mapping from measurement instead of assumption.
-//
-// Everything below is the intended shading logic and is believed correct once
-// `local` is right; only that one line is in question.
-// ============================================================================
-
 // FACE-READ-01 (Director, 2026-07-31) — per-FACE shading for voxel tiles.
 //
 // "Eu queria garantir que nunca as três faces de um voxel vão ter exatamente a
@@ -41,17 +12,21 @@ shader_type canvas_item;
 // first and measured to move only 0.25% of a real capture, because it reaches
 // exclusively the voxels that bypass the baked lookup (impact marks and D25
 // carved half-voxels); every photographically baked wall takes its pixels from
-// a facade page and never sees an art change. A shader is the only seam that
-// covers both paths without re-baking anything.
+// a facade page and never sees an art change. Measured for this shader on the
+// same capture: 60.8%. A shader is the only seam that covers both paths, and
+// it needs no re-bake.
 //
 // HOW THE FACE IS FOUND: both tile paths lay atoms out on an exact 32×36 grid
 // aligned to the texture origin — the per-material sources are a single 32×36
 // texture with one tile at (0,0), and register_baked_atlas_page() sets
 // texture_region_size = (32, 36) with zero margins and zero separation. So the
 // atom-local pixel is just mod(pixel, atom_size), with no per-tile uniform and
-// no region lookup. The atom's geometry is canon (Transform Canon / SLICE-00):
-// a top diamond over the first `top_face_h` rows, then the SW face left of the
-// midline and the SE face right of it.
+// no region lookup. VERIFIED by capture, not assumed: a debug build writing
+// `local` out as a red/green gradient shows the gradient restarting once per
+// atom across both the baked walls and the material-only floor
+// (auto_2026-07-31_22-57-30.png). An earlier reading of a strong-value capture
+// mistook this working per-voxel effect for a tiling artefact — the mapping was
+// never wrong, the values were simply far too strong to read as shading.
 //
 // This MULTIPLIES the existing colour, so the light bucket, the soot term and
 // every tile modulate survive untouched underneath — this shader only decides
@@ -61,15 +36,19 @@ shader_type canvas_item;
 uniform vec2 atom_size = vec2(32.0, 36.0);
 uniform float top_face_h = 16.0;
 
-// Tuning (Rule 1: never const). Kept at or below 1.0 so a face can only be
-// darkened relative to the art, never brightened into clipping. The art itself
-// keeps its single flat side tone; the differentiation lives here.
-uniform float face_top : hint_range(0.0, 1.0) = 1.0;
-uniform float face_se : hint_range(0.0, 1.0) = 1.0;
-uniform float face_sw : hint_range(0.0, 1.0) = 0.80;
+// Tuning (Rule 1: never const). DELIBERATELY SUBTLE — Director, 2026-07-31:
+// *"usar valores baixos, essa diferenciação é pra ser sutil, e não causar
+// grande impacto na aparência geral. O grande segredo é só diferenciar as 3
+// faces de cada voxel."* What matters is only that the three values are
+// DISTINCT, not that they are far apart; a strong spread reads as noise at this
+// voxel size, which is what the first pass got wrong. Capped at 1.0 so a face
+// can only be darkened relative to the art, never brightened into clipping.
+uniform float face_top : hint_range(0.0, 1.0) = 1.00;
+uniform float face_se : hint_range(0.0, 1.0) = 0.97;
+uniform float face_sw : hint_range(0.0, 1.0) = 0.92;
 
 void fragment() {
-	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);  // ← the open problem
+	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
 	vec2 half_top = vec2(atom_size.x * 0.5, top_face_h * 0.5);

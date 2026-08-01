@@ -1253,10 +1253,33 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 ## z-index formula has exactly one owner; the two callers differ only in
 ## WHERE they file the result (_voxel_layers vs _negative_voxel_layers),
 ## never in HOW a layer is built.
+## FACE-READ-01 — one shared ShaderMaterial for every voxel layer. Built lazily
+## and reused: the shader is stateless (its uniforms are global tuning, not
+## per-layer), so N layers share one material and one pipeline.
+var _face_shading_material: ShaderMaterial
+
+
+func _get_face_shading_material() -> ShaderMaterial:
+	if _face_shading_material != null:
+		return _face_shading_material
+	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
+	if shader == null:
+		## B6 loud-fail: silently rendering undifferentiated voxels is exactly
+		## the class of bug this project keeps paying for.
+		push_error("[VoxelRenderer] FACE-READ-01: voxel_face_shading.gdshader failed to load — voxel faces will render flat")
+		return null
+	_face_shading_material = ShaderMaterial.new()
+	_face_shading_material.shader = shader
+	return _face_shading_material
+
+
 func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.tile_set = _tileset
 	layer.name = "voxel_layer_%d" % level
+	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
+	## material-only and the baked tile paths — see the shader's own header.
+	layer.material = _get_face_shading_material()
 
 	# E1 equation from Transform Canon (SLICE-00)
 	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):

@@ -27,7 +27,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 125
-- Test scripts: 26
+- Test scripts: 27
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16

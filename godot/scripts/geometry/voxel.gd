@@ -31,6 +31,19 @@ var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08), null unti
 ## cause), so only DENTED/CRACKED callers need to pass true.
 var damage_is_blast: bool = false
 
+## D25 (Director diagram, 2026-07-31): a blast-DENTED voxel is a HALF voxel,
+## and this is WHICH SIDE the blast ate — the side that faced the explosion.
+## Picks one of VoxelRenderer's four carved half-voxel textures.
+##
+## VIEW space, not base space: LEFT/RIGHT mean screen-left/screen-right, so
+## this value is only valid for the perspective it was computed under.
+## room._reapply_base_damage() recomputes it from the persisted base-space
+## direction on every rotation — see room._base_damage's own doc.
+## NONE means "direction unknown" (no epicentre bias was supplied), which
+## renders the flat pre-D25 blast mark rather than guessing a side.
+enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4 }
+var damage_carved_side: int = CarvedSide.NONE
+
 ## Back-reference for dirty propagation. Untyped on purpose: D1
 ## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
 ## (parent = Slice, owned by an Edge) and floor/ceiling/interior voxels (parent =
@@ -60,11 +73,16 @@ func set_visible(v: bool) -> void:
 ## state (D20 stacking a second hit into an already-DENTED voxel, say) keeps
 ## whichever source marked it first, same as the early-return already did for
 ## damage_state itself.
-func set_damage(new_state: int, from_blast: bool = false) -> void:
+## D25: carved_side travels with from_blast for the same reason and under the
+## same rule — read once, on the transition, so a second blast never rotates an
+## already-carved voxel's hole to a new side.
+func set_damage(new_state: int, from_blast: bool = false,
+		carved_side: int = CarvedSide.NONE) -> void:
 	if damage_state == new_state:
 		return
 	damage_state = new_state
 	damage_is_blast = from_blast
+	damage_carved_side = carved_side
 	if new_state == DamageState.DESTROYED:
 		visible = false
 	_set_dirty()

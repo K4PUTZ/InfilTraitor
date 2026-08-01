@@ -169,7 +169,17 @@ var _crater_floor_soot: Dictionary = {}
 ## fresh every repaint from whichever voxels damage_state already marks
 ## destroyed, so persisting it separately would just be a second copy of the
 ## same fact.
-var _base_damage: Dictionary = {}   ## base voxel key → damage_state (>0)
+## D23/D25 (2026-07-31): the value is no longer a bare damage_state. A blast
+## mark also has to remember that it CAME from a blast, and which side of the
+## voxel the blast ate — neither of which survived a rotation before, because
+## only damage_state was stored and set_damage()'s other arguments fell back to
+## their defaults on reapply. That silently reverted every blast mark to the
+## BULLET texture family on the first perspective flip.
+## Packed as Array[int]: [damage_state, is_blast, dir_x, dir_y, dir_z], where
+## dir is the BASE-space unit direction pointing at the blast (Vector3i.ZERO =
+## unknown). Base-space is the whole point: LEFT/RIGHT are screen-relative, so
+## the carved side has to be re-derived per view — see _carved_side_from_base().
+var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
 
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
@@ -193,12 +203,39 @@ func _base_voxel_size() -> Vector2i:
 ## later rotation. damage_state 0 means "nothing to persist". D24: no soot
 ## parameter any more — soot derives fresh from damage_state at repaint time,
 ## see BlastCalculator.derive_soot_rings().
-func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int) -> void:
+## D23/D25: is_blast and carved_side ride along now — see _base_damage's doc for
+## why storing damage_state alone silently downgraded every blast mark to a
+## bullet mark on the first rotation. carved_side is VIEW-space
+## (Voxel.CarvedSide); it is converted to a base-space direction here and back
+## to whatever the carved side is under the NEW view on reapply.
+func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int,
+		is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE) -> void:
 	if damage_state <= 0:
 		return
 	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
 	var key := Vector3i(base_xy.x, base_xy.y, level)
-	_base_damage[key] = damage_state
+	var dir := _carved_side_to_base_dir(grid_pos, carved_side)
+	_base_damage[key] = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z]
+
+
+## D25 — VIEW-space Voxel.CarvedSide → BASE-space unit direction pointing at the
+## blast. TOP/BOTTOM are vertical and so rotation-invariant; LEFT/RIGHT are the
+## screen-space read of the two front-facing horizontal edges (SW and SE, whose
+## grid deltas are (0,+1) and (+1,0)), and those DO rotate, so they go through
+## the same PerspectiveMapper the cells themselves use. Taking the difference of
+## two rotated points keeps that conversion honest — the affine offsets cancel,
+## so there is no second rotation formula here to drift out of sync with the one
+## in PerspectiveMapper.
+func _carved_side_to_base_dir(grid_pos: Vector2i, carved_side: int) -> Vector3i:
+	return BlastCalculator.carved_side_to_base_dir(grid_pos, carved_side, _active_perspective, _base_voxel_size())
+
+
+## D25 — the inverse of the above, for the perspective the room is in NOW.
+## Horizontal directions are re-projected to screen space and classified by the
+## sign of their screen-x ((x − y) under this isometric projection), the same
+## test BlastCalculator.carved_side_for() applies at detonation time.
+func _carved_side_from_base(base_xy: Vector2i, dir: Vector3i) -> int:
+	return BlastCalculator.carved_side_from_base(base_xy, dir, _active_perspective, _base_voxel_size())
 
 
 ## VL-PERSIST — re-apply the base-coord destruction registry to the freshly
@@ -239,10 +276,18 @@ func _reapply_base_damage() -> void:
 		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
 		if v == null:
 			continue
-		v.set_damage(int(_base_damage[base_key]))
+		## D23/D25: replay the FULL record, not just damage_state — the carved
+		## side is re-derived for the perspective being entered, so the hole
+		## stays on the side that physically faced the blast instead of
+		## following the screen.
+		var rec: Array = _base_damage[base_key]
+		var rec_state: int = int(rec[0])
+		v.set_damage(rec_state, int(rec[1]) == 1,
+			_carved_side_from_base(Vector2i(base_key.x, base_key.y),
+				Vector3i(int(rec[2]), int(rec[3]), int(rec[4]))))
 		## A destroyed FLOOR voxel exposes the level beneath it — re-reveal it and
 		## scorch the revealed cell, same as the original detonation did (VL-D2).
-		if base_key.z < 0 and int(_base_damage[base_key]) == Voxel.DamageState.DESTROYED:
+		if base_key.z < 0 and rec_state == Voxel.DamageState.DESTROYED:
 			var gu := Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)
 			var below_level: int = v.level - 1
 			if below_level >= GeometryCoords.FLOOR_DEEP_LEVEL:

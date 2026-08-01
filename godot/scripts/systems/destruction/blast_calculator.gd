@@ -409,10 +409,90 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		## D23: this is the ring-group scatter model, used only by RADIAL — a
 		## blast's DENTED/CRACKED voxels get the irregular chip/crack texture
 		## family, never the bullet's round puncture.
+		## D25: DENTED additionally carries WHICH SIDE the blast ate, so the
+		## renderer can pick the matching carved half-voxel.
 		for voxel in dent_set:
-			voxel.set_damage(Voxel.DamageState.DENTED, true)
+			voxel.set_damage(Voxel.DamageState.DENTED, true,
+				carved_side_for(voxel.grid_pos, is_roof, bias_epicenter))
 		for voxel in crack_set:
 			voxel.set_damage(Voxel.DamageState.CRACKED, true)
+
+
+## D25 (Director diagram, 2026-07-31) — which side of `voxel_cell` faced the
+## explosion, as a Voxel.CarvedSide in VIEW space.
+##
+## Fixes the Director's 2026-07-31 report that a ceiling above a grenade showed
+## its damage on the outward TOP, "por cima", when a blast that passes under a
+## slab can only ever eat its underside: a roof container is by construction
+## above the blast that reached it, so it carves BOTTOM — the diagram's
+## "DENTED CEILING VOXEL", which is pure silhouette (an isometric camera never
+## sees a ceiling's underside, hence no broken face on that variant).
+##
+## For a wall the choice is left/right, and it is decided in SCREEN space
+## rather than by the slice's compass face: the isometric projection puts
+## screen-x along (x − y), so the epicentre is to the screen-left of a voxel
+## exactly when its (x − y) is the smaller one. Deriving it this way means any
+## of the four horizontal faces resolves to a visible carve — a blast arriving
+## from a back-facing NE/NW side still picks the side its direction leans
+## toward on screen, instead of selecting a face the camera cannot see.
+##
+## Returns CarvedSide.NONE when no epicentre was supplied (the pure-hash
+## callers and their tests), which renders the flat pre-D25 mark instead of
+## inventing a direction.
+static func carved_side_for(voxel_cell: Vector2i, is_roof: bool,
+		bias_epicenter: Vector2i) -> int:
+	if bias_epicenter == NO_EPICENTER_BIAS:
+		return Voxel.CarvedSide.NONE
+	if is_roof:
+		return Voxel.CarvedSide.BOTTOM
+	var epi_screen_x: int = bias_epicenter.x - bias_epicenter.y
+	var vox_screen_x: int = voxel_cell.x - voxel_cell.y
+	return Voxel.CarvedSide.LEFT if epi_screen_x < vox_screen_x else Voxel.CarvedSide.RIGHT
+
+
+## D25 — VIEW-space CarvedSide → BASE-space unit direction pointing at the
+## blast, and back. These live here, beside carved_side_for(), because the
+## carved side is one concept with one owner: room.gd only persists what this
+## class decides. TOP/BOTTOM are vertical and rotation-invariant; LEFT/RIGHT
+## are a screen-space read of the two front-facing horizontal edges (SW and SE,
+## grid deltas (0,+1) and (+1,0)) and therefore DO rotate.
+##
+## The rotation goes through PerspectiveMapper by taking the difference of two
+## rotated points: the affine offsets cancel, so there is no second rotation
+## formula here to drift out of sync with the one real one.
+static func carved_side_to_base_dir(grid_pos: Vector2i, carved_side: int,
+		perspective: String, base_size: Vector2i) -> Vector3i:
+	match carved_side:
+		Voxel.CarvedSide.TOP:
+			return Vector3i(0, 0, 1)
+		Voxel.CarvedSide.BOTTOM:
+			return Vector3i(0, 0, -1)
+		Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT:
+			var view_dir := Vector2i(0, 1) if carved_side == Voxel.CarvedSide.LEFT else Vector2i(1, 0)
+			var a := PerspectiveMapper.cell_to_base(grid_pos, perspective, base_size)
+			var b := PerspectiveMapper.cell_to_base(grid_pos + view_dir, perspective, base_size)
+			return Vector3i(b.x - a.x, b.y - a.y, 0)
+		_:
+			return Vector3i.ZERO
+
+
+## Inverse of the above, for whichever perspective the room is in NOW.
+## Horizontal directions are re-projected and classified by the sign of their
+## screen-x ((x − y) under this isometric projection) — the same test
+## carved_side_for() applies at detonation time, so a hole recorded in one view
+## and read back in another lands on the side still facing the blast.
+static func carved_side_from_base(base_xy: Vector2i, dir: Vector3i,
+		perspective: String, base_size: Vector2i) -> int:
+	if dir.z > 0:
+		return Voxel.CarvedSide.TOP
+	if dir.z < 0:
+		return Voxel.CarvedSide.BOTTOM
+	if dir.x == 0 and dir.y == 0:
+		return Voxel.CarvedSide.NONE
+	var a := PerspectiveMapper.cell_from_base(base_xy, perspective, base_size)
+	var b := PerspectiveMapper.cell_from_base(base_xy + Vector2i(dir.x, dir.y), perspective, base_size)
+	var view_dir := b - a
+	return Voxel.CarvedSide.LEFT if (view_dir.x - view_dir.y) < 0 else Voxel.CarvedSide.RIGHT
 
 
 ## VL-D2 — Contiguous crater on the ground.

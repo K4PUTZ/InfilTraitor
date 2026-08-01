@@ -275,7 +275,8 @@ func fire_active() -> void:
 	## flip, which rebuilds every Voxel from the MapSpec.
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
-		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state)
+		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
+			av.damage_is_blast, av.damage_carved_side)
 
 	room._voxel_renderer.process_dirty(room._edge_registry)
 	room._voxel_renderer.process_dirty_slabs(room._slab_registry)

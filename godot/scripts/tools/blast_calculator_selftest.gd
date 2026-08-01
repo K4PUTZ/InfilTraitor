@@ -12,6 +12,7 @@ const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/bl
 const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
 const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")
 const VoxelClass = preload("res://godot/scripts/geometry/voxel.gd")
+const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -51,6 +52,9 @@ func _init() -> void:
 	test_point_impact_marks_only_the_impact_voxel()
 	test_point_impact_cascades_only_on_full_destroy()
 	test_pellet_selection_is_deterministic()
+	## DESTRUCTION_MASTER_PLAN D25 (2026-07-31) — carved half-voxels.
+	test_carved_side_faces_the_blast()
+	test_carved_side_survives_rotation()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -855,4 +859,95 @@ func test_pellet_selection_is_deterministic() -> void:
 		_pass("two calls with identical inputs picked the identical 8 pellets")
 	else:
 		_fail("identical inputs produced different pellet picks")
+	print("")
+
+
+## D25 (Director diagram, 2026-07-31) — a DENTED voxel is carved on the side
+## that faced the blast. This is the regression guard for the Director's
+## 2026-07-31 report: a ceiling above a grenade was showing its damage on the
+## outward TOP ("as marcas estão aparecendo por cima") when a blast passing
+## underneath can only ever eat the underside.
+func test_carved_side_faces_the_blast() -> void:
+	print("TEST: D25 — the carved side is the one that faced the explosion")
+
+	## A roof container is above whatever blast reached it, so it always
+	## carves BOTTOM — this is the reported bug, pinned.
+	var roof_side: int = BlastCalculatorClass.carved_side_for(
+		Vector2i(10, 10), true, Vector2i(10, 20))
+	if roof_side == Voxel.CarvedSide.BOTTOM:
+		_pass("roof voxel carves BOTTOM (blast came from below, not above)")
+	else:
+		_fail("roof voxel expected CarvedSide.BOTTOM, got %d" % roof_side)
+
+	## Walls resolve left/right in SCREEN space, where x runs along (x − y).
+	## Epicentre at (0,20): screen-x −20, vs the voxel's 0 → screen-left.
+	var left_side: int = BlastCalculatorClass.carved_side_for(
+		Vector2i(10, 10), false, Vector2i(0, 20))
+	var right_side: int = BlastCalculatorClass.carved_side_for(
+		Vector2i(10, 10), false, Vector2i(20, 0))
+	if left_side == Voxel.CarvedSide.LEFT and right_side == Voxel.CarvedSide.RIGHT:
+		_pass("wall voxel carves toward the epicentre on both screen sides")
+	else:
+		_fail("wall expected LEFT/RIGHT, got %d/%d" % [left_side, right_side])
+
+	## No epicentre supplied (every pure-hash caller and its tests) must not
+	## invent a direction — it falls back to the flat pre-D25 mark.
+	var none_side: int = BlastCalculatorClass.carved_side_for(
+		Vector2i(10, 10), false, BlastCalculatorClass.NO_EPICENTER_BIAS)
+	if none_side == Voxel.CarvedSide.NONE:
+		_pass("no epicentre bias → CarvedSide.NONE, no guessed direction")
+	else:
+		_fail("expected CarvedSide.NONE without a bias epicentre, got %d" % none_side)
+	print("")
+
+
+## D25 — the carved side is stored in BASE space and re-derived per view, so a
+## hole stays on the physical side that faced the blast instead of following
+## the screen when the map turns. Exercises room.gd's REAL static conversions
+## (not a copy) across all four perspectives.
+func test_carved_side_survives_rotation() -> void:
+	print("TEST: D25 — carved side round-trips through base space, all 4 views")
+
+	## Owned by BlastCalculator, not room.gd — room only persists what it decides.
+	var base_size := Vector2i(160, 144)     ## a 20×18 GU map at 8 voxels/GU
+	var cell := Vector2i(40, 56)
+	var views: Array = ["N", "E", "S", "W"]
+
+	## 1. Same view in and out must return the side it went in as.
+	var round_trip_ok := true
+	for view in views:
+		for side in [Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT,
+				Voxel.CarvedSide.TOP, Voxel.CarvedSide.BOTTOM]:
+			var dir: Vector3i = BlastCalculatorClass.carved_side_to_base_dir(cell, side, view, base_size)
+			var base_xy: Vector2i = PerspectiveMapperClass.cell_to_base(cell, view, base_size)
+			var back: int = BlastCalculatorClass.carved_side_from_base(base_xy, dir, view, base_size)
+			if back != side:
+				_fail("view %s: side %d round-tripped to %d" % [view, side, back])
+				round_trip_ok = false
+	if round_trip_ok:
+		_pass("every side survives a same-view base round-trip in all 4 views")
+
+	## 2. The real point: one physical hole, recorded once, read back under a
+	## DIFFERENT view must land on the side that still faces the blast — which
+	## for a 180° turn is the opposite screen side, not the same one.
+	var recorded: Vector3i = BlastCalculatorClass.carved_side_to_base_dir(
+		cell, Voxel.CarvedSide.LEFT, "N", base_size)
+	var base_cell: Vector2i = PerspectiveMapperClass.cell_to_base(cell, "N", base_size)
+	var seen_from_s: int = BlastCalculatorClass.carved_side_from_base(base_cell, recorded, "S", base_size)
+	if seen_from_s == Voxel.CarvedSide.RIGHT:
+		_pass("a hole carved screen-LEFT in view N reads screen-RIGHT from view S (180°)")
+	else:
+		_fail("expected RIGHT from view S after a LEFT carve in view N, got %d" % seen_from_s)
+
+	## 3. Vertical carves are rotation-invariant — a ceiling's underside is its
+	## underside from every compass direction.
+	var vertical_ok := true
+	var down: Vector3i = BlastCalculatorClass.carved_side_to_base_dir(
+		cell, Voxel.CarvedSide.BOTTOM, "N", base_size)
+	for view in views:
+		if BlastCalculatorClass.carved_side_from_base(base_cell, down, view, base_size) != Voxel.CarvedSide.BOTTOM:
+			_fail("BOTTOM carve changed under view %s" % view)
+			vertical_ok = false
+	if vertical_ok:
+		_pass("a BOTTOM (ceiling underside) carve is identical from all 4 views")
 	print("")

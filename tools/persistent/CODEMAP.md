@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 34869 lines total** (under `godot/scripts/`)
+**163 scripts · 35148 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -637,7 +637,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 88 lines
+`class_name Voxel` · 106 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1496 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1535 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -658,10 +658,11 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
-- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ]`
+- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ]`
 - `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
 - `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
-- `_IMPACT_SUFFIXES` = `["_dented", "_cracked"]`
+- `_IMPACT_SUFFIXES` = `[ "_dented", "_cracked", "_dented_top", "_dented_bottom", "_dented_left", "_dented_right", ]`
+- `_CARVED_SIDE_SUFFIX` = `{ Voxel.CarvedSide.TOP: "_top", Voxel.CarvedSide.BOTTOM: "_bottom", Voxel.CarvedSide.LEFT: "_left", Voxel.CarvedSide.RIGHT: "_right", }`
 - `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
 - `EMPTY_COLUMN` = `-9999`
 
@@ -1338,7 +1339,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 573 lines
+`class_name BlastCalculator` · 653 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1347,7 +1348,6 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
-- `DEEP_FLOOR_CRATER_FACTOR` = `0.5`
 
 ---
 
@@ -2172,7 +2172,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 858 lines
+extends `SceneTree` · 953 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2183,6 +2183,7 @@ extends `SceneTree` · 858 lines
 - `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
 - `VoxelClass` = `preload("res://godot/scripts/geometry/voxel.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `NE` = `Vector2i(0, -1)`
 
 **Public vars**
@@ -2217,6 +2218,8 @@ extends `SceneTree` · 858 lines
 - `func test_point_impact_marks_only_the_impact_voxel() -> void:`
 - `func test_point_impact_cascades_only_on_full_destroy() -> void:`
 - `func test_pellet_selection_is_deterministic() -> void:`
+- `func test_carved_side_faces_the_blast() -> void:`
+- `func test_carved_side_survives_rotation() -> void:`
 
 ---
 
@@ -3236,7 +3239,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 368 lines
+`class_name TestZoneController` · 369 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3296,7 +3299,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 305 lines
+`class_name WeaponBenchController` · 306 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3500,7 +3503,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3288 lines
+extends `Node2D` · 3333 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3573,7 +3576,7 @@ extends `Node2D` · 3288 lines
 - `var vision_bonus_tiles: int = 0`
 
 **Public API**
-- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int) -> void:`
+- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE) -> void:`
 
 ---
 

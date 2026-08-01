@@ -52,6 +52,19 @@ const MATERIALS: Array[String] = [
 	"stone_dented", "stone_cracked", "wood_dented", "wood_cracked",
 	"concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked",
 	"stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked",
+	## D25: the carved half-voxels, four per material — see the block comment
+	## above damage_variant_material(). The flat "*_blast_dented" entries just
+	## above them are superseded for any voxel whose carved side is known, but
+	## stay in this array forever: MATERIALS is append-only (source_id == index),
+	## and they remain the honest fallback when no epicentre bias was supplied.
+	"concrete_blast_dented_top", "concrete_blast_dented_bottom",
+	"concrete_blast_dented_left", "concrete_blast_dented_right",
+	"metal_blast_dented_top", "metal_blast_dented_bottom",
+	"metal_blast_dented_left", "metal_blast_dented_right",
+	"stone_blast_dented_top", "stone_blast_dented_bottom",
+	"stone_blast_dented_left", "stone_blast_dented_right",
+	"wood_blast_dented_top", "wood_blast_dented_bottom",
+	"wood_blast_dented_left", "wood_blast_dented_right",
 ]
 
 ## Voxel asset path template
@@ -65,8 +78,23 @@ const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxel
 ## baked-lookup branch for these pseudo-materials.
 const IMPACT_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"
 ## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
-## they match the two suffixes below without needing their own entries.
-const _IMPACT_SUFFIXES: Array[String] = ["_dented", "_cracked"]
+## they match the first two suffixes below without needing their own entries.
+## D25's carved half-voxels do NOT — they end in the carved side — so each of
+## the four gets its own entry here.
+const _IMPACT_SUFFIXES: Array[String] = [
+	"_dented", "_cracked",
+	"_dented_top", "_dented_bottom", "_dented_left", "_dented_right",
+]
+
+## D25: Voxel.CarvedSide → the filename/material suffix for that carved side.
+## Keyed by the enum so an unmapped value (NONE) falls through to the flat
+## pre-D25 mark instead of composing a material name that has no asset.
+const _CARVED_SIDE_SUFFIX: Dictionary = {
+	Voxel.CarvedSide.TOP: "_top",
+	Voxel.CarvedSide.BOTTOM: "_bottom",
+	Voxel.CarvedSide.LEFT: "_left",
+	Voxel.CarvedSide.RIGHT: "_right",
+}
 
 
 ## D22: is `material_name` an impact-mark pseudo-material ("metal_dented" etc.)
@@ -85,10 +113,21 @@ static func _is_impact_mark(material_name: String) -> bool:
 ## called). blast_sourced (voxel.damage_is_blast) picks the irregular
 ## chip/crack family instead of the bullet's round puncture — a blast's
 ## "not fully destroyed" voxels should never look like they took a clean shot.
-static func damage_variant_material(base_material: String, damage_state: int, blast_sourced: bool = false) -> String:
+## D25 (Director diagram, 2026-07-31): a blast-DENTED voxel is no longer an
+## intact cube wearing a mark — it is a HALF voxel, carved on the side that
+## faced the explosion, with a pre-baked broken face exposed in the cut
+## ("o voxel fica com metade em alpha e acrescenta uma face pre-baked").
+## carved_side is Voxel.CarvedSide in VIEW space; CarvedSide.NONE (no epicentre
+## bias available) keeps the flat pre-D25 mark rather than guessing a side.
+## CRACKED and the bullet-sourced marks are deliberately untouched here — the
+## Director is specifying their own analogous mechanisms separately.
+static func damage_variant_material(base_material: String, damage_state: int,
+		blast_sourced: bool = false, carved_side: int = Voxel.CarvedSide.NONE) -> String:
 	var infix := "_blast" if blast_sourced else ""
 	match damage_state:
 		Voxel.DamageState.DENTED:
+			if blast_sourced and _CARVED_SIDE_SUFFIX.has(carved_side):
+				return base_material + "_blast_dented" + String(_CARVED_SIDE_SUFFIX[carved_side])
 			return base_material + infix + "_dented"
 		Voxel.DamageState.CRACKED:
 			return base_material + infix + "_cracked"
@@ -620,7 +659,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast)
+			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 
 
@@ -1134,7 +1173,7 @@ func process_dirty(registry: EdgeRegistry) -> void:
 				# Update cell state based on voxel visibility
 				if voxel.visible:
 					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast)
+					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 				else:
 					# Clear cell
@@ -1192,7 +1231,7 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 					## above) — the substitution is a no-op for them and only
 					## matters for CEILING/INTERIOR, which apply_container_damage
 					## can tag exactly like a wall.
-					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast)
+					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
 				else:

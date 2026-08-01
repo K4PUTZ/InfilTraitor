@@ -44,8 +44,8 @@ uniform float top_face_h = 16.0;
 // voxel size, which is what the first pass got wrong. Capped at 1.0 so a face
 // can only be darkened relative to the art, never brightened into clipping.
 uniform float face_top : hint_range(0.0, 1.0) = 1.00;
-uniform float face_se : hint_range(0.0, 1.0) = 0.97;
-uniform float face_sw : hint_range(0.0, 1.0) = 0.92;
+uniform float face_se : hint_range(0.0, 1.0) = 0.975;
+uniform float face_sw : hint_range(0.0, 1.0) = 0.945;
 
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);

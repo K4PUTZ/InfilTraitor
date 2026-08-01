@@ -77,26 +77,41 @@ var under_structure_factor: float = 0.68
 ## are the only ones that bypass the baked lookup. A baked wall takes its pixels
 ## from the facade page and never sees a change made here in art.
 ##
-## Applied as a ±N step on the QUANTISED bucket index, not as a multiplier on
-## the continuous factor. Measured 2026-07-31: a 10% multiplicative jitter moved
-## only 19% of crater pixels, by a mean of 1.15/255, and actually *lowered* the
-## region's standard deviation — the 12-bucket quantisation swallowed it. One
-## index step always lands, and VoxelRenderer's bucket_luminance table is
-## non-linear, so a step is gentle in the light (0.92↔1.00) where "micro" is
-## what was asked for. Set to 0 to disable.
+## DEFAULT 0 — OFF, and it should stay off unless the luminance channel itself
+## changes. This mechanism cannot be made "micro" where it matters, and that is
+## a property of the channel, not of the tuning:
 ##
-## SOOTED VOXELS ARE EXEMPT — see _compute_bucket(). This is not a special case
-## for tidiness; it was measured. The soot gradient is carried in this same
-## 12-bucket channel and only spans buckets 0-2, so jittering sooted voxels does
-## not enrich the crater, it erases its rings: mean luminance fell 41.1 → 26.6
-## and the mid-tone band emptied (9% → 0% of pixels). Soot and micro-variation
-## compete for one quantised channel, and the gradient wins.
+##   1. As a MULTIPLIER on the continuous factor it is invisible. A 10% jitter
+##      moved only 19% of crater pixels, by a mean of 1.15/255, and *lowered*
+##      the region's standard deviation — the 12-bucket quantisation ate it.
+##   2. As a ±1 step on the QUANTISED index it always lands, but
+##      VoxelRenderer.bucket_luminance is compressed at the dark end
+##      (0.12 → 0.20 → 0.33 = +67%, +65% per step, against +8% at the top), so
+##      one step is a far bigger perceptual jump in shadow than in light.
+##      Measured against a neutral capture, stratified by brightness: 6.7% in
+##      the darkest band falling to 4.1% in the brightest — strongest exactly
+##      where the Director reported it reading as noise ("veja nas zonas mais
+##      escuras como varia demais").
+##
+## The per-FACE shader (godot/shaders/voxel_face_shading.gdshader) does the same
+## job correctly because it MULTIPLIES colour instead of stepping an index, so
+## its effect is perceptually flat: measured 1.6% → 3.3% across the same
+## brightness bands. Face differentiation is also what the Director actually
+## asked for — *"o grande segredo é só diferenciar as 3 faces de cada voxel."*
+##
+## Kept rather than deleted because the mechanism is sound and would become
+## usable the moment the luminance ramp gains resolution at its dark end; the
+## measurements above are what a future attempt needs in order not to repeat
+## this. If re-enabled, note that SOOTED VOXELS ARE EXEMPT in _compute_bucket()
+## — also measured: jittering them erased the crater rings outright (mean
+## luminance 41.1 → 26.6, mid-tone band 9% → 0% of pixels), because soot lives
+## in this same channel and only spans buckets 0-2.
 ##
 ## Deterministic per voxel via the project's FNV-1a hash — B4 discipline, so it
 ## is stable across rebuilds and identical between an incremental and a fresh
 ## build. Purely visual: LIGHT_MASTER_PLAN's canon split means brightness is
 ## never tactical visibility, so this cannot move a gameplay number.
-var micro_jitter_buckets: int = 1
+var micro_jitter_buckets: int = 0
 
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult

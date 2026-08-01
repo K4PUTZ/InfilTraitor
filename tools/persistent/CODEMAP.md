@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**163 scripts · 35228 lines total** (under `godot/scripts/`)
+**163 scripts · 35243 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1715,7 +1715,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 408 lines
+`class_name VoxelLightField` · extends `RefCounted` · 423 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 

@@ -33,6 +33,11 @@ const GRENADE_LEVEL := 0
 ## as "absent" without an extra bool parameter.
 const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
 
+## FACE-SOOT-01 — the per-face ring meaning "this face takes NO soot". Sits one
+## past the last real ring index so `ring + falloff` clamps onto it naturally;
+## VoxelLightField.encode_face_soot() relies on it being 3 (2 bits per face).
+const FACE_SOOT_CLEAN := 3
+
 
 ## GU cell -> ring index (0 = source GU). Wall-aware BFS, capped at
 ## bomb_def.ring_multipliers.size()-1 rings. blocked_edges must already be
@@ -664,15 +669,33 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 ## self-limit to ~1 since an isolated hole has no further-out neighbours that
 ## are ALSO absent). min-ring wins, so a voxel near two holes takes the
 ## darker scorch.
+##
+## FACE-SOOT-01 (Director, 2026-08-01) — `out_faces`, when supplied, additionally
+## receives `{level: {grid_pos: Vector3i(ring_top, ring_se, ring_sw)}}`: the same
+## scorch resolved PER VISIBLE FACE instead of one value for the whole voxel.
+## `FACE_SOOT_CLEAN` (3) means that face takes no soot at all.
+##
+## Where the direction comes from, and why it costs nothing: the BFS already
+## knows the step `d` it reached a voxel through, so `-d` points back at the hole
+## — the face pointing that way is the one that faced the blast. That face keeps
+## the voxel's own ring; the other two fall `face_soot_falloff` rings back
+## (fainter), and past the last ring they come out clean. A voxel reached from
+## BELOW or from BEHIND (-X/-Y/-Z) has NO visible face turned toward the hole, so
+## all three of its faces take the fainter value — correct, and the reason a
+## crater's outer slope reads lighter than its inner wall.
+##
+## Ties are merged, not raced: a voxel equidistant from two holes (a crater
+## corner) takes the strong ring on BOTH the faces that see them, because the
+## same-ring branch mins per face instead of keeping whichever direction the
+## frontier happened to visit first. That is also what makes the result
+## order-independent, hence stable across rebuilds and rotations.
 static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
-		n_rings: int, out_snapshot: Dictionary) -> void:
+		n_rings: int, out_snapshot: Dictionary, out_faces: Dictionary = {},
+		face_soot_falloff: int = 1) -> void:
 	if destroyed_cells.is_empty() or n_rings <= 0:
 		return
 	## Frontier BFS. Seeds are the holes themselves (they have no surviving voxel
 	## to tag); their SURVIVING neighbours become ring 0, and so on outward.
-	var visited: Dictionary = {}
-	for c in destroyed_cells:
-		visited[c] = true
 	var frontier: Array = destroyed_cells.duplicate()
 	const NEIGHBOURS: Array = [
 		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
@@ -684,9 +707,6 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 		for cell in frontier:
 			for d in NEIGHBOURS:
 				var ncell: Vector3i = cell + d
-				if visited.has(ncell):
-					continue
-				visited[ncell] = true
 				var voxel = cell_to_voxel.get(ncell)
 				## Only surviving, visible voxels take soot — a destroyed cell is a
 				## hole (already a seed) and an absent one is empty air.
@@ -694,10 +714,60 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 					continue
 				if not out_snapshot.has(voxel.level):
 					out_snapshot[voxel.level] = {}
-				var existing: int = int(out_snapshot[voxel.level].get(voxel.grid_pos, -1))
-				if existing < 0 or ring < existing:
-					out_snapshot[voxel.level][voxel.grid_pos] = ring
-				next_frontier.append(ncell)
+				var level_map: Dictionary = out_snapshot[voxel.level]
+				var existing: int = int(level_map.get(voxel.grid_pos, -1))
+				## A nearer hole already claimed this voxel — its own ring wins, and
+				## so do its faces. (This also replaces the old `visited` set: a voxel
+				## is enqueued exactly once, on the pass that first tags it.)
+				if existing >= 0 and existing < ring:
+					continue
+				var faces := _face_rings_for(ring, -d, n_rings, face_soot_falloff)
+				if existing < 0:
+					level_map[voxel.grid_pos] = ring
+					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, false)
+					next_frontier.append(ncell)
+				else:
+					## Same ring, another direction: merge (min per face) so a corner
+					## voxel scorches on every side that actually saw a hole.
+					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, true)
 		frontier = next_frontier
 		if frontier.is_empty():
 			break
+
+
+## FACE-SOOT-01 — per-face rings for a voxel tagged at `ring`, reached from the
+## direction `toward` (the offset from the voxel back to the cell the BFS came
+## from, i.e. pointing at the hole).
+##
+## Only three faces can ever be seen at once with this camera (VL-02b, and the
+## same three the shader classifies): +Z is the top diamond, +X the SE face, +Y
+## the SW face. Any other `toward` means the hole is behind or below the voxel,
+## and no visible face is turned toward it.
+static func _face_rings_for(ring: int, toward: Vector3i, n_rings: int,
+		falloff: int) -> Vector3i:
+	var faint: int = ring + maxi(falloff, 0)
+	if faint >= n_rings:
+		faint = FACE_SOOT_CLEAN
+	var out := Vector3i(faint, faint, faint)
+	if toward == Vector3i(0, 0, 1):
+		out.x = ring        ## top
+	elif toward == Vector3i(1, 0, 0):
+		out.y = ring        ## SE
+	elif toward == Vector3i(0, 1, 0):
+		out.z = ring        ## SW
+	return out
+
+
+## A caller that does not want per-face data passes nothing and the default dict
+## is simply discarded — cheaper than branching on it at every write.
+static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
+		faces: Vector3i, merge: bool) -> void:
+	if not out_faces.has(level):
+		out_faces[level] = {}
+	var level_faces: Dictionary = out_faces[level]
+	if merge and level_faces.has(cell):
+		var prev: Vector3i = level_faces[cell]
+		level_faces[cell] = Vector3i(
+			mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
+		return
+	level_faces[cell] = faces

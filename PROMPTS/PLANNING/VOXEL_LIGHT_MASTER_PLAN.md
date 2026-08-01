@@ -2,9 +2,11 @@
 
 > **Status:** ✅ SHIPPED (VL-01 → VL-D5, 2026-07-23 → 2026-07-26) — "Alpha
 > Temporal Light Foundation"; extended by FACE-READ-01 (2026-07-31) and
-> FACE-READ-02 (2026-08-01) — "Alpha Face Light System Foundation." This is the
+> FACE-READ-02, FACE-SOOT-01 and FACE-READ-03 (2026-08-01) — "Alpha Face Light
+> System Foundation." This is the
 > geometry/mechanism reference for the voxel FACE lighting plane (buckets, blast
-> visuals, persistence, temporal repaint, per-face shading) — read it before
+> visuals, persistence, temporal repaint, per-face shading and per-face soot) —
+> read it before
 > touching `VoxelLightField`, `VoxelRenderer.apply_light_field*()`,
 > `godot/shaders/voxel_face_shading.gdshader`, `EmberOverlay`, or the
 > destruction↔lighting seam in `test_zone_controller.gd`. Item 6 (metal
@@ -576,39 +578,129 @@ distinct under soot; it does not make soot itself directional.
 
 ---
 
-### 🔖 OPEN — Per-FACE soot and light (Director, 2026-07-31)
+### FACE-SOOT-01 — soot is now PER FACE ✅ LANDED 2026-08-01
 
-Asked directly at session close: *"então agora a fuligem pode ser aplicada por
-face?"* **Not yet, and the blocker is identified.** The shader differentiates
-faces by a GLOBAL uniform; soot needs per-CELL, per-FACE data, and the only
-per-cell channel today is `TileData.modulate`, delivered through a pre-minted
-alternative and carrying ONE scalar replicated across R/G/B
-(`_ensure_light_alt`: `Color(base.r * lum, base.g * lum, base.b * lum, base.a)`).
+**Director:** *"Faça a melhor avaliação entre qualidade da imagem/física e
+viabilidade em mobile, e pode implementar."* — the call on the open item below,
+which had been left as "spike and measure first."
 
-**The mechanism that would work, unspiked:** those three channels are the wasted
-capacity. Encode top/SE/SW brightness in R/G/B, and have the shader pick ONE
-channel and apply it to all of RGB — so the modulate never tints, it stays a
-grayscale multiply, just chosen per face:
+**The mechanism this plan proposed does NOT work, and that was measured before
+anything was built.** The section below (kept as the record) proposed packing
+three per-face brightnesses into `modulate`'s R/G/B, on the stated premise that
+"the modulate never tints, it stays a grayscale multiply." It is not a grayscale
+multiply. On the BAKED path — `BakeConfig.enabled` is `true`, the live default —
+the pages are grayscale by invariant B2 and the MATERIAL'S COLOUR is precisely
+what those three channels carry (`BakeCompositor._modulate_for_mode()` returns
+`material.base_color` under MULTIPLY); on the material path the colour sits in
+the texture instead and a channel splat flattens it to one component. Either
+way, packing luminances into RGB destroys material colour. The premise was
+wrong, not the arithmetic.
 
-```glsl
-vec4 tex = texture(TEXTURE, UV);
-float f = (diamond <= 1.0) ? MODULATE.r : (local.x >= half ? MODULATE.g : MODULATE.b);
-COLOR = vec4(tex.rgb * f, tex.a * MODULATE.a);
-```
+**What shipped instead: the per-face code rides in modulate ALPHA.** Alpha is
+genuinely free — occlusion stopped placing ghost alternatives at OCC-21 — and it
+leaves both colour paths untouched.
 
-This would serve LIGHT per face as well as soot — the face turned toward a lamp
-reading brighter, which is the Director's original framing.
+- **Content.** `BlastCalculator.derive_soot_rings()` gained `out_faces`:
+  `{level: {cell: Vector3i(ring_top, ring_se, ring_sw)}}`. The direction costs
+  nothing to obtain — the BFS already knows the step `d` it reached a voxel
+  through, so `-d` points back at the hole. The face turned that way keeps the
+  voxel's ring; the other two fall `face_soot_falloff` (1) rings back and come
+  out clean past the last ring. A voxel reached from below or behind has no
+  visible face toward the hole and takes the fainter value on all three — which
+  is why a crater's inner wall now reads scorched while its outer slope does not.
+  Ties MERGE rather than race (min per face), so a corner voxel between two holes
+  scorches on both sides and the result is order-independent.
+- **Carrier.** `VoxelRenderer._ensure_light_alt()` writes
+  `modulate.a = (code + 1) / 64`, `code = top*16 + se*4 + sw` (ring 0..2, 3 =
+  clean). Clean is code 63 → alpha exactly 1.0, so **an untouched voxel's tile is
+  bit-identical to what it was before this existed** and a map with no
+  destruction mints exactly the alternatives it minted before.
+- **Decoding without betting on `MODULATE` semantics.** The shader recovers the
+  carrier as `COLOR.a / texture(TEXTURE, UV).a` — every node modulate in play is
+  opaque (`FLOOR_DEPTH_DIM` is `Color(d, d, d, 1.0)`) — instead of relying on
+  whether `MODULATE` includes `TileData.modulate` for a `TileMapLayer`, a
+  semantic that would otherwise have been a silent bet. Costs one sample of a
+  texel already in cache.
+- **Soot left the light bucket.** `VoxelLightField._static_factor()` no longer
+  multiplies `soot_factor()` in; it could not stay, because one bucket is one
+  scalar per cell and three faces need three values. `soot_darkening` remains as
+  the canonical curve `soot_face_mult` is calibrated against, and as what probes
+  and vision modes still read. Side benefit, not the motive: the static-factor
+  cache is now MORE reusable, since a detonation no longer invalidates the light
+  bucket of every voxel it scorches.
 
-**Costs to weigh before building it:** (a) the alternative-id space multiplies —
-today 12 buckets × 2 flips ≈ 24 ids; per-face soot patterns push it to roughly
-384–1536 possible, mitigated but not eliminated by the existing LAZY minting
-(`_ensure_light_alt` only creates what is actually placed, and most of a map is
-unsooted); (b) it **redefines what `modulate` means** in §3.4's unified
-alternative-tile state space, from "one light bucket per cell" to "three per-face
-brightnesses" — a canon change, not an implementation detail. Director's call at
-session close: **spike and measure before committing to it.**
+**Calibration, stated because it is a real visual change.** Soot used to be
+quantised through `bucket_luminance`, whose dark end is non-linear: a fully lit
+ring-0 voxel computed `1.00 x 0.20 = 0.20`, which ROUNDED to bucket 2 and
+rendered at **0.33**, not 0.20. `soot_face_mult` therefore ships as
+`[0.33, 0.47, 0.69, 1.0]` — the effective values the old path actually produced
+under full light — rather than as `soot_darkening`'s nominal
+`[0.20, 0.40, 0.63]`, which would have silently darkened every crater in the
+game. All four are shader uniforms, tunable from here.
+
+**Evidence — the real map, not a fixture.** `INFILTRAITOR_FACE_SOOT_DIAG=1` on a
+real PLAYGROUND detonation: **1606 sooted voxels, 1124 of them (70.0%) with
+faces that genuinely differ from each other.** Ring histogram
+`top=[252,616,465,273] se=[151,678,490,287] sw=[135,704,508,259]`. After
+rotating to view E the same blast reports 1603 voxels / 68.9% directional with
+**SE and SW histograms swapped** (`sw` after ≈ `se` before) — exactly what a 90°
+rotation must do to screen-space faces, and evidence that directional soot
+survives rotation rather than merely surviving as a count. Captures
+`auto_2026-08-01_01-59-43.png` (view N) and `auto_2026-08-01_02-01-02.png`
+(rotated E). Material colours verified intact in both — the failure mode the
+rejected RGB packing would have caused.
 
 ---
+
+### FACE-READ-03 — the separation guarantee, now unconditional ✅ LANDED 2026-08-01
+
+**FACE-SOOT-01 broke FACE-READ-02, and the selftest caught it.** `face_min_sep`
+subtracted an absolute 1/255 per face INDEX (top 0, SE 1, SW 2), which separates
+the faces only while they are already ordered top ≥ SE ≥ SW. Per-face soot
+inverts that order — a top face at ring 0 is darker than an SE face at ring 1 —
+and the fixed offset can then land two faces on the same 8-bit value. Measured
+over the real canon grid (`bucket_luminance` × `FLOOR_DEPTH_DIM` × all 64
+per-face ring combinations): a pair collapsing at **24/255**, a plainly visible
+mid-tone.
+
+**Replacement:** each face is forced onto its own residue class mod 3 of the
+8-bit value (top ≡ 0, SE ≡ 1, SW ≡ 2), rounding DOWN so nothing clips, with a
+single +3 correction near zero. Two different residues cannot be equal, so no
+combination of light, depth, material colour or per-face soot can merge two
+faces. **This retires FACE-READ-02's caveat entirely** — the old guarantee held
+only "wherever a voxel renders above 2/255"; this one holds everywhere.
+
+`voxel_face_separation_selftest.gd` follows the shipped model: it parses
+`soot_face_mult` out of the shader alongside the face constants, sweeps all 64
+per-face ring combinations (967 680 total), and reports **0 collapses**. Its
+teeth-check (`face_residue_sep = 0`) collapses **301 712/967 680, worst visible
+110/255** — so test 1 cannot pass vacuously.
+
+---
+
+### 🔖 STILL OPEN — Per-FACE LIGHT (not soot)
+
+Per-face LIGHT — the face turned toward a lamp reading brighter — is the half of
+the original ask that did NOT ship, and it is deliberately out of FACE-SOOT-01's
+scope. Note that `surface_factor()` today picks the BRIGHTEST visible face and
+applies that one factor to the WHOLE voxel, so there is currently no real
+per-face light at all; the shader's `face_top/se/sw` are global constants.
+
+**The blocker is the alternative-id space, and the ceiling is now a measured
+number rather than an estimate.** Verified in-engine: `TRANSFORM_FLIP_H = 4096`
+(`FLIP_V` 8192, `TRANSPOSE` 16384), so a real alternative id must stay **below
+4096** or it collides with the transform bits Godot ORs into the same integer.
+FACE-SOOT-01 uses 12 buckets × 64 soot codes × 2 flips = **1536 ids (max 1535)**.
+Three independent per-face buckets would be 12³ × 2 = **3456 on its own**, and
+combined with the soot codes it blows the ceiling outright. So per-face light
+cannot be a third axis — it would have to REUSE the existing code space (e.g.
+per-face light as a delta from a shared base bucket, the same shape soot uses).
+That is the design constraint any future attempt starts from.
+
+Real minting cost, for whoever weighs this: PLAYGROUND mints **31 298**
+alternatives clean and **32 771** after a detonation — **+1473, under 5%**, for
+1606 sooted voxels. Lazy minting is what keeps that affordable and it is load
+bearing here.
 
 ## Session close (2026-07-26) — "Alpha Temporal Light Foundation"
 

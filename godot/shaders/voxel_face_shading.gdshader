@@ -73,7 +73,68 @@ uniform float face_sw : hint_range(0.0, 1.0) = 0.945;
 //
 // Soot from blasts and from firearms share one mechanism (D24), so this covers
 // both with no separate firearm path.
-uniform float face_min_sep : hint_range(0.0, 0.02) = 0.00392;  // 1.0/255
+// FACE-READ-03 (2026-08-01) — RETIRES face_min_sep, which FACE-SOOT-01 broke.
+//
+// face_min_sep was an absolute 1/255 offset subtracted per face INDEX (top 0,
+// SE 1, SW 2). That works only while the three faces are already ordered
+// top >= SE >= SW, which was true when every face took the same soot. Per-face
+// soot inverts the order — a top face at ring 0 is darker than an SE face at
+// ring 1 — and a fixed per-index offset can then land two faces on exactly the
+// same 8-bit value. MEASURED, not predicted: sweeping the real canon grid
+// (bucket_luminance x FLOOR_DEPTH_DIM x all 64 per-face ring combinations) with
+// face_min_sep still in place collapses a pair at 24/255 — a plainly visible
+// mid-tone, and the precise failure this shader exists to prevent.
+//
+// The replacement makes the guarantee UNCONDITIONAL by construction instead of
+// arithmetically hoping: each face is forced onto its own residue class mod 3 of
+// the 8-bit value (top ≡ 0, SE ≡ 1, SW ≡ 2). Two different residues cannot be
+// equal, so no combination of light, depth, material colour or per-face soot can
+// ever merge two faces — including the near-black range FACE-READ-02 had to
+// explicitly exclude ("three distinct faces wherever a voxel renders above
+// 2/255"). That caveat is now gone: the guarantee holds everywhere.
+//
+// Rounding is always DOWNWARD to the residue class (max 2/255 darker, never
+// brighter, so nothing clips), with a single +3 correction when that would go
+// below zero. Setting this to 0.0 disables the enforcement, which is what the
+// selftest's teeth-check drives.
+uniform float face_residue_sep : hint_range(0.0, 1.0) = 1.0;
+
+// FACE-SOOT-01 (Director, 2026-08-01) — soot is now delivered PER FACE, and the
+// shader is what applies it.
+//
+// WHY IT HAD TO MOVE HERE: soot used to multiply into the light BUCKET
+// (VoxelLightField._static_factor). A bucket is one scalar per cell, so while
+// soot lived inside it a voxel structurally could not carry three different
+// amounts of scorch — the thing this shader exists to express.
+//
+// HOW THE PER-CELL DATA ARRIVES — and why NOT in R/G/B, which is what
+// VOXEL_LIGHT_MASTER_PLAN's open item proposed: that proposal assumed the tile
+// modulate was "a grayscale multiply" with three spare channels. Measured, it is
+// not. On the baked path (BakeConfig.enabled, the live default) the pages are
+// grayscale by invariant B2 and the MATERIAL'S COLOUR is precisely what those
+// RGB channels carry (BakeCompositor._modulate_for_mode() returns
+// material.base_color under MULTIPLY); on the material path the colour is in the
+// texture instead. Packing three luminances into RGB destroys the material
+// colour on the first path and splats it to a single channel on the second.
+//
+// ALPHA is genuinely free — occlusion stopped placing ghost alternatives at
+// OCC-21 — so the per-face code rides there: VoxelRenderer._ensure_light_alt()
+// writes modulate.a = (code + 1) / 64, code = top*16 + se*4 + sw with each face
+// a soot ring 0..2 and 3 = clean. Clean is code 63 → alpha exactly 1.0, so an
+// untouched voxel's tile is bit-identical to what it was before this existed.
+//
+// DECODING WITHOUT THE `MODULATE` BUILT-IN: COLOR arrives as
+// texture(TEXTURE, UV) * tile_modulate * node_modulate, and every node modulate
+// in play is opaque (FLOOR_DEPTH_DIM is Color(d, d, d, 1.0)), so dividing
+// COLOR.a by the texture's own alpha recovers the carrier exactly. That avoids
+// depending on whether MODULATE includes TileData.modulate for a TileMapLayer —
+// a semantic this shader would otherwise be silently betting on. It costs one
+// extra sample of a texel already in cache, and nothing else.
+uniform vec4 soot_face_mult = vec4(0.33, 0.47, 0.69, 1.0);
+// Below this texture alpha the division is not worth trusting (a fully
+// transparent texel carries no recoverable carrier); such pixels are invisible
+// anyway, so they simply take no soot.
+uniform float soot_alpha_floor : hint_range(0.0, 0.5) = 0.02;
 
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
@@ -83,6 +144,9 @@ void fragment() {
 	float diamond = abs(local.x - half_top.x) / half_top.x
 			+ abs(local.y - half_top.y) / half_top.y;
 
+	// Face index: 0 = top, 1 = SE, 2 = SW. Drives BOTH the multiply and the
+	// separation offset (FACE-READ-01/02) and the soot lookup (FACE-SOOT-01), so
+	// the three can never disagree about which face they are shading.
 	float f = face_sw;
 	float sep_index = 2.0;
 	if (diamond <= 1.0) {
@@ -93,5 +157,31 @@ void fragment() {
 		sep_index = 1.0;
 	}
 
-	COLOR.rgb = max(COLOR.rgb * f - face_min_sep * sep_index, vec3(0.0));
+	float tex_a = texture(TEXTURE, UV).a;
+	float ring = 3.0;  // clean
+	if (tex_a > soot_alpha_floor) {
+		float code = floor((COLOR.a / tex_a) * 64.0 + 0.5) - 1.0;
+		code = clamp(code, 0.0, 63.0);
+		// top*16 + se*4 + sw, selected by the face index resolved above.
+		if (sep_index < 0.5) {
+			ring = floor(code / 16.0);
+		} else if (sep_index < 1.5) {
+			ring = floor(mod(code, 16.0) / 4.0);
+		} else {
+			ring = mod(code, 4.0);
+		}
+	}
+	f *= soot_face_mult[int(ring)];
+	COLOR.rgb = max(COLOR.rgb * f, vec3(0.0));
+
+	// FACE-READ-03: force this face onto its own residue class mod 3, LAST, so
+	// nothing downstream can re-merge two faces. See the uniform's note above.
+	if (face_residue_sep > 0.0) {
+		vec3 q = floor(COLOR.rgb * 255.0 + 0.5);
+		vec3 adj = q - mod(q - sep_index, 3.0);
+		adj += step(adj, vec3(-0.5)) * 3.0;
+		COLOR.rgb = adj / 255.0;
+	}
+	// Alpha carried data, not transparency — hand back the real silhouette.
+	COLOR.a = tex_a;
 }

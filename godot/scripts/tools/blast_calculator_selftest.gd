@@ -35,6 +35,9 @@ func _init() -> void:
 	test_ring_beyond_range_untouched()
 	test_soot_rings_spread_by_distance()
 	test_soot_min_ring_wins_between_two_holes()
+	test_face_soot_points_at_the_hole()
+	test_face_soot_merges_at_a_corner()
+	test_face_soot_leaves_isotropic_result_untouched()
 	test_crater_core_solid_rim_ragged_beyond_intact()
 	## FLOOR-DENT-01 (2026-08-01) — crater-rim survivors dent, prevalence from
 	## the product of material dent_factor × bomb radii × distance.
@@ -441,6 +444,109 @@ func test_soot_min_ring_wins_between_two_holes() -> void:
 		_pass("x=1,3 ring 0 (adjacent to a hole); x=2 ring 1 (min of the two paths)")
 	else:
 		_fail("Expected rings [0,1,0] for x=1,2,3; got [%d,%d,%d]" % [r1, r2, r3])
+	print("")
+
+
+## FACE-SOOT-01 — the face turned toward the hole takes the voxel's own ring;
+## the other two visible faces fall one ring back. This is the whole point of
+## the feature: a crater's inner wall reads scorched while the same voxel's
+## outward faces stay comparatively clean.
+func test_face_soot_points_at_the_hole() -> void:
+	print("[FACE-SOOT-01a] The face turned toward the hole is the sooty one\n")
+
+	## A 1x3 row on X with the hole at x=0. x=1 is reached by stepping +X, so its
+	## direction BACK to the hole is -X — no visible face points that way, and all
+	## three of its faces must take the fainter ring. Mirror it with a hole at
+	## x=2 to get the case where the SE (+X) face IS the one facing the blast.
+	var slab := Slab.new("FACE_SOOT_ROW", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	for x in range(3):
+		var v := VoxelClass.new(Vector2i(x, 0), 0, slab)
+		if x == 2:
+			v.visible = false
+			v.set_damage(Voxel.DamageState.DESTROYED)
+			destroyed.append(Vector3i(x, 0, 0))
+		cell_to_voxel[Vector3i(x, 0, 0)] = v
+
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, snapshot, faces)
+
+	## x=1 sits next to the hole at x=2, reached by stepping -X, so the direction
+	## back to the hole is +X — the SE face. SE keeps ring 0; top and SW fall to 1.
+	var f1 = faces.get(0, {}).get(Vector2i(1, 0))
+	## x=0 is ring 1, reached from x=1 by stepping -X, so again the SE face leads.
+	var f0 = faces.get(0, {}).get(Vector2i(0, 0))
+	if f1 == Vector3i(1, 0, 1) and f0 == Vector3i(2, 1, 2):
+		_pass("SE face carries the near ring (x=1 %s, x=0 %s); top/SW one ring fainter" % [f1, f0])
+	else:
+		_fail("Expected x=1 (1,0,1) and x=0 (2,1,2); got %s and %s" % [f1, f0])
+	print("")
+
+
+## FACE-SOOT-01 — a voxel equidistant from two holes on DIFFERENT axes scorches
+## on both faces that see one. Without the same-ring merge the BFS would keep
+## whichever direction it happened to reach first, which would also make the
+## result depend on frontier order and therefore unstable across rebuilds.
+func test_face_soot_merges_at_a_corner() -> void:
+	print("[FACE-SOOT-01b] A corner voxel scorches on every side that saw a hole\n")
+
+	var slab := Slab.new("FACE_SOOT_CORNER", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	## Holes at (1,0) and (0,1); the voxel at (0,0) touches both — one across its
+	## SE (+X) face, one across its SW (+Y) face.
+	for pos in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]:
+		var v := VoxelClass.new(pos, 0, slab)
+		if pos != Vector2i(0, 0):
+			v.visible = false
+			v.set_damage(Voxel.DamageState.DESTROYED)
+			destroyed.append(Vector3i(pos.x, pos.y, 0))
+		cell_to_voxel[Vector3i(pos.x, pos.y, 0)] = v
+
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, snapshot, faces)
+
+	var f = faces.get(0, {}).get(Vector2i(0, 0))
+	if f == Vector3i(1, 0, 0):
+		_pass("Corner voxel: SE and SW both ring 0, top one ring fainter (%s)" % [f])
+	else:
+		_fail("Expected (1,0,0) — both facing sides at ring 0; got %s" % [f])
+	print("")
+
+
+## FACE-SOOT-01 must not have moved the isotropic ring map it rides alongside:
+## probes, vision modes and VoxelLightField.soot_factor() all still read that,
+## and the crater-floor cells room.gd merges in have no face data at all.
+func test_face_soot_leaves_isotropic_result_untouched() -> void:
+	print("[FACE-SOOT-01c] The per-voxel ring map is byte-identical with and without faces\n")
+
+	var slab := Slab.new("FACE_SOOT_ISO", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	for x in range(7):
+		for y in range(3):
+			var v := VoxelClass.new(Vector2i(x, y), 0, slab)
+			if x == 3 and y == 1:
+				v.visible = false
+				v.set_damage(Voxel.DamageState.DESTROYED)
+				destroyed.append(Vector3i(x, y, 0))
+			cell_to_voxel[Vector3i(x, y, 0)] = v
+
+	var without: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, without)
+	var with_faces: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, with_faces, faces)
+
+	if without == with_faces and not faces.is_empty():
+		_pass("Ring map identical either way (%d levels), and %d face triples produced"
+			% [without.size(), faces.get(0, {}).size()])
+	else:
+		_fail("Ring map diverged when faces were requested (without=%s with=%s)"
+			% [without, with_faces])
 	print("")
 
 

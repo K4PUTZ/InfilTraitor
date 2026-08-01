@@ -1811,14 +1811,48 @@ func _repaint_voxel_light_buckets() -> void:
 	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
 	## 8-storey ceiling-fixture height — see VoxelLightField.build().
 	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	## FACE-SOOT-01: one derivation feeds both — the isotropic ring map (probes,
+	## vision modes, selftests) and the per-face triples the renderer packs into
+	## each cell's modulate alpha.
+	var soot_faces: Dictionary = {}
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
 			_voxel_renderer.build_occupancy(),
-			_build_soot_snapshot(),
-			_under_structure)
+			_build_soot_snapshot(soot_faces),
+			_under_structure,
+			soot_faces)
 	_voxel_renderer.apply_light_field(_voxel_light_field)
+	if OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
+		_print_face_soot_diagnostics(soot_faces)
+
+
+## FACE-SOOT-01 diagnostics — env-gated (INFILTRAITOR_FACE_SOOT_DIAG=1). Reports
+## what the REAL map actually produced, because a selftest on a synthetic patch
+## cannot catch a feature made inert by real data (the floor-dent lesson,
+## 2026-08-01: 69 dents on a fixture, zero on PLAYGROUND).
+func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
+	var total: int = 0
+	var directional: int = 0        ## faces genuinely differ from each other
+	var per_face_rings := {0: [0, 0, 0, 0], 1: [0, 0, 0, 0], 2: [0, 0, 0, 0]}
+	for level in soot_faces:
+		for cell in soot_faces[level]:
+			var f: Vector3i = soot_faces[level][cell]
+			total += 1
+			if f.x != f.y or f.y != f.z:
+				directional += 1
+			per_face_rings[0][clampi(f.x, 0, 3)] += 1
+			per_face_rings[1][clampi(f.y, 0, 3)] += 1
+			per_face_rings[2][clampi(f.z, 0, 3)] += 1
+	print("[FACE-SOOT-DIAG] sooted voxels=%d directional=%d (%.1f%%)"
+			% [total, directional, 100.0 * float(directional) / maxf(float(total), 1.0)])
+	print("[FACE-SOOT-DIAG] ring histogram [r0,r1,r2,clean] top=%s se=%s sw=%s"
+			% [per_face_rings[0], per_face_rings[1], per_face_rings[2]])
+	## Lazily minted (source, atlas_coords, alt) triples across the whole tileset —
+	## NOT comparable to the 1536-wide alternative-id space, which is per TILE.
+	## This is the number that costs memory on a phone.
+	print("[FACE-SOOT-DIAG] minted tile alternatives=%d" % _voxel_renderer.minted_alt_count())
 
 
 ## VL-D1/D24 — level → {cell: soot_ring}, DERIVED fresh from which voxels are
@@ -1832,7 +1866,9 @@ func _repaint_voxel_light_buckets() -> void:
 ## itself needs to persist separately any more. Empty when nothing is holed.
 const MAX_SOOT_RINGS := 3
 
-func _build_soot_snapshot() -> Dictionary:
+## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
+## triples for every voxel this pass scorches (see BlastCalculator).
+func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
 	var destroyed_cells: Array = []      ## Vector3i seeds for the BFS
 	if _edge_registry != null:
@@ -1845,7 +1881,8 @@ func _build_soot_snapshot() -> Dictionary:
 				_index_soot_voxel(cell_to_voxel, destroyed_cells, v)
 
 	var snapshot: Dictionary = {}
-	BlastCalculator.derive_soot_rings(cell_to_voxel, destroyed_cells, MAX_SOOT_RINGS, snapshot)
+	BlastCalculator.derive_soot_rings(
+			cell_to_voxel, destroyed_cells, MAX_SOOT_RINGS, snapshot, out_faces)
 
 	## VL-D2: merge the revealed crater-floor soot (non-Voxel cells).
 	for level in _crater_floor_soot.keys():

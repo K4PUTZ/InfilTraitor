@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**164 scripts · 35786 lines total** (under `godot/scripts/`)
+**164 scripts · 36193 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1601 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1676 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -663,17 +663,12 @@ extends `ConfirmationDialog` · 64 lines
 - `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
 - `_IMPACT_SUFFIXES` = `[ "_dented", "_cracked", "_dented_top", "_dented_bottom", "_dented_left", "_dented_right", ]`
 - `_CARVED_SIDE_SUFFIX` = `{ Voxel.CarvedSide.TOP: "_top", Voxel.CarvedSide.BOTTOM: "_bottom", Voxel.CarvedSide.LEFT: "_left", Voxel.CarvedSide.RIGHT: "_right", }`
-- `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
 - `EMPTY_COLUMN` = `-9999`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
-- `var debug_nudge: Vector2 = Vector2.ZERO`
 
 **Public API**
-- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
-- `func set_baked_lookup(lookup) -> void:`
-- `func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [], tile_modulate: Color = Color.WHITE) -> int:`
 - `func get_layer(level: int) -> TileMapLayer:`
 
 ---
@@ -1339,7 +1334,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 703 lines
+`class_name BlastCalculator` · 773 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1348,6 +1343,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
+- `FACE_SOOT_CLEAN` = `3`
 
 ---
 
@@ -1715,7 +1711,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 423 lines
+`class_name VoxelLightField` · extends `RefCounted` · 503 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -2172,7 +2168,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1095 lines
+extends `SceneTree` · 1201 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2203,6 +2199,9 @@ extends `SceneTree` · 1095 lines
 - `func test_ring_beyond_range_untouched() -> void:`
 - `func test_soot_rings_spread_by_distance() -> void:`
 - `func test_soot_min_ring_wins_between_two_holes() -> void:`
+- `func test_face_soot_points_at_the_hole() -> void:`
+- `func test_face_soot_merges_at_a_corner() -> void:`
+- `func test_face_soot_leaves_isotropic_result_untouched() -> void:`
 - `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
 - `func test_crater_dents_rim_and_band_by_material() -> void:`
 - `func test_bias_prefers_epicenter_facing_side() -> void:`
@@ -2844,17 +2843,17 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_face_separation_selftest.gd`
 
-extends `SceneTree` · 186 lines
+extends `SceneTree` · 225 lines
 
 `godot/scripts/tools/voxel_face_separation_selftest.gd`
 
-> FACE-READ-02 selftest — the "never three identical faces" guarantee. Run: godot --headless --script res://godot/scripts/tools/voxel_face_separation_selftest.gd Director, 2026-08-01: *"forçar a fuligem de destruição e tiros a seguir o mesmo princípio de nunca deixar um voxel existir com as 3 faces totalmente iguais [...] garantir que as 3 faces tem uma micro diferença."* The property under test is a CONTRACT BETWEEN TWO FILES that are tuned independently: the shader's per-face constants (godot/shaders/voxel_face_shading.gdshader) and the darkening canon they have to stay separable against (VoxelRenderer.bucket_luminance, its FLOOR_DEPTH_DIM, and VoxelLightField.soot_darkening). Either side can be retuned in good faith and silently destroy the guarantee — soot to 0.20 is exactly what broke it originally — so both sides are read from their real owners here, and the shader constants are PARSED from the shader file rather than copied, so a value changed there fails this test instead of drifting. A headless run has no rasteriser, so this reproduces the shader's arithmetic rather than sampling real pixels: quantised 8-bit output for each of the three faces. That is a deliberate, stated substitution — the real-pixel evidence for this feature is the capture cited in the session record.
+> FACE-READ-02 selftest — the "never three identical faces" guarantee. Run: godot --headless --script res://godot/scripts/tools/voxel_face_separation_selftest.gd Director, 2026-08-01: *"forçar a fuligem de destruição e tiros a seguir o mesmo princípio de nunca deixar um voxel existir com as 3 faces totalmente iguais [...] garantir que as 3 faces tem uma micro diferença."* The property under test is a CONTRACT BETWEEN TWO FILES that are tuned independently: the shader's per-face constants (godot/shaders/voxel_face_shading.gdshader) and the darkening canon they have to stay separable against (VoxelRenderer.bucket_luminance and its FLOOR_DEPTH_DIM). Either side can be retuned in good faith and silently destroy the guarantee — soot to 0.20 is exactly what broke it originally — so both sides are read from their real owners here, and the shader constants are PARSED from the shader file rather than copied, so a value changed there fails this test instead of drifting. FACE-SOOT-01 (2026-08-01) moved soot OUT of the light bucket and into this same shader, as a per-face multiplier (`soot_face_mult`). The scan follows it: the incoming colour is now bucket x depth only, and every one of the 64 per-face ring COMBINATIONS is swept, because two faces at different soot rings are a collapse risk this test could not previously even express. A headless run has no rasteriser, so this reproduces the shader's arithmetic rather than sampling real pixels: quantised 8-bit output for each of the three faces. That is a deliberate, stated substitution — the real-pixel evidence for this feature is the capture cited in the session record.
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `SHADER_PATH` = `"res://godot/shaders/voxel_face_shading.gdshader"`
-- `BLACK_CEILING` = `2`
+- `BLACK_CEILING` = `0`
 
 **Public vars**
 - `var passed: int = 0`
@@ -3532,7 +3531,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3360 lines
+extends `Node2D` · 3397 lines
 
 `godot/scripts/world/room.gd`
 

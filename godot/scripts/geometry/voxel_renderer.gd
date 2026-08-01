@@ -194,7 +194,10 @@ const GHOST_ALPHAS: Array[float] = [0.08, 0.16, 0.24]
 ## per-voxel surface/AO shading at once — axis factors collapsed into the same
 ## bucket as their neighbours and blast craters stayed invisible.
 const LIGHT_BUCKET_COUNT: int = 12
-const LIGHT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT - 1  ## flipped dim alts follow the unflipped run
+## (LIGHT_ALT_FLIP_BASE lived here and was the flip offset of the bucket-only id
+## run; FACE-SOOT-01 replaced it with SOOT_ALT_FLIP_BASE, which has to clear the
+## whole bucket × soot space rather than just the buckets. Repo-wide grep before
+## deleting it found this line as its only occurrence.)
 
 ## Bucket → modulate luminance. Bucket 0 must stay dark-but-readable (Director:
 ## full shadow still shows texture). Tunable; changes take effect on the next
@@ -218,27 +221,72 @@ var bucket_luminance: Array[float] = [
 ]
 
 
-## VL-01: (bucket, flipped) → alternative id. Single source of truth.
-static func encode_light_alt(bucket: int, flipped: bool) -> int:
+## FACE-SOOT-01 — the alternative id now carries (light bucket × per-face soot
+## code × flip), not just (bucket × flip). One flat run per flip state:
+##
+##   raw = (LIGHT_BUCKET_COUNT - 1 - bucket) + LIGHT_BUCKET_COUNT * soot_slot
+##   soot_slot = FACE_SOOT_CODE_CLEAN - soot_code   (so CLEAN → slot 0)
+##
+## raw == 0 is therefore "full lit, no soot" — the base tile — and the whole
+## pre-FACE-SOOT-01 id range survives unchanged as the soot_slot-0 run, so a map
+## with no destruction mints exactly the alternatives it minted before.
+##
+## HARD CEILING, verified in-engine rather than assumed: TRANSFORM_FLIP_H is
+## 4096 (FLIP_V 8192, TRANSPOSE 16384), so a real alternative id must stay below
+## 4096 or it collides with the transform bits Godot ORs into the same integer.
+## The full space here is 12 buckets × 64 codes × 2 flips = 1536 ids, max 1535 —
+## 2560 clear of the ceiling. Adding per-FACE LIGHT later (the other half of
+## VOXEL_LIGHT_MASTER_PLAN's open item) would multiply the bucket axis by 12×12
+## and BLOW that ceiling at 3456+; it would have to reuse this same soot code
+## space rather than add a third axis. Recorded here because the id space is the
+## real constraint on that feature, and nothing else in the codebase says so.
+##
+## The code itself is 2 bits per visible face — `top * 16 + se * 4 + sw`, ring
+## 0..2 with 3 = clean — so the all-clean code is 63 and maps to modulate alpha
+## 1.0, i.e. exactly the tile every untouched voxel already carries.
+## VoxelLightField.encode_face_soot()/decode_face_soot() are its only readers.
+const FACE_SOOT_CODE_CLEAN: int = 63
+const FACE_SOOT_CODE_COUNT: int = 64
+const SOOT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT * FACE_SOOT_CODE_COUNT
+
+
+## (bucket, per-face soot code, flipped) → alternative id. Single source of truth.
+static func encode_voxel_alt(bucket: int, soot_code: int, flipped: bool) -> int:
 	var b: int = clampi(bucket, 0, LIGHT_BUCKET_COUNT - 1)
-	if b == LIGHT_BUCKET_COUNT - 1:
+	var slot: int = FACE_SOOT_CODE_CLEAN - clampi(soot_code, 0, FACE_SOOT_CODE_COUNT - 1)
+	var raw: int = (LIGHT_BUCKET_COUNT - 1 - b) + LIGHT_BUCKET_COUNT * slot
+	if raw == 0:
 		return TileSetAtlasSource.TRANSFORM_FLIP_H if flipped else 0
-	var dim_alt: int = LIGHT_BUCKET_COUNT - 1 - b        ## 1..5, alt 1 = bucket 4
-	return (LIGHT_ALT_FLIP_BASE + dim_alt) if flipped else dim_alt
+	return (SOOT_ALT_FLIP_BASE + raw) if flipped else raw
 
 
-## VL-01: alternative id → light bucket (0..5).
+## alternative id → the raw (bucket, soot) index, flip stripped.
+static func _decode_alt_raw(alt: int) -> int:
+	if alt == 0 or alt == TileSetAtlasSource.TRANSFORM_FLIP_H:
+		return 0
+	return (alt - SOOT_ALT_FLIP_BASE) if alt >= SOOT_ALT_FLIP_BASE else alt
+
+
+## VL-01: (bucket, flipped) → alternative id, for callers with no soot to carry.
+static func encode_light_alt(bucket: int, flipped: bool) -> int:
+	return encode_voxel_alt(bucket, FACE_SOOT_CODE_CLEAN, flipped)
+
+
+## VL-01: alternative id → light bucket (0..LIGHT_BUCKET_COUNT-1).
 static func decode_light_bucket(alt: int) -> int:
-	if alt == 0 or alt >= TileSetAtlasSource.TRANSFORM_FLIP_H:
-		return LIGHT_BUCKET_COUNT - 1
-	if alt <= LIGHT_ALT_FLIP_BASE:
-		return LIGHT_BUCKET_COUNT - 1 - alt
-	return LIGHT_BUCKET_COUNT - 1 - (alt - LIGHT_ALT_FLIP_BASE)
+	return LIGHT_BUCKET_COUNT - 1 - (_decode_alt_raw(alt) % LIGHT_BUCKET_COUNT)
+
+
+## FACE-SOOT-01: alternative id → per-face soot code (63 = clean).
+static func decode_face_soot_code(alt: int) -> int:
+	@warning_ignore("integer_division")
+	var slot: int = _decode_alt_raw(alt) / LIGHT_BUCKET_COUNT
+	return FACE_SOOT_CODE_CLEAN - slot
 
 
 ## VL-01: alternative id → is the cell H-flipped (junction mirror)?
 static func decode_light_flipped(alt: int) -> bool:
-	return alt >= TileSetAtlasSource.TRANSFORM_FLIP_H or alt > LIGHT_ALT_FLIP_BASE
+	return alt >= SOOT_ALT_FLIP_BASE
 
 ## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
 ## the occluded set is restored to EXACTLY the alternative it had. We remember what was
@@ -437,8 +485,22 @@ func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
 		push_error("[VL-03-PERF] Failed to create light alternative %d at %s" % [alt_id, coords])
 		return
 	alt_data.texture_origin = GeometryCoords.voxel_texture_origin()
+	## FACE-SOOT-01: RGB stays exactly what it was — base tint × light bucket —
+	## and the per-face soot code rides in ALPHA, which nothing else uses since
+	## OCC-21 stopped placing ghost alternatives. Encoded as (code + 1) / 64 so
+	## it is never 0 (a 0 alpha would erase the voxel before the shader could
+	## read it) and so the clean code 63 lands on exactly 1.0 — an untouched
+	## voxel's modulate is bit-identical to the pre-FACE-SOOT-01 one.
+	##
+	## base_modulate.a must be 1.0 for the shader to recover the code by dividing
+	## it back out; it always is (Color.WHITE, or a MaterialDef.base_color, both
+	## opaque). Loud-fail rather than render silently-wrong soot everywhere (B6).
+	if not is_equal_approx(base_modulate.a, 1.0):
+		push_error("[FACE-SOOT-01] Base tile modulate at %s is not opaque (a=%.3f) — the per-face soot code rides in alpha and cannot survive a non-opaque base" % [coords, base_modulate.a])
+		return
+	var soot_alpha: float = float(decode_face_soot_code(alt_id) + 1) / float(FACE_SOOT_CODE_COUNT)
 	alt_data.modulate = Color(
-		base_modulate.r * lum, base_modulate.g * lum, base_modulate.b * lum, base_modulate.a)
+		base_modulate.r * lum, base_modulate.g * lum, base_modulate.b * lum, soot_alpha)
 	alt_data.flip_h = decode_light_flipped(alt_id)
 
 
@@ -557,6 +619,14 @@ func get_max_voxel_z_index() -> int:
 ## The B6 loud-fail guard in RoomBuilder reads this: a registry with slices that
 ## places zero cells means the render path did not run, and the game must not
 ## boot into a silently empty world. See OCC-FIX-01.
+## FACE-SOOT-01 — how many tile alternatives lazy minting has actually created.
+## The alternative-id SPACE is 1536 wide now (12 buckets × 64 per-face soot codes
+## × 2 flips); what matters on a phone is how much of it a real map ever touches,
+## and that is what this reports.
+func minted_alt_count() -> int:
+	return _minted_light_alts.size()
+
+
 func get_placed_cell_count() -> int:
 	return _diag_total_cells
 
@@ -1115,8 +1185,9 @@ func apply_light_field(field) -> void:
 	for cell in _ghosted_cells.keys():
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			record["prev_alt"] = encode_light_alt(
-					field.bucket_for(cell, record["level"]), flipped)
+			record["prev_alt"] = encode_voxel_alt(
+					field.bucket_for(cell, record["level"]),
+					field.face_soot_code(cell, record["level"]), flipped)
 
 
 ## VL-03 — repaint ONLY the cells inside the given GU cells, using the index
@@ -1148,11 +1219,13 @@ func apply_light_field_gus(field, gus: Array) -> void:
 			if source_id == -1:
 				continue  ## erased — destroyed, or currently ghosted (handled below)
 			var prev_alt: int = layer.get_cell_alternative_tile(cell)
-			var bucket: int = field.bucket_for(cell, level)
-			if bucket == decode_light_bucket(prev_alt):
+			## FACE-SOOT-01: the whole id is the comparison now — the same light bucket
+			## with different per-face soot is a different tile.
+			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
+					field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+			if alt_id == prev_alt:
 				continue
 			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
-			var alt_id: int = encode_light_alt(bucket, decode_light_flipped(prev_alt))
 			_ensure_light_alt(source_id, atlas_coords, alt_id)
 			layer.set_cell(cell, source_id, atlas_coords, alt_id)
 	## Ghosted cells inside the affected GUs: retarget their stored alternative
@@ -1163,8 +1236,9 @@ func apply_light_field_gus(field, gus: Array) -> void:
 			continue
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			record["prev_alt"] = encode_light_alt(
-					field.bucket_for(cell, record["level"]), flipped)
+			record["prev_alt"] = encode_voxel_alt(
+					field.bucket_for(cell, record["level"]),
+					field.face_soot_code(cell, record["level"]), flipped)
 
 
 func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: bool = false) -> void:
@@ -1175,12 +1249,13 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 				_placed_by_gu[gu] = []
 			_placed_by_gu[gu].append({"level": level, "cell": cell})
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
-		var bucket: int = field.bucket_for(cell, level)
-		if bucket == decode_light_bucket(prev_alt):
+		## FACE-SOOT-01: see apply_light_field_gus() — compare the whole id.
+		var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
+				field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+		if alt_id == prev_alt:
 			continue
 		var source_id: int = layer.get_cell_source_id(cell)
 		var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
-		var alt_id: int = encode_light_alt(bucket, decode_light_flipped(prev_alt))
 		## VL-03-PERF: mint this bucket's alternative lazily, only now that a cell
 		## actually needs it.
 		_ensure_light_alt(source_id, atlas_coords, alt_id)

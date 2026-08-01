@@ -60,11 +60,18 @@ Two standing duties, both obligations:
    `print_debug`, assertions).
 4. Visual claims need a real capture (`Screenshots/history/`, or an
    explicit ad-hoc one) — never a written description standing in for one.
-5. `python3 tools/persistent/check_invariants.py` and
+5. `python3 tools/persistent/run_selftests.py` (`--only <name>` for one) —
+   **the arbiter for selftests, the way `project_lint.py` is for compile
+   errors.** A bare `godot --script` run of a selftest can print a runtime
+   `SCRIPT ERROR`, skip the rest of that function, and still report PASS
+   with exit 0; GDScript cannot catch its own script errors in-process, so
+   the check has to live outside the Godot process. Never cite a bare run as
+   evidence a suite passed.
+6. `python3 tools/persistent/check_invariants.py` and
    `python3 tools/persistent/gen_codemap.py --check` — both must pass;
    these also run as pre-commit gates, so a failure here blocks the commit
    anyway.
-6. Commit (and push, if asked) on completion — see Git protocol below.
+7. Commit (and push, if asked) on completion — see Git protocol below.
 
 **Error-handling contract:**
 - `push_error("[ClassName] context: %s" % detail)` — config/asset/spec
@@ -96,6 +103,13 @@ before being written down.
 - `"PASS (deferred)"` and its variants (future tense, "code-based
   verification," "will land in...") are banned constructions — a criterion
   is PASS or it isn't.
+- **A green selftest does not mean the feature fires on the real map.**
+  Synthetic fixtures are built with the material/data that works, so they
+  cannot catch a feature made inert by real data. On 2026-08-01 the floor-dent
+  path passed its selftest with 69 dents on a synthetic patch and produced
+  **zero** on PLAYGROUND across 42 affected slabs — the map's floor is one
+  `ground_concrete` zone and only `earth` had a `dent_factor` row. Run the real
+  path and read the real counts before calling a feature done.
 - **Stay inside the requested scope.** An unrequested cleanup, refactor, or
   dead-code removal is a defect by definition, not a bonus. On 2026-07-12
   an unrequested `[CLEANUP]` commit (`0f55cae`) deleted a var that looked

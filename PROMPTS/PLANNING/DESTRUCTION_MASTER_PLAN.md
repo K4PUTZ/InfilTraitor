@@ -21,10 +21,13 @@ readback (not code-reading). **Resumed 2026-07-30/31**, alongside the parallel
 damage tiers per material, DENTED-before-CRACKED ring draw, blast marks in
 their own irregular texture family distinct from bullets, soot derived fresh
 every repaint for both explosions and firearms instead of stored). §7 item 6
-is the open thread going into the next session: damage marks don't yet know
-which face of a voxel actually faced the blast — a slab above the epicentre
-marks its outward top instead of the underside that faced the explosion.
-Director is bringing a diagram to formally design the fix.
+closed the same arc with **D25** (a DENTED voxel is a carved half-voxel,
+oriented by where the blast came from), and **2026-08-01 closed D25's own
+loose end with D26**: the floor dents too, prevalence scaling from the product
+of the destruction variables already in play, which finally makes the `_top`
+carved variant reachable. The blast floods also stopped propagating through
+solid `spec.blocks` obstacles that session — the consequence
+`WEAPON_MASTER_PLAN.md` flagged rather than fixed on 2026-07-30.
 **Runs AFTER `OCCLUSION_MASTER_PLAN`** (Director's call, 2026-07-12) —
 occlusion paused at Alpha Foundation 2026-07-15, this plan picked up next
 and is now itself paused, first at its own Alpha Ceiling Foundation

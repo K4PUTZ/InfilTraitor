@@ -30,7 +30,7 @@ These four are load-bearing. Contradicting them breaks something that is expensi
 | **[DIRECTION_GLOSSARY](DIRECTION_GLOSSARY.md)** | NW/NE/SE/SW, the two coordinate planes, **§10 banned terms** |
 | **[VOXEL_MASTER_PLAN](technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md)** | Voxel geometry: atoms, slices, edges, junctions, coordinate math |
 | **[MAPFILE_REFERENCE](technical/MAPFILE_REFERENCE.md)** | The `.map.json` schema |
-| **[VOXEL_LIGHT_MASTER_PLAN](../PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md)** | Voxel FACE lighting: 12-bucket brightness, blast soot/crater/ember visuals, destruction persistence, rotation perf |
+| **[VOXEL_LIGHT_MASTER_PLAN](../PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md)** | Voxel FACE lighting: 12-bucket brightness, blast soot/crater/ember visuals, destruction persistence, rotation perf, **per-face shading (FACE-READ-01/02)** |
 
 ### Master plans
 
@@ -38,7 +38,7 @@ Per-system status — most are paused mid-implementation, not blank slates.
 Read the plan's own status header before proposing anything in its territory.
 
 - **[OCCLUSION_MASTER_PLAN](../PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md)** — ⏸️ Paused 2026-07-21; Parts 1–3 closed. O1: occlusion is VIEW, not STATE.
-- **[DESTRUCTION_MASTER_PLAN](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md)** — 🟢 Part 3 (the trigger) done 2026-07-22; **Part 5 added 2026-07-29** — directional destruction, `CONE` shipped and `LINE` open. §7 q0 answers what a checkpoint restore does to holes. Sole writer of `Voxel.visible`.
+- **[DESTRUCTION_MASTER_PLAN](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md)** — 🟢 Part 3 (the trigger) done 2026-07-22; **Part 5 added 2026-07-29** — directional destruction, `CONE` shipped and `LINE` open. **D25/D26 (2026-07-31, 2026-08-01):** a DENTED voxel is a carved half-voxel oriented by the blast, and floors dent too. §7 q0 answers what a checkpoint restore does to holes. Sole writer of `Voxel.visible`.
 - **[INTERFACE_MASTER_PLAN](../PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md)** — 🟡 In progress; Waves 1–2 closed, Wave 3 not started.
 - **[TOP_TEXTURE_MASTER_PLAN](../PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md)** — Parts 1–2 closed 2026-07-11; Part 3 blocked.
 - **[ACTOR_MASTER_PLAN](../PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md)** — 🟡 v1.4: Part 5a Showcase shipped — a real CC0 shotgun renders live in a main-menu screen, adaptive layout verified both orientations. Part 6's first exercise (floating/rotating collectible, real normal-map lighting) also shipped. **D30 (2026-07-29):** the same class now covers a second object and a static-facing mode, and its frames are shared per bake rather than per instance. Living-beings track (character twin/poses/damage) deferred.
@@ -104,4 +104,7 @@ philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
   `CLAUDE.md`. Kept for the fuller philosophy, delegation calibration, and
   the manual-injection workflow other tools may still use.
 - `tools/persistent/CODEMAP.md` — generated; a pre-commit hook blocks a stale one
+- `tools/persistent/run_selftests.py` — runs every `*_selftest.gd` and fails a
+  run on any `SCRIPT ERROR`. The arbiter for selftests: a bare `godot --script`
+  run can print one and still exit 0.
 - `tools/persistent/QUICK_REFERENCE.md` · `ASSET_PIPELINE_QUICK_REFERENCE.md`

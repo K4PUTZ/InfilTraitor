@@ -1,13 +1,15 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
 > **Status:** ✅ SHIPPED (VL-01 → VL-D5, 2026-07-23 → 2026-07-26) — "Alpha
-> Temporal Light Foundation." This is the geometry/mechanism reference for the
-> voxel FACE lighting plane (buckets, blast visuals, persistence, temporal
-> repaint) — read it before touching `VoxelLightField`, `VoxelRenderer.
-> apply_light_field*()`, `EmberOverlay`, or the destruction↔lighting seam in
-> `test_zone_controller.gd`. Item 6 (metal denting/warping) and the 4-view
-> prebuild optimization are the only pieces still open — see their own
-> sections below for status.
+> Temporal Light Foundation"; extended by FACE-READ-01 (2026-07-31) and
+> FACE-READ-02 (2026-08-01) — "Alpha Face Light System Foundation." This is the
+> geometry/mechanism reference for the voxel FACE lighting plane (buckets, blast
+> visuals, persistence, temporal repaint, per-face shading) — read it before
+> touching `VoxelLightField`, `VoxelRenderer.apply_light_field*()`,
+> `godot/shaders/voxel_face_shading.gdshader`, `EmberOverlay`, or the
+> destruction↔lighting seam in `test_zone_controller.gd`. Item 6 (metal
+> denting/warping), the 4-view prebuild optimization, and per-FACE soot CONTENT
+> are the pieces still open — see their own sections below for status.
 > **Authored:** 2026-07-23 (solo mode).
 > **Was prerequisite for:** resuming `DESTRUCTION_MASTER_PLAN.md` (paused
 > 2026-07-22 precisely because destruction was invisible while every voxel

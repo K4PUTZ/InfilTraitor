@@ -17,8 +17,8 @@ GEOMETRY (deve coincidir com constantes voxel em VOXEL-02):
 
 Face topo  (y=0..15) : diamante isométrico
     N=(16, 0)  E=(32, 8)  S=(16, 16)  W=(0, 8)
-Face lateral (y=16..35): SW darken 70%, SE darken 88% (FACE-READ-01:
-    três tons distintos, nunca dois — ver SIDE_DARKEN_LEFT/RIGHT)
+Face lateral (y=16..35): retângulo 32×20, darken 80% (a diferenciação
+    SW/SE é aplicada em runtime por voxel_face_shading.gdshader)
 
 Flat-lit: sem shading direcional baked — BakeSystem aplica textura em load-time.
 Sem outline: voxels do mesmo material fundem numa superfície de parede contínua.
@@ -54,16 +54,15 @@ V_SB = (TILE_W // 2, TILE_H + SIDE_H)                   # canto inferior base
 V_EB = (TILE_W,      TILE_H + SIDE_H - TILE_H // 2)    # canto direito base
 
 # FACE-READ-01 (Director, 2026-07-31): the three visible faces of a voxel must
-# NEVER share a value. Until now both side faces used one SIDE_DARKEN (0.80),
-# so a voxel had only TWO tones (top 1.00 / both sides 0.80) and runs of voxels
-# fused into flat blobs — *"não dá pra saber exatamente como as superfícies em
-# 3D estão posicionadas."* The docstring in generate_voxel_atom() had specified
-# "face esquerda mais escura / face direita mais clara" since the file was
-# written; only the constant was missing, so the two polygons were filled from
-# the same variable. Three distinct tones now, which is what makes each
-# dimension explicit.
-SIDE_DARKEN_LEFT: float = 0.70    # SW-facing (screen-left), the darkest plane
-SIDE_DARKEN_RIGHT: float = 0.88   # SE-facing (screen-right), catches more light
+# NEVER share a value. Differentiating them HERE was tried first and measured to
+# reach only 0.25% of a real capture — the atom art feeds exclusively the voxels
+# that bypass the baked lookup, while every photographically baked wall takes
+# its pixels from a facade page. So the differentiation moved to
+# godot/shaders/voxel_face_shading.gdshader, which covers both paths, and this
+# stays a SINGLE flat side tone on purpose: the shader darkens the SW face
+# relative to it, and two sources of face shading would compound into a
+# double-darkened voxel.
+SIDE_DARKEN: float = 0.80   # ambas as laterais; a diferenciação SW/SE é do shader
 
 # ---------------------------------------------------------------------------
 # Paleta de materiais — (R, G, B) base, flat-lit
@@ -446,7 +445,7 @@ def generate_voxel_atom(base_color: tuple[int, int, int]) -> Image.Image:
     """
     Retorna um Image RGBA 32×36 px com um cubo 3D isométrico:
       y=[0..15]  face topo     — diamante isométrico, cor base
-      y=[16..35] faces laterais — SW 70% (escura) + SE 88% (clara)
+      y=[16..35] faces laterais — tom único 80% (shader diferencia SW/SE)
     
     Geometria (Painter's algorithm):
       Topo:      N, E, S, W (diamante)
@@ -457,16 +456,15 @@ def generate_voxel_atom(base_color: tuple[int, int, int]) -> Image.Image:
     draw = ImageDraw.Draw(img)
 
     # Cores — três tons distintos, nunca dois (FACE-READ-01)
-    c_top    = _rgba(base_color)                        # topo: cor base
-    c_left   = _darken(base_color, SIDE_DARKEN_LEFT)    # SW: mais escura
-    c_right  = _darken(base_color, SIDE_DARKEN_RIGHT)   # SE: mais clara
+    c_top   = _rgba(base_color)                  # topo: cor base
+    c_side  = _darken(base_color, SIDE_DARKEN)   # laterais: tom único (ver acima)
 
     # Painter's order (back to front): esquerda → direita → topo
     # Esquerda (SW face)
-    draw.polygon([V_W, V_S, V_SB, V_WB], fill=c_left)
+    draw.polygon([V_W, V_S, V_SB, V_WB], fill=c_side)
 
     # Direita (SE face)
-    draw.polygon([V_S, V_E, V_EB, V_SB], fill=c_right)
+    draw.polygon([V_S, V_E, V_EB, V_SB], fill=c_side)
     
     # Topo (top diamond)
     draw.polygon([V_N, V_E, V_S, V_W], fill=c_top)

@@ -678,29 +678,70 @@ teeth-check (`face_residue_sep = 0`) collapses **301 712/967 680, worst visible
 
 ---
 
-### 🔖 STILL OPEN — Per-FACE LIGHT (not soot)
+### 🔖 STILL OPEN — Per-FACE LIGHT, and the design it has to take (Director-ratified 2026-08-02)
 
 Per-face LIGHT — the face turned toward a lamp reading brighter — is the half of
-the original ask that did NOT ship, and it is deliberately out of FACE-SOOT-01's
-scope. Note that `surface_factor()` today picks the BRIGHTEST visible face and
-applies that one factor to the WHOLE voxel, so there is currently no real
-per-face light at all; the shader's `face_top/se/sw` are global constants.
+the original ask that did NOT ship, and it was deliberately out of
+FACE-SOOT-01's scope. Note that `surface_factor()` today picks the BRIGHTEST
+visible face and applies that one factor to the WHOLE voxel, so there is
+currently no real per-face light at all; the shader's `face_top/se/sw` are
+global constants.
 
-**The blocker is the alternative-id space, and the ceiling is now a measured
-number rather than an estimate.** Verified in-engine: `TRANSFORM_FLIP_H = 4096`
-(`FLIP_V` 8192, `TRANSPOSE` 16384), so a real alternative id must stay **below
-4096** or it collides with the transform bits Godot ORs into the same integer.
-FACE-SOOT-01 uses 12 buckets × 64 soot codes × 2 flips = **1536 ids (max 1535)**.
-Three independent per-face buckets would be 12³ × 2 = **3456 on its own**, and
-combined with the soot codes it blows the ceiling outright. So per-face light
-cannot be a third axis — it would have to REUSE the existing code space (e.g.
-per-face light as a delta from a shared base bucket, the same shape soot uses).
-That is the design constraint any future attempt starts from.
+**The constraint, measured in-engine rather than estimated.** `TRANSFORM_FLIP_H`
+is 4096 (`FLIP_V` 8192, `TRANSPOSE` 16384) and Godot ORs those bits into the
+same integer as the alternative id, so a real alternative id must stay below
+4096. Probed directly: `create_alternative_tile(id = 4095)` creates and
+round-trips through `set_cell()`/`get_cell_alternative_tile()` intact, while
+`id = 5000` is silently decomposed into `4096 | 904` and
+`has_alternative_tile()` comes back **false** — the alternative is never
+created. 4095 is the last usable id.
+
+**The ceiling is PER TILE, and it is not soot-specific.** Verified in the same
+probe: the same id value exists independently on two different tiles of one
+source. So this is never a budget over the scene — a map with a million voxels
+does not pressure it at all. What it bounds is *how many distinct visual states
+one tile can express*, and since the id encodes the WHOLE per-cell state
+(light bucket × per-face soot code × flip), it applies to every scenery voxel,
+sooted or not. A clean voxel only ever lands on 24 of those ids, but the other
+1512 slots stay reserved by the numbering and cannot be spent on anything else.
+Current occupancy: **1536 of 4096, leaving 2560 free.**
+
+**The design per-face light has to take — merge the two axes, do not add one.**
+An earlier note here said three independent per-face buckets "blow the ceiling."
+Re-checked: 12³ × 2 flips = **3456, which FITS**, with 640 to spare. What blows
+it is per-face light *plus* soot as a SEPARATE axis (12³ × 64 × 2 = 221 184).
+
+So the path is to stop treating light and soot as separate axes and encode **one
+per-face DARKENING INDEX with 12 levels**, already carrying both:
+
+```
+alt raw = idx_top + 12 * idx_se + 144 * idx_sw      (0 .. 1727)
+flipped = raw + 1728                                 (max 3455 < 4095)
+```
+
+The shader applies one multiplier per face and has no need to know whether that
+darkening came from shadow or from scorch — which is exactly why the two can
+share a channel. This delivers per-face light AND keeps per-face soot, inside
+the ceiling.
+
+**Cost to weigh when it is taken up** (this is the part that is not free): the
+index becomes derived from two terms that live in different files and are tuned
+independently today — `VoxelRenderer.bucket_luminance` (12 light levels) and the
+shader's `soot_face_mult` (4 soot levels). Merging them means recalibrating both
+together into one 12-level ramp, and FACE-SOOT-01's calibration lesson applies
+directly: `soot_face_mult` ships at `[0.33, 0.47, 0.69, 1.0]` precisely because
+the *nominal* `soot_darkening` values were not what the old quantised path
+actually produced. A merged ramp has to be derived from measured output, not
+from multiplying the two nominal tables together.
+
+FACE-READ-03's residue-class guarantee is unaffected either way — it operates on
+the final 8-bit value and does not care how the darkening was derived.
 
 Real minting cost, for whoever weighs this: PLAYGROUND mints **31 298**
 alternatives clean and **32 771** after a detonation — **+1473, under 5%**, for
 1606 sooted voxels. Lazy minting is what keeps that affordable and it is load
-bearing here.
+bearing here. A merged 12-level index would not change the shape of that cost:
+a clean map still touches only a handful of states per tile.
 
 ## Session close (2026-07-26) — "Alpha Temporal Light Foundation"
 

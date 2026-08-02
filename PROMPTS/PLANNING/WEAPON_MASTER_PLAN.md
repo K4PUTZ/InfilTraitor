@@ -230,7 +230,7 @@ Measured, not estimated.
 
 | Quantity | Value | Source |
 |---|---|---|
-| Destruction shapes implemented | **2 of 4** — `RADIAL`, `CONE`. `LINE` declared by 5 weapons and **not built** | `flood_gu_rings()` / `flood_gu_cone()` |
+| Destruction shapes implemented | **3 of 4** — `RADIAL`, `CONE`, `LINE` (2026-08-02, D30). `NONE` is by definition no-op | `flood_gu_rings()` / `flood_gu_cone()` / `select_line_impact()` |
 | Weapon definitions on disk | **6** in `weapons/` + 1 in `bombs/` | shotgun (CONE) · pistol, revolver, smg, assault_rifle, sniper_rifle (all LINE) |
 | **Baked-frame VRAM, per object** | **48.2 MB** for a 120-frame set (measured, real GPU) | FRAME-MEM-01 — the number that reshaped the bench, see below |
 | Test-zone frame VRAM, per-instance loading | **241 MB** for 5 props; **1447 MB** projected at 30 | measured / projected before the shared cache |
@@ -467,7 +467,32 @@ direito)."* The pieces and their real state, audited 2026-07-29:
   permanent prop-interaction architecture"*, so a sibling controller is the
   path of least resistance, not a generalised multi-prop system.
 
-### Part 3b — `LINE`, the other rifled half *(OPEN — the next real mechanic, now specified by §5b)*
+### Part 3b — `LINE`, the other rifled half *(✅ LANDED 2026-08-02 — see DESTRUCTION_MASTER_PLAN D30)*
+
+**Shipped.** `BlastCalculator.select_line_impact()` fires one straight ray from
+the muzzle GU along the facing, stopping at the first blocked edge or occupied
+cell — deliberately reusing `_walk_pellet_ray()` at angle 0 rather than
+reimplementing a ray, so the stop conditions (edge blocking, occupied cells,
+D15's void fallthrough) can never drift between `CONE` and `LINE`.
+`WeaponBenchController` dispatches it instead of loud-failing, **retiring D11's
+loud-fail for `LINE`** (the gate stays for `RADIAL`/`NONE` on the bench).
+
+**The damage model is `DESTRUCTION_MASTER_PLAN` D30's `punch` coefficient**, not
+a `LINE`-specific one — a sniper and a shotgun pellet differ only by their
+coefficient, never by code path.
+
+**One canon correction landed here, caught by a real bench shot rather than by
+review:** D1 defines `step_multipliers` as **distance bands for `CONE`** but
+**penetration depth for `LINE`**. The first implementation read it as distance
+for both, which made a sniper *weaker at range than a pistol* (measured: punch
+0.54 at 11 GU, below even the DENTED rung). `ShotPunchTable` now splits the two
+meanings into `cone_distance_multiplier()` and `penetration_multiplier()`, and
+the selftest asserts they are not interchangeable. `LINE` has no distance
+falloff at all today — a rifle's step table is spoken for by penetration and no
+range curve exists in the schema, which is D29's explicitly deferred work.
+
+*Original scoping text, kept:*
+
 
 **Re-scoped 2026-07-29 by the shot-physics brainstorm, unblocked 2026-07-30.**
 What follows below was written when `LINE` looked like "`CONE` but narrow". §5b

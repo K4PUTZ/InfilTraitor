@@ -60,7 +60,11 @@ func _init() -> void:
 	test_pellet_impacts_count_matches_projectile_count()
 	test_pellet_does_not_detour_around_narrow_obstacle()
 	test_point_impact_marks_only_the_impact_voxel()
+	test_point_impact_neighbour_ladder()
 	test_point_impact_cascades_only_on_full_destroy()
+	test_punch_coefficient_ordering()
+	test_no_shipped_weapon_reaches_the_cascade()
+	test_line_impact_is_straight_and_measures_distance()
 	test_pellet_selection_is_deterministic()
 	## DESTRUCTION_MASTER_PLAN D25 (2026-07-31) — carved half-voxels.
 	test_carved_side_faces_the_blast()
@@ -1037,7 +1041,7 @@ func test_pellet_does_not_detour_around_narrow_obstacle() -> void:
 
 
 func test_point_impact_marks_only_the_impact_voxel() -> void:
-	print("TEST: D28 - a mark exists ONLY at the impact voxel, never a neighbour")
+	print("TEST: D28/D30 - a MARK exists ONLY at the impact voxel; neighbours may be DESTROYED but never marked")
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")]
 	SliceGenerator.generate(edges, registry)
@@ -1046,47 +1050,266 @@ func test_point_impact_marks_only_the_impact_voxel() -> void:
 		_fail("Could not resolve synthetic wood Slice (id lookup mismatch)")
 		print("")
 		return
+	## D30 amends D28's SCOPE, not its invariant: a heavy round now takes
+	## neighbours with it, but the mark itself stays the projectile's alone.
+	## Driven at a punch high enough to guarantee a full 8-neighbour hole, so
+	## this exercises the amended path rather than trivially passing on a shot
+	## that destroyed nothing.
 	var touched := BlastCalculatorClass.apply_point_impact(
-		slice, 4, "wood", 1.0, registry, "ISOLATION_TEST")
-	var stray := 0
+		slice, 12, 2.5, registry, "ISOLATION_TEST")
+	var marked_strays := 0
+	var destroyed_strays := 0
 	for i in range(slice.voxels.size()):
-		if i == 4:
+		if i == 12:
 			continue
-		if slice.voxels[i].damage_state != Voxel.DamageState.INTACT:
-			stray += 1
-	if stray == 0 and touched.size() >= 1:
-		_pass("only voxel index 4 changed state (%d touched total incl. cascade) — the other 7 in-slice voxels stayed INTACT" %
-			touched.size())
+		var st: int = slice.voxels[i].damage_state
+		if st == Voxel.DamageState.DENTED or st == Voxel.DamageState.CRACKED:
+			marked_strays += 1
+		elif st == Voxel.DamageState.DESTROYED:
+			destroyed_strays += 1
+	if marked_strays == 0 and destroyed_strays > 0 and touched.size() > 1:
+		_pass("%d neighbours DESTROYED, ZERO of them marked (%d touched total) — D30.1 holds: only the projectile marks" %
+			[destroyed_strays, touched.size()])
 	else:
-		_fail("%d stray voxels changed state outside the impact point" % stray)
+		_fail("marked_strays=%d (must be 0), destroyed_strays=%d (must be >0 at punch 2.5)" %
+			[marked_strays, destroyed_strays])
+	print("")
+
+
+func test_point_impact_neighbour_ladder() -> void:
+	print("TEST: D30 - neighbour count is monotonic in punch, 0 below the start, capped at 8")
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")]
+	SliceGenerator.generate(edges, registry)
+	var counts: Array = []
+	for punch in [0.8, 1.0, 1.5, 2.0, 2.5, 4.0]:
+		var slice: Slice = registry.get_slice("SLICE_5_2_NE")
+		for v in slice.voxels:
+			v.damage_state = Voxel.DamageState.INTACT
+		var sib := registry.sibling_slice(slice.id)
+		if sib != null:
+			for v in sib.voxels:
+				v.damage_state = Voxel.DamageState.INTACT
+		BlastCalculatorClass.apply_point_impact(slice, 12, punch, registry, "LADDER_%f" % punch)
+		var destroyed := 0
+		for i in range(slice.voxels.size()):
+			if i != 12 and slice.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
+				destroyed += 1
+		counts.append(destroyed)
+	var monotonic := true
+	for i in range(1, counts.size()):
+		if counts[i] < counts[i - 1]:
+			monotonic = false
+	## Index 12 is an interior voxel of an 8-wide slice, so all 8 neighbours exist.
+	if monotonic and counts[0] == 0 and counts[counts.size() - 1] == 8:
+		_pass("neighbour counts across punch [0.8,1.0,1.5,2.0,2.5,4.0] = %s — monotonic, 0 below start, capped at 8" % [counts])
+	else:
+		_fail("counts=%s (expected monotonic, first 0, last 8)" % [counts])
 	print("")
 
 
 func test_point_impact_cascades_only_on_full_destroy() -> void:
-	print("TEST: D28 - cascade to the sibling (behind) voxel ONLY when the impact voxel is destroyed, never more than 2 deep")
+	print("TEST: D28/D30 - the CENTRE column cascades one layer when destroyed; neighbours only cascade above NEIGHBOUR_CASCADE_PUNCH")
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "metal")]
 	SliceGenerator.generate(edges, registry)
-	## Metal destroy_factor 0.05: search a small salt space for a roll that
-	## survives (no cascade, touched.size()==1) alongside proving the ceiling
-	## — no call ever touches more than 2 voxels, whatever the salt.
-	var max_touched := 0
-	var found_single := false
-	for i in range(20):
-		var slice: Slice = registry.get_slice("SLICE_5_2_NE")
-		var touched := BlastCalculatorClass.apply_point_impact(
-			slice, 4, "metal", 1.0, registry, "CASCADE_TEST_%d" % i)
-		max_touched = maxi(max_touched, touched.size())
-		if touched.size() == 1:
-			found_single = true
-		slice.voxels[4].damage_state = Voxel.DamageState.INTACT
-		var sib := registry.sibling_slice(slice.id)
-		if sib != null:
-			sib.voxels[4].damage_state = Voxel.DamageState.INTACT
-	if found_single and max_touched <= 2:
-		_pass("saw a 1-voxel (no cascade) result across 20 salts, and never more than 2 touched (a wall is exactly 2 voxels thick)")
+	var slice: Slice = registry.get_slice("SLICE_5_2_NE")
+	var sib := registry.sibling_slice(slice.id)
+	if slice == null or sib == null:
+		_fail("Could not resolve the synthetic metal Slice pair")
+		print("")
+		return
+
+	## Below the DESTROY threshold: a mark and nothing else — no cascade at all.
+	var touched_mark := BlastCalculatorClass.apply_point_impact(
+		slice, 12, 0.4, registry, "CASCADE_MARK")
+	var mark_ok: bool = touched_mark.size() == 1 \
+		and slice.voxels[12].damage_state == Voxel.DamageState.DENTED \
+		and sib.voxels[12].damage_state == Voxel.DamageState.INTACT
+
+	## Mid punch: centre destroys and cascades, but neighbours must NOT reach
+	## the second layer (this is the D30.2 "not frequent" guarantee).
+	_reset_slice_pair(slice, sib)
+	BlastCalculatorClass.apply_point_impact(slice, 12, 1.6, registry, "CASCADE_MID")
+	var sib_destroyed_mid := 0
+	for i in range(sib.voxels.size()):
+		if sib.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
+			sib_destroyed_mid += 1
+	var mid_ok: bool = slice.voxels[12].damage_state == Voxel.DamageState.DESTROYED \
+		and sib_destroyed_mid <= 1
+
+	## Above NEIGHBOUR_CASCADE_PUNCH: the crater goes through — neighbours
+	## reach the second layer too.
+	_reset_slice_pair(slice, sib)
+	BlastCalculatorClass.apply_point_impact(slice, 12, 6.0, registry, "CASCADE_HEAVY")
+	var sib_destroyed_heavy := 0
+	for i in range(sib.voxels.size()):
+		if sib.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
+			sib_destroyed_heavy += 1
+	var heavy_ok: bool = sib_destroyed_heavy > 1
+
+	if mark_ok and mid_ok and heavy_ok:
+		_pass("punch 0.4 -> mark only, no cascade; punch 1.6 -> centre through (%d in layer 2); punch 6.0 -> neighbours through too (%d in layer 2)" %
+			[sib_destroyed_mid, sib_destroyed_heavy])
 	else:
-		_fail("found_single=%s, max_touched=%d (expected some 1s, never >2)" % [found_single, max_touched])
+		_fail("mark_ok=%s mid_ok=%s (layer2=%d) heavy_ok=%s (layer2=%d)" %
+			[mark_ok, mid_ok, sib_destroyed_mid, heavy_ok, sib_destroyed_heavy])
+	print("")
+
+
+func _reset_slice_pair(a: Slice, b: Slice) -> void:
+	for v in a.voxels:
+		v.damage_state = Voxel.DamageState.INTACT
+	for v in b.voxels:
+		v.damage_state = Voxel.DamageState.INTACT
+
+
+func test_punch_coefficient_ordering() -> void:
+	print("TEST: D30 - the punch coefficient orders correctly across weapon, skill, material and distance")
+	## Weapon ordering at neutral everything: sniper > rifle > revolver > pistol
+	## > smg > one shotgun pellet. This is the Director's stated intent —
+	## *"sniper deixa 1 buraco maior, shotgun deixa vários pequenos"* — expressed
+	## as a single number, so a regression in the JSONs shows up here.
+	var order: Array = []
+	for wp in [0.70, 0.45, 0.35, 0.25, 0.22, 0.12]:
+		order.append(ShotPunchTable.compute(wp, "concrete", ShotPunchTable.SKILL_NEUTRAL,
+			1.0, "ORDER_FIXED"))
+	var weapon_ok := true
+	for i in range(1, order.size()):
+		if order[i] >= order[i - 1]:
+			weapon_ok = false
+
+	## Skill: novice < neutral < elite, same weapon and material.
+	var novice: float = ShotPunchTable.compute(0.70, "concrete", ShotPunchTable.SKILL_NOVICE, 1.0, "S")
+	var neutral: float = ShotPunchTable.compute(0.70, "concrete", ShotPunchTable.SKILL_NEUTRAL, 1.0, "S")
+	var elite: float = ShotPunchTable.compute(0.70, "concrete", ShotPunchTable.SKILL_ELITE, 1.0, "S")
+	var skill_ok: bool = novice < neutral and neutral < elite
+
+	## Material: the harder the material, the lower the punch.
+	var on_metal: float = ShotPunchTable.compute(0.70, "metal", 1.0, 1.0, "M")
+	var on_concrete: float = ShotPunchTable.compute(0.70, "concrete", 1.0, 1.0, "M")
+	var on_wood: float = ShotPunchTable.compute(0.70, "wood", 1.0, 1.0, "M")
+	var material_ok: bool = on_metal < on_concrete and on_concrete < on_wood
+
+	## D1's two meanings of step_multipliers must NOT be interchangeable.
+	## CONE: distance bands, indexed by GU travelled, holding the last entry past
+	## the table's end (D26 — a miss keeps travelling, it does not stop at range).
+	var falloff: Array = [1.0, 0.5]
+	var near: float = ShotPunchTable.cone_distance_multiplier(falloff, 0)
+	var far: float = ShotPunchTable.cone_distance_multiplier(falloff, 1)
+	var beyond: float = ShotPunchTable.cone_distance_multiplier(falloff, 99)
+	var distance_ok: bool = far < near and is_equal_approx(beyond, far)
+
+	## LINE: the SAME table read as penetration depth. Layer 0 never attenuates;
+	## layer 1 takes the table's own second entry, NOT the flat fallback. This is
+	## the exact confusion that shipped and was caught on the bench — a sniper
+	## reading its penetration table as distance came out weaker at range than a
+	## pistol.
+	var sniper_steps: Array = [1.0, 0.95, 0.9]
+	var pen_ok: bool = is_equal_approx(ShotPunchTable.penetration_multiplier(sniper_steps, 0), 1.0) \
+		and is_equal_approx(ShotPunchTable.penetration_multiplier(sniper_steps, 1), 0.95) \
+		and is_equal_approx(ShotPunchTable.penetration_multiplier([], 1), ShotPunchTable.PENETRATION_FALLOFF)
+
+	## Luck: same inputs, different shot salt -> different punch, but always
+	## inside [LUCK_MIN, LUCK_MAX] of the unlucked value.
+	var luck_values: Dictionary = {}
+	for i in range(50):
+		luck_values[ShotPunchTable.luck_for("LUCK_%d" % i)] = true
+	var luck_ok: bool = luck_values.size() > 1
+	for lv in luck_values:
+		if lv < ShotPunchTable.LUCK_MIN or lv > ShotPunchTable.LUCK_MAX:
+			luck_ok = false
+
+	if weapon_ok and skill_ok and material_ok and distance_ok and pen_ok and luck_ok:
+		_pass("weapon order %s strictly descending; skill %.2f<%.2f<%.2f; metal %.2f < concrete %.2f < wood %.2f; CONE distance holds past table end; LINE penetration reads its own table; %d distinct luck values in range" %
+			[order.map(func(v): return snappedf(v, 0.01)), novice, neutral, elite,
+			on_metal, on_concrete, on_wood, luck_values.size()])
+	else:
+		_fail("weapon_ok=%s skill_ok=%s material_ok=%s distance_ok=%s pen_ok=%s luck_ok=%s" %
+			[weapon_ok, skill_ok, material_ok, distance_ok, pen_ok, luck_ok])
+	print("")
+
+
+func test_no_shipped_weapon_reaches_the_cascade() -> void:
+	print("TEST: D30.2 - no weapon in the shipped arsenal can trigger the neighbour cascade (that is reserved for a future heavy weapon)")
+	## Reads the REAL weapon JSONs, not a fixture: the whole point is to catch a
+	## future balance edit that quietly turns a rifle into a bazooka. An earlier
+	## pass set this threshold from a concrete-only hand calculation and was
+	## wrong by 2x because wood is softer — hence a test over every material,
+	## at the worst case of every other factor.
+	var dir := DirAccess.open("res://weapons")
+	if dir == null:
+		_fail("could not open res://weapons")
+		print("")
+		return
+	var worst := 0.0
+	var worst_label := ""
+	for file_name in dir.get_files():
+		if not file_name.ends_with(".json"):
+			continue
+		var text := FileAccess.get_file_as_string("res://weapons/%s" % file_name)
+		var data = JSON.parse_string(text)
+		if typeof(data) != TYPE_DICTIONARY:
+			_fail("could not parse weapons/%s" % file_name)
+			print("")
+			return
+		var def := WeaponDef.from_json(data)
+		for material in ShotPunchTable.RESISTANCE:
+			## GLASS IS EXCLUDED, with a measured reason rather than a hunch:
+			## at resistance 0.4 a sniper reaches punch 8.82 on it, far past the
+			## threshold. That is not a mis-calibration of the ladder — D22
+			## ratified glass as DESTROYED-only ("não vai ter dented; é buraco
+			## feito, ou não feito") and explicitly DEFERRED its wider-cascade
+			## destruction behaviour, so a pane shattering through both layers
+			## is the specified outcome, not the wall-crater case D30.2 is
+			## about. Flagged to the Director as an open calibration item; if
+			## glass ever gets its own destruction rule this exclusion goes.
+			if material == "glass":
+				continue
+			## Worst case: elite agent, point blank (step 0), luckiest roll.
+			var p: float = ShotPunchTable.PUNCH_GAIN * def.punch \
+				* ShotPunchTable.SKILL_ELITE \
+				* ShotPunchTable.cone_distance_multiplier(def.step_multipliers, 0) \
+				* ShotPunchTable.LUCK_MAX \
+				/ ShotPunchTable.resistance(material)
+			if p > worst:
+				worst = p
+				worst_label = "%s on %s" % [def.id, material]
+	if worst > 0.0 and worst < ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH:
+		_pass("arsenal worst case is %s at punch %.2f, below the %.2f cascade threshold" %
+			[worst_label, worst, ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH])
+	else:
+		_fail("worst case %s reached punch %.2f, at or above the %.2f cascade threshold" %
+			[worst_label, worst, ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH])
+	print("")
+
+
+func test_line_impact_is_straight_and_measures_distance() -> void:
+	print("TEST: D30 - LINE fires ONE straight ray and reports the GU distance it travelled")
+	_wide_wall_registry(1, 2, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 10)
+	## Muzzle at (5,5) firing NE (toward -Y) into the wall between rows 2 and 1.
+	var hit := BlastCalculatorClass.select_line_impact(Vector2i(5, 5), NE, 40, blocked, {})
+	var straight_ok: bool = not hit.is_empty() \
+		and hit["gu"] == Vector2i(5, 2) \
+		and hit["face"] == Face.NE \
+		and int(hit["steps"]) == 3
+
+	## Determinism: LINE has no angular term at all, so two identical calls must
+	## be identical — and unlike a cone pellet, no salt is even involved.
+	var hit_again := BlastCalculatorClass.select_line_impact(Vector2i(5, 5), NE, 40, blocked, {})
+	var deterministic_ok: bool = hit == hit_again
+
+	## A ray into open space finds nothing and returns {} — it keeps travelling
+	## (D26), it does not stop at a range limit and invent an impact.
+	var miss := BlastCalculatorClass.select_line_impact(Vector2i(5, 5), -NE, 40, {}, {})
+	var miss_ok: bool = miss.is_empty()
+
+	if straight_ok and deterministic_ok and miss_ok:
+		_pass("ray from (5,5) NE stopped at (5,2)/NE after 3 GU steps; identical on repeat; a ray into the void returns {}")
+	else:
+		_fail("straight_ok=%s (hit=%s) deterministic_ok=%s miss_ok=%s" %
+			[straight_ok, hit, deterministic_ok, miss_ok])
 	print("")
 
 

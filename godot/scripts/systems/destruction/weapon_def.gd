@@ -44,6 +44,18 @@ var cone_half_angle_deg: float = 0.0
 ## so a heavier round beats concrete where a lighter one only scratches it.
 ## 1.0 = exactly as destructive as a grenade against the same material.
 var destroy_multiplier: float = 1.0
+## D30: the weapon's base term in the ShotPunchTable coefficient — what ONE
+## projectile of this weapon is worth before skill, distance, luck and material
+## resistance apply. Deliberately SEPARATE from destroy_multiplier because the
+## two answer different questions: destroy_multiplier scales a GROUP fraction
+## (how much of a ring group converts), punch scales a SINGLE point impact.
+## The shotgun is what forces the split — 0.6 is right as a group scalar, but
+## each of its 24 pellets is individually feeble (*"cada tiro da shotgun tem seu
+## próprio dado, mas individualmente tem menos potência do que outros tiros
+## singulares"*). Falls back to destroy_multiplier when the JSON omits it, so a
+## definition written before this field keeps its old relative strength instead
+## of silently reading as 0.
+var punch: float = 1.0
 ## D14/D27: how many independent projectiles one shot fires — sniper 1,
 ## shotgun ~8, pistol 1. Each rolls its own hit, its own impact point
 ## (BlastCalculator.select_cone_pellet_impacts()), its own damage tier
@@ -72,6 +84,7 @@ static func from_json(data: Dictionary) -> WeaponDef:
 
 	def.cone_half_angle_deg = float(data.get("cone_half_angle_deg", 0.0))
 	def.destroy_multiplier = float(data.get("destroy_multiplier", 1.0))
+	def.punch = float(data.get("punch", def.destroy_multiplier))
 	def.projectile_count = int(data.get("projectile_count", 1))
 	def.gameplay = data.get("gameplay", {})
 

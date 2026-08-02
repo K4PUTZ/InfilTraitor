@@ -291,33 +291,149 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 ## Returns Array[Voxel] actually touched (1 or 2), for the caller's soot/
 ## VL-PERSIST bookkeeping — same shape callers already build from
 ## destroy_set/dent_set/crack_set today.
-static func apply_point_impact(slice: Slice, voxel_index: int, material: String,
-		destroy_multiplier: float, edge_registry: EdgeRegistry, salt: String) -> Array:
+## D30 (Director, 2026-08-02) — REPLACES D28's three-way probability roll with
+## the single `punch` coefficient. `punch` arrives ALREADY COMPUTED (see
+## ShotPunchTable.compute()), so this function is pure geometry + ladder and a
+## selftest can drive an exact coefficient instead of hunting for a salt that
+## happens to roll the tier it wants to observe.
+##
+## WHAT CHANGED FROM D28, and what deliberately did NOT:
+## - The impact voxel's tier is now a DETERMINISTIC function of punch, not a
+##   dice throw between three buckets. Director: *"A marca vai afundando
+##   conforme a potência do tiro."* Randomness moved into punch itself (the luck
+##   term), so it varies the RESULT without making the ladder unreadable.
+## - There is no "nothing happened" outcome any more: *"O tiro errado sempre vai
+##   ter pelo menos uma marca de bala (a não ser que atravesse a parede)."*
+##   Below the DENTED threshold the floor is CRACKED, not INTACT.
+## - **Neighbours may now be DESTROYED, but NEVER marked** (D30.1, Director:
+##   *"vizinhos destruídos mas sem marca própria. Somente o projétil gera a
+##   marca no ponto de impacto"*). This keeps D28's actual invariant — the one
+##   it was written to protect — while letting a heavy round open one big
+##   contiguous hole instead of a spray of separate round marks. A neighbour
+##   only ever goes INTACT -> DESTROYED; it can never reach DENTED or CRACKED.
+## - Full penetration still leaves no mark anywhere on the path (D28, unchanged).
+##
+## D30.2 — neighbours cascade into the second layer ONLY above
+## ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH, which is set above anything the
+## current arsenal reaches. Director: *"Se a potência do tiro for gigantesca, os
+## vizinhos destruídos podem cascatear para a próxima camada. Não é algo para
+## ser frequente, mas eventualmente vai ter uma bazuca."*
+##
+## The centre column still cascades exactly as D28 specified: the wall's sibling
+## slice (edge_registry.sibling_slice(), same voxel index — verified 2026-07-30
+## that SliceGenerator builds both slices of an edge with matching per-level,
+## per-position iteration order, so index i is the same physical row/column on
+## the opposite face). A wall is exactly 2 voxels thick (D16), so depth caps
+## at 2.
+##
+## Returns Array[Voxel] actually touched, for the caller's soot / VL-PERSIST
+## bookkeeping — same shape callers already build from destroy_set/dent_set/
+## crack_set today.
+## `step_multipliers` is the weapon's own table and is consumed here ONLY as
+## D1's PENETRATION axis (what survives into layer 2). Passing it is optional:
+## an empty array falls back to ShotPunchTable.PENETRATION_FALLOFF, which is
+## what every non-LINE shape wants, since for those shapes the same table means
+## distance and has no business attenuating depth.
+static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
+		edge_registry: EdgeRegistry, salt: String,
+		step_multipliers: Array = []) -> Array:
 	var touched: Array = []
 	var current_slice := slice
-	var d: float = MaterialResistanceTable.destroy_factor(material) * destroy_multiplier
-	var n: float = MaterialResistanceTable.dent_factor(material)
-	var c: float = MaterialResistanceTable.crack_factor(material)
 	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
 		if current_slice == null or voxel_index < 0 or voxel_index >= current_slice.voxels.size():
 			break
+		var current_punch: float = punch \
+			* ShotPunchTable.penetration_multiplier(step_multipliers, depth)
 		var voxel: Voxel = current_slice.voxels[voxel_index]
 		touched.append(voxel)
-		var key: String = "%s:IMPACT:%d" % [salt, depth]
-		var roll: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
-		if roll < d:
-			voxel.set_damage(Voxel.DamageState.DESTROYED)
-			current_slice = edge_registry.sibling_slice(current_slice.id)
-			continue
-		elif roll < d + n:
-			voxel.set_damage(Voxel.DamageState.DENTED)
-		elif roll < d + n + c:
-			voxel.set_damage(Voxel.DamageState.CRACKED)
-		## else: roll missed every tier — INTACT, no mark. Matches "somente no
-		## ponto de impacto [...] QUANDO o voxel inteiro não é destruído": a
-		## clean miss on the tier roll just means nothing visible happened.
-		break
+		var state: int = ShotPunchTable.damage_state_for(current_punch)
+		if state != Voxel.DamageState.DESTROYED:
+			## CRACKED or DENTED — the projectile's own mark, bullet family
+			## (from_blast stays false, D23).
+			voxel.set_damage(state)
+			break
+		voxel.set_damage(Voxel.DamageState.DESTROYED)
+		var sibling := edge_registry.sibling_slice(current_slice.id)
+		## D30.1: neighbours of the hole go too, but never marked.
+		var neighbour_count: int = ShotPunchTable.neighbour_count_for(current_punch)
+		var cascade_neighbours: bool = current_punch >= ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH
+		for ni in select_face_neighbours(current_slice, voxel_index, neighbour_count,
+				"%s:NEIGHBOUR:%d" % [salt, depth]):
+			var nv: Voxel = current_slice.voxels[ni]
+			nv.set_damage(Voxel.DamageState.DESTROYED)
+			touched.append(nv)
+			if cascade_neighbours and sibling != null and ni < sibling.voxels.size():
+				var sv: Voxel = sibling.voxels[ni]
+				sv.set_damage(Voxel.DamageState.DESTROYED)
+				touched.append(sv)
+		current_slice = sibling
 	return touched
+
+
+## The up-to-8 face-plane neighbours of `voxel_index` inside its own Slice,
+## ranked by hash so the hole's SHAPE varies shot to shot instead of always
+## being the same cross or the same full square (D30.4 — *"pra não ficar o mesmo
+## buraco repetitivo"*). Soot needs no equivalent knob: derive_soot_rings() is a
+## deterministic BFS over whichever voxels are absent, so varying the hole
+## varies the scorch for free.
+##
+## A Slice's voxels are a row-major grid of VOXELS_PER_UNIT_AXIS columns
+## (index = row * 8 + col), so neighbours are the 3x3 patch minus the centre —
+## computed in (row, col) space precisely so index+1 cannot wrap onto the next
+## row and paint a hole on the far side of the wall.
+static func select_face_neighbours(slice: Slice, voxel_index: int, count: int,
+		salt: String) -> Array:
+	if count <= 0 or slice == null or slice.voxels.is_empty():
+		return []
+	var w: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var rows: int = slice.voxels.size() / w
+	var row: int = voxel_index / w
+	var col: int = voxel_index % w
+	var candidates: Array = []
+	for dr in [-1, 0, 1]:
+		for dc in [-1, 0, 1]:
+			if dr == 0 and dc == 0:
+				continue
+			var r: int = row + dr
+			var c: int = col + dc
+			if r < 0 or r >= rows or c < 0 or c >= w:
+				continue
+			candidates.append(r * w + c)
+	candidates.sort_custom(func(a, b) -> bool:
+		return FacadeSampler._fnv1a_hash("%s:%d" % [salt, a]) \
+			< FacadeSampler._fnv1a_hash("%s:%d" % [salt, b])
+	)
+	return candidates.slice(0, mini(count, candidates.size()))
+
+
+## D30 — LINE delivery: one straight ray from the muzzle GU along `facing_delta`,
+## stopping at the first blocked edge or occupied cell it meets. This is the
+## mechanic the five rifled weapons have declared truthfully and loud-failed on
+## since D11 (WEAPON_MASTER_PLAN Part 3b).
+##
+## Deliberately reuses _walk_pellet_ray() at angle 0 rather than reimplementing
+## a ray: a LINE shot IS a cone pellet with no angular deviation, and sharing
+## the walk means the stop conditions (edge blocking, occupied cells, void
+## fallthrough per D15) can never drift between the two delivery shapes.
+##
+## Returns {"gu","face","steps"} — `steps` is the GU distance travelled, which
+## is what ShotPunchTable's distance term indexes — or {} if the ray reached
+## max_steps without meeting anything (a miss into the void, D26: it keeps
+## travelling, it does not stop at a range limit).
+static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
+		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary) -> Dictionary:
+	if facing_delta == Vector2i.ZERO:
+		return {}
+	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
+	var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, 0.0, max_steps,
+		blocked_edges, blocked_cells)
+	if hit.is_empty():
+		return {}
+	## Chebyshev distance is exact here: a zero-angle walk only ever steps
+	## along `facing_delta`, so the GU delta is a pure multiple of it.
+	var delta: Vector2i = hit["gu"] - source_gu
+	hit["steps"] = maxi(absi(delta.x), absi(delta.y))
+	return hit
 
 
 ## Every wall Slice and roof Slab touching a flooded GU, each tagged with the

@@ -2975,10 +2975,15 @@ func _run_auto_screenshot_capture() -> void:
 		if wi < 0 or wi >= _weapon_bench_controller._weapons.size():
 			wi = 0
 		var w_cell: Vector2i = _weapon_bench_controller._weapons[wi]["gu_cell"]
-		## Frame between the weapon and the wall it is aimed at, not on the
-		## weapon itself — the point of the capture is the cone reaching its
-		## target.
-		var aim_center := Vector2i(w_cell.x, maxi(w_cell.y - 2, 0))
+		## Frame the WALL the weapon is aimed at, not the weapon itself — the
+		## point of the capture is the damage arriving at its target.
+		## `w_cell.y - 2` alone was written when every bench weapon was the
+		## shotgun at y=6 (so y=4, right against the wall row). D30 put LINE
+		## weapons on the bench at y=9 and y=13, where the same offset frames
+		## empty floor and the impact falls off-screen entirely — observed on
+		## the first sniper capture. Taking whichever of the two is closer to
+		## the wall keeps the shotgun's original framing and fixes the rest.
+		var aim_center := Vector2i(w_cell.x, maxi(mini(w_cell.y - 2, 3), 0))
 		if _camera_controller != null and agent != null:
 			_camera_controller.focus_on(agent._cell_to_world(aim_center))
 		if _fow_controller != null:

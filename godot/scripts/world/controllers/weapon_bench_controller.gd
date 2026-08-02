@@ -219,8 +219,9 @@ func fire_active() -> void:
 	## a narrow cone. Firing a cone out of a sniper rifle because it is the only
 	## shape implemented would be exactly the kind of silent substitution this
 	## project's evidence rules ban.
-	if weapon_def.delivery != WeaponDef.DELIVERY_CONE:
-		push_error("[WeaponBenchController] '%s' declares delivery %s, which is not implemented yet — only CONE is (WEAPON_MASTER_PLAN Part 2 / DESTRUCTION_MASTER_PLAN Part 5)." %
+	if weapon_def.delivery != WeaponDef.DELIVERY_CONE \
+			and weapon_def.delivery != WeaponDef.DELIVERY_LINE:
+		push_error("[WeaponBenchController] '%s' declares delivery %s, which is not implemented yet — only CONE and LINE are (WEAPON_MASTER_PLAN Part 2 / Part 3b)." %
 			[w["weapon_id"], weapon_def.delivery])
 		cancel_active()
 		return
@@ -234,15 +235,30 @@ func fire_active() -> void:
 	## CONE, which is exactly what was reading as "quase como uma granada,
 	## desde o chão até o teto." A miss keeps travelling regardless of
 	## distance (D26), so max_steps is a generous constant, not a range cap.
+	##
+	## D30 (2026-08-02): LINE joins here as ONE straight ray instead of N
+	## angled ones — the picks then flow through the exact same resolve +
+	## apply_point_impact() path, which is why a sniper and a shotgun pellet
+	## differ only by their punch coefficient and not by code path.
 	var pellet_salt: String = "%s_%s_%d" % [w["weapon_id"], w["gu_cell"], int(w["shots_fired"])]
 	w["shots_fired"] = int(w["shots_fired"]) + 1
-	var pellet_picks := BlastCalculatorClass.select_cone_pellet_impacts(
-		w["gu_cell"], _view_facing_delta(w["facing"]), weapon_def.cone_half_angle_deg,
-		PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count, _blocked_edges_dict(),
-		room._blocked_cells, pellet_salt)
+	var facing_delta := _view_facing_delta(w["facing"])
+	var pellet_picks: Array = []
+	if weapon_def.delivery == WeaponDef.DELIVERY_LINE:
+		var line_hit := BlastCalculatorClass.select_line_impact(
+			w["gu_cell"], facing_delta, PELLET_FLOOD_MAX_STEPS,
+			_blocked_edges_dict(), room._blocked_cells)
+		if not line_hit.is_empty():
+			pellet_picks.append(line_hit)
+	else:
+		pellet_picks = BlastCalculatorClass.select_cone_pellet_impacts(
+			w["gu_cell"], facing_delta, weapon_def.cone_half_angle_deg,
+			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count, _blocked_edges_dict(),
+			room._blocked_cells, pellet_salt)
 
 	var cell_to_voxel: Dictionary = {}
 	var pellets_landed := 0
+	var punch_log: Array = []
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
 			pellet_picks[i], room._edge_registry, "%s:%d" % [pellet_salt, i])
@@ -250,14 +266,38 @@ func fire_active() -> void:
 			continue
 		pellets_landed += 1
 		var slice: Slice = resolved["slice"]
+		## D30: one coefficient decides tier, neighbour count and cascade. Each
+		## projectile gets its OWN salt, so every shotgun pellet rolls its own
+		## luck exactly as the Director specified.
+		## D1 decides what step_multipliers MEANS, and it differs per shape: for
+		## CONE the table is distance bands, for LINE it is penetration depth.
+		## Reading a rifle's table as distance is a real bug that was caught on
+		## this very bench — it made a sniper weaker at range than a pistol.
+		var is_line: bool = weapon_def.delivery == WeaponDef.DELIVERY_LINE
+		## DISTANCE IS DELIBERATELY NEUTRAL (1.0) FOR BOTH SHAPES THIS PASS, and
+		## that is a scope decision, not an omission. Wiring CONE's table in as a
+		## distance term looked canon-correct (D2) but MEASURED as a regression:
+		## the shotgun's [1.0,0.85,0.6,0.35,0.15] bottoms out at 4 GU, which is
+		## exactly where the bench stands it, so 24 pellets that used to punch
+		## ~7 holes through concrete produced ZERO. The old CONE path never read
+		## that table at all, so switching it on is a behaviour change nobody
+		## asked for in this pass. Range/falloff for firearms is D29's explicitly
+		## deferred work; ShotPunchTable.cone_distance_multiplier() is the tested
+		## seam it lands on.
+		var punch: float = ShotPunchTable.compute(
+			weapon_def.punch, slice.material, _agent_skill(),
+			1.0, "%s:%d" % [pellet_salt, i])
+		punch_log.append(snappedf(punch, 0.01))
 		var touched := BlastCalculatorClass.apply_point_impact(
-			slice, resolved["voxel_index"], slice.material, weapon_def.destroy_multiplier,
-			room._edge_registry, "%s:%d" % [pellet_salt, i])
+			slice, resolved["voxel_index"], punch,
+			room._edge_registry, "%s:%d" % [pellet_salt, i],
+			weapon_def.step_multipliers if is_line else [])
 		for v in touched:
 			_index_voxel(cell_to_voxel, v)
 
-	print_debug("[SHOT] weapon=%s gu=%s facing=%s pellets=%d/%d landed" %
-		[w["weapon_id"], w["gu_cell"], w["facing"], pellets_landed, pellet_picks.size()])
+	print_debug("[SHOT] weapon=%s delivery=%s gu=%s facing=%s landed=%d/%d punch=%s" %
+		[w["weapon_id"], weapon_def.delivery, w["gu_cell"], w["facing"],
+		pellets_landed, pellet_picks.size(), punch_log])
 	## No roof/ceiling branch: D18 shots are chest-height and horizontal, and
 	## the per-pellet model only ever picks WALL-facing candidates
 	## (select_cone_pellet_impacts() checks blocked_edges between horizontal
@@ -292,6 +332,16 @@ func fire_active() -> void:
 ## repaint-time derivation (BlastCalculator.derive_soot_rings()) walks the
 ## whole map fresh. This just indexes which voxels THIS shot touched, for the
 ## VL-PERSIST loop above.
+## D30.3 — the agent's skill term of the punch coefficient. Director: *"Skill do
+## agente. Vamos implementar futuramente boosts e outros tipos de modificações."*
+## No actor carries a skill stat yet, so this is the SINGLE seam that will read
+## it once one exists; until then every shot fires at the neutral 1.0 and the
+## ladder is calibrated around that. Deliberately a named function rather than a
+## literal at the call site so the future wiring has one obvious place to land.
+func _agent_skill() -> float:
+	return ShotPunchTable.SKILL_NEUTRAL
+
+
 func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v

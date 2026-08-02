@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.86 · **Updated:** 2026-08-02 · **Branch:** main
+**Version:** 0.9.87 · **Updated:** 2026-08-02 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -21,6 +21,7 @@
 - RESUMO_SESSAO_2026-07-30_31_DESTRUCTION_VISUALS.md
 - RESUMO_SESSAO_2026-08-01_FACE_LIGHT_FOUNDATION.md
 - RESUMO_SESSAO_2026-08-02_FACE_SOOT.md
+- RESUMO_SESSAO_2026-08-02_FIREARM_DESTRUCTION.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -28,7 +29,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 125
+- GDScript modules: 126
 - Test scripts: 27
 - Known maps: 3
 - Shipped facade files: 0
@@ -342,6 +343,33 @@ canon above, full writeup in `PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`:**
 - Perspective rotation cost cut ~80% (~5.7s → ~1.15s off-screen throttled) via
   lazy alt-minting, a baked-source cache across rotations, and light-field
   caching — independent of the above, found while investigating flicker cost
+
+✅ **Firearm Destruction (D30/D31, 2026-08-02) — "Alpha Firearm Destruction",
+full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
+`WEAPON_MASTER_PLAN.md` Part 3b:**
+- **3 of 4 delivery shapes now real** — `RADIAL`, `CONE` and `LINE`
+  (`NONE` is by definition no-op). `LINE` was the last unbuilt one: five
+  rifled weapons declared it and loud-failed since D11, and now fire
+  (`BlastCalculator.select_line_impact()`)
+- **One readable destruction coefficient**, `punch`, replaces the old
+  three-way probability roll: weapon × agent skill × distance × luck ÷
+  material resistance, every factor centred on 1.0, printed on the `[SHOT]`
+  line, all tunables in `shot_punch_table.gd`. Ladder runs CRACKED → DENTED
+  → DESTROYED plus 0–8 neighbours; a stray shot always leaves at least a mark
+- **Neighbours are destroyed but never marked** — a heavy round opens one
+  contiguous breach instead of a spray of separate round holes, which is the
+  invariant D28 was written to protect. Neighbour cascade into the wall's
+  second layer is reserved for a future heavy weapon (threshold pinned above
+  the shipped arsenal's measured worst case by a selftest that reads the real
+  weapon JSONs)
+- **The shotgun's spread is a disc that widens with range**, not a horizontal
+  line — pellets sample the unit disc and carry a vertical axis that did not
+  previously exist. Range is deliberately uncapped: a pellet that clears the
+  near wall keeps travelling
+- ❌ **Damage does NOT fall off with distance yet** — deliberately neutral for
+  both shapes (D30-CAL); moved to the COMBAT work at the Director's call
+- ❌ **No actor carries a skill stat** — `_agent_skill()` returns neutral 1.0
+  and is the single seam for when one exists
 
 ---
 

@@ -196,12 +196,44 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 	## drifts along as it strays from dead-centre.
 	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
 	for i in range(projectile_count):
-		var key: String = "%s:PELLET_ANGLE:%d" % [salt, i]
-		var unit: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0  ## [0,1)
-		var angle_deg: float = lerpf(-half_angle_deg, half_angle_deg, unit)
+		## CONE-DISC-01 (Director, 2026-08-02) — a shotgun's spread is a DISC on
+		## the target, not a horizontal line. Two things were wrong before:
+		##
+		## 1. The lateral angle was `lerp(-half, +half, unit)` with `unit`
+		##    uniform, which spreads pellets EVENLY ACROSS THE FULL WIDTH — half
+		##    of every blast sat past 12.5 deg of a 25 deg cone, and the extremes
+		##    were as likely as dead centre. A real cone is uniform over AREA, so
+		##    the radius must be sqrt-distributed; that alone pulls the pattern
+		##    into the cone instead of smearing it along the cone's edge.
+		## 2. There was NO vertical axis at all — resolve_pellet_voxel() pinned
+		##    every pellet to chest level, so 24 pellets landed on one voxel row.
+		##    That is the horizontal streak in the Director's capture.
+		##
+		## So each pellet draws a point in the UNIT DISC (theta, rho=sqrt(u)):
+		## the horizontal component steers the GU-space ray (which is what keeps
+		## occlusion honest), and the vertical component rides in the pick for
+		## resolve_pellet_voxel() to turn into a level offset. Both scale with
+		## distance travelled, which is the diagram's *"tiros de longe erram mais
+		## longe"* — and it falls out of the cone's geometry rather than being a
+		## separate rule.
+		##
+		## Range is deliberately NOT capped (Director, 2026-08-02: *"o alcance
+		## não é pra ter limite mesmo, o tiro acertou o fundo corretamente em
+		## relação à distância"*) — a pellet that clears the near wall keeps
+		## going and may legitimately mark the far one.
+		var theta_key: String = "%s:PELLET_THETA:%d" % [salt, i]
+		var rho_key: String = "%s:PELLET_RHO:%d" % [salt, i]
+		var theta: float = TAU * float(FacadeSampler._fnv1a_hash(theta_key) % 10000) / 10000.0
+		var rho: float = sqrt(float(FacadeSampler._fnv1a_hash(rho_key) % 10000) / 10000.0)
+		var angle_deg: float = half_angle_deg * rho * cos(theta)
 		var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, deg_to_rad(angle_deg),
 			max_steps, blocked_edges, blocked_cells)
 		if not hit.is_empty():
+			## Carried so the impact voxel can be placed on the same disc the
+			## lateral angle came from, instead of an unrelated hash.
+			hit["v_unit"] = rho * sin(theta)
+			hit["h_unit"] = rho * cos(theta)
+			hit["half_angle_deg"] = half_angle_deg
 			picks.append(hit)
 	return picks
 
@@ -209,27 +241,29 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 ## One pellet's own path: mostly `forward`, drifting one `lateral` step
 ## whenever the accumulated tan(angle_rad) crosses a whole step (Bresenham's
 ## algorithm applied to a facing axis instead of a literal line). Stops and
-## returns {"gu","face"} at the FIRST blocked edge OR occupied cell this
+## returns {"gu","face","steps"} at the FIRST blocked edge OR occupied cell this
 ## specific path meets; {} if it exhausts max_steps without meeting one
-## (void, D15).
+## (void, D15). `steps` is how far the pellet actually travelled, which is what
+## the disc's radius scales with (CONE-DISC-01) and what LINE's distance term
+## reads.
 static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Vector2i,
 		angle_rad: float, max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary) -> Dictionary:
 	var current := source_gu
 	var lateral_accum := 0.0
 	var tan_angle := tan(angle_rad)
-	for _step in range(max_steps):
+	for step in range(max_steps):
 		lateral_accum += tan_angle
 		if absf(lateral_accum) >= 1.0:
 			var step_sign: int = 1 if lateral_accum > 0.0 else -1
 			var lateral_step: Vector2i = lateral * step_sign
 			var lateral_target: Vector2i = current + lateral_step
 			if WallEdgeData.is_edge_blocked(current, lateral_target, blocked_edges) or blocked_cells.has(lateral_target):
-				return {"gu": current, "face": Face.from_delta(lateral_step)}
+				return {"gu": current, "face": Face.from_delta(lateral_step), "steps": step}
 			current = lateral_target
 			lateral_accum -= step_sign
 		var forward_target: Vector2i = current + forward
 		if WallEdgeData.is_edge_blocked(current, forward_target, blocked_edges) or blocked_cells.has(forward_target):
-			return {"gu": current, "face": Face.from_delta(forward)}
+			return {"gu": current, "face": Face.from_delta(forward), "steps": step}
 		current = forward_target
 	return {}
 
@@ -262,10 +296,39 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 		return {}
 	var chest_level: int = target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY \
 		+ GeometryCoords.LEVELS_PER_STOREY / 2
-	var level_offset: int = clampi(chest_level - target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY,
-		0, target_slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1)
-	var jitter_key: String = "%s:PELLET_JITTER:%s" % [salt, target_slice.id]
-	var position_index: int = FacadeSampler._fnv1a_hash(jitter_key) % GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var max_level_offset: int = target_slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
+	## CONE-DISC-01: the pellet's VERTICAL place on the wall, from the same unit
+	## disc its lateral angle came from. The cone's radius at the impact is
+	## `steps * tan(half_angle)` in GUs; multiplying by VOXELS_PER_UNIT_AXIS puts
+	## it in voxel rows, which is the unit a level offset is measured in. A pick
+	## without these keys (a LINE shot, or any older caller) falls through to
+	## chest level exactly as before.
+	var v_offset := 0
+	if pick.has("v_unit") and pick.has("half_angle_deg"):
+		var spread_gu: float = float(int(pick.get("steps", 0))) \
+			* tan(deg_to_rad(float(pick["half_angle_deg"])))
+		v_offset = int(roundf(float(pick["v_unit"]) * spread_gu
+			* float(GeometryCoords.VOXELS_PER_UNIT_AXIS)))
+	var level_offset: int = clampi(
+		chest_level - target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY + v_offset,
+		0, max_level_offset)
+	## Horizontal place WITHIN the struck GU's 8-voxel face. For a cone pellet
+	## this is the disc's own horizontal component, so the pattern is round
+	## rather than a column of randomly-offset rows; the GU-level drift the ray
+	## walk already applied carries the coarse part, this carries the remainder.
+	## Anything without the disc keys keeps the original hashed jitter.
+	var position_index: int
+	if pick.has("h_unit") and pick.has("half_angle_deg"):
+		var h_spread_vox: float = float(int(pick.get("steps", 0))) \
+			* tan(deg_to_rad(float(pick["half_angle_deg"]))) \
+			* float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+		position_index = clampi(
+			int(roundf(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0
+				+ float(pick["h_unit"]) * h_spread_vox)),
+			0, GeometryCoords.VOXELS_PER_UNIT_AXIS - 1)
+	else:
+		var jitter_key: String = "%s:PELLET_JITTER:%s" % [salt, target_slice.id]
+		position_index = FacadeSampler._fnv1a_hash(jitter_key) % GeometryCoords.VOXELS_PER_UNIT_AXIS
 	var voxel_index: int = level_offset * GeometryCoords.VOXELS_PER_UNIT_AXIS + position_index
 	return {"slice": target_slice, "voxel_index": voxel_index}
 

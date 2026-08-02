@@ -65,6 +65,7 @@ func _init() -> void:
 	test_punch_coefficient_ordering()
 	test_no_shipped_weapon_reaches_the_cascade()
 	test_line_impact_is_straight_and_measures_distance()
+	test_cone_spread_is_a_disc_not_a_line()
 	test_pellet_selection_is_deterministic()
 	## DESTRUCTION_MASTER_PLAN D25 (2026-07-31) — carved half-voxels.
 	test_carved_side_faces_the_blast()
@@ -1227,6 +1228,51 @@ func test_punch_coefficient_ordering() -> void:
 	else:
 		_fail("weapon_ok=%s skill_ok=%s material_ok=%s distance_ok=%s pen_ok=%s luck_ok=%s" %
 			[weapon_ok, skill_ok, material_ok, distance_ok, pen_ok, luck_ok])
+	print("")
+
+
+func test_cone_spread_is_a_disc_not_a_line() -> void:
+	print("TEST: CONE-DISC-01 - shotgun pellets scatter over an AREA that grows with distance, not along one voxel row")
+	## The regression this pins: resolve_pellet_voxel() used to place every
+	## pellet at chest level, so 24 pellets landed on ONE row — the horizontal
+	## streak in the Director's capture. Asserting "more than one row" is the
+	## whole point, so it must be measured from the real functions.
+	var registry := _wide_wall_registry(1, 2, 0, 20, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 20)
+
+	var near_rows: Dictionary = {}
+	var near_cells: Dictionary = {}
+	var picks_near := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(10, 5), NE, 6.0, 40, 24, blocked, {}, "DISC_NEAR")
+	for i in range(picks_near.size()):
+		var r := BlastCalculatorClass.resolve_pellet_voxel(picks_near[i], registry, "DISC_NEAR:%d" % i)
+		if r.is_empty():
+			continue
+		var idx: int = r["voxel_index"]
+		near_rows[idx / GeometryCoords.VOXELS_PER_UNIT_AXIS] = true
+		near_cells["%s:%d" % [r["slice"].id, idx]] = true
+
+	## Same weapon, further away: the cone is wider there, so the pattern must
+	## cover at least as many rows — *"tiros de longe erram mais longe"*.
+	var far_rows: Dictionary = {}
+	var picks_far := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(10, 12), NE, 6.0, 40, 24, blocked, {}, "DISC_FAR")
+	for i in range(picks_far.size()):
+		var r := BlastCalculatorClass.resolve_pellet_voxel(picks_far[i], registry, "DISC_FAR:%d" % i)
+		if r.is_empty():
+			continue
+		far_rows[int(r["voxel_index"]) / GeometryCoords.VOXELS_PER_UNIT_AXIS] = true
+
+	var vertical_ok: bool = near_rows.size() > 1
+	var grows_ok: bool = far_rows.size() >= near_rows.size()
+	var area_ok: bool = near_cells.size() > near_rows.size()
+
+	if vertical_ok and grows_ok and area_ok:
+		_pass("near shot covers %d rows / %d distinct voxels; far shot covers %d rows — an area, and it widens with range" %
+			[near_rows.size(), near_cells.size(), far_rows.size()])
+	else:
+		_fail("vertical_ok=%s (near rows=%d) grows_ok=%s (far rows=%d) area_ok=%s (near cells=%d)" %
+			[vertical_ok, near_rows.size(), grows_ok, far_rows.size(), area_ok, near_cells.size()])
 	print("")
 
 

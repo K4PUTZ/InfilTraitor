@@ -186,7 +186,13 @@ func test_floor_still_resolves_when_both_could_apply() -> void:
 
 
 func test_no_baked_atom_falls_through_to_generic() -> void:
-	print("[5] A ceiling DENTED mark with no baked atom available still falls through cleanly\n")
+	print("[5] A ceiling DENTED mark with no baked atom now falls through to D33 Part 4b's generic vector compositor, not all the way to composites/\n")
+	## D33 Part 4b (2026-08-03) changed what "falls through" means here: a
+	## no-baked-atom miss used to reach only the last-resort composites/-backed
+	## MATERIALS.find() id; now _composite_generic_ceiling() (purely
+	## string-driven, no baked dependency) resolves it first, onto the flat
+	## atom. Not a regression — see half_voxel_seam_selftest.gd's identical
+	## fix and PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 4b.
 	var renderer := _new_renderer()
 	renderer._bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	renderer._bake_config.enabled = true
@@ -197,11 +203,11 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	var pos := Vector2i(7, 7)
 	renderer._set_voxel_cell(pos, 0, "stone_blast_dented_bottom", null, Vector2i.ZERO, 0, true)
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
-	var expected: int = VoxelRendererClass.MATERIALS.find("stone_blast_dented_bottom")
-	if got == expected:
-		_pass("no baked atom -> falls through to the generic composites/ id (%d), no crash" % expected)
+	var generic_id: int = VoxelRendererClass.MATERIALS.find("stone_blast_dented_bottom")
+	if got != -1 and got != generic_id:
+		_pass("no baked atom -> resolves via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
 	else:
-		_fail("expected fallback to generic id %d, got %d" % [expected, got])
+		_fail("expected the generic vector compositor to resolve this, got %d (composites/ id is %d)" % [got, generic_id])
 
 	renderer.queue_free()
 	print("")

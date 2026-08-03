@@ -93,6 +93,11 @@ const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wo
 ## voxels/manifest.json — asserted by voxel_decal_selftest.gd rather than
 ## trusted, because a mismatch fails as a silent MATERIALS.find() miss.
 const IMPACT_DECAL_VARIANTS: int = 3
+## D33 Part 4a — must match GENERIC_MARK_VARIANTS in generate_voxel.py.
+## Independent of IMPACT_DECAL_VARIANTS above on purpose: the generic marks
+## are material-agnostic, so nothing forces the two counts to match, they
+## just both happen to be 3 today.
+const GENERIC_MARK_VARIANT_COUNT: int = 3
 ## Every ground material's dent routes to this one shared asset (D26), so the
 ## floor family is built on "earth" and needs only the blast/dent/top corner of
 ## the matrix: floors take no bullets (D32.4) and have no crack tier.
@@ -178,6 +183,12 @@ const IMPACT_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "composites/voxel_%s.pn
 ## atom instead of loading a pre-composited voxel_%s.png from composites/ —
 ## _full_voxel_decal_plan()/_composite_full_voxel_decal() below are the seam.
 const DECAL_NAME_TEMPLATE: String = VOXEL_ASSET_ROOT + "decals/decal_%s_%s_%d.png"
+## D33 Part 4a — the material-agnostic VECTOR mark decals (kind, variant),
+## same folder generate_voxel.py's build_decal_family() writes
+## GENERIC_MARK_KINDS into. Loaded by _load_decal_image() exactly like the
+## photographic family above — same cache, same "missing file -> {} -> fall
+## through" contract — only the template and the kind space differ.
+const GENERIC_MARK_TEMPLATE: String = VOXEL_ASSET_ROOT + "decals/decal_generic_%s_%d.png"
 ## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
 ## they match the first two suffixes below without needing their own entries.
 ## D25's carved half-voxels do NOT — they end in the carved side — so each of
@@ -427,6 +438,30 @@ static func _ceiling_carve_plan(material_name: String) -> Dictionary:
 	for base in IMPACT_DECAL_MATERIALS:
 		if material_name == "%s_blast_dented_bottom" % base:
 			return {"base_material": base}
+	return {}
+
+
+## D33 Part 4b — recognizes the OLD, pre-decal-family full-voxel names
+## (D22/D23: "<material>_dented", "_cracked", "_blast_dented", "_blast_cracked",
+## no side, no variant in the name at all) that damage_variant_material() still
+## falls back to whenever _decal_material() returns "" — a bullet/blast with no
+## resolvable carved_side, or a base_material outside IMPACT_DECAL_MATERIALS.
+## Every one of these is a FULL-VOXEL top-face mark (D22's original
+## generate_impact_mark()/generate_blast_mark() only ever drew at the top
+## diamond's centre); "dented" is the only tier that needs its own alpha-cut
+## variant (see _composite_generic_flat_mark()'s doc comment), everything
+## else is exact-string-matched so there is no ordering hazard between e.g.
+## "_dented" and "_blast_dented".
+static func _generic_flat_mark_plan(material_name: String) -> Dictionary:
+	for base in IMPACT_DECAL_MATERIALS:
+		if material_name == "%s_blast_dented" % base:
+			return {"base_material": base, "mark_family": "blast", "dented": true}
+		elif material_name == "%s_blast_cracked" % base:
+			return {"base_material": base, "mark_family": "blast", "dented": false}
+		elif material_name == "%s_dented" % base:
+			return {"base_material": base, "mark_family": "bullet", "dented": true}
+		elif material_name == "%s_cracked" % base:
+			return {"base_material": base, "mark_family": "bullet", "dented": false}
 	return {}
 
 
@@ -1038,6 +1073,252 @@ func _composite_ceiling_carve(plan: Dictionary, material_name: String, voxel_xy:
 	return entry
 
 
+## D33 Part 4b — the flat (unbaked/generic) counterpart to _tint_baked_atom():
+## `base_material`'s own flat atom is already the real colour (BASE_MATERIALS
+## carries no per-tile modulate, unlike a baked page), so there is no tint
+## step at all here — just hand back the already-boot-loaded image. {} only
+## if `base_material` somehow isn't a registered MATERIALS entry (B6: should
+## never happen for anything _generic_flat_mark_plan/_half_voxel_decal_plan/
+## _floor_sunk_decal_plan/_ceiling_carve_plan hand back).
+func _resolve_flat_material_atom(base_material: String) -> Dictionary:
+	var source_id: int = MATERIALS.find(base_material)
+	if source_id < 0:
+		return {}
+	var source: TileSetAtlasSource = _tileset.get_source(source_id)
+	if source == null or source.texture == null:
+		return {}
+	return {"image": source.texture.get_image(), "alternative_id": 0}
+
+
+## D33 Part 4b — deterministic variant pick for the generic path's OLD
+## non-suffixed names, which (unlike the decal family) carry no variant index
+## at all in the string. A fixed formula over (grid_pos, level) instead of
+## always variant 0 buys the visual variety the 12 generic decals already
+## support, at zero cost — same cell always resolves to the same variant, no
+## new state to persist. Godot's own hash() is intentionally NOT used here
+## (unlike HalfVoxelCompositor's ported _hash01/FNV-1a): this selects which of
+## 3 already-generated PNGs to show, a cosmetic choice with no golden-fixture
+## behind it, not a pixel value that has to reproduce identically forever.
+func _generic_variant_for(grid_pos: Vector2i, level: int) -> int:
+	return posmod(grid_pos.x * 928371 + grid_pos.y * 123457 + level * 7919, GENERIC_MARK_VARIANT_COUNT)
+
+
+## D33 Part 4b — how big a hole punch_generic_alpha_hole() cuts, keyed by
+## mark_family. Must match generate_voxel.py's _GENERIC_HOLE_RADIUS exactly
+## (equality-tested by generic_mark_compositor_equality_selftest.gd).
+const _GENERIC_HOLE_RADIUS: Dictionary = {"bullet": 2.0, "blast": 3.0}
+
+
+## D33 Part 4b — the ACTUAL alpha cut for the full-voxel fallback-of-fallback
+## DENTED case (no known carved side, so nothing else conveys "material is
+## gone"). Applied to the runtime COMPOSITE, never to a static decal: source-
+## over blending (_paste_decal's own blend math) can only ever ADD coverage,
+## so an alpha=0 region baked into a decal PNG leaves an opaque substrate
+## completely unchanged instead of punching a hole through it — measured via
+## generic_mark_seam_selftest.gd sampling the real composited pixel before
+## this existed. Port of generate_voxel.py's punch_generic_alpha_hole(),
+## same centre (16, 8) — the top-face diamond centre FACE_TOP always projects
+## onto, matching D22's original _MARK_CENTER.
+func _punch_generic_alpha_hole(image: Image, mark_family: String, variant: int) -> Image:
+	var img: Image = image.duplicate()
+	var cx := 16.0
+	var cy := 8.0
+	var seed := variant * 173 + 29
+	var ox := (HalfVoxelCompositorClass._hash01(seed, 1, 401) - 0.5) * 2.0
+	var oy := (HalfVoxelCompositorClass._hash01(seed, 2, 402) - 0.5) * 1.5
+	var r: float = _GENERIC_HOLE_RADIUS[mark_family]
+	var x0 := maxi(0, int(cx + ox - r) - 1)
+	var x1 := mini(img.get_width(), int(cx + ox + r) + 2)
+	var y0 := maxi(0, int(cy + oy - r) - 1)
+	var y1 := mini(img.get_height(), int(cy + oy + r) + 2)
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			var dx := (x + 0.5) - (cx + ox)
+			var dy := (y + 0.5) - (cy + oy)
+			if dx * dx + dy * dy <= r * r:
+				var c := img.get_pixel(x, y)
+				img.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
+	return img
+
+
+## D33 Part 4b — the generic vector-mark counterpart to the OLD,
+## pre-decal-family fallback (_generic_flat_mark_plan()'s "<material>_dented"
+## etc — always a FACE_TOP-only mark). The substrate is the flat MATERIALS
+## atom and the decal is one of the 12 material-agnostic marks instead of the
+## photographic family — see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part
+## 4a for why a generic voxel must never wear photographic art. `dented`
+## additionally punches the real alpha-cut hole (see
+## _punch_generic_alpha_hole()'s own doc comment for why that has to happen
+## here and not in the decal art). See
+## _composite_generic_full_voxel_cracked() just below for this function's
+## sibling: the DECAL-FAMILY full-voxel CRACKED shapes
+## (_full_voxel_decal_plan()'s own names), which this function does NOT cover.
+func _composite_generic_flat_mark(plan: Dictionary, material_name: String,
+		grid_pos: Vector2i, level: int) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_flat_material_atom(plan["base_material"])
+	if resolved.is_empty():
+		return {}
+
+	var mark_family: String = plan["mark_family"]
+	var kind: String
+	if mark_family == "bullet":
+		kind = "bullet_dented" if plan["dented"] else "bullet_cracked"
+	else:
+		kind = "blast_dent" if plan["dented"] else "blast_crack"
+	var variant := _generic_variant_for(grid_pos, level)
+	var decal_image := _load_decal_image(GENERIC_MARK_TEMPLATE % [kind, variant])
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(
+		resolved["image"], decal_image, [DecalCompositorClass.FACE_TOP])
+	if plan["dented"]:
+		composite = _punch_generic_alpha_hole(composite, mark_family, variant)
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = 0
+	return entry
+
+
+## D33 Part 4b — the generic counterpart to _composite_full_voxel_decal():
+## reuses _full_voxel_decal_plan() as-is (a bullet's CRACKED mark on the one
+## lateral face it struck, or a blast's CRACKED mark on all three visible
+## faces) — same targets, same variant, flat MATERIALS atom instead of a
+## tinted baked one, generic decal instead of photographic. CRACKED never
+## carves and never punches a hole (that is _composite_generic_flat_mark()'s
+## DENTED-only job) — pure ink on every target face.
+func _composite_generic_full_voxel_cracked(plan: Dictionary, material_name: String,
+		grid_pos: Vector2i, level: int) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_flat_material_atom(plan["base_material"])
+	if resolved.is_empty():
+		return {}
+
+	var kind: String = "bullet_cracked" if plan["decal_family"] == "bullet" else "blast_crack"
+	var variant: int = posmod(int(plan["variant"]), GENERIC_MARK_VARIANT_COUNT)
+	var decal_image := _load_decal_image(GENERIC_MARK_TEMPLATE % [kind, variant])
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(
+		resolved["image"], decal_image, plan["targets"])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = 0
+	return entry
+
+
+## D33 Part 4b — the generic counterpart to _composite_half_voxel_decal():
+## builds the SAME carved silhouette (HalfVoxelCompositor.build_half_voxel_substrate())
+## from the flat MATERIALS atom instead of a tinted baked one, pastes the
+## generic mark onto the exposed cut face — no alpha-cut needed here (unlike
+## _composite_generic_flat_mark()'s DENTED case): the carve itself already
+## represents the missing material.
+func _composite_generic_half_voxel(plan: Dictionary, material_name: String,
+		grid_pos: Vector2i, level: int) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_flat_material_atom(plan["base_material"])
+	if resolved.is_empty():
+		return {}
+
+	var cut_fill := _flat_material_side_color(plan["base_material"])
+	var half_substrate := HalfVoxelCompositorClass.build_half_voxel_substrate(
+		resolved["image"], cut_fill, plan["side"])
+
+	var kind: String = "bullet_dented" if plan["decal_family"] == "bullet" else "blast_dent"
+	## The plan already carries the REAL variant the baked branch would have
+	## used (parsed straight from the pseudo-material name) — reuse it rather
+	## than _generic_variant_for()'s grid_pos hash, which does not vary across
+	## the different variant NAMES this same cell might be asked to render
+	## and would otherwise collapse every variant onto one composite.
+	var variant: int = posmod(int(plan["variant"]), GENERIC_MARK_VARIANT_COUNT)
+	var decal_image := _load_decal_image(GENERIC_MARK_TEMPLATE % [kind, variant])
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(half_substrate, decal_image, [plan["target"]])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = 0
+	return entry
+
+
+## D33 Part 4b — the generic counterpart to _composite_floor_sunk_decal().
+## Matches the PRE-D33 composites/ fallback's own existing behaviour exactly:
+## the substrate is always the flat "earth_0" atom (EARTH_VARIANTS[0] in
+## generate_voxel.py), never the real zoned ground material — D26/D25's own
+## rule ("one generic fracture serves every material"), true of the baked
+## branch too (_composite_floor_sunk_decal reads the REAL zoned texture only
+## for colour continuity around the mark; the generic/flat path has no
+## facade to keep continuous, so there is nothing zone-specific to preserve).
+func _composite_generic_floor_sunk(plan: Dictionary, material_name: String,
+		grid_pos: Vector2i, level: int) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_flat_material_atom("earth_0")
+	if resolved.is_empty():
+		return {}
+
+	var floor_substrate := HalfVoxelCompositorClass.build_floor_sunk_substrate(resolved["image"])
+
+	## Same reasoning as _composite_generic_half_voxel(): reuse the REAL
+	## variant _floor_sunk_decal_plan() already parsed from the name.
+	var variant: int = posmod(int(plan["variant"]), GENERIC_MARK_VARIANT_COUNT)
+	var decal_image := _load_decal_image(GENERIC_MARK_TEMPLATE % ["blast_dent", variant])
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(
+		floor_substrate, decal_image, [DecalCompositorClass.FACE_SUNK_TOP])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = 0
+	return entry
+
+
+## D33 Part 4b — the generic counterpart to _composite_ceiling_carve(): no
+## decal ever (the camera never sees this face, same reasoning as the baked
+## branch), just the silhouette carve on the flat atom instead of a tinted
+## baked one.
+func _composite_generic_ceiling(plan: Dictionary, material_name: String,
+		grid_pos: Vector2i, level: int) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_flat_material_atom(plan["base_material"])
+	if resolved.is_empty():
+		return {}
+
+	var carved := HalfVoxelCompositorClass.carve_ceiling_silhouette(resolved["image"])
+	var entry := cache.store(key, carved)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = 0
+	return entry
+
+
 ## VL-03-PERF: mint ONE light-bucket alternative for one tile, on first use.
 ##
 ## Eager-minting all 22 alternatives (buckets 0..4 × flip) for all ~13k tiles
@@ -1588,6 +1869,71 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 					atlas_coords = floor_composite["atlas_coords"]
 					alternative_id = floor_composite["alternative_id"]
 					_diag_baked_hits += 1
+
+	## D33 Part 4b — the generic/vector counterpart: reached whenever this cell
+	## is an impact mark and NONE of the baked branches above resolved it
+	## (BakeConfig off — the release canon — an unbaked map, or simply no
+	## baked atom for this specific cell). Composites a material-agnostic
+	## PROCEDURAL vector mark onto the flat MATERIALS atom instead of falling
+	## straight to the composites/-backed MATERIALS.find() below — see
+	## PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 4 for why a generic
+	## voxel must never wear the photographic decal art. Purely string-driven
+	## (no edge/flat_baked gating needed: the five plan parsers below are
+	## mutually exclusive by construction, same guarantee the baked branches
+	## above already rely on), so all five are tried unconditionally in the
+	## same order as the baked branches. {} on any miss (should not happen —
+	## B6: the 12 generic decals are unconditional, unlike the photographic
+	## family) falls through to the last-resort composites/ fallback, which
+	## Part 4c retires once this path is proven with a real bake-OFF capture.
+	if is_impact_mark and source_id < 0:
+		var generic_cracked_plan := _full_voxel_decal_plan(material_name)
+		if not generic_cracked_plan.is_empty():
+			var generic_cracked_composite := _composite_generic_full_voxel_cracked(
+				generic_cracked_plan, material_name, grid_pos, level)
+			if not generic_cracked_composite.is_empty():
+				source_id = generic_cracked_composite["source_id"]
+				atlas_coords = generic_cracked_composite["atlas_coords"]
+				alternative_id = generic_cracked_composite["alternative_id"]
+
+		if source_id < 0:
+			var generic_flat_plan := _generic_flat_mark_plan(material_name)
+			if not generic_flat_plan.is_empty():
+				var generic_flat_composite := _composite_generic_flat_mark(
+					generic_flat_plan, material_name, grid_pos, level)
+				if not generic_flat_composite.is_empty():
+					source_id = generic_flat_composite["source_id"]
+					atlas_coords = generic_flat_composite["atlas_coords"]
+					alternative_id = generic_flat_composite["alternative_id"]
+
+		if source_id < 0:
+			var generic_wall_plan := _half_voxel_decal_plan(material_name)
+			if not generic_wall_plan.is_empty():
+				var generic_wall_composite := _composite_generic_half_voxel(
+					generic_wall_plan, material_name, grid_pos, level)
+				if not generic_wall_composite.is_empty():
+					source_id = generic_wall_composite["source_id"]
+					atlas_coords = generic_wall_composite["atlas_coords"]
+					alternative_id = generic_wall_composite["alternative_id"]
+
+		if source_id < 0:
+			var generic_ceiling_plan := _ceiling_carve_plan(material_name)
+			if not generic_ceiling_plan.is_empty():
+				var generic_ceiling_composite := _composite_generic_ceiling(
+					generic_ceiling_plan, material_name, grid_pos, level)
+				if not generic_ceiling_composite.is_empty():
+					source_id = generic_ceiling_composite["source_id"]
+					atlas_coords = generic_ceiling_composite["atlas_coords"]
+					alternative_id = generic_ceiling_composite["alternative_id"]
+
+		if source_id < 0:
+			var generic_floor_plan := _floor_sunk_decal_plan(material_name)
+			if not generic_floor_plan.is_empty():
+				var generic_floor_composite := _composite_generic_floor_sunk(
+					generic_floor_plan, material_name, grid_pos, level)
+				if not generic_floor_composite.is_empty():
+					source_id = generic_floor_composite["source_id"]
+					atlas_coords = generic_floor_composite["atlas_coords"]
+					alternative_id = generic_floor_composite["alternative_id"]
 
 	# Fallback: material-only path
 	if source_id < 0:

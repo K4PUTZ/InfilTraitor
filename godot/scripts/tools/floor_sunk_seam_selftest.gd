@@ -162,7 +162,13 @@ func test_resolve_flat_receives_the_real_zone_material_not_the_pseudo_name() -> 
 
 
 func test_empty_zone_material_falls_through_to_generic() -> void:
-	print("[4] zone_material=\"\" (unzoned/plain earth) still falls through to generic, no crash\n")
+	print("[4] zone_material=\"\" (unzoned/plain earth) now falls through to D33 Part 4b's generic floor compositor, not all the way to composites/\n")
+	## D33 Part 4b (2026-08-03): _composite_generic_floor_sunk() is purely
+	## string-driven off material_name (never needs zone_material — it always
+	## substitutes the flat "earth_0" atom regardless, matching the pre-D33
+	## composites/ fallback's own existing behaviour), so it now resolves this
+	## before the last-resort composites/ id is ever reached. Not a
+	## regression — see half_voxel_seam_selftest.gd's identical fix.
 	var renderer := _new_renderer()
 	_stub_baked_floor(renderer, Color.WHITE)
 	var pos := Vector2i(3, 3)
@@ -171,18 +177,18 @@ func test_empty_zone_material_falls_through_to_generic() -> void:
 	## earth floor, which has no facade to preserve in the first place.
 	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true)
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
-	var expected: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_0")
-	if got == expected:
-		_pass("no zone_material -> generic composites/ id (%d), unchanged from before D33" % expected)
+	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_0")
+	if got != -1 and got != generic_id:
+		_pass("no zone_material -> resolves via the generic floor compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
 	else:
-		_fail("expected fallback to generic id %d, got %d" % [expected, got])
+		_fail("expected the generic floor compositor to resolve this, got %d (composites/ id is %d)" % [got, generic_id])
 
 	renderer.queue_free()
 	print("")
 
 
 func test_no_baked_atom_falls_through_to_generic() -> void:
-	print("[5] A floor DENTED mark with no baked zone available still falls through cleanly\n")
+	print("[5] A floor DENTED mark with no baked zone now falls through to D33 Part 4b's generic floor compositor, not all the way to composites/\n")
 	var renderer := _new_renderer()
 	renderer._bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	renderer._bake_config.enabled = true
@@ -193,11 +199,11 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	var pos := Vector2i(8, 8)
 	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_1", null, Vector2i.ZERO, 0, true, "ground_sand")
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
-	var expected: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_1")
-	if got == expected:
-		_pass("no baked zone -> falls through to the generic composites/ id (%d), no crash" % expected)
+	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_1")
+	if got != -1 and got != generic_id:
+		_pass("no baked zone -> resolves via the generic floor compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
 	else:
-		_fail("expected fallback to generic id %d, got %d" % [expected, got])
+		_fail("expected the generic floor compositor to resolve this, got %d (composites/ id is %d)" % [got, generic_id])
 
 	renderer.queue_free()
 	print("")

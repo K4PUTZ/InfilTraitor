@@ -287,7 +287,16 @@ func test_dented_and_non_impact_names_are_unaffected() -> void:
 
 
 func test_no_baked_atom_falls_through_to_generic() -> void:
-	print("[6] A CRACKED mark with no baked atom available still falls through cleanly\n")
+	print("[6] A CRACKED mark with no baked atom now falls through to D33 Part 4b's generic vector compositor, not all the way to composites/\n")
+	## D33 Part 4b (2026-08-03) changed what "falls through" means here:
+	## _composite_generic_full_voxel_cracked() (purely string-driven, no
+	## baked dependency — reuses _full_voxel_decal_plan() itself) now resolves
+	## it before the last-resort composites/-backed MATERIALS.find() is ever
+	## reached. Found via a real bake-OFF capture on PLAYGROUND: this exact
+	## shape (blast_cracked_all) was the one real gap Part 4b's first pass
+	## missed — see generic_mark_seam_selftest.gd's own test [4]. Not a
+	## regression — same category as ceiling/half_voxel/floor_sunk's own
+	## identical fixes.
 	var renderer := _new_renderer()
 	renderer._bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	renderer._bake_config.enabled = true
@@ -298,11 +307,11 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	var pos := Vector2i(9, 9)
 	renderer._set_voxel_cell(pos, 0, "stone_blast_cracked_all_0", Object.new(), Vector2i.ZERO, 0)
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
-	var expected: int = VoxelRendererClass.MATERIALS.find("stone_blast_cracked_all_0")
-	if got == expected:
-		_pass("no baked atom -> falls through to the generic composites/ id (%d), no crash" % expected)
+	var generic_id: int = VoxelRendererClass.MATERIALS.find("stone_blast_cracked_all_0")
+	if got != -1 and got != generic_id:
+		_pass("no baked atom -> resolves via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
 	else:
-		_fail("expected fallback to generic id %d, got %d" % [expected, got])
+		_fail("expected the generic vector compositor to resolve this, got %d (composites/ id is %d)" % [got, generic_id])
 
 	renderer.queue_free()
 	print("")

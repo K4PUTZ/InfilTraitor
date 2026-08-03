@@ -5,8 +5,16 @@
 real baked facade instead of losing it to the flat generic material.** Part
 0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01 removed
 the harder of §10's two open design points; Parts 1, 2, 3a/b/c/d all done.
-**Remaining: Part 4 (retire the 97 pre-composited PNGs `composites/` held —
-the whole reason ASSET-LAYOUT-01 split that folder out) — not started.**
+**Part 4 split into 4a/4b/4c (2026-08-03) — a real risk surfaced before any
+deletion: `BakeConfig.enabled` ships `false` at release, so every Part 3
+branch goes inert then, and deleting `composites/` as originally scoped
+would silently regress every damage mark to flat concrete the moment bake
+is off. 4a (generic vector-mark decal assets) and 4b (GDScript wiring) both
+done — every impact-mark shape now resolves through a live compositor with
+BakeConfig OFF, proven by `generic_mark_seam_selftest.gd` (2 real bugs
+caught and fixed before shipping, see §5 Part 4b). 4c (delete `composites/`,
+the 97 MATERIALS entries, and `impact_decal_names()`) — not started, needs
+a real bake-OFF capture as evidence first.**
 
 ---
 
@@ -437,13 +445,111 @@ reason this tier carries no exposed-surface decal in the first place).
   trade worth making for this checkpoint.
 
 ### Part 4 — Retire the pre-composited PNGs
-- `composites/` is deleted wholesale (this is what ASSET-LAYOUT-01 was
+
+**Risk caught before any deletion (2026-08-03):** `bake_config.gd`'s own
+canon is `enabled = false` at release — every Part 3 branch above is gated
+on `_bake_config.enabled == true`, so deleting `composites/` as originally
+scoped would make ALL damage rendering depend on that flag being true
+forever. Bake OFF (or any cell the baked branches miss) would silently
+repaint every damaged voxel as flat, undamaged concrete. Undetected until
+now because dev testing always runs with bake ON. Presented three options
+(reinstate a bake-off spike scope-check / keep `composites/` forever /
+extend the live compositor to work without a baked substrate) — the
+Director picked the third, **with one binding constraint**: a generic (flat,
+unbaked) voxel must never wear the photographic decal art — only a
+material-agnostic **vector** substitute, "condizente com o cenário low
+poly," "tentando ser um pouco mais caprichado" (2026-08-03). Split into:
+
+#### Part 4a — generic vector-mark decal assets ✅ DONE
+Four mark "kinds" × 3 variants = 12 material-independent PNGs in `decals/`
+(`decal_generic_<kind>_<variant>.png`, `GENERIC_MARK_KINDS` in
+`generate_voxel.py`): `bullet_dented`, `bullet_cracked`, `blast_dent`,
+`blast_crack`. Authored FLAT on the same 256×256 canvas as the photographic
+decal family (not drawn in final diamond/atom space — a v1 prototype did
+that and the marks read as "too round"; the Director's fix was to reuse the
+same authoring convention and let the real `_paste_decal()`/
+`compose_decal_voxel()` projection do the shear, exactly like the
+photographic decals already do). `GENERIC_MARK_INK_ALPHA = 178` (0.7 × 255,
+Director-specified) lets each material's own colour read through instead of
+needing per-material art. All four kinds are pure ink, no alpha=0 region —
+see Part 4b for why the true alpha-cut hole moved to the runtime composite
+instead of the decal PNG.
+
+#### Part 4b — GDScript wiring ✅ DONE
+A new fallback branch in `_set_voxel_cell()`, tried after every Part 3
+baked branch and before the final `MATERIALS.find()` composites/ fallback:
+reuses the SAME plan parsers (`_full_voxel_decal_plan` → new
+`_generic_flat_mark_plan` for the old non-suffixed names,
+`_half_voxel_decal_plan`, `_floor_sunk_decal_plan`, `_ceiling_carve_plan`)
+and the SAME `HalfVoxelCompositor`/`DecalCompositor` primitives Parts 3a-3d
+already built — substrate is the flat, already-boot-loaded `MATERIALS` atom
+instead of a tinted baked one (no tint step needed: flat atoms carry their
+real colour directly, unlike grayscale-plus-modulate baked pages), decal is
+one of the 12 generic PNGs instead of the photographic family. Ceiling needs
+no decal at all (silhouette carve only, already true of the baked branch).
+Floor always substitutes the flat `earth_0` atom regardless of the real
+zoned material — matching the pre-D33 `composites/` fallback's own existing
+behaviour exactly (`floor_damage_material()`'s "one generic fracture serves
+every material").
+
+**Bug caught by its own seam suite before shipping**: an early version tried
+encoding the DENTED "material is gone" alpha-cut into the DECAL PNG itself
+(`cut=True` drawing `fill=(0,0,0,0)`). Wrong — `_paste_decal()` blends
+source-over (Porter-Duff), where a decal pixel's alpha only ever ADDS
+coverage; alpha=0 means "contributes nothing", which leaves an opaque flat
+substrate completely unchanged instead of punching a hole through it.
+`generic_mark_seam_selftest.gd` sampled the real composited pixel and caught
+it (alpha stayed 1.0). Fixed: decals are solid ink everywhere (Part 4a
+above), and `punch_generic_alpha_hole()` (mirrored Python↔GDScript, same
+equality discipline as every other D33 primitive) applies the real cut to
+the COMPOSITE, only for the full-voxel fallback-of-fallback DENTED case —
+the one case where nothing else conveys "material is gone."
+
+A second bug the same suite caught: `_composite_generic_half_voxel()`/
+`_composite_generic_floor_sunk()` initially picked a decal variant from a
+`grid_pos` hash instead of the plan's own already-parsed variant (only
+`_composite_generic_flat_mark()`'s OLD non-suffixed names actually lack a
+variant in the string — the decal-family names Parts 3a-3d already parse
+carry one). Three different variant NAMES at the same cell collapsed onto
+one composite until fixed to reuse `plan["variant"]`.
+
+Both bugs also forced updates to four PRE-EXISTING seam tests
+(`half_voxel_seam_selftest.gd`, `ceiling_carve_seam_selftest.gd`,
+`floor_sunk_seam_selftest.gd`, `slab_render_selftest.gd`) whose
+"no baked atom falls through to composites/" assertions were true only
+because nothing used to catch that case before this generic fallback
+existed — not regressions, the exact same category as the `decal_seam_selftest.gd`
+fix earlier in Part 3b.
+
+**A third gap, found only by a REAL bake-OFF capture on PLAYGROUND, not by
+any selftest**: the first wiring pass covered `_generic_flat_mark_plan`,
+`_half_voxel_decal_plan`, `_ceiling_carve_plan`, `_floor_sunk_decal_plan` —
+but never `_full_voxel_decal_plan` (the decal-family full-voxel CRACKED
+shapes: a bullet's mark on the one lateral face it struck, or a blast's mark
+on all three visible faces). A real detonation printed `concrete_blast_cracked_all_0
+-> source_id -1`, meaning it fell all the way through to the last-resort
+composites/ fallback — the exact regression Part 4 exists to prevent, and
+selftests alone never caught it (this shape's baked branch is always tried
+first in every synthetic fixture, unlike a real bake-OFF map). Closed with
+`_composite_generic_full_voxel_cracked()`, reusing `_full_voxel_decal_plan()`
+as-is. Re-verified with real detonations across all four test-zone
+materials (concrete/metal/stone/wood): zero fall-throughs to composites/.
+Evidence: `Screenshots/history/d33_part4b_bake_off_generic_mark.png` — a
+real blast crater rendering on PLAYGROUND's floor with `BAKE: ✗ OFF` shown
+in the dev overlay (non-`auto_`-named — see CLAUDE.md's screenshot-rotation
+note — so this citation won't rot).
+
+#### Part 4c — delete `composites/` (blocked on 4b)
+- `composites/` deleted wholesale (this is what ASSET-LAYOUT-01 was
   structured for). `materials/`, `halves/`, `decals/` stay — they become the
   runtime's inputs instead of the generator's.
-- `generate_voxel.py` keeps producing `materials/` and `halves/`; its composite
-  stage goes away.
+- `generate_voxel.py` keeps producing `materials/` and `halves/`; its
+  composite stage goes away.
 - `VoxelRenderer.MATERIALS` loses the 97 generated entries and
   `impact_decal_names()` with them.
+- Only safe once 4b is proven with a real bake-OFF capture — the entire
+  point of this split was that "the tests pass" was not evidence enough
+  last time (bake is always ON in dev testing).
 
 ---
 

@@ -682,6 +682,212 @@ def generate_decal_placeholder(family: str, variant: int) -> Image.Image:
     return img
 
 
+# ---------------------------------------------------------------------------
+# D33 Part 4 — generic/vector mark decals (Director, 2026-08-03)
+# ---------------------------------------------------------------------------
+# "No caso do fallback estar ativo, não queremos texturas sendo aplicadas em
+# voxels genéricos. Queremos texturas genéricas (vetor)... substitutos
+# virtuais para cada textura." A generic (flat, unbaked) voxel must never
+# wear the photographic decal art above — these six mark "kinds" are its
+# material-agnostic vector substitute instead. Authored FLAT on the same
+# 256x256 canvas as every other decal (never in final atom/diamond space —
+# that was v1's mistake: a shape drawn straight into the projected image
+# ignores the real isometric shear entirely, which is why circles read as
+# "too round"). The SAME real _paste_decal()/compose_decal_voxel() the
+# photographic decals use projects these too, so whatever geometric
+# treatment is correct for those is automatically correct here.
+#
+# Material-independent by design — the 0.7 ink alpha (GENERIC_MARK_INK_ALPHA)
+# is what lets each material's own colour read through, instead of needing
+# per-material art.
+#
+# No "cut" variant at the DECAL level: an early version tried encoding a true
+# alpha=0 hole into the decal PNG itself for the full-voxel
+# fallback-of-fallback DENTED case (no carved side, no other geometry
+# conveys "material is gone"). Measured wrong — _paste_decal()/
+# compose_decal_voxel() blend "source over" (Porter-Duff), where a decal
+# pixel's alpha only ever ADDS coverage; alpha=0 in the decal means "this
+# decal contributes nothing here", which leaves whatever the OPAQUE flat
+# substrate already shows completely unchanged, never punches a hole through
+# it. Confirmed by generic_mark_seam_selftest.gd sampling the real composited
+# pixel: alpha stayed 1.0 with the old cut=True path. The real D32
+# photographic "dent" family never attempted this — it only ever draws fully
+# opaque ink onto substrates that are ALREADY carved (real geometry, real
+# transparency) — so this was a novel mistake, not a repeated one. Fixed:
+# the decals are solid ink only, everywhere; punch_generic_alpha_hole() below
+# is the ACTUAL cut, applied to the COMPOSITE at runtime (only place a
+# substrate's own alpha can honestly be reduced), invoked only for the
+# fallback-of-fallback DENTED case.
+GENERIC_MARK_INK_ALPHA = 178   # 0.7 * 255 (Director, 2026-08-03)
+GENERIC_MARK_KINDS: tuple[str, ...] = (
+    "bullet_dented", "bullet_cracked", "blast_dent", "blast_crack",
+)
+GENERIC_MARK_NAME = "decal_generic_%s_%d.png"   # kind, variant
+GENERIC_MARK_VARIANTS = 3
+
+
+def _generic_mark_canvas() -> Image.Image:
+    return Image.new("RGBA", (DECAL_AUTHOR_W, DECAL_AUTHOR_H), (0, 0, 0, 0))
+
+
+def generate_generic_bullet_decal(variant: int) -> Image.Image:
+    """"Dented" bullet look: a crater rim plus a few short radial
+    stress-cracks, hash-jittered per variant. Solid ink — see the
+    module-level "cut" note above for why there is no cut here."""
+    img = _generic_mark_canvas()
+    draw = ImageDraw.Draw(img)
+    cx, cy = DECAL_AUTHOR_W / 2.0, DECAL_AUTHOR_H / 2.0
+    seed = variant * 97 + 13
+
+    outer = DECAL_AUTHOR_W * (0.20 + 0.02 * _hash01(seed, 3, 203))
+    rim_shade = 0.55 + 0.25 * _hash01(seed, 3, 203)
+    draw.ellipse(
+        [cx - outer, cy - outer, cx + outer, cy + outer],
+        fill=(int(90 * rim_shade), int(85 * rim_shade), int(78 * rim_shade), GENERIC_MARK_INK_ALPHA),
+    )
+    for i in range(3):
+        angle = (2.0 * math.pi / 3) * i + (_hash01(seed, i, 210) - 0.5) * 0.9
+        length = outer + DECAL_AUTHOR_W * (0.05 + 0.05 * _hash01(seed, i, 220))
+        ex, ey = cx + math.cos(angle) * length, cy + math.sin(angle) * length
+        draw.line([(cx, cy), (ex, ey)], fill=(60, 55, 50, GENERIC_MARK_INK_ALPHA), width=3)
+    return img
+
+
+def generate_generic_bullet_crack_decal(variant: int) -> Image.Image:
+    """"Cracked" bullet look: a small solid core, no rim, a few short hairline
+    cracks. Always full-voxel, never carved, so there is no "cut" variant."""
+    img = _generic_mark_canvas()
+    draw = ImageDraw.Draw(img)
+    cx, cy = DECAL_AUTHOR_W / 2.0, DECAL_AUTHOR_H / 2.0
+    seed = variant * 97 + 13
+
+    core = DECAL_AUTHOR_W * 0.09
+    draw.ellipse([cx - core, cy - core, cx + core, cy + core],
+                 fill=(70, 65, 60, GENERIC_MARK_INK_ALPHA))
+    for i in range(4):
+        angle = (2.0 * math.pi / 4) * i + 0.4 + (_hash01(seed, i, 230) - 0.5) * 0.7
+        length = core + DECAL_AUTHOR_W * (0.04 + 0.05 * _hash01(seed, i, 240))
+        ex, ey = cx + math.cos(angle) * length, cy + math.sin(angle) * length
+        draw.line([(cx, cy), (ex, ey)], fill=(55, 50, 46, GENERIC_MARK_INK_ALPHA), width=2)
+    return img
+
+
+def _generic_jagged_ring(cx: float, cy: float, base_r: float, amplitude: float,
+                         n_points: int, seed: int) -> list[tuple[float, float]]:
+    pts = []
+    for i in range(n_points):
+        angle = (2.0 * math.pi / n_points) * i
+        r = base_r + (_hash01(int(angle * 1000), i, seed) - 0.5) * 2 * amplitude
+        pts.append((cx + math.cos(angle) * r, cy + math.sin(angle) * r))
+    return pts
+
+
+def generate_generic_blast_dent_decal(variant: int) -> Image.Image:
+    """
+    Blast dent: a data-driven jagged crater (hash-perturbed radius per angle,
+    never hand-picked vertices) with blotch+grain shaded ink fill (same
+    recipe as generate_broken_face()). Solid ink — see the module-level
+    "cut" note above for why there is no cut here.
+    """
+    img = _generic_mark_canvas()
+    cx, cy = DECAL_AUTHOR_W / 2.0, DECAL_AUTHOR_H / 2.0
+    seed = variant * 131 + 7
+
+    outline = _generic_jagged_ring(cx, cy, DECAL_AUTHOR_W * 0.30, DECAL_AUTHOR_W * 0.07, 12, seed + 1)
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).polygon(outline, fill=255)
+
+    fill = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    px = fill.load()
+    base_tint = (46, 42, 38)
+    xs = [p[0] for p in outline]
+    ys = [p[1] for p in outline]
+    x0, x1 = max(0, int(min(xs))), min(img.size[0], int(max(xs)) + 1)
+    y0, y1 = max(0, int(min(ys))), min(img.size[1], int(max(ys)) + 1)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            blotch = _hash01(x // 6, y // 6, seed + 11)
+            grain = _hash01(x, y, seed + 29)
+            shade = 0.55 + 0.35 * blotch + 0.20 * grain
+            px[x, y] = (
+                min(255, int(base_tint[0] * shade)),
+                min(255, int(base_tint[1] * shade)),
+                min(255, int(base_tint[2] * shade)),
+                GENERIC_MARK_INK_ALPHA,
+            )
+    img.paste(fill, (0, 0), mask)
+    return img
+
+
+## D33 Part 4b — the ACTUAL alpha cut, applied to the runtime COMPOSITE
+## (never to a static decal — see the module-level note on why that doesn't
+## work), only for the full-voxel fallback-of-fallback DENTED case (no known
+## carved side, so nothing else conveys "material is gone"). Never called by
+## main()/build_decal_family() — this is a runtime operation, mirrored here
+## in Python purely so a GDScript port has a real reference to prove
+## equality against (same discipline as every other D33 compositor
+## primitive). `cx, cy` are in FINAL ATOM space (32x36), matching
+## generate_impact_mark()'s own _MARK_CENTER = (16, 8) — the top-face
+## diamond centre both mark families project onto (FACE_TOP is the only
+## target _composite_generic_flat_mark() ever uses).
+_GENERIC_HOLE_RADIUS = {"bullet": 2.0, "blast": 3.0}
+
+
+def punch_generic_alpha_hole(image: "Image.Image", mark_family: str, variant: int) -> "Image.Image":
+    img = image.copy()
+    cx, cy = 16.0, 8.0
+    seed = variant * 173 + 29
+    ox = (_hash01(seed, 1, 401) - 0.5) * 2.0
+    oy = (_hash01(seed, 2, 402) - 0.5) * 1.5
+    r = _GENERIC_HOLE_RADIUS[mark_family]
+    px = img.load()
+    x0, x1 = max(0, int(cx + ox - r) - 1), min(img.size[0], int(cx + ox + r) + 2)
+    y0, y1 = max(0, int(cy + oy - r) - 1), min(img.size[1], int(cy + oy + r) + 2)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            dx, dy = (x + 0.5) - (cx + ox), (y + 0.5) - (cy + oy)
+            if dx * dx + dy * dy <= r * r:
+                r_, g_, b_, _a = px[x, y]
+                px[x, y] = (r_, g_, b_, 0)
+    return img
+
+
+def generate_generic_blast_crack_decal(variant: int) -> Image.Image:
+    """Blast crack: branching fracture lines radiating from centre, hash-driven
+    branch count/angle/fork so each variant reads distinctly. Always
+    full-voxel (a crack never carves), so there is no "cut" variant."""
+    img = _generic_mark_canvas()
+    draw = ImageDraw.Draw(img)
+    cx, cy = DECAL_AUTHOR_W / 2.0, DECAL_AUTHOR_H / 2.0
+    seed = variant * 131 + 7
+    n_branches = 5 + (seed % 3)
+    for i in range(n_branches):
+        angle = (2.0 * math.pi / n_branches) * i + _hash01(seed, i, 301) * 0.5
+        length = DECAL_AUTHOR_W * (0.28 + 0.10 * _hash01(seed, i, 302))
+        ex, ey = cx + math.cos(angle) * length, cy + math.sin(angle) * length
+        width = 5 if i % 2 == 0 else 3
+        draw.line([(cx, cy), (ex, ey)], fill=(48, 44, 40, GENERIC_MARK_INK_ALPHA), width=width)
+        if _hash01(seed, i, 303) > 0.45:
+            fork_t = 0.5 + _hash01(seed, i, 304) * 0.3
+            fx, fy = cx + (ex - cx) * fork_t, cy + (ey - cy) * fork_t
+            fork_angle = angle + (0.6 if i % 2 == 0 else -0.6)
+            flen = length * 0.45
+            fex = fx + math.cos(fork_angle) * flen
+            fey = fy + math.sin(fork_angle) * flen
+            draw.line([(fx, fy), (fex, fey)], fill=(48, 44, 40, GENERIC_MARK_INK_ALPHA), width=2)
+    return img
+
+
+def generate_all_generic_mark_decals() -> dict[tuple[str, int], "Image.Image"]:
+    marks: dict[tuple[str, int], Image.Image] = {}
+    for variant in range(GENERIC_MARK_VARIANTS):
+        marks[("bullet_dented", variant)] = generate_generic_bullet_decal(variant)
+        marks[("bullet_cracked", variant)] = generate_generic_bullet_crack_decal(variant)
+        marks[("blast_dent", variant)] = generate_generic_blast_dent_decal(variant)
+        marks[("blast_crack", variant)] = generate_generic_blast_crack_decal(variant)
+    return marks
+
+
 def _mirror_point(p: tuple[int, int]) -> tuple[int, int]:
     """
     Mirror a GEOMETRY point across the voxel's vertical axis.
@@ -1037,6 +1243,31 @@ def build_decal_family() -> None:
                 written_decals += 1
     print(f"  ✓ {written_decals} decal placeholder(s) written, "
           f"{kept_decals} authored decal(s) kept → {DECAL_DIR}/")
+
+    # D33 Part 4 — generic/vector mark decals, material-independent (see the
+    # module docstring above generate_generic_bullet_decal for why these exist
+    # separately from the photographic family above). "Never overwrite" the
+    # same way as everything else in decals/, though nothing is expected to
+    # replace these by hand — they are the permanent generic-path answer, not
+    # a placeholder awaiting real art.
+    kept_generic = 0
+    written_generic = 0
+    for kind in GENERIC_MARK_KINDS:
+        for variant in range(GENERIC_MARK_VARIANTS):
+            path = DECAL_DIR / (GENERIC_MARK_NAME % (kind, variant))
+            if path.exists():
+                kept_generic += 1
+                continue
+            generators = {
+                "bullet_dented": generate_generic_bullet_decal,
+                "bullet_cracked": generate_generic_bullet_crack_decal,
+                "blast_dent": generate_generic_blast_dent_decal,
+                "blast_crack": generate_generic_blast_crack_decal,
+            }
+            generators[kind](variant).save(path, "PNG")
+            written_generic += 1
+    print(f"  ✓ {written_generic} generic mark decal(s) written, "
+          f"{kept_generic} kept → {DECAL_DIR}/")
 
     halves: dict[tuple[str, str], Image.Image] = {}
     kept_halves = 0

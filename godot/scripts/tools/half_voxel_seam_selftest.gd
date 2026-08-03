@@ -204,21 +204,35 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	else:
 		_fail("floor DENTED resolved to %d, expected the untouched generic id %d" % [floor_got, floor_expected])
 
+	## D33 Part 4b (2026-08-03) changed this one: _composite_generic_ceiling()
+	## is purely name-driven (no edge/flat_baked gate, unlike Part 3d's baked
+	## branch), so it now resolves a ceiling shape here too — even reached
+	## with a non-null edge, which real gameplay never does (ROOF-BAKE-01/02c:
+	## a ceiling cell always calls in with edge == null). The WALL half-voxel
+	## branch this file is actually testing still correctly ignores it
+	## (_half_voxel_decal_plan returns {} for "_blast_dented_bottom" — ceiling
+	## is not, and never was, a bug in that branch). Not a regression.
 	var ceiling_pos := Vector2i(3, 3)
 	renderer._set_voxel_cell(ceiling_pos, 0, "concrete_blast_dented_bottom", edge_stub, Vector2i.ZERO, 0)
 	var ceiling_got := renderer.get_layer(0).get_cell_source_id(ceiling_pos)
-	var ceiling_expected: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_bottom")
-	if ceiling_got == ceiling_expected:
-		_pass("ceiling DENTED still resolves to its generic id (%d) — Part 3b's ceiling increment not built yet" % ceiling_expected)
+	var ceiling_generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_bottom")
+	if ceiling_got != -1 and ceiling_got != ceiling_generic_id:
+		_pass("ceiling DENTED resolves via Part 4b's generic ceiling compositor (source_id %d), not the wall branch and not the untouched generic id (%d)" % [ceiling_got, ceiling_generic_id])
 	else:
-		_fail("ceiling DENTED resolved to %d, expected the untouched generic id %d" % [ceiling_got, ceiling_expected])
+		_fail("ceiling DENTED resolved to %d, expected the generic ceiling compositor to catch it (composites/ id is %d)" % [ceiling_got, ceiling_generic_id])
 
 	renderer.queue_free()
 	print("")
 
 
 func test_no_baked_atom_falls_through_to_generic() -> void:
-	print("[6] A DENTED mark with no baked atom available still falls through cleanly\n")
+	print("[6] A DENTED mark with no baked atom now falls through to D33 Part 4b's generic vector compositor, not all the way to composites/\n")
+	## D33 Part 4b (2026-08-03) changed what "falls through" means here: a
+	## no-baked-atom miss used to reach only the last-resort composites/-backed
+	## MATERIALS.find() id; now _composite_generic_half_voxel() (purely
+	## string-driven, no baked dependency) resolves it first, onto the flat
+	## atom. Not a regression — see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md
+	## §5 Part 4b.
 	var renderer := _new_renderer()
 	renderer._bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	renderer._bake_config.enabled = true
@@ -229,11 +243,11 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	var pos := Vector2i(9, 1)
 	renderer._set_voxel_cell(pos, 0, "wood_bullet_dented_right_0", Object.new(), Vector2i.ZERO, 0)
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
-	var expected: int = VoxelRendererClass.MATERIALS.find("wood_bullet_dented_right_0")
-	if got == expected:
-		_pass("no baked atom -> falls through to the generic composites/ id (%d), no crash" % expected)
+	var generic_id: int = VoxelRendererClass.MATERIALS.find("wood_bullet_dented_right_0")
+	if got != -1 and got != generic_id:
+		_pass("no baked atom -> resolves via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
 	else:
-		_fail("expected fallback to generic id %d, got %d" % [expected, got])
+		_fail("expected the generic vector compositor to resolve this, got %d (composites/ id is %d)" % [got, generic_id])
 
 	renderer.queue_free()
 	print("")

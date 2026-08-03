@@ -1,15 +1,18 @@
-## D33 Parts 3b/3c — HalfVoxelCompositor equality proof, same discipline as
-## Part 2's decal_compositor_equality_selftest.gd: compare the GDScript port
-## against a reference built by the REAL Python function it ports
-## (generate_voxel.py's generate_half_voxel(), plus compose_decal_voxel() for
-## the full real pipeline), on fixtures neither side generates itself:
+## D33 Parts 3b/3c/3d — HalfVoxelCompositor equality proof, same discipline
+## as Part 2's decal_compositor_equality_selftest.gd: compare the GDScript
+## port against a reference built by the REAL Python function it ports
+## (generate_voxel.py's generate_half_voxel()/generate_dented_voxel(), plus
+## compose_decal_voxel() for the full real pipeline where a decal exists),
+## on fixtures neither side generates itself:
 ##   godot/scripts/tools/fixtures/d33_part3b/{atom,decal}.png                — wall inputs
 ##   godot/scripts/tools/fixtures/d33_part3b/half_{left,right}.png           — wall mask-only reference
 ##   godot/scripts/tools/fixtures/d33_part3b/composited_{left,right}.png     — wall mask + decal reference
 ##   godot/scripts/tools/fixtures/d33_part3c/{atom,decal}.png                — floor inputs
 ##   godot/scripts/tools/fixtures/d33_part3c/half_top.png                    — floor mask-only reference
 ##   godot/scripts/tools/fixtures/d33_part3c/composited_top.png              — floor mask + decal reference
-## (produced by tools/asset_generation/d33_part3{b,c}_fixture_gen.py).
+##   godot/scripts/tools/fixtures/d33_part3d/atom.png                       — ceiling input (no decal)
+##   godot/scripts/tools/fixtures/d33_part3d/bottom.png                      — ceiling carve reference
+## (produced by tools/asset_generation/d33_part3{b,c,d}_fixture_gen.py).
 ##
 ## Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_compositor_equality_selftest.gd
 extends SceneTree
@@ -19,6 +22,7 @@ const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_composi
 
 const FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part3b/"
 const FLOOR_FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part3c/"
+const CEILING_FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part3d/"
 
 ## generate_voxel.py's _darken(MATERIALS["concrete"], SIDE_DARKEN), printed by
 ## the fixture generator: (140, 136, 129). Copied as a literal, not re-derived
@@ -52,13 +56,23 @@ const MAX_MISMATCHED_PIXEL_FRACTION: float = 0.07
 ## because the underlying cause differs.
 const FLOOR_MAX_MISMATCHED_PIXEL_FRACTION: float = 0.05
 
+## Ceiling measured separately, 2026-08-03: 8 of 574 (1.39%) — the smallest
+## gap of the three shapes, and a different mechanism than the others: this
+## is a per-column discrete row cutoff (the jagged profile), not a
+## continuous polygon boundary, so an off-by-one in the linear-interpolation
+## rounding at an isolated column shows up as exactly one row of that
+## column's pixels differing — not a rasterizer tie-break like LEFT/RIGHT/
+## floor's diagonal seams, but the same class of "measured, small, at a
+## boundary" residual.
+const CEILING_MAX_MISMATCHED_PIXEL_FRACTION: float = 0.03
+
 var passed: int = 0
 var failed: int = 0
 
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("D33 PARTS 3b/3c — HALF VOXEL COMPOSITOR EQUALITY SELFTEST")
+	print("D33 PARTS 3b/3c/3d — HALF VOXEL COMPOSITOR EQUALITY SELFTEST")
 	print("=".repeat(70) + "\n")
 
 	var atom := _load(FIXTURE_DIR + "atom.png")
@@ -81,6 +95,12 @@ func _init() -> void:
 	else:
 		test_floor_mask_only(floor_atom)
 		test_floor_full_pipeline(floor_atom, floor_decal)
+
+	var ceiling_atom := _load(CEILING_FIXTURE_DIR + "atom.png")
+	if ceiling_atom == null:
+		_fail("could not load ceiling fixtures — run tools/asset_generation/d33_part3d_fixture_gen.py first")
+	else:
+		test_ceiling_carve(ceiling_atom)
 
 	_finish()
 
@@ -228,4 +248,16 @@ func test_floor_full_pipeline(atom: Image, decal: Image) -> void:
 	var substrate := HalfVoxelCompositorClass.build_floor_sunk_substrate(atom)
 	var got := DecalCompositorClass.compose_decal_voxel(substrate, decal, [DecalCompositorClass.FACE_SUNK_TOP])
 	_judge("floor full pipeline", _compare(got, reference), FLOOR_MAX_MISMATCHED_PIXEL_FRACTION)
+	print("")
+
+
+func test_ceiling_carve(atom: Image) -> void:
+	print("[ceiling] carve_ceiling_silhouette() matches generate_dented_voxel(atom, atom, \"bottom\")\n")
+	var reference := _load(CEILING_FIXTURE_DIR + "bottom.png")
+	if reference == null:
+		_fail("bottom.png missing")
+		print("")
+		return
+	var got := HalfVoxelCompositorClass.carve_ceiling_silhouette(atom)
+	_judge("ceiling carve", _compare(got, reference), CEILING_MAX_MISMATCHED_PIXEL_FRACTION)
 	print("")

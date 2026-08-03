@@ -404,8 +404,8 @@ static func _half_voxel_decal_plan(material_name: String) -> Dictionary:
 ## family for every ground material), so the real material has to come from
 ## elsewhere (the caller's `zone_material`, threaded separately through
 ## _set_voxel_cell() — see that function's own comment). Ceiling
-## ("_dented_bottom") is a further increment and correctly does not match
-## this prefix.
+## ("_dented_bottom", no "_top" or a trailing variant) correctly does not
+## match this prefix — see _ceiling_carve_plan() just below for that case.
 static func _floor_sunk_decal_plan(material_name: String) -> Dictionary:
 	const PREFIX := "earth_blast_dented_top_"
 	if not material_name.begins_with(PREFIX):
@@ -414,6 +414,20 @@ static func _floor_sunk_decal_plan(material_name: String) -> Dictionary:
 	if not v.is_valid_int():
 		return {}
 	return {"decal_family": "dent", "variant": v.to_int()}
+
+
+## D33 Part 3d — recognizes the ceiling DENTED case: no decal, no variant at
+## all (build_decal_family()'s own reasoning: "an isometric camera never
+## sees a voxel's underside, so there is no exposed surface for a decal to
+## land on" — just a silhouette carve). Unlike the floor case, the REAL
+## material IS recoverable directly from the name here: there is no shared
+## substitute the way floor's "earth" is one — "concrete_blast_dented_bottom"
+## already says "concrete", so no separate zone_material threading is needed.
+static func _ceiling_carve_plan(material_name: String) -> Dictionary:
+	for base in IMPACT_DECAL_MATERIALS:
+		if material_name == "%s_blast_dented_bottom" % base:
+			return {"base_material": base}
+	return {}
 
 
 ## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
@@ -998,6 +1012,32 @@ func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_m
 	return entry
 
 
+## D33 Part 3d — carves the baked atom's underside along a deterministic
+## jagged profile (HalfVoxelCompositor.carve_ceiling_silhouette() — a direct
+## port of generate_dented_voxel()'s "bottom" branch, its FNV-1a hash
+## included for byte-for-byte determinism), no decal ever pasted — there is
+## nothing to paste onto; the camera never sees this face. Caches, returns
+## the usual shape. {} on any miss (no baked atom here), same fall-through
+## as everywhere else in this file.
+func _composite_ceiling_carve(plan: Dictionary, material_name: String, voxel_xy: Vector2i,
+		level: int, grid_pos: Vector2i) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_tinted_baked_atom_flat(plan["base_material"], voxel_xy)
+	if resolved.is_empty():
+		return {}
+
+	var carved := HalfVoxelCompositorClass.carve_ceiling_silhouette(resolved["image"])
+	var entry := cache.store(key, carved)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = resolved["alternative_id"]
+	return entry
+
+
 ## VL-03-PERF: mint ONE light-bucket alternative for one tile, on first use.
 ##
 ## Eager-minting all 22 alternatives (buckets 0..4 × flip) for all ~13k tiles
@@ -1513,25 +1553,41 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 					alternative_id = half_composite["alternative_id"]
 					_diag_baked_hits += 1
 
-	## D33 Part 3c: the floor-sunk counterpart. Floor damage always arrives
-	## with edge == null (ROOF-BAKE-01/02c: edge-less baked surfaces) and
-	## flat_baked == true for a zoned ground material, so this is an `elif`
-	## on the SAME "is this an impact mark on a baked surface" question above,
-	## just the edge-less half of it. zone_material == "" means either an
-	## unzoned floor (plain earth — never baked, nothing to preserve) or a
-	## non-floor flat_baked case (ceiling/interior, which don't need it) —
-	## either way, skip rather than resolve_flat() against an empty string.
-	if is_impact_mark and _bake_config and _bake_config.enabled \
-			and edge == null and flat_baked and zone_material != "" and source_id < 0:
-		var floor_plan := _floor_sunk_decal_plan(material_name)
-		if not floor_plan.is_empty():
-			var floor_composite := _composite_floor_sunk_decal(
-				floor_plan, material_name, zone_material, voxel_xy, level, grid_pos)
-			if not floor_composite.is_empty():
-				source_id = floor_composite["source_id"]
-				atlas_coords = floor_composite["atlas_coords"]
-				alternative_id = floor_composite["alternative_id"]
-				_diag_baked_hits += 1
+	## D33 Part 3c/3d: the edge-less (flat_baked) counterparts — floor-sunk
+	## DENTED and ceiling DENTED. Both always arrive with edge == null
+	## (ROOF-BAKE-01/02c: edge-less baked surfaces) and flat_baked == true,
+	## so this is the edge-less half of the SAME "is this an impact mark on a
+	## baked surface" question above. Tried in either order — the two plan
+	## parsers never both match the same name (ceiling ends in
+	## "_dented_bottom" with no variant; floor is always
+	## "earth_blast_dented_top_N") — ceiling first since it needs no
+	## zone_material at all.
+	if is_impact_mark and _bake_config and _bake_config.enabled and edge == null and flat_baked:
+		if source_id < 0:
+			var ceiling_plan := _ceiling_carve_plan(material_name)
+			if not ceiling_plan.is_empty():
+				var ceiling_composite := _composite_ceiling_carve(
+					ceiling_plan, material_name, voxel_xy, level, grid_pos)
+				if not ceiling_composite.is_empty():
+					source_id = ceiling_composite["source_id"]
+					atlas_coords = ceiling_composite["atlas_coords"]
+					alternative_id = ceiling_composite["alternative_id"]
+					_diag_baked_hits += 1
+
+		## zone_material == "" means either an unzoned floor (plain earth —
+		## never baked, nothing to preserve) or a non-floor flat_baked case
+		## (interior) — either way, skip rather than resolve_flat() against
+		## an empty string.
+		if source_id < 0 and zone_material != "":
+			var floor_plan := _floor_sunk_decal_plan(material_name)
+			if not floor_plan.is_empty():
+				var floor_composite := _composite_floor_sunk_decal(
+					floor_plan, material_name, zone_material, voxel_xy, level, grid_pos)
+				if not floor_composite.is_empty():
+					source_id = floor_composite["source_id"]
+					atlas_coords = floor_composite["atlas_coords"]
+					alternative_id = floor_composite["alternative_id"]
+					_diag_baked_hits += 1
 
 	# Fallback: material-only path
 	if source_id < 0:

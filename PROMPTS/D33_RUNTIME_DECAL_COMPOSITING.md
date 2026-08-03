@@ -1,13 +1,12 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** 🔶 **Part 3c done (2026-08-03) — floor-sunk DENTED marks on
-zoned ground materials (ground_grass/concrete/etc.) now composite too,**
-alongside Part 3a's full-voxel CRACKED and Part 3b's wall-DENTED marks.
-Part 0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01
-removed the harder of §10's two open design points; Parts 1, 2, 3a, 3b done.
-**Remaining: ceiling DENTED ("_bottom", silhouette-only, no decal) — a
-further increment, not started, scoped at the end of the Part 3 section
-below — then Part 4 (retire the pre-composited PNGs).**
+**Status:** ✅ **Part 3 fully done (2026-08-03) — every impact-mark shape
+(full-voxel CRACKED, wall/floor/ceiling DENTED) now composites onto the
+real baked facade instead of losing it to the flat generic material.** Part
+0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01 removed
+the harder of §10's two open design points; Parts 1, 2, 3a/b/c/d all done.
+**Remaining: Part 4 (retire the 97 pre-composited PNGs `composites/` held —
+the whole reason ASSET-LAYOUT-01 split that folder out) — not started.**
 
 ---
 
@@ -390,14 +389,52 @@ calling it with `"earth_blast_dented_top_0"` finds nothing.
   `check_invariants`, `gen_codemap --check`, `run_selftests` (26/26) all
   clean.
 
-**What's left, a further increment, not started:** ceiling DENTED
-(`_dented_bottom`), silhouette-only via a jagged-profile carve
-(`_jagged_profile()`'s own FNV-1a hash — no decal at all,
-`generate_dented_voxel()` not `generate_half_voxel()`). Lowest priority of
-everything in this plan: an isometric camera never sees a ceiling's
-underside (D25's own original reasoning), so the visible payoff is smaller
-than any other part built this session. `_half_voxel_decal_plan()`
-deliberately returns `{}` for it today.
+**Part 3d — ceiling DENTED (silhouette carve, no decal). Status: ✅ DONE
+2026-08-03, same session — Part 3 is now fully complete.**
+
+The last and simplest shape, structurally: no polygon mask, no decal, no
+cut-face fill. `generate_half_voxel()`'s "bottom" branch delegates straight
+to the older, D25-era `generate_dented_voxel(base_img, base_img, "bottom")`
+— keep the whole atom, carve a **deterministic jagged line** off its
+underside (an isometric camera never sees a ceiling's underside at all, the
+reason this tier carries no exposed-surface decal in the first place).
+
+- `HalfVoxelCompositor.carve_ceiling_silhouette(kept_atom)` — a direct port,
+  including `_hash01()` (FNV-1a over `(x, y, salt)`) and `_jagged_profile()`.
+  **Verified bit-exact against real Python output before writing the real
+  version**: a standalone GDScript port of `_hash01()` reproduced Python's
+  values to full float precision on a spot-check, confirming the byte-order
+  assumption (little-endian, matching `int.to_bytes(4, "little", ...)`'s own
+  iteration order) before it went anywhere near production code.
+- `VoxelRenderer._ceiling_carve_plan()` — unlike floor, the REAL material
+  IS recoverable directly from the pseudo-name here (`"concrete_blast_dented_bottom"`
+  already says "concrete" — no shared substitute the way floor's "earth" is
+  one), so no `zone_material` threading needed; `resolve_flat()` is called
+  with the extracted material directly.
+- `_set_voxel_cell()`'s edge-less branch now tries ceiling before floor (the
+  two plan parsers never both match the same name, so order doesn't matter
+  functionally — ceiling first since it needs nothing extra resolved).
+- **Evidence**: `half_voxel_compositor_equality_selftest.gd` extended again
+  (now 8/8) — ceiling's own measured gap is **1.39%** (8 of 574 pixels), the
+  smallest of the three shapes and a different mechanism than the others: a
+  per-column discrete row cutoff, not a continuous polygon boundary, so an
+  isolated off-by-one in the linear-interpolation rounding shows up as one
+  row of one column differing, not a rasterizer tie-break. `ceiling_carve_seam_selftest.gd`
+  (9/9): plan parsing (including that floor/wall names correctly don't
+  match), the real seam picking the ceiling composite with idempotent
+  caching, `resolve_flat()` proven to receive the material extracted
+  straight from the name, floor still resolving correctly with the ceiling
+  branch tried first (no collision), and a no-baked-atom miss falling
+  through cleanly. `project_lint`, `check_invariants`, `gen_codemap --check`,
+  `run_selftests` (27/27) all clean.
+- **Honestly recorded, not chased further**: PLAYGROUND has **zero roof/
+  ceiling geometry defined** (`grep -c "roofs" maps/PLAYGROUND.map.json` →
+  0), so there is no live scenario on the current test map to capture a real
+  ceiling-DENTED voxel in play — unlike every other part this session, this
+  one has no real-game screenshot behind it, only the equality/seam proofs
+  above. Building one would mean adding roof geometry to a map for a feature
+  whose entire justification is "the camera never sees this" — not a
+  trade worth making for this checkpoint.
 
 ### Part 4 — Retire the pre-composited PNGs
 - `composites/` is deleted wholesale (this is what ASSET-LAYOUT-01 was

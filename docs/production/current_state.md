@@ -20,6 +20,7 @@
 - RESUMO_SESSAO_2026-07-29_WEAPONS_BENCH_ARSENAL.md
 - RESUMO_SESSAO_2026-07-30_31_DESTRUCTION_VISUALS.md
 - RESUMO_SESSAO_2026-08-01_FACE_LIGHT_FOUNDATION.md
+- RESUMO_SESSAO_2026-08-02_DAMAGE_DECALS.md
 - RESUMO_SESSAO_2026-08-02_FACE_SOOT.md
 - RESUMO_SESSAO_2026-08-02_FIREARM_DESTRUCTION.md
 <!-- AUTO:END pending_prompts -->
@@ -30,7 +31,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 126
-- Test scripts: 27
+- Test scripts: 28
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**166 scripts · 37409 lines total** (under `godot/scripts/`)
+**166 scripts · 37514 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1809 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1817 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -662,6 +662,7 @@ extends `ConfirmationDialog` · 64 lines
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
 - `IMPACT_FLOOR_MATERIAL` = `"earth"`
+- `IMPACT_CRACK_MATERIALS` = `["concrete", "stone"]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -1383,14 +1384,11 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 81 lines
+`class_name MaterialResistanceTable` · 91 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
 > MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
-
-**Constants / tuning**
-- `TABLE` = `{ "metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3}, "stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2}, "concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15}, "wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03}, "glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0}, "earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0}, ## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry. ## register_ground_defaults()). Added with "earth" because the only floor ## in the real test map (PLAYGROUND) is a single ground_concrete zone ## covering all 24x16 GUs: without these rows the floor-dent path is ## reachable ONLY on plain earth and produces literally zero dents on the ## map it is tested against (measured: 0 dents across 42 affected floor ## slabs before this row existed). dent_factor mirrors each material's ## obvious counterpart above, same first-pass placeholder status as every ## other row. destroy_factor is inert for floors — apply_crater_damage() ## decides removal geometrically — and is listed only so the rows are not ## half-specified. crack_factor 0.0: no ground crack texture exists. "ground_concrete": {"destroy_factor": 0.5, "dent_factor": 0.2,  "crack_factor": 0.0}, "ground_gravel":   {"destroy_factor": 0.5, "dent_factor": 0.3,  "crack_factor": 0.0}, "ground_dirt":     {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0}, "ground_grass":    {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0}, "ground_sand":     {"destroy_factor": 0.5, "dent_factor": 0.4,  "crack_factor": 0.0}, }`
 
 ---
 
@@ -2847,7 +2845,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 303 lines
+extends `SceneTree` · 390 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 

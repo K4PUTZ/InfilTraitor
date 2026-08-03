@@ -35,11 +35,21 @@ class_name MaterialResistanceTable
 ## first-pass placeholder status as every other row. crack_factor stays 0.0:
 ## no earth crack texture exists, and the table's own rule is that a tier with
 ## no texture wired stays off.
+## D32.6 (Director, 2026-08-02): "metal e madeira não ficam rachados, só dented
+## ou balas." A blast on either now produces DESTROYED or DENTED and nothing
+## else — crack_factor 0.0, matching the table's own standing rule that a tier
+## with no art wired stays off, except here the reason is physical rather than
+## practical: neither material fractures the way concrete and stone do. Their
+## dent_factor is deliberately NOT raised to absorb the lost share — that would
+## be a balance change nobody asked for, and the freed voxels simply stay
+## intact. Bullets are unaffected: a firearm's CRACKED tier is a bullet MARK on
+## the struck face, not a fracture, and it reads from the bullet family
+## (VoxelRenderer.damage_variant_material's blast_sourced=false branch).
 const TABLE := {
-	"metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.3},
+	"metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.0},
 	"stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2},
 	"concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15},
-	"wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.03},
+	"wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.0},
 	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
 	"earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0},
 	## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry.

@@ -92,6 +92,13 @@ const IMPACT_DECAL_VARIANTS: int = 3
 ## floor family is built on "earth" and needs only the blast/dent/top corner of
 ## the matrix: floors take no bullets (D32.4) and have no crack tier.
 const IMPACT_FLOOR_MATERIAL: String = "earth"
+## D32.6 (Director, 2026-08-02): "metal e madeira não ficam rachados, só dented
+## ou balas." Only these two fracture, so only these two get a blast-CRACKED
+## decal — MaterialResistanceTable holds the matching crack_factor 0.0 for metal
+## and wood, and voxel_decal_selftest asserts the two agree. Bullets are NOT
+## gated by this: a firearm's CRACKED tier is a bullet mark on the struck face,
+## which every material gets.
+const IMPACT_CRACK_MATERIALS: Array[String] = ["concrete", "stone"]
 
 ## Built by _static_init(); see BASE_MATERIALS above for why it is not a const.
 static var MATERIALS: Array[String] = []
@@ -129,7 +136,8 @@ static func impact_decal_names(material: String) -> Array[String]:
 				names.append("%s_bullet_cracked_%s_%d" % [material, side, variant])
 				names.append("%s_bullet_dented_%s_%d" % [material, side, variant])
 				names.append("%s_blast_dented_%s_%d" % [material, side, variant])
-			names.append("%s_blast_cracked_all_%d" % [material, variant])
+			if IMPACT_CRACK_MATERIALS.has(material):
+				names.append("%s_blast_cracked_all_%d" % [material, variant])
 		names.append("%s_blast_dented_top_%d" % [material, variant])
 	if not is_floor:
 		names.append("%s_blast_dented_bottom" % material)

@@ -35,6 +35,8 @@ func _init() -> void:
 	test_variant_selects_distinct_names()
 	test_unknown_material_falls_back_instead_of_composing_a_missing_name()
 	test_shooter_gu_resolves_a_real_side()
+	test_a_blast_never_resolves_to_a_bullet_mark()
+	test_metal_and_wood_do_not_crack()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -173,14 +175,19 @@ func test_bullet_marks_the_struck_lateral_face_only() -> void:
 func test_cracked_is_whole_voxel_for_a_blast() -> void:
 	print("[4] A blast-CRACKED voxel resolves to the whole-voxel name, whatever the side\n")
 
+	## Driven on a material that actually cracks — D32.6 took metal and wood out
+	## of the crack tier entirely, so asking metal here would test the fallback
+	## rather than the rule.
+	var material: String = VoxelRendererClass.IMPACT_CRACK_MATERIALS[0]
+	var expected := "%s_blast_cracked_all_1" % material
 	var names: Dictionary = {}
 	for side in [Voxel.CarvedSide.NONE, Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT,
 			Voxel.CarvedSide.TOP, Voxel.CarvedSide.BOTTOM]:
 		names[VoxelRendererClass.damage_variant_material(
-			"metal", Voxel.DamageState.CRACKED, true, side, 1)] = true
+			material, Voxel.DamageState.CRACKED, true, side, 1)] = true
 
-	if names.size() == 1 and names.has("metal_blast_cracked_all_1"):
-		_pass("all five sides resolve to the single name metal_blast_cracked_all_1")
+	if names.size() == 1 and names.has(expected):
+		_pass("all five sides resolve to the single name %s" % expected)
 	else:
 		_fail("blast CRACKED resolved to %d distinct name(s): %s" % [names.size(), names.keys()])
 
@@ -291,6 +298,86 @@ func test_shooter_gu_resolves_a_real_side() -> void:
 	else:
 		_fail("decal_variant_for() gave %d then %d (range 0..%d)"
 			% [a, b, VoxelRendererClass.IMPACT_DECAL_VARIANTS - 1])
+
+	print("")
+
+
+## D23, restated by the Director 2026-08-02: "explosão não gera buracos de
+## balas, somente dented e cracked."
+##
+## This was already true when the Director raised it — every blast write in
+## BlastCalculator passes from_blast=true, so the family was never in doubt.
+## It is asserted anyway because the guarantee lives in a DEFAULT PARAMETER
+## (set_damage's `from_blast`), and a future caller that forgets it inherits the
+## bullet family silently, with no error and no failing test. Exhaustive over
+## every material x tier x side rather than a spot check, since the whole point
+## is that no corner of the matrix leaks.
+func test_a_blast_never_resolves_to_a_bullet_mark() -> void:
+	print("[9] No blast, on any material/tier/side, resolves to a bullet mark\n")
+
+	var materials: Array[String] = VoxelRendererClass.IMPACT_DECAL_MATERIALS.duplicate()
+	materials.append_array(["glass", "ground_concrete", VoxelRendererClass.IMPACT_FLOOR_MATERIAL])
+	var offenders: Array[String] = []
+	var checked := 0
+	for material in materials:
+		for state in [Voxel.DamageState.CRACKED, Voxel.DamageState.DENTED]:
+			for side in [Voxel.CarvedSide.NONE, Voxel.CarvedSide.LEFT,
+					Voxel.CarvedSide.RIGHT, Voxel.CarvedSide.TOP, Voxel.CarvedSide.BOTTOM]:
+				for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+					checked += 1
+					var resolved: String = VoxelRendererClass.damage_variant_material(
+						material, state, true, side, variant)
+					## The bullet families are the D32 "_bullet_" names and D22's
+					## original bare "<material>_dented"/"_cracked" pair.
+					if resolved.contains("_bullet_") \
+							or resolved == "%s_dented" % material \
+							or resolved == "%s_cracked" % material:
+						offenders.append("%s → %s" % [material, resolved])
+
+	if offenders.is_empty():
+		_pass("%d blast combinations checked, none resolved to a bullet mark" % checked)
+	else:
+		_fail("%d blast combination(s) resolved to a bullet mark: %s"
+			% [offenders.size(), ", ".join(offenders.slice(0, 5))])
+
+	print("")
+
+
+## D32.6 — "metal e madeira não ficam rachados, só dented ou balas."
+##
+## Two halves that must agree: the DATA (crack_factor 0.0, so the tier is never
+## reached) and the ASSETS (no crack decal generated). Asserting only one would
+## leave the other free to drift — a non-zero crack_factor with no asset is the
+## silent MATERIALS.find() miss, and an asset with a zero factor is dead art in
+## the Director's queue.
+func test_metal_and_wood_do_not_crack() -> void:
+	print("[10] Metal and wood never blast-crack, in data AND in assets\n")
+
+	for material in ["metal", "wood"]:
+		var factor: float = MaterialResistanceTable.crack_factor(material)
+		if is_zero_approx(factor):
+			_pass("%s crack_factor is 0.0 — a blast can only destroy or dent it" % material)
+		else:
+			_fail("%s crack_factor is %.2f — a blast can still crack it" % [material, factor])
+
+		var resolved: String = VoxelRendererClass.damage_variant_material(
+			material, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, 0)
+		if resolved.contains("_cracked_all_"):
+			_fail("%s still resolves a whole-voxel crack decal (%s)" % [material, resolved])
+		else:
+			_pass("%s has no blast-crack decal (falls back to %s)" % [material, resolved])
+
+	## ...and the materials that DO crack must still have theirs, or this rule
+	## would pass just as well by deleting the feature.
+	for material in VoxelRendererClass.IMPACT_CRACK_MATERIALS:
+		var resolved: String = VoxelRendererClass.damage_variant_material(
+			material, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, 0)
+		if resolved == "%s_blast_cracked_all_0" % material:
+			_pass("%s still cracks → %s" % [material, resolved])
+		else:
+			_fail("%s should still crack but resolved to %s" % [material, resolved])
+		if MaterialResistanceTable.crack_factor(material) <= 0.0:
+			_fail("%s is listed as a cracking material but its crack_factor is 0.0" % material)
 
 	print("")
 

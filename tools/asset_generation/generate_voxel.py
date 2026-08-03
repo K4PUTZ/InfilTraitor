@@ -430,6 +430,13 @@ DECAL_DIR = IMPACT_OUTPUT_DIR / "decals"
 DECAL_TEMPLATE_NAME = f"TEMPLATE_decal_{DECAL_AUTHOR_W}x{DECAL_AUTHOR_H}.png"
 DECAL_NAME = "decal_%s_%s_%d.png"           # family, material, variant
 DECAL_FAMILIES: tuple[str, ...] = ("bullet", "dent", "crack")
+# D32.6 (Director, 2026-08-02): "metal e madeira não ficam rachados, só dented
+# ou balas." Only these fracture, so only these get crack decals and composites
+# — keeping the others would put art in the Director's queue for a state the
+# runtime can no longer reach (MaterialResistanceTable crack_factor 0.0 for
+# metal and wood). Mirrors VoxelRenderer.IMPACT_CRACK_MATERIALS; the two are
+# asserted equal by voxel_decal_selftest.
+CRACK_MATERIALS: tuple[str, ...] = ("concrete", "stone")
 DECAL_VARIANT_COUNT = 3
 
 HALF_NAME = "voxel_%s_half_%s.png"          # material, side
@@ -612,19 +619,35 @@ def generate_decal_placeholder(family: str, variant: int) -> Image.Image:
                      fill=(16, 14, 13, 255))
 
     elif family == "dent":
-        # Irregular chip: a radially perturbed polygon, pushed off-centre so it
-        # never reads as a bullet's concentric hole.
-        ox = cx + DECAL_AUTHOR_W * 0.06 * (_hash01(variant, 1, salt) - 0.5)
-        oy = cy + DECAL_AUTHOR_H * 0.06 * (_hash01(variant, 2, salt) - 0.5)
+        # An explosion NEVER produces a bullet hole (D23, restated by the
+        # Director 2026-08-02: "explosão não gera buracos de balas, somente
+        # dented e cracked"). The runtime already guarantees the texture FAMILY
+        # — every blast write passes from_blast=true — but at 16x20 px on screen
+        # a gently perturbed polygon still READS as a round hole, which is what
+        # the Director saw in the first live capture. So the shape is made
+        # structurally angular rather than nearly-round:
+        #   - few vertices (7), so straight facets are visible at 16 px;
+        #   - large radial swing (0.20..0.46 of the canvas) instead of a small
+        #     wobble around one radius;
+        #   - the core is a SEPARATE angular polygon, rotated against the rim,
+        #     so the silhouette and the hole never share a centre or an outline.
+        # Nothing here is randomised — same deterministic _hash01 contract.
+        ox = cx + DECAL_AUTHOR_W * 0.10 * (_hash01(variant, 1, salt) - 0.5)
+        oy = cy + DECAL_AUTHOR_H * 0.10 * (_hash01(variant, 2, salt) - 0.5)
+        steps = 7
+        base_ang = 2.0 * math.pi * _hash01(variant, 3, salt) / steps
         pts = []
-        steps = 13
         for i in range(steps):
-            ang = 2.0 * math.pi * i / steps
-            rad = DECAL_AUTHOR_W * (0.30 + 0.16 * _hash01(i, variant, salt))
+            ang = base_ang + 2.0 * math.pi * i / steps
+            rad = DECAL_AUTHOR_W * (0.20 + 0.26 * _hash01(i, variant, salt))
             pts.append((ox + rad * math.cos(ang), oy + rad * math.sin(ang) * 1.25))
         draw.polygon(pts, fill=(46, 41, 37, 235))
-        inner = [(ox + (x - ox) * 0.52, oy + (y - oy) * 0.52) for (x, y) in pts]
-        draw.polygon(inner, fill=(18, 16, 14, 255))
+        core = []
+        for i in range(5):
+            ang = base_ang + 0.4 + 2.0 * math.pi * i / 5
+            rad = DECAL_AUTHOR_W * (0.09 + 0.13 * _hash01(i, variant + 3, salt))
+            core.append((ox + rad * math.cos(ang), oy + rad * math.sin(ang) * 1.25))
+        draw.polygon(core, fill=(18, 16, 14, 255))
 
     elif family == "crack":
         # Branching fracture. Every voxel that carries this is CRACKED, which
@@ -991,6 +1014,8 @@ def build_decal_family() -> None:
     decals: dict[tuple[str, str, int], Image.Image] = {}
     for material in IMPACT_MATERIALS:
         for family in DECAL_FAMILIES:
+            if family == "crack" and material not in CRACK_MATERIALS:
+                continue
             for variant in range(DECAL_VARIANT_COUNT):
                 path = DECAL_DIR / (DECAL_NAME % (family, material, variant))
                 if path.exists():
@@ -1028,7 +1053,6 @@ def build_decal_family() -> None:
         for variant in range(DECAL_VARIANT_COUNT):
             bullet = decals[(material, "bullet", variant)]
             dent = decals[(material, "dent", variant)]
-            crack = decals[(material, "crack", variant)]
 
             # --- BULLET, CRACKED: full voxel, mark on the struck lateral face.
             # LEFT means the SW face took it (shooter to screen-left), matching
@@ -1065,11 +1089,13 @@ def build_decal_family() -> None:
             # DENTED and is barely holding together cannot read pristine on one
             # side and shattered on the other. Same variant on all three, so the
             # voxel reads as ONE event rather than three unrelated fractures.
-            cracked = compose_decal_voxel(
-                atom, crack, [_FACE_TOP, _FACE_SW, _FACE_SE])
-            cracked.save(IMPACT_OUTPUT_DIR /
-                         f"voxel_{material}_blast_cracked_all_{variant}.png", "PNG")
-            composites += 1
+            if material in CRACK_MATERIALS:
+                cracked = compose_decal_voxel(
+                    atom, decals[(material, "crack", variant)],
+                    [_FACE_TOP, _FACE_SW, _FACE_SE])
+                cracked.save(IMPACT_OUTPUT_DIR /
+                             f"voxel_{material}_blast_cracked_all_{variant}.png", "PNG")
+                composites += 1
 
         # --- BLAST, DENTED (ceiling): silhouette only, no variants. Confirmed by
         # the Director against the explosion diagram — an isometric camera never
@@ -1123,6 +1149,7 @@ def build_decal_family() -> None:
         "materials": list(IMPACT_MATERIALS),
         "floor_material": "earth",
         "families": list(DECAL_FAMILIES),
+        "crack_materials": list(CRACK_MATERIALS),
         "composites": {
             "bullet_cracked": {"sides": ["left", "right"], "variants": True},
             "bullet_dented": {"sides": ["left", "right"], "variants": True},

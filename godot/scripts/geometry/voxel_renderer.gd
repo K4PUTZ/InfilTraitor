@@ -397,6 +397,25 @@ static func _half_voxel_decal_plan(material_name: String) -> Dictionary:
 	return {}
 
 
+## D33 Part 3c — recognizes the floor-sunk DENTED case. Unlike every other
+## plan parser above, there is no `base_material` to extract from the name at
+## all: floor_damage_material() always names it "earth_blast_dented_top_N"
+## regardless of the REAL zoned ground material (D26 — one shared decal
+## family for every ground material), so the real material has to come from
+## elsewhere (the caller's `zone_material`, threaded separately through
+## _set_voxel_cell() — see that function's own comment). Ceiling
+## ("_dented_bottom") is a further increment and correctly does not match
+## this prefix.
+static func _floor_sunk_decal_plan(material_name: String) -> Dictionary:
+	const PREFIX := "earth_blast_dented_top_"
+	if not material_name.begins_with(PREFIX):
+		return {}
+	var v := material_name.substr(PREFIX.length())
+	if not v.is_valid_int():
+		return {}
+	return {"decal_family": "dent", "variant": v.to_int()}
+
+
 ## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
 ##
 ## A floor has exactly ONE damage asset today: the carved-TOP pockmark, built on
@@ -844,7 +863,22 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 ## {} on any kind of miss (no baked atom here, unbaked map, BakeConfig off) —
 ## the caller's signal to fall through to the generic path.
 func _resolve_tinted_baked_atom(edge, slice_face: int, voxel_xy: Vector2i, level: int) -> Dictionary:
-	var substrate_result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
+	return _tint_baked_atom(_baked_lookup.resolve(edge, slice_face, voxel_xy, level))
+
+
+## D33 Part 3c: the flat/edge-less counterpart — zoned FLOOR materials resolve
+## through resolve_flat(zone_material, voxel_xy) (ROOF-BAKE-01/02c's seam),
+## never resolve(). `zone_material` must be the REAL ground material (e.g.
+## "ground_grass"), not the damage pseudo-name — see _composite_floor_sunk_decal()'s
+## own comment for why those are two different strings for a floor.
+func _resolve_tinted_baked_atom_flat(zone_material: String, voxel_xy: Vector2i) -> Dictionary:
+	return _tint_baked_atom(_baked_lookup.resolve_flat(zone_material, voxel_xy))
+
+
+## D33 Part 3a/3b/3c shared: extracts and tints a TileLookupResult's atom
+## (or {} for a null/miss result) — see the doc comment this replaced on
+## _resolve_tinted_baked_atom() for why the tint has to be applied here.
+func _tint_baked_atom(substrate_result) -> Dictionary:
 	if substrate_result == null or substrate_result.source_id_int < 0:
 		return {}
 	var baked_source: TileSetAtlasSource = _tileset.get_source(substrate_result.source_id_int)
@@ -919,6 +953,44 @@ func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
 		return {}
 
 	var composite := DecalCompositorClass.compose_decal_voxel(half_substrate, decal_image, [plan["target"]])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = resolved["alternative_id"]
+	return entry
+
+
+## D33 Part 3c — the floor counterpart: builds the sunk substrate
+## (HalfVoxelCompositor.build_floor_sunk_substrate() — no cut_fill parameter,
+## it samples the resolved atom's own top tone), pastes the "dent" family
+## decal (floor damage is always the shared "earth" family — D26 — never the
+## real zoned material) onto FACE_SUNK_TOP, caches, returns the usual shape.
+##
+## `zone_material` is the REAL ground material (e.g. "ground_grass"), which
+## `material_name` (the "earth_blast_dented_top_N" pseudo-name) does not
+## carry — resolve_flat() needs the real one to find the right baked zone
+## page; the decal family is fixed to IMPACT_FLOOR_MATERIAL ("earth")
+## regardless, matching floor_damage_material()'s own rule.
+func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_material: String,
+		voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_tinted_baked_atom_flat(zone_material, voxel_xy)
+	if resolved.is_empty():
+		return {}
+
+	var floor_substrate := HalfVoxelCompositorClass.build_floor_sunk_substrate(resolved["image"])
+
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], IMPACT_FLOOR_MATERIAL, plan["variant"]]
+	var decal_image := _load_decal_image(decal_path)
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(
+		floor_substrate, decal_image, [DecalCompositorClass.FACE_SUNK_TOP])
 	var entry := cache.store(key, composite)
 	if entry.is_empty():
 		return {}
@@ -1340,9 +1412,16 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 ## slabs) through BakedTileLookup.resolve_flat() — dedicated roof pages,
 ## keyed by the STRUCTURE-LOCAL offset passed in voxel_xy. Same fallback
 ## contract: any miss lands on the generic material atlas below.
+## D33 Part 3c: `zone_material`, when non-empty, is the REAL zoned ground
+## material (e.g. "ground_grass") a damaged FLOOR voxel's `material_name`
+## no longer carries — floor_damage_material() always renames it to the
+## shared "earth_blast_dented_top_N" (D26), so resolve_flat() would look up
+## the wrong (nonexistent) zone if given `material_name` directly. Every
+## other caller passes "" (the default) and nothing changes for them.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
-                     slice_face: int = 0, flat_baked: bool = false) -> void:
+                     slice_face: int = 0, flat_baked: bool = false,
+                     zone_material: String = "") -> void:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -1433,6 +1512,26 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 					atlas_coords = half_composite["atlas_coords"]
 					alternative_id = half_composite["alternative_id"]
 					_diag_baked_hits += 1
+
+	## D33 Part 3c: the floor-sunk counterpart. Floor damage always arrives
+	## with edge == null (ROOF-BAKE-01/02c: edge-less baked surfaces) and
+	## flat_baked == true for a zoned ground material, so this is an `elif`
+	## on the SAME "is this an impact mark on a baked surface" question above,
+	## just the edge-less half of it. zone_material == "" means either an
+	## unzoned floor (plain earth — never baked, nothing to preserve) or a
+	## non-floor flat_baked case (ceiling/interior, which don't need it) —
+	## either way, skip rather than resolve_flat() against an empty string.
+	if is_impact_mark and _bake_config and _bake_config.enabled \
+			and edge == null and flat_baked and zone_material != "" and source_id < 0:
+		var floor_plan := _floor_sunk_decal_plan(material_name)
+		if not floor_plan.is_empty():
+			var floor_composite := _composite_floor_sunk_decal(
+				floor_plan, material_name, zone_material, voxel_xy, level, grid_pos)
+			if not floor_composite.is_empty():
+				source_id = floor_composite["source_id"]
+				atlas_coords = floor_composite["atlas_coords"]
+				alternative_id = floor_composite["alternative_id"]
+				_diag_baked_hits += 1
 
 	# Fallback: material-only path
 	if source_id < 0:
@@ -1863,8 +1962,14 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 							voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 						if floor_damaged != "":
 							render_material = floor_damaged
+					## D33 Part 3c: pass slab.material (the REAL zone, e.g.
+					## "ground_grass") separately from render_material (which
+					## just became the shared "earth_..." pseudo-name above) —
+					## _set_voxel_cell()'s own comment on `zone_material`
+					## explains why resolve_flat() needs the real one.
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
-							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
+							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked,
+							slab.material if is_zoned_floor else "")
 				else:
 					## FLOOR-DENT-01: a damaged floor voxel renders its carved
 					## variant instead of a pristine earth variant — this branch

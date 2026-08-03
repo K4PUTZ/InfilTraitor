@@ -125,3 +125,34 @@ static func build_half_voxel_substrate(kept_atom: Image, cut_fill: Color, side: 
 	paste_masked(img, kept_atom, kept_face)
 	paste_masked(img, kept_atom, kept_top)
 	return img
+
+
+## D33 Part 3c — floor-DENTED ("blast from above"): the top diamond sinks by
+## DENTED_CUT_DEPTH, the two side bands below it survive from `kept_atom`, and
+## the newly-exposed sunk surface is filled flat — with the atom's OWN top
+## tone, sampled directly from `kept_atom` at (16, 8) (dead centre of its top
+## diamond, inside any material's silhouette) rather than a second colour the
+## caller would have to resolve. generate_voxel.py's equivalent
+## (generate_half_voxel()'s "top" branch) does the same thing structurally:
+## the sunk fill is the material's un-darkened base_color, i.e. exactly its
+## OWN top-face tone — reading it back off the atom itself is that same fact,
+## not a shortcut. No mirrored variant: a floor dent has no left/right.
+const SUNK_TOP: PackedVector2Array = [
+	Vector2(16, 10), Vector2(32, 18), Vector2(16, 26), Vector2(0, 18),
+]
+const KEPT_SW_BAND: PackedVector2Array = [
+	Vector2(0, 18), Vector2(16, 26), Vector2(16, 36), Vector2(0, 28),
+]
+const KEPT_SE_BAND: PackedVector2Array = [
+	Vector2(16, 26), Vector2(32, 18), Vector2(32, 28), Vector2(16, 36),
+]
+
+static func build_floor_sunk_substrate(kept_atom: Image) -> Image:
+	var img := Image.create(ATOM_W, ATOM_H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.0, 0.0, 0.0, 0.0))
+
+	var top_tone: Color = kept_atom.get_pixel(16, 8)
+	paste_masked(img, kept_atom, KEPT_SW_BAND)
+	paste_masked(img, kept_atom, KEPT_SE_BAND)
+	fill_masked(img, top_tone, SUNK_TOP)
+	return img

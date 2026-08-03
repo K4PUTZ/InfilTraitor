@@ -1,12 +1,13 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** 🔶 **Part 3b done (2026-08-03) — wall DENTED marks (bullet/blast,
-left/right) now composite onto the real baked facade too, alongside Part
-3a's full-voxel CRACKED marks.** Part 0 viable (§9 wrong, §10 corrected);
-§11 explains why ROTATE-KILL-01 removed the harder of §10's two open design
-points; Parts 1, 2, 3a done. **Remaining: floor-sunk DENTED ("_top") and
-ceiling DENTED ("_bottom", silhouette-only) — a further increment, not
-started, scoped at the end of the Part 3 section below.**
+**Status:** 🔶 **Part 3c done (2026-08-03) — floor-sunk DENTED marks on
+zoned ground materials (ground_grass/concrete/etc.) now composite too,**
+alongside Part 3a's full-voxel CRACKED and Part 3b's wall-DENTED marks.
+Part 0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01
+removed the harder of §10's two open design points; Parts 1, 2, 3a, 3b done.
+**Remaining: ceiling DENTED ("_bottom", silhouette-only, no decal) — a
+further increment, not started, scoped at the end of the Part 3 section
+below — then Part 4 (retire the pre-composited PNGs).**
 
 ---
 
@@ -345,13 +346,58 @@ this needed a genuinely new primitive, not a wiring change:
   `project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
   (25/25) all clean.
 
-**What's left, a further increment, not started:** floor-sunk DENTED
-(`_dented_top`, the sunk-diamond substrate + `_FACE_SUNK_TOP`) and ceiling
-DENTED (`_dented_bottom`, silhouette-only via a jagged-profile carve,
-`_jagged_profile()`'s own FNV-1a hash — no decal, `generate_dented_voxel()`
-not `generate_half_voxel()`). Both reuse `HalfVoxelCompositor`'s primitives;
-neither is wired, and `_half_voxel_decal_plan()` deliberately returns `{}`
-for both today.
+**Part 3c — floor-sunk DENTED (zoned ground materials). Status: ✅ DONE
+2026-08-03, same session.**
+
+The floor case turned up its own real wrinkle, different from 3a/3b's: a
+zoned floor's damage pseudo-name is ALWAYS `"earth_blast_dented_top_N"`
+(`floor_damage_material()` — D26, one shared decal family for every ground
+material) regardless of which REAL material (`ground_grass`,
+`ground_concrete`, ...) is actually there. By the time `_set_voxel_cell()`
+sees `render_material`, the real material name is already gone —
+overwritten in `process_dirty_slabs()` before the call. But
+`resolve_flat(material_id, ...)` (the zoned-floor lookup seam,
+ROOF-BAKE-01/02c) needs the REAL material to find the right baked zone page;
+calling it with `"earth_blast_dented_top_0"` finds nothing.
+
+- `_set_voxel_cell()` gained one new parameter, `zone_material: String = ""`
+  — every existing caller keeps passing nothing and nothing changes for
+  them; `process_dirty_slabs()`'s zoned-floor branch now passes
+  `slab.material` (the real zone) alongside `render_material` (the pseudo-
+  name), so both are available where they're each needed.
+- `HalfVoxelCompositor.build_floor_sunk_substrate(kept_atom)` — no
+  `cut_fill`/`side` parameters at all, unlike the wall version: the sunk
+  region's fill tone is sampled directly off `kept_atom`'s own top-diamond
+  pixel (16, 8) rather than resolved through a second colour lookup — it
+  IS the material's own top tone already, reading it back is the same fact
+  Python's `_rgba(base_color)` states, not a shortcut.
+- `VoxelRenderer._floor_sunk_decal_plan()`/`_composite_floor_sunk_decal()`:
+  the decal family is unconditionally `"dent"`/`IMPACT_FLOOR_MATERIAL`
+  ("earth") — never derived from a `base_material` in the name, because
+  there isn't one to derive; the substrate lookup uses the separate
+  `zone_material` parameter instead.
+- **Evidence**: `half_voxel_compositor_equality_selftest.gd` extended (now
+  7/7) — floor's own measured gap is 3.89% (between wall LEFT's 1.94% and
+  RIGHT's 6.40%, same class of 1px outer-seam disagreement, not a new
+  problem). `floor_sunk_seam_selftest.gd` (8/8): plan parsing, the real seam
+  picking the floor composite with idempotent caching, **`resolve_flat()`
+  proven to receive the real zone material and never the pseudo-name**
+  (the one bug this whole part existed to prevent), an empty
+  `zone_material` (unzoned/never-baked earth) falling through unchanged, and
+  a no-baked-zone miss falling through cleanly. Run live on real PLAYGROUND
+  (`ground_concrete` zone, the same `test_zone_detonate` that already
+  produced real floor dents): **zero errors.** `project_lint`,
+  `check_invariants`, `gen_codemap --check`, `run_selftests` (26/26) all
+  clean.
+
+**What's left, a further increment, not started:** ceiling DENTED
+(`_dented_bottom`), silhouette-only via a jagged-profile carve
+(`_jagged_profile()`'s own FNV-1a hash — no decal at all,
+`generate_dented_voxel()` not `generate_half_voxel()`). Lowest priority of
+everything in this plan: an isometric camera never sees a ceiling's
+underside (D25's own original reasoning), so the visible payoff is smaller
+than any other part built this session. `_half_voxel_decal_plan()`
+deliberately returns `{}` for it today.
 
 ### Part 4 — Retire the pre-composited PNGs
 - `composites/` is deleted wholesale (this is what ASSET-LAYOUT-01 was

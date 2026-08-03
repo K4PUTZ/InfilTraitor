@@ -1,12 +1,15 @@
-## D33 Part 3b — HalfVoxelCompositor equality proof, same discipline as Part
-## 2's decal_compositor_equality_selftest.gd: compare the GDScript port
+## D33 Parts 3b/3c — HalfVoxelCompositor equality proof, same discipline as
+## Part 2's decal_compositor_equality_selftest.gd: compare the GDScript port
 ## against a reference built by the REAL Python function it ports
 ## (generate_voxel.py's generate_half_voxel(), plus compose_decal_voxel() for
 ## the full real pipeline), on fixtures neither side generates itself:
-##   godot/scripts/tools/fixtures/d33_part3b/{atom,decal}.png            — inputs
-##   godot/scripts/tools/fixtures/d33_part3b/half_{left,right}.png       — mask-only reference
-##   godot/scripts/tools/fixtures/d33_part3b/composited_{left,right}.png — mask + decal reference
-## (produced by tools/asset_generation/d33_part3b_fixture_gen.py).
+##   godot/scripts/tools/fixtures/d33_part3b/{atom,decal}.png                — wall inputs
+##   godot/scripts/tools/fixtures/d33_part3b/half_{left,right}.png           — wall mask-only reference
+##   godot/scripts/tools/fixtures/d33_part3b/composited_{left,right}.png     — wall mask + decal reference
+##   godot/scripts/tools/fixtures/d33_part3c/{atom,decal}.png                — floor inputs
+##   godot/scripts/tools/fixtures/d33_part3c/half_top.png                    — floor mask-only reference
+##   godot/scripts/tools/fixtures/d33_part3c/composited_top.png              — floor mask + decal reference
+## (produced by tools/asset_generation/d33_part3{b,c}_fixture_gen.py).
 ##
 ## Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_compositor_equality_selftest.gd
 extends SceneTree
@@ -15,6 +18,7 @@ const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxe
 const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
 
 const FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part3b/"
+const FLOOR_FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part3c/"
 
 ## generate_voxel.py's _darken(MATERIALS["concrete"], SIDE_DARKEN), printed by
 ## the fixture generator: (140, 136, 129). Copied as a literal, not re-derived
@@ -41,13 +45,20 @@ const CUT_FILL := Color(140.0 / 255.0, 136.0 / 255.0, 129.0 / 255.0, 1.0)
 const MAX_CHANNEL_DIFF_TOLERANCE: int = 3
 const MAX_MISMATCHED_PIXEL_FRACTION: float = 0.07
 
+## Floor ("top"/sunk) measured separately, 2026-08-03: 23 of 591 boundary
+## pixels (3.89%) — same class of 1px outer-edge seam as LEFT/RIGHT above,
+## between LEFT's 1.94% and RIGHT's 6.40%. Kept as its own constant since
+## it's a genuinely different shape (no mirroring involved at all), not
+## because the underlying cause differs.
+const FLOOR_MAX_MISMATCHED_PIXEL_FRACTION: float = 0.05
+
 var passed: int = 0
 var failed: int = 0
 
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("D33 PART 3b — HALF VOXEL COMPOSITOR EQUALITY SELFTEST")
+	print("D33 PARTS 3b/3c — HALF VOXEL COMPOSITOR EQUALITY SELFTEST")
 	print("=".repeat(70) + "\n")
 
 	var atom := _load(FIXTURE_DIR + "atom.png")
@@ -62,6 +73,14 @@ func _init() -> void:
 	test_full_pipeline("left", atom, decal, DecalCompositorClass.FACE_CUT_LEFT, "composited_left.png")
 	test_full_pipeline("right", atom, decal, DecalCompositorClass.FACE_CUT_RIGHT, "composited_right.png")
 	test_unknown_side_fails_loudly()
+
+	var floor_atom := _load(FLOOR_FIXTURE_DIR + "atom.png")
+	var floor_decal := _load(FLOOR_FIXTURE_DIR + "decal.png")
+	if floor_atom == null or floor_decal == null:
+		_fail("could not load floor fixtures — run tools/asset_generation/d33_part3c_fixture_gen.py first")
+	else:
+		test_floor_mask_only(floor_atom)
+		test_floor_full_pipeline(floor_atom, floor_decal)
 
 	_finish()
 
@@ -125,13 +144,13 @@ func _compare(got: Image, reference: Image) -> Dictionary:
 	return {"max_diff": max_diff, "mismatched": mismatched, "compared": compared}
 
 
-func _judge(label: String, stats: Dictionary) -> void:
+func _judge(label: String, stats: Dictionary, tolerance_fraction: float = MAX_MISMATCHED_PIXEL_FRACTION) -> void:
 	var fraction: float = float(stats["mismatched"]) / float(maxi(1, stats["compared"]))
 	print("  measured: max_channel_diff=%d, mismatched=%d/%d pixels (%.2f%%)" % [
 		stats["max_diff"], stats["mismatched"], stats["compared"], fraction * 100.0])
-	if fraction <= MAX_MISMATCHED_PIXEL_FRACTION:
+	if fraction <= tolerance_fraction:
 		_pass("%s within tolerance (<= %.0f%% of pixels over %d/channel)" % [
-			label, MAX_MISMATCHED_PIXEL_FRACTION * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
+			label, tolerance_fraction * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
 	else:
 		_fail("%s exceeds tolerance: %.2f%% of pixels differ by more than %d/channel" % [
 			label, fraction * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
@@ -165,6 +184,11 @@ func test_full_pipeline(side: String, atom: Image, decal: Image, target: Diction
 
 func test_unknown_side_fails_loudly() -> void:
 	print("[guard] an unrecognised side pushes an error and returns empty, not a silent wrong shape\n")
+	## "top" is a real shape now (build_floor_sunk_substrate(), tested below)
+	## but NOT a valid `side` for build_half_voxel_substrate() — that function
+	## only ever knows "left"/"right"; floor is a structurally different
+	## construction (no cut-plane fill colour, no mirroring), not a third
+	## side value on this one. This still checks what it always checked.
 	var atom := _load(FIXTURE_DIR + "atom.png")
 	var result := HalfVoxelCompositorClass.build_half_voxel_substrate(atom, CUT_FILL, "top")
 	var all_transparent := true
@@ -176,7 +200,32 @@ func test_unknown_side_fails_loudly() -> void:
 		if not all_transparent:
 			break
 	if all_transparent:
-		_pass("an unrecognised side (\"top\", not yet implemented) returned a fully transparent image")
+		_pass("build_half_voxel_substrate(\"top\") returned a fully transparent image — not this function's shape")
 	else:
 		_fail("an unrecognised side drew SOMETHING instead of failing cleanly")
+	print("")
+
+
+func test_floor_mask_only(atom: Image) -> void:
+	print("[floor-mask] build_floor_sunk_substrate() matches generate_half_voxel(..., \"top\")\n")
+	var reference := _load(FLOOR_FIXTURE_DIR + "half_top.png")
+	if reference == null:
+		_fail("half_top.png missing")
+		print("")
+		return
+	var got := HalfVoxelCompositorClass.build_floor_sunk_substrate(atom)
+	_judge("floor mask-only substrate", _compare(got, reference), FLOOR_MAX_MISMATCHED_PIXEL_FRACTION)
+	print("")
+
+
+func test_floor_full_pipeline(atom: Image, decal: Image) -> void:
+	print("[floor-full] mask + decal matches compose_decal_voxel(generate_half_voxel(..., \"top\"), decal, [FACE_SUNK_TOP])\n")
+	var reference := _load(FLOOR_FIXTURE_DIR + "composited_top.png")
+	if reference == null:
+		_fail("composited_top.png missing")
+		print("")
+		return
+	var substrate := HalfVoxelCompositorClass.build_floor_sunk_substrate(atom)
+	var got := DecalCompositorClass.compose_decal_voxel(substrate, decal, [DecalCompositorClass.FACE_SUNK_TOP])
+	_judge("floor full pipeline", _compare(got, reference), FLOOR_MAX_MISMATCHED_PIXEL_FRACTION)
 	print("")

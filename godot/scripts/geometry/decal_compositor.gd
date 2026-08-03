@@ -80,6 +80,12 @@ const FACE_SE_MIRRORED := {"origin": V_E, "u_end": V_S, "v_end": V_EB, "native":
 const FACE_CUT_LEFT := {"origin": Vector2(8, 4), "u_end": Vector2(24, 12), "v_end": Vector2(8, 24), "native": LATERAL_NATIVE}
 const FACE_CUT_RIGHT := {"origin": Vector2(24, 4), "u_end": Vector2(8, 12), "v_end": Vector2(24, 24), "native": LATERAL_NATIVE}
 
+## D33 Part 3c — the sunken top surface of a floor-DENTED (blast-from-above)
+## half voxel: the whole top diamond shifted down by DENTED_CUT_DEPTH (10).
+## generate_voxel.py's _FACE_SUNK_TOP = (sunk_N, sunk_E, sunk_W, _TOP_NATIVE);
+## no mirrored variant — a floor dent has no left/right, only "from above".
+const FACE_SUNK_TOP := {"origin": Vector2(16, 10), "u_end": Vector2(32, 18), "v_end": Vector2(0, 18), "native": TOP_NATIVE}
+
 
 ## Alpha-composites `decal` onto `dst` (both must already be Image.FORMAT_RGBA8),
 ## mapping the decal's whole rectangle onto the parallelogram

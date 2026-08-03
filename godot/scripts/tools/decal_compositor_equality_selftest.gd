@@ -32,6 +32,12 @@ const FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part2/"
 ## fixture, not get silently validated against itself.
 const FACE_SE := DecalCompositorClass.FACE_SE
 const FACE_TOP := DecalCompositorClass.FACE_TOP
+## FACE_SW/FACE_SE_MIRRORED added same-day as a real bug fix: they reference
+## V_WB/V_EB, which FACE_SE/FACE_TOP never touch, so the two tests above gave
+## zero coverage of a real mistyped constant (28 written as 26) that shipped
+## in D33 Part 3a undetected. Found building Part 3b's fixtures; closed here.
+const FACE_SW := DecalCompositorClass.FACE_SW
+const FACE_SE_MIRRORED := DecalCompositorClass.FACE_SE_MIRRORED
 
 ## Measured 2026-08-03 on this exact fixture: max_channel_diff=1 (of 255),
 ## 0 of 911 compared pixels differ at all past that — the Lanczos/rounding
@@ -59,8 +65,10 @@ func _init() -> void:
 		_finish()
 		return
 
-	test_lateral_face(substrate, decal)
-	test_top_face(substrate, decal)
+	test_face("[1] Lateral face (FACE_SE)", FACE_SE, "reference_lateral.png", substrate, decal)
+	test_face("[2] Top face (FACE_TOP)", FACE_TOP, "reference_top.png", substrate, decal)
+	test_face("[3] FACE_SW (uses V_WB — the constant that was wrong)", FACE_SW, "reference_sw.png", substrate, decal)
+	test_face("[4] FACE_SE_MIRRORED (uses V_EB — the constant that was wrong)", FACE_SE_MIRRORED, "reference_se_mirrored.png", substrate, decal)
 	test_b3_clamp_never_exceeds_substrate_silhouette(substrate, decal)
 
 	_finish()
@@ -135,12 +143,13 @@ func _compare(got: Image, reference: Image) -> Dictionary:
 	return {"max_diff": max_diff, "mismatched": mismatched, "compared": compared}
 
 
-func test_lateral_face(substrate: Image, decal: Image) -> void:
-	print("[1] Lateral face (_FACE_SE) matches the real Python compositor\n")
-	var got := DecalCompositorClass.compose_decal_voxel(substrate, decal, [FACE_SE])
-	var reference := _load(FIXTURE_DIR + "reference_lateral.png")
+func test_face(label: String, target: Dictionary, reference_filename: String,
+		substrate: Image, decal: Image) -> void:
+	print("%s matches the real Python compositor\n" % label)
+	var got := DecalCompositorClass.compose_decal_voxel(substrate, decal, [target])
+	var reference := _load(FIXTURE_DIR + reference_filename)
 	if reference == null:
-		_fail("reference_lateral.png missing")
+		_fail("%s missing" % reference_filename)
 		print("")
 		return
 
@@ -150,33 +159,10 @@ func test_lateral_face(substrate: Image, decal: Image) -> void:
 		stats["max_diff"], stats["mismatched"], stats["compared"], fraction * 100.0])
 
 	if fraction <= MAX_MISMATCHED_PIXEL_FRACTION:
-		_pass("lateral face within tolerance (<= %.0f%% of pixels over %d/channel)" % [
+		_pass("within tolerance (<= %.0f%% of pixels over %d/channel)" % [
 			MAX_MISMATCHED_PIXEL_FRACTION * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
 	else:
-		_fail("lateral face exceeds tolerance: %.2f%% of pixels differ by more than %d/channel" % [
-			fraction * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
-	print("")
-
-
-func test_top_face(substrate: Image, decal: Image) -> void:
-	print("[2] Top face (_FACE_TOP) matches the real Python compositor\n")
-	var got := DecalCompositorClass.compose_decal_voxel(substrate, decal, [FACE_TOP])
-	var reference := _load(FIXTURE_DIR + "reference_top.png")
-	if reference == null:
-		_fail("reference_top.png missing")
-		print("")
-		return
-
-	var stats := _compare(got, reference)
-	var fraction: float = float(stats["mismatched"]) / float(maxi(1, stats["compared"]))
-	print("  measured: max_channel_diff=%d, mismatched=%d/%d pixels (%.2f%%)" % [
-		stats["max_diff"], stats["mismatched"], stats["compared"], fraction * 100.0])
-
-	if fraction <= MAX_MISMATCHED_PIXEL_FRACTION:
-		_pass("top face within tolerance (<= %.0f%% of pixels over %d/channel)" % [
-			MAX_MISMATCHED_PIXEL_FRACTION * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
-	else:
-		_fail("top face exceeds tolerance: %.2f%% of pixels differ by more than %d/channel" % [
+		_fail("exceeds tolerance: %.2f%% of pixels differ by more than %d/channel" % [
 			fraction * 100.0, MAX_CHANNEL_DIFF_TOLERANCE])
 	print("")
 

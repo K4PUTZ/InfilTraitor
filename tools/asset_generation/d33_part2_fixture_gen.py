@@ -22,6 +22,16 @@ Writes to godot/scripts/tools/fixtures/d33_part2/:
                               depending on any asset file's current state)
     reference_lateral.png  — compose_decal_voxel(substrate, decal, [_FACE_SE])
     reference_top.png      — compose_decal_voxel(substrate, decal, [_FACE_TOP])
+    reference_sw.png       — compose_decal_voxel(substrate, decal, [_FACE_SW])
+    reference_se_mirrored.png — compose_decal_voxel(substrate, decal, [_FACE_SE_MIRRORED])
+
+reference_sw/reference_se_mirrored exist because a real bug (V_WB/V_EB
+mistyped 28 as 26 in decal_compositor.gd) shipped in D33 Part 3a undetected:
+FACE_SE and FACE_TOP don't reference V_WB or V_EB at all, so the original
+two fixtures above gave zero coverage of the two targets (FACE_SW,
+FACE_SE_MIRRORED) Part 3a's bullet-LEFT/bullet-RIGHT wiring actually uses.
+Found while building Part 3b's fixtures, fixed, and closed here so this
+class of gap can't recur.
 
 The decal pattern is a soft-edged circle with a position-dependent color
 (R=x, G=y, B=128) and genuinely partial alpha across its edge — chosen so a
@@ -71,19 +81,26 @@ def main() -> None:
 
     reference_lateral = gv.compose_decal_voxel(substrate, decal, [gv._FACE_SE])
     reference_top = gv.compose_decal_voxel(substrate, decal, [gv._FACE_TOP])
+    reference_sw = gv.compose_decal_voxel(substrate, decal, [gv._FACE_SW])
+    reference_se_mirrored = gv.compose_decal_voxel(substrate, decal, [gv._FACE_SE_MIRRORED])
 
     substrate.save(FIXTURE_DIR / "substrate.png", "PNG")
     decal.save(FIXTURE_DIR / "decal.png", "PNG")
     reference_lateral.save(FIXTURE_DIR / "reference_lateral.png", "PNG")
     reference_top.save(FIXTURE_DIR / "reference_top.png", "PNG")
+    reference_sw.save(FIXTURE_DIR / "reference_sw.png", "PNG")
+    reference_se_mirrored.save(FIXTURE_DIR / "reference_se_mirrored.png", "PNG")
 
     print(f"Wrote fixtures to {FIXTURE_DIR}/:")
-    for name in ["substrate.png", "decal.png", "reference_lateral.png", "reference_top.png"]:
+    for name in ["substrate.png", "decal.png", "reference_lateral.png", "reference_top.png",
+                 "reference_sw.png", "reference_se_mirrored.png"]:
         print(f"  {name}")
 
     print("\nTarget geometry used (must match the GDScript port exactly):")
     print(f"  _FACE_SE  = {gv._FACE_SE}")
     print(f"  _FACE_TOP = {gv._FACE_TOP}")
+    print(f"  _FACE_SW  = {gv._FACE_SW}")
+    print(f"  _FACE_SE_MIRRORED = {gv._FACE_SE_MIRRORED}")
 
 
 if __name__ == "__main__":

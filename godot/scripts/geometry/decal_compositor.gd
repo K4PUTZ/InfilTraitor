@@ -36,16 +36,24 @@ const SUPERSAMPLE: int = 4
 
 ## Voxel geometry vertices — copied from generate_voxel.py's own constants
 ## (TILE_W=32, TILE_H=16, SIDE_H=20: V_N=(16,0) V_E=(32,8) V_S=(16,16)
-## V_W=(0,8) V_WB=(0,26) V_SB=(16,36) V_EB=(32,26)). Single source of truth
-## for every face target this class or its callers use — never re-derive
-## these independently.
+## V_W=(0,8) V_WB=(0,28) V_SB=(16,36) V_EB=(32,28), the last two from
+## TILE_H+SIDE_H-TILE_H//2 = 16+20-8 = 28). Single source of truth for every
+## face target this class or its callers use — never re-derive these
+## independently. V_WB/V_EB were briefly wrong here (26, an arithmetic slip —
+## 28 was mistyped as 26) and it went undetected by the Part 2 equality
+## selftest because that selftest's two targets (FACE_SE, FACE_TOP) don't
+## reference V_WB or V_EB at all; FACE_SW and FACE_SE_MIRRORED do, and those
+## are exactly what D33 Part 3a's bullet-LEFT/bullet-RIGHT wiring uses. Found
+## while building Part 3b's fixtures (its geometry is printed straight from
+## the real Python constants), fixed here, and the selftest gap that let it
+## through is closed alongside this fix.
 const V_N := Vector2(16, 0)
 const V_E := Vector2(32, 8)
 const V_S := Vector2(16, 16)
 const V_W := Vector2(0, 8)
-const V_WB := Vector2(0, 26)
+const V_WB := Vector2(0, 28)
 const V_SB := Vector2(16, 36)
-const V_EB := Vector2(32, 26)
+const V_EB := Vector2(32, 28)
 
 const LATERAL_NATIVE := Vector2i(16, 20)
 const TOP_NATIVE := Vector2i(16, 16)

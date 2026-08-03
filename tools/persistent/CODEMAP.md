@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**171 scripts · 38816 lines total** (under `godot/scripts/`)
+**171 scripts · 38810 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -426,7 +426,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `decal_compositor.gd`
 
-`class_name DecalCompositor` · extends `RefCounted` · 164 lines
+`class_name DecalCompositor` · extends `RefCounted` · 172 lines
 
 `godot/scripts/geometry/decal_compositor.gd`
 
@@ -438,9 +438,9 @@ extends `ConfirmationDialog` · 64 lines
 - `V_E` = `Vector2(32, 8)`
 - `V_S` = `Vector2(16, 16)`
 - `V_W` = `Vector2(0, 8)`
-- `V_WB` = `Vector2(0, 26)`
+- `V_WB` = `Vector2(0, 28)`
 - `V_SB` = `Vector2(16, 36)`
-- `V_EB` = `Vector2(32, 26)`
+- `V_EB` = `Vector2(32, 28)`
 - `LATERAL_NATIVE` = `Vector2i(16, 20)`
 - `TOP_NATIVE` = `Vector2i(16, 16)`
 - `FACE_TOP` = `{"origin": V_N, "u_end": V_E, "v_end": V_W, "native": TOP_NATIVE}`
@@ -2328,7 +2328,7 @@ extends `SceneTree` · 251 lines
 
 ### `decal_compositor_equality_selftest.gd`
 
-extends `SceneTree` · 200 lines
+extends `SceneTree` · 186 lines
 
 `godot/scripts/tools/decal_compositor_equality_selftest.gd`
 
@@ -2339,6 +2339,8 @@ extends `SceneTree` · 200 lines
 - `FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part2/"`
 - `FACE_SE` = `DecalCompositorClass.FACE_SE`
 - `FACE_TOP` = `DecalCompositorClass.FACE_TOP`
+- `FACE_SW` = `DecalCompositorClass.FACE_SW`
+- `FACE_SE_MIRRORED` = `DecalCompositorClass.FACE_SE_MIRRORED`
 - `MAX_CHANNEL_DIFF_TOLERANCE` = `3`
 - `MAX_MISMATCHED_PIXEL_FRACTION` = `0.0`
 
@@ -2347,8 +2349,7 @@ extends `SceneTree` · 200 lines
 - `var failed: int = 0`
 
 **Public API**
-- `func test_lateral_face(substrate: Image, decal: Image) -> void:`
-- `func test_top_face(substrate: Image, decal: Image) -> void:`
+- `func test_face(label: String, target: Dictionary, reference_filename: String, substrate: Image, decal: Image) -> void:`
 - `func test_b3_clamp_never_exceeds_substrate_silhouette(substrate: Image, decal: Image) -> void:`
 
 ---

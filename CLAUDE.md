@@ -130,6 +130,16 @@ capture (a real windowed Godot boot):
   no subfolder) — never trigger this programmatically.
 - When a capture exists for a claim, point at the actual file instead of
   describing what the code should produce.
+- **A cited `auto_*.png` will eventually stop existing.** The rotation keeps the
+  50 most recent `auto_`-prefixed files and never touches anything else, so a
+  citation in a master plan decays the moment 50 more captures land — measured
+  2026-08-03: **16 of 23 captures cited across the docs were already gone**,
+  while every hand-named one (`occ_view_N.png`, `shotgun_preview_*.png`)
+  survived. This is the rotation working, not data loss. Consequences: don't
+  "fix" a dead capture link by re-running something (the run will not reproduce
+  the old frame), don't treat a missing file as evidence of a deleted commit,
+  and **give a capture a non-`auto_` name when it is meant to be cited
+  long-term** — that is the only way to opt out of the rotation.
 
 ## Git & push protocol
 

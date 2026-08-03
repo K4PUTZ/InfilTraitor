@@ -1,8 +1,10 @@
 # RESUMO_SESSAO — 2026-08-02 (DAMAGE DECALS, D32)
 
 **Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` — D32
-ratified and shipped (assets + runtime wiring).
+ratified and shipped (assets + runtime wiring), D32.6/D32.7 same session, D33
+ratified and deferred.
 **VERSION at session start:** 0.9.87
+**VERSION at session end:** 0.9.88
 **Mode:** Solo mode.
 **Screenshot session:** not toggled; captures via direct off-screen
 `INFILTRAITOR_AUTO_SCREENSHOT=1` runs.
@@ -106,6 +108,54 @@ not a bug — but `--import` is now a documented step in `ART_SPECIFICATIONS.md`
   faces, and the crater rim shows floor dents on their sunken tops.
 
 ---
+
+## Landed after the first close of this file
+
+- **D32.6 — metal and wood stop cracking** (Director: *"metal e madeira não
+  ficam rachados, só dented ou balas"*). `crack_factor` 0.0 for both, and the
+  crack decal family gated to concrete/stone so no art is queued for a state the
+  runtime cannot reach — the Director's asset debt dropped by 6. `dent_factor`
+  deliberately not raised to absorb the freed share. **Real-map evidence**: every
+  metal slice now logs `cracked=0` across all four rings, against 20/9 before.
+- **D32.7 — an explosion never produces a bullet hole.** Already true when
+  raised (all three blast writes pass `from_blast=true`); pinned anyway by an
+  exhaustive 210-combination test, because the guarantee lives in a DEFAULT
+  PARAMETER a future caller can silently omit. What the Director actually saw
+  was the placeholder dent decal reading round at 16×20 px — rebuilt
+  structurally angular.
+- **D33 — runtime compositing, ratified and deferred.** Answered with numbers
+  rather than a preference: RAM is a wash (same 97 textures either way), the
+  shader route is dead on the alternative-id ceiling already documented in
+  `voxel_renderer.gd`, and the load-time blit route is worth doing chiefly
+  because a per-cell composite can stamp the decal onto that cell's BAKED atom,
+  which today is discarded. Sequenced after the art by the Director's call.
+- **ASSET-LAYOUT-01 — the voxel source tree split by pipeline role.**
+  196 PNGs, 144 of them flat in one folder, became
+  `materials/` · `halves/` · `decals/` (INPUTS, never overwritten) and
+  `composites/` (OUTPUT, always rebuilt). No `bakes/` folder: nothing is baked
+  to disk and "bake" is a protected term here. Verified on a real boot, not only
+  by tests — zero missing-texture errors and a real detonation rendered.
+
+## Documentation sweep (Director-requested, session close)
+
+- **0 dead links across 86 markdown files** (was 8). `DIRECTION_GLOSSARY`
+  pointed at a `../history/` that resolves outside the repo; the two retired
+  context files kept relative links from before they were moved into
+  `docs/history/`, and CLAUDE.md still calls them "the fuller record".
+- `docs/README.md`'s claim to index every doc **verified** — 34/34.
+- `ARCHITECTURE.md` listed the Voxel Render Plane as **Planned** while its own
+  opening section describes it as shipped. Fixed that row; the document remains
+  self-declared unreconciled since 2026-07-03 for bake closure, the screenshot
+  hook, occlusion and destruction — a real reconciliation task, not a sweep.
+- `ASSET_PIPELINE_QUICK_REFERENCE` still said "4 materials" and told the reader
+  to switch focus to Godot for reimport; now lists the real material set and the
+  headless `--import` form, flagged non-optional (B6).
+- **Evidence citations decay by design, and that is now written down.** 16 of 23
+  captures cited across the docs no longer exist: the rotation keeps the 50 most
+  recent `auto_*` files and never touches anything else, so every hand-named
+  capture survived and every `auto_` one eventually will not. Recorded in
+  CLAUDE.md with the consequence that matters — name a capture without the
+  `auto_` prefix when it is meant to be cited long-term.
 
 ## Open, deliberately
 

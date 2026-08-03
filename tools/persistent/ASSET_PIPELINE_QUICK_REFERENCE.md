@@ -79,7 +79,9 @@ ATOM = vstack(TOP, SIDE)
 
 **Key properties:**
 - Flat-lit (no baked shadows in atom itself)
-- 4 materials: concrete, metal, stone, wood (extend via `MATERIALS` dict)
+- Wall materials: concrete, metal, stone, wood, glass · floor palette: `earth_0..7` ·
+  ground zones: `ground_{concrete,dirt,grass,gravel,sand}` (extend via the
+  `MATERIALS` dict in `generate_voxel.py`)
 - Transparent areas: `RGBA8` format with alpha=0
 
 ### Workflow: Add New Voxel Material
@@ -93,7 +95,10 @@ confirmed zero runtime callers.)
 
 1. Add entry to `MATERIALS` dict in `generate_voxel.py`
 2. Run: `python3 tools/asset_generation/generate_voxel.py`
-3. Switch to Godot window, wait 3–5 seconds for reimport
+3. Import the new PNG. Switching focus to the Godot window works (3–5 s), but
+   `Godot --headless --path . --import` is the reliable form and the only one
+   available in a headless session. **Not optional** — an unimported asset is a
+   `push_error` at boot (B6), never a silent fallback.
 4. Add `ATLAS_COORD_{MATERIAL}` constant in `godot/scripts/geometry/geometry_coords.gd`
 5. **No texture_origin calibration needed** — analytically positioned
 

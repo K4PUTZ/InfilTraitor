@@ -478,7 +478,7 @@ Read the linked doc before modifying that system. One essential per row.
 
 | Topic | Document | Essential |
 |---|---|---|
-| Grid, screen coords, voxel constants | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` from `room.gd`; never a per-height lookup table |
+| Grid, screen coords, voxel constants | [QUICK_REFERENCE.md](../../tools/persistent/QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` from `room.gd`; never a per-height lookup table |
 | Directions, faces, banned terms | [DIRECTION_GLOSSARY.md](../../docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
 | Voxel wall system | [VOXEL_MASTER_PLAN.md](../../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |
 | Baking system (modules, evidence, learnings) | [BAKE_SYSTEM_REFERENCE.md](../../docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
@@ -487,9 +487,9 @@ Read the linked doc before modifying that system. One essential per row.
 | MAPFILE persistence (`.map.json`) | [MAPFILE_REFERENCE.md](../../docs/technical/MAPFILE_REFERENCE.md) | Sections versioned + owner-registered (new feature = new section, M1–M7); unknown sections round-trip verbatim; loud-fail load, never half-loaded |
 | Lighting & visibility | [LIGHT_MASTER_PLAN.md](../../docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness ≠ tactical visibility; lights come from the map |
 | Localization | [LOCALIZATION_REFERENCE.md](../../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
-| Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its dedicated directory |
-| File map, API surface, tuning tables | [CODEMAP.md](CODEMAP.md) | **Generated — never edit by hand, never mirror lists here.** Consult on demand |
-| Mobile device testing | [MobileTesting.md](MobileTesting.md) | Local HTTP server + ngrok tunnel; re-export `export/web` from Godot after code changes |
+| Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](../../tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets (`tileset_blocks` 256×128, `tileset_voxels` 32×16); each builder scans its dedicated directory |
+| File map, API surface, tuning tables | [CODEMAP.md](../../tools/persistent/CODEMAP.md) | **Generated — never edit by hand, never mirror lists here.** Consult on demand |
+| Mobile device testing | [MobileTesting.md](../../tools/persistent/MobileTesting.md) | Local HTTP server + ngrok tunnel; re-export `export/web` from Godot after code changes |
 
 **CODEMAP governance:** regenerate with
 `python3 tools/persistent/gen_codemap.py` (`--check` fails if stale). The

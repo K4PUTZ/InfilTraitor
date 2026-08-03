@@ -173,7 +173,7 @@ const _EDGE_BY_SUFFIX: Dictionary = {
 }
 ```
 
-**Histórico:** Originalmente em `subcube_geometry.gd` (SLICE-01). Integrada ao `EdgeExtractor` na refatoração SLICE-02 (ver [`docs/history/`](../history/)).
+**Histórico:** Originalmente em `subcube_geometry.gd` (SLICE-01). Integrada ao `EdgeExtractor` na refatoração SLICE-02 (ver [`docs/history/`](history/)).
 
 ---
 

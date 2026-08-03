@@ -680,7 +680,7 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Camera & perspective | Implemented | Functional | leash, zoom/pinch, 4-way perspective re-layout |
 | Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
 | Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
-| **Voxel Render Plane** | **Planned** | — | VOXEL-00..11 series; replaces WallContainer; spec: `VOXEL_MASTER_PLAN.md` |
+| **Voxel Render Plane** | **Implemented** | Functional | Shipped; it is what every wall, roof and floor renders through today. This row read "Planned" until 2026-08-03, contradicting this document's own opening section. Spec: `VOXEL_MASTER_PLAN.md` |
 | Light/semantic authoring & serialization | Planned | — | specced (LIGHT-03), no runtime code path |
 
 ---

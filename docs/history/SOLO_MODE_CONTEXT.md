@@ -332,7 +332,7 @@ Read the relevant doc before modifying that system.
 
 | Topic | Document | Essential |
 |---|---|---|
-| Grid, screen coords, voxel constants | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` from `room.gd`; never a per-height lookup table |
+| Grid, screen coords, voxel constants | [QUICK_REFERENCE.md](../../tools/persistent/QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)` from `room.gd`; never a per-height lookup table |
 | Directions, faces, banned terms | [DIRECTION_GLOSSARY.md](../../docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
 | Voxel wall system | [VOXEL_MASTER_PLAN.md](../../docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |
 | Baking system | [BAKE_SYSTEM_REFERENCE.md](../../docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; B1–B6 govern it |
@@ -341,8 +341,8 @@ Read the relevant doc before modifying that system.
 | MAPFILE persistence | [MAPFILE_REFERENCE.md](../../docs/technical/MAPFILE_REFERENCE.md) | Owner-versioned sections; unknown sections round-trip verbatim |
 | Lighting & visibility | [LIGHT_MASTER_PLAN.md](../../docs/systems/LIGHT_MASTER_PLAN.md) | Visual brightness is not tactical visibility |
 | Localization | [LOCALIZATION_REFERENCE.md](../../docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; dev overlays stay English |
-| Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets; each builder scans its dedicated directory |
-| File map and API surface | [CODEMAP.md](CODEMAP.md) | Generated file; never edit by hand |
+| Asset & TileSet pipeline | [ASSET_PIPELINE_QUICK_REFERENCE.md](../../tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | Two TileSets; each builder scans its dedicated directory |
+| File map and API surface | [CODEMAP.md](../../tools/persistent/CODEMAP.md) | Generated file; never edit by hand |
 
 ---
 

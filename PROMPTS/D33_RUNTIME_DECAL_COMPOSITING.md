@@ -1,9 +1,10 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** ❌ **STOPPED AT PART 0 — the spike hit its own kill criterion.**
-Parts 1–4 were never started and should not be, in this form. Measurements and
-verdict in §9; the plan below is kept verbatim as the record of what was
-proposed and what killed it.
+**Status:** ✅ **VIABLE — the Part 0 kill was WRONG and is retracted (§10).**
+The spike measured a screen-space cache key, which is the wrong key, and the
+wrong key produced the wrong verdict. With a per-view key the cost amortises:
+97% cache hit on returning to a view already seen. §9 is kept verbatim as the
+record of the mistake; **§10 supersedes it.**
 
 ---
 
@@ -248,3 +249,76 @@ may weigh, not grounds for me to rewrite the bar I set before measuring.
 3. Runtime compositing is confirmed *possible*. If the rotation re-bake ever
    stops being per-view — or if damage ever stops persisting across rotations —
    the arithmetic changes completely and this plan is worth re-reading.
+
+
+---
+
+## 10. Correction — the kill in §9 was wrong, and why
+
+The Director pushed back ("*se a gente derrubar a rotação, daria pra colocar o
+decal por cima dos baked voxels?*") and the pushback exposed a defect in the
+spike, not in the idea.
+
+### What §9 got wrong
+
+S2b measured whether a damaged cell's substrate changes across a rotation. It
+does — and I read that as *"a re-bake re-samples every facade run, so the cost is
+per-rotation structurally."* **That inference does not follow.** The substrate
+changes because rotating shows a **different physical face** of the wall, which
+is correct behaviour, not resampling noise.
+
+The cache key I planned in §5 — `(page_idx, atlas_coords, composite_name)` — is
+**screen-space**. Screen-space keys cannot survive a rotation by construction, so
+measuring one and concluding the approach is dead was circular.
+
+### The measurement that settles it — N → E → N
+
+Same 197 damaged cells, hashing each cell's substrate at each stop:
+
+```
+view N          68 distinct substrates
+view E          68 distinct substrates      N∩E = 0    → 68 new composites
+view N (back)   69 distinct substrates      N∩N' = 67  → 97% CACHE HIT
+```
+
+Substrates are **stable per view**. Returning to a view already visited costs
+essentially nothing. The correct key is per-view (equivalently, base-space cell +
+physical face + decal).
+
+### Corrected cost
+
+| Event | Cost |
+|---|---|
+| Rotation into a view that has not seen this damage | cells × 0.31 ms — e.g. **61 ms** for one grenade's 197 cells |
+| Rotation into a view that has | **~0** (cache hit) |
+| Steady state after all 4 views seen | **0** |
+
+The 916 ms figure in §9 assumed every rotation recomposites everything. It does
+not; it recomposites only what *that view* has not seen. **The kill criterion is
+not breached.** Rotation does not need to be dropped.
+
+### The real binding constraint, and it is a different one
+
+Not time — **memory**. Worst case is `damaged cells × views visited × 4.6 KB`;
+at 2955 cells across all four views that is **~54 MB**, against a bake budget
+D21 already measured at 75.9 MB. Realistic figures are far lower (a wall face is
+not visible from all four views), but this needs a cap with eviction, and that
+cap — not the timing — is what Part 1 must design around.
+
+### Still unmeasured, and it is a real design point
+
+The composite cache must **outlive the room rebuild**. Rotation rebuilds every
+Voxel from the MapSpec and clears `_baked_source_ids`; a cache that lives on the
+renderer dies with it. It has to hang off something with room lifetime, keyed in
+base space, and it must invalidate correctly when the *map* changes rather than
+when the *view* does. Part 1 owns this and it is the next thing to prove.
+
+### Process note
+
+Two lessons, recorded because they cost a full spike:
+
+1. **Measuring the thing you designed proves only that you designed it that
+   way.** The spike validated my cache key instead of the question.
+2. The Director's "*me parece tão trivial*" was the correct instinct. When a
+   measured result says an obviously-simple thing is impossible, the measurement
+   is the more likely suspect.

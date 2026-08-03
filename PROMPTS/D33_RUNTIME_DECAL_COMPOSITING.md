@@ -1,10 +1,14 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** 🔶 **Part 2 done (2026-08-03, §5) — the one real remaining risk
-in this plan is retired, measured, not assumed.** Part 0 was viable (§9
-wrong, §10 corrected); §11 explains why ROTATE-KILL-01 removed the harder of
-§10's two open design points; Part 1 (the cache) is done. **Part 3 — wiring
-into `_set_voxel_cell()` — is next.**
+**Status:** 🔶 **Part 3a done (2026-08-03) — full-voxel CRACKED marks
+(bullet, blast) now composite onto the real baked facade in the live
+`_set_voxel_cell()` seam.** Part 0 viable (§9 wrong, §10 corrected); §11
+explains why ROTATE-KILL-01 removed the harder of §10's two open design
+points; Part 1 (cache) and Part 2 (compositor, measured equal to Python) are
+done. **Part 3b — the half-voxel DENTED substrate (most impacts in
+practice) — is the next real work; it was split out of Part 3 mid-session
+once it turned out to need its own new subsystem, not just wiring (see the
+Part 3 section below).**
 
 ---
 
@@ -202,14 +206,95 @@ enough on its own — there is no per-pixel inverse-mapping primitive in Godot's
 `DamageCompositeCache`'s key (still Part 3's job, per §11).
 
 ### Part 3 — Wire it into the seam
-- `_set_voxel_cell()`: for an impact mark **whose cell resolves to a baked
-  atom**, take the composite path; otherwise keep today's generic path verbatim.
-  The generic path stays the fallback forever — glass, `ground_*`, unbaked maps
-  and `BakeConfig.enabled = false` all still need it.
-- Half voxels: the carve is geometry, not a decal. The substrate for a DENTED
-  cell is `baked atom masked by the kept polygons` + the cut face. The cut face
-  has no baked source (it is interior) — it keeps the material's own side tone,
-  exactly as `generate_half_voxel()` does today.
+
+**Split into 3a (done) and 3b (not started) mid-session, 2026-08-03**, once
+reading `generate_voxel.py` end to end (rather than working from memory)
+showed this bullet list bundled two very differently-sized problems. Full
+detail of what was found and why: the session record; the durable summary
+lives here.
+
+**Part 3a — full-voxel CRACKED marks. Status: ✅ DONE.**
+
+The straightforward half: bullet-CRACKED (mark on the one lateral face
+struck) and blast-CRACKED (mark on all three visible faces) both use the
+**full voxel atom** as their substrate — no geometry carve, nothing D25's
+`generate_half_voxel()` does applies here at all. Wiring these needed three
+things, in `voxel_renderer.gd`:
+
+- `VoxelRenderer._full_voxel_decal_plan(material_name)` — parses the pseudo-
+  material string (e.g. `concrete_bullet_cracked_left_0`,
+  `stone_blast_cracked_all_1`) into `{base_material, decal_family, variant,
+  targets}`, returning `{}` for anything this slice doesn't cover (DENTED,
+  clean materials) so the caller falls through unchanged. `DecalCompositor`
+  gained named `FACE_TOP`/`FACE_SW`/`FACE_SE`/`FACE_SE_MIRRORED` constants
+  (the vertex geometry, copied once from `generate_voxel.py`) as the single
+  source of truth both this parser and the Part 2 selftest now reference.
+- `VoxelRenderer._composite_full_voxel_decal(...)` — the real substrate read.
+  **A correctness question surfaced here that neither Part 1 nor Part 2
+  needed to answer**: baked facade pages are grayscale-plus-modulate
+  (`BakeCompositor`/`_modulate_for_mode()` — the real material tint is a
+  per-tile `TileData.modulate`, never baked into the page's own pixels), so
+  reading the page back raw would produce a colourless substrate. Fixed by
+  multiplying the substrate's pixels by the baked tile's own `modulate`
+  *before* compositing, once — the stored composite already carries the real
+  colour, the new tile registers with the default WHITE modulate, and
+  `_ensure_light_alt()`'s existing lazy light-bucket minting (unmodified —
+  it derives its multiplier from whatever the tile's own alt-0 modulate is)
+  keeps dimming this tile correctly with zero new code.
+- Cache key: `"%d,%d,%d,%s" % [grid_pos, level, material_name]` — safe as
+  view-space rather than base-space *specifically because* Part 1's cache is
+  reset every `build_from_layout()` pass (§11): grid_pos never has to mean
+  the same thing across two rebuilds, because the cache never survives one.
+- `_set_voxel_cell()` gained one new branch, inserted before the existing
+  generic fallback, guarded by `is_impact_mark and bake enabled and edge !=
+  null` — exactly the condition that used to skip straight to generic. Every
+  other branch, and the generic fallback itself, is untouched.
+
+**Evidence**: `godot/scripts/tools/decal_seam_selftest.gd`, 12/12 PASS —
+plan parsing (including that `FACE_SE_MIRRORED` really is a different
+parallelogram from `FACE_SE`, not the same one twice), the tint math verified
+against real registered baked pixels, idempotent caching, DENTED and
+clean-material names proven UNAFFECTED (still resolve to their pre-D33 id),
+a missing-baked-atom case falling through cleanly, and the real
+`_set_voxel_cell()` seam picking the composite end to end. Also run live on
+real PLAYGROUND: `INFILTRAITOR_CAPTURE_ACTION=test_zone_detonate` produced
+real `cracked` concrete voxels (`[BLAST] slice=SLICE_3_3_SW ... cracked=10`)
+with **zero errors, zero missing-decal pushes** — the real
+`decal_bullet_concrete_0.png`/`decal_crack_*.png` files loaded and composited
+without incident. A tight, unambiguous before/after screenshot of the mark
+itself was attempted and is **inconclusive at this capture's resolution/
+framing** — a bullet mark's real footprint is small (~16×28 of a 32×36 atom)
+against a busy soot/destruction backdrop, and getting the camera precisely
+onto one specific damaged voxel needs more iteration than this session spent
+on it. Recorded honestly rather than claimed: the numeric/functional
+evidence above is solid, the crisp visual is a follow-up, not a substitute.
+`project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
+(23/23) all clean.
+
+**Part 3b — half-voxel DENTED marks. Status: not started, real scope now
+understood.**
+
+DENTED (bullet or blast, wall or floor) is the *majority* of real impacts and
+is architecturally different: `generate_half_voxel()` builds its substrate by
+**polygon-masking**, not by decorating a full atom —
+- the newly-exposed CUT FACE gets a flat, un-baked side tone (`_darken(base_color,
+  SIDE_DARKEN)` — it's interior, there is no facade there to read);
+- the KEPT lateral-face region and KEPT top-diamond region are copied from the
+  full atom, masked by `_KEPT_RIGHT_FACE`/`_KEPT_TOP_HALF` (or their mirrors
+  for "right"), straight `Image.paste(..., mask)` in Pillow;
+- the floor ("top") case sinks the whole diamond by `DENTED_CUT_DEPTH` and
+  fills it with flat `base_color` instead of a cut plane.
+
+None of this exists in the runtime yet in mask form — Pillow's `paste(...,
+mask)` has no direct Godot `Image` equivalent, so Part 3b's first job is a
+polygon-mask compositing primitive (likely alongside `DecalCompositor`,
+same inverse-mapping discipline Part 2 already proved out), THEN swapping the
+flat placeholder atom in that construction for the real baked atom (reusing
+Part 3a's tint-read logic), THEN the decal paste onto the resulting cut face
+(`_FACE_CUT_LEFT`/`_FACE_CUT_RIGHT`/`_FACE_SUNK_TOP`, all pinned in
+`generate_voxel.py`, not yet named in `DecalCompositor`). Comparable in size
+to Parts 1+2 combined, not a wiring change — this is why it was split out
+rather than attempted in the same pass as 3a.
 
 ### Part 4 — Retire the pre-composited PNGs
 - `composites/` is deleted wholesale (this is what ASSET-LAYOUT-01 was

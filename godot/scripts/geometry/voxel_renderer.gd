@@ -11,6 +11,9 @@ class_name VoxelRenderer
 signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)
 
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
+## D33 Part 3a — the runtime decal compositor (Part 2) this file's
+## _set_voxel_cell() now calls for full-voxel CRACKED impact marks.
+const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -167,6 +170,12 @@ const VOXEL_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "materials/voxel_%s.png"
 ## _IMPACT_SUFFIXES below is also what _set_voxel_cell() checks to bypass the
 ## baked-lookup branch for these pseudo-materials.
 const IMPACT_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "composites/voxel_%s.png"
+## D33 Part 3a — the RAW decal art (family, material, variant), same folder
+## and filename shape generate_voxel.py's build_decal_family() authors into
+## (DECAL_NAME = "decal_%s_%s_%d.png"). Composited at runtime onto the baked
+## atom instead of loading a pre-composited voxel_%s.png from composites/ —
+## _full_voxel_decal_plan()/_composite_full_voxel_decal() below are the seam.
+const DECAL_NAME_TEMPLATE: String = VOXEL_ASSET_ROOT + "decals/decal_%s_%s_%d.png"
 ## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
 ## they match the first two suffixes below without needing their own entries.
 ## D25's carved half-voxels do NOT — they end in the carved side — so each of
@@ -291,6 +300,51 @@ static func _decal_material(base_material: String, damage_state: int,
 		_:
 			return ""
 	return composed if composed != "" and MATERIALS.has(composed) else ""
+
+
+## D33 Part 3a — recognizes exactly the FULL-VOXEL decal cases this slice
+## wires (see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 3): a bullet's
+## CRACKED mark on the one lateral face it struck, or a blast's CRACKED mark
+## on all three visible faces at once. Returns {} for anything else — DENTED
+## is a half-voxel substrate (Part 3b, not yet built) and every non-impact
+## name never reaches this function at all — and {} is exactly the signal
+## _set_voxel_cell() reads as "fall through to today's path unchanged".
+##
+## Mirrors generate_voxel.py's build_decal_family(): LEFT pastes onto
+## DecalCompositor.FACE_SW, RIGHT onto FACE_SE_MIRRORED (the two are NOT the
+## same parallelogram — see that constant's own doc comment), and a blast's
+## "_all_" name papers FACE_TOP + FACE_SW + FACE_SE in one composite. The RAW
+## decal FAMILY on disk is "bullet" for both bullet cases and "crack" for the
+## blast case (generate_voxel.py's DECAL_FAMILIES naming, distinct from the
+## damage TIER also spelled "cracked" in the material name).
+static func _full_voxel_decal_plan(material_name: String) -> Dictionary:
+	for base in IMPACT_DECAL_MATERIALS:
+		var prefix := base + "_"
+		if not material_name.begins_with(prefix):
+			continue
+		var rest := material_name.substr(prefix.length())
+		if rest.begins_with("bullet_cracked_left_"):
+			var v := rest.substr("bullet_cracked_left_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "bullet", "variant": v.to_int(),
+					"targets": [DecalCompositorClass.FACE_SW],
+				}
+		elif rest.begins_with("bullet_cracked_right_"):
+			var v := rest.substr("bullet_cracked_right_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "bullet", "variant": v.to_int(),
+					"targets": [DecalCompositorClass.FACE_SE_MIRRORED],
+				}
+		elif rest.begins_with("blast_cracked_all_"):
+			var v := rest.substr("blast_cracked_all_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "crack", "variant": v.to_int(),
+					"targets": [DecalCompositorClass.FACE_TOP, DecalCompositorClass.FACE_SW, DecalCompositorClass.FACE_SE],
+				}
+	return {}
 
 
 ## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
@@ -542,6 +596,11 @@ var _baked_lookup = null      # BakedTileLookup instance, created once
 ## renderer that never composites a decal never pays for the Image pages.
 var _damage_composite_cache: DamageCompositeCache = null
 
+## D33 Part 3a: raw decal art loaded from disk once per path and kept for this
+## renderer's lifetime (decals/ never changes mid-session, unlike the composite
+## cache above, which is intentionally reset every build_from_layout() pass).
+var _decal_image_cache: Dictionary = {}
+
 ## VL-03-PERF: Vector4i(source_id, coords.x, coords.y, alt_id) → true for every
 ## light-bucket alternative already minted. Cleared when sources are rebuilt
 ## (prune_baked_sources / clear) so it never points at a stale source.
@@ -652,6 +711,87 @@ func add_damage_composite_tile(source_id: int, page_image: Image, atlas_coords: 
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
 	(source.texture as ImageTexture).update(page_image)
+
+
+## D33 Part 3a: raw decal art from disk, cached by path for this renderer's
+## lifetime. Returns null (and push_error()s once) if the file is missing —
+## the caller treats that exactly like "no baked atom here": fall through to
+## today's generic path, never a crash.
+func _load_decal_image(path: String) -> Image:
+	if _decal_image_cache.has(path):
+		return _decal_image_cache[path]
+	var tex: Texture2D = load(path)
+	if tex == null:
+		push_error("[D33 Part 3a] missing decal asset: %s" % path)
+		_decal_image_cache[path] = null
+		return null
+	var img := tex.get_image()
+	_decal_image_cache[path] = img
+	return img
+
+
+## D33 Part 3a — the real seam: composites `plan`'s decal (see
+## _full_voxel_decal_plan()) onto the baked atom this cell would have shown if
+## undamaged, caches the result (Part 1), and returns
+## {"source_id":, "atlas_coords":, "alternative_id":} — or {} if there is no
+## baked atom to composite onto (unbaked map, BakeConfig off, an edge-less
+## cell, or the decal file is missing), which the caller reads exactly like a
+## baked-lookup miss: fall through to the generic MATERIALS path unchanged.
+##
+## Cache key is view-space grid_pos + level + the exact material_name string —
+## safe specifically BECAUSE DamageCompositeCache is reset every
+## build_from_layout() pass (Part 1): grid_pos never has to mean the same
+## thing across two different rebuilds, because the cache never survives one.
+## See PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §11 for why that simplification
+## holds now that player rotation (the only thing that used to rebuild
+## mid-session) is gone.
+##
+## Tint: baked facade PAGES are grayscale-plus-modulate (BakeCompositor;
+## the real material colour is a per-tile TileData.modulate, never baked into
+## the page's own pixels) — read back raw, the substrate would be colourless.
+## Applied here, once, directly to the substrate's pixels before compositing,
+## so the STORED composite already carries the real colour and the new tile
+## registers with the default WHITE modulate — which is also why
+## _ensure_light_alt()'s lazy light-bucket minting (unmodified, works on any
+## source_id) keeps dimming this tile correctly: it derives its bucket
+## multiplier from the tile's OWN alt-0 modulate, and multiplying
+## already-tinted pixels by WHITE-times-luminance is the same final colour as
+## multiplying grayscale pixels by tint-times-luminance.
+func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
+		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var substrate_result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
+	if substrate_result == null or substrate_result.source_id_int < 0:
+		return {}
+	var baked_source: TileSetAtlasSource = _tileset.get_source(substrate_result.source_id_int)
+	if baked_source == null:
+		return {}
+
+	var region := Rect2i(substrate_result.atlas_coords * Vector2i(32, 36), Vector2i(32, 36))
+	var substrate: Image = baked_source.texture.get_image().get_region(region)
+	var base_tile_data: TileData = baked_source.get_tile_data(substrate_result.atlas_coords, 0)
+	var base_modulate: Color = base_tile_data.modulate if base_tile_data != null else Color.WHITE
+	for y in range(substrate.get_height()):
+		for x in range(substrate.get_width()):
+			var c := substrate.get_pixel(x, y)
+			substrate.set_pixel(x, y, Color(
+				c.r * base_modulate.r, c.g * base_modulate.g, c.b * base_modulate.b, c.a))
+
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
+	var decal_image := _load_decal_image(decal_path)
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(substrate, decal_image, plan["targets"])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = substrate_result.alternative_id
+	return entry
 
 
 ## VL-03-PERF: mint ONE light-bucket alternative for one tile, on first use.
@@ -1084,10 +1224,15 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	var atlas_coords: Vector2i = Vector2i.ZERO
 	var alternative_id: int = 0
 
-	## D22: an impact-mark pseudo-material ("metal_dented" etc.) always
-	## renders through the generic path below, full stop — it is deliberately
-	## self-contained ("encaixado em qualquer lugar," Director), not tied to
-	## whatever baked facade the surrounding wall happens to use.
+	## D22: an impact-mark pseudo-material ("metal_dented" etc.) bypasses the
+	## NORMAL baked-lookup branch below, full stop — it was never tied to
+	## whatever baked facade the surrounding wall happens to use, since a
+	## pre-composited voxel_%s.png (composites/) is self-contained ("encaixado
+	## em qualquer lugar," Director). D33 Part 3a below is NOT that branch: for
+	## the recognized full-voxel CRACKED cases, the decal is composited onto
+	## the SAME baked atom the wall around it uses, on purpose — that is the
+	## entire point of D33. DENTED (half-voxel) marks still fall straight
+	## through to the generic path (Part 3b, not yet built).
 	var is_impact_mark: bool = _is_impact_mark(material_name)
 
 	# SEAM: Try baked lookup first (using cached instances)
@@ -1119,6 +1264,26 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			atlas_coords = flat_result.atlas_coords
 			alternative_id = flat_result.alternative_id
 			_diag_baked_hits += 1
+
+	## D33 Part 3a: a full-voxel CRACKED impact mark (bullet on the struck
+	## lateral face, or a blast on all three faces) whose underlying wall
+	## resolves to a baked facade gets its decal composited onto THAT atom
+	## instead of the flat generic material below. _full_voxel_decal_plan()
+	## returns {} for everything this slice doesn't cover (DENTED — Part 3b —
+	## and anything without a recognized shape), which falls through exactly
+	## like before D33 existed; _composite_full_voxel_decal() itself returns
+	## {} for "no baked atom here" (unbaked map, BakeConfig off, an edge-less
+	## cell) or a missing decal file, same fall-through, never a crash.
+	if is_impact_mark and _bake_config and _bake_config.enabled and edge != null:
+		var plan := _full_voxel_decal_plan(material_name)
+		if not plan.is_empty():
+			var composite := _composite_full_voxel_decal(
+				plan, material_name, edge, slice_face, voxel_xy, level, grid_pos)
+			if not composite.is_empty():
+				source_id = composite["source_id"]
+				atlas_coords = composite["atlas_coords"]
+				alternative_id = composite["alternative_id"]
+				_diag_baked_hits += 1
 
 	# Fallback: material-only path
 	if source_id < 0:

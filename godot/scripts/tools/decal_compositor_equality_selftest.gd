@@ -22,19 +22,16 @@ const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_composi
 
 const FIXTURE_DIR := "res://godot/scripts/tools/fixtures/d33_part2/"
 
-## generate_voxel.py's real _FACE_SE / _FACE_TOP tuples (see
-## d33_part2_fixture_gen.py's own printed confirmation) — copied as literal
-## numbers, not re-derived, so a future drift in either file's geometry
-## constants is caught by comparing against the SAME fixture rather than two
-## independently-computed targets that could drift together.
-const FACE_SE := {
-	"origin": Vector2(16, 16), "u_end": Vector2(32, 8),
-	"v_end": Vector2(16, 36), "native": Vector2i(16, 20),
-}
-const FACE_TOP := {
-	"origin": Vector2(16, 0), "u_end": Vector2(32, 8),
-	"v_end": Vector2(0, 8), "native": Vector2i(16, 16),
-}
+## DecalCompositor.FACE_SE / FACE_TOP — the same constants Part 3's real
+## wiring uses (single source of truth, added when Part 3a needed named face
+## targets rather than the literal tuples this selftest originally carried).
+## Still a valid equality check either way: the ground truth
+## (reference_lateral/top.png) was rendered by generate_voxel.py's
+## INDEPENDENTLY-DEFINED _FACE_SE/_FACE_TOP, so a future bug in
+## DecalCompositor's own constants would still show up as a diff against that
+## fixture, not get silently validated against itself.
+const FACE_SE := DecalCompositorClass.FACE_SE
+const FACE_TOP := DecalCompositorClass.FACE_TOP
 
 ## Measured 2026-08-03 on this exact fixture: max_channel_diff=1 (of 255),
 ## 0 of 911 compared pixels differ at all past that — the Lanczos/rounding

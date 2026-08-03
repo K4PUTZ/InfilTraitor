@@ -34,6 +34,35 @@ extends RefCounted
 ## silent divergence the equality selftest exists to catch.
 const SUPERSAMPLE: int = 4
 
+## Voxel geometry vertices — copied from generate_voxel.py's own constants
+## (TILE_W=32, TILE_H=16, SIDE_H=20: V_N=(16,0) V_E=(32,8) V_S=(16,16)
+## V_W=(0,8) V_WB=(0,26) V_SB=(16,36) V_EB=(32,26)). Single source of truth
+## for every face target this class or its callers use — never re-derive
+## these independently.
+const V_N := Vector2(16, 0)
+const V_E := Vector2(32, 8)
+const V_S := Vector2(16, 16)
+const V_W := Vector2(0, 8)
+const V_WB := Vector2(0, 26)
+const V_SB := Vector2(16, 36)
+const V_EB := Vector2(32, 26)
+
+const LATERAL_NATIVE := Vector2i(16, 20)
+const TOP_NATIVE := Vector2i(16, 16)
+
+## Face targets, in compose_decal_voxel()'s {"origin","u_end","v_end","native"}
+## shape. Geometry matches generate_voxel.py's _FACE_TOP/_FACE_SW/_FACE_SE/
+## _FACE_SE_MIRRORED exactly. FACE_SE_MIRRORED is NOT the same parallelogram
+## as FACE_SE (origin/u_end/v_end swapped so `u` runs the opposite direction
+## across the SAME physical face) — that swap IS the mirror, not a bug: see
+## generate_voxel.py's _mirror_target() docstring, "order is preserved, so u
+## ends up running right to left". FACE_SE is blast-cracked's un-mirrored
+## third face; FACE_SE_MIRRORED is the bullet-cracked-RIGHT target.
+const FACE_TOP := {"origin": V_N, "u_end": V_E, "v_end": V_W, "native": TOP_NATIVE}
+const FACE_SW := {"origin": V_W, "u_end": V_S, "v_end": V_WB, "native": LATERAL_NATIVE}
+const FACE_SE := {"origin": V_S, "u_end": V_E, "v_end": V_SB, "native": LATERAL_NATIVE}
+const FACE_SE_MIRRORED := {"origin": V_E, "u_end": V_S, "v_end": V_EB, "native": LATERAL_NATIVE}
+
 
 ## Alpha-composites `decal` onto `dst` (both must already be Image.FORMAT_RGBA8),
 ## mapping the decal's whole rectangle onto the parallelogram

@@ -26,7 +26,14 @@ const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_ex
 const HEAT_OVERLAY_Z := 1
 
 # ── Vision state ───────────────────────────────────────────────────────────────
-var dev_vision: bool = false
+## ROTATE-KILL-01: dev_vision now gates PerspectivePad (see _apply_dev_vision())
+## as well as the pre-existing debug overlays, and defaults ON — the player build
+## has no rotation UI otherwise, so a fresh boot needs dev tooling reachable
+## without remembering to press the H/L/D toggle first. Cosmetic-only default:
+## _apply_fow_visibility() only hides the FOW *render* layer, never touches
+## guard detection/visibility logic, so this doesn't change how the game plays,
+## only what's visible while checking it.
+var dev_vision: bool = true
 var light_vision: bool = false
 var heat_vision: bool = false
 
@@ -49,6 +56,11 @@ func setup(room_ref: Node2D, fog_of_war_ref: Node2D) -> void:
 	_room = room_ref
 	_fog_of_war = fog_of_war_ref
 	_init_overlays()
+	## ROTATE-KILL-01: dev_vision defaults true now, so the state it drives
+	## (FOW visibility, dev markers, PerspectivePad) has to be applied once on
+	## boot — every other default was passively correct (false = every
+	## overlay's own idle state), this one is not.
+	_apply_dev_vision()
 
 func toggle_dev() -> void:
 	dev_vision = not dev_vision
@@ -92,6 +104,13 @@ func _init_overlays() -> void:
 func _apply_dev_vision() -> void:
 	## Toggle FOW when dev_vision, light_vision, or heat_vision is active
 	_apply_fow_visibility()
+
+	## ROTATE-KILL-01: camera rotation is a dev/QA tool now, not a player
+	## feature (ENGINE_PERFORMANCE_REVIEW.md §9) — the pad that drives
+	## _set_perspective() is gated the same way every other dev-only overlay
+	## already is here.
+	if _room.perspective_pad != null:
+		_room.perspective_pad.visible = dev_vision
 
 	## Notify each guard of dev_vision state
 	for guard in _room._get_all_guards():

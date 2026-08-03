@@ -64,6 +64,7 @@ const OcclusionWireframeOverlayClass = preload("res://godot/scripts/overlays/occ
 @onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
 @onready var btn_reset:           Button       = $HUD/TopBar/Row/BtnReset
 @onready var toolbar_row:         HBoxContainer = $HUD/TopBar/Row
+@onready var perspective_pad:     PanelContainer = $HUD/PerspectivePad
 @onready var btn_perspective_nw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNW
 @onready var btn_perspective_ne:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNE
 @onready var btn_perspective_sw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSW

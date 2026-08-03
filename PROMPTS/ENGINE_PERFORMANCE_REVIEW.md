@@ -1,9 +1,8 @@
 # Engine Performance Review — whole-system reassessment
 
-**Status:** ✅ Part 0 (diagnostic spike) run 2026-08-03 — real numbers in §8.
-Recommendation in §9 is a recommendation, not a ratified decision — Option B
-(kill rotation) awaits the Director's explicit go-ahead on the design
-trade-off, not just the performance one.
+**Status:** ✅ Part 0 run 2026-08-03 (§8) — **Option B ratified by the
+Director same day and implemented (§10).** Rotation is gone for the player
+build; the mechanism stays alive as a dev/QA tool.
 
 **Continues:** the close of `PROMPTS/RESUMO_SESSAO_2026-08-03_D33_SPIKE.md`,
 which named this "the whole-system engine reassessment" as the explicit next
@@ -337,3 +336,56 @@ the stealth-puzzle design actually leans on multi-angle reads today. If the
 answer is "not much" — which matches the Director's own stated lean — B is
 the clean close to this whole review: Q2/Q3/Q4/Q5 all stop mattering the
 moment rotation stops running during play.
+
+---
+
+## 10. Ratified — Option B, implemented as ROTATE-KILL-01 (2026-08-03)
+
+The Director ratified §9's recommendation the same day, with one addition:
+keep the mechanism reachable as a dev/QA tool rather than deleting it, since
+checking the map from another angle during development still has value even
+though the player never should. That reframes the whole implementation as a
+**visibility gate, not a removal** — `_set_perspective()`, `PerspectiveMapper`,
+and the base-space damage/agent persistence (VL-PERSIST) that exists
+specifically so state survives a rotation are all untouched. Only the
+player's ability to *trigger* it is gone.
+
+**What shipped:**
+
+- `PerspectivePad` (`$HUD/PerspectivePad`, the 4 rotation buttons) is now
+  gated by `VisionController.dev_vision` — the same bool that already gates
+  `shadow_overlay`, `light_overlay`, guard debug extras, spawn/trail markers.
+  One `_room.perspective_pad.visible = dev_vision` line in
+  `_apply_dev_vision()` (`vision_controller.gd`), reusing the established
+  pattern rather than inventing a second one.
+- `dev_vision` now **defaults to `true`** (was `false`) — a player build has
+  no other way to reach rotation, so dev tooling needs to be live on boot,
+  not behind a toggle someone has to remember to press. `setup()` now calls
+  `_apply_dev_vision()` once at boot to actually apply that default (every
+  prior default was passively correct — `false` matched every overlay's own
+  idle state; `true` is not passively correct and needs one explicit apply).
+- **Cosmetic-only, checked before flipping the default**:
+  `_apply_fow_visibility()` only sets `.visible` on the fog-of-war render
+  nodes — it does not touch guard detection or any gameplay logic. Defaulting
+  dev_vision on changes what's visible while testing, not how the game
+  plays.
+- **`load_map()` never called `_set_perspective()`** (confirmed while
+  implementing) — the initial view was always built through a separate path
+  (`_room_builder.build_from_layout()` called directly). So this change adds
+  **zero** new load-time cost; it only removes the repeated per-rotation hit
+  a player could trigger.
+
+**Verified:** real captures (`Screenshots/history/auto_2026-08-03_03-10-54.png`
+dev_vision ON, pad visible; `auto_2026-08-03_03-11-28.png` dev_vision OFF,
+pad and debug overlay both gone) — not a code-reading claim.
+`project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
+(20/20) all clean.
+
+**Known gap, not this task's scope:** `dev_vision` itself is not yet
+release-gated — it's a plain on-screen H/L/D toggle reachable in any build
+today (`docs/production/technical_debt.md` #12, pre-existing). Defaulting it
+to `true` hides rotation from *casual play right now*, but a hypothetical
+shipped build would still let a player flip it back on and see the debug
+overlay + regain rotation. Closing that needs a real debug/release build
+split this project doesn't have yet — out of scope here, flagged so it
+isn't mistaken for done.

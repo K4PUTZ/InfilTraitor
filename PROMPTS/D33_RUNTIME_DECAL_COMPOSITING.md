@@ -1,9 +1,9 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** PLAN — not started. Director ratified the direction (D33,
-`DESTRUCTION_MASTER_PLAN.md`) and sequenced it after the art pass, which is now
-done well enough to prove the pipeline.
-**Owner decision required before Part 1:** see §6 kill criteria.
+**Status:** ❌ **STOPPED AT PART 0 — the spike hit its own kill criterion.**
+Parts 1–4 were never started and should not be, in this form. Measurements and
+verdict in §9; the plan below is kept verbatim as the record of what was
+proposed and what killed it.
 
 ---
 
@@ -166,3 +166,85 @@ Uglier, but it buys the facade preservation without paying it on every rotation.
 - `run_selftests.py` clean, including the Part 2 equality test.
 - `project_lint`, `check_invariants`, `gen_codemap --check` clean.
 - Rule 8 untouched: every voxel still reaches the tilemap through `set_cell()`.
+
+
+---
+
+## 9. Part 0 result — measured 2026-08-03, and the verdict
+
+Spike ran on the real PLAYGROUND with the real bake enabled. All spike code
+(`d33_spike.gd`, instrumentation in `test_zone_controller.gd` and `room.gd`) was
+reverted; nothing shipped, exactly as Part 0 specified.
+
+### S1 — cost of one composite, in GDScript, 1000 iterations
+
+| Scale | Per composite | Notes |
+|---|---|---|
+| 1× (blit only) | **0.31 ms** | harder edges, no supersampling |
+| 4× (compose big, downscale) | **1.10 ms** | smooth edges |
+
+Feasibility itself is confirmed: reading a baked atom back out of its page
+(`TileSetAtlasSource.texture.get_image().get_region()`), column-wise
+`blend_rect` as the shear, and the B3 alpha clamp all work at runtime.
+
+### S2 — reuse of baked atoms among damaged cells
+
+One real grenade: **197 damaged cells, 197 of them baked, 0 on the generic
+path.** Backed by **167 distinct atoms** and needing **190 distinct composites**.
+
+**Reuse factor 1.04×.** By substrate pixel content it improves to 1.44× on the
+98 wall cells (68 distinct hashes), which is still nowhere near enough. *The
+cache that was supposed to rescue the approach saves essentially nothing.*
+
+### S2b — does a composite survive a rotation? *(the decisive one)*
+
+Substrate pixel hashes, before and after a rotation to E, same 197 damaged cells:
+
+```
+before:       68 distinct substrates
+after:        68 distinct substrates
+intersection:  0     ← zero
+to recompose: 68 (all of them)
+```
+
+**0% overlap.** A re-bake under a new perspective genuinely re-samples every
+facade run, so every damaged cell's substrate is new pixels. The cost is
+therefore **per rotation**, structurally, and no cache key can avoid it — this
+is not a tuning problem.
+
+### S3 — rotation baseline
+
+`_set_perspective()` = **1918 ms** today, with one grenade's damage on the map.
+
+### Verdict
+
+| Damage on map | Cells | Added per rotation @1× | vs. the 150 ms criterion |
+|---|---|---|---|
+| 1 grenade | 197 | 61 ms | under |
+| 5 grenades | ~985 | 305 ms | **2× over** |
+| 15 grenades | ~2955 | 916 ms | **6× over** |
+
+At 4× it is 220 ms / 1.1 s / 3.3 s — over the criterion before the first
+grenade finishes.
+
+**The criterion in §4 is exceeded by 6× at the stated worst case, so the
+approach is dead in this form.** I am not moving that criterion after the fact
+to make the result pass: the baseline being slow (§S3) is context the Director
+may weigh, not grounds for me to rewrite the bar I set before measuring.
+
+### What is worth keeping from this
+
+1. **`_set_perspective()` costs ~1.9 s.** That is the more interesting number
+   this spike produced, and it is not a D33 problem — it is a rotation problem
+   that existed before and will outlive this decision. Nobody had measured it.
+2. **The §7 fallback remains technically viable** and was not killed: composite
+   only baked cells, lazily, capped at N per frame. At 0.31 ms, 20 per frame is
+   6 ms/frame and 2955 cells fill in over ~2.5 s of progressive catch-up, with
+   damaged cells showing today's generic atom until they land. It buys the
+   facade preservation without blocking the rotation — at the cost of a whole
+   caching + progressive-fill subsystem for a visual that only appears on
+   damaged cells of baked walls. **Not recommended on its own merits**; recorded
+   so the option is not rediscovered from scratch.
+3. Runtime compositing is confirmed *possible*. If the rotation re-bake ever
+   stops being per-view — or if damage ever stops persisting across rotations —
+   the arithmetic changes completely and this plan is worth re-reading.

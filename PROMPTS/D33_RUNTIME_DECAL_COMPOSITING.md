@@ -1,14 +1,12 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** 🔶 **Part 3a done (2026-08-03) — full-voxel CRACKED marks
-(bullet, blast) now composite onto the real baked facade in the live
-`_set_voxel_cell()` seam.** Part 0 viable (§9 wrong, §10 corrected); §11
-explains why ROTATE-KILL-01 removed the harder of §10's two open design
-points; Part 1 (cache) and Part 2 (compositor, measured equal to Python) are
-done. **Part 3b — the half-voxel DENTED substrate (most impacts in
-practice) — is the next real work; it was split out of Part 3 mid-session
-once it turned out to need its own new subsystem, not just wiring (see the
-Part 3 section below).**
+**Status:** 🔶 **Part 3b done (2026-08-03) — wall DENTED marks (bullet/blast,
+left/right) now composite onto the real baked facade too, alongside Part
+3a's full-voxel CRACKED marks.** Part 0 viable (§9 wrong, §10 corrected);
+§11 explains why ROTATE-KILL-01 removed the harder of §10's two open design
+points; Parts 1, 2, 3a done. **Remaining: floor-sunk DENTED ("_top") and
+ceiling DENTED ("_bottom", silhouette-only) — a further increment, not
+started, scoped at the end of the Part 3 section below.**
 
 ---
 
@@ -271,30 +269,89 @@ evidence above is solid, the crisp visual is a follow-up, not a substitute.
 `project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
 (23/23) all clean.
 
-**Part 3b — half-voxel DENTED marks. Status: not started, real scope now
-understood.**
+**Part 3b — half-voxel DENTED marks (wall left/right). Status: ✅ DONE
+2026-08-03, same session.**
 
-DENTED (bullet or blast, wall or floor) is the *majority* of real impacts and
-is architecturally different: `generate_half_voxel()` builds its substrate by
-**polygon-masking**, not by decorating a full atom —
-- the newly-exposed CUT FACE gets a flat, un-baked side tone (`_darken(base_color,
-  SIDE_DARKEN)` — it's interior, there is no facade there to read);
-- the KEPT lateral-face region and KEPT top-diamond region are copied from the
-  full atom, masked by `_KEPT_RIGHT_FACE`/`_KEPT_TOP_HALF` (or their mirrors
-  for "right"), straight `Image.paste(..., mask)` in Pillow;
-- the floor ("top") case sinks the whole diamond by `DENTED_CUT_DEPTH` and
-  fills it with flat `base_color` instead of a cut plane.
+**A real bug surfaced first, in already-shipped Part 3a code, and was fixed
+before 3b was built on top of it.** Building 3b's fixtures prints geometry
+straight from the real Python constants (same discipline as Part 2's), and
+the numbers didn't match `decal_compositor.gd`: `V_WB`/`V_EB` should be
+`TILE_H + SIDE_H - TILE_H//2 = 28`, and the file had `26` — an arithmetic
+slip. Undetected by Part 2's own equality selftest because its two targets
+(`FACE_SE`, `FACE_TOP`) never reference `V_WB`/`V_EB` at all; `FACE_SW` and
+`FACE_SE_MIRRORED` do, and those are exactly Part 3a's bullet-LEFT/bullet-
+RIGHT targets — a passing suite with a real, silent coverage gap. Fixed
+(`26 → 28`), and the fixture generator + selftest now also cover
+`FACE_SW`/`FACE_SE_MIRRORED` — confirmed the new tests actually catch the
+class of bug by reverting the constant by hand and re-running (28-29%
+mismatch), then restoring the fix (5/5 clean).
 
-None of this exists in the runtime yet in mask form — Pillow's `paste(...,
-mask)` has no direct Godot `Image` equivalent, so Part 3b's first job is a
-polygon-mask compositing primitive (likely alongside `DecalCompositor`,
-same inverse-mapping discipline Part 2 already proved out), THEN swapping the
-flat placeholder atom in that construction for the real baked atom (reusing
-Part 3a's tint-read logic), THEN the decal paste onto the resulting cut face
-(`_FACE_CUT_LEFT`/`_FACE_CUT_RIGHT`/`_FACE_SUNK_TOP`, all pinned in
-`generate_voxel.py`, not yet named in `DecalCompositor`). Comparable in size
-to Parts 1+2 combined, not a wiring change — this is why it was split out
-rather than attempted in the same pass as 3a.
+**Then Part 3b itself.** `generate_half_voxel()` builds its LEFT/RIGHT
+substrate by **polygon-masking**, not by decorating a full atom — the newly
+exposed CUT FACE gets a flat, un-baked side tone, and the KEPT lateral-face +
+KEPT top-diamond regions are copied from the atom masked by
+`_KEPT_RIGHT_FACE`/`_KEPT_TOP_HALF` (mirrored for "right"). Pillow's
+`Image.paste(source, (0,0), mask)` has no direct Godot `Image` equivalent, so
+this needed a genuinely new primitive, not a wiring change:
+
+- `godot/scripts/geometry/half_voxel_compositor.gd` — `HalfVoxelCompositor`:
+  `paste_masked()`/`fill_masked()` (point-in-polygon per destination pixel,
+  no resampling — a different primitive from `DecalCompositor`'s projected/
+  sheared paste) and `build_half_voxel_substrate(kept_atom, cut_fill, side)`,
+  a direct port of `generate_half_voxel()`'s left/right branch.
+- **Measured, not assumed, and NOT a clean bit-match** — the one real
+  imperfection in this whole plan so far: point-in-polygon (even-odd,
+  top-left-corner sampling — measured better than pixel-centre, 24→12
+  mismatches) disagrees with Pillow's own scanline polygon fill on **1.94%**
+  of LEFT's boundary pixels and **6.40%** of RIGHT's (mirrored polygons don't
+  inherit Pillow's fill bias symmetrically — tried and rejected several fixed
+  offsets for the mirrored case, best found 33/641, still short of LEFT).
+  Confined to a 1px-wide diagonal seam at the shape's own OUTER edge (the
+  shared edges between kept regions line up correctly); confirmed
+  **visually indistinguishable** at real scale side-by-side against the
+  Python reference despite the measured gap. Closing this fully means
+  reimplementing Pillow's specific C scan-fill algorithm rather than tuning
+  a generic point test — flagged as a known, accepted limitation, not
+  chased further this session.
+- `VoxelRenderer._half_voxel_decal_plan()` — parses `bullet_dented_left/
+  right_N` and `blast_dented_left/right_N` (raw decal family is "bullet" for
+  the former, **"dent" not "blast"** for the latter, matching
+  `generate_voxel.py`'s `DECAL_FAMILIES` naming); `{}` for CRACKED (Part
+  3a's), floor `_top`, ceiling `_bottom`, and clean materials.
+- `VoxelRenderer._composite_half_voxel_decal()` reuses Part 3a's baked-atom-
+  read/tint logic (refactored into a shared `_resolve_tinted_baked_atom()`),
+  resolves the cut-face fill colour via `_flat_material_side_color()` — reads
+  it straight off the ALREADY-LOADED flat MATERIALS atom rather than
+  re-deriving a darken factor against a baked tile's modulate, sidestepping a
+  real ambiguity (whether a baked tile's modulate already represents the
+  darkened lateral tone, or a pre-shader value `voxel_face_shading.gdshader`
+  darkens further — not established, and guessing wrong would over/under-
+  darken every cut face).
+- Wired into `_set_voxel_cell()` as a second branch, tried only when Part
+  3a's full-voxel plan didn't match (a name is CRACKED-full-voxel or
+  DENTED-half-voxel, never both).
+- **Evidence**: `half_voxel_compositor_equality_selftest.gd` (5/5, the
+  measured numbers above) and `half_voxel_seam_selftest.gd` (12/12) — plan
+  parsing, the flat side-colour cache, the real seam picking the half-voxel
+  composite end to end with idempotent caching, CRACKED confirmed to still
+  route through 3a (not swallowed by 3b), floor/ceiling DENTED and
+  no-baked-atom cases confirmed unaffected. Fixing this session's own
+  regression cost along the way: Part 3a's `decal_seam_selftest.gd` had
+  asserted wall-DENTED falls through to generic — true when written, false
+  now that 3b handles it — updated to assert the still-true claim (floor
+  DENTED falls through), not weakened. Run live on real PLAYGROUND
+  (`test_zone_detonate`): real wall-DENTED voxels produced
+  (`[BLAST] slice=SLICE_3_3_SW ... dented=13`), **zero errors**.
+  `project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
+  (25/25) all clean.
+
+**What's left, a further increment, not started:** floor-sunk DENTED
+(`_dented_top`, the sunk-diamond substrate + `_FACE_SUNK_TOP`) and ceiling
+DENTED (`_dented_bottom`, silhouette-only via a jagged-profile carve,
+`_jagged_profile()`'s own FNV-1a hash — no decal, `generate_dented_voxel()`
+not `generate_half_voxel()`). Both reuse `HalfVoxelCompositor`'s primitives;
+neither is wired, and `_half_voxel_decal_plan()` deliberately returns `{}`
+for both today.
 
 ### Part 4 — Retire the pre-composited PNGs
 - `composites/` is deleted wholesale (this is what ASSET-LAYOUT-01 was

@@ -71,6 +71,15 @@ const FACE_SW := {"origin": V_W, "u_end": V_S, "v_end": V_WB, "native": LATERAL_
 const FACE_SE := {"origin": V_S, "u_end": V_E, "v_end": V_SB, "native": LATERAL_NATIVE}
 const FACE_SE_MIRRORED := {"origin": V_E, "u_end": V_S, "v_end": V_EB, "native": LATERAL_NATIVE}
 
+## D33 Part 3b — the exposed CUT FACE of a half voxel (HalfVoxelCompositor's
+## CUT_PLANE, extruded the wall's own full height). Origin/u_end/v_end are
+## generate_voxel.py's _CUT_NW_MID/_CUT_ES_MID/(+SIDE_H) — (8,4)/(24,12)/(8,24)
+## — mirrored the same way FACE_SE_MIRRORED mirrors FACE_SE, for the same
+## reason (a bullet/blast on the RIGHT side needs its own, not FACE_CUT_LEFT
+## reused).
+const FACE_CUT_LEFT := {"origin": Vector2(8, 4), "u_end": Vector2(24, 12), "v_end": Vector2(8, 24), "native": LATERAL_NATIVE}
+const FACE_CUT_RIGHT := {"origin": Vector2(24, 4), "u_end": Vector2(8, 12), "v_end": Vector2(24, 24), "native": LATERAL_NATIVE}
+
 
 ## Alpha-composites `decal` onto `dst` (both must already be Image.FORMAT_RGBA8),
 ## mapping the decal's whole rectangle onto the parallelogram

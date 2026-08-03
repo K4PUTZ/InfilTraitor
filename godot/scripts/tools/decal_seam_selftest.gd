@@ -260,20 +260,28 @@ func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:
 	print("")
 
 
+## NOTE: wall-DENTED left/right (e.g. "concrete_bullet_dented_left_1") is
+## deliberately NOT the example here any more — D33 Part 3b (same session)
+## wired exactly that shape through its own half-voxel composite path, so it
+## no longer falls through to generic. That's Part 3b's own seam selftest's
+## job to prove (half_voxel_seam_selftest.gd); this test's job is narrower:
+## confirm Part 3a's full-voxel path doesn't reach into shapes NEITHER 3a nor
+## 3b covers yet (floor "_dented_top", ceiling "_dented_bottom") or into
+## plain clean materials.
 func test_dented_and_non_impact_names_are_unaffected() -> void:
-	print("[5] DENTED marks and clean materials still take the pre-D33 path, unchanged\n")
+	print("[5] Floor/ceiling DENTED and clean materials still take the pre-D33 path\n")
 	var renderer := _new_renderer()
 	_stub_baked_wall(renderer, Color(0.6, 0.6, 0.65, 1.0))
 	var edge_stub := Object.new()
 
-	var dented_pos := Vector2i(1, 1)
-	renderer._set_voxel_cell(dented_pos, 0, "concrete_bullet_dented_left_1", edge_stub, Vector2i.ZERO, 0)
-	var dented_source_id := renderer.get_layer(0).get_cell_source_id(dented_pos)
-	var expected_dented_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_dented_left_1")
-	if dented_source_id == expected_dented_id:
-		_pass("a DENTED mark still resolves to its generic composites/ id (%d) — Part 3b untouched" % expected_dented_id)
+	var floor_pos := Vector2i(1, 1)
+	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_1", edge_stub, Vector2i.ZERO, 0)
+	var floor_source_id := renderer.get_layer(0).get_cell_source_id(floor_pos)
+	var expected_floor_id: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_top_1")
+	if floor_source_id == expected_floor_id:
+		_pass("floor DENTED still resolves to its generic composites/ id (%d) — not this session's scope" % expected_floor_id)
 	else:
-		_fail("a DENTED mark resolved to %d, expected the untouched generic id %d" % [dented_source_id, expected_dented_id])
+		_fail("floor DENTED resolved to %d, expected the untouched generic id %d" % [floor_source_id, expected_floor_id])
 
 	print("")
 

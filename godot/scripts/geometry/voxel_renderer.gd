@@ -14,6 +14,8 @@ var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 ## D33 Part 3a — the runtime decal compositor (Part 2) this file's
 ## _set_voxel_cell() now calls for full-voxel CRACKED impact marks.
 const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
+## D33 Part 3b — the polygon-mask primitive for half-voxel DENTED impact marks.
+const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxel_compositor.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -347,6 +349,54 @@ static func _full_voxel_decal_plan(material_name: String) -> Dictionary:
 	return {}
 
 
+## D33 Part 3b — recognizes the wall-DENTED (half-voxel) decal cases: a
+## bullet or a blast, carved LEFT or RIGHT. Floor ("_dented_top", sunk) and
+## ceiling ("_dented_bottom", silhouette-only, no decal) are a further
+## increment — see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 3b —
+## and fall through here exactly like everything Part 3a didn't cover.
+##
+## Raw decal FAMILY on disk: "bullet" for both bullet_cracked (Part 3a) and
+## bullet_dented (this function) — one decal image, two different substrates
+## and targets; "dent" (not "crack") for blast_dented — generate_voxel.py's
+## build_decal_family() names it `decals[(material, "dent", variant)]`, kept
+## in `dent` for BOTH the wall dented tier and the floor's own sunk dent.
+static func _half_voxel_decal_plan(material_name: String) -> Dictionary:
+	for base in IMPACT_DECAL_MATERIALS:
+		var prefix := base + "_"
+		if not material_name.begins_with(prefix):
+			continue
+		var rest := material_name.substr(prefix.length())
+		if rest.begins_with("bullet_dented_left_"):
+			var v := rest.substr("bullet_dented_left_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "bullet", "variant": v.to_int(),
+					"side": "left", "target": DecalCompositorClass.FACE_CUT_LEFT,
+				}
+		elif rest.begins_with("bullet_dented_right_"):
+			var v := rest.substr("bullet_dented_right_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "bullet", "variant": v.to_int(),
+					"side": "right", "target": DecalCompositorClass.FACE_CUT_RIGHT,
+				}
+		elif rest.begins_with("blast_dented_left_"):
+			var v := rest.substr("blast_dented_left_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "dent", "variant": v.to_int(),
+					"side": "left", "target": DecalCompositorClass.FACE_CUT_LEFT,
+				}
+		elif rest.begins_with("blast_dented_right_"):
+			var v := rest.substr("blast_dented_right_".length())
+			if v.is_valid_int():
+				return {
+					"base_material": base, "decal_family": "dent", "variant": v.to_int(),
+					"side": "right", "target": DecalCompositorClass.FACE_CUT_RIGHT,
+				}
+	return {}
+
+
 ## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
 ##
 ## A floor has exactly ONE damage asset today: the carved-TOP pockmark, built on
@@ -601,6 +651,11 @@ var _damage_composite_cache: DamageCompositeCache = null
 ## cache above, which is intentionally reset every build_from_layout() pass).
 var _decal_image_cache: Dictionary = {}
 
+## D33 Part 3b: base_material -> the flat MATERIALS atom's own lateral-face
+## Color, read once and cached. See _flat_material_side_color()'s own comment
+## for why this is the right source for a half-voxel's cut-face fill tone.
+var _flat_side_color_cache: Dictionary = {}
+
 ## VL-03-PERF: Vector4i(source_id, coords.x, coords.y, alt_id) → true for every
 ## light-bucket alternative already minted. Cleared when sources are rebuilt
 ## (prune_baked_sources / clear) so it never points at a stale source.
@@ -764,6 +819,31 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 	if cache.has(key):
 		return cache.resolve(key)
 
+	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level)
+	if resolved.is_empty():
+		return {}
+
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
+	var decal_image := _load_decal_image(decal_path)
+	if decal_image == null:
+		return {}
+
+	var composite := DecalCompositorClass.compose_decal_voxel(resolved["image"], decal_image, plan["targets"])
+	var entry := cache.store(key, composite)
+	if entry.is_empty():
+		return {}
+	entry["alternative_id"] = resolved["alternative_id"]
+	return entry
+
+
+## D33 Part 3a/3b shared: resolves the baked atom this cell would show if
+## undamaged and returns it with the baked page's own per-tile modulate
+## already applied to its pixels (see _composite_full_voxel_decal()'s
+## original doc comment for why: baked facade pages are grayscale-plus-
+## modulate, not pre-tinted, so a raw readback would be colourless). Returns
+## {} on any kind of miss (no baked atom here, unbaked map, BakeConfig off) —
+## the caller's signal to fall through to the generic path.
+func _resolve_tinted_baked_atom(edge, slice_face: int, voxel_xy: Vector2i, level: int) -> Dictionary:
 	var substrate_result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
 	if substrate_result == null or substrate_result.source_id_int < 0:
 		return {}
@@ -781,16 +861,68 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 			substrate.set_pixel(x, y, Color(
 				c.r * base_modulate.r, c.g * base_modulate.g, c.b * base_modulate.b, c.a))
 
+	return {"image": substrate, "alternative_id": substrate_result.alternative_id}
+
+
+## D33 Part 3b: the flat MATERIALS atom's own lateral-face colour for
+## `base_material`, read once from the ALREADY-LOADED flat texture and
+## cached. This is the cut face's fill tone (generate_voxel.py:
+## `_darken(base_color, SIDE_DARKEN)`), and reading it from the real flat
+## atom — rather than re-deriving a darken factor against a baked tile's
+## modulate — sidesteps a real ambiguity: it is not established whether a
+## baked tile's own modulate already represents this exact darkened lateral
+## tone or a pre-shader value voxel_face_shading.gdshader darkens further at
+## render time, and guessing wrong here would over- or under-darken the cut
+## face. The flat atom's own pixels are unambiguous: generate_voxel_atom()
+## paints both lateral faces with exactly this tone, and MATERIALS[base_material]
+## is that exact same generator's output, already loaded at boot.
+func _flat_material_side_color(base_material: String) -> Color:
+	if _flat_side_color_cache.has(base_material):
+		return _flat_side_color_cache[base_material]
+	var source_id: int = MATERIALS.find(base_material)
+	var color := Color.WHITE
+	if source_id >= 0:
+		var source: TileSetAtlasSource = _tileset.get_source(source_id)
+		if source != null and source.texture != null:
+			## (8, 26): comfortably inside either lateral face's y-band
+			## (16..35) regardless of the exact diamond silhouette, for any
+			## of the flat wall materials this is ever called with.
+			color = source.texture.get_image().get_pixel(8, 26)
+	_flat_side_color_cache[base_material] = color
+	return color
+
+
+## D33 Part 3b — the half-voxel counterpart to _composite_full_voxel_decal():
+## builds the DENTED substrate (cut face flat-filled, kept face/top read from
+## the real baked atom — HalfVoxelCompositor.build_half_voxel_substrate()),
+## pastes the decal onto the exposed cut face, caches, and returns the same
+## {source_id, atlas_coords, alternative_id} shape. {} on any miss (no baked
+## atom, missing decal file) falls through to the generic path unchanged.
+func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
+		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
+	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
+	var cache := get_damage_composite_cache()
+	if cache.has(key):
+		return cache.resolve(key)
+
+	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level)
+	if resolved.is_empty():
+		return {}
+
+	var cut_fill := _flat_material_side_color(plan["base_material"])
+	var half_substrate := HalfVoxelCompositorClass.build_half_voxel_substrate(
+		resolved["image"], cut_fill, plan["side"])
+
 	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
 	var decal_image := _load_decal_image(decal_path)
 	if decal_image == null:
 		return {}
 
-	var composite := DecalCompositorClass.compose_decal_voxel(substrate, decal_image, plan["targets"])
+	var composite := DecalCompositorClass.compose_decal_voxel(half_substrate, decal_image, [plan["target"]])
 	var entry := cache.store(key, composite)
 	if entry.is_empty():
 		return {}
-	entry["alternative_id"] = substrate_result.alternative_id
+	entry["alternative_id"] = resolved["alternative_id"]
 	return entry
 
 
@@ -1284,6 +1416,23 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 				atlas_coords = composite["atlas_coords"]
 				alternative_id = composite["alternative_id"]
 				_diag_baked_hits += 1
+
+		## D33 Part 3b: the half-voxel counterpart — wall DENTED (bullet or
+		## blast, LEFT or RIGHT). Only reached when the full-voxel plan above
+		## didn't match (CRACKED is full-voxel, DENTED is half-voxel; a name
+		## is one or the other, never both). Floor ("_dented_top") and
+		## ceiling ("_dented_bottom") remain a further increment —
+		## _half_voxel_decal_plan() returns {} for them, same fall-through.
+		if source_id < 0:
+			var half_plan := _half_voxel_decal_plan(material_name)
+			if not half_plan.is_empty():
+				var half_composite := _composite_half_voxel_decal(
+					half_plan, material_name, edge, slice_face, voxel_xy, level, grid_pos)
+				if not half_composite.is_empty():
+					source_id = half_composite["source_id"]
+					atlas_coords = half_composite["atlas_coords"]
+					alternative_id = half_composite["alternative_id"]
+					_diag_baked_hits += 1
 
 	# Fallback: material-only path
 	if source_id < 0:

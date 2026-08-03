@@ -8,18 +8,18 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**171 scripts · 38810 lines total** (under `godot/scripts/`)
+**174 scripts · 39524 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
-- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -426,7 +426,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `decal_compositor.gd`
 
-`class_name DecalCompositor` · extends `RefCounted` · 172 lines
+`class_name DecalCompositor` · extends `RefCounted` · 181 lines
 
 `godot/scripts/geometry/decal_compositor.gd`
 
@@ -548,6 +548,16 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_TILE_H` = `16`
 - `FLOOR_TOP_LEVEL` = `-1`
 - `FLOOR_DEEP_LEVEL` = `-2`
+
+---
+
+### `half_voxel_compositor.gd`
+
+`class_name HalfVoxelCompositor` · extends `RefCounted` · 127 lines
+
+`godot/scripts/geometry/half_voxel_compositor.gd`
+
+> D33 Part 3b — HalfVoxelCompositor: the GDScript port of generate_voxel.py's generate_half_voxel() (LEFT/RIGHT wall variants only — "top"/floor and "bottom"/ceiling are a further increment, see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 3b). This is a DIFFERENT primitive from DecalCompositor (Part 2): a decal is PROJECTED onto a face through a sheared parallelogram (inverse-mapped, resampled); a half-voxel's kept geometry is a straight, same-coordinate POLYGON MASK copy — Pillow's `Image.paste(source, (0,0), _polygon_mask(poly))`, which has no direct Godot Image equivalent. paste_masked() below is that primitive: point-in-polygon per destination pixel, no resampling, no shear. Proven equal to the real Python output (not assumed) by godot/scripts/tools/half_voxel_compositor_equality_selftest.gd against fixtures generated straight from generate_half_voxel() itself (tools/asset_generation/d33_part3b_fixture_gen.py).
 
 ---
 
@@ -698,7 +708,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2055 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2204 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -709,15 +719,20 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
+- `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
 - `VOXEL_SOURCE_ID` = `0`
 - `BASE_MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim ## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE, ## so earth gets exactly the _top carve — the mirror of ceilings only ever ## carving _bottom. Appended last: MATERIALS is append-only (source_id == ## index). "earth_blast_dented_top", ]`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
 - `IMPACT_FLOOR_MATERIAL` = `"earth"`
 - `IMPACT_CRACK_MATERIALS` = `["concrete", "stone"]`
+- `EMPTY_COLUMN` = `-9999`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+
+**Public API**
+- `func get_layer(level: int) -> TileMapLayer:`
 
 ---
 
@@ -2356,7 +2371,7 @@ extends `SceneTree` · 186 lines
 
 ### `decal_seam_selftest.gd`
 
-extends `SceneTree` · 300 lines
+extends `SceneTree` · 308 lines
 
 `godot/scripts/tools/decal_seam_selftest.gd`
 
@@ -2541,6 +2556,48 @@ extends `SceneTree` · 227 lines
 - `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
 - `OUT_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/"`
 - `ANCHOR_OUT_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/anchor.json"`
+
+---
+
+### `half_voxel_compositor_equality_selftest.gd`
+
+extends `SceneTree` · 182 lines
+
+`godot/scripts/tools/half_voxel_compositor_equality_selftest.gd`
+
+> D33 Part 3b — HalfVoxelCompositor equality proof, same discipline as Part 2's decal_compositor_equality_selftest.gd: compare the GDScript port against a reference built by the REAL Python function it ports (generate_voxel.py's generate_half_voxel(), plus compose_decal_voxel() for the full real pipeline), on fixtures neither side generates itself: godot/scripts/tools/fixtures/d33_part3b/{atom,decal}.png            — inputs godot/scripts/tools/fixtures/d33_part3b/half_{left,right}.png       — mask-only reference godot/scripts/tools/fixtures/d33_part3b/composited_{left,right}.png — mask + decal reference (produced by tools/asset_generation/d33_part3b_fixture_gen.py). Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_compositor_equality_selftest.gd
+
+**Constants / tuning**
+- `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
+- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
+- `FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part3b/"`
+- `CUT_FILL` = `Color(140.0 / 255.0, 136.0 / 255.0, 129.0 / 255.0, 1.0)`
+
+---
+
+### `half_voxel_seam_selftest.gd`
+
+extends `SceneTree` · 239 lines
+
+`godot/scripts/tools/half_voxel_seam_selftest.gd`
+
+> D33 Part 3b — the real render-seam selftest for half-voxel DENTED marks, sibling to decal_seam_selftest.gd (Part 3a, full-voxel CRACKED). Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_seam_selftest.gd
+
+**Constants / tuning**
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_plan_parser_recognizes_dented_wall_cases() -> void:`
+- `func test_flat_material_side_color_is_cached_and_nonwhite() -> void:`
+- `func test_set_voxel_cell_end_to_end_picks_the_half_voxel_composite() -> void:`
+- `func test_cracked_still_goes_through_full_voxel_path_not_half() -> void:`
+- `func test_floor_and_ceiling_dented_are_unaffected() -> void:`
+- `func test_no_baked_atom_falls_through_to_generic() -> void:`
 
 ---
 

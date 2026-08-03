@@ -1,0 +1,135 @@
+## D33 Part 2 — DecalCompositor: the GDScript port of
+## tools/asset_generation/generate_voxel.py's real compositing math
+## (_paste_decal + compose_decal_voxel), NOT the simplified "resize + shear"
+## sketch D33's own §5 originally described — that sketch was written from
+## memory before this file was read line by line. The actual Python compositor
+## inverse-maps every destination pixel into the decal's parametric (s, t)
+## space through a general parallelogram (not a fixed shear), 4x4-supersamples
+## it, and premultiplied-alpha-blends the result — see _paste_decal's own
+## docstring for why (inverse mapping so an oblique projection leaves no
+## holes). This port must be numerically equal to that function, not to a
+## cheaper approximation of it — proven by
+## godot/scripts/tools/decal_compositor_equality_selftest.gd against fixtures
+## godot/scripts/tools/fixtures/d33_part2/ generated straight from the real
+## Python functions (tools/asset_generation/d33_part2_fixture_gen.py).
+##
+## Known, accepted sources of sub-tolerance divergence from the Python
+## reference (measured by the selftest, not assumed away):
+##  - Godot's Image.INTERPOLATE_LANCZOS and Pillow's Image.LANCZOS are
+##    different implementations (kernel radius/windowing); the pre-resize
+##    step this class ports (native x 4 supersample) cannot be bit-identical
+##    across them.
+##  - Python's round() is round-half-to-even; GDScript Image.set_pixel() on an
+##    RGBA8-format Image rounds half-up at the C++ level. Only reachable at
+##    exact .5 boundaries in 0..255 space, so it affects at most a handful of
+##    pixels' least-significant bit.
+## Rule 8 is not implicated here: this class produces an Image the caller
+## registers exactly like any other baked/composite page (Part 1's
+## DamageCompositeCache) — it never touches the tilemap directly.
+class_name DecalCompositor
+extends RefCounted
+
+## Samples per axis, per destination pixel — pinned equal to generate_voxel.py's
+## _DECAL_SUPERSAMPLE. Changing this on only one side is exactly the kind of
+## silent divergence the equality selftest exists to catch.
+const SUPERSAMPLE: int = 4
+
+
+## Alpha-composites `decal` onto `dst` (both must already be Image.FORMAT_RGBA8),
+## mapping the decal's whole rectangle onto the parallelogram
+## (origin, u_end, v_end), scaled to `native` texels before the supersample.
+## Direct port of generate_voxel.py's _paste_decal() — inverse-mapped per
+## destination pixel so an oblique projection cannot leave sampling holes, and
+## the 0 <= s,t < 1 test doubles as the clip against the target polygon.
+static func paste_decal(dst: Image, decal: Image, origin: Vector2, u_end: Vector2,
+		v_end: Vector2, native: Vector2i) -> void:
+	var ux: float = u_end.x - origin.x
+	var uy: float = u_end.y - origin.y
+	var vx: float = v_end.x - origin.x
+	var vy: float = v_end.y - origin.y
+	var det: float = ux * vy - uy * vx
+	if is_zero_approx(det):
+		push_error("[DecalCompositor] paste_decal: degenerate parallelogram (origin=%s u_end=%s v_end=%s)" % [origin, u_end, v_end])
+		return
+
+	## Reduce the decal to exactly the face's native texel grid x supersample —
+	## same reduction generate_voxel.py's canon x20/16 stretch happens through
+	## (native encodes the (16,20) vs (16,16) asymmetry, not this function).
+	var work: Image = decal.duplicate()
+	work.resize(native.x * SUPERSAMPLE, native.y * SUPERSAMPLE, Image.INTERPOLATE_LANCZOS)
+	var src_w: int = work.get_width()
+	var src_h: int = work.get_height()
+
+	var corners_x: Array[float] = [origin.x, u_end.x, v_end.x, origin.x + ux + vx]
+	var corners_y: Array[float] = [origin.y, u_end.y, v_end.y, origin.y + uy + vy]
+	var x0: int = maxi(0, int(corners_x.min()) - 1)
+	var x1: int = mini(dst.get_width(), int(corners_x.max()) + 2)
+	var y0: int = maxi(0, int(corners_y.min()) - 1)
+	var y1: int = mini(dst.get_height(), int(corners_y.max()) + 2)
+
+	var step: float = 1.0 / float(SUPERSAMPLE)
+	var sample_weight: float = 1.0 / float(SUPERSAMPLE * SUPERSAMPLE)
+
+	for py in range(y0, y1):
+		for px in range(x0, x1):
+			var acc_r: float = 0.0
+			var acc_g: float = 0.0
+			var acc_b: float = 0.0
+			var acc_a: float = 0.0
+			for sy in range(SUPERSAMPLE):
+				for sx in range(SUPERSAMPLE):
+					var dx: float = float(px) + (float(sx) + 0.5) * step - origin.x
+					var dy: float = float(py) + (float(sy) + 0.5) * step - origin.y
+					var s: float = (dx * vy - dy * vx) / det
+					var t: float = (ux * dy - uy * dx) / det
+					if not (s >= 0.0 and s < 1.0 and t >= 0.0 and t < 1.0):
+						continue
+					var sample: Color = work.get_pixel(
+						mini(src_w - 1, int(s * float(src_w))),
+						mini(src_h - 1, int(t * float(src_h))))
+					var alpha: float = sample.a
+					acc_r += sample.r * alpha
+					acc_g += sample.g * alpha
+					acc_b += sample.b * alpha
+					acc_a += alpha
+			if acc_a <= 0.0:
+				continue
+			## Averaged premultiplied -> straight alpha, then source-over.
+			var s_r: float = acc_r / acc_a
+			var s_g: float = acc_g / acc_a
+			var s_b: float = acc_b / acc_a
+			var s_a: float = acc_a * sample_weight
+			var backdrop: Color = dst.get_pixel(px, py)
+			var b_a: float = backdrop.a
+			var n_a: float = s_a + b_a * (1.0 - s_a)
+			if n_a <= 0.0:
+				continue
+			var inv: float = b_a * (1.0 - s_a)
+			dst.set_pixel(px, py, Color(
+				(s_r * s_a + backdrop.r * inv) / n_a,
+				(s_g * s_a + backdrop.g * inv) / n_a,
+				(s_b * s_a + backdrop.b * inv) / n_a,
+				n_a,
+			))
+
+
+## Pastes one decal onto every listed face of a COPY of `substrate`, then
+## clamps the result to the substrate's own alpha — INVARIANT B3: silhouette
+## alpha always comes from the canonical voxel texture, never from the decal.
+## Direct port of generate_voxel.py's compose_decal_voxel(). `targets` is an
+## Array of Dictionaries: {"origin": Vector2, "u_end": Vector2, "v_end":
+## Vector2, "native": Vector2i} — the same four numbers as the Python tuple,
+## named instead of positional so a Part 3 caller can't transpose two Vector2s
+## silently.
+static func compose_decal_voxel(substrate: Image, decal: Image, targets: Array) -> Image:
+	var img: Image = substrate.duplicate()
+	for target in targets:
+		paste_decal(img, decal, target["origin"], target["u_end"], target["v_end"], target["native"])
+
+	var w: int = substrate.get_width()
+	var h: int = substrate.get_height()
+	for y in range(h):
+		for x in range(w):
+			if is_zero_approx(substrate.get_pixel(x, y).a) and not is_zero_approx(img.get_pixel(x, y).a):
+				img.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
+	return img

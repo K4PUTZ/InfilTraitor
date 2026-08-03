@@ -1,10 +1,10 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** 🔶 **Part 1 done (2026-08-03, §5).** Part 0 was viable (§9 wrong,
-§10 corrected); §11 explains why ROTATE-KILL-01 (killed for unrelated
-performance reasons) removed the harder of §10's two open design points.
-**Part 2 — the GDScript compositor and its Python equality proof — is next
-and is the one real remaining risk in this whole plan.**
+**Status:** 🔶 **Part 2 done (2026-08-03, §5) — the one real remaining risk
+in this plan is retired, measured, not assumed.** Part 0 was viable (§9
+wrong, §10 corrected); §11 explains why ROTATE-KILL-01 removed the harder of
+§10's two open design points; Part 1 (the cache) is done. **Part 3 — wiring
+into `_set_voxel_cell()` — is next.**
 
 ---
 
@@ -140,17 +140,66 @@ fallback is §7.
   through the same `set_cell()`/`_set_voxel_cell()` seam everything else uses.
 
 ### Part 2 — The GDScript compositor
-- Port `generate_voxel.py`'s three primitives: lateral shear
-  (resize ×20/16 + per-column shift), top shear (H-shear then V-shear), and the
-  B3 alpha clamp to the substrate.
-- **The port must be proven equal, not assumed.** A selftest composites the same
-  (substrate, decal, face) in GDScript and compares against the Python output
-  byte-for-byte within a stated tolerance. This is the single highest-risk step:
-  the Python side was verified numerically against the parametric
-  `0 ≤ s,t < 1` region, and a silent divergence here is a visual bug with no
-  error attached.
-- Sub-pixel: `blit_rect` has no supersampling. Compose at 4× and downscale, or
-  accept harder edges — decide against a real capture, not in advance.
+
+**Status: ✅ DONE 2026-08-03.**
+
+**Correction first**: this bullet list, as originally written, described the
+wrong algorithm. "Lateral shear (resize ×20/16 + per-column shift), top shear
+(H-shear then V-shear)" was a memory of what `bake_compositor.gd` does for
+*facade* baking, assumed to also describe the decal path without reading it.
+The real `generate_voxel.py` function (`_paste_decal`) is more general: it
+inverse-maps every DESTINATION pixel into the decal's parametric `(s, t)`
+space through an arbitrary parallelogram (not a fixed shear), 4×4-supersamples
+each one against a Lanczos-pre-resized copy of the decal, and blends
+premultiplied-then-unpremultiplied alpha. `blit_rect` was never going to be
+enough on its own — there is no per-pixel inverse-mapping primitive in Godot's
+`Image` API that does this; the port implements the same nested-loop math
+`_paste_decal` does, not a `blit_rect` call.
+
+**What shipped:**
+
+- `godot/scripts/geometry/decal_compositor.gd` — `DecalCompositor`, two
+  `static func`s: `paste_decal()` (the inverse-map + supersample + blend, line
+  for line the same math as `_paste_decal`) and `compose_decal_voxel()` (B3
+  clamp: composite onto a copy of the substrate, then force any pixel to
+  `(0,0,0,0)` wherever the substrate itself was transparent — decal art can be
+  clipped at a face's corners, but can never expand the canonical silhouette).
+- `tools/asset_generation/d33_part2_fixture_gen.py` — a one-shot fixture
+  generator that calls the REAL, unmodified Python functions
+  (`generate_voxel_atom` for a genuine concrete substrate, a procedural
+  soft-edged colour-gradient decal chosen to exercise partial alpha rather
+  than an all-or-nothing mask, `compose_decal_voxel` itself) and writes
+  `godot/scripts/tools/fixtures/d33_part2/{substrate,decal,reference_lateral,
+  reference_top}.png`. The fixture is the ground truth; nothing about it is
+  reimplemented independently on either side.
+- **The equality measurement, not an assumption**:
+  `damage_composite_cache_selftest.gd`'s sibling,
+  `godot/scripts/tools/decal_compositor_equality_selftest.gd`, runs
+  `DecalCompositor` on the fixture inputs and diffs the result against the
+  Python-produced reference, pixel by pixel, over every pixel either image
+  considers non-transparent. **Measured result: max channel difference = 1
+  (of 255), 0 of 911 compared pixels differ at all beyond that** — far
+  tighter than the tolerance guessed before measuring (12/channel, 5% of
+  pixels; kept in the selftest's own comment as the record of the guess, not
+  in the passing condition). Confirmed visually too: the GDScript and Python
+  composites are indistinguishable at both the lateral and top targets, not
+  just numerically close.
+- **What the ~1-level residual almost certainly is, not guessed**: Godot's
+  `Image.INTERPOLATE_LANCZOS` and Pillow's `Image.LANCZOS` are different
+  implementations and were the predicted risk — they turned out to agree
+  far more closely than expected on this fixture. The remaining ±1 is
+  consistent with Python's round-half-to-even vs. Godot's round-half-up at
+  8-bit quantization, reachable only at exact `.5` boundaries.
+- A third selftest checks B3 independently of numeric closeness: even if the
+  colour math ever drifted, no pixel outside the substrate's own alpha may
+  gain alpha. Holds.
+- `project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
+  (22/22) all clean.
+
+**What Part 2 deliberately does not do**: no `_set_voxel_cell()` wiring
+(Part 3), no decision about composing at a scale other than the pinned
+4× supersample (measured fine, not revisited), no change to
+`DamageCompositeCache`'s key (still Part 3's job, per §11).
 
 ### Part 3 — Wire it into the seam
 - `_set_voxel_cell()`: for an impact mark **whose cell resolves to a baked

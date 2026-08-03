@@ -8,18 +8,18 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**168 scripts · 37987 lines total** (under `godot/scripts/`)
+**170 scripts · 38325 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
-- **geometry/** — damage_composite_cache.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, damage_composite_cache_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -421,6 +421,19 @@ extends `ConfirmationDialog` · 64 lines
 - `func page_count() -> int:`
 - `func get_page_image(page_idx: int) -> Image:`
 - `func reset() -> void:`
+
+---
+
+### `decal_compositor.gd`
+
+`class_name DecalCompositor` · extends `RefCounted` · 135 lines
+
+`godot/scripts/geometry/decal_compositor.gd`
+
+> D33 Part 2 — DecalCompositor: the GDScript port of tools/asset_generation/generate_voxel.py's real compositing math (_paste_decal + compose_decal_voxel), NOT the simplified "resize + shear" sketch D33's own §5 originally described — that sketch was written from memory before this file was read line by line. The actual Python compositor inverse-maps every destination pixel into the decal's parametric (s, t) space through a general parallelogram (not a fixed shear), 4x4-supersamples it, and premultiplied-alpha-blends the result — see _paste_decal's own docstring for why (inverse mapping so an oblique projection leaves no holes). This port must be numerically equal to that function, not to a cheaper approximation of it — proven by godot/scripts/tools/decal_compositor_equality_selftest.gd against fixtures godot/scripts/tools/fixtures/d33_part2/ generated straight from the real Python functions (tools/asset_generation/d33_part2_fixture_gen.py). Known, accepted sources of sub-tolerance divergence from the Python reference (measured by the selftest, not assumed away): - Godot's Image.INTERPOLATE_LANCZOS and Pillow's Image.LANCZOS are different implementations (kernel radius/windowing); the pre-resize step this class ports (native x 4 supersample) cannot be bit-identical across them. - Python's round() is round-half-to-even; GDScript Image.set_pixel() on an RGBA8-format Image rounds half-up at the C++ level. Only reachable at exact .5 boundaries in 0..255 space, so it affects at most a handful of pixels' least-significant bit. Rule 8 is not implicated here: this class produces an Image the caller registers exactly like any other baked/composite page (Part 1's DamageCompositeCache) — it never touches the tilemap directly.
+
+**Constants / tuning**
+- `SUPERSAMPLE` = `4`
 
 ---
 
@@ -2296,6 +2309,33 @@ extends `SceneTree` · 251 lines
 - `func test_wrong_sized_image_is_rejected_without_corrupting_state() -> void:`
 - `func test_page_overflow_allocates_a_second_page() -> void:`
 - `func test_reset_clears_everything_and_next_store_starts_fresh() -> void:`
+
+---
+
+### `decal_compositor_equality_selftest.gd`
+
+extends `SceneTree` · 203 lines
+
+`godot/scripts/tools/decal_compositor_equality_selftest.gd`
+
+> D33 Part 2 — the equality proof the plan calls "the single highest-risk step" (PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 2). Compares DecalCompositor's GDScript output against a reference composited by the REAL Python function it ports (generate_voxel.py's compose_decal_voxel), on fixtures neither side generates itself: godot/scripts/tools/fixtures/d33_part2/{substrate,decal}.png       — inputs godot/scripts/tools/fixtures/d33_part2/reference_{lateral,top}.png — Python output (produced by tools/asset_generation/d33_part2_fixture_gen.py, which calls the real _paste_decal/compose_decal_voxel unmodified). Rodar: godot --headless --script res://godot/scripts/tools/decal_compositor_equality_selftest.gd Tolerance is MEASURED here, not assumed: DecalCompositor's own doc comment names two real sources of divergence (Lanczos implementation differences, Python round-half-to-even vs Godot's round-half-up at 8-bit quantization). The thresholds below are the actual measured worst case on this fixture, recorded so a future regression shows up as a real failure instead of a silently loosened bound.
+
+**Constants / tuning**
+- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
+- `FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part2/"`
+- `FACE_SE` = `{ "origin": Vector2(16, 16), "u_end": Vector2(32, 8), "v_end": Vector2(16, 36), "native": Vector2i(16, 20), }`
+- `FACE_TOP` = `{ "origin": Vector2(16, 0), "u_end": Vector2(32, 8), "v_end": Vector2(0, 8), "native": Vector2i(16, 16), }`
+- `MAX_CHANNEL_DIFF_TOLERANCE` = `3`
+- `MAX_MISMATCHED_PIXEL_FRACTION` = `0.0`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_lateral_face(substrate: Image, decal: Image) -> void:`
+- `func test_top_face(substrate: Image, decal: Image) -> void:`
+- `func test_b3_clamp_never_exceeds_substrate_silhouette(substrate: Image, decal: Image) -> void:`
 
 ---
 

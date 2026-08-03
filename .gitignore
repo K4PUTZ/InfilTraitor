@@ -62,6 +62,14 @@ ASSETS/*
 Screenshots/*
 !Screenshots/history/
 !Screenshots/history/*.png
+
+# D33 Part 2 — golden-fixture PNGs for the GDScript<->Python decal compositor
+# equality proof (decal_compositor_equality_selftest.gd). Frozen ground truth
+# generated once by tools/asset_generation/d33_part2_fixture_gen.py from the
+# real Python compositor, not provisional art — regenerating them at test
+# time would make the equality proof circular. See
+# PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 2.
+!godot/scripts/tools/fixtures/d33_part2/*.png
 # SCREENSHOT-HOOK-03: .gdignore makes the Godot editor skip the whole
 # Screenshots/ tree (no .import sidecars, no resource scan) while the files
 # stay on disk for the capture/diff tooling, which uses absolute paths.

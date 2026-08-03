@@ -197,7 +197,63 @@ Rule: once the dictionary exists, `BakePolicy` and every other consumer
 
 ---
 
-## 7. Invariants That Bind All Art
+## 7. Damage Decals (SHIPPED — scaffolding; art pending)
+
+Impact art for the destruction system. Director diagrams, 2026-08-02.
+
+The Director authors **flat, unprojected decals**; the generator
+(`tools/asset_generation/generate_voxel.py`) projects them onto voxel faces
+and writes every composite. Art is never pre-projected — §1's rule, and the
+same division of labour `bake_compositor.gd` already has with facades.
+
+| Property | Specification |
+|---|---|
+| File | `ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/decals/decal_<family>_<material>_<n>.png` |
+| Dimensions | **256×256 px, square** — 16× the pinned `TEX_AUTHORING_N` density |
+| Aspect | **Square, always.** A voxel face is square in flat space. The ×20/16 vertical stretch onto a lateral face is applied by the generator, never by the art (§1) |
+| Alpha | **Required.** The decal is a mark on a face, not a face — everything outside the mark is transparent. Its alpha is clamped to the substrate's silhouette on composite (invariant B3): a decal can never enlarge a voxel |
+| Color | Full color allowed (these are not facade/pattern sources, so B2 does not bind them) |
+| Families | `bullet` (firearms), `dent` (explosions, on half voxels), `crack` (explosions, on whole voxels) |
+| Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
+| Materials | `concrete`, `metal`, `stone`, `wood`. Glass and brick deferred (glass gets no DENTED/CRACKED tier at all — destroyed or intact) |
+
+**Where each family lands** — one decal, two destinations, and the geometry
+decides which stretch applies:
+
+| Destination | Native size | Stretch from the square source |
+|---|---|---|
+| Lateral face (SW/SE) of a whole voxel | 16 × 20 | ×20/16 vertical (canon) |
+| Cut plane of a lateral half voxel | 16 × 20 | ×20/16 vertical |
+| Top diamond of a whole voxel | 16 × 16 | none — 1:1 |
+| Sunken top of a floor half voxel | 16 × 16 | none — 1:1 |
+
+**Placement rules** (Director, 2026-08-02) — each mark in its own place:
+
+- A **bullet** only ever hits a wall, and marks exactly the **one lateral
+  face** it struck. Never a top face, never a floor, never a ceiling.
+- A **wall** dents laterally only (`left`/`right`), never top or bottom.
+- A **floor** dents from above only (`top`); a **ceiling** from below only
+  (`bottom`).
+- A **ceiling** half voxel is **silhouette only** — an isometric camera never
+  sees a voxel's underside, so no decal is composited onto it.
+- **CRACKED covers all three visible faces of a whole voxel.** A voxel that
+  nearly became DENTED and is barely holding together cannot read pristine on
+  one side and shattered on the other. There is no single-face cracked voxel.
+- DENTED and CRACKED are mutually exclusive; a voxel is one or the other.
+
+**Half voxels** (`voxel_<material>_half_<left|right|top|bottom>.png`) are
+generated from the material's own atom and are shared by the bullet and blast
+dented tiers. Like the decals, they are only written **if absent** — dropping
+hand-made art at the same filename makes the generator build around it instead
+of overwriting it.
+
+`impact_marks/manifest.json` is the machine-readable copy of the counts above
+and is what runtime reads for variant discovery — never a directory scan,
+which does not survive export packing.
+
+---
+
+## 8. Invariants That Bind All Art
 
 Full detail: `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
 
@@ -214,7 +270,7 @@ Full detail: `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
 
 ---
 
-## 8. Governance
+## 9. Governance
 
 - This document lives at `ASSETS/ART_SPECIFICATIONS.md` and is owned by the
   Director (ratification) and the Overlord (maintenance).

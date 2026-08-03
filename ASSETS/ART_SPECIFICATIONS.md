@@ -215,7 +215,19 @@ same division of labour `bake_compositor.gd` already has with facades.
 | Color | Full color allowed (these are not facade/pattern sources, so B2 does not bind them) |
 | Families | `bullet` (firearms), `dent` (explosions, on half voxels), `crack` (explosions, on whole voxels) |
 | Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
-| Materials | `concrete`, `metal`, `stone`, `wood`. Glass and brick deferred (glass gets no DENTED/CRACKED tier at all — destroyed or intact) |
+| Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. Glass and brick deferred (glass gets no DENTED/CRACKED tier at all — destroyed or intact) |
+
+**Which material needs which family — 33 files total:**
+
+| Family | Materials | Files | Why not the others |
+|---|---|---|---|
+| `bullet` | concrete, metal, stone, wood | 12 | Firearms hit walls only |
+| `dent` | concrete, metal, stone, wood, **earth** | 15 | `earth` is the shared floor dent every ground material routes to (D26) |
+| `crack` | concrete, stone | 6 | D32.6 — metal and wood do not fracture, only dent or take bullets |
+
+An explosion never produces a bullet hole (D32.7), so `dent` and `crack` must
+read as chipped/fractured, never as a round puncture — at 16×20 px on screen a
+gently perturbed circle still reads round, so the shape needs visible facets.
 
 **Where each family lands** — one decal, two destinations, and the geometry
 decides which stretch applies:

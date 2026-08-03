@@ -538,6 +538,10 @@ var debug_nudge: Vector2 = Vector2.ZERO
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
 
+## D33 Part 1: created lazily on first use (get_damage_composite_cache()) so a
+## renderer that never composites a decal never pays for the Image pages.
+var _damage_composite_cache: DamageCompositeCache = null
+
 ## VL-03-PERF: Vector4i(source_id, coords.x, coords.y, alt_id) → true for every
 ## light-bucket alternative already minted. Cleared when sources are rebuilt
 ## (prune_baked_sources / clear) so it never points at a stale source.
@@ -601,6 +605,53 @@ func register_baked_atlas_page(page_image: Image, atlas_coords_used: Array = [],
 			## here at build time.
 
 	return source_id
+
+
+## D33 Part 1: lazily creates this renderer's DamageCompositeCache. Public so
+## a future Part 3 seam (and this part's own selftest) can reach it without
+## reconstructing VoxelRenderer's setup sequence.
+func get_damage_composite_cache() -> DamageCompositeCache:
+	if _damage_composite_cache == null:
+		_damage_composite_cache = DamageCompositeCache.new(self)
+	return _damage_composite_cache
+
+
+## D33 Part 1: registers an EMPTY dynamic page for runtime-composited decal
+## atoms — same TileSetAtlasSource shape register_baked_atlas_page() uses
+## (32x36 region), but with no tiles yet; add_damage_composite_tile() below
+## creates them one at a time as DamageCompositeCache fills slots. Appends to
+## _baked_source_ids on purpose: this page is exactly as transient as a baked
+## facade page (one per build_from_layout() pass) and prune_baked_sources()
+## already removes everything in that list — no second cleanup path to keep
+## in sync.
+func register_damage_composite_page(page_image: Image) -> int:
+	var source := TileSetAtlasSource.new()
+	source.texture = ImageTexture.create_from_image(page_image)
+	source.texture_region_size = Vector2i(32, 36)  # DamageCompositeCache.ATOM_W/H
+
+	var source_id := _tileset.get_next_source_id()
+	_tileset.add_source(source, source_id)
+	_baked_source_ids.append(source_id)
+	return source_id
+
+
+## D33 Part 1: adds ONE tile to an already-registered dynamic page at
+## `atlas_coords` (a no-op if it already exists — DamageCompositeCache never
+## calls this twice for the same slot, but staying idempotent costs nothing)
+## and re-uploads the page texture so DamageCompositeCache.store()'s blit is
+## actually visible. Mirrors register_baked_atlas_page()'s per-tile setup
+## (texture_origin) for one coordinate instead of a whole batch.
+func add_damage_composite_tile(source_id: int, page_image: Image, atlas_coords: Vector2i) -> void:
+	var source: TileSetAtlasSource = _tileset.get_source(source_id)
+	if source == null:
+		push_error("[D33] add_damage_composite_tile: source_id %d not registered" % source_id)
+		return
+	if source.get_tile_at_coords(atlas_coords) == Vector2i(-1, -1):
+		source.create_tile(atlas_coords)
+		var tile_data: TileData = source.get_tile_data(atlas_coords, 0)
+		if tile_data != null:
+			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
+	(source.texture as ImageTexture).update(page_image)
 
 
 ## VL-03-PERF: mint ONE light-bucket alternative for one tile, on first use.
@@ -1823,6 +1874,14 @@ func prune_baked_sources() -> void:
 	## VL-03-PERF: those source ids are gone; their lazy-mint records must not
 	## survive to alias a freshly-registered source at the same id next pass.
 	_minted_light_alts.clear()
+	## D33 Part 1: damage composite pages were just removed above (their ids
+	## live in _baked_source_ids too — see register_damage_composite_page()).
+	## The cache's own bookkeeping (Dictionary entries, in-memory Image pages)
+	## is a separate object the loop above never touches; reset it here so the
+	## next build_from_layout() pass starts genuinely empty instead of
+	## resolving stale (source_id, atlas_coords) pairs that no longer exist.
+	if _damage_composite_cache != null:
+		_damage_composite_cache.reset()
 
 
 func _to_string() -> String:

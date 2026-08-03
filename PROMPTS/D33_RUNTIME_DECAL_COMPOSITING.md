@@ -1,10 +1,10 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** ✅ **VIABLE — the Part 0 kill was WRONG and is retracted (§10).**
-The spike measured a screen-space cache key, which is the wrong key, and the
-wrong key produced the wrong verdict. With a per-view key the cost amortises:
-97% cache hit on returning to a view already seen. §9 is kept verbatim as the
-record of the mistake; **§10 supersedes it.**
+**Status:** 🔶 **Part 1 done (2026-08-03, §5).** Part 0 was viable (§9 wrong,
+§10 corrected); §11 explains why ROTATE-KILL-01 (killed for unrelated
+performance reasons) removed the harder of §10's two open design points.
+**Part 2 — the GDScript compositor and its Python equality proof — is next
+and is the one real remaining risk in this whole plan.**
 
 ---
 
@@ -96,14 +96,48 @@ fallback is §7.
 ## 5. Parts, assuming Part 0 clears
 
 ### Part 1 — The composite cache and its page
-- One `TileSetAtlasSource` backed by a **dynamic page** (start 2048×2048 →
-  64 cols × 56 rows = 3584 slots at 32×36), mirroring how baked pages already
-  work rather than inventing a second mechanism.
-- `DamageCompositeCache`: key `(page_idx, atlas_coords, composite_name)` →
-  slot coords. Owns allocation, eviction (if ever needed) and the reset that
-  `prune_baked_sources()` already does for baked pages.
-- Reuses `register_baked_atlas_page()`'s exact registration shape so light/soot
-  alternatives keep minting lazily through the existing path.
+
+**Status: ✅ DONE 2026-08-03.**
+
+- `godot/scripts/geometry/damage_composite_cache.gd` — `DamageCompositeCache`,
+  a `RefCounted` owned lazily by `VoxelRenderer` (`get_damage_composite_cache()`).
+  Dynamic page, default 2048×2048 (64 cols × 56 rows = 3584 slots at 32×36),
+  overridable so a selftest can force page-overflow without allocating
+  thousands of composites. `store(key, composite_image)` allocates a slot
+  (growing to a new page when full) and blits; a repeat `store()` with an
+  already-seen key is a pure cache hit. `resolve(key)`/`has(key)` mirror
+  `BakedTileLookup.resolve()`'s shape. **Key is a caller-supplied opaque
+  `String`** — this class does not know or care what a key means; Part 3
+  owns constructing one that is base-space + physical-face + decal-name, per
+  §11.
+- `voxel_renderer.gd` gained two new methods, deliberately mirroring
+  `register_baked_atlas_page()`'s shape rather than inventing a second one:
+  `register_damage_composite_page(image)` (registers an empty dynamic
+  `TileSetAtlasSource`, appends to `_baked_source_ids` — same list, same
+  lifetime, same cleanup) and `add_damage_composite_tile(source_id, image,
+  atlas_coords)` (creates one tile + re-uploads the page texture via
+  `ImageTexture.update()`).
+- `prune_baked_sources()` now also resets the damage composite cache — no
+  second cleanup path: the page *sources* die via the existing
+  `_baked_source_ids` loop, and the cache's own bookkeeping (Dictionary +
+  in-memory `Image`s, which that loop can't see) is reset alongside it.
+- **Evidence**: `godot/scripts/tools/damage_composite_cache_selftest.gd`,
+  16/16 PASS — empty-state reporting, idempotent repeat `store()`, two keys
+  landing in distinct slots with verified non-bleeding pixels (read back from
+  the real page `Image`, not assumed), a wrong-sized composite rejected
+  (B6-style `push_error`, state untouched), page overflow at a forced 2-slot
+  page boundary with all three keys still resolving correctly across it,
+  `reset()` clearing state, and — the one that exercises the real integration
+  point, not just the standalone class — `VoxelRenderer.prune_baked_sources()`
+  (`room_builder.gd:716`'s real call site) actually driving the reset.
+  `project_lint`, `check_invariants`, `gen_codemap --check`, `run_selftests`
+  (21/21) all clean.
+- **What Part 1 deliberately does not do**: no pixel compositing (Part 2, the
+  Python↔GDScript shear/alpha-clamp port), no `_set_voxel_cell()` wiring
+  (Part 3 — today's decal path is completely untouched), no real key
+  construction (opaque string, Part 3's job). Rule 8 intact: this only ever
+  registers a `TileSetAtlasSource`; nothing reaches the tilemap except
+  through the same `set_cell()`/`_set_voxel_cell()` seam everything else uses.
 
 ### Part 2 — The GDScript compositor
 - Port `generate_voxel.py`'s three primitives: lateral shear
@@ -322,3 +356,81 @@ Two lessons, recorded because they cost a full spike:
 2. The Director's "*me parece tão trivial*" was the correct instinct. When a
    measured result says an obviously-simple thing is impossible, the measurement
    is the more likely suspect.
+
+---
+
+## 11. Correction — ROTATE-KILL-01 resolves §10's harder open point (2026-08-03)
+
+Same-day follow-on, unrelated in origin: `PROMPTS/ENGINE_PERFORMANCE_REVIEW.md`
+(the Director's whole-engine performance review) measured `_set_perspective()`
+at a flat ~1.3-1.9 s per call with no cheap fix available, and the Director
+ratified killing player rotation entirely — `PerspectivePad` is now gated
+behind `VisionController.dev_vision` (default ON for dev builds, OFF for
+players), commit `ROTATE-KILL-01`. That decision was made purely on
+performance grounds and never mentioned D33 — but it changes this plan's
+constraint directly.
+
+### The mechanical fact that matters here
+
+Verified by grepping every call site of `RoomBuilder.build_from_layout()` in
+`room.gd`: there are exactly two, `load_map()` (`room.gd:551`, the one-time
+initial load) and `_set_perspective()` (`room.gd:1145`, rotation). With
+rotation gated out of player builds, **a player session never calls
+`build_from_layout()` a second time.** The room is built once per mission and
+never rebuilt until the next `load_map()` (a genuinely new map/mission, which
+should invalidate every cache anyway — that was always going to be true).
+
+### What this resolves
+
+§10 left two open points for Part 1. One is unaffected; the other is now moot
+for the case that matters:
+
+- **"The composite cache must outlive the room rebuild"** (§10, "Still
+  unmeasured, and it is a real design point") — **moot for players.**
+  `_baked_source_ids` is cleared and every `Voxel` is rebuilt only when
+  `build_from_layout()` runs, and that no longer happens mid-session. A plain
+  in-memory cache scoped to the loaded room's lifetime (built lazily as cells
+  take damage, discarded whole on the next `load_map()`) is now sufficient —
+  no invalidate-on-rotation logic to design, because there is no rotation to
+  invalidate against.
+- **The memory ceiling** (§10, "the real binding constraint") — recalculated,
+  not just discounted. §10's worst case was `damaged cells × views visited ×
+  4.6 KB` ≈ **54 MB** at 2955 cells across 4 views. With exactly one view ever
+  rendered for a player, the multiplier is 1, not 4: **≈13.6 MB** at the same
+  2955-cell worst case — comfortably inside the 75.9 MB bake budget D21
+  measured, with no eviction policy required for correctness. A cap is still
+  cheap insurance, but Part 1 no longer has to design one to ship.
+- **What does NOT change**: S1 (0.31 ms / 1.10 ms per composite, §9) is
+  unaffected by any of this, and Part 2's real open risk — porting the
+  shear/alpha-clamp math from `generate_voxel.py` to GDScript and proving
+  numeric equality — has nothing to do with rotation either. That is still
+  the one genuinely unproven step in this whole plan.
+
+### What still needs a per-view-shaped key, and why
+
+`DEV_VISION` keeps `_set_perspective()` alive for QA (ROTATE-KILL-01's own
+design — a visibility gate, not a removal). A developer can still rotate, and
+§10's finding stands unchanged: the same physical edge shows a genuinely
+different face under a different view, so a naive "one composite per voxel,
+full stop" cache would show a stale or wrong face if a dev rotates after
+damage. The key still needs a face/orientation component, not just
+`(grid_pos, level)` — it just no longer needs to *survive being rebuilt*,
+because for the one case that has to be fast (the player), the face never
+changes at all. Concretely: key on **base-space voxel identity + the
+resolved face + decal name** — `(container_id, grid_pos, level, face,
+decal_name)`, sourced from the exact fields `process_dirty()` already passes
+around (`voxel_renderer.gd:1438`: `edge`, `voxel_xy`, `slice.face`) rather
+than anything screen-space. For a player this key never repeats under a
+different face (no rotation to produce one); for a dev rotating in
+DEV_VISION, a face change is a genuinely new key, correctly recomposited —
+same behaviour as before, just no longer perf-critical since it only fires
+under a debug toggle.
+
+### Net effect on Part 1's scope
+
+D33 was "✅ viable, with two open design problems for Part 1." One is now
+solved by a decision made for a different reason; the other (memory) has a
+comfortable margin instead of needing an eviction subsystem. **Part 1 is
+lower-risk than it looked on 2026-08-03 morning, unchanged in what it still
+owes: the base-space key design above, and Part 2's Python↔GDScript equality
+proof.**

@@ -86,7 +86,13 @@ MATERIALS: dict[str, tuple[int, int, int]] = {
 # IMPACT_OUTPUT_DIR at these exact filenames — zero code changes on swap.
 # Glass is excluded: it has no DENTED/CRACKED tier by design.
 # ---------------------------------------------------------------------------
-IMPACT_OUTPUT_DIR = Path("ASSETS/ISOMETRIC/source_assets/voxels/impact_marks")
+VOXEL_ROOT = Path("ASSETS/ISOMETRIC/source_assets/voxels")
+# ASSET-LAYOUT-01 (Director, 2026-08-02) — split by what the pipeline DOES with
+# a file. materials/halves/decals are INPUTS the generator never overwrites;
+# composites/ is a pure derivative, always rebuilt. See the tree's README.md.
+MATERIAL_OUTPUT_DIR = VOXEL_ROOT / "materials"
+HALF_OUTPUT_DIR = VOXEL_ROOT / "halves"
+IMPACT_OUTPUT_DIR = VOXEL_ROOT / "composites"
 IMPACT_MATERIALS: list[str] = ["concrete", "metal", "stone", "wood"]
 
 # Top-face diamond center (TILE_W/2, TILE_H/2) = (16, 8); radii kept small
@@ -426,7 +432,7 @@ DECAL_AUTHOR_SIZE = TEX_AUTHORING_N * DECAL_AUTHOR_MULTIPLE   # 256, square
 DECAL_AUTHOR_W = DECAL_AUTHOR_SIZE
 DECAL_AUTHOR_H = DECAL_AUTHOR_SIZE
 
-DECAL_DIR = IMPACT_OUTPUT_DIR / "decals"
+DECAL_DIR = VOXEL_ROOT / "decals"
 DECAL_TEMPLATE_NAME = f"TEMPLATE_decal_{DECAL_AUTHOR_W}x{DECAL_AUTHOR_H}.png"
 DECAL_NAME = "decal_%s_%s_%d.png"           # family, material, variant
 DECAL_FAMILIES: tuple[str, ...] = ("bullet", "dent", "crack")
@@ -443,6 +449,7 @@ HALF_NAME = "voxel_%s_half_%s.png"          # material, side
 HALF_SIDES: tuple[str, ...] = ("left", "right", "top", "bottom")
 
 MANIFEST_NAME = "manifest.json"
+MANIFEST_DIR = VOXEL_ROOT
 
 # Decal targets as (origin, u_end, v_end, native): u runs along the face's own
 # horizontal edge, v straight down it, and `native` is that face's size in FLAT
@@ -830,7 +837,7 @@ GROUND_MATERIALS: dict[str, tuple[int, int, int]] = {
 # ---------------------------------------------------------------------------
 # Output (relativo à raiz do projecto)
 # ---------------------------------------------------------------------------
-OUTPUT_DIR = Path("ASSETS/ISOMETRIC/source_assets/voxels")
+OUTPUT_DIR = MATERIAL_OUTPUT_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -916,6 +923,7 @@ def main() -> None:
     # D22 — impact-mark placeholders (dented/cracked), one pair per non-glass
     # wall material, built from each material's own base atom above.
     IMPACT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     impact_count = 0
     for material in IMPACT_MATERIALS:
         base_img = generate_voxel_atom(MATERIALS[material])
@@ -945,7 +953,7 @@ def main() -> None:
     # only baked into the composites) so the Director can see exactly what the
     # real per-material art has to replace.
     generic_broken = generate_broken_face()
-    generic_path = IMPACT_OUTPUT_DIR / (BROKEN_FACE_TEMPLATE % "generic")
+    generic_path = DECAL_DIR / (BROKEN_FACE_TEMPLATE % "generic")
     generic_broken.save(generic_path, "PNG")
     print(f"  ✓ {generic_path}  (generic broken-face fallback)")
 
@@ -955,7 +963,7 @@ def main() -> None:
         # Per-material override if the Director has dropped real art in;
         # otherwise every material shares the generic fracture, which is the
         # whole point of decoupling it from the material colour.
-        override = IMPACT_OUTPUT_DIR / (BROKEN_FACE_TEMPLATE % material)
+        override = DECAL_DIR / (BROKEN_FACE_TEMPLATE % material)
         broken_img = Image.open(override).convert("RGBA") if override.exists() else generic_broken
         for variant in DENTED_VARIANTS:
             img = generate_dented_voxel(base_img, broken_img, variant)
@@ -973,7 +981,7 @@ def main() -> None:
     # generic earth (the broken face dominates the read), not as one specific
     # of the 8 floor variants.
     earth_base = generate_voxel_atom(EARTH_VARIANTS[0])
-    earth_override = IMPACT_OUTPUT_DIR / (BROKEN_FACE_TEMPLATE % "earth")
+    earth_override = DECAL_DIR / (BROKEN_FACE_TEMPLATE % "earth")
     earth_broken = Image.open(earth_override).convert("RGBA") if earth_override.exists() else generic_broken
     img = generate_dented_voxel(earth_base, earth_broken, "top")
     path = IMPACT_OUTPUT_DIR / "voxel_earth_blast_dented_top.png"
@@ -1004,6 +1012,7 @@ def build_decal_family() -> None:
     rewritten.
     """
     DECAL_DIR.mkdir(parents=True, exist_ok=True)
+    HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     template_path = DECAL_DIR / DECAL_TEMPLATE_NAME
     generate_decal_template().save(template_path, "PNG")
@@ -1034,7 +1043,7 @@ def build_decal_family() -> None:
     written_halves = 0
     for material in IMPACT_MATERIALS:
         for side in HALF_SIDES:
-            path = IMPACT_OUTPUT_DIR / (HALF_NAME % (material, side))
+            path = HALF_OUTPUT_DIR / (HALF_NAME % (material, side))
             if path.exists():
                 halves[(material, side)] = Image.open(path).convert("RGBA")
                 kept_halves += 1
@@ -1044,7 +1053,7 @@ def build_decal_family() -> None:
             halves[(material, side)] = img
             written_halves += 1
     print(f"  ✓ {written_halves} half voxel(s) written, "
-          f"{kept_halves} authored half voxel(s) kept → {IMPACT_OUTPUT_DIR}/")
+          f"{kept_halves} authored half voxel(s) kept → {HALF_OUTPUT_DIR}/")
 
     composites = 0
     for material in IMPACT_MATERIALS:
@@ -1116,7 +1125,7 @@ def build_decal_family() -> None:
     # visibly two systems in one shot. Only the `dent` family applies: floors
     # take no bullets (D32.4) and have no crack tier (crack_factor 0.0).
     earth_atom = generate_voxel_atom(EARTH_VARIANTS[0])
-    earth_half_path = IMPACT_OUTPUT_DIR / (HALF_NAME % ("earth", "top"))
+    earth_half_path = HALF_OUTPUT_DIR / (HALF_NAME % ("earth", "top"))
     if earth_half_path.exists():
         earth_half = Image.open(earth_half_path).convert("RGBA")
     else:
@@ -1158,7 +1167,7 @@ def build_decal_family() -> None:
             "blast_cracked_all": {"sides": ["all"], "variants": True},
         },
     }
-    manifest_path = IMPACT_OUTPUT_DIR / MANIFEST_NAME
+    manifest_path = MANIFEST_DIR / MANIFEST_NAME
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"  ✓ {manifest_path}  (runtime variant discovery)")
 

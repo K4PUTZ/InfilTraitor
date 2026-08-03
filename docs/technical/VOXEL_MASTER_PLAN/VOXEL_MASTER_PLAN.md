@@ -587,7 +587,7 @@ reveal would require a full LOS recomputation and is deferred to a future phase.
 
 | Script | Output | Description |
 |--------|--------|-------------|
-| `generate_voxel.py` | `source_assets/voxels/voxel_base.png` | 32×36 neutral voxel atom |
+| `generate_voxel.py` | `source_assets/voxels/materials/voxel_<material>.png` | 32×36 neutral voxel atom |
 | `generate_voxel_variants.py` | `voxel_concrete.png`, `voxel_metal.png`, etc. | Material-tinted variants |
 | `generate_voxel_damaged.py` | `voxel_{mat}_cracked.png` | Pre-authored crack overlay atoms |
 

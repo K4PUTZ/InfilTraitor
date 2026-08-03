@@ -14,7 +14,7 @@ class_name EarthVariantSelector
 
 const VARIANT_COUNT: int = 8
 
-const ASSET_PATH_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_earth_%d.png"
+const ASSET_PATH_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_earth_%d.png"
 
 
 ## Deterministic variant index in [0, VARIANT_COUNT) for one voxel position.

@@ -16,7 +16,7 @@ extends SceneTree
 
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
-const MANIFEST_PATH := "res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/manifest.json"
+const MANIFEST_PATH := "res://ASSETS/ISOMETRIC/source_assets/voxels/manifest.json"
 
 var passed: int = 0
 var failed: int = 0
@@ -106,7 +106,7 @@ func test_every_decal_name_has_an_asset() -> void:
 ## A drift between them fails as a silent MATERIALS.find() miss at runtime, so
 ## it is asserted rather than trusted.
 func test_manifest_agrees_with_the_renderer() -> void:
-	print("[2] impact_marks/manifest.json agrees with VoxelRenderer's constants\n")
+	print("[2] voxels/manifest.json agrees with VoxelRenderer's constants\n")
 
 	if not FileAccess.file_exists(MANIFEST_PATH):
 		_fail("manifest.json missing at %s — run tools/asset_generation/generate_voxel.py" % MANIFEST_PATH)

@@ -198,7 +198,7 @@ The complete audit was performed by `godot/scripts/tools/tile_anatomy_audit.gd` 
 
 ## TASK 1: REAL ATOM CANVAS
 
-Loading: res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_concrete.png
+Loading: res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_concrete.png
   • Dimensions: 32×36
   ✓ Dimensions match expected (32×36)
   • Alpha histogram:
@@ -208,7 +208,7 @@ Loading: res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_concrete.png
     Partial/edge (0.01 ≤ α ≤ 0.99):      8 pixels
     Opaque ratio: 78.6%
 
-Loading: res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_metal.png
+Loading: res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_metal.png
   • Dimensions: 32×36
   ✓ Dimensions match expected (32×36)
   • Alpha histogram:

@@ -85,7 +85,7 @@ const BASE_MATERIALS: Array[String] = [
 ## Director's explicit call on 2026-08-02 ("vidro e tijolo deixa pra depois").
 const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
 ## Fixed at three by the Director, same session. Must match `variant_count` in
-## impact_marks/manifest.json — asserted by voxel_decal_selftest.gd rather than
+## voxels/manifest.json — asserted by voxel_decal_selftest.gd rather than
 ## trusted, because a mismatch fails as a silent MATERIALS.find() miss.
 const IMPACT_DECAL_VARIANTS: int = 3
 ## Every ground material's dent routes to this one shared asset (D26), so the
@@ -144,7 +144,21 @@ static func impact_decal_names(material: String) -> Array[String]:
 	return names
 
 ## Voxel asset path template
-const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
+## ASSET-LAYOUT-01 (Director, 2026-08-02) — the voxel source tree is split by
+## WHAT THE PIPELINE DOES WITH A FILE, not by what it depicts:
+##
+##   materials/   one whole voxel per material            INPUT  (never overwritten)
+##   halves/      the four carved substrates per material INPUT  (generated if absent)
+##   decals/      the marks + broken faces + template     INPUT  (never overwritten)
+##   composites/  material|half x decal                   OUTPUT (always rebuilt)
+##
+## The rule is worth the folders: everything in the first three is authorable and
+## the generator refuses to clobber it, everything in the last is a pure
+## derivative that can be deleted and rebuilt at any time. It also makes D33
+## (moving compositing to load time) a folder deletion instead of a 126-file
+## audit. Full layout: ASSETS/ISOMETRIC/source_assets/voxels/README.md.
+const VOXEL_ASSET_ROOT: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/"
+const VOXEL_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "materials/voxel_%s.png"
 
 ## D22: impact-mark pseudo-materials load from their own folder, not
 ## alongside the base material atoms — the Director's dedicated drop point
@@ -152,7 +166,7 @@ const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxel
 ## produced; placeholder vector marks live here meanwhile (generate_voxel.py).
 ## _IMPACT_SUFFIXES below is also what _set_voxel_cell() checks to bypass the
 ## baked-lookup branch for these pseudo-materials.
-const IMPACT_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"
+const IMPACT_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "composites/voxel_%s.png"
 ## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
 ## they match the first two suffixes below without needing their own entries.
 ## D25's carved half-voxels do NOT — they end in the carved side — so each of
@@ -286,7 +300,7 @@ static func _decal_material(base_material: String, damage_state: int,
 ## ever carving BOTTOM). Every ground material shares it, which is D25's existing
 ## rule rather than a shortcut for floors: the broken face is deliberately
 ## decoupled from material colour, "one generic grey fracture serves every
-## material", overridable per material by dropping a file in impact_marks/.
+## material", overridable per material by dropping a file in decals/.
 ##
 ## This is what keeps the zoned/baked branch honest. A zoned floor composing
 ## "ground_concrete_blast_dented_top" would miss MATERIALS entirely, and

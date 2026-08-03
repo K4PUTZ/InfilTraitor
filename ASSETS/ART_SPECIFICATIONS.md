@@ -208,7 +208,7 @@ same division of labour `bake_compositor.gd` already has with facades.
 
 | Property | Specification |
 |---|---|
-| File | `ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/decals/decal_<family>_<material>_<n>.png` |
+| File | `ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png` |
 | Dimensions | **256×256 px, square** — 16× the pinned `TEX_AUTHORING_N` density |
 | Aspect | **Square, always.** A voxel face is square in flat space. The ×20/16 vertical stretch onto a lateral face is applied by the generator, never by the art (§1) |
 | Alpha | **Required.** The decal is a mark on a face, not a face — everything outside the mark is transparent. Its alpha is clamped to the substrate's silhouette on composite (invariant B3): a decal can never enlarge a voxel |
@@ -259,9 +259,15 @@ dented tiers. Like the decals, they are only written **if absent** — dropping
 hand-made art at the same filename makes the generator build around it instead
 of overwriting it.
 
-`impact_marks/manifest.json` is the machine-readable copy of the counts above
+`voxels/manifest.json` is the machine-readable copy of the counts above
 and is what runtime reads for variant discovery — never a directory scan,
 which does not survive export packing.
+
+The voxel source tree is split by what the pipeline does with a file —
+`materials/` and `halves/` and `decals/` are INPUTS the generator never
+overwrites, `composites/` is a pure derivative that is always rebuilt. The rule
+and the reasoning live in that tree's own
+`ASSETS/ISOMETRIC/source_assets/voxels/README.md` (ASSET-LAYOUT-01).
 
 **After dropping new art**, run the generator and let Godot reimport before
 launching, or the new PNGs fail to load and every affected voxel hard-errors at

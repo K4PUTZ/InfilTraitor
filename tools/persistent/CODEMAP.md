@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**166 scripts · 37514 lines total** (under `godot/scripts/`)
+**166 scripts · 37528 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1817 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1831 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1245,7 +1245,7 @@ extends `Node2D` · 43 lines
 - `PAGE_TILE_COLS` = `128`
 - `PAGE_H` = `576`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood", "ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
+- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
 
 ---
 
@@ -1459,7 +1459,7 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `VARIANT_COUNT` = `8`
-- `ASSET_PATH_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_earth_%d.png"`
+- `ASSET_PATH_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_earth_%d.png"`
 
 ---
 
@@ -2123,7 +2123,7 @@ extends `SceneTree` · 338 lines
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
+- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 
 **Public vars**
@@ -2812,7 +2812,7 @@ extends `MainLoop` · 298 lines
 
 **Constants / tuning**
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"`
+- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
 - `FACADE_BASE_PATH` = `"res://ASSETS/TEXTURES/defaults/facade_"`
 - `EXPECTED_VOXEL_W` = `32`
 - `EXPECTED_VOXEL_H` = `36`
@@ -2853,7 +2853,7 @@ extends `SceneTree` · 390 lines
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `MANIFEST_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/manifest.json"`
+- `MANIFEST_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/manifest.json"`
 
 **Public vars**
 - `var passed: int = 0`

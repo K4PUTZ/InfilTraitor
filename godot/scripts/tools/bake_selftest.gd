@@ -12,7 +12,7 @@ const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolv
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
-const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
+const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
 
 class SimplePattern:

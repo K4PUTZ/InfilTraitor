@@ -57,7 +57,7 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
 	"ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]
-const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
+const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
 ## atoms are no longer individually materialized on the hot path.

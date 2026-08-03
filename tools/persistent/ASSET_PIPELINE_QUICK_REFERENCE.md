@@ -10,28 +10,48 @@ Voxel and TileSet generation workflow.
 Asset Source                  Generator              Output TileSet              In-Game
 ────────────────────────────────────────────────────────────────────────────────────────
 PNG voxel atoms       →  generate_voxel.py     →  built in memory at    →  Voxel walls
-(source_assets/voxels/)    (32×36 per material)    room load (32×16)        (VoxelRenderer)
+(voxels/materials/)        (32×36 per material)    room load (32×16)        (VoxelRenderer)
+
+decals/ + halves/     →  generate_voxel.py     →  same in-memory TileSet →  Damage marks
+(what you paint)           (shear + composite)     (composites/, D32)
 
 Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   →  Floor, props
 (source_assets/generated/)  (no wall series)        (256×128 tile_size)
 ```
 
 Voxel atoms have no `.tres` output — `VoxelRenderer._build_voxel_tileset()`
-scans `source_assets/voxels/` and builds the TileSet in memory on every room
+reads `source_assets/voxels/` and builds the TileSet in memory on every room
 load. No separate build step, no baked resource on disk.
 
 ---
 
 ## Voxel Asset Pipeline (VOXEL series)
 
-**Asset directory:**
+**Asset directory** (ASSET-LAYOUT-01, Director 2026-08-02 — split by what the
+pipeline DOES with a file, not by what it depicts; full rule in that tree's own
+`README.md`):
 ```
 ASSETS/ISOMETRIC/source_assets/voxels/
-├── voxel_concrete.png     ← 32×36 px atom
-├── voxel_metal.png        (16 px top face + 20 px side face)
-├── voxel_stone.png
-└── voxel_wood.png
+├── materials/     INPUT   one 32×36 atom per material (16 px top + 20 px side)
+├── halves/        INPUT   carved substrates, 4 per material (left/right/top/bottom)
+├── decals/        INPUT   the marks you paint, 256×256 RGBA (+ broken faces, template)
+├── composites/    OUTPUT  material|half × decal — always rebuilt, safe to delete
+└── manifest.json  OUTPUT  counts; what runtime reads for variant discovery
 ```
+
+INPUT folders are never overwritten by the generator: drop art at an existing
+filename and re-run it, and `composites/` is rebuilt around your file. **After
+adding or replacing any PNG, run `--import`** — an unimported asset is a hard
+`push_error` at boot (B6), never a silent fallback:
+
+```bash
+python3 tools/asset_generation/generate_voxel.py
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
+```
+
+There is deliberately **no `bakes/` folder** — no baked voxel exists on disk;
+`BakeSystem` composes atlas pages in memory from `ASSETS/TEXTURES/defaults/`.
+The files in `composites/` are pre-composited atoms, not bakes.
 
 ### Voxel Atom Anatomy
 

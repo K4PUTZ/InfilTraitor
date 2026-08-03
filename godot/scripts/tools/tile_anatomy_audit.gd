@@ -7,7 +7,7 @@ extends MainLoop
 
 # Voxel materials list
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
-const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_"
+const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 const FACADE_BASE_PATH = "res://ASSETS/TEXTURES/defaults/facade_"
 
 # Expected constants (from geometry_coords.gd)

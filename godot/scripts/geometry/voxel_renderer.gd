@@ -45,7 +45,14 @@ const VOXEL_SOURCE_ID: int = 0
 ## family (irregular chip/crack), never the bullet's round puncture. Same
 ## append-only mechanism, same folder, just a `_blast_` infix so both families
 ## sit side by side — see damage_variant_material()'s blast_sourced parameter.
-const MATERIALS: Array[String] = [
+## D32 (Director diagrams, 2026-08-02): the decal-composited impact family is
+## APPENDED to this list by _static_init() instead of being typed out — 103
+## names built from (material x tier x side x variant) is exactly the kind of
+## list that rots when edited by hand, and the generator builds its filenames
+## from the same three axes. The literal list below stays the literal list: it
+## is the historical prefix, and MATERIALS is append-only (source_id == index),
+## so every id already minted keeps its value.
+const BASE_MATERIALS: Array[String] = [
 	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
 	"concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked",
@@ -72,6 +79,61 @@ const MATERIALS: Array[String] = [
 	## index).
 	"earth_blast_dented_top",
 ]
+
+## D32 — the four wall materials the Director authors decals for. Glass is
+## absent by D22 (DESTROYED-only) and brick is deferred; both were the
+## Director's explicit call on 2026-08-02 ("vidro e tijolo deixa pra depois").
+const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
+## Fixed at three by the Director, same session. Must match `variant_count` in
+## impact_marks/manifest.json — asserted by voxel_decal_selftest.gd rather than
+## trusted, because a mismatch fails as a silent MATERIALS.find() miss.
+const IMPACT_DECAL_VARIANTS: int = 3
+## Every ground material's dent routes to this one shared asset (D26), so the
+## floor family is built on "earth" and needs only the blast/dent/top corner of
+## the matrix: floors take no bullets (D32.4) and have no crack tier.
+const IMPACT_FLOOR_MATERIAL: String = "earth"
+
+## Built by _static_init(); see BASE_MATERIALS above for why it is not a const.
+static var MATERIALS: Array[String] = []
+
+
+static func _static_init() -> void:
+	MATERIALS = BASE_MATERIALS.duplicate()
+	for material in IMPACT_DECAL_MATERIALS:
+		for name in impact_decal_names(material):
+			if not MATERIALS.has(name):
+				MATERIALS.append(name)
+	for name in impact_decal_names(IMPACT_FLOOR_MATERIAL):
+		if not MATERIALS.has(name):
+			MATERIALS.append(name)
+
+
+## D32 — every decal-composited pseudo-material name for `material`, in a fixed
+## order so source ids are reproducible across runs.
+##
+## `_blast_dented_bottom` carries NO variant: a ceiling half voxel is silhouette
+## only (an isometric camera never sees a voxel's underside), so there is no
+## decal on it and nothing for a variant to vary. It is also already present in
+## BASE_MATERIALS from D25 — same name, same asset, same meaning — which is why
+## _static_init() de-duplicates instead of appending blindly.
+##
+## The floor material gets only the blast/dented/top row; asking for the rest
+## would mint names with no asset behind them, and a missing asset is a
+## push_error at boot (B6), not a silent fallback.
+static func impact_decal_names(material: String) -> Array[String]:
+	var names: Array[String] = []
+	var is_floor: bool = material == IMPACT_FLOOR_MATERIAL
+	for variant in range(IMPACT_DECAL_VARIANTS):
+		if not is_floor:
+			for side in ["left", "right"]:
+				names.append("%s_bullet_cracked_%s_%d" % [material, side, variant])
+				names.append("%s_bullet_dented_%s_%d" % [material, side, variant])
+				names.append("%s_blast_dented_%s_%d" % [material, side, variant])
+			names.append("%s_blast_cracked_all_%d" % [material, variant])
+		names.append("%s_blast_dented_top_%d" % [material, variant])
+	if not is_floor:
+		names.append("%s_blast_dented_bottom" % material)
+	return names
 
 ## Voxel asset path template
 const VOXEL_ASSET_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"
@@ -107,6 +169,13 @@ const _CARVED_SIDE_SUFFIX: Dictionary = {
 ## rather than a real base material? Used both to pick the asset folder at
 ## boot and to bypass the baked-lookup branch at render time.
 static func _is_impact_mark(material_name: String) -> bool:
+	## D32: the decal family's names all carry a `_bullet_`/`_blast_` infix and
+	## END in a side or a variant index, so the suffix list below can no longer
+	## recognise them on its own. Checking the infix first covers every D32 name
+	## and every D23 blast name in one test; the suffix loop still covers D22's
+	## original bullet pair ("<material>_dented"/"_cracked"), which has neither.
+	if material_name.contains("_bullet_") or material_name.contains("_blast_"):
+		return true
 	for suffix in _IMPACT_SUFFIXES:
 		if material_name.ends_with(suffix):
 			return true
@@ -125,10 +194,31 @@ static func _is_impact_mark(material_name: String) -> bool:
 ## ("o voxel fica com metade em alpha e acrescenta uma face pre-baked").
 ## carved_side is Voxel.CarvedSide in VIEW space; CarvedSide.NONE (no epicentre
 ## bias available) keeps the flat pre-D25 mark rather than guessing a side.
-## CRACKED and the bullet-sourced marks are deliberately untouched here — the
-## Director is specifying their own analogous mechanisms separately.
+## D32 (Director diagrams, 2026-08-02) — the decal family supersedes all of the
+## above for the four materials that have one, and the rules it encodes are the
+## Director's placement rules, not conveniences:
+##
+##   - a BULLET marks exactly the ONE lateral face it struck, never a top face
+##     (the bug this replaces: D22's art put the hole on the top diamond, so
+##     every firearm hit on a wall painted its bullet hole on the roof);
+##   - a CRACKED voxel wears its decal on ALL THREE visible faces, so the
+##     `_all` name takes no side at all — "não existe voxel rachado só em uma
+##     face";
+##   - a ceiling's `_bottom` carve takes no variant, because it carries no
+##     decal to vary.
+##
+## Anything that does not resolve to a real MATERIALS entry falls back to the
+## pre-D32 name rather than being returned unchecked. That guard is load-bearing:
+## _set_voxel_cell()'s MATERIALS.find() returns -1 for an unknown name and -1
+## silently becomes source_id 0, repainting the voxel as flat "concrete" — the
+## exact failure D26 hit on zoned floors.
 static func damage_variant_material(base_material: String, damage_state: int,
-		blast_sourced: bool = false, carved_side: int = Voxel.CarvedSide.NONE) -> String:
+		blast_sourced: bool = false, carved_side: int = Voxel.CarvedSide.NONE,
+		variant: int = 0) -> String:
+	var decal := _decal_material(base_material, damage_state, blast_sourced,
+		carved_side, variant)
+	if decal != "":
+		return decal
 	var infix := "_blast" if blast_sourced else ""
 	match damage_state:
 		Voxel.DamageState.DENTED:
@@ -139,6 +229,47 @@ static func damage_variant_material(base_material: String, damage_state: int,
 			return base_material + infix + "_cracked"
 		_:
 			return base_material
+
+
+## D32 — the decal-family name for this (material, tier, cause, side, variant),
+## or "" when the combination has no decal asset and the caller should fall back.
+##
+## Returning "" rather than a composed-but-missing name is the whole point: this
+## function is the only place that knows which corners of the matrix were
+## actually generated, so every miss is caught here instead of reaching
+## MATERIALS.find() and turning into source_id 0.
+static func _decal_material(base_material: String, damage_state: int,
+		blast_sourced: bool, carved_side: int, variant: int) -> String:
+	if not IMPACT_DECAL_MATERIALS.has(base_material) \
+			and base_material != IMPACT_FLOOR_MATERIAL:
+		return ""
+	var v: int = posmod(variant, IMPACT_DECAL_VARIANTS)
+	var composed := ""
+	match damage_state:
+		Voxel.DamageState.CRACKED:
+			## A blast cracks the whole voxel — one name, no side (D32.3). A
+			## bullet cracks the one face it hit, so a bullet with no known side
+			## has nothing to render and falls through to the legacy mark.
+			if blast_sourced:
+				composed = "%s_blast_cracked_all_%d" % [base_material, v]
+			elif _CARVED_SIDE_SUFFIX.has(carved_side):
+				composed = "%s_bullet_cracked%s_%d" % [
+					base_material, String(_CARVED_SIDE_SUFFIX[carved_side]), v]
+		Voxel.DamageState.DENTED:
+			if not _CARVED_SIDE_SUFFIX.has(carved_side):
+				return ""
+			var side := String(_CARVED_SIDE_SUFFIX[carved_side])
+			if blast_sourced:
+				## The ceiling carve is silhouette-only and therefore variantless.
+				composed = "%s_blast_dented_bottom" % base_material \
+					if carved_side == Voxel.CarvedSide.BOTTOM \
+					else "%s_blast_dented%s_%d" % [base_material, side, v]
+			else:
+				composed = "%s_bullet_dented%s_%d" % [base_material, side, v]
+		_:
+			return ""
+	return composed if composed != "" and MATERIALS.has(composed) else ""
+
 
 ## FLOOR-DENT-01 (2026-08-01) — which material a damaged FLOOR voxel renders as.
 ##
@@ -158,10 +289,12 @@ static func damage_variant_material(base_material: String, damage_state: int,
 ##
 ## Returns "" when there is no floor damage variant (INTACT, or a tier with no
 ## floor asset), meaning "keep whatever material you were going to use".
-static func floor_damage_material(damage_state: int, is_blast: bool, carved_side: int) -> String:
+static func floor_damage_material(damage_state: int, is_blast: bool, carved_side: int,
+		variant: int = 0) -> String:
 	if damage_state == Voxel.DamageState.INTACT or damage_state == Voxel.DamageState.DESTROYED:
 		return ""
-	var composed := damage_variant_material("earth", damage_state, is_blast, carved_side)
+	var composed := damage_variant_material(IMPACT_FLOOR_MATERIAL, damage_state,
+		is_blast, carved_side, variant)
 	return composed if MATERIALS.has(composed) else ""
 
 
@@ -760,7 +893,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
+			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 
 
@@ -1279,7 +1412,7 @@ func process_dirty(registry: EdgeRegistry) -> void:
 				# Update cell state based on voxel visibility
 				if voxel.visible:
 					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
+					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 				else:
 					# Clear cell
@@ -1333,14 +1466,14 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 					var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
 					## D22: the substitution tags CEILING/INTERIOR exactly like a
 					## wall (apply_container_damage).
-					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side)
+					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 					## FLOOR-DENT-01: a zoned floor has no per-zone damage bake —
 					## its dents route to the shared carved-TOP asset instead of
 					## composing a "ground_*_blast_dented_top" name that MATERIALS
 					## does not hold (which would repaint the voxel flat concrete).
 					if is_zoned_floor:
 						var floor_damaged := floor_damage_material(voxel.damage_state,
-							voxel.damage_is_blast, voxel.damage_carved_side)
+							voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 						if floor_damaged != "":
 							render_material = floor_damaged
 					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
@@ -1351,7 +1484,7 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 					## was unreachable for damage before (craters only destroyed)
 					## and would silently repaint a dent as intact ground.
 					var earth_material := floor_damage_material(voxel.damage_state,
-						voxel.damage_is_blast, voxel.damage_carved_side)
+						voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 					if earth_material == "":
 						earth_material = "earth_%d" % EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
 					_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)

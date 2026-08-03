@@ -131,6 +131,18 @@ Named pains:
 | **D28** | **A bullet mark exists ONLY at a projectile's own impact voxel — never on neighbours, never scattered across a ring.** *(Director, 2026-07-30.)* *"Os buracos de bala não podem aparecer em qualquer lugar, somente no ponto de impacto de cada projetil."* Neighbouring voxels may still take **soot** (D17, already face-local and derived) but never their own DENTED/CRACKED texture — soot and bullet-mark are different data, D17 already got this right, D22's `apply_container_damage()` did not (it distributes DENTED/CRACKED across a whole ring group). **If the impact voxel is fully DESTROYED, the voxel immediately behind it (the wall's paired slice, `Edge.slice_a_id`/`slice_b_id` — confirmed 2026-07-30 that both slices index `voxels[]` in matching order, same level, same array index, so the "behind" voxel is a direct lookup) becomes a new roll target** — destroyed / dented / cracked / untouched, same three-tier table (D22), same cascade rule recursively. **If a shot fully penetrates (every layer destroyed), there is no mark anywhere on that path** — nothing stopped there to leave one, per *"se o tiro atravessar a parede não tem marca de bala porque ela continuou o caminho."* **Shipped same day** as `BlastCalculator.apply_point_impact()`. | ✅ Ratified & shipped — supersedes D22's ring-group DENTED/CRACKED distribution for CONE/LINE (RADIAL/grenade keeps the ring model; a blast genuinely is an area effect) |
 | **D29** | **Sniper and pistol fire one straight-line projectile each (not a pellet spread), but still miss into a dispersion zone "similar" to the shotgun's, with modifiers — unspecified.** *(Director, 2026-07-30: "vão ter uma trajetória reta, porque os tiros são individuais, mas eles podem errar em uma zona similar à da shotgun, com modificadores. Vamos trabalhar isso melhor depois.")* Explicitly deferred — not this pass. Recorded so `LINE`'s eventual build doesn't silently default to zero spread on a miss. | ⏸ Deferred (explicit) |
 
+**D28 amended 2026-08-02 — WHERE the mark lands, ratified in
+`DESTRUCTION_MASTER_PLAN.md` D32 and not duplicated here.** D28 pinned *which
+voxel* takes a mark and left the face open; the mark was in fact painted on the
+voxel's **top diamond**, so every firearm hit on a wall put its bullet hole on
+the roof. D32 fixes it: a bullet marks exactly the **one lateral face it
+struck**, resolved by `BlastCalculator.carved_side_for()` in screen space — the
+same function the blast side already used — and a firearm hits **walls only**
+this pass (Director: *"vamos simplificar por enquanto e fazer só tiros que
+acertam paredes"*), so no bullet ever reaches a floor or a ceiling. Read D32
+for the decal model, the half-voxel substrates and the placement table; this
+plan owns *what a weapon emits*, never *how the voxel is drawn*.
+
 ### D26-D28 implementation note (2026-07-30) — two real bugs, caught and fixed same day
 
 **`BlastCalculator.select_cone_pellet_impacts()`** replaces the flood-fill for

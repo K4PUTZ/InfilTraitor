@@ -197,7 +197,7 @@ Rule: once the dictionary exists, `BakePolicy` and every other consumer
 
 ---
 
-## 7. Damage Decals (SHIPPED — scaffolding; art pending)
+## 7. Damage Decals (SHIPPED — wired; final art pending)
 
 Impact art for the destruction system. Director diagrams, 2026-08-02.
 
@@ -250,6 +250,21 @@ of overwriting it.
 `impact_marks/manifest.json` is the machine-readable copy of the counts above
 and is what runtime reads for variant discovery — never a directory scan,
 which does not survive export packing.
+
+**After dropping new art**, run the generator and let Godot reimport before
+launching, or the new PNGs fail to load and every affected voxel hard-errors at
+boot (invariant B6 — a missing asset is loud, never a silent fallback):
+
+```
+python3 tools/asset_generation/generate_voxel.py
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
+```
+
+Runtime side (for whoever changes it next): `VoxelRenderer.impact_decal_names()`
+is the single writer of these names, `damage_variant_material()` the single
+reader, and `voxel_decal_selftest.gd` asserts every name it can generate has a
+loadable asset — so adding a corner of the matrix that the generator does not
+produce fails the suite instead of failing on screen.
 
 ---
 

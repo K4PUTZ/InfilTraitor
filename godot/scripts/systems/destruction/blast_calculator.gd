@@ -397,9 +397,19 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 ## an empty array falls back to ShotPunchTable.PENETRATION_FALLOFF, which is
 ## what every non-LINE shape wants, since for those shapes the same table means
 ## distance and has no business attenuating depth.
+## D32 (Director, 2026-08-02) — `shooter_gu` is what finally lets the projectile's
+## mark land on the face it actually struck. Until now this function called
+## set_damage() with no side at all, so `carved_side` stayed NONE and the mark
+## rendered from D22's top-face art: every firearm hit on a wall painted its
+## bullet hole on the voxel's ROOF. The resolution reuses carved_side_for(), the
+## same screen-space test the blast side has used since D25 — a bullet arriving
+## from screen-left marks the SW face — rather than a second, parallel rule that
+## could drift from it. NO_EPICENTER_BIAS keeps the pre-D32 behaviour, which is
+## what every existing selftest passes and why the parameter is trailing.
 static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 		edge_registry: EdgeRegistry, salt: String,
-		step_multipliers: Array = []) -> Array:
+		step_multipliers: Array = [],
+		shooter_gu: Vector2i = NO_EPICENTER_BIAS) -> Array:
 	var touched: Array = []
 	var current_slice := slice
 	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
@@ -412,8 +422,11 @@ static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 		var state: int = ShotPunchTable.damage_state_for(current_punch)
 		if state != Voxel.DamageState.DESTROYED:
 			## CRACKED or DENTED — the projectile's own mark, bullet family
-			## (from_blast stays false, D23).
-			voxel.set_damage(state)
+			## (from_blast stays false, D23), on the face the shot came from
+			## (D32.4), with one of the three authored decals (D32.5).
+			voxel.set_damage(state, false,
+				carved_side_for(voxel.grid_pos, false, shooter_gu),
+				decal_variant_for(salt, voxel_index, depth))
 			break
 		voxel.set_damage(Voxel.DamageState.DESTROYED)
 		var sibling := edge_registry.sibling_slice(current_slice.id)
@@ -608,11 +621,31 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		## family, never the bullet's round puncture.
 		## D25: DENTED additionally carries WHICH SIDE the blast ate, so the
 		## renderer can pick the matching carved half-voxel.
+		## D32.5: the decal variant is drawn from the container's own id plus the
+		## voxel's cell, so two voxels of the same blast rarely share art, and a
+		## re-run of the same detonation reproduces it exactly.
 		for voxel in dent_set:
 			voxel.set_damage(Voxel.DamageState.DENTED, true,
-				carved_side_for(voxel.grid_pos, is_roof, bias_epicenter))
+				carved_side_for(voxel.grid_pos, is_roof, bias_epicenter),
+				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
 		for voxel in crack_set:
-			voxel.set_damage(Voxel.DamageState.CRACKED, true)
+			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
+				decal_variant_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level))
+
+
+## D32.5 — which of the three authored decals a mark uses.
+##
+## Deterministic over the caller's own identifiers, never `randi()`: the same
+## detonation or the same shot reproduces the same art, which is what makes a
+## capture comparable against the next one. The value is STORED on the Voxel
+## (see Voxel.damage_variant) rather than re-derived at paint time, because
+## grid_pos is view-space and re-deriving it would re-roll every mark on
+## rotation.
+static func decal_variant_for(salt: String, a: int, b: int) -> int:
+	var count: int = VoxelRenderer.IMPACT_DECAL_VARIANTS
+	if count <= 1:
+		return 0
+	return FacadeSampler._fnv1a_hash("%s:DECAL:%d:%d" % [salt, a, b]) % count
 
 
 ## D25 (Director diagram, 2026-07-31) — which side of `voxel_cell` faced the
@@ -759,7 +792,8 @@ static func _roll_floor_dent(voxel, container_id: String, d: float,
 	var key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 	var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 	if h < dent_p:
-		voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP)
+		voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
+			decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
 
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): "a segunda camada do chão mais difícil

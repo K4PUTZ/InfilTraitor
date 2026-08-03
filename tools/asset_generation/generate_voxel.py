@@ -1079,6 +1079,34 @@ def build_decal_family() -> None:
             IMPACT_OUTPUT_DIR / f"voxel_{material}_blast_dented_bottom.png", "PNG")
         composites += 1
 
+    # --- The floor's own dent, on "earth".
+    #
+    # NOT one of the Director's four wall materials, and included anyway for one
+    # concrete reason: VoxelRenderer.floor_damage_material() routes EVERY ground
+    # material's dent to this single shared "earth" asset (D26 — a zoned floor
+    # composing "ground_concrete_blast_dented_top" misses MATERIALS and repaints
+    # flat concrete). Leaving it out would put the new decal look on every wall
+    # while every crater rim in the same room kept D25's grey generic fracture —
+    # visibly two systems in one shot. Only the `dent` family applies: floors
+    # take no bullets (D32.4) and have no crack tier (crack_factor 0.0).
+    earth_atom = generate_voxel_atom(EARTH_VARIANTS[0])
+    earth_half_path = IMPACT_OUTPUT_DIR / (HALF_NAME % ("earth", "top"))
+    if earth_half_path.exists():
+        earth_half = Image.open(earth_half_path).convert("RGBA")
+    else:
+        earth_half = generate_half_voxel(EARTH_VARIANTS[0], "top")
+        earth_half.save(earth_half_path, "PNG")
+    for variant in range(DECAL_VARIANT_COUNT):
+        path = DECAL_DIR / (DECAL_NAME % ("dent", "earth", variant))
+        if path.exists():
+            decal = Image.open(path).convert("RGBA")
+        else:
+            decal = generate_decal_placeholder("dent", variant)
+            decal.save(path, "PNG")
+        compose_decal_voxel(earth_half, decal, [_FACE_SUNK_TOP]).save(
+            IMPACT_OUTPUT_DIR / f"voxel_earth_blast_dented_top_{variant}.png", "PNG")
+        composites += 1
+
     print(f"  ✓ {composites} composite(s) → {IMPACT_OUTPUT_DIR}/")
 
     manifest = {
@@ -1093,6 +1121,7 @@ def build_decal_family() -> None:
         },
         "variant_count": DECAL_VARIANT_COUNT,
         "materials": list(IMPACT_MATERIALS),
+        "floor_material": "earth",
         "families": list(DECAL_FAMILIES),
         "composites": {
             "bullet_cracked": {"sides": ["left", "right"], "variants": True},

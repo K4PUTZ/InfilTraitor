@@ -204,11 +204,22 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 	print("[5] FLOOR-DENT — a dented floor voxel places the carved-TOP asset (both branches)\n")
 
-	var expected_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top")
-	if expected_id < 0:
-		_fail("MATERIALS has no 'earth_blast_dented_top' entry — the carved floor asset is unwired")
-		print("")
-		return
+	## D32 (2026-08-02): the carved floor asset is now one of three decal
+	## composites, so the name carries the variant index. The assertion this
+	## test exists for is UNCHANGED — a dented floor voxel must not fall through
+	## to flat concrete — and the variant axis is asserted on top of it: each
+	## variant must place its OWN source id, which is what proves the value
+	## survives Voxel.damage_variant → damage_variant_material() rather than
+	## being quietly dropped somewhere in between.
+	var expected_ids: Array[int] = []
+	for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+		var name := "earth_blast_dented_top_%d" % variant
+		var id: int = VoxelRendererClass.MATERIALS.find(name)
+		if id < 0:
+			_fail("MATERIALS has no '%s' entry — the carved floor asset is unwired" % name)
+			print("")
+			return
+		expected_ids.append(id)
 	var concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
 
 	## material "earth" → the EarthVariantSelector branch;
@@ -222,28 +233,48 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 		var slab := SlabGenerator.generate(Vector2i(0, 0), Slab.Role.FLOOR, 0, material, registry)
 		renderer.render_slab(slab)
 
-		var target: Voxel = slab.voxels[0]
-		target.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP)
-		renderer.process_dirty_slabs(registry)
+		var placed: Array[int] = []
+		for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+			var target: Voxel = slab.voxels[variant]
+			target.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, variant)
+			renderer.process_dirty_slabs(registry)
 
-		var layer: TileMapLayer = renderer.get_layer(0)
-		var actual_id: int = layer.get_cell_source_id(target.grid_pos)
-		if actual_id == expected_id:
-			_pass("%s: dented voxel placed source_id %d (earth_blast_dented_top)" % [material, actual_id])
-		elif actual_id == concrete_id:
-			_fail("%s: dented voxel fell through to source_id %d (concrete) — the silent MATERIALS.find() miss"
-				% [material, actual_id])
+			var layer: TileMapLayer = renderer.get_layer(0)
+			var actual_id: int = layer.get_cell_source_id(target.grid_pos)
+			placed.append(actual_id)
+			if actual_id == expected_ids[variant]:
+				_pass("%s: dented voxel variant %d placed source_id %d (earth_blast_dented_top_%d)"
+					% [material, variant, actual_id, variant])
+			elif actual_id == concrete_id:
+				_fail("%s: dented voxel fell through to source_id %d (concrete) — the silent MATERIALS.find() miss"
+					% [material, actual_id])
+			else:
+				_fail("%s: dented voxel variant %d placed source_id %d, expected %d"
+					% [material, variant, actual_id, expected_ids[variant]])
+
+		## Three distinct ids, not three copies of one — a variant that is read
+		## but ignored downstream would still pass every check above.
+		var distinct: Dictionary = {}
+		for id in placed:
+			distinct[id] = true
+		if distinct.size() == VoxelRendererClass.IMPACT_DECAL_VARIANTS:
+			_pass("%s: the %d variants placed %d distinct source ids"
+				% [material, VoxelRendererClass.IMPACT_DECAL_VARIANTS, distinct.size()])
 		else:
-			_fail("%s: dented voxel placed source_id %d, expected %d" % [material, actual_id, expected_id])
+			_fail("%s: variants collapsed to %d distinct source id(s) — damage_variant is not reaching the renderer"
+				% [material, distinct.size()])
 
 		## A neighbouring INTACT voxel must be untouched by the dent path. Only
 		## "is not the carved asset" is asserted: what an intact ZONED voxel
 		## resolves to depends on bake pages this synthetic fixture never
 		## registers, so its exact id here is a fixture artefact, not a claim
 		## about real rendering.
-		var neighbour: Voxel = slab.voxels[1]
-		var neighbour_id: int = layer.get_cell_source_id(neighbour.grid_pos)
-		if neighbour_id != expected_id:
+		## Index past the voxels the variant loop above damaged — voxels[0..2]
+		## are all DENTED now, so the old voxels[1] would no longer be intact.
+		var neighbour: Voxel = slab.voxels[VoxelRendererClass.IMPACT_DECAL_VARIANTS]
+		var neighbour_layer: TileMapLayer = renderer.get_layer(0)
+		var neighbour_id: int = neighbour_layer.get_cell_source_id(neighbour.grid_pos)
+		if not expected_ids.has(neighbour_id):
 			_pass("%s: the INTACT neighbour was not painted with the carved asset" % material)
 		else:
 			_fail("%s: an INTACT neighbour was also painted with the carved asset" % material)

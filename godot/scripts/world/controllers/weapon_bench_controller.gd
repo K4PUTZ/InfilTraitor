@@ -288,10 +288,14 @@ func fire_active() -> void:
 			weapon_def.punch, slice.material, _agent_skill(),
 			1.0, "%s:%d" % [pellet_salt, i])
 		punch_log.append(snappedf(punch, 0.01))
+		## D32.4: the shooter's GU is what decides WHICH face the mark lands on
+		## — without it apply_point_impact() leaves carved_side NONE and the
+		## bullet hole renders on the voxel's top diamond.
 		var touched := BlastCalculatorClass.apply_point_impact(
 			slice, resolved["voxel_index"], punch,
 			room._edge_registry, "%s:%d" % [pellet_salt, i],
-			weapon_def.step_multipliers if is_line else [])
+			weapon_def.step_multipliers if is_line else [],
+			w["gu_cell"])
 		for v in touched:
 			_index_voxel(cell_to_voxel, v)
 
@@ -316,7 +320,7 @@ func fire_active() -> void:
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
-			av.damage_is_blast, av.damage_carved_side)
+			av.damage_is_blast, av.damage_carved_side, av.damage_variant)
 
 	room._voxel_renderer.process_dirty(room._edge_registry)
 	room._voxel_renderer.process_dirty_slabs(room._slab_registry)

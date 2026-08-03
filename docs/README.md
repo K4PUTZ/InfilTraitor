@@ -22,7 +22,7 @@ docs describing a team, a process, and systems that never existed.
 
 ## The canon — read before touching the render
 
-These four are load-bearing. Contradicting them breaks something that is expensive to find.
+These are load-bearing. Contradicting them breaks something that is expensive to find.
 
 | Doc | Owns |
 |---|---|
@@ -30,6 +30,7 @@ These four are load-bearing. Contradicting them breaks something that is expensi
 | **[DIRECTION_GLOSSARY](DIRECTION_GLOSSARY.md)** | NW/NE/SE/SW, the two coordinate planes, **§10 banned terms** |
 | **[VOXEL_MASTER_PLAN](technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md)** | Voxel geometry: atoms, slices, edges, junctions, coordinate math |
 | **[MAPFILE_REFERENCE](technical/MAPFILE_REFERENCE.md)** | The `.map.json` schema |
+| **[ART_SPECIFICATIONS](../ASSETS/ART_SPECIFICATIONS.md)** | What art must conform to: authoring density, facades, roofs, props, **§7 damage decals** |
 | **[VOXEL_LIGHT_MASTER_PLAN](../PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md)** | Voxel FACE lighting: 12-bucket brightness, blast soot/crater/ember visuals, destruction persistence, rotation perf, **per-face shading (FACE-READ-01/02)** |
 
 ### Master plans

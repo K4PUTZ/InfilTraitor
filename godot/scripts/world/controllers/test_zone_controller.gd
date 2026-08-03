@@ -289,7 +289,7 @@ func detonate_active() -> void:
 			for key in cell_to_voxel:
 				var av: Voxel = cell_to_voxel[key]
 				room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
-					av.damage_is_blast, av.damage_carved_side)
+					av.damage_is_blast, av.damage_carved_side, av.damage_variant)
 
 			room._voxel_renderer.process_dirty(room._edge_registry)
 			room._voxel_renderer.process_dirty_slabs(room._slab_registry)

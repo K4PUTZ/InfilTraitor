@@ -39,11 +39,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- bba7a5a ALPHA FIREARM DESTRUCTION 0.9.87 - LINE delivery, punch coefficient, disc cone, session close
 - e38dd46 ALPHA FACE LIGHT SYSTEM FOUNDATION 0.9.86 - floor dent, guaranteed face separation, session close
 - 253e8cc [DOCS] Session close: weapons bench, arsenal catalog, shot physics, VERSION 0.9.85
 - 0352467 [DOCS] Session close: prop-z + floor-depth decisions, z-slot map, VERSION 0.9.84
 - b68abb8 [VERSION] Bump to 0.9.83
-- 09e03ee [DOCS] Session close: FLOOR-ZONE-BAKE reference, schema tables, VERSION 0.9.82
 <!-- AUTO:END version_history -->
 
 ---

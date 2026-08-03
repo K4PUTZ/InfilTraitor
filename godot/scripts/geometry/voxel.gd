@@ -44,6 +44,17 @@ var damage_is_blast: bool = false
 enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4 }
 var damage_carved_side: int = CarvedSide.NONE
 
+## D32 (Director, 2026-08-02): WHICH of the three authored decals this mark uses
+## — "até 5 variações... se tiver mais, randomiza", fixed at 3 the same session.
+##
+## Stored rather than derived at render time, and that is deliberate. The
+## obvious cheap alternative — hashing the voxel's grid_pos at paint time — is
+## wrong here: grid_pos is VIEW space, so rotating the camera would silently
+## re-roll every mark's art. The damaging caller picks this from its own salt
+## (one roll per projectile, per voxel) and room._base_damage persists it
+## alongside is_blast and the carved side, so a mark keeps its art forever.
+var damage_variant: int = 0
+
 ## Back-reference for dirty propagation. Untyped on purpose: D1
 ## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
 ## (parent = Slice, owned by an Edge) and floor/ceiling/interior voxels (parent =
@@ -76,13 +87,16 @@ func set_visible(v: bool) -> void:
 ## D25: carved_side travels with from_blast for the same reason and under the
 ## same rule — read once, on the transition, so a second blast never rotates an
 ## already-carved voxel's hole to a new side.
+## D32: variant rides the same read-once rule for the same reason — a second
+## hit on an already-marked voxel must not swap the art out from under it.
 func set_damage(new_state: int, from_blast: bool = false,
-		carved_side: int = CarvedSide.NONE) -> void:
+		carved_side: int = CarvedSide.NONE, variant: int = 0) -> void:
 	if damage_state == new_state:
 		return
 	damage_state = new_state
 	damage_is_blast = from_blast
 	damage_carved_side = carved_side
+	damage_variant = variant
 	if new_state == DamageState.DESTROYED:
 		visible = false
 	_set_dirty()

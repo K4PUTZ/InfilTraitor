@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**165 scripts · 36883 lines total** (under `godot/scripts/`)
+**166 scripts · 37409 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -637,7 +637,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 106 lines
+`class_name Voxel` · 120 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -647,7 +647,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 1676 lines
+`class_name VoxelRenderer` · extends `Node2D` · 1809 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -658,18 +658,13 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `VOXEL_SOURCE_ID` = `0`
-- `MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim ## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE, ## so earth gets exactly the _top carve — the mirror of ceilings only ever ## carving _bottom. Appended last: MATERIALS is append-only (source_id == ## index). "earth_blast_dented_top", ]`
-- `VOXEL_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/voxel_%s.png"`
-- `IMPACT_ASSET_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/voxel_%s.png"`
-- `_IMPACT_SUFFIXES` = `[ "_dented", "_cracked", "_dented_top", "_dented_bottom", "_dented_left", "_dented_right", ]`
-- `_CARVED_SIDE_SUFFIX` = `{ Voxel.CarvedSide.TOP: "_top", Voxel.CarvedSide.BOTTOM: "_bottom", Voxel.CarvedSide.LEFT: "_left", Voxel.CarvedSide.RIGHT: "_right", }`
-- `EMPTY_COLUMN` = `-9999`
+- `BASE_MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim ## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE, ## so earth gets exactly the _top carve — the mirror of ceilings only ever ## carving _bottom. Appended last: MATERIALS is append-only (source_id == ## index). "earth_blast_dented_top", ]`
+- `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
+- `IMPACT_DECAL_VARIANTS` = `3`
+- `IMPACT_FLOOR_MATERIAL` = `"earth"`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
-
-**Public API**
-- `func get_layer(level: int) -> TileMapLayer:`
 
 ---
 
@@ -1334,7 +1329,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 952 lines
+`class_name BlastCalculator` · 986 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2757,7 +2752,7 @@ extends `SceneTree` · 223 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 252 lines
+extends `SceneTree` · 283 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
@@ -2847,6 +2842,34 @@ extends `SceneTree` · 49 lines
 `godot/scripts/tools/version_info_test.gd`
 
 > VERSION-01 Test: VersionInfo singleton initialization
+
+---
+
+### `voxel_decal_selftest.gd`
+
+extends `SceneTree` · 303 lines
+
+`godot/scripts/tools/voxel_decal_selftest.gd`
+
+> DESTRUCTION_MASTER_PLAN D32 — damage-decal placement selftest. Rodar: godot --headless --script res://godot/scripts/tools/voxel_decal_selftest.gd What this suite exists to catch, stated as the bug it would have caught: before D32 every firearm hit on a wall painted its bullet hole on the voxel's TOP diamond, because apply_point_impact() never resolved which face was struck and the art had the mark baked on the top face. Nothing failed — it just rendered wrong. So the assertions here are about WHICH NAME a given (tier, cause, side) resolves to, and about every one of those names having a real asset behind it, rather than about the pixels. Deliberately NOT asserted here: what the decal looks like. That is verified on the asset side (the generator's own geometry checks) and by real capture.
+
+**Constants / tuning**
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `MANIFEST_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/manifest.json"`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_every_decal_name_has_an_asset() -> void:`
+- `func test_manifest_agrees_with_the_renderer() -> void:`
+- `func test_bullet_marks_the_struck_lateral_face_only() -> void:`
+- `func test_cracked_is_whole_voxel_for_a_blast() -> void:`
+- `func test_ceiling_carve_is_variantless() -> void:`
+- `func test_variant_selects_distinct_names() -> void:`
+- `func test_unknown_material_falls_back_instead_of_composing_a_missing_name() -> void:`
+- `func test_shooter_gu_resolves_a_real_side() -> void:`
 
 ---
 
@@ -3336,7 +3359,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 356 lines
+`class_name WeaponBenchController` · 360 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -3540,7 +3563,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3402 lines
+extends `Node2D` · 3409 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3613,7 +3636,7 @@ extends `Node2D` · 3402 lines
 - `var vision_bonus_tiles: int = 0`
 
 **Public API**
-- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE) -> void:`
+- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0) -> void:`
 
 ---
 

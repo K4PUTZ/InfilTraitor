@@ -345,8 +345,12 @@ func detonate_active() -> void:
 			## VL-02b/c: geometry just changed — re-derive the light field so the
 			## new cavity walls pick up their surface/AO shading and the crater
 			## reads as depth instead of a flat recolour of intact voxels.
+			## PERF-03: geometry and soot are the only inputs this changed —
+			## no light moved, and the shadow projector is not re-run here — so
+			## the light field can keep its caches instead of rebuilding every
+			## voxel's bucket from scratch. See VoxelLightField.build().
 			if room.has_method("_repaint_voxel_light_buckets"):
-				room._repaint_voxel_light_buckets()
+				room._repaint_voxel_light_buckets(true)
 			room._destruction_render_busy = false
 
 	if room._blast_wireframe_overlay != null:

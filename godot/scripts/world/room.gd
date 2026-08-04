@@ -1914,7 +1914,10 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## Connected to lighting_rebuilt: runs on map load, perspective rotation and
 ## any light change. The field stays queryable on _voxel_light_field — the
 ## seam future vision modes (thermal / night / X-ray) will consume.
-func _repaint_voxel_light_buckets() -> void:
+## PERF-03 — `geometry_only` is forwarded to VoxelLightField.build(); see its
+## doc for the contract. Defaults false, so the `lighting_rebuilt` signal
+## connection (which passes no arguments) keeps the full, unconditional rebuild.
+func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 	if _voxel_renderer == null or _lighting_controller == null:
 		return
 	var registry = _lighting_controller.get_light_registry()
@@ -1936,10 +1939,48 @@ func _repaint_voxel_light_buckets() -> void:
 			_voxel_renderer.build_occupancy(),
 			_build_soot_snapshot(soot_faces),
 			_under_structure,
-			soot_faces)
+			soot_faces,
+			geometry_only)
 	_voxel_renderer.apply_light_field(_voxel_light_field)
+	## PERF-03 equivalence probe — env-gated (INFILTRAITOR_LIGHT_EQUIV_PROBE=1),
+	## same standing-dev-tool precedent as INFILTRAITOR_FACE_SOOT_DIAG above.
+	## Snapshots every cell's alternative, forces a full rebuild, and reports
+	## how many cells disagree; 0 means the incremental invalidation left
+	## nothing stale. Kept rather than deleted after it did its job once,
+	## because it guards a regression class nothing else can see: the
+	## invalidation neighbourhood in VoxelLightField._stale_cells() is derived
+	## from how far _face_occlusion() samples, so widening that sampling
+	## silently makes the neighbourhood too small — a stale-lighting bug with
+	## no visible symptom until someone looks at the right voxel. Run it after
+	## touching either. Doubles the repaint cost while enabled, hence the gate.
+	if geometry_only and OS.get_environment("INFILTRAITOR_LIGHT_EQUIV_PROBE") == "1":
+		var _snap_a: Dictionary = _perf_snapshot_alts()
+		_repaint_voxel_light_buckets(false)
+		var _snap_b: Dictionary = _perf_snapshot_alts()
+		var _diff: int = 0
+		for k in _snap_b:
+			if _snap_a.get(k, -12345) != _snap_b[k]:
+				_diff += 1
+		print("[LIGHT-EQUIV] %d cells, %d differ" % [_snap_b.size(), _diff])
 	if OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
 		_print_face_soot_diagnostics(soot_faces)
+
+
+## PERF-03 — every placed cell's current alternative id, for the equivalence
+## probe above. Reads both layer stores the renderer keeps (positive wall
+## levels and the negative floor/background ones), so "every cell" really is
+## every cell and not just the walls.
+func _perf_snapshot_alts() -> Dictionary:
+	var out: Dictionary = {}
+	for level in range(_voxel_renderer._voxel_layers.size()):
+		var layer: TileMapLayer = _voxel_renderer._voxel_layers[level]
+		for cell in layer.get_used_cells():
+			out[Vector3i(cell.x, cell.y, level)] = layer.get_cell_alternative_tile(cell)
+	for level in _voxel_renderer._negative_voxel_layers.keys():
+		var nlayer: TileMapLayer = _voxel_renderer._negative_voxel_layers[level]
+		for cell in nlayer.get_used_cells():
+			out[Vector3i(cell.x, cell.y, level)] = nlayer.get_cell_alternative_tile(cell)
+	return out
 
 
 ## FACE-SOOT-01 diagnostics — env-gated (INFILTRAITOR_FACE_SOOT_DIAG=1). Reports

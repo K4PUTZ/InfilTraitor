@@ -332,8 +332,10 @@ func fire_active() -> void:
 	room._destruction_render_busy = true
 	await room._voxel_renderer.process_dirty_async(room._edge_registry)
 	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
+	## PERF-03: same contract as TestZoneController's own repaint — a shot
+	## changes geometry and soot only, never a light or a shadow result.
 	if room.has_method("_repaint_voxel_light_buckets"):
-		room._repaint_voxel_light_buckets()
+		room._repaint_voxel_light_buckets(true)
 	room._destruction_render_busy = false
 
 	if room._blast_wireframe_overlay != null:

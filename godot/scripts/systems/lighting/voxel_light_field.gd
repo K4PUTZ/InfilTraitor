@@ -167,9 +167,27 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## (VL-D3); their floor voxels read darker once exposed.
 ## face_soot: level -> {cell: Vector3i(top, se, sw)} (FACE-SOOT-01); optional,
 ## and absent entries fall back to the voxel's own isotropic ring.
+## PERF-03 — `geometry_only` says: LIGHTS, SHADOWS, top_wall_level and cover are
+## unchanged since the last build; only occupancy and soot moved. That is
+## exactly a detonation (TestZoneController.detonate_active() repaints directly
+## and never re-runs the shadow projector), and it is what lets this keep the
+## caches instead of dropping them. Defaults FALSE, so every other caller —
+## map load, perspective rotation, real light changes — keeps the unconditional
+## clear it always had.
+##
+## Why it pays: measured on a real PLAYGROUND blast, the repaint walked 106,847
+## cells to change 1,303 of them, and spent 362ms inside bucket_for() because
+## build() had just emptied the cache that would have answered for all of them.
+## _static_factor's own doc already anticipated this reuse ("a detonation no
+## longer has to invalidate the light bucket of every voxel it scorches") — the
+## wholesale clear here is what defeated it.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		occupancy: Dictionary = {}, soot: Dictionary = {},
-		under_structure: Dictionary = {}, face_soot: Dictionary = {}) -> void:
+		under_structure: Dictionary = {}, face_soot: Dictionary = {},
+		geometry_only: bool = false) -> void:
+	var stale: Dictionary = {}
+	if geometry_only:
+		stale = _stale_cells(occupancy, soot)
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
 	_occupancy = occupancy
@@ -177,12 +195,83 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 	_face_soot = face_soot
 	_under_structure = under_structure
 	_shadow_by_light.clear()
-	_bucket_cache.clear()
-	_lamp_cache.clear()
-	_static_factor_cache.clear()  ## geometry/soot/cover may have changed — see build() callers
+	if geometry_only:
+		## _lamp_cache survives untouched: _lamp_intensity() reads lights,
+		## shadows and the anchor level, none of which this path may change.
+		for key in stale:
+			_bucket_cache.erase(key)
+			_static_factor_cache.erase(key)
+	else:
+		_bucket_cache.clear()
+		_lamp_cache.clear()
+		_static_factor_cache.clear()  ## geometry/soot/cover may have changed — see build() callers
 	for result in shadow_results:
 		if result != null and result.source_light != null:
 			_shadow_by_light[result.source_light.get_instance_id()] = result
+
+
+## PERF-03 — every cached key the incoming occupancy/soot invalidate, and NOT
+## one more. Both halves are derived from what the cached values actually read,
+## traced in the code rather than guessed:
+##
+##  - `_static_factor(cell, level)` reads occupancy through surface_factor()
+##    (cell, cell+X, cell+Y at `level` and `level+1`) and _face_occlusion()
+##    (an outward cell at `level`/`level+1`, its 4-neighbour ring, and one
+##    level above/below that). The widest XY offset any of those reaches is
+##    ±1, and the widest level offset is +2. INVERTING that: a change at
+##    (c, L) can invalidate any cell within Chebyshev 1 in XY and levels
+##    L-2 .. L+1. That is the neighbourhood expanded below.
+##  - the soot term enters only through _compute_bucket()'s micro-jitter
+##    exemption, at exactly (cell, level) with no neighbourhood — soot has not
+##    been part of _static_factor since FACE-SOOT-01.
+func _stale_cells(occupancy: Dictionary, soot: Dictionary) -> Dictionary:
+	var stale: Dictionary = {}
+	for level in _union_keys(_occupancy, occupancy):
+		var before: Variant = _occupancy.get(level)
+		var after: Variant = occupancy.get(level)
+		if before == after:
+			continue
+		for cell in _symmetric_difference(before, after):
+			for dz in range(-2, 2):
+				for dx in range(-1, 2):
+					for dy in range(-1, 2):
+						stale[Vector3i(cell.x + dx, cell.y + dy, level + dz)] = true
+	for level in _union_keys(_soot, soot):
+		var before_soot: Variant = _soot.get(level)
+		var after_soot: Variant = soot.get(level)
+		if before_soot == after_soot:
+			continue
+		for cell in _symmetric_difference(before_soot, after_soot):
+			stale[Vector3i(cell.x, cell.y, level)] = true
+	return stale
+
+
+static func _union_keys(a: Dictionary, b: Dictionary) -> Array:
+	var keys: Dictionary = {}
+	for k in a:
+		keys[k] = true
+	for k in b:
+		keys[k] = true
+	return keys.keys()
+
+
+## Cells present in exactly one of the two sets, plus cells whose VALUE differs
+## (soot stores a ring per cell, so a cell can be in both and still have moved).
+## A null side means "that level had nothing", which makes every cell on the
+## other side a difference.
+static func _symmetric_difference(before: Variant, after: Variant) -> Array:
+	var out: Array = []
+	if before != null:
+		for cell in before:
+			if after == null or not after.has(cell):
+				out.append(cell)
+			elif typeof(before) == TYPE_DICTIONARY and before[cell] != after[cell]:
+				out.append(cell)
+	if after != null:
+		for cell in after:
+			if before == null or not before.has(cell):
+				out.append(cell)
+	return out
 
 
 ## VL-03 — clear ONLY the LAMP-dependent caches, keeping the geometry-dependent

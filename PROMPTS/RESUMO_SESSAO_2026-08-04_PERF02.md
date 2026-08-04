@@ -148,6 +148,44 @@ made the explosion small.
 
 ---
 
+## 3c. PERF-03 — the light repaint (Director-directed, after PERF-02 closed)
+
+The repaint was 52% of a detonation and nothing had touched it. Profiling put
+**573 of its ~648ms inside `apply_light_field()`**, and inside that:
+**106,847 cells walked to change 1,303** — with `bucket_for()` alone at 362ms,
+because `VoxelLightField.build()` had just cleared the cache that would have
+answered for every unchanged cell.
+
+The fix writes itself once you read `_static_factor`'s own doc, which had
+already anticipated the reuse ("a detonation no longer has to invalidate the
+light bucket of every voxel it scorches") — the unconditional clear in
+`build()` is what defeated it. Added a `geometry_only` flag (default false, so
+map load / rotation / light changes are untouched) that invalidates only the
+cells the new occupancy and soot actually touch, with the neighbourhood derived
+from what the cached values really read rather than guessed: ±1 in XY and +2 in
+level, traced through `surface_factor()` and `_face_occlusion()`. `_lamp_cache`
+survives entirely, since a detonation moves no light and never re-runs the
+shadow projector.
+
+**`bucket_for` 362ms → 42ms; detonation 1250.9/1282.9 → 920.7/925.3ms (-26%).**
+Against this session's own starting baseline: **3716.7ms → 920.7ms, 75%
+faster.**
+
+**The verification is the part worth remembering.** A capture diff on the
+weapon-bench path showed 273 pixels differing — which looks exactly like a
+staleness bug. A control run of two IDENTICAL configurations differed by 259,
+i.e. the same magnitude: VFX particle variance, not staleness. What actually
+settled it was a cell-level equivalence probe — snapshot every cell's
+alternative after the fast path, force a full rebuild, diff — which returned
+**0 of 106,847 differing on the grenade path and 0 of 106,459 on the weapon
+bench**. Kept as a standing env-gated tool
+(`INFILTRAITOR_LIGHT_EQUIV_PROBE=1`), because it guards a regression nothing
+else can see: widen `_face_occlusion()`'s sampling radius and the invalidation
+neighbourhood silently becomes too small, with no visible symptom until someone
+looks at the right voxel.
+
+---
+
 ## 4. State at close
 
 - **VERSION 0.9.89** (unchanged).
@@ -158,12 +196,13 @@ made the explosion small.
 
 ## 5. Next session starts here
 
-**The light repaint is now the bottleneck.** `_repaint_voxel_light_buckets()`
-sits at ~648ms — **52% of what a detonation now costs** — because nothing in
-PERF-01 or PERF-02 touched it. It was never in this plan's scope and is the
-obvious next target.
+**The repaint bottleneck is closed** (see §3c) — a detonation is now ~920ms,
+down from 3717ms at this session's start. The next available cut in that arc
+is scoping the light repaint's cell walk to the blast's own GUs, reusing
+VL-03's existing `apply_light_field_gus()` seam; it needs the `_placed_by_gu`
+placement index kept current for the cells `reveal_floor_slab()` adds mid-blast.
 
-After that (or instead, at the Director's call) the two deliberately deferred
+The two deliberately deferred
 ideas in the master plan's §6 are still waiting, in the Director's own
 sequencing: **D11** the three-stage destruction with the red/yellow/white
 flash cascade, and **D12** the real-explosion video/flipbook overlay. Neither

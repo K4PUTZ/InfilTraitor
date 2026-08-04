@@ -137,11 +137,59 @@ pixel-identical to the baseline capture (0 pixels differing by more than 8,
 max channel diff ≤ 3 — the residue is VFX particle randomness), so the whole
 Part A is a pure speed change with no visual consequence.
 
-**What is left, for whoever picks this up next:** the light repaint
-(`_repaint_voxel_light_buckets()`, ~648ms) is now the single largest stage at
-**52% of the total** — it barely moved through this whole pass because
-nothing here touched it. It is the obvious next target, and it was never in
-this plan's scope.
+**PERF-03 — the light repaint, done 2026-08-04.** It was the single largest
+stage after PERF-02 (~648ms, 52% of the total), and it was never in this
+plan's scope; the Director called it next. Profiled the same way, the cost was
+not where "repaint the lighting" suggests:
+
+| Stage of the repaint | Cost |
+|---|---|
+| `build_occupancy()` | 15 ms |
+| `_build_soot_snapshot()` | 69 ms |
+| `VoxelLightField.build()` | 27 ms |
+| **`apply_light_field()`** | **573 ms** |
+
+and inside that: **106,847 cells walked to change 1,303 of them** (1.2%), with
+`VoxelLightField.bucket_for()` alone accounting for **362 ms** — because
+`build()` had just emptied the cache that would have answered for every
+unchanged cell.
+
+`_static_factor`'s own doc had already anticipated exactly this reuse
+("dropping soot from it makes the cache MORE reusable... a detonation no
+longer has to invalidate the light bucket of every voxel it scorches") — the
+unconditional clear in `build()` is what defeated it. Fixed by giving `build()`
+a `geometry_only` flag (default **false**, so map load / rotation / real light
+changes keep the full clear) that instead invalidates only the cells the new
+occupancy and soot actually touch. The invalidation neighbourhood is derived
+from what the cached values really read — traced in the code, not guessed:
+`_static_factor` reaches ±1 in XY and +2 in level through `surface_factor()`
+and `_face_occlusion()`, so a change at (c, L) invalidates Chebyshev-1 XY over
+levels L-2..L+1; soot enters only through the micro-jitter exemption, at that
+one cell. `_lamp_cache` survives untouched, since a detonation moves no light
+and never re-runs the shadow projector.
+
+Result: `bucket_for` 362 ms → **42 ms**, repaint ~648 ms → ~328 ms, and the
+whole detonation **1250.9/1282.9 ms → 920.7/925.3 ms** (-26%).
+
+**Proven, not argued:** an equivalence probe snapshots every cell's
+alternative after the fast path, forces a full rebuild, and diffs — **0 of
+106,847 cells differ** on the grenade path and **0 of 106,459** on the weapon
+bench, and the forced full rebuild independently reported `changed=0`.
+Captures are pixel-identical to pre-PERF-03 ones (0 pixels over 8). The
+weapon-bench capture initially looked different (273 pixels over 8) until a
+control run of two IDENTICAL configurations showed the same magnitude (259) —
+VFX particle variance, not staleness; the cell-level probe is what settled it.
+The probe is kept as a standing env-gated tool
+(`INFILTRAITOR_LIGHT_EQUIV_PROBE=1`) because it guards a regression nothing
+else can see: widen `_face_occlusion()`'s sampling and the invalidation
+neighbourhood silently becomes too small.
+
+**Where the remaining time is:** the repaint still walks all ~107k cells to
+find the ~1.3k that changed (~50 ms rebuilding the `_placed_by_gu` index,
+plus the per-cell lookups). Scoping that walk to the blast's own GUs — the
+`apply_light_field_gus()` seam VL-03 already built for temporal lights — is
+the next available cut, and it needs the placement index kept current for
+cells `reveal_floor_slab()` adds mid-blast.
 
 The remaining ~22% is presumed spread across baked-lookup resolution,
 decal-plan string matching, `_load_decal_image()`, and similar smaller

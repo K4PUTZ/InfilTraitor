@@ -269,7 +269,20 @@ func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:
 ## 3b covers yet (floor "_dented_top", ceiling "_dented_bottom") or into
 ## plain clean materials.
 func test_dented_and_non_impact_names_are_unaffected() -> void:
-	print("[5] Floor/ceiling DENTED and clean materials still take the pre-D33 path\n")
+	print("[5] A non-earth '_blast_dented_top' name (structurally unreachable — floor damage always substitutes 'earth') is caught by no plan and falls all the way to flat concrete\n")
+	## "concrete_blast_dented_top_N" is not a name any real caller ever
+	## constructs — floor_damage_material() always substitutes
+	## IMPACT_FLOOR_MATERIAL ("earth") regardless of the real wall/zone
+	## material, so only "earth_blast_dented_top_N" is ever actually
+	## requested (see _floor_sunk_decal_plan()'s own exact-prefix match).
+	## D33 Part 4c retired this name's composites/-backed MATERIALS entry
+	## along with the other 96 — MATERIALS.find() now returns -1 for it, and
+	## since no plan parser recognises it either, the real seam correctly
+	## falls all the way to the LAST-resort concrete fallback (source_id 0),
+	## same as it would for any other genuinely unsupported name. Not a
+	## regression: this shape was never rendered to a real player before
+	## Part 4c either — its old composites/ asset backed a name nothing ever
+	## requested.
 	var renderer := _new_renderer()
 	_stub_baked_wall(renderer, Color(0.6, 0.6, 0.65, 1.0))
 	var edge_stub := Object.new()
@@ -277,11 +290,10 @@ func test_dented_and_non_impact_names_are_unaffected() -> void:
 	var floor_pos := Vector2i(1, 1)
 	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_1", edge_stub, Vector2i.ZERO, 0)
 	var floor_source_id := renderer.get_layer(0).get_cell_source_id(floor_pos)
-	var expected_floor_id: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_top_1")
-	if floor_source_id == expected_floor_id:
-		_pass("floor DENTED still resolves to its generic composites/ id (%d) — not this session's scope" % expected_floor_id)
+	if floor_source_id == 0:
+		_pass("unsupported/unreachable shape falls through to flat concrete (source_id 0), no crash")
 	else:
-		_fail("floor DENTED resolved to %d, expected the untouched generic id %d" % [floor_source_id, expected_floor_id])
+		_fail("expected the flat-concrete fallback (0), got %d" % floor_source_id)
 
 	print("")
 

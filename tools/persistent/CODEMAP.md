@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**177 scripts · 40990 lines total** (under `godot/scripts/`)
+**177 scripts · 41019 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -711,7 +711,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2711 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2676 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -724,12 +724,6 @@ extends `ConfirmationDialog` · 64 lines
 - `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
 - `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
 - `VOXEL_SOURCE_ID` = `0`
-- `BASE_MATERIALS` = `[ "concrete", "metal", "stone", "wood", "glass", "earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7", "concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked", "stone_dented", "stone_cracked", "wood_dented", "wood_cracked", "concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked", "stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked", ## D25: the carved half-voxels, four per material — see the block comment ## above damage_variant_material(). The flat "*_blast_dented" entries just ## above them are superseded for any voxel whose carved side is known, but ## stay in this array forever: MATERIALS is append-only (source_id == index), ## and they remain the honest fallback when no epicentre bias was supplied. "concrete_blast_dented_top", "concrete_blast_dented_bottom", "concrete_blast_dented_left", "concrete_blast_dented_right", "metal_blast_dented_top", "metal_blast_dented_bottom", "metal_blast_dented_left", "metal_blast_dented_right", "stone_blast_dented_top", "stone_blast_dented_bottom", "stone_blast_dented_left", "stone_blast_dented_right", "wood_blast_dented_top", "wood_blast_dented_bottom", "wood_blast_dented_left", "wood_blast_dented_right", ## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim ## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE, ## so earth gets exactly the _top carve — the mirror of ceilings only ever ## carving _bottom. Appended last: MATERIALS is append-only (source_id == ## index). "earth_blast_dented_top", ]`
-- `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
-- `IMPACT_DECAL_VARIANTS` = `3`
-- `GENERIC_MARK_VARIANT_COUNT` = `3`
-- `IMPACT_FLOOR_MATERIAL` = `"earth"`
-- `IMPACT_CRACK_MATERIALS` = `["concrete", "stone"]`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -2396,7 +2390,7 @@ extends `SceneTree` · 186 lines
 
 ### `decal_seam_selftest.gd`
 
-extends `SceneTree` · 317 lines
+extends `SceneTree` · 329 lines
 
 `godot/scripts/tools/decal_seam_selftest.gd`
 
@@ -2658,7 +2652,7 @@ extends `SceneTree` · 263 lines
 
 ### `half_voxel_seam_selftest.gd`
 
-extends `SceneTree` · 253 lines
+extends `SceneTree` · 258 lines
 
 `godot/scripts/tools/half_voxel_seam_selftest.gd`
 
@@ -3115,7 +3109,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 390 lines
+extends `SceneTree` · 437 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
@@ -3130,7 +3124,6 @@ extends `SceneTree` · 390 lines
 - `var failed: int = 0`
 
 **Public API**
-- `func test_every_decal_name_has_an_asset() -> void:`
 - `func test_manifest_agrees_with_the_renderer() -> void:`
 - `func test_bullet_marks_the_struck_lateral_face_only() -> void:`
 - `func test_cracked_is_whole_voxel_for_a_blast() -> void:`

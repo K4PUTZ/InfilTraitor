@@ -195,14 +195,19 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	_stub_baked_wall(renderer, Color(0.6, 0.55, 0.5, 1.0))
 	var edge_stub := Object.new()
 
+	## "concrete_blast_dented_top_0" is not a name any real caller ever
+	## constructs (floor_damage_material() always substitutes "earth" —
+	## see decal_seam_selftest.gd's identical fix for the full reasoning).
+	## D33 Part 4c retired its composites/-backed MATERIALS entry, so it now
+	## correctly falls all the way to flat concrete (source_id 0) — no plan
+	## parser recognises it, same as any other unsupported name.
 	var floor_pos := Vector2i(1, 1)
 	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_0", edge_stub, Vector2i.ZERO, 0)
 	var floor_got := renderer.get_layer(0).get_cell_source_id(floor_pos)
-	var floor_expected: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_top_0")
-	if floor_got == floor_expected:
-		_pass("floor DENTED still resolves to its generic id (%d) — Part 3b's floor increment not built yet" % floor_expected)
+	if floor_got == 0:
+		_pass("unsupported/unreachable floor shape falls through to flat concrete (source_id 0), no crash")
 	else:
-		_fail("floor DENTED resolved to %d, expected the untouched generic id %d" % [floor_got, floor_expected])
+		_fail("expected the flat-concrete fallback (0), got %d" % floor_got)
 
 	## D33 Part 4b (2026-08-03) changed this one: _composite_generic_ceiling()
 	## is purely name-driven (no edge/flat_baked gate, unlike Part 3d's baked

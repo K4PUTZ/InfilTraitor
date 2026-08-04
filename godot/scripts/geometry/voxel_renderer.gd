@@ -36,53 +36,22 @@ const VOXEL_SOURCE_ID: int = 0
 ## D22 (2026-07-30): "glass" is the 5th wall material — DESTROYED-only per the
 ## Director (no DENTED/CRACKED tier, MaterialResistanceTable keeps both
 ## factors at 0 for it), so it needs nothing beyond its own base atom here.
-## The "_dented"/"_cracked" suffixed entries are impact-mark pseudo-materials,
-## one pair per non-glass material — see IMPACT_ASSET_TEMPLATE below and
-## damage_variant_material(). They load through this exact same mechanism
-## (append-only, same MATERIALS.find() source_id resolution) but from a
-## SEPARATE folder, and _set_voxel_cell() short-circuits them past the
-## baked-lookup branch entirely — an impact mark is self-contained by design
-## ("encaixado em qualquer lugar," Director), not tied to whatever facade the
-## surrounding wall happens to bake.
-## D23 (Director, 2026-07-30): "a granada produzindo buracos de bala não faz
-## sentido [...] estados intermediários do material em explosões, mas não com
-## furos redondos" — a blast's DENTED/CRACKED voxels get their OWN texture
-## family (irregular chip/crack), never the bullet's round puncture. Same
-## append-only mechanism, same folder, just a `_blast_` infix so both families
-## sit side by side — see damage_variant_material()'s blast_sourced parameter.
-## D32 (Director diagrams, 2026-08-02): the decal-composited impact family is
-## APPENDED to this list by _static_init() instead of being typed out — 103
-## names built from (material x tier x side x variant) is exactly the kind of
-## list that rots when edited by hand, and the generator builds its filenames
-## from the same three axes. The literal list below stays the literal list: it
-## is the historical prefix, and MATERIALS is append-only (source_id == index),
-## so every id already minted keeps its value.
+##
+## D33 Part 4c (2026-08-03): every impact-mark pseudo-material name (D22's
+## bare "_dented"/"_cracked", D23's "_blast_" infix, D25's carved-side
+## suffixes, D32's decal-family side+variant names) USED to live here too —
+## first as a hand-typed literal tail, later appended by _static_init() —
+## each backed by its own pre-composited PNG in composites/ and its own
+## boot-time TileSetAtlasSource. That whole mechanism is gone: every one of
+## those names is now resolved PURELY BY STRING at render time in
+## _set_voxel_cell() (_full_voxel_decal_plan/_half_voxel_decal_plan/
+## _ceiling_carve_plan/_floor_sunk_decal_plan/_generic_flat_mark_plan below),
+## composited live onto either a baked atom (Parts 3a-3d) or the flat atom
+## right here in MATERIALS (Part 4b) — never pre-registered, never loaded
+## from a per-name file. BASE_MATERIALS is real base materials ONLY now.
 const BASE_MATERIALS: Array[String] = [
 	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
-	"concrete_dented", "concrete_cracked", "metal_dented", "metal_cracked",
-	"stone_dented", "stone_cracked", "wood_dented", "wood_cracked",
-	"concrete_blast_dented", "concrete_blast_cracked", "metal_blast_dented", "metal_blast_cracked",
-	"stone_blast_dented", "stone_blast_cracked", "wood_blast_dented", "wood_blast_cracked",
-	## D25: the carved half-voxels, four per material — see the block comment
-	## above damage_variant_material(). The flat "*_blast_dented" entries just
-	## above them are superseded for any voxel whose carved side is known, but
-	## stay in this array forever: MATERIALS is append-only (source_id == index),
-	## and they remain the honest fallback when no epicentre bias was supplied.
-	"concrete_blast_dented_top", "concrete_blast_dented_bottom",
-	"concrete_blast_dented_left", "concrete_blast_dented_right",
-	"metal_blast_dented_top", "metal_blast_dented_bottom",
-	"metal_blast_dented_left", "metal_blast_dented_right",
-	"stone_blast_dented_top", "stone_blast_dented_bottom",
-	"stone_blast_dented_left", "stone_blast_dented_right",
-	"wood_blast_dented_top", "wood_blast_dented_bottom",
-	"wood_blast_dented_left", "wood_blast_dented_right",
-	## FLOOR-DENT-01 (2026-08-01): plain-earth floors dent now (crater-rim
-	## pockmarks, apply_crater_damage). A floor is only ever eaten from ABOVE,
-	## so earth gets exactly the _top carve — the mirror of ceilings only ever
-	## carving _bottom. Appended last: MATERIALS is append-only (source_id ==
-	## index).
-	"earth_blast_dented_top",
 ]
 
 ## D32 — the four wall materials the Director authors decals for. Glass is
@@ -110,48 +79,17 @@ const IMPACT_FLOOR_MATERIAL: String = "earth"
 ## which every material gets.
 const IMPACT_CRACK_MATERIALS: Array[String] = ["concrete", "stone"]
 
-## Built by _static_init(); see BASE_MATERIALS above for why it is not a const.
+## D33 Part 4c: used to be built by _static_init() appending
+## impact_decal_names()'s ~97 generated names on top of BASE_MATERIALS —
+## both gone now (see BASE_MATERIALS' own comment above). MATERIALS is just
+## the base materials themselves; kept as a mutable static var (not a const
+## alias of BASE_MATERIALS) purely so existing MATERIALS.find()/.has() call
+## sites elsewhere in this file don't need to change.
 static var MATERIALS: Array[String] = []
 
 
 static func _static_init() -> void:
 	MATERIALS = BASE_MATERIALS.duplicate()
-	for material in IMPACT_DECAL_MATERIALS:
-		for name in impact_decal_names(material):
-			if not MATERIALS.has(name):
-				MATERIALS.append(name)
-	for name in impact_decal_names(IMPACT_FLOOR_MATERIAL):
-		if not MATERIALS.has(name):
-			MATERIALS.append(name)
-
-
-## D32 — every decal-composited pseudo-material name for `material`, in a fixed
-## order so source ids are reproducible across runs.
-##
-## `_blast_dented_bottom` carries NO variant: a ceiling half voxel is silhouette
-## only (an isometric camera never sees a voxel's underside), so there is no
-## decal on it and nothing for a variant to vary. It is also already present in
-## BASE_MATERIALS from D25 — same name, same asset, same meaning — which is why
-## _static_init() de-duplicates instead of appending blindly.
-##
-## The floor material gets only the blast/dented/top row; asking for the rest
-## would mint names with no asset behind them, and a missing asset is a
-## push_error at boot (B6), not a silent fallback.
-static func impact_decal_names(material: String) -> Array[String]:
-	var names: Array[String] = []
-	var is_floor: bool = material == IMPACT_FLOOR_MATERIAL
-	for variant in range(IMPACT_DECAL_VARIANTS):
-		if not is_floor:
-			for side in ["left", "right"]:
-				names.append("%s_bullet_cracked_%s_%d" % [material, side, variant])
-				names.append("%s_bullet_dented_%s_%d" % [material, side, variant])
-				names.append("%s_blast_dented_%s_%d" % [material, side, variant])
-			if IMPACT_CRACK_MATERIALS.has(material):
-				names.append("%s_blast_cracked_all_%d" % [material, variant])
-		names.append("%s_blast_dented_top_%d" % [material, variant])
-	if not is_floor:
-		names.append("%s_blast_dented_bottom" % material)
-	return names
 
 ## Voxel asset path template
 ## ASSET-LAYOUT-01 (Director, 2026-08-02) — the voxel source tree is split by
@@ -160,23 +98,16 @@ static func impact_decal_names(material: String) -> Array[String]:
 ##   materials/   one whole voxel per material            INPUT  (never overwritten)
 ##   halves/      the four carved substrates per material INPUT  (generated if absent)
 ##   decals/      the marks + broken faces + template     INPUT  (never overwritten)
-##   composites/  material|half x decal                   OUTPUT (always rebuilt)
+##   composites/  material|half x decal                   RETIRED (D33 Part 4c, 2026-08-03)
 ##
-## The rule is worth the folders: everything in the first three is authorable and
-## the generator refuses to clobber it, everything in the last is a pure
-## derivative that can be deleted and rebuilt at any time. It also makes D33
-## (moving compositing to load time) a folder deletion instead of a 126-file
-## audit. Full layout: ASSETS/ISOMETRIC/source_assets/voxels/README.md.
+## composites/ was a pure OUTPUT derivative — always rebuilt, deletable at
+## any time — which is exactly what made D33 (moving compositing to load
+## time) a folder deletion instead of a 126-file audit once every consumer
+## moved off it (Parts 3a-3d for baked cells, Part 4b for flat/generic ones).
+## Full layout: ASSETS/ISOMETRIC/source_assets/voxels/README.md.
 const VOXEL_ASSET_ROOT: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/"
 const VOXEL_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "materials/voxel_%s.png"
 
-## D22: impact-mark pseudo-materials load from their own folder, not
-## alongside the base material atoms — the Director's dedicated drop point
-## for the real photographic bakes ("pasta especial dentro de assets") once
-## produced; placeholder vector marks live here meanwhile (generate_voxel.py).
-## _IMPACT_SUFFIXES below is also what _set_voxel_cell() checks to bypass the
-## baked-lookup branch for these pseudo-materials.
-const IMPACT_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "composites/voxel_%s.png"
 ## D33 Part 3a — the RAW decal art (family, material, variant), same folder
 ## and filename shape generate_voxel.py's build_decal_family() authors into
 ## (DECAL_NAME = "decal_%s_%s_%d.png"). Composited at runtime onto the baked
@@ -251,11 +182,13 @@ static func _is_impact_mark(material_name: String) -> bool:
 ##   - a ceiling's `_bottom` carve takes no variant, because it carries no
 ##     decal to vary.
 ##
-## Anything that does not resolve to a real MATERIALS entry falls back to the
-## pre-D32 name rather than being returned unchecked. That guard is load-bearing:
-## _set_voxel_cell()'s MATERIALS.find() returns -1 for an unknown name and -1
-## silently becomes source_id 0, repainting the voxel as flat "concrete" — the
-## exact failure D26 hit on zoned floors.
+## _decal_material() returning "" (base_material outside the decal family, or
+## no resolvable carved_side) falls back to the pre-D32 name instead. D33 Part
+## 4c retired the days when an unrecognised name could reach
+## _set_voxel_cell()'s last-resort MATERIALS.find() and repaint the voxel flat
+## concrete (the D26 failure this comment used to warn about): every name
+## either function can produce is now composited live by one of the plan
+## parsers below, baked or generic.
 static func damage_variant_material(base_material: String, damage_state: int,
 		blast_sourced: bool = false, carved_side: int = Voxel.CarvedSide.NONE,
 		variant: int = 0) -> String:
@@ -276,12 +209,32 @@ static func damage_variant_material(base_material: String, damage_state: int,
 
 
 ## D32 — the decal-family name for this (material, tier, cause, side, variant),
-## or "" when the combination has no decal asset and the caller should fall back.
+## or "" when base_material/damage_state/carved_side don't form a real
+## combination at all (e.g. DENTED with no resolvable carved_side — nothing to
+## render a decal ON).
 ##
-## Returning "" rather than a composed-but-missing name is the whole point: this
-## function is the only place that knows which corners of the matrix were
-## actually generated, so every miss is caught here instead of reaching
-## MATERIALS.find() and turning into source_id 0.
+## D33 Part 4c (2026-08-03): used to also return "" whenever `composed` named a
+## corner of the matrix composites/ never generated a file for (checked via
+## MATERIALS.has(composed) — MATERIALS held every valid decal-family name back
+## when each one needed its own boot-time composites/-backed TileSetAtlasSource).
+## That check is gone along with composites/ itself: every name this function
+## can compose is now ALWAYS renderable, either via the baked path (Parts
+## 3a-3d, when a baked atom is available) or the generic vector-mark fallback
+## (Part 4b, always available) — verified exhaustively by
+## voxel_decal_selftest.gd's own asset check and generic_mark_seam_selftest.gd.
+## A bullet only ever strikes a LATERAL face (D32.4 — "a BULLET marks exactly
+## the ONE lateral face it struck, never a top face"); TOP/BOTTOM are
+## structurally unreachable for a firearm in real gameplay
+## (BlastCalculator.carved_side_for() never returns them for a shooter), but
+## this function validates it explicitly rather than relying on that upstream
+## guarantee — D33 Part 4c removed the MATERIALS.has(composed) check that used
+## to catch a wrongly-constructed "..._bullet_..._top_N"/"..._bottom_N" name
+## as a side effect (composites/ simply never had that file), so the
+## restriction has to be real here now.
+static func _is_lateral_side(carved_side: int) -> bool:
+	return carved_side == Voxel.CarvedSide.LEFT or carved_side == Voxel.CarvedSide.RIGHT
+
+
 static func _decal_material(base_material: String, damage_state: int,
 		blast_sourced: bool, carved_side: int, variant: int) -> String:
 	if not IMPACT_DECAL_MATERIALS.has(base_material) \
@@ -291,12 +244,17 @@ static func _decal_material(base_material: String, damage_state: int,
 	var composed := ""
 	match damage_state:
 		Voxel.DamageState.CRACKED:
-			## A blast cracks the whole voxel — one name, no side (D32.3). A
-			## bullet cracks the one face it hit, so a bullet with no known side
-			## has nothing to render and falls through to the legacy mark.
+			## A blast cracks the whole voxel — one name, no side (D32.3), and
+			## only for materials D32.6 lets crack at all (metal/wood never do —
+			## explicit here now, see _is_lateral_side()'s own comment for why
+			## this can no longer lean on the retired MATERIALS.has() check). A
+			## bullet cracks the one lateral face it hit, so a bullet with no
+			## resolvable lateral side has nothing to render and falls through
+			## to the legacy mark.
 			if blast_sourced:
-				composed = "%s_blast_cracked_all_%d" % [base_material, v]
-			elif _CARVED_SIDE_SUFFIX.has(carved_side):
+				if IMPACT_CRACK_MATERIALS.has(base_material):
+					composed = "%s_blast_cracked_all_%d" % [base_material, v]
+			elif _is_lateral_side(carved_side):
 				composed = "%s_bullet_cracked%s_%d" % [
 					base_material, String(_CARVED_SIDE_SUFFIX[carved_side]), v]
 		Voxel.DamageState.DENTED:
@@ -304,15 +262,18 @@ static func _decal_material(base_material: String, damage_state: int,
 				return ""
 			var side := String(_CARVED_SIDE_SUFFIX[carved_side])
 			if blast_sourced:
-				## The ceiling carve is silhouette-only and therefore variantless.
+				## A blast can dent any of the four sides (floor TOP, ceiling
+				## BOTTOM, wall LEFT/RIGHT) — unlike a bullet, never restricted
+				## to lateral. The ceiling carve is silhouette-only and
+				## therefore variantless.
 				composed = "%s_blast_dented_bottom" % base_material \
 					if carved_side == Voxel.CarvedSide.BOTTOM \
 					else "%s_blast_dented%s_%d" % [base_material, side, v]
-			else:
+			elif _is_lateral_side(carved_side):
 				composed = "%s_bullet_dented%s_%d" % [base_material, side, v]
 		_:
 			return ""
-	return composed if composed != "" and MATERIALS.has(composed) else ""
+	return composed
 
 
 ## D33 Part 3a — recognizes exactly the FULL-VOXEL decal cases this slice
@@ -475,21 +436,23 @@ static func _generic_flat_mark_plan(material_name: String) -> Dictionary:
 ## material", overridable per material by dropping a file in decals/.
 ##
 ## This is what keeps the zoned/baked branch honest. A zoned floor composing
-## "ground_concrete_blast_dented_top" would miss MATERIALS entirely, and
-## _set_voxel_cell()'s MATERIALS.find() returns -1 → source_id 0 → the voxel
-## silently repaints as flat "concrete" — the exact failure render_slab()'s own
-## comment warns about for ground_* names. Impact marks bypass the baked lookup
-## by construction (_is_impact_mark()), so one asset serves both branches.
+## "ground_concrete_blast_dented_top" instead would miss every plan parser in
+## this file (they all key on "earth_blast_dented_top_" or the fixed
+## IMPACT_DECAL_MATERIALS list, never a "ground_*" prefix) and fall through to
+## flat "concrete" — the exact failure render_slab()'s own comment warns about
+## for ground_* names. Impact marks bypass the baked lookup by construction
+## (_is_impact_mark()), so one asset serves both branches.
 ##
 ## Returns "" when there is no floor damage variant (INTACT, or a tier with no
-## floor asset), meaning "keep whatever material you were going to use".
+## floor asset), meaning "keep whatever material you were going to use". D33
+## Part 4c: no longer separately checks MATERIALS.has(composed) — see
+## _decal_material()'s own comment for why that check is retired entirely.
 static func floor_damage_material(damage_state: int, is_blast: bool, carved_side: int,
 		variant: int = 0) -> String:
 	if damage_state == Voxel.DamageState.INTACT or damage_state == Voxel.DamageState.DESTROYED:
 		return ""
-	var composed := damage_variant_material(IMPACT_FLOOR_MATERIAL, damage_state,
+	return damage_variant_material(IMPACT_FLOOR_MATERIAL, damage_state,
 		is_blast, carved_side, variant)
-	return composed if MATERIALS.has(composed) else ""
 
 
 ## OCC-27 (2026-07-21, Director's call): occlusion ring alphas, consumed by the
@@ -1526,10 +1489,12 @@ func _build_voxel_tileset() -> void:
 	_tileset.set_custom_data_layer_type(0, Variant.Type.TYPE_STRING)
 	
 	# Create TileSetAtlasSource for each material
+	# D33 Part 4c: MATERIALS holds only real base materials now — no impact-mark
+	# pseudo-material ever needs a boot-time entry or a composites/ load anymore.
 	for mat_index in range(MATERIALS.size()):
 		var material_name: String = MATERIALS[mat_index]
-		var asset_path := (IMPACT_ASSET_TEMPLATE if _is_impact_mark(material_name) else VOXEL_ASSET_TEMPLATE) % material_name
-		
+		var asset_path := VOXEL_ASSET_TEMPLATE % material_name
+
 		var texture := load(asset_path)
 		if not texture:
 			push_error("VoxelRenderer: missing texture for material '%s' at %s" % [material_name, asset_path])

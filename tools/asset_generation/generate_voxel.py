@@ -81,119 +81,30 @@ MATERIALS: dict[str, tuple[int, int, int]] = {
 }
 
 # ---------------------------------------------------------------------------
-# D22 — impact-mark pseudo-materials (placeholder "vector" marks). Real
-# per-material photographic bakes are the Director's own pass, dropped into
-# IMPACT_OUTPUT_DIR at these exact filenames — zero code changes on swap.
-# Glass is excluded: it has no DENTED/CRACKED tier by design.
+# D22 — impact-mark pseudo-materials. Glass is excluded: it has no
+# DENTED/CRACKED tier by design. Real per-material photographic decal art is
+# the Director's own pass, dropped into DECAL_DIR (decals/) at the filenames
+# DECAL_NAME/build_decal_family() expect — zero code changes on swap.
 # ---------------------------------------------------------------------------
 VOXEL_ROOT = Path("ASSETS/ISOMETRIC/source_assets/voxels")
 # ASSET-LAYOUT-01 (Director, 2026-08-02) — split by what the pipeline DOES with
-# a file. materials/halves/decals are INPUTS the generator never overwrites;
-# composites/ is a pure derivative, always rebuilt. See the tree's README.md.
+# a file. materials/halves/decals are INPUTS the generator never overwrites.
+# composites/ (a pure, always-rebuilt derivative) is gone as of D33 Part 4c
+# (2026-08-03) — every shape it used to hold composites LIVE at runtime
+# instead. See the tree's README.md.
 MATERIAL_OUTPUT_DIR = VOXEL_ROOT / "materials"
 HALF_OUTPUT_DIR = VOXEL_ROOT / "halves"
-IMPACT_OUTPUT_DIR = VOXEL_ROOT / "composites"
 IMPACT_MATERIALS: list[str] = ["concrete", "metal", "stone", "wood"]
 
-# Top-face diamond center (TILE_W/2, TILE_H/2) = (16, 8); radii kept small
-# enough to stay inside the diamond's taper near its N/S points rather than
-# bleeding into the transparent corners outside the cube silhouette.
-_MARK_CENTER = (TILE_W // 2, TILE_H // 2)
-_DENT_OUTER_RADIUS = 5
-_DENT_CORE_RADIUS = 2
-_CRACK_RADIUS = 4
 
-
-def generate_impact_mark(base_img: "Image.Image", dented: bool) -> "Image.Image":
-    """
-    Overlay a placeholder bullet-impact mark onto a copy of an existing voxel
-    atom's top face.
-
-    dented=True:  a dark rim around a TRUE alpha-cut core — the "meio voxel"
-                  sunken look (Director, 2026-07-30): "um voxel inteiro com a
-                  geometria modificada pra ter metade em alpha", so whatever
-                  renders behind this tile shows through the core, selling
-                  depth without any sub-tile geometry (Rule 8 stays satisfied
-                  — still one flat PNG through set_cell()).
-    dented=False: a smaller, opaque dark mark — a flat surface graze, no
-                  sinking, no alpha.
-    """
-    img = base_img.copy()
-    draw = ImageDraw.Draw(img)
-    cx, cy = _MARK_CENTER
-    if dented:
-        draw.ellipse(
-            [cx - _DENT_OUTER_RADIUS, cy - _DENT_OUTER_RADIUS,
-             cx + _DENT_OUTER_RADIUS, cy + _DENT_OUTER_RADIUS],
-            fill=(22, 19, 17, 255),
-        )
-        draw.ellipse(
-            [cx - _DENT_CORE_RADIUS, cy - _DENT_CORE_RADIUS,
-             cx + _DENT_CORE_RADIUS, cy + _DENT_CORE_RADIUS],
-            fill=(0, 0, 0, 0),
-        )
-    else:
-        draw.ellipse(
-            [cx - _CRACK_RADIUS, cy - _CRACK_RADIUS,
-             cx + _CRACK_RADIUS, cy + _CRACK_RADIUS],
-            fill=(38, 33, 30, 235),
-        )
-    return img
-
-
-# ---------------------------------------------------------------------------
-# D23 (Director, 2026-07-30) — blast impact marks. "A granada produzindo
-# buracos de bala não faz sentido [...] estados intermediários do material em
-# explosões, mas não com furos redondos." Deliberately NOT drawn with
-# draw.ellipse: a jagged fixed polygon for the sunken/dented look (an
-# off-centre alpha-cut "missing chunk", not a clean circular hole) and
-# branching crack LINES (not a filled blob) for the flat/cracked look — reads
-# as chipped/fractured rather than punctured, at a glance, from across the
-# room, which is the whole point. Points are hand-picked and deterministic,
-# not randomised — same reproducibility contract every generator in this
-# file already has.
-#
-# Sized to nearly fill the top-face diamond (2026-07-31, Director: the
-# apply_container_damage() ring scatter — D22, unchanged here — picks many
-# separate, non-adjacent voxels per blast, so small marks read as an isolated
-# pinprick scatter ("buracos de bala") regardless of their individual shape.
-# Widening each mark toward the diamond's own N/E/S/W edges means picks that
-# land on neighbouring voxels visually touch/merge into one blotch instead of
-# staying legible as separate dots — a texture-only fix, the scatter itself
-# (D22, shared with every RADIAL caller) is untouched.
-# ---------------------------------------------------------------------------
-_BLAST_DENT_OUTLINE = [(16, 1), (24, 5), (29, 8), (24, 12), (16, 14), (8, 12), (3, 8), (6, 5)]
-_BLAST_DENT_CHIP = [(17, 3), (23, 6), (21, 11), (13, 9)]
-_BLAST_CRACK_LINES = [
-    [(16, 8), (9, 2)],
-    [(16, 8), (23, 3)],
-    [(16, 8), (28, 9)],
-    [(16, 8), (22, 13)],
-    [(16, 8), (14, 15)],
-    [(9, 2), (4, 7)],
-    [(23, 3), (27, 6)],
-]
-
-
-def generate_blast_mark(base_img: "Image.Image", dented: bool) -> "Image.Image":
-    """
-    Overlay a placeholder BLAST-damage mark (chipped/cracked, never a round
-    puncture) onto a copy of an existing voxel atom's top face.
-
-    dented=True:  a jagged polygon with a smaller, OFF-CENTRE true alpha-cut
-                  "missing chunk" — an uneven chip, not a centred bullet hole.
-    dented=False: a handful of branching crack LINES radiating from a rough
-                  centre — a fracture, not a filled dot.
-    """
-    img = base_img.copy()
-    draw = ImageDraw.Draw(img)
-    if dented:
-        draw.polygon(_BLAST_DENT_OUTLINE, fill=(24, 20, 17, 255))
-        draw.polygon(_BLAST_DENT_CHIP, fill=(0, 0, 0, 0))
-    else:
-        for seg in _BLAST_CRACK_LINES:
-            draw.line(seg, fill=(35, 30, 27, 230), width=2)
-    return img
+## D33 Part 4c (2026-08-03): generate_impact_mark() (D22) and generate_blast_mark()
+## (D23) — the original placeholder top-face marks (ellipse/polygon, drawn
+## directly onto a full voxel atom) — retired along with the composites/ files
+## they only ever fed. Their material-agnostic, projection-correct
+## replacements are generate_generic_bullet_decal()/generate_generic_blast_dent_decal()/
+## etc. below (D33 Part 4a), which the Director specifically asked to REPLACE
+## these with rather than reuse ("texturas genéricas (vetor)... tentando ser
+## um pouco mais caprichado").
 
 # ---------------------------------------------------------------------------
 # D25 (Director diagram, 2026-07-31) — DENTED voxels are HALF VOXELS, not a
@@ -826,10 +737,10 @@ def generate_generic_blast_dent_decal(variant: int) -> Image.Image:
 ## main()/build_decal_family() — this is a runtime operation, mirrored here
 ## in Python purely so a GDScript port has a real reference to prove
 ## equality against (same discipline as every other D33 compositor
-## primitive). `cx, cy` are in FINAL ATOM space (32x36), matching
-## generate_impact_mark()'s own _MARK_CENTER = (16, 8) — the top-face
+## primitive). `cx, cy` are in FINAL ATOM space (32x36): (16, 8), the top-face
 ## diamond centre both mark families project onto (FACE_TOP is the only
-## target _composite_generic_flat_mark() ever uses).
+## target _composite_generic_flat_mark() ever uses) — the same point D22's
+## retired generate_impact_mark() used to draw straight onto.
 _GENERIC_HOLE_RADIUS = {"bullet": 2.0, "blast": 3.0}
 
 
@@ -1126,75 +1037,16 @@ def main() -> None:
     total = len(MATERIALS) + len(EARTH_VARIANTS) + len(GROUND_MATERIALS)
     print(f"\n✓ {total} voxel atom(s) → {OUTPUT_DIR}/")
 
-    # D22 — impact-mark placeholders (dented/cracked), one pair per non-glass
-    # wall material, built from each material's own base atom above.
-    IMPACT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    # D33 Part 4c (2026-08-03): the D22/D32/D25/FLOOR-DENT-01 composite-writing
+    # stages that used to run here (impact-mark placeholders, blast-mark
+    # placeholders, dented half-voxels, the floor's own carved composite) are
+    # retired along with composites/ itself — every one of those shapes is
+    # composited LIVE at runtime now (VoxelRenderer's baked and generic
+    # branches), never pre-baked to a per-name PNG. generate_broken_face()'s
+    # generic fallback texture still gets written below, inside
+    # build_decal_family() — that one is real decals/ INPUT art (ASSET-LAYOUT-01),
+    # not a composite derivative.
     HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    impact_count = 0
-    for material in IMPACT_MATERIALS:
-        base_img = generate_voxel_atom(MATERIALS[material])
-        for suffix, dented in (("dented", True), ("cracked", False)):
-            img  = generate_impact_mark(base_img, dented)
-            path = IMPACT_OUTPUT_DIR / f"voxel_{material}_{suffix}.png"
-            img.save(path, "PNG")
-            print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
-            impact_count += 1
-    print(f"\n✓ {impact_count} impact-mark placeholder(s) → {IMPACT_OUTPUT_DIR}/")
-
-    # D32 — blast-mark placeholders (dented/cracked), same materials, own
-    # texture family (chip/crack, never a round puncture).
-    blast_count = 0
-    for material in IMPACT_MATERIALS:
-        base_img = generate_voxel_atom(MATERIALS[material])
-        for suffix, dented in (("dented", True), ("cracked", False)):
-            img  = generate_blast_mark(base_img, dented)
-            path = IMPACT_OUTPUT_DIR / f"voxel_{material}_blast_{suffix}.png"
-            img.save(path, "PNG")
-            print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
-            blast_count += 1
-    print(f"\n✓ {blast_count} blast-mark placeholder(s) → {IMPACT_OUTPUT_DIR}/")
-
-    # D25 — DENTED half-voxels with a pre-baked broken face, 4 carved sides per
-    # material. The generic broken face is written out as its own asset (not
-    # only baked into the composites) so the Director can see exactly what the
-    # real per-material art has to replace.
-    generic_broken = generate_broken_face()
-    generic_path = DECAL_DIR / (BROKEN_FACE_TEMPLATE % "generic")
-    generic_broken.save(generic_path, "PNG")
-    print(f"  ✓ {generic_path}  (generic broken-face fallback)")
-
-    dented_count = 0
-    for material in IMPACT_MATERIALS:
-        base_img = generate_voxel_atom(MATERIALS[material])
-        # Per-material override if the Director has dropped real art in;
-        # otherwise every material shares the generic fracture, which is the
-        # whole point of decoupling it from the material colour.
-        override = DECAL_DIR / (BROKEN_FACE_TEMPLATE % material)
-        broken_img = Image.open(override).convert("RGBA") if override.exists() else generic_broken
-        for variant in DENTED_VARIANTS:
-            img = generate_dented_voxel(base_img, broken_img, variant)
-            path = IMPACT_OUTPUT_DIR / f"voxel_{material}_blast_dented_{variant}.png"
-            img.save(path, "PNG")
-            print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
-            dented_count += 1
-
-    # FLOOR-DENT-01 (2026-08-01) — the floor's own carved variant. Plain-earth
-    # floors are the one ground type that dents today (MaterialResistanceTable's
-    # "earth" row; zoned ground_* materials stay dent-free until they get their
-    # own asset + table entry). A floor is only ever eaten from ABOVE, so earth
-    # gets exactly the _top carve — the same reasoning that gives ceilings only
-    # _bottom. Base colour is EARTH_VARIANTS[0]: the carved voxel reads as
-    # generic earth (the broken face dominates the read), not as one specific
-    # of the 8 floor variants.
-    earth_base = generate_voxel_atom(EARTH_VARIANTS[0])
-    earth_override = DECAL_DIR / (BROKEN_FACE_TEMPLATE % "earth")
-    earth_broken = Image.open(earth_override).convert("RGBA") if earth_override.exists() else generic_broken
-    img = generate_dented_voxel(earth_base, earth_broken, "top")
-    path = IMPACT_OUTPUT_DIR / "voxel_earth_blast_dented_top.png"
-    img.save(path, "PNG")
-    print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
-    dented_count += 1
-    print(f"\n✓ {dented_count} dented half-voxel(s) → {IMPACT_OUTPUT_DIR}/")
 
     build_decal_family()
 
@@ -1208,14 +1060,19 @@ def main() -> None:
 def build_decal_family() -> None:
     """
     Write the whole 2026-08-02 decal family: the Photoshop gabarito, the decal
-    placeholders the Director will replace, the four half voxels per material,
-    and every composite derived from them.
+    placeholders the Director will replace, the generic vector marks, the
+    generic broken-face fallback, and the four half voxels per material — every
+    one of them real decals/materials/halves INPUT art, per ASSET-LAYOUT-01.
 
     AUTHORED FILES ARE NEVER OVERWRITTEN. Decals and half voxels are written
     only when absent — the diagram's own "IF NOT PRESENT IN THE FOLDER" — so
-    re-running this after dropping real art rebuilds the composites around that
-    art instead of clobbering it. Composites are pure derivatives and are always
-    rewritten.
+    re-running this after dropping real art keeps it.
+
+    D33 Part 4c (2026-08-03): this used to also build every composite derived
+    from the above (composites/ — material|half x decal, ~130 files) and end
+    with `composites = 0` counting them. That whole stage is retired:
+    composites/ is gone, every one of those shapes composites LIVE at runtime
+    now instead (VoxelRenderer's baked and generic branches).
     """
     DECAL_DIR.mkdir(parents=True, exist_ok=True)
     HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1223,6 +1080,16 @@ def build_decal_family() -> None:
     template_path = DECAL_DIR / DECAL_TEMPLATE_NAME
     generate_decal_template().save(template_path, "PNG")
     print(f"\n  ✓ {template_path}  (blank gabarito {DECAL_AUTHOR_W}×{DECAL_AUTHOR_H})")
+
+    # D25 — the generic "inside of a broken voxel" surface, the cut-face fill
+    # every half voxel's cut plane used to be composited with. No longer
+    # loaded by the runtime (the live compositors read the flat MATERIALS
+    # atom's own lateral colour instead — see _flat_material_side_color()),
+    # kept here purely as authored decals/ INPUT art per ASSET-LAYOUT-01.
+    generic_broken_path = DECAL_DIR / (BROKEN_FACE_TEMPLATE % "generic")
+    if not generic_broken_path.exists():
+        generate_broken_face().save(generic_broken_path, "PNG")
+        print(f"  ✓ {generic_broken_path}  (generic broken-face fallback)")
 
     kept_decals = 0
     written_decals = 0
@@ -1286,94 +1153,15 @@ def build_decal_family() -> None:
     print(f"  ✓ {written_halves} half voxel(s) written, "
           f"{kept_halves} authored half voxel(s) kept → {HALF_OUTPUT_DIR}/")
 
-    composites = 0
-    for material in IMPACT_MATERIALS:
-        atom = generate_voxel_atom(MATERIALS[material])
-
-        for variant in range(DECAL_VARIANT_COUNT):
-            bullet = decals[(material, "bullet", variant)]
-            dent = decals[(material, "dent", variant)]
-
-            # --- BULLET, CRACKED: full voxel, mark on the struck lateral face.
-            # LEFT means the SW face took it (shooter to screen-left), matching
-            # BlastCalculator.carved_side_for()'s own screen-space convention.
-            composites += _save_pair(
-                compose_decal_voxel(atom, bullet, [_FACE_SW]),
-                compose_decal_voxel(atom, bullet, [_FACE_SE_MIRRORED]),
-                material, "bullet_cracked", variant)
-
-            # --- BULLET, DENTED: half voxel, same mark on the exposed cut plane
-            # ("aplicar a perspectiva da bala um pouco mais pra dentro" — the cut
-            # plane IS half a voxel deeper, so no extra offset is needed).
-            composites += _save_pair(
-                compose_decal_voxel(halves[(material, "left")], bullet, [_FACE_CUT_LEFT]),
-                compose_decal_voxel(halves[(material, "right")], bullet, [_FACE_CUT_RIGHT]),
-                material, "bullet_dented", variant)
-
-            # --- BLAST, DENTED (wall): same substrate, blast's own decal.
-            composites += _save_pair(
-                compose_decal_voxel(halves[(material, "left")], dent, [_FACE_CUT_LEFT]),
-                compose_decal_voxel(halves[(material, "right")], dent, [_FACE_CUT_RIGHT]),
-                material, "blast_dented", variant)
-
-            # --- BLAST, DENTED (floor): the sunken top surface takes the decal.
-            floor = compose_decal_voxel(
-                halves[(material, "top")], dent, [_FACE_SUNK_TOP])
-            floor.save(IMPACT_OUTPUT_DIR /
-                       f"voxel_{material}_blast_dented_top_{variant}.png", "PNG")
-            composites += 1
-
-            # --- BLAST, CRACKED: the FULL voxel, all three visible faces.
-            # Director: "cracked aparece no voxel inteiro, nas 3 faces. Não
-            # existe voxel rachado só em uma face" — a voxel that nearly became
-            # DENTED and is barely holding together cannot read pristine on one
-            # side and shattered on the other. Same variant on all three, so the
-            # voxel reads as ONE event rather than three unrelated fractures.
-            if material in CRACK_MATERIALS:
-                cracked = compose_decal_voxel(
-                    atom, decals[(material, "crack", variant)],
-                    [_FACE_TOP, _FACE_SW, _FACE_SE])
-                cracked.save(IMPACT_OUTPUT_DIR /
-                             f"voxel_{material}_blast_cracked_all_{variant}.png", "PNG")
-                composites += 1
-
-        # --- BLAST, DENTED (ceiling): silhouette only, no variants. Confirmed by
-        # the Director against the explosion diagram — an isometric camera never
-        # sees a voxel's underside, so there is no exposed surface to decal and
-        # nothing for a variant to vary.
-        halves[(material, "bottom")].save(
-            IMPACT_OUTPUT_DIR / f"voxel_{material}_blast_dented_bottom.png", "PNG")
-        composites += 1
-
-    # --- The floor's own dent, on "earth".
-    #
-    # NOT one of the Director's four wall materials, and included anyway for one
-    # concrete reason: VoxelRenderer.floor_damage_material() routes EVERY ground
-    # material's dent to this single shared "earth" asset (D26 — a zoned floor
-    # composing "ground_concrete_blast_dented_top" misses MATERIALS and repaints
-    # flat concrete). Leaving it out would put the new decal look on every wall
-    # while every crater rim in the same room kept D25's grey generic fracture —
-    # visibly two systems in one shot. Only the `dent` family applies: floors
-    # take no bullets (D32.4) and have no crack tier (crack_factor 0.0).
-    earth_atom = generate_voxel_atom(EARTH_VARIANTS[0])
+    # D33 Part 4c: the earth floor's own half voxel ("top" side — the one
+    # ground material that dents, FLOOR-DENT-01) is not part of the
+    # IMPACT_MATERIALS loop above (earth isn't a wall material), so it still
+    # needs writing here as halves/ INPUT art even though nothing composites
+    # it into a static file anymore.
     earth_half_path = HALF_OUTPUT_DIR / (HALF_NAME % ("earth", "top"))
-    if earth_half_path.exists():
-        earth_half = Image.open(earth_half_path).convert("RGBA")
-    else:
-        earth_half = generate_half_voxel(EARTH_VARIANTS[0], "top")
-        earth_half.save(earth_half_path, "PNG")
-    for variant in range(DECAL_VARIANT_COUNT):
-        path = DECAL_DIR / (DECAL_NAME % ("dent", "earth", variant))
-        if path.exists():
-            decal = Image.open(path).convert("RGBA")
-        else:
-            decal = generate_decal_placeholder("dent", variant)
-            decal.save(path, "PNG")
-        compose_decal_voxel(earth_half, decal, [_FACE_SUNK_TOP]).save(
-            IMPACT_OUTPUT_DIR / f"voxel_earth_blast_dented_top_{variant}.png", "PNG")
-        composites += 1
-
-    print(f"  ✓ {composites} composite(s) → {IMPACT_OUTPUT_DIR}/")
+    if not earth_half_path.exists():
+        generate_half_voxel(EARTH_VARIANTS[0], "top").save(earth_half_path, "PNG")
+        print(f"  ✓ {earth_half_path}  (earth floor half voxel)")
 
     manifest = {
         "generated_by": "tools/asset_generation/generate_voxel.py",
@@ -1390,27 +1178,10 @@ def build_decal_family() -> None:
         "floor_material": "earth",
         "families": list(DECAL_FAMILIES),
         "crack_materials": list(CRACK_MATERIALS),
-        "composites": {
-            "bullet_cracked": {"sides": ["left", "right"], "variants": True},
-            "bullet_dented": {"sides": ["left", "right"], "variants": True},
-            "blast_dented": {"sides": ["left", "right", "top"], "variants": True},
-            "blast_dented_bottom": {"sides": ["bottom"], "variants": False},
-            "blast_cracked_all": {"sides": ["all"], "variants": True},
-        },
     }
     manifest_path = MANIFEST_DIR / MANIFEST_NAME
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"  ✓ {manifest_path}  (runtime variant discovery)")
-
-
-def _save_pair(left: "Image.Image", right: "Image.Image", material: str,
-               kind: str, variant: int) -> int:
-    """Write a left/right composite pair; returns how many files were written."""
-    left.save(IMPACT_OUTPUT_DIR /
-              f"voxel_{material}_{kind}_left_{variant}.png", "PNG")
-    right.save(IMPACT_OUTPUT_DIR /
-               f"voxel_{material}_{kind}_right_{variant}.png", "PNG")
-    return 2
 
 
 if __name__ == "__main__":

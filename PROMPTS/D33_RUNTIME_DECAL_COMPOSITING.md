@@ -1,20 +1,32 @@
 # D33 — Runtime decal compositing over the real baked facade
 
-**Status:** ✅ **Part 3 fully done (2026-08-03) — every impact-mark shape
-(full-voxel CRACKED, wall/floor/ceiling DENTED) now composites onto the
-real baked facade instead of losing it to the flat generic material.** Part
-0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01 removed
-the harder of §10's two open design points; Parts 1, 2, 3a/b/c/d all done.
-**Part 4 split into 4a/4b/4c (2026-08-03) — a real risk surfaced before any
-deletion: `BakeConfig.enabled` ships `false` at release, so every Part 3
-branch goes inert then, and deleting `composites/` as originally scoped
-would silently regress every damage mark to flat concrete the moment bake
-is off. 4a (generic vector-mark decal assets) and 4b (GDScript wiring) both
-done — every impact-mark shape now resolves through a live compositor with
-BakeConfig OFF, proven by `generic_mark_seam_selftest.gd` (2 real bugs
+**Status:** ✅ **D33 COMPLETE (2026-08-03).** Every impact-mark shape
+(full-voxel CRACKED, wall/floor/ceiling DENTED) composites onto the real
+baked facade when one is available (Parts 3a-3d), and onto the flat
+material atom via a material-agnostic vector mark when it isn't — bake off,
+or no baked atom for that cell (Part 4b). `composites/` — the 130-odd
+pre-baked PNGs and their boot-time MATERIALS registrations this whole arc
+existed to retire — is deleted from disk (Part 4c). Real captures with both
+BakeConfig ON and OFF, taken AFTER the deletion, both show a real
+detonation's damage rendering correctly:
+`Screenshots/history/d33_part4c_bake_on_post_composites_deletion.png`,
+`Screenshots/history/d33_part4c_bake_off_post_composites_deletion.png`.
+
+Part 0 viable (§9 wrong, §10 corrected); §11 explains why ROTATE-KILL-01
+removed the harder of §10's two open design points; Parts 1, 2, 3a/b/c/d all
+done. **Part 4 split into 4a/4b/4c (2026-08-03) — a real risk surfaced
+before any deletion: `BakeConfig.enabled` ships `false` at release, so every
+Part 3 branch goes inert then, and deleting `composites/` as originally
+scoped would silently regress every damage mark to flat concrete the moment
+bake is off. 4a (generic vector-mark decal assets) and 4b (GDScript wiring)
+both done — every impact-mark shape now resolves through a live compositor
+with BakeConfig OFF, proven by `generic_mark_seam_selftest.gd` (2 real bugs
 caught and fixed before shipping, see §5 Part 4b). 4c (delete `composites/`,
-the 97 MATERIALS entries, and `impact_decal_names()`) — not started, needs
-a real bake-OFF capture as evidence first.**
+the 97 decal-family MATERIALS entries plus the 33 older D22/D23/D25 ones,
+and `impact_decal_names()`) — ✅ done, see §5 Part 4c for the two further
+bugs its own removal surfaced (`_decal_material()`'s stale `MATERIALS.has()`
+guard, and two genuinely-invalid combinations it had accidentally been
+filtering as a side effect).**
 
 ---
 
@@ -539,17 +551,51 @@ real blast crater rendering on PLAYGROUND's floor with `BAKE: ✗ OFF` shown
 in the dev overlay (non-`auto_`-named — see CLAUDE.md's screenshot-rotation
 note — so this citation won't rot).
 
-#### Part 4c — delete `composites/` (blocked on 4b)
-- `composites/` deleted wholesale (this is what ASSET-LAYOUT-01 was
-  structured for). `materials/`, `halves/`, `decals/` stay — they become the
-  runtime's inputs instead of the generator's.
-- `generate_voxel.py` keeps producing `materials/` and `halves/`; its
-  composite stage goes away.
-- `VoxelRenderer.MATERIALS` loses the 97 generated entries and
-  `impact_decal_names()` with them.
-- Only safe once 4b is proven with a real bake-OFF capture — the entire
-  point of this split was that "the tests pass" was not evidence enough
-  last time (bake is always ON in dev testing).
+#### Part 4c — delete `composites/` ✅ DONE
+
+- `composites/` deleted wholesale (252 files) — this is what ASSET-LAYOUT-01
+  was structured for. `materials/`, `halves/`, `decals/` stay as the
+  runtime's inputs; `generate_voxel.py`'s own composite-writing stage
+  (`generate_impact_mark`/`generate_blast_mark` and their D22/D32/D25/
+  FLOOR-DENT-01 call sites in `main()`/`build_decal_family()`) is gone with
+  it. `generate_dented_voxel()`/`generate_half_voxel()`/`compose_decal_voxel()`/
+  `_paste_decal()` all stay — still the golden-reference implementations the
+  GDScript equality selftests measure against.
+- `VoxelRenderer.BASE_MATERIALS` trimmed from ~144 entries down to the 13
+  real base materials (concrete/metal/stone/wood/glass/earth_0-7) — turned
+  out to be MORE than the doc's own "97 generated entries" figure: that
+  count only covered the D32 decal-family names `_static_init()` appended;
+  the 33 older D22/D23/D25 hand-typed pseudo-materials
+  (`"concrete_dented"`, `"concrete_blast_dented_left"`, ...) needed removing
+  too, or their boot-time `composites/`-backed load would push_error
+  immediately. Confirmed every one of the 33 is structurally unreachable at
+  runtime before removing any of them (traced every real caller of
+  `damage_variant_material()`/`carved_side_for()`).
+- **A real bug this removal surfaced**: `_decal_material()` (and
+  `floor_damage_material()`) used to gate their composed name on
+  `MATERIALS.has(composed)` — a check that was doing double duty as both
+  "does this asset exist" (obsolete now, everything composites live) AND
+  "is this actually a valid combination" (e.g. a BULLET can only strike a
+  LATERAL face; only `IMPACT_CRACK_MATERIALS` may blast-crack). Removing the
+  guard blindly made `_decal_material()` construct and return names like
+  `"concrete_bullet_dented_top_0"` (a bullet on a horizontal face) and
+  `"metal_blast_cracked_all_0"` (metal blast-cracking, D32.6 forbids it) —
+  caught immediately by `voxel_decal_selftest.gd`'s existing tests [3] and
+  [10], neither of which needed a single line changed to catch it. Fixed by
+  making the validation explicit (`_is_lateral_side()`, an
+  `IMPACT_CRACK_MATERIALS.has()` check) instead of leaning on a side effect.
+- Five pre-existing seam tests needed their own stale-assertion updates,
+  same category as Part 4b's — `decal_seam_selftest.gd` and
+  `half_voxel_seam_selftest.gd` each had one test asserting a
+  structurally-unreachable non-earth `"..._blast_dented_top_N"` name
+  "still resolves to its own composites/ id"; now correctly falls through
+  to flat concrete (source_id 0) since nothing was ever really rendering it.
+- Evidence: real captures with BakeConfig ON and OFF, both taken AFTER the
+  actual `rm -rf composites/`, both showing a real detonation's damage
+  rendering correctly — `d33_part4c_bake_on_post_composites_deletion.png`,
+  `d33_part4c_bake_off_post_composites_deletion.png` (§9's own "tests pass
+  ≠ the real map renders it" lesson, applied one more time before declaring
+  this closed).
 
 ---
 

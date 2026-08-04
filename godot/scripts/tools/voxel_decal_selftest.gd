@@ -60,46 +60,93 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
-## B6 — a name in MATERIALS with no file behind it is a push_error at boot, not
-## a fallback. Checking it here means the suite fails on a missing asset instead
-## of the game failing on the Director's screen.
+## B6 — every impact-mark shape must have a REAL renderable asset behind it,
+## in whichever path actually renders it, or the game silently repaints it
+## flat concrete on the Director's screen instead of failing loudly here.
+##
+## D33 Part 4c (2026-08-03) retired impact_decal_names()/IMPACT_ASSET_TEMPLATE/
+## the MATERIALS-registration this test used to check: no impact-mark
+## pseudo-material is pre-registered in MATERIALS or backed by a per-name
+## composites/ file any more. Every shape is composited LIVE now, from TWO
+## possible asset sources depending on which path renders it:
+##   - the photographic decal (DECAL_NAME_TEMPLATE) — Parts 3a-3d, when a
+##     baked atom is available;
+##   - the generic vector mark (GENERIC_MARK_TEMPLATE) — Part 4b, always
+##     available as the fallback (bake OFF, or no baked atom for this cell).
+## Ceiling ("_blast_dented_bottom") needs neither — it is a silhouette carve
+## with no decal in ANY path (the camera never sees a voxel's underside).
 func test_every_decal_name_has_an_asset() -> void:
-	print("[1] Every generated decal name resolves to a real, loadable texture (B6)\n")
+	print("[1] Every impact-mark shape has a real asset behind both the baked path and the generic fallback (B6)\n")
 
 	var checked := 0
 	var missing: Array[String] = []
-	var materials: Array[String] = VoxelRendererClass.IMPACT_DECAL_MATERIALS.duplicate()
-	materials.append(VoxelRendererClass.IMPACT_FLOOR_MATERIAL)
-	for material in materials:
-		for name in VoxelRendererClass.impact_decal_names(material):
+	var unrecognised: Array[String] = []
+
+	for material in VoxelRendererClass.IMPACT_DECAL_MATERIALS:
+		for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+			for side in ["left", "right"]:
+				## bullet CRACKED and bullet DENTED — both decal family "bullet",
+				## both need the generic "bullet_cracked"/"bullet_dented" kind.
+				_check_shape("%s_bullet_cracked_%s_%d" % [material, side, variant],
+					"bullet", material, variant, "bullet_cracked", checked, missing, unrecognised)
+				checked += 1
+				_check_shape("%s_bullet_dented_%s_%d" % [material, side, variant],
+					"bullet", material, variant, "bullet_dented", checked, missing, unrecognised)
+				checked += 1
+				_check_shape("%s_blast_dented_%s_%d" % [material, side, variant],
+					"dent", material, variant, "blast_dent", checked, missing, unrecognised)
+				checked += 1
+			if VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+				_check_shape("%s_blast_cracked_all_%d" % [material, variant],
+					"crack", material, variant, "blast_crack", checked, missing, unrecognised)
+				checked += 1
+			_check_shape("%s_blast_dented_top_%d" % [material, variant],
+				"dent", VoxelRendererClass.IMPACT_FLOOR_MATERIAL, variant, "blast_dent",
+				checked, missing, unrecognised)
 			checked += 1
-			if not VoxelRendererClass.MATERIALS.has(name):
-				missing.append("%s (absent from MATERIALS)" % name)
-				continue
-			var path: String = VoxelRendererClass.IMPACT_ASSET_TEMPLATE % name
-			if not ResourceLoader.exists(path):
-				missing.append(path)
+		## Ceiling: no decal in either path, just _is_impact_mark() recognition.
+		checked += 1
+		var ceiling_name := "%s_blast_dented_bottom" % material
+		if not VoxelRendererClass._is_impact_mark(ceiling_name):
+			unrecognised.append(ceiling_name)
+
+	## The floor's own carved-TOP row (D26 — shared "earth" family, no bullets,
+	## no crack tier).
+	for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+		_check_shape("%s_blast_dented_top_%d" % [VoxelRendererClass.IMPACT_FLOOR_MATERIAL, variant],
+			"dent", VoxelRendererClass.IMPACT_FLOOR_MATERIAL, variant, "blast_dent",
+			checked, missing, unrecognised)
+		checked += 1
 
 	if missing.is_empty():
-		_pass("%d decal names, all present in MATERIALS and loadable" % checked)
+		_pass("%d impact-mark shapes checked, every one has a real asset in whichever path renders it" % checked)
 	else:
-		_fail("%d of %d decal names have no asset: %s"
+		_fail("%d of %d shapes missing an asset: %s"
 			% [missing.size(), checked, ", ".join(missing.slice(0, 5))])
 
-	## Every decal name must also be recognised as an impact mark, or it would
-	## be loaded from the base-material folder and would bypass nothing.
-	var unrecognised: Array[String] = []
-	for material in materials:
-		for name in VoxelRendererClass.impact_decal_names(material):
-			if not VoxelRendererClass._is_impact_mark(name):
-				unrecognised.append(name)
 	if unrecognised.is_empty():
-		_pass("all decal names classify as impact marks (right folder, baked lookup bypassed)")
+		_pass("all shape names classify as impact marks (right branch, baked lookup bypassed)")
 	else:
-		_fail("%d decal name(s) not recognised by _is_impact_mark(): %s"
+		_fail("%d shape name(s) not recognised by _is_impact_mark(): %s"
 			% [unrecognised.size(), ", ".join(unrecognised.slice(0, 5))])
 
 	print("")
+
+
+## Checks one (name, path) pair: the constructed pseudo-material name must
+## classify as an impact mark, and BOTH the photographic decal (baked path)
+## and the generic vector mark (Part 4b fallback path) it could resolve
+## through must be real, loadable files.
+func _check_shape(name: String, decal_family: String, decal_material: String, variant: int,
+		generic_kind: String, _checked: int, missing: Array[String], unrecognised: Array[String]) -> void:
+	if not VoxelRendererClass._is_impact_mark(name):
+		unrecognised.append(name)
+	var photo_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [decal_family, decal_material, variant]
+	if not ResourceLoader.exists(photo_path):
+		missing.append(photo_path)
+	var generic_path: String = VoxelRendererClass.GENERIC_MARK_TEMPLATE % [generic_kind, variant]
+	if not ResourceLoader.exists(generic_path):
+		missing.append(generic_path)
 
 
 ## The generator writes the manifest; the renderer hardcodes the same counts.

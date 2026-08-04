@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**180 scripts · 42482 lines total** (under `godot/scripts/`)
+**180 scripts · 42554 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -712,7 +712,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2879 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2889 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1439,7 +1439,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1094 lines
+`class_name BlastCalculator` · 1105 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1448,7 +1448,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
-- `FACE_SOOT_CLEAN` = `3`
+- `FACE_SOOT_CLEAN` = `4`
 
 ---
 
@@ -1493,7 +1493,7 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 101 lines
+`class_name MaterialResistanceTable` · 112 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -1817,7 +1817,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 503 lines
+`class_name VoxelLightField` · extends `RefCounted` · 516 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -2274,7 +2274,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1679 lines
+extends `SceneTree` · 1683 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3213,7 +3213,7 @@ extends `SceneTree` · 437 lines
 
 ### `voxel_face_separation_selftest.gd`
 
-extends `SceneTree` · 225 lines
+extends `SceneTree` · 235 lines
 
 `godot/scripts/tools/voxel_face_separation_selftest.gd`
 
@@ -3901,7 +3901,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3594 lines
+extends `Node2D` · 3607 lines
 
 `godot/scripts/world/room.gd`
 

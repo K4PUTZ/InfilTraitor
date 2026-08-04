@@ -35,8 +35,19 @@ const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
 
 ## FACE-SOOT-01 — the per-face ring meaning "this face takes NO soot". Sits one
 ## past the last real ring index so `ring + falloff` clamps onto it naturally;
-## VoxelLightField.encode_face_soot() relies on it being 3 (2 bits per face).
-const FACE_SOOT_CLEAN := 3
+## VoxelLightField.encode_face_soot() packs three faces in base (this + 1).
+##
+## PERF-02 B3-2 (Director, 2026-08-04): 3 → 4, i.e. FOUR real soot tones
+## (0..3) instead of three. The Director asked for five; five does not fit,
+## and the binding constraint is NOT the alpha carrier the code rides in
+## (measured: a 216-level carrier decodes cleanly — a real capture with the
+## finer packing came back pixel-identical to the 64-level one). It is the
+## alternative-id ceiling documented on VoxelRenderer.FACE_SOOT_CODE_COUNT:
+## 12 buckets × codes × 2 flips must stay under TileSetAtlasSource.
+## TRANSFORM_FLIP_H (4096, read from the engine, not assumed). Five tones need
+## 6³ = 216 codes and peak at id 5183 — over. Four need 5³ = 125 and peak at
+## 2999.
+const FACE_SOOT_CLEAN := 4
 
 
 ## GU cell -> ring index (0 = source GU). Wall-aware BFS, capped at

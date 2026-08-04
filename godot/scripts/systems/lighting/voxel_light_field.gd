@@ -67,7 +67,13 @@ var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4
 ## canonical ring→darkening curve that the shader's `soot_face_mult` is
 ## calibrated against, and as the value `soot_factor()` still reports to probes,
 ## selftests and (future) vision modes.
-var soot_darkening: Array[float] = [0.20, 0.40, 0.63]  ## ring 0/1/2 multiplier
+## PERF-02 B3-2: ring 0/1/2/3 multiplier. The first three are UNCHANGED, so a
+## firearm's 3-ring scorch renders exactly as it did; ring 3 is new and only a
+## blast reaches it (see Room.blast_soot_rings), which is what makes the bomb's
+## extra distance a real gradient step instead of a flat band of the faintest
+## tone. Isotropic reference curve — the shader's per-face multipliers are
+## calibrated against it, not derived from it.
+var soot_darkening: Array[float] = [0.20, 0.40, 0.63, 0.80]
 
 ## VL-D3 — floor voxels that sat under a wall/block never saw the sun, so when a
 ## blast exposes their top they read darker than always-open floor. A gentle
@@ -348,20 +354,27 @@ func face_soot_code(cell: Vector2i, level: int) -> int:
 ## The code layout lives on VoxelRenderer (it owns the alternative-id space this
 ## packs into) and is referenced from function bodies only — a `const` here
 ## pointing at it and back would be a parse-time cycle between the two classes.
+## PERF-02 B3-2: base is FACE_SOOT_CLEAN + 1 (5 — four real tones plus clean),
+## was 4. Derived from the constant rather than written as a literal so the two
+## can never drift; the same base appears in voxel_face_shading.gdshader, which
+## cannot import it and states the coupling in its own comment.
+const FACE_SOOT_BASE: int = BlastCalculator.FACE_SOOT_CLEAN + 1
+
+
 static func encode_face_soot(faces: Vector3i) -> int:
 	var t: int = clampi(faces.x, 0, BlastCalculator.FACE_SOOT_CLEAN)
 	var se: int = clampi(faces.y, 0, BlastCalculator.FACE_SOOT_CLEAN)
 	var sw: int = clampi(faces.z, 0, BlastCalculator.FACE_SOOT_CLEAN)
-	return t * 16 + se * 4 + sw
+	return t * FACE_SOOT_BASE * FACE_SOOT_BASE + se * FACE_SOOT_BASE + sw
 
 
 static func decode_face_soot(code: int) -> Vector3i:
 	var c: int = clampi(code, 0, VoxelRenderer.FACE_SOOT_CODE_COUNT - 1)
 	@warning_ignore("integer_division")
-	var top: int = c / 16
+	var top: int = c / (FACE_SOOT_BASE * FACE_SOOT_BASE)
 	@warning_ignore("integer_division")
-	var se: int = (c / 4) % 4
-	return Vector3i(top, se, c % 4)
+	var se: int = (c / FACE_SOOT_BASE) % FACE_SOOT_BASE
+	return Vector3i(top, se, c % FACE_SOOT_BASE)
 
 
 ## VL-D1 — soot multiplier for a voxel (1.0 = clean). Public for vision modes /

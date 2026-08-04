@@ -524,19 +524,29 @@ var bucket_luminance: Array[float] = [
 ## HARD CEILING, verified in-engine rather than assumed: TRANSFORM_FLIP_H is
 ## 4096 (FLIP_V 8192, TRANSPOSE 16384), so a real alternative id must stay below
 ## 4096 or it collides with the transform bits Godot ORs into the same integer.
-## The full space here is 12 buckets × 64 codes × 2 flips = 1536 ids, max 1535 —
-## 2560 clear of the ceiling. Adding per-FACE LIGHT later (the other half of
-## VOXEL_LIGHT_MASTER_PLAN's open item) would multiply the bucket axis by 12×12
-## and BLOW that ceiling at 3456+; it would have to reuse this same soot code
-## space rather than add a third axis. Recorded here because the id space is the
-## real constraint on that feature, and nothing else in the codebase says so.
+## Adding per-FACE LIGHT later (the other half of VOXEL_LIGHT_MASTER_PLAN's open
+## item) would multiply the bucket axis by 12×12 and BLOW that ceiling; it would
+## have to reuse this same soot code space rather than add a third axis.
+## Recorded here because the id space is the real constraint on that feature,
+## and nothing else in the codebase says so.
 ##
-## The code itself is 2 bits per visible face — `top * 16 + se * 4 + sw`, ring
-## 0..2 with 3 = clean — so the all-clean code is 63 and maps to modulate alpha
+## PERF-02 B3-2 (2026-08-04): THE CEILING IS NOW THE BINDING CONSTRAINT on how
+## many soot tones exist, and it is why the Director's request for five was
+## built as four. Measured against the real engine constant, per face-code
+## count: 64 codes → max id 1535 · 125 → 2999 · 170 → 4079 · **216 → 5183,
+## over**. Five tones per face need 6³ = 216. Four need 5³ = 125. The alpha
+## carrier the code rides in is NOT the limit — a 216-level carrier was probed
+## on a real capture and decoded pixel-identically — so anyone revisiting this
+## should target the flip axis (it consumes half the space by adding
+## SOOT_ALT_FLIP_BASE, where Godot's own TRANSFORM_FLIP_H bit could carry it
+## instead), not the alpha packing.
+##
+## The code is base-5 per visible face — `top * 25 + se * 5 + sw`, ring 0..3
+## with 4 = clean — so the all-clean code is 124 and maps to modulate alpha
 ## 1.0, i.e. exactly the tile every untouched voxel already carries.
 ## VoxelLightField.encode_face_soot()/decode_face_soot() are its only readers.
-const FACE_SOOT_CODE_CLEAN: int = 63
-const FACE_SOOT_CODE_COUNT: int = 64
+const FACE_SOOT_CODE_CLEAN: int = 124
+const FACE_SOOT_CODE_COUNT: int = 125
 const SOOT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT * FACE_SOOT_CODE_COUNT
 
 

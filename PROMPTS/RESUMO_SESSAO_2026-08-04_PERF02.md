@@ -106,6 +106,48 @@ so every pre-existing caller stays bit-identical.
 
 ---
 
+## 3b. Follow-up round (B3-2 / B2b) — both Director-initiated
+
+**B3-2 — four soot tones instead of three stretched over five.** The Director
+rejected the flat outer band B3 shipped and asked for five intensities over
+five cells. Chasing it corrected *my own* earlier answer: I had said five was
+blocked by the alpha carrier the per-face code rides in. That was wrong, and a
+two-line probe proved it — packing 216 levels into the carrier and capturing a
+real detonation came back pixel-identical to the 64-level build. The actual
+limit is the **alternative-id ceiling**, read out of the engine
+(`TRANSFORM_FLIP_H` = 4096) rather than assumed: 5 tones need 6³ = 216 codes
+and peak at id 5183, over the ceiling; 4 tones need 5³ = 125 and peak at 2999.
+So the encoding moved to base-5 and the blast reaches 4 cells — one cell per
+available tone.
+
+The measurement that shows why the Director was right on the outcome, same
+index-0 blast:
+
+| | r0 | r1 | r2 | r3 | total |
+|---|---|---|---|---|---|
+| original (3 rings) | 156 | 306 | 302 | — | 925 |
+| B3 (3 tones over 5 cells) | 156 | 306 | **653** | — | 1477 |
+| B3-2 (4 tones over 4 cells) | 156 | 306 | 302 | **267** | 1196 |
+
+B3 was doubling the thickness of the faintest tone; B3-2 restores r0/r1/r2 to
+their original counts and gives the extra reach its own step. The weapon path
+is untouched — r3 is 0 on all three faces, r0/r1/r2 bit-identical. Minted tile
+alternatives went *down* (1175 new vs 1378), since 4 cells soot fewer voxels
+than 5. Face-separation guarantee re-verified across the larger code space:
+0/1,890,000 collapses.
+
+**B2b — resistance retune.** Wood 0.6 → 0.75 and metal dent 0.3 → 0.35: the
+flat ×0.65 ignored what each material reads as, and the two places it hurt were
+exactly the two the selftests caught. Wood measures 75% destroyed again, so the
+70% threshold this session had lowered to 55% is **restored** rather than left
+loose — a threshold that no longer matches the statement it encodes is worse
+than no threshold. Metal's dent prevalence is strictly ordered again (83 >
+earth 69 > concrete 34). Detonation timing unchanged: 1256.3 / 1245.9 ms
+against the committed 1250.9 / 1282.9 — B1's ring cut, not this table, is what
+made the explosion small.
+
+---
+
 ## 4. State at close
 
 - **VERSION 0.9.89** (unchanged).

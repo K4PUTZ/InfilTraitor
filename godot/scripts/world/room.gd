@@ -1949,20 +1949,29 @@ func _repaint_voxel_light_buckets() -> void:
 func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
 	var total: int = 0
 	var directional: int = 0        ## faces genuinely differ from each other
-	var per_face_rings := {0: [0, 0, 0, 0], 1: [0, 0, 0, 0], 2: [0, 0, 0, 0]}
+	## PERF-02 B3-2: one slot per real ring plus clean — sized off the constant
+	## so a further tone change cannot silently drop counts off the end.
+	var histogram_slots: int = BlastCalculator.FACE_SOOT_CLEAN + 1
+	var per_face_rings := {}
+	for face_idx in range(3):
+		var row: Array = []
+		for _slot in range(histogram_slots):
+			row.append(0)
+		per_face_rings[face_idx] = row
 	for level in soot_faces:
 		for cell in soot_faces[level]:
 			var f: Vector3i = soot_faces[level][cell]
 			total += 1
 			if f.x != f.y or f.y != f.z:
 				directional += 1
-			per_face_rings[0][clampi(f.x, 0, 3)] += 1
-			per_face_rings[1][clampi(f.y, 0, 3)] += 1
-			per_face_rings[2][clampi(f.z, 0, 3)] += 1
+			per_face_rings[0][clampi(f.x, 0, histogram_slots - 1)] += 1
+			per_face_rings[1][clampi(f.y, 0, histogram_slots - 1)] += 1
+			per_face_rings[2][clampi(f.z, 0, histogram_slots - 1)] += 1
 	print("[FACE-SOOT-DIAG] sooted voxels=%d directional=%d (%.1f%%)"
 			% [total, directional, 100.0 * float(directional) / maxf(float(total), 1.0)])
-	print("[FACE-SOOT-DIAG] ring histogram [r0,r1,r2,clean] top=%s se=%s sw=%s"
-			% [per_face_rings[0], per_face_rings[1], per_face_rings[2]])
+	print("[FACE-SOOT-DIAG] ring histogram [r0..r%d,clean] top=%s se=%s sw=%s"
+			% [BlastCalculator.FACE_SOOT_CLEAN - 1,
+			per_face_rings[0], per_face_rings[1], per_face_rings[2]])
 	## Lazily minted (source, atlas_coords, alt) triples across the whole tileset —
 	## NOT comparable to the 1536-wide alternative-id space, which is per TILE.
 	## This is the number that costs memory on a phone.
@@ -1985,8 +1994,12 @@ func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
 ## compose across two calls into the same snapshot — a second call cannot lower
 ## an already-recorded ring — so they run into scratch dictionaries and merge
 ## externally. `var`, not `const` (Rule 1): both are tuning numbers.
+## PERF-02 B3-2: 4, not 5 — one cell of reach per available tone, so the bomb's
+## extra distance reads as a real gradient step rather than a flat band of the
+## faintest tone. Four is the ceiling, not a preference: see
+## VoxelRenderer.FACE_SOOT_CODE_COUNT for the measured alternative-id limit.
 var weapon_soot_rings: int = 3
-var blast_soot_rings: int = 5
+var blast_soot_rings: int = 4
 
 ## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
 ## triples for every voxel this pass scorches (see BlastCalculator).

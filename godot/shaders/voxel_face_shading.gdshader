@@ -122,6 +122,8 @@ uniform float face_residue_sep : hint_range(0.0, 1.0) = 1.0;
 // writes modulate.a = (code + 1) / 64, code = top*16 + se*4 + sw with each face
 // a soot ring 0..2 and 3 = clean. Clean is code 63 → alpha exactly 1.0, so an
 // untouched voxel's tile is bit-identical to what it was before this existed.
+// (PERF-02 B3-2: now `(code + 1) / 125`, code = top*25 + se*5 + sw, ring 0..3
+// with 4 = clean — clean is code 124, still exactly alpha 1.0.)
 //
 // DECODING WITHOUT THE `MODULATE` BUILT-IN: COLOR arrives as
 // texture(TEXTURE, UV) * tile_modulate * node_modulate, and every node modulate
@@ -130,7 +132,21 @@ uniform float face_residue_sep : hint_range(0.0, 1.0) = 1.0;
 // depending on whether MODULATE includes TileData.modulate for a TileMapLayer —
 // a semantic this shader would otherwise be silently betting on. It costs one
 // extra sample of a texel already in cache, and nothing else.
-uniform vec4 soot_face_mult = vec4(0.33, 0.47, 0.69, 1.0);
+//
+// PERF-02 B3-2 (2026-08-04): FOUR real soot tones per face, not three, and the
+// code is packed base-5 (`top*25 + se*5 + sw`, ring 0..3 with 4 = clean, 125
+// codes) instead of base-4. Rings 0/1/2 keep their exact previous multipliers,
+// so a firearm's 3-ring scorch is bit-identical to before; ring 3 is new and
+// only a blast reaches it. Five tones were asked for and do not fit — see
+// VoxelRenderer.FACE_SOOT_CODE_COUNT for the measured alternative-id ceiling.
+// The base lives in two files that cannot import each other (this one and
+// VoxelLightField.FACE_SOOT_BASE); voxel_face_separation_selftest.gd parses
+// these uniforms out of this file precisely so a change here cannot drift.
+uniform vec4 soot_face_mult = vec4(0.33, 0.47, 0.69, 0.84);
+// Ring 4 = clean. Split out of the vec4 above because there are now five
+// entries; must be 1.0 or an untouched voxel would be tinted by a table it is
+// not supposed to be subject to at all.
+uniform float soot_clean_mult = 1.0;
 // Below this texture alpha the division is not worth trusting (a fully
 // transparent texel carries no recoverable carrier); such pixels are invisible
 // anyway, so they simply take no soot.
@@ -158,20 +174,20 @@ void fragment() {
 	}
 
 	float tex_a = texture(TEXTURE, UV).a;
-	float ring = 3.0;  // clean
+	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
-		float code = floor((COLOR.a / tex_a) * 64.0 + 0.5) - 1.0;
-		code = clamp(code, 0.0, 63.0);
-		// top*16 + se*4 + sw, selected by the face index resolved above.
+		float code = floor((COLOR.a / tex_a) * 125.0 + 0.5) - 1.0;
+		code = clamp(code, 0.0, 124.0);
+		// top*25 + se*5 + sw, selected by the face index resolved above.
 		if (sep_index < 0.5) {
-			ring = floor(code / 16.0);
+			ring = floor(code / 25.0);
 		} else if (sep_index < 1.5) {
-			ring = floor(mod(code, 16.0) / 4.0);
+			ring = floor(mod(code, 25.0) / 5.0);
 		} else {
-			ring = mod(code, 4.0);
+			ring = mod(code, 5.0);
 		}
 	}
-	f *= soot_face_mult[int(ring)];
+	f *= (ring < 3.5) ? soot_face_mult[int(ring)] : soot_clean_mult;
 	COLOR.rgb = max(COLOR.rgb * f, vec3(0.0));
 
 	// FACE-READ-03: force this face onto its own residue class mod 3, LAST, so

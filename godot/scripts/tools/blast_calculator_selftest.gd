@@ -374,19 +374,18 @@ func test_wood_container_mostly_destroyed_at_ring_zero() -> void:
 		if voxel.damage_state == Voxel.DamageState.DESTROYED:
 			destroyed += 1
 
-	## PERF-02 B2 (Director, 2026-08-04): the threshold moved 70% -> 55% when
-	## every wall material's factors were scaled ~x0.65 to make explosions
-	## physically smaller (wood destroy_factor 0.9 -> 0.6). This is the new
-	## design intent overriding the old absolute number, not a threshold
-	## loosened to make a failing test pass — the RELATIVE statement it was
-	## written to protect is untouched and is asserted below: wood is still by
-	## far the most destroyed material in the table.
+	## PERF-02 B2b (2026-08-04): threshold RESTORED to its original 70%. It was
+	## briefly lowered to 55% when the flat ×0.65 scale put wood at 0.6, and the
+	## retune to 0.75 made that concession unnecessary — wood measures 75%
+	## destroyed again. Kept as a real 70% bar rather than left loose: a
+	## threshold that no longer matches the design statement it encodes is worse
+	## than no threshold.
 	var ratio := float(destroyed) / float(slice.voxels.size())
-	if ratio >= 0.55:
+	if ratio >= 0.7:
 		_pass("Wood slice: %d/%d voxels DESTROYED (%.0f%%) — matches 'quase toda destruída'" %
 			[destroyed, slice.voxels.size(), ratio * 100.0])
 	else:
-		_fail("Wood slice: only %d/%d voxels DESTROYED (%.0f%%), expected >=55%%" %
+		_fail("Wood slice: only %d/%d voxels DESTROYED (%.0f%%), expected >=70%%" %
 			[destroyed, slice.voxels.size(), ratio * 100.0])
 
 	## The ordering the Director's statement is really about — kept as a real
@@ -718,6 +717,11 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 	## deterministic hash threshold. Reading the factors makes the assertion
 	## about the property (prevalence follows the factor) rather than about one
 	## session's numbers, so a future retune cannot make it wrong again.
+	##
+	## B2b moved metal to 0.35 and the tie no longer occurs at the shipped
+	## values — this stays property-based anyway, because it is the stronger
+	## assertion and the tie case is a real invariant of the hash selection,
+	## not a workaround for one table.
 	var metal: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(metal, "DENT_PATCH", epicenter, CORE, MAX_R, "metal")
 	var concrete: Array = make_patch.call()

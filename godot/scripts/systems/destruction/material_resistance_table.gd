@@ -56,10 +56,21 @@ class_name MaterialResistanceTable
 ## materials the test bench exercises, and the floor's own volume is addressed
 ## structurally by B4 instead.
 const TABLE := {
-	"metal":    {"destroy_factor": 0.03, "dent_factor": 0.3,  "crack_factor": 0.0},
+##
+## PERF-02 B2b (2026-08-04): two of the ×0.65 results were walked back, because
+## a flat scale ignores what each material is supposed to READ as, and the two
+## places it hurt are exactly the two the selftests caught. Wood's
+## destroy_factor goes 0.6 → 0.75 (still a real cut from 0.9, but back to
+## "quase toda destruída" rather than a coin flip) and metal's dent_factor goes
+## 0.3 → 0.35, off its accidental tie with earth's untouched 0.3 and back to
+## being the material that dents more than any other. Stone and concrete keep
+## their scaled values — they are the ones B1's ring cut already thins out, and
+## nothing about their character was in question. The explosion stays small:
+## B1 (4 rings → 3) did most of the reduction, not this table.
+	"metal":    {"destroy_factor": 0.03, "dent_factor": 0.35, "crack_factor": 0.0},
 	"stone":    {"destroy_factor": 0.2,  "dent_factor": 0.2,  "crack_factor": 0.1},
 	"concrete": {"destroy_factor": 0.3,  "dent_factor": 0.15, "crack_factor": 0.1},
-	"wood":     {"destroy_factor": 0.6,  "dent_factor": 0.03, "crack_factor": 0.0},
+	"wood":     {"destroy_factor": 0.75, "dent_factor": 0.03, "crack_factor": 0.0},
 	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
 	"earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0},
 	## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry.

@@ -101,9 +101,11 @@ func _parse_shader_uniforms() -> Dictionary:
 		if m == null:
 			return {}
 		out[name] = float(m.get_string(1))
-	## FACE-SOOT-01: the ring -> multiplier table, parsed the same way. Index 3 is
-	## "clean" and must be 1.0, or an untouched voxel would be tinted by a table
-	## it is not supposed to be subject to at all.
+	## FACE-SOOT-01: the ring -> multiplier table, parsed the same way.
+	## PERF-02 B3-2: the vec4 now holds the FOUR real rings (0..3) and "clean"
+	## moved to its own `soot_clean_mult` uniform, because there are five entries
+	## and no vec5. Clean must still be 1.0, or an untouched voxel would be
+	## tinted by a table it is not supposed to be subject to at all.
 	var vre := RegEx.new()
 	vre.compile("uniform\\s+vec4\\s+soot_face_mult\\s*=\\s*vec4\\(([^)]*)\\)")
 	var vm := vre.search(text)
@@ -114,6 +116,12 @@ func _parse_shader_uniforms() -> Dictionary:
 		mults.append(float(part.strip_edges()))
 	if mults.size() != 4:
 		return {}
+	var cre := RegEx.new()
+	cre.compile("uniform\\s+float\\s+soot_clean_mult\\s*(?::[^=]*)?=\\s*([0-9.]+)")
+	var cm := cre.search(text)
+	if cm == null:
+		return {}
+	mults.append(float(cm.get_string(1)))
 	out["soot_face_mult"] = mults
 	return out
 
@@ -147,13 +155,15 @@ func _scan(uniforms: Dictionary, residue: float) -> Dictionary:
 	var collapsed: int = 0
 	var worst_visible: int = 0
 	## FACE-SOOT-01: soot is no longer part of the incoming colour — it is a
-	## PER-FACE multiply inside the shader, so the sweep runs over every one of
-	## the 64 (top, se, sw) ring combinations the code space can deliver.
+	## PER-FACE multiply inside the shader, so the sweep runs over every
+	## (top, se, sw) ring combination the code space can deliver.
+	## PERF-02 B3-2: that space grew 64 -> 125 with the fourth soot tone; read
+	## from the constant so the sweep can never cover less than the real space.
 	for art in range(4, 256):
 		for lum in renderer.bucket_luminance:
 			for depth in VoxelRendererClass.FLOOR_DEPTH_DIM:
 				var c: float = (float(art) / 255.0) * lum * depth
-				for code in range(64):
+				for code in range(VoxelRendererClass.FACE_SOOT_CODE_COUNT):
 					var rings := VoxelLightFieldClass.decode_face_soot(code)
 					var v0: int = _face_value(c, factors[0], 0.0, residue, mult[rings.x])
 					var v1: int = _face_value(c, factors[1], 1.0, residue, mult[rings.y])

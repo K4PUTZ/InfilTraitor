@@ -22,6 +22,8 @@ const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
+const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
+const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
@@ -426,6 +428,26 @@ var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
+var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
+var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
+
+## VFX-01: chance (0-1) that a destroyed voxel of the relevant material also
+## spawns dust/sparks/chips — starting points to tune after seeing it run;
+## smoke always fires (no chance gate), per Director's request.
+var vfx_dust_chance: float = 0.4
+var vfx_spark_chance: float = 0.65
+var vfx_chip_chance: float = 0.55
+var vfx_dust_materials: Array[String] = ["concrete", "stone", "ground_concrete", "ground_gravel", "earth"]
+var vfx_metal_spark_count_min: int = 3
+var vfx_metal_spark_count_max: int = 8
+var vfx_stone_spark_count: int = 2
+var vfx_chip_count_min: int = 1
+var vfx_chip_count_max: int = 4
+var vfx_smoke_darken_wood: float = 0.55   ## Color.darkened() amount — wood smoke reads darker
+var vfx_smoke_darken_default: float = 0.15  ## masonry/metal/ground smoke reads lighter
+var vfx_smoke_alpha: float = 0.6
+var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
+var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
 ## GU-GRID-01: always-on per-GU floor boundary grid (GuGridOverlay) —
 ## restores the reference grid the legacy floor art used to bake into its own
@@ -577,6 +599,10 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
+	if _smoke_spark_overlay != null:
+		_smoke_spark_overlay.clear()  ## VFX-01: same reasoning as the ember overlay above
+	if _debris_overlay != null:
+		_debris_overlay.clear()
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -780,6 +806,20 @@ func _ready() -> void:
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
 	_ember_overlay = EmberOverlayClass.new()
 	add_child(_ember_overlay)
+
+	## VFX-01: smoke/spark (above-floor) and dust/chip (floor-level) VFX for
+	## VoxelRenderer.voxel_destroyed — same deferred z-assignment as above.
+	_smoke_spark_overlay = SmokeSparkOverlayClass.new()
+	add_child(_smoke_spark_overlay)
+	_debris_overlay = DebrisOverlayClass.new()
+	## Fixed floor-level z (not overhead-band, unlike ember/smoke/spark): dust
+	## and chips read as sitting ON the ground, not floating above every wall.
+	## Just above the floor layer (-9), below structure/agents — see
+	## _apply_overhead_overlay_z()'s doc for the overhead-band siblings.
+	_debris_overlay.z_index = -8
+	add_child(_debris_overlay)
+	_ember_overlay.set_smoke_overlay(_smoke_spark_overlay)
+	_voxel_renderer.voxel_destroyed.connect(_on_voxel_destroyed)
 
 	## Initialize world markers overlay controller (shadows, spill, light rays)
 	## MUST be before signal connections to LightingController
@@ -1228,6 +1268,10 @@ func _set_perspective(direction: String) -> void:
 		## a glow floating over the wrong voxel instead of just fading away.
 		if _ember_overlay != null:
 			_ember_overlay.clear()
+		if _smoke_spark_overlay != null:
+			_smoke_spark_overlay.clear()
+		if _debris_overlay != null:
+			_debris_overlay.clear()
 
 		## OCC-01: Recompute occlusion set on perspective change
 		_recompute_occlusion()
@@ -1802,6 +1846,62 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	## competes with them for a pixel.
 	if _ember_overlay != null:
 		_ember_overlay.z_index = max_voxel_z_index + 4
+	## VFX-01: smoke/sparks are the same "always above the geometry" family as
+	## the ember glow — one tick higher so it never competes with ember for a
+	## pixel. Debris (dust/chips) is deliberately NOT in this overhead band:
+	## it's meant to read as sitting on the ground, not floating above every
+	## wall, so it gets a fixed floor-level z instead (see _ready()/OCC-03).
+	if _smoke_spark_overlay != null:
+		_smoke_spark_overlay.z_index = max_voxel_z_index + 5
+
+
+## VFX-01: dispatch VoxelRenderer.voxel_destroyed to the smoke/spark/debris
+## overlays. Ember keeps its own separate trigger (TestZoneController's
+## freshly-scorched-neighbour loop) — that condition ("survives next to a
+## fresh hole") is different from "this voxel was destroyed", so it isn't
+## folded in here. Fires for both blast and firearm destruction — both paths
+## emit the same signal (VoxelRenderer.process_dirty()/process_dirty_slabs()).
+func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) -> void:
+	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
+		return
+	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
+	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)
+	if floor_pos == Vector2.ZERO:
+		floor_pos = origin
+
+	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id))
+
+	if vfx_dust_materials.has(material_id) and randf() < vfx_dust_chance:
+		var dust_color: Color = _vfx_material_base_color(material_id)
+		_debris_overlay.add_dust(origin, floor_pos, dust_color)
+
+	if material_id == "metal" and randf() < vfx_spark_chance:
+		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max), vfx_metal_spark_color)
+	elif material_id == "stone" and randf() < vfx_spark_chance:
+		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color)
+
+	if material_id == "wood" and randf() < vfx_chip_chance:
+		var wood_color: Color = _vfx_material_base_color(material_id)
+		_debris_overlay.add_chips(origin, floor_pos, randi_range(vfx_chip_count_min, vfx_chip_count_max), wood_color)
+
+
+## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the
+## material has no registry entry (e.g. "earth" — resistance-table-only, see
+## material_resistance_table.gd).
+func _vfx_material_base_color(material_id: String) -> Color:
+	var mat_def = Registries.get_material_registry().get_material(material_id)
+	return mat_def.base_color if mat_def != null else Color(0.6, 0.6, 0.6)
+
+
+## VFX-01: smoke tint per material — darker/desaturated version of the
+## material's own base color so wood reads as dark smoke and masonry/metal
+## read as light smoke, per the Director's request.
+func _vfx_smoke_color_for_material(material_id: String) -> Color:
+	var base: Color = _vfx_material_base_color(material_id)
+	var darken: float = vfx_smoke_darken_wood if material_id == "wood" else vfx_smoke_darken_default
+	var smoke: Color = base.darkened(darken)
+	smoke.a = vfx_smoke_alpha
+	return smoke
 
 
 ## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
@@ -3085,6 +3185,16 @@ func _run_auto_screenshot_capture() -> void:
 			## detonation screenshot. Wait past the tween so the shot shows
 			## the real damage.
 			for _j in range(45):
+				await get_tree().process_frame
+			## VFX-01 dev verification: the 45-frame wait above is enough to
+			## catch the flash-tween settling, but VFX-01's dust (starts
+			## falling ~1s after the blast) and ember extinguish-puffs (up to
+			## a few seconds) land later than that. Purely additive — 0
+			## frames when unset, same as every other capture-only env var in
+			## this function.
+			var extra_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_EXTRA_WAIT_FRAMES")
+			var extra_wait: int = extra_wait_env.to_int() if extra_wait_env.is_valid_int() else 0
+			for _e in range(extra_wait):
 				await get_tree().process_frame
 			## FLOOR-DENT-01 (2026-08-01): rotate AFTER the blast, so a capture
 			## proves damage SURVIVES rotation instead of only that it renders

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**177 scripts · 41266 lines total** (under `godot/scripts/`)
+**179 scripts · 41784 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -832,6 +832,45 @@ extends `ConfirmationDialog` · 64 lines
 
 ---
 
+### `debris_overlay.gd`
+
+`class_name DebrisOverlay` · extends `Node2D` · 183 lines
+
+`godot/scripts/overlays/debris_overlay.gd`
+
+**Public vars**
+- `var dust_delay_min: float = 0.9`
+- `var dust_delay_max: float = 1.1`
+- `var dust_fall_duration_min: float = 0.3`
+- `var dust_fall_duration_max: float = 0.5`
+- `var dust_settle_duration_min: float = 0.6`
+- `var dust_settle_duration_max: float = 1.0`
+- `var dust_speck_count_min: int = 3`
+- `var dust_speck_count_max: int = 5`
+- `var dust_speck_spread: float = 5.0`
+- `var dust_speck_radius: float = 1.6`
+- `var dust_fade_power: float = 1.3`
+- `var chip_arc_duration_min: float = 0.4`
+- `var chip_arc_duration_max: float = 0.6`
+- `var chip_settle_duration_min: float = 0.8`
+- `var chip_settle_duration_max: float = 1.3`
+- `var chip_gravity: float = 420.0`
+- `var chip_horizontal_jitter: float = 40.0`
+- `var chip_half_w: float = 3.5`
+- `var chip_half_h: float = 1.6`
+- `var chip_size_jitter_min: float = 0.7`
+- `var chip_size_jitter_max: float = 1.3`
+- `var chip_rotation_speed_min: float = -10.0`
+- `var chip_rotation_speed_max: float = 10.0`
+- `var chip_fade_power: float = 1.3`
+
+**Public API**
+- `func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:`
+- `func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:`
+- `func clear() -> void:`
+
+---
+
 ### `elite_exposure_overlay.gd`
 
 extends `Node2D` · 233 lines
@@ -870,7 +909,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 75 lines
+`class_name EmberOverlay` · extends `Node2D` · 161 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1180,6 +1219,14 @@ extends `Node2D` · 94 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func is_dev_vision_enabled() -> bool:`
+
+---
+
+### `smoke_spark_overlay.gd`
+
+`class_name SmokeSparkOverlay` · extends `Node2D` · 139 lines
+
+`godot/scripts/overlays/smoke_spark_overlay.gd`
 
 ---
 
@@ -3831,7 +3878,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3420 lines
+extends `Node2D` · 3530 lines
 
 `godot/scripts/world/room.gd`
 
@@ -3857,6 +3904,8 @@ extends `Node2D` · 3420 lines
 - `ShadowBoundaryOverlayClass` = `preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")`
 - `LightRayOverlayClass` = `preload("res://godot/scripts/overlays/light_ray_overlay.gd")`
 - `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
+- `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
+- `DebrisOverlayClass` = `preload("res://godot/scripts/overlays/debris_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`
@@ -3897,11 +3946,24 @@ extends `Node2D` · 3420 lines
 - `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
 - `ACTOR_END_HOLD_DELAY` = `0.5`
 - `TRAIL_MAX` = `5`
-- `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
 - `var vision_bonus_tiles: int = 0`
+- `var vfx_dust_chance: float = 0.4`
+- `var vfx_spark_chance: float = 0.65`
+- `var vfx_chip_chance: float = 0.55`
+- `var vfx_dust_materials: Array[String] = ["concrete", "stone", "ground_concrete", "ground_gravel", "earth"]`
+- `var vfx_metal_spark_count_min: int = 3`
+- `var vfx_metal_spark_count_max: int = 8`
+- `var vfx_stone_spark_count: int = 2`
+- `var vfx_chip_count_min: int = 1`
+- `var vfx_chip_count_max: int = 4`
+- `var vfx_smoke_darken_wood: float = 0.55`
+- `var vfx_smoke_darken_default: float = 0.15`
+- `var vfx_smoke_alpha: float = 0.6`
+- `var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)`
+- `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
 
 **Public API**
 - `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0) -> void:`

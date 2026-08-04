@@ -3,7 +3,13 @@
 > **Status:** ✅ SHIPPED (VL-01 → VL-D5, 2026-07-23 → 2026-07-26) — "Alpha
 > Temporal Light Foundation"; extended by FACE-READ-01 (2026-07-31) and
 > FACE-READ-02, FACE-SOOT-01 and FACE-READ-03 (2026-08-01) — "Alpha Face Light
-> System Foundation." This is the
+> System Foundation"; extended again by D33-SOOT-01 (2026-08-03, full record
+> in `DESTRUCTION_MASTER_PLAN.md`'s D24 ledger entry): a DENTED/CRACKED voxel
+> that never happens to sit beside a real hole now gets one faint self-soot
+> ring on its own struck face (`BlastCalculator.apply_self_soot()`) — closes
+> the gap where some weapon/material combinations (structurally never reach
+> DESTROYED, given current punch/resistance values) left dents and bullet
+> marks with zero soot regardless of weapon or material. This is the
 > geometry/mechanism reference for the voxel FACE lighting plane (buckets, blast
 > visuals, persistence, temporal repaint, per-face shading and per-face soot) —
 > read it before

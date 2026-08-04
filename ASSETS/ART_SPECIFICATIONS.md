@@ -201,10 +201,12 @@ Rule: once the dictionary exists, `BakePolicy` and every other consumer
 
 Impact art for the destruction system. Director diagrams, 2026-08-02.
 
-The Director authors **flat, unprojected decals**; the generator
-(`tools/asset_generation/generate_voxel.py`) projects them onto voxel faces
-and writes every composite. Art is never pre-projected — §1's rule, and the
-same division of labour `bake_compositor.gd` already has with facades.
+The Director authors **flat, unprojected decals**; the runtime
+(`VoxelRenderer`, D33) projects them onto voxel faces and composites them
+live, at room load — never pre-projected, and never pre-composited to a file
+either (D33 Part 4c retired the `composites/` staging folder this section
+used to describe; see below). Art is never pre-projected — §1's rule, and
+the same division of labour `bake_compositor.gd` already has with facades.
 
 | Property | Specification |
 |---|---|
@@ -254,20 +256,23 @@ decides which stretch applies:
 - DENTED and CRACKED are mutually exclusive; a voxel is one or the other.
 
 **Half voxels** (`voxel_<material>_half_<left|right|top|bottom>.png`) are
-generated from the material's own atom and are shared by the bullet and blast
-dented tiers. Like the decals, they are only written **if absent** — dropping
-hand-made art at the same filename makes the generator build around it instead
-of overwriting it.
+generated from the material's own atom. Not read by the runtime any more
+(D33 Part 4b builds the carved substrate live from the flat material atom
+instead — `HalfVoxelCompositor`), kept as authored INPUT art per
+ASSET-LAYOUT-01's own rule regardless.
 
 `voxels/manifest.json` is the machine-readable copy of the counts above
 and is what runtime reads for variant discovery — never a directory scan,
 which does not survive export packing.
 
 The voxel source tree is split by what the pipeline does with a file —
-`materials/` and `halves/` and `decals/` are INPUTS the generator never
-overwrites, `composites/` is a pure derivative that is always rebuilt. The rule
-and the reasoning live in that tree's own
-`ASSETS/ISOMETRIC/source_assets/voxels/README.md` (ASSET-LAYOUT-01).
+`materials/`, `halves/` and `decals/` are INPUTS the generator never
+overwrites. **There is no OUTPUT folder any more** — `composites/` (a pure,
+always-rebuilt derivative) was retired in D33 Part 4c (2026-08-03): every
+damage mark composites LIVE at room-load time now, straight from these three
+INPUT folders, never pre-baked to a file. The rule and the reasoning live in
+that tree's own `ASSETS/ISOMETRIC/source_assets/voxels/README.md`
+(ASSET-LAYOUT-01).
 
 **After dropping new art**, run the generator and let Godot reimport before
 launching, or the new PNGs fail to load and every affected voxel hard-errors at
@@ -278,11 +283,31 @@ python3 tools/asset_generation/generate_voxel.py
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
 ```
 
-Runtime side (for whoever changes it next): `VoxelRenderer.impact_decal_names()`
-is the single writer of these names, `damage_variant_material()` the single
-reader, and `voxel_decal_selftest.gd` asserts every name it can generate has a
-loadable asset — so adding a corner of the matrix that the generator does not
-produce fails the suite instead of failing on screen.
+Runtime side (for whoever changes it next): `damage_variant_material()` names
+the pseudo-material, `VoxelRenderer._set_voxel_cell()`'s plan parsers
+(`_full_voxel_decal_plan`/`_half_voxel_decal_plan`/`_floor_sunk_decal_plan`/
+`_ceiling_carve_plan`) recognize it and pick the composite path, and
+`voxel_decal_selftest.gd` asserts every name the plan parsers can produce has
+a loadable asset behind BOTH the photographic decal path and the generic
+vector-mark path below — so adding a corner of the matrix with no art behind
+it fails the suite instead of failing on screen.
+
+### Generic vector marks (procedural — nothing to author here)
+
+A generic (flat, unbaked) voxel — `BakeConfig.enabled == false` (the release
+canon), or simply no baked atom available for a given cell — never wears the
+photographic decal art above (Director, 2026-08-03: "não queremos texturas
+sendo aplicadas em voxels genéricos"). Instead it gets a **material-agnostic,
+procedurally generated** vector mark: `generate_generic_bullet_decal()` /
+`generate_generic_bullet_crack_decal()` / `generate_generic_blast_dent_decal()`
+/ `generate_generic_blast_crack_decal()` in `generate_voxel.py`, 3 variants
+each, written to `decals/decal_generic_<kind>_<n>.png` — 12 files total,
+never per-material (that is the whole point: one set works on any material's
+flat colour, at 70% ink opacity so the material's own colour still reads
+through). **Nothing here is Director-authored** — there is no art to drop in,
+no filename to override; regenerating always overwrites these (unlike every
+other file in `decals/`). If a future pass wants real per-material generic art
+instead, that is a new design conversation, not a file drop.
 
 ---
 

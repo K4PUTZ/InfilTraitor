@@ -658,7 +658,21 @@ further out that is also absent.
 `soot_ring` today is **per voxel** — the BFS marks whole voxels. D17 wants
 **per face**. The good news is `VoxelLightField` already works in faces (12
 directional brightness buckets per face), so the rendering side can express it;
-the storage does not exist yet.
+the storage does not exist yet. *(Closed by FACE-SOOT-01, 2026-08-01 — per-face
+storage shipped, see `DESTRUCTION_MASTER_PLAN.md`'s D24 ledger entry.)*
+
+**Extended further by D33-SOOT-01 (2026-08-03).** D17's "a bullet marks its
+impact; it does not blacken the wall" held exactly, until the Director found
+the edge it didn't cover: a DENTED/CRACKED voxel that never happens to sit
+next to an actual hole got NO soot at all — not faint, not local, none —
+because the BFS above only ever seeds from `DESTROYED` voxels. Measured:
+pistol/metal, pistol/stone and shotgun/metal structurally never cross
+`PUNCH_DESTROY_MIN` given `RESISTANCE`'s current values, so those
+combinations never produced a hole to seed from, regardless of weapon.
+`BlastCalculator.apply_self_soot()` adds one faint, non-propagating ring
+directly on the struck face — still true to "does not blacken the wall" (no
+spreading to neighbours, ever), just no longer leaves the mark itself looking
+pristine.
 
 **S4. ✅ CLOSED 2026-07-30 — deferred, not designed here.** Noise stays owned by
 the noise system (D8) and is explicitly secondary at this point: once a firearm

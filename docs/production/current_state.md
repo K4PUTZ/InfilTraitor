@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.88 · **Updated:** 2026-08-03 · **Branch:** main
+**Version:** 0.9.89 · **Updated:** 2026-08-04 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -26,6 +26,7 @@
 - RESUMO_SESSAO_2026-08-02_FACE_SOOT.md
 - RESUMO_SESSAO_2026-08-02_FIREARM_DESTRUCTION.md
 - RESUMO_SESSAO_2026-08-03_D33_SPIKE.md
+- RESUMO_SESSAO_2026-08-04_GENERIC_DECALS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

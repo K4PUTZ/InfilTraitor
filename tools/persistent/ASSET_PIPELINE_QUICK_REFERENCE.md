@@ -12,8 +12,8 @@ Asset Source                  Generator              Output TileSet             
 PNG voxel atoms       →  generate_voxel.py     →  built in memory at    →  Voxel walls
 (voxels/materials/)        (32×36 per material)    room load (32×16)        (VoxelRenderer)
 
-decals/ + halves/     →  generate_voxel.py     →  same in-memory TileSet →  Damage marks
-(what you paint)           (shear + composite)     (composites/, D32)
+decals/ + halves/     →  VoxelRenderer         →  live composite onto   →  Damage marks
+(what you paint)           (runtime, D33)          the placed cell's atom
 
 Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   →  Floor, props
 (source_assets/generated/)  (no wall series)        (256×128 tile_size)
@@ -35,14 +35,19 @@ ASSETS/ISOMETRIC/source_assets/voxels/
 ├── materials/     INPUT   one 32×36 atom per material (16 px top + 20 px side)
 ├── halves/        INPUT   carved substrates, 4 per material (left/right/top/bottom)
 ├── decals/        INPUT   the marks you paint, 256×256 RGBA (+ broken faces, template)
-├── composites/    OUTPUT  material|half × decal — always rebuilt, safe to delete
 └── manifest.json  OUTPUT  counts; what runtime reads for variant discovery
 ```
 
-INPUT folders are never overwritten by the generator: drop art at an existing
-filename and re-run it, and `composites/` is rebuilt around your file. **After
-adding or replacing any PNG, run `--import`** — an unimported asset is a hard
-`push_error` at boot (B6), never a silent fallback:
+**`composites/` is retired (D33 Part 4c, 2026-08-03).** It used to hold
+`material | half × decal` as a pure, always-rebuilt OUTPUT — deleted
+permanently now. Every damage mark composites LIVE at room-load time instead
+(`VoxelRenderer`, reading straight from the three INPUT folders above): onto
+a real baked facade when one is available, onto the flat material atom via a
+material-agnostic vector mark when it isn't. Nothing on disk needs rebuilding
+around your art any more — INPUT folders are never overwritten by the
+generator: drop art at an existing filename and re-run it, and it's kept.
+**After adding or replacing any PNG, run `--import`** — an unimported asset
+is a hard `push_error` at boot (B6), never a silent fallback:
 
 ```bash
 python3 tools/asset_generation/generate_voxel.py
@@ -51,7 +56,9 @@ python3 tools/asset_generation/generate_voxel.py
 
 There is deliberately **no `bakes/` folder** — no baked voxel exists on disk;
 `BakeSystem` composes atlas pages in memory from `ASSETS/TEXTURES/defaults/`.
-The files in `composites/` are pre-composited atoms, not bakes.
+Runtime damage compositing (`DamageCompositeCache`, D33) is also
+in-memory-only and also writes nothing to disk here — distinct systems, same
+"nothing is ever baked to a file" property.
 
 ### Voxel Atom Anatomy
 

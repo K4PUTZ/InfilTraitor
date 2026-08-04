@@ -231,12 +231,39 @@ func detonate_active() -> void:
 			## Director 2026-07-24: crater was too wide — narrowed from 0.55 to 0.40.
 			var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * 0.40
 			var crater_core: float = crater_max * 0.4
+			## PERF-02 B4 (Director, 2026-08-04): one explosion cracks one floor
+			## depth layer. Which deep-plane voxels are eligible is decided from
+			## holes that existed BEFORE this blast, captured here rather than
+			## read inside the loop below: iteration order over
+			## affected["floors"] is undefined (the loop's own comment says so),
+			## so reading the shallow plane's visibility mid-loop could see the
+			## crater this very blast just punched and let the deep plane through
+			## on the same explosion — the exact thing this limits.
+			var shallow_holes: Dictionary = {}
+			for pre_slab_id in affected.get("floors", {}):
+				var pre_slab: Slab = room._slab_registry.get_slab(pre_slab_id)
+				if pre_slab == null or pre_slab.level > GeometryCoords.FLOOR_DEEP_LEVEL:
+					continue
+				var shallow_sibling: Slab = room._slab_registry.get_slab(
+						Slab.make_id(pre_slab.gu_cell, Slab.Role.FLOOR,
+							GeometryCoords.FLOOR_TOP_LEVEL))
+				if shallow_sibling == null:
+					continue
+				for sv in shallow_sibling.voxels:
+					if not sv.visible:
+						shallow_holes[sv.grid_pos] = true
+
 			for slab_id in affected.get("floors", {}):
 				var floor_slab: Slab = room._slab_registry.get_slab(slab_id)
 				var floor_ring: int = affected["floors"][slab_id]
 				var is_deep: bool = floor_slab.level <= GeometryCoords.FLOOR_DEEP_LEVEL
 				var core: float = crater_core
 				var max_radius: float = crater_max
+				## PERF-02 B4: the deep plane only takes damage where the plane
+				## above it is ALREADY open — a later explosion over the same
+				## spot reaches it, this one cannot. Defaults to the whole slab,
+				## which is what every non-deep floor keeps using.
+				var crater_voxels: Array = floor_slab.voxels
 				if is_deep:
 					## FLOOR-DEPTH-01: the deep plane survives outside the blast's
 					## own GU entirely (ring 0 IS the source GU), and inside it takes
@@ -245,6 +272,17 @@ func detonate_active() -> void:
 						continue
 					core *= BlastCalculatorClass.DEEP_FLOOR_CRATER_FACTOR
 					max_radius *= BlastCalculatorClass.DEEP_FLOOR_CRATER_FACTOR
+					crater_voxels = []
+					for dv in floor_slab.voxels:
+						if shallow_holes.has(dv.grid_pos):
+							crater_voxels.append(dv)
+					## Nothing above it is open yet: skip this slab entirely —
+					## no reveal, no damage. It stays hidden until a blast that
+					## actually has a hole to fall through.
+					if crater_voxels.is_empty():
+						print_debug("[BLAST]   floor=%s level=%d ring=%d SKIPPED (B4: no hole in the plane above yet)" %
+							[floor_slab.id, floor_slab.level, floor_ring])
+						continue
 					## It is rendered on exposure, so it has to be on screen before it
 					## can show a hole in itself. Idempotent if the plane above
 					## already revealed it earlier in this same loop (dictionary
@@ -253,7 +291,7 @@ func detonate_active() -> void:
 				## FLOOR-DENT-01: material drives the dent roll (earth 0.3;
 				## zoned ground_* floors have no table row and stay dent-free).
 				BlastCalculatorClass.apply_crater_damage(
-					floor_slab.voxels, floor_slab.id, epicenter, core, max_radius,
+					crater_voxels, floor_slab.id, epicenter, core, max_radius,
 					floor_slab.material)
 				var fd := 0
 				var fdent := 0

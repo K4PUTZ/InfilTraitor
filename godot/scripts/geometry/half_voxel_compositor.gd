@@ -84,24 +84,99 @@ static func _point_in_polygon(point: Vector2, polygon: PackedVector2Array) -> bo
 	return inside
 
 
+## PERF-02 A2 — cached inside-pixel index lists, keyed by (size, polygon).
+## The polygon set this class rasterizes is fixed and tiny (the named
+## constants above plus their mirrors), but paste_masked()/fill_masked() were
+## re-running _point_in_polygon() over all 32x36 pixels on EVERY call: 459
+## masked ops in one measured grenade blast, ~362ms, all of it recomputing the
+## same handful of masks. Values are linear pixel indices (y * width + x) of
+## the pixels INSIDE the polygon — the same set the per-pixel test produced,
+## stored instead of re-derived. Process-lifetime cache: a mask is a pure
+## function of its key, so it can never go stale.
+static var _mask_cache: Dictionary = {}
+
+
+## Inside-pixel indices for `polygon` over a `width` x `height` raster. The key
+## carries the size because the mask is only valid for the raster it was built
+## for; every runtime caller uses ATOM_W x ATOM_H, but a selftest passing a
+## different-sized dst must not silently get another size's mask.
+static func _polygon_mask(polygon: PackedVector2Array, width: int, height: int) -> PackedInt32Array:
+	var key := "%dx%d|%s" % [width, height, polygon]
+	var cached = _mask_cache.get(key)
+	if cached != null:
+		return cached
+	var mask := PackedInt32Array()
+	for y in range(height):
+		for x in range(width):
+			if _point_in_polygon(Vector2(x, y), polygon):
+				mask.append(y * width + x)
+	_mask_cache[key] = mask
+	return mask
+
+
 ## Copies `source`'s pixels onto `dst` wherever `polygon` contains the pixel
 ## corner — direct 1:1 coordinate copy, no resampling. GDScript equivalent of
 ## Pillow's `dst.paste(source, (0, 0), _polygon_mask(polygon))`.
+##
+## PERF-02 A2: same pixels, two cheaper mechanisms — the inside/outside test
+## comes from the cached mask above, and the transfer itself is a raw
+## byte-buffer copy when both images are RGBA8 and the same size (which is
+## what every runtime caller passes). Anything else falls back to the original
+## get_pixel()/set_pixel() transfer rather than reinterpreting bytes of a
+## format this does not own.
 static func paste_masked(dst: Image, source: Image, polygon: PackedVector2Array) -> void:
-	for y in range(dst.get_height()):
-		for x in range(dst.get_width()):
-			if _point_in_polygon(Vector2(x, y), polygon):
-				dst.set_pixel(x, y, source.get_pixel(x, y))
+	var width: int = dst.get_width()
+	var height: int = dst.get_height()
+	var mask := _polygon_mask(polygon, width, height)
+	if dst.get_format() != Image.FORMAT_RGBA8 or source.get_format() != Image.FORMAT_RGBA8 \
+			or source.get_width() != width or source.get_height() != height:
+		for idx in mask:
+			@warning_ignore("integer_division")
+			var y: int = idx / width
+			dst.set_pixel(idx % width, y, source.get_pixel(idx % width, y))
+	else:
+		var dst_data := dst.get_data()
+		var src_data := source.get_data()
+		for idx in mask:
+			var o: int = idx * 4
+			dst_data[o] = src_data[o]
+			dst_data[o + 1] = src_data[o + 1]
+			dst_data[o + 2] = src_data[o + 2]
+			dst_data[o + 3] = src_data[o + 3]
+		dst.set_data(width, height, false, Image.FORMAT_RGBA8, dst_data)
 
 
 ## Fills `dst` with `color` wherever `polygon` contains the pixel's corner.
 ## GDScript equivalent of Pillow's
 ## `dst.paste(Image.new("RGBA", size, color), (0, 0), _polygon_mask(polygon))`.
+##
+## PERF-02 A2: see paste_masked(). The fill's four bytes are quantized ONCE,
+## through the same truncating float->byte conversion Image.set_pixel() uses
+## on an 8-bit format (measured in PERF-01, see
+## VoxelRenderer._tint_image_rgb()'s own doc) — not rounded, which would shift
+## every filled cut face by up to 1/255 against the loop this replaces.
 static func fill_masked(dst: Image, color: Color, polygon: PackedVector2Array) -> void:
-	for y in range(dst.get_height()):
-		for x in range(dst.get_width()):
-			if _point_in_polygon(Vector2(x, y), polygon):
-				dst.set_pixel(x, y, color)
+	var width: int = dst.get_width()
+	var height: int = dst.get_height()
+	var mask := _polygon_mask(polygon, width, height)
+	if dst.get_format() != Image.FORMAT_RGBA8:
+		for idx in mask:
+			@warning_ignore("integer_division")
+			var y: int = idx / width
+			dst.set_pixel(idx % width, y, color)
+	else:
+		var cr: int = floori(clampf(color.r, 0.0, 1.0) * 255.0)
+		var cg: int = floori(clampf(color.g, 0.0, 1.0) * 255.0)
+		var cb: int = floori(clampf(color.b, 0.0, 1.0) * 255.0)
+		var ca: int = floori(clampf(color.a, 0.0, 1.0) * 255.0)
+		var dst_data := dst.get_data()
+		for idx in mask:
+			var o: int = idx * 4
+			dst_data[o] = cr
+			dst_data[o + 1] = cg
+			dst_data[o + 2] = cb
+			dst_data[o + 3] = ca
+		dst.set_data(width, height, false, Image.FORMAT_RGBA8, dst_data)
 
 
 ## Direct port of generate_half_voxel()'s "left"/"right" branch: a transparent

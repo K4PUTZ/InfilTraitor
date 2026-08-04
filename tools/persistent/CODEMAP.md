@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**180 scripts · 42112 lines total** (under `godot/scripts/`)
+**180 scripts · 42482 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -401,7 +401,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `damage_composite_cache.gd`
 
-`class_name DamageCompositeCache` · extends `RefCounted` · 129 lines
+`class_name DamageCompositeCache` · extends `RefCounted` · 160 lines
 
 `godot/scripts/geometry/damage_composite_cache.gd`
 
@@ -417,6 +417,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func has(key: String) -> bool:`
 - `func resolve(key: String) -> Dictionary:`
 - `func store(key: String, composite: Image) -> Dictionary:`
+- `func flush_dirty_pages() -> int:`
 - `func size() -> int:`
 - `func page_count() -> int:`
 - `func get_page_image(page_idx: int) -> Image:`
@@ -426,7 +427,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `decal_compositor.gd`
 
-`class_name DecalCompositor` · extends `RefCounted` · 187 lines
+`class_name DecalCompositor` · extends `RefCounted` · 211 lines
 
 `godot/scripts/geometry/decal_compositor.gd`
 
@@ -553,7 +554,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `half_voxel_compositor.gd`
 
-`class_name HalfVoxelCompositor` · extends `RefCounted` · 234 lines
+`class_name HalfVoxelCompositor` · extends `RefCounted` · 309 lines
 
 `godot/scripts/geometry/half_voxel_compositor.gd`
 
@@ -711,7 +712,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2825 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2879 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1438,7 +1439,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1063 lines
+`class_name BlastCalculator` · 1094 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1492,7 +1493,7 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 91 lines
+`class_name MaterialResistanceTable` · 101 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -2273,7 +2274,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1630 lines
+extends `SceneTree` · 1679 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3636,7 +3637,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 389 lines
+`class_name TestZoneController` · 427 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3900,7 +3901,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3536 lines
+extends `Node2D` · 3594 lines
 
 `godot/scripts/world/room.gd`
 

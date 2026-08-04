@@ -614,8 +614,16 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		var remaining: Array = after_destroy.filter(func(v): return not dented_lookup.has(v))
 		var crack_set: Array = _select_deterministic(remaining, container_id, "CRACK", crack_n, bias_epicenter)
 
+		## PERF-02 B3: DESTROYED now records its blast provenance too. It never
+		## did before because a destroyed voxel is erased — there is no variant
+		## to pick, so nothing read the flag — but soot is seeded from exactly
+		## these holes, and the bomb-only wider radius cannot tell a crater from
+		## a bullet hole without it. Measured, not assumed: with the flag left
+		## false here, every hole fell into the FIREARM bucket and B3's wider
+		## radius produced a byte-identical soot map (925 sooted voxels either
+		## way) on the real PLAYGROUND blast.
 		for voxel in destroy_set:
-			voxel.set_damage(Voxel.DamageState.DESTROYED)
+			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
 		## D23: this is the ring-group scatter model, used only by RADIAL — a
 		## blast's DENTED/CRACKED voxels get the irregular chip/crack texture
 		## family, never the bullet's round puncture.
@@ -763,7 +771,9 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 	for voxel in voxels:
 		var d: float = Vector2(voxel.grid_pos - epicenter).length()
 		if d <= core_radius:
-			voxel.set_damage(Voxel.DamageState.DESTROYED)
+			## PERF-02 B3: blast provenance on the hole itself — see
+			## apply_container_damage()'s own note for why it matters now.
+			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
 		elif d <= max_radius:
 			## Probability of removal falls 1→0 across the rim; a deterministic
 			## per-voxel hash in [0,1) is compared against it, so the same voxels
@@ -772,7 +782,7 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 			var key: String = "%s:CRATER:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 			var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 			if h < keep_prob:
-				voxel.set_damage(Voxel.DamageState.DESTROYED)
+				voxel.set_damage(Voxel.DamageState.DESTROYED, true)
 			else:
 				_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f)
 		elif d <= max_radius + rim_span:
@@ -902,11 +912,25 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 ## same-ring branch mins per face instead of keeping whichever direction the
 ## frontier happened to visit first. That is also what makes the result
 ## order-independent, hence stable across rebuilds and rotations.
+## PERF-02 B3 (Director, 2026-08-04) — `intensity_rings` separates HOW FAR the
+## scorch reaches (`n_rings`, a BFS distance) from HOW MANY distinct soot
+## intensities exist (`intensity_rings`, a hard property of the encoding, not a
+## tuning knob: `VoxelLightField.encode_face_soot()` packs each face into TWO
+## BITS — 0/1/2 are real rings and 3 is FACE_SOOT_CLEAN, so a fourth intensity
+## is not representable and would silently clamp to "clean", i.e. render as no
+## soot at all). Capping the ring rather than widening the format is what makes
+## the Director's "a fuligem não é mais forte, é mais distante" implementable:
+## the same three tones cover 5 cells of distance instead of 3, with the
+## faintest one simply reaching further out.
+##
+## Defaults to n_rings, which reproduces today's behaviour bit-for-bit for every
+## pre-existing caller (with intensity == n_rings the cap is never binding).
 static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 		n_rings: int, out_snapshot: Dictionary, out_faces: Dictionary = {},
-		face_soot_falloff: int = 1) -> void:
+		face_soot_falloff: int = 1, intensity_rings: int = 0) -> void:
 	if destroyed_cells.is_empty() or n_rings <= 0:
 		return
+	var intensity: int = intensity_rings if intensity_rings > 0 else n_rings
 	## Frontier BFS. Seeds are the holes themselves (they have no surviving voxel
 	## to tag); their SURVIVING neighbours become ring 0, and so on outward.
 	var frontier: Array = destroyed_cells.duplicate()
@@ -929,14 +953,21 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 					out_snapshot[voxel.level] = {}
 				var level_map: Dictionary = out_snapshot[voxel.level]
 				var existing: int = int(level_map.get(voxel.grid_pos, -1))
+				## PERF-02 B3: the INTENSITY this distance paints — identical to
+				## `ring` whenever intensity == n_rings, which is every
+				## pre-existing caller. Compared and stored instead of `ring` so
+				## the two branches below keep meaning "a nearer hole already
+				## claimed this" and "same tone, another direction" once
+				## distances beyond the last intensity all share the faintest one.
+				var capped: int = mini(ring, intensity - 1)
 				## A nearer hole already claimed this voxel — its own ring wins, and
 				## so do its faces. (This also replaces the old `visited` set: a voxel
 				## is enqueued exactly once, on the pass that first tags it.)
-				if existing >= 0 and existing < ring:
+				if existing >= 0 and existing < capped:
 					continue
-				var faces := _face_rings_for(ring, -d, n_rings, face_soot_falloff)
+				var faces := _face_rings_for(capped, -d, intensity, face_soot_falloff)
 				if existing < 0:
-					level_map[voxel.grid_pos] = ring
+					level_map[voxel.grid_pos] = capped
 					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, false)
 					next_frontier.append(ncell)
 				else:

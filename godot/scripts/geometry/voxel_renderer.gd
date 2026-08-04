@@ -780,7 +780,7 @@ func get_damage_composite_cache() -> DamageCompositeCache:
 
 ## D33 Part 1: registers an EMPTY dynamic page for runtime-composited decal
 ## atoms — same TileSetAtlasSource shape register_baked_atlas_page() uses
-## (32x36 region), but with no tiles yet; add_damage_composite_tile() below
+## (32x36 region), but with no tiles yet; create_damage_composite_tile() below
 ## creates them one at a time as DamageCompositeCache fills slots. Appends to
 ## _baked_source_ids on purpose: this page is exactly as transient as a baked
 ## facade page (one per build_from_layout() pass) and prune_baked_sources()
@@ -799,21 +799,49 @@ func register_damage_composite_page(page_image: Image) -> int:
 
 ## D33 Part 1: adds ONE tile to an already-registered dynamic page at
 ## `atlas_coords` (a no-op if it already exists — DamageCompositeCache never
-## calls this twice for the same slot, but staying idempotent costs nothing)
-## and re-uploads the page texture so DamageCompositeCache.store()'s blit is
-## actually visible. Mirrors register_baked_atlas_page()'s per-tile setup
-## (texture_origin) for one coordinate instead of a whole batch.
-func add_damage_composite_tile(source_id: int, page_image: Image, atlas_coords: Vector2i) -> void:
+## calls this twice for the same slot, but staying idempotent costs nothing).
+## Mirrors register_baked_atlas_page()'s per-tile setup (texture_origin) for
+## one coordinate instead of a whole batch.
+##
+## PERF-02 A1: this used to re-upload the whole page texture too, which is
+## why one blast paid 197 uploads of the same 2048x2048 pages (~876ms
+## measured). The upload moved to upload_damage_composite_page(), batched per
+## page by DamageCompositeCache.flush_dirty_pages(); tile creation stayed here
+## because the caller places the cell immediately and cannot wait for a flush.
+func create_damage_composite_tile(source_id: int, atlas_coords: Vector2i) -> void:
 	var source: TileSetAtlasSource = _tileset.get_source(source_id)
 	if source == null:
-		push_error("[D33] add_damage_composite_tile: source_id %d not registered" % source_id)
+		push_error("[D33] create_damage_composite_tile: source_id %d not registered" % source_id)
 		return
 	if source.get_tile_at_coords(atlas_coords) == Vector2i(-1, -1):
 		source.create_tile(atlas_coords)
 		var tile_data: TileData = source.get_tile_data(atlas_coords, 0)
 		if tile_data != null:
 			tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
+
+
+## PERF-02 A1: re-uploads one whole composite page so every blit
+## DamageCompositeCache.store() made into it since the last upload becomes
+## visible. Called only through DamageCompositeCache.flush_dirty_pages() —
+## per touched page, once, instead of per stored atom.
+func upload_damage_composite_page(source_id: int, page_image: Image) -> void:
+	var source: TileSetAtlasSource = _tileset.get_source(source_id)
+	if source == null:
+		push_error("[D33] upload_damage_composite_page: source_id %d not registered" % source_id)
+		return
 	(source.texture as ImageTexture).update(page_image)
+
+
+## PERF-02 A1: pushes every pending composite blit to the GPU. Every render
+## path that can composite a damaged voxel must call this before the frame it
+## draws in — an un-uploaded slot renders as transparent, not as stale pixels,
+## so a missed flush shows up as a missing voxel rather than a wrong-looking
+## one. Cheap and safe to call when nothing is pending (returns 0 without
+## touching the GPU).
+func flush_damage_composite_pages() -> int:
+	if _damage_composite_cache == null:
+		return 0
+	return _damage_composite_cache.flush_dirty_pages()
 
 
 ## D33 Part 3a: raw decal art from disk, cached by path for this renderer's
@@ -2331,6 +2359,10 @@ func process_dirty(registry: EdgeRegistry) -> void:
 		# Clear all dirty flags in slice
 		slice.clear_all_dirty()
 
+	## PERF-02 A1: one upload per page this batch composited into, instead of
+	## one per composited atom.
+	flush_damage_composite_pages()
+
 
 ## PERF-01: the per-voxel body process_dirty() runs for every dirty voxel in
 ## a slice — extracted so process_dirty_async() can share the exact same
@@ -2387,6 +2419,9 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 				_process_dirty_slab_voxel(voxel, slab, use_solid, is_zoned_floor)
 
 		slab.clear_all_dirty()
+
+	## PERF-02 A1: see process_dirty()'s own flush.
+	flush_damage_composite_pages()
 
 
 ## PERF-01: the per-voxel body process_dirty_slabs() runs for every dirty
@@ -2472,8 +2507,19 @@ func process_dirty_async(registry: EdgeRegistry) -> void:
 				processed += 1
 				if processed >= voxels_per_frame:
 					processed = 0
+					## PERF-02 A1: flush BEFORE yielding, not only at the end —
+					## this pass is about to let a frame draw, and a composite
+					## slot whose page hasn't been uploaded yet samples
+					## transparent. Batching to the end of the whole pass would
+					## make every damaged voxel invisible for the ~2s the async
+					## spread takes, trading a freeze for a hole. One upload per
+					## touched page per frame still collapses the 197 measured
+					## uploads to a handful.
+					flush_damage_composite_pages()
 					await get_tree().process_frame
 		slice.clear_all_dirty()
+
+	flush_damage_composite_pages()
 
 
 ## Async counterpart to process_dirty_slabs() — see process_dirty_async()'s
@@ -2497,8 +2543,12 @@ func process_dirty_slabs_async(registry: SlabRegistry) -> void:
 				processed += 1
 				if processed >= voxels_per_frame:
 					processed = 0
+					## PERF-02 A1: see process_dirty_async()'s own pre-yield flush.
+					flush_damage_composite_pages()
 					await get_tree().process_frame
 		slab.clear_all_dirty()
+
+	flush_damage_composite_pages()
 
 
 ## Ensure layers exist up to storey count (E1 equation from SLICE-00)
@@ -2817,6 +2867,10 @@ func prune_baked_sources() -> void:
 	## about to be reused by this pass's fresh register_baked_atlas_page()
 	## calls would silently answer for the wrong page's pixels.
 	_baked_source_image_cache.clear()
+	## PERF-02 A3: same reasoning again — the resized decal images DecalCompositor
+	## caches are keyed by this build's decal Image objects, which this pass is
+	## about to stop using.
+	DecalCompositorClass.clear_work_cache()
 
 
 func _to_string() -> String:

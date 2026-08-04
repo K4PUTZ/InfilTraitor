@@ -102,6 +102,20 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
+## PERF-02 B2: "count_a relates to count_b the same way factor_a relates to
+## factor_b" — a strictly larger factor must yield a strictly larger count, and
+## EQUAL factors must yield equal counts (same deterministic hash, same
+## threshold, so the selected sets are identical, not merely similar). Used by
+## the dent-prevalence check so it asserts the property instead of one
+## session's numbers.
+func _ordered_like(count_a: int, count_b: int, factor_a: float, factor_b: float) -> bool:
+	if is_equal_approx(factor_a, factor_b):
+		return count_a == count_b
+	if factor_a > factor_b:
+		return count_a > count_b
+	return count_a < count_b
+
+
 func _test_bomb(ring_multipliers: Array) -> BombDefClass:
 	var bomb := BombDefClass.new()
 	bomb.id = "test_bomb"
@@ -360,13 +374,34 @@ func test_wood_container_mostly_destroyed_at_ring_zero() -> void:
 		if voxel.damage_state == Voxel.DamageState.DESTROYED:
 			destroyed += 1
 
+	## PERF-02 B2 (Director, 2026-08-04): the threshold moved 70% -> 55% when
+	## every wall material's factors were scaled ~x0.65 to make explosions
+	## physically smaller (wood destroy_factor 0.9 -> 0.6). This is the new
+	## design intent overriding the old absolute number, not a threshold
+	## loosened to make a failing test pass — the RELATIVE statement it was
+	## written to protect is untouched and is asserted below: wood is still by
+	## far the most destroyed material in the table.
 	var ratio := float(destroyed) / float(slice.voxels.size())
-	if ratio >= 0.7:
+	if ratio >= 0.55:
 		_pass("Wood slice: %d/%d voxels DESTROYED (%.0f%%) — matches 'quase toda destruída'" %
 			[destroyed, slice.voxels.size(), ratio * 100.0])
 	else:
-		_fail("Wood slice: only %d/%d voxels DESTROYED (%.0f%%), expected >=70%%" %
+		_fail("Wood slice: only %d/%d voxels DESTROYED (%.0f%%), expected >=55%%" %
 			[destroyed, slice.voxels.size(), ratio * 100.0])
+
+	## The ordering the Director's statement is really about — kept as a real
+	## assertion so a future retune cannot quietly make wood the tough one.
+	var wood_df: float = MaterialResistanceTableClass.destroy_factor("wood")
+	var toughest_other: float = maxf(maxf(
+		MaterialResistanceTableClass.destroy_factor("concrete"),
+		MaterialResistanceTableClass.destroy_factor("stone")),
+		MaterialResistanceTableClass.destroy_factor("metal"))
+	if wood_df > toughest_other:
+		_pass("wood destroy_factor %.2f still exceeds every other wall material (max %.2f)"
+			% [wood_df, toughest_other])
+	else:
+		_fail("wood destroy_factor %.2f no longer leads the table (max other %.2f)"
+			% [wood_df, toughest_other])
 	print("")
 
 
@@ -671,9 +706,18 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 	else:
 		_fail("%d dents missing blast provenance or carved TOP" % earth_stats["bad_provenance"])
 
-	## (d) dent_factor monotonicity: metal 0.5 > earth 0.3 > concrete 0.2 —
-	## same hash per voxel, larger threshold ⇒ superset ⇒ strictly ordered
-	## counts on a patch this size.
+	## (d) dent prevalence tracks dent_factor: same hash per voxel, larger
+	## threshold ⇒ superset ⇒ ordered counts on a patch this size.
+	##
+	## PERF-02 B2 (Director, 2026-08-04): compares against the table's LIVE
+	## values instead of the "metal 0.5 > earth 0.3 > concrete 0.2" ordering
+	## hardcoded when this was written. Scaling the wall materials ~x0.65 put
+	## metal's dent_factor (0.5 -> 0.3) exactly level with earth's untouched
+	## 0.3, and a strict > then failed on a tie that is correct behaviour —
+	## equal factors MUST produce equal counts, since the selection is the same
+	## deterministic hash threshold. Reading the factors makes the assertion
+	## about the property (prevalence follows the factor) rather than about one
+	## session's numbers, so a future retune cannot make it wrong again.
 	var metal: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(metal, "DENT_PATCH", epicenter, CORE, MAX_R, "metal")
 	var concrete: Array = make_patch.call()
@@ -681,10 +725,15 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 	var m: int = count_states.call(metal)["dents"]
 	var e: int = earth_stats["dents"]
 	var c: int = count_states.call(concrete)["dents"]
-	if m > e and e > c:
-		_pass("prevalence follows dent_factor: metal %d > earth %d > concrete %d" % [m, e, c])
+	var mf: float = MaterialResistanceTableClass.dent_factor("metal")
+	var ef: float = MaterialResistanceTableClass.dent_factor("earth")
+	var cf: float = MaterialResistanceTableClass.dent_factor("concrete")
+	if _ordered_like(m, e, mf, ef) and _ordered_like(e, c, ef, cf):
+		_pass("prevalence follows dent_factor: metal %d (%.2f), earth %d (%.2f), concrete %d (%.2f)"
+			% [m, mf, e, ef, c, cf])
 	else:
-		_fail("prevalence not monotone with dent_factor: metal=%d earth=%d concrete=%d" % [m, e, c])
+		_fail("prevalence not consistent with dent_factor: metal=%d (%.2f) earth=%d (%.2f) concrete=%d (%.2f)"
+			% [m, mf, e, ef, c, cf])
 
 	## (e) the destroy roll is untouched by the material's dent factor.
 	if earth_stats["destroyed"] == bare_stats["destroyed"]:

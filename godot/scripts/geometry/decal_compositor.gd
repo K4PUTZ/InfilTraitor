@@ -34,6 +34,26 @@ extends RefCounted
 ## silent divergence the equality selftest exists to catch.
 const SUPERSAMPLE: int = 4
 
+## PERF-02 A3 — the Lanczos pre-resize below, cached by (decal identity, native
+## size). Measured: 285 paste_decal() calls in one grenade blast spent 134ms
+## re-running Image.resize() on the SAME handful of (decal, native) pairs, since
+## a blast paints the same few decal assets onto face after face. The resized
+## image is read-only inside this function, so one copy per pair is exactly as
+## correct as 285 identical copies — and being the same resize, it cannot drift
+## numerically the way a re-derived one could.
+##
+## Keyed by Object id, which Godot allocates from a monotonic counter and does
+## not recycle within a process; cleared by clear_work_cache() when
+## VoxelRenderer prunes its own per-build image caches, so a room rebuild does
+## not accumulate the previous build's resized decals.
+static var _work_cache: Dictionary = {}
+
+
+## PERF-02 A3: see _work_cache. Called from VoxelRenderer.prune_baked_sources(),
+## alongside the other per-build image caches it drops there.
+static func clear_work_cache() -> void:
+	_work_cache.clear()
+
 ## Voxel geometry vertices — copied from generate_voxel.py's own constants
 ## (TILE_W=32, TILE_H=16, SIDE_H=20: V_N=(16,0) V_E=(32,8) V_S=(16,16)
 ## V_W=(0,8) V_WB=(0,28) V_SB=(16,36) V_EB=(32,28), the last two from
@@ -107,8 +127,12 @@ static func paste_decal(dst: Image, decal: Image, origin: Vector2, u_end: Vector
 	## Reduce the decal to exactly the face's native texel grid x supersample —
 	## same reduction generate_voxel.py's canon x20/16 stretch happens through
 	## (native encodes the (16,20) vs (16,16) asymmetry, not this function).
-	var work: Image = decal.duplicate()
-	work.resize(native.x * SUPERSAMPLE, native.y * SUPERSAMPLE, Image.INTERPOLATE_LANCZOS)
+	var cache_key := "%d|%dx%d" % [decal.get_instance_id(), native.x, native.y]
+	var work: Image = _work_cache.get(cache_key)
+	if work == null:
+		work = decal.duplicate()
+		work.resize(native.x * SUPERSAMPLE, native.y * SUPERSAMPLE, Image.INTERPOLATE_LANCZOS)
+		_work_cache[cache_key] = work
 	var src_w: int = work.get_width()
 	var src_h: int = work.get_height()
 

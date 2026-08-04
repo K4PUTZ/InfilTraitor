@@ -1978,26 +1978,50 @@ func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
 ## plus one bounded BFS from this map's current holes. A destroyed voxel's
 ## absence already survives rotation via _base_damage, so nothing about soot
 ## itself needs to persist separately any more. Empty when nothing is holed.
-const MAX_SOOT_RINGS := 3
+## PERF-02 B3 (Director, 2026-08-04): "a fuligem não é mais forte, é mais
+## distante... só pra bombas." A bomb's scorch reaches further than a firearm's;
+## it is not darker. Two separate BFS passes (see _build_soot_snapshot()),
+## because BlastCalculator.derive_soot_rings()' internal min-ring merge does not
+## compose across two calls into the same snapshot — a second call cannot lower
+## an already-recorded ring — so they run into scratch dictionaries and merge
+## externally. `var`, not `const` (Rule 1): both are tuning numbers.
+var weapon_soot_rings: int = 3
+var blast_soot_rings: int = 5
 
 ## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
 ## triples for every voxel this pass scorches (see BlastCalculator).
 func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
-	var destroyed_cells: Array = []      ## Vector3i seeds for the BFS
+	## PERF-02 B3: seeds split by what made the hole. Voxel.damage_is_blast
+	## already carries that distinction — nothing new has to be recorded.
+	var blast_cells: Array = []          ## Vector3i seeds, bomb-made holes
+	var weapon_cells: Array = []         ## Vector3i seeds, firearm-made holes
 	var damaged_voxels: Array = []       ## D33-SOOT-01: DENTED/CRACKED, not destroyed
 	if _edge_registry != null:
 		for slice in _edge_registry.all_slices():
 			for v in slice.voxels:
-				_index_soot_voxel(cell_to_voxel, destroyed_cells, damaged_voxels, v)
+				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
 	if _slab_registry != null:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
-				_index_soot_voxel(cell_to_voxel, destroyed_cells, damaged_voxels, v)
+				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
 
+	## PERF-02 B3: two passes into scratch dictionaries, merged min-wins below.
+	## The bomb pass reaches `blast_soot_rings` cells but paints with the SAME
+	## number of tones the weapon pass uses (derive_soot_rings()' own
+	## `intensity_rings`, capped at what the per-face encoding can represent —
+	## see that parameter's doc for why a 4th tone is not available).
 	var snapshot: Dictionary = {}
-	BlastCalculator.derive_soot_rings(
-			cell_to_voxel, destroyed_cells, MAX_SOOT_RINGS, snapshot, out_faces)
+	var blast_snapshot: Dictionary = {}
+	var blast_faces: Dictionary = {}
+	BlastCalculator.derive_soot_rings(cell_to_voxel, blast_cells, blast_soot_rings,
+			blast_snapshot, blast_faces, 1, BlastCalculator.FACE_SOOT_CLEAN)
+	var weapon_snapshot: Dictionary = {}
+	var weapon_faces: Dictionary = {}
+	BlastCalculator.derive_soot_rings(cell_to_voxel, weapon_cells, weapon_soot_rings,
+			weapon_snapshot, weapon_faces)
+	_merge_soot_into(snapshot, out_faces, blast_snapshot, blast_faces)
+	_merge_soot_into(snapshot, out_faces, weapon_snapshot, weapon_faces)
 	## D33-SOOT-01: a faint touch of soot on a DENTED/CRACKED voxel's own
 	## struck face, even when it's nowhere near an actual hole — see
 	## BlastCalculator.apply_self_soot()'s own doc comment. Runs AFTER the
@@ -2014,12 +2038,46 @@ func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	return snapshot
 
 
-func _index_soot_voxel(cell_to_voxel: Dictionary, destroyed_cells: Array,
-		damaged_voxels: Array, v: Voxel) -> void:
+## PERF-02 B3: merges one scratch soot pass into the real snapshot/face dicts,
+## min-wins per cell and per face component — the same rule
+## derive_soot_rings() applies internally, applied here because it cannot
+## compose across two separate calls (a later call has no way to lower an
+## already-recorded ring). A nearer/darker source therefore always wins,
+## whichever pass produced it.
+func _merge_soot_into(out_snapshot: Dictionary, out_faces: Dictionary,
+		src_snapshot: Dictionary, src_faces: Dictionary) -> void:
+	for level in src_snapshot:
+		if not out_snapshot.has(level):
+			out_snapshot[level] = {}
+		var level_map: Dictionary = out_snapshot[level]
+		for cell in src_snapshot[level]:
+			var ring: int = int(src_snapshot[level][cell])
+			var existing: int = int(level_map.get(cell, -1))
+			if existing < 0 or ring < existing:
+				level_map[cell] = ring
+	for level in src_faces:
+		if not out_faces.has(level):
+			out_faces[level] = {}
+		var level_faces: Dictionary = out_faces[level]
+		for cell in src_faces[level]:
+			var faces: Vector3i = src_faces[level][cell]
+			if level_faces.has(cell):
+				var prev: Vector3i = level_faces[cell]
+				level_faces[cell] = Vector3i(
+					mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
+			else:
+				level_faces[cell] = faces
+
+
+func _index_soot_voxel(cell_to_voxel: Dictionary, blast_cells: Array,
+		weapon_cells: Array, damaged_voxels: Array, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
 	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
-		destroyed_cells.append(key)
+		if v.damage_is_blast:
+			blast_cells.append(key)
+		else:
+			weapon_cells.append(key)
 	elif v.damage_state == Voxel.DamageState.DENTED or v.damage_state == Voxel.DamageState.CRACKED:
 		damaged_voxels.append(v)
 

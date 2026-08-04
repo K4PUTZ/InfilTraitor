@@ -45,11 +45,21 @@ class_name MaterialResistanceTable
 ## intact. Bullets are unaffected: a firearm's CRACKED tier is a bullet MARK on
 ## the struck face, not a fracture, and it reads from the bullet family
 ## (VoxelRenderer.damage_variant_material's blast_sourced=false branch).
+## PERF-02 B2 (Director, 2026-08-04): the four wall materials scaled down
+## together, ~x0.65, as part of making an explosion physically smaller rather
+## than only faster. Scaling destroy_factor ALONE would have been worse than
+## useless here: the voxels it spared would fall through to dent_factor/
+## crack_factor, which is the expensive runtime-decal-composite path — the
+## same total churn, just relabelled. Lowering all three is what actually
+## reduces how many voxels a blast touches. Rows below the four (glass, earth,
+## the ground_* zones) are deliberately untouched: this pass is about the wall
+## materials the test bench exercises, and the floor's own volume is addressed
+## structurally by B4 instead.
 const TABLE := {
-	"metal":    {"destroy_factor": 0.05, "dent_factor": 0.5,  "crack_factor": 0.0},
-	"stone":    {"destroy_factor": 0.3,  "dent_factor": 0.3,  "crack_factor": 0.2},
-	"concrete": {"destroy_factor": 0.5,  "dent_factor": 0.2,  "crack_factor": 0.15},
-	"wood":     {"destroy_factor": 0.9,  "dent_factor": 0.05, "crack_factor": 0.0},
+	"metal":    {"destroy_factor": 0.03, "dent_factor": 0.3,  "crack_factor": 0.0},
+	"stone":    {"destroy_factor": 0.2,  "dent_factor": 0.2,  "crack_factor": 0.1},
+	"concrete": {"destroy_factor": 0.3,  "dent_factor": 0.15, "crack_factor": 0.1},
+	"wood":     {"destroy_factor": 0.6,  "dent_factor": 0.03, "crack_factor": 0.0},
 	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
 	"earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0},
 	## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry.

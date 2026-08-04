@@ -27,6 +27,8 @@
 - RESUMO_SESSAO_2026-08-02_FIREARM_DESTRUCTION.md
 - RESUMO_SESSAO_2026-08-03_D33_SPIKE.md
 - RESUMO_SESSAO_2026-08-04_GENERIC_DECALS.md
+- RESUMO_SESSAO_2026-08-04_PERF02.md
+- RESUMO_SESSAO_2026-08-04_VFX01_DETONATION_PERFORMANCE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -34,8 +36,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 129
-- Test scripts: 36
+- GDScript modules: 131
+- Test scripts: 37
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16
@@ -44,11 +46,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 202b104 ALPHA GENERIC DECALS 0.9.89 - D33 shipped end to end, D33-SOOT-01, session close
 - 5230ca9 ALPHA HALF VOXELS AND DECALS 0.9.88 - decal pipeline, placement rules, asset layout, doc sweep
 - bba7a5a ALPHA FIREARM DESTRUCTION 0.9.87 - LINE delivery, punch coefficient, disc cone, session close
 - e38dd46 ALPHA FACE LIGHT SYSTEM FOUNDATION 0.9.86 - floor dent, guaranteed face separation, session close
 - 253e8cc [DOCS] Session close: weapons bench, arsenal catalog, shot physics, VERSION 0.9.85
-- 0352467 [DOCS] Session close: prop-z + floor-depth decisions, z-slot map, VERSION 0.9.84
 <!-- AUTO:END version_history -->
 
 ---

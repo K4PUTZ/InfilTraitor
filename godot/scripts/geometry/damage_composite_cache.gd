@@ -36,6 +36,12 @@ var _slots_per_page: int
 var _pages: Array[Image] = []
 var _source_ids: Array[int] = []
 var _next_slot: int = 0
+## PERF-02 A1: page indices whose Image has been blitted into since the last
+## flush_dirty_pages(). store() only marks; the GPU upload happens once per
+## touched page instead of once per stored atom — measured 197 uploads (~876ms)
+## in one grenade blast, nearly all of them re-uploading the same 2048x2048
+## page a tile at a time.
+var _dirty_pages: Dictionary = {}
 ## String key -> {"source_id": int, "atlas_coords": Vector2i}. Key shape is the
 ## caller's contract (see the class doc above), not this cache's concern.
 var _entries: Dictionary = {}
@@ -66,6 +72,14 @@ func resolve(key: String) -> Dictionary:
 ## key hasn't been composited yet this room-load. Returns the same shape as
 ## resolve(). Idempotent: calling twice with the same key is a cache hit and
 ## never re-blits or re-uploads.
+##
+## PERF-02 A1: the TileSetAtlasSource tile is still created here — a caller
+## set_cell()s the returned coords immediately after, and an atlas source with
+## no tile at those coords places nothing. Only the texture UPLOAD is deferred
+## to flush_dirty_pages(); until it runs, the new tile samples the page
+## texture's pre-blit contents (transparent for a never-uploaded slot), which
+## is why every render path that composites must flush before the frame it
+## draws in — see VoxelRenderer.flush_damage_composite_pages()'s callers.
 func store(key: String, composite: Image) -> Dictionary:
 	if _entries.has(key):
 		return _entries[key]
@@ -87,11 +101,27 @@ func store(key: String, composite: Image) -> Dictionary:
 		atlas_coords * Vector2i(ATOM_W, ATOM_H))
 
 	var source_id: int = _source_ids[page_idx]
-	_renderer.add_damage_composite_tile(source_id, page, atlas_coords)
+	_renderer.create_damage_composite_tile(source_id, atlas_coords)
+	_dirty_pages[page_idx] = true
 
 	var entry := {"source_id": source_id, "atlas_coords": atlas_coords}
 	_entries[key] = entry
 	return entry
+
+
+## PERF-02 A1: uploads every page store() has blitted into since the last
+## flush, exactly once each. Returns how many pages were uploaded —
+## diagnostics/selftests only. A no-op when nothing was stored, which is the
+## common case for the render paths that call this unconditionally.
+func flush_dirty_pages() -> int:
+	if _dirty_pages.is_empty():
+		return 0
+	var uploaded := 0
+	for page_idx in _dirty_pages:
+		_renderer.upload_damage_composite_page(_source_ids[page_idx], _pages[page_idx])
+		uploaded += 1
+	_dirty_pages.clear()
+	return uploaded
 
 
 ## Total composites cached this room-load — diagnostics/selftests only.
@@ -126,4 +156,5 @@ func reset() -> void:
 	_pages.clear()
 	_source_ids.clear()
 	_entries.clear()
+	_dirty_pages.clear()
 	_next_slot = 0

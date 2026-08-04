@@ -710,7 +710,15 @@ one tile can express*, and since the id encodes the WHOLE per-cell state
 (light bucket × per-face soot code × flip), it applies to every scenery voxel,
 sooted or not. A clean voxel only ever lands on 24 of those ids, but the other
 1512 slots stay reserved by the numbering and cannot be spent on anything else.
-Current occupancy: **1536 of 4096, leaving 2560 free.**
+Current occupancy: **3000 of 4096, leaving 1096 free** — was 1536/2560 until
+PERF-02 B3-2 (2026-08-04) took per-face soot from 3 tones to 4, which moved the
+code space from 64 to 125 (`12 buckets × 125 codes × 2 flips`). That spend does
+NOT threaten the design below, because the merged encoding **replaces** this
+one rather than stacking on it (3456 either way); it is recorded so nobody
+reads the old headroom as still available for a third axis. It also identified
+where the space actually goes: the flip axis consumes HALF of it via
+`SOOT_ALT_FLIP_BASE`, where Godot's own `TRANSFORM_FLIP_H` bit could carry flip
+for free — the first thing to reach for if any future encoding runs short.
 
 **The design per-face light has to take — merge the two axes, do not add one.**
 An earlier note here said three independent per-face buckets "blow the ceiling."

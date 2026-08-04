@@ -448,6 +448,12 @@ var vfx_smoke_darken_default: float = 0.15  ## masonry/metal/ground smoke reads 
 var vfx_smoke_alpha: float = 0.6
 var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
 var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
+
+## PERF-01: true while a detonate_active()/fire_active() async render pass
+## (process_dirty_async()/process_dirty_slabs_async(), spread across frames)
+## is in flight. Both check-and-early-return on this before starting another
+## pass — two concurrent passes would race on the same TileMapLayers.
+var _destruction_render_busy: bool = false
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
 ## GU-GRID-01: always-on per-GU floor boundary grid (GuGridOverlay) —
 ## restores the reference grid the legacy floor art used to bake into its own

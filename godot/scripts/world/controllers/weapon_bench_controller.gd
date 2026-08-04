@@ -206,6 +206,11 @@ func _view_facing_delta(base_facing: String) -> Vector2i:
 func fire_active() -> void:
 	if _active_index < 0 or _active_index >= _weapons.size():
 		return
+	## PERF-01: a render pass from an earlier fire/detonate is still spread
+	## across frames — refuse to start a second one racing on the same
+	## TileMapLayers. Silent no-op, same idiom as the guards above.
+	if room._destruction_render_busy:
+		return
 	var w: Dictionary = _weapons[_active_index]
 	var weapon_def = Registries.get_weapon_registry().get_weapon(w["weapon_id"])
 	if weapon_def == null:
@@ -322,10 +327,14 @@ func fire_active() -> void:
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
 			av.damage_is_blast, av.damage_carved_side, av.damage_variant)
 
-	room._voxel_renderer.process_dirty(room._edge_registry)
-	room._voxel_renderer.process_dirty_slabs(room._slab_registry)
+	## PERF-01: spread across frames instead of one synchronous batch — see
+	## TestZoneController.detonate_active()'s matching comment.
+	room._destruction_render_busy = true
+	await room._voxel_renderer.process_dirty_async(room._edge_registry)
+	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
 	if room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets()
+	room._destruction_render_busy = false
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()

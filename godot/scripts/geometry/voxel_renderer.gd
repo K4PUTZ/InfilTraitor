@@ -692,6 +692,23 @@ var _flat_side_color_cache: Dictionary = {}
 ## (prune_baked_sources / clear) so it never points at a stale source.
 var _minted_light_alts: Dictionary = {}
 
+## PERF-01: source_id (int) -> the FULL baked facade page as a CPU Image,
+## read once via Texture2D.get_image() and reused for every voxel that reads
+## from the same page. get_image() on a GPU-resident ImageTexture is a
+## synchronous GPU->CPU readback — measured at 1738ms of one big blast's
+## 1771ms total spent tinting (98%), across 197 calls that were almost
+## entirely re-reading the SAME handful of pages voxel by voxel. Safe to
+## cache for a page's whole lifetime: register_baked_atlas_page() is the
+## only writer of a facade source's `.texture` (ImageTexture.create_from_image(),
+## once, at bake time) — unlike DamageCompositeCache's pages, nothing ever
+## calls .texture.update() on a facade page afterward, so a snapshot never
+## goes stale until the page itself is gone. Reset alongside
+## prune_baked_sources() below, same lifecycle as _minted_light_alts and
+## _damage_composite_cache — a fresh build_from_layout() pass assigns new
+## source_ids, so a cached image at an old id would silently answer for the
+## wrong page.
+var _baked_source_image_cache: Dictionary = {}
+
 ## BAKE-DIAG-01: placement counters, reset at the top of each render() call
 var _diag_total_cells: int = 0
 var _diag_baked_hits: int = 0
@@ -890,6 +907,12 @@ func _resolve_tinted_baked_atom_flat(zone_material: String, voxel_xy: Vector2i) 
 ## D33 Part 3a/3b/3c shared: extracts and tints a TileLookupResult's atom
 ## (or {} for a null/miss result) — see the doc comment this replaced on
 ## _resolve_tinted_baked_atom() for why the tint has to be applied here.
+##
+## PERF-01: the page-wide Image behind `baked_source.texture` is read via
+## _baked_source_image_cache (see that var's own comment for why caching a
+## GPU->CPU readback here is safe) instead of calling
+## `baked_source.texture.get_image()` fresh on every voxel — that readback,
+## not the tint math, was the real cost measured in this function.
 func _tint_baked_atom(substrate_result) -> Dictionary:
 	if substrate_result == null or substrate_result.source_id_int < 0:
 		return {}
@@ -898,16 +921,57 @@ func _tint_baked_atom(substrate_result) -> Dictionary:
 		return {}
 
 	var region := Rect2i(substrate_result.atlas_coords * Vector2i(32, 36), Vector2i(32, 36))
-	var substrate: Image = baked_source.texture.get_image().get_region(region)
+	var full_img: Image = _baked_source_image_cache.get(substrate_result.source_id_int)
+	if full_img == null:
+		full_img = baked_source.texture.get_image()
+		_baked_source_image_cache[substrate_result.source_id_int] = full_img
+	var substrate: Image = full_img.get_region(region)
 	var base_tile_data: TileData = baked_source.get_tile_data(substrate_result.atlas_coords, 0)
 	var base_modulate: Color = base_tile_data.modulate if base_tile_data != null else Color.WHITE
-	for y in range(substrate.get_height()):
-		for x in range(substrate.get_width()):
-			var c := substrate.get_pixel(x, y)
-			substrate.set_pixel(x, y, Color(
-				c.r * base_modulate.r, c.g * base_modulate.g, c.b * base_modulate.b, c.a))
+	substrate = _tint_image_rgb(substrate, base_modulate)
 
 	return {"image": substrate, "alternative_id": substrate_result.alternative_id}
+
+
+## PERF-01: multiplies `image`'s RGB channels by `modulate` (alpha
+## untouched) — the same Color-multiply-and-requantize `_tint_baked_atom()`
+## did per-pixel via get_pixel()/set_pixel() before this, measured at
+## ~3.4s across one big blast's ~965 tinted atoms (99.8% of
+## process_dirty+process_dirty_slabs' time). Operates on the raw byte
+## buffer instead — see tint_baked_atom_selftest.gd for the pixel-identity
+## proof against the original loop. Mutates and returns `image`.
+##
+## floori(), not roundi(): Image.set_pixel() on an 8-bit format TRUNCATES
+## the float->byte conversion rather than rounding it (measured empirically
+## — byte=127, mod=0.5 -> get_pixel/set_pixel round-trips to 63, i.e.
+## floor(63.5), not round(63.5)=64). Matching that exactly is the whole
+## point: this function exists to be pixel-identical to the loop it
+## replaces, not merely close.
+static func _tint_image_rgb(image: Image, modulate: Color) -> Image:
+	if modulate.is_equal_approx(Color.WHITE):
+		return image
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
+	var data := image.get_data()
+	var mr := modulate.r
+	var mg := modulate.g
+	var mb := modulate.b
+	var i := 0
+	var n := data.size()
+	while i < n:
+		## Same divide/multiply/clamp/scale sequence get_pixel()+set_pixel()
+		## run per channel (not the shortcut `data[i] * mr`, which is the same
+		## real number but not always the same FLOAT after rounding — a
+		## modulate > 1.0 needs the clamp to land on the exact same side of an
+		## integer boundary the original loop does; see the selftest's
+		## "modulate above 1.0" case).
+		data[i] = floori(clampf((float(data[i]) / 255.0) * mr, 0.0, 1.0) * 255.0)
+		data[i + 1] = floori(clampf((float(data[i + 1]) / 255.0) * mg, 0.0, 1.0) * 255.0)
+		data[i + 2] = floori(clampf((float(data[i + 2]) / 255.0) * mb, 0.0, 1.0) * 255.0)
+		# data[i + 3] (alpha) left untouched, matching the original loop.
+		i += 4
+	image.set_data(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8, data)
+	return image
 
 
 ## D33 Part 3b: the flat MATERIALS atom's own lateral-face colour for
@@ -2262,19 +2326,26 @@ func process_dirty(registry: EdgeRegistry) -> void:
 
 		for voxel in slice.voxels:
 			if voxel.dirty:
-				# Update cell state based on voxel visibility
-				if voxel.visible:
-					var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-					var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
-				else:
-					# Clear cell
-					if voxel.level < _voxel_layers.size():
-						_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
-						voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+				_process_dirty_slice_voxel(voxel, slice, edge)
 
 		# Clear all dirty flags in slice
 		slice.clear_all_dirty()
+
+
+## PERF-01: the per-voxel body process_dirty() runs for every dirty voxel in
+## a slice — extracted so process_dirty_async() can share the exact same
+## logic instead of a second copy drifting from this one over time.
+func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
+	# Update cell state based on voxel visibility
+	if voxel.visible:
+		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
+		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
+	else:
+		# Clear cell
+		if voxel.level < _voxel_layers.size():
+			_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
+			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
 
 
 ## Slab-side counterpart to process_dirty() — DESTRUCTION_MASTER_PLAN Part 3.
@@ -2312,47 +2383,121 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 		var is_zoned_floor: bool = (not use_solid) and slab.material != "earth" \
 				and _bake_config != null and _bake_config.enabled
 		for voxel in slab.voxels:
-			if not voxel.dirty:
-				continue
-			if voxel.visible:
-				if use_solid or is_zoned_floor:
-					var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
-					## D22: the substitution tags CEILING/INTERIOR exactly like a
-					## wall (apply_container_damage).
-					var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-					## FLOOR-DENT-01: a zoned floor has no per-zone damage bake —
-					## its dents route to the shared carved-TOP asset instead of
-					## composing a "ground_*_blast_dented_top" name that MATERIALS
-					## does not hold (which would repaint the voxel flat concrete).
-					if is_zoned_floor:
-						var floor_damaged := floor_damage_material(voxel.damage_state,
-							voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-						if floor_damaged != "":
-							render_material = floor_damaged
-					## D33 Part 3c: pass slab.material (the REAL zone, e.g.
-					## "ground_grass") separately from render_material (which
-					## just became the shared "earth_..." pseudo-name above) —
-					## _set_voxel_cell()'s own comment on `zone_material`
-					## explains why resolve_flat() needs the real one.
-					_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
-							null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked,
-							slab.material if is_zoned_floor else "")
-				else:
-					## FLOOR-DENT-01: a damaged floor voxel renders its carved
-					## variant instead of a pristine earth variant — this branch
-					## was unreachable for damage before (craters only destroyed)
-					## and would silently repaint a dent as intact ground.
-					var earth_material := floor_damage_material(voxel.damage_state,
-						voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-					if earth_material == "":
-						earth_material = "earth_%d" % EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
-					_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
-			else:
-				var layer := get_layer(voxel.level)
-				if layer != null:
-					layer.erase_cell(voxel.grid_pos)
-					voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+			if voxel.dirty:
+				_process_dirty_slab_voxel(voxel, slab, use_solid, is_zoned_floor)
 
+		slab.clear_all_dirty()
+
+
+## PERF-01: the per-voxel body process_dirty_slabs() runs for every dirty
+## voxel in a slab — extracted so process_dirty_slabs_async() can share the
+## exact same logic instead of a second copy drifting from this one over
+## time. `use_solid`/`is_zoned_floor` are computed once per slab by the
+## caller (constant across every voxel in it), not re-derived per voxel.
+func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zoned_floor: bool) -> void:
+	if voxel.visible:
+		if use_solid or is_zoned_floor:
+			var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
+			## D22: the substitution tags CEILING/INTERIOR exactly like a
+			## wall (apply_container_damage).
+			var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			## FLOOR-DENT-01: a zoned floor has no per-zone damage bake —
+			## its dents route to the shared carved-TOP asset instead of
+			## composing a "ground_*_blast_dented_top" name that MATERIALS
+			## does not hold (which would repaint the voxel flat concrete).
+			if is_zoned_floor:
+				var floor_damaged := floor_damage_material(voxel.damage_state,
+					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+				if floor_damaged != "":
+					render_material = floor_damaged
+			## D33 Part 3c: pass slab.material (the REAL zone, e.g.
+			## "ground_grass") separately from render_material (which
+			## just became the shared "earth_..." pseudo-name above) —
+			## _set_voxel_cell()'s own comment on `zone_material`
+			## explains why resolve_flat() needs the real one.
+			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
+					null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked,
+					slab.material if is_zoned_floor else "")
+		else:
+			## FLOOR-DENT-01: a damaged floor voxel renders its carved
+			## variant instead of a pristine earth variant — this branch
+			## was unreachable for damage before (craters only destroyed)
+			## and would silently repaint a dent as intact ground.
+			var earth_material := floor_damage_material(voxel.damage_state,
+				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			if earth_material == "":
+				earth_material = "earth_%d" % EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+			_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
+	else:
+		var layer := get_layer(voxel.level)
+		if layer != null:
+			layer.erase_cell(voxel.grid_pos)
+			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+
+
+## PERF-01: batch size for process_dirty_async()/process_dirty_slabs_async()
+## — voxels processed before yielding a frame. A big blast (measured: ~965
+## dirty voxels) synchronously spent ~3.6s inside process_dirty()+
+## process_dirty_slabs() before the _tint_image_rgb() fix, virtually all of
+## it in _set_voxel_cell(); spreading that across frames keeps each single
+## frame's slice fast even if the total work is still substantial, instead
+## of the whole game freezing for one long frame. `var` (Rule 1) — starting
+## point to retune once the _tint_image_rgb() fix's real per-voxel cost is
+## measured.
+var voxels_per_frame: int = 150
+
+
+## Async counterpart to process_dirty(): identical per-voxel logic
+## (_process_dirty_slice_voxel()), but yields a frame every
+## `voxels_per_frame` voxels instead of running the whole dirty set in one
+## synchronous call. process_dirty() itself is untouched and stays
+## synchronous — _tic_voxel_system() (small per-step deltas),
+## _reapply_base_damage() (map rebuild/rotation) and
+## slab_render_selftest.gd all call it expecting immediate completion, and
+## none of them showed the multi-second stall this exists to avoid. Only
+## TestZoneController.detonate_active() and
+## WeaponBenchController.fire_active() — the two big-batch, player-triggered
+## paths — use this one.
+func process_dirty_async(registry: EdgeRegistry) -> void:
+	var dirty_slices := registry.dirty_slices()
+	if dirty_slices.is_empty():
+		return
+
+	var processed := 0
+	for slice in dirty_slices:
+		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
+		for voxel in slice.voxels:
+			if voxel.dirty:
+				_process_dirty_slice_voxel(voxel, slice, edge)
+				processed += 1
+				if processed >= voxels_per_frame:
+					processed = 0
+					await get_tree().process_frame
+		slice.clear_all_dirty()
+
+
+## Async counterpart to process_dirty_slabs() — see process_dirty_async()'s
+## doc for why this is a second entry point rather than a parameter on the
+## synchronous original.
+func process_dirty_slabs_async(registry: SlabRegistry) -> void:
+	var dirty_slabs := registry.dirty_slabs()
+	if dirty_slabs.is_empty():
+		return
+
+	if _bake_config == null:
+		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
+	var processed := 0
+	for slab in dirty_slabs:
+		var use_solid: bool = slab.role != Slab.Role.FLOOR
+		var is_zoned_floor: bool = (not use_solid) and slab.material != "earth" \
+				and _bake_config != null and _bake_config.enabled
+		for voxel in slab.voxels:
+			if voxel.dirty:
+				_process_dirty_slab_voxel(voxel, slab, use_solid, is_zoned_floor)
+				processed += 1
+				if processed >= voxels_per_frame:
+					processed = 0
+					await get_tree().process_frame
 		slab.clear_all_dirty()
 
 
@@ -2668,6 +2813,10 @@ func prune_baked_sources() -> void:
 	## resolving stale (source_id, atlas_coords) pairs that no longer exist.
 	if _damage_composite_cache != null:
 		_damage_composite_cache.reset()
+	## PERF-01: same reasoning — a cached page Image at a source_id that's
+	## about to be reused by this pass's fresh register_baked_atlas_page()
+	## calls would silently answer for the wrong page's pixels.
+	_baked_source_image_cache.clear()
 
 
 func _to_string() -> String:

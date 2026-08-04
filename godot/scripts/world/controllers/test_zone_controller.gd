@@ -156,6 +156,11 @@ func open_menu_for(index: int) -> void:
 func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return
+	## PERF-01: a render pass from an earlier detonate/fire is still spread
+	## across frames — refuse to start a second one racing on the same
+	## TileMapLayers. Silent no-op, same idiom as the guards above.
+	if room._destruction_render_busy:
+		return
 	var g: Dictionary = _grenades[_active_index]
 	if not g["detonated"]:
 		var sprite: Sprite2D = g["sprite"]
@@ -291,13 +296,20 @@ func detonate_active() -> void:
 				room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
 					av.damage_is_blast, av.damage_carved_side, av.damage_variant)
 
-			room._voxel_renderer.process_dirty(room._edge_registry)
-			room._voxel_renderer.process_dirty_slabs(room._slab_registry)
+			## PERF-01: the batch below used to run in one synchronous call and
+			## measured ~3.6s on a big blast — spread across frames instead
+			## (process_dirty_async()/process_dirty_slabs_async()) so the game
+			## keeps rendering/responding while it catches up, rather than
+			## freezing for the whole duration.
+			room._destruction_render_busy = true
+			await room._voxel_renderer.process_dirty_async(room._edge_registry)
+			await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
 			## VL-02b/c: geometry just changed — re-derive the light field so the
 			## new cavity walls pick up their surface/AO shading and the crater
 			## reads as depth instead of a flat recolour of intact voxels.
 			if room.has_method("_repaint_voxel_light_buckets"):
 				room._repaint_voxel_light_buckets()
+			room._destruction_render_busy = false
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()

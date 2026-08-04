@@ -70,6 +70,15 @@ func _init() -> void:
 	## DESTRUCTION_MASTER_PLAN D25 (2026-07-31) — carved half-voxels.
 	test_carved_side_faces_the_blast()
 	test_carved_side_survives_rotation()
+	## D33-SOOT-01 (2026-08-03) — a faint touch of soot on a DENTED/CRACKED
+	## voxel's own struck face, even nowhere near an actual hole.
+	test_self_soot_faces_dented_lateral_sides()
+	test_self_soot_faces_dented_top_and_bottom()
+	test_self_soot_faces_cracked_blast_hits_all_three()
+	test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top()
+	test_self_soot_faces_intact_and_destroyed_get_none()
+	test_apply_self_soot_fills_in_when_nothing_stronger_exists()
+	test_apply_self_soot_never_weakens_an_existing_stronger_ring()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1467,4 +1476,155 @@ func test_carved_side_survives_rotation() -> void:
 			vertical_ok = false
 	if vertical_ok:
 		_pass("a BOTTOM (ceiling underside) carve is identical from all 4 views")
+
+
+## D33-SOOT-01 — the root cause the Director reported: pistol/metal,
+## pistol/stone, shotgun/metal (and any other weapon/material combo whose
+## punch never crosses PUNCH_DESTROY_MIN) never produced a hole, so
+## derive_soot_rings() never had anything to seed from and these voxels
+## stayed completely clean regardless of weapon or material. These tests
+## cover _self_soot_faces()'s face-selection table directly.
+func test_self_soot_faces_dented_lateral_sides() -> void:
+	print("[SOOT-SELF-1] A DENTED voxel's own faint soot lands on its carved lateral face only\n")
+
+	var left := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.LEFT)
+	var expected_left := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING)
+	if left == expected_left:
+		_pass("LEFT -> SW faint only, top/SE clean (%s)" % left)
+	else:
+		_fail("LEFT -> %s, expected %s" % [left, expected_left])
+
+	var right := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.RIGHT)
+	var expected_right := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if right == expected_right:
+		_pass("RIGHT -> SE faint only, top/SW clean (%s) — blast-sourced DENTED behaves the same as bullet" % right)
+	else:
+		_fail("RIGHT -> %s, expected %s" % [right, expected_right])
+
+	print("")
+
+
+func test_self_soot_faces_dented_top_and_bottom() -> void:
+	print("[SOOT-SELF-2] A DENTED floor (TOP) gets a faint top face; a DENTED ceiling (BOTTOM) stays clean\n")
+
+	var top := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP)
+	var expected_top := Vector3i(BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if top == expected_top:
+		_pass("TOP -> top face faint only (%s)" % top)
+	else:
+		_fail("TOP -> %s, expected %s" % [top, expected_top])
+
+	var bottom := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.BOTTOM)
+	var clean := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if bottom == clean:
+		_pass("BOTTOM (ceiling underside, never visible) stays fully clean (%s)" % bottom)
+	else:
+		_fail("BOTTOM -> %s, expected fully clean %s" % [bottom, clean])
+
+	print("")
+
+
+## D32.3 — "não existe voxel rachado só em uma face": a blast-CRACKED voxel's
+## own soot must match its own decal, which lands on all three visible faces.
+func test_self_soot_faces_cracked_blast_hits_all_three() -> void:
+	print("[SOOT-SELF-3] A blast-CRACKED voxel's faint soot touches all three visible faces\n")
+
+	var faces := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE)
+	var expected := Vector3i(BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.SELF_SOOT_RING)
+	if faces == expected:
+		_pass("blast CRACKED -> all three faces faint (%s), matching the decal's own _all placement" % faces)
+	else:
+		_fail("blast CRACKED -> %s, expected %s" % [faces, expected])
+
+	print("")
+
+
+func test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top() -> void:
+	print("[SOOT-SELF-4] A bullet CRACKED voxel with no known side falls back to the top face, same as its flat mark\n")
+
+	var faces := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.CRACKED, false, Voxel.CarvedSide.NONE)
+	var expected := Vector3i(BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if faces == expected:
+		_pass("bullet CRACKED, no side -> top face faint only (%s)" % faces)
+	else:
+		_fail("bullet CRACKED, no side -> %s, expected %s" % [faces, expected])
+
+	print("")
+
+
+func test_self_soot_faces_intact_and_destroyed_get_none() -> void:
+	print("[SOOT-SELF-5] INTACT and DESTROYED voxels get no self-soot (DESTROYED is the BFS's own job)\n")
+
+	var clean := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	var intact := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.INTACT, false, Voxel.CarvedSide.NONE)
+	var destroyed := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.LEFT)
+	if intact == clean and destroyed == clean:
+		_pass("INTACT (%s) and DESTROYED (%s) both produce no self-soot" % [intact, destroyed])
+	else:
+		_fail("expected both clean, got INTACT=%s DESTROYED=%s" % [intact, destroyed])
+
+	print("")
+
+
+## End-to-end apply_self_soot(): a lone DENTED voxel with no hole anywhere
+## near it — the exact "shotgun on metal" case the Director reported — must
+## still come out of _build_soot_snapshot()'s equivalent pipeline lightly
+## sooted instead of perfectly clean.
+func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:
+	print("[SOOT-SELF-6] A lone DENTED voxel with no nearby hole still gets a faint self-soot\n")
+
+	var slab := Slab.new("SOOT_SELF_LONE", Vector2i.ZERO, Slab.Role.FLOOR, 0, "metal")
+	var v := VoxelClass.new(Vector2i(5, 5), 0, slab)
+	v.set_damage(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.RIGHT, 0)
+
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	## No derive_soot_rings() call at all — no destroyed_cells, nothing to BFS.
+	BlastCalculatorClass.apply_self_soot([v], snapshot, faces)
+
+	var f = faces.get(0, {}).get(Vector2i(5, 5))
+	var s = snapshot.get(0, {}).get(Vector2i(5, 5), -1)
+	var expected_faces := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if f == expected_faces and int(s) == BlastCalculatorClass.SELF_SOOT_RING:
+		_pass("lone dent (RIGHT) -> faces %s, isotropic ring %d — no longer perfectly clean" % [f, s])
+	else:
+		_fail("lone dent -> faces %s (expected %s), isotropic ring %s (expected %d)"
+			% [f, expected_faces, s, BlastCalculatorClass.SELF_SOOT_RING])
+
+	print("")
+
+
+## The other half of the merge contract: a voxel that ALSO sits right beside
+## a real hole must keep the BFS's stronger (numerically lower) ring — self
+## soot must never overwrite it with the fainter value.
+func test_apply_self_soot_never_weakens_an_existing_stronger_ring() -> void:
+	print("[SOOT-SELF-7] apply_self_soot() never weakens a stronger ring derive_soot_rings() already placed\n")
+
+	var slab := Slab.new("SOOT_SELF_STRONG", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var hole := VoxelClass.new(Vector2i(0, 0), 0, slab)
+	hole.visible = false
+	hole.set_damage(Voxel.DamageState.DESTROYED)
+	var neighbour := VoxelClass.new(Vector2i(1, 0), 0, slab)
+	## Also DENTED — this voxel is both "next to a hole" AND itself damaged,
+	## which is the realistic case (a hole's rim survivors are often dented).
+	neighbour.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.RIGHT, 0)
+
+	var cell_to_voxel: Dictionary = {
+		Vector3i(0, 0, 0): hole,
+		Vector3i(1, 0, 0): neighbour,
+	}
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, [Vector3i(0, 0, 0)], 3, snapshot, faces)
+	var before = faces.get(0, {}).get(Vector2i(1, 0))
+
+	BlastCalculatorClass.apply_self_soot([neighbour], snapshot, faces)
+	var after = faces.get(0, {}).get(Vector2i(1, 0))
+
+	if before == after and int(snapshot.get(0, {}).get(Vector2i(1, 0), -1)) == 0:
+		_pass("ring-0 neighbour unchanged by apply_self_soot() (%s before and after, isotropic ring 0)" % after)
+	else:
+		_fail("expected apply_self_soot() to leave the stronger ring alone — before %s, after %s" % [before, after])
+
+	print("")
 	print("")

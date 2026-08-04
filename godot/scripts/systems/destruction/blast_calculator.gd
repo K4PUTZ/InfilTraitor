@@ -984,3 +984,80 @@ static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
 			mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
 		return
 	level_faces[cell] = faces
+
+
+## D33-SOOT-01 (Director, 2026-08-03): "algumas armas... deixam tudo limpo.
+## Precisamos adicionar um pouquinho de fuligem, só pra diferenciar do resto
+## da parede." Measured root cause: derive_soot_rings() only ever seeds from
+## DESTROYED voxels (holes) — a DENTED or CRACKED voxel that never happens to
+## sit next to a hole gets no soot at all, regardless of weapon or material.
+## Confirmed structural, not incidental: pistol/metal, pistol/stone and
+## shotgun/metal can never cross PUNCH_DESTROY_MIN given RESISTANCE's current
+## values (always land DENTED/CRACKED), so those combinations NEVER produced
+## a hole to seed from.
+##
+## This is a deliberate, small extension of D17/D24's "a bullet marks its
+## impact; it does not blacken the wall" — not a reversal. It adds a single
+## FAINT ring (SELF_SOOT_RING, the lightest of the three — 0.63× brightness,
+## `VoxelLightField.soot_darkening[2]`) directly on the struck face of the
+## damaged voxel ITSELF. No propagation, no BFS: a dent/crack never darkens
+## its neighbours, only its own mark reads as slightly scorched instead of
+## pristine. Merged into whatever derive_soot_rings() already produced with
+## min-wins (_write_face_rings' own semantics), so a voxel that ALSO happens
+## to sit beside a real hole keeps that stronger ring — self-soot only fills
+## in where nothing stronger already applies.
+const SELF_SOOT_RING := 2
+
+
+## Which face(s) a damaged (DENTED/CRACKED, not DESTROYED) voxel's own faint
+## soot lands on. Mirrors the SAME face-selection rules
+## VoxelRenderer's decal plan parsers encode for the visual mark itself
+## (kept independent rather than importing VoxelRenderer here — this module
+## already owns face-ring resolution, via _face_rings_for() above):
+##  - a blast CRACKED voxel marks all three visible faces (D32.3 — "não
+##    existe voxel rachado só em uma face");
+##  - a bullet (CRACKED or DENTED) marks the one lateral face it struck;
+##  - a DENTED voxel's carved_side IS the exposed/cut face, except BOTTOM
+##    (ceiling) — no visible face ever faces the camera there, matching
+##    derive_soot_rings()'s own reasoning for why a hole reached from below
+##    scorches no single face preferentially;
+##  - no resolvable side (the pre-D25/D32 fallback) marks the top face, same
+##    as the flat mark itself.
+static func _self_soot_faces(damage_state: int, blast_sourced: bool, carved_side: int) -> Vector3i:
+	var clean := Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)
+	if damage_state != Voxel.DamageState.DENTED and damage_state != Voxel.DamageState.CRACKED:
+		return clean
+	if damage_state == Voxel.DamageState.CRACKED and blast_sourced:
+		return Vector3i(SELF_SOOT_RING, SELF_SOOT_RING, SELF_SOOT_RING)
+	match carved_side:
+		Voxel.CarvedSide.LEFT:
+			return Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, SELF_SOOT_RING)   ## SW
+		Voxel.CarvedSide.RIGHT:
+			return Vector3i(FACE_SOOT_CLEAN, SELF_SOOT_RING, FACE_SOOT_CLEAN)   ## SE
+		Voxel.CarvedSide.TOP:
+			return Vector3i(SELF_SOOT_RING, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## top (floor)
+		Voxel.CarvedSide.BOTTOM:
+			return clean   ## ceiling underside — never visible
+		_:
+			return Vector3i(SELF_SOOT_RING, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## NONE -> top, matches the flat mark
+
+
+## Applies _self_soot_faces() for every voxel in `voxels` (expected: every
+## DENTED/CRACKED, currently-visible voxel this room holds — see
+## room.gd's _index_soot_voxel()), merging into both out-params exactly like
+## derive_soot_rings() populates them: out_faces per-face (render-facing),
+## out_snapshot the isotropic min-of-faces ring (soot_factor()/probes/tests).
+## Call AFTER derive_soot_rings() so a stronger nearby-hole ring always wins.
+static func apply_self_soot(voxels: Array, out_snapshot: Dictionary, out_faces: Dictionary) -> void:
+	for v in voxels:
+		var faces := _self_soot_faces(v.damage_state, v.damage_is_blast, v.damage_carved_side)
+		if faces == Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN):
+			continue
+		_write_face_rings(out_faces, v.level, v.grid_pos, faces, true)
+		var ring: int = mini(faces.x, mini(faces.y, faces.z))
+		if not out_snapshot.has(v.level):
+			out_snapshot[v.level] = {}
+		var level_map: Dictionary = out_snapshot[v.level]
+		var existing: int = int(level_map.get(v.grid_pos, 99))
+		if ring < existing:
+			level_map[v.grid_pos] = ring

@@ -1879,18 +1879,25 @@ const MAX_SOOT_RINGS := 3
 func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
 	var destroyed_cells: Array = []      ## Vector3i seeds for the BFS
+	var damaged_voxels: Array = []       ## D33-SOOT-01: DENTED/CRACKED, not destroyed
 	if _edge_registry != null:
 		for slice in _edge_registry.all_slices():
 			for v in slice.voxels:
-				_index_soot_voxel(cell_to_voxel, destroyed_cells, v)
+				_index_soot_voxel(cell_to_voxel, destroyed_cells, damaged_voxels, v)
 	if _slab_registry != null:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
-				_index_soot_voxel(cell_to_voxel, destroyed_cells, v)
+				_index_soot_voxel(cell_to_voxel, destroyed_cells, damaged_voxels, v)
 
 	var snapshot: Dictionary = {}
 	BlastCalculator.derive_soot_rings(
 			cell_to_voxel, destroyed_cells, MAX_SOOT_RINGS, snapshot, out_faces)
+	## D33-SOOT-01: a faint touch of soot on a DENTED/CRACKED voxel's own
+	## struck face, even when it's nowhere near an actual hole — see
+	## BlastCalculator.apply_self_soot()'s own doc comment. Runs AFTER the
+	## BFS above so a voxel that also happens to sit beside a real hole keeps
+	## that stronger ring (min-wins merge).
+	BlastCalculator.apply_self_soot(damaged_voxels, snapshot, out_faces)
 
 	## VL-D2: merge the revealed crater-floor soot (non-Voxel cells).
 	for level in _crater_floor_soot.keys():
@@ -1901,11 +1908,14 @@ func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	return snapshot
 
 
-func _index_soot_voxel(cell_to_voxel: Dictionary, destroyed_cells: Array, v: Voxel) -> void:
+func _index_soot_voxel(cell_to_voxel: Dictionary, destroyed_cells: Array,
+		damaged_voxels: Array, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
 	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
 		destroyed_cells.append(key)
+	elif v.damage_state == Voxel.DamageState.DENTED or v.damage_state == Voxel.DamageState.CRACKED:
+		damaged_voxels.append(v)
 
 
 ## VL-D2 — record soot on a revealed crater-floor cell (no Voxel to hang it on).

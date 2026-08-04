@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**177 scripts · 41019 lines total** (under `godot/scripts/`)
+**177 scripts · 41266 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1391,7 +1391,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 986 lines
+`class_name BlastCalculator` · 1063 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2226,7 +2226,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1470 lines
+extends `SceneTree` · 1630 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2285,6 +2285,13 @@ extends `SceneTree` · 1470 lines
 - `func test_pellet_selection_is_deterministic() -> void:`
 - `func test_carved_side_faces_the_blast() -> void:`
 - `func test_carved_side_survives_rotation() -> void:`
+- `func test_self_soot_faces_dented_lateral_sides() -> void:`
+- `func test_self_soot_faces_dented_top_and_bottom() -> void:`
+- `func test_self_soot_faces_cracked_blast_hits_all_three() -> void:`
+- `func test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top() -> void:`
+- `func test_self_soot_faces_intact_and_destroyed_get_none() -> void:`
+- `func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:`
+- `func test_apply_self_soot_never_weakens_an_existing_stronger_ring() -> void:`
 
 ---
 
@@ -3824,7 +3831,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3410 lines
+extends `Node2D` · 3420 lines
 
 `godot/scripts/world/room.gd`
 

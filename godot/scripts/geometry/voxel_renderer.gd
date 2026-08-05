@@ -911,6 +911,11 @@ func _load_decal_image(path: String) -> Image:
 ## multiplier from the tile's OWN alt-0 modulate, and multiplying
 ## already-tinted pixels by WHITE-times-luminance is the same final colour as
 ## multiplying grayscale pixels by tint-times-luminance.
+##
+## [D-ARCH-01] This function is FALLBACK-ONLY. Normal damage rendering uses
+## apply_damage_voxel_swap() (pre-baked tile lookup). This is only called if
+## apply_damage_voxel_swap() fails or when rendering directly to _set_voxel_cell()
+## (e.g., test scenarios or unusual map configs). 
 func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
 	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
@@ -1877,6 +1882,13 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			alternative_id = flat_result.alternative_id
 			_diag_baked_hits += 1
 
+	## D-ARCH-01 NOTE: This is now FALLBACK-ONLY rendering for damaged voxels.
+	## Normal damage rendering uses apply_damage_voxel_swap() (pre-baked tile
+	## swaps) in the dirty render pass. The D33 compositing paths below are only
+	## reached if apply_damage_voxel_swap() fails or returns false (e.g., variant
+	## not found, registry uninitialized). Kept for robustness and tested via
+	## seam selftests.
+	##
 	## D33 Part 3a: a full-voxel CRACKED impact mark (bullet on the struck
 	## lateral face, or a blast on all three faces) whose underlying wall
 	## resolves to a baked facade gets its decal composited onto THAT atom

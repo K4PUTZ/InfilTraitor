@@ -16,6 +16,8 @@ var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
 ## D33 Part 3b — the polygon-mask primitive for half-voxel DENTED impact marks.
 const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxel_compositor.gd")
+## D-ARCH-01: Variant registry for pre-baked damage voxels
+const VoxelVariantRegistry = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -682,6 +684,7 @@ var debug_nudge: Vector2 = Vector2.ZERO
 ## Cached baking components (Item 7: caching hot-path objects)
 var _bake_config = null       # Script ref, loaded once
 var _baked_lookup = null      # BakedTileLookup instance, created once
+var _damage_variant_registry = null  # D-ARCH-01: VoxelVariantRegistry for pre-baked damage variants
 
 ## D33 Part 1: created lazily on first use (get_damage_composite_cache()) so a
 ## renderer that never composites a decal never pays for the Image pages.
@@ -739,6 +742,16 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 func set_baked_lookup(lookup) -> void:
 	_baked_lookup = lookup
 	print("[VOXEL] Baked lookup set: %s" % ("registered" if lookup != null else "null"))
+
+
+## Set damage variant registry (called by room_builder after variants are generated)
+## D-ARCH-01: Maps (voxel_pos, material, damage_state, side, variant) → pre-baked source ID
+func set_damage_variant_registry(registry) -> void:
+	_damage_variant_registry = registry
+	if registry != null:
+		print("[VOXEL] Damage variant registry set (pre-baked variants available)")
+	else:
+		print("[VOXEL] Damage variant registry cleared")
 
 
 ## Register a baked atlas page as a source on this renderer's own TileSet.
@@ -2897,6 +2910,83 @@ func clear() -> void:
 ## minted ghost alternatives) orphaned in _tileset forever: source_count grew without
 ## bound and every rotation re-triggered a full ghost-mint pass on top of the leak.
 ## The four MATERIALS sources (ids assigned once in _build_voxel_tileset()) are untouched.
+
+
+## D-ARCH-01: Apply damage to a voxel by swapping tile IDs (no runtime compositing).
+## Called immediately after voxel.set_damage() to render the damage mark.
+## Looks up pre-baked damage variant from registry and calls set_cell() once.
+##
+## Parameters:
+##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant set
+##   edge: the Wall Edge (for material lookup), or null for fallback
+##   level: the storey index
+##   registry: optional EdgeRegistry (unused, kept for signature compatibility)
+##
+## Returns: true if swap succeeded, false if no variant found (fell back to generic)
+func apply_damage_voxel_swap(voxel: Voxel, edge, level: int, registry = null) -> bool:
+	if _damage_variant_registry == null:
+		return false  # Registry not initialized, cannot swap
+	
+	# Extract material from edge
+	var material_id = "default"
+	if edge and edge.has_method("get_material_id"):
+		material_id = edge.get_material_id()
+	elif edge and "material" in edge:
+		material_id = edge.material
+	
+	# Build cell key for lookup
+	var cell_key = VoxelVariantRegistry.make_cell_key(voxel.grid_pos, level, 
+		edge.id if edge and edge.has_method("id") else "", material_id)
+	
+	# Get the damage mark type name (e.g. "blast_top_0", "bullet_0", etc)
+	# For now, use a simple formula; could be more sophisticated
+	var damage_mark_name = _get_damage_mark_name(voxel, edge)
+	if damage_mark_name == "":
+		return false
+	
+	# Lookup the source ID
+	var source_id = -1
+	match voxel.damage_state:
+		Voxel.DamageState.DESTROYED:
+			source_id = _damage_variant_registry.get_destroyed(cell_key)
+		Voxel.DamageState.CRACKED:
+			# Use soot seed based on position + variant ID
+			var soot_seed = VoxelVariantRegistry.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
+			source_id = _damage_variant_registry.get_cracked(cell_key, soot_seed)
+		Voxel.DamageState.DENTED:
+			var soot_seed = VoxelVariantRegistry.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
+			source_id = _damage_variant_registry.get_dented(cell_key, damage_mark_name, soot_seed)
+	
+	if source_id < 0:
+		return false  # No variant found
+	
+	# Apply the damage by swapping tile ID
+	var layer = _voxel_layers[level]
+	if layer:
+		layer.set_cell(voxel.grid_pos, source_id, Vector2i.ZERO, 0)
+		return true
+	
+	return false
+
+
+## Helper: get the damage mark name for a voxel (e.g. "blast_top_0")
+func _get_damage_mark_name(voxel: Voxel, edge) -> String:
+	if voxel.damage_state == Voxel.DamageState.DESTROYED:
+		return ""  # Destroyed has no mark name
+	
+	if voxel.damage_state == Voxel.DamageState.CRACKED:
+		return ""  # Cracked is uniform (no side variation)
+	
+	if voxel.damage_state == Voxel.DamageState.DENTED:
+		var side_suffix = _CARVED_SIDE_SUFFIX.get(voxel.damage_carved_side, "")
+		if voxel.damage_is_blast:
+			return "blast_%s_%d" % [side_suffix, voxel.damage_variant]
+		else:
+			return "bullet_%d" % voxel.damage_variant
+	
+	return ""
+
+
 func prune_baked_sources() -> void:
 	for source_id in _baked_source_ids:
 		if _tileset.has_source(source_id):

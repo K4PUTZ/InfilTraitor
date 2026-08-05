@@ -147,7 +147,7 @@ func generate_dented_variants(material: String, damage_type: String) -> Array:
 
 
 ## Composite a decal mark onto a voxel with varying soot intensity
-func _composite_mark_on_voxel(target: Image, decal: Image, alpha_mult: float, mark_type: String) -> void:
+func _composite_mark_on_voxel(target: Image, decal: Image, alpha_mult: float, _mark_type: String) -> void:
 	# Simple alpha-blend: iterate decal pixels, blend onto target
 	# Real implementation would use DecalCompositor for proper geometry,
 	# but for now, a basic overlay works for proof-of-concept
@@ -162,7 +162,7 @@ func _composite_mark_on_voxel(target: Image, decal: Image, alpha_mult: float, ma
 				var target_pixel = target.get_pixel(x, y)
 				
 				# Apply soot intensity via alpha
-				var blended_alpha = decal_pixel.a * alpha_mult
+				var _blended_alpha = decal_pixel.a * alpha_mult
 				
 				# Alpha blend
 				var out_alpha = target_pixel.a + decal_pixel.a * (1.0 - target_pixel.a)

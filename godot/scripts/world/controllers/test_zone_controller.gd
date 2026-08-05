@@ -187,7 +187,7 @@ func detonate_active() -> void:
 			## bias) and the floor's own crater (VL-D2) agree on the same point.
 			var n_rings: int = bomb_def.ring_multipliers.size()
 			var epicenter: Vector2i = g["gu_cell"] * GeometryCoords.VOXELS_PER_UNIT_AXIS \
-				+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
+				+ Vector2i(int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0), int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0))
 			## D24: index every voxel this blast touches, keyed by cell -- used
 			## for VL-PERSIST below and the ember ring-0 check. Soot itself no
 			## longer needs a seed list here: room._build_soot_snapshot()

@@ -998,15 +998,15 @@ func _tint_baked_atom(substrate_result) -> Dictionary:
 ## floor(63.5), not round(63.5)=64). Matching that exactly is the whole
 ## point: this function exists to be pixel-identical to the loop it
 ## replaces, not merely close.
-static func _tint_image_rgb(image: Image, modulate: Color) -> Image:
-	if modulate.is_equal_approx(Color.WHITE):
+static func _tint_image_rgb(image: Image, _modulate: Color) -> Image:
+	if _modulate.is_equal_approx(Color.WHITE):
 		return image
 	if image.get_format() != Image.FORMAT_RGBA8:
 		image.convert(Image.FORMAT_RGBA8)
 	var data := image.get_data()
-	var mr := modulate.r
-	var mg := modulate.g
-	var mb := modulate.b
+	var mr := _modulate.r
+	var mg := _modulate.g
+	var mb := _modulate.b
 	var i := 0
 	var n := data.size()
 	while i < n:
@@ -1201,9 +1201,9 @@ func _punch_generic_alpha_hole(image: Image, mark_family: String, variant: int) 
 	var img: Image = image.duplicate()
 	var cx := 16.0
 	var cy := 8.0
-	var seed := variant * 173 + 29
-	var ox := (HalfVoxelCompositorClass._hash01(seed, 1, 401) - 0.5) * 2.0
-	var oy := (HalfVoxelCompositorClass._hash01(seed, 2, 402) - 0.5) * 1.5
+	var seed_value := variant * 173 + 29
+	var ox := (HalfVoxelCompositorClass._hash01(seed_value, 1, 401) - 0.5) * 2.0
+	var oy := (HalfVoxelCompositorClass._hash01(seed_value, 2, 402) - 0.5) * 1.5
 	var r: float = _GENERIC_HOLE_RADIUS[mark_family]
 	var x0 := maxi(0, int(cx + ox - r) - 1)
 	var x1 := mini(img.get_width(), int(cx + ox + r) + 2)
@@ -2876,11 +2876,11 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
 ## beneath the Slab planes can wear the same baked texture. material is the zone
 ## material ("earth" clears the entry — an unzoned GU must fall back to the
 ## earth hash, never to a stale zone from a previous map).
-func set_floor_zone(gu_cell: Vector2i, material: String, anchor: Vector2i) -> void:
-	if material == "" or material == "earth":
+func set_floor_zone(gu_cell: Vector2i, zone_material: String, anchor: Vector2i) -> void:
+	if zone_material == "" or zone_material == "earth":
 		_floor_zone_by_gu.erase(gu_cell)
 		return
-	_floor_zone_by_gu[gu_cell] = {"material": material, "anchor": anchor}
+	_floor_zone_by_gu[gu_cell] = {"material": zone_material, "anchor": anchor}
 
 
 ## FLOOR-DEPTH-01 — drop every published floor zone. Called by room_builder at the
@@ -2935,21 +2935,21 @@ func clear() -> void:
 ##   registry: optional EdgeRegistry (unused, kept for signature compatibility)
 ##
 ## Returns: true if swap succeeded, false if no variant found (fell back to generic)
-func apply_damage_voxel_swap(voxel: Voxel, container, level: int, registry = null) -> bool:
+func apply_damage_voxel_swap(voxel: Voxel, container, level: int, _registry = null) -> bool:
 	if _damage_variant_registry == null:
 		return false  # Registry not initialized, cannot swap
 	
 	# Extract material from container (Slice or Slab)
-	var material: String = ""
+	var container_material: String = ""
 	if container is Slice:
-		material = container.material
+		container_material = container.material
 	elif container is Slab:
-		material = container.material
+		container_material = container.material
 	else:
 		return false  # Unknown container type
-	
+
 	# Build cell key for lookup (using global coordinates as per D-ARCH-01)
-	var cell_key = VoxelVariantRegistry.make_cell_key(Vector2i.ZERO, 0, "global", material)
+	var cell_key = VoxelVariantRegistry.make_cell_key(Vector2i.ZERO, 0, "global", container_material)
 	
 	# Lookup the source ID based on damage state
 	var source_id = -1

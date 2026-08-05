@@ -306,7 +306,7 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 	if target_slice == null or target_slice.voxels.is_empty():
 		return {}
 	var chest_level: int = target_slice.start_storey * GeometryCoords.LEVELS_PER_STOREY \
-		+ GeometryCoords.LEVELS_PER_STOREY / 2
+		+ int(float(GeometryCoords.LEVELS_PER_STOREY) / 2.0)
 	var max_level_offset: int = target_slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
 	## CONE-DISC-01: the pellet's VERTICAL place on the wall, from the same unit
 	## disc its lateral angle came from. The cone's radius at the impact is
@@ -473,8 +473,8 @@ static func select_face_neighbours(slice: Slice, voxel_index: int, count: int,
 	if count <= 0 or slice == null or slice.voxels.is_empty():
 		return []
 	var w: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
-	var rows: int = slice.voxels.size() / w
-	var row: int = voxel_index / w
+	var rows: int = int(float(slice.voxels.size()) / float(w))
+	var row: int = int(float(voxel_index) / float(w))
 	var col: int = voxel_index % w
 	var candidates: Array = []
 	for dr in [-1, 0, 1]:

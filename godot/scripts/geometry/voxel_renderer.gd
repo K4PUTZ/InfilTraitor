@@ -2407,7 +2407,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 	if voxel.visible:
 		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
 		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
-			if apply_damage_voxel_swap(voxel, edge, voxel.level):
+			if apply_damage_voxel_swap(voxel, slice, voxel.level):
 				return  # Swap succeeded, no need for fallback
 		
 		## Fallback: render via material lookup (original behavior)

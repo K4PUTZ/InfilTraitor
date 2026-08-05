@@ -824,6 +824,14 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	_cached_source_ids = source_ids
 
 	_wire_baked_lookup(runs, baked_atlas, source_ids)
+	
+	## D-ARCH-01: Initialize damage variant registry (fallback for now — full
+	## DamageVariantBaker integration deferred). Allow apply_damage_voxel_swap()
+	## to recognize the registry exists and attempt lookup; on miss, it returns
+	## false and falls back to D33 compositing (which works). Prevents silent
+	## no-op damage when apply_damage_voxel_swap() returns false due to null
+	## registry.
+	_initialize_damage_variant_registry()
 
 
 ## VL-PERF-BAKE: build the BakedTileLookup from runs + a baked atlas + source ids
@@ -837,6 +845,21 @@ func _wire_baked_lookup(runs: Array, baked_atlas, source_ids: Dictionary) -> voi
 	lookup.set_baked_atlas(baked_atlas)
 	lookup.set_source_ids(source_ids)
 	room._voxel_renderer.set_baked_lookup(lookup)
+
+
+## D-ARCH-01: Initialize damage variant registry. For now, a minimal fallback:
+## create an empty registry and register it with the renderer. The registry
+## exists so apply_damage_voxel_swap() doesn't return false due to null check,
+## but it has no actual variants, so lookups fail gracefully and D33 compositing
+## takes over as fallback. Full variant generation/registration deferred.
+func _initialize_damage_variant_registry() -> void:
+	var VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
+	var registry = VoxelVariantRegistryClass.new()
+	## TODO (D-ARCH-01 Phase 2): populate registry with DamageVariantBaker output
+	## For now, leave it empty; apply_damage_voxel_swap() will return false on
+	## all lookups, and D33 compositing will handle damage rendering.
+	room._voxel_renderer.set_damage_variant_registry(registry)
+	print("[ROOM] Initialized damage variant registry (fallback mode)")
 
 
 ## VL-PERF-BAKE: force the next _bake_textures() to do a full rebake instead of

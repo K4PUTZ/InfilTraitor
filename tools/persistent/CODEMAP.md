@@ -724,7 +724,7 @@ extends `ConfirmationDialog` · 64 lines
 **Constants / tuning**
 - `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
 - `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
-- `VoxelVariantRegistry` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
+- `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
 - `VOXEL_SOURCE_ID` = `0`
 
 **Public vars**

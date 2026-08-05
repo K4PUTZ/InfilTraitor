@@ -2393,6 +2393,12 @@ func process_dirty(registry: EdgeRegistry) -> void:
 func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 	# Update cell state based on voxel visibility
 	if voxel.visible:
+		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
+		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
+			if apply_damage_voxel_swap(voxel, edge, voxel.level):
+				return  # Swap succeeded, no need for fallback
+		
+		## Fallback: render via material lookup (original behavior)
 		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
 		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
@@ -2454,6 +2460,12 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 ## caller (constant across every voxel in it), not re-derived per voxel.
 func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zoned_floor: bool) -> void:
 	if voxel.visible:
+		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
+		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
+			if apply_damage_voxel_swap(voxel, slab, voxel.level):
+				return  # Swap succeeded, no need for fallback
+		
+		## Fallback: render via material lookup (original behavior)
 		if use_solid or is_zoned_floor:
 			var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
 			## D22: the substitution tags CEILING/INTERIOR exactly like a
@@ -2923,28 +2935,23 @@ func clear() -> void:
 ##   registry: optional EdgeRegistry (unused, kept for signature compatibility)
 ##
 ## Returns: true if swap succeeded, false if no variant found (fell back to generic)
-func apply_damage_voxel_swap(voxel: Voxel, edge, level: int, registry = null) -> bool:
+func apply_damage_voxel_swap(voxel: Voxel, container, level: int, registry = null) -> bool:
 	if _damage_variant_registry == null:
 		return false  # Registry not initialized, cannot swap
 	
-	# Extract material from edge
-	var material_id = "default"
-	if edge and edge.has_method("get_material_id"):
-		material_id = edge.get_material_id()
-	elif edge and "material" in edge:
-		material_id = edge.material
+	# Extract material from container (Slice or Slab)
+	var material: String = ""
+	if container is Slice:
+		material = container.material
+	elif container is Slab:
+		material = container.material
+	else:
+		return false  # Unknown container type
 	
-	# Build cell key for lookup
-	var cell_key = VoxelVariantRegistry.make_cell_key(voxel.grid_pos, level, 
-		edge.id if edge and edge.has_method("id") else "", material_id)
+	# Build cell key for lookup (using global coordinates as per D-ARCH-01)
+	var cell_key = VoxelVariantRegistry.make_cell_key(Vector2i.ZERO, 0, "global", material)
 	
-	# Get the damage mark type name (e.g. "blast_top_0", "bullet_0", etc)
-	# For now, use a simple formula; could be more sophisticated
-	var damage_mark_name = _get_damage_mark_name(voxel, edge)
-	if damage_mark_name == "":
-		return false
-	
-	# Lookup the source ID
+	# Lookup the source ID based on damage state
 	var source_id = -1
 	match voxel.damage_state:
 		Voxel.DamageState.DESTROYED:
@@ -2955,38 +2962,21 @@ func apply_damage_voxel_swap(voxel: Voxel, edge, level: int, registry = null) ->
 			source_id = _damage_variant_registry.get_cracked(cell_key, soot_seed)
 		Voxel.DamageState.DENTED:
 			var soot_seed = VoxelVariantRegistry.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
-			source_id = _damage_variant_registry.get_dented(cell_key, damage_mark_name, soot_seed)
+			source_id = _damage_variant_registry.get_dented(cell_key, "", soot_seed)
 	
 	if source_id < 0:
 		return false  # No variant found
 	
 	# Apply the damage by swapping tile ID
-	var layer = _voxel_layers[level]
+	var layer = get_layer(level)
 	if layer:
 		layer.set_cell(voxel.grid_pos, source_id, Vector2i.ZERO, 0)
 		return true
 	
 	return false
 
-
-## Helper: get the damage mark name for a voxel (e.g. "blast_top_0")
-func _get_damage_mark_name(voxel: Voxel, edge) -> String:
-	if voxel.damage_state == Voxel.DamageState.DESTROYED:
-		return ""  # Destroyed has no mark name
-	
-	if voxel.damage_state == Voxel.DamageState.CRACKED:
-		return ""  # Cracked is uniform (no side variation)
-	
-	if voxel.damage_state == Voxel.DamageState.DENTED:
-		var side_suffix = _CARVED_SIDE_SUFFIX.get(voxel.damage_carved_side, "")
-		if voxel.damage_is_blast:
-			return "blast_%s_%d" % [side_suffix, voxel.damage_variant]
-		else:
-			return "bullet_%d" % voxel.damage_variant
-	
-	return ""
-
-
+## D-ARCH-01: Pre-bake all damage variants at load time
+## No runtime compositing — single-frame ID swap at detonation
 func prune_baked_sources() -> void:
 	for source_id in _baked_source_ids:
 		if _tileset.has_source(source_id):

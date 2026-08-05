@@ -17,7 +17,7 @@ const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_composi
 ## D33 Part 3b — the polygon-mask primitive for half-voxel DENTED impact marks.
 const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxel_compositor.gd")
 ## D-ARCH-01: Variant registry for pre-baked damage voxels
-const VoxelVariantRegistry = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
+const VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -2961,7 +2961,7 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int, _registry = nu
 		return false  # Unknown container type
 
 	# Build cell key for lookup (using global coordinates as per D-ARCH-01)
-	var cell_key = VoxelVariantRegistry.make_cell_key(Vector2i.ZERO, 0, "global", container_material)
+	var cell_key = VoxelVariantRegistryClass.make_cell_key(Vector2i.ZERO, 0, "global", container_material)
 	
 	# Lookup the source ID based on damage state
 	var source_id = -1
@@ -2970,10 +2970,10 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int, _registry = nu
 			source_id = _damage_variant_registry.get_destroyed(cell_key)
 		Voxel.DamageState.CRACKED:
 			# Use soot seed based on position + variant ID
-			var soot_seed = VoxelVariantRegistry.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
+			var soot_seed = VoxelVariantRegistryClass.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
 			source_id = _damage_variant_registry.get_cracked(cell_key, soot_seed)
 		Voxel.DamageState.DENTED:
-			var soot_seed = VoxelVariantRegistry.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
+			var soot_seed = VoxelVariantRegistryClass.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
 			source_id = _damage_variant_registry.get_dented(cell_key, "", soot_seed)
 	
 	if source_id < 0:

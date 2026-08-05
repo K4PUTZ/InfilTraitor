@@ -121,9 +121,9 @@ func _setup_lights_from_layout() -> void:
 		## Direction / cone for directional & cone (spot / sun) lights.
 		light.direction_angle = deg_to_rad(float(src.get("direction_deg", 0.0)))
 		light.cone_angle = float(src.get("cone_deg", light.cone_angle))
-		## Small/temporal sources (fire, candle, intermittent).
-		if bool(src.get("flicker", false)):
-			light.set_flicker(true, float(src.get("flicker_interval", 1.0)))
+		## Flicker disabled while the destruction visual system is rebuilt —
+		## brightness variation was contaminating diagnostic captures. Map
+		## data may still carry "flicker": true; it's just not honored here.
 		light.active = true
 		light.light_id = "map_light_%d" % (i + 1)
 		light.owner_name = "map_light_%d" % (i + 1)

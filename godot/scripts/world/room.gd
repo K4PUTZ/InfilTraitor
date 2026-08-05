@@ -449,6 +449,18 @@ var vfx_smoke_alpha: float = 0.6
 var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
 var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 
+## PERF-01: guards against a second detonate/fire racing the same
+## TileMapLayers mid-render while an async destruction render pass
+## (process_dirty_async()/process_dirty_slabs_async(), spread across frames)
+## is in flight. Both check-and-early-return on this before starting another
+## pass — two concurrent passes would race on the same TileMapLayers.
+## The @warning_ignore below is load-bearing: Godot's own linter reports this as
+## UNUSED_PRIVATE_CLASS_VARIABLE, because it cannot see the cross-file write either
+## (weapon_bench_controller.gd, test_zone_controller.gd) — that false warning is
+## what invited an earlier delete (743bde2) that silently broke both callers'
+## fire_active()/detonate_active() with a runtime "Invalid access" error.
+@warning_ignore("unused_private_class_variable")
+var _destruction_render_busy: bool = false
 var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges of playable shadows (z=4)
 ## GU-GRID-01: always-on per-GU floor boundary grid (GuGridOverlay) —
 ## restores the reference grid the legacy floor art used to bake into its own

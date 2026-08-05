@@ -469,14 +469,3 @@ func _blocked_edges_dict() -> Dictionary:
 	for e in room._current_blocked_edges:
 		blocked[WallEdgeData.edge_key(e["from"], e["to"])] = true
 	return blocked
-
-
-## [TEMPORARY DEBUG] Auto-detonate first grenade on load for screenshot capture
-func _ready() -> void:
-	await room.get_tree().process_frame  # Wait one frame for full initialization
-	await room.get_tree().create_timer(1.0).timeout  # Wait 1s for render stabilization
-	if _grenades.size() > 0:
-		_active_index = 0
-		detonate_active()
-		await room.get_tree().create_timer(3.0).timeout  # Wait 3s for explosion render
-		room.get_tree().quit()  # Auto-quit after screenshot

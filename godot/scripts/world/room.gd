@@ -459,8 +459,6 @@ var _gu_grid_overlay: Node2D = null
 ## DESTRUCTION_MASTER_PLAN Part 3: red blast-radius wireframe preview, shown
 ## while a grenade's context menu is open. See TestZoneController.open_menu_for().
 var _blast_wireframe_overlay: Node2D = null
-## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation. See _flash_white().
-var _flash_rect: ColorRect = null
 var _tile_game: Node2D = null   ## TileOverlay for visual gameplay (z=3, mix)
 var _trail_overlay: Node2D = null
 
@@ -981,15 +979,6 @@ func _ready() -> void:
 
 	## Initialize selection controller
 	_selection_controller = SelectionControllerClass.new(self)
-
-	## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
-	## Smallest possible implementation — a bare ColorRect + Tween, no new
-	## class, matching "por enquanto fica só a explosão" (fire/smoke deferred).
-	_flash_rect = ColorRect.new()
-	_flash_rect.color = Color(1, 1, 1, 0)
-	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	$HUD.add_child(_flash_rect)
 
 	## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 	## WEAPON-FIRE-01 (2026-07-29): and "Atirar" on a bench weapon — ONE menu
@@ -1862,36 +1851,10 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 ## fresh hole") is different from "this voxel was destroyed", so it isn't
 ## folded in here. Fires for both blast and firearm destruction — both paths
 ## emit the same signal (VoxelRenderer.process_dirty()/process_dirty_slabs()).
-## D11 — collect-then-release for destruction VFX. VFX-01 wired smoke/dust/
-## sparks/chips straight to the `voxel_destroyed` signal, so they trickled out
-## one voxel at a time as the async render erased them. The Director wants the
-## smoke as ONE coordinated moment after the staged destruction finishes
-## ("Em seguida soltamos a fumaça"), which needs the immediate dispatch
-## buffered instead of removed — a firearm hit still wants its puff instantly,
-## so this is opt-in and only the blast path turns it on.
-var _vfx_collecting: bool = false
-var _vfx_pending: Array = []
-
-
-func begin_destruction_vfx_capture() -> void:
-	_vfx_collecting = true
-	_vfx_pending.clear()
-
-
-## Releases everything buffered since begin_destruction_vfx_capture(). Safe to
-## call when nothing was captured, and always leaves capture OFF so a missed
-## release cannot silently swallow a later shot's VFX.
-func flush_destruction_vfx() -> void:
-	_vfx_collecting = false
-	for entry in _vfx_pending:
-		_dispatch_destruction_vfx(entry[0], entry[1], entry[2])
-	_vfx_pending.clear()
-
-
+## VFX-01 — dispatch smoke/dust/sparks/chips immediately when voxels are destroyed.
+## D-ARCH-01: No buffering needed — damage applies in a single frame via tile swap,
+## so VFX is dispatched directly as the voxel_destroyed signal fires.
 func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) -> void:
-	if _vfx_collecting:
-		_vfx_pending.append([grid_pos, level, material_id])
-		return
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
 
 
@@ -3048,35 +3011,6 @@ func _populate_test_zone_if_playground() -> void:
 			_collectibles.size(), TEST_ZONE_GRENADE_GUS.size()])
 
 
-## DESTRUCTION_MASTER_PLAN Part 3: full-screen white flash on detonation.
-## Called by TestZoneController.detonate_active() right before the
-## destruction pass runs, so the flash covers the frame the geometry
-## actually changes on.
-func _flash_white() -> void:
-	if _flash_rect == null:
-		return
-	_flash_rect.color = Color(1.0, 1.0, 1.0, _flash_rect.color.a)
-	var tween := create_tween()
-	tween.tween_property(_flash_rect, "color:a", 1.0, 0.03)
-	tween.tween_property(_flash_rect, "color:a", 0.0, 0.25)
-
-
-## D11 (Director, 2026-08-04): *"podemos colocar um frame na tela toda
-## vermelho, um frame todo amarelo, e um frame todo branco com tween de
-## opacidade down (ja existe)"* — the red and yellow beats are exactly that,
-## ONE frame at full opacity and gone, not a tween. Only the white one fades,
-## and that one is _flash_white() above, untouched.
-##
-## Awaits two frames on purpose: one to let the filled rect actually draw, and
-## the caller resumes after it has been cleared, so consecutive stages cannot
-## stack two colours on the same frame.
-func _flash_frame(color: Color) -> void:
-	if _flash_rect == null:
-		return
-	_flash_rect.color = Color(color.r, color.g, color.b, 1.0)
-	await get_tree().process_frame
-	_flash_rect.color = Color(color.r, color.g, color.b, 0.0)
-	await get_tree().process_frame
 
 
 ## GU-GRID-01: re-run whenever room_size can have changed — a real map load

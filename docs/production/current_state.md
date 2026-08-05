@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.89 · **Updated:** 2026-08-04 · **Branch:** main
+**Version:** 0.9.89 · **Updated:** 2026-08-05 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -15,6 +15,8 @@
 <!-- AUTO:BEGIN pending_prompts -->
 - D33_RUNTIME_DECAL_COMPOSITING.md
 - ENGINE_PERFORMANCE_REVIEW.md
+- INVESTIGACAO_EXPLOSAO_2026-08-04.md
+- PLANO_PRE_FABRICATED_DAMAGE_VARIANTS.md
 - RESUMO_SESSAO_2026-07-26_TEMPORAL_LIGHT_FOUNDATION.md
 - RESUMO_SESSAO_2026-07-28_FLOOR_ZONE_BAKE.md
 - RESUMO_SESSAO_2026-07-28_SHOTGUN_SHADOW.md
@@ -36,8 +38,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 131
-- Test scripts: 37
+- GDScript modules: 133
+- Test scripts: 38
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16

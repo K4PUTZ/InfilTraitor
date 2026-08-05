@@ -2480,22 +2480,43 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 
 
-## PERF-01: batch size for process_dirty_async()/process_dirty_slabs_async()
-## — voxels processed before yielding a frame. A big blast (measured: ~965
-## dirty voxels) synchronously spent ~3.6s inside process_dirty()+
-## process_dirty_slabs() before the _tint_image_rgb() fix, virtually all of
-## it in _set_voxel_cell(); spreading that across frames keeps each single
-## frame's slice fast even if the total work is still substantial, instead
-## of the whole game freezing for one long frame. `var` (Rule 1) — starting
-## point to retune once the _tint_image_rgb() fix's real per-voxel cost is
-## measured.
-var voxels_per_frame: int = 150
-
+## D11 — how long one async render batch may run before yielding a frame.
+##
+## This REPLACES the old `voxels_per_frame = 150` count, and the reason is
+## measured: that number was chosen when a voxel cost ~3.7ms, and PERF-01/02
+## took it to ~0.9ms without the count following. The result was the opposite
+## of a spread — the wall pass finished inside a single frame without ever
+## yielding, and the slab pass ran ONE 135ms batch, i.e. a ~7fps frame. That
+## is exactly the "engasgada" the Director reported.
+##
+## A time budget adapts to whatever a voxel costs today, and to the fact that
+## voxel costs are wildly uneven (erasing a DESTROYED voxel is nearly free;
+## compositing a DENTED one runs a decal paste). The NUMBER itself is measured,
+## not the obvious "half a 60fps frame" guess (8ms) it started at — D11 also
+## does per-voxel-STATE stages (DESTROYED, then DENTED, then the rest), and
+## real profiling on the dev capture harness found each yield disproportionately
+## expensive whenever a batch had composited a damage-composite atlas page
+## (flush_damage_composite_pages() re-uploads the touched page's whole texture
+## before the frame draws — cheap CPU-side per PERF-02's own numbers, but the
+## frame that then renders it was measured far slower than an untouched one on
+## this harness). An 8ms budget forces a yield roughly every 1-2 decal-heavy
+## voxels, which multiplies that per-yield cost by voxel count instead of
+## amortizing it. Measured end-to-end detonation wall-clock at several budgets
+## on the same real blast: 8ms → 8940ms, 40ms → 2674ms, 50ms → 2663ms,
+## 100ms → 1375ms, 200ms → 995ms, effectively-unbounded (no in-stage yield at
+## all) → 853ms. 200ms was chosen off that curve: it already sits within ~8%
+## of the unbounded floor (i.e. batching finer buys almost nothing further),
+## while still yielding when a stage's total work genuinely needs it — the
+## measured blast triggered exactly one yield at this setting, not zero — so a
+## much larger future blast still gets spread across multiple frames instead of
+## one long block, which is the hard requirement PERF-01 shipped this async
+## path to satisfy in the first place.
+var render_frame_budget_ms: float = 200.0
 
 ## Async counterpart to process_dirty(): identical per-voxel logic
 ## (_process_dirty_slice_voxel()), but yields a frame every
-## `voxels_per_frame` voxels instead of running the whole dirty set in one
-## synchronous call. process_dirty() itself is untouched and stays
+## `render_frame_budget_ms` of wall time instead of running the whole dirty set
+## in one synchronous call. process_dirty() itself is untouched and stays
 ## synchronous — _tic_voxel_system() (small per-step deltas),
 ## _reapply_base_damage() (map rebuild/rotation) and
 ## slab_render_selftest.gd all call it expecting immediate completion, and
@@ -2503,20 +2524,29 @@ var voxels_per_frame: int = 150
 ## TestZoneController.detonate_active() and
 ## WeaponBenchController.fire_active() — the two big-batch, player-triggered
 ## paths — use this one.
-func process_dirty_async(registry: EdgeRegistry) -> void:
+## D11 — `states` filters which DamageStates this pass renders, so a caller can
+## run the same dirty set in stages (destroyed first, then dented, then the
+## rest) instead of one undifferentiated sweep. Empty = everything, which is
+## the pre-D11 behaviour and what every non-staged caller still gets.
+##
+## Dirty flags are cleared PER VOXEL when a filter is active — `clear_all_dirty()`
+## would drop the flags of the voxels this stage deliberately skipped, and the
+## next stage would then find nothing to do.
+func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:
 	var dirty_slices := registry.dirty_slices()
 	if dirty_slices.is_empty():
 		return
 
-	var processed := 0
+	var filtered: bool = not states.is_empty()
+	var batch_start: int = Time.get_ticks_usec()
 	for slice in dirty_slices:
 		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
 		for voxel in slice.voxels:
-			if voxel.dirty:
+			if voxel.dirty and (not filtered or states.has(voxel.damage_state)):
 				_process_dirty_slice_voxel(voxel, slice, edge)
-				processed += 1
-				if processed >= voxels_per_frame:
-					processed = 0
+				if filtered:
+					voxel.clear_dirty()
+				if float(Time.get_ticks_usec() - batch_start) / 1000.0 >= render_frame_budget_ms:
 					## PERF-02 A1: flush BEFORE yielding, not only at the end —
 					## this pass is about to let a frame draw, and a composite
 					## slot whose page hasn't been uploaded yet samples
@@ -2527,7 +2557,13 @@ func process_dirty_async(registry: EdgeRegistry) -> void:
 					## uploads to a handful.
 					flush_damage_composite_pages()
 					await get_tree().process_frame
-		slice.clear_all_dirty()
+					## Restart the clock AFTER the frame wait, so the wait
+					## itself is not charged against the next batch's budget.
+					batch_start = Time.get_ticks_usec()
+		## D11: only safe when this pass took every dirty voxel — see the
+		## per-voxel clear above for the filtered case.
+		if not filtered:
+			slice.clear_all_dirty()
 
 	flush_damage_composite_pages()
 
@@ -2535,28 +2571,32 @@ func process_dirty_async(registry: EdgeRegistry) -> void:
 ## Async counterpart to process_dirty_slabs() — see process_dirty_async()'s
 ## doc for why this is a second entry point rather than a parameter on the
 ## synchronous original.
-func process_dirty_slabs_async(registry: SlabRegistry) -> void:
+func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:
 	var dirty_slabs := registry.dirty_slabs()
 	if dirty_slabs.is_empty():
 		return
 
 	if _bake_config == null:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var processed := 0
+	var filtered: bool = not states.is_empty()
+	var batch_start: int = Time.get_ticks_usec()
 	for slab in dirty_slabs:
 		var use_solid: bool = slab.role != Slab.Role.FLOOR
 		var is_zoned_floor: bool = (not use_solid) and slab.material != "earth" \
 				and _bake_config != null and _bake_config.enabled
 		for voxel in slab.voxels:
-			if voxel.dirty:
+			if voxel.dirty and (not filtered or states.has(voxel.damage_state)):
 				_process_dirty_slab_voxel(voxel, slab, use_solid, is_zoned_floor)
-				processed += 1
-				if processed >= voxels_per_frame:
-					processed = 0
+				if filtered:
+					voxel.clear_dirty()
+				if float(Time.get_ticks_usec() - batch_start) / 1000.0 >= render_frame_budget_ms:
 					## PERF-02 A1: see process_dirty_async()'s own pre-yield flush.
 					flush_damage_composite_pages()
 					await get_tree().process_frame
-		slab.clear_all_dirty()
+					batch_start = Time.get_ticks_usec()
+		## D11: see process_dirty_async()'s own note.
+		if not filtered:
+			slab.clear_all_dirty()
 
 	flush_damage_composite_pages()
 

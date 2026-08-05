@@ -168,8 +168,9 @@ func detonate_active() -> void:
 			sprite.visible = false
 		g["detonated"] = true
 
-		if room.has_method("_flash_white"):
-			room._flash_white()
+		## D11: the white flash moved to the END of the cascade (it is the last
+		## of the three beats); the immediate response on detonate is the red
+		## one, fired below once the buffering is armed.
 
 		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
@@ -340,8 +341,77 @@ func detonate_active() -> void:
 			## keeps rendering/responding while it catches up, rather than
 			## freezing for the whole duration.
 			room._destruction_render_busy = true
-			await room._voxel_renderer.process_dirty_async(room._edge_registry)
-			await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
+			## D11 (Director, 2026-08-04): the destruction lands in three
+			## logical stages instead of one undifferentiated sweep — holes
+			## first, then the sunken dents, then the surface marks — with a
+			## screen beat between each. *"Assim da tempo de 'pensar com
+			## calma'... vai deixar a explosão mais orgânica."* It also groups
+			## like-for-like work: the DESTROYED pass is nearly free (erases),
+			## so the hole appears immediately, and the expensive decal
+			## composites fill in behind it.
+			##
+			## Smoke is buffered across all three stages and released as one
+			## moment afterwards; the soot/light repaint is deferred again so
+			## it lands while that smoke is still rising.
+			room.begin_destruction_vfx_capture()
+			await room._flash_frame(Color(1.0, 0.15, 0.05))
+			await _render_damage_stage([Voxel.DamageState.DESTROYED])
+			await room._flash_frame(Color(1.0, 0.85, 0.10))
+			await _render_damage_stage([Voxel.DamageState.DENTED])
+			room._flash_white()
+			## Empty filter = "everything still dirty", which is CRACKED plus
+			## any voxel the two named stages did not claim — so the sweep
+			## cannot strand a dirty voxel for a later TIC to render out of
+			## sequence.
+			await _render_damage_stage([])
+			## D11 equivalence probe — env-gated
+			## (INFILTRAITOR_CASCADE_EQUIV_PROBE=1), same standing-dev-tool
+			## precedent as INFILTRAITOR_LIGHT_EQUIV_PROBE (PERF-03) and
+			## INFILTRAITOR_FACE_SOOT_DIAG. Snapshots (source_id, atlas_coords)
+			## for every voxel this blast touched, force-dirties them again,
+			## and re-renders through ONE unfiltered pass — the pre-D11 code
+			## path — then diffs. Proves the three-stage sweep placed the same
+			## tiles a single sweep would, independent of VFX-timing pixel
+			## noise (a real capture diff after staging showed 518 differing
+			## pixels against a pre-D11 capture; this probe is what proved
+			## that was debris/dust particle timing, not a placement bug — 0
+			## mismatch across all four PLAYGROUND test-wall materials).
+			## Kept rather than deleted because it guards a real regression
+			## class: a future change to the stage filters (e.g. reordering
+			## which DamageState each stage claims) could silently leave a
+			## voxel double-rendered or unrendered, with no visible symptom
+			## until someone looks at the exact right voxel.
+			if OS.get_environment("INFILTRAITOR_CASCADE_EQUIV_PROBE") == "1":
+				var _before: Dictionary = {}
+				for key in cell_to_voxel:
+					var pv: Voxel = cell_to_voxel[key]
+					var players: TileMapLayer = room._voxel_renderer.get_layer(pv.level)
+					if players != null and players.get_cell_source_id(pv.grid_pos) != -1:
+						_before[key] = [players.get_cell_source_id(pv.grid_pos),
+							players.get_cell_atlas_coords(pv.grid_pos)]
+					else:
+						_before[key] = null
+					pv._set_dirty()
+				await room._voxel_renderer.process_dirty_async(room._edge_registry)
+				await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
+				var _mismatch := 0
+				for key in cell_to_voxel:
+					var pv2: Voxel = cell_to_voxel[key]
+					var players2: TileMapLayer = room._voxel_renderer.get_layer(pv2.level)
+					var after = null
+					if players2 != null and players2.get_cell_source_id(pv2.grid_pos) != -1:
+						after = [players2.get_cell_source_id(pv2.grid_pos),
+							players2.get_cell_atlas_coords(pv2.grid_pos)]
+					if _before[key] != after:
+						_mismatch += 1
+				print("[CASCADE-EQUIV] %d voxels checked, %d mismatch" % [cell_to_voxel.size(), _mismatch])
+			## D11: "Em seguida soltamos a fumaça. E enquanto ela ainda está
+			## subindo, aplicamos a fuligem." — release every buffered puff/
+			## spark/dust/chip as one moment now that all three stages are on
+			## screen, THEN run the soot/light repaint immediately after (not
+			## awaited past a delay) so it lands while that smoke is still
+			## rising rather than before it exists.
+			room.flush_destruction_vfx()
 			## VL-02b/c: geometry just changed — re-derive the light field so the
 			## new cavity walls pick up their surface/AO shading and the crater
 			## reads as depth instead of a flat recolour of intact voxels.
@@ -356,6 +426,16 @@ func detonate_active() -> void:
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## D11 — runs both dirty-flag pipelines (walls, then floors/roofs) filtered to
+## `states`. Shared by every cascade stage in detonate_active() so the
+## wall/slab ordering and the async-yield behaviour have exactly one owner.
+## `states.is_empty()` means "everything still dirty" — VoxelRenderer's own
+## contract for process_dirty_async()/process_dirty_slabs_async().
+func _render_damage_stage(states: Array) -> void:
+	await room._voxel_renderer.process_dirty_async(room._edge_registry, states)
+	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry, states)
 
 
 ## FLOOR-DEPTH-01 — reveal whatever lies under a floor plane that just took holes.

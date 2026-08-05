@@ -70,7 +70,7 @@ mid-play, unconditionally, on the tap that matters most (destroying cover).
 | **D10** | ✅ **Shipped**, with one hardening the plan did not specify: the shallow plane's holes are snapshotted BEFORE the floor loop runs, not read inside it — iteration order over `affected["floors"]` is undefined, so reading mid-loop could see the crater this very blast just punched and let the deep plane through on the same explosion. Measured on one real detonation: `SLAB_3_5_FLOOR_-1 destroyed=60` and `SLAB_3_5_FLOOR_-2 SKIPPED (B4: no hole in the plane above yet)`, and a probe of the post-blast state confirmed that same GU would now expose **60/64** deep voxels to a NEXT blast. Original text: Floor cratering limited to one depth layer per explosion. Today `detonate_active()` damages both `FLOOR_TOP_LEVEL` (-1) and `FLOOR_DEEP_LEVEL` (-2) in the same blast (deep one reduced-radius, ring-0-only). Director: destroy only the top layer per explosion; a *later*, separate explosion over the same spot should be able to reach the deep layer once it's exposed. Implementation: for a deep slab, look up its shallow sibling (`Slab.make_id(gu_cell, Role.FLOOR, FLOOR_TOP_LEVEL)`) and filter to only the deep voxels whose shallow counterpart is *already* `not visible` (destroyed by a prior blast) before calling `apply_crater_damage()` — empty filter result skips the deep slab entirely (no reveal, no damage) for this blast. `WeaponBenchController.fire_active()` untouched — firearms never crater floors. | 🔵 Planned, PERF-02 (B4) |
 | **D13** | ✅ **Shipped (B3-2).** Per-face soot moved from base-4 (3 tones + clean, 64 codes) to **base-5 (4 tones + clean, 125 codes)**: `top*25 + se*5 + sw`, `blast_soot_rings` 5 → 4, one cell of reach per available tone. The Director asked for five; **five does not fit**, and finding out why corrected my own earlier answer as well. The limit is NOT the alpha carrier the code rides in — that was the reason I first gave, and it is wrong: a 216-level carrier was probed on a real capture and decoded pixel-identically (0 pixels differing by more than 8). The real limit is the alternative-id ceiling, read from the engine rather than assumed (`TileSetAtlasSource.TRANSFORM_FLIP_H` = 4096): 64 codes → max id 1535 · 125 → 2999 · 170 → 4079 · **216 → 5183, over**. Anyone wanting the 5th tone should target the flip axis (it consumes half the id space via `SOOT_ALT_FLIP_BASE`, where Godot's own transform bit could carry it) — not the alpha packing. Measured result on the same index-0 blast, and this is the whole point of the change: rings r0/r1/r2 come back **identical to the pre-B3 original** (156/306/302) with the new r3 carrying 267, where B3's cap had instead ballooned r2 from 302 to **653** — a flat band twice as thick, exactly what the Director objected to. Weapon shot untouched: r3 = **0** on all three faces, r0/r1/r2 bit-identical. Minted tile alternatives went *down* (1175 new vs B3's 1378), since 4 cells of reach soot fewer voxels than 5. Face-separation guarantee re-verified across the larger code space: **0/1,890,000** collapses. | ✅ Shipped, B3-2 |
 | **D14** | ✅ **Shipped (B2b).** Two of the flat ×0.65 results walked back, because a flat scale ignores what each material is supposed to READ as — and the two places it hurt are exactly the two the selftests caught. **wood destroy 0.6 → 0.75** (still a real cut from 0.9; measures 75% destroyed, so the 70% threshold the earlier round had lowered to 55% is **restored** rather than left loose) and **metal dent 0.3 → 0.35** (off its accidental tie with earth's untouched 0.3; prevalence ordering is strict again at metal 83 > earth 69 > concrete 34). Stone and concrete keep their scaled values. Real map: wood 31 → 39 destroyed per slice, metal 16 → 17 dents. Detonation timing unchanged at 1256.3 / 1245.9 ms against the committed 1250.9 / 1282.9 — the explosion stays small because B1's ring cut, not this table, did the reduction. | ✅ Shipped, B2b |
-| **D11** | Colored-flash choreography: stage destruction in three explicit passes across frames (DESTROYED → DENTED → CRACKED), with a full-screen flash between each stage (red, then yellow, then the existing white `_flash_white()` tween) — "gives it time to think calmly," reads more organic, and batching same-type work per stage may itself recover some fps. Smoke (VFX-01) released as one coordinated moment *after* all three stages instead of trickling out per-voxel-erased as it does today; soot/light repaint deferred to run *while* the smoke is still rising rather than immediately. | ⚪ Deferred — see §6, not part of PERF-02 |
+| **D11** | ✅ **Shipped 2026-08-04**, after a real regression the plan didn't anticipate — see §6b. Three explicit render stages (DESTROYED → DENTED → everything-else-still-dirty, i.e. CRACKED), a red/yellow/white flash between each, smoke buffered and released as one moment after the third stage, soot/light repaint deferred to land while that smoke is rising. Structural correctness proven, not eyeballed: a probe that force-re-renders every touched voxel through the OLD single-sweep path and diffs tile identity reports **0 mismatch across all four PLAYGROUND materials** (2240/1856/1856/1856 voxels checked). End-to-end: **~950-1030ms**, against the flat PERF-03 baseline of ~920ms — the whole three-stage, three-flash cascade costs barely more than the old undifferentiated sweep. | ✅ Shipped |
 | **D12** | Real-explosion video overlay: convert the Director's alpha-background fire/smoke footage into an image sequence (same baked-flipbook idiom already used for grenade/collectible/weapon props), play it centered on the epicenter while the async destruction resolves behind it, and gate the reveal on whichever finishes later (animation or render) so nothing pops in visibly mid-cover. Confirmed technically sound — the flipbook's own `_process()` advance and the destruction coroutine are independent per-frame work, neither blocks the other. Director: both D11 and D12 happen together, in a **later session**, after PERF-02 ships — no video files handed over yet, no flipbook code started. | ⚪ Deferred — see §6, not part of PERF-02 |
 
 ---
@@ -327,6 +327,78 @@ advance and the destruction coroutine (`process_dirty_async()`/
 main thread — neither blocks the other, matching how VFX-01's own overlays
 (`SmokeSparkOverlay`, `DebrisOverlay`) already coexist with the render
 passes today.
+
+---
+
+## 6b. D11 implementation — a real regression the plan didn't anticipate, found and fixed
+
+Shipped 2026-08-04. The staging and flash choreography are exactly what D11
+specified — three render stages, three beats, buffered smoke. What the plan
+did NOT anticipate: `voxels_per_frame = 150` (PERF-01's own batching knob)
+had to be replaced with a time budget, since staging voxels by
+`DamageState` makes batches wildly uneven in cost (erasing a DESTROYED voxel
+is nearly free; compositing a DENTED one runs a full decal paste). The first
+real measurement of that replacement was **8940ms for one detonation** — a
+10x regression against the ~920ms PERF-03 baseline, and a worse experience
+than the freeze this whole arc exists to fix.
+
+**Root cause, chased with the same discipline as every other PERF item —
+measured, not reasoned about:**
+
+1. An 8ms budget (chosen as "half a 60fps frame", the obvious guess) forces a
+   yield roughly every 1-2 voxels for the DENTED/CRACKED stages, since a
+   decal-composite voxel costs ~5-8ms on its own.
+2. Each yield calls `flush_damage_composite_pages()` before the frame draws
+   (PERF-02 A1's own contract — an un-uploaded slot samples transparent).
+   That re-uploads the WHOLE touched 2048×2048 page.
+3. `ImageTexture.update()` itself is cheap — PERF-02 measured 1.6ms/call.
+   What is NOT cheap, on the off-screen windowed harness this whole arc's
+   measurements run through, is the FRAME that renders immediately after: a
+   direct probe (`room._process()` timestamped across the cascade) measured
+   **~150-190ms per yielded frame** once decal compositing was in play,
+   against **16.1ms/frame measured on the same scene, same harness, doing
+   nothing** (idle, pre-detonation). The gap is not fully explained — it may
+   be specific to this capture harness's off-screen/unfocused window and not
+   representative of a real on-screen 60fps session — but it is real and
+   reproducible, and multiplying it by ~47 yields is exactly where the 8.9s
+   went.
+
+**Fix: raise the time budget, chosen from a measured curve, not a second
+guess.** Real end-to-end detonation wall-clock at several budgets, same
+blast:
+
+| Budget | Yields | Total |
+|---|---|---|
+| 8ms | 47 | 8940ms |
+| 40ms | 10 | 2674ms |
+| 50ms | 9 | 2663ms |
+| 100ms | 4 | 1375ms |
+| **200ms (shipped)** | **1** | **995ms** |
+| effectively unbounded | 0 | 853ms |
+
+200ms sits within ~8% of the unbounded floor (finer batching buys almost
+nothing further) while still yielding when a stage's total work genuinely
+needs it — this exact blast triggered one yield at 200ms, not zero — so a
+much larger future blast still spreads across multiple frames instead of
+one long block, honoring PERF-01's original hard requirement. Full reasoning
+lives on `VoxelRenderer.render_frame_budget_ms`'s own doc comment.
+
+**Verification, because a pixel diff alone was ambiguous.** A real capture
+of the final cascade state differed from a pre-D11 capture by 518 pixels
+(max channel diff 44) — enough to demand a real check, not enough to assume
+either way. Cropping both to the blast region showed visually identical
+crater/decal geometry; the actual proof was a probe that snapshots every
+touched voxel's `(source_id, atlas_coords)`, force-dirties them again, and
+re-renders through ONE unfiltered pass (the pre-D11 code path), then diffs —
+**0 mismatch across all four PLAYGROUND materials** (2240, 1856, 1856, 1856
+voxels checked). The 518 pixels were debris/dust particle timing noise:
+smoke used to trickle out per-voxel as it was erased, and D11 deliberately
+buffers it into one release after the third stage, so the same wall-clock
+wait-frame count now catches the debris physics at a different relative age.
+Kept as a standing env-gated tool (`INFILTRAITOR_CASCADE_EQUIV_PROBE=1`),
+same precedent as `INFILTRAITOR_LIGHT_EQUIV_PROBE` — it guards a real
+regression class (a future change to which `DamageState` each stage claims
+could silently double-render or skip a voxel with no visible symptom).
 
 ---
 

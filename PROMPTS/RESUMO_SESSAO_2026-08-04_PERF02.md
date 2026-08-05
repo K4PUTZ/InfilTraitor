@@ -186,21 +186,78 @@ looks at the right voxel.
 
 ---
 
+## 3d. D11 — the destruction cascade, and a self-inflicted regression caught and fixed
+
+Director, continuing the same session: *"O sistema do frame a frame ainda
+está esquisito, dando engasgadas... aplicar primeiro destruição total;
+depois voxels dented; e por fim voxels cracked... com um frame vermelho, um
+frame amarelo, um frame branco... soltamos a fumaça... enquanto ela ainda
+está subindo, aplicamos a fuligem."* Built exactly that: three render stages
+filtered by `Voxel.DamageState` (`process_dirty_async()`/
+`process_dirty_slabs_async()` gained an optional `states` filter), a
+red/yellow/white flash between stages, VFX-01's smoke/dust/spark/chip
+dispatch buffered during the cascade and released as one moment afterward,
+and the soot/light repaint deferred to land while that smoke is still
+rising.
+
+**Then the first real measurement was 8.9 SECONDS — a 10x regression**, worse
+than the freeze PERF-01/02/03 exist to fix. Root cause, chased the same way
+as everything else this session (measured, not reasoned): PERF-01's
+`voxels_per_frame = 150` count had to become a time budget (staged batches
+are wildly uneven — erasing a hole is free, compositing a decal is not), and
+the naive 8ms guess ("half a 60fps frame") forced a yield almost every 1-2
+decal voxels. Each yield re-uploads the touched damage-composite page
+(PERF-02 A1's own contract), and — on this session's off-screen dev-capture
+harness specifically — the frame that renders right after a page upload
+measured ~150-190ms, against 16ms for an idle frame on the same scene. 47
+such yields is where the 8.9s went.
+
+Fixed by raising the budget, chosen from a measured curve rather than a
+second guess: 8ms→8940ms, 40ms→2674ms, 100ms→1375ms, **200ms→995ms**,
+unbounded→853ms. 200ms sits within ~8% of the unbounded floor while still
+yielding when a stage genuinely needs it (this blast triggered exactly one
+yield, not zero), so a much bigger future blast still spreads across frames
+instead of freezing.
+
+**Correctness was proven, not eyeballed.** A real capture of the final
+cascade differed from a pre-D11 capture by 518 pixels (max diff 44) — too
+much to wave off, not obviously a bug either. The real proof: a probe that
+snapshots every touched voxel's placed tile, force-re-renders them through
+the OLD single-sweep path, and diffs — **0 mismatch across all four
+PLAYGROUND materials**. The 518 pixels were debris/dust particle timing
+noise (smoke now releases as one buffered burst instead of trickling
+per-voxel, so the same fixed wait-frame count catches the physics at a
+different relative age), not a placement bug. Kept as a standing env-gated
+tool (`INFILTRAITOR_CASCADE_EQUIV_PROBE=1`).
+
+Result: **detonation ~950-1030ms**, barely more than the flat ~920ms PERF-03
+baseline, now delivered as three organic stages with three screen beats
+instead of one undifferentiated sweep.
+
+---
+
 ## 4. State at close
 
 - **VERSION 0.9.89** (unchanged).
 - `project_lint` PASSED · `run_selftests` **29 clean / 0 failed** ·
   `check_invariants` OK · `gen_codemap --check` clean.
-- Master plan updated in place with results, the three corrections, and the
-  measured stage table.
+- Master plan updated in place with results, every correction (including
+  D11's own regression-and-fix), and the measured stage tables.
 
 ## 5. Next session starts here
 
-**The repaint bottleneck is closed** (see §3c) — a detonation is now ~920ms,
-down from 3717ms at this session's start. The next available cut in that arc
-is scoping the light repaint's cell walk to the blast's own GUs, reusing
-VL-03's existing `apply_light_field_gus()` seam; it needs the `_placed_by_gu`
-placement index kept current for the cells `reveal_floor_slab()` adds mid-blast.
+**The repaint bottleneck is closed** (see §3c) — a detonation is now
+~950-1030ms with the full D11 cascade, down from 3717ms at this session's
+start. The next available cut in that arc is scoping the light repaint's
+cell walk to the blast's own GUs, reusing VL-03's existing
+`apply_light_field_gus()` seam; it needs the `_placed_by_gu` placement index
+kept current for the cells `reveal_floor_slab()` adds mid-blast.
+
+D11 itself is shipped; the two still-deferred ideas from the earlier
+planning session — D12 (real-explosion video/flipbook overlay, still
+waiting on the Director's source footage) and the standing open items
+(shotgun height-limit calibration, the 5th soot tone, per-face light) — are
+unchanged by this session's work.
 
 The two deliberately deferred
 ideas in the master plan's §6 are still waiting, in the Director's own

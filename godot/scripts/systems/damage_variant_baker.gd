@@ -1,240 +1,139 @@
-## D-ARCH-02 — DamageVariantBaker: Generate pre-baked damage voxel variants
+## DamageVariantBaker — D-ARCH-01 Phase 2
 ##
-## During map load, after wall baking completes, generate all CRACKED/DENTED
-## variants with multiple soot intensities. Reuses DecalCompositor to ensure
-## consistency with runtime rendering (if it ever were to happen, which it now
-## never does).
+## Pre-bakes CRACKED/DENTED damage-decal variants for placed wall/ceiling/
+## zoned-floor voxels at map-load time, driving the SAME compositor functions
+## (VoxelRenderer._composite_full_voxel_decal() etc.) the D33 runtime path
+## already uses for the identical inputs — same pixels, computed once here
+## instead of lazily at detonation time. Results are registered into a
+## VoxelVariantRegistry that VoxelRenderer.apply_damage_voxel_swap() consults
+## before falling back to D33 runtime compositing.
 ##
-## Output: additional atoms on the baked atlas pages, + expanded lookup entries
+## Scope is derived from what VoxelRenderer._set_voxel_cell()'s own dispatch
+## actually reaches for each container type — not every theoretical
+## combination:
+##   - Wall Slice (edge != null): DENTED (bullet/blast, LEFT/RIGHT, 3
+##     variants) + CRACKED (bullet LEFT/RIGHT, 3 variants, every material;
+##     blast "_all_", 3 variants, only IMPACT_CRACK_MATERIALS).
+##   - Ceiling Slab (role == CEILING): DENTED blast BOTTOM only, no variant —
+##     _ceiling_carve_plan()/_composite_ceiling_carve() is a silhouette carve
+##     with nothing to vary.
+##   - Zoned-floor Slab (role == FLOOR, zoned): DENTED blast TOP only, 3
+##     variants — _floor_sunk_decal_plan()/_composite_floor_sunk_decal(),
+##     always the shared "earth" family (floor_damage_material()'s own rule)
+##     regardless of the real zone material.
+##   - INTERIOR slabs and plain (unzoned) earth floors are skipped entirely:
+##     neither ever reaches the baked D33 path (_set_voxel_cell()'s
+##     edge/flat_baked gates never admit them — edge is always null for
+##     slabs, and flat_baked is false for INTERIOR and for an unzoned floor).
+##     Both already render through the cheap generic/vector fallback (D33
+##     Part 4b), so there is nothing expensive to pre-bake there.
+##   - CRACKED never occurs on ceiling/floor Slabs in the real game (neither
+##     asset family recognizes it), so it is never enumerated for them.
 ##
-## Soot model: a damage mark's color is the same at all 3 intensities, but the
-## opacity/darkness varies:
-##   soot_intensity 0: mark barely visible (low opacity)
-##   soot_intensity 1: medium opacity
-##   soot_intensity 2: heavy/dark (high opacity)
-##
-## These are achieved by varying the decal's alpha or by desaturating the mark.
+## Soot is never part of this: it is a per-cell modulate-alpha code
+## (VoxelLightField.encode_face_soot()) applied by the light-repaint pass
+## after any set_cell(), independent of which tile a cell shows.
 
 class_name DamageVariantBaker
 extends RefCounted
 
-const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
-
-## Map of material → voxel atom (32×36px) for alpha/shape reference
-var _base_voxel_atoms: Dictionary = {}
-
-## Decal asset paths
-const DECAL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/decals/"
-
-## Supported materials for damage variants (glass does NOT get damage variants, per Director)
-const DAMAGE_VARIANT_MATERIALS = ["concrete", "metal", "stone", "wood", "earth"]
-
-## Soot intensities: opacity factor at each level (0 = light, 1 = medium, 2 = dark)
-const SOOT_INTENSITIES = [0.4, 0.7, 1.0]  # 40%, 70%, 100% opacity
+var _renderer: VoxelRenderer
+var _registry: VoxelVariantRegistry
 
 
-func _init() -> void:
-	_load_base_voxel_atoms()
+func _init(renderer: VoxelRenderer, registry: VoxelVariantRegistry) -> void:
+	_renderer = renderer
+	_registry = registry
 
 
-## Load base voxel atoms (INTACT) for alpha reference and baseline shape
-func _load_base_voxel_atoms() -> void:
-	const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
-	
-	for material in DAMAGE_VARIANT_MATERIALS:
-		var path = VOXEL_BASE_PATH + material + ".png"
-		var texture: Texture2D = load(path)
-		if texture == null:
-			push_error("[DMG-BAKE] Failed to load base voxel: %s" % path)
-			continue
-		var img = texture.get_image()
-		if img == null:
-			push_error("[DMG-BAKE] Failed to get image: %s" % path)
-			continue
-		if img.get_format() != Image.FORMAT_RGBA8:
-			img = img.duplicate()
-			img.convert(Image.FORMAT_RGBA8)
-		_base_voxel_atoms[material] = img
-	
-	print("[DMG-BAKE] Loaded %d base voxel atoms" % _base_voxel_atoms.size())
+## Bakes every reachable DENTED/CRACKED variant for one placed, visible wall
+## voxel. Call once per voxel in a Slice.
+func bake_wall_voxel(voxel: Voxel, slice: Slice, edge: Edge) -> void:
+	var material: String = slice.material
+	var voxel_xy := Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
+	for name in _wall_variant_names(material):
+		_bake_and_register(name, material, voxel.grid_pos, voxel.level,
+			edge, slice.face, voxel_xy, false, "")
 
 
-## Generate CRACKED variant for a material (full-voxel top-face mark + soot intensities)
-## Returns: Array[Image] — 3 images (soot levels 0, 1, 2)
-func generate_cracked_variants(material: String) -> Array:
-	var result: Array = []
-	
-	if not DAMAGE_VARIANT_MATERIALS.has(material):
-		push_warning("[DMG-BAKE] Material %s not in damage variant list" % material)
-		return result
-	
-	var base_atom = _base_voxel_atoms.get(material)
-	if base_atom == null:
-		push_error("[DMG-BAKE] No base atom for material: %s" % material)
-		return result
-	
-	# Load the CRACKED decal asset
-	var decal_path = DECAL_BASE_PATH + "%s_cracked_0.png" % material
-	var decal_texture: Texture2D = load(decal_path)
-	if decal_texture == null:
-		push_warning("[DMG-BAKE] No decal asset: %s (will use flat mark)" % decal_path)
-		# Fallback: generate simple mark
-		for soot_level in range(3):
-			result.append(_generate_flat_mark(base_atom, SOOT_INTENSITIES[soot_level]))
-		return result
-	
-	var decal_img = decal_texture.get_image()
-	if decal_img == null:
-		push_error("[DMG-BAKE] Failed to load decal image: %s" % decal_path)
-		return result
-	
-	# Generate 3 soot levels
-	for soot_level in range(3):
-		var variant = base_atom.duplicate()
-		var alpha_multiplier = SOOT_INTENSITIES[soot_level]
-		
-		# Composite decal with soot intensity
-		_composite_mark_on_voxel(variant, decal_img, alpha_multiplier, "cracked")
-		result.append(variant)
-	
-	print("[DMG-BAKE] Generated %d CRACKED variants for %s" % [result.size(), material])
-	return result
+## Bakes the single reachable DENTED-bottom variant for one placed, visible
+## ceiling voxel. Call once per voxel in a CEILING-role Slab.
+func bake_ceiling_voxel(voxel: Voxel, slab: Slab) -> void:
+	var name: String = VoxelRenderer.damage_variant_material(
+		slab.material, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.BOTTOM, 0)
+	_bake_and_register(name, slab.material, voxel.grid_pos, voxel.level,
+		null, 0, Vector2i.ZERO, true, "")
 
 
-## Generate DENTED variants (per side + soot intensities)
-## damage_type: "blast_top", "blast_left", "blast_right", "blast_bottom", "bullet"
-## Returns: Array[Image] — 3 images
-func generate_dented_variants(material: String, damage_type: String) -> Array:
-	var result: Array = []
-	
-	if not DAMAGE_VARIANT_MATERIALS.has(material):
-		return result
-	
-	var base_atom = _base_voxel_atoms.get(material)
-	if base_atom == null:
-		return result
-	
-	# Load decal for this damage type
-	var decal_path = DECAL_BASE_PATH + "%s_dented_%s_0.png" % [material, damage_type]
-	var decal_texture: Texture2D = load(decal_path)
-	
-	if decal_texture == null:
-		# Fallback to generic dented mark
-		push_warning("[DMG-BAKE] No specific decal: %s, using generic" % decal_path)
-		decal_path = DECAL_BASE_PATH + "%s_dented_generic.png" % material
-		decal_texture = load(decal_path)
-		if decal_texture == null:
-			# Last resort: flat mark
-			for soot_level in range(3):
-				result.append(_generate_flat_mark(base_atom, SOOT_INTENSITIES[soot_level]))
-			return result
-	
-	var decal_img = decal_texture.get_image()
-	if decal_img == null:
-		push_error("[DMG-BAKE] Failed to load dented decal: %s" % decal_path)
-		return result
-	
-	# Generate 3 soot levels
-	for soot_level in range(3):
-		var variant = base_atom.duplicate()
-		var alpha_multiplier = SOOT_INTENSITIES[soot_level]
-		
-		_composite_mark_on_voxel(variant, decal_img, alpha_multiplier, "dented")
-		result.append(variant)
-	
-	return result
+## Bakes the 3 reachable DENTED-top variants for one placed, visible zoned-
+## floor voxel. `zone_material` is the real ground material (e.g.
+## "ground_concrete") — needed to resolve the baked substrate; the registered
+## name/key always use the shared "earth" family, matching
+## VoxelRenderer.floor_damage_material()'s own rule. Call once per voxel in a
+## FLOOR-role, zoned Slab.
+func bake_zoned_floor_voxel(voxel: Voxel, slab: Slab) -> void:
+	for variant in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
+		var name: String = VoxelRenderer.floor_damage_material(
+			Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, variant)
+		_bake_and_register(name, VoxelRenderer.IMPACT_FLOOR_MATERIAL,
+			voxel.grid_pos, voxel.level, null, 0,
+			voxel.grid_pos - slab.texture_anchor, true, slab.material)
 
 
-## Composite a decal mark onto a voxel with varying soot intensity
-func _composite_mark_on_voxel(target: Image, decal: Image, alpha_mult: float, _mark_type: String) -> void:
-	# Simple alpha-blend: iterate decal pixels, blend onto target
-	# Real implementation would use DecalCompositor for proper geometry,
-	# but for now, a basic overlay works for proof-of-concept
-	
-	var w = mini(decal.get_width(), target.get_width())
-	var h = mini(decal.get_height(), target.get_height())
-	
-	for y in range(h):
-		for x in range(w):
-			var decal_pixel = decal.get_pixel(x, y)
-			if decal_pixel.a > 0.01:  # Only blend visible pixels
-				var target_pixel = target.get_pixel(x, y)
-				
-				# Apply soot intensity via alpha
-				var _blended_alpha = decal_pixel.a * alpha_mult
-				
-				# Alpha blend
-				var out_alpha = target_pixel.a + decal_pixel.a * (1.0 - target_pixel.a)
-				var out_color: Color
-				if out_alpha > 0.01:
-					var a_src = decal_pixel.a * alpha_mult / out_alpha
-					var a_dst = target_pixel.a * (1.0 - decal_pixel.a * alpha_mult) / out_alpha
-					out_color = Color(
-						decal_pixel.r * a_src + target_pixel.r * a_dst,
-						decal_pixel.g * a_src + target_pixel.g * a_dst,
-						decal_pixel.b * a_src + target_pixel.b * a_dst,
-						out_alpha
-					)
-				else:
-					out_color = target_pixel
-				
-				target.set_pixel(x, y, out_color)
+## Every reachable damage_variant_material() name for a wall material —
+## mirrors _decal_material()'s own gating (_is_lateral_side() restriction,
+## IMPACT_CRACK_MATERIALS) rather than re-deriving which combos are valid.
+func _wall_variant_names(material: String) -> Array[String]:
+	var names: Array[String] = []
+	var sides := [Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT]
+	for variant in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
+		for side in sides:
+			names.append(VoxelRenderer.damage_variant_material(
+				material, Voxel.DamageState.DENTED, false, side, variant))
+			names.append(VoxelRenderer.damage_variant_material(
+				material, Voxel.DamageState.DENTED, true, side, variant))
+			names.append(VoxelRenderer.damage_variant_material(
+				material, Voxel.DamageState.CRACKED, false, side, variant))
+		if VoxelRenderer.IMPACT_CRACK_MATERIALS.has(material):
+			names.append(VoxelRenderer.damage_variant_material(
+				material, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, variant))
+	return names
 
 
-## Generate a flat simple mark (when no asset available)
-func _generate_flat_mark(base_atom: Image, darkness: float) -> Image:
-	var result = base_atom.duplicate()
-	
-	# Darken the top region of the voxel
-	for y in range(16):  # Top face
-		for x in range(16, 48):  # Only top diamond
-			if x < 32:
-				var edge = 8.0 + float(x) / 2.0
-				if float(y) < edge:
-					var pixel = result.get_pixel(x, y)
-					var darkened = Color(
-						pixel.r * (1.0 - darkness * 0.5),
-						pixel.g * (1.0 - darkness * 0.5),
-						pixel.b * (1.0 - darkness * 0.5),
-						pixel.a
-					)
-					result.set_pixel(x, y, darkened)
-	
-	return result
+## Resolves one name through the same plan parsers _set_voxel_cell() uses —
+## mutually exclusive by construction (see VoxelRenderer._full_voxel_decal_plan()'s
+## own comment), so trying them is order-independent — and registers the
+## composited result. A miss (no plan matched, or the composite function
+## itself returned {} — missing decal asset, no baked atom here) leaves the
+## registry without this entry; apply_damage_voxel_swap() then falls back to
+## D33 runtime compositing for that one cell exactly as it does today.
+func _bake_and_register(material_name: String, container_material: String,
+		grid_pos: Vector2i, level: int, edge: Edge, slice_face: int, voxel_xy: Vector2i,
+		flat_baked: bool, zone_material: String) -> void:
+	var entry: Dictionary = {}
+	if edge != null:
+		var full_plan := VoxelRenderer._full_voxel_decal_plan(material_name)
+		if not full_plan.is_empty():
+			entry = _renderer._composite_full_voxel_decal(
+				full_plan, material_name, edge, slice_face, voxel_xy, level, grid_pos)
+		else:
+			var half_plan := VoxelRenderer._half_voxel_decal_plan(material_name)
+			if not half_plan.is_empty():
+				entry = _renderer._composite_half_voxel_decal(
+					half_plan, material_name, edge, slice_face, voxel_xy, level, grid_pos)
+	elif flat_baked:
+		var ceiling_plan := VoxelRenderer._ceiling_carve_plan(material_name)
+		if not ceiling_plan.is_empty():
+			entry = _renderer._composite_ceiling_carve(
+				ceiling_plan, material_name, voxel_xy, level, grid_pos)
+		elif zone_material != "":
+			var floor_plan := VoxelRenderer._floor_sunk_decal_plan(material_name)
+			if not floor_plan.is_empty():
+				entry = _renderer._composite_floor_sunk_decal(
+					floor_plan, material_name, zone_material, voxel_xy, level, grid_pos)
 
+	if entry.is_empty():
+		return
 
-## Generate DESTROYED variant (hole — mostly transparent, edge highlight)
-func generate_destroyed_variant(material: String) -> Image:
-	var base_atom = _base_voxel_atoms.get(material)
-	if base_atom == null:
-		return Image.create(32, 36, false, Image.FORMAT_RGBA8)
-	
-	var result = base_atom.duplicate()
-	
-	# Make interior transparent (leave silhouette edges)
-	for y in range(result.get_height()):
-		for x in range(result.get_width()):
-			var pixel = result.get_pixel(x, y)
-			
-			# Keep edges (high alpha), fade interior
-			if pixel.a > 0.1:
-				# Threshold: keep only the outline
-				var is_edge = false
-				if x > 0 and result.get_pixel(x - 1, y).a < 0.1:
-					is_edge = true
-				elif x < 31 and result.get_pixel(x + 1, y).a < 0.1:
-					is_edge = true
-				elif y > 0 and result.get_pixel(x, y - 1).a < 0.1:
-					is_edge = true
-				elif y < 35 and result.get_pixel(x, y + 1).a < 0.1:
-					is_edge = true
-				
-				if not is_edge:
-					# Interior: make transparent
-					result.set_pixel(x, y, Color(pixel.r, pixel.g, pixel.b, 0.0))
-				else:
-					# Edge: keep but darken
-					result.set_pixel(x, y, Color(0.3, 0.3, 0.3, pixel.a))
-	
-	return result
+	var cell_key := VoxelVariantRegistry.make_cell_key(grid_pos, level, container_material)
+	_registry.register(cell_key, material_name, entry["source_id"], entry["atlas_coords"])

@@ -1,137 +1,67 @@
 ## VoxelVariantRegistry — Pre-fabricated damage variant lookup (D-ARCH-01)
 ##
-## Stores and resolves all pre-baked damage voxel variants created during map load.
-## Eliminates runtime decal compositing: all DENTED/CRACKED/DESTROYED variants are
-## pre-created with multiple soot intensities, stored on the atlas, and swapped by ID
-## during detonation.
+## Stores and resolves pre-baked damage-decal tile references created during
+## map load, keyed by the EXACT string VoxelRenderer.damage_variant_material()/
+## floor_damage_material() computes for a given (material, damage_state,
+## blast_sourced, carved_side, variant) combination — the same functions
+## VoxelRenderer.apply_damage_voxel_swap() calls to build its lookup key, so a
+## hit and its D33 runtime-compositing fallback can never name a cell
+## differently.
 ##
-## Registry structure:
-## - key: (voxel_pos.x, voxel_pos.y, level, edge_id, material_id)
-## - value: {
-##     intact_id: source_id,
-##     destroyed_id: source_id,
-##     cracked_ids: [source_id × 3 soot],          # 3 intensity levels
-##     dented_ids: {
-##       "blast_top_0": [source_id × 3 soot],
-##       "blast_left_2": [source_id × 3 soot],
-##       ...,
-##       "bullet_0": [source_id × 3 soot],
-##     }
-##   }
-##
-## At detonation time, lookup returns the correct ID (+ random soot intensity).
-## On camera rotation, re-apply using the same voxel_pos (deterministic seed for soot).
+## Soot is deliberately NOT part of this registry: soot is a per-cell
+## modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the
+## light-repaint pass after any set_cell(), independent of which
+## source_id/atlas_coords a cell shows. DESTROYED voxels are not registered
+## either — Voxel.set_damage(DESTROYED) sets visible = false and the renderer
+## erases the cell directly, never reaching a damage-variant lookup at all.
 
 class_name VoxelVariantRegistry
 
-## All pre-baked damage variants for a single map load
-var _variant_cache: Dictionary = {}  # (x, y, level, edge_id, mat) → variant data
-
-## Fallback when no variant found (shouldn't happen if baking worked)
-var _fallback_intact_id: int = -1
+## (grid_pos.x, grid_pos.y, level, container_material) ->
+##   Dictionary[damage_material_name: String -> {source_id: int, atlas_coords: Vector2i}]
+var _variant_cache: Dictionary = {}
 
 
 func _init() -> void:
 	_variant_cache.clear()
-	_fallback_intact_id = -1
 
 
-## Register an intact voxel variant (base baked atom).
-## Called during map load after baking completes.
-func register_intact(cell_key: String, source_id: int, atlas_coords: Vector2i) -> void:
+## Register a pre-baked CRACKED/DENTED variant. `damage_material_name` must be
+## the exact string damage_variant_material()/floor_damage_material() would
+## compute for this voxel's (damage_state, blast_sourced, carved_side,
+## variant) — see apply_damage_voxel_swap()'s own derivation.
+func register(cell_key: String, damage_material_name: String, source_id: int, atlas_coords: Vector2i) -> void:
 	if not _variant_cache.has(cell_key):
 		_variant_cache[cell_key] = {}
-	_variant_cache[cell_key]["intact_id"] = source_id
-	_variant_cache[cell_key]["intact_coords"] = atlas_coords
-	
-	# Remember one ID for fallback
-	if _fallback_intact_id < 0:
-		_fallback_intact_id = source_id
+	_variant_cache[cell_key][damage_material_name] = {
+		"source_id": source_id,
+		"atlas_coords": atlas_coords,
+	}
 
 
-## Register a DESTROYED variant (hole/invisible).
-func register_destroyed(cell_key: String, source_id: int, atlas_coords: Vector2i) -> void:
-	if not _variant_cache.has(cell_key):
-		_variant_cache[cell_key] = {}
-	_variant_cache[cell_key]["destroyed_id"] = source_id
-	_variant_cache[cell_key]["destroyed_coords"] = atlas_coords
-
-
-## Register CRACKED variants (3 soot intensities).
-## soot_variants: array of 3 source IDs (no soot, medium, heavy)
-func register_cracked(cell_key: String, soot_variants: Array) -> void:
-	if not _variant_cache.has(cell_key):
-		_variant_cache[cell_key] = {}
-	_variant_cache[cell_key]["cracked_ids"] = soot_variants.duplicate()
-
-
-## Register DENTED variants for one side/cause (bullet or blast + direction).
-## soot_variants: array of 3 source IDs
-## key_name: e.g. "blast_top_0", "blast_left_2", "bullet_0"
-func register_dented(cell_key: String, key_name: String, soot_variants: Array) -> void:
-	if not _variant_cache.has(cell_key):
-		_variant_cache[cell_key] = {}
-	if not _variant_cache[cell_key].has("dented_ids"):
-		_variant_cache[cell_key]["dented_ids"] = {}
-	_variant_cache[cell_key]["dented_ids"][key_name] = soot_variants.duplicate()
-
-
-## Resolve INTACT voxel ID at a cell
-func get_intact(cell_key: String) -> int:
+## Resolve a pre-baked variant, or {} on a miss (registry not populated for
+## this cell/name — caller falls through to D33 runtime compositing).
+func get_variant(cell_key: String, damage_material_name: String) -> Dictionary:
 	if _variant_cache.has(cell_key):
-		var entry = _variant_cache[cell_key]
-		if entry.has("intact_id"):
-			return entry["intact_id"]
-	return _fallback_intact_id
+		return _variant_cache[cell_key].get(damage_material_name, {})
+	return {}
 
 
-## Resolve DESTROYED voxel ID at a cell (hole/invisible)
-func get_destroyed(cell_key: String) -> int:
-	if _variant_cache.has(cell_key):
-		var entry = _variant_cache[cell_key]
-		if entry.has("destroyed_id"):
-			return entry["destroyed_id"]
-	return -1  # No destroyed variant
+## Make a cell key from position/level/material. No edge_id dimension: edge
+## only matters for the baked-atom LOOKUP resolution that already happened by
+## bake time and is baked into the composited pixels themselves.
+static func make_cell_key(voxel_pos: Vector2i, level: int, container_material: String) -> String:
+	return "%d_%d_%d_%s" % [voxel_pos.x, voxel_pos.y, level, container_material]
 
 
-## Resolve CRACKED voxel ID with random soot intensity
-func get_cracked(cell_key: String, soot_seed: int = 0) -> int:
-	if _variant_cache.has(cell_key):
-		var entry = _variant_cache[cell_key]
-		if entry.has("cracked_ids"):
-			var variants: Array = entry["cracked_ids"]
-			if variants.size() > 0:
-				var soot_idx = posmod(soot_seed, variants.size())
-				return variants[soot_idx]
-	return -1
-
-
-## Resolve DENTED voxel ID with random soot intensity.
-## damage_variant_name: "blast_top_0", "blast_left_2", "bullet_0", etc.
-func get_dented(cell_key: String, damage_variant_name: String, soot_seed: int = 0) -> int:
-	if _variant_cache.has(cell_key):
-		var entry = _variant_cache[cell_key]
-		if entry.has("dented_ids"):
-			var dented_dict: Dictionary = entry["dented_ids"]
-			if dented_dict.has(damage_variant_name):
-				var variants: Array = dented_dict[damage_variant_name]
-				if variants.size() > 0:
-					var soot_idx = posmod(soot_seed, variants.size())
-					return variants[soot_idx]
-	return -1
-
-
-## Deterministic soot seed for a voxel (used on rotation to keep marks consistent)
-static func soot_seed_for_position(voxel_pos: Vector2i, level: int, variant_id: int = 0) -> int:
-	return hash(Vector3i(voxel_pos.x, voxel_pos.y, level)) + variant_id
-
-
-## Make a cell key from position/level/edge/material
-static func make_cell_key(voxel_pos: Vector2i, level: int, edge_id: String, material_id: String) -> String:
-	return "%d_%d_%d_%s_%s" % [voxel_pos.x, voxel_pos.y, level, edge_id, material_id]
-
-
-## Clear all variants (map change)
+## Clear all variants (map change).
 func clear() -> void:
 	_variant_cache.clear()
-	_fallback_intact_id = -1
+
+
+## Total registered (cell, damage_material_name) entries — diagnostics/selftest only.
+func size() -> int:
+	var total := 0
+	for cell_key in _variant_cache:
+		total += _variant_cache[cell_key].size()
+	return total

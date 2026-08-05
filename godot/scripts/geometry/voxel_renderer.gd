@@ -505,9 +505,9 @@ const LIGHT_BUCKET_COUNT: int = 12
 ## FLOOR-DEPTH-02 caveat: on a negative level these values are multiplied again
 ## by FLOOR_DEPTH_DIM, so a SOOTED voxel two levels down lands near 0.08 — below
 ## the readable floor this table is tuned to hold. That is why the depth dim is
-## gentle, and why the soot ring of a freshly exposed crater floor is what
-## actually governs whether its layers read apart (see the ring-by-depth note in
-## TestZoneController._expose_below).
+## gentle, and why a freshly exposed crater floor is given
+## BlastCalculator.EXPOSED_FLOOR_SOOT_RING soot on reveal — that is what
+## actually governs whether its layers read apart.
 var bucket_luminance: Array[float] = [
 	0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 ]
@@ -2938,54 +2938,59 @@ func clear() -> void:
 
 ## D-ARCH-01: Apply damage to a voxel by swapping tile IDs (no runtime compositing).
 ## Called immediately after voxel.set_damage() to render the damage mark.
-## Looks up pre-baked damage variant from registry and calls set_cell() once.
+## Looks up a pre-baked damage variant and swaps the cell's tile in one call;
+## on a miss, returns false so the caller's own fallback line renders it via
+## D33 runtime compositing.
+##
+## `render_material`/`material_for_key` are derived exactly the way the
+## fallback line right below each call site already derives them
+## (damage_variant_material() for a Slice or a solid Slab, floor_damage_material()
+## for a FLOOR Slab regardless of zoning — see _process_dirty_slab_voxel()'s own
+## branching) — the lookup and its fallback can never name a cell differently
+## because they call the same functions.
 ##
 ## Parameters:
 ##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant set
-##   edge: the Wall Edge (for material lookup), or null for fallback
+##   container: the Slice or Slab this voxel belongs to
 ##   level: the storey index
-##   registry: optional EdgeRegistry (unused, kept for signature compatibility)
 ##
-## Returns: true if swap succeeded, false if no variant found (fell back to generic)
-func apply_damage_voxel_swap(voxel: Voxel, container, level: int, _registry = null) -> bool:
+## Returns: true if swap succeeded, false if no variant found (caller falls back)
+func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
 	if _damage_variant_registry == null:
 		return false  # Registry not initialized, cannot swap
-	
-	# Extract material from container (Slice or Slab)
-	var container_material: String = ""
+
+	var render_material: String
+	var material_for_key: String
 	if container is Slice:
-		container_material = container.material
+		render_material = damage_variant_material(container.material, voxel.damage_state,
+			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+		material_for_key = container.material
 	elif container is Slab:
-		container_material = container.material
+		if container.role == Slab.Role.FLOOR:
+			## D33/FLOOR-DENT-01: every FLOOR voxel's damage — zoned or plain
+			## earth — always renders through the shared "earth" family
+			## (floor_damage_material()'s own rule), never the real zone
+			## material. See voxel_renderer.gd's floor_damage_material() doc.
+			render_material = floor_damage_material(voxel.damage_state,
+				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			material_for_key = IMPACT_FLOOR_MATERIAL
+		else:
+			render_material = damage_variant_material(container.material, voxel.damage_state,
+				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			material_for_key = container.material
 	else:
 		return false  # Unknown container type
 
-	# Build cell key for lookup (using actual voxel position as per D-ARCH-01)
-	var cell_key = VoxelVariantRegistryClass.make_cell_key(voxel.grid_pos, level, "global", container_material)
-	
-	# Lookup the source ID based on damage state
-	var source_id = -1
-	match voxel.damage_state:
-		Voxel.DamageState.DESTROYED:
-			source_id = _damage_variant_registry.get_destroyed(cell_key)
-		Voxel.DamageState.CRACKED:
-			# Use soot seed based on position + variant ID
-			var soot_seed = VoxelVariantRegistryClass.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
-			source_id = _damage_variant_registry.get_cracked(cell_key, soot_seed)
-		Voxel.DamageState.DENTED:
-			var soot_seed = VoxelVariantRegistryClass.soot_seed_for_position(voxel.grid_pos, level, voxel.damage_variant)
-			source_id = _damage_variant_registry.get_dented(cell_key, "", soot_seed)
-	
-	if source_id < 0:
-		return false  # No variant found
-	
-	# Apply the damage by swapping tile ID
-	var layer = get_layer(level)
-	if layer:
-		layer.set_cell(voxel.grid_pos, source_id, Vector2i.ZERO, 0)
-		return true
-	
-	return false
+	var cell_key := VoxelVariantRegistryClass.make_cell_key(voxel.grid_pos, level, material_for_key)
+	var entry: Dictionary = _damage_variant_registry.get_variant(cell_key, render_material)
+	if entry.is_empty():
+		return false  # No pre-baked variant — caller's fallback line renders it
+
+	var layer := get_layer(level)
+	if layer == null:
+		return false
+	layer.set_cell(voxel.grid_pos, entry["source_id"], entry["atlas_coords"], 0)
+	return true
 
 ## D-ARCH-01: Pre-bake all damage variants at load time
 ## No runtime compositing — single-frame ID swap at detonation

@@ -2960,8 +2960,8 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int, _registry = nu
 	else:
 		return false  # Unknown container type
 
-	# Build cell key for lookup (using global coordinates as per D-ARCH-01)
-	var cell_key = VoxelVariantRegistryClass.make_cell_key(Vector2i.ZERO, 0, "global", container_material)
+	# Build cell key for lookup (using actual voxel position as per D-ARCH-01)
+	var cell_key = VoxelVariantRegistryClass.make_cell_key(voxel.grid_pos, level, "global", container_material)
 	
 	# Lookup the source ID based on damage state
 	var source_id = -1

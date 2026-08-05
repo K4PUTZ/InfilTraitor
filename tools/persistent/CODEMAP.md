@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**183 scripts · 43287 lines total** (under `godot/scripts/`)
+**182 scripts · 42803 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_composite_cache_selftest.gd, damage_variant_baker_test.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -712,7 +712,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3021 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3026 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1440,23 +1440,16 @@ extends `Node2D` · 43 lines
 
 ### `damage_variant_baker.gd`
 
-`class_name DamageVariantBaker` · extends `RefCounted` · 240 lines
+`class_name DamageVariantBaker` · extends `RefCounted` · 139 lines
 
 `godot/scripts/systems/damage_variant_baker.gd`
 
-> D-ARCH-02 — DamageVariantBaker: Generate pre-baked damage voxel variants During map load, after wall baking completes, generate all CRACKED/DENTED variants with multiple soot intensities. Reuses DecalCompositor to ensure consistency with runtime rendering (if it ever were to happen, which it now never does). Output: additional atoms on the baked atlas pages, + expanded lookup entries Soot model: a damage mark's color is the same at all 3 intensities, but the opacity/darkness varies: soot_intensity 0: mark barely visible (low opacity) soot_intensity 1: medium opacity soot_intensity 2: heavy/dark (high opacity) These are achieved by varying the decal's alpha or by desaturating the mark.
-
-**Constants / tuning**
-- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `DECAL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/decals/"`
-- `DAMAGE_VARIANT_MATERIALS` = `["concrete", "metal", "stone", "wood", "earth"]`
-- `SOOT_INTENSITIES` = `[0.4, 0.7, 1.0]`
+> DamageVariantBaker — D-ARCH-01 Phase 2 Pre-bakes CRACKED/DENTED damage-decal variants for placed wall/ceiling/ zoned-floor voxels at map-load time, driving the SAME compositor functions (VoxelRenderer._composite_full_voxel_decal() etc.) the D33 runtime path already uses for the identical inputs — same pixels, computed once here instead of lazily at detonation time. Results are registered into a VoxelVariantRegistry that VoxelRenderer.apply_damage_voxel_swap() consults before falling back to D33 runtime compositing. Scope is derived from what VoxelRenderer._set_voxel_cell()'s own dispatch actually reaches for each container type — not every theoretical combination: - Wall Slice (edge != null): DENTED (bullet/blast, LEFT/RIGHT, 3 variants) + CRACKED (bullet LEFT/RIGHT, 3 variants, every material; blast "_all_", 3 variants, only IMPACT_CRACK_MATERIALS). - Ceiling Slab (role == CEILING): DENTED blast BOTTOM only, no variant — _ceiling_carve_plan()/_composite_ceiling_carve() is a silhouette carve with nothing to vary. - Zoned-floor Slab (role == FLOOR, zoned): DENTED blast TOP only, 3 variants — _floor_sunk_decal_plan()/_composite_floor_sunk_decal(), always the shared "earth" family (floor_damage_material()'s own rule) regardless of the real zone material. - INTERIOR slabs and plain (unzoned) earth floors are skipped entirely: neither ever reaches the baked D33 path (_set_voxel_cell()'s edge/flat_baked gates never admit them — edge is always null for slabs, and flat_baked is false for INTERIOR and for an unzoned floor). Both already render through the cheap generic/vector fallback (D33 Part 4b), so there is nothing expensive to pre-bake there. - CRACKED never occurs on ceiling/floor Slabs in the real game (neither asset family recognizes it), so it is never enumerated for them. Soot is never part of this: it is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which tile a cell shows.
 
 **Public API**
-- `func generate_cracked_variants(material: String) -> Array:`
-- `func generate_dented_variants(material: String, damage_type: String) -> Array:`
-- `func generate_destroyed_variant(material: String) -> Image:`
+- `func bake_wall_voxel(voxel: Voxel, slice: Slice, edge: Edge) -> void:`
+- `func bake_ceiling_voxel(voxel: Voxel, slab: Slab) -> void:`
+- `func bake_zoned_floor_voxel(voxel: Voxel, slab: Slab) -> void:`
 
 ---
 
@@ -2160,11 +2153,17 @@ extends `Node` · 54 lines
 
 ### `voxel_variant_registry.gd`
 
-`class_name VoxelVariantRegistry` · 137 lines
+`class_name VoxelVariantRegistry` · 67 lines
 
 `godot/scripts/systems/voxel_variant_registry.gd`
 
-> VoxelVariantRegistry — Pre-fabricated damage variant lookup (D-ARCH-01) Stores and resolves all pre-baked damage voxel variants created during map load. Eliminates runtime decal compositing: all DENTED/CRACKED/DESTROYED variants are pre-created with multiple soot intensities, stored on the atlas, and swapped by ID during detonation. Registry structure: - key: (voxel_pos.x, voxel_pos.y, level, edge_id, material_id) - value: { intact_id: source_id, destroyed_id: source_id, cracked_ids: [source_id × 3 soot],          # 3 intensity levels dented_ids: { "blast_top_0": [source_id × 3 soot], "blast_left_2": [source_id × 3 soot], ..., "bullet_0": [source_id × 3 soot], } } At detonation time, lookup returns the correct ID (+ random soot intensity). On camera rotation, re-apply using the same voxel_pos (deterministic seed for soot).
+> VoxelVariantRegistry — Pre-fabricated damage variant lookup (D-ARCH-01) Stores and resolves pre-baked damage-decal tile references created during map load, keyed by the EXACT string VoxelRenderer.damage_variant_material()/ floor_damage_material() computes for a given (material, damage_state, blast_sourced, carved_side, variant) combination — the same functions VoxelRenderer.apply_damage_voxel_swap() calls to build its lookup key, so a hit and its D33 runtime-compositing fallback can never name a cell differently. Soot is deliberately NOT part of this registry: soot is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which source_id/atlas_coords a cell shows. DESTROYED voxels are not registered either — Voxel.set_damage(DESTROYED) sets visible = false and the renderer erases the cell directly, never reaching a damage-variant lookup at all.
+
+**Public API**
+- `func register(cell_key: String, damage_material_name: String, source_id: int, atlas_coords: Vector2i) -> void:`
+- `func get_variant(cell_key: String, damage_material_name: String) -> Dictionary:`
+- `func clear() -> void:`
+- `func size() -> int:`
 
 ---
 
@@ -2445,19 +2444,6 @@ extends `SceneTree` · 251 lines
 - `func test_wrong_sized_image_is_rejected_without_corrupting_state() -> void:`
 - `func test_page_overflow_allocates_a_second_page() -> void:`
 - `func test_reset_clears_everything_and_next_store_starts_fresh() -> void:`
-
----
-
-### `damage_variant_baker_test.gd`
-
-extends `Node` · 44 lines
-
-`godot/scripts/tools/damage_variant_baker_test.gd`
-
-> Test: DamageVariantBaker generates damage variant atoms Simple validation that soot intensities and basic decal compositing work
-
-**Public API**
-- `func test_damage_variant_generation():`
 
 ---
 
@@ -3683,7 +3669,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 471 lines
+`class_name TestZoneController` · 185 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3695,14 +3681,12 @@ extends `Node2D` · 34 lines
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `BOMB_ID` = `"frag_grenade"`
-- `_EMBER_NEIGHBOURS` = `[ Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), ]`
 
 **Public vars**
 - `var room: Node`
 
 **Public API**
 - `func clear() -> void:`
-- `func cancel_active() -> void:`
 
 ---
 
@@ -3947,7 +3931,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3629 lines
+extends `Node2D` · 3641 lines
 
 `godot/scripts/world/room.gd`
 

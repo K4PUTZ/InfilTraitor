@@ -4,7 +4,8 @@
 **Date opened:** 2026-08-05
 **Updated:** 2026-08-06 — Director answered Q1–Q6, then corrected/extended Q1b
 and Q3b in a follow-up round (floor is material-real now, not agnostic to
-"earth"; bullet marks join the pre-bake). Q7–Q9 remain (Phase B only).
+"earth"; bullet marks join the pre-bake), then added D13 (per-map material
+scope + cross-session bake cache, §3.5). Q7–Q9 remain (Phase B only).
 **Status:** 🟠 **PLANNING — awaiting Director sign-off on the vertical-falloff
 formula (§10 Q1b).** Nothing here is built.
 **Next action:** §11. Q1b's exact formula is the one remaining proposed-not-
@@ -297,12 +298,58 @@ actually cheaper.
 **This projection is not evidence.** Task 0 below measures it before a single
 line of the architecture is committed to.
 
-Escape hatches, in the order they'd be taken if Task 0 comes back too
-expensive:
+Escape hatches, if Task 0 comes back too expensive **beyond what §3.5's cache
+and per-map material scoping already buy**:
 1. Substrates 3 → 1 (−138 atoms, 207 → 69; costs visual variety, D3 reversed).
 2. Bake lazily on the **first** detonation, inside the pre-compute window
    (windows #1 and #2 exist precisely to absorb a hitch).
-3. Serialize the baked page to disk, keyed on the bake config + material set.
+
+(The third hatch from the first draft of this section — "serialize the baked
+page to disk" — is promoted out of the escape-hatch list: it's now baseline
+design, §3.5, not a fallback. Task 0 still measures the **cold**, no-cache
+case, because that's the number that answers "does a device's very first load
+of a new material feel broken" — the cache cannot help that one.)
+
+### 3.5 Material scope per map, and the cross-session bake cache (D13, new 2026-08-06)
+
+Two related requirements from the Director, both aimed at the same problem:
+the game will eventually ship many materials, and no single map — let alone
+every load of the same map — should pay to bake all of them.
+
+**Scope: each map declares which materials it actually uses.** Not derived by
+scanning that map's `walls`/`blocks`/`floor_zones` sections for distinct
+`material` values at compile time, even though that data already exists there
+— an explicit declaration lets the bake pass run and finish **before**
+geometry compilation needs the resulting atoms, rather than depending on a
+full compile pass first (the likely reason the Director asked for this
+explicitly rather than derived; noted as inference, not confirmed). Per
+`MAPFILE_REFERENCE.md`'s extension protocol, this is **a new registered
+section** (`{section_id, version, serialize, deserialize, migrations[]}` via
+`MapSectionRegistry`, read before implementing — required by CLAUDE.md for any
+`.map.json` change), not an ad-hoc field bolted onto an existing one. Task 1
+should add a selftest asserting the declared list is a superset of what the
+map's own walls/blocks/floor_zones actually reference, so authoring drift
+(a material used but not declared) fails loudly (B6) instead of silently
+missing its bake.
+
+**Cache: baked atoms persist across sessions on the same device.** `user://`-
+scoped, keyed on `(material, damage_state class, decal_variant,
+substrate_variant)` **plus** a version/hash of the bake inputs (compositor
+version, decal source art, bake config) — not just the material name — so an
+art or config update invalidates stale entries automatically rather than
+silently serving outdated graphics (a real risk with any disk cache; handled
+by hashing the inputs, not by trusting the cache blindly). A map whose full
+declared material set is already cached pays **effectively zero** bake time on
+that load — Task 1's gate includes a real capture proving this: load the same
+map twice, second load's bake step measurably near-zero versus the first.
+
+**Partial coverage is already handled, not new work (D10 generalizes):**
+*"alguns materiais vão ter todos os decals, outros só alguns"* is exactly
+what D10's derive-from-`MaterialResistanceTable` rule already does — a
+material with `crack_factor == 0` simply never enumerates a CRACKED atom.
+Extending the roster later (new materials, or new decal families for existing
+ones) is adding rows/factors and declaring the material on the relevant maps,
+no code change.
 
 ---
 
@@ -531,8 +578,8 @@ Two new sibling stores, both in base coords:
 
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
-| **0** | **Bake-cost measurement spike** | Real ms for a warm sequential 207-atom bake on PLAYGROUND (§3.2, 2026-08-06 final recount), via a temporary `INFILTRAITOR_CAPTURE_ACTION` hook (added, measured, reverted — same discipline as every PERF round) | **Blocks everything.** If > ~2 s, take §3.4's escape hatches before proceeding |
-| 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule) — includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; wired into `room_builder`; selftest asserts all 207 atoms exist | Real load-time capture + atom count printed |
+| **0** | **Bake-cost measurement spike** | Real ms for a **cold, uncached** warm sequential 207-atom bake on PLAYGROUND (§3.2, 2026-08-06 final recount), via a temporary `INFILTRAITOR_CAPTURE_ACTION` hook (added, measured, reverted — same discipline as every PERF round) | **Blocks everything.** If > ~2 s, take §3.4's escape hatches before proceeding — §3.5's cache does not help this number, it only helps loads 2+ |
+| 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
 | 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
@@ -715,8 +762,9 @@ animation is not.
 exactly the post-reset state §0 describes — grenades detonate and damage
 nothing, firearms work. Working tree still clean at commit `2ba9a19` plus
 docs-only commits since. Q1–Q6 answered 2026-08-06; a same-day follow-up round
-resolved Q3b (bullets: in scope, D12) and sharpened Q1 (resistance stays,
-floor stops being agnostic to "earth", D9/D10). **Only Q1b (§4.3's exact
+resolved Q3b (bullets: in scope, D12), sharpened Q1 (resistance stays, floor
+stops being agnostic to "earth", D9/D10), and added D13 (per-map material
+scope + cross-session bake cache, §3.5). **Only Q1b (§4.3's exact
 vertical-falloff formula) is still proposed-not-confirmed.**
 
 **Order of business:**
@@ -728,21 +776,25 @@ vertical-falloff formula) is still proposed-not-confirmed.**
    measurement, commits to no design decision, and produces the one number the
    whole architecture rests on. Can start immediately, in parallel with Q1b.
    - Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook,
-     bake a representative warm sequential run over the **207-atom** table
-     (§3.2, 2026-08-06 final recount — 216 if Task 2 also turns on
-     `ground_concrete.crack_factor`, D10), print real ms, **revert the hook
-     before committing** — the same add/measure/revert discipline every PERF
-     round used (and `grep -n explosion_bake_spike` must come back empty).
+     bake a representative **cold, uncached** sequential run over the
+     **207-atom** table (§3.2, 2026-08-06 final recount — 216 if Task 2 also
+     turns on `ground_concrete.crack_factor`, D10), print real ms, **revert
+     the hook before committing** — the same add/measure/revert discipline
+     every PERF round used (and `grep -n explosion_bake_spike` must come back
+     empty). D13's cache (§3.5) is a Task 1 deliverable, not yet built —
+     Task 0 cannot lean on it.
    - What makes it honest: the 2026-08-05 figure of ~95 ms/voxel was a
      *per-cell, partly-cold* bake. This spike must measure the *warm sequential*
      case, because that is the case the plan actually depends on. Do not reuse
      the old number as if it answered this question.
    - Decision gate: > ~2 s at load → take §3.4's escape hatches (substrates
      3→1, or lazy bake into the pre-compute window) **before** writing Task 1.
-3. Then Tasks 1 → 6 in §8's order. **Task 1 now includes baking the D12
-   marked/bullet atoms** (cheap and additive — just more registry entries),
-   but **not** rewiring `WeaponBenchController.fire_active()` onto them; see
-   the sequencing note below.
+3. Then Tasks 1 → 6 in §8's order. **Task 1 now includes:** baking the D12
+   marked/bullet atoms (cheap and additive — just more registry entries, not
+   yet wired to `fire_active()`, see the sequencing note below); reading
+   `MAPFILE_REFERENCE.md`'s extension protocol before adding D13's new
+   declared-materials section; and building the `user://` bake cache. All
+   three are Task 1 deliverables, none of them block Task 0.
 4. **A new, explicit checkpoint (not yet numbered as a Task):** once Phase A's
    blast waves are captured and signed off, rewire `fire_active()`'s mark
    step onto the pre-baked D12 atoms, with its own real before/after captures

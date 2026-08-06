@@ -3,6 +3,8 @@
 
 **Date opened:** 2026-08-05
 **Status:** 🟠 **PLANNING — awaiting Director sign-off.** Nothing here is built.
+**Next action:** §11. Nine open questions in §10 (Q1 and Q3 gate work); Task 0
+in §8 is a pure measurement spike and can start before any of them are answered.
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -378,25 +380,138 @@ not detailed here beyond §1's sequence, on purpose.
 
 ---
 
-## 10. Inputs still needed from the Director
+## 10. Open questions for the Director
 
-1. **The reference image** (XCOM / Phoenix Point bubble) — referenced in the
-   spec as "(imagem)" but no image arrived with the message.
-2. **The explosion art** — 3 frames, fire/energy dispersing in alpha.
-3. **Cracked art for ceilings and floors.** Neither exists today: D32.6 fixed
-   blast-CRACKED to concrete and stone only, and the floor family has no crack
-   tier at all (`IMPACT_FLOOR_MATERIAL` covers blast/dent/top only). Options:
-   reuse `decal_generic_blast_crack_*`, or author new families. **This gates
-   64 of the ~192 atoms in §3.2.**
-4. **Wave cadence** — 40 ms/wave proposed (≈560 ms total).
-5. **Ceiling DENTED** is a pure silhouette carve with nothing to vary
-   (`_ceiling_carve_plan()`), so it gets 1 decal × 3 substrates rather than the
-   3 decals the spec asks for on the other families. Confirm that's acceptable.
-6. **Throw range** default in GU, until the strength/skill stats exist.
+Opened 2026-08-05, to be answered at the start of the next session. Each entry
+says what it blocks and what the plan assumes if it is left unanswered, so the
+next session is never fully stalled — but **Q1 and Q3 genuinely gate work** and
+should be answered before Task 1 starts.
+
+### Q1 — Destruction on walls/ceilings: does the spec's floor falloff apply to them too? 🔴 blocks Task 2
+
+The spec says *"Somente destroi voxels no chão no ring 0 (muito), no ring 1
+(menos), e no ring 2 (quase nada)"*, but the ratified answer to the same
+question was **"Chão + paredes/tetos, como hoje"**. Those two readings only
+reconcile one way, and §1/D1 and §4.2 are written on that reading:
+
+> the *muito / menos / quase nada* profile is the **floor's own**; walls and
+> ceilings keep today's ring-multiplier × material-resistance model.
+
+**If that reading is wrong**, §4.2's weight tables change shape and Task 2 is
+re-scoped. Please confirm or correct.
+
+*Assumed if unanswered:* the reading above.
+
+### Q2 — Does smoke reach ring 3? 🟡 contradiction in the spec
+
+The prose says smoke appears *"mais no centro e menos no ring 3"*, but the
+numbered wave list stops at **Fumaça 2**, and the same prose calls soot *"o
+único elemento do ring 3"*. The plan follows the wave list (smoke rings 0–2,
+`smoke_ring_weights` ends in `0.0`).
+
+*Assumed if unanswered:* the wave list wins — no smoke at ring 3.
+
+### Q3 — Cracked art for ceilings and floors 🔴 gates 64 of the ~192 atoms
+
+Neither family exists today. D32.6 fixed blast-CRACKED to concrete and stone
+only, and the floor family has no crack tier at all (`IMPACT_FLOOR_MATERIAL`
+covers blast/dent/top). Options:
+
+- **(a)** reuse the existing `decal_generic_blast_crack_{0,1,2}` family for both
+  — zero new art, ships immediately;
+- **(b)** author dedicated ceiling and floor crack families (6 new PNGs at
+  256×256 per `ART_SPECIFICATIONS.md` §7);
+- **(c)** drop cracked on ceilings and/or floors entirely — walls only.
+
+*Assumed if unanswered:* **(a)**, since it unblocks Task 1 without waiting on
+art. Swapping to (b) later is a pure asset change, no code change.
+
+### Q4 — Ceiling DENTED has nothing to vary 🟡
+
+`_ceiling_carve_plan()` is a pure silhouette carve — an isometric camera never
+sees a ceiling's underside, so there is no exposed face to paint a decal onto
+(D25). It therefore gets **1 carve × 3 substrates**, not the 3 decals the spec
+asks for on the other families. Confirm that's acceptable, or say what should
+vary instead.
+
+*Assumed if unanswered:* 1 × 3.
+
+### Q5 — Wave cadence 🟡 Phase A tuning
+
+**40 ms/wave** proposed → 14 waves ≈ **560 ms** of choreography. It is a `var`,
+trivially re-tuned after the first capture.
+
+*Assumed if unanswered:* 40 ms.
+
+### Q6 — The reference image never arrived 🟢 Phase B only
+
+The spec cites *"como no XCOM ou Phoenix Point (imagem)"* but no image came
+with the message. Needed before the bubble is designed — Phase B, so it does
+not block Phase A at all.
+
+### Q7 — Explosion art 🟢 Phase B only
+
+3 frames, fire/energy dispersing in alpha. Director said *"vou fornecer a
+arte."* Phase B.
+
+### Q8 — Throw range 🟢 Phase B only
+
+A flat default in GU, until agent strength/skills exist. Note this is
+**independent of the blast's 4 rings**: range decides how far the impact GU can
+be placed, rings decide what the blast does once it lands.
+
+*Assumed if unanswered:* 6 GU, matching the movement overlay's comfortable
+reach.
+
+### Q9 — Is the throw animation a new asset, or the existing sprite on an arc? 🟢 Phase B only
+
+`GrenadeProp` already bakes 8 angles of the Quaternius grenade. Tweening that
+existing sprite along a parabola is nearly free; a hand-authored throw
+animation is not.
+
+*Assumed if unanswered:* tween the existing prop.
 
 ---
 
-## 11. Verification contract for this plan
+## 11. Next session starts here
+
+**Resume point:** planning complete, **nothing implemented**. The repo is in
+exactly the post-reset state §0 describes — grenades detonate and damage
+nothing, firearms work. Working tree clean at commit `2ba9a19`.
+
+**Order of business:**
+
+1. Read this file's §10 and take the Director's answers. Q1 and Q3 first —
+   they are the two that change work already planned.
+2. **Run Task 0 (§8): the bake-cost measurement spike.** It is pure
+   measurement, commits to no design decision, and produces the one number the
+   whole architecture rests on. It can start before any of §10 is answered.
+   - Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook,
+     bake a representative warm sequential run, print real ms, **revert the
+     hook before committing** — the same add/measure/revert discipline every
+     PERF round used (and `grep -n explosion_bake_spike` must come back empty).
+   - What makes it honest: the 2026-08-05 figure of ~95 ms/voxel was a
+     *per-cell, partly-cold* bake. This spike must measure the *warm sequential*
+     case, because that is the case the plan actually depends on. Do not reuse
+     the old number as if it answered this question.
+   - Decision gate: > ~2 s at load → take §3.4's escape hatches (substrates
+     3→1, or lazy bake into the pre-compute window) **before** writing Task 1.
+3. Then Tasks 1 → 6 in §8's order.
+
+**Do not:**
+- start Phase B (targeting UI, bubble, throw, explosion frames) — the Director
+  chose Phase A first, deliberately, so the 14 waves are verifiable with real
+  captures before they get wrapped in animation;
+- touch `WeaponBenchController.fire_active()` or the D33 runtime compositing
+  path it uses — firearms are the one destruction path that works, and §9 keeps
+  them out of scope on purpose;
+- re-enable camera rotation as part of this work (§9);
+- treat the ~192-atom count in §3.2 as measured — it is an enumeration of the
+  §3.2 table, and Task 0 is what turns it into a real cost.
+
+---
+
+## 12. Verification contract for this plan
 
 Nothing in this plan is reported done on reasoning. Each task closes with:
 `project_lint.py` clean · `run_selftests.py` clean · `check_invariants.py` OK ·

@@ -55,8 +55,13 @@ const PAGE_W: int = 4096
 const PAGE_TILE_COLS: int = 128
 const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 
+## D19: one canonical voxel atom per material, surface-independent — the
+## floor-only materials keep their own atom (grass/dirt/gravel/sand), but
+## concrete's floor bake now reuses concrete's existing (wall) atom instead
+## of a second "ground_concrete" duplicate (verified byte-identical alpha,
+## the only channel a canonical atom's masking ever reads).
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
-	"ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]
+	"grass", "dirt", "gravel", "sand"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
@@ -242,7 +247,7 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 		# MATERIAL_ONLY placement short-circuits to the generic atlas, so its
 		# modulate here is irrelevant; TEXTURE_ONLY (and, for now, the two
 		# experimental modes) = white; MULTIPLY = lifted base_color.
-		var modulate := _modulate_for_mode(blend_mode, material)
+		var modulate := _modulate_for_mode(blend_mode, material, facade_id)
 
 		for dir in range(2):
 			var cache_key := "%s|%s|%d" % [material_id, facade_id, dir]
@@ -441,7 +446,7 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 				page.set_data(page.get_width(), page.get_height(), false, Image.FORMAT_RGBA8, data)
 
 		atlas_result.atom_pages.append(page)
-		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material))
+		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material, facade_id))
 		print("[BAKE] Composed junction page: %s (%d atoms)" % [combo_key, atom_idx])
 
 ## Luma lift applied to the MULTIPLY modulate (Director, 2026-07-10: MULTIPLY
@@ -453,12 +458,17 @@ func _compose_junction_pages(atlas_result: BakedAtlas, junction_specs: Array, fa
 var multiply_luma_lift: float = 0.0
 
 ## Per-tile modulate realizing the blend mode on grayscale baked pages.
-## Floor-zone materials (MaterialDef.full_color) are photographic sources —
-## forcing WHITE regardless of blend_mode is the entire mechanism that keeps
-## their real RGB instead of tinting by base_color (BAKE_SYSTEM_REFERENCE.md
-## B2's floor/ground exception).
-func _modulate_for_mode(blend_mode: int, material) -> Color:
-	if material.full_color:
+## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): the WHITE-vs-tinted
+## decision follows the TEXTURE id's own prefix, not a flag on the material —
+## `slab_*` (floor/ceiling) sources are photographic (BAKE_SYSTEM_REFERENCE.md
+## B2's exception), forcing WHITE regardless of blend_mode so their real RGB
+## survives; `facade_*` (wall/roof) sources tint by base_color under MULTIPLY.
+## This is what lets one unified material (e.g. `concrete`) be tinted on
+## walls and full-color on floors at once — a single `MaterialDef.full_color`
+## bool could not represent both, since it was read the same way regardless
+## of which surface's page was being composed.
+func _modulate_for_mode(blend_mode: int, material, texture_id: String) -> Color:
+	if texture_id.begins_with("slab_"):
 		return Color.WHITE
 	if blend_mode == BakeConfigClass.BlendMode.MULTIPLY:
 		return material.base_color.lightened(multiply_luma_lift)
@@ -670,10 +680,20 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 			push_error("[BAKE] Roof combo %s|%s unresolved — roof falls back to generic atlas" % [material_id, facade_id])
 			continue
 
+		## D19/D20: this function bakes BOTH roof_specs (facade_id="facade_*",
+		## e.g. a wood roof reprojecting the wall's own facade_wood — unchanged
+		## from today) and floor_specs (facade_id="slab_*", the photographic
+		## floor-zone source, renamed from "ground_*"). The two are
+		## disambiguated purely by facade_id's prefix, same as
+		## _modulate_for_mode below — never by material_id, which after D19's
+		## unification no longer encodes surface (concrete is both a wall AND
+		## a floor material now).
+		var is_slab_bake: bool = facade_id.begins_with("slab_")
+
 		var cache_key := "ROOF|%s|%s" % [material_id, facade_id]
 		var entry = _page_cache.get(cache_key)
 		if entry == null:
-			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []), material.full_color)
+			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []), is_slab_bake)
 			_page_cache[cache_key] = entry
 			print("[BAKE] Composed roof page %s (%d atoms)" % [cache_key, entry["frag"].size()])
 		else:
@@ -681,7 +701,7 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 
 		var page_idx: int = atlas_result.atom_pages.size()
 		atlas_result.atom_pages.append(entry["page"])
-		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material))
+		atlas_result.page_modulates.append(_modulate_for_mode(blend_mode, material, facade_id))
 		for frag_key in entry["frag"]:
 			atlas_result.lookup["ROOF|%s|%s|%s" % [material_id, facade_id, frag_key]] = {
 				"page": page_idx,

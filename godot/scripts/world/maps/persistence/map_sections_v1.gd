@@ -94,18 +94,32 @@ static func register_blocks(registry) -> void:
 	))
 
 ## floor_zones: author-declared floor material rects (floor-zone bake).
-## Shape mirrors "blocks" ({gu, size, material}); v1, no migration needed —
-## "size" is always present from the start, unlike blocks' v1->v2 history.
+## Shape mirrors "blocks" ({gu, size, material}).
+## v1 -> v2 (EXPLOSION_REBUILD_MASTER_PLAN D19/D20, 2026-08-06): material ids
+## drop their "ground_" prefix — the material reform unified `ground_concrete`
+## into the single `concrete` row and renamed the floor-only materials
+## (`ground_grass`/`ground_dirt`/`ground_gravel`/`ground_sand` ->
+## `grass`/`dirt`/`gravel`/`sand`). Shipped maps are edited directly to v2;
+## this migration covers any file (e.g. a user:// map) still saved at v1.
 static func register_floor_zones(registry) -> void:
 	var SectionOwner = registry.SectionOwner
+	var migrations = {}
+	migrations[1] = func(old: Dictionary) -> Dictionary:
+		var items = old.get("items", [])
+		for item in items:
+			var material := String(item.get("material", ""))
+			if material.begins_with("ground_"):
+				item["material"] = material.substr(len("ground_"))
+		return { "items": items }
+
 	registry.register(SectionOwner.new(
 		"floor_zones",
-		1,
+		2,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },
 		func(raw: Dictionary) -> Dictionary:
 			return { "items": raw.get("items", []) },
-		{},
+		migrations,
 		func() -> Dictionary:
 			return { "items": [] }
 	))

@@ -304,7 +304,11 @@ func test_variant_selects_distinct_names() -> void:
 func test_unknown_material_falls_back_instead_of_composing_a_missing_name() -> void:
 	print("[7] A material with no decal family falls back to a name that EXISTS\n")
 
-	for material in ["glass", "ground_concrete", "not_a_material"]:
+	## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): "grass" replaces
+	## "ground_concrete" as the example of a registered material outside
+	## IMPACT_DECAL_MATERIALS — "concrete" now has a decal family (it's the
+	## same unified material as the wall's), so it no longer fits this case.
+	for material in ["glass", "grass", "not_a_material"]:
 		var resolved: String = VoxelRendererClass.damage_variant_material(
 			material, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.LEFT, 1)
 		if resolved.ends_with("_1"):
@@ -363,7 +367,7 @@ func test_a_blast_never_resolves_to_a_bullet_mark() -> void:
 	print("[9] No blast, on any material/tier/side, resolves to a bullet mark\n")
 
 	var materials: Array[String] = VoxelRendererClass.IMPACT_DECAL_MATERIALS.duplicate()
-	materials.append_array(["glass", "ground_concrete", VoxelRendererClass.IMPACT_FLOOR_MATERIAL])
+	materials.append_array(["glass", "grass", VoxelRendererClass.IMPACT_FLOOR_MATERIAL])
 	var offenders: Array[String] = []
 	var checked := 0
 	for material in materials:

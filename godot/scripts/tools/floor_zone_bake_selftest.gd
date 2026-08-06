@@ -31,6 +31,7 @@ extends SceneTree
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
@@ -55,9 +56,9 @@ class MockMaterial:
 class MockRegistry:
 	var materials: Dictionary = {}
 	func _init() -> void:
-		materials["ground_grass"] = MockMaterial.new("ground_grass", Color(0.42, 0.55, 0.29), true)
-		materials["ground_dirt"] = MockMaterial.new("ground_dirt", Color(0.50, 0.38, 0.27), true)
-		materials["ground_sand"] = MockMaterial.new("ground_sand", Color(0.76, 0.67, 0.51), true)
+		materials["grass"] = MockMaterial.new("grass", Color(0.42, 0.55, 0.29), true)
+		materials["dirt"] = MockMaterial.new("dirt", Color(0.50, 0.38, 0.27), true)
+		materials["sand"] = MockMaterial.new("sand", Color(0.76, 0.67, 0.51), true)
 	func get_material(material_id: String):
 		return materials.get(material_id, null)
 
@@ -132,10 +133,14 @@ func _fold(index: int, period: int) -> int:
 	return k
 
 
-## Ground materials are self-referential (facade_id == material_id, see
-## bake_policy.gd's DEFAULT_FACADES) — no "facade_" prefix, unlike walls.
+## D19/D20: floor materials bake under the SLAB texture family
+## ("slab_<material_id>", BakePolicy.slab_for_material) — no longer
+## self-referential now that the material id itself dropped its "ground_"
+## prefix (a bare material id like "grass" or "concrete" no longer says by
+## itself which texture family it means).
 func _floor_key(material_id: String, local_x: int, local_y: int) -> String:
-	return "ROOF|%s|%s|%d|%d" % [material_id, material_id, _fold(local_x, 64), _fold(local_y, 64)]
+	var facade_id := BakePolicyClass.slab_for_material(material_id)
+	return "ROOF|%s|%s|%d|%d" % [material_id, facade_id, _fold(local_x, 64), _fold(local_y, 64)]
 
 
 ## Independent component anchors: own flood fill over a {gu: material} dict
@@ -192,8 +197,8 @@ func _bake_floor_only_spec():
 			cells.append(Vector2i(x, y))
 	var map_spec := {
 		"roofs": [{
-			"material_id": "ground_grass",
-			"facade_id": "ground_grass",
+			"material_id": "grass",
+			"facade_id": "slab_grass",
 			"cells": cells,
 		}],
 		"map_id": "FLOOR_BAKE_TEST",
@@ -212,7 +217,7 @@ func test_1_floor_cells_get_lookup_entries(fx: Dictionary) -> void:
 	var atlas = fx["atlas"]
 	var missing := 0
 	for cell in fx["cells"]:
-		if not atlas.lookup.has(_floor_key("ground_grass", cell.x, cell.y)):
+		if not atlas.lookup.has(_floor_key("grass", cell.x, cell.y)):
 			missing += 1
 	if missing == 0:
 		_pass("All %d local floor-zone cells (incl. negative border coords) have ROOF| lookup entries under locally re-derived keys" % fx["cells"].size())
@@ -233,8 +238,8 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 	var samples: Array = [Vector2i(-1, -1), Vector2i(0, 0), Vector2i(7, 3), Vector2i(16, 16), Vector2i(130, 126)]
 	var mismatches := 0
 	for pos in samples:
-		var expected = atlas.lookup.get(_floor_key("ground_grass", pos.x, pos.y))
-		var result = lookup.resolve_flat("ground_grass", pos)
+		var expected = atlas.lookup.get(_floor_key("grass", pos.x, pos.y))
+		var result = lookup.resolve_flat("grass", pos, BakePolicyClass.SurfaceClass.SLAB)
 		if expected == null:
 			if result != null and _fold(pos.x, 64) <= 16 and _fold(pos.y, 64) <= 16:
 				mismatches += 1
@@ -248,9 +253,9 @@ func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) ->
 	else:
 		_fail("%d resolve_flat results diverged from local derivation" % mismatches)
 
-	var no_facade = lookup.resolve_flat("ground_nonexistent", Vector2i(2, 2))
+	var no_facade = lookup.resolve_flat("nonexistent", Vector2i(2, 2), BakePolicyClass.SurfaceClass.SLAB)
 	bake_config.enabled = false
-	var when_disabled = lookup.resolve_flat("ground_grass", Vector2i(2, 2))
+	var when_disabled = lookup.resolve_flat("grass", Vector2i(2, 2), BakePolicyClass.SurfaceClass.SLAB)
 	bake_config.enabled = true
 	if no_facade == null and when_disabled == null:
 		_pass("resolve_flat gates correctly: unmapped material -> null, bake disabled -> null")
@@ -262,9 +267,9 @@ func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) ->
 	print("[TEST 3] Atom top-diamonds equal a direct ISOTROPIC 1024x1024 floor-plane read; full_color forces WHITE modulate")
 	var atlas = fx["atlas"]
 	var compositor = fx["compositor"]
-	var resolved = fx["resolver"].resolve("ground_grass")
+	var resolved = fx["resolver"].resolve("slab_grass")
 	if resolved == null or resolved.image == null:
-		_fail("ground_grass unresolvable — cannot pixel-check")
+		_fail("slab_grass unresolvable — cannot pixel-check")
 		return
 	var facade: Image = resolved.image
 
@@ -288,11 +293,11 @@ func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) ->
 	## page's own pixel bytes. So this is the SAME comparison roof's test 3
 	## does for a tinted material — proving the page itself is untinted
 	## either way, and full_color's effect is provably NOT a pixel change.
-	var floor_top: Image = compositor._get_roof_plane_top("ground_grass", facade, FLOOR_TARGET_H)
+	var floor_top: Image = compositor._get_roof_plane_top("slab_grass", facade, FLOOR_TARGET_H)
 	var x_off: int = floor_source.get_height() - 1
-	var canonical: Image = compositor._voxel_atoms.get("ground_grass")
+	var canonical: Image = compositor._voxel_atoms.get("grass")
 	if canonical == null:
-		_fail("canonical ground_grass voxel atom unavailable")
+		_fail("canonical grass voxel atom unavailable")
 		return
 
 	var compared := 0
@@ -300,7 +305,7 @@ func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) ->
 	var non_white_source_pixels := 0
 	for y in range(4, 7):
 		for x in range(4, 7):
-			var entry = atlas.lookup.get(_floor_key("ground_grass", x, y))
+			var entry = atlas.lookup.get(_floor_key("grass", x, y))
 			if entry == null:
 				_fail("cell (%d,%d) missing from lookup — cannot pixel-check" % [x, y])
 				return

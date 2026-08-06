@@ -19,7 +19,7 @@ class _StubBakedLookup:
 	var last_flat_material_id: String = ""
 	func resolve(_edge, _face: int, _voxel_xy: Vector2i, _level: int = 0, _column_in_run: int = -1) -> BakedTileLookupClass.TileLookupResult:
 		return result
-	func resolve_flat(material_id: String, _local_pos: Vector2i) -> BakedTileLookupClass.TileLookupResult:
+	func resolve_flat(material_id: String, _local_pos: Vector2i, _surface_class: int = 0) -> BakedTileLookupClass.TileLookupResult:
 		last_flat_material_id = material_id
 		return result
 
@@ -123,7 +123,7 @@ func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:
 	_stub_baked_floor(renderer, Color(0.5, 0.6, 0.4, 1.0))
 	var grid_pos := Vector2i(6, 2)
 
-	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "ground_grass")
+	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
 
 	var layer := renderer.get_layer(0)
 	var placed_source_id := layer.get_cell_source_id(grid_pos)
@@ -135,7 +135,7 @@ func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:
 		_fail("placed source_id (%d) fell back to generic (%d) instead of the floor composite" % [placed_source_id, generic_id])
 
 	## Idempotency, same discipline as 3a/3b.
-	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "ground_grass")
+	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
 	if layer.get_cell_source_id(grid_pos) == placed_source_id and renderer.get_damage_composite_cache().size() == 1:
 		_pass("a repeat call hit the cache (still 1 entry)")
 	else:
@@ -146,14 +146,14 @@ func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:
 
 
 func test_resolve_flat_receives_the_real_zone_material_not_the_pseudo_name() -> void:
-	print("[3] resolve_flat() is called with \"ground_grass\", never \"earth_blast_dented_top_0\"\n")
+	print("[3] resolve_flat() is called with \"concrete\", never \"earth_blast_dented_top_0\"\n")
 	var renderer := _new_renderer()
 	var stub := _stub_baked_floor(renderer, Color.WHITE)
 
-	renderer._set_voxel_cell(Vector2i(1, 1), 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "ground_concrete")
+	renderer._set_voxel_cell(Vector2i(1, 1), 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "concrete")
 
-	if stub.last_flat_material_id == "ground_concrete":
-		_pass("resolve_flat() received the real zone material (\"ground_concrete\")")
+	if stub.last_flat_material_id == "concrete":
+		_pass("resolve_flat() received the real zone material (\"concrete\")")
 	else:
 		_fail("resolve_flat() received %s instead of the real zone material" % stub.last_flat_material_id)
 
@@ -197,7 +197,7 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	renderer._baked_lookup = miss_stub
 
 	var pos := Vector2i(8, 8)
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_1", null, Vector2i.ZERO, 0, true, "ground_sand")
+	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_1", null, Vector2i.ZERO, 0, true, "sand")
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_1")
 	if got != -1 and got != generic_id:

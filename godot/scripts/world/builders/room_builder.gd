@@ -195,7 +195,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		var floor_slab: Slab = floor_slabs_by_gu[floor_gu]
 		if floor_slab.material == "earth":
 			continue
-		var floor_combo_key := "%s|%s" % [floor_slab.material, BakePolicyClass.facade_for_material(floor_slab.material)]
+		## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): floor zones bake
+		## through the SLAB texture family (slab_<material>), not SLICE — the
+		## roof combo just below stays on facade_for_material() unchanged,
+		## since a roof reprojects its material's own wall facade, not a
+		## photographic slab source.
+		var floor_combo_key := "%s|%s" % [floor_slab.material, BakePolicyClass.slab_for_material(floor_slab.material)]
 		if not floor_cells_by_combo.has(floor_combo_key):
 			floor_cells_by_combo[floor_combo_key] = {}
 		for voxel in floor_slab.voxels:

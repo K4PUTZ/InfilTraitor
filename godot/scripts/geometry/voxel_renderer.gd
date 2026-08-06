@@ -18,6 +18,8 @@ const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_composi
 const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxel_compositor.gd")
 ## D-ARCH-01: Variant registry for pre-baked damage voxels
 const VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
+## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN): SurfaceClass enum for resolve_flat().
+const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -951,13 +953,18 @@ func _resolve_tinted_baked_atom(edge, slice_face: int, voxel_xy: Vector2i, level
 	return _tint_baked_atom(_baked_lookup.resolve(edge, slice_face, voxel_xy, level))
 
 
-## D33 Part 3c: the flat/edge-less counterpart — zoned FLOOR materials resolve
-## through resolve_flat(zone_material, voxel_xy) (ROOF-BAKE-01/02c's seam),
-## never resolve(). `zone_material` must be the REAL ground material (e.g.
-## "ground_grass"), not the damage pseudo-name — see _composite_floor_sunk_decal()'s
-## own comment for why those are two different strings for a floor.
-func _resolve_tinted_baked_atom_flat(zone_material: String, voxel_xy: Vector2i) -> Dictionary:
-	return _tint_baked_atom(_baked_lookup.resolve_flat(zone_material, voxel_xy))
+## D33 Part 3c: the flat/edge-less counterpart — zoned FLOOR materials AND
+## ceiling (roof-underside) carves both resolve through
+## resolve_flat(zone_material, voxel_xy) (ROOF-BAKE-01/02c's seam), never
+## resolve(). `zone_material` must be the REAL ground material (e.g. "grass"),
+## not the damage pseudo-name — see _composite_floor_sunk_decal()'s own
+## comment for why those are two different strings for a floor.
+## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): `surface_class`
+## defaults to SLICE (the ceiling caller's correct, unchanged behavior — a
+## roof carve reads the wall's own facade); the floor caller passes SLAB.
+func _resolve_tinted_baked_atom_flat(zone_material: String, voxel_xy: Vector2i,
+		surface_class: int = BakePolicyClass.SurfaceClass.SLICE) -> Dictionary:
+	return _tint_baked_atom(_baked_lookup.resolve_flat(zone_material, voxel_xy, surface_class))
 
 
 ## D33 Part 3a/3b/3c shared: extracts and tints a TileLookupResult's atom
@@ -1110,7 +1117,8 @@ func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_m
 	if cache.has(key):
 		return cache.resolve(key)
 
-	var resolved := _resolve_tinted_baked_atom_flat(zone_material, voxel_xy)
+	var resolved := _resolve_tinted_baked_atom_flat(zone_material, voxel_xy,
+			BakePolicyClass.SurfaceClass.SLAB)
 	if resolved.is_empty():
 		return {}
 
@@ -1819,15 +1827,22 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 ## keyed by the STRUCTURE-LOCAL offset passed in voxel_xy. Same fallback
 ## contract: any miss lands on the generic material atlas below.
 ## D33 Part 3c: `zone_material`, when non-empty, is the REAL zoned ground
-## material (e.g. "ground_grass") a damaged FLOOR voxel's `material_name`
+## material (e.g. "grass") a damaged FLOOR voxel's `material_name`
 ## no longer carries — floor_damage_material() always renames it to the
 ## shared "earth_blast_dented_top_N" (D26), so resolve_flat() would look up
 ## the wrong (nonexistent) zone if given `material_name` directly. Every
 ## other caller passes "" (the default) and nothing changes for them.
+## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): `surface_class`
+## disambiguates the flat_baked resolve_flat() call below (SLICE for roof
+## slabs, SLAB for floor zones) — needed since material unification means a
+## material id like "concrete" no longer says by itself which texture family
+## it means. Defaults to SLICE (today's roof/wall behavior); the edge/wall
+## branch above never reads it. Every floor-zone caller passes SLAB.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
                      slice_face: int = 0, flat_baked: bool = false,
-                     zone_material: String = "") -> void:
+                     zone_material: String = "",
+                     surface_class: int = BakePolicyClass.SurfaceClass.SLICE) -> void:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -1875,7 +1890,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	# voxel_xy carries the STRUCTURE-LOCAL offset here (grid_pos − anchor),
 	# the same container-local meaning it has for wall slices.
 	if not is_impact_mark and source_id < 0 and flat_baked and _bake_config and _bake_config.enabled:
-		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy)
+		var flat_result = _baked_lookup.resolve_flat(material_name, voxel_xy, surface_class)
 		if flat_result and flat_result.source_id_int >= 0:
 			source_id = flat_result.source_id_int
 			atlas_coords = flat_result.atlas_coords
@@ -2783,7 +2798,8 @@ func render_slab(slab: Slab) -> void:
 			if not voxel.visible:
 				continue
 			_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
-					null, voxel.grid_pos - slab.texture_anchor, 0, true)
+					null, voxel.grid_pos - slab.texture_anchor, 0, true,
+					"", BakePolicyClass.SurfaceClass.SLAB)
 		return
 
 	for voxel in slab.voxels:
@@ -2876,7 +2892,8 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
 		var zone_anchor: Vector2i = zone["anchor"]
 		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
 			_set_voxel_cell(voxel_pos, level, zone_material,
-					null, voxel_pos - zone_anchor, 0, true)
+					null, voxel_pos - zone_anchor, 0, true,
+					"", BakePolicyClass.SurfaceClass.SLAB)
 		return
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):

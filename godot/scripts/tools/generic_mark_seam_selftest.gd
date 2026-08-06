@@ -242,7 +242,7 @@ func test_floor_sunk_resolves_with_bake_off() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(6, 6)
 
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "ground_grass")
+	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "grass")
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_2")
 	if got != -1 and got != generic_id:

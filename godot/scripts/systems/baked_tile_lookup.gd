@@ -280,7 +280,18 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 ## y → row, BOTH period 64 (ROOF-SIDE-03 — the atom's SE half consumes y
 ## as a dir-1 run position). Returns null on any miss — caller
 ## falls back to the generic material atlas, same contract as resolve().
-func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
+##
+## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): shared by BOTH floor
+## zones and roof slabs (room_builder.gd bakes roof_specs + floor_specs
+## through the same page family, "ROOF|..." keys below cover both). Before
+## the material reform this needed no surface_class: floor materials carried
+## a "ground_" prefix and roof/wall materials didn't, so the string alone
+## disambiguated. After unification `concrete` names both a wall AND a floor
+## material, so the caller must say which texture family it means —
+## surface_class defaults to SLICE (today's roof/wall behavior, unchanged)
+## and every floor caller passes SLAB explicitly.
+func resolve_flat(material_id: String, local_pos: Vector2i,
+		surface_class: int = BakePolicyClass.SurfaceClass.SLICE) -> TileLookupResult:
 	# Same enable/MATERIAL_ONLY gates as resolve()
 	var baking_enabled = false
 	if _bake_config:
@@ -299,7 +310,7 @@ func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:
 	if not baking_enabled or is_material_only:
 		return null
 
-	var facade_id = BakePolicyClass.facade_for_material(material_id)
+	var facade_id = BakePolicyClass.texture_for_material(material_id, surface_class)
 	if facade_id == "":
 		return null
 

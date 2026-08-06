@@ -1,0 +1,10 @@
+{
+  "id": "concrete",
+  "destroy_factor": 0.3,
+  "dent_factor": 0.15,
+  "crack_factor": 0.1,
+  "base_color": [0.62, 0.62, 0.62],
+  "pattern_algorithm": "stone",
+  "has_facade": true,
+  "slab_full_color": true
+}

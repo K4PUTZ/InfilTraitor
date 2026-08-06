@@ -1,0 +1,6 @@
+{
+  "id": "glass",
+  "destroy_factor": 0.7,
+  "dent_factor": 0.0,
+  "crack_factor": 0.0
+}

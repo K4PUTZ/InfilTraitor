@@ -17,7 +17,7 @@ class _StubBakedLookup:
 	var last_flat_material_id: String = ""
 	func resolve(_edge, _face: int, _voxel_xy: Vector2i, _level: int = 0, _column_in_run: int = -1) -> BakedTileLookupClass.TileLookupResult:
 		return result
-	func resolve_flat(material_id: String, _local_pos: Vector2i) -> BakedTileLookupClass.TileLookupResult:
+	func resolve_flat(material_id: String, _local_pos: Vector2i, _surface_class: int = 0) -> BakedTileLookupClass.TileLookupResult:
 		last_flat_material_id = material_id
 		return result
 
@@ -173,7 +173,7 @@ func test_floor_still_resolves_when_both_could_apply() -> void:
 	_stub_baked_ceiling(renderer, Color(0.5, 0.6, 0.4, 1.0))
 	var pos := Vector2i(2, 2)
 
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "ground_grass")
+	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_0")
 	if got != -1 and got != generic_id:

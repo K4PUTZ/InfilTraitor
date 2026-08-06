@@ -233,8 +233,8 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 		generic_ids.append(VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_%d" % variant))
 
 	## material "earth" → the EarthVariantSelector branch;
-	## "ground_concrete" → the zoned/baked branch (bake enabled below).
-	for material in ["earth", "ground_concrete"]:
+	## "concrete" → the zoned/baked branch (bake enabled below).
+	for material in ["earth", "concrete"]:
 		var renderer := VoxelRendererClass.new()
 		root.add_child(renderer)
 		renderer.setup(Vector2.ZERO)

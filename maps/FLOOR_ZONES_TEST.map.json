@@ -59,25 +59,25 @@
       ]
     },
     "floor_zones": {
-      "v": 1,
+      "v": 2,
       "items": [
         {
           "comment": "Grass patch, top-left of the open interior",
           "gu": [2, 2],
           "size": [4, 4],
-          "material": "ground_grass"
+          "material": "grass"
         },
         {
           "comment": "Dirt patch, adjacent to the right of grass",
           "gu": [6, 2],
           "size": [4, 4],
-          "material": "ground_dirt"
+          "material": "dirt"
         },
         {
           "comment": "Sand patch, adjacent below grass",
           "gu": [2, 6],
           "size": [4, 4],
-          "material": "ground_sand"
+          "material": "sand"
         }
       ]
     }

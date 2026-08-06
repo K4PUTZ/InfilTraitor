@@ -1,0 +1,10 @@
+{
+  "id": "dirt",
+  "destroy_factor": 0.5,
+  "dent_factor": 0.35,
+  "crack_factor": 0.0,
+  "base_color": [0.50, 0.38, 0.27],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "slab_full_color": true
+}

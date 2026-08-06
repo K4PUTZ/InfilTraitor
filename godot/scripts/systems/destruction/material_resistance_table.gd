@@ -1,21 +1,27 @@
 ## MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22.
 ## How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED
-## for a given wall/roof material. Engine-tuning data (not content-author data
-## like BombDef), so no res://+user:// two-tier — a plain fixed table,
-## matching bake_policy.gd's material→facade mapping shape.
+## for a given wall/roof/floor material.
+##
+## D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are
+## registered dynamic data, never hardcoded and never map-coupled — the old
+## `const TABLE` literal is gone. Data now lives in `res://materials/*.json`
+## (+ `user://materials/*.json`, user wins on collision), the same files
+## `MaterialRegistry` reads for render properties — one row per material, one
+## file per material, no duplication between the two readers. This file keeps
+## its original static-accessor API (`destroy_factor`/`dent_factor`/
+## `crack_factor(material_id) -> float`, same defaults) so every existing
+## call site (BlastCalculator, selftests) is untouched — only the data
+## source changed, lazily loaded and cached on first access.
 ##
 ## Ordering (resistance to destruction, most -> least), per Director
-## (this session): metal > stone > concrete > wood. Values below are
+## (2026-07-30 session): metal > stone > concrete > wood. Values are
 ## first-pass placeholders — a balancing lever (D6), not researched
 ## constants; expect these to be retuned once real captures show the effect.
 class_name MaterialResistanceTable
 
-## destroy_factor: fraction of a ring-group's voxels that convert to
-## DESTROYED, before multiplying by that ring's ring_multiplier.
-## dent_factor: same, for DamageState.DENTED — a sunken special piece, short
-## of destroyed. Applied to voxels NOT already selected for DESTROYED.
-## crack_factor: same, for DamageState.CRACKED — a flat surface mark, no
-## sinking. Applied to voxels NOT already selected for DESTROYED or DENTED.
+const RES_MATERIALS_DIR := "res://materials"
+const USER_MATERIALS_DIR := "user://materials"
+
 ## D22 (Director, 2026-07-30): every material can reach every tier — no
 ## material is hardcoded to stay whole. What used to be metal's lone
 ## crack_factor 0.6 is now split across dent_factor (the sunken look metal was
@@ -30,83 +36,91 @@ class_name MaterialResistanceTable
 ## DESTRUCTION_MASTER_PLAN §7 item 4, not invented on the spot.
 ## "earth" (FLOOR-DENT-01, 2026-08-01): consumed by the floor-dent path only —
 ## apply_crater_damage()'s crater geometry ignores destroy_factor, so
-## dent_factor is the one live number: the prevalence of carved-TOP pockmarks
-## among crater-rim survivors and in the fading band beyond the crater. Same
-## first-pass placeholder status as every other row. crack_factor stays 0.0:
-## no earth crack texture exists, and the table's own rule is that a tier with
-## no texture wired stays off.
+## dent_factor is the one live number.
 ## D32.6 (Director, 2026-08-02): "metal e madeira não ficam rachados, só dented
 ## ou balas." A blast on either now produces DESTROYED or DENTED and nothing
 ## else — crack_factor 0.0, matching the table's own standing rule that a tier
 ## with no art wired stays off, except here the reason is physical rather than
 ## practical: neither material fractures the way concrete and stone do. Their
-## dent_factor is deliberately NOT raised to absorb the lost share — that would
-## be a balance change nobody asked for, and the freed voxels simply stay
-## intact. Bullets are unaffected: a firearm's CRACKED tier is a bullet MARK on
-## the struck face, not a fracture, and it reads from the bullet family
-## (VoxelRenderer.damage_variant_material's blast_sourced=false branch).
+## dent_factor is deliberately NOT raised to absorb the lost share — that
+## would be a balance change nobody asked for, and the freed voxels simply
+## stay intact. Bullets are unaffected: a firearm's CRACKED tier is a bullet
+## MARK on the struck face, not a fracture, and it reads from the bullet
+## family (VoxelRenderer.damage_variant_material's blast_sourced=false
+## branch).
 ## PERF-02 B2 (Director, 2026-08-04): the four wall materials scaled down
 ## together, ~x0.65, as part of making an explosion physically smaller rather
-## than only faster. Scaling destroy_factor ALONE would have been worse than
-## useless here: the voxels it spared would fall through to dent_factor/
-## crack_factor, which is the expensive runtime-decal-composite path — the
-## same total churn, just relabelled. Lowering all three is what actually
-## reduces how many voxels a blast touches. Rows below the four (glass, earth,
-## the ground_* zones) are deliberately untouched: this pass is about the wall
-## materials the test bench exercises, and the floor's own volume is addressed
-## structurally by B4 instead.
-const TABLE := {
-##
-## PERF-02 B2b (2026-08-04): two of the ×0.65 results were walked back, because
-## a flat scale ignores what each material is supposed to READ as, and the two
-## places it hurt are exactly the two the selftests caught. Wood's
-## destroy_factor goes 0.6 → 0.75 (still a real cut from 0.9, but back to
-## "quase toda destruída" rather than a coin flip) and metal's dent_factor goes
-## 0.3 → 0.35, off its accidental tie with earth's untouched 0.3 and back to
-## being the material that dents more than any other. Stone and concrete keep
-## their scaled values — they are the ones B1's ring cut already thins out, and
-## nothing about their character was in question. The explosion stays small:
-## B1 (4 rings → 3) did most of the reduction, not this table.
-	"metal":    {"destroy_factor": 0.03, "dent_factor": 0.35, "crack_factor": 0.0},
-	"stone":    {"destroy_factor": 0.2,  "dent_factor": 0.2,  "crack_factor": 0.1},
-	"concrete": {"destroy_factor": 0.3,  "dent_factor": 0.15, "crack_factor": 0.1},
-	"wood":     {"destroy_factor": 0.75, "dent_factor": 0.03, "crack_factor": 0.0},
-	"glass":    {"destroy_factor": 0.7,  "dent_factor": 0.0,  "crack_factor": 0.0},
-	"earth":    {"destroy_factor": 0.5,  "dent_factor": 0.3,  "crack_factor": 0.0},
-	## FLOOR-DENT-01 — the ground_* zone materials (MaterialRegistry.
-	## register_ground_defaults()). Added with "earth" because the only floor
-	## in the real test map (PLAYGROUND) is a single ground_concrete zone
-	## covering all 24x16 GUs: without these rows the floor-dent path is
-	## reachable ONLY on plain earth and produces literally zero dents on the
-	## map it is tested against (measured: 0 dents across 42 affected floor
-	## slabs before this row existed). dent_factor mirrors each material's
-	## obvious counterpart above, same first-pass placeholder status as every
-	## other row. destroy_factor is inert for floors — apply_crater_damage()
-	## decides removal geometrically — and is listed only so the rows are not
-	## half-specified. crack_factor 0.0: no ground crack texture exists.
-	"ground_concrete": {"destroy_factor": 0.5, "dent_factor": 0.2,  "crack_factor": 0.0},
-	"ground_gravel":   {"destroy_factor": 0.5, "dent_factor": 0.3,  "crack_factor": 0.0},
-	"ground_dirt":     {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0},
-	"ground_grass":    {"destroy_factor": 0.5, "dent_factor": 0.35, "crack_factor": 0.0},
-	"ground_sand":     {"destroy_factor": 0.5, "dent_factor": 0.4,  "crack_factor": 0.0},
-}
+## than only faster.
+## PERF-02 B2b (2026-08-04): two of the ×0.65 results were walked back — wood's
+## destroy_factor 0.6 → 0.75, metal's dent_factor 0.3 → 0.35.
+## D19 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): a material behaves
+## identically on floor, wall and ceiling — the old duplicate `ground_*` rows
+## (a second, disagreeing row for the same material — e.g. `concrete`
+## {0.3, 0.15, 0.1} vs `ground_concrete` {0.5, 0.2, 0.0}) are gone. One
+## `concrete` row now, `crack_factor` 0.1, closing D10's old gap by
+## construction: floors crack like walls. `grass`/`dirt`/`gravel`/`sand`
+## (renamed from `ground_grass`/`ground_dirt`/`ground_gravel`/`ground_sand`,
+## D20) keep the values they always had.
 
-## Defaults stay 0.0 for dent/crack (not the table's own values) so any
-## material outside the four canon ones (earth/ground floor variants, an
-## unknown id) keeps today's DESTROYED-only behaviour instead of silently
-## picking up a damage tier that has no texture wired to it yet.
+## Defaults stay 0.0 for dent/crack (not any row's own values) so any
+## material outside the registered roster (an unknown id) keeps today's
+## DESTROYED-only behaviour instead of silently picking up a damage tier that
+## has no texture wired to it yet.
 const DEFAULT_DESTROY_FACTOR := 0.5
 const DEFAULT_DENT_FACTOR := 0.0
 const DEFAULT_CRACK_FACTOR := 0.0
 
+## Lazily loaded, cached on first access. Non-const by construction (D21) —
+## a `const` here would be exactly the violation this rewrite closes.
+static var _table: Dictionary = {}
+static var _loaded: bool = false
+
 
 static func destroy_factor(material: String) -> float:
-	return float(TABLE.get(material, {}).get("destroy_factor", DEFAULT_DESTROY_FACTOR))
+	return float(_row(material).get("destroy_factor", DEFAULT_DESTROY_FACTOR))
 
 
 static func dent_factor(material: String) -> float:
-	return float(TABLE.get(material, {}).get("dent_factor", DEFAULT_DENT_FACTOR))
+	return float(_row(material).get("dent_factor", DEFAULT_DENT_FACTOR))
 
 
 static func crack_factor(material: String) -> float:
-	return float(TABLE.get(material, {}).get("crack_factor", DEFAULT_CRACK_FACTOR))
+	return float(_row(material).get("crack_factor", DEFAULT_CRACK_FACTOR))
+
+
+static func _row(material: String) -> Dictionary:
+	_ensure_loaded()
+	return _table.get(material, {})
+
+
+static func _ensure_loaded() -> void:
+	if _loaded:
+		return
+	_loaded = true
+	_scan_dir(RES_MATERIALS_DIR)
+	_scan_dir(USER_MATERIALS_DIR)
+
+
+static func _scan_dir(dir_path: String) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if fname.ends_with(".json"):
+			var file := FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
+			if file:
+				var text := file.get_as_text()
+				file.close()
+				var parsed = JSON.parse_string(text)
+				if typeof(parsed) == TYPE_DICTIONARY:
+					var id := String(parsed.get("id", ""))
+					if not id.is_empty():
+						_table[id] = {
+							"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
+							"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
+							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
+						}
+		fname = dir.get_next()

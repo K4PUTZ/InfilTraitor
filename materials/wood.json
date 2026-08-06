@@ -1,0 +1,10 @@
+{
+  "id": "wood",
+  "destroy_factor": 0.75,
+  "dent_factor": 0.03,
+  "crack_factor": 0.0,
+  "base_color": [0.66, 0.47, 0.31],
+  "pattern_algorithm": "wood",
+  "has_facade": true,
+  "slab_full_color": false
+}

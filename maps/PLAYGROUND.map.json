@@ -140,10 +140,10 @@
             24,
             16
           ],
-          "material": "ground_concrete"
+          "material": "concrete"
         }
       ],
-      "v": 1
+      "v": 2
     },
     "legacy_compiler": {
       "wall_height": 1,

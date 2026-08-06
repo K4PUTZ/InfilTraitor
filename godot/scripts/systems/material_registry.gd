@@ -1,9 +1,16 @@
-## MaterialRegistry — Material definitions and pattern algorithms
+## MaterialRegistry — Material definitions, pattern algorithms, and resistance
+## (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06):
+## material properties are registered dynamic data, never hardcoded and never
+## map-coupled. Two-tier disk load (res:// then user://, user wins on
+## collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry.
 ##
-## Materials are code, not files. Each material couples a base color with a
-## deterministic pattern algorithm that creates per-voxel luminance variation.
-## This is the only place where pixels are created; all other baking stages
-## operate on these pixels.
+## D19/D20: one row per material, surface-independent for behavior (this
+## file). Texture identity is a SEPARATE, surface-keyed axis
+## (BakePolicy.facade_for_material / slab_for_material) — a material's
+## `pattern_algorithm`/`base_color` here still feed the SLICE (wall) render
+## path only; the SLAB (floor/ceiling) path's WHITE-vs-tinted modulate is
+## decided by the texture id's own prefix at bake time, not by a field on
+## this class (see bake_compositor.gd's _modulate_for_mode).
 
 class_name MaterialRegistry
 
@@ -12,6 +19,9 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
 const WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")
 const MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")
+
+const RES_MATERIALS_DIR := "res://materials"
+const USER_MATERIALS_DIR := "user://materials"
 
 ## Base class for pattern algorithms
 class PatternAlgorithm:
@@ -27,16 +37,52 @@ class MaterialDef:
 	var base_color: Color
 	var pattern_algorithm: PatternAlgorithm
 	var flags: int = 0
-	## Floor-bake full-color exception (BAKE_SYSTEM_REFERENCE.md B2): when true,
-	## the compositor forces a WHITE page modulate instead of tinting by
-	## base_color, so a photographic facade source keeps its real RGB.
-	var full_color: bool = false
+	## D19: resistance/behavior — surface-independent, one row per material.
+	## Same semantics as the retired MaterialResistanceTable.TABLE rows.
+	var destroy_factor: float = 0.5
+	var dent_factor: float = 0.0
+	var crack_factor: float = 0.0
+	## Whether this material has a SLICE (wall) facade at all — false for the
+	## floor-only materials (grass/dirt/gravel/sand today), which have no
+	## `facade_<id>` asset and only ever render via the SLAB path.
+	var has_facade: bool = true
+	## Whether this material's SLAB (floor/ceiling) render is a full-color
+	## photographic source (BAKE_SYSTEM_REFERENCE.md B2's exception) — read
+	## by the compositor's modulate decision for `slab_<id>` pages only, never
+	## for `facade_<id>` (SLICE) pages regardless of this value (see
+	## bake_compositor.gd's _modulate_for_mode). NOT the retired
+	## `MaterialDef.full_color`, which was read uniformly across both surfaces
+	## and could not represent a material (concrete) that is tinted on walls
+	## and full-color on floors at once.
+	var slab_full_color: bool = false
 
-	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm, p_full_color: bool = false) -> void:
+	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
 		base_color = p_color
 		pattern_algorithm = p_algo
-		full_color = p_full_color
+
+	## Factory: parse MaterialDef from a JSON dict (res://materials/*.json),
+	## same contract as BombDef.from_json()/PropDef.from_json().
+	static func from_json(data: Dictionary) -> MaterialDef:
+		var algo_key := String(data.get("pattern_algorithm", "flat"))
+		var algo: PatternAlgorithm
+		match algo_key:
+			"stone": algo = StonePatternClass.new()
+			"wood": algo = WoodPatternClass.new()
+			"metal": algo = MetalPatternClass.new()
+			_: algo = PatternAlgorithm.new()
+
+		var color_arr: Array = data.get("base_color", [1.0, 1.0, 1.0])
+		var color := Color(float(color_arr[0]), float(color_arr[1]), float(color_arr[2])) \
+				if color_arr.size() >= 3 else Color.WHITE
+
+		var def := MaterialDef.new(String(data.get("id", "")), color, algo)
+		def.destroy_factor = float(data.get("destroy_factor", 0.5))
+		def.dent_factor = float(data.get("dent_factor", 0.0))
+		def.crack_factor = float(data.get("crack_factor", 0.0))
+		def.has_facade = bool(data.get("has_facade", false))
+		def.slab_full_color = bool(data.get("slab_full_color", false))
+		return def
 
 ## Material registry
 var registry: Dictionary = {}  # id → MaterialDef
@@ -47,7 +93,7 @@ func _init() -> void:
 ## Register a material
 func register(material: MaterialDef) -> void:
 	registry[material.id] = material
-	print("[MaterialRegistry] Registered: %s (color: %.2f,%.2f,%.2f)" % 
+	print("[MaterialRegistry] Registered: %s (color: %.2f,%.2f,%.2f)" %
 		[material.id, material.base_color.r, material.base_color.g, material.base_color.b])
 
 ## Get a material by ID
@@ -62,23 +108,35 @@ func list_materials() -> Array:
 func count() -> int:
 	return registry.size()
 
-## Populate the registry with the four canon materials (MAP_MATTRESS D2).
-## Call once at boot (and at the top of any test that needs materials).
+## D21: load the roster from registered data instead of hardcoding it.
+## Two-tier (res:// then user://, user wins on id collision), same pattern as
+## BombRegistry/PropRegistry/WeaponRegistry. Call once at boot (and at the
+## top of any test that needs materials).
 func register_defaults() -> void:
-	register(MaterialDef.new("concrete", Color(0.62, 0.62, 0.62), StonePatternClass.new()))
-	register(MaterialDef.new("stone",    Color(0.55, 0.55, 0.58), StonePatternClass.new()))
-	register(MaterialDef.new("wood",     Color(0.66, 0.47, 0.31), WoodPatternClass.new()))
-	register(MaterialDef.new("metal",    Color(0.49, 0.53, 0.56), MetalPatternClass.new()))
-	register_ground_defaults()
+	load_from_disk()
 
 
-## Floor-zone bake materials (v1: 5 representative photographic ground
-## textures, full color — see MaterialDef.full_color). base_color here is
-## only a plausible placeholder for the unbaked/MATERIAL_ONLY fallback path;
-## the baked page modulate ignores it (forced WHITE).
-func register_ground_defaults() -> void:
-	register(MaterialDef.new("ground_grass",    Color(0.42, 0.55, 0.29), PatternAlgorithm.new(), true))
-	register(MaterialDef.new("ground_concrete", Color(0.60, 0.58, 0.53), PatternAlgorithm.new(), true))
-	register(MaterialDef.new("ground_dirt",     Color(0.50, 0.38, 0.27), PatternAlgorithm.new(), true))
-	register(MaterialDef.new("ground_gravel",   Color(0.55, 0.52, 0.49), PatternAlgorithm.new(), true))
-	register(MaterialDef.new("ground_sand",     Color(0.76, 0.67, 0.51), PatternAlgorithm.new(), true))
+func load_from_disk() -> void:
+	_scan_dir(RES_MATERIALS_DIR)
+	_scan_dir(USER_MATERIALS_DIR)
+
+
+func _scan_dir(dir_path: String) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return
+
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if fname.ends_with(".json"):
+			var file := FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
+			if file:
+				var text := file.get_as_text()
+				file.close()
+				var parsed = JSON.parse_string(text)
+				if typeof(parsed) == TYPE_DICTIONARY:
+					var material_def := MaterialDef.from_json(parsed)
+					if not material_def.id.is_empty():
+						register(material_def)
+		fname = dir.get_next()

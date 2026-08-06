@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**182 scripts · 42860 lines total** (under `godot/scripts/`)
+**183 scripts · 43253 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -712,7 +712,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3026 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3043 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -725,6 +725,7 @@ extends `ConfirmationDialog` · 64 lines
 - `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
 - `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
 - `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
+- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `VOXEL_SOURCE_ID` = `0`
 
 **Public vars**
@@ -1329,7 +1330,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1133 lines
+`class_name BakeCompositor` · 1153 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1354,8 +1355,6 @@ extends `Node2D` · 43 lines
 - `PAGE_W` = `4096`
 - `PAGE_TILE_COLS` = `128`
 - `PAGE_H` = `576`
-- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood", "ground_grass", "ground_concrete", "ground_dirt", "ground_gravel", "ground_sand"]`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
 
 ---
 
@@ -1371,20 +1370,17 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 36 lines
+`class_name BakePolicy` · 47 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
-> BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Facade assignment (material ID → facade ID) - Variant seeding (edge + material → [0, 4) variant)
-
-**Constants / tuning**
-- `DEFAULT_FACADES` = `{ "concrete": "facade_concrete", "stone": "facade_stone", "wood": "facade_wood", "metal": "facade_metal", ## Floor-zone bake (full-color, see MaterialRegistry.full_color): facade_id ## == material_id for these, since each ground material owns exactly one ## photographic source (no shared/reused facade across materials, unlike ## walls, where several materials could reuse a facade). "ground_grass": "ground_grass", "ground_concrete": "ground_concrete", "ground_dirt": "ground_dirt", "ground_gravel": "ground_gravel", "ground_sand": "ground_sand", }`
+> BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Texture assignment (material ID + surface class → texture ID) - Variant seeding (edge + material → [0, 4) variant) D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): texture identity is a (material, surface_class) pair, mechanically derived — no per-material dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same source) always resolves to `facade_<id>`; SLAB (floor zones) always resolves to `slab_<id>` (renamed from the old `ground_<id>` — the material id itself no longer carries a `ground_` prefix, D19 unified it). A missing asset for either (e.g. a material with no wall facade) is handled the same way it always was: TextureResolver.resolve() falls back to Tier.NONE and every caller already treats that as "fall back to the generic atlas".
 
 ---
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 419 lines
+`class_name BakedTileLookup` · 430 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1400,8 +1396,6 @@ extends `Node2D` · 43 lines
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
 - `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
-- `func resolve_flat(material_id: String, local_pos: Vector2i) -> TileLookupResult:`
-- `func resolve_junction(voxel_pos: Vector2i, level: int) -> TileLookupResult:`
 
 ---
 
@@ -1509,11 +1503,15 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 112 lines
+`class_name MaterialResistanceTable` · 126 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
-> MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof material. Engine-tuning data (not content-author data like BombDef), so no res://+user:// two-tier — a plain fixed table, matching bake_policy.gd's material→facade mapping shape. Ordering (resistance to destruction, most -> least), per Director (this session): metal > stone > concrete > wood. Values below are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
+> MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof/floor material. D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled — the old `const TABLE` literal is gone. Data now lives in `res://materials/*.json` (+ `user://materials/*.json`, user wins on collision), the same files `MaterialRegistry` reads for render properties — one row per material, one file per material, no duplication between the two readers. This file keeps its original static-accessor API (`destroy_factor`/`dent_factor`/ `crack_factor(material_id) -> float`, same defaults) so every existing call site (BlastCalculator, selftests) is untouched — only the data source changed, lazily loaded and cached on first access. Ordering (resistance to destruction, most -> least), per Director (2026-07-30 session): metal > stone > concrete > wood. Values are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
+
+**Constants / tuning**
+- `RES_MATERIALS_DIR` = `"res://materials"`
+- `USER_MATERIALS_DIR` = `"user://materials"`
 
 ---
 
@@ -1880,17 +1878,19 @@ extends `Node2D` · 43 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 84 lines
+`class_name MaterialRegistry` · 142 lines
 
 `godot/scripts/systems/material_registry.gd`
 
-> MaterialRegistry — Material definitions and pattern algorithms Materials are code, not files. Each material couples a base color with a deterministic pattern algorithm that creates per-voxel luminance variation. This is the only place where pixels are created; all other baking stages operate on these pixels.
+> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE, surface-keyed axis (BakePolicy.facade_for_material / slab_for_material) — a material's `pattern_algorithm`/`base_color` here still feed the SLICE (wall) render path only; the SLAB (floor/ceiling) path's WHITE-vs-tinted modulate is decided by the texture id's own prefix at bake time, not by a field on this class (see bake_compositor.gd's _modulate_for_mode).
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
 - `WoodPatternClass` = `preload("res://godot/scripts/systems/wood_pattern.gd")`
 - `MetalPatternClass` = `preload("res://godot/scripts/systems/metal_pattern.gd")`
+- `RES_MATERIALS_DIR` = `"res://materials"`
+- `USER_MATERIALS_DIR` = `"user://materials"`
 
 **Public vars**
 - `var registry: Dictionary = {}`
@@ -1901,7 +1901,7 @@ extends `Node2D` · 43 lines
 - `func list_materials() -> Array:`
 - `func count() -> int:`
 - `func register_defaults() -> void:`
-- `func register_ground_defaults() -> void:`
+- `func load_from_disk() -> void:`
 
 ---
 
@@ -2056,7 +2056,7 @@ extends `Node` · 159 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 177 lines
+`class_name TextureResolver` · 178 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -2616,7 +2616,7 @@ extends `SceneTree` · 209 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 512 lines
+extends `SceneTree` · 517 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -2626,6 +2626,7 @@ extends `SceneTree` · 512 lines
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
@@ -2640,6 +2641,13 @@ extends `SceneTree` · 512 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_1_floor_cells_get_lookup_entries(fx: Dictionary) -> void:`
+- `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
+- `func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) -> void:`
+- `func test_4_real_map_local_keys_and_unzoned_fallback() -> void:`
+- `func test_5_rotated_view_zones_follow_declared_material() -> void:`
 
 ---
 
@@ -2815,6 +2823,27 @@ extends `SceneTree` · 322 lines
 - `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
 - `var MapSectionsV1Class = preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
 - `var MapFileServiceClass = preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+
+---
+
+### `material_reform_selftest.gd`
+
+extends `SceneTree` · 233 lines
+
+`godot/scripts/tools/material_reform_selftest.gd`
+
+> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. RENDERING stays surface-dependent — the same material resolves to two different texture ids (facade_/slab_) and two different bake modulates (tinted/white) depending on surface_class, which is the exact mechanism that makes "concrete" (a material with a genuine wall AND floor presence, unlike grass/dirt/gravel/sand) survive unification without visually merging its two renders. Every expectation is computed independently (own expected values), never read back from the code under test.
+
+**Constants / tuning**
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
+- `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
+- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
+- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
+- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
 
 ---
 
@@ -3219,7 +3248,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 437 lines
+extends `SceneTree` · 441 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
@@ -3564,7 +3593,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1024 lines
+`class_name RoomBuilder` · 1029 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -3917,7 +3946,7 @@ extends `Node2D` · 34 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 159 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 173 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -4002,7 +4031,7 @@ extends `Node2D` · 3641 lines
 - `var vfx_dust_chance: float = 0.4`
 - `var vfx_spark_chance: float = 0.65`
 - `var vfx_chip_chance: float = 0.55`
-- `var vfx_dust_materials: Array[String] = ["concrete", "stone", "ground_concrete", "ground_gravel", "earth"]`
+- `var vfx_dust_materials: Array[String] = ["concrete", "stone", "gravel", "earth"]`
 - `var vfx_metal_spark_count_min: int = 3`
 - `var vfx_metal_spark_count_max: int = 8`
 - `var vfx_stone_spark_count: int = 2`

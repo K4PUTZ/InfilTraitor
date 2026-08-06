@@ -68,6 +68,15 @@ round-trip verbatim as unknown sections (M3). Flow when implemented:
 Generator ids are canon (D10): a generator whose output changes for old seeds
 gets a new id (`shell_v2`), never a silent change.
 
+`damage_materials` (working name — the map's explicit declared list of which
+materials its damage-decal bake needs, read before compile) is planned by
+`EXPLOSION_REBUILD_MASTER_PLAN.md` §3.5/D13 (2026-08-06), not yet a registered
+section. Exists because materials are planned to become per-player/per-
+playthrough procedural content (same doc, D13's "why"), not a small fixed
+catalog derivable from `walls`/`blocks`/`floor_zones`. When implemented,
+register it the normal way (extension protocol above); this line is a
+forward-pointer so a future reader of this file isn't surprised by it landing.
+
 ## Invariants (M1–M7)
 
 - **M1** — Map files are declarative data only; engine-derived state (compiled

@@ -9,6 +9,16 @@ bake system.
 
 ---
 
+**Forward-pointer (2026-08-06):** `EXPLOSION_REBUILD_MASTER_PLAN.md` §3.5/D13
+plans a per-map explicit material-scope declaration and a cross-session
+`user://` bake cache for damage-decal atoms, motivated by materials becoming
+per-player/per-playthrough procedural content rather than a fixed catalog —
+not built yet, not this document's job to describe in full, but worth knowing
+this system is the one that will carry it. Notably, `TextureResolver`'s
+existing `user:// → default:// → material-only` fallback chain already
+anticipates player-specific overrides at the facade level — the new work
+extends that same idea to damage-decal atoms, it doesn't invent a new concept.
+
 ## Overview
 
 The baking system composites per-wall facade textures (marble, wood grain,

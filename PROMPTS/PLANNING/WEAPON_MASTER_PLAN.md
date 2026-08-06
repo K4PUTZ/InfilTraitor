@@ -233,6 +233,14 @@ implementation.
   AI and occlusion**, per D8.
 - **Inventory, equipping and loadouts belong to nothing yet** and are not
   claimed here.
+- **Bullet-mark *painting* (not breaking) is being narrowed by
+  `EXPLOSION_REBUILD_MASTER_PLAN.md`'s D12 (2026-08-06, that plan's own local
+  decision numbering — unrelated to this plan's own D12/D13 in §5b).** Once
+  that plan's Task 1 lands, D33's live per-cell mark compositing is planned to
+  become a pre-baked-atom swap, same mechanism as blast damage. Only the
+  *paint* step changes — hit detection and damage-state transition stay
+  exactly where D26–D33 put them, in this plan. Not yet done as of this note;
+  see that plan's §9 and §11 for the sequencing.
 
 ---
 

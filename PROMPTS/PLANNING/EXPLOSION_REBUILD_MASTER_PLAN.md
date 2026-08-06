@@ -2,9 +2,12 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Status:** 🟠 **PLANNING — awaiting Director sign-off.** Nothing here is built.
-**Next action:** §11. Nine open questions in §10 (Q1 and Q3 gate work); Task 0
-in §8 is a pure measurement spike and can start before any of them are answered.
+**Updated:** 2026-08-06 — Director answered Q1–Q6; Q7–Q9 remain (Phase B only).
+**Status:** 🟠 **PLANNING — awaiting Director sign-off on two mechanism
+proposals (§10 Q1b, Q3b).** Nothing here is built.
+**Next action:** §11. Q1b and Q3b are proposed readings of the 2026-08-06
+answers, not yet confirmed; Task 0 in §8 is a pure measurement spike, unaffected
+by either, and can start immediately.
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -64,18 +67,28 @@ Ring model — the grenade reaches **3 GU beyond ring 0**, so rings 0,1,2,3.
 
 | Effect | Ring 0 | Ring 1 | Ring 2 | Ring 3 |
 |---|---|---|---|---|
-| **Destruction (floor)** | muito | menos | quase nada | — |
-| **Destruction (wall/ceiling)** | as today (ring mult × resistance) | ” | ” | — |
+| **Destruction (floor + wall/ceiling, unified — D1)** | muito | menos | quase nada | — |
 | **Dented** | alguns | menos | — | — |
 | **Cracked** | — | vários | alguns | — |
 | **Soot (fuligem)** | strongest | medium | weak | minimal — **ring 3's only effect** |
-| **Smoke (fumaça)** | most | medium | least | — |
+| **Smoke (fumaça)** | most | medium | least | minimal — staggered in after ring 2 |
 
-Plus, as ratified in this session:
+Plus, as ratified in this session (2026-08-05) and revised the next
+(2026-08-06, marked **rev**):
 
-- **D1** Destruction applies to floor **and** walls/ceilings, as today. The
-  *muito/menos/quase nada* falloff above is the **floor's own** profile; walls
-  and ceilings keep the existing ring-multiplier × material-resistance model.
+- **D1 (rev 2026-08-06)** Destruction, dented, cracked, soot, *and* smoke all
+  use **one unified per-tier ring-weight model** (§4.2) for floor, wall, and
+  ceiling — there is no separate "ring-mult × material-resistance" path for
+  walls anymore, and no floor-specific formula either. Rings flood walls the
+  same way they flood the floor: a grenade landing next to a wall reaches it
+  horizontally (rings 0–3 across GUs) **and** vertically — the slice directly
+  above the blast's own floor level takes less, the slice above that even
+  less. This is why a ceiling naturally takes the least damage today: not a
+  hardcoded ceiling rule, a consequence of vertical distance from a blast that
+  (for now) always originates at floor level. If throwing onto a roof is ever
+  added, the same rule applies unchanged with that blast's own level as the
+  zero point. **Mechanism proposed in §4.3, pending confirmation (Q1b) — does
+  not block Task 0.**
 - **D2** Floor layers: the **first** blast on a virgin GU cedes only
   `FLOOR_TOP_LEVEL` (−1). A **later** blast on a GU that has already been
   blasted also cedes `FLOOR_DEEP_LEVEL` (−2). Requires per-GU blast memory.
@@ -85,6 +98,25 @@ Plus, as ratified in this session:
 - **D4** Build in phases: **Phase A** = bake + calculation + waves on the
   current right-click trigger. **Phase B** = targeting UI, throw animation,
   bubble, the 1-second pre-compute window.
+- **D5 (new 2026-08-06)** Smoke reaches ring 3 (weak, per the table above),
+  and rings fire their smoke **in order, not simultaneously** — already the
+  wave list's shape below, now extended one entry for ring 3.
+- **D6 (new 2026-08-06)** Cracked is **one voxel family per material**, not
+  one per element class. A cracked atom bakes its decal onto all three visible
+  faces at once (it represents a voxel already failing on every side), so the
+  same 3×3 (decal × substrate) atom set serves floor, wall, *and* ceiling —
+  see §3.2's rewritten count.
+- **D7 (new 2026-08-06)** Ceiling DENTED gets **3 irregular alpha-cut shapes**
+  (broken-brick-style, reference image on file), not the single silhouette
+  §3.2 assumed under Q4's old default. The cut-shape *art* is reusable across
+  materials that share a look (not every material cracks — iron doesn't — so
+  not every material needs its own cut set), but each material still bakes its
+  own atom (facade differs per material even when the cut shape is shared).
+- **D8 (new 2026-08-06, optimization, not yet scheduled to a task)** Soot and
+  the light repaint for blast-affected voxels can be computed **after** the
+  smoke waves fire rather than before wave 1, since soot visibly appearing a
+  moment late reads as natural. This loosens §2's "repaint once, before wave 1"
+  rule specifically for the soot waves — see §6.3.
 
 Detonation sequence (Phase B order, with Phase A's part marked):
 
@@ -100,20 +132,24 @@ Detonation sequence (Phase B order, with Phase A's part marked):
    atoms must already be resolved.
 9. Explosion animation — 3 frames, fire/energy dispersing in alpha (**art
    pending from the Director**).
-10. **[PHASE A]** 13 waves, fired one after another, inner rings first, each
+10. **[PHASE A]** 15 waves, fired one after another, inner rings first, each
     wave independent — no wave waits for the previous one to finish:
 
     | # | Wave | | # | Wave |
     |---|---|---|---|---|
-    | 1 | Destruction ring 0 | | 8 | Smoke ring 0 |
-    | 2 | Destruction ring 1 | | 9 | Smoke ring 1 |
-    | 3 | Destruction ring 2 | | 10 | Smoke ring 2 |
-    | 4 | Dented ring 0 | | 11 | Soot ring 0 |
-    | 5 | Dented ring 1 | | 12 | Soot ring 1 |
-    | 6 | Cracked ring 1 | | 13 | Soot ring 2 |
-    | 7 | Cracked ring 2 | | 14 | Soot ring 3 |
+    | 1 | Destruction ring 0 | | 9 | Smoke ring 1 |
+    | 2 | Destruction ring 1 | | 10 | Smoke ring 2 |
+    | 3 | Destruction ring 2 | | 11 | Smoke ring 3 |
+    | 4 | Dented ring 0 | | 12 | Soot ring 0 |
+    | 5 | Dented ring 1 | | 13 | Soot ring 1 |
+    | 6 | Cracked ring 1 | | 14 | Soot ring 2 |
+    | 7 | Cracked ring 2 | | 15 | Soot ring 3 |
+    | 8 | Smoke ring 0 | | | |
 
-    (14 entries — the Director's list, counted.)
+    (Director's original 14-entry list plus **Smoke ring 3**, added
+    2026-08-06 per D5/Q2 — destruction/dented/cracked apply to floor, wall,
+    *and* ceiling cells within the same wave now, per D1; no per-element-class
+    wave split needed.)
 
 ---
 
@@ -157,20 +193,38 @@ Two consequences that must be designed for, not discovered later:
 replaced by `make_variant_key()`; the file's own docstring (which currently
 describes the per-cell model) is rewritten to match.
 
-### 3.2 Enumeration and count
+### 3.2 Enumeration and count (rewritten 2026-08-06 — D6/D7)
 
-| Class | Material set | Combinations | Atoms |
+Rewritten against the Director's exact per-material recap (2026-08-06) and the
+real material constants read from `voxel_renderer.gd`, not re-derived:
+`IMPACT_DECAL_MATERIALS = [concrete, metal, stone, wood]` (4, dented),
+`IMPACT_CRACK_MATERIALS = [concrete, stone]` (2, cracked — not every material
+cracks, D7), `IMPACT_FLOOR_MATERIAL = "earth"` (1 — the floor decal family is
+fixed to `"earth"` regardless of the real zone material, per the existing
+`decal_seam_selftest.gd` comment).
+
+| Class | Materials | Combinations | Atoms |
 |---|---|---|---|
-| WALL DENTED blast | concrete, metal, stone, wood | 2 sides × 3 decals × 3 substrates | 72 |
-| WALL CRACKED blast | concrete, stone (`IMPACT_CRACK_MATERIALS`) | 3 decals × 3 substrates | 18 |
-| CEILING DENTED blast (BOTTOM) | 4 materials | 1 silhouette × 3 substrates | 12 |
-| CEILING CRACKED blast | 4 materials | 3 decals × 3 substrates | 36 |
-| FLOOR DENTED blast (TOP) | ~3 zone materials, shared `earth` family | 3 decals × 3 substrates | 27 |
-| FLOOR CRACKED blast | ~3 zone materials | 3 decals × 3 substrates | 27 |
-| | | **Total** | **~192** |
+| CRACKED (universal — floor + wall + ceiling, D6) | concrete, stone (2) | 3 decals × 3 substrates | 18 |
+| DENTED WALL | concrete, metal, stone, wood (4) | 2 sides × 3 decals × 3 substrates | 72 |
+| DENTED FLOOR (top only) | earth (1) | 3 decals × 3 substrates | 9 |
+| DENTED CEILING (bottom, alpha-cut, D7) | concrete, metal, stone, wood (4) | 3 cut shapes × 3 substrates | 36 |
+| | | **Total** | **135** |
 
-Bullet variants are **not** in this table — firearms keep the D33 per-cell
-runtime path (§9).
+Down from the previous ~192 — cracked going universal (D6) removes 63 atoms
+(no more separate per-class cracked bakes), ceiling dented's 3-shape upgrade
+(D7) adds 24. Net **−57**, a smaller bake surface than before, which is a
+positive input to Task 0, not a reason to skip measuring it.
+
+**Not included above, flagged for confirmation (Q3b):** the Director's
+2026-08-06 recap also listed "3 voxels marked/bullets (×2 faces) per
+material" as part of the same 21-voxel-per-material family inventory. §9
+states bullets stay on the D33 per-cell **live** runtime path and are
+explicitly excluded from this bake ("a *bullet* mark shows that cell's own
+facade... that is the deliberate trade of §3"). This table assumes the recap
+was describing the registry's full vocabulary for reference, not new scope —
+if wrong, add `IMPACT_DECAL_MATERIALS (4) × 2 sides × 3 × 3 = 72` marked
+atoms, bringing the total to 207.
 
 ### 3.3 Substrate selection, and how it survives rotation
 
@@ -188,17 +242,18 @@ every mark on rotation.
 ### 3.4 Bake cost — the gating unknown
 
 The 95 ms/wall-voxel figure measured on 2026-08-05 was a per-cell bake with a
-partly cold cache. A sequential 192-atom bake is a different animal: the GPU
-readback cache (`_baked_source_image_cache`) is warm after the first atom, the
-decal `Image`s are cached, `DecalCompositor`'s resize cache is warm, and page
-uploads batch (PERF-02 A1 measured 197 uploads → 5, 876 ms → 8.1 ms).
+partly cold cache. A sequential 135-atom bake (§3.2, 2026-08-06 recount) is a
+different animal: the GPU readback cache (`_baked_source_image_cache`) is warm
+after the first atom, the decal `Image`s are cached, `DecalCompositor`'s
+resize cache is warm, and page uploads batch (PERF-02 A1 measured 197
+uploads → 5, 876 ms → 8.1 ms).
 
 **This projection is not evidence.** Task 0 below measures it before a single
 line of the architecture is committed to.
 
 Escape hatches, in the order they'd be taken if Task 0 comes back too
 expensive:
-1. Substrates 3 → 1 (−128 atoms; costs visual variety, D3 reversed).
+1. Substrates 3 → 1 (−90 atoms, 135 → 45; costs visual variety, D3 reversed).
 2. Bake lazily on the **first** detonation, inside the pre-compute window
    (windows #1 and #2 exist precisely to absorb a hitch).
 3. Serialize the baked page to disk, keyed on the bake config + material set.
@@ -219,7 +274,7 @@ by **data alone**: `frag_grenade.json` becomes
 Ring 3's `0.0` means it contributes no destruction/dent/crack — it exists to
 carry soot. No change to the flood code.
 
-### 4.2 Per-tier ring gates (new)
+### 4.2 Per-tier ring gates (new; now shared by floor, wall, and ceiling — D1 rev)
 
 Today every ring rolls all three tiers, scaled by one multiplier. The
 Director's table gates tiers **by ring** — dented never appears in ring 2,
@@ -231,15 +286,55 @@ cracked never in ring 0. That needs explicit per-tier weight tables, living in
 "dent_ring_weights":    [1.0, 0.45, 0.0,  0.0],
 "crack_ring_weights":   [0.0, 1.0,  0.35, 0.0],
 "soot_ring_tones":      [0, 1, 2, 3],
-"smoke_ring_weights":   [1.0, 0.5,  0.2,  0.0]
+"smoke_ring_weights":   [1.0, 0.5,  0.2,  0.1]
 ```
 
-`apply_container_damage()` multiplies each tier's count by its own ring weight
-instead of the single shared `ring_multipliers[ring]`. The starting numbers
-above are a first pass on *"muito / menos / quase nada"* — they are tuning
-knobs, expected to move after the first real capture.
+`smoke_ring_weights[3]` moved from `0.0` to `0.1` (D5/Q2 — smoke now reaches
+ring 3, weak). `apply_container_damage()` multiplies each tier's count by its
+own ring weight instead of the single shared `ring_multipliers[ring]`, and —
+new as of D1 rev — this is no longer a floor-only computation: the same
+weight tables gate wall and ceiling cells too, using the *effective ring* from
+§4.3 rather than the flat horizontal ring. The starting numbers above are a
+first pass on *"muito / menos / quase nada"* — tuning knobs, expected to move
+after the first real capture (Task 6).
 
-### 4.3 D2 — the two floor layers
+### 4.3 Vertical falloff for walls/ceiling (new, D1 rev — mechanism proposed, pending confirmation as Q1b)
+
+§4.2's weight tables are indexed by ring, and until 2026-08-06 "ring" meant
+purely the horizontal GU distance from `flood_gu_rings()`. The Director's
+answer to Q1 asks for a *second* falloff axis — vertical — so that a wall
+slice directly above the blast's own floor level takes less than one at the
+same level, and a slice above that takes less still (explaining, as a
+consequence rather than a special case, why ceilings take the least damage:
+they sit furthest above a blast that always originates at floor level).
+
+**Proposed mechanism**, chosen because it reuses §4.2's existing tables
+without adding a second parallel set of weights:
+
+```
+effective_ring(cell) = clamp(
+    horizontal_ring(cell.gu) + max(0, cell.floor_level - blast.floor_level),
+    0, ring_weights.size() - 1
+)
+```
+
+A wall voxel at the blast's own floor level, horizontal ring 0, gets
+`effective_ring = 0` (full weight). One floor level up, same horizontal ring,
+gets `effective_ring = 1` ("menos"). Levels *below* the blast's floor level are
+not penalized by this term (grenades that land on a floor have nothing
+naturally below to fall off from; D2's floor-layer rule already governs
+what's below). If throwing onto a roof is ever built, the formula is unchanged
+— it always measures from that detonation's own floor level, never a fixed
+"ground" constant.
+
+This changes `apply_container_damage()`'s per-cell ring lookup from
+`horizontal_ring(cell)` to `effective_ring(cell)` for wall/ceiling cells (floor
+cells keep using the horizontal ring alone, since D2 already owns their
+vertical dimension via the two-layer rule). **Confirm or correct before
+Task 2** — it is the one piece of D1 the Director's answer described in
+behavior, not in exact formula.
+
+### 4.4 D2 — the two floor layers
 
 `apply_crater_damage()` gains a `deep_layer_unlocked: bool`:
 
@@ -290,6 +385,11 @@ untouched, and the blast simply adds its own four rings on top. The per-face →
 per-voxel collapse is a pure data simplification of the same values (take the
 darkest of the three faces) and is verified by capture, not by reasoning.
 
+**Timing, not just tone (D8, new 2026-08-06):** the stamped-by-blast half of
+this computation, and the light repaint it feeds, do not need to land before
+wave 1 the way destroy/dent/crack/smoke do — see §6.3 for the deferred-compute
+proposal that spends that extra ~440 ms of slack.
+
 ---
 
 ## 6. E-WAVE — the choreography driver
@@ -319,12 +419,37 @@ A small `DetonationChoreographer` (new, ~120 lines) walks a static wave table
 on absolute elapsed time from the flash, so a slow wave never delays the next —
 matching *"cada onda independente, sem esperar a outra acabar."*
 
-Proposed cadence **40 ms/wave** → 14 waves ≈ 560 ms of choreography.
-`wave_interval_ms` is a `var`, not a `const`. **Needs the Director's number.**
+**Cadence confirmed 2026-08-06: 40 ms/wave** → 15 waves ≈ 600 ms of
+choreography (was 560 ms/14 waves before Smoke ring 3 was added).
+`wave_interval_ms` is a `var`, not a `const`, and trivially re-tuned after the
+first capture.
 
 Smoke waves call the existing `SmokeSparkOverlay.add_smoke()` with per-blob
 durations drawn from the ring (Director: *"usando durações diferentes"*) — that
 overlay already exists and needs no rebuild.
+
+### 6.3 Deferred soot + light compute (D8, new 2026-08-06 — optimization, not yet scheduled to a task)
+
+§2's rule is "the map-wide light repaint runs exactly once, before wave 1."
+The Director's 2026-08-06 addendum proposes loosening that specifically for
+the four soot waves (12–15): since soot visibly settling a beat late reads as
+natural (real fuligem takes a moment to appear), the soot tone computation and
+its light repaint don't have to be ready before wave 1 — they only have to be
+ready by the time wave 12 fires, roughly **440 ms** later at 40 ms/wave
+(waves 1–11). That is real slack the destroy/dent/crack/smoke waves don't get.
+
+Two ways to spend that slack, either compatible with `DetonationPlan`'s
+existing shape:
+- Compute soot synchronously but **after** dispatching wave 1, in whatever
+  time remains before wave 12 is due — no thread needed, just reordering.
+- Compute it on a background thread (`WorkerThreadPool`) started alongside the
+  destroy/dent/crack pre-compute, and fire wave 12 on the *later* of "thread
+  done" or "440 ms elapsed" — Director: *"se for possível soltamos antes, se a
+  thread já estiver disponível."*
+
+Not scheduled to a specific task yet — Task 4 (E-PLAN) is the natural place to
+decide which of the two, once the rest of the pre-compute window's real cost
+is known from Task 0.
 
 ---
 
@@ -349,9 +474,9 @@ Two new sibling stores, both in base coords:
 
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
-| **0** | **Bake-cost measurement spike** | Real ms for a warm sequential 192-atom bake on PLAYGROUND, via a temporary `INFILTRAITOR_CAPTURE_ACTION` hook (added, measured, reverted — same discipline as every PERF round) | **Blocks everything.** If > ~2 s, take §3.4's escape hatches before proceeding |
-| 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table; wired into `room_builder`; selftest asserts all ~192 atoms exist | Real load-time capture + atom count printed |
-| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef`; `apply_container_damage()` reads them; D2's two-layer floor rule | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood |
+| **0** | **Bake-cost measurement spike** | Real ms for a warm sequential 135-atom bake on PLAYGROUND (§3.2, 2026-08-06 recount), via a temporary `INFILTRAITOR_CAPTURE_ACTION` hook (added, measured, reverted — same discipline as every PERF round) | **Blocks everything.** If > ~2 s, take §3.4's escape hatches before proceeding |
+| 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table; wired into `room_builder`; selftest asserts all 135 atoms exist | Real load-time capture + atom count printed |
+| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` reads them via the §4.3 effective-ring formula for wall/ceiling cells; D2's two-layer floor rule | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood *and* on the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
@@ -382,72 +507,102 @@ not detailed here beyond §1's sequence, on purpose.
 
 ## 10. Open questions for the Director
 
-Opened 2026-08-05, to be answered at the start of the next session. Each entry
-says what it blocks and what the plan assumes if it is left unanswered, so the
-next session is never fully stalled — but **Q1 and Q3 genuinely gate work** and
-should be answered before Task 1 starts.
+Opened 2026-08-05. **Q1–Q6 answered 2026-08-06**, recorded below with the
+mechanism each answer implies, plus two follow-up sub-questions (Q1b, Q3b)
+that turn "what the Director wants" into "the exact rule the code checks" —
+neither blocks Task 0. Q7–Q9 stay open, Phase B only.
 
-### Q1 — Destruction on walls/ceilings: does the spec's floor falloff apply to them too? 🔴 blocks Task 2
+### Q1 — ✅ ANSWERED 2026-08-06. Destruction on walls/ceilings uses the same ring model as floor, plus a vertical falloff.
 
-The spec says *"Somente destroi voxels no chão no ring 0 (muito), no ring 1
-(menos), e no ring 2 (quase nada)"*, but the ratified answer to the same
-question was **"Chão + paredes/tetos, como hoje"**. Those two readings only
-reconcile one way, and §1/D1 and §4.2 are written on that reading:
+> "Q1: tudo vai ser passível de destruição. Os rings se extendem pelas paredes
+> da mesma forma que no chão... a slice imediatamente acima recebe menos dano,
+> a que estiver mais pra cima menos ainda... As demais características
+> (dented, cracked, fumaça, fuligem) também seguem o mesmo mecanismo do chão,
+> ativados em waves."
 
-> the *muito / menos / quase nada* profile is the **floor's own**; walls and
-> ceilings keep today's ring-multiplier × material-resistance model.
+Recorded as D1 (rev) in §1, weight-table sharing in §4.2. This **reverses**
+the 2026-08-05 reading (walls kept their own ring-mult × resistance model) —
+the earlier reading was wrong, corrected.
 
-**If that reading is wrong**, §4.2's weight tables change shape and Task 2 is
-re-scoped. Please confirm or correct.
+#### Q1b — the exact vertical-falloff formula 🔴 blocks Task 2, proposed not confirmed
 
-*Assumed if unanswered:* the reading above.
+The Director described the *behavior* (progressive falloff with height above
+the blast) but not the exact formula. §4.3 proposes
+`effective_ring = horizontal_ring + max(0, floor_level - blast.floor_level)`,
+clamped to the table's max index, reusing §4.2's existing weight tables rather
+than adding a second parallel set. **Confirm or correct before Task 2 is
+written** — Task 0 and Task 1 are unaffected.
 
-### Q2 — Does smoke reach ring 3? 🟡 contradiction in the spec
+*Assumed if unanswered:* the §4.3 formula above.
 
-The prose says smoke appears *"mais no centro e menos no ring 3"*, but the
-numbered wave list stops at **Fumaça 2**, and the same prose calls soot *"o
-único elemento do ring 3"*. The plan follows the wave list (smoke rings 0–2,
-`smoke_ring_weights` ends in `0.0`).
+### Q2 — ✅ ANSWERED 2026-08-06. Smoke reaches ring 3, weaker, and rings fire in sequence.
 
-*Assumed if unanswered:* the wave list wins — no smoke at ring 3.
+> "Q2: sim, vamos fazer a fumaça chegar no ring 3, mas queremos que a
+> intensidade diminua um pouco entre os rings, e cada ring solte sua fumaça na
+> ordem, e não todos ao mesmo tempo."
 
-### Q3 — Cracked art for ceilings and floors 🔴 gates 64 of the ~192 atoms
+Recorded as D5 in §1. Wave 11 (**Smoke ring 3**) added to the choreography
+(§1 step 10, now 15 waves); `smoke_ring_weights[3]` set to `0.1` in §4.2. The
+"in order, not simultaneous" half was already the wave list's shape — no
+change needed there.
 
-Neither family exists today. D32.6 fixed blast-CRACKED to concrete and stone
-only, and the floor family has no crack tier at all (`IMPACT_FLOOR_MATERIAL`
-covers blast/dent/top). Options:
+### Q3 — ✅ ANSWERED 2026-08-06. Cracked is one voxel family per material, shared across floor/wall/ceiling.
 
-- **(a)** reuse the existing `decal_generic_blast_crack_{0,1,2}` family for both
-  — zero new art, ships immediately;
-- **(b)** author dedicated ceiling and floor crack families (6 new PNGs at
-  256×256 per `ART_SPECIFICATIONS.md` §7);
-- **(c)** drop cracked on ceilings and/or floors entirely — walls only.
+> "Q3: cracked é um voxel só (x3 variantes de decal) para cada material...
+> Esses 3 voxels servem pra chão telhado e teto. Por que? Porque o cracked tem
+> que ser baked nas 3 faces do voxel... os demais voxels dented ou marked
+> (bullets) são específicos para chão, parede ou teto."
 
-*Assumed if unanswered:* **(a)**, since it unblocks Task 1 without waiting on
-art. Swapping to (b) later is a pure asset change, no code change.
+Recorded as D6 in §1, §3.2 rewritten (2 crack materials × 3 decals ×
+3 substrates = 18 atoms total, down from the old per-class 81). This resolves
+the original Q3 (no cracked art existed for ceiling/floor) differently from
+any of the proposed options (a)/(b)/(c) — the Director's answer makes ceiling
+and floor crack **the same baked atom as the wall's**, so no new art and no
+per-class art was ever needed; the 3 decal variants already planned for wall
+cracked now cover all three classes.
 
-### Q4 — Ceiling DENTED has nothing to vary 🟡
+#### Q3b — does "marked/bullets" belong in this bake? 🟡 does not block Task 0/1, changes Task 1's exact atom count
 
-`_ceiling_carve_plan()` is a pure silhouette carve — an isometric camera never
-sees a ceiling's underside, so there is no exposed face to paint a decal onto
-(D25). It therefore gets **1 carve × 3 substrates**, not the 3 decals the spec
-asks for on the other families. Confirm that's acceptable, or say what should
-vary instead.
+The Director's full recap ("total 21 voxels especiais por material") counted
+marked/bullets alongside cracked/dented. §9 states bullets stay on D33's live
+per-cell path and are explicitly out of this bake. §3.2 assumes the recap was
+describing the registry's full vocabulary (including pieces already built by
+the 2026-08-05 D-ARCH-01 correction) rather than instructing new bullet-bake
+work here. **Confirm or correct before Task 1's selftest asserts a final atom
+count** — if bullets belong in this table too, it grows from 135 to 207
+(§3.2's math, shown inline).
 
-*Assumed if unanswered:* 1 × 3.
+*Assumed if unanswered:* excluded — §9's boundary holds, 135 atoms.
 
-### Q5 — Wave cadence 🟡 Phase A tuning
+### Q4 — ✅ ANSWERED 2026-08-06. Ceiling DENTED gets 3 irregular alpha-cut shapes, reusable across materials.
 
-**40 ms/wave** proposed → 14 waves ≈ **560 ms** of choreography. It is a `var`,
-trivially re-tuned after the first capture.
+> "Q4: o dented DE TETO é só metade de cima do voxel recortada em alpha...
+> vamos fazer 3 tipos de recorte irregular, angulados, simulando um voxel com
+> a base faltando, como um tijolo quebrado... Esses recortes podem ser
+> re-utilizados em outros materiais similares... sem a necessidade de criar
+> novas variações."
 
-*Assumed if unanswered:* 40 ms.
+Recorded as D7 in §1. §3.2's ceiling-dented count moves from 1×3=12 to
+3×3×4 materials = 36 (the *art* — the cut-shape alpha masks — is shared across
+materials, but each material still bakes its own atom against its own
+facade). No longer "nothing to vary" — superseded.
 
-### Q6 — The reference image never arrived 🟢 Phase B only
+### Q5 — ✅ ANSWERED 2026-08-06. 40 ms/wave confirmed.
 
-The spec cites *"como no XCOM ou Phoenix Point (imagem)"* but no image came
-with the message. Needed before the bubble is designed — Phase B, so it does
-not block Phase A at all.
+> "Q5: Me parece bom! Vamos seguir com 40ms."
+
+§6.2 updated: 15 waves × 40 ms ≈ 600 ms of choreography (was 560 ms/14 waves
+before Smoke ring 3).
+
+### Q6 — 🟡 PARTIALLY ANSWERED 2026-08-06 (bubble described; reference image attached). Phase B only, does not block Phase A.
+
+The Director attached the XCOM reference and described it: a line simulating
+the parabola from the throwing agent to the impact point, and a translucent
+3D bubble over the blast-radius area, in isometric perspective — the same
+information the existing floor-perimeter wireframe (`open_menu_for()`) already
+computes, extended into a 3D projected volume rather than a flat outline. Not
+detailed further here since Phase B is not scheduled — recorded so the Phase B
+plan doesn't have to re-ask for the image.
 
 ### Q7 — Explosion art 🟢 Phase B only
 
@@ -473,23 +628,29 @@ animation is not.
 
 ---
 
-## 11. Next session starts here
+## 11. Next session starts here (updated 2026-08-06)
 
 **Resume point:** planning complete, **nothing implemented**. The repo is in
 exactly the post-reset state §0 describes — grenades detonate and damage
-nothing, firearms work. Working tree clean at commit `2ba9a19`.
+nothing, firearms work. Working tree still clean at commit `2ba9a19` plus
+docs-only commits since. Q1–Q6 answered this session (§10); Q1b and Q3b are
+this session's own follow-up proposals, awaiting confirmation but not blocking.
 
 **Order of business:**
 
-1. Read this file's §10 and take the Director's answers. Q1 and Q3 first —
-   they are the two that change work already planned.
+1. **Confirm Q1b (§4.3's effective-ring formula) and Q3b (marked/bullets
+   scope, §3.2) before writing Task 2 / finalizing Task 1's atom count.**
+   Both are proposed readings with stated defaults — Task 0 does not need
+   either answered to start.
 2. **Run Task 0 (§8): the bake-cost measurement spike.** It is pure
    measurement, commits to no design decision, and produces the one number the
-   whole architecture rests on. It can start before any of §10 is answered.
+   whole architecture rests on. Can start immediately, in parallel with Q1b/Q3b.
    - Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook,
-     bake a representative warm sequential run, print real ms, **revert the
-     hook before committing** — the same add/measure/revert discipline every
-     PERF round used (and `grep -n explosion_bake_spike` must come back empty).
+     bake a representative warm sequential run over the **135-atom** table
+     (§3.2, 2026-08-06 recount — 207 if Q3b comes back "include bullets"),
+     print real ms, **revert the hook before committing** — the same
+     add/measure/revert discipline every PERF round used (and
+     `grep -n explosion_bake_spike` must come back empty).
    - What makes it honest: the 2026-08-05 figure of ~95 ms/voxel was a
      *per-cell, partly-cold* bake. This spike must measure the *warm sequential*
      case, because that is the case the plan actually depends on. Do not reuse
@@ -500,13 +661,15 @@ nothing, firearms work. Working tree clean at commit `2ba9a19`.
 
 **Do not:**
 - start Phase B (targeting UI, bubble, throw, explosion frames) — the Director
-  chose Phase A first, deliberately, so the 14 waves are verifiable with real
-  captures before they get wrapped in animation;
+  chose Phase A first, deliberately, so the 15 waves are verifiable with real
+  captures before they get wrapped in animation. Q6's bubble description and
+  XCOM reference (2026-08-06) are recorded in §10 for when Phase B starts, not
+  a signal to start it now;
 - touch `WeaponBenchController.fire_active()` or the D33 runtime compositing
   path it uses — firearms are the one destruction path that works, and §9 keeps
   them out of scope on purpose;
 - re-enable camera rotation as part of this work (§9);
-- treat the ~192-atom count in §3.2 as measured — it is an enumeration of the
+- treat the 135-atom count in §3.2 as measured — it is an enumeration of the
   §3.2 table, and Task 0 is what turns it into a real cost.
 
 ---
@@ -517,7 +680,7 @@ Nothing in this plan is reported done on reasoning. Each task closes with:
 `project_lint.py` clean · `run_selftests.py` clean · `check_invariants.py` OK ·
 `gen_codemap.py --check` clean · **and a real capture from the real PLAYGROUND
 map with real counts printed** — the floor-dent lesson (69 dents on a fixture,
-zero on PLAYGROUND) applies to every single one of the 14 waves.
+zero on PLAYGROUND) applies to every single one of the 15 waves.
 
 Captures meant to be cited here get **hand-picked names** (`expl_wave3_ring0.png`),
 never `auto_*` — the 50-file rotation eats those, and 16 of 23 `auto_*`

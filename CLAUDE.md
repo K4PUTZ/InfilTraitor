@@ -241,6 +241,7 @@ Read the linked doc before modifying that system.
 
 | Topic | Document | Essential |
 |---|---|---|
+| **Game design canon** (any gameplay-facing proposal) | [`docs/DESIGN_MASTER_PLAN.md`](docs/DESIGN_MASTER_PLAN.md) | Every ratified mechanic in one place. Confrontation/cover, 3-layer resistance + the tenth-shot rule, the 3 equipment classes, enemy factions and hierarchy, segment map structure and Freelance escalation are **designed and unbuilt** — extend that design, never invent a parallel one. §19 = the six architecture rules an endless game depends on; §20 = where the build already diverges |
 | Grid, screen coords, voxel constants | [`tools/persistent/QUICK_REFERENCE.md`](tools/persistent/QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)`; `TILE_OFFSET = (112, 64)`; two-plane model (gameplay grid vs. geometry/render grid) — never a per-height lookup table |
 | Directions, faces, banned terms | [`docs/DIRECTION_GLOSSARY.md`](docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
 | Voxel wall system | [`docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |

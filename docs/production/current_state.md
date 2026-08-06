@@ -33,6 +33,7 @@
 - RESUMO_SESSAO_2026-08-04_VFX01_DETONATION_PERFORMANCE.md
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_REBUILD_PLAN.md
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_RESET.md
+- RESUMO_SESSAO_2026-08-06_EXPLOSION_REBUILD_ANSWERS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -209,7 +210,7 @@ The AI system is **functional but simplified** relative to the design intent.
 | **Narrative** | Not started | — | 0% |
 | **Combat** | Not started | — | 0% |
 | **Content** | Sparse | Prototype | 15% |
-| **Voxel Rendering System** | Partially Implemented | Alpha | 40% |
+| **Voxel Rendering System** | Functional — the only wall renderer | Beta | 85% |
 
 ---
 
@@ -275,9 +276,16 @@ The AI system is **functional but simplified** relative to the design intent.
 - Guards react to the agent (fleeing to shadows, crouching has a real effect)
 - FOW hides unrevealed guards
 
+ℹ️ **How escalation actually works** (this is the shipped design, not a gap):
+gradual and meter-driven — see `turn_controller.gd::_apply_tic_result()`,
+thresholds 0.30/0.60/1.00. The meter is the transition driver, not a debug
+overlay.
+
 ⚠️ **Incomplete:**
-- Visual escalation is gradual and meter-driven (see `turn_controller.gd::_apply_tic_result()`, thresholds 0.30/0.60/1.00) — the meter is the transition driver, not a debug overlay
 - The distance curve has not been validated with playtesters
+- Detection tops out at CHASE. The confrontation phase the design calls for
+  at 100% ([`DESIGN_MASTER_PLAN.md`](../DESIGN_MASTER_PLAN.md) §8 — cover
+  states, peek, flanking, smoke as pivot) does not exist
 
 ---
 
@@ -395,14 +403,24 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Perception — Calculation (60% — Alpha)
+### Perception — Calculation (75% — Beta)
 ✅ **The calculation is correct:**
 - Visual cone with angle, distance, and lateral falloff
 - LOS verified via WallEdgeData
-- Multipliers: posture, shadow, cover, flanking
+- Multipliers: posture (1.00/0.55/0.20, `agent.gd`), exposure class
+  (1.00/0.80/0.55/0.30/0.10, `exposure_system.gd`), guard state
+  (0.55/1.60/0.80/2.00/2.80, `tic_system.gd`), cover, flanking
 
-🚨 **Not connected:**
-- The calculation result is not used to change guard state
+✅ **Connected** (corrected 2026-08-06 — this section previously claimed the
+opposite): the result drives guard state.
+`turn_controller.gd:212-222` calls `guard.observe_player()` with severity
+3/2/1 as `guard.detection` crosses 1.00 / 0.60 / 0.30. Same wiring mirrored in
+`room.gd:1634-1644`.
+
+⚠️ **Not built** (design exists in
+[`DESIGN_MASTER_PLAN.md`](../DESIGN_MASTER_PLAN.md) §12): the peripheral
+cone, the 3-layer guard state model, `GuardKnowledge`, and evidence detection
+(cones reading noise trails with the agent absent).
 
 ---
 
@@ -463,17 +481,20 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 | Item | Effort | Impact |
 |------|--------|--------|
-| Connect the detection meter to the state thresholds | 1–2 weeks | High (game feel) |
+| ~~Connect the detection meter to the state thresholds~~ | — | ✅ **Done** (`turn_controller.gd:212-222`) |
 | Tune the detection curve (distance, shadow, posture) | 3–5 days | High (fairness) |
 | Polish the demo room (layout, interesting patrols) | 3–5 days | High (first impression) |
 | Visual feedback of guard state (cone colors already change) | 1–2 days | Medium |
 | Difficulty testing and tuning | 3–5 days | Medium |
 
-**Total estimate for a convincing demo: 2–4 weeks of focused development.**
+**The 2–4 week estimate that used to close this section was written on
+2026-07-08 against the list above, and Phase 3's scope has expanded a long way
+since (see [`roadmap.md`](roadmap.md) Phase 3). Treat the remaining rows as a
+checklist, not a schedule.**
 
 ---
 
-## Render System Status (updated 2026-06-28)
+## Render System Status (last two rows corrected 2026-08-06)
 
 | Item | Status | Maturity |
 |------|--------|----------|
@@ -481,8 +502,8 @@ The game is already functional. Guards detect and react. For a convincing demo:
 | **Direction system (vertex-aligned)** | ✅ Renamed RENAME-01 | Beta |
 | **x/y-varying wall orientation fix** | ✅ Fixed RENAME-01b | Beta |
 | **Corner fill (triangular gap cover)** | ✅ CONTAINER-04 complete | Alpha |
-| **Dirty Flag + TIC updates** | ⏳ Planned CONTAINER-05 | — |
-| **View occlusion (wall cutaway)** | 🔲 Planned VIS-01 Slice 4 | — |
+| **Dirty Flag + TIC updates** | ✅ Shipped as VOXEL-07 (see that section above) — the "Planned CONTAINER-05" this row used to claim was superseded | Beta |
+| **View occlusion (wall cutaway)** | ⏸️ Parts 1–3 closed, paused 2026-07-21 — `occlusion_set.gd`, `occlusion_overlay.gd`, wireframe + slice panel all exist. [`OCCLUSION_MASTER_PLAN`](../../PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md) is the arbiter | Alpha |
 
 ---
 
@@ -535,9 +556,11 @@ The game is already functional. Guards detect and react. For a convincing demo:
 
 ---
 
-**Last Updated:** 2026-07-08
-**Maintained By:** GitHub Copilot / Project Management
-**Status:** ✅ ALPHA ENHANCE PLAN COMPLETE — 7 controllers extracted, room.gd refactored to 2,078 lines, all systems operational. Ready for perspective system implementation and further modularization.
+**This footer describes the ENHANCE series above, dated 2026-07-08 — it is not
+the document's date.** The header block at the top of this file is the live
+one, regenerated by `update_docs.py`.
+
+**Status at that milestone:** ✅ ALPHA ENHANCE PLAN COMPLETE — 7 controllers extracted, room.gd refactored to 2,078 lines, all systems operational. Ready for perspective system implementation and further modularization.
 
 > **2,078 lines is a point-in-time record of this milestone (2026-07-08),
 > not a current figure.** Two more months of feature work (Voxel Light

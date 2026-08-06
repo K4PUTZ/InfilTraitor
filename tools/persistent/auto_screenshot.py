@@ -26,11 +26,11 @@
 ## commit used to pay the ~5-6s cost; that's wasted on routine architecture
 ## commits, doc updates, and planning sessions. Runs only when either:
 ##   (a) the session switch is ON (tools/persistent/screenshot_toggle.py
-##       --on — the Overlord flips this for a visual-heavy phase, e.g.
-##       occlusion/destruction work, and flips it back off after), or
-##   (b) INFILTRAITOR_SCREENSHOT_ONCE=1 is set for this one commit (the
-##       Overlord asks for this in a specific prompt when that prompt's
-##       work has real visual surface, even during an otherwise-OFF phase).
+##       --on — flipped on for a visual-heavy phase, e.g. occlusion or
+##       destruction work, and flipped back off after), or
+##   (b) INFILTRAITOR_SCREENSHOT_ONCE=1 is set for this one commit (used
+##       when a single commit has real visual surface, even during an
+##       otherwise-OFF phase).
 ##
 
 import os

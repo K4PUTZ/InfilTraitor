@@ -15,6 +15,7 @@ docs describing a team, a process, and systems that never existed.
 | **[Game Vision](vision/game_vision.md)** | What the game is and why |
 | **[Design Philosophy](vision/design_philosophy.md)** | The principles that don't bend |
 | **[Design Pillars](vision/pillars.md)** | The seven pillars |
+| **[Design Master Plan](DESIGN_MASTER_PLAN.md)** | **Every ratified mechanic in one place** — turn/detection/noise canon, and the confrontation, resistance, equipment, enemy and progression design that is decided but unbuilt. Read before designing anything gameplay-facing. |
 | **[Architecture](ARCHITECTURE.md)** | How the engine is put together |
 | **[Retrospective, first eight weeks](production/RETROSPECTIVE_2026-07.md)** | Where we've been, with the numbers |
 
@@ -70,7 +71,7 @@ of docs rotted.
 - **[milestones.md](production/milestones.md)** — the executable list
 - **[roadmap.md](production/roadmap.md)** — macro phases
 - **[technical_debt.md](production/technical_debt.md)** — known issues
-- **[METHODOLOGY.md](production/METHODOLOGY.md)** — prompt IDs, domains, the Director/Overlord/Operator split
+- **[METHODOLOGY.md](production/METHODOLOGY.md)** — the two axes (phases vs. milestones), milestone IDs, the domain enum
 - **[TILE_ANATOMY.md](production/TILE_ANATOMY.md)** — tile geometry (audited by `tile_anatomy_audit.gd`)
 
 ## Technical
@@ -82,10 +83,13 @@ of docs rotted.
 
 ## History
 
-[design-concepts/](history/design-concepts/) — the original concept docs, kept for their
-vision value. Sprint logs, refactor logs, deprecated designs, and the subcube
-wall-straddle record were deleted on 2026-07-12: a record of decisions we no
-longer make, and **git already keeps it** —
+[design-concepts/](history/design-concepts/) — the original June 2026 concept docs.
+**Their game design was recovered into [DESIGN_MASTER_PLAN.md](DESIGN_MASTER_PLAN.md)
+on 2026-08-06** — go there, not here. These files stay archived and unmodified as the
+provenance record; only their technical-state sections are genuinely obsolete, which is
+what their DEPRECATED banners were about. Sprint logs, refactor logs, deprecated designs,
+and the subcube wall-straddle record were deleted on 2026-07-12: a record of decisions we
+no longer make, and **git already keeps it** —
 `git show <sha>:docs/history/<file>` recovers any of it.
 
 [SOLO_MODE_CONTEXT.md](history/SOLO_MODE_CONTEXT.md),

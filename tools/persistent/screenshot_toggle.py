@@ -7,7 +7,7 @@
 ## Godot boot) — worth it while a feature has real visual surface (facade
 ## work, occlusion, destruction, UI), wasted on routine architecture-only
 ## commits, doc updates, or planning sessions. This is a session-level
-## switch: the Overlord turns it on for a visual-heavy phase and off when
+## switch: turn it on when entering a visual-heavy phase and off when
 ## leaving one, rather than deciding per-commit.
 ##
 ## For a single commit that deserves a capture while the session switch is

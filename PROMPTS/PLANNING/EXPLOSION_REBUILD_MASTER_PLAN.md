@@ -10,7 +10,10 @@ passed its gate (§8.1), and Q1b was answered — spherical falloff (D14), plus
 roof-throw holes (D15).** Q7–Q9 remain (Phase B only).
 **Status:** 🟢 **BUILDING. Task 0 done (~737 ms, gate was ~2 s). Task 1
 (E-BAKE) is the next concrete action.** Nothing else is built.
-**Next action:** §11. **Nothing gates Task 1 (E-BAKE).** Q1c closed the same
+**Next action:** §11. **Task 1a (E-MAT) — the material reform — is the next
+concrete action**, pulled in front of the bake by the Director on 2026-08-06
+(*"vamos considerar fazer essa mudança agora e não depois"*, while the roster
+is still 5–6 materials). Nothing gates it. Q1c closed the same
 day as D17/D18; D16 settled the ceiling-vs-floor atom contradiction without
 changing the atom count; **D19 made materials surface-independent, which closes
 D10's `crack_factor` gap by construction and voids the old "216-atom variant"
@@ -199,6 +202,65 @@ Plus, as ratified in this session (2026-08-05) and revised the next
   `maps/*.map.json` reference `ground_concrete`, `ground_dirt`, `ground_grass`
   and `ground_sand`, so a rename is a **MAPFILE migration** under
   `MAPFILE_REFERENCE.md`'s versioned-section protocol, not a find/replace.
+- **D20 (new 2026-08-06, executes D19 — the naming logic, decided)** One
+  material table; the **only** thing that separates by surface is the baked
+  texture. Director: *"a de chão usa outra projeção de imagem na superfície, e
+  a parede exibe uma textura vertical. A iluminação muda porque o chão vai ter
+  superfícies escuras e o multiply estava ficando ruim... Mas o material em si
+  é rigorosamente o mesmo. Podemos ter uma tabela única para materiais e
+  separar só a parte da textura que é baked."*
+
+  ```
+  material id          concrete          ← ONE row. Behaviour: destroy/dent/
+                                           crack, soot, effects, ember.
+                                           Surface-independent, always.
+  vertical texture     facade_concrete   ← SLICE  (walls)
+  horizontal texture   slab_concrete     ← SLAB   (floor AND ceiling)
+  ```
+
+  **Why this split of names and not the symmetric one.** The Director offered
+  `slab_*`/`slice_*` or `facade_*`/`ground_*` and asked only that the logic be
+  defined. Measured before choosing: `facade` is **512 occurrences across 31
+  `.gd` files, 35 docs, 8 assets — and zero map files**; `ground_` is **107
+  occurrences, and it IS in 2 maps**. So:
+  - **`facade_*` stays.** Renaming it to `slice_*` is ~5× the churn for no
+    semantic gain — "facade" is already the right word for a vertical building
+    face, and it is the entrenched vocabulary of the whole bake system
+    (`facade_id`, `FacadeSampler`, `bake_policy.gd`, the PNGs on disk).
+  - **`ground_*` → `slab_*`.** This one has to change regardless: the maps
+    carry it, so a MAPFILE migration is happening anyway, and `ground` is
+    **semantically wrong** under D19 — a ceiling is a slab and is never
+    "ground". `slab_*` matches the engine's own `Slab` container class.
+
+  The asymmetry `facade`/`slab` is deliberate and meaningful: a facade is a
+  vertical face, a slab is a horizontal plane. Both are the correct
+  architectural words; neither is a leftover.
+
+  **Earth walls and grass roofs become legal**, and behave like any other
+  material taking damage — Director: *"em teoria possíveis de existir... Não
+  vão aparecer muito em mapas porque não faz sentido. Mas a engine vai ser
+  unificada em relação aos materiais."* The engine must not forbid them; map
+  authorship simply won't ask for them often.
+- **D21 (new 2026-08-06, hard constraint)** **Material properties are dynamic
+  data and are never hardcoded, and never tied to a particular map.**
+  Director: *"essa questão de materiais no FILEMAP não pode estar hardcoded em
+  nenhum lugar, e atrelada a um mapa X ou Y. Precisamos ter as propriedades
+  dinâmicas e bem definidas."* Two places violate this today and both are in
+  Task 1's path:
+  - `MaterialResistanceTable.TABLE` is a `const` Dictionary literal in
+    GDScript. It must become registered data. (Note this is the same direction
+    as `CLAUDE.md`'s inviolable Rule 1 — stats are `var`, never `const` —
+    whose automated checker happens to scope only the named gameplay stats,
+    so it never flagged this one.)
+  - `MaterialRegistry.register_defaults()` hardcodes the roster in code, and
+    the `ground_*` rows in the resistance table were added *because* PLAYGROUND
+    specifically has a concrete floor — exactly the map-coupling D21 forbids.
+
+  D13's per-map declared-materials section is the *right* shape for this: the
+  **map declares which material ids it needs**, the **engine resolves their
+  properties from registered data**, and no code anywhere names a map. This
+  also lines up with why the Baking System exists at all — materials are
+  headed toward per-player procedural generation, not a fixed catalog (§3.5).
 - **D2** Floor layers: the **first** blast on a virgin GU cedes only
   `FLOOR_TOP_LEVEL` (−1). A **later** blast on a GU that has already been
   blasted also cedes `FLOOR_DEEP_LEVEL` (−2). Requires per-GU blast memory.
@@ -710,7 +772,8 @@ Two new sibling stores, both in base coords:
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
-| 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
+| **1a** | **E-MAT** (new 2026-08-06 — D19/D20/D21 pulled in front of the bake) | **One material table, surface-independent.** `MaterialResistanceTable`'s `const TABLE` becomes registered dynamic data (D21) with the duplicate `ground_*` rows collapsed into their base material — one `concrete` row, `crack_factor` 0.1, which closes D10's gap; `MaterialRegistry` stops hardcoding its roster; texture identity moves to `(material, surface_class)` with `SLICE → facade_*` (unchanged) and `SLAB → slab_*` (renamed from `ground_*`, D20); `full_color` stays a **material** property, not a surface one, preserving B2's documented floor/ground exception verbatim; `.map.json` migrated off `ground_*` under `MAPFILE_REFERENCE.md`'s versioned-section protocol (2 maps affected); no code names a map anywhere (D21) | `project_lint` + all 29 selftests clean · `check_invariants` OK · a **real PLAYGROUND capture that is pixel-identical to one taken before the reform** — this task changes names and plumbing, never appearance · plus a red-before-green proving a material's behaviour is now identical on slab and slice |
+| **1b** | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule, now reading 1a's unified table), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it, and note 1a already versioned the file); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
 | 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; **D19 collapses `MaterialResistanceTable`'s duplicate `ground_*` rows** (one row per material, surface-independent), which closes D10's `crack_factor` gap by construction rather than by a separate decision; the D17 slab-pierce multiplier is exposed here too | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
@@ -919,7 +982,7 @@ expressing itself as *the next slab down*, not as the second level of the same
 slab. Task 2's selftest asserts this shape; a capture that reads wrong is the
 signal to revisit.
 
-#### Q1d — how far does D19's unification go on the ASSET side? 🟡 blocks nothing in Task 1, has a stated default
+#### Q1d — ✅ ANSWERED 2026-08-06. Unify now, not later; naming decided as D20.
 
 D19 settles behaviour completely: durability, damage tiers, soot, effects and
 ember are the material's, never the surface's. Task 2 collapses
@@ -941,11 +1004,16 @@ What is left open is narrower and purely about assets and names:
    `ground_concrete`, `ground_dirt`, `ground_grass`, `ground_sand`. Renaming is
    a versioned MAPFILE migration, not a text substitution.
 
-*Assumed if unanswered:* behaviour unifies in **Task 2** (free, closes D10);
-the **rename and any asset convergence are deferred** and, if wanted, ride
-Task 1's already-planned `.map.json` change for D13's declared-materials
-section — that is the one moment the mapfile is being versioned anyway, so
-bundling costs almost nothing and doing it later costs a second migration.
+**Answered:** *"vamos considerar fazer essa mudança agora e não depois"* —
+the Director chose to do the reform up front, while the roster is still 5–6
+materials and *"vai ser muito fácil reformar."* The three points above resolve
+as: (1) the two texture pipelines are **real and stay** — a slab uses a
+different image projection and a facade a vertical one, and the lighting
+genuinely differs because dark floor surfaces made MULTIPLY read badly; only
+the *material* unifies, not the textures; (2) earth walls and grass roofs
+become legal and damage like anything else; (3) the rename is **D20**, and it
+rides Task 1's mapfile change. The hard constraint that came with it is
+**D21** — nothing about materials may be hardcoded or map-coupled.
 
 ### Q2 — ✅ ANSWERED 2026-08-06. Smoke reaches ring 3, weaker, and rings fire in sequence.
 
@@ -1092,7 +1160,12 @@ vertical-falloff formula) is still proposed-not-confirmed.**
      the old number as if it answered this question.
    - Decision gate: > ~2 s at load → take §3.4's escape hatches (substrates
      3→1, or lazy bake into the pre-compute window) **before** writing Task 1.
-3. Then Tasks 1 → 6 in §8's order. **Task 1 now includes:** baking the D12
+3. Then Tasks **1a → 1b → 2 → 6** in §8's order. **Task 1a (E-MAT) is new**
+   and runs first: D19/D20/D21's material reform — one surface-independent
+   material table as registered dynamic data, `ground_* → slab_*`, `facade_*`
+   untouched, mapfile migrated, nothing hardcoded or map-coupled. Its gate is
+   a **pixel-identical capture**: 1a changes names and plumbing, never
+   appearance. **Task 1b (E-BAKE) then includes:** baking the D12
    marked/bullet atoms (cheap and additive — just more registry entries, not
    yet wired to `fire_active()`, see the sequencing note below); reading
    `MAPFILE_REFERENCE.md`'s extension protocol before adding D13's new

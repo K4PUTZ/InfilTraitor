@@ -10,9 +10,10 @@ passed its gate (§8.1), and Q1b was answered — spherical falloff (D14), plus
 roof-throw holes (D15).** Q7–Q9 remain (Phase B only).
 **Status:** 🟢 **BUILDING. Task 0 done (~737 ms, gate was ~2 s). Task 1
 (E-BAKE) is the next concrete action.** Nothing else is built.
-**Next action:** §11. Every question that gated Phase A is now answered; the
-only open item is **Q1c** (does D2's two-layer rule apply to a roof?), which
-has a stated default and blocks Task 2 alone, not Task 1.
+**Next action:** §11. **Every question that gated Phase A is answered** —
+Q1c closed the same day as D17/D18, and D16 settled the ceiling-vs-floor atom
+contradiction without changing the atom count. Task 1 (E-BAKE) has nothing
+left in front of it.
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -117,11 +118,52 @@ Plus, as ratified in this session (2026-08-05) and revised the next
   `apply_crater_damage()` model, the same rings, the same per-material
   resistance; only the container role differs. The blast's origin level is the
   roof's own level, which §4.3's formula already handles (it always measures
-  from that detonation's floor level, never a fixed ground constant). **Open
-  sub-question flagged for Task 2, see §10 Q1c:** whether D2's two-layer rule
-  ("first blast opens the top layer, a later one opens deeper") applies to a
-  roof's 2 levels as well — "no difference from the floor" reads as yes, but
-  it decides whether one grenade can punch clean through a roof or needs two.
+  from that detonation's floor level, never a fixed ground constant). **How
+  many grenades it takes is settled by D17; which atoms the struck slab shows
+  is settled by D16; what the hole is *for* is settled by D18.**
+- **D16 (new 2026-08-06)** **Which existing atom pool a slab draws from is
+  decided by the side the blast hits it from, not by the slab's role.** The
+  Director raised this unprompted as the contradiction nobody had asked about:
+  D6/D7 established that ceiling voxels never appear on floors and vice versa.
+  That rule stands — it is about *where the blast comes from*, which for a
+  ceiling had until now always been below:
+  - Grenade **on the floor** → the ceiling takes the blast **from below** → it
+    shows only ceiling-baked damage (D7's bottom alpha-cuts). No floor
+    dented/cracked ever appears up there. Unchanged.
+  - Grenade **on top of a roof slab** (D15) → that slab **stops behaving as a
+    ceiling and behaves as a floor**: it takes the blast **from above** and
+    shows dented, cracked and holes *"como se fosse no chão"*, drawing the
+    floor's **existing** special voxels.
+
+  **This adds no atoms and §3.2's total does not move.** Director, correcting
+  an earlier reading of mine that had invented a 36-atom row for it:
+  *"não tem recontagem, os voxels já existem... a contagem não muda, apenas
+  onde eles aparecem."* D16 is a routing rule over the current table, and
+  Task 0's ~737 ms stands unchanged.
+
+  *One thing to judge on capture, not in advance (Task 5):* the floor's atoms
+  are baked against `ground_concrete` substrates, so a metal or wood roof
+  pierced from above will show that damage material rather than its own. That
+  may read perfectly well — a sunk hole is mostly debris and shadow — and it
+  is what "the same floor voxels" means by construction. Flagged so a capture
+  that reads wrong has a recorded cause, not so it gets pre-emptively changed.
+- **D17 (new 2026-08-06, answers Q1c)** Roof piercing keeps the existing
+  destruction model *"por enquanto"*: **one grenade pierces one slab; a second
+  grenade pierces the next one down.** Task 2 must expose a **named
+  calibration multiplier** on this specific term — Director: *"posteriormente
+  podemos querer aumentar esse dano em função do gameplay, então deixe um
+  multiplicador atrelado pra gente calibrar isso futuramente."* It is a
+  separate knob from `apply_container_damage()`'s existing
+  `destroy_multiplier` (WEAPON_MASTER_PLAN D2's calibre/punch term), which
+  must keep meaning what it means today.
+- **D18 (new 2026-08-06, scope-defining — read before designing anything
+  around roof holes)** **Upper storeys are not playable.** They exist to
+  compose the scene's height, nothing else. So roof destruction is a
+  **lighting** event — it changes where light and shadow fall, which per the
+  ratified Phase 3 sequencing is exactly what the detection, movement-cost,
+  sound and patrol numbers are waiting on. It is **not** an access route: the
+  player cannot enter from above, and no tactical entry mechanic hangs off it.
+  Any reasoning that treats a roof hole as a way in is wrong.
 - **D2** Floor layers: the **first** blast on a virgin GU cedes only
   `FLOOR_TOP_LEVEL` (−1). A **later** blast on a GU that has already been
   blasted also cedes `FLOOR_DEEP_LEVEL` (−2). Requires per-GU blast memory.
@@ -285,6 +327,11 @@ material today):
 | DENTED CEILING (bottom, alpha-cut, D7) | concrete, metal, stone, wood (4) | 3 cut shapes × 3 substrates | 36 |
 | MARKED / bullets (D12, confirmed in-scope) | concrete, metal, stone, wood (4) | 2 sides × 3 decals × 3 substrates | 72 |
 | | | **Total** | **207** |
+
+**D16 adds no atoms.** A roof slab struck from above reuses the floor's
+existing special voxels verbatim — Director: *"os voxels já existem... a
+contagem não muda, apenas onde eles aparecem."* D16 is a routing rule over
+this table, not an extension of it.
 
 Not 135 (this session's first recount) and not the original ~192 — three real
 moves happened across two rounds of answers: cracked went universal (D6,
@@ -627,7 +674,7 @@ Two new sibling stores, both in base coords:
 |---|---|---|---|
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
-| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path, with Q1c deciding whether D2 gates them, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
+| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
@@ -807,22 +854,33 @@ downward cylinder, not a sphere. Symmetry is the direct reading of "esférico".
 slabs. Floor cells keep D2's two-layer rule as the owner of their own vertical
 dimension.
 
-#### Q1c — does D2's two-layer rule apply to a roof? 🟡 blocks Task 2 only, has a stated default
+#### Q1c — ✅ ANSWERED 2026-08-06. One grenade per slab, with a calibration multiplier.
 
-D15 says roof destruction is the floor's model *"sem nenhuma diferença"*. Taken
-literally that includes **D2**: the first blast on a virgin GU cedes only the
-top level, and only a second blast opens the deeper one. A roof is
-`ROOF_LEVEL_COUNT = 2` levels thick (`room_builder.gd:289`), the same shape the
-floor's two layers have — so the rule maps onto it cleanly.
+> "Q1c: sim a destruição permanece a mesma por enquanto, fura a primeira slab,
+> e uma segunda granada fura a próxima. Posteriormente podemos querer aumentar
+> esse dano em função do gameplay, então deixe um multiplicador atrelado pra
+> gente calibrar isso futuramente. Só lembrando que os andares não são
+> jogáveis... a destruição de um teto influencia na iluminação, mas não permite
+> o jogador entrar por cima."
 
-What it decides is concrete and gameplay-visible: **can one grenade punch a
-hole clean through a roof, or does it take two?** Under D2 it takes two, and
-the first blast leaves a dished-but-unbroken roof. That is a tactical fact
-(whether the agent can open an entry from above in one action), not a rendering
-detail — which is why it is asked rather than assumed silently.
+Recorded as **D17** (one grenade pierces one slab; the next grenade takes the
+next slab down; Task 2 exposes a named multiplier for later calibration) and
+**D18** (upper storeys are not playable — roof holes are a *lighting* event,
+never an access route).
 
-*Assumed if unanswered:* yes, D2 applies — one blast dishes the roof, a second
-opens the hole, consistent with "no difference from the floor."
+**The framing of the question was wrong, and the answer corrects it.** Q1c was
+posed as a tactical trade-off — "can the agent open an entry from above in one
+action, and is two grenades too expensive against a 2-gadget loadout?" D18
+removes that premise entirely: there is no entry from above to buy. The real
+consequence of a roof hole is what it does to the light, which is precisely the
+dependency the whole Phase 3 sequencing rests on.
+
+*Residual implementation detail, defaulted rather than re-asked:* "fura a
+primeira slab" is read as **both of that slab's ~2 levels going with the one
+blast** (it is pierced, not dished), with D2's "a later blast opens deeper"
+expressing itself as *the next slab down*, not as the second level of the same
+slab. Task 2's selftest asserts this shape; a capture that reads wrong is the
+signal to revisit.
 
 ### Q2 — ✅ ANSWERED 2026-08-06. Smoke reaches ring 3, weaker, and rings fire in sequence.
 
@@ -945,9 +1003,13 @@ vertical-falloff formula) is still proposed-not-confirmed.**
    thrown onto a roof and open a hole in the slab, on the floor's exact
    destruction model. Task 2 inherits the wall formula from existing code,
    retires the `is_roof` per-raw-level branch, and switches `maxi` → `absi`.
-   **One sub-question opened in its place: Q1c** — does D2's two-layer rule
-   apply to a roof (one grenade dishes it, a second opens the hole)? Default
-   is yes; blocks Task 2 only.
+   **Q1c, opened then closed the same day:** one grenade pierces one slab, the
+   next grenade the next slab down (**D17**, with a named calibration
+   multiplier Task 2 must expose). **D18** is the scope fact behind it — upper
+   storeys are not playable, so a roof hole is a *lighting* event, never an
+   access route. **D16** settled the ceiling-vs-floor atom contradiction: which
+   pool a slab draws from depends on the blast's side, and it adds no atoms.
+   **Nothing gates Task 1.**
 2. ~~**Run Task 0 (§8): the bake-cost measurement spike.**~~ ✅ Done — §8.1.
    It was pure measurement, committed to no design decision, and produced the
    one number the whole architecture rests on.
@@ -990,8 +1052,8 @@ vertical-falloff formula) is still proposed-not-confirmed.**
   switch yet (see item 4 above). The rest of D26–D33 (hit detection,
   damage-state logic) stays untouched regardless;
 - re-enable camera rotation as part of this work (§9);
-- treat the 207-atom count in §3.2 as measured — it is an enumeration of the
-  §3.2 table, and Task 0 is what turns it into a real cost.
+- treat the 207-atom count in §3.2 as an open number — it is settled (D16 adds
+  routing, not atoms) and Task 0 measured its real cost at ~737 ms.
 
 ---
 

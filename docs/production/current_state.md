@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.89 · **Updated:** 2026-08-06 · **Branch:** main
+**Version:** 0.9.90 · **Updated:** 2026-08-06 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -33,6 +33,7 @@
 - RESUMO_SESSAO_2026-08-04_VFX01_DETONATION_PERFORMANCE.md
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_REBUILD_PLAN.md
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_RESET.md
+- RESUMO_SESSAO_2026-08-06_AUDIT_TASK0_MATERIAL_REFORM.md
 - RESUMO_SESSAO_2026-08-06_EXPLOSION_REBUILD_ANSWERS.md
 <!-- AUTO:END pending_prompts -->
 
@@ -389,6 +390,44 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
   both shapes (D30-CAL); moved to the COMBAT work at the Director's call
 - ❌ **No actor carries a skill stat** — `_agent_skill()` returns neutral 1.0
   and is the single seam for when one exists
+
+---
+
+### Explosive Destruction (0% functional — deliberate no-op, rebuild specified)
+
+🚨 **A grenade currently damages nothing.** `TestZoneController.detonate_active()`
+hides the sprite and closes its menu; the `BlastCalculator` calls were removed
+on 2026-08-05 (`d412480`). **This is the Director's explicit reset, not a
+regression** — the PERF-01/02/03 → D11 → D-ARCH-01 patch arc was judged a
+mistake and stopped rather than iterated on again. Firearm destruction
+(above) is untouched and remains the one destruction path that works.
+
+**Preserved, intact, unwired, for the rebuild:** `BlastCalculator` (1105
+lines, fully selftested), `DecalCompositor`, `HalfVoxelCompositor`, all 45
+decal PNGs, `VoxelVariantRegistry`, `DamageVariantBaker`,
+`apply_damage_voxel_swap()`. Nothing was deleted.
+
+✅ **The rebuild is fully specified and its gating measurement passed**
+([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),
+🟢 BUILDING, **zero open questions in Phase A** as of 2026-08-06):
+- **Why the old architecture failed:** D-ARCH-01 baked a damage variant *per
+  cell* — 71,296 cells × N variants, ~95 ms each. The new model bakes
+  **207 atoms for the whole map** (materials × types × decals × substrates); a
+  damaged voxel shows a *random* facade atom for its material, not its own.
+- **Task 0 (2026-08-06) measured it: ~737 ms for all 207 atoms** against a
+  ~2 s gate — 742.3 / 731.3 / 739.0 across three runs, 1.5% spread. 2.7×
+  headroom, no escape hatch needed. Full method and per-cohort split in the
+  plan's §8.1.
+- **Damage model:** spherical falloff, one ring step per 8 voxels in every
+  direction (D14 — `VOXELS_PER_UNIT_AXIS` and `LEVELS_PER_STOREY` are both 8,
+  so it is a sphere by construction). Grenades can be thrown onto roofs and
+  open holes (D15/D17); which atom pool a struck slab draws from depends on
+  the blast's *side*, not the slab's role (D16).
+- **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
+  event, never an access route.
+- **Next:** Task 1a (E-MAT), the material reform — one surface-independent
+  material table as dynamic registered data, `ground_* → slab_*`, `facade_*`
+  unchanged (D19/D20/D21). Then Task 1b (E-BAKE).
 
 ---
 

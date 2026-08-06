@@ -312,36 +312,50 @@ of a new material feel broken" — the cache cannot help that one.)
 
 ### 3.5 Material scope per map, and the cross-session bake cache (D13, new 2026-08-06)
 
-Two related requirements from the Director, both aimed at the same problem:
-the game will eventually ship many materials, and no single map — let alone
-every load of the same map — should pay to bake all of them.
+**Why this exists (corrected understanding, same day):** the first framing of
+this section guessed the reason was load-ordering (bake before geometry
+compilation needs the atoms). The Director corrected that — the real reason is
+bigger: the Baking System exists because maps and scenarios are planned to be
+**downloadable and procedurally generated, unique per playthrough**, down to
+subtle texture/UI/menu differences. *"O jogador A não vai ver o mesmo tipo de
+madeira que o jogador B"* — materials carry per-player modifiers (color,
+light, and other elements tied to character level or seasonal themes, e.g.
+Halloween). A material set therefore **cannot be a small fixed game-wide
+catalog** the way `IMPACT_DECAL_MATERIALS` is today — it's dynamic content,
+different per player and even per session. Explicit per-map declaration isn't
+an optimization choice over derivation, it's the only thing that can name a
+material that doesn't exist anywhere else in the codebase yet.
 
-**Scope: each map declares which materials it actually uses.** Not derived by
-scanning that map's `walls`/`blocks`/`floor_zones` sections for distinct
-`material` values at compile time, even though that data already exists there
-— an explicit declaration lets the bake pass run and finish **before**
-geometry compilation needs the resulting atoms, rather than depending on a
-full compile pass first (the likely reason the Director asked for this
-explicitly rather than derived; noted as inference, not confirmed). Per
+**Scope: each map declares which materials it actually uses.** Per
 `MAPFILE_REFERENCE.md`'s extension protocol, this is **a new registered
 section** (`{section_id, version, serialize, deserialize, migrations[]}` via
 `MapSectionRegistry`, read before implementing — required by CLAUDE.md for any
-`.map.json` change), not an ad-hoc field bolted onto an existing one. Task 1
-should add a selftest asserting the declared list is a superset of what the
-map's own walls/blocks/floor_zones actually reference, so authoring drift
-(a material used but not declared) fails loudly (B6) instead of silently
-missing its bake.
+`.map.json` change), not an ad-hoc field bolted onto an existing one. For
+today's game-wide materials (concrete, metal, stone, wood, ground_concrete),
+Task 1 should add a selftest asserting the declared list is a superset of what
+the map's own walls/blocks/floor_zones actually reference, so authoring drift
+fails loudly (B6) instead of silently missing its bake.
 
 **Cache: baked atoms persist across sessions on the same device.** `user://`-
 scoped, keyed on `(material, damage_state class, decal_variant,
-substrate_variant)` **plus** a version/hash of the bake inputs (compositor
-version, decal source art, bake config) — not just the material name — so an
-art or config update invalidates stale entries automatically rather than
-silently serving outdated graphics (a real risk with any disk cache; handled
-by hashing the inputs, not by trusting the cache blindly). A map whose full
-declared material set is already cached pays **effectively zero** bake time on
-that load — Task 1's gate includes a real capture proving this: load the same
-map twice, second load's bake step measurably near-zero versus the first.
+substrate_variant)` **plus** a version/hash of the bake inputs, so a content
+update invalidates stale entries automatically. A map whose full declared
+material set is already cached pays **effectively zero** bake time on that
+load — Task 1's gate includes a real capture proving this.
+
+**Explicitly deferred, not this plan's job (Director, 2026-08-06):**
+*"o cache vai ser baked muitas vezes para cada jogador, e o cache precisa ter
+um gerenciamento dinâmico e bem planejado — podemos deixar isso pra o fim da
+fase de destruição."* Per-player procedural material variants mean the cache
+will eventually need real management: a storage budget, an eviction policy,
+versioning for regenerated/reskinned materials, tracking which variants
+belong to which playthrough. **None of that is built here.** Task 1's cache
+stays deliberately minimal — a flat `user://` store keyed as above, no
+eviction, no per-player namespacing — sufficient for this plan's actual
+material set (concrete-focused, game-wide, not yet procedural). The dynamic
+cache-management system gets its **own dedicated planning pass, later, at the
+end of the destruction phase** — not a Phase A or Phase B item of this plan,
+and not something to start scoping now. Added to §9's out-of-scope list.
 
 **Partial coverage is already handled, not new work (D10 generalizes):**
 *"alguns materiais vão ter todos os decals, outros só alguns"* is exactly
@@ -617,6 +631,12 @@ not detailed here beyond §1's sequence, on purpose.
   firearms.
 - **Actor damage from blasts.** Not mentioned in the Director's spec; not
   built.
+- **Dynamic bake-cache management** (new 2026-08-06, D13). Storage budget,
+  eviction policy, per-player namespacing, and versioning for procedurally
+  regenerated/reskinned materials — needed eventually because materials will
+  be customized per player and per playthrough (§3.5), but explicitly
+  deferred by the Director to *"o fim da fase de destruição"*, its own
+  dedicated planning pass. Task 1's cache is a minimal flat store, not this.
 
 ---
 

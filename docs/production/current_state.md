@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.89 · **Updated:** 2026-08-05 · **Branch:** main
+**Version:** 0.9.89 · **Updated:** 2026-08-06 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -31,6 +31,7 @@
 - RESUMO_SESSAO_2026-08-04_GENERIC_DECALS.md
 - RESUMO_SESSAO_2026-08-04_PERF02.md
 - RESUMO_SESSAO_2026-08-04_VFX01_DETONATION_PERFORMANCE.md
+- RESUMO_SESSAO_2026-08-05_EXPLOSION_REBUILD_PLAN.md
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_RESET.md
 <!-- AUTO:END pending_prompts -->
 

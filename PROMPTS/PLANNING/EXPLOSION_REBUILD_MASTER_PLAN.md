@@ -5,12 +5,14 @@
 **Updated:** 2026-08-06 — Director answered Q1–Q6, then corrected/extended Q1b
 and Q3b in a follow-up round (floor is material-real now, not agnostic to
 "earth"; bullet marks join the pre-bake), then added D13 (per-map material
-scope + cross-session bake cache, §3.5). Q7–Q9 remain (Phase B only).
-**Status:** 🟠 **PLANNING — awaiting Director sign-off on the vertical-falloff
-formula (§10 Q1b).** Nothing here is built.
-**Next action:** §11. Q1b's exact formula is the one remaining proposed-not-
-confirmed reading; Task 0 in §8 is a pure measurement spike, unaffected by it,
-and can start immediately.
+scope + cross-session bake cache, §3.5). **Late same day: Task 0 ran and
+passed its gate (§8.1), and Q1b was answered — spherical falloff (D14), plus
+roof-throw holes (D15).** Q7–Q9 remain (Phase B only).
+**Status:** 🟢 **BUILDING. Task 0 done (~737 ms, gate was ~2 s). Task 1
+(E-BAKE) is the next concrete action.** Nothing else is built.
+**Next action:** §11. Every question that gated Phase A is now answered; the
+only open item is **Q1c** (does D2's two-layer rule apply to a roof?), which
+has a stated default and blocks Task 2 alone, not Task 1.
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -97,8 +99,29 @@ Plus, as ratified in this session (2026-08-05) and revised the next
   less, the slice above that even less. This is why a ceiling naturally takes
   the least damage today: not a hardcoded ceiling rule, a consequence of
   vertical distance from a blast that (for now) always originates at floor
-  level. **Formula proposed in §4.3, pending confirmation (Q1b) — does not
-  block Task 0.**
+  level. **Formula confirmed 2026-08-06 as D14 below.**
+- **D14 (new 2026-08-06, answers Q1b)** The falloff is **spherical**: one ring
+  step per **8 voxels in every direction**, horizontal or vertical. The
+  constants make this exact rather than approximate —
+  `VOXELS_PER_UNIT_AXIS = 8` and `LEVELS_PER_STOREY = 8`, so one storey of
+  height measures one GU of width. Only the **material** changes what that
+  distance costs (`MaterialResistanceTable`, unchanged). Two code
+  consequences, both detailed in §10 Q1b: it **retires** the deliberate
+  `is_roof` per-raw-level stepping in `apply_container_damage()` (whose own
+  comment asked to be reviewed against a real capture — this is that review),
+  and `maxi(0, vertical_ring)` becomes `absi(…)` so the sphere is symmetric
+  below the blast as well as above, which D15 makes load-bearing.
+- **D15 (new 2026-08-06)** A grenade can be thrown **onto a roof**, destroying
+  it and opening a **hole in the slab**. Its destruction physics is *"o mesmo
+  sistema de destruição do chão, sem nenhuma diferença"* — the same
+  `apply_crater_damage()` model, the same rings, the same per-material
+  resistance; only the container role differs. The blast's origin level is the
+  roof's own level, which §4.3's formula already handles (it always measures
+  from that detonation's floor level, never a fixed ground constant). **Open
+  sub-question flagged for Task 2, see §10 Q1c:** whether D2's two-layer rule
+  ("first blast opens the top layer, a later one opens deeper") applies to a
+  roof's 2 levels as well — "no difference from the floor" reads as yes, but
+  it decides whether one grenade can punch clean through a roof or needs two.
 - **D2** Floor layers: the **first** blast on a virgin GU cedes only
   `FLOOR_TOP_LEVEL` (−1). A **later** blast on a GU that has already been
   blasted also cedes `FLOOR_DEEP_LEVEL` (−2). Requires per-GU blast memory.
@@ -416,7 +439,17 @@ needs the same material-lookup change `apply_container_damage()` already has,
 where today it likely doesn't (unverified — Task 2 confirms by reading the
 real function, not by this plan asserting it).
 
-### 4.3 Vertical falloff for walls/ceiling (new, D1 rev — mechanism proposed, pending confirmation as Q1b)
+### 4.3 Vertical falloff for walls/ceiling (D1 rev — ✅ CONFIRMED 2026-08-06 as D14, spherical)
+
+> **Confirmed and amended.** The mechanism below is right and, for walls, is
+> already what `apply_container_damage()` ships. D14 amends it in two places
+> that the text below predates — read §10 Q1b for the evidence:
+> **(a)** `max(0, …)` becomes `abs(…)`, because D15's roof throws put real
+> geometry *below* the blast and a sphere is symmetric;
+> **(b)** the `is_roof` branch that advances roofs one ring per **raw level**
+> is retired — roofs step per storey like everything else, which means a
+> 2-level roof shows uniform damage rather than an internal gradient. That
+> branch's own comment asked for exactly this review.
 
 §4.2's weight tables are indexed by ring, and until 2026-08-06 "ring" meant
 purely the horizontal GU distance from `flood_gu_rings()`. The Director's
@@ -594,7 +627,7 @@ Two new sibling stores, both in base coords:
 |---|---|---|---|
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
-| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
+| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path, with Q1c deciding whether D2 gates them, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
@@ -727,16 +760,69 @@ mechanism, and — new — the floor now consults it against its **real** ground
 material too, not a fixed `"earth"` placeholder (D9, D10 in §1). See §4.2's
 added paragraph.
 
-#### Q1b — the exact vertical-falloff formula 🔴 blocks Task 2, proposed not confirmed
+#### Q1b — ✅ ANSWERED 2026-08-06. Spherical: one ring step per 8 voxels in every direction.
 
-The Director described the *behavior* (progressive falloff with height above
-the blast) but not the exact formula. §4.3 proposes
-`effective_ring = horizontal_ring + max(0, floor_level - blast.floor_level)`,
-clamped to the table's max index, reusing §4.2's existing weight tables rather
-than adding a second parallel set. **Confirm or correct before Task 2 is
-written** — Task 0 and Task 1 are unaffected.
+> "Sim, vamos seguir com o sistema esférico: slabs e slices são afetadas
+> seguindo o mesmo sistema de anéis, tanto nos 8 voxels horizontais quanto nos
+> 8 verticais. O que muda é o material (resistência). Porém vamos deixar ainda
+> a possibilidade de jogar a granada SOBRE o teto, e destruir ele criando um
+> BURACO na slab. A física segue o mesmo sistema de destruição do chão, sem
+> nenhuma diferença."
 
-*Assumed if unanswered:* the §4.3 formula above.
+Recorded as **D14** (spherical falloff) and **D15** (roof-throw holes) in §1.
+The geometry backs the choice rather than merely permitting it:
+`VOXELS_PER_UNIT_AXIS = 8` and `LEVELS_PER_STOREY = 8`, so one storey of
+height measures exactly one GU of width. A ring step per 8 voxels in every
+direction *is* a sphere; it needs no justification beyond the constants.
+
+**Three consequences, verified against the preserved code, not reasoned:**
+
+**1. For walls, this is already the shipped behaviour — §4.3 proposed
+something that exists.** `BlastCalculator.apply_container_damage()` already
+computes `vertical_ring = floor(level_offset / LEVELS_PER_STOREY)` and
+`ring = base_ring + maxi(0, vertical_ring)`. Task 2 inherits it instead of
+writing it.
+
+**2. It RETIRES a documented deliberate asymmetry for roofs.** The same
+function currently branches on `is_roof` and advances roofs **one ring per raw
+level** instead of per storey. Its own comment says why: `ROOF_LEVEL_COUNT` is
+2 (`room_builder.gd:289`), so a whole-storey step "would collapse every roof
+level into ring 0 and roofs would never show falloff at all" — and it ends
+*"Deliberate asymmetry, not an oversight — flagged for review if a real
+capture shows it reading wrong."* D14 is that review, and it goes the other
+way: under a sphere a 2-level-thick roof genuinely sits at one distance from
+the blast, so uniform damage across its two levels is geometrically correct
+and the per-level stepping was manufacturing a gradient the geometry does not
+support. **Visible consequence: roofs stop showing internal top-vs-bottom
+grading.** Task 5's captures are where that gets judged.
+
+**3. `maxi(0, …)` has to become `absi(…)` — and D15 is why.** The clamp exists
+because a floor-level grenade has nothing below it to fall off toward. D15 puts
+a grenade *on top of a roof*, damaging the room beneath, and under the clamp
+every level below the blast would sit at `vertical_ring = 0` — an infinite
+downward cylinder, not a sphere. Symmetry is the direct reading of "esférico".
+
+*Assumption stated, open to one-line correction:* Task 2 uses
+`vertical_ring = absi(level_offset) / LEVELS_PER_STOREY` for both walls and
+slabs. Floor cells keep D2's two-layer rule as the owner of their own vertical
+dimension.
+
+#### Q1c — does D2's two-layer rule apply to a roof? 🟡 blocks Task 2 only, has a stated default
+
+D15 says roof destruction is the floor's model *"sem nenhuma diferença"*. Taken
+literally that includes **D2**: the first blast on a virgin GU cedes only the
+top level, and only a second blast opens the deeper one. A roof is
+`ROOF_LEVEL_COUNT = 2` levels thick (`room_builder.gd:289`), the same shape the
+floor's two layers have — so the rule maps onto it cleanly.
+
+What it decides is concrete and gameplay-visible: **can one grenade punch a
+hole clean through a roof, or does it take two?** Under D2 it takes two, and
+the first blast leaves a dished-but-unbroken roof. That is a tactical fact
+(whether the agent can open an entry from above in one action), not a rendering
+detail — which is why it is asked rather than assumed silently.
+
+*Assumed if unanswered:* yes, D2 applies — one blast dishes the roof, a second
+opens the hole, consistent with "no difference from the floor."
 
 ### Q2 — ✅ ANSWERED 2026-08-06. Smoke reaches ring 3, weaker, and rings fire in sequence.
 
@@ -853,9 +939,15 @@ vertical-falloff formula) is still proposed-not-confirmed.**
 
 **Order of business:**
 
-1. **Confirm Q1b (§4.3's effective-ring formula) before writing Task 2.** It
-   is the one remaining proposed reading with a stated default — Task 1 does
-   not need it answered to start. **Still open.**
+1. ~~**Confirm Q1b (§4.3's effective-ring formula).**~~ ✅ Answered 2026-08-06:
+   **spherical, D14** — one ring step per 8 voxels in every direction, only the
+   material changing what that distance costs. Plus **D15**: grenades can be
+   thrown onto a roof and open a hole in the slab, on the floor's exact
+   destruction model. Task 2 inherits the wall formula from existing code,
+   retires the `is_roof` per-raw-level branch, and switches `maxi` → `absi`.
+   **One sub-question opened in its place: Q1c** — does D2's two-layer rule
+   apply to a roof (one grenade dishes it, a second opens the hole)? Default
+   is yes; blocks Task 2 only.
 2. ~~**Run Task 0 (§8): the bake-cost measurement spike.**~~ ✅ Done — §8.1.
    It was pure measurement, committed to no design decision, and produced the
    one number the whole architecture rests on.

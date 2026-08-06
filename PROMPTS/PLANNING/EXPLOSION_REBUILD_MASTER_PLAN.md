@@ -592,13 +592,71 @@ Two new sibling stores, both in base coords:
 
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
-| **0** | **Bake-cost measurement spike** | Real ms for a **cold, uncached** warm sequential 207-atom bake on PLAYGROUND (§3.2, 2026-08-06 final recount), via a temporary `INFILTRAITOR_CAPTURE_ACTION` hook (added, measured, reverted — same discipline as every PERF round) | **Blocks everything.** If > ~2 s, take §3.4's escape hatches before proceeding — §3.5's cache does not help this number, it only helps loads 2+ |
+| **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
 | 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
 | 6 | Tuning pass | Director reviews captures, moves the §4.2 numbers | Director sign-off |
+
+### 8.1 Task 0 result — the number the architecture rests on (2026-08-06)
+
+**~737 ms to bake all 207 atoms. The gate was ~2 s. It passes with 2.7×
+headroom, so §3.4's escape hatches are NOT taken and Task 1 proceeds as
+written.**
+
+Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook in
+`room.gd`, driving the same compositor functions `DamageVariantBaker`
+already calls, on a real headless PLAYGROUND load with `BakeConfig.enabled`
+asserted true first (a false there would have measured misses, not
+composites). Every call used a distinct `(grid_pos, level, material_name)`
+key so the per-cell composite cache never short-circuited one — **0 misses in
+the wall and ceiling cohorts, every timed call a genuine composite.** Hook
+reverted before commit; `grep -n explosion_bake_spike` comes back empty.
+
+| Run | Total (207 atoms) |
+|---|---|
+| 1 | 742.3 ms |
+| 2 | 731.3 ms |
+| 3 | 739.0 ms |
+| **Mean** | **~737 ms** (spread 11 ms, 1.5%) |
+
+Per cohort — the three classes use three different compositors, so the whole
+table was never projected off one path:
+
+| Cohort | Atoms | Cost | Per atom |
+|---|---|---|---|
+| **Wall** (`_composite_full/half_voxel_decal`) | 162 | ~680 ms | **~4.2 ms** — the entire cost, effectively |
+| **Ceiling** (`_composite_ceiling_carve`) | 36 | ~13 ms | **~0.35 ms** — a silhouette carve with no decal to load; free |
+| **Floor** (`_composite_floor_sunk_decal`) | 9 | see note | — |
+
+Steady-state mean 3.50 ms/atom, median 3.28, first call ~15–17 ms (cold decal
+load + atlas page creation, paid once).
+
+**Why this is not the old ~95 ms/voxel number, and why that one was never
+comparable:** that figure was a *per-cell* bake, partly cold, over 71 296
+placed cells. The atom model removes the cell dimension entirely — the whole
+map's damage vocabulary is 207 composites, not 71 296. The unit cost barely
+moved; the count collapsed by three orders of magnitude. That is the whole
+architecture in one number.
+
+**Three caveats, none of them blocking:**
+
+1. **The floor cohort needed 7 305 attempts to land its 9 atoms** — 7 296
+   misses, consistently across all three runs. The 9 timed composites are
+   real, so the number above stands, but a 0.1% hit rate on the floor path
+   deserves a look in **Task 1** when D9 rewires floor specials onto pre-baked
+   SLAB atoms: it suggests `resolve_flat()` finds no baked atom for the vast
+   majority of floor cells. Flagged, not diagnosed.
+2. **Headless, this machine, no GPU present.** Device cost is unmeasured. The
+   headroom is large enough that this is a monitoring note, not a risk.
+3. **Cost scales linearly with the atom count**, ~3.5 ms each. D13's per-map
+   material scope is what keeps that count at 207; a map declaring many more
+   materials pays proportionally, and the §3.5 cache is what keeps loads 2+
+   from paying at all.
+
+---
 
 **Phase B** (targeting UI, bubble, throw animation, explosion frames, the two
 compute windows) is planned separately once Phase A produces evidence — it is
@@ -787,14 +845,20 @@ stops being agnostic to "earth", D9/D10), and added D13 (per-map material
 scope + cross-session bake cache, §3.5). **Only Q1b (§4.3's exact
 vertical-falloff formula) is still proposed-not-confirmed.**
 
+> **UPDATE 2026-08-06 — Task 0 is DONE and the gate PASSED: ~737 ms for all
+> 207 atoms against a ~2 s gate (§8.1 has the method, the per-cohort split,
+> and three caveats). No escape hatch is taken. The next concrete action is
+> **Task 1 (E-BAKE)**, and item 2 below is kept only as the record of how
+> Task 0 was specified.**
+
 **Order of business:**
 
 1. **Confirm Q1b (§4.3's effective-ring formula) before writing Task 2.** It
-   is the one remaining proposed reading with a stated default — Task 0 and
-   Task 1 do not need it answered to start.
-2. **Run Task 0 (§8): the bake-cost measurement spike.** It is pure
-   measurement, commits to no design decision, and produces the one number the
-   whole architecture rests on. Can start immediately, in parallel with Q1b.
+   is the one remaining proposed reading with a stated default — Task 1 does
+   not need it answered to start. **Still open.**
+2. ~~**Run Task 0 (§8): the bake-cost measurement spike.**~~ ✅ Done — §8.1.
+   It was pure measurement, committed to no design decision, and produced the
+   one number the whole architecture rests on.
    - Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook,
      bake a representative **cold, uncached** sequential run over the
      **207-atom** table (§3.2, 2026-08-06 final recount — 216 if Task 2 also

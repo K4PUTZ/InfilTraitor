@@ -142,6 +142,37 @@ scope; all of it is now largely done.
 months of unplanned engine work. Re-estimate once the open decisions above
 are made.
 
+**Why the engine work comes first — Director, 2026-08-06.** Read this before
+concluding the phase has drifted. It has not: the ordering is a dependency
+chain, ratified deliberately.
+
+> A demo will never sell the project without a minimum of visual art.
+> Shipping a gameplay loop that does not read visually would compromise
+> everything.
+
+And the systems are not separable in the direction one might assume:
+
+```
+destruction  →  light & shadow layout  →  guard reaction, agent movement,
+                                          which route he takes, HOW MANY
+                                          TILES he must walk, sound
+                                          propagation, patrol routing
+```
+
+Light and shadow are **tactical**, not decorative — `SHADOW_MULT = 0.30` and
+`PENUMBRA_MULT = 0.55` in `guard_enemy.gd`, the five exposure classes in
+`exposure_system.gd`. Shadow structure is what makes a route safe or fatal,
+and destruction *moves where the light falls*. Tuning detection, movement
+cost or patrols before destruction works would be calibrating against numbers
+that are still going to move.
+
+So `tic_system.gd` and `noise_system.gd` sitting untouched since 2026-06-17 is
+not neglect — those systems are waiting on inputs that are not final yet. The
+confrontation phase the design calls for at 100% detection
+([`DESIGN_MASTER_PLAN.md`](../DESIGN_MASTER_PLAN.md) §8) is genuinely unbuilt
+and still matters; it is **sequenced after this foundation**, not dropped.
+This is still the Investor Demo phase, laying its ground.
+
 ---
 
 ### Phase 4: Production Pass (Post-Investment ⏳)

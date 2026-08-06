@@ -132,6 +132,34 @@ def run_one(godot: str, script_rel: str) -> dict:
     }
 
 
+## AUDIT-01 (2026-08-06): the glob above is *_selftest.gd, and eight test files
+## in the same folder are named *_test.gd / *_tests.gd. They had been invisible
+## to this runner — the arbiter — for as long as they existed, and the audit that
+## finally ran them by hand found one failing outright (input_controller_test,
+## exit 1, 17 SCRIPT ERRORs) and one reporting "3/5 passed" while exiting 0
+## (occlusion_set_test, fixtures stale since OCC-07). Both are fixed now.
+##
+## Renaming them into the glob is NOT free: prop_01_tests and version_info_test
+## depend on autoloads (Registries, VersionInfo), which `--script` runs do not
+## instantiate, so they cannot pass under this runner as written — the same
+## limitation project_lint.py whitelists. Until that is solved, the runner at
+## least refuses to stay silent about its own blind spot.
+def report_unrun_tests(ran: list) -> None:
+    ran_names = {os.path.basename(s) for s in ran}
+    others = sorted(
+        os.path.basename(p)
+        for pat in ("*_test.gd", "*_tests.gd")
+        for p in glob.glob(os.path.join(PROJECT_ROOT, SELFTEST_DIR, pat))
+        if os.path.basename(p) not in ran_names
+    )
+    if not others:
+        return
+    print("[SELFTEST] NOT RUN — %d test file(s) outside the *_selftest.gd glob:" % len(others))
+    for name in others:
+        print("    · %s" % name)
+    print("[SELFTEST] Run one by hand: godot --headless --path . --script %s/<name>" % SELFTEST_DIR)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Godot selftests with SCRIPT ERROR detection")
     parser.add_argument("--only", help="substring of the selftest name (e.g. blast_calculator)")
@@ -169,6 +197,8 @@ def main() -> int:
                 print("      | %s" % line)
 
     print("[SELFTEST] RESULT: %d clean, %d failed" % (len(scripts) - len(failures), len(failures)))
+    if not args.only:
+        report_unrun_tests(scripts)
     return 1 if failures else 0
 
 

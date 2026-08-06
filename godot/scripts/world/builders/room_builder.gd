@@ -985,8 +985,21 @@ func _render_voxel_props(instances: Array) -> void:
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 
+## Hard-disabled, and the reason it gives used to be false. AUDIT-01
+## (2026-08-06): the old note read "TODO: Fix Registries reference", but
+## `Registries` IS a registered autoload (project.godot) and
+## `ensure_prop_registry()` exists (registries_autoload.gd) — the reference
+## needs no fixing. Returning null keeps PROP-01's whole PropDef path
+## unreachable: _render_voxel_props() warns and skips every instance.
+##
+## Nothing is missing on screen today because the shipped maps place crates
+## through the LEGACY tile path in their .map.json, not through voxel_props;
+## only the SIGMA_01 *code* spec (fallback-only) declares 9 of them.
+##
+## Re-enabling is the one line below, but it is a rendering change on a path
+## no currently-running test covers (prop_01_tests.gd is outside the selftest
+## runner's glob), so it is a Director call, not a cleanup.
 func _get_prop_registry():
-	# TODO: Fix Registries reference
 	# return Registries.ensure_prop_registry()
 	return null
 

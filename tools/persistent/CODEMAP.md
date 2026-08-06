@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**182 scripts · 42803 lines total** (under `godot/scripts/`)
+**182 scripts · 42860 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2872,7 +2872,7 @@ extends `SceneTree` · 187 lines
 
 ### `occlusion_set_test.gd`
 
-`class_name OcclusionSetTest` · extends `SceneTree` · 245 lines
+`class_name OcclusionSetTest` · extends `SceneTree` · 283 lines
 
 `godot/scripts/tools/occlusion_set_test.gd`
 
@@ -2881,6 +2881,7 @@ extends `SceneTree` · 187 lines
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `OcclusionSetMod` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `FIXTURE_LEVELS` = `6`
 
 ---
 
@@ -3563,16 +3564,11 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1011 lines
+`class_name RoomBuilder` · 1024 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
 > RoomBuilder Orchestrates room construction, tile placement, and perspective transformations. Handles loading maps, building layouts, caching blocked cells, and coordinate rotations.
-
-**Constants / tuning**
-- `WALL_FLOOR_STEP_PX` = `20.0`
-- `WALL_BASE_Z_INDEX` = `8`
-- `INVALID_CELL` = `Vector2i(-1, -1)`
 
 **Public vars**
 - `var room: Node`
@@ -3625,7 +3621,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 159 lines
+`class_name InputController` · 165 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 

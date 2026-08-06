@@ -7,6 +7,40 @@ class_name OcclusionSetTest
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const OcclusionSetMod = preload("res://godot/scripts/systems/occlusion_set.gd")
 
+## AUDIT-01 (2026-08-06): every test below used to hand recompute() a raw
+## Array[Vector2i]. OCC-07 moved the decision from per-voxel to per-Slice, so
+## _group_slices_by_edge() has been reading `slice.voxels` / `slice.edge_id`
+## off a Vector2i ever since — a SCRIPT ERROR that aborts the calling function
+## and leaves an EMPTY occlusion set. GDScript cannot fail its own process for
+## that, so the file still exited 0 while printing "3/5 passed", and the three
+## "passes" were vacuous ("Cardinality reasonable: 0 cells (expect dozens)").
+## The fixtures now build the shape room.gd:2542 really passes.
+##
+## Levels matter: an edge's bottom BASE_VISIBLE_LEVELS (2) never ghost, so a
+## fixture column must be taller than that to produce any occluded cell at all.
+const FIXTURE_LEVELS: int = 6
+
+
+## Wrap voxel cells in the Slice/Voxel shape EdgeRegistry.all_slices() yields.
+## One synthetic edge per cell column: enough for depth/ring/cardinality
+## assertions, which are all per-cell, without inventing a wall topology the
+## real EdgeRegistry would own.
+func _slices_from_cells(cells: Array) -> Array:
+	var slices: Array = []
+	for cell: Vector2i in cells:
+		var edge_id := "AUDIT_EDGE_%d_%d" % [cell.x, cell.y]
+		var slice := Slice.new(
+			"AUDIT_SLICE_%d_%d" % [cell.x, cell.y],
+			GeometryCoordsMod.voxel_to_gu(cell),
+			0,            ## face — unread by compute_edge_occlusion()
+			edge_id,
+			1             ## storey_count
+		)
+		for level in range(FIXTURE_LEVELS):
+			slice.voxels.append(Voxel.new(cell, level, slice))
+		slices.append(slice)
+	return slices
+
 ## Test entry point (SceneTree._initialize replaces _ready())
 func _initialize():
 	var separator = "=========================================="
@@ -44,14 +78,14 @@ func _initialize():
 	else:
 		print("  ✗ FAILED: Depth ordering violated")
 	
-	# Test 4: Ring assignment by distance
-	print("\nGROUP: Ring Distance Ordering")
+	# Test 4: Ring range (ordering coverage retired — see _test_ring_ordering)
+	print("\nGROUP: Ring Range")
 	total_count += 1
 	if _test_ring_ordering():
-		print("  ✓ Ring indices match distance from agent")
+		print("  ✓ Ring indices within the valid range")
 		pass_count += 1
 	else:
-		print("  ✗ FAILED: Ring ordering")
+		print("  ✗ FAILED: Ring range")
 	
 	# Test 5: Cardinality — should be dozens, not thousands
 	print("\nGROUP: Cardinality Guard (Anti-O5 Failure)")
@@ -91,7 +125,7 @@ func _test_wrong_predicate() -> bool:
 	]
 	
 	# Recompute: should only include cells with depth > agent_depth
-	occ.recompute(agent_cell, voxel_cells, Vector2i(100, 100))
+	occ.recompute(agent_cell, _slices_from_cells(voxel_cells), Vector2i(100, 100))
 	var occluded = occ.get_occluded_cells()
 	
 	# WRONG ASSERTION: if we used >= instead of >, we'd include the behind cell
@@ -126,7 +160,7 @@ func _test_basic_computation() -> bool:
 		Vector2i(48, 48),  # depth 96
 	]
 	
-	occ.recompute(agent_cell, voxel_cells, Vector2i(100, 100))
+	occ.recompute(agent_cell, _slices_from_cells(voxel_cells), Vector2i(100, 100))
 	var occluded = occ.get_occluded_cells()
 	
 	if occluded.size() > 0:
@@ -144,15 +178,25 @@ func _test_depth_ordering() -> bool:
 	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
 	var _agent_depth := agent_voxel.x + agent_voxel.y
 	
-	# Create voxel cells at different depths
+	## AUDIT-01: the old span (78..84)² sat almost entirely BEHIND the agent —
+	## his centre is voxel (84, 84), depth 168, while that span tops out at 168.
+	## The set came back empty and the assertion below passed over nothing
+	## ("All 0 cells pass depth test"), which is the same vacuous green the
+	## SCRIPT ERROR used to produce. Straddle him instead: this span runs
+	## depth 156..190, so there is real material on both sides to filter.
 	var voxel_cells: Array = []
-	for x in range(78, 85):  # 10*8 = 80, so range around that
-		for y in range(78, 85):
+	for x in range(78, 96):
+		for y in range(78, 96):
 			voxel_cells.append(Vector2i(x, y))
 	
-	occ.recompute(agent_cell, voxel_cells, Vector2i(200, 200))
+	occ.recompute(agent_cell, _slices_from_cells(voxel_cells), Vector2i(200, 200))
 	var occluded = occ.get_occluded_cells()
 	
+	## AUDIT-01: an empty set must not pass this test by vacuity.
+	if occluded.is_empty():
+		print("    ✗ Empty occlusion set — nothing to depth-test")
+		return false
+
 	# Verify: all cells have depth > agent_depth
 	for cell in occluded.keys():
 		var cell_depth: int = cell.x + cell.y
@@ -163,16 +207,26 @@ func _test_depth_ordering() -> bool:
 	print("    ✓ All %d cells pass depth test: (x+y) > agent_(x+y)" % occluded.size())
 	return true
 
-## Test ring ordering: ring index should increase with distance
+## Ring RANGE, not ring-vs-distance.
+##
+## AUDIT-01 (2026-08-06) — COVERAGE DELIBERATELY REDUCED HERE, read before
+## trusting this test: it used to assert "ring index grows with euclidean
+## distance from the agent", configured through occ.circle_radius_voxels /
+## ring_N_width. Those four properties no longer exist. OCC-08/09/10 replaced
+## the concentric-circle model with ring propagation along the EDGE ADJACENCY
+## GRAPH (`vertex_to_edges`, MAX_RING) — a far edge reachable in one hop is
+## ring 1 while a nearer edge reached in two hops is ring 2, so the old
+## assertion is not merely misconfigured, it is FALSE under the current model.
+##
+## Assigning the dead property threw a SCRIPT ERROR that aborted this function
+## silently. What is asserted below (every ring within [0, MAX_RING]) is true
+## and worth keeping, but it is strictly weaker. **Ring ORDERING is no longer
+## covered by any test** — writing the right assertion for the adjacency model
+## is a design question for whoever resumes OCCLUSION_MASTER_PLAN, not
+## something to guess here.
 func _test_ring_ordering() -> bool:
 	var occ = OcclusionSetMod.new()
-	
-	# Tune small radii for predictable results
-	occ.circle_radius_voxels = 25.0
-	occ.ring_0_width = 5.0
-	occ.ring_1_width = 8.0
-	occ.ring_2_width = 12.0
-	
+
 	var agent_cell := Vector2i(10, 10)
 	var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell)
 	
@@ -182,39 +236,23 @@ func _test_ring_ordering() -> bool:
 		for y in range(75, 95):
 			voxel_cells.append(Vector2i(x, y))
 	
-	occ.recompute(agent_cell, voxel_cells, Vector2i(200, 200))
+	occ.recompute(agent_cell, _slices_from_cells(voxel_cells), Vector2i(200, 200))
 	var occluded = occ.get_occluded_cells()
 	
 	if occluded.size() == 0:
 		print("    ✗ No occluded cells (cannot test ring ordering)")
 		return false
 	
-	# Check that rings are used and distance increases
 	var rings_present: Dictionary = {}
-	var max_ring_dist: Dictionary = {}
-	
 	for cell in occluded.keys():
-		var ring: int = occluded[cell]
-		var dist_sq: float = float((cell.x - agent_voxel.x) * (cell.x - agent_voxel.x) +
-			int((cell.y - agent_voxel.y) * 0.5) * int((cell.y - agent_voxel.y) * 0.5))
-		
-		if not rings_present.has(ring):
-			rings_present[ring] = 0
-			max_ring_dist[ring] = 0.0
-		
-		rings_present[ring] = rings_present[ring] + 1
-		if dist_sq > max_ring_dist[ring]:
-			max_ring_dist[ring] = dist_sq
-	
-	# Verify ring distances increase: max_dist[0] < max_dist[1] < max_dist[2]
-	if max_ring_dist.has(0) and max_ring_dist.has(1):
-		var dist_0: float = max_ring_dist[0]
-		var dist_1: float = max_ring_dist[1]
-		if dist_0 > dist_1:
-			print("    ✗ Ring 0 distance > Ring 1 distance (reversed ordering)")
+		## OCC-09/OCC-10/OCC-26: the value is a dict now, not a bare ring int.
+		var ring: int = occluded[cell]["ring"]
+		if ring < 0 or ring > OcclusionSetMod.MAX_RING:
+			print("    ✗ Cell %s has ring %d outside [0, %d]" % [cell, ring, OcclusionSetMod.MAX_RING])
 			return false
-	
-	print("    ✓ Ring ordering consistent: %s" % rings_present)
+		rings_present[ring] = rings_present.get(ring, 0) + 1
+
+	print("    ✓ Every ring within [0, %d]: %s" % [OcclusionSetMod.MAX_RING, rings_present])
 	return true
 
 ## Test cardinality: should be dozens, not thousands (guards against O5 failure)
@@ -229,7 +267,7 @@ func _test_cardinality() -> bool:
 		for y in range(150, 170):
 			voxel_cells.append(Vector2i(x, y))
 	
-	occ.recompute(agent_cell, voxel_cells, Vector2i(200, 200))
+	occ.recompute(agent_cell, _slices_from_cells(voxel_cells), Vector2i(200, 200))
 	var occluded = occ.get_occluded_cells()
 	
 	# Expect: ~50–200 cells (dozens). NOT thousands.

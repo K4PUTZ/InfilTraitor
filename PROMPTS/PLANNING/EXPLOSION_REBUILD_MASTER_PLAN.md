@@ -10,10 +10,13 @@ passed its gate (§8.1), and Q1b was answered — spherical falloff (D14), plus
 roof-throw holes (D15).** Q7–Q9 remain (Phase B only).
 **Status:** 🟢 **BUILDING. Task 0 done (~737 ms, gate was ~2 s). Task 1
 (E-BAKE) is the next concrete action.** Nothing else is built.
-**Next action:** §11. **Every question that gated Phase A is answered** —
-Q1c closed the same day as D17/D18, and D16 settled the ceiling-vs-floor atom
-contradiction without changing the atom count. Task 1 (E-BAKE) has nothing
-left in front of it.
+**Next action:** §11. **Nothing gates Task 1 (E-BAKE).** Q1c closed the same
+day as D17/D18; D16 settled the ceiling-vs-floor atom contradiction without
+changing the atom count; **D19 made materials surface-independent, which closes
+D10's `crack_factor` gap by construction and voids the old "216-atom variant"
+note.** One narrow item stays open — **Q1d**, how far D19's unification goes on
+the *asset/naming* side — with a stated default and no bearing on Task 1 unless
+the rename is bundled into its `.map.json` change.
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -164,6 +167,38 @@ Plus, as ratified in this session (2026-08-05) and revised the next
   sound and patrol numbers are waiting on. It is **not** an access route: the
   player cannot enter from above, and no tactical entry mechanic hangs off it.
   Any reasoning that treats a roof hole as a way in is wrong.
+- **D19 (new 2026-08-06, supersedes the surface-specific half of D9/D10)**
+  **A material behaves identically on floor, wall and ceiling.** Director:
+  *"os materiais são sempre os mesmos para chão e para teto. O fato de ser
+  'ground' concrete não muda nada em relação a 'slab_concrete'... para
+  durabilidade, baked assets, fuligem, efeitos especiais, brasa, etc, o
+  material se comporta exatamente igual no chão, na parede ou no teto."*
+  Material is one axis; surface is another; **the surface never modifies the
+  material.** The `ground_` prefix encoded surface, which this decision makes
+  meaningless — the canonical name is the bare one (`concrete`, `grass`,
+  `sand`, `dirt`, `gravel`).
+
+  **What it closes for free (behaviour side, do this in Task 2):**
+  `MaterialResistanceTable` stops carrying separate `ground_*` rows. Today
+  `concrete` reads `{destroy 0.3, dent 0.15, crack 0.1}` while
+  `ground_concrete` reads `{0.5, 0.2, 0.0}` — two rows for one material, and
+  the disagreement is exactly **D10's flagged `crack_factor` gap**. Under D19
+  there is one concrete row, its `crack_factor` is 0.1, and floors crack like
+  walls. **D10's gap is therefore closed by construction, not by a separate
+  decision, and the "216-atom variant" note it generated is void.** Same for
+  the `"earth"` shared-damage-family placeholder D9 was already retiring.
+
+  **What is NOT free, and must not be done as a silent rename (flagged, see
+  §10 Q1d):** `ground_*` are not aliases. They are five *photographic,
+  `full_color = true`* materials, and `full_color` is a documented **exception
+  to bake invariant B2's grayscale rule** (`bake_compositor.gd:456`, forcing
+  modulate WHITE so their real RGB survives). So `concrete` currently has two
+  different asset pipelines depending on surface — procedural grayscale for
+  walls, photographic for floors — which is precisely the thing D19 says
+  should not depend on surface. Worse, the strings live in shipped map data:
+  `maps/*.map.json` reference `ground_concrete`, `ground_dirt`, `ground_grass`
+  and `ground_sand`, so a rename is a **MAPFILE migration** under
+  `MAPFILE_REFERENCE.md`'s versioned-section protocol, not a find/replace.
 - **D2** Floor layers: the **first** blast on a virgin GU cedes only
   `FLOOR_TOP_LEVEL` (−1). A **later** blast on a GU that has already been
   blasted also cedes `FLOOR_DEEP_LEVEL` (−2). Requires per-GU blast memory.
@@ -321,7 +356,7 @@ material today):
 
 | Class | Materials (derived) | Combinations | Atoms |
 |---|---|---|---|
-| CRACKED (universal — floor + wall + ceiling, D6) | concrete, stone (2 — `crack_factor > 0`; `ground_concrete` excluded, D10's flagged gap) | 3 decals × 3 substrates | 18 |
+| CRACKED (universal — floor + wall + ceiling, D6) | concrete, stone (2 — `crack_factor > 0`; **D10's `ground_concrete` exclusion is void under D19** — there is one concrete, and it cracks) | 3 decals × 3 substrates | 18 |
 | DENTED WALL | concrete, metal, stone, wood (4) | 2 sides × 3 decals × 3 substrates | 72 |
 | DENTED FLOOR (top only, D9) | ground_concrete (1 — real material, not `"earth"`) | 3 decals × 3 substrates | 9 |
 | DENTED CEILING (bottom, alpha-cut, D7) | concrete, metal, stone, wood (4) | 3 cut shapes × 3 substrates | 36 |
@@ -336,9 +371,11 @@ this table, not an extension of it.
 Not 135 (this session's first recount) and not the original ~192 — three real
 moves happened across two rounds of answers: cracked went universal (D6,
 −63), ceiling dented gained 2 more shapes (D7, +24), and marked/bullets joined
-the pre-bake (D12, +72). If Task 2 later turns on `ground_concrete.crack_factor`
-(D10's flagged gap), the total becomes **216** (+9) — a data-only change, no
-new code path, since D10's derivation already reads the table live.
+the pre-bake (D12, +72). ~~If Task 2 later turns on `ground_concrete.crack_factor` (D10's flagged gap),
+the total becomes 216 (+9).~~ **Void under D19 (2026-08-06):** there is no
+separate `ground_concrete` to turn on — one concrete row, `crack_factor` 0.1,
+and the 18 cracked atoms already cover every surface it appears on. The total
+stays **207**.
 
 ### 3.3 Substrate selection, and how it survives rotation
 
@@ -674,7 +711,7 @@ Two new sibling stores, both in base coords:
 |---|---|---|---|
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | 1 | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
-| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; D10's flagged `ground_concrete.crack_factor` gap gets a decision here, not left silently at 0 | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
+| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; **D19 collapses `MaterialResistanceTable`'s duplicate `ground_*` rows** (one row per material, surface-independent), which closes D10's `crack_factor` gap by construction rather than by a separate decision; the D17 slab-pierce multiplier is exposed here too | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
@@ -882,6 +919,34 @@ expressing itself as *the next slab down*, not as the second level of the same
 slab. Task 2's selftest asserts this shape; a capture that reads wrong is the
 signal to revisit.
 
+#### Q1d — how far does D19's unification go on the ASSET side? 🟡 blocks nothing in Task 1, has a stated default
+
+D19 settles behaviour completely: durability, damage tiers, soot, effects and
+ember are the material's, never the surface's. Task 2 collapses
+`MaterialResistanceTable`'s duplicate rows on that basis and D10's gap closes
+with them. **None of that is in question.**
+
+What is left open is narrower and purely about assets and names:
+
+1. **`concrete` has two texture sources today** — a procedural grayscale
+   facade (walls) and a photographic `full_color` ground page (floors, B2's
+   documented exception). D19 says the *material* is one thing; it does not by
+   itself say which of the two images a concrete **ceiling pierced from above**
+   should show, nor whether the two should eventually converge into one source.
+2. **Four of the five `ground_*` materials have no wall counterpart at all**
+   (`grass`, `dirt`, `gravel`, `sand`). Under D19 they are simply materials
+   that happen to appear only on floors so far — nothing forbids a grass roof.
+   The rename drops their prefix too.
+3. **The rename touches shipped map data.** `maps/*.map.json` carry
+   `ground_concrete`, `ground_dirt`, `ground_grass`, `ground_sand`. Renaming is
+   a versioned MAPFILE migration, not a text substitution.
+
+*Assumed if unanswered:* behaviour unifies in **Task 2** (free, closes D10);
+the **rename and any asset convergence are deferred** and, if wanted, ride
+Task 1's already-planned `.map.json` change for D13's declared-materials
+section — that is the one moment the mapfile is being versioned anyway, so
+bundling costs almost nothing and doing it later costs a second migration.
+
 ### Q2 — ✅ ANSWERED 2026-08-06. Smoke reaches ring 3, weaker, and rings fire in sequence.
 
 > "Q2: sim, vamos fazer a fumaça chegar no ring 3, mas queremos que a
@@ -1015,8 +1080,8 @@ vertical-falloff formula) is still proposed-not-confirmed.**
    one number the whole architecture rests on.
    - Method: temporary `INFILTRAITOR_CAPTURE_ACTION=explosion_bake_spike` hook,
      bake a representative **cold, uncached** sequential run over the
-     **207-atom** table (§3.2, 2026-08-06 final recount — 216 if Task 2 also
-     turns on `ground_concrete.crack_factor`, D10), print real ms, **revert
+     **207-atom** table (§3.2 — the "216 variant" that used to be noted here
+     is void under D19), print real ms, **revert
      the hook before committing** — the same add/measure/revert discipline
      every PERF round used (and `grep -n explosion_bake_spike` must come back
      empty). D13's cache (§3.5) is a Task 1 deliverable, not yet built —

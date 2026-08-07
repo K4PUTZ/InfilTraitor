@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.90 · **Updated:** 2026-08-06 · **Branch:** main
+**Version:** 0.9.90 · **Updated:** 2026-08-07 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -35,7 +35,9 @@
 - RESUMO_SESSAO_2026-08-05_EXPLOSION_RESET.md
 - RESUMO_SESSAO_2026-08-06_AUDIT_TASK0_MATERIAL_REFORM.md
 - RESUMO_SESSAO_2026-08-06_EXPLOSION_REBUILD_ANSWERS.md
+- RESUMO_SESSAO_2026-08-06_E_BAKE_TASK1B.md
 - RESUMO_SESSAO_2026-08-06_E_MAT_TASK1A.md
+- RESUMO_SESSAO_2026-08-07_E_RING_TASK2.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

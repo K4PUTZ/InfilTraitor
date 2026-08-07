@@ -9,23 +9,22 @@ scope + cross-session bake cache, §3.5). Task 0 ran and passed its gate
 (§8.1), Q1b was answered (spherical falloff D14, roof-throw holes D15).
 **Same day, later: Task 1a (E-MAT) shipped — commit `95d83cb`. Later still:
 Task 1b (E-BAKE) shipped — commit `2d18a9e`.** Q7–Q9 remain (Phase B only).
-**Status:** 🟢 **BUILDING. Task 0, Task 1a, and Task 1b are all done.
+**2026-08-07: Task 2 (E-RING) shipped** — see its closure note below.
+**Status:** 🟢 **BUILDING. Task 0, Task 1a, Task 1b, and Task 2 are all done.
 273 real damage atoms bake on PLAYGROUND, cache-verified (1498ms → 31ms on a
 second load), wired end-to-end (`apply_damage_voxel_swap()` resolves via the
-pre-bake for a real wall voxel). Task 2 (E-RING) is the next concrete
+pre-bake for a real wall voxel). `apply_container_damage()`/
+`apply_crater_damage()` now carry the full ring/falloff/gating surface (D14
+spherical falloff, per-tier weights, D2 deep-layer gate, D16 blast-side
+routing, D17 pierce multiplier) — calculation-layer only, no live caller yet
+(see Task 2's own closure note for why). Task 3 (E-SOOT) is the next concrete
 action.**
-**Next action:** §11. **Task 2 (E-RING)** — the 4th ring, per-tier weight
-tables in `BombDef`, D14's spherical vertical-falloff formula
-(`absi(level_offset) / LEVELS_PER_STOREY`, retiring the `is_roof` per-raw-
-level branch), D15's roof-throw holes, D16's blast-side atom routing, D17's
-slab-pierce calibration multiplier, D2's two-layer floor rule. Q1c closed the
-same day as D17/D18; D16 settled the ceiling-vs-floor atom contradiction
-without changing the atom count; D19 made materials surface-independent,
-closing D10's `crack_factor` gap by construction. **Q1d is answered and
-implemented** — D19/D20/D21's rename and dynamic-data reform are live
-(`res://materials/*.json`, `ground_* → bare`, `facade_*`/`slab_*` texture
-split); see the Task 1a/1b closure notes below for the real corrections
-implementation surfaced against the plan text.
+**Next action:** §11. **Task 3 (E-SOOT)** — per-voxel authored soot,
+consuming `soot_ring_tones`/`smoke_ring_weights` (parsed by Task 2, not read
+yet). Q1d is answered and implemented — D19/D20/D21's rename and
+dynamic-data reform are live (`res://materials/*.json`, `ground_* → bare`,
+`facade_*`/`slab_*` texture split); see the Task 1a/1b/2 closure notes below
+for the real corrections surfaced against the plan text.
 
 ### Task 1a (E-MAT) — closed 2026-08-06, commit `95d83cb`
 
@@ -92,6 +91,92 @@ Those documents stay as the historical record of why this rebuild exists.
 (`WEAPON_MASTER_PLAN.md` D26–D33): bullet *mark application* now shares this
 plan's pre-baked registry (D12, 2026-08-06) — see §9's rewritten note. Hit
 detection and damage-state logic in D26–D33 are still untouched.
+
+### Task 2 (E-RING) — closed 2026-08-07, commit `a3f58ee`
+
+Shipped as scoped by this task's own research pass (not the plan row's flat
+list): **neither `apply_container_damage()` nor `apply_crater_damage()` has
+a live caller today** (`TestZoneController.detonate_active()` stayed
+disconnected since 2026-08-05, commit `d412480`), so this task is
+calculation-layer only — parameter surface + selftest proof, no `room`
+state. Confirmed with the Director (AskUserQuestion) before writing code:
+`room._gu_blast_count`'s persistence and reconnecting `detonate_active()`
+are Task 5 (E-WAVE)'s job, since no caller exists yet to drive that state.
+
+- **`frag_grenade.json`/`BombDef`**: 4th ring
+  (`ring_multipliers: [1.0, 0.6, 0.25, 0.0]`) plus `destroy_ring_weights`/
+  `dent_ring_weights`/`crack_ring_weights: Array[float]` and
+  `soot_ring_tones`/`smoke_ring_weights` (parsed now, consumed by Task 3+).
+- **D14 (spherical falloff)**: `apply_container_damage()`'s vertical-ring
+  step is now `absi(level_offset) / LEVELS_PER_STOREY` for wall AND roof —
+  the `is_roof` per-raw-level branch this file's own doc comment used to
+  justify is retired. **Confirmed as load-bearing, not cosmetic**: a
+  dedicated selftest (`test_vertical_falloff_identical_for_wall_and_roof`)
+  proves that under the OLD per-raw-level roof stepping, a roof voxel one
+  level above the blast would already have fallen to ring 1 — under D14 it
+  stays at ring 0, the whole storey through. A second selftest
+  (`test_roof_two_levels_same_ring_group`) proves the master plan's own
+  "roof pierces as one unit falls out for free" claim concretely: two Slabs
+  at levels 0/1 (a real roof's `ROOF_LEVEL_COUNT=2`) land in the identical
+  ring group, not split.
+- **Per-tier weights**: `destroy_ring_weights`/`dent_ring_weights`/
+  `crack_ring_weights` replace the single `ring_multipliers[ring]` scaling
+  read in `apply_container_damage()`. `ring_multipliers` itself is
+  unchanged in its other job (range cap). Proven against the REAL
+  `frag_grenade.json` (loaded via `BombRegistry`, not a hand-built array):
+  ring 3 is in range and evaluated, not skipped, yet produces zero material
+  damage — the real "4th ring is smoke-only" shape.
+- **D2 (two floor layers)**: `apply_crater_damage()` gains
+  `deep_layer_unlocked: bool = false` — the principled replacement for the
+  removed PERF-02 B4 hack ("skip FLOOR_-2 entirely"). `false` leaves every
+  `GeometryCoords.FLOOR_DEEP_LEVEL` voxel `INTACT` even inside
+  `core_radius`; `true` lets them take real damage. The caller flipping
+  this from a GU's second blast onward (`room._gu_blast_count`) is Task 5's
+  job, per the scope note above.
+- **D17 (slab-pierce multiplier)**: `apply_crater_damage()` gains
+  `slab_pierce_multiplier: float = 1.0`, scaling both the destroy
+  probability and the dent probability in the crater's rim band. Trailing +
+  defaulted, byte-for-byte inert at 1.0 (proven, not assumed) — a future
+  calibration knob, since no stacked-slab scenario exists in any real map
+  today (confirmed via a research pass: `SlabRegistry` has no
+  topmost/next query, `Slab` has no pierced/intact flag).
+- **D16 (blast-side atom routing)**: turned out to need **zero changes** to
+  `apply_crater_damage()` — its DENTED path already hardcoded
+  `CarvedSide.TOP` unconditionally, already correct for a roof struck from
+  above. D16 is entirely a render-side fix in
+  `VoxelRenderer.apply_damage_voxel_swap()`: a CEILING container whose
+  voxel carries `damage_carved_side == TOP` now routes through the FLOOR
+  naming/key path (`floor_damage_material()`, the GU's real ground material
+  via `_floor_zone_by_gu`) instead of the ordinary CEILING path. Proven
+  against the real PLAYGROUND registry and a real `TileMapLayer` readback
+  (`damage_atom_bake_selftest.gd`'s new `test_5`) — not just a boolean
+  return value, since both candidate keys are real, registered atoms on
+  this map and could not otherwise be told apart.
+- **D9 (real-material floor lookup)**: confirmed already fully wired before
+  this task (`git show d412480~1` — the pre-reset caller already passed a
+  real material, never hardcoded `"earth"`); this task's job was proving
+  it, not building it. New selftest compares a real `wood` floor against a
+  real `concrete` floor through `apply_crater_damage()` — 10 dents vs 49,
+  tracking each material's real `dent_factor` from the reformed
+  one-row-per-material table (D19/D20).
+
+**One real bug caught and fixed by the selftests themselves, not by manual
+review**: `damage_atom_bake_selftest.gd`'s first draft of the D16 routing
+test re-used one real `Voxel` for both the TOP and BOTTOM checks, calling
+`set_damage(DENTED, ..., TOP, ...)` then `set_damage(DENTED, ..., BOTTOM,
+...)` — but `Voxel.set_damage()` no-ops when `new_state == damage_state`
+(`voxel.gd:105`), so the second call was silently dropped and the BOTTOM
+check ran against a voxel still carrying `TOP`. Caught by a real
+red-before-green run (the BOTTOM assertion failed with a concrete,
+non-matching atlas coordinate — not a crash, not a false green), fixed by
+resetting `damage_state` to `INTACT` between the two calls so the second
+`set_damage()` actually applies.
+
+Full verification: `project_lint.py` 183 files/0 errors, `run_selftests.py`
+31/31 clean (13 new assertions: 6 in `blast_calculator_selftest.gd`, 1 new
+multi-assertion test in `damage_atom_bake_selftest.gd`), `check_invariants.py`
+OK, `gen_codemap.py --check` clean. No live capture — no live caller exists
+to capture (confirmed above), matching this task's own stated gate.
 
 ---
 
@@ -844,7 +929,7 @@ Two new sibling stores, both in base coords:
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | **1a** | ✅ **DONE 2026-08-06, commit `95d83cb`** — **E-MAT**, D19/D20/D21 | **One material table, surface-independent.** `MaterialResistanceTable` + `MaterialRegistry` load from `res://materials/*.json` (+ `user://` override) instead of hardcoded GDScript — the duplicate `ground_*` rows collapsed into their base material, one `concrete` row, `crack_factor` 0.1, closing D10's gap; texture identity moved to `(material, surface_class)` via `BakePolicy` — `SLICE → facade_*` (unchanged, **including roofs**, which reproject their own wall texture rather than adopting a SLAB source) and `SLAB → slab_*` (renamed from `ground_*`, floor zones only); `full_color` **retired** from `MaterialDef` — corrected against the plan text: the bake compositor's WHITE-vs-tinted modulate now reads the texture id's own prefix, since one unified material (concrete) needs tinted-on-walls AND full-color-on-floors at once, which a single material-level flag cannot express; `floor_zones` MAPFILE section bumped v1→v2 with a migration, 2 shipped maps edited directly; no code names a map anywhere (D21) | `project_lint` + all 30 selftests clean · `check_invariants` OK · **real PLAYGROUND capture pixel-identical to the pre-reform one — 0/921600 differing pixels** (`Screenshots/history/e_mat_before.png`/`e_mat_after.png`) · `material_reform_selftest.gd` (new) proves the unified row + the surface-split render |
 | **1b** | ✅ **DONE 2026-08-06, commit `2d18a9e`** — **E-BAKE** | `VoxelVariantRegistry` re-keyed to `(element_class, material, damage_material_name, substrate_variant)`; `DamageVariantBaker` rewritten to `bake_all(declared_materials, floor_materials)`, D10-derived (crack_factor > 0, not the hardcoded `IMPACT_CRACK_MATERIALS` list) across WALL/CEILING/FLOOR, scoped to each map's `damage_materials` MAPFILE section (D13, registered); D12's marked/bullet atoms baked as **both** shapes (144 atoms, Director-confirmed, not the plan's original 72) — and found to already be **live and consumed by `fire_active()`** with zero code changes there (§9's rewritten note); floor specials source substrate from the real ground material via SLAB atoms per D9; `user://` bake cache wired (reusing `BakeCompositor`'s own encode/decode/load/save helpers); wired into `room_builder`; `damage_atom_bake_selftest.gd` (new) asserts real coverage, the new key's consumer, cache parity, and D13's loud-fail | **273 real atoms** on PLAYGROUND (0 unresolved) · load-time count+ms printed · second-load cache-hit capture: **1498 ms → 31 ms**, 255/255 disk cache hits, 0 misses · firearm live-D33 sanity capture unaffected |
-| 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; **D19 collapses `MaterialResistanceTable`'s duplicate `ground_*` rows** (one row per material, surface-independent), which closes D10's `crack_factor` gap by construction rather than by a separate decision; the D17 slab-pierce multiplier is exposed here too | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
+| **2** | ✅ **DONE 2026-08-07, commit `a3f58ee`** — **E-RING** | Calculation-layer only (neither function has a live caller yet — confirmed, Task 5's job to reconnect). 4th ring in `frag_grenade.json` + `destroy_ring_weights`/`dent_ring_weights`/`crack_ring_weights` in `BombDef`; `apply_container_damage()`'s vertical-ring step rewritten to D14's spherical `absi(level_offset) / LEVELS_PER_STOREY` (both wall and roof, `is_roof` per-raw-level branch retired); `apply_crater_damage()` gains `deep_layer_unlocked` (D2) and `slab_pierce_multiplier` (D17, trailing + inert at 1.0); D16 needed zero calculation-layer changes — it's entirely `VoxelRenderer.apply_damage_voxel_swap()`'s CEILING+TOP→FLOOR routing fix; D9 confirmed already fully wired pre-task, this task's job was proving it | `blast_calculator_selftest` +6 real assertions (ring-3 red-before-green against the REAL `frag_grenade.json`, D14 wall/roof parity, the roof-two-levels-one-ring-group proof, wood-vs-concrete floor realism, D2 gate on/off, D17 multiplier live-check) · `damage_atom_bake_selftest` +1 test (D16 routing proven against the real PLAYGROUND registry + a real `TileMapLayer` readback, not a boolean) · 31/31 selftests clean |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
 | 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
@@ -1187,48 +1272,36 @@ animation is not.
 
 ---
 
-## 11. Next session starts here (updated 2026-08-06, post-Task-1a)
+## 11. Next session starts here (updated 2026-08-07, post-Task-2)
 
-**Resume point:** Task 0 and Task 1a (E-MAT) are both done and committed
-(`95d83cb`). Grenades still detonate and damage nothing (Phase A's 15 waves
-are Task 2/E-RING onward, not built yet); firearms still work, untouched.
-**Task 1b (E-BAKE) is the next concrete action** — see §8's Task 1b row for
-its full deliverable: `VoxelVariantRegistry` re-keyed, `DamageVariantBaker`
-rewritten to enumerate the 207-atom table reading 1a's now-unified
-`MaterialResistanceTable`/`MaterialRegistry`, D13's `damage_materials`
-MAPFILE section (read `MAPFILE_REFERENCE.md`'s extension protocol first —
-1a already bumped `floor_zones` to v2, a good worked example of the pattern),
-the `user://` bake cache, and D12's marked/bullet atoms (baked, not yet wired
-to `fire_active()` — that's its own checkpoint, item 4 below, unchanged).
+**Resume point:** Task 0, Task 1a (E-MAT), Task 1b (E-BAKE), and Task 2
+(E-RING) are all done and committed. Grenades still detonate and damage
+nothing — `apply_container_damage()`/`apply_crater_damage()` now carry the
+full ring/falloff/gating surface but have no live caller yet
+(`TestZoneController.detonate_active()` stays disconnected until Task 5);
+firearms still work, untouched. **Task 3 (E-SOOT) is the next concrete
+action** — see §8's Task 3 row and §5: per-voxel authored soot codes,
+`min()`-merging derived + stamped, ring-3 stamping. `soot_ring_tones`/
+`smoke_ring_weights` are already parsed into `BombDef` (Task 2) and sitting
+unread — Task 3 is where they first get consumed.
 
-Before starting Task 1b: reread §3.2's atom enumeration table with 1a's
-naming fresh in mind — `slab_concrete` is now a real, working texture id (not
-a future one), and the floor cohort's rows should key off `concrete`, not
-`ground_concrete`. Task 0's own flagged caveat (the floor cohort needed 7305
-attempts to land 9 atoms, a 0.1% hit rate on `resolve_flat()`) is exactly the
-kind of thing Task 1b's rewrite should re-measure now that the floor's
-material id and texture id are no longer the same string.
-
-Older order-of-business items (Q1b confirmation, Task 0, Task 1a, Task 1b)
-are fully closed and folded into §1/§8.1/§8's task rows / the closure notes
-above; not repeated here.
+Older order-of-business items (Q1b confirmation, Task 0, Task 1a, Task 1b,
+Task 2) are fully closed and folded into §1/§8.1/§8's task rows / the
+closure notes above; not repeated here.
 
 **Order of business:**
 
-1. **Task 2 (E-RING) is next.** Read §8's Task 2 row: the 4th ring in
-   `frag_grenade.json`, per-tier weight tables in `BombDef`, D14's spherical
-   vertical-falloff formula in `apply_container_damage()`/
-   `apply_crater_damage()` (`absi(level_offset) / LEVELS_PER_STOREY`,
-   retiring the `is_roof` per-raw-level branch), D15's roof-throw holes,
-   D16's blast-side atom routing (no new atoms, just which pool a struck
-   slab draws from), D17's slab-pierce calibration multiplier (distinct from
-   `destroy_multiplier`), D2's two-layer floor rule, and D9's floor-material-
-   real resistance lookup (`apply_crater_damage()` keying off the GU's real
-   ground material instead of `"earth"`).
-2. Once Task 2 lands and Phase A's blast waves (Tasks 3–5) are captured and
-   signed off, `TestZoneController.detonate_active()` gets rewired back onto
+1. **Task 3 (E-SOOT) is next.** Read §8's Task 3 row and §5.1–5.3: per-voxel
+   granularity (not per-face), authored by the blast per ring rather than
+   derived, `FACE_SOOT_CLEAN = 4` real tones. §5.3 ("Not breaking firearms")
+   is the scope boundary to reread first — this task must not touch the
+   D33 live-compositing path Task 1b just finished proving untouched.
+2. Once Tasks 3–5 (Phase A's remaining waves) are captured and signed off,
+   `TestZoneController.detonate_active()` gets rewired back onto
    `BlastCalculator` (removed 2026-08-05, commit `d412480`) — that is the
-   actual remaining "flip the switch" moment for explosions. **Firearms
+   actual remaining "flip the switch" moment for explosions, and also where
+   Task 2's `deep_layer_unlocked`/`slab_pierce_multiplier` parameters and
+   D2's `room._gu_blast_count` state first get a real caller. **Firearms
    already flip their own switch automatically** (see §9's rewritten D12
    note) — nothing left to do there.
 
@@ -1241,7 +1314,11 @@ above; not repeated here.
 - re-enable camera rotation as part of this work (§9);
 - treat the 207/273-atom counts in §3.2/Task 1b as open numbers — both are
   settled and measured (D16 adds routing, not atoms; Task 0 measured ~737 ms,
-  Task 1b measured the real 273-atom bake at ~1.5 s cold / ~31 ms warm).
+  Task 1b measured the real 273-atom bake at ~1.5 s cold / ~31 ms warm);
+- assume Task 2's new parameters (`deep_layer_unlocked`,
+  `slab_pierce_multiplier`, the per-tier weight arrays) are live in any real
+  playthrough — they are proven correct in isolation via selftest only,
+  since no caller exists yet (Task 5's job).
 
 ---
 

@@ -3,7 +3,8 @@
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-07_E_SOOT_TASK3.md`, which
 closed with Task 3 done and Task 4 as the next action.
 **VERSION:** 0.9.90 (unchanged — no version bump requested).
-**Commit:** pending (see next message).
+**Commit:** `ddbe7dd` — `[E-PLAN] Task 4 — DetonationPlan builder: real
+resolution, single light query, zero live TileMapLayer writes`.
 **Mode:** Solo mode.
 
 ---
@@ -171,4 +172,4 @@ today.
 - Explosive destruction is still fully invisible end-to-end
   (`detonate_active()` not yet rewired). Firearms unaffected, untouched this
   session (proven by the unchanged seam-selftest suite, not just claimed).
-- Pushed to `main` (pending — see next message).
+- Pushed to `main` (`ddbe7dd`).

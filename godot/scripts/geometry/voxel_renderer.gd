@@ -1860,11 +1860,25 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 ## material id like "concrete" no longer says by itself which texture family
 ## it means. Defaults to SLICE (today's roof/wall behavior); the edge/wall
 ## branch above never reads it. Every floor-zone caller passes SLAB.
+## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — `apply` is the
+## resolve-only seam DetonationPlanBuilder needs: every branch below still
+## computes the SAME source_id/atlas_coords/alternative_id it always did
+## (baked lookup, D33 live-compositing fallback, or the flat material-only
+## last resort), but when `apply` is false the ONE side-effecting line
+## (`layer.set_cell()`) is skipped and the resolved triple is returned
+## instead — the whole point of §2's "no compositing, no lookup... inside a
+## wave": a pre-compute pass can resolve every affected cell's final tile
+## WITHOUT touching the live TileMapLayer, and a later wave (Task 5) turns
+## the returned triple into a real set_cell() call with zero further lookup.
+## Trailing + defaulted true, so every existing caller (all of them) is
+## byte-for-byte unaffected — the return value they've always ignored (void)
+## is simply an ignorable empty Dictionary now instead.
 func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      edge = null, voxel_xy: Vector2i = Vector2i.ZERO,
                      slice_face: int = 0, flat_baked: bool = false,
                      zone_material: String = "",
-                     surface_class: int = BakePolicyClass.SurfaceClass.SLICE) -> void:
+                     surface_class: int = BakePolicyClass.SurfaceClass.SLICE,
+                     apply: bool = true) -> Dictionary:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -1872,7 +1886,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	var layer: TileMapLayer = get_layer(level)
 	if layer == null:
 		push_warning("VoxelRenderer._set_voxel_cell: level %d has no layer — call _ensure_voxel_layers()/_ensure_negative_voxel_layer() first" % level)
-		return
+		return {}
 
 	var source_id: int = -1
 	var atlas_coords: Vector2i = Vector2i.ZERO
@@ -2072,7 +2086,10 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			source_id = 0  # Fallback to concrete
 		atlas_coords = Vector2i.ZERO
 
+	if not apply:
+		return {"source_id": source_id, "atlas_coords": atlas_coords, "alternative_id": alternative_id}
 	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
+	return {}
 
 
 
@@ -2779,9 +2796,20 @@ func _ensure_negative_voxel_layer(level: int) -> void:
 ## Not wired to any real map data yet (no MapSpec integration) — this is the
 ## render-side half of Part 2's core, consumed directly by whatever builds a
 ## Slab (today: only slab_generator.gd's manual/test construction).
-func render_slab(slab: Slab) -> void:
+## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — `apply` mirrors
+## _set_voxel_cell()'s own resolve-only seam: DetonationPlanBuilder's floor-
+## reveal exposure fallback (§2 — "destroying a voxel exposes geometry behind
+## it, which must fall back to the material atlas") needs to resolve the
+## deep floor Slab's tiles WITHOUT painting them onto the live TileMapLayer
+## before the destroy wave that exposes them actually fires. Returns
+## Array[{"grid_pos":Vector2i, "level":int, "source_id":int,
+## "atlas_coords":Vector2i, "alternative_id":int}] when apply is false (one
+## entry per currently-visible voxel), empty when apply is true (existing
+## callers all ignore the return value already).
+func render_slab(slab: Slab, apply: bool = true) -> Array:
+	var resolved: Array = []
 	if slab.voxels.is_empty():
-		return
+		return resolved
 	# All of one Slab's voxels share slab.level (SlabGenerator.generate()'s
 	# invariant) — one layer to ensure, not a min/max scan. D17: negative
 	# (floor) levels route to the negative-only ensure function.
@@ -2819,17 +2847,27 @@ func render_slab(slab: Slab) -> void:
 		for voxel in slab.voxels:
 			if not voxel.visible:
 				continue
-			_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
+			var result := _set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
 					null, voxel.grid_pos - slab.texture_anchor, 0, true,
-					"", BakePolicyClass.SurfaceClass.SLAB)
-		return
+					"", BakePolicyClass.SurfaceClass.SLAB, apply)
+			if not apply and not result.is_empty():
+				resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
+					"source_id": result["source_id"], "atlas_coords": result["atlas_coords"],
+					"alternative_id": result["alternative_id"]})
+		return resolved
 
 	for voxel in slab.voxels:
 		if not voxel.visible:
 			continue
 		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
 		var material_name: String = "earth_%d" % variant_index
-		_set_voxel_cell(voxel.grid_pos, voxel.level, material_name)
+		var result2 := _set_voxel_cell(voxel.grid_pos, voxel.level, material_name,
+				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
+		if not apply and not result2.is_empty():
+			resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
+				"source_id": result2["source_id"], "atlas_coords": result2["atlas_coords"],
+				"alternative_id": result2["alternative_id"]})
+	return resolved
 
 
 ## FLOOR-DEPTH-01 — put a deferred-render floor plane on screen.
@@ -2843,8 +2881,8 @@ func render_slab(slab: Slab) -> void:
 ## Idempotent by construction (render_slab skips destroyed voxels): calling it on
 ## an already-revealed, already-cratered plane re-places exactly the cells that
 ## are still there and leaves the holes alone.
-func reveal_floor_slab(slab: Slab) -> void:
-	render_slab(slab)
+func reveal_floor_slab(slab: Slab, apply: bool = true) -> Array:
+	return render_slab(slab, apply)
 
 
 ## DESTRUCTION — render one Slab's voxels using a single FIXED material for
@@ -2896,7 +2934,14 @@ func render_slab_solid(slab: Slab) -> void:
 ## destructible planes — a ground_* material is absent from MATERIALS, so
 ## letting one through with the bake off would resolve to MATERIALS[0] and paint
 ## the crater bottom flat concrete gray).
-func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
+## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — `apply` mirrors
+## render_slab()'s own resolve-only seam, for the OTHER exposure-fallback
+## branch (_expose_below()'s "no real Slab below — paint the fixed earth
+## plane directly" case). See render_slab()'s doc for the full rationale;
+## same return shape (Array of resolved per-voxel entries, empty when apply
+## is true).
+func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
+	var resolved: Array = []
 	if level < 0:
 		_ensure_negative_voxel_layer(level)
 	else:
@@ -2913,14 +2958,24 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int) -> void:
 		var zone_material: String = String(zone["material"])
 		var zone_anchor: Vector2i = zone["anchor"]
 		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-			_set_voxel_cell(voxel_pos, level, zone_material,
+			var result := _set_voxel_cell(voxel_pos, level, zone_material,
 					null, voxel_pos - zone_anchor, 0, true,
-					"", BakePolicyClass.SurfaceClass.SLAB)
-		return
+					"", BakePolicyClass.SurfaceClass.SLAB, apply)
+			if not apply and not result.is_empty():
+				resolved.append({"grid_pos": voxel_pos, "level": level,
+					"source_id": result["source_id"], "atlas_coords": result["atlas_coords"],
+					"alternative_id": result["alternative_id"]})
+		return resolved
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
 		var variant_index: int = EarthVariantSelector.variant_for(voxel_pos, level)
-		_set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index)
+		var result2 := _set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index,
+				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
+		if not apply and not result2.is_empty():
+			resolved.append({"grid_pos": voxel_pos, "level": level,
+				"source_id": result2["source_id"], "atlas_coords": result2["atlas_coords"],
+				"alternative_id": result2["alternative_id"]})
+	return resolved
 
 
 ## FLOOR-DEPTH-01 — publish one GU's declared floor zone, so the FIXED levels
@@ -3002,12 +3057,22 @@ func clear() -> void:
 ##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant/
 ##     substrate set
 ##   container: the Slice or Slab this voxel belongs to
-##   level: the storey index
 ##
-## Returns: true if swap succeeded, false if no variant found (caller falls back)
-func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
+## Returns: {"source_id":int, "atlas_coords":Vector2i} on a hit, {} on a miss
+## (registry uninitialized, unknown container type, or no registered variant
+## — the caller's own fallback line renders it, unchanged).
+##
+## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — extracted out of
+## apply_damage_voxel_swap() (now a thin wrapper below) so DetonationPlan-
+## Builder's pre-compute pass can resolve WHICH atom a damaged voxel maps to
+## WITHOUT touching the live TileMapLayer — the whole point of §2's "no
+## compositing, no lookup... inside a wave": every branch here is the exact
+## same lookup the live D-ARCH-01 render path uses, so the two can never
+## disagree about which atom a given (voxel, container) resolves to. Pure
+## extraction, same reasoning as Task 3's vertical_ring_for() split.
+func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
 	if _damage_variant_registry == null:
-		return false  # Registry not initialized, cannot swap
+		return {}  # Registry not initialized, cannot swap
 
 	var render_material: String
 	var material_for_key: String
@@ -3072,14 +3137,24 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
 			material_for_key = container.material
 			element_class = "INTERIOR"
 	else:
-		return false  # Unknown container type
+		return {}  # Unknown container type
 
 	var variant_key := VoxelVariantRegistryClass.make_variant_key(
 		element_class, material_for_key, render_material, voxel.damage_substrate)
-	var entry: Dictionary = _damage_variant_registry.get_variant(variant_key)
+	return _damage_variant_registry.get_variant(variant_key)
+
+
+## D-ARCH-01: Apply damage to a voxel by swapping tile IDs (no runtime
+## compositing). Called immediately after voxel.set_damage() to render the
+## damage mark. Thin wrapper over resolve_damage_voxel_swap() (Task 4/E-PLAN,
+## 2026-08-07) — this function is now just "resolve, then place at alt 0"
+## (the separate map-wide light repaint fixes up the real alt afterward, same
+## as every other placement path); on a miss it returns false so the caller's
+## own fallback line renders it via D33 runtime compositing.
+func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
+	var entry := resolve_damage_voxel_swap(voxel, container)
 	if entry.is_empty():
 		return false  # No pre-baked variant — caller's fallback line renders it
-
 	var layer := get_layer(level)
 	if layer == null:
 		return false

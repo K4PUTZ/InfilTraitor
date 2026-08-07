@@ -615,7 +615,7 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
-		var ring: int = base_ring + _vertical_ring_for(level_offset)
+		var ring: int = base_ring + vertical_ring_for(level_offset)
 		if ring >= ring_multipliers.size():
 			continue
 		if not by_ring.has(ring):
@@ -678,12 +678,16 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 
 
 ## D14's spherical vertical-ring step, extracted out of apply_container_damage()
-## (EXPLOSION_REBUILD_MASTER_PLAN Task 3/E-SOOT, 2026-08-07) so the new soot
-## stamp functions below reuse the exact same formula textually instead of a
-## second copy free to drift out of sync. Pure extraction — apply_container_
-## damage()'s own behavior is unchanged (see D14's doc comment above for the
-## formula's rationale).
-static func _vertical_ring_for(level_offset: int) -> int:
+## (EXPLOSION_REBUILD_MASTER_PLAN Task 3/E-SOOT, 2026-08-07) so the soot stamp
+## functions below reuse the exact same formula textually instead of a second
+## copy free to drift out of sync. Pure extraction — apply_container_damage()'s
+## own behavior is unchanged (see D14's doc comment above for the formula's
+## rationale). Kept public, not `_`-prefixed (Task 4/E-PLAN, 2026-08-07):
+## DetonationPlanBuilder is a second, cross-file consumer that needs the exact
+## same per-voxel ring a container's damage/soot calls already used, to group
+## its plan entries by ring — a private name would invite a silently drifting
+## second copy in that file instead.
+static func vertical_ring_for(level_offset: int) -> int:
 	return int(floor(float(absi(level_offset)) / float(GeometryCoords.LEVELS_PER_STOREY)))
 
 
@@ -1154,7 +1158,7 @@ static func _toward_for_carved_side(carved_side: int) -> Vector3i:
 ## step direction, here fed a direction toward the EPICENTRE instead of
 ## toward a specific neighbouring hole.
 ##
-## Ring math is base_ring + _vertical_ring_for(level_offset) — textually the
+## Ring math is base_ring + vertical_ring_for(level_offset) — textually the
 ## same D14 formula apply_container_damage() uses, not a second copy. tone =
 ## soot_ring_tones[ring] is fed as _face_rings_for()'s `ring` argument with
 ## n_rings=FACE_SOOT_CLEAN (not soot_ring_tones.size()): tone is already a
@@ -1176,7 +1180,7 @@ static func stamp_container_soot(voxels: Array, base_ring: int, base_level: int,
 		face_soot_falloff: int = 1) -> void:
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
-		var ring: int = base_ring + _vertical_ring_for(level_offset)
+		var ring: int = base_ring + vertical_ring_for(level_offset)
 		if ring >= soot_ring_tones.size():
 			continue
 		var tone: int = soot_ring_tones[ring]
@@ -1210,19 +1214,30 @@ static func stamp_container_soot(voxels: Array, base_ring: int, base_level: int,
 ## Isotropic (Vector3i(tone, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)): a floor
 ## voxel has exactly one visible face (the top), so there is genuinely one
 ## channel to stamp, not a shortcut around directionality.
+##
+## crater_ring_for() (Task 4/E-PLAN, 2026-08-07): extracted out of this
+## function's own inline body so DetonationPlanBuilder can classify a floor
+## voxel's destroy/dent OUTCOME into the same numbered ring this function
+## already uses for soot — the wave choreography groups floor cells by ring
+## exactly like wall/roof cells, and this is the one place that ring is
+## defined for a radially-damaged (not ring-flooded) container. Pure
+## extraction, same reasoning as vertical_ring_for() above: ring N covers
+## d in (max_radius + (N-1)*rim_span, max_radius + N*rim_span] — a boundary
+## distance belongs to the CLOSER ring, matching every other `<=`-based band
+## test in apply_crater_damage() above. ceil, not floor: floor would put an
+## exact-multiple boundary (e.g. d == max_radius + rim_span) one ring further
+## out than every neighbouring distance a fraction closer.
+static func crater_ring_for(d: float, max_radius: float, rim_span: float) -> int:
+	return 0 if d <= max_radius else int(ceil((d - max_radius) / rim_span))
+
+
 static func stamp_crater_soot(voxels: Array, epicenter: Vector2i,
 		core_radius: float, max_radius: float, soot_ring_tones: Array[int],
 		out_snapshot: Dictionary, out_faces: Dictionary) -> void:
 	var rim_span: float = maxf(max_radius - core_radius, 0.001)
 	for voxel in voxels:
 		var d: float = Vector2(voxel.grid_pos - epicenter).length()
-		## ring N covers d in (max_radius + (N-1)*rim_span, max_radius + N*rim_span]
-		## — a boundary distance belongs to the CLOSER ring, matching every other
-		## `<=`-based band test in apply_crater_damage() above. ceil, not floor:
-		## floor would put an exact-multiple boundary (e.g. d == max_radius +
-		## rim_span) one ring further out than every neighbouring distance a
-		## fraction closer.
-		var ring: int = 0 if d <= max_radius else int(ceil((d - max_radius) / rim_span))
+		var ring: int = crater_ring_for(d, max_radius, rim_span)
 		if ring >= soot_ring_tones.size():
 			continue
 		var tone: int = soot_ring_tones[ring]

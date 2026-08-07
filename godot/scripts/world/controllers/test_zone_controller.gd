@@ -24,10 +24,21 @@ class_name TestZoneController
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
+const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
+const DetonationChoreographerClass = preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
+
+## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE) — keeps the in-flight
+## DetonationChoreographer (a RefCounted, not a Node) alive for its whole
+## ~600ms wave sequence. `detonate_active()`'s own local variable is not
+## enough on its own to guarantee this across every code path; holding it
+## here ties its lifetime to this controller (the whole room's), the same
+## explicit-ownership pattern _grenades already uses instead of leaning on
+## implicit signal-connection keep-alive semantics.
+var _active_choreographer = null
 
 const MENU_GAP_ABOVE_PX: float = 30.0
 
@@ -144,15 +155,26 @@ func open_menu_for(index: int) -> void:
 			room._blast_wireframe_overlay.show_footprint(gu_rings.keys())
 
 
-## DESTRUCTION_MASTER_PLAN Part 3: the trigger. Explosive voxel destruction is
-## disconnected here (Director, 2026-08-05) while the destruction visual
-## system is rebuilt from scratch — the prior patch-on-patch arc (PERF-01/02/
-## 03, D11, D-ARCH-01) was judged not worth its own cost/complexity. Detonating
-## still hides the grenade and closes its menu; it no longer damages voxels.
-## BlastCalculator, the decal compositors, and this session's
-## VoxelVariantRegistry/DamageVariantBaker/apply_damage_voxel_swap() stay
-## intact and unused, ready for the rebuild. Firearm destruction
-## (WeaponBenchController.fire_active()) is untouched by this.
+## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real
+## trigger, reconnected — disconnected 2026-08-05 (commit `d412480`) while the
+## destruction visual system was rebuilt from scratch (the prior patch-on-
+## patch arc, PERF-01/02/03 + D11 + D-ARCH-01, was judged not worth its own
+## cost/complexity). `DetonationPlanBuilder.build_plan()` (Task 4) does all
+## resolution and exposure fallback up front; `DetonationChoreographer`
+## (Task 5) is the only thing that actually paints it, as the real 15-wave
+## sequence from §1's table. Firearm destruction
+## (WeaponBenchController.fire_active()) is untouched by this — it still
+## renders through VoxelRenderer.process_dirty()'s single-frame D-ARCH-01 swap.
+##
+## Gap, flagged not silently dropped: VFX-01's per-voxel dust/spark/chip
+## debris (room._dispatch_destruction_vfx(), driven by the voxel_destroyed
+## signal) does not fire for blast-caused destruction any more — the
+## choreographer's destroy wave calls layer.erase_cell() directly rather than
+## going through VoxelRenderer.process_dirty(), and the DetonationPlan's own
+## destroy entries carry no material to dispatch debris VFX from (§6.1's
+## literal shape is {cell, level} only). Firearms are unaffected (still the
+## signal-driven path). Revisit if the Director wants blast debris back —
+## needs material threaded onto destroy plan entries, not a quick patch here.
 func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return
@@ -163,9 +185,55 @@ func detonate_active() -> void:
 			sprite.visible = false
 		g["detonated"] = true
 
+		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
+			var gu: Vector2i = g["gu_cell"]
+			var ctx := _build_detonation_ctx(gu)
+			var plan := DetonationPlanBuilderClass.build_plan(bomb_def, gu, ctx)
+			room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
+
+			## VL-PERSIST: record every voxel this blast actually changed so
+			## rotation replays it — the exact set Task 4's own plan returns,
+			## no second flood/find_affected_containers pass needed.
+			for voxel in plan["touched_voxels"]:
+				room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
+					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
+					voxel.damage_substrate)
+
+			var choreographer := DetonationChoreographerClass.new()
+			_active_choreographer = choreographer
+			choreographer.finished.connect(func(): _active_choreographer = null)
+			choreographer.start(plan, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
+
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## The real ctx DetonationPlanBuilder.build_plan() needs, assembled from the
+## live room — mirrors detonation_plan_selftest.gd's own MinimalRoom ctx
+## builder, except lights/shadow_results come from the REAL LightingController
+## instead of a hand-converted map-data dict (a real room already has one).
+func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
+	var lights: Array = []
+	var shadow_results: Array = []
+	if room._lighting_controller != null:
+		var registry = room._lighting_controller.get_light_registry()
+		if registry != null:
+			lights = registry.get_active_lights()
+		shadow_results = room._lighting_controller.get_shadow_results()
+	return {
+		"edge_registry": room._edge_registry,
+		"slab_registry": room._slab_registry,
+		"voxel_renderer": room._voxel_renderer,
+		"blocked_edges": _blocked_edges_dict(),
+		"blocked_cells": room._blocked_cells,
+		"lights": lights,
+		"shadow_results": shadow_results,
+		"under_structure": room._under_structure,
+		## D2: unlocked from this GU's SECOND blast onward.
+		"deep_layer_unlocked": int(room._gu_blast_count.get(source_gu, 0)) > 0,
+	}
 
 
 func cancel_active() -> void:

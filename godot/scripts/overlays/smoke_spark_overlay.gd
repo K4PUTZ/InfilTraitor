@@ -50,7 +50,13 @@ var _sparks: Array = [] ## [{"pos","vel","elapsed","duration","color"}]
 ## Queue a small puff at `pos`. `color` carries its own alpha (base opacity);
 ## `scale` shrinks/grows both size and offset — used by EmberOverlay to spawn
 ## a smaller puff when an ember burns out.
-func add_smoke(pos: Vector2, color: Color, scale: float = 1.0) -> void:
+## `duration_scale` (EXPLOSION_REBUILD_MASTER_PLAN Task 5/E-WAVE, 2026-08-07):
+## multiplies the randomized min/max duration window — DetonationChoreographer's
+## smoke waves use this so a farther ring's puff genuinely lingers for less
+## time, not just a smaller/fainter one ("usando durações diferentes", Director,
+## recorded at §6.2). Trailing + defaulted to 1.0, so every pre-existing caller
+## (EmberOverlay, room.gd's VFX-01 dispatch) is byte-for-byte unaffected.
+func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0) -> void:
 	var blob_count: int = randi_range(smoke_blob_count_min, smoke_blob_count_max)
 	for i in range(blob_count):
 		var offset := Vector2(randf_range(-smoke_spawn_jitter, smoke_spawn_jitter),
@@ -61,7 +67,7 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0) -> void:
 			"pos": pos + offset,
 			"vel": vel,
 			"elapsed": 0.0,
-			"duration": randf_range(smoke_duration_min, smoke_duration_max),
+			"duration": randf_range(smoke_duration_min, smoke_duration_max) * duration_scale,
 			"color": color,
 			"start_radius": smoke_start_radius * scale * randf_range(0.85, 1.15),
 			"end_radius": smoke_end_radius * scale * randf_range(0.85, 1.15),

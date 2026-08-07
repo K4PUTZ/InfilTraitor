@@ -17,10 +17,14 @@
 ##    established, unchanged writer — DESTRUCTION_MASTER_PLAN §3), but its
 ##    on-screen TILE is only ever resolved, never painted, until a wave
 ##    chooses to apply the plan entry it produced here.
-##  - It never persists anything into `room._base_damage`/`_gu_blast_count`/
-##    a stamped-blast replay list — that is Task 5's job, the same split
-##    Task 2/3 already established for their own new parameters (no live
-##    caller exists yet to drive that state).
+##  - It never CALLS `room.record_voxel_damage_to_base()`/increments
+##    `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's
+##    job, the same split Task 2/3 already established for their own new
+##    parameters. It DOES return the raw material for the first of those
+##    (`plan["touched_voxels"]`, `Array[Voxel]` — every voxel this blast's
+##    containers actually changed the damage_state of, DESTROYED or DENTED/
+##    CRACKED), so Task 5's caller can persist without a second flood/
+##    find_affected_containers pass to re-derive the same set.
 ##  - It never schedules or times anything — the plan is a static census of
 ##    what EVERY wave should eventually paint; Task 5 owns turning that into
 ##    a 40 ms-cadenced sequence.
@@ -72,6 +76,7 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 
 	var plan: Dictionary = {
 		"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "soot": {},
+		"touched_voxels": [],   ## Array[Voxel] — Task 5's persistence seam, see below
 	}
 
 	var gu_rings := BlastCalculatorClass.flood_gu_rings(source_gu, bomb_def, blocked_edges, blocked_cells)
@@ -211,6 +216,12 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	## --- Package destroy/dented/cracked, keyed by ring, from the containers'
 	## already-mutated Voxel state (never re-derived, never re-rolled). ---
 	var touched_this_blast: Dictionary = {}   ## Vector3i -> true, excludes these from the soot-only wave
+	## Every voxel whose damage_state this blast actually changed — the exact
+	## set room.record_voxel_damage_to_base() needs for VL-PERSIST (rotation
+	## survival). Returned alongside the plan (see "touched_voxels" below) so
+	## Task 5's caller persists from real Voxel objects, never re-deriving the
+	## affected set with a second flood/find_affected_containers pass.
+	var touched_voxels: Array = []
 	for key in ring_of:
 		var voxel: Voxel = cell_to_voxel.get(key)
 		if voxel == null:
@@ -218,9 +229,11 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		var ring: int = ring_of[key]
 		if voxel.damage_state == Voxel.DamageState.DESTROYED:
 			touched_this_blast[key] = true
+			touched_voxels.append(voxel)
 			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level})
 		elif voxel.damage_state == Voxel.DamageState.DENTED or voxel.damage_state == Voxel.DamageState.CRACKED:
 			touched_this_blast[key] = true
+			touched_voxels.append(voxel)
 			var resolved := _resolve_damaged_tile(voxel, container_of.get(key), voxel_renderer)
 			var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
 			var wave_key: String = "dented" if voxel.damage_state == Voxel.DamageState.DENTED else "cracked"
@@ -294,6 +307,7 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		var world_pos: Vector2 = voxel_renderer.voxel_world_position(gu_center, BlastCalculatorClass.GRENADE_LEVEL)
 		_append(plan["smoke"], ring, {"world_pos": world_pos, "duration": weight, "scale": weight})
 
+	plan["touched_voxels"] = touched_voxels
 	return plan
 
 

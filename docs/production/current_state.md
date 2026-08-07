@@ -37,8 +37,10 @@
 - RESUMO_SESSAO_2026-08-06_EXPLOSION_REBUILD_ANSWERS.md
 - RESUMO_SESSAO_2026-08-06_E_BAKE_TASK1B.md
 - RESUMO_SESSAO_2026-08-06_E_MAT_TASK1A.md
+- RESUMO_SESSAO_2026-08-07_E_PLAN_TASK4.md
 - RESUMO_SESSAO_2026-08-07_E_RING_TASK2.md
 - RESUMO_SESSAO_2026-08-07_E_SOOT_TASK3.md
+- RESUMO_SESSAO_2026-08-07_E_WAVE_TASK5.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -46,8 +48,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 133
-- Test scripts: 39
+- GDScript modules: 135
+- Test scripts: 41
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 16

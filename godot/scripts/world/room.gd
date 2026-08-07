@@ -192,6 +192,17 @@ var _crater_floor_soot: Dictionary = {}
 ## read back as substrate 0.
 var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
 
+## D2 (EXPLOSION_REBUILD_MASTER_PLAN §4.4, Task 5/E-WAVE, 2026-08-07) — how
+## many times a GU has been detonated on, base-coord keyed (Vector2i) for the
+## identical reason `_base_damage` is: it must survive a perspective rotation,
+## which rebuilds every Voxel from the MapSpec but never re-derives how many
+## blasts a spot has already taken. First blast on a GU: `apply_crater_damage()`
+## only cedes `FLOOR_TOP_LEVEL`. Second and later: `deep_layer_unlocked` flips
+## true for that GU's `DetonationPlanBuilder.build_plan()` call, and
+## `FLOOR_DEEP_LEVEL` becomes a candidate too. Cleared on map load, same as
+## `_base_damage`.
+var _gu_blast_count: Dictionary = {}
+
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
 ## (before reapply_damage), so it survives detonation and rotation on its own —
@@ -612,6 +623,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_current_light_sources = _room_builder.get_light_sources()
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
+	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
 	if _smoke_spark_overlay != null:

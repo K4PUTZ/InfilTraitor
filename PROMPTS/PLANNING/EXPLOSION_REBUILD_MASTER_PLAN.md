@@ -18,26 +18,23 @@ applies now that explosions are pre-baked, not live-composited — **full
 per-face directional soot is kept everywhere** (FACE-SOOT-01 and self-soot
 untouched), and the new blast-stamp mechanism is itself directional too, not
 isotropic. See Task 3's closure note for the full resolution.
-**Status:** 🟢 **BUILDING. Task 0, Task 1a, Task 1b, Task 2, Task 3, and Task
-4 are all done.** 273 real damage atoms bake on PLAYGROUND, cache-verified
-(1498ms → 31ms on a second load), wired end-to-end. The ring/falloff/soot
-calculation surface is complete (D14 spherical falloff, per-tier weights, D2
-deep-layer gate, D16 blast-side routing, D17 pierce multiplier,
-`stamp_container_soot()`/`stamp_crater_soot()` for blast-authored soot) and
-now has its first real, non-selftest consumer: `DetonationPlanBuilder.
-build_plan()` (Task 4/E-PLAN) resolves an entire real detonation into a
-`DetonationPlan` — proven against real PLAYGROUND with a real before/after
-TileMapLayer snapshot diff (108,576 placed cells, zero changed) — but still
-has no live CALLER (`TestZoneController.detonate_active()` stays
-disconnected). **Task 5 (E-WAVE) is the next concrete action.**
-**Next action:** §11. **Task 5 (E-WAVE)** — `DetonationChoreographer`: walk
-the static 15-wave table at 40 ms/wave, playing back each of Task 4's plan
-entries as a pure `set_cell()`/`erase_cell()` call, and reconnect
-`TestZoneController.detonate_active()` to the whole pipeline for real. Q1d is
-answered and implemented — D19/D20/D21's rename and dynamic-data reform are
-live (`res://materials/*.json`, `ground_* → bare`, `facade_*`/`slab_*`
-texture split); see the Task 1a/1b/2/3/4 closure notes below for the real
-corrections surfaced against the plan text.
+**Status:** 🟢 **BUILDING. Task 0, Task 1a, Task 1b, Task 2, Task 3, Task 4,
+and Task 5 are all done — grenades detonate and damage voxels for real,
+on screen, for the first time since the 2026-08-05 reset.** 273 real damage
+atoms bake on PLAYGROUND, cache-verified (1498ms → 31ms on a second load),
+wired end-to-end. `DetonationPlanBuilder.build_plan()` (Task 4) resolves an
+entire detonation up front; `DetonationChoreographer` (Task 5) plays it back
+as the real 15-wave sequence, and `TestZoneController.detonate_active()` is
+reconnected. A real capture (`Screenshots/history/e_wave_detonation.png`)
+shows a real scorch crater; real per-wave timing is printed and measured on
+every detonation. **Task 6 (the tuning pass) is the next concrete action.**
+**Next action:** §11. **Task 6** — Director reviews real captures and moves
+§4.2's ring-weight numbers; also where §6.3's deferred-soot-compute question
+(D8) and the flagged blast-debris-VFX gap (Task 5's closure note) get
+picked up if wanted. Q1d is answered and implemented — D19/D20/D21's rename
+and dynamic-data reform are live (`res://materials/*.json`, `ground_* →
+bare`, `facade_*`/`slab_*` texture split); see the Task 1a/1b/2/3/4/5
+closure notes below for the real corrections surfaced against the plan text.
 
 ### Task 1a (E-MAT) — closed 2026-08-06, commit `95d83cb`
 
@@ -383,6 +380,116 @@ reasoning as Task 2/3: a plan with no player-visible effect (nothing calls
 census above and the byte-identity snapshot diff are this task's real
 evidence instead. Deferred to Task 5's real wave driver, which is where a
 detonation first becomes visible.
+
+### Task 5 (E-WAVE) — closed 2026-08-07, commit pending
+
+Shipped as scoped by §8's Task 5 row: `DetonationChoreographer` plays back
+Task 4's `DetonationPlan` as the real 15-wave sequence, and
+`TestZoneController.detonate_active()` is reconnected — **a grenade now
+detonates, damages voxels, and repaints correctly for real**, the first
+time this has been true since the reset on 2026-08-05 (`d412480`).
+
+**One real bug, caught by the capture itself, not by reasoning about the
+code.** The first real run scheduled all 15 `SceneTreeTimer`s correctly
+(confirmed via a diagnostic print per timer) but **not one `timeout` ever
+fired** — `DetonationChoreographer`'s own header comment had assumed a
+`SceneTreeTimer`'s `timeout` connection holding a bound `Callable` would be
+enough to keep the (RefCounted, non-Node) choreographer alive for its whole
+~600 ms sequence. Measured false: `detonate_active()`'s local `choreographer`
+variable was the only reference, and it went out of scope the instant the
+function returned — before a single wave applied. Fixed by
+`TestZoneController` holding an explicit `_active_choreographer` reference,
+cleared via the class's own new `finished` signal once the last wave lands.
+The class's own doc comment was rewritten to record the measured finding
+instead of the wrong assumption, so the next reader doesn't repeat it.
+
+**What shipped, concretely:**
+- **`DetonationChoreographer`** (`godot/scripts/systems/destruction/
+  detonation_choreographer.gd`) — the static 15-entry `WAVE_TABLE` from §1,
+  each wave scheduled on its own independent `SceneTreeTimer` from t=0 (never
+  chained/awaited), `wave_interval_ms` a `var` at 40 (Q5). `_apply_wave()` is
+  the ONLY place in the whole pipeline that calls `layer.set_cell()`/
+  `erase_cell()`/`SmokeSparkOverlay.add_smoke()` — every value it applies was
+  already fully resolved by Task 4. Prints `[E-WAVE] wave N/15 kind=... ring=...
+  cells=... elapsed=...ms apply=...ms` per wave — the Task 5 gate's own
+  "measured per-wave ms" evidence, on every real detonation, not just a dev
+  capture.
+- **`SmokeSparkOverlay.add_smoke()`** gained a trailing `duration_scale: float
+  = 1.0` (both pre-existing callers — `EmberOverlay`, room.gd's VFX-01
+  dispatch — unaffected), so smoke waves can make a farther ring's puff
+  genuinely linger for less time, not just read smaller/fainter.
+- **`DetonationPlanBuilder.build_plan()`** now also returns
+  `"touched_voxels"` (`Array[Voxel]`, every voxel this blast actually changed
+  the damage_state of) — Task 5's persistence seam, so
+  `TestZoneController.detonate_active()` can call
+  `room.record_voxel_damage_to_base()` for real without a second flood/
+  find_affected_containers pass to re-derive the same set.
+- **`room._gu_blast_count: Dictionary`** (new, cleared on map load alongside
+  `_base_damage`) — D2's floor-layer memory, threaded into
+  `build_plan()`'s `ctx["deep_layer_unlocked"]` as `count(gu) > 0`.
+- **`TestZoneController.detonate_active()`** rebuilds a real `ctx` from the
+  live room (`_edge_registry`/`_slab_registry`/`_voxel_renderer`, real
+  `blocked_edges`/`blocked_cells`, real `LightSource` objects from
+  `room._lighting_controller.get_light_registry().get_active_lights()` — a
+  real room already has these, unlike the selftest scaffold which had to
+  hand-convert map-data dicts), calls `build_plan()`, increments
+  `_gu_blast_count`, persists `touched_voxels`, then hands the plan to a
+  `DetonationChoreographer`.
+
+**One documented, deliberate scope decision, not silently dropped:**
+VFX-01's per-voxel dust/spark/chip debris (`room._dispatch_destruction_vfx()`,
+driven by `VoxelRenderer.voxel_destroyed`) does not fire for blast-caused
+destruction any more — the choreographer's destroy wave calls
+`layer.erase_cell()` directly rather than routing through
+`VoxelRenderer.process_dirty()`, and the plan's own destroy entries carry no
+material to dispatch debris VFX from (§6.1's literal shape is `{cell,
+level}` only). The OLD immediate-smoke half of that same dispatch would have
+doubled up with the new staged smoke waves (D5) if left connected, which is
+the more load-bearing reason it isn't. Firearms are unaffected — still the
+signal-driven path, untouched. Revisiting blast debris needs material
+threaded onto destroy plan entries, not a quick patch; flagged for whoever
+picks this up, not decided here.
+
+**Real evidence — a real detonation, captured and measured, not reasoned
+about:**
+
+| Wave | ring0 | ring1 | ring2 | ring3 |
+|---|---|---|---|---|
+| destroy | 899 | 2 | 0 | — |
+| dented | 38 | 62 | — | — |
+| cracked | — | 0 | 0 | — |
+| smoke | 1 | 4 | 7 | 10 |
+| soot | 217 | 708 | 513 | 389 |
+
+(Metal wall, `INFILTRAITOR_CAPTURE_DETONATE_INDEX=1` —
+`cracked` is correctly always 0: metal's `crack_factor` is 0, matching
+D32.6/the material table.) Real per-wave timing from the SAME run — the
+"never delays the next" property holding for real, not just in the formula:
+waves land at elapsed ≈ 8/9/9/9/127/127/127/243/243/243/267/304/431/438/443 ms
+(target cadence 0/40/80/120/160/200/240/280/320/360/400/440/480/520/560 ms —
+real drift is frame-quantization, not compounding delay: wave 15 is 443 ms
+after t0, not 15×whatever wave 14 took). Apply cost per wave: sub-1 ms for
+every wave except the two biggest (wave 1's 899-cell destroy: 8.4 ms; wave
+13's 708-cell soot: 8.9 ms) — confirming Task 0's own finding that the
+expensive part was never the per-cell work, it was the old per-cell
+*resolution* this whole rebuild eliminated.
+
+Visual: a real, framed capture
+(`Screenshots/history/e_wave_detonation.png`) shows a dark, textured,
+irregular scorch crater on the floor, visibly distinct from the surrounding
+clean tile pattern — the first real, on-screen grenade damage this rebuild
+has produced.
+
+Verification: `project_lint.py` 188 files/0 errors, `run_selftests.py`
+33/33 clean (new `detonation_choreographer_selftest.gd` drives
+`_apply_wave()` directly, in `WAVE_TABLE` order, against a real PLAYGROUND
+plan, and asserts every resulting cell — erasures, exposed reveals, dented,
+cracked, soot — matches its plan entry exactly, plus a real smoke-puff
+count on `SmokeSparkOverlay`; every pre-existing selftest, including every
+`_set_voxel_cell()`/`apply_damage_voxel_swap()` seam test, still passes
+unchanged), `check_invariants.py` OK, `gen_codemap.py --check` clean (188
+scripts). A separate real `weapon_fire` capture confirms firearms are
+unaffected.
 
 ---
 
@@ -1138,7 +1245,7 @@ Two new sibling stores, both in base coords:
 | **2** | ✅ **DONE 2026-08-07, commit `a3f58ee`** — **E-RING** | Calculation-layer only (neither function has a live caller yet — confirmed, Task 5's job to reconnect). 4th ring in `frag_grenade.json` + `destroy_ring_weights`/`dent_ring_weights`/`crack_ring_weights` in `BombDef`; `apply_container_damage()`'s vertical-ring step rewritten to D14's spherical `absi(level_offset) / LEVELS_PER_STOREY` (both wall and roof, `is_roof` per-raw-level branch retired); `apply_crater_damage()` gains `deep_layer_unlocked` (D2) and `slab_pierce_multiplier` (D17, trailing + inert at 1.0); D16 needed zero calculation-layer changes — it's entirely `VoxelRenderer.apply_damage_voxel_swap()`'s CEILING+TOP→FLOOR routing fix; D9 confirmed already fully wired pre-task, this task's job was proving it | `blast_calculator_selftest` +6 real assertions (ring-3 red-before-green against the REAL `frag_grenade.json`, D14 wall/roof parity, the roof-two-levels-one-ring-group proof, wood-vs-concrete floor realism, D2 gate on/off, D17 multiplier live-check) · `damage_atom_bake_selftest` +1 test (D16 routing proven against the real PLAYGROUND registry + a real `TileMapLayer` readback, not a boolean) · 31/31 selftests clean |
 | **3** | ✅ **DONE 2026-08-07, commit `fdcb5e9`** — **E-SOOT** | Calculation-layer only, same reason as Task 2 (no live caller). Full per-face directional soot **kept everywhere** — `FACE_SOOT_CODE_COUNT`/encode/decode/shader untouched, per Director confirmation this session (§5.1's per-voxel collapse was a stale processing-cost concession); `stamp_container_soot()` (walls/ceiling, reuses D14's ring formula + `carved_side_for()` + `_face_rings_for()`) and `stamp_crater_soot()` (floor, extends `apply_crater_damage()`'s own `rim_span` unit into numbered rings) stamp soot from `BombDef.soot_ring_tones`, independent of what got destroyed — closing the real gap that ring 3 (destroys nothing) can never get soot through derivation alone; both min-wins-merge with `derive_soot_rings()`'s output. No `room.gd` changes — the stamped-blast event/replay list is Task 5's job, alongside `_gu_blast_count` | `blast_calculator_selftest` +12 real assertions (ring-3 reached-and-stamped against the REAL `frag_grenade.json`, epicenter-directional face split, ceiling-underside skip, stamped/derived min-merge both directions, crater ring bands + isotropic output, out-of-range skip) · 31/31 selftests clean, including all 7 pre-existing `SOOT-SELF-*`/`FACE-SOOT-*` assertions unchanged |
 | **4** | ✅ **DONE 2026-08-07, commit `ddbe7dd`** — **E-PLAN** | `DetonationPlanBuilder.build_plan()` — the real resolution/soot-merge/single-light-field-query/exposure-fallback pipeline, resolve-only end to end (a new `apply` seam on `_set_voxel_cell()`/`apply_damage_voxel_swap()`→`resolve_damage_voxel_swap()`/`render_slab()`/`render_fixed_earth_level()`); `smoke_ring_weights` consumed for the first time; two new `BlastCalculator` public helpers (`vertical_ring_for()` promoted, `crater_ring_for()` extracted) so wave grouping and soot banding share one ring formula | Printed plan census from a real PLAYGROUND detonation (see closure note) · a real before/after TileMapLayer snapshot diff over 108,576 cells proves zero live mutation · `run_selftests.py` 32/32 clean |
-| 5 | E-WAVE | `DetonationChoreographer`; reconnect `TestZoneController.detonate_active()` | Real capture per wave; measured per-wave ms |
+| **5** | ✅ **DONE 2026-08-07, commit pending** — **E-WAVE** | `DetonationChoreographer` (15-wave table, independent `SceneTreeTimer` per wave, `wave_interval_ms=40`); `TestZoneController.detonate_active()` reconnected end to end; `add_smoke()` gained `duration_scale`; `build_plan()` returns `touched_voxels` for VL-PERSIST; `room._gu_blast_count` (D2) added | Real capture (`Screenshots/history/e_wave_detonation.png`) · real per-wave `[E-WAVE]` timing log on the actual detonation · `detonation_choreographer_selftest.gd` proves every wave's cells match the plan exactly · `run_selftests.py` 33/33 clean |
 | 6 | Tuning pass | Director reviews captures, moves the §4.2 numbers | Director sign-off |
 
 ### 8.1 Task 0 result — the number the architecture rests on (2026-08-06)
@@ -1478,68 +1585,68 @@ animation is not.
 
 ---
 
-## 11. Next session starts here (updated 2026-08-07, post-Task-4)
+## 11. Next session starts here (updated 2026-08-07, post-Task-5)
 
 **Resume point:** Task 0, Task 1a (E-MAT), Task 1b (E-BAKE), Task 2
-(E-RING), Task 3 (E-SOOT), and Task 4 (E-PLAN) are all done and committed.
-Grenades still detonate and damage nothing on screen — a real
-`DetonationPlan` now resolves correctly end to end against real PLAYGROUND
-data (`DetonationPlanBuilder.build_plan()`, proven never to touch the live
-TileMapLayer), but nothing plays it back yet
-(`TestZoneController.detonate_active()` stays disconnected until Task 5);
-firearms still work, untouched (every pre-existing `_set_voxel_cell()`/
-`apply_damage_voxel_swap()` seam selftest still passes unchanged). **Task 5
-(E-WAVE) is the next concrete action** — see §8's Task 5 row and §6.2: the
-`DetonationChoreographer`, walking the static 15-wave table at 40 ms/wave,
-turning each of Task 4's plan entries into a real `set_cell()`/
-`erase_cell()` call, and finally reconnecting
-`TestZoneController.detonate_active()` to the whole pipeline.
+(E-RING), Task 3 (E-SOOT), Task 4 (E-PLAN), and Task 5 (E-WAVE) are all done
+and committed. **Grenades detonate for real** — right-click "Detonar" on a
+TEST-ZONE grenade now damages voxels, repaints, and plays the real 15-wave
+sequence on screen (`Screenshots/history/e_wave_detonation.png`), with a
+real per-wave `[E-WAVE]` timing log printed on every detonation. Firearms
+are untouched (separate real capture confirmed this session). Phase A of
+this plan — bake + calculation + waves on the current right-click trigger —
+is now functionally complete end to end.
 
-Older order-of-business items (Q1b confirmation, Task 0, Task 1a, Task 1b,
-Task 2, Task 3, Task 4) are fully closed and folded into §1/§8.1/§8's task
-rows / the closure notes above; not repeated here.
+Older order-of-business items (Q1b confirmation, Task 0 through Task 5) are
+fully closed and folded into §1/§8.1/§8's task rows / the closure notes
+above; not repeated here.
 
-**Order of business:**
+**Order of business — Task 6, the tuning pass (§8's own row):**
 
-1. **Task 5 (E-WAVE) is next.** Read §8's Task 5 row and §6.2:
-   `DetonationChoreographer` (new, ~120 lines) walks `[(kind, ring,
-   delay_ms)]` and, for each wave, applies its `DetonationPlanBuilder`-
-   produced entries — `layer.set_cell(cell, source_id, atlas_coords, alt)`
-   for dented/cracked/expose/soot entries, `layer.erase_cell(cell)` for
-   destroy entries, `SmokeSparkOverlay.add_smoke()` for smoke entries (its
-   signature has no external duration override today — a small, flagged
-   extension this task will need, not Task 4's to have built). This task
-   also owns: reconnecting `TestZoneController.detonate_active()` to call
-   `DetonationPlanBuilder.build_plan()` then the choreographer;
-   `room._gu_blast_count` (D2's `deep_layer_unlocked` gate) and the
-   stamped-blast event/replay list (§6.1's persistence note, Task 3's own
-   scope call) so a later perspective rotation replays correctly;
-   `record_voxel_damage_to_base()` calls for every plan-touched voxel (Task
-   4 built no persistence — the plan is ephemeral, computed fresh per
-   detonation); and picking a real smoke color per material (Task 4 left
-   `{world_pos, duration, scale}` only, per §6.1's literal shape).
-2. §6.3's deferred-soot-compute question (D8 — run soot's light query on a
-   background thread, or synchronously after wave 1 dispatches) is still
-   open and is this task's to decide, now that Task 4 has measured what the
-   rest of the pre-compute window actually costs on real data.
-3. D18 stands: roof holes are a lighting event, never a player access route
-   — nothing in Task 5 should treat one as an entry point.
+1. Get the Director a real capture (`e_wave_detonation.png` or a fresh one)
+   and the real census/timing numbers from this session's closure note, and
+   let the Director move §4.2's ring-weight numbers (`destroy_ring_weights`/
+   `dent_ring_weights`/`crack_ring_weights`/`soot_ring_tones`/
+   `smoke_ring_weights` in `bombs/frag_grenade.json`) based on what actually
+   reads right — every one of them is explicitly a first-pass placeholder,
+   not a researched constant.
+2. Two items Task 5 flagged and deliberately did NOT resolve, both real
+   design questions for the Director rather than something to guess past a
+   second time:
+   - **Blast debris VFX** — dust/spark/chip puffs (VFX-01) no longer fire
+     for blast-caused destruction (only for firearms). Reinstating them
+     needs material threaded onto the `DetonationPlan`'s destroy entries
+     (§6.1's shape is `{cell, level}` only today) — a real, if small,
+     schema change, not a quick patch. Ask before building it.
+   - **§6.3's deferred-soot-compute question (D8)** — run the soot
+     light-query on a background thread, or synchronously after wave 1
+     dispatches. Task 4/5 never needed it: `build_plan()`'s own measured
+     cost is small enough (the biggest real wave in this session's capture
+     applied in ~8.9 ms) that the whole plan resolves well within one
+     frame today. Revisit only if a much bigger real blast (more affected
+     containers, not more rings) is measured to actually need the slack.
+3. D18 still stands: roof holes are a lighting event, never a player access
+   route — nothing building on Task 5 should treat one as an entry point.
+4. Camera rotation is still disabled (ROTATE-KILL-01, §9). The stamped-blast
+   soot's own rotation-persistence (an *event* replay list feeding
+   `stamp_container_soot()`/`stamp_crater_soot()` again on rotation, per
+   Task 3's own closure note) was never built — this is currently
+   unreachable to even test with rotation off, so it stays deliberately
+   unbuilt rather than guessed at. Build it when rotation comes back, not
+   before — `_base_damage`'s DAMAGE STATE (not soot) already survives
+   rotation correctly today via the ordinary `record_voxel_damage_to_base()`
+   path Task 5 wired in.
 
 **Do not:**
 - start Phase B (targeting UI, bubble, throw, explosion frames) — the Director
   chose Phase A first, deliberately, so the 15 waves are verifiable with real
   captures before they get wrapped in animation. Q6's bubble description and
-  XCOM reference (2026-08-06) are recorded in §10 for when Phase B starts, not
-  a signal to start it now;
-- re-enable camera rotation as part of this work (§9);
+  XCOM reference (2026-08-06) are recorded in §10 for when Phase B starts —
+  Phase A being functionally complete (Task 5) is still not that signal;
+- re-enable camera rotation as part of Task 6 (§9) — see point 4 above;
 - treat the 207/273-atom counts in §3.2/Task 1b as open numbers — both are
   settled and measured (D16 adds routing, not atoms; Task 0 measured ~737 ms,
   Task 1b measured the real 273-atom bake at ~1.5 s cold / ~31 ms warm);
-- assume Task 2/3's new parameters (`deep_layer_unlocked`,
-  `slab_pierce_multiplier`, the per-tier weight arrays, `stamp_container_
-  soot()`/`stamp_crater_soot()`) are live in any real playthrough outside a
-  `DetonationPlanBuilder.build_plan()` call — Task 4 proved them correct
-  against real data, but nothing paints the result yet (Task 5's job);
 - revisit the per-voxel/per-face soot granularity question — it is
   **closed**: full per-face directionality stays everywhere
   (`FACE_SOOT_CODE_COUNT`, `encode_face_soot()`, the shader), confirmed
@@ -1549,7 +1656,12 @@ rows / the closure notes above; not repeated here.
   path without a real failing case driving it — Task 4 flagged this as an
   honest, unexercised gap (0 misses measured on real PLAYGROUND material),
   not a silent assumption; fix it when a real material actually misses the
-  bake, not preemptively.
+  bake, not preemptively;
+- assume a `RefCounted` (non-Node) object with only a signal-connection
+  reference stays alive across a real-time sequence — Task 5's own real
+  bug: `DetonationChoreographer` needs an explicit owner
+  (`TestZoneController._active_choreographer`), a bound `Callable` on a
+  `SceneTreeTimer` connection was measured NOT sufficient on its own.
 
 ---
 

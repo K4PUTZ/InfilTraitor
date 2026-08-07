@@ -7,21 +7,25 @@ and Q3b in a follow-up round (floor is material-real now, not agnostic to
 "earth"; bullet marks join the pre-bake), then added D13 (per-map material
 scope + cross-session bake cache, §3.5). Task 0 ran and passed its gate
 (§8.1), Q1b was answered (spherical falloff D14, roof-throw holes D15).
-**Same day, later: Task 1a (E-MAT) shipped — commit `95d83cb`.** Q7–Q9 remain
-(Phase B only).
-**Status:** 🟢 **BUILDING. Task 0 done (~737 ms, gate was ~2 s). Task 1a
-(E-MAT) done — pixel-identical PLAYGROUND capture (0/921600 px diff),
-30/30 selftests clean. Task 1b (E-BAKE) is the next concrete action.**
-**Next action:** §11. **Task 1b (E-BAKE)** — the 207-atom `DamageVariantBaker`
-rewrite reading 1a's unified table, D13's `damage_materials` MAPFILE section,
-the `user://` bake cache, and the D12 marked/bullet atoms (baked, not yet
-wired to `fire_active()`). Q1c closed the same day as D17/D18; D16 settled the
-ceiling-vs-floor atom contradiction without changing the atom count; D19 made
-materials surface-independent, closing D10's `crack_factor` gap by
-construction. **Q1d is answered and implemented** — D19/D20/D21's rename and
-dynamic-data reform are live (`res://materials/*.json`, `ground_* → bare`,
-`facade_*`/`slab_*` texture split); see the Task 1a closure note below for the
-one real correction implementation surfaced against the plan text.
+**Same day, later: Task 1a (E-MAT) shipped — commit `95d83cb`. Later still:
+Task 1b (E-BAKE) shipped — commit `2d18a9e`.** Q7–Q9 remain (Phase B only).
+**Status:** 🟢 **BUILDING. Task 0, Task 1a, and Task 1b are all done.
+273 real damage atoms bake on PLAYGROUND, cache-verified (1498ms → 31ms on a
+second load), wired end-to-end (`apply_damage_voxel_swap()` resolves via the
+pre-bake for a real wall voxel). Task 2 (E-RING) is the next concrete
+action.**
+**Next action:** §11. **Task 2 (E-RING)** — the 4th ring, per-tier weight
+tables in `BombDef`, D14's spherical vertical-falloff formula
+(`absi(level_offset) / LEVELS_PER_STOREY`, retiring the `is_roof` per-raw-
+level branch), D15's roof-throw holes, D16's blast-side atom routing, D17's
+slab-pierce calibration multiplier, D2's two-layer floor rule. Q1c closed the
+same day as D17/D18; D16 settled the ceiling-vs-floor atom contradiction
+without changing the atom count; D19 made materials surface-independent,
+closing D10's `crack_factor` gap by construction. **Q1d is answered and
+implemented** — D19/D20/D21's rename and dynamic-data reform are live
+(`res://materials/*.json`, `ground_* → bare`, `facade_*`/`slab_*` texture
+split); see the Task 1a/1b closure notes below for the real corrections
+implementation surfaced against the plan text.
 
 ### Task 1a (E-MAT) — closed 2026-08-06, commit `95d83cb`
 
@@ -41,6 +45,44 @@ retired: the WHITE-vs-tinted bake modulate now reads the texture id's own
 prefix instead of a flag on the material, since one unified `MaterialDef`
 could not represent "tinted on walls, full-color on floors" for concrete
 otherwise. Full writeup: `PROMPTS/RESUMO_SESSAO_2026-08-06_E_MAT_TASK1A.md`.
+
+### Task 1b (E-BAKE) — closed 2026-08-06, commit `2d18a9e`
+
+Shipped larger than the plan's one-line row summary suggested: the retired
+D-ARCH-01 `DamageVariantBaker`/`VoxelVariantRegistry` pair was genuinely dead
+code (`room_builder.gd` built an always-empty registry with a literal
+`TODO (D-ARCH-01 Phase 2)`), and the consumer
+(`VoxelRenderer.apply_damage_voxel_swap()`) was still written for the retired
+per-cell key shape — making it real required a new persisted `Voxel.
+damage_substrate` field (D3/§3.3), a `BlastCalculator.substrate_for()`
+matching `decal_variant_for()`'s shape, and a 7th `_base_damage` column, none
+of which the plan row named explicitly.
+
+**273 real atoms bake on PLAYGROUND** (not the estimated 207/279 — the real
+number, printed on every load). Two corrections found by reading the actual
+compositor rather than the plan text, both recorded rather than guessed
+past: **(1)** bullet marks bake BOTH shapes (cracked full-voxel and dented
+half-voxel, 144 not 72 atoms) — confirmed with the Director, since
+`ShotPunchTable.damage_state_for()` genuinely produces either outcome.
+**(2)** D7's "3 irregular ceiling cut shapes" isn't implemented in
+`HalfVoxelCompositor` yet (`carve_ceiling_silhouette()` takes no shape
+parameter) — ceiling DENTED bakes the 1 real shape × 3 substrates per
+material, not 3 shapes, until that art/code exists.
+
+Mechanism: `_composite_full_voxel_decal()`/`_composite_half_voxel_decal()`
+now branch on `edge == null` (the atom-bake's signal) to resolve substrate
+via `resolve_flat()` instead of the edge-based `resolve()`, confirmed by
+direct code reading that the edge-based path needs a real, run-registered
+`Edge` a synthetic bake-time call has no reason to fabricate.
+`BakeCompositor` bakes **sparsely** (only real placement usage composes a
+tile), so `room_builder.gd`'s bake step forces 3 chosen substrate positions
+per declared material into real wall/roof/floor combo usage before
+`bake()` runs. A `user://` disk cache (reusing `BakeCompositor`'s own
+encode/decode/load/save helpers via a new overridable cache directory)
+measured **1498ms → 31ms** on a second load, 255/255 disk cache hits.
+Firearms (D33 live compositing) verified untouched via a real weapon-fire
+capture. Full writeup: `PROMPTS/RESUMO_SESSAO_2026-08-06_E_BAKE_TASK1B.md`.
+
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
 D-ARCH-01 arc (`DETONATION_PERFORMANCE_MASTER_PLAN.md`,
@@ -64,9 +106,16 @@ Established by reading the repo, not from memory:
   regression.
 - The blast-radius red wireframe preview (`open_menu_for()`) still works — it
   never touched voxels.
-- **Kept intact and unused:** `BlastCalculator` (1105 lines, fully
-  selftested), `DecalCompositor`, `HalfVoxelCompositor`, all 45 decal PNGs,
-  `VoxelVariantRegistry`, `DamageVariantBaker`, `apply_damage_voxel_swap()`.
+- **Kept intact and unused (still true for detonation itself):**
+  `BlastCalculator` (1105 lines, fully selftested — grenades still damage
+  nothing, see Task 2), `DecalCompositor`, `HalfVoxelCompositor`, all 45
+  decal PNGs.
+- **No longer unused, as of Task 1b (2026-08-06):** `VoxelVariantRegistry`,
+  `DamageVariantBaker`, `apply_damage_voxel_swap()` — 273 real atoms bake on
+  PLAYGROUND and a real firearm hit resolves through the pre-bake. What's
+  still missing is the *trigger*: nothing calls `BlastCalculator` yet (that's
+  Task 2 rewiring `TestZoneController.detonate_active()`), so the populated
+  registry currently only serves firearm marks.
 - **Working and untouched:** `WeaponBenchController.fire_active()` — firearms
   destroy voxels through D33 runtime compositing.
 - Light flicker is off (`a2d0d47`), for clean diagnostic captures.
@@ -794,7 +843,7 @@ Two new sibling stores, both in base coords:
 |---|---|---|---|
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | **1a** | ✅ **DONE 2026-08-06, commit `95d83cb`** — **E-MAT**, D19/D20/D21 | **One material table, surface-independent.** `MaterialResistanceTable` + `MaterialRegistry` load from `res://materials/*.json` (+ `user://` override) instead of hardcoded GDScript — the duplicate `ground_*` rows collapsed into their base material, one `concrete` row, `crack_factor` 0.1, closing D10's gap; texture identity moved to `(material, surface_class)` via `BakePolicy` — `SLICE → facade_*` (unchanged, **including roofs**, which reproject their own wall texture rather than adopting a SLAB source) and `SLAB → slab_*` (renamed from `ground_*`, floor zones only); `full_color` **retired** from `MaterialDef` — corrected against the plan text: the bake compositor's WHITE-vs-tinted modulate now reads the texture id's own prefix, since one unified material (concrete) needs tinted-on-walls AND full-color-on-floors at once, which a single material-level flag cannot express; `floor_zones` MAPFILE section bumped v1→v2 with a migration, 2 shipped maps edited directly; no code names a map anywhere (D21) | `project_lint` + all 30 selftests clean · `check_invariants` OK · **real PLAYGROUND capture pixel-identical to the pre-reform one — 0/921600 differing pixels** (`Screenshots/history/e_mat_before.png`/`e_mat_after.png`) · `material_reform_selftest.gd` (new) proves the unified row + the surface-split render |
-| **1b** | E-BAKE | `VoxelVariantRegistry` re-keyed; `DamageVariantBaker` rewritten to enumerate the §3.2 table (D10's derived-from-resistance-table rule, now reading 1a's unified table), scoped to each map's newly-declared material section (§3.5, D13 — read `MAPFILE_REFERENCE.md` before adding it, and note 1a already versioned the file); includes D12's marked/bullet atoms (baked, not yet wired to `fire_active()`, §11); floor specials source their substrate from pre-baked SLAB atoms per D9, not the wall facade pool; `user://` bake cache wired per §3.5; wired into `room_builder`; selftest asserts all declared atoms exist | Real load-time capture + atom count printed **on first load**, plus a second-load capture proving the cache makes repeat materials ~free |
+| **1b** | ✅ **DONE 2026-08-06, commit `2d18a9e`** — **E-BAKE** | `VoxelVariantRegistry` re-keyed to `(element_class, material, damage_material_name, substrate_variant)`; `DamageVariantBaker` rewritten to `bake_all(declared_materials, floor_materials)`, D10-derived (crack_factor > 0, not the hardcoded `IMPACT_CRACK_MATERIALS` list) across WALL/CEILING/FLOOR, scoped to each map's `damage_materials` MAPFILE section (D13, registered); D12's marked/bullet atoms baked as **both** shapes (144 atoms, Director-confirmed, not the plan's original 72) — and found to already be **live and consumed by `fire_active()`** with zero code changes there (§9's rewritten note); floor specials source substrate from the real ground material via SLAB atoms per D9; `user://` bake cache wired (reusing `BakeCompositor`'s own encode/decode/load/save helpers); wired into `room_builder`; `damage_atom_bake_selftest.gd` (new) asserts real coverage, the new key's consumer, cache parity, and D13's loud-fail | **273 real atoms** on PLAYGROUND (0 unresolved) · load-time count+ms printed · second-load cache-hit capture: **1498 ms → 31 ms**, 255/255 disk cache hits, 0 misses · firearm live-D33 sanity capture unaffected |
 | 2 | E-RING | 4th ring in `frag_grenade.json`; per-tier weight tables in `BombDef` (now shared by floor/wall/ceiling, D1 rev); `apply_container_damage()` *and* `apply_crater_damage()` read them via the §4.3 effective-ring formula **as amended by D14 (spherical: `absi(level_offset) / LEVELS_PER_STOREY`, and the `is_roof` per-raw-level branch retired)**; D15 roof-throw holes ride the same `apply_crater_damage()` path under D17 (one grenade per slab) with a **named calibration multiplier** exposed for later gameplay tuning, distinct from `destroy_multiplier`; D16's blast-side routing decides whether a struck slab draws ceiling or floor atoms, `MaterialResistanceTable` still multiplying in unchanged (D1's clarification) — floor's lookup keys off the GU's real ground material (D9), not `"earth"`; D2's two-layer floor rule; **D19 collapses `MaterialResistanceTable`'s duplicate `ground_*` rows** (one row per material, surface-independent), which closes D10's `crack_factor` gap by construction rather than by a separate decision; the D17 slab-pierce multiplier is exposed here too | `blast_calculator_selftest` extended, red-before-green on the ring-3 flood, the vertical falloff (a wall voxel one floor level up must show a lower effective ring than one at blast level), *and* floor material realism (a `ground_concrete` GU and a hypothetical lower-resistance ground GU must show different destroy counts) |
 | 3 | E-SOOT | per-voxel soot codes; `min()` merge of derived + stamped; ring-3 stamping | Real capture showing soot at ring 3 where nothing is destroyed |
 | 4 | E-PLAN | `DetonationPlan` builder — all resolution, all exposure fallback, the single light repaint | Printed plan census (cells per wave) from a real detonation |
@@ -867,21 +916,27 @@ not detailed here beyond §1's sequence, on purpose.
 
 ## 9. Explicitly out of scope
 
-- **~~Firearm destruction~~ — narrowed 2026-08-06 (D12).** The original plan
-  put ALL of firearm destruction out of scope, D33 untouched. That line no
-  longer holds in full: bullet MARK application (the decal that appears where
-  a shot lands) moves onto the same pre-baked registry as blast, per D12 —
-  meaning it stops being live-composited and starts being a `set_cell()` swap
-  against a pre-baked atom, same as every blast wave. **What stays genuinely
-  out of scope:** the rest of D26–D33 (hit detection, damage-state transition,
-  `WeaponBenchController.fire_active()`'s overall flow) — only the *mark* step
-  changes *how* it paints, not *when* or *whether* a shot damages a voxel.
-  Firearms are still the one destruction path proven to work today, so §11
-  flags this as a sequencing risk: bake the marked atoms in Task 1 (cheap,
-  additive, no wiring change), but treat rewiring
-  `WeaponBenchController.fire_active()` onto them as its own checkpoint with
-  its own before/after captures, done *after* Phase A's blast waves are
-  proven — not bundled silently into Task 1.
+- **~~Firearm destruction~~ — narrowed 2026-08-06 (D12), then found to
+  already be live 2026-08-06 (Task 1b).** The original plan put ALL of
+  firearm destruction out of scope, D33 untouched; D12 narrowed that to say
+  bullet MARK application would move onto the pre-baked registry, but
+  planned it as its own future rewiring checkpoint — the assumption being
+  that `WeaponBenchController.fire_active()`'s render path would need code
+  changes to start consuming it. **That assumption was wrong, confirmed with
+  a real spike (added and reverted the same session, `grep -n
+  E-BAKE-VERIFY-SPIKE` comes back empty):** `_process_dirty_slice_voxel()`
+  already called `apply_damage_voxel_swap()` unconditionally, first, before
+  any live-compositing fallback — pre-existing D-ARCH-01 wiring that was
+  never removed, only ever fed an empty registry (`room_builder.gd`'s old
+  `TODO (D-ARCH-01 Phase 2)` stub). The instant Task 1b's `bake_all()`
+  populates that registry for real, firearm marks start resolving through
+  it automatically. Verified on a real fired shotgun blast: 9/9 hits logged
+  `apply_damage_voxel_swap HIT key=WALL|concrete|concrete_bullet_dented_*`.
+  **No `fire_active()` rewiring checkpoint is needed — it already happened,
+  as a side effect of Task 1b, with zero lines of `fire_active()` touched.**
+  What stays genuinely out of scope: the rest of D26–D33 (hit detection,
+  damage-state transition) — only *how* a mark paints changed, never *when*
+  or *whether* a shot damages a voxel.
 - **Camera rotation.** Still disabled (ROTATE-KILL-01). The persistence
   contract in §7 is honoured anyway so re-enabling it is not blocked by this
   work.
@@ -1154,26 +1209,28 @@ attempts to land 9 atoms, a 0.1% hit rate on `resolve_flat()`) is exactly the
 kind of thing Task 1b's rewrite should re-measure now that the floor's
 material id and texture id are no longer the same string.
 
-Older order-of-business items (Q1b confirmation, Task 0 itself) are fully
-closed and folded into §1/§8.1 above; not repeated here.
+Older order-of-business items (Q1b confirmation, Task 0, Task 1a, Task 1b)
+are fully closed and folded into §1/§8.1/§8's task rows / the closure notes
+above; not repeated here.
 
-**Order of business (superseded items removed, kept only what's still live):**
+**Order of business:**
 
-1. ~~Confirm Q1b~~, ~~run Task 0~~, ~~Task 1a (E-MAT)~~ — all ✅ done, see §1's
-   D14–D21, §8.1, and §8's Task 1a row / the closure note above. **Task 1b
-   (E-BAKE) is next**: read §8's Task 1b row for the full deliverable list
-   (re-keyed `VoxelVariantRegistry`, rewritten `DamageVariantBaker` reading
-   1a's unified table, D13's `damage_materials` MAPFILE section, the
-   `user://` bake cache, D12's marked/bullet atoms baked-but-unwired). Its
-   gate: a real load-time capture with atom count printed on first load, plus
-   a second-load capture proving the cache makes repeat materials ~free.
-2. **A new, explicit checkpoint (not yet numbered as a Task):** once Phase A's
-   blast waves are captured and signed off, rewire `fire_active()`'s mark
-   step onto the pre-baked D12 atoms, with its own real before/after captures
-   (bullet marks still landing, still on the right face, still per-material).
-   Do this as its own reviewable unit, not folded into Task 1 silently — D33
-   is the one destruction path that's been solid since the reset, and
-   changing *when* it stops being solid deserves its own checkpoint.
+1. **Task 2 (E-RING) is next.** Read §8's Task 2 row: the 4th ring in
+   `frag_grenade.json`, per-tier weight tables in `BombDef`, D14's spherical
+   vertical-falloff formula in `apply_container_damage()`/
+   `apply_crater_damage()` (`absi(level_offset) / LEVELS_PER_STOREY`,
+   retiring the `is_roof` per-raw-level branch), D15's roof-throw holes,
+   D16's blast-side atom routing (no new atoms, just which pool a struck
+   slab draws from), D17's slab-pierce calibration multiplier (distinct from
+   `destroy_multiplier`), D2's two-layer floor rule, and D9's floor-material-
+   real resistance lookup (`apply_crater_damage()` keying off the GU's real
+   ground material instead of `"earth"`).
+2. Once Task 2 lands and Phase A's blast waves (Tasks 3–5) are captured and
+   signed off, `TestZoneController.detonate_active()` gets rewired back onto
+   `BlastCalculator` (removed 2026-08-05, commit `d412480`) — that is the
+   actual remaining "flip the switch" moment for explosions. **Firearms
+   already flip their own switch automatically** (see §9's rewritten D12
+   note) — nothing left to do there.
 
 **Do not:**
 - start Phase B (targeting UI, bubble, throw, explosion frames) — the Director
@@ -1181,13 +1238,10 @@ closed and folded into §1/§8.1 above; not repeated here.
   captures before they get wrapped in animation. Q6's bubble description and
   XCOM reference (2026-08-06) are recorded in §10 for when Phase B starts, not
   a signal to start it now;
-- rewire `WeaponBenchController.fire_active()`'s live compositing onto the
-  D12 pre-baked atoms **as part of Task 1b** — bake the atoms, don't flip the
-  switch yet (see item 2 above). The rest of D26–D33 (hit detection,
-  damage-state logic) stays untouched regardless;
 - re-enable camera rotation as part of this work (§9);
-- treat the 207-atom count in §3.2 as an open number — it is settled (D16 adds
-  routing, not atoms) and Task 0 measured its real cost at ~737 ms.
+- treat the 207/273-atom counts in §3.2/Task 1b as open numbers — both are
+  settled and measured (D16 adds routing, not atoms; Task 0 measured ~737 ms,
+  Task 1b measured the real 273-atom bake at ~1.5 s cold / ~31 ms warm).
 
 ---
 

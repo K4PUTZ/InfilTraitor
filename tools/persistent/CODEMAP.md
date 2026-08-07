@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**184 scripts · 44434 lines total** (under `godot/scripts/`)
+**184 scripts · 44806 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1453,7 +1453,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1176 lines
+`class_name BlastCalculator` · 1313 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2311,7 +2311,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1960 lines
+extends `SceneTree` · 2195 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2364,26 +2364,7 @@ extends `SceneTree` · 1960 lines
 - `func test_crater_dent_varies_by_real_floor_material_wood_vs_concrete() -> void:`
 - `func test_deep_layer_gate_blocks_floor_deep_level() -> void:`
 - `func test_slab_pierce_multiplier_scales_destruction() -> void:`
-- `func test_pellet_impacts_no_hard_range_cap() -> void:`
-- `func test_pellet_impacts_count_matches_projectile_count() -> void:`
-- `func test_pellet_does_not_detour_around_narrow_obstacle() -> void:`
-- `func test_point_impact_marks_only_the_impact_voxel() -> void:`
-- `func test_point_impact_neighbour_ladder() -> void:`
-- `func test_point_impact_cascades_only_on_full_destroy() -> void:`
-- `func test_punch_coefficient_ordering() -> void:`
-- `func test_cone_spread_is_a_disc_not_a_line() -> void:`
-- `func test_no_shipped_weapon_reaches_the_cascade() -> void:`
-- `func test_line_impact_is_straight_and_measures_distance() -> void:`
-- `func test_pellet_selection_is_deterministic() -> void:`
-- `func test_carved_side_faces_the_blast() -> void:`
-- `func test_carved_side_survives_rotation() -> void:`
-- `func test_self_soot_faces_dented_lateral_sides() -> void:`
-- `func test_self_soot_faces_dented_top_and_bottom() -> void:`
-- `func test_self_soot_faces_cracked_blast_hits_all_three() -> void:`
-- `func test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top() -> void:`
-- `func test_self_soot_faces_intact_and_destroyed_get_none() -> void:`
-- `func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:`
-- `func test_apply_self_soot_never_weakens_an_existing_stronger_ring() -> void:`
+- `func test_stamp_and_derive_soot_min_merge_darker_wins() -> void:`
 
 ---
 

@@ -88,6 +88,14 @@ func _init() -> void:
 	test_crater_dent_varies_by_real_floor_material_wood_vs_concrete()
 	test_deep_layer_gate_blocks_floor_deep_level()
 	test_slab_pierce_multiplier_scales_destruction()
+	## EXPLOSION_REBUILD_MASTER_PLAN Task 3 (E-SOOT, 2026-08-07) — blast-
+	## stamped soot, closing the ring-3 gap derivation alone cannot reach.
+	test_stamp_container_soot_reaches_ring3_when_derivation_cannot()
+	test_stamp_container_soot_directional_faces_toward_epicenter()
+	test_stamp_container_soot_skips_ceiling_underside()
+	test_stamp_and_derive_soot_min_merge_darker_wins()
+	test_stamp_crater_soot_isotropic_and_ring_bands()
+	test_stamp_soot_beyond_range_untouched()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1255,6 +1263,233 @@ func test_slab_pierce_multiplier_scales_destruction() -> void:
 		_pass("omitting slab_pierce_multiplier matches passing 1.0 explicitly — existing callers unaffected")
 	else:
 		_fail("default diverged from explicit 1.0: %d vs %d" % [_count_destroyed(explicit), base_destroyed])
+	print("")
+
+
+## §5.2 (EXPLOSION_REBUILD_MASTER_PLAN Task 3/E-SOOT, 2026-08-07) —
+## stamp_container_soot() closes the exact gap this master plan section
+## identifies: derive_soot_rings() can never produce ring-3 soot because
+## ring 3 destroys nothing (frag_grenade's real destroy_ring_weights[3]=0.0).
+## Proven against the REAL frag_grenade.json (via BombRegistry, not a
+## hand-built array) — ring 3 must be reached and stamped even though every
+## voxel there stays fully INTACT.
+func test_stamp_container_soot_reaches_ring3_when_derivation_cannot() -> void:
+	print("[E-SOOT-1] stamp_container_soot() reaches ring 3 with a real tone, where derivation has nothing to seed from\n")
+
+	var registry := BombRegistryClass.new()
+	registry.load_from_disk()
+	var frag = registry.get_bomb("frag_grenade")
+	if frag == null:
+		_fail("Could not load real frag_grenade.json via BombRegistry")
+		print("")
+		return
+
+	var edge_registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 4, "concrete")]
+	SliceGenerator.generate(edges, edge_registry)
+	var slice: Slice = edge_registry.get_slice("SLICE_0_0_SE")
+	if slice == null:
+		_fail("Could not resolve synthetic concrete Slice")
+		print("")
+		return
+
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.stamp_container_soot(slice.voxels, 0, 0, false,
+		frag.soot_ring_tones, BlastCalculatorClass.NO_EPICENTER_BIAS, snapshot, faces)
+
+	var ring0_tone := -1
+	var ring3_tone := -1
+	var ring3_all_intact := true
+	for voxel in slice.voxels:
+		var t: int = int(snapshot.get(voxel.level, {}).get(voxel.grid_pos, -1))
+		if voxel.level < GeometryCoords.LEVELS_PER_STOREY and ring0_tone < 0:
+			ring0_tone = t
+		if voxel.level >= 3 * GeometryCoords.LEVELS_PER_STOREY:
+			if ring3_tone < 0:
+				ring3_tone = t
+			if voxel.damage_state != Voxel.DamageState.INTACT:
+				ring3_all_intact = false
+
+	if ring0_tone == frag.soot_ring_tones[0] and ring3_tone == frag.soot_ring_tones[3] and ring3_all_intact:
+		_pass("ring 0 tone=%d, ring 3 tone=%d, ring-3 voxels still fully INTACT (nothing destroyed)" %
+			[ring0_tone, ring3_tone])
+	else:
+		_fail("ring0=%d (want %d), ring3=%d (want %d), ring3_intact=%s" %
+			[ring0_tone, frag.soot_ring_tones[0], ring3_tone, frag.soot_ring_tones[3], ring3_all_intact])
+	print("")
+
+
+## Mirrors test_carved_side_faces_the_blast()'s own epicentre/voxel
+## coordinates: voxel (10,10), epicentre (0,20) resolves LEFT in screen
+## space -> SW face. The face pointed at the epicentre must carry the ring's
+## strong tone; the other two visible faces fall back one tone fainter,
+## exactly the split _face_rings_for() already produces for hole-derived soot.
+func test_stamp_container_soot_directional_faces_toward_epicenter() -> void:
+	print("[E-SOOT-2] stamp_container_soot(): the face toward the epicentre carries the strong tone, others fall back\n")
+
+	var slab := Slab.new("STAMP_DIR", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var v := VoxelClass.new(Vector2i(10, 10), 0, slab)
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.stamp_container_soot([v], 0, 0, false, [0, 1, 2, 3],
+		Vector2i(0, 20), snapshot, faces)
+
+	var f = faces.get(0, {}).get(Vector2i(10, 10))
+	## LEFT -> SW gets the strong tone (ring 0 -> tone 0); top/SE fall back
+	## to tone+falloff (default falloff=1) = 1.
+	if f == Vector3i(1, 1, 0):
+		_pass("epicentre to screen-left -> SW carries tone 0, top/SE fall back to 1 (%s)" % f)
+	else:
+		_fail("expected (top=1,se=1,sw=0), got %s" % f)
+	print("")
+
+
+## D25's own rule, reused: a ceiling's underside is never visible to the
+## camera, so a roof container must never receive a stamped face (or an
+## isotropic snapshot entry) at all — matching _self_soot_faces()'s BOTTOM
+## behaviour for the same physical reason.
+func test_stamp_container_soot_skips_ceiling_underside() -> void:
+	print("[E-SOOT-3] stamp_container_soot(): is_roof=true never stamps a face (ceiling underside invisible)\n")
+
+	var slab := Slab.new("STAMP_ROOF", Vector2i.ZERO, Slab.Role.CEILING, 0, "concrete")
+	var v := VoxelClass.new(Vector2i(5, 5), 0, slab)
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.stamp_container_soot([v], 0, 0, true, [0, 1, 2, 3],
+		Vector2i(0, 20), snapshot, faces)
+
+	var f = faces.get(0, {}).get(Vector2i(5, 5), null)
+	var s = snapshot.get(0, {}).get(Vector2i(5, 5), null)
+	if f == null and s == null:
+		_pass("is_roof=true: no face entry and no snapshot entry written (BOTTOM skip)")
+	else:
+		_fail("expected no entries for a roof voxel, got faces=%s snapshot=%s" % [f, s])
+	print("")
+
+
+## §5.3's whole design: soot_tone(cell) = min(derived_from_holes(cell),
+## stamped_by_blast(cell)). Proven both directions on the SAME shared
+## snapshot/faces dicts, since a real caller merges into one accumulator
+## regardless of which pass runs first: a real derived ring 0 must survive a
+## fainter stamp applied afterward, and a stamped ring 0 must survive an
+## (empty) derive pass applied afterward.
+func test_stamp_and_derive_soot_min_merge_darker_wins() -> void:
+	print("[E-SOOT-4] Stamped and derived soot compose via min-wins, whichever pass ran first\n")
+
+	var slab := Slab.new("STAMP_MERGE", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var cell_to_voxel: Dictionary = {}
+	var destroyed: Array = []
+	for x in range(3):
+		var v := VoxelClass.new(Vector2i(x, 0), 0, slab)
+		if x == 2:
+			v.visible = false
+			v.set_damage(Voxel.DamageState.DESTROYED)
+			destroyed.append(Vector3i(x, 0, 0))
+		cell_to_voxel[Vector3i(x, 0, 0)] = v
+
+	## x=1 derives ring 0 from the real hole at x=2. Stamping it with a much
+	## fainter tone (3) afterward, into the SAME shared dicts, must not
+	## weaken it.
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.derive_soot_rings(cell_to_voxel, destroyed, 3, snapshot, faces)
+	var derived_voxel = cell_to_voxel[Vector3i(1, 0, 0)]
+	BlastCalculatorClass.stamp_container_soot([derived_voxel], 0, 0, false, [3],
+		BlastCalculatorClass.NO_EPICENTER_BIAS, snapshot, faces)
+	var ring_after: int = int(snapshot.get(0, {}).get(Vector2i(1, 0), -1))
+	if ring_after == 0:
+		_pass("derived ring 0 survives a fainter stamp (3) applied afterward on the same voxel")
+	else:
+		_fail("expected the stronger derived ring 0 to survive, got %d" % ring_after)
+
+	## Reverse order: stamp a fresh, undamaged voxel with a strong tone (0)
+	## first, then run an empty derive pass over the same shared dicts — the
+	## stamped value must survive derivation contributing nothing.
+	var snapshot2: Dictionary = {}
+	var faces2: Dictionary = {}
+	var lone_slab := Slab.new("STAMP_MERGE_LONE", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var lone_voxel := VoxelClass.new(Vector2i(50, 50), 0, lone_slab)
+	BlastCalculatorClass.stamp_container_soot([lone_voxel], 0, 0, false, [0],
+		BlastCalculatorClass.NO_EPICENTER_BIAS, snapshot2, faces2)
+	BlastCalculatorClass.derive_soot_rings({}, [], 3, snapshot2, faces2)
+	var ring2: int = int(snapshot2.get(0, {}).get(Vector2i(50, 50), -1))
+	if ring2 == 0:
+		_pass("stamped ring 0 survives an empty derive pass over the same shared dicts")
+	else:
+		_fail("expected the stamped ring 0 to survive, got %d" % ring2)
+	print("")
+
+
+## stamp_crater_soot(): isotropic (a floor voxel has one visible face, so
+## Vector3i(tone, CLEAN, CLEAN) is the whole answer, not a shortcut), and its
+## ring bands follow apply_crater_damage()'s own rim_span unit — one band
+## per further ring beyond the crater proper, boundary-inclusive to the
+## CLOSER ring (matching apply_crater_damage()'s own `<=` convention).
+func test_stamp_crater_soot_isotropic_and_ring_bands() -> void:
+	print("[E-SOOT-5] stamp_crater_soot(): isotropic top-only tone, ring bands follow rim_span past the crater\n")
+
+	const CORE := 5.0
+	const MAX_R := 10.0
+	## rim_span = MAX_R - CORE = 5.0. Ring 0: d<=10. Ring 1: 10<d<=15. Ring 2: 15<d<=20.
+	var slab := Slab.new("STAMP_CRATER", Vector2i.ZERO, Slab.Role.FLOOR, 0, "earth")
+	var epicenter := Vector2i(0, 0)
+	var v0 := VoxelClass.new(Vector2i(10, 0), 0, slab)   ## d=10 -> ring 0 (boundary, closer ring)
+	var v1 := VoxelClass.new(Vector2i(15, 0), 0, slab)   ## d=15 -> ring 1 (boundary, closer ring)
+	var v2 := VoxelClass.new(Vector2i(20, 0), 0, slab)   ## d=20 -> ring 2
+
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.stamp_crater_soot([v0, v1, v2], epicenter, CORE, MAX_R,
+		[0, 1, 2], snapshot, faces)
+
+	var r0: int = int(snapshot.get(0, {}).get(Vector2i(10, 0), -1))
+	var r1: int = int(snapshot.get(0, {}).get(Vector2i(15, 0), -1))
+	var r2: int = int(snapshot.get(0, {}).get(Vector2i(20, 0), -1))
+	if r0 == 0 and r1 == 1 and r2 == 2:
+		_pass("distance bands land on rings 0/1/2 as expected (d=10,15,20)")
+	else:
+		_fail("expected rings [0,1,2], got [%d,%d,%d]" % [r0, r1, r2])
+
+	var f0 = faces.get(0, {}).get(Vector2i(10, 0))
+	var expected_f0 := Vector3i(0, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if f0 == expected_f0:
+		_pass("floor stamp is isotropic top-only: %s" % f0)
+	else:
+		_fail("expected top-only %s, got %s" % [expected_f0, f0])
+	print("")
+
+
+## Mirrors test_ring_beyond_range_untouched()'s own gate: a ring beyond
+## soot_ring_tones.size() must be skipped entirely by BOTH stamp functions —
+## no entry at all, not clamped to the last real tone.
+func test_stamp_soot_beyond_range_untouched() -> void:
+	print("[E-SOOT-6] A ring beyond soot_ring_tones.size() is skipped entirely by both stamp functions\n")
+
+	## Container: ring = base_ring(2) + vertical_ring(0) = 2, but
+	## soot_ring_tones only has 2 entries (0,1) -> ring 2 is out of range.
+	var slab := Slab.new("STAMP_RANGE", Vector2i.ZERO, Slab.Role.FLOOR, 0, "concrete")
+	var v := VoxelClass.new(Vector2i(3, 3), 0, slab)
+	var snapshot: Dictionary = {}
+	var faces: Dictionary = {}
+	BlastCalculatorClass.stamp_container_soot([v], 2, 0, false, [0, 1],
+		BlastCalculatorClass.NO_EPICENTER_BIAS, snapshot, faces)
+	var container_touched: bool = snapshot.get(0, {}).has(Vector2i(3, 3))
+
+	## Crater: d=20 lands in ring 2 (core=5, max=10, rim_span=5), but
+	## soot_ring_tones only has 2 entries (0,1) -> ring 2 is out of range.
+	var crater_slab := Slab.new("STAMP_RANGE_CRATER", Vector2i.ZERO, Slab.Role.FLOOR, 0, "earth")
+	var cv := VoxelClass.new(Vector2i(20, 0), 0, crater_slab)
+	var csnapshot: Dictionary = {}
+	var cfaces: Dictionary = {}
+	BlastCalculatorClass.stamp_crater_soot([cv], Vector2i(0, 0), 5.0, 10.0, [0, 1],
+		csnapshot, cfaces)
+	var crater_touched: bool = csnapshot.get(0, {}).has(Vector2i(20, 0))
+
+	if not container_touched and not crater_touched:
+		_pass("both stamp functions leave an out-of-range ring completely untouched")
+	else:
+		_fail("expected both untouched, got container=%s crater=%s" % [container_touched, crater_touched])
 	print("")
 
 

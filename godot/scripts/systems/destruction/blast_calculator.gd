@@ -615,9 +615,7 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
-		var vertical_ring: int = int(floor(
-			float(absi(level_offset)) / float(GeometryCoords.LEVELS_PER_STOREY)))
-		var ring: int = base_ring + vertical_ring
+		var ring: int = base_ring + _vertical_ring_for(level_offset)
 		if ring >= ring_multipliers.size():
 			continue
 		if not by_ring.has(ring):
@@ -677,6 +675,16 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
 				decal_variant_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level),
 				substrate_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level))
+
+
+## D14's spherical vertical-ring step, extracted out of apply_container_damage()
+## (EXPLOSION_REBUILD_MASTER_PLAN Task 3/E-SOOT, 2026-08-07) so the new soot
+## stamp functions below reuse the exact same formula textually instead of a
+## second copy free to drift out of sync. Pure extraction — apply_container_
+## damage()'s own behavior is unchanged (see D14's doc comment above for the
+## formula's rationale).
+static func _vertical_ring_for(level_offset: int) -> int:
+	return int(floor(float(absi(level_offset)) / float(GeometryCoords.LEVELS_PER_STOREY)))
 
 
 ## D32.5 — which of the three authored decals a mark uses.
@@ -1097,6 +1105,135 @@ static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
 			mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
 		return
 	level_faces[cell] = faces
+
+
+## EXPLOSION_REBUILD_MASTER_PLAN Task 3/E-SOOT (2026-08-07) — converts
+## carved_side_for()'s VIEW-space answer ("which face of this voxel points at
+## the epicentre") into the `toward` shape _face_rings_for() already consumes
+## (a Vector3i pointing FROM the voxel TOWARD whatever scorched it — the same
+## shape derive_soot_rings() derives from its own BFS step direction). Kept
+## separate from _self_soot_faces() (which answers a related but different
+## question — "which face did THIS voxel's own carved damage expose" — and
+## whose 7 passing SOOT-SELF-* assertions this task must not disturb) rather
+## than folded into it.
+## BOTTOM has no dedicated `toward` — a ceiling's underside is never visible
+## to the camera (the same rule _self_soot_faces() applies to BOTTOM), so the
+## caller must check for it and skip the voxel entirely rather than stamp a
+## face nobody can see.
+static func _toward_for_carved_side(carved_side: int) -> Vector3i:
+	match carved_side:
+		Voxel.CarvedSide.LEFT:
+			return Vector3i(0, 1, 0)   ## SW
+		Voxel.CarvedSide.RIGHT:
+			return Vector3i(1, 0, 0)   ## SE
+		Voxel.CarvedSide.BOTTOM:
+			return Vector3i.ZERO       ## caller's cue to skip — see doc above
+		_:
+			return Vector3i(0, 0, 1)   ## TOP and NONE both fall back to top
+
+
+## §5.2 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-07) — derive_soot_rings()
+## only ever seeds from DESTROYED voxels, so a ring that destroys nothing
+## (frag_grenade's own ring 3: destroy_ring_weights[3]=0.0) can never get soot
+## through derivation alone. This stamps soot directly from the blast's own
+## ring/tone table (BombDef.soot_ring_tones), independent of what got
+## destroyed — for wall/ceiling containers (see stamp_crater_soot() below for
+## floor).
+##
+## Directional per Director confirmation (2026-08-07): the per-voxel/
+## per-face collapse §5.1 originally proposed (to save alt-id headroom) was a
+## processing-cost concession that no longer applies now that explosions are
+## pre-baked, not live-composited — FACE-SOOT-01 and self-soot's per-face
+## richness stay exactly as they are (no change to FACE_SOOT_CODE_COUNT,
+## encode_face_soot(), or the shader), and this NEW stamp is genuinely
+## per-face directional too, not a flat isotropic value. It reuses
+## carved_side_for() (already the canonical "which face points at the
+## epicentre" answer, used elsewhere for decal carving) via
+## _toward_for_carved_side(), then delegates to _face_rings_for() — the exact
+## same strong/faint split derive_soot_rings() already produces from a BFS
+## step direction, here fed a direction toward the EPICENTRE instead of
+## toward a specific neighbouring hole.
+##
+## Ring math is base_ring + _vertical_ring_for(level_offset) — textually the
+## same D14 formula apply_container_damage() uses, not a second copy. tone =
+## soot_ring_tones[ring] is fed as _face_rings_for()'s `ring` argument with
+## n_rings=FACE_SOOT_CLEAN (not soot_ring_tones.size()): tone is already a
+## real code value (0..FACE_SOOT_CLEAN-1, or exactly FACE_SOOT_CLEAN for a
+## bomb's intentionally-clean ring entry) — the same constant
+## derive_soot_rings()'s own blast-soot call site already passes as
+## intensity_rings.
+##
+## out_snapshot/out_faces are written with min-wins semantics (never
+## overwrites a stronger/lower value already present) so this composes with
+## whatever derive_soot_rings() and apply_self_soot() already produced,
+## exactly the way room._merge_soot_into() composes two independent passes
+## today — this function does its own version of that merge inline since it
+## may be called multiple times (once per affected container) into one
+## shared accumulator.
+static func stamp_container_soot(voxels: Array, base_ring: int, base_level: int,
+		is_roof: bool, soot_ring_tones: Array[int], bias_epicenter: Vector2i,
+		out_snapshot: Dictionary, out_faces: Dictionary,
+		face_soot_falloff: int = 1) -> void:
+	for voxel in voxels:
+		var level_offset: int = voxel.level - base_level
+		var ring: int = base_ring + _vertical_ring_for(level_offset)
+		if ring >= soot_ring_tones.size():
+			continue
+		var tone: int = soot_ring_tones[ring]
+		var toward: Vector3i = _toward_for_carved_side(
+			carved_side_for(voxel.grid_pos, is_roof, bias_epicenter))
+		if toward == Vector3i.ZERO:
+			continue   ## BOTTOM: ceiling underside, never visible
+		if not out_snapshot.has(voxel.level):
+			out_snapshot[voxel.level] = {}
+		var level_map: Dictionary = out_snapshot[voxel.level]
+		var existing: int = int(level_map.get(voxel.grid_pos, FACE_SOOT_CLEAN))
+		if tone < existing:
+			level_map[voxel.grid_pos] = tone
+		var faces: Vector3i = _face_rings_for(tone, toward, FACE_SOOT_CLEAN, face_soot_falloff)
+		_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, true)
+
+
+## §5.2/§5.4.4 — the floor counterpart of stamp_container_soot(). Floor
+## voxels are damaged RADIALLY (apply_crater_damage(), no discrete ring), so
+## this derives an equivalent numbered ring from the exact same distance
+## unit that function already uses: ring 0 covers the crater itself
+## (d <= max_radius), and each further ring is one more rim_span-wide band
+## beyond it — `rim_span = max_radius - core_radius` is apply_crater_damage()'s
+## own falloff unit, reused rather than inventing a second one.
+##
+## Assumption stated, open to one-line correction (Task 2's own D1/D2
+## precedent): this banding is new, not separately specified — reasonable
+## given rings apply uniformly in every direction (Q1b's spherical answer),
+## but flagged here rather than silently invented.
+##
+## Isotropic (Vector3i(tone, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)): a floor
+## voxel has exactly one visible face (the top), so there is genuinely one
+## channel to stamp, not a shortcut around directionality.
+static func stamp_crater_soot(voxels: Array, epicenter: Vector2i,
+		core_radius: float, max_radius: float, soot_ring_tones: Array[int],
+		out_snapshot: Dictionary, out_faces: Dictionary) -> void:
+	var rim_span: float = maxf(max_radius - core_radius, 0.001)
+	for voxel in voxels:
+		var d: float = Vector2(voxel.grid_pos - epicenter).length()
+		## ring N covers d in (max_radius + (N-1)*rim_span, max_radius + N*rim_span]
+		## — a boundary distance belongs to the CLOSER ring, matching every other
+		## `<=`-based band test in apply_crater_damage() above. ceil, not floor:
+		## floor would put an exact-multiple boundary (e.g. d == max_radius +
+		## rim_span) one ring further out than every neighbouring distance a
+		## fraction closer.
+		var ring: int = 0 if d <= max_radius else int(ceil((d - max_radius) / rim_span))
+		if ring >= soot_ring_tones.size():
+			continue
+		var tone: int = soot_ring_tones[ring]
+		if not out_snapshot.has(voxel.level):
+			out_snapshot[voxel.level] = {}
+		var level_map: Dictionary = out_snapshot[voxel.level]
+		var existing: int = int(level_map.get(voxel.grid_pos, FACE_SOOT_CLEAN))
+		if tone < existing:
+			level_map[voxel.grid_pos] = tone
+		_write_face_rings(out_faces, voxel.level, voxel.grid_pos,
+			Vector3i(tone, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN), true)
 
 
 ## D33-SOOT-01 (Director, 2026-08-03): "algumas armas... deixam tudo limpo.

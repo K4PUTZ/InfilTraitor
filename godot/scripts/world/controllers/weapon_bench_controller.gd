@@ -325,7 +325,7 @@ func fire_active() -> void:
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
-			av.damage_is_blast, av.damage_carved_side, av.damage_variant)
+			av.damage_is_blast, av.damage_carved_side, av.damage_variant, av.damage_substrate)
 
 	## PERF-01: spread across frames instead of one synchronous batch — see
 	## TestZoneController.detonate_active()'s matching comment.

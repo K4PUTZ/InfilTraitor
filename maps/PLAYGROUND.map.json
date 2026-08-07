@@ -145,6 +145,10 @@
       ],
       "v": 2
     },
+    "damage_materials": {
+      "materials": ["concrete", "metal", "stone", "wood"],
+      "v": 1
+    },
     "legacy_compiler": {
       "wall_height": 1,
       "access_points": [],

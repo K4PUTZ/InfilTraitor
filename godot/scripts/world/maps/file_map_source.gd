@@ -110,6 +110,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if floor_zones_section.get("items", []).size() > 0:
 		runtime["floor_zones"] = _convert_from_json_compatible(floor_zones_section["items"])
 
+	# --- Damage materials section (D13): flat declared-material list ---------
+	var damage_materials_section = sections.get("damage_materials", {})
+	if damage_materials_section.get("materials", []).size() > 0:
+		runtime["damage_materials"] = damage_materials_section["materials"]
+
 	# --- Props section: now translatable (PROP-01 implementation) -----------
 	var props_section = sections.get("props", {})
 	if props_section.get("items", []).size() > 0:

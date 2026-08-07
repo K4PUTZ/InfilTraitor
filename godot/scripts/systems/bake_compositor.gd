@@ -1115,11 +1115,15 @@ func _decode_cache_image(data: PackedByteArray) -> Image:
 	img.set_data(width, height, false, format_id, payload)
 	return img
 
-## Load page from disk cache; returns null on miss or corruption
-func _disk_cache_load(cache_key: String) -> Image:
-	var cache_file: String = BAKE_CACHE_PATH + cache_key + BAKE_CACHE_EXTENSION
+## Load page from disk cache; returns null on miss or corruption.
+## D13 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): `cache_dir` defaults to
+## this compositor's own page cache but is overridable so DamageVariantBaker
+## can reuse this exact encode/decode/load/save mechanism for its own,
+## sibling atom cache instead of duplicating it.
+func _disk_cache_load(cache_key: String, cache_dir: String = BAKE_CACHE_PATH) -> Image:
+	var cache_file: String = cache_dir + cache_key + BAKE_CACHE_EXTENSION
 	var global_path: String = ProjectSettings.globalize_path(cache_file)
-	var legacy_path: String = ProjectSettings.globalize_path(BAKE_CACHE_PATH + cache_key + ".png")
+	var legacy_path: String = ProjectSettings.globalize_path(cache_dir + cache_key + ".png")
 	if FileAccess.file_exists(global_path):
 		var file_data = FileAccess.get_file_as_bytes(global_path)
 		if file_data == null or file_data.size() == 0:
@@ -1137,9 +1141,8 @@ func _disk_cache_load(cache_key: String) -> Image:
 	print("[BAKE] Disk cache MISS: file not found %s" % global_path)
 	return null
 
-## Save page to disk cache
-func _disk_cache_save(cache_key: String, page: Image) -> void:
-	var cache_dir: String = BAKE_CACHE_PATH
+## Save page to disk cache. `cache_dir` — see _disk_cache_load()'s doc comment.
+func _disk_cache_save(cache_key: String, page: Image, cache_dir: String = BAKE_CACHE_PATH) -> void:
 	var global_dir: String = ProjectSettings.globalize_path(cache_dir)
 	if not DirAccess.dir_exists_absolute(global_dir):
 		DirAccess.make_dir_absolute(global_dir)

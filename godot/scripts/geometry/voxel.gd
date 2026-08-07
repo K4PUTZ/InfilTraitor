@@ -55,6 +55,16 @@ var damage_carved_side: int = CarvedSide.NONE
 ## alongside is_blast and the carved side, so a mark keeps its art forever.
 var damage_variant: int = 0
 
+## D3/§3.3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): WHICH of the 3 pre-baked
+## substrate crops this mark's decal sits on — the atom-bake model's whole
+## premise is that a damaged voxel shows a RANDOMLY CHOSEN facade crop for its
+## material, not its own. Same storage rationale as damage_variant above
+## (grid_pos is view-space, rotation would re-roll it) and the same read-once
+## rule in set_damage(). Rolled from a DIFFERENT hash salt than damage_variant
+## (BlastCalculator.substrate_for()) so substrate choice never correlates with
+## decal choice.
+var damage_substrate: int = 0
+
 ## Back-reference for dirty propagation. Untyped on purpose: D1
 ## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
 ## (parent = Slice, owned by an Edge) and floor/ceiling/interior voxels (parent =
@@ -89,14 +99,16 @@ func set_visible(v: bool) -> void:
 ## already-carved voxel's hole to a new side.
 ## D32: variant rides the same read-once rule for the same reason — a second
 ## hit on an already-marked voxel must not swap the art out from under it.
+## D3/§3.3: substrate rides the same rule for the same reason.
 func set_damage(new_state: int, from_blast: bool = false,
-		carved_side: int = CarvedSide.NONE, variant: int = 0) -> void:
+		carved_side: int = CarvedSide.NONE, variant: int = 0, substrate: int = 0) -> void:
 	if damage_state == new_state:
 		return
 	damage_state = new_state
 	damage_is_blast = from_blast
 	damage_carved_side = carved_side
 	damage_variant = variant
+	damage_substrate = substrate
 	if new_state == DamageState.DESTROYED:
 		visible = false
 	_set_dirty()

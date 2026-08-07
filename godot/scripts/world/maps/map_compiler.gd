@@ -170,6 +170,11 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"material": String(zone.get("material", "")),
 		})
 
+	## --- damage_materials (D13): flat pass-through, no offset/rotation to apply ---
+	var damage_materials: Array[String] = []
+	for m in spec.get("damage_materials", []):
+		damage_materials.append(String(m))
+
 	## Ceiling-fixture height (lamp + temporal knob), independent of the physical
 	## wall storeys. Defaults to DEFAULT_CEILING_FLOORS for tall scene composition.
 	var ceiling_floors: int = maxi(1, int(spec.get("ceiling_floors", DEFAULT_CEILING_FLOORS)))
@@ -256,6 +261,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
 		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
+		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       enemy_defs,

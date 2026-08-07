@@ -71,6 +71,12 @@ const IMPACT_DECAL_VARIANTS: int = 3
 ## are material-agnostic, so nothing forces the two counts to match, they
 ## just both happen to be 3 today.
 const GENERIC_MARK_VARIANT_COUNT: int = 3
+## D3/§3.3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — how many pre-baked
+## substrate crops the atom-bake model offers per (material, damage name).
+## Independent of IMPACT_DECAL_VARIANTS on purpose (same reasoning as
+## GENERIC_MARK_VARIANT_COUNT above): a decal-art axis and a substrate-crop
+## axis have no reason to share a count, they just both happen to be 3 today.
+const DAMAGE_SUBSTRATE_VARIANTS: int = 3
 ## Every ground material's dent routes to this one shared asset (D26), so the
 ## floor family is built on "earth" and needs only the blast/dent/top corner of
 ## the matrix: floors take no bullets (D32.4) and have no crack tier.
@@ -918,6 +924,14 @@ func _load_decal_image(path: String) -> Image:
 ## apply_damage_voxel_swap() (pre-baked tile lookup). This is only called if
 ## apply_damage_voxel_swap() fails or when rendering directly to _set_voxel_cell()
 ## (e.g., test scenarios or unusual map configs). 
+## D3/§3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): `edge == null` is the
+## atom-bake caller's signal (DamageVariantBaker) — there is no real wall
+## cell to resolve a substrate against, only a chosen synthetic crop of
+## `plan["base_material"]`'s own facade sheet. Resolves via resolve_flat()
+## instead of the edge-based resolve() in that case (SLICE surface_class,
+## matching what walls always use) — confirmed by direct code reading that
+## resolve()'s column_in_run derivation requires a REAL, run-registered Edge,
+## which a synthetic bake-time call has no reason to fabricate.
 func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
 	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
@@ -925,7 +939,9 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 	if cache.has(key):
 		return cache.resolve(key)
 
-	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level)
+	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level) \
+			if edge != null \
+			else _resolve_tinted_baked_atom_flat(plan["base_material"], voxel_xy, BakePolicyClass.SurfaceClass.SLICE)
 	if resolved.is_empty():
 		return {}
 
@@ -1071,6 +1087,10 @@ func _flat_material_side_color(base_material: String) -> Color:
 ## pastes the decal onto the exposed cut face, caches, and returns the same
 ## {source_id, atlas_coords, alternative_id} shape. {} on any miss (no baked
 ## atom, missing decal file) falls through to the generic path unchanged.
+## D3/§3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): `edge == null` is the
+## atom-bake caller's signal, same as _composite_full_voxel_decal() above —
+## see that function's doc comment for why resolve_flat() replaces resolve()
+## in that case.
 func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
 		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
 	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
@@ -1078,7 +1098,9 @@ func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
 	if cache.has(key):
 		return cache.resolve(key)
 
-	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level)
+	var resolved := _resolve_tinted_baked_atom(edge, slice_face, voxel_xy, level) \
+			if edge != null \
+			else _resolve_tinted_baked_atom_flat(plan["base_material"], voxel_xy, BakePolicyClass.SurfaceClass.SLICE)
 	if resolved.is_empty():
 		return {}
 
@@ -2966,8 +2988,19 @@ func clear() -> void:
 ## branching) — the lookup and its fallback can never name a cell differently
 ## because they call the same functions.
 ##
+## D3/§3.1 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): the registry lost its
+## per-cell dimension — `element_class` ("WALL"/"CEILING"/"FLOOR", the same
+## three DamageVariantBaker.bake_all() enumerates) plus
+## `voxel.damage_substrate` (the pre-baked atom this specific mark's decal
+## sits on) now identify the atom instead of `grid_pos`/`level`. INTERIOR
+## Slabs get no baked atoms (DamageVariantBaker's own scope note — they never
+## reach the baked D33 path in the first place), so they're keyed under
+## "INTERIOR" purely to keep the lookup honest about what it's asking for;
+## it always misses and falls back exactly as it does today.
+##
 ## Parameters:
-##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant set
+##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant/
+##     substrate set
 ##   container: the Slice or Slab this voxel belongs to
 ##   level: the storey index
 ##
@@ -2978,28 +3011,49 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
 
 	var render_material: String
 	var material_for_key: String
+	var element_class: String
 	if container is Slice:
 		render_material = damage_variant_material(container.material, voxel.damage_state,
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		material_for_key = container.material
+		element_class = "WALL"
 	elif container is Slab:
 		if container.role == Slab.Role.FLOOR:
-			## D33/FLOOR-DENT-01: every FLOOR voxel's damage — zoned or plain
-			## earth — always renders through the shared "earth" family
-			## (floor_damage_material()'s own rule), never the real zone
-			## material. See voxel_renderer.gd's floor_damage_material() doc.
+			## D33/FLOOR-DENT-01: every FLOOR voxel's damage NAME always
+			## renders through the shared "earth" family
+			## (floor_damage_material()'s own rule) regardless of the real
+			## zone material — that part is unchanged. But D9
+			## (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) makes the ATOM
+			## itself material-real: the substrate crop under the decal now
+			## comes from the GU's actual ground material (Task 1a's
+			## `concrete`, not a hardcoded "earth"/"ground_concrete"), so two
+			## different real materials bake two genuinely different atoms
+			## even though they share the same damage-state NAME string. The
+			## registry key's material component must therefore be the real
+			## zone material (`container.material` — "earth" itself for a
+			## genuinely unzoned floor), never the IMPACT_FLOOR_MATERIAL
+			## naming constant, or every real material would collide into one
+			## slot.
 			render_material = floor_damage_material(voxel.damage_state,
 				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			material_for_key = IMPACT_FLOOR_MATERIAL
+			material_for_key = container.material
+			element_class = "FLOOR"
+		elif container.role == Slab.Role.CEILING:
+			render_material = damage_variant_material(container.material, voxel.damage_state,
+				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			material_for_key = container.material
+			element_class = "CEILING"
 		else:
 			render_material = damage_variant_material(container.material, voxel.damage_state,
 				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 			material_for_key = container.material
+			element_class = "INTERIOR"
 	else:
 		return false  # Unknown container type
 
-	var cell_key := VoxelVariantRegistryClass.make_cell_key(voxel.grid_pos, level, material_for_key)
-	var entry: Dictionary = _damage_variant_registry.get_variant(cell_key, render_material)
+	var variant_key := VoxelVariantRegistryClass.make_variant_key(
+		element_class, material_for_key, render_material, voxel.damage_substrate)
+	var entry: Dictionary = _damage_variant_registry.get_variant(variant_key)
 	if entry.is_empty():
 		return false  # No pre-baked variant — caller's fallback line renders it
 

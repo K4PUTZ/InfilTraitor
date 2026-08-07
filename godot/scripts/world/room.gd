@@ -178,15 +178,18 @@ var _crater_floor_soot: Dictionary = {}
 ## only damage_state was stored and set_damage()'s other arguments fell back to
 ## their defaults on reapply. That silently reverted every blast mark to the
 ## BULLET texture family on the first perspective flip.
-## Packed as Array[int]: [damage_state, is_blast, dir_x, dir_y, dir_z, variant],
-## where dir is the BASE-space unit direction pointing at the blast
+## Packed as Array[int]: [damage_state, is_blast, dir_x, dir_y, dir_z, variant,
+## substrate], where dir is the BASE-space unit direction pointing at the blast
 ## (Vector3i.ZERO = unknown). Base-space is the whole point: LEFT/RIGHT are
 ## screen-relative, so the carved side has to be re-derived per view — see
 ## _carved_side_from_base(). D32 appended `variant` (which of the three authored
 ## decals this mark uses) for exactly the reason is_blast was appended at D25: a
 ## value that is not persisted falls back to its default on reapply, so every
 ## mark would silently snap to variant 0 on the first rotation. Records written
-## before D32 are 5 long and read back as variant 0.
+## before D32 are 5 long and read back as variant 0. D3/§3.3
+## (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) appended `substrate` for the
+## identical reason — records written before this are 6 long or shorter and
+## read back as substrate 0.
 var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
 
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
@@ -218,13 +221,13 @@ func _base_voxel_size() -> Vector2i:
 ## to whatever the carved side is under the NEW view on reapply.
 func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int,
 		is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE,
-		variant: int = 0) -> void:
+		variant: int = 0, substrate: int = 0) -> void:
 	if damage_state <= 0:
 		return
 	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
 	var key := Vector3i(base_xy.x, base_xy.y, level)
 	var dir := _carved_side_to_base_dir(grid_pos, carved_side)
-	_base_damage[key] = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant]
+	_base_damage[key] = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant, substrate]
 
 
 ## D25 — VIEW-space Voxel.CarvedSide → BASE-space unit direction pointing at the
@@ -294,7 +297,8 @@ func _reapply_base_damage() -> void:
 		v.set_damage(rec_state, int(rec[1]) == 1,
 			_carved_side_from_base(Vector2i(base_key.x, base_key.y),
 				Vector3i(int(rec[2]), int(rec[3]), int(rec[4]))),
-			int(rec[5]) if rec.size() > 5 else 0)
+			int(rec[5]) if rec.size() > 5 else 0,
+			int(rec[6]) if rec.size() > 6 else 0)
 		## A destroyed FLOOR voxel exposes the level beneath it — re-reveal it and
 		## scorch the revealed cell, same as the original detonation did (VL-D2).
 		if base_key.z < 0 and rec_state == Voxel.DamageState.DESTROYED:

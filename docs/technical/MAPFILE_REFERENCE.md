@@ -57,6 +57,7 @@ Coordinates are **internal** throughout; the buffer is applied only in
 | `props` | voxel props: `{def, gu, vox_offset, rot}` (PROP-01) |
 | `actors` | `agent_start` + `guards` as **bare array-of-routes** (D16: `[[x,y],...]` per guard — no wrapper dict, no `class` field until guard AI needs it; richer config arrives later as a routine `v1→v2` section migration) |
 | `legacy_compiler` | **D15 bridge:** flat cell/grid vocabulary `MapCompiler` natively understands (`wall_height`, `access_points`, `dividers`, `lights`). Keeps golden exports lossless until the compiler learns the native `walls`/`blocks`/`props` vocabulary end-to-end. |
+| `damage_materials` | **D13** (`EXPLOSION_REBUILD_MASTER_PLAN.md` §3.5, registered 2026-08-06 in Task 1b/E-BAKE): `{materials: [String]}` — the map's own declared list of which materials its damage-decal atom bake needs, read before `DamageVariantBaker.bake_all()`. Not derived from `walls`/`blocks`/`floor_zones`: materials are planned to become per-player/per-playthrough procedural content (§3.5's "why"), so a map has to be able to name a material that exists nowhere else in the file. Empty/absent = opt-out (no atoms baked for that map); `DamageVariantBaker`'s own selftest checks the declared list is a superset of what the map's other sections actually reference, so a forgotten declaration fails loudly (B6) instead of silently missing its bake. |
 
 ### Reserved, not yet registered
 
@@ -67,15 +68,6 @@ round-trip verbatim as unknown sections (M3). Flow when implemented:
 `generator(seed, params) → base spec → patches in order → MapCompiler`.
 Generator ids are canon (D10): a generator whose output changes for old seeds
 gets a new id (`shell_v2`), never a silent change.
-
-`damage_materials` (working name — the map's explicit declared list of which
-materials its damage-decal bake needs, read before compile) is planned by
-`EXPLOSION_REBUILD_MASTER_PLAN.md` §3.5/D13 (2026-08-06), not yet a registered
-section. Exists because materials are planned to become per-player/per-
-playthrough procedural content (same doc, D13's "why"), not a small fixed
-catalog derivable from `walls`/`blocks`/`floor_zones`. When implemented,
-register it the normal way (extension protocol above); this line is a
-forward-pointer so a future reader of this file isn't surprised by it landing.
 
 ## Invariants (M1–M7)
 

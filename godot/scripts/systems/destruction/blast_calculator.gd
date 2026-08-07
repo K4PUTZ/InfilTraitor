@@ -437,7 +437,8 @@ static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 			## (D32.4), with one of the three authored decals (D32.5).
 			voxel.set_damage(state, false,
 				carved_side_for(voxel.grid_pos, false, shooter_gu),
-				decal_variant_for(salt, voxel_index, depth))
+				decal_variant_for(salt, voxel_index, depth),
+				substrate_for(salt, voxel_index, depth))
 			break
 		voxel.set_damage(Voxel.DamageState.DESTROYED)
 		var sibling := edge_registry.sibling_slice(current_slice.id)
@@ -646,10 +647,12 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		for voxel in dent_set:
 			voxel.set_damage(Voxel.DamageState.DENTED, true,
 				carved_side_for(voxel.grid_pos, is_roof, bias_epicenter),
-				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
+				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
 		for voxel in crack_set:
 			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
-				decal_variant_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level))
+				decal_variant_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level),
+				substrate_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level))
 
 
 ## D32.5 — which of the three authored decals a mark uses.
@@ -665,6 +668,22 @@ static func decal_variant_for(salt: String, a: int, b: int) -> int:
 	if count <= 1:
 		return 0
 	return FacadeSampler._fnv1a_hash("%s:DECAL:%d:%d" % [salt, a, b]) % count
+
+
+## D3/§3.3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — which of the 3
+## pre-baked substrate crops a mark's decal sits on. Line-for-line
+## decal_variant_for()'s shape, deliberately keyed under a DIFFERENT hash
+## salt segment ("SUBSTRATE" vs "DECAL") so substrate choice never
+## correlates with decal choice — two marks that roll the same decal variant
+## should not systematically also land on the same substrate. Stored on the
+## Voxel (see Voxel.damage_substrate) for the identical reason decal_variant
+## is stored: grid_pos is view-space, re-deriving at paint time would re-roll
+## every mark's substrate on rotation.
+static func substrate_for(salt: String, a: int, b: int) -> int:
+	var count: int = VoxelRenderer.DAMAGE_SUBSTRATE_VARIANTS
+	if count <= 1:
+		return 0
+	return FacadeSampler._fnv1a_hash("%s:SUBSTRATE:%d:%d" % [salt, a, b]) % count
 
 
 ## D25 (Director diagram, 2026-07-31) — which side of `voxel_cell` faced the
@@ -814,7 +833,8 @@ static func _roll_floor_dent(voxel, container_id: String, d: float,
 	var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 	if h < dent_p:
 		voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
-			decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+			decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
+			substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
 
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): "a segunda camada do chão mais difícil

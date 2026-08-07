@@ -8,6 +8,7 @@ static func register_all(registry) -> void:
 	register_walls(registry)
 	register_blocks(registry)
 	register_floor_zones(registry)
+	register_damage_materials(registry)
 	register_props(registry)
 	register_actors(registry)
 	register_legacy_compiler(registry)
@@ -122,6 +123,39 @@ static func register_floor_zones(registry) -> void:
 		migrations,
 		func() -> Dictionary:
 			return { "items": [] }
+	))
+
+## damage_materials (D13, EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): the
+## map's own declared list of which materials its damage-decal atom bake
+## needs — see MAPFILE_REFERENCE.md's "Reserved, not yet registered" note,
+## this is that section landing. Not derived from walls/blocks/floor_zones:
+## materials are planned to become per-player/per-playthrough procedural
+## content (§3.5's "why"), so a map has to be able to NAME a material that
+## exists nowhere else in the file. A map with no section (or an empty list)
+## simply bakes no damage atoms for itself — declaring is opt-in, and
+## DamageVariantBaker's own selftest checks that a map's declared list is a
+## superset of what its walls/blocks/floor_zones actually reference, so a
+## forgotten declaration fails loudly (B6) rather than silently missing its
+## bake. v1, no migration needed — "materials" is always present from the
+## start.
+static func register_damage_materials(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"damage_materials",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			var materials: Array[String] = []
+			for m in fragment.get("materials", []):
+				materials.append(String(m))
+			return { "materials": materials },
+		func(raw: Dictionary) -> Dictionary:
+			var materials: Array[String] = []
+			for m in raw.get("materials", []):
+				materials.append(String(m))
+			return { "materials": materials },
+		{},
+		func() -> Dictionary:
+			return { "materials": [] }
 	))
 
 static func register_props(registry) -> void:

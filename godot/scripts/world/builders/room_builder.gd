@@ -10,9 +10,55 @@ var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
+var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
+var DamageVariantBakerClass = preload("res://godot/scripts/systems/damage_variant_baker.gd")
+var VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
 
 # BAKE-FACADE-PLANE-02-b: Persistent bake compositor across map reloads
 var _bake_compositor: Object = null
+
+## D13 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): persistent material
+## registry, shared by the damage-substrate-usage injection below and
+## _bake_textures()'s own BakeCompositor wiring (which used to create its own
+## local, throwaway instance each first bake) — one registry, lazily loaded
+## once, same lifecycle as _bake_compositor.
+var _material_registry: Object = null
+
+func _get_material_registry() -> Object:
+	if _material_registry == null:
+		_material_registry = MaterialRegistryClass.new()
+		_material_registry.load_from_disk()
+	return _material_registry
+
+
+## D13/§3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): force
+## DamageVariantBaker's chosen substrate-crop positions into real bake usage.
+## BakeCompositor bakes SPARSELY — only (col,row) cells real wall/roof/floor
+## placements actually use get composed — so without this, a declared
+## material's damage-atom substrate would only resolve by accident, if a real
+## surface happened to already use that exact synthetic position. Merges into
+## the SAME `cells_by_combo` dict the real usage loop populates (not a
+## separate spec entry), so a combo that's also genuinely used keeps its real
+## cells too — `_compose_roof_pages` caches by (material, facade) combo, so a
+## second, separate spec entry for the same combo would just cache-HIT the
+## first one's cells and silently miss the synthetic positions.
+func _inject_damage_substrate_usage(cells_by_combo: Dictionary, materials: Array,
+		want_facade: bool) -> void:
+	if materials.is_empty():
+		return
+	var registry = _get_material_registry()
+	for material in materials:
+		var m := String(material)
+		var md = registry.get_material(m)
+		if md == null or (want_facade and not md.has_facade):
+			continue
+		var facade_id: String = BakePolicyClass.facade_for_material(m) if want_facade \
+				else BakePolicyClass.slab_for_material(m)
+		var combo_key := "%s|%s" % [m, facade_id]
+		if not cells_by_combo.has(combo_key):
+			cells_by_combo[combo_key] = {}
+		for pos in DamageVariantBakerClass.SUBSTRATE_POSITIONS:
+			cells_by_combo[combo_key][pos] = true
 
 ## VL-PERF-BAKE: baked pages/tiles depend only on the (material, facade) combos
 ## present, not on the view — so a perspective rotation produces byte-identical
@@ -191,10 +237,16 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## requires edges to exist).
 	var floor_specs: Array = []
 	var floor_cells_by_combo: Dictionary = {}
+	## D13: real floor materials seen this build — the subset of the map's
+	## declared damage_materials that DamageVariantBaker.bake_all() should
+	## actually bake a FLOOR atom for (baking one for a declared material
+	## that's never a floor would just be unused bloat).
+	var floor_materials_used: Dictionary = {}
 	for floor_gu in floor_slabs_by_gu:
 		var floor_slab: Slab = floor_slabs_by_gu[floor_gu]
 		if floor_slab.material == "earth":
 			continue
+		floor_materials_used[floor_slab.material] = true
 		## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): floor zones bake
 		## through the SLAB texture family (slab_<material>), not SLICE — the
 		## roof combo just below stays on facade_for_material() unchanged,
@@ -205,6 +257,28 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			floor_cells_by_combo[floor_combo_key] = {}
 		for voxel in floor_slab.voxels:
 			floor_cells_by_combo[floor_combo_key][voxel.grid_pos - floor_slab.texture_anchor] = true
+	var damage_materials: Array = layout.get("damage_materials", [])
+	var damage_floor_materials: Array = []
+	for m in floor_materials_used.keys():
+		if damage_materials.has(m):
+			damage_floor_materials.append(m)
+	_inject_damage_substrate_usage(floor_cells_by_combo, damage_floor_materials, false)
+
+	## D13 (EXPLOSION_REBUILD_MASTER_PLAN §3.5): loud-fail (B6) if this map's
+	## declared damage_materials is missing a material its walls/blocks/
+	## floor_zones actually use — a forgotten declaration means that
+	## material's damage atoms silently never bake, and every hit on it falls
+	## back to D33 live compositing forever without anyone noticing why.
+	var real_materials_used: Dictionary = {}
+	for e in extraction.get("edges", []):
+		real_materials_used[e.material] = true
+	for b: Dictionary in layout.get("solid_block_instances", []):
+		real_materials_used[String(b.get("material", ""))] = true
+	for m in floor_materials_used.keys():
+		real_materials_used[m] = true
+	for m in real_materials_used.keys():
+		if m != "" and m != "earth" and not damage_materials.has(m):
+			push_warning("[RoomBuilder] material '%s' is used by this map but missing from its damage_materials section — its damage atoms will never bake (D13)" % m)
 	for floor_combo_key in floor_cells_by_combo:
 		var floor_parts: PackedStringArray = String(floor_combo_key).split("|")
 		floor_specs.append({
@@ -372,6 +446,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 				roof_cells_by_combo[combo_key] = {}
 			for voxel in roof_slab.voxels:
 				roof_cells_by_combo[combo_key][voxel.grid_pos - roof_slab.texture_anchor] = true
+		_inject_damage_substrate_usage(roof_cells_by_combo, damage_materials, true)
 		for combo_key in roof_cells_by_combo:
 			var parts: PackedStringArray = String(combo_key).split("|")
 			roof_specs.append({
@@ -388,7 +463,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## automatic (see bake_compositor.gd Part C).
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
 		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, edge_registry, junction_columns, roof_specs + floor_specs)
+			_bake_textures(extraction, edge_registry, junction_columns, roof_specs + floor_specs,
+				damage_materials, damage_floor_materials)
 
 		if _diag_on:
 			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [
@@ -631,7 +707,8 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 
 
 ## Bake textures (S2: FIX-BAKE-05 integration + BAKE-FIX-02 run grouping & junction columns)
-func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = [], roof_specs: Array = []) -> void:
+func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junction_columns: Array = [],
+		roof_specs: Array = [], damage_materials: Array = [], damage_floor_materials: Array = []) -> void:
 	print("[ROOM] Baking textures with %d junction columns..." % _junction_columns.size())
 
 	# Get current map ID for cache keying
@@ -759,10 +836,7 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	if _bake_compositor == null:
 		var compositor_class = preload("res://godot/scripts/systems/bake_compositor.gd")
 		_bake_compositor = compositor_class.new()
-		# Inject material registry
-		var material_registry = preload("res://godot/scripts/systems/material_registry.gd").new()
-		material_registry.register_defaults()
-		_bake_compositor.set_material_registry(material_registry)
+		_bake_compositor.set_material_registry(_get_material_registry())
 		print("[BAKE] Created persistent BakeCompositor for session")
 
 	# TOP-01-b / BAKE-CACHE-01: One-shot disk cache clear (moved from bake_config.gd)
@@ -830,13 +904,13 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 
 	_wire_baked_lookup(runs, baked_atlas, source_ids)
 	
-	## D-ARCH-01: Initialize damage variant registry (fallback for now — full
-	## DamageVariantBaker integration deferred). Allow apply_damage_voxel_swap()
-	## to recognize the registry exists and attempt lookup; on miss, it returns
-	## false and falls back to D33 compositing (which works). Prevents silent
-	## no-op damage when apply_damage_voxel_swap() returns false due to null
-	## registry.
-	_initialize_damage_variant_registry()
+	## Task 1b/E-BAKE (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): populate the
+	## registry for real via DamageVariantBaker, reading the map's own
+	## declared damage_materials. apply_damage_voxel_swap() falls back to D33
+	## live compositing on any miss regardless (unreachable name, undeclared
+	## material, disk/bake failure), so this is additive — never a new way to
+	## fail damage rendering.
+	_initialize_damage_variant_registry(damage_materials, damage_floor_materials)
 
 
 ## VL-PERF-BAKE: build the BakedTileLookup from runs + a baked atlas + source ids
@@ -852,19 +926,27 @@ func _wire_baked_lookup(runs: Array, baked_atlas, source_ids: Dictionary) -> voi
 	room._voxel_renderer.set_baked_lookup(lookup)
 
 
-## D-ARCH-01: Initialize damage variant registry. For now, a minimal fallback:
-## create an empty registry and register it with the renderer. The registry
-## exists so apply_damage_voxel_swap() doesn't return false due to null check,
-## but it has no actual variants, so lookups fail gracefully and D33 compositing
-## takes over as fallback. Full variant generation/registration deferred.
-func _initialize_damage_variant_registry() -> void:
-	var VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
+## Task 1b/E-BAKE: build a real VoxelVariantRegistry via DamageVariantBaker.
+## `declared_materials`/`floor_materials` come from the map's own
+## damage_materials section (D13) — see build_from_layout()'s own
+## `damage_materials`/`damage_floor_materials` locals. An empty declared list
+## (map has no section, or bake disabled) yields an empty-but-real registry,
+## same fallback-safe shape the old stub always produced: every lookup misses
+## and apply_damage_voxel_swap() falls back to D33 live compositing.
+func _initialize_damage_variant_registry(declared_materials: Array, floor_materials: Array) -> void:
 	var registry = VoxelVariantRegistryClass.new()
-	## TODO (D-ARCH-01 Phase 2): populate registry with DamageVariantBaker output
-	## For now, leave it empty; apply_damage_voxel_swap() will return false on
-	## all lookups, and D33 compositing will handle damage rendering.
+	if not declared_materials.is_empty() or not floor_materials.is_empty():
+		var declared: Array[String] = []
+		for m in declared_materials:
+			declared.append(String(m))
+		var floors: Array[String] = []
+		for m in floor_materials:
+			floors.append(String(m))
+		var baker = DamageVariantBakerClass.new(
+			room._voxel_renderer, registry, _get_material_registry(), _bake_compositor)
+		baker.bake_all(declared, floors)
 	room._voxel_renderer.set_damage_variant_registry(registry)
-	print("[ROOM] Initialized damage variant registry (fallback mode)")
+	print("[ROOM] Initialized damage variant registry (%d atoms)" % registry.size())
 
 
 ## VL-PERF-BAKE: force the next _bake_textures() to do a full rebake instead of

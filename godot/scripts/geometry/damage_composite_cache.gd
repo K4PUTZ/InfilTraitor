@@ -133,6 +133,21 @@ func page_count() -> int:
 	return _pages.size()
 
 
+## D13 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): crop out the raw ATOM_W x
+## ATOM_H pixels a prior store() call blitted at (source_id, atlas_coords) —
+## DamageVariantBaker's own disk cache needs the RAW image (source_ids/
+## atlas_coords are only valid for this room-load's freshly-built atlas, not
+## across sessions), so it reads the pixels back once, right after storing,
+## rather than needing store() to hand them back directly.
+func get_image_at(source_id: int, atlas_coords: Vector2i) -> Image:
+	var page_idx := _source_ids.find(source_id)
+	if page_idx < 0:
+		return null
+	var page: Image = _pages[page_idx]
+	var rect := Rect2i(atlas_coords * Vector2i(ATOM_W, ATOM_H), Vector2i(ATOM_W, ATOM_H))
+	return page.get_region(rect)
+
+
 ## Diagnostics/selftest only — lets a caller verify what actually landed on a
 ## page's pixels without reaching into the private array.
 func get_page_image(page_idx: int) -> Image:

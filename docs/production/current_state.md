@@ -399,16 +399,15 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (0% functional end-to-end — rebuild's calculation layer done, no live caller yet)
+### Explosive Destruction (60% — Alpha, functional; Phase A complete, Phase B not started)
 
-🚨 **A grenade still damages nothing in a real playthrough.**
-`TestZoneController.detonate_active()` hides the sprite and closes its menu;
-the `BlastCalculator` calls were removed on 2026-08-05 (`d412480`) and have
-not been reconnected — that reconnection is Task 5's job (below). Firearm
-destruction (above) is untouched and remains the one destruction path that
-works today.
+✅ **A grenade damages voxels and repaints, for real, on screen** —
+right-click "Detonar" on a TEST-ZONE grenade now runs the whole pipeline:
+resolution, exposure fallback, one light-field query, then a real 15-wave
+choreography (`Screenshots/history/e_wave_detonation.png`). Firearm
+destruction (above) is untouched and still works exactly as before.
 
-✅ **Tasks 0–3 of the rebuild are done**
+✅ **Tasks 0–5 of the rebuild are done — Phase A is functionally complete**
 ([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),
 🟢 BUILDING, updated 2026-08-07):
 - **Task 0** (2026-08-06) measured the bake-cost gate: ~737 ms for the
@@ -442,18 +441,32 @@ works today.
   self-soot untouched) rather than collapsing to one tone per voxel, since
   the processing-cost reason for that collapse no longer applies now that
   explosions are pre-baked, not live-composited. Commit `fdcb5e9`.
+- **Task 4 (E-PLAN)** — `DetonationPlanBuilder.build_plan()` resolves an
+  entire detonation up front (real resolution, whole-map soot merge, one
+  `VoxelLightField` query) into a `DetonationPlan`, proven never to touch
+  the live TileMapLayer (a real before/after snapshot over 108,576 placed
+  cells, byte-identical). Required a resolve-only seam on
+  `VoxelRenderer._set_voxel_cell()`/`apply_damage_voxel_swap()` (trailing
+  `apply` param, every existing caller byte-for-byte unaffected). Commit
+  `ddbe7dd`.
+- **Task 5 (E-WAVE)** — `DetonationChoreographer` plays the plan back as the
+  real 15-wave sequence (independent `SceneTreeTimer` per wave, 40 ms
+  cadence), and `TestZoneController.detonate_active()` is reconnected end to
+  end. Real bug caught by the capture itself: a `SceneTreeTimer`'s signal
+  connection alone did not keep the (RefCounted) choreographer alive long
+  enough — fixed with an explicit owner reference. Commit `98e9772`.
 - **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
   event, never an access route.
-- **Calculation-layer only through Task 3** — neither `apply_container_
-  damage()`/`apply_crater_damage()` nor the new soot-stamp functions have a
-  live caller yet; every one of them is proven by selftest against real
-  data (e.g. the real `frag_grenade.json`), not a live capture. Reconnecting
-  `detonate_active()` is explicitly Task 5's job.
-- **Next:** Task 4 (E-PLAN) — the `DetonationPlan` builder folding every
-  wave's resolved `set_cell()` inputs (destroy/dent/crack/smoke/soot) into
-  one pre-computed object, the first real (non-selftest) consumer of Task 3's
-  stamp functions. Then Task 5 (E-WAVE): the choreography driver and the
-  actual `detonate_active()` reconnection.
+- **What's still open:** Phase B (targeting UI, throw arc/bubble, explosion
+  flash frames) is not started — the Director chose to prove Phase A's 15
+  waves with real captures first. Task 6 (tuning pass) is next: the
+  Director reviews the real capture and moves every ring-weight number in
+  `bombs/frag_grenade.json`, all first-pass placeholders today. Blast debris
+  VFX (dust/spark/chip) was deliberately disconnected in Task 5 (would have
+  doubled up with the new staged smoke waves) — flagged for a future task,
+  not silently dropped. Stamped-blast soot's rotation-persistence stays
+  unbuilt — currently unreachable to test since camera rotation is disabled
+  (ROTATE-KILL-01); damage *state* already survives rotation correctly.
 
 ---
 

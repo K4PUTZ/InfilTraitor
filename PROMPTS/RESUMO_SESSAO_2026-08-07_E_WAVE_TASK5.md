@@ -3,7 +3,8 @@
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-07_E_PLAN_TASK4.md`, which
 closed with Task 4 done and Task 5 as the next action.
 **VERSION:** 0.9.90 (unchanged — no version bump requested).
-**Commit:** pending (see next message).
+**Commit:** `98e9772` — `[E-WAVE] Task 5 — DetonationChoreographer:
+grenades detonate for real, on screen`.
 **Mode:** Solo mode.
 
 ---
@@ -134,4 +135,4 @@ pattern around it. The first real, on-screen grenade damage since the
   so it's currently unreachable to even test. Damage STATE (not soot)
   already survives rotation via the existing `record_voxel_damage_to_base()`
   path.
-- Pushed to `main` (pending — see next message).
+- Pushed to `main` (`98e9772`).

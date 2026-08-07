@@ -397,41 +397,61 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (0% functional — deliberate no-op, rebuild specified)
+### Explosive Destruction (0% functional end-to-end — rebuild's calculation layer done, no live caller yet)
 
-🚨 **A grenade currently damages nothing.** `TestZoneController.detonate_active()`
-hides the sprite and closes its menu; the `BlastCalculator` calls were removed
-on 2026-08-05 (`d412480`). **This is the Director's explicit reset, not a
-regression** — the PERF-01/02/03 → D11 → D-ARCH-01 patch arc was judged a
-mistake and stopped rather than iterated on again. Firearm destruction
-(above) is untouched and remains the one destruction path that works.
+🚨 **A grenade still damages nothing in a real playthrough.**
+`TestZoneController.detonate_active()` hides the sprite and closes its menu;
+the `BlastCalculator` calls were removed on 2026-08-05 (`d412480`) and have
+not been reconnected — that reconnection is Task 5's job (below). Firearm
+destruction (above) is untouched and remains the one destruction path that
+works today.
 
-**Preserved, intact, unwired, for the rebuild:** `BlastCalculator` (1105
-lines, fully selftested), `DecalCompositor`, `HalfVoxelCompositor`, all 45
-decal PNGs, `VoxelVariantRegistry`, `DamageVariantBaker`,
-`apply_damage_voxel_swap()`. Nothing was deleted.
-
-✅ **The rebuild is fully specified and its gating measurement passed**
+✅ **Tasks 0–3 of the rebuild are done**
 ([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),
-🟢 BUILDING, **zero open questions in Phase A** as of 2026-08-06):
-- **Why the old architecture failed:** D-ARCH-01 baked a damage variant *per
-  cell* — 71,296 cells × N variants, ~95 ms each. The new model bakes
-  **207 atoms for the whole map** (materials × types × decals × substrates); a
-  damaged voxel shows a *random* facade atom for its material, not its own.
-- **Task 0 (2026-08-06) measured it: ~737 ms for all 207 atoms** against a
-  ~2 s gate — 742.3 / 731.3 / 739.0 across three runs, 1.5% spread. 2.7×
-  headroom, no escape hatch needed. Full method and per-cohort split in the
-  plan's §8.1.
-- **Damage model:** spherical falloff, one ring step per 8 voxels in every
-  direction (D14 — `VOXELS_PER_UNIT_AXIS` and `LEVELS_PER_STOREY` are both 8,
-  so it is a sphere by construction). Grenades can be thrown onto roofs and
-  open holes (D15/D17); which atom pool a struck slab draws from depends on
-  the blast's *side*, not the slab's role (D16).
+🟢 BUILDING, updated 2026-08-07):
+- **Task 0** (2026-08-06) measured the bake-cost gate: ~737 ms for the
+  atom set against a ~2 s ceiling — 2.7× headroom, no escape hatch needed.
+- **Task 1a (E-MAT)** — one surface-independent material table
+  (`res://materials/*.json`), `ground_* → slab_*`/`facade_*` texture split
+  (D19/D20/D21). Commit `95d83cb`.
+- **Task 1b (E-BAKE)** — the real load-time damage-atom pre-bake:
+  **273 real atoms** on PLAYGROUND (not the projected 207 — bullet marks
+  and ceiling-dented art turned out larger in scope), cache-verified
+  (1498 ms → 31 ms on a second load). `apply_damage_voxel_swap()` resolves
+  through it for real wall voxels — **firearm bullet marks already consume
+  this pre-bake automatically**, a zero-code side effect of this task, not
+  a separate rewiring. Commit `2d18a9e`.
+- **Task 2 (E-RING)** — the ring/falloff calculation surface:
+  `apply_container_damage()`'s vertical-ring step is spherical
+  (`absi(level_offset) / LEVELS_PER_STOREY`, D14 — one ring step per 8
+  voxels in every direction, `VOXELS_PER_UNIT_AXIS == LEVELS_PER_STOREY == 8`
+  by construction) for wall **and** roof alike; per-tier
+  destroy/dent/crack ring weights; `apply_crater_damage()` (floor) gained
+  `deep_layer_unlocked` (D2, the two-layer floor rule) and
+  `slab_pierce_multiplier` (D17). D16's blast-side atom routing needed zero
+  calculation changes — a render-side fix in `apply_damage_voxel_swap()`
+  routes a roof struck from above through the floor atom pool. Commit
+  `a3f58ee`.
+- **Task 3 (E-SOOT)** — blast-stamped soot (`stamp_container_soot()`/
+  `stamp_crater_soot()`), closing the gap that ring 3 (which destroys
+  nothing) could never get soot from hole-derivation alone. A real design
+  tension was raised and resolved with the Director this session: soot
+  stays **fully per-face directional** everywhere (FACE-SOOT-01 and
+  self-soot untouched) rather than collapsing to one tone per voxel, since
+  the processing-cost reason for that collapse no longer applies now that
+  explosions are pre-baked, not live-composited. Commit `fdcb5e9`.
 - **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
   event, never an access route.
-- **Next:** Task 1a (E-MAT), the material reform — one surface-independent
-  material table as dynamic registered data, `ground_* → slab_*`, `facade_*`
-  unchanged (D19/D20/D21). Then Task 1b (E-BAKE).
+- **Calculation-layer only through Task 3** — neither `apply_container_
+  damage()`/`apply_crater_damage()` nor the new soot-stamp functions have a
+  live caller yet; every one of them is proven by selftest against real
+  data (e.g. the real `frag_grenade.json`), not a live capture. Reconnecting
+  `detonate_active()` is explicitly Task 5's job.
+- **Next:** Task 4 (E-PLAN) — the `DetonationPlan` builder folding every
+  wave's resolved `set_cell()` inputs (destroy/dent/crack/smoke/soot) into
+  one pre-computed object, the first real (non-selftest) consumer of Task 3's
+  stamp functions. Then Task 5 (E-WAVE): the choreography driver and the
+  actual `detonate_active()` reconnection.
 
 ---
 

@@ -73,6 +73,15 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	var blocked_edges: Dictionary = ctx.get("blocked_edges", {})
 	var blocked_cells: Dictionary = ctx.get("blocked_cells", {})
 	var deep_layer_unlocked: bool = ctx.get("deep_layer_unlocked", false)
+	## Diagnostic toggle (Director, 2026-08-07, comparing a real capture
+	## against the floor's own already-noisy dent decal art): true is the
+	## real/shipped behavior. false skips ONLY stamp_container_soot()/
+	## stamp_crater_soot() below — derive_soot_rings()/apply_self_soot() still
+	## run unchanged, so a voxel next to a real hole still scorches; what's
+	## missing is JUST the blast's authored ring-tone stamp (closes ring 3's
+	## own gap, per Task 3). Default true everywhere except an explicit
+	## comparison capture.
+	var stamp_soot_enabled: bool = ctx.get("stamp_soot_enabled", true)
 
 	var plan: Dictionary = {
 		"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "soot": {},
@@ -112,9 +121,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			slice.voxels, slice.id, slice.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
 			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter)
-		BlastCalculatorClass.stamp_container_soot(
-			slice.voxels, base_ring, base_level, false, bomb_def.soot_ring_tones,
-			epicenter, soot_snapshot, soot_faces)
+		if stamp_soot_enabled:
+			BlastCalculatorClass.stamp_container_soot(
+				slice.voxels, base_ring, base_level, false, bomb_def.soot_ring_tones,
+				epicenter, soot_snapshot, soot_faces)
 		for v in slice.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
@@ -127,9 +137,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			roof.voxels, roof.id, roof.material, base_ring, roof.level, true,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
 			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter)
-		BlastCalculatorClass.stamp_container_soot(
-			roof.voxels, base_ring, roof.level, true, bomb_def.soot_ring_tones,
-			epicenter, soot_snapshot, soot_faces)
+		if stamp_soot_enabled:
+			BlastCalculatorClass.stamp_container_soot(
+				roof.voxels, base_ring, roof.level, true, bomb_def.soot_ring_tones,
+				epicenter, soot_snapshot, soot_faces)
 		for v in roof.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - roof.level)
@@ -152,9 +163,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		BlastCalculatorClass.apply_crater_damage(
 			floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max,
 			floor_slab.material, deep_layer_unlocked)
-		BlastCalculatorClass.stamp_crater_soot(
-			floor_slab.voxels, epicenter, crater_core, crater_max,
-			bomb_def.soot_ring_tones, soot_snapshot, soot_faces)
+		if stamp_soot_enabled:
+			BlastCalculatorClass.stamp_crater_soot(
+				floor_slab.voxels, epicenter, crater_core, crater_max,
+				bomb_def.soot_ring_tones, soot_snapshot, soot_faces)
 		var min_destroy_ring: int = -1
 		for v in floor_slab.voxels:
 			var d: float = Vector2(v.grid_pos - epicenter).length()

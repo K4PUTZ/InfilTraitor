@@ -41,6 +41,7 @@
 - RESUMO_SESSAO_2026-08-07_E_RING_TASK2.md
 - RESUMO_SESSAO_2026-08-07_E_SOOT_TASK3.md
 - RESUMO_SESSAO_2026-08-07_E_WAVE_TASK5.md
+- RESUMO_SESSAO_2026-08-07_POST_TASK5_SOOT_DIAG.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -467,6 +468,15 @@ destruction (above) is untouched and still works exactly as before.
   not silently dropped. Stamped-blast soot's rotation-persistence stays
   unbuilt — currently unreachable to test since camera rotation is disabled
   (ROTATE-KILL-01); damage *state* already survives rotation correctly.
+- **Post-Task-5 (2026-08-07):** Director flagged the real crater's scorch as
+  "quebradiça" (brittle/fragmented) rather than one uniform shade. Real A/B
+  capture (`Screenshots/history/soot_stamp_on.png`/`soot_stamp_off.png`,
+  pixel-diffed: 3.3% of pixels differ, mean 0.76/255) rules out this
+  rebuild's own soot stamp as the cause — the texture comes from the
+  pre-existing floor dent decal art (`decal_dent_earth_*`, D22/D23) plus
+  D3's per-cell substrate-crop randomization, both predating this rebuild.
+  Four fix options are on the table for Task 6, none chosen yet — see
+  `EXPLOSION_REBUILD_MASTER_PLAN.md` §11 point 2.
 
 ---
 

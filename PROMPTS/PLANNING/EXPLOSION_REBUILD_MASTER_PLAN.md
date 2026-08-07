@@ -2,7 +2,12 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Updated:** 2026-08-06 — Director answered Q1–Q6, then corrected/extended Q1b
+**Latest update:** 2026-08-07, post-Task-5 — real-capture feedback ("fuligem
+quebradiça") investigated with a real A/B pixel-diff; root cause isolated
+to the pre-existing floor dent decal art + substrate randomization, NOT
+this rebuild's own soot stamp. See the Post-Task-5 note after Task 5's
+closure and §11 point 2.
+**Updated 2026-08-06** — Director answered Q1–Q6, then corrected/extended Q1b
 and Q3b in a follow-up round (floor is material-real now, not agnostic to
 "earth"; bullet marks join the pre-bake), then added D13 (per-map material
 scope + cross-session bake cache, §3.5). Task 0 ran and passed its gate
@@ -490,6 +495,49 @@ count on `SmokeSparkOverlay`; every pre-existing selftest, including every
 unchanged), `check_invariants.py` OK, `gen_codemap.py --check` clean (188
 scripts). A separate real `weapon_fire` capture confirms firearms are
 unaffected.
+
+#### Post-Task-5 note (2026-08-07) — the "quebradiça" soot texture, investigated, root cause NOT this session's work
+
+Director feedback on the real `e_wave_detonation.png` capture: the crater's
+scorch reads as "quebradiça e irregular" (brittle/fragmented) rather than
+one uniform shade per face — a real visual concern worth investigating
+before Task 6 spends time moving numbers on the wrong lever.
+
+**Investigated, not guessed.** Four candidate causes were identified by
+reading the actual render chain: (a) the new blast-stamped soot
+(`stamp_container_soot()`/`stamp_crater_soot()`, Task 3/4) rendering
+non-uniformly; (b) `MaterialResistanceTable.dent_factor`-driven DENTED
+density in the crater rim, each voxel independently drawing one of the
+floor's own dent decals; (c) the floor dent decal art itself
+(`decal_dent_earth_0/1/2.png`) — inherently a noisy, mottled
+crumbled-earth/crater texture, authored for D22/D23, predating this whole
+rebuild; (d) D3's per-cell random substrate-crop selection adding further
+tiling variety on top.
+
+**Isolated (a) with a real A/B capture, not reasoning.** A new diagnostic
+toggle (`DetonationPlanBuilder.build_plan()`'s `ctx["stamp_soot_enabled"]`,
+default `true`; `TestZoneController` reads
+`INFILTRAITOR_DISABLE_STAMP_SOOT=1` to flip it for a manual capture only —
+`derive_soot_rings()`/`apply_self_soot()` keep running unchanged either
+way, so this isolates ONLY the blast's own authored stamp) produced two
+captures at the identical GU
+(`Screenshots/history/soot_stamp_on.png`/`soot_stamp_off.png`). Pixel-diffed
+directly, not eyeballed: **3.3% of pixels differ by more than 5/255, mean
+diff 0.76/255** — the two images are visually near-identical, and the
+"quebradiça" pattern is present, unchanged, in both. **Conclusion: (a) is
+not the cause.** The stamp's real, measured contribution is a small extra
+darkening at the crater's outer edge (ring 3 — exactly the gap Task 3 closed,
+soot reaching a ring that destroys nothing) and nothing more; (b)/(c)/(d),
+all of them pre-existing, are where the texture actually comes from.
+
+**Left as an explicit open item for Task 6, not decided here** (four
+concrete options were put to the Director, not resolved yet):
+tighten crater-rim dent density, replace the dent decal art, disable D3's
+per-cell substrate randomization, or change the soot shader from a pure
+multiply to a flatter blend toward a solid tone. The diagnostic toggle
+itself stays in the code (`stamp_soot_enabled`, harmless — `true` by
+default, byte-identical to before it existed) since it's a real, cheap,
+reusable seam for the next A/B comparison, not a one-off hack to revert.
 
 ---
 
@@ -1610,7 +1658,22 @@ above; not repeated here.
    `smoke_ring_weights` in `bombs/frag_grenade.json`) based on what actually
    reads right — every one of them is explicitly a first-pass placeholder,
    not a researched constant.
-2. Two items Task 5 flagged and deliberately did NOT resolve, both real
+2. **The "quebradiça" (brittle/fragmented) soot texture** — see the
+   Post-Task-5 note right above Task 5's own closure. Investigated with a
+   real A/B capture (`soot_stamp_on.png`/`soot_stamp_off.png`, 3.3% pixels
+   differ, mean diff 0.76/255): the blast's OWN soot stamp is NOT the cause.
+   Root cause is the pre-existing floor dent decal art
+   (`decal_dent_earth_*`, D22/D23) plus D3's per-cell substrate-crop
+   randomization, both predating this rebuild. Four options were put to the
+   Director, none chosen yet: tighten crater-rim dent density (a
+   `dent_factor`/rim-span data tweak), replace the dent decal art (art
+   work, not code), disable D3's per-voxel substrate randomization (reverses
+   a ratified decision — ask first), or change `voxel_face_shading.gdshader`
+   from a pure multiply to a flatter blend toward a solid soot tone (a real
+   shader-philosophy change — the shader's own header comment currently
+   states multiply-only is deliberate). Pick one before touching any of
+   these systems.
+3. Two items Task 5 flagged and deliberately did NOT resolve, both real
    design questions for the Director rather than something to guess past a
    second time:
    - **Blast debris VFX** — dust/spark/chip puffs (VFX-01) no longer fire
@@ -1625,9 +1688,9 @@ above; not repeated here.
      applied in ~8.9 ms) that the whole plan resolves well within one
      frame today. Revisit only if a much bigger real blast (more affected
      containers, not more rings) is measured to actually need the slack.
-3. D18 still stands: roof holes are a lighting event, never a player access
+4. D18 still stands: roof holes are a lighting event, never a player access
    route — nothing building on Task 5 should treat one as an entry point.
-4. Camera rotation is still disabled (ROTATE-KILL-01, §9). The stamped-blast
+5. Camera rotation is still disabled (ROTATE-KILL-01, §9). The stamped-blast
    soot's own rotation-persistence (an *event* replay list feeding
    `stamp_container_soot()`/`stamp_crater_soot()` again on rotation, per
    Task 3's own closure note) was never built — this is currently

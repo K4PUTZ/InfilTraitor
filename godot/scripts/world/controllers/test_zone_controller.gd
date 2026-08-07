@@ -233,6 +233,11 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		"under_structure": room._under_structure,
 		## D2: unlocked from this GU's SECOND blast onward.
 		"deep_layer_unlocked": int(room._gu_blast_count.get(source_gu, 0)) > 0,
+		## Diagnostic-only, dev capture toggle (Director, 2026-08-07): compares
+		## a real detonation against the same one with the blast's authored
+		## soot stamp turned off, isolating it from the floor dent decal's own
+		## already-noisy art. Never set outside a manual capture.
+		"stamp_soot_enabled": OS.get_environment("INFILTRAITOR_DISABLE_STAMP_SOOT") != "1",
 	}
 
 

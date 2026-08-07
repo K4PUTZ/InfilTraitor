@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**184 scripts · 43953 lines total** (under `godot/scripts/`)
+**184 scripts · 44434 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -713,7 +713,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3097 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3120 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1453,7 +1453,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1125 lines
+`class_name BlastCalculator` · 1176 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1468,7 +1468,7 @@ extends `Node2D` · 43 lines
 
 ### `bomb_def.gd`
 
-`class_name BombDef` · 37 lines
+`class_name BombDef` · 72 lines
 
 `godot/scripts/systems/destruction/bomb_def.gd`
 
@@ -1477,8 +1477,9 @@ extends `Node2D` · 43 lines
 **Public vars**
 - `var id: String`
 - `var ring_multipliers: Array[float] = []`
-- `var gameplay: Dictionary = {}`
-- `var tags: Array[String] = []`
+- `var destroy_ring_weights: Array[float] = []`
+- `var dent_ring_weights: Array[float] = []`
+- `var crack_ring_weights: Array[float] = []`
 
 ---
 
@@ -2310,7 +2311,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 1683 lines
+extends `SceneTree` · 1960 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2319,6 +2320,7 @@ extends `SceneTree` · 1683 lines
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
+- `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
 - `VoxelClass` = `preload("res://godot/scripts/geometry/voxel.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
@@ -2356,6 +2358,12 @@ extends `SceneTree` · 1683 lines
 - `func test_flood_cone_stops_at_solid_block() -> void:`
 - `func test_cone_output_shape_matches_rings() -> void:`
 - `func test_destroy_multiplier_scales_damage() -> void:`
+- `func test_ring3_reached_but_zero_weighted() -> void:`
+- `func test_vertical_falloff_identical_for_wall_and_roof() -> void:`
+- `func test_roof_two_levels_same_ring_group() -> void:`
+- `func test_crater_dent_varies_by_real_floor_material_wood_vs_concrete() -> void:`
+- `func test_deep_layer_gate_blocks_floor_deep_level() -> void:`
+- `func test_slab_pierce_multiplier_scales_destruction() -> void:`
 - `func test_pellet_impacts_no_hard_range_cap() -> void:`
 - `func test_pellet_impacts_count_matches_projectile_count() -> void:`
 - `func test_pellet_does_not_detour_around_narrow_obstacle() -> void:`
@@ -2427,7 +2435,7 @@ extends `SceneTree` · 213 lines
 
 ### `damage_atom_bake_selftest.gd`
 
-extends `SceneTree` · 319 lines
+extends `SceneTree` · 414 lines
 
 `godot/scripts/tools/damage_atom_bake_selftest.gd`
 
@@ -2450,7 +2458,6 @@ extends `SceneTree` · 319 lines
 - `func test_1_real_coverage_across_element_classes(built: Dictionary) -> void:`
 - `func test_2_apply_damage_voxel_swap_resolves_new_key(built: Dictionary) -> void:`
 - `func test_3_cache_hit_on_second_bake() -> void:`
-- `func test_4_undeclared_material_warns_loudly() -> void:`
 
 ---
 

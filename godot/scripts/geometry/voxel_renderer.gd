@@ -3039,10 +3039,33 @@ func apply_damage_voxel_swap(voxel: Voxel, container, level: int) -> bool:
 			material_for_key = container.material
 			element_class = "FLOOR"
 		elif container.role == Slab.Role.CEILING:
-			render_material = damage_variant_material(container.material, voxel.damage_state,
-				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			material_for_key = container.material
-			element_class = "CEILING"
+			if voxel.damage_carved_side == Voxel.CarvedSide.TOP:
+				## D16 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — a roof
+				## struck from ABOVE (D15's roof-throw) carves its TOP face,
+				## the same signal apply_crater_damage()'s _roll_floor_dent()
+				## already hardcodes for a floor crater (see its own doc:
+				## "a floor is only ever eaten from above, the mirror of a
+				## ceiling only ever carving BOTTOM"). This voxel is really a
+				## floor-family mark sitting on a CEILING container, so it
+				## routes through the FLOOR naming/key path instead of the
+				## CEILING one below — reusing floor_damage_material() and,
+				## for the atom key, the real ground material at this GU
+				## (not container.material, the ROOF's own material: the
+				## floor beneath a roof can be a different real material).
+				## Falls back to "earth" for an unzoned GU, matching
+				## render_fixed_earth_level()'s own _floor_zone_by_gu rule.
+				## BOTTOM (a ceiling hit from underneath, the ordinary case)
+				## is unaffected — falls through to the unchanged branch below.
+				var zone: Dictionary = _floor_zone_by_gu.get(container.gu_cell, {})
+				render_material = floor_damage_material(voxel.damage_state,
+					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+				material_for_key = String(zone.get("material", "earth"))
+				element_class = "FLOOR"
+			else:
+				render_material = damage_variant_material(container.material, voxel.damage_state,
+					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+				material_for_key = container.material
+				element_class = "CEILING"
 		else:
 			render_material = damage_variant_material(container.material, voxel.damage_state,
 				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)

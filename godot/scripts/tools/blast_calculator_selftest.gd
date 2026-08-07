@@ -10,6 +10,7 @@ extends SceneTree
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
+const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
 const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")
 const VoxelClass = preload("res://godot/scripts/geometry/voxel.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
@@ -79,6 +80,14 @@ func _init() -> void:
 	test_self_soot_faces_intact_and_destroyed_get_none()
 	test_apply_self_soot_fills_in_when_nothing_stronger_exists()
 	test_apply_self_soot_never_weakens_an_existing_stronger_ring()
+	## EXPLOSION_REBUILD_MASTER_PLAN Task 2 (E-RING, 2026-08-06) — 4th ring,
+	## D14 spherical falloff, D2 two-layer floor, D17 slab-pierce multiplier.
+	test_ring3_reached_but_zero_weighted()
+	test_vertical_falloff_identical_for_wall_and_roof()
+	test_roof_two_levels_same_ring_group()
+	test_crater_dent_varies_by_real_floor_material_wood_vs_concrete()
+	test_deep_layer_gate_blocks_floor_deep_level()
+	test_slab_pierce_multiplier_scales_destruction()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -294,7 +303,8 @@ func test_metal_container_produces_cracked_not_destroyed() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "metal", 0, 0, false, [1.0, 0.5])
+		slice.voxels, slice.id, "metal", 0, 0, false, [1.0, 0.5],
+		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var destroyed := 0
 	var dented := 0
@@ -333,7 +343,8 @@ func test_damage_tiers_are_mutually_exclusive() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "concrete", 0, 0, false, [1.0, 0.5])
+		slice.voxels, slice.id, "concrete", 0, 0, false, [1.0, 0.5],
+		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var counts := {
 		Voxel.DamageState.INTACT: 0, Voxel.DamageState.DESTROYED: 0,
@@ -367,7 +378,8 @@ func test_wood_container_mostly_destroyed_at_ring_zero() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "wood", 0, 0, false, [1.0, 0.5])
+		slice.voxels, slice.id, "wood", 0, 0, false, [1.0, 0.5],
+		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var destroyed := 0
 	for voxel in slice.voxels:
@@ -419,7 +431,7 @@ func test_ring_beyond_range_untouched() -> void:
 	# Bomb only has rings [1.0] (max_ring=0) -> everything above storey 0 must
 	# be skipped entirely (still INTACT), not clamped to ring 0's multiplier.
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "wood", 0, 0, false, [1.0])
+		slice.voxels, slice.id, "wood", 0, 0, false, [1.0], [1.0], [1.0], [1.0])
 
 	var top_storey_touched := false
 	for voxel in slice.voxels:
@@ -955,12 +967,13 @@ func test_cone_output_shape_matches_rings() -> void:
 func test_destroy_multiplier_scales_damage() -> void:
 	print("TEST: destroy_multiplier (calibre) scales destruction, and defaults inert")
 	var full := _synthetic_voxels(64)
-	BlastCalculatorClass.apply_container_damage(full, "CAL_A", "concrete", 0, 0, false, [1.0])
+	BlastCalculatorClass.apply_container_damage(full, "CAL_A", "concrete", 0, 0, false, [1.0],
+		[1.0], [1.0], [1.0])
 	var full_destroyed := _count_destroyed(full)
 
 	var half := _synthetic_voxels(64)
 	BlastCalculatorClass.apply_container_damage(half, "CAL_A", "concrete", 0, 0, false, [1.0],
-		BlastCalculatorClass.NO_EPICENTER_BIAS, 0.5)
+		[1.0], [1.0], [1.0], BlastCalculatorClass.NO_EPICENTER_BIAS, 0.5)
 	var half_destroyed := _count_destroyed(half)
 
 	if half_destroyed < full_destroyed and half_destroyed > 0:
@@ -973,11 +986,275 @@ func test_destroy_multiplier_scales_damage() -> void:
 	## site omits this argument.
 	var explicit := _synthetic_voxels(64)
 	BlastCalculatorClass.apply_container_damage(explicit, "CAL_A", "concrete", 0, 0, false, [1.0],
-		BlastCalculatorClass.NO_EPICENTER_BIAS, 1.0)
+		[1.0], [1.0], [1.0], BlastCalculatorClass.NO_EPICENTER_BIAS, 1.0)
 	if _count_destroyed(explicit) == full_destroyed:
 		_pass("omitting the argument matches passing 1.0 — existing callers unaffected")
 	else:
 		_fail("default diverged from 1.0: %d vs %d" % [_count_destroyed(explicit), full_destroyed])
+	print("")
+
+
+## E-RING (EXPLOSION_REBUILD_MASTER_PLAN Task 2, 2026-08-06) — the 4th ring is
+## now IN RANGE (ring_multipliers.size()=4 on the real frag_grenade.json),
+## unlike test_ring_beyond_range_untouched()'s OUT-OF-RANGE case above. Real
+## production data (loaded via BombRegistry, not a hand-built array) has
+## destroy/dent/crack_ring_weights all read 0.0 at index 3 — only
+## smoke_ring_weights[3]=0.1 is nonzero there, and smoke isn't consumed yet
+## (Task 3/E-SOOT's job). Proves ring 3 is REACHED and EVALUATED (not simply
+## skipped by the `ring >= ring_multipliers.size()` gate) yet still produces
+## zero material damage — the real shape the "4th ring is smoke-only" design
+## intent has to produce.
+func test_ring3_reached_but_zero_weighted() -> void:
+	print("[E-RING-1] Ring 3 is in range and evaluated, but frag_grenade's real weights zero it out\n")
+
+	var registry := BombRegistryClass.new()
+	registry.load_from_disk()
+	var frag = registry.get_bomb("frag_grenade")
+	if frag == null:
+		_fail("Could not load real frag_grenade.json via BombRegistry")
+		print("")
+		return
+	if frag.ring_multipliers.size() != 4:
+		_fail("frag_grenade.json no longer has 4 rings (%d) — this test's premise changed" % frag.ring_multipliers.size())
+		print("")
+		return
+
+	var edge_registry := EdgeRegistry.new()
+	## 4 storeys tall (32 levels) so vertical_ring reaches exactly 3 at levels 24..31.
+	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 4, "concrete")]
+	SliceGenerator.generate(edges, edge_registry)
+	var slice: Slice = edge_registry.get_slice("SLICE_0_0_SE")
+	if slice == null:
+		_fail("Could not resolve synthetic concrete Slice")
+		print("")
+		return
+
+	BlastCalculatorClass.apply_container_damage(
+		slice.voxels, slice.id, "concrete", 0, 0, false, frag.ring_multipliers,
+		frag.destroy_ring_weights, frag.dent_ring_weights, frag.crack_ring_weights)
+
+	var ring0_damaged := 0
+	var ring3_damaged := 0
+	for voxel in slice.voxels:
+		var touched: bool = voxel.damage_state != Voxel.DamageState.INTACT
+		if voxel.level < GeometryCoords.LEVELS_PER_STOREY:
+			if touched: ring0_damaged += 1
+		elif voxel.level >= 3 * GeometryCoords.LEVELS_PER_STOREY:
+			if touched: ring3_damaged += 1
+
+	if ring0_damaged > 0 and ring3_damaged == 0:
+		_pass("ring 0 (real weights): %d voxels damaged; ring 3 (in-range, weight 0.0): 0 damaged" % ring0_damaged)
+	else:
+		_fail("expected ring0>0 and ring3==0, got ring0=%d ring3=%d" % [ring0_damaged, ring3_damaged])
+	print("")
+
+
+## D14 (2026-08-06) — the vertical ring step is now IDENTICAL for wall
+## (is_roof=false) and roof (is_roof=true): both advance one ring per whole
+## STOREY (LEVELS_PER_STOREY=8), never per raw level for roofs. Before this
+## change, is_roof=true advanced one ring per RAW level, so a roof voxel just
+## ONE level above the blast's own level (offset 1, still well inside storey
+## 0) would already fall to ring 1 and lose that ring's multiplier worth of
+## damage — the exact asymmetry D14 retires. Proves both flags now keep an
+## entire storey (levels 0..7) at ring 0, and only storey 1 (levels 8..15)
+## drops to ring 1 — for BOTH is_roof values identically.
+func test_vertical_falloff_identical_for_wall_and_roof() -> void:
+	print("[E-RING-2] D14: vertical ring step is per-STOREY for both wall and roof, not per-raw-level for roof\n")
+
+	for is_roof in [false, true]:
+		var registry := EdgeRegistry.new()
+		var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 2, "concrete")]
+		SliceGenerator.generate(edges, registry)
+		var slice: Slice = registry.get_slice("SLICE_0_0_SE")
+		if slice == null:
+			_fail("Could not resolve synthetic concrete Slice (is_roof=%s)" % is_roof)
+			continue
+
+		BlastCalculatorClass.apply_container_damage(
+			slice.voxels, slice.id, "concrete", 0, 0, is_roof, [1.0, 0.0],
+			[1.0, 0.0], [1.0, 0.0], [1.0, 0.0])
+
+		var storey0_damaged := 0
+		var storey1_damaged := 0
+		for voxel in slice.voxels:
+			var touched: bool = voxel.damage_state != Voxel.DamageState.INTACT
+			if voxel.level < GeometryCoords.LEVELS_PER_STOREY:
+				if touched: storey0_damaged += 1
+			else:
+				if touched: storey1_damaged += 1
+
+		if storey0_damaged > 0 and storey1_damaged == 0:
+			_pass("is_roof=%s: storey 0 damaged (%d voxels), storey 1 untouched (ring-1 weight 0.0)" % [is_roof, storey0_damaged])
+		else:
+			_fail("is_roof=%s: expected storey0>0 storey1==0, got storey0=%d storey1=%d" % [is_roof, storey0_damaged, storey1_damaged])
+	print("")
+
+
+## D14/D17 consequence check: a real roof is two Slabs at consecutive levels
+## (ROOF_LEVEL_COUNT=2, room_builder.gd), not one. Under the pre-D14 per-raw-
+## level roof stepping, level 0 and level 1 would have landed in DIFFERENT
+## ring groups (ring 0 vs ring 1) and taken different damage. D14's storey-
+## based step puts both at vertical_ring = floor(0/8) = floor(1/8) = 0 — the
+## SAME ring group — which is the concrete proof behind the master plan's
+## "roof pierces as one unit falls out for free" finding, not an assumption.
+func test_roof_two_levels_same_ring_group() -> void:
+	print("[E-RING-3] D14/D17: a roof's two levels (ROOF_LEVEL_COUNT=2) land in the SAME ring group\n")
+
+	var slab_a := Slab.new("ROOF_TEST_L0", Vector2i(9, 9), Slab.Role.CEILING, 0, "concrete")
+	var slab_b := Slab.new("ROOF_TEST_L1", Vector2i(9, 9), Slab.Role.CEILING, 1, "concrete")
+	var voxels: Array = []
+	for x in range(10):
+		for y in range(10):
+			voxels.append(VoxelClass.new(Vector2i(x, y), 0, slab_a))
+			voxels.append(VoxelClass.new(Vector2i(x, y), 1, slab_b))
+
+	## ring_multipliers/weights sized 2: ring 0 destroys everything, ring 1
+	## destroys nothing — a real roof's two levels must land ENTIRELY in
+	## ring 0, never split.
+	BlastCalculatorClass.apply_container_damage(
+		voxels, "ROOF_TEST", "concrete", 0, 0, true, [1.0, 0.0],
+		[1.0, 0.0], [1.0, 0.0], [1.0, 0.0])
+
+	var level0_destroyed := 0
+	var level1_destroyed := 0
+	for voxel in voxels:
+		if voxel.level == 0 and voxel.damage_state == Voxel.DamageState.DESTROYED:
+			level0_destroyed += 1
+		elif voxel.level == 1 and voxel.damage_state == Voxel.DamageState.DESTROYED:
+			level1_destroyed += 1
+
+	if level0_destroyed > 0 and level1_destroyed > 0:
+		_pass("both roof levels destroyed proportionally (level0=%d, level1=%d) — same ring group" % [level0_destroyed, level1_destroyed])
+	else:
+		_fail("roof levels split across rings: level0=%d level1=%d (expected both > 0)" % [level0_destroyed, level1_destroyed])
+	print("")
+
+
+## D19/D20 legalized non-ground materials (e.g. wood) as real floor-zone
+## materials, no longer hardcoded to "earth"/"ground_*". Proves
+## apply_crater_damage()'s D9 real-material lookup gives wood its own,
+## distinct, nonzero dent_factor through the reformed one-row-per-material
+## table — not a missing row silently reading 0, and not collapsed onto
+## concrete's value.
+func test_crater_dent_varies_by_real_floor_material_wood_vs_concrete() -> void:
+	print("[E-RING-4] D9/D19: apply_crater_damage() dent prevalence differs for a real wood floor vs a concrete floor\n")
+
+	var epicenter := Vector2i(0, 0)
+	const CORE := 7.0
+	const MAX_R := 17.0
+	var make_patch := func(mat: String) -> Array:
+		var slab := Slab.new("WOOD_FLOOR_TEST", Vector2i.ZERO, Slab.Role.FLOOR, 0, mat)
+		var out: Array = []
+		for x in range(28):
+			for y in range(28):
+				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		return out
+
+	var wood: Array = make_patch.call("wood")
+	BlastCalculatorClass.apply_crater_damage(wood, "WOOD_FLOOR_TEST", epicenter, CORE, MAX_R, "wood")
+	var concrete: Array = make_patch.call("concrete")
+	BlastCalculatorClass.apply_crater_damage(concrete, "WOOD_FLOOR_TEST", epicenter, CORE, MAX_R, "concrete")
+
+	var w: int = 0
+	for v in wood:
+		if v.damage_state == Voxel.DamageState.DENTED: w += 1
+	var c: int = 0
+	for v in concrete:
+		if v.damage_state == Voxel.DamageState.DENTED: c += 1
+
+	var wf: float = MaterialResistanceTableClass.dent_factor("wood")
+	var cf: float = MaterialResistanceTableClass.dent_factor("concrete")
+
+	if wf <= 0.0:
+		_fail("wood dent_factor is %.3f — D19/D20's reform left wood with no real dent row" % wf)
+	elif _ordered_like(w, c, wf, cf):
+		_pass("wood (%d dents, factor %.2f) vs concrete (%d dents, factor %.2f) — D9's real-material lookup varies by floor material" %
+			[w, wf, c, cf])
+	else:
+		_fail("dent counts don't track dent_factor: wood=%d (%.2f) concrete=%d (%.2f)" % [w, wf, c, cf])
+	print("")
+
+
+## D2 (EXPLOSION_REBUILD_MASTER_PLAN §4.4) — deep_layer_unlocked is the
+## principled replacement for the removed PERF-02 B4 hack. false must leave
+## every GeometryCoords.FLOOR_DEEP_LEVEL voxel INTACT even well inside
+## core_radius (where a FLOOR_TOP_LEVEL voxel would be unconditionally
+## destroyed); true must let the same voxels take real damage.
+func test_deep_layer_gate_blocks_floor_deep_level() -> void:
+	print("[E-RING-5] D2: deep_layer_unlocked gates FLOOR_DEEP_LEVEL voxels out entirely when false\n")
+
+	var epicenter := Vector2i(5, 5)
+	var make_deep_patch := func() -> Array:
+		var slab := Slab.new("DEEP_GATE_TEST", Vector2i.ZERO, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, "concrete")
+		var out: Array = []
+		for x in range(10):
+			for y in range(10):
+				out.append(VoxelClass.new(Vector2i(x, y), GeometryCoords.FLOOR_DEEP_LEVEL, slab))
+		return out
+
+	var locked: Array = make_deep_patch.call()
+	BlastCalculatorClass.apply_crater_damage(locked, "DEEP_GATE_TEST", epicenter, 3.0, 6.0, "concrete")
+	var locked_touched := 0
+	for v in locked:
+		if v.damage_state != Voxel.DamageState.INTACT:
+			locked_touched += 1
+
+	var unlocked: Array = make_deep_patch.call()
+	BlastCalculatorClass.apply_crater_damage(unlocked, "DEEP_GATE_TEST", epicenter, 3.0, 6.0, "concrete", true)
+	var unlocked_destroyed := 0
+	for v in unlocked:
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			unlocked_destroyed += 1
+
+	if locked_touched == 0:
+		_pass("deep_layer_unlocked=false (default): every FLOOR_DEEP_LEVEL voxel stays INTACT, even inside core_radius")
+	else:
+		_fail("deep_layer_unlocked=false: %d deep-level voxels still took damage" % locked_touched)
+
+	if unlocked_destroyed > 0:
+		_pass("deep_layer_unlocked=true: %d deep-level voxels destroyed inside core_radius" % unlocked_destroyed)
+	else:
+		_fail("deep_layer_unlocked=true: expected core-radius deep voxels destroyed, got 0")
+	print("")
+
+
+## D17 — slab_pierce_multiplier must visibly change the destroy count in the
+## crater's RIM band (core_radius is already 100% destroy regardless, so the
+## multiplier only has room to act where keep_prob < 1.0), proving the knob
+## is live and not a dead trailing parameter.
+func test_slab_pierce_multiplier_scales_destruction() -> void:
+	print("[E-RING-6] D17: slab_pierce_multiplier scales rim destruction, harmless at the 1.0 default\n")
+
+	var epicenter := Vector2i(0, 0)
+	var make_patch := func() -> Array:
+		var slab := Slab.new("PIERCE_TEST", Vector2i.ZERO, Slab.Role.CEILING, 0, "concrete")
+		var out: Array = []
+		for x in range(20):
+			for y in range(20):
+				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		return out
+
+	var base: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(base, "PIERCE_TEST", epicenter, 4.0, 14.0, "", false, 1.0)
+	var pierced: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(pierced, "PIERCE_TEST", epicenter, 4.0, 14.0, "", false, 3.0)
+
+	var base_destroyed := _count_destroyed(base)
+	var pierced_destroyed := _count_destroyed(pierced)
+
+	if pierced_destroyed > base_destroyed:
+		_pass("slab_pierce_multiplier 3.0 destroyed %d vs %d at 1.0x — scales rim destruction" %
+			[pierced_destroyed, base_destroyed])
+	else:
+		_fail("multiplier did not scale: 3.0x=%d 1.0x=%d" % [pierced_destroyed, base_destroyed])
+
+	## The default (omitted) must be byte-for-byte the explicit-1.0 behavior.
+	var explicit: Array = make_patch.call()
+	BlastCalculatorClass.apply_crater_damage(explicit, "PIERCE_TEST", epicenter, 4.0, 14.0)
+	if _count_destroyed(explicit) == base_destroyed:
+		_pass("omitting slab_pierce_multiplier matches passing 1.0 explicitly — existing callers unaffected")
+	else:
+		_fail("default diverged from explicit 1.0: %d vs %d" % [_count_destroyed(explicit), base_destroyed])
 	print("")
 
 

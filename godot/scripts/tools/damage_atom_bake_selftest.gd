@@ -58,6 +58,7 @@ func _init() -> void:
 		test_1_real_coverage_across_element_classes(built)
 		test_2_apply_damage_voxel_swap_resolves_new_key(built)
 		test_3_cache_hit_on_second_bake()
+		test_5_ceiling_top_routes_as_floor(built)
 	test_4_undeclared_material_warns_loudly()
 
 	bake_config.enabled = saved_enabled
@@ -244,6 +245,100 @@ func test_3_cache_hit_on_second_bake() -> void:
 		_pass("both bakes produced identical coverage (%d atoms each) — second pass reused the disk cache" % counts[0])
 	else:
 		_fail("bake counts diverged or were zero: %s" % [counts])
+
+	print("")
+
+
+## D16 (EXPLOSION_REBUILD_MASTER_PLAN, Task 2/E-RING, 2026-08-06) — a CEILING
+## voxel carved from the TOP (D15's roof-throw, once a live caller exists)
+## must render through the FLOOR family, not the CEILING one, even though its
+## container is still a CEILING Slab. Proven against the REAL registry state:
+## both candidate keys (the FLOOR one D16 should pick, the CEILING one the
+## unmodified BOTTOM case should still pick) are independently derived and
+## looked up first, then apply_damage_voxel_swap()'s actual painted tile
+## (read back from the real TileMapLayer, never from the function's own
+## boolean claim) is compared against them.
+func test_5_ceiling_top_routes_as_floor(built: Dictionary) -> void:
+	print("[5] D16: a CEILING voxel carved from the TOP renders through the FLOOR key, BOTTOM is unaffected\n")
+	var room = built["room"]
+	var renderer = built["renderer"]
+
+	var slab_registry = room._slab_registry
+	if slab_registry == null:
+		_fail("room._slab_registry is null — cannot find a real roof voxel")
+		return
+	var target_voxel: Voxel = null
+	var target_slab = null
+	for slab in slab_registry.all_slabs():
+		if slab.role == Slab.Role.CEILING and slab.material == "concrete" and not slab.voxels.is_empty():
+			target_slab = slab
+			target_voxel = slab.voxels[0]
+			break
+	if target_voxel == null:
+		_fail("no real concrete CEILING voxel found on PLAYGROUND")
+		return
+
+	## D9: the FLOOR atom's key material is the GU's REAL ground material
+	## (never a hardcoded "earth"), same rule apply_damage_voxel_swap()'s own
+	## FLOOR branch already follows — read via the same _floor_zone_by_gu
+	## the renderer itself uses, defaulting to "earth" when unzoned.
+	var zone: Dictionary = renderer._floor_zone_by_gu.get(target_slab.gu_cell, {})
+	var ground_material: String = String(zone.get("material", "earth"))
+	var floor_name: String = VoxelRendererClass.floor_damage_material(
+		Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+	var floor_key := VoxelVariantRegistryClass.make_variant_key("FLOOR", ground_material, floor_name, 0)
+	var floor_entry: Dictionary = renderer._damage_variant_registry.get_variant(floor_key)
+	if floor_entry.is_empty():
+		_fail("FLOOR candidate key not registered on PLAYGROUND — cannot prove routing (%s)" % floor_key)
+		return
+
+	target_voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0, 0)
+	var swapped_top: bool = renderer.apply_damage_voxel_swap(target_voxel, target_slab, target_voxel.level)
+	if not swapped_top:
+		_fail("apply_damage_voxel_swap() returned false for a CEILING+TOP voxel — expected a FLOOR-routed hit")
+		return
+
+	var layer: TileMapLayer = renderer.get_layer(target_voxel.level)
+	var painted_source: int = layer.get_cell_source_id(target_voxel.grid_pos)
+	var painted_atlas: Vector2i = layer.get_cell_atlas_coords(target_voxel.grid_pos)
+	if painted_source == floor_entry["source_id"] and painted_atlas == floor_entry["atlas_coords"]:
+		_pass("CEILING+TOP painted the FLOOR-keyed atom (ground_material=%s, source=%d atlas=%s)"
+			% [ground_material, painted_source, painted_atlas])
+	else:
+		_fail("CEILING+TOP painted source=%d atlas=%s — expected the FLOOR entry %s"
+			% [painted_source, painted_atlas, floor_entry])
+
+	## BOTTOM (the ordinary "hit from underneath" case) must still resolve
+	## via the CEILING key, unchanged — no regression for the existing branch.
+	var ceiling_name: String = VoxelRendererClass.damage_variant_material(
+		"concrete", Voxel.DamageState.DENTED, true, Voxel.CarvedSide.BOTTOM, 0)
+	var ceiling_key := VoxelVariantRegistryClass.make_variant_key("CEILING", "concrete", ceiling_name, 0)
+	var ceiling_entry: Dictionary = renderer._damage_variant_registry.get_variant(ceiling_key)
+	if ceiling_entry.is_empty():
+		_fail("CEILING candidate key not registered on PLAYGROUND — cannot prove the BOTTOM case is unaffected (%s)" % ceiling_key)
+		print("")
+		return
+
+	## set_damage() no-ops when new_state == the CURRENT damage_state
+	## (voxel.gd:105) — the voxel is still DENTED from the TOP call above, so
+	## a same-state DENTED/BOTTOM call would be silently dropped and
+	## carved_side would stay stuck at TOP. Reset to INTACT first so the
+	## BOTTOM call actually applies, exactly as a real render pass would see
+	## it (a voxel only ever transitions OUT of INTACT once).
+	target_voxel.damage_state = Voxel.DamageState.INTACT
+	target_voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.BOTTOM, 0, 0)
+	var swapped_bottom: bool = renderer.apply_damage_voxel_swap(target_voxel, target_slab, target_voxel.level)
+	if not swapped_bottom:
+		_fail("apply_damage_voxel_swap() returned false for a CEILING+BOTTOM voxel — expected a CEILING-routed hit")
+		print("")
+		return
+	var painted_source_b: int = layer.get_cell_source_id(target_voxel.grid_pos)
+	var painted_atlas_b: Vector2i = layer.get_cell_atlas_coords(target_voxel.grid_pos)
+	if painted_source_b == ceiling_entry["source_id"] and painted_atlas_b == ceiling_entry["atlas_coords"]:
+		_pass("CEILING+BOTTOM (unchanged case) still painted the CEILING-keyed atom, no regression")
+	else:
+		_fail("CEILING+BOTTOM painted source=%d atlas=%s — expected the CEILING entry %s"
+			% [painted_source_b, painted_atlas_b, ceiling_entry])
 
 	print("")
 

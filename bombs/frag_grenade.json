@@ -1,6 +1,11 @@
 {
   "id": "frag_grenade",
-  "ring_multipliers": [1.0, 0.6, 0.2],
+  "ring_multipliers": [1.0, 0.6, 0.25, 0.0],
+  "destroy_ring_weights": [1.0, 0.35, 0.08, 0.0],
+  "dent_ring_weights": [1.0, 0.45, 0.0, 0.0],
+  "crack_ring_weights": [0.0, 1.0, 0.35, 0.0],
+  "soot_ring_tones": [0, 1, 2, 3],
+  "smoke_ring_weights": [1.0, 0.5, 0.2, 0.1],
   "gameplay": { "blast_type": "fragmentation" },
   "tags": ["grenade", "explosive"]
 }

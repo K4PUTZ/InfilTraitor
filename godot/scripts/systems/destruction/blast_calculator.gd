@@ -541,10 +541,12 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 	## VL-02c (Director, 2026-07-23): a blast cracks the GROUND as well as the
 	## walls and roof. FLOOR/INTERIOR slabs were skipped here, so a grenade left
 	## the floor pristine — the crater had no bottom. Roofs and floors are kept
-	## in separate buckets because they take different vertical ring steps in
-	## apply_container_damage(): a roof advances one ring per raw level, while a
-	## floor's destructible plane is a single level (D13) that must stay at the
-	## source ring or its one layer would fall outside the multiplier table.
+	## in separate buckets because they resolve through different
+	## BlastCalculator entry points downstream: roofs through
+	## apply_container_damage()'s ring/level model (same as walls, since D14
+	## retired the roof-vs-wall ring-step asymmetry this comment used to cite),
+	## floors through apply_crater_damage()'s radial-rim model (D2's two-layer
+	## floor, D9's real-material lookup) — not a ring-step difference anymore.
 	var hit_roofs: Dictionary = {}
 	var hit_floors: Dictionary = {}
 	for slab in slab_registry.all_slabs():
@@ -562,12 +564,24 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 ## Slab) voxels and writes real damage via Voxel.set_damage() — the only
 ## writer of destruction state, per DESTRUCTION_MASTER_PLAN §3.
 ##
-## is_roof selects the vertical ring step: walls advance one ring per
-## LEVELS_PER_STOREY (a whole storey), roofs advance one ring per raw level
-## (ROOF_LEVEL_COUNT is only ~2 levels total, so a whole-storey step would
-## collapse every roof level into ring 0 and roofs would never show falloff
-## at all). Deliberate asymmetry, not an oversight — flagged for review if a
-## real capture shows it reading wrong.
+## D14 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06 — spherical falloff,
+## confirmed against real code 2026-08-06): the vertical ring step is now
+## IDENTICAL for wall and roof — `absi(level_offset) / LEVELS_PER_STOREY` —
+## retiring the deliberate asymmetry this comment used to document (roofs
+## advancing one ring per RAW level). That asymmetry existed because
+## ROOF_LEVEL_COUNT (~2 levels) is far smaller than LEVELS_PER_STOREY (8), so
+## a whole-storey step looked like it would collapse every roof level into
+## ring 0 — which, read as a SPHERE (one ring per 8 voxels in every
+## direction, VOXELS_PER_UNIT_AXIS == LEVELS_PER_STOREY == 8 by construction),
+## is exactly correct: a 2-level-thick roof genuinely sits at one distance
+## from a blast at floor level, so uniform damage across both levels is the
+## geometrically right answer, not a bug the old stepping was covering for.
+## `absi` (not `maxi(0, …)`) makes the sphere symmetric below the blast's own
+## floor level too — load-bearing for D15 (a grenade thrown onto a roof puts
+## real, destructible geometry *below* the blast for the first time).
+## is_roof is UNCHANGED for its other job: carved_side_for() still uses it to
+## pick BOTTOM (a ceiling hit from below, the ring-group path) vs LEFT/RIGHT
+## (a wall) — unrelated to the vertical-ring formula, not touched by D14.
 ##
 ## VL-D4 (Director, 2026-07-26): "acentuar destruição na face mais próxima da
 ## granada" — bias_epicenter (voxel-space; NO_EPICENTER_BIAS = off) makes
@@ -583,19 +597,27 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 ## round only scratches concrete where a heavy one bites into it. Trailing and
 ## defaulted to 1.0, so every pre-existing caller (all of them grenades) is
 ## byte-for-byte unaffected — the same technique bias_epicenter uses above.
+## §4.2 (D1 rev, 2026-08-06) — destroy/dent/crack_ring_weights replace the
+## single ring_multipliers[ring] scaling read: today every ring rolled all
+## three tiers off ONE multiplier; the Director's table gates tiers BY ring
+## (dented never in ring 2, cracked never in ring 0), which needs three
+## independent per-tier arrays. ring_multipliers itself is UNCHANGED in its
+## other job — flood_gu_rings()'s range cap, and the `ring >= size(): skip`
+## gate just below, both still read its length, not the new arrays'.
+## MaterialResistanceTable keeps multiplying in exactly as before (D1's own
+## clarification) — this is an ADDITIONAL term, not a replacement of it.
 static func apply_container_damage(voxels: Array, container_id: String, material: String,
 		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float],
+		destroy_ring_weights: Array[float], dent_ring_weights: Array[float],
+		crack_ring_weights: Array[float],
 		bias_epicenter: Vector2i = NO_EPICENTER_BIAS,
 		destroy_multiplier: float = 1.0) -> void:
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
-		var vertical_ring: int
-		if is_roof:
-			vertical_ring = level_offset
-		else:
-			vertical_ring = int(floor(float(level_offset) / float(GeometryCoords.LEVELS_PER_STOREY)))
-		var ring: int = base_ring + maxi(0, vertical_ring)
+		var vertical_ring: int = int(floor(
+			float(absi(level_offset)) / float(GeometryCoords.LEVELS_PER_STOREY)))
+		var ring: int = base_ring + vertical_ring
 		if ring >= ring_multipliers.size():
 			continue
 		if not by_ring.has(ring):
@@ -604,11 +626,13 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 
 	for ring in by_ring:
 		var group: Array = by_ring[ring]
-		var mult: float = ring_multipliers[ring]
-		var destroy_n: int = int(round(mult * MaterialResistanceTable.destroy_factor(material)
+		var d_w: float = destroy_ring_weights[ring] if ring < destroy_ring_weights.size() else 0.0
+		var n_w: float = dent_ring_weights[ring] if ring < dent_ring_weights.size() else 0.0
+		var c_w: float = crack_ring_weights[ring] if ring < crack_ring_weights.size() else 0.0
+		var destroy_n: int = int(round(d_w * MaterialResistanceTable.destroy_factor(material)
 			* destroy_multiplier * group.size()))
-		var dent_n: int = int(round(mult * MaterialResistanceTable.dent_factor(material) * group.size()))
-		var crack_n: int = int(round(mult * MaterialResistanceTable.crack_factor(material) * group.size()))
+		var dent_n: int = int(round(n_w * MaterialResistanceTable.dent_factor(material) * group.size()))
+		var crack_n: int = int(round(c_w * MaterialResistanceTable.crack_factor(material) * group.size()))
 
 		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)
 		var destroyed_lookup: Dictionary = {}
@@ -793,12 +817,34 @@ static func carved_side_from_base(base_xy: Vector2i, dir: Vector3i,
 ## fading linearly to zero across one further rim_span). material is trailing
 ## + defaulted to "" (dent_factor 0.0) so every pre-existing caller and test
 ## is byte-for-byte unaffected.
+##
+## D2 (EXPLOSION_REBUILD_MASTER_PLAN §4.4, 2026-08-06) — deep_layer_unlocked
+## gates GeometryCoords.FLOOR_DEEP_LEVEL voxels out entirely (no destroy roll,
+## no dent roll — left INTACT) when false, the principled replacement for the
+## removed PERF-02 B4 hack ("skip FLOOR_-2 entirely"). Trailing + defaulted to
+## false, matching D2's own rule ("the first blast on a GU only reaches
+## FLOOR_TOP_LEVEL"); the caller flips it true from a GU's second blast
+## onward via room._gu_blast_count — that state/wiring is Task 5 (E-WAVE)'s
+## job, since no live caller exists yet to drive it (confirmed this task).
+##
+## D17 — slab_pierce_multiplier is a future calibration knob ("posteriormente
+## podemos... deixar um multiplicador atrelado pra calibrar isso", Director)
+## for punching further through an already-weakened slab. Scales BOTH the
+## destroy probability (keep_prob) and the dent probability (dent_p) the same
+## way destroy_multiplier scales apply_container_damage()'s tier counts.
+## Trailing + defaulted to 1.0 (byte-for-byte inert) — no real caller drives a
+## non-1.0 value yet, since no stacked-slab scenario exists in any real map
+## today (confirmed this task); the knob exists so a future one can be added
+## without touching this function's signature again.
 static func apply_crater_damage(voxels: Array, container_id: String,
 		epicenter: Vector2i, core_radius: float, max_radius: float,
-		material: String = "") -> void:
+		material: String = "", deep_layer_unlocked: bool = false,
+		slab_pierce_multiplier: float = 1.0) -> void:
 	var rim_span: float = maxf(max_radius - core_radius, 0.001)
 	var dent_f: float = MaterialResistanceTable.dent_factor(material)
 	for voxel in voxels:
+		if voxel.level == GeometryCoords.FLOOR_DEEP_LEVEL and not deep_layer_unlocked:
+			continue
 		var d: float = Vector2(voxel.grid_pos - epicenter).length()
 		if d <= core_radius:
 			## PERF-02 B3: blast provenance on the hole itself — see
@@ -808,25 +854,30 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 			## Probability of removal falls 1→0 across the rim; a deterministic
 			## per-voxel hash in [0,1) is compared against it, so the same voxels
 			## always go and the boundary is ragged rather than a perfect circle.
-			var keep_prob: float = 1.0 - (d - core_radius) / rim_span
+			var keep_prob: float = clampf(
+				(1.0 - (d - core_radius) / rim_span) * slab_pierce_multiplier, 0.0, 1.0)
 			var key: String = "%s:CRATER:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 			var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 			if h < keep_prob:
 				voxel.set_damage(Voxel.DamageState.DESTROYED, true)
 			else:
-				_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f)
+				_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f, slab_pierce_multiplier)
 		elif d <= max_radius + rim_span:
-			_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f)
+			_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f, slab_pierce_multiplier)
 
 
 ## FLOOR-DENT-01 — one surviving floor voxel's dent roll. Separate salt from
 ## the destroy roll (":FLOORDENT:") so surviving the crater does not correlate
 ## with denting; carved side is always TOP (see apply_crater_damage's doc).
+## pierce_multiplier: D17, see apply_crater_damage's own doc — trailing +
+## defaulted to 1.0, byte-for-byte inert at default.
 static func _roll_floor_dent(voxel, container_id: String, d: float,
-		max_radius: float, rim_span: float, dent_f: float) -> void:
+		max_radius: float, rim_span: float, dent_f: float,
+		pierce_multiplier: float = 1.0) -> void:
 	if dent_f <= 0.0:
 		return
-	var dent_p: float = dent_f * clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0)
+	var dent_p: float = clampf(
+		dent_f * clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0) * pierce_multiplier, 0.0, 1.0)
 	if dent_p <= 0.0:
 		return
 	var key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]

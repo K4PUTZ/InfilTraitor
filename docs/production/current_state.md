@@ -417,7 +417,8 @@ destruction (above) is untouched and still works exactly as before.
   atom set against a ~2 s ceiling — 2.7× headroom, no escape hatch needed.
 - **Task 1a (E-MAT)** — one surface-independent material table
   (`res://materials/*.json`), `ground_* → slab_*`/`facade_*` texture split
-  (D19/D20/D21). Commit `95d83cb`.
+  (D19/D20/D21). Commit `95d83cb`. **That split was later collapsed by D34**
+  — see the D34 bullet below; only organic ground still resolves `slab_*`.
 - **Task 1b (E-BAKE)** — the real load-time damage-atom pre-bake:
   **273 real atoms** on PLAYGROUND (not the projected 207 — bullet marks
   and ceiling-dented art turned out larger in scope), cache-verified

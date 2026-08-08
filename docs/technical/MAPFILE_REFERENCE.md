@@ -53,7 +53,7 @@ Coordinates are **internal** throughout; the buffer is applied only in
 | `board` | `inner_size`, `buffer`, `floor_tile` |
 | `walls` | edge runs as `a→b` spans: `{a, b, material, storeys, facade}`; `"facade": null` = material default via `BakePolicy` (M6 prefix canon) |
 | `blocks` | solid GU blocks: `{gu, storeys, material}` (BLOCK-01 vocabulary) |
-| `floor_zones` | author-declared floor-bake ground material rects: `{gu, size, material}` (same shape as `blocks`; FLOOR-BAKE-01, see BAKE_SYSTEM_REFERENCE.md FLOOR-ZONE-BAKE) |
+| `floor_zones` | author-declared floor-bake ground material rects: `{gu, size, material}` (same shape as `blocks`; FLOOR-BAKE-01, see BAKE_SYSTEM_REFERENCE.md FLOOR-ZONE-BAKE). **D34:** a `has_facade` material here bakes from its own `facade_<material>` — the same source its walls and roofs use — and shares their page; only `has_facade: false` materials (organic ground) use `slab_<material>`. **`"earth"` is not declarable here**: it doubles as the sentinel for "this GU has no zone", so a rect declaring it is ignored and warns (D35 scoped earth to walls/blocks/roofs) |
 | `props` | voxel props: `{def, gu, vox_offset, rot}` (PROP-01) |
 | `actors` | `agent_start` + `guards` as **bare array-of-routes** (D16: `[[x,y],...]` per guard — no wrapper dict, no `class` field until guard AI needs it; richer config arrives later as a routine `v1→v2` section migration) |
 | `legacy_compiler` | **D15 bridge:** flat cell/grid vocabulary `MapCompiler` natively understands (`wall_height`, `access_points`, `dividers`, `lights`). Keeps golden exports lossless until the compiler learns the native `walls`/`blocks`/`props` vocabulary end-to-end. |

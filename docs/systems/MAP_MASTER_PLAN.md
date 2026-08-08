@@ -54,7 +54,7 @@ A MapSpec is a Dictionary containing the map data in **internal/playable coordin
 | `rooms` | Array | — | `[{rect, doors}, ...]` inner rooms |
 | `dividers` | Array | — | `[{cells: [Vector2i...]}, ...]` inner walls |
 | `blocks` | Array | — | `[{gu, size, storeys, material}, ...]` solid GU blockers (also drives ROOF-BAKE) |
-| `floor_zones` | Array | — | `[{gu, size, material}, ...]` author-declared floor-bake ground material rects (same shape as `blocks`; see BAKE_SYSTEM_REFERENCE.md FLOOR-ZONE-BAKE) |
+| `floor_zones` | Array | — | `[{gu, size, material}, ...]` author-declared floor-bake ground material rects (same shape as `blocks`; see BAKE_SYSTEM_REFERENCE.md FLOOR-ZONE-BAKE). D34: a structural material's floor bakes from the same `facade_<material>` as its walls/roofs. `"earth"` is not declarable — it is the "no zone here" sentinel, and a rect declaring it warns and is ignored |
 | `props` | Array | — | `[{cell, tile}, ...]` crate_*, column_* |
 | `lights` | Array | — | `[{x, y, height, radius, intensity}, ...]` map lights |
 | `patrols` | Array[Array] | — | `[[Vector2i, ...], [...]]` guard routes |

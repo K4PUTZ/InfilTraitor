@@ -277,3 +277,15 @@ Estão **banidos** do codebase e da documentação:
 | `"subcubo"` / `"subcube"` para render de paredes | Terminologia substituída | `"voxel"` |
 | `generate_subcube.py` / `generate_wall.py` | Pipeline de subcubo — arquivado | `generate_voxel.py` |
 | `tileset_blocks.tres` entries de wall | Série `wall_*`, `wallHalf_*`, `wallCorner_*` removidos | `tileset_voxels.tres` |
+
+### Banidos desde a reforma de materiais (D19 → D35, 2026-08-06/08)
+
+| Termo banido | Sistema de origem | Substituto |
+|---|---|---|
+| `ground_<material>` como id de material | Duplicava a linha do material por superfície (`ground_concrete` vs `concrete`) — D19 unificou | O id simples: `concrete`, `stone`, … |
+| `ground_<material>.png` como nome de textura | Renomeado em D20 | `slab_<material>.png` (só ground orgânico — D34) |
+| `MaterialDef.full_color` | Lido igual nas duas superfícies, não conseguia representar um material tintado na parede e fotográfico no chão | `has_facade` (D34) |
+| `MaterialDef.slab_full_color` | Substituto do anterior que **nunca foi lido por nada** — o compositor decidia pelo prefixo do texture id | `has_facade` (D34) |
+| `BakePolicy.DEFAULT_FACADES` | Dict material→facade mantido à mão | `BakePolicy.texture_for_material()`, derivado (D20/D34) |
+| "o chão usa arte colorida, a parede grayscale" | Modelo pré-D34 — as duas superfícies eram pipelines de arte diferentes | Um `facade_<id>` grayscale + MULTIPLY serve parede, teto **e** chão de um material estrutural; foto só para ground orgânico |
+| esticar (`resize`) uma facade para altura isotrópica | Pré-D34 — dobrava cada linha de texel, metade do detalhe vertical | Repetição espelhada (`_mirror_tile_v`), que é o idioma do resto do compositor |

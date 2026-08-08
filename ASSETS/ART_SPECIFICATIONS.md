@@ -207,13 +207,21 @@ JSON (field to be added at ART-01).
 
 ---
 
-## 6. Materials Dictionary (PLANNED — ART-01)
+## 6. Materials Dictionary (LARGELY SHIPPED — D19/D21, 2026-08-06)
 
-Today "what is a material" is scattered across three places:
-`BakePolicy.DEFAULT_FACADES`, the compositor's material registry, and
-`material_zones` in PropDefs. ART-01 consolidates this into a single
-authoritative **materials dictionary** — the single writer of material
-truth. Planned `MaterialDef` shape (schema finalized at ART-01):
+> **This section's premise is out of date.** It was written when "what is a
+> material" was scattered across `BakePolicy.DEFAULT_FACADES`, the
+> compositor's material registry, and `material_zones` in PropDefs. D19/D21
+> did the consolidation it asks for: `res://materials/*.json` is now the
+> single authoritative source, loaded by `MaterialRegistry` (two-tier
+> `res://` then `user://`), one surface-independent row per material.
+> `DEFAULT_FACADES` no longer exists — texture identity is derived
+> mechanically by `BakePolicy.texture_for_material()` from the material id
+> plus its `has_facade` flag (D34). The table below is kept as the ART-01
+> wish-list; compare it against a real `materials/*.json` before trusting
+> any row. PropDef `material_zones` is the one part genuinely still separate.
+
+Planned `MaterialDef` shape (schema finalized at ART-01):
 
 | Field | Purpose |
 |---|---|

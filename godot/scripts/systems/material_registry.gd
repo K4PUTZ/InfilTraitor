@@ -5,12 +5,17 @@
 ## collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry.
 ##
 ## D19/D20: one row per material, surface-independent for behavior (this
-## file). Texture identity is a SEPARATE, surface-keyed axis
-## (BakePolicy.facade_for_material / slab_for_material) — a material's
-## `pattern_algorithm`/`base_color` here still feed the SLICE (wall) render
-## path only; the SLAB (floor/ceiling) path's WHITE-vs-tinted modulate is
-## decided by the texture id's own prefix at bake time, not by a field on
-## this class (see bake_compositor.gd's _modulate_for_mode).
+## file). Texture identity is a SEPARATE axis, owned by
+## BakePolicy.texture_for_material().
+##
+## D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed
+## either. A `has_facade` material renders EVERY surface — wall, roof and
+## floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the
+## three read as one material; only `has_facade == false` (organic ground)
+## keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted
+## modulate is still decided by the texture id's own prefix at bake time
+## (bake_compositor.gd's _modulate_for_mode), never by a field on this class —
+## what changed is which ids reach it.
 
 class_name MaterialRegistry
 
@@ -45,16 +50,22 @@ class MaterialDef:
 	## Whether this material has a SLICE (wall) facade at all — false for the
 	## floor-only materials (grass/dirt/gravel/sand today), which have no
 	## `facade_<id>` asset and only ever render via the SLAB path.
+	##
+	## D34/E-SEAM-01 (Director, 2026-08-08) gave this field a second job: it is
+	## now the WHOLE texture-family rule. `true` means every surface of this
+	## material — wall, roof AND floor — bakes through `facade_<id>`, grayscale
+	## + multiply; `false` means its floor bakes through the photographic
+	## `slab_<id>` exception (organic ground, where hue IS the identity). See
+	## BakePolicy.texture_for_material(), which owns the decision for both
+	## sides of the seam.
+	##
+	## E-SEAM-03 retired `slab_full_color` here, which tried to express the
+	## same split as a second field and was **never read by anything** — the
+	## compositor decided from the texture id's own prefix, so the flag was
+	## dead data that silently disagreed with the doc comment describing it.
+	## Two fields could also encode a contradiction (has_facade false + not
+	## full_color = a material with neither source); one cannot.
 	var has_facade: bool = true
-	## Whether this material's SLAB (floor/ceiling) render is a full-color
-	## photographic source (BAKE_SYSTEM_REFERENCE.md B2's exception) — read
-	## by the compositor's modulate decision for `slab_<id>` pages only, never
-	## for `facade_<id>` (SLICE) pages regardless of this value (see
-	## bake_compositor.gd's _modulate_for_mode). NOT the retired
-	## `MaterialDef.full_color`, which was read uniformly across both surfaces
-	## and could not represent a material (concrete) that is tinted on walls
-	## and full-color on floors at once.
-	var slab_full_color: bool = false
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -81,7 +92,6 @@ class MaterialDef:
 		def.dent_factor = float(data.get("dent_factor", 0.0))
 		def.crack_factor = float(data.get("crack_factor", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
-		def.slab_full_color = bool(data.get("slab_full_color", false))
 		return def
 
 ## Material registry

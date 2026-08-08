@@ -315,8 +315,17 @@ instead, that is a new design conversation, not a file drop.
 
 Full detail: `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
 
-- **B2 — Grayscale:** all facade and pattern sources are grayscale
+- **B2 — Grayscale:** all `facade_*` and pattern sources are grayscale
   (R==G==B). Color is a runtime material property.
+  **D34 (2026-08-08):** one `facade_<material>.png` now serves that
+  material's WALL, ROOF **and FLOOR** — authoring a separate ground texture
+  for a structural material is no longer a thing. The only full-color
+  sources left are `slab_<material>.png` for organic ground (grass, dirt,
+  sand, gravel — materials with `has_facade: false`), where hue is the
+  material's identity and grayscale cannot carry it.
+  Facades stay 1024×512; the compositor reaches the 1024×1024 a horizontal
+  surface needs by mirroring the art vertically, so **do not pre-square a
+  facade** — same rule as never pre-stretching for projection (§1).
 - **B3 — Alpha from canon:** silhouette alpha always comes from the
   canonical voxel texture; art never carries silhouettes.
 - **B6 — Loud-fail:** a missing or malformed asset must hard-assert at

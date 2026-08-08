@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46945 lines total** (under `godot/scripts/`)
+**189 scripts · 46955 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1943,11 +1943,11 @@ extends `Node2D` · 43 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 142 lines
+`class_name MaterialRegistry` · 152 lines
 
 `godot/scripts/systems/material_registry.gd`
 
-> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE, surface-keyed axis (BakePolicy.facade_for_material / slab_for_material) — a material's `pattern_algorithm`/`base_color` here still feed the SLICE (wall) render path only; the SLAB (floor/ceiling) path's WHITE-vs-tinted modulate is decided by the texture id's own prefix at bake time, not by a field on this class (see bake_compositor.gd's _modulate_for_mode).
+> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis, owned by BakePolicy.texture_for_material(). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate is still decided by the texture id's own prefix at bake time (bake_compositor.gd's _modulate_for_mode), never by a field on this class — what changed is which ids reach it.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`

@@ -2,20 +2,34 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Latest update:** 2026-08-08, session close — Director's call after the GPU-
-flush fix and the soot reversal below: **formalize the decal-bake step next
-session, before any soot tuning.** Root design gap surfaced today, not
-before: floor (SLAB) textures are a genuinely different art/render pipeline
-from wall (SLICE) textures — different dimensions (1024×1024 isotropic vs
-1024×512 anisotropic), different color rules (SLAB is the one full-color
-exception to B2's grayscale rule), different resolver validation — and
-that divergence is what actually broke metal/stone/wood floor damage
-(`slab_metal.png` etc. never existed; this session's stopgap fix reused the
-wall facade, palette-mode-converted and resized, not a real asset). Next
-session formalizes that seam properly instead of leaving the reused-facade
-workaround as the permanent answer — see §11's new lead item. Soot's real
-lever (the stamp mechanism, confirmed below) waits until that foundation is
-solid.
+**Latest update:** 2026-08-08, later session — **the decal-bake seam is
+formalized: D34 (E-SEAM-01 `8dd926e`, E-SEAM-02 `22b24be`).** The SLAB/SLICE
+split is gone for structural materials: a floor is a roof at the base of the
+scene, so wall, roof and floor of one material all bake from the same
+grayscale `facade_<id>` under MULTIPLY, and roof and floor share one page.
+`slab_<id>` survives only for organic ground (`has_facade: false`). The
+Director's own call made it free — fill a 1024×512 facade to the isotropic
+1024×1024 with a **vertically flipped copy, not a stretch** — which also fixed
+a latent roof bug (rows past ~36 had no texels) and recovered the floor's
+vertical detail. Floor dents now wear their own material's decal art
+(`decal_dent_concrete_*` etc.), with `earth` demoted to the fallback for
+materials with no art of their own. `MaterialDef.slab_full_color` deleted —
+never read by anything. Still open: `earth` itself is not unified (needs
+`facade_earth.png`, art that does not exist), and the GPU-flush safeguard.
+See §11.
+
+**2026-08-08, session close (superseded by the above the same day)** —
+Director's call after the GPU-flush fix and the soot reversal below:
+**formalize the decal-bake step next session, before any soot tuning.** Root
+design gap surfaced today, not before: floor (SLAB) textures are a genuinely
+different art/render pipeline from wall (SLICE) textures — different
+dimensions (1024×1024 isotropic vs 1024×512 anisotropic), different color
+rules (SLAB is the one full-color exception to B2's grayscale rule),
+different resolver validation — and that divergence is what actually broke
+metal/stone/wood floor damage (`slab_metal.png` etc. never existed; this
+session's stopgap fix reused the wall facade, palette-mode-converted and
+resized, not a real asset). Soot's real lever (the stamp mechanism, confirmed
+below) waits until that foundation is solid.
 **2026-08-08, earlier the same day** — the 2026-08-07 "fuligem quebradiça" A/B
 result (below) was itself built on a real bug: `DetonationChoreographer`
 never flushed `DamageCompositeCache`'s GPU texture uploads, so that A/B
@@ -1736,6 +1750,40 @@ above; not repeated here.
 **Order of business — formalize the decal-bake step (Director's call,
 2026-08-08), BEFORE Task 6:**
 
+## ✅ RESOLVED 2026-08-08 as D34 (E-SEAM-01 `8dd926e`, E-SEAM-02 `22b24be`)
+
+The Director's answer went further than the framing below asked for. Rather
+than authoring the missing SLAB assets, **the SLAB/SLICE split itself was
+removed for structural materials**: a floor is a roof at the base of the
+scene, so wall, roof and floor of one material all bake from the same
+grayscale `facade_<id>` under MULTIPLY. `slab_<id>` survives only as the
+photographic exception for organic ground (`has_facade == false`).
+
+The Director's own insight is what made it free: fill a 1024×512 facade up to
+the isotropic 1024×1024 a horizontal surface addresses **with a vertically
+flipped copy, not a stretch**. Mirrored repeat was already the idiom
+everywhere else in the compositor; stretching was the odd one out. Both
+surfaces gained — the roof kept native pixels AND stopped running out of
+addressable domain past row ~36 (latent, hidden only by roof structures being
+small), the floor kept full coverage AND recovered its vertical detail.
+
+Point-by-point against the list below: **(1) is moot** — the 3 stopgap
+`slab_metal/stone/wood.png` files are no longer loaded by anything; those
+materials render from their own facades. **(4) is decided** — reuse is not a
+fallback, it is the rule for `has_facade` materials, and a missing SLAB asset
+is only a real gap for organic ground. **(2) is still open** (see the
+remaining item after this block). **(3) is unchanged.**
+
+Full record: `BAKE_SYSTEM_REFERENCE.md` FLOOR-ZONE-BAKE's new reversal block,
+plus B2's widened scope. Still open, flagged not fixed: **`earth` is not part
+of the unification yet** — the Director wants it baked like any other material
+("uma parede e um teto de terra"), but `facade_earth.png` does not exist and
+`materials/earth.json` carries no `base_color`, so it still renders via
+`EarthVariantSelector`. That is an art task, deliberately out of the
+"sem arte nova" scope of this session.
+
+<details><summary>Original framing, 2026-08-08 (kept for the record)</summary>
+
 Director's framing, verbatim in spirit: floor textures turned out to have a
 genuinely different art/render pipeline from wall textures, and that
 divergence is what actually produced this session's problems — not a soot
@@ -1781,6 +1829,19 @@ here — for the Director to pick up next session:
    ("TextureResolver.resolve() falls back to Tier.NONE") — worth deciding
    if that's still the right default now that floor damage decals depend
    on it existing.
+
+</details>
+
+**Still open from the list above — the GPU-flush safeguard (point 2):**
+
+`DamageCompositeCache.store()` blits into a CPU-side `Image` and defers the
+GPU upload to `flush_dirty_pages()`. Two independent call sites forgot to pair
+them and both failed silently (no error, no crash, just stale pixels), found
+only by real windowed captures: the 2026-08-08 diagnostic rig (`512fa5c`) and
+`DetonationChoreographer`, the real production path (`31bf069`). Undecided:
+whether to fold the flush into `apply_damage_voxel_swap()` itself so no future
+caller can forget, rather than keep trusting every call site. D34 did not
+touch this.
 
 **Order of business — Task 6, the tuning pass (§8's own row):**
 

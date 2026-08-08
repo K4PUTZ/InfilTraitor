@@ -102,7 +102,7 @@ batch.
 All enforced by selftests and pre-commit hook:
 
 - **B1: Branch Exclusivity** — Placement uses exactly one atlas path (baked OR generic), never both
-- **B2: Grayscale Enforcement** — All WALL/CEILING facade and pattern sources are grayscale (R==G==B); color comes from `MaterialDef.base_color` at bake time. Floor-zone bake (`MaterialDef.full_color`, see room_builder.gd's floor_zones flood-fill) is an intentional, scoped exception: photographic `ground_*` sources keep their real RGB (page modulate forced to `Color.WHITE`, never tinted). `TextureResolver._is_grayscale()` enforces B2 at load time for everything except `ground_`-prefixed filenames.
+- **B2: Grayscale Enforcement** — All `facade_*` sources are grayscale (R==G==B); color comes from `MaterialDef.base_color` at bake time. **D34/E-SEAM-01 (2026-08-08) widened B2's reach:** a `has_facade` material's FLOOR now bakes from `facade_<id>` too, so wall, roof and floor of one material are all grayscale-and-tinted — B2 is the rule for every surface of every structural material, not just vertical ones. The photographic exception narrowed to match: only `slab_<id>` sources for `has_facade == false` materials (organic ground — grass/dirt/sand/gravel) keep their real RGB, with the page modulate forced to `Color.WHITE`. `TextureResolver._is_grayscale()` enforces B2 at load time for everything except `slab_`-prefixed filenames. See FLOOR-ZONE-BAKE below for the full history of this reversal.
 - **B3: Alpha from Canon** — Silhouette never generated; alpha from material registry
 - **B4: FNV-1a Determinism** — Hash values pinned; run vs. isolated wall origin identical
 - **B5: No Re-bake on Destruction** — Exposed geometry uses material atlas fallback
@@ -852,7 +852,48 @@ ground textures (`ASSETS/TEXTURES/source/ground/`) needed a real placement
 mechanism, but author-controlled by region (concrete over here, grass
 there), not random per-cell noise.
 
-### Color model — the one real departure from B2
+### ⚠️ REVERSED 2026-08-08 by D34/E-SEAM-01 — read this first
+
+Everything in this FLOOR-ZONE-BAKE section describes the model as shipped
+2026-07-28, and the **two subsections immediately below (Color model, The
+projection) no longer describe the code.** The Director reversed both on
+2026-08-08 after a week of floor/decal problems traced to this very split.
+They are kept because the reasoning is still the record of why the split
+existed, and because the data model, sequencing bug, and limitations further
+down are all still accurate.
+
+What changed:
+
+- **A floor is a roof at the base of the scene.** Which texture family a SLAB
+  request resolves to is derived from the MATERIAL, not the surface:
+  `has_facade == true` → `facade_<id>` (grayscale + multiply, the same source
+  its wall and roof use); `has_facade == false` → `slab_<id>` (photographic,
+  organic ground only). `BakePolicy.texture_for_material()` owns it, and both
+  the bake side (`room_builder.gd`) and the lookup side
+  (`BakedTileLookup.resolve_flat`) read the same `MaterialDef` field, or B1
+  breaks silently.
+- **One isotropic projection for every horizontal surface.** `top_target_h` is
+  `FACADE_W` (1024) unconditionally — roof/ceiling included, where it used to
+  be 512. A 1024×512 facade reaches it by **mirrored vertical repeat**
+  (`_mirror_tile_v`), never `resize()`: mirrored repeat is already the system's
+  idiom (the `flipped_x` wrap strip, the `flipped_y` margins, `_mirror_index`)
+  and it keeps native pixels, at the cost of a tighter repeat period on y (32
+  cells instead of 64).
+- **Roof and floor of one material now SHARE a page**, since with one
+  projection and one texture id the two are byte-identical.
+  `room_builder._merge_horizontal_specs()` unions their cell sets first — two
+  specs on one cache key would otherwise cache-HIT and drop the second's cells.
+- **`MaterialDef.slab_full_color` is gone** (E-SEAM-03). It was never read by
+  anything: the compositor decided from the texture id's prefix, so the flag
+  was dead data whose doc comment claimed otherwise. `has_facade` expresses the
+  same split without allowing a contradictory pair.
+
+Why the old split had to go: `facade_concrete` and `slab_concrete` were
+unrelated art, so a concrete floor could never read as the same material as a
+concrete wall — and `slab_metal/stone/wood` did not exist at all until a
+2026-08-08 stopgap reused the wall facade for them, stretched and mis-tinted.
+
+### Color model — the one real departure from B2 (SUPERSEDED, see above)
 
 Walls/ceiling sample `FacadeSampler`-style GRAYSCALE facades, tinted by
 `MaterialDef.base_color` at bake time (B2). Floor-zone materials are
@@ -871,7 +912,7 @@ are the documented exception, and `TextureResolver._is_grayscale()`
 enforces this split at load time (a `ground_`-prefixed filename bypasses
 the check; everything else still must pass it).
 
-### The projection — isotropic at the source's own square aspect
+### The projection — isotropic at the source's own square aspect (SUPERSEDED, see above)
 
 Floor's photographic sources are 1024×1024 (square, seamless), not the wall
 facade's inherited 1024×512. `_get_roof_plane_source()` gained an optional

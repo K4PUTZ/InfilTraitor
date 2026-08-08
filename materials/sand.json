@@ -3,8 +3,11 @@
   "destroy_factor": 0.5,
   "dent_factor": 0.4,
   "crack_factor": 0.0,
-  "base_color": [0.76, 0.67, 0.51],
+  "base_color": [
+    0.76,
+    0.67,
+    0.51
+  ],
   "pattern_algorithm": "flat",
-  "has_facade": false,
-  "slab_full_color": true
+  "has_facade": false
 }

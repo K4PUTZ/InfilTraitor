@@ -117,6 +117,27 @@ func _apply_wave(index: int, kind: String, ring: int, plan: Dictionary,
 					smoke_overlay.add_smoke(entry["world_pos"], SMOKE_COLOR, 1.0, entry["duration"])
 					count += 1
 
+	## GPU-UPLOAD-01 (2026-08-08): every dented/cracked/soot entry's
+	## source_id/atlas_coords was resolved by DetonationPlanBuilder against
+	## DamageVariantBaker's pre-bake OR live-composited on the spot — either
+	## way it was written through DamageCompositeCache.store(), which blits
+	## into a CPU-side Image and marks the page dirty but leaves the GPU
+	## texture upload for flush_dirty_pages() (that class's own doc comment).
+	## This choreographer is the ONLY place a plan ever reaches set_cell()
+	## (this file's own header), and it never called that flush — every real
+	## detonation's dented/cracked/soot marks rendered whatever the page
+	## texture already held (stale content from a previous flush, or nothing
+	## at all), never what was actually composited, unless some UNRELATED
+	## event happened to flush the same page first (e.g. a bullet fired
+	## earlier in the same session). Root-caused 2026-08-08 via
+	## damage_gallery_debug.gd hitting the identical gap directly (see that
+	## file's own header) — this is the real-gameplay half of the same fix,
+	## not a separate bug. Called once per wave, unconditionally: cheap
+	## no-op when nothing composited this wave (flush_dirty_pages() checks
+	## an empty dirty-page set itself), so "destroy"/"smoke" waves pay
+	## nothing extra.
+	voxel_renderer.flush_damage_composite_pages()
+
 	var apply_ms: float = float(Time.get_ticks_usec() - apply_start_us) / 1000.0
 	var elapsed_ms: int = Time.get_ticks_msec() - _t0_ms
 	## The Task 5 gate's own evidence — "measured per-wave ms" — printed for

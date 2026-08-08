@@ -3,10 +3,12 @@
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md`, which closed
 with the SLAB/SLICE seam unified and `earth` explicitly flagged as the one
 material left outside it, blocked on art that did not exist.
-**VERSION:** 0.9.90 → **0.9.91** — `verified/v0.9.91`, "Alpha Material
-Unification".
+**VERSION:** 0.9.90 → **0.9.91** (`verified/v0.9.91`, "Alpha Material
+Unification") → **0.9.92** (`verified/v0.9.92`, "Alpha Floor Facade Fix", the
+session-close checkpoint).
 **Commits:** `87fa023` (E-EARTH-01), `6ec2566` (E-EARTH-02), `52156fc` (doc
-sweep). Pushed to `main`.
+sweep), `a85f714` (PLAYGROUND floor zones), `5df259b` (ATOM-SHEET). Pushed to
+`main`.
 **Mode:** Solo mode.
 
 ---
@@ -101,6 +103,38 @@ accounting changed: 4 horizontal pages on PLAYGROUND where the split produced
 `MAP_MASTER_PLAN`'s `floor_zones` rows, `ART_SPECIFICATIONS` §6 (whose
 "PLANNED" premise had shipped), `DIRECTION_GLOSSARY` §10 (a new banned-terms
 block for the reform), and CLAUDE.md's art-authoring row.
+
+## After the tag — session close (0.9.92, "Alpha Floor Facade Fix")
+
+Three follow-ups the Director asked for once `verified/v0.9.91` was pushed:
+
+1. **Doc sweep** (`52156fc`) — every doc written for the old model corrected,
+   or marked-not-deleted where it is a dated decision record. Notably
+   `DESTRUCTION_MASTER_PLAN` D26 (the shared carved-TOP asset rule, partially
+   reversed) and D21 (whose measured 18 MB `ground_concrete` page no longer
+   exists — conclusion stands, accounting changed: PLAYGROUND composes 4
+   horizontal pages where the old split produced 8), plus a new banned-terms
+   block in `DIRECTION_GLOSSARY` §10.
+2. **PLAYGROUND floor zones** (`a85f714`) — one patch per material aligned
+   under its block group, adding the concrete patch that was missing because
+   the 24×16 base is already concrete. **Reported honestly as a no-op on
+   screen**: an overlapping rect of the same material resolves to the same
+   value and merges into the same flood-fill component; a real boot confirmed
+   byte-identical output. The value is the map file stating its intent.
+3. **ATOM-SHEET** (`5df259b`) — the Director redirected mid-build ("não precisa
+   perder tempo com o display dentro do game"): what they wanted was a
+   printable DOCUMENT of the baked decals to work from while editing source
+   art. Godot dumps every atom + a manifest
+   (`INFILTRAITOR_CAPTURE_ACTION=export_atoms`, 300/300 on PLAYGROUND); Python
+   composes the labeled PNG/PDF (`tools/persistent/build_atom_sheet.py`) —
+   split that way because GDScript's Image API renders no text and the sheet's
+   whole point is knowing which decal you are looking at. The in-game overlay
+   survives as F8, the quick look.
+
+   The sheet earned itself immediately: metal's atoms *look* like flat black
+   faces. Measured, they are (58,62,66) with metal's own hue intact and zero
+   truly-black pixels — dark, textured, correct. Art judgement for the
+   Director, not a bug, and exactly the call the sheet exists to enable.
 
 ## State at close
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46955 lines total** (under `godot/scripts/`)
+**189 scripts · 47109 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -729,7 +729,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3229 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3245 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1347,7 +1347,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1217 lines
+`class_name BakeCompositor` · 1224 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1387,7 +1387,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 78 lines
+`class_name BakePolicy` · 102 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
@@ -2964,7 +2964,7 @@ extends `SceneTree` · 322 lines
 
 ### `material_reform_selftest.gd`
 
-extends `SceneTree` · 391 lines
+extends `SceneTree` · 489 lines
 
 `godot/scripts/tools/material_reform_selftest.gd`
 
@@ -2977,6 +2977,7 @@ extends `SceneTree` · 391 lines
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
+- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -2985,6 +2986,7 @@ extends `SceneTree` · 391 lines
 **Public API**
 - `func test_6_horizontal_plane_is_mirrored_not_stretched() -> void:`
 - `func test_7_roof_and_floor_specs_merge_their_cells() -> void:`
+- `func test_8_earth_is_a_buildable_material() -> void:`
 
 ---
 
@@ -3735,7 +3737,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1179 lines
+`class_name RoomBuilder` · 1188 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

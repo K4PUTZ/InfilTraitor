@@ -30,6 +30,7 @@ const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
+const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -47,6 +48,7 @@ func _init() -> void:
 	test_5_both_families_bake_in_one_session()
 	test_6_horizontal_plane_is_mirrored_not_stretched()
 	test_7_roof_and_floor_specs_merge_their_cells()
+	test_8_earth_is_a_buildable_material()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -387,5 +389,101 @@ func test_7_roof_and_floor_specs_merge_their_cells() -> void:
 		_pass("grass: floor-only combo passes through untouched on the photographic family")
 	else:
 		_fail("grass spec = %s" % [grass_spec])
+
+	print("")
+
+
+## D35/E-EARTH-01 (Director, 2026-08-08) — `earth` became a buildable material
+## (walls, blocks, roofs), closing the gap D34 explicitly left open. Three
+## things had to line up, and each fails in a different silent way if it does
+## not, so each is asserted separately rather than inferred from one boot:
+##   - the material row (has_facade + a real base_color, or its wall renders
+##     WHITE-tinted)
+##   - the canonical voxel atom (earth ships as 8 variants and has NO
+##     `voxel_earth.png`, so a naive path build push_errors and B3 masking
+##     silently degrades to unmasked rectangles)
+##   - the generic-atlas entry (bake-OFF is the SHIPPED canon; without it
+##     MATERIALS.find("earth") is -1 and an earth wall paints flat concrete)
+##
+## Deliberately does NOT require `facade_earth.png` to exist: the art is the
+## Director's, arrives separately, and a missing facade is the documented
+## graceful path (TextureResolver -> Tier.NONE -> generic atlas). This test
+## pins the plumbing that must be correct either way.
+func test_8_earth_is_a_buildable_material() -> void:
+	print("[8] earth is a first-class buildable material — row, canonical atom, generic atlas (D35)\n")
+
+	var registry := MaterialRegistryClass.new()
+	registry.load_from_disk()
+	var earth = registry.get_material("earth")
+	if earth == null:
+		_fail("MaterialRegistry has no 'earth' entry")
+		return
+
+	if earth.has_facade:
+		_pass("earth declares has_facade — its wall/roof/floor all resolve '%s'" % \
+			BakePolicyClass.texture_for_material("earth", BakePolicyClass.SurfaceClass.SLICE, earth.has_facade))
+	else:
+		_fail("earth has_facade is false — it cannot be built with")
+
+	## A material left at the WHITE default would multiply to no tint at all,
+	## i.e. a grayscale wall. Any real colour is enough; this asserts it is not
+	## the default rather than pinning the Director's exact value.
+	if earth.base_color != Color.WHITE:
+		_pass("earth carries a real base_color %s (not the WHITE default)" % earth.base_color)
+	else:
+		_fail("earth base_color is the WHITE default — MULTIPLY would leave it grayscale")
+
+	## The canonical atom: alias resolves, file exists, and the alpha it
+	## contributes really is interchangeable (B3's whole premise for the alias).
+	var stem: String = BakePolicyClass.canonical_voxel_atom_for("earth")
+	var earth_path: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_%s.png" % stem
+	if stem != "earth" and ResourceLoader.exists(earth_path):
+		_pass("canonical atom alias earth -> '%s' resolves to a real file" % stem)
+	else:
+		_fail("canonical atom for earth resolved to '%s' (%s), which does not exist" % [stem, earth_path])
+
+	var earth_img: Image = load(earth_path).get_image() if ResourceLoader.exists(earth_path) else null
+	var concrete_img: Image = load("res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_concrete.png").get_image()
+	if earth_img != null and concrete_img != null:
+		earth_img = earth_img.duplicate(); earth_img.convert(Image.FORMAT_RGBA8)
+		concrete_img = concrete_img.duplicate(); concrete_img.convert(Image.FORMAT_RGBA8)
+		var alpha_mismatches := 0
+		for y in range(concrete_img.get_height()):
+			for x in range(concrete_img.get_width()):
+				if earth_img.get_pixel(x, y).a != concrete_img.get_pixel(x, y).a:
+					alpha_mismatches += 1
+		if alpha_mismatches == 0:
+			_pass("earth's canonical alpha is identical to concrete's over all %d px — the alias is B3-safe" % \
+				(concrete_img.get_width() * concrete_img.get_height()))
+		else:
+			_fail("earth's canonical alpha differs from concrete's on %d px — the alias breaks B3" % alpha_mismatches)
+
+	## Identity must hold for everything else, or the alias is a landmine.
+	for other in ["concrete", "metal", "stone", "wood", "grass"]:
+		if BakePolicyClass.canonical_voxel_atom_for(other) != other:
+			_fail("canonical_voxel_atom_for('%s') aliased unexpectedly to '%s'" % \
+				[other, BakePolicyClass.canonical_voxel_atom_for(other)])
+			return
+	_pass("every other material's canonical atom is still identity")
+
+	## Generic atlas (the bake-OFF / shipped path).
+	var earth_index: int = VoxelRendererClass.MATERIALS.find("earth")
+	if earth_index > 0:
+		_pass("bare 'earth' is in MATERIALS at %d — a bake-OFF earth wall no longer falls to MATERIALS[0] ('%s')" % \
+			[earth_index, VoxelRendererClass.MATERIALS[0]])
+	else:
+		_fail("MATERIALS.find('earth') = %d — a bake-OFF earth wall would paint flat %s" % \
+			[earth_index, VoxelRendererClass.MATERIALS[0]])
+
+	## The per-cell surface palette for UNZONED ground is a different thing and
+	## must be untouched by D35 — regressing it would repaint every floor.
+	var variants_intact := true
+	for v in range(8):
+		if not VoxelRendererClass.MATERIALS.has("earth_%d" % v):
+			variants_intact = false
+	if variants_intact:
+		_pass("earth_0..earth_7 (EarthVariantSelector's unzoned-ground palette) are all still present")
+	else:
+		_fail("an earth_N variant went missing — unzoned floor rendering would regress")
 
 	print("")

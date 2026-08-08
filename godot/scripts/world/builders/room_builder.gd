@@ -265,6 +265,15 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	for fx in range(0, _room_size.x):
 		for fy in range(0, _room_size.y):
 			var floor_gu := Vector2i(fx, fy)
+			## D35/E-EARTH-01: "earth" is BOTH a real material (buildable on
+			## walls/blocks/roofs since D35) and the sentinel below for "this GU
+			## has no declared floor zone". Only the floor path conflates them,
+			## and the Director scoped D35 to buildable-earth deliberately — so
+			## a zone that DECLARES earth is silently indistinguishable from an
+			## undeclared GU. Say so out loud (B6) instead of dropping it: the
+			## author gets told why their zone did nothing.
+			if floor_zone_by_gu.get(floor_gu, "") == "earth":
+				push_warning("[RoomBuilder] floor_zone at GU %s declares 'earth', which is the sentinel for an UNDECLARED floor — the zone is ignored and this GU renders via EarthVariantSelector. Baked earth ground needs the sentinel split (D35 scope note); earth on walls/blocks/roofs works today." % floor_gu)
 			var floor_material: String = floor_zone_by_gu.get(floor_gu, "earth")
 			var floor_anchor: Vector2i = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
 			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry)

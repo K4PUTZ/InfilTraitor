@@ -53,9 +53,21 @@ const VOXEL_SOURCE_ID: int = 0
 ## composited live onto either a baked atom (Parts 3a-3d) or the flat atom
 ## right here in MATERIALS (Part 4b) — never pre-registered, never loaded
 ## from a per-name file. BASE_MATERIALS is real base materials ONLY now.
+##
+## D35/E-EARTH-01 (2026-08-08): bare `"earth"` joined the list — earth is a
+## buildable material now (walls, blocks, roofs), and without an entry here a
+## bake-OFF earth wall resolved `MATERIALS.find("earth") == -1` and fell to
+## MATERIALS[0], painting itself flat concrete. That matters: bake-OFF is the
+## SHIPPED canon (`BakeConfig.enabled` defaults false for release), so this is
+## the release path, not a dev-only fallback. Distinct from the
+## `earth_0..earth_7` entries above, which are EarthVariantSelector's per-cell
+## surface palette for the UNZONED ground and stay exactly as they were.
+## APPENDED, never inserted: MATERIALS[0] is the last-resort fallback and every
+## other index is looked up by name, so order changes are gratuitous risk.
 const BASE_MATERIALS: Array[String] = [
 	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
+	"earth",
 ]
 
 ## D32 — the four wall materials the Director authors decals for. Glass is
@@ -1669,7 +1681,11 @@ func _build_voxel_tileset() -> void:
 	# pseudo-material ever needs a boot-time entry or a composites/ load anymore.
 	for mat_index in range(MATERIALS.size()):
 		var material_name: String = MATERIALS[mat_index]
-		var asset_path := VOXEL_ASSET_TEMPLATE % material_name
+		## D35/E-EARTH-01: the atlas entry is keyed by MATERIAL id but loaded
+		## from the CANONICAL atom's filename — they differ only for `earth`,
+		## which ships as eight variants and has no unsuffixed file (see
+		## BakePolicy.canonical_voxel_atom_for()).
+		var asset_path := VOXEL_ASSET_TEMPLATE % BakePolicyClass.canonical_voxel_atom_for(material_name)
 
 		var texture := load(asset_path)
 		if not texture:

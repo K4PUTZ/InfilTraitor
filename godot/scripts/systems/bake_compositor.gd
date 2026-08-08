@@ -60,8 +60,13 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 ## concrete's floor bake now reuses concrete's existing (wall) atom instead
 ## of a second "ground_concrete" duplicate (verified byte-identical alpha,
 ## the only channel a canonical atom's masking ever reads).
+## D35/E-EARTH-01: `earth` joined the list when it became a buildable material
+## (walls, blocks, roofs). Its atom file is `voxel_earth_0.png`, not
+## `voxel_earth.png` — resolved through BakePolicy.canonical_voxel_atom_for(),
+## which owns that aliasing and explains why variant 0 is a valid canonical
+## alpha source.
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
-	"grass", "dirt", "gravel", "sand"]
+	"grass", "dirt", "gravel", "sand", "earth"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
@@ -153,7 +158,9 @@ func clear_disk_cache() -> void:
 ## per-material derived data: antialiased-pixel list + top-face diamond overlay
 func _load_real_voxel_atoms() -> void:
 	for material in VOXEL_MATERIALS:
-		var path = VOXEL_BASE_PATH + material + ".png"
+		## D35: keyed by MATERIAL id, loaded from the CANONICAL atom's filename —
+		## the two differ only for `earth` (see BakePolicy's own doc comment).
+		var path = VOXEL_BASE_PATH + BakePolicyClass.canonical_voxel_atom_for(material) + ".png"
 		var texture: Texture2D = load(path)
 		if texture == null:
 			push_error("[BAKE] Failed to load texture resource: %s" % path)

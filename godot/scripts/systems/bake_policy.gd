@@ -72,6 +72,30 @@ static func texture_for_material(material_id: String, surface_class: int,
 	return facade_for_material(material_id)
 
 
+## D35/E-EARTH-01 (2026-08-08) — filename stem of the CANONICAL voxel atom for
+## a material, i.e. the `voxel_<stem>.png` under `source_assets/voxels/
+## materials/` that B3 reads a silhouette's alpha from. Identity for every
+## material except `earth`, whose atom ships as eight surface variants
+## (`voxel_earth_0..7.png`, the EarthVariantSelector palette) and has no
+## unsuffixed file.
+##
+## Pointing earth at variant 0 is safe and is not a shortcut: **alpha is the
+## only channel a canonical atom's masking ever reads** (the same reasoning
+## already recorded for concrete reusing its wall atom on the floor bake), and
+## all eight earth variants carry byte-identical alpha to every other voxel
+## atom in the project — verified directly, not assumed, since every atom is
+## the same 32x36 isometric cube silhouette.
+##
+## Deliberately a policy function rather than a copied `voxel_earth.png`:
+## `materials/` is an INPUT directory (ASSET-LAYOUT-01, "never overwritten"),
+## and a duplicate file there would be a derived artifact masquerading as
+## authored art.
+static func canonical_voxel_atom_for(material_id: String) -> String:
+	if material_id == "earth":
+		return "earth_0"
+	return material_id
+
+
 ## Deterministic variant selection. Stable across runs: NEVER uses instance identity.
 static func variant_for(edge, material_id: String) -> int:
 	var edge_key: String = edge.key_string() if edge.has_method("key_string") else str(edge)

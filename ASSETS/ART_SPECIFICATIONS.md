@@ -65,9 +65,33 @@ since `verified/v0.6.0`.
 | Wrap | Edges repeat by **mirroring**, not tiling — the pattern must tolerate being flipped at its borders without reading as broken |
 | Vertical pre-scale | The compositor stretches walls ×20/16 vertically (16-texel authoring rows onto 20 px levels). **Author flat at 16 texels/voxel; never bake this stretch into the art.** |
 
-Registration: material → facade mapping lives in
-`godot/scripts/systems/bake_policy.gd` (`DEFAULT_FACADES`). Current
-materials: `concrete`, `stone`, `wood`, `metal`.
+**Vertical wrap mirrors too, since D34 (2026-08-08).** A horizontal surface
+(roof, ceiling, floor) addresses 1024 texels on *both* axes, and the
+compositor reaches the second 512 by flipping the art vertically. So the top
+and bottom edges must survive being mirrored the same way the left and right
+already had to — and a facade is now seen on horizontal surfaces, not just
+vertical ones. Still author 1024×512; **never pre-square it.**
+
+Registration is mechanical, not a table: `BakePolicy.texture_for_material()`
+derives `facade_<material>` from the material id (the old `DEFAULT_FACADES`
+dict is gone, D20). To add a facade for a material:
+
+1. Drop `facade_<material>.png` in `ASSETS/TEXTURES/defaults/`.
+2. Set `has_facade: true` and a real `base_color` in `materials/<material>.json`
+   — left at the WHITE default, MULTIPLY leaves the wall grayscale.
+3. **Let Godot reimport it.** `TextureResolver` resolves through
+   `ResourceLoader.exists()`, so an un-imported PNG is invisible to the bake
+   and silently falls back to the generic atlas — Tier.NONE, no error.
+   Focus the open editor for a few seconds, or
+   `godot --headless --import --path .`
+4. If the material's canonical voxel atom is not `voxel_<material>.png`, add
+   the alias to `BakePolicy.canonical_voxel_atom_for()` (only `earth` needs
+   one today) and the id to `BakeCompositor.VOXEL_MATERIALS` and
+   `VoxelRenderer.BASE_MATERIALS`.
+
+Current materials with a facade: `concrete`, `stone`, `wood`, `metal`, and
+`earth` (D35 — art pending; every step above except the PNG itself is done,
+so the material lights up the moment the file lands and is imported).
 
 ---
 

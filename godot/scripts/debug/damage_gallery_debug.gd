@@ -90,29 +90,38 @@ static func _gallery_wall(renderer, material: String, gu: Vector2i) -> void:
 	_report(material, "WALL", "CRACKED", cracked_hit)
 
 
-static func _gallery_floor(renderer, slab_registry: SlabRegistry, material: String, gu: Vector2i) -> void:
-	var slab_id := Slab.make_id(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL)
-	var slab: Slab = slab_registry.get_slab(slab_id)
-	if slab == null:
-		_report(material, "FLOOR", "DENTED", false, "no Slab %s — floor_zones patch missing?" % slab_id)
-		_report(material, "FLOOR", "CRACKED", false, "no Slab %s — floor_zones patch missing?" % slab_id)
-		return
-	var dented_hit := false
-	var cracked_hit := false
-	for i in range(slab.voxels.size()):
-		var voxel: Voxel = slab.voxels[i]
-		if i % 2 == 0:
-			voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0, 0)
-			var hit: bool = renderer.apply_damage_voxel_swap(voxel, slab, GeometryCoords.FLOOR_TOP_LEVEL)
-			if i == 0:
-				dented_hit = hit
-		else:
-			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, 0, 0)
-			var hit2: bool = renderer.apply_damage_voxel_swap(voxel, slab, GeometryCoords.FLOOR_TOP_LEVEL)
-			if i == 1:
-				cracked_hit = hit2
+## Whole-GU coverage (2026-08-08, Director follow-up): the map's 3x3
+## floor_zones patch around `center_gu` — west column entirely DENTED, east
+## column entirely CRACKED, center column left INTACT as a clean reference —
+## instead of alternating individual voxels. Reads "as if an explosion
+## already happened" rather than a diagnostic speckle: no rings, no
+## DESTROYED voxels, just the decals directly, per the Director's request.
+static func _gallery_floor(renderer, slab_registry: SlabRegistry, material: String, center_gu: Vector2i) -> void:
+	var dented_hit := _paint_floor_column(renderer, slab_registry, center_gu, -1,
+		Voxel.DamageState.DENTED, Voxel.CarvedSide.TOP)
+	var cracked_hit := _paint_floor_column(renderer, slab_registry, center_gu, 1,
+		Voxel.DamageState.CRACKED, Voxel.CarvedSide.NONE)
 	_report(material, "FLOOR", "DENTED", dented_hit)
 	_report(material, "FLOOR", "CRACKED", cracked_hit)
+
+
+## Forces every voxel of the 3 GUs at (center_gu.x + dx_col, center_gu.y-1..+1)
+## to `state`, painting each immediately. Returns the last
+## apply_damage_voxel_swap() result — every GU in a column shares the same
+## registry key (same material/state/carved_side/substrate=0), so any one of
+## them is representative of the whole column's hit/miss outcome.
+static func _paint_floor_column(renderer, slab_registry: SlabRegistry, center_gu: Vector2i,
+		dx_col: int, state: int, carved_side: int) -> bool:
+	var hit := false
+	for dy in range(-1, 2):
+		var gu := center_gu + Vector2i(dx_col, dy)
+		var slab: Slab = slab_registry.get_slab(Slab.make_id(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL))
+		if slab == null:
+			continue
+		for voxel in slab.voxels:
+			voxel.set_damage(state, true, carved_side, 0, 0)
+			hit = renderer.apply_damage_voxel_swap(voxel, slab, GeometryCoords.FLOOR_TOP_LEVEL)
+	return hit
 
 
 static func _gallery_ceiling(renderer, slab_registry: SlabRegistry, material: String, gu: Vector2i) -> void:

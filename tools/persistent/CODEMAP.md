@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46371 lines total** (under `godot/scripts/`)
+**189 scripts · 46380 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -327,7 +327,7 @@ extends `Node2D` · 316 lines
 
 ### `damage_gallery_debug.gd`
 
-`class_name DamageGalleryDebug` · 147 lines
+`class_name DamageGalleryDebug` · 156 lines
 
 `godot/scripts/debug/damage_gallery_debug.gd`
 

@@ -468,15 +468,21 @@ destruction (above) is untouched and still works exactly as before.
   not silently dropped. Stamped-blast soot's rotation-persistence stays
   unbuilt — currently unreachable to test since camera rotation is disabled
   (ROTATE-KILL-01); damage *state* already survives rotation correctly.
-- **Post-Task-5 (2026-08-07):** Director flagged the real crater's scorch as
-  "quebradiça" (brittle/fragmented) rather than one uniform shade. Real A/B
-  capture (`Screenshots/history/soot_stamp_on.png`/`soot_stamp_off.png`,
-  pixel-diffed: 3.3% of pixels differ, mean 0.76/255) rules out this
-  rebuild's own soot stamp as the cause — the texture comes from the
-  pre-existing floor dent decal art (`decal_dent_earth_*`, D22/D23) plus
-  D3's per-cell substrate-crop randomization, both predating this rebuild.
-  Four fix options are on the table for Task 6, none chosen yet — see
-  `EXPLOSION_REBUILD_MASTER_PLAN.md` §11 point 2.
+- **Post-Task-5 (2026-08-07), REVERSED 2026-08-08:** Director flagged the
+  real crater's scorch as "quebradiça" (brittle/fragmented) rather than one
+  uniform shade. The original A/B capture (3.3% pixels differ, mean
+  0.76/255) that ruled out this rebuild's own soot stamp was itself
+  comparing two captures both reading unflushed GPU texture content —
+  `DetonationChoreographer` (the only place a `DetonationPlan` reaches
+  `set_cell()`) never called `flush_damage_composite_pages()`, unlike every
+  other real damage call site. Fixed; the identical A/B test re-run clean
+  shows **the blast's own soot stamp genuinely is the cause** (4.1% of
+  pixels differ, mean 101.6/255 — over 130x the earlier signal): ring 3
+  (soot-only, zero dent/crack weight, so it can carry no dent-decal-art or
+  D3 substrate variation at all) reads smooth with the stamp off and
+  "quebradiça" with it on. Exact mechanism (uniform per-ring tone →
+  checkered per-pixel result) not yet traced — see
+  `EXPLOSION_REBUILD_MASTER_PLAN.md`'s Post-Post-Task-5 note and §11 point 2.
 
 ---
 

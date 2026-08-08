@@ -2,11 +2,22 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Latest update:** 2026-08-07, post-Task-5 — real-capture feedback ("fuligem
-quebradiça") investigated with a real A/B pixel-diff; root cause isolated
-to the pre-existing floor dent decal art + substrate randomization, NOT
-this rebuild's own soot stamp. See the Post-Task-5 note after Task 5's
-closure and §11 point 2.
+**Latest update:** 2026-08-08 — the 2026-08-07 "fuligem quebradiça" A/B
+result (below) was itself built on a real bug: `DetonationChoreographer`
+never flushed `DamageCompositeCache`'s GPU texture uploads, so that A/B
+compared two captures both reading stale/unflushed content. Fixed
+(`flush_damage_composite_pages()`, once per wave); the SAME A/B test re-run
+clean shows the blast's own soot stamp genuinely IS the cause (4.1% of
+pixels differ at mean 101.6/255, vs the earlier false "3.3% at 0.76/255
+near-identical" reading) — reversing Post-Task-5's conclusion. Exact
+mechanism (uniform per-ring tone → checkered per-pixel result) still
+untraced. See the Post-Post-Task-5 note after Task 5's closure and §11
+point 2.
+**2026-08-07, post-Task-5** — real-capture feedback ("fuligem quebradiça")
+investigated with a real A/B pixel-diff; root cause isolated to the
+pre-existing floor dent decal art + substrate randomization, NOT this
+rebuild's own soot stamp — **this conclusion was wrong, see the 2026-08-08
+update above.**
 **Updated 2026-08-06** — Director answered Q1–Q6, then corrected/extended Q1b
 and Q3b in a follow-up round (floor is material-real now, not agnostic to
 "earth"; bullet marks join the pre-bake), then added D13 (per-map material
@@ -496,7 +507,7 @@ unchanged), `check_invariants.py` OK, `gen_codemap.py --check` clean (188
 scripts). A separate real `weapon_fire` capture confirms firearms are
 unaffected.
 
-#### Post-Task-5 note (2026-08-07) — the "quebradiça" soot texture, investigated, root cause NOT this session's work
+#### Post-Task-5 note (2026-08-07) — the "quebradiça" soot texture, investigated, root cause NOT this session's work — **REVERSED 2026-08-08, see the note right after this one**
 
 Director feedback on the real `e_wave_detonation.png` capture: the crater's
 scorch reads as "quebradiça e irregular" (brittle/fragmented) rather than
@@ -538,6 +549,63 @@ multiply to a flatter blend toward a solid tone. The diagnostic toggle
 itself stays in the code (`stamp_soot_enabled`, harmless — `true` by
 default, byte-identical to before it existed) since it's a real, cheap,
 reusable seam for the next A/B comparison, not a one-off hack to revert.
+
+#### Post-Post-Task-5 note (2026-08-08) — the A/B test above was comparing two broken captures; re-run clean, the stamp IS the cause
+
+The Director rejected the conclusion above outright: "não dá pra ver nenhum
+decal baked no chão, em nenhum material" (not a soot complaint — a claim
+that NO dent/crack decal was rendering on the floor at all, in any
+material), and pointed out that (b)/(c)/(d) above cannot explain ring 3 at
+all — `frag_grenade.json`'s `destroy_ring_weights[3]`/`dent_ring_weights[3]`/
+`crack_ring_weights[3]` are all `0.0`, so a ring-3 voxel never reaches
+`apply_container_damage()`'s `DENT`/`CRACK` selection loops and therefore
+never rolls a `decal_variant`/`substrate` at all (`decal_variant_for()`/
+`substrate_for()` are called ONLY inside those loops) — there is no dent
+decal art or D3 randomization for ring 3 to inherit in the first place.
+
+Chasing that contradiction (via a new floor/wall/ceiling damage-atom gallery
+rig, `damage_gallery_debug.gd`) found a real, unrelated bug first:
+`DamageCompositeCache.store()` (every WALL/FLOOR/CEILING damage atom's
+compositor, baked or live) blits into a CPU-side `Image` and marks the page
+dirty, but defers the actual GPU texture upload to `flush_dirty_pages()`.
+Every real call site pairs painting with that flush EXCEPT
+`DetonationChoreographer` — the only place a `DetonationPlan` ever reaches
+`set_cell()` — which never did. Fixed
+(`voxel_renderer.flush_damage_composite_pages()`, once per wave,
+`detonation_choreographer.gd`).
+
+That means the ORIGINAL A/B capture above (`soot_stamp_on.png`/
+`soot_stamp_off.png`, 2026-08-07) was comparing two captures that were both
+reading unflushed, potentially stale GPU texture content — exactly the kind
+of noise that would wash out a real difference and produce a false "near
+identical" reading (3.3% pixels, mean diff 0.76/255). Same test, same
+identical stone crater, re-run clean after the fix
+(`INFILTRAITOR_CAPTURE_ACTION=test_zone_detonate` +
+`INFILTRAITOR_DISABLE_STAMP_SOOT=1` vs unset): **4.1% of pixels differ, mean
+diff 101.6/255 — over 130x the earlier signal.** Visually decisive, not a
+statistical technicality: with the stamp OFF, ring 3's floor tiles read as a
+smooth, even darkening; with it ON (today's shipped default), the same
+tiles show the "quebradiça e irregular" checkerboard/pockmark pattern
+verbatim.
+
+**Conclusion, reversed: the blast's own soot stamp (`stamp_container_soot()`/
+`stamp_crater_soot()`, Task 3/4) IS the cause.** `stamp_crater_soot()`'s ring
+assignment is a plain Euclidean-distance band (`crater_ring_for()`) with no
+per-voxel hashing or randomness — every voxel in a ring gets the textually
+identical `tone`. Exactly how that uniform per-ring value turns into a
+checkered per-pixel result on screen is NOT yet traced — candidates, in no
+particular order: an interaction between the soot tone and the light-bucket
+alternative-tile encoding (`encode_voxel_alt()`, VL-01's 12-bucket system),
+or a base-texture contrast effect only visible once the multiply-blend
+darkening is strong enough (ring 3 is the stamp's own deepest/darkest
+reach). **Options (b)/(c)/(d) from the note above (dent-decal art, D3
+substrate randomization, crater-rim dent density) are very likely NOT where
+Task 6's tuning time belongs** — they were never reachable in the region
+that actually changed. Option 4 (the shader's multiply-vs-flatter-blend
+question) or the stamp's own rendering path is the real lever. The
+diagnostic toggle (`stamp_soot_enabled`) remains the correct seam for
+whoever traces the exact mechanism next — now finally trustworthy, since
+both sides of the comparison are flushed correctly.
 
 ---
 
@@ -1658,21 +1726,37 @@ above; not repeated here.
    `smoke_ring_weights` in `bombs/frag_grenade.json`) based on what actually
    reads right — every one of them is explicitly a first-pass placeholder,
    not a researched constant.
-2. **The "quebradiça" (brittle/fragmented) soot texture** — see the
-   Post-Task-5 note right above Task 5's own closure. Investigated with a
-   real A/B capture (`soot_stamp_on.png`/`soot_stamp_off.png`, 3.3% pixels
-   differ, mean diff 0.76/255): the blast's OWN soot stamp is NOT the cause.
-   Root cause is the pre-existing floor dent decal art
-   (`decal_dent_earth_*`, D22/D23) plus D3's per-cell substrate-crop
-   randomization, both predating this rebuild. Four options were put to the
-   Director, none chosen yet: tighten crater-rim dent density (a
+2. **The "quebradiça" (brittle/fragmented) soot texture** — **REVERSED,
+   2026-08-08.** The Post-Task-5 A/B test below was run against a genuine
+   bug (GPU-UPLOAD-01, same session's own damage-atom gallery rig found it
+   first): `DamageCompositeCache.store()` defers the GPU texture upload to
+   `flush_dirty_pages()`, and `DetonationChoreographer` — the only place a
+   `DetonationPlan` ever reaches `set_cell()` — never called it, so both
+   `soot_stamp_on.png` and `soot_stamp_off.png` were comparing stale/unflushed
+   texture content, not the real difference. Fixed
+   (`voxel_renderer.flush_damage_composite_pages()`, once per wave). Same
+   A/B test, re-run clean on the identical stone crater: stamp ON vs OFF now
+   differ on 4.1% of the frame at mean 101.6/255 (was 3.3% at 0.76/255) —
+   **the blast's own soot stamp IS the cause.** With the stamp off, ring 3
+   (soot-only — `destroy/dent/crack_ring_weights[3]` are all `0.0`, so it
+   can carry no dent-decal-art or D3 substrate-crop variation at all) reads
+   as a smooth, even darkening; with it on, the same tiles show the
+   checkerboard/pockmark pattern. `stamp_crater_soot()`'s own ring math is a
+   plain Euclidean-distance band with no per-voxel hashing — exactly how a
+   uniform per-ring tone becomes a checkered pixel result is not yet traced
+   (candidate: the soot tone's interaction with the light-bucket
+   alternative-tile encoding, or with the base texture under strong
+   multiply-darkening). Options 1-3 below (dent-decal art, D3 randomization)
+   are very likely NOT where to spend tuning time now; option 4 (the
+   shader's multiply-vs-flatter-blend question) or the stamp's own rendering
+   path is where the real lever probably is. Original (now superseded)
+   options, kept for the record: tighten crater-rim dent density (a
    `dent_factor`/rim-span data tweak), replace the dent decal art (art
    work, not code), disable D3's per-voxel substrate randomization (reverses
    a ratified decision — ask first), or change `voxel_face_shading.gdshader`
    from a pure multiply to a flatter blend toward a solid soot tone (a real
    shader-philosophy change — the shader's own header comment currently
-   states multiply-only is deliberate). Pick one before touching any of
-   these systems.
+   states multiply-only is deliberate).
 3. Two items Task 5 flagged and deliberately did NOT resolve, both real
    design questions for the Director rather than something to guess past a
    second time:

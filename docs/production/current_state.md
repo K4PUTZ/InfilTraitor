@@ -461,19 +461,37 @@ destruction (above) is untouched and still works exactly as before.
   event, never an access route.
 - **What's still open:** Phase B (targeting UI, throw arc/bubble, explosion
   flash frames) is not started — the Director chose to prove Phase A's 15
-  waves with real captures first. **Next session formalizes the decal-bake
-  step (Director's call, 2026-08-08) BEFORE Task 6** — see the bullet below
-  and `EXPLOSION_REBUILD_MASTER_PLAN.md` §11's new lead item: floor (SLAB)
-  textures turned out to be a genuinely different art/render pipeline from
-  wall (SLICE) textures (dimensions, color rules, resolver validation all
-  differ), and metal/stone/wood floor materials never had a real asset for
-  it. Task 6 (the tuning pass, including soot ring weights) comes after
-  that foundation is solid. Blast debris VFX (dust/spark/chip) was
+  waves with real captures first. The decal-bake formalization that blocked
+  Task 6 is **done — D34, 2026-08-08** (see the D34 bullet below); Task 6
+  (the tuning pass, including soot ring weights) is now the next concrete
+  action. Blast debris VFX (dust/spark/chip) was
   deliberately disconnected in Task 5 (would have doubled up with the new
   staged smoke waves) — flagged for a future task, not silently dropped.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently
   unreachable to test since camera rotation is disabled (ROTATE-KILL-01);
   damage *state* already survives rotation correctly.
+- **D34 — the SLAB/SLICE seam, unified (2026-08-08, commits `8dd926e`,
+  `22b24be`, `9cd37ae`):** floor textures used to be a genuinely different
+  art/render pipeline from wall textures, which is what made a concrete
+  floor unable to read as the same material as a concrete wall. Removed:
+  **a floor is a roof at the base of the scene**, so wall, roof and floor of
+  a `has_facade` material all bake from the same grayscale `facade_<id>`
+  under MULTIPLY, and roof and floor of one material now share a single
+  page. `slab_<id>` survives only as the photographic exception for organic
+  ground (`has_facade: false` — grass/dirt/sand/gravel), verified still
+  intact on FLOOR_ZONES_TEST. Every horizontal surface projects at the
+  isotropic 1024, reached by **mirrored vertical repeat rather than a
+  stretch** (the Director's call) — which also closed a latent roof bug
+  (cell rows past ~36 had no texels, hidden only by roof structures being
+  small) and gave the floor its native vertical detail back. Floor dents
+  wear their own material's decal art now (`decal_dent_concrete_*` etc.),
+  with `earth` demoted from "the rule" to "the fallback for materials with
+  no art of their own". `MaterialDef.slab_full_color` deleted — it was
+  parsed by nothing and read by nothing while its doc comment claimed
+  otherwise. **Still open:** `earth` itself is not unified (needs a
+  `facade_earth.png` that does not exist) and still renders via
+  `EarthVariantSelector`. Full contract: `BAKE_SYSTEM_REFERENCE.md`
+  FLOOR-ZONE-BAKE's reversal block and B2.
 - **GPU-upload flush bug, found and fixed (2026-08-08):**
   `DamageCompositeCache.store()` (every WALL/FLOOR/CEILING damage atom's
   compositor) defers the actual GPU texture upload to

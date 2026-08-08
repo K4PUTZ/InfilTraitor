@@ -161,6 +161,11 @@ func _handle_key_action(key: InputEventKey) -> void:
 		debug_command_requested.emit("force_damage_gallery")
 		if viewport:
 			viewport.set_input_as_handled()
+	elif key.is_action_pressed("debug_atom_sheet"):
+		print_debug("[INPUT] Debug: toggle atom sheet")
+		debug_command_requested.emit("toggle_atom_sheet")
+		if viewport:
+			viewport.set_input_as_handled()
 
 
 func _emit_movement_input(direction: Vector2i) -> void:

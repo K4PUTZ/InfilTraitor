@@ -100,6 +100,30 @@ func force_damage_gallery() -> void:
 	DamageGalleryDebugClass.run(room)
 
 
+## ATOM-SHEET (F8) — show/hide the contact sheet of every pre-baked damage
+## atom in the loaded map, read straight off the VoxelVariantRegistry. The
+## complement to F5's in-world gallery: that one proves a damaged voxel
+## RENDERS, this one shows what the map actually BAKED. See
+## atom_sheet_debug.gd.
+var _atom_sheet: CanvasLayer = null
+
+func toggle_atom_sheet() -> void:
+	if _atom_sheet != null and is_instance_valid(_atom_sheet):
+		_atom_sheet.queue_free()
+		_atom_sheet = null
+		_show_transient_label("Atom Sheet: OFF")
+		return
+	var AtomSheetDebugClass = preload("res://godot/scripts/debug/atom_sheet_debug.gd")
+	var sheet = AtomSheetDebugClass.new()
+	if not sheet.setup(room):
+		sheet.queue_free()
+		_show_transient_label("Atom Sheet: no atoms baked")
+		return
+	_atom_sheet = sheet
+	room.add_child(_atom_sheet)
+	_show_transient_label("Atom Sheet: ON")
+
+
 ## Show a transient on-screen label (used by bake mode and blend mode toggles)
 func _show_transient_label(text: String) -> void:
 	var label := Label.new()

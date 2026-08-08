@@ -63,3 +63,14 @@ func clear() -> void:
 ## Total registered atoms — diagnostics/selftest only.
 func size() -> int:
 	return _variants.size()
+
+
+## Every registered variant key — diagnostics/display only (ATOM-SHEET, the
+## per-material atom display). Deliberately NOT part of the resolve path:
+## nothing in rendering may iterate this registry, because a lookup is always
+## by an exactly-computed key (see get_variant()'s own contract) and iterating
+## would invite "find something close enough", which is how a wrong atom ends
+## up on a voxel. Returns a copy, so a caller cannot mutate the registry
+## through it.
+func keys() -> Array:
+	return _variants.keys()

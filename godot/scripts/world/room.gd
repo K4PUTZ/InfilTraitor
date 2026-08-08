@@ -3382,6 +3382,24 @@ func _run_auto_screenshot_capture() -> void:
 			await get_tree().process_frame
 		if OS.get_environment("INFILTRAITOR_GALLERY_READBACK") == "1":
 			DamageGalleryDebugClass.readback_probe(self)
+	elif capture_action == "export_atoms":
+		## ATOM-EXPORT dev action (Director, 2026-08-08) — dumps every baked
+		## damage atom to Screenshots/atoms/ as its own PNG plus a manifest,
+		## for reviewing the decals while iterating on their source art.
+		## Compose the printable sheet from it with
+		## `python3 tools/persistent/build_atom_sheet.py`.
+		var AtomSheetExportClass = preload("res://godot/scripts/debug/atom_sheet_debug.gd")
+		AtomSheetExportClass.export_atoms(self)
+		for _j in range(5):
+			await get_tree().process_frame
+	elif capture_action == "atom_sheet" and _debug_tools_controller != null:
+		## ATOM-SHEET dev capture action (2026-08-08) — the unattended-capture
+		## path for F8. Needs no camera framing at all, unlike damage_gallery
+		## above: the sheet is a full-screen overlay built from the registry,
+		## not something happening out in the world.
+		_debug_tools_controller.toggle_atom_sheet()
+		for _j in range(10):
+			await get_tree().process_frame
 	elif capture_action == "open_showcase" and _main_menu_panel != null:
 		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
 		## path (Main Menu's own _on_showcase_pressed(), same as a real click
@@ -3610,6 +3628,8 @@ func _on_debug_command_requested(command: String) -> void:
 				_debug_tools_controller.reset_nudge()
 		"force_damage_gallery":
 			_debug_tools_controller.force_damage_gallery()
+		"toggle_atom_sheet":
+			_debug_tools_controller.toggle_atom_sheet()
 
 
 ## ESC-STACK-01: Escape's ONE entry point (InputController emits this
@@ -3669,6 +3689,9 @@ func _initialize_debug_views() -> void:
 	F5:  Toggle Theme Matrix (saturation calibration grid)
 	F6:  Toggle bake mode (BAKED / GENERIC), reloads current map
 	F7:  Cycle bake blend mode (MULTIPLY/TEXTURE_ONLY/MATERIAL_ONLY/OVERLAY/LINEAR_LIGHT), reloads current map
+	F8:  Toggle Atom Sheet — every pre-baked damage atom in this map, by
+	     material and surface, read off the VoxelVariantRegistry
+	     (INFILTRAITOR_ATOM_SHEET_SUBSTRATES=all shows the substrate axis too)
 	F12: (Reserved) Selftest — run headless:
 	     godot --headless --script godot/scripts/tools/bake_selftest.gd
 	""")

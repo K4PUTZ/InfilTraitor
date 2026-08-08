@@ -331,6 +331,37 @@ a loadable asset behind BOTH the photographic decal path and the generic
 vector-mark path below — so adding a corner of the matrix with no art behind
 it fails the suite instead of failing on screen.
 
+### Reviewing the baked result (ATOM-SHEET, 2026-08-08)
+
+Authoring a decal is only half the loop — what lands on a voxel is the decal
+**composited onto a crop of that material's facade and tinted**, which can read
+very differently from the source PNG. Two commands produce a printable contact
+sheet of every baked atom in a map, to look at while editing the art:
+
+```bash
+INFILTRAITOR_CAPTURE_ACTION=export_atoms python3 tools/persistent/auto_screenshot.py
+python3 tools/persistent/build_atom_sheet.py
+```
+
+The first dumps one PNG per atom plus `manifest.json` into `Screenshots/atoms/`
+(a real map load, so it is the real bake — 300 atoms on PLAYGROUND). The second
+composes `Screenshots/atom_sheet.png` and `.pdf`, grouped material → surface →
+decal family, variants across, substrates alongside. `--scale N` changes the
+zoom; `--substrate N` narrows to one substrate crop.
+
+Both outputs are gitignored like everything else under `Screenshots/` — they
+are regenerable from those two commands, not source.
+
+Atoms are drawn on a checkerboard rather than a flat fill on purpose: several
+decals are near-white or near-black, and a flat backdrop swallows one end of
+that range — the exact failure the sheet exists to catch. Read dark tiles with
+that in mind; measure before calling one broken (a first pass at this sheet
+read metal's atoms as "black faces", and they measure (58,62,66) with metal's
+own hue intact — dark, textured, and correct).
+
+`F8` shows the same data as an in-game overlay (`atom_sheet_debug.gd`), which
+is the quicker look; the exported sheet is the one to print.
+
 ### Generic vector marks (procedural — nothing to author here)
 
 A generic (flat, unbaked) voxel — `BakeConfig.enabled == false` (the release

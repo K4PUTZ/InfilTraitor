@@ -8,13 +8,13 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 47109 lines total** (under `godot/scripts/`)
+**190 scripts · 47495 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
-- **debug/** — damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
+- **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
@@ -324,6 +324,23 @@ extends `Node2D` · 316 lines
 ---
 
 ## debug/
+
+### `atom_sheet_debug.gd`
+
+`class_name AtomSheetDebug` · extends `CanvasLayer` · 323 lines
+
+`godot/scripts/debug/atom_sheet_debug.gd`
+
+> ATOM-SHEET (2026-08-08, Director) — a contact sheet of EVERY pre-baked damage atom in the loaded map, grouped by material and by the surface it belongs to (WALL / CEILING / FLOOR), with its decal visible. Why a sheet and not more in-world geometry: `damage_gallery_debug.gd` (F5) forces damage onto real voxels scattered across the map, which proves the RENDER PATH works but can only ever show the handful of atoms the map's own geometry happens to expose, at whatever angle the camera is at. This reads the `VoxelVariantRegistry` directly, so what it displays IS the bake — every atom that exists, nothing that doesn't, and a count that can be checked against `registry.size()`. The two are complements: F5 answers "does a damaged voxel render correctly", F8 answers "what did the map actually bake". Atoms come back through `DamageCompositeCache.get_image_at()`, the same readback `DamageVariantBaker` already uses to persist its disk cache — the real composited pixels, not a re-derivation, so an atom that is wrong here is wrong in the game. Substrates: an atom exists once per (material, damage name, substrate) and the substrate axis is just a different crop of the same facade — three near-identical tiles per row, which triples the sheet's size for very little signal. Substrate 0 only by default; set `INFILTRAITOR_ATOM_SHEET_SUBSTRATES=all` to see the axis itself. Debug-only. Never called from gameplay.
+
+**Constants / tuning**
+- `DEFAULT_ATOM_SCALE` = `2`
+- `ELEMENT_ORDER` = `["WALL", "CEILING", "FLOOR"]`
+
+**Public API**
+- `func setup(room: Node) -> bool:`
+
+---
 
 ### `damage_gallery_debug.gd`
 
@@ -2218,7 +2235,7 @@ extends `Node` · 54 lines
 
 ### `voxel_variant_registry.gd`
 
-`class_name VoxelVariantRegistry` · 65 lines
+`class_name VoxelVariantRegistry` · 76 lines
 
 `godot/scripts/systems/voxel_variant_registry.gd`
 
@@ -3762,7 +3779,7 @@ extends `Node2D` · 34 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 165 lines
+`class_name DebugToolsController` · 189 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -3779,6 +3796,7 @@ extends `Node2D` · 34 lines
 - `func toggle_bake_mode() -> void:`
 - `func cycle_blend_mode() -> void:`
 - `func force_damage_gallery() -> void:`
+- `func toggle_atom_sheet() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
 - `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
@@ -3788,7 +3806,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 170 lines
+`class_name InputController` · 175 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -4091,7 +4109,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3680 lines
+extends `Node2D` · 3703 lines
 
 `godot/scripts/world/room.gd`
 

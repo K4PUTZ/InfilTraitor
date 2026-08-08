@@ -489,10 +489,18 @@ destruction (above) is untouched and still works exactly as before.
   with `earth` demoted from "the rule" to "the fallback for materials with
   no art of their own". `MaterialDef.slab_full_color` deleted — it was
   parsed by nothing and read by nothing while its doc comment claimed
-  otherwise. **Still open:** `earth` itself is not unified (needs a
-  `facade_earth.png` that does not exist) and still renders via
-  `EarthVariantSelector`. Full contract: `BAKE_SYSTEM_REFERENCE.md`
-  FLOOR-ZONE-BAKE's reversal block and B2.
+  otherwise. Full contract: `BAKE_SYSTEM_REFERENCE.md` FLOOR-ZONE-BAKE's
+  reversal block and B2.
+- **D35 — earth is a buildable material (2026-08-08, `87fa023` + the
+  Director's `facade_earth.png`):** closes the gap D34 left open. Walls,
+  blocks and roofs of earth render through the same grayscale + multiply path
+  as every other structural material — the "uma parede e um teto de terra"
+  combo. Real capture: `Screenshots/history/e_earth_buildable.png`.
+  `base_color [0.52, 0.39, 0.26]` is derived from the existing
+  `voxel_earth_N` atoms, not picked. **Still scoped out:** earth as a
+  DECLARED floor zone, because `"earth"` is also the sentinel for "no floor
+  zone here" in five places that decide the whole floor's render; declaring it
+  in `floor_zones` now warns loudly instead of vanishing.
 - **GPU-upload flush bug, found and fixed (2026-08-08):**
   `DamageCompositeCache.store()` (every WALL/FLOOR/CEILING damage atom's
   compositor) defers the actual GPU texture upload to

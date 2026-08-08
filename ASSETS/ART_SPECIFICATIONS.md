@@ -89,9 +89,16 @@ dict is gone, D20). To add a facade for a material:
    one today) and the id to `BakeCompositor.VOXEL_MATERIALS` and
    `VoxelRenderer.BASE_MATERIALS`.
 
-Current materials with a facade: `concrete`, `stone`, `wood`, `metal`, and
-`earth` (D35 — art pending; every step above except the PNG itself is done,
-so the material lights up the moment the file lands and is imported).
+Current materials with a facade: `concrete`, `stone`, `wood`, `metal`, `earth`
+(D35, delivered 2026-08-08 — walls, blocks and roofs of earth render through
+the same grayscale + multiply path as every other structural material).
+
+> Step 3 is not hypothetical. The first `facade_earth.png` delivery was
+> rejected at load for being full-colour (100% of sampled pixels over the
+> tolerance) — caught only because someone measured the file. A rejected
+> facade produces **no error at all**: Tier.NONE, generic atlas, a material
+> that looks vaguely wrong. Measure a new facade before trusting it, and
+> reimport after every re-export — a stale `.import` fails the same silent way.
 
 ---
 

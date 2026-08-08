@@ -1775,12 +1775,24 @@ is only a real gap for organic ground. **(2) is still open** (see the
 remaining item after this block). **(3) is unchanged.**
 
 Full record: `BAKE_SYSTEM_REFERENCE.md` FLOOR-ZONE-BAKE's new reversal block,
-plus B2's widened scope. Still open, flagged not fixed: **`earth` is not part
-of the unification yet** — the Director wants it baked like any other material
-("uma parede e um teto de terra"), but `facade_earth.png` does not exist and
-`materials/earth.json` carries no `base_color`, so it still renders via
-`EarthVariantSelector`. That is an art task, deliberately out of the
-"sem arte nova" scope of this session.
+plus B2's widened scope.
+
+**~~Still open: `earth` is not part of the unification yet.~~ CLOSED the same
+day as D35 (`87fa023` + the Director's `facade_earth.png`).** Earth is a
+buildable material now — walls, blocks and roofs render through the same
+grayscale + multiply path as concrete/metal/stone/wood, which is the
+"uma parede e um teto de terra" combo the Director described. Real capture:
+`Screenshots/history/e_earth_buildable.png`. Three supports had to land with
+it: `has_facade` + a derived `base_color` in `materials/earth.json`, a
+canonical-atom alias (earth ships as eight variants, has no `voxel_earth.png`),
+and a bare `"earth"` entry in `BASE_MATERIALS` for the bake-OFF/shipped path.
+
+**Still scoped out, deliberately: earth as a DECLARED floor zone.** `"earth"`
+is simultaneously the material name and the sentinel for "this GU has no
+declared floor zone", compared in five places that decide how the whole floor
+renders. Only the floor path conflates the two, so buildable earth needed no
+sentinel change. A `floor_zones` entry declaring earth now push_warnings and
+explains itself instead of vanishing silently.
 
 <details><summary>Original framing, 2026-08-08 (kept for the record)</summary>
 

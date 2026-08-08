@@ -6,21 +6,41 @@
   "sections": {
     "board": {
       "v": 1,
-      "inner_size": [10, 10],
+      "inner_size": [
+        10,
+        10
+      ],
       "buffer": 1,
       "floor_tile": "floor_SE"
     },
     "actors": {
       "v": 1,
-      "agent_start": [1, 1],
+      "agent_start": [
+        1,
+        1
+      ],
       "guards": []
     },
     "legacy_compiler": {
       "v": 1,
       "wall_height": 1,
-      "access_points": [{"cell": [1, 0]}],
+      "access_points": [
+        {
+          "cell": [
+            1,
+            0
+          ]
+        }
+      ],
       "dividers": [
-        {"cells": [[5, 5]]}
+        {
+          "cells": [
+            [
+              5,
+              5
+            ]
+          ]
+        }
       ],
       "lights": []
     },
@@ -28,13 +48,27 @@
       "v": 1,
       "items": [
         {
-          "gu": [3, 3],
+          "gu": [
+            3,
+            3
+          ],
           "material": "stone",
           "storeys": 1
         },
         {
-          "gu": [4, 3],
+          "gu": [
+            4,
+            3
+          ],
           "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            6,
+            3
+          ],
+          "material": "earth",
           "storeys": 2
         }
       ]

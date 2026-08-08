@@ -9,15 +9,23 @@
 ## it. Debug-only, triggered by F5 (see debug_tools_controller.gd), never
 ## called from gameplay.
 ##
-## WALL uses the map's own PLAYGROUND.map.json per-material test blocks
-## (render_block() — no real Slice, so a throwaway Slice carries just the
-## material string apply_damage_voxel_swap() reads). FLOOR/CEILING use the
-## real Slab objects room._slab_registry already tracks (floor needs a
-## floor_zones patch per non-concrete material — added alongside this file).
+## WALL/FLOOR/CEILING all paint through REAL, registered containers —
+## room._edge_registry's Slices for WALL (EdgeExtractor gives every
+## block-to-block/block-to-floor boundary a real Slice, confirmed by probe:
+## SLICE_13_3_SW etc — the map's per-material test blocks are NOT purely
+## render_block()-anonymous, only their non-boundary interior voxels are),
+## room._slab_registry's Slabs for FLOOR/CEILING. This matters beyond
+## correctness: a throwaway, unregistered Voxel/Slice (this file's first
+## version, for WALL) paints once via a direct apply_damage_voxel_swap() call
+## and then gets silently overwritten by the next repaint (light/occlusion/
+## FOW reveal all re-render from each container's own tracked Voxel objects)
+## — nothing persists the forced damage anywhere a repaint would consult, so
+## the mark visibly reverted to intact by the time of the capture. Confirmed
+## real, non-reverting bullet marks exist on these same blocks (a live
+## shotgun weapon_fire capture, 2026-08-08) — this now uses that exact
+## register-and-repaint-safe path instead of a one-shot poke.
 class_name DamageGalleryDebug
 
-const WALL_DENTED_LEVEL := 6
-const WALL_CRACKED_LEVEL := 10
 const BLOCK_STOREYS := 2
 
 ## MapCompiler shifts every `blocks`/`floor_zones` GU by +(board.buffer,
@@ -54,40 +62,84 @@ const MATERIAL_FLOOR_GU := {
 static func run(room: Node) -> void:
 	var renderer = room._voxel_renderer
 	var slab_registry = room._slab_registry
-	if renderer == null or slab_registry == null:
-		push_warning("[DAMAGE-GALLERY] _voxel_renderer/_slab_registry unavailable — is a map loaded?")
+	var edge_registry = room._edge_registry
+	if renderer == null or slab_registry == null or edge_registry == null:
+		push_warning("[DAMAGE-GALLERY] _voxel_renderer/_slab_registry/_edge_registry unavailable — is a map loaded?")
 		return
 
 	print("[DAMAGE-GALLERY] === forcing DENTED/CRACKED per material (WALL/FLOOR/CEILING) ===")
 	for material in MATERIAL_BLOCK_GU.keys():
-		_gallery_wall(renderer, material, MATERIAL_BLOCK_GU[material])
+		_gallery_wall(renderer, edge_registry, material, MATERIAL_BLOCK_GU[material])
 		_gallery_floor(renderer, slab_registry, material, MATERIAL_FLOOR_GU[material])
 		_gallery_ceiling(renderer, slab_registry, material, MATERIAL_BLOCK_GU[material])
+	## ROOT CAUSE (2026-08-08): DamageCompositeCache.store() (the compositor
+	## every damage-atom bake — WALL/FLOOR/CEILING alike — writes through)
+	## blits its pixels into a CPU-side Image and marks the page dirty, but
+	## the GPU texture upload is DEFERRED to flush_dirty_pages(); until that
+	## runs, the placed tile samples "the page texture's pre-blit contents"
+	## (that class's own doc comment) — not what was just composited. Real
+	## gameplay never notices because process_dirty()/process_dirty_async()
+	## (the TIC path every real bullet/blast goes through) always call
+	## flush_damage_composite_pages() right after painting. This function
+	## calls apply_damage_voxel_swap() directly instead — DamageVariantBaker's
+	## own map-load bake never flushes either — so without this call every
+	## mark here traced correct at the Voxel/registry/cell level (confirmed:
+	## an immediate AND a late readback both showed the right source_id/
+	## atlas_coords/damage_state) and still rendered as a hollow/wrong-color
+	## artifact, because the texture backing that source_id was never
+	## actually uploaded.
+	renderer.flush_damage_composite_pages()
 	print("[DAMAGE-GALLERY] === done — MISS means apply_damage_voxel_swap() found no baked atom (expected for CRACKED where MaterialResistanceTable.crack_factor == 0, e.g. metal/wood) ===")
 
 
-## No real Slice backs these voxels (render_block() paints them flat) — a
-## throwaway Slice supplies only the .material field resolve_damage_voxel_swap()
-## reads for the WALL branch, and doubles as the Voxel's dirty-propagation parent.
-static func _gallery_wall(renderer, material: String, gu: Vector2i) -> void:
-	var fake_slice := Slice.new("GALLERY_WALL_%s" % material, gu, Face.SW, "",
-		BLOCK_STOREYS * GeometryCoords.LEVELS_PER_STOREY, material)
-	var dented_hit := false
-	var cracked_hit := false
-	var first := true
-	for voxel_pos in GeometryCoords.gu_voxels(gu):
-		var dented := Voxel.new(voxel_pos, WALL_DENTED_LEVEL, fake_slice)
-		dented.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.LEFT, 0, 0)
-		var d_hit: bool = renderer.apply_damage_voxel_swap(dented, fake_slice, WALL_DENTED_LEVEL)
-		var cracked := Voxel.new(voxel_pos, WALL_CRACKED_LEVEL, fake_slice)
-		cracked.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, 0, 0)
-		var c_hit: bool = renderer.apply_damage_voxel_swap(cracked, fake_slice, WALL_CRACKED_LEVEL)
-		if first:
-			dented_hit = d_hit
-			cracked_hit = c_hit
-			first = false
+## West GU of the material's 3-wide block row goes entirely DENTED, east GU
+## entirely CRACKED, center GU stays intact — same west/center/east pattern
+## _gallery_floor() uses, reusing the block row's own existing 3-GU width
+## instead of needing new map geometry.
+static func _gallery_wall(renderer, edge_registry: EdgeRegistry, material: String, center_gu: Vector2i) -> void:
+	var dented_hit := _paint_wall_gu(renderer, edge_registry, material, center_gu + Vector2i(-1, 0),
+		Voxel.DamageState.DENTED, Voxel.CarvedSide.LEFT)
+	var cracked_hit := _paint_wall_gu(renderer, edge_registry, material, center_gu + Vector2i(1, 0),
+		Voxel.DamageState.CRACKED, Voxel.CarvedSide.NONE)
 	_report(material, "WALL", "DENTED", dented_hit)
 	_report(material, "WALL", "CRACKED", cracked_hit)
+
+
+## Forces every voxel of `gu`'s SOUTH-facing (Face.SW) real Slice to `state`
+## — the one visible face in the default "VIEW: N" capture, and a single
+## coherent surface for a half-voxel DENTED carve. A block GU sitting between
+## two other solid GUs of the same material has NO edge on that shared side
+## (nothing to render inside solid rock) but DOES have real edges on every
+## side that borders open floor — first version of this function carved
+## LEFT uniformly across all of them (west/north/south at once for the west
+## GU), which reads as structurally nonsensical from three different
+## surfaces simultaneously — confirmed visually: the whole block came out as
+## a hollow table/skeleton instead of one dented face. Real Slice/Voxel
+## objects either way, found via room._edge_registry exactly like
+## find_affected_containers() does for a real blast/shot — never a
+## throwaway/unregistered one, so a later repaint re-derives the SAME
+## damage_state instead of silently reverting it.
+static func _paint_wall_gu(renderer, edge_registry: EdgeRegistry, material: String,
+		gu: Vector2i, state: int, carved_side: int) -> bool:
+	var hit := false
+	for edge in edge_registry.edges_touching_gu(gu):
+		if edge.material != material:
+			continue
+		for slice in edge_registry.slices_of_edge(edge.id):
+			if slice.material != material or slice.gu_cell != gu or slice.face != Face.SW:
+				continue
+			for voxel in slice.voxels:
+				voxel.set_damage(state, true, carved_side, 0, 0)
+				hit = renderer.apply_damage_voxel_swap(voxel, slice, voxel.level)
+				if OS.get_environment("INFILTRAITOR_GALLERY_READBACK") == "1":
+					var layer: TileMapLayer = renderer.get_layer(voxel.level)
+					if layer != null:
+						print("[DG-READBACK] gu=%s level=%d hit=%s src=%d atlas=%s (readback src=%d atlas=%s)" % [
+							voxel.grid_pos, voxel.level, hit,
+							renderer.resolve_damage_voxel_swap(voxel, slice).get("source_id", -1),
+							renderer.resolve_damage_voxel_swap(voxel, slice).get("atlas_coords", Vector2i(-1,-1)),
+							layer.get_cell_source_id(voxel.grid_pos), layer.get_cell_atlas_coords(voxel.grid_pos)])
+	return hit
 
 
 ## Whole-GU coverage (2026-08-08, Director follow-up): the map's 3x3
@@ -148,6 +200,38 @@ static func _gallery_ceiling(renderer, slab_registry: SlabRegistry, material: St
 				cracked_hit = hit2
 	_report(material, "CEILING", "DENTED", dented_hit)
 	_report(material, "CEILING", "CRACKED", cracked_hit)
+
+
+## Late readback (2026-08-08 diagnostic): re-checks stone's west GU (the
+## real Slice/Voxel this run's own DENTED paint targeted) AT CAPTURE TIME,
+## not immediately after painting — an immediate readback already proved the
+## correct source_id/atlas_coords land on the layer synchronously; a real
+## windowed capture nonetheless showed zero pixel difference on screen. This
+## distinguishes "the data reverted before capture" from "the data is still
+## correct but isn't visually reflected" — call via
+## INFILTRAITOR_GALLERY_READBACK=1, right before the screenshot.
+static func readback_probe(room: Node) -> void:
+	var renderer = room._voxel_renderer
+	var edge_registry = room._edge_registry
+	if renderer == null or edge_registry == null:
+		return
+	var west_gu: Vector2i = MATERIAL_BLOCK_GU["stone"] + Vector2i(-1, 0)
+	for edge in edge_registry.edges_touching_gu(west_gu):
+		if edge.material != "stone":
+			continue
+		for slice in edge_registry.slices_of_edge(edge.id):
+			if slice.material != "stone" or slice.gu_cell != west_gu or slice.face != Face.SW:
+				continue
+			for voxel in slice.voxels:
+				var layer: TileMapLayer = renderer.get_layer(voxel.level)
+				if layer == null:
+					continue
+				print("[DG-LATE-READBACK] gu=%s level=%d damage_state=%d src=%d atlas=%s alt=%d" % [
+					voxel.grid_pos, voxel.level, voxel.damage_state,
+					layer.get_cell_source_id(voxel.grid_pos),
+					layer.get_cell_atlas_coords(voxel.grid_pos),
+					layer.get_cell_alternative_tile(voxel.grid_pos)])
+			return
 
 
 static func _report(material: String, element: String, state: String, hit: bool, extra: String = "") -> void:

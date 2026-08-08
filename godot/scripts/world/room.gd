@@ -3380,6 +3380,8 @@ func _run_auto_screenshot_capture() -> void:
 		DamageGalleryDebugClass.run(self)
 		for _j in range(10):
 			await get_tree().process_frame
+		if OS.get_environment("INFILTRAITOR_GALLERY_READBACK") == "1":
+			DamageGalleryDebugClass.readback_probe(self)
 	elif capture_action == "open_showcase" and _main_menu_panel != null:
 		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
 		## path (Main Menu's own _on_showcase_pressed(), same as a real click

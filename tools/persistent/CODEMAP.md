@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46380 lines total** (under `godot/scripts/`)
+**189 scripts · 46466 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -327,15 +327,13 @@ extends `Node2D` · 316 lines
 
 ### `damage_gallery_debug.gd`
 
-`class_name DamageGalleryDebug` · 156 lines
+`class_name DamageGalleryDebug` · 240 lines
 
 `godot/scripts/debug/damage_gallery_debug.gd`
 
-> DAMAGE-GALLERY (2026-08-07) — forces DENTED/CRACKED onto real voxels of every declared material, on WALL/FLOOR/CEILING, and reports whether VoxelRenderer.apply_damage_voxel_swap() actually hit a pre-baked atom. Built because the Post-Task-5 soot diagnosis (EXPLOSION_REBUILD_MASTER_PLAN) concluded the "quebradiça" floor texture comes from pre-existing dent/crack art, without first confirming those atoms are baked at all for every material — this checks that assumption directly instead of reasoning about it. Debug-only, triggered by F5 (see debug_tools_controller.gd), never called from gameplay. WALL uses the map's own PLAYGROUND.map.json per-material test blocks (render_block() — no real Slice, so a throwaway Slice carries just the material string apply_damage_voxel_swap() reads). FLOOR/CEILING use the real Slab objects room._slab_registry already tracks (floor needs a floor_zones patch per non-concrete material — added alongside this file).
+> DAMAGE-GALLERY (2026-08-07) — forces DENTED/CRACKED onto real voxels of every declared material, on WALL/FLOOR/CEILING, and reports whether VoxelRenderer.apply_damage_voxel_swap() actually hit a pre-baked atom. Built because the Post-Task-5 soot diagnosis (EXPLOSION_REBUILD_MASTER_PLAN) concluded the "quebradiça" floor texture comes from pre-existing dent/crack art, without first confirming those atoms are baked at all for every material — this checks that assumption directly instead of reasoning about it. Debug-only, triggered by F5 (see debug_tools_controller.gd), never called from gameplay. WALL/FLOOR/CEILING all paint through REAL, registered containers — room._edge_registry's Slices for WALL (EdgeExtractor gives every block-to-block/block-to-floor boundary a real Slice, confirmed by probe: SLICE_13_3_SW etc — the map's per-material test blocks are NOT purely render_block()-anonymous, only their non-boundary interior voxels are), room._slab_registry's Slabs for FLOOR/CEILING. This matters beyond correctness: a throwaway, unregistered Voxel/Slice (this file's first version, for WALL) paints once via a direct apply_damage_voxel_swap() call and then gets silently overwritten by the next repaint (light/occlusion/ FOW reveal all re-render from each container's own tracked Voxel objects) — nothing persists the forced damage anywhere a repaint would consult, so the mark visibly reverted to intact by the time of the capture. Confirmed real, non-reverting bullet marks exist on these same blocks (a live shotgun weapon_fire capture, 2026-08-08) — this now uses that exact register-and-repaint-safe path instead of a one-shot poke.
 
 **Constants / tuning**
-- `WALL_DENTED_LEVEL` = `6`
-- `WALL_CRACKED_LEVEL` = `10`
 - `BLOCK_STOREYS` = `2`
 - `MAP_BUFFER_OFFSET` = `Vector2i(1, 1)`
 - `MATERIAL_BLOCK_GU` = `{ "concrete": Vector2i(3, 2) + MAP_BUFFER_OFFSET, "metal": Vector2i(8, 2) + MAP_BUFFER_OFFSET, "stone": Vector2i(13, 2) + MAP_BUFFER_OFFSET, "wood": Vector2i(18, 2) + MAP_BUFFER_OFFSET, }`
@@ -4093,7 +4091,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3678 lines
+extends `Node2D` · 3680 lines
 
 `godot/scripts/world/room.gd`
 

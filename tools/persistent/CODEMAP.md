@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46853 lines total** (under `godot/scripts/`)
+**189 scripts · 46945 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -729,7 +729,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3195 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3229 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1453,7 +1453,7 @@ extends `Node2D` · 43 lines
 
 ### `damage_variant_baker.gd`
 
-`class_name DamageVariantBaker` · extends `RefCounted` · 287 lines
+`class_name DamageVariantBaker` · extends `RefCounted` · 290 lines
 
 `godot/scripts/systems/damage_variant_baker.gd`
 
@@ -2476,7 +2476,7 @@ extends `SceneTree` · 213 lines
 
 ### `damage_atom_bake_selftest.gd`
 
-extends `SceneTree` · 414 lines
+extends `SceneTree` · 419 lines
 
 `godot/scripts/tools/damage_atom_bake_selftest.gd`
 
@@ -2558,7 +2558,7 @@ extends `SceneTree` · 186 lines
 
 ### `decal_seam_selftest.gd`
 
-extends `SceneTree` · 329 lines
+extends `SceneTree` · 328 lines
 
 `godot/scripts/tools/decal_seam_selftest.gd`
 
@@ -2883,7 +2883,7 @@ extends `SceneTree` · 263 lines
 
 ### `half_voxel_seam_selftest.gd`
 
-extends `SceneTree` · 258 lines
+extends `SceneTree` · 262 lines
 
 `godot/scripts/tools/half_voxel_seam_selftest.gd`
 
@@ -3389,7 +3389,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 441 lines
+extends `SceneTree` · 488 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
@@ -3408,6 +3408,7 @@ extends `SceneTree` · 441 lines
 - `func test_bullet_marks_the_struck_lateral_face_only() -> void:`
 - `func test_cracked_is_whole_voxel_for_a_blast() -> void:`
 - `func test_ceiling_carve_is_variantless() -> void:`
+- `func test_floor_dent_uses_the_real_material_art() -> void:`
 - `func test_variant_selects_distinct_names() -> void:`
 - `func test_unknown_material_falls_back_instead_of_composing_a_missing_name() -> void:`
 - `func test_shooter_gu_resolves_a_real_side() -> void:`

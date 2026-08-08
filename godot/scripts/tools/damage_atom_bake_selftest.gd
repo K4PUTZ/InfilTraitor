@@ -152,10 +152,13 @@ func test_1_real_coverage_across_element_classes(built: Dictionary) -> void:
 		_fail("CEILING: expected shared-CRACKED key missing: %s" % ceiling_key)
 
 	## D9: FLOOR keys off the REAL zone material ("concrete" on PLAYGROUND),
-	## never the "earth" naming constant, even though the render_material
-	## NAME string itself still is the shared "earth_..." pseudo-name.
+	## never the "earth" naming constant. D34/E-SEAM-02: the NAME agrees with
+	## the key now — it is "concrete_blast_dented_top_0", not the old shared
+	## "earth_..." pseudo-name — so both arguments below are the same material.
 	var floor_name: String = VoxelRendererClass.floor_damage_material(
-		Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+		"concrete", Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+	if not floor_name.begins_with("concrete_"):
+		_fail("D34: floor dent name '%s' should carry the real material, not a substitute" % floor_name)
 	var floor_key := VoxelVariantRegistryClass.make_variant_key("FLOOR", "concrete", floor_name, 0)
 	if not registry.get_variant(floor_key).is_empty():
 		_pass("FLOOR: concrete's real-material floor DENTED atom is registered")
@@ -284,8 +287,10 @@ func test_5_ceiling_top_routes_as_floor(built: Dictionary) -> void:
 	## the renderer itself uses, defaulting to "earth" when unzoned.
 	var zone: Dictionary = renderer._floor_zone_by_gu.get(target_slab.gu_cell, {})
 	var ground_material: String = String(zone.get("material", "earth"))
+	## D34/E-SEAM-02: named from that same real ground material, so the name
+	## and the key can no longer disagree about which material this is.
 	var floor_name: String = VoxelRendererClass.floor_damage_material(
-		Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+		ground_material, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
 	var floor_key := VoxelVariantRegistryClass.make_variant_key("FLOOR", ground_material, floor_name, 0)
 	var floor_entry: Dictionary = renderer._damage_variant_registry.get_variant(floor_key)
 	if floor_entry.is_empty():

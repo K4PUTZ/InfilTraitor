@@ -32,6 +32,7 @@ func _init() -> void:
 	test_bullet_marks_the_struck_lateral_face_only()
 	test_cracked_is_whole_voxel_for_a_blast()
 	test_ceiling_carve_is_variantless()
+	test_floor_dent_uses_the_real_material_art()
 	test_variant_selects_distinct_names()
 	test_unknown_material_falls_back_instead_of_composing_a_missing_name()
 	test_shooter_gu_resolves_a_real_side()
@@ -263,6 +264,52 @@ func test_ceiling_carve_is_variantless() -> void:
 	else:
 		_fail("TOP carve collapsed to %d name(s) — the variant axis is dead there too"
 			% top_names.size())
+
+	print("")
+
+
+## D34/E-SEAM-02 (Director, 2026-08-08) — a floor dent is named after the REAL
+## material and wears that material's own decal art, exactly like a wall or a
+## ceiling. `earth` survives only as the fallback family for a material with no
+## `decal_dent_<m>_*` of its own. Both halves are asserted here (the naming AND
+## the plan parser that reads it back) because the two have to agree for the
+## right PNG to be loaded — _composite_floor_sunk_decal() feeds
+## plan["base_material"] straight into DECAL_NAME_TEMPLATE.
+func test_floor_dent_uses_the_real_material_art() -> void:
+	print("[6b] Floor dents carry the real material, falling back to earth only without own art (D34)\n")
+
+	## Materials WITH their own decal family name themselves.
+	for material in VoxelRendererClass.IMPACT_DECAL_MATERIALS:
+		var name: String = VoxelRendererClass.floor_damage_material(
+			material, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+		var expected := "%s_blast_dented_top_0" % material
+		if name != expected:
+			_fail("%s floor dent named '%s', expected '%s'" % [material, name, expected])
+			continue
+		var plan: Dictionary = VoxelRendererClass._floor_sunk_decal_plan(name)
+		if String(plan.get("base_material", "")) != material:
+			_fail("%s: plan read back base_material '%s'" % [material, plan.get("base_material", "")])
+			continue
+		## The file the compositor will actually open, derived the same way.
+		var decal_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
+			plan["decal_family"], plan["base_material"], plan["variant"]]
+		if ResourceLoader.exists(decal_path) or FileAccess.file_exists(decal_path):
+			_pass("%s floor dent -> '%s' -> %s (real asset on disk)" % [
+				material, name, decal_path.get_file()])
+		else:
+			_fail("%s floor dent resolves '%s', which does not exist" % [material, decal_path])
+
+	## A floor-only material (no facade, no decal family) still falls back to
+	## the shared earth art — D25's rule, kept exactly where it still applies.
+	var grass_name: String = VoxelRendererClass.floor_damage_material(
+		"grass", Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, 0)
+	var grass_plan: Dictionary = VoxelRendererClass._floor_sunk_decal_plan(grass_name)
+	if grass_name == "earth_blast_dented_top_0" \
+			and String(grass_plan.get("base_material", "")) == VoxelRendererClass.IMPACT_FLOOR_MATERIAL:
+		_pass("grass (no decal art of its own) still falls back to the shared earth family")
+	else:
+		_fail("grass floor dent named '%s' (plan base '%s'), expected the earth fallback" % [
+			grass_name, grass_plan.get("base_material", "")])
 
 	print("")
 

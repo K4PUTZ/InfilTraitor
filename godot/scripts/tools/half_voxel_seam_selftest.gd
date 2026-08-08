@@ -195,19 +195,23 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	_stub_baked_wall(renderer, Color(0.6, 0.55, 0.5, 1.0))
 	var edge_stub := Object.new()
 
-	## "concrete_blast_dented_top_0" is not a name any real caller ever
-	## constructs (floor_damage_material() always substitutes "earth" —
-	## see decal_seam_selftest.gd's identical fix for the full reasoning).
-	## D33 Part 4c retired its composites/-backed MATERIALS entry, so it now
-	## correctly falls all the way to flat concrete (source_id 0) — no plan
-	## parser recognises it, same as any other unsupported name.
+	## D34/E-SEAM-02 inverted this the same way decal_seam_selftest.gd's test
+	## [5] was inverted, and for the same reason: floor_damage_material() no
+	## longer substitutes "earth", so "concrete_blast_dented_top_0" is a real
+	## name a real concrete floor now produces. It must composite through the
+	## floor-sunk path. What this file actually tests is unaffected either way
+	## — _half_voxel_decal_plan() still returns {} for a "_top_" name, so the
+	## WALL branch correctly never claims it.
 	var floor_pos := Vector2i(1, 1)
 	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_0", edge_stub, Vector2i.ZERO, 0)
 	var floor_got := renderer.get_layer(0).get_cell_source_id(floor_pos)
-	if floor_got == 0:
-		_pass("unsupported/unreachable floor shape falls through to flat concrete (source_id 0), no crash")
+	var flat_concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
+	if floor_got != -1 and floor_got != flat_concrete_id:
+		_pass("floor DENTED composites through the floor-sunk path (source_id %d), not the wall branch and not flat concrete (%d)" % [
+			floor_got, flat_concrete_id])
 	else:
-		_fail("expected the flat-concrete fallback (0), got %d" % floor_got)
+		_fail("expected a real composited atom, got %d (flat concrete is %d)" % [
+			floor_got, flat_concrete_id])
 
 	## D33 Part 4b (2026-08-03) changed this one: _composite_generic_ceiling()
 	## is purely name-driven (no edge/flat_baked gate, unlike Part 3d's baked

@@ -269,20 +269,16 @@ func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:
 ## 3b covers yet (floor "_dented_top", ceiling "_dented_bottom") or into
 ## plain clean materials.
 func test_dented_and_non_impact_names_are_unaffected() -> void:
-	print("[5] A non-earth '_blast_dented_top' name (structurally unreachable — floor damage always substitutes 'earth') is caught by no plan and falls all the way to flat concrete\n")
-	## "concrete_blast_dented_top_N" is not a name any real caller ever
-	## constructs — floor_damage_material() always substitutes
-	## IMPACT_FLOOR_MATERIAL ("earth") regardless of the real wall/zone
-	## material, so only "earth_blast_dented_top_N" is ever actually
-	## requested (see _floor_sunk_decal_plan()'s own exact-prefix match).
-	## D33 Part 4c retired this name's composites/-backed MATERIALS entry
-	## along with the other 96 — MATERIALS.find() now returns -1 for it, and
-	## since no plan parser recognises it either, the real seam correctly
-	## falls all the way to the LAST-resort concrete fallback (source_id 0),
-	## same as it would for any other genuinely unsupported name. Not a
-	## regression: this shape was never rendered to a real player before
-	## Part 4c either — its old composites/ asset backed a name nothing ever
-	## requested.
+	print("[5] A material-real '_blast_dented_top' name is a REAL floor dent now (D34) and composites, instead of falling to flat concrete\n")
+	## D34/E-SEAM-02 (Director, 2026-08-08) INVERTED this assertion, and the
+	## test's own stated premise is what changed: it read "concrete_blast_
+	## dented_top_N is not a name any real caller ever constructs — floor_
+	## damage_material() always substitutes IMPACT_FLOOR_MATERIAL". That
+	## substitution is gone. A concrete floor now names its dent after itself
+	## and wears `decal_dent_concrete_*`, the same art its walls already use,
+	## so this shape must RESOLVE rather than fall through to the last-resort
+	## flat-concrete id. `earth` survives only as the fallback family for
+	## materials with no decal art of their own.
 	var renderer := _new_renderer()
 	_stub_baked_wall(renderer, Color(0.6, 0.6, 0.65, 1.0))
 	var edge_stub := Object.new()
@@ -290,10 +286,13 @@ func test_dented_and_non_impact_names_are_unaffected() -> void:
 	var floor_pos := Vector2i(1, 1)
 	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_1", edge_stub, Vector2i.ZERO, 0)
 	var floor_source_id := renderer.get_layer(0).get_cell_source_id(floor_pos)
-	if floor_source_id == 0:
-		_pass("unsupported/unreachable shape falls through to flat concrete (source_id 0), no crash")
+	var flat_concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
+	if floor_source_id != -1 and floor_source_id != flat_concrete_id:
+		_pass("concrete's own floor dent composites (source_id %d), not the last-resort flat concrete (%d)" % [
+			floor_source_id, flat_concrete_id])
 	else:
-		_fail("expected the flat-concrete fallback (0), got %d" % floor_source_id)
+		_fail("expected a real composited atom, got %d (flat concrete is %d)" % [
+			floor_source_id, flat_concrete_id])
 
 	print("")
 

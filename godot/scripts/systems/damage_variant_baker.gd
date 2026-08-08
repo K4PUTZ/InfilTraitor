@@ -215,14 +215,17 @@ func _bake_ceiling(material: String) -> int:
 	return baked
 
 
-## FLOOR DENTED — the shared "earth_blast_dented_top_N" name (unchanged), but
-## the substrate is `material`'s own real facade (D9), never a wall-style
-## facade voxel.
+## FLOOR DENTED — substrate from `material`'s own real facade (D9). D34/
+## E-SEAM-02: the NAME is `material`'s too now ("concrete_blast_dented_top_N"),
+## not the shared "earth_..." pseudo-name — floor_damage_material() still
+## substitutes earth for materials with no decal art of their own, so a
+## floor-only material (grass/dirt/sand/gravel) bakes exactly what it did
+## before under a name that says so.
 func _bake_floor(material: String) -> int:
 	var baked := 0
 	for variant in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
 		var name: String = VoxelRenderer.floor_damage_material(
-			Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, variant)
+			material, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, variant)
 		if name == "":
 			continue
 		var floor_plan := VoxelRenderer._floor_sunk_decal_plan(name)

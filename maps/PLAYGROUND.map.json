@@ -144,6 +144,17 @@
         },
         {
           "gu": [
+            2,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "concrete"
+        },
+        {
+          "gu": [
             7,
             4
           ],
@@ -179,7 +190,12 @@
       "v": 2
     },
     "damage_materials": {
-      "materials": ["concrete", "metal", "stone", "wood"],
+      "materials": [
+        "concrete",
+        "metal",
+        "stone",
+        "wood"
+      ],
       "v": 1
     },
     "legacy_compiler": {

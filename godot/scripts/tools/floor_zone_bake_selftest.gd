@@ -273,18 +273,20 @@ func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) ->
 		return
 	var facade: Image = resolved.image
 
-	## Isotropy: floor's plane source must be built at the isotropic
-	## FACADE_W x FACADE_W (1024x1024) target, not the wall/ceiling-inherited
-	## FACADE_W x FACADE_H (1024x512).
+	## Isotropy. This used to assert floor (1024) and ceiling (512) DIVERGED —
+	## D34/E-SEAM-01 (Director, 2026-08-08) deleted that divergence: every
+	## horizontal surface is built at the isotropic FACADE_W x FACADE_W target
+	## now, which is exactly what lets a roof and a floor of one material share
+	## a page. So the assertion inverts — the two must MATCH — and the default
+	## argument must already be the isotropic target, not 512.
 	var floor_source: Image = compositor._get_roof_plane_source(facade, FLOOR_TARGET_H)
 	var ceiling_source: Image = compositor._get_roof_plane_source(facade)
-	var expected_floor_h := V_MARGIN + FLOOR_TARGET_H + V_MARGIN
-	var expected_ceiling_h := V_MARGIN + 512 + V_MARGIN
-	if floor_source.get_height() == expected_floor_h and ceiling_source.get_height() == expected_ceiling_h:
-		_pass("Floor plane source is isotropic (%dpx incl. margins, matches FACADE_W) — unlike the ceiling/wall-inherited source (%dpx)" % [expected_floor_h, expected_ceiling_h])
+	var expected_h := V_MARGIN + FLOOR_TARGET_H + V_MARGIN
+	if floor_source.get_height() == expected_h and ceiling_source.get_height() == expected_h:
+		_pass("Floor and ceiling plane sources are both isotropic (%dpx incl. margins, matches FACADE_W) — one horizontal projection, D34" % expected_h)
 	else:
-		_fail("Source heights unexpected: floor=%d (want %d), ceiling=%d (want %d)" % [
-			floor_source.get_height(), expected_floor_h, ceiling_source.get_height(), expected_ceiling_h])
+		_fail("Source heights unexpected: floor=%d, ceiling=%d, both want %d" % [
+			floor_source.get_height(), ceiling_source.get_height(), expected_h])
 
 	## full_color modulate: composed page pixels must equal the plane read
 	## VERBATIM (no tint baked into the page) — the WHITE modulate this

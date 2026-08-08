@@ -256,15 +256,20 @@ func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:
 		return
 	var facade: Image = resolved.image
 
-	## Isotropy: the roof source must be the UNSCALED facade + margins
-	## (32 + 512 + 32 = 576 tall), not the wall source's ×20/16 pre-scale
-	## (32 + 640 + 32 = 704 tall).
+	## Isotropy. D34/E-SEAM-01 (Director, 2026-08-08) RAISED this expectation:
+	## the roof source used to be the facade at its own 512 height + margins
+	## (576 tall), which addresses only 32 of the 64 cell rows resolve_flat()
+	## folds to — the rows past that simply had no texels, invisible until now
+	## only because roof structures are small (a 3 GU block is 24 voxels).
+	## It is now the isotropic 1024 + margins (1088), reached by MIRRORED
+	## VERTICAL REPEAT of the same facade, so pixels stay native. Still
+	## unrelated to the wall source's ×20/16 pre-scale (32 + 640 + 32 = 704).
 	var roof_source: Image = compositor._get_roof_plane_source(facade)
 	var wall_source: Image = compositor._get_plane_source(facade, 0)
-	if roof_source.get_height() == 576 and wall_source.get_height() == 704:
-		_pass("Roof plane source is the unscaled facade (576 px incl. margins) — isotropic, unlike the wall source (704 px)")
+	if roof_source.get_height() == 1088 and wall_source.get_height() == 704:
+		_pass("Roof plane source is the isotropic mirrored facade (1088 px incl. margins) — covers all 64 cell rows, unlike the wall source (704 px)")
 	else:
-		_fail("Source heights unexpected: roof=%d (want 576), wall=%d (want 704)" % [roof_source.get_height(), wall_source.get_height()])
+		_fail("Source heights unexpected: roof=%d (want 1088), wall=%d (want 704)" % [roof_source.get_height(), wall_source.get_height()])
 
 	var roof_top: Image = compositor._get_roof_plane_top("facade_concrete", facade)
 	var x_off: int = roof_source.get_height() - 1

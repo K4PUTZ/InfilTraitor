@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**189 scripts · 46487 lines total** (under `godot/scripts/`)
+**189 scripts · 46853 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1347,7 +1347,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1156 lines
+`class_name BakeCompositor` · 1217 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1387,17 +1387,17 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 47 lines
+`class_name BakePolicy` · 78 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
-> BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Texture assignment (material ID + surface class → texture ID) - Variant seeding (edge + material → [0, 4) variant) D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): texture identity is a (material, surface_class) pair, mechanically derived — no per-material dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same source) always resolves to `facade_<id>`; SLAB (floor zones) always resolves to `slab_<id>` (renamed from the old `ground_<id>` — the material id itself no longer carries a `ground_` prefix, D19 unified it). A missing asset for either (e.g. a material with no wall facade) is handled the same way it always was: TextureResolver.resolve() falls back to Tier.NONE and every caller already treats that as "fall back to the generic atlas".
+> BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Texture assignment (material ID + surface class → texture ID) - Variant seeding (edge + material → [0, 4) variant) D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): texture identity is a (material, surface_class) pair, mechanically derived — no per-material dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same source) always resolves to `facade_<id>`. A missing asset (e.g. a material with no wall facade) is handled the same way it always was: TextureResolver.resolve() falls back to Tier.NONE and every caller already treats that as "fall back to the generic atlas". D34/E-SEAM-01 (Director, 2026-08-08) — **amends D20's SLAB half.** D20 sent EVERY floor zone down the `slab_<id>` photographic path, which is what made a concrete floor unable to read as the same material as a concrete wall (they were literally different art: `facade_concrete` grayscale+tinted vs `slab_concrete`, an unrelated ground photo at WHITE). The Director's model instead: **a floor is a roof at the base of the scene** — same bake, same grayscale source, same multiply tint, so wall/roof/floor of one material all read as that material. Which family a SLAB request resolves to is therefore derived from the MATERIAL, not from the surface alone: has_facade == true  -> `facade_<id>`, the SLICE family (concrete, metal, stone, wood today) has_facade == false -> `slab_<id>`, the photographic exception, kept on purpose for organic/wild ground (grass, dirt, sand, gravel) where hue IS the material identity and a grayscale source cannot carry it `has_facade` is consulted for SLAB only; SLICE resolves to `facade_<id>` regardless. This also retires the never-read `MaterialDef.slab_full_color` flag — the same split is derivable from `has_facade`, so there is no second field to keep in sync with it (E-SEAM-03).
 
 ---
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 430 lines
+`class_name BakedTileLookup` · 471 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1406,9 +1406,11 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
+- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 
 **Public API**
 - `func set_test_config(config) -> void:`
+- `func set_material_registry(registry) -> void:`
 - `func set_baked_atlas(atlas) -> void:`
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
@@ -2750,7 +2752,7 @@ extends `SceneTree` · 209 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 517 lines
+extends `SceneTree` · 519 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -2962,11 +2964,11 @@ extends `SceneTree` · 322 lines
 
 ### `material_reform_selftest.gd`
 
-extends `SceneTree` · 233 lines
+extends `SceneTree` · 391 lines
 
 `godot/scripts/tools/material_reform_selftest.gd`
 
-> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. RENDERING stays surface-dependent — the same material resolves to two different texture ids (facade_/slab_) and two different bake modulates (tinted/white) depending on surface_class, which is the exact mechanism that makes "concrete" (a material with a genuine wall AND floor presence, unlike grass/dirt/gravel/sand) survive unification without visually merging its two renders. Every expectation is computed independently (own expected values), never read back from the code under test.
+> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. RENDERING follows the MATERIAL, not the surface — D34/E-SEAM-01 (Director, 2026-08-08) **reversed D20's original answer here.** D20 sent every floor down the photographic `slab_` path, so a concrete floor and a concrete wall were literally different art and could never read as the same material. The rule now: `has_facade == true` -> the floor bakes through the SAME `facade_<id>` its wall and roof do (grayscale + multiply); `has_facade == false` -> the photographic `slab_<id>` exception, kept on purpose for organic ground. Tests 3-5 below assert the new contract; they asserted the opposite before, and were rewritten rather than relaxed. 3. The projection that made the merge free — D34 extends a 1024x512 wall facade to the isotropic 1024x1024 a horizontal surface addresses by MIRRORED VERTICAL REPEAT, never by resize (tests 6-7). Every expectation is computed independently (own expected values), never read back from the code under test.
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
@@ -2974,10 +2976,15 @@ extends `SceneTree` · 233 lines
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_6_horizontal_plane_is_mirrored_not_stretched() -> void:`
+- `func test_7_roof_and_floor_specs_merge_their_cells() -> void:`
 
 ---
 
@@ -3139,7 +3146,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 488 lines
+extends `SceneTree` · 493 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -3727,7 +3734,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1111 lines
+`class_name RoomBuilder` · 1179 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -3743,18 +3750,8 @@ extends `Node2D` · 34 lines
 - `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
 - `var DamageVariantBakerClass = preload("res://godot/scripts/systems/damage_variant_baker.gd")`
 - `var VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
-- `var floor_layer: TileMapLayer = null`
-- `var structure_layer: TileMapLayer = null`
 
 **Public API**
-- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:`
-- `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
-- `func get_blocked_cells() -> Dictionary:`
-- `func get_prop_heights() -> Dictionary:`
-- `func get_exit_cells() -> Array[Vector2i]:`
-- `func get_light_sources() -> Array:`
-- `func build_registry(ts: TileSet) -> void:`
-- `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
 - `func invalidate_bake_cache() -> void:`
 - `func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:`
 

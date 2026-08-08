@@ -12,10 +12,14 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 # (facade_sampler/bake_compositor preloads removed in OVERLORD-FIX-01 — the
 # lookup no longer samples or bakes; it only addresses per-direction sheets)
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
+const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 
 # For testing: can inject a mock BakeConfig
 var _bake_config = null
 var _bake_config_ref = null  # Cache BakeConfig class reference
+# D34/E-SEAM-01: injected MaterialRegistry — resolve_flat() reads `has_facade`
+# off it to pick the SLAB texture family. Null is tolerated (see _has_facade).
+var _material_registry = null
 
 # BAKE-FIX-02: Run information (edge_id -> run) for strip walking
 var _edge_run_map: Dictionary = {}  # edge.id -> {"edges": [], "min_edge": Edge, ...}
@@ -46,6 +50,35 @@ class TileLookupResult:
 ## Set mock config for testing (optional)
 func set_test_config(config) -> void:
 	_bake_config = config
+
+
+## D34/E-SEAM-01: the material registry resolve_flat() reads `has_facade` off
+## to pick the SLAB texture family. Injected by room_builder (which already
+## owns one) rather than loaded here, so bake and lookup provably consult the
+## SAME registry instance — two registries that disagreed would break B1
+## silently, which is the failure mode this whole seam already produced once.
+func set_material_registry(registry) -> void:
+	_material_registry = registry
+
+
+## Deliberately NOT defaulted when the registry was never injected: this
+## function decides which of two page families a floor voxel looks in, and
+## guessing either way is silently wrong for half the materials (guessing
+## `true` sends grass to a `facade_grass` page that does not exist; guessing
+## `false` sends concrete to a `slab_concrete` page D34 stopped baking). So an
+## un-injected lookup loads its own registry from disk instead — the same
+## two-tier res://+user:// scan, cached on the instance, no per-voxel cost
+## after the first call.
+##
+## An unknown material id keeps `true`: `facade_<id>` is what every material
+## has always resolved to on SLICE, and a missing asset there fails the way it
+## always did (TextureResolver Tier.NONE -> generic atlas), visibly.
+func _has_facade(material_id: String) -> bool:
+	if _material_registry == null:
+		_material_registry = MaterialRegistryClass.new()
+		_material_registry.load_from_disk()
+	var md = _material_registry.get_material(material_id)
+	return md.has_facade if md != null else true
 
 
 ## Set baked atlas for testing or injection
@@ -290,6 +323,13 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 ## material, so the caller must say which texture family it means —
 ## surface_class defaults to SLICE (today's roof/wall behavior, unchanged)
 ## and every floor caller passes SLAB explicitly.
+##
+## D34/E-SEAM-01: which family SLAB resolves to now depends on the MATERIAL's
+## own `has_facade` (BakePolicy's header explains the rule), so this class
+## needs the material registry — see set_material_registry(). B1 lives or dies
+## on this side deriving the texture id EXACTLY the way room_builder's bake
+## side did; both now call the same BakePolicy function reading the same field
+## off the same registry, instead of each re-deciding locally.
 func resolve_flat(material_id: String, local_pos: Vector2i,
 		surface_class: int = BakePolicyClass.SurfaceClass.SLICE) -> TileLookupResult:
 	# Same enable/MATERIAL_ONLY gates as resolve()
@@ -310,7 +350,8 @@ func resolve_flat(material_id: String, local_pos: Vector2i,
 	if not baking_enabled or is_material_only:
 		return null
 
-	var facade_id = BakePolicyClass.texture_for_material(material_id, surface_class)
+	var facade_id = BakePolicyClass.texture_for_material(material_id, surface_class,
+			_has_facade(material_id))
 	if facade_id == "":
 		return null
 

@@ -116,7 +116,13 @@ var _page_cache: Dictionary = {}           # "mat|fac|dir" / "ROOF|mat|fac" → 
 ##     the run start) samples the plane MIRRORED in texture space instead of
 ##     verbatim, so lateral V-junction columns mirror the adjacent wall
 ##     column instead of repeating it
-const BAKE_CODE_VERSION: int = 8
+## v9: D34/E-SEAM-01 — every HORIZONTAL surface (roof/ceiling and floor
+##     alike) is now built at the isotropic 1024 top target, and a short
+##     1024x512 facade reaches it by MIRRORED VERTICAL REPEAT rather than a
+##     resize. Roof pages composed by v8 are stale twice over: wrong plane
+##     height, and a structural material's floor now shares the roof's page
+##     instead of baking its own photographic one.
+const BAKE_CODE_VERSION: int = 9
 const BAKE_CACHE_PATH: String = "user://bake_cache/"
 const BAKE_CACHE_FORMAT_VERSION: int = 2
 const BAKE_CACHE_EXTENSION: String = ".bin"
@@ -605,17 +611,34 @@ func _get_plane_top(facade_id: String, facade: Image, dir: int) -> Image:
 ## 1024×512 facade EXACTLY — full period, isotropic. Same S_ext recipe as
 ## _get_plane_source dir 0 otherwise (grayscale flatten, mirrored wrap strip,
 ## mirrored vertical margins).
-## `target_h` defaults to FACADE_H (512, the wall/ceiling facade's own
-## anisotropic height) for backward compat. Floor-zone bake passes FACADE_W
-## (1024) instead — resolve_flat() folds BOTH axes at period SHEET_COLS=64,
-## so a floor source wants a genuinely isotropic 1024x1024 plane, not the
-## wall facade's inherited 2:1 aspect.
-func _get_roof_plane_source(facade: Image, target_h: int = FACADE_H) -> Image:
+## D34/E-SEAM-01 (Director, 2026-08-08): `target_h` is now FACADE_W (1024) for
+## EVERY horizontal surface — roof/ceiling included, where it used to be
+## FACADE_H (512). resolve_flat() folds BOTH axes at period SHEET_COLS=64 and
+## TEX_AUTHORING_N is pinned at 16, so 64*16=1024 is the addressable domain on
+## both axes; anything shorter simply has no texels for the rows past it.
+##
+## A 1024x512 wall facade reaches that height by MIRRORED VERTICAL REPEAT
+## (_mirror_tile_v below), never by `resize()`. Two reasons, and the first is
+## the load-bearing one:
+##   - Mirrored repeat is already this system's canon for extending a source
+##     past its own extent — the flipped_x wrap strip and the flipped_y
+##     margins right below do exactly this, and _mirror_index()/the whole
+##     fold model is built on it. Stretching would have been the odd one out.
+##   - It keeps NATIVE pixels. The old floor path resized 512->1024 with
+##     INTERPOLATE_NEAREST, i.e. duplicated every texel row, halving vertical
+##     detail at 16 px per cell where that is very visible. The cost is a
+##     tighter repeat period on y (32 cells instead of 64), which reads far
+##     better than blockiness on a real capture.
+## A source already at target_h (the photographic `slab_*` family, authored
+## 1024x1024) passes through untouched.
+func _get_roof_plane_source(facade: Image, target_h: int = FACADE_W) -> Image:
 	var flat: Image = facade.duplicate()
 	flat.convert(Image.FORMAT_RGB8)
 	flat.convert(Image.FORMAT_RGBA8)
-	if flat.get_width() != FACADE_W or flat.get_height() != target_h:
-		flat.resize(FACADE_W, target_h, Image.INTERPOLATE_NEAREST)
+	if flat.get_width() != FACADE_W:
+		flat.resize(FACADE_W, flat.get_height(), Image.INTERPOLATE_NEAREST)
+	if flat.get_height() != target_h:
+		flat = _mirror_tile_v(flat, target_h)
 
 	var s_ext := Image.create(PLANE_W, V_MARGIN + target_h + V_MARGIN, false, Image.FORMAT_RGBA8)
 	s_ext.blit_rect(flat, Rect2i(0, 0, FACADE_W, target_h), Vector2i(0, V_MARGIN))
@@ -630,11 +653,44 @@ func _get_roof_plane_source(facade: Image, target_h: int = FACADE_H) -> Image:
 	return s_ext
 
 
+## D34/E-SEAM-01: extend `src` vertically to `target_h` by MIRRORED REPEAT —
+## band 0 is the source itself, band 1 its flip_y, band 2 the source again,
+## and so on, the last band cropped to fit. Matches _mirror_index()'s own
+## semantics exactly, including its repeated edge row (index 63 and 64 both
+## fold to 63), because flipped[0] IS src[src_h - 1] — so the plane a caller
+## samples is the same image the cell-level fold would have addressed.
+##
+## A source TALLER than the target is cropped rather than mirrored: there is
+## nothing to extend, and silently rescaling it would hide an asset that
+## violates its own dimension contract (TextureResolver._validate_dimensions
+## already rejects those at load time, so this is defence in depth).
+func _mirror_tile_v(src: Image, target_h: int) -> Image:
+	var src_h := src.get_height()
+	if src_h == target_h:
+		return src
+	var src_w := src.get_width()
+	if src_h > target_h:
+		return src.get_region(Rect2i(0, 0, src_w, target_h))
+
+	var out := Image.create(src_w, target_h, false, Image.FORMAT_RGBA8)
+	var flipped: Image = src.duplicate()
+	flipped.flip_y()
+	var y := 0
+	var band := 0
+	while y < target_h:
+		var chunk: Image = flipped if (band % 2) == 1 else src
+		var h: int = mini(src_h, target_h - y)
+		out.blit_rect(chunk, Rect2i(0, 0, src_w, h), Vector2i(0, y))
+		y += h
+		band += 1
+	return out
+
+
 ## ROOF-BAKE-02c: roof top plane — the same two-pass isometric projection as
 ## _get_plane_top (identical mapping contract, identical crop formula in the
 ## consumer) built from the UNSCALED roof source. One image per facade (no
 ## direction: a horizontal surface has none).
-func _get_roof_plane_top(facade_id: String, facade: Image, target_h: int = FACADE_H) -> Image:
+func _get_roof_plane_top(facade_id: String, facade: Image, target_h: int = FACADE_W) -> Image:
 	if _roof_plane_top_cache.has(facade_id):
 		return _roof_plane_top_cache[facade_id]
 
@@ -680,20 +736,22 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 			push_error("[BAKE] Roof combo %s|%s unresolved — roof falls back to generic atlas" % [material_id, facade_id])
 			continue
 
-		## D19/D20: this function bakes BOTH roof_specs (facade_id="facade_*",
-		## e.g. a wood roof reprojecting the wall's own facade_wood — unchanged
-		## from today) and floor_specs (facade_id="slab_*", the photographic
-		## floor-zone source, renamed from "ground_*"). The two are
-		## disambiguated purely by facade_id's prefix, same as
-		## _modulate_for_mode below — never by material_id, which after D19's
-		## unification no longer encodes surface (concrete is both a wall AND
-		## a floor material now).
-		var is_slab_bake: bool = facade_id.begins_with("slab_")
-
+		## D34/E-SEAM-01: this function bakes every HORIZONTAL surface — roof/
+		## ceiling and floor zones alike — and after the unification there is
+		## nothing left to disambiguate between them. A `has_facade` material
+		## arrives as facade_* from both, and the page it composes is now
+		## byte-identical either way (one isotropic top source, see
+		## _compose_roof_page), so the cache key below is deliberately shared:
+		## a concrete roof and a concrete floor MUST land on the same page.
+		## That is only safe because room_builder merges their cell sets before
+		## calling here — two specs on one combo would otherwise cache-HIT and
+		## silently drop the second one's cells (_merge_horizontal_specs).
+		## `slab_*` still arrives for the photographic ground materials
+		## (has_facade == false), which have no roof counterpart to collide with.
 		var cache_key := "ROOF|%s|%s" % [material_id, facade_id]
 		var entry = _page_cache.get(cache_key)
 		if entry == null:
-			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []), is_slab_bake)
+			entry = _compose_roof_page(material_id, facade_id, facade, material.base_color, roof.get("cells", []))
 			_page_cache[cache_key] = entry
 			print("[BAKE] Composed roof page %s (%d atoms)" % [cache_key, entry["frag"].size()])
 		else:
@@ -713,12 +771,15 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 ## recipe (side crop + masked top crop + canonical silhouette + B3 AA fixup)
 ## with the top sourced from the isotropic roof plane; page sized to the atom
 ## count like junction pages (roof usage is sparse by nature).
-func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array, is_floor_bake: bool = false) -> Dictionary:
-	# Floor-zone bake wants an isotropic 1024x1024 top source (see
-	# _get_roof_plane_source's doc comment); ceiling/roof keeps the
-	# wall-inherited 1024x512. Side faces (below) are unaffected either way —
-	# v1 deliberately leaves them on the wall-style plane (see plan doc).
-	var top_target_h: int = FACADE_W if is_floor_bake else FACADE_H
+func _compose_roof_page(material_id: String, facade_id: String, facade: Image, base_color: Color, cells: Array) -> Dictionary:
+	# D34/E-SEAM-01: ONE isotropic 1024x1024 top source for every horizontal
+	# surface — floor and roof/ceiling alike. The old split (floor 1024, roof
+	# 512) is what made the two un-shareable; with the mirrored vertical
+	# repeat in _get_roof_plane_source() neither side pays for the merge (the
+	# roof keeps native pixels AND stops running out of domain past row ~36).
+	# Side faces (below) still come off the wall-style plane — v1 deliberately
+	# leaves those alone (see plan doc).
+	var top_target_h: int = FACADE_W
 	# ROOF-SIDE-04: every atom paints BOTH side halves — slabs are SOLID.
 	# Interior side faces are visible whenever occlusion ghosts the front
 	# walls, and destruction will expose them for real (v5's border-only

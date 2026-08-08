@@ -8,12 +8,32 @@
 ## (material, surface_class) pair, mechanically derived — no per-material
 ## dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix
 ## canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same
-## source) always resolves to `facade_<id>`; SLAB (floor zones) always
-## resolves to `slab_<id>` (renamed from the old `ground_<id>` — the material
-## id itself no longer carries a `ground_` prefix, D19 unified it). A missing
-## asset for either (e.g. a material with no wall facade) is handled the same
-## way it always was: TextureResolver.resolve() falls back to Tier.NONE and
-## every caller already treats that as "fall back to the generic atlas".
+## source) always resolves to `facade_<id>`. A missing asset (e.g. a material
+## with no wall facade) is handled the same way it always was:
+## TextureResolver.resolve() falls back to Tier.NONE and every caller already
+## treats that as "fall back to the generic atlas".
+##
+## D34/E-SEAM-01 (Director, 2026-08-08) — **amends D20's SLAB half.** D20 sent
+## EVERY floor zone down the `slab_<id>` photographic path, which is what made
+## a concrete floor unable to read as the same material as a concrete wall
+## (they were literally different art: `facade_concrete` grayscale+tinted vs
+## `slab_concrete`, an unrelated ground photo at WHITE). The Director's model
+## instead: **a floor is a roof at the base of the scene** — same bake, same
+## grayscale source, same multiply tint, so wall/roof/floor of one material
+## all read as that material. Which family a SLAB request resolves to is
+## therefore derived from the MATERIAL, not from the surface alone:
+##
+##   has_facade == true  -> `facade_<id>`, the SLICE family (concrete, metal,
+##                          stone, wood today)
+##   has_facade == false -> `slab_<id>`, the photographic exception, kept on
+##                          purpose for organic/wild ground (grass, dirt,
+##                          sand, gravel) where hue IS the material identity
+##                          and a grayscale source cannot carry it
+##
+## `has_facade` is consulted for SLAB only; SLICE resolves to `facade_<id>`
+## regardless. This also retires the never-read `MaterialDef.slab_full_color`
+## flag — the same split is derivable from `has_facade`, so there is no second
+## field to keep in sync with it (E-SEAM-03).
 
 class_name BakePolicy
 
@@ -28,15 +48,26 @@ static func facade_for_material(material_id: String) -> String:
 	return "facade_" + material_id
 
 
-## SLAB (horizontal, floor zones) texture id for a material.
+## SLAB (horizontal) texture id for a material — the PHOTOGRAPHIC family only.
+## D34: reaching this for a `has_facade` material is a bug, not a fallback —
+## go through texture_for_material() so the has_facade split is applied once,
+## in one place, on both sides of the seam (B1).
 static func slab_for_material(material_id: String) -> String:
 	return "slab_" + material_id
 
 
-## (material_id, surface_class) → texture id, the one call sites that already
-## know their surface_class should use instead of picking a function by hand.
-static func texture_for_material(material_id: String, surface_class: int) -> String:
-	if surface_class == SurfaceClass.SLAB:
+## (material_id, surface_class, has_facade) → texture id, the one call sites
+## that already know their surface_class should use instead of picking a
+## function by hand. See this file's header for why `has_facade` decides the
+## SLAB case (D34/E-SEAM-01).
+##
+## `has_facade` is deliberately REQUIRED rather than defaulted: a wrong guess
+## here is silent (TextureResolver returns Tier.NONE and the surface quietly
+## degrades to the generic atlas — no error, no crash, just the wrong pixels),
+## which is exactly the failure mode this seam already produced once.
+static func texture_for_material(material_id: String, surface_class: int,
+		has_facade: bool) -> String:
+	if surface_class == SurfaceClass.SLAB and not has_facade:
 		return slab_for_material(material_id)
 	return facade_for_material(material_id)
 

@@ -31,6 +31,49 @@ func _get_material_registry() -> Object:
 	return _material_registry
 
 
+## D34/E-SEAM-01: union roof and floor specs that landed on the same
+## (material_id, facade_id) combo — which a `has_facade` material now always
+## does, since its floor and its roof reproject the identical source. Returns
+## one spec per combo carrying BOTH surfaces' cells; combos unique to one
+## surface pass through unchanged. Order is preserved (roof first, then any
+## floor-only combo) so a bake is deterministic across runs, which the
+## VL-PERF-BAKE cache key depends on.
+func _merge_horizontal_specs(roof_specs: Array, floor_specs: Array) -> Array:
+	var by_combo: Dictionary = {}
+	var order: Array[String] = []
+	for spec: Dictionary in roof_specs + floor_specs:
+		var combo_key := "%s|%s" % [spec.get("material_id", ""), spec.get("facade_id", "")]
+		if not by_combo.has(combo_key):
+			by_combo[combo_key] = {}
+			order.append(combo_key)
+		var seen: Dictionary = by_combo[combo_key]
+		for cell in spec.get("cells", []):
+			seen[cell] = true
+
+	var merged: Array = []
+	for combo_key in order:
+		var parts: PackedStringArray = combo_key.split("|")
+		merged.append({
+			"material_id": parts[0],
+			"facade_id": parts[1],
+			"cells": by_combo[combo_key].keys(),
+		})
+	return merged
+
+
+## D34/E-SEAM-01: the one field the SLAB texture family split reads (see
+## BakePolicy's header). An unregistered material warns loudly (B6) and falls
+## back to `false` — the pre-D34 behaviour for every floor, so an unknown
+## material degrades to what it already did instead of silently changing
+## family.
+func _material_has_facade(material_id: String) -> bool:
+	var md = _get_material_registry().get_material(material_id)
+	if md == null:
+		push_warning("[RoomBuilder] material '%s' is not registered — floor bake falls back to the photographic slab_ family (D34)" % material_id)
+		return false
+	return md.has_facade
+
+
 ## D13/§3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): force
 ## DamageVariantBaker's chosen substrate-crop positions into real bake usage.
 ## BakeCompositor bakes SPARSELY — only (col,row) cells real wall/roof/floor
@@ -42,18 +85,25 @@ func _get_material_registry() -> Object:
 ## cells too — `_compose_roof_pages` caches by (material, facade) combo, so a
 ## second, separate spec entry for the same combo would just cache-HIT the
 ## first one's cells and silently miss the synthetic positions.
+##
+## D34/E-SEAM-01: the combo key MUST be derived exactly the way the real usage
+## loop above derives it, or the synthetic substrate positions land in a combo
+## nothing places and the damage atoms resolve against an unbaked page. Now
+## that a `has_facade` material's FLOOR shares its wall's `facade_<id>` combo,
+## that means routing SLAB through texture_for_material() too, not through the
+## bare slab_for_material() this used before.
 func _inject_damage_substrate_usage(cells_by_combo: Dictionary, materials: Array,
-		want_facade: bool) -> void:
+		surface_class: int) -> void:
 	if materials.is_empty():
 		return
 	var registry = _get_material_registry()
+	var want_facade: bool = surface_class == BakePolicyClass.SurfaceClass.SLICE
 	for material in materials:
 		var m := String(material)
 		var md = registry.get_material(m)
 		if md == null or (want_facade and not md.has_facade):
 			continue
-		var facade_id: String = BakePolicyClass.facade_for_material(m) if want_facade \
-				else BakePolicyClass.slab_for_material(m)
+		var facade_id: String = BakePolicyClass.texture_for_material(m, surface_class, md.has_facade)
 		var combo_key := "%s|%s" % [m, facade_id]
 		if not cells_by_combo.has(combo_key):
 			cells_by_combo[combo_key] = {}
@@ -247,12 +297,19 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		if floor_slab.material == "earth":
 			continue
 		floor_materials_used[floor_slab.material] = true
-		## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): floor zones bake
-		## through the SLAB texture family (slab_<material>), not SLICE — the
-		## roof combo just below stays on facade_for_material() unchanged,
-		## since a roof reprojects its material's own wall facade, not a
-		## photographic slab source.
-		var floor_combo_key := "%s|%s" % [floor_slab.material, BakePolicyClass.slab_for_material(floor_slab.material)]
+		## D34/E-SEAM-01 (Director, 2026-08-08): a floor is a roof at the base
+		## of the scene, so a `has_facade` material's floor bakes through the
+		## SAME SLICE source its wall and roof do — which is what makes a
+		## concrete floor read as concrete instead of as an unrelated ground
+		## photo. Only `has_facade == false` materials (the organic ground:
+		## grass/dirt/sand/gravel) keep D20's photographic `slab_<material>`
+		## path. BakePolicy.texture_for_material() owns that split; the LOOKUP
+		## side (BakedTileLookup.resolve_flat) must apply the identical rule or
+		## B1 breaks, which is why both read it from the same MaterialDef field
+		## rather than each deciding locally.
+		var floor_combo_key := "%s|%s" % [floor_slab.material,
+			BakePolicyClass.texture_for_material(floor_slab.material,
+				BakePolicyClass.SurfaceClass.SLAB, _material_has_facade(floor_slab.material))]
 		if not floor_cells_by_combo.has(floor_combo_key):
 			floor_cells_by_combo[floor_combo_key] = {}
 		for voxel in floor_slab.voxels:
@@ -262,7 +319,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	for m in floor_materials_used.keys():
 		if damage_materials.has(m):
 			damage_floor_materials.append(m)
-	_inject_damage_substrate_usage(floor_cells_by_combo, damage_floor_materials, false)
+	_inject_damage_substrate_usage(floor_cells_by_combo, damage_floor_materials,
+		BakePolicyClass.SurfaceClass.SLAB)
 
 	## D13 (EXPLOSION_REBUILD_MASTER_PLAN §3.5): loud-fail (B6) if this map's
 	## declared damage_materials is missing a material its walls/blocks/
@@ -446,7 +504,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 				roof_cells_by_combo[combo_key] = {}
 			for voxel in roof_slab.voxels:
 				roof_cells_by_combo[combo_key][voxel.grid_pos - roof_slab.texture_anchor] = true
-		_inject_damage_substrate_usage(roof_cells_by_combo, damage_materials, true)
+		_inject_damage_substrate_usage(roof_cells_by_combo, damage_materials,
+			BakePolicyClass.SurfaceClass.SLICE)
 		for combo_key in roof_cells_by_combo:
 			var parts: PackedStringArray = String(combo_key).split("|")
 			roof_specs.append({
@@ -456,14 +515,20 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			})
 
 		## Bake textures (S2: Wire baking into room_builder)
-		## Floor-zone specs merge into the same array roof uses — namespaced
-		## material/facade ids (ground_* vs. wall ids) prevent lookup-key
-		## collisions, and the VL-PERF-BAKE cache key below already loops this
-		## combined array, so cache invalidation on floor-zone edits is
-		## automatic (see bake_compositor.gd Part C).
+		## Floor-zone specs merge into the same array roof uses. D34/E-SEAM-01
+		## changed what that merge means: the ids are no longer namespaced
+		## apart (a concrete roof and a concrete floor are BOTH
+		## "concrete|facade_concrete" now, deliberately — one shared page), so
+		## the two spec lists must be merged BY COMBO, unioning their cells.
+		## Plain concatenation would hand _compose_roof_pages() two specs on one
+		## cache key and the second one's cells would vanish into a cache HIT —
+		## the exact hazard _inject_damage_substrate_usage()'s own comment
+		## already warns about. The VL-PERF-BAKE cache key below loops the
+		## merged array, so invalidation on floor-zone edits stays automatic.
+		var horizontal_specs: Array = _merge_horizontal_specs(roof_specs, floor_specs)
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
 		if bake_config and bake_config.enabled:
-			_bake_textures(extraction, edge_registry, junction_columns, roof_specs + floor_specs,
+			_bake_textures(extraction, edge_registry, junction_columns, horizontal_specs,
 				damage_materials, damage_floor_materials)
 
 		if _diag_on:
@@ -923,6 +988,9 @@ func _wire_baked_lookup(runs: Array, baked_atlas, source_ids: Dictionary) -> voi
 	# BAKE-LIVE-VERIFY-01-b Part 2: real baked data, not Engine.get_meta() nulls.
 	lookup.set_baked_atlas(baked_atlas)
 	lookup.set_source_ids(source_ids)
+	# D34/E-SEAM-01: the SAME registry instance the bake side derived its
+	# texture ids from — B1 requires both ends to agree on `has_facade`.
+	lookup.set_material_registry(_get_material_registry())
 	room._voxel_renderer.set_baked_lookup(lookup)
 
 

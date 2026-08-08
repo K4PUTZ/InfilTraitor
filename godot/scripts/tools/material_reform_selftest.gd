@@ -6,12 +6,19 @@
 ##   1. BEHAVIOR is unified — one row per material (MaterialRegistry +
 ##      MaterialResistanceTable), the old duplicate `ground_concrete` row is
 ##      gone, not merely shadowed.
-##   2. RENDERING stays surface-dependent — the same material resolves to two
-##      different texture ids (facade_/slab_) and two different bake
-##      modulates (tinted/white) depending on surface_class, which is the
-##      exact mechanism that makes "concrete" (a material with a genuine
-##      wall AND floor presence, unlike grass/dirt/gravel/sand) survive
-##      unification without visually merging its two renders.
+##   2. RENDERING follows the MATERIAL, not the surface — D34/E-SEAM-01
+##      (Director, 2026-08-08) **reversed D20's original answer here.** D20
+##      sent every floor down the photographic `slab_` path, so a concrete
+##      floor and a concrete wall were literally different art and could
+##      never read as the same material. The rule now: `has_facade == true`
+##      -> the floor bakes through the SAME `facade_<id>` its wall and roof
+##      do (grayscale + multiply); `has_facade == false` -> the photographic
+##      `slab_<id>` exception, kept on purpose for organic ground. Tests 3-5
+##      below assert the new contract; they asserted the opposite before, and
+##      were rewritten rather than relaxed.
+##   3. The projection that made the merge free — D34 extends a 1024x512 wall
+##      facade to the isotropic 1024x1024 a horizontal surface addresses by
+##      MIRRORED VERTICAL REPEAT, never by resize (tests 6-7).
 ## Every expectation is computed independently (own expected values), never
 ## read back from the code under test.
 
@@ -22,6 +29,7 @@ const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destru
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -34,9 +42,11 @@ func _init() -> void:
 
 	test_1_one_registered_row_per_material()
 	test_2_old_duplicate_row_is_gone_not_shadowed()
-	test_3_texture_identity_is_surface_keyed()
-	test_4_modulate_follows_surface_not_material()
-	test_5_concrete_bakes_on_both_surfaces_without_collision()
+	test_3_texture_identity_is_material_keyed()
+	test_4_floor_and_wall_share_one_modulate()
+	test_5_both_families_bake_in_one_session()
+	test_6_horizontal_plane_is_mirrored_not_stretched()
+	test_7_roof_and_floor_specs_merge_their_cells()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -119,70 +129,107 @@ func test_2_old_duplicate_row_is_gone_not_shadowed() -> void:
 	print("")
 
 
-## D20: one material, two texture ids — the naming logic is mechanical
-## (facade_<id> for SLICE, slab_<id> for SLAB), so this is true for every
-## material, not a special case hand-listed for concrete.
-func test_3_texture_identity_is_surface_keyed() -> void:
-	print("[3] (material, surface_class) -> texture id, both directions (D20)\n")
+## D34: the SLAB family is chosen by the MATERIAL's own has_facade, not by
+## surface alone. Both expectations are hardcoded here on purpose and the
+## registry is asserted to agree — that way a silent edit to materials/*.json
+## fails this test instead of quietly redefining the contract it encodes.
+func test_3_texture_identity_is_material_keyed() -> void:
+	print("[3] (material, surface_class, has_facade) -> texture id (D34, supersedes D20)\n")
 
-	var facade_id := BakePolicyClass.facade_for_material("concrete")
-	var slab_id := BakePolicyClass.slab_for_material("concrete")
-	if facade_id == "facade_concrete" and slab_id == "slab_concrete" and facade_id != slab_id:
-		_pass("concrete: SLICE -> '%s', SLAB -> '%s' — same material, two distinct texture ids" % [facade_id, slab_id])
-	else:
-		_fail("concrete: SLICE -> '%s', SLAB -> '%s', expected 'facade_concrete'/'slab_concrete'" % [facade_id, slab_id])
+	var registry := MaterialRegistryClass.new()
+	registry.load_from_disk()
 
-	var via_enum_slice := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLICE)
-	var via_enum_slab := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLAB)
-	if via_enum_slice == facade_id and via_enum_slab == slab_id:
-		_pass("texture_for_material() agrees with the direct facade_for_material()/slab_for_material() calls")
+	for row in [["concrete", true], ["grass", false]]:
+		var mid: String = row[0]
+		var expected_has_facade: bool = row[1]
+		var md = registry.get_material(mid)
+		if md == null:
+			_fail("MaterialRegistry has no '%s' entry" % mid)
+			continue
+		if md.has_facade != expected_has_facade:
+			_fail("materials/%s.json has_facade=%s, this test's contract expects %s" % [
+				mid, md.has_facade, expected_has_facade])
+			continue
+
+		var slice_id := BakePolicyClass.texture_for_material(
+			mid, BakePolicyClass.SurfaceClass.SLICE, md.has_facade)
+		var slab_id := BakePolicyClass.texture_for_material(
+			mid, BakePolicyClass.SurfaceClass.SLAB, md.has_facade)
+		var expected_slab: String = "facade_%s" % mid if expected_has_facade else "slab_%s" % mid
+
+		if slice_id == "facade_%s" % mid and slab_id == expected_slab:
+			_pass("%s (has_facade=%s): SLICE -> '%s', SLAB -> '%s'" % [mid, md.has_facade, slice_id, slab_id])
+		else:
+			_fail("%s: SLICE -> '%s', SLAB -> '%s', expected 'facade_%s'/'%s'" % [
+				mid, slice_id, slab_id, mid, expected_slab])
+
+	## The whole point, stated as its own assertion: a structural material's
+	## floor and wall must be the SAME texture id, and an organic one's must
+	## not. Deriving both from the same call is what makes B1 hold.
+	var concrete_wall := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLICE, true)
+	var concrete_floor := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLAB, true)
+	var grass_floor := BakePolicyClass.texture_for_material("grass", BakePolicyClass.SurfaceClass.SLAB, false)
+	if concrete_wall == concrete_floor and grass_floor != concrete_floor:
+		_pass("concrete floor == concrete wall ('%s'); grass floor stays photographic ('%s')" % [
+			concrete_floor, grass_floor])
 	else:
-		_fail("texture_for_material() diverged: SLICE=%s SLAB=%s" % [via_enum_slice, via_enum_slab])
+		_fail("wall='%s' floor='%s' grass='%s' — structural floor must equal its wall" % [
+			concrete_wall, concrete_floor, grass_floor])
 
 	print("")
 
 
-## The crux mechanism this whole reform hinges on: bake_compositor.gd's
-## _modulate_for_mode() must decide WHITE-vs-tinted from the TEXTURE id
-## (slab_ prefix), not from a flag on the MaterialDef — otherwise a single
-## unified 'concrete' MaterialDef could not be tinted on walls AND full-color
-## on floors at once. Calling the SAME function with the SAME material but
-## two different texture ids is the direct proof.
-func test_4_modulate_follows_surface_not_material() -> void:
-	print("[4] Same material, different modulate per surface (the D19/D20 tension this plan resolved)\n")
+## D34 reverses test 4's original claim. The old contract wanted concrete's
+## floor to be WHITE (photographic) while its wall was tinted; that is exactly
+## what made the two unable to read as one material. Now a structural
+## material's floor page and wall page are the same id, so they necessarily
+## carry the SAME tinted modulate — and only the organic `slab_` family stays
+## WHITE. _modulate_for_mode() itself is unchanged (it still keys on the
+## `slab_` prefix); what changed is which ids reach it.
+func test_4_floor_and_wall_share_one_modulate() -> void:
+	print("[4] A structural material's floor and wall carry one modulate; organic ground stays WHITE (D34)\n")
 
 	var compositor := BakeCompositorClass.new()
 	var registry := MaterialRegistryClass.new()
 	registry.load_from_disk()
 	compositor.set_material_registry(registry)
 	var concrete = registry.get_material("concrete")
-	if concrete == null:
-		_fail("MaterialRegistry has no 'concrete' entry — cannot test modulate")
+	var grass = registry.get_material("grass")
+	if concrete == null or grass == null:
+		_fail("MaterialRegistry missing 'concrete' or 'grass' — cannot test modulate")
 		return
 
 	var blend_mode := 0  # BakeConfig.BlendMode.MULTIPLY
-	var wall_modulate: Color = compositor._modulate_for_mode(blend_mode, concrete, "facade_concrete")
-	var floor_modulate: Color = compositor._modulate_for_mode(blend_mode, concrete, "slab_concrete")
+	var wall_id := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLICE, concrete.has_facade)
+	var floor_id := BakePolicyClass.texture_for_material("concrete", BakePolicyClass.SurfaceClass.SLAB, concrete.has_facade)
+	var grass_id := BakePolicyClass.texture_for_material("grass", BakePolicyClass.SurfaceClass.SLAB, grass.has_facade)
 
-	var wall_is_tinted := wall_modulate != Color.WHITE
-	var floor_is_white := floor_modulate == Color.WHITE
-	if wall_is_tinted and floor_is_white:
-		_pass("same MaterialDef instance: facade_concrete -> tinted %s (MULTIPLY), slab_concrete -> WHITE (B2 exception)" % wall_modulate)
+	var wall_modulate: Color = compositor._modulate_for_mode(blend_mode, concrete, wall_id)
+	var floor_modulate: Color = compositor._modulate_for_mode(blend_mode, concrete, floor_id)
+	var grass_modulate: Color = compositor._modulate_for_mode(blend_mode, grass, grass_id)
+
+	if wall_modulate != Color.WHITE and floor_modulate == wall_modulate:
+		_pass("concrete: wall and floor both tinted %s — one material, one look" % wall_modulate)
 	else:
-		_fail("wall_modulate=%s (tinted expected) floor_modulate=%s (WHITE expected)" % [wall_modulate, floor_modulate])
+		_fail("concrete: wall=%s floor=%s — expected both tinted and equal" % [wall_modulate, floor_modulate])
+
+	if grass_modulate == Color.WHITE:
+		_pass("grass: '%s' -> WHITE, the photographic exception survives (B2)" % grass_id)
+	else:
+		_fail("grass: '%s' -> %s, expected WHITE" % [grass_id, grass_modulate])
 
 	print("")
 
 
-## End-to-end: bake 'concrete' through BOTH the wall/roof (SLICE) page family
-## and the floor (SLAB) page family in the SAME session, real compositor +
-## real resolver + real on-disk assets — the actual collision case D19
-## introduces (concrete is the only material with both a wall and a floor
-## presence) and the one no prior selftest exercised, since floor_zone_bake_
-## selftest.gd/roof_bake_selftest.gd each use materials that only ever
-## appear on one surface.
-func test_5_concrete_bakes_on_both_surfaces_without_collision() -> void:
-	print("[5] 'concrete' bakes real, distinct pages for SLICE and SLAB in one session (the actual reform gate)\n")
+## End-to-end: bake BOTH families in one session with the real compositor,
+## real resolver and real on-disk assets — a structural material through
+## `facade_` and an organic one through `slab_`. D34 changed what this test
+## proves: the old version asserted concrete produced two distinct pages (one
+## per surface), which is precisely the split the Director removed. What must
+## hold now is that the two FAMILIES still coexist without colliding, and that
+## each carries its own modulate.
+func test_5_both_families_bake_in_one_session() -> void:
+	print("[5] facade_ and slab_ families bake side by side, each with its own modulate (D34 gate)\n")
 
 	var compositor := BakeCompositorClass.new()
 	var registry := MaterialRegistryClass.new()
@@ -197,7 +244,7 @@ func test_5_concrete_bakes_on_both_surfaces_without_collision() -> void:
 	var map_spec := {
 		"roofs": [
 			{"material_id": "concrete", "facade_id": "facade_concrete", "cells": cells},
-			{"material_id": "concrete", "facade_id": "slab_concrete", "cells": cells},
+			{"material_id": "grass", "facade_id": "slab_grass", "cells": cells},
 		],
 		"map_id": "MATERIAL_REFORM_TEST",
 	}
@@ -206,28 +253,139 @@ func test_5_concrete_bakes_on_both_surfaces_without_collision() -> void:
 		_fail("bake() returned null")
 		return
 
-	var slice_key := "ROOF|concrete|facade_concrete|0|0"
-	var slab_key := "ROOF|concrete|slab_concrete|0|0"
-	var slice_entry = atlas.lookup.get(slice_key)
-	var slab_entry = atlas.lookup.get(slab_key)
-	if slice_entry == null or slab_entry == null:
-		_fail("missing lookup entries: slice=%s slab=%s" % [slice_entry, slab_entry])
+	var structural_entry = atlas.lookup.get("ROOF|concrete|facade_concrete|0|0")
+	var organic_entry = atlas.lookup.get("ROOF|grass|slab_grass|0|0")
+	if structural_entry == null or organic_entry == null:
+		_fail("missing lookup entries: concrete=%s grass=%s" % [structural_entry, organic_entry])
 		return
-	_pass("both 'concrete' combos composed real lookup entries (facade_concrete AND slab_concrete, no collision)")
+	_pass("both families composed real lookup entries (facade_concrete AND slab_grass)")
 
-	var slice_page: Image = atlas.atom_pages[int(slice_entry.get("page"))]
-	var slab_page: Image = atlas.atom_pages[int(slab_entry.get("page"))]
-	if slice_page != slab_page:
-		_pass("SLICE and SLAB pages are distinct Images (%dx%d vs %dx%d) — not aliased onto one page" % [
-			slice_page.get_width(), slice_page.get_height(), slab_page.get_width(), slab_page.get_height()])
+	var structural_page: Image = atlas.atom_pages[int(structural_entry.get("page"))]
+	var organic_page: Image = atlas.atom_pages[int(organic_entry.get("page"))]
+	if structural_page != organic_page:
+		_pass("the two families are distinct Images (%dx%d vs %dx%d)" % [
+			structural_page.get_width(), structural_page.get_height(),
+			organic_page.get_width(), organic_page.get_height()])
 	else:
-		_fail("SLICE and SLAB pages are the SAME Image — collision")
+		_fail("both families landed on the SAME Image — collision")
 
-	var slice_modulate: Color = atlas.page_modulates[int(slice_entry.get("page"))]
-	var slab_modulate: Color = atlas.page_modulates[int(slab_entry.get("page"))]
-	if slice_modulate != Color.WHITE and slab_modulate == Color.WHITE:
-		_pass("registered modulates: facade page=%s (tinted), slab page=WHITE — matches test 4's direct call" % slice_modulate)
+	var structural_modulate: Color = atlas.page_modulates[int(structural_entry.get("page"))]
+	var organic_modulate: Color = atlas.page_modulates[int(organic_entry.get("page"))]
+	if structural_modulate != Color.WHITE and organic_modulate == Color.WHITE:
+		_pass("registered modulates: facade_concrete=%s (tinted), slab_grass=WHITE — matches test 4" % structural_modulate)
 	else:
-		_fail("registered modulates: facade=%s slab=%s — expected tinted/WHITE" % [slice_modulate, slab_modulate])
+		_fail("registered modulates: concrete=%s grass=%s — expected tinted/WHITE" % [
+			structural_modulate, organic_modulate])
+
+	print("")
+
+
+## D34's projection change, on a synthetic source small enough to verify every
+## pixel by hand. Mirrored repeat must (a) reach the target height, (b) keep
+## NATIVE pixels — a resize would blend or duplicate rows and fail the exact
+## equality below — and (c) reflect with a repeated edge row, matching
+## BakeCompositor._mirror_index()'s own fold semantics (index 63 and 64 both
+## fold to 63), so the plane agrees with the cell-level fold that samples it.
+func test_6_horizontal_plane_is_mirrored_not_stretched() -> void:
+	print("[6] A short source reaches the isotropic target by mirrored repeat, not resize (D34)\n")
+
+	var compositor := BakeCompositorClass.new()
+	var src := Image.create(2, 4, false, Image.FORMAT_RGBA8)
+	for y in range(4):
+		for x in range(2):
+			src.set_pixel(x, y, Color(float(y) / 4.0, 0.0, 0.0, 1.0))
+
+	var out: Image = compositor._mirror_tile_v(src, 8)
+	if out.get_height() != 8 or out.get_width() != 2:
+		_fail("expected 2x8, got %dx%d" % [out.get_width(), out.get_height()])
+		return
+	_pass("2x4 source extended to 2x8")
+
+	## Expected row order derived here, not read from the code under test:
+	## band 0 = rows 0,1,2,3 then band 1 = the flip, rows 3,2,1,0.
+	var expected_rows: Array[int] = [0, 1, 2, 3, 3, 2, 1, 0]
+	var mismatches: Array[String] = []
+	for y in range(8):
+		var got: Color = out.get_pixel(0, y)
+		var want: Color = src.get_pixel(0, expected_rows[y])
+		if not is_equal_approx(got.r, want.r):
+			mismatches.append("y=%d got r=%.4f want r=%.4f (src row %d)" % [y, got.r, want.r, expected_rows[y]])
+	if mismatches.is_empty():
+		_pass("row order is 0,1,2,3,3,2,1,0 — reflected with a repeated edge row, pixels exact (no resampling)")
+	else:
+		_fail("mirrored rows wrong: %s" % ", ".join(mismatches))
+
+	## And the real consequence: a 1024x512 wall facade now yields the SAME
+	## isotropic plane height the floor path already produced (V_MARGIN +
+	## 1024 + V_MARGIN = 1088, the number floor_zone_bake_selftest pinned),
+	## which is what lets a roof and a floor share one page at all.
+	var facade := Image.create(BakeCompositorClass.FACADE_W, BakeCompositorClass.FACADE_H, false, Image.FORMAT_RGBA8)
+	facade.fill(Color(0.5, 0.5, 0.5, 1.0))
+	var plane: Image = compositor._get_roof_plane_source(facade)
+	var expected_h: int = 2 * BakeCompositorClass.V_MARGIN + BakeCompositorClass.FACADE_W
+	if plane.get_height() == expected_h:
+		_pass("a 1024x512 facade builds the isotropic plane (height %d) — roof and floor now agree" % expected_h)
+	else:
+		_fail("plane height %d, expected %d" % [plane.get_height(), expected_h])
+
+	print("")
+
+
+## D34 made a structural material's roof combo and its floor combo IDENTICAL,
+## so room_builder must union their cells before the compositor sees them —
+## two specs on one cache key would silently drop the second one's cells.
+## Verified directly on the merge function rather than through a full build.
+func test_7_roof_and_floor_specs_merge_their_cells() -> void:
+	print("[7] Roof and floor specs on one combo union their cells, they do not overwrite (D34)\n")
+
+	## _merge_horizontal_specs() is pure (dict in, array out) and touches no
+	## `room` state, so a null room is enough to construct the builder here —
+	## no scene, no map load.
+	var builder := RoomBuilderClass.new(null)
+	var roof_specs: Array = [{
+		"material_id": "concrete", "facade_id": "facade_concrete",
+		"cells": [Vector2i(0, 0), Vector2i(1, 0)],
+	}]
+	var floor_specs: Array = [
+		{
+			"material_id": "concrete", "facade_id": "facade_concrete",
+			"cells": [Vector2i(1, 0), Vector2i(2, 0)],
+		},
+		{
+			"material_id": "grass", "facade_id": "slab_grass",
+			"cells": [Vector2i(5, 5)],
+		},
+	]
+
+	var merged: Array = builder._merge_horizontal_specs(roof_specs, floor_specs)
+	if merged.size() != 2:
+		_fail("expected 2 merged combos (concrete, grass), got %d" % merged.size())
+		return
+	_pass("3 specs across 2 combos merged into 2 specs")
+
+	var concrete_spec: Dictionary = {}
+	var grass_spec: Dictionary = {}
+	for spec: Dictionary in merged:
+		if String(spec["material_id"]) == "concrete":
+			concrete_spec = spec
+		elif String(spec["material_id"]) == "grass":
+			grass_spec = spec
+
+	## Union of {(0,0),(1,0)} and {(1,0),(2,0)} is 3 distinct cells — the
+	## shared (1,0) must appear once, and neither surface's own cell may be lost.
+	var concrete_cells: Array = concrete_spec.get("cells", [])
+	var have := {}
+	for cell in concrete_cells:
+		have[cell] = true
+	var want_all: bool = have.has(Vector2i(0, 0)) and have.has(Vector2i(1, 0)) and have.has(Vector2i(2, 0))
+	if concrete_cells.size() == 3 and want_all:
+		_pass("concrete: roof's (0,0) and floor's (2,0) both survive, shared (1,0) deduped — 3 cells")
+	else:
+		_fail("concrete cells = %s, expected exactly (0,0),(1,0),(2,0)" % [concrete_cells])
+
+	if String(grass_spec.get("facade_id", "")) == "slab_grass" and grass_spec.get("cells", []).size() == 1:
+		_pass("grass: floor-only combo passes through untouched on the photographic family")
+	else:
+		_fail("grass spec = %s" % [grass_spec])
 
 	print("")

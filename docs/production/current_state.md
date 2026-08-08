@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.90 · **Updated:** 2026-08-08 · **Branch:** main
+**Version:** 0.9.91 · **Updated:** 2026-08-08 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -42,6 +42,7 @@
 - RESUMO_SESSAO_2026-08-07_E_SOOT_TASK3.md
 - RESUMO_SESSAO_2026-08-07_E_WAVE_TASK5.md
 - RESUMO_SESSAO_2026-08-07_POST_TASK5_SOOT_DIAG.md
+- RESUMO_SESSAO_2026-08-08_E_EARTH_D35.md
 - RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md
 - RESUMO_SESSAO_2026-08-08_GPU_FLUSH_AND_SOOT_REVERSAL.md
 <!-- AUTO:END pending_prompts -->

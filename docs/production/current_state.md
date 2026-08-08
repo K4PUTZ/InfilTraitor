@@ -460,14 +460,31 @@ destruction (above) is untouched and still works exactly as before.
   event, never an access route.
 - **What's still open:** Phase B (targeting UI, throw arc/bubble, explosion
   flash frames) is not started — the Director chose to prove Phase A's 15
-  waves with real captures first. Task 6 (tuning pass) is next: the
-  Director reviews the real capture and moves every ring-weight number in
-  `bombs/frag_grenade.json`, all first-pass placeholders today. Blast debris
-  VFX (dust/spark/chip) was deliberately disconnected in Task 5 (would have
-  doubled up with the new staged smoke waves) — flagged for a future task,
-  not silently dropped. Stamped-blast soot's rotation-persistence stays
-  unbuilt — currently unreachable to test since camera rotation is disabled
-  (ROTATE-KILL-01); damage *state* already survives rotation correctly.
+  waves with real captures first. **Next session formalizes the decal-bake
+  step (Director's call, 2026-08-08) BEFORE Task 6** — see the bullet below
+  and `EXPLOSION_REBUILD_MASTER_PLAN.md` §11's new lead item: floor (SLAB)
+  textures turned out to be a genuinely different art/render pipeline from
+  wall (SLICE) textures (dimensions, color rules, resolver validation all
+  differ), and metal/stone/wood floor materials never had a real asset for
+  it. Task 6 (the tuning pass, including soot ring weights) comes after
+  that foundation is solid. Blast debris VFX (dust/spark/chip) was
+  deliberately disconnected in Task 5 (would have doubled up with the new
+  staged smoke waves) — flagged for a future task, not silently dropped.
+  Stamped-blast soot's rotation-persistence stays unbuilt — currently
+  unreachable to test since camera rotation is disabled (ROTATE-KILL-01);
+  damage *state* already survives rotation correctly.
+- **GPU-upload flush bug, found and fixed (2026-08-08):**
+  `DamageCompositeCache.store()` (every WALL/FLOOR/CEILING damage atom's
+  compositor) defers the actual GPU texture upload to
+  `flush_dirty_pages()`; two independent call sites never called it —
+  a new diagnostic tool built this session (`damage_gallery_debug.gd`,
+  fixed in commit `512fa5c`) and, more importantly,
+  `DetonationChoreographer` itself, the only place a real `DetonationPlan`
+  ever reaches `set_cell()` (fixed in commit `31bf069`). Both failures were
+  silent — correct data, stale/wrong pixels on screen — found only by a
+  real windowed capture, never by a headless check. Real WALL/FLOOR/CEILING
+  damage decals are now confirmed rendering correctly (post-fix capture)
+  for all 4 declared materials.
 - **Post-Task-5 (2026-08-07), REVERSED 2026-08-08:** Director flagged the
   real crater's scorch as "quebradiça" (brittle/fragmented) rather than one
   uniform shade. The original A/B capture (3.3% pixels differ, mean

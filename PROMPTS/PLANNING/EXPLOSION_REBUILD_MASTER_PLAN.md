@@ -2,7 +2,21 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Latest update:** 2026-08-08 — the 2026-08-07 "fuligem quebradiça" A/B
+**Latest update:** 2026-08-08, session close — Director's call after the GPU-
+flush fix and the soot reversal below: **formalize the decal-bake step next
+session, before any soot tuning.** Root design gap surfaced today, not
+before: floor (SLAB) textures are a genuinely different art/render pipeline
+from wall (SLICE) textures — different dimensions (1024×1024 isotropic vs
+1024×512 anisotropic), different color rules (SLAB is the one full-color
+exception to B2's grayscale rule), different resolver validation — and
+that divergence is what actually broke metal/stone/wood floor damage
+(`slab_metal.png` etc. never existed; this session's stopgap fix reused the
+wall facade, palette-mode-converted and resized, not a real asset). Next
+session formalizes that seam properly instead of leaving the reused-facade
+workaround as the permanent answer — see §11's new lead item. Soot's real
+lever (the stamp mechanism, confirmed below) waits until that foundation is
+solid.
+**2026-08-08, earlier the same day** — the 2026-08-07 "fuligem quebradiça" A/B
 result (below) was itself built on a real bug: `DetonationChoreographer`
 never flushed `DamageCompositeCache`'s GPU texture uploads, so that A/B
 compared two captures both reading stale/unflushed content. Fixed
@@ -44,13 +58,15 @@ as the real 15-wave sequence, and `TestZoneController.detonate_active()` is
 reconnected. A real capture (`Screenshots/history/e_wave_detonation.png`)
 shows a real scorch crater; real per-wave timing is printed and measured on
 every detonation. **Task 6 (the tuning pass) is the next concrete action.**
-**Next action:** §11. **Task 6** — Director reviews real captures and moves
-§4.2's ring-weight numbers; also where §6.3's deferred-soot-compute question
-(D8) and the flagged blast-debris-VFX gap (Task 5's closure note) get
-picked up if wanted. Q1d is answered and implemented — D19/D20/D21's rename
-and dynamic-data reform are live (`res://materials/*.json`, `ground_* →
-bare`, `facade_*`/`slab_*` texture split); see the Task 1a/1b/2/3/4/5
-closure notes below for the real corrections surfaced against the plan text.
+**Next action:** §11. **Formalize the decal-bake step (Director's call,
+2026-08-08)** — the floor/SLAB texture pipeline needs to be a real,
+complete asset+code path for every declared material, not the reused-facade
+stopgap this session shipped for metal/stone/wood. **Task 6** (the tuning
+pass over §4.2's ring weights, including soot) comes AFTER that — Q1d is
+answered and implemented — D19/D20/D21's rename and dynamic-data reform are
+live (`res://materials/*.json`, `ground_* → bare`, `facade_*`/`slab_*`
+texture split); see the Task 1a/1b/2/3/4/5 closure notes below for the real
+corrections surfaced against the plan text.
 
 ### Task 1a (E-MAT) — closed 2026-08-06, commit `95d83cb`
 
@@ -1716,6 +1732,55 @@ is now functionally complete end to end.
 Older order-of-business items (Q1b confirmation, Task 0 through Task 5) are
 fully closed and folded into §1/§8.1/§8's task rows / the closure notes
 above; not repeated here.
+
+**Order of business — formalize the decal-bake step (Director's call,
+2026-08-08), BEFORE Task 6:**
+
+Director's framing, verbatim in spirit: floor textures turned out to have a
+genuinely different art/render pipeline from wall textures, and that
+divergence is what actually produced this session's problems — not a soot
+bug specifically. Concrete gaps this session's diagnostic work (the
+damage-atom gallery rig, `damage_gallery_debug.gd`) surfaced, none decided
+here — for the Director to pick up next session:
+
+1. **Real `slab_<material>.png` assets for metal/stone/wood.** They never
+   existed (only `concrete`/`sand`/`dirt`/`grass`/`gravel` had one — the
+   ground materials, not the wall-facade-only test materials). This
+   session's fix was a stopgap: `facade_<material>.png` converted from
+   palette to RGB and resized 1024×512 → 1024×1024 with
+   `Image.NEAREST` (matching `bake_compositor.gd`'s own precedent for the
+   roof plane), NOT a properly authored SLAB source. It resolves and bakes
+   correctly (confirmed: FLOOR DENTED reads BAKED for all 4 materials,
+   real capture shows a real crumbled-dent pattern, not the earlier flat
+   color/orange artifact) but is visually a stretched wall photo, not real
+   ground art. **`ASSETS/*` is gitignored (`.gitignore:48-53`) — these 3
+   files exist only on this machine, not in the repo; flag for backup
+   before relying on them across sessions.**
+2. **The `DamageCompositeCache` GPU-upload-flush contract.**
+   `store()` blits into a CPU-side `Image` and defers the actual texture
+   upload to `flush_dirty_pages()` (that class's own doc comment) — every
+   real call site is SUPPOSED to pair painting with a flush, and two
+   independent ones didn't: this session's own diagnostic tool (fixed,
+   commit `512fa5c`) and `DetonationChoreographer`, the real production
+   path (fixed, commit `31bf069`). Both were silent — no error, no crash,
+   just wrong/stale pixels on screen, found only by a real windowed
+   capture. Worth deciding whether this needs a structural safeguard (e.g.
+   folding the flush into `apply_damage_voxel_swap()` itself so no caller
+   can forget it) rather than trusting every future call site to remember,
+   since this exact bug class already bit two call sites independently.
+3. **WALL and CEILING are confirmed solid** — real capture, both DENTED and
+   CRACKED (where `crack_factor > 0`) bake and render correctly for all 4
+   materials post-flush-fix. Not part of this formalization; recorded here
+   only so the next session doesn't re-litigate them.
+4. **The SLICE/SLAB convention itself** — should every declared material
+   require both a `facade_<material>.png` AND a `slab_<material>.png`
+   authored independently, or should reuse (facade → slab, isotropic
+   resize) become a first-class, documented path instead of an ad-hoc
+   fix? `BakePolicy`'s own doc comment (`bake_policy.gd:14-16`) already
+   treats a missing SLAB asset as an expected, silently-tolerated gap
+   ("TextureResolver.resolve() falls back to Tier.NONE") — worth deciding
+   if that's still the right default now that floor damage decals depend
+   on it existing.
 
 **Order of business — Task 6, the tuning pass (§8's own row):**
 

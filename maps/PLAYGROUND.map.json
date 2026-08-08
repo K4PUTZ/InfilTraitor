@@ -141,6 +141,39 @@
             16
           ],
           "material": "concrete"
+        },
+        {
+          "gu": [
+            7,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "metal"
+        },
+        {
+          "gu": [
+            12,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "stone"
+        },
+        {
+          "gu": [
+            17,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "wood"
         }
       ],
       "v": 2

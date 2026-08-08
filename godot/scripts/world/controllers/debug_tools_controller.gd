@@ -93,6 +93,13 @@ func cycle_blend_mode() -> void:
 	_show_transient_label("Blend Mode: %s" % mode_name)
 
 
+## Force DENTED/CRACKED onto every declared material's WALL/FLOOR/CEILING
+## test geometry (F5) — see damage_gallery_debug.gd for why.
+func force_damage_gallery() -> void:
+	var DamageGalleryDebugClass = preload("res://godot/scripts/debug/damage_gallery_debug.gd")
+	DamageGalleryDebugClass.run(room)
+
+
 ## Show a transient on-screen label (used by bake mode and blend mode toggles)
 func _show_transient_label(text: String) -> void:
 	var label := Label.new()

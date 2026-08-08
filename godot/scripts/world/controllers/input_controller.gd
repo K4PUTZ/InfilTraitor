@@ -156,6 +156,11 @@ func _handle_key_action(key: InputEventKey) -> void:
 		debug_command_requested.emit("nudge_reset")
 		if viewport:
 			viewport.set_input_as_handled()
+	elif key.is_action_pressed("debug_force_damage_gallery"):
+		print_debug("[INPUT] Debug: force damage gallery")
+		debug_command_requested.emit("force_damage_gallery")
+		if viewport:
+			viewport.set_input_as_handled()
 
 
 func _emit_movement_input(direction: Vector2i) -> void:

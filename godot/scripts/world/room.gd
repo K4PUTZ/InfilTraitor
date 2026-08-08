@@ -3361,6 +3361,25 @@ func _run_auto_screenshot_capture() -> void:
 			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
+	elif capture_action == "damage_gallery" and _voxel_renderer != null:
+		## DAMAGE-GALLERY dev capture action (2026-08-07) — frames the map's
+		## per-material test row wide enough to cover the wall row (y=2), this
+		## rig's floor patches south of it (y=4-6), and the roof above, then
+		## forces every material's WALL/FLOOR/CEILING DENTED/CRACKED atoms so
+		## the capture shows whether they're actually baked. See
+		## damage_gallery_debug.gd — real F5 keybind counterpart for
+		## interactive use, this is the unattended-capture path for it.
+		var dg_row_center := Vector2i(10, 5)
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(dg_row_center))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(dg_row_center, 14)
+		for _c in range(5):
+			await get_tree().process_frame
+		var DamageGalleryDebugClass = preload("res://godot/scripts/debug/damage_gallery_debug.gd")
+		DamageGalleryDebugClass.run(self)
+		for _j in range(10):
+			await get_tree().process_frame
 	elif capture_action == "open_showcase" and _main_menu_panel != null:
 		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
 		## path (Main Menu's own _on_showcase_pressed(), same as a real click
@@ -3587,6 +3606,8 @@ func _on_debug_command_requested(command: String) -> void:
 		"nudge_reset":
 			if _debug_tools_controller.is_nudge_mode_active():
 				_debug_tools_controller.reset_nudge()
+		"force_damage_gallery":
+			_debug_tools_controller.force_damage_gallery()
 
 
 ## ESC-STACK-01: Escape's ONE entry point (InputController emits this

@@ -8,13 +8,13 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**188 scripts · 46191 lines total** (under `godot/scripts/`)
+**189 scripts · 46371 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
-- **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
+- **debug/** — damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
@@ -324,6 +324,24 @@ extends `Node2D` · 316 lines
 ---
 
 ## debug/
+
+### `damage_gallery_debug.gd`
+
+`class_name DamageGalleryDebug` · 147 lines
+
+`godot/scripts/debug/damage_gallery_debug.gd`
+
+> DAMAGE-GALLERY (2026-08-07) — forces DENTED/CRACKED onto real voxels of every declared material, on WALL/FLOOR/CEILING, and reports whether VoxelRenderer.apply_damage_voxel_swap() actually hit a pre-baked atom. Built because the Post-Task-5 soot diagnosis (EXPLOSION_REBUILD_MASTER_PLAN) concluded the "quebradiça" floor texture comes from pre-existing dent/crack art, without first confirming those atoms are baked at all for every material — this checks that assumption directly instead of reasoning about it. Debug-only, triggered by F5 (see debug_tools_controller.gd), never called from gameplay. WALL uses the map's own PLAYGROUND.map.json per-material test blocks (render_block() — no real Slice, so a throwaway Slice carries just the material string apply_damage_voxel_swap() reads). FLOOR/CEILING use the real Slab objects room._slab_registry already tracks (floor needs a floor_zones patch per non-concrete material — added alongside this file).
+
+**Constants / tuning**
+- `WALL_DENTED_LEVEL` = `6`
+- `WALL_CRACKED_LEVEL` = `10`
+- `BLOCK_STOREYS` = `2`
+- `MAP_BUFFER_OFFSET` = `Vector2i(1, 1)`
+- `MATERIAL_BLOCK_GU` = `{ "concrete": Vector2i(3, 2) + MAP_BUFFER_OFFSET, "metal": Vector2i(8, 2) + MAP_BUFFER_OFFSET, "stone": Vector2i(13, 2) + MAP_BUFFER_OFFSET, "wood": Vector2i(18, 2) + MAP_BUFFER_OFFSET, }`
+- `MATERIAL_FLOOR_GU` = `{ "concrete": Vector2i(3, 5) + MAP_BUFFER_OFFSET, "metal": Vector2i(8, 5) + MAP_BUFFER_OFFSET, "stone": Vector2i(13, 5) + MAP_BUFFER_OFFSET, "wood": Vector2i(18, 5) + MAP_BUFFER_OFFSET, }`
+
+---
 
 ### `dev_vision_status_panel.gd`
 
@@ -3746,7 +3764,7 @@ extends `Node2D` · 34 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 158 lines
+`class_name DebugToolsController` · 165 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -3762,6 +3780,7 @@ extends `Node2D` · 34 lines
 - `func toggle_nudge_mode() -> void:`
 - `func toggle_bake_mode() -> void:`
 - `func cycle_blend_mode() -> void:`
+- `func force_damage_gallery() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
 - `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
@@ -3771,7 +3790,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 165 lines
+`class_name InputController` · 170 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -4074,7 +4093,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3657 lines
+extends `Node2D` · 3678 lines
 
 `godot/scripts/world/room.gd`
 

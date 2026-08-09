@@ -703,11 +703,25 @@ e em todas as direções em volta, pra baixo não muito por causa do chão"*
 describes, expressed as the axis the Director actually named rather than as a
 damping factor.
 
-**Still open for the Director's eye:** on the negative frames the fire reads
-**dark navy**, not neutral dark — the inverse of orange is blue, which is
-exactly E-NATIVE-01's original objection resurfacing now that the ordering is
-reversed. It is dark, which is what was asked; whether the blue is wanted is a
-look call.
+**The blue, and its close (same day).** With the ordering reversed the fire
+came out **dark navy** rather than neutral — the inverse of orange is blue,
+E-NATIVE-01's original objection resurfacing exactly as predicted. Director:
+*"dessatura a inversão pra ficar escuro neutro em vez de azul."*
+
+The shader now pulls the inverted colour toward its own Rec.709 luma by
+`strobe_negative_desaturate` (default 1.0). Rec.709 and not a flat (r+g+b)/3
+on purpose: an equal-weight average would read the inverted fire's green
+channel as no brighter than its red, and the point is for the result to land
+where the eye says it should.
+
+Verified by measurement, on the real negative frames, centre crop over the
+fire: **max saturation 0, mean 0.0, and zero blue-leaning pixels among the 400
+darkest** (`B − R > 25`). The fire is a neutral black blob.
+
+**Scope worth knowing:** desaturating *the inversion* makes the whole negative
+frame greyscale, not just the fire — the literal reading of the instruction,
+and it happens to read like a film negative. `strobe_negative_desaturate` below
+1.0 keeps colour in the inverted world while softening the fire's blue.
 
 ### 8.5 The filmstrip's own stale-frame bug — three attempts, one real fix
 

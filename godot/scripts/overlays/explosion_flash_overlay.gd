@@ -66,6 +66,11 @@ var strobe_white_alpha: float = 1.0
 ## How strongly the NEGATIVE frame inverts. 1.0 = full inversion.
 var strobe_negative_amount: float = 1.0
 
+## How far the inverted image is pulled toward greyscale. 1.0 = fully neutral,
+## which is the shipped look (Director, 2026-08-09) — see the shader's own note.
+## 0.0 restores the raw inversion, and with it the blue fire.
+var strobe_negative_desaturate: float = 1.0
+
 ## Flash appearance. NEGATIVE inverts what is already on screen, "como nas
 ## explosões de antigamente" (Director, 2026-08-09); WHITE replaces it. Both are
 ## now used in the SAME detonation — the strobe alternates them — rather than
@@ -73,17 +78,34 @@ var strobe_negative_amount: float = 1.0
 enum FlashMode { WHITE, NEGATIVE }
 var flash_mode: int = FlashMode.NEGATIVE
 
-## Inverts whatever the frame already rendered, by `amount`. Six lines, one
-## screen-texture read, no per-frame allocation — this is the entire cost of the
-## Director's "frame negativo" idea, which they flagged as possibly hard or slow
-## at runtime and is neither.
+## Inverts whatever the frame already rendered, by `amount`, then pulls the
+## result toward its own luminance by `desaturate`. One screen-texture read, no
+## per-frame allocation — this is the entire cost of the Director's "frame
+## negativo" idea, which they flagged as possibly hard or slow at runtime and is
+## neither.
+##
+## The desaturation step is P-DARKFIRE's second half (Director, 2026-08-09:
+## "dessatura a inversão pra ficar escuro neutro em vez de azul"). Once the
+## negative layer moved above the fire, a straight inversion turned the flames
+## dark BLUE, because the inverse of orange is blue — the exact objection
+## E-NATIVE-01 raised when this ordering was first tried. Desaturating the
+## inverted colour keeps what the Director wanted (the fire goes dark with
+## everything else) and drops what they did not (the hue swing).
+##
+## Rec.709 luma, not a flat (r+g+b)/3: an equal-weight average would read the
+## inverted fire's green channel as no brighter than its red, and the whole
+## point here is that the result lands where the eye says it should.
 const NEGATIVE_FLASH_SHADER := """
 shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
 uniform float amount : hint_range(0.0, 1.0) = 0.0;
+uniform float desaturate : hint_range(0.0, 1.0) = 1.0;
 void fragment() {
 	vec3 src = texture(screen_tex, SCREEN_UV).rgb;
-	COLOR = vec4(mix(src, vec3(1.0) - src, amount), 1.0);
+	vec3 inv = vec3(1.0) - src;
+	float luma = dot(inv, vec3(0.2126, 0.7152, 0.0722));
+	inv = mix(inv, vec3(luma), desaturate);
+	COLOR = vec4(mix(src, inv, amount), 1.0);
 }
 """
 
@@ -179,6 +201,7 @@ func _draw_negative() -> void:
 	if strobe_negative_amount <= 0.001:
 		return
 	_negative_material.set_shader_parameter("amount", strobe_negative_amount)
+	_negative_material.set_shader_parameter("desaturate", strobe_negative_desaturate)
 	_negative_layer.draw_rect(_visible_world_rect(), Color.WHITE)
 
 

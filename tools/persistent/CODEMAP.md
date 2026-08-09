@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 49346 lines total** (under `godot/scripts/`)
+**191 scripts · 49369 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -962,7 +962,7 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 210 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 233 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
 
@@ -972,6 +972,7 @@ extends `Node2D` · 233 lines
 **Public vars**
 - `var strobe_white_alpha: float = 1.0`
 - `var strobe_negative_amount: float = 1.0`
+- `var strobe_negative_desaturate: float = 1.0`
 - `var flash_mode: int = FlashMode.NEGATIVE`
 
 **Public API**

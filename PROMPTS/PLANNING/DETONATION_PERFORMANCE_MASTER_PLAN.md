@@ -25,6 +25,33 @@ changed during implementation — both measured, not argued:**
   DESTROYED voxels, and a soot ring of 5 is not representable in the
   per-face encoding. See D9's own row.
 
+> **⚠️ 2026-08-09 — one measurement from the Alpha Explosion Waves session
+> belongs here, because it contradicts the instinct this whole plan runs on.**
+>
+> Rebuilding the detonation's pacing produced a clean A/B nobody had run:
+> applying a real blast's 2072 cell writes **all in one frame costs 26 ms**,
+> while spreading the identical work at 60 cells/frame costs **485 ms total**.
+> Every intermediate budget landed in between, and the *per-frame* apply cost
+> fell monotonically the whole way (24.3 → 4.4 → 2.2 → 0.9 ms) while the total
+> got worse.
+>
+> **The cost is per FRAME that writes to a `TileMapLayer`, not per cell** —
+> Godot rebuilds the dirtied layers once per frame regardless of how many cells
+> changed. Consequences for anyone optimizing here:
+>
+> - "Spread the work thinner across frames" is the *wrong* instinct for this
+>   pipeline, and it looks right in every log while making the blast slower.
+> - The `apply=` column in the `[E-WAVE]` log is the wrong number to tune
+>   against. Read totals.
+> - A frame that touches N layers is what costs; batching writes so fewer
+>   distinct layers are dirtied per frame is the untested lever that *would*
+>   follow from this finding, and nobody has measured it yet.
+>
+> **Caveat:** measured in the off-screen capture harness, which renders a
+> detonation at ~8 fps, so the ~120 ms per-frame constant is certainly smaller
+> on a real windowed run. The SHAPE of the finding is what to trust, not the
+> constant. Full data: `EXPLOSION_REBUILD_MASTER_PLAN`'s E-ORGANIC-01 block.
+
 **Companions:** `PROMPTS/ENGINE_PERFORMANCE_REVIEW.md` (closed 2026-08-03,
 ROTATE-KILL-01 — a *different* stall, camera rotation, not detonation; that
 review's Q1 "is destruction worth its resource cost" is partially answered

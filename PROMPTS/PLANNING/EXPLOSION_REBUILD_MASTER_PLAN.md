@@ -959,6 +959,16 @@ Detonation sequence (Phase B order, with Phase A's part marked):
 10. **[PHASE A]** 15 waves, fired one after another, inner rings first, each
     wave independent — no wave waits for the previous one to finish:
 
+    > **⚠️ SUPERSEDED 2026-08-09 by E-ORGANIC-01/E-RADIAL-01 — the TABLE below
+    > survives, the SCHEDULE does not.** The Director retired the fixed 15
+    > waves (*"não precisamos fixar as 15 waves"*): a wave was whatever cells
+    > fell in one (kind, ring) bucket, and buckets are wildly uneven, so
+    > pacing by bucket guaranteed one catastrophic frame AND made effects
+    > arrive in per-category blocks. The plan now flattens into one queue of
+    > single-cell steps ordered by **radius from the epicentre**, paced
+    > against a deadline. This table is still the tie-break ORDER at equal
+    > radius. Read E-ORGANIC-01/E-RADIAL-01 before §11.
+
     | # | Wave | | # | Wave |
     |---|---|---|---|---|
     | 1 | Destruction ring 0 | | 9 | Smoke ring 1 |
@@ -1330,10 +1340,16 @@ A small `DetonationChoreographer` (new, ~120 lines) walks a static wave table
 on absolute elapsed time from the flash, so a slow wave never delays the next —
 matching *"cada onda independente, sem esperar a outra acabar."*
 
-**Cadence confirmed 2026-08-06: 40 ms/wave** → 15 waves ≈ 600 ms of
-choreography (was 560 ms/14 waves before Smoke ring 3 was added).
-`wave_interval_ms` is a `var`, not a `const`, and trivially re-tuned after the
-first capture.
+~~**Cadence confirmed 2026-08-06: 40 ms/wave** → 15 waves ≈ 600 ms of
+choreography (was 560 ms/14 waves before Smoke ring 3 was added).~~
+
+> **⚠️ SUPERSEDED 2026-08-09.** The Director moved this three times in one
+> session — 40 ms → 20 ms → "no máximo 1 frame por wave" → no fixed wave at
+> all. There is no per-wave interval any more: `sequence_ms` (240) is what the
+> WHOLE blast should take, and each frame advances the queue to wherever that
+> deadline says it should be. The paragraph's last sentence is the part that
+> held up — it is still a `var`, and it was still re-tuned against real
+> captures. See E-ORGANIC-01.
 
 Smoke waves call the existing `SmokeSparkOverlay.add_smoke()` with per-blob
 durations drawn from the ring (Director: *"usando durações diferentes"*) — that
@@ -1731,17 +1747,42 @@ animation is not.
 
 ---
 
-## 11. Next session starts here (updated 2026-08-07, post-Task-5)
+## 11. Next session starts here (updated 2026-08-09, post-Alpha-Explosion-Waves)
 
-**Resume point:** Task 0, Task 1a (E-MAT), Task 1b (E-BAKE), Task 2
-(E-RING), Task 3 (E-SOOT), Task 4 (E-PLAN), and Task 5 (E-WAVE) are all done
-and committed. **Grenades detonate for real** — right-click "Detonar" on a
-TEST-ZONE grenade now damages voxels, repaints, and plays the real 15-wave
-sequence on screen (`Screenshots/history/e_wave_detonation.png`), with a
-real per-wave `[E-WAVE]` timing log printed on every detonation. Firearms
-are untouched (separate real capture confirmed this session). Phase A of
-this plan — bake + calculation + waves on the current right-click trigger —
-is now functionally complete end to end.
+**Resume point:** Tasks 0 through 5 are done and committed, and the
+2026-08-08/09 session (VERSION 0.9.93, "Alpha Explosion Waves") took the blast
+from "the waves fire" to **one organic event**. Full record:
+`PROMPTS/RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md`; per-topic detail in the
+E-DENT-01 / E-CRACK-01 / E-SMOKE-01 / E-FLASH-01..03 / E-ORGANIC-01 /
+E-RADIAL-01 / E-NATIVE-01 blocks just above §11's own order of business.
+
+What a detonation is today, end to end:
+
+1. `Room.spawn_blast_burst()` fires the core — embers, sparks and dust from the
+   overlays this project already had. **No imported sprite** (E-NATIVE-01).
+2. A **negative** screen flash inverts the world and tweens back
+   (`INFILTRAITOR_WHITE_FLASH=1` restores the old white one), drawn BELOW
+   ember/smoke so the fire is not inverted with the world it is lighting.
+3. Camera shake, starting on the same beat.
+4. `DetonationChoreographer` replays the plan as an **expanding front**: every
+   entry sorted by its own radius from the epicentre, so effects interleave by
+   where they physically are instead of arriving in per-category blocks, and
+   paced against a deadline with catch-up (E-RADIAL-01, E-ORGANIC-01).
+5. Per-voxel smoke — one puff per damaged voxel, intensity and lifetime from its
+   damage tier, its ring, and a per-cell hash.
+
+**Everything above is a `var`.** The Director's stated next step is the fine
+tuning pass (*"depois fazemos o ajuste fino"*), and the surface is:
+`bombs/frag_grenade.json`'s ring weights · `sequence_ms` / `front_jitter` /
+`KIND_RADIUS_BIAS` in `detonation_choreographer.gd` · `blast_burst_*` in
+`room.gd` · the flash's own `flash_*` fields · `SmokeSparkOverlay`'s duration and
+drift defaults · `DetonationPlanBuilder`'s `SMOKE_*` and `CRATER_*` constants.
+
+**Read before re-tuning anything performance-shaped:** the cost of this sequence
+is **per frame that writes to a `TileMapLayer`**, not per cell — measured, and it
+inverted the obvious answer once already (see the E-ORGANIC-01 block's table).
+Tuning against the `apply=` column in the `[E-WAVE]` log will make the blast
+slower while every number in the log improves.
 
 Older order-of-business items (Q1b confirmation, Task 0 through Task 5) are
 fully closed and folded into §1/§8.1/§8's task rows / the closure notes
@@ -2379,7 +2420,8 @@ Nothing in this plan is reported done on reasoning. Each task closes with:
 `project_lint.py` clean · `run_selftests.py` clean · `check_invariants.py` OK ·
 `gen_codemap.py --check` clean · **and a real capture from the real PLAYGROUND
 map with real counts printed** — the floor-dent lesson (69 dents on a fixture,
-zero on PLAYGROUND) applies to every single one of the 15 waves.
+zero on PLAYGROUND) applies to every effect the blast can produce — which since
+2026-08-09 is a radially-ordered queue of per-voxel steps, not 15 waves.
 
 Captures meant to be cited here get **hand-picked names** (`expl_wave3_ring0.png`),
 never `auto_*` — the 50-file rotation eats those, and 16 of 23 `auto_*`

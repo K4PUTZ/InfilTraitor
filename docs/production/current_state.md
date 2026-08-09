@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.92 · **Updated:** 2026-08-08 · **Branch:** main
+**Version:** 0.9.93 · **Updated:** 2026-08-09 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -42,6 +42,7 @@
 - RESUMO_SESSAO_2026-08-07_E_SOOT_TASK3.md
 - RESUMO_SESSAO_2026-08-07_E_WAVE_TASK5.md
 - RESUMO_SESSAO_2026-08-07_POST_TASK5_SOOT_DIAG.md
+- RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md
 - RESUMO_SESSAO_2026-08-08_E_EARTH_D35.md
 - RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md
 - RESUMO_SESSAO_2026-08-08_GPU_FLUSH_AND_SOOT_REVERSAL.md
@@ -52,7 +53,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 137
+- GDScript modules: 138
 - Test scripts: 41
 - Known maps: 3
 - Shipped facade files: 0
@@ -403,13 +404,41 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (60% — Alpha, functional; Phase A complete, Phase B not started)
+### Explosive Destruction (70% — Alpha, functional and polished; Phase A complete, Phase B not started)
 
-✅ **A grenade damages voxels and repaints, for real, on screen** —
-right-click "Detonar" on a TEST-ZONE grenade now runs the whole pipeline:
-resolution, exposure fallback, one light-field query, then a real 15-wave
-choreography (`Screenshots/history/e_wave_detonation.png`). Firearm
-destruction (above) is untouched and still works exactly as before.
+✅ **A grenade detonates as ONE ORGANIC EVENT, on screen** — right-click
+"Detonar" on a TEST-ZONE grenade runs the whole pipeline: resolution,
+exposure fallback, one light-field query, then a burst built from this game's
+own overlays, a negative screen flash, camera shake, and an **expanding front**
+of per-voxel effects that ends at the widest circle. Firearm destruction
+(above) is untouched and still works exactly as before.
+
+✅ **0.9.93 "Alpha Explosion Waves" (2026-08-08/09)** — eight passes that took
+the blast from "the waves fire" to something that reads right. Full record:
+[`RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md`](../../PROMPTS/RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md).
+- **The floor finally CRACKS** (E-CRACK-01). `apply_crater_damage()` had no
+  crack roll at all, so `FLOOR/cracked` measured **0 on every material on every
+  blast** — D19's "floors crack like walls" was closed in the data and never in
+  the code. Found by a new per-(surface, material) `[E-PLAN]` census, which the
+  old blended per-wave counts could not have shown.
+- **The fixed 15-wave table is retired** (E-ORGANIC-01, E-RADIAL-01). The plan
+  flattens into one queue of single-cell steps ordered by **radius from the
+  epicentre**, paced against a deadline with catch-up. Categories interleave by
+  where they physically are instead of arriving in per-category blocks —
+  **171 category switches against ~15** before.
+- **Smoke is per damaged voxel** (E-SMOKE-01) — 22 puffs → **465**, each one's
+  intensity and lifetime from its damage tier, its ring, and a per-cell hash.
+- **The imported fireball is gone** (E-NATIVE-01). Three rounds of tuning an
+  authored sprite never fixed a style mismatch; the blast's core is now
+  `Room.spawn_blast_burst()` — embers, sparks and dust from overlays that
+  already existed.
+- **The soot stamp is OFF for now** (E-DENT-01), at the live caller only.
+- Two measurements worth carrying: the sequence's cost is **per frame that
+  writes to a TileMapLayer, not per cell** (a naive per-frame budget made the
+  blast 3–20× slower while every log number improved), and the "engasgada" the
+  Director kept feeling was a **150 ms frame**, not the flash.
+- ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
+  face — a faint tonal patch rather than a fracture. Art, not wiring.
 
 ✅ **Tasks 0–5 of the rebuild are done — Phase A is functionally complete**
 ([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),
@@ -454,10 +483,11 @@ destruction (above) is untouched and still works exactly as before.
   `VoxelRenderer._set_voxel_cell()`/`apply_damage_voxel_swap()` (trailing
   `apply` param, every existing caller byte-for-byte unaffected). Commit
   `ddbe7dd`.
-- **Task 5 (E-WAVE)** — `DetonationChoreographer` plays the plan back as the
-  real 15-wave sequence (independent `SceneTreeTimer` per wave, 40 ms
-  cadence), and `TestZoneController.detonate_active()` is reconnected end to
-  end. Real bug caught by the capture itself: a `SceneTreeTimer`'s signal
+- **Task 5 (E-WAVE)** — `DetonationChoreographer` plays the plan back and
+  `TestZoneController.detonate_active()` is reconnected end to end. As shipped
+  this was 15 fixed waves on independent `SceneTreeTimer`s at 40 ms; **both the
+  table and the timers were retired on 2026-08-09** (E-ORGANIC-01/E-RADIAL-01,
+  above) in favour of a radially-ordered queue paced against a deadline. Real bug caught by the capture itself: a `SceneTreeTimer`'s signal
   connection alone did not keep the (RefCounted) choreographer alive long
   enough — fixed with an explicit owner reference. Commit `98e9772`.
 - **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
@@ -465,9 +495,10 @@ destruction (above) is untouched and still works exactly as before.
 - **What's still open:** Phase B (targeting UI, throw arc/bubble, explosion
   flash frames) is not started — the Director chose to prove Phase A's 15
   waves with real captures first. The decal-bake formalization that blocked
-  Task 6 is **done — D34, 2026-08-08** (see the D34 bullet below); Task 6
-  (the tuning pass, including soot ring weights) is now the next concrete
-  action. Blast debris VFX (dust/spark/chip) was
+  Task 6 is **done — D34, 2026-08-08** (see the D34 bullet below), and Task 6's
+  own tuning pass ran on 2026-08-08/09 (0.9.93). **The next concrete action is
+  the Director's fine-tuning pass** — every lever is a `var`; the surface is
+  listed in the master plan's §11. Blast debris VFX (dust/spark/chip) was
   deliberately disconnected in Task 5 (would have doubled up with the new
   staged smoke waves) — flagged for a future task, not silently dropped.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently

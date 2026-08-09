@@ -893,6 +893,34 @@ unrelated art, so a concrete floor could never read as the same material as a
 concrete wall — and `slab_metal/stone/wood` did not exist at all until a
 2026-08-08 stopgap reused the wall facade for them, stretched and mis-tinted.
 
+### FLOOR CRACKED joins the atom roster (E-CRACK-01, 2026-08-08)
+
+`DamageVariantBaker`'s header used to state that FLOOR CRACKED was deliberately
+not baked, "unreachable in practice today", for two reasons that were both true
+when written and are both gone now:
+
+- `floor_damage_material()` keyed the CRACKED case off the shared `"earth"`
+  naming sentinel — **fixed by D34/E-SEAM-02** above, which made the name
+  material-real, so a concrete floor now asks for `concrete_blast_cracked_all_N`.
+- `apply_crater_damage()` never called `set_damage(CRACKED, …)` for a floor voxel
+  at all — **fixed by E-CRACK-01**, which gave the crater path a real crack tier
+  (see `EXPLOSION_REBUILD_MASTER_PLAN`). Before that, `FLOOR/cracked` measured
+  **0 on every material on every real blast**, regardless of `crack_factor`.
+
+No new compositing was needed. §3.2's roster always described CRACKED as
+**universal — floor + wall + ceiling (D6)**, and the wall's CRACKED-blast atom
+*is* that atom (a 3-face composite). The baker now registers it a second time
+under `"FLOOR"` for any floor material with `crack_factor > 0`, from the same
+composite, with no extra atlas slot — exactly the registration D6 already does
+for `"CEILING"`. Only the registration was ever missing.
+
+Consequence worth knowing before changing bomb data: a cracked FLOOR voxel
+renders the full 3-face atom, while a DENTED one is a half-voxel carve. If a
+cracked floor voxel's neighbours are destroyed it therefore reads as a complete
+block standing in the hole — observed directly (`e_crack_ring0_artifact.png`)
+when `crack_ring_weights[0]` was raised above 0. §4.2's "cracked never in ring 0"
+is what keeps that unreachable, and it is load-bearing, not cosmetic.
+
 ### Color model — the one real departure from B2 (SUPERSEDED, see above)
 
 Walls/ceiling sample `FacadeSampler`-style GRAYSCALE facades, tinted by

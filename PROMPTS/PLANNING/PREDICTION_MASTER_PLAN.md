@@ -2,12 +2,14 @@
 ## Simulate without committing: the engine's pure-prediction, pre-production and cache layer — v1.0
 
 **Date opened:** 2026-08-09
-**Status:** 🟢 **BUILDING. Task 1 (P-PLAY) shipped 2026-08-09 — see §8.1.** The
-blast went from 3 frames to 24 and the expanding front is visible for the first
-time. Tasks 2–6 (the purity refactor, the Delta, slicing, the cache, the
-"cooking" beat) are planned and unbuilt. Every number below is measured on a
-real PLAYGROUND detonation; every claim about what mutates comes from reading
-the actual writers, not from the plan text of another document.
+**Status:** 🟢 **BUILDING. Tasks 1 (P-PLAY) and 2 (P-PURE) shipped 2026-08-09 —
+see §8.1 and §8.6.** The blast is paced by frame count and its expanding front
+is visible; the two blast mutators are now `commit(simulate(…))`, so the engine
+can compute a detonation's full damage without causing it. Tasks 3–6 (the Delta
+type, slicing, the cache, the "cooking" beat) are planned and unbuilt. Every
+number below is measured on a real PLAYGROUND detonation; every claim about what
+mutates comes from reading the actual writers, not from the plan text of another
+document.
 **Opened by:** the Director, 2026-08-09, when the explosion's pre-production
 question turned out to be an engine question:
 
@@ -240,13 +242,47 @@ simulate_container_damage(voxels, …) -> Dictionary   # pure, new
 apply_container_damage(voxels, …)                    # = commit(simulate(…)), unchanged behaviour
 ```
 
-The reads are the subtle part, not the writes: both functions currently read
-`voxel.damage_state` **as they go** (a voxel destroyed earlier in the same pass
-changes what a later voxel does — the cascade in `apply_container_damage()`'s
-own neighbour logic). The pure version must therefore read through an overlay
-that answers *"state as of this simulation so far"*, not *"state on the real
-Voxel"*. **This is the single highest-risk detail in the refactor** and it gets
-its own task and its own red-before-green test (Task 2).
+#### ⚠️ The read-overlay this section predicted DOES NOT EXIST — corrected 2026-08-09
+
+The original text of this section read:
+
+> *The reads are the subtle part, not the writes: both functions currently read
+> `voxel.damage_state` **as they go** (a voxel destroyed earlier in the same
+> pass changes what a later voxel does — the cascade in
+> `apply_container_damage()`'s own neighbour logic). The pure version must
+> therefore read through an overlay that answers "state as of this simulation so
+> far". **This is the single highest-risk detail in the refactor.***
+
+**It was wrong, in the same way §2.3's firearm claim was wrong, and one grep
+reversed it.** The only Voxel state access in either function is the
+`set_damage()` write itself:
+
+```
+$ sed -n '609,680p' blast_calculator.gd | grep -n "damage_state|.visible|set_damage|damage_is_blast|damage_carved|damage_variant|damage_substrate"
+52:			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+62:			voxel.set_damage(Voxel.DamageState.DENTED, true,
+67:			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
+--- crater 882-972 ---
+20:			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+30:				voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+75:			voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
+88:		voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
+```
+
+Zero reads of `damage_state`, `visible`, or any damage field. There is also no
+"neighbour logic" in `apply_container_damage()` — it partitions the voxels into
+ring groups and draws three disjoint sets from each group's pool, so **no voxel
+is written twice in one call** and there is no in-pass cascade to overlay.
+
+What *does* depend on prior state is `Voxel.set_damage()`'s own early return and
+its read-once rule for the other four fields — and those stay in the commit,
+which is strictly better: a Delta replayed onto a world that has since moved on
+behaves identically to a direct call, instead of baking in the world it was
+computed against.
+
+**The lesson is the recurring one on this project: a risk stated in a plan is a
+hypothesis, and this one cost two greps to falsify.** The red-before-green test
+the section demanded was still built, and still earns its place — see §8.6.
 
 ### 3.4 What the Delta must expose for non-explosion consumers
 
@@ -466,7 +502,7 @@ refactor lands behind a regression net.
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
 | **1** | ✅ **DONE 2026-08-09 — P-PLAY**, see §8.1 | Frame-count pacing (`front_frames`), band quantization (`band_voxels`), fire/shake tuning. `cells_due_now()` retired. No prediction work. | **Met.** 24 frames exactly on the real blast, heaviest frame 13.5% (was 94%); front advances 1.0→25.0 band by band; 3 pixel-diffed captures. Director sign-off pending on the look. |
-| **2** | **P-PURE** — the purity refactor | `simulate_container_damage()` / `simulate_crater_damage()`; existing mutators become `commit(simulate(…))`. §3.3's read-overlay is the hard part. | **`blast_calculator_selftest.gd` passes with ZERO edits** — it is the net, not collateral. Plus a new red-before-green test: `simulate()` on a real PLAYGROUND blast leaves all 7 fields of every voxel untouched, asserted by before/after field snapshot over the full affected set. Byte-identical Delta from `simulate()` and from the committed path. |
+| **2** | ✅ **DONE 2026-08-09 — P-PURE**, see §8.6 | `simulate_container_damage()` / `simulate_crater_damage()` + `commit_damage()`; the mutators are now `commit(simulate(…))`. §3.3's read-overlay turned out not to exist. | **Met.** `blast_calculator_selftest.gd` passes with **zero edits** (`git diff --name-only` names only `blast_calculator.gd`). New `blast_purity_selftest.gd`: 7/7 on the real PLAYGROUND blast, 100 896 voxels × 7 fields unchanged by `simulate()`, red-before-green demonstrated. Real detonation census byte-identical to the pre-refactor baseline. |
 | **3** | **P-DELTA** — `WorldDelta` as a real type | Today's plan Dictionary becomes an inspectable Delta with §3.4's census as a field. `DetonationPlanBuilder` produces one; `commit()` consumes one. | `run_selftests.py` clean. A real detonation is pixel-identical to the pre-refactor one — the same 0-differing-pixels gate Task 1a of the explosion plan used. |
 | **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. |
 | **5** | **P-CACHE** — the cache | §5's keyed, revision-invalidated LRU. `request_prediction()` / cancel / reuse. Sized for one cursor, not for guard AI (Q3). | A scripted 10-GU cursor sweep: measured hit rate on return-to-a-previous-GU, and a proof that every committed mutation invalidates. |
@@ -751,6 +787,133 @@ generic lesson for any future capture rig in this project: **grab on
 when something blocks the main thread, so a rig that looks correct today will
 start lying the moment it is pointed at expensive work.
 
+### 8.6 Task 2 (P-PURE) closure — 2026-08-09
+
+**What shipped.** Three new functions in `blast_calculator.gd`, one renamed:
+
+```
+damage_entry(voxel, state, from_blast, carved_side, variant, substrate) -> Dictionary
+commit_damage(entries: Array) -> void            # the pipeline's only writer now
+simulate_container_damage(…) -> Array            # was the body of apply_container_damage
+simulate_crater_damage(…)    -> Array            # was the body of apply_crater_damage
+_append_floor_surface_damage(…)                  # was _roll_floor_surface_damage
+apply_container_damage(…) / apply_crater_damage(…)  # now commit(simulate(…)), signatures untouched
+```
+
+A Delta is an **ordered Array of pending `set_damage()` calls**. Ordered on
+purpose: replaying them in the order the simulation produced them makes
+`commit(simulate(…))` identical to the old direct calls *by construction*,
+rather than by an argument that order happens not to matter.
+
+**The one design call worth stating.** The early-return and read-once semantics
+of `Voxel.set_damage()` stay in the **commit**, not the simulate — so a Delta is
+"what these voxels would be told", not "what they would become". That is the
+right side of the line for prediction: a Delta computed on hover and committed
+half a second later behaves exactly like a direct call at commit time, instead
+of silently carrying the world it was computed against. §11.5's determinism
+invariant is what makes the deferral safe.
+
+**Gates, literal.**
+
+```
+$ git diff --name-only
+godot/scripts/systems/destruction/blast_calculator.gd
+
+$ python3 tools/persistent/run_selftests.py --only blast_calculator
+  ✓ blast_calculator_selftest.gd               0.9s
+[SELFTEST] RESULT: 1 clean, 0 failed
+
+$ python3 tools/persistent/project_lint.py
+[LINT] ✅ PASSED — No real compile errors detected
+[LINT] Files checked: 191
+
+$ python3 tools/persistent/run_selftests.py
+[SELFTEST] Running 34 selftest(s)
+[SELFTEST] RESULT: 34 clean, 0 failed
+```
+
+The regression net passed **before the new test existed and without a single
+edit to it** — that ordering is the point, and it is why the new assertions went
+into a separate file (see below) instead of into the suite that was doing the
+pinning.
+
+**The new test: `godot/scripts/tools/blast_purity_selftest.gd`.** Real
+PLAYGROUND, real frag grenade, no fixture:
+
+```
+  (real PLAYGROUND, frag_grenade, source GU (0, 1))
+
+[1] §11.4 — simulate() leaves all 7 mutable fields of every voxel untouched
+  ✓ 100896 voxel(s) x 7 fields — not one changed during simulate
+  ✓ 1184 container dirty_count(s) unchanged — nothing was queued for repaint either
+[2] §11.5 — two simulate() calls on an unchanged world return the same Delta
+  ✓ 167 entries, identical in order and in all 5 payload fields
+[3] The Delta the REAL map produces is real — not a clean-but-inert simulate
+      destroyed 105 · dented 42 · cracked 20   (167 entries total)
+  ✓ all three damage tiers are present on the real PLAYGROUND blast
+[4] commit_damage() writes exactly what the Delta described
+  ✓ 167 entries committed, every one landed exactly as described (0 no-op entr(ies))
+  ✓ all 105 DESTROYED entries also cleared `visible` — the 7th field travels too
+  ✓ no voxel outside the Delta came out dirty — the commit's reach is the Delta's
+
+RESULT: 7 PASS, 0 FAIL
+```
+
+Test 1 snapshots **every voxel in the map**, not the affected set — a simulate
+that wrote outside its own reach is exactly what a purity test is for, and
+scoping the snapshot to the affected set would hide it. `dirty_count` is checked
+separately because it is the one mutable field that does not live on a Voxel.
+
+**Red-before-green, and what it revealed about the other three tests.** With one
+`voxel.set_damage(...)` added inside `damage_entry()` — the smallest edit that
+makes both simulate functions impure at once:
+
+```
+[1] ✗ 167 voxel(s) changed state during simulate (e.g. (7,11) level 0:
+      [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true])
+    ✗ 3 container(s) had their dirty_count moved by simulate
+[2] ✓ 167 entries, identical in order and in all 5 payload fields
+[3] ✓ all three damage tiers are present on the real PLAYGROUND blast
+[4] ✓ 167 entries committed, every one landed exactly as described (167 no-op entr(ies))
+RESULT: 5 PASS, 2 FAIL
+```
+
+**Tests 2, 3 and 4 all stayed green while the function was mutating the world.**
+Determinism, a healthy tier census and a faithful commit are every one of them
+true of an impure simulate. Test 1 is the only thing standing between this plan
+and a `simulate()` that silently damages the map, which is precisely the claim
+§3.2 rejected snapshot/restore on.
+
+**Real-map verification (§11.7 — a green selftest does not close a task).** Same
+grenade, same map, same harness, before and after the refactor:
+
+```
+[E-PLAN] census gu=(13, 5) — surface/material: destroyed · dented · cracked (bake hits)
+[E-PLAN]   FLOOR/concrete   destroyed   89 · dented   58 · cracked   42   (baked 100/live 0)
+[E-PLAN]   FLOOR/stone      destroyed  143 · dented   40 · cracked   20   (baked 60/live 0)
+[E-PLAN]   WALL/stone       destroyed   12 · dented   32 · cracked   28   (baked 60/live 0)
+[E-WAVE] frame 1 front_r=5.0  cells=278/2072
+[E-WAVE] frame 2 front_r=10.0 cells=882/2072
+[E-WAVE] frame 3 front_r=15.0 cells=1834/2072
+[E-WAVE] frame 4 front_r=20.0 cells=2037/2072
+[E-WAVE] frame 5 front_r=inf  cells=2072/2072
+```
+
+`diff` against the pre-refactor baseline differs **only in the wall-clock
+`elapsed=`/`apply=` columns** — every census figure and every per-frame cell
+count is identical.
+
+**What did NOT change, and this is the honest limit of Task 2.**
+`DetonationPlanBuilder.build_plan()` still mutates. It calls the `apply_*`
+wrappers, and everything after them (`_index_soot_voxel`, `_voxel_occupancy`,
+the packaging loop, `_resolve_damaged_tile`) reads the *mutated* Voxels. Task 2
+built the seam; **Task 3 (P-DELTA) is what makes `build_plan()` itself pure**,
+and until it lands nothing user-visible has moved. The 166 ms still blocks the
+frame the player is watching.
+
+**Also worth recording:** the selftest baseline in §11.2 moves from 33/33 to
+**34/34** — `blast_purity_selftest.gd` is the 34th.
+
 ---
 
 ## 9. Explicitly out of scope
@@ -896,6 +1059,7 @@ these, with pasted literal output — never a reasoned expectation.
    touched.
 2. `run_selftests.py` — clean. **Baseline for this plan: 33/33 clean,
    `project_lint` 190 files / 0 errors, measured 2026-08-09 before any work.**
+   Now **34/34 clean, 191 files** — Task 2 added `blast_purity_selftest.gd`.
 3. `check_invariants.py` + `gen_codemap.py --check` — clean.
 4. **The purity invariant, asserted not assumed:** after any `simulate()`, a
    before/after snapshot of all 7 mutable fields (§2.1) across the entire

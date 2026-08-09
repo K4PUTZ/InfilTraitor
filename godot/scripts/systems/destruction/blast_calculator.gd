@@ -560,9 +560,64 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 	return {"slices": hit_slices, "roofs": hit_roofs, "floors": hit_floors}
 
 
-## Applies ring falloff + material resistance to one container's (Slice or
-## Slab) voxels and writes real damage via Voxel.set_damage() — the only
-## writer of destruction state, per DESTRUCTION_MASTER_PLAN §3.
+## ============================================================================
+## P-PURE (PREDICTION_MASTER_PLAN Task 2, 2026-08-09) — the two blast mutators
+## became `commit(simulate(…))`.
+##
+## `simulate_*` computes a blast's damage and writes NOTHING; `commit_damage()`
+## is the only thing in this pipeline that touches a Voxel. That split is what
+## lets the engine answer "what would this grenade do" without doing it, which
+## is the whole of PREDICTION_MASTER_PLAN §3.
+##
+## **The signatures, the rolls, the ring maths and every hash salt are byte for
+## byte what they were.** `apply_*` keeps its old signature and its old
+## behaviour exactly, which is why `blast_calculator_selftest.gd`'s ~20 direct
+## call sites are the regression net for this refactor and were not edited.
+##
+## **The read-overlay the plan feared does not exist — a finding, not a
+## shortcut.** §3.3 called it "the single highest-risk detail in the refactor",
+## on the belief that these functions read `voxel.damage_state` as they go and
+## that a voxel destroyed earlier in a pass changes what a later one does.
+## Measured instead: the ONLY Voxel state access in either function is the
+## `set_damage()` write itself — zero reads of `damage_state`, `visible`, or any
+## other damage field — and no voxel is written twice in one call (ring groups
+## partition the voxels; destroy/dent/crack are disjoint draws from one shrinking
+## pool; a crater voxel takes at most one branch). There is no in-pass cascade to
+## overlay, so the pure version needs no notion of "state as of this simulation
+## so far".
+##
+## What DOES depend on prior state is `Voxel.set_damage()`'s own early return
+## (`damage_state == new_state`) and the read-once rule for the other four
+## fields. Those stay in the commit, exactly where they always were — so a Delta
+## replayed onto a world that has moved on behaves identically to a direct call,
+## instead of the prediction quietly baking in the world it was computed against.
+## ============================================================================
+
+## One pending `set_damage()` call. A damage Delta is an ordered Array of these.
+## Ordered, because replaying them in the order the simulation produced them is
+## what makes `commit_damage(simulate(…))` identical to the old direct calls by
+## construction, rather than by an argument that order happens not to matter.
+static func damage_entry(voxel, state: int, from_blast: bool,
+		carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0,
+		substrate: int = 0) -> Dictionary:
+	return {"voxel": voxel, "state": state, "from_blast": from_blast,
+		"carved_side": carved_side, "variant": variant, "substrate": substrate}
+
+
+## Applies a damage Delta — the single writer the blast pipeline has left.
+## Deliberately dumb: no rolls, no lookups, no geometry. Everything that could
+## be wrong was decided in the simulate.
+static func commit_damage(entries: Array) -> void:
+	for e in entries:
+		e["voxel"].set_damage(e["state"], e["from_blast"], e["carved_side"],
+			e["variant"], e["substrate"])
+
+
+## Computes ring falloff + material resistance for one container's (Slice or
+## Slab) voxels and returns the damage Delta — the `set_damage()` calls that
+## WOULD be made. Writes nothing (P-PURE, above); `apply_container_damage()`
+## below is this plus `commit_damage()`, and remains the only writer path, per
+## DESTRUCTION_MASTER_PLAN §3.
 ##
 ## D14 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06 — spherical falloff,
 ## confirmed against real code 2026-08-06): the vertical ring step is now
@@ -606,12 +661,13 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 ## gate just below, both still read its length, not the new arrays'.
 ## MaterialResistanceTable keeps multiplying in exactly as before (D1's own
 ## clarification) — this is an ADDITIONAL term, not a replacement of it.
-static func apply_container_damage(voxels: Array, container_id: String, material: String,
+static func simulate_container_damage(voxels: Array, container_id: String, material: String,
 		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float],
 		destroy_ring_weights: Array[float], dent_ring_weights: Array[float],
 		crack_ring_weights: Array[float],
 		bias_epicenter: Vector2i = NO_EPICENTER_BIAS,
-		destroy_multiplier: float = 1.0) -> void:
+		destroy_multiplier: float = 1.0) -> Array:
+	var entries: Array = []
 	var by_ring: Dictionary = {}  # ring -> Array[Voxel]
 	for voxel in voxels:
 		var level_offset: int = voxel.level - base_level
@@ -657,7 +713,7 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		## radius produced a byte-identical soot map (925 sooted voxels either
 		## way) on the real PLAYGROUND blast.
 		for voxel in destroy_set:
-			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+			entries.append(damage_entry(voxel, Voxel.DamageState.DESTROYED, true))
 		## D23: this is the ring-group scatter model, used only by RADIAL — a
 		## blast's DENTED/CRACKED voxels get the irregular chip/crack texture
 		## family, never the bullet's round puncture.
@@ -667,14 +723,30 @@ static func apply_container_damage(voxels: Array, container_id: String, material
 		## voxel's cell, so two voxels of the same blast rarely share art, and a
 		## re-run of the same detonation reproduces it exactly.
 		for voxel in dent_set:
-			voxel.set_damage(Voxel.DamageState.DENTED, true,
+			entries.append(damage_entry(voxel, Voxel.DamageState.DENTED, true,
 				carved_side_for(voxel.grid_pos, is_roof, bias_epicenter),
 				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
-				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level)))
 		for voxel in crack_set:
-			voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
+			entries.append(damage_entry(voxel, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
 				decal_variant_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level),
-				substrate_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level))
+				substrate_for(container_id, voxel.grid_pos.y, voxel.grid_pos.x + voxel.level)))
+	return entries
+
+
+## The mutating call, unchanged for every caller that already had one:
+## `commit(simulate(…))`. Kept — not deprecated — because DetonationPlanBuilder
+## and ~20 selftest sites legitimately want the damage to happen, and because
+## those sites are precisely the regression net that pins this refactor.
+static func apply_container_damage(voxels: Array, container_id: String, material: String,
+		base_ring: int, base_level: int, is_roof: bool, ring_multipliers: Array[float],
+		destroy_ring_weights: Array[float], dent_ring_weights: Array[float],
+		crack_ring_weights: Array[float],
+		bias_epicenter: Vector2i = NO_EPICENTER_BIAS,
+		destroy_multiplier: float = 1.0) -> void:
+	commit_damage(simulate_container_damage(voxels, container_id, material, base_ring,
+		base_level, is_roof, ring_multipliers, destroy_ring_weights, dent_ring_weights,
+		crack_ring_weights, bias_epicenter, destroy_multiplier))
 
 
 ## D14's spherical vertical-ring step, extracted out of apply_container_damage()
@@ -879,12 +951,17 @@ static var CRATER_DAMAGE_MAX_RING: int = 2
 ## to `[]`, which means: dent → un-gated (weight 1.0, today's behaviour exactly),
 ## crack → 0.0 (off). Every pre-existing caller and selftest is therefore
 ## byte-for-byte unaffected, the same discipline D2/D17 used on this signature.
-static func apply_crater_damage(voxels: Array, container_id: String,
+##
+## P-PURE: the pure half. Returns the damage Delta and writes nothing — see the
+## P-PURE block above apply_container_damage() for what that does and does not
+## change. `apply_crater_damage()` below is this plus `commit_damage()`.
+static func simulate_crater_damage(voxels: Array, container_id: String,
 		epicenter: Vector2i, core_radius: float, max_radius: float,
 		material: String = "", deep_layer_unlocked: bool = false,
 		slab_pierce_multiplier: float = 1.0,
 		dent_ring_weights: Array[float] = [],
-		crack_ring_weights: Array[float] = []) -> void:
+		crack_ring_weights: Array[float] = []) -> Array:
+	var entries: Array = []
 	var rim_span: float = maxf(max_radius - core_radius, 0.001)
 	var dent_f: float = MaterialResistanceTable.dent_factor(material)
 	var crack_f: float = MaterialResistanceTable.crack_factor(material)
@@ -898,7 +975,7 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 		if d <= core_radius:
 			## PERF-02 B3: blast provenance on the hole itself — see
 			## apply_container_damage()'s own note for why it matters now.
-			voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+			entries.append(damage_entry(voxel, Voxel.DamageState.DESTROYED, true))
 		elif d <= max_radius:
 			## Probability of removal falls 1→0 across the rim; a deterministic
 			## per-voxel hash in [0,1) is compared against it, so the same voxels
@@ -908,15 +985,29 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 			var key: String = "%s:CRATER:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 			var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
 			if h < keep_prob:
-				voxel.set_damage(Voxel.DamageState.DESTROYED, true)
+				entries.append(damage_entry(voxel, Voxel.DamageState.DESTROYED, true))
 			else:
-				_roll_floor_surface_damage(voxel, container_id, d, max_radius, rim_span,
-					ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
+				_append_floor_surface_damage(entries, voxel, container_id, d, max_radius,
+					rim_span, ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
 					slab_pierce_multiplier)
 		elif ring <= CRATER_DAMAGE_MAX_RING:
-			_roll_floor_surface_damage(voxel, container_id, d, max_radius, rim_span,
-				ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
+			_append_floor_surface_damage(entries, voxel, container_id, d, max_radius,
+				rim_span, ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
 				slab_pierce_multiplier)
+	return entries
+
+
+## The mutating call, unchanged for every caller: `commit(simulate(…))`. Same
+## rationale as apply_container_damage()'s own wrapper.
+static func apply_crater_damage(voxels: Array, container_id: String,
+		epicenter: Vector2i, core_radius: float, max_radius: float,
+		material: String = "", deep_layer_unlocked: bool = false,
+		slab_pierce_multiplier: float = 1.0,
+		dent_ring_weights: Array[float] = [],
+		crack_ring_weights: Array[float] = []) -> void:
+	commit_damage(simulate_crater_damage(voxels, container_id, epicenter, core_radius,
+		max_radius, material, deep_layer_unlocked, slab_pierce_multiplier,
+		dent_ring_weights, crack_ring_weights))
 
 
 ## FLOOR-DENT-01 + E-CRACK-01 — one surviving floor voxel's damage roll, in the
@@ -942,9 +1033,14 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 ## a crack (D32.3 — "a blast cracks the whole voxel, one name, no side").
 ## pierce_multiplier: D17, see apply_crater_damage's own doc — trailing +
 ## defaulted to 1.0, byte-for-byte inert at default.
-static func _roll_floor_surface_damage(voxel, container_id: String, d: float,
-		max_radius: float, rim_span: float, ring: int, dent_f: float, crack_f: float,
-		dent_ring_weights: Array[float], crack_ring_weights: Array[float],
+##
+## P-PURE: renamed from `_roll_floor_surface_damage()` and given the Delta to
+## append to instead of a Voxel to write. The name change is not cosmetic — a
+## `_roll_*` that no longer rolls onto anything would misdescribe the one thing
+## that matters about it now.
+static func _append_floor_surface_damage(entries: Array, voxel, container_id: String,
+		d: float, max_radius: float, rim_span: float, ring: int, dent_f: float,
+		crack_f: float, dent_ring_weights: Array[float], crack_ring_weights: Array[float],
 		pierce_multiplier: float = 1.0) -> void:
 	var dent_p: float = clampf(dent_f
 		* clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0)
@@ -953,9 +1049,9 @@ static func _roll_floor_surface_damage(voxel, container_id: String, d: float,
 		var dent_key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 		var dent_h: float = float(FacadeSampler._fnv1a_hash(dent_key) % 10000) / 10000.0
 		if dent_h < dent_p:
-			voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
+			entries.append(damage_entry(voxel, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
 				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
-				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level)))
 			return
 
 	var crack_p: float = clampf(crack_f
@@ -966,9 +1062,9 @@ static func _roll_floor_surface_damage(voxel, container_id: String, d: float,
 	var crack_key: String = "%s:FLOORCRACK:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 	var crack_h: float = float(FacadeSampler._fnv1a_hash(crack_key) % 10000) / 10000.0
 	if crack_h < crack_p:
-		voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
+		entries.append(damage_entry(voxel, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
 			decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
-			substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+			substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level)))
 
 
 ## One tier's ring weight, or `absent` when the caller passed no table at all

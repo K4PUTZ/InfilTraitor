@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 49049 lines total** (under `godot/scripts/`)
+**191 scripts · 49105 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -962,7 +962,7 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 185 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 184 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
 
@@ -970,14 +970,12 @@ extends `Node2D` · 233 lines
 - `NEGATIVE_FLASH_SHADER` = `"""`
 
 **Public vars**
-- `var flash_peak_alpha: float = 0.8`
-- `var flash_fade_seconds: float = 0.32`
-- `var flash_fade_power: float = 1.5`
-- `var flash_max_step_seconds: float = 0.034`
+- `var strobe_white_alpha: float = 1.0`
+- `var strobe_negative_amount: float = 1.0`
 - `var flash_mode: int = FlashMode.NEGATIVE`
 
 **Public API**
-- `func flash() -> void:`
+- `func hold_frame(mode: int) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -3868,7 +3866,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 342 lines
+`class_name TestZoneController` · 387 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4127,7 +4125,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3801 lines
+extends `Node2D` · 3813 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4216,8 +4214,8 @@ extends `Node2D` · 3801 lines
 - `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
 - `var blast_burst_ember_count: int = 22`
 - `var blast_burst_ember_spread_px: float = 64.0`
-- `var blast_burst_ember_life_min: float = 0.40`
-- `var blast_burst_ember_life_max: float = 1.05`
+- `var blast_burst_ember_life_min: float = 0.50`
+- `var blast_burst_ember_life_max: float = 1.25`
 - `var blast_burst_spark_count: int = 34`
 - `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
 - `var blast_burst_dust_count: int = 7`

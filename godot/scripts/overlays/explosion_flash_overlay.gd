@@ -29,30 +29,47 @@ class_name ExplosionFlashOverlay
 ## free) keeps the effect on the world where it belongs, and needs no camera
 ## reference.
 
+## ============================================================================
+## P-STROBE (Director, 2026-08-09) — THE TIMED FADE IS GONE. The flash is a
+## STROBE of discrete frames now, and the caller owns every one of them:
+##
+##     "separar o fogo, do flash, da destruição. A duração do fogo está boa.
+##      Depois do último frame, entra: 1 flash frame branco, 1 frame negativo,
+##      outro frame branco, outro frame negativo. O fogo se extende mais um
+##      pouco e permanece acontecendo durante os 4 frames do flash.
+##      Em seguida: frame positivo com a destruição limpa acontecendo."
+##
+## What this deletes, and why the deletion is a real simplification rather than
+## a cleanup: `flash_fade_seconds`, `flash_fade_power`, `_process()` and
+## `flash_max_step_seconds` all existed to run a fade on a wall clock. The last
+## of those is the E-FLASH-03 fix — the frame the flash started on was also the
+## frame the destruction landed on, measured at **150 ms** against 8-17 ms for
+## its neighbours, so the fade advanced by that whole delta and burned half its
+## curve in one step, reading as "already half gone".
+##
+## **A frame-driven strobe cannot have that bug.** There is no curve to burn:
+## each frame is held at full intensity for exactly one frame and the caller
+## advances it. A slow frame makes the strobe frame LAST longer, which is
+## correct — it is still one frame of strobe — instead of skipping most of it.
+## The whole class of "the effect ate itself because delta was big" is gone by
+## construction. That measurement is preserved here because it is the reason to
+## never put a wall-clock term back.
+## ============================================================================
+
 ## Tuning — all `var` (Rule 1).
 
-## `flash_fade_seconds` is deliberately close to the destruction sequence's own
-## length — the Director asked for the fade to run "enquanto as waves de
-## destruição são disparadas", so the damage is already on screen as it lifts.
-var flash_peak_alpha: float = 0.8
-var flash_fade_seconds: float = 0.32
-var flash_fade_power: float = 1.5         ## >1 = holds bright, then drops away
+## Strobe frames are FULL intensity by design: a strobe frame's job is to
+## replace the frame outright, not to tint it. This replaces the old
+## `flash_peak_alpha` (0.8), which was the peak of a fade that no longer exists.
+var strobe_white_alpha: float = 1.0
 
-## E-FLASH-03 — the measured reason the Director felt an "engasgada" at the flash,
-## and it was neither cause they suspected (the white being slow to enter, or
-## persistence of vision from an all-white next frame). The frame the flash starts
-## on is also the frame the destruction lands on, and it measured **150 ms**
-## against 8-17 ms for its neighbours. The flash was then advancing its fade by
-## that same 150 ms delta, burning half its curve in one step, so it appeared
-## already half gone. Capping the delta the FADE sees does not hide the spike —
-## E-ORGANIC-01 addresses that separately — it stops the flash from eating its own
-## animation because of it.
-var flash_max_step_seconds: float = 0.034
+## How strongly the NEGATIVE frame inverts. 1.0 = full inversion.
+var strobe_negative_amount: float = 1.0
 
-## Flash appearance. NEGATIVE is the shipped look as of 2026-08-09 (Director:
-## "vamos testar o flash negativo em vez de branco também") — it inverts what is
-## already on screen, "como nas explosões de antigamente". WHITE is the previous
-## look, kept switchable for comparison (INFILTRAITOR_WHITE_FLASH=1).
+## Flash appearance. NEGATIVE inverts what is already on screen, "como nas
+## explosões de antigamente" (Director, 2026-08-09); WHITE replaces it. Both are
+## now used in the SAME detonation — the strobe alternates them — rather than
+## one being chosen over the other. `flash_mode` is what `hold_frame()` sets.
 enum FlashMode { WHITE, NEGATIVE }
 var flash_mode: int = FlashMode.NEGATIVE
 
@@ -70,7 +87,9 @@ void fragment() {
 }
 """
 
-var _flash_elapsed: float = -1.0          ## <0 = no flash running
+## true while a strobe frame is being held. There is no elapsed time and no
+## timer: the caller sets a frame, awaits it, and sets the next one.
+var _holding: bool = false
 
 ## The NEGATIVE flash needs a ShaderMaterial reading the screen texture; the
 ## WHITE flash is a plain draw_rect on this node and needs none. Two canvases
@@ -92,68 +111,48 @@ func _ready() -> void:
 	add_child(_negative_layer)
 
 
-## Starts the flash. The caller fires the destruction sequence on the same beat —
-## covering the frame it lands on is the whole reason this exists.
-func flash() -> void:
-	_flash_elapsed = 0.0
-	set_process(true)
+## Holds ONE strobe frame of `mode` at full intensity. The caller is expected to
+## `await get_tree().process_frame` after each call and to `clear()` when the
+## strobe is over — this node runs no timer and no `_process()`, so a caller
+## that forgets `clear()` leaves the frame held indefinitely. That is a
+## deliberate trade: the caller owning every frame is the entire point (see the
+## P-STROBE block above), and the alternative — a safety timeout — would put
+## back the wall-clock term the redesign exists to remove.
+##
+## `Room.clear()`/map reload already call `clear()` on this overlay, so the
+## worst case of an interrupted strobe is bounded by the same path every other
+## overlay uses.
+func hold_frame(mode: int) -> void:
+	flash_mode = mode
+	_holding = true
 	_redraw_all()
 
 
-func _process(delta: float) -> void:
-	if _flash_elapsed < 0.0:
-		set_process(false)
-		return
-	## Capped — see flash_max_step_seconds.
-	_flash_elapsed += minf(delta, flash_max_step_seconds)
-	if _flash_elapsed >= flash_fade_seconds:
-		_flash_elapsed = -1.0
-	_redraw_all()
-	if _flash_elapsed < 0.0:
-		set_process(false)
-
-
-## Both canvases redraw together — whichever mode is active reads the same
-## `_flash_elapsed`.
+## Both canvases redraw together — only the one matching `flash_mode` paints.
 func _redraw_all() -> void:
 	queue_redraw()
 	if _negative_layer != null:
 		_negative_layer.queue_redraw()
 
 
-## 0..1 across the fade, or -1 when no flash is running.
-func _flash_progress() -> float:
-	if _flash_elapsed < 0.0:
-		return -1.0
-	return clampf(_flash_elapsed / flash_fade_seconds, 0.0, 1.0)
-
-
 ## This node: the WHITE flash, at normal blend. Deliberately NOT additive — a
 ## flash frame's job is to REPLACE what is underneath it.
 func _draw() -> void:
-	if flash_mode != FlashMode.WHITE:
+	if not _holding or flash_mode != FlashMode.WHITE:
 		return
-	var t: float = _flash_progress()
-	if t < 0.0:
-		return
-	var alpha: float = flash_peak_alpha * pow(1.0 - t, flash_fade_power)
-	if alpha > 0.001:
-		draw_rect(_visible_world_rect(), Color(1.0, 1.0, 1.0, alpha))
+	if strobe_white_alpha > 0.001:
+		draw_rect(_visible_world_rect(), Color(1.0, 1.0, 1.0, strobe_white_alpha))
 
 
 ## The NEGATIVE flash: one full-screen quad whose shader inverts what is already
 ## rendered underneath, tweening back to normal. Drawn white — the colour is
 ## irrelevant, the shader replaces it outright.
 func _draw_negative() -> void:
-	if flash_mode != FlashMode.NEGATIVE or _negative_material == null:
+	if not _holding or flash_mode != FlashMode.NEGATIVE or _negative_material == null:
 		return
-	var t: float = _flash_progress()
-	if t < 0.0:
+	if strobe_negative_amount <= 0.001:
 		return
-	var amount: float = pow(1.0 - t, flash_fade_power)
-	if amount <= 0.001:
-		return
-	_negative_material.set_shader_parameter("amount", amount)
+	_negative_material.set_shader_parameter("amount", strobe_negative_amount)
 	_negative_layer.draw_rect(_visible_world_rect(), Color.WHITE)
 
 
@@ -177,9 +176,9 @@ func _visible_world_rect() -> Rect2:
 	return Rect2(top_left, bottom_right - top_left)
 
 
-## Discard anything in flight (map load/reload, perspective change) — same
-## reasoning as EmberOverlay.clear(): nothing here is state a reload restores.
+## Ends the strobe, and discards anything in flight on a map load/reload or
+## perspective change — same reasoning as EmberOverlay.clear(): nothing here is
+## state a reload restores. Every strobe MUST end with this (see hold_frame()).
 func clear() -> void:
-	_flash_elapsed = -1.0
-	set_process(false)
+	_holding = false
 	_redraw_all()

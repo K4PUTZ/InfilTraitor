@@ -551,6 +551,71 @@ primary guard** — the collapse's real signature was a frame count that ignored
 **Not done, and not silently dropped:** §6.2's optional second trailing ripple.
 The Director chose visible bands over multiple ripples, so it was not built.
 
+### 8.2 P-STROBE — the detonation becomes three beats (2026-08-09)
+
+Q5's answer, and it went further than the question asked. The detonation is no
+longer one beat with a fade running under it:
+
+| beat | what | length |
+|---|---|---|
+| 1 · FIRE | burst + camera shake, alone | `burst_lead_frames` = 3 frames |
+| 2 · STROBE | white → negative → white → negative, fire still burning under it | 4 held frames |
+| 3 · DESTRUCTION | the radial front, with no flash over it at all | `front_frames` = 5 frames |
+
+**The timed fade is deleted, not shortened** — `flash()`, `_process()`,
+`flash_fade_seconds`, `flash_fade_power`, `flash_peak_alpha` and
+`flash_max_step_seconds` are all gone, replaced by `hold_frame(mode)` +
+`clear()`, driven one frame at a time by the caller.
+
+**Why that deletion is a simplification and not a cleanup:** the last of those
+vars is the E-FLASH-03 fix. The frame the flash started on was also the frame
+the destruction landed on, measured at **150 ms** against 8–17 ms for its
+neighbours, so the fade advanced by that whole delta and burned half its curve
+in one step. **A frame-driven strobe cannot express that bug** — there is no
+curve to burn, and a slow frame makes a strobe frame *last* longer, which is
+correct, rather than skipping most of it. The measurement is preserved in the
+overlay's header as the reason never to put a wall-clock term back.
+
+**Verified by luminance, not by eye.** Each frame of the sequence was captured
+separately and measured against an undetonated baseline of **61.9** — the scene
+is DARK, so a negative frame is the *bright* one (~193 predicted):
+
+| wait | mean luminance | reading |
+|---|---|---|
+| 2, 3 | 62.6, 63.5 | normal — beat 1, fire alone |
+| 4 | 237.3 | **WHITE** |
+| 5 | 176.3 | **NEGATIVE** (short of 193 because HUD/dev overlays draw above the negative layer and are not inverted) |
+| 6 | 236.9 | **WHITE** |
+| 7 | 177.1 | **NEGATIVE** |
+| 8 | 62.8 | normal — beat 3, destruction clean |
+
+Captures: `p_strobe_1_fire_only.png`, `p_strobe_2_white.png`,
+`p_strobe_3_negative.png`, `p_strobe_4_clean_destruction.png`. The negative
+frame also confirms E-NATIVE-01's layer ordering survived — the world inverts
+while the fire on top stays orange, because the negative layer sits BELOW
+ember/smoke.
+
+**One assumption, flagged rather than buried.** "Depois do último frame" of the
+fire has no referent any more: E-NATIVE-01 deleted the authored 4-frame
+fireball, so the fire is particle overlays with 0.5–1.25 s lifetimes and
+waiting for its true end would put the strobe a full second after the bang. It
+is read as "after the burst has visibly established itself" —
+`burst_lead_frames = 3`, a starting value for the Director's eye, not a derived
+one.
+
+**And one instruction that was already satisfied, measured rather than
+assumed:** "o fogo… permanece acontecendo durante os 4 frames do flash". The
+whole strobe is 3 + 4 = 7 frames ≈ 117 ms at 60 fps, against a fire whose
+*shortest* ember already lived 400 ms. The lifetime bump that shipped
+(0.40–1.05 → 0.50–1.25 s) is therefore for the look the Director asked for, not
+to cover the strobe — recorded because "extend it so it covers X" is exactly
+the kind of line that later gets re-read as a constraint.
+
+**Known and not fixed:** `hold_frame()` runs no timer, so a caller that never
+calls `clear()` leaves a frame held. That is the deliberate cost of the caller
+owning every frame; the bound is `Room.clear()`, which every map reload and
+perspective change already routes through.
+
 ---
 
 ## 9. Explicitly out of scope
@@ -602,7 +667,20 @@ the same cloud sooner without shortening it.
 entire destruction completes inside the negative flash's own 0.32 s fade, so
 the expanding front is hidden under it.
 
-### Q5 — Does the flash shrink with the blast? 🔴 NEW 2026-08-09, blocks nothing but wastes Task 1 if ignored
+### Q5 — ✅ ANSWERED 2026-08-09. Shorten it, and separate the three beats. See §8.2.
+
+> *"Com certeza, vamos encurtar o flash. E também vamos tentar o seguinte:
+> separar o fogo, do flash, da destruição. A duração do fogo está boa. Depois
+> do último frame, entra: 1 flash frame branco, 1 frame negativo, outro frame
+> branco, outro frame negativo. O fogo se extende mais um pouco e permanece
+> acontecendo durante os 4 frames do flash. Em seguida: frame positivo com a
+> destruição limpa acontecendo."*
+
+The answer went past (b) — the flash is not merely shorter, the timed fade is
+gone entirely and the detonation is three explicit beats. Shipped as P-STROBE,
+recorded in §8.2. Original framing kept below.
+
+<details><summary>Original framing, 2026-08-09</summary>
 
 `ExplosionFlashOverlay.flash_fade_seconds` is 0.32 s. At `front_frames = 5` the
 whole sequence is ~83 ms at 60 fps, so **100% of the destruction now happens
@@ -623,6 +701,8 @@ legitimate read; (b) shorten `flash_fade_seconds` so the front clears it;
 
 *Assumed if unanswered:* nothing — this is a look call and the Director is
 actively tuning.
+
+</details>
 
 ### Q3 — ✅ ANSWERED 2026-08-09. Out of scope; do not size the cache for it.
 

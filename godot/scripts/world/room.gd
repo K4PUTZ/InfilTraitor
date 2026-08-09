@@ -479,10 +479,22 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## embers thins it out — the same overlap economics E-SMOKE-01 measured for the
 ## per-voxel smoke, where density comes from OVERLAP and a wider sparse cluster
 ## reads as fewer, more legible individual dots instead of one fire.
+##
+## P-STROBE (Director, 2026-08-09): "o fogo se extende mais um pouco e permanece
+## acontecendo durante os 4 frames do flash." Lifetimes up again, 0.40-1.05 →
+## 0.50-1.25.
+##
+## The "permanece acontecendo" half of that was **already satisfied by a wide
+## margin and is not what moved** — measured, not assumed: the strobe runs
+## `burst_lead_frames` (3) + 4 held frames = 7 frames, ≈117 ms at 60 fps,
+## against a fire whose SHORTEST ember already lived 400 ms. So the extension is
+## purely for the look the Director asked for, not to cover the strobe. Recorded
+## because "extend it so it covers X" is exactly the kind of instruction that
+## later gets read as a constraint and re-tuned against.
 var blast_burst_ember_count: int = 22
 var blast_burst_ember_spread_px: float = 64.0
-var blast_burst_ember_life_min: float = 0.40
-var blast_burst_ember_life_max: float = 1.05
+var blast_burst_ember_life_min: float = 0.50
+var blast_burst_ember_life_max: float = 1.25
 var blast_burst_spark_count: int = 34
 var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)
 var blast_burst_dust_count: int = 7

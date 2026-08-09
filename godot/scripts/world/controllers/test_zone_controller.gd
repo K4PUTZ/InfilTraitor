@@ -75,6 +75,28 @@ const BOMB_ID: String = "frag_grenade"
 var SHAKE_SECONDS: float = 1.0
 var SHAKE_AMPLITUDE_PX: float = 12.0
 
+## P-STROBE (Director, 2026-08-09) — the strobe, exactly as specified: "1 flash
+## frame branco, 1 frame negativo, outro frame branco, outro frame negativo."
+## One entry = one held engine frame. Order is the look; length is the duration.
+const STROBE_SEQUENCE: Array[int] = [
+	ExplosionFlashOverlay.FlashMode.WHITE,
+	ExplosionFlashOverlay.FlashMode.NEGATIVE,
+	ExplosionFlashOverlay.FlashMode.WHITE,
+	ExplosionFlashOverlay.FlashMode.NEGATIVE,
+]
+
+## How long the fire burns ALONE before the strobe starts — the Director's
+## "depois do último frame" of the fire.
+##
+## ASSUMPTION, flagged rather than buried: the fire has no "last frame" to wait
+## for any more. E-NATIVE-01 deleted the authored 4-frame fireball, so the fire
+## is now particle overlays with 0.5-1.25 s lifetimes; waiting for its real end
+## would put the strobe a full second after the bang. Read as "after the burst
+## has visibly established itself", which is a small number of frames. 3 is a
+## starting value for the Director's eye, not a derived one — it is the single
+## number to move if the strobe should sit earlier or later.
+var burst_lead_frames: int = 3
+
 
 func _init(p_room: Node) -> void:
 	room = p_room
@@ -236,34 +258,57 @@ func detonate_active() -> void:
 	_active_index = -1
 
 
-## E-FLASH-01 (Director, 2026-08-08) — the detonation's own beat, in the order
-## the Director specified it: the 4-frame fireball plays first, the white flash
-## frame lands "depois do último frame da animação", and the destruction waves
-## fire underneath while that white fades ("com tween de opacidade down, enquanto
-## as waves de destruição são disparadas"). The camera shake spans from the flash
-## to roughly when the smoke gives out.
+## P-STROBE (Director, 2026-08-09) — the detonation is THREE SEPARATE BEATS now,
+## in the Director's own words: *"separar o fogo, do flash, da destruição."*
+##
+##   1. FIRE       burst + camera shake, alone, for `burst_lead_frames`
+##   2. STROBE     4 held frames — white, negative, white, negative — with the
+##                 fire still burning underneath ("o fogo se extende mais um
+##                 pouco e permanece acontecendo durante os 4 frames do flash")
+##   3. DESTRUCTION played clean, with no flash over it at all
+##                 ("frame positivo com a destruição limpa acontecendo")
+##
+## This replaces E-FLASH-01's arrangement, where everything landed on one beat
+## and the fade ran *underneath* the destruction. What forced the change: once
+## the blast dropped to 5 frames (Q2's re-answer) the entire destruction
+## finished inside the old 0.32 s fade, so the expanding front was invisible.
+## Separating the beats is what makes the front visible AND keeps the flash.
+##
+## Nothing here is on a wall clock — every beat is counted in frames, the same
+## rule the choreographer itself now runs on. A slow frame stretches a beat
+## instead of skipping it.
 ##
 ## The DAMAGE is already fully applied to Voxel state before any of this runs
 ## (build_plan() is the writer) — this only schedules when the player SEES it, so
 ## a dropped frame or a map reload mid-sequence loses pixels, never state.
+##
+## A coroutine (it awaits frames), deliberately called WITHOUT await by
+## detonate_active(): the caller's remaining work — clearing the wireframe,
+## resetting _active_index — belongs to the click, not to the animation. `self`
+## stays alive because room holds `_test_zone_controller`, the same explicit
+## ownership `_active_choreographer` exists for.
 func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
-	## E-NATIVE-01 (2026-08-09): with the authored fireball gone there is nothing
-	## left to WAIT for — the flash, the burst, the shake and the destruction all
-	## land on the same beat, which is what a detonation actually is. The old
-	## sequence had to stage them behind `animation_finished` only because a
-	## 4-frame sprite had to finish playing first.
+	## Beat 1 — fire and shake, alone.
 	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
+	for _i in range(maxi(burst_lead_frames, 0)):
+		await room.get_tree().process_frame
+
+	## Beat 2 — the strobe. One held frame each, caller-paced.
 	var flash_overlay = room._explosion_flash_overlay
 	if flash_overlay != null:
 		## Dev capture toggle, same seam/precedent as INFILTRAITOR_ENABLE_STAMP_SOOT.
-		## NEGATIVE is the shipped look (Director, 2026-08-09); this only lets a
-		## capture put the previous white one beside it.
-		flash_overlay.flash_mode = ExplosionFlashOverlay.FlashMode.WHITE \
-			if OS.get_environment("INFILTRAITOR_WHITE_FLASH") == "1" \
-			else ExplosionFlashOverlay.FlashMode.NEGATIVE
-		flash_overlay.flash()
+		## Now means "make every strobe frame white" rather than picking one of
+		## two looks, since the shipped strobe uses BOTH.
+		var all_white: bool = OS.get_environment("INFILTRAITOR_WHITE_FLASH") == "1"
+		for mode in STROBE_SEQUENCE:
+			flash_overlay.hold_frame(
+				ExplosionFlashOverlay.FlashMode.WHITE if all_white else mode)
+			await room.get_tree().process_frame
+		flash_overlay.clear()
+
+	## Beat 3 — destruction, clean.
 	_start_waves(plan)
 
 

@@ -1749,6 +1749,45 @@ animation is not.
 
 ## 11. Next session starts here (updated 2026-08-09, post-Alpha-Explosion-Waves)
 
+> ### ⚠️ 2026-08-09, later the same day — Task 6 was opened and immediately grew a dependency.
+>
+> The Director's fine-tuning pass started, and the first two things they
+> reported (*"vejo o console carregando os arquivos no momento da explosão…
+> a câmera trava e de repente a explosão já está toda construída"*) were
+> measured rather than tuned. Both turned out to be structural:
+>
+> 1. **`build_plan()` blocks for 171 ms, and it appears in NO existing log** —
+>    `[E-WAVE]` sets `_t0_ms` *after* `build_plan()` returns, so every
+>    detonation performance discussion in this document has been measuring the
+>    cheap half. Phase breakdown, mutation inventory and method:
+>    `PREDICTION_MASTER_PLAN` §1.1/§2.
+> 2. **Every blast is 3 frames.** `cells_due_now()`'s wall-clock deadline means
+>    one slow frame makes the next frame's quota the entire queue — measured,
+>    2 057 of 2 185 steps on a single frame. **This is why E-RADIAL-01's
+>    expanding front does not read as a wave on screen:** the ordering is
+>    correct and ships, the front just crosses 2 185 steps in two visible
+>    states. Fixing the pacing produces the Director's "ondas na água"
+>    with no new feature (`PREDICTION_MASTER_PLAN` §6.2).
+>
+> The Director's answer to the pre-production question was to build it
+> properly, as an engine capability rather than an explosion feature —
+> *"vai ser fundamental para outros processos de previsão do game,
+> inteligência dos guardas, informações no HUD… queremos um cache e a
+> pré-produção profissionais."* That work is now
+> **[`PREDICTION_MASTER_PLAN.md`](PREDICTION_MASTER_PLAN.md)**, and Phase B's
+> hover/throw flow plugs into its Task 5 seam.
+>
+> **What that plan corrects in this one:** §2.3 there establishes that
+> firearms do **not** share `apply_container_damage()` (D26/D27/D30 moved them
+> to `apply_point_impact()`), so the blast mutators can be made pure without
+> any risk to shotgun/sniper tuning. `MaterialResistanceTable` remains shared
+> and remains untouchable.
+>
+> **Task 6's remaining tuning surface is unchanged** and still lives below —
+> what moved out is the pre-production/cache half, plus the playback fix that
+> has to land before any look-tuning is meaningful (tuning a blast you can only
+> see in 3 frames is tuning blind).
+
 **Resume point:** Tasks 0 through 5 are done and committed, and the
 2026-08-08/09 session (VERSION 0.9.93, "Alpha Explosion Waves") took the blast
 from "the waves fire" to **one organic event**. Full record:

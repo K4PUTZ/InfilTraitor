@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**192 scripts · 49889 lines total** (under `godot/scripts/`)
+**193 scripts · 50171 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -1583,14 +1583,15 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 697 lines
+`class_name DetonationPlanBuilder` · 787 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
-> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `DetonationPlan` (§6.1) for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one plain Dictionary a later choreography driver (Task 5/E-WAVE) can play back as a pure sequence of `set_cell()`/ `erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelRenderer call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`render_slab()`/ `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's DAMAGE STATE is real (BlastCalculator.set_damage() calls are the established, unchanged writer — DESTRUCTION_MASTER_PLAN §3), but its on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry it produced here. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`plan["touched_voxels"]`, `Array[Voxel]` — every voxel this blast's containers actually changed the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_renderer": VoxelRenderer      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
+> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelRenderer call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`render_slab()`/ `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_renderer": VoxelRenderer      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
@@ -2064,6 +2065,44 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `world_delta.gd`
+
+`class_name WorldDelta` · extends `RefCounted` · 195 lines
+
+`godot/scripts/systems/prediction/world_delta.gd`
+
+> WorldDelta — PREDICTION_MASTER_PLAN §3.1, Task 3 (P-DELTA), 2026-08-09. **A description of what WOULD change, never a change.** An action is simulated into one of these; committing it is a separate, explicit act. That split is the whole plan: it is what lets the engine answer *"what would this grenade do"* without doing it, and therefore what lets a detonation be computed early (§4), cached (§5), thrown away when the player moves the cursor, or read by a HUD that must not damage anything to draw a number. It lives under `systems/prediction/`, not under `systems/destruction/`, deliberately — §0: *"Explosions are this layer's first consumer and its proving ground, not its owner."* ## The projection, and why it is not just a dictionary of new values Half of this class is `_by_voxel`: the answer to *"what would this voxel be if this Delta committed?"* Everything downstream of the damage step in `DetonationPlanBuilder` — soot derivation, occupancy, tile resolution, the census — used to read that answer off the real Voxel, because the damage had already been applied to it. With a pure builder there is nothing to read, so the projection has to answer instead. It models `Voxel.set_damage()` EXACTLY, including the two rules that are easy to miss and would silently produce a Delta that predicts the wrong thing: - **the early return.** An entry naming a state the voxel is already in writes nothing — and, critically, leaves the OTHER four fields at their older values. A projection that just overwrote would invent a fresh variant/substrate for a voxel that is going to keep its old one. - **`visible` follows DESTROYED only.** Nothing sets it back to true, so a voxel that was destroyed and is later marked DENTED stays invisible. That is pre-existing behaviour, and the projection reproduces it rather than tidying it up. ## What a Delta must not be trusted to survive `damage` entries and `touched_voxels` hold **live Voxel references**. They are valid only against the world revision the Delta was computed on — which is exactly what §5.2's cache key exists to enforce. A Delta that outlives a map reload points at freed objects; `touched` (plain `Vector3i` cells) is the field to read when a consumer needs to survive that.
+
+**Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `P_STATE` = `0`
+- `P_BLAST` = `1`
+- `P_SIDE` = `2`
+- `P_VARIANT` = `3`
+- `P_SUBSTRATE` = `4`
+- `P_VISIBLE` = `5`
+
+**Public vars**
+- `var damage: Array = []`
+- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "soot": {}, }`
+- `var census: Dictionary = {}`
+- `var touched: Array[Vector3i] = []`
+- `var touched_voxels: Array = []`
+- `var cost_ms: float = 0.0`
+
+**Public API**
+- `func add_damage(entries: Array) -> void:`
+- `func changes(voxel) -> bool:`
+- `func projection_of(voxel) -> Array:`
+- `func state_of(voxel) -> int:`
+- `func visible_of(voxel) -> bool:`
+- `func is_blast_of(voxel) -> bool:`
+- `func project_voxel(voxel) -> Voxel:`
+- `func commit() -> void:`
+- `func is_empty() -> bool:`
+
+---
+
 ### `prop_def.gd`
 
 `class_name PropDef` · 39 lines
@@ -2464,11 +2503,11 @@ extends `SceneTree` · 2404 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 424 lines
+extends `SceneTree` · 407 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
-> P-PURE — BlastCalculator purity selftest (PREDICTION_MASTER_PLAN Task 2, 2026-08-09). Rodar: python3 tools/persistent/run_selftests.py --only blast_purity This is the test §11.4 calls "the test that makes the whole plan safe": it asserts that `simulate_container_damage()` / `simulate_crater_damage()` change NOTHING about the world, so a prediction that is computed and thrown away costs nothing but the time. Why it lives in its own file rather than inside blast_calculator_selftest.gd: that suite is Task 2's REGRESSION NET — its ~20 direct calls to the mutating `apply_*` functions pin today's behaviour, and the task's own gate is that it passes with **zero edits**. Adding to it would have compromised the one piece of evidence the refactor rests on. Everything here runs against the REAL PLAYGROUND map and the REAL frag grenade, not a synthetic patch — CLAUDE.md's own standing lesson (a floor-dent feature that passed its fixture with 69 dents and produced ZERO on the real map). Test 3 exists specifically to make a silently-inert simulate impossible to mistake for a clean one. RED-BEFORE-GREEN, recorded because a purity test that has never failed proves nothing. With one `voxel.set_damage(...)` added inside `BlastCalculator.damage_entry()` — the smallest edit that makes BOTH simulate functions impure at once — this run came back: ✗ 167 voxel(s) changed state during simulate (e.g. (7, 11) level 0: [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true]) ✗ 3 container(s) had their dirty_count moved by simulate RESULT: 5 PASS, 2 FAIL Note what stayed green under that break, because it is the reason test 1 has to exist separately: determinism (2) and the tier census (3) both still passed, and test 4 still reported every entry landing correctly — it merely counted 167 no-ops instead of 0. An impure simulate is invisible to every check here except this one.
+> P-PURE / P-DELTA — prediction purity selftest (PREDICTION_MASTER_PLAN Tasks 2 and 3, 2026-08-09). Rodar: python3 tools/persistent/run_selftests.py --only blast_purity This is the test §11.4 calls "the test that makes the whole plan safe": it asserts that computing a detonation changes NOTHING about the world, so a prediction that is computed and thrown away costs nothing but the time. **Task 3 widened its subject from the two mutators to the whole pass.** It opened running a hand-written mirror of `build_plan()`'s damage phase, because `build_plan()` itself still committed and would have defeated a purity test outright. Now that P-DELTA made the builder pure, the mirror is gone and every test below runs the REAL `DetonationPlanBuilder.build_plan()` — which is both a stronger claim (the whole 170 ms pipeline is pure, not just its damage step) and one fewer copy of the pipeline free to drift out of sync with the original. Why it lives in its own file rather than inside blast_calculator_selftest.gd: that suite is Task 2's REGRESSION NET — its ~20 direct calls to the mutating `apply_*` functions pin today's behaviour, and the task's own gate is that it passes with **zero edits**. Adding to it would have compromised the one piece of evidence the refactor rests on. Everything here runs against the REAL PLAYGROUND map and the REAL frag grenade, not a synthetic patch — CLAUDE.md's own standing lesson (a floor-dent feature that passed its fixture with 69 dents and produced ZERO on the real map). Test 3 exists specifically to make a silently-inert simulate impossible to mistake for a clean one. RED-BEFORE-GREEN, recorded because a purity test that has never failed proves nothing. With one `voxel.set_damage(...)` added inside `BlastCalculator.damage_entry()` — the smallest edit that makes BOTH simulate functions impure at once — this run came back: ✗ 167 voxel(s) changed state during build_plan() (e.g. (7, 11) level 0: [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true]) ✗ 3 container(s) had their dirty_count moved by build_plan() RESULT: 6 PASS, 2 FAIL Note what stayed green under that break, because it is the reason test 1 has to exist separately: determinism (2) and the tier census (3) both still passed, and test 4 still reported every entry landing correctly — it merely counted 167 no-ops instead of 0. An impure builder is invisible to every check here except this one.
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
@@ -2486,8 +2525,8 @@ extends `SceneTree` · 424 lines
 
 **Public API**
 - `func test_1_simulate_writes_nothing(before: Dictionary, after: Dictionary) -> void:`
-- `func test_2_simulate_is_deterministic(a: Array, b: Array) -> void:`
-- `func test_3_the_delta_is_not_empty_on_the_real_map(delta: Array) -> void:`
+- `func test_2_simulate_is_deterministic(da: WorldDelta, db: WorldDelta) -> void:`
+- `func test_3_the_delta_is_not_empty_on_the_real_map(wd: WorldDelta) -> void:`
 
 ---
 
@@ -3897,7 +3936,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 387 lines
+`class_name TestZoneController` · 401 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

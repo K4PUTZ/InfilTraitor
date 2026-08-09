@@ -2,14 +2,23 @@
 ## Simulate without committing: the engine's pure-prediction, pre-production and cache layer — v1.0
 
 **Date opened:** 2026-08-09
-**Status:** 🟢 **BUILDING. Tasks 1 (P-PLAY) and 2 (P-PURE) shipped 2026-08-09 —
-see §8.1 and §8.6.** The blast is paced by frame count and its expanding front
-is visible; the two blast mutators are now `commit(simulate(…))`, so the engine
-can compute a detonation's full damage without causing it. Tasks 3–6 (the Delta
-type, slicing, the cache, the "cooking" beat) are planned and unbuilt. Every
-number below is measured on a real PLAYGROUND detonation; every claim about what
-mutates comes from reading the actual writers, not from the plan text of another
-document.
+**Status:** 🟢 **BUILDING. Tasks 1–3 shipped 2026-08-09 — see §8.1, §8.6, §8.7.**
+The blast is paced by frame count and its front is visible (P-PLAY); the two
+blast mutators are `commit(simulate(…))` (P-PURE); and
+`DetonationPlanBuilder.build_plan()` is **pure** — it returns a `WorldDelta` and
+the caller decides whether any of it happens (P-DELTA). Tasks 4–6 (slicing, the
+cache, the "cooking" beat) are planned and unbuilt.
+
+⚠️ **Nothing the player feels has improved yet, and one thing got worse:** the
+detonation still blocks the frame it always did, and P-DELTA's projection lookups
+made that block ~51 ms *longer* (178 → 229 ms, measured, §8.7). That bill is paid
+back only when Tasks 4–6 move the whole figure off the visible frame. Said here
+rather than in a footnote, because a plan that is three tasks in and has made the
+symptom worse should say so on its first screen.
+
+Every number below is measured on a real PLAYGROUND detonation; every claim about
+what mutates comes from reading the actual writers, not from the plan text of
+another document.
 **Opened by:** the Director, 2026-08-09, when the explosion's pre-production
 question turned out to be an engine question:
 
@@ -503,8 +512,8 @@ refactor lands behind a regression net.
 |---|---|---|---|
 | **1** | ✅ **DONE 2026-08-09 — P-PLAY**, see §8.1 | Frame-count pacing (`front_frames`), band quantization (`band_voxels`), fire/shake tuning. `cells_due_now()` retired. No prediction work. | **Met.** 24 frames exactly on the real blast, heaviest frame 13.5% (was 94%); front advances 1.0→25.0 band by band; 3 pixel-diffed captures. Director sign-off pending on the look. |
 | **2** | ✅ **DONE 2026-08-09 — P-PURE**, see §8.6 | `simulate_container_damage()` / `simulate_crater_damage()` + `commit_damage()`; the mutators are now `commit(simulate(…))`. §3.3's read-overlay turned out not to exist. | **Met.** `blast_calculator_selftest.gd` passes with **zero edits** (`git diff --name-only` names only `blast_calculator.gd`). New `blast_purity_selftest.gd`: 7/7 on the real PLAYGROUND blast, 100 896 voxels × 7 fields unchanged by `simulate()`, red-before-green demonstrated. Real detonation census byte-identical to the pre-refactor baseline. |
-| **3** | **P-DELTA** — `WorldDelta` as a real type | Today's plan Dictionary becomes an inspectable Delta with §3.4's census as a field. `DetonationPlanBuilder` produces one; `commit()` consumes one. | `run_selftests.py` clean. A real detonation is pixel-identical to the pre-refactor one — the same 0-differing-pixels gate Task 1a of the explosion plan used. |
-| **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. |
+| **3** | ✅ **DONE 2026-08-09 — P-DELTA**, see §8.7 | `WorldDelta` is a real type with §3.4's census/touched/cost_ms as fields, and **`build_plan()` is now pure** — it produces a Delta, the caller commits it. | **Met.** `run_selftests` 34 clean. Real detonation **0 differing pixels** against the pre-refactor capture. Purity asserted over the whole builder: 100 896 voxels × 7 fields unchanged. ⚠️ **Cost regressed +51 ms** — measured, not hidden; see §8.7. |
+| **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. **First concrete target, measured by Task 3:** `_index_soot_voxel()` and `_voxel_occupancy()` each traverse every voxel in the map separately and both now want the same projection lookup — merging them into one walk halves both. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. **Plus: recover P-DELTA's +51 ms** (§8.7) — the pre-refactor 178 ms mean is the number to beat, not merely to match. |
 | **5** | **P-CACHE** — the cache | §5's keyed, revision-invalidated LRU. `request_prediction()` / cancel / reuse. Sized for one cursor, not for guard AI (Q3). | A scripted 10-GU cursor sweep: measured hit rate on return-to-a-previous-GU, and a proof that every committed mutation invalidates. |
 | **6** | **P-COOK** — the "cooking" beat | §4.2's wiring for the detonate path that exists TODAY (context menu), so the flow is real before Phase B's throw arc exists. | Real capture: camera never freezes; the 171 ms is gone from the visible beat. |
 
@@ -913,6 +922,153 @@ frame the player is watching.
 
 **Also worth recording:** the selftest baseline in §11.2 moves from 33/33 to
 **34/34** — `blast_purity_selftest.gd` is the 34th.
+
+### 8.7 Task 3 (P-DELTA) closure — 2026-08-09
+
+**`DetonationPlanBuilder.build_plan()` no longer changes anything.** It returns a
+`WorldDelta` describing what a detonation would do; `delta.commit()` is what
+makes it happen, and `TestZoneController.detonate_active()` is the one caller
+that does. This is the task that actually delivers the plan's §0 promise — Task
+2 built the seam, this one moved the engine onto it.
+
+**New file: `godot/scripts/systems/prediction/world_delta.gd`.** Under
+`prediction/`, not `destruction/`, on §0's own wording ("explosions are this
+layer's first consumer, not its owner"). Fields: `damage` (the ordered entries),
+`waves` (the playback payload, unchanged in shape), plus §3.4's `census`,
+`touched`, `touched_voxels` and `cost_ms`.
+
+**The projection is the half worth reading.** Everything downstream of the
+damage step used to read freshly-mutated Voxels; with a pure builder there is
+nothing to read, so `WorldDelta` answers instead — and it models
+`Voxel.set_damage()` exactly, including the two rules that would otherwise
+produce a Delta that predicts the wrong thing: the **early return** (an entry
+naming a state the voxel already holds keeps the OLD variant/substrate, it does
+not mint new ones) and **`visible` following DESTROYED only** (nothing sets it
+back to true).
+
+Three call sites needed it, and one of them was a real trap:
+
+| site | what it reads | how |
+|---|---|---|
+| `_voxel_occupancy()` | `visible` | `delta.visible_of(v)` |
+| `_index_soot_voxel()` | `visible`, `damage_state`, `damage_is_blast` | one `projection_of()` fetch |
+| `_resolve_damaged_tile()` | five damage fields, off a whole Voxel | `delta.project_voxel(v)` — a detached copy |
+
+**The trap: `damaged_voxels`.** Its only consumer, `apply_self_soot()`, reads
+`damage_state`/`damage_is_blast`/`damage_carved_side` off the objects in it. Had
+it kept receiving REAL Voxels it would have read INTACT for every fresh mark and
+the self-soot on every new dent and crack would have vanished silently — a
+0-pixel gate would have caught it here, but only because this map happens to
+produce dents. It gets projected copies. `cell_to_voxel` deliberately keeps the
+real objects, because `touched_voxels` has to persist them after the commit.
+
+`project_voxel()` returns the ORIGINAL voxel when the Delta does not touch it —
+no allocation on the ~99% path — and builds its copy with a **null** parent
+container, so an accidental write dies in `Voxel._set_dirty()` instead of quietly
+bumping a real container's dirty count.
+
+**Gates, literal.**
+
+```
+$ python3 tools/persistent/run_selftests.py
+[SELFTEST] RESULT: 34 clean, 0 failed
+
+$ python3 tools/persistent/project_lint.py
+[LINT] ✅ PASSED — Files checked: 191
+
+$ python3 tools/persistent/check_invariants.py     →  ✓ invariants OK
+$ python3 tools/persistent/gen_codemap.py --check  →  exit 0
+```
+
+**The 0-pixel gate, and how it was actually made trustworthy.** The naive version
+of this measurement is worthless and said so out loud: two runs of the *same*
+code, captured at the default 45-frame wait under `--fixed-fps 60`, differ by
+**36 733 pixels** — 45 fixed frames is 0.75 s, well inside the fire and smoke
+lifetimes, and `spawn_blast_burst()` places embers with `randf_range()`. Pushing
+the wait to `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400` (≈6.7 s of simulated
+time) lands the capture on the settled crater, where two runs of the same code
+differ by **0**. Only then is a before/after comparison meaningful:
+
+```
+same code, 45 frames   : 36733 differing pixels   ← the measurement to NOT trust
+same code, 400 frames  :     0 differing pixels   ← harness proven deterministic
+PRE-refactor vs P-DELTA:     0 differing pixels   ← the gate
+```
+
+The pre-refactor image was captured by stashing the change, running, and
+restoring, so both sides are the same binary, the same map and the same grenade.
+Census and per-frame cell counts are identical too (278 / 882 / 1834 / 2037 /
+2072).
+
+**⚠️ The regression, measured and not buried: purity costs ~51 ms today.**
+Six real detonations each side, same grenade, same harness, identical
+instrumentation (a timer around `build_plan()` up to the census print, added to
+BOTH versions):
+
+| | samples (ms) | mean | range |
+|---|---|---|---|
+| before P-DELTA | 158.8 · 194.5 · 182.9 · 167.8 · 173.4 · 192.7 | **178** | 159–195 |
+| after P-DELTA | 224.3 · 259.2 · 214.2 · 224.3 · 227.0 · 224.8 | **229** | 214–259 |
+
+The ranges do not overlap. The cause is not mysterious: the two map-wide passes
+walk ~100 000 voxels each and every one of them now costs a dictionary lookup
+against the projection. Folding `_index_soot_voxel()`'s three accessor calls into
+one `projection_of()` fetch already clawed back ~24 ms of it (~256 → ~229 mean);
+the remaining ~51 ms is ~200 000 lookups.
+
+**Two things follow, and the first one matters to the Director more than the
+second.**
+
+1. **Right now, today, the visible freeze is WORSE, not better** — the player
+   waits 229 ms where they waited 178 ms, in the same frozen frame. P-DELTA on
+   its own buys architecture, not smoothness. Tasks 4–6 are what pay it back, by
+   moving the whole figure off the frame anybody is looking at. A +51 ms bill in
+   a moment nobody sees, to remove ~230 ms from a moment everybody sees, is the
+   trade this plan exists to make — but it is only a good trade once Task 6
+   lands.
+2. **Task 4 now has a measured target and a named candidate fix.**
+   `_index_soot_voxel()` and `_voxel_occupancy()` each traverse every voxel in
+   the map, separately, and both now want the same projection lookup. **Merging
+   them into a single walk** would halve both the traversal and the lookups.
+   Deliberately NOT done here: it restructures code the 0-pixel gate is
+   currently vouching for, and it is a performance change, which is Task 4's
+   subject rather than this one's.
+
+**The selftest changed subject, and grew.** `blast_purity_selftest.gd` opened
+Task 2 running a hand-written mirror of the damage phase, because `build_plan()`
+still committed. That mirror is now deleted (−47 lines) and every test runs the
+REAL builder — a strictly stronger claim (the whole ~230 ms pipeline is pure, not
+just its damage step) and one fewer copy of the pipeline free to drift:
+
+```
+[1] §11.4 — build_plan() leaves all 7 mutable fields of every voxel untouched
+  ✓ 100896 voxel(s) x 7 fields — not one changed during build_plan()
+  ✓ 1184 container dirty_count(s) unchanged
+[2] §11.5 — two build_plan() calls on an unchanged world return the same Delta
+  ✓ 167 entries, identical in order and in all 5 payload fields
+[3] The Delta the REAL map produces is real
+      destroyed 105 · dented 42 · cracked 20   (167 entries total)
+      waves 877 entries · census 2 row(s) · touched 167 cell(s) · cost 290.0 ms
+  ✓ all three damage tiers are present on the real PLAYGROUND blast
+  ✓ §3.4 surface populated — waves, census, touched (cells == voxels) and cost_ms
+[4] delta.commit() writes exactly what the Delta described
+  ✓ 167 entries committed, every one landed exactly as described (0 no-op entr(ies))
+  ✓ all 105 DESTROYED entries also cleared `visible`
+  ✓ no voxel outside the Delta came out dirty
+RESULT: 8 PASS, 0 FAIL
+```
+
+Red-before-green re-run against the new subject (one `set_damage()` inside
+`damage_entry()`): **6 PASS, 2 FAIL**, test 1 reporting 167 changed voxels and 3
+moved dirty counts, with tests 2/3/4 still green — the same lesson as §8.6, now
+covering the whole builder.
+
+**What is still NOT separated, and it is the whole point of what remains.**
+`detonate_active()` calls `build_plan()` and `delta.commit()` on adjacent lines.
+Nothing about when the player feels the cost has changed. **Task 4 (slicing),
+Task 5 (the cache) and Task 6 (the cooking beat) are the ones that move it**, and
+they are now unblocked: there is a pure function to slice, a Delta to cache, and
+a commit to defer.
 
 ---
 

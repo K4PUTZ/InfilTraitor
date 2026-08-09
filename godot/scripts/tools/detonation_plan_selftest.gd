@@ -69,7 +69,7 @@ func _init() -> void:
 			var ctx := _build_ctx(built)
 			var source_gu: Vector2i = _pick_source_gu(built)
 			var before := _snapshot_layers(built["renderer"])
-			var plan := DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx)
+			var plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx).waves
 			var after := _snapshot_layers(built["renderer"])
 
 			test_1_wave_census(plan, source_gu)

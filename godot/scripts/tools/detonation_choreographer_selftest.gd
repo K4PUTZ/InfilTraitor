@@ -58,7 +58,7 @@ func _init() -> void:
 		if bomb_def != null:
 			var ctx := _build_ctx(built)
 			var source_gu: Vector2i = _pick_source_gu(built)
-			var plan := DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx)
+			var plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx).waves
 			var renderer = built["renderer"]
 			var smoke_overlay := SmokeSparkOverlayClass.new()
 			root.add_child(smoke_overlay)

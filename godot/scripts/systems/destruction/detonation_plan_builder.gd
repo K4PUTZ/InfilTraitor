@@ -1,30 +1,38 @@
 ## DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN).
 ##
-## Builds one `DetonationPlan` (§6.1) for a single grenade detonation: all
-## resolution, all exposure fallback, and the single map-wide light-field
-## query, folded into one plain Dictionary a later choreography driver
-## (Task 5/E-WAVE) can play back as a pure sequence of `set_cell()`/
-## `erase_cell()` calls with zero further compositing/lookup — the
-## performance idea §2 states once: "no compositing, no lookup, no light
-## rebuild, no allocation happens inside a wave."
+## Builds one `WorldDelta` for a single grenade detonation: all resolution, all
+## exposure fallback, and the single map-wide light-field query, folded into one
+## object a later choreography driver (Task 5/E-WAVE) can play back from
+## `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with
+## zero further compositing/lookup — the performance idea §2 states once: "no
+## compositing, no lookup, no light rebuild, no allocation happens inside a
+## wave."
+##
+## **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now
+## PURE.** It changes nothing — not a tile, not a Voxel — and returns a
+## description of what a detonation WOULD do. `delta.commit()` is what makes it
+## happen, and the caller owns that decision. Everything this pass used to read
+## off freshly-mutated Voxels it now reads through `WorldDelta`'s projection.
 ##
 ## What this class does NOT do, on purpose:
 ##  - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelRenderer
 ##    call it makes runs in resolve-only mode (`apply=false`, Task 4's own
 ##    seam added to `_set_voxel_cell()`/`render_slab()`/
 ##    `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's
-##    DAMAGE STATE is real (BlastCalculator.set_damage() calls are the
-##    established, unchanged writer — DESTRUCTION_MASTER_PLAN §3), but its
-##    on-screen TILE is only ever resolved, never painted, until a wave
-##    chooses to apply the plan entry it produced here.
+##    on-screen TILE is only ever resolved, never painted, until a wave chooses
+##    to apply the plan entry produced here.
+##  - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s
+##    `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3);
+##    this pass only ever calls its `simulate_*` half.
 ##  - It never CALLS `room.record_voxel_damage_to_base()`/increments
 ##    `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's
 ##    job, the same split Task 2/3 already established for their own new
 ##    parameters. It DOES return the raw material for the first of those
-##    (`plan["touched_voxels"]`, `Array[Voxel]` — every voxel this blast's
-##    containers actually changed the damage_state of, DESTROYED or DENTED/
+##    (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's
+##    containers would change the damage_state of, DESTROYED or DENTED/
 ##    CRACKED), so Task 5's caller can persist without a second flood/
-##    find_affected_containers pass to re-derive the same set.
+##    find_affected_containers pass to re-derive the same set. That list is
+##    only meaningful AFTER `commit()`, which is when its caller reads it.
 ##  - It never schedules or times anything — the plan is a static census of
 ##    what EVERY wave should eventually paint; Task 5 owns turning that into
 ##    a 40 ms-cadenced sequence.
@@ -53,6 +61,7 @@
 class_name DetonationPlanBuilder
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
+const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const VoxelLightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
@@ -112,9 +121,29 @@ static var SMOKE_SCALE_BASE: float = 1.7
 const SMOKE_BLOBS_PER_VOXEL: int = 1
 
 
-## Builds and returns one DetonationPlan Dictionary. Empty `{}` sub-dicts for
+## Builds and returns one WorldDelta. Empty `{}` sub-dicts in `delta.waves` for
 ## any wave kind with nothing to show — Task 5 reads with `.get(ring, [])`.
-static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictionary:
+##
+## P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09) — **THIS FUNCTION NO
+## LONGER MUTATES ANYTHING.** It used to damage the real Voxels on its way
+## through and then read the result back off them; it now simulates into a
+## `WorldDelta` and reads back through that Delta's projection. The caller
+## decides whether any of it happens, by calling `delta.commit()` — or not.
+##
+## Two consequences worth naming, because they are the point:
+##
+##  - a Delta that is computed and discarded costs nothing but the time, which
+##    is what makes §4's pre-production and §5's cache possible at all;
+##  - the `under_structure` capture below no longer depends on WHERE in this
+##    function it happens. Its old contract ("captured BEFORE any set_damage()")
+##    was an ordering rule enforced by a comment; purity turns it into a
+##    property of the code.
+##
+## What did NOT change: every roll, every hash salt, every ring table read and
+## the order of every loop. The gate for this task is a real detonation whose
+## census and per-frame cell counts are identical to the pre-refactor ones.
+static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:
+	var started_usec: int = Time.get_ticks_usec()
 	var edge_registry: EdgeRegistry = ctx["edge_registry"]
 	var slab_registry: SlabRegistry = ctx["slab_registry"]
 	var voxel_renderer: VoxelRendererClass = ctx["voxel_renderer"]
@@ -131,10 +160,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	## comparison capture.
 	var stamp_soot_enabled: bool = ctx.get("stamp_soot_enabled", true)
 
-	var plan: Dictionary = {
-		"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "soot": {},
-		"touched_voxels": [],   ## Array[Voxel] — Task 5's persistence seam, see below
-	}
+	var delta := WorldDeltaClass.new()
+	var waves: Dictionary = delta.waves
 
 	var gu_rings := BlastCalculatorClass.flood_gu_rings(source_gu, bomb_def, blocked_edges, blocked_cells)
 	var affected := BlastCalculatorClass.find_affected_containers(gu_rings, edge_registry, slab_registry)
@@ -143,16 +170,20 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		+ Vector2i(int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0),
 			int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0))
 
-	## Captured BEFORE any set_damage() call below — VL-D3's own contract
-	## ("computed from the INTACT geometry right after a build, before
-	## reapply_damage") — a floor voxel newly exposed by THIS blast must read
-	## as "never saw the sun" using the geometry that stood over it a moment
-	## ago, not the hole this same call is about to punch.
+	## VL-D3's own contract: "computed from the INTACT geometry right after a
+	## build, before reapply_damage" — a floor voxel newly exposed by THIS blast
+	## must read as "never saw the sun" using the geometry that stood over it a
+	## moment ago, not the hole this call is about to describe.
+	##
+	## P-DELTA: this used to be an ORDERING rule ("captured BEFORE any
+	## set_damage() call below") held together by this comment. It is now a
+	## property of the function — nothing below writes to a Voxel, so the real
+	## geometry is intact wherever this line sits.
 	var under_structure: Dictionary = ctx.get("under_structure", {})
 	if under_structure.is_empty():
 		under_structure = _columns_with_structure(edge_registry)
 
-	## --- Resolution: the real writers, unchanged (Task 2/3's own calc layer).
+	## --- Resolution: the calc layer, now SIMULATED rather than applied (P-PURE).
 	## ring_of/container_of are this pass's own bookkeeping — a Voxel carries
 	## neither (Rule 4's spirit: only the resolution pass that just ran owns
 	## ring/container assignment, not a field bolted onto Voxel). ---
@@ -165,10 +196,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		var slice: Slice = edge_registry.get_slice(slice_id)
 		var base_ring: int = affected["slices"][slice_id]
 		var base_level: int = slice.start_storey * GeometryCoords.LEVELS_PER_STOREY
-		BlastCalculatorClass.apply_container_damage(
+		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			slice.voxels, slice.id, slice.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter)
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
 		if stamp_soot_enabled:
 			BlastCalculatorClass.stamp_container_soot(
 				slice.voxels, base_ring, base_level, false, bomb_def.soot_ring_tones,
@@ -181,10 +212,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	for slab_id in affected["roofs"]:
 		var roof: Slab = slab_registry.get_slab(slab_id)
 		var base_ring: int = affected["roofs"][slab_id]
-		BlastCalculatorClass.apply_container_damage(
+		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			roof.voxels, roof.id, roof.material, base_ring, roof.level, true,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter)
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
 		if stamp_soot_enabled:
 			BlastCalculatorClass.stamp_container_soot(
 				roof.voxels, base_ring, roof.level, true, bomb_def.soot_ring_tones,
@@ -215,10 +246,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		## falloff. `slab_pierce_multiplier` stays at its D17 default (no stacked
 		## slab exists on any real map yet) and is passed positionally only
 		## because the ring tables sit behind it.
-		BlastCalculatorClass.apply_crater_damage(
+		delta.add_damage(BlastCalculatorClass.simulate_crater_damage(
 			floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max,
 			floor_slab.material, deep_layer_unlocked, 1.0,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights)
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights))
 		if stamp_soot_enabled:
 			BlastCalculatorClass.stamp_crater_soot(
 				floor_slab.voxels, epicenter, crater_core, crater_max,
@@ -230,7 +261,11 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = ring
 			container_of[key] = floor_slab
-			if v.damage_state == Voxel.DamageState.DESTROYED:
+			## P-DELTA: the Delta's projection, not the Voxel — this slab's own
+			## simulate ran one statement ago and `add_damage()` folded it in, so
+			## the answer here is the same one the old mutating version read off
+			## the freshly-damaged Voxel.
+			if delta.state_of(v) == Voxel.DamageState.DESTROYED:
 				min_destroy_ring = ring if min_destroy_ring < 0 else mini(min_destroy_ring, ring)
 		## D18 lazy reveal — a crater with nothing exposed below it shows the
 		## legacy plane straight through the hole. Grouped under the EARLIEST
@@ -254,10 +289,10 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	var damaged_voxels: Array = []
 	for slice2 in edge_registry.all_slices():
 		for v in slice2.voxels:
-			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v, delta)
 	for slab2 in slab_registry.all_slabs():
 		for v in slab2.voxels:
-			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v, delta)
 
 	var derived_blast_snapshot: Dictionary = {}
 	var derived_blast_faces: Dictionary = {}
@@ -275,14 +310,16 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	## --- The single map-wide light-field query (§2). Built ONCE, queried per
 	## cell below — VoxelLightField.build() never touches the TileMapLayer,
 	## and nothing here calls VoxelRenderer.apply_light_field(). ---
-	var occupancy := _voxel_occupancy(edge_registry, slab_registry)
+	var occupancy := _voxel_occupancy(edge_registry, slab_registry, delta)
 	var top_wall_level: int = maxi(voxel_renderer.get_layer_count() - 1, 0)
 	var field := VoxelLightFieldClass.new()
 	field.build(ctx.get("lights", []), ctx.get("shadow_results", []), top_wall_level,
 		occupancy, soot_snapshot, under_structure, soot_faces)
 
-	## --- Package destroy/dented/cracked, keyed by ring, from the containers'
-	## already-mutated Voxel state (never re-derived, never re-rolled). ---
+	## --- Package destroy/dented/cracked, keyed by ring, from the DELTA's
+	## projected state (never re-derived, never re-rolled — P-DELTA swapped the
+	## source from "the containers' already-mutated Voxels" to the projection,
+	## and nothing else about this block). ---
 	var touched_this_blast: Dictionary = {}   ## Vector3i -> true, excludes these from the soot-only wave
 	## Every voxel whose damage_state this blast actually changed — the exact
 	## set room.record_voxel_damage_to_base() needs for VL-PERSIST (rotation
@@ -313,30 +350,38 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			continue
 		var ring: int = ring_of[key]
 		var container = container_of.get(key)
-		if voxel.damage_state == Voxel.DamageState.DESTROYED:
+		var state: int = delta.state_of(voxel)
+		if state == Voxel.DamageState.DESTROYED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
 			_count(census, "destroy", container, true)
-			_append_voxel_smoke(plan["smoke"], smoked_gus, voxel, ring,
+			_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
 				bomb_def.smoke_ring_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter)
-			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
+			_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 				"r": _radius_of(voxel.grid_pos, epicenter)})
-		elif voxel.damage_state == Voxel.DamageState.DENTED or voxel.damage_state == Voxel.DamageState.CRACKED:
+		elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
-			_append_voxel_smoke(plan["smoke"], smoked_gus, voxel, ring,
+			_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
 				bomb_def.smoke_ring_weights,
-				DENT_SMOKE_INTENSITY if voxel.damage_state == Voxel.DamageState.DENTED
+				DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
 					else CRACK_SMOKE_INTENSITY,
 				voxel_renderer, epicenter)
-			var resolved := _resolve_damaged_tile(voxel, container, voxel_renderer)
+			## P-DELTA: the resolver takes a whole Voxel and reads five damage
+			## fields off it, so it is handed the Delta's PROJECTED copy — see
+			## WorldDelta.project_voxel(). The real Voxel is still what goes into
+			## `touched_voxels`, because that list is the commit's persistence
+			## seam and needs the object, not a snapshot of it.
+			var resolved := _resolve_damaged_tile(
+				delta.project_voxel(voxel), container, voxel_renderer)
 			var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
-			var wave_key: String = "dented" if voxel.damage_state == Voxel.DamageState.DENTED else "cracked"
+			var wave_key: String = "dented" if state == Voxel.DamageState.DENTED else "cracked"
 			_count(census, wave_key, container, resolved["baked"])
-			_append(plan[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
+			_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 				"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"], "alt": alt,
 				"r": _radius_of(voxel.grid_pos, epicenter)})
-	_print_census(census, source_gu)
+	_print_census(census, source_gu,
+		float(Time.get_ticks_usec() - started_usec) / 1000.0)
 
 	## --- Exposure fallback: the floor reveals from above, wired into their
 	## owning ring's destroy entries (§6.1's `expose` sub-array), lit through
@@ -348,9 +393,9 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
 				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
 				"r": _radius_of(e["grid_pos"], epicenter)})
-		if not plan["destroy"].has(ring):
-			plan["destroy"][ring] = []
-		var carrier: Array = plan["destroy"][ring]
+		if not waves["destroy"].has(ring):
+			waves["destroy"][ring] = []
+		var carrier: Array = waves["destroy"][ring]
 		if carrier.is_empty():
 			## Shouldn't happen — a reveal only fires alongside a real destroy
 			## in the same ring — kept as an honestly-labelled defensive entry
@@ -387,7 +432,7 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			var alt := _alt_for(field, cell, level, prev_alt)
 			if alt == prev_alt:
 				continue   ## nothing this blast changes for this cell — no wave entry needed
-			_append(plan["soot"], ring, {"cell": cell, "level": level,
+			_append(waves["soot"], ring, {"cell": cell, "level": level,
 				"source_id": source_id, "atlas_coords": atlas_coords, "alt": alt,
 				"r": _radius_of(cell, epicenter)})
 
@@ -411,12 +456,22 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			+ Vector2i(int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0),
 				int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0))
 		var world_pos: Vector2 = voxel_renderer.voxel_world_position(gu_center, BlastCalculatorClass.GRENADE_LEVEL)
-		_append(plan["smoke"], ring, {"world_pos": world_pos, "duration": weight,
+		_append(waves["smoke"], ring, {"world_pos": world_pos, "duration": weight,
 			"scale": weight, "alpha": weight, "blobs": 0,
 			"r": _radius_of(gu_center, epicenter)})
 
-	plan["touched_voxels"] = touched_voxels
-	return plan
+	## §3.4 — the Delta's queryable surface. `touched_voxels` is the object list
+	## VL-PERSIST already consumed; `touched` is the same set as plain cells, for
+	## anything that must outlive the Voxel references (a cached Delta, a HUD
+	## readout). `census` stops being a print-only side effect.
+	delta.touched_voxels = touched_voxels
+	var touched_cells: Array[Vector3i] = []
+	for v3 in touched_voxels:
+		touched_cells.append(Vector3i(v3.grid_pos.x, v3.grid_pos.y, v3.level))
+	delta.touched = touched_cells
+	delta.census = census
+	delta.cost_ms = float(Time.get_ticks_usec() - started_usec) / 1000.0
+	return delta
 
 
 ## VL-D3 equivalent, computed from Voxel state rather than the live
@@ -436,18 +491,25 @@ static func _columns_with_structure(edge_registry: EdgeRegistry) -> Dictionary:
 ## live layer still shows every voxel this blast just destroyed as PLACED
 ## (nothing has erased it yet, on purpose), so reading occupancy off it would
 ## light the fresh crater as if it were still solid rock.
-static func _voxel_occupancy(edge_registry: EdgeRegistry, slab_registry: SlabRegistry) -> Dictionary:
+##
+## P-DELTA: `delta.visible_of()` rather than `v.visible`, because with a pure
+## builder the crater does not exist on the Voxels yet either. One dictionary
+## miss per untouched voxel is the whole cost of that, and it buys the property
+## that this same function lights a PREDICTED crater correctly — which is what a
+## blast-radius preview will need.
+static func _voxel_occupancy(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
+		delta: WorldDelta) -> Dictionary:
 	var occupancy: Dictionary = {}
 	for slice in edge_registry.all_slices():
 		for v in slice.voxels:
-			if not v.visible:
+			if not delta.visible_of(v):
 				continue
 			if not occupancy.has(v.level):
 				occupancy[v.level] = {}
 			occupancy[v.level][v.grid_pos] = true
 	for slab in slab_registry.all_slabs():
 		for v in slab.voxels:
-			if not v.visible:
+			if not delta.visible_of(v):
 				continue
 			if not occupancy.has(v.level):
 				occupancy[v.level] = {}
@@ -460,17 +522,39 @@ static func _voxel_occupancy(edge_registry: EdgeRegistry, slab_registry: SlabReg
 ## provenance) — kept as an independent copy rather than a call into room.gd
 ## because this class must run without a real Room (the MinimalRoom selftest
 ## scaffold, matching Task 1b/2/3's own precedent).
+##
+## P-DELTA: classifies through the Delta's projection, for the same reason
+## `_voxel_occupancy()` does — the holes this blast makes are what the soot is
+## derived FROM, and with a pure builder they exist only in the Delta.
+##
+## The two output collections are deliberately DIFFERENT about this:
+##  - `cell_to_voxel` keeps the REAL Voxel. `derive_soot_rings()` reads nothing
+##    but the cell key off it, and the packaging loop downstream wants the real
+##    object so `touched_voxels` can persist it.
+##  - `damaged_voxels` gets the PROJECTED voxel, because its only consumer
+##    (`apply_self_soot()`) reads `damage_state`, `damage_is_blast` and
+##    `damage_carved_side` — a real Voxel would still read INTACT here and the
+##    self-soot on every fresh dent/crack would silently vanish.
+##    `project_voxel()` returns the original when nothing changed, so untouched
+##    voxels cost no allocation.
 static func _index_soot_voxel(cell_to_voxel: Dictionary, blast_cells: Array,
-		weapon_cells: Array, damaged_voxels: Array, v: Voxel) -> void:
+		weapon_cells: Array, damaged_voxels: Array, v: Voxel, delta: WorldDelta) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
-	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
-		if v.damage_is_blast:
+	## ONE projection lookup, not three — this runs ~100 000 times per
+	## detonation. See WorldDelta.projection_of() for the measurement.
+	var p: Array = delta.projection_of(v)
+	var touched: bool = not p.is_empty()
+	var state: int = int(p[WorldDelta.P_STATE]) if touched else v.damage_state
+	var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else v.visible
+	if not vis or state == Voxel.DamageState.DESTROYED:
+		var from_blast: bool = bool(p[WorldDelta.P_BLAST]) if touched else v.damage_is_blast
+		if from_blast:
 			blast_cells.append(key)
 		else:
 			weapon_cells.append(key)
-	elif v.damage_state == Voxel.DamageState.DENTED or v.damage_state == Voxel.DamageState.CRACKED:
-		damaged_voxels.append(v)
+	elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
+		damaged_voxels.append(delta.project_voxel(v) if touched else v)
 
 
 ## Mirrors room._merge_soot_into() exactly (min-wins per cell, min-per-face
@@ -590,8 +674,14 @@ static func _material_name(container) -> String:
 ## none — a silent census and a zero census are different findings, and
 ## FLOOR-DENT-01 (69 dents on a fixture, zero on PLAYGROUND) is what happens
 ## when they read the same.
-static func _print_census(census: Dictionary, source_gu: Vector2i) -> void:
-	print("[E-PLAN] census gu=%s — surface/material: destroyed · dented · cracked (bake hits)" % source_gu)
+## P-DELTA appended `cost_ms` — the Delta's own §3.4 field, printed here because
+## this is the line a detonation is already read from, and §4.4's slice budget is
+## measured against exactly this number. It is the cost UP TO the census, not the
+## whole call (the soot-only wave and the GU smoke remainder still follow), which
+## makes it comparable across runs but NOT the same figure as `delta.cost_ms`.
+static func _print_census(census: Dictionary, source_gu: Vector2i, cost_ms: float) -> void:
+	print("[E-PLAN] census gu=%s cost=%.1fms — surface/material: destroyed · dented · cracked (bake hits)"
+		% [source_gu, cost_ms])
 	if census.is_empty():
 		print("[E-PLAN]   (no container reached — nothing to damage)")
 		return

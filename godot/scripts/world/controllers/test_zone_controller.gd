@@ -240,18 +240,27 @@ func detonate_active() -> void:
 		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
 			var gu: Vector2i = g["gu_cell"]
 			var ctx := _build_detonation_ctx(gu)
-			var plan := DetonationPlanBuilderClass.build_plan(bomb_def, gu, ctx)
+			## P-DELTA (2026-08-09): build_plan() no longer damages anything —
+			## it returns a WorldDelta describing what WOULD happen, and the
+			## commit below is what makes it real. The two lines are adjacent
+			## here on purpose: nothing about the player-visible behaviour has
+			## changed yet, and the SEPARATION of these two moments is Task 6
+			## (P-COOK), not this one. Pulling them apart before the cooking beat
+			## exists would just move the 166 ms somewhere else.
+			var delta := DetonationPlanBuilderClass.build_plan(bomb_def, gu, ctx)
+			delta.commit()
 			room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
 
 			## VL-PERSIST: record every voxel this blast actually changed so
 			## rotation replays it — the exact set Task 4's own plan returns,
-			## no second flood/find_affected_containers pass needed.
-			for voxel in plan["touched_voxels"]:
+			## no second flood/find_affected_containers pass needed. Reads the
+			## real Voxel fields, so it has to follow the commit above.
+			for voxel in delta.touched_voxels:
 				room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
 					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 					voxel.damage_substrate)
 
-			_start_detonation_sequence(plan, anchor)
+			_start_detonation_sequence(delta.waves, anchor)
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
@@ -279,15 +288,20 @@ func detonate_active() -> void:
 ## instead of skipping it.
 ##
 ## The DAMAGE is already fully applied to Voxel state before any of this runs
-## (build_plan() is the writer) — this only schedules when the player SEES it, so
-## a dropped frame or a map reload mid-sequence loses pixels, never state.
+## (P-DELTA: `delta.commit()` in detonate_active() is the writer now, not
+## build_plan()) — this only schedules when the player SEES it, so a dropped
+## frame or a map reload mid-sequence loses pixels, never state.
+##
+## It takes `delta.waves`, not the Delta: playback has no business knowing that
+## a prediction layer exists, and a choreographer that could reach `commit()`
+## would be a second writer.
 ##
 ## A coroutine (it awaits frames), deliberately called WITHOUT await by
 ## detonate_active(): the caller's remaining work — clearing the wireframe,
 ## resetting _active_index — belongs to the click, not to the animation. `self`
 ## stays alive because room holds `_test_zone_controller`, the same explicit
 ## ownership `_active_choreographer` exists for.
-func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
+func _start_detonation_sequence(waves: Dictionary, anchor: Vector2) -> void:
 	## Beat 1 — fire and shake, alone.
 	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
@@ -309,14 +323,14 @@ func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
 		flash_overlay.clear()
 
 	## Beat 3 — destruction, clean.
-	_start_waves(plan)
+	_start_waves(waves)
 
 
-func _start_waves(plan: Dictionary) -> void:
+func _start_waves(waves: Dictionary) -> void:
 	var choreographer := DetonationChoreographerClass.new()
 	_active_choreographer = choreographer
 	choreographer.finished.connect(func(): _active_choreographer = null)
-	choreographer.start(plan, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
+	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
 
 
 ## The point the fireball blooms from: the top-centre of the grenade sprite, in

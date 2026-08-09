@@ -1,11 +1,18 @@
-## P-PURE — BlastCalculator purity selftest (PREDICTION_MASTER_PLAN Task 2,
-## 2026-08-09).
+## P-PURE / P-DELTA — prediction purity selftest (PREDICTION_MASTER_PLAN
+## Tasks 2 and 3, 2026-08-09).
 ## Rodar: python3 tools/persistent/run_selftests.py --only blast_purity
 ##
 ## This is the test §11.4 calls "the test that makes the whole plan safe": it
-## asserts that `simulate_container_damage()` / `simulate_crater_damage()`
-## change NOTHING about the world, so a prediction that is computed and thrown
-## away costs nothing but the time.
+## asserts that computing a detonation changes NOTHING about the world, so a
+## prediction that is computed and thrown away costs nothing but the time.
+##
+## **Task 3 widened its subject from the two mutators to the whole pass.** It
+## opened running a hand-written mirror of `build_plan()`'s damage phase, because
+## `build_plan()` itself still committed and would have defeated a purity test
+## outright. Now that P-DELTA made the builder pure, the mirror is gone and every
+## test below runs the REAL `DetonationPlanBuilder.build_plan()` — which is both
+## a stronger claim (the whole 170 ms pipeline is pure, not just its damage step)
+## and one fewer copy of the pipeline free to drift out of sync with the original.
 ##
 ## Why it lives in its own file rather than inside blast_calculator_selftest.gd:
 ## that suite is Task 2's REGRESSION NET — its ~20 direct calls to the mutating
@@ -24,15 +31,15 @@
 ## `BlastCalculator.damage_entry()` — the smallest edit that makes BOTH
 ## simulate functions impure at once — this run came back:
 ##
-##     ✗ 167 voxel(s) changed state during simulate (e.g. (7, 11) level 0:
+##     ✗ 167 voxel(s) changed state during build_plan() (e.g. (7, 11) level 0:
 ##       [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true])
-##     ✗ 3 container(s) had their dirty_count moved by simulate
-##     RESULT: 5 PASS, 2 FAIL
+##     ✗ 3 container(s) had their dirty_count moved by build_plan()
+##     RESULT: 6 PASS, 2 FAIL
 ##
 ## Note what stayed green under that break, because it is the reason test 1 has
 ## to exist separately: determinism (2) and the tier census (3) both still
 ## passed, and test 4 still reported every entry landing correctly — it merely
-## counted 167 no-ops instead of 0. An impure simulate is invisible to every
+## counted 167 no-ops instead of 0. An impure builder is invisible to every
 ## check here except this one.
 
 extends SceneTree
@@ -83,12 +90,13 @@ func _init() -> void:
 			var slab_registry = built["room"]._slab_registry
 
 			var before := _snapshot_world(edge_registry, slab_registry)
-			var delta_a := _simulate_blast(bomb_def, source_gu, ctx)
+			var delta_a: WorldDelta = DetonationPlanBuilderClass.build_plan(
+				bomb_def, source_gu, ctx)
 			var after := _snapshot_world(edge_registry, slab_registry)
 
 			test_1_simulate_writes_nothing(before, after)
-			test_2_simulate_is_deterministic(
-				delta_a, _simulate_blast(bomb_def, source_gu, ctx))
+			test_2_simulate_is_deterministic(delta_a,
+				DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx))
 			test_3_the_delta_is_not_empty_on_the_real_map(delta_a)
 			## Mutating — must be last. Everything above assumes an untouched world.
 			test_4_commit_realises_the_delta(delta_a, edge_registry, slab_registry)
@@ -119,7 +127,7 @@ func _init() -> void:
 ## is checked too, because it is the one piece of mutable state that does NOT
 ## live on a Voxel (`Voxel._set_dirty()` propagates upward).
 func test_1_simulate_writes_nothing(before: Dictionary, after: Dictionary) -> void:
-	print("[1] §11.4 — simulate() leaves all 7 mutable fields of every voxel untouched\n")
+	print("[1] §11.4 — build_plan() leaves all 7 mutable fields of every voxel untouched\n")
 	var voxels_before: Dictionary = before["voxels"]
 	var voxels_after: Dictionary = after["voxels"]
 
@@ -138,9 +146,9 @@ func test_1_simulate_writes_nothing(before: Dictionary, after: Dictionary) -> vo
 			if first_example.is_empty():
 				first_example = "%s: %s -> %s" % [key, a, b]
 	if changed == 0:
-		_pass("%d voxel(s) x 7 fields — not one changed during simulate" % voxels_before.size())
+		_pass("%d voxel(s) x 7 fields — not one changed during build_plan()" % voxels_before.size())
 	else:
-		_fail("%d voxel(s) changed state during simulate (e.g. %s)" % [changed, first_example])
+		_fail("%d voxel(s) changed state during build_plan() (e.g. %s)" % [changed, first_example])
 
 	var dirty_before: Dictionary = before["dirty"]
 	var dirty_after: Dictionary = after["dirty"]
@@ -152,15 +160,17 @@ func test_1_simulate_writes_nothing(before: Dictionary, after: Dictionary) -> vo
 		_pass("%d container dirty_count(s) unchanged — nothing was queued for repaint either"
 			% dirty_before.size())
 	else:
-		_fail("%d container(s) had their dirty_count moved by simulate" % dirty_changed)
+		_fail("%d container(s) had their dirty_count moved by build_plan()" % dirty_changed)
 
 
 ## §11.5. Determinism is what makes pre-production safe at all: a Delta computed
 ## on hover and committed on landing is only trustworthy if the same world
 ## produces the same Delta. §2.4 argues this already holds (every roll is an
 ## FNV-1a hash of a stable key, never randf()); this is what keeps it holding.
-func test_2_simulate_is_deterministic(a: Array, b: Array) -> void:
-	print("[2] §11.5 — two simulate() calls on an unchanged world return the same Delta\n")
+func test_2_simulate_is_deterministic(da: WorldDelta, db: WorldDelta) -> void:
+	print("[2] §11.5 — two build_plan() calls on an unchanged world return the same Delta\n")
+	var a: Array = da.damage
+	var b: Array = db.damage
 	if a.size() != b.size():
 		_fail("Delta sizes differ: %d vs %d" % [a.size(), b.size()])
 		return
@@ -187,8 +197,9 @@ func test_2_simulate_is_deterministic(a: Array, b: Array) -> void:
 ## empty Delta would pass tests 1 and 2 perfectly — purity and determinism are
 ## both trivially true of a function that does nothing. This is the test that
 ## tells the difference.
-func test_3_the_delta_is_not_empty_on_the_real_map(delta: Array) -> void:
+func test_3_the_delta_is_not_empty_on_the_real_map(wd: WorldDelta) -> void:
 	print("[3] The Delta the REAL map produces is real — not a clean-but-inert simulate\n")
+	var delta: Array = wd.damage
 	var by_state: Dictionary = {}
 	for e in delta:
 		var s: int = int(e["state"])
@@ -204,6 +215,24 @@ func test_3_the_delta_is_not_empty_on_the_real_map(delta: Array) -> void:
 		_fail("a tier came back empty on the real map — destroyed %d, dented %d, cracked %d"
 			% [destroyed, dented, cracked])
 
+	## §3.4's queryable surface, as an assertion rather than a promise. A HUD or
+	## a preview reads these three and never walks `damage`, so a Delta that
+	## silently shipped them empty would break a consumer that has no other way
+	## to notice.
+	var wave_entries: int = 0
+	for kind in wd.waves:
+		for ring in wd.waves[kind]:
+			wave_entries += (wd.waves[kind][ring] as Array).size()
+	print("      waves %d entries · census %d row(s) · touched %d cell(s) · cost %.1f ms"
+		% [wave_entries, wd.census.size(), wd.touched.size(), wd.cost_ms])
+	if wave_entries > 0 and not wd.census.is_empty() \
+			and wd.touched.size() == wd.touched_voxels.size() and wd.cost_ms > 0.0:
+		_pass("§3.4 surface populated — waves, census, touched (cells == voxels) and cost_ms")
+	else:
+		_fail("§3.4 surface incomplete — waves %d, census %d, touched %d vs voxels %d, cost %.1f"
+			% [wave_entries, wd.census.size(), wd.touched.size(),
+				wd.touched_voxels.size(), wd.cost_ms])
+
 
 ## The other half of the contract: the Delta must be a FAITHFUL description of
 ## the mutation, not merely a harmless one. After commit, every entry's voxel
@@ -216,14 +245,15 @@ func test_3_the_delta_is_not_empty_on_the_real_map(delta: Array) -> void:
 ## provenance fields. On a first blast against an intact map that set should be
 ## empty, and it is counted rather than waved through so a future non-empty one
 ## shows up as a number instead of as silence.
-func test_4_commit_realises_the_delta(delta: Array, edge_registry, slab_registry) -> void:
-	print("[4] commit_damage() writes exactly what the Delta described\n")
+func test_4_commit_realises_the_delta(wd: WorldDelta, edge_registry, slab_registry) -> void:
+	print("[4] delta.commit() writes exactly what the Delta described\n")
+	var delta: Array = wd.damage
 	var no_ops: int = 0
 	for e in delta:
 		if e["voxel"].damage_state == e["state"]:
 			no_ops += 1
 
-	BlastCalculatorClass.commit_damage(delta)
+	wd.commit()
 
 	var wrong: int = 0
 	var first_example: String = ""
@@ -279,53 +309,6 @@ func test_4_commit_realises_the_delta(delta: Array, edge_registry, slab_registry
 ## as an independent copy (same precedent that file records: a selftest must run
 ## without a real Room).
 ## ---------------------------------------------------------------------------
-
-## The blast's SIMULATE-only pass, mirroring build_plan()'s own resolution phase
-## (detonation_plan_builder.gd) call for call — same flood, same affected
-## containers, same epicentre, same crater radii, same argument order — with
-## `simulate_*` substituted for `apply_*` and nothing else changed. Kept as a
-## faithful mirror rather than calling build_plan(), because build_plan() still
-## commits (Task 3's job) and would defeat the purity test outright.
-func _simulate_blast(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Array:
-	var edge_registry = ctx["edge_registry"]
-	var slab_registry = ctx["slab_registry"]
-	var gu_rings := BlastCalculatorClass.flood_gu_rings(source_gu, bomb_def,
-		ctx.get("blocked_edges", {}), ctx.get("blocked_cells", {}))
-	var affected := BlastCalculatorClass.find_affected_containers(
-		gu_rings, edge_registry, slab_registry)
-	var n_rings: int = bomb_def.ring_multipliers.size()
-	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
-	var epicenter: Vector2i = source_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
-		+ Vector2i(half, half)
-
-	var delta: Array = []
-	for slice_id in affected["slices"]:
-		var slice: Slice = edge_registry.get_slice(slice_id)
-		var base_level: int = slice.start_storey * GeometryCoords.LEVELS_PER_STOREY
-		delta.append_array(BlastCalculatorClass.simulate_container_damage(
-			slice.voxels, slice.id, slice.material, affected["slices"][slice_id],
-			base_level, false, bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
-	for slab_id in affected["roofs"]:
-		var roof: Slab = slab_registry.get_slab(slab_id)
-		delta.append_array(BlastCalculatorClass.simulate_container_damage(
-			roof.voxels, roof.id, roof.material, affected["roofs"][slab_id],
-			roof.level, true, bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
-
-	var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) \
-		* DetonationPlanBuilderClass.CRATER_MAX_FACTOR
-	var crater_core: float = crater_max * DetonationPlanBuilderClass.CRATER_CORE_FACTOR
-	for slab_id2 in affected.get("floors", {}):
-		var floor_slab: Slab = slab_registry.get_slab(slab_id2)
-		if floor_slab.level == GeometryCoords.FLOOR_DEEP_LEVEL:
-			continue   ## D2: locked on a first blast, matching build_plan()'s own gate
-		delta.append_array(BlastCalculatorClass.simulate_crater_damage(
-			floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max,
-			floor_slab.material, false, 1.0,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights))
-	return delta
-
 
 ## §2.1's complete mutable surface, per voxel, plus the container counter the
 ## 7th field propagates into. Keyed by the Voxel itself so identity, not

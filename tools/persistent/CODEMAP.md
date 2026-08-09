@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**190 scripts · 47925 lines total** (under `godot/scripts/`)
+**190 scripts · 48116 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1261,7 +1261,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 145 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 154 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1543,7 +1543,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 151 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 177 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1555,10 +1555,10 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `WAVE_TABLE` = `[ ["destroy", 0], ["destroy", 1], ["destroy", 2], ["dented", 0], ["dented", 1], ["cracked", 1], ["cracked", 2], ["smoke", 0], ["smoke", 1], ["smoke", 2], ["smoke", 3], ["soot", 0], ["soot", 1], ["soot", 2], ["soot", 3], ]`
-- `SMOKE_COLOR` = `Color(0.35, 0.35, 0.35, 0.6)`
+- `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
 
 **Public vars**
-- `var wave_interval_ms: float = 40.0`
+- `var wave_interval_ms: float = 20.0`
 
 **Public API**
 - `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
@@ -1567,7 +1567,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 572 lines
+`class_name DetonationPlanBuilder` · 670 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1580,6 +1580,7 @@ extends `Node2D` · 43 lines
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
 - `CRATER_CORE_FACTOR` = `0.30`
+- `SMOKE_BLOBS_PER_VOXEL` = `1`
 
 ---
 
@@ -2649,7 +2650,7 @@ extends `SceneTree` · 245 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 350 lines
+extends `SceneTree` · 399 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4109,7 +4110,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3703 lines
+extends `Node2D` · 3712 lines
 
 `godot/scripts/world/room.gd`
 

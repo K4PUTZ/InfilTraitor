@@ -1952,13 +1952,69 @@ delta 24.8/255 (the floor's holes: 39.7, peak 248). This is an ART problem at
 voxel scale, not a wiring one — the pipeline demonstrably delivers the right atom
 to the right cell. Flagged for the Director, not guessed at.
 
+## E-SMOKE-01 (2026-08-08) — 20 ms waves, and smoke from every damaged voxel
+
+Two more Director calls, same session.
+
+**Cadence: 40 ms → 20 ms.** Q5 confirmed 40 ms on 2026-08-06, before any of it
+had been watched running; the Director halved it after real detonations. 15
+waves now complete in **256 ms** (measured, `[E-WAVE]` log) instead of 565 ms.
+Note for whoever tunes it next: at 20 ms the interval is already *below* one
+frame at 60 fps, so the sequence is effectively frame-paced (~15 frames) and
+lowering the number further will not shorten it.
+
+**Smoke: one puff per flooded GU → one puff per damaged voxel.** Director:
+"fumaça tem muito pouca, praticamente todo voxel afetado pode soltar um
+pouquinho de fumaça, com intensidades diferentes e durações diferentes."
+Measured, stone blast: **22 puffs → 465**, one for every voxel in the census
+(464 damaged + 1 GU remainder). Three terms multiply into each puff, no `randf()`
+anywhere in the plan:
+
+- the damage tier's own intensity (`DESTROY 1.0 / DENT 0.6 / CRACK 0.35`) — the
+  smoke draws a picture of the damage instead of a uniform fog;
+- `smoke_ring_weights[ring]`, the table the GU-level path already read;
+- a deterministic per-cell FNV-1a hash, with **separate salts for size and
+  duration** so a big puff is not systematically also a long one.
+
+The old per-GU puff survives as a *remainder* pass, filling only GUs the flood
+reached but left undamaged. That is not tidiness: ring 3 damages nothing by
+construction (§4.1), so without it ring 3 would have lost the weak smoke D5/Q2
+deliberately gave it.
+
+Cost is not the issue anyone expected: applying 298 puffs measured **0.579 ms**.
+The real ceiling is draw-time — ~465 `draw_circle` calls per frame while the
+puffs live (~1 s). Fine on desktop; **unmeasured on a real device, and this is a
+mobile-first game** — flagged, not assumed.
+
+**Two visual iterations, both driven by a real capture rather than review:**
+
+1. First pass measured as *invisible* — the mid-sequence frame differed from the
+   post-smoke frame on 1.1% of pixels at mean delta 12/255. Cause: dark grey
+   (0.35) puffs drawn over an already-sooted crater, at a radius smaller than the
+   voxel venting them. Fixed with an ash colour and `SMOKE_SCALE_BASE`.
+2. Second pass overshot into **hard-edged discs** — `SmokeSparkOverlay` draws
+   flat `draw_circle`s, so 274 opaque puffs read as a heap of bubbles
+   (`e_smoke_hard_discs_rejected.png`). **Per-voxel smoke inverts the economics
+   the one-puff-per-GU model was tuned for: density now comes from OVERLAP**, so
+   alpha dropped 0.8 → 0.2 and `SMOKE_JITTER` rose to 0.7. Final: 2.57% of the
+   frame at mean delta 19.1. Recorded because the wrong lever is obvious and
+   wrong — turning the alpha back up is how this regresses.
+
+Captures: `e_smoke_per_voxel_stone.png`, `e_smoke_per_voxel_metal.png`.
+`INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES` (new, defaults to the historical 45)
+lands a capture mid-sequence — **every detonation capture ever taken before this
+showed the damage with the VFX already dead**, which is why no earlier session
+could make a visual claim about smoke at all.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight
    numbers.~~ **Done 2026-08-08 as E-CRACK-01's tuning pass, above** — the
    numbers moved once, on real censuses, and every one of them is still a
-   placeholder open to another pass. `soot_ring_tones` and `smoke_ring_weights`
-   were NOT touched (the soot stamp is off entirely for now, E-DENT-01).
+   placeholder open to another pass. `soot_ring_tones` was NOT touched (the soot
+   stamp is off entirely for now, E-DENT-01); `smoke_ring_weights` is unchanged
+   in value but now scales hundreds of per-voxel puffs instead of a handful of
+   per-GU ones (E-SMOKE-01), so the same numbers mean something different.
 2. **The "quebradiça" (brittle/fragmented) soot texture** — **REVERSED,
    2026-08-08.** The Post-Task-5 A/B test below was run against a genuine
    bug (GPU-UPLOAD-01, same session's own damage-atom gallery rig found it

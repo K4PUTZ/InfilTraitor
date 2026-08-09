@@ -305,24 +305,73 @@ func test_4_exposure_fallback(plan: Dictionary) -> void:
 	print("")
 
 
+## E-SMOKE-01 (2026-08-08) rewrote what this test can assert. It used to demand
+## `duration == scale == smoke_ring_weights[ring]` EXACTLY, which was provable
+## only while smoke was one flat descriptor per GU. The Director's per-voxel smoke
+## ("praticamente todo voxel afetado pode soltar um pouquinho de fumaça, com
+## intensidades diferentes e durações diferentes") makes that equality false BY
+## DESIGN — every puff is the product of its voxel's damage tier, its ring
+## weight, and a per-cell hash. The test's own title is still the right intent, so
+## the three properties below replace the equality rather than the test being
+## dropped or weakened:
+##   (a) a ring whose weight is 0.0 emits NOTHING — the weight still gates;
+##   (b) every puff stays inside the envelope its ring weight allows — the weight
+##       still SCALES, which an equality check proved and a "> 0" check would not;
+##   (c) puffs within one ring actually differ from each other — the variation the
+##       Director asked for is real, not a constant dressed up as one.
 func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:
-	print("[5] smoke_ring_weights is a real consumed input, not still-unread\n")
+	print("[5] smoke_ring_weights still gates and scales every per-voxel puff (E-SMOKE-01)\n")
 	var by_ring: Dictionary = plan["smoke"]
 	if by_ring.is_empty():
 		_fail("no smoke entries at all — smoke_ring_weights cannot be proven consumed")
 		print("")
 		return
-	var ok := true
+
+	## The largest scale/duration _append_voxel_smoke() can produce for a ring:
+	## the strongest tier, at full jitter, on that ring's own weight. The GU-level
+	## remainder puffs (duration == scale == weight) sit well inside it.
+	var envelope := func(ring: int) -> float:
+		var weight: float = bomb_def.smoke_ring_weights[ring] if ring < bomb_def.smoke_ring_weights.size() else 0.0
+		return DetonationPlanBuilderClass.SMOKE_SCALE_BASE \
+			* DetonationPlanBuilderClass.DESTROY_SMOKE_INTENSITY * weight \
+			* (1.0 + DetonationPlanBuilderClass.SMOKE_JITTER)
+
+	var gated_ok := true
+	var scaled_ok := true
+	var varied_rings := 0
+	var uniform_rings: Array[String] = []
 	for ring in by_ring.keys():
-		var expected_weight: float = bomb_def.smoke_ring_weights[ring] if ring < bomb_def.smoke_ring_weights.size() else 0.0
-		for entry in by_ring[ring]:
-			if not is_equal_approx(float(entry["duration"]), expected_weight) \
-					or not is_equal_approx(float(entry["scale"]), expected_weight):
-				ok = false
-	if ok:
-		_pass("every smoke entry's duration/scale matches frag_grenade.json's own smoke_ring_weights[ring]")
+		var weight: float = bomb_def.smoke_ring_weights[ring] if ring < bomb_def.smoke_ring_weights.size() else 0.0
+		var entries: Array = by_ring[ring]
+		if weight <= 0.0 and not entries.is_empty():
+			gated_ok = false
+			continue
+		var limit: float = envelope.call(ring) + 0.0001
+		var distinct: Dictionary = {}
+		for entry in entries:
+			var scale: float = float(entry["scale"])
+			var duration: float = float(entry["duration"])
+			if scale <= 0.0 or duration <= 0.0 or scale > limit or duration > limit:
+				scaled_ok = false
+			distinct["%.3f|%.3f" % [scale, duration]] = true
+		if entries.size() >= 8:
+			if distinct.size() > 1:
+				varied_rings += 1
+			else:
+				uniform_rings.append("ring %d (%d identical puffs)" % [ring, entries.size()])
+
+	if gated_ok:
+		_pass("no smoke entry exists in a ring frag_grenade.json weights at 0.0 — the gate holds")
 	else:
-		_fail("at least one smoke entry's duration/scale does not match smoke_ring_weights[ring]")
+		_fail("a ring with smoke_ring_weights 0.0 still produced puffs — the gate is not applied")
+	if scaled_ok:
+		_pass("every puff's scale/duration is positive and within its ring weight's envelope")
+	else:
+		_fail("at least one puff fell outside the envelope its ring weight allows")
+	if uniform_rings.is_empty() and varied_rings > 0:
+		_pass("%d ring(s) with 8+ puffs each carry genuinely different intensities/durations" % varied_rings)
+	else:
+		_fail("per-voxel variation missing: %s" % ", ".join(uniform_rings))
 	print("")
 
 

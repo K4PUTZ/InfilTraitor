@@ -73,6 +73,35 @@ const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const CRATER_MAX_FACTOR: float = 0.40
 const CRATER_CORE_FACTOR: float = 0.30
 
+## E-SMOKE-01 (Director, 2026-08-08) — "intensidades diferentes". A puff's base
+## strength comes from how hard its voxel was actually hit, so the smoke reads as
+## a picture of the damage rather than a uniform fog: a hole vents most, a
+## fracture barely wisps. This is the same severity ladder the damage tiers
+## themselves ride on (E-CRACK-01), reused rather than re-invented. `var`, not
+## `const` — architecture rule 1, these are tuning levers.
+static var DESTROY_SMOKE_INTENSITY: float = 1.0
+static var DENT_SMOKE_INTENSITY: float = 0.6
+static var CRACK_SMOKE_INTENSITY: float = 0.35
+
+## Per-voxel spread around that base, "durações diferentes". Applied as a
+## deterministic per-cell hash rather than randf() so two runs of the same
+## capture are comparable — the same reason every other roll in this pipeline is
+## hashed (FacadeSampler._fnv1a_hash), even though smoke itself is purely visual.
+static var SMOKE_JITTER: float = 0.7       ## ± fraction on scale/alpha
+static var SMOKE_DURATION_JITTER: float = 0.6   ## ± fraction on duration
+
+## The overlay's own radii (6 px start, 16 px end) were authored for VFX-01's
+## 2-3 blob cluster on ONE destroyed voxel. A single per-voxel blob at scale 1.0
+## is smaller than the 32x16 voxel it is venting from, which is a large part of
+## why the first per-voxel pass measured as invisible; this lifts the base so a
+## puff at least covers its own voxel.
+static var SMOKE_SCALE_BASE: float = 1.7
+
+## A per-voxel puff is ONE blob, not the 2-3 cluster VFX-01 gives a lone
+## destroyed voxel — there are now hundreds of them and each is meant to read as
+## "um pouquinho de fumaça".
+const SMOKE_BLOBS_PER_VOXEL: int = 1
+
 
 ## Builds and returns one DetonationPlan Dictionary. Empty `{}` sub-dicts for
 ## any wave kind with nothing to show — Task 5 reads with `.get(ring, [])`.
@@ -261,6 +290,14 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	## PLAYGROUND" the first time. Built here (the only pass that knows each
 	## voxel's container), printed once per detonation.
 	var census: Dictionary = {}   ## "kind|surface" -> {"n": int, "baked": int}
+	## E-SMOKE-01 (Director, 2026-08-08): "praticamente todo voxel afetado pode
+	## soltar um pouquinho de fumaça, com intensidades diferentes e durações
+	## diferentes." Smoke used to be ONE puff per flooded GU (1/4/7/10 per blast);
+	## it is now one puff per voxel this blast actually damaged, emitted right
+	## where the damage is. `smoked_gus` records which GUs that covered, so the
+	## old per-GU puff can still fill the ones it didn't — see the smoke block
+	## further down for why ring 3 needs exactly that.
+	var smoked_gus: Dictionary = {}
 	for key in ring_of:
 		var voxel: Voxel = cell_to_voxel.get(key)
 		if voxel == null:
@@ -271,10 +308,17 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
 			_count(census, "destroy", container, true)
+			_append_voxel_smoke(plan["smoke"], smoked_gus, voxel, ring,
+				bomb_def.smoke_ring_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer)
 			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level})
 		elif voxel.damage_state == Voxel.DamageState.DENTED or voxel.damage_state == Voxel.DamageState.CRACKED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
+			_append_voxel_smoke(plan["smoke"], smoked_gus, voxel, ring,
+				bomb_def.smoke_ring_weights,
+				DENT_SMOKE_INTENSITY if voxel.damage_state == Voxel.DamageState.DENTED
+					else CRACK_SMOKE_INTENSITY,
+				voxel_renderer)
 			var resolved := _resolve_damaged_tile(voxel, container, voxel_renderer)
 			var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
 			var wave_key: String = "dented" if voxel.damage_state == Voxel.DamageState.DENTED else "cracked"
@@ -333,11 +377,16 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			_append(plan["soot"], ring, {"cell": cell, "level": level,
 				"source_id": source_id, "atlas_coords": atlas_coords, "alt": alt})
 
-	## --- Smoke: smoke_ring_weights' first real consumer (Task 3's closure
-	## note flagged this as still-unread). One descriptor per GU actually
-	## reached by the flood, ring-scaled duration/scale — Task 5 owns picking
-	## a material color and calling SmokeSparkOverlay.add_smoke(). ---
+	## --- Smoke, the GU-level remainder (E-SMOKE-01). The per-voxel puffs above
+	## already cover every GU that took real damage; this fills only the GUs the
+	## flood REACHED but left intact. Ring 3 is the case that makes it necessary
+	## rather than decorative: `destroy/dent/crack_ring_weights[3]` are all 0.0
+	## (§4.1 — ring 3 exists to carry soot), so ring 3 damages nothing and would
+	## otherwise have lost the weak smoke D5/Q2 deliberately gave it ("smoke now
+	## reaches ring 3, weak"). Same descriptor shape as before, one per GU. ---
 	for gu in gu_rings.keys():
+		if smoked_gus.has(gu):
+			continue
 		var ring: int = gu_rings[gu]
 		if ring >= bomb_def.smoke_ring_weights.size():
 			continue
@@ -348,7 +397,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			+ Vector2i(int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0),
 				int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0))
 		var world_pos: Vector2 = voxel_renderer.voxel_world_position(gu_center, BlastCalculatorClass.GRENADE_LEVEL)
-		_append(plan["smoke"], ring, {"world_pos": world_pos, "duration": weight, "scale": weight})
+		_append(plan["smoke"], ring, {"world_pos": world_pos, "duration": weight,
+			"scale": weight, "alpha": weight, "blobs": 0})
 
 	plan["touched_voxels"] = touched_voxels
 	return plan
@@ -570,3 +620,51 @@ static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
 	if not by_ring.has(ring):
 		by_ring[ring] = []
 	by_ring[ring].append(entry)
+
+
+## E-SMOKE-01 — one puff descriptor for one damaged voxel, at that voxel's own
+## world position (not its GU's centre: the point of going per-voxel is that the
+## smoke traces the real shape of the damage).
+##
+## Three independent terms multiply into every puff, which is what produces
+## "intensidades diferentes e durações diferentes" without a single random call:
+##   · the damage tier's own base intensity (destroyed > dented > cracked);
+##   · the bomb's `smoke_ring_weights[ring]`, so an outer ring genuinely wisps
+##     less than the epicentre — the same table the GU-level path already read;
+##   · a deterministic per-cell hash, so two neighbouring voxels in the same ring
+##     and the same tier still differ. Scale/alpha and duration draw from
+##     SEPARATE salts, so a big puff is not systematically also a long one.
+##
+## Records the voxel's GU in `smoked_gus` so the GU-level remainder pass at the
+## end of build_plan() knows this GU is already covered.
+static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionary,
+		voxel: Voxel, ring: int, smoke_ring_weights: Array[float], tier_intensity: float,
+		voxel_renderer: VoxelRendererClass) -> void:
+	if ring < 0 or ring >= smoke_ring_weights.size():
+		return
+	var weight: float = smoke_ring_weights[ring]
+	if weight <= 0.0:
+		return
+	smoked_gus[GeometryCoords.voxel_to_gu(voxel.grid_pos)] = true
+
+	var size_roll: float = _hash_unit("SMOKESIZE", voxel.grid_pos, voxel.level)
+	var time_roll: float = _hash_unit("SMOKETIME", voxel.grid_pos, voxel.level)
+	var strength: float = tier_intensity * weight
+	var scale: float = maxf(
+		SMOKE_SCALE_BASE * strength * (1.0 - SMOKE_JITTER + 2.0 * SMOKE_JITTER * size_roll), 0.05)
+	var duration: float = maxf(
+		strength * (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
+	_append(smoke_by_ring, ring, {
+		"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+		"duration": duration,
+		"scale": scale,
+		"alpha": clampf(strength * (0.6 + 0.8 * size_roll), 0.05, 1.0),
+		"blobs": SMOKE_BLOBS_PER_VOXEL,
+	})
+
+
+## A deterministic value in [0,1) for one cell under one salt — the project's
+## standard FNV-1a roll (BlastCalculator's own idiom), reused here so smoke
+## variation survives a re-run of the same capture.
+static func _hash_unit(salt: String, cell: Vector2i, level: int) -> float:
+	return float(FacadeSampler._fnv1a_hash("%s:%d,%d,%d" % [salt, cell.x, cell.y, level]) % 10000) / 10000.0

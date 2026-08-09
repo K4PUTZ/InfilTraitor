@@ -3311,7 +3311,16 @@ func _run_auto_screenshot_capture() -> void:
 			## caught the capture mid-flash, washing the crater out of every
 			## detonation screenshot. Wait past the tween so the shot shows
 			## the real damage.
-			for _j in range(45):
+			## E-SMOKE-01 (2026-08-08): 45 frames is past the tween but also past
+			## most of the SMOKE — puffs live 0.6-1.0s scaled down per voxel, so
+			## every detonation capture ever taken has shown the damage with the
+			## VFX already gone. INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES lands
+			## the shot mid-sequence instead, which is the only way to make a
+			## visual claim about smoke at all. Defaults to the historical 45, so
+			## every pre-existing capture invocation is unchanged.
+			var det_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
+			var det_wait: int = det_wait_env.to_int() if det_wait_env.is_valid_int() else 45
+			for _j in range(maxi(det_wait, 0)):
 				await get_tree().process_frame
 			## VFX-01 dev verification: the 45-frame wait above is enough to
 			## catch the flash-tween settling, but VFX-01's dust (starts

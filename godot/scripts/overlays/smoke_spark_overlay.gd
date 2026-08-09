@@ -56,8 +56,17 @@ var _sparks: Array = [] ## [{"pos","vel","elapsed","duration","color"}]
 ## time, not just a smaller/fainter one ("usando durações diferentes", Director,
 ## recorded at §6.2). Trailing + defaulted to 1.0, so every pre-existing caller
 ## (EmberOverlay, room.gd's VFX-01 dispatch) is byte-for-byte unaffected.
-func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0) -> void:
-	var blob_count: int = randi_range(smoke_blob_count_min, smoke_blob_count_max)
+## `blob_count_override` (E-SMOKE-01, 2026-08-08): the Director's per-voxel blast
+## smoke ("praticamente todo voxel afetado pode soltar um pouquinho de fumaça")
+## turns one call per GU into one call per damaged voxel — two orders of
+## magnitude more calls, each of which should be a SINGLE small puff rather than
+## the 2-3 blob cluster a lone destroyed voxel gets from VFX-01. Trailing +
+## defaulted to 0 = "use the min/max range", so EmberOverlay and room.gd's VFX-01
+## dispatch are byte-for-byte unaffected.
+func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0,
+		blob_count_override: int = 0) -> void:
+	var blob_count: int = blob_count_override if blob_count_override > 0 \
+		else randi_range(smoke_blob_count_min, smoke_blob_count_max)
 	for i in range(blob_count):
 		var offset := Vector2(randf_range(-smoke_spawn_jitter, smoke_spawn_jitter),
 			randf_range(-smoke_spawn_jitter, smoke_spawn_jitter)) * scale

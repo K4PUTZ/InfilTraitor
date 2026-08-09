@@ -30,9 +30,12 @@
 class_name DetonationChoreographer
 extends RefCounted
 
-## Director-confirmed cadence (Q5, 2026-08-06): 15 waves * 40ms ~= 600ms.
-## `var`, not `const` — trivially re-tuned after a real capture (Task 6).
-var wave_interval_ms: float = 40.0
+## Cadence. Q5 confirmed 40 ms (15 waves ~= 600 ms) on 2026-08-06, before any
+## of it had been seen moving; the Director halved it to 20 ms on 2026-08-08
+## after watching real detonations — 15 waves ~= 300 ms, the blast reads as one
+## event instead of a sequence you can count. `var`, not `const` — this is
+## exactly the number that gets re-tuned against a capture.
+var wave_interval_ms: float = 20.0
 
 ## §1 step 10's table, inner rings first — the one authoritative order.
 ## [kind, ring] pairs; kind indexes directly into the plan's own top-level keys.
@@ -50,7 +53,20 @@ const WAVE_TABLE: Array = [
 ## of which wall it came from, unlike VFX-01's per-voxel material-tinted
 ## puffs). One flat color for every ring; Task 6's tuning pass is where this
 ## gets a real look if the Director wants ring-dependent tinting.
-const SMOKE_COLOR := Color(0.35, 0.35, 0.35, 0.6)
+## E-SMOKE-01 (2026-08-08): lightened from Color(0.35, 0.35, 0.35, 0.6). At 0.35
+## grey the puffs were dark smoke drawn over an already-sooted crater — measured,
+## not eyeballed: a real capture mid-sequence differed from the same frame after
+## the smoke had died on 1.1% of pixels at mean delta 12/255, i.e. present in the
+## overlay and invisible on screen. Ash reads against both the dark crater and
+## the light concrete around it, which is the whole span this smoke covers.
+## The alpha is deliberately LOW. SmokeSparkOverlay draws each blob as a flat
+## `draw_circle`, so at 0.8 the 274 ring-0 puffs read as a heap of hard-edged
+## discs rather than smoke (real capture, 2026-08-08). Per-voxel smoke inverts
+## the economics the old one-puff-per-GU model was tuned for: density now comes
+## from OVERLAP, so each puff has to be faint enough that no single disc is
+## legible on its own. Raising this back up is the wrong lever for "more smoke" —
+## widen SMOKE_JITTER or lift the tier intensities instead.
+const SMOKE_COLOR := Color(0.62, 0.60, 0.57, 0.2)
 
 signal wave_applied(index: int, kind: String, ring: int, cell_count: int)
 signal finished()
@@ -114,7 +130,17 @@ func _apply_wave(index: int, kind: String, ring: int, plan: Dictionary,
 		"smoke":
 			if smoke_overlay != null:
 				for entry in plan["smoke"].get(ring, []):
-					smoke_overlay.add_smoke(entry["world_pos"], SMOKE_COLOR, 1.0, entry["duration"])
+					## E-SMOKE-01: scale and alpha are now per-entry, not the flat
+					## 1.0 this used to pass — DetonationPlanBuilder derives both
+					## from the voxel's damage tier, its ring, and a per-cell hash
+					## (see _append_voxel_smoke()). `blobs` is 0 for the GU-level
+					## remainder puffs, which means "use the overlay's own 2-3
+					## range" — only the per-voxel puffs pin themselves to 1.
+					var puff_color := SMOKE_COLOR
+					puff_color.a *= float(entry.get("alpha", 1.0))
+					smoke_overlay.add_smoke(entry["world_pos"], puff_color,
+						float(entry.get("scale", 1.0)), entry["duration"],
+						int(entry.get("blobs", 0)))
 					count += 1
 
 	## GPU-UPLOAD-01 (2026-08-08): every dented/cracked/soot entry's

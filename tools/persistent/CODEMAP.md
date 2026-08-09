@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 49009 lines total** (under `godot/scripts/`)
+**191 scripts · 49049 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1573,22 +1573,11 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 440 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 457 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
 > DetonationChoreographer — EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE). Plays back one DetonationPlanBuilder.build_plan() result as the real 15-wave sequence from §1's table, at `wave_interval_ms` (40, per Q5) apart. This is the ONLY class that ever turns a plan entry into a real `layer.set_cell()`/`erase_cell()` call — every value it applies was already fully resolved during Task 4's pre-compute pass, so a wave here is exactly what §2 promises: no compositing, no lookup, no light rebuild, no allocation beyond the trivial per-cell dictionary reads. §6.2 used to read: "Waves are scheduled on absolute elapsed time from the flash, so a slow wave never delays the next" — 15 independent SceneTreeTimers fired from start() at once. **Superseded 2026-08-08 by the Director's own cadence call: "vamos reduzir mais, até no máximo 1 frame por wave."** A timer cannot express that. At 20 ms on a 16.67 ms frame budget the timers did not land one per frame — they clumped (measured: waves 1-8 all inside one 14 ms window, then a 237 ms gap before wave 9), because each fires on the first frame past its own absolute deadline and the process frame rate does not divide 20 ms evenly. Driving the sequence off `process_frame` instead makes "one wave per frame" exactly true, removes the clumping, and makes the whole thing 15 frames long regardless of frame rate. What that trades away, stated plainly: a slow wave DOES now delay the next one, which is precisely what the old absolute-time scheduling existed to prevent. That is acceptable here and only here — the measured worst wave is wave 1 at ~11 ms, and every other wave is under 2 ms (see the `[E-WAVE]` log), so a wave overrunning a frame is a performance bug to fix at the source rather than a case to schedule around. Extends RefCounted, not Node: nothing here needs to be in the scene tree itself — `tree` (the SceneTree) is passed in once, to await its frames. The caller MUST keep its own strong reference to the instance for the whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture): a bound Callable held only by a SceneTreeTimer's `timeout` connection was NOT enough to keep this RefCounted alive in practice — every one of the 15 scheduled timers printed its own creation line, but not one `timeout` ever fired, because `detonate_active()`'s local `choreographer` var was the sole reference and it went out of scope the instant that function returned. Fixed by TestZoneController holding `_active_choreographer` (cleared via this class's own `finished` signal) — any other caller needs the same explicit ownership, not a shortcut through a local variable.
-
-**Signals**
-- `signal wave_applied(index: int, kind: String, ring: int, cell_count: int)`
-- `signal finished()`
-
-**Constants / tuning**
-- `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
-- `KIND_RADIUS_BIAS` = `{ "destroy": -0.60, "expose": -0.50, "dented": -0.30, "cracked": -0.20, "smoke": 0.0, "soot": 0.40, }`
-
-**Public API**
-- `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
 
 ---
 
@@ -2647,7 +2636,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 398 lines
+extends `SceneTree` · 421 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 

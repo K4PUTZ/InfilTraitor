@@ -359,16 +359,21 @@ sweep of eight GUs is a realistic worst case and eight Deltas is on the order
 of 17 000 entries — acceptable. Anything larger is a symptom of a consumer
 that should be asking for a census rather than a full Delta.
 
-### 5.4 Guard-AI pressure is the real sizing question
+### 5.4 The workload is one cursor, not a guard swarm — settled 2026-08-09
 
-One player hovering is a trivial load. **Twelve guards each evaluating several
-candidate actions per turn is not**, and that is the load this cache actually
-has to survive. It is why §3.4's census exists as a separate, cheap product:
-most AI queries want *"how much cover would I lose"*, not 2 185 tile triples.
+This section used to argue that twelve guards evaluating candidate actions per
+turn was the load that sized the cache. **The Director closed that (Q3): guard
+AI is out of scope, gets its own system if it ever needs one, and is naturally
+bounded anyway** — turn-based, TIC-based, AP-capped, each guard resolving its
+own options individually.
 
-**Open question Q3 (§10) asks the Director to confirm the AI's real query
-shape before this is sized**, because guessing it wrong is how a cache gets
-built for the wrong workload.
+So the sizing case is the one in §5.1: a player sweeping a cursor across GUs
+and coming back to compare. §5.3's 8 entries covers that with room, and is a
+settled number rather than a provisional one.
+
+The seam stays pure and generic, which is what leaves the door open for reuse
+(§7) — but nothing in this cache is shaped around a consumer that may never
+arrive.
 
 ---
 
@@ -435,10 +440,13 @@ be shaking at a settled scene. Flagged so the two move together.
 Named now so the seam is designed for them, **built later, and not in this
 plan's task list.**
 
-- **Guard AI.** *"Se eu me mover para ali, o que muda?"* Needs `simulate()` on
-  movement and line-of-fire actions plus §3.4's census. The
-  `AI_MASTER_PLAN`'s FSM (Rule 4) and alert meter (Rule 5) are untouched by
-  this — prediction feeds a decision, it never makes one.
+- **Guard AI.** ⚠️ **Explicitly deferred by the Director 2026-08-09 (Q3), and
+  possibly never a consumer of this layer at all** — *"se for necessário
+  construímos um sistema separado."* Its load is bounded by construction
+  (turn/TIC/AP, one guard at a time), so it imposes no requirement here. Listed
+  only so the seam is not accidentally shaped in a way that would exclude it.
+  `AI_MASTER_PLAN`'s FSM (Rule 4) and alert meter (Rule 5) are untouched either
+  way — prediction would feed a decision, never make one.
 - **HUD.** Damage/coverage estimates before committing an action. Needs the
   census and nothing else.
 - **Targeting UI (Phase B of the explosion plan).** The blast-radius bubble is
@@ -461,7 +469,7 @@ refactor lands behind a regression net.
 | **2** | **P-PURE** — the purity refactor | `simulate_container_damage()` / `simulate_crater_damage()`; existing mutators become `commit(simulate(…))`. §3.3's read-overlay is the hard part. | **`blast_calculator_selftest.gd` passes with ZERO edits** — it is the net, not collateral. Plus a new red-before-green test: `simulate()` on a real PLAYGROUND blast leaves all 7 fields of every voxel untouched, asserted by before/after field snapshot over the full affected set. Byte-identical Delta from `simulate()` and from the committed path. |
 | **3** | **P-DELTA** — `WorldDelta` as a real type | Today's plan Dictionary becomes an inspectable Delta with §3.4's census as a field. `DetonationPlanBuilder` produces one; `commit()` consumes one. | `run_selftests.py` clean. A real detonation is pixel-identical to the pre-refactor one — the same 0-differing-pixels gate Task 1a of the explosion plan used. |
 | **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. |
-| **5** | **P-CACHE** — the cache | §5's keyed, revision-invalidated LRU. `request_prediction()` / cancel / reuse. | A scripted 10-GU cursor sweep: measured hit rate on return-to-a-previous-GU, and a proof that every committed mutation invalidates. |
+| **5** | **P-CACHE** — the cache | §5's keyed, revision-invalidated LRU. `request_prediction()` / cancel / reuse. Sized for one cursor, not for guard AI (Q3). | A scripted 10-GU cursor sweep: measured hit rate on return-to-a-previous-GU, and a proof that every committed mutation invalidates. |
 | **6** | **P-COOK** — the "cooking" beat | §4.2's wiring for the detonate path that exists TODAY (context menu), so the flow is real before Phase B's throw arc exists. | Real capture: camera never freezes; the 171 ms is gone from the visible beat. |
 
 **Phase B of `EXPLOSION_REBUILD_MASTER_PLAN` (throw arc, bubble, hover) plugs
@@ -479,43 +487,66 @@ multiple; `steps_within()` scans the already-sorted queue up to that radius.
 survives anywhere in the pacing path, which is the property that makes the
 collapse unreachable rather than merely unlikely.
 
-**The real blast, before → after** (same grenade, same map, same harness):
+**The real blast, before → after** (same grenade, same map, same harness). The
+24-frame column is what shipped first and what the Director then judged too
+slow; the 5-frame column is what stands (Q2's re-answer).
 
-| | before | after |
-|---|---|---|
-| frames | **3** | **24** |
-| heaviest single frame | 2 057 / 2 185 (**94%**) | 294 / 2 185 (**13.5%**) |
-| front radius per frame | not a concept | 1.0 → 2.0 → 3.0 → … → 25.0 → ∞ |
+| | before | 24 frames | **shipped (5)** |
+|---|---|---|---|
+| frames | **3** (whatever the clock said) | 24 | **5** |
+| heaviest single frame | 2 057 / 2 185 (**94%**) | 294 / 2 185 (13.5%) | 952 / 2 072 (**45.9%**) |
+| front radius per frame | not a concept | 1.0 → 2.0 → … → 25.0 → ∞ | 5.0 → 10.0 → 15.0 → 20.0 → ∞ |
+| per-frame cells (real map) | 92 / 2 057 / 36 | — | 278 / 604 / 952 / 203 / 35 |
 
-**Captures** (hand-named, rotation-proof): `p_play_front_f5.png`,
-`p_play_front_f11.png`, `p_play_front_f17.png`, `p_play_front_f24.png`, taken
-mid-sequence through `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES`. Pixel-diffed
-rather than eyeballed:
+**45.9% on one frame is the honest price of the speed, and it is not the
+collapse coming back.** A radial front advances at a constant rate through
+SPACE — that is what makes it read as a shockwave — while the cells in each
+band follow the annulus area, so the middle band dominates whenever the frame
+count is small. Pacing by equal WORK per frame would flatten the profile and
+was rejected: it would make the wave crawl through dense regions and jump
+through sparse ones, which is not what an explosion does.
 
-| transition | pixels differing | mean delta |
-|---|---|---|
-| f5 → f11 | 97.88% | 52.9/255 — the negative flash clearing, not the front |
-| f11 → f17 | 4.82% | 20.8/255 — **the front advancing** |
-| f17 → f24 | 3.34% | 14.7/255 — still advancing |
+**Captures** (hand-named, rotation-proof): `p_play_fast_f2.png` … `f5.png`, one
+per frame of the shipped 5-frame sequence, taken through
+`INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES`.
 
-**Two things worth recording because they are easy to misread later:**
+**The capture that matters most is `p_play_fast_f5.png`, and it is bad news for
+the look, not for the pacing:** the crater is complete (2 072/2 072) and the
+scene is still fully washed by the negative flash. See Q5 — at 5 frames the
+whole sequence finishes inside the flash's 0.32 s fade.
 
-1. **`elapsed` in the `[E-WAVE]` log is now ~2 700 ms, and that is not a
-   regression.** The capture harness renders at ~8 fps; 24 frames × ~123 ms is
-   the harness's frame rate, not the blast's duration. At 60 fps the same 24
-   frames are 0.4 s. This is the documented trade in the choreographer's
-   header — duration scales with frame rate, on purpose.
-2. **Frames 22–23 apply zero cells** (the front crosses empty space between
-   r=24 and r=25). That is the intended pause between a dense inner band and a
-   sparse rim, documented on `steps_within()`, not a stall — the last frame's
-   `INF` guarantees termination regardless.
+**Three things worth recording because they are easy to misread later:**
+
+1. **`elapsed` in the `[E-WAVE]` log is harness time, not blast time.** The
+   off-screen capture harness renders at ~8 fps, so a 5-frame blast logs
+   ~620 ms there and is ~83 ms at 60 fps. Duration scaling with frame rate is
+   the deliberate trade in the choreographer's header.
+2. **The 24-frame captures understated the flash overlap** (`p_play_front_*`,
+   now superseded and deleted). At ~8 fps, frame 11 lands 1.3 s in — long past
+   the flash. At 60 fps the same frame lands at 183 ms, inside it. Any future
+   judgement about what the player SEES during a blast has to correct for the
+   harness's frame rate or it will be wrong in this exact direction.
+3. **A frame applying zero cells is legitimate**, not a stall — the front is
+   crossing empty space between a dense band and a sparse rim. Documented on
+   `steps_within()`; the last frame's `INF` guarantees termination regardless.
 
 **Selftest.** `detonation_choreographer_selftest` test 5 was **replaced, not
 relaxed.** Its third assertion had been pinning the bug verbatim ("past the
 deadline the whole queue is due at once — the blast finishes on time at any
 frame rate"). Four assertions now stand in its place: exact frame count with no
-wall-clock input, no frame over 50% of the queue (the direct red-before-green
-for the collapse), front monotonicity, and band-boundary alignment.
+wall-clock input, a bound on the heaviest frame, front monotonicity, and
+band-boundary alignment.
+
+**One threshold moved, and the reason is recorded in the test itself so it is
+not mistaken for weakening.** 5b first shipped at "< 50% of the queue on any
+one frame", written while `front_frames` was 24 (even split 4.2%, measured
+13.5%). At 5 frames the even split is 20% and a healthy sequence measures
+45.9% on the real map, 53.7% on the fixture — so a flat 50% fails correct code.
+The bound is now 70%, anchored to the collapse it exists to catch (94%) rather
+than to any even-split multiple, and the test prints the full per-frame profile
+so the distribution is visible instead of hidden behind a pass. **5a is the
+primary guard** — the collapse's real signature was a frame count that ignored
+`front_frames` entirely, and 5a makes that unrepresentable.
 
 **Not done, and not silently dropped:** §6.2's optional second trailing ripple.
 The Director chose visible bands over multiple ripples, so it was not built.
@@ -548,19 +579,80 @@ trailing ripple is therefore **not built**, and if it is ever wanted it needs
 its own decision about what the second wave carries, since destruction can only
 happen once per voxel.
 
-### Q2 — ✅ ANSWERED 2026-08-09. 24 frames (~0.4 s at 60 fps).
+### Q2 — ✅ ANSWERED 2026-08-09, then RE-ANSWERED the same day on the real thing. 5 frames.
 
-`front_frames = 24`. Note the consequence recorded in §8.1: this is a frame
-count, so wall-clock duration scales with frame rate by design.
+First answer was 24 frames, reasoned from 60 fps (≈0.4 s). The Director ran it
+and rejected it: *"ficou ótima a explosão, mas está muito lenta, tem que ter
+mais ou menos 1/5 dessa duração (desconsidere a fumaça que já está boa)."*
+`front_frames = 24 → 5`.
 
-### Q3 — What will the guard AI actually ask? 🟡 blocks Task 5's sizing only
+**Why the 60 fps arithmetic was wrong, and it is this plan's own measurement
+that should have caught it:** a blast frame is by definition a frame that
+dirties a `TileMapLayer`, which is the expensive kind (§1.2). Duration is
+`front_frames × the cost of a blast frame`, never `front_frames × 16.7 ms`.
+Frame-count pacing is still right — it is what makes every frame visible — but
+its duration must be judged on the running game, never computed from a target
+frame rate.
 
-§5.4: a guard evaluating candidate actions is the load that sizes the cache. Do
-guards need full Deltas, or only the census ("how much cover would this cost
-me")? Guessing this is how a cache gets built for the wrong workload.
+**Smoke deliberately untouched:** puffs are emitted as queue steps, but each
+one's lifetime is set in `DetonationPlanBuilder`, so a 5× faster front emits
+the same cloud sooner without shortening it.
 
-*Assumed if unanswered:* census only; full Deltas reserved for player-facing
-previews.
+**Surfaced by the change, and NOT decided here — see Q5.** At 5 frames the
+entire destruction completes inside the negative flash's own 0.32 s fade, so
+the expanding front is hidden under it.
+
+### Q5 — Does the flash shrink with the blast? 🔴 NEW 2026-08-09, blocks nothing but wastes Task 1 if ignored
+
+`ExplosionFlashOverlay.flash_fade_seconds` is 0.32 s. At `front_frames = 5` the
+whole sequence is ~83 ms at 60 fps, so **100% of the destruction now happens
+under the flash** — real capture `p_play_fast_f5.png` shows the crater already
+complete (2072/2072) with the scene still fully washed.
+
+At 24 frames roughly the last fifth of the sequence was clear of it; at 5,
+none is. So the radial front built this session is, at the shipped numbers,
+invisible.
+
+Recorded honestly: **the harness captures that closed Task 1 understated this.**
+They were taken at ~8 fps, where frame 11 lands 1.3 s after the flash is gone;
+at 60 fps that same frame lands at 183 ms, inside it.
+
+Options: (a) leave it — an explosion that is a flash, then an aftermath, is a
+legitimate read; (b) shorten `flash_fade_seconds` so the front clears it;
+(c) drop `flash_peak_alpha` so the front shows through.
+
+*Assumed if unanswered:* nothing — this is a look call and the Director is
+actively tuning.
+
+### Q3 — ✅ ANSWERED 2026-08-09. Out of scope; do not size the cache for it.
+
+> *"A IA dos guardas ainda não vamos entrar por enquanto. Se for necessário
+> construímos um sistema separado. Considerando que trabalhamos sempre por
+> turno e por TIC, com limite de AP, acredito que a performance não tem muitas
+> travas limitantes. E cada guarda vai processar suas opções individualmente (a
+> não ser em casos de comunicação, alarmes, etc). Enfim, vamos focar na
+> explosão por enquanto, só deixando a porta aberta para reaproveitar o que for
+> útil posteriormente."*
+
+**This retires §5.4's sizing pressure entirely.** The load I had assumed —
+twelve guards each evaluating several candidate actions — is not the workload:
+the game is turn-based and TIC-based with an AP ceiling, and each guard
+resolves its own options individually. That is naturally serialized and
+naturally bounded, so it does not need a cache built around it, and it may not
+share this one at all ("um sistema separado" if it comes to that).
+
+**Consequences, applied:**
+
+- **§5.3's LRU sizing is now a player-facing question only** — the real worst
+  case is one cursor sweeping GUs, not N guards × M actions. 8 entries is
+  comfortably right for that and is no longer provisional.
+- **§3.4's census/Delta split stays**, but its justification changes: it exists
+  for the HUD and for cheap previews, not to protect a cache from guard AI.
+- **§7's "designed for them" framing is downgraded to "not designed against
+  them."** The seam stays generic and pure, which is what keeps the door open;
+  nothing further is shaped around a consumer that may never arrive.
+- **Task 5's gate loses its AI clause.** It is measured on a scripted cursor
+  sweep alone.
 
 ### Q4 — Does the "cooking" beat get its own visual? 🟢 Task 6 only
 

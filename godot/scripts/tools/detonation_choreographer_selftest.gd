@@ -352,18 +352,41 @@ func test_2_work_queue(plan: Dictionary) -> void:
 
 	## 5b. No single frame may swallow the blast. Under the retired rule frame 2
 	##     took 94% of the queue on a real detonation.
+	##
+	##     THE BOUND IS DELIBERATELY LOOSE, and the reason matters more than the
+	##     number. This assertion first shipped at 50% while `front_frames` was
+	##     24, where an even split is 4.2% and the measured worst frame was
+	##     13.5%. At `front_frames` = 5 (Director, 2026-08-09) an even split is
+	##     20% and the measured worst frame is ~46% on the real map, 53.7% on
+	##     this fixture — so a flat 50% fails a perfectly healthy sequence.
+	##
+	##     That is a defect in the threshold, not in the pacing. A radial front
+	##     is INHERENTLY uneven: the front advances at a constant rate through
+	##     SPACE (which is what makes it read as a shockwave), while the cell
+	##     count in each band follows the annulus area, so the middle bands
+	##     genuinely dominate. Pacing by equal WORK per frame would flatten this
+	##     and was rejected — it would make the wave crawl through dense regions
+	##     and jump through sparse ones, which is not what an explosion does.
+	##
+	##     So this stays a guard against the COLLAPSE (94% on one frame),
+	##     anchored there rather than at any particular even-split multiple, and
+	##     it is the secondary guard: **5a is the real one**, because the
+	##     collapse's actual signature was a frame count that ignored
+	##     `front_frames` entirely.
 	var worst := 0
 	var prev_cursor := 0
 	cursor = 0
+	var profile: Array[String] = []
 	for f in range(frames):
 		var fr2: float = DetonationChoreographerClass.front_radius_for(f, frames, max_r, band)
 		cursor = DetonationChoreographerClass.steps_within(queue, cursor, fr2)
 		worst = maxi(worst, cursor - prev_cursor)
+		profile.append(str(cursor - prev_cursor))
 		prev_cursor = cursor
 	var worst_pct: float = 100.0 * float(worst) / float(total)
-	if worst_pct < 50.0:
-		_pass("the heaviest single frame carries %d/%d steps (%.1f%%) — no frame swallows the blast" %
-			[worst, total, worst_pct])
+	if worst_pct < 70.0:
+		_pass("per-frame profile [%s] of %d steps — heaviest frame %.1f%%, nowhere near the 94%% collapse" %
+			[", ".join(profile), total, worst_pct])
 	else:
 		_fail("one frame carries %d/%d steps (%.1f%%) — the sequence is collapsing again" %
 			[worst, total, worst_pct])

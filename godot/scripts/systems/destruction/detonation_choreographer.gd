@@ -119,8 +119,25 @@ extends RefCounted
 
 ## How many FRAMES the front takes to travel from the epicentre to the outermost
 ## step in the queue. The whole pacing rule, and the blast's duration knob.
-## 24 ≈ 0.4 s at 60 fps (Director, 2026-08-09).
-var front_frames: int = 24
+##
+## 24 → 5 (Director, 2026-08-09, on the real thing: "ficou ótima a explosão, mas
+## está muito lenta, tem que ter mais ou menos 1/5 dessa duração"). 24 was
+## reasoned from 60 fps (≈0.4 s) and that reasoning was wrong in practice, in a
+## way this file's own measurements should have predicted: the blast's frames
+## are exactly the frames that dirty a TileMapLayer, which are the expensive
+## ones. Duration is `front_frames × the cost of a blast frame`, never
+## `front_frames × 16.7 ms`, so the real sequence ran far longer than the 60 fps
+## arithmetic promised.
+##
+## Deliberately NOT compensated for by reintroducing a wall-clock term — that is
+## the retired rule, and it is what collapsed the blast to 3 frames. If the
+## duration needs to track real time, the honest lever is this number.
+##
+## Smoke is unaffected and stays as it is (Director: "desconsidere a fumaça que
+## já está boa"): puffs are emitted as queue steps but each one's lifetime is
+## its own, set in DetonationPlanBuilder, so a faster front emits the same cloud
+## sooner without shortening it.
+var front_frames: int = 5
 
 ## Width of one visible band of the expanding front, in voxels. The front's
 ## radius is snapped DOWN to a multiple of this, so the wave advances in

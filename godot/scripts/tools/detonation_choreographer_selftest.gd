@@ -64,7 +64,7 @@ func _init() -> void:
 			root.add_child(smoke_overlay)
 
 			test_1_waves_apply_in_order(plan, renderer, smoke_overlay)
-			test_2_cadence_rule()
+			test_2_work_queue(plan)
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -246,56 +246,96 @@ func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> v
 	print("")
 
 
-## E-FLASH-01 (2026-08-08) — the wave cadence rule, tested directly rather than
-## through a real 15-frame sequence, because a headless run cannot control its
-## own frame timing and that is exactly the variable under test.
+## E-ORGANIC-01 (2026-08-09) — the flattened work queue that replaced the fixed
+## 15-wave schedule, asserted against a REAL PLAYGROUND plan.
 ##
-## The rule has two halves and BOTH were regressions in this session's own
-## development, which is why each gets its own assertion:
-##   · the ceiling ("no máximo 1 frame por wave", the Director's words) — a wave
-##     must never wait a second frame, so at least one always fires;
-##   · the floor — a frame that arrives late must catch the sequence up instead
-##     of pushing it back. A pure one-wave-per-frame loop passed the ceiling and
-##     stretched the 15 waves to 1111 ms at ~9 fps; only this half catches that.
-func test_2_cadence_rule() -> void:
-	print("[2] Wave cadence: at least one wave per frame, plus everything already overdue\n")
-	var total: int = DetonationChoreographerClass.WAVE_TABLE.size()
+## The old cadence test that lived here checked `waves_due_now()`, which paced
+## whole (kind, ring) buckets one per frame. That rule is gone, and with it the
+## defect it could never see: buckets are wildly uneven, so pacing BY BUCKET
+## guaranteed one catastrophic frame no matter how the interval was tuned.
+## Assertion 3 below is the one that pins that down for good.
+func test_2_work_queue(plan: Dictionary) -> void:
+	print("[2] The plan flattens into one ordered queue of single-cell steps\n")
+	var queue: Array = DetonationChoreographerClass.flatten_plan(plan)
+	var table: Array = DetonationChoreographerClass.WAVE_TABLE
 
-	## Ceiling: nothing is overdue yet (elapsed 0), so exactly one wave fires —
-	## from any starting point, including the last.
-	var ceiling_ok := true
-	for start in range(total):
-		if DetonationChoreographerClass.waves_due_now(start, 0.0, 16.0, total) != start + 1:
-			ceiling_ok = false
-	if ceiling_ok:
-		_pass("elapsed=0 → exactly one wave per frame, from every one of the %d start points" % total)
+	## 1. Nothing is dropped: every plan entry, plus every exposure reveal,
+	##    becomes exactly one step.
+	var expected := 0
+	for pair in table:
+		var entries: Array = plan.get(pair[0], {}).get(pair[1], [])
+		expected += entries.size()
+		if pair[0] == "destroy":
+			for entry in entries:
+				expected += entry.get("expose", []).size()
+	if queue.size() == expected and queue.size() > 0:
+		_pass("%d steps queued — every plan entry and every exposure reveal, nothing dropped" % queue.size())
 	else:
-		_fail("a frame with nothing overdue did not apply exactly one wave")
+		_fail("queue has %d steps, expected %d" % [queue.size(), expected])
 
-	## Floor: a frame that arrives after several deadlines drains all of them at
-	## once. At 16 ms cadence, 100 ms elapsed covers waves 0..6 (6*16=96 <= 100,
-	## 7*16=112 > 100), so from wave 0 the frame must reach index 7.
-	var drained: int = DetonationChoreographerClass.waves_due_now(0, 100.0, 16.0, total)
-	if drained == 7:
-		_pass("a 100 ms frame at 16 ms cadence drains 7 waves in one frame (no stretch)")
+	## 2. WAVE_TABLE order is preserved — the blast's dramatic shape is the one
+	##    thing E-ORGANIC-01 did NOT change.
+	var position_of := {}
+	for i in range(table.size()):
+		position_of["%s|%d" % [table[i][0], table[i][1]]] = i
+	var last_pos := -1
+	var order_ok := true
+	var exposes_adrift := 0
+	var prev_kind := ""
+	for step in queue:
+		if String(step["kind"]) == "expose":
+			## An exposure reveal belongs to the destruction that opened it, so
+			## it must sit immediately behind a destroy step or another of its
+			## own siblings — never floating in some later bucket.
+			if prev_kind != "destroy" and prev_kind != "expose":
+				exposes_adrift += 1
+			prev_kind = "expose"
+			continue
+		var pos: int = int(position_of.get("%s|%d" % [step["kind"], step["ring"]], -1))
+		if pos < last_pos:
+			order_ok = false
+		last_pos = pos
+		prev_kind = String(step["kind"])
+	if order_ok:
+		_pass("steps never run backwards through WAVE_TABLE — the authored order survives flattening")
 	else:
-		_fail("late frame drained to index %d, expected 7 — the sequence would stretch" % drained)
+		_fail("the flattened queue reorders WAVE_TABLE's own sequence")
+	if exposes_adrift == 0:
+		_pass("every exposure reveal sits immediately behind the destruction that opened it")
+	else:
+		_fail("%d exposure steps drifted away from their destroy step" % exposes_adrift)
 
-	## The degenerate low-frame-rate case the frame-locked version got wrong: one
-	## enormous frame must finish the whole sequence, not schedule 15 more.
-	var all_at_once: int = DetonationChoreographerClass.waves_due_now(0, 100000.0, 16.0, total)
-	if all_at_once == total:
-		_pass("an arbitrarily late frame completes all %d waves at once" % total)
-	else:
-		_fail("a very late frame reached index %d, expected %d" % [all_at_once, total])
+	## 3. The pacing rule itself, on the real queue size. Two properties, and the
+	##    second is the one that inverted this session's first attempt: a naive
+	##    fixed per-frame budget made the blast 20x slower in wall clock, because
+	##    the cost is per FRAME that writes to a TileMapLayer, not per cell (the
+	##    measurements are in the choreographer's own header). A deadline with
+	##    catch-up is what keeps the total bounded when frames turn out expensive.
+	var total: int = queue.size()
+	var seq_ms: float = DetonationChoreographerClass.new().sequence_ms
+	var min_cells: int = DetonationChoreographerClass.new().min_cells_per_frame
 
-	## Never past the end, whatever the clock says.
-	var clamped_ok := true
-	for elapsed in [0.0, 50.0, 1000.0]:
-		if DetonationChoreographerClass.waves_due_now(total - 1, elapsed, 16.0, total) != total:
-			clamped_ok = false
-	if clamped_ok:
-		_pass("the last wave never schedules past the end of WAVE_TABLE")
+	var first: int = DetonationChoreographerClass.cells_due_now(0, 0.0, seq_ms, min_cells, total)
+	if first == min_cells:
+		_pass("at elapsed 0 the first frame applies exactly the %d-cell floor — it never stalls, never dumps" % min_cells)
 	else:
-		_fail("waves_due_now() returned an index past WAVE_TABLE's end")
+		_fail("first frame applied %d cells, expected the %d-cell floor" % [first, min_cells])
+
+	var midway: int = DetonationChoreographerClass.cells_due_now(0, seq_ms * 0.5, seq_ms, min_cells, total)
+	if midway >= total / 2 and midway < total:
+		_pass("halfway through the deadline the quota is %d/%d — a slow frame catches up instead of stretching" % [midway, total])
+	else:
+		_fail("halfway quota was %d/%d, expected about half" % [midway, total])
+
+	var overdue: int = DetonationChoreographerClass.cells_due_now(0, seq_ms * 3.0, seq_ms, min_cells, total)
+	if overdue == total:
+		_pass("past the deadline the whole queue is due at once — the blast finishes on time at any frame rate")
+	else:
+		_fail("past the deadline only %d/%d cells were due" % [overdue, total])
+
+	var clamped: int = DetonationChoreographerClass.cells_due_now(total - 1, 0.0, seq_ms, min_cells, total)
+	if clamped == total:
+		_pass("the quota never runs past the end of the queue")
+	else:
+		_fail("quota returned %d with a %d-step queue" % [clamped, total])
 	print("")

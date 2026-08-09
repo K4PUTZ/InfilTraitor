@@ -2165,6 +2165,68 @@ Honest note from the capture (`e_flash_negative_mode.png`): the inversion reads
 mid-grey. On this particular map that makes it subtler overall than the white
 flash, which may or may not be what the Director wants.
 
+### E-ORGANIC-01 (2026-08-09) — the wave table stops being a unit of time
+
+Director: "não precisamos fixar as 15 waves, queremos que seja o mais orgânico e
+natural possível... ainda sinto umas engasgadas."
+
+`WAVE_TABLE` still defines the ORDER — that ordering is the blast's dramatic
+shape. What is gone is the idea that a wave is a unit of TIME. A wave was
+whatever cells fell in one (kind, ring) bucket, and buckets are wildly uneven:
+destroy ring 0 on a real PLAYGROUND blast is 872 cells (244 erases + 628
+exposure reveals) while destroy ring 2 is 4. Giving each bucket a frame therefore
+guaranteed one catastrophic frame, which is the "engasgada" that survived three
+rounds of tuning. The plan now flattens into one ordered queue of single-cell
+steps — with each exposure reveal broken out as its own step instead of riding
+inside the destroy entry that carries 628 of them — drained against a deadline.
+
+**The measurement that inverted the obvious answer.** The first attempt was a
+flat per-frame cell budget. It made every frame look cheap in the log and made
+the blast three to twenty times slower in wall clock. Same blast each time,
+2072 steps, varying only the budget:
+
+| budget | total | apply per frame |
+|---|---|---|
+| all 2072 in one frame | **26 ms** | 24.3 ms |
+| 600 cells/frame | 509 ms | ~4.4 ms |
+| 160 cells/frame | 496 ms | ~2.2 ms |
+| 60 cells/frame | 485 ms | ~0.9 ms |
+
+**A frame costs ~120 ms whether it writes 60 cells or 600.** The cost is Godot
+rebuilding the dirtied `TileMapLayer`s, paid once per frame, not once per cell —
+so "spread the work thinner" is exactly the wrong instinct, and the apply column
+is exactly the wrong number to tune against. Recorded in the choreographer's own
+header so the next person does not repeat it.
+
+Shipped instead: a **deadline with catch-up at cell granularity** — the same
+ceiling/floor shape the per-wave scheduler used, one level down. `sequence_ms`
+(240) is what the blast should take; each frame advances to wherever that
+deadline says it should be, with a `min_cells_per_frame` floor so a fast machine
+still subdivides. On a healthy frame budget the blast becomes a dozen fine steps
+and reads as propagation; when frames are expensive the quota drags it forward
+rather than letting it stretch. Measured after: **261 ms**, versus 254 ms for the
+old fixed schedule and 485-509 ms for the naive budget — organic pacing at no
+wall-clock cost, and the 872-cell spike structurally gone.
+
+**Caveat, stated because it matters for anyone re-tuning this:** every number
+above comes from the off-screen capture harness, which renders the blast at
+~8 fps. The ~120 ms per-frame constant is certainly much smaller on a real
+windowed run. **The SHAPE of the finding (per-frame, not per-cell) is what to
+trust; the constant is not.** The harness also cannot demonstrate the smooth
+case — at ~8 fps the quota jumps straight to 100% on the second frame, so the
+dozen-fine-steps behaviour is reasoned from the rule, not captured.
+
+**Still open — the explosion's ART.** The Director: "essa animação autorada
+também me causa um pouco de estranheza porque o gráfico tem um estilo cômico que
+não combina com o resto do cenário. O Godot não tem algum efeito nativo mais
+integrado pra simular explosões?" Answered in the session response, not built —
+a new explosion look is a design decision (Process rule 1). Short version: yes,
+`GPUParticles2D`/`CPUParticles2D` + `ParticleProcessMaterial` is the native
+route, and more to the point this project already owns the vocabulary
+(`EmberOverlay`, `SmokeSparkOverlay`, `DebrisOverlay`, `PointLight2D`) to build a
+blast out of the same materials as everything else on screen instead of a foreign
+sprite sheet. Awaiting the Director's call.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight

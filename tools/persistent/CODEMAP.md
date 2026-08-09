@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 48788 lines total** (under `godot/scripts/`)
+**191 scripts · 48884 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1559,7 +1559,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 245 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 301 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1574,7 +1574,8 @@ extends `Node2D` · 43 lines
 - `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
 
 **Public vars**
-- `var wave_interval_ms: float = 16.0`
+- `var sequence_ms: float = 240.0`
+- `var min_cells_per_frame: int = 24`
 
 **Public API**
 - `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
@@ -2636,7 +2637,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 301 lines
+extends `SceneTree` · 341 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -2661,6 +2662,7 @@ extends `SceneTree` · 301 lines
 
 **Public API**
 - `func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> void:`
+- `func test_2_work_queue(plan: Dictionary) -> void:`
 
 ---
 

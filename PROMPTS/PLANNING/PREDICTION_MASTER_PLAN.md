@@ -616,6 +616,60 @@ calls `clear()` leaves a frame held. That is the deliberate cost of the caller
 owning every frame; the bound is `Room.clear()`, which every map reload and
 perspective change already routes through.
 
+### 8.3 P-FILM — the filmstrip rig (2026-08-09)
+
+Director: *"queria ver se a gente consegue fazer um filmstrip com todos os
+frames da explosão pra analisar a sequência com mais calma."*
+
+`tools/persistent/build_filmstrip.py` + a `detonation_filmstrip` capture action
+in `room.gd`. One command, one contact sheet:
+
+```
+python3 tools/persistent/build_filmstrip.py --frames 24 --grenade 2 --cols 6
+```
+
+**Two design points, both of which the obvious version gets wrong** — and both
+were live mistakes in this session's own earlier captures:
+
+1. **ONE detonation, not one boot per frame.** Every capture before this was a
+   separate Godot boot, i.e. a separate blast. `Room.spawn_blast_burst()`
+   places embers with `randf_range()`, so a strip stitched from separate runs
+   shows the fire jumping between tiles. Every frame now comes from one blast.
+2. **`--fixed-fps 60` is load-bearing, not tidiness.** A full GPU→CPU readback
+   per frame drags real frame time to a crawl. The destruction front and the
+   strobe are frame-driven and survive that exactly — but fire and smoke
+   advance on DELTA, so at the harness's real ~8 fps they age ~7× too fast per
+   frame and the strip would misrepresent precisely the effect being judged.
+   `--fixed-fps` pins every delta to 1/60 s.
+
+One capture artifact found and fixed by looking at the first sheet:
+`detonate_active()` is called directly (it needs the `_active_index` that
+`open_menu_for()` sets), which never reaches the button handler that normally
+closes the menu — so "Detonate (Enter) / Cancel (Esc)" sat over the blast in
+every tile. `_context_menu.close()` now follows the call.
+
+**What the first clean sheet shows, frame by frame** — the three beats are
+exactly as specified: frames 0–2 fire alone with the floor intact, frames 3–6
+white/negative/white/negative, frames 7–11 the destruction, frames 12+ the
+smoke tail.
+
+**And what it surfaced that the Director should decide (Q6):** the two WHITE
+strobe frames are effectively total white-outs. Measured on the real frames,
+centre crop, brightness out of 765:
+
+| frame | range | max saturation |
+|---|---|---|
+| 3 (white) | **643–765** | 97 |
+| 4 (negative) | 174–765 | 94 |
+| 5 (white) | **651–765** | 90 |
+
+A white frame compresses the entire image into the top 16% of the brightness
+range. The fire is genuinely still rendered (saturation 97 proves colour is
+present) but has almost no contrast against it — so *"o fogo… permanece
+acontecendo durante os 4 frames do flash"* holds on the negative frames and is
+visually lost on the white ones. `strobe_white_alpha` (currently 1.0) is the
+one lever.
+
 ---
 
 ## 9. Explicitly out of scope
@@ -733,6 +787,17 @@ share this one at all ("um sistema separado" if it comes to that).
   nothing further is shaped around a consumer that may never arrive.
 - **Task 5's gate loses its AI clause.** It is measured on a scripted cursor
   sweep alone.
+
+### Q6 — How white should the white strobe frames be? 🟡 NEW 2026-08-09, one number
+
+§8.3's measurement: at `strobe_white_alpha = 1.0` a white frame puts the whole
+image in the top 16% of the brightness range, so the fire that is supposed to
+keep burning through the strobe is rendered but invisible. Options: leave it
+(a white-out is a legitimate strobe), or drop the alpha to ~0.85 so the world
+and the fire read through it.
+
+*Assumed if unanswered:* nothing — the Director is actively tuning the look and
+now has the filmstrip to judge it from.
 
 ### Q4 — Does the "cooking" beat get its own visual? 🟢 Task 6 only
 

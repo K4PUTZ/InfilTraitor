@@ -128,6 +128,15 @@ capture (a real windowed Godot boot):
 - One-off for a single commit: `INFILTRAITOR_SCREENSHOT_ONCE=1`.
 - `Shift+P` is the Director's own manual capture (saves to `Screenshots/`,
   no subfolder) — never trigger this programmatically.
+- **Frame-by-frame analysis of a detonation:**
+  `python3 tools/persistent/build_filmstrip.py` (P-FILM) — one contact sheet of
+  every frame of ONE blast, to `Screenshots/filmstrip/` (gitignored). It boots
+  once and passes `--fixed-fps 60`; both matter and neither is optional. A
+  strip stitched from separate boots shows the fire jumping, because
+  `spawn_blast_burst()` uses `randf_range()`; and without the fixed FPS the
+  particle effects age several times too fast per frame while the frame-driven
+  destruction and strobe stay exact, so the sheet lies about exactly what it is
+  being used to judge.
 - When a capture exists for a claim, point at the actual file instead of
   describing what the code should produce.
 - **A cited `auto_*.png` will eventually stop existing.** The rotation keeps the

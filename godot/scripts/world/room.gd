@@ -2877,6 +2877,76 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_selected_cell(cell)
 
 
+## P-FILM (Director, 2026-08-09): "queria ver se a gente consegue fazer um
+## filmstrip com todos os frames da explosão pra analisar a sequência com mais
+## calma." Dumps every frame of ONE detonation as a numbered PNG;
+## tools/persistent/build_filmstrip.py drives this and stitches the contact
+## sheet.
+##
+## ONE detonation, not one boot per frame — and that is the whole point, not an
+## optimization. Room.spawn_blast_burst() places its embers with randf_range(),
+## so frames stitched from separate runs would show the fire jumping between
+## tiles. Every frame here comes from the same blast.
+##
+## MUST be run with `--fixed-fps 60` (the Python driver passes it). Grabbing the
+## viewport every frame is a GPU→CPU readback and drags real frame time to a
+## crawl, which would matter enormously: the destruction front and the strobe
+## are frame-driven and stay exact no matter how slow the capture runs, but the
+## fire and smoke advance on DELTA, so at the harness's real ~8 fps they would
+## age ~7× too fast per frame and the filmstrip would lie about the effect the
+## Director is trying to judge. `--fixed-fps` pins every delta to 1/60 s and
+## makes the strip a faithful 60 fps read of all three beats at once.
+func _capture_detonation_filmstrip() -> void:
+	var frames_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_FRAMES")
+	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
+	var index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
+	var tz_index: int = index_env.to_int() if index_env.is_valid_int() else 2
+
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	## Stale frames from a shorter previous run would silently pad the strip.
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("frame_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	if tz_index < 0 or tz_index >= _test_zone_controller._grenades.size():
+		push_error("[P-FILM] grenade index %d out of range (%d placed)" % [
+			tz_index, _test_zone_controller._grenades.size()])
+		return
+	var gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+	if _camera_controller != null and agent != null:
+		_camera_controller.focus_on(agent._cell_to_world(gu))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(gu, 12)
+	## Let the camera settle and the fog reveal land BEFORE frame 0, so the
+	## strip opens on the scene the blast is about to change rather than on a
+	## camera still travelling.
+	for _s in range(20):
+		await get_tree().process_frame
+
+	print("[P-FILM] capturing %d frames of one detonation at gu=%s" % [frame_count, gu])
+	_test_zone_controller.open_menu_for(tz_index)
+	_test_zone_controller.detonate_active()
+	## open_menu_for() is only here because detonate_active() reads the
+	## `_active_index` it sets — the real click route closes the menu through
+	## the button's own handler, which a direct call never reaches. Left open it
+	## parks "Detonate (Enter) / Cancel (Esc)" over the blast in EVERY tile of
+	## the sheet, right where the thing being analysed is.
+	if _context_menu != null:
+		_context_menu.close()
+
+	for i in range(frame_count):
+		await get_tree().process_frame
+		var img := get_viewport().get_texture().get_image()
+		if img == null:
+			push_error("[P-FILM] null viewport image at frame %d" % i)
+			continue
+		img.save_png("%s/frame_%03d.png" % [out_dir, i])
+	print("[P-FILM] wrote %d frames to %s" % [frame_count, out_dir])
+
+
 func _capture_screenshot_to_file() -> void:
 	var image := get_viewport().get_texture().get_image()
 	if image == null:
@@ -3279,6 +3349,10 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:
+		await _capture_detonation_filmstrip()
+		get_tree().quit(0)
+		return
 	elif capture_action == "escape_open_menu":
 		## ESC-STACK-01 fallback check: with nothing else open, Escape must
 		## still open the Main Menu (the ModalStack empty-stack branch of

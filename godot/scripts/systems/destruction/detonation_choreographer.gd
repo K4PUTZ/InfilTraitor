@@ -8,14 +8,28 @@
 ## what §2 promises: no compositing, no lookup, no light rebuild, no
 ## allocation beyond the trivial per-cell dictionary reads.
 ##
-## §6.2: "Waves are scheduled on absolute elapsed time from the flash, so a
-## slow wave never delays the next" — each wave gets its OWN SceneTreeTimer,
-## fired from `start()` all at once (never chained/awaited sequentially), so
-## wave N's delay is always `N * wave_interval_ms` from t=0 regardless of how
-## long wave N-1 took to apply.
+## §6.2 used to read: "Waves are scheduled on absolute elapsed time from the
+## flash, so a slow wave never delays the next" — 15 independent SceneTreeTimers
+## fired from start() at once. **Superseded 2026-08-08 by the Director's own
+## cadence call: "vamos reduzir mais, até no máximo 1 frame por wave."**
+##
+## A timer cannot express that. At 20 ms on a 16.67 ms frame budget the timers
+## did not land one per frame — they clumped (measured: waves 1-8 all inside one
+## 14 ms window, then a 237 ms gap before wave 9), because each fires on the
+## first frame past its own absolute deadline and the process frame rate does not
+## divide 20 ms evenly. Driving the sequence off `process_frame` instead makes
+## "one wave per frame" exactly true, removes the clumping, and makes the whole
+## thing 15 frames long regardless of frame rate.
+##
+## What that trades away, stated plainly: a slow wave DOES now delay the next
+## one, which is precisely what the old absolute-time scheduling existed to
+## prevent. That is acceptable here and only here — the measured worst wave is
+## wave 1 at ~11 ms, and every other wave is under 2 ms (see the `[E-WAVE]` log),
+## so a wave overrunning a frame is a performance bug to fix at the source rather
+## than a case to schedule around.
 ##
 ## Extends RefCounted, not Node: nothing here needs to be in the scene tree
-## itself — `tree` (the SceneTree) is passed in once, for `create_timer()`.
+## itself — `tree` (the SceneTree) is passed in once, to await its frames.
 ##
 ## The caller MUST keep its own strong reference to the instance for the
 ## whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture):
@@ -30,12 +44,13 @@
 class_name DetonationChoreographer
 extends RefCounted
 
-## Cadence. Q5 confirmed 40 ms (15 waves ~= 600 ms) on 2026-08-06, before any
-## of it had been seen moving; the Director halved it to 20 ms on 2026-08-08
-## after watching real detonations — 15 waves ~= 300 ms, the blast reads as one
-## event instead of a sequence you can count. `var`, not `const` — this is
-## exactly the number that gets re-tuned against a capture.
-var wave_interval_ms: float = 20.0
+## Cadence. Q5 confirmed 40 ms on 2026-08-06 before any of it had been seen
+## moving; the Director halved it to 20 ms and then, the same session, to "no
+## máximo 1 frame por wave". 16 ms is one wave per frame at 60 fps — the ceiling
+## the Director asked for — while staying a real deadline, which is what keeps
+## the sequence from STRETCHING when the frame rate drops (see _run_waves).
+## `var`, not `const` (Rule 1).
+var wave_interval_ms: float = 16.0
 
 ## §1 step 10's table, inner rings first — the one authoritative order.
 ## [kind, ring] pairs; kind indexes directly into the plan's own top-level keys.
@@ -82,12 +97,65 @@ var _waves_done: int = 0
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
 	_t0_ms = Time.get_ticks_msec()
 	_waves_done = 0
-	for i in range(WAVE_TABLE.size()):
-		var kind: String = WAVE_TABLE[i][0]
-		var ring: int = WAVE_TABLE[i][1]
-		var delay_s: float = (float(i) * wave_interval_ms) / 1000.0
-		var timer := tree.create_timer(delay_s)
-		timer.timeout.connect(_apply_wave.bind(i, kind, ring, plan, voxel_renderer, smoke_overlay))
+	_run_waves(plan, voxel_renderer, smoke_overlay, tree)
+
+
+## The Director's cap — "no máximo 1 frame por wave" — read as a CEILING on how
+## long a wave may wait, which is what it literally says. Two rules, together:
+##
+##   · at least one wave per frame, so no wave ever waits two frames;
+##   · plus every wave whose absolute deadline (`i * wave_interval_ms` from t=0)
+##     has already passed, so a slow frame does not push the whole sequence back.
+##
+## The second rule is what the first one alone gets wrong, and it was measured,
+## not reasoned: a pure one-wave-per-frame loop ran the 15 waves in 1111 ms in
+## the off-screen capture process (~9 fps there), because frame-locking hands the
+## sequence's duration to the frame rate. With the deadline in place the same run
+## finishes in roughly its target time at ANY frame rate — 60 fps spends about one
+## wave per frame, a 10 fps frame simply flushes several at once.
+##
+## It also restores what §6.2's original absolute-time scheduling was protecting
+## ("a slow wave never delays the next"), which a frame-chained loop had given up.
+##
+## Wave 0 lands on the calling frame: the blast's first destruction is
+## simultaneous with the white flash that triggered it, not one frame after.
+##
+## The `await` keeps this coroutine (and therefore `self`) alive across the
+## sequence, but that is NOT a substitute for the caller's own strong reference:
+## the header's ownership note still holds, and TestZoneController still holds
+## `_active_choreographer`. If the tree goes away mid-sequence (map reload,
+## quit), `await tree.process_frame` simply never resumes and the remaining waves
+## are dropped — correct behaviour for a purely visual replay of damage that has
+## already been applied to the Voxel state.
+func _run_waves(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
+	var next_wave := 0
+	while next_wave < WAVE_TABLE.size():
+		if next_wave > 0:
+			await tree.process_frame
+		var due := waves_due_now(next_wave, float(Time.get_ticks_msec() - _t0_ms),
+			wave_interval_ms, WAVE_TABLE.size())
+		while next_wave < due:
+			_apply_wave(next_wave, WAVE_TABLE[next_wave][0], WAVE_TABLE[next_wave][1],
+				plan, voxel_renderer, smoke_overlay)
+			next_wave += 1
+
+
+## How many waves this frame should apply, as an EXCLUSIVE end index: apply
+## `next_wave .. return-1`. Pure and static so the cadence rule can be tested
+## directly (detonation_choreographer_selftest) instead of only through a real
+## 15-frame sequence whose timing a headless run cannot control.
+##
+## Always at least one wave — that is the Director's ceiling, "no máximo 1 frame
+## por wave", i.e. no wave ever waits two frames. Then every further wave whose
+## absolute deadline has already passed, which is the floor that stops a slow
+## frame from pushing the rest of the sequence back.
+static func waves_due_now(next_wave: int, elapsed_ms: float, interval_ms: float, total: int) -> int:
+	var due: int = mini(next_wave + 1, total)
+	if interval_ms <= 0.0:
+		return total   ## no cadence at all — the whole sequence is due immediately
+	while due < total and float(due) * interval_ms <= elapsed_ms:
+		due += 1
+	return due
 
 
 ## One wave's real work — the only place in this whole pipeline that ever

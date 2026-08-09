@@ -138,6 +138,78 @@ func focus_on(world_pos: Vector2) -> void:
 		_camera.position = world_pos
 
 
+## E-FLASH-01 (Director, 2026-08-08) — "uma breve camera shake no período entre
+## o flash frame e o fim da fumaça."
+##
+## Rides on `Camera2D.offset`, NOT `position`: position is the leashed, drag- and
+## focus-owned value (see _get_leashed_pos()), and a shake written there would
+## fight every one of those and could push the view past its own leash. offset is
+## a pure render-time displacement nothing else in this controller touches, so
+## the shake composes with drag, zoom and perspective changes for free and is
+## guaranteed to leave no residue — it always ends at Vector2.ZERO.
+##
+## Amplitude decays over the duration so the shake settles instead of stopping
+## dead. Frequency is per-axis and deliberately irrational-ish so the two axes do
+## not resynchronise into a diagonal line.
+var _shake_elapsed: float = -1.0          ## <0 = not shaking
+var _shake_duration: float = 0.0
+var _shake_amplitude: float = 0.0
+var _shake_seed: float = 0.0
+
+## Phase offset for the two axis waves. A FIXED value, not randf(): this project
+## verifies visual work by pixel-diffing two real captures of the same event
+## (the 2026-08-08 soot A/B, the crack-artifact diff), and a randomised camera
+## displacement would put a few pixels of noise into every such comparison
+## forever, for an effect nobody can tell apart between blasts. Deterministic by
+## default, still a `var` if a caller ever wants variety.
+var shake_phase: float = 0.0
+
+var shake_frequency_x: float = 31.0       ## Hz-ish, per axis
+var shake_frequency_y: float = 23.0
+var shake_decay_power: float = 2.0        ## >1 = falls off fast, long soft tail
+
+
+func shake(duration: float, amplitude: float) -> void:
+	if _camera == null or duration <= 0.0 or amplitude <= 0.0:
+		return
+	## A shake already running is REPLACED, not stacked: two overlapping blasts
+	## should not sum into a displacement neither one asked for.
+	_shake_elapsed = 0.0
+	_shake_duration = duration
+	_shake_amplitude = amplitude
+	_shake_seed = shake_phase
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if _shake_elapsed < 0.0:
+		set_process(false)
+		return
+	_shake_elapsed += delta
+	if _shake_elapsed >= _shake_duration:
+		_shake_elapsed = -1.0
+		if _camera:
+			_camera.offset = Vector2.ZERO
+		set_process(false)
+		return
+	var t: float = _shake_elapsed / _shake_duration
+	var falloff: float = pow(1.0 - t, shake_decay_power)
+	var amp: float = _shake_amplitude * falloff
+	if _camera:
+		_camera.offset = Vector2(
+			sin(_shake_seed + _shake_elapsed * shake_frequency_x) * amp,
+			cos(_shake_seed * 1.7 + _shake_elapsed * shake_frequency_y) * amp)
+
+
+## Any camera teardown path (map reload, perspective change) must not leave a
+## half-finished shake displacing the view.
+func stop_shake() -> void:
+	_shake_elapsed = -1.0
+	if _camera:
+		_camera.offset = Vector2.ZERO
+	set_process(false)
+
+
 func _cache_perspective_buttons() -> void:
 	_btn_perspective_nw = _room.btn_perspective_nw
 	_btn_perspective_ne = _room.btn_perspective_ne

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**190 scripts · 48116 lines total** (under `godot/scripts/`)
+**191 scripts · 48584 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -191,7 +191,7 @@
 
 ### `camera_controller.gd`
 
-extends `Node` · 211 lines
+extends `Node` · 283 lines
 
 `godot/scripts/controllers/camera_controller.gd`
 
@@ -204,10 +204,18 @@ extends `Node` · 211 lines
 - `CAMERA_SOFT_ZONE_TILES` = `2`
 - `WORLD_TILE_PX` = `128.0`
 
+**Public vars**
+- `var shake_phase: float = 0.0`
+- `var shake_frequency_x: float = 31.0`
+- `var shake_frequency_y: float = 23.0`
+- `var shake_decay_power: float = 2.0`
+
 **Public API**
 - `func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:`
 - `func handle_input(event: InputEvent) -> bool:`
 - `func focus_on(world_pos: Vector2) -> void:`
+- `func shake(duration: float, amplitude: float) -> void:`
+- `func stop_shake() -> void:`
 - `func set_zoom_for_capture(new_z: float) -> void:`
 
 ---
@@ -952,6 +960,34 @@ extends `Node2D` · 233 lines
 
 ---
 
+### `explosion_flash_overlay.gd`
+
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 184 lines
+
+`godot/scripts/overlays/explosion_flash_overlay.gd`
+
+**Signals**
+- `signal animation_finished()`
+
+**Constants / tuning**
+- `FRAME_DIR` = `"res://ASSETS/ANIMATIONS/Explosion_1/Export"`
+- `FRAME_COUNT` = `4`
+
+**Public vars**
+- `var frames_per_animation_frame: int = 2`
+- `var flash_peak_alpha: float = 0.8`
+- `var flash_fade_seconds: float = 0.32`
+- `var flash_fade_power: float = 1.5`
+- `var sprite_scale: float = 1.0`
+
+**Public API**
+- `func play(world_anchor: Vector2) -> void:`
+- `func flash() -> void:`
+- `func animation_seconds(frame_delta: float) -> float:`
+- `func clear() -> void:`
+
+---
+
 ### `exposure_overlay.gd`
 
 extends `Node2D` · 143 lines
@@ -1261,7 +1297,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 154 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 164 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1543,11 +1579,11 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 177 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 245 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
-> DetonationChoreographer — EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE). Plays back one DetonationPlanBuilder.build_plan() result as the real 15-wave sequence from §1's table, at `wave_interval_ms` (40, per Q5) apart. This is the ONLY class that ever turns a plan entry into a real `layer.set_cell()`/`erase_cell()` call — every value it applies was already fully resolved during Task 4's pre-compute pass, so a wave here is exactly what §2 promises: no compositing, no lookup, no light rebuild, no allocation beyond the trivial per-cell dictionary reads. §6.2: "Waves are scheduled on absolute elapsed time from the flash, so a slow wave never delays the next" — each wave gets its OWN SceneTreeTimer, fired from `start()` all at once (never chained/awaited sequentially), so wave N's delay is always `N * wave_interval_ms` from t=0 regardless of how long wave N-1 took to apply. Extends RefCounted, not Node: nothing here needs to be in the scene tree itself — `tree` (the SceneTree) is passed in once, for `create_timer()`. The caller MUST keep its own strong reference to the instance for the whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture): a bound Callable held only by a SceneTreeTimer's `timeout` connection was NOT enough to keep this RefCounted alive in practice — every one of the 15 scheduled timers printed its own creation line, but not one `timeout` ever fired, because `detonate_active()`'s local `choreographer` var was the sole reference and it went out of scope the instant that function returned. Fixed by TestZoneController holding `_active_choreographer` (cleared via this class's own `finished` signal) — any other caller needs the same explicit ownership, not a shortcut through a local variable.
+> DetonationChoreographer — EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE). Plays back one DetonationPlanBuilder.build_plan() result as the real 15-wave sequence from §1's table, at `wave_interval_ms` (40, per Q5) apart. This is the ONLY class that ever turns a plan entry into a real `layer.set_cell()`/`erase_cell()` call — every value it applies was already fully resolved during Task 4's pre-compute pass, so a wave here is exactly what §2 promises: no compositing, no lookup, no light rebuild, no allocation beyond the trivial per-cell dictionary reads. §6.2 used to read: "Waves are scheduled on absolute elapsed time from the flash, so a slow wave never delays the next" — 15 independent SceneTreeTimers fired from start() at once. **Superseded 2026-08-08 by the Director's own cadence call: "vamos reduzir mais, até no máximo 1 frame por wave."** A timer cannot express that. At 20 ms on a 16.67 ms frame budget the timers did not land one per frame — they clumped (measured: waves 1-8 all inside one 14 ms window, then a 237 ms gap before wave 9), because each fires on the first frame past its own absolute deadline and the process frame rate does not divide 20 ms evenly. Driving the sequence off `process_frame` instead makes "one wave per frame" exactly true, removes the clumping, and makes the whole thing 15 frames long regardless of frame rate. What that trades away, stated plainly: a slow wave DOES now delay the next one, which is precisely what the old absolute-time scheduling existed to prevent. That is acceptable here and only here — the measured worst wave is wave 1 at ~11 ms, and every other wave is under 2 ms (see the `[E-WAVE]` log), so a wave overrunning a frame is a performance bug to fix at the source rather than a case to schedule around. Extends RefCounted, not Node: nothing here needs to be in the scene tree itself — `tree` (the SceneTree) is passed in once, to await its frames. The caller MUST keep its own strong reference to the instance for the whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture): a bound Callable held only by a SceneTreeTimer's `timeout` connection was NOT enough to keep this RefCounted alive in practice — every one of the 15 scheduled timers printed its own creation line, but not one `timeout` ever fired, because `detonate_active()`'s local `choreographer` var was the sole reference and it went out of scope the instant that function returned. Fixed by TestZoneController holding `_active_choreographer` (cleared via this class's own `finished` signal) — any other caller needs the same explicit ownership, not a shortcut through a local variable.
 
 **Signals**
 - `signal wave_applied(index: int, kind: String, ring: int, cell_count: int)`
@@ -1558,7 +1594,7 @@ extends `Node2D` · 43 lines
 - `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
 
 **Public vars**
-- `var wave_interval_ms: float = 20.0`
+- `var wave_interval_ms: float = 16.0`
 
 **Public API**
 - `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
@@ -2620,7 +2656,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 245 lines
+extends `SceneTree` · 301 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -3851,7 +3887,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 266 lines
+`class_name TestZoneController` · 322 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4110,7 +4146,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3712 lines
+extends `Node2D` · 3734 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4138,6 +4174,7 @@ extends `Node2D` · 3712 lines
 - `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
 - `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
 - `DebrisOverlayClass` = `preload("res://godot/scripts/overlays/debris_overlay.gd")`
+- `ExplosionFlashOverlayClass` = `preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`

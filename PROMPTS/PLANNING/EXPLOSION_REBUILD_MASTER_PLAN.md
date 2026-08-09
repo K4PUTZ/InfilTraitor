@@ -2006,6 +2006,64 @@ lands a capture mid-sequence — **every detonation capture ever taken before th
 showed the damage with the VFX already dead**, which is why no earlier session
 could make a visual claim about smoke at all.
 
+## E-FLASH-01 (2026-08-08) — the detonation finally has a detonation
+
+Director, same session, five asks. All landed.
+
+**1. Cadence, again: "no máximo 1 frame por wave."** Read as a CEILING on how
+long a wave may wait, which is what it says. The implementation went through a
+wrong version first and the wrong version is the interesting part: a pure
+one-wave-per-`process_frame` loop satisfies the ceiling and **hands the
+sequence's duration to the frame rate** — measured at 1111 ms in the off-screen
+capture process (~9 fps there), i.e. *slower* than the 20 ms timers it replaced.
+The shipped rule is both halves at once, extracted into a pure static
+`waves_due_now()` so it is testable without controlling frame timing:
+
+- at least one wave per frame (the ceiling — no wave waits two frames);
+- **plus** every wave whose absolute deadline has already passed (the floor — a
+  late frame catches up instead of pushing the rest back).
+
+Same run after the fix: **254 ms**, at the same ~9 fps. This also restores what
+§6.2's original absolute-time scheduling was protecting ("a slow wave never
+delays the next"), which the frame-chained version had silently given up.
+
+**2. Smoke: longer and higher.** `smoke_duration_min/max` 0.6/1.0 s → 1.0/1.8 s,
+`smoke_drift_y` 18-32 → 34-58 px/s. The third number is the one that mattered:
+`smoke_drift_damping` 0.4 → 0.62. At 0.4 a puff lost ~60% of its rise inside the
+first second, so lifting the launch velocity alone would have bought almost
+nothing. These are the overlay's own defaults, so VFX-01's per-voxel destruction
+puffs and EmberOverlay's burn-out puffs move with them — which is what "geral"
+asks for.
+
+**3-4. The fireball and the white flash frame** — new `ExplosionFlashOverlay`.
+Plays `ASSETS/ANIMATIONS/Explosion_1/Export/1..4.png` at the grenade's own
+top-centre ("anchor point em cima da granada"), then the white frame follows its
+last frame and tweens its opacity down while the destruction waves fire
+underneath. Two implementation notes worth keeping:
+
+- **The frames are `load()`ed at play time, never `preload()`ed.** `ASSETS/*` is
+  gitignored (.gitignore:48), so a preload would turn a missing local asset into
+  a whole-project COMPILE error on a fresh clone. A missing frame now
+  `push_error`s and skips to the flash — the detonation still runs (B6).
+- **The white wash is drawn in world space, not as a CanvasLayer + ColorRect.**
+  room.tscn's two CanvasLayers (VisionFogOverlay, HUD) are both layer 0 and
+  ordered by tree position, so a runtime-added layer lands *above* the HUD and
+  whites out the dev overlays too. Filling the camera's own visible rect (from
+  the canvas transform, so pan/zoom come free) keeps the wash on the world.
+
+**5. Camera shake**, on `Camera2D.offset` — never `position`, which is the
+leashed, drag- and focus-owned value a shake would fight. 0.55 s, 12 px peak,
+quadratic decay, always ending at exactly `Vector2.ZERO`; `stop_shake()` is
+called on map load and perspective change so no path can leave the camera
+displaced. **Deliberately NOT `randf()`-seeded**: this project verifies visual
+work by pixel-diffing two captures of the same event (the soot A/B, the
+crack-artifact diff), and a randomised camera offset would put noise into every
+such comparison forever, for variety nobody can perceive between blasts.
+
+Sequence captures: `e_flash_fireball.png` (frame 4 at the anchor),
+`e_flash_white_frame.png` (the wash, crater already forming under it),
+`e_flash_smoke_rise.png` (smoke climbing off the crater).
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight

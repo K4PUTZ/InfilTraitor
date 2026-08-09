@@ -64,6 +64,7 @@ func _init() -> void:
 			root.add_child(smoke_overlay)
 
 			test_1_waves_apply_in_order(plan, renderer, smoke_overlay)
+			test_2_cadence_rule()
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -242,4 +243,59 @@ func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> v
 		_fail("plan had no smoke entries at all — cannot prove the smoke wave path")
 	else:
 		_fail("plan had %d smoke entries but SmokeSparkOverlay queued none" % smoke_total)
+	print("")
+
+
+## E-FLASH-01 (2026-08-08) — the wave cadence rule, tested directly rather than
+## through a real 15-frame sequence, because a headless run cannot control its
+## own frame timing and that is exactly the variable under test.
+##
+## The rule has two halves and BOTH were regressions in this session's own
+## development, which is why each gets its own assertion:
+##   · the ceiling ("no máximo 1 frame por wave", the Director's words) — a wave
+##     must never wait a second frame, so at least one always fires;
+##   · the floor — a frame that arrives late must catch the sequence up instead
+##     of pushing it back. A pure one-wave-per-frame loop passed the ceiling and
+##     stretched the 15 waves to 1111 ms at ~9 fps; only this half catches that.
+func test_2_cadence_rule() -> void:
+	print("[2] Wave cadence: at least one wave per frame, plus everything already overdue\n")
+	var total: int = DetonationChoreographerClass.WAVE_TABLE.size()
+
+	## Ceiling: nothing is overdue yet (elapsed 0), so exactly one wave fires —
+	## from any starting point, including the last.
+	var ceiling_ok := true
+	for start in range(total):
+		if DetonationChoreographerClass.waves_due_now(start, 0.0, 16.0, total) != start + 1:
+			ceiling_ok = false
+	if ceiling_ok:
+		_pass("elapsed=0 → exactly one wave per frame, from every one of the %d start points" % total)
+	else:
+		_fail("a frame with nothing overdue did not apply exactly one wave")
+
+	## Floor: a frame that arrives after several deadlines drains all of them at
+	## once. At 16 ms cadence, 100 ms elapsed covers waves 0..6 (6*16=96 <= 100,
+	## 7*16=112 > 100), so from wave 0 the frame must reach index 7.
+	var drained: int = DetonationChoreographerClass.waves_due_now(0, 100.0, 16.0, total)
+	if drained == 7:
+		_pass("a 100 ms frame at 16 ms cadence drains 7 waves in one frame (no stretch)")
+	else:
+		_fail("late frame drained to index %d, expected 7 — the sequence would stretch" % drained)
+
+	## The degenerate low-frame-rate case the frame-locked version got wrong: one
+	## enormous frame must finish the whole sequence, not schedule 15 more.
+	var all_at_once: int = DetonationChoreographerClass.waves_due_now(0, 100000.0, 16.0, total)
+	if all_at_once == total:
+		_pass("an arbitrarily late frame completes all %d waves at once" % total)
+	else:
+		_fail("a very late frame reached index %d, expected %d" % [all_at_once, total])
+
+	## Never past the end, whatever the clock says.
+	var clamped_ok := true
+	for elapsed in [0.0, 50.0, 1000.0]:
+		if DetonationChoreographerClass.waves_due_now(total - 1, elapsed, 16.0, total) != total:
+			clamped_ok = false
+	if clamped_ok:
+		_pass("the last wave never schedules past the end of WAVE_TABLE")
+	else:
+		_fail("waves_due_now() returned an index past WAVE_TABLE's end")
 	print("")

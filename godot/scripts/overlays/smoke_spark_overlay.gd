@@ -22,14 +22,24 @@ class_name SmokeSparkOverlay
 ## --- Smoke ---
 var smoke_blob_count_min: int = 2
 var smoke_blob_count_max: int = 3
-var smoke_duration_min: float = 0.6       ## seconds — "bem rápido e some"
-var smoke_duration_max: float = 1.0
+## Duration and rise both lifted on 2026-08-08 (Director: "vamos aumentar um
+## pouco a duração geral da fumaça, e fazer ela subir um pouco mais alto").
+## Was 0.6/1.0 s and 18-32 px/s. These are the overlay's own defaults, so the
+## change reaches VFX-01's per-voxel destruction puffs and EmberOverlay's
+## burn-out puffs too — which is what "geral" asks for, and both are the same
+## smoke from the player's side.
+var smoke_duration_min: float = 1.0       ## seconds
+var smoke_duration_max: float = 1.8
 var smoke_start_radius: float = 6.0
 var smoke_end_radius: float = 16.0
 var smoke_drift_x: float = 10.0           ## px/sec horizontal jitter range
-var smoke_drift_y_min: float = 18.0       ## px/sec upward drift range
-var smoke_drift_y_max: float = 32.0
-var smoke_drift_damping: float = 0.4      ## exponential decay applied to velocity per second
+var smoke_drift_y_min: float = 34.0       ## px/sec upward drift range
+var smoke_drift_y_max: float = 58.0
+## Raised from 0.4 alongside the drift: damping is applied as pow(damping, delta)
+## per second, so at 0.4 a puff lost ~60% of its rise in the first second and
+## barely climbed no matter how fast it started. Lifting the initial velocity
+## without lifting this would have bought almost nothing.
+var smoke_drift_damping: float = 0.62     ## exponential decay applied to velocity per second
 var smoke_fade_power: float = 1.4
 var smoke_spawn_jitter: float = 4.0       ## px, per-blob offset from the requested position
 

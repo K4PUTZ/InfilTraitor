@@ -24,6 +24,7 @@ const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_ove
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
+const ExplosionFlashOverlayClass = preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
@@ -445,6 +446,7 @@ var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
+var _explosion_flash_overlay: ExplosionFlashOverlay = null  ## E-FLASH-01 — 4-frame fireball + white flash frame
 
 ## VFX-01: chance (0-1) that a destroyed voxel of the relevant material also
 ## spawns dust/sparks/chips — starting points to tune after seeing it run;
@@ -630,6 +632,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_smoke_spark_overlay.clear()  ## VFX-01: same reasoning as the ember overlay above
 	if _debris_overlay != null:
 		_debris_overlay.clear()
+	if _explosion_flash_overlay != null:
+		_explosion_flash_overlay.clear()  ## E-FLASH-01: same reasoning as the overlays above
+	if _camera_controller != null:
+		## E-FLASH-01: a map load mid-shake must not leave the camera displaced.
+		_camera_controller.stop_shake()
 
 	## Reset turn/agent state so a reload doesn't leave stale AP/position/FOW from the
 	## previous map. Reuse whatever _ready() already does after _build_room() for
@@ -845,6 +852,11 @@ func _ready() -> void:
 	## _apply_overhead_overlay_z()'s doc for the overhead-band siblings.
 	_debris_overlay.z_index = -8
 	add_child(_debris_overlay)
+	## E-FLASH-01: the detonation fireball + its white flash frame. Added LAST of
+	## the overhead-band overlays so it draws over smoke and embers — the flash
+	## is meant to wash out everything the blast just did, including the VFX.
+	_explosion_flash_overlay = ExplosionFlashOverlayClass.new()
+	add_child(_explosion_flash_overlay)
 	_ember_overlay.set_smoke_overlay(_smoke_spark_overlay)
 	_voxel_renderer.voxel_destroyed.connect(_on_voxel_destroyed)
 
@@ -1290,6 +1302,12 @@ func _set_perspective(direction: String) -> void:
 			_smoke_spark_overlay.clear()
 		if _debris_overlay != null:
 			_debris_overlay.clear()
+		if _explosion_flash_overlay != null:
+			## E-FLASH-01: the fireball is anchored in the OLD view's screen
+			## space, exactly like the ember glow above it.
+			_explosion_flash_overlay.clear()
+		if _camera_controller != null:
+			_camera_controller.stop_shake()
 
 		## OCC-01: Recompute occlusion set on perspective change
 		_recompute_occlusion()
@@ -1871,6 +1889,10 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	## wall, so it gets a fixed floor-level z instead (see _ready()/OCC-03).
 	if _smoke_spark_overlay != null:
 		_smoke_spark_overlay.z_index = max_voxel_z_index + 5
+	## E-FLASH-01: top of the overhead band. The white flash frame has to cover
+	## the smoke and embers it is washing out, not sit behind them.
+	if _explosion_flash_overlay != null:
+		_explosion_flash_overlay.z_index = max_voxel_z_index + 6
 
 
 ## VFX-01: dispatch VoxelRenderer.voxel_destroyed to the smoke/spark/debris

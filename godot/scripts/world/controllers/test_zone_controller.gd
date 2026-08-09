@@ -47,6 +47,17 @@ const MENU_GAP_ABOVE_PX: float = 30.0
 ## system can vary this per grenade instance instead of hardcoding it here.
 const BOMB_ID: String = "frag_grenade"
 
+## E-FLASH-01 (Director, 2026-08-08): "uma breve camera shake no período entre o
+## flash frame e o fim da fumaça." It starts on the flash and decays across the
+## window the smoke lives in — the smoke's own puffs run 1.0-1.8 s scaled down
+## per voxel, so most of the cloud is gone by ~0.8 s and a shake outlasting that
+## would be shaking at nothing. `var` (Rule 1), both are tuning levers.
+## 12 px is the camera's OWN space, so the on-screen displacement is scaled by
+## the current zoom (0.20-1.20) — at a typical zoom this reads as a few pixels of
+## kick that settles inside half a second, which is what "breve" asks for.
+var SHAKE_SECONDS: float = 0.55
+var SHAKE_AMPLITUDE_PX: float = 12.0
+
 
 func _init(p_room: Node) -> void:
 	room = p_room
@@ -180,6 +191,7 @@ func detonate_active() -> void:
 		return
 	var g: Dictionary = _grenades[_active_index]
 	if not g["detonated"]:
+		var anchor: Vector2 = _blast_anchor(g)
 		var sprite: Sprite2D = g["sprite"]
 		if sprite != null and is_instance_valid(sprite):
 			sprite.visible = false
@@ -200,14 +212,58 @@ func detonate_active() -> void:
 					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 					voxel.damage_substrate)
 
-			var choreographer := DetonationChoreographerClass.new()
-			_active_choreographer = choreographer
-			choreographer.finished.connect(func(): _active_choreographer = null)
-			choreographer.start(plan, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
+			_start_detonation_sequence(plan, anchor)
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## E-FLASH-01 (Director, 2026-08-08) — the detonation's own beat, in the order
+## the Director specified it: the 4-frame fireball plays first, the white flash
+## frame lands "depois do último frame da animação", and the destruction waves
+## fire underneath while that white fades ("com tween de opacidade down, enquanto
+## as waves de destruição são disparadas"). The camera shake spans from the flash
+## to roughly when the smoke gives out.
+##
+## The DAMAGE is already fully applied to Voxel state before any of this runs
+## (build_plan() is the writer) — this only schedules when the player SEES it, so
+## a dropped frame or a map reload mid-sequence loses pixels, never state.
+func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
+	var flash_overlay = room._explosion_flash_overlay
+	if flash_overlay == null:
+		## B6: no art overlay wired (headless/selftest scaffold) — the blast must
+		## still play, so go straight to the waves rather than swallowing it.
+		_start_waves(plan)
+		return
+	flash_overlay.play(anchor)
+	## One-shot: the overlay is reused by every future detonation, so this
+	## connection must not survive its own firing.
+	flash_overlay.animation_finished.connect(func():
+		flash_overlay.flash()
+		if room._camera_controller != null:
+			room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
+		_start_waves(plan),
+		CONNECT_ONE_SHOT)
+
+
+func _start_waves(plan: Dictionary) -> void:
+	var choreographer := DetonationChoreographerClass.new()
+	_active_choreographer = choreographer
+	choreographer.finished.connect(func(): _active_choreographer = null)
+	choreographer.start(plan, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
+
+
+## The point the fireball blooms from: the top-centre of the grenade sprite, in
+## world space — the Director's "anchor point em cima da granada". Deliberately
+## the same geometry _top_screen_pos() uses for the context menu, minus its
+## canvas-transform step, so the two never drift apart.
+func _blast_anchor(grenade: Dictionary) -> Vector2:
+	var sprite: Sprite2D = grenade["sprite"]
+	if sprite == null or not is_instance_valid(sprite) or sprite.texture == null:
+		return room.agent._cell_to_world(grenade["gu_cell"])
+	var rect := _sprite_global_rect(grenade)
+	return rect.position + Vector2(rect.size.x / 2.0, 0.0)
 
 
 ## The real ctx DetonationPlanBuilder.build_plan() needs, assembled from the

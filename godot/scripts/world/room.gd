@@ -472,14 +472,21 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## The ember cluster is short-lived on purpose: EmberOverlay's own defaults
 ## (1.5-4.0 s) are tuned for scorched voxels cooling down, and a detonation's
 ## flash-core is a fraction of that.
-var blast_burst_ember_count: int = 14
-var blast_burst_ember_spread_px: float = 46.0
-var blast_burst_ember_life_min: float = 0.28
-var blast_burst_ember_life_max: float = 0.75
-var blast_burst_spark_count: int = 26
+##
+## P-PLAY (Director, 2026-08-09): "aumentar um pouco as dimensões e a duração
+## do efeito do fogo." Spread and lifetime both up; the counts rise with the
+## spread rather than staying put, because widening the cluster without adding
+## embers thins it out — the same overlap economics E-SMOKE-01 measured for the
+## per-voxel smoke, where density comes from OVERLAP and a wider sparse cluster
+## reads as fewer, more legible individual dots instead of one fire.
+var blast_burst_ember_count: int = 22
+var blast_burst_ember_spread_px: float = 64.0
+var blast_burst_ember_life_min: float = 0.40
+var blast_burst_ember_life_max: float = 1.05
+var blast_burst_spark_count: int = 34
 var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)
-var blast_burst_dust_count: int = 5
-var blast_burst_dust_drop_px: float = 34.0
+var blast_burst_dust_count: int = 7
+var blast_burst_dust_drop_px: float = 44.0
 var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)
 
 ## PERF-01: guards against a second detonate/fire racing the same

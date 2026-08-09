@@ -315,31 +315,84 @@ func test_2_work_queue(plan: Dictionary) -> void:
 	else:
 		_fail("queue does not expand outward: first r=%.1f, last r=%.1f" % [first_r, last_r])
 
-	## 5. The pacing rule. Two properties, and the second is the one that
-	##    inverted this session's first attempt: a naive fixed per-frame budget
-	##    made the blast 20x slower in wall clock, because the cost is per FRAME
-	##    that writes to a TileMapLayer, not per cell (measurements are in the
-	##    choreographer's own header). A deadline with catch-up is what keeps the
-	##    total bounded when frames turn out expensive.
+	## 5. The pacing rule — REPLACED 2026-08-09 (P-PLAY,
+	##    PREDICTION_MASTER_PLAN Task 1), not relaxed. What stood here asserted
+	##    three properties of the wall-clock deadline, and the third of them
+	##    ("past the deadline the whole queue is due at once — the blast finishes
+	##    on time at any frame rate") was pinning THE BUG: on a real PLAYGROUND
+	##    blast that rule put 2 057 of 2 185 steps on a single frame, because one
+	##    slow frame is all it takes to push `elapsed` past the deadline. The
+	##    blast was three frames long and E-RADIAL-01's expanding front was
+	##    invisible behind that.
+	##
+	##    The front advances by FRAME INDEX now. The four assertions below are
+	##    the new contract, and 5b is the direct red-before-green for the
+	##    collapse.
 	var total: int = queue.size()
-	var seq_ms: float = DetonationChoreographerClass.new().sequence_ms
-	var min_cells: int = DetonationChoreographerClass.new().min_cells_per_frame
+	var chor := DetonationChoreographerClass.new()
+	var frames: int = chor.front_frames
+	var band: float = chor.band_voxels
+	var max_r: float = float(queue[queue.size() - 1]["sort"])
 
-	var first: int = DetonationChoreographerClass.cells_due_now(0, 0.0, seq_ms, min_cells, total)
-	if first == min_cells:
-		_pass("at elapsed 0 the first frame applies exactly the %d-cell floor — it never stalls, never dumps" % min_cells)
+	## 5a. The blast is exactly `front_frames` frames long — and, the property
+	##     that actually matters, it cannot be otherwise, because no elapsed
+	##     time is an input at all.
+	var simulated_frames := 0
+	var cursor := 0
+	while cursor < total and simulated_frames < frames * 4:
+		var fr: float = DetonationChoreographerClass.front_radius_for(
+			simulated_frames, frames, max_r, band)
+		cursor = DetonationChoreographerClass.steps_within(queue, cursor, fr)
+		simulated_frames += 1
+	if simulated_frames == frames and cursor == total:
+		_pass("the front drains all %d steps in exactly %d frames, with no wall-clock input" % [total, frames])
 	else:
-		_fail("first frame applied %d cells, expected the %d-cell floor" % [first, min_cells])
+		_fail("drained %d/%d steps in %d frames, expected all of them in %d" %
+			[cursor, total, simulated_frames, frames])
 
-	var midway: int = DetonationChoreographerClass.cells_due_now(0, seq_ms * 0.5, seq_ms, min_cells, total)
-	if midway >= total / 2 and midway < total:
-		_pass("halfway through the deadline the quota is %d/%d — a slow frame catches up instead of stretching" % [midway, total])
+	## 5b. No single frame may swallow the blast. Under the retired rule frame 2
+	##     took 94% of the queue on a real detonation.
+	var worst := 0
+	var prev_cursor := 0
+	cursor = 0
+	for f in range(frames):
+		var fr2: float = DetonationChoreographerClass.front_radius_for(f, frames, max_r, band)
+		cursor = DetonationChoreographerClass.steps_within(queue, cursor, fr2)
+		worst = maxi(worst, cursor - prev_cursor)
+		prev_cursor = cursor
+	var worst_pct: float = 100.0 * float(worst) / float(total)
+	if worst_pct < 50.0:
+		_pass("the heaviest single frame carries %d/%d steps (%.1f%%) — no frame swallows the blast" %
+			[worst, total, worst_pct])
 	else:
-		_fail("halfway quota was %d/%d, expected about half" % [midway, total])
+		_fail("one frame carries %d/%d steps (%.1f%%) — the sequence is collapsing again" %
+			[worst, total, worst_pct])
 
-	var overdue: int = DetonationChoreographerClass.cells_due_now(0, seq_ms * 3.0, seq_ms, min_cells, total)
-	if overdue == total:
-		_pass("past the deadline the whole queue is due at once — the blast finishes on time at any frame rate")
+	## 5c. The front only ever moves outward. A front that retreated would
+	##     re-apply cells an earlier frame already painted.
+	var receded := 0
+	var last_front: float = -1000000.0
+	for f in range(frames):
+		var fr3: float = DetonationChoreographerClass.front_radius_for(f, frames, max_r, band)
+		if fr3 < last_front:
+			receded += 1
+		last_front = fr3
+	if receded == 0:
+		_pass("the front radius is monotonic across all %d frames" % frames)
 	else:
-		_fail("past the deadline only %d/%d cells were due" % [overdue, total])
+		_fail("the front receded on %d frame(s)" % receded)
+
+	## 5d. Banding is real: each frame's front lands on a band boundary, so the
+	##     wave advances in discrete visible steps (the Director's "ondas na
+	##     água", 2026-08-09) instead of a continuous smear. The final frame is
+	##     INF by design — it flushes the remainder — and is excluded.
+	var off_band := 0
+	for f in range(frames - 1):
+		var fr4: float = DetonationChoreographerClass.front_radius_for(f, frames, max_r, band)
+		if not is_equal_approx(fr4, floor(fr4 / band) * band):
+			off_band += 1
+	if off_band == 0:
+		_pass("every frame's front sits on a %.1f-voxel band boundary — the wave advances in steps" % band)
+	else:
+		_fail("%d frame(s) landed off the band grid" % off_band)
 	print("")

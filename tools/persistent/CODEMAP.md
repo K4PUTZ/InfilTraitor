@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 48856 lines total** (under `godot/scripts/`)
+**191 scripts · 49009 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1573,7 +1573,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 360 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 440 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1584,13 +1584,8 @@ extends `Node2D` · 43 lines
 - `signal finished()`
 
 **Constants / tuning**
-- `WAVE_TABLE` = `[ ["destroy", 0], ["destroy", 1], ["destroy", 2], ["dented", 0], ["dented", 1], ["cracked", 1], ["cracked", 2], ["smoke", 0], ["smoke", 1], ["smoke", 2], ["smoke", 3], ["soot", 0], ["soot", 1], ["soot", 2], ["soot", 3], ]`
 - `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
 - `KIND_RADIUS_BIAS` = `{ "destroy": -0.60, "expose": -0.50, "dented": -0.30, "cracked": -0.20, "smoke": 0.0, "soot": 0.40, }`
-
-**Public vars**
-- `var sequence_ms: float = 240.0`
-- `var min_cells_per_frame: int = 24`
 
 **Public API**
 - `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
@@ -2652,7 +2647,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 345 lines
+extends `SceneTree` · 398 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -3884,7 +3879,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 329 lines
+`class_name TestZoneController` · 342 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4143,7 +4138,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3794 lines
+extends `Node2D` · 3801 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4230,14 +4225,14 @@ extends `Node2D` · 3794 lines
 - `var vfx_smoke_alpha: float = 0.6`
 - `var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)`
 - `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
-- `var blast_burst_ember_count: int = 14`
-- `var blast_burst_ember_spread_px: float = 46.0`
-- `var blast_burst_ember_life_min: float = 0.28`
-- `var blast_burst_ember_life_max: float = 0.75`
-- `var blast_burst_spark_count: int = 26`
+- `var blast_burst_ember_count: int = 22`
+- `var blast_burst_ember_spread_px: float = 64.0`
+- `var blast_burst_ember_life_min: float = 0.40`
+- `var blast_burst_ember_life_max: float = 1.05`
+- `var blast_burst_spark_count: int = 34`
 - `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
-- `var blast_burst_dust_count: int = 5`
-- `var blast_burst_dust_drop_px: float = 34.0`
+- `var blast_burst_dust_count: int = 7`
+- `var blast_burst_dust_drop_px: float = 44.0`
 - `var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)`
 
 **Public API**

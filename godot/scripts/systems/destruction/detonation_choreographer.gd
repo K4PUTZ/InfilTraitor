@@ -80,11 +80,59 @@ extends RefCounted
 ## harness, which renders the blast at ~8 fps: the ~120 ms per-frame figure is
 ## almost certainly much smaller on a real windowed run, and the SHAPE of the
 ## conclusion (per-frame, not per-cell) is what to trust, not the constant.
-var sequence_ms: float = 240.0
+##
+## ============================================================================
+## P-PLAY (PREDICTION_MASTER_PLAN Task 1, 2026-08-09) — THE DEADLINE RULE ABOVE
+## IS RETIRED. It is kept in this header because the measurement that produced
+## it is still true and still governs; only the conclusion drawn from it was
+## wrong.
+##
+## What the deadline rule actually did, measured on a real PLAYGROUND blast:
+##
+##     [E-WAVE] frame 1 cells=92/2185   elapsed=13ms   dt=10.0ms   target=92
+##     [E-WAVE] frame 2 cells=2149/2185 elapsed=257ms  dt=226.0ms  target=2149
+##     [E-WAVE] frame 3 cells=2185/2185 elapsed=385ms  dt=148.0ms  target=2185
+##
+## **The whole blast was three frames, 2 057 of its 2 185 steps on one of them.**
+## `cells_due_now()` derived its quota from `elapsed_ms / sequence_ms`, so a
+## single slow frame put `elapsed` past the deadline and the quota became the
+## entire queue. The class documented that as a feature ("when frames are
+## expensive the quota drags the sequence forward"); the Director saw it as
+## "de repente a explosão já está toda construída", and they were right.
+##
+## It also hid E-RADIAL-01 completely. The radial ordering below is correct and
+## has shipped since `04bfed1`, but a front that crosses 2 185 steps inside two
+## visible frames is not a front — it is two states.
+##
+## The rule now: **the front advances by FRAME, never by wall clock.** The blast
+## is `front_frames` frames long whatever each frame costs, which is what
+## guarantees the Director's "todos os frames bem visíveis, na duração certa".
+##
+## The trade this makes, stated plainly rather than discovered later: wall-clock
+## duration now scales with frame rate — 24 frames is 0.4 s at 60 fps and 1.2 s
+## at 20 fps. That is correct for a purely visual sequence (nothing waits on it,
+## and a machine rendering at 20 fps is slow at everything), and it is the exact
+## property the old rule traded away to keep a wall-clock promise nobody had
+## asked for. There is deliberately NO wall-clock cap: adding one re-introduces
+## the dump the moment it fires.
+## ============================================================================
 
-## Floor on progress, so a fast machine still subdivides rather than dumping the
-## whole quota at once, and so the queue always advances even at elapsed 0.
-var min_cells_per_frame: int = 24
+## How many FRAMES the front takes to travel from the epicentre to the outermost
+## step in the queue. The whole pacing rule, and the blast's duration knob.
+## 24 ≈ 0.4 s at 60 fps (Director, 2026-08-09).
+var front_frames: int = 24
+
+## Width of one visible band of the expanding front, in voxels. The front's
+## radius is snapped DOWN to a multiple of this, so the wave advances in
+## discrete steps instead of a continuous smear — the Director's "ondas na água
+## de um lago" (2026-08-09), chosen over both a continuous front and a genuine
+## second trailing ripple.
+##
+## This does NOT read as machined rings, because `front_jitter` below already
+## scatters each cell up to ±0.45 voxels off the true circle, so a band's edge
+## is ragged before it is ever drawn. Bands and jitter are therefore tuned
+## together: raising jitter past the band width dissolves the banding entirely.
+var band_voxels: float = 1.0
 
 ## §1 step 10's table, inner rings first — the one authoritative order.
 ## [kind, ring] pairs; kind indexes directly into the plan's own top-level keys.
@@ -226,12 +274,17 @@ static func _sort_key(kind: String, entry: Dictionary) -> float:
 func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
 	var next_step := 0
 	var frame_index := 0
+	## The outermost step's own sort key — the radius the front has to reach for
+	## the blast to be over. Read off the queue rather than recomputed from the
+	## bomb's rings, so it stays honest when a blast is clipped by walls.
+	var max_r: float = 0.0
+	if not queue.is_empty():
+		max_r = float(queue[queue.size() - 1]["sort"])
 	while next_step < queue.size():
 		if frame_index > 0:
 			await tree.process_frame
-		var elapsed_ms: float = float(Time.get_ticks_msec() - _t0_ms)
-		var target: int = cells_due_now(next_step, elapsed_ms, sequence_ms,
-			min_cells_per_frame, queue.size())
+		var front_r: float = front_radius_for(frame_index, front_frames, max_r, band_voxels)
+		var target: int = steps_within(queue, next_step, front_r)
 		var apply_start_us := Time.get_ticks_usec()
 		var applied := 0
 		while next_step < target:
@@ -241,31 +294,58 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree) ->
 			applied += 1
 		_flush(voxel_renderer)
 		var apply_ms: float = float(Time.get_ticks_usec() - apply_start_us) / 1000.0
-		print("[E-WAVE] frame %d cells=%d/%d elapsed=%dms apply=%.3fms" %
-			[frame_index + 1, next_step, queue.size(), Time.get_ticks_msec() - _t0_ms, apply_ms])
+		print("[E-WAVE] frame %d front_r=%.1f cells=%d/%d elapsed=%dms apply=%.3fms" %
+			[frame_index + 1, front_r, next_step, queue.size(),
+			Time.get_ticks_msec() - _t0_ms, apply_ms])
 		wave_applied.emit(frame_index, "queue", 0, applied)
 		frame_index += 1
 	_waves_done = frame_index
 	finished.emit()
 
 
-## How far into the queue this frame should get, as an EXCLUSIVE end index.
-## Pure and static so the pacing rule is testable without controlling frame
-## timing — the same reason its per-wave predecessor was.
+## Where the expanding front stands on a given frame, as a radius in the same
+## units the queue's `sort` keys are in. Pure and static so the pacing rule is
+## testable without controlling frame timing — the same reason its two
+## predecessors (`waves_due_now`, `cells_due_now`) were.
 ##
-## The quota is where the sequence SHOULD be by now if it were spread evenly
-## across `sequence_ms`; `min_cells` is the floor that guarantees progress on the
-## first frame (elapsed 0) and keeps a fast machine subdividing. Past
-## `sequence_ms` the quota is the whole queue, so the blast finishes on time
-## regardless of how expensive the frames turned out to be.
-static func cells_due_now(next_step: int, elapsed_ms: float, sequence_ms: float,
-		min_cells: int, total: int) -> int:
-	if total <= 0:
-		return 0
-	var quota: int = total
-	if sequence_ms > 0.0 and elapsed_ms < sequence_ms:
-		quota = int(ceil(float(total) * (elapsed_ms / sequence_ms)))
-	return clampi(maxi(quota, next_step + maxi(min_cells, 1)), 0, total)
+## Linear in FRAME INDEX, never in wall clock. That single change is what
+## retires the dump documented in this file's header: no elapsed time is
+## consulted, so no slow frame can make the rest of the queue "due".
+##
+## Snapped DOWN to a `band` multiple so the front advances in visible steps.
+## `floor` and not `round` on purpose — a band must be fully reached before it
+## fires, or the first half of every band leaks into the previous frame and the
+## banding softens back into the smear it exists to prevent.
+##
+## The last frame returns INF: whatever the arithmetic and the quantization have
+## left over lands, so the sequence always terminates on exactly `frames`
+## frames. Without it a rounding-down at the top of the range could strand the
+## outermost steps and hang the coroutine.
+static func front_radius_for(frame_index: int, frames: int, max_r: float,
+		band: float) -> float:
+	var f: int = maxi(frames, 1)
+	if frame_index >= f - 1:
+		return INF
+	var reach: float = max_r * (float(frame_index + 1) / float(f))
+	if band > 0.0:
+		reach = floor(reach / band) * band
+	return reach
+
+
+## How far into the queue the front has reached, as an EXCLUSIVE end index.
+## A linear scan from where the last frame stopped, which is correct precisely
+## because `flatten_plan()` leaves the queue sorted by this same key — the scan
+## and the ordering are the same fact, so this cannot silently disagree with it.
+##
+## Returning `from_index` unchanged is a legitimate result, not a stall: it means
+## the front is crossing empty space this frame, which is exactly the pause a
+## blast should have between a dense inner band and a sparse outer one. The
+## INF on the last frame (above) is what guarantees termination regardless.
+static func steps_within(queue: Array, from_index: int, front_r: float) -> int:
+	var i: int = from_index
+	while i < queue.size() and float(queue[i]["sort"]) <= front_r:
+		i += 1
+	return i
 
 
 ## Applies EVERY entry of one (kind, ring) bucket at once. No longer the

@@ -2,10 +2,12 @@
 ## Simulate without committing: the engine's pure-prediction, pre-production and cache layer — v1.0
 
 **Date opened:** 2026-08-09
-**Status:** 🔵 **PLANNED — no code written yet.** Every number below is measured
-on a real PLAYGROUND detonation this session; every claim about what mutates
-comes from reading the actual writers, not from the plan text of another
-document.
+**Status:** 🟢 **BUILDING. Task 1 (P-PLAY) shipped 2026-08-09 — see §8.1.** The
+blast went from 3 frames to 24 and the expanding front is visible for the first
+time. Tasks 2–6 (the purity refactor, the Delta, slicing, the cache, the
+"cooking" beat) are planned and unbuilt. Every number below is measured on a
+real PLAYGROUND detonation; every claim about what mutates comes from reading
+the actual writers, not from the plan text of another document.
 **Opened by:** the Director, 2026-08-09, when the explosion's pre-production
 question turned out to be an engine question:
 
@@ -455,7 +457,7 @@ refactor lands behind a regression net.
 
 | # | Task | Deliverable | Gate |
 |---|---|---|---|
-| **1** | **P-PLAY** — playback that reads | §6.1's frame-count pacing; §6.2's radius quantization; §6.3's fire/shake tuning. No prediction work at all. | Real PLAYGROUND capture sequence showing the front at ≥3 distinct radii on separate frames (today: impossible, the blast is 3 frames). `[E-WAVE]` log showing a stable frame count across two runs. Director sign-off on the look. |
+| **1** | ✅ **DONE 2026-08-09 — P-PLAY**, see §8.1 | Frame-count pacing (`front_frames`), band quantization (`band_voxels`), fire/shake tuning. `cells_due_now()` retired. No prediction work. | **Met.** 24 frames exactly on the real blast, heaviest frame 13.5% (was 94%); front advances 1.0→25.0 band by band; 3 pixel-diffed captures. Director sign-off pending on the look. |
 | **2** | **P-PURE** — the purity refactor | `simulate_container_damage()` / `simulate_crater_damage()`; existing mutators become `commit(simulate(…))`. §3.3's read-overlay is the hard part. | **`blast_calculator_selftest.gd` passes with ZERO edits** — it is the net, not collateral. Plus a new red-before-green test: `simulate()` on a real PLAYGROUND blast leaves all 7 fields of every voxel untouched, asserted by before/after field snapshot over the full affected set. Byte-identical Delta from `simulate()` and from the committed path. |
 | **3** | **P-DELTA** — `WorldDelta` as a real type | Today's plan Dictionary becomes an inspectable Delta with §3.4's census as a field. `DetonationPlanBuilder` produces one; `commit()` consumes one. | `run_selftests.py` clean. A real detonation is pixel-identical to the pre-refactor one — the same 0-differing-pixels gate Task 1a of the explosion plan used. |
 | **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. |
@@ -464,6 +466,59 @@ refactor lands behind a regression net.
 
 **Phase B of `EXPLOSION_REBUILD_MASTER_PLAN` (throw arc, bubble, hover) plugs
 into Task 5's seam and is planned there, not here.**
+
+### 8.1 Task 1 (P-PLAY) closure — 2026-08-09
+
+Shipped as specified, with the Director's Q1/Q2 answers taken as given
+(visible bands; ~0.4 s / 24 frames).
+
+**What changed.** `cells_due_now()` is gone. `front_radius_for()` advances the
+front linearly in **frame index** and snaps it down to a `band_voxels`
+multiple; `steps_within()` scans the already-sorted queue up to that radius.
+`sequence_ms` and `min_cells_per_frame` are deleted — no wall-clock term
+survives anywhere in the pacing path, which is the property that makes the
+collapse unreachable rather than merely unlikely.
+
+**The real blast, before → after** (same grenade, same map, same harness):
+
+| | before | after |
+|---|---|---|
+| frames | **3** | **24** |
+| heaviest single frame | 2 057 / 2 185 (**94%**) | 294 / 2 185 (**13.5%**) |
+| front radius per frame | not a concept | 1.0 → 2.0 → 3.0 → … → 25.0 → ∞ |
+
+**Captures** (hand-named, rotation-proof): `p_play_front_f5.png`,
+`p_play_front_f11.png`, `p_play_front_f17.png`, `p_play_front_f24.png`, taken
+mid-sequence through `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES`. Pixel-diffed
+rather than eyeballed:
+
+| transition | pixels differing | mean delta |
+|---|---|---|
+| f5 → f11 | 97.88% | 52.9/255 — the negative flash clearing, not the front |
+| f11 → f17 | 4.82% | 20.8/255 — **the front advancing** |
+| f17 → f24 | 3.34% | 14.7/255 — still advancing |
+
+**Two things worth recording because they are easy to misread later:**
+
+1. **`elapsed` in the `[E-WAVE]` log is now ~2 700 ms, and that is not a
+   regression.** The capture harness renders at ~8 fps; 24 frames × ~123 ms is
+   the harness's frame rate, not the blast's duration. At 60 fps the same 24
+   frames are 0.4 s. This is the documented trade in the choreographer's
+   header — duration scales with frame rate, on purpose.
+2. **Frames 22–23 apply zero cells** (the front crosses empty space between
+   r=24 and r=25). That is the intended pause between a dense inner band and a
+   sparse rim, documented on `steps_within()`, not a stall — the last frame's
+   `INF` guarantees termination regardless.
+
+**Selftest.** `detonation_choreographer_selftest` test 5 was **replaced, not
+relaxed.** Its third assertion had been pinning the bug verbatim ("past the
+deadline the whole queue is due at once — the blast finishes on time at any
+frame rate"). Four assertions now stand in its place: exact frame count with no
+wall-clock input, no frame over 50% of the queue (the direct red-before-green
+for the collapse), front monotonicity, and band-boundary alignment.
+
+**Not done, and not silently dropped:** §6.2's optional second trailing ripple.
+The Director chose visible bands over multiple ripples, so it was not built.
 
 ---
 
@@ -485,22 +540,18 @@ into Task 5's seam and is planned there, not here.**
 
 ## 10. Open questions for the Director
 
-### Q1 — The ripple's look 🔴 blocks Task 1's final tuning, not its build
+### Q1 — ✅ ANSWERED 2026-08-09. Visible bands.
 
-§6.2: fixing the pacing gives you one expanding front. Do you want (a) exactly
-that, (b) that plus discrete visible bands, or (c) genuine multiple ripples —
-a second weaker wave trailing the first, like a real lake?
+One expanding front, quantized into discrete bands (`band_voxels = 1.0`) —
+chosen over both a continuous front and a genuine second trailing ripple. The
+trailing ripple is therefore **not built**, and if it is ever wanted it needs
+its own decision about what the second wave carries, since destruction can only
+happen once per voxel.
 
-*Assumed if unanswered:* (b) — one front, quantized into visible bands. It is
-the closest to "ondas na água" that does not invent a second effect.
+### Q2 — ✅ ANSWERED 2026-08-09. 24 frames (~0.4 s at 60 fps).
 
-### Q2 — How long should a blast take? 🔴 blocks Task 1
-
-Today `sequence_ms = 240` and reality is 3 frames. With frame-count pacing the
-question becomes a real one: **how many frames should the front take to reach
-the widest circle?** At 60 fps, 20 frames = 0.33 s, 40 frames = 0.66 s.
-
-*Assumed if unanswered:* 24 frames (~0.4 s at 60 fps), then tuned on capture.
+`front_frames = 24`. Note the consequence recorded in §8.1: this is a frame
+count, so wall-clock duration scales with frame rate by design.
 
 ### Q3 — What will the guard AI actually ask? 🟡 blocks Task 5's sizing only
 

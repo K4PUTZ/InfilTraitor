@@ -59,7 +59,20 @@ const BOMB_ID: String = "frag_grenade"
 ## than with the flash: it now has the animation's own ~8 frames to cover before
 ## the destruction even lands, and the old duration would have been most spent
 ## before the crater appeared.
-var SHAKE_SECONDS: float = 0.7
+##
+## P-PLAY (Director, 2026-08-09): "estender um pouco mais a duração do camera
+## shake." 0.7 -> 1.0, and the two reasons it is safe to now are both new this
+## pass rather than a decision to shake at nothing:
+##   1. The blast itself is LONGER. The front was collapsing into 3 frames
+##      (PREDICTION_MASTER_PLAN §1.2); it is `front_frames` = 24 now, ~0.4 s at
+##      60 fps, so the destruction the shake exists to sell is still arriving at
+##      a point where the old 0.7 s was already fading out.
+##   2. `blast_burst_ember_life_max` went 0.75 -> 1.05 in the same pass, so
+##      there is visibly burning material for the whole new window.
+## The caution in the paragraph above still governs: this must not outlast the
+## smoke, or the camera ends up shaking a settled scene. 1.0 s sits inside the
+## per-voxel smoke's own 1.0-1.8 s envelope.
+var SHAKE_SECONDS: float = 1.0
 var SHAKE_AMPLITUDE_PX: float = 12.0
 
 

@@ -1855,15 +1855,110 @@ whether to fold the flush into `apply_damage_voxel_swap()` itself so no future
 caller can forget, rather than keep trusting every call site. D34 did not
 touch this.
 
+## E-DENT-01 / E-CRACK-01 (2026-08-08) — the soot stamp is off, and the floor finally cracks
+
+Two Director calls in one session, both landed and pushed.
+
+**E-DENT-01 (`a681af0`) — "vamos apagar o stamp de fuligem por enquanto."**
+`TestZoneController` builds every real detonation with `stamp_soot_enabled =
+false`; `build_plan()`'s own default stays `true`, so the calculation layer and
+its selftests do not move and the reversal is one boolean
+(`INFILTRAITOR_ENABLE_STAMP_SOOT=1` restores it).
+`derive_soot_rings()`/`apply_self_soot()` are untouched — a voxel next to a real
+hole still scorches. Same commit added the `[E-PLAN] census`: one line per
+(surface, material) a blast actually reached, with destroyed/dented/cracked
+counts and how many dent/crack tiles came from the pre-bake instead of the D33
+live fallback. `[E-WAVE]`'s per-wave counts blend floor/wall/ceiling into one
+figure, which is exactly what hid "69 dents on a fixture, zero on PLAYGROUND"
+the first time.
+
+That census is what found the real gap: **FLOOR/cracked measured 0 on every
+material, on every one of the four test-zone blasts** — `apply_crater_damage()`
+had no crack roll at all, so D19's "floors crack like walls" was closed in the
+data (one `concrete` row, `crack_factor` 0.1) and never in the code.
+
+**E-CRACK-01 — the Director's answer: build it, "seguindo o modelo da parede",
+with the severity ladder "recebe muito → destruído; um pouco menos → dented; o
+próximo → cracked, quase quebrando mas ainda resistiu". Hybrid dented+cracked
+states explicitly scoped out for now.** Three layers, all of which had to move:
+
+1. `apply_crater_damage()` grew a CRACKED tier —
+   `_roll_floor_dent()` became `_roll_floor_surface_damage()`, offering each
+   surviving voxel DENTED first and only then CRACKED (apply_container_damage()'s
+   own D22 pool order, applied per voxel because a crater is radial). Three
+   independent hash salts. The two tiers fall off over different spans (dent dies
+   one `rim_span` past the crater, crack a `rim_span` later), so the ladder reads
+   spatially as well as per voxel. The bomb's `dent_ring_weights`/
+   `crack_ring_weights` now reach the floor, indexed by `crater_ring_for()` —
+   floor and wall finally read the same authored tables. Both trailing +
+   defaulted (`[]` = dent un-gated, crack off), so every pre-existing caller is
+   byte-for-byte unaffected.
+2. `floor_damage_material()` needed **nothing** — D34/E-SEAM-02 had already made
+   it material-real, so a concrete floor asks for `concrete_blast_cracked_all_N`.
+   The stale claim that it "always keys CRACKED off the earth sentinel" is
+   corrected in `damage_variant_baker.gd`'s header.
+3. `DamageVariantBaker` registers the universal CRACKED-blast atom under
+   `"FLOOR"` for any floor material with `crack_factor > 0` — the same
+   registration D6 already does for `"CEILING"`, from the same composite, no
+   re-compositing and no second atlas slot. §3.2's roster always said CRACKED was
+   "universal — floor + wall + ceiling"; only the registration was missing.
+
+**Tuning (Director: "diminuir um pouco a quantidade de voxels destruídos e
+tentar colocar mais decals").** Done on the BOMB and the crater radius, NOT on
+`MaterialResistanceTable` — that table is shared with firearms through
+`apply_container_damage()`, so every row moved there silently retunes shotgun and
+sniper damage. `CRATER_CORE_FACTOR` 0.4 → 0.30 (one number: fewer holes, and
+since `rim_span = max − core` it widens every mark band without changing the
+crater's outer reach); `destroy_ring_weights` `[1.0, 0.35, 0.08, 0]` →
+`[0.85, 0.28, 0.06, 0]`; `dent_ring_weights` `[1.0, 0.45, 0, 0]` →
+`[1.0, 0.8, 0.25, 0]`; `crack_ring_weights` `[0, 1.0, 0.35, 0]` →
+`[0, 1.0, 0.6, 0]`. One material row moved and only one: **wood's `dent_factor`
+0.03 → 0.2**, because at 0.03 a wood floor that lost 137 voxels showed 7 dents,
+which made D32.6's "wood dents instead of cracking" effectively void.
+
+**One tuning attempt was reverted by a real capture, not by review.** Setting
+`crack_ring_weights[0]` 0.0 → 0.45 (cracks inside the crater, to raise decal
+density where the eye goes) produced isolated bright full-voxel cubes standing in
+the hole: CRACKED is a 3-face composite while DENTED is a half-voxel carve, so a
+cracked floor voxel whose neighbours were destroyed renders as a complete block
+where every other floor tile renders as a flat top face. `e_crack_ring0_artifact.png`
+is that frame. **§4.2's "cracked never in ring 0" is therefore load-bearing, not
+cosmetic** — reverted to 0.0, and `blast_calculator_selftest.gd` now asserts it.
+
+Real PLAYGROUND, all four test-zone grenades, before (2026-08-08 baseline) → after:
+
+| surface/material | destroyed | dented | cracked | decals |
+|---|---|---|---|---|
+| FLOOR/concrete gu(3,5) | 268 → **239** | 69 → 69 | 0 → **67** | 69 → **136** |
+| WALL/concrete | 26 → **16** | 8 → 28 | 24 → 36 | 32 → **64** |
+| FLOOR/metal | 154 → **143** | 76 → 77 | 0 (D32.6) | 76 → **77** |
+| WALL/metal | 2 → 2 | 20 → 60 | 0 (D32.6) | 20 → **60** |
+| FLOOR/stone | 160 → **143** | 42 → 40 | 0 → **20** | 42 → **60** |
+| WALL/stone | 12 → 12 | 12 → 32 | 20 → 28 | 32 → **60** |
+| FLOOR/wood | 155 → **137** | 8 → 43 | 0 (D32.6) | 8 → **43** |
+| WALL/wood | 50 → **38** | 2 → 32 | 0 (D32.6) | 2 → **32** |
+
+Destruction down on every surface, decals up on every surface, **every single
+dent/crack tile resolved from a pre-baked atom — 0 live-composite fallbacks**.
+Captures: `e_crack_floor_concrete.png`, `e_crack_floor_metal.png`,
+`e_crack_floor_stone.png`, `e_crack_floor_wood.png`.
+
+**Known and NOT fixed — the crack decal barely survives the downsample.** The
+art (`decal_crack_<material>_0..2.png`) is a real 256×256 fracture network of
+thin dark lines; projected onto a floor voxel's top face it averages out to a
+faint tonal patch rather than a visible crack. The same reads on walls: a
+pre/post pixel diff of the stone block measured only 8363 changed pixels at mean
+delta 24.8/255 (the floor's holes: 39.7, peak 248). This is an ART problem at
+voxel scale, not a wiring one — the pipeline demonstrably delivers the right atom
+to the right cell. Flagged for the Director, not guessed at.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
-1. Get the Director a real capture (`e_wave_detonation.png` or a fresh one)
-   and the real census/timing numbers from this session's closure note, and
-   let the Director move §4.2's ring-weight numbers (`destroy_ring_weights`/
-   `dent_ring_weights`/`crack_ring_weights`/`soot_ring_tones`/
-   `smoke_ring_weights` in `bombs/frag_grenade.json`) based on what actually
-   reads right — every one of them is explicitly a first-pass placeholder,
-   not a researched constant.
+1. ~~Get the Director a real capture and let them move §4.2's ring-weight
+   numbers.~~ **Done 2026-08-08 as E-CRACK-01's tuning pass, above** — the
+   numbers moved once, on real censuses, and every one of them is still a
+   placeholder open to another pass. `soot_ring_tones` and `smoke_ring_weights`
+   were NOT touched (the soot stamp is off entirely for now, E-DENT-01).
 2. **The "quebradiça" (brittle/fragmented) soot texture** — **REVERSED,
    2026-08-08.** The Post-Task-5 A/B test below was run against a genuine
    bug (GPU-UPLOAD-01, same session's own damage-atom gallery rig found it

@@ -1,7 +1,7 @@
 {
   "id": "wood",
   "destroy_factor": 0.75,
-  "dent_factor": 0.03,
+  "dent_factor": 0.2,
   "crack_factor": 0.0,
   "base_color": [
     0.66,

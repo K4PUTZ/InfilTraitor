@@ -96,6 +96,10 @@ func _init() -> void:
 	test_stamp_and_derive_soot_min_merge_darker_wins()
 	test_stamp_crater_soot_isotropic_and_ring_bands()
 	test_stamp_soot_beyond_range_untouched()
+	## E-CRACK-01 (Director, 2026-08-08) — the floor's own CRACKED tier.
+	test_crater_crack_absent_without_weights()
+	test_crater_crack_bands_and_severity_ladder()
+	test_crater_crack_follows_crack_factor_and_respects_d32_6()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -2193,3 +2197,208 @@ func test_apply_self_soot_never_weakens_an_existing_stronger_ring() -> void:
 
 	print("")
 	print("")
+
+## E-CRACK-01 (a) — the byte-compat guarantee this signature's trailing +
+## defaulted convention exists for: no crack table passed ⇒ the function behaves
+## exactly as it did before the crack tier existed. Asserted against a material
+## that DOES crack (concrete, crack_factor > 0), so a pass means "the weights
+## gate it", not "this material could never crack anyway".
+func test_crater_crack_absent_without_weights() -> void:
+	print("[E-CRACK-1] no crack_ring_weights ⇒ 0 cracks, even on a cracking material\n")
+
+	var voxels := _crater_patch("CRACK_PATCH_A", "concrete")
+	BlastCalculatorClass.apply_crater_damage(
+		voxels, "CRACK_PATCH_A", Vector2i.ZERO, 7.0, 17.0, "concrete")
+
+	var cracked := 0
+	var dented := 0
+	for v in voxels:
+		if v.damage_state == Voxel.DamageState.CRACKED:
+			cracked += 1
+		elif v.damage_state == Voxel.DamageState.DENTED:
+			dented += 1
+	if cracked == 0 and dented > 0:
+		_pass("no weights → 0 cracked, %d dented (every pre-E-CRACK-01 caller unaffected)" % dented)
+	else:
+		_fail("expected 0 cracked and some dents without weights — got cracked=%d dented=%d" % [cracked, dented])
+	print("")
+
+
+## E-CRACK-01 (b) — the real placement rules, against the REAL frag_grenade.json
+## (via BombRegistry, never a hand-built array — Task 2's own precedent, so a
+## retune of the shipped table is caught here instead of quietly diverging):
+##   · cracks exist at all on a floor, which was structurally impossible before;
+##   · none in crater ring 0 — the Director's own table rule (§4.2, "cracked
+##     never in ring 0"), and the rule a real capture proved load-bearing on
+##     2026-08-08: a cracked voxel inside the crater renders as an isolated
+##     full-voxel cube standing in the hole, because CRACKED is a 3-face
+##     composite while DENTED is a half-voxel carve;
+##   · none past ring CRATER_DAMAGE_MAX_RING;
+##   · the severity ladder holds — DENTED is offered each voxel first, so no
+##     voxel is ever both, and every crack sits at a distance where the dent
+##     roll had already passed it over.
+func test_crater_crack_bands_and_severity_ladder() -> void:
+	print("[E-CRACK-2] crack bands + the destroy→dent→crack ladder, on the real frag_grenade table\n")
+
+	var registry := BombRegistryClass.new()
+	registry.load_from_disk()
+	var frag = registry.get_bomb("frag_grenade")
+	if frag == null:
+		_fail("Could not load real frag_grenade.json via BombRegistry")
+		print("")
+		return
+
+	const CORE := 7.0
+	const MAX_R := 17.0
+	const RIM := MAX_R - CORE
+	var voxels := _crater_patch("CRACK_PATCH_B", "concrete")
+	BlastCalculatorClass.apply_crater_damage(
+		voxels, "CRACK_PATCH_B", Vector2i.ZERO, CORE, MAX_R, "concrete", false, 1.0,
+		frag.dent_ring_weights, frag.crack_ring_weights)
+
+	var cracked := 0
+	var crack_in_ring0 := 0
+	var crack_beyond_max_ring := 0
+	var bad_side := 0
+	var overlap := 0
+	for v in voxels:
+		if v.damage_state != Voxel.DamageState.CRACKED:
+			continue
+		cracked += 1
+		var d: float = Vector2(v.grid_pos).length()
+		var ring: int = BlastCalculatorClass.crater_ring_for(d, MAX_R, RIM)
+		if ring == 0:
+			crack_in_ring0 += 1
+		if ring > BlastCalculatorClass.CRATER_DAMAGE_MAX_RING:
+			crack_beyond_max_ring += 1
+		## D32.3 — a blast cracks the whole voxel, one name, no side.
+		if not v.damage_is_blast or v.damage_carved_side != Voxel.CarvedSide.NONE:
+			bad_side += 1
+		## A Voxel carries ONE damage_state, so "both tiers" cannot be read off
+		## the state itself — what the ladder really guarantees is that the
+		## DENT roll passed this voxel over. Re-run its dent roll here with the
+		## same salt/threshold the production path uses and assert it failed.
+		if _would_dent("CRACK_PATCH_B", v, d, MAX_R, RIM,
+				MaterialResistanceTableClass.dent_factor("concrete"), frag.dent_ring_weights):
+			overlap += 1
+
+	if cracked > 0:
+		_pass("%d cracked floor voxels — the tier is reachable at all (it was structurally impossible before)" % cracked)
+	else:
+		_fail("0 cracked voxels with the real frag_grenade table — the crack tier never fires")
+	if crack_in_ring0 == 0 and crack_beyond_max_ring == 0:
+		_pass("every crack sits in rings 1..%d — none in the crater (§4.2), none past the mark bands"
+			% BlastCalculatorClass.CRATER_DAMAGE_MAX_RING)
+	else:
+		_fail("crack placement wrong: %d in ring 0, %d past ring %d"
+			% [crack_in_ring0, crack_beyond_max_ring, BlastCalculatorClass.CRATER_DAMAGE_MAX_RING])
+	if bad_side == 0:
+		_pass("every crack is blast-sourced with CarvedSide.NONE (D32.3)")
+	else:
+		_fail("%d cracks carry a carved side or lost blast provenance" % bad_side)
+	if overlap == 0:
+		_pass("severity ladder holds: no cracked voxel would also have dented")
+	else:
+		_fail("%d voxels cracked despite passing their own dent roll — DENTED must win first" % overlap)
+	print("")
+
+
+## E-CRACK-01 (c) — two separate properties, both live-table-driven rather than
+## pinned to one session's numbers:
+##
+##   1. A material cracks on a floor IFF its crack_factor > 0. That is the whole
+##      of D32.6 on this surface ("metal e madeira não ficam rachados, só dented
+##      ou balas") and it is the assertion that would catch the tier being wired
+##      to the wrong material property.
+##   2. Prevalence scales with the crack term, proven by halving the crack ring
+##      weights and checking the smaller result is a strict SUBSET of the larger
+##      (same per-voxel hash, smaller threshold ⇒ subset — the same argument the
+##      dent test makes).
+##
+## Deliberately NOT asserted: an ordering between concrete and stone. They share
+## crack_factor 0.10 but differ in dent_factor (0.15 vs 0.20), and DENTED draws
+## from the pool first, so the material that dents more leaves fewer voxels for
+## the crack roll — 44 vs 40 measured. That gap is the severity ladder working,
+## not a prevalence bug, and an ordering assertion here would be asserting
+## something false. No two shipped materials currently differ in crack_factor at
+## all, which is why (2) isolates the term by moving the weight instead.
+func test_crater_crack_follows_crack_factor_and_respects_d32_6() -> void:
+	print("[E-CRACK-3] cracks iff crack_factor > 0 (D32.6), and prevalence scales with the crack term\n")
+
+	var registry := BombRegistryClass.new()
+	registry.load_from_disk()
+	var frag = registry.get_bomb("frag_grenade")
+	if frag == null:
+		_fail("Could not load real frag_grenade.json via BombRegistry")
+		print("")
+		return
+
+	var cracked_cells := func(material: String, crack_weights: Array[float]) -> Dictionary:
+		var id := "CRACK_PATCH_%s" % material
+		var voxels := _crater_patch(id, material)
+		BlastCalculatorClass.apply_crater_damage(
+			voxels, id, Vector2i.ZERO, 7.0, 17.0, material, false, 1.0,
+			frag.dent_ring_weights, crack_weights)
+		var cells: Dictionary = {}
+		for v in voxels:
+			if v.damage_state == Voxel.DamageState.CRACKED:
+				cells[v.grid_pos] = true
+		return cells
+
+	var mismatched: Array[String] = []
+	var summary: Array[String] = []
+	for material in ["concrete", "stone", "metal", "wood"]:
+		var n: int = cracked_cells.call(material, frag.crack_ring_weights).size()
+		var expects_cracks: bool = MaterialResistanceTableClass.crack_factor(material) > 0.0
+		summary.append("%s %d (factor %.2f)" % [material, n, MaterialResistanceTableClass.crack_factor(material)])
+		if (n > 0) != expects_cracks:
+			mismatched.append(material)
+	if mismatched.is_empty():
+		_pass("cracks appear exactly where crack_factor > 0: %s" % ", ".join(summary))
+	else:
+		_fail("crack presence disagrees with crack_factor for: %s (%s)"
+			% [", ".join(mismatched), ", ".join(summary)])
+
+	var half: Array[float] = []
+	for w in frag.crack_ring_weights:
+		half.append(float(w) * 0.5)
+	var full_set: Dictionary = cracked_cells.call("concrete", frag.crack_ring_weights)
+	var half_set: Dictionary = cracked_cells.call("concrete", half)
+	var escaped := 0
+	for cell in half_set:
+		if not full_set.has(cell):
+			escaped += 1
+	if half_set.size() < full_set.size() and escaped == 0:
+		_pass("halving the crack weights gives %d cracks, a strict subset of the full table's %d"
+			% [half_set.size(), full_set.size()])
+	else:
+		_fail("half-weight crack set is not a strict subset: %d vs %d, %d cells outside the full set"
+			% [half_set.size(), full_set.size(), escaped])
+	print("")
+
+
+## One 28×28 quadrant of a real FLOOR Slab's Voxels, epicenter at (0,0) — the
+## same fixture shape test_crater_dents_rim_and_band_by_material() uses, so both
+## tiers are measured on identical geometry.
+func _crater_patch(slab_id: String, material: String) -> Array:
+	var slab := Slab.new(slab_id, Vector2i.ZERO, Slab.Role.FLOOR, 0, material)
+	var out: Array = []
+	for x in range(28):
+		for y in range(28):
+			out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+	return out
+
+
+## Recomputes one voxel's DENT roll exactly as _roll_floor_surface_damage() does
+## — same salt, same falloff, same ring weight — so the ladder assertion tests
+## the real threshold rather than a restatement of it.
+func _would_dent(container_id: String, voxel, d: float, max_radius: float,
+		rim_span: float, dent_f: float, dent_ring_weights: Array[float]) -> bool:
+	var ring: int = BlastCalculatorClass.crater_ring_for(d, max_radius, rim_span)
+	var weight: float = dent_ring_weights[ring] if ring < dent_ring_weights.size() else 0.0
+	var dent_p: float = clampf(dent_f
+		* clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0) * weight, 0.0, 1.0)
+	if dent_p <= 0.0:
+		return false
+	var key := "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
+	return float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0 < dent_p

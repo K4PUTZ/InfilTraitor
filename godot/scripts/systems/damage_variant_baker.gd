@@ -48,12 +48,16 @@
 ##     substrate is the GU's REAL ground material (D9) — so the registry key's
 ##     material component must be the real material, not the naming
 ##     constant, or every real floor material would collide into one slot.
-##     FLOOR CRACKED is not baked: unreachable in practice today —
-##     floor_damage_material() always keys the CRACKED case off the "earth"
-##     naming sentinel, which IMPACT_CRACK_MATERIALS never contains, and
-##     apply_crater_damage() never calls set_damage(CRACKED, ...) for a floor
-##     voxel in the first place (only DESTROYED/DENTED). Baking an atom
-##     nothing can ever query would be pure bloat.
+##     FLOOR CRACKED is not composited here: §3.2's roster makes CRACKED
+##     universal (floor + wall + ceiling, D6) and the wall's CRACKED-blast atom
+##     IS that atom, so a floor material with crack_factor > 0 gets it
+##     registered a second time under "FLOOR" from the same composite —
+##     see _bake_wall_and_marked()'s `is_floor_material`. Both halves of the
+##     old reason this was skipped are gone: D34/E-SEAM-02 made
+##     floor_damage_material() material-real (a concrete floor asks for
+##     "concrete_blast_cracked_all_N", not the "earth" sentinel), and
+##     E-CRACK-01 gave apply_crater_damage() a real crack tier, so a floor
+##     voxel can reach CRACKED at all.
 ##   - INTERIOR slabs and plain (unzoned) earth floors: skipped entirely,
 ##     same reasoning as the retired version — neither ever reaches the baked
 ##     D33 path, so there is nothing expensive to pre-bake for them.
@@ -115,7 +119,12 @@ func bake_all(declared_materials: Array[String], floor_materials: Array[String] 
 			push_warning("[DamageVariantBaker] declared material '%s' not registered — skipping" % material)
 			continue
 		if md.has_facade:
-			total += _bake_wall_and_marked(material)
+			## E-CRACK-01: a material that is ALSO a real floor zone gets the
+			## universal CRACKED-blast atom registered under "FLOOR" as well —
+			## see _bake_wall_and_marked()'s own note. Passed down rather than
+			## handled in the floor loop below so the atom is registered from
+			## the same composite, with no second slot allocation.
+			total += _bake_wall_and_marked(material, floor_materials.has(material))
 			total += _bake_ceiling(material)
 	for material in floor_materials:
 		if not declared_materials.has(material):
@@ -134,7 +143,7 @@ func bake_all(declared_materials: Array[String], floor_materials: Array[String] 
 ## this material, mirrored from the retired _wall_variant_names()'s gating
 ## but D10-derived (crack_factor > 0) instead of the hardcoded
 ## IMPACT_CRACK_MATERIALS list.
-func _bake_wall_and_marked(material: String) -> int:
+func _bake_wall_and_marked(material: String, is_floor_material: bool = false) -> int:
 	var baked := 0
 	var crack_eligible: bool = MaterialResistanceTable.crack_factor(material) > 0.0
 	var sides := [Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT]
@@ -150,12 +159,25 @@ func _bake_wall_and_marked(material: String) -> int:
 			## D6: this exact atom (a 3-face composite) also serves CEILING —
 			## register it a second time under that element_class, no
 			## re-compositing.
+			##
+			## E-CRACK-01 (2026-08-08): and FLOOR, for the same reason and by the
+			## same ratified rule — §3.2's roster row is literally "CRACKED
+			## (universal — floor + wall + ceiling, D6)". The registration was
+			## missing only because nothing could ever produce a cracked floor
+			## voxel until apply_crater_damage() grew its crack tier this session;
+			## this file's old header called that out honestly ("unreachable in
+			## practice today"), and it is reachable now. A floor voxel shows its
+			## TOP face, which this composite already papers (FACE_TOP + FACE_SW
+			## + FACE_SE in one atom) — the identical argument D6 made for
+			## CEILING, not a new claim about the art.
 			baked += _bake_wall_name(material, VoxelRenderer.damage_variant_material(
-				material, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, variant), true)
+				material, Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE, variant),
+				true, is_floor_material)
 	return baked
 
 
-func _bake_wall_name(material: String, name: String, also_ceiling: bool = false) -> int:
+func _bake_wall_name(material: String, name: String, also_ceiling: bool = false,
+		also_floor: bool = false) -> int:
 	if name == "":
 		return 0
 	var baked := 0
@@ -172,6 +194,11 @@ func _bake_wall_name(material: String, name: String, also_ceiling: bool = false)
 		if also_ceiling:
 			_registry.register(
 				VoxelVariantRegistry.make_variant_key("CEILING", material, name, substrate),
+				entry["source_id"], entry["atlas_coords"])
+			baked += 1
+		if also_floor:
+			_registry.register(
+				VoxelVariantRegistry.make_variant_key("FLOOR", material, name, substrate),
 				entry["source_id"], entry["atlas_coords"])
 			baked += 1
 	return baked

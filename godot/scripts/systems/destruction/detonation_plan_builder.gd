@@ -60,8 +60,18 @@ const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 ## VL-02c/D2 (unchanged from the pre-reset detonate_active() this task
 ## replaces) — the ground takes the blast as a CONTIGUOUS crater, radii
 ## derived from the bomb's own ring count.
+##
+## E-CRACK-01 (Director, 2026-08-08): "vamos diminuir um pouco a quantidade de
+## voxels destruídos e tentar colocar mais decals." CORE 0.4 → 0.30 is the one
+## number that does BOTH on the floor, which is why it moved alone: the core is
+## the unconditionally-destroyed bowl, so shrinking it removes holes directly,
+## and `rim_span = max - core` is the width unit every mark band is measured in,
+## so the same edit widens the dent band AND the new crack band without touching
+## the crater's outer reach (MAX is unchanged — the blast covers the same ground,
+## it just eats less of it and marks more of it). First pass, a tuning lever
+## (D6), not a researched constant — expect it to move again after a capture.
 const CRATER_MAX_FACTOR: float = 0.40
-const CRATER_CORE_FACTOR: float = 0.4
+const CRATER_CORE_FACTOR: float = 0.30
 
 
 ## Builds and returns one DetonationPlan Dictionary. Empty `{}` sub-dicts for
@@ -160,9 +170,17 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		var floor_slab: Slab = slab_registry.get_slab(slab_id)
 		if floor_slab.level == GeometryCoords.FLOOR_DEEP_LEVEL and not deep_layer_unlocked:
 			continue
+		## E-CRACK-01: the bomb's own dent/crack ring tables now reach the floor
+		## too — the same two arrays apply_container_damage() already reads for
+		## every wall and roof above, so one authored number governs a tier
+		## everywhere it can appear instead of the floor keeping a private
+		## falloff. `slab_pierce_multiplier` stays at its D17 default (no stacked
+		## slab exists on any real map yet) and is passed positionally only
+		## because the ring tables sit behind it.
 		BlastCalculatorClass.apply_crater_damage(
 			floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max,
-			floor_slab.material, deep_layer_unlocked)
+			floor_slab.material, deep_layer_unlocked, 1.0,
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights)
 		if stamp_soot_enabled:
 			BlastCalculatorClass.stamp_crater_soot(
 				floor_slab.voxels, epicenter, crater_core, crater_max,

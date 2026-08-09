@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**190 scripts · 47578 lines total** (under `godot/scripts/`)
+**190 scripts · 47925 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1470,11 +1470,11 @@ extends `Node2D` · 43 lines
 
 ### `damage_variant_baker.gd`
 
-`class_name DamageVariantBaker` · extends `RefCounted` · 290 lines
+`class_name DamageVariantBaker` · extends `RefCounted` · 317 lines
 
 `godot/scripts/systems/damage_variant_baker.gd`
 
-> DamageVariantBaker — EXPLOSION_REBUILD_MASTER_PLAN Task 1b (E-BAKE, 2026-08-06) Pre-bakes CRACKED/DENTED/MARKED damage-decal ATOMS once per map load — replaces D-ARCH-01's per-CELL bake (which this class used to be: bake_wall_voxel()/bake_ceiling_voxel()/bake_zoned_floor_voxel(), called once per placed Voxel, 71,296 cells × N variants — infeasible, see EXPLOSION_REBUILD_MASTER_PLAN §0). The new model's whole premise: a damaged voxel no longer shows ITS OWN facade under the decal, it shows a randomly chosen crop of that material's facade — so the bake surface collapses from cells × variants to materials × damage-type × decal × substrate, ~207-279 atoms for the WHOLE MAP, not per cell. Drives the SAME compositor functions the D33 live-compositing path uses (VoxelRenderer._composite_full_voxel_decal() etc.) — same pixels, computed once here instead of lazily at hit time — via a synthetic, edge-free substrate crop (VoxelRenderer._composite_full_voxel_decal()'s own doc comment explains why `edge == null` triggers resolve_flat() there instead of the edge-based resolve()). Results register into a VoxelVariantRegistry keyed by (element_class, material, damage_material_name, substrate_variant) — no cell dimension — that VoxelRenderer.apply_damage_voxel_swap() consults before falling back to D33 runtime compositing. Scope is derived from what VoxelRenderer._set_voxel_cell()'s own dispatch actually reaches, same as the retired per-cell version: - WALL (element_class "WALL", any `has_facade` material): DENTED blast+bullet(mark) (2 sides × 3 decal variants each) + CRACKED bullet(mark) (2 sides × 3 variants) + CRACKED blast (3 variants, only materials with crack_factor > 0 — D10's derived rule, not the hardcoded IMPACT_CRACK_MATERIALS list this file used to lean on). D12 (2026-08-06): bullet marks bake BOTH shapes (cracked full-voxel AND dented half-voxel) — confirmed with the Director, since ShotPunchTable.damage_state_for() genuinely produces either outcome and the whole point of D12 was moving bullets fully off live compositing. - CEILING (element_class "CEILING", any `has_facade` material): DENTED blast-bottom, a silhouette carve with **1 shape** today (not D7's eventual 3 irregular cut shapes — HalfVoxelCompositor. carve_ceiling_silhouette() takes no shape parameter yet; that art/code doesn't exist, so this bakes what's real rather than pretending 3 variants exist). D6: CRACKED is universal — the SAME wall CRACKED-blast atom (already a 3-face composite, D6's "bakes onto all three visible faces at once") is additionally registered under "CEILING" with no re-compositing. - FLOOR (element_class "FLOOR", only materials actually used as a real floor zone — D9): DENTED blast-top, 3 variants. The registry NAME is always the shared "earth_blast_dented_top_N" pseudo-name (floor_damage_material()'s own rule, unchanged) but the ATOM's substrate is the GU's REAL ground material (D9) — so the registry key's material component must be the real material, not the naming constant, or every real floor material would collide into one slot. FLOOR CRACKED is not baked: unreachable in practice today — floor_damage_material() always keys the CRACKED case off the "earth" naming sentinel, which IMPACT_CRACK_MATERIALS never contains, and apply_crater_damage() never calls set_damage(CRACKED, ...) for a floor voxel in the first place (only DESTROYED/DENTED). Baking an atom nothing can ever query would be pure bloat. - INTERIOR slabs and plain (unzoned) earth floors: skipped entirely, same reasoning as the retired version — neither ever reaches the baked D33 path, so there is nothing expensive to pre-bake for them. Soot is never part of this: it is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which tile a cell shows.
+> DamageVariantBaker — EXPLOSION_REBUILD_MASTER_PLAN Task 1b (E-BAKE, 2026-08-06) Pre-bakes CRACKED/DENTED/MARKED damage-decal ATOMS once per map load — replaces D-ARCH-01's per-CELL bake (which this class used to be: bake_wall_voxel()/bake_ceiling_voxel()/bake_zoned_floor_voxel(), called once per placed Voxel, 71,296 cells × N variants — infeasible, see EXPLOSION_REBUILD_MASTER_PLAN §0). The new model's whole premise: a damaged voxel no longer shows ITS OWN facade under the decal, it shows a randomly chosen crop of that material's facade — so the bake surface collapses from cells × variants to materials × damage-type × decal × substrate, ~207-279 atoms for the WHOLE MAP, not per cell. Drives the SAME compositor functions the D33 live-compositing path uses (VoxelRenderer._composite_full_voxel_decal() etc.) — same pixels, computed once here instead of lazily at hit time — via a synthetic, edge-free substrate crop (VoxelRenderer._composite_full_voxel_decal()'s own doc comment explains why `edge == null` triggers resolve_flat() there instead of the edge-based resolve()). Results register into a VoxelVariantRegistry keyed by (element_class, material, damage_material_name, substrate_variant) — no cell dimension — that VoxelRenderer.apply_damage_voxel_swap() consults before falling back to D33 runtime compositing. Scope is derived from what VoxelRenderer._set_voxel_cell()'s own dispatch actually reaches, same as the retired per-cell version: - WALL (element_class "WALL", any `has_facade` material): DENTED blast+bullet(mark) (2 sides × 3 decal variants each) + CRACKED bullet(mark) (2 sides × 3 variants) + CRACKED blast (3 variants, only materials with crack_factor > 0 — D10's derived rule, not the hardcoded IMPACT_CRACK_MATERIALS list this file used to lean on). D12 (2026-08-06): bullet marks bake BOTH shapes (cracked full-voxel AND dented half-voxel) — confirmed with the Director, since ShotPunchTable.damage_state_for() genuinely produces either outcome and the whole point of D12 was moving bullets fully off live compositing. - CEILING (element_class "CEILING", any `has_facade` material): DENTED blast-bottom, a silhouette carve with **1 shape** today (not D7's eventual 3 irregular cut shapes — HalfVoxelCompositor. carve_ceiling_silhouette() takes no shape parameter yet; that art/code doesn't exist, so this bakes what's real rather than pretending 3 variants exist). D6: CRACKED is universal — the SAME wall CRACKED-blast atom (already a 3-face composite, D6's "bakes onto all three visible faces at once") is additionally registered under "CEILING" with no re-compositing. - FLOOR (element_class "FLOOR", only materials actually used as a real floor zone — D9): DENTED blast-top, 3 variants. The registry NAME is always the shared "earth_blast_dented_top_N" pseudo-name (floor_damage_material()'s own rule, unchanged) but the ATOM's substrate is the GU's REAL ground material (D9) — so the registry key's material component must be the real material, not the naming constant, or every real floor material would collide into one slot. FLOOR CRACKED is not composited here: §3.2's roster makes CRACKED universal (floor + wall + ceiling, D6) and the wall's CRACKED-blast atom IS that atom, so a floor material with crack_factor > 0 gets it registered a second time under "FLOOR" from the same composite — see _bake_wall_and_marked()'s `is_floor_material`. Both halves of the old reason this was skipped are gone: D34/E-SEAM-02 made floor_damage_material() material-real (a concrete floor asks for "concrete_blast_cracked_all_N", not the "earth" sentinel), and E-CRACK-01 gave apply_crater_damage() a real crack tier, so a floor voxel can reach CRACKED at all. - INTERIOR slabs and plain (unzoned) earth floors: skipped entirely, same reasoning as the retired version — neither ever reaches the baked D33 path, so there is nothing expensive to pre-bake for them. Soot is never part of this: it is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which tile a cell shows.
 
 **Constants / tuning**
 - `SUBSTRATE_POSITIONS` = `[Vector2i(0, 0), Vector2i(20, 0), Vector2i(40, 0)]`
@@ -1488,7 +1488,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1328 lines
+`class_name BlastCalculator` · 1410 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1567,7 +1567,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 554 lines
+`class_name DetonationPlanBuilder` · 572 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1579,13 +1579,13 @@ extends `Node2D` · 43 lines
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
-- `CRATER_CORE_FACTOR` = `0.4`
+- `CRATER_CORE_FACTOR` = `0.30`
 
 ---
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 126 lines
+`class_name MaterialResistanceTable` · 137 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -2388,7 +2388,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2195 lines
+extends `SceneTree` · 2404 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 

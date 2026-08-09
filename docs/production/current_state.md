@@ -62,11 +62,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 0f37d96 ALPHA FLOOR FACADE FIX 0.9.92 - doc sweep, PLAYGROUND floor zones, baked-decal contact sheet
 - 6a59c6f ALPHA MATERIAL UNIFICATION 0.9.91 - one grayscale facade per material serves wall, roof and floor
 - f29e0a1 ALPHA EXPLOSION REBUILD READY 0.9.90 - design canon recovered, audit, Task 0 measured, material reform specified
 - 202b104 ALPHA GENERIC DECALS 0.9.89 - D33 shipped end to end, D33-SOOT-01, session close
 - 5230ca9 ALPHA HALF VOXELS AND DECALS 0.9.88 - decal pipeline, placement rules, asset layout, doc sweep
-- bba7a5a ALPHA FIREARM DESTRUCTION 0.9.87 - LINE delivery, punch coefficient, disc cone, session close
 <!-- AUTO:END version_history -->
 
 ---

@@ -53,6 +53,17 @@ const USER_MATERIALS_DIR := "user://materials"
 ## than only faster.
 ## PERF-02 B2b (2026-08-04): two of the ×0.65 results were walked back — wood's
 ## destroy_factor 0.6 → 0.75, metal's dent_factor 0.3 → 0.35.
+## E-CRACK-01 (Director, 2026-08-08): wood's `dent_factor` 0.03 → 0.2, the ONLY
+## row this session moved. At 0.03 a real PLAYGROUND blast put 7 dents on a wood
+## floor that lost 137 voxels — D32.6 says wood dents instead of cracking, and
+## 0.03 made that promise effectively void. Everything else the Director asked
+## for this session ("menos destruídos, mais decals") was tuned on the BOMB
+## (`frag_grenade.json`'s ring weights) and on the crater's own core radius
+## instead, deliberately: this table is shared with FIREARMS through
+## apply_container_damage(), so every row moved here silently retunes shotgun and
+## sniper damage too. This one row is worth that side effect (a bullet should be
+## able to dent wood at all); the rest were not.
+##
 ## D19 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): a material behaves
 ## identically on floor, wall and ceiling — the old duplicate `ground_*` rows
 ## (a second, disagreeing row for the same material — e.g. `concrete`

@@ -817,6 +817,15 @@ static func carved_side_from_base(base_xy: Vector2i, dir: Vector3i,
 ##
 ## FLOOR-DENT-01 (Director, 2026-08-01): "o dent no chão também, sendo mais ou
 ## menos prevalente de acordo com a soma de todas as variáveis de destruição."
+## E-CRACK-01 — the outermost crater ring a surface mark can reach. Ring 0 is the
+## crater itself (d <= max_radius) and each further ring is one rim_span-wide band
+## (crater_ring_for()), so ring 2 puts the mark band's outer edge at
+## `max_radius + 2*rim_span` — one band further out than the dent-only model
+## reached, which is exactly the room CRACKED needs to sit outside DENTED. Rings
+## past this are the blast's soot-only reach (§4.1's "ring 3 carries soot").
+## `var`, not `const` — architecture rule 1, this is a tuning lever.
+static var CRATER_DAMAGE_MAX_RING: int = 2
+
 ## A rim voxel that SURVIVES the destroy roll — and any voxel in a band one
 ## rim-width past the crater — takes a second, independent roll to become a
 ## carved-TOP DENTED pockmark (D25's half-voxel; a floor is only ever eaten
@@ -848,16 +857,44 @@ static func carved_side_from_base(base_xy: Vector2i, dir: Vector3i,
 ## non-1.0 value yet, since no stacked-slab scenario exists in any real map
 ## today (confirmed this task); the knob exists so a future one can be added
 ## without touching this function's signature again.
+##
+## E-CRACK-01 (Director, 2026-08-08) — the floor finally reaches CRACKED, "seguindo
+## o modelo da parede". Until now a crater produced DESTROYED and DENTED only, so
+## FLOOR/cracked measured 0 on every real PLAYGROUND blast regardless of the
+## material's crack_factor, and D19's "floors crack like walls" was closed in the
+## DATA (one concrete row, crack_factor 0.1) but never in this function.
+##
+## The ladder is the Director's own, per voxel and in severity order — "um voxel
+## que recebe muito é destruído, o que recebe um pouco menos fica dented, o
+## próximo fica cracked, quase quebrando mas ainda resistiu". That is exactly
+## apply_container_damage()'s D22 pool order (destroy → dent → crack, each drawn
+## from what the previous tier left), applied here per voxel instead of per ring
+## group because a crater is radial, not ring-flooded. HYBRID states (a voxel both
+## dented AND cracked) are deliberately NOT built — the Director scoped them out
+## explicitly ("acho que nesse momento isso não é tão importante").
+##
+## dent_ring_weights/crack_ring_weights are the bomb's OWN tables (§4.2), indexed
+## by crater_ring_for() so the floor and the wall finally read the same authored
+## numbers instead of the floor carrying a private falloff. Trailing + defaulted
+## to `[]`, which means: dent → un-gated (weight 1.0, today's behaviour exactly),
+## crack → 0.0 (off). Every pre-existing caller and selftest is therefore
+## byte-for-byte unaffected, the same discipline D2/D17 used on this signature.
 static func apply_crater_damage(voxels: Array, container_id: String,
 		epicenter: Vector2i, core_radius: float, max_radius: float,
 		material: String = "", deep_layer_unlocked: bool = false,
-		slab_pierce_multiplier: float = 1.0) -> void:
+		slab_pierce_multiplier: float = 1.0,
+		dent_ring_weights: Array[float] = [],
+		crack_ring_weights: Array[float] = []) -> void:
 	var rim_span: float = maxf(max_radius - core_radius, 0.001)
 	var dent_f: float = MaterialResistanceTable.dent_factor(material)
+	var crack_f: float = MaterialResistanceTable.crack_factor(material)
 	for voxel in voxels:
 		if voxel.level == GeometryCoords.FLOOR_DEEP_LEVEL and not deep_layer_unlocked:
 			continue
 		var d: float = Vector2(voxel.grid_pos - epicenter).length()
+		## The SAME numbered ring soot and the wave choreography already use for a
+		## radially-damaged container — never a second banding scheme.
+		var ring: int = crater_ring_for(d, max_radius, rim_span)
 		if d <= core_radius:
 			## PERF-02 B3: blast provenance on the hole itself — see
 			## apply_container_damage()'s own note for why it matters now.
@@ -873,31 +910,76 @@ static func apply_crater_damage(voxels: Array, container_id: String,
 			if h < keep_prob:
 				voxel.set_damage(Voxel.DamageState.DESTROYED, true)
 			else:
-				_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f, slab_pierce_multiplier)
-		elif d <= max_radius + rim_span:
-			_roll_floor_dent(voxel, container_id, d, max_radius, rim_span, dent_f, slab_pierce_multiplier)
+				_roll_floor_surface_damage(voxel, container_id, d, max_radius, rim_span,
+					ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
+					slab_pierce_multiplier)
+		elif ring <= CRATER_DAMAGE_MAX_RING:
+			_roll_floor_surface_damage(voxel, container_id, d, max_radius, rim_span,
+				ring, dent_f, crack_f, dent_ring_weights, crack_ring_weights,
+				slab_pierce_multiplier)
 
 
-## FLOOR-DENT-01 — one surviving floor voxel's dent roll. Separate salt from
-## the destroy roll (":FLOORDENT:") so surviving the crater does not correlate
-## with denting; carved side is always TOP (see apply_crater_damage's doc).
+## FLOOR-DENT-01 + E-CRACK-01 — one surviving floor voxel's damage roll, in the
+## Director's severity order: DENTED (a sunken TOP carve, harsher) is offered the
+## voxel first, and only a voxel it passes over is offered to CRACKED (a flat
+## surface fracture, milder — "quase quebrando, mas ainda resistiu"). Same order,
+## same reason, as apply_container_damage()'s D22 pool draw on a wall.
+##
+## Three independent hash salts (":FLOORDENT:", ":FLOORCRACK:", and the destroy
+## roll's own ":CRATER:") so no tier's selection correlates with another's —
+## surviving the crater must not predict denting, and failing the dent roll must
+## not predict cracking.
+##
+## The two tiers fall off over DIFFERENT spans, which is what makes the ladder
+## read spatially as well as per-voxel: dent is full strength inside the crater
+## and fades to nothing one rim_span past it, while crack only starts fading a
+## rim_span later. Near the hole a mark is almost always a dent; far out it is
+## almost always a crack; in between they mix. Each is then scaled by the bomb's
+## own ring weight for that crater ring (§4.2's tables — the wall's numbers,
+## reused, not a parallel set).
+##
+## Carved side: TOP for a dent (a floor is only ever eaten from above), NONE for
+## a crack (D32.3 — "a blast cracks the whole voxel, one name, no side").
 ## pierce_multiplier: D17, see apply_crater_damage's own doc — trailing +
 ## defaulted to 1.0, byte-for-byte inert at default.
-static func _roll_floor_dent(voxel, container_id: String, d: float,
-		max_radius: float, rim_span: float, dent_f: float,
+static func _roll_floor_surface_damage(voxel, container_id: String, d: float,
+		max_radius: float, rim_span: float, ring: int, dent_f: float, crack_f: float,
+		dent_ring_weights: Array[float], crack_ring_weights: Array[float],
 		pierce_multiplier: float = 1.0) -> void:
-	if dent_f <= 0.0:
+	var dent_p: float = clampf(dent_f
+		* clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0)
+		* _ring_weight(dent_ring_weights, ring, 1.0) * pierce_multiplier, 0.0, 1.0)
+	if dent_p > 0.0:
+		var dent_key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
+		var dent_h: float = float(FacadeSampler._fnv1a_hash(dent_key) % 10000) / 10000.0
+		if dent_h < dent_p:
+			voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
+				decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
+				substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+			return
+
+	var crack_p: float = clampf(crack_f
+		* clampf(1.0 - (d - (max_radius + rim_span)) / rim_span, 0.0, 1.0)
+		* _ring_weight(crack_ring_weights, ring, 0.0) * pierce_multiplier, 0.0, 1.0)
+	if crack_p <= 0.0:
 		return
-	var dent_p: float = clampf(
-		dent_f * clampf(1.0 - (d - max_radius) / rim_span, 0.0, 1.0) * pierce_multiplier, 0.0, 1.0)
-	if dent_p <= 0.0:
-		return
-	var key: String = "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
-	var h: float = float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0
-	if h < dent_p:
-		voxel.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP,
+	var crack_key: String = "%s:FLOORCRACK:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
+	var crack_h: float = float(FacadeSampler._fnv1a_hash(crack_key) % 10000) / 10000.0
+	if crack_h < crack_p:
+		voxel.set_damage(Voxel.DamageState.CRACKED, true, Voxel.CarvedSide.NONE,
 			decal_variant_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level),
 			substrate_for(container_id, voxel.grid_pos.x, voxel.grid_pos.y + voxel.level))
+
+
+## One tier's ring weight, or `absent` when the caller passed no table at all
+## (see apply_crater_damage's own doc for what each default means). A ring past
+## the table's end weighs 0.0 — same rule apply_container_damage() applies to the
+## identical tables, so "the bomb declares no 4th ring" means the same thing on a
+## floor as on a wall.
+static func _ring_weight(weights: Array[float], ring: int, absent: float) -> float:
+	if weights.is_empty():
+		return absent
+	return weights[ring] if ring >= 0 and ring < weights.size() else 0.0
 
 
 ## FLOOR-DEPTH-01 (Director, 2026-07-28): "a segunda camada do chão mais difícil

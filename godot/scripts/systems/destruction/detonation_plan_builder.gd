@@ -234,23 +234,36 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 	## Task 5's caller persists from real Voxel objects, never re-deriving the
 	## affected set with a second flood/find_affected_containers pass.
 	var touched_voxels: Array = []
+	## E-DENT-01 census (Director, 2026-08-08): the one number §12's verification
+	## contract actually asks for — how many dented/cracked atoms a REAL blast
+	## lands, split by the surface each one landed on, and how many of those came
+	## from the pre-bake instead of the D33 live-compositing fallback. `[E-WAVE]`
+	## already prints per-wave cell counts, but those blend floor/wall/ceiling
+	## into one figure, which is exactly what hid "69 dents on a fixture, zero on
+	## PLAYGROUND" the first time. Built here (the only pass that knows each
+	## voxel's container), printed once per detonation.
+	var census: Dictionary = {}   ## "kind|surface" -> {"n": int, "baked": int}
 	for key in ring_of:
 		var voxel: Voxel = cell_to_voxel.get(key)
 		if voxel == null:
 			continue
 		var ring: int = ring_of[key]
+		var container = container_of.get(key)
 		if voxel.damage_state == Voxel.DamageState.DESTROYED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
+			_count(census, "destroy", container, true)
 			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level})
 		elif voxel.damage_state == Voxel.DamageState.DENTED or voxel.damage_state == Voxel.DamageState.CRACKED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
-			var resolved := _resolve_damaged_tile(voxel, container_of.get(key), voxel_renderer)
+			var resolved := _resolve_damaged_tile(voxel, container, voxel_renderer)
 			var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
 			var wave_key: String = "dented" if voxel.damage_state == Voxel.DamageState.DENTED else "cracked"
+			_count(census, wave_key, container, resolved["baked"])
 			_append(plan[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 				"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"], "alt": alt})
+	_print_census(census, source_gu)
 
 	## --- Exposure fallback: the floor reveals from above, wired into their
 	## owning ring's destroy entries (§6.1's `expose` sub-array), lit through
@@ -411,12 +424,18 @@ static func _merge_soot(out_snapshot: Dictionary, out_faces: Dictionary,
 ## never applying either result to the live layer. Always returns a usable
 ## triple (the D33 fallback's own last-resort material-only path never
 ## fails), so this never returns {}.
+##
+## The trailing `baked` flag is census-only (E-DENT-01) — which of the two tiers
+## actually answered. It is deliberately NOT copied into the plan entry: §6.1's
+## entry shape is what Task 5 replays, and a wave has no business knowing where
+## its tile came from.
 static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
 	if container == null:
-		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0}
+		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false}
 	var baked := voxel_renderer.resolve_damage_voxel_swap(voxel, container)
 	if not baked.is_empty():
-		return {"source_id": baked["source_id"], "atlas_coords": baked["atlas_coords"], "alternative_id": 0}
+		return {"source_id": baked["source_id"], "atlas_coords": baked["atlas_coords"],
+			"alternative_id": 0, "baked": true}
 	if container is Slice:
 		var slice: Slice = container
 		var voxel_xy := Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
@@ -426,7 +445,7 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 		var resolved := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 			null, voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
 		return {"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
-			"alternative_id": resolved["alternative_id"]}
+			"alternative_id": resolved["alternative_id"], "baked": false}
 	## Slab (FLOOR/CEILING/INTERIOR) — mirrors render_slab_solid()'s own
 	## fixed-material call shape. A live-fallback miss on a Slab is not
 	## exercised by any real material on PLAYGROUND today (Task 1b measured 0
@@ -443,7 +462,63 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 		null, voxel.grid_pos - slab.texture_anchor, 0, slab.role == Slab.Role.CEILING,
 		"", BakePolicyClass.SurfaceClass.SLICE, false)
 	return {"source_id": resolved2["source_id"], "atlas_coords": resolved2["atlas_coords"],
-		"alternative_id": resolved2["alternative_id"]}
+		"alternative_id": resolved2["alternative_id"], "baked": false}
+
+
+## E-DENT-01 census bookkeeping — one row per (surface, material, tier) triple.
+## Material is in the key because the whole point of D34's floor zones is that
+## each material's slab shows its OWN defects; a blended "FLOOR 93" cannot tell
+## a working concrete patch apart from a silently inert metal one.
+static func _count(census: Dictionary, kind: String, container, was_baked: bool) -> void:
+	var group := "%s|%s" % [_surface_name(container), _material_name(container)]
+	if not census.has(group):
+		census[group] = {"destroy": 0, "dented": 0, "cracked": 0, "baked": 0, "live": 0}
+	var row: Dictionary = census[group]
+	row[kind] = int(row[kind]) + 1
+	if kind != "destroy":
+		var tier: String = "baked" if was_baked else "live"
+		row[tier] = int(row[tier]) + 1
+
+
+static func _surface_name(container) -> String:
+	if container is Slice:
+		return "WALL"
+	if container is Slab:
+		var slab: Slab = container
+		match slab.role:
+			Slab.Role.FLOOR:
+				return "FLOOR"
+			Slab.Role.CEILING:
+				return "CEILING"
+			_:
+				return "INTERIOR"
+	return "NONE"
+
+
+static func _material_name(container) -> String:
+	if container is Slice or container is Slab:
+		return container.material
+	return "?"
+
+
+## Printed once per detonation, next to the `[E-WAVE]` per-wave lines the
+## choreographer already emits. One line per surface+material this blast
+## actually reached, plus an explicit "nothing reached" line when it reached
+## none — a silent census and a zero census are different findings, and
+## FLOOR-DENT-01 (69 dents on a fixture, zero on PLAYGROUND) is what happens
+## when they read the same.
+static func _print_census(census: Dictionary, source_gu: Vector2i) -> void:
+	print("[E-PLAN] census gu=%s — surface/material: destroyed · dented · cracked (bake hits)" % source_gu)
+	if census.is_empty():
+		print("[E-PLAN]   (no container reached — nothing to damage)")
+		return
+	var groups: Array = census.keys()
+	groups.sort()
+	for group in groups:
+		var row: Dictionary = census[group]
+		print("[E-PLAN]   %-16s destroyed %4d · dented %4d · cracked %4d   (baked %d/live %d)" % [
+			String(group).replace("|", "/"), int(row["destroy"]), int(row["dented"]),
+			int(row["cracked"]), int(row["baked"]), int(row["live"])])
 
 
 ## §2's exposure fallback (B5): resolve the deep floor Slab's tiles (the

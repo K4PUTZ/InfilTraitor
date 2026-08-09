@@ -327,14 +327,25 @@ func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:
 		print("")
 		return
 
-	## The largest scale/duration _append_voxel_smoke() can produce for a ring:
-	## the strongest tier, at full jitter, on that ring's own weight. The GU-level
-	## remainder puffs (duration == scale == weight) sit well inside it.
-	var envelope := func(ring: int) -> float:
+	## SIZE is still ring-weight-scaled: the largest scale _append_voxel_smoke()
+	## can produce for a ring is the strongest tier, at full jitter, on that
+	## ring's own weight. The GU-level remainder puffs (scale == weight) sit well
+	## inside it.
+	var scale_envelope := func(ring: int) -> float:
 		var weight: float = bomb_def.smoke_ring_weights[ring] if ring < bomb_def.smoke_ring_weights.size() else 0.0
 		return DetonationPlanBuilderClass.SMOKE_SCALE_BASE \
 			* DetonationPlanBuilderClass.DESTROY_SMOKE_INTENSITY * weight \
 			* (1.0 + DetonationPlanBuilderClass.SMOKE_JITTER)
+
+	## LIFETIME deliberately is NOT, since 2026-08-08's second smoke pass. Scaling
+	## duration on strength like size and alpha made an outer cracked voxel's puff
+	## last ~0.1 s — the thinning outer edge vanished first, which is exactly what
+	## the Director wanted to keep ("deixar a fumaça mais tempo no final").
+	## SMOKE_DURATION_FLOOR decouples the two: a far puff is small and faint but
+	## not instantaneous, so its envelope is global rather than per-ring. Asserting
+	## the old per-ring bound here would be asserting a rule the code deliberately
+	## no longer follows.
+	var duration_limit: float = 1.0 + DetonationPlanBuilderClass.SMOKE_DURATION_JITTER
 
 	var gated_ok := true
 	var scaled_ok := true
@@ -346,12 +357,14 @@ func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:
 		if weight <= 0.0 and not entries.is_empty():
 			gated_ok = false
 			continue
-		var limit: float = envelope.call(ring) + 0.0001
+		var limit: float = scale_envelope.call(ring) + 0.0001
 		var distinct: Dictionary = {}
 		for entry in entries:
 			var scale: float = float(entry["scale"])
 			var duration: float = float(entry["duration"])
-			if scale <= 0.0 or duration <= 0.0 or scale > limit or duration > limit:
+			if scale <= 0.0 or scale > limit:
+				scaled_ok = false
+			if duration <= 0.0 or duration > duration_limit + 0.0001:
 				scaled_ok = false
 			distinct["%.3f|%.3f" % [scale, duration]] = true
 		if entries.size() >= 8:
@@ -365,9 +378,9 @@ func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:
 	else:
 		_fail("a ring with smoke_ring_weights 0.0 still produced puffs — the gate is not applied")
 	if scaled_ok:
-		_pass("every puff's scale/duration is positive and within its ring weight's envelope")
+		_pass("every puff's size stays inside its ring weight's envelope, and every lifetime inside the global one")
 	else:
-		_fail("at least one puff fell outside the envelope its ring weight allows")
+		_fail("at least one puff fell outside its size or lifetime envelope")
 	if uniform_rings.is_empty() and varied_rings > 0:
 		_pass("%d ring(s) with 8+ puffs each carry genuinely different intensities/durations" % varied_rings)
 	else:

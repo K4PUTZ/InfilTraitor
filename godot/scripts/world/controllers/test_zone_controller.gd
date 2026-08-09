@@ -55,7 +55,11 @@ const BOMB_ID: String = "frag_grenade"
 ## 12 px is the camera's OWN space, so the on-screen displacement is scaled by
 ## the current zoom (0.20-1.20) — at a typical zoom this reads as a few pixels of
 ## kick that settles inside half a second, which is what "breve" asks for.
-var SHAKE_SECONDS: float = 0.55
+## Lengthened 0.55 -> 0.7 when the shake moved to start with the fireball rather
+## than with the flash: it now has the animation's own ~8 frames to cover before
+## the destruction even lands, and the old duration would have been most spent
+## before the crater appeared.
+var SHAKE_SECONDS: float = 0.7
 var SHAKE_AMPLITUDE_PX: float = 12.0
 
 
@@ -237,12 +241,15 @@ func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
 		_start_waves(plan)
 		return
 	flash_overlay.play(anchor)
+	## Shake starts WITH the fireball, not with the flash (Director, 2026-08-08:
+	## "vamos começar o camera shake antes, junto com a animação") — the ground
+	## moves as the charge goes off, not a beat later when the light reaches it.
+	if room._camera_controller != null:
+		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
 	## One-shot: the overlay is reused by every future detonation, so this
 	## connection must not survive its own firing.
 	flash_overlay.animation_finished.connect(func():
 		flash_overlay.flash()
-		if room._camera_controller != null:
-			room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
 		_start_waves(plan),
 		CONNECT_ONE_SHOT)
 

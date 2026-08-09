@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 48584 lines total** (under `godot/scripts/`)
+**191 scripts · 48679 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -962,29 +962,9 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 184 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 244 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
-
-**Signals**
-- `signal animation_finished()`
-
-**Constants / tuning**
-- `FRAME_DIR` = `"res://ASSETS/ANIMATIONS/Explosion_1/Export"`
-- `FRAME_COUNT` = `4`
-
-**Public vars**
-- `var frames_per_animation_frame: int = 2`
-- `var flash_peak_alpha: float = 0.8`
-- `var flash_fade_seconds: float = 0.32`
-- `var flash_fade_power: float = 1.5`
-- `var sprite_scale: float = 1.0`
-
-**Public API**
-- `func play(world_anchor: Vector2) -> void:`
-- `func flash() -> void:`
-- `func animation_seconds(frame_delta: float) -> float:`
-- `func clear() -> void:`
 
 ---
 
@@ -1297,7 +1277,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 164 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 169 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1603,7 +1583,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 670 lines
+`class_name DetonationPlanBuilder` · 680 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2686,7 +2666,7 @@ extends `SceneTree` · 301 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 399 lines
+extends `SceneTree` · 412 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -3887,7 +3867,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 322 lines
+`class_name TestZoneController` · 329 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

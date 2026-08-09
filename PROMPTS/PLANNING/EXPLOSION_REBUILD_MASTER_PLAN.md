@@ -2064,6 +2064,48 @@ Sequence captures: `e_flash_fireball.png` (frame 4 at the anchor),
 `e_flash_white_frame.png` (the wash, crater already forming under it),
 `e_flash_smoke_rise.png` (smoke climbing off the crater).
 
+### E-FLASH-02 (2026-08-09) — the Director's polish pass on the above
+
+Five adjustments after watching it run. Four were tuning; one was a real,
+measured bug the Director spotted by feel.
+
+1. **Fireball 2×** (`sprite_scale` 1.0 → 2.0). At native 283 px it barely
+   covered one GU next to a crater spanning two.
+2. **Additive blend on the fireball** — "queremos deixar passar um pouco do
+   fundo". `CanvasItemMaterial.blend_mode` is per-node, so the fire moved to its
+   own child node (`_fire_layer`, `z_index = -1`) while the WHITE FLASH stayed on
+   the parent at normal blend: a flash frame's job is to replace what is under
+   it, so making that additive would be the opposite of the ask. Under ADD the
+   art's dark halo drops out entirely and the floor grid reads through the ball
+   (`e_flash_fireball_blend.png`).
+3. **"O primeiro flash frame me pareceu que demorou um pouco... talvez precise de
+   um pré-load" — the Director was right, and it was measurable: 44.94 ms** of
+   PNG decode was happening inside the first detonation's own frame, ~3 frames at
+   60 fps, once per session. Moved to `_ready()`. Still `load()`, never
+   `preload()` — the gitignore reasoning in E-FLASH-01 is unchanged; only *when*
+   moved.
+4. **Camera shake starts with the fireball**, not with the flash — the ground
+   moves as the charge goes off, not a beat later when the light reaches it.
+   Lengthened 0.55 → 0.7 s to cover the animation's own ~8 frames as well.
+5. **Smoke lingers and climbs**: duration 1.0-1.8 → 1.8-3.2 s, rise 34-58 →
+   48-82 px/s, damping 0.62 → 0.78. Plus a real fix behind the ask —
+   `SMOKE_DURATION_FLOOR`. Lifetime used to scale on `strength` exactly like size
+   and alpha, so an outer cracked voxel's puff (strength ~0.07) lasted ~0.1 s and
+   the *thinning outer edge* — precisely "o final" of the smoke — vanished first.
+   Size and alpha still scale all the way down; only lifetime gets the floor.
+
+Measured, blast on the stone patch, against a frame with the smoke fully gone:
+centroid rises **y 362.7 → 349.4 → 337.7** across the window, and the cloud still
+covers **2.11%** of the frame at 75 frames post-detonation
+(`e_flash_smoke_lingers.png`). Honest caveat on those first two numbers: the
+shake is still running at that point and displaces the whole frame, so the w18/w40
+pixel counts include a little geometry shift — the w75 figure is the clean one.
+
+`detonation_plan_selftest`'s envelope assertion had to split in two as a result:
+ring weight still bounds a puff's SIZE, but no longer its LIFETIME, and asserting
+the old single bound would have been asserting a rule the code deliberately
+stopped following.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight

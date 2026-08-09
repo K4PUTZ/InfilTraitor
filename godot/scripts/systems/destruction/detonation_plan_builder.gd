@@ -90,6 +90,15 @@ static var CRACK_SMOKE_INTENSITY: float = 0.35
 static var SMOKE_JITTER: float = 0.7       ## ± fraction on scale/alpha
 static var SMOKE_DURATION_JITTER: float = 0.6   ## ± fraction on duration
 
+## How much of the base duration the WEAKEST puff still gets. Duration used to
+## scale on `strength` directly, like size and alpha do, which made an outer
+## cracked voxel's puff (strength ~0.07) last ~0.1 s — it was gone before the eye
+## reached it, and the thinning outer edge of the cloud is precisely what the
+## Director meant by "deixar a fumaça mais tempo no final". Size and alpha still
+## scale on strength all the way down; only LIFETIME gets this floor, so a far
+## puff is small and faint but not instantaneous.
+static var SMOKE_DURATION_FLOOR: float = 0.55
+
 ## The overlay's own radii (6 px start, 16 px end) were authored for VFX-01's
 ## 2-3 blob cluster on ONE destroyed voxel. A single per-voxel blob at scale 1.0
 ## is smaller than the 32x16 voxel it is venting from, which is a large part of
@@ -653,7 +662,8 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 	var scale: float = maxf(
 		SMOKE_SCALE_BASE * strength * (1.0 - SMOKE_JITTER + 2.0 * SMOKE_JITTER * size_roll), 0.05)
 	var duration: float = maxf(
-		strength * (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
+		lerpf(SMOKE_DURATION_FLOOR, 1.0, clampf(strength, 0.0, 1.0))
+		* (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
 	_append(smoke_by_ring, ring, {
 		"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
 		"duration": duration,

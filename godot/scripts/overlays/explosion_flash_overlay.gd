@@ -22,11 +22,19 @@ class_name ExplosionFlashOverlay
 ## follows pan and zoom for free) keeps the wash on the world where it belongs
 ## and needs no camera reference.
 ##
-## Frames are `load()`ed at play time, never `preload()`ed: `ASSETS/*` is
-## gitignored (.gitignore:48), so a preload would turn a missing local asset
-## into a whole-project COMPILE error on a fresh clone. A missing frame here
-## fails loudly and skips straight to the flash (B6) — the detonation still
-## runs, it just has no fireball.
+## Frames are `load()`ed, never `preload()`ed: `ASSETS/*` is gitignored
+## (.gitignore:48), so a preload would turn a missing local asset into a
+## whole-project COMPILE error on a fresh clone. A missing frame here fails
+## loudly and skips straight to the flash (B6) — the detonation still runs, it
+## just has no fireball.
+##
+## They are loaded in `_ready()`, NOT on the first play(). The Director called
+## this on 2026-08-08 ("o primeiro flash frame branco me pareceu que demorou um
+## pouco... talvez precise de um pré-load") and it was real: lazy loading put
+## four PNG decodes inside the first detonation's own frame, so the very first
+## blast of a session stuttered before its flash and every later one did not.
+## Warming at _ready() keeps the gitignore-safety of a runtime load and removes
+## the hitch.
 
 ## Tuning — all `var` (Rule 1).
 
@@ -43,9 +51,16 @@ var flash_peak_alpha: float = 0.8
 var flash_fade_seconds: float = 0.32
 var flash_fade_power: float = 1.5         ## >1 = holds bright, then drops away
 
-## The fireball is authored at 283x283, a hair wider than one GU (256 px), and
-## is drawn centred on its anchor at native size.
-var sprite_scale: float = 1.0
+## The fireball is authored at 283x283 — a hair wider than one GU (256 px), which
+## the Director found too small next to a crater that spans two ("animação do
+## fogo parece pequena, vamos duplicar o tamanho"). At 2.0 it covers ~566 px,
+## roughly the blast's own visible reach.
+var sprite_scale: float = 2.0
+
+## The fireball's own tint/opacity, applied ON TOP of the additive blend below.
+## Additive alone still reads bright; pulling the alpha back is what lets the
+## floor texture stay legible through the middle of the ball.
+var fire_modulate := Color(1.0, 1.0, 1.0, 0.82)
 
 const FRAME_DIR := "res://ASSETS/ANIMATIONS/Explosion_1/Export"
 const FRAME_COUNT := 4
@@ -58,6 +73,36 @@ var _frame_ticks: int = 0
 var _anchor: Vector2 = Vector2.ZERO
 
 var _flash_elapsed: float = -1.0          ## <0 = no flash running
+
+## The fireball draws on its OWN child node, because CanvasItemMaterial.
+## blend_mode is per-node (SmokeSparkOverlay's header makes the same point about
+## why smoke and sparks share one node and one blend). The Director asked for the
+## animation to stop sitting so hard on the scenery — "queremos deixar passar um
+## pouco do fundo usando um blend mode" — and ADD is what does that: the art's
+## dark pixels contribute nothing, so the floor reads through the fireball's
+## edges and smoke instead of being replaced by them.
+##
+## The WHITE FLASH stays on this node, at normal blend, deliberately: a flash
+## frame's whole job is to REPLACE what is underneath, so making it additive
+## would be the opposite of the ask. `_fire_layer.z_index = -1` keeps the fire
+## under the flash — a Node2D child otherwise draws over its parent.
+var _fire_layer: Node2D = null
+
+
+func _ready() -> void:
+	## The additive child. Built here rather than in the scene so this overlay
+	## stays a single self-contained script, same as every other overlay.
+	_fire_layer = Node2D.new()
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_fire_layer.material = mat
+	_fire_layer.z_index = -1        ## under this node's own white flash
+	_fire_layer.draw.connect(_draw_fire)
+	add_child(_fire_layer)
+
+	## Pay the PNG decodes at map load, not inside the first detonation's frame —
+	## see this file's header for the Director's own observation that led here.
+	_ensure_frames_loaded()
 
 
 ## Plays the fireball at `world_anchor` (the grenade's own top-centre — see
@@ -74,7 +119,7 @@ func play(world_anchor: Vector2) -> void:
 	_frame_index = 0
 	_frame_ticks = 0
 	set_process(true)
-	queue_redraw()
+	_redraw_all()
 
 
 ## The white frame. Separate from play() on purpose: the Director's sequence is
@@ -83,7 +128,7 @@ func play(world_anchor: Vector2) -> void:
 func flash() -> void:
 	_flash_elapsed = 0.0
 	set_process(true)
-	queue_redraw()
+	_redraw_all()
 
 
 ## Total seconds play() will take before it emits animation_finished — the
@@ -113,25 +158,40 @@ func _process(delta: float) -> void:
 		else:
 			busy = true
 
-	queue_redraw()
+	_redraw_all()
 	if not busy:
 		set_process(false)
 
 
-func _draw() -> void:
-	if _frame_index >= 0 and _frame_index < _frames.size():
-		var tex: Texture2D = _frames[_frame_index]
-		var size: Vector2 = tex.get_size() * sprite_scale
-		## Centred on the anchor: the anchor is the point ON TOP of the grenade
-		## (Director), so the fireball blooms out of it in every direction
-		## rather than sitting on top of it like a hat.
-		draw_texture_rect(tex, Rect2(_anchor - size * 0.5, size), false)
+## Both canvases redraw together — they are two halves of one effect, and only
+## the blend mode separates them.
+func _redraw_all() -> void:
+	queue_redraw()
+	if _fire_layer != null:
+		_fire_layer.queue_redraw()
 
+
+## This node: the WHITE FLASH only, at normal blend (see _fire_layer's doc).
+func _draw() -> void:
 	if _flash_elapsed >= 0.0:
 		var t: float = clampf(_flash_elapsed / flash_fade_seconds, 0.0, 1.0)
 		var alpha: float = flash_peak_alpha * pow(1.0 - t, flash_fade_power)
 		if alpha > 0.001:
 			draw_rect(_visible_world_rect(), Color(1.0, 1.0, 1.0, alpha))
+
+
+## The additive child: the fireball frame. Connected to `_fire_layer.draw` in
+## _ready() rather than living in a second script — it is four lines and belongs
+## to this effect, not to a class of its own.
+func _draw_fire() -> void:
+	if _frame_index < 0 or _frame_index >= _frames.size():
+		return
+	var tex: Texture2D = _frames[_frame_index]
+	var size: Vector2 = tex.get_size() * sprite_scale
+	## Centred on the anchor: the anchor is the point ON TOP of the grenade
+	## (Director), so the fireball blooms out of it in every direction rather
+	## than sitting on top of it like a hat.
+	_fire_layer.draw_texture_rect(tex, Rect2(_anchor - size * 0.5, size), false, fire_modulate)
 
 
 ## The camera's visible area in this node's own space. Derived from the canvas
@@ -181,4 +241,4 @@ func clear() -> void:
 	_frame_ticks = 0
 	_flash_elapsed = -1.0
 	set_process(false)
-	queue_redraw()
+	_redraw_all()

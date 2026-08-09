@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 48679 lines total** (under `godot/scripts/`)
+**191 scripts · 48788 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -962,7 +962,7 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 244 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 346 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
 
@@ -3867,7 +3867,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 329 lines
+`class_name TestZoneController` · 336 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

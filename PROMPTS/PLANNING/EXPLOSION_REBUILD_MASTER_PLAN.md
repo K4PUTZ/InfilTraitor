@@ -2106,6 +2106,65 @@ ring weight still bounds a puff's SIZE, but no longer its LIFETIME, and assertin
 the old single bound would have been asserting a rule the code deliberately
 stopped following.
 
+### E-FLASH-03 (2026-08-09) — in-between frames, and the real cause of the "engasgada"
+
+**The stutter is real, measured, and is neither thing the Director suspected.**
+They reported "me parece também que dá uma engasgada no último frame" and offered
+two hypotheses: the white being slow to enter, or persistence of vision from an
+all-white next frame. Per-frame instrumentation across a real detonation:
+
+```
+[ANIM-DIAG] dt=16.7ms  frame=3          ← the animation itself runs clean
+[E-WAVE]    wave 1/15 destroy ring=0 cells=872 apply=15.951ms
+[ANIM-DIAG] dt=150.0ms flash_t=0.017    ← the frame the flash starts on
+[ANIM-DIAG] dt=119.8ms flash_t=0.167
+```
+
+The frame the flash appears on is the same frame `DetonationChoreographer`
+applies destroy ring 0 — 244 `erase_cell`s plus 628 exposure `set_cell`s — and it
+costs **150 ms** where every animation frame around it costs 8-17 ms. Only ~16 ms
+of that is the wave's own apply; the rest is `TileMapLayer` rebuilding after 872
+cell writes. The white was not slow: the frame was.
+
+**Fixed here (the compounding half):** the flash advanced its fade by that same
+150 ms delta, burning half its curve in one step, so the white appeared *already
+half gone* — which is exactly what "demora pra entrar" looks like from the
+outside. `flash_max_step_seconds` (0.034) caps the step the FADE sees. Re-measured
+on the identical blast: the 149 ms frame now takes the flash to t=0.051 instead of
+t=0.167, and the flash spans **18 frames instead of 5**.
+
+**NOT fixed, and needs a Director call:** the 150 ms frame itself. The obvious
+targeted fix is splitting the 628 exposure reveals out of destroy ring 0 into
+their own wave, roughly halving the worst frame's cell churn — but that changes
+§1's ratified 15-wave table and is a performance change, not an animation one, so
+it is not being done on an animation ask. **Open question for the Director.**
+
+**In-between frames (the Director's own suggestion B), shipped.** Playback moved
+from an integer frame index to continuous TIME, and every drawn instant
+cross-fades the two authored frames it falls between. Done at draw time rather
+than by baking textures — no extra memory, no extra load cost, and the result is
+continuous rather than one fixed in-between per pair. `frame_hold_fraction`
+(0.35) keeps each authored pose readable for part of its slot instead of the
+whole animation being one long mush. Under the additive blend the two
+contributions sum, so brightness stays roughly constant through a blend instead
+of dipping. `animation_seconds` 0.22 replaces `frames_per_animation_frame`.
+Capture: `e_flash_interp_midframe.png`.
+
+**Negative flash (the Director's suggestion A), available and switchable.** They
+flagged it as maybe hard at runtime and maybe slower; it is neither — a six-line
+`canvas_item` shader reading `hint_screen_texture` and mixing toward
+`1.0 - src` by a tweened `amount`, on its own child node (the white flash is a
+plain `draw_rect` and needs no material). One screen copy, no measurable delay.
+`INFILTRAITOR_NEGATIVE_FLASH=1` selects it for a capture;
+`flash_mode` defaults to WHITE and **this session does not pick between them** —
+which reads better is a look decision.
+
+Honest note from the capture (`e_flash_negative_mode.png`): the inversion reads
+*dramatically* on high-contrast geometry (the dark stone wall goes white) and
+*weakly* across the mid-grey concrete floor, because inverting mid-grey returns
+mid-grey. On this particular map that makes it subtler overall than the white
+flash, which may or may not be what the Director wants.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight

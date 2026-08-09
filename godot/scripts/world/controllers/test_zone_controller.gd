@@ -240,6 +240,13 @@ func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
 		## still play, so go straight to the waves rather than swallowing it.
 		_start_waves(plan)
 		return
+	## E-FLASH-03 dev capture toggle, same seam/precedent as
+	## INFILTRAITOR_ENABLE_STAMP_SOOT: lets a real capture compare the Director's
+	## "frame negativo... como nas explosões de antigamente" against the shipped
+	## white one, without either becoming the default before they have seen both.
+	flash_overlay.flash_mode = ExplosionFlashOverlay.FlashMode.NEGATIVE \
+		if OS.get_environment("INFILTRAITOR_NEGATIVE_FLASH") == "1" \
+		else ExplosionFlashOverlay.FlashMode.WHITE
 	flash_overlay.play(anchor)
 	## Shake starts WITH the fireball, not with the flash (Director, 2026-08-08:
 	## "vamos começar o camera shake antes, junto com a animação") — the ground

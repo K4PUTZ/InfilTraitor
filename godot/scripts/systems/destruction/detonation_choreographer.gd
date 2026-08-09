@@ -133,28 +133,87 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	_run_queue(flatten_plan(plan), voxel_renderer, smoke_overlay, tree)
 
 
-## The plan, flattened into ONE ordered queue of single-cell steps, in WAVE_TABLE
-## order. Static and pure so the ordering can be asserted directly in a selftest.
+## E-RADIAL-01 (Director, 2026-08-09): "eu tô achando as waves duras, parece que
+## entram em soquinhos por categoria. Seria possível fazer as ondas de destruição
+## granularizadas por voxels? De forma que realmente vão se expandindo a partir do
+## centro, cada efeito surgindo no seu tempo individual e terminando no círculo
+## mais largo?"
+##
+## Yes, and this is it. The queue is no longer ordered by WAVE_TABLE — it is
+## ordered by each cell's own DISTANCE FROM THE EPICENTRE. What the Director was
+## seeing was structural: WAVE_TABLE order means every destruction everywhere
+## lands, then every dent everywhere, then every crack, then every soot. Four
+## blocks by category, exactly the "soquinhos" described, and no amount of pacing
+## could hide it because the ORDER itself was categorical.
+##
+## Sorted by radius, the categories interleave on their own — you get destruction
+## near the centre, dents a little further out, cracks and soot at the rim,
+## because that is physically where each one IS. A single front expands outward
+## and every cell's own effect appears as the front reaches it, ending at the
+## widest circle. The category is no longer a schedule; it is just what happens to
+## be true at that radius.
+##
+## WAVE_TABLE survives as the TIE-BREAK ordering (see KIND_RADIUS_BIAS): at the
+## same radius, a hole still leads its own scorch.
 ##
 ## `expose` entries are broken out as their own steps rather than riding inside
-## the destroy entry that carries them. That is the single most important line in
-## this function: one destroy entry can hold 628 exposure reveals, so leaving
-## them nested would put 628 `set_cell`s into one indivisible step and rebuild the
-## exact spike the budget exists to prevent. They still land immediately after
-## the destruction that opened them, so §2's "a crater has no bottom until its
-## own wave fires" still holds — the reveal is now one step behind the hole
-## instead of inside it.
+## the destroy entry that carries them — one destroy entry can hold 628 exposure
+## reveals, so leaving them nested would put 628 `set_cell`s into one indivisible
+## step. Each carries its own radius, so a reveal naturally lands with the
+## destruction that opened it rather than needing to be pinned to it.
+##
+## Static and pure so the ordering can be asserted directly in a selftest.
 static func flatten_plan(plan: Dictionary) -> Array:
 	var queue: Array = []
 	for pair in WAVE_TABLE:
 		var kind: String = pair[0]
 		var ring: int = pair[1]
 		for entry in plan.get(kind, {}).get(ring, []):
-			queue.append({"kind": kind, "ring": ring, "entry": entry})
+			queue.append({"kind": kind, "ring": ring, "entry": entry,
+				"sort": _sort_key(kind, entry)})
 			if kind == "destroy":
 				for exp in entry.get("expose", []):
-					queue.append({"kind": "expose", "ring": ring, "entry": exp})
+					queue.append({"kind": "expose", "ring": ring, "entry": exp,
+						"sort": _sort_key("expose", exp)})
+	queue.sort_custom(func(a, b): return float(a["sort"]) < float(b["sort"]))
 	return queue
+
+
+## Sub-voxel offsets applied to a step's radius so that, at the SAME distance,
+## effects still resolve in a sensible order instead of arbitrarily: the hole
+## opens, what it exposed appears, the dents and cracks around it register, and
+## the scorch settles last. All well under one voxel, so they order simultaneous
+## effects without ever letting a category jump the expanding front — which is the
+## whole point of sorting by radius in the first place.
+const KIND_RADIUS_BIAS: Dictionary = {
+	"destroy": -0.60,
+	"expose": -0.50,
+	"dented": -0.30,
+	"cracked": -0.20,
+	"smoke": 0.0,
+	"soot": 0.40,
+}
+
+## How far a single cell may deviate from the true circle, in voxels. Without it
+## the front is a perfect expanding ring, which reads as machined rather than as
+## an explosion; with it the edge is ragged. Deterministic per cell (FNV-1a, the
+## project's standard roll) so two captures of the same blast stay comparable —
+## the same reason the camera shake is not randf()-seeded. `static var` because
+## flatten_plan() is static, which is what keeps the ordering testable without
+## constructing a choreographer.
+static var front_jitter: float = 0.9
+
+
+static func _sort_key(kind: String, entry: Dictionary) -> float:
+	var r: float = float(entry.get("r", 0.0))
+	var bias: float = float(KIND_RADIUS_BIAS.get(kind, 0.0))
+	var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
+	## Salted per kind as well as per cell: two different effects on the SAME
+	## voxel should not receive the identical wobble, or their bias separation
+	## would be all that ever distinguishes them.
+	var roll: float = float(FacadeSampler._fnv1a_hash(
+		"FRONT:%s:%d,%d" % [kind, cell.x, cell.y]) % 10000) / 10000.0
+	return r + bias + (roll - 0.5) * front_jitter
 
 
 ## Drains the queue against the deadline above. The `await` keeps this

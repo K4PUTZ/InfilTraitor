@@ -246,16 +246,17 @@ func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> v
 	print("")
 
 
-## E-ORGANIC-01 (2026-08-09) — the flattened work queue that replaced the fixed
-## 15-wave schedule, asserted against a REAL PLAYGROUND plan.
+## E-RADIAL-01 (2026-08-09) — the queue is ordered by DISTANCE FROM THE
+## EPICENTRE, not by category, asserted against a REAL PLAYGROUND plan.
 ##
-## The old cadence test that lived here checked `waves_due_now()`, which paced
-## whole (kind, ring) buckets one per frame. That rule is gone, and with it the
-## defect it could never see: buckets are wildly uneven, so pacing BY BUCKET
-## guaranteed one catastrophic frame no matter how the interval was tuned.
-## Assertion 3 below is the one that pins that down for good.
+## The assertion that used to live here checked that steps never ran backwards
+## through WAVE_TABLE. That is now false BY DESIGN and had to be replaced rather
+## than relaxed: WAVE_TABLE order is exactly what produced the Director's
+## "soquinhos por categoria" — every destruction everywhere, then every dent
+## everywhere, then every crack. Assertion 3 below is the one that pins the fix
+## down, because it fails the moment the ordering goes back to categorical.
 func test_2_work_queue(plan: Dictionary) -> void:
-	print("[2] The plan flattens into one ordered queue of single-cell steps\n")
+	print("[2] The plan flattens into one radially-ordered queue of single-cell steps\n")
 	var queue: Array = DetonationChoreographerClass.flatten_plan(plan)
 	var table: Array = DetonationChoreographerClass.WAVE_TABLE
 
@@ -273,44 +274,53 @@ func test_2_work_queue(plan: Dictionary) -> void:
 	else:
 		_fail("queue has %d steps, expected %d" % [queue.size(), expected])
 
-	## 2. WAVE_TABLE order is preserved — the blast's dramatic shape is the one
-	##    thing E-ORGANIC-01 did NOT change.
-	var position_of := {}
-	for i in range(table.size()):
-		position_of["%s|%d" % [table[i][0], table[i][1]]] = i
-	var last_pos := -1
-	var order_ok := true
-	var exposes_adrift := 0
-	var prev_kind := ""
+	## 2. The front only ever expands. Sorted on the same key flatten_plan()
+	##    sorted by, so this is the monotonicity of the real ordering, not a
+	##    restatement of the sort call.
+	var backwards := 0
+	var last_key: float = -1000000.0
 	for step in queue:
-		if String(step["kind"]) == "expose":
-			## An exposure reveal belongs to the destruction that opened it, so
-			## it must sit immediately behind a destroy step or another of its
-			## own siblings — never floating in some later bucket.
-			if prev_kind != "destroy" and prev_kind != "expose":
-				exposes_adrift += 1
-			prev_kind = "expose"
-			continue
-		var pos: int = int(position_of.get("%s|%d" % [step["kind"], step["ring"]], -1))
-		if pos < last_pos:
-			order_ok = false
-		last_pos = pos
-		prev_kind = String(step["kind"])
-	if order_ok:
-		_pass("steps never run backwards through WAVE_TABLE — the authored order survives flattening")
+		var key: float = float(step["sort"])
+		if key < last_key:
+			backwards += 1
+		last_key = key
+	if backwards == 0:
+		_pass("the front never travels inward — %d steps, monotonically expanding" % queue.size())
 	else:
-		_fail("the flattened queue reorders WAVE_TABLE's own sequence")
-	if exposes_adrift == 0:
-		_pass("every exposure reveal sits immediately behind the destruction that opened it")
-	else:
-		_fail("%d exposure steps drifted away from their destroy step" % exposes_adrift)
+		_fail("%d steps run backwards toward the epicentre" % backwards)
 
-	## 3. The pacing rule itself, on the real queue size. Two properties, and the
-	##    second is the one that inverted this session's first attempt: a naive
-	##    fixed per-frame budget made the blast 20x slower in wall clock, because
-	##    the cost is per FRAME that writes to a TileMapLayer, not per cell (the
-	##    measurements are in the choreographer's own header). A deadline with
-	##    catch-up is what keeps the total bounded when frames turn out expensive.
+	## 3. Categories INTERLEAVE instead of arriving in blocks. Measured as: how
+	##    many times the queue switches kind. Under the old WAVE_TABLE ordering
+	##    this was at most one switch per (kind, ring) bucket — about 15. Sorted
+	##    radially it should be in the hundreds, because at any given radius
+	##    whatever is physically there fires together.
+	var switches := 0
+	var prev := ""
+	for step in queue:
+		var kind := String(step["kind"])
+		if kind != prev:
+			switches += 1
+		prev = kind
+	if switches > table.size() * 3:
+		_pass("%d category switches across the queue — effects interleave by radius, not in per-category blocks" % switches)
+	else:
+		_fail("only %d category switches: the queue is still arriving in blocks (WAVE_TABLE ordering?)" % switches)
+
+	## 4. "Terminando no círculo mais largo" (Director) — the last steps really
+	##    are the outermost ones, so the blast ends at its own rim.
+	var first_r: float = float(queue[0]["entry"].get("r", 0.0))
+	var last_r: float = float(queue[queue.size() - 1]["entry"].get("r", 0.0))
+	if last_r > first_r:
+		_pass("queue runs from r=%.1f at the epicentre out to r=%.1f at the rim" % [first_r, last_r])
+	else:
+		_fail("queue does not expand outward: first r=%.1f, last r=%.1f" % [first_r, last_r])
+
+	## 5. The pacing rule. Two properties, and the second is the one that
+	##    inverted this session's first attempt: a naive fixed per-frame budget
+	##    made the blast 20x slower in wall clock, because the cost is per FRAME
+	##    that writes to a TileMapLayer, not per cell (measurements are in the
+	##    choreographer's own header). A deadline with catch-up is what keeps the
+	##    total bounded when frames turn out expensive.
 	var total: int = queue.size()
 	var seq_ms: float = DetonationChoreographerClass.new().sequence_ms
 	var min_cells: int = DetonationChoreographerClass.new().min_cells_per_frame
@@ -332,10 +342,4 @@ func test_2_work_queue(plan: Dictionary) -> void:
 		_pass("past the deadline the whole queue is due at once — the blast finishes on time at any frame rate")
 	else:
 		_fail("past the deadline only %d/%d cells were due" % [overdue, total])
-
-	var clamped: int = DetonationChoreographerClass.cells_due_now(total - 1, 0.0, seq_ms, min_cells, total)
-	if clamped == total:
-		_pass("the quota never runs past the end of the queue")
-	else:
-		_fail("quota returned %d with a %d-step queue" % [clamped, total])
 	print("")

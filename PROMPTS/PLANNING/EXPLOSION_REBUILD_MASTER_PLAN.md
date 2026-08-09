@@ -2227,6 +2227,57 @@ route, and more to the point this project already owns the vocabulary
 blast out of the same materials as everything else on screen instead of a foreign
 sprite sheet. Awaiting the Director's call.
 
+### E-RADIAL-01 / E-NATIVE-01 (2026-08-09) — an expanding front, and no imported art
+
+Three Director calls, all landed.
+
+**1. The waves were "duras... em soquinhos por categoria" — and that was
+structural, not a pacing problem.** WAVE_TABLE order means every destruction
+everywhere lands, then every dent everywhere, then every crack, then every soot:
+four blocks by category, and no amount of pacing could hide it because the ORDER
+itself was categorical. The Director asked for the opposite — "granularizadas por
+voxels... realmente vão se expandindo a partir do centro, cada efeito surgindo no
+seu tempo individual e terminando no círculo mais largo."
+
+Every plan entry now carries its own **radius from the epicentre** (added in
+`DetonationPlanBuilder`, which is the pass that already knows it), and the queue
+is sorted by that radius instead of by category. The categories then interleave
+on their own — destruction near the centre, dents further out, cracks and soot at
+the rim — because that is physically where each one *is*. Measured on a real
+PLAYGROUND plan: **171 category switches across the queue, against ~15 under the
+old ordering.** The selftest asserts that number stays high, so the ordering
+cannot silently revert.
+
+Two refinements keep it from reading as machinery: `KIND_RADIUS_BIAS` gives each
+effect a sub-voxel offset so a hole still leads its own scorch at the same
+radius, and `front_jitter` (±0.9 voxel, deterministic FNV-1a per cell) keeps the
+front ragged instead of a perfect expanding ring.
+
+**2. The authored fireball is gone** (Director: "tirar as animações autoradas por
+enquanto"). Three rounds of tuning an imported sprite — 2× scale, additive blend,
+continuous frame interpolation — never fixed what was actually wrong with it,
+which was a style mismatch. `ExplosionFlashOverlay` is now just the flash.
+
+**3. The blast's core is built from this game's own vocabulary** —
+`Room.spawn_blast_burst()` calls `EmberOverlay.add_ember()`,
+`SmokeSparkOverlay.add_sparks()` and `DebrisOverlay.add_dust()`. No new
+machinery: four calls to overlays that already existed, which is precisely why it
+integrates — it is made of the same material as every other effect on screen.
+**Deliberately NOT a particle system:** `GPUParticles2D` is the native route for
+something this project did *not* already have, and adding one here would stand up
+a second parallel VFX vocabulary beside one that already reads correctly.
+
+**4. The negative flash is now the shipped look** (`INFILTRAITOR_WHITE_FLASH=1`
+restores the old one). This surfaced a real ordering bug the moment it shipped:
+the flash sat ABOVE ember/smoke, which was right for a white wash meant to cover
+everything — but a negative flash INVERTS what is under it, so the blast's own
+warm embers came out **blue** (seen directly in the first capture). The flash
+moved below ember/smoke: the world is what gets blown out, the fire is the thing
+doing the blowing out and must not inverted along with it.
+
+Captures: `e_native_flash_core.png` (inversion at peak with the hot core over
+it), `e_native_burst.png`, `e_native_smoke_core.png`.
+
 **Order of business — Task 6, the tuning pass (§8's own row):**
 
 1. ~~Get the Director a real capture and let them move §4.2's ring-weight

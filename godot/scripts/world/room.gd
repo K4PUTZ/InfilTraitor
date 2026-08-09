@@ -466,6 +466,22 @@ var vfx_smoke_alpha: float = 0.6
 var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
 var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 
+## E-NATIVE-01 — the blast burst (see spawn_blast_burst()). All `var` (Rule 1);
+## these are the whole tuning surface for the detonation's core now that the
+## authored fireball is gone, so expect them to move on the Director's eye.
+## The ember cluster is short-lived on purpose: EmberOverlay's own defaults
+## (1.5-4.0 s) are tuned for scorched voxels cooling down, and a detonation's
+## flash-core is a fraction of that.
+var blast_burst_ember_count: int = 14
+var blast_burst_ember_spread_px: float = 46.0
+var blast_burst_ember_life_min: float = 0.28
+var blast_burst_ember_life_max: float = 0.75
+var blast_burst_spark_count: int = 26
+var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)
+var blast_burst_dust_count: int = 5
+var blast_burst_dust_drop_px: float = 34.0
+var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)
+
 ## PERF-01: guards against a second detonate/fire racing the same
 ## TileMapLayers mid-render while an async destruction render pass
 ## (process_dirty_async()/process_dirty_slabs_async(), spread across frames)
@@ -1878,21 +1894,26 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —
-	## same reasoning as the two overlays above, one tick higher so it never
-	## competes with them for a pixel.
-	if _ember_overlay != null:
-		_ember_overlay.z_index = max_voxel_z_index + 4
+	## same reasoning as the two overlays above. Its exact tick is assigned below,
+	## with the flash, since E-NATIVE-01 made the two order-dependent.
 	## VFX-01: smoke/sparks are the same "always above the geometry" family as
 	## the ember glow — one tick higher so it never competes with ember for a
 	## pixel. Debris (dust/chips) is deliberately NOT in this overhead band:
 	## it's meant to read as sitting on the ground, not floating above every
 	## wall, so it gets a fixed floor-level z instead (see _ready()/OCC-03).
 	if _smoke_spark_overlay != null:
-		_smoke_spark_overlay.z_index = max_voxel_z_index + 5
-	## E-FLASH-01: top of the overhead band. The white flash frame has to cover
-	## the smoke and embers it is washing out, not sit behind them.
+		_smoke_spark_overlay.z_index = max_voxel_z_index + 6
+	## E-NATIVE-01 (2026-08-09): the flash sits BELOW ember/smoke now, not above.
+	## It was on top while it was a white wash meant to cover everything the blast
+	## did, VFX included. The negative flash inverts what is under it — so with the
+	## blast's core built from real embers and sparks, putting it on top turned the
+	## fire BLUE (observed directly, first capture after the switch). The world is
+	## what gets blown out by the blast; the fire is the thing doing the blowing
+	## out, and it must not be inverted along with everything else.
 	if _explosion_flash_overlay != null:
-		_explosion_flash_overlay.z_index = max_voxel_z_index + 6
+		_explosion_flash_overlay.z_index = max_voxel_z_index + 4
+	if _ember_overlay != null:
+		_ember_overlay.z_index = max_voxel_z_index + 5
 
 
 ## VFX-01: dispatch VoxelRenderer.voxel_destroyed to the smoke/spark/debris
@@ -1906,6 +1927,45 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 ## so VFX is dispatched directly as the voxel_destroyed signal fires.
 func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) -> void:
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
+
+
+## E-NATIVE-01 (Director, 2026-08-09) — the detonation's visible core, built from
+## this game's OWN vfx vocabulary instead of an imported sprite sheet.
+##
+## The Director's read on the authored 4-frame fireball was that its comic style
+## "não combina com o resto do cenário", and asked whether Godot had something
+## more integrated. The honest answer turned out not to be a Godot feature at all:
+## this project already owns every piece needed — EmberOverlay's warm fading glow,
+## SmokeSparkOverlay's puffs and sparks, DebrisOverlay's dust. A blast assembled
+## from those is integrated by construction, because it is literally the same
+## material every other effect on screen is made of. Nothing here is new
+## machinery; it is four calls to overlays that already existed.
+##
+## Deliberately NOT a particle system: GPUParticles2D would be the native route
+## for something this project did not already have, but adding one here would
+## introduce a second, parallel VFX vocabulary right next to the one that already
+## reads correctly. Revisit only if these overlays run out of expressiveness.
+##
+## PURELY VISUAL, like every overlay it drives — losing a burst to a reload costs
+## nothing.
+func spawn_blast_burst(world_pos: Vector2) -> void:
+	if _ember_overlay != null:
+		## The core: a tight cluster of embers rather than one big glow, so it
+		## flickers and cools unevenly the way the per-voxel scorch already does.
+		for i in range(blast_burst_ember_count):
+			var angle: float = TAU * float(i) / float(maxi(blast_burst_ember_count, 1))
+			var dist: float = randf_range(0.0, blast_burst_ember_spread_px)
+			var offset := Vector2(cos(angle) * dist, sin(angle) * dist * 0.5)
+			_ember_overlay.add_ember(world_pos + offset,
+				randf_range(blast_burst_ember_life_min, blast_burst_ember_life_max))
+	if _smoke_spark_overlay != null:
+		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color)
+	if _debris_overlay != null:
+		## Dust falls toward the floor under the blast, the same origin→target
+		## shape VFX-01's per-voxel dust already uses.
+		var floor_pos: Vector2 = world_pos + Vector2(0.0, blast_burst_dust_drop_px)
+		for _d in range(blast_burst_dust_count):
+			_debris_overlay.add_dust(world_pos, floor_pos, blast_burst_dust_color)
 
 
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:

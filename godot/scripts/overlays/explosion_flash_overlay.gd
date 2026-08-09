@@ -1,113 +1,65 @@
 extends Node2D
 class_name ExplosionFlashOverlay
 
-## ExplosionFlashOverlay — E-FLASH-01 (Director, 2026-08-08): the grenade's own
-## detonation art. Two things, in one node because they are one beat:
+## ExplosionFlashOverlay — the detonation's screen flash.
 ##
-##   1. a 4-frame fireball (ASSETS/ANIMATIONS/Explosion_1/Export/1..4.png)
-##      played at the grenade's anchor, and
-##   2. the WHITE FLASH FRAME that follows its last frame — a full-screen white
-##      wash whose opacity tweens down while DetonationChoreographer fires the
-##      destruction waves underneath it.
+## E-NATIVE-01 (Director, 2026-08-09): "vamos seguir por esse caminho mesmo, e
+## tirar as animações autoradas por enquanto." The 4-frame authored fireball is
+## GONE. Its comic style did not sit with the rest of the scene, and no amount of
+## scaling, additive blending or frame interpolation was going to fix a style
+## mismatch — three rounds of tuning an imported sprite is what finally made that
+## clear. The blast's visible core is built from the game's own vocabulary now
+## (embers, sparks, dust, smoke — see Room.spawn_blast_burst()), so it is made of
+## the same materials as everything else on screen instead of imported alongside
+## it.
+##
+## What survives here is the one part that genuinely IS a screen effect rather
+## than a world object: the flash. It stays because it does a job nothing else
+## can — it covers the frame the destruction lands on.
 ##
 ## PURELY VISUAL, same contract as EmberOverlay/SmokeSparkOverlay: nothing here
-## is gameplay state, so losing a play in progress to a map reload or a
+## is gameplay state, so losing a flash in progress to a map reload or a
 ## perspective rotation costs nothing but the effect itself.
 ##
-## Why the flash is drawn HERE, in world space, rather than as a CanvasLayer +
-## ColorRect: room.tscn's two CanvasLayers (VisionFogOverlay, HUD) both sit at
-## layer 0 and are ordered by tree position, so a runtime-added layer lands
-## ABOVE the HUD and whites out the dev overlays along with the world. Filling
-## the camera's own visible rect (derived from the canvas transform, so it
-## follows pan and zoom for free) keeps the wash on the world where it belongs
-## and needs no camera reference.
-##
-## Frames are `load()`ed, never `preload()`ed: `ASSETS/*` is gitignored
-## (.gitignore:48), so a preload would turn a missing local asset into a
-## whole-project COMPILE error on a fresh clone. A missing frame here fails
-## loudly and skips straight to the flash (B6) — the detonation still runs, it
-## just has no fireball.
-##
-## They are loaded in `_ready()`, NOT on the first play(). The Director called
-## this on 2026-08-08 ("o primeiro flash frame branco me pareceu que demorou um
-## pouco... talvez precise de um pré-load") and it was real: lazy loading put
-## four PNG decodes inside the first detonation's own frame, so the very first
-## blast of a session stuttered before its flash and every later one did not.
-## Warming at _ready() keeps the gitignore-safety of a runtime load and removes
-## the hitch.
+## Why the flash is drawn in WORLD space rather than as a CanvasLayer + ColorRect:
+## room.tscn's two CanvasLayers (VisionFogOverlay, HUD) both sit at layer 0 and
+## are ordered by tree position, so a runtime-added layer lands ABOVE the HUD and
+## washes out the dev overlays along with the world. Filling the camera's own
+## visible rect (derived from the canvas transform, so it follows pan and zoom for
+## free) keeps the effect on the world where it belongs, and needs no camera
+## reference.
 
 ## Tuning — all `var` (Rule 1).
 
-## E-FLASH-03 (Director, 2026-08-09): "tem um problema sério que são os 4 frames
-## sem os estados intermediários". The animation is now driven by TIME, not by an
-## integer frame index, and every drawn instant CROSS-FADES the two authored
-## frames it falls between — the Director's own suggestion ("frames intermediários
-## usando cada dois frames mesclados interpolando os dois individualmente"), done
-## at draw time rather than by baking textures. Draw-time is strictly better here:
-## no extra memory, no extra load cost, and the result is CONTINUOUS instead of
-## one fixed in-between per pair.
-##
-## Under the additive blend the two contributions sum, so a cross-fade at
-## (1-t)/(t) keeps the fireball's total brightness roughly constant through the
-## blend instead of dipping in the middle.
-var animation_seconds: float = 0.22
-
-## How much of each authored frame's time is spent HOLDING it versus blending
-## into the next. 0.0 = a permanent cross-fade (mushy, everything is a blend);
-## 1.0 = no blending at all (back to the 4-frame flip-book). The middle keeps
-## each authored pose readable while removing the hard steps between them.
-var frame_hold_fraction: float = 0.35
-
-## The flash. `flash_fade_seconds` is deliberately close to the wave sequence's
-## own length — the Director asked for the fade to run "enquanto as waves de
+## `flash_fade_seconds` is deliberately close to the destruction sequence's own
+## length — the Director asked for the fade to run "enquanto as waves de
 ## destruição são disparadas", so the damage is already on screen as it lifts.
 var flash_peak_alpha: float = 0.8
 var flash_fade_seconds: float = 0.32
 var flash_fade_power: float = 1.5         ## >1 = holds bright, then drops away
 
-## E-FLASH-03 — the measured reason the Director felt an "engasgada" at the last
-## frame, and it is neither of the two causes they suspected (the white being
-## slow to appear, or persistence of vision from an all-white next frame). The
-## frame the flash starts on is also the frame DetonationChoreographer applies
-## destroy ring 0 — 872 cells erased plus the exposure reveals — and that frame
-## measured **150 ms** where the animation's own frames ran at 8-17 ms. The flash
-## was then advancing its fade by that same 150 ms delta, burning half its curve
-## in one step, so the white appeared already half gone.
-##
-## Capping the delta the FADE sees does not hide the freeze — the freeze is a
-## real frame-time spike and the honest fix is splitting that wave, which is a
-## performance change outside this ask (see the master plan's note). What it does
-## fix is the flash no longer eating its own animation because of it: the white
-## now covers the spike instead of flickering through it.
+## E-FLASH-03 — the measured reason the Director felt an "engasgada" at the flash,
+## and it was neither cause they suspected (the white being slow to enter, or
+## persistence of vision from an all-white next frame). The frame the flash starts
+## on is also the frame the destruction lands on, and it measured **150 ms**
+## against 8-17 ms for its neighbours. The flash was then advancing its fade by
+## that same 150 ms delta, burning half its curve in one step, so it appeared
+## already half gone. Capping the delta the FADE sees does not hide the spike —
+## E-ORGANIC-01 addresses that separately — it stops the flash from eating its own
+## animation because of it.
 var flash_max_step_seconds: float = 0.034
 
-## Flash appearance. WHITE is the shipped look. NEGATIVE inverts what is already
-## on screen ("um frame negativo em tween... como nas explosões de antigamente",
-## Director's own suggestion) via a one-pass screen-read shader — real, cheap, and
-## measured to add no delay of its own. Left OFF by default: which of the two
-## reads better is a look decision, and this session only makes it available to
-## compare, never picks it.
+## Flash appearance. NEGATIVE is the shipped look as of 2026-08-09 (Director:
+## "vamos testar o flash negativo em vez de branco também") — it inverts what is
+## already on screen, "como nas explosões de antigamente". WHITE is the previous
+## look, kept switchable for comparison (INFILTRAITOR_WHITE_FLASH=1).
 enum FlashMode { WHITE, NEGATIVE }
-var flash_mode: int = FlashMode.WHITE
-
-## The fireball is authored at 283x283 — a hair wider than one GU (256 px), which
-## the Director found too small next to a crater that spans two ("animação do
-## fogo parece pequena, vamos duplicar o tamanho"). At 2.0 it covers ~566 px,
-## roughly the blast's own visible reach.
-var sprite_scale: float = 2.0
-
-## The fireball's own tint/opacity, applied ON TOP of the additive blend below.
-## Additive alone still reads bright; pulling the alpha back is what lets the
-## floor texture stay legible through the middle of the ball.
-var fire_modulate := Color(1.0, 1.0, 1.0, 0.82)
-
-const FRAME_DIR := "res://ASSETS/ANIMATIONS/Explosion_1/Export"
-const FRAME_COUNT := 4
+var flash_mode: int = FlashMode.NEGATIVE
 
 ## Inverts whatever the frame already rendered, by `amount`. Six lines, one
-## screen-texture read, no allocation per frame — this is the whole cost of the
-## Director's "frame negativo" idea, which they flagged as possibly hard or
-## slow at runtime and is neither.
+## screen-texture read, no per-frame allocation — this is the entire cost of the
+## Director's "frame negativo" idea, which they flagged as possibly hard or slow
+## at runtime and is neither.
 const NEGATIVE_FLASH_SHADER := """
 shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
@@ -118,33 +70,17 @@ void fragment() {
 }
 """
 
-signal animation_finished()
-
-var _frames: Array[Texture2D] = []
-var _anim_elapsed: float = -1.0           ## <0 = no animation playing
-var _anchor: Vector2 = Vector2.ZERO
-
 var _flash_elapsed: float = -1.0          ## <0 = no flash running
 
-var _fire_layer: Node2D = null
+## The NEGATIVE flash needs a ShaderMaterial reading the screen texture; the
+## WHITE flash is a plain draw_rect on this node and needs none. Two canvases
+## rather than one because a material is per-node.
 var _negative_layer: Node2D = null
 var _negative_material: ShaderMaterial = null
 
 
 func _ready() -> void:
-	## The additive child. Built here rather than in the scene so this overlay
-	## stays a single self-contained script, same as every other overlay.
-	_fire_layer = Node2D.new()
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_fire_layer.material = mat
-	_fire_layer.z_index = -1        ## under this node's own flash
-	_fire_layer.draw.connect(_draw_fire)
-	add_child(_fire_layer)
-
-	## The NEGATIVE flash's own canvas — it needs a ShaderMaterial reading the
-	## screen texture, which the WHITE flash (a plain draw_rect on this node)
-	## does not. Built unconditionally but drawn only in that mode, so switching
+	## Built unconditionally but drawn only in NEGATIVE mode, so flipping
 	## `flash_mode` at runtime needs no re-setup.
 	_negative_layer = Node2D.new()
 	var shader := Shader.new()
@@ -155,30 +91,9 @@ func _ready() -> void:
 	_negative_layer.draw.connect(_draw_negative)
 	add_child(_negative_layer)
 
-	## Pay the PNG decodes at map load, not inside the first detonation's frame —
-	## see this file's header for the Director's own observation that led here.
-	_ensure_frames_loaded()
 
-
-## Plays the fireball at `world_anchor` (the grenade's own top-centre — see
-## TestZoneController.detonate_active()), then emits `animation_finished` so the
-## caller can fire the flash and the destruction waves on the same beat.
-func play(world_anchor: Vector2) -> void:
-	_anchor = world_anchor
-	_ensure_frames_loaded()
-	if _frames.is_empty():
-		## B6 loud-fail already reported by _ensure_frames_loaded(). Emit anyway:
-		## a missing art file must not swallow the detonation itself.
-		animation_finished.emit()
-		return
-	_anim_elapsed = 0.0
-	set_process(true)
-	_redraw_all()
-
-
-## The flash. Separate from play() on purpose: the Director's sequence is
-## "animação -> flash -> waves", so the caller decides when the flash lands
-## rather than this class assuming it follows immediately.
+## Starts the flash. The caller fires the destruction sequence on the same beat —
+## covering the frame it lands on is the whole reason this exists.
 func flash() -> void:
 	_flash_elapsed = 0.0
 	set_process(true)
@@ -186,49 +101,35 @@ func flash() -> void:
 
 
 func _process(delta: float) -> void:
-	var busy := false
-
-	if _anim_elapsed >= 0.0:
-		_anim_elapsed += delta
-		if _anim_elapsed >= animation_seconds:
-			_anim_elapsed = -1.0
-			animation_finished.emit()
-		else:
-			busy = true
-
-	if _flash_elapsed >= 0.0:
-		## Capped, unlike the animation above: see flash_max_step_seconds. A
-		## 150 ms frame must not consume half the fade in one step.
-		_flash_elapsed += minf(delta, flash_max_step_seconds)
-		if _flash_elapsed >= flash_fade_seconds:
-			_flash_elapsed = -1.0
-		else:
-			busy = true
-
+	if _flash_elapsed < 0.0:
+		set_process(false)
+		return
+	## Capped — see flash_max_step_seconds.
+	_flash_elapsed += minf(delta, flash_max_step_seconds)
+	if _flash_elapsed >= flash_fade_seconds:
+		_flash_elapsed = -1.0
 	_redraw_all()
-	if not busy:
+	if _flash_elapsed < 0.0:
 		set_process(false)
 
 
-## Both canvases redraw together — they are halves of one effect, separated only
-## by the blend/material each one needs.
+## Both canvases redraw together — whichever mode is active reads the same
+## `_flash_elapsed`.
 func _redraw_all() -> void:
 	queue_redraw()
-	if _fire_layer != null:
-		_fire_layer.queue_redraw()
 	if _negative_layer != null:
 		_negative_layer.queue_redraw()
 
 
-## 0..1 across the flash's fade, or -1 when no flash is running.
+## 0..1 across the fade, or -1 when no flash is running.
 func _flash_progress() -> float:
 	if _flash_elapsed < 0.0:
 		return -1.0
 	return clampf(_flash_elapsed / flash_fade_seconds, 0.0, 1.0)
 
 
-## This node: the WHITE flash, at normal blend (see _fire_layer's doc for why
-## the flash is NOT additive).
+## This node: the WHITE flash, at normal blend. Deliberately NOT additive — a
+## flash frame's job is to REPLACE what is underneath it.
 func _draw() -> void:
 	if flash_mode != FlashMode.WHITE:
 		return
@@ -256,50 +157,9 @@ func _draw_negative() -> void:
 	_negative_layer.draw_rect(_visible_world_rect(), Color.WHITE)
 
 
-## The additive child: the fireball, cross-faded between the two authored frames
-## the current instant falls between (E-FLASH-03 — the Director's own fix for
-## "os 4 frames sem os estados intermediários"). Connected to `_fire_layer.draw`
-## in _ready() rather than living in a second script — it belongs to this effect,
-## not to a class of its own.
-##
-## `frame_hold_fraction` of each frame's slot is spent on the authored pose
-## alone; the rest cross-fades into the next. Both contributions are drawn
-## additively, so they sum rather than one dimming the other.
-func _draw_fire() -> void:
-	if _anim_elapsed < 0.0 or _frames.size() < 2:
-		return
-	## Position along the authored frames, in [0, FRAME_COUNT-1].
-	var p: float = clampf(_anim_elapsed / maxf(animation_seconds, 0.001), 0.0, 1.0) \
-		* float(FRAME_COUNT - 1)
-	var i: int = clampi(int(floor(p)), 0, FRAME_COUNT - 2)
-	var local: float = p - float(i)
-	## Remap so the first `frame_hold_fraction` of the slot holds frame i.
-	var blend: float = 0.0
-	if local > frame_hold_fraction:
-		blend = (local - frame_hold_fraction) / maxf(1.0 - frame_hold_fraction, 0.001)
-	blend = clampf(blend, 0.0, 1.0)
-
-	_draw_fire_frame(i, 1.0 - blend)
-	if blend > 0.0:
-		_draw_fire_frame(i + 1, blend)
-
-
-func _draw_fire_frame(index: int, weight: float) -> void:
-	if weight <= 0.001 or index < 0 or index >= _frames.size():
-		return
-	var tex: Texture2D = _frames[index]
-	var size: Vector2 = tex.get_size() * sprite_scale
-	var tint := fire_modulate
-	tint.a *= weight
-	## Centred on the anchor: the anchor is the point ON TOP of the grenade
-	## (Director), so the fireball blooms out of it in every direction rather
-	## than sitting on top of it like a hat.
-	_fire_layer.draw_texture_rect(tex, Rect2(_anchor - size * 0.5, size), false, tint)
-
-
 ## The camera's visible area in this node's own space. Derived from the canvas
-## transform rather than from a Camera2D reference, so pan/zoom are already
-## folded in and this overlay stays as dependency-free as every other one.
+## transform rather than from a Camera2D reference, so pan/zoom are already folded
+## in and this overlay stays as dependency-free as every other one.
 func _visible_world_rect() -> Rect2:
 	var inv := get_canvas_transform().affine_inverse()
 	var view_size: Vector2 = get_viewport_rect().size
@@ -317,30 +177,9 @@ func _visible_world_rect() -> Rect2:
 	return Rect2(top_left, bottom_right - top_left)
 
 
-## Loaded once per session, on the first real play. ResourceLoader.exists() is
-## checked per frame so a partially-exported folder names the file it is missing
-## instead of failing on whichever one load() happened to reach first.
-func _ensure_frames_loaded() -> void:
-	if not _frames.is_empty():
-		return
-	var loaded: Array[Texture2D] = []
-	for i in range(1, FRAME_COUNT + 1):
-		var path := "%s/%d.png" % [FRAME_DIR, i]
-		if not ResourceLoader.exists(path):
-			push_error("[ExplosionFlashOverlay] missing detonation frame: %s — no fireball will play" % path)
-			return
-		var tex = load(path)
-		if tex == null or not (tex is Texture2D):
-			push_error("[ExplosionFlashOverlay] detonation frame is not a Texture2D: %s" % path)
-			return
-		loaded.append(tex)
-	_frames = loaded
-
-
 ## Discard anything in flight (map load/reload, perspective change) — same
 ## reasoning as EmberOverlay.clear(): nothing here is state a reload restores.
 func clear() -> void:
-	_anim_elapsed = -1.0
 	_flash_elapsed = -1.0
 	set_process(false)
 	_redraw_all()

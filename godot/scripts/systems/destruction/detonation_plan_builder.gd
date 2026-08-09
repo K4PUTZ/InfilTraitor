@@ -318,8 +318,9 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			touched_voxels.append(voxel)
 			_count(census, "destroy", container, true)
 			_append_voxel_smoke(plan["smoke"], smoked_gus, voxel, ring,
-				bomb_def.smoke_ring_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer)
-			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level})
+				bomb_def.smoke_ring_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter)
+			_append(plan["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
+				"r": _radius_of(voxel.grid_pos, epicenter)})
 		elif voxel.damage_state == Voxel.DamageState.DENTED or voxel.damage_state == Voxel.DamageState.CRACKED:
 			touched_this_blast[key] = true
 			touched_voxels.append(voxel)
@@ -327,13 +328,14 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 				bomb_def.smoke_ring_weights,
 				DENT_SMOKE_INTENSITY if voxel.damage_state == Voxel.DamageState.DENTED
 					else CRACK_SMOKE_INTENSITY,
-				voxel_renderer)
+				voxel_renderer, epicenter)
 			var resolved := _resolve_damaged_tile(voxel, container, voxel_renderer)
 			var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
 			var wave_key: String = "dented" if voxel.damage_state == Voxel.DamageState.DENTED else "cracked"
 			_count(census, wave_key, container, resolved["baked"])
 			_append(plan[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
-				"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"], "alt": alt})
+				"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"], "alt": alt,
+				"r": _radius_of(voxel.grid_pos, epicenter)})
 	_print_census(census, source_gu)
 
 	## --- Exposure fallback: the floor reveals from above, wired into their
@@ -344,7 +346,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 		for e in exposed_by_ring[ring]:
 			var alt := _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
-				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt})
+				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
+				"r": _radius_of(e["grid_pos"], epicenter)})
 		if not plan["destroy"].has(ring):
 			plan["destroy"][ring] = []
 		var carrier: Array = plan["destroy"][ring]
@@ -353,7 +356,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			## in the same ring — kept as an honestly-labelled defensive entry
 			## (epicenter cell, not a real destroyed voxel) rather than
 			## silently dropping the exposed tiles.
-			carrier.append({"cell": epicenter, "level": GeometryCoords.FLOOR_TOP_LEVEL, "expose": lit_expose})
+			carrier.append({"cell": epicenter, "level": GeometryCoords.FLOOR_TOP_LEVEL,
+				"r": 0.0, "expose": lit_expose})
 		else:
 			var entry: Dictionary = carrier[0]
 			var existing_expose: Array = entry.get("expose", [])
@@ -384,7 +388,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 			if alt == prev_alt:
 				continue   ## nothing this blast changes for this cell — no wave entry needed
 			_append(plan["soot"], ring, {"cell": cell, "level": level,
-				"source_id": source_id, "atlas_coords": atlas_coords, "alt": alt})
+				"source_id": source_id, "atlas_coords": atlas_coords, "alt": alt,
+				"r": _radius_of(cell, epicenter)})
 
 	## --- Smoke, the GU-level remainder (E-SMOKE-01). The per-voxel puffs above
 	## already cover every GU that took real damage; this fills only the GUs the
@@ -407,7 +412,8 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictio
 				int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0))
 		var world_pos: Vector2 = voxel_renderer.voxel_world_position(gu_center, BlastCalculatorClass.GRENADE_LEVEL)
 		_append(plan["smoke"], ring, {"world_pos": world_pos, "duration": weight,
-			"scale": weight, "alpha": weight, "blobs": 0})
+			"scale": weight, "alpha": weight, "blobs": 0,
+			"r": _radius_of(gu_center, epicenter)})
 
 	plan["touched_voxels"] = touched_voxels
 	return plan
@@ -648,7 +654,7 @@ static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
 ## end of build_plan() knows this GU is already covered.
 static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionary,
 		voxel: Voxel, ring: int, smoke_ring_weights: Array[float], tier_intensity: float,
-		voxel_renderer: VoxelRendererClass) -> void:
+		voxel_renderer: VoxelRendererClass, epicenter: Vector2i) -> void:
 	if ring < 0 or ring >= smoke_ring_weights.size():
 		return
 	var weight: float = smoke_ring_weights[ring]
@@ -670,7 +676,18 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		"scale": scale,
 		"alpha": clampf(strength * (0.6 + 0.8 * size_roll), 0.05, 1.0),
 		"blobs": SMOKE_BLOBS_PER_VOXEL,
+		"r": _radius_of(voxel.grid_pos, epicenter),
 	})
+
+
+## E-RADIAL-01 (Director, 2026-08-09): every plan entry carries its own distance
+## from the epicentre, in voxels. This is what lets the choreographer replay the
+## blast as an EXPANDING FRONT instead of category-by-category — see
+## DetonationChoreographer.flatten_plan(). Computed here because this is the pass
+## that already knows the epicentre; recomputing it downstream would mean handing
+## the choreographer geometry it has no other reason to know.
+static func _radius_of(cell: Vector2i, epicenter: Vector2i) -> float:
+	return Vector2(cell - epicenter).length()
 
 
 ## A deterministic value in [0,1) for one cell under one salt — the project's

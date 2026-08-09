@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 48884 lines total** (under `godot/scripts/`)
+**191 scripts · 48856 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -962,9 +962,23 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 346 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 185 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
+
+**Constants / tuning**
+- `NEGATIVE_FLASH_SHADER` = `"""`
+
+**Public vars**
+- `var flash_peak_alpha: float = 0.8`
+- `var flash_fade_seconds: float = 0.32`
+- `var flash_fade_power: float = 1.5`
+- `var flash_max_step_seconds: float = 0.034`
+- `var flash_mode: int = FlashMode.NEGATIVE`
+
+**Public API**
+- `func flash() -> void:`
+- `func clear() -> void:`
 
 ---
 
@@ -1559,7 +1573,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 301 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 360 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1572,6 +1586,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `WAVE_TABLE` = `[ ["destroy", 0], ["destroy", 1], ["destroy", 2], ["dented", 0], ["dented", 1], ["cracked", 1], ["cracked", 2], ["smoke", 0], ["smoke", 1], ["smoke", 2], ["smoke", 3], ["soot", 0], ["soot", 1], ["soot", 2], ["soot", 3], ]`
 - `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
+- `KIND_RADIUS_BIAS` = `{ "destroy": -0.60, "expose": -0.50, "dented": -0.30, "cracked": -0.20, "smoke": 0.0, "soot": 0.40, }`
 
 **Public vars**
 - `var sequence_ms: float = 240.0`
@@ -1584,7 +1599,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 680 lines
+`class_name DetonationPlanBuilder` · 697 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2637,7 +2652,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 341 lines
+extends `SceneTree` · 345 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -3869,7 +3884,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 336 lines
+`class_name TestZoneController` · 329 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4128,7 +4143,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3734 lines
+extends `Node2D` · 3794 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4215,6 +4230,15 @@ extends `Node2D` · 3734 lines
 - `var vfx_smoke_alpha: float = 0.6`
 - `var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)`
 - `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
+- `var blast_burst_ember_count: int = 14`
+- `var blast_burst_ember_spread_px: float = 46.0`
+- `var blast_burst_ember_life_min: float = 0.28`
+- `var blast_burst_ember_life_max: float = 0.75`
+- `var blast_burst_spark_count: int = 26`
+- `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
+- `var blast_burst_dust_count: int = 5`
+- `var blast_burst_dust_drop_px: float = 34.0`
+- `var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)`
 
 **Public API**
 - `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0, substrate: int = 0) -> void:`

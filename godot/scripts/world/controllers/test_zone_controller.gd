@@ -234,31 +234,24 @@ func detonate_active() -> void:
 ## (build_plan() is the writer) — this only schedules when the player SEES it, so
 ## a dropped frame or a map reload mid-sequence loses pixels, never state.
 func _start_detonation_sequence(plan: Dictionary, anchor: Vector2) -> void:
-	var flash_overlay = room._explosion_flash_overlay
-	if flash_overlay == null:
-		## B6: no art overlay wired (headless/selftest scaffold) — the blast must
-		## still play, so go straight to the waves rather than swallowing it.
-		_start_waves(plan)
-		return
-	## E-FLASH-03 dev capture toggle, same seam/precedent as
-	## INFILTRAITOR_ENABLE_STAMP_SOOT: lets a real capture compare the Director's
-	## "frame negativo... como nas explosões de antigamente" against the shipped
-	## white one, without either becoming the default before they have seen both.
-	flash_overlay.flash_mode = ExplosionFlashOverlay.FlashMode.NEGATIVE \
-		if OS.get_environment("INFILTRAITOR_NEGATIVE_FLASH") == "1" \
-		else ExplosionFlashOverlay.FlashMode.WHITE
-	flash_overlay.play(anchor)
-	## Shake starts WITH the fireball, not with the flash (Director, 2026-08-08:
-	## "vamos começar o camera shake antes, junto com a animação") — the ground
-	## moves as the charge goes off, not a beat later when the light reaches it.
+	## E-NATIVE-01 (2026-08-09): with the authored fireball gone there is nothing
+	## left to WAIT for — the flash, the burst, the shake and the destruction all
+	## land on the same beat, which is what a detonation actually is. The old
+	## sequence had to stage them behind `animation_finished` only because a
+	## 4-frame sprite had to finish playing first.
+	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
-	## One-shot: the overlay is reused by every future detonation, so this
-	## connection must not survive its own firing.
-	flash_overlay.animation_finished.connect(func():
+	var flash_overlay = room._explosion_flash_overlay
+	if flash_overlay != null:
+		## Dev capture toggle, same seam/precedent as INFILTRAITOR_ENABLE_STAMP_SOOT.
+		## NEGATIVE is the shipped look (Director, 2026-08-09); this only lets a
+		## capture put the previous white one beside it.
+		flash_overlay.flash_mode = ExplosionFlashOverlay.FlashMode.WHITE \
+			if OS.get_environment("INFILTRAITOR_WHITE_FLASH") == "1" \
+			else ExplosionFlashOverlay.FlashMode.NEGATIVE
 		flash_overlay.flash()
-		_start_waves(plan),
-		CONNECT_ONE_SHOT)
+	_start_waves(plan)
 
 
 func _start_waves(plan: Dictionary) -> void:

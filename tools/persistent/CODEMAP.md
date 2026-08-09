@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**191 scripts · 49179 lines total** (under `godot/scripts/`)
+**191 scripts · 49346 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -954,7 +954,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 161 lines
+`class_name EmberOverlay` · extends `Node2D` · 194 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -962,7 +962,7 @@ extends `Node2D` · 233 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 184 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 210 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
 
@@ -975,6 +975,7 @@ extends `Node2D` · 233 lines
 - `var flash_mode: int = FlashMode.NEGATIVE`
 
 **Public API**
+- `func set_negative_z_index(z: int) -> void:`
 - `func hold_frame(mode: int) -> void:`
 - `func clear() -> void:`
 
@@ -4125,7 +4126,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3887 lines
+extends `Node2D` · 3995 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4194,6 +4195,7 @@ extends `Node2D` · 3887 lines
 - `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
 - `ACTOR_END_HOLD_DELAY` = `0.5`
 - `TRAIL_MAX` = `5`
+- `BLAST_ISO_GROUND_SQUASH` = `0.5`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
@@ -4216,6 +4218,13 @@ extends `Node2D` · 3887 lines
 - `var blast_burst_ember_spread_px: float = 64.0`
 - `var blast_burst_ember_life_min: float = 0.50`
 - `var blast_burst_ember_life_max: float = 1.25`
+- `var blast_burst_ember_start_radius_px: float = 7.0`
+- `var blast_burst_ember_speed_min: float = 150.0`
+- `var blast_burst_ember_speed_max: float = 320.0`
+- `var blast_burst_ember_drag: float = 3.4`
+- `var blast_burst_ember_rise_px_s: float = 46.0`
+- `var blast_burst_ember_up_deg: float = 72.0`
+- `var blast_burst_ember_down_deg: float = 10.0`
 - `var blast_burst_spark_count: int = 34`
 - `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
 - `var blast_burst_dust_count: int = 7`

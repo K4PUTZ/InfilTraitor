@@ -495,6 +495,37 @@ var blast_burst_ember_count: int = 22
 var blast_burst_ember_spread_px: float = 64.0
 var blast_burst_ember_life_min: float = 0.50
 var blast_burst_ember_life_max: float = 1.25
+
+## P-FIRE (Director, 2026-08-09) — the fireball EXPANDS now instead of appearing
+## at full size. See spawn_blast_burst() for how these compose.
+##
+## Where the numbers come from, so the next pass tunes them and does not
+## re-derive them: at drag 3.4 an ember travels `speed / drag` px over its whole
+## flight (the integral of an exponential decay), so the 150-320 px/s range
+## reaches ~44-94 px — straddling `blast_burst_ember_spread_px` (64), which used
+## to be the radius the cluster was SCATTERED across at t=0 and is now the reach
+## it grows INTO. That is the one relationship worth preserving when retuning:
+## speed/drag should land near the spread, or the fire either falls short of its
+## own smoke or outruns it.
+var blast_burst_ember_start_radius_px: float = 7.0   ## "do tamanho da granada"
+var blast_burst_ember_speed_min: float = 150.0
+var blast_burst_ember_speed_max: float = 320.0
+var blast_burst_ember_drag: float = 3.4              ## fast out, then coasts
+var blast_burst_ember_rise_px_s: float = 46.0        ## buoyancy, never decays
+
+## The dome the fire blooms into, in degrees of elevation off the ground plane.
+## Asymmetric on purpose — "pra baixo não muito por causa do chão" is expressed
+## as a shallow downward cone rather than as a damping factor, because elevation
+## is the axis the Director actually described. Up is generous: a fireball is a
+## rising thing, and nothing is in its way.
+var blast_burst_ember_up_deg: float = 72.0
+var blast_burst_ember_down_deg: float = 10.0
+
+## The isometric floor's own foreshortening — one horizontal unit of depth is
+## half a unit on screen. Ground movement is squashed by it; ALTITUDE is not.
+## Same 0.5 the burst's original spawn offset used, named now that two different
+## axes depend on it meaning different things.
+const BLAST_ISO_GROUND_SQUASH: float = 0.5
 var blast_burst_spark_count: int = 34
 var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)
 var blast_burst_dust_count: int = 7
@@ -1929,8 +1960,19 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	## fire BLUE (observed directly, first capture after the switch). The world is
 	## what gets blown out by the blast; the fire is the thing doing the blowing
 	## out, and it must not be inverted along with everything else.
+	##
+	## P-DARKFIRE (Director, 2026-08-09, after seeing the filmstrip) — **the
+	## paragraph above is deliberately overruled for the NEGATIVE layer only:**
+	## "o fogo precisa ser escuro no flash negativo." A negative frame that
+	## exempts the brightest thing on screen does not read as a negative frame.
+	## The overlay itself stays at +4 (so the WHITE frame still draws under the
+	## fire and does not erase it), and only the negative quad is lifted above
+	## ember (+5) and smoke (+6). If a future capture shows the fire reading BLUE
+	## rather than DARK, that is E-NATIVE-01's original objection resurfacing and
+	## it is a Director call, not a bug to quietly revert.
 	if _explosion_flash_overlay != null:
 		_explosion_flash_overlay.z_index = max_voxel_z_index + 4
+		_explosion_flash_overlay.set_negative_z_index(max_voxel_z_index + 7)
 	if _ember_overlay != null:
 		_ember_overlay.z_index = max_voxel_z_index + 5
 
@@ -1971,12 +2013,49 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 	if _ember_overlay != null:
 		## The core: a tight cluster of embers rather than one big glow, so it
 		## flickers and cools unevenly the way the per-voxel scorch already does.
+		##
+		## P-FIRE (Director, 2026-08-09): "o fogo está praticamente parado no
+		## lugar. A gente quer que ele comece menor, do tamanho da granada, bem
+		## em cima dela, e se expanda rapidamente, pra cima e em todas as
+		## direções em volta (pra baixo não muito por causa do chão), se
+		## dissipando para fora."
+		##
+		## So the cluster is no longer scattered across its final radius at
+		## t=0 — it is born grenade-sized and THROWN outward. Every ember starts
+		## inside `blast_burst_ember_start_radius_px` and carries a velocity;
+		## `blast_burst_ember_spread_px` stopped being a spawn radius and is now
+		## the reach the expansion aims for, which is the whole difference
+		## between a puff that appears and a fireball that blooms.
 		for i in range(blast_burst_ember_count):
-			var angle: float = TAU * float(i) / float(maxi(blast_burst_ember_count, 1))
-			var dist: float = randf_range(0.0, blast_burst_ember_spread_px)
-			var offset := Vector2(cos(angle) * dist, sin(angle) * dist * 0.5)
-			_ember_overlay.add_ember(world_pos + offset,
-				randf_range(blast_burst_ember_life_min, blast_burst_ember_life_max))
+			## Golden-angle stepping rather than i/count around a circle: at
+			## these counts an even sweep visibly reads as spokes once the
+			## embers start travelling outward along their own angle, because
+			## the eye follows the motion and the gaps become rays.
+			var ground_angle: float = float(i) * PI * (3.0 - sqrt(5.0))
+			## GROUND and ALTITUDE are different axes in an isometric view, and
+			## conflating them is what made the first pass at this spread
+			## sideways instead of blooming (real filmstrip, 2026-08-09): a
+			## single squashed 2D circle makes "up" merely the NORTH direction
+			## of the ground plane, at HALF the horizontal rate. Altitude is not
+			## north — it is straight up the screen, unsquashed. So each ember
+			## gets a direction around the ground plane AND an elevation:
+			##   ground → x full, y × 0.5 (the diamond's own foreshortening)
+			##   altitude → pure −y, no squash
+			## which is what "pra cima e em todas as direções em volta" asks for.
+			var elev: float = deg_to_rad(randf_range(
+				-blast_burst_ember_down_deg, blast_burst_ember_up_deg))
+			var ce: float = cos(elev)
+			var dir := Vector2(
+				cos(ground_angle) * ce,
+				sin(ground_angle) * ce * BLAST_ISO_GROUND_SQUASH - sin(elev))
+			var start := world_pos + dir * blast_burst_ember_start_radius_px
+			var speed: float = randf_range(blast_burst_ember_speed_min,
+				blast_burst_ember_speed_max)
+			_ember_overlay.add_ember(start,
+				randf_range(blast_burst_ember_life_min, blast_burst_ember_life_max),
+				dir.normalized() * speed,
+				blast_burst_ember_drag,
+				blast_burst_ember_rise_px_s)
 	if _smoke_spark_overlay != null:
 		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color)
 	if _debris_overlay != null:
@@ -2923,22 +3002,51 @@ func _capture_detonation_filmstrip() -> void:
 	## Let the camera settle and the fog reveal land BEFORE frame 0, so the
 	## strip opens on the scene the blast is about to change rather than on a
 	## camera still travelling.
-	for _s in range(20):
+	##
+	## 20 → 60: focus_on() eases rather than snapping, and 20 frames was enough
+	## only sometimes — one sheet opened on frame 0 still showing the agent's
+	## end of the map with the movement overlay up. A filmstrip whose first tile
+	## is a different place is worse than a slow one, and these frames are
+	## simulated (`--fixed-fps`), so the cost is capture time, never fidelity.
+	for _s in range(60):
 		await get_tree().process_frame
 
 	print("[P-FILM] capturing %d frames of one detonation at gu=%s" % [frame_count, gu])
-	_test_zone_controller.open_menu_for(tz_index)
-	_test_zone_controller.detonate_active()
 	## open_menu_for() is only here because detonate_active() reads the
-	## `_active_index` it sets — the real click route closes the menu through
-	## the button's own handler, which a direct call never reaches. Left open it
-	## parks "Detonate (Enter) / Cancel (Esc)" over the blast in EVERY tile of
-	## the sheet, right where the thing being analysed is.
+	## `_active_index` it sets — a direct call never reaches the button handler
+	## that normally closes the menu, and left open it parks "Detonate (Enter) /
+	## Cancel (Esc)" over the blast in EVERY tile of the sheet.
+	##
+	## Closed BEFORE detonating, matching DetonateContextMenu._on_action_pressed()'s
+	## own documented order ("close() must run first so the menu is already gone
+	## by the time the action's own visuals play"). close() emits only `closed`,
+	## never `cancelled`, so `_active_index` survives it — cancel_active() is what
+	## would clear it, and that is on the cancelled path.
+	_test_zone_controller.open_menu_for(tz_index)
 	if _context_menu != null:
 		_context_menu.close()
+	if _blast_wireframe_overlay != null:
+		_blast_wireframe_overlay.clear()   ## open_menu_for() draws the red preview
+	_test_zone_controller.detonate_active()
 
+	## `RenderingServer.frame_post_draw`, NOT `SceneTree.process_frame`.
+	##
+	## `process_frame` fires during idle processing, BEFORE the frame is drawn,
+	## so a grab there returns whatever was last presented — normally one frame
+	## behind, and arbitrarily further behind when the main thread has just
+	## blocked. That is exactly this sequence's situation: `detonate_active()`
+	## runs `build_plan()`, ~166 ms of synchronous work, and the first grab after
+	## it came back showing the pre-detonation scene from the other end of the
+	## map (observed on two real sheets).
+	##
+	## Discarding warm-up grabs did hide it, and was the wrong fix twice over:
+	## placed after the detonation it flushed the buffer using the blast's own
+	## opening frames and the sheet lost the head of beat 1, and placed before it
+	## the staleness came straight back, because the 166 ms block is what causes
+	## it. `frame_post_draw` fires after the draw actually completes, so every
+	## grab matches the frame it belongs to and no frames are spent.
 	for i in range(frame_count):
-		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
 		if img == null:
 			push_error("[P-FILM] null viewport image at frame %d" % i)

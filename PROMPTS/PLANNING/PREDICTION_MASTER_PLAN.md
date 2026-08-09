@@ -670,6 +670,73 @@ acontecendo durante os 4 frames do flash"* holds on the negative frames and is
 visually lost on the white ones. `strobe_white_alpha` (currently 1.0) is the
 one lever.
 
+### 8.4 P-DARKFIRE / P-FIRE — the fire inverts, and it blooms (2026-08-09)
+
+Two Director calls off the first filmstrip.
+
+**"O fogo precisa ser escuro no flash negativo."** Only the NEGATIVE quad is
+lifted above ember (+5) and smoke (+6), via `set_negative_z_index()`; the
+overlay itself stays at +4 so the WHITE frame still draws *under* the fire and
+does not erase it outright (§8.3's measurement is why that distinction
+matters). **This deliberately reverses E-NATIVE-01's ordering call**, which put
+the whole overlay below ember precisely so the flash would not invert the fire
+— recorded in both files so it is not "fixed" back by someone reading the older
+comment.
+
+**"O fogo está praticamente parado no lugar."** It was: `add_ember()` pinned a
+glow to one point, which is right for the thing the overlay was built for (a
+scorched voxel cooling) and wrong for a fireball. Embers now carry `velocity`,
+`drag` and `rise`, all trailing and defaulted to zero so the per-voxel scorch
+embers — which *should* stay pinned — are byte-for-byte unaffected. Drag is
+exponential (`v *= exp(-drag·dt)`), which is what "expands rapidly, then
+dissipates" actually is; `rise` is applied undecayed, because buoyancy does not
+run out of steam the way the blast impulse does.
+
+**The first attempt at the bloom was wrong and the filmstrip caught it.** The
+fire spread sideways and barely climbed, because I modelled the whole burst as
+one squashed 2D circle — which makes "up" merely the NORTH direction of the
+ground plane, at **half** the horizontal rate. Ground and altitude are
+different axes in an isometric view: ground is x-full/y-halved, altitude is
+pure −y with no squash. Each ember now gets a ground angle *and* an elevation,
+with the dome asymmetric (up to 72°, down only 10°) — which is what *"pra cima
+e em todas as direções em volta, pra baixo não muito por causa do chão"*
+describes, expressed as the axis the Director actually named rather than as a
+damping factor.
+
+**Still open for the Director's eye:** on the negative frames the fire reads
+**dark navy**, not neutral dark — the inverse of orange is blue, which is
+exactly E-NATIVE-01's original objection resurfacing now that the ordering is
+reversed. It is dark, which is what was asked; whether the blue is wanted is a
+look call.
+
+### 8.5 The filmstrip's own stale-frame bug — three attempts, one real fix
+
+Worth recording because two of the three attempts *appeared* to work.
+
+The first grab of each sheet came back showing the pre-detonation scene from
+the other end of the map. Ruled out in order:
+
+1. **"The camera is still travelling."** Raising the settle loop 20 → 60 frames
+   changed nothing, and `CameraController.focus_on()` turned out to be
+   `_camera.position = world_pos` — an instant assignment, no tween. The camera
+   was on the blast sixty frames before frame 0.
+2. **Discarded warm-up grabs, placed after the detonation.** Fixed frame 0 —
+   and silently ate the head of beat 1, so a sheet that should have opened on
+   three fire-only frames opened on the third.
+3. **The same warm-up grabs, placed before the detonation.** The staleness came
+   straight back, which is what identified the real cause: `detonate_active()`
+   runs `build_plan()`, ~166 ms of synchronous main-thread work, and the grab
+   after it returns whatever was last presented.
+
+**The fix is `await RenderingServer.frame_post_draw` instead of
+`SceneTree.process_frame`.** `process_frame` fires during idle processing,
+*before* the frame is drawn; `frame_post_draw` fires after the draw completes,
+so every grab matches its own frame and no frames are spent on warm-ups. The
+generic lesson for any future capture rig in this project: **grab on
+`frame_post_draw`, never on `process_frame`** — the bug only becomes visible
+when something blocks the main thread, so a rig that looks correct today will
+start lying the moment it is pointed at expensive work.
+
 ---
 
 ## 9. Explicitly out of scope

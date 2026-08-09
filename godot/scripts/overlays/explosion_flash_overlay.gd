@@ -98,6 +98,32 @@ var _negative_layer: Node2D = null
 var _negative_material: ShaderMaterial = null
 
 
+## P-DARKFIRE (Director, 2026-08-09): "o fogo precisa ser escuro no flash
+## negativo." This **deliberately reverses E-NATIVE-01's ordering call** — do not
+## "fix" it back without asking.
+##
+## E-NATIVE-01 put this whole overlay BELOW ember/smoke because a negative flash
+## drawn on top turned the blast's own warm embers blue, and the reasoning was
+## "the world is what gets blown out; the fire is the thing doing the blowing
+## out." The Director has now looked at it on the filmstrip and wants the
+## opposite: the fire goes dark with everything else, because a negative frame
+## that exempts the brightest thing on screen does not read as a negative frame.
+##
+## Only the NEGATIVE layer is raised, not the whole overlay. The WHITE frame
+## keeps drawing below ember/smoke, so the fire still reads through it —
+## measured 2026-08-09, a white frame already compresses the image into the top
+## 16% of the brightness range, and putting it above the fire too would erase
+## the "o fogo permanece acontecendo durante os 4 frames" the Director asked
+## for outright.
+##
+## Absolute, not relative: as a child of this node, `_negative_layer` would
+## otherwise inherit the parent's z and could never sort above it.
+func set_negative_z_index(z: int) -> void:
+	if _negative_layer != null:
+		_negative_layer.z_as_relative = false
+		_negative_layer.z_index = z
+
+
 func _ready() -> void:
 	## Built unconditionally but drawn only in NEGATIVE mode, so flipping
 	## `flash_mode` at runtime needs no re-setup.

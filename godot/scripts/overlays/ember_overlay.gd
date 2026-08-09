@@ -83,7 +83,28 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 ## duration <= 0 rolls a random one in [min_glow_duration, max_glow_duration],
 ## then applies the height bias below; a caller-supplied duration is used as
 ## the pre-bias base instead (still height-biased, never randomized further).
-func add_ember(world_pos: Vector2, duration: float = -1.0) -> void:
+## P-FIRE (Director, 2026-08-09): "o fogo está praticamente parado no lugar."
+## It was — an ember has always been a glow pinned to one point, which is right
+## for the thing this overlay was built for (a scorched voxel cooling down) and
+## wrong for a fireball.
+##
+## `velocity` and `drag` are trailing and default to zero, so every existing
+## caller — the per-voxel scorch embers, which SHOULD stay pinned to their
+## voxel — is byte-for-byte unaffected. Only Room.spawn_blast_burst() passes
+## them.
+##
+## `drag` is an exponential decay on the velocity, not a linear one: an
+## explosion throws its fire out hard and then it coasts to a stop, which is
+## exactly `v *= exp(-drag·dt)`. A linear damp would make the expansion end
+## abruptly at a fixed time instead of easing out of it.
+##
+## `rise` is separate from `velocity` and is applied as a constant, undecayed
+## upward drift — buoyancy does not run out of steam the way the blast impulse
+## does, so folding it into the velocity (and letting drag eat it) would make
+## the fire stop climbing right when a real one keeps going.
+func add_ember(world_pos: Vector2, duration: float = -1.0,
+		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
+		rise: float = 0.0) -> void:
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
 	var final_duration: float = base_duration * _height_bias(world_pos.y)
 	var color := Color.from_hsv(
@@ -93,6 +114,9 @@ func add_ember(world_pos: Vector2, duration: float = -1.0) -> void:
 		1.0)
 	_embers.append({
 		"pos": world_pos,
+		"vel": velocity,
+		"drag": drag,
+		"rise": rise,
 		"elapsed": 0.0,
 		"duration": final_duration,
 		"color": color,
@@ -131,6 +155,15 @@ func _process(delta: float) -> void:
 	var alive: Array = []
 	for e in _embers:
 		e["elapsed"] += delta
+		## P-FIRE: a still ember costs one dictionary read and nothing else —
+		## the pinned per-voxel scorch embers never enter this branch.
+		var vel: Vector2 = e.get("vel", Vector2.ZERO)
+		var rise: float = float(e.get("rise", 0.0))
+		if vel != Vector2.ZERO or rise != 0.0:
+			e["pos"] = e["pos"] + vel * delta + Vector2(0.0, -rise) * delta
+			var drag: float = float(e.get("drag", 0.0))
+			if drag > 0.0:
+				e["vel"] = vel * exp(-drag * delta)
 		if e["elapsed"] < e["duration"]:
 			alive.append(e)
 		elif _smoke_overlay != null:

@@ -260,7 +260,7 @@ func enter_targeting_mode(index: int) -> void:
 	## Each ring is roughly 1 GU distance; 1 GU ≈ 112 pixels horizontally
 	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
 	var throw_range: float = float(max_ring) * 112.0  ## pixel radius
-	var agent_pos: Vector2 = room.agent._cell_to_world(room.agent.grid_pos)
+	var agent_pos: Vector2 = room.agent.position
 	if room._throw_perimeter_overlay != null:
 		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range)
 	if room._aim_bubble_overlay != null:

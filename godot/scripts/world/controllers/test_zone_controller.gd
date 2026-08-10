@@ -461,16 +461,26 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	for _i in range(maxi(burst_lead_frames - cook_frames, 0)):
 		await room.get_tree().process_frame
 
-	## Beat 2 — the strobe. One held frame each, caller-paced.
+	## Beat 2 — E-SHARD: camera-facing shard that becomes the negative flash.
+	## Replaces STROBE_SEQUENCE entirely (WHITE frames never used anymore).
+	## One frame leaving the grenade (small, black) → 2 frames growing/desaturating
+	## toward grey → holds at full negative (1.0) for 1 frame → 3 frames fade
+	## to normal (1.0 → 0.0).
 	var flash_overlay = room._explosion_flash_overlay
 	if flash_overlay != null:
-		## Dev capture toggle, same seam/precedent as INFILTRAITOR_ENABLE_STAMP_SOOT.
-		## Now means "make every strobe frame white" rather than picking one of
-		## two looks, since the shipped strobe uses BOTH.
-		var all_white: bool = OS.get_environment("INFILTRAITOR_WHITE_FLASH") == "1"
-		for mode in STROBE_SEQUENCE:
-			flash_overlay.hold_frame(
-				ExplosionFlashOverlay.FlashMode.WHITE if all_white else mode)
+		## Shard frames 1-3: growing approach (strobe animates 0 → 1)
+		for i in range(3):
+			flash_overlay.strobe_negative_amount = float(i + 1) / 3.0
+			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+			await room.get_tree().process_frame
+		## Peak frame: full negative
+		flash_overlay.strobe_negative_amount = 1.0
+		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+		await room.get_tree().process_frame
+		## Shard frames 5-7: fading out (strobe animates 1.0 → 0)
+		for i in range(3):
+			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
+			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			await room.get_tree().process_frame
 		flash_overlay.clear()
 

@@ -478,6 +478,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	if room._debug_ray_overlay != null:
 		room._debug_ray_overlay.show_debug_rays(anchor, waves, room._voxel_renderer)
 
+	## E-FRAG: shrapnel from affected cells
+	if room._shrapnel_overlay != null:
+		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
+
 	## Beat 3 — destruction, clean.
 	_start_waves(waves)
 

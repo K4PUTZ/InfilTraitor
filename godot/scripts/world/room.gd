@@ -2755,6 +2755,36 @@ func _tile_to_screen_center(cell: Vector2i) -> Vector2:
 	return get_viewport().get_canvas_transform() * global_pos
 
 
+## T-BUBBLE: Convert screen position to world position and update bubble
+func _screen_to_world(screen_pos: Vector2) -> Vector2:
+	var ct: Transform2D = get_viewport().get_canvas_transform()
+	var global_pos: Vector2 = ct.affine_inverse() * screen_pos
+	return floor_layer.to_local(global_pos)
+
+
+## T-BUBBLE: Update aim bubble position during targeting, clamped to throw range
+func _update_bubble_for_targeting(screen_pos: Vector2) -> void:
+	if _aim_bubble_overlay == null:
+		return
+
+	var world_pos: Vector2 = _screen_to_world(screen_pos)
+	var agent_pos: Vector2 = agent.position
+	var to_cursor: Vector2 = world_pos - agent_pos
+	var dist_to_cursor: float = to_cursor.length()
+
+	var throw_range: float = _test_zone_controller.get_targeting_throw_range()
+	var clamped_pos: Vector2 = agent_pos
+
+	if dist_to_cursor > throw_range:
+		## Clamp to edge of throw range circle
+		if dist_to_cursor > 0.001:
+			clamped_pos += to_cursor.normalized() * throw_range
+	else:
+		clamped_pos = world_pos
+
+	_aim_bubble_overlay.update_position(clamped_pos)
+
+
 ## OCC-FIX-01 — B6 loud-fail: geometry in, geometry out.
 ##
 ## This lives in the CALLER, not inside build_from_layout(), and that placement is the
@@ -2948,11 +2978,11 @@ func _input(event: InputEvent) -> void:
 		if new_hover != _hovered_cell:
 			## OCC-HOVER-01: Cache previous hover to detect reachability zone changes
 			var old_hover := _hovered_cell
-			var old_reachable := (old_hover != INVALID_CELL and old_hover != agent.cell 
+			var old_reachable := (old_hover != INVALID_CELL and old_hover != agent.cell
 				and movement_overlay != null and movement_overlay.is_reachable(old_hover))
-			
+
 			_hovered_cell = new_hover
-			
+
 			## Recompute occlusion if hover moved in/out of reachable zone
 			var new_reachable := (_hovered_cell != INVALID_CELL and _hovered_cell != agent.cell
 				and movement_overlay != null and movement_overlay.is_reachable(_hovered_cell))
@@ -2962,11 +2992,11 @@ func _input(event: InputEvent) -> void:
 				## Both old and new are reachable, but different cells — recompute to
 				## update preview. Only when inside reachable zone to avoid spam.
 				_recompute_occlusion()
-			
+
 			if _vision_controller.dev_vision:
 				_update_dev_hover_label()
 			_update_movement_highlight()
-			
+
 			## UI-01: Update selection and path preview on hover
 			if _is_selectable_cell(_hovered_cell):
 				_selected_cell = _hovered_cell
@@ -2977,6 +3007,10 @@ func _input(event: InputEvent) -> void:
 				_selected_cell = agent.cell
 				selection_overlay.set_selected(agent.cell)
 				path_preview.clear_path()
+
+		## T-BUBBLE: Update aim bubble position during targeting mode
+		if _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode():
+			_update_bubble_for_targeting(mm.position)
 
 
 ## Left mouse: only runs when no GUI Control consumed the event first.

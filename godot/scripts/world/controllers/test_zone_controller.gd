@@ -279,6 +279,22 @@ func cancel_targeting() -> void:
 		room._aim_bubble_overlay.clear()
 
 
+## T-BUBBLE: Check if currently in targeting mode
+func is_in_targeting_mode() -> bool:
+	return _targeting_mode
+
+
+## T-BUBBLE: Get throw range for current targeting grenade
+func get_targeting_throw_range() -> float:
+	if not _targeting_mode or _targeting_grenade_index < 0:
+		return 0.0
+	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if bomb_def == null:
+		return 0.0
+	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
+	return float(max_ring) * 112.0
+
+
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real
 ## trigger, reconnected — disconnected 2026-08-05 (commit `d412480`) while the
 ## destruction visual system was rebuilt from scratch (the prior patch-on-

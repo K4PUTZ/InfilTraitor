@@ -139,6 +139,16 @@ capture (a real windowed Godot boot):
   being used to judge.
 - When a capture exists for a claim, point at the actual file instead of
   describing what the code should produce.
+- **A pixel-diff gate has to be EARNED before it means anything.** Prove the
+  harness is deterministic first, by diffing two runs of the *same* code — a
+  0-pixel claim from a non-deterministic capture is noise wearing a number.
+  Measured 2026-08-09: at the default 45-frame detonation wait under
+  `--fixed-fps 60`, two identical runs differed by **36 733 pixels** (45 fixed
+  frames is 0.75 s, well inside the fire/smoke lifetimes, and
+  `spawn_blast_burst()` places embers with `randf_range()`). At
+  `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400` they differ by **0**. Capture
+  the "before" side by stashing the change and re-running, so both sides come
+  from the same binary and the same map.
 - **A cited `auto_*.png` will eventually stop existing.** The rotation keeps the
   50 most recent `auto_`-prefixed files and never touches anything else, so a
   citation in a master plan decays the moment 50 more captures land — measured

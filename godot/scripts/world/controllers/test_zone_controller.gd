@@ -31,6 +31,10 @@ var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
 
+## T-MODE: targeting mode active (grenade selected, waiting for target)
+var _targeting_mode: bool = false
+var _targeting_grenade_index: int = -1
+
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE) — keeps the in-flight
 ## DetonationChoreographer (a RefCounted, not a Node) alive for its whole
 ## ~600ms wave sequence. `detonate_active()`'s own local variable is not
@@ -236,6 +240,40 @@ func open_menu_for(index: int) -> void:
 	## by the time "Detonate" is pressed the Delta is normally already finished and
 	## the blast starts on the very next frame, with nothing to freeze.
 	_begin_preproduction(g["gu_cell"])
+
+
+## T-MODE (Phase B): enter targeting mode for grenade.
+## Shows perimeter and bubble; waits for player to select a target GU.
+func enter_targeting_mode(index: int) -> void:
+	if index < 0 or index >= _grenades.size():
+		return
+	_targeting_grenade_index = index
+	_targeting_mode = true
+	var g: Dictionary = _grenades[index]
+	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if bomb_def == null:
+		_targeting_mode = false
+		return
+
+	## Show throw range perimeter and aim bubble
+	var throw_range: float = float(bomb_def.get("destroy_ring_radius", 512.0))
+	var agent_pos: Vector2 = room.agent._cell_to_world(room.agent.grid_pos)
+	if room._throw_perimeter_overlay != null:
+		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range)
+	if room._aim_bubble_overlay != null:
+		room._aim_bubble_overlay.show_bubble(agent_pos, throw_range)
+
+
+## Cancel targeting mode
+func cancel_targeting() -> void:
+	if not _targeting_mode:
+		return
+	_targeting_mode = false
+	_targeting_grenade_index = -1
+	if room._throw_perimeter_overlay != null:
+		room._throw_perimeter_overlay.clear()
+	if room._aim_bubble_overlay != null:
+		room._aim_bubble_overlay.clear()
 
 
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real

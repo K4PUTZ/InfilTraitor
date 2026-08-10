@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.95 · **Updated:** 2026-08-10 · **Branch:** main
+**Version:** 0.9.96 · **Updated:** 2026-08-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -66,6 +66,7 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 47af86c ALPHA BUBBLE FOUNDATION 0.9.96 - Phase B targeting UI, elliptical throw perimeter, smart bubble clamping, parabolic arc, Enter/ESC throw control
 - cced231 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 - 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 - 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
@@ -534,19 +535,27 @@ the blast from "the waves fire" to something that reads right. Full record:
   enough — fixed with an explicit owner reference. Commit `98e9772`.
 - **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
   event, never an access route.
-- **What's still open:** Phase B (targeting UI, throw arc/bubble, explosion
-  flash frames) is not started — the Director chose to prove Phase A's 15
-  waves with real captures first. The decal-bake formalization that blocked
-  Task 6 is **done — D34, 2026-08-08** (see the D34 bullet below), and Task 6's
-  own tuning pass ran on 2026-08-08/09 (0.9.93) and 2026-08-09 (0.9.94).
-  **Phase B is now UNBLOCKED and is the next real work** — its hover/throw flow
-  plugs straight into `PredictionCache.request()`, with
-  `TestZoneController._begin_preproduction()` as the working reference. Ahead of
-  it sits the Director's fine-tuning pass on the fluidity, deferred on purpose at
-  0.9.94's close; every lever is a `var` and the surface is listed in the master
-  plan's §11. **One rule Phase B must not break:** any new committed mutation
-  calls `room.bump_world_revision()`, or cached predictions go stale. Blast debris VFX (dust/spark/chip) was
-  deliberately disconnected in Task 5 (would have doubled up with the new
+- **Phase B "Alpha Bubble Foundation" (2026-08-10)** — targeting UI, throw
+  arc, bubble, and throw animation fully integrated. Full record:
+  [`RESUMO_SESSAO_2026-08-10_GRENADE_TARGETING_FOUNDATION.md`](../../PROMPTS/DONE/RESUMO_SESSAO_2026-08-10_GRENADE_TARGETING_FOUNDATION.md).
+  - **T-MODE:** G key enters grenade targeting mode. Red elliptical perimeter
+    (respects isometric 2:1) shows throw range (~3× original). Removed right-click
+    grenade interact in favour of keyboard.
+  - **T-BUBBLE:** Blue aim bubble marks explosion impact point. Positioned at hover
+    cell, defaults to 3 GUs forward. Smart clamping: if user hovers beyond
+    throw_range, bubble snaps to closest valid GU within range.
+  - **T-ARC:** Yellow parabolic arc from agent hand to bubble target. Updates
+    live as user moves cursor. Arc respects clamping — never reaches beyond
+    perimeter.
+  - **Enter/ESC:** Enter throws grenade (animates 0.6s parabolic trajectory,
+    waits 1s+ for prediction cache, then detonates). ESC cancels targeting mode.
+  - **Perimeter is elliptical:** X-radius = throw_range, Y-radius = throw_range/2
+    (isometric 2:1 aspect ratio). Larger than original for better visibility.
+  - **What's still open:** fine-tuning animation easing, bounce on landing,
+    audio/feedback, and throw timing. The mechanism is solid and ready for polish.
+    **One rule Phase B must not break:** any new committed mutation
+    calls `room.bump_world_revision()`, or cached predictions go stale. Blast debris VFX (dust/spark/chip) was
+    deliberately disconnected in Task 5 (would have doubled up with the new
   staged smoke waves) — flagged for a future task, not silently dropped.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently
   unreachable to test since camera rotation is disabled (ROTATE-KILL-01);

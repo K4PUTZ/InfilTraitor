@@ -474,6 +474,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			await room.get_tree().process_frame
 		flash_overlay.clear()
 
+	## E-DEBUG-RAY: show debug rays to all affected voxels before destruction
+	if room._debug_ray_overlay != null:
+		room._debug_ray_overlay.show_debug_rays(anchor, waves, room._voxel_renderer)
+
 	## Beat 3 — destruction, clean.
 	_start_waves(waves)
 

@@ -1,5 +1,6 @@
-## P-PURE / P-DELTA — prediction purity selftest (PREDICTION_MASTER_PLAN
-## Tasks 2 and 3, 2026-08-09).
+## Prediction-layer selftest (PREDICTION_MASTER_PLAN Tasks 2-6, 2026-08-09).
+## Purity and determinism (P-PURE, P-DELTA), frame-slicing and cancellation
+## (P-SLICE), and the cache's sweep/invalidation behaviour (P-CACHE).
 ## Rodar: python3 tools/persistent/run_selftests.py --only blast_purity
 ##
 ## This is the test §11.4 calls "the test that makes the whole plan safe": it
@@ -53,6 +54,9 @@ const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruct
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
 const WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")
 
+## §4.4's proposed per-frame slice budget: "4 ms, ~a quarter of a 60 fps frame".
+const BUDGET_MS: float = 4.0
+
 var passed: int = 0
 var failed: int = 0
 
@@ -69,7 +73,7 @@ class MinimalRoom extends Node:
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("P-PURE — BLAST CALCULATOR PURITY SELFTEST")
+	print("P-PURE / P-DELTA / P-SLICE / P-CACHE — PREDICTION LAYER SELFTEST")
 	print("=".repeat(70) + "\n")
 
 	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -98,6 +102,10 @@ func _init() -> void:
 			test_2_simulate_is_deterministic(delta_a,
 				DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx))
 			test_3_the_delta_is_not_empty_on_the_real_map(delta_a)
+			test_5_sliced_build_matches_one_shot(delta_a, bomb_def, source_gu, ctx)
+			test_6_cancellation_leaves_nothing_behind(
+				bomb_def, source_gu, ctx, edge_registry, slab_registry)
+			test_7_cursor_sweep_and_invalidation(bomb_def, ctx, _sweep_gus(built))
 			## Mutating — must be last. Everything above assumes an untouched world.
 			test_4_commit_realises_the_delta(delta_a, edge_registry, slab_registry)
 
@@ -108,10 +116,10 @@ func _init() -> void:
 	print("=".repeat(70) + "\n")
 
 	if failed == 0:
-		print("✓ BLAST PURITY SELFTEST PASS\n")
+		print("✓ PREDICTION LAYER SELFTEST PASS\n")
 		quit(0)
 	else:
-		print("✗ BLAST PURITY SELFTEST FAILED\n")
+		print("✗ PREDICTION LAYER SELFTEST FAILED\n")
 		quit(1)
 
 
@@ -304,6 +312,211 @@ func test_4_commit_realises_the_delta(wd: WorldDelta, edge_registry, slab_regist
 		_fail("%d voxel(s) outside the Delta were dirtied by the commit" % unnamed_dirty)
 
 
+## §4.4's budget gate, and the equivalence claim that makes slicing safe at all.
+##
+## Two separate things are asserted here and they are easy to conflate:
+##
+##  1. **A sliced build produces the SAME Delta as a one-shot build.** This is
+##     the one that would sink P-SLICE if it failed — a pipeline that answers
+##     differently depending on how it was paced is not a pipeline, it is two.
+##     Entry-for-entry, in order, all five payload fields.
+##  2. **What the budget actually bought.** `step(4ms)` is best-effort: the
+##     builder honours a deadline between chunks and two phases cannot be
+##     suspended at all. So the worst observed step is PRINTED with the phase
+##     that caused it, rather than asserted against 4 ms — the number is the
+##     finding, and §8.8 is where it is interpreted.
+##
+## The assertion that IS made about pacing is the weaker, true one: the build
+## takes many steps rather than secretly running to completion on the first.
+func test_5_sliced_build_matches_one_shot(one_shot: WorldDelta, bomb_def,
+		source_gu: Vector2i, ctx: Dictionary) -> void:
+	print("[5] P-SLICE — a frame-sliced build returns the same Delta as a one-shot one\n")
+	var job := DetonationPrediction.new()
+	job.begin(bomb_def, source_gu, ctx)
+	var guard: int = 0
+	while not job.step(BUDGET_MS):
+		guard += 1
+		if guard > 100000:
+			_fail("sliced build did not terminate after 100000 steps")
+			return
+
+	if job.steps > 1:
+		_pass("%d steps at a %.1f ms budget — the build really did suspend and resume"
+			% [job.steps, BUDGET_MS])
+	else:
+		_fail("the build finished in one step — nothing was sliced")
+
+	var a: Array = one_shot.damage
+	var b: Array = job.delta.damage
+	if a.size() != b.size():
+		_fail("sliced Delta has %d entries, one-shot has %d" % [b.size(), a.size()])
+		return
+	var mismatches: int = 0
+	for i in range(a.size()):
+		var ea: Dictionary = a[i]
+		var eb: Dictionary = b[i]
+		if ea["voxel"] != eb["voxel"] or ea["state"] != eb["state"] \
+				or ea["from_blast"] != eb["from_blast"] \
+				or ea["carved_side"] != eb["carved_side"] \
+				or ea["variant"] != eb["variant"] \
+				or ea["substrate"] != eb["substrate"]:
+			mismatches += 1
+	if mismatches == 0:
+		_pass("%d damage entries identical to the one-shot build, in order" % b.size())
+	else:
+		_fail("%d sliced entr(ies) differ from the one-shot build" % mismatches)
+
+	var wa: int = _wave_entry_count(one_shot)
+	var wb: int = _wave_entry_count(job.delta)
+	if wa == wb and one_shot.census == job.delta.census \
+			and one_shot.touched.size() == job.delta.touched.size():
+		_pass("waves (%d), census and touched all match the one-shot build" % wb)
+	else:
+		_fail("sliced output diverges — waves %d vs %d, touched %d vs %d"
+			% [wb, wa, job.delta.touched.size(), one_shot.touched.size()])
+
+	print("      budget %.1f ms · %d steps · worst step %.1f ms in phase %s"
+		% [BUDGET_MS, job.steps, job.worst_step_ms, job.worst_step_phase])
+
+
+## "Cancellation proven to leave zero state behind" — Task 4's own gate, and the
+## property §3.2 rejected snapshot/restore in order to get.
+##
+## Cancels at the first step that carries the build past half way — which lands
+## on whatever phase that happens to be, not on a convenient boundary — and
+## re-snapshots all 7 mutable fields of every voxel. There is nothing to roll
+## back, so the only way this can fail is if some phase had started writing to
+## the world. The phase it stopped in is printed rather than asserted, because
+## pinning it would pin the phase COSTS, which are a tuning surface.
+func test_6_cancellation_leaves_nothing_behind(bomb_def, source_gu: Vector2i,
+		ctx: Dictionary, edge_registry, slab_registry) -> void:
+	print("[6] P-SLICE — cancelling a half-built prediction leaves the world untouched\n")
+	var before := _snapshot_world(edge_registry, slab_registry)
+	var job := DetonationPrediction.new()
+	job.begin(bomb_def, source_gu, ctx)
+	var guard: int = 0
+	while job.progress() < 0.5 and not job.step(BUDGET_MS):
+		guard += 1
+		if guard > 100000:
+			break
+	var stopped_at: String = job.phase_name()
+	var stopped_progress: float = job.progress()
+	job.cancel()
+	var after := _snapshot_world(edge_registry, slab_registry)
+
+	print("      cancelled in phase %s at %.0f%% after %d step(s)"
+		% [stopped_at, stopped_progress * 100.0, job.steps])
+	if stopped_progress >= 1.0:
+		_fail("the build finished before it could be cancelled — nothing was tested")
+		return
+
+	var vb: Dictionary = before["voxels"]
+	var va: Dictionary = after["voxels"]
+	var changed: int = 0
+	for key in vb:
+		if vb[key] != va.get(key, []):
+			changed += 1
+	var dirty_changed: int = 0
+	for cid in before["dirty"]:
+		if int(before["dirty"][cid]) != int(after["dirty"].get(cid, -1)):
+			dirty_changed += 1
+	if changed == 0 and dirty_changed == 0:
+		_pass("%d voxel(s) x 7 fields and %d dirty_count(s) unchanged by the abandoned build"
+			% [vb.size(), before["dirty"].size()])
+	else:
+		_fail("cancellation left state behind — %d voxel(s), %d dirty_count(s)"
+			% [changed, dirty_changed])
+	if job.is_cancelled() and job.delta == null and job.phase_name() == "CANCELLED":
+		_pass("the job reports itself cancelled and hands out no partial Delta")
+	else:
+		_fail("cancelled job is in an inconsistent state (delta %s, phase %s)"
+			% [job.delta, job.phase_name()])
+
+
+## Task 5's gate: "a scripted 10-GU cursor sweep — measured hit rate on
+## return-to-a-previous-GU, and a proof that every committed mutation
+## invalidates."
+##
+## The sweep is the workload §5.1 sizes the cache for, and the SECOND pass over
+## the same GUs is the whole point: a player comparing targets comes back, and
+## coming back has to be free.
+##
+## Note the deliberate asymmetry with §4.2: a superseded IN-FLIGHT prediction is
+## cancelled and dropped, while a FINISHED one is kept. So a sweep that lets each
+## GU finish fills the cache, and a sweep that keeps moving fills nothing — both
+## are correct, and the test drives the first because that is what a player
+## pausing on each target actually produces.
+func test_7_cursor_sweep_and_invalidation(bomb_def, ctx: Dictionary, gus: Array) -> void:
+	print("[7] P-CACHE — a cursor sweep pays once per GU, and a mutation drops everything\n")
+	if gus.size() < 3:
+		_fail("need at least 3 distinct GUs to sweep; the scaffold offered %d" % gus.size())
+		return
+	var cache := PredictionCache.new()
+	var revision: int = 1
+
+	for gu in gus:
+		var sig := PredictionCache.blast_signature("frag_grenade", gu, "NORTH")
+		cache.request(sig, revision, bomb_def, gu, ctx)
+		while cache.is_busy():
+			cache.pump(BUDGET_MS)
+	var first_pass_misses: int = cache.misses
+	var first_pass_hits: int = cache.hits
+
+	## The comparison — back over the same targets, nothing changed in between.
+	for gu in gus:
+		var sig := PredictionCache.blast_signature("frag_grenade", gu, "NORTH")
+		var d := cache.peek(sig, revision)
+		if d == null:
+			cache.request(sig, revision, bomb_def, gu, ctx)
+			while cache.is_busy():
+				cache.pump(BUDGET_MS)
+	var return_misses: int = cache.misses - first_pass_misses
+	print("      sweep of %d GU(s): %d miss(es) / %d hit(s) outbound, %d miss(es) on the way back"
+		% [gus.size(), first_pass_misses, first_pass_hits, return_misses])
+	if first_pass_misses == gus.size() and return_misses == 0:
+		_pass("every GU cost exactly one build; the return pass was free (%d/%d cached)"
+			% [gus.size(), gus.size()])
+	else:
+		_fail("expected %d outbound misses and 0 on return, got %d and %d"
+			% [gus.size(), first_pass_misses, return_misses])
+
+	## §5.3's LRU bound, exercised rather than asserted from the constant.
+	if cache.size() <= cache.max_entries:
+		_pass("cache holds %d entr(ies), within the %d bound (evictions: %d)"
+			% [cache.size(), cache.max_entries, cache.evictions])
+	else:
+		_fail("cache overflowed its bound: %d > %d" % [cache.size(), cache.max_entries])
+
+	## §5.2's invalidation, which is the half that makes a stale prediction
+	## impossible rather than merely unlikely.
+	var probe := PredictionCache.blast_signature("frag_grenade", gus[0], "NORTH")
+	if cache.peek(probe, revision) == null:
+		_fail("the probe GU was not cached before the mutation — nothing to invalidate")
+		return
+	revision += 1   ## what room.bump_world_revision() does after a commit
+	if cache.peek(probe, revision) == null:
+		_pass("a bumped world revision makes every cached Delta unreachable")
+	else:
+		_fail("a cached Delta survived a world-revision bump — stale predictions are possible")
+	## And the old revision must not resurrect it either: request() re-syncs and
+	## drops the lot, so asking again is a genuine miss rather than a stale hit.
+	var before_misses: int = cache.misses
+	cache.request(probe, revision, bomb_def, gus[0], ctx)
+	if cache.misses == before_misses + 1:
+		_pass("re-asking after the bump rebuilds rather than serving the stale entry")
+	else:
+		_fail("re-asking after the bump did not count as a miss")
+	cache.invalidate()
+
+
+func _wave_entry_count(d: WorldDelta) -> int:
+	var n: int = 0
+	for kind in d.waves:
+		for ring in d.waves[kind]:
+			n += (d.waves[kind][ring] as Array).size()
+	return n
+
+
 ## ---------------------------------------------------------------------------
 ## Scaffold — mirrors detonation_choreographer_selftest.gd's own, deliberately
 ## as an independent copy (same precedent that file records: a selftest must run
@@ -387,6 +600,21 @@ func _build_ctx(built: Dictionary) -> Dictionary:
 		"blocked_edges": blocked_edges,
 		"blocked_cells": builder.get_blocked_cells(),
 	}
+
+
+## A handful of distinct GUs that actually carry geometry — the scripted stand-in
+## for a player sweeping a cursor across candidate targets.
+func _sweep_gus(built: Dictionary) -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for slice in (built["room"]._edge_registry as EdgeRegistry).all_slices():
+		if seen.has(slice.gu_cell):
+			continue
+		seen[slice.gu_cell] = true
+		out.append(slice.gu_cell)
+		if out.size() >= 5:
+			break
+	return out
 
 
 func _pick_source_gu(built: Dictionary) -> Vector2i:

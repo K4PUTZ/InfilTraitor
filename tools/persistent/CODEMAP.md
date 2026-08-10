@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**193 scripts · 50171 lines total** (under `godot/scripts/`)
+**195 scripts · 51325 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -1583,7 +1583,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 787 lines
+`class_name DetonationPlanBuilder` · 1168 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1598,6 +1598,19 @@ extends `Node2D` · 43 lines
 - `CRATER_MAX_FACTOR` = `0.40`
 - `CRATER_CORE_FACTOR` = `0.30`
 - `SMOKE_BLOBS_PER_VOXEL` = `1`
+- `PHASE_SETUP` = `0`
+- `PHASE_SLICES` = `1`
+- `PHASE_ROOFS` = `2`
+- `PHASE_FLOORS` = `3`
+- `PHASE_WALK` = `4`
+- `PHASE_SOOT` = `5`
+- `PHASE_LIGHT` = `6`
+- `PHASE_PACKAGE` = `7`
+- `PHASE_EXPOSE` = `8`
+- `PHASE_SOOTWAVE` = `9`
+- `PHASE_SMOKE` = `10`
+- `PHASE_DONE` = `11`
+- `PHASE_NAMES` = `[ "SETUP", "SLICES", "ROOFS", "FLOORS", "WALK", "SOOT", "LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE", ]`
 
 ---
 
@@ -2065,6 +2078,67 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `detonation_prediction.gd`
+
+`class_name DetonationPrediction` · extends `RefCounted` · 143 lines
+
+`godot/scripts/systems/prediction/detonation_prediction.gd`
+
+> DetonationPrediction — PREDICTION_MASTER_PLAN §4, Task 4 (P-SLICE), 2026-08-09. One detonation being computed, as an object you can hold, advance a few milliseconds at a time, ask about, and throw away. `DetonationPlanBuilder` owns the pipeline and its phases; this owns the *handle*. The split matters for §5: a cache stores predictions, and a cache entry that is a bare `Dictionary` of pipeline internals would leak that pipeline into every consumer. ## Cancellation is free, and that is the entire payoff of Tasks 2 and 3 `cancel()` drops the state. There is no rollback, no restore set, nothing to undo — because nothing was done. Every phase writes only into the Delta and the build's own scratch dictionaries, so an abandoned prediction leaves the world byte-identical to how it found it. That property is asserted, not assumed: `blast_purity_selftest.gd` cancels a half-finished build mid-phase and snapshots all 7 mutable fields of all ~100 000 voxels either side. §3.2 rejected snapshot/restore partly on this: a restore-based design would have to enumerate its undo set perfectly on every cancellation, and a player sweeping a cursor across ten GUs cancels nine times. ## Best-effort budgets `step()` honours its budget BETWEEN chunks, never inside one, and two phases (SOOT, LIGHT) cannot be suspended at all — see `DetonationPlanBuilder`'s phase table and §8.8's measurements. A caller must treat the budget as a target, not a guarantee, and `worst_step_ms` is here so it can find out what it actually got instead of trusting the number it asked for.
+
+**Constants / tuning**
+- `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
+
+**Public vars**
+- `var delta: WorldDelta = null`
+- `var signature: String = ""`
+- `var steps: int = 0`
+- `var worst_step_ms: float = 0.0`
+- `var worst_step_phase: String = ""`
+
+**Public API**
+- `func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:`
+- `func step(budget_ms: float) -> bool:`
+- `func run(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:`
+- `func cancel() -> void:`
+- `func is_cancelled() -> bool:`
+- `func is_done() -> bool:`
+- `func progress() -> float:`
+- `func phase_name() -> String:`
+- `func profile_lines() -> Array[String]:`
+
+---
+
+### `prediction_cache.gd`
+
+`class_name PredictionCache` · extends `RefCounted` · 208 lines
+
+`godot/scripts/systems/prediction/prediction_cache.gd`
+
+> PredictionCache — PREDICTION_MASTER_PLAN §5, Task 5 (P-CACHE), 2026-08-09. Holds finished predictions so that coming BACK to a target is free. The Director's own reason, and it is the right one: *"O jogador pode decidir mudar de GU na última hora (é o mais provável, a gente só pára de ficar mexendo quando acerta a que estava buscando), então temos que jogar fora e começar de novo rapidamente."* A cursor sweeping ten GUs generates ten predictions and discards nine. Coming back is the COMMON case, because the sweep is a comparison. ## The key, and why invalidation is deliberately blunt `(signature, world_revision)`. The signature is the action's own identity (bomb + target GU + perspective); the revision is a counter the world bumps on every committed mutation. A bumped revision drops the whole cache at once. That is coarse on purpose. §5.2: a precise dependency graph is a second system to get wrong, and the common case — nothing changes while the player is choosing a target — is served perfectly by the blunt version. Flagged there as revisitable, not as final. ## One prediction is pumped at a time, and a superseded one is CANCELLED §4.2: *"hover moves to another GU → previous request cancelled, not completed; cache keeps whatever finished."* A half-built prediction for a GU the player has already left is pure cost, so it is dropped rather than finished in the background. Cancelling is free (nothing was written — see `DetonationPrediction`), which is what makes "throw away and start again quickly" a real option instead of an expensive one. ## Sizing `max_entries` = 8 by default, and that is a SETTLED number rather than a provisional one (§5.4, Q3): the workload is one cursor comparing GUs, not a guard swarm. Guard AI is out of scope and gets its own system if it ever needs one, so nothing here is shaped around it.
+
+**Constants / tuning**
+- `DetonationPredictionClass` = `preload("res://godot/scripts/systems/prediction/detonation_prediction.gd")`
+
+**Public vars**
+- `var max_entries: int = 8`
+- `var hits: int = 0`
+- `var misses: int = 0`
+- `var evictions: int = 0`
+- `var cancellations: int = 0`
+- `var invalidations: int = 0`
+
+**Public API**
+- `func request(signature: String, revision: int, bomb_def, source_gu: Vector2i, ctx: Dictionary) -> DetonationPrediction:`
+- `func peek(signature: String, revision: int) -> WorldDelta:`
+- `func pump(budget_ms: float) -> bool:`
+- `func is_busy() -> bool:`
+- `func invalidate() -> void:`
+- `func size() -> int:`
+- `func stats_line() -> String:`
+
+---
+
 ### `world_delta.gd`
 
 `class_name WorldDelta` · extends `RefCounted` · 195 lines
@@ -2503,11 +2577,11 @@ extends `SceneTree` · 2404 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 407 lines
+extends `SceneTree` · 635 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
-> P-PURE / P-DELTA — prediction purity selftest (PREDICTION_MASTER_PLAN Tasks 2 and 3, 2026-08-09). Rodar: python3 tools/persistent/run_selftests.py --only blast_purity This is the test §11.4 calls "the test that makes the whole plan safe": it asserts that computing a detonation changes NOTHING about the world, so a prediction that is computed and thrown away costs nothing but the time. **Task 3 widened its subject from the two mutators to the whole pass.** It opened running a hand-written mirror of `build_plan()`'s damage phase, because `build_plan()` itself still committed and would have defeated a purity test outright. Now that P-DELTA made the builder pure, the mirror is gone and every test below runs the REAL `DetonationPlanBuilder.build_plan()` — which is both a stronger claim (the whole 170 ms pipeline is pure, not just its damage step) and one fewer copy of the pipeline free to drift out of sync with the original. Why it lives in its own file rather than inside blast_calculator_selftest.gd: that suite is Task 2's REGRESSION NET — its ~20 direct calls to the mutating `apply_*` functions pin today's behaviour, and the task's own gate is that it passes with **zero edits**. Adding to it would have compromised the one piece of evidence the refactor rests on. Everything here runs against the REAL PLAYGROUND map and the REAL frag grenade, not a synthetic patch — CLAUDE.md's own standing lesson (a floor-dent feature that passed its fixture with 69 dents and produced ZERO on the real map). Test 3 exists specifically to make a silently-inert simulate impossible to mistake for a clean one. RED-BEFORE-GREEN, recorded because a purity test that has never failed proves nothing. With one `voxel.set_damage(...)` added inside `BlastCalculator.damage_entry()` — the smallest edit that makes BOTH simulate functions impure at once — this run came back: ✗ 167 voxel(s) changed state during build_plan() (e.g. (7, 11) level 0: [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true]) ✗ 3 container(s) had their dirty_count moved by build_plan() RESULT: 6 PASS, 2 FAIL Note what stayed green under that break, because it is the reason test 1 has to exist separately: determinism (2) and the tier census (3) both still passed, and test 4 still reported every entry landing correctly — it merely counted 167 no-ops instead of 0. An impure builder is invisible to every check here except this one.
+> Prediction-layer selftest (PREDICTION_MASTER_PLAN Tasks 2-6, 2026-08-09). Purity and determinism (P-PURE, P-DELTA), frame-slicing and cancellation (P-SLICE), and the cache's sweep/invalidation behaviour (P-CACHE). Rodar: python3 tools/persistent/run_selftests.py --only blast_purity This is the test §11.4 calls "the test that makes the whole plan safe": it asserts that computing a detonation changes NOTHING about the world, so a prediction that is computed and thrown away costs nothing but the time. **Task 3 widened its subject from the two mutators to the whole pass.** It opened running a hand-written mirror of `build_plan()`'s damage phase, because `build_plan()` itself still committed and would have defeated a purity test outright. Now that P-DELTA made the builder pure, the mirror is gone and every test below runs the REAL `DetonationPlanBuilder.build_plan()` — which is both a stronger claim (the whole 170 ms pipeline is pure, not just its damage step) and one fewer copy of the pipeline free to drift out of sync with the original. Why it lives in its own file rather than inside blast_calculator_selftest.gd: that suite is Task 2's REGRESSION NET — its ~20 direct calls to the mutating `apply_*` functions pin today's behaviour, and the task's own gate is that it passes with **zero edits**. Adding to it would have compromised the one piece of evidence the refactor rests on. Everything here runs against the REAL PLAYGROUND map and the REAL frag grenade, not a synthetic patch — CLAUDE.md's own standing lesson (a floor-dent feature that passed its fixture with 69 dents and produced ZERO on the real map). Test 3 exists specifically to make a silently-inert simulate impossible to mistake for a clean one. RED-BEFORE-GREEN, recorded because a purity test that has never failed proves nothing. With one `voxel.set_damage(...)` added inside `BlastCalculator.damage_entry()` — the smallest edit that makes BOTH simulate functions impure at once — this run came back: ✗ 167 voxel(s) changed state during build_plan() (e.g. (7, 11) level 0: [0, false, 0, 0, 0, true, false] -> [2, true, 0, 0, 0, false, true]) ✗ 3 container(s) had their dirty_count moved by build_plan() RESULT: 6 PASS, 2 FAIL Note what stayed green under that break, because it is the reason test 1 has to exist separately: determinism (2) and the tier census (3) both still passed, and test 4 still reported every entry landing correctly — it merely counted 167 no-ops instead of 0. An impure builder is invisible to every check here except this one.
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
@@ -2518,6 +2592,7 @@ extends `SceneTree` · 407 lines
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
+- `BUDGET_MS` = `4.0`
 
 **Public vars**
 - `var passed: int = 0`
@@ -3936,7 +4011,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 401 lines
+`class_name TestZoneController` · 554 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -3991,7 +4066,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 371 lines
+`class_name WeaponBenchController` · 376 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -4195,7 +4270,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 3995 lines
+extends `Node2D` · 4031 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4249,59 +4324,9 @@ extends `Node2D` · 3995 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `VOXEL_STEP_PX` = `20.0`
-- `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
-- `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
-- `OBSTACLE_HEIGHTS` = `{ "crate":     1.0, "wall":      2.0, "block":     2.0, "column":    3.0, "half_wall": 1.0, }`
-- `OBSTACLE_HEIGHT_DEFAULT` = `1.5`
-- `VISION_TILE_RADIUS` = `5`
-- `FOW_REVEAL_RADIUS` = `9`
-- `WORLD_TILE_PX` = `128.0`
-- `DETECTION_THRESHOLD_SUSPICIOUS` = `0.30`
-- `DETECTION_THRESHOLD_ALERT` = `0.60`
-- `DETECTION_THRESHOLD_CHASE` = `1.00`
-- `ENEMY_INTER_TURN_DELAY` = `1.0`
-- `ENEMY_CAMERA_TWEEN_DURATION` = `0.45`
-- `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
-- `ACTOR_END_HOLD_DELAY` = `0.5`
-- `TRAIL_MAX` = `5`
-- `BLAST_ISO_GROUND_SQUASH` = `0.5`
 
 **Public vars**
 - `var CRATE_STACK_STEP_PX: float = 128.0`
-- `var vision_bonus_tiles: int = 0`
-- `var vfx_dust_chance: float = 0.4`
-- `var vfx_spark_chance: float = 0.65`
-- `var vfx_chip_chance: float = 0.55`
-- `var vfx_dust_materials: Array[String] = ["concrete", "stone", "gravel", "earth"]`
-- `var vfx_metal_spark_count_min: int = 3`
-- `var vfx_metal_spark_count_max: int = 8`
-- `var vfx_stone_spark_count: int = 2`
-- `var vfx_chip_count_min: int = 1`
-- `var vfx_chip_count_max: int = 4`
-- `var vfx_smoke_darken_wood: float = 0.55`
-- `var vfx_smoke_darken_default: float = 0.15`
-- `var vfx_smoke_alpha: float = 0.6`
-- `var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)`
-- `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
-- `var blast_burst_ember_count: int = 22`
-- `var blast_burst_ember_spread_px: float = 64.0`
-- `var blast_burst_ember_life_min: float = 0.50`
-- `var blast_burst_ember_life_max: float = 1.25`
-- `var blast_burst_ember_start_radius_px: float = 7.0`
-- `var blast_burst_ember_speed_min: float = 150.0`
-- `var blast_burst_ember_speed_max: float = 320.0`
-- `var blast_burst_ember_drag: float = 3.4`
-- `var blast_burst_ember_rise_px_s: float = 46.0`
-- `var blast_burst_ember_up_deg: float = 72.0`
-- `var blast_burst_ember_down_deg: float = 10.0`
-- `var blast_burst_spark_count: int = 34`
-- `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
-- `var blast_burst_dust_count: int = 7`
-- `var blast_burst_dust_drop_px: float = 44.0`
-- `var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)`
-
-**Public API**
-- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0, substrate: int = 0) -> void:`
 
 ---
 

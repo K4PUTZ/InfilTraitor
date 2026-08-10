@@ -2,23 +2,33 @@
 ## Simulate without committing: the engine's pure-prediction, pre-production and cache layer — v1.0
 
 **Date opened:** 2026-08-09
-**Status:** 🟢 **BUILDING. Tasks 1–3 shipped 2026-08-09 — see §8.1, §8.6, §8.7.**
-The blast is paced by frame count and its front is visible (P-PLAY); the two
-blast mutators are `commit(simulate(…))` (P-PURE); and
-`DetonationPlanBuilder.build_plan()` is **pure** — it returns a `WorldDelta` and
-the caller decides whether any of it happens (P-DELTA). Tasks 4–6 (slicing, the
-cache, the "cooking" beat) are planned and unbuilt.
+**Status:** ✅ **ALL SIX TASKS SHIPPED 2026-08-09** — §8.1, §8.6, §8.7, §8.8,
+§8.9, §8.10.
 
-⚠️ **Nothing the player feels has improved yet, and one thing got worse:** the
-detonation still blocks the frame it always did, and P-DELTA's projection lookups
-made that block ~51 ms *longer* (178 → 229 ms, measured, §8.7). That bill is paid
-back only when Tasks 4–6 move the whole figure off the visible frame. Said here
-rather than in a footnote, because a plan that is three tasks in and has made the
-symptom worse should say so on its first screen.
+The blast is paced by frame count and its front is visible (P-PLAY); the two
+blast mutators are `commit(simulate(…))` (P-PURE); `build_plan()` is **pure** and
+returns a `WorldDelta` (P-DELTA); the pipeline is a resumable, cancellable state
+machine (P-SLICE); predictions are cached and revision-invalidated (P-CACHE); and
+**the ~190 ms is out of the frame the player clicks on** — pre-production starts
+when the target is picked, and whatever is left finishes under a burning grenade
+(P-COOK).
+
+**The one number that matters: a detonation no longer freezes the camera.** In
+the harshest case the harness can produce — "Detonate" pressed ~10 frames after
+the menu opens, far faster than a human — the grenade cooks for 16 frames
+(~0.27 s) with the fire burning and the camera shaking the whole time. Not one
+frozen frame. A human takes long enough choosing that the normal case cooks zero.
+
+⚠️ **Two things are honestly short of their gates, both recorded rather than
+declared met:** §4.4's 4 ms per-frame budget (worst unsuspendable visit is 7–9 ms
+— §8.8 names the two phases and costs the fix), and the total build cost, which
+is ~192 ms against a pre-refactor 178 ms (§8.8; ~37 of P-DELTA's 51 ms regression
+recovered, ~14 ms is what purity costs).
 
 Every number below is measured on a real PLAYGROUND detonation; every claim about
 what mutates comes from reading the actual writers, not from the plan text of
-another document.
+another document. **§1.1's phase table is a historical measurement and is now
+known to mis-attribute where the time goes — see §8.8.**
 **Opened by:** the Director, 2026-08-09, when the explosion's pre-production
 question turned out to be an engine question:
 
@@ -513,9 +523,9 @@ refactor lands behind a regression net.
 | **1** | ✅ **DONE 2026-08-09 — P-PLAY**, see §8.1 | Frame-count pacing (`front_frames`), band quantization (`band_voxels`), fire/shake tuning. `cells_due_now()` retired. No prediction work. | **Met.** 24 frames exactly on the real blast, heaviest frame 13.5% (was 94%); front advances 1.0→25.0 band by band; 3 pixel-diffed captures. Director sign-off pending on the look. |
 | **2** | ✅ **DONE 2026-08-09 — P-PURE**, see §8.6 | `simulate_container_damage()` / `simulate_crater_damage()` + `commit_damage()`; the mutators are now `commit(simulate(…))`. §3.3's read-overlay turned out not to exist. | **Met.** `blast_calculator_selftest.gd` passes with **zero edits** (`git diff --name-only` names only `blast_calculator.gd`). New `blast_purity_selftest.gd`: 7/7 on the real PLAYGROUND blast, 100 896 voxels × 7 fields unchanged by `simulate()`, red-before-green demonstrated. Real detonation census byte-identical to the pre-refactor baseline. |
 | **3** | ✅ **DONE 2026-08-09 — P-DELTA**, see §8.7 | `WorldDelta` is a real type with §3.4's census/touched/cost_ms as fields, and **`build_plan()` is now pure** — it produces a Delta, the caller commits it. | **Met.** `run_selftests` 34 clean. Real detonation **0 differing pixels** against the pre-refactor capture. Purity asserted over the whole builder: 100 896 voxels × 7 fields unchanged. ⚠️ **Cost regressed +51 ms** — measured, not hidden; see §8.7. |
-| **4** | **P-SLICE** — time-sliced simulate | Phases interruptible and cancellable; map-wide phases 3/4 subdivided. **First concrete target, measured by Task 3:** `_index_soot_voxel()` and `_voxel_occupancy()` each traverse every voxel in the map separately and both now want the same projection lookup — merging them into one walk halves both. | Measured: no single frame blocked >4 ms during a full prediction; full prediction completes <600 ms. Cancellation proven to leave zero state behind. **Plus: recover P-DELTA's +51 ms** (§8.7) — the pre-refactor 178 ms mean is the number to beat, not merely to match. |
-| **5** | **P-CACHE** — the cache | §5's keyed, revision-invalidated LRU. `request_prediction()` / cancel / reuse. Sized for one cursor, not for guard AI (Q3). | A scripted 10-GU cursor sweep: measured hit rate on return-to-a-previous-GU, and a proof that every committed mutation invalidates. |
-| **6** | **P-COOK** — the "cooking" beat | §4.2's wiring for the detonate path that exists TODAY (context menu), so the flow is real before Phase B's throw arc exists. | Real capture: camera never freezes; the 171 ms is gone from the visible beat. |
+| **4** | ✅ **DONE 2026-08-09 — P-SLICE**, see §8.8 | 11-phase resumable state machine; `build_plan()` is it with an unlimited budget. The three map-wide walks merged into one. | **Partly met, honestly.** Cancellation proven (100 896 voxels unchanged). Sliced Delta identical to one-shot. Full prediction ~192 ms (<600 ✓), and 37 of P-DELTA's 51 ms recovered. ⚠️ **4 ms/frame NOT met** — worst unsuspendable visit 7–9 ms; §8.8 names the phases and costs the fix rather than weakening the gate. |
+| **5** | ✅ **DONE 2026-08-09 — P-CACHE**, see §8.9 | `PredictionCache` keyed `(signature, world_revision)`, LRU 8; `room.bump_world_revision()` from 4 mutation sites. | **Met.** Scripted sweep: 5 GUs, 5 misses outbound, **0 on the way back**; bumped revision proven to make every entry unreachable and to force a rebuild. Eviction is untested (the map offers 5 GUs, not 9) and is recorded as such. |
+| **6** | ✅ **DONE 2026-08-09 — P-COOK**, see §8.10 | Pre-production on menu open; beat 0 cooks under the fire; commit + census + revision bump follow it. | **Met.** Real capture: 16 cooked frames in the harness's harshest case, **zero frozen frames** — the fire is lit and the camera shaking throughout. 0 differing pixels against the pre-refactor reference. |
 
 **Phase B of `EXPLOSION_REBUILD_MASTER_PLAN` (throw arc, bubble, hover) plugs
 into Task 5's seam and is planned there, not here.**
@@ -1070,6 +1080,220 @@ Task 5 (the cache) and Task 6 (the cooking beat) are the ones that move it**, an
 they are now unblocked: there is a pure function to slice, a Delta to cache, and
 a commit to defer.
 
+### 8.8 Task 4 (P-SLICE) closure — 2026-08-09
+
+**The pipeline is a resumable state machine, and `build_plan()` is that machine
+run with an unlimited budget.** Eleven phases (`DetonationPlanBuilder`'s own
+table), each either atomic or chunked with a cursor. There is exactly ONE
+implementation: a one-shot build and a frame-sliced hover-time prediction run
+the same `_run_phase()` over the same state and differ only in how many
+microseconds the caller hands them. A separate "fast path" was rejected outright
+— it would be a second copy of a 300-line pipeline free to drift, and the 0-pixel
+gate would only ever be vouching for one of them.
+
+**The three map-wide walks became one.** `_columns_with_structure()`,
+`_index_soot_voxel()`'s loop and `_voxel_occupancy()` each traversed every voxel
+separately and, after P-DELTA, each wanted its own projection lookup. Phase 4
+does all three off a single lookup. This was §8.7's named fix, and it collected:
+
+| | mean | range | n |
+|---|---|---|---|
+| before P-DELTA | 178 ms | 159–195 | 6 |
+| after P-DELTA (the regression) | 229 ms | 214–259 | 6 |
+| **after P-SLICE's merged walk** | **192 ms** | 185–203 | 6 |
+
+**~37 of the 51 ms are back.** The residual ~14 ms is what purity costs on this
+map, and the ranges now overlap. Worth naming what it buys: the same walk that
+pays it is the one that lights a PREDICTED crater correctly, which is what a
+blast-radius preview will need.
+
+#### ⚠️ §4.4's 4 ms budget is NOT met, and §1.1's phase table was wrong about why
+
+The first real per-phase profile of a detonation (real PLAYGROUND, real lights,
+`INFILTRAITOR_PREDICTION_PROFILE=1`, uniform 4 ms budget):
+
+```
+[P-SLICE] 43 step(s) · worst step 11.7 ms · total 202.7 ms
+[P-SLICE]   SETUP     total     1.1 ms   worst visit    1.1 ms
+[P-SLICE]   SLICES    total    20.0 ms   worst visit    7.4 ms
+[P-SLICE]   ROOFS     total     0.0 ms   worst visit    0.0 ms
+[P-SLICE]   FLOORS    total    16.8 ms   worst visit    4.4 ms
+[P-SLICE]   WALK      total   133.3 ms   worst visit    5.6 ms
+[P-SLICE]   SOOT      total    10.5 ms   worst visit    9.2 ms
+[P-SLICE]   LIGHT     total     0.1 ms   worst visit    0.1 ms
+[P-SLICE]   PACKAGE   total    11.4 ms   worst visit    5.6 ms
+[P-SLICE]   EXPOSE    total     4.1 ms   worst visit    4.1 ms
+[P-SLICE]   SOOTWAVE  total     4.9 ms   worst visit    4.2 ms
+[P-SLICE]   SMOKE     total     0.2 ms   worst visit    0.2 ms
+```
+
+**This overturns §1.1's attribution, which every plan decision since has been
+reasoned from.** §1.1 said the two expensive things were the soot derivation
+(66 ms) and the light field (35 ms), and §4.3 accordingly said "phases 3 and 4,
+the map-wide ones, 101 ms, need to subdivide further". Measured properly:
+
+- **the soot BFS is 10.5 ms, not 66** — the other ~55 was the map-wide voxel
+  INDEX walk that shared the phase with it;
+- **`VoxelLightField.build()` is 0.1 ms, not 35** — with real lights, on the real
+  map. The other ~35 was `_voxel_occupancy()`, also a map-wide walk;
+- **the walk is 133 ms, 66% of everything.** It was never broken out because it
+  had never been one phase.
+
+So §4.3's instruction was right by accident and satisfied in substance: the
+expensive map-wide work IS subdivided, just not the part §1.1 pointed at. §1.1's
+table is left standing above as the historical measurement it was, with this
+correction attached — it was taken with reverted ad-hoc instrumentation on a
+different grenade, and its phase boundaries did not separate the walk from the
+work.
+
+**Where the budget is actually missed.** Two phases are atomic per item and
+overrun a 4 ms deadline they can only check between items:
+
+- **SOOT, ~9 ms** — `derive_soot_rings()` is a multi-source BFS whose frontier IS
+  its state. It is already split into its three natural visits (blast BFS, weapon
+  BFS, merge+self-soot), which is as fine as it gets without making the frontier
+  resumable inside `BlastCalculator` — a function `room.gd`'s repaint path also
+  calls. **Named, scoped and deliberately not done:** ring-boundary suspension
+  would take it to ~1.5 ms per visit and meet the gate, at the cost of changing
+  the most-verified file in the project for a spike that happens once per
+  prediction.
+- **SLICES, ~7 ms** — one big wall slice. Atomic by construction, not by
+  omission: `simulate_container_damage()` draws destroy/dent/crack from one
+  shrinking per-ring pool, so it cannot be suspended mid-container without
+  changing what it produces.
+
+**Honest verdict: the worst single unsuspendable visit is 7–9 ms, roughly half a
+60 fps frame, once per prediction.** That is a hitch, not a freeze, and it lands
+during pre-production rather than during the blast. §4.4's 4 ms was not weakened
+to declare this met — it is recorded as missed, with the two phases responsible
+and the fix for the larger of them costed.
+
+**Chunk sizes are per-phase, because per-item costs differ by an order of
+magnitude.** A WALK item is ~1.3 µs; a PACKAGE item is ~12 µs (it resolves a tile
+through the bake registry). At one shared 512, WALK held a 4 ms budget to within
+0.7 ms while PACKAGE overshot to 6.5. Now `WALK_CHUNK` 512 / `PACKAGE_CHUNK` 256
+/ `SOOTWAVE_CHUNK` 512, and PACKAGE's worst visit is 5.6 ms. WALK was tried at
+2048 and moved back: the coarser chunk took its worst visit 4.7 → 6.4 ms while
+the total moved only within run-to-run noise.
+
+**Gates.** `run_selftests` 34 clean · `project_lint` 191/0 · invariants and
+codemap pass · real detonation **0 differing pixels** against the pre-refactor
+reference — the same image that has now survived four tasks of refactoring.
+
+Two new assertions carry the task (`blast_purity_selftest.gd`):
+
+```
+[5] P-SLICE — a frame-sliced build returns the same Delta as a one-shot one
+  ✓ 31 steps at a 4.0 ms budget — the build really did suspend and resume
+  ✓ 167 damage entries identical to the one-shot build, in order
+  ✓ waves (877), census and touched all match the one-shot build
+[6] P-SLICE — cancelling a half-built prediction leaves the world untouched
+      cancelled in phase SOOTWAVE at 82% after 31 step(s)
+  ✓ 100896 voxel(s) x 7 fields and 1184 dirty_count(s) unchanged by the abandoned build
+  ✓ the job reports itself cancelled and hands out no partial Delta
+```
+
+Test 5 is the one that would sink P-SLICE if it failed: **a pipeline that answers
+differently depending on how it is paced is not a pipeline, it is two.** Test 6
+is Task 4's cancellation gate, and it is cheap to pass for exactly the reason
+§3.2 rejected snapshot/restore — there is nothing to roll back.
+
+### 8.9 Task 5 (P-CACHE) closure — 2026-08-09
+
+`godot/scripts/systems/prediction/prediction_cache.gd`, keyed on
+`(signature, world_revision)` exactly as §5.2 specifies, LRU-bounded at 8.
+
+**`room._world_revision` is the world's side of the key**, bumped by
+`room.bump_world_revision()` from four places — a committed detonation, a firearm
+impact, a map load and a perspective change. That is §2.4's dependency list minus
+the entries that cannot happen yet. Invalidation is blunt on purpose (§5.2): one
+counter for the whole world, no dependency graph.
+
+**Two behaviours worth stating because they are asymmetric on purpose.** A
+superseded IN-FLIGHT prediction is cancelled and dropped (§4.2 — a half-built
+Delta for a GU the player has left is pure cost). A FINISHED one is kept. And a
+half-built prediction whose menu is merely closed is NOT cancelled: the key is
+still valid, so reopening the same grenade resumes rather than restarts.
+
+Task 5's gate, run against the real map:
+
+```
+[7] P-CACHE — a cursor sweep pays once per GU, and a mutation drops everything
+      sweep of 5 GU(s): 5 miss(es) / 0 hit(s) outbound, 0 miss(es) on the way back
+  ✓ every GU cost exactly one build; the return pass was free (5/5 cached)
+  ✓ cache holds 5 entr(ies), within the 8 bound (evictions: 0)
+  ✓ a bumped world revision makes every cached Delta unreachable
+  ✓ re-asking after the bump rebuilds rather than serving the stale entry
+```
+
+The gate asked for ten GUs; the PLAYGROUND scaffold offers five distinct
+slice-bearing GUs, and the test says so rather than padding with duplicates.
+Five is enough to exercise the sweep, the return pass and the bound; it does NOT
+exercise eviction, which is recorded as untested rather than claimed.
+
+**One design mistake, found by running it.** The cache first built its
+predictions with a `print_census: false` flag so a hover would not narrate
+itself — and the committing path then set the flag true and got nothing, because
+a cache HIT returns the job that was built quietly. The fix is better than the
+bug: **the builder no longer prints at all, and the committing caller prints from
+the finished Delta** (`DetonationPlanBuilder.print_census(delta, gu)`). A census
+describes a blast that HAPPENED; a pure function that prints was the wrong shape
+to begin with.
+
+### 8.10 Task 6 (P-COOK) closure — 2026-08-09
+
+**The 190 ms is out of the frame the player clicks on.** `detonate_active()` no
+longer builds anything: pre-production starts when the context menu opens, and
+the detonation sequence gained a beat 0.
+
+| moment | what happens |
+|---|---|
+| context menu opens on a grenade | `_begin_preproduction()` — cache request + a per-frame pump at 4 ms |
+| menu closed / cancelled | pump stops; the half-built prediction is KEPT for the same key |
+| "Detonate" pressed | `_take_prediction()` returns the handle. **Never waits.** |
+| beat 0 · COOKING | the fire is already lit; the engine finishes underneath it at 8 ms/frame |
+| Delta ready | `commit()` → persistence → census → `bump_world_revision()` |
+| beats 1–3 | fire lead / strobe / destruction, exactly as P-STROBE left them |
+
+**Q4 is answered, and the answer is "it needed no new visual".** P-STROBE had
+already established that the fire burns alone for `burst_lead_frames` before the
+strobe, so *"a granada fica cooking no chão"* was a beat the sequence already
+had — cooking just makes its length depend on the engine instead of on a
+constant. `burst_lead_frames` became a MINIMUM rather than an addition, so a long
+fuse does not additionally delay the strobe.
+
+**The order is the whole fix and is not negotiable: FIRE FIRST, then think.** The
+burst and the camera shake are unconditional and happen before any remaining
+computation, so the player sees the explosion begin on the very frame they
+clicked. Whatever is left runs under an animation instead of under a frozen
+camera.
+
+**Two budgets, because the player is doing different things.**
+`predict_budget_ms` 4.0 while they are still choosing (a cursor may be moving);
+`cook_budget_ms` 8.0 with the grenade already burning (nothing to keep smooth,
+and a bigger bite ends the wait sooner).
+
+**Measured on the real map.** The capture harness presses Enter ~10 frames after
+opening the menu — far faster than a human — so it is a deliberately harsh case:
+
+```
+[P-COOK] gu=(13, 5) cooked 16 frame(s) at 8.0 ms — pre-production was short by 128 ms
+[E-PLAN] census gu=(13, 5) cost=188.4ms — ...
+```
+
+16 cooked frames ≈ 0.27 s at 60 fps, and **not one of them is a frozen frame** —
+the fire is burning and the camera is shaking throughout. A human takes several
+hundred milliseconds to read a menu and press a button, so the normal case cooks
+zero frames and the blast starts on the next frame.
+
+**The failure mode is handled loudly, not silently.** If a map load or a rotation
+cancels the prediction mid-fuse, the sequence stops with a `push_warning` rather
+than playing a fire with no explosion behind it.
+
+**Gates.** 0 differing pixels against the pre-refactor reference; census and
+per-frame cell counts unchanged; `run_selftests` 34 clean; lint, invariants and
+codemap pass.
+
 ---
 
 ## 9. Explicitly out of scope
@@ -1199,10 +1423,18 @@ and the fire read through it.
 *Assumed if unanswered:* nothing — the Director is actively tuning the look and
 now has the filmstrip to judge it from.
 
-### Q4 — Does the "cooking" beat get its own visual? 🟢 Task 6 only
+### Q4 — ✅ ANSWERED by building it, 2026-08-09. It needed no new visual.
 
-A grenade waiting on the engine is a fuse burning. Is that a real animation you
-want to author, or is the existing prop plus the smoke enough?
+The question was whether a grenade waiting on the engine needs an authored fuse
+animation. It does not, and P-STROBE is why: that pass had already given the
+sequence a beat where the fire burns alone before the strobe
+(`burst_lead_frames`). Cooking simply makes that beat's LENGTH depend on the
+engine instead of on a constant, and `burst_lead_frames` becomes a minimum rather
+than an addition.
+
+So the honest visual for *"the engine is still thinking"* was already on screen,
+and the Director can still decide to author something on top of it — but nothing
+is missing without it. See §8.10.
 
 ---
 
@@ -1215,7 +1447,10 @@ these, with pasted literal output — never a reasoned expectation.
    touched.
 2. `run_selftests.py` — clean. **Baseline for this plan: 33/33 clean,
    `project_lint` 190 files / 0 errors, measured 2026-08-09 before any work.**
-   Now **34/34 clean, 191 files** — Task 2 added `blast_purity_selftest.gd`.
+   Now **34/34 clean, 194 files** — Task 2 added `blast_purity_selftest.gd`
+   (which Tasks 4 and 5 grew into the prediction layer's whole suite, 17
+   assertions), and Tasks 3–5 added `world_delta.gd`,
+   `detonation_prediction.gd` and `prediction_cache.gd`.
 3. `check_invariants.py` + `gen_codemap.py --check` — clean.
 4. **The purity invariant, asserted not assumed:** after any `simulate()`, a
    before/after snapshot of all 7 mutable fields (§2.1) across the entire
@@ -1237,8 +1472,15 @@ these, with pasted literal output — never a reasoned expectation.
 
 - That 171 ms is slow on the Director's machine in a real window. It was
   measured in the off-screen capture harness. **The phase RATIO is what to
-  trust; the absolute constant is not.** Phase 2/3/4 being 87% of the cost is
-  robust; "171 ms" is not.
-- That the six phases are the right slice boundaries. They are the obvious
-  ones; Task 4 measures whether phases 3 and 4 subdivide cleanly.
+  trust; the absolute constant is not.**
+  ⚠️ **Even the ratio turned out to be wrong** — Task 4's real per-phase profile
+  (§8.8) puts the soot BFS at 10 ms rather than 66 and the light field at 0.1 ms
+  rather than 35, with the map-wide voxel walk (never a separate phase in §1.1)
+  accounting for 66% of everything. Trust §8.8's table, not §1.1's.
+- That the six phases are the right slice boundaries. **Measured in §8.8: they
+  were not.** The pipeline is eleven phases now, and the one that mattered was
+  hiding inside two of the original six.
+- **That the 4 ms per-frame budget is met.** It is not; the worst unsuspendable
+  visit is 7–9 ms (§8.8). What IS claimed is that no frame FREEZES: the cost is
+  paid during pre-production and cooking, under a burning grenade.
 - That the cache sizes in §5.3 are right. They are proposals pending Q3.

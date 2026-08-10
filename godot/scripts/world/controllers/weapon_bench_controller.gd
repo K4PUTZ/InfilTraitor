@@ -307,6 +307,11 @@ func fire_active() -> void:
 	print_debug("[SHOT] weapon=%s delivery=%s gu=%s facing=%s landed=%d/%d punch=%s" %
 		[w["weapon_id"], weapon_def.delivery, w["gu_cell"], w["facing"],
 		pellets_landed, pellet_picks.size(), punch_log])
+	## PREDICTION_MASTER_PLAN §5.2 — a shot is a committed mutation, so every
+	## cached blast prediction is now stale (a blast's outcome depends on prior
+	## damage state, §2.4). The firearm path does NOT otherwise touch the
+	## prediction layer: §2.3 established it shares neither blast mutator.
+	room.bump_world_revision()
 	## No roof/ceiling branch: D18 shots are chest-height and horizontal, and
 	## the per-pellet model only ever picks WALL-facing candidates
 	## (select_cone_pellet_impacts() checks blocked_edges between horizontal

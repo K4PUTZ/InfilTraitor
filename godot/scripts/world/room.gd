@@ -204,6 +204,35 @@ var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see
 ## `_base_damage`.
 var _gu_blast_count: Dictionary = {}
 
+## PREDICTION_MASTER_PLAN §5.2 (P-CACHE, 2026-08-09) — a monotonic counter the
+## prediction cache keys against. Every COMMITTED mutation bumps it, and a bump
+## drops the whole cache: a Delta computed against revision N is only valid
+## against revision N, because a blast's outcome depends on prior damage state
+## (§2.4, `set_damage()`'s read-once rule).
+##
+## Deliberately blunt — one counter for the whole world, not a dependency graph.
+## §5.2 argues the case: a precise graph is a second system to get wrong, and the
+## common case (nothing changes while the player picks a target) is served
+## perfectly by the blunt version.
+##
+## Bumped from four places today, which is §2.4's list minus the ones that cannot
+## happen yet: a committed detonation, a firearm impact, a map load, and a
+## perspective change.
+var _world_revision: int = 0
+
+## The one cache. Lives on the room because the room IS the world the revision
+## counts — a cache held anywhere else would need a way to learn that the world
+## moved, which is exactly the coupling the revision exists to avoid.
+var _prediction_cache: PredictionCache = PredictionCache.new()
+
+
+## Invalidates every cached prediction. Call AFTER the mutation lands, never
+## before: a prediction started in between would be filed under the old
+## revision and immediately be wrong.
+func bump_world_revision() -> void:
+	_world_revision += 1
+	_prediction_cache.invalidate()
+
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
 ## (before reapply_damage), so it survives detonation and rotation on its own —
@@ -652,6 +681,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_error("[Room] Map compilation failed for map_id '%s' — room state unchanged" % new_map_id)
 		return
 	_base_layout = layout.duplicate(true)
+	## §5.2: a new map is the bluntest possible world change — every cached
+	## prediction points at Voxels that are about to be replaced wholesale.
+	bump_world_revision()
 	_agent_start_cell_base = layout.get("agent_start_cell", Vector2i.ZERO)
 	var room_size: Vector2i = layout.get("size", Vector2i.ZERO)
 	if room_size == Vector2i.ZERO:
@@ -1275,6 +1307,10 @@ func _set_perspective(direction: String) -> void:
 	var base_selected := _cell_to_base(_selected_cell, prev_direction) if has_selected else INVALID_CELL
 
 	_active_perspective = direction
+	## §2.4 lists the active perspective as a real input: carved sides and every
+	## other screen-space read resolve differently after a rotation, and the
+	## rotation rebuilds every Voxel besides.
+	bump_world_revision()
 	if not _base_layout.is_empty():
 		var view_layout := _room_builder.layout_with_perspective(_base_layout, _active_perspective)
 		var room_size: Vector2i = view_layout.get("size", _room_size)

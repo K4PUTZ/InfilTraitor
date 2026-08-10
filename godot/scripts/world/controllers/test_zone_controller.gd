@@ -40,6 +40,25 @@ var _active_index: int = -1
 ## implicit signal-connection keep-alive semantics.
 var _active_choreographer = null
 
+## P-COOK (PREDICTION_MASTER_PLAN Task 6, 2026-08-09) — whether the
+## pre-production pump coroutine is running. The prediction itself lives in
+## `room._prediction_cache`; only the pump belongs to this controller.
+var _pumping: bool = false
+
+## §4.4's slice budget, split in two because the player is doing different
+## things in the two cases. `var`, Rule 1.
+##
+## PRE-PRODUCTION runs while the player is still choosing. The scene is idle but
+## the cursor may be moving and must stay smooth, so this is §4.4's proposed
+## quarter of a 60 fps frame.
+##
+## COOKING runs with the grenade already on the ground and the fire already
+## burning: the player is watching an animation and waiting for the bang, so a
+## bigger bite is both affordable and desirable, because it shortens the wait.
+## This is the number to raise if the fuse ever feels long.
+var predict_budget_ms: float = 4.0
+var cook_budget_ms: float = 8.0
+
 const MENU_GAP_ABOVE_PX: float = 30.0
 
 ## DESTRUCTION_MASTER_PLAN Part 3: every TEST-ZONE grenade is this one bomb
@@ -204,6 +223,20 @@ func open_menu_for(index: int) -> void:
 				_blocked_edges_dict(), room._blocked_cells)
 			room._blast_wireframe_overlay.show_footprint(gu_rings.keys())
 
+	## P-COOK: PRE-PRODUCTION STARTS HERE.
+	##
+	## §4.2's trigger is "hover, or first tap on a GU for mobile". The throw arc
+	## and the hover that drives it do not exist yet (Phase B of
+	## EXPLOSION_REBUILD_MASTER_PLAN), so the equivalent moment in today's flow is
+	## the context menu opening: the player has picked the target and is about to
+	## confirm it.
+	##
+	## That gap is the whole trick. A human takes several hundred milliseconds to
+	## read a menu and press a button, and a prediction needs ~190 ms of work — so
+	## by the time "Detonate" is pressed the Delta is normally already finished and
+	## the blast starts on the very next frame, with nothing to freeze.
+	_begin_preproduction(g["gu_cell"])
+
 
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real
 ## trigger, reconnected — disconnected 2026-08-05 (commit `d412480`) while the
@@ -239,32 +272,76 @@ func detonate_active() -> void:
 		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 		if bomb_def != null and room._edge_registry != null and room._slab_registry != null:
 			var gu: Vector2i = g["gu_cell"]
-			var ctx := _build_detonation_ctx(gu)
-			## P-DELTA (2026-08-09): build_plan() no longer damages anything —
-			## it returns a WorldDelta describing what WOULD happen, and the
-			## commit below is what makes it real. The two lines are adjacent
-			## here on purpose: nothing about the player-visible behaviour has
-			## changed yet, and the SEPARATION of these two moments is Task 6
-			## (P-COOK), not this one. Pulling them apart before the cooking beat
-			## exists would just move the 166 ms somewhere else.
-			var delta := DetonationPlanBuilderClass.build_plan(bomb_def, gu, ctx)
-			delta.commit()
-			room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
-
-			## VL-PERSIST: record every voxel this blast actually changed so
-			## rotation replays it — the exact set Task 4's own plan returns,
-			## no second flood/find_affected_containers pass needed. Reads the
-			## real Voxel fields, so it has to follow the commit above.
-			for voxel in delta.touched_voxels:
-				room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
-					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
-					voxel.damage_substrate)
-
-			_start_detonation_sequence(delta.waves, anchor)
+			## P-COOK (2026-08-09) — **NOTHING BLOCKS HERE ANY MORE.** This used
+			## to be `build_plan()` + `commit()` on adjacent lines, ~190 ms of
+			## synchronous work inside the frame the player clicked on. The
+			## prediction started when the menu opened and is normally already
+			## finished; `_take_prediction()` returns whatever exists, done or
+			## half-built, and never waits. The sequence below cooks if it must.
+			_stop_pumping()
+			_start_detonation_sequence(_take_prediction(bomb_def, gu), gu, anchor)
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
 	_active_index = -1
+
+
+## The prediction for this GU — resumed from the cache, or started now if the
+## menu path was bypassed (the capture harness calls `detonate_active()`
+## directly). Never waits.
+func _take_prediction(bomb_def, gu: Vector2i) -> DetonationPrediction:
+	var ctx := _build_detonation_ctx(gu)
+	return room._prediction_cache.request(
+		PredictionCache.blast_signature(BOMB_ID, gu, room._active_perspective),
+		room._world_revision, bomb_def, gu, ctx)
+
+
+## §4.2's pre-production, started when the player picks a target.
+##
+## Cancelling and restarting is CHEAP by construction — Tasks 2 and 3 mean
+## nothing has been written, so there is nothing to undo. That is what makes the
+## Director's *"jogar fora e começar de novo rapidamente"* an actual property of
+## the code rather than an aspiration. The cache does the cancelling (§4.2: a
+## superseded request is cancelled, not finished); this only asks.
+func _begin_preproduction(gu: Vector2i) -> void:
+	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if bomb_def == null or room._edge_registry == null or room._slab_registry == null:
+		return
+	var ctx := _build_detonation_ctx(gu)
+	room._prediction_cache.request(
+		PredictionCache.blast_signature(BOMB_ID, gu, room._active_perspective),
+		room._world_revision, bomb_def, gu, ctx)
+	_pump_prediction()
+
+
+## Advances the cache's in-flight prediction one budget per frame until it
+## finishes or something cancels it.
+##
+## A coroutine rather than a `_process()` because this controller is not a Node —
+## the same reason `_start_detonation_sequence()` is one. Self-terminating (the
+## cache stops being busy) and interruptible (`_stop_pumping()`), so there is no
+## timer to leak and no second one can start while one is running.
+func _pump_prediction() -> void:
+	if _pumping:
+		return
+	_pumping = true
+	while _pumping and room._prediction_cache.is_busy():
+		room._prediction_cache.pump(predict_budget_ms)
+		await room.get_tree().process_frame
+	_pumping = false
+
+
+func _stop_pumping() -> void:
+	_pumping = false
+
+
+## Called when the player backs out of the menu. The half-built prediction is
+## KEPT, not cancelled: the cache is keyed on (action, world revision), so if the
+## player reopens the same grenade with nothing changed in between, the work
+## already done is still valid and gets resumed instead of repeated. §5.1's whole
+## point — "coming back is the common case, because the sweep is a comparison."
+func cancel_preproduction() -> void:
+	_stop_pumping()
 
 
 ## P-STROBE (Director, 2026-08-09) — the detonation is THREE SEPARATE BEATS now,
@@ -287,26 +364,101 @@ func detonate_active() -> void:
 ## rule the choreographer itself now runs on. A slow frame stretches a beat
 ## instead of skipping it.
 ##
-## The DAMAGE is already fully applied to Voxel state before any of this runs
-## (P-DELTA: `delta.commit()` in detonate_active() is the writer now, not
-## build_plan()) — this only schedules when the player SEES it, so a dropped
-## frame or a map reload mid-sequence loses pixels, never state.
+## P-COOK (Task 6, 2026-08-09) prepends a beat 0 to that list, and it is the
+## Director's own:
 ##
-## It takes `delta.waves`, not the Delta: playback has no business knowing that
-## a prediction layer exists, and a choreographer that could reach `commit()`
-## would be a second writer.
+##   *"Se por acaso o cálculo ainda não tiver sido finalizado, travamos o sistema
+##   aqui para ele finalizar o processamento. A granada fica 'cooking' no chão,
+##   até soltar a cena."*
+##
+##   0. COOKING    the fire is already lit and the engine finishes thinking
+##                 underneath it — for as long as it needs, zero frames if the
+##                 pre-production already finished
+##
+## **Beat 0 costs nothing when it is not needed, and it needed no new visual.**
+## P-STROBE had already established that the fire burns alone for
+## `burst_lead_frames` before the strobe, so "the grenade sits there burning" was
+## a beat this sequence already had — cooking simply makes its length depend on
+## the engine instead of on a constant. That answers Q4 as "no, it does not need
+## its own animation": the honest visual for *"the engine is still thinking"* was
+## already on screen.
+##
+## The order matters and is not negotiable: FIRE FIRST, then think. Starting the
+## burst before pumping is what removes the freeze — the player sees the
+## explosion begin on the very frame they clicked, and the remaining computation
+## happens under an animation instead of under a frozen camera.
+##
+## The DAMAGE is applied at the END of beat 0, by `delta.commit()`, once there is
+## a Delta to commit. Everything after that only schedules when the player SEES
+## it, so a dropped frame or a map reload mid-sequence loses pixels, never state.
+##
+## The choreographer is still handed `delta.waves`, never the Delta: playback has
+## no business knowing a prediction layer exists, and a choreographer that could
+## reach `commit()` would be a second writer.
 ##
 ## A coroutine (it awaits frames), deliberately called WITHOUT await by
 ## detonate_active(): the caller's remaining work — clearing the wireframe,
 ## resetting _active_index — belongs to the click, not to the animation. `self`
 ## stays alive because room holds `_test_zone_controller`, the same explicit
 ## ownership `_active_choreographer` exists for.
-func _start_detonation_sequence(waves: Dictionary, anchor: Vector2) -> void:
-	## Beat 1 — fire and shake, alone.
+func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
+		anchor: Vector2) -> void:
+	## Beat 1 — fire and shake, alone. Unconditionally FIRST, before any
+	## remaining computation: this is the frame the player clicked on.
 	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
-	for _i in range(maxi(burst_lead_frames, 0)):
+
+	## Beat 0 — COOKING. Usually zero iterations, because pre-production started
+	## when the menu opened. `cook_budget_ms` is the bigger of the two budgets:
+	## with the grenade already burning there is no cursor to keep smooth, and a
+	## bigger bite ends the wait sooner.
+	var cook_frames: int = 0
+	while not job.is_done() and not job.is_cancelled():
+		job.step(cook_budget_ms)
+		await room.get_tree().process_frame
+		cook_frames += 1
+	if job.delta == null:
+		## Cancelled out from under us — a map load or a rotation while the fuse
+		## was burning. Loud rather than silent: the fire is already on screen and
+		## no destruction is going to follow it, which is worth a line in the log.
+		push_warning("[P-COOK] prediction for gu=%s was cancelled mid-fuse — no destruction" % gu)
+		return
+	if cook_frames > 0:
+		print_debug("[P-COOK] gu=%s cooked %d frame(s) at %.1f ms — pre-production was short by %.0f ms"
+			% [gu, cook_frames, cook_budget_ms, float(cook_frames) * cook_budget_ms])
+
+	## The commit, and everything that reads real Voxel state after it.
+	job.delta.commit()
+	DetonationPlanBuilderClass.print_census(job.delta, gu)
+	## Deep diagnostic, off by default — the per-phase profile and the worst
+	## single frame the prediction actually cost. §4.4's budget can only honestly
+	## be judged on the REAL map (the two unsuspendable phases are both cheap on a
+	## synthetic fixture), so this is the seam that measurement goes through.
+	if OS.get_environment("INFILTRAITOR_PREDICTION_PROFILE") == "1":
+		print("[P-SLICE] %d step(s) · worst step %.1f ms (phase %s) · total %.1f ms"
+			% [job.steps, job.worst_step_ms, job.worst_step_phase, job.delta.cost_ms])
+		for line in job.profile_lines():
+			print("[P-SLICE]   " + line)
+		print(room._prediction_cache.stats_line())
+	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
+	## VL-PERSIST: record every voxel this blast actually changed so rotation
+	## replays it — the exact set the Delta already carries, no second flood/
+	## find_affected_containers pass needed. Reads the real Voxel fields, so it
+	## has to follow the commit.
+	for voxel in job.delta.touched_voxels:
+		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
+			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
+			voxel.damage_substrate)
+	var waves: Dictionary = job.delta.waves
+	## §5.2: the world just moved, so every cached prediction — including this
+	## one — is now stale. AFTER the commit, never before.
+	room.bump_world_revision()
+
+	## The rest of beat 1: however much fire-only lead is still owed. Cooking
+	## already spent frames here, so a long fuse does not additionally delay the
+	## strobe — `burst_lead_frames` is a MINIMUM, not an extra.
+	for _i in range(maxi(burst_lead_frames - cook_frames, 0)):
 		await room.get_tree().process_frame
 
 	## Beat 2 — the strobe. One held frame each, caller-paced.
@@ -388,6 +540,7 @@ func cancel_active() -> void:
 	_active_index = -1
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
+	cancel_preproduction()
 
 
 ## room._current_blocked_edges entries are {"from": Vector2i, "to": Vector2i}

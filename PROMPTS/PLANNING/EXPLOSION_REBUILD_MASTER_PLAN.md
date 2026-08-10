@@ -2,19 +2,16 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Latest update:** 2026-08-10 — **Task 6 grows a real ordered task list:**
-the white strobe frame is retired in favour of a camera-facing shard that
-darkens into the existing negative flash, the blast gets decorative iron
-shrapnel (and a debug twin that shows real dented/cracked positions), soot
-becomes its own late fade-in beat, and Phase B's aim-bubble turns out to need
-none of the prediction machinery for its first version. See the new dated
-section **"E-FRAG-01 / E-SHARD-01 (2026-08-10)"** near the end of this file for
-the full task table, the reference images, and a scope boundary the Director
-drew explicitly: a real room-wide relight after a blast (holes letting in new
-light, affecting shadows/detection) is confirmed real but belongs to its own
-future gameplay milestone alongside cover/exposure — this plan only closes the
-destroyed voxels' own soot/decal/light paint, already built and measured cheap
-enough (0.1 ms) that the deferral idea that opened this question is dropped.
+**Latest update:** 2026-08-10, session close — 🟢 **ALL SIX TASKS COMPLETE.**
+E-RAY/E-DEBUG-RAY/E-FRAG/E-SHARD/E-FUME/E-BUBBLE all built and pushed
+(commits d6dd657–3fba237). The white strobe frame is retired in favour of
+a camera-facing shard that darkens into the existing negative flash, the
+blast gets decorative iron shrapnel (and a debug twin), soot becomes its own
+late beat, and Phase B's aim-bubble is wired. Phase B (targeting UI, throw arc)
+is now unblocked. See the **"E-FRAG-01 / E-SHARD-01 (2026-08-10)"** section at
+the end of this file for the task table, implementation notes, and the scope
+boundary: a real room-wide relight after a blast is confirmed real but belongs
+to its own future gameplay milestone alongside cover/exposure.
 
 <details><summary>Previous update — 2026-08-09, session close (Alpha Explosion Flow)</summary>
 

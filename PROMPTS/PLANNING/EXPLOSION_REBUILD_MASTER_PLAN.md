@@ -2,6 +2,17 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
+**Latest update:** 2026-08-09, session close (Alpha Explosion Flow) — **Phase A
+is complete and its last dependency is discharged.** The 3-frame collapse and
+the 171 ms detonation block are both gone; `PREDICTION_MASTER_PLAN` shipped all
+six of its tasks, so a grenade's damage is computed before the player confirms
+it and a detonation no longer freezes the camera. **Phase B (targeting UI, throw
+arc, bubble) is now unblocked and is the next work** — see §11, which names the
+exact seam it plugs into. Task 6's look-tuning surface is deliberately still
+open: the Director deferred it until the mechanism was established.
+
+<details><summary>Previous update — 2026-08-08, later session</summary>
+
 **Latest update:** 2026-08-08, later session — **the decal-bake seam is
 formalized: D34 (E-SEAM-01 `8dd926e`, E-SEAM-02 `22b24be`).** The SLAB/SLICE
 split is gone for structural materials: a floor is a roof at the base of the
@@ -17,6 +28,8 @@ materials with no art of their own. `MaterialDef.slab_full_color` deleted —
 never read by anything. Still open: `earth` itself is not unified (needs
 `facade_earth.png`, art that does not exist), and the GPU-flush safeguard.
 See §11.
+
+</details>
 
 **2026-08-08, session close (superseded by the above the same day)** —
 Director's call after the GPU-flush fix and the soot reversal below:
@@ -1747,7 +1760,38 @@ animation is not.
 
 ---
 
-## 11. Next session starts here (updated 2026-08-09, post-Alpha-Explosion-Waves)
+## 11. Next session starts here (updated 2026-08-09, post-Alpha-Explosion-Flow)
+
+> ### ✅ 2026-08-09, session close — the prediction dependency is BUILT and Phase B is unblocked.
+>
+> Everything the block below opened as a dependency has shipped.
+> **[`PREDICTION_MASTER_PLAN.md`](PREDICTION_MASTER_PLAN.md) is complete — all
+> six tasks.** Concretely, for this plan:
+>
+> - **Both defects named below are fixed.** The 3-frame collapse is gone
+>   (`front_frames`, no wall-clock term survives in the pacing path), and the
+>   171 ms block is out of the frame the player clicks on — pre-production starts
+>   when the target is picked and the remainder finishes under a burning grenade.
+>   Measured on the real map: **zero frozen frames.**
+> - **Phase B's hover/throw flow has a real seam to plug into.**
+>   `PredictionCache.request(signature, revision, …)` is what the hover should
+>   call, and `TestZoneController._begin_preproduction()` is the working
+>   reference — the context menu is standing in for the hover that Phase B will
+>   build.
+> - **The blast-radius bubble is a prediction consumer**, and it should read
+>   `delta.census` (§3.4) rather than a full Delta.
+> - **One rule Phase B must not break:** any new committed mutation calls
+>   `room.bump_world_revision()`, or cached predictions go stale.
+>
+> **Task 6's remaining tuning surface is unchanged and still lives below.** The
+> Director deferred the look pass deliberately at session close —
+> *"a gente só vai conseguir fazer o fine tuning da fluidez quando todo o
+> mecanismo estiver bem estabelecido"* — so the mechanism landed first.
+>
+> Full detail: `PROMPTS/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md`.
+
+<details><summary>The original 2026-08-09 dependency note, kept for the reasoning</summary>
+
 
 > ### ⚠️ 2026-08-09, later the same day — Task 6 was opened and immediately grew a dependency.
 >
@@ -1788,34 +1832,67 @@ animation is not.
 > has to land before any look-tuning is meaningful (tuning a blast you can only
 > see in 3 frames is tuning blind).
 
-**Resume point:** Tasks 0 through 5 are done and committed, and the
-2026-08-08/09 session (VERSION 0.9.93, "Alpha Explosion Waves") took the blast
-from "the waves fire" to **one organic event**. Full record:
+</details>
+
+**Resume point:** Tasks 0 through 5 are done and committed. The 2026-08-08/09
+session (0.9.93, "Alpha Explosion Waves") took the blast from "the waves fire" to
+**one organic event**; the 2026-08-09 session (0.9.94, **"Alpha Explosion Flow"**)
+made it **flow** — visible pacing, three separated beats, and no frozen frame.
+Full records: `PROMPTS/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md` and
 `PROMPTS/RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md`; per-topic detail in the
 E-DENT-01 / E-CRACK-01 / E-SMOKE-01 / E-FLASH-01..03 / E-ORGANIC-01 /
 E-RADIAL-01 / E-NATIVE-01 blocks just above §11's own order of business.
 
 What a detonation is today, end to end:
 
-1. `Room.spawn_blast_burst()` fires the core — embers, sparks and dust from the
-   overlays this project already had. **No imported sprite** (E-NATIVE-01).
-2. A **negative** screen flash inverts the world and tweens back
-   (`INFILTRAITOR_WHITE_FLASH=1` restores the old white one), drawn BELOW
-   ember/smoke so the fire is not inverted with the world it is lighting.
-3. Camera shake, starting on the same beat.
-4. `DetonationChoreographer` replays the plan as an **expanding front**: every
-   entry sorted by its own radius from the epicentre, so effects interleave by
-   where they physically are instead of arriving in per-category blocks, and
-   paced against a deadline with catch-up (E-RADIAL-01, E-ORGANIC-01).
-5. Per-voxel smoke — one puff per damaged voxel, intensity and lifetime from its
+0. **Pre-production.** The moment the player picks a target, the whole blast is
+   computed in 4 ms slices without touching the world (P-COOK). By the time they
+   confirm, the Delta is normally already in the cache.
+1. **Beat 0 · COOKING.** `Room.spawn_blast_burst()` fires the core — embers,
+   sparks and dust from the overlays this project already had, **no imported
+   sprite** (E-NATIVE-01) — and the camera shakes. Both are unconditional and
+   land on the frame the player clicked. If any computation is left, it finishes
+   *here*, under the burning grenade. Usually zero frames.
+2. **The commit.** `delta.commit()` is the single writer; persistence, census and
+   the world-revision bump follow it.
+3. **Beat 1 · FIRE**, alone, for whatever `burst_lead_frames` the cooking did not
+   already spend.
+4. **Beat 2 · STROBE** — white, negative, white, negative, one held frame each,
+   caller-paced, with the fire still burning under it. The negative quad sits
+   ABOVE ember/smoke so the fire goes dark with the world (P-DARKFIRE), and the
+   inversion is desaturated so it goes neutral rather than blue.
+5. **Beat 3 · DESTRUCTION**, clean, with no flash over it.
+   `DetonationChoreographer` replays the plan as an **expanding front** paced by
+   FRAME COUNT — every entry sorted by its own radius from the epicentre and
+   snapped to visible bands, so the wave reads as "ondas na água"
+   (E-RADIAL-01, P-PLAY). No wall-clock term survives anywhere in that path.
+6. Per-voxel smoke — one puff per damaged voxel, intensity and lifetime from its
    damage tier, its ring, and a per-cell hash.
 
-**Everything above is a `var`.** The Director's stated next step is the fine
-tuning pass (*"depois fazemos o ajuste fino"*), and the surface is:
-`bombs/frag_grenade.json`'s ring weights · `sequence_ms` / `front_jitter` /
-`KIND_RADIUS_BIAS` in `detonation_choreographer.gd` · `blast_burst_*` in
-`room.gd` · the flash's own `flash_*` fields · `SmokeSparkOverlay`'s duration and
-drift defaults · `DetonationPlanBuilder`'s `SMOKE_*` and `CRATER_*` constants.
+**Everything above is a `var`, and the fine-tuning pass is the next thing the
+Director does** — deliberately deferred at 0.9.94's close (*"a gente só vai
+conseguir fazer o fine tuning da fluidez quando todo o mecanismo estiver bem
+estabelecido"*), so the mechanism landed first and the look is untouched. The
+surface, updated for what this session changed:
+`bombs/frag_grenade.json`'s ring weights · `front_frames` / `band_voxels` /
+`front_jitter` / `KIND_RADIUS_BIAS` in `detonation_choreographer.gd`
+(`sequence_ms` is GONE — P-PLAY deleted the wall-clock pacing) · `blast_burst_*`
+in `room.gd` · `burst_lead_frames`, `SHAKE_SECONDS`, `predict_budget_ms` and
+`cook_budget_ms` in `test_zone_controller.gd` · the flash overlay's
+`strobe_white_alpha` / `strobe_negative_amount` / `strobe_negative_desaturate`
+(the `flash_fade_*` fields are GONE — P-STROBE deleted the timed fade) ·
+`SmokeSparkOverlay`'s duration and drift defaults · `DetonationPlanBuilder`'s
+`SMOKE_*` and `CRATER_*` constants.
+
+**The one open look question is Q6 in `PREDICTION_MASTER_PLAN` §10:** at
+`strobe_white_alpha = 1.0` a white strobe frame compresses the whole image into
+the top 16% of the brightness range, so the fire that is meant to keep burning
+through the strobe is rendered but invisible. One number.
+
+**Use the filmstrip to judge any of this** —
+`python3 tools/persistent/build_filmstrip.py` puts every frame of ONE detonation
+on one sheet, which is how three of this session's look calls were actually
+made.
 
 **Read before re-tuning anything performance-shaped:** the cost of this sequence
 is **per frame that writes to a `TileMapLayer`**, not per cell — measured, and it

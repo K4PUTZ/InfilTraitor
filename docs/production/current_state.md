@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.93 · **Updated:** 2026-08-09 · **Branch:** main
+**Version:** 0.9.94 · **Updated:** 2026-08-09 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -46,6 +46,7 @@
 - RESUMO_SESSAO_2026-08-08_E_EARTH_D35.md
 - RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md
 - RESUMO_SESSAO_2026-08-08_GPU_FLUSH_AND_SOOT_REVERSAL.md
+- RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -53,7 +54,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 139
+- GDScript modules: 141
 - Test scripts: 42
 - Known maps: 3
 - Shipped facade files: 0
@@ -404,14 +405,53 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (70% — Alpha, functional and polished; Phase A complete, Phase B not started)
+### Explosive Destruction (75% — Alpha, functional and polished; Phase A complete + prediction layer, Phase B not started)
 
-✅ **A grenade detonates as ONE ORGANIC EVENT, on screen** — right-click
-"Detonar" on a TEST-ZONE grenade runs the whole pipeline: resolution,
-exposure fallback, one light-field query, then a burst built from this game's
-own overlays, a negative screen flash, camera shake, and an **expanding front**
-of per-voxel effects that ends at the widest circle. Firearm destruction
-(above) is untouched and still works exactly as before.
+✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
+camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:
+the damage is COMPUTED the moment the target is picked, then a burst built from
+this game's own overlays, camera shake, a 4-frame white/negative strobe, and an
+**expanding front** of per-voxel effects that ends at the widest circle.
+Firearm destruction (above) is untouched and still works exactly as before.
+
+✅ **0.9.94 "Alpha Explosion Flow" (2026-08-09)** — the session that made the
+blast *flow*. Full record:
+[`RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md`](../../PROMPTS/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md).
+- **The blast stopped being three frames.** `cells_due_now()`'s wall-clock
+  deadline meant one slow frame made the next frame's quota the entire queue —
+  measured, **2 057 of 2 185 steps on one frame**. That is why the radial front
+  shipped two days earlier never read as a wave. Pacing is by FRAME COUNT now,
+  snapped to visible bands; no wall-clock term survives in that path. **The
+  Director's "ondas na água" needed no new feature.**
+- **The detonation is three beats** (P-STROBE) — fire alone, then a 4-frame
+  white/negative/white/negative strobe with the fire still burning under it, then
+  the destruction clean. The timed fade was **deleted, not shortened**: a
+  frame-driven strobe cannot express the E-FLASH-03 bug (a 150 ms frame burning
+  half the fade curve in one step) by construction.
+- **A complete PREDICTION layer**
+  ([`PREDICTION_MASTER_PLAN`](../../PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md),
+  all six tasks). `build_plan()` is **pure** — it returns a `WorldDelta`
+  describing what a grenade *would* do, and `delta.commit()` is the only writer.
+  The pipeline is an 11-phase resumable, cancellable state machine; predictions
+  are cached on `(signature, world_revision)` and start when the player picks a
+  target. **In the harness's harshest case the grenade cooks 16 frames (~0.27 s)
+  with zero frozen frames.**
+- **`tools/persistent/build_filmstrip.py`** puts every frame of ONE detonation on
+  one contact sheet — three of the session's look calls were made from it,
+  including one bloom direction that was simply wrong (the fire spread sideways
+  because the burst was modelled as one squashed 2D circle; ground and altitude
+  are different axes in isometric).
+- ⚠️ **Two gates recorded as SHORT rather than declared met:** §4.4's 4 ms
+  per-frame budget (worst unsuspendable visit 7–9 ms — the soot BFS and one large
+  wall slice, both atomic by construction) and the total build cost (~192 ms vs a
+  pre-refactor 178 ms — what purity costs). Neither freezes a frame.
+- ⚠️ **The plan's own opening phase table was wrong**, and every decision in it
+  had been reasoned from that table: the soot BFS is 10 ms not 66, the light
+  field 0.1 ms not 35, and the map-wide voxel walk — never a separate phase — is
+  66% of the cost. Corrected in §8.8.
+- ⚠️ **Deliberately un-tuned:** the fire/flash/destruction timing. The Director's
+  call — *"a gente só vai conseguir fazer o fine tuning da fluidez quando todo o
+  mecanismo estiver bem estabelecido."* That pass is the next work.
 
 ✅ **0.9.93 "Alpha Explosion Waves" (2026-08-08/09)** — eight passes that took
 the blast from "the waves fire" to something that reads right. Full record:
@@ -496,9 +536,14 @@ the blast from "the waves fire" to something that reads right. Full record:
   flash frames) is not started — the Director chose to prove Phase A's 15
   waves with real captures first. The decal-bake formalization that blocked
   Task 6 is **done — D34, 2026-08-08** (see the D34 bullet below), and Task 6's
-  own tuning pass ran on 2026-08-08/09 (0.9.93). **The next concrete action is
-  the Director's fine-tuning pass** — every lever is a `var`; the surface is
-  listed in the master plan's §11. Blast debris VFX (dust/spark/chip) was
+  own tuning pass ran on 2026-08-08/09 (0.9.93) and 2026-08-09 (0.9.94).
+  **Phase B is now UNBLOCKED and is the next real work** — its hover/throw flow
+  plugs straight into `PredictionCache.request()`, with
+  `TestZoneController._begin_preproduction()` as the working reference. Ahead of
+  it sits the Director's fine-tuning pass on the fluidity, deferred on purpose at
+  0.9.94's close; every lever is a `var` and the surface is listed in the master
+  plan's §11. **One rule Phase B must not break:** any new committed mutation
+  calls `room.bump_world_revision()`, or cached predictions go stale. Blast debris VFX (dust/spark/chip) was
   deliberately disconnected in Task 5 (would have doubled up with the new
   staged smoke waves) — flagged for a future task, not silently dropped.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently

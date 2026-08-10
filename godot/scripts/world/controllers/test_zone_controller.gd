@@ -267,17 +267,19 @@ func _update_grenade_targeting_display() -> void:
 	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
 	var throw_range: float = float(max_ring) * 112.0 * 3.0  ## triplo da distância
 
-	## Show perimeter
+	## Show perimeter (eliptical, respecting isometric 2:1)
 	if room._throw_perimeter_overlay != null:
 		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range)
 
-	## Position bubble: selected > hover > closest > forward (3 GUs)
-	var bubble_pos: Vector2 = agent_pos
-	if room._hovered_cell != room.INVALID_CELL:
-		bubble_pos = room.agent._cell_to_world(room._hovered_cell)
-	else:
-		## Default: 3 GUs forward (agent's facing direction)
-		bubble_pos = agent_pos + Vector2(336.0, 0.0)  ## 3 * 112 px
+	## Position bubble with clamping to closest GU within range
+	var target_gu: Vector2i = room._hovered_cell
+	if target_gu == room.INVALID_CELL:
+		## Default: 3 GUs forward
+		target_gu = room.agent.cell + Vector2i(3, 0)
+
+	## Clamp target to closest GU within throw range
+	var clamped_gu: Vector2i = _clamp_gu_to_throw_range(target_gu, agent_pos, throw_range)
+	var bubble_pos: Vector2 = room.agent._cell_to_world(clamped_gu)
 
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.show_bubble(bubble_pos, throw_range)
@@ -330,6 +332,32 @@ func _cleanup_grenade_targeting_ui() -> void:
 		room._aim_bubble_overlay.clear()
 	if room._throw_arc_overlay != null:
 		room._throw_arc_overlay.clear()
+
+
+## T-BUBBLE: Clamp target GU to closest one within throw range (isometric 2:1)
+func _clamp_gu_to_throw_range(target_gu: Vector2i, agent_world_pos: Vector2, throw_range: float) -> Vector2i:
+	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
+	var delta: Vector2 = target_world - agent_world_pos
+
+	## Check isometric distance: x-distance directly, y-distance scaled by 2 (2:1 aspect)
+	var iso_dist: float = absf(delta.x) + absf(delta.y * 2.0)
+
+	## If within range, return target as-is
+	if iso_dist <= throw_range:
+		return target_gu
+
+	## Out of range: find closest GU on the edge
+	## Clamp world position to edge of ellipse, then convert back to GU
+	if iso_dist > 0.001:
+		var scale: float = throw_range / iso_dist
+		var clamped_world: Vector2 = agent_world_pos + delta * scale
+		## Convert back to GU (snap to nearest grid cell)
+		var clamped_gu: Vector2i = room._screen_to_tile(room.get_viewport().get_canvas_transform() * room.floor_layer.to_global(clamped_world))
+		if clamped_gu != room.INVALID_CELL:
+			return clamped_gu
+
+	## Fallback: return agent's current cell
+	return room.agent.cell
 
 
 ## T-ARC: Animate grenade throw then detonate

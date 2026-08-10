@@ -153,12 +153,13 @@ var band_voxels: float = 1.0
 
 ## §1 step 10's table, inner rings first — the one authoritative order.
 ## [kind, ring] pairs; kind indexes directly into the plan's own top-level keys.
+## E-FUME: soot is no longer in this table; it's its own late fade-in step after
+## smoke (see _apply_entry's "soot" handler and _run_queue's end-of-sequence).
 const WAVE_TABLE: Array = [
 	["destroy", 0], ["destroy", 1], ["destroy", 2],
 	["dented", 0], ["dented", 1],
 	["cracked", 1], ["cracked", 2],
 	["smoke", 0], ["smoke", 1], ["smoke", 2], ["smoke", 3],
-	["soot", 0], ["soot", 1], ["soot", 2], ["soot", 3],
 ]
 
 ## The DetonationPlan's own smoke entries carry no material (§6.1's literal
@@ -195,7 +196,7 @@ var _waves_done: int = 0
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
 	_t0_ms = Time.get_ticks_msec()
 	_waves_done = 0
-	_run_queue(flatten_plan(plan), voxel_renderer, smoke_overlay, tree)
+	_run_queue(flatten_plan(plan), voxel_renderer, smoke_overlay, tree, plan)
 
 
 ## E-RADIAL-01 (Director, 2026-08-09): "eu tô achando as waves duras, parece que
@@ -288,7 +289,7 @@ static func _sort_key(kind: String, entry: Dictionary) -> float:
 ## tree goes away mid-sequence (map reload, quit), `await tree.process_frame`
 ## simply never resumes and the rest is dropped — correct for a purely visual
 ## replay of damage already applied to the Voxel state.
-func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
+func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, plan: Dictionary = {}) -> void:
 	var next_step := 0
 	var frame_index := 0
 	## The outermost step's own sort key — the radius the front has to reach for
@@ -316,6 +317,23 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree) ->
 			Time.get_ticks_msec() - _t0_ms, apply_ms])
 		wave_applied.emit(frame_index, "queue", 0, applied)
 		frame_index += 1
+
+	## E-FUME: soot as its own late step after smoke (visual reordering only).
+	## Soot is removed from WAVE_TABLE and applied here after the expanding front
+	## is done, so it visually appears after smoke has mostly dissipated rather than
+	## landing alongside it. The "alpha ramp in" in the plan's language is the
+	## temporal ordering (appears later), not a technical fade—set_cell applies
+	## the pre-computed alt instantly.
+	var soot_entries: Array = []
+	for ring: int in plan.get("soot", {}).keys():
+		soot_entries.append_array(plan["soot"][ring])
+	if not soot_entries.is_empty():
+		for entry in soot_entries:
+			_apply_entry("soot", entry, voxel_renderer, smoke_overlay)
+		_flush(voxel_renderer)
+		frame_index += 1
+		await tree.process_frame
+
 	_waves_done = frame_index
 	finished.emit()
 

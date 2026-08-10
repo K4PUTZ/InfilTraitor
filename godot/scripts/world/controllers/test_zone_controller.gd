@@ -287,16 +287,90 @@ func _update_grenade_targeting_display() -> void:
 		room._throw_arc_overlay.show_arc(agent_pos, bubble_pos)
 
 
+## Execute grenade throw from current targeting position
+func execute_grenade_throw() -> void:
+	if not _targeting_mode or _targeting_grenade_index < 0:
+		return
+
+	## Get target GU from hover or default
+	var target_gu: Vector2i = room._hovered_cell
+	if target_gu == room.INVALID_CELL:
+		## Default: 3 GUs forward (convert world pos back to gu cell)
+		var default_world_pos: Vector2 = room.agent.position + Vector2(336.0, 0.0)
+		target_gu = room._screen_to_tile(room.get_viewport().get_canvas_transform() * room.floor_layer.to_global(default_world_pos))
+
+	## Clean up targeting UI
+	_cleanup_grenade_targeting_ui()
+
+	## Start preproduction immediately
+	_begin_preproduction(target_gu)
+
+	## Start throw animation (will wait for preproduction and then detonate)
+	var g: Dictionary = _grenades[_targeting_grenade_index]
+	_start_grenade_throw_animation(target_gu, g)
+
+	_targeting_mode = false
+	_targeting_grenade_index = -1
+
+
 ## Cancel targeting mode
 func cancel_targeting() -> void:
 	if not _targeting_mode:
 		return
 	_targeting_mode = false
 	_targeting_grenade_index = -1
+	_cleanup_grenade_targeting_ui()
+
+
+## Clean up grenade targeting UI overlays
+func _cleanup_grenade_targeting_ui() -> void:
 	if room._throw_perimeter_overlay != null:
 		room._throw_perimeter_overlay.clear()
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.clear()
+	if room._throw_arc_overlay != null:
+		room._throw_arc_overlay.clear()
+
+
+## T-ARC: Animate grenade throw then detonate
+func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) -> void:
+	var sprite: Sprite2D = grenade.get("sprite")
+	if sprite == null:
+		return
+
+	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if bomb_def == null:
+		return
+
+	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
+	var start_pos: Vector2 = room.agent.position
+	var throw_duration: float = 0.6
+
+	## Animate grenade from hand to target
+	var elapsed: float = 0.0
+	while elapsed < throw_duration:
+		elapsed += room.get_tree().get_physics_frame()
+		var t: float = elapsed / throw_duration
+		sprite.position = start_pos.lerp(target_world, t)
+		await room.get_tree().process_frame
+
+	sprite.position = target_world
+
+	## Wait for preproduction or timeout (whichever is longer)
+	var timeout: float = 1.0
+	var wait_elapsed: float = 0.0
+	while wait_elapsed < timeout:
+		if room._prediction_cache != null and room._prediction_cache.is_busy():
+			## Wait a bit more if cache is still computing
+			pass
+		else:
+			break
+		wait_elapsed += room.get_tree().get_physics_frame()
+		await room.get_tree().process_frame
+
+	## Get the precomputed prediction and start detonation
+	var prediction: DetonationPrediction = _take_prediction(bomb_def, target_gu)
+	_start_detonation_sequence(prediction, target_gu, target_world)
 
 
 ## T-BUBBLE: Check if currently in targeting mode

@@ -13,6 +13,8 @@ signal debug_command_requested(command: String)
 signal screenshot_requested
 signal pause_requested
 signal grenade_mode_requested
+signal grenade_throw_requested
+signal grenade_cancel_requested
 var room: Node
 var _camera_controller: Node = null
 
@@ -103,6 +105,16 @@ func _handle_key_action(key: InputEventKey) -> void:
 	elif key.is_action_pressed("ui_grenade_mode"):
 		print_debug("[INPUT] Grenade mode requested")
 		grenade_mode_requested.emit()
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_accept"):
+		print_debug("[INPUT] Grenade throw requested")
+		grenade_throw_requested.emit()
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_cancel"):
+		print_debug("[INPUT] Grenade cancel requested")
+		grenade_cancel_requested.emit()
 		if viewport:
 			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_up"):

@@ -1130,6 +1130,8 @@ func _ready() -> void:
 	_input_controller.screenshot_requested.connect(_on_screenshot_requested)
 	_input_controller.pause_requested.connect(_on_pause_requested)
 	_input_controller.grenade_mode_requested.connect(_on_grenade_mode_requested)
+	_input_controller.grenade_throw_requested.connect(_on_grenade_throw_requested)
+	_input_controller.grenade_cancel_requested.connect(_on_grenade_cancel_requested)
 
 	## PAUSE-MENU-01: Initialize main menu panel
 	var MainMenuPanelClass = preload("res://godot/scripts/ui/main_menu_panel.gd")
@@ -4075,6 +4077,18 @@ func _on_pause_requested() -> void:
 func _on_grenade_mode_requested() -> void:
 	if _test_zone_controller != null:
 		_test_zone_controller.enter_grenade_mode()
+
+
+## T-GRENADE: Enter key to throw grenade
+func _on_grenade_throw_requested() -> void:
+	if _test_zone_controller != null:
+		_test_zone_controller.execute_grenade_throw()
+
+
+## T-GRENADE: ESC key to cancel grenade mode
+func _on_grenade_cancel_requested() -> void:
+	if _test_zone_controller != null:
+		_test_zone_controller.cancel_targeting()
 
 
 func _on_controls_requested() -> void:

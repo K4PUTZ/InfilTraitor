@@ -64,11 +64,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 - 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
 - 0f37d96 ALPHA FLOOR FACADE FIX 0.9.92 - doc sweep, PLAYGROUND floor zones, baked-decal contact sheet
 - 6a59c6f ALPHA MATERIAL UNIFICATION 0.9.91 - one grayscale facade per material serves wall, roof and floor
 - f29e0a1 ALPHA EXPLOSION REBUILD READY 0.9.90 - design canon recovered, audit, Task 0 measured, material reform specified
-- 202b104 ALPHA GENERIC DECALS 0.9.89 - D33 shipped end to end, D33-SOOT-01, session close
 <!-- AUTO:END version_history -->
 
 ---

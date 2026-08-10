@@ -2,6 +2,22 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
+**Latest update:** 2026-08-10 — **Task 6 grows a real ordered task list:**
+the white strobe frame is retired in favour of a camera-facing shard that
+darkens into the existing negative flash, the blast gets decorative iron
+shrapnel (and a debug twin that shows real dented/cracked positions), soot
+becomes its own late fade-in beat, and Phase B's aim-bubble turns out to need
+none of the prediction machinery for its first version. See the new dated
+section **"E-FRAG-01 / E-SHARD-01 (2026-08-10)"** near the end of this file for
+the full task table, the reference images, and a scope boundary the Director
+drew explicitly: a real room-wide relight after a blast (holes letting in new
+light, affecting shadows/detection) is confirmed real but belongs to its own
+future gameplay milestone alongside cover/exposure — this plan only closes the
+destroyed voxels' own soot/decal/light paint, already built and measured cheap
+enough (0.1 ms) that the deferral idea that opened this question is dropped.
+
+<details><summary>Previous update — 2026-08-09, session close (Alpha Explosion Flow)</summary>
+
 **Latest update:** 2026-08-09, session close (Alpha Explosion Flow) — **Phase A
 is complete and its last dependency is discharged.** The 3-frame collapse and
 the 171 ms detonation block are both gone; `PREDICTION_MASTER_PLAN` shipped all
@@ -10,6 +26,8 @@ it and a detonation no longer freezes the camera. **Phase B (targeting UI, throw
 arc, bubble) is now unblocked and is the next work** — see §11, which names the
 exact seam it plugs into. Task 6's look-tuning surface is deliberately still
 open: the Director deferred it until the mechanism was established.
+
+</details>
 
 <details><summary>Previous update — 2026-08-08, later session</summary>
 
@@ -1391,6 +1409,18 @@ Not scheduled to a specific task yet — Task 4 (E-PLAN) is the natural place to
 decide which of the two, once the rest of the pre-compute window's real cost
 is known from Task 0.
 
+**⚠️ SUPERSEDED IN PART, 2026-08-10.** This whole note predates
+`build_plan()`/`WorldDelta` (P-DELTA, P-SLICE) — there is no "wave 1" to
+dispatch relative to any more, and every entry's `alt` (including soot's) is
+already resolved inside the single pure pre-compute pass, on the main thread,
+before `commit()`. The reordering this note proposed never happened and the
+timing pressure it was solving (soot ready by wave 12, ~440 ms in) no longer
+applies at 5-frame `front_frames`. **The soot-as-a-late-fading-beat idea is
+alive again, in a different shape** — see "E-FRAG-01 / E-SHARD-01
+(2026-08-10)" near the end of this file, task E-FUME: soot moves to its own
+step in the choreographer's queue, not a background thread, and the reason to
+defer it now is a fade-in look, not a compute-cost deadline.
+
 ---
 
 ## 7. E-PERSIST — what survives rotation
@@ -1726,7 +1756,7 @@ facade). No longer "nothing to vary" — superseded.
 §6.2 updated: 15 waves × 40 ms ≈ 600 ms of choreography (was 560 ms/14 waves
 before Smoke ring 3).
 
-### Q6 — 🟡 PARTIALLY ANSWERED 2026-08-06 (bubble described; reference image attached). Phase B only, does not block Phase A.
+### Q6 — 🟢 REFINED 2026-08-10 (second reference image, a Phoenix Point capture, attached). Phase B only, does not block Phase A.
 
 The Director attached the XCOM reference and described it: a line simulating
 the parabola from the throwing agent to the impact point, and a translucent
@@ -1735,6 +1765,30 @@ information the existing floor-perimeter wireframe (`open_menu_for()`) already
 computes, extended into a 3D projected volume rather than a flat outline. Not
 detailed further here since Phase B is not scheduled — recorded so the Phase B
 plan doesn't have to re-ask for the image.
+
+**2026-08-10 refinement, from the Phoenix Point capture and the Director's own
+words:** *"O HUD vai ser mais simplificado e translúcido, como na referência do
+XCOM. A mira só vai usar uma parte dos raios, formando a bolha em volta da GU.
+Não vamos exibir a trajetória inteira dos estilhaços antes dela acontecer."*
+Three concrete narrowings for the FIRST version (task E-BUBBLE, see
+"E-FRAG-01 / E-SHARD-01 (2026-08-10)" near the end of this file):
+
+- **Flat and simple, not a per-voxel projection.** A translucent disc sized
+  directly from `BombDef`'s own ring radii (`frag_grenade.json`), positioned at
+  the hovered GU — closer to the reference image's flat hex overlay than to a
+  true 3D volume. This needs no prediction data at all: the ring radii are
+  known the instant a GU is hovered, so **E-BUBBLE has no dependency on
+  `PredictionCache`, `build_plan()`, or E-RAY below.**
+- **No pre-throw trajectory display.** The shrapnel rays (E-FRAG) and the
+  camera shard (E-SHARD) are a DETONATION effect; the aim bubble shown while
+  choosing a target must not show them in advance.
+- **Explicitly deferred, not scheduled:** *"se a gente conseguir exibir os
+  raios saindo de dentro da bola, temos um diferencial visual bem
+  interessante. De qualquer maneira, deixamos isso pra depois."* Rays radiating
+  from inside the bubble toward the real cells the blast would hit — this
+  WOULD need E-RAY, real per-cell prediction data, and therefore the
+  hover-driven cache tuning this session flagged but did not schedule (see the
+  new section's closing note). Revisit only after the flat disc ships.
 
 ### Q7 — Explosion art 🟢 Phase B only
 
@@ -2527,6 +2581,143 @@ it), `e_native_burst.png`, `e_native_smoke_core.png`.
   bug: `DetonationChoreographer` needs an explicit owner
   (`TestZoneController._active_choreographer`), a bound `Callable` on a
   `SceneTreeTimer` connection was measured NOT sufficient on its own.
+
+---
+
+## E-FRAG-01 / E-SHARD-01 (2026-08-10) — the strobe becomes a shard, and the blast gets real debris
+
+**Where this started:** `PREDICTION_MASTER_PLAN` §10 Q6, left open at last
+session's close — *"how white should the white strobe frames be?"* §8.3 had
+measured that at `strobe_white_alpha = 1.0` a white frame puts the whole image
+in the top 16% of the brightness range, so the fire the Director wanted
+burning through the strobe (*"o fogo permanece acontecendo durante os 4 frames
+do flash"*) is rendered but invisible. This session answered it by deleting
+the white frame rather than tuning its alpha, on the Director's own
+reasoning: *"Não vamos mais ter aquele flash todo branco, inclusive por
+questões de epilepsia."* Two reference stills of grenade/fragmentation VFX
+were attached alongside the instruction — dark, angular, hard-silhouetted
+debris against a bright core, not the round embers `ember_overlay.gd` already
+draws — and a third, a Phoenix Point capture, for Q6's aim-bubble refinement
+(folded into §10 above).
+
+**The other three asks in the same message, restated exactly** because each
+maps to a different existing system and none of them needed a new mechanic
+invented — only a beat moved or a var animated:
+
+> *"Isso resolve o problema do frame branco cobrir o fogo: um dos estilhaços de
+> ferro pretos voam exatamente em direção à câmera (1 frame saindo da
+> granada), vai ficando cinza no caminho (2 frames), termina no frame negativo
+> cobrindo a tela toda (que já está pronto com o fogo escuro) e tween down
+> rápido."* — confirmed as **no repetition**: one negative peak, opacity down
+> over 3 frames, back to normal.
+>
+> *"A fuligem de todo o conjunto pode começar a ser pintada depois que a
+> fumaça estiver no final, e terminar de aparecer no seu tempo, com um alpha
+> suave, em vez de aparecer com 100% de uma vez."*
+>
+> *"A iluminação nova, por sobre toda a cena que foi esculpida, pode ser
+> calculada e refeita depois que a fumaça tiver sido disparada."*
+
+### The insight that reshaped the shrapnel task
+
+The Director noticed `light_ray_overlay.gd` (golden shafts, one lamp to every
+lit tile's centre, pre-computed arrays, one cheap `_draw()`) is geometrically
+the same shape the shrapnel needs — an origin, many real destinations, drawn
+as lines. Verified by reading the class: yes, and the reusable part is the
+*pattern* (packed `_ray_froms`/`_ray_tos`/`_ray_alphas`, built once, redrawn
+via `queue_redraw()`), not the class itself — the light rays are static
+between `lighting_rebuilt` events and blend `MIX` gold; the shrapnel has to
+animate (travel/grow, then fade) and blend dark over the fire. **Corrected
+once, by the Director, before it got written into a task:** it is NOT one ray
+per affected voxel the way light rays cover every lit tile — *"não precisamos
+ter tantos estilhaços quanto raios de luz (que afetam absolutamente todo o
+cenário). A granada na vida real tem um número X de gomos que são
+disparados."* A real grenade fragments into a bounded number of pieces; the
+decorative overlay samples a small fixed count from the plan's real
+destroy/dented/cracked cells rather than drawing one per cell.
+
+**The debug consumer is the opposite: deliberately NOT capped.** *"Não
+precisamos alterar o comportamento da destruição dos voxels, o efeito visual é
+só decorativo. Porém, queremos detectar a posição dos voxels especiais para
+fins de debug."* E-FRAG stays purely cosmetic (no Voxel writes, same contract
+as `ember_overlay.gd`/`smoke_spark_overlay.gd`); E-DEBUG-RAY exists precisely
+to show every one, unbounded, because it is the tool this project's own
+evidence discipline calls for — CLAUDE.md already records a feature that
+passed its selftest with 69 synthetic dents and produced zero on the real
+map, discovered only because someone eventually needed to see WHERE the
+affected voxels actually were.
+
+### Tasks, in order
+
+| # | Tag | Deliverable | Depends on |
+|---|---|---|---|
+| 1 | **E-RAY** | Generic animated ray/streak overlay: `Node2D`, precomputed origin→destination(s) arrays (`light_ray_overlay.gd`'s pattern), but each entry carries its own travel/fade lifetime instead of being static. Sibling class, not a subclass — blend mode, colour and animation all differ from `LightRayOverlay`. | — |
+| 2 | **E-DEBUG-RAY** | Dev-only consumer of E-RAY: one ray to every `dented`/`cracked` voxel a real blast plan touched, unbounded, env-var gated (same precedent as `INFILTRAITOR_ENABLE_STAMP_SOOT`). Ships FIRST after E-RAY because it is the lowest-risk consumer and gives every later task a real tool to verify against. | E-RAY |
+| 3 | **E-FRAG** | Decorative shrapnel: a small `var frag_count` (tunable, "gomos" order of magnitude, not per-voxel) sampled from the plan's real destroy/dented/cracked cells — so directions stay coherent with where the blast actually lands without scaling with the census. Dark iron colour, alpha over the fire, lifetime in real TIME (`_process(delta)`, `ember_overlay.gd`'s convention) since nothing waits on it. Fires at the exact point `sprite.visible = false` already sets in `detonate_active()` (`test_zone_controller.gd:269`). *"Eles voam e somem, enquanto o fogo vai aparecendo por trás"* — E-FRAG draws above the fire and finishes before it does; no timing coupling needed beyond both starting at the same beat. | E-RAY |
+| 4 | **E-SHARD** | The camera-facing shard, separate from E-FRAG's set. 1 frame leaving the grenade (small, black) → 2 frames growing and desaturating toward grey → on the frame it fills the screen, call `hold_frame(NEGATIVE)` — **no new shader**: `strobe_negative_amount` is already a `var` (`explosion_flash_overlay.gd:67`), just never animated per-frame before. 3 more held frames step it `1.0 → 0.0`, then `clear()`. This REPLACES `STROBE_SEQUENCE` (`test_zone_controller.gd:100`) entirely — `FlashMode.WHITE` is never invoked by the live sequence again (the env-var escape hatch `INFILTRAITOR_WHITE_FLASH=1` can stay, as a comparison tool, not a shipped path). | E-FRAG (shares its geometry/timing base) |
+| 5 | **E-FUME** | Soot leaves `WAVE_TABLE`'s radially-interleaved ordering and becomes its own late step in `DetonationChoreographer`'s queue, firing once the smoke puffs are mostly spent rather than riding the front. Alpha ramps in over N frames instead of the tile's baked alt appearing at full opacity the instant `set_cell()` runs. | none of the above — pure reordering in `detonation_choreographer.gd` |
+| 6 | **E-BUBBLE** | Phase B aim-bubble, flat translucent disc from `BombDef`'s ring radii — see §10 Q6's refinement above for the full scope and what is deliberately NOT built yet. | none — no prediction dependency for this scope |
+
+Each task closes against §12's contract below, same as every other task in
+this plan.
+
+### What this session's research corrected before it became a task
+
+Two places where reading the real code changed the plan from what a first
+reading of the Director's words would have produced — recorded so neither
+gets "fixed" back by someone trusting the plain-English request over the
+code:
+
+1. **The bubble does not need `delta.census` OR a full Delta.** `PREDICTION_MASTER_PLAN`
+   §11 states the bubble "should read `delta.census` (§3.4) rather than a
+   full Delta" — true for a per-cell ray-based bubble, but §3.4's census is
+   an aggregate count per (surface, material), not per-cell positions, so it
+   cannot drive individual rays either way. Moot for the scope actually
+   shipping now (E-BUBBLE is a flat disc sized from static `BombDef` ring
+   radii, no Delta of any shape needed) — but real, and worth naming, for
+   the deferred "rays from inside the bubble" idea: that would need a THIRD,
+   lighter shape on `WorldDelta` (per-ring cell positions, no material/light/
+   soot resolution), not the census and not the full Delta. Not built; named
+   so the deferred feature does not silently reach for the wrong field.
+2. **No full-room relight fires after a blast today — grepped, not
+   assumed. ✅ RESOLVED 2026-08-10 — it is a real future capability, and it is
+   explicitly OUT of this plan.** `detonation_plan_builder.gd`'s own
+   `VoxelLightField.build()` call (§8.8's phase 6) constructs a **throwaway,
+   plan-scoped field** used only to resolve this blast's own entries' `alt`;
+   it never touches `room._voxel_light_field`, and nothing in
+   `test_zone_controller.gd`'s detonation sequence or `room.gd` calls a
+   room-wide relight (`_repaint_world_shadows()` or `_voxel_light_field.build()`
+   on the persistent field) after a commit. The Director confirmed this is
+   deliberate for now, not a gap: *"nós vamos ter buracos no teto que iluminam
+   o cenário, e paredes destruídas idem. Isso interfere diretamente no
+   gameplay do jogo, causando sombras ou iluminação, e vai ter toda uma
+   milestone só pra si."* A hole changing what the room's light field looks
+   like is a GAMEPLAY system (shadows, tactical visibility) that belongs
+   alongside cover/exposure and guard detection, not a destruction-VFX task —
+   **deliberately deferred to that future milestone, not scheduled here.**
+   What THIS plan closes is narrower and already built: the destroyed voxels'
+   own soot/decal/light-bucket paint (exactly the three the Director named —
+   *"fuligem, decals e luz"*) — `detonation_plan_builder.gd`'s existing
+   per-entry `alt` resolution already covers all three, pre-commit, pure.
+   **The original "defer this until after the smoke fires" idea is DISCARDED**
+   on the Director's own conditional (*"se isso não for economizar
+   processamento... podemos descartar essa alteração"*) — §8.8 already
+   measured this exact phase at **0.1 ms**, so there is nothing to save by
+   deferring it, and the extra time budget from the future throw-arc animation
+   makes the point moot twice over. `build_plan()` keeps resolving it eagerly,
+   unchanged. **E-FUME is unaffected by this** — it only moves WHEN soot's
+   already-resolved `alt` gets painted onto the tilemap and how its alpha
+   ramps in, never when it gets COMPUTED.
+
+### Reference images (2026-08-10)
+
+Two grenade-fragmentation stills (dark, angular, hard-silhouetted debris
+against a bright core — the look target for E-FRAG/E-SHARD) and one Phoenix
+Point capture (the flat translucent hex-grid aim overlay — the look target for
+E-BUBBLE) were attached in chat. Not saved into the repo as of this writing;
+if any becomes a long-lived visual reference, save it under a hand-picked name
+(never `auto_*`, per this plan's own §12 rule) rather than relying on the chat
+transcript.
 
 ---
 

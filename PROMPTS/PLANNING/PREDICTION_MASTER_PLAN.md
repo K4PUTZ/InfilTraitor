@@ -1412,16 +1412,26 @@ share this one at all ("um sistema separado" if it comes to that).
 - **Task 5's gate loses its AI clause.** It is measured on a scripted cursor
   sweep alone.
 
-### Q6 — How white should the white strobe frames be? 🟡 NEW 2026-08-09, one number
+### Q6 — How white should the white strobe frames be? ✅ ANSWERED 2026-08-10 — not a number, a redesign
 
-§8.3's measurement: at `strobe_white_alpha = 1.0` a white frame puts the whole
-image in the top 16% of the brightness range, so the fire that is supposed to
-keep burning through the strobe is rendered but invisible. Options: leave it
-(a white-out is a legitimate strobe), or drop the alpha to ~0.85 so the world
-and the fire read through it.
+Not a value on `strobe_white_alpha`. The Director removed the white frame
+outright: *"Não vamos mais ter aquele flash todo branco, inclusive por
+questões de epilepsia."* The white/negative alternation is replaced by a
+camera-facing shard that flies out of the grenade, darkens toward grey across
+a couple of frames, and lands exactly on the negative flash — which already
+renders the fire dark (P-DARKFIRE) — followed by a 3-frame fade of
+`strobe_negative_amount` back to zero. No repeated strobing at all, which is
+also what removes the epilepsy concern, not just the brightness one §8.3
+measured.
 
-*Assumed if unanswered:* nothing — the Director is actively tuning the look and
-now has the filmstrip to judge it from.
+This is a look/choreography change, not an engine one, so the task (E-SHARD)
+and its full reasoning live in `EXPLOSION_REBUILD_MASTER_PLAN.md`, section
+"E-FRAG-01 / E-SHARD-01 (2026-08-10)" — consistent with §8's own rule that
+Phase B/look work is planned there, not here. What DOES belong to this plan
+and is unaffected: `strobe_negative_amount` was already a `var` on
+`ExplosionFlashOverlay` before this change: the shard idea works with zero new
+shader code because that variable existed for the negative fade already,
+just never animated per-frame.
 
 ### Q4 — ✅ ANSWERED by building it, 2026-08-09. It needed no new visual.
 

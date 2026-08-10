@@ -21,6 +21,7 @@ const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builde
 const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
+const AnimatedRayOverlayClass = preload("res://godot/scripts/overlays/animated_ray_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
@@ -472,6 +473,7 @@ const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
+var _animated_ray_overlay: Node2D = null  ## E-RAY — generic animated rays (shrapnel, debug)
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -732,6 +734,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_debris_overlay.clear()
 	if _explosion_flash_overlay != null:
 		_explosion_flash_overlay.clear()  ## E-FLASH-01: same reasoning as the overlays above
+	if _animated_ray_overlay != null:
+		_animated_ray_overlay.clear()  ## E-RAY: same reasoning as the overlays above
 	if _camera_controller != null:
 		## E-FLASH-01: a map load mid-shake must not leave the camera displaced.
 		_camera_controller.stop_shake()
@@ -933,6 +937,11 @@ func _ready() -> void:
 	_light_ray_overlay.z_index = 0
 	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
 	add_child(_light_ray_overlay)
+
+	## E-RAY: animated ray overlay (shrapnel, debug rays). z assigned in
+	## _apply_overhead_overlay_z() once the real wall-stack height is known.
+	_animated_ray_overlay = AnimatedRayOverlayClass.new()
+	add_child(_animated_ray_overlay)
 
 	## VL-D4: ember glow overlay (blast VFX). z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -1404,6 +1413,8 @@ func _set_perspective(direction: String) -> void:
 			_smoke_spark_overlay.clear()
 		if _debris_overlay != null:
 			_debris_overlay.clear()
+		if _animated_ray_overlay != null:
+			_animated_ray_overlay.clear()
 		if _explosion_flash_overlay != null:
 			## E-FLASH-01: the fireball is anchored in the OLD view's screen
 			## space, exactly like the ember glow above it.
@@ -1977,6 +1988,8 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	if _light_ray_overlay != null:
 		_light_ray_overlay.z_index = max_voxel_z_index + 2
+	if _animated_ray_overlay != null:
+		_animated_ray_overlay.z_index = max_voxel_z_index + 8
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —

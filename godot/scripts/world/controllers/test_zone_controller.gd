@@ -282,6 +282,10 @@ func _update_grenade_targeting_display() -> void:
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.show_bubble(bubble_pos, throw_range)
 
+	## Show throw arc from agent to bubble
+	if room._throw_arc_overlay != null:
+		room._throw_arc_overlay.show_arc(agent_pos, bubble_pos)
+
 
 ## Cancel targeting mode
 func cancel_targeting() -> void:

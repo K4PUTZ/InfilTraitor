@@ -26,6 +26,7 @@ const DebugRayOverlayClass = preload("res://godot/scripts/overlays/debug_ray_ove
 const ShrapnelOverlayClass = preload("res://godot/scripts/overlays/shrapnel_overlay.gd")
 const AimBubbleOverlayClass = preload("res://godot/scripts/overlays/aim_bubble_overlay.gd")
 const ThrowPerimeterOverlayClass = preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")
+const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
@@ -482,6 +483,7 @@ var _debug_ray_overlay: Node = null  ## E-DEBUG-RAY — dev-only rays to damaged
 var _shrapnel_overlay: Node2D = null  ## E-FRAG — decorative shrapnel from blast
 var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
+var _throw_arc_overlay: Node2D = null  ## T-ARC — parabolic throw arc
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -752,6 +754,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_aim_bubble_overlay.clear()  ## E-BUBBLE: same reasoning as the overlays above
 	if _throw_perimeter_overlay != null:
 		_throw_perimeter_overlay.clear()  ## T-MODE: same reasoning as the overlays above
+	if _throw_arc_overlay != null:
+		_throw_arc_overlay.clear()  ## T-ARC: same reasoning as the overlays above
 	if _camera_controller != null:
 		## E-FLASH-01: a map load mid-shake must not leave the camera displaced.
 		_camera_controller.stop_shake()
@@ -976,6 +980,10 @@ func _ready() -> void:
 	## T-MODE: throw range perimeter (UI layer).
 	_throw_perimeter_overlay = ThrowPerimeterOverlayClass.new()
 	add_child(_throw_perimeter_overlay)
+
+	## T-ARC: throw arc parabola (UI layer).
+	_throw_arc_overlay = ThrowArcOverlayClass.new()
+	add_child(_throw_arc_overlay)
 
 	## VL-D4: ember glow overlay (blast VFX). z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -2039,6 +2047,8 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_aim_bubble_overlay.z_index = max_voxel_z_index + 9
 	if _throw_perimeter_overlay != null:
 		_throw_perimeter_overlay.z_index = max_voxel_z_index + 9
+	if _throw_arc_overlay != null:
+		_throw_arc_overlay.z_index = max_voxel_z_index + 8
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —
@@ -2998,6 +3008,10 @@ func _input(event: InputEvent) -> void:
 				_update_dev_hover_label()
 			_update_movement_highlight()
 
+			## T-GRENADE: Update grenade targeting display when hover changes
+			if _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode():
+				_test_zone_controller._update_grenade_targeting_display()
+
 			## UI-01: Update selection and path preview on hover
 			if _is_selectable_cell(_hovered_cell):
 				_selected_cell = _hovered_cell
@@ -3008,10 +3022,6 @@ func _input(event: InputEvent) -> void:
 				_selected_cell = agent.cell
 				selection_overlay.set_selected(agent.cell)
 				path_preview.clear_path()
-
-		## T-BUBBLE: Update aim bubble position during targeting mode
-		if _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode():
-			_update_bubble_for_targeting(mm.position)
 
 
 ## Left mouse: only runs when no GUI Control consumed the event first.

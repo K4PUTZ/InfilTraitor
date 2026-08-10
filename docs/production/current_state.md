@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.94 · **Updated:** 2026-08-09 · **Branch:** main
+**Version:** 0.9.95 · **Updated:** 2026-08-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -47,6 +47,8 @@
 - RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md
 - RESUMO_SESSAO_2026-08-08_GPU_FLUSH_AND_SOOT_REVERSAL.md
 - RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md
+- RESUMO_SESSAO_2026-08-10_GRENADE_SHRAPNEL_PLAN.md
+- RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -54,7 +56,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 141
+- GDScript modules: 146
 - Test scripts: 42
 - Known maps: 3
 - Shipped facade files: 0
@@ -64,11 +66,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- cced231 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 - 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 - 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
 - 0f37d96 ALPHA FLOOR FACADE FIX 0.9.92 - doc sweep, PLAYGROUND floor zones, baked-decal contact sheet
 - 6a59c6f ALPHA MATERIAL UNIFICATION 0.9.91 - one grayscale facade per material serves wall, roof and floor
-- f29e0a1 ALPHA EXPLOSION REBUILD READY 0.9.90 - design canon recovered, audit, Task 0 measured, material reform specified
 <!-- AUTO:END version_history -->
 
 ---

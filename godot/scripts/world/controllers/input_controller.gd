@@ -12,6 +12,7 @@ signal movement_input_requested(direction: Vector2i, is_large_step: bool)
 signal debug_command_requested(command: String)
 signal screenshot_requested
 signal pause_requested
+signal grenade_mode_requested
 var room: Node
 var _camera_controller: Node = null
 
@@ -97,6 +98,11 @@ func _handle_key_action(key: InputEventKey) -> void:
 	elif key.is_action_pressed("ui_peek", false, true):
 		print_debug("[INPUT] Peek initiated")
 		peek_initiated.emit()
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_grenade_mode"):
+		print_debug("[INPUT] Grenade mode requested")
+		grenade_mode_requested.emit()
 		if viewport:
 			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_up"):

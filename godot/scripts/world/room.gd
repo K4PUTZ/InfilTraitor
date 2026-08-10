@@ -1121,6 +1121,7 @@ func _ready() -> void:
 	_input_controller.debug_command_requested.connect(_on_debug_command_requested)
 	_input_controller.screenshot_requested.connect(_on_screenshot_requested)
 	_input_controller.pause_requested.connect(_on_pause_requested)
+	_input_controller.grenade_mode_requested.connect(_on_grenade_mode_requested)
 
 	## PAUSE-MENU-01: Initialize main menu panel
 	var MainMenuPanelClass = preload("res://godot/scripts/ui/main_menu_panel.gd")
@@ -3043,18 +3044,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	## the previously selected tile"; touch devices have no right button, so
 	## this branch is desktop-only by nature.
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-		## TEST-ZONE placeholder (2026-07-21): right-click on a detonatable
-		## test prop opens the context menu instead of moving the agent there.
-		var grenade_index := -1
-		if _test_zone_controller != null:
-			grenade_index = _test_zone_controller.hit_test(mb.position)
-		if grenade_index != -1:
-			_test_zone_controller.enter_targeting_mode(grenade_index)
-			get_viewport().set_input_as_handled()
-			return
-		## WEAPON-FIRE-01: same pattern, second prop type. Checked AFTER the
-		## grenades because the bench sits behind them and a click that could
-		## plausibly be either should take the nearer, consumable one.
+		## GRENADE mode is now triggered by 'G' key, not right-click.
+		## Right-click on weapon bench still opens menu.
 		var weapon_index := -1
 		if _weapon_bench_controller != null:
 			weapon_index = _weapon_bench_controller.hit_test(mb.position)
@@ -4068,6 +4059,13 @@ func _on_pause_requested() -> void:
 		return
 	_main_menu_panel.open()
 	get_tree().paused = true
+
+
+## T-MODE (Phase B): G key to enter grenade targeting mode
+func _on_grenade_mode_requested() -> void:
+	if _test_zone_controller != null:
+		_test_zone_controller.enter_grenade_mode()
+
 
 func _on_controls_requested() -> void:
 	_controls_panel.open()

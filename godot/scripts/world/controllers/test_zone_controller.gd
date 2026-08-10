@@ -242,29 +242,45 @@ func open_menu_for(index: int) -> void:
 	_begin_preproduction(g["gu_cell"])
 
 
-## T-MODE (Phase B): enter targeting mode for grenade.
-## Shows perimeter and bubble; waits for player to select a target GU.
-func enter_targeting_mode(index: int) -> void:
-	if index < 0 or index >= _grenades.size():
+## T-MODE (Phase B): enter targeting mode for grenade via G key.
+## Shows perimeter and bubble positioned at target GU.
+func enter_grenade_mode() -> void:
+	if _grenades.is_empty():
 		return
-	_targeting_grenade_index = index
+	## Use first available grenade for now (TODO: cycle through available)
+	_targeting_grenade_index = 0
 	_targeting_mode = true
-	var g: Dictionary = _grenades[index]
+	_update_grenade_targeting_display()
+
+
+## Update bubble position during grenade mode based on cursor/hover/selection
+func _update_grenade_targeting_display() -> void:
+	if not _targeting_mode or _targeting_grenade_index < 0:
+		return
+
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
 		_targeting_mode = false
 		return
 
-	## Calculate throw range from ring_multipliers count and gu cell distance
-	## ring_multipliers.size() - 1 is the outermost ring index
-	## Each ring is roughly 1 GU distance; 1 GU ≈ 112 pixels horizontally
-	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
-	var throw_range: float = float(max_ring) * 112.0  ## pixel radius
 	var agent_pos: Vector2 = room.agent.position
+	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
+	var throw_range: float = float(max_ring) * 112.0 * 3.0  ## triplo da distância
+
+	## Show perimeter
 	if room._throw_perimeter_overlay != null:
 		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range)
+
+	## Position bubble: selected > hover > closest > forward (3 GUs)
+	var bubble_pos: Vector2 = agent_pos
+	if room._hovered_cell != room.INVALID_CELL:
+		bubble_pos = room.agent._cell_to_world(room._hovered_cell)
+	else:
+		## Default: 3 GUs forward (agent's facing direction)
+		bubble_pos = agent_pos + Vector2(336.0, 0.0)  ## 3 * 112 px
+
 	if room._aim_bubble_overlay != null:
-		room._aim_bubble_overlay.show_bubble(agent_pos, throw_range)
+		room._aim_bubble_overlay.show_bubble(bubble_pos, throw_range)
 
 
 ## Cancel targeting mode
@@ -292,7 +308,7 @@ func get_targeting_throw_range() -> float:
 	if bomb_def == null:
 		return 0.0
 	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
-	return float(max_ring) * 112.0
+	return float(max_ring) * 112.0 * 3.0  ## triplo da distância
 
 
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real

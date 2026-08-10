@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**200 scripts · 51810 lines total** (under `godot/scripts/`)
+**200 scripts · 51860 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4094,7 +4094,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 613 lines
+`class_name TestZoneController` · 629 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4353,7 +4353,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4092 lines
+extends `Node2D` · 4126 lines
 
 `godot/scripts/world/room.gd`
 

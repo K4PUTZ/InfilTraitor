@@ -29,7 +29,9 @@ func _init() -> void:
 	test_floor_ellipse_is_two_to_one()
 	test_dome_is_a_real_hemisphere()
 	test_arc_endpoints_seam_exactly()
+	test_projection_preserves_grid_distance()
 	test_dome_covers_three_by_three_gu()
+	test_throw_arc_goes_up()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -164,29 +166,115 @@ func test_arc_endpoints_seam_exactly() -> void:
 	print("")
 
 
-## [6] The Director's actual requirement, in the Director's own units:
-## "cobrindo uma área de 3x3 GU aproximadamente" (2026-08-10). Tested where it
-## matters — in SCREEN space, against the projected ellipse the player sees.
+## [6] The property that makes the dome's radius mean something in GU at all:
+## the projection preserves the GRID metric exactly. A cell `d` GU away lands at
+## normalised radius (d/R)² on the projected ellipse, whatever direction it is
+## in. Without this, "a 2 GU dome" would be 2 GU in some directions and less in
+## others, and every coverage claim below would be a coincidence.
+func test_projection_preserves_grid_distance() -> void:
+	print("[6] The projected ellipse preserves grid distance exactly\n")
+	var radius_gu := 2.0
+	var axes: Vector2 = IsoProjection.floor_circle_semi_axes(radius_gu)
+	var ok := true
+	for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1),
+			Vector2i(1, -1), Vector2i(2, 0), Vector2i(3, -2), Vector2i(-2, 1)]:
+		var measured: float = _normalised_radius(offset.x, offset.y, axes)
+		var grid_dist: float = Vector2(offset).length()
+		var expected: float = (grid_dist * grid_dist) / (radius_gu * radius_gu)
+		if absf(measured - expected) > EPS:
+			_fail("offset %s: ellipse says %.6f, grid distance says %.6f" %
+				[offset, measured, expected])
+			ok = false
+	if ok:
+		_pass("normalised radius == (grid distance / R)² for every sampled offset")
+	print("")
+
+
+## [7] The Director's actual requirement, in the Director's own units. First
+## "cobrindo uma área de 3x3 GU aproximadamente", then widened: "vamos fazer 2,
+## para ficar uma sobrinha por cima de outras GUs nos cantos. A ideia é indicar
+## que a granada é meio imprecisa" (2026-08-10). Tested where it matters — in
+## SCREEN space, against the projected ellipse the player sees.
 func test_dome_covers_three_by_three_gu() -> void:
-	print("[6] A 1.5 GU dome covers the 3x3 GU block and nothing beyond it\n")
-	var axes: Vector2 = IsoProjection.floor_circle_semi_axes(1.5)
+	print("[7] A 2.0 GU dome clears the 3x3 block and spills onto its neighbours\n")
+	var axes: Vector2 = IsoProjection.floor_circle_semi_axes(2.0)
+
 	var inside_all := true
 	for dx: int in [-1, 0, 1]:
 		for dy: int in [-1, 0, 1]:
-			if _normalised_radius(dx, dy, axes) > 1.0:
-				_fail("cell offset (%d,%d) of the 3x3 block falls OUTSIDE the dome" % [dx, dy])
+			if _normalised_radius(dx, dy, axes) >= 1.0:
+				_fail("cell offset (%d,%d) of the 3x3 block is not inside the dome" % [dx, dy])
 				inside_all = false
 	if inside_all:
-		_pass("all 9 cell centres of the 3x3 block are inside the projected ellipse")
+		_pass("all 9 cell centres of the 3x3 block sit inside, with margin")
+
+	## THE SPILL, which is the whole reason for 2.0 over 1.5: the rim reaches the
+	## centres of the cells two out along each axis. Anything less and the dome
+	## stops at the block's own edge, which is the precision the Director does
+	## NOT want it to imply.
+	var spilled := true
+	for offset: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		if absf(_normalised_radius(offset.x, offset.y, axes) - 1.0) > EPS:
+			_fail("offset %s should sit ON the rim, got %.4f" %
+				[offset, _normalised_radius(offset.x, offset.y, axes)])
+			spilled = false
+	if spilled:
+		_pass("the rim passes through the 4 cells two out — the blast reads imprecise")
 
 	var outside_all := true
-	for offset: Vector2i in [Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0),
-			Vector2i(0, -2), Vector2i(2, 2), Vector2i(1, 2)]:
+	for offset: Vector2i in [Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 0), Vector2i(-1, -2)]:
 		if _normalised_radius(offset.x, offset.y, axes) <= 1.0:
-			_fail("cell offset %s is two rings out but lands INSIDE the dome" % offset)
+			_fail("cell offset %s is beyond 2 GU but lands inside the dome" % offset)
 			outside_all = false
 	if outside_all:
-		_pass("every cell centre two or more out is excluded — the dome is 3x3, not 5x5")
+		_pass("nothing past 2 GU is covered — the dome stays a dome, not a footprint")
+	print("")
+
+
+## [8] The throw parabola, pinned because its first version was upside down —
+## it sagged BELOW the chord instead of arcing over it, and a grenade does not
+## fall upward on the way out.
+func test_throw_arc_goes_up() -> void:
+	print("[8] The throw arc rises above its own chord, and lands where aimed\n")
+	var from_pos := Vector2(400.0, 600.0)
+	var to_pos := Vector2(900.0, 640.0)
+	var height: float = ThrowArcOverlay.arc_height_for(from_pos, to_pos, 0.35)
+
+	if not ThrowArcOverlay.arc_point(from_pos, to_pos, 0.0, height).is_equal_approx(from_pos) \
+			or not ThrowArcOverlay.arc_point(from_pos, to_pos, 1.0, height).is_equal_approx(to_pos):
+		_fail("the arc does not start at the hand or end at the target cell")
+	else:
+		_pass("t=0 is the hand and t=1 is the target — endpoints are exact")
+
+	var above := true
+	for i: int in range(1, 20):
+		var t: float = float(i) / 20.0
+		var on_arc: Vector2 = ThrowArcOverlay.arc_point(from_pos, to_pos, t, height)
+		var on_chord: Vector2 = from_pos.lerp(to_pos, t)
+		if on_arc.y >= on_chord.y:
+			_fail("at t=%.2f the arc is at y=%.1f, not above the chord's %.1f" %
+				[t, on_arc.y, on_chord.y])
+			above = false
+			break
+	if above:
+		_pass("every interior point is above the chord — the grenade rises, then falls")
+
+	## A throw straight down the screen must still arc. The first version scaled
+	## its height by the horizontal distance alone, so this case was a flat line.
+	var vertical_height: float = ThrowArcOverlay.arc_height_for(
+		Vector2(500.0, 200.0), Vector2(500.0, 800.0), 0.35)
+	if vertical_height > 1.0:
+		_pass("a purely vertical throw still gets %.1f px of apex" % vertical_height)
+	else:
+		_fail("a purely vertical throw arcs by %.1f px — that is a straight line" % vertical_height)
+
+	## The bounce leaves and rejoins the floor without a step at either end.
+	if absf(ThrowArcOverlay.bounce_lift(0.0, 50.0)) < EPS \
+			and absf(ThrowArcOverlay.bounce_lift(1.0, 50.0)) < EPS \
+			and ThrowArcOverlay.bounce_lift(0.5, 50.0) > 0.0:
+		_pass("the landing hop starts and ends on the ground, peaking in between")
+	else:
+		_fail("the landing hop does not return to the ground")
 	print("")
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**204 scripts · 52654 lines total** (under `godot/scripts/`)
+**204 scripts · 52864 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1349,7 +1349,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 98 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 147 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
@@ -1357,9 +1357,13 @@ extends `Node2D` · 94 lines
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public vars**
-- `var ray_color: Color = Color(1.0, 0.72, 0.35, 1.0)`
+- `var ray_color: Color = Color(0.05, 0.05, 0.06, 1.0)`
 - `var line_width: float = 2.0`
 - `var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])`
+- `var length_scale: float = 1.15`
+- `var circularity: float = 1.0`
+- `var rays_per_cell: int = 2`
+- `var spread_rad: float = 0.13`
 
 **Public API**
 - `func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
@@ -1412,14 +1416,17 @@ extends `Node2D` · 262 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 68 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 85 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
 **Public vars**
 - `var arc_color: Color = Color(1.0, 0.8, 0.3, 0.7)`
 - `var line_width: float = 2.0`
-- `var arc_segments: int = 20`
+- `var arc_segments: int = 24`
+- `var arc_height_ratio: float = 0.35`
+- `var bounce_height_ratio: float = 0.12`
+- `var bounce_duration_s: float = 0.18`
 
 **Public API**
 - `func show_arc(from_pos: Vector2, to_pos: Vector2) -> void:`
@@ -3226,7 +3233,7 @@ extends `SceneTree` · 275 lines
 
 ### `iso_projection_selftest.gd`
 
-extends `SceneTree` · 196 lines
+extends `SceneTree` · 284 lines
 
 `godot/scripts/tools/iso_projection_selftest.gd`
 
@@ -3246,7 +3253,9 @@ extends `SceneTree` · 196 lines
 - `func test_floor_ellipse_is_two_to_one() -> void:`
 - `func test_dome_is_a_real_hemisphere() -> void:`
 - `func test_arc_endpoints_seam_exactly() -> void:`
+- `func test_projection_preserves_grid_distance() -> void:`
 - `func test_dome_covers_three_by_three_gu() -> void:`
+- `func test_throw_arc_goes_up() -> void:`
 
 ---
 
@@ -4154,7 +4163,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 773 lines
+`class_name TestZoneController` · 810 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4171,8 +4180,9 @@ extends `Node2D` · 34 lines
 **Public vars**
 - `var room: Node`
 - `var throw_range_gu: float = 6.5`
-- `var aim_dome_radius_gu: float = 1.5`
+- `var aim_dome_radius_gu: float = 2.0`
 - `var throw_duration_s: float = 0.6`
+- `var grenade_cook_s: float = 1.0`
 - `var throw_prediction_timeout_s: float = 1.0`
 
 ---
@@ -4418,7 +4428,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4228 lines
+extends `Node2D` · 4247 lines
 
 `godot/scripts/world/room.gd`
 

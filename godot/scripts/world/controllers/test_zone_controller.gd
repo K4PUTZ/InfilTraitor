@@ -48,16 +48,24 @@ var _targeting_target_gu: Vector2i = Vector2i.ZERO
 ## vermelho parece ok, poderia ser um pouquinho mais largo."
 var throw_range_gu: float = 6.5
 
-## Radius of the aim dome, in GAME UNITS. Director: "cobrindo uma área de 3x3 GU
-## aproximadamente" — 1.5 GU in every direction from the target cell's centre.
-## Deliberately NOT derived from `bomb_def.ring_multipliers.size()`: the dome is
-## the readable shape of the blast, and the per-cell truth of how far it reaches
-## is what the shrapnel rays carry.
-var aim_dome_radius_gu: float = 1.5
+## Radius of the aim dome, in GAME UNITS. Deliberately NOT derived from
+## `bomb_def.ring_multipliers.size()`: the dome is the readable shape of the
+## blast, and the per-cell truth of how far it reaches is what the shrapnel rays
+## carry.
+##
+## 1.5 -> 2.0 (Director, 2026-08-10): "pode ser um pouquinho mais largo que as
+## 1,5 GUs, vamos fazer 2, para ficar uma sobrinha por cima de outras GUs nos
+## cantos. A ideia é indicar que a granada é meio imprecisa, e a região de dano
+## se estende além das GUs, sem uma localização exata." At exactly 2.0 the rim
+## passes through the centres of the cells two out along each axis — the spill
+## is the message, so the number is not arbitrary.
+var aim_dome_radius_gu: float = 2.0
 
-## Seconds the thrown grenade takes to travel its arc, and the cap on how long
-## the fuse waits for a prediction that is still cooking.
+## Seconds the thrown grenade takes to travel its arc; how long it then sits on
+## the ground before going off; and the cap on how much longer the fuse may
+## stretch for a prediction that is somehow still cooking after all that.
 var throw_duration_s: float = 0.6
+var grenade_cook_s: float = 1.0
 var throw_prediction_timeout_s: float = 1.0
 
 ## Where the dome starts when targeting opens and the cursor is not over the map
@@ -407,17 +415,46 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
 	var start_pos: Vector2 = room.agent.position
 
+	## The flight follows ThrowArcOverlay's OWN parabola, with the overlay's own
+	## ratio — the grenade cannot fly a different curve from the one the player
+	## was shown while aiming.
+	var arc = room._throw_arc_overlay
+	var height_ratio: float = arc.arc_height_ratio if arc != null else 0.35
+	var arc_height: float = ThrowArcOverlay.arc_height_for(start_pos, target_world, height_ratio)
+
 	var elapsed: float = 0.0
 	while elapsed < throw_duration_s:
 		await tree.process_frame
 		elapsed += room.get_process_delta_time()
-		sprite.position = start_pos.lerp(target_world,
-			minf(elapsed / throw_duration_s, 1.0))
+		sprite.position = ThrowArcOverlay.arc_point(start_pos, target_world,
+			minf(elapsed / throw_duration_s, 1.0), arc_height)
 	sprite.position = target_world
 	grenade["gu_cell"] = target_gu
 
-	## Give a prediction that is still cooking the rest of the fuse to finish in,
-	## capped so a pathological one cannot hold the blast forever —
+	## The landing hop — Director: "dá um bounce no chão de leve".
+	var bounce_height: float = arc_height * (arc.bounce_height_ratio if arc != null else 0.12)
+	var bounce_duration: float = arc.bounce_duration_s if arc != null else 0.18
+	var bounced: float = 0.0
+	while bounced < bounce_duration:
+		await tree.process_frame
+		bounced += room.get_process_delta_time()
+		var bt: float = minf(bounced / bounce_duration, 1.0)
+		sprite.position = target_world \
+			- Vector2(0.0, ThrowArcOverlay.bounce_lift(bt, bounce_height))
+	sprite.position = target_world
+
+	## COOKING — Director: "antes de pausar para ficar 'cooking' por aprox. 1
+	## segundo." The grenade sits on the ground for a beat before it goes off.
+	## The prediction finishes INSIDE this second rather than after it: that is
+	## the whole point of P-COOK's pre-production, and the fuse is exactly the
+	## kind of human-paced gap §4.2 was designed to hide the work in.
+	var cooked: float = 0.0
+	while cooked < grenade_cook_s:
+		await tree.process_frame
+		cooked += room.get_process_delta_time()
+
+	## Only if the prediction is STILL going does the fuse stretch, capped so a
+	## pathological one cannot hold the blast forever —
 	## `_start_detonation_sequence()` cooks whatever is left anyway.
 	var waited: float = 0.0
 	while waited < throw_prediction_timeout_s and room._prediction_cache != null \

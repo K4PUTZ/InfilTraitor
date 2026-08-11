@@ -8,7 +8,11 @@ Phase A (detonation VFX) closed 2026-08-10. This plan describes the UI and
 interaction layer that feeds Phase A.
 
 **Evidence (hand-named, so the 50-file rotation cannot eat them):**
-- `Screenshots/history/grenade_aim_dome.png` — dome, perimeter, arc and rays
+- `Screenshots/history/grenade_aim_dome.png` — dome, perimeter, up-arc and rays
+- `Screenshots/history/grenade_throw_cooked.png` — the throw detonating at the
+  aimed cell after its arc, bounce and cooking second
+- `Screenshots/history/grenade_menu_detonate.png` — the restored right-click
+  "Detonar" menu on a grenade already lying on the floor
 - `Screenshots/history/grenade_throw_before.png` / `grenade_throw_after.png` —
   the same throw with and without the `get_physics_frame` fix
 
@@ -91,20 +95,33 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 - **Perimeter on floor**: red ellipse, radius `throw_range_gu` = 6.5 GU. The
   projection of a grid circle is exactly a 2:1 axis-aligned ellipse — derived,
   not eyeballed, and the same circle the throw's clamp tests against.
-- **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = 1.5 GU sitting on
-  the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e paredes
-  próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the
+- **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = **2.0 GU** sitting
+  on the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e
+  paredes próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the
   silhouette ellipse (181.0 × 183.8 px/GU — a sphere projects to very nearly a
   circle here) closed underneath by the floor section (181.0 × 90.5 px/GU). Both
   share their horizontal semi-axis, so the seam is exact.
+  2.0 rather than 1.5 is deliberate and is asserted by the selftest: at exactly
+  2.0 the rim passes through the centres of the cells two out along each axis,
+  spilling past the 3×3 block — *"para indicar que a granada é meio imprecisa, e
+  a região de dano se estende além das GUs, sem uma localização exata."*
   **Explicitly NOT the predicted damage footprint** — the Director ruled out
   showing the silhouette with its holes.
 - **Shrapnel rays** (T-FRAG): LightRayOverlay's mechanism pointed at a grenade —
-  one line from the target GU centre to every cell `flood_gu_rings()` reaches,
-  so walls cut them the same way they cut the real blast. This is where cover
-  shows; the dome promises nothing about it.
-- **Throw arc**: visual only, 2D parabolic curve, agent → landing GU.
-- **Throw animation timing**: `throw_duration_s` = 0.6 s, linear.
+  lines from the target GU centre outward for every cell `flood_gu_rings()`
+  reaches, so walls cut them the same way they cut the real blast. This is where
+  cover shows; the dome promises nothing about it. Dark iron, two per cell,
+  `length_scale` past the cell centre, and `circularity` = 1 undoes the 2:1
+  isometric squash so the star reads round instead of flattened. The trade,
+  stated: at full circularity a ray no longer ENDS on the cell it came from —
+  it is a fragment's direction and reach, not a per-cell readout.
+- **Throw arc**: parabola arcing UP (`arc_height_ratio` = 0.35 of the throw's
+  screen distance), shared by the preview line and the sprite's own flight via
+  `ThrowArcOverlay`'s statics, so the two cannot disagree.
+- **Throw timing**: `throw_duration_s` 0.6 s flight, a light landing hop
+  (`bounce_height_ratio` 0.12, `bounce_duration_s` 0.18), then
+  `grenade_cook_s` = 1.0 s sitting on the ground before it goes off. The
+  prediction finishes inside that cooking second.
 
 ---
 
@@ -115,10 +132,10 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   it from `ring_multipliers.size()` was the first pass's mistake.
 - **Perimeter style:** solid ellipse, red, kept. Widened 5.57 → 6.5 GU on the
   Director's *"poderia ser um pouquinho mais largo."*
-- **Throw animation easing:** still open — linear for now.
-- **Throw timing before detonation:** still open — the fuse currently waits only
-  for the prediction (≤ `throw_prediction_timeout_s` = 1 s), with no deliberate
-  hold on top.
+- **Throw animation easing:** ~~open~~ → the arc IS the easing. It rises and
+  falls, lands with a light hop, then holds.
+- **Throw timing before detonation:** ~~open~~ → `grenade_cook_s` = 1.0 s on the
+  ground, per *"antes de pausar para ficar 'cooking' por aprox. 1 segundo."*
 
 ---
 
@@ -130,14 +147,15 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   (`VoxelRenderer.classify_geometry_over_rect()`, OcclusionSet policy O5) —
   `z_index` encodes HEIGHT in this project and cannot express "behind that wall
   but in front of this one".
-- **The click-driven `test_zone_*` capture actions are dead.** `ecdae79` removed
-  the right-click → `open_menu_for()` path for grenades ("now G-key only"), so
-  `test_zone_menu` / `test_zone_detonate` / `test_zone_escape` drive a click that
-  no longer opens anything — verified 2026-08-10, `test_zone_detonate` captures a
-  completely undamaged map. `detonation_filmstrip` and
-  `INFILTRAITOR_CAPTURE_DETONATE_FIRST` are unaffected (they call the controller
-  directly). Either point those actions at the G-key flow or restore a
-  right-click route; both are Director calls, not cleanup.
+- ~~The click-driven `test_zone_*` capture actions are dead.~~ **CLOSED
+  2026-08-10.** `ecdae79` had removed the right-click → `open_menu_for()` path
+  ("now G-key only"), taking `test_zone_menu` / `test_zone_detonate` /
+  `test_zone_escape` with it. Restored on the Director's call — the two routes
+  are not rivals: **G aims and throws a NEW grenade; right-click detonates one
+  already lying on the floor**, which is what keeps the choreography and
+  performance work testable. Proven by trace, not by eye
+  (`grenade_index=0` → menu → Enter → `[E-PLAN] census gu=(3,5)`) plus
+  `grenade_menu_detonate.png`.
 
 ---
 

@@ -20,18 +20,42 @@ class_name ShrapnelPreviewOverlay
 ## nothing about cover, and these rays are where the cover actually shows —
 ## a cell behind a wall simply never gets a ray.
 ##
+## SECOND PASS (Director, same day): "podem ser um pouquinho mais compridos para
+## fora, principalmente para cima (compensando a proporção 2:1 pra ficar mais
+## circular), com maior número, vamos duplicar a quantidade, e pintar de preto,
+## afinal são estilhaços." All three are handled below — `circularity` undoes the
+## isometric squash so the star reads round, `rays_per_cell` doubles the count,
+## and the colour is now iron-dark rather than a warm glow.
+##
 ## Distinct from ShrapnelOverlay (E-FRAG), which is the decorative debris thrown
 ## AFTER a real blast. This one is preview-only and never touches world state.
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 ## Tuning — `var` per architecture Rule 1.
-var ray_color: Color = Color(1.0, 0.72, 0.35, 1.0)
+## Fragments, not light: dark iron, drawn MIX so it reads as a mark on the floor.
+var ray_color: Color = Color(0.05, 0.05, 0.06, 1.0)
 var line_width: float = 2.0
 ## Per-ring alpha, index = ring distance from the target GU. Index 0 is the
 ## target cell itself: its "ray" has zero length, so it is skipped outright and
 ## the 0.0 here only documents that.
 var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])
+
+## How far past the reached cell's own centre a fragment carries. Shrapnel does
+## not stop politely at a grid line.
+var length_scale: float = 1.15
+
+## How much of the isometric 2:1 squash to undo, 0 = none (rays end on the
+## projected floor ellipse, so the star is twice as wide as it is tall), 1 =
+## fully circular. The factor is `AXIS_X.x / AXIS_X.y` = 2.0, taken from the
+## projection rather than typed in, so this stays correct if the tile ever
+## changes shape.
+var circularity: float = 1.0
+
+## Fragments emitted per reached cell, fanned symmetrically around the cell's own
+## direction by `spread_rad` either side of centre.
+var rays_per_cell: int = 2
+var spread_rad: float = 0.13
 
 var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
@@ -62,6 +86,9 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 		return
 
 	var origin: Vector2 = _cell_to_screen(source_gu)
+	var y_scale: float = lerpf(1.0, IsoProjection.AXIS_X.x / IsoProjection.AXIS_X.y, circularity)
+	var fan: int = maxi(rays_per_cell, 1)
+
 	for cell: Vector2i in gu_rings.keys():
 		var ring: int = int(gu_rings[cell])
 		if ring <= 0 or ring >= ring_alpha.size():
@@ -69,9 +96,23 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 		var alpha: float = ring_alpha[ring]
 		if alpha <= 0.0:
 			continue
-		_ray_froms.append(origin)
-		_ray_tos.append(_cell_to_screen(cell))
-		_ray_alphas.append(alpha)
+
+		## Undo the isometric squash on the OUTWARD vector only — the ray still
+		## starts and aims at the real cell, it just carries the extra distance
+		## the flattened projection would otherwise hide.
+		var delta: Vector2 = _cell_to_screen(cell) - origin
+		var out := Vector2(delta.x, delta.y * y_scale)
+
+		for k: int in range(fan):
+			## Symmetric fan: one ray dead-on when fan is odd, ±spread_rad
+			## either side otherwise. Deterministic, so the star does not
+			## shimmer while the cursor moves.
+			var offset_index: float = float(k) - (float(fan) - 1.0) * 0.5
+			var angle: float = offset_index * spread_rad
+			var jitter: float = lerpf(0.82, 1.0, _hash01(cell, k))
+			_ray_froms.append(origin)
+			_ray_tos.append(origin + out.rotated(angle) * length_scale * jitter)
+			_ray_alphas.append(alpha)
 
 	visible = not _ray_froms.is_empty()
 	queue_redraw()
@@ -82,6 +123,14 @@ func _draw() -> void:
 	for i: int in _ray_froms.size():
 		draw_line(_ray_froms[i], _ray_tos[i],
 			Color(c.r, c.g, c.b, _ray_alphas[i]), line_width)
+
+
+## Deterministic [0,1) from a cell and a fan index — fragments want uneven
+## lengths, but a random one would re-roll on every hover and make the whole
+## star crawl. Same input, same star, every frame.
+func _hash01(cell: Vector2i, k: int) -> float:
+	var raw: float = sin(float(cell.x) * 127.1 + float(cell.y) * 311.7 + float(k) * 74.7) * 43758.5453
+	return raw - floor(raw)
 
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:

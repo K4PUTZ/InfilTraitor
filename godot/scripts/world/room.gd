@@ -3044,8 +3044,27 @@ func _unhandled_input(event: InputEvent) -> void:
 	## the previously selected tile"; touch devices have no right button, so
 	## this branch is desktop-only by nature.
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-		## GRENADE mode is now triggered by 'G' key, not right-click.
-		## Right-click on weapon bench still opens menu.
+		## TEST-ZONE placeholder (2026-07-21): right-click on a detonatable test
+		## prop opens the context menu instead of moving the agent there.
+		##
+		## Removed by `ecdae79` ("now G-key only") and RESTORED 2026-08-10 on the
+		## Director's call: "vamos manter as granadas antigas que estavam no chão,
+		## e o menu para detonar funcionando, de maneira que você possa continuar
+		## fazendo testes até a gente fechar a coreografia e a otimização da
+		## explosão." The two routes are not rivals — G aims and throws a NEW
+		## grenade, this detonates one already lying on the floor. Removing it also
+		## silently killed the test_zone_menu / test_zone_detonate /
+		## test_zone_escape capture actions, which drive exactly this click.
+		var grenade_index := -1
+		if _test_zone_controller != null:
+			grenade_index = _test_zone_controller.hit_test(mb.position)
+		if grenade_index != -1:
+			_test_zone_controller.open_menu_for(grenade_index)
+			get_viewport().set_input_as_handled()
+			return
+		## WEAPON-FIRE-01: same pattern, second prop type. Checked AFTER the
+		## grenades because the bench sits behind them and a click that could
+		## plausibly be either should take the nearer, consumable one.
 		var weapon_index := -1
 		if _weapon_bench_controller != null:
 			weapon_index = _weapon_bench_controller.hit_test(mb.position)

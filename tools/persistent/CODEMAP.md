@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53131 lines total** (under `godot/scripts/`)
+**205 scripts · 53180 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 241 lines
+`class_name DebugAgent` · extends `Node2D` · 263 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -54,6 +54,7 @@
 - `COLOR_BODY_DARK` = `Color(0.07, 0.42, 0.18, 1.0)`
 - `COLOR_HEAD` = `Color(0.84, 0.96, 0.88, 1.0)`
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
+- `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
 - `SILHOUETTE_WIDTH` = `44.0`
 - `SILHOUETTE_HEIGHT` = `61.0`
 - `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
@@ -72,6 +73,7 @@
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 
 **Public API**
+- `func throw_origin() -> Vector2:`
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
@@ -871,7 +873,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `blast_wireframe_overlay.gd`
 
-`class_name BlastWireframeOverlay` · extends `Node2D` · 120 lines
+`class_name BlastWireframeOverlay` · extends `Node2D` · 121 lines
 
 `godot/scripts/overlays/blast_wireframe_overlay.gd`
 
@@ -881,13 +883,11 @@ extends `ConfirmationDialog` · 64 lines
 - `PERIMETER_INSET_DISTANCE` = `6.0`
 
 **Public vars**
-- `var hatch_color: Color = Color(1.0, 0.28, 0.18, 0.42)`
-- `var hatch_width: float = 2.0`
-- `var hatch_lines_per_cell: int = 3`
+- `var ring_fill_alphas: PackedFloat32Array = PackedFloat32Array([0.34, 0.22, 0.13])`
 
 **Public API**
 - `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:`
-- `func show_footprint(cells, hatched: bool = false) -> void:`
+- `func show_footprint(cells, ring_by_cell: Dictionary = {}) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -4193,7 +4193,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 841 lines
+`class_name TestZoneController` · 867 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

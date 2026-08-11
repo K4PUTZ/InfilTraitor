@@ -75,6 +75,28 @@ const COLOR_BODY_DARK := Color(0.07, 0.42, 0.18, 1.0)
 const COLOR_HEAD := Color(0.84, 0.96, 0.88, 1.0)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
+## Where the head marker sits, per posture, in the agent's own local space.
+##
+## T-ARC (Director, 2026-08-10): "a parábola está começando no pé do agente
+## (centro da GU), vamos subir para sair mais ou menos da bolinha branca que
+## fica em cima do losângulo verde, que vai corresponder à altura dos braços
+## aproximadamente." These numbers used to live only inside `_draw()`'s three
+## posture branches; they are a const now because `throw_origin()` below needs
+## the same values, and two copies of "where the head is" would drift the first
+## time a posture's shape is tuned.
+const HEAD_OFFSET: Dictionary = {
+	Posture.STANDING: Vector2(0.0, -64.0),
+	Posture.CROUCHING: Vector2(0.0, -44.0),
+	Posture.PRONE: Vector2(26.0, -10.0),
+}
+
+
+## Where a thrown object leaves this agent, in the same space as `position` —
+## roughly arm height, which the head marker already stands for. Crouching and
+## prone throws start correspondingly lower, for free.
+func throw_origin() -> Vector2:
+	return position + HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
+
 ## Placeholder bounding box for standing-character silhouette (O7 stroke will clip to this)
 ## Dimensions tuned to enclosing rect of STANDING posture diamond
 const SILHOUETTE_WIDTH := 44.0   ## left-right span of standing character
@@ -193,7 +215,7 @@ func _draw() -> void:
 			])
 			draw_colored_polygon(body, body_color)
 			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 3.0)
-			draw_circle(Vector2(0.0, -64.0), 10.0, COLOR_HEAD)
+			draw_circle(HEAD_OFFSET[Posture.STANDING], 10.0, COLOR_HEAD)
 
 		Posture.CROUCHING:
 			## Smaller, lower diamond
@@ -203,7 +225,7 @@ func _draw() -> void:
 			])
 			draw_colored_polygon(body, body_color)
 			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 3.0)
-			draw_circle(Vector2(0.0, -44.0), 8.0, COLOR_HEAD)
+			draw_circle(HEAD_OFFSET[Posture.CROUCHING], 8.0, COLOR_HEAD)
 
 		Posture.PRONE:
 			## Horizontal ellipse — lying down
@@ -213,7 +235,7 @@ func _draw() -> void:
 			])
 			draw_colored_polygon(body, body_color)
 			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 2.0)
-			draw_circle(Vector2(26.0, -10.0), 7.0, COLOR_HEAD)
+			draw_circle(HEAD_OFFSET[Posture.PRONE], 7.0, COLOR_HEAD)
 
 	# Placeholder bounding box silhouette (OCC-03) — debug rect for stroke clipping (OCC-04)
 	_draw_silhouette_placeholder()

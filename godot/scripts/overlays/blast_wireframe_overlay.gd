@@ -24,25 +24,27 @@ const LINE_COLOR := Color(1.0, 0.15, 0.15, 0.9)
 const LINE_WIDTH := 3.0
 const PERIMETER_INSET_DISTANCE := 6.0  ## reused verbatim from movement_overlay.gd
 
-## T-HATCH (Director, 2026-08-10): "assim como no Phoenix Point, vamos realçar
-## as GUs afetadas pela granada, para indicar quais inimigos vão ser atingidos.
-## Já temos o perímetro vermelho funcionando (...) só precisamos aplicar na base
-## da bola e dar mais destaque com as hachuras." Ref. REFERENCES/granade.webp,
-## whose target area is a lattice rather than a flat wash.
+## T-FILL (Director, 2026-08-10): "assim como no Phoenix Point, vamos realçar as
+## GUs afetadas pela granada, para indicar quais inimigos vão ser atingidos",
+## then, on the first attempt at it: "vamos tirar a hachura do chão e pintar o
+## interior do perímetro de vermelho com opacidades variadas, usando o mesmo
+## mecanismo visual que estamos usando para indicar o perímetro de movimentação
+## do agente."
 ##
-## OFF by default, so the two pre-existing callers (the grenade context menu and
-## the weapon bench) keep the plain outline they were written for.
-var hatch_color: Color = Color(1.0, 0.28, 0.18, 0.42)
-var hatch_width: float = 2.0
-## Lines per cell along EACH of the two grid axes. They are placed at the same
-## fractions in every cell, so they join into continuous lines across the whole
-## footprint instead of stopping at cell borders.
-var hatch_lines_per_cell: int = 3
+## That mechanism is MovementOverlay's — a flat `draw_colored_polygon` per cell
+## diamond under the perimeter lines, with alpha carrying the grading. Here the
+## grade is by blast ring instead of by AP cost, which is the same idea said in
+## the grenade's units: the closer to the epicentre, the denser the red.
+##
+## OFF unless a caller passes ring data, so the two pre-existing callers (the
+## grenade context menu and the weapon bench) keep the plain outline they were
+## written for.
+var ring_fill_alphas: PackedFloat32Array = PackedFloat32Array([0.34, 0.22, 0.13])
 
 var _floor_layer: TileMapLayer = null
 var _visual_grid_offset: Vector2 = Vector2.ZERO
 var _footprint: Dictionary = {}  ## Vector2i -> true, membership test only
-var _hatched: bool = false
+var _ring_by_cell: Dictionary = {}  ## Vector2i -> int, empty when unfilled
 
 
 func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:
@@ -52,11 +54,13 @@ func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:
 
 ## cells: any Array/iterable of Vector2i (e.g. BlastCalculator.flood_gu_rings()'s
 ## keys()) — the whole max-range footprint, regardless of ring.
-func show_footprint(cells, hatched: bool = false) -> void:
+## `ring_by_cell` is optional: pass flood_gu_rings()' own {Vector2i -> ring}
+## output to get the graded fill, or leave it out for the bare outline.
+func show_footprint(cells, ring_by_cell: Dictionary = {}) -> void:
 	_footprint.clear()
 	for c in cells:
 		_footprint[c] = true
-	_hatched = hatched
+	_ring_by_cell = ring_by_cell
 	queue_redraw()
 
 
@@ -64,17 +68,22 @@ func clear() -> void:
 	if _footprint.is_empty():
 		return
 	_footprint.clear()
-	_hatched = false
+	_ring_by_cell = {}
 	queue_redraw()
 
 
 func _draw() -> void:
 	if _floor_layer == null or _footprint.is_empty():
 		return
-	if _hatched:
-		## Under the outline, so the perimeter still reads as the boundary.
-		for cell in _footprint.keys():
-			_draw_cell_hatch(cell)
+	## Fills first, so the perimeter still reads as the boundary on top of them —
+	## the same order MovementOverlay._draw() uses.
+	for cell in _ring_by_cell.keys():
+		var ring: int = int(_ring_by_cell[cell])
+		if ring < 0 or ring >= ring_fill_alphas.size():
+			continue
+		var fill := LINE_COLOR
+		fill.a = ring_fill_alphas[ring]
+		draw_colored_polygon(_diamond_points(cell), fill)
 	for cell in _footprint.keys():
 		var diamond := _diamond_points_inset(cell)
 		if not _footprint.has(cell + Vector2i.UP):
@@ -87,26 +96,18 @@ func _draw() -> void:
 			draw_line(diamond[3], diamond[0], LINE_COLOR, LINE_WIDTH, true)
 
 
-## One cell's share of the lattice.
-##
-## A cell's diamond is exactly {centre + a·AXIS_X + b·AXIS_Y : a,b ∈ [-½,½]} —
-## the four corners fall out at (±½,±½), which is why the hatch can be drawn in
-## that basis instead of clipping screen-space lines against a polygon. Holding
-## `b` fixed and sweeping `a` gives a line parallel to one grid axis; holding
-## `a` gives the other. Both families are drawn, which is what makes it a
-## lattice rather than stripes.
-func _draw_cell_hatch(cell: Vector2i) -> void:
-	if hatch_lines_per_cell < 1:
-		return
-	var centre := _floor_layer.map_to_local(cell) + _visual_grid_offset + Vector2(0.0, 64.0)
-	var ax := IsoProjection.AXIS_X
-	var ay := IsoProjection.AXIS_Y
-	for i: int in range(hatch_lines_per_cell):
-		var t: float = (float(i) + 0.5) / float(hatch_lines_per_cell) - 0.5
-		draw_line(centre + ax * -0.5 + ay * t, centre + ax * 0.5 + ay * t,
-			hatch_color, hatch_width)
-		draw_line(centre + ax * t + ay * -0.5, centre + ax * t + ay * 0.5,
-			hatch_color, hatch_width)
+## The cell's full diamond, un-inset — the fill has to meet its neighbours or
+## the graded area reads as loose tiles instead of one region. Copied in shape
+## from MovementOverlay._diamond_points() for the same reason the inset version
+## below was: that one is already proven correct in this codebase.
+func _diamond_points(cell: Vector2i) -> PackedVector2Array:
+	var top := _floor_layer.map_to_local(cell) + _visual_grid_offset
+	return PackedVector2Array([
+		top,
+		top + Vector2(128.0, 64.0),
+		top + Vector2(0.0, 128.0),
+		top + Vector2(-128.0, 64.0),
+	])
 
 
 func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:

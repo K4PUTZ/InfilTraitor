@@ -330,26 +330,28 @@ func _update_grenade_targeting_display() -> void:
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu)
 
+	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
+	## ground shape but the arc is not.
 	if room._throw_arc_overlay != null:
-		room._throw_arc_overlay.show_arc(agent_pos, target_pos)
+		room._throw_arc_overlay.show_arc(room.agent.throw_origin(), target_pos)
 
 	## The SAME wall-aware BFS the real blast floods with feeds both the rays and
 	## the highlighted footprint, so a cell the grenade cannot reach gets neither.
 	## Cheap enough to redo per hover: `max_ring` is 3, so this walks ~25 cells —
 	## the expensive part is `_begin_preproduction()`, which stays on the throw.
-	var gu_rings := BlastCalculatorClass.flood_gu_rings(_targeting_target_gu, bomb_def,
-		_blocked_edges_dict(), room._blocked_cells)
+	var gu_rings := _damaging_rings(BlastCalculatorClass.flood_gu_rings(
+		_targeting_target_gu, bomb_def, _blocked_edges_dict(), room._blocked_cells), bomb_def)
 
 	## T-FRAG: the shrapnel rays.
 	if room._shrapnel_preview_overlay != null:
 		room._shrapnel_preview_overlay.show_rays(_targeting_target_gu, gu_rings)
 
-	## T-HATCH: the affected GUs, at the base of the dome — Director: "assim como
+	## T-FILL: the affected GUs, at the base of the dome — Director: "assim como
 	## no Phoenix Point, vamos realçar as GUs afetadas pela granada, para indicar
 	## quais inimigos vão ser atingidos." Same overlay the right-click menu
-	## already uses, with its hatch turned on for the extra emphasis asked for.
+	## already uses; passing the ring data turns on its graded red fill.
 	if room._blast_wireframe_overlay != null:
-		room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), true)
+		room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), gu_rings)
 
 	## T-CURSOR: the hatched grenade replaces the magenta selection diamond for
 	## as long as the throw is being aimed.
@@ -408,6 +410,29 @@ func _cleanup_grenade_targeting_ui() -> void:
 		room.selection_overlay.visible = true
 
 
+## The subset of a flood that actually TAKES damage.
+##
+## Director, 2026-08-10: "o perímetro vermelho da granada no chão está muito
+## largo, vamos reduzir uma GU no raio." It was too wide by exactly one ring, and
+## the reason is in the bomb data rather than in any drawing code:
+## `flood_gu_rings()` caps at `ring_multipliers.size() - 1` because that array's
+## LENGTH is the bomb's range — but `frag_grenade`'s last entry is `0.0`, and
+## every one of its per-tier weights is 0.0 there too. That outermost ring is
+## reached and takes nothing. It exists so the smoke and soot tables have a
+## faint outer step, which is cosmetic.
+##
+## So this trims by DAMAGE rather than by a hardcoded -1: a bomb whose outermost
+## ring does hurt keeps it, and one with two dead rings loses both.
+func _damaging_rings(gu_rings: Dictionary, bomb_def) -> Dictionary:
+	var kept: Dictionary = {}
+	var multipliers: Array = bomb_def.ring_multipliers
+	for cell: Vector2i in gu_rings.keys():
+		var ring: int = int(gu_rings[cell])
+		if ring < multipliers.size() and float(multipliers[ring]) > 0.0:
+			kept[cell] = ring
+	return kept
+
+
 ## T-BUBBLE: snap a target cell to the closest one within `throw_range_gu`.
 ##
 ## Works in GU SPACE, not screen pixels. The first pass measured
@@ -444,7 +469,8 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 
 	var tree: SceneTree = room.get_tree()
 	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
-	var start_pos: Vector2 = room.agent.position
+	## Same origin the preview arc used — the agent's hands, not their feet.
+	var start_pos: Vector2 = room.agent.throw_origin()
 
 	## The flight follows ThrowArcOverlay's OWN parabola, with the overlay's own
 	## ratio — the grenade cannot fly a different curve from the one the player

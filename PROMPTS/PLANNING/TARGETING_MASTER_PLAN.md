@@ -103,11 +103,24 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   integer offsets, so a fractional radius draws a perfectly good ellipse
   through empty space between two rings. Asserted by selftest [9], including
   the counter-case (nothing is on a 6.5 GU rim, anywhere on the board).
-- **Affected GUs** (T-HATCH): the footprint of `flood_gu_rings()` outlined and
-  hatched at the base of the dome — *"assim como no Phoenix Point, vamos realçar
-  as GUs afetadas pela granada, para indicar quais inimigos vão ser atingidos."*
-  Same `BlastWireframeOverlay` the right-click menu already used, with the hatch
-  as an opt-in flag so its two older callers are unchanged.
+- **Affected GUs** (T-FILL): the footprint of `flood_gu_rings()` outlined at the
+  base of the dome and filled red, graded per ring — *"assim como no Phoenix
+  Point, vamos realçar as GUs afetadas pela granada, para indicar quais inimigos
+  vão ser atingidos"*, then *"pintar o interior do perímetro de vermelho com
+  opacidades variadas, usando o mesmo mecanismo visual que estamos usando para
+  indicar o perímetro de movimentação do agente."* That mechanism is
+  `MovementOverlay`'s flat per-diamond `draw_colored_polygon` under the outline;
+  here the grade is by blast ring instead of by AP cost. Same
+  `BlastWireframeOverlay` the right-click menu already used — the fill only
+  turns on when a caller passes ring data, so its two older callers are
+  unchanged. (An earlier hatch attempt was rejected and removed.)
+  **Rings that do no damage are excluded.** `flood_gu_rings()` caps at
+  `ring_multipliers.size() - 1` because that array's length IS the bomb's range,
+  but `frag_grenade`'s outermost entry is `0.0` with every per-tier weight zero
+  too — reached, and harmless. Drawing it claimed one GU more than the blast
+  delivers (*"o perímetro vermelho da granada no chão está muito largo, vamos
+  reduzir uma GU no raio"*). `_damaging_rings()` trims by damage rather than by
+  a hardcoded −1, so a bomb whose outer ring does bite keeps it.
 - **Target marker** (T-CURSOR): `SelectionOverlay`'s magenta diamond is hidden
   for the duration of the throw and a hatched grenade stands on the target cell
   instead. Drawn, not sprited: `GrenadeProp`'s baked frames are the physical
@@ -139,7 +152,12 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   is the hatched footprint above.
 - **Throw arc**: parabola arcing UP (`arc_height_ratio` = 0.35 of the throw's
   screen distance), shared by the preview line and the sprite's own flight via
-  `ThrowArcOverlay`'s statics, so the two cannot disagree.
+  `ThrowArcOverlay`'s statics, so the two cannot disagree. It leaves
+  `DebugAgent.throw_origin()` — the head marker's own height, roughly where the
+  hands are (*"vamos subir para sair mais ou menos da bolinha branca (...) que
+  vai corresponder à altura dos braços"*), not the cell centre at the agent's
+  feet. Crouching and prone throws start lower for free, because the offsets are
+  the same const `_draw()` places the marker with.
 - **Throw timing**: `throw_duration_s` 0.6 s flight, a light landing hop
   (`bounce_height_ratio` 0.12, `bounce_duration_s` 0.18), then
   `grenade_cook_s` = 1.0 s sitting on the ground before it goes off. The

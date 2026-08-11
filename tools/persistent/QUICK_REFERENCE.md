@@ -116,7 +116,8 @@ not knowing them:
 | 24 / 25 / 27 / 28 | LIGHT-vision overlays: height / temporal / light / shadow |
 | `max_voxel_z` + 1 | agent (OCC-03; props must stay below this) |
 | +2 / +3 / +4 | light rays / ceiling props / embers |
-| 100 | blast wireframe, guard noise indicator |
+| 100 | blast wireframe (= `Room.AIM_Z_FOOTPRINT`), guard noise indicator |
+| 101 … 105 | grenade aiming stack, bottom to top: throw perimeter, aim dome, shrapnel rays, throw arc, virtual grenade (`Room.AIM_Z_*`). Absolute, not `max_voxel_z + n` — the footprint at 100 is already absolute, so a relative sibling drew *under* it |
 | 140 / 150 | noise overlay / trail + occlusion overlay |
 | 200 | dev hover label |
 

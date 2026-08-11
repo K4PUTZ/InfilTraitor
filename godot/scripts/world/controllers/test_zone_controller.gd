@@ -299,9 +299,44 @@ func enter_grenade_mode() -> void:
 	_update_grenade_targeting_display()
 
 
-## Rebuild the whole aiming preview — perimeter, dome, arc and shrapnel rays —
-## from the current hover. Called on entry and on every hover change.
+## Hover-driven entry point — room._input() calls this whenever the cursor
+## crosses into a new cell.
 func _update_grenade_targeting_display() -> void:
+	if not _targeting_mode or _targeting_grenade_index < 0:
+		return
+	var hovered: Vector2i = room._hovered_cell
+	if hovered == room.INVALID_CELL:
+		hovered = _targeting_target_gu
+	_set_targeting_target(hovered)
+
+
+## T-TAP (Director, 2026-08-10): "um segundo clique/tap na GU que está com a
+## bolha marcada dispara a bomba (enter)."
+##
+## First tap aims, second tap on the SAME cell throws — which is what makes the
+## flow work with no hover at all, and PREDICTION_MASTER_PLAN §4.2's own trigger
+## ("hover, or first tap on a GU for mobile"). The comparison is made on the
+## CLAMPED cell, not the raw one: two taps beyond the perimeter both resolve to
+## the same edge cell, so the second still fires rather than silently re-aiming
+## at a target that never moved.
+##
+## Returns true when the click belonged to targeting, so the caller can consume
+## it instead of moving the agent.
+func handle_targeting_click(cell: Vector2i) -> bool:
+	if not _targeting_mode or _targeting_grenade_index < 0:
+		return false
+	if cell == room.INVALID_CELL:
+		return false
+	if _clamp_gu_to_throw_range(cell, room.agent.cell) == _targeting_target_gu:
+		execute_grenade_throw()
+	else:
+		_set_targeting_target(cell)
+	return true
+
+
+## Aim at a cell (clamped to range) and rebuild every aiming overlay —
+## perimeter, dome, arc, shrapnel rays, affected GUs and the virtual grenade.
+func _set_targeting_target(cell: Vector2i) -> void:
 	if not _targeting_mode or _targeting_grenade_index < 0:
 		return
 
@@ -319,10 +354,7 @@ func _update_grenade_targeting_display() -> void:
 	if room._throw_perimeter_overlay != null:
 		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range_gu)
 
-	var hovered: Vector2i = room._hovered_cell
-	if hovered == room.INVALID_CELL:
-		hovered = _targeting_target_gu
-	_targeting_target_gu = _clamp_gu_to_throw_range(hovered, origin_gu)
+	_targeting_target_gu = _clamp_gu_to_throw_range(cell, origin_gu)
 	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
 
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
@@ -353,10 +385,11 @@ func _update_grenade_targeting_display() -> void:
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), gu_rings)
 
-	## T-CURSOR: the hatched grenade replaces the magenta selection diamond for
-	## as long as the throw is being aimed.
+	## T-CURSOR: the virtual grenade replaces the magenta selection diamond for
+	## as long as the throw is being aimed. The perspective goes with it — it is
+	## the real baked prop, so it has a per-view frame like the prop does.
 	if room._target_cursor_overlay != null:
-		room._target_cursor_overlay.show_at(target_pos)
+		room._target_cursor_overlay.show_at(target_pos, room._active_perspective)
 	if room.selection_overlay != null:
 		room.selection_overlay.visible = false
 

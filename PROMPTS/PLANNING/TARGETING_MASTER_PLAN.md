@@ -122,10 +122,33 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   reduzir uma GU no raio"*). `_damaging_rings()` trims by damage rather than by
   a hardcoded −1, so a bomb whose outer ring does bite keeps it.
 - **Target marker** (T-CURSOR): `SelectionOverlay`'s magenta diamond is hidden
-  for the duration of the throw and a hatched grenade stands on the target cell
-  instead. Drawn, not sprited: `GrenadeProp`'s baked frames are the physical
-  object, this is a diagram. Its size is in GU of world height via `AXIS_Z`, so
-  it tracks the map instead of floating at a fixed pixel size.
+  for the duration of the throw and a **virtual grenade** stands on the target
+  cell instead — `GrenadeProp`'s own baked frames, through its
+  `load_color_frames()` rather than a second path constant, per *"exibir o
+  verdadeiro asset da granada, já que vamos ter outros tipos de explosivos.
+  Carregue dinamicamente o que quer que tenha sido definido como granada."*
+  A hand-drawn silhouette beside a baked prop is two definitions of one object;
+  the second explosive type is when they drift. It mirrors the prop's anchoring
+  and per-view frame swap, so the preview stands exactly where the throw lands.
+  `virtual_grenade.gdshader` is what separates them: 50% red overlay, 2 px red
+  stroke round the silhouette, 2 px diagonal red hatch across it meeting the
+  stroke on both sides. Sizes are in TEXTURE pixels — the sprite is scaled by
+  `SPRITE_SCALE` and again by camera zoom, so screen-space widths would need the
+  live zoom every frame and would still read differently at every zoom level.
+- **Confirm by tap** (T-TAP): with the throw being aimed, the left button
+  belongs to it — the first click aims, a second on the **same** GU throws,
+  identical to Enter. *"Um segundo clique/tap na GU que está com a bolha marcada
+  dispara a bomba."* This is what makes the flow work with no hover at all, and
+  is `PREDICTION_MASTER_PLAN` §4.2's own trigger ("hover, or first tap on a GU
+  for mobile"). The comparison is on the CLAMPED cell, so two taps beyond the
+  perimeter both resolve to the same edge cell and the second still fires.
+- **Draw order** (T-Z): *"os raios laranjas precisam ficar por cima do perímetro
+  vermelho. A granada virtual fica por cima dos raios."* The aiming overlays hold
+  absolute slots `Room.AIM_Z_FOOTPRINT` … `AIM_Z_GRENADE` (100–105) rather than
+  `max_voxel_z_index + n`. That is the fix, not a tidy-up: the footprint has
+  always been at a flat 100, while the rest rode a few ticks above the tallest
+  voxel — nowhere near 100 — so the footprint drew over everything regardless of
+  their relative order.
 - **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = **2.0 GU** sitting
   on the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e
   paredes próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the

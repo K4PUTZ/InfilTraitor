@@ -1,108 +1,78 @@
 extends Node2D
 class_name TargetCursorOverlay
 
-## TargetCursorOverlay — the hatched grenade that marks the throw's target cell.
+## TargetCursorOverlay — the "virtual grenade" that marks the throw's target cell.
 ##
 ## Director, 2026-08-10: "o quadrado magenta que estamos usando para indicar a
 ## GU selecionada pode sumir, e o cursor assume temporariamente o formato da
-## granada hachurada (ver referência)" — REFERENCES/granade.webp, whose target
-## area is drawn as a lattice rather than a flat wash.
+## granada" — then, on the first version: "vamos modificar a silhueta da
+## granada-cursor para exibir o verdadeiro asset da granada, já que vamos ter
+## outros tipos de explosivos. Carregue dinamicamente o que quer que tenha sido
+## definido como granada."
 ##
-## So while a throw is being aimed, SelectionOverlay's magenta diamond is hidden
-## and this stands in its place: the same job (here is the cell you picked),
-## said in the verb of the action instead of the generic selection marker.
+## So the drawn silhouette is gone and this shows GrenadeProp's OWN baked frames,
+## through GrenadeProp.load_color_frames() rather than a second path constant.
+## That is the whole point of the change: a hand-drawn icon beside a baked prop
+## is two definitions of one object, and the second explosive type is exactly
+## when they drift apart.
 ##
-## Drawn rather than sprited on purpose. GrenadeProp's baked frames are the
-## physical object — photoreal, per-perspective, and lit; this is a UI symbol
-## that has to stay legible at any zoom and read as a diagram. Its one shared
-## fact with the world is its SIZE, which is in GU and projected through
-## IsoProjection.AXIS_Z, so it grows and shrinks with the map instead of
-## floating free at a fixed pixel size.
+## It mirrors GrenadeProp's anchoring (`centered = false`, `offset = -ANCHOR_PX`,
+## `SPRITE_SCALE`) and its per-perspective frame swap, so the virtual grenade
+## stands exactly where the real one will land, in the same view. What separates
+## them is `virtual_grenade.gdshader` — 50% red overlay, 2 px stroke, 2 px
+## diagonal hatch — which says "planned", not "there".
 
-## Tuning — `var` per architecture Rule 1.
-var body_color: Color = Color(1.0, 0.86, 0.62, 0.95)
-var hatch_color: Color = Color(1.0, 0.42, 0.14, 0.75)
-var line_width: float = 2.0
-var hatch_width: float = 1.5
-## Icon height in GAME UNITS of world HEIGHT — a real size in the world's own
-## vertical scale, not a pixel constant.
-var icon_height_gu: float = 0.62
-var hatch_lines: int = 7
-var body_segments: int = 24
+const SHADER_PATH := "res://godot/shaders/virtual_grenade.gdshader"
 
-var _center: Vector2 = Vector2.ZERO
-var _visible: bool = false
+## Tuning — `var` per architecture Rule 1. Forwarded to the shader on setup.
+var mark_color: Color = Color(1.0, 0.0, 0.0, 1.0)
+var overlay_strength: float = 0.5
+var outline_px: float = 2.0
+var hatch_px: float = 2.0
+## Gap between hatch lines, in the same texture pixels the widths use. The
+## grenade's silhouette is only ~45 texels across, so a spacing near the line
+## width turns the whole asset into a red blob — measured on the first capture
+## at 9, where five lines and a 2 px stroke left nothing of the shape.
+var hatch_spacing_px: float = 16.0
+
+var _sprite: Sprite2D = null
+var _material: ShaderMaterial = null
+var _frames: Dictionary = {}
 
 
 func _ready() -> void:
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
-	material = mat
+	_frames = GrenadeProp.load_color_frames()
+
+	_material = ShaderMaterial.new()
+	_material.shader = load(SHADER_PATH)
+	_material.set_shader_parameter("mark_color", mark_color)
+	_material.set_shader_parameter("overlay_strength", overlay_strength)
+	_material.set_shader_parameter("outline_px", outline_px)
+	_material.set_shader_parameter("hatch_px", hatch_px)
+	_material.set_shader_parameter("hatch_spacing_px", hatch_spacing_px)
+
+	## Same anchoring the real prop uses, so the preview and the landing agree.
+	_sprite = Sprite2D.new()
+	_sprite.centered = false
+	_sprite.offset = -GrenadeProp.ANCHOR_PX
+	_sprite.scale = Vector2.ONE * GrenadeProp.SPRITE_SCALE
+	_sprite.material = _material
+	add_child(_sprite)
+
 	visible = false
 
 
-## Show the marker standing on a floor position.
-func show_at(center: Vector2) -> void:
-	_center = center
-	_visible = true
+## Stand the virtual grenade on a floor position, in the room's active view.
+func show_at(center: Vector2, direction: String) -> void:
+	if _sprite == null:
+		return
+	if not _frames.has(direction):
+		push_warning("[TargetCursorOverlay] no grenade frame baked for view '%s'" % direction)
+		return
+	_sprite.texture = _frames[direction]
+	_sprite.position = center
 	visible = true
-	queue_redraw()
-
-
-func _draw() -> void:
-	if not _visible:
-		return
-
-	var h: float = absf(IsoProjection.AXIS_Z.y) * icon_height_gu
-	## Body: an ellipse whose centre sits above the cell it marks, so the icon
-	## stands on the target rather than being bisected by it.
-	var body_center: Vector2 = _center + Vector2(0.0, -0.42 * h)
-	var radii := Vector2(0.30 * h, 0.34 * h)
-
-	_draw_hatch(body_center, radii)
-
-	var outline := IsoProjection.ellipse_arc(body_center, radii, 0.0, TAU, body_segments)
-	draw_polyline(outline, body_color, line_width)
-
-	## Fuse cap and lever — the two silhouette details that make a circle read
-	## as a grenade rather than as a ball.
-	var cap_w: float = 0.13 * h
-	var cap_top: float = body_center.y - radii.y - 0.16 * h
-	var cap_bottom: float = body_center.y - radii.y + 0.04 * h
-	draw_polyline(PackedVector2Array([
-		Vector2(body_center.x - cap_w, cap_bottom),
-		Vector2(body_center.x - cap_w, cap_top),
-		Vector2(body_center.x + cap_w, cap_top),
-		Vector2(body_center.x + cap_w, cap_bottom),
-	]), body_color, line_width)
-	draw_line(Vector2(body_center.x + cap_w, cap_top + 0.03 * h),
-		Vector2(body_center.x + cap_w + 0.17 * h, body_center.y - 0.06 * h),
-		body_color, line_width)
-
-
-## Parallel 45° lines clipped to the ellipse, without clipping anything.
-##
-## The chord of a line across the UNIT CIRCLE at signed offset `c` from the
-## centre is 2·sqrt(1 - c²) long — closed form, no intersection test. Scaling
-## the result by the ellipse's radii maps circle to ellipse, and because that
-## scaling is affine it takes straight lines to straight lines and parallel
-## families to parallel families. So the hatch is built where the maths is easy
-## and then stretched into place.
-func _draw_hatch(center: Vector2, radii: Vector2) -> void:
-	if hatch_lines < 1:
-		return
-	var diag: float = sqrt(0.5)
-	var dir := Vector2(diag, diag)   ## 45°, unit length
-	var normal := Vector2(-dir.y, dir.x)
-	for i: int in range(hatch_lines):
-		var c: float = ((float(i) + 0.5) / float(hatch_lines)) * 2.0 - 1.0
-		var half: float = sqrt(maxf(1.0 - c * c, 0.0))
-		var a: Vector2 = normal * c - dir * half
-		var b: Vector2 = normal * c + dir * half
-		draw_line(center + a * radii, center + b * radii, hatch_color, hatch_width)
 
 
 func clear() -> void:
-	_visible = false
 	visible = false
-	queue_redraw()

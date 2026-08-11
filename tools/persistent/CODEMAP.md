@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53180 lines total** (under `godot/scripts/`)
+**205 scripts · 53263 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1065,7 +1065,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 182 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 202 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1390,21 +1390,22 @@ extends `Node2D` · 94 lines
 
 ### `target_cursor_overlay.gd`
 
-`class_name TargetCursorOverlay` · extends `Node2D` · 108 lines
+`class_name TargetCursorOverlay` · extends `Node2D` · 78 lines
 
 `godot/scripts/overlays/target_cursor_overlay.gd`
 
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/virtual_grenade.gdshader"`
+
 **Public vars**
-- `var body_color: Color = Color(1.0, 0.86, 0.62, 0.95)`
-- `var hatch_color: Color = Color(1.0, 0.42, 0.14, 0.75)`
-- `var line_width: float = 2.0`
-- `var hatch_width: float = 1.5`
-- `var icon_height_gu: float = 0.62`
-- `var hatch_lines: int = 7`
-- `var body_segments: int = 24`
+- `var mark_color: Color = Color(1.0, 0.0, 0.0, 1.0)`
+- `var overlay_strength: float = 0.5`
+- `var outline_px: float = 2.0`
+- `var hatch_px: float = 2.0`
+- `var hatch_spacing_px: float = 16.0`
 
 **Public API**
-- `func show_at(center: Vector2) -> void:`
+- `func show_at(center: Vector2, direction: String) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -4193,7 +4194,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 867 lines
+`class_name TestZoneController` · 900 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4458,7 +4459,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4260 lines
+extends `Node2D` · 4320 lines
 
 `godot/scripts/world/room.gd`
 

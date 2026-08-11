@@ -487,7 +487,18 @@ var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
 var _throw_arc_overlay: Node2D = null  ## T-ARC — parabolic throw arc
 var _shrapnel_preview_overlay: Node2D = null  ## T-FRAG — aiming shrapnel rays
-var _target_cursor_overlay: Node2D = null  ## T-CURSOR — hatched grenade marker
+var _target_cursor_overlay: Node2D = null  ## T-CURSOR — virtual grenade marker
+
+## T-Z: the aiming stack's slots in the flat "UI above everything" z tier, whose
+## first occupant is `_blast_wireframe_overlay` at 100. Bottom to top, and the
+## order is the reading order of the preview: which GUs are hit, how far you can
+## throw, the blast volume, the fragments, the trajectory, the grenade itself.
+const AIM_Z_FOOTPRINT: int = 100
+const AIM_Z_PERIMETER: int = 101
+const AIM_Z_DOME: int = 102
+const AIM_Z_RAYS: int = 103
+const AIM_Z_ARC: int = 104
+const AIM_Z_GRENADE: int = 105
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -939,7 +950,7 @@ func _ready() -> void:
 	## decoration like _gu_grid_overlay.
 	_blast_wireframe_overlay = Node2D.new()
 	_blast_wireframe_overlay.set_script(BlastWireframeOverlayClass)
-	_blast_wireframe_overlay.z_index = 100
+	_blast_wireframe_overlay.z_index = AIM_Z_FOOTPRINT
 	add_child(_blast_wireframe_overlay)
 	_blast_wireframe_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
 
@@ -2071,17 +2082,27 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_animated_ray_overlay.z_index = max_voxel_z_index + 8
 	if _shrapnel_overlay != null:
 		_shrapnel_overlay.z_index = max_voxel_z_index + 5
-	if _aim_bubble_overlay != null:
-		_aim_bubble_overlay.z_index = max_voxel_z_index + 9
+	## T-Z (Director, 2026-08-10): "os raios laranjas precisam ficar por cima do
+	## perímetro vermelho. A granada virtual fica por cima dos raios."
+	##
+	## The aiming overlays take ABSOLUTE slots rather than `max_voxel_z_index + n`,
+	## and that is the fix rather than a tidy-up. `_blast_wireframe_overlay` — the
+	## red footprint — has always sat at the flat 100 of the "UI above everything"
+	## tier (see QUICK_REFERENCE's z table), while these were riding a few ticks
+	## above the tallest voxel, which on this map is nowhere near 100. So the
+	## footprint drew over the rays no matter what order the ticks were in. Now
+	## the whole aiming stack lives in that same tier, in the order it is read:
+	## footprint, perimeter, dome, rays, arc, grenade.
 	if _throw_perimeter_overlay != null:
-		_throw_perimeter_overlay.z_index = max_voxel_z_index + 9
-	if _throw_arc_overlay != null:
-		_throw_arc_overlay.z_index = max_voxel_z_index + 8
+		_throw_perimeter_overlay.z_index = AIM_Z_PERIMETER
+	if _aim_bubble_overlay != null:
+		_aim_bubble_overlay.z_index = AIM_Z_DOME
 	if _shrapnel_preview_overlay != null:
-		## Same tick as the aim dome; tree order (added after it) puts the rays on top.
-		_shrapnel_preview_overlay.z_index = max_voxel_z_index + 9
+		_shrapnel_preview_overlay.z_index = AIM_Z_RAYS
+	if _throw_arc_overlay != null:
+		_throw_arc_overlay.z_index = AIM_Z_ARC
 	if _target_cursor_overlay != null:
-		_target_cursor_overlay.z_index = max_voxel_z_index + 10
+		_target_cursor_overlay.z_index = AIM_Z_GRENADE
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —
@@ -3104,6 +3125,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		## selected cell again walks (handle_tile_click). On desktop the left
 		## button only ever selects; movement lives on the right button.
 		if cell != INVALID_CELL:
+			## T-TAP: while a throw is being aimed the left button belongs to it —
+			## first click aims, a second on the same GU throws. Checked before
+			## selection/movement on purpose: during targeting there is nothing
+			## else the click could sensibly mean.
+			if _test_zone_controller != null \
+					and _test_zone_controller.handle_targeting_click(cell):
+				get_viewport().set_input_as_handled()
+				return
 			if DisplayServer.is_touchscreen_available():
 				_handle_tile_click(cell)
 			else:
@@ -3807,7 +3836,7 @@ func _run_auto_screenshot_capture() -> void:
 			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
-	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel"] \
+	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel", "grenade_tap"] \
 			and _test_zone_controller != null:
 		## T-MODE/E-BUBBLE dev capture action (2026-08-10) — the unattended path
 		## for the aiming preview, same standing-tool precedent as weapon_menu
@@ -3832,7 +3861,12 @@ func _run_auto_screenshot_capture() -> void:
 			_camera_controller.focus_on(agent._cell_to_world(aim_cell))
 		if _fow_controller != null:
 			_fow_controller.reveal_around(aim_cell, 14)
-		for _c in range(5):
+		## The camera tween has to SETTLE before the synthetic motion below is
+		## positioned, or _tile_to_screen_center() is computed against a transform
+		## that is still moving and the hover lands on a different cell. Measured
+		## 2026-08-10: at 5 frames this misfired roughly one run in four at the
+		## harness's ~8 fps.
+		for _c in range(15):
 			await get_tree().process_frame
 
 		var g_down := InputEventKey.new()
@@ -3874,6 +3908,32 @@ func _run_auto_screenshot_capture() -> void:
 			var throw_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
 			var throw_wait: int = throw_wait_env.to_int() if throw_wait_env.is_valid_int() else 120
 			for _j in range(maxi(throw_wait, 0)):
+				await get_tree().process_frame
+
+		if capture_action == "grenade_tap":
+			## T-TAP: the mobile flow, driven through the real _unhandled_input()
+			## release branch rather than by calling the handler directly. TWO taps
+			## on a cell the hover is NOT already sitting on: the first must only
+			## re-aim, the second must throw. Doing it on the hovered cell instead
+			## would prove nothing, because one tap would already match.
+			var tap_cell := aim_cell + Vector2i(1, 1)
+			for tap: int in range(2):
+				var press := InputEventMouseButton.new()
+				press.button_index = MOUSE_BUTTON_LEFT
+				press.pressed = true
+				press.position = _tile_to_screen_center(tap_cell)
+				_unhandled_input(press)
+				var release := InputEventMouseButton.new()
+				release.button_index = MOUSE_BUTTON_LEFT
+				release.pressed = false
+				release.position = press.position
+				_unhandled_input(release)
+				print("[T-TAP] tap %d on %s: targeting=%s" % [tap + 1, tap_cell, is_grenade_targeting()])
+				for _j in range(6):
+					await get_tree().process_frame
+			var tap_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
+			var tap_wait: int = tap_wait_env.to_int() if tap_wait_env.is_valid_int() else 120
+			for _j in range(maxi(tap_wait, 0)):
 				await get_tree().process_frame
 
 		if capture_action == "grenade_cancel":

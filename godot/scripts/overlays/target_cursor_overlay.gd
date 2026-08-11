@@ -32,8 +32,9 @@ var hatch_px: float = 2.0
 ## Gap between hatch lines, in the same texture pixels the widths use. The
 ## grenade's silhouette is only ~45 texels across, so a spacing near the line
 ## width turns the whole asset into a red blob — measured on the first capture
-## at 9, where five lines and a 2 px stroke left nothing of the shape.
-var hatch_spacing_px: float = 16.0
+## at 9, where five lines and a 2 px stroke left nothing of the shape. 16 read as
+## too sparse next to it; 12 is the Director's "aumenta só um pouquinho".
+var hatch_spacing_px: float = 12.0
 
 var _sprite: Sprite2D = null
 var _material: ShaderMaterial = null

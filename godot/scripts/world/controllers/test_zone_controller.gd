@@ -365,6 +365,7 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.
 	if room._throw_arc_overlay != null:
+		room._throw_arc_overlay.set_launch_height(room.agent.throw_launch_height())
 		room._throw_arc_overlay.show_arc(room.agent.throw_origin(), target_pos)
 
 	## The SAME wall-aware BFS the real blast floods with feeds both the rays and
@@ -509,26 +510,39 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## ratio — the grenade cannot fly a different curve from the one the player
 	## was shown while aiming.
 	var arc = room._throw_arc_overlay
-	var height_ratio: float = arc.arc_height_ratio if arc != null else 0.35
-	var arc_height: float = ThrowArcOverlay.arc_height_for(start_pos, target_world, height_ratio)
+	if arc == null:
+		push_error("[TestZoneController] throw: no ThrowArcOverlay to take the trajectory from")
+		return
+	var launch_px: float = room.agent.throw_launch_height()
+	var arc_height: float = ThrowArcOverlay.arc_height_for(
+		start_pos, target_world, arc.arc_height_ratio, launch_px)
+
+	## Which way "forward" is for the settle roll below — the direction the throw
+	## was travelling across the screen. A throw to the left rolls the other way.
+	var roll_sign: float = signf(target_world.x - start_pos.x)
+	if absf(roll_sign) < 0.5:
+		roll_sign = 1.0
 
 	var elapsed: float = 0.0
 	while elapsed < throw_duration_s:
 		await tree.process_frame
 		elapsed += room.get_process_delta_time()
-		sprite.position = ThrowArcOverlay.arc_point(start_pos, target_world,
-			minf(elapsed / throw_duration_s, 1.0), arc_height)
+		var t: float = minf(elapsed / throw_duration_s, 1.0)
+		sprite.position = ThrowArcOverlay.arc_point(
+			start_pos, target_world, t, arc_height, launch_px)
+		## The tumble. One whole turn over the flight, so it lands upright.
+		sprite.rotation = roll_sign * TAU * arc.flight_turns * t
 	sprite.position = target_world
+	sprite.rotation = roll_sign * TAU * arc.flight_turns
 	grenade["gu_cell"] = target_gu
 
 	## The landing hop — Director: "dá um bounce no chão de leve".
-	var bounce_height: float = arc_height * (arc.bounce_height_ratio if arc != null else 0.12)
-	var bounce_duration: float = arc.bounce_duration_s if arc != null else 0.18
+	var bounce_height: float = arc_height * arc.bounce_height_ratio
 	var bounced: float = 0.0
-	while bounced < bounce_duration:
+	while bounced < arc.bounce_duration_s:
 		await tree.process_frame
 		bounced += room.get_process_delta_time()
-		var bt: float = minf(bounced / bounce_duration, 1.0)
+		var bt: float = minf(bounced / arc.bounce_duration_s, 1.0)
 		sprite.position = target_world \
 			- Vector2(0.0, ThrowArcOverlay.bounce_lift(bt, bounce_height))
 	sprite.position = target_world
@@ -538,10 +552,27 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## The prediction finishes INSIDE this second rather than after it: that is
 	## the whole point of P-COOK's pre-production, and the fuse is exactly the
 	## kind of human-paced gap §4.2 was designed to hide the work in.
+	##
+	## The settle happens inside that second: "a granada pode rolar um pouquinho
+	## (1/16 de volta) pra frente (em relação ao arremesso), e depois rolar 1/32
+	## de volta pra trás, e parar." Rolling back less than it rolled forward is
+	## what makes it read as settling rather than as bouncing.
+	var rest_rotation: float = sprite.rotation
+	var forward_rotation: float = rest_rotation + roll_sign * TAU * arc.roll_forward_turns
+	var settled_rotation: float = forward_rotation - roll_sign * TAU * arc.roll_back_turns
+
 	var cooked: float = 0.0
 	while cooked < grenade_cook_s:
 		await tree.process_frame
 		cooked += room.get_process_delta_time()
+		if cooked < arc.roll_forward_s:
+			sprite.rotation = lerpf(rest_rotation, forward_rotation,
+				cooked / arc.roll_forward_s)
+		elif cooked < arc.roll_forward_s + arc.roll_back_s:
+			sprite.rotation = lerpf(forward_rotation, settled_rotation,
+				(cooked - arc.roll_forward_s) / arc.roll_back_s)
+		else:
+			sprite.rotation = settled_rotation
 
 	## Only if the prediction is STILL going does the fuse stretch, capped so a
 	## pathological one cannot hold the blast forever —

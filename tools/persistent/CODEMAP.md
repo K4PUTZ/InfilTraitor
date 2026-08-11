@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53263 lines total** (under `godot/scripts/`)
+**205 scripts · 53431 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 263 lines
+`class_name DebugAgent` · extends `Node2D` · 272 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -74,6 +74,7 @@
 
 **Public API**
 - `func throw_origin() -> Vector2:`
+- `func throw_launch_height() -> float:`
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
@@ -1390,7 +1391,7 @@ extends `Node2D` · 94 lines
 
 ### `target_cursor_overlay.gd`
 
-`class_name TargetCursorOverlay` · extends `Node2D` · 78 lines
+`class_name TargetCursorOverlay` · extends `Node2D` · 79 lines
 
 `godot/scripts/overlays/target_cursor_overlay.gd`
 
@@ -1402,7 +1403,7 @@ extends `Node2D` · 94 lines
 - `var overlay_strength: float = 0.5`
 - `var outline_px: float = 2.0`
 - `var hatch_px: float = 2.0`
-- `var hatch_spacing_px: float = 16.0`
+- `var hatch_spacing_px: float = 12.0`
 
 **Public API**
 - `func show_at(center: Vector2, direction: String) -> void:`
@@ -1446,7 +1447,7 @@ extends `Node2D` · 262 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 85 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 143 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
@@ -1457,9 +1458,15 @@ extends `Node2D` · 262 lines
 - `var arc_height_ratio: float = 0.35`
 - `var bounce_height_ratio: float = 0.12`
 - `var bounce_duration_s: float = 0.18`
+- `var flight_turns: float = 1.0`
+- `var roll_forward_turns: float = 1.0 / 16.0`
+- `var roll_back_turns: float = 1.0 / 32.0`
+- `var roll_forward_s: float = 0.20`
+- `var roll_back_s: float = 0.14`
 
 **Public API**
 - `func show_arc(from_pos: Vector2, to_pos: Vector2) -> void:`
+- `func set_launch_height(launch_px: float) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -3263,7 +3270,7 @@ extends `SceneTree` · 275 lines
 
 ### `iso_projection_selftest.gd`
 
-extends `SceneTree` · 319 lines
+extends `SceneTree` · 388 lines
 
 `godot/scripts/tools/iso_projection_selftest.gd`
 
@@ -3287,6 +3294,7 @@ extends `SceneTree` · 319 lines
 - `func test_dome_covers_three_by_three_gu() -> void:`
 - `func test_throw_perimeter_lands_on_cell_centres() -> void:`
 - `func test_throw_arc_goes_up() -> void:`
+- `func test_throw_arc_is_ballistic() -> void:`
 
 ---
 
@@ -4194,7 +4202,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 900 lines
+`class_name TestZoneController` · 931 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

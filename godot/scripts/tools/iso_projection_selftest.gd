@@ -33,6 +33,7 @@ func _init() -> void:
 	test_dome_covers_three_by_three_gu()
 	test_throw_perimeter_lands_on_cell_centres()
 	test_throw_arc_goes_up()
+	test_throw_arc_is_ballistic()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -271,12 +272,13 @@ func test_throw_perimeter_lands_on_cell_centres() -> void:
 ## fall upward on the way out.
 func test_throw_arc_goes_up() -> void:
 	print("[8] The throw arc rises above its own chord, and lands where aimed\n")
+	var launch := 64.0   ## DebugAgent's standing hand height
 	var from_pos := Vector2(400.0, 600.0)
 	var to_pos := Vector2(900.0, 640.0)
-	var height: float = ThrowArcOverlay.arc_height_for(from_pos, to_pos, 0.35)
+	var apex: float = ThrowArcOverlay.arc_height_for(from_pos, to_pos, 0.35, launch)
 
-	if not ThrowArcOverlay.arc_point(from_pos, to_pos, 0.0, height).is_equal_approx(from_pos) \
-			or not ThrowArcOverlay.arc_point(from_pos, to_pos, 1.0, height).is_equal_approx(to_pos):
+	if not ThrowArcOverlay.arc_point(from_pos, to_pos, 0.0, apex, launch).is_equal_approx(from_pos) \
+			or not ThrowArcOverlay.arc_point(from_pos, to_pos, 1.0, apex, launch).is_equal_approx(to_pos):
 		_fail("the arc does not start at the hand or end at the target cell")
 	else:
 		_pass("t=0 is the hand and t=1 is the target — endpoints are exact")
@@ -284,7 +286,7 @@ func test_throw_arc_goes_up() -> void:
 	var above := true
 	for i: int in range(1, 20):
 		var t: float = float(i) / 20.0
-		var on_arc: Vector2 = ThrowArcOverlay.arc_point(from_pos, to_pos, t, height)
+		var on_arc: Vector2 = ThrowArcOverlay.arc_point(from_pos, to_pos, t, apex, launch)
 		var on_chord: Vector2 = from_pos.lerp(to_pos, t)
 		if on_arc.y >= on_chord.y:
 			_fail("at t=%.2f the arc is at y=%.1f, not above the chord's %.1f" %
@@ -296,12 +298,12 @@ func test_throw_arc_goes_up() -> void:
 
 	## A throw straight down the screen must still arc. The first version scaled
 	## its height by the horizontal distance alone, so this case was a flat line.
-	var vertical_height: float = ThrowArcOverlay.arc_height_for(
-		Vector2(500.0, 200.0), Vector2(500.0, 800.0), 0.35)
-	if vertical_height > 1.0:
-		_pass("a purely vertical throw still gets %.1f px of apex" % vertical_height)
+	var vertical_apex: float = ThrowArcOverlay.arc_height_for(
+		Vector2(500.0, 200.0), Vector2(500.0, 800.0), 0.35, launch)
+	if vertical_apex > 1.0:
+		_pass("a purely vertical throw still gets %.1f px of apex" % vertical_apex)
 	else:
-		_fail("a purely vertical throw arcs by %.1f px — that is a straight line" % vertical_height)
+		_fail("a purely vertical throw arcs by %.1f px — that is a straight line" % vertical_apex)
 
 	## The bounce leaves and rejoins the floor without a step at either end.
 	if absf(ThrowArcOverlay.bounce_lift(0.0, 50.0)) < EPS \
@@ -310,6 +312,73 @@ func test_throw_arc_goes_up() -> void:
 		_pass("the landing hop starts and ends on the ground, peaking in between")
 	else:
 		_fail("the landing hop does not return to the ground")
+	print("")
+
+
+## [10] "Desacelerar a granada até o ápice da parábola, e acelerar até o chão"
+## (Director, 2026-08-10). Constant gravity already does that; what the arc did
+## NOT have was the launch height, and that is what makes a real throw
+## asymmetric — released above the floor it lands on, it peaks before halfway and
+## falls longer than it rose. Both properties are pinned here.
+func test_throw_arc_is_ballistic() -> void:
+	print("[10] The flight decelerates to the apex, accelerates to the ground\n")
+	var launch := 64.0
+	var from_pos := Vector2(400.0, 600.0)
+	var to_pos := Vector2(1000.0, 600.0)
+	var apex: float = ThrowArcOverlay.arc_height_for(from_pos, to_pos, 0.35, launch)
+
+	## Measured on the HEIGHT term alone, not on screen Y. The two are not the
+	## same thing and conflating them is how this test failed on its first run:
+	## the ground path from the thrower's feet to the target cell has its own
+	## screen-Y drift (the map is isometric — moving along the ground moves you up
+	## and down the screen), and that drift is linear, so mixing it in masks the
+	## acceleration this test exists to check.
+	var ground_from := from_pos + Vector2(0.0, launch)
+	var t_apex: float = ThrowArcOverlay.apex_time(apex, launch)
+	var step := 0.02
+	var rising_ok := true
+	var falling_ok := true
+	var previous_rise: float = INF
+	var previous_fall: float = 0.0
+	for i: int in range(1, 50):
+		var t: float = float(i) * step
+		if t >= 0.98:
+			break
+		var height_a: float = ground_from.lerp(to_pos, t).y \
+			- ThrowArcOverlay.arc_point(from_pos, to_pos, t, apex, launch).y
+		var height_b: float = ground_from.lerp(to_pos, t + step).y \
+			- ThrowArcOverlay.arc_point(from_pos, to_pos, t + step, apex, launch).y
+		var vertical_speed: float = absf(height_b - height_a)
+		if t + step <= t_apex:
+			if vertical_speed > previous_rise + EPS:
+				rising_ok = false
+			previous_rise = vertical_speed
+		elif t >= t_apex:
+			if vertical_speed < previous_fall - EPS:
+				falling_ok = false
+			previous_fall = vertical_speed
+	if rising_ok:
+		_pass("vertical speed only ever decreases on the way up")
+	else:
+		_fail("the grenade speeds up on its way to the apex")
+	if falling_ok:
+		_pass("vertical speed only ever increases on the way down")
+	else:
+		_fail("the grenade slows down on its way to the ground")
+
+	## The asymmetry itself: thrown from a height, the apex comes early.
+	if t_apex < 0.5 - EPS:
+		_pass("apex at t=%.3f — thrown from %.0f px up, the fall is the longer half" %
+			[t_apex, launch])
+	else:
+		_fail("apex at t=%.3f — the arc is still symmetric, launch height is ignored" % t_apex)
+
+	## And with no launch height it must reduce EXACTLY to the old symmetric
+	## parabola, or every previously-tuned value silently changed meaning.
+	if absf(ThrowArcOverlay.apex_time(apex, 0.0) - 0.5) < EPS:
+		_pass("with launch height 0 the apex returns to t=0.5 — a strict generalisation")
+	else:
+		_fail("the zero-launch case no longer matches the parabola it replaced")
 	print("")
 
 

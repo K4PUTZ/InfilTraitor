@@ -97,6 +97,15 @@ const HEAD_OFFSET: Dictionary = {
 func throw_origin() -> Vector2:
 	return position + HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
 
+
+## How far above the floor that origin is, in pixels. The ballistic arc needs it
+## as a number and not just as a point: a throw released above the plane it lands
+## on peaks before halfway and falls longer than it rose, and that asymmetry is
+## the whole difference between a real throw and a symmetric bow.
+func throw_launch_height() -> float:
+	var offset: Vector2 = HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
+	return absf(offset.y)
+
 ## Placeholder bounding box for standing-character silhouette (O7 stroke will clip to this)
 ## Dimensions tuned to enclosing rect of STANDING posture diamond
 const SILHOUETTE_WIDTH := 44.0   ## left-right span of standing character

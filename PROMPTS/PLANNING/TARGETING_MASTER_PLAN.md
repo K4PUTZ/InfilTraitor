@@ -173,18 +173,35 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   full circularity a ray no longer ENDS on the cell it came from — it is a
   fragment's direction and reach, not a per-cell readout. The per-cell readout
   is the hatched footprint above.
-- **Throw arc**: parabola arcing UP (`arc_height_ratio` = 0.35 of the throw's
-  screen distance), shared by the preview line and the sprite's own flight via
-  `ThrowArcOverlay`'s statics, so the two cannot disagree. It leaves
+- **Throw arc**: a real BALLISTIC path (`arc_height_ratio` = 0.35 of the throw's
+  screen distance sets the apex), shared by the preview line and the sprite's own
+  flight via `ThrowArcOverlay`'s statics, so the two cannot disagree. It leaves
   `DebugAgent.throw_origin()` — the head marker's own height, roughly where the
   hands are (*"vamos subir para sair mais ou menos da bolinha branca (...) que
   vai corresponder à altura dos braços"*), not the cell centre at the agent's
   feet. Crouching and prone throws start lower for free, because the offsets are
   the same const `_draw()` places the marker with.
-- **Throw timing**: `throw_duration_s` 0.6 s flight, a light landing hop
-  (`bounce_height_ratio` 0.12, `bounce_duration_s` 0.18), then
-  `grenade_cook_s` = 1.0 s sitting on the ground before it goes off. The
-  prediction finishes inside that cooking second.
+  On *"desacelerar a granada até o ápice da parábola, e acelerar até o chão"*:
+  constant gravity already did that — a `4·h·t·(1−t)` lift has a constant second
+  derivative. What was missing is that the grenade **leaves the hand above the
+  floor it lands on**, and that is what makes a real throw asymmetric. With
+  `launch_px` threaded through (`DebugAgent.throw_launch_height()`), the apex
+  arrives at t ≈ 0.455 instead of 0.5 and the fall is the longer, faster half.
+  With `launch_px` = 0 it reduces **exactly** to the old symmetric parabola, so
+  it is a strict generalisation rather than a retune — selftest [10] asserts
+  that, along with the monotonic decelerate-then-accelerate itself. That test
+  measures the HEIGHT term, not screen Y: on an isometric map the ground path
+  has its own linear screen-Y drift, and mixing it in masks the acceleration.
+- **Throw timing and settle**: `throw_duration_s` 0.6 s flight with a
+  `flight_turns` = 1 tumble (one whole turn, so it lands upright), a light
+  landing hop (`bounce_height_ratio` 0.12, `bounce_duration_s` 0.18), then
+  `grenade_cook_s` = 1.0 s on the ground before it goes off. The settle happens
+  inside that second — *"rolar um pouquinho (1/16 de volta) pra frente (em
+  relação ao arremesso), e depois rolar 1/32 de volta pra trás, e parar"* —
+  where forward is the direction the throw was travelling, so a throw to the
+  left rolls the other way. Rolling back less than it rolled forward is what
+  makes it read as settling instead of bouncing. The prediction finishes inside
+  the same cooking second.
 
 ---
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.96 · **Updated:** 2026-08-10 · **Branch:** main
+**Version:** 0.9.95 · **Updated:** 2026-08-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -60,13 +60,12 @@
 - Test scripts: 42
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 16
+- Archived prompts: 17
 <!-- AUTO:END inventory -->
 
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- 47af86c ALPHA BUBBLE FOUNDATION 0.9.96 - Phase B targeting UI, elliptical throw perimeter, smart bubble clamping, parabolic arc, Enter/ESC throw control
 - cced231 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 - 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 - 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep

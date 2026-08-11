@@ -27,6 +27,7 @@ const ShrapnelOverlayClass = preload("res://godot/scripts/overlays/shrapnel_over
 const AimBubbleOverlayClass = preload("res://godot/scripts/overlays/aim_bubble_overlay.gd")
 const ThrowPerimeterOverlayClass = preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")
 const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_overlay.gd")
+const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
@@ -484,6 +485,7 @@ var _shrapnel_overlay: Node2D = null  ## E-FRAG — decorative shrapnel from bla
 var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
 var _throw_arc_overlay: Node2D = null  ## T-ARC — parabolic throw arc
+var _shrapnel_preview_overlay: Node2D = null  ## T-FRAG — aiming shrapnel rays
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -756,6 +758,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_throw_perimeter_overlay.clear()  ## T-MODE: same reasoning as the overlays above
 	if _throw_arc_overlay != null:
 		_throw_arc_overlay.clear()  ## T-ARC: same reasoning as the overlays above
+	if _shrapnel_preview_overlay != null:
+		_shrapnel_preview_overlay.clear()  ## T-FRAG: same reasoning as the overlays above
 	if _camera_controller != null:
 		## E-FLASH-01: a map load mid-shake must not leave the camera displaced.
 		_camera_controller.stop_shake()
@@ -984,6 +988,13 @@ func _ready() -> void:
 	## T-ARC: throw arc parabola (UI layer).
 	_throw_arc_overlay = ThrowArcOverlayClass.new()
 	add_child(_throw_arc_overlay)
+
+	## T-FRAG: aiming shrapnel rays. Added AFTER the aim dome so it draws over
+	## it at the same z — the rays are the tactical information, the dome is the
+	## shape they travel inside.
+	_shrapnel_preview_overlay = ShrapnelPreviewOverlayClass.new()
+	add_child(_shrapnel_preview_overlay)
+	_shrapnel_preview_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
 
 	## VL-D4: ember glow overlay (blast VFX). z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -1468,6 +1479,10 @@ func _set_perspective(direction: String) -> void:
 			_aim_bubble_overlay.clear()
 		if _throw_perimeter_overlay != null:
 			_throw_perimeter_overlay.clear()
+		if _throw_arc_overlay != null:
+			_throw_arc_overlay.clear()
+		if _shrapnel_preview_overlay != null:
+			_shrapnel_preview_overlay.clear()
 		if _explosion_flash_overlay != null:
 			## E-FLASH-01: the fireball is anchored in the OLD view's screen
 			## space, exactly like the ember glow above it.
@@ -2051,6 +2066,9 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_throw_perimeter_overlay.z_index = max_voxel_z_index + 9
 	if _throw_arc_overlay != null:
 		_throw_arc_overlay.z_index = max_voxel_z_index + 8
+	if _shrapnel_preview_overlay != null:
+		## Same tick as the aim dome; tree order (added after it) puts the rays on top.
+		_shrapnel_preview_overlay.z_index = max_voxel_z_index + 9
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —
@@ -2766,36 +2784,6 @@ func _tile_to_screen_center(cell: Vector2i) -> Vector2:
 	var local_center: Vector2 = floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	var global_pos: Vector2 = floor_layer.to_global(local_center)
 	return get_viewport().get_canvas_transform() * global_pos
-
-
-## T-BUBBLE: Convert screen position to world position and update bubble
-func _screen_to_world(screen_pos: Vector2) -> Vector2:
-	var ct: Transform2D = get_viewport().get_canvas_transform()
-	var global_pos: Vector2 = ct.affine_inverse() * screen_pos
-	return floor_layer.to_local(global_pos)
-
-
-## T-BUBBLE: Update aim bubble position during targeting, clamped to throw range
-func _update_bubble_for_targeting(screen_pos: Vector2) -> void:
-	if _aim_bubble_overlay == null:
-		return
-
-	var world_pos: Vector2 = _screen_to_world(screen_pos)
-	var agent_pos: Vector2 = agent.position
-	var to_cursor: Vector2 = world_pos - agent_pos
-	var dist_to_cursor: float = to_cursor.length()
-
-	var throw_range: float = _test_zone_controller.get_targeting_throw_range()
-	var clamped_pos: Vector2 = agent_pos
-
-	if dist_to_cursor > throw_range:
-		## Clamp to edge of throw range circle
-		if dist_to_cursor > 0.001:
-			clamped_pos += to_cursor.normalized() * throw_range
-	else:
-		clamped_pos = world_pos
-
-	_aim_bubble_overlay.update_position(clamped_pos)
 
 
 ## OCC-FIX-01 — B6 loud-fail: geometry in, geometry out.
@@ -3787,6 +3775,92 @@ func _run_auto_screenshot_capture() -> void:
 			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
+	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel"] \
+			and _test_zone_controller != null:
+		## T-MODE/E-BUBBLE dev capture action (2026-08-10) — the unattended path
+		## for the aiming preview, same standing-tool precedent as weapon_menu
+		## above (which exists so the CONE preview can be captured rather than
+		## described). Real G keypress through InputController and a real
+		## InputEventMouseMotion through _input(), so what the shot proves is the
+		## whole chain: key -> targeting mode -> hover -> perimeter/dome/rays.
+		##
+		## INFILTRAITOR_CAPTURE_AIM_CELL="x,y" is the cell the cursor hovers
+		## (default (11,9), open floor next to the test-zone wall row). Combine
+		## with INFILTRAITOR_CAPTURE_AGENT_CELL to change where the throw starts
+		## and therefore where the perimeter is centred.
+		var aim_cell := Vector2i(11, 9)
+		var aim_env := OS.get_environment("INFILTRAITOR_CAPTURE_AIM_CELL")
+		if aim_env.contains(","):
+			var parts := aim_env.split(",")
+			if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():
+				aim_cell = Vector2i(parts[0].to_int(), parts[1].to_int())
+			else:
+				push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AIM_CELL '%s' — expected 'x,y'" % aim_env)
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(aim_cell))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(aim_cell, 14)
+		for _c in range(5):
+			await get_tree().process_frame
+
+		var g_down := InputEventKey.new()
+		g_down.keycode = KEY_G
+		g_down.pressed = true
+		Input.parse_input_event(g_down)
+		var g_up := InputEventKey.new()
+		g_up.keycode = KEY_G
+		g_up.pressed = false
+		Input.parse_input_event(g_up)
+		for _j in range(5):
+			await get_tree().process_frame
+
+		## The hover is what moves the dome — without it the preview sits on
+		## enter_grenade_mode()'s placeholder cell and the capture proves nothing
+		## about the cursor path.
+		var motion := InputEventMouseMotion.new()
+		motion.position = _tile_to_screen_center(aim_cell)
+		_input(motion)
+		for _j in range(10):
+			await get_tree().process_frame
+
+		if capture_action == "grenade_throw":
+			## Real Enter through InputController's targeting branch — the same
+			## route the player takes, and the only way to prove the throw
+			## coroutine survives its own frame loop. It did not before
+			## 2026-08-10: it called SceneTree.get_physics_frame(), which does not
+			## exist, so the coroutine aborted and nothing ever detonated.
+			var t_down := InputEventKey.new()
+			t_down.keycode = KEY_ENTER
+			t_down.pressed = true
+			Input.parse_input_event(t_down)
+			var t_up := InputEventKey.new()
+			t_up.keycode = KEY_ENTER
+			t_up.pressed = false
+			Input.parse_input_event(t_up)
+			## Past the 0.6 s throw, the fuse wait, and the flash tween — the same
+			## reasoning (and the same env var) test_zone_detonate uses.
+			var throw_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
+			var throw_wait: int = throw_wait_env.to_int() if throw_wait_env.is_valid_int() else 120
+			for _j in range(maxi(throw_wait, 0)):
+				await get_tree().process_frame
+
+		if capture_action == "grenade_cancel":
+			## Real Escape, for the branch `ui_pause` used to swallow: with a throw
+			## being aimed, Escape must clear the preview and leave the game
+			## running, NOT open the Main Menu and pause. A capture showing the
+			## menu is this action failing.
+			var c_down := InputEventKey.new()
+			c_down.keycode = KEY_ESCAPE
+			c_down.pressed = true
+			Input.parse_input_event(c_down)
+			var c_up := InputEventKey.new()
+			c_up.keycode = KEY_ESCAPE
+			c_up.pressed = false
+			Input.parse_input_event(c_up)
+			for _j in range(10):
+				await get_tree().process_frame
+			print("[T-GRENADE] after Escape: targeting=%s paused=%s"
+				% [is_grenade_targeting(), get_tree().paused])
 	elif capture_action == "damage_gallery" and _voxel_renderer != null:
 		## DAMAGE-GALLERY dev capture action (2026-08-07) — frames the map's
 		## per-material test row wide enough to cover the wall row (y=2), this
@@ -4071,6 +4145,12 @@ func _on_pause_requested() -> void:
 		return
 	_main_menu_panel.open()
 	get_tree().paused = true
+
+
+## T-GRENADE: whether a throw is currently being aimed. InputController asks
+## before claiming Enter/Escape — see its _is_grenade_targeting().
+func is_grenade_targeting() -> bool:
+	return _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode()
 
 
 ## T-MODE (Phase B): G key to enter grenade targeting mode

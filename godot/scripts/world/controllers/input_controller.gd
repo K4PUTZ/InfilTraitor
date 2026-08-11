@@ -48,12 +48,46 @@ func _unhandled_input(event: InputEvent) -> void:
 			viewport.set_input_as_handled()
 
 
+## Whether a grenade throw is currently being aimed. Guarded with has_method()
+## the same way get_viewport()/get_tree() are above, because input_controller_test
+## drives this controller with a stand-in room that has no such method.
+func _is_grenade_targeting() -> bool:
+	return room != null and room.has_method("is_grenade_targeting") \
+		and room.is_grenade_targeting()
+
+
 func _handle_key_action(key: InputEventKey) -> void:
 	## Dispatch keyboard actions based on the Input Map (via is_action_pressed).
 	## This eliminates raw keycode matching and ensures rebindability works.
 	
 	var viewport = get_viewport()
-	
+
+	## T-GRENADE: Enter and Escape belong to the throw ONLY while it is being
+	## aimed, and they are tested here — ahead of `ui_pause` — for two reasons the
+	## first pass got wrong by claiming them unconditionally further down.
+	##
+	## Escape: `ui_pause` is also bound to Escape and returns, so the cancel
+	## branch below it could never be reached at all; aiming a grenade and
+	## pressing Escape opened the Main Menu. Innermost thing first, the same rule
+	## ESC-STACK-01 established for the ModalStack.
+	##
+	## Enter: `_input()` runs BEFORE GUI input, so an unconditionally consumed
+	## Enter never reached the focused Button in the context menu. Measured
+	## 2026-08-10 — the `test_zone_detonate` capture stopped detonating anything.
+	if _is_grenade_targeting():
+		if key.is_action_pressed("ui_cancel"):
+			print_debug("[INPUT] Grenade cancel requested")
+			grenade_cancel_requested.emit()
+			if viewport:
+				viewport.set_input_as_handled()
+			return
+		if key.is_action_pressed("ui_accept"):
+			print_debug("[INPUT] Grenade throw requested")
+			grenade_throw_requested.emit()
+			if viewport:
+				viewport.set_input_as_handled()
+			return
+
 	# Menu actions
 	if key.is_action_pressed("ui_pause"):
 		print_debug("[INPUT] Pause requested")
@@ -105,16 +139,6 @@ func _handle_key_action(key: InputEventKey) -> void:
 	elif key.is_action_pressed("ui_grenade_mode"):
 		print_debug("[INPUT] Grenade mode requested")
 		grenade_mode_requested.emit()
-		if viewport:
-			viewport.set_input_as_handled()
-	elif key.is_action_pressed("ui_accept"):
-		print_debug("[INPUT] Grenade throw requested")
-		grenade_throw_requested.emit()
-		if viewport:
-			viewport.set_input_as_handled()
-	elif key.is_action_pressed("ui_cancel"):
-		print_debug("[INPUT] Grenade cancel requested")
-		grenade_cancel_requested.emit()
 		if viewport:
 			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_move_up"):

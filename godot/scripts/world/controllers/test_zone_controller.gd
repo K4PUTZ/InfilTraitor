@@ -34,6 +34,35 @@ var _active_index: int = -1
 ## T-MODE: targeting mode active (grenade selected, waiting for target)
 var _targeting_mode: bool = false
 var _targeting_grenade_index: int = -1
+## The cell the throw will actually use — ALREADY CLAMPED to throw range. The
+## first pass kept no such state: the preview clamped `room._hovered_cell` for
+## the bubble, and then `execute_grenade_throw()` re-read the RAW hovered cell,
+## so a throw aimed past the perimeter went where the preview said it could not.
+var _targeting_target_gu: Vector2i = Vector2i.ZERO
+
+## Throw range, in GAME UNITS — the radius the perimeter ellipse draws and the
+## clamp tests against, one number for both (`var`, Rule 1).
+##
+## Was `max_ring * 112.0 * 3.0` px, a stack of magic numbers that worked out to
+## 5.57 GU by accident. Director, 2026-08-10, on the real thing: "O perímetro em
+## vermelho parece ok, poderia ser um pouquinho mais largo."
+var throw_range_gu: float = 6.5
+
+## Radius of the aim dome, in GAME UNITS. Director: "cobrindo uma área de 3x3 GU
+## aproximadamente" — 1.5 GU in every direction from the target cell's centre.
+## Deliberately NOT derived from `bomb_def.ring_multipliers.size()`: the dome is
+## the readable shape of the blast, and the per-cell truth of how far it reaches
+## is what the shrapnel rays carry.
+var aim_dome_radius_gu: float = 1.5
+
+## Seconds the thrown grenade takes to travel its arc, and the cap on how long
+## the fuse waits for a prediction that is still cooking.
+var throw_duration_s: float = 0.6
+var throw_prediction_timeout_s: float = 1.0
+
+## Where the dome starts when targeting opens and the cursor is not over the map
+## yet — three cells along +x, purely so the preview has something to show.
+const DEFAULT_TARGET_OFFSET := Vector2i(3, 0)
 
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE) — keeps the in-flight
 ## DetonationChoreographer (a RefCounted, not a Node) alive for its whole
@@ -242,77 +271,81 @@ func open_menu_for(index: int) -> void:
 	_begin_preproduction(g["gu_cell"])
 
 
-## T-MODE (Phase B): enter targeting mode for grenade via G key.
-## Shows perimeter and bubble positioned at target GU.
+## T-MODE (Phase B): enter targeting mode for a grenade via the G key.
 func enter_grenade_mode() -> void:
 	if _grenades.is_empty():
 		return
-	## Use first available grenade for now (TODO: cycle through available)
+	## First available grenade for now — cycling belongs to the inventory system
+	## that does not exist yet, not here.
 	_targeting_grenade_index = 0
 	_targeting_mode = true
+	_targeting_target_gu = room.agent.cell + DEFAULT_TARGET_OFFSET
 	_update_grenade_targeting_display()
 
 
-## Update bubble position during grenade mode based on cursor/hover/selection
+## Rebuild the whole aiming preview — perimeter, dome, arc and shrapnel rays —
+## from the current hover. Called on entry and on every hover change.
 func _update_grenade_targeting_display() -> void:
 	if not _targeting_mode or _targeting_grenade_index < 0:
 		return
 
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
-		_targeting_mode = false
+		push_error("[TestZoneController] targeting: bomb '%s' is not in the registry" % BOMB_ID)
+		cancel_targeting()
 		return
 
+	var origin_gu: Vector2i = room.agent.cell
 	var agent_pos: Vector2 = room.agent.position
-	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
-	var throw_range: float = float(max_ring) * 112.0 * 3.0  ## triplo da distância
 
-	## Show perimeter (eliptical, respecting isometric 2:1)
+	## The perimeter is the locus of `throw_range_gu` around the agent, projected
+	## by IsoProjection — the same radius, in the same units, the clamp below uses.
 	if room._throw_perimeter_overlay != null:
-		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range)
+		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range_gu)
 
-	## Position bubble with clamping to closest GU within range
-	var target_gu: Vector2i = room._hovered_cell
-	if target_gu == room.INVALID_CELL:
-		## Default: 3 GUs forward
-		target_gu = room.agent.cell + Vector2i(3, 0)
+	var hovered: Vector2i = room._hovered_cell
+	if hovered == room.INVALID_CELL:
+		hovered = _targeting_target_gu
+	_targeting_target_gu = _clamp_gu_to_throw_range(hovered, origin_gu)
+	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
 
-	## Clamp target to closest GU within throw range
-	var clamped_gu: Vector2i = _clamp_gu_to_throw_range(target_gu, agent_pos, throw_range)
-	var bubble_pos: Vector2 = room.agent._cell_to_world(clamped_gu)
-
+	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
+	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
 	if room._aim_bubble_overlay != null:
-		room._aim_bubble_overlay.show_bubble(bubble_pos, throw_range)
+		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu)
 
-	## Show throw arc from agent to bubble
 	if room._throw_arc_overlay != null:
-		room._throw_arc_overlay.show_arc(agent_pos, bubble_pos)
+		room._throw_arc_overlay.show_arc(agent_pos, target_pos)
+
+	## T-FRAG: the shrapnel rays, from the SAME wall-aware BFS the real blast
+	## floods with, so a cell the grenade cannot reach never gets a ray. Cheap
+	## enough to redo per hover: `max_ring` is 3, so this walks ~25 cells — the
+	## expensive prediction is `_begin_preproduction()`, which stays on the throw.
+	if room._shrapnel_preview_overlay != null:
+		var gu_rings := BlastCalculatorClass.flood_gu_rings(_targeting_target_gu, bomb_def,
+			_blocked_edges_dict(), room._blocked_cells)
+		room._shrapnel_preview_overlay.show_rays(_targeting_target_gu, gu_rings)
 
 
-## Execute grenade throw from current targeting position
+## Throw the grenade at the target the preview is showing.
 func execute_grenade_throw() -> void:
 	if not _targeting_mode or _targeting_grenade_index < 0:
 		return
 
-	## Get target GU from hover or default
-	var target_gu: Vector2i = room._hovered_cell
-	if target_gu == room.INVALID_CELL:
-		## Default: 3 GUs forward (convert world pos back to gu cell)
-		var default_world_pos: Vector2 = room.agent.position + Vector2(336.0, 0.0)
-		target_gu = room._screen_to_tile(room.get_viewport().get_canvas_transform() * room.floor_layer.to_global(default_world_pos))
+	## `_targeting_target_gu` is already clamped — the throw and the preview
+	## cannot disagree, because there is only one cell and the preview set it.
+	var target_gu: Vector2i = _targeting_target_gu
+	var grenade: Dictionary = _grenades[_targeting_grenade_index]
 
-	## Clean up targeting UI
-	_cleanup_grenade_targeting_ui()
-
-	## Start preproduction immediately
-	_begin_preproduction(target_gu)
-
-	## Start throw animation (will wait for preproduction and then detonate)
-	var g: Dictionary = _grenades[_targeting_grenade_index]
-	_start_grenade_throw_animation(target_gu, g)
-
+	## Leave targeting BEFORE the animation awaits its first frame: the throw is
+	## in flight from here on, and an ESC during it must not try to cancel a mode
+	## that is already spent.
 	_targeting_mode = false
 	_targeting_grenade_index = -1
+	_cleanup_grenade_targeting_ui()
+
+	_begin_preproduction(target_gu)
+	_start_grenade_throw_animation(target_gu, grenade)
 
 
 ## Cancel targeting mode
@@ -332,89 +365,78 @@ func _cleanup_grenade_targeting_ui() -> void:
 		room._aim_bubble_overlay.clear()
 	if room._throw_arc_overlay != null:
 		room._throw_arc_overlay.clear()
+	if room._shrapnel_preview_overlay != null:
+		room._shrapnel_preview_overlay.clear()
 
 
-## T-BUBBLE: Clamp target GU to closest one within throw range (isometric 2:1)
-func _clamp_gu_to_throw_range(target_gu: Vector2i, agent_world_pos: Vector2, throw_range: float) -> Vector2i:
-	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
-	var delta: Vector2 = target_world - agent_world_pos
-
-	## Check isometric distance: x-distance directly, y-distance scaled by 2 (2:1 aspect)
-	var iso_dist: float = absf(delta.x) + absf(delta.y * 2.0)
-
-	## If within range, return target as-is
-	if iso_dist <= throw_range:
+## T-BUBBLE: snap a target cell to the closest one within `throw_range_gu`.
+##
+## Works in GU SPACE, not screen pixels. The first pass measured
+## `|dx| + 2·|dy| <= range` on projected positions, which is a DIAMOND inscribed
+## in the ellipse the perimeter draws — so the dome could never touch the line it
+## was being clamped to except on the two axes. A plain Euclidean test in grid
+## coordinates is the perimeter's own definition, and IsoProjection turns that
+## same circle into the ellipse on screen.
+func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vector2i:
+	var delta := Vector2(target_gu - origin_gu)
+	var distance_gu: float = delta.length()
+	if distance_gu <= throw_range_gu:
 		return target_gu
-
-	## Out of range: find closest GU on the edge
-	## Clamp world position to edge of ellipse, then convert back to GU
-	if iso_dist > 0.001:
-		var scale: float = throw_range / iso_dist
-		var clamped_world: Vector2 = agent_world_pos + delta * scale
-		## Convert back to GU (snap to nearest grid cell)
-		var clamped_gu: Vector2i = room._screen_to_tile(room.get_viewport().get_canvas_transform() * room.floor_layer.to_global(clamped_world))
-		if clamped_gu != room.INVALID_CELL:
-			return clamped_gu
-
-	## Fallback: return agent's current cell
-	return room.agent.cell
+	return origin_gu + Vector2i((delta / distance_gu * throw_range_gu).round())
 
 
-## T-ARC: Animate grenade throw then detonate
+## T-ARC: fly the grenade along its arc, then detonate where it lands.
+##
+## The frame loops below advance on `room.get_process_delta_time()`. They used to
+## advance on `room.get_tree().get_physics_frame()`, which does not exist on
+## SceneTree in Godot 4.6 — every throw raised "Invalid call. Nonexistent
+## function 'get_physics_frame'" on the first iteration, aborted this coroutine,
+## and the grenade never moved and never detonated.
 func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) -> void:
 	var sprite: Sprite2D = grenade.get("sprite")
-	if sprite == null:
+	if sprite == null or not is_instance_valid(sprite):
+		push_error("[TestZoneController] throw: grenade %s has no sprite to animate" % target_gu)
 		return
 
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
+		push_error("[TestZoneController] throw: bomb '%s' is not in the registry" % BOMB_ID)
 		return
 
+	var tree: SceneTree = room.get_tree()
 	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
 	var start_pos: Vector2 = room.agent.position
-	var throw_duration: float = 0.6
 
-	## Animate grenade from hand to target
 	var elapsed: float = 0.0
-	while elapsed < throw_duration:
-		elapsed += room.get_tree().get_physics_frame()
-		var t: float = elapsed / throw_duration
-		sprite.position = start_pos.lerp(target_world, t)
-		await room.get_tree().process_frame
-
+	while elapsed < throw_duration_s:
+		await tree.process_frame
+		elapsed += room.get_process_delta_time()
+		sprite.position = start_pos.lerp(target_world,
+			minf(elapsed / throw_duration_s, 1.0))
 	sprite.position = target_world
+	grenade["gu_cell"] = target_gu
 
-	## Wait for preproduction or timeout (whichever is longer)
-	var timeout: float = 1.0
-	var wait_elapsed: float = 0.0
-	while wait_elapsed < timeout:
-		if room._prediction_cache != null and room._prediction_cache.is_busy():
-			## Wait a bit more if cache is still computing
-			pass
-		else:
-			break
-		wait_elapsed += room.get_tree().get_physics_frame()
-		await room.get_tree().process_frame
+	## Give a prediction that is still cooking the rest of the fuse to finish in,
+	## capped so a pathological one cannot hold the blast forever —
+	## `_start_detonation_sequence()` cooks whatever is left anyway.
+	var waited: float = 0.0
+	while waited < throw_prediction_timeout_s and room._prediction_cache != null \
+			and room._prediction_cache.is_busy():
+		await tree.process_frame
+		waited += room.get_process_delta_time()
 
-	## Get the precomputed prediction and start detonation
-	var prediction: DetonationPrediction = _take_prediction(bomb_def, target_gu)
-	_start_detonation_sequence(prediction, target_gu, target_world)
+	## Same hand-off `detonate_active()` makes: the prop stops existing at the
+	## exact frame the blast starts, which is also E-FRAG's cue to throw debris.
+	var anchor: Vector2 = _blast_anchor(grenade)
+	sprite.visible = false
+	grenade["detonated"] = true
+	_stop_pumping()
+	_start_detonation_sequence(_take_prediction(bomb_def, target_gu), target_gu, anchor)
 
 
 ## T-BUBBLE: Check if currently in targeting mode
 func is_in_targeting_mode() -> bool:
 	return _targeting_mode
-
-
-## T-BUBBLE: Get throw range for current targeting grenade
-func get_targeting_throw_range() -> float:
-	if not _targeting_mode or _targeting_grenade_index < 0:
-		return 0.0
-	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
-	if bomb_def == null:
-		return 0.0
-	var max_ring: int = int(bomb_def.ring_multipliers.size()) - 1
-	return float(max_ring) * 112.0 * 3.0  ## triplo da distância
 
 
 ## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE, 2026-08-07): the real

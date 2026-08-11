@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**201 scripts · 52062 lines total** (under `godot/scripts/`)
+**204 scripts · 52654 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,11 +17,11 @@
 - **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — aim_bubble_overlay.gd, animated_ray_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, debug_ray_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — aim_bubble_overlay.gd, animated_ray_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, debug_ray_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -846,18 +846,9 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 61 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 106 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
-
-**Public vars**
-- `var bubble_color: Color = Color(0.5, 0.7, 1.0, 0.2)`
-- `var ring_width: float = 2.0`
-
-**Public API**
-- `func show_bubble(center: Vector2, radius: float) -> void:`
-- `func update_position(center: Vector2) -> void:`
-- `func clear() -> void:`
 
 ---
 
@@ -1356,6 +1347,27 @@ extends `Node2D` · 94 lines
 
 ---
 
+### `shrapnel_preview_overlay.gd`
+
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 98 lines
+
+`godot/scripts/overlays/shrapnel_preview_overlay.gd`
+
+**Constants / tuning**
+- `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+
+**Public vars**
+- `var ray_color: Color = Color(1.0, 0.72, 0.35, 1.0)`
+- `var line_width: float = 2.0`
+- `var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])`
+
+**Public API**
+- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
+- `func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:`
+- `func clear() -> void:`
+
+---
+
 ### `smoke_spark_overlay.gd`
 
 `class_name SmokeSparkOverlay` · extends `Node2D` · 169 lines
@@ -1417,16 +1429,18 @@ extends `Node2D` · 262 lines
 
 ### `throw_perimeter_overlay.gd`
 
-`class_name ThrowPerimeterOverlay` · extends `Node2D` · 46 lines
+`class_name ThrowPerimeterOverlay` · extends `Node2D` · 53 lines
 
 `godot/scripts/overlays/throw_perimeter_overlay.gd`
 
 **Public vars**
-- `var perimeter_color: Color = Color(1.0, 0.3, 0.3, 0.6)`
+- `var perimeter_color: Color = Color(1.0, 0.3, 0.3, 1.0)`
+- `var line_alpha: float = 0.75`
 - `var line_width: float = 2.0`
+- `var arc_segments: int = 64`
 
 **Public API**
-- `func show_perimeter(center: Vector2, radius: float) -> void:`
+- `func show_perimeter(center: Vector2, radius_gu: float) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -3210,6 +3224,32 @@ extends `SceneTree` · 275 lines
 
 ---
 
+### `iso_projection_selftest.gd`
+
+extends `SceneTree` · 196 lines
+
+`godot/scripts/tools/iso_projection_selftest.gd`
+
+> IsoProjection selftest — the aiming overlays' geometry, checked against the REAL TileSet instead of against itself. Run: python3 tools/persistent/run_selftests.py --only iso_projection_selftest Why this file exists. T-BUBBLE's first pass sized the aim bubble with `max_ring * 112.0 * 3.0`, drew it as a circle over a 2:1 perimeter ellipse, and clamped the cursor with a third shape again. Nothing was wrong in a way a compiler could see; it was wrong in a way only the screen showed. Every claim IsoProjection makes is therefore asserted here, and test [1] asserts the two horizontal basis vectors against `tileset_blocks.tres` itself — a self-comparison would pass no matter what the constants said.
+
+**Constants / tuning**
+- `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
+- `EPS` = `0.0001`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_basis_matches_real_tileset() -> void:`
+- `func test_ellipses_are_axis_aligned() -> void:`
+- `func test_floor_ellipse_is_two_to_one() -> void:`
+- `func test_dome_is_a_real_hemisphere() -> void:`
+- `func test_arc_endpoints_seam_exactly() -> void:`
+- `func test_dome_covers_three_by_three_gu() -> void:`
+
+---
+
 ### `map_lint.gd`
 
 extends `SceneTree` · 58 lines
@@ -4067,7 +4107,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 193 lines
+`class_name InputController` · 217 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -4114,7 +4154,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 723 lines
+`class_name TestZoneController` · 773 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4126,9 +4166,14 @@ extends `Node2D` · 34 lines
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `DetonationChoreographerClass` = `preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")`
+- `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
 
 **Public vars**
 - `var room: Node`
+- `var throw_range_gu: float = 6.5`
+- `var aim_dome_radius_gu: float = 1.5`
+- `var throw_duration_s: float = 0.6`
+- `var throw_prediction_timeout_s: float = 1.0`
 
 ---
 
@@ -4373,7 +4418,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4148 lines
+extends `Node2D` · 4228 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4404,6 +4449,7 @@ extends `Node2D` · 4148 lines
 - `AimBubbleOverlayClass` = `preload("res://godot/scripts/overlays/aim_bubble_overlay.gd")`
 - `ThrowPerimeterOverlayClass` = `preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")`
 - `ThrowArcOverlayClass` = `preload("res://godot/scripts/overlays/throw_arc_overlay.gd")`
+- `ShrapnelPreviewOverlayClass` = `preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")`
 - `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
 - `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
 - `DebrisOverlayClass` = `preload("res://godot/scripts/overlays/debris_overlay.gd")`
@@ -4498,6 +4544,19 @@ extends `Node2D` · 4148 lines
 **Public API**
 - `func debug_string() -> String:`
 - `func debug_info() -> String:`
+
+---
+
+### `iso_projection.gd`
+
+`class_name IsoProjection` · 92 lines
+
+`godot/scripts/world/utilities/iso_projection.gd`
+
+**Constants / tuning**
+- `AXIS_X` = `Vector2(128.0, 64.0)`
+- `AXIS_Y` = `Vector2(-128.0, 64.0)`
+- `AXIS_Z` = `Vector2(0.0, -160.0)`
 
 ---
 

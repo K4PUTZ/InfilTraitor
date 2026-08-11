@@ -2,8 +2,18 @@
 ## Grenade targeting UI, throw arc, and planning flow — Phase B
 
 **Date opened:** 2026-08-10  
-**Status:** 🟡 **PLANNING**. Phase A (detonation VFX) closed 2026-08-10. This plan
-describes the UI and interaction layer that feeds Phase A.
+**Status:** 🟢 **BUILT** — Tasks 1–4 land and the whole chain runs end to end
+(G → aim → Enter → detonation), verified by real capture, not by description.
+Phase A (detonation VFX) closed 2026-08-10. This plan describes the UI and
+interaction layer that feeds Phase A.
+
+**Evidence (hand-named, so the 50-file rotation cannot eat them):**
+- `Screenshots/history/grenade_aim_dome.png` — dome, perimeter, arc and rays
+- `Screenshots/history/grenade_throw_before.png` / `grenade_throw_after.png` —
+  the same throw with and without the `get_physics_frame` fix
+
+**Dev capture actions** (`INFILTRAITOR_CAPTURE_ACTION=`): `grenade_aim`,
+`grenade_throw`, `grenade_cancel`, with `INFILTRAITOR_CAPTURE_AIM_CELL="x,y"`.
 
 **Dependency:** `EXPLOSION_REBUILD_MASTER_PLAN.md` Phase A complete (E-RAY through
 E-BUBBLE, commits d6dd657–3fba237). `PredictionCache` built
@@ -74,26 +84,68 @@ Each task closes against Phase A's existing integration (test_zone_controller fl
 
 ## 4. Visual Requirements
 
-- **Perimeter on floor**: red line circle, radius = throw range (from BombDef), GU-grid resolution
-- **Bubble**: already built (E-BUBBLE, translucent blue disc)
-- **Throw arc**: visual only, 2D parabolic curve (or simple arc), player hand → landing GU
-- **Throw animation timing**: ~0.5–0.8 s (measured, not configured initially; tuning pass after first working prototype)
+Everything below is measured in GAME UNITS and projected by `IsoProjection`
+(`godot/scripts/world/utilities/iso_projection.gd`), never in hand-picked pixels.
+Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
+
+- **Perimeter on floor**: red ellipse, radius `throw_range_gu` = 6.5 GU. The
+  projection of a grid circle is exactly a 2:1 axis-aligned ellipse — derived,
+  not eyeballed, and the same circle the throw's clamp tests against.
+- **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = 1.5 GU sitting on
+  the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e paredes
+  próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the
+  silhouette ellipse (181.0 × 183.8 px/GU — a sphere projects to very nearly a
+  circle here) closed underneath by the floor section (181.0 × 90.5 px/GU). Both
+  share their horizontal semi-axis, so the seam is exact.
+  **Explicitly NOT the predicted damage footprint** — the Director ruled out
+  showing the silhouette with its holes.
+- **Shrapnel rays** (T-FRAG): LightRayOverlay's mechanism pointed at a grenade —
+  one line from the target GU centre to every cell `flood_gu_rings()` reaches,
+  so walls cut them the same way they cut the real blast. This is where cover
+  shows; the dome promises nothing about it.
+- **Throw arc**: visual only, 2D parabolic curve, agent → landing GU.
+- **Throw animation timing**: `throw_duration_s` = 0.6 s, linear.
 
 ---
 
-## 5. Questions for Director
+## 5. Questions for Director — ANSWERED 2026-08-10
 
-- **Throw range:** derive from BombDef? Fixed constant? Skill-scaled?
-- **Throw animation:** easing curve preference? Linear, ease-in, ease-out?
-- **Throw timing:** how long should the grenade sit before detonation? (1 s default in §1)
-- **Perimeter style:** solid circle, dashed, segments? Colour intensity?
+- **Throw range:** ~~derive from BombDef?~~ → a standalone `throw_range_gu` tuning
+  var. It is a property of the thrower, not of the bomb's blast table; deriving
+  it from `ring_multipliers.size()` was the first pass's mistake.
+- **Perimeter style:** solid ellipse, red, kept. Widened 5.57 → 6.5 GU on the
+  Director's *"poderia ser um pouquinho mais largo."*
+- **Throw animation easing:** still open — linear for now.
+- **Throw timing before detonation:** still open — the fuse currently waits only
+  for the prediction (≤ `throw_prediction_timeout_s` = 1 s), with no deliberate
+  hold on top.
 
 ---
 
-## 6. Schedule
+## 6. Open
 
-**Next session:** T-MODE (Tasks 1–2 required for Phase B to be playable at all).  
-**T-COOK and T-ARC** can start in parallel once T-MODE is land; they have independent audiences (compute flow vs. animation flow).
+- **Wall sectioning of the dome.** The Director asked for a sphere sectioned by
+  the floor *and by nearby walls*; only the floor section is built. Walls need
+  the depth classification `FloatingCollectible` already uses
+  (`VoxelRenderer.classify_geometry_over_rect()`, OcclusionSet policy O5) —
+  `z_index` encodes HEIGHT in this project and cannot express "behind that wall
+  but in front of this one".
+- **The click-driven `test_zone_*` capture actions are dead.** `ecdae79` removed
+  the right-click → `open_menu_for()` path for grenades ("now G-key only"), so
+  `test_zone_menu` / `test_zone_detonate` / `test_zone_escape` drive a click that
+  no longer opens anything — verified 2026-08-10, `test_zone_detonate` captures a
+  completely undamaged map. `detonation_filmstrip` and
+  `INFILTRAITOR_CAPTURE_DETONATE_FIRST` are unaffected (they call the controller
+  directly). Either point those actions at the G-key flow or restore a
+  right-click route; both are Director calls, not cleanup.
 
-**Risk:** none identified. All dependencies are built.
+---
+
+## 7. Schedule
+
+Tasks 1–4 are done. What is left is polish and the two items in §6:
+
+1. Wall sectioning of the dome (the only part of the Director's brief not built).
+2. Decide what the `test_zone_*` capture actions should drive now.
+3. Throw feel — easing, a deliberate hold before detonation, landing bounce, SFX.
 

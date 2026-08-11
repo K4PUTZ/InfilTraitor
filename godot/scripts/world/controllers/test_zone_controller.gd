@@ -554,34 +554,73 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	var arc_height: float = ThrowArcOverlay.arc_height_for(
 		start_pos, target_world, arc.arc_height_ratio, launch_px)
 
-	## Which way "forward" is for the settle roll below — the direction the throw
-	## was travelling across the screen. A throw to the left rolls the other way.
-	var roll_sign: float = signf(target_world.x - start_pos.x)
-	if absf(roll_sign) < 0.5:
-		roll_sign = 1.0
+	## ROTATION IS ONE CONTINUOUS MOTION from release to rest, and that is the
+	## whole fix for the Director's "a roladinha da granada no final do arremesso
+	## não ficou natural, parece forçada". The first version played three
+	## unrelated motions back to back: a tumble at constant full speed for the
+	## entire flight, a bounce with the sprite frozen solid, then a 22.5° twitch
+	## starting from a standstill. Each was individually tuned and the sequence
+	## still read as forced, because nothing connected them. Now one angular
+	## velocity decays from the tumble, through the bounce, into the settle.
+	##
+	## Two things that a fixed rule genuinely cannot cover — the Director's own
+	## objection ("depende do ângulo, e da distância") — are handled by deriving
+	## them instead of picking numbers:
+	##
+	## ANGLE. A ground roll spins about an axis perpendicular to travel. When that
+	## axis lies across the screen you see the whole rotation; when it points at
+	## the camera (a throw straight up or down the screen) you see none of it —
+	## a real grenade rolling away from you does not appear to spin, it just
+	## recedes. `roll_dir.x` IS that projection, so it replaces the old arbitrary
+	## `sign()` and the vertical-throw case stops being a coin flip.
+	##
+	## DISTANCE. A longer throw lands harder, so the settle is scaled by travel
+	## distance against `roll_reference_px` and clamped at both ends.
+	var ground_start: Vector2 = start_pos + Vector2(0.0, launch_px)
+	var travel: Vector2 = target_world - ground_start
+	var roll_dir: Vector2 = travel.normalized() if travel.length() > 0.001 else Vector2.RIGHT
+	var spin_visibility: float = roll_dir.x
+	var roll_scale: float = clampf(travel.length() / arc.roll_reference_px,
+		arc.roll_scale_min, arc.roll_scale_max)
+	var forward_turns: float = arc.roll_forward_turns * roll_scale
+	var back_turns: float = arc.roll_back_turns * roll_scale
 
+	## Turns per second the flight tumbles at, and the rate the settle STARTS at.
+	## The second is derived, not chosen: an ease-out of 1-(1-t)² has an initial
+	## derivative of 2, so a roll of `forward_turns` over `roll_forward_s` begins
+	## at exactly this speed. Decaying the bounce down to it is what makes the
+	## hand-off invisible.
+	var flight_rate: float = arc.flight_turns / maxf(throw_duration_s, 0.001)
+	var settle_rate: float = minf(
+		2.0 * forward_turns / maxf(arc.roll_forward_s, 0.001), flight_rate)
+
+	var turns: float = 0.0
 	var elapsed: float = 0.0
 	while elapsed < throw_duration_s:
 		await tree.process_frame
-		elapsed += room.get_process_delta_time()
+		var delta: float = room.get_process_delta_time()
+		elapsed += delta
 		var t: float = minf(elapsed / throw_duration_s, 1.0)
 		sprite.position = ThrowArcOverlay.arc_point(
 			start_pos, target_world, t, arc_height, launch_px)
-		## The tumble. One whole turn over the flight, so it lands upright.
-		sprite.rotation = roll_sign * TAU * arc.flight_turns * t
+		turns += flight_rate * delta
+		sprite.rotation = turns * TAU * spin_visibility
 	sprite.position = target_world
-	sprite.rotation = roll_sign * TAU * arc.flight_turns
 	grenade["gu_cell"] = target_gu
 
-	## The landing hop — Director: "dá um bounce no chão de leve".
+	## The landing hop — Director: "dá um bounce no chão de leve" — with the
+	## tumble bleeding off across it instead of stopping dead on contact.
 	var bounce_height: float = arc_height * arc.bounce_height_ratio
 	var bounced: float = 0.0
 	while bounced < arc.bounce_duration_s:
 		await tree.process_frame
-		bounced += room.get_process_delta_time()
+		var delta: float = room.get_process_delta_time()
+		bounced += delta
 		var bt: float = minf(bounced / arc.bounce_duration_s, 1.0)
 		sprite.position = target_world \
 			- Vector2(0.0, ThrowArcOverlay.bounce_lift(bt, bounce_height))
+		turns += lerpf(flight_rate, settle_rate, bt) * delta
+		sprite.rotation = turns * TAU * spin_visibility
 	sprite.position = target_world
 
 	## COOKING — Director: "antes de pausar para ficar 'cooking' por aprox. 1
@@ -594,22 +633,32 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## (1/16 de volta) pra frente (em relação ao arremesso), e depois rolar 1/32
 	## de volta pra trás, e parar." Rolling back less than it rolled forward is
 	## what makes it read as settling rather than as bouncing.
-	var rest_rotation: float = sprite.rotation
-	var forward_rotation: float = rest_rotation + roll_sign * TAU * arc.roll_forward_turns
-	var settled_rotation: float = forward_rotation - roll_sign * TAU * arc.roll_back_turns
-
+	##
+	## And it is a ROLL, not a pivot: every turn moves the grenade `r·θ` along the
+	## ground. That coupling is what a spin-in-place was missing, and it is also
+	## why the translation uses the TURNS rather than the visible rotation — a
+	## grenade rolling away from the camera still travels even though it shows no
+	## rotation at all.
+	var turns_at_rest: float = turns
 	var cooked: float = 0.0
 	while cooked < grenade_cook_s:
 		await tree.process_frame
 		cooked += room.get_process_delta_time()
 		if cooked < arc.roll_forward_s:
-			sprite.rotation = lerpf(rest_rotation, forward_rotation,
-				cooked / arc.roll_forward_s)
+			## Ease-out: starts at exactly `settle_rate`, arrives stopped.
+			var ft: float = cooked / arc.roll_forward_s
+			turns = turns_at_rest + forward_turns * (1.0 - (1.0 - ft) * (1.0 - ft))
 		elif cooked < arc.roll_forward_s + arc.roll_back_s:
-			sprite.rotation = lerpf(forward_rotation, settled_rotation,
-				(cooked - arc.roll_forward_s) / arc.roll_back_s)
+			## Smoothstep back: leaves and arrives at zero speed, so neither end
+			## of the rock reads as a jolt.
+			var bt2: float = (cooked - arc.roll_forward_s) / arc.roll_back_s
+			turns = turns_at_rest + forward_turns \
+				- back_turns * smoothstep(0.0, 1.0, bt2)
 		else:
-			sprite.rotation = settled_rotation
+			turns = turns_at_rest + forward_turns - back_turns
+		sprite.rotation = turns * TAU * spin_visibility
+		sprite.position = target_world \
+			+ roll_dir * arc.roll_radius_px * TAU * (turns - turns_at_rest)
 
 	## Only if the prediction is STILL going does the fuse stretch, capped so a
 	## pathological one cannot hold the blast forever —

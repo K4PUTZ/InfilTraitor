@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53547 lines total** (under `godot/scripts/`)
+**205 scripts · 53646 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1355,7 +1355,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 200 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 233 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
@@ -1367,7 +1367,7 @@ extends `Node2D` · 94 lines
 - `var line_width: float = 2.0`
 - `var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])`
 - `var ray_origin_lift_gu: float = 0.18`
-- `var length_scale: float = 1.7`
+- `var length_scale: float = 1.35`
 - `var circularity: float = 1.0`
 - `var lateral_scale: float = 1.3`
 - `var ground_brake: float = 0.42`
@@ -1447,7 +1447,7 @@ extends `Node2D` · 262 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 143 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 160 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
@@ -1463,6 +1463,10 @@ extends `Node2D` · 262 lines
 - `var roll_back_turns: float = 1.0 / 32.0`
 - `var roll_forward_s: float = 0.20`
 - `var roll_back_s: float = 0.14`
+- `var roll_radius_px: float = 11.0`
+- `var roll_reference_px: float = 700.0`
+- `var roll_scale_min: float = 0.45`
+- `var roll_scale_max: float = 1.5`
 
 **Public API**
 - `func show_arc(from_pos: Vector2, to_pos: Vector2) -> void:`
@@ -4202,7 +4206,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 968 lines
+`class_name TestZoneController` · 1017 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

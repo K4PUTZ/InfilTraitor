@@ -201,7 +201,8 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   lines from the target GU centre outward for every cell `flood_gu_rings()`
   reaches, so walls cut them the same way they cut the real blast. This is where
   cover shows; the dome promises nothing about it. Orange-red, three per cell,
-  `length_scale` = 1.7 past the cell centre so they clearly overshoot the dome,
+  ending on an ELLIPSE of `length_scale` = 1.35 times the outer ring's projected
+  radius, so they clearly overshoot the dome,
   `circularity` = 1 undoes the 2:1 isometric squash so the star reads round, and
   `lateral_scale` buys a little extra width back on top.
   **`rays_per_cell` is not the spoke count.** The BFS reaches 12 cells but they
@@ -210,7 +211,14 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   2's four diagonals supply up/down/left/right. The fan exists to fill the 45°
   gaps between those eight, so `spread_rad` must be sized against that gap:
   3 rays 15° apart span 30° of each 45°, which is near-even. Raising the count
-  without opening the spread to match just makes eight tight bundles. They leave from `ray_origin_lift_gu` above the floor
+  without opening the spread to match just makes eight tight bundles.
+  **Lengths come from a direction, not from the cell's own distance.** Scaling
+  each cell's delta made the four screen diagonals 64% longer than the four axes,
+  because the BFS reaches an L1 diamond and `(2,0)` is 2 GU out while `(1,1)` is
+  only 1.41 — the corners the Director circled as TOO LONG, with the short ones
+  being the axes between them. Endpoints land on an ellipse instead
+  (`_ellipse_radius()`, closed form), and the remaining variation is the ring
+  step and the deterministic jitter, on purpose. They leave from `ray_origin_lift_gu` above the floor
   (roughly where the grenade sits) and `ground_brake` shortens the ones aimed
   downward, since the floor is in the way on that side. The trade, stated: at
   full circularity a ray no longer ENDS on the cell it came from — it is a
@@ -240,11 +248,27 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   landing hop (`bounce_height_ratio` 0.12, `bounce_duration_s` 0.18), then
   `grenade_cook_s` = 1.0 s on the ground before it goes off. The settle happens
   inside that second — *"rolar um pouquinho (1/16 de volta) pra frente (em
-  relação ao arremesso), e depois rolar 1/32 de volta pra trás, e parar"* —
-  where forward is the direction the throw was travelling, so a throw to the
-  left rolls the other way. Rolling back less than it rolled forward is what
-  makes it read as settling instead of bouncing. The prediction finishes inside
-  the same cooking second.
+  relação ao arremesso), e depois rolar 1/32 de volta pra trás, e parar"*.
+  Rolling back less than it rolled forward is what makes it read as settling
+  instead of bouncing. The prediction finishes inside the same cooking second.
+  **Rotation is ONE continuous angular motion from release to rest.** The first
+  version played three unrelated ones back to back — a tumble at constant full
+  speed, a bounce with the sprite frozen, then a twitch from a standstill — and
+  the Director's *"parece forçada"* was that seam, not any of the three
+  amplitudes. One velocity now decays from the tumble, through the bounce, into
+  the settle; the settle's start rate is DERIVED (an ease-out of 1−(1−t)² begins
+  at 2×amount/duration) rather than picked, so the hand-off cannot show.
+  The two things the Director said a fixed rule cannot cover are derived too:
+  **angle** — a ground roll spins about an axis perpendicular to travel, seen in
+  full when that axis lies across the screen and not at all when it points at
+  the camera, which is exactly `roll_dir.x`, so the old arbitrary `sign()` and
+  its coin-flip on vertical throws are gone; and **distance** — the settle
+  scales with travel against `roll_reference_px`, clamped both ends.
+  It is also a roll rather than a pivot: every turn moves the grenade `r·θ`
+  along the ground, from the TURNS and not the visible rotation, because a
+  grenade rolling away from the camera still travels while showing no spin.
+  Honest caveat: at `roll_radius_px` = 11 that travel is ~5 px, so what fixes
+  the feel is the continuity, not the displacement.
 
 ---
 

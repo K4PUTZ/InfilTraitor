@@ -48,13 +48,20 @@ var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])
 ## a pixel nudge.
 var ray_origin_lift_gu: float = 0.18
 
-## How far past the reached cell's own centre a fragment carries. Shrapnel does
-## not stop politely at a grid line — and per the Director's reference mock-up
-## (2026-08-10) it should clearly overshoot the dome rather than stop at its rim:
-## "aumentar a extensão deles para além da bolha, principalmente em cima e nas
-## laterais." Up and sideways is where the extra reach lands on its own, because
-## `ground_brake` below already holds the downward fragments back.
-var length_scale: float = 1.7
+## How far the OUTERMOST fragments reach, as a multiple of the blast's own
+## outer ring projected onto the screen. The dome's rim sits at 1.0, so anything
+## above that overshoots it — "aumentar a extensão deles para além da bolha".
+##
+## THIS IS A LENGTH, NOT A SCALE ON THE CELL'S OWN DISTANCE, and that change is
+## the fix for "alguns raios parecem muito longos e outros curtos" (Director,
+## 2026-08-10, annotated capture). The BFS reaches an L1 diamond, so its cells
+## are NOT all the same distance away: `(2,0)` is 2 GU out while `(1,1)` is only
+## 1.41. Multiplying each cell's own delta therefore made the four screen
+## diagonals 64% longer than the four axes — exactly the corners the Director
+## circled as TOO LONG, with the short ones being the axes between them. Ray
+## endpoints now land on an ELLIPSE instead, so the star is even by construction
+## and its irregularity comes from the ring step and the jitter, on purpose.
+var length_scale: float = 1.35
 
 ## How much of the isometric 2:1 squash to undo, 0 = none (rays end on the
 ## projected floor ellipse, so the star is twice as wide as it is tall), 1 =
@@ -128,6 +135,17 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 	var y_scale: float = lerpf(1.0, IsoProjection.AXIS_X.x / IsoProjection.AXIS_X.y, circularity)
 	var fan: int = maxi(rays_per_cell, 1)
 
+	## The ellipse the OUTERMOST fragments end on. Its vertical semi-axis is the
+	## blast's own outer ring, projected: under full circularity a grid circle of
+	## R GU maps to a screen circle of `sqrt(2)·128·R`, and `lateral_scale` then
+	## widens it. Everything after this is a direction and a fraction of it.
+	var outer_ring: int = 1
+	for ring_value in gu_rings.values():
+		outer_ring = maxi(outer_ring, int(ring_value))
+	var semi_y: float = IsoProjection.floor_circle_semi_axes(float(outer_ring)).x \
+		* length_scale
+	var semi_x: float = semi_y * lateral_scale
+
 	for cell: Vector2i in gu_rings.keys():
 		var ring: int = int(gu_rings[cell])
 		if ring <= 0 or ring >= ring_alpha.size():
@@ -136,23 +154,29 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 		if alpha <= 0.0:
 			continue
 
-		## Undo the isometric squash on the OUTWARD vector only — the ray still
-		## starts and aims at the real cell, it just carries the extra distance
-		## the flattened projection would otherwise hide. `lateral_scale` then
-		## buys back a little width on top.
+		## Undo the isometric squash so the fan of DIRECTIONS is even on screen —
+		## without this the same angular spread reads twice as wide as it is tall.
 		var delta: Vector2 = _cell_to_screen(cell) - ground
-		var out := Vector2(delta.x * lateral_scale, delta.y * y_scale)
+		var out := Vector2(delta.x, delta.y * y_scale)
+		if out.length_squared() < 1.0:
+			continue
+
+		## Inner rings fall short of the rim rather than reaching it, which is
+		## what keeps the star from being a perfectly uniform burst.
+		var ring_reach: float = lerpf(0.72, 1.0,
+			float(ring - 1) / maxf(float(outer_ring - 1), 1.0))
 
 		for k: int in range(fan):
 			## Symmetric fan: one ray dead-on when fan is odd, ±spread_rad
 			## either side otherwise. Deterministic, so the star does not
 			## shimmer while the cursor moves.
 			var offset_index: float = float(k) - (float(fan) - 1.0) * 0.5
-			var angle: float = offset_index * spread_rad
+			var aimed: Vector2 = out.rotated(offset_index * spread_rad).normalized()
 			var jitter: float = lerpf(0.82, 1.0, _hash01(cell, k))
-			var aimed := out.rotated(angle)
+			var reach: float = _ellipse_radius(aimed, semi_x, semi_y) \
+				* ring_reach * jitter * _ground_factor(aimed)
 			_ray_froms.append(origin)
-			_ray_tos.append(origin + aimed * length_scale * jitter * _ground_factor(aimed))
+			_ray_tos.append(origin + aimed * reach)
 			_ray_alphas.append(alpha)
 
 	visible = not _ray_froms.is_empty()
@@ -164,6 +188,15 @@ func _draw() -> void:
 	for i: int in _ray_froms.size():
 		draw_line(_ray_froms[i], _ray_tos[i],
 			Color(c.r, c.g, c.b, _ray_alphas[i]), line_width)
+
+
+## Distance from the centre of an axis-aligned ellipse to its rim, along a UNIT
+## direction. Closed form from (x/a)² + (y/b)² = 1 — no intersection test, and it
+## is what makes every ray land on the same curve regardless of bearing.
+func _ellipse_radius(direction: Vector2, semi_x: float, semi_y: float) -> float:
+	var nx: float = direction.x / maxf(semi_x, 0.001)
+	var ny: float = direction.y / maxf(semi_y, 0.001)
+	return 1.0 / maxf(sqrt(nx * nx + ny * ny), 0.000001)
 
 
 ## How much of its reach a fragment keeps, given the direction it left in.

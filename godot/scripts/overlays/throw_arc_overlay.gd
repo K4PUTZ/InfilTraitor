@@ -37,10 +37,27 @@ var flight_turns: float = 1.0
 ## enquanto está 'cooking', a granada pode rolar um pouquinho (1/16 de volta) pra
 ## frente (em relação ao arremesso), e depois rolar 1/32 de volta pra trás, e
 ## parar." Forward means the direction the throw was travelling.
+##
+## Scaled by throw distance at run time (`roll_reference_px`), because the
+## Director's own objection to the first version was that a fixed rule cannot be
+## right: "depende do ângulo, e da distância pra fazer essa rolada no chão."
 var roll_forward_turns: float = 1.0 / 16.0
 var roll_back_turns: float = 1.0 / 32.0
 var roll_forward_s: float = 0.20
 var roll_back_s: float = 0.14
+
+## Radius of the grenade's body on screen, in pixels. A roll is a rotation
+## COUPLED to a translation of r·θ — that coupling is what separates rolling from
+## pivoting on the spot, and pivoting on the spot is what the first version did.
+## Measured off the bake: the body is ~30 texels across in the 96 px frame, so
+## ~15 texels of radius at GrenadeProp.SPRITE_SCALE (0.75).
+var roll_radius_px: float = 11.0
+
+## Throw distance at which the roll is played at full size. Shorter throws land
+## softer and roll less; longer ones roll more, within the clamp below.
+var roll_reference_px: float = 700.0
+var roll_scale_min: float = 0.45
+var roll_scale_max: float = 1.5
 
 var _from: Vector2 = Vector2.ZERO
 var _to: Vector2 = Vector2.ZERO

@@ -288,6 +288,75 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 
 ## 6. Open
 
+### 6.1 Next session — picked up mid-task, both specified by the Director
+
+**A. The grenade's ground shadow — STARTED, NOT WIRED.**
+*"A sombra da granada. Nós já temos nas outras armas, e está funcionando bem.
+Vamos aplicar na granada também. Durante o vôo da granada, a sombra precisa
+acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo
+com a distância vertical. Quando a granada encosta no chão a sombra é muito bem
+definida e bem menor, por baixo do asset. Durante o vôo ela aumenta um pouquinho
+e fica mais difusa."*
+
+`godot/shaders/object_ground_shadow.gdshader` is written and documented.
+**Nothing references it yet** — it compiles, it is inert, and the tree is
+functional without it. What is left:
+
+1. `GrenadeProp` gains a shadow child `Sprite2D` with this material and
+   `show_behind_parent = true`, fed the SAME colour frame the body is showing,
+   squashed by `sin(ELEVATION_DEG)` = 0.5 (the bake camera's own elevation, the
+   convention `CollectibleBakeConfig.SHADOW_SQUASH_Y` already uses).
+2. `set_flight_height_px(px)` on `GrenadeProp`: the shadow's local `y` is `+px`
+   so it stays pinned to the ground while the body lifts (the same trick as
+   `floating_collectible.gd:528`), and `px` drives three things — scale up,
+   `blur_px` up, `strength` down. Height 0 = small, sharp, opaque, directly
+   under the asset.
+3. Counter-rotate the shadow against the tumble (`_shadow.rotation = -rotation`
+   in `_process`), or the squash is applied after the parent's rotation and
+   shears.
+4. The throw animation feeds it: during flight
+   `ground_from.lerp(target_world, t).y - sprite.position.y`, during the bounce
+   `ThrowArcOverlay.bounce_lift(...)`, and 0 once it settles. The four resting
+   test-zone props get height 0 for free, which is the "encosta no chão" look.
+
+**Why a shader and not baked frames — stated, because it is a substitution.**
+`FloatingCollectible`'s shadow is two BAKED passes per frame
+(`frame_%02d_shadow_{sharp,soft}.png`) crossfaded by height, and
+`grenade_collectible_frames/` really does ship 480 of them. The THROWN prop's
+`grenade_frames/` has none: `grenade_frame_bake_spike.gd` never had a shadow
+pass, only `grenade_collectible_bake_spike.gd` does. Deriving the shadow from
+the alpha of the colour frame the prop is already showing gives both looks from
+one texture with no pipeline run, and it is still the object's real silhouette
+rather than a stand-in ellipse. The baked route remains open: add a shadow pass
+to the prop spike and this shader stops being needed.
+
+**B. The settle roll is still quantised.** Director, 2026-08-10: *"me parece que
+o giro da granada no chão está travado ainda em 1/16 e 1/32 de volta. Essa
+graduação precisa ser livre, de acordo com o ângulo e a energia. Vamos fazer
+essa rolada bem sutil, com ease in/out, sem pressa."*
+
+Correct — `roll_forward_turns` / `roll_back_turns` are still literal fractions
+of a turn, merely multiplied by a clamped distance factor, so the amount is
+quantised even though the timing is now continuous. The replacement is a
+friction model, which drops out of the ballistics already built:
+
+    landing rate ω₀ = (ground distance in GU × 181.02 px/GU / throw_duration)
+                      / (TAU · roll_radius_px) · restitution      [turns/s]
+    duration      T = ω₀ / friction
+    amount        θ = ω₀² / (2·friction)
+
+Constant friction integrates to `θ(t) = amount·(1 − (1 − t/T)²)`, which is
+**exactly the ease-out already in the code** — so the profile does not change,
+only where its two numbers come from. Both then graduate freely: amount goes
+with the square of throw distance (kinetic energy), duration linearly. Clamp `T`
+against `grenade_cook_s` so a long throw cannot outlast the fuse, and derive the
+back-rock as a RATIO of the forward roll rather than a second fixed fraction.
+Distances must be measured in **GU, not screen px** — a throw along the screen's
+vertical covers half the pixels of the same ground distance sideways, so screen
+px would under-rate exactly the throws the Director calls out as angle-dependent.
+
+### 6.2 Standing
+
 - **Wall sectioning of the dome.** The Director asked for a sphere sectioned by
   the floor *and by nearby walls*; only the floor section is built. Walls need
   the depth classification `FloatingCollectible` already uses
@@ -304,13 +373,38 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   (`grenade_index=0` → menu → Enter → `[E-PLAN] census gu=(3,5)`) plus
   `grenade_menu_detonate.png`.
 
+### 6.3 Found in passing, NOT this plan's to fix
+
+Both predate this work and both are silently-inert features rather than visible
+breakage, which is why neither surfaced on its own.
+
+- **`detonation_choreographer_selftest` fails, deterministically.** "One frame
+  carries 367/403 steps (91.1%) — the sequence is collapsing again." Cause
+  confirmed by red/green: `[E-FUME] 20334c3` pulled soot out of `WAVE_TABLE`,
+  taking 546 of 949 steps out of the paced queue, and the front lost its spread.
+  Restoring those four rows returns the suite to 10 PASS / 0 FAIL with the
+  heaviest frame at 53.7%. This is the blast pacing the Director wants to close
+  next, so it belongs to `EXPLOSION_REBUILD_MASTER_PLAN`, not here.
+- **E-FRAG's post-blast debris has never fired.** Every detonation raises
+  `Invalid call. Nonexistent function 'cell_level_to_world' in base
+  VoxelRenderer` from `shrapnel_overlay.gd:49`; `debug_ray_overlay.gd:45` makes
+  the same call. Dates to `0c728c6`. Confirmed pre-existing by stashing this
+  session's changes and reproducing at `71c60af`.
+
 ---
 
 ## 7. Schedule
 
-Tasks 1–4 are done. What is left is polish and the two items in §6:
+Tasks 1–4 are done and the whole chain runs end to end. Next session, in order:
 
-1. Wall sectioning of the dome (the only part of the Director's brief not built).
-2. Decide what the `test_zone_*` capture actions should drive now.
-3. Throw feel — easing, a deliberate hold before detonation, landing bounce, SFX.
+1. **§6.1 A — wire the grenade's ground shadow.** The shader exists; four steps
+   listed there, all inside `GrenadeProp` and the throw animation.
+2. **§6.1 B — free the settle roll** from its 1/16 and 1/32, using the friction
+   model derived there. The ease-out profile does not change, only its inputs.
+3. **§6.2 — wall sectioning of the dome**, the last part of the Director's
+   original brief still unbuilt.
+4. Throw feel beyond that: SFX, and whether the arc should be dev-only after all
+   (see §4's flagged judgement call).
+
+Nothing here blocks the blast-choreography work in §6.3, and vice versa.
 

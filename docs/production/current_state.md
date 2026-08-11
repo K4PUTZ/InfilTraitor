@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.95 · **Updated:** 2026-08-10 · **Branch:** main
+**Version:** 0.9.96 · **Updated:** 2026-08-11 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -47,6 +47,7 @@
 - RESUMO_SESSAO_2026-08-08_E_SEAM_D34.md
 - RESUMO_SESSAO_2026-08-08_GPU_FLUSH_AND_SOOT_REVERSAL.md
 - RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md
+- RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md
 - RESUMO_SESSAO_2026-08-10_GRENADE_SHRAPNEL_PLAN.md
 - RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md
 <!-- AUTO:END pending_prompts -->
@@ -56,8 +57,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 147
-- Test scripts: 42
+- GDScript modules: 150
+- Test scripts: 43
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17
@@ -407,7 +408,7 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (75% — Alpha, functional and polished; Phase A complete + prediction layer, Phase B not started)
+### Explosive Destruction (80% — Alpha, functional and polished; Phase A complete + prediction layer, Phase B built)
 
 ✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
 camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:
@@ -534,28 +535,65 @@ the blast from "the waves fire" to something that reads right. Full record:
   enough — fixed with an explicit owner reference. Commit `98e9772`.
 - **Upper storeys are not playable** (D18) — a roof hole is a **lighting**
   event, never an access route.
-- **Phase B "Alpha Bubble Foundation" (2026-08-10)** — targeting UI, throw
-  arc, bubble, and throw animation fully integrated. Full record:
-  [`RESUMO_SESSAO_2026-08-10_GRENADE_TARGETING_FOUNDATION.md`](../../PROMPTS/DONE/RESUMO_SESSAO_2026-08-10_GRENADE_TARGETING_FOUNDATION.md).
-  - **T-MODE:** G key enters grenade targeting mode. Red elliptical perimeter
-    (respects isometric 2:1) shows throw range (~3× original). Removed right-click
-    grenade interact in favour of keyboard.
-  - **T-BUBBLE:** Blue aim bubble marks explosion impact point. Positioned at hover
-    cell, defaults to 3 GUs forward. Smart clamping: if user hovers beyond
-    throw_range, bubble snaps to closest valid GU within range.
-  - **T-ARC:** Yellow parabolic arc from agent hand to bubble target. Updates
-    live as user moves cursor. Arc respects clamping — never reaches beyond
-    perimeter.
-  - **Enter/ESC:** Enter throws grenade (animates 0.6s parabolic trajectory,
-    waits 1s+ for prediction cache, then detonates). ESC cancels targeting mode.
-  - **Perimeter is elliptical:** X-radius = throw_range, Y-radius = throw_range/2
-    (isometric 2:1 aspect ratio). Larger than original for better visibility.
-  - **What's still open:** fine-tuning animation easing, bounce on landing,
-    audio/feedback, and throw timing. The mechanism is solid and ready for polish.
-    **One rule Phase B must not break:** any new committed mutation
-    calls `room.bump_world_revision()`, or cached predictions go stale. Blast debris VFX (dust/spark/chip) was
-    deliberately disconnected in Task 5 (would have doubled up with the new
-  staged smoke waves) — flagged for a future task, not silently dropped.
+- **Phase B "Alpha Bubble Foundation" (2026-08-10/11, 0.9.96)** — the grenade
+  aiming UI, built and running end to end: **G → aim → tap or Enter → arc →
+  bounce → cook → detonation**. Full record:
+  [`RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md`](../../PROMPTS/RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md);
+  plan and open items:
+  [`TARGETING_MASTER_PLAN`](../../PROMPTS/PLANNING/TARGETING_MASTER_PLAN.md).
+  - **It did not run when the session opened.** The previous pass reported the
+    feature complete and `34/34 selftests clean`; an audit found the throw
+    aborted on its first frame (`SceneTree.get_physics_frame()` does not exist
+    in Godot 4.6), ESC opened the Main Menu instead of cancelling, Enter was
+    consumed before GUI input and had killed the context menu's focused button
+    *and* the `test_zone_detonate` capture, the bubble was sized from the throw
+    range rather than the blast, and the throw used the RAW hovered cell while
+    the preview showed a clamped one. All reproduced before being fixed.
+  - **`IsoProjection` is the one analytic home** for "a shape in GAME UNITS
+    drawn on the isometric plane", and its basis is MEASURED against
+    `tileset_blocks.tres` rather than reasoned from Godot's layout enum —
+    `iso_projection_selftest.gd` asserts it there, since a self-comparison
+    would pass whatever the constants said. Zero off-diagonal ⇒ every ellipse
+    is screen-axis-aligned; a floor circle is exactly 2:1 at (181.02, 90.51)
+    px/GU; a sphere is (181.02, 183.83) — very nearly a circle; and normalised
+    radius equals `(grid distance / R)²` in every direction, which is what lets
+    any radius here mean a real number of cells.
+  - **Dome** — a 2 GU hemisphere (sphere ellipse closed underneath by the floor
+    section, sharing a horizontal semi-axis so the seam is exact), orange.
+    At exactly 2.0 the rim passes through the cells two out: the spill past the
+    3×3 block is the message, not a rounding. **Deliberately not** the predicted
+    footprint — the Director ruled out showing the silhouette with its holes.
+  - **Shrapnel rays** — LightRayOverlay's mechanism pointed at a grenade.
+    Directions come from the SAME wall-aware BFS the real blast floods with, so
+    a cell behind a wall gets no ray; endpoints land on an ellipse so lengths
+    are even; plus a lifted origin, ground braking on the downward ones, and a
+    deterministic jitter (random would re-roll every hover and crawl).
+  - **Virtual grenade cursor** — `GrenadeProp`'s real baked frames under
+    `virtual_grenade.gdshader` (50% red overlay, 2 px stroke, 2 px diagonal
+    hatch), replacing the magenta selection diamond while aiming. One place
+    knows where grenade art lives, so the second explosive type inherits it.
+  - **Throw** — a real ballistic arc that accounts for the grenade leaving the
+    hand ABOVE the floor it lands on (apex at t ≈ 0.455, the fall the longer
+    half); a flight tumble, a landing hop, and a 1 s cook, all driven by ONE
+    continuous angular velocity from release to rest.
+  - **Player vs. developer** — both red diagnostics (throw perimeter, damage
+    footprint) are dev-vision-only. The player's HUD shows the dome, the rays,
+    the virtual grenade and the arc. `dev_vision` defaults TRUE in this build,
+    so `INFILTRAITOR_CAPTURE_NO_DEV=1` exists to capture the player's own view.
+  - **Right-click "Detonar" is back**, alongside the G-key flow: G throws a NEW
+    grenade, right-click detonates one already on the floor — which is what
+    keeps the choreography and performance work testable.
+  - **Still open** (`TARGETING_MASTER_PLAN` §6): the grenade's ground shadow
+    (shader written, not wired); the settle roll still quantised at 1/16 and
+    1/32 instead of graduating freely with angle and energy; wall sectioning of
+    the dome. **One rule Phase B must not break:** any new committed mutation
+    calls `room.bump_world_revision()`, or cached predictions go stale.
+  - **Found, not fixed, both pre-existing:** `detonation_choreographer_selftest`
+    fails deterministically (91% of the front on one frame) since `[E-FUME]`
+    pulled soot out of `WAVE_TABLE` — proven red/green; and E-FRAG's post-blast
+    debris has never fired, because `shrapnel_overlay.gd:49` calls a
+    `VoxelRenderer` method that does not exist. Blast debris VFX
+    (dust/spark/chip) also remains deliberately disconnected from Task 5.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently
   unreachable to test since camera rotation is disabled (ROTATE-KILL-01);
   damage *state* already survives rotation correctly.

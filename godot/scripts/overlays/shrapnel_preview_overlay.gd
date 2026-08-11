@@ -49,8 +49,12 @@ var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])
 var ray_origin_lift_gu: float = 0.18
 
 ## How far past the reached cell's own centre a fragment carries. Shrapnel does
-## not stop politely at a grid line.
-var length_scale: float = 1.15
+## not stop politely at a grid line — and per the Director's reference mock-up
+## (2026-08-10) it should clearly overshoot the dome rather than stop at its rim:
+## "aumentar a extensão deles para além da bolha, principalmente em cima e nas
+## laterais." Up and sideways is where the extra reach lands on its own, because
+## `ground_brake` below already holds the downward fragments back.
+var length_scale: float = 1.7
 
 ## How much of the isometric 2:1 squash to undo, 0 = none (rays end on the
 ## projected floor ellipse, so the star is twice as wide as it is tall), 1 =
@@ -72,9 +76,22 @@ var lateral_scale: float = 1.3
 var ground_brake: float = 0.42
 
 ## Fragments emitted per reached cell, fanned symmetrically around the cell's own
-## direction by `spread_rad` either side of centre.
-var rays_per_cell: int = 2
-var spread_rad: float = 0.13
+## direction by `spread_rad` per step out from centre.
+##
+## THE COUNT IS NOT THE NUMBER OF SPOKES, and that is worth knowing before
+## tuning it. The BFS reaches 12 cells, but they only point in EIGHT distinct
+## screen directions: (1,0) and (2,0) are the same bearing at different lengths,
+## and so are the other three axis pairs, while ring 2's four diagonals add the
+## up/down/left/right ones. So the fan is what fills the 45° gaps between those
+## eight, and `spread_rad` has to be sized against that gap rather than picked
+## for looks — at 3 rays and 15° apart the fan spans 30° of each 45°, which is
+## near-even. Raising `rays_per_cell` without opening `spread_rad` to match just
+## makes eight tight bundles.
+##
+## 2 → 3 and 0.13 → 0.26 for the Director's reference mock-up (2026-08-10):
+## 36 rays across 24 distinct bearings.
+var rays_per_cell: int = 3
+var spread_rad: float = 0.26
 
 var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO

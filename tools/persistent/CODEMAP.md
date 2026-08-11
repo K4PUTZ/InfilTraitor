@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53530 lines total** (under `godot/scripts/`)
+**205 scripts · 53547 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1355,7 +1355,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 183 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 200 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
@@ -1367,12 +1367,12 @@ extends `Node2D` · 94 lines
 - `var line_width: float = 2.0`
 - `var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])`
 - `var ray_origin_lift_gu: float = 0.18`
-- `var length_scale: float = 1.15`
+- `var length_scale: float = 1.7`
 - `var circularity: float = 1.0`
 - `var lateral_scale: float = 1.3`
 - `var ground_brake: float = 0.42`
-- `var rays_per_cell: int = 2`
-- `var spread_rad: float = 0.13`
+- `var rays_per_cell: int = 3`
+- `var spread_rad: float = 0.26`
 
 **Public API**
 - `func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`

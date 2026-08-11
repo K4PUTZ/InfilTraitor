@@ -200,10 +200,17 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 - **Shrapnel rays** (T-FRAG): LightRayOverlay's mechanism pointed at a grenade —
   lines from the target GU centre outward for every cell `flood_gu_rings()`
   reaches, so walls cut them the same way they cut the real blast. This is where
-  cover shows; the dome promises nothing about it. Orange-red, two per cell,
-  `length_scale` past the cell centre, `circularity` = 1 undoes the 2:1
-  isometric squash so the star reads round, and `lateral_scale` buys a little
-  extra width back on top. They leave from `ray_origin_lift_gu` above the floor
+  cover shows; the dome promises nothing about it. Orange-red, three per cell,
+  `length_scale` = 1.7 past the cell centre so they clearly overshoot the dome,
+  `circularity` = 1 undoes the 2:1 isometric squash so the star reads round, and
+  `lateral_scale` buys a little extra width back on top.
+  **`rays_per_cell` is not the spoke count.** The BFS reaches 12 cells but they
+  point in only EIGHT distinct screen bearings — `(1,0)` and `(2,0)` are the same
+  direction at different lengths, likewise the other three axis pairs, and ring
+  2's four diagonals supply up/down/left/right. The fan exists to fill the 45°
+  gaps between those eight, so `spread_rad` must be sized against that gap:
+  3 rays 15° apart span 30° of each 45°, which is near-even. Raising the count
+  without opening the spread to match just makes eight tight bundles. They leave from `ray_origin_lift_gu` above the floor
   (roughly where the grenade sits) and `ground_brake` shortens the ones aimed
   downward, since the floor is in the way on that side. The trade, stated: at
   full circularity a ray no longer ENDS on the cell it came from — it is a

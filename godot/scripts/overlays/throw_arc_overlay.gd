@@ -34,17 +34,44 @@ var bounce_duration_s: float = 0.18
 var flight_turns: float = 1.0
 
 ## The settle roll while the fuse burns — Director: "assim que bate no chão,
-## enquanto está 'cooking', a granada pode rolar um pouquinho (1/16 de volta) pra
-## frente (em relação ao arremesso), e depois rolar 1/32 de volta pra trás, e
-## parar." Forward means the direction the throw was travelling.
+## enquanto está 'cooking', a granada pode rolar um pouquinho pra frente (em
+## relação ao arremesso), e depois rolar um pouco pra trás, e parar." Forward
+## means the direction the throw was travelling.
 ##
-## Scaled by throw distance at run time (`roll_reference_px`), because the
-## Director's own objection to the first version was that a fixed rule cannot be
-## right: "depende do ângulo, e da distância pra fazer essa rolada no chão."
-var roll_forward_turns: float = 1.0 / 16.0
-var roll_back_turns: float = 1.0 / 32.0
-var roll_forward_s: float = 0.20
-var roll_back_s: float = 0.14
+## FREED FROM ITS QUANTISATION (Director, 2026-08-10: "me parece que o giro da
+## granada no chão está travado ainda em 1/16 e 1/32 de volta. Essa graduação
+## precisa ser livre, de acordo com o ângulo e a energia. Vamos fazer essa rolada
+## bem sutil, com ease in/out, sem pressa."). Correct: the previous
+## `roll_forward_turns = 1/16` was a literal fraction of a turn, merely multiplied
+## by a distance factor CLAMPED to [0.45, 1.5] — so the amount could only ever be
+## one of a narrow band around 1/16, and the "graduação" was 3.3:1 at best.
+##
+## What replaces it is a friction model, and it drops out of the ballistics that
+## are already here. A grenade landing with angular rate w0 under constant
+## friction f stops after T = w0/f having turned theta = w0**2/(2f); its angle
+## follows theta*(1 - (1 - t/T)**2), which is EXACTLY the ease-out already in the
+## code — the profile does not change, only where its two numbers come from. And
+## since w0 is proportional to the landing ground speed v, the model collapses to
+## two proportionalities with no friction constant left to invent:
+##
+##     duration  proportional to v        (linear)
+##     amount    proportional to v**2     (kinetic energy)
+##
+## which is why it is anchored below by what the LONGEST throw does, rather than
+## by a friction coefficient in turns/s**2 that nobody can picture. Every shorter
+## throw then falls out of the physics, freely — no clamp, no fraction.
+##
+## The one free number. One eighth of a turn (45 degrees) is the settle at the
+## maximum throw range; a half-range throw gets a quarter of it, not half.
+var roll_turns_at_max_range: float = 1.0 / 8.0
+
+## The back-rock, as RATIOS of the forward roll rather than as a second pair of
+## fixed numbers — rolling back less than it rolled forward is what makes it read
+## as settling rather than as bouncing. Both preserve the ratified feel of the
+## fractions they replace: 1/32 over 1/16 was exactly 0.5, and 0.14 s over 0.20 s
+## was 0.7.
+var roll_back_ratio: float = 0.5
+var roll_back_duration_ratio: float = 0.7
 
 ## Radius of the grenade's body on screen, in pixels. A roll is a rotation
 ## COUPLED to a translation of r·θ — that coupling is what separates rolling from
@@ -53,11 +80,13 @@ var roll_back_s: float = 0.14
 ## ~15 texels of radius at GrenadeProp.SPRITE_SCALE (0.75).
 var roll_radius_px: float = 11.0
 
-## Throw distance at which the roll is played at full size. Shorter throws land
-## softer and roll less; longer ones roll more, within the clamp below.
-var roll_reference_px: float = 700.0
-var roll_scale_min: float = 0.45
-var roll_scale_max: float = 1.5
+## How long the forward roll of a MAXIMUM-RANGE throw lasts, derived rather than
+## picked: the settle must finish inside the fuse, and forward + back is
+## `(1 + roll_back_duration_ratio)` times this. Anchoring it to the fuse means the
+## longest throw's settle comes to rest exactly as the grenade goes off, "sem
+## pressa" and without a clamp truncating the very throw the effect is sized by.
+func settle_duration_at_max_range(cook_s: float) -> float:
+	return maxf(cook_s, 0.001) / (1.0 + roll_back_duration_ratio)
 
 var _from: Vector2 = Vector2.ZERO
 var _to: Vector2 = Vector2.ZERO

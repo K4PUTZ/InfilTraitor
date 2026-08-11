@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53646 lines total** (under `godot/scripts/`)
+**205 scripts · 53827 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1066,7 +1066,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 202 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 321 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1076,10 +1076,18 @@ extends `Node2D` · 143 lines
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `SHADOW_SHADER_PATH` = `"res://godot/shaders/object_ground_shadow.gdshader"`
+- `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
 - `ANCHOR_PX` = `Vector2(48.0, 73.15551)`
 - `SPRITE_SCALE` = `0.75`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_DEG` = `45.0`
+- `SHADOW_HEIGHT_REF_PX` = `90.0`
+- `SHADOW_STRENGTH_AT_GROUND` = `0.55`
+- `SHADOW_STRENGTH_IN_FLIGHT` = `0.35`
+- `SHADOW_SCALE_AT_GROUND` = `0.80`
+- `SHADOW_SCALE_IN_FLIGHT` = `1.05`
+- `SHADOW_BLUR_MAX_PX` = `5.0`
 
 **Public vars**
 - `var room: Node = null`
@@ -1088,6 +1096,7 @@ extends `Node2D` · 143 lines
 
 **Public API**
 - `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
+- `func set_flight_height_px(px: float) -> void:`
 - `func update_cell(p_gu_cell: Vector2i) -> void:`
 
 ---
@@ -1447,7 +1456,7 @@ extends `Node2D` · 262 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 160 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 189 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
@@ -1459,19 +1468,6 @@ extends `Node2D` · 262 lines
 - `var bounce_height_ratio: float = 0.12`
 - `var bounce_duration_s: float = 0.18`
 - `var flight_turns: float = 1.0`
-- `var roll_forward_turns: float = 1.0 / 16.0`
-- `var roll_back_turns: float = 1.0 / 32.0`
-- `var roll_forward_s: float = 0.20`
-- `var roll_back_s: float = 0.14`
-- `var roll_radius_px: float = 11.0`
-- `var roll_reference_px: float = 700.0`
-- `var roll_scale_min: float = 0.45`
-- `var roll_scale_max: float = 1.5`
-
-**Public API**
-- `func show_arc(from_pos: Vector2, to_pos: Vector2) -> void:`
-- `func set_launch_height(launch_px: float) -> void:`
-- `func clear() -> void:`
 
 ---
 
@@ -4206,7 +4202,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1017 lines
+`class_name TestZoneController` · 1050 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

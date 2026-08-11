@@ -528,7 +528,9 @@ func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vecto
 ## function 'get_physics_frame'" on the first iteration, aborted this coroutine,
 ## and the grenade never moved and never detonated.
 func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) -> void:
-	var sprite: Sprite2D = grenade.get("sprite")
+	## Typed as the prop, not as Sprite2D: the flight drives the ground shadow
+	## through `set_flight_height_px()`, which only GrenadeProp has.
+	var sprite: GrenadePropClass = grenade.get("sprite")
 	if sprite == null or not is_instance_valid(sprite):
 		push_error("[TestZoneController] throw: grenade %s has no sprite to animate" % target_gu)
 		return
@@ -574,26 +576,47 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## recedes. `roll_dir.x` IS that projection, so it replaces the old arbitrary
 	## `sign()` and the vertical-throw case stops being a coin flip.
 	##
-	## DISTANCE. A longer throw lands harder, so the settle is scaled by travel
-	## distance against `roll_reference_px` and clamped at both ends.
+	## DISTANCE, AND WHY IT IS MEASURED IN GU. `ThrowArcOverlay`'s friction model
+	## (see its `roll_turns_at_max_range` block) grades the settle by the speed the
+	## grenade lands at — duration linearly, amount with the square. The speed here
+	## is the ground track over the flight time, so all that varies is the ground
+	## DISTANCE, and that has to be read in GAME UNITS, not in screen pixels: the
+	## isometric floor is 181.02 px/GU across and 90.51 px/GU down
+	## (`IsoProjection.floor_circle_semi_axes`), so the same real throw measures
+	## half as far when aimed up or down the screen. Pixels would under-rate exactly
+	## the throws the Director's "depende do ângulo" is about.
 	var ground_start: Vector2 = start_pos + Vector2(0.0, launch_px)
 	var travel: Vector2 = target_world - ground_start
 	var roll_dir: Vector2 = travel.normalized() if travel.length() > 0.001 else Vector2.RIGHT
 	var spin_visibility: float = roll_dir.x
-	var roll_scale: float = clampf(travel.length() / arc.roll_reference_px,
-		arc.roll_scale_min, arc.roll_scale_max)
-	var forward_turns: float = arc.roll_forward_turns * roll_scale
-	var back_turns: float = arc.roll_back_turns * roll_scale
+
+	var origin_gu: Vector2i = room.agent.cell
+	var distance_gu: float = Vector2(target_gu - origin_gu).length()
+	## 0 at the thrower's feet, 1 at the far edge of the throw perimeter. Both
+	## curves below are anchored to what happens at 1, so nothing is quantised and
+	## nothing is clamped from underneath — a 1 GU lob really does roll almost
+	## nothing, and that is the physics, not a floor.
+	var speed_ratio: float = clampf(distance_gu / maxf(throw_range_gu, 0.001), 0.0, 1.0)
+	var settle_forward_s: float = arc.settle_duration_at_max_range(grenade_cook_s) * speed_ratio
+	var settle_back_s: float = settle_forward_s * arc.roll_back_duration_ratio
+	var forward_turns: float = arc.roll_turns_at_max_range * speed_ratio * speed_ratio
+	var back_turns: float = forward_turns * arc.roll_back_ratio
 
 	## Turns per second the flight tumbles at, and the rate the settle STARTS at.
 	## The second is derived, not chosen: an ease-out of 1-(1-t)² has an initial
-	## derivative of 2, so a roll of `forward_turns` over `roll_forward_s` begins
+	## derivative of 2, so a roll of `forward_turns` over `settle_forward_s` begins
 	## at exactly this speed. Decaying the bounce down to it is what makes the
 	## hand-off invisible.
 	var flight_rate: float = arc.flight_turns / maxf(throw_duration_s, 0.001)
 	var settle_rate: float = minf(
-		2.0 * forward_turns / maxf(arc.roll_forward_s, 0.001), flight_rate)
+		2.0 * forward_turns / maxf(settle_forward_s, 0.001), flight_rate)
 
+	## The ground shadow follows the flight by HEIGHT, not by the sprite's screen
+	## position — Director: "a sombra precisa acompanhar no chão... de acordo com a
+	## distância vertical." The height is the gap between the body and the ground
+	## point directly under it, which on this path is the linear ground track from
+	## the hand's own floor point to the target. Taking it from the arc rather than
+	## re-deriving a second parabola is the same rule the tumble already follows.
 	var turns: float = 0.0
 	var elapsed: float = 0.0
 	while elapsed < throw_duration_s:
@@ -605,7 +628,9 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 			start_pos, target_world, t, arc_height, launch_px)
 		turns += flight_rate * delta
 		sprite.rotation = turns * TAU * spin_visibility
+		sprite.set_flight_height_px(ground_start.lerp(target_world, t).y - sprite.position.y)
 	sprite.position = target_world
+	sprite.set_flight_height_px(0.0)
 	grenade["gu_cell"] = target_gu
 
 	## The landing hop — Director: "dá um bounce no chão de leve" — with the
@@ -617,11 +642,13 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		var delta: float = room.get_process_delta_time()
 		bounced += delta
 		var bt: float = minf(bounced / arc.bounce_duration_s, 1.0)
-		sprite.position = target_world \
-			- Vector2(0.0, ThrowArcOverlay.bounce_lift(bt, bounce_height))
+		var lift: float = ThrowArcOverlay.bounce_lift(bt, bounce_height)
+		sprite.position = target_world - Vector2(0.0, lift)
 		turns += lerpf(flight_rate, settle_rate, bt) * delta
 		sprite.rotation = turns * TAU * spin_visibility
+		sprite.set_flight_height_px(lift)
 	sprite.position = target_world
+	sprite.set_flight_height_px(0.0)
 
 	## COOKING — Director: "antes de pausar para ficar 'cooking' por aprox. 1
 	## segundo." The grenade sits on the ground for a beat before it goes off.
@@ -630,9 +657,15 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## kind of human-paced gap §4.2 was designed to hide the work in.
 	##
 	## The settle happens inside that second: "a granada pode rolar um pouquinho
-	## (1/16 de volta) pra frente (em relação ao arremesso), e depois rolar 1/32
-	## de volta pra trás, e parar." Rolling back less than it rolled forward is
-	## what makes it read as settling rather than as bouncing.
+	## pra frente (em relação ao arremesso), e depois rolar um pouco pra trás, e
+	## parar." Rolling back less than it rolled forward is what makes it read as
+	## settling rather than as bouncing.
+	##
+	## Both durations now come from the throw's own energy (see the friction block
+	## above), so a lob settles in a fraction of a second and a full-range throw
+	## rolls for most of the fuse. The ease-out below is UNCHANGED — under constant
+	## friction it is already the exact solution, so freeing the graduation was only
+	## ever a question of where its two numbers come from.
 	##
 	## And it is a ROLL, not a pivot: every turn moves the grenade `r·θ` along the
 	## ground. That coupling is what a spin-in-place was missing, and it is also
@@ -644,14 +677,14 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	while cooked < grenade_cook_s:
 		await tree.process_frame
 		cooked += room.get_process_delta_time()
-		if cooked < arc.roll_forward_s:
+		if cooked < settle_forward_s:
 			## Ease-out: starts at exactly `settle_rate`, arrives stopped.
-			var ft: float = cooked / arc.roll_forward_s
+			var ft: float = cooked / settle_forward_s
 			turns = turns_at_rest + forward_turns * (1.0 - (1.0 - ft) * (1.0 - ft))
-		elif cooked < arc.roll_forward_s + arc.roll_back_s:
+		elif cooked < settle_forward_s + settle_back_s:
 			## Smoothstep back: leaves and arrives at zero speed, so neither end
 			## of the rock reads as a jolt.
-			var bt2: float = (cooked - arc.roll_forward_s) / arc.roll_back_s
+			var bt2: float = (cooked - settle_forward_s) / maxf(settle_back_s, 0.001)
 			turns = turns_at_rest + forward_turns \
 				- back_turns * smoothstep(0.0, 1.0, bt2)
 		else:

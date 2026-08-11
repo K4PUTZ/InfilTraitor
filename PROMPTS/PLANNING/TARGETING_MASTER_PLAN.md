@@ -288,9 +288,13 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 
 ## 6. Open
 
-### 6.1 Next session — picked up mid-task, both specified by the Director
+### 6.1 ✅ CLOSED 2026-08-11 — both items built and verified
 
-**A. The grenade's ground shadow — STARTED, NOT WIRED.**
+Both were specified by the Director and left mid-task; both are now landed. What
+follows is the original specification, kept verbatim, with the closure recorded
+under each.
+
+**A. The grenade's ground shadow — ✅ BUILT 2026-08-11.**
 *"A sombra da granada. Nós já temos nas outras armas, e está funcionando bem.
 Vamos aplicar na granada também. Durante o vôo da granada, a sombra precisa
 acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo
@@ -330,6 +334,33 @@ one texture with no pipeline run, and it is still the object's real silhouette
 rather than a stand-in ellipse. The baked route remains open: add a shadow pass
 to the prop spike and this shader stops being needed.
 
+**Closure.** All four steps landed, plus one the spec did not anticipate: a child
+inherits its parent's WHOLE transform, so counter-rotating the shadow is not
+enough — its ground offset gets rotated too and the shadow ORBITS the tumbling
+grenade. `GrenadeProp._sync_shadow_transform()` undoes both exactly (the algebra
+is in its docstring); the net world transform is a plain screen-space drop of
+`h` px, with the parent's uniform scale cancelling out of the linear part.
+
+The first tuning rendered nothing visible, and the diagnosis was NOT eyeballed: a
+`print_debug` proved the node was in the tree, visible, textured and holding a
+loaded shader at a correct world position, and forcing `strength` to 1.0 and the
+scale to 3.0 rendered a perfectly placed black grenade. So the wiring was never
+the problem — `FloatingCollectible`'s airborne alpha (0.28) is simply too faint
+for a 22 px squashed silhouette when it works fine for a baked, dilated blob.
+Walked back to 0.35 in flight / 0.55 on the ground.
+
+`SHADOW_HEIGHT_REF_PX` (90) is derived, not picked: `arc_height_for()` floors
+every apex at `launch_px · 1.4` = 89.6 px for a standing throw, so even the
+SHORTEST throw the geometry allows reaches the full effect at its own apex, and
+longer ones hold it instead of pumping.
+
+Evidence, hand-named so the 50-file rotation cannot eat it:
+`grenade_shadow_flight.png` (mid-flight, larger + diffuse + faint),
+`grenade_shadow_ground.png` (landed, small + sharp + under the asset), and the
+red/green partner `grenade_shadow_off.png` — same binary, same map, same frame,
+shadow strength forced to 0. Diffing the pair: **291 px changed, peak darkening
+55.4%** — the effect's measured footprint rather than a description of one.
+
 **B. The settle roll is still quantised.** Director, 2026-08-10: *"me parece que
 o giro da granada no chão está travado ainda em 1/16 e 1/32 de volta. Essa
 graduação precisa ser livre, de acordo com o ângulo e a energia. Vamos fazer
@@ -354,6 +385,40 @@ back-rock as a RATIO of the forward roll rather than a second fixed fraction.
 Distances must be measured in **GU, not screen px** — a throw along the screen's
 vertical covers half the pixels of the same ground distance sideways, so screen
 px would under-rate exactly the throws the Director calls out as angle-dependent.
+
+**Closure — ✅ BUILT 2026-08-11, re-anchored.** The model above is exactly what
+shipped, but NOT with a friction coefficient in the code. Since `ω₀ ∝ v`, the two
+results collapse to `T ∝ v` and `θ ∝ v²`, so `friction` and `restitution` cancel
+out entirely and the whole thing is expressed by what the LONGEST throw does —
+two numbers anyone can picture instead of two nobody can. `roll_reference_px`,
+`roll_scale_min/max`, `roll_forward_turns`, `roll_back_turns`, `roll_forward_s`
+and `roll_back_s` are all gone.
+
+What replaced them: one free number, `roll_turns_at_max_range` = 1/8 turn; the
+duration at max range is itself **derived from the fuse** (`grenade_cook_s ÷ (1 +
+roll_back_duration_ratio)`), so the longest throw comes to rest exactly as the
+grenade goes off — no clamp ever truncates the throw the effect is sized by. The
+ease-out is byte-for-byte the old one, which is the point: under constant
+friction it was already the exact solution.
+
+Measured, by tracing the real `_start_grenade_throw_animation` on eight throws:
+
+| target | GU dist | forward roll | duration |
+|---|---|---|---|
+| (15,13) | 2.236 | **4.59°** | 0.188 s |
+| (13,11) | 3.000 | **8.27°** | 0.252 s |
+| (11,9) | 5.385 | **26.63°** | 0.453 s |
+| (9,9) | 6.403 | **37.65°** | 0.538 s |
+
+Free and continuous, amount with the square of distance, duration linear — no
+fraction of a turn anywhere. And the GU-not-pixels requirement is confirmed
+rather than asserted: four throws of exactly 3.000 GU in four different grid
+directions from (13,14) — to (13,11), (10,14), (16,14), (13,17) — all returned
+**identical** numbers (8.27° over 0.252 s), which is precisely what a screen-px
+measure could not have done.
+
+Not captured, and deliberately: a still cannot show a rotation over time, so the
+trace above is the evidence rather than a screenshot claimed to stand for one.
 
 ### 6.2 Standing
 
@@ -395,15 +460,13 @@ breakage, which is why neither surfaced on its own.
 
 ## 7. Schedule
 
-Tasks 1–4 are done and the whole chain runs end to end. Next session, in order:
+Tasks 1–4 are done, the whole chain runs end to end, and **§6.1 A and B are both
+closed** (2026-08-11). Next session, in order:
 
-1. **§6.1 A — wire the grenade's ground shadow.** The shader exists; four steps
-   listed there, all inside `GrenadeProp` and the throw animation.
-2. **§6.1 B — free the settle roll** from its 1/16 and 1/32, using the friction
-   model derived there. The ease-out profile does not change, only its inputs.
-3. **§6.2 — wall sectioning of the dome**, the last part of the Director's
-   original brief still unbuilt.
-4. Throw feel beyond that: SFX, and whether the arc should be dev-only after all
+1. **§6.2 — wall sectioning of the dome**, the last part of the Director's
+   original brief still unbuilt, and the only one needing new machinery
+   (`VoxelRenderer.classify_geometry_over_rect()`, OcclusionSet policy O5).
+2. Throw feel beyond that: SFX, and whether the arc should be dev-only after all
    (see §4's flagged judgement call).
 
 Nothing here blocks the blast-choreography work in §6.3, and vice versa.

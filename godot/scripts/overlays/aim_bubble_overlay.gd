@@ -35,7 +35,10 @@ class_name AimBubbleOverlay
 ## wall but in front of this one". Tracked, not silently dropped.
 
 ## Tuning — `var` per architecture Rule 1.
-var dome_color: Color = Color(0.55, 0.75, 1.0, 1.0)
+## Orange since 2026-08-10 ("vamos mudar a arte bolha de azul para laranja"),
+## which also puts it in the same family as the shrapnel rays and the reference's
+## own target volume instead of reading as a separate, cooler UI element.
+var dome_color: Color = Color(1.0, 0.66, 0.30, 1.0)
 var fill_alpha: float = 0.13          ## the dome's volume
 var floor_fill_alpha: float = 0.20    ## the ground section, denser than the volume
 var floor_line_alpha: float = 0.50    ## the section's own outline

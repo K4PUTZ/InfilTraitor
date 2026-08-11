@@ -16,11 +16,15 @@ interaction layer that feeds Phase A.
   aimed cell after its arc, bounce and cooking second
 - `Screenshots/history/grenade_menu_detonate.png` — the restored right-click
   "Detonar" menu on a grenade already lying on the floor
+- `Screenshots/history/grenade_aim_gameplay_hud.png` — the PLAYER's view, dev
+  vision off: dome, rays, virtual grenade, arc, and neither red perimeter
+- `Screenshots/history/grenade_flight_tumble.png` — three points of one flight
 - `Screenshots/history/grenade_throw_before.png` / `grenade_throw_after.png` —
   the same throw with and without the `get_physics_frame` fix
 
 **Dev capture actions** (`INFILTRAITOR_CAPTURE_ACTION=`): `grenade_aim`,
-`grenade_throw`, `grenade_cancel`, with `INFILTRAITOR_CAPTURE_AIM_CELL="x,y"`.
+`grenade_throw`, `grenade_cancel`, `grenade_tap`, `grenade_second`. Modifiers:
+`INFILTRAITOR_CAPTURE_AIM_CELL="x,y"` and `INFILTRAITOR_CAPTURE_NO_DEV=1`.
 
 **Dependency:** `EXPLOSION_REBUILD_MASTER_PLAN.md` Phase A complete (E-RAY through
 E-BUBBLE, commits d6dd657–3fba237). `PredictionCache` built
@@ -91,6 +95,35 @@ Each task closes against Phase A's existing integration (test_zone_controller fl
 
 ## 4. Visual Requirements
 
+**What the PLAYER sees vs. what the DEVELOPER sees** (T-DEV, Director
+2026-08-10): *"tanto o perímetro vermelho do alcance, quanto o perímetro
+vermelho do dano, vamos deixar ativos só no DEV VISION. Durante o gameplay
+normal o HUD só vai mostrar a bolha, os raios, e a granada virtual."*
+
+| | normal | dev vision |
+|---|---|---|
+| aim dome, shrapnel rays, virtual grenade, throw arc | ✅ | ✅ |
+| red throw perimeter | — | ✅ |
+| red damage footprint (affected GUs) | — | ✅ |
+
+Both reds are exact, legible diagrams of numbers the player is not meant to be
+reading off the board — the throw's radius in cells and the blast's cell list.
+The dome and the rays say the same two things approximately, which is the point.
+The **clamp is unaffected** by the toggle: the range is real either way, only the
+line drawing it is a dev instrument.
+
+`dev_vision` defaults to TRUE in this build (ROTATE-KILL-01), so the harness
+shows the developer's view unless told otherwise —
+`INFILTRAITOR_CAPTURE_NO_DEV=1` presses V first, which is the only way to
+capture the player's HUD.
+
+**The throw arc is kept in normal play**, and that is a judgement call worth
+flagging rather than burying: it is not one of the three things the Director
+listed, but it is also not a perimeter, it is the only thing that shows whether
+the throw clears the geometry in between, and its physics were tuned across two
+passes. One line in `_set_targeting_target()` moves it behind the same gate if
+that reading was wrong.
+
 Everything below is measured in GAME UNITS and projected by `IsoProjection`
 (`godot/scripts/world/utilities/iso_projection.gd`), never in hand-picked pixels.
 Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
@@ -149,7 +182,10 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
   always been at a flat 100, while the rest rode a few ticks above the tallest
   voxel — nowhere near 100 — so the footprint drew over everything regardless of
   their relative order.
-- **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = **2.0 GU** sitting
+- **Dome** (E-BUBBLE), ORANGE since 2026-08-10 (*"vamos mudar a arte bolha de
+  azul para laranja"*), which also puts it in the same family as the shrapnel
+  rays instead of reading as a separate, cooler UI element: a hemisphere of
+  `aim_dome_radius_gu` = **2.0 GU** sitting
   on the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e
   paredes próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the
   silhouette ellipse (181.0 × 183.8 px/GU — a sphere projects to very nearly a

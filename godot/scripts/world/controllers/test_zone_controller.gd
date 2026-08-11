@@ -289,14 +289,31 @@ func open_menu_for(index: int) -> void:
 
 ## T-MODE (Phase B): enter targeting mode for a grenade via the G key.
 func enter_grenade_mode() -> void:
-	if _grenades.is_empty():
+	## First grenade that has NOT already gone off. This used to be a flat
+	## `_targeting_grenade_index = 0`, which is the bug the Director reported as
+	## "uma segunda granada não aparece sendo lançada": after the first throw,
+	## grenade 0 is spent and its sprite has `visible = false`, so the second
+	## throw dutifully animated an invisible prop along the arc and then detonated
+	## a grenade that had already detonated. Nothing appeared, and the count of
+	## grenades never went down.
+	##
+	## Cycling with a key still belongs to the inventory system that does not
+	## exist yet; picking a LIVE one does not.
+	_targeting_grenade_index = _first_live_grenade()
+	if _targeting_grenade_index < 0:
+		print_debug("[T-MODE] no grenades left to throw")
 		return
-	## First available grenade for now — cycling belongs to the inventory system
-	## that does not exist yet, not here.
-	_targeting_grenade_index = 0
 	_targeting_mode = true
 	_targeting_target_gu = room.agent.cell + DEFAULT_TARGET_OFFSET
 	_update_grenade_targeting_display()
+
+
+## Index of the first grenade still on the board, or -1 when they are all spent.
+func _first_live_grenade() -> int:
+	for i: int in range(_grenades.size()):
+		if not _grenades[i]["detonated"]:
+			return i
+	return -1
 
 
 ## Hover-driven entry point — room._input() calls this whenever the cursor
@@ -349,10 +366,26 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	var origin_gu: Vector2i = room.agent.cell
 	var agent_pos: Vector2 = room.agent.position
 
+	## T-DEV (Director, 2026-08-10): "tanto o perímetro vermelho do alcance,
+	## quanto o perímetro vermelho do dano, vamos deixar ativos só no DEV VISION.
+	## Durante o gameplay normal o HUD só vai mostrar a bolha, os raios, e a
+	## granada virtual."
+	##
+	## Both reds are exact, legible diagrams of numbers the player is not supposed
+	## to be reading off the board — the throw's radius and the blast's cell list.
+	## They stay as a development instrument; the dome and the rays are what say
+	## the same things approximately, which is the point.
+	var dev: bool = room._vision_controller != null and room._vision_controller.dev_vision
+
 	## The perimeter is the locus of `throw_range_gu` around the agent, projected
 	## by IsoProjection — the same radius, in the same units, the clamp below uses.
+	## The CLAMP is unaffected by the toggle: the range is real either way, only
+	## the line drawing it is a dev tool.
 	if room._throw_perimeter_overlay != null:
-		room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range_gu)
+		if dev:
+			room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range_gu)
+		else:
+			room._throw_perimeter_overlay.clear()
 
 	_targeting_target_gu = _clamp_gu_to_throw_range(cell, origin_gu)
 	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
@@ -383,8 +416,12 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## no Phoenix Point, vamos realçar as GUs afetadas pela granada, para indicar
 	## quais inimigos vão ser atingidos." Same overlay the right-click menu
 	## already uses; passing the ring data turns on its graded red fill.
+	## Dev-only per T-DEV above — the exact cell list is the developer's readout.
 	if room._blast_wireframe_overlay != null:
-		room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), gu_rings)
+		if dev:
+			room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), gu_rings)
+		else:
+			room._blast_wireframe_overlay.clear()
 
 	## T-CURSOR: the virtual grenade replaces the magenta selection diamond for
 	## as long as the throw is being aimed. The perspective goes with it — it is

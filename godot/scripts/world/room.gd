@@ -1614,6 +1614,13 @@ func _set_view_mode(which: String, btn: Button) -> void:
 	btn.set_pressed_no_signal(enabled)
 	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
 
+	## T-DEV: the two red aiming diagnostics are gated on dev vision, so toggling
+	## it mid-aim has to rebuild the preview — otherwise the perimeter and the
+	## footprint linger (or stay missing) until the cursor happens to move.
+	if which == "dev" and _test_zone_controller != null \
+			and _test_zone_controller.is_in_targeting_mode():
+		_test_zone_controller._update_grenade_targeting_display()
+
 
 func _on_view_h_toggled(_is_enabled: bool) -> void:
 	_set_view_mode("heat", btn_view_h)
@@ -3836,8 +3843,8 @@ func _run_auto_screenshot_capture() -> void:
 			Input.parse_input_event(esc_up)
 			for _j in range(10):
 				await get_tree().process_frame
-	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel", "grenade_tap"] \
-			and _test_zone_controller != null:
+	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel",
+			"grenade_tap", "grenade_second"] and _test_zone_controller != null:
 		## T-MODE/E-BUBBLE dev capture action (2026-08-10) — the unattended path
 		## for the aiming preview, same standing-tool precedent as weapon_menu
 		## above (which exists so the CONE preview can be captured rather than
@@ -3868,6 +3875,22 @@ func _run_auto_screenshot_capture() -> void:
 		## harness's ~8 fps.
 		for _c in range(15):
 			await get_tree().process_frame
+
+		## T-DEV: `dev_vision` defaults TRUE in this build (ROTATE-KILL-01), so the
+		## harness always shows the developer's view. This turns it off through the
+		## real V keybind, which is the only way to capture what the player's HUD
+		## actually looks like during a throw.
+		if OS.get_environment("INFILTRAITOR_CAPTURE_NO_DEV") == "1":
+			var v_down := InputEventKey.new()
+			v_down.keycode = KEY_V
+			v_down.pressed = true
+			Input.parse_input_event(v_down)
+			var v_up := InputEventKey.new()
+			v_up.keycode = KEY_V
+			v_up.pressed = false
+			Input.parse_input_event(v_up)
+			for _j in range(6):
+				await get_tree().process_frame
 
 		var g_down := InputEventKey.new()
 		g_down.keycode = KEY_G
@@ -3909,6 +3932,42 @@ func _run_auto_screenshot_capture() -> void:
 			var throw_wait: int = throw_wait_env.to_int() if throw_wait_env.is_valid_int() else 120
 			for _j in range(maxi(throw_wait, 0)):
 				await get_tree().process_frame
+
+		if capture_action == "grenade_second":
+			## T-SECOND: throw TWICE from one boot. The Director's bug was that
+			## "uma segunda granada não aparece sendo lançada" — targeting always
+			## selected grenade 0, which after the first throw is spent and
+			## invisible. A capture of one throw can never show this; only the
+			## second one can, so the check is which prop is in the air.
+			for shot: int in range(2):
+				var g_down2 := InputEventKey.new()
+				g_down2.keycode = KEY_G
+				g_down2.pressed = true
+				Input.parse_input_event(g_down2)
+				var g_up2 := InputEventKey.new()
+				g_up2.keycode = KEY_G
+				g_up2.pressed = false
+				Input.parse_input_event(g_up2)
+				for _j in range(5):
+					await get_tree().process_frame
+				print("[T-SECOND] shot %d: targeting=%s picked_index=%d" %
+					[shot + 1, is_grenade_targeting(),
+					_test_zone_controller._targeting_grenade_index])
+				var motion2 := InputEventMouseMotion.new()
+				motion2.position = _tile_to_screen_center(aim_cell + Vector2i(shot, 0))
+				_input(motion2)
+				for _j in range(5):
+					await get_tree().process_frame
+				var e_down := InputEventKey.new()
+				e_down.keycode = KEY_ENTER
+				e_down.pressed = true
+				Input.parse_input_event(e_down)
+				var e_up := InputEventKey.new()
+				e_up.keycode = KEY_ENTER
+				e_up.pressed = false
+				Input.parse_input_event(e_up)
+				for _j in range(150):
+					await get_tree().process_frame
 
 		if capture_action == "grenade_tap":
 			## T-TAP: the mobile flow, driven through the real _unhandled_input()

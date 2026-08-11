@@ -17,8 +17,9 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 ## Minimal RoomBuilder target — RoomBuilder only ever reads/writes
-## _edge_registry, _junction_columns, _slab_registry, _voxel_renderer, plus
-## generic Node methods (add_child/remove_child). Not room.gd itself: that
+## _edge_registry, _junction_columns, _slab_registry, _voxel_renderer,
+## _wall_height_edges, plus generic Node methods (add_child/remove_child).
+## Not room.gd itself: that
 ## carries a full game's worth of UI/controller dependencies this test has no
 ## business booting just to verify the floor-building loop.
 class MinimalRoom extends Node:
@@ -26,6 +27,8 @@ class MinimalRoom extends Node:
 	var _junction_columns
 	var _slab_registry
 	var _voxel_renderer
+	@warning_ignore("unused_private_class_variable")
+	var _wall_height_edges
 	var map_id: String = "TEST"
 
 var passed: int = 0

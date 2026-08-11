@@ -50,6 +50,8 @@ class MinimalRoom extends Node:
 	var _junction_columns
 	var _slab_registry
 	var _voxel_renderer
+	@warning_ignore("unused_private_class_variable")
+	var _wall_height_edges
 	var map_id: String = "TEST"
 
 

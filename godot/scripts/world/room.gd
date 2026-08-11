@@ -156,6 +156,14 @@ var _blocked_cells: Dictionary = {}
 var _prop_heights: Dictionary = {}  ## rotated cell → prop shadow height class (1-4)
 var _base_layout: Dictionary = {}
 var _current_blocked_edges: Array[Dictionary] = []
+## edge_key (WallEdgeData) -> {"start_storey": int, "storey_count": int}, in
+## GU (1 storey == 1 GU, GeometryCoords.LEVELS_PER_STOREY == VOXELS_PER_UNIT_AXIS
+## == 8). Populated by RoomBuilder from EdgeExtractor's own edges — the same
+## per-edge height range SliceGenerator turns into voxels, retained here
+## because nothing else needed it at runtime before AimBubbleOverlay's
+## wall-sectioned grid (E-BUBBLE §6.2). Unlike `_current_blocked_edges` this
+## carries real HEIGHT, not just a movement/LOS boolean.
+var _wall_height_edges: Dictionary = {}
 var _guards: Array = []
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)

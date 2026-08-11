@@ -77,6 +77,17 @@ static func sphere_semi_axes(radius_gu: float) -> Vector2:
 		sqrt(AXIS_X.y * AXIS_X.y + AXIS_Y.y * AXIS_Y.y + AXIS_Z.y * AXIS_Z.y)) * radius_gu
 
 
+## Screen offset for a single point `gu_xyz` GU away from this projection's
+## origin, along the same linear basis the ellipse helpers share. Unlike them
+## this is one 3D point, not a silhouette — for anything that needs a real
+## position on the sphere rather than its outline (E-BUBBLE's wall-sectioned
+## grid: each grid vertex is cast in 3D against nearby wall planes, then
+## projected here). Add the result to a screen-space centre; no further sign
+## flip needed, AXIS_Z already encodes "up the screen" for +height.
+static func project_point(gu_xyz: Vector3) -> Vector2:
+	return AXIS_X * gu_xyz.x + AXIS_Y * gu_xyz.y + AXIS_Z * gu_xyz.z
+
+
 ## Points of an axis-aligned ellipse arc, `segments` spans from `start_rad` to
 ## `end_rad`. Y is negated so that a positive angle reads as "up the screen",
 ## which keeps the dome assembly in aim_bubble_overlay.gd readable.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53827 lines total** (under `godot/scripts/`)
+**205 scripts · 54011 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -849,7 +849,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 109 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 235 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
 
@@ -2735,7 +2735,7 @@ extends `SceneTree` · 2404 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 635 lines
+extends `SceneTree` · 637 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -2811,7 +2811,7 @@ extends `SceneTree` · 213 lines
 
 ### `damage_atom_bake_selftest.gd`
 
-extends `SceneTree` · 419 lines
+extends `SceneTree` · 421 lines
 
 `godot/scripts/tools/damage_atom_bake_selftest.gd`
 
@@ -2937,7 +2937,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 421 lines
+extends `SceneTree` · 423 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -2968,7 +2968,7 @@ extends `SceneTree` · 421 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 412 lines
+extends `SceneTree` · 414 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -3039,7 +3039,7 @@ extends `SceneTree` · 170 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 292 lines
+extends `SceneTree` · 295 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -3088,7 +3088,7 @@ extends `SceneTree` · 209 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 519 lines
+extends `SceneTree` · 521 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -3514,7 +3514,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 493 lines
+extends `SceneTree` · 495 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -3550,7 +3550,7 @@ extends `SceneTree` · 493 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 267 lines
+extends `SceneTree` · 269 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -4103,7 +4103,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1188 lines
+`class_name RoomBuilder` · 1203 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -4202,7 +4202,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1050 lines
+`class_name TestZoneController` · 1057 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4467,7 +4467,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4379 lines
+extends `Node2D` · 4387 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4599,7 +4599,7 @@ extends `Node2D` · 4379 lines
 
 ### `iso_projection.gd`
 
-`class_name IsoProjection` · 92 lines
+`class_name IsoProjection` · 103 lines
 
 `godot/scripts/world/utilities/iso_projection.gd`
 

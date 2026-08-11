@@ -297,9 +297,15 @@ func enter_grenade_mode() -> void:
 	## a grenade that had already detonated. Nothing appeared, and the count of
 	## grenades never went down.
 	##
-	## Cycling with a key still belongs to the inventory system that does not
-	## exist yet; picking a LIVE one does not.
+	## The test-zone scaffold does not have a real inventory yet, so when the
+	## player has exhausted every live grenade we spawn a fresh one on the spot
+	## instead of blocking the action. That suspends the effective grenade limit
+	## in this gameplay path without introducing a separate inventory system.
 	_targeting_grenade_index = _first_live_grenade()
+	if _targeting_grenade_index < 0:
+		var spawn_cell: Vector2i = room.agent.cell if room.agent != null else Vector2i.ZERO
+		add_grenade(spawn_cell)
+		_targeting_grenade_index = _first_live_grenade()
 	if _targeting_grenade_index < 0:
 		print_debug("[T-MODE] no grenades left to throw")
 		return
@@ -393,7 +399,8 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
 	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
 	if room._aim_bubble_overlay != null:
-		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu)
+		room._aim_bubble_overlay.show_dome(
+			target_pos, aim_dome_radius_gu, _targeting_target_gu, room._wall_height_edges)
 
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.

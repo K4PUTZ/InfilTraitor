@@ -171,6 +171,21 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			extraction.get("edges", []).size(), _diag_bake_config.enabled
 		])
 
+	## E-BUBBLE wall-sectioning support: EdgeExtractor's edges already carry the
+	## per-edge start_storey/storey_count SliceGenerator turns into voxels below
+	## — but nothing retained that for a runtime query, so it was discarded the
+	## moment the slices existed. AimBubbleOverlay needs exactly this (which
+	## walls, how tall, in GU) to mould its grid around parapets and blocks
+	## instead of assuming every nearby wall is full-height. Keyed by
+	## WallEdgeData.edge_key() per Rule 3 — never a second key format.
+	var wall_height_edges: Dictionary = {}
+	for extracted_edge in extraction.get("edges", []):
+		wall_height_edges[WallEdgeData.edge_key(extracted_edge.gu_a, extracted_edge.gu_b)] = {
+			"start_storey": extracted_edge.start_storey,
+			"storey_count": extracted_edge.storey_count,
+		}
+	room._wall_height_edges = wall_height_edges
+
 	## D1/Part 1 (DESTRUCTION_MASTER_PLAN): SlabRegistry published unconditionally
 	## — a room has a floor whether or not it has walls (edges), unlike the block
 	## below. Previously nested inside the edges-conditional, which would have

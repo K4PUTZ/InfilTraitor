@@ -8,7 +8,10 @@ Phase A (detonation VFX) closed 2026-08-10. This plan describes the UI and
 interaction layer that feeds Phase A.
 
 **Evidence (hand-named, so the 50-file rotation cannot eat them):**
-- `Screenshots/history/grenade_aim_dome.png` — dome, perimeter, up-arc and rays
+- `Screenshots/history/grenade_aim_dome.png` — dome, hatched footprint, grenade
+  marker, up-arc and rays
+- `Screenshots/history/grenade_aim_wide.png` — the same, zoomed out far enough
+  to see the whole 7 GU throw perimeter
 - `Screenshots/history/grenade_throw_cooked.png` — the throw detonating at the
   aimed cell after its arc, bounce and cooking second
 - `Screenshots/history/grenade_menu_detonate.png` — the restored right-click
@@ -92,9 +95,24 @@ Everything below is measured in GAME UNITS and projected by `IsoProjection`
 (`godot/scripts/world/utilities/iso_projection.gd`), never in hand-picked pixels.
 Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 
-- **Perimeter on floor**: red ellipse, radius `throw_range_gu` = 6.5 GU. The
+- **Perimeter on floor**: red ellipse, radius `throw_range_gu` = **7 GU**. The
   projection of a grid circle is exactly a 2:1 axis-aligned ellipse — derived,
   not eyeballed, and the same circle the throw's clamp tests against.
+  **The radius must stay a WHOLE number** — *"o perímetro precisa passar pelo
+  centro das últimas GUs que o arremesso alcança."* Cell centres only sit at
+  integer offsets, so a fractional radius draws a perfectly good ellipse
+  through empty space between two rings. Asserted by selftest [9], including
+  the counter-case (nothing is on a 6.5 GU rim, anywhere on the board).
+- **Affected GUs** (T-HATCH): the footprint of `flood_gu_rings()` outlined and
+  hatched at the base of the dome — *"assim como no Phoenix Point, vamos realçar
+  as GUs afetadas pela granada, para indicar quais inimigos vão ser atingidos."*
+  Same `BlastWireframeOverlay` the right-click menu already used, with the hatch
+  as an opt-in flag so its two older callers are unchanged.
+- **Target marker** (T-CURSOR): `SelectionOverlay`'s magenta diamond is hidden
+  for the duration of the throw and a hatched grenade stands on the target cell
+  instead. Drawn, not sprited: `GrenadeProp`'s baked frames are the physical
+  object, this is a diagram. Its size is in GU of world height via `AXIS_Z`, so
+  it tracks the map instead of floating at a fixed pixel size.
 - **Dome** (E-BUBBLE): a hemisphere of `aim_dome_radius_gu` = **2.0 GU** sitting
   on the floor — Director, 2026-08-10: *"uma esfera seccionada pelo chão (e
   paredes próximas), como em XCOM"*, ref. `REFERENCES/granade.webp`. Drawn as the
@@ -110,11 +128,15 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 - **Shrapnel rays** (T-FRAG): LightRayOverlay's mechanism pointed at a grenade —
   lines from the target GU centre outward for every cell `flood_gu_rings()`
   reaches, so walls cut them the same way they cut the real blast. This is where
-  cover shows; the dome promises nothing about it. Dark iron, two per cell,
-  `length_scale` past the cell centre, and `circularity` = 1 undoes the 2:1
-  isometric squash so the star reads round instead of flattened. The trade,
-  stated: at full circularity a ray no longer ENDS on the cell it came from —
-  it is a fragment's direction and reach, not a per-cell readout.
+  cover shows; the dome promises nothing about it. Orange-red, two per cell,
+  `length_scale` past the cell centre, `circularity` = 1 undoes the 2:1
+  isometric squash so the star reads round, and `lateral_scale` buys a little
+  extra width back on top. They leave from `ray_origin_lift_gu` above the floor
+  (roughly where the grenade sits) and `ground_brake` shortens the ones aimed
+  downward, since the floor is in the way on that side. The trade, stated: at
+  full circularity a ray no longer ENDS on the cell it came from — it is a
+  fragment's direction and reach, not a per-cell readout. The per-cell readout
+  is the hatched footprint above.
 - **Throw arc**: parabola arcing UP (`arc_height_ratio` = 0.35 of the throw's
   screen distance), shared by the preview line and the sprite's own flight via
   `ThrowArcOverlay`'s statics, so the two cannot disagree.

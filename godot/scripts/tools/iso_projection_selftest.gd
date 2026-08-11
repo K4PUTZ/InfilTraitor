@@ -31,6 +31,7 @@ func _init() -> void:
 	test_arc_endpoints_seam_exactly()
 	test_projection_preserves_grid_distance()
 	test_dome_covers_three_by_three_gu()
+	test_throw_perimeter_lands_on_cell_centres()
 	test_throw_arc_goes_up()
 
 	print("\n" + "=".repeat(70))
@@ -228,6 +229,40 @@ func test_dome_covers_three_by_three_gu() -> void:
 			outside_all = false
 	if outside_all:
 		_pass("nothing past 2 GU is covered — the dome stays a dome, not a footprint")
+	print("")
+
+
+## [9] Director, 2026-08-10: "o perímetro precisa passar pelo centro das últimas
+## GUs que o arremesso alcança." That only happens at a WHOLE number of GU, and
+## the failure mode is invisible — a fractional radius still draws a perfectly
+## good ellipse, it just runs through empty space between two rings. Pinned so
+## the next person to tune `throw_range_gu` finds out from a test rather than
+## from a screenshot.
+func test_throw_perimeter_lands_on_cell_centres() -> void:
+	print("[9] The throw perimeter passes through the last reachable GU centres\n")
+	var whole := 7.0
+	var axes: Vector2 = IsoProjection.floor_circle_semi_axes(whole)
+	var on_rim := true
+	for offset: Vector2i in [Vector2i(7, 0), Vector2i(-7, 0), Vector2i(0, 7), Vector2i(0, -7)]:
+		if absf(_normalised_radius(offset.x, offset.y, axes) - 1.0) > EPS:
+			_fail("at R=%.1f GU, cell %s is not on the perimeter" % [whole, offset])
+			on_rim = false
+	if on_rim:
+		_pass("at R=7 GU the ellipse runs exactly through those 4 cell centres")
+
+	## The counter-case, which is why this test exists: 6.5² = 42.25 is not a sum
+	## of two squared integers, so no cell centre can sit on that rim at all.
+	var half: float = 6.5
+	var half_axes: Vector2 = IsoProjection.floor_circle_semi_axes(half)
+	var any_hit := false
+	for dx: int in range(-7, 8):
+		for dy: int in range(-7, 8):
+			if absf(_normalised_radius(dx, dy, half_axes) - 1.0) <= EPS:
+				any_hit = true
+	if any_hit:
+		_fail("a 6.5 GU perimeter touches a cell centre — the premise of this test is wrong")
+	else:
+		_pass("a 6.5 GU perimeter touches no cell centre at all — keep the radius whole")
 	print("")
 
 

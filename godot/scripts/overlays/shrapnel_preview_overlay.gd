@@ -33,13 +33,20 @@ class_name ShrapnelPreviewOverlay
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 ## Tuning — `var` per architecture Rule 1.
-## Fragments, not light: dark iron, drawn MIX so it reads as a mark on the floor.
-var ray_color: Color = Color(0.05, 0.05, 0.06, 1.0)
+## Director, 2026-08-10, second revision: "não gostei dos raios pretos, vamos
+## usar laranja avermelhado."
+var ray_color: Color = Color(1.0, 0.42, 0.14, 1.0)
 var line_width: float = 2.0
 ## Per-ring alpha, index = ring distance from the target GU. Index 0 is the
 ## target cell itself: its "ray" has zero length, so it is skipped outright and
 ## the 0.0 here only documents that.
 var ring_alpha: PackedFloat32Array = PackedFloat32Array([0.0, 0.70, 0.45, 0.25])
+
+## Where the fragments come FROM, in GU above the floor — "vamos subir só um
+## pouquinho a altura do centro dos raios, pra ficar na posição aproximada da
+## granada sobre o chão." Projected through AXIS_Z, so it is a real height, not
+## a pixel nudge.
+var ray_origin_lift_gu: float = 0.18
 
 ## How far past the reached cell's own centre a fragment carries. Shrapnel does
 ## not stop politely at a grid line.
@@ -51,6 +58,18 @@ var length_scale: float = 1.15
 ## projection rather than typed in, so this stays correct if the tile ever
 ## changes shape.
 var circularity: float = 1.0
+
+## Extra reach on the horizontal only — "fazer os raios se estenderem mais um
+## pouco lateralmente." Applied after `circularity`, so the star is a touch
+## wider than tall rather than a perfect circle.
+var lateral_scale: float = 1.3
+
+## Ground braking — "os raios não podem ir totalmente para baixo, precisam ser
+## menores na base, considerando que o chão vai frear o impacto." A fragment
+## thrown straight down the screen (toward the camera, into the floor) keeps
+## only this fraction of its reach; one going straight up keeps all of it, and
+## everything between is interpolated by how downward it points.
+var ground_brake: float = 0.42
 
 ## Fragments emitted per reached cell, fanned symmetrically around the cell's own
 ## direction by `spread_rad` either side of centre.
@@ -85,7 +104,10 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 		push_error("[ShrapnelPreviewOverlay] setup() never ran — no floor_layer to project with")
 		return
 
-	var origin: Vector2 = _cell_to_screen(source_gu)
+	## The fragments leave the grenade, which is sitting slightly above the floor,
+	## not the floor plane itself.
+	var ground: Vector2 = _cell_to_screen(source_gu)
+	var origin: Vector2 = ground + IsoProjection.AXIS_Z * ray_origin_lift_gu
 	var y_scale: float = lerpf(1.0, IsoProjection.AXIS_X.x / IsoProjection.AXIS_X.y, circularity)
 	var fan: int = maxi(rays_per_cell, 1)
 
@@ -99,9 +121,10 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 
 		## Undo the isometric squash on the OUTWARD vector only — the ray still
 		## starts and aims at the real cell, it just carries the extra distance
-		## the flattened projection would otherwise hide.
-		var delta: Vector2 = _cell_to_screen(cell) - origin
-		var out := Vector2(delta.x, delta.y * y_scale)
+		## the flattened projection would otherwise hide. `lateral_scale` then
+		## buys back a little width on top.
+		var delta: Vector2 = _cell_to_screen(cell) - ground
+		var out := Vector2(delta.x * lateral_scale, delta.y * y_scale)
 
 		for k: int in range(fan):
 			## Symmetric fan: one ray dead-on when fan is odd, ±spread_rad
@@ -110,8 +133,9 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 			var offset_index: float = float(k) - (float(fan) - 1.0) * 0.5
 			var angle: float = offset_index * spread_rad
 			var jitter: float = lerpf(0.82, 1.0, _hash01(cell, k))
+			var aimed := out.rotated(angle)
 			_ray_froms.append(origin)
-			_ray_tos.append(origin + out.rotated(angle) * length_scale * jitter)
+			_ray_tos.append(origin + aimed * length_scale * jitter * _ground_factor(aimed))
 			_ray_alphas.append(alpha)
 
 	visible = not _ray_froms.is_empty()
@@ -123,6 +147,18 @@ func _draw() -> void:
 	for i: int in _ray_froms.size():
 		draw_line(_ray_froms[i], _ray_tos[i],
 			Color(c.r, c.g, c.b, _ray_alphas[i]), line_width)
+
+
+## How much of its reach a fragment keeps, given the direction it left in.
+## 1.0 straight up, `ground_brake` straight down, interpolated by the downward
+## component in between — the floor is in the way on that side.
+func _ground_factor(direction: Vector2) -> float:
+	var length: float = direction.length()
+	if length < 0.001:
+		return 1.0
+	## +Y is down the screen, so this is 1.0 for a fragment aimed at the floor.
+	var downward: float = clampf(direction.y / length, 0.0, 1.0)
+	return lerpf(1.0, ground_brake, downward)
 
 
 ## Deterministic [0,1) from a cell and a fan index — fragments want uneven

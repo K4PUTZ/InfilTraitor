@@ -28,6 +28,7 @@ const AimBubbleOverlayClass = preload("res://godot/scripts/overlays/aim_bubble_o
 const ThrowPerimeterOverlayClass = preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")
 const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_overlay.gd")
 const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")
+const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
@@ -486,6 +487,7 @@ var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
 var _throw_arc_overlay: Node2D = null  ## T-ARC — parabolic throw arc
 var _shrapnel_preview_overlay: Node2D = null  ## T-FRAG — aiming shrapnel rays
+var _target_cursor_overlay: Node2D = null  ## T-CURSOR — hatched grenade marker
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -760,6 +762,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_throw_arc_overlay.clear()  ## T-ARC: same reasoning as the overlays above
 	if _shrapnel_preview_overlay != null:
 		_shrapnel_preview_overlay.clear()  ## T-FRAG: same reasoning as the overlays above
+	if _target_cursor_overlay != null:
+		_target_cursor_overlay.clear()  ## T-CURSOR: same reasoning as the overlays above
 	if _camera_controller != null:
 		## E-FLASH-01: a map load mid-shake must not leave the camera displaced.
 		_camera_controller.stop_shake()
@@ -995,6 +999,11 @@ func _ready() -> void:
 	_shrapnel_preview_overlay = ShrapnelPreviewOverlayClass.new()
 	add_child(_shrapnel_preview_overlay)
 	_shrapnel_preview_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+
+	## T-CURSOR: the hatched grenade standing on the target cell, in place of
+	## SelectionOverlay's magenta diamond while a throw is being aimed.
+	_target_cursor_overlay = TargetCursorOverlayClass.new()
+	add_child(_target_cursor_overlay)
 
 	## VL-D4: ember glow overlay (blast VFX). z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -1483,6 +1492,8 @@ func _set_perspective(direction: String) -> void:
 			_throw_arc_overlay.clear()
 		if _shrapnel_preview_overlay != null:
 			_shrapnel_preview_overlay.clear()
+		if _target_cursor_overlay != null:
+			_target_cursor_overlay.clear()
 		if _explosion_flash_overlay != null:
 			## E-FLASH-01: the fireball is anchored in the OLD view's screen
 			## space, exactly like the ember glow above it.
@@ -2069,6 +2080,8 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	if _shrapnel_preview_overlay != null:
 		## Same tick as the aim dome; tree order (added after it) puts the rays on top.
 		_shrapnel_preview_overlay.z_index = max_voxel_z_index + 9
+	if _target_cursor_overlay != null:
+		_target_cursor_overlay.z_index = max_voxel_z_index + 10
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —

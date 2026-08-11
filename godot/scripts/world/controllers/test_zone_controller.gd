@@ -45,8 +45,16 @@ var _targeting_target_gu: Vector2i = Vector2i.ZERO
 ##
 ## Was `max_ring * 112.0 * 3.0` px, a stack of magic numbers that worked out to
 ## 5.57 GU by accident. Director, 2026-08-10, on the real thing: "O perímetro em
-## vermelho parece ok, poderia ser um pouquinho mais largo."
-var throw_range_gu: float = 6.5
+## vermelho parece ok, poderia ser um pouquinho mais largo" → 6.5, then "o
+## perímetro precisa passar pelo centro das últimas GUs que o arremesso alcança"
+## → **7.0**.
+##
+## KEEP THIS A WHOLE NUMBER. The projection preserves grid distance exactly
+## (iso_projection_selftest [6]), so a cell exactly R GU away lands exactly ON
+## the drawn ellipse — but only if R is a whole number of cells, because cell
+## centres only ever sit at integer offsets. At 6.5 the line ran through empty
+## space between two rings and meant nothing on the board.
+var throw_range_gu: float = 7.0
 
 ## Radius of the aim dome, in GAME UNITS. Deliberately NOT derived from
 ## `bomb_def.ring_multipliers.size()`: the dome is the readable shape of the
@@ -325,14 +333,30 @@ func _update_grenade_targeting_display() -> void:
 	if room._throw_arc_overlay != null:
 		room._throw_arc_overlay.show_arc(agent_pos, target_pos)
 
-	## T-FRAG: the shrapnel rays, from the SAME wall-aware BFS the real blast
-	## floods with, so a cell the grenade cannot reach never gets a ray. Cheap
-	## enough to redo per hover: `max_ring` is 3, so this walks ~25 cells — the
-	## expensive prediction is `_begin_preproduction()`, which stays on the throw.
+	## The SAME wall-aware BFS the real blast floods with feeds both the rays and
+	## the highlighted footprint, so a cell the grenade cannot reach gets neither.
+	## Cheap enough to redo per hover: `max_ring` is 3, so this walks ~25 cells —
+	## the expensive part is `_begin_preproduction()`, which stays on the throw.
+	var gu_rings := BlastCalculatorClass.flood_gu_rings(_targeting_target_gu, bomb_def,
+		_blocked_edges_dict(), room._blocked_cells)
+
+	## T-FRAG: the shrapnel rays.
 	if room._shrapnel_preview_overlay != null:
-		var gu_rings := BlastCalculatorClass.flood_gu_rings(_targeting_target_gu, bomb_def,
-			_blocked_edges_dict(), room._blocked_cells)
 		room._shrapnel_preview_overlay.show_rays(_targeting_target_gu, gu_rings)
+
+	## T-HATCH: the affected GUs, at the base of the dome — Director: "assim como
+	## no Phoenix Point, vamos realçar as GUs afetadas pela granada, para indicar
+	## quais inimigos vão ser atingidos." Same overlay the right-click menu
+	## already uses, with its hatch turned on for the extra emphasis asked for.
+	if room._blast_wireframe_overlay != null:
+		room._blast_wireframe_overlay.show_footprint(gu_rings.keys(), true)
+
+	## T-CURSOR: the hatched grenade replaces the magenta selection diamond for
+	## as long as the throw is being aimed.
+	if room._target_cursor_overlay != null:
+		room._target_cursor_overlay.show_at(target_pos)
+	if room.selection_overlay != null:
+		room.selection_overlay.visible = false
 
 
 ## Throw the grenade at the target the preview is showing.
@@ -375,6 +399,13 @@ func _cleanup_grenade_targeting_ui() -> void:
 		room._throw_arc_overlay.clear()
 	if room._shrapnel_preview_overlay != null:
 		room._shrapnel_preview_overlay.clear()
+	if room._blast_wireframe_overlay != null:
+		room._blast_wireframe_overlay.clear()
+	if room._target_cursor_overlay != null:
+		room._target_cursor_overlay.clear()
+	## The magenta diamond only steps aside for the duration of the throw.
+	if room.selection_overlay != null:
+		room.selection_overlay.visible = true
 
 
 ## T-BUBBLE: snap a target cell to the closest one within `throw_range_gu`.

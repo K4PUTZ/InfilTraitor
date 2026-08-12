@@ -422,12 +422,31 @@ trace above is the evidence rather than a screenshot claimed to stand for one.
 
 ### 6.2 Standing
 
-- **Wall sectioning of the dome.** The Director asked for a sphere sectioned by
-  the floor *and by nearby walls*; only the floor section is built. Walls need
-  the depth classification `FloatingCollectible` already uses
-  (`VoxelRenderer.classify_geometry_over_rect()`, OcclusionSet policy O5) —
-  `z_index` encodes HEIGHT in this project and cannot express "behind that wall
-  but in front of this one".
+- **Wall sectioning of the dome — ATTEMPTED 2026-08-11/12, PAUSED, not the
+  depth trick this section used to propose.** `classify_geometry_over_rect()`/
+  OcclusionSet O5 turned out to be the wrong tool — it only answers "in front
+  of or behind," never "cut by, up to this real height," and the Director's
+  follow-up ("vamos ter parapeitos, morros e outros cenários com paredes mais
+  baixas — precisamos calcular por edge e por slice") ruled out any version
+  that treats a wall as a uniform full-height plane. What got built instead:
+  `AimBubbleOverlay` grew a real lat/long wireframe grid (`IsoProjection.
+  project_point()`, new and additive), and `RoomBuilder` now retains
+  `EdgeExtractor`'s per-edge `start_storey`/`storey_count` on
+  `room._wall_height_edges` (1 storey == 1 GU) instead of discarding it right
+  after `SliceGenerator` consumes it — the real per-edge, per-height data the
+  Director asked for. Each grid vertex was cast as a 3D ray from the dome's
+  centre, clamped to whichever is nearer: the sphere surface, or a wall plane
+  whose real `[start_storey, start_storey+storey_count)` range covers the hit
+  point. Verified working end to end (a real detonation-adjacent wall bent two
+  meridians into straight lines tracing its face, `grenade_wall_grid_molded.
+  png`). **Then reverted on sight**, 2026-08-11: *"a distorção não é assim...
+  vai ser uma coisa mais angulosa"* — the curved ray-clamp is the wrong SHAPE,
+  not a wrong mechanism in principle, and the request needs a refined spec
+  before it's rebuilt. `AimBubbleOverlay` is back to a plain undistorted grid
+  (`grid_line_width` 1.2 → 1.8 for legibility); `room._wall_height_edges`
+  stays populated and documented as currently unconsumed — cheap, tested,
+  correct on its own, and exactly what the next attempt will need, so
+  re-deriving it later would be pure waste.
 - ~~The click-driven `test_zone_*` capture actions are dead.~~ **CLOSED
   2026-08-10.** `ecdae79` had removed the right-click → `open_menu_for()` path
   ("now G-key only"), taking `test_zone_menu` / `test_zone_detonate` /
@@ -440,8 +459,8 @@ trace above is the evidence rather than a screenshot claimed to stand for one.
 
 ### 6.3 Found in passing, NOT this plan's to fix
 
-Both predate this work and both are silently-inert features rather than visible
-breakage, which is why neither surfaced on its own.
+Both predate this work; neither surfaced on its own because both are
+silently-inert rather than visible breakage. One is now closed.
 
 - **`detonation_choreographer_selftest` fails, deterministically.** "One frame
   carries 367/403 steps (91.1%) — the sequence is collapsing again." Cause
@@ -449,23 +468,38 @@ breakage, which is why neither surfaced on its own.
   taking 546 of 949 steps out of the paced queue, and the front lost its spread.
   Restoring those four rows returns the suite to 10 PASS / 0 FAIL with the
   heaviest frame at 53.7%. This is the blast pacing the Director wants to close
-  next, so it belongs to `EXPLOSION_REBUILD_MASTER_PLAN`, not here.
-- **E-FRAG's post-blast debris has never fired.** Every detonation raises
-  `Invalid call. Nonexistent function 'cell_level_to_world' in base
-  VoxelRenderer` from `shrapnel_overlay.gd:49`; `debug_ray_overlay.gd:45` makes
-  the same call. Dates to `0c728c6`. Confirmed pre-existing by stashing this
-  session's changes and reproducing at `71c60af`.
+  next, so it belongs to `EXPLOSION_REBUILD_MASTER_PLAN`, not here. Still
+  failing as of 2026-08-12 (re-checked, unrelated to this session's work).
+- **E-FRAG's post-blast debris has never fired — CLOSED 2026-08-12.** Two
+  bugs, both silent because nothing but a real detonation exercises the path.
+  `shrapnel_overlay.gd:49` and `debug_ray_overlay.gd:45` both called
+  `VoxelRenderer.cell_level_to_world()`, which never existed — every
+  detonation raised a SCRIPT ERROR and aborted before a single fragment/ray
+  was built (confirmed NOT to abort the caller too: `_start_waves()` right
+  after it always ran, so real destruction was never affected). Real name:
+  `voxel_world_position(cell, level)`. Once fragments spawned, they still
+  didn't render — `BLEND_MODE_ADD` on the near-black "dark iron" colour adds
+  almost nothing to the frame under it. Proven by forcing a bright colour and
+  tracing every `_draw()` call: geometry, timing and z-index were all already
+  correct, only invisible. Switched to `BLEND_MODE_MIX`. Evidence:
+  `grenade_shrapnel_verified_bright.png` (forced colour, proves the pipeline),
+  `grenade_shrapnel_dark_iron.png` (real tuning), `grenade_debug_rays.png`
+  (E-DEBUG-RAY's 200 rays, same fix).
 
 ---
 
 ## 7. Schedule
 
-Tasks 1–4 are done, the whole chain runs end to end, and **§6.1 A and B are both
-closed** (2026-08-11). Next session, in order:
+Tasks 1–4 are done, the whole chain runs end to end, **§6.1 A and B are both
+closed** (2026-08-11), and **E-FRAG/E-DEBUG-RAY are closed** (2026-08-12, §6.3).
+Next session, in order:
 
-1. **§6.2 — wall sectioning of the dome**, the last part of the Director's
-   original brief still unbuilt, and the only one needing new machinery
-   (`VoxelRenderer.classify_geometry_over_rect()`, OcclusionSet policy O5).
+1. **§6.2 — wall sectioning of the dome, refined spec needed.** The
+   ray-clamp mechanism works and the height-aware data (`room.
+   _wall_height_edges`) is already retained — what's missing is the
+   Director's "mais angulosa" shape spelled out concretely (which geometric
+   primitive, what the transition looks like) before it goes back into
+   `AimBubbleOverlay`.
 2. Throw feel beyond that: SFX, and whether the arc should be dev-only after all
    (see §4's flagged judgement call).
 

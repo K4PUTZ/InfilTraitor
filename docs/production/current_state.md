@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.96 · **Updated:** 2026-08-11 · **Branch:** main
+**Version:** 0.9.96 · **Updated:** 2026-08-12 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -50,6 +50,7 @@
 - RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md
 - RESUMO_SESSAO_2026-08-10_GRENADE_SHRAPNEL_PLAN.md
 - RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md
+- RESUMO_SESSAO_2026-08-11_GRENADE_SHADOW_ROLL.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -67,11 +68,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 52827f8 ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
 - cced231 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 - 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 - 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
 - 0f37d96 ALPHA FLOOR FACADE FIX 0.9.92 - doc sweep, PLAYGROUND floor zones, baked-decal contact sheet
-- 6a59c6f ALPHA MATERIAL UNIFICATION 0.9.91 - one grayscale facade per material serves wall, roof and floor
 <!-- AUTO:END version_history -->
 
 ---
@@ -583,17 +584,27 @@ the blast from "the waves fire" to something that reads right. Full record:
   - **Right-click "Detonar" is back**, alongside the G-key flow: G throws a NEW
     grenade, right-click detonates one already on the floor — which is what
     keeps the choreography and performance work testable.
-  - **Still open** (`TARGETING_MASTER_PLAN` §6): the grenade's ground shadow
-    (shader written, not wired); the settle roll still quantised at 1/16 and
-    1/32 instead of graduating freely with angle and energy; wall sectioning of
-    the dome. **One rule Phase B must not break:** any new committed mutation
-    calls `room.bump_world_revision()`, or cached predictions go stale.
-  - **Found, not fixed, both pre-existing:** `detonation_choreographer_selftest`
-    fails deterministically (91% of the front on one frame) since `[E-FUME]`
-    pulled soot out of `WAVE_TABLE` — proven red/green; and E-FRAG's post-blast
-    debris has never fired, because `shrapnel_overlay.gd:49` calls a
-    `VoxelRenderer` method that does not exist. Blast debris VFX
-    (dust/spark/chip) also remains deliberately disconnected from Task 5.
+  - **Closed since (`TARGETING_MASTER_PLAN` §6.1/§6.3):** the grenade's ground
+    shadow (2026-08-11, `_sync_shadow_transform()` undoes the parent's whole
+    transform so the shadow doesn't orbit the tumbling sprite); the settle roll
+    now graduates freely with distance/energy instead of quantised 1/16-1/32
+    fractions; E-FRAG's shrapnel and E-DEBUG-RAY's rays both fire for real now
+    (2026-08-12 — wrong `VoxelRenderer` method name, then a near-black colour
+    on `BLEND_MODE_ADD` that rendered every frame while being invisible).
+  - **Wall sectioning of the dome — attempted 2026-08-11/12, paused.** A real
+    lat/long wireframe grid was built (`IsoProjection.project_point()`), with
+    each vertex cast as a 3D ray that clamps to the nearest wall whose real
+    per-edge height (`room._wall_height_edges`, retained from `EdgeExtractor`
+    instead of discarded) covers the hit point — verified against a real wall,
+    a meridian bent into a straight line tracing its face. Reverted on sight:
+    *"a distorção não é assim... vai ser uma coisa mais angulosa"* — wrong
+    shape, needs a refined spec. The dome's grid is a plain undistorted
+    wireframe for now; the height-aware data stays retained for the redo.
+  - **`detonation_choreographer_selftest` still fails, deterministically**
+    (91% of the front on one frame) since `[E-FUME]` pulled soot out of
+    `WAVE_TABLE` — proven red/green, unrelated to the two paragraphs above.
+    Blast debris VFX (dust/spark/chip) also remains deliberately disconnected
+    from Task 5.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently
   unreachable to test since camera rotation is disabled (ROTATE-KILL-01);
   damage *state* already survives rotation correctly.

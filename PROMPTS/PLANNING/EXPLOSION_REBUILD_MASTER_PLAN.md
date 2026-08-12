@@ -12,6 +12,15 @@ is now unblocked. See the **"E-FRAG-01 / E-SHARD-01 (2026-08-10)"** section at
 the end of this file for the task table, implementation notes, and the scope
 boundary: a real room-wide relight after a blast is confirmed real but belongs
 to its own future gameplay milestone alongside cover/exposure.
+>
+> **Correction, 2026-08-12:** "complete" was wrong for E-FRAG/E-DEBUG-RAY —
+> both called a `VoxelRenderer` method (`cell_level_to_world`) that never
+> existed, so every real detonation silently aborted before a fragment or ray
+> was built. Real destruction was unaffected (the SCRIPT ERROR did not abort
+> the caller). Fixed along with a second bug that would have kept the
+> fragments invisible anyway (`BLEND_MODE_ADD` on a near-black colour). Detail
+> in `TARGETING_MASTER_PLAN.md` §6.3, since that is where the bug was first
+> found and logged as pre-existing.
 
 <details><summary>Previous update — 2026-08-09, session close (Alpha Explosion Flow)</summary>
 

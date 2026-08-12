@@ -3952,6 +3952,22 @@ func _run_auto_screenshot_capture() -> void:
 			## selected grenade 0, which after the first throw is spent and
 			## invisible. A capture of one throw can never show this; only the
 			## second one can, so the check is which prop is in the air.
+			##
+			## INFILTRAITOR_CAPTURE_SECOND_OFFSET="x,y" moves where the SECOND
+			## throw lands relative to the first; default (1,0) is the original
+			## behaviour, byte for byte. "0,0" puts both on the same GU, which is
+			## the only way to exercise D2's deep-layer unlock
+			## (`deep_layer_unlocked` reads `_gu_blast_count[gu] > 0`) from the
+			## unattended harness — the Director's "jogando duas ou mais granadas
+			## no mesmo lugar aparecem alguns voxels especiais".
+			var second_offset := Vector2i(1, 0)
+			var offset_env := OS.get_environment("INFILTRAITOR_CAPTURE_SECOND_OFFSET")
+			if offset_env.contains(","):
+				var off_parts := offset_env.split(",")
+				if off_parts.size() == 2 and off_parts[0].is_valid_int() and off_parts[1].is_valid_int():
+					second_offset = Vector2i(off_parts[0].to_int(), off_parts[1].to_int())
+				else:
+					push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_SECOND_OFFSET '%s' — expected 'x,y'" % offset_env)
 			for shot: int in range(2):
 				var g_down2 := InputEventKey.new()
 				g_down2.keycode = KEY_G
@@ -3967,7 +3983,7 @@ func _run_auto_screenshot_capture() -> void:
 					[shot + 1, is_grenade_targeting(),
 					_test_zone_controller._targeting_grenade_index])
 				var motion2 := InputEventMouseMotion.new()
-				motion2.position = _tile_to_screen_center(aim_cell + Vector2i(shot, 0))
+				motion2.position = _tile_to_screen_center(aim_cell + second_offset * shot)
 				_input(motion2)
 				for _j in range(5):
 					await get_tree().process_frame
@@ -3979,7 +3995,14 @@ func _run_auto_screenshot_capture() -> void:
 				e_up.keycode = KEY_ENTER
 				e_up.pressed = false
 				Input.parse_input_event(e_up)
-				for _j in range(150):
+				## Honours INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES like every
+				## other detonating action, defaulting to the 150 this always
+				## used. The blast's own smoke runs 1.8-3.2 s, so 150 frames
+				## lands mid-cloud — fine for "did a second grenade fly", useless
+				## for looking at the crater it left.
+				var second_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
+				var second_wait: int = second_wait_env.to_int() if second_wait_env.is_valid_int() else 150
+				for _j in range(maxi(second_wait, 0)):
 					await get_tree().process_frame
 
 		if capture_action == "grenade_tap":

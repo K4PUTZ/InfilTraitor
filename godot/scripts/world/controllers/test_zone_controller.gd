@@ -926,9 +926,9 @@ func _warm_prediction(job: DetonationPrediction) -> void:
 		room._voxel_renderer.minted_light_alt_count() - minted_before, pages,
 		float(Time.get_ticks_usec() - warm_start_us) / 1000.0])
 	_prof("WARM carries — %s" % _plan_inventory(job.delta.waves))
-	var dropped: int = _entries_no_wave_table_row(job.delta.waves)
+	var dropped: int = _entries_playback_will_drop(job.delta.waves)
 	if dropped > 0:
-		push_warning("[P-WARM] %d plan entr(ies) sit in a (kind, ring) bucket DetonationChoreographer.WAVE_TABLE never plays — computed, warmed, and dropped. See _entries_no_wave_table_row()." % dropped)
+		push_warning("[P-WARM] %d plan entr(ies) are in a kind DetonationChoreographer never plays — computed, warmed, and dropped. See _entries_playback_will_drop()." % dropped)
 	## The frame this returns on is the one that pays the rebuild; waiting for it
 	## here keeps the caller's own timing line honest about where it landed.
 	await room.get_tree().process_frame
@@ -954,37 +954,26 @@ func _plan_inventory(plan: Dictionary) -> String:
 	return " ".join(parts)
 
 
-## Plan entries whose (kind, ring) bucket has no row in
-## `DetonationChoreographer.WAVE_TABLE` — so the pipeline computes them, this
-## warm-up pre-mints their tiles, and playback then never reads the bucket.
+## Plan entries in a kind `DetonationChoreographer` never draws — computed by the
+## pipeline, pre-minted by this warm-up, then never read.
 ##
-## FOUND BY THIS COUNTER, 2026-08-12, and NOT fixed here because the two sources
-## genuinely disagree and the answer is the Director's:
+## THIS COUNTER EARNED ITS KEEP ON THE DAY IT SHIPPED. It found 18 ring-2 dents
+## dropped on every PLAYGROUND blast, because the choreographer's `WAVE_TABLE`
+## re-gated by ring what `frag_grenade.json`'s own `dent_ring_weights` had
+## already decided, and the two had drifted. E-ORGANIC-02 removed that second
+## gate (Director: "vamos liberar eles para serem orgânicos, e não limitados
+## pelos rings"), so rings can no longer be the cause — but the KIND axis still
+## can, and a new plan key nobody wired into playback would be exactly as silent.
 ##
-##   · `WAVE_TABLE` plays `dented` at rings 0 and 1 only, matching
-##     EXPLOSION_REBUILD_MASTER_PLAN §4.2's statement of the Director's table —
-##     *"dented never appears in ring 2"*.
-##   · the shipped `frag_grenade.json` says `dent_ring_weights: [1.0, 0.8, 0.25,
-##     0.0]`, i.e. ring 2 dents at a quarter strength — and §4.2 itself calls
-##     those weights *"tuning knobs, expected to move after the first real
-##     capture"*, so the JSON is plausibly the NEWER intent.
-##
-## On a real PLAYGROUND throw that is 18 dents planned and dropped every time.
-## Whichever way it is settled — a `["dented", 2]` row, or a `0.0` weight — one
-## of the two files is currently lying, and this counter is how the next one gets
-## caught instead of sitting silent for a session.
-##
-## `soot` is deliberately exempt: E-FUME took it out of WAVE_TABLE on purpose and
-## `_run_queue()` applies it as its own late step after the front.
-func _entries_no_wave_table_row(plan: Dictionary) -> int:
-	var played: Dictionary = {}
-	for pair: Array in DetonationChoreographerClass.WAVE_TABLE:
-		played["%s/%d" % [pair[0], pair[1]]] = true
+## `soot` is deliberately exempt: E-FUME took it out of the played kinds on
+## purpose and `_run_queue()` applies it as its own late step after the front.
+func _entries_playback_will_drop(plan: Dictionary) -> int:
 	var dropped: int = 0
-	for kind: String in ["destroy", "dented", "cracked", "smoke"]:
-		for ring: int in plan.get(kind, {}).keys():
-			if not played.has("%s/%d" % [kind, ring]):
-				dropped += plan[kind][ring].size()
+	for kind: String in plan.keys():
+		if kind == "soot" or DetonationChoreographerClass.PLAYED_KINDS.has(kind):
+			continue
+		for ring: int in plan[kind].keys():
+			dropped += plan[kind][ring].size()
 	return dropped
 
 

@@ -151,16 +151,49 @@ var front_frames: int = 5
 ## together: raising jitter past the band width dissolves the banding entirely.
 var band_voxels: float = 1.0
 
-## §1 step 10's table, inner rings first — the one authoritative order.
-## [kind, ring] pairs; kind indexes directly into the plan's own top-level keys.
-## E-FUME: soot is no longer in this table; it's its own late fade-in step after
-## smoke (see _apply_entry's "soot" handler and _run_queue's end-of-sequence).
-const WAVE_TABLE: Array = [
-	["destroy", 0], ["destroy", 1], ["destroy", 2],
-	["dented", 0], ["dented", 1],
-	["cracked", 1], ["cracked", 2],
-	["smoke", 0], ["smoke", 1], ["smoke", 2], ["smoke", 3],
-]
+## The kinds playback draws, inner rings first within each — what used to be a
+## hardcoded [kind, ring] table (§1 step 10's).
+##
+## E-ORGANIC-02 (Director, 2026-08-12): *"Me parece que você já descobriu uma
+## pista aí de que os dentes e crackeds não estão sendo bem construídos. Vamos
+## liberar eles para serem orgânicos, e não limitados pelos rings."*
+##
+## THE RINGS ARE GONE FROM HERE, and that is a deletion of a SECOND gate rather
+## than a loosening of the only one. The bomb's own JSON already decides which
+## rings each tier reaches — `frag_grenade.dent_ring_weights` is
+## `[1.0, 0.8, 0.25, 0.0]`, so ring 2 dents at a quarter strength and ring 3 not
+## at all. The table then re-gated the same decision by hand and the two drifted:
+## it listed `dented` at rings 0-1 only, matching EXPLOSION_REBUILD_MASTER_PLAN
+## §4.2's FIRST-PASS weights (`[1.0, 0.45, 0.0, 0.0]`), which §4.2 itself calls
+## "tuning knobs, expected to move after the first real capture". They moved; the
+## table did not. Measured cost of that drift on a real PLAYGROUND throw: **18
+## dents planned, warmed, and silently dropped, every single blast** — found by
+## P-WARM's own dropped-entry counter, not by looking at the picture.
+##
+## So a tier's reach is now decided in exactly one place, the place designed to
+## decide it. Whatever the plan holds gets drawn.
+##
+## E-FUME: soot is not here; it is its own late fade-in step after smoke (see
+## _apply_entry's "soot" handler and _run_queue's end-of-sequence).
+const PLAYED_KINDS: Array[String] = ["destroy", "dented", "cracked", "smoke"]
+
+
+## The (kind, ring) waves a given plan actually contains, in PLAYED_KINDS order
+## with rings ascending — the data-driven successor to the old WAVE_TABLE
+## constant, and the reason a ring can no longer be reached by the calculation
+## layer and missed by the playback one.
+##
+## Rings are sorted rather than taken in Dictionary order: `_apply_wave()` and
+## the selftest both read this as "inner rings first", and a plan's keys arrive
+## in insertion order, which is not the same promise.
+static func wave_table_for(plan: Dictionary) -> Array:
+	var table: Array = []
+	for kind: String in PLAYED_KINDS:
+		var rings: Array = plan.get(kind, {}).keys()
+		rings.sort()
+		for ring: int in rings:
+			table.append([kind, ring])
+	return table
 
 ## The DetonationPlan's own smoke entries carry no material (§6.1's literal
 ## shape — {world_pos, duration, scale} only, Task 4's own documented
@@ -229,8 +262,11 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 ## widest circle. The category is no longer a schedule; it is just what happens to
 ## be true at that radius.
 ##
-## WAVE_TABLE survives as the TIE-BREAK ordering (see KIND_RADIUS_BIAS): at the
-## same radius, a hole still leads its own scorch.
+## The TIE-BREAK is KIND_RADIUS_BIAS, not the table: at the same radius, a hole
+## still leads its own scorch. That is worth stating precisely because it is what
+## made E-ORGANIC-02 safe — since the queue sorts by radius and breaks ties by
+## KIND, the table's rings had stopped carrying any ordering at all and were a
+## pure FILTER. Dropping them changes what is drawn, never when.
 ##
 ## `expose` entries are broken out as their own steps rather than riding inside
 ## the destroy entry that carries them — one destroy entry can hold 628 exposure
@@ -241,7 +277,7 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 ## Static and pure so the ordering can be asserted directly in a selftest.
 static func flatten_plan(plan: Dictionary) -> Array:
 	var queue: Array = []
-	for pair in WAVE_TABLE:
+	for pair in wave_table_for(plan):
 		var kind: String = pair[0]
 		var ring: int = pair[1]
 		for entry in plan.get(kind, {}).get(ring, []):

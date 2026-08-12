@@ -184,9 +184,13 @@ func _pick_source_gu(built: Dictionary) -> Vector2i:
 
 
 func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> void:
-	print("[1] Every wave, applied in WAVE_TABLE order, writes exactly what the plan says\n")
+	print("[1] Every wave the plan holds, applied in order, writes exactly what the plan says\n")
 	var choreographer := DetonationChoreographerClass.new()
-	var table: Array = DetonationChoreographerClass.WAVE_TABLE
+	## E-ORGANIC-02 (2026-08-12): derived from the PLAN now, not from a constant.
+	## This is not a relaxation — it is strictly MORE than the constant covered,
+	## because the constant's hardcoded rings were dropping real plan entries
+	## (18 ring-2 dents per PLAYGROUND blast) that this assertion could never see.
+	var table: Array = DetonationChoreographerClass.wave_table_for(plan)
 
 	var destroy_erased := 0
 	var expose_placed := 0
@@ -260,7 +264,7 @@ func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> v
 func test_2_work_queue(plan: Dictionary) -> void:
 	print("[2] The plan flattens into one radially-ordered queue of single-cell steps\n")
 	var queue: Array = DetonationChoreographerClass.flatten_plan(plan)
-	var table: Array = DetonationChoreographerClass.WAVE_TABLE
+	var table: Array = DetonationChoreographerClass.wave_table_for(plan)
 
 	## 1. Nothing is dropped: every plan entry, plus every exposure reveal,
 	##    becomes exactly one step.

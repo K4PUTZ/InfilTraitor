@@ -193,10 +193,20 @@ var _waves_done: int = 0
 ## Starts the sequence. `plan` is a real DetonationPlanBuilder.build_plan()
 ## result; `voxel_renderer`/`smoke_overlay` are the real, live instances this
 ## sequence paints into; `tree` is the SceneTree its frames come from.
-func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
+## `precomputed_queue` (P-WARM, 2026-08-12) is `flatten_plan(plan)` already done
+## — during the throw, by TestZoneController's warm-up, instead of here at the
+## instant the grenade goes off. Measured at 8.5 ms on a real PLAYGROUND blast,
+## which is half a 60 fps frame spent sorting 1 590 entries on the one frame that
+## can least afford it. Empty means "not warmed", and this flattens it itself:
+## `detonate_active()`'s right-click path never runs pre-production, and the
+## selftests drive `flatten_plan()` directly.
+func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
+		precomputed_queue: Array = []) -> void:
 	_t0_ms = Time.get_ticks_msec()
 	_waves_done = 0
-	_run_queue(flatten_plan(plan), voxel_renderer, smoke_overlay, tree, plan)
+	var queue: Array = precomputed_queue if not precomputed_queue.is_empty() \
+		else flatten_plan(plan)
+	_run_queue(queue, voxel_renderer, smoke_overlay, tree, plan)
 
 
 ## E-RADIAL-01 (Director, 2026-08-09): "eu tô achando as waves duras, parece que

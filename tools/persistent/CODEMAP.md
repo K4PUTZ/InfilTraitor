@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 54718 lines total** (under `godot/scripts/`)
+**205 scripts · 54923 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -757,7 +757,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3245 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3252 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1771,7 +1771,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 475 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 485 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -2278,7 +2278,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_prediction.gd`
 
-`class_name DetonationPrediction` · extends `RefCounted` · 143 lines
+`class_name DetonationPrediction` · extends `RefCounted` · 168 lines
 
 `godot/scripts/systems/prediction/detonation_prediction.gd`
 
@@ -2293,17 +2293,6 @@ extends `Node2D` · 43 lines
 - `var steps: int = 0`
 - `var worst_step_ms: float = 0.0`
 - `var worst_step_phase: String = ""`
-
-**Public API**
-- `func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:`
-- `func step(budget_ms: float) -> bool:`
-- `func run(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:`
-- `func cancel() -> void:`
-- `func is_cancelled() -> bool:`
-- `func is_done() -> bool:`
-- `func progress() -> float:`
-- `func phase_name() -> String:`
-- `func profile_lines() -> Array[String]:`
 
 ---
 
@@ -4243,7 +4232,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1113 lines
+`class_name TestZoneController` · 1276 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

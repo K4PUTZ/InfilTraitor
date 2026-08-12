@@ -1487,6 +1487,13 @@ func _composite_generic_ceiling(plan: Dictionary, material_name: String,
 ##    re-applied or the cell jumps 10 px the instant its bucket changes.
 ##  - the modulate must derive from the tile's BASE modulate (baked pages are
 ##    tinted per page), not hardcoded white.
+## How many light-bucket alternatives have been minted on this renderer so far.
+## Diagnostics: P-WARM reports how many a blast's warm-up added, which is the
+## number that used to be paid one frame at a time during the blast itself.
+func minted_light_alt_count() -> int:
+	return _minted_light_alts.size()
+
+
 func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
 	if alt_id == 0 or alt_id == TileSetAtlasSource.TRANSFORM_FLIP_H:
 		return

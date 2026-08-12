@@ -736,7 +736,11 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	sprite.visible = false
 	grenade["detonated"] = true
 	_stop_pumping()
-	_start_detonation_sequence(_take_prediction(bomb_def, target_gu), target_gu, anchor)
+	var tk0: int = Time.get_ticks_usec()
+	var job: DetonationPrediction = _take_prediction(bomb_def, target_gu)
+	_prof("TAKE — _take_prediction (ctx rebuild + cache lookup) %.2f ms" % [
+		float(Time.get_ticks_usec() - tk0) / 1000.0])
+	_start_detonation_sequence(job, target_gu, anchor)
 
 
 ## T-BUBBLE: Check if currently in targeting mode
@@ -814,10 +818,9 @@ func _begin_preproduction(gu: Vector2i) -> void:
 	if bomb_def == null or room._edge_registry == null or room._slab_registry == null:
 		return
 	var ctx := _build_detonation_ctx(gu)
-	room._prediction_cache.request(
+	_pump_prediction(room._prediction_cache.request(
 		PredictionCache.blast_signature(BOMB_ID, gu, room._active_perspective),
-		room._world_revision, bomb_def, gu, ctx)
-	_pump_prediction()
+		room._world_revision, bomb_def, gu, ctx))
 
 
 ## Advances the cache's in-flight prediction one budget per frame until it
@@ -827,7 +830,7 @@ func _begin_preproduction(gu: Vector2i) -> void:
 ## the same reason `_start_detonation_sequence()` is one. Self-terminating (the
 ## cache stops being busy) and interruptible (`_stop_pumping()`), so there is no
 ## timer to leak and no second one can start while one is running.
-func _pump_prediction() -> void:
+func _pump_prediction(job: DetonationPrediction = null) -> void:
 	if _pumping:
 		return
 	_pumping = true
@@ -842,10 +845,163 @@ func _pump_prediction() -> void:
 	## `_pumping` is still true here when the loop ended because the CACHE went
 	## idle — that is the prediction finishing on its own. False means someone
 	## called `_stop_pumping()` and the work was abandoned part-built.
+	var finished: bool = _pumping
 	_prof("PUMP ends — %d frame(s) pumped, %.1f ms of real work at a %.1f ms budget (%s)" % [
 		pumped, float(pump_work_us) / 1000.0, predict_budget_ms,
-		"prediction finished" if _pumping else "interrupted"])
+		"prediction finished" if finished else "interrupted"])
+	if finished and job != null:
+		await _warm_prediction(job)
 	_pumping = false
+
+
+## P-WARM (Director, 2026-08-12): *"antes de mexer com o tempo e os frames, a
+## gente precisa garantir que a pré-produção da destruição está funcionando e
+## carrega todos os dados necessários (...) Assim a gente garante que estamos
+## vendo os frames 'livres', e não travando por conta de processamento."*
+##
+## The prediction being DONE was never the same thing as the blast being ready
+## to play. Three pieces of work survived into playback, and all three landed on
+## the frames the Director was watching:
+##
+##   · flattening + radially sorting the 1 590-step queue   8.5 ms, once
+##   · minting the TileSet alternatives each cell needs     ~105 ms PER FRAME
+##   · uploading the composited damage page to the GPU      ~133 ms, once
+##
+## The middle one is the whole story and it is not obvious: `_ensure_light_alt()`
+## calls `create_alternative_tile()`, which mutates the TileSet that EVERY
+## TileMapLayer shares, so a single new alternative on a frame forces the lot to
+## rebuild. That is why the cost was flat — a frame minting one alternative and a
+## frame minting three hundred cost the same, and a frame minting none cost
+## nothing. Measured end to end on a real PLAYGROUND throw:
+##
+##     before   5 wave frames over 753 ms   (~150 ms each)
+##     after    5 wave frames over  85 ms   (~17 ms each — a normal frame)
+##
+## Done HERE and not in the pipeline because two of the three mutate the
+## renderer, and `build_plan()` is pure by architecture (PREDICTION_MASTER_PLAN
+## §3.3). This is playback preparation that happens to be cheap to do early, not
+## part of the prediction — hence a controller step, and hence `warmed` living on
+## the job rather than inside the Delta.
+##
+## DELIBERATELY NOT SLICED, and that is the whole trick rather than an omission.
+## The first version budgeted the mint pass across frames the way the pump does,
+## and made things WORSE: it took the warm-up from one frame to five, and the
+## throw animation stuttered for 490 ms (measured, f=44 to f=49). The cost is not
+## the CPU of `_ensure_light_alt()` — that is ~19 ms for the lot — it is the
+## TileSet rebuild that any frame minting ANYTHING has to pay, once. Spreading
+## the mints spreads that penalty over every frame it touches.
+##
+## This is the same inversion DetonationChoreographer's own header warns about
+## ("a naive 'spread the work thinner' budget makes the blast three to twenty
+## times SLOWER"), met a second time from the other side. One frame pays it once.
+##
+## Where that frame LANDS is what makes it affordable: the prediction finishes
+## around +730 ms on a real throw, which is already past the 600 ms flight — so
+## the hitch falls while the grenade is sitting on the ground cooking, not while
+## it is arcing through the air.
+func _warm_prediction(job: DetonationPrediction) -> void:
+	if job.delta == null or job.warmed:
+		return
+	var warm_start_us: int = Time.get_ticks_usec()
+	var minted_before: int = room._voxel_renderer.minted_light_alt_count()
+
+	## 1. The playback queue. Pure, so it could live anywhere; it lives here
+	##    because this is the only place with a frame to spare.
+	job.playback_queue = DetonationChoreographerClass.flatten_plan(job.delta.waves)
+
+	## 2. Every tile alternative the plan will place. Walks the PLAN rather than
+	##    the queue, so soot — which E-FUME took out of WAVE_TABLE and applies as
+	##    its own late step — is covered too.
+	for triple: Array in _plan_light_alt_triples(job.delta.waves):
+		room._voxel_renderer._ensure_light_alt(triple[0], triple[1], triple[2])
+
+	## 3. Push the composited damage pages the PACKAGE phase blitted. Whole
+	##    2048x2048 pages, so this is a real upload — and it belongs in the same
+	##    frame as the mints, so the sequence pays one penalty and not two.
+	var pages: int = room._voxel_renderer.flush_damage_composite_pages()
+
+	job.warmed = true
+	_prof("WARM done — %d step(s) queued, %d alt(s) minted, %d page(s) uploaded, %.1f ms cpu" % [
+		job.playback_queue.size(),
+		room._voxel_renderer.minted_light_alt_count() - minted_before, pages,
+		float(Time.get_ticks_usec() - warm_start_us) / 1000.0])
+	_prof("WARM carries — %s" % _plan_inventory(job.delta.waves))
+	var dropped: int = _entries_no_wave_table_row(job.delta.waves)
+	if dropped > 0:
+		push_warning("[P-WARM] %d plan entr(ies) sit in a (kind, ring) bucket DetonationChoreographer.WAVE_TABLE never plays — computed, warmed, and dropped. See _entries_no_wave_table_row()." % dropped)
+	## The frame this returns on is the one that pays the rebuild; waiting for it
+	## here keeps the caller's own timing line honest about where it landed.
+	await room.get_tree().process_frame
+
+
+## What a finished plan actually holds, per kind — the Director's own acceptance
+## question for pre-production: *"carrega todos os dados necessários desde os
+## voxels destruídos até o disparo da fumaça e a fuligem"*. A zero here is the
+## honest way to find a stage that silently produces nothing, which is exactly
+## how the floor-dent path stayed inert for a session (CLAUDE.md's own example).
+func _plan_inventory(plan: Dictionary) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke"]:
+		var count: int = 0
+		for ring: int in plan.get(kind, {}).keys():
+			count += plan[kind][ring].size()
+		if kind == "expose":
+			count = 0
+			for ring2: int in plan.get("destroy", {}).keys():
+				for entry in plan["destroy"][ring2]:
+					count += entry.get("expose", []).size()
+		parts.append("%s=%d" % [kind, count])
+	return " ".join(parts)
+
+
+## Plan entries whose (kind, ring) bucket has no row in
+## `DetonationChoreographer.WAVE_TABLE` — so the pipeline computes them, this
+## warm-up pre-mints their tiles, and playback then never reads the bucket.
+##
+## FOUND BY THIS COUNTER, 2026-08-12, and NOT fixed here because the two sources
+## genuinely disagree and the answer is the Director's:
+##
+##   · `WAVE_TABLE` plays `dented` at rings 0 and 1 only, matching
+##     EXPLOSION_REBUILD_MASTER_PLAN §4.2's statement of the Director's table —
+##     *"dented never appears in ring 2"*.
+##   · the shipped `frag_grenade.json` says `dent_ring_weights: [1.0, 0.8, 0.25,
+##     0.0]`, i.e. ring 2 dents at a quarter strength — and §4.2 itself calls
+##     those weights *"tuning knobs, expected to move after the first real
+##     capture"*, so the JSON is plausibly the NEWER intent.
+##
+## On a real PLAYGROUND throw that is 18 dents planned and dropped every time.
+## Whichever way it is settled — a `["dented", 2]` row, or a `0.0` weight — one
+## of the two files is currently lying, and this counter is how the next one gets
+## caught instead of sitting silent for a session.
+##
+## `soot` is deliberately exempt: E-FUME took it out of WAVE_TABLE on purpose and
+## `_run_queue()` applies it as its own late step after the front.
+func _entries_no_wave_table_row(plan: Dictionary) -> int:
+	var played: Dictionary = {}
+	for pair: Array in DetonationChoreographerClass.WAVE_TABLE:
+		played["%s/%d" % [pair[0], pair[1]]] = true
+	var dropped: int = 0
+	for kind: String in ["destroy", "dented", "cracked", "smoke"]:
+		for ring: int in plan.get(kind, {}).keys():
+			if not played.has("%s/%d" % [kind, ring]):
+				dropped += plan[kind][ring].size()
+	return dropped
+
+
+## Every (source_id, atlas_coords, alt) a plan will hand to `set_cell()`.
+## `destroy` carries its reveals nested, and only ever erases on its own account;
+## `smoke` never touches a tile at all.
+func _plan_light_alt_triples(plan: Dictionary) -> Array:
+	var triples: Array = []
+	for kind: String in ["dented", "cracked", "soot"]:
+		for ring: int in plan.get(kind, {}).keys():
+			for entry in plan[kind][ring]:
+				triples.append([entry["source_id"], entry["atlas_coords"], entry["alt"]])
+	for ring2: int in plan.get("destroy", {}).keys():
+		for entry2 in plan["destroy"][ring2]:
+			for exposed in entry2.get("expose", []):
+				triples.append([exposed["source_id"], exposed["atlas_coords"], exposed["alt"]])
+	return triples
 
 
 func _stop_pumping() -> void:
@@ -976,7 +1132,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		for line in job.profile_lines():
 			print("[P-SLICE]   " + line)
 		print(room._prediction_cache.stats_line())
+	_prof("CENSUS — print_census done")
 	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
+	var rec0: int = Time.get_ticks_usec()
 	## VL-PERSIST: record every voxel this blast actually changed so rotation
 	## replays it — the exact set the Delta already carries, no second flood/
 	## find_affected_containers pass needed. Reads the real Voxel fields, so it
@@ -985,6 +1143,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 			voxel.damage_substrate)
+	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
+		job.delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
 	var waves: Dictionary = job.delta.waves
 	## §5.2: the world just moved, so every cached prediction — including this
 	## one — is now stale. AFTER the commit, never before.
@@ -1027,21 +1187,24 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		room._debug_ray_overlay.show_debug_rays(anchor, waves, room._voxel_renderer)
 
 	## E-FRAG: shrapnel from affected cells
+	var frag0: int = Time.get_ticks_usec()
 	if room._shrapnel_overlay != null:
 		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
-	_prof("BEAT 3 — destruction starts")
+	_prof("FRAG — spawn_shrapnel %.2f ms" % [float(Time.get_ticks_usec() - frag0) / 1000.0])
+	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
 	## Beat 3 — destruction, clean.
-	_start_waves(waves)
+	_start_waves(waves, job.playback_queue)
 
 
-func _start_waves(waves: Dictionary) -> void:
+func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 	var choreographer := DetonationChoreographerClass.new()
 	_active_choreographer = choreographer
 	choreographer.finished.connect(func():
 		_prof("WAVES end — the blast is over")
 		_active_choreographer = null)
-	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
+	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
+		room.get_tree(), playback_queue)
 
 
 ## The point the fireball blooms from: the top-centre of the grenade sprite, in

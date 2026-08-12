@@ -88,6 +88,37 @@ static func project_point(gu_xyz: Vector3) -> Vector2:
 	return AXIS_X * gu_xyz.x + AXIS_Y * gu_xyz.y + AXIS_Z * gu_xyz.z
 
 
+## The one 3D direction this projection collapses to nothing — M·k = 0, the null
+## space of the 2x3 matrix the header describes. Derived as the cross product of
+## M's two ROWS (each row is one screen axis's coefficients), which is orthogonal
+## to both by construction, so this stays correct if the tile shape or the storey
+## height ever changes instead of being a constant that quietly goes stale.
+##
+## For this basis it comes out along (1, 1, 0.8).
+##
+## WHY ANYTHING NEEDS IT: the silhouette of a sphere under a linear projection is
+## the great circle PERPENDICULAR to this direction — precisely the 3D points
+## that land on the outline `sphere_semi_axes()` describes. E-BUBBLE's sectioned
+## dome needs those points in 3D, not just the 2D ellipse, because it has to ask
+## which of them a wall has taken away.
+static func kernel_direction() -> Vector3:
+	var row_x := Vector3(AXIS_X.x, AXIS_Y.x, AXIS_Z.x)
+	var row_y := Vector3(AXIS_X.y, AXIS_Y.y, AXIS_Z.y)
+	return row_x.cross(row_y).normalized()
+
+
+## Two orthonormal 3D directions spanning the plane of the silhouette great
+## circle above — i.e. `basis[0] * cos(u) + basis[1] * sin(u)`, times a radius,
+## walks the exact set of sphere points on that sphere's projected outline.
+static func silhouette_basis() -> Array[Vector3]:
+	var k: Vector3 = kernel_direction()
+	## Any axis not parallel to k works as the seed; UP is only unusable if the
+	## projection collapses the vertical, which would mean a degenerate basis.
+	var seed := Vector3.UP if absf(k.dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
+	var e1: Vector3 = k.cross(seed).normalized()
+	return [e1, k.cross(e1).normalized()]
+
+
 ## Points of an axis-aligned ellipse arc, `segments` spans from `start_rad` to
 ## `end_rad`. Y is negated so that a positive angle reads as "up the screen",
 ## which keeps the dome assembly in aim_bubble_overlay.gd readable.

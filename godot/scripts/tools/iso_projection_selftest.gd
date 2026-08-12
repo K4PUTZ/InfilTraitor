@@ -34,6 +34,7 @@ func _init() -> void:
 	test_throw_perimeter_lands_on_cell_centres()
 	test_throw_arc_goes_up()
 	test_throw_arc_is_ballistic()
+	test_silhouette_great_circle()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -379,6 +380,64 @@ func test_throw_arc_is_ballistic() -> void:
 		_pass("with launch height 0 the apex returns to t=0.5 — a strict generalisation")
 	else:
 		_fail("the zero-launch case no longer matches the parabola it replaced")
+	print("")
+
+
+## [11] `kernel_direction()` / `silhouette_basis()` — E-BUBBLE's sectioned dome
+## (2026-08-12) needs the sphere's silhouette as REAL 3D POINTS, not just as the
+## 2D ellipse, so that it can ask which of them a wall has taken away. These
+## assert the two properties that makes those points mean anything.
+##
+## Deliberately NOT a self-comparison. `sphere_semi_axes()` is derived straight
+## from the axis constants, while the great circle below comes from the null
+## space of the same matrix — two different routes through the basis. If either
+## were wrong they would disagree, which is exactly what a check comparing
+## `kernel_direction()` against a hand-copied (1, 1, 0.8) could never catch.
+func test_silhouette_great_circle() -> void:
+	print("[11] The silhouette great circle is the sphere's real 3D outline\n")
+	var k: Vector3 = IsoProjection.kernel_direction()
+
+	## 1. It is genuinely the null direction: the projection sends it to zero.
+	var collapsed: Vector2 = IsoProjection.project_point(k)
+	if collapsed.length() < EPS:
+		_pass("kernel direction %s projects to (0, 0) — the projection really does collapse it" % k)
+	else:
+		_fail("kernel direction projects to %s, expected the origin" % collapsed)
+
+	## 2. The basis spans the plane perpendicular to it, orthonormally.
+	var basis: Array[Vector3] = IsoProjection.silhouette_basis()
+	if absf(basis[0].dot(k)) < EPS and absf(basis[1].dot(k)) < EPS \
+			and absf(basis[0].dot(basis[1])) < EPS \
+			and absf(basis[0].length() - 1.0) < EPS and absf(basis[1].length() - 1.0) < EPS:
+		_pass("silhouette basis is orthonormal and perpendicular to the kernel")
+	else:
+		_fail("silhouette basis is not an orthonormal frame perpendicular to the kernel")
+
+	## 3. The payoff: walking that great circle traces exactly the ellipse
+	##    `sphere_semi_axes()` predicts, for a radius nobody tuned it at.
+	var radius: float = 2.0
+	var axes: Vector2 = IsoProjection.sphere_semi_axes(radius)
+	var worst: float = 0.0
+	var reached_x: float = 0.0
+	var reached_y: float = 0.0
+	for i: int in range(720):
+		var u: float = TAU * float(i) / 720.0
+		var p: Vector2 = IsoProjection.project_point(
+			(basis[0] * cos(u) + basis[1] * sin(u)) * radius)
+		worst = maxf(worst, absf((p.x * p.x) / (axes.x * axes.x)
+			+ (p.y * p.y) / (axes.y * axes.y) - 1.0))
+		reached_x = maxf(reached_x, absf(p.x))
+		reached_y = maxf(reached_y, absf(p.y))
+	if worst < 0.001:
+		_pass("every point of the great circle lands on the sphere ellipse (worst error %.8f)" % worst)
+	else:
+		_fail("great circle departs from the sphere ellipse by %.4f" % worst)
+	if absf(reached_x - axes.x) < 0.5 and absf(reached_y - axes.y) < 0.5:
+		_pass("and it reaches both semi-axes — (%.2f, %.2f) px against (%.2f, %.2f)" %
+			[reached_x, reached_y, axes.x, axes.y])
+	else:
+		_fail("great circle only reaches (%.2f, %.2f) px, expected (%.2f, %.2f)" %
+			[reached_x, reached_y, axes.x, axes.y])
 	print("")
 
 

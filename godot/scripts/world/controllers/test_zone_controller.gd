@@ -398,8 +398,12 @@ func _set_targeting_target(cell: Vector2i) -> void:
 
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
 	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
+	## The GU cell goes along with the screen position because the dome sections
+	## itself against nearby walls, and `room._wall_height_edges` is keyed by the
+	## cell PAIR each wall separates — a screen position cannot find them.
 	if room._aim_bubble_overlay != null:
-		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu)
+		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu,
+			_targeting_target_gu, room._wall_height_edges)
 
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.

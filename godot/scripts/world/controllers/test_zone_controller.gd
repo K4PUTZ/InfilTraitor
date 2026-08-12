@@ -94,6 +94,17 @@ var _active_choreographer = null
 ## `room._prediction_cache`; only the pump belongs to this controller.
 var _pumping: bool = false
 
+## `INFILTRAITOR_THROW_PROFILE=1` — one timeline for a whole throw, from the
+## release to the last wave, in both milliseconds and FRAMES. Off by default,
+## same seam and same reasoning as `INFILTRAITOR_PREDICTION_PROFILE`: the
+## question "is the engine still thinking when the fuse ends" can only be
+## answered on the real map, and only end to end. Frames are reported next to
+## the clock because everything in this sequence is paced by frames — a wall
+## clock alone cannot tell a slow frame from an extra one.
+const THROW_PROFILE_ENV := "INFILTRAITOR_THROW_PROFILE"
+var _prof_t0_ms: int = 0
+var _prof_f0: int = 0
+
 ## §4.4's slice budget, split in two because the player is doing different
 ## things in the two cases. `var`, Rule 1.
 ##
@@ -459,6 +470,10 @@ func execute_grenade_throw() -> void:
 	_targeting_grenade_index = -1
 	_cleanup_grenade_targeting_ui()
 
+	_prof_t0_ms = Time.get_ticks_msec()
+	_prof_f0 = int(Engine.get_process_frames())
+	_prof("RELEASE — throw starts, pre-production starts")
+
 	_begin_preproduction(target_gu)
 	_start_grenade_throw_animation(target_gu, grenade)
 
@@ -706,11 +721,14 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## Only if the prediction is STILL going does the fuse stretch, capped so a
 	## pathological one cannot hold the blast forever —
 	## `_start_detonation_sequence()` cooks whatever is left anyway.
+	_prof("FUSE ends — grenade has settled and cooked")
 	var waited: float = 0.0
 	while waited < throw_prediction_timeout_s and room._prediction_cache != null \
 			and room._prediction_cache.is_busy():
 		await tree.process_frame
 		waited += room.get_process_delta_time()
+	if waited > 0.0:
+		_prof("FUSE STRETCHED — held %.0f ms more waiting on the prediction" % (waited * 1000.0))
 
 	## Same hand-off `detonate_active()` makes: the prop stops existing at the
 	## exact frame the blast starts, which is also E-FRAG's cue to throw debris.
@@ -813,14 +831,34 @@ func _pump_prediction() -> void:
 	if _pumping:
 		return
 	_pumping = true
+	var pumped: int = 0
+	var pump_work_us: int = 0
 	while _pumping and room._prediction_cache.is_busy():
+		var t0: int = Time.get_ticks_usec()
 		room._prediction_cache.pump(predict_budget_ms)
+		pump_work_us += Time.get_ticks_usec() - t0
+		pumped += 1
 		await room.get_tree().process_frame
+	## `_pumping` is still true here when the loop ended because the CACHE went
+	## idle — that is the prediction finishing on its own. False means someone
+	## called `_stop_pumping()` and the work was abandoned part-built.
+	_prof("PUMP ends — %d frame(s) pumped, %.1f ms of real work at a %.1f ms budget (%s)" % [
+		pumped, float(pump_work_us) / 1000.0, predict_budget_ms,
+		"prediction finished" if _pumping else "interrupted"])
 	_pumping = false
 
 
 func _stop_pumping() -> void:
 	_pumping = false
+
+
+## One line of the throw timeline. See THROW_PROFILE_ENV.
+func _prof(label: String) -> void:
+	if OS.get_environment(THROW_PROFILE_ENV) != "1":
+		return
+	print("[T-PROF] +%6d ms  f=%3d  %s" % [
+		Time.get_ticks_msec() - _prof_t0_ms,
+		int(Engine.get_process_frames()) - _prof_f0, label])
 
 
 ## Called when the player backs out of the menu. The half-built prediction is
@@ -893,6 +931,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2) -> void:
 	## Beat 1 — fire and shake, alone. Unconditionally FIRST, before any
 	## remaining computation: this is the frame the player clicked on.
+	_prof("BEAT 1 — fire lit")
 	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
@@ -902,10 +941,15 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## with the grenade already burning there is no cursor to keep smooth, and a
 	## bigger bite ends the wait sooner.
 	var cook_frames: int = 0
+	var cook_work_us: int = 0
 	while not job.is_done() and not job.is_cancelled():
+		var ct0: int = Time.get_ticks_usec()
 		job.step(cook_budget_ms)
+		cook_work_us += Time.get_ticks_usec() - ct0
 		await room.get_tree().process_frame
 		cook_frames += 1
+	_prof("BEAT 0 — cooking done: %d frame(s), %.1f ms of leftover work at a %.1f ms budget" % [
+		cook_frames, float(cook_work_us) / 1000.0, cook_budget_ms])
 	if job.delta == null:
 		## Cancelled out from under us — a map load or a rotation while the fuse
 		## was burning. Loud rather than silent: the fire is already on screen and
@@ -917,7 +961,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			% [gu, cook_frames, cook_budget_ms, float(cook_frames) * cook_budget_ms])
 
 	## The commit, and everything that reads real Voxel state after it.
+	var commit_t0: int = Time.get_ticks_usec()
 	job.delta.commit()
+	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
+		float(Time.get_ticks_usec() - commit_t0) / 1000.0, job.delta.touched_voxels.size()])
 	DetonationPlanBuilderClass.print_census(job.delta, gu)
 	## Deep diagnostic, off by default — the per-phase profile and the worst
 	## single frame the prediction actually cost. §4.4's budget can only honestly
@@ -948,6 +995,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## strobe — `burst_lead_frames` is a MINIMUM, not an extra.
 	for _i in range(maxi(burst_lead_frames - cook_frames, 0)):
 		await room.get_tree().process_frame
+	_prof("BEAT 1 ends — fire-only lead served (%d of %d frame(s) owed)" % [
+		maxi(burst_lead_frames - cook_frames, 0), burst_lead_frames])
 
 	## Beat 2 — E-SHARD: camera-facing shard that becomes the negative flash.
 	## Replaces STROBE_SEQUENCE entirely (WHITE frames never used anymore).
@@ -971,6 +1020,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			await room.get_tree().process_frame
 		flash_overlay.clear()
+	_prof("BEAT 2 ends — 7 shard/flash frames held")
 
 	## E-DEBUG-RAY: show debug rays to all affected voxels before destruction
 	if room._debug_ray_overlay != null:
@@ -979,6 +1029,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## E-FRAG: shrapnel from affected cells
 	if room._shrapnel_overlay != null:
 		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
+	_prof("BEAT 3 — destruction starts")
 
 	## Beat 3 — destruction, clean.
 	_start_waves(waves)
@@ -987,7 +1038,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 func _start_waves(waves: Dictionary) -> void:
 	var choreographer := DetonationChoreographerClass.new()
 	_active_choreographer = choreographer
-	choreographer.finished.connect(func(): _active_choreographer = null)
+	choreographer.finished.connect(func():
+		_prof("WAVES end — the blast is over")
+		_active_choreographer = null)
 	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay, room.get_tree())
 
 

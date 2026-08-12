@@ -14,6 +14,22 @@ class_name ShrapnelOverlay
 ##
 ## Fires at the exact point sprite.visible = false already sets in
 ## detonate_active() (test_zone_controller.gd:269).
+##
+## FIXED 2026-08-12 — never fired since `0c728c6`. Two bugs, both silent
+## because nothing exercises this path except a real detonation:
+## 1. `cell_level_to_world()` doesn't exist on VoxelRenderer — the real name
+##    is `voxel_world_position()` (same (cell, level) -> Vector2 signature).
+##    Every call raised a SCRIPT ERROR and aborted `spawn_shrapnel()` before
+##    a single fragment was created. Confirmed NOT to abort its caller too —
+##    `_start_waves()` right after it in `_start_detonation_sequence()` still
+##    ran, so the real destruction was never affected, only the shrapnel.
+## 2. Once fragments spawned, `BLEND_MODE_ADD` on a near-black colour is
+##    close to a no-op — additive blending with almost-zero channels adds
+##    almost nothing to the frame underneath, so they rendered every frame
+##    (proven with a forced bright colour) while being invisible at the real
+##    one. `BLEND_MODE_MIX` (plain alpha blending) is what a dark silhouette
+##    over a bright fire needs — the same reasoning EmberOverlay's bright ADD
+##    embers do NOT share, so this is not "copy the sibling class".
 
 var glow_radius: float = 16.0             ## px, angular size of fragment
 var min_lifetime: float = 0.4             ## seconds, fastest-fading shard
@@ -28,7 +44,7 @@ var _frags: Array = []
 
 func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
 	material = mat
 
 
@@ -46,7 +62,7 @@ func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> 
 			for entry in plan[kind][ring]:
 				var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
 				var level: int = entry.get("level", 0)
-				var world_pos: Vector2 = voxel_renderer.cell_level_to_world(cell, level)
+				var world_pos: Vector2 = voxel_renderer.voxel_world_position(cell, level)
 				cells.append(world_pos)
 
 	if cells.is_empty():

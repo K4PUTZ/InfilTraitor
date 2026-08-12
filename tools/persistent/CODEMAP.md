@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 53941 lines total** (under `godot/scripts/`)
+**205 scripts · 53957 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1344,7 +1344,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_overlay.gd`
 
-`class_name ShrapnelOverlay` · extends `Node2D` · 101 lines
+`class_name ShrapnelOverlay` · extends `Node2D` · 117 lines
 
 `godot/scripts/overlays/shrapnel_overlay.gd`
 

@@ -42,7 +42,7 @@ func show_debug_rays(blast_center: Vector2, plan: Dictionary, voxel_renderer) ->
 			for entry in plan[kind][ring]:
 				var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
 				var level: int = entry.get("level", 0)
-				var world_pos: Vector2 = voxel_renderer.cell_level_to_world(cell, level)
+				var world_pos: Vector2 = voxel_renderer.voxel_world_position(cell, level)
 				_ray_overlay.add_ray(
 					blast_center,
 					world_pos,

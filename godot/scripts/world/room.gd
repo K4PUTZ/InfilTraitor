@@ -160,9 +160,14 @@ var _current_blocked_edges: Array[Dictionary] = []
 ## GU (1 storey == 1 GU, GeometryCoords.LEVELS_PER_STOREY == VOXELS_PER_UNIT_AXIS
 ## == 8). Populated by RoomBuilder from EdgeExtractor's own edges — the same
 ## per-edge height range SliceGenerator turns into voxels, retained here
-## because nothing else needed it at runtime before AimBubbleOverlay's
-## wall-sectioned grid (E-BUBBLE §6.2). Unlike `_current_blocked_edges` this
-## carries real HEIGHT, not just a movement/LOS boolean.
+## because nothing else needed it at runtime before AimBubbleOverlay's E-BUBBLE
+## §6.2 wall-sectioned grid. Unlike `_current_blocked_edges` this carries real
+## HEIGHT, not just a movement/LOS boolean. NOT CURRENTLY CONSUMED: the first
+## grid version that read this (a ray-clamp against each wall's plane) was
+## rejected by the Director 2026-08-11 as the wrong distortion shape ("mais
+## angulosa" — more angular — was asked for, needs a refined spec) and pulled
+## back out of AimBubbleOverlay. Left populated because it's cheap, tested,
+## and correct on its own — re-deriving it later would be pure waste.
 var _wall_height_edges: Dictionary = {}
 var _guards: Array = []
 

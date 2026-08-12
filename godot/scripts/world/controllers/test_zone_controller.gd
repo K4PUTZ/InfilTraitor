@@ -399,8 +399,7 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
 	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
 	if room._aim_bubble_overlay != null:
-		room._aim_bubble_overlay.show_dome(
-			target_pos, aim_dome_radius_gu, _targeting_target_gu, room._wall_height_edges)
+		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu)
 
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.

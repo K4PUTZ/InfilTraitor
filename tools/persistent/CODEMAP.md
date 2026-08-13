@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 55864 lines total** (under `godot/scripts/`)
+**205 scripts · 56209 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1777,7 +1777,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 673 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 715 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1787,7 +1787,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1396 lines
+`class_name DetonationPlanBuilder` · 1493 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2323,7 +2323,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 201 lines
+`class_name WorldDelta` · extends `RefCounted` · 202 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2340,7 +2340,7 @@ extends `Node2D` · 43 lines
 
 **Public vars**
 - `var damage: Array = []`
-- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "soot": {}, }`
+- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, }`
 - `var census: Dictionary = {}`
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
@@ -3013,11 +3013,11 @@ extends `SceneTree` · 441 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 741 lines
+extends `SceneTree` · 864 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
-> E-PLAN — DetonationPlanBuilder selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 4, 2026-08-07). Rodar: godot --headless --script res://godot/scripts/tools/detonation_plan_selftest.gd Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path (mirrors damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs DetonationPlanBuilder.build_plan() against a REAL grenade throw at a real wall's own GU, and proves: 1. The Task 4 gate itself — a printed wave census (cell counts per ring, per wave kind) from a real detonation, not a synthetic fixture. 2. Every dented/cracked/expose entry carries a real, resolved (source_id, atlas_coords, alt) triple — never a placeholder. 3. build_plan() never mutates the live TileMapLayer — every placed cell's (source_id, atlas_coords, alt) is BYTE-IDENTICAL before and after, proven by a real snapshot diff, not by re-reading the code's own claim. 4. The exposure fallback (§2/B5) fires for real: at least one destroy entry carries a non-empty `expose` array once the crater opens the floor. 5. smoke_ring_weights is consumed for real (duration/scale fall off with ring, matching the JSON's own weights) — the "still unread" gap Task 3's closure note flagged. 6. The per-tier ring gates from the REAL frag_grenade.json hold on real data: crack_ring_weights[0]=0.0 means ring 0 never has a cracked entry, dent_ring_weights[2]=0.0 means ring 2 never has a dented one. 7. E-EMBER-01: a real blast at PLAYGROUND's own WOOD wall queues embers, every one on a SURVIVING combustible voxel 6-adjacent to a hole this same blast opens — cell->material read off the live registries, not assumed. Non-zero on real data is the point: this is the exact shape of failure the floor-dent case (69 on a fixture, 0 on PLAYGROUND) is remembered for. 8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it came from, without which the choreographer cannot tint the puff. 9. E-EMBER-02: fire creeps UPWARD one level at a time (every rung sits directly above another lit voxel and burns shorter than it), the creep is FNV-1a-deterministic across two builds of the same blast, and an ember COOLS yellow-hot -> deep red while dimming — the one detail the Director first described inverted and then corrected. Every expectation is checked against the REAL plan/registry/renderer state — never read back from the code under test's own success claim.
+> E-PLAN — DetonationPlanBuilder selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 4, 2026-08-07). Rodar: godot --headless --script res://godot/scripts/tools/detonation_plan_selftest.gd Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path (mirrors damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs DetonationPlanBuilder.build_plan() against a REAL grenade throw at a real wall's own GU, and proves: 1. The Task 4 gate itself — a printed wave census (cell counts per ring, per wave kind) from a real detonation, not a synthetic fixture. 2. Every dented/cracked/expose entry carries a real, resolved (source_id, atlas_coords, alt) triple — never a placeholder. 3. build_plan() never mutates the live TileMapLayer — every placed cell's (source_id, atlas_coords, alt) is BYTE-IDENTICAL before and after, proven by a real snapshot diff, not by re-reading the code's own claim. 4. The exposure fallback (§2/B5) fires for real: at least one destroy entry carries a non-empty `expose` array once the crater opens the floor. 5. smoke_ring_weights is consumed for real (duration/scale fall off with ring, matching the JSON's own weights) — the "still unread" gap Task 3's closure note flagged. 6. The per-tier ring gates from the REAL frag_grenade.json hold on real data: crack_ring_weights[0]=0.0 means ring 0 never has a cracked entry, dent_ring_weights[2]=0.0 means ring 2 never has a dented one. 7. E-EMBER-01: a real blast at PLAYGROUND's own WOOD wall queues embers, every one on a SURVIVING combustible voxel 6-adjacent to a hole this same blast opens — cell->material read off the live registries, not assumed. Non-zero on real data is the point: this is the exact shape of failure the floor-dent case (69 on a fixture, 0 on PLAYGROUND) is remembered for. 8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it came from, without which the choreographer cannot tint the puff. 9. E-EMBER-02: fire creeps UPWARD one level at a time (every rung sits directly above another lit voxel and burns shorter than it), the creep is FNV-1a-deterministic across two builds of the same blast, and an ember COOLS yellow-hot -> deep red while dimming — the one detail the Director first described inverted and then corrected. 10. E-DEBRIS-01: dust/sparks/chips fire only on cells the blast DESTROYS, only on materials their own rule lists, with counts inside their range and identical across two builds — plus the contract that a ctx carrying no debris policy produces exactly zero, so no pre-existing caller moved. Every expectation is checked against the REAL plan/registry/renderer state — never read back from the code under test's own success claim.
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
@@ -4249,7 +4249,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1295 lines
+`class_name TestZoneController` · 1300 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4514,7 +4514,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4483 lines
+extends `Node2D` · 4560 lines
 
 `godot/scripts/world/room.gd`
 

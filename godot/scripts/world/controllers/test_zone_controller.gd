@@ -967,7 +967,7 @@ func _plan_inventory(plan: Dictionary) -> String:
 	## `ember` added 2026-08-13 with E-EMBER-01. This readout exists so a zero
 	## exposes a stage that silently produces nothing — a new kind missing from
 	## the list is the same failure one level up, in the instrument itself.
-	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke", "ember"]:
+	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke", "ember", "debris"]:
 		var count: int = 0
 		for ring: int in plan.get(kind, {}).keys():
 			count += plan[kind][ring].size()
@@ -1221,7 +1221,8 @@ func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 	## E-EMBER-01 / E-SMOKE-TINT-01: the two VFX targets that are not on
 	## `start()`'s signature — the ember overlay VL-D4's per-voxel glow needs, and
 	## the per-material smoke tints only a MaterialRegistry owner can resolve.
-	choreographer.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints())
+	choreographer.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
+		room._debris_overlay, room.blast_debris_palette())
 	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
 		room.get_tree(), playback_queue)
 
@@ -1271,6 +1272,10 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		## about soot's reach with no error anywhere. Same drift as §1.2 of
 		## SOOT_MASTER_PLAN, in a spot that plan had not found.
 		"blast_soot_rings": room.blast_soot_rings + room.blast_soot_feather_rings,
+		## E-DEBRIS-01: which materials throw dust/sparks/chips, and how often.
+		## Room policy as plain data — see Room.blast_debris_policy(). Absent
+		## means no debris, which is what every non-explosion caller wants.
+		"debris": room.blast_debris_policy(),
 		"weapon_soot_rings": room.weapon_soot_rings,
 		## D2: unlocked from this GU's SECOND blast onward.
 		"deep_layer_unlocked": int(room._gu_blast_count.get(source_gu, 0)) > 0,

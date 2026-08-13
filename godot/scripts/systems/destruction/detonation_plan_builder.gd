@@ -419,6 +419,14 @@ static func _phase_setup(s: Dictionary) -> void:
 	## voxel on the map to phase 4, which §8.8 already measures as 66% of the
 	## build's whole cost.
 	s["flammable_cells"] = {}
+	## E-DEBRIS-01: which materials throw dust/sparks/chips and how often, as
+	## plain data from the caller (`Room.blast_debris_policy()`). It travels in
+	## `ctx` for the same reason `blast_soot_rings` does — the material→effect
+	## mapping is room POLICY, and a builder that hardcoded it would be a second
+	## place for the two weapon families to drift apart. Absent (every selftest
+	## that predates this, and every non-explosion caller) means no debris at all,
+	## which is exactly today's behaviour for those callers.
+	s["debris_policy"] = ctx.get("debris", {})
 	s["blast_cells"] = []
 	s["weapon_cells"] = []
 	s["damaged_voxels"] = []
@@ -818,6 +826,8 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 					_material_name(container))
 				_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"r": _radius_of(voxel.grid_pos, epicenter)})
+				_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
+					s["debris_policy"], voxel_renderer, epicenter)
 			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
 				touched_this_blast[key] = true
 				touched_voxels.append(voxel)
@@ -1294,6 +1304,30 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 		ember_total += (delta.waves["ember"][ring] as Array).size()
 	print("[E-EMBER] %d ember(s) queued — surviving combustible voxels edging this blast's holes"
 		% ember_total)
+	## E-DEBRIS-01, per effect for the same reason the census is per material: a
+	## single total would hide one effect being structurally unreachable, and only
+	## a DESTROYED voxel throws debris.
+	##
+	## Sparks looked like exactly that risk — metal's `destroy_factor` is 0.03, so
+	## a blast essentially never destroys a metal WALL voxel. Measured instead of
+	## assumed, and the measurement said otherwise: `apply_crater_damage()`'s
+	## crater geometry ignores `destroy_factor` entirely, so a metal FLOOR loses
+	## voxels freely (real capture: `FLOOR/metal destroyed 143`, `sparks/metal=28`).
+	## Recorded because the reasoning was sound and the conclusion was wrong.
+	var debris_by_effect: Dictionary = {}
+	for ring in delta.waves.get("debris", {}).keys():
+		for e in delta.waves["debris"][ring]:
+			var key: String = "%s/%s" % [e["effect"], e["material"]]
+			debris_by_effect[key] = int(debris_by_effect.get(key, 0)) + 1
+	if debris_by_effect.is_empty():
+		print("[E-DEBRIS] none — no destroyed voxel matched a debris rule")
+	else:
+		var keys: Array = debris_by_effect.keys()
+		keys.sort()
+		var parts: PackedStringArray = PackedStringArray()
+		for k in keys:
+			parts.append("%s=%d" % [k, debris_by_effect[k]])
+		print("[E-DEBRIS] %s" % " ".join(parts))
 
 
 ## §2's exposure fallback (B5): resolve the deep floor Slab's tiles (the
@@ -1377,6 +1411,69 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		"material": material,
 		"r": _radius_of(voxel.grid_pos, epicenter),
 	})
+
+
+## E-DEBRIS-01 (2026-08-13) — dust, sparks and wood chips for a DESTROYED voxel.
+## The last piece of VFX-01 that never reached explosions: the choreographer
+## erases cells directly, so `VoxelRenderer.voxel_destroyed` (which drives
+## `Room._dispatch_destruction_vfx()`) has only ever fired for firearms.
+##
+## Reconnecting that dispatch was again the wrong move, for the third time and
+## the same reason: its smoke half would double against the staged smoke waves.
+## The plan carries the debris instead, resolved here.
+##
+## THE ROLLS ARE HASHED, NOT `randf()` — and here that is not only the filmstrip
+## discipline. `build_plan()` is PURE and its output is CACHED by
+## `PredictionCache`: a cursor sweeping GUs builds and discards a plan per hover,
+## and a cache HIT returns one built earlier. With `randf()` the debris a blast
+## finally showed would depend on how many times the player had moved the mouse.
+##
+## Effects roll INDEPENDENTLY, under different salts, because VFX-01 let stone
+## throw both dust and sparks from one strike and that is worth keeping.
+static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring: int,
+		material: String, policy: Dictionary, voxel_renderer: VoxelRendererClass,
+		epicenter: Vector2i) -> void:
+	if policy.is_empty():
+		return
+	var origin: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)
+	## Where dust settles and chips land — the floor under this voxel, the same
+	## point VFX-01's own dispatch uses. Falls back to the origin when level 0 has
+	## no cell there (an unbuilt column), matching that dispatch exactly.
+	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, 0)
+	if floor_pos == Vector2.ZERO:
+		floor_pos = origin
+	var r: float = _radius_of(voxel.grid_pos, epicenter)
+	for effect: String in DEBRIS_EFFECTS:
+		var rule: Dictionary = policy.get(effect, {})
+		if rule.is_empty():
+			continue
+		if not (rule.get("materials", []) as Array).has(material):
+			continue
+		if _hash_unit("DEBRIS" + effect, voxel.grid_pos, voxel.level) >= float(rule.get("chance", 0.0)):
+			continue
+		var lo: int = int(rule.get("count_min", 1))
+		var hi: int = int(rule.get("count_max", 1))
+		var count: int = lo
+		if hi > lo:
+			count = lo + int(_hash_unit("DEBRISN" + effect, voxel.grid_pos, voxel.level)
+				* float(hi - lo + 1))
+			count = mini(count, hi)
+		_append(debris_by_ring, ring, {
+			"effect": effect,
+			"material": material,
+			"count": count,
+			"world_pos": origin,
+			"floor_pos": floor_pos,
+			"cell": voxel.grid_pos,
+			"level": voxel.level,
+			"r": r,
+		})
+
+
+## Fixed order so a voxel that throws two effects always queues them the same
+## way — the determinism above would be pointless if Dictionary iteration order
+## decided which of a stone voxel's dust and sparks landed first.
+const DEBRIS_EFFECTS: Array[String] = ["dust", "sparks", "chips"]
 
 
 ## E-RADIAL-01 (Director, 2026-08-09): every plan entry carries its own distance

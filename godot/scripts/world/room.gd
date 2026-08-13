@@ -535,6 +535,24 @@ var vfx_smoke_alpha: float = 0.6
 var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
 var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 
+## E-DEBRIS-01 (Director, 2026-08-13) — the last piece of VFX-01 that never
+## reached explosions: dust, sparks and wood chips.
+##
+## THE ONE NUMBER THAT MATTERS, and the reason this is a scale rather than three
+## more independent chances. The `vfx_*_chance` values above are per DESTROYED
+## VOXEL and were calibrated against a FIREARM, where one shot destroys a handful
+## of voxels. A real PLAYGROUND grenade destroys 243-500. Reusing them unchanged
+## would put several hundred dust clusters and chip volleys on screen for one
+## blast — not "more debris", a curtain — and the mistake would look like a
+## tuning accident rather than the unit error it is.
+##
+## So the blast rates are expressed as ONE documented fraction of the firearm
+## rates. That keeps a single knob for the Director's eye, and keeps the two
+## weapon families from silently drifting apart the way the soot rings did
+## (SOOT_MASTER_PLAN §1.2). 0.25 is a starting point measured on a real capture,
+## not a researched constant — expect it to move.
+var blast_debris_rate_scale: float = 0.25
+
 ## E-NATIVE-01 — the blast burst (see spawn_blast_burst()). All `var` (Rule 1);
 ## these are the whole tuning surface for the detonation's core now that the
 ## authored fireball is gone, so expect them to move on the Director's eye.
@@ -2341,6 +2359,65 @@ func blast_smoke_tints() -> Dictionary:
 	for material_id in registry.list_materials():
 		tints[material_id] = _vfx_smoke_color_for_material(material_id)
 	return tints
+
+
+## E-DEBRIS-01 — which materials throw what, and how often, as plain DATA for
+## `DetonationPlanBuilder` to gate on. The material→effect mapping is room
+## policy, not builder knowledge, so it travels in `ctx` exactly the way
+## `blast_soot_rings` does; the builder stays generic and testable.
+##
+## Rates are the firearm ones scaled — see `blast_debris_rate_scale` for why
+## that unit conversion is the whole point rather than a tidy-up.
+func blast_debris_policy() -> Dictionary:
+	var s: float = blast_debris_rate_scale
+	return {
+		"dust": {
+			"materials": vfx_dust_materials,
+			"chance": vfx_dust_chance * s,
+			"count_min": 1, "count_max": 1,
+		},
+		"sparks": {
+			## Metal and stone, the two VFX-01 strikes sparks from. The count
+			## range is metal's; stone's flat 2 sits inside it, and one range
+			## here beats a second policy branch for a one-value difference.
+			"materials": ["metal", "stone"],
+			"chance": vfx_spark_chance * s,
+			"count_min": vfx_metal_spark_count_min,
+			"count_max": vfx_metal_spark_count_max,
+		},
+		"chips": {
+			## Splinters — combustible-looking material, but keyed on the
+			## material list rather than on `flammability`, because a chip is
+			## about how a material BREAKS, not whether it burns. Glass will
+			## want chips and no ember; that stays expressible.
+			"materials": ["wood"],
+			"chance": vfx_chip_chance * s,
+			"count_min": vfx_chip_count_min,
+			"count_max": vfx_chip_count_max,
+		},
+	}
+
+
+## E-DEBRIS-01 — `{"<effect>:<material>": Color}` for the choreographer, resolved
+## here for the same reason `blast_smoke_tints()` is: `DetonationPlanBuilder` is
+## static and runs headless in selftests where the `Registries` autoload does not
+## exist, so the plan carries the material id and never the colour.
+func blast_debris_palette() -> Dictionary:
+	var palette: Dictionary = {}
+	var registry = Registries.get_material_registry()
+	if registry == null:
+		return palette
+	for material_id in registry.list_materials():
+		## Dust and chips take the material's own colour (VFX-01's own choice:
+		## masonry throws masonry-coloured dust, wood throws wood-coloured
+		## splinters). Sparks do NOT — a spark is incandescence, its colour comes
+		## from the strike, not from the material's albedo.
+		var base: Color = _vfx_material_base_color(material_id)
+		palette["dust:%s" % material_id] = base
+		palette["chips:%s" % material_id] = base
+		palette["sparks:%s" % material_id] = \
+			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color
+	return palette
 
 
 ## VFX-01: smoke tint per material — darker/desaturated version of the

@@ -198,7 +198,7 @@ var soot_fade_frames_per_step: int = 2
 ## that opened the hole; fired all at once (which is what the pre-2026-08-05
 ## version did, before the front existed) the whole crater would light up
 ## simultaneously after the destruction had already finished passing through.
-const PLAYED_KINDS: Array[String] = ["destroy", "dented", "cracked", "smoke", "ember"]
+const PLAYED_KINDS: Array[String] = ["destroy", "dented", "cracked", "smoke", "ember", "debris"]
 
 
 ## The (kind, ring) waves a given plan actually contains, in PLAYED_KINDS order
@@ -239,6 +239,11 @@ static func wave_table_for(plan: Dictionary) -> Array:
 ## widen SMOKE_JITTER or lift the tier intensities instead.
 const SMOKE_COLOR := Color(0.62, 0.60, 0.57, 0.2)
 
+## E-DEBRIS-01 — used only when a material has no palette row, which means the
+## MaterialRegistry did not know it. Neutral grey, the same fallback
+## Room._vfx_material_base_color() uses for exactly that case.
+const DEBRIS_FALLBACK_COLOR := Color(0.6, 0.6, 0.6)
+
 signal wave_applied(index: int, kind: String, ring: int, cell_count: int)
 signal finished()
 
@@ -253,6 +258,9 @@ var _waves_done: int = 0
 ## ember kind is a silent no-op and smoke keeps the flat SMOKE_COLOR — which is
 ## exactly what the selftests and any non-room caller want.
 var _ember_overlay: EmberOverlay = null
+var _debris_overlay: DebrisOverlay = null
+## `{"<effect>:<material>": Color}` — see Room.blast_debris_palette().
+var _debris_colors: Dictionary = {}
 ## `{material_id: Color}`, resolved by whoever owns a MaterialRegistry. See
 ## Room.blast_smoke_tints() and DetonationPlanBuilder._append_voxel_smoke().
 var _smoke_tints: Dictionary = {}
@@ -260,9 +268,12 @@ var _smoke_tints: Dictionary = {}
 
 ## Wire the two overlay targets that are not on `start()`'s signature. Call
 ## before `start()`; both stay optional.
-func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}) -> void:
+func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
+		debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:
 	_ember_overlay = ember_overlay
 	_smoke_tints = smoke_tints
+	_debris_overlay = debris_overlay
+	_debris_colors = debris_colors
 
 
 ## Starts the sequence. `plan` is a real DetonationPlanBuilder.build_plan()
@@ -348,6 +359,9 @@ const KIND_RADIUS_BIAS: Dictionary = {
 	"dented": -0.30,
 	"cracked": -0.20,
 	"ember": -0.10,
+	## E-DEBRIS-01: debris is thrown BY the hole opening, so it rides just behind
+	## the destroy step that produced it and ahead of the smoke that hangs after.
+	"debris": -0.15,
 	"smoke": 0.0,
 	"soot": 0.40,
 }
@@ -650,6 +664,34 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			_ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
 				float(entry.get("duration_scale", 1.0)), float(entry.get("delay", 0.0)))
 			return 1
+		"debris":
+			## E-DEBRIS-01. The plan already decided WHICH effect this voxel
+			## throws and HOW MANY, hashed per cell — this only dispatches.
+			## Colour comes from the palette rather than the entry for the same
+			## reason smoke's tint does: the builder runs headless, without a
+			## MaterialRegistry to ask.
+			var effect: String = String(entry.get("effect", ""))
+			var color: Color = _debris_colors.get(
+				"%s:%s" % [effect, entry.get("material", "")], DEBRIS_FALLBACK_COLOR)
+			match effect:
+				"dust":
+					if _debris_overlay == null:
+						return 0
+					_debris_overlay.add_dust(entry["world_pos"], entry["floor_pos"], color)
+					return 1
+				"chips":
+					if _debris_overlay == null:
+						return 0
+					_debris_overlay.add_chips(entry["world_pos"], entry["floor_pos"],
+						int(entry.get("count", 1)), color)
+					return 1
+				"sparks":
+					if smoke_overlay == null:
+						return 0
+					smoke_overlay.add_sparks(entry["world_pos"],
+						int(entry.get("count", 1)), color)
+					return 1
+			return 0
 	return 0
 
 

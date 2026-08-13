@@ -73,11 +73,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
 - 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
 - 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
 - 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
 - a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
-- 52827f8b ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
 <!-- AUTO:END version_history -->
 
 ---
@@ -555,10 +555,16 @@ the blast from "the waves fire" to something that reads right. Full record:
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
-- ⚠️ **Still off, deliberately:** the DUST / SPARK / CHIP debris of VFX-01's
-  dispatch (wood splinters included) never fires for blasts, only for firearms.
-  Nothing blocks it since E-SMOKE-TINT-01 showed how to thread material onto a
-  plan entry — it is simply outside any scope the Director has asked for.
+- ✅ **Dust, sparks and chips reach explosions** (E-DEBRIS-01) — the last piece
+  of VFX-01, and the gap the master plan had flagged since 2026-08-07 with an
+  explicit "ask first". A `debris` wave on the plan, not a reconnected
+  `voxel_destroyed` dispatch (which would double every smoke puff). The blast
+  rates are ONE documented fraction of the firearm rates
+  (`blast_debris_rate_scale` 0.25) because those chances are per destroyed voxel
+  and a shot destroys a handful where a grenade destroys 243–500 — a unit error,
+  not a taste call. Real captures, one per material family: wood
+  `chips=23 dust=13`, stone `dust=21 sparks=34`, metal `sparks=28`.
+  `e_debris01_filmstrip_stone_2026-08-13.png`.
 
 ✅ **Tasks 0–5 of the rebuild are done — Phase A is functionally complete**
 ([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),

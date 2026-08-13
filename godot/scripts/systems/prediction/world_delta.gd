@@ -64,13 +64,14 @@ var damage: Array = []
 ## `DetonationChoreographer` and both plan selftests consume `delta.waves`
 ## and needed no other edit.
 ##
-## `ember` (E-EMBER-01, 2026-08-13) is the only kind that paints nothing on the
-## TileMapLayer — it hands a glow to `EmberOverlay`, exactly like `smoke` hands
-## a puff to `SmokeSparkOverlay`. It rides here anyway because it has to arrive
-## WITH the expanding front that opened the hole it edges, and the queue is what
-## carries that ordering.
+## `ember` and `debris` (E-EMBER-01 / E-DEBRIS-01, 2026-08-13) paint nothing on
+## the TileMapLayer — they hand a glow to `EmberOverlay` and dust/chips/sparks to
+## `DebrisOverlay`/`SmokeSparkOverlay`, exactly the way `smoke` hands a puff over.
+## They ride here anyway because both have to arrive WITH the expanding front
+## that produced them, and the queue is what carries that ordering.
 var waves: Dictionary = {
-	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "soot": {},
+	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {},
+	"debris": {}, "soot": {},
 }
 
 ## §3.4 — the cheap summary. A consumer that only needs "how much of this cover

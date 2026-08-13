@@ -36,6 +36,10 @@
 ##      is FNV-1a-deterministic across two builds of the same blast, and an
 ##      ember COOLS yellow-hot -> deep red while dimming — the one detail the
 ##      Director first described inverted and then corrected.
+##  10. E-DEBRIS-01: dust/sparks/chips fire only on cells the blast DESTROYS,
+##      only on materials their own rule lists, with counts inside their range
+##      and identical across two builds — plus the contract that a ctx carrying
+##      no debris policy produces exactly zero, so no pre-existing caller moved.
 ##
 ## Every expectation is checked against the REAL plan/registry/renderer
 ## state — never read back from the code under test's own success claim.
@@ -96,6 +100,7 @@ func _init() -> void:
 			test_7_ember_wave_on_real_wood(built, bomb_def, ctx)
 			test_8_smoke_entries_carry_material(plan)
 			test_9_ember_climb_and_cooling_ramp(built, bomb_def, ctx)
+			test_10_debris_wave(built, bomb_def, ctx)
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -739,3 +744,121 @@ func test_9_ember_climb_and_cooling_ramp(built: Dictionary, bomb_def, ctx: Dicti
 	else:
 		_fail("brightness already down to %.0f%% at t=0.30 — the red arrives dim" % (early.v / maxf(hot.v, 0.0001) * 100.0))
 	overlay.queue_free()
+
+
+## E-DEBRIS-01 (2026-08-13) — dust, sparks and chips, the last piece of VFX-01
+## that never reached explosions.
+##
+## Uses a ctx with the REAL Room policy shape rather than the bare `_build_ctx()`
+## one, because "absent policy means no debris" is itself a contract worth
+## proving: every caller that predates this (and every firearm path) must keep
+## producing exactly zero debris entries.
+func test_10_debris_wave(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
+	print("\n[10] E-DEBRIS-01: destroyed voxels throw dust / sparks / chips\n")
+	var bare: Dictionary = DetonationPlanBuilderClass.build_plan(
+		bomb_def, _pick_source_gu(built), ctx).waves
+	var bare_count := 0
+	for ring in bare.get("debris", {}).keys():
+		bare_count += (bare["debris"][ring] as Array).size()
+	if bare_count == 0:
+		_pass("a ctx with no debris policy produces ZERO debris — every pre-existing caller is unaffected")
+	else:
+		_fail("a ctx with no debris policy still produced %d debris entries" % bare_count)
+
+	## The real policy, mirroring Room.blast_debris_policy()'s shape exactly.
+	var policy: Dictionary = {
+		"dust": {"materials": ["concrete", "stone", "gravel", "earth"],
+			"chance": 0.10, "count_min": 1, "count_max": 1},
+		"sparks": {"materials": ["metal", "stone"], "chance": 0.16,
+			"count_min": 3, "count_max": 8},
+		"chips": {"materials": ["wood"], "chance": 0.14, "count_min": 1, "count_max": 4},
+	}
+	var with_policy: Dictionary = ctx.duplicate()
+	with_policy["debris"] = policy
+
+	## PLAYGROUND's wood wall — the one GU proven to destroy wood AND concrete,
+	## so dust and chips are both reachable from a single blast.
+	var wood_gu := Vector2i(-9999, -9999)
+	for slice in built["room"]._edge_registry.all_slices():
+		if slice.material == "wood":
+			wood_gu = slice.gu_cell
+			break
+	if wood_gu.x == -9999:
+		_fail("PLAYGROUND has no wood slice — cannot exercise chips")
+		return
+	var plan: Dictionary = DetonationPlanBuilderClass.build_plan(
+		bomb_def, wood_gu, with_policy).waves
+
+	var entries: Array = []
+	for ring in plan.get("debris", {}).keys():
+		entries.append_array(plan["debris"][ring])
+	if entries.is_empty():
+		_fail("a real blast with a real policy produced ZERO debris — the feature is inert on real data")
+		return
+
+	## Every debris entry must sit on a cell this same blast DESTROYS. Debris is
+	## thrown by material leaving, so a dented voxel producing chips would mean
+	## the gate moved off `state == DESTROYED` without anyone noticing.
+	var holes: Dictionary = {}
+	for ring in plan.get("destroy", {}).keys():
+		for e in plan["destroy"][ring]:
+			holes[Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))] = true
+
+	var by_effect: Dictionary = {}
+	var off_hole := 0
+	var wrong_material := 0
+	var bad_count := 0
+	for e in entries:
+		var effect: String = String(e["effect"])
+		by_effect[effect] = int(by_effect.get(effect, 0)) + 1
+		if not holes.has(Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))):
+			off_hole += 1
+		var rule: Dictionary = policy[effect]
+		if not (rule["materials"] as Array).has(String(e["material"])):
+			wrong_material += 1
+		var n: int = int(e["count"])
+		if n < int(rule["count_min"]) or n > int(rule["count_max"]):
+			bad_count += 1
+
+	var names: Array = by_effect.keys()
+	names.sort()
+	var summary: PackedStringArray = PackedStringArray()
+	for n2 in names:
+		summary.append("%s=%d" % [n2, by_effect[n2]])
+	_pass("%d debris entries on a real wood-wall blast (%s)" % [entries.size(), " ".join(summary)])
+
+	if off_hole == 0:
+		_pass("every debris entry sits on a cell this blast DESTROYS")
+	else:
+		_fail("%d debris entr(ies) sit on a cell this blast does not destroy" % off_hole)
+	if wrong_material == 0:
+		_pass("every effect only fired on a material its own rule lists")
+	else:
+		_fail("%d debris entr(ies) fired on a material outside their rule" % wrong_material)
+	if bad_count == 0:
+		_pass("every count sits inside its rule's own min/max")
+	else:
+		_fail("%d debris entr(ies) carry a count outside their rule's range" % bad_count)
+
+	## Determinism — same reason as the ember creep, and one step stronger here:
+	## build_plan() results are CACHED by PredictionCache, so with randf() the
+	## debris a blast finally showed would depend on how many times the player had
+	## moved the cursor over it first.
+	var again: Dictionary = DetonationPlanBuilderClass.build_plan(
+		bomb_def, wood_gu, with_policy).waves
+	var again_count := 0
+	var mismatch := 0
+	var index: Dictionary = {}
+	for e in entries:
+		index["%s@%d,%d,%d" % [e["effect"], e["cell"].x, e["cell"].y, int(e["level"])]] = int(e["count"])
+	for ring in again.get("debris", {}).keys():
+		for e in again["debris"][ring]:
+			again_count += 1
+			var k: String = "%s@%d,%d,%d" % [e["effect"], e["cell"].x, e["cell"].y, int(e["level"])]
+			if not index.has(k) or index[k] != int(e["count"]):
+				mismatch += 1
+	if mismatch == 0 and again_count == entries.size():
+		_pass("a second build reproduces all %d debris entries and counts exactly" % again_count)
+	else:
+		_fail("re-building changed %d of %d debris entries — the rolls are not deterministic"
+			% [mismatch, again_count])

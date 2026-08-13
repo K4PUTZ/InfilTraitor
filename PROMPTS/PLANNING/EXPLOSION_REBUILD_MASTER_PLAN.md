@@ -3244,11 +3244,67 @@ in vivid orange-red across the crater and up the wall column, still bright, next
 to the 2 s and 4 s stills from E-EMBER-02 that show the same run cooling out to
 charcoal and soot.
 
-**Still deliberately disconnected, and the Director has not asked for it:** the
-DUST / SPARK / CHIP debris of that same VFX-01 dispatch (including wood's own
-`add_chips` splinters). Nothing blocks it any more — destroy entries could take
-a material exactly the way smoke entries now do — it is simply outside the scope
-that was requested.
+### E-DEBRIS-01 — dust, sparks and chips, the last piece (same day)
+
+Director: *"pode seguir com as lascas, faíscas e debris."* This closes the gap
+§5 opened on 2026-08-07 and flagged with an explicit *"Ask before building it"*.
+
+Reconnecting `Room._dispatch_destruction_vfx()` was rejected for the third time
+and for the same reason: its smoke half would double against the staged smoke
+waves. The plan carries the debris instead, resolved in
+`_append_voxel_debris()` off each DESTROYED voxel and played as a `debris` kind
+at bias −0.15 (just behind the destroy step that threw it, ahead of the smoke
+that hangs after).
+
+**THE ONE NUMBER THAT MATTERS is a unit conversion, not a taste call.** VFX-01's
+`vfx_*_chance` values are per DESTROYED VOXEL and were calibrated against a
+FIREARM, where a shot destroys a handful. A real PLAYGROUND grenade destroys
+243–500. Reusing them unchanged would put several hundred dust clusters and chip
+volleys on screen — not "more debris", a curtain — and it would have read as a
+tuning accident rather than the unit error it is. So the blast rates are ONE
+documented fraction of the firearm rates (`Room.blast_debris_rate_scale`, 0.25),
+which keeps a single knob for the Director's eye and stops the two weapon
+families drifting apart the way the soot rings did (SOOT_MASTER_PLAN §1.2).
+
+The material→effect mapping is ROOM POLICY travelling in `ctx` as plain data
+(`Room.blast_debris_policy()`), exactly like `blast_soot_rings`, so the builder
+stays generic and an absent policy means zero debris — which is what every
+pre-existing caller and every firearm path wants, and is asserted directly.
+Colours come from `Room.blast_debris_palette()` for the same reason smoke tints
+do; sparks deliberately do NOT take the material's albedo, because a spark is
+incandescence from the strike, not the material's own colour.
+
+Rolls are FNV-1a per cell, and here that is not only the filmstrip discipline:
+`build_plan()` results are CACHED by `PredictionCache`, so with `randf()` the
+debris a blast finally showed would have depended on how many times the player
+had swept the cursor over that GU first.
+
+*Evidence — three real PLAYGROUND blasts, one per material family:*
+
+    grenade 3 (wood)   FLOOR/wood destroyed 137 · WALL/wood destroyed 38
+                       [E-DEBRIS] chips/wood=23 dust/concrete=13
+    grenade 2 (stone)  FLOOR/stone destroyed 143 · WALL/stone destroyed 12
+                       [E-DEBRIS] dust/concrete=7 dust/stone=14 sparks/stone=34
+    grenade 1 (metal)  FLOOR/metal destroyed 143 · WALL/metal destroyed 2
+                       [E-DEBRIS] dust/concrete=9 sparks/metal=28
+
+**A prediction this made and got wrong, kept because the reasoning was sound.**
+Sparks looked structurally unreachable for metal: `destroy_factor` is 0.03, so a
+blast essentially never destroys a metal WALL voxel, and only a destroyed voxel
+throws debris. The measurement said otherwise — `apply_crater_damage()`'s crater
+geometry ignores `destroy_factor` entirely, so a metal FLOOR loses voxels freely
+(143 of them, 28 spark events). The comment that asserted the opposite was
+corrected before it could become a fact in the codebase.
+
+`e_debris01_filmstrip_stone_2026-08-13.png` is the stone blast frame by frame:
+crater, dark smoke, sparks as bright points, debris specks — and no fire column,
+because stone is not combustible, which is the ember gate reading correctly from
+the other side.
+
+`detonation_plan_selftest` test 10 pins all of it on the real map: every entry
+on a cell the blast DESTROYS, every effect only on a material its own rule
+lists, every count inside its range, byte-identical across two builds, and zero
+entries when the ctx carries no policy.
 
 ---
 

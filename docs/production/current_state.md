@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.98 · **Updated:** 2026-08-13 · **Branch:** main
+**Version:** 0.9.99 · **Updated:** 2026-08-13 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -53,6 +53,7 @@
 - RESUMO_SESSAO_2026-08-11_GRENADE_SHADOW_ROLL.md
 - RESUMO_SESSAO_2026-08-12_13_BUBBLE_WARM_SOOT.md
 - RESUMO_SESSAO_2026-08-12_WALL_GRID_AND_SHRAPNEL_FIX.md
+- RESUMO_SESSAO_2026-08-13_EXPLOSION_REFINEMENT.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

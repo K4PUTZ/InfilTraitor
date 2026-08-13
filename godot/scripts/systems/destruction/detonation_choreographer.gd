@@ -190,7 +190,15 @@ var soot_fade_frames_per_step: int = 2
 ##
 ## E-FUME: soot is not here; it is its own late fade-in step after smoke (see
 ## _apply_entry's "soot" handler and _run_queue's end-of-sequence).
-const PLAYED_KINDS: Array[String] = ["destroy", "dented", "cracked", "smoke"]
+##
+## E-EMBER-01 (2026-08-13): `ember` joins them. It is the one played kind that
+## touches no TileMapLayer — it hands a glow to EmberOverlay the way `smoke`
+## hands a puff to SmokeSparkOverlay. It belongs in the QUEUE rather than in one
+## burst at the end because a hole's glowing edge has to arrive with the front
+## that opened the hole; fired all at once (which is what the pre-2026-08-05
+## version did, before the front existed) the whole crater would light up
+## simultaneously after the destruction had already finished passing through.
+const PLAYED_KINDS: Array[String] = ["destroy", "dented", "cracked", "smoke", "ember"]
 
 
 ## The (kind, ring) waves a given plan actually contains, in PLAYED_KINDS order
@@ -236,6 +244,25 @@ signal finished()
 
 var _t0_ms: int = 0
 var _waves_done: int = 0
+
+## E-EMBER-01 / E-SMOKE-TINT-01 — two optional VFX targets, held as members
+## rather than threaded through `start()` -> `_run_queue()` -> `_apply_wave()` ->
+## `_apply_entry()`. Both are optional and neither changes what a step MEANS, so
+## four widened signatures (one of them `_apply_wave`, which the choreographer
+## selftest calls directly) would be churn for no expressive gain. Unset, the
+## ember kind is a silent no-op and smoke keeps the flat SMOKE_COLOR — which is
+## exactly what the selftests and any non-room caller want.
+var _ember_overlay: EmberOverlay = null
+## `{material_id: Color}`, resolved by whoever owns a MaterialRegistry. See
+## Room.blast_smoke_tints() and DetonationPlanBuilder._append_voxel_smoke().
+var _smoke_tints: Dictionary = {}
+
+
+## Wire the two overlay targets that are not on `start()`'s signature. Call
+## before `start()`; both stay optional.
+func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}) -> void:
+	_ember_overlay = ember_overlay
+	_smoke_tints = smoke_tints
 
 
 ## Starts the sequence. `plan` is a real DetonationPlanBuilder.build_plan()
@@ -312,11 +339,15 @@ static func flatten_plan(plan: Dictionary) -> Array:
 ## the scorch settles last. All well under one voxel, so they order simultaneous
 ## effects without ever letting a category jump the expanding front — which is the
 ## whole point of sorting by radius in the first place.
+## E-EMBER-01: the ember sits between the mark and the smoke. It cannot lead the
+## hole that produced it (its own seed is a `destroy` entry, at -0.60), and it
+## must precede the soot it is drawn on top of and eventually reveals.
 const KIND_RADIUS_BIAS: Dictionary = {
 	"destroy": -0.60,
 	"expose": -0.50,
 	"dented": -0.30,
 	"cracked": -0.20,
+	"ember": -0.10,
 	"smoke": 0.0,
 	"soot": 0.40,
 }
@@ -579,11 +610,39 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			## its ring, and a per-cell hash (see _append_voxel_smoke()).
 			## `blobs` is 0 for the GU-level remainder puffs, which means "use
 			## the overlay's own 2-3 range"; only per-voxel puffs pin to 1.
-			var puff_color := SMOKE_COLOR
-			puff_color.a *= float(entry.get("alpha", 1.0))
+			## E-SMOKE-TINT-01 (2026-08-13): the hue comes from the material, the
+			## ALPHA does not. VFX-01's per-material tint (wood reads as dark
+			## smoke, masonry and metal as light) stopped reaching explosions on
+			## 2026-08-05 — the choreographer erases cells directly and never
+			## emits `voxel_destroyed`, so `Room._dispatch_destruction_vfx()` has
+			## only fired for firearms since. Reinstating it by reconnecting that
+			## dispatch would double every puff against the staged smoke waves;
+			## tinting the wave entry is the same look without the double.
+			##
+			## SMOKE_COLOR's own alpha is kept deliberately, and this is the trap:
+			## it is 0.2 because per-voxel smoke gets its density from OVERLAP
+			## (see that constant's note — at VFX-01's alpha the ring-0 puffs read
+			## as a heap of hard-edged discs). VFX-01's `vfx_smoke_alpha` was tuned
+			## for one puff per destroyed voxel through a completely different
+			## path. Taking the tint's alpha along would silently undo that.
+			var puff_color: Color = _smoke_tints.get(entry.get("material", ""), SMOKE_COLOR)
+			puff_color.a = SMOKE_COLOR.a * float(entry.get("alpha", 1.0))
 			smoke_overlay.add_smoke(entry["world_pos"], puff_color,
 				float(entry.get("scale", 1.0)), entry["duration"],
 				int(entry.get("blobs", 0)))
+			return 1
+		"ember":
+			## E-EMBER-01. No duration is passed: the overlay's own 1.5-4.0 roll
+			## plus its height bias is what makes a scorched patch cool unevenly
+			## instead of as a bank of identical dots, and that is the VL-D4 look
+			## the Director asked to keep ("a gente já tinha um visual bom").
+			## `duration_scale` is the material's flammability, 1.0 for wood —
+			## an exact no-op today, and the seam the cardboard/fabric materials
+			## will use later.
+			if _ember_overlay == null:
+				return 0
+			_ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
+				float(entry.get("duration_scale", 1.0)))
 			return 1
 	return 0
 

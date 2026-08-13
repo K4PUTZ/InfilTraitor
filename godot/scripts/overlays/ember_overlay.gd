@@ -102,11 +102,19 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 ## upward drift — buoyancy does not run out of steam the way the blast impulse
 ## does, so folding it into the velocity (and letting drag eat it) would make
 ## the fire stop climbing right when a real one keeps going.
+## `duration_scale` is E-EMBER-01's seam for the material table's
+## `flammability`: it multiplies the duration this ember would otherwise have,
+## whether that came from the random roll or from an explicit `duration`.
+## Trailing and defaulting to 1.0, so it is a no-op for every pre-existing
+## caller — the same "optional, default no-op" idiom E-CONTRAST-03 used for
+## `shade_brightness`. Scaling the ROLL rather than replacing it is the whole
+## point: passing an absolute `duration` would flatten the 1.5-4.0 spread that
+## makes a scorched patch cool unevenly, which is the look VL-D4 shipped.
 func add_ember(world_pos: Vector2, duration: float = -1.0,
 		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
-		rise: float = 0.0) -> void:
+		rise: float = 0.0, duration_scale: float = 1.0) -> void:
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
-	var final_duration: float = base_duration * _height_bias(world_pos.y)
+	var final_duration: float = base_duration * maxf(duration_scale, 0.01) * _height_bias(world_pos.y)
 	var color := Color.from_hsv(
 		randf_range(hue_min, hue_max),
 		randf_range(sat_min, sat_max),

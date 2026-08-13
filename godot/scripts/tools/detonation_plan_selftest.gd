@@ -23,6 +23,14 @@
 ##   6. The per-tier ring gates from the REAL frag_grenade.json hold on real
 ##      data: crack_ring_weights[0]=0.0 means ring 0 never has a cracked
 ##      entry, dent_ring_weights[2]=0.0 means ring 2 never has a dented one.
+##   7. E-EMBER-01: a real blast at PLAYGROUND's own WOOD wall queues embers,
+##      every one on a SURVIVING combustible voxel 6-adjacent to a hole this
+##      same blast opens — cell->material read off the live registries, not
+##      assumed. Non-zero on real data is the point: this is the exact shape
+##      of failure the floor-dent case (69 on a fixture, 0 on PLAYGROUND) is
+##      remembered for.
+##   8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it
+##      came from, without which the choreographer cannot tint the puff.
 ##
 ## Every expectation is checked against the REAL plan/registry/renderer
 ## state — never read back from the code under test's own success claim.
@@ -79,6 +87,8 @@ func _init() -> void:
 			test_4_exposure_fallback(plan)
 			test_5_smoke_ring_weights_consumed(plan, bomb_def)
 			test_6_real_ring_gates(plan, bomb_def)
+			test_7_ember_wave_on_real_wood(built, bomb_def, ctx)
+			test_8_smoke_entries_carry_material(plan)
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -414,3 +424,180 @@ func test_6_real_ring_gates(plan: Dictionary, bomb_def) -> void:
 					break
 	if all_ok:
 		_pass("no wave produced a cell in a ring its own JSON weight zeroes out")
+
+
+## E-EMBER-01 (2026-08-13) — the per-voxel ember glow on combustible material,
+## restored after eight days in which three documents described it as shipped
+## and no code had fired one since the 2026-08-05 `[RESET]`.
+##
+## Deliberately a SECOND build_plan() against the SAME already-built PLAYGROUND
+## rather than a synthetic fixture, and rather than retargeting _pick_source_gu()
+## (which would silently change the data tests 1-6 assert on). build_plan() is
+## PURE — §3's whole contract — so calling it twice is free of side effects, and
+## this way the ember gate is proven on the map's REAL wood, which is the exact
+## failure mode CLAUDE.md's floor-dent case exists to catch: a fixture is built
+## out of the material that works, so it cannot detect a feature made inert by
+## real map data.
+func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
+	print("\n[7] E-EMBER-01: a real blast at PLAYGROUND's WOOD wall queues embers on the survivors\n")
+	var edge_registry = built["room"]._edge_registry
+	var wood_gu := Vector2i(-9999, -9999)
+	for slice in edge_registry.all_slices():
+		if slice.material == "wood":
+			wood_gu = slice.gu_cell
+			break
+	if wood_gu.x == -9999:
+		_fail("PLAYGROUND has no wood slice at all — this test cannot prove anything")
+		return
+
+	var plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, wood_gu, ctx).waves
+	var embers: Array = []
+	for ring in plan.get("ember", {}).keys():
+		embers.append_array(plan["ember"][ring])
+	if embers.is_empty():
+		_fail("a real blast at the wood wall (gu=%s) queued ZERO embers — the feature is inert on real data" % wood_gu)
+		return
+	_pass("real wood blast at gu=%s queued %d ember(s)" % [wood_gu, embers.size()])
+
+	## The holes this same plan opens — the ember's only legal seed.
+	var holes: Dictionary = {}
+	for ring in plan.get("destroy", {}).keys():
+		for entry in plan["destroy"][ring]:
+			holes[Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))] = true
+
+	## Real cell -> material, read off the live registries rather than assumed,
+	## so "only combustible material glows" is checked against the map itself.
+	var material_of: Dictionary = {}
+	for slice in edge_registry.all_slices():
+		for v in slice.voxels:
+			material_of[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slice.material
+	for slab in built["room"]._slab_registry.all_slabs():
+		for v in slab.voxels:
+			material_of[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slab.material
+	## JunctionColumn is the THIRD container class (E-JUNCTION-01), and leaving it
+	## out is not a rounding error: PLAYGROUND has 20 columns and 4 of them are
+	## wood, so the first run of this test reported 10 embers on "non-combustible"
+	## material that were in fact on real wood the ground truth simply did not
+	## know about. Their cells never collide with a Slice's or a Slab's (measured:
+	## 0 overlaps), so a plain third pass is enough.
+	for column in built["room"]._junction_columns:
+		for v in column.voxels:
+			material_of[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = column.material
+
+	const NEIGHBOURS: Array = [
+		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+		Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+		Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+	]
+	var seen: Dictionary = {}
+	var on_a_hole := 0
+	var not_adjacent := 0
+	var non_combustible := 0
+	var duplicated := 0
+	var wrong_scale := 0
+	var expected_scale: float = MaterialResistanceTable.flammability("wood")
+	for e in embers:
+		var key := Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))
+		if seen.has(key):
+			duplicated += 1
+		seen[key] = true
+		if holes.has(key):
+			on_a_hole += 1
+		var touches := false
+		for d in NEIGHBOURS:
+			if holes.has(key + d):
+				touches = true
+				break
+		if not touches:
+			not_adjacent += 1
+		if MaterialResistanceTable.flammability(String(material_of.get(key, ""))) <= 0.0:
+			non_combustible += 1
+		if absf(float(e.get("duration_scale", -1.0)) - expected_scale) > 0.0001:
+			wrong_scale += 1
+
+	if on_a_hole == 0:
+		_pass("no ember sits on a cell this blast destroys — every one is a SURVIVOR (VL-D4's predicate)")
+	else:
+		_fail("%d ember(s) sit on a destroyed cell — the glow is on the hole, not its edge" % on_a_hole)
+
+	if not_adjacent == 0:
+		_pass("every ember is 6-adjacent to a hole this blast opened")
+	else:
+		_fail("%d ember(s) touch no hole from this blast — seeded from the wrong set" % not_adjacent)
+
+	if non_combustible == 0:
+		_pass("every ember's own voxel is a combustible material on the real map (flammability > 0)")
+	else:
+		_fail("%d ember(s) landed on non-combustible material — the flammability gate leaks" % non_combustible)
+
+	if duplicated == 0:
+		_pass("no cell was queued twice (one ember per voxel, whatever its hole count)")
+	else:
+		_fail("%d duplicate ember cell(s) — a voxel beside two holes glows twice as bright" % duplicated)
+
+	if wrong_scale == 0:
+		_pass("every ember carries wood's own flammability as duration_scale (%.2f)" % expected_scale)
+	else:
+		_fail("%d ember(s) carry a duration_scale that is not the material table's value" % wrong_scale)
+
+	## The negative half of the gate, on real data: a blast far from any wood
+	## must produce no embers at all. Uses the same concrete GU tests 1-6 run on.
+	var concrete_gu: Vector2i = _pick_source_gu(built)
+	var concrete_plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, concrete_gu, ctx).waves
+	var concrete_embers := 0
+	for ring in concrete_plan.get("ember", {}).keys():
+		concrete_embers += (concrete_plan["ember"][ring] as Array).size()
+	var reaches_wood := false
+	for ring in concrete_plan.get("destroy", {}).keys():
+		for entry in concrete_plan["destroy"][ring]:
+			var k := Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))
+			for d in NEIGHBOURS:
+				if MaterialResistanceTable.flammability(String(material_of.get(k + d, ""))) > 0.0:
+					reaches_wood = true
+					break
+			if reaches_wood:
+				break
+		if reaches_wood:
+			break
+	if reaches_wood:
+		_pass("concrete-wall blast reaches wood too (%d ember(s)) — no negative case available at this GU, and that is the map's shape, not a skip" % concrete_embers)
+	elif concrete_embers == 0:
+		_pass("a blast whose holes touch no combustible voxel queues ZERO embers")
+	else:
+		_fail("a blast touching no combustible voxel still queued %d ember(s)" % concrete_embers)
+
+
+## E-SMOKE-TINT-01 (2026-08-13) — every per-voxel smoke puff carries the material
+## it came from, which is what lets DetonationChoreographer tint it. The GU-level
+## remainder puffs (_phase_smoke) legitimately carry none: they belong to a GU the
+## flood reached but left intact, so there is no damaged voxel to take a material
+## from. They are told apart by `blobs == 0`, the same flag the choreographer
+## already uses to mean "GU remainder".
+func test_8_smoke_entries_carry_material(plan: Dictionary) -> void:
+	print("\n[8] E-SMOKE-TINT-01: per-voxel smoke entries carry their material\n")
+	var per_voxel := 0
+	var missing := 0
+	var materials: Dictionary = {}
+	for ring in plan.get("smoke", {}).keys():
+		for entry in plan["smoke"][ring]:
+			if int(entry.get("blobs", 0)) == 0:
+				continue
+			per_voxel += 1
+			var m: String = String(entry.get("material", ""))
+			if m.is_empty() or m == "?":
+				missing += 1
+			else:
+				materials[m] = int(materials.get(m, 0)) + 1
+	if per_voxel == 0:
+		_fail("no per-voxel smoke entries at all — cannot prove the material rides along")
+		return
+	if missing == 0:
+		var names: Array = materials.keys()
+		names.sort()
+		var summary: Array = []
+		for n in names:
+			summary.append("%s×%d" % [n, materials[n]])
+		_pass("all %d per-voxel puffs carry a real material (%s)" % [per_voxel, ", ".join(summary)])
+	else:
+		_fail("%d of %d per-voxel smoke entries carry no material — those puffs cannot be tinted" %
+			[missing, per_voxel])

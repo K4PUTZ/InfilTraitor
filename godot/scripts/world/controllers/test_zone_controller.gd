@@ -770,15 +770,27 @@ func is_in_targeting_mode() -> bool:
 ## (WeaponBenchController.fire_active()) is untouched by this — it still
 ## renders through VoxelRenderer.process_dirty()'s single-frame D-ARCH-01 swap.
 ##
-## Gap, flagged not silently dropped: VFX-01's per-voxel dust/spark/chip
-## debris (room._dispatch_destruction_vfx(), driven by the voxel_destroyed
-## signal) does not fire for blast-caused destruction any more — the
-## choreographer's destroy wave calls layer.erase_cell() directly rather than
-## going through VoxelRenderer.process_dirty(), and the DetonationPlan's own
-## destroy entries carry no material to dispatch debris VFX from (§6.1's
-## literal shape is {cell, level} only). Firearms are unaffected (still the
-## signal-driven path). Revisit if the Director wants blast debris back —
-## needs material threaded onto destroy plan entries, not a quick patch here.
+## Gap, flagged not silently dropped: VFX-01's per-voxel debris
+## (room._dispatch_destruction_vfx(), driven by the voxel_destroyed signal)
+## does not fire for blast-caused destruction — the choreographer's destroy wave
+## calls layer.erase_cell() directly rather than going through
+## VoxelRenderer.process_dirty(), so the signal never reaches the room.
+## Firearms are unaffected (still the signal-driven path).
+##
+## PARTIALLY CLOSED 2026-08-13 (E-EMBER-01 / E-SMOKE-TINT-01, Director: "reativar
+## as brasas e a fumaça na madeira"). Two of the three halves are back, and NOT
+## by reconnecting that dispatch — doing so would double every puff against the
+## staged smoke waves. Instead the plan carries what each effect needs and the
+## choreographer plays it in the front:
+##   · the per-voxel EMBER glow on combustible material (VL-D4, dead since the
+##     2026-08-05 `[RESET]`) — a real `ember` wave, gated on the material
+##     table's new `flammability` column;
+##   · the per-material SMOKE TINT — `material` on each smoke entry, colours
+##     from room.blast_smoke_tints().
+## STILL DISCONNECTED, deliberately, and the Director has not asked for it: the
+## DUST / SPARK / CHIP debris of that same dispatch. It is not blocked by
+## anything any more (destroy entries could take a material the same way smoke
+## did) — it is simply out of the scope that was requested.
 func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return
@@ -1203,6 +1215,10 @@ func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 	choreographer.finished.connect(func():
 		_prof("WAVES end — the blast is over")
 		_active_choreographer = null)
+	## E-EMBER-01 / E-SMOKE-TINT-01: the two VFX targets that are not on
+	## `start()`'s signature — the ember overlay VL-D4's per-voxel glow needs, and
+	## the per-material smoke tints only a MaterialRegistry owner can resolve.
+	choreographer.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints())
 	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
 		room.get_tree(), playback_queue)
 

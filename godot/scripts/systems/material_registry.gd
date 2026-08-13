@@ -47,6 +47,14 @@ class MaterialDef:
 	var destroy_factor: float = 0.5
 	var dent_factor: float = 0.0
 	var crack_factor: float = 0.0
+	## E-EMBER-01 (Director, 2026-08-13): does this material catch, and for how
+	## long. A multiplier centred on 1.0, NOT a 0-1 probability — 0.0 is the one
+	## value with structural meaning (never catches). Authoritative semantics and
+	## the reason it lives in two readers: MaterialResistanceTable's own
+	## DEFAULT_FLAMMABILITY note. Kept in sync here from the same JSON row so an
+	## inspector/debug view of a MaterialDef is not missing a column the
+	## destruction side acts on.
+	var flammability: float = 0.0
 	## Whether this material has a SLICE (wall) facade at all — false for the
 	## floor-only materials (grass/dirt/gravel/sand today), which have no
 	## `facade_<id>` asset and only ever render via the SLAB path.
@@ -91,6 +99,7 @@ class MaterialDef:
 		def.destroy_factor = float(data.get("destroy_factor", 0.5))
 		def.dent_factor = float(data.get("dent_factor", 0.0))
 		def.crack_factor = float(data.get("crack_factor", 0.0))
+		def.flammability = float(data.get("flammability", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
 		return def
 

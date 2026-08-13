@@ -3,6 +3,7 @@
   "destroy_factor": 0.2,
   "dent_factor": 0.2,
   "crack_factor": 0.1,
+  "flammability": 0.0,
   "base_color": [
     0.55,
     0.55,

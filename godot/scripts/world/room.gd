@@ -2280,6 +2280,29 @@ func _vfx_material_base_color(material_id: String) -> Color:
 	return mat_def.base_color if mat_def != null else Color(0.6, 0.6, 0.6)
 
 
+## E-SMOKE-TINT-01 (2026-08-13) — the same per-material tints VFX-01 gives
+## firearm destruction, resolved once per detonation as `{material_id: Color}`
+## for DetonationChoreographer to look up per smoke entry.
+##
+## It lives here, and is passed in, because `DetonationPlanBuilder` is static and
+## runs headless in selftests where the `Registries` autoload does not exist —
+## the plan therefore carries the material ID and never the colour. Built from
+## the registry's whole roster (not just this blast's materials) because it is a
+## handful of entries and this way one map's cached plan can never be replayed
+## against a map whose materials the map has since changed.
+##
+## Only the HUE is consumed downstream; the choreographer keeps SMOKE_COLOR's own
+## alpha, for the reason spelled out at its call site.
+func blast_smoke_tints() -> Dictionary:
+	var tints: Dictionary = {}
+	var registry = Registries.get_material_registry()
+	if registry == null:
+		return tints
+	for material_id in registry.list_materials():
+		tints[material_id] = _vfx_smoke_color_for_material(material_id)
+	return tints
+
+
 ## VFX-01: smoke tint per material — darker/desaturated version of the
 ## material's own base color so wood reads as dark smoke and masonry/metal
 ## read as light smoke, per the Director's request.

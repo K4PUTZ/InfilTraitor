@@ -412,6 +412,13 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["container_of"] = {}
 	s["exposed_by_ring"] = {}
 	s["cell_to_voxel"] = {}
+	## E-EMBER-01: `{Vector3i: flammability}`, filled only for voxels whose
+	## container's material actually catches — one table lookup per CONTAINER in
+	## the walk, and a dictionary write only for the combustible ones. The
+	## alternative (a whole-map cell -> material map) would add a write for every
+	## voxel on the map to phase 4, which §8.8 already measures as 66% of the
+	## build's whole cost.
+	s["flammable_cells"] = {}
 	s["blast_cells"] = []
 	s["weapon_cells"] = []
 	s["damaged_voxels"] = []
@@ -618,6 +625,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 	var occupancy: Dictionary = s["occupancy"]
 	var under_structure: Dictionary = s["under_structure"]
 	var derive_us: bool = bool(s["derive_under_structure"])
+	var flammable_cells: Dictionary = s["flammable_cells"]
 	var chunk: int = WALK_CHUNK
 	var ci: int = int(s["cursor"])
 	var vi: int = int(s["sub"])
@@ -627,6 +635,14 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 		var entry: Array = containers[ci]
 		var voxels: Array = entry[0].voxels
 		var is_slice: bool = bool(entry[1])
+		## E-EMBER-01, resolved once per container rather than per voxel. D19 is
+		## why this reads the material and not the surface: "a material behaves
+		## identically on floor, wall and ceiling — durability, baked assets,
+		## soot, effects, ember." The pre-2026-08-05 VL-D4 loop collected wood
+		## from SLICES only, so a wood floor never glowed; that was an oversight
+		## the D19 reform had already outlawed, not a look to reproduce.
+		var flammability: float = MaterialResistanceTable.flammability(
+			_material_name(entry[0]))
 		while vi < voxels.size():
 			var v: Voxel = voxels[vi]
 			vi += 1
@@ -640,6 +656,8 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 			## visible+damaged -> self-soot), classified through the projection.
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			cell_to_voxel[key] = v
+			if flammability > 0.0:
+				flammable_cells[key] = flammability
 			if not vis or state == Voxel.DamageState.DESTROYED:
 				var from_blast: bool = bool(p[WorldDelta.P_BLAST]) if touched else v.damage_is_blast
 				if from_blast:
@@ -796,7 +814,8 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				touched_voxels.append(voxel)
 				_count(census, "destroy", container, true)
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
-					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter)
+					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter,
+					_material_name(container))
 				_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"r": _radius_of(voxel.grid_pos, epicenter)})
 			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
@@ -805,7 +824,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
 					DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
 						else CRACK_SMOKE_INTENSITY,
-					voxel_renderer, epicenter)
+					voxel_renderer, epicenter, _material_name(container))
 				## The resolver takes a whole Voxel and reads five damage fields off
 				## it, so it is handed the Delta's PROJECTED copy. The real Voxel is
 				## what goes into `touched_voxels`, because that list is the commit's
@@ -962,6 +981,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= gus.size():
+		_build_ember_wave(s)
 		## §3.4 — the Delta's queryable surface. `touched_voxels` is the object
 		## list VL-PERSIST consumes after the commit; `touched` is the same set as
 		## plain cells, for anything that must outlive those references (a cached
@@ -975,6 +995,80 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		delta.touched = touched_cells
 		delta.census = s["census"]
 		_enter_phase(s, PHASE_DONE)
+
+
+## --- E-EMBER-01: the combustible edge of this blast's holes. ---------------
+##
+## Restores VL-D4 ("wood ficar em brasa no momento da explosão, e depois de
+## alguns segundos escurecer"), removed on 2026-08-05 by the `[RESET]` commit
+## `d4124809` along with `TestZoneController._is_freshly_scorched()`, and never
+## reconnected when Task 5 (E-WAVE) brought the trigger back. Three docs went on
+## describing it as shipped for eight days; nothing in code had fired one since.
+##
+## The predicate is the original's, unchanged: a voxel that SURVIVES with at
+## least one of its six neighbours gone glows. Not the destroyed voxel — the
+## edge of the hole is what stays on screen to cool down, and the glow fading
+## reveals the soot already painted under it.
+##
+## Seeded from this blast's own destroy entries rather than from the soot
+## snapshot, even though soot ring 0 is the same predicate. The snapshot merges
+## firearm holes and every older crater on the map, so seeding from it would
+## light wood next to a bullet hole across the room every time a grenade went
+## off somewhere else. A blast's embers belong to that blast.
+##
+## Cost is (this blast's holes x 6) dictionary lookups — no BFS, no second walk.
+static func _build_ember_wave(s: Dictionary) -> void:
+	var flammable_cells: Dictionary = s["flammable_cells"]
+	if flammable_cells.is_empty():
+		return
+	var waves: Dictionary = s["waves"]
+	var destroy_by_ring: Dictionary = waves["destroy"]
+	if destroy_by_ring.is_empty():
+		return
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var delta: WorldDelta = s["delta"]
+	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var epicenter: Vector2i = s["epicenter"]
+	var seen: Dictionary = {}
+	for ring: int in destroy_by_ring.keys():
+		for hole: Dictionary in destroy_by_ring[ring]:
+			var origin := Vector3i(hole["cell"].x, hole["cell"].y, int(hole["level"]))
+			for d: Vector3i in EMBER_NEIGHBOURS:
+				var ncell: Vector3i = origin + d
+				if seen.has(ncell):
+					continue
+				var flammability: float = float(flammable_cells.get(ncell, 0.0))
+				if flammability <= 0.0:
+					continue
+				var neighbour: Voxel = cell_to_voxel.get(ncell)
+				if neighbour == null:
+					continue
+				## PROJECTED, not live — the same trap phase 4 names for
+				## `damaged_voxels`. The real Voxel still reads INTACT/visible
+				## here (nothing has committed yet), so a voxel this very blast
+				## destroys would light up as if it had survived.
+				var p: Array = delta.projection_of(neighbour)
+				var touched: bool = not p.is_empty()
+				var state: int = int(p[WorldDelta.P_STATE]) if touched else neighbour.damage_state
+				var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else neighbour.visible
+				if not vis or state == Voxel.DamageState.DESTROYED:
+					continue
+				seen[ncell] = true
+				_append(waves["ember"], ring, {
+					"cell": neighbour.grid_pos,
+					"level": neighbour.level,
+					"world_pos": voxel_renderer.voxel_world_position(
+						neighbour.grid_pos, neighbour.level),
+					"duration_scale": flammability,
+					"r": _radius_of(neighbour.grid_pos, epicenter),
+				})
+
+
+const EMBER_NEIGHBOURS: Array[Vector3i] = [
+	Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+	Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+	Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+]
 
 
 static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
@@ -1102,6 +1196,16 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 		print("[E-PLAN]   %-16s destroyed %4d · dented %4d · cracked %4d   (baked %d/live %d)" % [
 			String(group).replace("|", "/"), int(row["destroy"]), int(row["dented"]),
 			int(row["cracked"]), int(row["baked"]), int(row["live"])])
+	## E-EMBER-01: reported on the REAL blast, next to the census, for exactly
+	## the reason CLAUDE.md's floor-dent case exists — a synthetic fixture is
+	## built out of the material that works, so it cannot catch a feature made
+	## inert by real map data (69 dents on a patch, zero on PLAYGROUND). A zero
+	## here on a map that HAS a combustible material is the finding.
+	var ember_total: int = 0
+	for ring in delta.waves.get("ember", {}).keys():
+		ember_total += (delta.waves["ember"][ring] as Array).size()
+	print("[E-EMBER] %d ember(s) queued — surviving combustible voxels edging this blast's holes"
+		% ember_total)
 
 
 ## §2's exposure fallback (B5): resolve the deep floor Slab's tiles (the
@@ -1152,9 +1256,15 @@ static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
 ##
 ## Records the voxel's GU in `smoked_gus` so the GU-level remainder pass at the
 ## end of build_plan() knows this GU is already covered.
+## `material` (E-SMOKE-TINT-01, 2026-08-13) rides on the entry so the
+## choreographer can tint the puff. It is only ever the container's own id — the
+## COLOUR is resolved by the caller that has a MaterialRegistry (see
+## Room.blast_smoke_tints()), because this builder is static and runs headless in
+## selftests where the `Registries` autoload does not exist.
 static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionary,
 		voxel: Voxel, ring: int, smoke_ring_weights: Array[float], tier_intensity: float,
-		voxel_renderer: VoxelRendererClass, epicenter: Vector2i) -> void:
+		voxel_renderer: VoxelRendererClass, epicenter: Vector2i,
+		material: String = "") -> void:
 	if ring < 0 or ring >= smoke_ring_weights.size():
 		return
 	var weight: float = smoke_ring_weights[ring]
@@ -1176,6 +1286,7 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		"scale": scale,
 		"alpha": clampf(strength * (0.6 + 0.8 * size_roll), 0.05, 1.0),
 		"blobs": SMOKE_BLOBS_PER_VOXEL,
+		"material": material,
 		"r": _radius_of(voxel.grid_pos, epicenter),
 	})
 

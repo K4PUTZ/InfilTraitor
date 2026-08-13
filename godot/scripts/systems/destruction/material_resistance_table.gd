@@ -81,6 +81,27 @@ const DEFAULT_DESTROY_FACTOR := 0.5
 const DEFAULT_DENT_FACTOR := 0.0
 const DEFAULT_CRACK_FACTOR := 0.0
 
+## E-EMBER-01 (Director, 2026-08-13): whether a material CATCHES, and how long
+## it stays glowing. Lives here rather than on MaterialRegistry.MaterialDef
+## because it is destruction behaviour, and because this reader is the
+## autoload-free one — DetonationPlanBuilder is static and runs headless in
+## selftests, where `Registries` does not exist. MaterialDef carries the same
+## field for the render/inspection side, parsed from the same JSON row (D21:
+## one file per material, two readers, no duplication).
+##
+## NOT a 0-1 probability — a MULTIPLIER centred on 1.0, the same convention
+## `shot_punch_table.gd`'s factors use. `0.0` means "does not catch at all" and
+## is the only value with a structural meaning (it gates the ember off);
+## anything above scales how long the glow lives. Wood is the reference at 1.0,
+## which makes today's ember byte-for-byte the pre-2026-08-05 VL-D4 look.
+##
+## Deliberately just a gate + a duration scale for now. The Director's wider
+## intent — cardboard, fabric, awnings that block light until they burn, light
+## wood walls that burn through into a new passage — is the MATERIALS milestone,
+## and none of that mechanism is invented here. This is the column those
+## materials will fill in, nothing more.
+const DEFAULT_FLAMMABILITY := 0.0
+
 ## Lazily loaded, cached on first access. Non-const by construction (D21) —
 ## a `const` here would be exactly the violation this rewrite closes.
 static var _table: Dictionary = {}
@@ -97,6 +118,16 @@ static func dent_factor(material: String) -> float:
 
 static func crack_factor(material: String) -> float:
 	return float(_row(material).get("crack_factor", DEFAULT_CRACK_FACTOR))
+
+
+## E-EMBER-01. See DEFAULT_FLAMMABILITY for what the number means.
+static func flammability(material: String) -> float:
+	return float(_row(material).get("flammability", DEFAULT_FLAMMABILITY))
+
+
+## The gate, named once so no call site re-derives it as `> 0.0` and drifts.
+static func is_combustible(material: String) -> bool:
+	return flammability(material) > 0.0
 
 
 static func _row(material: String) -> Dictionary:
@@ -133,5 +164,6 @@ static func _scan_dir(dir_path: String) -> void:
 							"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
 							"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
 							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
+							"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
 						}
 		fname = dir.get_next()

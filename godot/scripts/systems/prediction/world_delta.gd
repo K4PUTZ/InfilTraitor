@@ -59,12 +59,18 @@ const P_VISIBLE: int = 5
 var damage: Array = []
 
 ## The playback payload: `{kind: {ring: [entry]}}` for destroy / dented /
-## cracked / smoke / soot. Unchanged in shape from the Dictionary
+## cracked / smoke / ember / soot. Unchanged in shape from the Dictionary
 ## `DetonationPlanBuilder` returned before this class existed, which is why
 ## `DetonationChoreographer` and both plan selftests consume `delta.waves`
 ## and needed no other edit.
+##
+## `ember` (E-EMBER-01, 2026-08-13) is the only kind that paints nothing on the
+## TileMapLayer — it hands a glow to `EmberOverlay`, exactly like `smoke` hands
+## a puff to `SmokeSparkOverlay`. It rides here anyway because it has to arrive
+## WITH the expanding front that opened the hole it edges, and the queue is what
+## carries that ordering.
 var waves: Dictionary = {
-	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "soot": {},
+	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "soot": {},
 }
 
 ## §3.4 — the cheap summary. A consumer that only needs "how much of this cover

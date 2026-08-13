@@ -394,7 +394,10 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      capture with a grenade at the concrete base — 501 px darkened along the
      exposed under-wall floor, mean −14; bake 19/19, blast 14/14, floor 9/9,
      persist 2/2; lint clean. All `var`, tunable.
-4. **Wood ✅ LANDED 2026-07-26 (VL-D4).** Two independent mechanisms:
+4. **Wood ✅ LANDED 2026-07-26 (VL-D4)** — *the ember half was **dead from
+   2026-08-05 to 2026-08-13** and is described further down as it now stands;
+   see the E-EMBER-01 note at the end of this item before trusting the
+   present tense in it.* Two independent mechanisms:
    - **Directional destruction bias** (general-purpose, not wood-only —
      wood is just where destroy_factor=0.9 makes it read strongest).
      `BlastCalculator._select_deterministic()` gained an optional
@@ -431,6 +434,47 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      is ALREADY in its final charred state from VL-D1's soot the instant the
      blast lands — the glow just obscures it briefly, so "cooling" is really
      "revealing," not a second darkening pass.
+
+     **⚠️ E-EMBER-01 (2026-08-13) — this mechanism was DEAD for eight days,
+     and this document said otherwise the whole time.** The seeding loop and
+     its `_is_freshly_scorched()` helper were deleted on 2026-08-05 by the
+     `[RESET]` commit `d4124809`, which disconnected explosive destruction
+     wholesale; when Task 5 (E-WAVE) reconnected the trigger two days later it
+     restored the damage pipeline and not this. Nothing recorded it as an open
+     gap — unlike the debris VFX dropped in the same rebuild, which
+     `EXPLOSION_REBUILD_MASTER_PLAN` §5 flagged explicitly. Found 2026-08-13 by
+     reading this file against the code, on the Director's own request for a
+     doc-vs-code pass. **Restored the same day**, with three deliberate
+     differences from the text above:
+     - The predicate is the 6-neighbour absence check, not `soot_ring == 0` —
+       that per-voxel field was deleted by D24 in 2026-07-30 and is not coming
+       back. Same set, different derivation.
+     - It is no longer wood-specific in code. The gate is the material table's
+       new `flammability` column (`materials/*.json`,
+       `MaterialResistanceTable.is_combustible()`), so cardboard, fabric and
+       light wood can join it as data in the materials milestone rather than as
+       a second `if material == "wood"`.
+     - It covers **floors and ceilings too**, per D19 ("a material behaves
+       identically on floor, wall and ceiling — durability, baked assets, soot,
+       effects, ember"). The 2026-07-26 loop collected wood from SLICES only, so
+       a wood floor never glowed; that was an oversight D19 had already
+       outlawed, not a look to reproduce.
+
+     Delivery is now a real `ember` wave on the `DetonationPlan`, played by
+     `DetonationChoreographer` inside the expanding front (bias -0.10, between
+     the mark and the smoke) rather than fired in one burst after the
+     destruction has finished passing through — the front did not exist in
+     2026-07-26.
+
+     *Evidence, real map, not a fixture:* live PLAYGROUND detonation at the wood
+     test-zone grenade — `[E-EMBER] 290 ember(s) queued` against a census of
+     `FLOOR/wood destroyed 137` + `WALL/wood destroyed 38`;
+     `Screenshots/history/e_ember01_wood_embers_settled_2026-08-13.png` (the
+     settled ~2.2 s state: scattered coals on the wall face over the soot, the
+     floor's own already cooled — `height_bias_low` 0.65 doing exactly what
+     "heat rises" was written to do). `detonation_plan_selftest.gd` test 7 runs
+     the same predicate on the real map (112 embers at another wood GU) and
+     checks every one against cell→material read off the live registries.
    - *Evidence:* new `blast_calculator_selftest` cases 13–14 (bias prefers the
      epicenter-facing side; the `NO_EPICENTER_BIAS` sentinel path is
      byte-identical to omitting the argument) — blast suite 16/16. Real

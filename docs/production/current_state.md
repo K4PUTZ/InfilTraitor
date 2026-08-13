@@ -53,6 +53,7 @@
 - RESUMO_SESSAO_2026-08-11_GRENADE_SHADOW_ROLL.md
 - RESUMO_SESSAO_2026-08-12_13_BUBBLE_WARM_SOOT.md
 - RESUMO_SESSAO_2026-08-12_WALL_GRID_AND_SHRAPNEL_FIX.md
+- RESUMO_SESSAO_2026-08-13_DOC_AUDIT_EMBER.md
 - RESUMO_SESSAO_2026-08-13_EXPLOSION_REFINEMENT.md
 - RESUMO_SESSAO_2026-08-13_E_CONTRAST_FLOOR_SHADE.md
 <!-- AUTO:END pending_prompts -->
@@ -72,11 +73,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
 - 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
 - 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
 - a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
 - 52827f8b ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
-- cced2311 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 <!-- AUTO:END version_history -->
 
 ---
@@ -372,14 +373,19 @@ canon above, full writeup in `PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`:**
 - Blast destruction reads visually: soot rings around holes, a contiguous
   radial floor crater (not a scatter), directional destruction bias toward
   the blast-facing side, under-wall floor darkening, a fading ember→char glow
-  on freshly-blasted wood (`EmberOverlay`) — all material-agnostic except the
-  ember seed condition
+  on freshly-blasted combustible material (`EmberOverlay`) — all
+  material-agnostic except the ember seed condition, which now reads the
+  material table's `flammability` column instead of hardcoding wood
+  (**the ember was dead code 2026-08-05 → 2026-08-13** while this line claimed
+  otherwise; see E-EMBER-01 under Explosive Destruction below)
 - Destruction (holes/soot) persists through perspective rotation via a
   base-coordinate registry, without prebuilding all 4 views (deferred to the
   project's finishing/optimization pass)
 - Temporal lights (flicker/pulse) repaint only their own influence set
   (~75ms worst case) instead of the whole map (~590-675ms) — the mechanism
-  behind both the flicker demo lamp and the wood ember effect
+  behind the flicker demo lamp (the ember effect is a screen-space overlay and
+  never used this path — see `EmberOverlay`'s own header on why a light bucket
+  structurally cannot carry one voxel's time-varying colour)
 - Perspective rotation cost cut ~80% (~5.7s → ~1.15s off-screen throttled) via
   lazy alt-minting, a baked-source cache across rotations, and light-field
   caching — independent of the above, found while investigating flicker cost
@@ -508,8 +514,27 @@ the blast from "the waves fire" to something that reads right. Full record:
   `WAVE_TABLE`'s hardcoded pairs were a second gate on what the bomb's JSON
   already decides, and 18 ring-2 dents were planned and silently dropped on every
   blast.
+- ✅ **The embers and the wood smoke are back** (E-EMBER-01 / E-SMOKE-TINT-01,
+  2026-08-13, `EXPLOSION_REBUILD_MASTER_PLAN` §11b). Found by the Director's own
+  doc-vs-code review: VL-D4's per-voxel ember→char glow had been **dead code
+  since the 2026-08-05 `[RESET]`** — deleted with the destruction trigger, not
+  restored when Task 5 reconnected it — while three documents, this one
+  included, described it as shipped. Nothing had recorded it as a gap. Both
+  effects needed the same missing thing (the plan's entries carried no
+  material), and neither was fixed by reconnecting VFX-01's dispatch, which
+  would double every puff against the staged smoke waves. The ember is now a
+  real `ember` wave played inside the expanding front, gated on a new
+  **`flammability` column in the material table** rather than a hardcoded wood
+  check — today only wood is combustible; cardboard, fabric and light wood are
+  the materials milestone. Real PLAYGROUND detonation: **290 embers** against
+  `FLOOR/wood destroyed 137` + `WALL/wood destroyed 38`
+  (`e_ember01_wood_embers_settled_2026-08-13.png`).
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
+- ⚠️ **Still off, deliberately:** the DUST / SPARK / CHIP debris of VFX-01's
+  dispatch (wood splinters included) never fires for blasts, only for firearms.
+  Nothing blocks it since E-SMOKE-TINT-01 showed how to thread material onto a
+  plan entry — it is simply outside any scope the Director has asked for.
 
 ✅ **Tasks 0–5 of the rebuild are done — Phase A is functionally complete**
 ([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),

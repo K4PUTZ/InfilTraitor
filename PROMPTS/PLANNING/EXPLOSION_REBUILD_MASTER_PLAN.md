@@ -531,7 +531,8 @@ instead of the wrong assumption, so the next reader doesn't repeat it.
   `_gu_blast_count`, persists `touched_voxels`, then hands the plan to a
   `DetonationChoreographer`.
 
-**One documented, deliberate scope decision, not silently dropped:**
+**One documented, deliberate scope decision, not silently dropped**
+*(partially reversed 2026-08-13 — see E-EMBER-01 / E-SMOKE-TINT-01 below):*
 VFX-01's per-voxel dust/spark/chip debris (`room._dispatch_destruction_vfx()`,
 driven by `VoxelRenderer.voxel_destroyed`) does not fire for blast-caused
 destruction any more — the choreographer's destroy wave calls
@@ -3057,6 +3058,104 @@ real before/after captures at every stage, not reasoned claims. Commits
 Hand-named captures: `e_contrast02_floor_shade_after_2026-08-13.png` (the
 regression, kept as the historical record of what "wrong" looked like),
 `e_contrast03_floor_decal_bake_shade_2026-08-13.png` (the real fix).
+
+---
+
+## 11b. E-EMBER-01 / E-SMOKE-TINT-01 — the wood embers and the wood smoke, back (2026-08-13)
+
+**Trigger.** The Director asked for a doc-vs-code pass over the project state,
+naming the remaining destruction detail directly: *"reativar as brasas e a
+fumaça na madeira depois da explosão, que acabaram ficando de lado quando a
+gente refez o sistema da granada."*
+
+**What the pass found.** Two effects, one root cause, and only one of them
+honestly documented:
+
+1. **The embers were dead and three documents said they shipped.**
+   `VOXEL_LIGHT_MASTER_PLAN` §VL-D4, `docs/production/current_state.md` and
+   `DESTRUCTION_MASTER_PLAN`'s own header all described the per-voxel
+   ember→char glow in the present tense. The seeding loop and
+   `TestZoneController._is_freshly_scorched()` were deleted on **2026-08-05** by
+   the `[RESET]` commit `d4124809`; Task 5's reconnect two days later restored
+   the damage pipeline and not this. **Nothing anywhere recorded it as an open
+   gap** — the single doc-vs-code divergence the whole review turned up.
+2. **The material smoke tint was dead and §5 said so.** `SMOKE_COLOR` is one
+   flat grey for every material, while VFX-01's `_vfx_smoke_color_for_material()`
+   (wood dark, masonry and metal light) only ever runs off `voxel_destroyed` —
+   a signal the choreographer's `erase_cell()` path never emits. Documented
+   correctly, above and in `test_zone_controller.gd`'s own comment.
+
+**The shape of the fix.** Both wanted the same missing thing: the plan's
+entries did not carry the material. Neither was fixed by reconnecting
+`_dispatch_destruction_vfx()` — that would double every puff against the staged
+smoke waves, which is §5's own stated reason for leaving it off. The material
+rides on the plan instead, and the choreographer plays it in the front.
+
+| Piece | Where |
+|---|---|
+| `flammability` column, one row per material | `materials/*.json`, `MaterialResistanceTable.flammability()` / `is_combustible()`, mirrored on `MaterialRegistry.MaterialDef` |
+| Combustible-cell index, one lookup per CONTAINER in the map walk | `DetonationPlanBuilder._phase_walk()` → `s["flammable_cells"]` |
+| The ember wave itself | `DetonationPlanBuilder._build_ember_wave()`, run at the tail of `_phase_smoke` |
+| `ember` as a played kind, bias −0.10 (after the mark, before the smoke) | `DetonationChoreographer.PLAYED_KINDS` / `KIND_RADIUS_BIAS` / `_apply_entry()` |
+| `duration_scale`, trailing and defaulting to 1.0 | `EmberOverlay.add_ember()` |
+| `material` on every per-voxel smoke entry; `{material: Color}` resolved room-side | `_append_voxel_smoke()`, `Room.blast_smoke_tints()`, `DetonationChoreographer.set_vfx_targets()` |
+
+**Three decisions worth naming, because none of them is a detail:**
+
+- **`flammability` is a MULTIPLIER centred on 1.0, not a 0–1 probability** —
+  `shot_punch_table.gd`'s convention. Only `0.0` has structural meaning (never
+  catches). Wood sits at the 1.0 reference, which makes the restored ember
+  byte-for-byte the pre-`[RESET]` look; a future cardboard at 1.4 or fabric at
+  0.5 gets a real meaning for free. It is deliberately just a gate plus a
+  duration scale — the Director's wider intent (*"caixas de papelão e tecidos…
+  um toldo tampa a luz mas pode ser queimado… paredes de madeira mais leve bem
+  inflamáveis, podendo abrir passagens"*) is the **materials milestone**, and
+  none of that mechanism is invented here.
+- **The ember covers floors and ceilings, not only walls.** The 2026-07-26 loop
+  collected wood from `Slice`es only, so a wood floor never glowed. D19 ("a
+  material behaves identically on floor, wall and ceiling — durability, baked
+  assets, soot, effects, ember") had already outlawed that; reproducing it would
+  have been reproducing a bug.
+- **The tint takes the material's HUE and keeps `SMOKE_COLOR`'s ALPHA.** That
+  alpha is 0.2 because per-voxel smoke gets its density from OVERLAP (E-SMOKE-01
+  measured the alternative: 274 ring-0 puffs reading as a heap of hard-edged
+  discs). VFX-01's own `vfx_smoke_alpha` was tuned for a different path
+  entirely; carrying it along would have silently undone that.
+
+**Evidence — real map, real counts.**
+
+    [E-PLAN] census gu=(18, 5) cost=188.4ms
+      FLOOR/concrete   destroyed   85 · dented   54 · cracked   59
+      FLOOR/stone      destroyed    0 · dented    0 · cracked    5
+      FLOOR/wood       destroyed  137 · dented   43 · cracked    0
+      WALL/wood        destroyed   38 · dented   32 · cracked    0
+    [E-EMBER] 290 ember(s) queued
+    [E-WAVE] frames 1-5, apply 5.2 / 7.6 / 11.0 / 1.3 / 0.2 ms
+
+Hand-named captures:
+`e_ember01_wood_blast_peak_2026-08-13.png` (the detonation at full burn) and
+`e_ember01_wood_embers_settled_2026-08-13.png` (~2.2 s later — scattered coals
+on the wall face over the soot, the floor's own already cooled, which is
+`EmberOverlay`'s `height_bias_low` 0.65 doing exactly what "heat rises" was
+written to do).
+
+`detonation_plan_selftest.gd` gained tests 7 and 8, both against the real
+PLAYGROUND: 112 embers at a second wood GU, every one checked to be a SURVIVOR,
+6-adjacent to a hole this same blast opens, on a material with
+`flammability > 0` per the **live registries**, never duplicated, carrying
+wood's own value as `duration_scale` — plus the negative case (a blast whose
+holes touch no combustible voxel queues zero). **Test 7 failed on its first
+run**, reporting 10 embers on "non-combustible" material: the test's own
+cell→material ground truth omitted `JunctionColumn`, the third container class,
+and 4 of PLAYGROUND's 20 columns are wood. The code was right and the test was
+incomplete — fixed by completing the ground truth, not by relaxing the
+assertion.
+
+**Still deliberately disconnected, and the Director has not asked for it:** the
+DUST / SPARK / CHIP debris of that same VFX-01 dispatch (including wood's own
+`add_chips` splinters). Nothing blocks it any more — destroy entries could take
+a material exactly the way smoke entries now do — it is simply outside the scope
+that was requested.
 
 ---
 

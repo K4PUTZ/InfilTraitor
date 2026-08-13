@@ -2923,6 +2923,143 @@ above, both ways (ctx with/without `junction_columns`, same map, same target).
 
 ---
 
+## E-CONTRAST-01/02/03 (2026-08-13) — "voxels especiais" after 2+ blasts, and two wrong diagnoses before the right one
+
+Director, with a screenshot from a live PLAYGROUND session (heat/light dev
+overlay): *"duas explosões ou mais criam voxels especiais sem nenhuma
+fuligem, que ficam muito claros. Não precisam ficar tão escuros quanto os
+demais, mas do jeito que está parece defeito."* Closed the same day, but only
+on the third attempt — the first two targeted a mechanism that turned out to
+be innocent, and the second one caused a real regression before the actual
+cause (baked decal art, not soot) was identified.
+
+### The investigation that ruled out a soot bug
+
+A headless probe against real PLAYGROUND (two frag grenades at nearby, not
+identical, GUs — the same-GU-twice case was already S-DEEP's fix) first found
+~400 voxels where the derived soot ring said "should be scorched" but the
+painted tile showed clean. Tracing it down: the probe's own `ctx` was copied
+from a 2026-08-07 selftest scaffold that predates `test_zone_controller.gd`'s
+real `_build_detonation_ctx()` — missing `blast_soot_rings`/
+`weapon_soot_rings`, so the plan silently built with `build_plan()`'s
+un-fed-through default of 4 rings instead of the room's real 4+2=6. Fixing
+the probe's ctx to match production exactly dropped the count to **0
+mismatches across 1217 candidate voxels** — the soot BFS, merge and paint
+pipeline itself was correct the whole time. Real lesson, not a footnote:
+the first "bug" found was in the investigation tool, not the game.
+
+### E-CONTRAST-01 — real, but not what the Director was pointing at
+
+`voxel_face_shading.gdshader`'s `soot_face_mult` ring 3 (0.84, the blast-only
+feather PERF-02 B3-2 introduced) moved to 0.75, mirrored into
+`VoxelLightField.soot_darkening[3]` (0.80→0.71) for the isotropic reference
+curve. Real, measured (a genuine before/after pixel diff, ring-shaped —
+exactly the crater's outer slope `derive_soot_rings()`'s own comment already
+predicts reads lighter than the inner wall), but the diff's shape proved it
+never touched the crater's INTERIOR, where the Director's screenshot pointed.
+**Reverted in E-CONTRAST-03** once the real cause was found — not left in
+alongside it, because it was solving a problem nobody reported.
+
+### E-CONTRAST-02 — wrong mechanism, and a real regression
+
+A ring histogram (same real two-blast scene) showed the bright interior
+blobs already sitting at ring 0/1 — the DARKEST tones `soot_face_mult`
+offers. That ruled out "not enough ring reach" and produced a real but
+incomplete insight: multiply can only ever SCALE a face's own bright base
+texture, never flatten it, so no ring tuning could close the gap. Built a
+second `ShaderMaterial` instance (`voxel_is_floor` flag, floor layers only)
+that mixed the final colour toward a dark shade — a real, measurable, floor-
+scoped darkening (0/1217 → real pixel diff covering the whole crater, not
+just a ring).
+
+**Wrong on delivery.** Director, with an annotated screenshot: *"você pintou
+a borda da explosão que estava boa com feather e chapou tudo... os voxels
+especiais clarinhos que precisavam ser escurecidos continuam idênticos."* The
+flat mix amount applied to EVERY ring, including ring 3 — S-FADE's own
+gradual feather fade-in flattened into a uniform plateau, a real regression
+caught from a live capture, not a guess. Scoping the mix to skip ring 3
+(`floor_soot_shade_amount` became a per-ring `vec4`, ring 3 = 0.0) restored
+the feather exactly — but the voxels the Director's arrow pointed at, inside
+the DENTED/CRACKED decal zone, were still byte-identical, because they were
+never a soot-ring case at all. **Also reverted in E-CONTRAST-03** — the whole
+mechanism (second `ShaderMaterial`, `voxel_is_floor`, both shade uniforms)
+removed, not just tuned further, once the Director named the real cause.
+
+### E-CONTRAST-03 — the real fix: shade the decal ATOM, at bake time
+
+Director: *"Esses voxels são os dented e cracked que a gente faz no baking
+system, queimando os decals depois que as facades e slabs estão prontas.
+Como eles tem uma arte diferente, acabam se destacando mais que os outros...
+Só precisamos diminuir o brilho, ou aplicar um shade, na hora de fazer o bake
+dos voxels de chão, que só podem ser afetados por explosão, já que armas não
+acertam o chão. Com isso eles naturalmente já nascem com mais fuligem. Os
+demais voxels continuam como estão, com exceção do cracked que também podem
+aparecer em paredes, mas não tem problema se ficarem um pouco mais escuros."*
+Not a soot-proximity problem at all — the DENTED/CRACKED atoms
+`DamageVariantBaker` pre-bakes (this plan's own Task 1b/E-BAKE) show a
+randomly-cropped facade slice under a pasted decal, distinct art from the
+material around it, so they read brighter independent of any soot ring
+sitting on top of them afterward (soot is a per-cell modulate-alpha code
+applied AFTER any `set_cell()`, per this file's own DamageVariantBaker header
+— the two layers never interacted, which is exactly why tuning soot twice
+never touched them).
+
+**Shipped**, floor only, matching the Director's own scope call:
+- `VoxelRenderer._composite_floor_sunk_decal()` (FLOOR DENTED — floor-
+  exclusive, `_bake_floor()`'s own compositor) and `_composite_full_voxel_decal()`
+  (also the CRACKED-blast atom D6 registers under FLOOR *and* WALL/CEILING
+  from one composite — see this file's own DamageVariantBaker header) gain an
+  optional `shade_brightness` that runs `Image.adjust_bcs()` on the composited
+  decal before it is cached. Defaults to 1.0 — `adjust_bcs()` skipped
+  entirely — so every pre-existing caller, including the live D33 per-cell
+  fallback both functions still serve, is untouched unless asked for less.
+- `DamageVariantBaker.FLOOR_SHADE_BRIGHTNESS` (0.72) is passed from
+  `_bake_floor()` unconditionally, and from `_bake_wall_name()` exactly when
+  `also_floor` is true — which, structurally, is ONLY the shared CRACKED-
+  blast atom (D6's "universal" registration); wall DENTED and ceiling atoms
+  are never reached by this flag. Wall CRACKED reading a little darker too is
+  the Director's own accepted trade-off for one shared atom, not a second bug.
+- `DamageVariantBaker.DAMAGE_BAKE_LOCAL_VERSION` — a NEW version salt,
+  independent of `BakeCompositor.BAKE_CODE_VERSION` (which also gates the
+  wall/roof/floor SHEET pages; bumping it would force every declared
+  material's base bake to redo for a change that only touches damage atoms)
+  — invalidates the on-disk damage-atom cache so a stale, unshaded entry from
+  before this change cannot silently keep serving old pixels forever.
+
+**Real evidence, not reasoning:** the same two-blast PLAYGROUND scene,
+captured three times (baseline, E-CONTRAST-02's regression, E-CONTRAST-03's
+fix) via the `grenade_second` capture action's `INFILTRAITOR_CAPTURE_
+SECOND_OFFSET` (built 2026-08-10 for a different bug, and its own comment
+already quotes this exact Director complaint verbatim — see
+`room.gd:_run_auto_screenshot_capture()`'s `grenade_second` branch). The outer feather
+matches baseline (E-CONTRAST-02's flattening gone); the DENTED/CRACKED block
+the Director's arrow pointed at is visibly darker and no longer stands out.
+Director, after a live playthrough: *"Testei ao vivo, ficou bom, pode fechar
+a explosão."*
+
+### Tasks, actual outcome
+
+| id | task | touches | outcome |
+|---|---|---|---|
+| — | ring 3 soot tune | `voxel_face_shading.gdshader`, `voxel_light_field.gd` | **built, then reverted** — real but not the reported problem |
+| — | floor-only runtime soot shade | `voxel_face_shading.gdshader`, `voxel_renderer.gd` | **built, regressed the feather, scoped to fix that, then reverted entirely** once the real cause was found |
+| — | shade FLOOR decal atoms at bake time | `voxel_renderer.gd` (`_composite_floor_sunk_decal`, `_composite_full_voxel_decal`), `damage_variant_baker.gd` | done — the real fix |
+
+### Verification
+
+`project_lint.py` 204-205 files/0 errors at every commit · `run_selftests.py`
+35/35 clean throughout (`damage_atom_bake_selftest.gd` exercises this exact
+bake path against real PLAYGROUND data; `voxel_face_separation_selftest.gd`
+confirms the shader reverted cleanly, parsed from the file rather than
+hand-copied) · `check_invariants.py` OK · `gen_codemap.py --check` clean ·
+real before/after captures at every stage, not reasoned claims. Commits
+`a57732f7` (E-CONTRAST-02, since reverted), `406152a6` (revert + E-CONTRAST-03).
+Hand-named captures: `e_contrast02_floor_shade_after_2026-08-13.png` (the
+regression, kept as the historical record of what "wrong" looked like),
+`e_contrast03_floor_decal_bake_shade_2026-08-13.png` (the real fix).
+
+---
+
 ## 12. Verification contract for this plan
 
 Nothing in this plan is reported done on reasoning. Each task closes with:

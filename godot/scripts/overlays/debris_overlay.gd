@@ -23,16 +23,30 @@ class_name DebrisOverlay
 ## Tuning — all `var` (Rule 1).
 
 ## --- Dust ---
-var dust_delay_min: float = 0.9           ## seconds before it starts falling — "depois de 1 segundo"
-var dust_delay_max: float = 1.1
-var dust_fall_duration_min: float = 0.3
-var dust_fall_duration_max: float = 0.5
-var dust_settle_duration_min: float = 0.6
-var dust_settle_duration_max: float = 1.0
-var dust_speck_count_min: int = 3
-var dust_speck_count_max: int = 5
-var dust_speck_spread: float = 5.0        ## px, cluster radius around the falling point
-var dust_speck_radius: float = 1.6
+## E-DUST-01 (Director, 2026-08-13): *"poeira também não consigo ver."*
+##
+## It was invisible BY CONSTRUCTION, not too faint — three things stacked:
+##   1. `dust_delay` held it for 0.9-1.1 s before it started falling, drawing
+##      nothing at all in the meantime;
+##   2. during the fall the alpha ramped `0 → 1` (`alpha = t` in _draw()), so
+##      dust FADED IN from invisible instead of being visible as it dropped;
+##   3. 3-5 specks at 1.6 px radius is a few pixels of near-background grey.
+##
+## The 1 s delay itself was the Director's own earlier request ("depois de 1
+## segundo") and is KEPT as an idea — dust hangs, then falls — but shortened,
+## because a full second after a gunshot is past the moment anyone is looking.
+## The fade-in is gone: falling dust is visible while it falls.
+var dust_delay_min: float = 0.25          ## seconds before it starts falling
+var dust_delay_max: float = 0.45
+var dust_fall_duration_min: float = 0.45
+var dust_fall_duration_max: float = 0.75
+var dust_settle_duration_min: float = 0.7
+var dust_settle_duration_max: float = 1.2
+var dust_speck_count_min: int = 7
+var dust_speck_count_max: int = 12
+var dust_speck_spread: float = 9.0        ## px, cluster radius around the falling point
+var dust_speck_radius: float = 2.6
+var dust_alpha_gain: float = 1.7          ## E-DUST-01 — the specks were near-background grey
 var dust_fade_power: float = 1.3
 
 ## --- Wood chips ---
@@ -147,13 +161,16 @@ func _draw() -> void:
 		if elapsed < delay + fall_duration:
 			var t: float = (elapsed - delay) / fall_duration
 			pos = lerp(d["origin"] as Vector2, d["target"] as Vector2, t)
-			alpha = t
+			## E-DUST-01: FULL alpha while falling. This used to be `alpha = t`,
+			## which meant the dust was invisible exactly when it was moving —
+			## the one part of its life the eye could have caught.
+			alpha = 1.0
 		else:
 			pos = d["target"]
 			var st: float = (elapsed - delay - fall_duration) / settle_duration
 			alpha = pow(1.0 - st, dust_fade_power)
 		var c: Color = d["color"]
-		c.a *= alpha
+		c.a = minf(c.a * alpha * dust_alpha_gain, 1.0)
 		for offset in d["specks"]:
 			draw_circle(pos + offset, dust_speck_radius, c)
 

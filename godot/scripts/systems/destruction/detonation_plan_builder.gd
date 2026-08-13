@@ -1451,8 +1451,13 @@ static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring:
 			continue
 		if _hash_unit("DEBRIS" + effect, voxel.grid_pos, voxel.level) >= float(rule.get("chance", 0.0)):
 			continue
-		var lo: int = int(rule.get("count_min", 1))
-		var hi: int = int(rule.get("count_max", 1))
+		## E-SPARK-02: a per-material count overrides the rule's shared range
+		## where the policy declares one ("cimento só um pouquinho, metal
+		## bastante, pedra médio"). Optional, so a rule with a single range —
+		## every rule before this, and the selftest's own — is unchanged.
+		var span: Array = (rule.get("per_material", {}) as Dictionary).get(material, [])
+		var lo: int = int(span[0]) if span.size() == 2 else int(rule.get("count_min", 1))
+		var hi: int = int(span[1]) if span.size() == 2 else int(rule.get("count_max", 1))
 		var count: int = lo
 		if hi > lo:
 			count = lo + int(_hash_unit("DEBRISN" + effect, voxel.grid_pos, voxel.level)

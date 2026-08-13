@@ -49,13 +49,29 @@ var smoke_fade_power: float = 1.4
 var smoke_spawn_jitter: float = 4.0       ## px, per-blob offset from the requested position
 
 ## --- Sparks ---
-var spark_speed_min: float = 60.0         ## px/sec
-var spark_speed_max: float = 140.0
+## E-SPARK-02 (Director, 2026-08-13): *"consigo ver algumas faíscas na explosão,
+## mas bem modestas. Vamos aumentar a quantidade e fazer elas voarem um
+## pouquinho mais tempo pra ficarem mais evidentes. Não precisa ser só a
+## partícula, pode ter um rastro suave."*
+##
+## Lifetime and reach both up. The trail already existed at 5 px, which is under
+## a third of a voxel face — at that length a streak is indistinguishable from
+## the dot that draws it, which is why the effect read as "só a partícula".
+##
+## The trail is now drawn as a TAPERED, FADING streak instead of one flat line:
+## a hot head, a dimmer tail, thinning toward the back. That is what makes it
+## read as motion rather than as a dash — and it is built from `draw_line`
+## segments this overlay already used, not from a new texture or a particle
+## system (E-NATIVE-01: this project builds its VFX out of its own vocabulary).
+var spark_speed_min: float = 90.0         ## px/sec
+var spark_speed_max: float = 220.0
 var spark_gravity: float = 260.0          ## px/sec^2, downward
-var spark_duration_min: float = 0.2       ## seconds — brief and fast
-var spark_duration_max: float = 0.4
-var spark_trail_length: float = 5.0       ## px, streak drawn behind the spark
-var spark_width: float = 1.5
+var spark_duration_min: float = 0.45      ## seconds — brief, but long enough to read
+var spark_duration_max: float = 0.85
+var spark_trail_length: float = 15.0      ## px, streak drawn behind the spark
+var spark_trail_segments: int = 4         ## tapered/fading steps along the streak
+var spark_trail_tail_alpha: float = 0.12  ## alpha multiplier at the far end of the trail
+var spark_width: float = 1.9
 var spark_fade_power: float = 1.2
 
 var _smoke: Array = []  ## [{"pos","vel","elapsed","duration","color","start_radius","end_radius"}]
@@ -154,10 +170,27 @@ func _draw() -> void:
 		var t: float = p["elapsed"] / p["duration"]
 		var alpha: float = pow(1.0 - t, spark_fade_power)
 		var c: Color = p["color"]
-		c.a *= alpha
 		var vel: Vector2 = p["vel"]
-		var tail: Vector2 = vel.normalized() * spark_trail_length if vel.length() > 0.01 else Vector2.ZERO
-		draw_line(p["pos"], p["pos"] - tail, c, spark_width)
+		if vel.length() <= 0.01:
+			c.a *= alpha
+			draw_line(p["pos"], p["pos"], c, spark_width)
+			continue
+		## E-SPARK-02: the streak is walked back from the head in segments, each
+		## dimmer and thinner than the last. Length follows SPEED, so a fast
+		## spark draws a long streak and one that has been slowed by gravity
+		## draws a short one — the trail reports the motion instead of being a
+		## fixed decoration stuck to every particle.
+		var dir: Vector2 = vel.normalized()
+		var reach: float = spark_trail_length * clampf(
+			vel.length() / maxf(spark_speed_max, 0.001), 0.25, 1.0)
+		var segs: int = maxi(spark_trail_segments, 1)
+		for i in range(segs):
+			var a0: float = float(i) / float(segs)
+			var a1: float = float(i + 1) / float(segs)
+			var seg := c
+			seg.a = c.a * alpha * lerpf(1.0, spark_trail_tail_alpha, a0)
+			draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
+				seg, spark_width * lerpf(1.0, 0.35, a0))
 
 
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as

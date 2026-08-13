@@ -47,6 +47,15 @@ const WEAPON_GRADE_CONTRAST := 1.15
 ## comfortably-past-any-real-room constant instead.
 const PELLET_FLOOD_MAX_STEPS: int = 40
 
+## E-MUZZLE-01 — where the barrel tip sits, as a fraction of one GU step along
+## the facing plus a small lift. Not empirical pixel calibration on a voxel
+## position (which the project bans); these place a VFX anchor relative to an
+## analytically-derived world point, the same way the blast anchor sits above
+## the grenade sprite.
+const MUZZLE_OFFSET_GU_FRACTION: float = 0.42
+const MUZZLE_HEIGHT_PX: float = -18.0
+const MUZZLE_LEVEL: int = 3
+
 var room: Node
 var _weapons: Array[Dictionary] = []
 var _active_index: int = -1
@@ -248,6 +257,9 @@ func fire_active() -> void:
 	var pellet_salt: String = "%s_%s_%d" % [w["weapon_id"], w["gu_cell"], int(w["shots_fired"])]
 	w["shots_fired"] = int(w["shots_fired"]) + 1
 	var facing_delta := _view_facing_delta(w["facing"])
+	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —
+	## the barrel does not wait to find out what it hit.
+	_spawn_muzzle_flash(w, facing_delta)
 	var pellet_picks: Array = []
 	if weapon_def.delivery == WeaponDef.DELIVERY_LINE:
 		var line_hit := BlastCalculatorClass.select_line_impact(
@@ -396,3 +408,42 @@ func _blocked_edges_dict() -> Dictionary:
 	for e in room._current_blocked_edges:
 		blocked[WallEdgeData.edge_key(e["from"], e["to"])] = true
 	return blocked
+
+
+## E-MUZZLE-01 (Director, 2026-08-13) — the flash/smoke at the barrel tip.
+##
+## The MUZZLE POSITION is derived, never an empirical pixel offset (project
+## rule): the weapon's own GU centre and the GU one step along its facing are
+## both converted to world space through `VoxelRenderer.voxel_world_position()`,
+## and the barrel line is the vector between them. That is the same analytic
+## route the cone preview already uses to decide where the shot goes, so the
+## flash can never point somewhere the shot does not — including after a
+## perspective rotation, since `_view_facing_delta()` is what supplies the step.
+##
+## Deliberately in the CONTROLLER and not on the sprite: the Director's own
+## framing is that this is physics being made ready for an agent holding a
+## weapon, and an agent will have a hand position rather than a bench prop.
+## `Room.spawn_muzzle_flash()` takes a point and a direction and knows about
+## neither.
+func _spawn_muzzle_flash(weapon: Dictionary, facing_delta: Vector2i) -> void:
+	if room._voxel_renderer == null or facing_delta == Vector2i.ZERO:
+		return
+	var gu: Vector2i = weapon["gu_cell"]
+	var here: Vector2 = _gu_centre_world(gu)
+	var ahead: Vector2 = _gu_centre_world(gu + facing_delta)
+	if here == Vector2.ZERO or ahead == Vector2.ZERO:
+		return
+	var dir: Vector2 = ahead - here
+	## The barrel tip sits a little way out from the prop's own cell centre,
+	## expressed as a fraction of one GU step rather than in pixels so it holds
+	## at any zoom and in any of the four views.
+	room.spawn_muzzle_flash(here + dir * MUZZLE_OFFSET_GU_FRACTION
+		+ Vector2(0.0, MUZZLE_HEIGHT_PX), dir)
+
+
+## World position of a GU cell's centre, at roughly chest height — the same
+## GU→voxel→world chain DetonationPlanBuilder uses for its GU-level smoke.
+func _gu_centre_world(gu: Vector2i) -> Vector2:
+	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
+	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
+	return room._voxel_renderer.voxel_world_position(centre, MUZZLE_LEVEL)

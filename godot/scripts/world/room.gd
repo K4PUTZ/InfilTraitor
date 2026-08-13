@@ -561,10 +561,14 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ##
 ## All `var` (Rule 1) and read as data — a material with no row here throws
 ## nothing on impact, which is today's behaviour for everything.
+## E-SPARK-02 (Director, 2026-08-13) set the per-material ladder directly:
+## *"cimento gera só um pouquinho de faísca, metal bastante, pedra médio,
+## madeira não."* Concrete had 0 and now has its pouquinho; wood stays at zero,
+## which is the one row that is a hard rule rather than a level on a dial.
 var vfx_impact_profiles: Dictionary = {
-	"metal":    {"sparks": 12, "smoke": false, "dust": false, "chips": 0},
-	"stone":    {"sparks": 4,  "smoke": false, "dust": true,  "chips": 0},
-	"concrete": {"sparks": 0,  "smoke": true,  "dust": true,  "chips": 0},
+	"metal":    {"sparks": 22, "smoke": false, "dust": false, "chips": 0},
+	"stone":    {"sparks": 10, "smoke": false, "dust": true,  "chips": 0},
+	"concrete": {"sparks": 3,  "smoke": true,  "dust": true,  "chips": 0},
 	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 2},
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
@@ -2342,6 +2346,86 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 			_debris_overlay.add_dust(world_pos, floor_pos, blast_burst_dust_color)
 
 
+## E-MUZZLE-01 (Director, 2026-08-13): *"as armas de fogo também precisam de um
+## clarão e uma fumacinha na ponta quando disparam. Nós ainda precisamos fazer
+## os sprites com o agente empunhando a arma, mas de qualquer forma já vamos
+## deixar a física pronta nos modelos da bancada."*
+##
+## So this is deliberately built against a MUZZLE POSITION AND A DIRECTION, not
+## against the bench prop. The bench weapon is the only caller today; an agent
+## holding a rifle will pass its own hand position and facing and get the
+## identical effect with no new code.
+##
+## BUILT FROM THIS PROJECT'S OWN OVERLAYS, not from the reference sheets the
+## Director shared. Those are authored sprite sheets, and E-NATIVE-01 is the
+## ratified precedent: the imported 4-frame fireball was REMOVED because its
+## style did not fit, and the blast's core was rebuilt out of ember/spark/smoke.
+## A muzzle flash assembled the same way is integrated by construction — it is
+## literally the same material every other effect on screen is made of. The
+## reference images informed the SHAPE (a bright core, a forward cone of sparks,
+## a soft puff hanging where the core was), not the pixels.
+##
+## Three beats, all sub-second: the flash itself (a very short, bright ember
+## with no rise — a muzzle flash does not float), a forward spark cone, and one
+## small puff that lingers after both are gone.
+var muzzle_flash_count: int = 8             ## embers forming the core
+## 0.09 -> 0.17: at 0.09 the core was gone before the frame after the trigger,
+## so the barrel showed sparks and no CLARÃO at all (measured on a real capture).
+## Still well under a fifth of a second — a flash, not a fire.
+var muzzle_flash_life: float = 0.17         ## seconds — a flash, not a fire
+var muzzle_flash_spread_px: float = 7.0
+var muzzle_flash_forward_px: float = 9.0    ## how far the core sits ahead of the muzzle
+var muzzle_spark_count: int = 14
+var muzzle_spark_cone_deg: float = 26.0     ## half-angle of the forward spray
+var muzzle_spark_color: Color = Color(1.0, 0.93, 0.66, 1.0)
+var muzzle_smoke_color: Color = Color(0.72, 0.70, 0.66, 0.30)
+## The puff hangs BEHIND the flash, not on it. SmokeSparkOverlay draws one tick
+## ABOVE EmberOverlay (see _apply_overhead_overlay_z()), so a puff centred on the
+## barrel paints a dark disc straight over the core — measured on a real capture,
+## which is what the black middle in the first muzzle print was.
+var muzzle_smoke_scale: float = 0.8
+var muzzle_smoke_puffs: int = 2
+var muzzle_smoke_back_px: float = 10.0
+## The core is a FLASH, not a coal: EmberOverlay.glow_radius is tuned to 9 px for
+## the crater's per-voxel embers, which is the wrong size by an order of
+## magnitude for a barrel. See EmberOverlay.add_ember()'s `radius_scale`.
+var muzzle_flash_radius_scale: float = 2.0
+
+
+## Fire one muzzle flash at `muzzle_pos`, pointing along `direction` (a screen/
+## world-space vector; it is normalized here). Purely visual, same contract as
+## every other overlay call in this file.
+func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
+	var dir: Vector2 = direction.normalized() if direction.length() > 0.001 else Vector2.RIGHT
+	if _ember_overlay != null:
+		## No velocity and no rise: the core sits at the barrel for its 90 ms and
+		## goes. Giving it the burst's buoyancy would make a gunshot bloom like a
+		## small explosion, which is the opposite of the read.
+		for i in range(muzzle_flash_count):
+			var lateral: Vector2 = Vector2(-dir.y, dir.x) * randf_range(
+				-muzzle_flash_spread_px, muzzle_flash_spread_px) * 0.5
+			var at: Vector2 = muzzle_pos + dir * randf_range(
+				0.0, muzzle_flash_forward_px) + lateral
+			## cool_rate 0.0 — a flash does not cool, it ends. See add_ember().
+			_ember_overlay.add_ember(at, muzzle_flash_life * randf_range(0.7, 1.3),
+				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0)
+	if _smoke_spark_overlay != null:
+		## The forward spray. add_sparks() throws a full circle, so the cone is
+		## built here by placing each spark's own start point along the barrel
+		## line — cheap, and it keeps SmokeSparkOverlay free of weapon geometry
+		## it has no business knowing.
+		for i in range(muzzle_spark_count):
+			var a: float = deg_to_rad(randf_range(-muzzle_spark_cone_deg, muzzle_spark_cone_deg))
+			var spread: Vector2 = dir.rotated(a)
+			_smoke_spark_overlay.add_sparks(
+				muzzle_pos + spread * randf_range(2.0, muzzle_flash_forward_px * 1.6),
+				1, muzzle_spark_color)
+		for j in range(muzzle_smoke_puffs):
+			_smoke_spark_overlay.add_smoke(
+				muzzle_pos - dir * randf_range(0.0, muzzle_smoke_back_px),
+				muzzle_smoke_color, muzzle_smoke_scale)
+
+
 ## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).
 ##
 ## The counterpart to `_dispatch_destruction_vfx()`, and deliberately a separate
@@ -2454,13 +2538,20 @@ func blast_debris_policy() -> Dictionary:
 			"count_min": 1, "count_max": 1,
 		},
 		"sparks": {
-			## Metal and stone, the two VFX-01 strikes sparks from. The count
-			## range is metal's; stone's flat 2 sits inside it, and one range
-			## here beats a second policy branch for a one-value difference.
-			"materials": ["metal", "stone"],
+			## E-SPARK-02: the Director's ladder, per material — "cimento só um
+			## pouquinho, metal bastante, pedra médio, madeira não". `per_material`
+			## overrides the shared count range where a row exists; the shared
+			## range stays as the fallback so the rule is still readable without
+			## it, and so the selftest's own simpler policy keeps working.
+			"materials": ["metal", "stone", "concrete"],
 			"chance": vfx_spark_chance * s,
 			"count_min": vfx_metal_spark_count_min,
 			"count_max": vfx_metal_spark_count_max,
+			"per_material": {
+				"metal": [10, 18],
+				"stone": [4, 9],
+				"concrete": [1, 3],
+			},
 		},
 		"chips": {
 			## Splinters — combustible-looking material, but keyed on the

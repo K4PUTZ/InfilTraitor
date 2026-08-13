@@ -555,6 +555,23 @@ the blast from "the waves fire" to something that reads right. Full record:
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
+- ✅ **Sparks, dust and a muzzle flash** (E-SPARK-02 / E-DUST-01 / E-MUZZLE-01,
+  2026-08-13). Sparks: more, faster, ~2× the lifetime, and a **tapered fading
+  trail** whose length follows the particle's own speed. Per-material ladder set
+  by the Director — metal a lot, stone medium, concrete a little, wood none —
+  applied to firearms AND blast debris. **Dust was invisible by construction,
+  not too faint**: it waited 0.9–1.1 s before falling, ramped alpha `0→1` while
+  falling (so it faded IN from nothing exactly while it moved), and drew 3–5
+  specks at 1.6 px. Delay shortened, fade-in deleted, specks bigger and more
+  numerous. **Muzzle flash + powder smoke** at the barrel, built from the
+  project's own overlays per E-NATIVE-01 rather than from the authored sprite
+  sheets the Director shared as reference — `Room.spawn_muzzle_flash()` takes a
+  point and a direction, so an agent holding a rifle needs no new code. Two
+  measured mistakes on the way, both fixed and recorded: the flash inherited the
+  ember cooling ramp and photographed as a small RED fireball (`cool_rate` 0.0
+  now pins it hot — a flash does not cool, it ends), and the powder smoke drew
+  a dark disc straight over the core because SmokeSparkOverlay sits one z-index
+  above EmberOverlay. `e_muzzle01_zoom_muzzle_and_impact_2026-08-13.png`.
 - ✅ **A hit that does NOT destroy now throws VFX too** (E-SPARK-01,
   2026-08-13). Director-reported: *"o metal deveria gerar bastante faísca num
   tiro da shotgun."* It generated none — and neither did stone. Cause, measured

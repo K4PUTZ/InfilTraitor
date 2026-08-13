@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 56325 lines total** (under `godot/scripts/`)
+**205 scripts · 56533 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -950,21 +950,22 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 183 lines
+`class_name DebrisOverlay` · extends `Node2D` · 200 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
 **Public vars**
-- `var dust_delay_min: float = 0.9`
-- `var dust_delay_max: float = 1.1`
-- `var dust_fall_duration_min: float = 0.3`
-- `var dust_fall_duration_max: float = 0.5`
-- `var dust_settle_duration_min: float = 0.6`
-- `var dust_settle_duration_max: float = 1.0`
-- `var dust_speck_count_min: int = 3`
-- `var dust_speck_count_max: int = 5`
-- `var dust_speck_spread: float = 5.0`
-- `var dust_speck_radius: float = 1.6`
+- `var dust_delay_min: float = 0.25`
+- `var dust_delay_max: float = 0.45`
+- `var dust_fall_duration_min: float = 0.45`
+- `var dust_fall_duration_max: float = 0.75`
+- `var dust_settle_duration_min: float = 0.7`
+- `var dust_settle_duration_max: float = 1.2`
+- `var dust_speck_count_min: int = 7`
+- `var dust_speck_count_max: int = 12`
+- `var dust_speck_spread: float = 9.0`
+- `var dust_speck_radius: float = 2.6`
+- `var dust_alpha_gain: float = 1.7`
 - `var dust_fade_power: float = 1.3`
 - `var chip_arc_duration_min: float = 0.4`
 - `var chip_arc_duration_max: float = 0.6`
@@ -1038,7 +1039,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 307 lines
+`class_name EmberOverlay` · extends `Node2D` · 318 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1433,7 +1434,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 169 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 202 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1787,7 +1788,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1493 lines
+`class_name DetonationPlanBuilder` · 1498 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -4310,7 +4311,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 398 lines
+`class_name WeaponBenchController` · 449 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -4325,6 +4326,9 @@ extends `Node2D` · 34 lines
 - `WEAPON_GRADE_SATURATION` = `1.3`
 - `WEAPON_GRADE_CONTRAST` = `1.15`
 - `PELLET_FLOOD_MAX_STEPS` = `40`
+- `MUZZLE_OFFSET_GU_FRACTION` = `0.42`
+- `MUZZLE_HEIGHT_PX` = `-18.0`
+- `MUZZLE_LEVEL` = `3`
 
 **Public vars**
 - `var room: Node`
@@ -4514,7 +4518,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4654 lines
+extends `Node2D` · 4745 lines
 
 `godot/scripts/world/room.gd`
 

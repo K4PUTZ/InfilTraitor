@@ -165,7 +165,12 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 ## whether that came from the random roll or from an explicit `duration`.
 ## Trailing and defaulting to 1.0, so it is a no-op for every pre-existing
 ## caller — the same "optional, default no-op" idiom E-CONTRAST-03 used for
-## `shade_brightness`. Scaling the ROLL rather than replacing it is the whole
+## `shade_brightness`.
+##
+## `radius_scale` (E-MUZZLE-01) is the same idiom for SIZE. It exists because
+## `glow_radius` was tuned DOWN to 9 px for the crater's per-voxel coals, and a
+## muzzle flash is not a coal — without it the flash inherited a scorch ember's
+## dimensions and read as a few sparks with nothing behind them. Scaling the ROLL rather than replacing it is the whole
 ## point: passing an absolute `duration` would flatten the 1.5-4.0 spread that
 ## makes a scorched patch cool unevenly, which is the look VL-D4 shipped.
 ## `delay` (E-EMBER-02) holds an ember dark and motionless before it catches —
@@ -178,7 +183,7 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 func add_ember(world_pos: Vector2, duration: float = -1.0,
 		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
 		rise: float = 0.0, duration_scale: float = 1.0,
-		delay: float = 0.0) -> void:
+		delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0) -> void:
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
 	var final_duration: float = base_duration * maxf(duration_scale, 0.01) * _height_bias(world_pos.y)
 	_embers.append({
@@ -196,7 +201,8 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		"hue_cold": randf_range(hue_cold_min, hue_cold_max),
 		"sat": randf_range(sat_min, sat_max),
 		"val": randf_range(val_min, val_max),
-		"radius": glow_radius * randf_range(radius_jitter_min, radius_jitter_max),
+		"radius": glow_radius * radius_scale * randf_range(radius_jitter_min, radius_jitter_max),
+		"cool_rate": maxf(cool_rate, 0.0),
 		"halo_scale": randf_range(halo_scale_min, halo_scale_max),
 		"pulse_speed": randf_range(pulse_speed_min, pulse_speed_max),
 		"pulse_phase": randf_range(0.0, TAU),
@@ -211,7 +217,12 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 ## a frame loop, which is the part that was wrong in the Director's first
 ## description and is worth pinning.
 func ember_color_at(e: Dictionary, t: float) -> Color:
-	var k: float = clampf(t, 0.0, 1.0)
+	## E-MUZZLE-01: `cool_rate` scales how fast this ember walks its own ramp.
+	## 1.0 is every scorch ember (cools across its life); 0.0 pins it at the hot
+	## end forever, which is what a MUZZLE FLASH is — it does not cool down, it
+	## stops. Without this the flash inherited E-EMBER-03's deliberately fast
+	## yellow->red easing and photographed as a small red fireball.
+	var k: float = clampf(t * float(e.get("cool_rate", 1.0)), 0.0, 1.0)
 	## E-EMBER-03: hue runs ahead of brightness, deliberately. See hue_cool_ease.
 	var k_hue: float = pow(k, hue_cool_ease)
 	var k_val: float = pow(k, val_cool_ease)

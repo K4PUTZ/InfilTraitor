@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 54766 lines total** (under `godot/scripts/`)
+**205 scripts · 54778 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2991,7 +2991,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 427 lines
+extends `SceneTree` · 439 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 

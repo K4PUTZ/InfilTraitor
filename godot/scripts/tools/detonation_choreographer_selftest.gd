@@ -175,11 +175,23 @@ func _real_light_sources(builder) -> Array:
 	return out
 
 
+## Deliberately NOT `slice.gu_cell` (copied from detonation_plan_selftest.gd's
+## scaffold, where that IS correct — see its own comment). `Slice.gu_cell` is
+## the wall's own solid GU, not the open floor beside it: a real grenade never
+## lands inside a wall, but this test's 91.2%-in-one-frame failure did — every
+## `destroy`/`dented`/`cracked` entry landed within the epicentre's own band
+## because the "blast" started already embedded in concrete, choked on every
+## side but one. Stepping through `Face.delta()` onto the GU the slice actually
+## faces reproduces a normal throw: same guarantee of hitting real concrete
+## (still the neighbour of a real wall slice), but from the open side. Real
+## PLAYGROUND profile after the fix: [662, 466, 225, 50, 11], worst 46.8% —
+## matching the ~46% the real map measured in the P-WARM session, not a
+## coincidence: this is now the same kind of blast.
 func _pick_source_gu(built: Dictionary) -> Vector2i:
 	var edge_registry = built["room"]._edge_registry
 	for slice in edge_registry.all_slices():
 		if slice.material == "concrete":
-			return slice.gu_cell
+			return slice.gu_cell + Face.delta(slice.face)
 	return Vector2i.ZERO
 
 

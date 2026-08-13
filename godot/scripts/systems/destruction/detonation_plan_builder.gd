@@ -647,7 +647,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		var blast_faces: Dictionary = {}
 		BlastCalculatorClass.derive_soot_rings(s["cell_to_voxel"], s["blast_cells"],
 			ctx.get("blast_soot_rings", 4), blast_snapshot, blast_faces,
-			1, BlastCalculatorClass.FACE_SOOT_CLEAN)
+			1, BlastCalculatorClass.FACE_SOOT_CLEAN, _cells_this_blast_reveals(s))
 		s["derived_blast"] = [blast_snapshot, blast_faces]
 		s["sub"] = 1
 		if _out_of_time(deadline):
@@ -669,7 +669,57 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	_merge_soot(soot_snapshot, soot_faces, blast[0], blast[1])
 	_merge_soot(soot_snapshot, soot_faces, weapon[0], weapon[1])
 	BlastCalculatorClass.apply_self_soot(s["damaged_voxels"], soot_snapshot, soot_faces)
+	_scorch_revealed_fixed_cells(s, soot_snapshot, soot_faces)
 	_enter_phase(s, PHASE_LIGHT)
+
+
+## S-DEEP part 1 — every cell this blast is about to REVEAL, as the BFS's
+## `also_visible` set. Reads `exposed_by_ring`, which `_phase_floors` has already
+## filled by the time this phase runs (phase order: FLOORS, WALK, SOOT).
+static func _cells_this_blast_reveals(s: Dictionary) -> Dictionary:
+	var revealed: Dictionary = {}
+	for ring in s["exposed_by_ring"].keys():
+		for e in s["exposed_by_ring"][ring]:
+			var pos: Vector2i = e["grid_pos"]
+			revealed[Vector3i(pos.x, pos.y, e["level"])] = true
+	return revealed
+
+
+## S-DEEP part 2 — the revealed cells that are not Voxels at all.
+##
+## `_resolve_expose_below()` has two outcomes: a real deep Slab
+## (`reveal_floor_slab()`, real Voxel objects the BFS above can now reach) or the
+## FIXED earth level (`render_fixed_earth_level()`, cells with no Voxel behind
+## them). The BFS is a walk over `cell_to_voxel`, so the second kind is
+## unreachable by construction, no matter what it is told about visibility.
+##
+## `room.gd`'s repaint path has always handled exactly this, via
+## `add_crater_floor_soot()` at `EXPOSED_FLOOR_SOOT_RING` — and the detonation
+## path never did. That asymmetry is SOOT_MASTER_PLAN §1.2's predicted defect:
+## the same crater would read clean right after the blast and sooted after a
+## rotation. Both sides now write the same constant, which is what makes the
+## prediction moot rather than merely untested.
+##
+## Isotropic top-only, matching `add_crater_floor_soot()`'s own shape: a floor
+## cell has exactly one visible face.
+static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary,
+		out_faces: Dictionary) -> void:
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var ring: int = BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING
+	var clean: int = BlastCalculatorClass.FACE_SOOT_CLEAN
+	for ring_key in s["exposed_by_ring"].keys():
+		for e in s["exposed_by_ring"][ring_key]:
+			var pos: Vector2i = e["grid_pos"]
+			var level: int = e["level"]
+			if cell_to_voxel.has(Vector3i(pos.x, pos.y, level)):
+				continue   ## a real Voxel — the BFS above already owns it
+			if not out_snapshot.has(level):
+				out_snapshot[level] = {}
+			var level_map: Dictionary = out_snapshot[level]
+			if ring < int(level_map.get(pos, clean)):
+				level_map[pos] = ring
+			BlastCalculatorClass._write_face_rings(out_faces, level, pos,
+				Vector3i(ring, clean, clean), true)
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------

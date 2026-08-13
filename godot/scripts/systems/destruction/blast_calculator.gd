@@ -1197,9 +1197,23 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 ##
 ## Defaults to n_rings, which reproduces today's behaviour bit-for-bit for every
 ## pre-existing caller (with intensity == n_rings the cap is never binding).
+## `also_visible` (S-DEEP, 2026-08-12) — cells that are NOT visible yet but will
+## be by the time this soot is drawn, so the BFS must scorch them anyway.
+##
+## The case that forced it, reported by the Director: throwing twice on one GU
+## unlocks D2's deep floor layer, and the revealed voxels came up pristine inside
+## a blackened crater. They are still hidden at the moment soot is derived — the
+## expose path reveals them afterwards — so `voxel.visible` is false and the
+## check below skipped them, and `_alt_for()` then read a clean face code.
+## Measured: on a second blast every other kind roughly doubles (destroy 244 ->
+## 482, expose 640 -> 1280, smoke 484 -> 887) while soot HALVED, 512 -> 240.
+##
+## Empty by default, so every pre-existing caller — including room.gd's repaint,
+## where those voxels are genuinely visible by then — is byte-for-byte unchanged.
 static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 		n_rings: int, out_snapshot: Dictionary, out_faces: Dictionary = {},
-		face_soot_falloff: int = 1, intensity_rings: int = 0) -> void:
+		face_soot_falloff: int = 1, intensity_rings: int = 0,
+		also_visible: Dictionary = {}) -> void:
 	if destroyed_cells.is_empty() or n_rings <= 0:
 		return
 	var intensity: int = intensity_rings if intensity_rings > 0 else n_rings
@@ -1217,9 +1231,13 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 			for d in NEIGHBOURS:
 				var ncell: Vector3i = cell + d
 				var voxel = cell_to_voxel.get(ncell)
-				## Only surviving, visible voxels take soot — a destroyed cell is a
-				## hole (already a seed) and an absent one is empty air.
-				if voxel == null or not voxel.visible or voxel.damage_state == Voxel.DamageState.DESTROYED:
+				## Only surviving voxels take soot — a destroyed cell is a hole
+				## (already a seed) and an absent one is empty air.
+				if voxel == null or voxel.damage_state == Voxel.DamageState.DESTROYED:
+					continue
+				## ...and only ones that will be ON SCREEN. `also_visible` is how a
+				## caller says "this one is about to be", see the parameter's note.
+				if not voxel.visible and not also_visible.has(ncell):
 					continue
 				if not out_snapshot.has(voxel.level):
 					out_snapshot[voxel.level] = {}

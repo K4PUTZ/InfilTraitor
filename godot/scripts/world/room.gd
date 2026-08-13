@@ -2230,6 +2230,22 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 		## `blast_burst_ember_spread_px` stopped being a spawn radius and is now
 		## the reach the expansion aims for, which is the whole difference
 		## between a puff that appears and a fireball that blooms.
+		##
+		## E-AUDIT (2026-08-13): and that made it a field NO CODE READS — the
+		## reach is an emergent property of `speed / drag`, and the "relationship
+		## worth preserving when retuning" recorded at the declaration was
+		## enforced by a comment alone. That is the `slab_full_color` shape
+		## exactly (E-SEAM-03: a documented field silently disagreeing with what
+		## the code does), and the retune two commits ago walked right past it.
+		## An `assert` makes the relationship real at zero release cost — Godot
+		## strips these from release builds, which is the project's stated use
+		## for them. It changes no pixel; it just stops the next retune from
+		## drifting speed/drag away from the reach the comment claims.
+		assert(blast_burst_ember_speed_min / maxf(blast_burst_ember_drag, 0.001)
+				<= blast_burst_ember_spread_px
+			and blast_burst_ember_speed_max / maxf(blast_burst_ember_drag, 0.001)
+				>= blast_burst_ember_spread_px,
+			"[Room] blast burst reach (speed/drag) no longer straddles blast_burst_ember_spread_px — see P-FIRE")
 		for i in range(blast_burst_ember_count):
 			## Golden-angle stepping rather than i/count around a circle: at
 			## these counts an even sweep visibly reads as spokes once the

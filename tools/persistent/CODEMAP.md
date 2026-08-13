@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 55842 lines total** (under `godot/scripts/`)
+**205 scripts · 55864 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1038,7 +1038,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 304 lines
+`class_name EmberOverlay` · extends `Node2D` · 307 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -4249,7 +4249,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1292 lines
+`class_name TestZoneController` · 1295 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4514,7 +4514,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4467 lines
+extends `Node2D` · 4483 lines
 
 `godot/scripts/world/room.gd`
 

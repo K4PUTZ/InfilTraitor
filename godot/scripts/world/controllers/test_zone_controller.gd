@@ -964,7 +964,10 @@ func _warm_prediction(job: DetonationPrediction) -> void:
 ## how the floor-dent path stayed inert for a session (CLAUDE.md's own example).
 func _plan_inventory(plan: Dictionary) -> String:
 	var parts: PackedStringArray = PackedStringArray()
-	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke"]:
+	## `ember` added 2026-08-13 with E-EMBER-01. This readout exists so a zero
+	## exposes a stage that silently produces nothing — a new kind missing from
+	## the list is the same failure one level up, in the instrument itself.
+	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke", "ember"]:
 		var count: int = 0
 		for ring: int in plan.get(kind, {}).keys():
 			count += plan[kind][ring].size()

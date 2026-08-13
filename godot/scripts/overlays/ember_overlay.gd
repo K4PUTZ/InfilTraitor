@@ -117,8 +117,11 @@ var ember_smoke_scale: float = 0.85
 var ember_smoke_radius_gain: float = 0.5  ## how much the ember's radius jitter feeds the puff size
 
 var _embers: Array = []
-## [{"pos", "elapsed", "duration", "color", "radius", "halo_scale",
+## [{"pos", "vel", "drag", "rise", "delay", "elapsed", "duration",
+##   "hue_hot", "hue_cold", "sat", "val", "radius", "halo_scale",
 ##   "pulse_speed", "pulse_phase", "pulse_amount"}]
+## E-EMBER-02 replaced the single rolled "color" with the hue_hot/hue_cold/sat/
+## val quartet ember_color_at() ramps between; "delay" arrived with it.
 
 var _smoke_overlay: SmokeSparkOverlay = null  ## optional — puff-on-extinguish target
 

@@ -251,7 +251,7 @@ func _snapshot_layers(renderer) -> Dictionary:
 func test_1_wave_census(plan: Dictionary, source_gu: Vector2i) -> void:
 	print("[1] Wave census — the Task 4 gate itself (real detonation at gu=%s)\n" % source_gu)
 	var any_content := false
-	for kind in ["destroy", "dented", "cracked", "smoke", "soot"]:
+	for kind in ["destroy", "dented", "cracked", "smoke", "ember", "soot"]:
 		var by_ring: Dictionary = plan[kind]
 		var rings: Array = by_ring.keys()
 		rings.sort()

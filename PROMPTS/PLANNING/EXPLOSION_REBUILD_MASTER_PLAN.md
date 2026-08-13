@@ -3151,6 +3151,74 @@ and 4 of PLAYGROUND's 20 columns are wood. The code was right and the test was
 incomplete — fixed by completing the ground truth, not by relaxing the
 assertion.
 
+### E-EMBER-02 — the ember becomes a fire that cools (same day)
+
+Director, after seeing E-EMBER-01 live: *"esse efeito do foguinho brilhando, a
+gente quer que suba rapidamente pra cima verticalmente e ao longo da parede, e
+apague em seguida, deixando para trás voxels bem vermelhos e brilhantes, que
+vão ficando amarelos e apagando até sobrar só preto-carvão, deixando a fuligem
+ao redor. Os voxels também se propagam para cima, de maneira mais comedida e
+errática, apagando logo em seguida. Ao apagar, cada voxel gera mais fumaça
+escura, e finaliza. Tudo com duração e velocidades ligeiramente diferentes."*
+
+**The Director's own diagnosis was the key to it:** *"talvez já esteja
+funcionando, mas como o foguinho está por cima eu não estou vendo."* Correct.
+`spawn_blast_burst()`'s fireball and the per-voxel scorch embers share ONE
+overlay and therefore one z_index, and at `rise = 46 px/s` a burst ember climbed
+~46 px over its ~1 s life — under two voxel steps. The fire sat on the crater
+for its whole life, covering the exact thing it was supposed to be revealing.
+
+Fixed by moving the fire, not by shortening it (`rise` 46 → 150 px/s, plus a
+±45% per-ember jitter so the cluster frays into a plume instead of rising as a
+rigid plate). Shortening the lifetime was the obvious wrong lever: P-STROBE
+explicitly tuned it so *"o fogo permanece acontecendo durante os 4 frames do
+flash."*
+
+Also shipped, all inside the existing structure per the Director's *"vamos
+reaproveitar tudo que já está pronto"*:
+
+- **The cooling ramp.** An ember no longer keeps one rolled hue for its whole
+  life. It runs yellow-hot → deep red while dimming and deepening in saturation
+  (`EmberOverlay.ember_color_at()`). **The Director's first description had this
+  inverted** (red → yellow) and corrected it on the next message — which is
+  exactly why the ramp's DIRECTION carries an assertion rather than an eyeball:
+  an inverted ramp still looks like fire in a screenshot.
+- **The upward creep.** `_climb_from()` walks up one level at a time and stops
+  at the first level that does not catch, so a tall wall gets a short tongue
+  rather than a full stripe — that single "stop on first miss" rule is most of
+  what makes it read as *comedido*. Each rung starts later and burns shorter
+  than the one below. Rolled FNV-1a per cell, never `randf()`: this runs inside
+  the PURE `build_plan()`, whose output the prediction layer caches and the
+  filmstrip replays.
+- **A darker, ember-sized puff on extinguish**, scaled by that ember's own
+  radius so a fat coal dies bigger than a small one.
+
+**The first filmstrip rejected the first attempt, and that is why it was run.**
+With every seed igniting on the same frame at the same hot end of the ramp,
+~137 ADD-blended circles summed into **one molten sheet the shape of the
+crater** — the old per-ember random hue had been providing variety at t=0, and
+the ramp removed it without anyone noticing. Fixed by attacking the perceived
+density rather than the count: `glow_radius` 14 → 9, halo reach 1.6-2.4 → 1.25-1.8,
+halo alpha 0.35 → 0.20, value 0.85-1.0 → 0.60-0.85, plus a deterministic
+`EMBER_SEED_STAGGER_S` (0.45 s) spreading the seeds' own ignitions. Under ADD,
+the per-ember value that reads right ALONE blows out to white in a crowd — and a
+crowd is the normal case for a real crater, not the exception.
+
+*Evidence, in three parts because one artefact could not carry it:*
+`e_ember02_filmstrip_wood_2026-08-13.png` (36 frames, one blast, `--fixed-fps 60`)
+covers the ignition — discrete coals over the crater and the column climbing the
+wall — but only ~0.6 s, so it structurally cannot show the cooling.
+`e_ember02_wood_cooling_120f_2026-08-13.png` (~2 s) has the coals in deep red on
+the wall face; `e_ember02_wood_cooling_240f_2026-08-13.png` (~4 s) is the end
+state: everything out, charred wall, soot around the crater.
+
+`detonation_plan_selftest.gd` test 9 pins the creep's continuity, its per-rung
+shortening, its determinism across two builds of the same blast, and the ramp's
+direction. Test 7's two seed-specific assertions were narrowed to seeds (`climb
+== 0`, an explicit rank on the entry rather than an inference from `delay`,
+which stopped discriminating once seeds got a stagger of their own) — the rungs
+are covered in full by test 9, so that moved coverage rather than dropping it.
+
 **Still deliberately disconnected, and the Director has not asked for it:** the
 DUST / SPARK / CHIP debris of that same VFX-01 dispatch (including wood's own
 `add_chips` splinters). Nothing blocks it any more — destroy entries could take

@@ -580,7 +580,29 @@ var blast_burst_ember_start_radius_px: float = 7.0   ## "do tamanho da granada"
 var blast_burst_ember_speed_min: float = 150.0
 var blast_burst_ember_speed_max: float = 320.0
 var blast_burst_ember_drag: float = 3.4              ## fast out, then coasts
-var blast_burst_ember_rise_px_s: float = 46.0        ## buoyancy, never decays
+
+## E-EMBER-02 (Director, 2026-08-13): *"o foguinho brilhando… queremos que suba
+## rapidamente pra cima verticalmente e ao longo da parede, e apague em
+## seguida, deixando para trás voxels bem vermelhos e brilhantes"* — and, on why
+## it mattered: *"talvez já esteja funcionando, mas como o foguinho está por
+## cima eu não estou vendo."* That diagnosis was right. The burst and the
+## per-voxel scorch embers share ONE overlay and therefore one z_index, so for
+## the fire's whole life it drew over the very thing it was supposed to be
+## revealing.
+##
+## Fixed by moving the fire rather than by shortening it: at 46 px/s a burst
+## ember climbed ~46 px over a ~1 s life — less than two voxel steps, so it
+## effectively sat on the crater until it died. Tripled, it clears the crater
+## early and is still alive and visible ABOVE it, which is both what the
+## Director described and what keeps P-STROBE's "o fogo permanece acontecendo
+## durante os 4 frames do flash" intact. **Shortening the lifetime would have
+## broken that** and is the obvious wrong lever here.
+##
+## The jitter is E-EMBER-02's "velocidades ligeiramente diferentes": buoyancy
+## used to be one constant shared by all 22 embers, which made the cluster rise
+## as a rigid plate. Per-ember it frays into a plume.
+var blast_burst_ember_rise_px_s: float = 150.0       ## buoyancy, never decays
+var blast_burst_ember_rise_jitter: float = 0.45      ## +/- fraction, per ember
 
 ## The dome the fire blooms into, in degrees of elevation off the ground plane.
 ## Asymmetric on purpose — "pra baixo não muito por causa do chão" is expressed
@@ -2237,7 +2259,9 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 				randf_range(blast_burst_ember_life_min, blast_burst_ember_life_max),
 				dir.normalized() * speed,
 				blast_burst_ember_drag,
-				blast_burst_ember_rise_px_s)
+				blast_burst_ember_rise_px_s * randf_range(
+					1.0 - blast_burst_ember_rise_jitter,
+					1.0 + blast_burst_ember_rise_jitter))
 	if _smoke_spark_overlay != null:
 		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color)
 	if _debris_overlay != null:

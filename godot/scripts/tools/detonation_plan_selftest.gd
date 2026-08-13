@@ -31,6 +31,11 @@
 ##      remembered for.
 ##   8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it
 ##      came from, without which the choreographer cannot tint the puff.
+##   9. E-EMBER-02: fire creeps UPWARD one level at a time (every rung sits
+##      directly above another lit voxel and burns shorter than it), the creep
+##      is FNV-1a-deterministic across two builds of the same blast, and an
+##      ember COOLS yellow-hot -> deep red while dimming — the one detail the
+##      Director first described inverted and then corrected.
 ##
 ## Every expectation is checked against the REAL plan/registry/renderer
 ## state — never read back from the code under test's own success claim.
@@ -46,6 +51,7 @@ const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_
 const WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
+const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -89,6 +95,7 @@ func _init() -> void:
 			test_6_real_ring_gates(plan, bomb_def)
 			test_7_ember_wave_on_real_wood(built, bomb_def, ctx)
 			test_8_smoke_entries_carry_material(plan)
+			test_9_ember_climb_and_cooling_ramp(built, bomb_def, ctx)
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -496,13 +503,28 @@ func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary
 	var duplicated := 0
 	var wrong_scale := 0
 	var expected_scale: float = MaterialResistanceTable.flammability("wood")
+	## E-EMBER-02 split this set in two. A SEED is a survivor beside a hole (this
+	## test's subject, `delay == 0`); a RUNG is a creep step the fire climbed to
+	## afterwards, which by construction touches no hole and burns shorter than
+	## whatever lit it. Rungs are not skipped here — test 9 owns them in full
+	## (each must sit directly above another lit voxel and carry a strictly
+	## smaller duration_scale), so narrowing these two checks to the seeds moves
+	## coverage rather than dropping it. The other four checks below still run on
+	## EVERY ember, seed or rung.
+	var seeds := 0
 	for e in embers:
 		var key := Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))
+		var is_seed: bool = int(e.get("climb", 0)) == 0
 		if seen.has(key):
 			duplicated += 1
 		seen[key] = true
 		if holes.has(key):
 			on_a_hole += 1
+		if MaterialResistanceTable.flammability(String(material_of.get(key, ""))) <= 0.0:
+			non_combustible += 1
+		if not is_seed:
+			continue
+		seeds += 1
 		var touches := false
 		for d in NEIGHBOURS:
 			if holes.has(key + d):
@@ -510,10 +532,11 @@ func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary
 				break
 		if not touches:
 			not_adjacent += 1
-		if MaterialResistanceTable.flammability(String(material_of.get(key, ""))) <= 0.0:
-			non_combustible += 1
 		if absf(float(e.get("duration_scale", -1.0)) - expected_scale) > 0.0001:
 			wrong_scale += 1
+	if seeds == 0:
+		_fail("every ember is a creep rung — no seed at all, which cannot happen if the creep works")
+		return
 
 	if on_a_hole == 0:
 		_pass("no ember sits on a cell this blast destroys — every one is a SURVIVOR (VL-D4's predicate)")
@@ -521,9 +544,9 @@ func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary
 		_fail("%d ember(s) sit on a destroyed cell — the glow is on the hole, not its edge" % on_a_hole)
 
 	if not_adjacent == 0:
-		_pass("every ember is 6-adjacent to a hole this blast opened")
+		_pass("every one of the %d SEED embers is 6-adjacent to a hole this blast opened" % seeds)
 	else:
-		_fail("%d ember(s) touch no hole from this blast — seeded from the wrong set" % not_adjacent)
+		_fail("%d SEED ember(s) touch no hole from this blast — seeded from the wrong set" % not_adjacent)
 
 	if non_combustible == 0:
 		_pass("every ember's own voxel is a combustible material on the real map (flammability > 0)")
@@ -536,9 +559,9 @@ func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary
 		_fail("%d duplicate ember cell(s) — a voxel beside two holes glows twice as bright" % duplicated)
 
 	if wrong_scale == 0:
-		_pass("every ember carries wood's own flammability as duration_scale (%.2f)" % expected_scale)
+		_pass("every SEED ember carries wood's own flammability as duration_scale (%.2f)" % expected_scale)
 	else:
-		_fail("%d ember(s) carry a duration_scale that is not the material table's value" % wrong_scale)
+		_fail("%d SEED ember(s) carry a duration_scale that is not the material table's value" % wrong_scale)
 
 	## The negative half of the gate, on real data: a blast far from any wood
 	## must produce no embers at all. Uses the same concrete GU tests 1-6 run on.
@@ -601,3 +624,102 @@ func test_8_smoke_entries_carry_material(plan: Dictionary) -> void:
 	else:
 		_fail("%d of %d per-voxel smoke entries carry no material — those puffs cannot be tinted" %
 			[missing, per_voxel])
+
+
+## E-EMBER-02 (2026-08-13) — the upward creep and the cooling ramp.
+##
+## The ramp assertion lives in this file rather than in an overlay selftest of
+## its own because it is the same feature and, more to the point, it pins the
+## one detail the Director specified BACKWARDS and then corrected: the glow runs
+## yellow-hot -> red -> out, not red -> yellow. A ramp that silently inverts
+## would still look like fire in a screenshot, which is exactly why it gets an
+## assertion instead of an eyeball.
+func test_9_ember_climb_and_cooling_ramp(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
+	print("\n[9] E-EMBER-02: fire creeps upward, and an ember COOLS as it dies\n")
+	var edge_registry = built["room"]._edge_registry
+	var wood_gu := Vector2i(-9999, -9999)
+	for slice in edge_registry.all_slices():
+		if slice.material == "wood":
+			wood_gu = slice.gu_cell
+			break
+	if wood_gu.x == -9999:
+		_fail("PLAYGROUND has no wood slice — cannot exercise the creep")
+		return
+
+	var plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, wood_gu, ctx).waves
+	var by_cell: Dictionary = {}
+	var climbed: Array = []
+	for ring in plan.get("ember", {}).keys():
+		for e in plan["ember"][ring]:
+			by_cell[Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))] = e
+			if int(e.get("climb", 0)) > 0:
+				climbed.append(e)
+
+	if climbed.is_empty():
+		_fail("no ember carries a climb rank — the upward creep produced nothing on real data")
+		return
+	_pass("%d of %d ember(s) are creep rungs (climb > 0)" % [climbed.size(), by_cell.size()])
+
+	## A rung must sit directly above another lit voxel — the creep is
+	## continuous, never a light floating up a column on its own.
+	var orphan := 0
+	var not_shorter := 0
+	for e in climbed:
+		var here := Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))
+		var below: Dictionary = by_cell.get(Vector3i(here.x, here.y, here.z - 1), {})
+		if below.is_empty():
+			orphan += 1
+			continue
+		if float(e["duration_scale"]) >= float(below["duration_scale"]):
+			not_shorter += 1
+	if orphan == 0:
+		_pass("every creep rung sits directly above another lit voxel — the climb is continuous")
+	else:
+		_fail("%d creep rung(s) have nothing lit below them — the climb is skipping levels" % orphan)
+	if not_shorter == 0:
+		_pass("every rung burns shorter than the voxel that lit it ('apagando logo em seguida')")
+	else:
+		_fail("%d rung(s) burn as long as or longer than the voxel below" % not_shorter)
+
+	## Determinism: the creep is FNV-1a per cell, not randf(). Two builds of the
+	## same blast must produce byte-identical delays, or the filmstrip and every
+	## pixel-diff gate built on it stop meaning anything.
+	var again: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, wood_gu, ctx).waves
+	var mismatch := 0
+	var second := 0
+	for ring in again.get("ember", {}).keys():
+		for e in again["ember"][ring]:
+			second += 1
+			var prior: Dictionary = by_cell.get(
+				Vector3i(e["cell"].x, e["cell"].y, int(e["level"])), {})
+			if prior.is_empty() or absf(float(prior["delay"]) - float(e["delay"])) > 0.000001:
+				mismatch += 1
+	if mismatch == 0 and second == by_cell.size():
+		_pass("a second build of the same blast reproduces all %d embers and delays exactly" % second)
+	else:
+		_fail("re-building the same blast changed %d of %d ember(s) — the creep is not deterministic"
+			% [mismatch, second])
+
+	## The ramp itself, on a real EmberOverlay rather than a hand-built dict.
+	var overlay := EmberOverlayClass.new()
+	built["room"].add_child(overlay)
+	overlay.add_ember(Vector2(100.0, 100.0))
+	var e0: Dictionary = overlay._embers[0]
+	var hot: Color = overlay.ember_color_at(e0, 0.0)
+	var mid: Color = overlay.ember_color_at(e0, 0.5)
+	var cold: Color = overlay.ember_color_at(e0, 1.0)
+	var hot_h: float = hot.h
+	var cold_h: float = cold.h
+	if hot_h > cold_h:
+		_pass("hue cools the physical way round: %.3f (yellow-hot) -> %.3f (deep red)" % [hot_h, cold_h])
+	else:
+		_fail("hue runs %.3f -> %.3f — that is red warming into yellow, the inverted ramp" % [hot_h, cold_h])
+	if hot.v > mid.v and mid.v > cold.v:
+		_pass("brightness falls monotonically across the life (%.2f -> %.2f -> %.2f)" % [hot.v, mid.v, cold.v])
+	else:
+		_fail("brightness is not monotonically falling: %.2f -> %.2f -> %.2f" % [hot.v, mid.v, cold.v])
+	if cold.s > hot.s:
+		_pass("saturation deepens as it dies (%.2f -> %.2f) — a dying coal, not a pale one" % [hot.s, cold.s])
+	else:
+		_fail("saturation does not deepen: %.2f -> %.2f" % [hot.s, cold.s])
+	overlay.queue_free()

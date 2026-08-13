@@ -529,6 +529,23 @@ the blast from "the waves fire" to something that reads right. Full record:
   the materials milestone. Real PLAYGROUND detonation: **290 embers** against
   `FLOOR/wood destroyed 137` + `WALL/wood destroyed 38`
   (`e_ember01_wood_embers_settled_2026-08-13.png`).
+- ✅ **The ember became a fire that cools** (E-EMBER-02, same day). The Director
+  diagnosed why he could not see the previous step: the fireball and the
+  per-voxel embers share one overlay and one z_index, and at 46 px/s the fire
+  climbed under two voxel steps in its whole life — it sat on the crater
+  covering the thing it was meant to reveal. Fixed by raising the fire's
+  buoyancy to 150 px/s (with per-ember jitter), **not** by shortening it, which
+  would have broken P-STROBE. Plus: a yellow-hot → deep-red cooling ramp per
+  ember; an upward creep that climbs one level at a time and stops at the first
+  level that does not catch (FNV-1a per cell, never `randf()`, since it runs
+  inside the pure `build_plan()`); and a darker, ember-sized puff on extinguish.
+  **The first filmstrip rejected the first attempt** — every seed igniting on
+  the same frame at the same hot tone made ~137 ADD circles sum into one molten
+  sheet; fixed by cutting perceived density (radius, halo, value) and staggering
+  the ignitions, not by cutting the count. Evidence in three parts:
+  `e_ember02_filmstrip_wood_2026-08-13.png` (ignition, ~0.6 s — a 36-frame strip
+  structurally cannot reach the cooling), plus stills at ~2 s and ~4 s
+  (`e_ember02_wood_cooling_120f/240f_2026-08-13.png`).
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
 - ⚠️ **Still off, deliberately:** the DUST / SPARK / CHIP debris of VFX-01's

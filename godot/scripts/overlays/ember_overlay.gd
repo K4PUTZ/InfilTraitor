@@ -26,7 +26,12 @@ class_name EmberOverlay
 ## reads as "went out", not "vanished".
 
 ## Tuning — all `var` (Rule 1).
-var glow_radius: float = 14.0             ## px, roughly one voxel face — jittered per ember
+## E-EMBER-02 tuning pass (filmstrip, 2026-08-13): 14.0 with the old halo made
+## ~137 overlapping ADD circles read as one molten sheet the shape of the crater
+## rather than as coals. Radius, halo reach and halo alpha all came down
+## together — the halo is what was filling the gaps BETWEEN embers into a
+## continuous surface, so shrinking only the core would not have separated them.
+var glow_radius: float = 9.0              ## px, under one voxel face — jittered per ember
 var fade_power: float = 1.6               ## >1 = lingers bright, then drops fast
 
 var min_glow_duration: float = 1.5        ## seconds, fastest-dying ember
@@ -40,26 +45,59 @@ var height_bias_low: float = 0.65         ## multiplier for the lowest ember on 
 var height_bias_high: float = 1.3         ## multiplier for the highest ember on screen
 
 ## Warm hue range for Color.from_hsv (0.0 = red, ~0.13 = yellow-orange).
-var hue_min: float = 0.0
-var hue_max: float = 0.13
+##
+## E-EMBER-02 (Director, 2026-08-13): an ember no longer keeps ONE rolled hue for
+## its whole life — it COOLS. *"voxels bem vermelhos e brilhantes, que vão
+## ficando amarelos e apagando até sobrar só preto-carvão"*, corrected by the
+## Director on the next message to run the physical way round: **yellow-hot
+## first, reddening as it dies.** A real ember goes white/yellow -> orange ->
+## red -> dark, and the original text had it inverted.
+##
+## Each ember still rolls its OWN pair of endpoints rather than sharing one
+## global ramp, which is what keeps "durações e velocidades ligeiramente
+## diferentes" true of the colour too: at any instant a patch shows a spread of
+## tones, not one tone marching in lockstep. `hue_hot` is rolled in the yellow
+## half and `hue_cold` in the red half, so the direction can never invert on a
+## bad roll.
+var hue_hot_min: float = 0.075              ## t=0 end — orange-yellow
+var hue_hot_max: float = 0.145
+var hue_cold_min: float = 0.0               ## t=1 end — deep red
+var hue_cold_max: float = 0.035
 var sat_min: float = 0.75
 var sat_max: float = 0.95
-var val_min: float = 0.85
-var val_max: float = 1.0
+## Saturation RISES as it cools (a dying coal is deep red, not pale red), so
+## this is added to the rolled saturation across the life rather than subtracted.
+var sat_cool_gain: float = 0.18
+## Down from 0.85-1.0 in the same pass. Under ADD, N overlapping embers sum, so
+## the per-ember value that reads correct ALONE blows out to white in a crowd —
+## and a crowd is the normal case for a real crater, not the exception.
+var val_min: float = 0.60
+var val_max: float = 0.85
+## Value falls to this fraction of the rolled one by the end — the "apagando até
+## sobrar só preto-carvão" half. It never reaches the charcoal itself: the tile
+## underneath is ALREADY charred by soot the instant the blast lands, so the
+## last thing this overlay does is get out of the way and let it show (VL-D4's
+## own "cooling is really revealing, not a second darkening pass").
+var val_cool_floor: float = 0.35
 
 var radius_jitter_min: float = 0.7        ## core-radius multiplier range (diffusion variety)
 var radius_jitter_max: float = 1.4
-var halo_scale_min: float = 1.6           ## soft outer halo, relative to core radius
-var halo_scale_max: float = 2.4
-var halo_alpha_factor: float = 0.35       ## halo is dimmer than the core at the same t
+var halo_scale_min: float = 1.25          ## soft outer halo, relative to core radius
+var halo_scale_max: float = 1.8
+var halo_alpha_factor: float = 0.20       ## halo is dimmer than the core at the same t
 
 var pulse_speed_min: float = 2.0          ## cycles/sec, per-ember flicker frequency
 var pulse_speed_max: float = 6.0
 var pulse_amount_min: float = 0.15        ## +/- brightness swing from the flicker
 var pulse_amount_max: float = 0.35
 
-var ember_smoke_color: Color = Color(0.22, 0.18, 0.15, 0.55)  ## puff spawned on extinguish
-var ember_smoke_scale: float = 0.5
+## The puff spawned when an ember burns out — E-EMBER-02: *"ao apagar, cada
+## voxel gera mais fumaça escura, e finaliza."* Darker and larger than the
+## 2026-07-26 original, and scaled by the ember's OWN radius so a fat coal
+## leaves a fat puff instead of every death producing the identical blob.
+var ember_smoke_color: Color = Color(0.13, 0.11, 0.10, 0.72)
+var ember_smoke_scale: float = 0.85
+var ember_smoke_radius_gain: float = 0.5  ## how much the ember's radius jitter feeds the puff size
 
 var _embers: Array = []
 ## [{"pos", "elapsed", "duration", "color", "radius", "halo_scale",
@@ -110,24 +148,34 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 ## `shade_brightness`. Scaling the ROLL rather than replacing it is the whole
 ## point: passing an absolute `duration` would flatten the 1.5-4.0 spread that
 ## makes a scorched patch cool unevenly, which is the look VL-D4 shipped.
+## `delay` (E-EMBER-02) holds an ember dark and motionless before it catches —
+## the seam the upward propagation uses (`DetonationPlanBuilder._build_ember_wave()`
+## staggers a climb so fire creeps up a wall instead of the whole column lighting
+## at once). Trailing and zero by default, so it costs existing callers nothing.
+## Deliberately NOT a timer or a tween per ember: this overlay already owns a
+## per-frame loop over its own entries, and a few hundred SceneTreeTimers would
+## be a second scheduler for something one float already expresses.
 func add_ember(world_pos: Vector2, duration: float = -1.0,
 		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
-		rise: float = 0.0, duration_scale: float = 1.0) -> void:
+		rise: float = 0.0, duration_scale: float = 1.0,
+		delay: float = 0.0) -> void:
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
 	var final_duration: float = base_duration * maxf(duration_scale, 0.01) * _height_bias(world_pos.y)
-	var color := Color.from_hsv(
-		randf_range(hue_min, hue_max),
-		randf_range(sat_min, sat_max),
-		randf_range(val_min, val_max),
-		1.0)
 	_embers.append({
 		"pos": world_pos,
 		"vel": velocity,
 		"drag": drag,
 		"rise": rise,
+		"delay": maxf(delay, 0.0),
 		"elapsed": 0.0,
 		"duration": final_duration,
-		"color": color,
+		## E-EMBER-02: the two ends of this ember's own cooling ramp, rolled
+		## once here and lerped per frame in _draw(). Saturation and value are
+		## the t=0 values; both are walked by the ramp too.
+		"hue_hot": randf_range(hue_hot_min, hue_hot_max),
+		"hue_cold": randf_range(hue_cold_min, hue_cold_max),
+		"sat": randf_range(sat_min, sat_max),
+		"val": randf_range(val_min, val_max),
 		"radius": glow_radius * randf_range(radius_jitter_min, radius_jitter_max),
 		"halo_scale": randf_range(halo_scale_min, halo_scale_max),
 		"pulse_speed": randf_range(pulse_speed_min, pulse_speed_max),
@@ -135,6 +183,20 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		"pulse_amount": randf_range(pulse_amount_min, pulse_amount_max),
 	})
 	set_process(true)
+
+
+## E-EMBER-02 — one ember's colour at life fraction `t`. Hue walks hot->cold,
+## saturation deepens, value falls toward `val_cool_floor`. Kept as its own
+## function so a selftest can assert the ramp's DIRECTION without constructing
+## a frame loop, which is the part that was wrong in the Director's first
+## description and is worth pinning.
+func ember_color_at(e: Dictionary, t: float) -> Color:
+	var k: float = clampf(t, 0.0, 1.0)
+	return Color.from_hsv(
+		lerpf(float(e["hue_hot"]), float(e["hue_cold"]), k),
+		clampf(float(e["sat"]) + sat_cool_gain * k, 0.0, 1.0),
+		float(e["val"]) * lerpf(1.0, val_cool_floor, k),
+		1.0)
 
 
 ## Statistical bias, not a strict queue: normalizes `y` against the embers
@@ -162,6 +224,15 @@ func _process(delta: float) -> void:
 		return
 	var alive: Array = []
 	for e in _embers:
+		## E-EMBER-02: an ember that has not caught yet burns down its delay and
+		## nothing else — it does not age, move, or draw. Checked before
+		## `elapsed` advances so a delayed ember's own duration is never eaten
+		## by the wait.
+		var wait: float = float(e.get("delay", 0.0))
+		if wait > 0.0:
+			e["delay"] = wait - delta
+			alive.append(e)
+			continue
 		e["elapsed"] += delta
 		## P-FIRE: a still ember costs one dictionary read and nothing else —
 		## the pinned per-voxel scorch embers never enter this branch.
@@ -175,20 +246,31 @@ func _process(delta: float) -> void:
 		if e["elapsed"] < e["duration"]:
 			alive.append(e)
 		elif _smoke_overlay != null:
-			_smoke_overlay.add_smoke(e["pos"], ember_smoke_color, ember_smoke_scale)
+			## E-EMBER-02: the puff inherits this ember's own size, so the death
+			## of a big coal reads bigger than the death of a small one.
+			_smoke_overlay.add_smoke(e["pos"], ember_smoke_color,
+				ember_smoke_scale * (1.0 + ember_smoke_radius_gain
+					* (float(e["radius"]) / maxf(glow_radius, 0.001) - 1.0)))
 	_embers = alive
 	queue_redraw()
 
 
 func _draw() -> void:
 	for e in _embers:
+		## E-EMBER-02: an ember still counting down its delay is not on fire yet
+		## and draws nothing at all.
+		if float(e.get("delay", 0.0)) > 0.0:
+			continue
 		var t: float = e["elapsed"] / e["duration"]
 		var pulse: float = 1.0 + e["pulse_amount"] * sin(e["elapsed"] * e["pulse_speed"] * TAU + e["pulse_phase"])
 		var alpha: float = clampf(pow(1.0 - t, fade_power) * pulse, 0.0, 1.0)
-		var core := e["color"] as Color
+		## Rolled once per FRAME, not once per ember: the whole point of
+		## E-EMBER-02 is that the colour itself cools as the glow dies.
+		var hot := ember_color_at(e, t)
+		var core := hot
 		core.a *= alpha
 		draw_circle(e["pos"], e["radius"], core)
-		var halo := e["color"] as Color
+		var halo := hot
 		halo.a *= alpha * halo_alpha_factor
 		draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
 

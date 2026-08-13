@@ -641,8 +641,14 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			## will use later.
 			if _ember_overlay == null:
 				return 0
+			## E-EMBER-02: `delay` is the upward creep's stagger, already rolled
+			## deterministically per cell in the plan — the choreographer only
+			## forwards it. Velocity/drag/rise stay zero: a scorch ember is
+			## PINNED to its voxel (the rising fire is the burst's job, and
+			## E-EMBER-02 raised that one instead precisely so it clears the
+			## crater and stops hiding these).
 			_ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
-				float(entry.get("duration_scale", 1.0)))
+				float(entry.get("duration_scale", 1.0)), float(entry.get("delay", 0.0)))
 			return 1
 	return 0
 

@@ -1060,8 +1060,96 @@ static func _build_ember_wave(s: Dictionary) -> void:
 					"world_pos": voxel_renderer.voxel_world_position(
 						neighbour.grid_pos, neighbour.level),
 					"duration_scale": flammability,
+					## E-EMBER-02 tuning pass: a small per-cell stagger. Without it
+					## every seed in a crater ignites on the SAME frame at the same
+					## hot end of the ramp, and under ADD blending ~137 of them sum
+					## into one molten sheet the shape of the crater (seen directly
+					## on the first filmstrip). Spread over a fraction of a second
+					## they read as a patch catching, which is also the Director's
+					## own "tudo com duração e velocidades ligeiramente diferentes".
+					"delay": EMBER_SEED_STAGGER_S * _hash_unit(
+						"EMBERSEED", neighbour.grid_pos, neighbour.level),
+					## Rank in the upward creep — 0 is a seed beside a real hole,
+					## >0 is a rung the fire climbed to. Carried explicitly rather
+					## than inferred from `delay`, which stopped being a reliable
+					## discriminator the moment seeds got a stagger of their own.
+					"climb": 0,
 					"r": _radius_of(neighbour.grid_pos, epicenter),
 				})
+				_climb_from(ncell, ring, s, seen, waves["ember"])
+
+
+## E-EMBER-02 (Director, 2026-08-13): *"os voxels também se propagam para cima,
+## de maneira mais comedida e errática, apagando logo em seguida."*
+##
+## Fire creeps UP from a lit voxel, one level at a time, and stops at the first
+## level that does not catch — a continuous creep, not a scatter of independent
+## lights up the column. That single rule is most of what makes it read as
+## "comedido": the chance decays with height AND any miss ends the climb, so a
+## tall wall lights a short tongue rather than a full stripe.
+##
+## Rolled from FNV-1a per cell, never `randf()`. This runs inside `build_plan()`,
+## which is PURE and whose output the prediction layer caches and the filmstrip
+## replays — a runtime roll here would make two captures of the same detonation
+## differ, and CLAUDE.md's own pixel-diff discipline (36 733 differing pixels
+## from one non-deterministic capture) is what that costs.
+##
+## Each rung starts LATER and lives SHORTER than the one below it, which is the
+## "apagando logo em seguida" half and also what keeps the climb from reading as
+## a solid bar appearing at once.
+static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
+		seen: Dictionary, ember_by_ring: Dictionary) -> void:
+	var flammable_cells: Dictionary = s["flammable_cells"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var delta: WorldDelta = s["delta"]
+	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var epicenter: Vector2i = s["epicenter"]
+	var chance: float = EMBER_CLIMB_CHANCE
+	for step in range(1, EMBER_CLIMB_MAX_LEVELS + 1):
+		var up := Vector3i(origin.x, origin.y, origin.z + step)
+		if seen.has(up):
+			return
+		var flammability: float = float(flammable_cells.get(up, 0.0))
+		if flammability <= 0.0:
+			return
+		var voxel: Voxel = cell_to_voxel.get(up)
+		if voxel == null:
+			return
+		var p: Array = delta.projection_of(voxel)
+		var touched: bool = not p.is_empty()
+		var state: int = int(p[WorldDelta.P_STATE]) if touched else voxel.damage_state
+		var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else voxel.visible
+		if not vis or state == Voxel.DamageState.DESTROYED:
+			return
+		if _hash_unit("EMBERCLIMB", voxel.grid_pos, voxel.level) > chance:
+			return
+		seen[up] = true
+		var jitter: float = _hash_unit("EMBERDELAY", voxel.grid_pos, voxel.level)
+		_append(ember_by_ring, ring, {
+			"cell": voxel.grid_pos,
+			"level": voxel.level,
+			"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+			"duration_scale": flammability * pow(EMBER_CLIMB_LIFE_DECAY, float(step)),
+			"delay": EMBER_CLIMB_DELAY_S * float(step)
+				* (1.0 - EMBER_CLIMB_DELAY_JITTER + 2.0 * EMBER_CLIMB_DELAY_JITTER * jitter),
+			"climb": step,
+			"r": _radius_of(voxel.grid_pos, epicenter),
+		})
+		chance *= EMBER_CLIMB_DECAY
+
+
+## How far a creep may reach above the voxel that lit it, and how willingly.
+## All `var`-free by intent: these are structural limits on the plan's size, not
+## per-difficulty stats — Rule 1 governs STATS, and a climb ceiling is the same
+## kind of constant as EMBER_NEIGHBOURS. Tuning happens on the Director's eye
+## via the filmstrip, which is why they are named rather than inlined.
+const EMBER_CLIMB_MAX_LEVELS: int = 3
+const EMBER_CLIMB_CHANCE: float = 0.55       ## chance the first level above catches
+const EMBER_CLIMB_DECAY: float = 0.55        ## each further level is this much likelier to stop
+const EMBER_CLIMB_LIFE_DECAY: float = 0.7    ## each rung burns out sooner than the one below
+const EMBER_CLIMB_DELAY_S: float = 0.28      ## base stagger per level climbed
+const EMBER_CLIMB_DELAY_JITTER: float = 0.55 ## +/- fraction of that stagger, per cell
+const EMBER_SEED_STAGGER_S: float = 0.45     ## window the seeds' own ignitions spread across
 
 
 const EMBER_NEIGHBOURS: Array[Vector3i] = [

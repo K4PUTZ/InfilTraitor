@@ -1,7 +1,7 @@
 # RESUMO_SESSAO — 2026-08-13 (doc-vs-code audit → E-EMBER-01 / E-SMOKE-TINT-01)
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-13_E_CONTRAST_FLOOR_SHADE.md`
-**VERSION:** 0.9.100 (unchanged — no checkpoint was asked for)
+**VERSION:** 0.9.100 → **0.9.101** ("Alpha Ember Tuning")
 **Plans touched:** `EXPLOSION_REBUILD_MASTER_PLAN` (new §11b),
 `VOXEL_LIGHT_MASTER_PLAN` (VL-D4), `DESTRUCTION_MASTER_PLAN` (header + D24),
 `docs/production/current_state.md`, `docs/README.md`.
@@ -140,6 +140,48 @@ was incomplete, and the fix was completing the ground truth.
     check_invariants.py      ✅ OK
     gen_codemap.py --check   ✅ clean
     run_selftests.py         ✅ 35 clean, 0 failed (plan selftest 16/16 PASS)
+
+## 5b. E-EMBER-02 / E-EMBER-03 — the same session, after the Director saw it live
+
+**E-EMBER-02.** Director: *"o foguinho... queremos que suba rapidamente pra cima
+verticalmente e ao longo da parede, e apague em seguida, deixando para trás
+voxels bem vermelhos e brilhantes… os voxels também se propagam para cima, de
+maneira mais comedida e errática… ao apagar, cada voxel gera mais fumaça
+escura."* Plus a correction: the colour order runs yellow-hot → red, not the
+red → yellow first written.
+
+**The Director's own diagnosis was the key**: *"talvez já esteja funcionando, mas como o
+foguinho está por cima eu não estou vendo."* Right. The fireball and the scorch
+embers share one overlay and one z_index, and at 46 px/s a burst ember climbed
+~46 px in its whole ~1 s life — under two voxel steps. The fire sat on the
+crater covering the thing it existed to reveal. Fixed by MOVING it (rise → 150
+px/s + per-ember jitter), never by shortening it: P-STROBE tuned that lifetime
+on purpose.
+
+Shipped inside the existing structure: the per-ember cooling ramp; the upward
+creep (one level at a time, stopping at the first that does not catch, FNV-1a
+per cell because `build_plan()` is pure and the filmstrip replays it); a
+trailing `delay` on `add_ember()`; a darker, ember-sized extinguish puff.
+
+**The filmstrip rejected the first attempt, which is why it was run.** Every
+seed igniting on the same frame at the same hot tone made ~137 ADD circles sum
+into one molten sheet the shape of the crater — the old random per-ember hue had
+been supplying the t=0 variety and the ramp removed it. Fixed on perceived
+DENSITY, not count: radius 14→9, halo reach and alpha down, value 0.85-1.0 →
+0.60-0.85, and a deterministic 0.45 s stagger across the seeds' ignitions.
+
+**E-EMBER-03.** Director: *"a gente conseguiria passar de amarelo pra vermelho
+vivo mais rápido, antes de apagarem? De resto ok."* Both ramps were linear in
+`t`, so the ember drifted through orange and the vivid red never got its own
+stretch. Hue and value are now eased in opposite directions — hue exponent 0.40
+(62% of the way to red by 30% of the life), value exponent 1.80 (93% of full
+brightness at that same point). Easing the hue alone would have delivered a red
+that was already dim on arrival.
+
+Evidence: `e_ember02_filmstrip_wood_2026-08-13.png` (ignition, ~0.6 s — a
+36-frame strip structurally cannot reach the cooling), `e_ember03_vivid_red_70f`
+(~1.2 s, vivid), `e_ember02_wood_cooling_120f` (~2 s, deep red) and `_240f`
+(~4 s, out — charred wall, soot around the crater). Plan selftest 25/25.
 
 ## 6. What's open
 

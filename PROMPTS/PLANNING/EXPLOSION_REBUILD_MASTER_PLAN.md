@@ -3219,6 +3219,31 @@ direction. Test 7's two seed-specific assertions were narrowed to seeds (`climb
 which stopped discriminating once seeds got a stagger of their own) — the rungs
 are covered in full by test 9, so that moved coverage rather than dropping it.
 
+### E-EMBER-03 — the yellow becomes a flash, the red gets its own stretch (0.9.101, "Alpha Ember Tuning")
+
+Director, on the E-EMBER-02 filmstrip: *"a gente conseguiria passar de amarelo
+pra vermelho vivo mais rápido, antes de apagarem? De resto ok."*
+
+Both ramps were linear in `t`, so an ember spent its entire life drifting
+through orange and the vivid red never got a moment of its own. They are now
+eased in **opposite** directions, and the opposition is the whole trick:
+
+| ramp | exponent | effect |
+|---|---|---|
+| `hue_cool_ease` | 0.40 (<1) | reaches the cold hue early — 62% of the way to red by 30% of the life |
+| `val_cool_ease` | 1.80 (>1) | brightness HOLDS (93% of full at that same point), then falls away |
+
+Easing the hue alone would have delivered a red that was already dim by the time
+it arrived, which is the exact opposite of *vivo*. Both halves are pinned by
+assertions rather than by the endpoints alone, because a future retune that
+quietly linearizes either one restores the slow orange drift without breaking
+anything else that is checked.
+
+*Evidence:* `e_ember03_vivid_red_70f_2026-08-13.png` (~1.2 s) — discrete coals
+in vivid orange-red across the crater and up the wall column, still bright, next
+to the 2 s and 4 s stills from E-EMBER-02 that show the same run cooling out to
+charcoal and soot.
+
 **Still deliberately disconnected, and the Director has not asked for it:** the
 DUST / SPARK / CHIP debris of that same VFX-01 dispatch (including wood's own
 `add_chips` splinters). Nothing blocks it any more — destroy entries could take

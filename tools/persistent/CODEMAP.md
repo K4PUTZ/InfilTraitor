@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 55806 lines total** (under `godot/scripts/`)
+**205 scripts · 55842 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1038,7 +1038,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 284 lines
+`class_name EmberOverlay` · extends `Node2D` · 304 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -3013,7 +3013,7 @@ extends `SceneTree` · 441 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 725 lines
+extends `SceneTree` · 741 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 

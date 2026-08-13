@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.100 · **Updated:** 2026-08-13 · **Branch:** main
+**Version:** 0.9.101 · **Updated:** 2026-08-13 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -530,7 +530,7 @@ the blast from "the waves fire" to something that reads right. Full record:
   `FLOOR/wood destroyed 137` + `WALL/wood destroyed 38`
   (`e_ember01_wood_embers_settled_2026-08-13.png`).
 - ✅ **The ember became a fire that cools** (E-EMBER-02, same day). The Director
-  diagnosed why he could not see the previous step: the fireball and the
+  diagnosed why the previous step was invisible: the fireball and the
   per-voxel embers share one overlay and one z_index, and at 46 px/s the fire
   climbed under two voxel steps in its whole life — it sat on the crater
   covering the thing it was meant to reveal. Fixed by raising the fire's
@@ -546,6 +546,13 @@ the blast from "the waves fire" to something that reads right. Full record:
   `e_ember02_filmstrip_wood_2026-08-13.png` (ignition, ~0.6 s — a 36-frame strip
   structurally cannot reach the cooling), plus stills at ~2 s and ~4 s
   (`e_ember02_wood_cooling_120f/240f_2026-08-13.png`).
+- ✅ **0.9.101 "Alpha Ember Tuning" (E-EMBER-03)** — the colour ramps were linear
+  in `t`, so an ember drifted through orange for its whole life and the vivid red
+  never had a stretch of its own. Hue and brightness are now eased in OPPOSITE
+  directions (hue exponent 0.40 reaches red early, value exponent 1.80 holds
+  brightness and then drops), so the yellow is a flash and the red arrives fast
+  AND bright. Easing the hue alone would have produced a red that was already dim
+  on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
 - ⚠️ **Still off, deliberately:** the DUST / SPARK / CHIP debris of VFX-01's

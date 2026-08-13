@@ -80,6 +80,23 @@ var val_max: float = 0.85
 ## own "cooling is really revealing, not a second darkening pass").
 var val_cool_floor: float = 0.35
 
+## E-EMBER-03 (Director, 2026-08-13): *"a gente conseguiria passar de amarelo
+## pra vermelho vivo mais rápido, antes de apagarem?"*
+##
+## The two ramps were both linear in `t`, which spent the ember's whole life
+## drifting through orange and never gave the vivid red a moment of its own.
+## They are now eased in OPPOSITE directions, and that opposition is the whole
+## trick:
+##   · hue  — exponent < 1, so the yellow is a flash and the ember is essentially
+##            red by the first third of its life;
+##   · value — exponent > 1, so brightness HOLDS near full through that same
+##            stretch and only then drops away.
+## Together: a brief yellow, then a long *bright* red, then the fade. Easing the
+## hue alone would have produced a red that was already dim by the time it
+## arrived, which is the opposite of "vivo".
+var hue_cool_ease: float = 0.40   ## <1 reaches the cold hue early
+var val_cool_ease: float = 1.80   ## >1 holds brightness, then falls off
+
 var radius_jitter_min: float = 0.7        ## core-radius multiplier range (diffusion variety)
 var radius_jitter_max: float = 1.4
 var halo_scale_min: float = 1.25          ## soft outer halo, relative to core radius
@@ -192,10 +209,13 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 ## description and is worth pinning.
 func ember_color_at(e: Dictionary, t: float) -> Color:
 	var k: float = clampf(t, 0.0, 1.0)
+	## E-EMBER-03: hue runs ahead of brightness, deliberately. See hue_cool_ease.
+	var k_hue: float = pow(k, hue_cool_ease)
+	var k_val: float = pow(k, val_cool_ease)
 	return Color.from_hsv(
-		lerpf(float(e["hue_hot"]), float(e["hue_cold"]), k),
-		clampf(float(e["sat"]) + sat_cool_gain * k, 0.0, 1.0),
-		float(e["val"]) * lerpf(1.0, val_cool_floor, k),
+		lerpf(float(e["hue_hot"]), float(e["hue_cold"]), k_hue),
+		clampf(float(e["sat"]) + sat_cool_gain * k_hue, 0.0, 1.0),
+		float(e["val"]) * lerpf(1.0, val_cool_floor, k_val),
 		1.0)
 
 

@@ -722,4 +722,20 @@ func test_9_ember_climb_and_cooling_ramp(built: Dictionary, bomb_def, ctx: Dicti
 		_pass("saturation deepens as it dies (%.2f -> %.2f) — a dying coal, not a pale one" % [hot.s, cold.s])
 	else:
 		_fail("saturation does not deepen: %.2f -> %.2f" % [hot.s, cold.s])
+
+	## E-EMBER-03 (Director: "passar de amarelo pra vermelho vivo mais rápido").
+	## The two ramps are eased in OPPOSITE directions, and a future retune that
+	## quietly linearizes either one would restore the slow orange drift without
+	## breaking anything else — so both halves get pinned, not just the endpoints.
+	var early: Color = overlay.ember_color_at(e0, 0.30)
+	var hue_span: float = float(e0["hue_hot"]) - float(e0["hue_cold"])
+	var travelled: float = (float(e0["hue_hot"]) - early.h) / maxf(hue_span, 0.0001)
+	if travelled >= 0.6:
+		_pass("hue is %.0f%% of the way to red by 30%% of the life — the yellow is a flash, not a drift" % (travelled * 100.0))
+	else:
+		_fail("hue is only %.0f%% cooled at t=0.30 — that is the slow orange drift E-EMBER-03 removed" % (travelled * 100.0))
+	if early.v >= hot.v * 0.8:
+		_pass("brightness still %.0f%% of full at that point — the red arrives VIVID, not already dim" % (early.v / maxf(hot.v, 0.0001) * 100.0))
+	else:
+		_fail("brightness already down to %.0f%% at t=0.30 — the red arrives dim" % (early.v / maxf(hot.v, 0.0001) * 100.0))
 	overlay.queue_free()

@@ -2755,10 +2755,18 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## z-index formula has exactly one owner; the two callers differ only in
 ## WHERE they file the result (_voxel_layers vs _negative_voxel_layers),
 ## never in HOW a layer is built.
-## FACE-READ-01 — one shared ShaderMaterial for every voxel layer. Built lazily
-## and reused: the shader is stateless (its uniforms are global tuning, not
-## per-layer), so N layers share one material and one pipeline.
+## FACE-READ-01 — one shared ShaderMaterial for every WALL voxel layer. Built
+## lazily and reused: the shader is stateless (its uniforms are global tuning,
+## not per-layer), so N layers share one material and one pipeline.
+##
+## E-CONTRAST-02 (2026-08-13): floor layers get a SECOND instance of the same
+## shader script, with `voxel_is_floor = true` set only on it — see the
+## shader's own note. Two instances, not a per-cell branch fed from GDScript,
+## because a ShaderMaterial's uniforms are the natural per-layer-group knob
+## and the wall instance's defaults stay untouched, so wall rendering cannot
+## regress by construction.
 var _face_shading_material: ShaderMaterial
+var _face_shading_material_floor: ShaderMaterial
 
 
 func _get_face_shading_material() -> ShaderMaterial:
@@ -2775,13 +2783,30 @@ func _get_face_shading_material() -> ShaderMaterial:
 	return _face_shading_material
 
 
+func _get_face_shading_material_floor() -> ShaderMaterial:
+	if _face_shading_material_floor != null:
+		return _face_shading_material_floor
+	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
+	if shader == null:
+		push_error("[VoxelRenderer] E-CONTRAST-02: voxel_face_shading.gdshader failed to load — floor faces will render flat")
+		return null
+	_face_shading_material_floor = ShaderMaterial.new()
+	_face_shading_material_floor.shader = shader
+	_face_shading_material_floor.set_shader_parameter("voxel_is_floor", true)
+	return _face_shading_material_floor
+
+
 func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.tile_set = _tileset
 	layer.name = "voxel_layer_%d" % level
 	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
 	## material-only and the baked tile paths — see the shader's own header.
-	layer.material = _get_face_shading_material()
+	## E-CONTRAST-02: negative levels are floor/background (D17) — same test
+	## `level < 0` already used below for FLOOR-DEPTH-02's own tint, so a wall
+	## level can never accidentally pick up the floor material.
+	layer.material = _get_face_shading_material_floor() if level < 0 \
+		else _get_face_shading_material()
 
 	# E1 equation from Transform Canon (SLICE-00)
 	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):

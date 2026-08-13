@@ -71,11 +71,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
 - 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
 - a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
 - 52827f8b ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
 - cced2311 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
-- 26cca8a5 ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
 <!-- AUTO:END version_history -->
 
 ---

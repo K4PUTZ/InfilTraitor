@@ -142,7 +142,14 @@ uniform float face_residue_sep : hint_range(0.0, 1.0) = 1.0;
 // The base lives in two files that cannot import each other (this one and
 // VoxelLightField.FACE_SOOT_BASE); voxel_face_separation_selftest.gd parses
 // these uniforms out of this file precisely so a change here cannot drift.
-uniform vec4 soot_face_mult = vec4(0.33, 0.47, 0.69, 0.84);
+//
+// E-CONTRAST-01 (Director, 2026-08-13): a real two-blast capture on PLAYGROUND
+// showed freshly-exposed crater voxels reading too close to their own bright
+// facade texture — "não precisa ser muito mais escuro, é só pra não ficar tão
+// contrastante." Ring 3 only (0.84 -> 0.75): it is the blast-only feather tone
+// PERF-02 B3-2 already isolated for exactly this reason, so darkening it
+// cannot touch a firearm's 3-ring scorch (rings 0/1/2, still bit-identical).
+uniform vec4 soot_face_mult = vec4(0.33, 0.47, 0.69, 0.75);
 // Ring 4 = clean. Split out of the vec4 above because there are now five
 // entries; must be 1.0 or an untouched voxel would be tinted by a table it is
 // not supposed to be subject to at all.
@@ -151,6 +158,30 @@ uniform float soot_clean_mult = 1.0;
 // transparent texel carries no recoverable carrier); such pixels are invisible
 // anyway, so they simply take no soot.
 uniform float soot_alpha_floor : hint_range(0.0, 0.5) = 0.02;
+
+// E-CONTRAST-02 (Director, 2026-08-13) — a real ring histogram on the same
+// two-blast capture showed the bright interior blobs sitting at ring 0/1
+// already (the DARKEST tones soot_face_mult offers), not ring 3. A multiply
+// can only ever SCALE a face's own bright base texture, never flatten it — a
+// bright facade texel at ring 0 (200 * 0.33 ~ 66) still reads far lighter
+// than a dark texel at the SAME ring (60 * 0.33 ~ 20), because multiply
+// preserves relative contrast, it does not reduce it. Only a MIX toward a
+// fixed dark colour pulls a bright outlier down in absolute terms while
+// barely moving an already-dark texel — the "shade on top" the Director
+// asked for, literally.
+//
+// FLOOR ONLY, on the Director's own instruction ("armas não acertam o chão,
+// e na parede pode ficar como está" — firearms never reach a Slab, per
+// WEAPON_MASTER_PLAN's own aim model, so there is no shared-tuning risk here
+// the way ring 0-2 had for soot_face_mult above). `voxel_is_floor` defaults
+// false, so the WALL ShaderMaterial instance (VoxelRenderer._get_face_
+// shading_material(), unchanged) never enters this branch — byte-identical
+// to before. VoxelRenderer._get_face_shading_material(true) is a SEPARATE
+// ShaderMaterial instance, same shader script, bound only to the negative
+// (floor) voxel layers, with this flag on.
+uniform bool voxel_is_floor = false;
+uniform vec3 floor_soot_shade_color = vec3(0.05, 0.045, 0.045);
+uniform float floor_soot_shade_amount : hint_range(0.0, 1.0) = 0.30;
 
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
@@ -189,6 +220,13 @@ void fragment() {
 	}
 	f *= (ring < 3.5) ? soot_face_mult[int(ring)] : soot_clean_mult;
 	COLOR.rgb = max(COLOR.rgb * f, vec3(0.0));
+
+	// E-CONTRAST-02: the shade-on-top, floor only, only on a face that actually
+	// carries a real ring (clean stays clean — this must never dim untouched
+	// floor across the rest of the map).
+	if (voxel_is_floor && ring < 3.5) {
+		COLOR.rgb = mix(COLOR.rgb, floor_soot_shade_color, floor_soot_shade_amount);
+	}
 
 	// FACE-READ-03: force this face onto its own residue class mod 3, LAST, so
 	// nothing downstream can re-merge two faces. See the uniform's note above.

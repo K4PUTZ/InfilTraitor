@@ -2,9 +2,13 @@
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
 **Status:** 🟢 **FIVE OF SIX TASKS BUILT 2026-08-12/13** — see §5. S-LOCAL was
-dropped on its own measurement, not deferred. What is left is not code: the fade
-has only been proven at its final state, and the repaint path has no trustworthy
-pixel gate (§7).
+dropped on its own measurement, not deferred. **The fade's mid-ramp is now
+proven** — `Screenshots/history/soot_fade_beat_2026-08-13.png` (44-frame
+filmstrip, `--fixed-fps 60`, grenade 2): the ring spreads across frames 28-32
+outside the smoke plume, no glitch/pop between rungs. What is left is not
+code: the repaint path still has no trustworthy pixel gate (§7's `weapon_fire`
+non-determinism), and §6 Q2/Q3 are now both answered (rotation dropped,
+accumulation not needed).
 Written first as a study, on the Director's request: *"Da uma estudada no jeito
 mais eficiente que nos permita ter fuligem realista sem comprometer a
 performance."*
@@ -440,11 +444,18 @@ acceptable differences are the ones a task is explicitly for.
 1. **The stamp** — confirmed reformable rather than deleted: its job (a ring that
    destroys nothing still scorches) becomes the base rule in §2. Nothing to
    decide unless §2's rule is rejected.
-2. **Rotation** — this plan deliberately does NOT depend on the answer.
-   Option A works either way. Recorded because §1.5 shows the current design was
-   shaped entirely by it.
-3. **Accumulation** — should two blasts on one spot leave a dirtier mark than
-   one? Today they cannot. That is the only thing Option B buys that A does not.
+2. **Rotation — ✅ ANSWERED 2026-08-13: dropped, for now.** Director: "Rotação
+   por enquanto está descartada, o jogo só vai ter um lado." Confirms what §1.5
+   already flagged as in question. Doesn't change anything Option A does — the
+   plan never depended on the answer — but it does retire the §1.2/§7.2 rotation
+   capture gap below: there's no rotation to prove the repaint path against
+   while this stands. "For now," so `room.gd`'s rotation/repaint code stays;
+   nothing here is a request to remove it.
+3. **Accumulation — ✅ ANSWERED 2026-08-13: no.** Director: "Não precisa sujar
+   mais, não vamos ter tantas explosões assim." Two blasts on one spot do not
+   need to leave a dirtier mark than one. Option A (derived, non-accumulating
+   soot) stays as the shipped design; Option B (stored per-voxel state, needing
+   the segment persistence layer) is not needed.
 
 ---
 
@@ -456,9 +467,11 @@ Red-before-green, in this order:
    cannot** — §1.4. This was checked before the plan was handed over precisely
    because it gated the headline, and it demoted performance from the reason to
    a side effect.
-2. The §1.2 rotation prediction — needs a capture action that rotates the view.
-   Cheap, and it either confirms the duplication is already visibly wrong or
-   removes an argument from this plan.
+2. ~~The §1.2 rotation prediction — needs a capture action that rotates the
+   view.~~ **MOOT, 2026-08-13 — §6 Q2: rotation is dropped, for now.** No
+   capture action to build against a feature that isn't shipping. Not deleted
+   from the record: if rotation returns, this is still the first thing to
+   check.
 3. A pixel diff of one real detonation, before and after, at the 400-frame
    settle CLAUDE.md records as deterministic. Soot is a look; the gate is that
    the look survives the refactor except where §1.3's defect is deliberately

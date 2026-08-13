@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.96 · **Updated:** 2026-08-12 · **Branch:** main
+**Version:** 0.9.98 · **Updated:** 2026-08-13 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -51,6 +51,8 @@
 - RESUMO_SESSAO_2026-08-10_GRENADE_SHRAPNEL_PLAN.md
 - RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md
 - RESUMO_SESSAO_2026-08-11_GRENADE_SHADOW_ROLL.md
+- RESUMO_SESSAO_2026-08-12_13_BUBBLE_WARM_SOOT.md
+- RESUMO_SESSAO_2026-08-12_WALL_GRID_AND_SHRAPNEL_FIX.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -68,11 +70,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- 52827f8 ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
-- cced231 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
-- 26cca8a ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
-- 6c20723 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
-- 0f37d96 ALPHA FLOOR FACADE FIX 0.9.92 - doc sweep, PLAYGROUND floor zones, baked-decal contact sheet
+- a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
+- 52827f8b ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
+- cced2311 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
+- 26cca8a5 ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
+- 6c207234 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
 <!-- AUTO:END version_history -->
 
 ---
@@ -476,11 +478,34 @@ the blast from "the waves fire" to something that reads right. Full record:
   authored sprite never fixed a style mismatch; the blast's core is now
   `Room.spawn_blast_burst()` — embers, sparks and dust from overlays that
   already existed.
-- **The soot stamp is OFF for now** (E-DENT-01), at the live caller only.
+- **The soot stamp is DELETED** (S-KILL-STAMP, 2026-08-12). It had been off at
+  the live caller since E-DENT-01; shown to the Director in a three-way A/B/C it
+  was rejected outright — it stamps once per CONTAINER, i.e. once per GU, so a
+  hard GU boundary is the shape of the mechanism, not a tuning error. 346 lines
+  out at **0 differing pixels**, which is the gate that proves a dormant deletion
+  really was inert. `BombDef.soot_ring_tones` is parsed and ignored.
 - Two measurements worth carrying: the sequence's cost is **per frame that
   writes to a TileMapLayer, not per cell** (a naive per-frame budget made the
   blast 3–20× slower while every log number improved), and the "engasgada" the
   Director kept feeling was a **150 ms frame**, not the flash.
+- ✅ **The blast's playback stopped computing** (P-WARM, 2026-08-12). Queue
+  flattening, tile-alternative minting and the composite page upload all
+  survived past the prediction into the blast's own frames — **753 ms across 5
+  wave frames**. Moved into the throw window they cost **84 ms**, at 0 differing
+  pixels. The cause was NOT the big floor layer it looked like:
+  `create_alternative_tile()` mutates the TileSet every layer SHARES, so one new
+  alternative rebuilds the lot. `INFILTRAITOR_THROW_PROFILE=1` is the new seam,
+  reporting a whole throw in ms AND frames.
+- ✅ **Soot is one mechanism again** (`SOOT_MASTER_PLAN`, five tasks,
+  2026-08-12/13): the sequence lives only in `BlastCalculator.build_soot_field()`
+  now, shared by the detonation and the repaint, which had already drifted apart
+  in three measurable ways. Plus a faint directional feather past the graded
+  rings, soot on the voxels a blast reveals (they used to come up pristine inside
+  a blackened crater), and a four-rung fade-in.
+- ✅ **Dents and cracks are no longer re-gated by ring** (E-ORGANIC-02):
+  `WAVE_TABLE`'s hardcoded pairs were a second gate on what the bomb's JSON
+  already decides, and 18 ring-2 dents were planned and silently dropped on every
+  blast.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
 
@@ -511,9 +536,10 @@ the blast from "the waves fire" to something that reads right. Full record:
   calculation changes — a render-side fix in `apply_damage_voxel_swap()`
   routes a roof struck from above through the floor atom pool. Commit
   `a3f58ee`.
-- **Task 3 (E-SOOT)** — blast-stamped soot (`stamp_container_soot()`/
-  `stamp_crater_soot()`), closing the gap that ring 3 (which destroys
-  nothing) could never get soot from hole-derivation alone. A real design
+- **Task 3 (E-SOOT)** — ⛔ **superseded 2026-08-13 by `SOOT_MASTER_PLAN`; the
+  stamp described here is deleted.** Blast-stamped soot
+  (`stamp_container_soot()`/`stamp_crater_soot()`) closed the gap that ring 3
+  (which destroys nothing) could never get soot from hole-derivation alone. A real design
   tension was raised and resolved with the Director this session: soot
   stays **fully per-face directional** everywhere (FACE-SOOT-01 and
   self-soot untouched) rather than collapsing to one tone per voxel, since

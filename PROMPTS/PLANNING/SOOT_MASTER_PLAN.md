@@ -1,13 +1,19 @@
 # SOOT_MASTER_PLAN
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
-**Status:** 🟢 RATIFIED 2026-08-12 — §5 carries the tasks, none built yet.
+**Status:** 🟢 **FIVE OF SIX TASKS BUILT 2026-08-12/13** — see §5. S-LOCAL was
+dropped on its own measurement, not deferred. What is left is not code: the fade
+has only been proven at its final state, and the repaint path has no trustworthy
+pixel gate (§7).
 Written first as a study, on the Director's request: *"Da uma estudada no jeito
 mais eficiente que nos permita ter fuligem realista sem comprometer a
 performance."*
 
-**Supersedes nothing until a task lands.** `EXPLOSION_REBUILD_MASTER_PLAN` §5
-(E-SOOT) and `PREDICTION_MASTER_PLAN` §2.2 remain the standing record.
+**SUPERSEDES `EXPLOSION_REBUILD_MASTER_PLAN` §5 (E-SOOT)** as of 2026-08-13:
+that section's authored ring-tone stamp is deleted, not merely disabled
+(§2.0.1, S-KILL-STAMP). `PREDICTION_MASTER_PLAN` §2.2's purity finding still
+holds and was deliberately preserved — soot is still a pure derived field, which
+is exactly why Option B (§3.2) was NOT taken.
 
 ---
 
@@ -65,10 +71,13 @@ They already disagree. `BlastCalculator.EXPOSED_FLOOR_SOOT_RING` appears in
 exactly one place in the project — `room.gd:382`, in the rotation replay. The
 plan builder has no equivalent.
 
-**Unverified prediction from that asymmetry, worth testing before it is designed
-around:** a fresh crater floor should look CLEAN right after the blast and
-SOOTED after a rotation. No capture action rotates the camera, so this has not
-been measured. It is consistent with the confirmed second-blast defect below.
+**Unverified prediction from that asymmetry:** a fresh crater floor should look
+CLEAN right after the blast and SOOTED after a rotation. No capture action
+rotates the camera, so it was never measured — and **S-DEEP made it moot rather
+than tested**: both paths now write `EXPLOSED_FLOOR_SOOT_RING` through the same
+helper (`BlastCalculator.scorch_floor_cell()`), so the asymmetry that would have
+produced it is gone. Recorded because "we removed the cause" and "we proved the
+symptom" are different claims, and only the first one is true here.
 
 ### 1.3 The confirmed defect it produces
 
@@ -397,14 +406,18 @@ one polish, and the Director's two asks.
 
 | id | task | why |
 |---|---|---|
-| **S-FEATHER** | A faint scorch tail past the last tone | the one look note on A: *"um pouco de fuligem bem levinha expandindo pra fora, como um feather"* |
-| **S-KILL-STAMP** | Delete `stamp_container_soot()`, `stamp_crater_soot()`, their 3 call sites and `stamp_soot_enabled` | §2.0.1 — rejected on sight, and dormant code with an inverted default is a trap |
-| **S-DEEP** | Newly-exposed voxels take soot | §1.3, the defect the Director reported |
-| **S-DEDUP** | One producer for detonation and repaint; absorb `_crater_floor_soot` | §1.2's drift, already real |
-| **S-DEFER** | Soot starts once the smoke is rising | Director's ask |
-| **S-FADE** | The ring-code ramp of §4b | Director's ask |
+| ✅ **S-FEATHER** `abf7add` | A faint scorch tail past the last tone | the one look note on A: *"um pouco de fuligem bem levinha expandindo pra fora, como um feather"* |
+| ✅ **S-KILL-STAMP** `0c787d9` | Delete `stamp_container_soot()`, `stamp_crater_soot()`, their 3 call sites and `stamp_soot_enabled` | §2.0.1 — rejected on sight, and dormant code with an inverted default is a trap |
+| ✅ **S-DEEP** `1a0c8b5` | Newly-exposed voxels take soot | §1.3, the defect the Director reported |
+| ✅ **S-DEDUP** `46c50d0` | One producer for detonation and repaint; absorb `_crater_floor_soot` | §1.2's drift, already real |
+| ✅ **S-DEFER** `cb5a344` | Soot starts once the smoke is rising | Director's ask |
+| ✅ **S-FADE** `cb5a344` | The ring-code ramp of §4b | Director's ask |
 
 **Order: S-FEATHER → S-KILL-STAMP → S-DEEP → S-DEDUP → S-DEFER → S-FADE.**
+**All six landed in that order.** S-DEFER and S-FADE converged into one commit,
+as predicted once it was clear that ramping the codes IS deferring them: the soot
+step was already the last thing `_run_queue()` does, so what was missing was
+never the timing, only the fade.
 
 S-FEATHER first because it is the only outstanding note on a look the Director
 has already accepted, and because it is very likely one parameter:

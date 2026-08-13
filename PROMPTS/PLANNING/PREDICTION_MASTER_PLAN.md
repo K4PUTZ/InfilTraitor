@@ -1448,6 +1448,40 @@ is missing without it. See §8.10.
 
 ---
 
+### 8.9 P-WARM (2026-08-12) — the prediction being DONE was not the blast being READY
+
+Three pieces of playback preparation survived past `is_done()` and landed on the
+blast's own frames: flattening the 1 590-step queue (8.5 ms), minting each cell's
+TileSet alternatives (**~105 ms per frame**), and uploading the 2048x2048
+composite page (~133 ms once). Moved into the throw window by
+`TestZoneController._warm_prediction()`.
+
+    before   5 wave frames over 753 ms   (~150 ms each)
+    after    5 wave frames over  84 ms   (~17 ms each)
+    pixels   0 differing, max delta 0
+
+**The cause was not what the evidence first suggested.** It read as "writing into
+the big floor layer is expensive" — a frame writing 18 cells into a 29 750-cell
+layer cost the same 117 ms as one writing 832. The real cause is
+`create_alternative_tile()` mutating **the TileSet every TileMapLayer shares**, so
+ONE new alternative forces the lot to rebuild. The floor is merely where most
+damaged cells live, hence where most alternatives got minted.
+
+**The warm-up is deliberately NOT sliced**, and this is §4.3's own slicing rule
+meeting its exception: budgeting it across frames made the throw stutter for
+490 ms across five frames instead of one, because the cost is the per-frame
+rebuild, not the ~30 ms of CPU. Same inversion `DetonationChoreographer`'s header
+warns about, met from the other side.
+
+New seam: `INFILTRAITOR_THROW_PROFILE=1`, one timeline from release to last wave
+in ms AND frames — the latter because every beat here is frame-paced and a wall
+clock cannot tell a slow frame from an extra one.
+
+**§4.4's budget question is moot in practice**: the prediction finishes at
+~+765 ms against a fuse ending ~+2030 ms, and beat 0 (cooking) runs zero frames.
+
+---
+
 ## 11. Verification contract
 
 Non-negotiable, per CLAUDE.md's evidence discipline. Every task closes against

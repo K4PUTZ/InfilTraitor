@@ -1309,6 +1309,15 @@ principled version of the same saving.
 ---
 
 ## 5. E-SOOT — per voxel, authored, not derived
+##
+## ⛔ **SUPERSEDED 2026-08-13 by `SOOT_MASTER_PLAN`.** The authored stamp this
+## section specifies was built, shipped disabled (E-DENT-01, 2026-08-08), shown
+## to the Director on 2026-08-12 in a three-way A/B/C, and DELETED — it stamps
+## once per container, i.e. once per GU, so it produces a hard GU boundary by
+## construction ("muito forte por GUs, mas de repente na GU do lado não tem
+## nada"). Soot is `derive_soot_rings()` + `apply_self_soot()` only.
+## `BombDef.soot_ring_tones` is parsed and ignored. Read the section below as
+## the historical specification it is.
 
 ### 5.1 What changes
 

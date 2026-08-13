@@ -422,8 +422,30 @@ trace above is the evidence rather than a screenshot claimed to stand for one.
 
 ### 6.2 Standing
 
-- **Wall sectioning of the dome — ATTEMPTED 2026-08-11/12, PAUSED, not the
-  depth trick this section used to propose.** `classify_geometry_over_rect()`/
+- **Wall sectioning of the dome — ✅ CLOSED 2026-08-12 (`c30601d`).** The dome
+  is really sectioned now: the SILHOUETTE is cut, the sphere's own grid is not
+  bent (only hidden where a wall stops it), and each visible wall face carries
+  its own grid in the WALL's axes — the Director's diagram. Re-reading the
+  reverted attempt said exactly why it read wrong and the mechanism was never
+  at fault: it moulded only `_draw_wall_grid()` and left `outline`/`disc` as
+  full undistorted ellipses, so the rim stayed a perfect round balloon with a
+  dented interior (byte-identical rim between `grenade_wall_grid_molded.png`
+  and the plain build). A radial sweep, not a convex hull, because a wall is a
+  FINITE rectangle and a parapet leaves a non-convex region a hull would fill
+  in. Four defects found by measuring — per-cell-pair edges arriving as seven
+  segments, a box's three invisible faces, bucket aliasing (19 empty buckets of
+  180), and the wall EDGE's shadow curve never sampled. Verified numerically:
+  smooth at all 180 buckets across three aim cells, extremes landing exactly on
+  `IsoProjection.sphere_semi_axes(2.0)` (362.04 / 367.65 px).
+  `kernel_direction()`/`silhouette_basis()` added and asserted in
+  `iso_projection_selftest` [11] by a different route through the basis.
+  Evidence: `grenade_dome_sectioned_front.png`,
+  `grenade_dome_parapet_overtop.png`.
+
+  <details><summary>The original PAUSED note, kept as the record</summary>
+
+  **ATTEMPTED 2026-08-11/12, PAUSED, not the depth trick this section used to
+  propose.** `classify_geometry_over_rect()`/
   OcclusionSet O5 turned out to be the wrong tool — it only answers "in front
   of or behind," never "cut by, up to this real height," and the Director's
   follow-up ("vamos ter parapeitos, morros e outros cenários com paredes mais
@@ -447,6 +469,8 @@ trace above is the evidence rather than a screenshot claimed to stand for one.
   stays populated and documented as currently unconsumed — cheap, tested,
   correct on its own, and exactly what the next attempt will need, so
   re-deriving it later would be pure waste.
+
+  </details>
 - ~~The click-driven `test_zone_*` capture actions are dead.~~ **CLOSED
   2026-08-10.** `ecdae79` had removed the right-click → `open_menu_for()` path
   ("now G-key only"), taking `test_zone_menu` / `test_zone_detonate` /

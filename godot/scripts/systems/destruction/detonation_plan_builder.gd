@@ -170,19 +170,24 @@ const SMOKE_BLOBS_PER_VOXEL: int = 1
 
 const PHASE_SETUP: int = 0
 const PHASE_SLICES: int = 1
-const PHASE_ROOFS: int = 2
-const PHASE_FLOORS: int = 3
-const PHASE_WALK: int = 4
-const PHASE_SOOT: int = 5
-const PHASE_LIGHT: int = 6
-const PHASE_PACKAGE: int = 7
-const PHASE_EXPOSE: int = 8
-const PHASE_SOOTWAVE: int = 9
-const PHASE_SMOKE: int = 10
-const PHASE_DONE: int = 11
+## E-JUNCTION-01 (2026-08-13): wall-junction corner columns, explosion-only
+## (see find_affected_containers()'s own note) — mirrors PHASE_SLICES exactly,
+## same simulate_container_damage() ring model, inserted right after it since
+## a JunctionColumn is architecturally a diagonal wall segment.
+const PHASE_JUNCTIONS: int = 2
+const PHASE_ROOFS: int = 3
+const PHASE_FLOORS: int = 4
+const PHASE_WALK: int = 5
+const PHASE_SOOT: int = 6
+const PHASE_LIGHT: int = 7
+const PHASE_PACKAGE: int = 8
+const PHASE_EXPOSE: int = 9
+const PHASE_SOOTWAVE: int = 10
+const PHASE_SMOKE: int = 11
+const PHASE_DONE: int = 12
 
 const PHASE_NAMES: Array[String] = [
-	"SETUP", "SLICES", "ROOFS", "FLOORS", "WALK", "SOOT",
+	"SETUP", "SLICES", "JUNCTIONS", "ROOFS", "FLOORS", "WALK", "SOOT",
 	"LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE",
 ]
 
@@ -345,6 +350,8 @@ static func _run_phase(s: Dictionary, deadline: int) -> void:
 			_phase_setup(s)
 		PHASE_SLICES:
 			_phase_slices(s, deadline)
+		PHASE_JUNCTIONS:
+			_phase_junctions(s, deadline)
 		PHASE_ROOFS:
 			_phase_roofs(s, deadline)
 		PHASE_FLOORS:
@@ -372,8 +379,12 @@ static func _phase_setup(s: Dictionary) -> void:
 	var source_gu: Vector2i = s["source_gu"]
 	var gu_rings := BlastCalculatorClass.flood_gu_rings(source_gu, bomb_def,
 		ctx.get("blocked_edges", {}), ctx.get("blocked_cells", {}))
+	## E-JUNCTION-01: explosion-only (find_affected_containers()'s own note) —
+	## ctx.get default keeps every non-explosion caller (firearms, selftests
+	## that predate this) exactly as it was.
+	var junction_columns: Array = ctx.get("junction_columns", [])
 	var affected := BlastCalculatorClass.find_affected_containers(
-		gu_rings, s["edge_registry"], s["slab_registry"])
+		gu_rings, s["edge_registry"], s["slab_registry"], junction_columns)
 	var n_rings: int = bomb_def.ring_multipliers.size()
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * CRATER_MAX_FACTOR
@@ -388,6 +399,12 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["slice_ids"] = affected["slices"].keys()
 	s["roof_ids"] = affected["roofs"].keys()
 	s["floor_ids"] = affected.get("floors", {}).keys()
+	s["junction_ids"] = affected.get("junctions", {}).keys()
+	s["junction_columns"] = junction_columns
+	var junction_by_id: Dictionary = {}
+	for column in junction_columns:
+		junction_by_id[column.id] = column
+	s["junction_by_id"] = junction_by_id
 
 	s["soot_snapshot"] = {}
 	s["soot_faces"] = {}
@@ -439,6 +456,42 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
 			container_of[key] = slice
+		i += 1
+		if _out_of_time(deadline):
+			break
+	s["cursor"] = i
+	if i >= ids.size():
+		_enter_phase(s, PHASE_JUNCTIONS)
+
+
+## E-JUNCTION-01 (2026-08-13): wall-junction corner columns — mirrors
+## _phase_slices() exactly (same simulate_container_damage() ring model,
+## since a JunctionColumn is a diagonal wall segment structurally), reading
+## from junction_by_id instead of edge_registry.get_slice() because
+## JunctionColumn has no owning registry of its own, only the flat Array
+## room._junction_columns arrived in.
+static func _phase_junctions(s: Dictionary, deadline: int) -> void:
+	var ids: Array = s["junction_ids"]
+	var junction_by_id: Dictionary = s["junction_by_id"]
+	var affected: Dictionary = s["affected"]["junctions"]
+	var bomb_def = s["bomb_def"]
+	var delta: WorldDelta = s["delta"]
+	var epicenter: Vector2i = s["epicenter"]
+	var ring_of: Dictionary = s["ring_of"]
+	var container_of: Dictionary = s["container_of"]
+	var i: int = int(s["cursor"])
+	while i < ids.size():
+		var column = junction_by_id[ids[i]]
+		var base_ring: int = affected[ids[i]]
+		var base_level: int = column.start_storey * GeometryCoords.LEVELS_PER_STOREY
+		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
+			column.voxels, column.id, column.material, base_ring, base_level, false,
+			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
+		for v in column.voxels:
+			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
+			container_of[key] = column
 		i += 1
 		if _out_of_time(deadline):
 			break
@@ -538,6 +591,12 @@ static func _phase_floors(s: Dictionary, deadline: int) -> void:
 			walk.append([slice, true])
 		for slab in slab_registry.all_slabs():
 			walk.append([slab, false])
+		## E-JUNCTION-01: every junction column, not just the ones this blast
+		## hit — same reason the walk covers every Slice/Slab regardless of
+		## rings, since this pass is what makes soot/occupancy correct for the
+		## WHOLE map, not just this blast's own reach.
+		for column in (s["junction_columns"] as Array):
+			walk.append([column, true])
 		s["walk_containers"] = walk
 		_enter_phase(s, PHASE_WALK)
 
@@ -935,6 +994,22 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 			null, voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
 		return {"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
 			"alternative_id": resolved["alternative_id"], "baked": false}
+	## E-JUNCTION-01: a JunctionColumn is a diagonal wall segment, so it takes
+	## the same live-resolve shape a Slice does — the one real difference is
+	## orientation. A Slice has one face; a column has two (face_a/face_b, the
+	## corner itself). face_a is the plan's recorded default (EXPLOSION_
+	## REBUILD_MASTER_PLAN's E-JUNCTION-01 section) — a look detail to revisit
+	## after a real capture, not a correctness question.
+	if container is JunctionResolver.JunctionColumn:
+		var column: JunctionResolver.JunctionColumn = container
+		var voxel_xy2 := Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
+		var render_material3 := VoxelRendererClass.damage_variant_material(
+			column.material, voxel.damage_state, voxel.damage_is_blast,
+			voxel.damage_carved_side, voxel.damage_variant)
+		var resolved3 := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material3,
+			null, voxel_xy2, column.face_a, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
+		return {"source_id": resolved3["source_id"], "atlas_coords": resolved3["atlas_coords"],
+			"alternative_id": resolved3["alternative_id"], "baked": false}
 	## Slab (FLOOR/CEILING/INTERIOR) — mirrors render_slab_solid()'s own
 	## fixed-material call shape. A live-fallback miss on a Slab is not
 	## exercised by any real material on PLAYGROUND today (Task 1b measured 0
@@ -972,6 +1047,12 @@ static func _count(census: Dictionary, kind: String, container, was_baked: bool)
 static func _surface_name(container) -> String:
 	if container is Slice:
 		return "WALL"
+	## E-JUNCTION-01: counted as its own group rather than folded into WALL —
+	## the census exists to catch a tier silently going inert on one surface
+	## (§ "E-DENT-01 census bookkeeping" above); merging it into WALL would
+	## hide exactly that failure mode for junction columns specifically.
+	if container is JunctionResolver.JunctionColumn:
+		return "JUNCTION"
 	if container is Slab:
 		var slab: Slab = container
 		match slab.role:
@@ -985,7 +1066,7 @@ static func _surface_name(container) -> String:
 
 
 static func _material_name(container) -> String:
-	if container is Slice or container is Slab:
+	if container is Slice or container is Slab or container is JunctionResolver.JunctionColumn:
 		return container.material
 	return "?"
 

@@ -2461,6 +2461,19 @@ func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
 				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+	## E-JUNCTION-01 (2026-08-13): wall-junction corner columns. Explosions
+	## already dent/crack/destroy them (see DetonationPlanBuilder's own
+	## PHASE_JUNCTIONS); firearms deliberately still don't (a shot's aim
+	## resolves to a Slice face, never the diagonal notch a column owns — the
+	## Director's own call, since there is no way for a player to aim at a
+	## corner on purpose). But soot is a PROXIMITY read, not a hit test — a
+	## column standing right next to a hole either weapon opened should scorch
+	## like its neighbours, or it reads as an untouched island inside a
+	## blackened room. Indexing it here is what lets derive_soot_rings() see
+	## it at all, regardless of which weapon made the nearby hole.
+	for column in _junction_columns:
+		for v in column.voxels:
+			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
 
 	## S-DEDUP: the sequence lives in BlastCalculator.build_soot_field() now —
 	## the same call the detonation path makes, so a repaint and a detonation

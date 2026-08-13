@@ -36,7 +36,6 @@ var failed: int = 0
 class MinimalRoom extends Node:
 	@warning_ignore("unused_private_class_variable")
 	var _edge_registry
-	@warning_ignore("unused_private_class_variable")
 	var _junction_columns
 	var _slab_registry
 	var _voxel_renderer
@@ -146,6 +145,9 @@ func _build_ctx(built: Dictionary) -> Dictionary:
 		"blocked_cells": builder.get_blocked_cells(),
 		"lights": _real_light_sources(builder),
 		"shadow_results": [],
+		## E-JUNCTION-01: real coverage, not a defaulted-empty ctx — matches
+		## test_zone_controller.gd's real _build_detonation_ctx() shape.
+		"junction_columns": built["room"]._junction_columns,
 	}
 
 

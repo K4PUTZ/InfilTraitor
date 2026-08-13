@@ -528,8 +528,15 @@ static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
 ## ring of the GU it was reached through (the minimum ring, if reachable from
 ## more than one side). Returns {"slices": Dictionary[String,int] (slice.id
 ## -> ring), "roofs": Dictionary[String,int] (slab.id -> ring)}.
+##
+## `junction_columns` (E-JUNCTION-01, 2026-08-13): explosion-only, by design —
+## the Director's own call. A firearm's aim resolves to a face on whichever
+## Slice happens to be there, never to the diagonal notch a JunctionColumn
+## owns, so it has no way to select one on purpose; a grenade's flood is
+## omnidirectional and reaches that same diagonal GU like any other. Default
+## `[]` keeps every existing caller (firearms among them) exactly as it was.
 static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRegistry,
-		slab_registry: SlabRegistry) -> Dictionary:
+		slab_registry: SlabRegistry, junction_columns: Array = []) -> Dictionary:
 	var hit_slices: Dictionary = {}
 	for gu in gu_rings:
 		var ring: int = gu_rings[gu]
@@ -557,7 +564,17 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 		else:
 			hit_floors[slab.id] = gu_rings[slab.gu_cell]
 
-	return {"slices": hit_slices, "roofs": hit_roofs, "floors": hit_floors}
+	## E-JUNCTION-01: one column per diagonal GU (JunctionResolver.resolve()'s
+	## own cells_seen dictionary guarantees that), so membership in gu_rings is
+	## the whole test — no edge-touching search needed, unlike slices.
+	var hit_junctions: Dictionary = {}
+	for column in junction_columns:
+		if not gu_rings.has(column.gu_cell):
+			continue
+		hit_junctions[column.id] = gu_rings[column.gu_cell]
+
+	return {"slices": hit_slices, "roofs": hit_roofs, "floors": hit_floors,
+		"junctions": hit_junctions}
 
 
 ## ============================================================================

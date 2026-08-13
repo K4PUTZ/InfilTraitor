@@ -2,11 +2,17 @@
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
 **Date opened:** 2026-08-05
-**Next up:** **E-JUNCTION-01** (2026-08-13, planned, not yet built) — corner
-wall-junction columns take no damage from any weapon, explosive or firearm.
-Plan-first per the Director's own instruction; see the dated section near the
-end of this file before touching `detonation_plan_builder.gd` or
-`blast_calculator.gd`.
+**Latest:** **E-JUNCTION-01, 🟢 BUILT 2026-08-13** — corner wall-junction
+columns now take real explosion damage (destroy/dent/crack, same ring model
+as an adjacent wall) and real soot from either weapon type. Firearms do NOT
+get direct point-impact damage on them — the Director's own scope call, since
+a shot's aim has no way to target a diagonal notch on purpose. Found and
+fixed along the way: `JunctionColumn` never had real `Voxel` objects at all
+(`_render_junction_column()` wrote tiles directly, bypassing the Voxel model
+entirely) — the plan assumed otherwise from the class definition alone, a
+mistake its own red-before-green check caught before anything shipped. See
+the dated section near the end of this file for the full account and the
+real PLAYGROUND evidence.
 
 **Latest update:** 2026-08-10, session close — 🟢 **ALL SIX TASKS COMPLETE.**
 E-RAY/E-DEBUG-RAY/E-FRAG/E-SHARD/E-FUME/E-BUBBLE all built and pushed
@@ -2833,51 +2839,87 @@ Read before proposing a scope, not assumed:
    inside that existing baked/live split (B1: baked XOR generic, never both),
    not bypass it.
 
-### Recommended design (for the Director's yes/no, not yet built)
+### 🟢 BUILT 2026-08-13, same session as the plan — with one correction the plan got wrong
 
-- **Damage model: identical to an adjacent wall.** Same ring weights, same
-  `simulate_container_damage()` call, same DESTROY/DENT/CRACK/soot tiers a
-  `Slice` gets — a corner column is structurally a wall segment that happens
-  to be diagonal, and giving it a lesser damage model would just move the
-  "why doesn't this bit destroy" report one tile over.
-- **Id:** synthesize one at resolve time — `"JCOL_%d_%d" % [gu_cell.x,
-  gu_cell.y]` is unique (one column per diagonal GU, `JunctionResolver`'s own
-  `cells_seen` dictionary already guarantees that).
-- **Face for damage-texture resolution: `face_a` by default**, the simplest
-  option that is never wrong so much as occasionally arbitrary — the column
-  is one to a few voxels on a screen-small diagonal notch, and unlike a full
-  wall face there is no long run of tiles where a consistently-wrong
-  orientation would read as a mistake. Flagged as a LOOK detail to revisit
-  after a real capture, same pattern this plan has used all session (e.g.
-  S-FEATHER, the soot tail), not a blocking question.
-- **Firearms and explosions share the fix.** Both dead ends are in
-  `blast_calculator.gd` and resolve through the same `edge_registry`-shaped
-  gap — a single new lookup (junction columns touching a GU, by face)
-  extends both `find_affected_containers()` and `resolve_pellet_voxel()`/the
-  LINE hit-test, rather than writing the search twice.
+**Scope narrowed before implementation, by the Director directly**, once J6
+below turned out to be a real design question and not just plumbing:
+firearms do not get to damage junction columns on purpose. *"As armas de
+fogo, em tese, não afetam as colunas extras, porque vão ser usadas de GU
+atirando para GU, e acertam paredes atrás sem muito critério. Não tem como o
+jogador decidir atirar bem na esquina."* A shot's aim resolves to whichever
+`Slice` face is in front of it — there is no way to point a gun AT a
+diagonal notch on purpose, so extending firearm damage there would be
+solving a problem the aiming model cannot even pose. **Soot still should
+reach them** (*"seria bom... pra não ficarem muito diferentes do resto"*),
+and that turned out to be nearly free — see below. J6 (firearms search
+junction columns for direct hits) is **dropped, not deferred.**
 
-### Tasks, in order
+**Damage model shipped exactly as recommended: identical to an adjacent
+wall** — same `simulate_container_damage()` ring call, same DESTROY/DENT/
+CRACK tiers. Id synthesized as `"JCOL_%d_%d" % gu_cell` (unique per
+`JunctionResolver`'s own `cells_seen` guarantee). Damage-texture orientation
+uses `face_a`, exactly the "look detail, not blocking" call recorded above.
 
-| id | task | touches |
-|---|---|---|
-| J1 | `JunctionColumn` gains `.id` (synthesized, `resolve()`) | `junction_resolver.gd` |
-| J2 | A shared "junction columns touching this GU" lookup, keyed like `edge_registry.edges_touching_gu()` | `blast_calculator.gd` (new helper) |
-| J3 | `find_affected_containers()` takes `junction_columns: Array` and returns a `"junctions"` bucket alongside `"slices"`/`"roofs"`/`"floors"` | `blast_calculator.gd` |
-| J4 | New `PHASE_JUNCTIONS` (mirrors `_phase_slices()`) wired between `PHASE_SLICES` and `PHASE_ROOFS`; `_phase_walk()`'s container list includes junction columns | `detonation_plan_builder.gd` |
-| J5 | `_resolve_damaged_tile()` / `_surface_name()` / `_material_name()` gain a `JunctionColumn` branch (face_a, per the recommendation above) | `detonation_plan_builder.gd` |
-| J6 | `resolve_pellet_voxel()` (and the LINE hit-test) search junction columns too, via J2's helper | `blast_calculator.gd` |
-| J7 | Real ctx builders pass `room._junction_columns` through: `test_zone_controller.gd:_build_detonation_ctx()`, plus both selftest scaffolds (`detonation_plan_selftest.gd`, `detonation_choreographer_selftest.gd`) so coverage is real, not defaulted-empty | 3 files |
-| J8 | Verify against B1-B6: a damaged junction column still resolves baked XOR generic, never both, through the existing `_apply_junction_overrides()`/bake path | `damage_atom_bake_selftest.gd` (extend) |
+**What the plan got wrong, found by the red-before-green check §12 always
+demands, not by inspection:** a fresh probe of a real PLAYGROUND
+`JunctionColumn` (all 20 of them) printed `voxels=0` on every single one.
+`_render_junction_column()` (`voxel_renderer.gd:1806`) writes tiles straight
+from `column.voxel_pos`/`storey_count` via `_set_voxel_cell()` — it never
+constructed a `Voxel` object at all. §"Why this is not a punctual fix" read
+`voxels: Array[Voxel]` off the class definition and assumed it was populated
+like `Slice.voxels`, the same kind of unverified-shape assumption CLAUDE.md's
+evidence discipline warns against. Fixed at the source: `JunctionColumn.
+_init()` now builds one real `Voxel` per level (mirroring `SliceGenerator.
+_create_slice()`'s loop, one position instead of eight), and gained
+`dirty_count`/`increment_dirty()`/`decrement_dirty()` — `Voxel._set_dirty()`'s
+own contract, which `Slice`/`Slab` already satisfied and `JunctionColumn`
+never had to before because nothing ever called `set_damage()` on one of its
+voxels.
+
+**Firearm-sourced soot reaching junction columns turned out to need no
+firearm-specific code at all.** Soot is proximity-derived from an INDEXED
+voxel set (`room._build_soot_snapshot()`'s own walk, separate from but
+parallel to `_phase_walk()`), not from a per-weapon call — adding junction
+columns to that one indexing walk makes them visible to
+`derive_soot_rings()` for a scorch mark from EITHER weapon type, since the
+BFS that reads it has never known or cared which weapon made the nearby
+hole.
+
+Real PLAYGROUND evidence (`DetonationPlanBuilder.print_census()`, frag_grenade
+at gu=(6,2), same map, same target, ctx identical except `junction_columns`):
+
+    without: FLOOR/concrete, WALL/concrete, WALL/metal — no JUNCTION row at all
+    with:    + JUNCTION/concrete destroyed 3 · dented 2 · cracked 1  (live 3)
+             + JUNCTION/metal    destroyed 0 · dented 3 · cracked 0  (live 3)
+
+Every other row identical between the two runs — purely additive, confirmed
+by the numbers rather than assumed from the diff. `(baked 0/live 3)` on both
+JUNCTION rows is the deliberate B1-compliant choice: `resolve_damage_voxel_
+swap()` was left untouched (still returns `{}` for a `JunctionColumn`,
+exactly like the pre-existing Slab miss-path this file's own comment already
+flagged as "not silently assumed correct"), so a junction column always takes
+the live/generic path, never baked, never both — giving it real baked art is
+future work, not a correctness requirement.
+
+### Tasks, actual outcome
+
+| id | task | touches | outcome |
+|---|---|---|---|
+| J1 | `JunctionColumn` gains `.id` | `junction_resolver.gd` | done, plus the undiscovered prerequisite: `.voxels` construction + dirty-tracking (see above) |
+| J2/J3 | `find_affected_containers()` takes `junction_columns: Array`, returns a `"junctions"` bucket | `blast_calculator.gd` | done — simpler than planned: one column per GU, so membership in `gu_rings` is the whole test, no edge-touching search needed |
+| J4 | New `PHASE_JUNCTIONS` between `PHASE_SLICES`/`PHASE_ROOFS`; `_phase_walk()` container list extended | `detonation_plan_builder.gd` | done |
+| J5 | `_resolve_damaged_tile()`/`_surface_name()`/`_material_name()` gain a `JunctionColumn` branch (face_a) | `detonation_plan_builder.gd` | done |
+| J6 | ~~firearm point-impact resolution~~ | — | **dropped, Director's call — see above** |
+| — | firearm/explosion soot reaches junction columns | `room.gd:_build_soot_snapshot()` | done, one indexing loop, no firearm-specific code |
+| J7 | Real ctx + both selftest scaffolds pass `room._junction_columns` through | `test_zone_controller.gd`, `detonation_plan_selftest.gd`, `detonation_choreographer_selftest.gd` | done |
+| J8 | B1-B6 verified — always live, never baked, never mixed | see evidence above | done, no `damage_atom_bake_selftest.gd` change needed (nothing to assert that isn't already covered by the census's own `baked`/`live` split) |
 
 ### Verification
 
-Same contract as §12, plus the specific red-before-green this bug needs: a
-real PLAYGROUND blast or shot aimed AT a junction column's GU, showing zero
-touched cells before the fix and a real DESTROY/DENT/CRACK entry after it —
-matching this plan's own floor-dent lesson (a synthetic fixture with a
-junction column in convenient reach could pass while PLAYGROUND's real
-columns stay untouched, so the real map is the gate, not a fixture built to
-have one nearby).
+`project_lint.py` 204 files/0 errors · `run_selftests.py` 35/35 clean
+(unchanged from before this task — purely additive) · `check_invariants.py`
+OK · `gen_codemap.py --check` clean · real PLAYGROUND red-before-green census
+above, both ways (ctx with/without `junction_columns`, same map, same target).
 
 ---
 

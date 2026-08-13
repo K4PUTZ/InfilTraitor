@@ -24,6 +24,11 @@ class_name JunctionResolver
 
 ## Container for a corner column at a V-junction.
 class JunctionColumn:
+	var id: String                ## E-JUNCTION-01: "JCOL_%d_%d" % gu_cell — one column per
+	                               ## diagonal GU (resolve()'s own cells_seen guarantees that),
+	                               ## so this is unique without a counter. The destruction
+	                               ## pipeline keys every container by id (affected dict,
+	                               ## container_of, census) the same way it does for Slice/Slab.
 	var gu_cell: Vector2i         ## the diagonal GU that owns this column (outside the elbow)
 	var voxel_pos: Vector2i       ## the voxel position of the column
 	var storey_count: int         ## height (span between start_storey and end)
@@ -36,8 +41,13 @@ class JunctionColumn:
 	var edge_a_id: String         ## first edge's ID — BAKE-FIX-06: for neighbor voxel resolution
 	var edge_b_id: String         ## second edge's ID — BAKE-FIX-06: for neighbor voxel resolution
 	var voxels: Array[Voxel]      ## the voxel objects
+	var dirty_count: int = 0      ## E-JUNCTION-01: sum of child Voxel dirty flags — Voxel's own
+	                               ## contract (see voxel.gd's _parent_container doc) needs
+	                               ## increment_dirty()/decrement_dirty()/id on whatever owns it,
+	                               ## the same as Slice/Slab already provide.
 
 	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = "", p_face_a: int = 0, p_face_b: int = 1, p_edge_a_id: String = "", p_edge_b_id: String = ""):
+		id = "JCOL_%d_%d" % [p_gu.x, p_gu.y]
 		gu_cell = p_gu
 		voxel_pos = p_voxel_pos
 		storey_count = p_storey_count
@@ -49,7 +59,24 @@ class JunctionColumn:
 		face_b = p_face_b
 		edge_a_id = p_edge_a_id
 		edge_b_id = p_edge_b_id
+		## E-JUNCTION-01 (2026-08-13): a JunctionColumn used to be voxel
+		## POSITIONS only — `_render_junction_column()` writes tiles straight
+		## from `voxel_pos`/`storey_count`, never through a Voxel object, so
+		## there was never any per-voxel damage state to read or write. One
+		## real Voxel per level, mirroring SliceGenerator._create_slice()'s
+		## own loop (a Slice gets 8 positions per level; a column is one
+		## position, stacked).
 		voxels = []
+		for level_offset in range(storey_count * GeometryCoords.LEVELS_PER_STOREY):
+			var level: int = start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
+			voxels.append(Voxel.new(voxel_pos, level, self))
+
+	func increment_dirty() -> void:
+		dirty_count += 1
+
+	func decrement_dirty() -> void:
+		if dirty_count > 0:
+			dirty_count -= 1
 
 	func _to_string() -> String:
 		var facade_str = " (no facade)" if not facade_enabled else ""

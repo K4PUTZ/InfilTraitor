@@ -1235,6 +1235,11 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		"edge_registry": room._edge_registry,
 		"slab_registry": room._slab_registry,
 		"voxel_renderer": room._voxel_renderer,
+		## E-JUNCTION-01: wall-junction corner columns, so a grenade's
+		## omnidirectional flood can reach them the way it already reaches
+		## every Slice/Slab. find_affected_containers() defaults this to []
+		## when absent, so any other build_plan() caller is unaffected.
+		"junction_columns": room._junction_columns,
 		"blocked_edges": _blocked_edges_dict(),
 		"blocked_cells": room._blocked_cells,
 		"lights": lights,

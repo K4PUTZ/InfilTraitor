@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 54831 lines total** (under `godot/scripts/`)
+**205 scripts · 54978 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -640,7 +640,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 139 lines
+`class_name JunctionResolver` · 166 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -1717,7 +1717,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1498 lines
+`class_name BlastCalculator` · 1515 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1786,7 +1786,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1116 lines
+`class_name DetonationPlanBuilder` · 1197 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1803,17 +1803,6 @@ extends `Node2D` · 43 lines
 - `SMOKE_BLOBS_PER_VOXEL` = `1`
 - `PHASE_SETUP` = `0`
 - `PHASE_SLICES` = `1`
-- `PHASE_ROOFS` = `2`
-- `PHASE_FLOORS` = `3`
-- `PHASE_WALK` = `4`
-- `PHASE_SOOT` = `5`
-- `PHASE_LIGHT` = `6`
-- `PHASE_PACKAGE` = `7`
-- `PHASE_EXPOSE` = `8`
-- `PHASE_SOOTWAVE` = `9`
-- `PHASE_SMOKE` = `10`
-- `PHASE_DONE` = `11`
-- `PHASE_NAMES` = `[ "SETUP", "SLICES", "ROOFS", "FLOORS", "WALK", "SOOT", "LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE", ]`
 
 ---
 
@@ -2992,7 +2981,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_choreographer_selftest.gd`
 
-extends `SceneTree` · 439 lines
+extends `SceneTree` · 441 lines
 
 `godot/scripts/tools/detonation_choreographer_selftest.gd`
 
@@ -3023,7 +3012,7 @@ extends `SceneTree` · 439 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 414 lines
+extends `SceneTree` · 416 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4258,7 +4247,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1271 lines
+`class_name TestZoneController` · 1276 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4523,7 +4512,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4407 lines
+extends `Node2D` · 4420 lines
 
 `godot/scripts/world/room.gd`
 

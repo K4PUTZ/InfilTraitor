@@ -73,10 +73,7 @@ var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4
 ## extra distance a real gradient step instead of a flat band of the faintest
 ## tone. Isotropic reference curve — the shader's per-face multipliers are
 ## calibrated against it, not derived from it.
-## E-CONTRAST-01 (Director, 2026-08-13): ring 3 only, 0.80 -> 0.71, mirroring
-## the same step in voxel_face_shading.gdshader's `soot_face_mult` — see that
-## uniform's own note for why only the blast-only feather tone moved.
-var soot_darkening: Array[float] = [0.20, 0.40, 0.63, 0.71]
+var soot_darkening: Array[float] = [0.20, 0.40, 0.63, 0.80]
 
 ## VL-D3 — floor voxels that sat under a wall/block never saw the sun, so when a
 ## blast exposes their top they read darker than always-open floor. A gentle

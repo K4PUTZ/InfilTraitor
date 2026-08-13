@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 55006 lines total** (under `godot/scripts/`)
+**205 scripts · 55033 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1699,7 +1699,7 @@ extends `Node2D` · 43 lines
 
 ### `damage_variant_baker.gd`
 
-`class_name DamageVariantBaker` · extends `RefCounted` · 317 lines
+`class_name DamageVariantBaker` · extends `RefCounted` · 347 lines
 
 `godot/scripts/systems/damage_variant_baker.gd`
 
@@ -1708,6 +1708,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `SUBSTRATE_POSITIONS` = `[Vector2i(0, 0), Vector2i(20, 0), Vector2i(40, 0)]`
 - `BAKE_LEVEL` = `0`
+- `FLOOR_SHADE_BRIGHTNESS` = `0.72`
 - `DAMAGE_CACHE_PATH` = `"user://damage_atom_cache/"`
 
 **Public API**
@@ -2136,7 +2137,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 608 lines
+`class_name VoxelLightField` · extends `RefCounted` · 605 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 

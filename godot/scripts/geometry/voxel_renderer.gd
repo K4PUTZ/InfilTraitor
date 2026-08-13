@@ -962,8 +962,18 @@ func _load_decal_image(path: String) -> Image:
 ## matching what walls always use) — confirmed by direct code reading that
 ## resolve()'s column_in_run derivation requires a REAL, run-registered Edge,
 ## which a synthetic bake-time call has no reason to fabricate.
+## E-CONTRAST-03 (Director, 2026-08-13): `shade_brightness` defaults to 1.0
+## (adjust_bcs() no-op, skipped entirely — every pre-existing caller is
+## byte-identical). The one caller that passes a real value is
+## DamageVariantBaker's CRACKED-blast bake, for the atom D6 registers under
+## FLOOR *and* WALL/CEILING from the same composite (see that file's own
+## note) — floor-only damage bake was the ask, but a shared atom cannot be
+## darkened on one registration and not the others, and the Director's own
+## call was that a slightly darker wall CRACKED tile is an acceptable side
+## effect, not a second problem to solve.
 func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
-		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
+		slice_face: int, voxel_xy: Vector2i, level: int, grid_pos: Vector2i,
+		shade_brightness: float = 1.0) -> Dictionary:
 	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
 	var cache := get_damage_composite_cache()
 	if cache.has(key):
@@ -981,6 +991,8 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 		return {}
 
 	var composite := DecalCompositorClass.compose_decal_voxel(resolved["image"], decal_image, plan["targets"])
+	if not is_equal_approx(shade_brightness, 1.0):
+		composite.adjust_bcs(shade_brightness, 1.0, 1.0)
 	var entry := cache.store(key, composite)
 	if entry.is_empty():
 		return {}
@@ -1164,8 +1176,19 @@ func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
 ## `zone_material` stays a separate parameter: it is what resolve_flat() needs
 ## to find the right baked page, and it is NOT always the decal family (a grass
 ## floor resolves a grass substrate but pastes the earth-family dent).
+## E-CONTRAST-03 (Director, 2026-08-13): a real two-blast PLAYGROUND capture
+## showed FLOOR DENTED/CRACKED decal atoms reading noticeably brighter than
+## their surroundings — a baked-art brightness issue, not the per-cell soot
+## pass (which runs after any set_cell(), independent of which tile a cell
+## shows — see this file's own header). Floor only, since firearms never
+## reach a Slab (WEAPON_MASTER_PLAN's aim model) — there is no shared-tuning
+## risk the way a wall atom would have. `shade_brightness` defaults to 1.0
+## (adjust_bcs() no-op, skipped), so every pre-existing caller (the live D33
+## per-cell fallback included — this function serves both) is unaffected
+## unless DamageVariantBaker's floor bake explicitly asks for less.
 func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_material: String,
-		voxel_xy: Vector2i, level: int, grid_pos: Vector2i) -> Dictionary:
+		voxel_xy: Vector2i, level: int, grid_pos: Vector2i,
+		shade_brightness: float = 1.0) -> Dictionary:
 	var key := "%d,%d,%d,%s" % [grid_pos.x, grid_pos.y, level, material_name]
 	var cache := get_damage_composite_cache()
 	if cache.has(key):
@@ -1185,6 +1208,8 @@ func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_m
 
 	var composite := DecalCompositorClass.compose_decal_voxel(
 		floor_substrate, decal_image, [DecalCompositorClass.FACE_SUNK_TOP])
+	if not is_equal_approx(shade_brightness, 1.0):
+		composite.adjust_bcs(shade_brightness, 1.0, 1.0)
 	var entry := cache.store(key, composite)
 	if entry.is_empty():
 		return {}
@@ -2755,18 +2780,10 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## z-index formula has exactly one owner; the two callers differ only in
 ## WHERE they file the result (_voxel_layers vs _negative_voxel_layers),
 ## never in HOW a layer is built.
-## FACE-READ-01 — one shared ShaderMaterial for every WALL voxel layer. Built
-## lazily and reused: the shader is stateless (its uniforms are global tuning,
-## not per-layer), so N layers share one material and one pipeline.
-##
-## E-CONTRAST-02 (2026-08-13): floor layers get a SECOND instance of the same
-## shader script, with `voxel_is_floor = true` set only on it — see the
-## shader's own note. Two instances, not a per-cell branch fed from GDScript,
-## because a ShaderMaterial's uniforms are the natural per-layer-group knob
-## and the wall instance's defaults stay untouched, so wall rendering cannot
-## regress by construction.
+## FACE-READ-01 — one shared ShaderMaterial for every voxel layer. Built lazily
+## and reused: the shader is stateless (its uniforms are global tuning, not
+## per-layer), so N layers share one material and one pipeline.
 var _face_shading_material: ShaderMaterial
-var _face_shading_material_floor: ShaderMaterial
 
 
 func _get_face_shading_material() -> ShaderMaterial:
@@ -2783,30 +2800,13 @@ func _get_face_shading_material() -> ShaderMaterial:
 	return _face_shading_material
 
 
-func _get_face_shading_material_floor() -> ShaderMaterial:
-	if _face_shading_material_floor != null:
-		return _face_shading_material_floor
-	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
-	if shader == null:
-		push_error("[VoxelRenderer] E-CONTRAST-02: voxel_face_shading.gdshader failed to load — floor faces will render flat")
-		return null
-	_face_shading_material_floor = ShaderMaterial.new()
-	_face_shading_material_floor.shader = shader
-	_face_shading_material_floor.set_shader_parameter("voxel_is_floor", true)
-	return _face_shading_material_floor
-
-
 func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.tile_set = _tileset
 	layer.name = "voxel_layer_%d" % level
 	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
 	## material-only and the baked tile paths — see the shader's own header.
-	## E-CONTRAST-02: negative levels are floor/background (D17) — same test
-	## `level < 0` already used below for FLOOR-DEPTH-02's own tint, so a wall
-	## level can never accidentally pick up the floor material.
-	layer.material = _get_face_shading_material_floor() if level < 0 \
-		else _get_face_shading_material()
+	layer.material = _get_face_shading_material()
 
 	# E1 equation from Transform Canon (SLICE-00)
 	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):

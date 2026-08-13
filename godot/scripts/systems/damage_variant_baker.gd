@@ -88,6 +88,19 @@ const SUBSTRATE_POSITIONS: Array[Vector2i] = [Vector2i(0, 0), Vector2i(20, 0), V
 ## direct code reading). Any fixed level works; 0 is arbitrary.
 const BAKE_LEVEL: int = 0
 
+## E-CONTRAST-03 (Director, 2026-08-13): "diminuir o brilho... na hora de
+## fazer o bake dos voxels de chão, que só podem ser afetados por explosão,
+## já que armas não acertam o chão." Baked in once, at the source, rather
+## than shaded per-frame — the decal "já nasce com mais fuligem." Applies to
+## FLOOR DENTED (_bake_floor(), floor-exclusive) and to the CRACKED-blast
+## atom D6 shares across FLOOR/WALL/CEILING (_bake_wall_and_marked()'s
+## `is_floor_material` case) — the Director's own call that a slightly
+## darker wall CRACKED tile is an acceptable side effect of one shared atom,
+## not a second bug. Modest on purpose (adjust_bcs brightness multiplier,
+## not a flat colour swap) — tune against a real capture, same as every
+## other look constant in this codebase.
+const FLOOR_SHADE_BRIGHTNESS: float = 0.72
+
 ## §3.5/D13 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): a sibling directory
 ## to BakeCompositor's own BAKE_CACHE_PATH — same encode/decode/load/save
 ## mechanism (reused via `_compositor`, not duplicated), separate directory
@@ -181,10 +194,14 @@ func _bake_wall_name(material: String, name: String, also_ceiling: bool = false,
 	if name == "":
 		return 0
 	var baked := 0
+	## also_floor IS the shade trigger: the only call site that passes it true
+	## is the CRACKED-blast atom D6 shares with FLOOR (see this file's own
+	## note on FLOOR_SHADE_BRIGHTNESS) — no separate parameter needed.
+	var shade: float = FLOOR_SHADE_BRIGHTNESS if also_floor else 1.0
 	for substrate in range(VoxelRenderer.DAMAGE_SUBSTRATE_VARIANTS):
 		var pos: Vector2i = SUBSTRATE_POSITIONS[substrate]
 		var entry := _composite_cached(_atom_disk_key(material, name, substrate),
-				func(): return _composite_wall_name(name, pos))
+				func(): return _composite_wall_name(name, pos, shade))
 		if entry.is_empty():
 			continue
 		_registry.register(
@@ -208,11 +225,11 @@ func _bake_wall_name(material: String, name: String, also_ceiling: bool = false,
 ## mutually exclusive by construction (VoxelRenderer._full_voxel_decal_plan()'s
 ## own comment), so trying them in order is safe. `edge = null` is the
 ## atom-bake signal both compositor functions now branch on.
-func _composite_wall_name(name: String, pos: Vector2i) -> Dictionary:
+func _composite_wall_name(name: String, pos: Vector2i, shade_brightness: float = 1.0) -> Dictionary:
 	var full_plan := VoxelRenderer._full_voxel_decal_plan(name)
 	if not full_plan.is_empty():
 		return _renderer._composite_full_voxel_decal(
-			full_plan, name, null, 0, pos, BAKE_LEVEL, _next_synthetic_grid_pos())
+			full_plan, name, null, 0, pos, BAKE_LEVEL, _next_synthetic_grid_pos(), shade_brightness)
 	var half_plan := VoxelRenderer._half_voxel_decal_plan(name)
 	if not half_plan.is_empty():
 		return _renderer._composite_half_voxel_decal(
@@ -262,7 +279,8 @@ func _bake_floor(material: String) -> int:
 			var pos: Vector2i = SUBSTRATE_POSITIONS[substrate]
 			var entry := _composite_cached(_atom_disk_key(material, name, substrate),
 					func(): return _renderer._composite_floor_sunk_decal(
-						floor_plan, name, material, pos, BAKE_LEVEL, _next_synthetic_grid_pos()))
+						floor_plan, name, material, pos, BAKE_LEVEL, _next_synthetic_grid_pos(),
+						FLOOR_SHADE_BRIGHTNESS))
 			if entry.is_empty():
 				continue
 			_registry.register(
@@ -299,11 +317,23 @@ func _composite_cached(disk_key: String, produce: Callable) -> Dictionary:
 	return entry
 
 
+## E-CONTRAST-03: bumped independently of BakeCompositor.BAKE_CODE_VERSION on
+## purpose. That constant also gates the wall/roof/floor SHEET pages
+## (BakeCompositor.gd's own history log) — bumping it to invalidate a stale
+## FLOOR_SHADE_BRIGHTNESS disk entry would force every declared material's
+## base bake to redo too, real cost this change has no reason to pay. This
+## cache lives in its own directory already (DAMAGE_CACHE_PATH); it earns its
+## own, narrower version for the same reason.
+## v2: E-CONTRAST-03 (2026-08-13) — FLOOR_SHADE_BRIGHTNESS baked into FLOOR
+##     DENTED and the shared FLOOR/WALL/CEILING CRACKED-blast atom.
+const DAMAGE_BAKE_LOCAL_VERSION: int = 2
+
 ## (material, name, substrate) — no element_class (see _composite_cached()'s
 ## doc comment on why) — hashed the same way BakeCompositor's own page cache
 ## keys are (_fnv1a_64), reused via `_compositor` rather than duplicated.
 func _atom_disk_key(material: String, name: String, substrate: int) -> String:
-	var key_input := "%s|%s|%d|v%d" % [material, name, substrate, _compositor.BAKE_CODE_VERSION]
+	var key_input := "%s|%s|%d|v%d.%d" % [material, name, substrate,
+		_compositor.BAKE_CODE_VERSION, DAMAGE_BAKE_LOCAL_VERSION]
 	return _compositor._fnv1a_64(key_input.to_utf8_buffer())
 
 

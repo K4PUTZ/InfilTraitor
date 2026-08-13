@@ -24,8 +24,19 @@ var ring_multipliers: Array[float] = []
 var destroy_ring_weights: Array[float] = []
 var dent_ring_weights: Array[float] = []
 var crack_ring_weights: Array[float] = []
-## Not consumed yet (Task 3/E-SOOT and the wave driver's job) — parsed now
-## so the JSON schema is complete from the start.
+## NO LONGER CONSUMED ANYWHERE (S-KILL-STAMP, 2026-08-12). This was the tone
+## table `stamp_container_soot()`/`stamp_crater_soot()` read, and the Director
+## rejected the stamp on sight: *"a fuligem parece um monte de quadradinhos (...)
+## fica muito forte por GUs, mas de repente na GU do lado não tem nada"* — which
+## is structural, since the stamp ran once per container and so once per GU. Soot
+## comes from `derive_soot_rings()` + `apply_self_soot()` only.
+##
+## KEPT, not deleted, and the distinction is deliberate: this is authored tuning
+## data sitting in every bomb's JSON, and dropping the field would be a data
+## migration nobody asked for. Same call as `room._wall_height_edges` earlier the
+## same day — cheap, correct on its own, and exactly what a future soot rule
+## keyed on distance would want back. It is parsed and then ignored; if that ever
+## stops being true, this comment is the thing to delete.
 var soot_ring_tones: Array[int] = []
 var smoke_ring_weights: Array[float] = []
 

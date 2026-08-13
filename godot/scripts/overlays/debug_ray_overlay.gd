@@ -8,8 +8,9 @@ class_name DebugRayOverlay
 ## so it shows the complete census the blast touched — used to verify that the
 ## real damage positions match expectations.
 ##
-## Gated by env var INFILTRAITOR_ENABLE_DEBUG_RAYS (same precedent as
-## INFILTRAITOR_ENABLE_STAMP_SOOT). When disabled, this node does nothing.
+## Gated by env var INFILTRAITOR_ENABLE_DEBUG_RAYS. When disabled, this node
+## does nothing. (It used to cite INFILTRAITOR_ENABLE_STAMP_SOOT as the
+## precedent for that pattern; S-KILL-STAMP deleted that env var in 2026-08-12.)
 ##
 ## E-DEBUG-RAY ships FIRST after E-RAY because it is the lowest-risk consumer
 ## and gives every later task a real visual tool to verify against (not just

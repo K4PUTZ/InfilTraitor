@@ -1239,19 +1239,6 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		"weapon_soot_rings": room.weapon_soot_rings,
 		## D2: unlocked from this GU's SECOND blast onward.
 		"deep_layer_unlocked": int(room._gu_blast_count.get(source_gu, 0)) > 0,
-		## E-DENT-01 (Director, 2026-08-08): "vamos apagar o stamp de fuligem por
-		## enquanto." The blast's authored soot stamp is OFF for every real
-		## detonation now — the 2026-08-08 A/B proved it is what produces the
-		## "quebradiça" checkerboard, and it was covering the dented/cracked
-		## atoms this phase exists to look at. Deliberately a live-caller flip,
-		## not a deletion: build_plan()'s own default stays `true` (the stamp is
-		## still the designed behavior, Task 3), so nothing in the calculation
-		## layer or its selftests moves, and the whole reversal is this one
-		## boolean. INFILTRAITOR_ENABLE_STAMP_SOOT=1 brings it back for a
-		## comparison capture — the same seam as before, inverted.
-		## derive_soot_rings()/apply_self_soot() are untouched: a voxel next to a
-		## real hole still scorches, which is the soot that predates the rebuild.
-		"stamp_soot_enabled": OS.get_environment("INFILTRAITOR_ENABLE_STAMP_SOOT") == "1",
 	}
 
 

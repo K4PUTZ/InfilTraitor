@@ -136,7 +136,7 @@ const SMOKE_BLOBS_PER_VOXEL: int = 1
 ## Phases, which are §1.1's six subdivided wherever they were map-wide:
 ##
 ##   0 SETUP      flood + affected containers + epicentre          atomic, ~1.5 ms
-##   1 SLICES     damage + soot stamp + ring bookkeeping           per slice
+##   1 SLICES     damage + ring bookkeeping                       per slice
 ##   2 ROOFS      the same, for roof slabs                         per slab
 ##   3 FLOORS     crater damage + soot + expose resolution         per slab
 ##   4 WALK       the ONE map-wide voxel walk (see below)          per voxel chunk
@@ -224,12 +224,6 @@ static func build_plan(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldD
 ## state here costs exactly one allocation.
 static func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictionary:
 	var delta := WorldDeltaClass.new()
-	## Diagnostic toggle (Director, 2026-08-07, comparing a real capture
-	## against the floor's own already-noisy dent decal art): true is the
-	## real/shipped behavior. false skips ONLY stamp_container_soot()/
-	## stamp_crater_soot() — derive_soot_rings()/apply_self_soot() still run
-	## unchanged, so a voxel next to a real hole still scorches; what's missing
-	## is JUST the blast's authored ring-tone stamp.
 	return {
 		"bomb_def": bomb_def,
 		"source_gu": source_gu,
@@ -238,7 +232,6 @@ static func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictionary:
 		"slab_registry": ctx["slab_registry"] as SlabRegistry,
 		"voxel_renderer": ctx["voxel_renderer"] as VoxelRendererClass,
 		"deep_layer_unlocked": bool(ctx.get("deep_layer_unlocked", false)),
-		"stamp_soot_enabled": bool(ctx.get("stamp_soot_enabled", true)),
 		"delta": delta,
 		"waves": delta.waves,
 		"phase": PHASE_SETUP,
@@ -442,10 +435,6 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			slice.voxels, slice.id, slice.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
 			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
-		if bool(s["stamp_soot_enabled"]):
-			BlastCalculatorClass.stamp_container_soot(
-				slice.voxels, base_ring, base_level, false, bomb_def.soot_ring_tones,
-				epicenter, s["soot_snapshot"], s["soot_faces"])
 		for v in slice.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
@@ -475,10 +464,6 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 			roof.voxels, roof.id, roof.material, base_ring, roof.level, true,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
 			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
-		if bool(s["stamp_soot_enabled"]):
-			BlastCalculatorClass.stamp_container_soot(
-				roof.voxels, base_ring, roof.level, true, bomb_def.soot_ring_tones,
-				epicenter, s["soot_snapshot"], s["soot_faces"])
 		for v in roof.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - roof.level)
@@ -521,10 +506,6 @@ static func _phase_floors(s: Dictionary, deadline: int) -> void:
 			floor_slab.voxels, floor_slab.id, epicenter, crater_core, crater_max,
 			floor_slab.material, deep_unlocked, 1.0,
 			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights))
-		if bool(s["stamp_soot_enabled"]):
-			BlastCalculatorClass.stamp_crater_soot(
-				floor_slab.voxels, epicenter, crater_core, crater_max,
-				bomb_def.soot_ring_tones, s["soot_snapshot"], s["soot_faces"])
 		var min_destroy_ring: int = -1
 		for v in floor_slab.voxels:
 			var d: float = Vector2(v.grid_pos - epicenter).length()

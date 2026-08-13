@@ -70,11 +70,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
 - a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
 - 52827f8b ALPHA BUBBLE FOUNDATION 0.9.96 - grenade aiming UI built end to end, doc sweep
 - cced2311 ALPHA GRENADE SHRAPNEL 0.9.95 - kill-shard replaces white strobe, shrapnel/soot/bubble plan, doc sweep
 - 26cca8a5 ALPHA EXPLOSION FLOW 0.9.94 - prediction layer, three beats, no frozen frame, doc sweep
-- 6c207234 ALPHA EXPLOSION WAVES 0.9.93 - radial per-voxel front, floor cracks, native burst, doc sweep
 <!-- AUTO:END version_history -->
 
 ---
@@ -626,11 +626,16 @@ the blast from "the waves fire" to something that reads right. Full record:
     *"a distorção não é assim... vai ser uma coisa mais angulosa"* — wrong
     shape, needs a refined spec. The dome's grid is a plain undistorted
     wireframe for now; the height-aware data stays retained for the redo.
-  - **`detonation_choreographer_selftest` still fails, deterministically**
-    (91% of the front on one frame) since `[E-FUME]` pulled soot out of
-    `WAVE_TABLE` — proven red/green, unrelated to the two paragraphs above.
-    Blast debris VFX (dust/spark/chip) also remains deliberately disconnected
-    from Task 5.
+  - **`detonation_choreographer_selftest` — CLOSED 2026-08-13.** The prior
+    diagnosis here (`[E-FUME]` pulling soot out of `WAVE_TABLE`) was
+    superseded by E-ORGANIC-02 before it was ever applied and was never the
+    real cause: the selftest's `_pick_source_gu()` detonated its fixture
+    literally embedded in a wall (`Slice.gu_cell`, correct for a plan-
+    correctness test, copied here by mistake for a pacing one), choking 91.2%
+    of the queue into one frame. Fixed by stepping onto the open GU the wall
+    faces (`Face.delta()`); real profile after matches the ~46% the live map
+    already measured. Blast debris VFX (dust/spark/chip) also remains
+    deliberately disconnected from Task 5.
   Stamped-blast soot's rotation-persistence stays unbuilt — currently
   unreachable to test since camera rotation is disabled (ROTATE-KILL-01);
   damage *state* already survives rotation correctly.

@@ -2423,6 +2423,27 @@ func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
 var weapon_soot_rings: int = 3
 var blast_soot_rings: int = 4
 
+## S-FEATHER (Director, 2026-08-12): *"poderia ter um pouco de fuligem bem
+## levinha expandindo pra fora, como um feather."*
+##
+## Extra BFS reach BEYOND the graded rings above, at no extra tone. Every
+## distance past `intensity_rings` is capped by `derive_soot_rings()` at the
+## faintest real tone, so these rings come out as one flat, faint tail — which is
+## precisely the feather, and precisely what `blast_soot_rings` was pinned at 4
+## to AVOID: *"one cell of reach per available tone, so the bomb's extra distance
+## reads as a real gradient step rather than a flat band of the faintest tone"*
+## (PERF-02 B3-2, the note directly above).
+##
+## That reasoning is not wrong, it was answering a different question. It was
+## about where the GRADIENT should end, and this is about what happens after it
+## ends. Kept as two numbers rather than one raised number so the two ideas stay
+## separately tunable, and so the older note keeps meaning what it said.
+##
+## Only the falloff face survives out here: `_face_rings_for()` sends every
+## non-facing face to CLEAN once `ring + falloff` reaches the intensity count, so
+## the tail is directional — the faces that saw the blast, and nothing else.
+var blast_soot_feather_rings: int = 2
+
 ## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
 ## triples for every voxel this pass scorches (see BlastCalculator).
 func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
@@ -2449,7 +2470,8 @@ func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 	var snapshot: Dictionary = {}
 	var blast_snapshot: Dictionary = {}
 	var blast_faces: Dictionary = {}
-	BlastCalculator.derive_soot_rings(cell_to_voxel, blast_cells, blast_soot_rings,
+	BlastCalculator.derive_soot_rings(cell_to_voxel, blast_cells,
+			blast_soot_rings + blast_soot_feather_rings,
 			blast_snapshot, blast_faces, 1, BlastCalculator.FACE_SOOT_CLEAN)
 	var weapon_snapshot: Dictionary = {}
 	var weapon_faces: Dictionary = {}

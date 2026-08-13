@@ -172,6 +172,37 @@ throw (same binary, same map, 400-frame settle). Evidence:
     C  stamp only (§2's rule)     A vs C:  77 168 px differ, max delta 84
                                   B vs C:  36 277 px differ, max delta 84
 
+### 2.0.1 ⛔ DIRECTOR'S VERDICT, 2026-08-12 — the stamp is REJECTED, A ships
+
+*"O A está ótimo, bem orgânico, alguns voxels aleatórios no último ring, parece
+natural. Pra mim passa assim. (…) Os outros dois (…) estão muito esquisitos, a
+fuligem parece um monte de quadradinhos (…) fica muito artificial, parecendo
+glitch. Outro problema grave é que fica muito forte por GUs, mas de repente na GU
+do lado não tem nada."*
+
+**This retires §2's whole direction before a line of it was written, and the
+last sentence explains why in mechanism terms rather than taste.**
+`stamp_container_soot()` and `stamp_crater_soot()` are called **once per
+container** — per slice, per slab, i.e. **per GU** — and each stamps its own
+voxels from its own distance ramp. Adjacent GUs are separate calls with no
+continuity between them, so a hard GU boundary is not a bug in the stamp, it is
+the shape of the stamp. That is exactly "muito forte por GUs, mas de repente na
+GU do lado não tem nada", and no tuning of the tone table can remove it.
+
+The BFS has no such seam because it propagates through the voxel grid and never
+knows what a container is.
+
+**So the plan inverts: the stamp is deleted, not promoted.** Everything below
+that argued for a distance-keyed rule is kept as the record of a direction that
+was measured and rejected — the measurement is the useful part.
+
+What survives of the original goal: soot is still to become ONE producer shared
+by the detonation and repaint paths, still fixes the deep-layer defect (§1.3),
+and still gets the fade (§4b). It simply keeps the mechanism that already looks
+right instead of replacing it.
+
+---
+
 **§2's "one rule absorbs all three" is too strong as written, and C is the proof.**
 The stamp alone is not a drop-in for today — it is a substantially different
 picture, and a worse one in a specific way: it paints BROAD, even coverage the
@@ -360,21 +391,30 @@ Ratified by the Director 2026-08-12: *"vamos gastar um tempo agora deixando a
 fuligem unificada e coerente com todo o sistema (...) De resto pode planejar como
 você achar mais adequado e implementar."*
 
-| id | task | why it is separable |
+**REVISED after §2.0.1.** The stamp is deleted rather than promoted, so there is
+no new rule to write and no new class. What is left is subtraction, one defect,
+one polish, and the Director's two asks.
+
+| id | task | why |
 |---|---|---|
-| **S-ONE** | One producer: `SootField` implements §2's exposure rule; blast and firearm both emit into it; stamp/self-soot/crater-floor absorbed | the whole correctness case |
-| **S-LOCAL** | Derive over the emitter's reach, not the map | drops soot's ~41 ms out of the walk |
-| **S-DEFER** | Soot computation starts once the smoke waves are dispatched | Director's own ask; frees the blast frames |
-| **S-FADE** | The ring-code ramp of §4b, minted in one pass | Director's own ask |
-| **S-DEDUP** | `room.gd`'s repaint path calls the same producer | ends the two-implementation drift |
+| **S-FEATHER** | A faint scorch tail past the last tone | the one look note on A: *"um pouco de fuligem bem levinha expandindo pra fora, como um feather"* |
+| **S-KILL-STAMP** | Delete `stamp_container_soot()`, `stamp_crater_soot()`, their 3 call sites and `stamp_soot_enabled` | §2.0.1 — rejected on sight, and dormant code with an inverted default is a trap |
+| **S-DEEP** | Newly-exposed voxels take soot | §1.3, the defect the Director reported |
+| **S-DEDUP** | One producer for detonation and repaint; absorb `_crater_floor_soot` | §1.2's drift, already real |
+| **S-DEFER** | Soot starts once the smoke is rising | Director's ask |
+| **S-FADE** | The ring-code ramp of §4b | Director's ask |
 
-**Order: S-ONE → S-DEDUP → S-LOCAL → S-DEFER → S-FADE.**
+**Order: S-FEATHER → S-KILL-STAMP → S-DEEP → S-DEDUP → S-DEFER → S-FADE.**
 
-S-ONE first because every other task is cheaper once there is a single producer,
-and S-DEDUP immediately after because a second implementation left alive while
-the first is being rewritten is exactly how §1.2's drift happened. S-LOCAL is the
-only performance task and it is deliberately third — §1.4 shows it buys 57 ms
-against 1.2 s of slack, so it must not be allowed to set the schedule.
+S-FEATHER first because it is the only outstanding note on a look the Director
+has already accepted, and because it is very likely one parameter:
+`derive_soot_rings()` already caps every distance past `intensity_rings` at the
+faintest tone, so a longer reach at the same intensity IS a feather. Measure
+before believing that.
+
+S-LOCAL is **dropped from the schedule.** §1.4 measured it at 57 ms against 1.2 s
+of slack, and with the stamp gone the remaining producers are the ones that must
+not be disturbed. It stays recorded in §3.1 as available, not planned.
 
 **Gate for every task:** a real detonation pixel-diffed before and after at
 `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400`. Soot is a look; the only

@@ -1229,6 +1229,14 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		"lights": lights,
 		"shadow_results": shadow_results,
 		"under_structure": room._under_structure,
+		## Passed rather than left to `build_plan()`'s own defaults, which is a
+		## fix and not a tidy-up: the builder read `ctx.get("blast_soot_rings", 4)`
+		## while `room` carried its own `blast_soot_rings`, and nothing connected
+		## them — a detonation and a repaint of the same crater could disagree
+		## about soot's reach with no error anywhere. Same drift as §1.2 of
+		## SOOT_MASTER_PLAN, in a spot that plan had not found.
+		"blast_soot_rings": room.blast_soot_rings + room.blast_soot_feather_rings,
+		"weapon_soot_rings": room.weapon_soot_rings,
 		## D2: unlocked from this GU's SECOND blast onward.
 		"deep_layer_unlocked": int(room._gu_blast_count.get(source_gu, 0)) > 0,
 		## E-DENT-01 (Director, 2026-08-08): "vamos apagar o stamp de fuligem por

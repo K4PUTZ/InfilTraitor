@@ -535,6 +535,42 @@ var vfx_smoke_alpha: float = 0.6
 var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)
 var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 
+## E-SPARK-01 (Director, 2026-08-13): *"o metal deveria gerar bastante faísca
+## num tiro da shotgun. É o trade-off de não ter fumaça é bastante faísca.
+## Pedra menos, e assim por diante."*
+##
+## WHY THIS TABLE HAD TO EXIST AT ALL, because the bug was not "too few sparks":
+## `_dispatch_destruction_vfx()` runs off `VoxelRenderer.voxel_destroyed`, so it
+## only ever fires for a voxel that is DESTROYED. Measured on the real bench
+## (D30's ladder: <0.30 CRACKED, <0.60 DENTED, above DESTROYED) —
+##
+##     shotgun -> metal   punch 0.29-0.39   every pellet DENTED/CRACKED
+##     shotgun -> stone   punch 0.42-0.53   every pellet DENTED
+##     shotgun -> wood    punch 0.78-1.06   every pellet DESTROYED
+##
+## — metal and stone under a shotgun structurally never reach DESTROYED, so they
+## produced NO vfx at all while wood got the full dispatch. Exactly inverted.
+## Same structural gap D33-SOOT-01 found for soot on 2026-08-03 and closed with
+## `apply_self_soot()`; this is the VFX half of that finding.
+##
+## A round that DENTS steel and bounces off should throw more sparks than one
+## that punches through, not fewer — so the impact profile is deliberately not a
+## scaled-down copy of the destruction one. Metal trades smoke for sparks
+## outright, per the Director's own rule; wood trades sparks for splinters and
+## dark smoke; masonry sits between with dust.
+##
+## All `var` (Rule 1) and read as data — a material with no row here throws
+## nothing on impact, which is today's behaviour for everything.
+var vfx_impact_profiles: Dictionary = {
+	"metal":    {"sparks": 12, "smoke": false, "dust": false, "chips": 0},
+	"stone":    {"sparks": 4,  "smoke": false, "dust": true,  "chips": 0},
+	"concrete": {"sparks": 0,  "smoke": true,  "dust": true,  "chips": 0},
+	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 2},
+}
+## Per-impact spark count jitter, so 24 pellets do not all throw the identical
+## fan. Multiplies the profile's own count.
+var vfx_impact_spark_jitter: float = 0.35
+
 ## E-DEBRIS-01 (Director, 2026-08-13) — the last piece of VFX-01 that never
 ## reached explosions: dust, sparks and wood chips.
 ##
@@ -2304,6 +2340,47 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 		var floor_pos: Vector2 = world_pos + Vector2(0.0, blast_burst_dust_drop_px)
 		for _d in range(blast_burst_dust_count):
 			_debris_overlay.add_dust(world_pos, floor_pos, blast_burst_dust_color)
+
+
+## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).
+##
+## The counterpart to `_dispatch_destruction_vfx()`, and deliberately a separate
+## entry point rather than a branch inside it: that one is signal-driven off
+## `voxel_destroyed`, which by definition never fires for a survivor. Callers
+## pass the material because a `Voxel` does not carry one (it lives on the
+## Slice/Slab), exactly as the destruction path's signal does.
+##
+## PUBLIC because the caller is `WeaponBenchController.fire_active()`, which is
+## the only place that knows which voxels a shot just marked — the same shape as
+## the blast, where the plan knows what it damaged and the choreographer plays
+## it. No new signal: a signal would have to be emitted from the render pass,
+## which re-renders dirty voxels for reasons that have nothing to do with being
+## freshly shot.
+func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:
+	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
+		return
+	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
+	if profile.is_empty():
+		return
+	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
+	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)
+	if floor_pos == Vector2.ZERO:
+		floor_pos = origin
+
+	var spark_count: int = int(profile.get("sparks", 0))
+	if spark_count > 0:
+		var jittered: int = maxi(1, int(round(float(spark_count) * randf_range(
+			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
+		_smoke_spark_overlay.add_sparks(origin, jittered,
+			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color)
+	if bool(profile.get("smoke", false)):
+		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id))
+	if bool(profile.get("dust", false)) and randf() < vfx_dust_chance:
+		_debris_overlay.add_dust(origin, floor_pos, _vfx_material_base_color(material_id))
+	var chips: int = int(profile.get("chips", 0))
+	if chips > 0:
+		_debris_overlay.add_chips(origin, floor_pos, chips,
+			_vfx_material_base_color(material_id))
 
 
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:

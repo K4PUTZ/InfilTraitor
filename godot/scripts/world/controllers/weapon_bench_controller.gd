@@ -262,6 +262,8 @@ func fire_active() -> void:
 			room._blocked_cells, pellet_salt)
 
 	var cell_to_voxel: Dictionary = {}
+	## E-SPARK-01: one impact VFX per voxel per SHOT, not per pellet.
+	var _impact_vfx_done: Dictionary = {}
 	var pellets_landed := 0
 	var punch_log: Array = []
 	for i in range(pellet_picks.size()):
@@ -303,6 +305,26 @@ func fire_active() -> void:
 			w["gu_cell"])
 		for v in touched:
 			_index_voxel(cell_to_voxel, v)
+			## E-SPARK-01 (Director, 2026-08-13): VFX for the voxels that SURVIVE
+			## the hit. Destroyed ones are already served by the
+			## `voxel_destroyed` signal once `process_dirty_async()` runs below,
+			## so dispatching them here too would double every puff — the same
+			## doubling that kept `_dispatch_destruction_vfx()` off the blast
+			## path three times over.
+			##
+			## Dispatched HERE, inside the pellet loop, because this is the only
+			## scope that knows both the voxel and its material: `Voxel` carries
+			## no material (it lives on the Slice) and `cell_to_voxel` has lost
+			## the association by the time the loop below walks it.
+			##
+			## `_impact_vfx_done` dedupes across pellets — a shotgun puts several
+			## pellets into the same wall, and a voxel dented twice is still one
+			## impact to look at.
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				var vkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+				if not _impact_vfx_done.has(vkey):
+					_impact_vfx_done[vkey] = true
+					room.dispatch_impact_vfx(v.grid_pos, v.level, slice.material)
 
 	print_debug("[SHOT] weapon=%s delivery=%s gu=%s facing=%s landed=%d/%d punch=%s" %
 		[w["weapon_id"], weapon_def.delivery, w["gu_cell"], w["facing"],

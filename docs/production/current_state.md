@@ -555,6 +555,19 @@ the blast from "the waves fire" to something that reads right. Full record:
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
+- ✅ **A hit that does NOT destroy now throws VFX too** (E-SPARK-01,
+  2026-08-13). Director-reported: *"o metal deveria gerar bastante faísca num
+  tiro da shotgun."* It generated none — and neither did stone. Cause, measured
+  from real `[SHOT]` lines: `_dispatch_destruction_vfx()` runs off the
+  `voxel_destroyed` signal, and a shotgun on metal (punch 0.29–0.39) or stone
+  (0.42–0.53) never crosses D30's DESTROYED threshold, so those two produced
+  **nothing at all** while wood (0.78–1.06) got the full dispatch — the exact
+  inverse of the intent. Same structural gap D33-SOOT-01 closed for soot with
+  `apply_self_soot()`. `Room.dispatch_impact_vfx()` + a per-material
+  `vfx_impact_profiles` table now serve the survivors: metal trades smoke for a
+  dense spark burst, stone fewer sparks plus dust, concrete dust and light
+  smoke, wood splinters and dark smoke.
+  `e_spark01_shotgun_metal_sparks_2026-08-13.png`.
 - ✅ **Dust, sparks and chips reach explosions** (E-DEBRIS-01) — the last piece
   of VFX-01, and the gap the master plan had flagged since 2026-08-07 with an
   explicit "ask first". A `debris` wave on the plan, not a reconnected

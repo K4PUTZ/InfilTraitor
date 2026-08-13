@@ -641,35 +641,11 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 ## `sub` is the cursor: 0 = blast rings, 1 = weapon rings, 2 = merge + self-soot.
 static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	var ctx: Dictionary = s["ctx"]
-	var sub: int = int(s["sub"])
-	if sub == 0:
-		var blast_snapshot: Dictionary = {}
-		var blast_faces: Dictionary = {}
-		BlastCalculatorClass.derive_soot_rings(s["cell_to_voxel"], s["blast_cells"],
-			ctx.get("blast_soot_rings", 4), blast_snapshot, blast_faces,
-			1, BlastCalculatorClass.FACE_SOOT_CLEAN, _cells_this_blast_reveals(s))
-		s["derived_blast"] = [blast_snapshot, blast_faces]
-		s["sub"] = 1
-		if _out_of_time(deadline):
-			return
-		sub = 1
-	if sub == 1:
-		var weapon_snapshot: Dictionary = {}
-		var weapon_faces: Dictionary = {}
-		BlastCalculatorClass.derive_soot_rings(s["cell_to_voxel"], s["weapon_cells"],
-			ctx.get("weapon_soot_rings", 3), weapon_snapshot, weapon_faces)
-		s["derived_weapon"] = [weapon_snapshot, weapon_faces]
-		s["sub"] = 2
-		if _out_of_time(deadline):
-			return
-	var soot_snapshot: Dictionary = s["soot_snapshot"]
-	var soot_faces: Dictionary = s["soot_faces"]
-	var blast: Array = s["derived_blast"]
-	var weapon: Array = s["derived_weapon"]
-	_merge_soot(soot_snapshot, soot_faces, blast[0], blast[1])
-	_merge_soot(soot_snapshot, soot_faces, weapon[0], weapon[1])
-	BlastCalculatorClass.apply_self_soot(s["damaged_voxels"], soot_snapshot, soot_faces)
-	_scorch_revealed_fixed_cells(s, soot_snapshot, soot_faces)
+	BlastCalculatorClass.build_soot_field(
+		s["cell_to_voxel"], s["blast_cells"], s["weapon_cells"], s["damaged_voxels"],
+		ctx.get("blast_soot_rings", 4), ctx.get("weapon_soot_rings", 3),
+		s["soot_snapshot"], s["soot_faces"], _cells_this_blast_reveals(s))
+	_scorch_revealed_fixed_cells(s, s["soot_snapshot"], s["soot_faces"])
 	_enter_phase(s, PHASE_LIGHT)
 
 
@@ -688,38 +664,28 @@ static func _cells_this_blast_reveals(s: Dictionary) -> Dictionary:
 ## S-DEEP part 2 — the revealed cells that are not Voxels at all.
 ##
 ## `_resolve_expose_below()` has two outcomes: a real deep Slab
-## (`reveal_floor_slab()`, real Voxel objects the BFS above can now reach) or the
-## FIXED earth level (`render_fixed_earth_level()`, cells with no Voxel behind
-## them). The BFS is a walk over `cell_to_voxel`, so the second kind is
-## unreachable by construction, no matter what it is told about visibility.
+## (`reveal_floor_slab()`, real Voxel objects the BFS can reach once told they
+## are about to be visible) or the FIXED earth level
+## (`render_fixed_earth_level()`, cells with no Voxel behind them). The BFS walks
+## `cell_to_voxel`, so the second kind is unreachable by construction, no matter
+## what it is told about visibility.
 ##
-## `room.gd`'s repaint path has always handled exactly this, via
+## `room.gd`'s repaint has always handled exactly this, via
 ## `add_crater_floor_soot()` at `EXPOSED_FLOOR_SOOT_RING` — and the detonation
 ## path never did. That asymmetry is SOOT_MASTER_PLAN §1.2's predicted defect:
-## the same crater would read clean right after the blast and sooted after a
-## rotation. Both sides now write the same constant, which is what makes the
-## prediction moot rather than merely untested.
-##
-## Isotropic top-only, matching `add_crater_floor_soot()`'s own shape: a floor
-## cell has exactly one visible face.
+## the same crater reading clean right after the blast and sooted after a
+## rotation. Both sides now write the same constant through the same helper.
 static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary,
 		out_faces: Dictionary) -> void:
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
-	var ring: int = BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING
-	var clean: int = BlastCalculatorClass.FACE_SOOT_CLEAN
 	for ring_key in s["exposed_by_ring"].keys():
 		for e in s["exposed_by_ring"][ring_key]:
 			var pos: Vector2i = e["grid_pos"]
 			var level: int = e["level"]
 			if cell_to_voxel.has(Vector3i(pos.x, pos.y, level)):
-				continue   ## a real Voxel — the BFS above already owns it
-			if not out_snapshot.has(level):
-				out_snapshot[level] = {}
-			var level_map: Dictionary = out_snapshot[level]
-			if ring < int(level_map.get(pos, clean)):
-				level_map[pos] = ring
-			BlastCalculatorClass._write_face_rings(out_faces, level, pos,
-				Vector3i(ring, clean, clean), true)
+				continue   ## a real Voxel — the BFS already owns it
+			BlastCalculatorClass.scorch_floor_cell(out_snapshot, out_faces,
+				level, pos, BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING)
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------
@@ -952,55 +918,6 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		_enter_phase(s, PHASE_DONE)
 
 
-## The three map-wide walk helpers that used to live here —
-## `_columns_with_structure()`, `_voxel_occupancy()` and `_index_soot_voxel()` —
-## are GONE, absorbed into P-SLICE's phase 4 (see `_phase_walk()` above). They
-## each traversed every voxel in the map separately, and after P-DELTA each
-## wanted its own dictionary lookup against the Delta's projection. Recorded
-## here rather than deleted silently, because `room.gd` keeps its OWN
-## independent `_index_soot_voxel()` for the repaint path — that one is
-## untouched and is not a leftover.
-
-
-## Mirrors room._merge_soot_into() exactly (min-wins per cell, min-per-face
-## component) — independent copy for the same reason as _index_soot_voxel().
-static func _merge_soot(out_snapshot: Dictionary, out_faces: Dictionary,
-		src_snapshot: Dictionary, src_faces: Dictionary) -> void:
-	for level in src_snapshot:
-		if not out_snapshot.has(level):
-			out_snapshot[level] = {}
-		var level_map: Dictionary = out_snapshot[level]
-		for cell in src_snapshot[level]:
-			var ring: int = int(src_snapshot[level][cell])
-			var existing: int = int(level_map.get(cell, -1))
-			if existing < 0 or ring < existing:
-				level_map[cell] = ring
-	for level in src_faces:
-		if not out_faces.has(level):
-			out_faces[level] = {}
-		var level_faces: Dictionary = out_faces[level]
-		for cell in src_faces[level]:
-			var faces: Vector3i = src_faces[level][cell]
-			if level_faces.has(cell):
-				var prev: Vector3i = level_faces[cell]
-				level_faces[cell] = Vector3i(
-					mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
-			else:
-				level_faces[cell] = faces
-
-
-## Baked pre-bake first (resolve_damage_voxel_swap(), zero live compositing),
-## D33 live-compositing fallback second (_set_voxel_cell(apply=false), the
-## SAME fallback the live render pipeline already falls to) — same two-tier
-## order _process_dirty_slice_voxel()/_process_dirty_slab_voxel() use, just
-## never applying either result to the live layer. Always returns a usable
-## triple (the D33 fallback's own last-resort material-only path never
-## fails), so this never returns {}.
-##
-## The trailing `baked` flag is census-only (E-DENT-01) — which of the two tiers
-## actually answered. It is deliberately NOT copied into the plan entry: §6.1's
-## entry shape is what Task 5 replays, and a wave has no business knowing where
-## its tile came from.
 static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
 	if container == null:
 		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false}

@@ -1331,6 +1331,96 @@ static func crater_ring_for(d: float, max_radius: float, rim_span: float) -> int
 	return 0 if d <= max_radius else int(ceil((d - max_radius) / rim_span))
 
 
+## S-DEDUP (2026-08-12) — THE soot field, and the only place its sequence exists.
+##
+## Blast BFS, then firearm BFS, then min-wins merge, then self-soot. That order
+## is load-bearing (self-soot must not beat a real hole's stronger ring) and it
+## used to be written out twice: once in `DetonationPlanBuilder._phase_soot()`
+## for detonations and once in `room._build_soot_snapshot()` for repaints. The
+## two had already drifted apart in two measurable ways before this landed — the
+## detonation path read its own literal ring count instead of room's, and only
+## the repaint path scorched the revealed crater floor — so this is not tidying,
+## it is removing the seam those bugs grew in.
+##
+## The two BFS passes run into SCRATCH dictionaries and merge afterwards rather
+## than sharing one accumulator, and that is not an accident of style:
+## `derive_soot_rings()`'s internal min-ring merge cannot compose across two
+## calls into the same snapshot, because a second call can never LOWER a ring the
+## first already recorded (PERF-02 B3's own finding).
+##
+## `also_visible` is passed only to the BLAST pass: it means "this blast is about
+## to reveal these", which is a statement about the explosion in flight, not
+## about old firearm holes. See derive_soot_rings() for the case that forced it.
+##
+## Callers keep their own indexing, because they genuinely differ — the plan
+## builder folds it into its map-wide walk, room walks the two registries — and
+## their own handling of non-Voxel cells, which have no entry in `cell_to_voxel`
+## for any BFS to reach.
+static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
+		weapon_cells: Array, damaged_voxels: Array,
+		blast_rings: int, weapon_rings: int,
+		out_snapshot: Dictionary, out_faces: Dictionary,
+		also_visible: Dictionary = {}) -> void:
+	var blast_snapshot: Dictionary = {}
+	var blast_faces: Dictionary = {}
+	derive_soot_rings(cell_to_voxel, blast_cells, blast_rings,
+		blast_snapshot, blast_faces, 1, FACE_SOOT_CLEAN, also_visible)
+	var weapon_snapshot: Dictionary = {}
+	var weapon_faces: Dictionary = {}
+	derive_soot_rings(cell_to_voxel, weapon_cells, weapon_rings,
+		weapon_snapshot, weapon_faces)
+	merge_soot_field(out_snapshot, out_faces, blast_snapshot, blast_faces)
+	merge_soot_field(out_snapshot, out_faces, weapon_snapshot, weapon_faces)
+	apply_self_soot(damaged_voxels, out_snapshot, out_faces)
+
+
+## Merges one scratch soot pass into a snapshot/face pair, min-wins per cell and
+## per face component — the same rule `derive_soot_rings()` applies internally,
+## needed separately because that rule cannot compose across two calls.
+##
+## Was `DetonationPlanBuilder._merge_soot()` AND `room._merge_soot_into()`,
+## byte-identical 23-line copies of each other (verified line by line before
+## either was deleted).
+static func merge_soot_field(out_snapshot: Dictionary, out_faces: Dictionary,
+		src_snapshot: Dictionary, src_faces: Dictionary) -> void:
+	for level in src_snapshot:
+		if not out_snapshot.has(level):
+			out_snapshot[level] = {}
+		var level_map: Dictionary = out_snapshot[level]
+		for cell in src_snapshot[level]:
+			var ring: int = int(src_snapshot[level][cell])
+			var existing: int = int(level_map.get(cell, -1))
+			if existing < 0 or ring < existing:
+				level_map[cell] = ring
+	for level in src_faces:
+		if not out_faces.has(level):
+			out_faces[level] = {}
+		var level_faces: Dictionary = out_faces[level]
+		for cell in src_faces[level]:
+			var faces: Vector3i = src_faces[level][cell]
+			if level_faces.has(cell):
+				var prev: Vector3i = level_faces[cell]
+				level_faces[cell] = Vector3i(
+					mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
+			else:
+				level_faces[cell] = faces
+
+
+## One floor cell scorched at `ring`, isotropic top-only — a floor cell has
+## exactly one visible face. Shared by the two places that scorch cells with no
+## Voxel behind them: the detonation's revealed FIXED earth level, and room's
+## persistent `_crater_floor_soot` replay.
+static func scorch_floor_cell(out_snapshot: Dictionary, out_faces: Dictionary,
+		level: int, cell: Vector2i, ring: int) -> void:
+	if not out_snapshot.has(level):
+		out_snapshot[level] = {}
+	var level_map: Dictionary = out_snapshot[level]
+	if ring < int(level_map.get(cell, FACE_SOOT_CLEAN)):
+		level_map[cell] = ring
+	_write_face_rings(out_faces, level, cell,
+		Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN), true)
+
+
 ## D33-SOOT-01 (Director, 2026-08-03): "algumas armas... deixam tudo limpo.
 ## Precisamos adicionar um pouquinho de fuligem, só pra diferenciar do resto
 ## da parede." Measured root cause: derive_soot_rings() only ever seeds from

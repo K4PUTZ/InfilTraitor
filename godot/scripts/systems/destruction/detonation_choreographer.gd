@@ -151,6 +151,21 @@ var front_frames: int = 5
 ## together: raising jitter past the band width dissolves the banding entirely.
 var band_voxels: float = 1.0
 
+## S-FADE — how many rungs the soot ladder has, and how long each is held.
+## `var` per architecture Rule 1; both are tuning levers.
+##
+## 4 is the CEILING, not a preference: the per-face encoding has four real tones
+## plus clean, and `VoxelRenderer.FACE_SOOT_CODE_COUNT`'s own note records that a
+## fifth "was asked for and does not fit". A smoother fade cannot be bought here
+## by raising this number — it would need either a different encoding or the
+## Director's own overlay proposal (SOOT_MASTER_PLAN §4b.1).
+##
+## The hold is what actually sets the duration: 4 steps x 2 frames is ~0.13 s at
+## 60 fps, and the smoke it plays under runs 1.8-3.2 s, so there is room to slow
+## this down considerably before it outlasts its own cover.
+var soot_fade_steps: int = 4
+var soot_fade_frames_per_step: int = 2
+
 ## The kinds playback draws, inner rings first within each — what used to be a
 ## hardcoded [kind, ring] table (§1 step 10's).
 ##
@@ -364,24 +379,96 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 		wave_applied.emit(frame_index, "queue", 0, applied)
 		frame_index += 1
 
-	## E-FUME: soot as its own late step after smoke (visual reordering only).
-	## Soot is removed from WAVE_TABLE and applied here after the expanding front
-	## is done, so it visually appears after smoke has mostly dissipated rather than
-	## landing alongside it. The "alpha ramp in" in the plan's language is the
-	## temporal ordering (appears later), not a technical fade—set_cell applies
-	## the pre-computed alt instantly.
 	var soot_entries: Array = []
 	for ring: int in plan.get("soot", {}).keys():
 		soot_entries.append_array(plan["soot"][ring])
-	if not soot_entries.is_empty():
-		for entry in soot_entries:
-			_apply_entry("soot", entry, voxel_renderer, smoke_overlay)
-		_flush(voxel_renderer)
-		frame_index += 1
-		await tree.process_frame
+	frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
 
 	_waves_done = frame_index
 	finished.emit()
+
+
+## S-FADE (Director, 2026-08-12): *"queremos aplicar um tween up de opacidade,
+## pra ela não surgir de repente."*
+##
+## E-FUME had already moved soot to its own late step after the front — but it
+## landed in ONE frame, and that step's own comment admitted the "alpha ramp in"
+## was temporal ordering only, "not a technical fade". This is the fade.
+##
+## WHY THE RAMP IS IN THE RING CODES AND NOT A SHADER UNIFORM. The shader already
+## applies soot as a per-face multiply, so a `soot_strength` uniform lerping it
+## toward 1.0 would be smoother and completely free — and it is WRONG, because
+## that uniform is global to the material every voxel layer shares. Ramping 0 → 1
+## would first wipe every existing scorch on the map to clean and bring the lot
+## back, so an older crater would visibly flash. The per-face codes are already a
+## discrete ladder (0..3, 4 = clean), so lightening a cell's TARGET faces by k and
+## walking k down to zero fades only the cells this blast is changing, and touches
+## nothing else. Full reasoning: SOOT_MASTER_PLAN §4b.
+##
+## Darker cells take more steps to arrive (a face landing on tone 0 climbs the
+## whole ladder; one landing on tone 3 arrives in a single step), which reads as
+## soot settling rather than as a uniform dissolve.
+##
+## EVERY step's alternative is minted BEFORE the first one is drawn. That is the
+## P-WARM lesson for the third time: `create_alternative_tile()` mutates the
+## shared TileSet, so ANY frame that mints one pays a full rebuild — ~105 ms,
+## flat, regardless of how many. One pass up front costs that once; minting per
+## step would cost it per step.
+func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
+		frame_index: int) -> int:
+	if entries.is_empty():
+		return frame_index
+	var steps: int = maxi(soot_fade_steps, 1)
+
+	## Every (entry, step) alt, resolved and minted in one pass.
+	var ladder: Array = []
+	for entry: Dictionary in entries:
+		var target_alt: int = int(entry["alt"])
+		var bucket: int = VoxelRenderer.decode_light_bucket(target_alt)
+		var flipped: bool = VoxelRenderer.decode_light_flipped(target_alt)
+		var faces: Vector3i = VoxelLightField.decode_face_soot(
+			VoxelRenderer.decode_face_soot_code(target_alt))
+		var per_step: Array = []
+		var previous: int = -1
+		for step: int in range(steps):
+			var lighten: int = steps - 1 - step
+			var alt: int = VoxelRenderer.encode_voxel_alt(bucket,
+				VoxelLightField.encode_face_soot(_lightened(faces, lighten)), flipped)
+			## A step that changes nothing is a set_cell nobody can see.
+			per_step.append(-1 if alt == previous else alt)
+			if alt != previous:
+				voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt)
+			previous = alt
+		ladder.append(per_step)
+
+	for step: int in range(steps):
+		var painted: int = 0
+		for i: int in range(entries.size()):
+			var alt: int = int(ladder[i][step])
+			if alt < 0:
+				continue
+			var entry: Dictionary = entries[i]
+			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
+			if layer == null:
+				continue
+			layer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt)
+			painted += 1
+		_flush(voxel_renderer)
+		frame_index += 1
+		print("[E-FUME] soot fade step %d/%d — %d cell(s) repainted" %
+			[step + 1, steps, painted])
+		for _hold: int in range(maxi(soot_fade_frames_per_step, 1)):
+			await tree.process_frame
+	return frame_index
+
+
+## One rung down the ladder: every face `by` tones fainter, clamped at clean.
+## A face already clean stays clean, so a cell only fades on the faces it is
+## actually going to scorch.
+static func _lightened(faces: Vector3i, by: int) -> Vector3i:
+	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
+	return Vector3i(
+		mini(faces.x + by, clean), mini(faces.y + by, clean), mini(faces.z + by, clean))
 
 
 ## Where the expanding front stands on a given frame, as a radius in the same

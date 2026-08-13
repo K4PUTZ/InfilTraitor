@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 54679 lines total** (under `godot/scripts/`)
+**205 scripts · 54766 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1775,7 +1775,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 521 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 608 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 

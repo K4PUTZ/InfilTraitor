@@ -237,12 +237,54 @@ func update_cell(p_gu_cell: Vector2i) -> void:
 ## rotation moved it under one. No occlusion-ghosting involved on purpose —
 ## Director's call: these props should be hidden by geometry like anything
 ## else, not exempted from it.
+##
+## Only correct AT REST. `set_airborne()` below overrides it during a throw's
+## flight, for a reason this rule cannot see: it sorts by LEVEL, and a level is
+## a floor-height slot, not a real Z coordinate. A thrown grenade genuinely
+## leaves floor height (T-ARC's arc, 2026-08-13 measurement: up to ~400 world
+## px above ground at apex, the same order of magnitude as the wall column it
+## was found disappearing behind), so pinning it to level 0 for the whole
+## flight is exactly last time's bug, one level down: not "wrongly always on
+## top" but "wrongly always at the bottom," while it is nowhere near the
+## bottom.
 func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
 	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
 	if ground_layer != null:
 		z_index = ground_layer.z_index
+
+
+## Director, 2026-08-13: "o arco deve fazer parte do gameplay normal. Checar o
+## z-index da granada voando, pra não ficar atrás das paredes." It was: T-ARC's
+## flight loop moves `position` every frame but never touched `z_index`, left
+## pinned at `_apply_z_index()`'s level-0 value (set once, at `setup()`) for
+## the entire 0.6 s arc. Any wall or block whose screen silhouette the flight
+## path crossed drew in front of the grenade regardless of how high it
+## actually was — confirmed by instrumenting a real throw: z_index=10 (level
+## 0) unchanged across all 36 flight frames while the sprite rose 405 world px
+## above ground at its apex.
+##
+## The fix borrows OCC-03's own agent policy (`room.gd`'s
+## `agent.z_index = max_voxel_z_index + 1`) rather than inventing a height-to-
+## level mapping: for the few hundred milliseconds a grenade is genuinely
+## airborne, "draw above every real voxel column" is what an object flying
+## above the whole map's tallest geometry actually is, the same fact that
+## makes it true for the agent. This does not reopen the D22-FOLLOWUP mistake
+## above, because that was "always," full stop, applied to a prop that mostly
+## sits still on the floor; this is "only while airborne," which is a real,
+## different state the resting rule was never asked to cover.
+##
+## Called by TestZoneController right before the flight loop starts and again
+## (false) once the landing bounce settles — never during the post-landing
+## roll, which is real ground contact and belongs to `_apply_z_index()`.
+func set_airborne(airborne: bool) -> void:
+	if not airborne:
+		_apply_z_index()
+		return
+	if room == null or room._voxel_renderer == null:
+		return
+	z_index = room._voxel_renderer.get_max_voxel_z_index() + 1
 
 
 func _apply_direction(direction: String) -> void:

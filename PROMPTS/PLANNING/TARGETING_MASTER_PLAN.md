@@ -124,6 +124,23 @@ the throw clears the geometry in between, and its physics were tuned across two
 passes. One line in `_set_targeting_target()` moves it behind the same gate if
 that reading was wrong.
 
+**✅ CONFIRMED 2026-08-13** — Director: "o arco deve fazer parte do gameplay
+normal." Reading stands; T-ARC (the animated flight itself, not just this
+preview line) is a real player-facing feature, not a dev spectacle, which is
+what made its own z-index bug worth fixing rather than shrugging off as a
+dev-capture artefact — see `GrenadeProp.set_airborne()` and
+`test_zone_controller.gd`'s `_start_grenade_throw_animation()`:
+`_apply_z_index()` (D22-FOLLOWUP) pins the sprite to level-0 sorting once, at
+`setup()`, and the flight loop moved `position` every frame for 0.6 s without
+ever touching `z_index` again — confirmed by instrumenting a real throw,
+`z_index=10` unchanged across all 36 flight frames while the sprite rose 405
+world px above ground at its apex. Any wall the arc's screen path crossed drew
+in front of the grenade regardless of real height. Fixed by borrowing OCC-03's
+own agent policy (`max_voxel_z_index + 1`) for the duration of the flight only,
+restored to ground-level sorting once the landing bounce settles. Evidence:
+`grenade_flight_zindex_before_after.png` — same throw, same frame, stashed
+code vs fixed: invisible behind a wall vs correctly drawn in front of it.
+
 Everything below is measured in GAME UNITS and projected by `IsoProjection`
 (`godot/scripts/world/utilities/iso_projection.gd`), never in hand-picked pixels.
 Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
@@ -484,16 +501,23 @@ trace above is the evidence rather than a screenshot claimed to stand for one.
 ### 6.3 Found in passing, NOT this plan's to fix
 
 Both predate this work; neither surfaced on its own because both are
-silently-inert rather than visible breakage. One is now closed.
+silently-inert rather than visible breakage. Both are now closed.
 
-- **`detonation_choreographer_selftest` fails, deterministically.** "One frame
-  carries 367/403 steps (91.1%) — the sequence is collapsing again." Cause
-  confirmed by red/green: `[E-FUME] 20334c3` pulled soot out of `WAVE_TABLE`,
-  taking 546 of 949 steps out of the paced queue, and the front lost its spread.
-  Restoring those four rows returns the suite to 10 PASS / 0 FAIL with the
-  heaviest frame at 53.7%. This is the blast pacing the Director wants to close
-  next, so it belongs to `EXPLOSION_REBUILD_MASTER_PLAN`, not here. Still
-  failing as of 2026-08-12 (re-checked, unrelated to this session's work).
+- **`detonation_choreographer_selftest` fails, deterministically — CLOSED
+  2026-08-13.** Earlier diagnosis on this line (E-FUME pulled soot out of
+  `WAVE_TABLE`, restore four rows) was superseded before it was ever applied —
+  E-ORGANIC-02 (2026-08-12) replaced the constant with `wave_table_for(plan)`
+  entirely, so that fix no longer applied to the code that shipped. Real cause,
+  found by instrumenting the actual profile: the selftest's `_pick_source_gu()`
+  was copied from `detonation_plan_selftest.gd`'s scaffold, where returning
+  `Slice.gu_cell` (a wall's own solid GU) is correct — that file only tests
+  plan correctness and wants a guaranteed wall hit. Copied for a PACING test,
+  it detonated the fixture literally embedded in concrete, choked on every
+  side but one: 371/407 steps (91.2%) landed in the epicentre's own first
+  frame. Fix: `slice.gu_cell + Face.delta(slice.face)` — the open GU the wall
+  faces, not the wall itself. Real profile after: `[662, 466, 225, 50, 11]` of
+  1414 steps, worst 46.8%, matching the ~46% the real map measured
+  independently in the P-WARM session. `run_selftests.py` 35/35 clean.
 - **E-FRAG's post-blast debris has never fired — CLOSED 2026-08-12.** Two
   bugs, both silent because nothing but a real detonation exercises the path.
   `shrapnel_overlay.gd:49` and `debug_ray_overlay.gd:45` both called
@@ -515,17 +539,18 @@ silently-inert rather than visible breakage. One is now closed.
 ## 7. Schedule
 
 Tasks 1–4 are done, the whole chain runs end to end, **§6.1 A and B are both
-closed** (2026-08-11), and **E-FRAG/E-DEBUG-RAY are closed** (2026-08-12, §6.3).
-Next session, in order:
+closed** (2026-08-11), **E-FRAG/E-DEBUG-RAY are closed** (2026-08-12, §6.3),
+**§6.2 wall sectioning is closed** (2026-08-12, `c30601d`), **the
+`detonation_choreographer_selftest` fixture bug is closed** (2026-08-13,
+§6.3), and **the throw arc's z-index bug is closed** (2026-08-13, §4). The
+arc-stays-in-normal-play judgement call is confirmed, not reopened (§4).
 
-1. **§6.2 — wall sectioning of the dome, refined spec needed.** The
-   ray-clamp mechanism works and the height-aware data (`room.
-   _wall_height_edges`) is already retained — what's missing is the
-   Director's "mais angulosa" shape spelled out concretely (which geometric
-   primitive, what the transition looks like) before it goes back into
-   `AimBubbleOverlay`.
-2. Throw feel beyond that: SFX, and whether the arc should be dev-only after all
-   (see §4's flagged judgement call).
+What's left, in order:
+
+1. SFX for the throw — still nobody's asked for it yet, and it fits the
+   project's visual-first sequencing (sound is a later pillar, not started).
+2. `SOOT_MASTER_PLAN` §6 Q3 — closed 2026-08-13 (no accumulation needed), see
+   that plan directly.
 
 Nothing here blocks the blast-choreography work in §6.3, and vice versa.
 

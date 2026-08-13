@@ -642,6 +642,14 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## point directly under it, which on this path is the linear ground track from
 	## the hand's own floor point to the target. Taking it from the arc rather than
 	## re-deriving a second parabola is the same rule the tumble already follows.
+	## Z-INDEX-01 (Director, 2026-08-13): while airborne this prop must draw
+	## above every real voxel column, not sort by the level-0 value
+	## `_apply_z_index()` set at `setup()` — see `GrenadeProp.set_airborne()`
+	## for the full reasoning and the measurement that found the bug (405 px
+	## of real apex height, z_index frozen at level 0 the whole flight).
+	## Restored to ground-level sorting once the landing bounce settles, below.
+	sprite.set_airborne(true)
+
 	var turns: float = 0.0
 	var elapsed: float = 0.0
 	while elapsed < throw_duration_s:
@@ -674,6 +682,9 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		sprite.set_flight_height_px(lift)
 	sprite.position = target_world
 	sprite.set_flight_height_px(0.0)
+	## Back on the ground for real — the post-bounce roll is real floor
+	## contact and belongs under D22-FOLLOWUP's ordinary level-0 sort again.
+	sprite.set_airborne(false)
 
 	## COOKING — Director: "antes de pausar para ficar 'cooking' por aprox. 1
 	## segundo." The grenade sits on the ground for a beat before it goes off.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 54778 lines total** (under `godot/scripts/`)
+**205 scripts · 54831 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1106,7 +1106,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 321 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 363 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1138,6 +1138,7 @@ extends `Node2D` · 143 lines
 - `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
 - `func set_flight_height_px(px: float) -> void:`
 - `func update_cell(p_gu_cell: Vector2i) -> void:`
+- `func set_airborne(airborne: bool) -> void:`
 
 ---
 
@@ -4257,7 +4258,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1260 lines
+`class_name TestZoneController` · 1271 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

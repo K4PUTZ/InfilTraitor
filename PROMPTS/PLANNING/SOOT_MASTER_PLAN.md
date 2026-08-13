@@ -1,12 +1,13 @@
 # SOOT_MASTER_PLAN
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
-**Status:** 🟡 STUDY — nothing built. Written on the Director's request:
-*"Da uma estudada no jeito mais eficiente que nos permita ter fuligem realista
-sem comprometer a performance."*
+**Status:** 🟢 RATIFIED 2026-08-12 — §5 carries the tasks, none built yet.
+Written first as a study, on the Director's request: *"Da uma estudada no jeito
+mais eficiente que nos permita ter fuligem realista sem comprometer a
+performance."*
 
-**Supersedes nothing yet.** `EXPLOSION_REBUILD_MASTER_PLAN` §5 (E-SOOT) and
-`PREDICTION_MASTER_PLAN` §2.2 remain the standing record until this is ratified.
+**Supersedes nothing until a task lands.** `EXPLOSION_REBUILD_MASTER_PLAN` §5
+(E-SOOT) and `PREDICTION_MASTER_PLAN` §2.2 remain the standing record.
 
 ---
 
@@ -254,7 +255,104 @@ So deferral stays available as a lever, not as a requirement.
 
 ---
 
-## 5. Open questions for the Director
+## 4b. The fade-in, and the obvious mechanism that is wrong
+
+Director, 2026-08-12: *"queremos aplicar um tween up de opacidade, pra ela não
+surgir de repente."*
+
+**The tempting answer is a shader uniform, and it must be rejected.**
+`voxel_face_shading.gdshader` already applies soot as a per-face multiply
+(`soot_face_mult = vec4(0.33, 0.47, 0.69, 0.84)`, plus `soot_clean_mult = 1.0`),
+so a `soot_strength` uniform lerping each multiplier toward 1.0 would give a
+perfectly smooth ramp at zero per-cell cost — no re-minting, no `set_cell`,
+nothing.
+
+It is wrong because **that uniform is global to the material every voxel layer
+shares.** Ramping 0 → 1 does not fade the NEW soot in; it first wipes every
+existing scorch on the map to clean and then brings the lot back. A crater from
+an earlier grenade, or any firearm mark, would visibly flash clean and re-darken.
+Recorded here so the next reader does not rediscover the idea and ship it.
+
+**The mechanism that is correct: ramp the per-face RING CODE.** The codes are
+already a discrete ladder — 0, 1, 2, 3, and 4 = clean — so a cell whose final
+tone is ring 0 fades `clean → 3 → 2 → 1 → 0`, and one whose final tone is ring 3
+fades `clean → 3` in a single step. Darker cells therefore take longer to arrive,
+which reads as soot *settling* rather than as a uniform dissolve, and it is
+per-cell correct: nothing that is already sooted is touched.
+
+Its cost is the P-WARM lesson applied a third time: each ramp step writes new
+`(source, coords, alt)` triples, and any frame that mints one pays the TileSet
+rebuild. **So every ramp code is minted in ONE pass before the ramp starts**, and
+the steps themselves are then plain `set_cell`s. One rebuild, hidden under the
+smoke, instead of one per step.
+
+`FACE_SOOT_CODE_COUNT`'s ceiling is real and already measured — 5 tones "were
+asked for and do not fit" (shader header, PERF-02 B3-2) — so 4 + clean is the
+resolution the ramp has to work with. It is enough for a fade; it is not enough
+for a slow dissolve, and that is a constraint, not a tuning choice.
+
+### 4b.1 The Director's own proposal, recorded rather than dismissed
+
+Director, 2026-08-12: *"eu tinha pensado em calcular o frame com a fuligem,
+exportar e sobrepor com tween em cima da cena."*
+
+Render the sooted result to a texture, cross-fade it over the live scene, then
+swap the real tiles in underneath. **It solves the exact objection that killed
+the shader uniform** — the old soot is present in BOTH images, so it cannot
+flash — and it gives a genuinely continuous fade instead of four steps. It is the
+better idea on quality.
+
+Two things in this project's current shape stop it, and both are structural
+rather than fixable in passing:
+
+1. **The scene is animating under the fade.** Soot starts once the smoke is
+   rising, so a frozen snapshot would carry baked-in smoke that also renders
+   live underneath — every puff drawn twice, diverging as it drifts. Capturing
+   only the voxel layers would avoid that, but they are not isolated: overlays
+   interleave with them BY z_index (`AIM_Z_DOME`, the smoke, the embers, the
+   agent), so there is no subtree to snapshot.
+2. **The camera moves during it.** A screen-space overlay slides out of
+   alignment with the shake.
+
+Both dissolve if voxel rendering ever moves into its own SubViewport — which is a
+real option, and this is a real argument for it. Until then the ring-code ramp is
+the one that does not need the scene graph to change.
+
+**Judge it with the filmstrip.** Four steps under smoke may read perfectly well
+or may pop; that is a question for frame-by-frame evidence, not for either of us
+predicting. If it pops, this section is the alternative to come back to.
+
+---
+
+## 5. Tasks
+
+Ratified by the Director 2026-08-12: *"vamos gastar um tempo agora deixando a
+fuligem unificada e coerente com todo o sistema (...) De resto pode planejar como
+você achar mais adequado e implementar."*
+
+| id | task | why it is separable |
+|---|---|---|
+| **S-ONE** | One producer: `SootField` implements §2's exposure rule; blast and firearm both emit into it; stamp/self-soot/crater-floor absorbed | the whole correctness case |
+| **S-LOCAL** | Derive over the emitter's reach, not the map | drops soot's ~41 ms out of the walk |
+| **S-DEFER** | Soot computation starts once the smoke waves are dispatched | Director's own ask; frees the blast frames |
+| **S-FADE** | The ring-code ramp of §4b, minted in one pass | Director's own ask |
+| **S-DEDUP** | `room.gd`'s repaint path calls the same producer | ends the two-implementation drift |
+
+**Order: S-ONE → S-DEDUP → S-LOCAL → S-DEFER → S-FADE.**
+
+S-ONE first because every other task is cheaper once there is a single producer,
+and S-DEDUP immediately after because a second implementation left alive while
+the first is being rewritten is exactly how §1.2's drift happened. S-LOCAL is the
+only performance task and it is deliberately third — §1.4 shows it buys 57 ms
+against 1.2 s of slack, so it must not be allowed to set the schedule.
+
+**Gate for every task:** a real detonation pixel-diffed before and after at
+`INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400`. Soot is a look; the only
+acceptable differences are the ones a task is explicitly for.
+
+---
+
+## 6. Open questions for the Director
 
 1. **The stamp** — confirmed reformable rather than deleted: its job (a ring that
    destroys nothing still scorches) becomes the base rule in §2. Nothing to
@@ -267,7 +365,7 @@ So deferral stays available as a lever, not as a requirement.
 
 ---
 
-## 6. What to verify before building
+## 7. What to verify before building
 
 Red-before-green, in this order:
 

@@ -161,6 +161,36 @@ uses. Then:
   **self-soot's job, absorbed**;
 - a revealed crater floor is inside the reach — **§1.3's defect, absorbed**.
 
+### 2.0 What the A/B/C measured — and the correction it forces
+
+Before writing any of §2, the three configurations were rendered on the same real
+throw (same binary, same map, 400-frame settle). Evidence:
+`Screenshots/history/e_soot_abc_stamp_vs_bfs.png`.
+
+    A  today: BFS + self-soot                 baseline
+    B  stamp + BFS + self         A vs B:  43 135 px differ, max delta 69
+    C  stamp only (§2's rule)     A vs C:  77 168 px differ, max delta 84
+                                  B vs C:  36 277 px differ, max delta 84
+
+**§2's "one rule absorbs all three" is too strong as written, and C is the proof.**
+The stamp alone is not a drop-in for today — it is a substantially different
+picture, and a worse one in a specific way: it paints BROAD, even coverage the
+BFS structurally cannot (the BFS needs holes), but it does not deliver the dark
+irregular CORE the BFS produces around real destruction. B, with both, reads most
+like a real burn: wide scorch with a hot centre.
+
+So the two are complementary **in practice**, not redundant, and the honest
+target is one rule with TWO TERMS — a distance falloff for coverage plus a
+stronger term where the surface actually broke — rather than deleting two of
+three producers. That is still one mechanism, one code path and one tone curve;
+it is not "keep the BFS". The dark core has to come out of the rule, not out of a
+second traversal.
+
+Why the stamp's core is weak is worth checking before tuning it: `frag_grenade`'s
+`soot_ring_tones` already starts at 0 (the darkest tone), so the ramp is not the
+obvious culprit. `stamp_crater_soot()` writes only `Vector3i(tone, CLEAN, CLEAN)`
+— **the top face alone** — which is a real candidate and is cheap to test.
+
 ### 2.1 Coherent across explosives and firearms
 
 The Director's requirement: *"queremos um sistema de fuligem que seja coerente

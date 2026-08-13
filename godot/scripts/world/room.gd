@@ -3884,7 +3884,24 @@ func _run_auto_screenshot_capture() -> void:
 			w_key_up.keycode = KEY_ENTER
 			w_key_up.pressed = false
 			Input.parse_input_event(w_key_up)
-			for _j in range(30):
+			## E-SPARK-CAP (Director, 2026-08-13: *"não to conseguindo ver os
+			## efeitos… consegue tirar um print dos efeitos acontecendo?"*).
+			##
+			## The fixed 30 was why they could not. A spark lives 0.2-0.4 s
+			## (`SmokeSparkOverlay.spark_duration_min/max`), and this capture
+			## harness renders off-screen at a small fraction of real time — so
+			## by frame 30 every spark from that shot had died, several times
+			## over. The firearm VFX have been correct and effectively
+			## uncapturable for as long as this action has existed; no capture
+			## in the repo shows them.
+			##
+			## `INFILTRAITOR_CAPTURE_WEAPON_WAIT_FRAMES` mirrors
+			## INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES exactly, which the
+			## detonation side has had since the filmstrip work. Default
+			## unchanged, so every existing use of this action is untouched.
+			var w_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_WEAPON_WAIT_FRAMES")
+			var w_wait := w_wait_env.to_int() if w_wait_env.is_valid_int() else 30
+			for _j in range(maxi(w_wait, 0)):
 				await get_tree().process_frame
 	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _test_zone_controller != null:
 		## TEST-ZONE placeholder (2026-07-21) dev capture action, same

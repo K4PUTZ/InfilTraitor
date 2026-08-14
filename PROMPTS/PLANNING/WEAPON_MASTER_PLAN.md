@@ -61,6 +61,53 @@ weapons exist, and what shape of effect does each one put into the world.**
 
 ---
 
+## 0. NEXT SESSION — firearm pre-production (W-PRECOOK, Director 2026-08-13)
+
+*"Vamos fazer a pré-produção da arma de fogo também, na próxima sessão."*
+
+**The measurement that scheduled it.** A real 24-pellet shotgun on the PLAYGROUND
+bench, instrumented by `[SHOT-PROF]` (`WeaponBenchController.fire_active()`):
+
+    resolve 1.00 ms cpu · render 4.9 ms wall over 0 frame(s) · repaint 309.89 ms cpu ·  9 voxel(s)
+    resolve 1.09 ms cpu · render 7.9 ms wall over 0 frame(s) · repaint 322.64 ms cpu · 18 voxel(s)
+
+Damage resolution is **1 ms**. The async render pass PERF-01 built the
+`_destruction_render_busy` latch to spread needs **zero extra frames** — a real
+shot is 9-18 voxels. **The entire cost of firing is
+`_repaint_voxel_light_buckets()`: ~310 ms of real, synchronous CPU on the frame
+the player clicks**, for nine voxels.
+
+The contrast is the whole argument. On the same machine a grenade destroying
+**453** voxels commits in 0.5 ms and paints in five ~1 ms frames, because its
+light field is resolved inside `build_plan()` during the THROW (P-COOK/P-WARM,
+`PREDICTION_MASTER_PLAN`). The firearm has no pre-production at all.
+
+**That repaint is load-bearing, not waste** — D24 derives the bullet's soot from
+it — so this is not a delete-it fix.
+
+**Two routes, and the choice is the session's first question:**
+
+1. **Reuse the prediction layer.** A shot's target is picked through a contextual
+   menu (D25), so there IS a window between "player opens the menu" and "player
+   confirms" — the same shape P-COOK exploits for the throw. The firearm would
+   need its own `build_plan()` equivalent; `apply_point_impact()` shares neither
+   blast mutator (PREDICTION_MASTER_PLAN §2.3), so this is new work, not a
+   re-point.
+2. **Make the repaint incremental.** Scope it to the shot's own voxels plus their
+   soot reach instead of the map. Smaller change, but `VoxelLightField.build()`
+   is shared with the blast and the repaint path, so "incremental" has to be
+   proven not to diverge from the full rebuild — the exact drift SOOT_MASTER_PLAN
+   §1.2 found between two soot producers.
+
+**Also queued for that session, Director's own:** *"vamos lembrar de conferir
+depois se o cache do Baking System e os decals estão funcionando corretamente. Eu
+vou preparar um segundo set de texturas."* — verify that a changed texture set
+invalidates the bake cache correctly, that `BAKE_CODE_VERSION` /
+`DAMAGE_BAKE_LOCAL_VERSION` do what they promise, and that decals recomposite
+over the new art.
+
+---
+
 ## 1. Why — the pains this serves
 
 The engine has exactly one weapon and one destruction shape, and they are welded

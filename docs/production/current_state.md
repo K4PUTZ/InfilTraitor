@@ -419,7 +419,14 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (80% — Alpha, functional and polished; Phase A complete + prediction layer, Phase B built)
+### Explosive Destruction (85% — Alpha; **both master plans CLOSED 2026-08-13**, Phase A + B built, VFX foundation complete)
+
+> **NEXT SESSION (Director-scheduled):** firearm pre-production (W-PRECOOK) —
+> a shot's entire cost is `_repaint_voxel_light_buckets()`, ~310 ms of
+> synchronous CPU for nine voxels, against 0.5 ms for a 453-voxel blast that
+> pre-computes during the throw. Full measurement and the two candidate routes:
+> `WEAPON_MASTER_PLAN` §0. Queued alongside it: verify the Baking System cache
+> and decals against a second texture set.
 
 ✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
 camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:

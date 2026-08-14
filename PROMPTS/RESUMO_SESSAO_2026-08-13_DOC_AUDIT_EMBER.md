@@ -1,4 +1,4 @@
-# RESUMO_SESSAO — 2026-08-13 (doc-vs-code audit → E-EMBER-01 / E-SMOKE-TINT-01)
+# RESUMO_SESSAO — 2026-08-13 (doc audit → the whole destruction/VFX close-out)
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-13_E_CONTRAST_FLOOR_SHADE.md`
 **VERSION:** 0.9.100 → **0.9.101** ("Alpha Ember Tuning")
@@ -183,12 +183,79 @@ Evidence: `e_ember02_filmstrip_wood_2026-08-13.png` (ignition, ~0.6 s — a
 (~1.2 s, vivid), `e_ember02_wood_cooling_120f` (~2 s, deep red) and `_240f`
 (~4 s, out — charred wall, soot around the crater). Plan selftest 25/25.
 
+## 5c. The rest of the session — VFX foundation, plan closure, runtime hardening
+
+**E-AUDIT.** A sweep of the explosion mechanism for loose ends found four, the
+worst being `blast_burst_ember_spread_px` — a tuning field whose declaration
+documents "the one relationship worth preserving when retuning" and which **no
+code reads**. The `slab_full_color` shape exactly, and the E-EMBER-02 rise
+retune had walked straight past it. Now an `assert` (stripped in release).
+
+**E-DEBRIS-01.** Dust, sparks and wood chips finally reach explosions — the gap
+§5 flagged on 2026-08-07 with an explicit "ask first". The load-bearing decision
+was a UNIT CONVERSION, not taste: `vfx_*_chance` is per destroyed voxel and was
+calibrated against a firearm (a handful of voxels); a grenade destroys 243-500.
+Blast rates are one documented fraction of the firearm ones
+(`blast_debris_rate_scale`). A prediction made and disproven, kept in the code:
+sparks looked unreachable for metal (destroy_factor 0.03) — but
+`apply_crater_damage()` ignores destroy_factor, so a metal FLOOR loses 143.
+
+**E-SPARK-CAP → E-SPARK-01.** Director: *"o metal deveria gerar bastante faísca
+num tiro da shotgun."* It generated none. Two problems, and the second was real:
+the capture harness waited a fixed 30 frames while a spark lives 0.2-0.4 s (so
+firearm VFX had been effectively uncapturable for as long as the action
+existed); and `_dispatch_destruction_vfx()` runs off `voxel_destroyed`, which a
+shotgun on metal (punch 0.29-0.39) or stone (0.42-0.53) **structurally never
+reaches**. Those two produced nothing while wood got everything — the exact
+inverse of the intent, and the VFX half of the gap D33-SOOT-01 closed for soot.
+
+**E-SPARK-02/03/04, E-DUST-01, E-MUZZLE-01/02.** Sparks: longer-lived, faster, a
+tapered fading trail whose length follows the particle's own speed, no gravity,
+per-material ladder (metal a lot → wood none). **Dust was invisible BY
+CONSTRUCTION** — 0.9-1.1 s before falling, alpha ramping 0→1 *while* falling, 1.6
+px specks. Muzzle flash + powder smoke built from the project's own overlays per
+E-NATIVE-01 rather than from the reference sprite sheets the Director shared.
+Three measured mistakes on the way, all fixed: the flash inherited the cooling
+ramp (red fireball), inherited `glow_radius` tuned down for crater coals, and —
+misdiagnosed twice — the black hole in its middle was `EmberOverlay`'s dark
+BURN-OUT puff, not the muzzle's pale smoke.
+
+**Both master plans CLOSED**, Director-ratified. The sweep found six items listed
+as open that were already closed or moot in code, and one doc instruction telling
+implementers to snapshot `_base_soot` — a field D24 deleted in that same
+document. The GPU-flush safeguard closed WON'T DO: folding the flush into
+`apply_damage_voxel_swap()` would flush once per VOXEL and undo PERF-02 A1.
+
+**E-DEBUG-RAY removed**, with `AnimatedRayOverlay` (E-RAY) alongside it — it was
+that overlay's only consumer. Checked whole-repo first, per the 2026-07-12
+lesson; one trap cleared on the way (`DebugRayOverlay.clear()` clears the SHARED
+ray overlay, but both call sites already clear it directly on the line above).
+
+**REG-STRONG-01.** `Registries` held every registry through a `WeakRef`, and
+nothing else holds one — so each was collected between accesses and REBUILT FROM
+DISK. Measured on one throw: bomb registry **4×**, material registry **2×**. The
+fix was already in the same file six lines down (`_frame_cache`, FRAME-MEM-01).
+Verified: one load each, and the process still exits 0 with no SIGABRT.
+
+**RUNTIME-GUARD-01 / W-GUARD-01.** `DetonationChoreographer` is RefCounted and
+lives across its awaits, but `VoxelRenderer` is a child of the room and
+`load_map()` builds a new one. The class header claimed this was safe — true for
+QUIT, false for RELOAD. Both await sites now revalidate and abandon loudly;
+`TestZoneController.clear()` drops the active choreographer. Same treatment on
+the firearm path, plus its busy-latch rejection made loud (a silent guard on a
+self-clearing latch is indistinguishable from a broken one).
+
 ## 6. What's open
 
-1. **Blast DUST / SPARK / CHIP debris** (wood splinters included) still never
-   fires for explosions, only firearms. No longer blocked by anything —
-   E-SMOKE-TINT-01 demonstrated the threading — just unrequested.
-2. `flammability`'s magnitude only scales ember duration today. Every other
+1. **NEXT SESSION — firearm pre-production (W-PRECOOK).** Measured: a shot's
+   whole cost is `_repaint_voxel_light_buckets()`, **~310 ms of synchronous CPU
+   for nine voxels**, while a 453-voxel blast commits in 0.5 ms because its light
+   field is resolved during the throw. The repaint is load-bearing (D24 derives
+   bullet soot from it), so it is not a deletion. Two routes and the numbers are
+   written up as `WEAPON_MASTER_PLAN` §0.
+2. **Also next session:** verify the Baking System cache and the decals against
+   the second texture set the Director is preparing.
+3. `flammability`'s magnitude only scales ember duration today. Every other
    consumer (burning through, blocking light until burnt, opening passages) is
    the **materials milestone**.
 3. Carried over unchanged: `weapon_fire`'s repaint has no deterministic pixel

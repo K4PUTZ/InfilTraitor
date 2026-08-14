@@ -215,10 +215,19 @@ func _view_facing_delta(base_facing: String) -> Vector2i:
 func fire_active() -> void:
 	if _active_index < 0 or _active_index >= _weapons.size():
 		return
-	## PERF-01: a render pass from an earlier fire/detonate is still spread
-	## across frames — refuse to start a second one racing on the same
-	## TileMapLayers. Silent no-op, same idiom as the guards above.
+	## PERF-01: a render pass from an earlier fire is still spread across frames
+	## — refuse to start a second one racing on the same TileMapLayers.
+	##
+	## W-GUARD-01 (2026-08-13): NO LONGER SILENT. This flag is set true, then
+	## awaited across, then set false; if anything between those two lines ever
+	## fails to resume, every subsequent shot becomes a no-op with no symptom at
+	## all — the trigger just stops working and nothing says why. The whole point
+	## of the project's loud-fail contract is that a silent guard on a
+	## self-cleared latch is indistinguishable from a broken one. It is also, as
+	## of the 2026-08-05 reset, the ONLY consumer of this flag: the grenade path
+	## dropped it and never took it back.
 	if room._destruction_render_busy:
+		push_warning("[WeaponBenchController] shot ignored — a destruction render pass is still running. If this repeats with no shot in flight, _destruction_render_busy was left set by an interrupted pass.")
 		return
 	var w: Dictionary = _weapons[_active_index]
 	var weapon_def = Registries.get_weapon_registry().get_weapon(w["weapon_id"])
@@ -273,6 +282,8 @@ func fire_active() -> void:
 			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count, _blocked_edges_dict(),
 			room._blocked_cells, pellet_salt)
 
+	var shot_us := Time.get_ticks_usec()   ## W-PROF-01, see the print at the end
+	var shot_frame := Engine.get_frames_drawn()
 	var cell_to_voxel: Dictionary = {}
 	## E-SPARK-01: one impact VFX per voxel per SHOT, not per pellet.
 	var _impact_vfx_done: Dictionary = {}
@@ -368,14 +379,48 @@ func fire_active() -> void:
 
 	## PERF-01: spread across frames instead of one synchronous batch — see
 	## TestZoneController.detonate_active()'s matching comment.
+	##
+	## W-GUARD-01: every `await` below is a place the ROOM can go away — a map
+	## load frees it and builds a new VoxelRenderer, and this coroutine would
+	## resume reaching through a freed `room`. Same defect class as
+	## RUNTIME-GUARD-01 on the blast side, same fix: revalidate and abandon
+	## loudly. The busy flag needs no separate rescue on that path — it lives on
+	## the room that just went away.
 	room._destruction_render_busy = true
+	var render_us := Time.get_ticks_usec()
 	await room._voxel_renderer.process_dirty_async(room._edge_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+		push_warning("[WeaponBenchController] room went away mid-shot (map reload?) — render pass abandoned")
+		return
 	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+		push_warning("[WeaponBenchController] room went away mid-shot (map reload?) — render pass abandoned")
+		return
+	var render_wall_ms: float = float(Time.get_ticks_usec() - render_us) / 1000.0
+	var render_frames: int = Engine.get_frames_drawn() - shot_frame
 	## PERF-03: same contract as TestZoneController's own repaint — a shot
 	## changes geometry and soot only, never a light or a shadow result.
+	var repaint_us := Time.get_ticks_usec()
 	if room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
+	var repaint_ms: float = float(Time.get_ticks_usec() - repaint_us) / 1000.0
 	room._destruction_render_busy = false
+	## W-PROF-01: the firearm path has no pre-production (P-COOK/P-WARM cover the
+	## grenade only), so unlike a blast it pays everything at the trigger — worth
+	## PRINTING rather than assuming, the same reason `[E-PLAN] census cost=`
+	## exists on the blast side.
+	##
+	## THE THREE NUMBERS ARE NOT THE SAME KIND OF NUMBER, and the first version of
+	## this line hid that: `render` spans two frame-spread `await`s, so it is WALL
+	## CLOCK and mostly frame waiting — it read as 322 ms for NINE voxels on the
+	## off-screen harness, which would have looked like a catastrophic cost and is
+	## really ~3 slow frames of doing nothing. The frame count is printed beside it
+	## for exactly that reason. `resolve` and `repaint` are real CPU.
+	## This is the same trap DetonationChoreographer's header warns about from the
+	## other direction ("read the totals, never the apply column").
+	print_debug("[SHOT-PROF] resolve %.2f ms cpu · render %.1f ms wall over %d frame(s) · repaint %.2f ms cpu · %d voxel(s)" % [
+		float(render_us - shot_us) / 1000.0, render_wall_ms, render_frames,
+		repaint_ms, cell_to_voxel.size()])
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**203 scripts · 56491 lines total** (under `godot/scripts/`)
+**203 scripts · 56536 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4281,7 +4281,7 @@ extends `Node2D` · 34 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 449 lines
+`class_name WeaponBenchController` · 494 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 

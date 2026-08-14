@@ -2094,6 +2094,19 @@ whether to fold the flush into `apply_damage_voxel_swap()` itself so no future
 caller can forget, rather than keep trusting every call site. D34 did not
 touch this.
 
+**2026-08-13 sweep — the proposed safeguard is the wrong one, and that is now
+measured rather than undecided.** Folding the flush into
+`apply_damage_voxel_swap()` would flush ONCE PER VOXEL. PERF-02 A1 deliberately
+moved it the other way — every current call site flushes once per BATCH
+(`process_dirty()`, `process_dirty_slabs()`, their async twins) or once per FRAME
+(`DetonationChoreographer._flush()`), with the comment "one upload per page this
+batch composited into, instead of one per composited atom". The safeguard as
+written would undo that optimisation to protect against a bug class that has bitten
+twice. **Recommendation: close this as WON'T DO on those grounds**, and if a guard
+is still wanted, make it a debug-only assertion that no frame ends with dirty
+composite pages — which catches the same forgetfulness without moving a single
+upload. Not built: it is a Director call, not a sweep's to make.
+
 ## E-DENT-01 / E-CRACK-01 (2026-08-08) — the soot stamp is off, and the floor finally cracks
 
 Two Director calls in one session, both landed and pushed.
@@ -2560,11 +2573,12 @@ it), `e_native_burst.png`, `e_native_smoke_core.png`.
 3. Two items Task 5 flagged and deliberately did NOT resolve, both real
    design questions for the Director rather than something to guess past a
    second time:
-   - **Blast debris VFX** — dust/spark/chip puffs (VFX-01) no longer fire
-     for blast-caused destruction (only for firearms). Reinstating them
-     needs material threaded onto the `DetonationPlan`'s destroy entries
-     (§6.1's shape is `{cell, level}` only today) — a real, if small,
-     schema change, not a quick patch. Ask before building it.
+   - ~~**Blast debris VFX**~~ **CLOSED 2026-08-13 (E-DEBRIS-01, §11b).** Built
+     exactly as predicted here — material threaded onto plan entries — but as
+     its own `debris` wave rather than nested on `destroy`, and with the blast
+     rates expressed as one documented fraction of the firearm ones, because
+     those chances are per destroyed voxel and a grenade destroys 243-500 where
+     a shot destroys a handful.
    - **§6.3's deferred-soot-compute question (D8)** — run the soot
      light-query on a background thread, or synchronously after wave 1
      dispatches. Task 4/5 never needed it: `build_plan()`'s own measured
@@ -2574,10 +2588,12 @@ it), `e_native_burst.png`, `e_native_smoke_core.png`.
      containers, not more rings) is measured to actually need the slack.
 4. D18 still stands: roof holes are a lighting event, never a player access
    route — nothing building on Task 5 should treat one as an entry point.
-5. Camera rotation is still disabled (ROTATE-KILL-01, §9). The stamped-blast
-   soot's own rotation-persistence (an *event* replay list feeding
-   `stamp_container_soot()`/`stamp_crater_soot()` again on rotation, per
-   Task 3's own closure note) was never built — this is currently
+5. Camera rotation is still disabled (ROTATE-KILL-01, §9). **The stamped-blast
+   soot half of this item is now MOOT, not open** — `stamp_container_soot()` and
+   `stamp_crater_soot()` were deleted outright by S-KILL-STAMP (2026-08-12, 346
+   lines at 0 differing pixels), so there is no stamp left to replay. Kept for
+   the record: its rotation-persistence (an *event* replay list feeding those
+   two again on rotation, per Task 3's own closure note) was never built — this is currently
    unreachable to even test with rotation off, so it stays deliberately
    unbuilt rather than guessed at. Build it when rotation comes back, not
    before — `_base_damage`'s DAMAGE STATE (not soot) already survives
@@ -2585,8 +2601,10 @@ it), `e_native_burst.png`, `e_native_smoke_core.png`.
    path Task 5 wired in.
 
 **Do not:**
-- start Phase B (targeting UI, bubble, throw, explosion frames) — the Director
-  chose Phase A first, deliberately, so the 15 waves are verifiable with real
+- ~~start Phase B~~ **— SPENT. Phase B was built 2026-08-10/11 and is its own
+  document now (`TARGETING_MASTER_PLAN`, 🟢 BUILT).** The instruction is kept
+  because its REASON still reads correctly and is worth carrying: the Director
+  chose Phase A first, deliberately, so the waves are verifiable with real
   captures before they get wrapped in animation. Q6's bubble description and
   XCOM reference (2026-08-06) are recorded in §10 for when Phase B starts —
   Phase A being functionally complete (Task 5) is still not that signal;

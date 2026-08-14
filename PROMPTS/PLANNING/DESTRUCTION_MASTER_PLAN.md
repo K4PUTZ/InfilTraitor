@@ -452,8 +452,10 @@ not just in isolated tests:
   **actually rendering in the real running game**, not just in isolated
   tests.
 - **Still open:** legacy floor artwork (Part 4's retirement target) still
-  exists and will need retiring once the new floor is ratified. D18's actual
-  lazy-reveal *trigger* (Part 3, not built), deeper cosmetic storeys
+  exists and will need retiring once the new floor is ratified. ~~D18's actual
+  lazy-reveal *trigger*~~ (**built 2026-08-07** — the plan's `expose` entries;
+  64 of them resolved on the real PLAYGROUND blast the plan selftest measures),
+  deeper cosmetic storeys
   (storey −2 and below: lava/water/smoke), `usage_cells` (D3), depth shading
   (D7) and the 16-variant coarse composite (D14) remain open.
 
@@ -908,13 +910,20 @@ anything consumes it; Part 3 must not be bundled with it.
      Only character RPG progression survives.
 
    **Implementation, and it is cheap — the shape is already right:**
-   `room._base_damage` and `room._base_soot` are `Dictionary[Vector3i → int]` in
+   `room._base_damage` is a `Dictionary[Vector3i → int]` in
    **base (un-rotated) coordinates**, so a snapshot is `duplicate()` and a
    restore is a replace plus the `reapply_damage()` pass VL-PERSIST already runs
    after every perspective rotation. **The one real constraint:** the store
    cannot live on `room`, which is destroyed exactly when a segment unloads —
    it belongs in an autoload, the same lifecycle reason `Registries` owns the
    other registries (`FIX-SHUTDOWN-CRASH-01b`).
+
+   *(Corrected 2026-08-13: this paragraph used to say "`room._base_damage` and
+   `room._base_soot`". **`_base_soot` was deleted by D24 in this same
+   document** — soot is derived fresh every repaint from which voxels are
+   absent, so `_base_damage` alone is the whole payload and re-derivation does
+   the rest. A future implementer following the old text would have gone looking
+   for a field that has not existed since 2026-07-30.)*
 
    **Still open:** whether ember/soot decay, `_under_structure`, and any future
    fire state ride the same snapshot; and the full inventory of *other*
@@ -927,7 +936,16 @@ anything consumes it; Part 3 must not be bundled with it.
    many simultaneous layers** — headless has no display driver and cannot
    measure this. Carry forward as a non-blocking check before Part 1/2 ship
    broadly, not before Part 1 starts.
-2. **D9 (speculative pre-compute)** — deferred; revisit only if Part 0/3 measurements demand it.
+2. ~~**D9 (speculative pre-compute)**~~ **— ANSWERED 2026-08-09 by the
+   prediction layer, and the answer was yes.** `PREDICTION_MASTER_PLAN` shipped
+   all 6 tasks: `build_plan()` is pure, a plan is computed the moment a target is
+   picked (P-COOK — "the prediction started when the menu opened and is normally
+   already finished"), cached by `PredictionCache` on
+   `(signature, world_revision)`, and thrown away when the cursor moves. That is
+   exactly the "player thinking time is free compute" this item deferred. The
+   trap it warned about — building a predictor to save nothing — was avoided by
+   measurement: ~190 ms of synchronous work moved out of the frame the player
+   clicks on.
 3. ~~**Rule 8 amendment**~~ **DONE with Part 1, 2026-07-15** —
    Rule 8 (now in `CLAUDE.md`, originally `OPERATOR_CONTEXT.md`) explicitly
    covers Slab voxels alongside wall voxels.

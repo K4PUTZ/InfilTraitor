@@ -739,7 +739,23 @@ boundary while the eye is tracking translation, movement needs **no transition
 yaws at all** and only aim mode pays for the other 92 — which is the 744-body-set
 row, not 4608.
 
-**Awaiting the Director's blind judgement.**
+### 🟡 Corner result — PROVISIONAL, 2026-08-15
+
+Director: *"A ficou péssima, sem chance. A D me parece que é a melhor, mas ele dá
+mais passos do que tem chão embaixo."* Key: A = TURN_THEN_MOVE, D = **SNAP**.
+
+- **TURN_THEN_MOVE is rejected outright.** The deliberate 833 ms turn does not
+  belong in ordinary movement — consistent with the Director's own split between
+  target selection and getting from GU to GU.
+- **SNAP leads**, which if it holds collapses §9 #10 to its **744-body-set** row:
+  movement needs no transition yaws and only aim mode pays for the other 92.
+
+**Held PROVISIONAL, on the Director's own condition** — the stride was wrong, and
+they counted it. `s2_corner_render.py`'s `STRIDE_M` is distance per *full cycle*
+(two footfalls), so 0.80 m gave **four footfalls per 1.60 m GU**; a 1.96 m figure
+takes about two. Exactly 2× too many, which is why the feet outran the floor. The
+mechanism ranking is unlikely to move — footfall count is not what distinguishes
+the four — but a provisional result on a stated defect is not a settled one.
 
 ### ⚠️ What 23 in-betweens costs, and the one question that decides it
 
@@ -824,8 +840,9 @@ count. That is the number Part 0 exists to start pinning down.
 
 ## 9. Open questions
 
-1. **Bone set** — §4.2's ~20-bone list is proposed, not ratified. Prone and
-   full-cover crouch are the poses most likely to demand more.
+1. **Bone set** — §4.2's ~20-bone list is proposed, not ratified, and is now
+   BUILT as 20 in Part 1. Prone and full-cover crouch are the poses most likely
+   to demand more.
 2. **How many silhouette classes** — D33 recommends 3–4 against seven armour
    tiers. The single number that most moves §8.
 3. ~~**Character height**~~ **RESOLVED 2026-08-14 — see §4.7.** One voxel is

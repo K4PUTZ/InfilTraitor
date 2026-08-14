@@ -828,6 +828,48 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 
 ---
 
+### ⏳ GAMEPLAY-01 — The Non-Combat Turn *(new 2026-08-14, Director direct)*
+**Objective:** The systems that make a turn playable *before* anyone shoots —
+the home the Director assigned to every ownerless mechanic that came out of the
+character conversation.
+
+*"As questões sem dono entram em GAMEPLAY, que é paralelo ou anterior a combate.
+Vai tocar em AI dos guardas, movimentação, destruição de lâmpadas, som,
+detecção, etc."* (Director, 2026-08-14)
+
+**Dependencies:** none hard. **Parallel to or prior to GAME-01** — the Director's
+own framing, and the reason this milestone sits above it in this file.
+
+**Estimated Duration:** not estimated — scope is an enumeration, not a design.
+
+**Deliverables** *(the Director's own list, 2026-08-14 — recorded verbatim in
+substance, NOT expanded into a designed scope by the agent)*:
+- **Distraction / misdirection as an agent verb** — whistle to attract, throw a
+  stone to distract, bang on walls, build noise-emitting devices (the Director's
+  named reference: *Alien Isolation*).
+- **Manipulable NPCs** — map NPCs that can be worked positively or negatively;
+  not complex dialogue trees, but an interaction mechanic, up to and including
+  the comic beat (*"olha o passarinho"*) that neutralises a guard.
+- **Guard AI**, **movement**, **sound**, **detection** — the existing tracks
+  (AI-02, AI-03, M2.14) are the detail owners; this milestone is where they meet
+  the new verbs.
+- **Lamp destruction** — shooting out a light to manufacture shadow. Connects
+  three already-built systems (destruction, `LightRegistry`/`LightSource`,
+  `exposure_system.gd`) that have never been wired to each other for this.
+
+**Why it has no owner document yet:** noise is built (`DESIGN_MASTER_PLAN` §5)
+and the sound lure exists as a gadget (§10.4), but *the agent* whistling is a new
+verb and a manipulable NPC is a new system. The design belongs here, and is
+**not written** — see `ACTOR_MASTER_PLAN` §7's closing note, which is where these
+were parked before this milestone existed.
+
+**Design lineage:** this is the mechanical translation of the persona ratified in
+`ACTOR_MASTER_PLAN` D32 — a cunning operator who *"persuades and deceives."* In a
+stealth game that is not dialogue; it is manipulating what the enemy **knows**,
+which makes `GuardKnowledge` (§12.2) the system these verbs actually target.
+
+---
+
 ### ⏳ GAME-01 — Combat System Foundation
 **Objective:** Basic combat resolution and damage modeling.
 
@@ -995,6 +1037,66 @@ W-PRECOOK mais cedo, vamos fazer ele no final da milestone de combate."*
 - Progression is rewarding
 - Difficulty remains challenging
 - No trivializing mechanics
+
+---
+
+### ⏳ MONET-01 — Shop, Economy & Social Surface *(new 2026-08-14, Director direct)*
+**Objective:** The revenue half of the endless model — shop, currency, cosmetic
+delivery, gifting, and the forum/lobby where a player's avatar is seen by other
+players.
+
+**Dependencies:** M5.05. Progression must exist before there are tiers to hang
+cosmetics on, and before any of this can be balanced against a real game.
+
+**Placed here deliberately, and NOT before optimization.** The Director asked
+where this belongs (*"Colocar antes da otimização do código? Ou trabalhar nisso
+quando a engine já estiver funcionando?"*). The answer is that monetisation has
+**two halves with opposite schedules**, and only one of them is a milestone:
+
+- **The asset contract — already ratified, and it lands with the character, not
+  here.** What is a baked layer vs. a runtime uniform (`ACTOR_MASTER_PLAN` D34),
+  cosmetics may express state but never grant it (D36), the tier→silhouette
+  model (D33). These had to be settled *before the first character asset is
+  authored*, because the asset pipeline is built around them — which is why they
+  are D-rows in the actor plan and not deliverables in this milestone.
+- **The store itself — this milestone.** Cannot be tuned before there is a game
+  to tune it against.
+
+Building the store early and deciding the asset contract late would have been the
+two available mistakes; this split avoids both.
+
+**Estimated Duration:** not estimated.
+
+**Deliverables:**
+- Shop + currency/economy; ads integration per `DESIGN_MASTER_PLAN` §16
+- Cosmetic catalog and delivery — the natural carrier is `TextureResolver`'s
+  `user:// → default:// → material-only` chain (`ACTOR_MASTER_PLAN` D38: the
+  bake **compositor** does not transfer to characters, but that fallback ladder
+  is exactly a per-player content-delivery contract)
+- Gifting power-ups between players — *"sem ficar infernizando com lembretes, nem
+  depender disso pra jogar"* (Director), and guarded against the never-pay-to-win
+  erosion D36 names
+- Forum / lobby surface where the big 3D display model (D33/D35) is the avatar
+- Item market (`DESIGN_MASTER_PLAN` §16, `[Future]`) — still future, still open
+  in §18
+
+**Acceptance Criteria:**
+- **Never pay-to-win holds**, including through the gifting path
+- Every purchasable state indicator has a non-purchasable fallback (D36 / actor
+  plan §7 #24)
+- Economy is tunable from data, per §19 Rule 1
+
+**Documentation review, 2026-08-14 (Director-requested — *"veja se não tem nada
+sobre a monetização no arquivo histórico ou no repo"*).** Searched
+`milestones.md`, `roadmap.md`, `current_state.md`, the design-concepts archive
+and the whole repo. **Result: nothing existed.** No monetisation milestone
+anywhere across 40+ milestones. The entire body of monetisation design is
+`DESIGN_MASTER_PLAN` §16 (nine table rows) and its Portuguese original,
+`docs/history/design-concepts/infiltraitor_master_design.md` §15 — the same nine
+rows, not additional material — plus scattered `[Future]` mentions in
+`roadmap.md`. Every other repo hit for "cosmetic" means *merely visual* (shadow
+spill, halos), not commerce. **This milestone is therefore the first monetisation
+artifact in the project.**
 
 ---
 

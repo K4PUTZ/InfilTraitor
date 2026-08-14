@@ -1,5 +1,5 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.8
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.9
 
 > ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
 >
@@ -161,6 +161,22 @@ specifically** (D35), and **D16's twin/simplification split gains a second
 justification** it was not designed for — monetisation, not bake cost (D33/D38).
 Parts 1/3/4 remain unwritten on purpose.
 
+**v1.9 (2026-08-14, same-day continuation):** **D39–D42**, from the Director's
+reply to v1.8. The substantive change is that **poses were never the deliverable
+— animation between them is** (D39), which is what turns D35's rig from a
+convenience into the load-bearing choice, and which puts the facing count under
+an *open gameplay* decision (diagonal movement, `DESIGN_MASTER_PLAN` §18) rather
+than an art one. D40 answers the Director's own worry about animating clothing —
+it does not arise, because D33 already made armour a silhouette class rather than
+an item — and **refines D34's weapon term**: the weapon layer indexes on grip
+(≈3), not on pose (≥8). D41 makes guards nearly free and, in doing so, answers
+§7 #6 and settles #21 *for guards* (turn through, authored head lead). D42
+sharpens D19: the binding constraint is **RAM, not CPU**, and the dominant
+mitigation is that D34's multiplicative axes are mutually exclusive at runtime —
+the catalog is a disk cost, RAM holds one loadout. Two new open items (#27 cape
+deformation, #28 the measured resident set); two long-standing ownerless tracks
+homed into new milestones (GAMEPLAY-01, MONET-01). Parts 1/3/4 still unwritten.
+
 ---
 
 ## 1. Why — the pains this serves
@@ -238,6 +254,10 @@ Named pains this serves:
 | **D36** | **Cosmetics may EXPRESS state; they may never GRANT it — and any state indicator living in a purchasable asset needs a non-purchasable fallback.** The first half comes from D37's hood being simultaneously a cosmetic and a stealth-mode indicator, and it is what keeps §16's *never pay-to-win* true while still making shop items feel mechanically meaningful: the hood *shows* stealth mode, it does not *confer* it. **The second half is the trap the first half creates**, and it has to be settled before the first cosmetic is authored, not after: if the hood signals stealth and a player buys a cosmetic without one, the indicator disappears — and readability, this project's first tie-breaker (`design_philosophy.md`, "Readability always trumps realism"), would then depend on the store. Either every cosmetic carries an expression of that state, or the indicator is redundant with a non-cosmetic cue. Not decided which — §7 #24. **Same rule extends to the gifting system** the Director wants (players sending power-ups to each other, *"sem ficar infernizando com lembretes, nem depender disso pra jogar"*): gifting is the classic erosion vector for never-pay-to-win, since purchased power can be laundered through a second account. | ✅ Ratified (Director, 2026-08-14) |
 | **D37** | **The hood and the cape/overcoat are BACK-MOUNTED layers that coexist with any outfit — and deploying the hood opens a real reduced-visibility stealth mode.** *(Director, 2026-08-14: "O capuz introduz um modo novo com visibilidade reduzida... O capuz pode existir mesmo quando o agente está com um terno ou armadura, porque é um elemento a mais que fica nas costas... Isso permite ele entrar numa festa de gala pela frente, e de repente ir para outra area da casa.")* Mechanically this is the first real consumer of §10.1's tier-1 *"Civilian clothes — perfect disguise"*, which has existed in the design with nothing reading it. Narratively it is the persona's core verb made playable: **social infiltration pivoting to stealth**, the same *"transitar entre dois mundos"* the Director used to describe the art direction — the two halves of INFILTRAITOR's own title. **Because it is back-mounted it is orthogonal to the silhouette class** (D33), so it does not multiply D34's dominant term. **Not designed, and deliberately not designed here:** whether the mode is a fourth axis alongside `agent.gd`'s standing/crouching/prone postures or a modifier on the shipped five-class `exposure_system.gd` is a real gameplay question with a built system on the other side of it — §7 #25. | ✅ Ratified as direction (Director, 2026-08-14); mechanics undesigned |
 | **D38** | **The Baking System's compositor does NOT transfer to the character; its discipline and its resolver do.** *(Director's question, 2026-08-14: "queria ver se dá pra aproveitar o que for possível do Baking System pra customizar em tempo real, mas acho que não vai ter muito como colocar as texturas no modelo em tempo real.")* Read against `docs/technical/BAKE_SYSTEM_REFERENCE.md`: the bake system takes a grayscale facade + `MaterialDef.base_color` and emits a `TileSetAtlasSource` consumed by `set_cell()`, at map load, behind the single `BakedTileLookup.resolve()` seam. It knows nothing of meshes or UVs — a character is a rigged mesh, a wall is a grid cell that receives a tile ID. **Different problem, not a limitation.** What the Director's instinct got right and wrong: right that a texture cannot reach the model without passing through a 3D scene; **wrong that this is an obstacle** — the big display model *is* already a live 3D scene (D10/D11, shipped as Part 5a), so changing its texture is a material assignment at runtime, free and instant. The genuinely constrained half is the opposite one: the **in-game token is baked** (SubViewport + orthographic camera, a windowed GPU render that cannot run on-device per combo), so it can only ever wear what was baked ahead of time. This is precisely why D33's asymmetry is sound — it falls out of the technology rather than compromising with it. **What does transfer:** B1 (exactly one path, never both), B3 (alpha from canon, never generated), B6 (loud-fail on a missing dependency), B4's FNV-1a determinism if per-player procedural variants ever land, and above all `TextureResolver`'s `user:// → default:// → material-only` chain — that fallback ladder, not the compositor, is the piece that generalizes to per-player cosmetic delivery. | ✅ Ratified (Director, 2026-08-14) |
+| **D39** | **Poses are the keyframes, not the deliverable — the character needs ANIMATION between them, and the facing count is gated by an open gameplay decision.** *(Director, 2026-08-14: "não bastam só as poses, ele vai ter que se movimentar de uma GU pra outra, entrar e sair do stealth, etc. Então precisamos de animações na verdade, entre as poses.")* Moving GU→GU, entering and leaving D37's stealth mode, and every cover transition in `DESIGN_MASTER_PLAN` §8.2 are *transitions*, and a sprite cannot interpolate — each intermediate frame must exist. **This is what makes D35 load-bearing rather than merely convenient:** *"tendo as poses fica muito mais fácil depois gerar os estados intermediários"* — a rig generates the in-betweens from the keyframes, which is precisely the capability a voxel twin lacks, and it converts D34's frame counts from an authoring problem into a storage one. **Facing count (§7 #22) is not a free choice**: *"a questão das poses depende na verdade se a gente vai permitir movimentos diagonais futuramente. Por enquanto só temos movimentos horizontais ou verticais, e aí 4 poses resolve."* 4 is correct **today** and stays correct only while diagonal movement stays blocked — which `DESIGN_MASTER_PLAN` §18 lists as an **open** decision (*"blocked at the start, possibly a late-game skill unlock"*). Recorded so nobody treats 4 as settled: an unrelated gameplay ruling can double it. | ✅ Ratified (Director, 2026-08-14) |
+| **D40** | **Clothing and armour are baked INTO the silhouette class; only rigid attachments stay separate layers — and the weapon layer indexes on GRIP, not on pose.** Answers the Director's own worry (*"Só precisamos pensar se isso impacta em animar todas as roupas se movimentando"*): **no** — because D33 already made armour a silhouette *class* rather than an item, there is no separate clothing to animate. You animate **3–4 fully dressed bodies per archetype**, not a naked body plus N independently-animated outfits. This is also the Director's own justification for why tiers must exist at all: *"vamos precisar dos tiers de armaduras, não dá pra autorar qualquer coisinha"* — per-item authoring dies the moment animation enters, so the tier is what makes the problem finite. **Refines D34's weapon term.** The Director is right that weapons and worn items need baking per direction to seat into the poses, but the weapon layer does **not** need one frame per body pose: it indexes on the **grip** (lowered / ready / aimed), and many poses share one grip — idle, walk and turn are all "lowered." So the term is `weapon(W × G × Y)` with G ≈ 3, not `W × P × Y` with P ≥ 8. Still additive against the body, which is the property that matters. **The open exception is the cape** (D37): a medal or pauldron is rigid and composites freely, but a cape *deforms with movement* and cannot be a rigid overlay — it is either baked into the silhouette class or needs its own layer animated in lockstep with the body. Not decided — §7 #27. | ✅ Ratified (Director, 2026-08-14); cape unresolved |
+| **D41** | **Guards are nearly free in bake terms — one body, uniform and tint, and an authored head turn.** *(Director, 2026-08-14: "Os guardas não vão mudar praticamente nada em termos de baking, a não ser uniforme e possivelmente cores/shade. Então vamos autorar o giro da cabeça e o que mais for necessário pra animação deles ficar orgânica.")* Guards share the agent's body plan and therefore its pose/animation library, varying only by uniform and colour — and colour is D34's free axis. **This effectively answers §7 #6** (per-archetype vs. shared pose libraries): shared, with the guard as a tint-and-uniform variant rather than a separate authored actor. **The head turn is not a nicety.** `guard_enemy.gd:201` already interpolates `body_angle` toward `facing_angle_deg` at `TURN_SPEED := 4.0` with `vision_angle` leading at 1.35× — head before body. That reads as alive today *because vector geometry rotates for free*; authoring it is what preserves the shipped behaviour once the guard becomes a sprite. It is the concrete instance of §7 #21's snap-vs-turn-through question, and the Director has answered it for guards: **turn through, authored.** | ✅ Ratified (Director, 2026-08-14) |
+| **D42** | **The binding runtime constraint is RAM, not CPU — and the real mitigation is variant exclusivity, not only segment population.** *(Director, 2026-08-14: "não estamos muito preocupados com performance porque é um jogo por turnos, onde cada ator se movimenta separadamente, com GUs e TIC. O grande problema seria memória RAM.")* **Sharpens D19** rather than replacing it: D19 removed authoring time as a constraint and left "runtime cost"; this row names *which* runtime cost. Per-frame CPU/GPU is genuinely not the worry — actors resolve serially, one per TIC, so there is never a frame animating twenty characters at once. Texture memory is. **The Director's stated mitigation is segment population** (few entities co-resident, per §14.1's 3×3 segment grid), and it is real but secondary. **The larger factor is that D34's multiplicative axes are mutually exclusive at runtime:** the player wears exactly one archetype in exactly one silhouette class, so the resident set is *one* dressed body plus the guard variants on screen — not the 192–448 authored sets. The catalog is a disk cost; RAM only ever holds the current loadout. **What is still unmeasured and must not be assumed:** the resident frame count once animation (D39) multiplies the pose count, and whether normal maps — which D17's whole relight technique depends on — survive mobile texture compression without lighting artifacts. Both want a Part-0-style spike before any number here is treated as a budget. | ✅ Ratified (Director, 2026-08-14); resident-set cost unmeasured |
 
 ---
 
@@ -792,14 +812,26 @@ they are now the top of the queue.
     against §10.1's 7 armour tiers, on the Diablo 1 precedent. It is the single
     number that most moves D34's budget, and it is unmeasured.
 
-**Not in this list because they are not this plan's:** the distraction/
-misdirection system the same session opened (agent whistling, thrown stones,
-wall-banging, noise devices, manipulable NPCs) has **no owner document** —
-noise is built (`DESIGN_MASTER_PLAN` §5) and the sound lure exists as a gadget
-(§10.4), but *the agent* whistling is a new verb and a manipulable NPC is a new
-system. Likewise the monetisation track (shop, economy, gifting, forum/lobby):
-reviewed 2026-08-14 across `milestones.md`, `roadmap.md` and
-`current_state.md` — **no monetisation milestone exists anywhere**, and §16 of
-`DESIGN_MASTER_PLAN` (nine table rows) is the entire body of design. D33/D34/D36
-carry the half of it that constrains *this* plan's asset pipeline; the rest is
-M5.05-adjacent and deliberately not started.
+27. **Does the cape deform, and if so where does it live?** *(new, D40)* — a
+    medal or pauldron is rigid and composites over an anchor for free; a cape
+    moves with the body. Either it is baked into the silhouette class (cheap,
+    but then it is not a cosmetic layer) or it gets its own layer animated in
+    lockstep (a cosmetic, but no longer free). The hood, being back-mounted and
+    largely rigid, does not have this problem; the cape does.
+28. **The resident frame count, measured** *(new, D42)* — once D39's animation
+    multiplies the pose count, what actually stays in RAM for one loadout plus
+    the guards on screen. Unmeasured. Also unmeasured: whether normal maps
+    survive mobile texture compression without lighting artifacts, which D17's
+    entire relight technique depends on. Both want a Part-0-style spike.
+
+**Both homed 2026-08-14 — no longer this plan's open items.** The distraction/
+misdirection system the character conversation opened (agent whistling, thrown
+stones, wall-banging, noise devices, manipulable NPCs) now belongs to
+**`docs/production/milestones.md` → GAMEPLAY-01**, created the same day at the
+Director's direction: *"As questões sem dono entram em GAMEPLAY, que é paralelo
+ou anterior a combate."* The monetisation track belongs to **MONET-01**, likewise
+created 2026-08-14, and its placement note records the split this plan depends
+on: the **asset contract** (D33/D34/D36) lands here with the character because
+the pipeline is built around it, while the **store** waits on M5.05. A repo-wide
+review the same day confirmed no monetisation material existed anywhere before
+that milestone.

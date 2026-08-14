@@ -237,10 +237,22 @@ paid for. A character that spans ~10 voxels instead of ~5 gets twice the
 effective vertical resolution **at no cost to the world grid** — the grid does
 not change, the character simply uses more of what is there.
 
-**New and ownerless: vertical parallax, up AND down.** The Director named it as
-part of why the storey architecture exists. It is not in any master plan, it is
-not in `GAMEPLAY-01`, and nothing here designs it — flagged so it is not
-silently assumed to be somebody's job. See §9 #9.
+**Vertical parallax, up AND down — already designed, and this plan does not own
+it.** *(An earlier version of this paragraph called it "new and ownerless". That
+was wrong; the Director corrected it the same day and the sources are below.)*
+
+| Direction | Where it lives |
+|---|---|
+| **Up** | [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §"Vertical Rendering and Parallax" — visual storeys move independently via small per-layer factors; upper levels slower, underground faster; plus future sky/skyline/city as render-only layers |
+| **Down** | `DESTRUCTION_MASTER_PLAN` **D18** — cosmetic storeys at −2 and below (lava, water, smoke), never a `Slab`, glimpsed only through a crater "with a small parallax offset selling depth" |
+| Foreground | `OCCLUSION_MASTER_PLAN` **O9** — foreground parallax decoration, deferred |
+| Lighting | `docs/systems/lighting.md` — "Parallax structure (future) — visual depth without gameplay impact" |
+
+The governing rule is already stated in ARCHITECTURE.md and it is the same one
+[[upper-storeys-not-playable]] enforces: parallax separates **visual depth** from
+**gameplay depth**, adding no navigation, AI or physics layer. That is exactly
+why the character can be made large enough to spend the vertical space without
+any of it becoming reachable.
 
 **Cover is physical here and probabilistic in the rules** — the Director's own
 XCOM reference: being behind the slice is not immunity. `DESIGN_MASTER_PLAN`
@@ -604,10 +616,9 @@ count. That is the number Part 0 exists to start pinning down.
 7. **Turn frame count** — D45 makes it a test, not a decision. S2 answers it.
 8. **Whether the character's albedo needs bake-time grading** like the weapons
    did (§4.8). Unknowable until the first real bake is measured.
-9. **Vertical parallax (up and down)** *(new, 2026-08-14, §4.7b)* — named by the
-   Director as part of what the storey architecture is *for*, and owned by no
-   document. Whether it belongs to this plan, to `GAMEPLAY-01`, or to a plan of
-   its own is undecided; it is recorded here only so it is not lost.
+9. ~~**Vertical parallax (up and down)** — owned by no document.~~ **WRONG,
+   withdrawn 2026-08-14.** It is documented in four places; see §4.7b's table.
+   Not this plan's to own, and not an open question.
 
 ---
 

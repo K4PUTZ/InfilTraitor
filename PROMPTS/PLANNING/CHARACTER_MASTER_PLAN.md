@@ -1,12 +1,19 @@
 # CHARACTER_MASTER_PLAN
-## The Agent — Model, Rig, Poses, Animation, Layering — v1.0
+## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
-**Status:** 🔵 **NEW 2026-08-14. Nothing built.** This is the execution plan for
-the living-beings track `ACTOR_MASTER_PLAN` reopened on 2026-08-13 and decided
-on 2026-08-14 (D32–D45). It replaces that plan's deferred Parts 1, 3 and 4,
-which were stubs, not designs.
+**Status:** 🟢 **Part 0 CLOSED · Part 1 BUILT · reordered 2026-08-15 by D48.**
+Execution plan for the living-beings track `ACTOR_MASTER_PLAN` (reopened
+2026-08-13, decided 2026-08-14 as D32–D45, extended 2026-08-15 as D46–D48). It
+replaces that plan's deferred Parts 1, 3 and 4, which were stubs, not designs.
 
-**Baseline:** VERSION 0.9.101, `main` at `2a8d7e1d`. No `verified/` tag since
+| | State |
+|---|---|
+| **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
+| **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets. Its ART is superseded by D48; its RIG is the base |
+| **Part 8** — professional showcase model | 🔜 **NEXT, promoted by D48** — was last, now first |
+| **Part 2** — minimum viable agent | ⏸ waits on Part 8, per D48. Still the only Part with external dependents |
+
+**Baseline:** VERSION 0.9.101, `main` at `4ab3824e`. No `verified/` tag since
 `verified/v0.9.0`.
 
 ---
@@ -786,28 +793,62 @@ so this does not block the next Part.
 
 ## 7. Parts
 
+**Reordered 2026-08-15 by D48.** The professional showcase model was Part 8 and
+is now the immediate next work, because the gameplay figure takes its design from
+it — building Part 2 first would mean authoring it twice.
+
 ```
-Part 0  Tests                     S1 runnable now · S2 blocked on an asset
-Part 1  Base model + rig          -> needs S2's answer only for frame counts,
-                                     not for the model itself
+Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
+Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive D48;
+                                     the ART is superseded by Part 8
+Part 8  PROFESSIONAL SHOWCASE     🔜 NEXT (D48) — live 3D for the menu, no bake.
+        MODEL                        Design authority for everything below it
 Part 2  MINIMUM VIABLE AGENT      idle + 3 grips x 4 yaws, baked, on screen,
                                      replacing the vector placeholder
-                                     ⚠️ THIS is what unblocks aim mode + W-PRECOOK
-Part 3  Movement + transitions    walk GU->GU, turn, posture changes,
+                                     ⚠️ unblocks aim mode + W-PRECOOK
+Part 3  Movement + transitions    walk GU->GU, the D46 turn, posture changes,
                                      hood in/out — D39's real deliverable
 Part 4  Layer system              weapon by grip · cape synced · rigid adornments
                                      -> first real consumer of PropDef.layers (D7)
 Part 5  Silhouette classes        3-4 dressed bodies from §10.1's 7 tiers
 Part 6  Second archetype          mesh retarget onto Part 1's skeleton, never a new rig
 Part 7  Guards                    tint/uniform variant + authored head turn (D41)
-Part 8  Big display model         Showcase / forum avatar (D33/D35) — live 3D, no bake
 Part 9  Damage integration        ACTOR Part 3 / D5/D6 — the single-writer boundary
 ```
 
-**Part 2 is the milestone that matters to everything outside this plan.** It is
-deliberately scoped smaller than "the character is done": one pose, three grips,
-four yaws, baked and composited. Two blocked workstreams start moving the day it
-lands.
+**Part 2 is still the milestone that matters to everything outside this plan** —
+one pose, three grips, four yaws, baked and composited; firearm aim mode and
+W-PRECOOK both start moving the day it lands. **D48's stated price is that it now
+waits on Part 8.** That is the correct trade if the gameplay figure derives its
+design from the showcase model, and it is a real cost rather than a free
+reshuffle.
+
+### What Part 1 delivered, and what of it survives D48
+
+`tools/asset_generation/p1_agent_model.py` — 20 bones, 36 rigid parts, 2432
+faces, 1.898 m, 1.760 m span. Evidence:
+`Screenshots/history/p1_agent_tpose_sheet.png` (four orthographic views, the game
+camera, and the figure at its true 196 px ship size beside a 3× blow-up).
+
+| Survives as the base | Superseded by Part 8 |
+|---|---|
+| the 20-bone skeleton and its **exact names** (D32: one skeleton, retarget the mesh) | every mesh part |
+| the seven §4.3 sockets | the suit/hat/shoe forms |
+| the **verified exact T-pose rest** — measured off the armature, loud-fail | the palette |
+| §4.7's measured scale, deliberately untouched so `s2_posture_scale.py`'s verification still holds | |
+
+**Two bugs found by measuring rather than by looking**, recorded because both are
+recurring classes:
+1. `prism()` oriented cross sections with `axis.to_track_quat("Z", "Y")`, whose
+   **roll is undefined for a near-vertical segment**. Pure-Z parts landed one way
+   and the slightly tilted shirt panel landed another, turning its 85 mm *width*
+   into 85 mm of *depth* — a blade through the chest. Same class as D30's copied
+   `PERSPECTIVE_YAW_DEG` that came out 178° wrong: **derive the frame, never
+   inherit one from a convenience function whose convention you have not
+   checked.** Diagnosed wrong twice by eye before the bounding boxes were
+   measured.
+2. The first fedora had a 52 cm brim — a sombrero. Caught only because the model
+   was rendered rather than described.
 
 ---
 
@@ -865,13 +906,27 @@ count. That is the number Part 0 exists to start pinning down.
 9. ~~**Vertical parallax (up and down)** — owned by no document.~~ **WRONG,
    withdrawn 2026-08-14.** It is documented in four places; see §4.7b's table.
    Not this plan's to own, and not an open question.
-10. **Which postures can change facing in place** — NEW 2026-08-15, and now the
-    single number that most moves §8, ahead of #2. With the turn settled at 23
-    in-betweens, this is a **6× spread** on the body term (4608 / 1848 / 744
-    body sets — §6's table). Intermediate yaws are a *transition* asset; only
-    poses the agent can actually pivot in need them. A gameplay ruling
-    (`DESIGN_MASTER_PLAN` §8), not a technical one. **Does not block Part 2**,
-    which bakes idle at the four cardinal facings only.
+10. ~~**Which postures can change facing in place**~~ **RESOLVED 2026-08-15 by
+    D46 + D47.** Movement snaps at the GU boundary and needs no transition yaws;
+    only aim mode's deliberate turn pays for the other 92. **744 body sets, not
+    4608** — the 6× saving landed on the cheap side.
+11. **How the professional showcase model gets AUTHORED** — NEW 2026-08-15, and
+    the only thing blocking Part 8. D48 settles that it comes first and that it
+    is the design authority; it does not settle *who makes it or how*.
+    Procedurally scripted at much higher fidelity (the route every asset in this
+    project has taken so far), commissioned from an artist, sourced CC0 under the
+    Quaternius per-pack `ATTRIBUTION.txt` convention, or authored by the Director
+    — these have entirely different costs, timelines and revision loops, and the
+    choice is not a technical one. **A Director call.**
+12. **`agent.gd`'s `STEP_DURATION` is 12.3 m/s** — measured 2026-08-15. One GU is
+    1.60 m (`VOXELS_PER_UNIT_AXIS` 8 × 0.20 m) and the constant is 0.13 s, which
+    is faster than the 100 m world record. Not a bug: it is a *"snappy tactical
+    feel"* tuned for a 44×61 px vector diamond with no legs to contradict it. It
+    becomes a real problem the moment Part 2 puts a walk cycle on screen.
+    Related, same file: `_step_next()` builds a fresh `EASE_IN_OUT` tween **per
+    tile**, so a five-GU path is five accelerate-decelerate cycles rather than
+    one walk. Both belong to Part 3; neither blocks Part 8. Evidence:
+    `Screenshots/history/s2_step_duration.mp4`.
 
 ---
 

@@ -140,15 +140,23 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 
 
 ## Queue `count` sparks bursting outward from `pos`.
-func add_sparks(pos: Vector2, count: int, color: Color) -> void:
+## `speed_scale` / `duration_scale` (E-SPARK-04, Director 2026-08-13: *"faz a
+## faísca na parede voar e sumir um pouco mais rápida"*) are per-call, NOT edits
+## to `spark_speed_*`/`spark_duration_*`. The muzzle flash's own sparks were
+## called near-perfect in the same message, and they come through this same
+## function — moving the globals would have retuned the thing that was already
+## right in order to fix the thing that was not. Same reasoning, same idiom, as
+## `add_smoke()`'s own `drift_scale`.
+func add_sparks(pos: Vector2, count: int, color: Color,
+		speed_scale: float = 1.0, duration_scale: float = 1.0) -> void:
 	for i in range(count):
 		var angle: float = randf_range(0.0, TAU)
-		var speed: float = randf_range(spark_speed_min, spark_speed_max)
+		var speed: float = randf_range(spark_speed_min, spark_speed_max) * speed_scale
 		_sparks.append({
 			"pos": pos,
 			"vel": Vector2(cos(angle), sin(angle)) * speed,
 			"elapsed": 0.0,
-			"duration": randf_range(spark_duration_min, spark_duration_max),
+			"duration": randf_range(spark_duration_min, spark_duration_max) * duration_scale,
 			"color": color,
 		})
 	set_process(true)

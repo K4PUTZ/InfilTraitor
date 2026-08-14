@@ -244,6 +244,12 @@ const SMOKE_COLOR := Color(0.62, 0.60, 0.57, 0.2)
 ## Room._vfx_material_base_color() uses for exactly that case.
 const DEBRIS_FALLBACK_COLOR := Color(0.6, 0.6, 0.6)
 
+## E-SPARK-04 — mirrors Room.vfx_surface_spark_*, which the firearm path uses.
+## Const here rather than plumbed through set_vfx_targets(): these describe how a
+## spark behaves when it leaves a surface, which is not per-room configuration.
+const SURFACE_SPARK_SPEED_SCALE: float = 1.3
+const SURFACE_SPARK_DURATION_SCALE: float = 0.6
+
 signal wave_applied(index: int, kind: String, ring: int, cell_count: int)
 signal finished()
 
@@ -688,8 +694,13 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 				"sparks":
 					if smoke_overlay == null:
 						return 0
+					## E-SPARK-04: a blast's sparks come off a struck SURFACE, same
+					## as a bullet's, so they take the same faster/shorter profile
+					## — the muzzle's own are the exception and are not routed
+					## through here.
 					smoke_overlay.add_sparks(entry["world_pos"],
-						int(entry.get("count", 1)), color)
+						int(entry.get("count", 1)), color,
+						SURFACE_SPARK_SPEED_SCALE, SURFACE_SPARK_DURATION_SCALE)
 					return 1
 			return 0
 	return 0

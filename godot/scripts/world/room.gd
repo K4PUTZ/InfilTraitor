@@ -566,14 +566,19 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## madeira não."* Concrete had 0 and now has its pouquinho; wood stays at zero,
 ## which is the one row that is a hard rule rather than a level on a dial.
 var vfx_impact_profiles: Dictionary = {
-	"metal":    {"sparks": 22, "smoke": false, "dust": false, "chips": 0},
-	"stone":    {"sparks": 10, "smoke": false, "dust": true,  "chips": 0},
-	"concrete": {"sparks": 3,  "smoke": true,  "dust": true,  "chips": 0},
+	"metal":    {"sparks": 16, "smoke": false, "dust": false, "chips": 0},
+	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "chips": 0},
+	"concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0},
 	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 2},
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
 var vfx_impact_spark_jitter: float = 0.35
+## E-SPARK-04 (Director): a spark thrown off a struck SURFACE flies out and is
+## gone faster than the muzzle's own, which stays as it is. Per-call overrides on
+## add_sparks(), never edits to the shared spark tunables — see that function.
+var vfx_surface_spark_speed_scale: float = 1.3
+var vfx_surface_spark_duration_scale: float = 0.6
 
 ## E-DEBRIS-01 (Director, 2026-08-13) — the last piece of VFX-01 that never
 ## reached explosions: dust, sparks and wood chips.
@@ -2480,7 +2485,8 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 		var jittered: int = maxi(1, int(round(float(spark_count) * randf_range(
 			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
 		_smoke_spark_overlay.add_sparks(origin, jittered,
-			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color)
+			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
+			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale)
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id))
 	if bool(profile.get("dust", false)) and randf() < vfx_dust_chance:
@@ -2572,9 +2578,9 @@ func blast_debris_policy() -> Dictionary:
 			"count_min": vfx_metal_spark_count_min,
 			"count_max": vfx_metal_spark_count_max,
 			"per_material": {
-				"metal": [10, 18],
-				"stone": [4, 9],
-				"concrete": [1, 3],
+				"metal": [7, 13],
+				"stone": [3, 6],
+				"concrete": [1, 2],
 			},
 		},
 		"chips": {

@@ -139,8 +139,37 @@ def measure_height(arm) -> float:
     return hi - max(0.0, lo)
 
 
+def build_room(slices: int = 2):
+    """A ROOM: `slices` slices of 8 voxels each.
+
+    Director, 2026-08-14, correcting how a slice should be read: *"Os andares
+    nao sao jogaveis, eles servem para criar a altura da cena... Possivelmente um
+    andar teria 2 SLICES (a altura de uma sala onde cabe uma pessoa de 1,80)."*
+    So a SLICE is not a room -- it is HALF of one, and the storey architecture is
+    a scene-height device rather than a floor plan. At 2 slices a room is 16
+    voxels = 3.2 m, which is ordinary for the MVP's own settings (corporate HQ,
+    industrial site, laboratory). The earlier note in §4.7 calling a 1.60 m
+    storey "a deliberate readability-over-realism trade" was reading a slice as a
+    storey and is withdrawn: there is no trade here."""
+    h = SLICE_M * slices
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-0.75, 0.0, h / 2))
+    w = bpy.context.active_object
+    w.name = "room_wall"
+    w.scale = (0.35, 2.2, h)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for i in range(1, SLICE_VOXELS * slices):
+        # Slice boundaries read heavier than voxel bands, so the 2-slice
+        # structure is visible and not just a count of 16 stripes.
+        boundary = (i % SLICE_VOXELS == 0)
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-0.75, 0.0, i * VOXEL_M))
+        b = bpy.context.active_object
+        b.name = "band_%d" % i
+        b.scale = (0.36, 2.22, 0.022 if boundary else 0.006)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+
 def build_wall():
-    """One SLICE: 8 voxels tall. The thing the whole spec is measured against."""
+    """One SLICE: 8 voxels tall — the cover reference."""
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-0.75, 0.0, SLICE_M / 2))
     w = bpy.context.active_object
     w.name = "slice_wall"
@@ -189,7 +218,13 @@ def main():
         print("[S2-POSTURE][FAIL] AgentRig not found")
         sys.exit(1)
 
-    build_wall()
+    mode = os.environ.get("S2_MODE", "cover")
+    if mode == "room":
+        build_room(2)
+        global ORTHO_SCALE
+        ORTHO_SCALE = 4.6
+    else:
+        build_wall()
     setup_camera()
     os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -206,10 +241,16 @@ def main():
         ok = "OK" if lo <= vox <= hi else "OUT OF SPEC (target %.1f-%.1f)" % (lo, hi)
         log("%-9s %.2f m = %.1f voxels = %d px   %s"
             % (name, h, vox, int(round(vox * 20)), ok))
-        out = os.path.join(OUT_DIR, "posture_%s.png" % name)
+        out = os.path.join(OUT_DIR, "%s_%s.png" % (mode, name))
         bpy.context.scene.render.filepath = out
         bpy.ops.render.render(write_still=True)
 
+    if mode == "room":
+        log("")
+        log("A ROOM is 2 slices = %d voxels = %.2f m — headroom above a standing"
+            % (SLICE_VOXELS * 2, SLICE_M * 2))
+        log("figure: %.2f m. Storeys build SCENE HEIGHT, they are not floors."
+            % (SLICE_M * 2 - 1.96))
     log("")
     log("Cover is physical here and probabilistic in the rules (XCOM's model,")
     log("DESIGN_MASTER_PLAN §8.2) — behind the slice is not immunity.")

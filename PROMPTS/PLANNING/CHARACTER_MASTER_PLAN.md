@@ -194,14 +194,53 @@ outside the Director's band. Evidence:
 `Screenshots/history/s2_posture_vs_slice.png`, with the wall banded per voxel so
 the 8 units are countable in the picture rather than claimed in a caption.
 
-**Two consequences worth stating plainly.**
+**One consequence, and one CORRECTION to what was first written here.**
 
-1. **The character is TALLER than a wall storey**, which reverses this section's
+1. **The character is TALLER than a slice**, which reverses this section's
    earlier sketch (it assumed ~112 px, i.e. 70% of a storey). That sketch is
    superseded.
-2. **A 1.60 m storey is short for architecture** — real ones run 2.5–3 m. This is
-   a deliberate trade and it is the project's own first tie-breaker working as
-   designed (`design_philosophy.md`: *"Readability always trumps realism"*).
+2. ~~"A 1.60 m storey is short for architecture — a deliberate
+   readability-over-realism trade."~~ **WITHDRAWN 2026-08-14, same day, by the
+   Director.** That sentence read a slice as a *storey in the architectural
+   sense*, which it never was. **A slice is half a room.**
+
+### 4.7b What a storey actually is — and why the character is deliberately big
+
+*(Director, 2026-08-14: "Os andares não são jogáveis, eles servem para criar a
+altura da cena... Por isso o uso da arquitetura de storeys. Não simbolizam
+andares reais. Possivelmente um andar teria 2 SLICES (a altura de uma sala onde
+cabe uma pessoa de 1,80).")*
+
+**The storey stack is a scene-height device, not a floor plan.** Upper storeys
+were never playable space — they compose the scene's vertical extent. So a slice
+does not have to be room-sized, and reading it as one produced the false "trade"
+above.
+
+| | voxels | metres |
+|---|---:|---:|
+| slice | 8 | 1.60 |
+| **ROOM = 2 slices** | **16** | **3.20** |
+| standing figure | 9.8 | 1.96 |
+| headroom above him | 6.2 | 1.24 |
+
+A 3.2 m room is ordinary for the MVP's own three settings — corporate HQ,
+industrial site, laboratory (`DESIGN_MASTER_PLAN` §14.3). **There is no
+realism trade here at all.** Evidence:
+`Screenshots/history/s2_room_two_slices.png` (slice boundaries drawn heavier
+than voxel bands, so the 2-slice structure is visible rather than asserted).
+
+**Why the character is deliberately large — the Director's argument, recorded
+because it inverts the usual instinct:** *"ao fazer os personagens maiores,
+estamos granularizando os voxels de graça... fazer um personagem que não usa a
+altura seria desperdício."* The vertical space already exists and is already
+paid for. A character that spans ~10 voxels instead of ~5 gets twice the
+effective vertical resolution **at no cost to the world grid** — the grid does
+not change, the character simply uses more of what is there.
+
+**New and ownerless: vertical parallax, up AND down.** The Director named it as
+part of why the storey architecture exists. It is not in any master plan, it is
+not in `GAMEPLAY-01`, and nothing here designs it — flagged so it is not
+silently assumed to be somebody's job. See §9 #9.
 
 **Cover is physical here and probabilistic in the rules** — the Director's own
 XCOM reference: being behind the slice is not immunity. `DESIGN_MASTER_PLAN`
@@ -565,6 +604,10 @@ count. That is the number Part 0 exists to start pinning down.
 7. **Turn frame count** — D45 makes it a test, not a decision. S2 answers it.
 8. **Whether the character's albedo needs bake-time grading** like the weapons
    did (§4.8). Unknowable until the first real bake is measured.
+9. **Vertical parallax (up and down)** *(new, 2026-08-14, §4.7b)* — named by the
+   Director as part of what the storey architecture is *for*, and owned by no
+   document. Whether it belongs to this plan, to `GAMEPLAY-01`, or to a plan of
+   its own is undecided; it is recorded here only so it is not lost.
 
 ---
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.101 · **Updated:** 2026-08-13 · **Branch:** main
+**Version:** 0.9.101 · **Updated:** 2026-08-14 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -56,6 +56,7 @@
 - RESUMO_SESSAO_2026-08-13_DOC_AUDIT_EMBER.md
 - RESUMO_SESSAO_2026-08-13_EXPLOSION_REFINEMENT.md
 - RESUMO_SESSAO_2026-08-13_E_CONTRAST_FLOOR_SHADE.md
+- RESUMO_SESSAO_2026-08-13_FIREARM_DEFER_AIM_MODE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

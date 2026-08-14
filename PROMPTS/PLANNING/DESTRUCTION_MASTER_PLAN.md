@@ -1,7 +1,23 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
-**Status:** 🟡 **UNBLOCKED, 2026-07-26 — ready to resume.** Paused at Alpha
+> ## ✅ CLOSED 2026-08-13, Director-ratified
+>
+> *"Pode fechar como won't do e fechar os dois planos."* Explosive destruction
+> is owned by `EXPLOSION_REBUILD_MASTER_PLAN` (also closed the same day) and
+> firearm destruction by `WEAPON_MASTER_PLAN`; both shipped. The 2026-08-13
+> sweep corrected what this document still carried as open: D9 was ANSWERED by
+> the prediction layer, D18's lazy-reveal trigger was BUILT on 2026-08-07, and
+> the segment-reset design was telling implementers to snapshot `_base_soot`, a
+> field D24 deleted in this very document.
+>
+> Genuinely still open and NOT this plan's to finish: the segment-reset/rewind
+> system (its own milestone — the design here stands, minus that correction),
+> on-device GPU cost of many TileMapLayers, and the gameplay layer this Part
+> always deferred (cover rule, noise-on-digging, rubble-as-terrain,
+> breach-as-clue). Glass belongs to the **materials milestone**.
+
+**Status:** ✅ **CLOSED 2026-08-13** — previously: 🟡 **UNBLOCKED, 2026-07-26.** Paused at Alpha
 Grenade Foundation, 2026-07-22, precisely because "every voxel currently
 renders fully lit regardless of damage, so a crater's depth/shape reads as
 close to invisible." `VOXEL_LIGHT_MASTER_PLAN.md` (VL-01 → VL-D5, "Alpha

@@ -1,6 +1,27 @@
 # EXPLOSION_REBUILD_MASTER_PLAN
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
+> ## ✅ CLOSED 2026-08-13, Director-ratified
+>
+> *"Pode fechar como won't do e fechar os dois planos."* Phase A and Phase B are
+> both built and live; the 2026-08-13 sweep resolved every item this document
+> still listed as open (six were already closed or moot in code, one cited a
+> field D24 deleted — see §11's own corrections). What remains is not this
+> plan's work: the crack decal ART, on-device GPU frame cost (needs a device),
+> D8's deferred soot compute (revisit only if a bigger blast measures a need),
+> and GLASS, which the Director owes and has assigned to the **materials
+> milestone**.
+>
+> Also closed here: the E-DEBUG-RAY dev overlay and the E-RAY infrastructure
+> built to serve it were REMOVED the same day (*"as explosões já estão
+> aceitáveis, então se tiver algum resquício desse mecanismo pode remover"*).
+> `DebugRayOverlay` was `AnimatedRayOverlay`'s only consumer — nothing else in
+> the repo called `add_ray()` — so both went, verified against the whole repo
+> first. Shrapnel rays (`ShrapnelOverlay`/`ShrapnelPreviewOverlay`) and lamp
+> shafts (`LightRayOverlay`) are different classes and are untouched.
+>
+> Reopen only for a NEW mechanic, not to finish this one.
+
 **Date opened:** 2026-08-05
 **Latest:** **E-JUNCTION-01, 🟢 BUILT 2026-08-13** — corner wall-junction
 columns now take real explosion damage (destroy/dent/crack, same ring model
@@ -2102,10 +2123,11 @@ moved it the other way — every current call site flushes once per BATCH
 (`DetonationChoreographer._flush()`), with the comment "one upload per page this
 batch composited into, instead of one per composited atom". The safeguard as
 written would undo that optimisation to protect against a bug class that has bitten
-twice. **Recommendation: close this as WON'T DO on those grounds**, and if a guard
-is still wanted, make it a debug-only assertion that no frame ends with dirty
-composite pages — which catches the same forgetfulness without moving a single
-upload. Not built: it is a Director call, not a sweep's to make.
+twice. **CLOSED AS WON'T DO, Director-ratified 2026-08-13** (*"pode fechar como won't
+do"*). The alternative named at the time — a debug-only assertion that no frame
+ends with dirty composite pages — is recorded as the shape any future guard
+should take: it catches the same forgetfulness without moving a single upload.
+Not built, and not needed unless the bug recurs.
 
 ## E-DENT-01 / E-CRACK-01 (2026-08-08) — the soot stamp is off, and the floor finally cracks
 

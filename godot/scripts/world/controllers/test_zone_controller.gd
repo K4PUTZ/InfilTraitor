@@ -1197,10 +1197,6 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		flash_overlay.clear()
 	_prof("BEAT 2 ends — 7 shard/flash frames held")
 
-	## E-DEBUG-RAY: show debug rays to all affected voxels before destruction
-	if room._debug_ray_overlay != null:
-		room._debug_ray_overlay.show_debug_rays(anchor, waves, room._voxel_renderer)
-
 	## E-FRAG: shrapnel from affected cells
 	var frag0: int = Time.get_ticks_usec()
 	if room._shrapnel_overlay != null:

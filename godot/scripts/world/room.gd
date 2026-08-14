@@ -21,8 +21,6 @@ const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builde
 const TurnControllerClass = preload("res://godot/scripts/world/controllers/turn_controller.gd")
 const ShadowBoundaryOverlayClass = preload("res://godot/scripts/overlays/shadow_boundary_overlay.gd")
 const LightRayOverlayClass = preload("res://godot/scripts/overlays/light_ray_overlay.gd")
-const AnimatedRayOverlayClass = preload("res://godot/scripts/overlays/animated_ray_overlay.gd")
-const DebugRayOverlayClass = preload("res://godot/scripts/overlays/debug_ray_overlay.gd")
 const ShrapnelOverlayClass = preload("res://godot/scripts/overlays/shrapnel_overlay.gd")
 const AimBubbleOverlayClass = preload("res://godot/scripts/overlays/aim_bubble_overlay.gd")
 const ThrowPerimeterOverlayClass = preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")
@@ -493,8 +491,6 @@ const TRAIL_MAX := 5
 var _agent_trail: Array[Vector2i] = []
 var _tile_shadow: Node2D = null  ## TileOverlay for shadows (z=1, multiply)
 var _light_ray_overlay: Node2D = null  ## LightRayOverlay — golden shafts from lamps (z=0, additive)
-var _animated_ray_overlay: Node2D = null  ## E-RAY — generic animated rays (shrapnel, debug)
-var _debug_ray_overlay: Node = null  ## E-DEBUG-RAY — dev-only rays to damaged voxels
 var _shrapnel_overlay: Node2D = null  ## E-FRAG — decorative shrapnel from blast
 var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
@@ -857,10 +853,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_debris_overlay.clear()
 	if _explosion_flash_overlay != null:
 		_explosion_flash_overlay.clear()  ## E-FLASH-01: same reasoning as the overlays above
-	if _animated_ray_overlay != null:
-		_animated_ray_overlay.clear()  ## E-RAY: same reasoning as the overlays above
-	if _debug_ray_overlay != null:
-		_debug_ray_overlay.clear()  ## E-DEBUG-RAY: same reasoning as the overlays above
 	if _shrapnel_overlay != null:
 		_shrapnel_overlay.clear()  ## E-FRAG: same reasoning as the overlays above
 	if _aim_bubble_overlay != null:
@@ -1074,16 +1066,6 @@ func _ready() -> void:
 	_light_ray_overlay.z_index = 0
 	_light_ray_overlay.visible = false  ## hidden by default; toggled by VisionController (L key)
 	add_child(_light_ray_overlay)
-
-	## E-RAY: animated ray overlay (shrapnel, debug rays). z assigned in
-	## _apply_overhead_overlay_z() once the real wall-stack height is known.
-	_animated_ray_overlay = AnimatedRayOverlayClass.new()
-	add_child(_animated_ray_overlay)
-
-	## E-DEBUG-RAY: dev-only overlay showing rays to affected voxels.
-	_debug_ray_overlay = DebugRayOverlayClass.new()
-	add_child(_debug_ray_overlay)
-	_debug_ray_overlay.set_ray_overlay(_animated_ray_overlay)
 
 	## E-FRAG: decorative shrapnel overlay. z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -1587,10 +1569,6 @@ func _set_perspective(direction: String) -> void:
 			_smoke_spark_overlay.clear()
 		if _debris_overlay != null:
 			_debris_overlay.clear()
-		if _animated_ray_overlay != null:
-			_animated_ray_overlay.clear()
-		if _debug_ray_overlay != null:
-			_debug_ray_overlay.clear()
 		if _shrapnel_overlay != null:
 			_shrapnel_overlay.clear()
 		if _aim_bubble_overlay != null:
@@ -2183,8 +2161,6 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 	if _light_ray_overlay != null:
 		_light_ray_overlay.z_index = max_voxel_z_index + 2
-	if _animated_ray_overlay != null:
-		_animated_ray_overlay.z_index = max_voxel_z_index + 8
 	if _shrapnel_overlay != null:
 		_shrapnel_overlay.z_index = max_voxel_z_index + 5
 	## T-Z (Director, 2026-08-10): "os raios laranjas precisam ficar por cima do

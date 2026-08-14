@@ -590,11 +590,70 @@ costs 17 frame slots, not 16. Fixed by **deriving every label from the same
 numbers instead of passing them in** — the numbers now match §6's table exactly
 (150 / 217 / 283 / 417).
 
-**Status: the test is run; the answer is the Director's.** D45 makes this a
-game-feel judgement by eye, and no metric substitutes. Evidence (non-`auto_`
-names, so the 50-file rotation cannot eat them):
+### 🔴 The result that invalidated the method — Director, 2026-08-15
+
+*"Em todos os exemplos até agora a última opção sempre foi a melhor. O tempo de
+30 Hz ficou melhor e o exemplo com 23 in-betweens também fica mais natural."*
+
+**The Director's own observation is the finding, and it does not confirm the
+conclusion — it withdraws it.** Taken at face value the answer is 23 in-betweens
+at 30 Hz: a **833 ms** turn, **96 yaws**, **4608 body sets** — the most expensive
+corner of §8's whole budget. It should not be committed to, for three reasons,
+none of which is a matter of taste.
+
+**1. The range was never bracketed.** If the last option always wins, the
+preference is monotonic across everything tested, which means the test never
+contained its own answer. D45's premise is that a turn-based game has a ceiling
+where smooth turns *sluggish*; a set of options that never renders a sluggish one
+cannot locate that ceiling. Every S2 sheet so far topped out at the option the
+Director then chose.
+
+**2. Position and label bias were uncontrolled.** Every sheet ordered panels by
+increasing frame count, left to right, with the count printed on each. So *"the
+last one"* and *"the most frames"* were the **same panel every time** — the two
+explanations are not separable in anything collected so far.
+
+**3. The turn has no foot replant, and that may be the whole result.**
+`s2_turn_render.py:131` rotates the armature **object** plus the `head` and
+`chest` bones; the `thigh`/`shin`/`foot` bones the rig does have are never posed.
+The turn is a rigid pivot with the feet glued, sliding on the floor — visible in
+`s2_turn_frames_7inbetween.png`. **A slide contains no discrete beat**, so more
+in-betweens can only ever smooth it further, which is exactly the monotonic
+result observed. The frame count at which smoothness turns floaty is a property
+of a turn that has an *event* in it. Duration bracketing and footwork are two
+separate experiments; only the first is run below.
+
+### The blind bracket — `tools/asset_generation/s2_turn_bracket_blind.py`
+
+Answers 1 and 2 together. Every panel at **30 Hz** (the chosen rate), so only the
+in-between count varies, deliberately extended past where it should break:
+
+| Blind label | in-betweens | frames | turn |
+|---|---:|---:|---:|
+| D | 15 | 17 | 567 ms |
+| B | 23 | 25 | 833 ms |
+| A | 31 | 33 | 1100 ms |
+| C | 47 | 49 | **1633 ms** |
+
+Labels are **blind** (no counts, no milliseconds, no progress bar — a bar filling
+at different rates side by side is a duration readout in disguise) and the order
+is **randomised under a fixed seed**, constrained so the slowest is *not* last.
+That constraint is what makes the outcome diagnostic rather than merely another
+data point:
+
+- picks **D** (last panel, *fastest*) → the pattern was **position bias**
+- picks **C** (slowest, third) → genuine, and the range is *still* not bracketed
+- picks **A** or **B** → the ceiling is real and has been located
+
+Evidence: `Screenshots/history/s2_turn_bracket_blind.mp4` (not tracked, per
+`.gitignore:27`), key in `s2_turn_bracket_blind_KEY.json` (tracked).
+
+**Status: awaiting the Director's blind judgement.** D45 makes this a game-feel
+call by eye and no metric substitutes — but a biased instrument does not become
+unbiased by being judged sincerely. Evidence (non-`auto_` names, so the 50-file
+rotation cannot eat them):
 `Screenshots/history/s2_turn_{0,1,3,7}inbetween_200ms.gif`,
-`s2_turn_frames_7inbetween.png`, and the three rate artifacts tabled above.
+`s2_turn_frames_7inbetween.png`, and the rate artifacts tabled above.
 
 ---
 

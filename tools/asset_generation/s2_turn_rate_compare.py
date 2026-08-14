@@ -172,14 +172,19 @@ class Track:
     267 ms from the gap convention -- two numbers for one quantity in one image,
     which is how evidence discredits itself."""
 
-    def __init__(self, frames, hold, hz_label, subtitle):
+    def __init__(self, frames, hold, hz_label, subtitle, blind=False):
         self.frames = frames
         self.hold = hold
-        self.subtitle = subtitle
+        self.blind = blind
+        self.subtitle = "" if blind else subtitle
         self.count = len(frames)
         self.duration_ms = self.count * hold * FRAME_MS
         self.finish_frame = self.count * hold
-        self.title = "%s  —  %d ms" % (hz_label, round(self.duration_ms))
+        # A blind panel prints its label and nothing else. Every number is a
+        # tell -- a millisecond figure or a frame count lets "more must be
+        # better" answer the question instead of the eye.
+        self.title = hz_label if blind \
+            else "%s  —  %d ms" % (hz_label, round(self.duration_ms))
 
     def index_at(self, k):
         return min(k // self.hold, self.count - 1)
@@ -204,10 +209,22 @@ def draw_panel(track, k, scale):
     d.text((PAD, 38), track.subtitle,
            font=fit_font(track.subtitle, w, start=14, floor=10), fill=INK_DIM)
 
-    # Progress bar + live elapsed readout. The arrival beat is the thing being
-    # judged, so it gets its own colour rather than being inferred from the bar.
     done = k >= track.finish_frame
     bar_y = HEADER_H + h + 16
+
+    if track.blind:
+        # The arrival beat still has to be readable -- it is half of what makes
+        # a cadence feel settled or sluggish -- but it is shown as a state, not
+        # as a number, and without a progress bar (a bar filling at different
+        # rates side by side is a duration readout in disguise).
+        d.ellipse([PAD, bar_y + 6, PAD + 12, bar_y + 18],
+                  fill=ARRIVED if done else ACCENT)
+        d.text((PAD + 20, bar_y + 4), "arrived" if done else "turning",
+               font=font(15), fill=ARRIVED if done else ACCENT)
+        return panel
+
+    # Progress bar + live elapsed readout. The arrival beat is the thing being
+    # judged, so it gets its own colour rather than being inferred from the bar.
     bar_w = w
     d.rectangle([PAD, bar_y, PAD + bar_w, bar_y + 6], fill=(48, 48, 52))
     prog = min(1.0, k / float(max(1, track.finish_frame)))

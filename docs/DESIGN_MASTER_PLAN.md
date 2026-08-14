@@ -438,9 +438,14 @@ chooses *who*, never *where*. What moves the odds is cover (§8.2), flanking
 
 ```
 enter aim mode  ->  nearest enemy auto-targeted, hit % shown
-                    cycle between the 2-3 available targets, % updates
+                    cycle through EVERY valid target, % updates
                     confirm on the SAME target  ->  the dice roll
 ```
+
+**The target list is not capped.** Two or three targets is the common case, not
+a limit — six visible enemies means six cyclable targets, and that situation is
+rare mostly because a segment does not hold many enemies (special maps aside).
+Cycling is therefore a real list traversal, never a fixed set of slots.
 
 Confirmation is deliberately a **second** input on an already-chosen target —
 choosing and firing are two separate acts. That separation is what gives the
@@ -448,13 +453,13 @@ engine a window to pre-compute the shot, which is the difference between a shot
 that fires instantly and one that stalls the frame it is fired on.
 
 **Deliberately not decided here, Director's own:** *"Vamos definir isso melhor
-depois em COMBATE."* The hit-chance formula, AP cost, how many targets are
-reachable and on what basis, ammunition, and how a shotgun's many independent
-pellets collapse into one displayed percentage all belong to the COMBAT wave.
-They are enumerated as open questions in `WEAPON_MASTER_PLAN.md` §7c, including
-one that contradicts this document as written: **§10.2 gives the agent one
-weapon per mission, while aim mode's slots hold three** (§7c Q1, unresolved —
-flagged rather than silently reconciled).
+depois em COMBATE."* The hit-chance formula, AP cost, which enemies qualify as
+targets at all, ammunition, and how a shotgun's many independent pellets collapse
+into one displayed percentage all belong to the COMBAT wave. They are enumerated
+as open questions in `WEAPON_MASTER_PLAN.md` §7c.
+
+**What the agent is holding while he aims:** the whole arsenal, not one weapon —
+§10.2's per-mission pick is superseded, see the note there.
 
 **Interaction and pre-computation detail:** `WEAPON_MASTER_PLAN.md` §5c and
 D31–D36. The grenade's equivalent flow is already built and is the model to read
@@ -518,6 +523,24 @@ always costs mobility or stealth.***
 | 7 | Adaptive skin | 2 | 2 | Shadow multiplier ×2 |
 
 ### 10.2 Class 2 — Weapon
+
+> **🔄 The one-weapon-per-mission rule is SUPERSEDED as a live constraint
+> (Director, 2026-08-13).** *"Vamos ter mais armas disponíveis, desde granadas
+> até dardos tranquilizantes. Podemos ter mais decisões relacionadas ao modelo
+> de gameplay restringindo o acesso a tudo de uma vez, mas por enquanto deixa
+> liberado."*
+>
+> The agent carries the **whole arsenal** — firearms, explosives, and the
+> non-destructive tier — and selects between them in play (aim mode, §8.7).
+> **The table below stands as the weapon catalog and its tier progression**;
+> what no longer binds is §10's framing of Class 2 as a single pre-mission pick.
+>
+> **Restricting access is still on the table as a design lever, and is
+> undecided** — so nothing should be built that assumes either an open set or a
+> restricted one is permanent. What *is* settled: any weapon-selection UI has to
+> survive the carried set growing, so it cannot be N fixed slots.
+> Register entry: `WEAPON_MASTER_PLAN.md` D37.
+
 | Tier | Weapon | Damage | Noise | Range |
 |---|---|---|---|---|
 | 1 | Fist | 1 | None | Adjacent |

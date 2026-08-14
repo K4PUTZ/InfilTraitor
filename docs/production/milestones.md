@@ -841,11 +841,40 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 - Health tracking
 - Combat state machine (pre-combat, in-combat, post-combat)
 - Basic enemy tactics (flanking, covering)
+- Firearm aim mode — weapon slots, target cycling, hit %, pre-resolution
+  (`WEAPON_MASTER_PLAN` §5c / D31–D36)
+- **W-PRECOOK — firearm pre-production, as the LAST item of this milestone**
+  *(Director-assigned 2026-08-13; moved here from M7.0 the same day)*
 
 **Acceptance Criteria:**
 - Combat is viable but not optimal
 - Enemy tactics are coordinated and challenging
 - Combat escalates threats appropriately
+- **Firing a gun does not stall the frame it is fired on** (W-PRECOOK)
+
+**W-PRECOOK — firearm pre-production (Director-assigned 2026-08-13).** Briefly
+assigned to M7.0 earlier the same day, then pulled forward: *"pode colocar o
+W-PRECOOK mais cedo, vamos fazer ele no final da milestone de combate."*
+
+- **What it is:** firing a gun costs ~310 ms of synchronous CPU for nine voxels,
+  entirely inside `_repaint_voxel_light_buckets()` — measured, `[SHOT-PROF]`. A
+  grenade destroying 453 voxels commits in 0.5 ms, because it pre-computes
+  during the throw. The firearm has no pre-production at all.
+- **Why it is LAST in this milestone, not first:** the window it fills is the
+  aiming window, so aim mode has to exist and be roughly settled before there is
+  anything real to hide the cost inside. Doing it earlier means tuning against a
+  mock — the Director's original reason for deferring it at all: *"pra não ficar
+  testando com mecanismos visuais teóricos."*
+- **Also needs:** an agent that exists as a model and holds a weapon (ACTOR
+  living-beings track, Part 4).
+- **Owner doc:** [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](../../PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md)
+  §0 (measurement + the two candidate routes, unchanged) and D30.
+- **Scope note (Director, 2026-08-13, closing §7c Q2):** the candidate target
+  list is **not** capped — six visible enemies means six cyclable targets. This
+  does not enlarge the pre-production problem, because D33 pre-resolves only the
+  **current** target: peak cost is one plan regardless of how many candidates
+  exist. What the candidate count changes is how often the player discards and
+  recomputes by cycling, which is a responsiveness question, not a budget one.
 
 ---
 
@@ -1019,29 +1048,33 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 **Deliverables:**
 - Comprehensive QA pass
 - Performance optimization (target 60 FPS on 5-year-old devices)
-- **W-PRECOOK — firearm pre-production** *(assigned here by the Director,
-  2026-08-13; see the note below — it does **not** wait for M6.05)*
+- **Baking System cache + decals — final verification pass** *(Director-assigned
+  2026-08-13; see the note below)*
 - Platform-specific builds (iOS, Android, Web)
 - Final balance tuning
 
-**W-PRECOOK — firearm pre-production (Director-assigned 2026-08-13).**
-*"Deixa essa etapa marcado na milestone de otimização."* This is the one
-optimization item in this milestone with an **earlier trigger than the milestone
-itself**, and it is recorded here as its home, not as its schedule.
+**~~W-PRECOOK~~ MOVED OUT 2026-08-13, same day it was assigned here** — the
+Director pulled firearm pre-production forward to the **last item of GAME-01
+(Combat System Foundation)**: *"pode colocar o W-PRECOOK mais cedo, vamos fazer
+ele no final da milestone de combate."* See GAME-01 for the full note.
 
-- **What it is:** firing a gun costs ~310 ms of synchronous CPU for nine voxels,
-  entirely inside `_repaint_voxel_light_buckets()` — measured, `[SHOT-PROF]`. A
-  grenade destroying 453 voxels commits in 0.5 ms, because it pre-computes during
-  the throw. The firearm has no pre-production at all.
-- **Why it is not being done now:** the window it exists to fill is the *aiming*
-  window, and there is no aim mode, no shooter and no agent that holds a weapon.
-  Tuning it today means tuning against a mock. Director: *"quando o personagem já
-  existir e conseguir empunhar as armas. Pra não ficar testando com mecanismos
-  visuais teóricos."*
-- **Trigger:** the ACTOR living-beings track has produced an agent that holds a
-  weapon **and** aim mode runs. Not M6.05.
-- **Owner doc:** [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](../../PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md)
-  §0 (measurement + the two candidate routes, unchanged) and D30.
+**Baking System cache + decals — final verification (Director-assigned
+2026-08-13).** *"Coloca um lembrete para a gente tratar o cache do baking system
++ decals na última etapa da otimização."*
+
+- **What to verify:** that swapping a texture set correctly invalidates the bake
+  cache, that `BAKE_CODE_VERSION` / `DAMAGE_BAKE_LOCAL_VERSION` do what they
+  promise, and that damage decals recomposite over new art.
+- **Why it lands here and not earlier:** this is the pass that has to hold
+  against the *final* art, and the cache's whole job is to be invisible until
+  the art underneath it changes. Verifying it against placeholder sets proves
+  the mechanism, not the shipping condition.
+- **Not to be confused with the Director's own smoke test** — an informal check
+  by swapping texture files in the folders directly, run by the Director in
+  August 2026 and **explicitly off the agent's list**. That check answers "does
+  it obviously work"; this deliverable answers "does it hold for release."
+- **Reference:** `docs/technical/BAKE_SYSTEM_REFERENCE.md`,
+  `ASSETS/ART_SPECIFICATIONS.md` §7 (damage decals).
 
 **Acceptance Criteria:**
 - Zero critical bugs
@@ -1082,8 +1115,9 @@ itself**, and it is recorded here as its home, not as its schedule.
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
 | Destruction Part 4+ (cover/noise/fire, shot-based destruction) | Lighting (VOXEL_LIGHT) | 🟢 UNBLOCKED 2026-07-26 | Ready to resume; not yet scheduled |
 | Ranged weapon (shotgun) + shot-based wall destruction | ~~New mechanism~~ | 🟢 **BUILT (miss path) 2026-07-30 / 2026-08-02** — row updated 2026-08-13 | CONE (`select_cone_pellet_impacts()`) and LINE (`apply_point_impact()`) both ship and are selftested; a real shot breaks real voxels with material response, bullet marks and face-local soot. **What remains is the HIT half** — there is no actor to shoot at (`WEAPON_MASTER_PLAN` S8), which is the ACTOR track's job, not this row's |
-| **Firearm aim mode** (weapon slots, target cycling, hit %, pre-resolution) | Agent model that holds a weapon | 🟡 **DESIGNED 2026-08-13, unbuilt** | Flow + decisions: `WEAPON_MASTER_PLAN` §5c / D31–D36; gameplay statement: `DESIGN_MASTER_PLAN` §8.7. Six COMBAT-wave questions open (§7c) — two of them change what gets built |
-| **W-PRECOOK** (firearm pre-production, ~310 ms/shot) | Aim mode + an agent holding a weapon | ⏸ **DEFERRED 2026-08-13 → M7.0** | Director-assigned to the optimization milestone with an earlier trigger than the milestone — see M7.0's own note. Measurement and both routes unchanged in `WEAPON_MASTER_PLAN` §0 |
+| **Firearm aim mode** (weapon slots, target cycling, hit %, pre-resolution) | Agent model that holds a weapon | 🟡 **DESIGNED 2026-08-13, unbuilt — scheduled into GAME-01** | Flow + decisions: `WEAPON_MASTER_PLAN` §5c / D31–D36; gameplay statement: `DESIGN_MASTER_PLAN` §8.7. Of the six COMBAT-wave questions (§7c), **Q1 and Q2 were closed by the Director 2026-08-13** (D37/D38); four remain, none blocking the shape of the work |
+| **W-PRECOOK** (firearm pre-production, ~310 ms/shot) | Aim mode built + an agent holding a weapon | ⏸ **DEFERRED 2026-08-13 → last item of GAME-01** | Assigned to M7.0 and pulled forward to the end of the combat milestone the same day. Measurement and both routes unchanged in `WEAPON_MASTER_PLAN` §0 |
+| **Baking System cache + decals** — final verification against the shipping art | Final texture sets | ⏸ **SCHEDULED 2026-08-13 → M7.0** (last optimization stage) | Director runs an informal swap-the-files smoke test himself in the meantime; that is **not** this deliverable and is off the agent's list |
 | **ACTOR living-beings track** (character model, poses, weapon layering) | ~~D18 sequencing deferral~~ | 🟢 **UNBLOCKED 2026-08-13 by the Director** | *"Agora chegou a hora de produzir realmente o personagem."* Design conversation opened, plan not yet written — `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md` Parts 1/3/4 and §6 |
 | ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; **Director is now asking about character/animation work ahead of this window — see engine assessment for the sequencing question** |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
@@ -1140,11 +1174,13 @@ been answered by events. Read this section, not that one, for what happens next.
    hypothetical. Character work is starting. **ART-01's gate condition needs
    re-reading against that** — flagging, not deciding.
 5. **New (2026-08-13):** firearm aim mode is designed and unbuilt
-   (`WEAPON_MASTER_PLAN` §5c). Six COMBAT-wave questions block building it
-   (§7c); two of them — is the agent's loadout one weapon or three, and is
-   "2–3 targets" a cap or an observation — change the shape of the work rather
-   than its balance.
-6. **Still queued, independent of all of the above:** verify that a second
-   texture set correctly invalidates the Baking System cache and that decals
-   recomposite over new art (Director's own, 2026-08-13). Waits on the texture
-   set, not on the character.
+   (`WEAPON_MASTER_PLAN` §5c), and scheduled into **GAME-01** with W-PRECOOK as
+   that milestone's last item. Of the six §7c questions, the two that would have
+   changed the shape of the work were closed by the Director the same day:
+   the loadout is **not** restricted to one weapon (D37) and the target list is
+   **not** capped (D38). The four that remain are balance and scope questions.
+6. **Off the agent's list (Director, 2026-08-13):** the Baking System cache
+   check. The Director runs it himself by swapping texture files in the folders.
+   A **separate**, formal verification of cache invalidation + decal
+   recompositing against the shipping art is scheduled as the last optimization
+   stage — M7.0.

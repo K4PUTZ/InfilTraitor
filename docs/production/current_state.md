@@ -425,26 +425,32 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 > DEFERRED, and the character is now the active work.** The banner below was
 > written the morning of 2026-08-13 and overtaken the same day.
 >
-> **Firearm pre-production (W-PRECOOK) is deferred to the optimization
-> milestone** (`docs/production/milestones.md` → M7.0, which carries its real
-> trigger). Nothing about the problem changed — a shot still costs ~310 ms of
-> synchronous CPU for nine voxels — but the window it exists to fill is the
-> *aiming* window, and there is no aim mode, no shooter and no agent holding a
-> weapon to build it against. Director: *"quando o personagem já existir e
-> conseguir empunhar as armas. Pra não ficar testando com mecanismos visuais
-> teóricos."*
+> **Firearm pre-production (W-PRECOOK) is deferred to the LAST ITEM OF GAME-01**,
+> the combat milestone (`docs/production/milestones.md`). Nothing about the
+> problem changed — a shot still costs ~310 ms of synchronous CPU for nine
+> voxels — but the window it exists to fill is the *aiming* window, and there is
+> no aim mode, no shooter and no agent holding a weapon to build it against.
+> Director: *"quando o personagem já existir e conseguir empunhar as armas. Pra
+> não ficar testando com mecanismos visuais teóricos"*, then, on the placement:
+> *"pode colocar o W-PRECOOK mais cedo, vamos fazer ele no final da milestone de
+> combate."*
 >
-> **In its place, aim mode is DESIGNED and unbuilt** — weapon slots on 1/2/3,
-> `S` to aim, 2–3 cyclable targets with a visible hit percentage, the current
-> target pre-resolved immediately, and a second input to fire.
-> `WEAPON_MASTER_PLAN` §5c + D30–D36; `DESIGN_MASTER_PLAN` §8.7.
+> **In its place, aim mode is DESIGNED and unbuilt** — weapon selection on 1/2/3
+> over an open carried arsenal, `S` to aim, every valid target cyclable with a
+> visible hit percentage, the current target pre-resolved immediately, and a
+> second input to fire. `WEAPON_MASTER_PLAN` §5c + D30–D38;
+> `DESIGN_MASTER_PLAN` §8.7. **`DESIGN_MASTER_PLAN` §10.2's one-weapon-per-
+> mission loadout rule is superseded** (D37) — the agent carries everything for
+> now, and restricting it later is an open design lever.
 >
 > **The active work is the CHARACTER** — `ACTOR_MASTER_PLAN`'s living-beings
 > track, deferral lifted by the Director 2026-08-13. Design conversation open,
 > plan not yet written.
 >
-> Still queued and NOT deferred with W-PRECOOK: verify the Baking System cache
-> and decals against a second texture set (waits on the texture set).
+> **Off the agent's list:** the Baking System cache check — the Director runs it
+> himself by swapping texture files in the folders. A separate formal pass
+> (cache invalidation + decal recompositing against the shipping art) is
+> scheduled as the **last optimization stage**, M7.0.
 >
 > *Original banner, kept:* firearm pre-production (W-PRECOOK) — a shot's entire
 > cost is `_repaint_voxel_light_buckets()`, ~310 ms of synchronous CPU for nine

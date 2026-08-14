@@ -201,11 +201,13 @@ throw. The firearm has no pre-production at all.
 **Deliberately not fixed yet (Director, 2026-08-13).** The window this work
 exists to fill is the aiming window, and there is no aim mode, no shooter and no
 agent holding a weapon to build against — fixing it now means tuning against a
-mock. Assigned to the **M7.0** optimization milestone with an earlier trigger
-than the milestone itself.
+mock. Assigned to **GAME-01 (Combat System Foundation) as that milestone's last
+item**, after aim mode is built in the same milestone. (Briefly assigned to M7.0
+earlier the same day and pulled forward: *"vamos fazer ele no final da milestone
+de combate."*)
 
-**Timeline:** once the ACTOR living-beings track produces an agent that holds a
-weapon and aim mode runs.
+**Timeline:** end of GAME-01 — aim mode built, and an agent from the ACTOR
+living-beings track holding a weapon.
 **Owner doc:** `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` §0 (measurement + both
 routes) and D30.
 

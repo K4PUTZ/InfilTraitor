@@ -344,6 +344,57 @@ turn; every mesh in `imported_models/` is a weapon or a grenade.
 **Deliverable either way:** one turn and one walk cycle at three candidate
 intermediate-frame counts, played at real game speed, captured for the record.
 
+### 🟡 S2 — UNBLOCKED AND RENDERED 2026-08-14. Awaiting the Director's eye.
+
+Blender 5.2.0 LTS was installed the same day, so option 1 was taken: the mockup
+is **generated to §4's spec**, not sourced generic.
+`tools/asset_generation/s2_mockup_character.py` — **20 bones, 19 segments, 1.96 m
+tall** (1.80 m figure plus fedora), standing on z=0, with all seven §4.3 sockets
+exported as bone-parented empties. Output:
+`ASSETS/.../imported_models/s2_mockup/` (`.glb` 52 KB, `.blend` 97 KB).
+
+**Why a character was scriptable at all — the art direction made it so.** An
+action figure (D35) is rigid segments on visible joints, so every segment binds
+100% to exactly one bone: no weight painting, no falloff, no skinning artifacts
+to hand-fix. The thing that normally makes a character un-scriptable is absent
+*by art direction*. The joint gaps are the style, not a tolerance. This is the
+same convergence D35 already records between the action-figure look and the
+layering architecture — it turns out to extend to the tooling.
+
+**The turn** (`tools/asset_generation/s2_turn_render.py`): a 90° facing change at
+**0, 1, 3 and 7 in-betweens**, eased (a real turn accelerates and settles; a
+linear sweep would flatter high frame counts by hiding the arrival beat), with
+**head and chest running ahead of the hips** — because `guard_enemy.gd` turns
+`vision_angle` at 1.35× `body_angle` and D41 ratifies preserving that read. A
+rigid spin would have tested something the game does not do. Rendered at the
+game's exact camera convention (elevation 30°, azimuth 45°), as GIFs at two
+speeds (200 ms and 350 ms per 90°) so "too few frames" can be told apart from
+"too slow", which look alike in a single clip.
+
+**The cost, which is what makes this a real decision and not a polish call.**
+Every in-between is a yaw that must exist as a baked frame, and yaw multiplies
+the largest term in §8. At 2 archetypes × 3 silhouette classes × 8 poses:
+
+| In-betweens per 90° | Distinct yaws | Body sets |
+|---:|---:|---:|
+| 0 (snap) | 4 | 192 |
+| 1 | 8 | 384 |
+| 3 | 16 | 768 |
+| 7 | 32 | 1536 |
+
+**⚠️ Declared substitution, not a silent one.** These frames are rendered in
+Blender at the game camera — **not** baked through Godot and relit by
+`flat_normal_relight.gdshader`. The question here is *motion cadence*, which the
+camera angle and frame timing decide, and S1 separately established that the
+relight path survives compression. **Nothing here is evidence about the runtime
+pipeline** and must not be cited as such.
+
+**Status: the test is run; the answer is the Director's.** D45 makes this a
+game-feel judgement by eye, and no metric substitutes. Evidence (non-`auto_`
+names, so the 50-file rotation cannot eat them):
+`Screenshots/history/s2_turn_{0,1,3,7}inbetween_200ms.gif` and
+`s2_turn_frames_7inbetween.png`.
+
 ---
 
 ## 7. Parts

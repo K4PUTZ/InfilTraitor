@@ -1,5 +1,5 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.7
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.8
 
 > ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
 >
@@ -18,6 +18,24 @@
 > conversation land as new D-rows and a revised Part 1 — **not written here in
 > advance.** §7's open questions 1, 3, 4 and 5 are the ones that conversation
 > has to answer, and they are still open.
+>
+> ### 🔵 UPDATE 2026-08-14 — the conversation happened; D32–D38 are its record
+>
+> The persona/model conversation the banner above was waiting for ran on
+> **2026-08-14** and produced seven ratified decisions, **D32–D38** in §2. What
+> closed: **the source is a rigged low-poly mesh** (D35 — this was the question
+> gating the other four), **identity lives outside the body and the body is a
+> two-archetype legibility contract** (D32, closing the 2026-08-13 session's
+> question 5), the tier/silhouette model (D33), the cost contract that keeps the
+> combo space additive (D34), the cosmetic/state boundary (D36), the hood as a
+> back-mounted layer that opens a real stealth mode (D37), and the verdict on
+> reusing the Baking System (D38).
+>
+> **Parts 1/3/4 are still not written.** The Director asked to *register*, not to
+> plan, and this update honours that literally: §2 grew, the banner and §7 were
+> reconciled so the document does not contradict itself, and nothing else moved.
+> Still open and now the top of the list: the turn (snap vs. turn-through), the
+> facing count, and the minimum viable pose set — §7 #21–#26.
 >
 > **Two other workstreams are gated on this track**, both recorded 2026-08-13:
 > firearm **aim mode** (`WEAPON_MASTER_PLAN` §5c / D31–D36) and **W-PRECOOK**
@@ -131,6 +149,18 @@ in-world collectible read at the same, deliberate pace. Also bumped
 inline, not deleted — see its own flag. No decision register entry changed;
 this is an implementation correction, not a new ratified choice.
 
+**v1.8 (2026-08-14):** the persona/model conversation D18's reopening banner was
+waiting for. Seven new decisions, **D32–D38**, transcribed from a single Director
+session — same register discipline as D1–D9 and D10–D21 before them (every row is
+something the Director decided in conversation, not a proposal awaiting
+ratification). The load-bearing one is **D35: the source is a rigged low-poly
+mesh**, which was the question gating the other four left open on 2026-08-13, and
+which D34's arithmetic had already made nearly self-answering. No prior decision
+is reversed; **D12's per-object source choice is narrowed for characters
+specifically** (D35), and **D16's twin/simplification split gains a second
+justification** it was not designed for — monetisation, not bake cost (D33/D38).
+Parts 1/3/4 remain unwritten on purpose.
+
 ---
 
 ## 1. Why — the pains this serves
@@ -201,6 +231,13 @@ Named pains this serves:
 | **D30** | **`FloatingCollectible` covers a second object and a second BEHAVIOUR — and both were tested, not asserted.** *(Director, 2026-07-29: "inverter" the test zone's two roles, plus "confirmar se o modelo serve pra qualquer objeto".)* Two independent generalisations landed together. **(a) Second object:** the spinning pickup is now a grenade, not the shotgun — the first time this class has displayed anything but the object it was written for. That exposed a real hidden coupling: `SPRITE_HALF_WIDTH_PX`/`SPRITE_HALF_HEIGHT_PX` (38×19) were the *shotgun's* measured extents, feeding D29's depth-sort rect, and the grenade fills 44×48 of its frame rather than 66×33. Both constants are now measured per instance from the baked frames' own alpha bounds (`Image.get_used_rect()`, union across frames, max distance from the frame CENTRE since the sprite is `centered=true` and the object need not be centred in its canvas), with the old numbers surviving only as a fallback. **(b) Static facing mode:** a prop that POINTS somewhere instead of spinning is the same flipbook frozen on one frame — `actor_frame_bake_spike.gd` already renders a full 360° turn, so every facing is on disk and a placed weapon needs no bake of its own. Pinning `bob_phase` to 0.0 is the entire static branch: the prop then rests at `HOVER_HEIGHT_PX` with its shadow crossfade at the midpoint, so the static path cannot drift out of sync with the spinning one. **The measurement discipline is the point, not the feature:** a GLB's own forward axis is arbitrary art data, so `FACING_YAW_DEG` was derived from the real frames (PCA principal axis + thin-end test for direction, matched against each grid edge's projected screen angle) — and that measurement caught `PERSPECTIVE_YAW_DEG` copied verbatim from `GrenadeProp.YAW_BY_DIRECTION` being **wrong for E/W**: 170.6°/178.2° off, aiming away from the target, with N and S correct. Flipping E/W: worst error across 4 views × 4 columns went **178.2° → 9.4°**. `GrenadeProp` left alone deliberately — a grenade doesn't point anywhere, so a 180° error is invisible on it; a weapon aiming at a specific block is the project's first object whose facing is falsifiable. Catalog and delivery-shape consequences live in [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) (D3/D4/D5). | ✅ Shipped (2026-07-29, `e98ad25`) |
 | **D31** | **Weapon color, not just brightness, needed fixing at the BAKE, not at runtime.** *(Director, 2026-07-30: "estou achando as armas muito escuras e tristes. A gente não consegue levantar a iluminação delas e deixar mais coloridas?")* Tried the runtime route first, per D28's precedent (light/ambient, not the source pixels) — and this time measured the result instead of eyeballing it: a dedicated bench light (`maps/PLAYGROUND.map.json`, 4th light, r10 int1.2 covering the whole bench) plus raising `flat_normal_relight.gdshader`'s `ambient` floor (0.35→0.55) moved the bench pistol's mean pixel value by under 1/255 in a tight before/after crop — real, but not the fix. Root cause, measured directly on the baked source: `pistol_frames/frame_00_color.png`'s opaque pixels average RGB **(47,46,45)/255 — dark AND R≈G≈B, i.e. no hue at all** in the captured texture. `lit = albedo * (ambient + light)` can only ever brighten a colour that exists; it cannot manufacture hue that was never baked in, no matter how much light reaches the prop. **Fix: grade the baked colour texture itself**, once, at bake time — `_grade_color_image()` in both `weapon_frames_bake.gd` (pistol/revolver/SMG/assault rifle/sniper rifle) and `actor_frame_bake_spike.gd` (the shotgun's own separate bake, easy to have missed since it isn't in the other script's `WEAPONS` table). Brightness lift+gain, then an HSV saturation boost (amplifies whatever hue-bias a model already has — the shotgun read slightly warm even before grading), then a fixed cool gunmetal-steel tint blended underneath so a pixel with genuinely zero saturation (the pistol) still ends up with a real hue rather than "brighter gray." Applied to the colour pass only — never `normal_img` (real geometry data) or the shadow images (alpha-only silhouettes). **Measured result**: pistol mean RGB (47,46,45) → **(103,108,117)**, more than double the brightness and now genuinely blue-tinted rather than neutral gray; all 5 `weapon_frames_bake.gd` guns re-baked and land in the same 100-150 range. The grenade (`grenade_frame_bake_spike.gd`) was deliberately NOT touched — it already reads with real colour (measured mean RGB (86,99,69), clearly green) and didn't have the problem being solved here. Kept the light + ambient changes (D28-adjacent, harmless, mildly positive) alongside the real fix rather than reverting them. **Same-day follow-up**: *"dá pra aumentar um pouquinho a saturação e o contraste das armas sem refazer o bake?"* — a runtime `saturation`/`contrast` pair added to `flat_normal_relight.gdshader` (defaults 1.0 = no-op, same shared-shader opt-in contract `outline_width` already uses), set only by `WeaponBenchController.add_weapon()` (`WEAPON_GRADE_SATURATION`/`WEAPON_GRADE_CONTRAST`, 1.3/1.15 starting point) so the grenade stays untouched. Tunable by editing two constants and re-capturing — no windowed GPU bake needed, unlike this row's own fix. | ✅ Shipped 2026-07-30 |
 | **D29** | **Floating props sort by REAL DEPTH against voxel geometry.** *(Director-reported 2026-07-29: "a arma está entrando dentro da parede".)* Amends D25's fixed ground-level slot. The object was not inside the wall — it stood in the cell directly SOUTH of a 2-storey block and was drawn under it, because `z_index` in this project encodes HEIGHT (`WALL_BASE + level`) while a prop needs DEPTH, and y-sorting is enabled nowhere (only `y_sort_origin` is set, which does nothing alone). `VoxelRenderer.classify_geometry_over_rect()` now reports, for the prop's own world-space sprite rect, the tallest z overlapping it from BEHIND and whether anything overlaps it from the FRONT (depth = O5, `(x + y)`, greater = nearer); the prop sits one z above the former, or below everything when the latter is true — so D25's principle (geometry hides props, props never create occlusion) is preserved exactly. **Two wrong versions preceded this, both caught by real runs rather than reasoning:** (1) a vertical-only overlap test let a block 384px off to the side — one depth step nearer — count as an occluder and bury the prop under the whole map, a capture showing it MORE hidden than before the fix; (2) a GU-granular geometry query reported the prop's own cell and every neighbour as "occupied to level 17", because walls are not per-GU columns — `SliceGenerator` puts a slice in a single 8-voxel ROW and an edge's far slice lands one voxel INSIDE the neighbour GU. The query works at voxel resolution. Verified both branches by instrumented run: in front of the wall → `behind_top_z=13`, z=14 (only levels 0–3 overlap the sprite at all, so this clears every frame of the spin); north of the block → `covered_from_front=true`, z=9, hidden. | ✅ Shipped (2026-07-29) |
+| **D32** | **Identity lives OUTSIDE the body; the body is a legibility contract, not a personality.** *(Director, 2026-08-14: "A identidade mora fora do corpo. No lore, nas habilidades furtivas, estilo de movimentação, tecnologias utilizadas, tipos de contatos (NPCs)")* Who the agent *is* lives in lore, stealth abilities, movement style, technology and NPC contacts — never in a face. What the body carries instead is **recognizability**: **two fixed archetypes, masculine and feminine**, Mass Effect's Shepard as the named reference. Fully open sex/appearance customization was considered and **rejected by the Director's own objection** — *"ninguém sabe quem é quem, e o cenário acaba virando a âncora de realidade, em vez do personagem."* The TF2 property he invoked is class recognition, not individuality (the Heavy has no interior life), so this row is a **silhouette contract**. Technical consequence, in the Shepard mould: the two archetypes **share skeleton, pose library and animation timing**; the difference is mesh, proportion and head — which is what makes them one character in two bodies rather than two characters, and keeps the pose/yaw terms of D34's budget shared instead of doubled. **Closes the 2026-08-13 session's open question 5** ("face and identity, or silhouette?"). **Persona ratified alongside:** cunning, socially fluent, reads between the lines, persuades and deceives — a double agent; post-campaign, renegade to both the corrupt police and the drug lords. His motivation must be **renewable, never resolvable** — the Director rejected a trauma/revenge spiral as cliché, and it independently fails `DESIGN_MASTER_PLAN` §19 Rule 1 (design to scale, never to cap): revenge has an end, and this game does not. | ✅ Ratified (Director, 2026-08-14) |
+| **D33** | **Gameplay silhouette shows TIER; the big model shows IDENTITY — and appearance changes by silhouette CLASS, never per item (the Diablo 1 rule).** *(Director, 2026-08-14: "Como no Diablo 1, onde a aparência do personagem não muda com qualquer tipo de item, mas sim quando os tipos de itens sobem um tier... quando o jogador chega no último tier ele se sente, de fato, muito mais poderoso.")* Two representations with **deliberately different cosmetic rules**, which is D16's twin/simplification split arrived at a second time from a different direction (monetisation, not bake cost): the in-game token is coarse and tier-legible; the big menu/forum model is refined and cosmetically freer. That divergence is a decision, not a bug — D16 already establishes the two are synchronized *by convention through the same triggers, not by mechanical derivation*. **Recommendation carried into Part 1, not yet a number:** Diablo 1 used ~3 visual classes across dozens of items, so map §10.1's **7 armour tiers onto 3–4 silhouette classes** and let colour + adornments carry the rest — same felt progression, less than half of D34's dominant term. **Collision this creates, and its resolution:** §10.1 armour is a *tactical* choice with stealth penalties (tier 1 civilian clothes = *"perfect disguise"*), so if clothing alone encoded rank, a veteran choosing civilian clothes — a legitimate, sometimes optimal play — would read as a novice. Resolved by separating the **stat layer** (armour tier) from the **display layer** (cosmetic over it): that is `PropDef.layers` (D7), and it is also what protects §16's never-pay-to-win, since the shop sells only the display layer. | ✅ Ratified (Director, 2026-08-14) |
+| **D34** | **The cost contract: exactly one axis may multiply; everything else is additive or free.** Formalizes D8's combo budget for the character case now that D32/D33 fixed its dimensions. **Multiplies:** archetype (×2, D32) and silhouette class (D33). **Additive** — composited at runtime over per-(pose, yaw) anchors, exactly as the weapon already is: adornments (medals, pauldrons, armband), hood/cape (D37), weapons. **Free** — a shader uniform, no bake, no texture memory: colour and palette; `flat_normal_relight.gdshader` already carries `saturation`/`contrast` (D31) and `outline_width` (D28) as opt-in uniforms, so a tint/palette uniform is a proven pattern rather than a new one, and the Director's *"umas 7x variações só com isso"* costs nothing. **The explicit prohibition:** never export pre-combined (armour × weapon × pose) frames. The Director's phrasing — *"exportar todas as poses padrão, com todos os tiers de armas e armaduras"* — is correct as an *output requirement* and fatal as an *authoring shape*; it must be emitted as separate layers. Order of magnitude at 8 poses × 4 yaws: 7 silhouettes → `2 × 7 × 8 × 4` = **448** body sets; 3 silhouettes → **192**. Neither is measured, and both need Part 0's discipline (measure, don't guess) before they are treated as budget. | ✅ Ratified (Director, 2026-08-14) |
+| **D35** | **The character source is a RIGGED low-poly 3D mesh — D12's third path, authored to read as an action figure.** *(Director, 2026-08-14: "a questão do modelo tem que ser 3D rigged bem construído... Não precisa ser super definido e realista, queremos algo mais na linha do boneco de action figure.")* **This is the decision that was gating the other four** left open on 2026-08-13. It is D12's per-object source choice narrowed for characters specifically: D12 offered voxel twin or imported mesh and *recommended* the voxel twin for anything destructible-as-terrain, but a character has a dimension neither branch anticipated — **a voxel twin has no skeleton**, so every pose is re-authored voxel by voxel at Part 0's measured ~480–500 ms and ~330–360 MB per pose at ×8. Against D34's 192–448 body sets that path is arithmetically dead; a rig re-poses and re-bakes automatically. **Art direction:** action-figure silhouette, visible joints, swappable parts, low-poly — deliberately *not* the robotic reference image the Director supplied (*"Este aqui está muito robótico, mas a silhueta, as poses, e o low poligon é o estilo"*) — crossed with **gangster / Michael Jackson: elegant but stealthy, able to move between two worlds.** Worth recording: **this is the same reference D16 already named on 2026-07-26** ("art-directed toward Moonwalker (Arcade)'s pose/silhouette language"), arrived at independently three weeks later; the art direction has been consistent since July without anyone noticing. The action-figure read is also architecturally load-bearing rather than merely stylistic — visible joints and detachable parts make D34's layering (and D37's back-mounted hood) look native instead of like a compositing hack. **The big model is the Batman: Arkham-style display** for the menu, and is the same asset that becomes the forum avatar. | ✅ Ratified (Director, 2026-08-14) |
+| **D36** | **Cosmetics may EXPRESS state; they may never GRANT it — and any state indicator living in a purchasable asset needs a non-purchasable fallback.** The first half comes from D37's hood being simultaneously a cosmetic and a stealth-mode indicator, and it is what keeps §16's *never pay-to-win* true while still making shop items feel mechanically meaningful: the hood *shows* stealth mode, it does not *confer* it. **The second half is the trap the first half creates**, and it has to be settled before the first cosmetic is authored, not after: if the hood signals stealth and a player buys a cosmetic without one, the indicator disappears — and readability, this project's first tie-breaker (`design_philosophy.md`, "Readability always trumps realism"), would then depend on the store. Either every cosmetic carries an expression of that state, or the indicator is redundant with a non-cosmetic cue. Not decided which — §7 #24. **Same rule extends to the gifting system** the Director wants (players sending power-ups to each other, *"sem ficar infernizando com lembretes, nem depender disso pra jogar"*): gifting is the classic erosion vector for never-pay-to-win, since purchased power can be laundered through a second account. | ✅ Ratified (Director, 2026-08-14) |
+| **D37** | **The hood and the cape/overcoat are BACK-MOUNTED layers that coexist with any outfit — and deploying the hood opens a real reduced-visibility stealth mode.** *(Director, 2026-08-14: "O capuz introduz um modo novo com visibilidade reduzida... O capuz pode existir mesmo quando o agente está com um terno ou armadura, porque é um elemento a mais que fica nas costas... Isso permite ele entrar numa festa de gala pela frente, e de repente ir para outra area da casa.")* Mechanically this is the first real consumer of §10.1's tier-1 *"Civilian clothes — perfect disguise"*, which has existed in the design with nothing reading it. Narratively it is the persona's core verb made playable: **social infiltration pivoting to stealth**, the same *"transitar entre dois mundos"* the Director used to describe the art direction — the two halves of INFILTRAITOR's own title. **Because it is back-mounted it is orthogonal to the silhouette class** (D33), so it does not multiply D34's dominant term. **Not designed, and deliberately not designed here:** whether the mode is a fourth axis alongside `agent.gd`'s standing/crouching/prone postures or a modifier on the shipped five-class `exposure_system.gd` is a real gameplay question with a built system on the other side of it — §7 #25. | ✅ Ratified as direction (Director, 2026-08-14); mechanics undesigned |
+| **D38** | **The Baking System's compositor does NOT transfer to the character; its discipline and its resolver do.** *(Director's question, 2026-08-14: "queria ver se dá pra aproveitar o que for possível do Baking System pra customizar em tempo real, mas acho que não vai ter muito como colocar as texturas no modelo em tempo real.")* Read against `docs/technical/BAKE_SYSTEM_REFERENCE.md`: the bake system takes a grayscale facade + `MaterialDef.base_color` and emits a `TileSetAtlasSource` consumed by `set_cell()`, at map load, behind the single `BakedTileLookup.resolve()` seam. It knows nothing of meshes or UVs — a character is a rigged mesh, a wall is a grid cell that receives a tile ID. **Different problem, not a limitation.** What the Director's instinct got right and wrong: right that a texture cannot reach the model without passing through a 3D scene; **wrong that this is an obstacle** — the big display model *is* already a live 3D scene (D10/D11, shipped as Part 5a), so changing its texture is a material assignment at runtime, free and instant. The genuinely constrained half is the opposite one: the **in-game token is baked** (SubViewport + orthographic camera, a windowed GPU render that cannot run on-device per combo), so it can only ever wear what was baked ahead of time. This is precisely why D33's asymmetry is sound — it falls out of the technology rather than compromising with it. **What does transfer:** B1 (exactly one path, never both), B3 (alpha from canon, never generated), B6 (loud-fail on a missing dependency), B4's FNV-1a determinism if per-player procedural variants ever land, and above all `TextureResolver`'s `user:// → default:// → material-only` chain — that fallback ladder, not the compositor, is the piece that generalizes to per-player cosmetic delivery. | ✅ Ratified (Director, 2026-08-14) |
 
 ---
 
@@ -602,7 +639,14 @@ call, never a technical blocker, and the sequencing condition is met — the
 objects track proved the whole chain (bake rig → normal-map relight → runtime
 sprite with real lights and real depth sorting) on two objects. **The design
 conversation is open and Parts 1/3/4 are not yet planned**; see the banner at
-the top of this document. Part 2b's own gate (*"other engine fundamentals"*
+the top of this document.
+
+**2026-08-14 — the conversation ran; the source question closed.** D32–D38
+record it. Part 1's shape is now constrained but still unwritten: the source is
+a **rigged low-poly mesh** (D35), the twin/simplification split gained a second
+justification (D33), and the combo space has an explicit additive-only contract
+(D34). What still blocks writing Part 1 in earnest is §7 #21–#23 — the turn, the
+facing count, and the minimum viable pose set — none of which D35 answers. Part 2b's own gate (*"other engine fundamentals"*
 first) is likewise satisfiable now if the Director wants it — shot-based
 destruction landed 2026-08-02, and both destruction master plans closed
 2026-08-13 — but it has not been called, and it stays unstarted until it is.
@@ -617,9 +661,12 @@ picking it up early except the Director's own priority call.
 
 ## 7. Open questions
 
-1. **Digital-twin storage format** *(living-beings track, deferred per D18)* —
-   JSON like `PropDef` (`props/*.json`), a binary format, or something else.
-   Not decided.
+1. ~~**Digital-twin storage format** — JSON like `PropDef` (`props/*.json`), a
+   binary format, or something else.~~ **RESOLVED for characters 2026-08-14 —
+   see D35.** The character source is a rigged low-poly mesh, so its storage is
+   the mesh format itself (glTF, the path already proven by the shotgun and
+   grenade), not a voxel data structure. Still genuinely open for any actor that
+   takes D12's voxel-twin path instead — but no such actor is planned today.
 2. ~~**Real bake-time cost at ×8** — unmeasured; Part 0's actual job.~~
    **RESOLVED 2026-07-26** — see §4. ~500ms compose / ~360MB static memory
    for one 16,576-voxel pose; go, but recommend `MultiMeshInstance3D` over
@@ -709,3 +756,50 @@ picking it up early except the Director's own priority call.
     flagged here rather than silently normalized, since it is at minimum
     wasted I/O and would compound if `FRAME_COUNT` or the per-object frame
     count grows.
+
+**Opened 2026-08-14 by D32–D38 — the character's own list.** #21–#23 are the
+three questions the 2026-08-13 session left open that D35 did *not* answer, and
+they are now the top of the queue.
+
+21. **The turn — snap or turn-through?** *(2026-08-13 session, question 2; still
+    open)* `guard_enemy.gd:201` interpolates `body_angle` continuously toward
+    `facing_angle_deg` at `TURN_SPEED := 4.0`, with `vision_angle` turning
+    independently at 1.35× — head leading body. That is free for vector
+    geometry and **not free for a sprite**: every intermediate angle of a turn
+    is a frame that must exist. Either the turn becomes discrete, or D34's yaw
+    term rises sharply. Unresolved by D35 — a rig makes the frames cheap to
+    *author*, not cheap to *store*.
+22. **Facing count — 4 or 8?** *(2026-08-13 session, question 3; still open)*
+    Movement is 4-directional and `DESIGN_MASTER_PLAN` §17 already assumes
+    N/S/E/W sprites, but the shot is 360°. Note perspective itself is free:
+    on-screen yaw is `facing − perspective`, cyclic, so 4 facings × 4 room
+    perspectives is **4 distinct yaws, not 16**.
+23. **Minimum viable pose set** *(2026-08-13 session, question 4; still open)* —
+    idle plus three weapon stances is what unblocks the firearm work (aim mode,
+    W-PRECOOK); walk / crouch / prone / peek / death can follow. "~8 per
+    activity" (D3) remains a working figure, never an enumeration. §8.2's four
+    cover states, §8.3's peek, §9.2's mandated distinct death animation and
+    D37's hood mode all put real, already-ratified demands on this list.
+24. **The free fallback for a purchasable state indicator** *(new, D36)* —
+    either every cosmetic expresses stealth mode, or a non-cosmetic cue is
+    redundant with the hood. Must be settled before the first cosmetic is
+    authored, not after.
+25. **Where hood/stealth mode lives mechanically** *(new, D37)* — a fourth axis
+    beside `agent.gd`'s standing/crouching/prone postures, or a modifier on
+    `exposure_system.gd`'s five shipped exposure classes. Both are built
+    systems; this is a gameplay design question, not a rendering one.
+26. **How many silhouette classes** *(new, D33/D34)* — D33 recommends 3–4
+    against §10.1's 7 armour tiers, on the Diablo 1 precedent. It is the single
+    number that most moves D34's budget, and it is unmeasured.
+
+**Not in this list because they are not this plan's:** the distraction/
+misdirection system the same session opened (agent whistling, thrown stones,
+wall-banging, noise devices, manipulable NPCs) has **no owner document** —
+noise is built (`DESIGN_MASTER_PLAN` §5) and the sound lure exists as a gadget
+(§10.4), but *the agent* whistling is a new verb and a manipulable NPC is a new
+system. Likewise the monetisation track (shop, economy, gifting, forum/lobby):
+reviewed 2026-08-14 across `milestones.md`, `roadmap.md` and
+`current_state.md` — **no monetisation milestone exists anywhere**, and §16 of
+`DESIGN_MASTER_PLAN` (nine table rows) is the entire body of design. D33/D34/D36
+carry the half of it that constrains *this* plan's asset pipeline; the rest is
+M5.05-adjacent and deliberately not started.

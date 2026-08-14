@@ -170,28 +170,46 @@ sixteen. **No mirroring (D45)** — at four facings it saves one set in four whi
 inverting every asymmetry, and a mirrored frame would additionally need its
 normal map's R channel negated.
 
-### 4.7 Scale — derive it, do not guess it
-This project forbids empirical pixel offsets on voxel-layer positions
-(`CLAUDE.md`: positions are analytically derived). The character's height gets
-the same treatment. The real constants:
+### 4.7 Scale — ✅ SETTLED 2026-08-14 (closes §9 #3)
 
-```
-VOXEL_STEP_PX        = 20.0     # vertical px per voxel level
-LEVELS_PER_STOREY    = 8        # -> a storey is 8 * 20 = 160 px
-WALL_FLOOR_STEP_PX   = 158.0    # measured storey step (the ~2 px is the seam)
-```
+**The Director's spec, which is what finally made this derivable:** standing,
+slightly **taller** than a slice, so hunching drops him into full cover behind
+the 8 voxels; crouched, ~2/3 of a slice, *"5 or 6 voxels"*; prone, 2–3 voxels of
+cover.
 
-**The current placeholder is not evidence of anything.** `agent.gd`'s
-`SILHOUETTE_HEIGHT = 61.0` is 61/158 ≈ **39% of a storey** — if a storey reads
-as ~2.6 m, that placeholder is a person about one metre tall. It was hand-
-calibrated for a vector box, never derived.
+If the 1.80 m figure stands at ~9 voxels, one voxel is **0.20 m** and everything
+else follows with no second guess:
 
-So: pick the real-world storey height, state it, and derive the character height
-from it. For orientation only — a person at ~70% of a storey lands near **5.6
-voxel levels ≈ 112 px**, roughly double today's placeholder. **Not a decision;
-the arithmetic is shown so the decision is made against real numbers** (§9 #3).
-This also finally gives ACTOR §7 #17 (`MESH_SCALE` never validated) something to
-be validated against.
+| | voxels | metres | px (`VOXEL_STEP_PX` = 20) |
+|---|---:|---:|---:|
+| 1 voxel | 1 | 0.20 | 20 |
+| **SLICE** (`LEVELS_PER_STOREY`) | 8 | 1.60 | 160 *(`WALL_FLOOR_STEP_PX` = 158)* |
+| standing *(incl. fedora)* | 9.8 | 1.96 | 196 |
+| crouched | 5.5 | 1.10 | 110 |
+| prone | 2.2 | 0.44 | 44 |
+
+**Verified, not asserted** — `tools/asset_generation/s2_posture_scale.py` poses
+the rig and *measures* the evaluated mesh, failing loudly when a posture lands
+outside the Director's band. Evidence:
+`Screenshots/history/s2_posture_vs_slice.png`, with the wall banded per voxel so
+the 8 units are countable in the picture rather than claimed in a caption.
+
+**Two consequences worth stating plainly.**
+
+1. **The character is TALLER than a wall storey**, which reverses this section's
+   earlier sketch (it assumed ~112 px, i.e. 70% of a storey). That sketch is
+   superseded.
+2. **A 1.60 m storey is short for architecture** — real ones run 2.5–3 m. This is
+   a deliberate trade and it is the project's own first tie-breaker working as
+   designed (`design_philosophy.md`: *"Readability always trumps realism"*).
+
+**Cover is physical here and probabilistic in the rules** — the Director's own
+XCOM reference: being behind the slice is not immunity. `DESIGN_MASTER_PLAN`
+§8.2 gives each cover state a hit/damage multiplier, never a shield. The
+silhouette decides what the *player reads*; the dice decide what happens.
+
+`agent.gd`'s `SILHOUETTE_HEIGHT = 61.0` is now measurably wrong by more than 3×,
+and ACTOR §7 #17 (`MESH_SCALE` never validated) finally has a referent.
 
 ### 4.8 Material and the colour trap
 The bake emits a flat **unlit albedo** pass plus a **view-space normal** pass,
@@ -532,9 +550,9 @@ count. That is the number Part 0 exists to start pinning down.
    full-cover crouch are the poses most likely to demand more.
 2. **How many silhouette classes** — D33 recommends 3–4 against seven armour
    tiers. The single number that most moves §8.
-3. **Character height** — §4.7 shows the arithmetic and the placeholder's
-   distortion; the real-world storey height has never been stated, so the
-   derivation cannot be completed. Also finally gives ACTOR §7 #17 a referent.
+3. ~~**Character height**~~ **RESOLVED 2026-08-14 — see §4.7.** One voxel is
+   0.20 m; standing 9.8 / crouched 5.5 / prone 2.2 voxels, measured and gated,
+   not asserted.
 4. **The free fallback for a purchasable state indicator** (D36) — either every
    cosmetic expresses hood/stealth mode, or a non-cosmetic cue is redundant with
    it. Must be settled **before the first cosmetic is authored**.

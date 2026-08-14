@@ -1152,6 +1152,16 @@ artifact in the project.**
 - Performance optimization (target 60 FPS on 5-year-old devices)
 - **Baking System cache + decals — final verification pass** *(Director-assigned
   2026-08-13; see the note below)*
+- **Pose and clothing bake cache** *(Director-assigned 2026-08-14)* — *"Vamos
+  fazer o cache nas poses e roupas também se possível."* The character's frame
+  catalog is far larger than the wall atlas it would extend: `CHARACTER_MASTER_PLAN`
+  §8 puts the authored body sets in the hundreds-to-thousands, against a resident
+  set measured in tens of MB. The existing cross-session bake cache
+  (`BAKE_CODE_VERSION` / `DAMAGE_BAKE_LOCAL_VERSION`) is the precedent to extend,
+  **not a new mechanism**. Lands here rather than earlier for the same reason as
+  the row above: a cache's whole job is to be invisible until the art under it
+  changes, so verifying it against placeholder poses proves the mechanism and not
+  the shipping condition.
 - Platform-specific builds (iOS, Android, Web)
 - Final balance tuning
 

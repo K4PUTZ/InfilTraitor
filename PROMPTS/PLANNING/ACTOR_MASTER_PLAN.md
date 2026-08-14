@@ -850,13 +850,19 @@ they are now the top of the queue.
     fazer um mockup e testar o normal map" / "precisamos fazer alguns testes
     primeiro pra ver como vai ficar a fluidez da animação")* Two separate
     questions with different asset needs, and they should not be run as one:
-    - **(a) Normal maps under mobile texture compression — needs NO new asset.**
-      D17's entire relight technique depends on normal maps, and lossy formats
-      corrupt them in a way that shows up as wrong lighting rather than as
-      visible blur. The shotgun's 120 baked colour+normal frame pairs are
-      already on disk (`ASSETS/ISOMETRIC/source_assets/actor_bakes/`) — compress
-      them, relight both versions through the real shader, and measure the
-      delta. Answerable today.
+    - **(a) Normal maps under mobile texture compression — ✅ RUN 2026-08-14.
+      Result: ASTC yes, ETC2 no.** 60 measurements on real GPU, both gates
+      passed (same-config re-render diff **0**; every light direction produced a
+      200–227 luma spread, so no D22-style flat-image false pass). ASTC
+      compressed as colour: avg meanΔ **4.08/255 (1.6%)**. ETC2: **14.07** with
+      ~80% of silhouette pixels shifted. **D17 is safe to scale, and §8's RAM
+      arithmetic improves** — ASTC 4×4 is 8 bits/texel against RGBA8's 32.
+      Non-obvious finding: `COMPRESS_SOURCE_NORMAL` is a **contract** with the
+      shader (it packs to RG and expects Z rebuilt), not a quality dial — used
+      against the shipped `.rgb`-reading shader it measured 6× worse, and even
+      done correctly it trades outliers for pervasive error. The production
+      shader was not modified. Full record: `CHARACTER_MASTER_PLAN` §6 S1;
+      evidence `Screenshots/history/s1_normal_compression_comparison.png`.
     - **(b) Character mockup + animation fluidity — needs a rigged humanoid,
       which the project does not have.** `actor_part0_spike.gd`'s synthetic
       humanoid is unrigged voxel blocks and cannot test a turn; every mesh in

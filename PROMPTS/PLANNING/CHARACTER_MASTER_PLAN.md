@@ -271,8 +271,53 @@ any number. On 2026-08-09 an identical-code capture differed by 36 733 pixels
 until the wait was raised. A "0 pixel" claim from an unproven harness is noise
 wearing a number.
 
-**Outcome:** either D17 is safe at scale, or the character's normal maps need an
-uncompressed budget — which changes §8's RAM arithmetic materially.
+### ✅ S1 — RUN 2026-08-14. Result: **ASTC yes, ETC2 no.**
+
+Script: `godot/scripts/tools/s1_normal_compression_spike.gd` (windowed, real
+Metal GPU, Apple M1). 4 frames × 3 light directions × 5 compression strategies =
+60 measurements. Evidence:
+`Screenshots/history/s1_normal_compression_comparison.png` (non-`auto_` name, so
+the rotation cannot eat it).
+
+**Both gates passed before any number was read.** Same-config re-render diff:
+**0**, every frame, every light direction — the pixel-diff gate is earned. Every
+light direction produced a reference luma spread of 200–227, far above the
+validity floor, so no row is a D22-style "flat image" false pass.
+
+| Strategy | worst maxΔ | avg meanΔ (÷255) |
+|---|---:|---:|
+| **ASTC, compressed as colour** | **96** | **4.08 (1.6%)** |
+| ETC2, compressed as colour | 164 | 14.07 (5.5%) |
+| ETC2 + `SOURCE_NORMAL` + Z-reconstruction | 96 | 20.59 |
+| ASTC + `SOURCE_NORMAL` + Z-reconstruction | 92 | 21.24 |
+| S3TC + `SOURCE_NORMAL` + Z-reconstruction *(desktop control)* | 127 | 22.38 |
+
+**Verdict: D17 is safe to scale, on ASTC.** No uncompressed budget is needed, and
+§8's RAM arithmetic **improves** rather than degrades — ASTC 4×4 is 8 bits/texel
+against RGBA8's 32, a 4× saving on exactly the resource D42 names as binding.
+
+**ETC2 is not viable for this technique.** meanΔ 14/255 with ~80% of silhouette
+pixels shifted by more than 2, and a worst pixel off by 164. It is visibly
+blotchy in the strip, not subtly so. **Product consequence, stated rather than
+buried:** ASTC covers iOS A8+ (2014) and every Vulkan-class Android, while ETC2
+is the older GLES3 baseline — so this result quietly argues for an ASTC-class
+device floor. That is a Director call, not a technical one.
+
+**The finding worth keeping — `SOURCE_NORMAL` is a CONTRACT, not a quality
+setting.** The first run used it and measured it as *catastrophically worse*
+(meanΔ 91). Cause: it packs the normal into two channels and expects the
+consumer shader to rebuild Z, and `flat_normal_relight.gdshader` reads `.rgb`
+directly, so it never held up its end. Testing it that way measured a mistake,
+not the technique — the run was discarded and redone with a Z-reconstructing
+shader variant. Even done correctly it loses: reconstruction caps the outliers
+(164 → 96) but **raises pervasive error** (14 → 21), because `sqrt(1−x²−y²)`
+forces Z ≥ 0 and our view-space normals include near-silhouette texels that
+genuinely curve away. The production shader was **not modified** — the variant
+lives inside the spike.
+
+**Outcome:** D17 holds. The remaining unmeasured half of ACTOR §7 #28 — the
+resident frame count once animation multiplies the pose count — is untouched by
+this and still open.
 
 ### S2 — Mockup + animation fluidity *(blocked on an asset)*
 **The question (D45):** how many intermediate frames does a turn need before it

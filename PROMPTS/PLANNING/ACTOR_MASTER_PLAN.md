@@ -1,5 +1,5 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.9
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.0
 
 > ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
 >
@@ -177,6 +177,24 @@ the catalog is a disk cost, RAM holds one loadout. Two new open items (#27 cape
 deformation, #28 the measured resident set); two long-standing ownerless tracks
 homed into new milestones (GAMEPLAY-01, MONET-01). Parts 1/3/4 still unwritten.
 
+**v2.0 (2026-08-14, same-day continuation):** **D43–D45**, and the version bump
+is earned rather than cosmetic — **D44 removes the last way this plan's budget
+could grow.** The facing count had been hostage to `DESIGN_MASTER_PLAN` §18's
+open diagonal-movement decision (D39); ruling that a diagonal step is two
+orthogonal GU steps settles the *rendering* consequence without settling the
+gameplay question, and pins the yaw axis at four forever. §18 was updated to
+record the same ruling from its own side, so the two documents cannot drift.
+D43 closes the cape (synced layer, variants as tint over one shared motion —
+the more expensive branch, taken deliberately, since a cape baked into the
+silhouette is scenery rather than merchandise). D45 answers the Director's
+Diablo question — **mirroring is rejected**, because at four facings it saves one
+frame set in four while inverting every asymmetry, and because a mirrored frame
+would also need its normal map's R channel negated. Open questions 22 and 27
+close; 21 becomes a spike rather than a question; 28 is rewritten as the two
+Director-approved spikes, deliberately split because only one of them needs an
+asset the project does not have. **Parts 1/3/4 still unwritten** — this remains a
+register, not a plan.
+
 ---
 
 ## 1. Why — the pains this serves
@@ -258,6 +276,9 @@ Named pains this serves:
 | **D40** | **Clothing and armour are baked INTO the silhouette class; only rigid attachments stay separate layers — and the weapon layer indexes on GRIP, not on pose.** Answers the Director's own worry (*"Só precisamos pensar se isso impacta em animar todas as roupas se movimentando"*): **no** — because D33 already made armour a silhouette *class* rather than an item, there is no separate clothing to animate. You animate **3–4 fully dressed bodies per archetype**, not a naked body plus N independently-animated outfits. This is also the Director's own justification for why tiers must exist at all: *"vamos precisar dos tiers de armaduras, não dá pra autorar qualquer coisinha"* — per-item authoring dies the moment animation enters, so the tier is what makes the problem finite. **Refines D34's weapon term.** The Director is right that weapons and worn items need baking per direction to seat into the poses, but the weapon layer does **not** need one frame per body pose: it indexes on the **grip** (lowered / ready / aimed), and many poses share one grip — idle, walk and turn are all "lowered." So the term is `weapon(W × G × Y)` with G ≈ 3, not `W × P × Y` with P ≥ 8. Still additive against the body, which is the property that matters. **The open exception is the cape** (D37): a medal or pauldron is rigid and composites freely, but a cape *deforms with movement* and cannot be a rigid overlay — it is either baked into the silhouette class or needs its own layer animated in lockstep with the body. Not decided — §7 #27. | ✅ Ratified (Director, 2026-08-14); cape unresolved |
 | **D41** | **Guards are nearly free in bake terms — one body, uniform and tint, and an authored head turn.** *(Director, 2026-08-14: "Os guardas não vão mudar praticamente nada em termos de baking, a não ser uniforme e possivelmente cores/shade. Então vamos autorar o giro da cabeça e o que mais for necessário pra animação deles ficar orgânica.")* Guards share the agent's body plan and therefore its pose/animation library, varying only by uniform and colour — and colour is D34's free axis. **This effectively answers §7 #6** (per-archetype vs. shared pose libraries): shared, with the guard as a tint-and-uniform variant rather than a separate authored actor. **The head turn is not a nicety.** `guard_enemy.gd:201` already interpolates `body_angle` toward `facing_angle_deg` at `TURN_SPEED := 4.0` with `vision_angle` leading at 1.35× — head before body. That reads as alive today *because vector geometry rotates for free*; authoring it is what preserves the shipped behaviour once the guard becomes a sprite. It is the concrete instance of §7 #21's snap-vs-turn-through question, and the Director has answered it for guards: **turn through, authored.** | ✅ Ratified (Director, 2026-08-14) |
 | **D42** | **The binding runtime constraint is RAM, not CPU — and the real mitigation is variant exclusivity, not only segment population.** *(Director, 2026-08-14: "não estamos muito preocupados com performance porque é um jogo por turnos, onde cada ator se movimenta separadamente, com GUs e TIC. O grande problema seria memória RAM.")* **Sharpens D19** rather than replacing it: D19 removed authoring time as a constraint and left "runtime cost"; this row names *which* runtime cost. Per-frame CPU/GPU is genuinely not the worry — actors resolve serially, one per TIC, so there is never a frame animating twenty characters at once. Texture memory is. **The Director's stated mitigation is segment population** (few entities co-resident, per §14.1's 3×3 segment grid), and it is real but secondary. **The larger factor is that D34's multiplicative axes are mutually exclusive at runtime:** the player wears exactly one archetype in exactly one silhouette class, so the resident set is *one* dressed body plus the guard variants on screen — not the 192–448 authored sets. The catalog is a disk cost; RAM only ever holds the current loadout. **What is still unmeasured and must not be assumed:** the resident frame count once animation (D39) multiplies the pose count, and whether normal maps — which D17's whole relight technique depends on — survive mobile texture compression without lighting artifacts. Both want a Part-0-style spike before any number here is treated as a budget. | ✅ Ratified (Director, 2026-08-14); resident-set cost unmeasured |
+| **D43** | **The cape is a separately animated layer, synced to the body — and its cosmetic variants are a TINT over one shared animation, not one animation each.** *(Director, 2026-08-14: "Capa eu acho que tem que ser animada em sincronia. Porque aí dá pra aplicar variações cosméticas.")* **Closes §7 #27**, and takes the more expensive of the two branches on purpose: baking the cape into the silhouette class would have been cheaper but would have made it scenery instead of merchandise, which defeats the reason it exists. **The refinement that keeps it affordable:** a cape layer synced to the body means its frame count is the body's *full animation* set per yaw — by far the largest additive term in D34's contract, well above the weapon's (which indexes on ~3 grips per D40). So cape **variants must not multiply it**: author **one** cape motion and vary it by texture/tint, which is D34's free axis. A variant that genuinely changes the silhouette — a long overcoat versus a short cape — is different geometry and does need its own animation; that is a per-item judgment call, not a free tier. **Same rule the hood escapes:** back-mounted and largely rigid, the hood composites over an anchor like a medal and never enters this term (D37/D40). | ✅ Ratified (Director, 2026-08-14) |
+| **D44** | **Four facings, permanently — and diagonal movement, if it is ever offered, resolves as two orthogonal GU steps rather than a diagonal traversal.** *(Director, 2026-08-14: "Estou inclinado a usar só 4 poses mesmo, e no caso de movimentação diagonal, o agente percorre 2 GUs, em vez de passar diagonalmente de uma pra outra.")* **Closes §7 #22, and closes it durably** — D39 had left the facing count hostage to an unrelated, still-open gameplay decision (`DESIGN_MASTER_PLAN` §18, diagonal movement as a possible late-game unlock), meaning a ruling elsewhere could have doubled every body, cape and grip term in D34 at any time. This removes that exposure without deciding §18 itself: whether diagonal movement is ever *offered* stays open, but its **rendering consequence is now settled either way**, because a diagonal step is expressed as two moves the character already has frames for. Worth stating plainly since it is the whole point: **the yaw axis of D34's budget can no longer grow.** | ✅ Ratified (Director, 2026-08-14) |
+| **D45** | **Horizontal mirroring is REJECTED for the agent; the turn's smoothness is a game-feel decision, to be settled by a real test, not by budget.** Answers the Director's own question (*"Como isso é resolvido em Diablo, ele simplesmente faz flip horizontal?"*): **no** — Diablo pre-rendered and shipped all 8 directions rather than mirroring, because mirroring inverts every asymmetry, and this project has several the Director has explicitly asked for (weapon hand, holster side, the armband adornment, the hood's drape). Mirroring would actually be *more* viable here than in Diablo, since D40 already makes the weapon a separate layer that could be re-composited on the correct side — but **at D44's four facings the technique saves exactly one frame set in four**: N/E/S/W contains a single mirror pair (E/W); N and S are not mirrors of each other. Mirroring is a technique for 8-direction systems (render 5, mirror 3); at 4 it buys 25% for the cost of every asymmetry. **Concrete gotcha recorded so it is not rediscovered:** because lighting here is applied at runtime from a normal map (D17), mirroring a frame also requires **negating the normal map's R channel** (the X component) or the relight comes out inverted — the side that should be dark lights up. **On paying for smoothness:** the Director offered to absorb the cost as authoring time (*"se for o custo só de autorar mais tempo, eu pago tranquilamente"*), but D39/D42 place the invoice elsewhere — a rig generates in-betweens for free, and the real cost is resident texture memory. The Director's *other* instinct is the load-bearing one (*"se ficar muito lento o gameplay podemos cortar caminho"*): in a turn-based game a long, smooth per-turn animation reads as **sluggish** regardless of fidelity, which is a game-feel ceiling and not a budget one. Both pressures point the same way — a short, crisp turn is both the better-feeling and the cheaper option. **Not decided by reasoning: a real test decides it** (§7 #21, now a spike rather than a question). | ✅ Ratified (Director, 2026-08-14); exact frame count pending the fluidity test |
 
 ---
 
@@ -781,19 +802,19 @@ picking it up early except the Director's own priority call.
 three questions the 2026-08-13 session left open that D35 did *not* answer, and
 they are now the top of the queue.
 
-21. **The turn — snap or turn-through?** *(2026-08-13 session, question 2; still
-    open)* `guard_enemy.gd:201` interpolates `body_angle` continuously toward
-    `facing_angle_deg` at `TURN_SPEED := 4.0`, with `vision_angle` turning
-    independently at 1.35× — head leading body. That is free for vector
-    geometry and **not free for a sprite**: every intermediate angle of a turn
-    is a frame that must exist. Either the turn becomes discrete, or D34's yaw
-    term rises sharply. Unresolved by D35 — a rig makes the frames cheap to
-    *author*, not cheap to *store*.
-22. **Facing count — 4 or 8?** *(2026-08-13 session, question 3; still open)*
-    Movement is 4-directional and `DESIGN_MASTER_PLAN` §17 already assumes
-    N/S/E/W sprites, but the shot is 360°. Note perspective itself is free:
-    on-screen yaw is `facing − perspective`, cyclic, so 4 facings × 4 room
-    perspectives is **4 distinct yaws, not 16**.
+21. **The turn — snap or turn-through?** *(2026-08-13 session, question 2)*
+    **Answered for GUARDS 2026-08-14 (D41): turn through, authored**, preserving
+    the shipped 1.35x head-leads-body read. **Still open for the AGENT, and now a
+    SPIKE rather than a question (D45)** — mirroring is rejected, the cost lands
+    in RAM rather than in authoring time, and a long per-turn animation carries a
+    game-feel penalty in a turn-based game independent of what it costs. The
+    frame count is to be set by watching a real turn, not by reasoning about it.
+22. ~~**Facing count — 4 or 8?**~~ **CLOSED 2026-08-14 — see D44.** Four,
+    permanently: diagonal movement, if it is ever offered, resolves as two
+    orthogonal GU steps rather than a diagonal traversal, so the yaw axis of
+    D34's budget can no longer grow. (Perspective was already free — on-screen
+    yaw is `facing - perspective`, cyclic, so 4 facings x 4 room perspectives is
+    4 distinct yaws, not 16.)
 23. **Minimum viable pose set** *(2026-08-13 session, question 4; still open)* —
     idle plus three weapon stances is what unblocks the firearm work (aim mode,
     W-PRECOOK); walk / crouch / prone / peek / death can follow. "~8 per
@@ -812,18 +833,31 @@ they are now the top of the queue.
     against §10.1's 7 armour tiers, on the Diablo 1 precedent. It is the single
     number that most moves D34's budget, and it is unmeasured.
 
-27. **Does the cape deform, and if so where does it live?** *(new, D40)* — a
-    medal or pauldron is rigid and composites over an anchor for free; a cape
-    moves with the body. Either it is baked into the silhouette class (cheap,
-    but then it is not a cosmetic layer) or it gets its own layer animated in
-    lockstep (a cosmetic, but no longer free). The hood, being back-mounted and
-    largely rigid, does not have this problem; the cape does.
-28. **The resident frame count, measured** *(new, D42)* — once D39's animation
-    multiplies the pose count, what actually stays in RAM for one loadout plus
-    the guards on screen. Unmeasured. Also unmeasured: whether normal maps
-    survive mobile texture compression without lighting artifacts, which D17's
-    entire relight technique depends on. Both want a Part-0-style spike.
-
+27. ~~**Does the cape deform, and if so where does it live?**~~ **CLOSED
+    2026-08-14 — see D43.** Separately animated, synced to the body, with
+    variants as a tint over one shared cape motion so they do not multiply the
+    term. A variant that changes the silhouette (long overcoat vs. short cape)
+    is different geometry and needs its own animation — a per-item call.
+28. **The two spikes — Director-approved 2026-08-14, not yet run.** *("Vamos
+    fazer um mockup e testar o normal map" / "precisamos fazer alguns testes
+    primeiro pra ver como vai ficar a fluidez da animação")* Two separate
+    questions with different asset needs, and they should not be run as one:
+    - **(a) Normal maps under mobile texture compression — needs NO new asset.**
+      D17's entire relight technique depends on normal maps, and lossy formats
+      corrupt them in a way that shows up as wrong lighting rather than as
+      visible blur. The shotgun's 120 baked colour+normal frame pairs are
+      already on disk (`ASSETS/ISOMETRIC/source_assets/actor_bakes/`) — compress
+      them, relight both versions through the real shader, and measure the
+      delta. Answerable today.
+    - **(b) Character mockup + animation fluidity — needs a rigged humanoid,
+      which the project does not have.** `actor_part0_spike.gd`'s synthetic
+      humanoid is unrigged voxel blocks and cannot test a turn; every mesh in
+      `imported_models/` is a weapon or a grenade. This one is blocked on
+      sourcing a CC0 rigged character, same provenance convention as the
+      Quaternius weapons (`ATTRIBUTION.txt` per pack).
+    - **Also unmeasured, and folded in here:** the resident frame count once
+      D39's animation multiplies the pose count. D42 establishes that RAM holds
+      one loadout rather than the whole catalog; the number is still unknown.
 **Both homed 2026-08-14 — no longer this plan's open items.** The distraction/
 misdirection system the character conversation opened (agent whistling, thrown
 stones, wall-banging, noise devices, manipulable NPCs) now belongs to

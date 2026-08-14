@@ -845,7 +845,12 @@ indicator (top), contextual menu (tap), portrait panel (side).
 - [ ] Psionic protection — reserved for the future, out of the MVP.
 - [ ] Player-to-player item market — future.
 - [ ] Diagonal movement — blocked at the start, possibly a late-game skill
-  unlock.
+  unlock. **Its rendering consequence is no longer open (Director, 2026-08-14):
+  if diagonal movement is ever offered, the agent walks two orthogonal GU steps
+  rather than traversing diagonally**, so the character's facing set stays at
+  four permanently and this decision can never enlarge the actor art budget.
+  Whether the movement is offered at all is still open; how it would look is
+  settled. See `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md` D44.
 - [ ] Multi-floor / elevation — future, out of the MVP. *(Note: the voxel
   render system now supports vertical storeys; the open question is the
   gameplay rule, not the renderer.)*

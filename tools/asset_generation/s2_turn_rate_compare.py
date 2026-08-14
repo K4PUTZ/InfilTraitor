@@ -172,7 +172,11 @@ class Track:
     267 ms from the gap convention -- two numbers for one quantity in one image,
     which is how evidence discredits itself."""
 
-    def __init__(self, frames, hold, hz_label, subtitle, blind=False):
+    def __init__(self, frames, hold, hz_label, subtitle, blind=False,
+                 verb="turning"):
+        # The state word is per-sheet: a walking figure labelled "turning"
+        # describes the wrong motion, and these sheets are evidence.
+        self.verb = verb
         self.frames = frames
         self.hold = hold
         self.blind = blind
@@ -219,7 +223,7 @@ def draw_panel(track, k, scale):
         # rates side by side is a duration readout in disguise).
         d.ellipse([PAD, bar_y + 6, PAD + 12, bar_y + 18],
                   fill=ARRIVED if done else ACCENT)
-        d.text((PAD + 20, bar_y + 4), "arrived" if done else "turning",
+        d.text((PAD + 20, bar_y + 4), "arrived" if done else track.verb,
                font=font(15), fill=ARRIVED if done else ACCENT)
         return panel
 
@@ -232,7 +236,7 @@ def draw_panel(track, k, scale):
         d.rectangle([PAD, bar_y, PAD + int(bar_w * prog), bar_y + 6],
                     fill=ARRIVED if done else ACCENT)
     label = "ARRIVED  %d ms" % round(track.duration_ms) if done \
-        else "turning  %d ms" % round(track.elapsed_ms_at(k))
+        else "%s  %d ms" % (track.verb, round(track.elapsed_ms_at(k)))
     counter = "frame %d/%d" % (track.index_at(k) + 1, track.count)
     fl = font(15)
     d.text((PAD, bar_y + 14), label, font=fl, fill=ARRIVED if done else ACCENT)

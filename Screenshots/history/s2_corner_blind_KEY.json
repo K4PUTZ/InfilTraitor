@@ -1,0 +1,31 @@
+{
+  "seed": 20260815,
+  "step_ms": 500,
+  "gu_metres": 1.6,
+  "panels": {
+    "A": {
+      "treatment": "TURN_THEN_MOVE",
+      "frames": 110,
+      "total_ms": 1833,
+      "what": "stop at the corner, turn in place (833 ms), then step"
+    },
+    "B": {
+      "treatment": "INERTIAL",
+      "frames": 60,
+      "total_ms": 1000,
+      "what": "rotation spread across the outgoing step \u2014 one motion, no added time"
+    },
+    "C": {
+      "treatment": "ANTICIPATED",
+      "frames": 60,
+      "total_ms": 1000,
+      "what": "rotation runs in the tail of the incoming step; arrives already facing"
+    },
+    "D": {
+      "treatment": "SNAP",
+      "frames": 60,
+      "total_ms": 1000,
+      "what": "no turn frames at all; facing flips at the GU boundary"
+    }
+  }
+}

@@ -679,6 +679,68 @@ Evidence: `Screenshots/history/s2_turn_bracket_blind.mp4` (untracked per
 `.gitignore:27`; regenerable — see the chain above) and the tracked answer key
 `s2_turn_bracket_blind_KEY.json`.
 
+### Where the 833 ms turn applies — Director, 2026-08-15
+
+*"Vamos ter o giro para os casos em que o agente muda de alvo. Quando ele
+estiver selecionando em qual inimigo acertar, o personagem gira. Em outras
+situações corriqueiras ele vai simplesmente se mover da GU A para a GU B, entrar
+e sair do cover."*
+
+**The 833 ms turn is a DELIBERATE turn — target selection in aim mode**, where
+the turn *is* the feedback for the player's input, which is why it can afford to
+be weighty. Ordinary movement is a different animation with a different job, and
+the Director's follow-up question is which mechanism it uses: *"fica a dúvida se
+precisa ter uma transição e depois começar o movimento, ou se o giro já acontece
+com inércia pra frente, em movimentos únicos."*
+
+### 🔴 A finding that came out of asking it: the step is a sprint
+
+`VOXELS_PER_UNIT_AXIS` is 8 and one voxel is 0.20 m (§4.7), so **one GU is
+1.60 m** — the standard tactical square, and reasonable. But `agent.gd:71` has
+`STEP_DURATION := 0.13`, which over 1.60 m is **12.3 m/s — faster than the 100 m
+world record.**
+
+That constant is not a bug; it is a *"snappy tactical feel"* tuned for the
+44×61 px vector diamond that has no legs to contradict it. It cannot carry a walk
+cycle. And it is **upstream of the corner question**: whether a rotation "fits
+inside the step" is entirely a question of how long the step is, and at 130 ms
+nothing fits inside anything.
+
+Second measurement, same area: `agent.gd::_step_next()` builds a fresh
+`EASE_IN_OUT` tween **per tile**, so a five-GU path today is five separate
+accelerate-decelerate cycles. With a diamond that reads fine; with legs it reads
+as hopping, and it is the direct obstacle to the Director's *"movimentos únicos"*.
+
+Evidence: `Screenshots/history/s2_step_duration.mp4` — one GU at 130 / 500 /
+900 ms (12.3 / 3.2 / 1.8 m/s), labelled rather than blind because it is a
+measurement, not a matter of taste.
+
+### The corner — four mechanisms, blind
+
+`tools/asset_generation/s2_corner_render.py` + `s2_corner_compare.py`. One
+L-shaped path (GU A → B → C, a single 90° corner), one 500 ms step, and the only
+difference is **when** the facing changes. Two options are the Director's, two
+are added because offering only the two named would have pre-narrowed the choice:
+
+| Mechanism | What it does | Added cost per direction change |
+|---|---|---:|
+| TURN_THEN_MOVE | stop at the corner, turn in place, then step | **+833 ms** |
+| INERTIAL | rotation spread across the outgoing step — one motion | +0 ms |
+| ANTICIPATED | rotation runs in the *tail of the incoming* step; arrives already facing | +0 ms |
+| SNAP | no turn frames at all; facing flips at the GU boundary | +0 ms |
+
+Blind and randomised, seeded so the option with the *most* animation is not last
+— per the lesson the turn test paid for. Evidence:
+`Screenshots/history/s2_corner_blind.mp4`, key in `s2_corner_blind_KEY.json`
+(tracked).
+
+**SNAP is the one that decides §9 #10.** If the facing can simply flip at a GU
+boundary while the eye is tracking translation, movement needs **no transition
+yaws at all** and only aim mode pays for the other 92 — which is the 744-body-set
+row, not 4608.
+
+**Awaiting the Director's blind judgement.**
+
 ### ⚠️ What 23 in-betweens costs, and the one question that decides it
 
 Naively this is the most expensive corner of §8: **96 distinct yaws → 4608 body

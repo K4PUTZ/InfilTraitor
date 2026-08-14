@@ -65,7 +65,12 @@ var smoke_spawn_jitter: float = 4.0       ## px, per-blob offset from the reques
 ## system (E-NATIVE-01: this project builds its VFX out of its own vocabulary).
 var spark_speed_min: float = 90.0         ## px/sec
 var spark_speed_max: float = 220.0
-var spark_gravity: float = 260.0          ## px/sec^2, downward
+## E-SPARK-03 (Director, 2026-08-13): *"as faíscas não precisam cair, só voam
+## em todas as direções e somem."* Zero, not a small value — the whole read the
+## Director asked for is a radial burst that dies where it flew, and any gravity
+## at all bends the streaks into a fountain, which is a different picture. The
+## var stays (Rule 1, and a future incendiary round may well want it back).
+var spark_gravity: float = 0.0            ## px/sec^2, downward
 var spark_duration_min: float = 0.45      ## seconds — brief, but long enough to read
 var spark_duration_max: float = 0.85
 var spark_trail_length: float = 15.0      ## px, streak drawn behind the spark
@@ -94,19 +99,38 @@ var _sparks: Array = [] ## [{"pos","vel","elapsed","duration","color"}]
 ## the 2-3 blob cluster a lone destroyed voxel gets from VFX-01. Trailing +
 ## defaulted to 0 = "use the min/max range", so EmberOverlay and room.gd's VFX-01
 ## dispatch are byte-for-byte unaffected.
+## `drift_scale` (E-MUZZLE-02, 2026-08-13): multiplies the upward drift for this
+## puff only. Powder smoke at a barrel is not the same gas as a crater's plume —
+## the Director's own note: *"a fumaça das armas demora demais pra acabar e sobe
+## muito."* The alternative was lowering `smoke_drift_y_*`, which every blast
+## puff on the map also reads. Trailing + defaulted to 1.0, so every existing
+## caller is byte-for-byte unaffected.
+## `delay` (E-MUZZLE-02, 2026-08-13) holds a puff dormant before it exists —
+## same idiom, same reason, as EmberOverlay's own `delay`.
+##
+## It is what finally fixes the muzzle flash's black middle, and the fix is
+## TEMPORAL rather than spatial on purpose. This overlay draws one z-index ABOVE
+## EmberOverlay, so any puff overlapping the flash paints a dark disc over it.
+## Two spatial attempts failed for the same reason: behind the barrel it hid
+## behind the gun, and in front it still reached the core, because the flash's
+## own halo is ~45 px across. Pushing it clear would have detached the smoke from
+## the weapon entirely. Powder smoke FOLLOWS the flash — it does not coexist with
+## it — so the puff now simply waits for the flash to finish.
 func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0,
-		blob_count_override: int = 0) -> void:
+		blob_count_override: int = 0, drift_scale: float = 1.0,
+		delay: float = 0.0) -> void:
 	var blob_count: int = blob_count_override if blob_count_override > 0 \
 		else randi_range(smoke_blob_count_min, smoke_blob_count_max)
 	for i in range(blob_count):
 		var offset := Vector2(randf_range(-smoke_spawn_jitter, smoke_spawn_jitter),
 			randf_range(-smoke_spawn_jitter, smoke_spawn_jitter)) * scale
 		var vel := Vector2(randf_range(-smoke_drift_x, smoke_drift_x),
-			-randf_range(smoke_drift_y_min, smoke_drift_y_max))
+			-randf_range(smoke_drift_y_min, smoke_drift_y_max) * drift_scale)
 		_smoke.append({
 			"pos": pos + offset,
 			"vel": vel,
 			"elapsed": 0.0,
+			"delay": maxf(delay, 0.0),
 			"duration": randf_range(smoke_duration_min, smoke_duration_max) * duration_scale,
 			"color": color,
 			"start_radius": smoke_start_radius * scale * randf_range(0.85, 1.15),
@@ -138,6 +162,14 @@ func _process(delta: float) -> void:
 	var alive_smoke: Array = []
 	var damping: float = pow(smoke_drift_damping, delta)
 	for s in _smoke:
+		## E-MUZZLE-02: a delayed puff burns its delay down and does nothing else
+		## — it does not age, drift or draw. Checked before `elapsed` advances so
+		## the wait never eats the puff's own lifetime.
+		var wait: float = float(s.get("delay", 0.0))
+		if wait > 0.0:
+			s["delay"] = wait - delta
+			alive_smoke.append(s)
+			continue
 		s["elapsed"] += delta
 		s["pos"] += s["vel"] * delta
 		s["vel"] *= damping
@@ -159,6 +191,8 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	for s in _smoke:
+		if float(s.get("delay", 0.0)) > 0.0:
+			continue
 		var t: float = s["elapsed"] / s["duration"]
 		var alpha: float = pow(1.0 - t, smoke_fade_power)
 		var c: Color = s["color"]

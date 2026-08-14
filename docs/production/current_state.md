@@ -555,6 +555,18 @@ the blast from "the waves fire" to something that reads right. Full record:
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
+- ✅ **The muzzle sequence reads** (E-SPARK-03 / E-MUZZLE-02, 2026-08-13).
+  Sparks no longer fall (`spark_gravity` 260 → **0** — the Director's read is a
+  radial burst that dies where it flew, and any gravity bends it into a
+  fountain); the flash lives 0.30 s instead of 0.17; powder smoke is pale, aimed
+  forward, barely rises and is gone quickly (`drift_scale`/`duration_scale`
+  per-puff overrides, so no blast puff on the map moves). **The black hole in
+  the middle of the flash was misdiagnosed twice**: it was never the muzzle's own
+  pale smoke but the dark burn-out puff `EmberOverlay` hands over when ANY ember
+  dies — correct for a coal, wrong for a flash whose eight big embers each
+  dropped one. Chased through two spatial fixes and a delay on the wrong smoke
+  before a +9-frame capture showed the blob was brown, not grey.
+  `smoke_on_death` closes it. `e_muzzle02_flash_sequence_2026-08-13.png`.
 - ✅ **Sparks, dust and a muzzle flash** (E-SPARK-02 / E-DUST-01 / E-MUZZLE-01,
   2026-08-13). Sparks: more, faster, ~2× the lifetime, and a **tapered fading
   trail** whose length follows the particle's own speed. Per-material ladder set

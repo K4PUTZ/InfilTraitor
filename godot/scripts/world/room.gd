@@ -2369,23 +2369,42 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 ## with no rise — a muzzle flash does not float), a forward spark cone, and one
 ## small puff that lingers after both are gone.
 var muzzle_flash_count: int = 8             ## embers forming the core
-## 0.09 -> 0.17: at 0.09 the core was gone before the frame after the trigger,
-## so the barrel showed sparks and no CLARÃO at all (measured on a real capture).
-## Still well under a fifth of a second — a flash, not a fire.
-var muzzle_flash_life: float = 0.17         ## seconds — a flash, not a fire
+## 0.09 -> 0.17 -> 0.30. Twice now the honest instinct ("a flash is brief") has
+## lost to what the Director actually sees on screen: *"não consigo ver o clarão
+## na frente das armas, tenta deixar ele ativo mais um frame."* At 60 fps 0.30 s
+## is ~18 frames, which still reads as an instant next to a 0.85 s spark, and it
+## is the number the eye needs rather than the number physics suggests.
+var muzzle_flash_life: float = 0.30         ## seconds — a flash, not a fire
 var muzzle_flash_spread_px: float = 7.0
 var muzzle_flash_forward_px: float = 9.0    ## how far the core sits ahead of the muzzle
 var muzzle_spark_count: int = 14
 var muzzle_spark_cone_deg: float = 26.0     ## half-angle of the forward spray
 var muzzle_spark_color: Color = Color(1.0, 0.93, 0.66, 1.0)
-var muzzle_smoke_color: Color = Color(0.72, 0.70, 0.66, 0.30)
-## The puff hangs BEHIND the flash, not on it. SmokeSparkOverlay draws one tick
-## ABOVE EmberOverlay (see _apply_overhead_overlay_z()), so a puff centred on the
-## barrel paints a dark disc straight over the core — measured on a real capture,
-## which is what the black middle in the first muzzle print was.
-var muzzle_smoke_scale: float = 0.8
+## E-MUZZLE-02 (Director): *"preferencialmente um cinza mais claro."* Powder
+## smoke is pale, not the dark carbon a burning wall throws.
+var muzzle_smoke_color: Color = Color(0.88, 0.87, 0.84, 0.34)
+## E-MUZZLE-02 (Director): *"tem que ser mais pra frente... e se dissipar
+## logo."* The puff moved BEHIND the barrel in E-MUZZLE-01 for a real reason —
+## SmokeSparkOverlay draws one tick ABOVE EmberOverlay
+## (_apply_overhead_overlay_z()), so a puff centred on the flash paints a dark
+## disc over its core, which is exactly what the first muzzle print showed. The
+## fix is not to move it back again but to move it FORWARD, PAST the flash: it
+## clears the core on the far side instead of hiding behind the gun.
+##
+## `drift_scale` and `duration_scale` are what make it powder smoke rather than a
+## plume — it barely rises and it is gone quickly, instead of climbing the screen
+## for a second and a half like a crater's.
+var muzzle_smoke_scale: float = 0.7
 var muzzle_smoke_puffs: int = 2
-var muzzle_smoke_back_px: float = 10.0
+var muzzle_smoke_forward_px: float = 22.0   ## past the flash core, not behind the gun
+var muzzle_smoke_duration_scale: float = 0.35
+var muzzle_smoke_drift_scale: float = 0.22
+## The puff waits for the flash — and waits for ALL of it. 0.75 was chosen so the
+## two would "overlap for an instant"; that instant is precisely what the capture
+## showed as a dark hole. Pale grey in NORMAL blend drawn over an ADDITIVE flash
+## reads as a hole in it, however light the grey, so there is no overlap value
+## that looks right. 1.0 = the smoke starts as the flash ends.
+var muzzle_smoke_delay_factor: float = 1.0
 ## The core is a FLASH, not a coal: EmberOverlay.glow_radius is tuned to 9 px for
 ## the crater's per-voxel embers, which is the wrong size by an order of
 ## magnitude for a barrel. See EmberOverlay.add_ember()'s `radius_scale`.
@@ -2407,8 +2426,10 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 			var at: Vector2 = muzzle_pos + dir * randf_range(
 				0.0, muzzle_flash_forward_px) + lateral
 			## cool_rate 0.0 — a flash does not cool, it ends. See add_ember().
+			## smoke_on_death FALSE: a flash leaves powder smoke (spawned below,
+			## pale and forward), never a coal's dark burn-out puff.
 			_ember_overlay.add_ember(at, muzzle_flash_life * randf_range(0.7, 1.3),
-				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0)
+				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0, false)
 	if _smoke_spark_overlay != null:
 		## The forward spray. add_sparks() throws a full circle, so the cone is
 		## built here by placing each spark's own start point along the barrel
@@ -2422,8 +2443,11 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 				1, muzzle_spark_color)
 		for j in range(muzzle_smoke_puffs):
 			_smoke_spark_overlay.add_smoke(
-				muzzle_pos - dir * randf_range(0.0, muzzle_smoke_back_px),
-				muzzle_smoke_color, muzzle_smoke_scale)
+				muzzle_pos + dir * randf_range(
+					muzzle_flash_forward_px, muzzle_smoke_forward_px),
+				muzzle_smoke_color, muzzle_smoke_scale,
+				muzzle_smoke_duration_scale, 0, muzzle_smoke_drift_scale,
+				muzzle_flash_life * muzzle_smoke_delay_factor)
 
 
 ## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).

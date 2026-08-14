@@ -167,6 +167,15 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 ## caller — the same "optional, default no-op" idiom E-CONTRAST-03 used for
 ## `shade_brightness`.
 ##
+## `smoke_on_death` (E-MUZZLE-02) exists because of a real, and initially
+## misdiagnosed, defect. A dying ember hands a puff to the smoke overlay so it
+## reads as "went out" — correct for a coal, wrong for a MUZZLE FLASH, whose
+## eight big embers each dropped a dark `ember_smoke_color` (0.13/0.11/0.10 at
+## alpha 0.72) blob scaled by their own radius, right where the flash had been.
+## That black hole in the middle of the flash was chased through two spatial
+## fixes and a delay on the WRONG smoke before a capture at +9 frames showed the
+## blob was dark BROWN, not the pale grey the muzzle's own puff uses.
+##
 ## `radius_scale` (E-MUZZLE-01) is the same idiom for SIZE. It exists because
 ## `glow_radius` was tuned DOWN to 9 px for the crater's per-voxel coals, and a
 ## muzzle flash is not a coal — without it the flash inherited a scorch ember's
@@ -183,7 +192,8 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 func add_ember(world_pos: Vector2, duration: float = -1.0,
 		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
 		rise: float = 0.0, duration_scale: float = 1.0,
-		delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0) -> void:
+		delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0,
+		smoke_on_death: bool = true) -> void:
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
 	var final_duration: float = base_duration * maxf(duration_scale, 0.01) * _height_bias(world_pos.y)
 	_embers.append({
@@ -203,6 +213,7 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		"val": randf_range(val_min, val_max),
 		"radius": glow_radius * radius_scale * randf_range(radius_jitter_min, radius_jitter_max),
 		"cool_rate": maxf(cool_rate, 0.0),
+		"smoke_on_death": smoke_on_death,
 		"halo_scale": randf_range(halo_scale_min, halo_scale_max),
 		"pulse_speed": randf_range(pulse_speed_min, pulse_speed_max),
 		"pulse_phase": randf_range(0.0, TAU),
@@ -279,7 +290,7 @@ func _process(delta: float) -> void:
 				e["vel"] = vel * exp(-drag * delta)
 		if e["elapsed"] < e["duration"]:
 			alive.append(e)
-		elif _smoke_overlay != null:
+		elif _smoke_overlay != null and bool(e.get("smoke_on_death", true)):
 			## E-EMBER-02: the puff inherits this ember's own size, so the death
 			## of a big coal reads bigger than the death of a small one.
 			_smoke_overlay.add_smoke(e["pos"], ember_smoke_color,

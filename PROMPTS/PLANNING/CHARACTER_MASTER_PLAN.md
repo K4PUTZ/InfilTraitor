@@ -389,6 +389,81 @@ camera angle and frame timing decide, and S1 separately established that the
 relight path survives compression. **Nothing here is evidence about the runtime
 pipeline** and must not be cited as such.
 
+### Three corrections and one ceiling, 2026-08-14 (second S2 pass)
+
+**1. The frame rate is 60, not 30, and nothing caps it lower.** No `max_fps`,
+vsync or physics-tick override exists in `project.godot` or anywhere in
+`godot/scripts/`. **60 FPS is the stated target** — `milestones.md` M7.0
+("60 FPS on 5-year-old devices"), `docs/systems/movement.md`, and
+`lighting_runtime_pipeline.md`'s 16.67 ms budget. The "24 fps" in ACTOR is a
+*bake frame count*, and D26 already corrected that exact category error once.
+
+**2. THE DISPLAY CEILING — this is what bounds "more smoothness".** A sprite
+frame cannot be shown for less than one rendered frame, so a turn of *D* seconds
+at *F* fps can display at most *D×F* distinct frames. Everything past that is
+RAM spent on images the player never sees:
+
+| Turn duration | Max displayable frames @60 fps | Max useful in-betweens |
+|---|---:|---:|
+| 200 ms | 12 | 10 |
+| 350 ms | 21 | 19 |
+| 500 ms | 30 | 28 |
+
+Conversely: 7 in-betweens need ≥150 ms to show at all, 15 need ≥283 ms, 23 need
+≥417 ms. **Since the Director ruled the turn duration need not be fixed, only
+coherent and cheap, the two knobs are linked and neither is free alone.**
+
+**3. "We have RAM to spare" was NOT established by S1** — and the correction
+matters, because a decision was about to rest on it. S1 measured *compression
+fidelity*, not headroom: it showed the relight survives ASTC, which yields a 4×
+saving against RGBA8. It never measured a resident set, and ACTOR §7 #28 still
+listed that as open. **Now measured** (`s2_resident_memory_probe.gd`, real Godot
+compression, not a spec sheet), for the one loadout D42 says must be resident —
+guards add ~0, being the same frames under a different tint (D41):
+
+| yaws | in-betweens | frames | 96×128 | 128×160 | 160×192 | 192×256 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 4 | 0 | 96 | 2.2 MB | 3.8 MB | 5.6 MB | 9.0 MB |
+| 8 | 1 | 192 | 4.5 MB | 7.5 MB | 11.2 MB | 18.0 MB |
+| 16 | 3 | 384 | 9.0 MB | 15.0 MB | 22.5 MB | 36.0 MB |
+| 32 | 7 | 768 | 18.0 MB | 30.0 MB | 45.0 MB | 72.0 MB |
+| 48 | 11 | 1152 | 27.0 MB | 45.0 MB | 67.5 MB | 108.0 MB |
+| 64 | 15 | 1536 | 36.0 MB | 60.0 MB | 90.0 MB | 144.0 MB |
+
+Frames = 8 poses × 3 (poses plus the transitions between them, D39 — the ×3 is a
+flagged placeholder, not a measured multiplier). **The Director's conclusion
+turns out to be right and the premise wrong**: at a plausible canvas the whole
+resident character set is tens of MB, so the smoothness decision is not
+RAM-bound. What is still unmeasured is **device headroom** — what a real phone
+has spare beside the voxel tilemap and atlas pages. That needs an on-device run
+and must not be inferred from this table.
+
+### Real size — the shotgun in the mockup's hand
+
+*(Director: "queria ver em tamanho real na mão do personagem em cena pra
+decidir.")* `tools/asset_generation/s2_weapon_in_hand.py`. Evidence:
+`Screenshots/history/s2_real_size_decision_sheet.png`.
+
+**At 1:1 the compression difference is invisible.** The 8× strip that made ETC2
+look blotchy was the right view to *find* the artifact and the wrong one to
+decide it mattered — at the shotgun's real 66×33 px silhouette all six variants
+read the same. **Two limits on that, stated rather than glossed:** a character
+sprite is ~126 px tall, roughly 4× the shotgun's height, so this does not
+transfer automatically; and a still cannot show shimmer under a moving light.
+
+**Finding for Part 4 — a socket needs a per-weapon GRIP OFFSET, not just a
+position.** Placed at the midpoint of the two hand sockets, the shotgun's
+geometric centre still lands 0.345 m away, because a GLB's origin is arbitrary
+art data — the same class of fact D30 paid for when a copied `PERSPECTIVE_YAW_DEG`
+came out 178° wrong. The scale had to be *derived* too (the model is 4.471 units
+long; a hand-picked 0.55 made it a 2.5 m shotgun, which the first render showed
+plainly).
+
+**Process note worth keeping:** the first fix to that render produced a
+**byte-identical image** while the log happily reported the intended scale — a
+GLB brings its own root, so filtering for "meshes with no parent" reparented
+nothing. Caught by comparing the pictures, not by reading the log.
+
 **Status: the test is run; the answer is the Director's.** D45 makes this a
 game-feel judgement by eye, and no metric substitutes. Evidence (non-`auto_`
 names, so the 50-file rotation cannot eat them):

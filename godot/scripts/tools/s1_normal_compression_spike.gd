@@ -201,7 +201,12 @@ func _run() -> void:
 func _build_comparison_strip(entries: Array[Dictionary]) -> void:
 	if entries.is_empty():
 		return
-	const ZOOM := 8
+	# Zoom is overridable because the two questions need different views:
+	# 8x FINDS an artifact, 1x decides whether it MATTERS at the size the player
+	# actually sees (the shotgun's real silhouette is 66x33 px). Director,
+	# 2026-08-14: "queria ver em tamanho real ... pra decidir."
+	var zoom_env := OS.get_environment("S1_ZOOM")
+	var ZOOM: int = maxi(1, int(zoom_env)) if zoom_env != "" else 8
 	const PAD := 6
 	# Crop to the silhouette before zooming — the object fills a small part of
 	# the 160x160 canvas, and a strip where it is 40 px wide cannot be judged.
@@ -234,7 +239,7 @@ func _build_comparison_strip(entries: Array[Dictionary]) -> void:
 		strip.blit_rect(cell, Rect2i(Vector2i.ZERO, Vector2i(cell_w, cell_h)),
 			Vector2i(PAD + i * (cell_w + PAD), PAD))
 
-	_save_evidence(strip, "s1_normal_compression_comparison")
+	_save_evidence(strip, "s1_normal_compression_comparison_%dx" % ZOOM)
 	print("")
 	print("Comparison strip order (left to right):")
 	for e in entries:

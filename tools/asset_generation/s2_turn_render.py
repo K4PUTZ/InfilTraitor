@@ -57,7 +57,17 @@ ORTHO_SCALE = 2.6
 RES = (300, 400)
 
 # Candidate in-between counts for ONE 90-degree facing change.
-CANDIDATES = [0, 1, 3, 7]
+# Overridable so a stress run does not need a source edit:
+#   S2_CANDIDATES=7,11,15,23 S2_DURATIONS=0.35,0.50 blender --background --python ...
+CANDIDATES = [int(x) for x in os.environ.get("S2_CANDIDATES", "0,1,3,7").split(",")]
+
+# THE DISPLAY CEILING, and it is the reason more in-betweens stop helping.
+# A sprite frame cannot be shown for less than one rendered frame, so a turn of
+# D seconds at F fps can display at most D*F distinct frames -- everything past
+# that is RAM spent on images the player never sees. The project targets 60 FPS
+# (milestones.md M7.0, systems/movement.md, lighting_runtime_pipeline.md's
+# 16.67 ms budget); nothing caps it lower in project.godot or in code.
+TARGET_FPS = float(os.environ.get("S2_FPS", "60"))
 
 # How far ahead of the hips the head/chest run, as a fraction of the total turn.
 # Derived from the shipped ratio: vision turns at 1.35x body, so at the midpoint
@@ -68,7 +78,7 @@ CHEST_LEAD = 0.15
 # A 90-degree facing change, in seconds, for the GIF playback. Three speeds so
 # the Director can separate "not enough frames" from "too slow", which look
 # alike in a single clip.
-DURATIONS = [0.20, 0.35]
+DURATIONS = [float(x) for x in os.environ.get("S2_DURATIONS", "0.20,0.35").split(",")]
 
 
 def log(m):
@@ -190,6 +200,18 @@ def main():
         yaws = 4 + 4 * n
         log("  %d in-between(s) -> %2d distinct yaws -> %4d body sets"
             % (n, yaws, 2 * 3 * 8 * yaws))
+    log("")
+    log("=== DISPLAY CEILING AT %.0f FPS ===" % TARGET_FPS)
+    log("A sprite frame cannot show for less than one rendered frame.")
+    for dur in DURATIONS:
+        cap = int(dur * TARGET_FPS)
+        log("  a %.0f ms turn can display at most %d frames -> %d in-betweens"
+            % (dur * 1000, cap, max(0, cap - 2)))
+    for n in CANDIDATES:
+        frames = n + 2
+        need = frames / TARGET_FPS
+        log("  %2d in-between(s) = %2d frames -> needs >= %.0f ms to show them all"
+            % (n, frames, need * 1000))
     log("")
     for g in made:
         log("wrote %s" % os.path.relpath(g, REPO_ROOT))

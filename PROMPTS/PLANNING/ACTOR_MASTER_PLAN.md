@@ -360,7 +360,13 @@ default before Part 1 gets written in earnest. **Result: go, with a caveat**
 — see §4's real measurement table and its go/no-go note. Script:
 `godot/scripts/tools/actor_part0_spike.gd`.
 
-### Part 1 — Digital twin data model + pose library scaffolding *(DEFERRED — living-beings track, D18)*
+### Part 1 — Digital twin data model + pose library scaffolding *(SUPERSEDED 2026-08-14 — see `CHARACTER_MASTER_PLAN.md`)*
+> **This Part is no longer executed from here.** D18's deferral was lifted
+> 2026-08-13 and the track was designed 2026-08-14 (D32–D45); the build now
+> lives in [`CHARACTER_MASTER_PLAN.md`](CHARACTER_MASTER_PLAN.md) Parts 1–2.
+> The original text below is kept, not deleted, per this project's standing
+> no-silent-rewrite policy — read it as history, not as instructions.
+
 The persistent per-atom source-of-truth structure (format TBD — §7) and the
 pose-set contract (which activities get dedicated poses vs. shared ones).
 **Character-specific — objects don't need it.** A standalone object's
@@ -419,7 +425,8 @@ manifest-driven batch tool (D15):
    license record (only CC0/redistributable sources); for the voxel-twin
    path, the same palette-curation step already planned there.
 
-### Part 3 — Damage integration *(DEFERRED — living-beings track, D18)*
+### Part 3 — Damage integration *(MOVED 2026-08-14 — see `CHARACTER_MASTER_PLAN.md` Part 9)*
+
 The actor-atom container (§3), wired to the same dirty-flag/TIC pattern
 `DESTRUCTION_MASTER_PLAN` Part 3 uses for terrain. Formalizes D5's
 single-writer boundary in the inviolable-rules list once real code exists to
@@ -431,7 +438,8 @@ Part's damage now updates *both* the twin (detailed) and Part 6's
 simplification sprite (a simple cue) from the same trigger — two renders,
 one state.
 
-### Part 4 — Clothing/weapon layering *(DEFERRED — living-beings track, D18)*
+### Part 4 — Clothing/weapon layering *(MOVED 2026-08-14 — see `CHARACTER_MASTER_PLAN.md` Part 4)*
+
 Consumes `PropDef.layers` for real (D7) — the first renderer that does. Per
 D16, equipping something updates the twin's full layered representation and
 adds a simplified cue on Part 6's sprite from the same trigger.

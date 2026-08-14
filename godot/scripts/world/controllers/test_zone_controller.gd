@@ -188,6 +188,13 @@ func clear() -> void:
 			sprite.queue_free()
 	_grenades.clear()
 	_active_index = -1
+	## RUNTIME-GUARD-01 (2026-08-13): drop an in-flight blast too. This runs on
+	## map load (`_populate_test_zone_if_playground()`), and a sequence started
+	## against the OLD room's VoxelRenderer has nothing left to paint into — the
+	## renderer is rebuilt by `load_map()`. Releasing the reference lets the
+	## coroutine's own `is_instance_valid()` guard end it on the next frame
+	## instead of it running on against freed geometry.
+	_active_choreographer = null
 
 
 ## Place one placeholder grenade at gu_cell as a baked sprite (ground-contact

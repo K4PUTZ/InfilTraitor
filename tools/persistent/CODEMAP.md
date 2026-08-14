@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**203 scripts · 56459 lines total** (under `godot/scripts/`)
+**203 scripts · 56491 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1748,7 +1748,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 726 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 754 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -2375,11 +2375,11 @@ extends `Node2D` · 43 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 159 lines
+extends `Node` · 156 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
-> Registries — Global autoload for MaterialRegistry and PropRegistry Replaces Engine.set_meta() pseudo-singletons with real Godot autoload. This fixes the SIGABRT crash on quit (FIX-SHUTDOWN-CRASH-01) caused by Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup() after ScriptServer::finish_languages() has begun dismantling the script language. Strategy: Use weak references to avoid holding strong refs that prevent GC cleanup.
+> Registries — Global autoload for MaterialRegistry and PropRegistry Replaces Engine.set_meta() pseudo-singletons with real Godot autoload. This fixes the SIGABRT crash on quit (FIX-SHUTDOWN-CRASH-01) caused by Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup() after ScriptServer::finish_languages() has begun dismantling the script language. Strategy: the AUTOLOAD is what fixes the crash — a real Node with a real lifetime, torn down before the script language is dismantled. The weak references below were belt-and-braces on top of that. REG-STRONG-01 (2026-08-13, measured): the belt was costing real work every frame it was worn. Nothing else in the game holds a registry, so each one was being collected between accesses and REBUILT FROM DISK on the next call — measured on one real grenade throw: the bomb registry re-read `bombs/*.json` **4 times**, the material registry re-scanned `materials/*.json` **twice**. They are strong refs now, which is what `_frame_cache` below already does for exactly the same reason (FRAME-MEM-01, and it shipped without bringing the shutdown crash back — the precedent is six lines down from the bug).
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
@@ -4220,7 +4220,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1296 lines
+`class_name TestZoneController` · 1303 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

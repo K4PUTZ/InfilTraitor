@@ -398,9 +398,15 @@ static func _sort_key(kind: String, entry: Dictionary) -> float:
 ## coroutine (and therefore `self`) alive across the sequence, but that is NOT a
 ## substitute for the caller's own strong reference: the header's ownership note
 ## still holds, and TestZoneController still holds `_active_choreographer`. If the
-## tree goes away mid-sequence (map reload, quit), `await tree.process_frame`
+## tree goes away mid-sequence (quit), `await tree.process_frame`
 ## simply never resumes and the rest is dropped — correct for a purely visual
 ## replay of damage already applied to the Voxel state.
+##
+## RUNTIME-GUARD-01 (2026-08-13) — **that sentence used to say "map reload,
+## quit", and the map-reload half was wrong.** A reload does not take the tree
+## away, only the ROOM: `load_map()` builds a fresh VoxelRenderer, and this
+## coroutine would resume holding the old one and call `get_layer()` on a freed
+## object. Both await sites now revalidate it and abandon the sequence loudly.
 func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, plan: Dictionary = {}) -> void:
 	var next_step := 0
 	var frame_index := 0
@@ -413,6 +419,23 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 	while next_step < queue.size():
 		if frame_index > 0:
 			await tree.process_frame
+			## RUNTIME-GUARD-01 (2026-08-13). This class is RefCounted and stays
+			## alive across the whole sequence through its own `await`s — but the
+			## VoxelRenderer it paints into is a CHILD OF THE ROOM, and
+			## `room.gd::load_map()` builds a new one. A map load during the ~600 ms
+			## a blast is running would leave this coroutine resuming with a freed
+			## renderer and calling get_layer() on it.
+			##
+			## The class header's own claim — "if the tree goes away mid-sequence
+			## the await simply never resumes" — is true for QUIT and false for
+			## RELOAD: the tree survives a reload, only the room does not.
+			## `TestZoneController.clear()` did not cancel this either (it freed the
+			## grenade sprites and reset the index); it does now, and this is the
+			## belt to that brace.
+			if not is_instance_valid(voxel_renderer):
+				push_warning("[DetonationChoreographer] renderer went away mid-sequence (map reload?) — sequence abandoned at step %d/%d" % [next_step, queue.size()])
+				finished.emit()
+				return
 		var front_r: float = front_radius_for(frame_index, front_frames, max_r, band_voxels)
 		var target: int = steps_within(queue, next_step, front_r)
 		var apply_start_us := Time.get_ticks_usec()
@@ -510,6 +533,11 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 			[step + 1, steps, painted])
 		for _hold: int in range(maxi(soot_fade_frames_per_step, 1)):
 			await tree.process_frame
+		## RUNTIME-GUARD-01: the soot fade outlives the wave loop by several
+		## frames, so it needs the same check — see _run_queue()'s own note.
+		if not is_instance_valid(voxel_renderer):
+			push_warning("[DetonationChoreographer] renderer went away during the soot fade — %d of %d step(s) applied" % [step + 1, steps])
+			return frame_index
 	return frame_index
 
 

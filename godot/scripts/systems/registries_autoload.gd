@@ -4,7 +4,18 @@
 ## Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup()
 ## after ScriptServer::finish_languages() has begun dismantling the script language.
 ##
-## Strategy: Use weak references to avoid holding strong refs that prevent GC cleanup.
+## Strategy: the AUTOLOAD is what fixes the crash — a real Node with a real
+## lifetime, torn down before the script language is dismantled. The weak
+## references below were belt-and-braces on top of that.
+##
+## REG-STRONG-01 (2026-08-13, measured): the belt was costing real work every
+## frame it was worn. Nothing else in the game holds a registry, so each one was
+## being collected between accesses and REBUILT FROM DISK on the next call —
+## measured on one real grenade throw: the bomb registry re-read `bombs/*.json`
+## **4 times**, the material registry re-scanned `materials/*.json` **twice**.
+## They are strong refs now, which is what `_frame_cache` below already does for
+## exactly the same reason (FRAME-MEM-01, and it shipped without bringing the
+## shutdown crash back — the precedent is six lines down from the bug).
 
 extends Node
 
@@ -15,11 +26,12 @@ const WeaponRegistryClass = preload("res://godot/scripts/systems/destruction/wea
 const CollectibleFrameCacheClass = preload("res://godot/scripts/systems/collectible_frame_cache.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
-# Store weak references to registries to avoid holding strong refs during shutdown
-var _material_registry_ref: WeakRef = null
-var _prop_registry_ref: WeakRef = null
-var _bomb_registry_ref: WeakRef = null
-var _weapon_registry_ref: WeakRef = null
+## REG-STRONG-01: strong, so a registry is read from disk ONCE per run. See the
+## header for the measurement that changed these from WeakRef.
+var _material_registry = null
+var _prop_registry = null
+var _bomb_registry = null
+var _weapon_registry = null
 ## FRAME-MEM-01: a STRONG ref, unlike the registries above. A weak ref would let
 ## the shared frame set be collected the moment no prop happened to hold it, and
 ## the next prop would re-read 480 PNGs from disk — the exact cost this cache
@@ -34,14 +46,12 @@ func _ready() -> void:
 
 ## Ensure material registry exists and is initialized
 func ensure_material_registry() -> MaterialRegistryClass:
-	var reg = null
-	if _material_registry_ref != null:
-		reg = _material_registry_ref.get_ref()
+	var reg = _material_registry
 	
 	if reg == null:
 		reg = MaterialRegistryClass.new()
 		reg.register_defaults()
-		_material_registry_ref = weakref(reg)
+		_material_registry = reg
 		print("[Registries] Material registry initialized with defaults")
 	
 	return reg
@@ -49,14 +59,12 @@ func ensure_material_registry() -> MaterialRegistryClass:
 
 ## Ensure prop registry exists and is initialized
 func ensure_prop_registry() -> PropRegistryClass:
-	var reg = null
-	if _prop_registry_ref != null:
-		reg = _prop_registry_ref.get_ref()
+	var reg = _prop_registry
 	
 	if reg == null:
 		reg = PropRegistryClass.new()
 		reg.load_from_disk()
-		_prop_registry_ref = weakref(reg)
+		_prop_registry = reg
 		print("[Registries] Prop registry initialized from disk")
 	
 	return reg
@@ -74,14 +82,12 @@ func get_prop_registry() -> PropRegistryClass:
 
 ## Ensure bomb registry exists and is initialized
 func ensure_bomb_registry() -> BombRegistryClass:
-	var reg = null
-	if _bomb_registry_ref != null:
-		reg = _bomb_registry_ref.get_ref()
+	var reg = _bomb_registry
 
 	if reg == null:
 		reg = BombRegistryClass.new()
 		reg.load_from_disk()
-		_bomb_registry_ref = weakref(reg)
+		_bomb_registry = reg
 		print("[Registries] Bomb registry initialized from disk")
 
 	return reg
@@ -94,14 +100,12 @@ func get_bomb_registry() -> BombRegistryClass:
 
 ## Ensure weapon registry exists and is initialized (WEAPON_MASTER_PLAN Part 1)
 func ensure_weapon_registry() -> WeaponRegistryClass:
-	var reg = null
-	if _weapon_registry_ref != null:
-		reg = _weapon_registry_ref.get_ref()
+	var reg = _weapon_registry
 
 	if reg == null:
 		reg = WeaponRegistryClass.new()
 		reg.load_from_disk()
-		_weapon_registry_ref = weakref(reg)
+		_weapon_registry = reg
 		print("[Registries] Weapon registry initialized from disk")
 
 	return reg
@@ -143,17 +147,10 @@ func ensure_file_map_source() -> FileMapSourceClass:
 
 # Expose property for compatibility with existing checks
 var material_registry: MaterialRegistryClass:
-	get: 
-		if _material_registry_ref != null:
-			var ref = _material_registry_ref.get_ref()
-			if ref != null:
-				return ref
-		return null
-	set(val): 
-		if val != null:
-			_material_registry_ref = weakref(val)
-		else:
-			_material_registry_ref = null
+	get:
+		return _material_registry
+	set(val):
+		_material_registry = val
 
 
 

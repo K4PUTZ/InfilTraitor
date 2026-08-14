@@ -648,12 +648,61 @@ data point:
 Evidence: `Screenshots/history/s2_turn_bracket_blind.mp4` (not tracked, per
 `.gitignore:27`), key in `s2_turn_bracket_blind_KEY.json` (tracked).
 
-**Status: awaiting the Director's blind judgement.** D45 makes this a game-feel
-call by eye and no metric substitutes — but a biased instrument does not become
-unbiased by being judged sincerely. Evidence (non-`auto_` names, so the 50-file
-rotation cannot eat them):
-`Screenshots/history/s2_turn_{0,1,3,7}inbetween_200ms.gif`,
-`s2_turn_frames_7inbetween.png`, and the rate artifacts tabled above.
+### ✅ THE TURN — SETTLED 2026-08-15 by blind judgement. Closes §9 #7 and D45.
+
+**23 in-betweens, 30 Hz, an 833 ms turn.** Director's blind verdict, verbatim:
+*"B é a ideal, D está muito rápido. C está devagar, A está quase bom."*
+
+| Blind | in-betweens | turn | Verdict |
+|---|---:|---:|---|
+| D | 15 | 567 ms | too fast |
+| **B** | **23** | **833 ms** | ✅ **ideal** |
+| A | 31 | 1100 ms | almost good |
+| C | 47 | 1633 ms | too slow |
+
+**Both method objections are answered by the shape of that result, not by
+argument.** The chosen panel was **second from the left**, the *last* panel was
+rejected as too fast, and the panel with the **most frames** was rejected as too
+slow — so neither position bias nor "more is always better" survives. The
+preference is **single-peaked**, which is what a real optimum looks like and what
+neither failure mode produces. The blind test **confirms** the sighted answer
+rather than overturning it; the difference is that it is now a measurement.
+
+**Objection 3 is substantially WEAKENED, and this is a withdrawal, not a
+hedge.** The foot-slide argument predicted a *monotonic* preference — smoothing
+an artifact has no interior optimum. The result is single-peaked, so the slide is
+not what was being judged. It stays worth testing only in its weaker form: a turn
+with a real replant has an event in it and could **move** the peak. It is no
+longer a reason to doubt this number.
+
+Evidence: `Screenshots/history/s2_turn_bracket_blind.mp4` (untracked per
+`.gitignore:27`; regenerable — see the chain above) and the tracked answer key
+`s2_turn_bracket_blind_KEY.json`.
+
+### ⚠️ What 23 in-betweens costs, and the one question that decides it
+
+Naively this is the most expensive corner of §8: **96 distinct yaws → 4608 body
+sets** at `archetype(2) × silhouette(3) × pose(8) × yaw`. RAM is not the problem
+(D42: axes are mutually exclusive at runtime, and §6's probe measured one
+resident loadout at tens of MB); **bake time and disk are.**
+
+But that arithmetic assumes **every pose turns**, and it is an assumption nobody
+has ratified. Intermediate yaws exist *only during a turn* — they are a
+**transition** asset. The four cardinal facings are needed by all eight poses;
+the 92 extra yaws are needed only by poses the agent can actually pivot in.
+
+| Poses that can turn | yaw-terms per archetype×silhouette | body sets |
+|---|---:|---:|
+| all 8 *(today's assumption)* | 8 × 96 = 768 | **4608** |
+| 3 (idle, crouch, weapon-ready) | 8×4 + 3×92 = 308 | **1848** |
+| 1 (stand up to turn) | 8×4 + 92 = 124 | **744** |
+
+**A 6× spread on the largest term in the budget, decided by one design question:
+which postures can change facing in place?** That is a gameplay ruling
+(`DESIGN_MASTER_PLAN` §8 cover states are the natural place for it), not a
+technical one, and it belongs to the Director. Recorded here as **§9 #10**, open.
+Part 2 does not need it — Part 2 bakes idle only, at the four cardinal facings —
+so this does not block the next Part.
 
 ---
 
@@ -729,12 +778,21 @@ count. That is the number Part 0 exists to start pinning down.
    `agent.gd`'s three postures, or a modifier on `exposure_system.gd`'s five
    shipped exposure classes. Both are built systems; this is a gameplay
    question, and it belongs to GAMEPLAY-01 more than to this plan.
-7. **Turn frame count** — D45 makes it a test, not a decision. S2 answers it.
+7. ~~**Turn frame count**~~ **RESOLVED 2026-08-15 — see §6.** 23 in-betweens at
+   30 Hz, an 833 ms turn, settled by blind randomised judgement with the range
+   bracketed on both sides. Not asserted, and not read off a biased instrument.
 8. **Whether the character's albedo needs bake-time grading** like the weapons
    did (§4.8). Unknowable until the first real bake is measured.
 9. ~~**Vertical parallax (up and down)** — owned by no document.~~ **WRONG,
    withdrawn 2026-08-14.** It is documented in four places; see §4.7b's table.
    Not this plan's to own, and not an open question.
+10. **Which postures can change facing in place** — NEW 2026-08-15, and now the
+    single number that most moves §8, ahead of #2. With the turn settled at 23
+    in-betweens, this is a **6× spread** on the body term (4608 / 1848 / 744
+    body sets — §6's table). Intermediate yaws are a *transition* asset; only
+    poses the agent can actually pivot in need them. A gameplay ruling
+    (`DESIGN_MASTER_PLAN` §8), not a technical one. **Does not block Part 2**,
+    which bakes idle at the four cardinal facings only.
 
 ---
 

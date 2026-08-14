@@ -423,6 +423,43 @@ Attack tic:
   4. On miss:  visual feedback (round in the floor, spark on the wall)
 ```
 
+**Step 4 is no longer only feedback.** Everything a miss does to the scenario is
+built and shipped — the round travels the origin→target line to the wall behind
+and breaks real voxels there, with material-specific response, bullet marks and
+face-local soot. `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` §5b owns that half in
+full; this section stays the gameplay statement of it.
+
+### 8.7 Target selection — aim mode — `DESIGNED` *(Director, 2026-08-13)*
+
+**The reference is Fallout 3 / XCOM: you pick a target from a short list, read
+its hit chance, and commit.** There is no free aim and no reticle — the player
+chooses *who*, never *where*. What moves the odds is cover (§8.2), flanking
+(§8.4), shadow (§4.3) and the agent's own stats; the environment does the aiming.
+
+```
+enter aim mode  ->  nearest enemy auto-targeted, hit % shown
+                    cycle between the 2-3 available targets, % updates
+                    confirm on the SAME target  ->  the dice roll
+```
+
+Confirmation is deliberately a **second** input on an already-chosen target —
+choosing and firing are two separate acts. That separation is what gives the
+engine a window to pre-compute the shot, which is the difference between a shot
+that fires instantly and one that stalls the frame it is fired on.
+
+**Deliberately not decided here, Director's own:** *"Vamos definir isso melhor
+depois em COMBATE."* The hit-chance formula, AP cost, how many targets are
+reachable and on what basis, ammunition, and how a shotgun's many independent
+pellets collapse into one displayed percentage all belong to the COMBAT wave.
+They are enumerated as open questions in `WEAPON_MASTER_PLAN.md` §7c, including
+one that contradicts this document as written: **§10.2 gives the agent one
+weapon per mission, while aim mode's slots hold three** (§7c Q1, unresolved —
+flagged rather than silently reconciled).
+
+**Interaction and pre-computation detail:** `WEAPON_MASTER_PLAN.md` §5c and
+D31–D36. The grenade's equivalent flow is already built and is the model to read
+against — `PROMPTS/PLANNING/TARGETING_MASTER_PLAN.md`.
+
 ---
 
 ## 9. Agent resistance — `DESIGNED`

@@ -1,5 +1,30 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.6
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v1.7
+
+> ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
+>
+> *"Agora chegou a hora de produzir realmente o personagem. Vamos discutir
+> melhor como trabalhar na construção do modelo em seguida."*
+>
+> **D18's deferral is lifted.** Parts 1 (twin + pose scaffolding), 3 (damage
+> integration) and 4 (clothing/weapon layering) are no longer waiting on a
+> sequencing call. The objects track did its job: the bake rig, the relight
+> shader, the runtime sprite consumer and a real cost floor all exist and are
+> proven on two objects.
+>
+> **Nothing is designed yet, on purpose.** The Director asked to *discuss* the
+> model's construction before it is planned, so this revision does exactly one
+> thing: it records that the gate opened, and dates it. The decisions from that
+> conversation land as new D-rows and a revised Part 1 — **not written here in
+> advance.** §7's open questions 1, 3, 4 and 5 are the ones that conversation
+> has to answer, and they are still open.
+>
+> **Two other workstreams are gated on this track**, both recorded 2026-08-13:
+> firearm **aim mode** (`WEAPON_MASTER_PLAN` §5c / D31–D36) and **W-PRECOOK**
+> (deferred to `docs/production/milestones.md` → M7.0, D30). Both need an agent
+> that exists as a model and holds a weapon — which is **Part 4**, the last of
+> the three Parts this note reopens. That makes Part 4 load-bearing for the
+> firearm work, not just for cosmetics.
 
 **Status:** 🟡 **Part 0 DONE (2026-07-26). Part 5a (Showcase) first cut DONE
 2026-07-27 — a real shotgun renders live, auto-spinning, in a main-menu
@@ -563,12 +588,24 @@ Part 2b (mass-import
                                 DESTRUCTION_MASTER_PLAN), AI-02 tuning resume,
                                 and/or the living-beings track below.
 
-LIVING-BEINGS TRACK — deferred (D18), fully specified so it doesn't need
-re-deciding when picked up
+LIVING-BEINGS TRACK — 🟢 OPEN 2026-08-13 (was: deferred per D18)
 Part 1 (twin + pose scaffolding, character-specific)
 Part 3 (damage integration)  → depends on Part 1 + Part 2
 Part 4 (clothing/weapons)    → depends on Part 1 + Part 2
+                                ⚠️ ALSO the gate on firearm aim mode and
+                                   W-PRECOOK — an agent has to HOLD a weapon
 ```
+
+**2026-08-13 — the living-beings track opened.** Director: *"Agora chegou a
+hora de produzir realmente o personagem."* The deferral below was a sequencing
+call, never a technical blocker, and the sequencing condition is met — the
+objects track proved the whole chain (bake rig → normal-map relight → runtime
+sprite with real lights and real depth sorting) on two objects. **The design
+conversation is open and Parts 1/3/4 are not yet planned**; see the banner at
+the top of this document. Part 2b's own gate (*"other engine fundamentals"*
+first) is likewise satisfiable now if the Director wants it — shot-based
+destruction landed 2026-08-02, and both destruction master plans closed
+2026-08-13 — but it has not been called, and it stays unstarted until it is.
 
 **On the deferrals:** Part 2b is fully specified precisely so it does not
 need re-deciding later — "prepare the pipeline, don't run it yet" per the

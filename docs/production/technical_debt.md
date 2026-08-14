@@ -175,7 +175,39 @@ Not needed for the single-room demo. Needed before the campaign.
 **Severity:** MEDIUM
 **Impact:** MEDIUM (final product) / Low (Investor Demo)
 
-Tweening is functional for the demo. Real sprites await post-demo.
+Tweening is functional for the demo. ~~Real sprites await post-demo.~~
+**2026-08-13: the character work is now active** — see
+`current_state.md` → Animation / Sprites, and `ACTOR_MASTER_PLAN.md`.
+
+---
+
+### 16. Firing a gun costs ~310 ms of synchronous CPU (W-PRECOOK) — deferred on purpose
+**Severity:** HIGH (when combat exists) / None today (no shooter exists)
+**Impact:** HIGH — a visible stall on the frame the player fires
+**Estimated Fix:** unscoped; two candidate routes on record
+**Added:** 2026-08-13
+
+Measured with `[SHOT-PROF]` on a real 24-pellet shotgun, PLAYGROUND bench:
+
+    resolve 1.00 ms cpu · render 4.9 ms wall over 0 frame(s) · repaint 309.89 ms cpu ·  9 voxel(s)
+    resolve 1.09 ms cpu · render 7.9 ms wall over 0 frame(s) · repaint 322.64 ms cpu · 18 voxel(s)
+
+Damage resolution is 1 ms and the async render pass needs zero extra frames.
+**The entire cost is `_repaint_voxel_light_buckets()`** — and that repaint is
+load-bearing, not waste: bullet soot is derived from it. For contrast, a grenade
+destroying 453 voxels commits in 0.5 ms, because it pre-computes during the
+throw. The firearm has no pre-production at all.
+
+**Deliberately not fixed yet (Director, 2026-08-13).** The window this work
+exists to fill is the aiming window, and there is no aim mode, no shooter and no
+agent holding a weapon to build against — fixing it now means tuning against a
+mock. Assigned to the **M7.0** optimization milestone with an earlier trigger
+than the milestone itself.
+
+**Timeline:** once the ACTOR living-beings track produces an agent that holds a
+weapon and aim mode runs.
+**Owner doc:** `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` §0 (measurement + both
+routes) and D30.
 
 ---
 
@@ -272,7 +304,7 @@ The `DEV_VISION` flag and debug code are mixed with the logic. Functional for de
 |--------|-------|
 | **Resolved Items** | 4 (detection escalation, state_search visual, dead code, hardcoded noise) |
 | **Critical Issues** | 2 (Guard FSM scaling; hardcoded patrol timings — Overlay Performance re-scoped to LOW 2026-07-15) |
-| **High Priority Issues** | 4 |
+| **High Priority Issues** | 5 (item 16, W-PRECOOK, added 2026-08-13 — deferred by design, not by neglect) |
 | **Medium Priority Issues** | 2 (distance curve unvalidated; roof material fallback on E/S rotation) |
 | **Low Priority Issues** | 2 |
 | **Total Estimated Effort** | 8–12 weeks (refinement, not blocking) |

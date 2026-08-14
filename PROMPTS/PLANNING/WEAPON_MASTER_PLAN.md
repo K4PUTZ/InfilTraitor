@@ -1,5 +1,17 @@
 # WEAPON_MASTER_PLAN
-## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.0
+## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.1
+
+**v1.1 (2026-08-13) — the shooter arrives, the optimization leaves.** Two moves
+in one Director session, in opposite directions. **W-PRECOOK (§0) is DEFERRED**
+to the optimization milestone until the agent exists as a model and holds a
+weapon — its measurement and both routes are unchanged, only the schedule moved
+(D30). **Aim mode is SPECIFIED** in its place: weapon slots on 1/2/3, `S` to
+aim, a small cyclable target set with a visible hit percentage, immediate
+pre-resolution of the current target, and a second input to fire (D31–D36, flow
+in §5c). Six questions the COMBAT wave now has to answer are in §7c — Q1 (three
+slots vs. `DESIGN_MASTER_PLAN` §10.2's one weapon per mission) and Q2 (is "2–3
+targets" a cap or an observation?) are the two that change what gets built.
+Nothing below is retracted.
 
 **Status:** 🟢 **Catalog drafted, first shot fired, shot-physics model
 brainstormed 2026-07-29 — and the CONE model itself rebuilt 2026-07-30 (D26-D28):
@@ -61,9 +73,40 @@ weapons exist, and what shape of effect does each one put into the world.**
 
 ---
 
-## 0. NEXT SESSION — firearm pre-production (W-PRECOOK, Director 2026-08-13)
+## 0. Firearm pre-production (W-PRECOOK) — ⏸ DEFERRED to the optimization milestone
 
-*"Vamos fazer a pré-produção da arma de fogo também, na próxima sessão."*
+> **Scheduled and deferred on the same day, 2026-08-13.** This section was
+> written that morning under the heading *"NEXT SESSION — firearm
+> pre-production"*, from *"Vamos fazer a pré-produção da arma de fogo também, na
+> próxima sessão."* The next session opened by postponing it:
+>
+> *"Vamos postergar a decisão da última sessão, fazendo a pré produção das armas
+> de fogo depois, quando o personagem já existir e conseguir empunhar as armas.
+> Pra não ficar testando com mecanismos visuais teóricos. Deixa essa etapa
+> marcado na milestone de otimização."*
+>
+> **The reason is a verification reason, not a priority reason.** W-PRECOOK's
+> whole job is to hide ~310 ms inside a window the player spends aiming. There is
+> no aiming window today, and no agent that holds a weapon — the bench fires from
+> a static prop with no shooter (S8). Optimising a window whose real duration,
+> real trigger and real interruption points do not exist yet means tuning against
+> a mock, and the project's own evidence rules already ban standing a synthetic
+> fixture in for the real path.
+>
+> **New home:** `docs/production/milestones.md` → **M7.0 — Release Prep: QA &
+> Optimization**, listed with its own trigger so it is not read as
+> release-window work.
+> **Trigger to pick it up:** the agent exists as a real model, holds a weapon,
+> and aim mode (§5c) runs — i.e. after the ACTOR living-beings track and the
+> COMBAT wave, not after M6.05.
+> **Nothing below is retracted.** The measurement, the contrast with the blast,
+> and both candidate routes stand exactly as written; only the schedule moved.
+> **The problem got smaller while it waited** — see D32/D33 and §5c: a shot can
+> only ever be aimed at 2–3 actors, never at any GU, so the pre-production set is
+> bounded by the candidate list instead of by the map. That is the Director's own
+> point: *"No caso das armas de fogo a pré-produção vai ser bem mais fácil,
+> porque não vai dar pra atirar em qualquer GU."* Route 1 (reuse the prediction
+> layer) is the one that argument favours; route 2 is not thereby eliminated.
 
 **The measurement that scheduled it.** A real 24-pellet shotgun on the PLAYGROUND
 bench, instrumented by `[SHOT-PROF]` (`WeaponBenchController.fire_active()`):
@@ -93,18 +136,24 @@ it — so this is not a delete-it fix.
    need its own `build_plan()` equivalent; `apply_point_impact()` shares neither
    blast mutator (PREDICTION_MASTER_PLAN §2.3), so this is new work, not a
    re-point.
+   *(2026-08-13, later the same day: D32 replaces "contextual menu" with a
+   dedicated aim mode, which makes this window longer and explicitly
+   interruptible — the player cycles targets inside it. §5c is the flow this
+   route would hang off.)*
 2. **Make the repaint incremental.** Scope it to the shot's own voxels plus their
    soot reach instead of the map. Smaller change, but `VoxelLightField.build()`
    is shared with the blast and the repaint path, so "incremental" has to be
    proven not to diverge from the full rebuild — the exact drift SOOT_MASTER_PLAN
    §1.2 found between two soot producers.
 
-**Also queued for that session, Director's own:** *"vamos lembrar de conferir
-depois se o cache do Baking System e os decals estão funcionando corretamente. Eu
-vou preparar um segundo set de texturas."* — verify that a changed texture set
-invalidates the bake cache correctly, that `BAKE_CODE_VERSION` /
-`DAMAGE_BAKE_LOCAL_VERSION` do what they promise, and that decals recomposite
-over the new art.
+**Still queued, and NOT deferred with W-PRECOOK — Director's own:** *"vamos
+lembrar de conferir depois se o cache do Baking System e os decals estão
+funcionando corretamente. Eu vou preparar um segundo set de texturas."* — verify
+that a changed texture set invalidates the bake cache correctly, that
+`BAKE_CODE_VERSION` / `DAMAGE_BAKE_LOCAL_VERSION` do what they promise, and that
+decals recomposite over the new art. This was queued *alongside* W-PRECOOK, not
+inside it: it depends on the second texture set existing, not on the character,
+so the 2026-08-13 deferral does not reach it. It runs whenever the set is ready.
 
 ---
 
@@ -177,6 +226,13 @@ Named pains:
 | **D27** | **A shotgun shot is N independent pellet rolls (D14's projectile_count), each landing on exactly ONE voxel — never a flood-filled area.** *(Director, 2026-07-30.)* Per pellet: roll hit/miss against the target. **On hit**: damage roll applies to the target; with enough force it can continue through to a wall behind and leave a blood mark instead of a bullet mark (*"a desenvolver"* — not this pass, no target dummy exists yet, S8). **On miss**: the pellet keeps travelling in roughly its original direction, inside a horizontal spread that widens with distance travelled (*"um holofote horizontal, que aumenta com a distância. Quanto mais distante, mais longe o tiro pode acabar indo"*), until it reaches the nearest wall in that direction — that wall voxel is the pellet's own, individual impact point. This replaces D13's cone-as-footprint (which this session's shipped `flood_gu_cone()` still treats as an area to flood-damage-and-graduate-by-ring) with a literal reading of D13: **the cone bounds where impact points CAN land; it was never itself the thing that takes damage.** **Shipped same day** as `BlastCalculator.select_cone_pellet_impacts()` — see the implementation note below the table; only the MISS half is built (no target dummy exists, S8), matching this wave's own scope. | ✅ Ratified & shipped (miss path only) — supersedes the shipped `flood_gu_cone()` + `apply_container_damage()` area-scatter for CONE |
 | **D28** | **A bullet mark exists ONLY at a projectile's own impact voxel — never on neighbours, never scattered across a ring.** *(Director, 2026-07-30.)* *"Os buracos de bala não podem aparecer em qualquer lugar, somente no ponto de impacto de cada projetil."* Neighbouring voxels may still take **soot** (D17, already face-local and derived) but never their own DENTED/CRACKED texture — soot and bullet-mark are different data, D17 already got this right, D22's `apply_container_damage()` did not (it distributes DENTED/CRACKED across a whole ring group). **If the impact voxel is fully DESTROYED, the voxel immediately behind it (the wall's paired slice, `Edge.slice_a_id`/`slice_b_id` — confirmed 2026-07-30 that both slices index `voxels[]` in matching order, same level, same array index, so the "behind" voxel is a direct lookup) becomes a new roll target** — destroyed / dented / cracked / untouched, same three-tier table (D22), same cascade rule recursively. **If a shot fully penetrates (every layer destroyed), there is no mark anywhere on that path** — nothing stopped there to leave one, per *"se o tiro atravessar a parede não tem marca de bala porque ela continuou o caminho."* **Shipped same day** as `BlastCalculator.apply_point_impact()`. | ✅ Ratified & shipped — supersedes D22's ring-group DENTED/CRACKED distribution for CONE/LINE (RADIAL/grenade keeps the ring model; a blast genuinely is an area effect) |
 | **D29** | **Sniper and pistol fire one straight-line projectile each (not a pellet spread), but still miss into a dispersion zone "similar" to the shotgun's, with modifiers — unspecified.** *(Director, 2026-07-30: "vão ter uma trajetória reta, porque os tiros são individuais, mas eles podem errar em uma zona similar à da shotgun, com modificadores. Vamos trabalhar isso melhor depois.")* Explicitly deferred — not this pass. Recorded so `LINE`'s eventual build doesn't silently default to zero spread on a miss. | ⏸ Deferred (explicit) |
+| **D30** | **W-PRECOOK is deferred until the agent exists as a model and holds a weapon — the optimization milestone owns it from here.** *(Director, 2026-08-13: "Vamos postergar a decisão da última sessão, fazendo a pré produção das armas de fogo depois, quando o personagem já existir e conseguir empunhar as armas. Pra não ficar testando com mecanismos visuais teóricos. Deixa essa etapa marcado na milestone de otimização.")* The window W-PRECOOK exists to fill is the aiming window; there is no aim mode, no shooter and no agent-held weapon yet, so its duration, its trigger and its interruption points would all have to be mocked. Full reasoning and the unchanged measurement: §0. | ✅ Ratified — supersedes §0's "NEXT SESSION" scheduling |
+| **D31** | **The agent carries three firearms in fixed slots, selected by number, and enters a dedicated AIM MODE with `S`.** *(Director, 2026-08-13: "Vamos atribuir ao agente a possibilidade de atirar, selecionando rifle (1), pistola (2) ou shotgun (3), e usando 'S' para entrar no modo mira.")* Slot 1 rifle, slot 2 pistol, slot 3 shotgun. Verified free on 2026-08-13: the project's `[input]` map binds `Z X V L H P` + arrows + `G` (`ui_grenade_mode`) + `Esc`, and nothing on `1`, `2`, `3` or `S` — so these are new actions (`ui_weapon_slot_1..3`, `ui_shoot_mode`), added through the InputMap the way `ui_grenade_mode` was, never as raw keycodes (INTERFACE_MASTER_PLAN Part 1). **The game is mobile-first portrait: the keys are the desktop mirror of on-screen controls, not the primary interface.** Whether the three slots are a loadout constraint or a test-bench convenience is a COMBAT-wave question — `DESIGN_MASTER_PLAN` §10.2 gives the agent exactly ONE weapon per mission. | ✅ Ratified (input surface) · ⚠️ collides with the one-weapon loadout, see §7c Q1 |
+| **D32** | **Aim mode presents a SMALL, CYCLABLE SET of candidate targets with a hit percentage each — the Fallout 3 / XCOM model — and this supersedes D25's contextual menu as the target-picking UI.** *(Director, 2026-08-13: "O jogador vai ter 2 ou 3 alvos simultâneos, podendo circular entre eles, verificar a porcentagem de acerto e decidir em qual vai atirar (modelo Fallout 3, xcom, etc).")* **D25's substance is untouched** — a shot still always targets an actor, never a free direction, and the environment still does the aiming. What changes is the surface: a modal aim mode with target cycling and a visible hit chance, instead of a right-click menu entry. The visible percentage is the first time D12's hit roll becomes player-facing information rather than an internal number. | ✅ Ratified — supersedes D25's *mechanism*, not its principle |
+| **D33** | **Entering aim mode pre-resolves the CURRENT target immediately; changing target discards that work and pre-resolves the new one.** *(Director, 2026-08-13: "No momento em que o jogador selecionar a função tiro pela interface ou shortcut, a gente já vai imediatamente marcar o inimigo mais próximo dele como alvo, resolver qual é a parede que está no fundo (se houver) e calcular o dano em caso de erro. Se o jogador mudar de alvo, limpamos o calculo e calculamos o dano novo.")* The initial target is the **nearest enemy**. Pre-resolution answers two questions: which wall the origin→target line reaches beyond the target (D15/D25 — "se houver", so VOID is a legitimate answer), and what the miss would do to it. **This is what makes firearm pre-production tractable where the grenade's was hard**: a grenade can be aimed at any GU, a shot at 2–3 actors, so the plan set is bounded by the candidate list. | ✅ Ratified |
+| **D34** | **Firing is a SECOND input on an already-selected target — Enter, or a second tap/click — and the dice roll only then.** *(Director, 2026-08-13: "Quando ele der enter ou segundo tap/clique no alvo, rolamos os dados pra ver se erra ou acerta o alvo, e por fim aplicamos o dano em caso de erro.")* Order is fixed: confirm → hit roll (D12) → **on hit**, damage roll against the actor; **on miss**, commit the backdrop damage D33 already computed. Selecting a target and firing at it are two distinct inputs, which is exactly what gives D33 its window. | ✅ Ratified |
+| **D35** | **The shotgun's pre-resolution is PER PELLET — N independent outcomes, not one.** *(Director, 2026-08-13: "a shotgun vai ter projéteis independentes que vão ser calculados individualmente, cada um aplicando seu próprio dano".)* This is D14 + D27 restated against the new pre-production step, and it is not new physics; what is new is that the pre-computed plan for a shotgun target must hold **N independent sub-results**, because after the rolls an arbitrary subset of pellets has hit and the complement has missed. | ✅ Ratified (restates D14/D27 for pre-production) |
+| **D36** | **Engineering consequence of D35: pre-resolve the ALL-MISS case as N separable sub-deltas, then commit only the subset that actually missed.** The all-miss plan is the upper bound of the work, so computing it costs no more than the worst case and never less than what is needed; committing a subset requires the plan to be decomposable per pellet rather than one fused `WorldDelta`. `PREDICTION_MASTER_PLAN`'s `build_plan()`/`delta.commit()` split already has the right shape, but firearms use `apply_point_impact()` and share **neither** blast mutator (§2.3 there), so this is new construction on a proven pattern. | 🟠 Proposed (agent) — not stated by the Director |
 
 **D28 amended 2026-08-02 — WHERE the mark lands, ratified in
 `DESTRUCTION_MASTER_PLAN.md` D32 and not duplicated here.** D28 pinned *which
@@ -448,6 +504,81 @@ where impact *points* may land. That single change is expected to resolve both
 complaints, and it means §6b's calibration numbers describe a model that is
 being replaced — they stay recorded as evidence of the old behaviour, not as a
 target to tune toward.
+
+---
+
+## 5c. Aim mode — how the player picks a target and fires *(Director, 2026-08-13)*
+
+D31–D36 as an ordered flow. **Nothing here is built**, and it is deliberately
+written *before* the character exists so that when the character does exist there
+is a spec to build against rather than a conversation to re-run. §5b (above) owns
+what happens to the *scenario* once a projectile is loose; this section owns
+everything before that — selection, pre-resolution, confirmation, and the roll.
+
+The final numbers — hit-chance formula, AP cost, how many targets are reachable,
+ammunition — are **not** here. The Director scoped them out explicitly:
+*"Vamos definir isso melhor depois em COMBATE."* This is the interaction
+skeleton, not the balance.
+
+```
+ENTER AIM MODE            key S / on-screen control          (D31)
+  |
+  +-- weapon already selected by slot:  1 rifle · 2 pistol · 3 shotgun   (D31)
+  |
+  +-- auto-target the NEAREST enemy, immediately               (D33)
+  |
+  v
+PRE-RESOLVE the current target                                 (D33, D35, D36)
+  |
+  +-- 1. the origin -> target line, extended past the target   (D15/D25)
+  +-- 2. WHICH WALL is behind it — "se houver": VOID is a
+  |      legitimate answer, and means the miss does nothing    (D15)
+  +-- 3. what a MISS would do to that wall
+  |        LINE  (rifle/pistol) -> one impact plan
+  |        CONE  (shotgun)      -> N independent pellet plans  (D35)
+  |
+  +-- show the hit percentage for this target                  (D32)
+  |
+  v
+PLAYER CYCLES TARGETS  <-------+                               (D32)
+  |                            |
+  +-- discard the pre-resolved plan, pre-resolve the new target (D33)
+  |                            |
+  +----------------------------+
+  |
+  v
+CONFIRM  =  Enter, or a SECOND tap/click on the same target     (D34)
+  |
+  v
+ROLL — per projectile, independently                            (D12/D14/D27)
+  |
+  +-- ON HIT   -> damage roll against the actor  (armour/resistance/distance)
+  |               DESIGN_MASTER_PLAN §9 owns the resistance layers
+  |
+  +-- ON MISS  -> commit the pre-computed backdrop damage       (D34, D36)
+                  shotgun: commit only the sub-deltas of the pellets
+                  that actually missed                          (D36)
+```
+
+**Cancellation.** Not stated by the Director; `Esc` is the project's existing
+cancel for grenade aim mode (`TARGETING_MASTER_PLAN` §1) and aim mode should
+mirror it rather than invent a second convention. Flagged as an assumption, not
+a decision.
+
+**Why this makes W-PRECOOK smaller (§0, D30).** The grenade's prediction layer
+had to be a resumable, cancellable, budgeted state machine because a throw can be
+aimed at any GU on the map and the plan is one large fused delta. A shot can only
+be aimed at an actor, of which there are 2–3 in range, and D36's plan is already
+decomposable. The same `build_plan()` → `commit()` discipline applies; the state
+machine around it may not need to be nearly as elaborate. **That is a hypothesis
+to test when the work happens, not a conclusion** — the honest version of "vai
+ser bem mais fácil."
+
+**Where this connects to what already exists.** `TARGETING_MASTER_PLAN` (BUILT)
+is the grenade's equivalent of this section — modal aim state, cursor lock,
+cancel, confirm, and pre-production during the throw. Aim mode should be read
+against it before anything is written: the two are the same shape with a
+different selection domain (GU cells vs. actors), and one of them already works.
 
 ## 6. Parts
 
@@ -802,17 +933,77 @@ for the whole segment run) and they cost very different amounts if chosen late.
 **Belongs to `DESTRUCTION_MASTER_PLAN`, not here** — the arsenal only surfaced
 it.
 
+**S8 update, 2026-08-13 — still open, but now scheduled rather than parked.**
+The hit path's missing fixture is the character itself: D30 defers W-PRECOOK for
+exactly this reason, and the ACTOR living-beings track is what supplies it. S8
+closes when a real actor can be shot at, not when a dummy is bolted onto the
+bench.
+
 **S9. Deferred to the COMBAT wave — 2026-07-30.** Maximum range, AP cost and
 shots per turn, ammunition, what counts as "environment interativo", and
 whether hitting an actor produces voxel damage on it are explicitly
 *"vamos trabalhar depois em COMBATE"* — out of scope for the current
-destruction-focused wave. *Original text kept below.*
+destruction-focused wave. *Original text kept below.* **2026-08-13:** the
+Director restated the same boundary against aim mode — *"Vamos definir isso
+melhor depois em COMBATE"* — so §5c's flow is deliberately number-free, and §7c
+below collects what COMBAT now has to answer.
 
 Maximum range at which a projectile still damages a wall ("distância
 razoável"); AP cost and shots per turn (`docs/systems/movement.md` has the
 table); ammunition; what counts as "environment interativo"; and whether
 hitting an actor produces voxel damage on it (`ACTOR_MASTER_PLAN` D5/D6 has a
 deferred progressive-damage model waiting).
+
+### 7c. Raised against aim mode (2026-08-13) — for the COMBAT wave
+
+Written down at the point of ambiguity rather than guessed. None of these block
+writing §5c; all of them block *building* it.
+
+**Q1. Three weapon slots vs. one weapon per mission.** D31 gives the agent rifle,
+pistol and shotgun on keys 1/2/3. `DESIGN_MASTER_PLAN` §10.2 (Class 2 — Weapon)
+has the agent pick **one** weapon before a mission, as one of three loadout
+decisions. These are not compatible as written. Three readings, and they cost
+different things: (a) the slots are a **test/dev affordance** so all three
+delivery shapes can be exercised on one agent — nothing in the design changes;
+(b) the loadout **grows to three slots** — a real design change to §10.2, and it
+weakens the "three decisions, deep to master" framing; (c) the slots are
+**situational pickups** — you carry what you found, which fits the Freelance
+escalation model. **Not decided here.** Reading (a) is what the rest of this
+document assumes, because it is the only one that changes no ratified design.
+
+**Q2. Is "2 or 3 targets" a cap or an observation?** The pre-production argument
+in §0/D33 rests on the candidate set being small and bounded. If 2–3 is simply
+what a room usually contains, a corridor with seven visible guards makes the
+bound evaporate. If it is a hard cap (only the N nearest/most-relevant enemies
+are targetable), the bound is real and the pre-production budget is
+`N × one plan`. **This one has teeth** — it is the difference between a bounded
+and an unbounded pre-production problem.
+
+**Q3. What single number does the shotgun show?** D32 shows "the hit percentage"
+per target; D14/D27/D35 make a shotgun N independent rolls. So a shotgun's
+displayed percentage is one of: chance at least one pellet connects, expected
+pellets on target, or chance of some threshold damage. Each teaches the player
+something different about the weapon, and the first is nearly always a
+misleadingly high number.
+
+**Q4. Which enemies are candidates at all?** "Nearest" (D33) presupposes a
+candidate set. Visible-to-the-agent is the obvious answer and matches the
+detection/occlusion systems already built, but shooting at a guard you *heard*
+and cannot see is a coherent tactical option this project has the machinery for.
+Also unanswered: whether non-actor targets (interactive objects, S9's
+"environment interativo") ever enter the same cycle.
+
+**Q5. Does entering aim mode cost anything, and is cycling free?** If aim mode
+costs AP, opening it to read percentages and backing out is a real decision; if
+it is free, it is an information window and the player will always open it.
+Related: whether cancelling after cycling to a second target has any cost at all.
+
+**Q6. Does aim mode exist for guards too?** Every ratified piece of this
+(D25's "origin is whichever actor is shooting") is symmetric between the agent
+and an enemy. Guards firing at the agent presumably resolve through the same
+hit/miss/backdrop pipeline with no UI at all — worth confirming, because if so
+the pre-production question comes back on the enemy turn, where there is no
+aiming window to hide it in.
 
 ### 7b. Pre-existing
 

@@ -421,12 +421,35 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ### Explosive Destruction (85% — Alpha; **both master plans CLOSED 2026-08-13**, Phase A + B built, VFX foundation complete)
 
-> **NEXT SESSION (Director-scheduled):** firearm pre-production (W-PRECOOK) —
-> a shot's entire cost is `_repaint_voxel_light_buckets()`, ~310 ms of
-> synchronous CPU for nine voxels, against 0.5 ms for a 453-voxel blast that
-> pre-computes during the throw. Full measurement and the two candidate routes:
-> `WEAPON_MASTER_PLAN` §0. Queued alongside it: verify the Baking System cache
-> and decals against a second texture set.
+> **~~NEXT SESSION (Director-scheduled):~~ SUPERSEDED 2026-08-13 — W-PRECOOK
+> DEFERRED, and the character is now the active work.** The banner below was
+> written the morning of 2026-08-13 and overtaken the same day.
+>
+> **Firearm pre-production (W-PRECOOK) is deferred to the optimization
+> milestone** (`docs/production/milestones.md` → M7.0, which carries its real
+> trigger). Nothing about the problem changed — a shot still costs ~310 ms of
+> synchronous CPU for nine voxels — but the window it exists to fill is the
+> *aiming* window, and there is no aim mode, no shooter and no agent holding a
+> weapon to build it against. Director: *"quando o personagem já existir e
+> conseguir empunhar as armas. Pra não ficar testando com mecanismos visuais
+> teóricos."*
+>
+> **In its place, aim mode is DESIGNED and unbuilt** — weapon slots on 1/2/3,
+> `S` to aim, 2–3 cyclable targets with a visible hit percentage, the current
+> target pre-resolved immediately, and a second input to fire.
+> `WEAPON_MASTER_PLAN` §5c + D30–D36; `DESIGN_MASTER_PLAN` §8.7.
+>
+> **The active work is the CHARACTER** — `ACTOR_MASTER_PLAN`'s living-beings
+> track, deferral lifted by the Director 2026-08-13. Design conversation open,
+> plan not yet written.
+>
+> Still queued and NOT deferred with W-PRECOOK: verify the Baking System cache
+> and decals against a second texture set (waits on the texture set).
+>
+> *Original banner, kept:* firearm pre-production (W-PRECOOK) — a shot's entire
+> cost is `_repaint_voxel_light_buckets()`, ~310 ms of synchronous CPU for nine
+> voxels, against 0.5 ms for a 453-voxel blast that pre-computes during the
+> throw. Full measurement and the two candidate routes: `WEAPON_MASTER_PLAN` §0.
 
 ✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
 camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:
@@ -842,8 +865,38 @@ Deliberately deprioritized. The math noise grid works; real SFX awaits post-demo
 
 ---
 
-### Animation / Sprites (0% — Not Started)
-Movement tweening works adequately for the demo. Animated sprites await post-demo.
+### Animation / Sprites (0% — 🟢 ACTIVE as of 2026-08-13)
+Movement tweening works adequately for the demo. ~~Animated sprites await
+post-demo.~~ **The character is now the active work** — the Director lifted
+`ACTOR_MASTER_PLAN` D18's living-beings deferral on 2026-08-13: *"Agora chegou a
+hora de produzir realmente o personagem."*
+
+The agent on screen today is still a **44×61 px vector silhouette**
+(`agent.gd`, `SILHOUETTE_WIDTH`/`SILHOUETTE_HEIGHT`) — no sprite, no pose, no
+frames.
+
+What already exists to build on, all proven on *objects* rather than characters:
+- **The bake rig** — `actor_frame_bake_spike.gd`: N rotation frames from the
+  same fixed isometric camera gameplay uses, each frame a pair (flat unlit
+  albedo + view-space normal map).
+- **The relight shader** — `flat_normal_relight.gdshader`: continuous per-pixel
+  N·L + specular from the real `LightRegistry`, so a flat sprite reacts to the
+  map's actual lights.
+- **A runtime consumer** — `FloatingCollectible` (spinning pickup) and
+  `GrenadeProp` (static prop), both on that pipeline, both with real ground
+  shadows and real depth sorting.
+- **A measured cost floor** — Part 0's spike: a ×8 voxel twin is 16 576 nodes
+  and ~480–500 ms to compose per pose, which is why the runtime representation
+  is *not* baked from the twin (D16).
+
+What does **not** exist: any pose library, any damage/clothing layering, any
+weapon in a character's hands (Part 4), and any decision on how a character is
+authored in the first place. Plan: `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md`
+Parts 1/3/4 + §6; open questions in its §7.
+
+**Two other items are gated on this** — firearm aim mode
+(`WEAPON_MASTER_PLAN` §5c) and W-PRECOOK (M7.0) both need an agent that holds a
+weapon.
 
 ---
 

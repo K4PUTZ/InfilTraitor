@@ -1019,8 +1019,29 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 **Deliverables:**
 - Comprehensive QA pass
 - Performance optimization (target 60 FPS on 5-year-old devices)
+- **W-PRECOOK — firearm pre-production** *(assigned here by the Director,
+  2026-08-13; see the note below — it does **not** wait for M6.05)*
 - Platform-specific builds (iOS, Android, Web)
 - Final balance tuning
+
+**W-PRECOOK — firearm pre-production (Director-assigned 2026-08-13).**
+*"Deixa essa etapa marcado na milestone de otimização."* This is the one
+optimization item in this milestone with an **earlier trigger than the milestone
+itself**, and it is recorded here as its home, not as its schedule.
+
+- **What it is:** firing a gun costs ~310 ms of synchronous CPU for nine voxels,
+  entirely inside `_repaint_voxel_light_buckets()` — measured, `[SHOT-PROF]`. A
+  grenade destroying 453 voxels commits in 0.5 ms, because it pre-computes during
+  the throw. The firearm has no pre-production at all.
+- **Why it is not being done now:** the window it exists to fill is the *aiming*
+  window, and there is no aim mode, no shooter and no agent that holds a weapon.
+  Tuning it today means tuning against a mock. Director: *"quando o personagem já
+  existir e conseguir empunhar as armas. Pra não ficar testando com mecanismos
+  visuais teóricos."*
+- **Trigger:** the ACTOR living-beings track has produced an agent that holds a
+  weapon **and** aim mode runs. Not M6.05.
+- **Owner doc:** [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](../../PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md)
+  §0 (measurement + the two candidate routes, unchanged) and D30.
 
 **Acceptance Criteria:**
 - Zero critical bugs
@@ -1060,7 +1081,10 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 | CONTENT-01 | AI track + VIS-01 | ⏸ DEFERRED | Still gated by AI-02 tuning specifically |
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
 | Destruction Part 4+ (cover/noise/fire, shot-based destruction) | Lighting (VOXEL_LIGHT) | 🟢 UNBLOCKED 2026-07-26 | Ready to resume; not yet scheduled |
-| Ranged weapon (shotgun) + shot-based wall destruction | New mechanism | 🟡 Scoped 2026-07-29, Part 0 done | Catalog + four delivery shapes in `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`; test bench built (4 aimed shotguns × 4 materials). CONE/LINE geometry still unwritten — lands as `DESTRUCTION_MASTER_PLAN.md` Part 5 |
+| Ranged weapon (shotgun) + shot-based wall destruction | ~~New mechanism~~ | 🟢 **BUILT (miss path) 2026-07-30 / 2026-08-02** — row updated 2026-08-13 | CONE (`select_cone_pellet_impacts()`) and LINE (`apply_point_impact()`) both ship and are selftested; a real shot breaks real voxels with material response, bullet marks and face-local soot. **What remains is the HIT half** — there is no actor to shoot at (`WEAPON_MASTER_PLAN` S8), which is the ACTOR track's job, not this row's |
+| **Firearm aim mode** (weapon slots, target cycling, hit %, pre-resolution) | Agent model that holds a weapon | 🟡 **DESIGNED 2026-08-13, unbuilt** | Flow + decisions: `WEAPON_MASTER_PLAN` §5c / D31–D36; gameplay statement: `DESIGN_MASTER_PLAN` §8.7. Six COMBAT-wave questions open (§7c) — two of them change what gets built |
+| **W-PRECOOK** (firearm pre-production, ~310 ms/shot) | Aim mode + an agent holding a weapon | ⏸ **DEFERRED 2026-08-13 → M7.0** | Director-assigned to the optimization milestone with an earlier trigger than the milestone — see M7.0's own note. Measurement and both routes unchanged in `WEAPON_MASTER_PLAN` §0 |
+| **ACTOR living-beings track** (character model, poses, weapon layering) | ~~D18 sequencing deferral~~ | 🟢 **UNBLOCKED 2026-08-13 by the Director** | *"Agora chegou a hora de produzir realmente o personagem."* Design conversation opened, plan not yet written — `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md` Parts 1/3/4 and §6 |
 | ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; **Director is now asking about character/animation work ahead of this window — see engine assessment for the sequencing question** |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
@@ -1093,3 +1117,34 @@ raised:
 See: `docs/production/roadmap.md` for the macro view of the phases
 See: `docs/production/technical_debt.md` for blocker details
 See: `docs/production/current_state.md` for the maintained per-domain status
+
+---
+
+## Next Steps — superseding update (2026-08-13)
+
+The four items above were written on 2026-07-26 and three of them have since
+been answered by events. Read this section, not that one, for what happens next.
+
+1. **Shot-based destruction** — ✅ **done for the miss path.** CONE and LINE both
+   ship; the hit path has no fixture because no actor can be shot at yet.
+2. **Character/animation asset pipeline** — 🟢 **this is now the active work.**
+   The Director lifted `ACTOR_MASTER_PLAN` D18's living-beings deferral on
+   2026-08-13: *"Agora chegou a hora de produzir realmente o personagem."* The
+   design conversation is open; no plan is written yet, and nothing should be
+   built until it is. **This is also the gate on two other items** — W-PRECOOK
+   (M7.0) and firearm aim mode both wait on an agent that holds a weapon.
+3. **AI tuning (AI-02) resume timing** — still an open Director call, unchanged
+   since 2026-07-26. Not raised in the 2026-08-13 session.
+4. **ART-01 window** — the question flagged in 2026-07-26 ("if character work
+   starts now, that changes what 'complete' means for this gate") is no longer
+   hypothetical. Character work is starting. **ART-01's gate condition needs
+   re-reading against that** — flagging, not deciding.
+5. **New (2026-08-13):** firearm aim mode is designed and unbuilt
+   (`WEAPON_MASTER_PLAN` §5c). Six COMBAT-wave questions block building it
+   (§7c); two of them — is the agent's loadout one weapon or three, and is
+   "2–3 targets" a cap or an observation — change the shape of the work rather
+   than its balance.
+6. **Still queued, independent of all of the above:** verify that a second
+   texture set correctly invalidates the Baking System cache and that decals
+   recomposite over new art (Director's own, 2026-08-13). Waits on the texture
+   set, not on the character.

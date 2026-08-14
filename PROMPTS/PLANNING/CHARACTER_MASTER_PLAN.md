@@ -533,11 +533,68 @@ plainly).
 GLB brings its own root, so filtering for "meshes with no parent" reparented
 nothing. Caught by comparing the pictures, not by reading the log.
 
+### The turn's RATE — rendered 2026-08-15, the second half of the question
+
+The first S2 pass answered *how many in-betweens* (Director: *"faz muita
+diferença cada um"*, 7+ clearly best). It did not answer **how long the turn
+lasts**, and correction 2 above is why that is not a separate question: pick a
+frame count and you have picked a minimum duration; pick a duration and you have
+capped the useful frame count. `tools/asset_generation/s2_turn_rate_compare.py`
+renders both axes side by side.
+
+| Evidence | What it shows | Tracked? |
+|---|---|---|
+| `Screenshots/history/s2_turn_rate_60hz_vs_30hz.mp4` | the **same 17-frame asset** at 60 Hz (283 ms) and 30 Hz (567 ms), running together | **no** |
+| `Screenshots/history/s2_turn_ceiling_60hz.mp4` | 7 / 11 / 15 / 23 in-betweens, all at the ceiling → 150 / 217 / 283 / 417 ms | **no** |
+| `Screenshots/history/s2_turn_rate_contact_sheet.png` | the 17 frames as a strip, with both rulers — the durable record | yes |
+
+**Neither MP4 is committed, and that is the repo's rule, not an oversight.**
+`.gitignore:27` bans `*.mp4` globally (beside `*.mov`); force-adding would have
+been a silent workaround of a deliberate policy. They exist locally and were
+delivered to the Director for the judgement. **The chain is fully reproducible
+from tracked sources**, which is what makes not committing them safe:
+
+    s2_mockup_character.glb  (tracked)
+      -> s2_turn_render.py       -> Screenshots/s2_turn/turn_N_inbetween/
+      -> s2_turn_rate_compare.py -> the two MP4s + the contact sheet
+
+If the videos should be versioned, that is a `.gitignore` change and therefore a
+Director call. The PNG carries the numbers either way.
+
+**"30 Hz" here is an AUTHORING choice, not a slow device**, and mislabelling it
+would make the Director judge the wrong thing. Correction 1 above establishes the
+animation is time-driven (`floating_collectible.gd:331`), so a phone delivering
+30 fps keeps the duration and *drops* frames. The 30 Hz panel instead holds each
+sprite frame for two rendered frames: same asset, same RAM, twice the wall clock.
+
+**Both clips are MP4 at a true 60 fps, and the format is a fidelity decision
+rather than a preference.** GIF stores its delay in centiseconds, so 16.67 ms
+rounds to 2 cs = 20 ms — a "60 Hz" GIF actually plays at 50 Hz, a 17% error on
+the exact quantity under judgement, and many viewers additionally clamp sub-2 cs
+delays to 10 cs. Holding each source frame an *integer* number of output frames
+at a fixed 60 fps is exact by construction. The earlier GIFs remain valid for the
+frame-count question they were made for; they were never valid for this one.
+
+**Nothing was re-rendered** — the frame sequences from the first pass were reused
+in place, and the head-lead authoring stays in `s2_turn_render.py` rather than
+being copied, because two copies of *"how the turn is authored"* drift the first
+time one is tuned.
+
+**One correction, made before the numbers were reported.** The first run labelled
+the 15-in-between turn "283 ms" in the panel title while the live readout beside
+it computed **267 ms** — two numbers for one quantity in one image. Cause: the
+title used §6's frame-count convention (17 images × 16.67 ms) and the readout
+measured the *gaps* between them (16 × 16.67). §6's convention is the correct
+one: every image must occupy at least one rendered frame to be seen, so the turn
+costs 17 frame slots, not 16. Fixed by **deriving every label from the same
+numbers instead of passing them in** — the numbers now match §6's table exactly
+(150 / 217 / 283 / 417).
+
 **Status: the test is run; the answer is the Director's.** D45 makes this a
 game-feel judgement by eye, and no metric substitutes. Evidence (non-`auto_`
 names, so the 50-file rotation cannot eat them):
-`Screenshots/history/s2_turn_{0,1,3,7}inbetween_200ms.gif` and
-`s2_turn_frames_7inbetween.png`.
+`Screenshots/history/s2_turn_{0,1,3,7}inbetween_200ms.gif`,
+`s2_turn_frames_7inbetween.png`, and the three rate artifacts tabled above.
 
 ---
 

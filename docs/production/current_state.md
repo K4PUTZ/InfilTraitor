@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.101 · **Updated:** 2026-08-14 · **Branch:** main
+**Version:** 0.9.102 · **Updated:** 2026-08-15 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -592,6 +592,39 @@ the blast from "the waves fire" to something that reads right. Full record:
   brightness and then drops), so the yellow is a flash and the red arrives fast
   AND bright. Easing the hue alone would have produced a red that was already dim
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
+- ✅ **0.9.102 "Alpha Character Brainstorm"** — the character went from *designed*
+  to *building*. **Part 0 CLOSED**, **Part 1 BUILT**, and six decisions ratified
+  (D46–D51). **The method finding outranks the character one:** every sighted
+  comparison this project had run returned its *last / most-frames* option, and
+  the Director named the pattern — which invalidates an instrument rather than
+  confirming a result, because panels were always ordered by increasing count
+  with the count printed (so "the last one" and "the most one" were the same
+  panel every time) and nothing rendered had ever been deliberately too slow.
+  Re-run **blind** (A–D, no numbers, no progress bar), order seeded so the
+  slowest was *not* last, range extended past the expected breaking point, the
+  Director chose the **second** panel and rejected both extremes — a
+  single-peaked preference, which neither bias can produce. **D46:** the
+  deliberate turn is 23 in-betweens at 30 Hz (833 ms) and belongs to target
+  selection. **D47:** ordinary movement snaps facing at the GU boundary, which
+  keeps the body term at **744 sets instead of 4608**. **D48–D51:** the
+  professional showcase model is authored first as the design authority (art
+  derivation, not bake — D16 intact), in a dedicated joint sculpt stage, with the
+  project versioned but not its exports, from material *inspired by* CC0.
+  **Part 1** ships a real T-pose base — 20 bones, 36 parts, rest pose *measured
+  off the armature* and loud-failing if it is not an exact T. Two bugs found by
+  measuring rather than looking: `prism()` inherited an **undefined roll** from
+  `to_track_quat` on near-vertical segments, turning the shirt panel's 85 mm
+  width into 85 mm of depth (a blade through the chest); and the first fedora had
+  a 52 cm brim. **A spike measured the procedural ceiling** rather than assuming
+  it: lofted cages + subdivision genuinely improve form, but uniform subdivision
+  *destroyed the suit* — a garment edge is a cut, and knowing which edges are
+  hard is the judgement a script cannot make. Evidence:
+  `p1_agent_tpose_sheet.png`, `p1_sculpt_spike_comparison.png`,
+  `p8_sculpt_start_scene.png`.
+- ⚠️ **Also measured, owned by Part 3:** `agent.gd`'s `STEP_DURATION` is
+  **12.3 m/s** over a 1.60 m GU — a constant tuned for a legless 44×61 px vector
+  diamond — and `_step_next()` builds a fresh `EASE_IN_OUT` tween *per tile*, so
+  a five-GU path is five accelerate-decelerate cycles rather than one walk.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
 - ✅ **The muzzle sequence reads** (E-SPARK-03 / E-MUZZLE-02, 2026-08-13).

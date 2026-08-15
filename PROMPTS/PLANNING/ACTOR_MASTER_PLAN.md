@@ -1,5 +1,5 @@
 # ACTOR_MASTER_PLAN
-## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.1
+## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.2
 
 > ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
 >

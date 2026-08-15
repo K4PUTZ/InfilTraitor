@@ -3,18 +3,18 @@
 
 **Status:** 🟢 **Part 0 CLOSED · Part 1 BUILT · reordered 2026-08-15 by D48.**
 Execution plan for the living-beings track `ACTOR_MASTER_PLAN` (reopened
-2026-08-13, decided 2026-08-14 as D32–D45, extended 2026-08-15 as D46–D48). It
+2026-08-13, decided 2026-08-14 as D32–D45, extended 2026-08-15 as D46–D51). It
 replaces that plan's deferred Parts 1, 3 and 4, which were stubs, not designs.
 
 | | State |
 |---|---|
 | **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
 | **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets. Its ART is superseded by D48; its RIG is the base |
-| **Part 8** — professional showcase model | 🔜 **NEXT, promoted by D48** — was last, now first |
+| **Part 8** — professional showcase model | 🔜 **NEXT, promoted by D48.** Unblocked: D49 (dedicated joint sculpt stage), D50 (project versioned, exports not), D51 (inspired-by-CC0 + provenance log). Start scene BUILT |
 | **Part 2** — minimum viable agent | ⏸ waits on Part 8, per D48. Still the only Part with external dependents |
 
-**Baseline:** VERSION 0.9.101, `main` at `4ab3824e`. No `verified/` tag since
-`verified/v0.9.0`.
+**Baseline:** VERSION 0.9.102 (`verified/v0.9.102`, "Alpha Character
+Brainstorm"), `main` at `ce40e79f`.
 
 ---
 

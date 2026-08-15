@@ -1,16 +1,21 @@
 # RESUMO_SESSAO — 2026-08-15 (the turn, the corner, and the first real T-pose)
 
-**Version:** 0.9.101 (unchanged — no gameplay code was touched).
-**Commits:** `c0705a1d` → `4ab3824e`, five, all pushed.
-**No `verified/` tag** — none was asked for.
+**Version:** 0.9.101 → **0.9.102 "Alpha Character Brainstorm"**.
+No gameplay code was touched all session; the bump marks a design/asset
+checkpoint, not a build change.
+**Tag:** `verified/v0.9.102` — Director-cleared.
+**Commits:** `c0705a1d` → close, all pushed.
 
 ---
 
 ## The one-line version
 
 Part 0 **closed** and Part 1 **built**: the turn and the corner are both settled
-by blind test (D46, D47), the agent has a real T-pose model, and the Director
-reordered the plan so the professional showcase model comes first (D48).
+by blind test (D46, D47), the agent has a real T-pose model, the Director
+reordered the plan so the professional showcase model comes first (D48), and
+Part 8 went from blocked to **ready to start** — its production settled (D49),
+its versioning settled (D50), its sourcing settled (D51), and its start scene
+built.
 
 ---
 
@@ -50,15 +55,18 @@ sufficient.
 
 ---
 
-## 2. Three decisions registered — D46, D47, D48
+## 2. Six decisions registered — D46 … D51
 
-Full text in `ACTOR_MASTER_PLAN` §2 (now v2.1).
+Full text in `ACTOR_MASTER_PLAN` §2 (now v2.2).
 
 | D | What |
 |---|---|
 | **D46** | The deliberate turn is **23 in-betweens at 30 Hz — 833 ms** — and it belongs to **target selection**, not to ordinary movement. Closes D45's one pending quantity |
 | **D47** | Ordinary movement changes facing by **SNAP at the GU boundary**, no transition frames. Turn-then-move rejected outright (*"A ficou péssima, sem chance"*) |
-| **D48** | The **professional showcase model is authored FIRST** and is the design authority for the gameplay figure. Part 8 moves to the front |
+| **D48** | The **professional showcase model is authored FIRST** and is the design authority for the gameplay figure. Part 8 moves to the front. *Art* derivation, not bake — D16 intact |
+| **D49** | That model is made in a **dedicated, collaborative sculpt stage**: import open-source material, sculpt the agent *and the clothing* |
+| **D50** | The sculpt **project** is versioned in the repo; its **exports** are not. The official sprite library is committed only once the models are final |
+| **D51** | Material is **inspired by** CC0 rather than assembled from it; every source is logged at import time regardless |
 
 **D47 is the row that keeps the art budget finite.** Intermediate yaws are a
 *transition* asset. All eight poses need the four cardinal facings; only aim mode
@@ -191,20 +199,45 @@ cited across several documents, and a silent re-labelling is precisely how two
 documents drift. **If the opposite mapping is preferred, it is a rename across
 D1–D49 and must be done deliberately.**
 
-## 9. Next session
+## 9. What Part 8 now has, and what it cost to establish
 
-1. **Part 8 — the professional showcase model**, as a dedicated joint stage
-   (D49). Worth preparing beforehand so the stage spends its time on art and not
-   on setup: a Blender start scene carrying the verified 20-bone T-pose skeleton,
-   the seven §4.3 sockets, §4.7's scale reference, the game camera at
-   elevation 30 / azimuth 45, and a **196 px ship-size viewport** so the
-   silhouette is checkable at real size *while it is being sculpted*.
-2. **Two things D49 opens that want answers before the first sculpt**, not after:
-   **§9 #13** — a sculpt is not reproducible from a script, so the `.blend` **is**
-   the source, and `ASSETS/*` is gitignored; and **§9 #14** — licence provenance
-   for imported material is captured at import time and cannot be reconstructed
-   from a mesh later.
-3. **Part 2** follows, and still unblocks firearm aim mode and W-PRECOOK.
-4. **Open and not urgent:** the cape's own animation cost (D43), the free
+**The start scene is built** — `p8_sculpt_start_scene.py` →
+`agent_sculpt_start.blend`. `RIG` (the verified 20-bone T-pose + seven sockets,
+*generated* by `p1_agent_model.py` rather than copied), `BLOCKING` (Part 1's body,
+`hide_select`), `SCALE` (a 0.20 m voxel ruler to 3.20 m, the SLICE and ROOM lines,
+the 1.60 m GU footprint, the posture marks), `CAMERAS` (the bake convention plus
+three orthos), and a **133×196 render preset so F12 is a one-key check at true
+in-game size.** Two placement bugs were found by rendering the scene rather than
+trusting it: the ruler sat inside the 1.76 m T-pose arm span, and the labels
+faced away from `CAM_FRONT` so they rendered mirrored *and* read right-to-left.
+
+**The procedural ceiling was measured, not assumed** (`p1_procedural_sculpt_spike.py`,
+answering *"a gente não consegue esculpir proceduralmente?"*). Lofted control
+cages with per-section superellipse profiles, run through a subdivision surface,
+genuinely improve the form. **The finding is the failure in the middle of it:**
+uniform subdivision *destroyed the suit* — the jacket hem rounded into a bulb and
+the shoe's sole dissolved, because a garment edge is a **cut**. The fix was mixed
+construction, and **a script can execute that decision but cannot make it.** The
+plateau is therefore not surface quality: neither version has a face, fingers or
+fabric behaviour, and no amount of subdivision produces them.
+
+**Two costs recorded rather than discovered later.** `.git` is already **915 MB**
+and `git-lfs` is not installed, so D50's versioned `.blend` — an opaque binary
+stored in full per revision — needs the discipline of **committing at milestones,
+not at every save**; history cannot be pruned afterwards without rewriting
+published commits. And D51's provenance log guards against *non*-CC0 material
+entering unnoticed, which is unrecoverable once geometry has been reshaped and
+merged.
+
+## 10. Next session
+
+1. **Part 8 — the professional showcase model**, the dedicated joint sculpt stage
+   (D49). **Nothing blocks it.** Open `agent_sculpt_start.blend`; the first
+   action should be **Save As** into
+   `ASSETS/ISOMETRIC/source_assets/sculpt/agent_showcase.blend`, so the sculpted
+   file is born in the versioned location instead of overwriting the generated
+   scene.
+2. **Part 2** follows, and still unblocks firearm aim mode and W-PRECOOK.
+3. **Open and not urgent:** the cape's own animation cost (D43), the free
    fallback for a purchasable state indicator (D36 / §9 #4), how many silhouette
    classes (§9 #2), on-device RAM headroom, and §9 #12's step duration.

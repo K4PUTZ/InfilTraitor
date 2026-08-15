@@ -21,9 +21,15 @@ import bpy
 from mathutils import Vector
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Overridable so the same preview renders any candidate model without a source
+# edit -- the sculpt spike (D49) needs the IDENTICAL camera and framing or the
+# comparison measures the renderer instead of the model.
+#   P1_MODEL=agent_hifi P1_OUT=p1_preview_hifi blender --background --python ...
+_MODEL = os.environ.get("P1_MODEL", "agent_base")
 BLEND = os.path.join(REPO_ROOT, "ASSETS", "ISOMETRIC", "source_assets",
-                     "imported_models", "agent", "agent_base.blend")
-OUT_DIR = os.path.join(REPO_ROOT, "Screenshots", "p1_preview")
+                     "imported_models", "agent", "%s.blend" % _MODEL)
+OUT_DIR = os.path.join(REPO_ROOT, "Screenshots",
+                       os.environ.get("P1_OUT", "p1_preview"))
 
 # The game's fixed isometric camera (CollectibleBakeConfig). D26: a bake at any
 # other angle breaks the runtime light maths silently.

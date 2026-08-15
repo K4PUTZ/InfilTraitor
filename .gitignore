@@ -52,6 +52,27 @@ REFERENCES/
 ASSETS/*
 !ASSETS/ART_SPECIFICATIONS.md
 
+# SCULPT SOURCES ARE VERSIONED (Director ruling 2026-08-15, ACTOR D50).
+# Every character asset until now was produced by a headless generator, so the
+# RECIPE was the versioned artifact and nothing was lost by ignoring ASSETS/.
+# A sculpt is not reproducible from a script: the .blend IS the source, and
+# losing it means sculpting it again. So hand-authored sources live in
+# source_assets/sculpt/ and are tracked; EXPORTS (.glb, baked frames) stay
+# ignored, because the Director's ruling is explicit that many test iterations
+# are expected and only the final sprite library gets committed.
+# Each level has to be re-included separately -- git cannot re-include a file
+# whose parent directory is excluded, which is why ASSETS/* is written that way
+# above.
+!ASSETS/ISOMETRIC/
+ASSETS/ISOMETRIC/*
+!ASSETS/ISOMETRIC/source_assets/
+ASSETS/ISOMETRIC/source_assets/*
+!ASSETS/ISOMETRIC/source_assets/sculpt/
+ASSETS/ISOMETRIC/source_assets/sculpt/*
+!ASSETS/ISOMETRIC/source_assets/sculpt/*.blend
+!ASSETS/ISOMETRIC/source_assets/sculpt/*.md
+!ASSETS/ISOMETRIC/source_assets/sculpt/ATTRIBUTION.txt
+
 # Screenshots/ — Director's manual Shift+P captures stay local, never
 # committed. Screenshots/history/*.png is the exception: SCREENSHOT-HOOK-01's
 # pre-commit auto-capture, which IS meant to be versioned (see

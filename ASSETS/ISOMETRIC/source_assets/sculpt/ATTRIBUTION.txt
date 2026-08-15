@@ -1,0 +1,45 @@
+SCULPT SOURCES — PROVENANCE LOG
+================================
+
+Convention: ACTOR_MASTER_PLAN D51 (Director ruling, 2026-08-15).
+
+WHAT THIS FILE IS FOR, AND WHAT IT IS NOT.
+
+The Director's direction is to work from material INSPIRED BY CC0 sources --
+authoring our own version of each part and generating a single coherent whole --
+rather than assembling imported meshes. Under CC0 that means this file is NOT a
+legal obligation: CC0 waives attribution, so nothing here is owed to anyone.
+
+It is OUR OWN AUDIT TRAIL, and that is a stronger reason to keep it than a
+licence would have been.
+
+The risk this guards against is not CC0 material. It is the opposite: something
+that is NOT CC0 entering the pipeline unnoticed -- a model from a marketplace
+with a restrictive licence, an "free for personal use" download, a mesh of
+unclear origin from a forum. Once that geometry has been imported, reshaped and
+merged into a single sculpt, NOTHING IN THE FILE REMEMBERS WHERE IT CAME FROM.
+Provenance can only be captured at import time; it cannot be reconstructed later
+from a mesh. A gap in this log is not an inconvenience, it is an unanswerable
+question about whether the character can ship.
+
+The "inspired by, then authored ourselves" approach makes that risk smaller,
+because less foreign geometry survives into the result. It does not make it
+zero, because the reference still has to come from somewhere and a reference
+consulted is still a reference obtained.
+
+RULE: log EVERY file that is opened, imported, appended or traced against --
+including ones later deleted, and including ones used only as visual reference.
+Log it when you get it, not when you ship.
+
+FORMAT (one block per source):
+
+  file        <the filename as it landed on disk>
+  source      <URL, or where it came from>
+  author      <name/handle, if stated>
+  licence     <CC0 / CC-BY / other — write "UNVERIFIED" if you did not check>
+  obtained    <YYYY-MM-DD>
+  used-as     <reference only | imported and reshaped | imported as-is>
+  notes       <anything a future reader would need>
+
+-------------------------------------------------------------------------------
+(no sources logged yet)

@@ -922,15 +922,19 @@ count. That is the number Part 0 exists to start pinning down.
     2026-08-15 by D49** — a dedicated, collaborative stage: open-source material
     imported, then the agent *and the clothing* sculpted. Part 8 is unblocked.
     Two things it opens, both listed below as #13 and #14.
-13. **Where a SCULPTED source file lives.** NEW 2026-08-15, and it needs an
-    answer *before* the first sculpt rather than after. Every character artifact
+13. ~~**Where a SCULPTED source file lives.**~~ **RESOLVED 2026-08-15 by D50** —
+    the project is versioned, the exports are not; the official sprite library
+    is committed only once the models are final. Original text kept for the
+    reasoning: Every character artifact
     so far has been a headless Python generator, so the versioned artifact was
     the recipe and `ASSETS/*` could stay gitignored with nothing lost. A sculpt
     is not reproducible from a script: the `.blend` **is** the source. Either
     `.gitignore` gains a deliberate exception, or the model lives outside the
     repo under a stated backup convention. Losing it means re-sculpting it.
-14. **Licence provenance for imported open-source material.** ⚠️ Answer this at
-    the moment of the first import, not after. The convention
+14. ~~**Licence provenance for imported open-source material.**~~ **RESOLVED
+    2026-08-15 by D51** — material is *inspired by* CC0 rather than assembled
+    from it, and the log is our own audit trail rather than a legal obligation.
+    Still captured at import time; still cannot be reconstructed later. The convention
     exists and applies unchanged — per-pack `ATTRIBUTION.txt`, CC0 only, as used
     for the Quaternius weapon packs. Recorded here because provenance is captured
     **at import time** and cannot be reconstructed afterwards from a mesh.

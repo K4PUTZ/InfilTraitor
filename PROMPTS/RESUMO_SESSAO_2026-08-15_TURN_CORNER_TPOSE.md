@@ -166,14 +166,45 @@ changed this session. The last real result stands — 35 clean / 0 failed.
 
 ---
 
-## 8. Next session
+## 8. D48 confirmed, D49 added — and one word that needs the Director's ruling
 
-1. **Part 8 — the professional showcase model.** Blocked on one Director call
-   (§9 #11): **how it gets authored** — procedurally at much higher fidelity,
-   commissioned, sourced CC0 under the Quaternius `ATTRIBUTION.txt` convention,
-   or authored by the Director. D48 settles that it comes first and that it is
-   the design authority; it does not settle who makes it.
-2. **Part 2** follows it, and still unblocks firearm aim mode and W-PRECOOK.
-3. **Open and not urgent:** the cape's own animation cost (D43), the free
+**D48's reading was right** (*"Sim, derivar a arte, não o bake"*), with a
+refinement: the bake-side artifact is *"outra versão só para bake de assets,
+porém sincronizada com o modelo grande, considerando a exibição de tiers"*. That
+is exactly **D16's `simplification`**, now gaining a *design parent* it never
+had — D16 made the two separately authored and synchronized by convention; D48
+adds that the showcase model is the art authority the other is authored to match.
+A refinement of D16, not a contradiction.
+
+**D49 closes §9 #11:** the professional model is made in a **dedicated,
+collaborative stage** — open-source material imported, then the agent *and the
+clothing* sculpted. Part 8 is unblocked.
+
+### ⚠️ The naming collision, flagged rather than absorbed
+
+The Director's phrasing calls the bake-side version *"o twin digital"*. **D16
+assigns `digital twin` to the SHOWCASE model** and calls the gameplay-side
+artifact the `simplification`. The two usages are exact opposites and cannot both
+stand. The register keeps **D16's** assignment — `twin` = the big showcase model,
+`simplification` = the bake-only gameplay version — because D16 is ratified and
+cited across several documents, and a silent re-labelling is precisely how two
+documents drift. **If the opposite mapping is preferred, it is a rename across
+D1–D49 and must be done deliberately.**
+
+## 9. Next session
+
+1. **Part 8 — the professional showcase model**, as a dedicated joint stage
+   (D49). Worth preparing beforehand so the stage spends its time on art and not
+   on setup: a Blender start scene carrying the verified 20-bone T-pose skeleton,
+   the seven §4.3 sockets, §4.7's scale reference, the game camera at
+   elevation 30 / azimuth 45, and a **196 px ship-size viewport** so the
+   silhouette is checkable at real size *while it is being sculpted*.
+2. **Two things D49 opens that want answers before the first sculpt**, not after:
+   **§9 #13** — a sculpt is not reproducible from a script, so the `.blend` **is**
+   the source, and `ASSETS/*` is gitignored; and **§9 #14** — licence provenance
+   for imported material is captured at import time and cannot be reconstructed
+   from a mesh later.
+3. **Part 2** follows, and still unblocks firearm aim mode and W-PRECOOK.
+4. **Open and not urgent:** the cape's own animation cost (D43), the free
    fallback for a purchasable state indicator (D36 / §9 #4), how many silhouette
    classes (§9 #2), on-device RAM headroom, and §9 #12's step duration.

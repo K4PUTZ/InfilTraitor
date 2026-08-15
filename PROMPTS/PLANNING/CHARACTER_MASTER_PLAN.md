@@ -801,8 +801,13 @@ it — building Part 2 first would mean authoring it twice.
 Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
 Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive D48;
                                      the ART is superseded by Part 8
-Part 8  PROFESSIONAL SHOWCASE     🔜 NEXT (D48) — live 3D for the menu, no bake.
-        MODEL                        Design authority for everything below it
+Part 8  PROFESSIONAL SHOWCASE     🔜 NEXT (D48). Live 3D for the menu, no bake.
+        MODEL                        Design authority for everything below it.
+                                     D49: a DEDICATED COLLABORATIVE stage —
+                                     import open-source material, sculpt the
+                                     agent AND the clothing (D33: armour is a
+                                     dressed body, never a garment over a nude
+                                     base, so there is no nude base to sculpt)
 Part 2  MINIMUM VIABLE AGENT      idle + 3 grips x 4 yaws, baked, on screen,
                                      replacing the vector placeholder
                                      ⚠️ unblocks aim mode + W-PRECOOK
@@ -910,14 +915,21 @@ count. That is the number Part 0 exists to start pinning down.
     D46 + D47.** Movement snaps at the GU boundary and needs no transition yaws;
     only aim mode's deliberate turn pays for the other 92. **744 body sets, not
     4608** — the 6× saving landed on the cheap side.
-11. **How the professional showcase model gets AUTHORED** — NEW 2026-08-15, and
-    the only thing blocking Part 8. D48 settles that it comes first and that it
-    is the design authority; it does not settle *who makes it or how*.
-    Procedurally scripted at much higher fidelity (the route every asset in this
-    project has taken so far), commissioned from an artist, sourced CC0 under the
-    Quaternius per-pack `ATTRIBUTION.txt` convention, or authored by the Director
-    — these have entirely different costs, timelines and revision loops, and the
-    choice is not a technical one. **A Director call.**
+11. ~~**How the professional showcase model gets AUTHORED**~~ **RESOLVED
+    2026-08-15 by D49** — a dedicated, collaborative stage: open-source material
+    imported, then the agent *and the clothing* sculpted. Part 8 is unblocked.
+    Two things it opens, both listed below as #13 and #14.
+13. **Where a SCULPTED source file lives.** NEW 2026-08-15, and it needs an
+    answer *before* the first sculpt rather than after. Every character artifact
+    so far has been a headless Python generator, so the versioned artifact was
+    the recipe and `ASSETS/*` could stay gitignored with nothing lost. A sculpt
+    is not reproducible from a script: the `.blend` **is** the source. Either
+    `.gitignore` gains a deliberate exception, or the model lives outside the
+    repo under a stated backup convention. Losing it means re-sculpting it.
+14. **Licence provenance for imported open-source material.** The convention
+    exists and applies unchanged — per-pack `ATTRIBUTION.txt`, CC0 only, as used
+    for the Quaternius weapon packs. Recorded here because provenance is captured
+    **at import time** and cannot be reconstructed afterwards from a mesh.
 12. **`agent.gd`'s `STEP_DURATION` is 12.3 m/s** — measured 2026-08-15. One GU is
     1.60 m (`VOXELS_PER_UNIT_AXIS` 8 × 0.20 m) and the constant is 0.13 s, which
     is faster than the 100 m world record. Not a bug: it is a *"snappy tactical

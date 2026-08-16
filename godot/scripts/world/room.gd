@@ -3677,6 +3677,21 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
+## CHARACTER_MASTER_PLAN Part 2 probe (2026-08-16) — the baked agent standing on
+## the PLAYGROUND floor so proportion and lighting can be judged against real
+## voxel geometry instead of against a Blender render. Two cells on purpose: one
+## in the OPEN, where nothing competes with the silhouette, and one right beside
+## the concrete wall, which is the only way to read the figure's height against
+## the 8-voxel SLICE it is supposed to stand slightly taller than (§4.7). One
+## alone would answer half the question.
+##
+## This does NOT replace `agent.gd`'s vector placeholder — see AgentProbeProp's
+## header for what the probe deliberately is not.
+const TEST_ZONE_AGENT_PROBE_GUS: Array[Vector2i] = [
+	Vector2i(6, 7),   ## open floor, clear of every wall
+	Vector2i(3, 3),   ## one GU south of the concrete wall (gu 2,2 - 4,2)
+]
+
 ## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for
 ## real destruction calibration — "a bancada está muito cheia [...] vai ser
 ## impossível atirar diretamente na parede durante o jogo"). Revolver/SMG/
@@ -3787,6 +3802,8 @@ func _populate_test_zone_if_playground() -> void:
 	if map_id == "PLAYGROUND":
 		for gu in TEST_ZONE_GRENADE_GUS:
 			_test_zone_controller.add_grenade(gu)
+		for gu in TEST_ZONE_AGENT_PROBE_GUS:
+			_test_zone_controller.add_agent_probe(gu)
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
 		## The weapons bench: every row of TEST_ZONE_WEAPON_ROWS placed once per

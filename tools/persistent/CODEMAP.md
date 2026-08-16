@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**205 scripts · 57100 lines total** (under `godot/scripts/`)
+**207 scripts · 57726 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,9 +17,9 @@
 - **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -846,6 +846,34 @@ extends `ConfirmationDialog` · 64 lines
 ---
 
 ## overlays/
+
+### `agent_probe_prop.gd`
+
+`class_name AgentProbeProp` · extends `Sprite2D` · 203 lines
+
+`godot/scripts/overlays/agent_probe_prop.gd`
+
+> CHARACTER_MASTER_PLAN Part 2 — the agent, standing in the real room. WHAT THIS IS FOR, exactly: the Director asked whether the figure can be put in the scene yet to judge PROPORTIONS and LIGHTING. This is that probe and only that. It does not touch `agent.gd` — the playable agent is still its vector placeholder, and Part 2's definition of done (§10: the placeholder is GONE) is deliberately not claimed here. What this answers is whether the baked figure sits at the right size against real voxel geometry and takes the room's real light, which is the thing that has to be true before the swap is worth doing. A lean sibling of GrenadeProp: same four-frames-per-room-perspective contract, same `flat_normal_relight.gdshader`, same perspective-aware light mapping (ACTOR_MASTER_PLAN D22), same ground-contact anchoring. Three differences, all deliberate: 1. SPRITE_SCALE IS 1.0, AND THAT IS A DERIVATION RATHER THAN A SETTING. Every other prop in this project carries a hand-tuned sprite scale, which is right for a grenade and wrong here: the question being asked IS the figure's size, so a scale tuned until it looked right would answer itself. `agent_frame_bake_spike.gd` bakes at the game's own pixel scale and gates on it — a 0.20 m rise measured 20.000 px against VOXEL_STEP_PX's 20.0 — so one texel is already one world pixel and any scale but 1.0 would BREAK it. 2. THE ANCHOR IS READ FROM THE BAKE, NOT COPIED FROM IT. GrenadeProp hardcodes its `ANCHOR_PX` as a constant transcribed from the bake's printout. That is one number in two places, and it goes stale the first time the canvas size changes. The bake already writes `anchor.json`; this reads it. 3. NO GROUND SHADOW, ON PURPOSE. GrenadeProp fakes one by squashing the sprite's own silhouette on Y — a stated substitution that works because a grenade is a small round object. A 1.9 m standing figure squashed on Y is a long smear, not a footprint, and the bake's own header notes the honest version is a separate top-down pass (which `actor_frame_bake_spike.gd` does and this bake does not). Shipping a knowingly-wrong shadow into a probe about how the figure READS would corrupt the very judgement it exists for. The figure will look unmoored; that is the missing pass, not a placement bug.
+
+**Constants / tuning**
+- `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
+- `ANCHOR_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/anchor.json"`
+- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `DIRECTIONS` = `["N", "E", "S", "W"]`
+- `SPRITE_SCALE` = `1.0`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+
+**Public vars**
+- `var room: Node = null`
+- `var gu_cell: Vector2i = Vector2i.ZERO`
+- `var base_cell: Vector2i = Vector2i.ZERO`
+
+**Public API**
+- `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
+- `func update_cell(p_gu_cell: Vector2i) -> void:`
+
+---
 
 ### `aim_bubble_overlay.gd`
 
@@ -2595,6 +2623,34 @@ extends `SceneTree` · 226 lines
 
 ---
 
+### `agent_frame_bake_spike.gd`
+
+extends `SceneTree` · 374 lines
+
+`godot/scripts/tools/agent_frame_bake_spike.gd`
+
+> CHARACTER_MASTER_PLAN Part 2 — bake the posed agent for placement in the room. A sibling of grenade_frame_bake_spike.gd, copied per that file's own stated convention, and it differs from it in exactly two ways. Both differences exist because this object is a CHARACTER whose size is a ratified number, not a prop whose size is a judgement call. 1. MESH_SCALE IS 1.0 AND ORTHO_SIZE IS DERIVED, NOT TUNED. Every other bake in this project carries the comment "first-guess world scale, visually tuned, not derived from a formula" — correct for a grenade, and disqualifying here: the whole point of putting the agent in the scene is to judge his PROPORTIONS, and a scale tuned by eye would make that judgement circular. §4.7 fixes the figure at 1.898 m with 1 voxel = 0.20 m, and QUICK_REFERENCE fixes VOXEL_STEP_PX at 20, so the frame's pixels-per-metre is pinned at 20 / (0.20 * cos 30) = 115.47 and nothing else reproduces the game's size. The source GLB is authored in real metres, so MESH_SCALE is 1.0 and ORTHO_SIZE follows from the viewport. The bake then MEASURES the rendered figure and fails loudly if it missed. 2. RECENTRED IN Y ONLY, NOT ON THE FULL AABB. The grenade recentres on its whole AABB, which puts the AABB bottom-centre on the yaw axis and makes one anchor valid for all four frames. That works because a grenade is symmetric. This figure HOLDS A SHOTGUN sticking 0.6 m forward, so its AABB centre is not its footprint centre, and recentring on X/Z too would stand him off his own tile by the length of the weapon. Shifting in Y alone keeps the figure's own vertical axis on the yaw axis — still rotation-invariant, still one anchor — while the ground point stays where the model was authored: under the FEET. The exported GLB's origin is that point (p1_agent_model.py loud-fails if the figure does not stand on z=0), which is why no measurement is needed to find it. Source: tools/asset_generation/p2_grip_spike.py with P2_EXPORT_GLB, so what gets baked is the same pose the Director judged on the grip matrix, not a second pose that merely resembles it. Must run WINDOWED (real GPU rasterizer). Run via: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/agent_frame_bake_spike.gd
+
+**Constants / tuning**
+- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_posed_shotgun_ready.glb"`
+- `OUT_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
+- `ANCHOR_OUT_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/anchor.json"`
+- `DIRECTIONS` = `["N", "E", "S", "W"]`
+- `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+- `CAMERA_DISTANCE` = `12.0`
+- `VOXEL_M` = `0.20`
+- `VOXEL_STEP_PX` = `20.0`
+- `FIGURE_HEIGHT_M` = `1.898`
+- `VIEWPORT_SIZE` = `Vector2i(256, 256)`
+- `MESH_SCALE` = `1.0`
+- `SCALE_TOLERANCE_PX` = `0.25`
+- `MAX_WHITE_FRACTION` = `0.10`
+- `NORMAL_BAKE_SHADER_CODE` = `"""`
+
+---
+
 ### `bake_cache_test.gd`
 
 extends `SceneTree` · 430 lines
@@ -4253,7 +4309,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1303 lines
+`class_name TestZoneController` · 1335 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4263,6 +4319,7 @@ extends `Node2D` · 34 lines
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
+- `AgentProbePropClass` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `DetonationChoreographerClass` = `preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")`
 - `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
@@ -4521,7 +4578,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4751 lines
+extends `Node2D` · 4768 lines
 
 `godot/scripts/world/room.gd`
 

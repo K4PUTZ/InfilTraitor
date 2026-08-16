@@ -509,6 +509,136 @@ def measure_facings():
     return out
 
 
+def materialise_for_export():
+    """Give every node-less material a real Principled BSDF carrying its own
+    colour, so the glTF exporter can see it.
+
+    THE BUG THIS FIXES, because it is bigger than it looks. `p1_agent_model.py`
+    builds its palette with `use_nodes = False` and `diffuse_color` — the
+    VIEWPORT display colour. Blender's Workbench renderer reads it, which is why
+    every character render this project has judged so far (the T-pose sheet, S2,
+    the grip matrix) shows the suit/shirt/skin/hat split correctly. **The glTF
+    exporter does not read it.** It reads the Principled BSDF's Base Color, and
+    with no node tree there is none, so every material exports WHITE.
+
+    Measured, not deduced: the first agent bake came out at mean RGB (234,233,233)
+    with 53% of its opaque pixels pure white, and §4.8's whole albedo argument —
+    D31's "lit = albedo * (ambient + light) cannot manufacture a colour that was
+    never baked in" — applies to a palette that never left Blender.
+
+    WHAT THE .blend ACTUALLY HOLDS, measured rather than assumed — the first
+    version of this function guessed and repaired ZERO materials. `use_nodes =
+    False` does not survive the save: every material reloads with `use_nodes =
+    True` and a Principled BSDF still at Blender's default 0.8 grey, while
+    `diffuse_color` carries the authored palette. So the exporter does not see a
+    missing material, it sees a uniform grey one — which is why the bake came out
+    plausible-looking rather than obviously broken.
+
+    THE RULE, and it is narrow on purpose: sync only materials whose Principled
+    base colour is still that untouched default while `diffuse_color` says
+    something else. That signature means "authored via diffuse_color only". The
+    weapon arrives from a GLB with real base colours, so it is left alone.
+
+    `diffuse_color` is preserved, so Workbench keeps rendering exactly what it
+    rendered before and the grip matrix stays reproducible."""
+    default_grey = (0.8, 0.8, 0.8, 1.0)
+    fixed = 0
+    for m in bpy.data.materials:
+        if not m.use_nodes or m.node_tree is None:
+            m.use_nodes = True
+        bsdf = m.node_tree.nodes.get("Principled BSDF") if m.node_tree else None
+        if bsdf is None:
+            continue
+        base = tuple(round(v, 3) for v in bsdf.inputs["Base Color"].default_value)
+        rgba = tuple(m.diffuse_color)
+        if base != default_grey:
+            continue
+        if tuple(round(v, 3) for v in rgba) == default_grey:
+            continue
+        bsdf.inputs["Base Color"].default_value = rgba
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = 0.85
+        if "Metallic" in bsdf.inputs:
+            bsdf.inputs["Metallic"].default_value = 0.0
+        log("  material %-10s base colour %s -> %s"
+            % (m.name, base, tuple(round(v, 3) for v in rgba)))
+        fixed += 1
+    log("materials: %d carried the palette in diffuse_color only; the exporter "
+        "can now see it" % fixed)
+    if fixed == 0:
+        fail("no material needed the diffuse_color -> base colour sync. Either "
+             "p1_agent_model.py now authors real node colours (in which case "
+             "delete this function) or the .blend changed shape — do NOT export "
+             "a figure whose palette has not been confirmed to survive")
+    return fixed
+
+
+def export_posed(arm, key, facing_name):
+    """Write ONE posed figure + weapon as a static GLB, for the Godot bake.
+
+    Why static rather than rigged: `actor_frame_bake_spike.gd` loads a single
+    GLB and rotates the OBJECT between frames — it has no rig and wants none. So
+    the pose is applied to the geometry here (`export_apply`, skins off) and what
+    lands on disk is a posed mesh, not a character to animate. The rig stays in
+    `agent_base.blend`; this is a render source.
+    """
+    weapon, grip_name = key
+    spec = WEAPONS[weapon]
+    g = grip_for(key, facing_name)
+    aim = Vector(g["aim"]).normalized()
+    grip_world = Vector(g["grip"])
+
+    arm.rotation_euler = (0.0, 0.0, 0.0)
+    reset_pose(arm)
+    root, grip_local, grip_to_fore_m, wscale, created = import_weapon(spec)
+    root.parent = arm
+    root.matrix_parent_inverse = Matrix.Identity(4)
+    socket_off = arm.data.bones["hand_R"].length * 0.5
+    err_r, _, _ = two_bone_ik(arm, "R", grip_world - aim * socket_off, g["pole_r"], aim)
+    if spec["two_handed"]:
+        err_l, _, _ = two_bone_ik(arm, "L",
+                                  grip_world + aim * grip_to_fore_m - aim * socket_off,
+                                  g["pole_l"], aim)
+    else:
+        for part, d in (("upperarm", IDLE_L["upperarm"]), ("forearm", IDLE_L["forearm"]),
+                        ("hand", IDLE_L["hand"])):
+            aim_bone(arm, "%s_L" % part, d)
+        err_l = 0.0
+    if err_r > 0.02 or err_l > 0.02:
+        fail("export pose did not reach (R %.4f L %.4f)" % (err_r, err_l))
+    place_weapon(root, grip_local, wscale, grip_world, aim)
+
+    n_fixed = materialise_for_export()
+    out = os.path.join(os.path.dirname(BLEND),
+                       "agent_posed_%s_%s.glb" % (weapon, grip_name))
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.export_scene.gltf(filepath=out, export_format="GLB",
+                              export_apply=True, export_skins=False,
+                              export_yup=True)
+
+    # Verify the EXPORT, not the scene it came from — export_apply silently
+    # doing nothing would leave a T-posed figure on disk while every check above
+    # passed. Re-import and measure what actually landed.
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=out)
+    back = [bpy.data.objects[k] for k in set(bpy.data.objects.keys()) - before
+            if bpy.data.objects[k].type == "MESH"]
+    pts = [m.matrix_world @ v.co for m in back for v in m.data.vertices]
+    if not pts:
+        fail("the exported GLB re-imports with no geometry")
+    height = max(p.z for p in pts) - min(p.z for p in pts)
+    span_x = max(p.x for p in pts) - min(p.x for p in pts)
+    log("exported %s — re-imported %d meshes, height %.3f m, x-span %.3f m"
+        % (os.path.relpath(out, REPO_ROOT), len(back), height, span_x))
+    if abs(height - 1.898) > 0.12:
+        fail("exported figure is %.3f m, expected ~1.898 — the pose or the scale "
+             "did not survive the export" % height)
+    if span_x > 1.4:
+        fail("exported figure spans %.3f m in X — that is the T-POSE (1.76 m "
+             "span), so export_apply did not bake the pose in" % span_x)
+    return out
+
+
 def main():
     if not os.path.isfile(BLEND):
         fail("model missing: %s — run p1_agent_model.py first" % BLEND)
@@ -534,6 +664,21 @@ def main():
     setup_render()
     os.makedirs(OUT_DIR, exist_ok=True)
     facing = measure_facings()
+
+    # P2_EXPORT_GLB=shotgun:ready writes the posed source the Godot bake reads,
+    # then stops. Same pose machinery as the sheet, so the thing that goes into
+    # the game is the thing the Director judged — not a second pose that merely
+    # resembles it.
+    want = os.environ.get("P2_EXPORT_GLB", "")
+    if want:
+        parts = want.split(":")
+        key = (parts[0], parts[1])
+        if key not in GRIPS:
+            fail("P2_EXPORT_GLB=%s is not one of %s"
+                 % (want, ["%s:%s" % k for k in ORDER]))
+        export_posed(arm, key, parts[2] if len(parts) > 2 else "NE")
+        return
+
     frames = []
 
     os.makedirs(os.path.join(OUT_DIR, "nogun"), exist_ok=True)

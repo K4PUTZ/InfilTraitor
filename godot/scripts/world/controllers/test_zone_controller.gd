@@ -24,12 +24,19 @@ class_name TestZoneController
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
+const AgentProbePropClass = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 const DetonationChoreographerClass = preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
+## CHARACTER_MASTER_PLAN Part 2 probe — baked agent figures standing on the
+## floor so the Director can judge proportion and lighting against real voxel
+## geometry. Kept in their own list, not in `_grenades`: they are not
+## detonatable, not throwable, and nothing here should ever iterate them as if
+## they were. See AgentProbeProp's header for what this deliberately is NOT.
+var _agent_probes: Array[Dictionary] = []
 
 ## T-MODE: targeting mode active (grenade selected, waiting for target)
 var _targeting_mode: bool = false
@@ -187,6 +194,11 @@ func clear() -> void:
 		if sprite != null and is_instance_valid(sprite):
 			sprite.queue_free()
 	_grenades.clear()
+	for p in _agent_probes:
+		var probe: Sprite2D = p.get("sprite")
+		if probe != null and is_instance_valid(probe):
+			probe.queue_free()
+	_agent_probes.clear()
 	_active_index = -1
 	## RUNTIME-GUARD-01 (2026-08-13): drop an in-flight blast too. This runs on
 	## map load (`_populate_test_zone_if_playground()`), and a sequence started
@@ -217,6 +229,19 @@ func add_grenade(gu_cell: Vector2i) -> void:
 	})
 
 
+## CHARACTER_MASTER_PLAN Part 2 probe. Same perspective contract add_grenade()
+## uses — the view-space cell is stored converted to a base cell so rotation can
+## follow it — because a figure that drifts off its tile on a perspective flip
+## would corrupt the proportion judgement this probe exists for.
+func add_agent_probe(gu_cell: Vector2i) -> void:
+	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
+	var sprite := AgentProbePropClass.new()
+	sprite.setup(room, gu_cell, base_cell)
+	sprite.position = room.agent._cell_to_world(gu_cell)
+	room.add_child(sprite)
+	_agent_probes.append({"gu_cell": gu_cell, "base_cell": base_cell, "sprite": sprite})
+
+
 ## PERSPECTIVE-01: called from room.gd::_set_perspective() alongside the
 ## existing agent/selection-cursor reposition block. Every live (undetonated)
 ## grenade's gu_cell and sprite world position are re-derived from its
@@ -235,6 +260,13 @@ func reposition_for_perspective(direction: String) -> void:
 		if sprite != null and is_instance_valid(sprite):
 			sprite.position = room.agent._cell_to_world(new_cell)
 			sprite.update_cell(new_cell)
+	for p in _agent_probes:
+		var probe_cell: Vector2i = PerspectiveMapperClass.cell_from_base(p["base_cell"], direction, base_size)
+		p["gu_cell"] = probe_cell
+		var probe: AgentProbePropClass = p["sprite"]
+		if probe != null and is_instance_valid(probe):
+			probe.position = room.agent._cell_to_world(probe_cell)
+			probe.update_cell(probe_cell)
 
 
 ## The sprite's own drawn rect, in world/global space — centered=false with a

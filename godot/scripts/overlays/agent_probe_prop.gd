@@ -40,6 +40,13 @@ class_name AgentProbeProp
 extends Sprite2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
+## The same figure with only the `joint` material recoloured. Director,
+## 2026-08-16: "deixamos as juntas amarelas no DEV VISION, pra facilitar o
+## debug." Two bakes rather than a shader tint because the shader has no channel
+## that says "this pixel is a joint" — and the joints kept their own material
+## through the near-black pass precisely so this variant would be one env var
+## away (p1_agent_model.py, P1_JOINTS_YELLOW=1).
+const FRAMES_DIR_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const DIRECTIONS := ["N", "E", "S", "W"]
 ## The yaw each baked frame was rendered at, matching agent_frame_bake_spike.gd.
@@ -102,6 +109,12 @@ var _frames_dir: String = FRAMES_DIR
 ## one room all showed the same face. Director, 2026-08-16: "coloca o boneco 4x
 ## na cena para a gente avaliar todas as faces."
 var _facing: String = "N"
+var _dev_vision: bool = false
+## Loaded on FIRST enable, never at setup. DEV VISION is a debug mode, so the
+## second frame set has no business costing RAM in a normal session — and D42
+## names RAM, not CPU, as this character's binding constraint.
+var _dev_color_frames: Dictionary = {}
+var _dev_normal_frames: Dictionary = {}
 
 var _cam_right := Vector3.ZERO
 var _cam_up := Vector3.ZERO
@@ -166,6 +179,27 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i,
 	set_process(true)
 
 
+## Swap the whole figure to the yellow-joint bake and back. Driven by room.gd's
+## _set_view_mode("dev"), so it follows the same toggle every other dev overlay
+## does instead of inventing a second switch.
+func set_dev_vision(enabled: bool) -> void:
+	if enabled == _dev_vision:
+		return
+	_dev_vision = enabled
+	if enabled and _dev_color_frames.is_empty():
+		for direction: String in DIRECTIONS:
+			var c := _load_texture_raw("%sframe_%s_color.png" % [FRAMES_DIR_DEV, direction])
+			var n := _load_texture_raw("%sframe_%s_normal.png" % [FRAMES_DIR_DEV, direction])
+			if c == null or n == null:
+				push_error("[AgentProbeProp] DEV VISION frames missing in %s — run agent_frame_bake_spike.gd with AGENT_BAKE_MODEL=...devjoints" % FRAMES_DIR_DEV)
+				_dev_vision = false
+				return
+			_dev_color_frames[direction] = c
+			_dev_normal_frames[direction] = n
+	if room != null:
+		_apply_direction(room._active_perspective)
+
+
 ## The anchor pixel the bake computed and wrote — see note 2.
 func _load_anchor() -> bool:
 	var anchor_path := _frames_dir + "anchor.json"
@@ -213,11 +247,13 @@ func _apply_direction(perspective: String) -> void:
 		if is_equal_approx(fposmod(float(YAW_BY_DIRECTION[d]) - yaw, 360.0), 0.0):
 			direction = d
 			break
-	if not _color_frames.has(direction):
+	var colors: Dictionary = _dev_color_frames if _dev_vision else _color_frames
+	var normals: Dictionary = _dev_normal_frames if _dev_vision else _normal_frames
+	if not colors.has(direction):
 		return
-	texture = _color_frames[direction]
+	texture = colors[direction]
 	if _material != null:
-		_material.set_shader_parameter("normal_tex", _normal_frames[direction])
+		_material.set_shader_parameter("normal_tex", normals[direction])
 
 
 func _process(_delta: float) -> void:

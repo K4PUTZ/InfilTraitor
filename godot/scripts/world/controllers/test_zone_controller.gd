@@ -242,6 +242,15 @@ func add_agent_probe(gu_cell: Vector2i, cfg: Dictionary = {}) -> void:
 	_agent_probes.append({"gu_cell": gu_cell, "base_cell": base_cell, "sprite": sprite})
 
 
+## Follows room.gd's dev-vision toggle. The probes are the only props with a
+## second bake, so this stays here rather than becoming a general prop contract.
+func set_agent_probes_dev_vision(enabled: bool) -> void:
+	for p in _agent_probes:
+		var probe: AgentProbePropClass = p.get("sprite")
+		if probe != null and is_instance_valid(probe):
+			probe.set_dev_vision(enabled)
+
+
 ## PERSPECTIVE-01: called from room.gd::_set_perspective() alongside the
 ## existing agent/selection-cursor reposition block. Every live (undetonated)
 ## grenade's gu_cell and sprite world position are re-derived from its

@@ -1690,6 +1690,11 @@ func _set_view_mode(which: String, btn: Button) -> void:
 	btn.set_pressed_no_signal(enabled)
 	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
 
+	## The agent probes carry a second bake whose joints are yellow — the same
+	## toggle drives it, so there is one dev switch rather than two.
+	if which == "dev" and _test_zone_controller != null:
+		_test_zone_controller.set_agent_probes_dev_vision(enabled)
+
 	## T-DEV: the two red aiming diagnostics are gated on dev vision, so toggling
 	## it mid-aim has to rebuild the preview — otherwise the perimeter and the
 	## footprint linger (or stay missing) until the cursor happens to move.
@@ -3850,6 +3855,11 @@ func _populate_test_zone_if_playground() -> void:
 			var cfg: Dictionary = entry.duplicate()
 			cfg["frames_dir"] = "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/%s/" % entry["dir"]
 			_test_zone_controller.add_agent_probe(entry["cell"], cfg)
+		## Apply the CURRENT dev-vision state, not just future toggles. Dev vision
+		## is ON at boot, so a probe created here would otherwise sit in its normal
+		## bake until someone happened to toggle the button twice.
+		if _vision_controller != null:
+			_test_zone_controller.set_agent_probes_dev_vision(_vision_controller.dev_vision)
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
 		## The weapons bench: every row of TEST_ZONE_WEAPON_ROWS placed once per

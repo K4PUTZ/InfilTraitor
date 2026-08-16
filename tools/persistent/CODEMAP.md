@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**207 scripts · 57861 lines total** (under `godot/scripts/`)
+**207 scripts · 57916 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -849,7 +849,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 278 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 314 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -857,6 +857,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
+- `FRAMES_DIR_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
@@ -4297,7 +4298,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1335 lines
+`class_name TestZoneController` · 1344 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4566,7 +4567,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4814 lines
+extends `Node2D` · 4824 lines
 
 `godot/scripts/world/room.gd`
 

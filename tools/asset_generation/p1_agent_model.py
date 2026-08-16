@@ -141,6 +141,15 @@ def reset_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
+# DEV VISION build. Director, 2026-08-16: "deixamos as juntas amarelas no DEV
+# VISION, pra facilitar o debug." P1_JOINTS_YELLOW=1 recolours ONLY the joint
+# material, which is the entire reason the joints kept their own material when
+# they were given the suit's colour rather than being merged into it.
+_JOINTS_YELLOW = os.environ.get("P1_JOINTS_YELLOW") == "1"
+if _JOINTS_YELLOW:
+    MATS["joint"] = (0.92, 0.78, 0.10, 1.0)
+
+
 def material(key):
     if key in bpy.data.materials:
         return bpy.data.materials[key]

@@ -941,22 +941,43 @@ distance from whatever sits behind them.
 |---|---|---|---|
 | shotgun, all 3 grips × 4 facings | **367 – 842** | 22.9 – 35.2 | reads everywhere |
 | pistol, aimed | 224 – 236 | 13.9 – 26.6 | reads, carried by the ARM |
-| pistol, lowered / ready | **0 – 242** | 0 – 39.5 | **fails in NE** |
+| pistol, lowered / ready | 109 – 242 | 12.7 – 39.5 | reads — **after the NE fix below** |
 
-**The finding that matters, and it is a hard zero rather than a soft
-impression:** in the **NE facing the pistol is not dim, it is absent** — 0 px in
-both `lowered` and `ready`. The camera sits on the +X side, the figure's gun hand
-is on its right, and at that yaw the torso is exactly between them. A player
-facing NE with a holstered-height pistol reads as **unarmed**. `pistol/lowered`
-NE and `pistol/ready` NE are the two cells to look at first in the sheet.
+**The finding that drove it was a hard zero rather than a soft impression:** in
+the **NE facing the pistol was not dim, it was absent** — 0 px in both `lowered`
+and `ready`. The camera sits on the +X side, the figure's gun hand is on its
+right, and at that yaw the torso is exactly between them. A player facing NE with
+a holstered-height pistol read as **unarmed**.
 
-**Why this costs nothing to fix, which is the part worth being exact about.** It
-is tempting to read it as an argument for mirroring (D45) or for indexing the
-weapon on pose (against D40). It is neither. **Yaw is already an axis of both
-terms** — §8 has the body at `archetype × silhouette × pose × yaw` and the
-weapon at `weapon × grip × yaw` — so letting the NE arm pose differ from the SW
-one multiplies nothing. It is a per-facing authoring decision inside a frame the
-budget already pays for.
+#### ✅ FIXED 2026-08-16 — a per-facing arm pose, which multiplies nothing
+
+Director's call, same session. `GRIPS` entries now take an optional `by_facing`
+override that is merged **key by key** over the base pose, so an override states
+only what it changes and cannot drift from its base. Two cells use one:
+
+| cell | before | after |
+|---|---|---|
+| `pistol/lowered` NE | **0 px** | **109 px**, ΔL 18.6 — hand swung out to the figure's right and back toward the camera, clear of the torso's screen span, muzzle near-vertical (also the direction that projects longest on a 2:1 diamond) |
+| `pistol/ready` NE | **0 px** | **112 px**, ΔL 25.0 — the pistol raised outboard of the shoulder |
+
+**The other 22 cells re-measured byte-identical**, so the change is surgical
+rather than a re-tune of everything.
+
+**Why it costs nothing, which is the part worth being exact about.** It is
+tempting to read the zero as an argument for mirroring (D45) or for indexing the
+weapon on pose (against D40). It is neither, and **both rows keep their shape**.
+**Yaw was already an axis of both terms** — §8 has the body at
+`archetype × silhouette × pose × yaw` and the weapon at `weapon × grip × yaw` —
+so letting the NE arm pose differ from the SW one lives inside a frame the budget
+already pays for. What the spike really found is that *one arm pose cannot serve
+four camera-relative situations*, and the solver now poses **per facing** instead
+of once per grip.
+
+**The fix is gated, not just applied.** `p2_grip_sheet.py` fails any cell under
+`MIN_WEAPON_PX = 100`. The floor is earned rather than picked: it sits between
+the measured 0 and the weakest cell that already read (131), so it was **red on
+exactly those two cells before the fix and green after** — the only way a
+threshold means anything.
 
 **A second finding, softer and about D40 rather than about the art:** at ship
 size the shotgun's `lowered` and `ready` are hard to tell apart (rows 1 and 2 of
@@ -1023,9 +1044,8 @@ this spike cannot judge around. The first 208×216 attempt cropped every frame a
 the feet — an isometric silhouette is **taller** than the figure's pixel height,
 because the body's own depth projects into screen-Y too.
 
-**Still open after the spike**, and neither blocks the build:
-- the two NE cells above — a per-facing arm pose, or a weapon offset, or both;
-- whether `lowered` and `ready` stay two grips for long guns.
+**Still open after the spike**, and it does not block the build: whether
+`lowered` and `ready` stay two grips for long guns.
 
 ---
 

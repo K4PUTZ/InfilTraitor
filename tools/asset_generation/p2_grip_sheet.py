@@ -43,6 +43,14 @@ HEAD_H = 26
 # couple of pixels for the alpha threshold at the silhouette's edge.
 SIZE_TOL_PX = 3.0
 
+# The floor a weapon must clear to be ON SCREEN AT ALL. Earned, not picked: the
+# 2026-08-16 run measured the pistol at exactly 0 px in NE for both `lowered`
+# and `ready` — an armed figure reading as unarmed — while the weakest cell that
+# did read measured 131. 100 sits between the two, so this gate is red before the
+# per-facing fix and green after it, which is the only way a threshold means
+# anything.
+MIN_WEAPON_PX = 100
+
 
 def fail(m):
     print("[P2-SHEET][FAIL] %s" % m)
@@ -178,6 +186,10 @@ def main():
                             % (f["file"], box, cell_w, cell_h))
         f["px"] = [x1 - x0, y1 - y0]
         f.update(weapon_read(p, os.path.join(SRC, "nogun", f["file"])))
+        if f["weapon_px"] < MIN_WEAPON_PX:
+            problems.append("%s shows only %d px of weapon (floor %d) — an armed "
+                            "figure that reads as unarmed"
+                            % (f["file"], f["weapon_px"], MIN_WEAPON_PX))
 
     if problems:
         for p in problems:

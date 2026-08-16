@@ -136,12 +136,30 @@ GRIPS = {
     ("shotgun", "aimed"): dict(
         grip=(-0.16, 0.05, 1.38), aim=(0.16, 0.99, -0.02),
         pole_r=(-1.0, -0.2, -0.1), pole_l=(0.4, -0.2, -0.9)),
+    # `by_facing` overrides the base pose for one facing only. It exists because
+    # the 2026-08-16 run measured the pistol at ZERO visible pixels in NE for
+    # both of these grips: the camera sits on the +X side, the gun hand is on the
+    # figure's right, and at that yaw the torso is exactly between them — an
+    # armed player reading as unarmed. It costs nothing to fix, which is the part
+    # worth being exact about: §8 already indexes BOTH the body and the weapon on
+    # yaw, so a per-facing arm pose lives inside a frame the budget already pays
+    # for. It is not mirroring (D45) and it does not index the weapon on pose
+    # (D40) — both terms keep their shape.
     ("pistol", "lowered"): dict(
         grip=(-0.24, 0.12, 0.97), aim=(0.05, 0.45, -0.89),
-        pole_r=(-0.8, -0.6, -0.4), pole_l=None),
+        pole_r=(-0.8, -0.6, -0.4), pole_l=None,
+        by_facing={"NE": dict(
+            # Out to the figure's right and back toward the camera, clearing the
+            # torso's screen span; muzzle near-vertical, which is also the
+            # direction that projects LONGEST on a 2:1 diamond.
+            grip=(-0.31, -0.13, 1.00), aim=(-0.10, 0.10, -0.99),
+            pole_r=(-1.0, -0.5, -0.3))}),
     ("pistol", "ready"): dict(
         grip=(-0.19, 0.15, 1.31), aim=(0.10, 0.55, 0.83),
-        pole_r=(-1.0, -0.3, -0.5), pole_l=None),
+        pole_r=(-1.0, -0.3, -0.5), pole_l=None,
+        by_facing={"NE": dict(
+            grip=(-0.38, -0.02, 1.26), aim=(-0.12, 0.25, 0.96),
+            pole_r=(-1.0, -0.4, -0.4))}),
     ("pistol", "aimed"): dict(
         grip=(-0.11, 0.55, 1.45), aim=(0.02, 1.0, 0.06),
         pole_r=(-0.6, -0.2, -0.8), pole_l=None),
@@ -443,6 +461,17 @@ def setup_render():
     return cam
 
 
+def grip_for(key, facing_name):
+    """The grip's pose for one facing: the base entry, with any `by_facing`
+    override merged over it key by key. Partial overrides are the point — an
+    override that had to restate every field would drift from its base."""
+    g = dict(GRIPS[key])
+    over = g.pop("by_facing", {}) or {}
+    g["overridden"] = facing_name in over
+    g.update(over.get(facing_name, {}))
+    return g
+
+
 def measure_facings():
     """Which compass direction each yaw actually draws, read off the camera.
 
@@ -507,64 +536,71 @@ def main():
     facing = measure_facings()
     frames = []
 
+    os.makedirs(os.path.join(OUT_DIR, "nogun"), exist_ok=True)
+    socket_off = arm.data.bones["hand_R"].length * 0.5
+
     for key in ORDER:
         weapon, grip_name = key
-        spec = WEAPONS[weapon]
-        g = GRIPS[key]
-
-        reset_pose(arm)
-        aim = Vector(g["aim"]).normalized()
-        grip_world = Vector(g["grip"])
-
+        spec = WEAPONS[key[0]]
         root, grip_local, grip_to_fore_m, wscale, created = import_weapon(spec)
-
-        # The wrist target is the grip point pulled back along the hand's own
-        # direction by the socket's offset, so it is the SOCKET that lands on the
-        # weapon — which is the contract Part 4's compositor will bind to.
-        socket_off = arm.data.bones["hand_R"].length * 0.5
-        err_r, clamped_r, k_r = two_bone_ik(arm, "R", grip_world - aim * socket_off,
-                                            g["pole_r"], aim)
-        if spec["two_handed"]:
-            fore_world = grip_world + aim * grip_to_fore_m
-            err_l, clamped_l, k_l = two_bone_ik(arm, "L", fore_world - aim * socket_off,
-                                                g["pole_l"], aim)
-        else:
-            for part, d in (("upperarm", IDLE_L["upperarm"]),
-                            ("forearm", IDLE_L["forearm"]),
-                            ("hand", IDLE_L["hand"])):
-                aim_bone(arm, "%s_L" % part, d)
-            err_l, clamped_l, k_l = 0.0, False, 0.0
-
-        place_weapon(root, grip_local, wscale, grip_world, aim)
         root.parent = arm
-        root.matrix_parent_inverse = arm.matrix_world.inverted()
+        root.matrix_parent_inverse = Matrix.Identity(4)
 
-        # Verify against the SOCKETS, which is the thing that has to be right.
-        bpy.context.view_layer.update()
-        sr = bpy.data.objects["socket_hand_R"].matrix_world.translation
-        off_r = (sr - grip_world).length
-        log("%s/%s: wrist err R %.4f L %.4f m%s | shoulder assist R %.2f L %.2f "
-            "| socket_hand_R %.3f m from the grip"
-            % (weapon, grip_name, err_r, err_l,
-               " (CLAMPED)" if (clamped_r or clamped_l) else "", k_r, k_l, off_r))
-        if err_r > 0.02 or err_l > 0.02:
-            fail("%s/%s: IK did not reach (R %.4f L %.4f) — the target is outside "
-                 "the arm's reach, so the pose on screen is NOT the pose declared"
-                 % (weapon, grip_name, err_r, err_l))
-        if off_r > 0.09:
-            fail("%s/%s: the right hand socket is %.3f m from the grip — at ship "
-                 "size that is %.0f px of daylight between hand and weapon"
-                 % (weapon, grip_name, off_r, off_r * PX_PER_SCREEN_M))
-
-        # Each pose is rendered TWICE: with the weapon and without it. The pair
-        # is what lets p2_grip_sheet.py measure how many pixels of weapon
-        # actually survive onto the screen and how far they sit from whatever is
-        # behind them — the difference between "it reads" as an impression and
-        # as a number. §4.8 predicts the failure this catches: D31 measured the
-        # pistol's baked albedo at RGB (47,46,45), dark AND hueless, against a
-        # charcoal suit.
-        os.makedirs(os.path.join(OUT_DIR, "nogun"), exist_ok=True)
+        # The pose is now solved PER FACING, not once per grip. Yaw was always an
+        # axis of both §8 terms, so this multiplies nothing — it just stops
+        # pretending one arm pose can serve four camera-relative situations. Most
+        # facings still take the base pose verbatim.
         for yaw in YAWS:
+            g = grip_for(key, facing[yaw])
+            aim = Vector(g["aim"]).normalized()
+            grip_world = Vector(g["grip"])
+
+            # Pose at identity: the solver works in armature space, and that is
+            # only world space while the rig is unrotated.
+            arm.rotation_euler = (0.0, 0.0, 0.0)
+            reset_pose(arm)
+
+            # The wrist target is the grip point pulled back along the hand's own
+            # direction by the socket's offset, so it is the SOCKET that lands on
+            # the weapon — the contract Part 4's compositor will bind to.
+            err_r, clamped_r, k_r = two_bone_ik(arm, "R", grip_world - aim * socket_off,
+                                                g["pole_r"], aim)
+            if spec["two_handed"]:
+                fore_world = grip_world + aim * grip_to_fore_m
+                err_l, clamped_l, k_l = two_bone_ik(
+                    arm, "L", fore_world - aim * socket_off, g["pole_l"], aim)
+            else:
+                for part, d in (("upperarm", IDLE_L["upperarm"]),
+                                ("forearm", IDLE_L["forearm"]),
+                                ("hand", IDLE_L["hand"])):
+                    aim_bone(arm, "%s_L" % part, d)
+                err_l, clamped_l, k_l = 0.0, False, 0.0
+
+            place_weapon(root, grip_local, wscale, grip_world, aim)
+
+            # Verify against the SOCKETS, which is the thing that has to be right.
+            bpy.context.view_layer.update()
+            sr = bpy.data.objects["socket_hand_R"].matrix_world.translation
+            off_r = (sr - grip_world).length
+            log("%s/%s %-2s%s: wrist err R %.4f L %.4f m%s | shoulder assist "
+                "R %.2f L %.2f | socket_hand_R %.3f m from the grip"
+                % (weapon, grip_name, facing[yaw], "*" if g["overridden"] else " ",
+                   err_r, err_l, " (CLAMPED)" if (clamped_r or clamped_l) else "",
+                   k_r, k_l, off_r))
+            if err_r > 0.02 or err_l > 0.02:
+                fail("%s/%s %s: IK did not reach (R %.4f L %.4f) — the target is "
+                     "outside the arm's reach, so the pose on screen is NOT the "
+                     "pose declared" % (weapon, grip_name, facing[yaw], err_r, err_l))
+            if off_r > 0.09:
+                fail("%s/%s %s: the right hand socket is %.3f m from the grip — "
+                     "at ship size that is %.0f px of daylight between hand and "
+                     "weapon" % (weapon, grip_name, facing[yaw], off_r,
+                                 off_r * PX_PER_SCREEN_M))
+
+            # Rendered TWICE, with the weapon and without. The pair is what lets
+            # p2_grip_sheet.py measure how many weapon pixels survive the body's
+            # occlusion and how far they sit from what is behind them — the
+            # difference between "it reads" as an impression and as a number.
             arm.rotation_euler = (0.0, 0.0, math.radians(yaw))
             bpy.context.view_layer.update()
             name = "%s_%s_yaw%03d.png" % (weapon, grip_name, yaw)
@@ -576,7 +612,8 @@ def main():
             for ob in created:
                 ob.hide_render = False
             frames.append(dict(weapon=weapon, grip=grip_name, yaw=yaw,
-                               facing=facing[yaw], file=name))
+                               facing=facing[yaw], overridden=g["overridden"],
+                               file=name))
         arm.rotation_euler = (0.0, 0.0, 0.0)
 
         # Remove EVERY object the import created, not just the meshes — a GLB

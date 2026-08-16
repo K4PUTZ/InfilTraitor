@@ -11,7 +11,7 @@ and 4, which were stubs, not designs.
 |---|---|
 | **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
 | **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets (**8 with `head`, added by D53**). Its ART is superseded; its RIG is the base |
-| **Part 2** — minimum viable agent | 🔜 **NEXT, promoted by D55.** The design dependency D48 was protecting is discharged by D52 (style) and D53 (costume), not ignored. Unblocks firearm aim mode + W-PRECOOK |
+| **Part 2** — minimum viable agent | 🟡 **STARTED 2026-08-16 — the three-grip spike is RUN**, 24 frames at true ship size, awaiting the Director's eye. Promoted by D55; the design dependency D48 was protecting is discharged by D52 (style) and D53 (costume), not ignored. Unblocks firearm aim mode + W-PRECOOK |
 | **Part 8** — showcase model | ⏸ **DEFERRED by D55**, and may ship as 2D. Its preparation stands: start scene BUILT, D49/D50/D51 unchanged |
 
 **Phase rule (D54):** Alpha closes the character's **mechanics**; detail and
@@ -886,7 +886,8 @@ Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
 Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive;
                                      8 sockets after D53 added `head`.
                                      Its ART is superseded, its RIG is the base
-Part 2  MINIMUM VIABLE AGENT      🔜 NEXT (D55). idle + 3 grips x 4 yaws, baked,
+Part 2  MINIMUM VIABLE AGENT      🟡 STARTED. Grip spike RUN 2026-08-16 (below).
+                                     idle + 3 grips x 4 yaws, baked,
                                      on screen, replacing the vector placeholder
                                      Hand bar is D56: pose-capable, not correct
                                      ⚠️ unblocks aim mode + W-PRECOOK
@@ -917,6 +918,116 @@ anything, which was the whole point of the reversal.
 D33 splits the two representations as *gameplay silhouette shows TIER, the big
 model shows IDENTITY*. A 2D showcase changes what the identity half **is**, and
 that has not been decided. It does not block Part 2.
+
+### 🟡 Part 2 — the three-grip spike, RUN 2026-08-16. Awaiting the Director's eye.
+
+`tools/asset_generation/p2_grip_spike.py` (Blender) →
+`tools/asset_generation/p2_grip_sheet.py` (PIL). Evidence:
+`Screenshots/history/p2_grip_matrix.png` at true ship size, which is the frame
+the decision is made in, and `p2_grip_matrix_3x.png` for inspecting why.
+D40's three grips × two weapons × D44's four facings = 24 frames.
+
+**Honest scope, unchanged from S2:** a Blender render at the bake camera
+convention, **not** the Godot bake + relight path. Evidence about silhouette
+read; evidence about nothing else.
+
+**The question — does the figure read as *holding* at 19 px of hand (D56)? —
+splits by weapon, and the split is measured rather than judged.** Each pose is
+rendered twice, with the weapon and without, so "it reads" becomes two numbers:
+the weapon pixels that survive the body's occlusion, and their mean luminance
+distance from whatever sits behind them.
+
+| | visible weapon px | ΔL vs what is behind | verdict |
+|---|---|---|---|
+| shotgun, all 3 grips × 4 facings | **367 – 842** | 22.9 – 35.2 | reads everywhere |
+| pistol, aimed | 224 – 236 | 13.9 – 26.6 | reads, carried by the ARM |
+| pistol, lowered / ready | **0 – 242** | 0 – 39.5 | **fails in NE** |
+
+**The finding that matters, and it is a hard zero rather than a soft
+impression:** in the **NE facing the pistol is not dim, it is absent** — 0 px in
+both `lowered` and `ready`. The camera sits on the +X side, the figure's gun hand
+is on its right, and at that yaw the torso is exactly between them. A player
+facing NE with a holstered-height pistol reads as **unarmed**. `pistol/lowered`
+NE and `pistol/ready` NE are the two cells to look at first in the sheet.
+
+**Why this costs nothing to fix, which is the part worth being exact about.** It
+is tempting to read it as an argument for mirroring (D45) or for indexing the
+weapon on pose (against D40). It is neither. **Yaw is already an axis of both
+terms** — §8 has the body at `archetype × silhouette × pose × yaw` and the
+weapon at `weapon × grip × yaw` — so letting the NE arm pose differ from the SW
+one multiplies nothing. It is a per-facing authoring decision inside a frame the
+budget already pays for.
+
+**A second finding, softer and about D40 rather than about the art:** at ship
+size the shotgun's `lowered` and `ready` are hard to tell apart (rows 1 and 2 of
+the sheet). `aimed` is unmistakable. D40's three grips may be two-and-a-half for
+a long gun — not a contradiction of the row, which says *≈3*, but the first real
+data on where the third one earns its place.
+
+**Corroboration of a warning already in this plan.** §4.8's albedo trap —
+D31 measured the pistol's baked albedo at RGB (47,46,45), *dark AND hueless* —
+is exactly the failure mode the ΔL column reproduces on the character: the
+weakest non-zero readings (12.7, 13.1, 13.9) are all pistol-on-suit. The two
+darkest objects in the costume are the weapon and the suit.
+
+**Three things the spike derived rather than inherited, each recorded because
+the inherited version would have been wrong:**
+1. **The arm pose is solved from the weapon, not tuned against it.** Each grip
+   declares only where the right hand grips and where the muzzle points; a
+   two-bone IK places the elbow, and for the shotgun the left hand is targeted at
+   the **forend**, whose distance from the grip is measured off the real mesh
+   (0.425 m). `s2_weapon_in_hand.py` did the reverse — pose first, drop the gun
+   between the hands — which can only ever be approximately right.
+2. **`s2_weapon_in_hand.py`'s rotations are unusable and were not adapted.** Its
+   own comment states *"every arm bone points straight DOWN in rest"*; that was
+   the S2 mockup, and Part 1's arms run along ±X. Carried-over Euler angles would
+   have thrown the arms sideways.
+3. **Both weapons' axes were measured and then confirmed by eye** with an
+   axis-marked render before any placement code existed: muzzle +X, up +Z.
+
+**Two errors the script's own gates caught, both worth the gates:**
+- The first run declared a lowered two-handed carry that is **geometrically
+  impossible** — the left hand landed 0.356 m outside the arm's reach. Not a
+  solver bug: with a 0.57 m arm and a 0.42 m shoulder span, a rigid torso cannot
+  hold a shotgun. Real shooters bring the support shoulder forward, and the rig
+  already has `shoulder_L`/`shoulder_R` — **leaving those bones at rest was the
+  actual error.** The solver now rotates the shoulder by the least amount that
+  brings the target into reach, and by nothing when the arm can already get
+  there (used: 0.64 for `lowered`, 0.15 for `ready`, 0.00 for `aimed`).
+- The facing measurement first reported **N/E/S/W with a perfect 1.000 fit**
+  while the rendered frames were, correctly, NE/NW/SW/SE. The camera transform
+  had been written but not flushed, so `world_to_camera_view` was answering for a
+  camera still at the origin. Same class as the Godot pitfall §5 lists — geometry
+  read straight after a transform is written is a frame stale. **A perfect fit is
+  a reason to suspect the instrument, not to trust it.**
+
+**⚠️ A correction that lands outside this spike, stated because it changes what
+"ship size" means in two existing scripts.** `ortho_scale = 2.15` in
+`p1_agent_preview.py` and `p8_sculpt_start_scene.py` is a **framing** value, not
+a scale one. The game's projection is pinned by `VOXEL_STEP_PX` = 20 px per
+0.20 m of height, and at an elevation-30 orthographic camera that fixes the frame
+at **115.47 px per screen-metre** — nothing else reproduces the game's size. At
+ortho 2.15 in a 196 px frame the figure draws ≈150 px where the game draws ≈190.
+Both scripts have therefore been showing the figure **21% smaller than it
+ships**, which is the safe direction to be wrong in and is still wrong. This
+spike derives the value from the constants and gates on it: the reference
+silhouette is predicted by projecting the real vertices through the real camera
+and lands within **1.3 px**. **Neither script was changed** — that is outside
+this task, and it is the Director's call whether S1's and the start scene's
+conclusions want re-checking at the true size.
+
+**Canvas note:** the sheet renders 232×256, not §6's 133×196. The scale is
+untouched; the window is wider because at true ship scale a 0.85 m shotgun held
+across the body overruns a 133 px frame, and a cropped weapon is the one thing
+this spike cannot judge around. The first 208×216 attempt cropped every frame at
+the feet — an isometric silhouette is **taller** than the figure's pixel height,
+because the body's own depth projects into screen-Y too.
+
+**Still open after the spike**, and neither blocks the build:
+- the two NE cells above — a per-facing arm pose, or a weapon offset, or both;
+- whether `lowered` and `ready` stay two grips for long guns.
+
+---
 
 ### What Part 1 delivered, and what of it survives D48
 

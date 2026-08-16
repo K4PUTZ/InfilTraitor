@@ -58,6 +58,7 @@
 - RESUMO_SESSAO_2026-08-13_E_CONTRAST_FLOOR_SHADE.md
 - RESUMO_SESSAO_2026-08-13_FIREARM_DEFER_AIM_MODE.md
 - RESUMO_SESSAO_2026-08-14_CHARACTER_PERSONA_AND_PART0.md
+- RESUMO_SESSAO_2026-08-15_STYLE_COSTUME_PART2.md
 - RESUMO_SESSAO_2026-08-15_TURN_CORNER_TPOSE.md
 <!-- AUTO:END pending_prompts -->
 
@@ -76,11 +77,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
 - 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
 - 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
 - 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
 - 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
-- a1bc94ac [DOCS] Session close 0.9.97 — wall-grid attempt/pullback + E-FRAG fix swept
 <!-- AUTO:END version_history -->
 
 ---

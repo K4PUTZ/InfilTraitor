@@ -642,7 +642,7 @@ def scale_to_target_height(arm):
         "— see this function's note" % (1.80 * factor, 1.80 * factor / 0.20))
 
 
-def export_posed(arm, key, facing_name):
+def export_posed(arm, key, facing_name, posture=None):
     """Write ONE posed figure + weapon as a static GLB, for the Godot bake.
 
     Why static rather than rigged: `actor_frame_bake_spike.gd` loads a single
@@ -650,6 +650,28 @@ def export_posed(arm, key, facing_name):
     the pose is applied to the geometry here (`export_apply`, skins off) and what
     lands on disk is a posed mesh, not a character to animate. The rig stays in
     `agent_base.blend`; this is a render source.
+
+    `posture` is Part 3's hook and is OPTIONAL — omitted, every line below runs
+    exactly as it did for the mockup the Director closed on 2026-08-16, which is
+    the property that makes it safe to add here rather than in a second copy of
+    this function. It is a dict:
+
+        name          str, reaches the filename
+        apply(arm)    called after reset_pose, BEFORE any arm solving. Poses the
+                      legs/spine and returns the 4x4 that maps the standing chest
+                      frame onto the posed one.
+        grip / aim    optional absolute overrides in armature space. Omitted, the
+                      standing grip is carried through `apply`'s transform, which
+                      is a derivation rather than a re-tune: the arm keeps the
+                      same pose RELATIVE TO THE TORSO that the Director judged.
+        band_m        (lo, hi) the exported figure must measure within. A BAND
+                      rather than a number because a posture's height is an
+                      OUTCOME of its joint angles, and §4.7 states it as one:
+                      the Director's spec is *"5 or 6 voxels"* crouched and 2–3
+                      prone. The angles are the means; the measured height is
+                      the spec.
+        span_x_max_m  the T-pose guard's ceiling; a prone figure legitimately
+                      spans more than a standing one.
     """
     weapon, grip_name = key
     spec = WEAPONS[weapon]
@@ -659,6 +681,17 @@ def export_posed(arm, key, facing_name):
 
     arm.rotation_euler = (0.0, 0.0, 0.0)
     reset_pose(arm)
+    if posture is not None:
+        xform = posture["apply"](arm)
+        if posture.get("grip") is None:
+            grip_world = xform @ grip_world
+            aim = (xform.to_3x3() @ aim).normalized()
+        else:
+            grip_world = Vector(posture["grip"])
+            aim = Vector(posture["aim"]).normalized()
+        log("posture %s: grip -> %s, aim -> %s"
+            % (posture["name"], tuple(round(v, 3) for v in grip_world),
+               tuple(round(v, 3) for v in aim)))
     root, grip_local, grip_to_fore_m, wscale, created = import_weapon(spec)
     root.parent = arm
     root.matrix_parent_inverse = Matrix.Identity(4)
@@ -687,6 +720,7 @@ def export_posed(arm, key, facing_name):
     # two exports of different models silently overwrote each other at the same
     # path — caught only because the re-import mesh count changed from 49 to 37.
     suffix += "" if _MODEL == "agent_base" else _MODEL.replace("agent_base", "")
+    suffix += "" if posture is None else "_%s" % posture["name"]
     out = os.path.join(os.path.dirname(BLEND),
                        "agent_posed_%s_%s%s.glb" % (weapon, grip_name, suffix))
     bpy.ops.object.select_all(action="SELECT")
@@ -706,15 +740,31 @@ def export_posed(arm, key, facing_name):
         fail("the exported GLB re-imports with no geometry")
     height = max(p.z for p in pts) - min(p.z for p in pts)
     span_x = max(p.x for p in pts) - min(p.x for p in pts)
+    floor = min(p.z for p in pts)
+    band = ((EXPORT_HEIGHT_M - 0.01, EXPORT_HEIGHT_M + 0.01) if posture is None
+            else posture["band_m"])
+    span_max = (1.4 * (EXPORT_HEIGHT_M / 1.898) if posture is None
+                else posture["span_x_max_m"])
     log("exported %s — re-imported %d meshes, height %.3f m (%.2f voxels), "
-        "x-span %.3f m" % (os.path.relpath(out, REPO_ROOT), len(back), height,
-                           height / 0.20, span_x))
-    if abs(height - EXPORT_HEIGHT_M) > 0.01:
-        fail("exported figure is %.3f m, expected %.3f — the pose or the scale "
-             "did not survive the export" % (height, EXPORT_HEIGHT_M))
-    if span_x > 1.4 * (EXPORT_HEIGHT_M / 1.898):
+        "x-span %.3f m, floor %.4f m"
+        % (os.path.relpath(out, REPO_ROOT), len(back), height,
+           height / 0.20, span_x, floor))
+    if not (band[0] <= height <= band[1]):
+        fail("exported figure is %.3f m (%.2f voxels), outside the %.3f–%.3f m "
+             "band (%.1f–%.1f voxels) this posture is specified at"
+             % (height, height / 0.20, band[0], band[1],
+                band[0] / 0.20, band[1] / 0.20))
+    if span_x > span_max:
         fail("exported figure spans %.3f m in X — that is the T-POSE (1.76 m "
              "span), so export_apply did not bake the pose in" % span_x)
+    # agent_frame_bake_spike.gd REFUSES a model whose feet are not on its own
+    # origin (its Y-only recentring assumes it), at a 0.03 m tolerance. Failing
+    # here costs one Blender run; failing there costs a Blender run AND a
+    # windowed Godot boot.
+    if abs(floor) > 0.02:
+        fail("exported figure's lowest point is at z=%.4f m, not on its own "
+             "origin — the Godot bake's Y-only recentring rejects this at 0.03 m"
+             % floor)
     return out
 
 

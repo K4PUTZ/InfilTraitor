@@ -23,11 +23,18 @@ const SlabMod = preload("res://godot/scripts/geometry/slab.gd")
 
 ## OCC-08 (2026-07-14): the agent's own screen silhouette — used for the trigger
 ## test (does an EDGE's whole slice tower visually overlap him). Should track
-## agent.gd's SILHOUETTE_WIDTH/HEIGHT (44/61 at time of writing); kept as separate
-## constants rather than importing agent.gd, to keep this a dependency-free "pure
-## geometry" module — re-sync by hand if the agent's on-screen size ever changes.
-var silhouette_half_width_px: float = 22.0
-var silhouette_height_px: float = 61.0
+## agent.gd's SILHOUETTE_WIDTH/HEIGHT; kept as separate constants rather than
+## importing agent.gd, to keep this a dependency-free "pure geometry" module —
+## re-sync by hand if the agent's on-screen size ever changes.
+##
+## RE-SYNCED 2026-08-16, per that instruction: 22/61 described the vector diamond
+## placeholder, which Part 2 §10 deleted. The baked figure measures 104 x 222 px
+## on screen (agent_frame_bake_spike.gd's own silhouette readout, standing, the
+## widest and tallest of the four facings). The old pair understated the agent by
+## 3.6x in height, so a wall tower overlapping his head did not trigger the ghost
+## at all.
+var silhouette_half_width_px: float = 52.0
+var silhouette_height_px: float = 222.0
 
 ## How many hops along the wall's own connectivity graph the ring falloff reaches
 ## from a triggering edge. Ring alphas themselves live in VoxelRenderer.GHOST_ALPHAS

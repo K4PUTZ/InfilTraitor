@@ -8,11 +8,11 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**207 scripts · 57916 lines total** (under `godot/scripts/`)
+**208 scripts · 58391 lines total** (under `godot/scripts/`)
 
 ## Index
 
-- **agents/** — agent.gd, guard_attention.gd, guard_enemy.gd
+- **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 272 lines
+`class_name DebugAgent` · extends `Node2D` · 341 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -43,20 +43,17 @@
 - `POSTURE_CHANGE_AP` = `1`
 - `POSTURE_DETECTION_MULT` = `{ Posture.STANDING:  1.00, Posture.CROUCHING: 0.55, Posture.PRONE:     0.20, }`
 - `POSTURE_MOVE_AP_COST` = `{ Posture.STANDING:  0, Posture.CROUCHING: 1,   ## each tile costs +1 extra AP Posture.PRONE:     99,  ## cannot move (99 = effective block) }`
-- `POSTURE_COLORS` = `{ Posture.STANDING:  Color(0.16, 0.78, 0.32, 1.0),   ## green — current color Posture.CROUCHING: Color(0.90, 0.75, 0.10, 1.0),   ## yellow Posture.PRONE:     Color(0.90, 0.35, 0.10, 1.0),   ## orange }`
 - `POSTURE_HIT_MULT` = `{ Posture.STANDING:  1.00, Posture.CROUCHING: 0.50, Posture.PRONE:     0.70, }`
 - `POSTURE_AIM_MULT` = `{ Posture.STANDING:  1.00, Posture.CROUCHING: 0.75, Posture.PRONE:     0.50, }`
+- `POSTURE_SPRITE_NAME` = `{ Posture.STANDING: "standing", Posture.CROUCHING: "crouch", Posture.PRONE: "prone", }`
 - `COVER_FULL_MULT` = `0.20`
 - `COVER_PARTIAL_MULT` = `0.55`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `STEP_DURATION` = `0.13`
-- `COLOR_BODY` = `Color(0.16, 0.78, 0.32, 1.0)`
-- `COLOR_BODY_DARK` = `Color(0.07, 0.42, 0.18, 1.0)`
-- `COLOR_HEAD` = `Color(0.84, 0.96, 0.88, 1.0)`
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
-- `SILHOUETTE_WIDTH` = `44.0`
-- `SILHOUETTE_HEIGHT` = `61.0`
+- `SILHOUETTE_WIDTH` = `104.0`
+- `SILHOUETTE_HEIGHT` = `222.0`
 - `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
 - `SILHOUETTE_OUTLINE_WIDTH` = `1.5`
 
@@ -69,6 +66,7 @@
 - `var vision_mode: String = "normal"`
 - `var is_moving: bool = false`
 - `var dev_vision: bool = false`
+- `var sprite: AgentSprite = null`
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 
@@ -76,11 +74,52 @@
 - `func throw_origin() -> Vector2:`
 - `func throw_launch_height() -> float:`
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
+- `func attach_sprite(p_room: Node) -> bool:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
 - `func set_posture(new_posture: Posture) -> void:`
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func on_perspective_changed() -> void:`
 - `func update_cover(blocked_cells: Dictionary) -> void:`
 - `func move_along_path(path: Array[Vector2i]) -> void:`
+
+---
+
+### `agent_sprite.gd`
+
+`class_name AgentSprite` · extends `Sprite2D` · 328 lines
+
+`godot/scripts/agents/agent_sprite.gd`
+
+> CHARACTER_MASTER_PLAN Part 2 §10 — the baked figure ON the playable agent. This is the node that closes Part 2. `AgentProbeProp` put the figure in the room to be LOOKED at; this one puts it on the thing the player moves, which is the difference §10 draws between "the pipeline works" and done. It is a child of `DebugAgent` rather than a replacement for it, because the agent is a Node2D that owns grid state, tweening and signals, and none of that wants to become a Sprite2D. The agent keeps position; this keeps appearance. --- FOUR THINGS IT DOES THAT THE PROBE DOES NOT --- 1. THREE POSTURES, EACH ITS OWN BAKE WITH ITS OWN ANCHOR. The placeholder it replaces drew three shapes; a single standing sprite would have been a regression, not a swap. The anchors are NOT shared: the bake recentres each model on its own AABB, so the pixel its feet land on differs per posture (standing 227.99, crouch 184.00, prone 156.74 — measured, and read from each posture's own anchor.json rather than transcribed). 2. FACING, SNAPPED AT THE GU BOUNDARY (D47). Ordinary movement changes facing with no transition frames — the Director judged that blind on 2026-08-15, and it is the row that keeps the art budget at 744 body sets instead of 4608. So the facing is set once per step, from the step's own direction, and nothing interpolates. 3. FACING IS STORED IN BASE SPACE, NOT VIEW SPACE. A perspective flip rotates the room; an agent facing a wall must still face that wall afterwards. The cell round-trip through `_cell_to_base` already exists for exactly this reason and the facing has to make the same trip, or the figure would silently turn 90 degrees every time the Director rotated the view. 4. POSTURE FRAME SETS LOAD ON FIRST USE. D42 names RAM, not CPU, as this character's binding constraint. A session where the agent never goes prone should not pay for the prone bake. Everything else — the relight shader, the perspective-aware light mapping (D22), the ground-contact anchoring, the raw-PNG loader — is `AgentProbeProp`'s behaviour, and the duplication between the two files is real and known. The probe stays the single-pose bracket rig it was built as; this is the shipping path.
+
+**Constants / tuning**
+- `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
+- `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
+- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `DIRECTIONS` = `["N", "E", "S", "W"]`
+- `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
+- `POSTURE_DIRS` = `{"standing": "standing", "crouch": "crouch", "prone": "prone"}`
+- `FACING_BY_STEP` = `{ Vector2i(0, -1): "N", Vector2i(1, 0): "E", Vector2i(0, 1): "S", Vector2i(-1, 0): "W", }`
+- `SPRITE_SCALE` = `1.0`
+- `SPECULAR_STRENGTH` = `0.0`
+- `AMBIENT` = `0.42`
+- `SATURATION` = `1.25`
+- `CONTRAST` = `1.12`
+- `LIGHT_INTENSITY_SCALE` = `0.60`
+- `LIGHT_INTENSITY_MAX` = `1.30`
+- `ELEVATION_DEG` = `30.0`
+- `AZIMUTH_DEG` = `45.0`
+
+**Public vars**
+- `var room: Node = null`
+
+**Public API**
+- `func setup(p_room: Node) -> bool:`
+- `func set_posture_name(name: String) -> void:`
+- `func face_step(step: Vector2i) -> void:`
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func update_for_cell() -> void:`
 
 ---
 
@@ -2238,7 +2277,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 869 lines
+`class_name OcclusionSet` · 876 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -2615,7 +2654,7 @@ extends `SceneTree` · 226 lines
 
 ### `agent_frame_bake_spike.gd`
 
-extends `SceneTree` · 388 lines
+extends `SceneTree` · 401 lines
 
 `godot/scripts/tools/agent_frame_bake_spike.gd`
 
@@ -4567,7 +4606,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4824 lines
+extends `Node2D` · 4882 lines
 
 `godot/scripts/world/room.gd`
 

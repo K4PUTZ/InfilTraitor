@@ -1,7 +1,15 @@
 extends Node2D
 class_name DebugAgent
-## Lightweight debug agent — draw-based placeholder (no sprites yet).
-## Owns its grid cell, converts cell → world position, animates step-by-step.
+## The playable agent: owns its grid cell, converts cell → world position, and
+## animates step-by-step.
+##
+## CHARACTER_MASTER_PLAN Part 2 §10 CLOSED 2026-08-16 — the vector placeholder
+## that used to live in `_draw()` is gone, replaced by `AgentSprite`, the baked
+## figure at three postures and four facings under the room's real lighting. What
+## remains of `_draw()` is DEV-ONLY and says so.
+##
+## The class name still says Debug because renaming it touches every consumer,
+## and that is a rename, not this task.
 
 signal move_started(from_cell: Vector2i, to_cell: Vector2i)
 signal step_finished(cell: Vector2i)
@@ -31,13 +39,6 @@ const POSTURE_MOVE_AP_COST: Dictionary = {
 	Posture.PRONE:     99,  ## cannot move (99 = effective block)
 }
 
-## Temporary colors per posture (replaced by sprites in M3+)
-const POSTURE_COLORS: Dictionary = {
-	Posture.STANDING:  Color(0.16, 0.78, 0.32, 1.0),   ## green — current color
-	Posture.CROUCHING: Color(0.90, 0.75, 0.10, 1.0),   ## yellow
-	Posture.PRONE:     Color(0.90, 0.35, 0.10, 1.0),   ## orange
-}
-
 ## Declared for M3+ (combat) — not used yet
 const POSTURE_HIT_MULT: Dictionary = {
 	Posture.STANDING:  1.00,
@@ -58,6 +59,20 @@ var vision_mode: String = "normal"  ## future modes: thermal, night vision, xray
 var is_moving: bool = false
 var dev_vision: bool = false
 
+## The baked figure. Null until attach_sprite() succeeds, and every call site
+## guards on it: a missing bake must degrade to an invisible agent that still
+## plays, never to a crash in the middle of a turn.
+var sprite: AgentSprite = null
+
+## DebugAgent.Posture -> AgentSprite's directory name. The mapping lives here
+## rather than in AgentSprite so the dependency runs one way: the renderer knows
+## nothing about the gameplay enum.
+const POSTURE_SPRITE_NAME: Dictionary = {
+	Posture.STANDING: "standing",
+	Posture.CROUCHING: "crouch",
+	Posture.PRONE: "prone",
+}
+
 ## Cover
 enum CoverType { NONE, PARTIAL, FULL }
 var cover_state: CoverType = CoverType.NONE
@@ -70,9 +85,14 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 ## Duration per tile step — snappy tactical feel.
 const STEP_DURATION := 0.13
 
-const COLOR_BODY := Color(0.16, 0.78, 0.32, 1.0)
-const COLOR_BODY_DARK := Color(0.07, 0.42, 0.18, 1.0)
-const COLOR_HEAD := Color(0.84, 0.96, 0.88, 1.0)
+## The body/head colours that used to sit here went with the placeholder they
+## existed for — the "replaced by sprites in M3+" that POSTURE_COLORS' own
+## comment promised. `guard_enemy.gd` declares its OWN identically-named trio and
+## is untouched; the guards are still vector diamonds, which is Part 7.
+## Grepped the whole repo before deleting: zero external users. (The 2026-07-12
+## `[CLEANUP]` commit that stopped every wall rendering deleted a var that looked
+## unused in one file and was written from another — cross-file writes are
+## invisible to the linter, so the grep is the check, not the linter.)
 const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 ## Where the head marker sits, per posture, in the agent's own local space.
@@ -106,10 +126,24 @@ func throw_launch_height() -> float:
 	var offset: Vector2 = HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
 	return absf(offset.y)
 
-## Placeholder bounding box for standing-character silhouette (O7 stroke will clip to this)
-## Dimensions tuned to enclosing rect of STANDING posture diamond
-const SILHOUETTE_WIDTH := 44.0   ## left-right span of standing character
-const SILHOUETTE_HEIGHT := 61.0  ## top-bottom span of standing character
+## The standing character's on-screen extent (O7 stroke clips to this).
+##
+## ⚠️ THESE MOVED ON 2026-08-16 AND THE CHANGE IS BEHAVIOURAL, not cosmetic. They
+## were 44 x 61, the enclosing rect of the vector DIAMOND — a placeholder that no
+## longer exists. The baked figure MEASURES 104 x 222 px (agent_frame_bake_spike,
+## standing: 104x217 facing N/E and 104x222 facing S/W, the widest and tallest of
+## the four taken), so the old pair understated the agent by 2.4x in width and
+## 3.6x in height. The silhouette is taller than the figure's own 189.8 px of
+## vertical reach because the body's depth projects into screen-Y as well; the
+## drawn extent is the right quantity here, because every consumer asks about
+## visual overlap.
+##
+## `occlusion_set.gd` keeps its OWN copy of this pair on purpose (to stay a
+## dependency-free geometry module) with a comment saying to re-sync by hand when
+## the agent's on-screen size changes. This is that change, and it is re-synced
+## there in the same commit.
+const SILHOUETTE_WIDTH := 104.0   ## left-right span of standing character
+const SILHOUETTE_HEIGHT := 222.0  ## top-bottom span of standing character
 const SILHOUETTE_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.3)  ## semi-transparent white
 const SILHOUETTE_OUTLINE_WIDTH := 1.5
 
@@ -122,9 +156,31 @@ func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> v
 	set_cell(start_cell)
 
 
+## Part 2 §10's swap. Separate from `setup()` because the sprite needs `room` and
+## `setup()` is called with a TileMapLayer — and because a caller that has no
+## room (a headless selftest) must still get a working agent.
+func attach_sprite(p_room: Node) -> bool:
+	if sprite != null:
+		return true
+	var s := AgentSprite.new()
+	s.name = "AgentSprite"
+	add_child(s)
+	if not s.setup(p_room):
+		## The bake is missing or unreadable. Loud-failed already by AgentSprite;
+		## drop the node rather than leave an invisible child that makes the agent
+		## silently vanish from the map.
+		s.queue_free()
+		return false
+	sprite = s
+	sprite.set_posture_name(POSTURE_SPRITE_NAME[posture])
+	return true
+
+
 func set_cell(new_cell: Vector2i) -> void:
 	cell = new_cell
 	position = _cell_to_world(new_cell)
+	if sprite != null:
+		sprite.update_for_cell()
 	queue_redraw()
 
 
@@ -136,8 +192,28 @@ func set_posture(new_posture: Posture) -> void:
 	if new_posture == posture:
 		return
 	posture = new_posture
+	if sprite != null:
+		sprite.set_posture_name(POSTURE_SPRITE_NAME[posture])
 	posture_changed.emit(posture)
 	queue_redraw()
+
+
+## Mirrors `dev_vision` onto the sprite's second bake (yellow joints). Called by
+## room.gd's one dev switch, the same one the probes already follow.
+func set_dev_vision(enabled: bool) -> void:
+	dev_vision = enabled
+	if sprite != null:
+		sprite.set_dev_vision(enabled)
+	queue_redraw()
+
+
+## The room rotated. The agent's cell is re-derived by room.gd; its FACING has to
+## make the same trip, and does — AgentSprite stores the facing in base space and
+## recomposes it against the live perspective, so this only has to ask for a
+## refresh.
+func on_perspective_changed() -> void:
+	if sprite != null:
+		sprite.update_for_cell()
 
 
 func update_cover(blocked_cells: Dictionary) -> void:
@@ -183,6 +259,16 @@ func _step_next() -> void:
 		return
 
 	var next_cell: Vector2i = _path_queue.pop_front()
+
+	## D47: the facing SNAPS at the GU boundary, with no transition frames. The
+	## Director judged that blind on 2026-08-15 against three alternatives, and it
+	## is the row that keeps the body budget at 744 sets instead of 4608 — so the
+	## facing is set here, once, from the step's own direction, and nothing
+	## interpolates it. Read BEFORE `cell` advances, because the direction is the
+	## difference between where he is and where he is going.
+	if sprite != null:
+		sprite.face_step(next_cell - cell)
+
 	cell = next_cell  ## logical cell advances immediately
 
 	var tween := create_tween()
@@ -202,10 +288,25 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 	return floor_layer.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 
+## PART 2 §10: the three posture diamonds and the head circle that used to be
+## drawn here are GONE. `AgentSprite`, a child node, draws the agent now.
+##
+## Two things survive, and both are deliberate rather than leftovers:
+##
+## 1. THE GROUND SHADOW STAYS, and it is the one place this file still draws the
+##    character. AgentProbeProp ships without one on purpose — it fakes a shadow
+##    the way GrenadeProp does, by squashing the sprite's own silhouette on Y,
+##    which on a 2 m standing figure is a long smear rather than a footprint. A
+##    DRAWN contact ellipse is not that substitution: it does not pretend to be
+##    the figure's shape, it just says where the feet are, which is exactly what
+##    the probe's header names as missing. The honest lit version is still a
+##    separate top-down pass, and still unbuilt.
+##
+## 2. THE DEBUG RECT IS NOW DEV-ONLY. It used to draw unconditionally, which was
+##    invisible-ish over a flat green diamond and is a white box around a
+##    character. §10 says the placeholder is gone; a stroke that was part of it
+##    does not get to stay on screen by being useful.
 func _draw() -> void:
-	var body_color: Color = POSTURE_COLORS[posture]
-	var body_dark:  Color = body_color.darkened(0.45)
-
 	var shadow := PackedVector2Array([
 		Vector2(0.0, -10.0),
 		Vector2(28.0, 0.0),
@@ -214,59 +315,27 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(shadow, COLOR_SHADOW)
 
-	## Body — shape changes with posture
-	match posture:
-		Posture.STANDING:
-			## Tall vertical diamond — current shape
-			var body := PackedVector2Array([
-				Vector2(0.0, -56.0), Vector2(22.0, -30.0),
-				Vector2(0.0,  -6.0), Vector2(-22.0, -30.0),
-			])
-			draw_colored_polygon(body, body_color)
-			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 3.0)
-			draw_circle(HEAD_OFFSET[Posture.STANDING], 10.0, COLOR_HEAD)
+	if not dev_vision:
+		return
 
-		Posture.CROUCHING:
-			## Smaller, lower diamond
-			var body := PackedVector2Array([
-				Vector2(0.0, -36.0), Vector2(20.0, -18.0),
-				Vector2(0.0,  -4.0), Vector2(-20.0, -18.0),
-			])
-			draw_colored_polygon(body, body_color)
-			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 3.0)
-			draw_circle(HEAD_OFFSET[Posture.CROUCHING], 8.0, COLOR_HEAD)
-
-		Posture.PRONE:
-			## Horizontal ellipse — lying down
-			var body := PackedVector2Array([
-				Vector2(0.0, -14.0), Vector2(30.0, -6.0),
-				Vector2(0.0,   2.0), Vector2(-30.0, -6.0),
-			])
-			draw_colored_polygon(body, body_color)
-			draw_polyline(body + PackedVector2Array([body[0]]), body_dark, 2.0)
-			draw_circle(HEAD_OFFSET[Posture.PRONE], 7.0, COLOR_HEAD)
-
-	# Placeholder bounding box silhouette (OCC-03) — debug rect for stroke clipping (OCC-04)
 	_draw_silhouette_placeholder()
 
-	if dev_vision:
-		## Ring around the agent colored by cover level
-		var ring_color := Color.TRANSPARENT
-		match cover_state:
-			CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)
-			CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
-		if ring_color.a > 0.0:
-			draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, ring_color, 2.5)
+	## Ring around the agent colored by cover level
+	var ring_color := Color.TRANSPARENT
+	match cover_state:
+		CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)
+		CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
+	if ring_color.a > 0.0:
+		draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, ring_color, 2.5)
 
-## Placeholder bounding box for silhouette — marks the extent of the agent's standing form.
-## OCC-04 will render a stroke within this rect, masked to occluded-cell region.
+## The agent's on-screen extent, as a dev overlay. OCC-04 renders a stroke within
+## this rect, masked to the occluded-cell region.
 func _draw_silhouette_placeholder() -> void:
 	var half_w := SILHOUETTE_WIDTH * 0.5
-	var half_h := SILHOUETTE_HEIGHT * 0.5
 	var points := PackedVector2Array([
-		Vector2(-half_w, -half_h),
-		Vector2( half_w, -half_h),
-		Vector2( half_w,  half_h),
-		Vector2(-half_w,  half_h),
+		Vector2(-half_w, -SILHOUETTE_HEIGHT),
+		Vector2( half_w, -SILHOUETTE_HEIGHT),
+		Vector2( half_w,  0.0),
+		Vector2(-half_w,  0.0),
 	])
 	draw_polyline(points + PackedVector2Array([points[0]]), SILHOUETTE_OUTLINE_COLOR, SILHOUETTE_OUTLINE_WIDTH)

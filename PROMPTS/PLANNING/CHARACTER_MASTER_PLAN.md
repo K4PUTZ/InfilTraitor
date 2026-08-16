@@ -886,13 +886,15 @@ Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
 Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive;
                                      8 sockets after D53 added `head`.
                                      Its ART is superseded, its RIG is the base
-Part 2  MINIMUM VIABLE AGENT      🟡 IN PROGRESS. Grip spike RUN + MOCKUP CLOSED
-                                     2026-08-16 (both below).
-                                     idle + 3 grips x 4 yaws, baked,
-                                     on screen, replacing the vector placeholder
+Part 2  MINIMUM VIABLE AGENT      ✅ CLOSED 2026-08-16. The placeholder is GONE.
+                                     Grip spike RUN, MOCKUP CLOSED, and the
+                                     SWAP landed (all three below).
                                      Hand bar is D56: pose-capable, not correct
                                      ⚠️ unblocks aim mode + W-PRECOOK
-Part 3  Movement + transitions    walk GU->GU, the D46 turn, posture changes,
+Part 3  Movement + transitions    🟡 IN PROGRESS 2026-08-16. The 3 postures are
+                                     built and on screen; the walk cycle is
+                                     blocked on §9 #12, the step duration.
+                                     walk GU->GU, the D46 turn, posture changes,
                                      hood in/out — D39's real deliverable
 Part 4  Layer system              weapon by grip · cape synced · rigid adornments
                                      -> first real consumer of PropDef.layers (D7)
@@ -1098,6 +1100,63 @@ unlit faces on their own. That *"modelo mais fiel"* is not what this is. Within
 sides, which is what a mockup owes; D54 puts the rest in Beta.
 
 ---
+
+### ✅ THE SWAP — Part 2 CLOSED 2026-08-16. The placeholder is gone.
+
+Evidence: `Screenshots/history/p3_agent_standing.png`, `p3_agent_crouch.png`,
+`p3_agent_prone.png` (in-game, real room light, dev overlays off) and
+`p3_postures.png` / `p3_postures_3x.png` (the Blender sheet, with a voxel ruler
+drawn from the projection constants so the heights can be counted rather than
+taken on trust).
+
+```
+p3_posture_export.py       3 postures -> 3 static GLBs (+3 devjoints)
+agent_frame_bake_spike.gd  4 perspectives x albedo+normal, per posture
+AgentSprite                child of DebugAgent; posture, facing, relight
+agent.gd::_draw()          three diamonds and a head circle DELETED
+```
+
+**§10's bar was the deletion, and the deletion is what happened.** `_draw()` now
+holds a ground-contact ellipse and two dev-only overlays; the three posture
+diamonds, the head circle and their four colour constants are gone.
+
+| | |
+|---|---|
+| **The swap cost three postures, not one** | The placeholder drew STANDING, CROUCHING and PRONE. One standing sprite would have stood the agent up while he was lying down — a regression wearing a milestone's clothes |
+| **The crouch height is SOLVED, not tuned** | §4.7 specifies a height band, so the height is the input: the fold factor is binary-searched until the figure lands in it. Ships at **5.60 voxels**, prone at **2.87**, standing at **10.00**, each measured off the exported GLB |
+| **A rendered sheet withdrew my own argument** | The first crouch reached the band by folding the spine, and read as a crawl. I concluded the band was unreachable as a real crouch. **Probed instead of argued:** legs alone, torso upright, reach 6.17 voxels at thigh −130 and 5.62 at −150 — the whole band, no torso fold. The objection was my reference pose, not the spec |
+| **Facing snaps, per D47** | Set once per step from the step's own direction, and stored in BASE space so a perspective flip preserves it. Nothing interpolates — that is the row that keeps the budget at 744 body sets |
+| **Each posture has its OWN anchor** | The bake recentres every model on its own AABB, so the feet land on a different pixel per posture: 227.99 / 184.00 / 156.74. Read from each posture's `anchor.json`, never transcribed |
+
+**Two bugs found by gates rather than by looking, both worth the gates:**
+
+1. **`export_posed` had only ever run ONCE per Blender session.** Calling it three
+   times leaves `arm.scale` at 1.0537 from the previous posture, so armature space
+   stops being world space — the crouch's measured −0.4063 m ground correction
+   moved the figure −0.4281 m and left it 0.0218 m under the floor, *exactly*
+   0.4063 × 0.0537. It also never removed the GLB it re-imports to verify itself,
+   so posture N's file would have contained postures 1..N−1 as loose geometry.
+   Fixed by reopening the .blend per posture, which cannot rot the way a cleanup
+   list can.
+2. **A height typed twice went stale within the hour.** The crouch's bake command
+   carried 1.220 m from an earlier run while the file measured 1.120; the Godot
+   bake's height gate rejected it. The heights now travel in the manifest,
+   measured off the shipped GLB, and the contact sheet's caption reads them from
+   there instead of carrying its own copy.
+
+**⚠️ One change here is BEHAVIOURAL and is not about the character.**
+`occlusion_set.gd`'s agent silhouette was 22/61 — half-width and height of the
+vector diamond — with a comment instructing a hand re-sync if the agent's
+on-screen size ever changed. It changed: the baked figure measures **104 × 222
+px**, so the old pair understated him by 3.6× in height and a wall tower
+overlapping his head triggered no ghost at all. Re-synced in the same commit,
+and `occlusion_set_test.gd` (outside the selftest glob) passes 5/5 against it.
+
+**Known and stated:** the baked frames are gitignored under D50's rule — the
+recipe is versioned, the exports are not. A fresh clone boots with the agent
+invisible and a `push_warning` naming the two scripts that rebuild him. The
+guards are still red vector diamonds; that is Part 7, and the contrast on screen
+is now obvious.
 
 ### What Part 1 delivered, and what of it survives D48
 

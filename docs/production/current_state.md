@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.102 · **Updated:** 2026-08-16 · **Branch:** main
+**Version:** 0.9.103 · **Updated:** 2026-08-16 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -60,6 +60,7 @@
 - RESUMO_SESSAO_2026-08-14_CHARACTER_PERSONA_AND_PART0.md
 - RESUMO_SESSAO_2026-08-15_STYLE_COSTUME_PART2.md
 - RESUMO_SESSAO_2026-08-15_TURN_CORNER_TPOSE.md
+- RESUMO_SESSAO_2026-08-16_MOCKUP_MODEL_FOUNDATION.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

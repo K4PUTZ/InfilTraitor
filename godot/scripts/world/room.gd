@@ -892,7 +892,15 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	selection_overlay.z_index = 7
 
 	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
-	
+	## CHARACTER Part 2 §10: the baked figure replaces the vector placeholder.
+	## Idempotent, so a map reload does not stack a second sprite; it returns
+	## false (having already push_error'd) if the bake is missing, and the agent
+	## stays playable but invisible rather than taking the room down with it.
+	if not agent.attach_sprite(self):
+		push_warning("[Room] the agent's baked figure is unavailable — run "
+			+ "p3_posture_export.py and agent_frame_bake_spike.gd")
+	agent.set_dev_vision(_vision_controller.dev_vision)
+
 	# OCC-03: Agent renders above all voxel layers, below dev hover label (z=200)
 	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
 	agent.z_index = max_voxel_z_index + 1
@@ -1517,6 +1525,10 @@ func _set_perspective(direction: String) -> void:
 		if not _is_cell_inside_room(next_agent):
 			next_agent = _agent_start_cell
 		agent.set_cell(next_agent)
+		## The cell made the base-space round trip; so must the FACING, or the
+		## figure turns 90 degrees every time the view rotates. AgentSprite stores
+		## it in base space, so this only has to ask for a recompose.
+		agent.on_perspective_changed()
 
 		if has_selected:
 			var next_selected := PerspectiveMapperClass.cell_from_base(base_selected, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
@@ -1690,10 +1702,12 @@ func _set_view_mode(which: String, btn: Button) -> void:
 	btn.set_pressed_no_signal(enabled)
 	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
 
-	## The agent probes carry a second bake whose joints are yellow — the same
-	## toggle drives it, so there is one dev switch rather than two.
-	if which == "dev" and _test_zone_controller != null:
-		_test_zone_controller.set_agent_probes_dev_vision(enabled)
+	## The agent and the probes both carry a second bake whose joints are yellow —
+	## the same toggle drives both, so there is one dev switch rather than three.
+	if which == "dev":
+		agent.set_dev_vision(enabled)
+		if _test_zone_controller != null:
+			_test_zone_controller.set_agent_probes_dev_vision(enabled)
 
 	## T-DEV: the two red aiming diagnostics are gated on dev vision, so toggling
 	## it mid-aim has to rebuild the preview — otherwise the perimeter and the
@@ -4025,8 +4039,52 @@ func _run_auto_screenshot_capture() -> void:
 					_on_hud_numbers_toggled()
 				_:
 					push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_VISION mode '%s' — expected heat/light/dev/numbers" % raw_mode)
+		## This block toggles the controller DIRECTLY rather than going through
+		## _set_view_mode(), which is where the agent's yellow-joint bake is kept
+		## in step. Without this line the capture harness would photograph a
+		## developer-tinted agent while the HUD says dev is off — the first
+		## three-posture capture did exactly that.
+		if agent != null:
+			agent.set_dev_vision(_vision_controller.dev_vision)
 		for _j in range(10):
 			await get_tree().process_frame
+
+	## CHARACTER Part 2 §10 — INFILTRAITOR_CAPTURE_POSTURE=standing|crouch|prone.
+	## The swap replaced a placeholder that drew THREE shapes, so verifying it
+	## means photographing three postures; without this an unattended run can only
+	## ever reach the standing one, because posture is changed by a HUD button.
+	## It goes through `set_posture()`, the same call the button makes, so this
+	## drives the real path rather than poking the sprite directly.
+	var posture_env := OS.get_environment("INFILTRAITOR_CAPTURE_POSTURE")
+	if posture_env != "" and agent != null:
+		var wanted: Variant = {
+			"standing": DebugAgent.Posture.STANDING,
+			"crouch": DebugAgent.Posture.CROUCHING,
+			"prone": DebugAgent.Posture.PRONE,
+		}.get(posture_env.strip_edges().to_lower())
+		if wanted == null:
+			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_POSTURE '%s' — expected standing/crouch/prone" % posture_env)
+		else:
+			agent.set_posture(wanted)
+			for _j in range(6):
+				await get_tree().process_frame
+
+	## INFILTRAITOR_CAPTURE_FACING=N|E|S|W — the agent's own facing, independent
+	## of the room's perspective (§4.6). Driven through the same `face_step` D47
+	## uses on a real move, so what is captured is a facing the game can actually
+	## produce.
+	var facing_env := OS.get_environment("INFILTRAITOR_CAPTURE_FACING")
+	if facing_env != "" and agent != null and agent.sprite != null:
+		var step: Variant = {
+			"N": Vector2i(0, -1), "E": Vector2i(1, 0),
+			"S": Vector2i(0, 1), "W": Vector2i(-1, 0),
+		}.get(facing_env.strip_edges().to_upper())
+		if step == null:
+			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_FACING '%s' — expected N/E/S/W" % facing_env)
+		else:
+			agent.sprite.face_step(step)
+			for _j in range(4):
+				await get_tree().process_frame
 
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":

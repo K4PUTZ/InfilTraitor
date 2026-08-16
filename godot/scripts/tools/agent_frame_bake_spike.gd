@@ -56,6 +56,19 @@ static func out_dir() -> String:
 	var env := OS.get_environment("AGENT_BAKE_OUT")
 	return env if env != "" else DEFAULT_OUT_DIR
 
+
+## What the source GLB must measure. Overridable because Part 3 bakes THREE
+## postures and only standing is 2.00 m — crouch ships at 1.22 m and prone at
+## 0.57 m, both measured and gated at export time by p3_posture_export.py.
+##
+## It stays a hard gate rather than becoming "whatever the model happens to be":
+## its job is to catch a source that lost its scale, and a gate that adopts the
+## value it is checking would catch nothing. The caller states the height it
+## expects and the bake refuses anything else.
+static func figure_height_m() -> float:
+	var env := OS.get_environment("AGENT_BAKE_HEIGHT_M")
+	return float(env) if env != "" else FIGURE_HEIGHT_M
+
 ## Same convention as grenade_frame_bake_spike.gd: one render per ROOM
 ## perspective, matching PerspectiveMapper's own angle deltas, so the frame shown
 ## for an active perspective matches how the rest of the scene visually rotated.
@@ -101,7 +114,7 @@ static func ortho_size() -> float:
 ## What the figure MUST measure in the baked frame: its world height foreshortened
 ## by the camera's elevation, at the pinned pixel scale.
 static func expected_height_px() -> float:
-	return FIGURE_HEIGHT_M * cos(deg_to_rad(ELEVATION_DEG)) * px_per_screen_m()
+	return figure_height_m() * cos(deg_to_rad(ELEVATION_DEG)) * px_per_screen_m()
 
 
 func _init() -> void:
@@ -115,7 +128,7 @@ func _init() -> void:
 	## is §4.7's 196 px number. NOT the silhouette's pixel height, which is larger
 	## because the body's depth projects into screen-Y too. See _render_direction.
 	print("  the figure occludes %.1f px of vertical (%.2f voxels)" % [
-		expected_height_px(), FIGURE_HEIGHT_M / VOXEL_M])
+		expected_height_px(), figure_height_m() / VOXEL_M])
 
 	if not ResourceLoader.exists(model_path()) and not FileAccess.file_exists(model_path()):
 		push_error("[AgentBake] posed model missing: %s — run p2_grip_spike.py with P2_EXPORT_GLB=shotgun:ready first" % model_path())
@@ -241,8 +254,8 @@ func _compute_anchor_px() -> Vector2:
 
 	await process_frame
 	var aabb := _compute_aabb(model_root)
-	if abs(aabb.size.y - FIGURE_HEIGHT_M) > 0.05:
-		push_error("[AgentBake] the model is %.3f m tall, expected %.3f — this is not the posed agent, or the export lost its scale" % [aabb.size.y, FIGURE_HEIGHT_M])
+	if abs(aabb.size.y - figure_height_m()) > 0.05:
+		push_error("[AgentBake] the model is %.3f m tall, expected %.3f — this is not the posed agent, or the export lost its scale" % [aabb.size.y, figure_height_m()])
 		sub.queue_free()
 		return Vector2.ZERO
 	if abs(aabb.position.y) > 0.03:

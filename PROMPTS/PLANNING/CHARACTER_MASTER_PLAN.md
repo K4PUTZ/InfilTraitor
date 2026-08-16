@@ -1,17 +1,23 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
-**Status:** 🟢 **Part 0 CLOSED · Part 1 BUILT · reordered 2026-08-15 by D48.**
-Execution plan for the living-beings track `ACTOR_MASTER_PLAN` (reopened
-2026-08-13, decided 2026-08-14 as D32–D45, extended 2026-08-15 as D46–D51). It
-replaces that plan's deferred Parts 1, 3 and 4, which were stubs, not designs.
+**Status:** 🟢 **Part 0 CLOSED · Part 1 BUILT · re-reordered 2026-08-15 by D55,
+which reverses D48.** Execution plan for the living-beings track
+`ACTOR_MASTER_PLAN` (reopened 2026-08-13, decided 2026-08-14 as D32–D45,
+extended 2026-08-15 as D46–D58). It replaces that plan's deferred Parts 1, 3
+and 4, which were stubs, not designs.
 
 | | State |
 |---|---|
 | **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
-| **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets. Its ART is superseded by D48; its RIG is the base |
-| **Part 8** — professional showcase model | 🔜 **NEXT, promoted by D48.** Unblocked: D49 (dedicated joint sculpt stage), D50 (project versioned, exports not), D51 (inspired-by-CC0 + provenance log). Start scene BUILT |
-| **Part 2** — minimum viable agent | ⏸ waits on Part 8, per D48. Still the only Part with external dependents |
+| **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets (**8 with `head`, added by D53**). Its ART is superseded; its RIG is the base |
+| **Part 2** — minimum viable agent | 🔜 **NEXT, promoted by D55.** The design dependency D48 was protecting is discharged by D52 (style) and D53 (costume), not ignored. Unblocks firearm aim mode + W-PRECOOK |
+| **Part 8** — showcase model | ⏸ **DEFERRED by D55**, and may ship as 2D. Its preparation stands: start scene BUILT, D49/D50/D51 unchanged |
+
+**Phase rule (D54):** Alpha closes the character's **mechanics**; detail and
+finish are Beta. A deliverable is complete when the mechanic reads on screen —
+an unfinished surface is not an Alpha defect, and a beautiful model that cannot
+hold a weapon is not Alpha progress.
 
 **Baseline:** VERSION 0.9.102 (`verified/v0.9.102`, "Alpha Character
 Brainstorm"), `main` at `ce40e79f`.
@@ -22,10 +28,10 @@ Brainstorm"), `main` at `ce40e79f`.
 
 | Document | Owns | Wins on |
 |---|---|---|
-| [`ACTOR_MASTER_PLAN.md`](ACTOR_MASTER_PLAN.md) | the **decision register** (D1–D45) and the objects track | *what was decided, and by whom* |
+| [`ACTOR_MASTER_PLAN.md`](ACTOR_MASTER_PLAN.md) | the **decision register** (D1–D58) and the objects track | *what was decided, and by whom* |
 | **this plan** | the **execution** — what gets built, in what order, which test gates which stage, what "done" means | *how it is being done* |
 
-D32–D45 are cited here by number and **never restated in different words** —
+D32–D58 are cited here by number and **never restated in different words** —
 that is how two documents drift. If this plan seems to contradict a D-row, the
 D-row is right and this plan is a bug.
 
@@ -105,6 +111,21 @@ joints and detachable parts makes D34's layering (hood on the back, weapon in
 the hand, pauldron on the shoulder) read as *native construction* rather than as
 compositing artifacts. The art style and the architecture agree.
 
+**⚠️ Read that paragraph with D52, which splits it.** D52 keeps the
+*detachable parts* half — that is the half doing the work above — and declines
+the *visible joints* half as surface finish. The figure is stylised, not a toy:
+the reference set is Sonic's volumetric cartoon against Moonwalker's human
+silhouette, with Dick Tracy, Bond and TF2's Spy as the tailoring language. **The
+practical consequence for anyone modelling against this section:** do not assume
+a joint seam is available to hide a form transition behind. D52 records the
+session where exactly that assumption was used to argue a procedural hand was
+easy, and had to be withdrawn.
+
+**The costume itself is D53** — a reversible white/black overcoat, blue shirt
+and armband, white tie, all-black suit and hat, flipping to a hooded balaclava
+silhouette for an AP cost. It is cited here and not restated; §4.3 records the
+one socket it added, and §4.5 records why it is not a silhouette class.
+
 ---
 
 ## 4. The asset to build
@@ -137,13 +158,23 @@ so the compositor never guesses:
 |---|---|---|
 | `hand_R` | weapon (grip-indexed, D40) | rigid |
 | `hand_L` | off-hand / two-handed grip | rigid |
-| `back_upper` | hood, cape (D37) | **hood rigid; cape deforms — D43** |
+| `back_upper` | hood, cape/overcoat (D37) | **hood rigid; cape deforms — D43** |
 | `chest` | medals | rigid |
 | `shoulder_L` / `shoulder_R` | pauldrons | rigid |
 | `arm_L` | armband | rigid |
+| `head` | hat (**added 2026-08-15 by D53**) | rigid |
 
 The cape is the one deforming attachment and is why D43 gives it a synced
 animation instead of a rigid composite.
+
+**Why `head` was added, and it is the only structural change D53 required.**
+Part 1 modelled the fedora as part of the body mesh, which is fine for a hat
+that never comes off. D53's disguise flip requires exactly that — the hat is
+removed and stowed — so it has to be a layer. **Nothing else in D53's costume
+needed new structure:** the hood and the overcoat were already `back_upper`
+(D37/D43), the armband was already `arm_L`, the white⇄black inversion is one
+geometry under a colour uniform (D34, free), and the stowed hat is this layer
+switched off rather than stowed geometry to author.
 
 ### 4.4 The pose set
 Not invented here — every entry below is demanded by an already-ratified
@@ -169,6 +200,16 @@ silhouette classes** (the Diablo 1 precedent: ~3 visual classes across dozens of
 items), with colour and rigid adornments carrying the rest of the
 differentiation. The exact count is §9 #2 — the single number that most moves
 §8's budget.
+
+**D53's two disguise states are NOT two of those classes.** This is the
+distinction that keeps the costume free, so it is worth being exact about where
+each piece lands: the **dressed body is one and the same** in both states — the
+all-black suit — while the coat and hood are `back_upper` layers, the hat is the
+new `head` layer, and white⇄black is a colour uniform. Nothing in the flip
+touches `archetype × silhouette × pose × yaw`, which §8 names as the only
+multiplicative term. Had the flip been modelled as two dressed bodies instead,
+it would have **doubled** that term for a change the player reads as one garment
+turning inside out.
 
 ### 4.6 Facings
 **Four, permanently (D44).** N/E/S/W. On-screen yaw is `facing − perspective`,
@@ -318,6 +359,47 @@ emits `TileSetAtlasSource` pages for `set_cell()` and knows nothing of meshes.
 - `actor_frame_bake_spike.gd` reloads the source model once per pass per frame
   (ACTOR §7 #20). Never measured as a bottleneck at 120 frames; **a character
   with a full animation set is where it would start to matter.**
+
+### 5.1 Where the geometry comes from — the CC0 shortlist (D57)
+
+D57 makes CC0 a **filter**, not a preference. The shortlist below was researched
+2026-08-15; anything not on it needs its licence checked before import, and
+every import is logged in `sculpt/ATTRIBUTION.txt` at import time per D51.
+
+| Source | Why it is on the list |
+|---|---|
+| **Quaternius — Modular Character Outfits** | 62 separate modular parts. The repo already carries two Quaternius packs with `ATTRIBUTION.txt`, so the convention exists |
+| **Blender Studio — Human Base Meshes** | 17 meshes, with hands, heads and feet as *separate* assets — the parts D56 needs at the fidelity D52 sets |
+| **Sketchfab — Clothing And Character Kit 1.0** | face, hands, shoes, shirt, vest, trousers |
+| **Sketchfab — Military Character Kit 1.1** | gloves, boots, modern gear |
+
+**Two that fail the filter, listed because both are easy to adopt by mistake:**
+**Meshy's free tier** publishes under **CC BY 4.0** — commercial use allowed,
+but a permanent attribution obligation rides along with the shipped game — and
+**SMPL-X / MANO**, which dominate any search for parametric hands, are licensed
+for **non-commercial research only**.
+
+**The legal point that inverts the intuition:** CC0 imposes no obligation to
+alter anything. *"Change it a little so it doesn't look generic"* is therefore
+an **art** requirement bounded by taste alone, not a licence requirement.
+
+### 5.2 The two fronts (D58)
+
+D58 splits the work so neither side waits on the other. **The constraint that
+makes it real:** the technical front is built so the same assembly path works
+whether joints read as visible or fused — that is a boolean/remesh step switched
+on or off at the end, never an assumption baked into the machine.
+
+| | Front A — conceptual | Front B — technical |
+|---|---|---|
+| Runs on | the Director's PC (RTX 3060 Ti 8 GB) | Mac mini M1 16 GB, Blender 5.2 LTS |
+| Closes | stylisation degree, joint legibility, silhouette across D44's four facings, §4.8 palette, the §9 #2 class count, hat height | import + scale + assembly, so execution is mechanical once A lands |
+| Inherits | **S1's rule: every concept is also checked at 196 px** — six variants were obvious at 8× and indistinguishable at ship size | §4.7's measured scale; the ruler is already in `agent_sculpt_start.blend` |
+
+**Generative 3D stays on the PC as an experiment, never a pipeline dependency.**
+The Mac has no CUDA: Hunyuan3D's texturing path alone wants ~38 GB there and its
+rasteriser fails **silently**, which is the worst failure mode this project has
+a standing rule against (B6, loud-fail).
 
 ---
 
@@ -793,43 +875,48 @@ so this does not block the next Part.
 
 ## 7. Parts
 
-**Reordered 2026-08-15 by D48.** The professional showcase model was Part 8 and
-is now the immediate next work, because the gameplay figure takes its design from
-it — building Part 2 first would mean authoring it twice.
+**Re-reordered 2026-08-15 by D55, which reverses D48.** Part 2 leads and Part 8
+is deferred. D48 had promoted the showcase model because *the gameplay figure
+takes its design from it*; D52 and D53 supply that design directly, so the
+dependency is **discharged rather than skipped** and the double-authoring risk
+D48 guarded against does not return.
 
 ```
 Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
-Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive D48;
-                                     the ART is superseded by Part 8
-Part 8  PROFESSIONAL SHOWCASE     🔜 NEXT (D48). Start scene BUILT 2026-08-15:
-                                     `p8_sculpt_start_scene.py` ->
-                                     `agent_sculpt_start.blend`.
-                                     Live 3D for the menu, no bake.
-        MODEL                        Design authority for everything below it.
-                                     D49: a DEDICATED COLLABORATIVE stage —
-                                     import open-source material, sculpt the
-                                     agent AND the clothing (D33: armour is a
-                                     dressed body, never a garment over a nude
-                                     base, so there is no nude base to sculpt)
-Part 2  MINIMUM VIABLE AGENT      idle + 3 grips x 4 yaws, baked, on screen,
-                                     replacing the vector placeholder
+Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive;
+                                     8 sockets after D53 added `head`.
+                                     Its ART is superseded, its RIG is the base
+Part 2  MINIMUM VIABLE AGENT      🔜 NEXT (D55). idle + 3 grips x 4 yaws, baked,
+                                     on screen, replacing the vector placeholder
+                                     Hand bar is D56: pose-capable, not correct
                                      ⚠️ unblocks aim mode + W-PRECOOK
 Part 3  Movement + transitions    walk GU->GU, the D46 turn, posture changes,
                                      hood in/out — D39's real deliverable
 Part 4  Layer system              weapon by grip · cape synced · rigid adornments
                                      -> first real consumer of PropDef.layers (D7)
+                                     Also where D53's coat/hat/hood flip lands
 Part 5  Silhouette classes        3-4 dressed bodies from §10.1's 7 tiers
+                                     (D53's two disguise states are NOT two of
+                                     them — see §4.5)
 Part 6  Second archetype          mesh retarget onto Part 1's skeleton, never a new rig
 Part 7  Guards                    tint/uniform variant + authored head turn (D41)
+Part 8  SHOWCASE MODEL            ⏸ DEFERRED (D55), and may ship as 2D.
+                                     Preparation stands: start scene BUILT
+                                     (`p8_sculpt_start_scene.py` ->
+                                     `agent_sculpt_start.blend`), D49/D50/D51
+                                     unchanged
 Part 9  Damage integration        ACTOR Part 3 / D5/D6 — the single-writer boundary
 ```
 
-**Part 2 is still the milestone that matters to everything outside this plan** —
-one pose, three grips, four yaws, baked and composited; firearm aim mode and
-W-PRECOOK both start moving the day it lands. **D48's stated price is that it now
-waits on Part 8.** That is the correct trade if the gameplay figure derives its
-design from the showcase model, and it is a real cost rather than a free
-reshuffle.
+**Part 2 is the milestone that matters to everything outside this plan** — one
+pose, three grips, four yaws, baked and composited; firearm aim mode and
+W-PRECOOK both start moving the day it lands. Under D55 it no longer waits on
+anything, which was the whole point of the reversal.
+
+**What D55 leaves open, recorded so it is not rediscovered as a contradiction:**
+D33 splits the two representations as *gameplay silhouette shows TIER, the big
+model shows IDENTITY*. A 2D showcase changes what the identity half **is**, and
+that has not been decided. It does not block Part 2.
 
 ### What Part 1 delivered, and what of it survives D48
 
@@ -906,6 +993,11 @@ count. That is the number Part 0 exists to start pinning down.
    `agent.gd`'s three postures, or a modifier on `exposure_system.gd`'s five
    shipped exposure classes. Both are built systems; this is a gameplay
    question, and it belongs to GAMEPLAY-01 more than to this plan.
+   **Narrowed 2026-08-15 by D53, not closed:** the transition is now known to be
+   a player *action* with an AP price, which rules out a passive modifier that
+   changes with no turn cost. **The price itself is unset** — the Director said
+   *"gasta AP"* without a number, and the 2-AP economy makes 1 AP the only
+   plausible value, but that is an inference and not a ruling.
 7. ~~**Turn frame count**~~ **RESOLVED 2026-08-15 — see §6.** 23 in-betweens at
    30 Hz, an 833 ms turn, settled by blind randomised judgement with the range
    bracketed on both sides. Not asserted, and not read off a biased instrument.
@@ -938,6 +1030,19 @@ count. That is the number Part 0 exists to start pinning down.
     exists and applies unchanged — per-pack `ATTRIBUTION.txt`, CC0 only, as used
     for the Quaternius weapon packs. Recorded here because provenance is captured
     **at import time** and cannot be reconstructed afterwards from a mesh.
+    **⚠️ Re-weighted 2026-08-15 by D57.** D51 said *inspired by* CC0 rather than
+    *assembled from* it; the Director has since asked for the opposite emphasis
+    — *"pegar os diversos elementos menores com boa qualidade, mudar um
+    pouquinho... e gerar um modelo grande, que vira a soma das partes."* More
+    foreign geometry now survives into the result than D51 assumed, so **the log
+    matters more, not less**. D51's rule is unchanged; the risk it prices went
+    up. §5.1 carries the vetted shortlist and the two sources that fail.
+
+15. **What the showcase model IS, if it ships as 2D** (D55). D33 splits the two
+    representations as *gameplay silhouette shows TIER, the big model shows
+    IDENTITY*. Deferring Part 8 is settled; whether the identity half survives
+    as a 2D artifact, and what that does to D33's monetisation reasoning, is
+    not. Does not block Part 2 — recorded so it is not met later as a surprise.
 
 ### The start scene — BUILT 2026-08-15
 

@@ -47,6 +47,31 @@ const DIRECTIONS := ["N", "E", "S", "W"]
 ## See note 1. Not a knob.
 const SPRITE_SCALE := 1.0
 
+## --- The washed-out fix (Director, 2026-08-16: "conserta o lavado"). ---
+##
+## MEASURED FIRST, then tuned. The figure's baked albedo is (138,138,150) — a
+## real blue cast, b-r = 12. On screen it came back at b-r = 5 with its lit faces
+## averaging ~200 and 390 pixels fully clipped. Both symptoms have one cause: the
+## specular term is WHITE, so it simultaneously blows the highlights and pulls
+## the hue out of everything it touches. `flat_normal_relight`'s defaults were
+## tuned against weapons, and a gun barrel is specular in a way a wool suit is
+## not.
+##
+## So the biggest move here is dropping specular, not dimming the light — dimming
+## alone would have made a grey figure darker instead of a blue figure. The
+## saturation/contrast pair is D31's own same-day answer to this exact complaint
+## about the weapons ("dá pra aumentar um pouquinho a saturação e o contraste
+## [...] sem refazer o bake?"), set slightly gentler than the bench's 1.3/1.15
+## because this albedo starts with hue rather than needing it manufactured.
+const SPECULAR_STRENGTH := 0.10   ## wool, not gunmetal — was 0.4
+const AMBIENT := 0.42             ## was 0.55
+const SATURATION := 1.25
+const CONTRAST := 1.12
+## The shared clamp is 3.0, sized for objects D31 had to grade UP from a mean of
+## 47. This albedo already lands at 138, so the same headroom overshoots.
+const LIGHT_INTENSITY_SCALE := 0.60
+const LIGHT_INTENSITY_MAX := 1.30
+
 ## Must match agent_frame_bake_spike.gd's camera, which is CollectibleBakeConfig's
 ## convention — D26: a different angle breaks the light maths silently.
 const ELEVATION_DEG := 30.0
@@ -96,6 +121,13 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:
 
 	_material = ShaderMaterial.new()
 	_material.shader = load(SHADER_PATH)
+	## Opt in explicitly, the same contract outline_width and saturation already
+	## use: this shader is SHARED with the grenade and every weapon, so a default
+	## changed in the shader itself would silently restyle all of them.
+	_material.set_shader_parameter("specular_strength", SPECULAR_STRENGTH)
+	_material.set_shader_parameter("ambient", AMBIENT)
+	_material.set_shader_parameter("saturation", SATURATION)
+	_material.set_shader_parameter("contrast", CONTRAST)
 	material = _material
 
 	_apply_direction(room._active_perspective)
@@ -189,7 +221,8 @@ func _update_light_uniform() -> void:
 	).normalized()
 
 	_material.set_shader_parameter("light_dir", light_dir_view)
-	_material.set_shader_parameter("light_intensity", clampf(best_energy, 0.0, 3.0))
+	_material.set_shader_parameter("light_intensity",
+		clampf(best_energy * LIGHT_INTENSITY_SCALE, 0.0, LIGHT_INTENSITY_MAX))
 
 
 ## CLI-baked PNGs never went through the editor's import scan, so plain load()

@@ -174,6 +174,12 @@ IDLE_L = dict(upperarm=(0.13, 0.06, -0.99), forearm=(0.02, 0.22, -0.97),
 
 YAWS = [0, 90, 180, 270]
 
+## The height the EXPORTED figure ships at — 10.0 voxels at §4.7's 0.20 m.
+## Director's call, 2026-08-16. See scale_to_target_height() for what it costs.
+## Affects only the GLB the Godot bake reads; the grip matrix above still renders
+## Part 1's own 1.898 m so its measured numbers stay comparable.
+EXPORT_HEIGHT_M = 2.00
+
 # DIRECTION_GLOSSARY §2/§3, as SCREEN directions. The compass is vertex-aligned
 # — N/E/S/W are the diamond's vertices (straight up/right/down/left) and
 # NE/SE/SW/NW are its edges, which are the grid axes and therefore the
@@ -573,6 +579,37 @@ def materialise_for_export():
     return fixed
 
 
+def scale_to_target_height(arm):
+    """Scale the whole rig so the figure ships at EXPORT_HEIGHT_M.
+
+    Director, 2026-08-16: *"aumenta um pouquinho o boneco todo [...] pra ver se
+    ele tem aprox. 10 voxels de altura em standing com chapéu."* 10 voxels at
+    §4.7's 0.20 m is 2.00 m, against the 1.898 m Part 1 built — a 5.4% lift.
+
+    IT SCALES THE MODEL, NOT THE CAMERA, and the difference is the whole point.
+    agent_frame_bake_spike.gd derives its pixel scale from VOXEL_STEP_PX and
+    gates on it, so nudging MESH_SCALE there would still pass the gate while
+    making the figure "bigger" in a way that corresponds to no real height —
+    §4.7's metres would quietly become a fiction. Changing the height here keeps
+    every downstream number honest: he is drawn bigger because he IS bigger.
+
+    ⚠️ THE COST, stated rather than absorbed: §4.7 records the BODY at 1.80 m =
+    9.0 voxels exactly, and `s2_posture_scale.py` VERIFIED the standing/crouched/
+    prone bands against it. Scaling the whole figure carries the body to 1.897 m
+    (9.49 voxels), so that verification no longer describes this asset. The
+    alternative that preserves it is raising only the hat — the question
+    `agent_sculpt_start.blend` deliberately draws as two labelled lines — and it
+    is one constant away if the Director prefers it."""
+    src = 1.898
+    factor = EXPORT_HEIGHT_M / src
+    arm.scale = (factor,) * 3
+    bpy.context.view_layer.update()
+    log("scale: figure %.3f m -> %.3f m (x%.4f) = %.2f voxels at %.2f m/voxel"
+        % (src, EXPORT_HEIGHT_M, factor, EXPORT_HEIGHT_M / 0.20, 0.20))
+    log("       body carried from 1.800 m (9.00 voxels) to %.3f m (%.2f voxels) "
+        "— see this function's note" % (1.80 * factor, 1.80 * factor / 0.20))
+
+
 def export_posed(arm, key, facing_name):
     """Write ONE posed figure + weapon as a static GLB, for the Godot bake.
 
@@ -608,7 +645,8 @@ def export_posed(arm, key, facing_name):
         fail("export pose did not reach (R %.4f L %.4f)" % (err_r, err_l))
     place_weapon(root, grip_local, wscale, grip_world, aim)
 
-    n_fixed = materialise_for_export()
+    materialise_for_export()
+    scale_to_target_height(arm)
     out = os.path.join(os.path.dirname(BLEND),
                        "agent_posed_%s_%s.glb" % (weapon, grip_name))
     bpy.ops.object.select_all(action="SELECT")
@@ -628,12 +666,13 @@ def export_posed(arm, key, facing_name):
         fail("the exported GLB re-imports with no geometry")
     height = max(p.z for p in pts) - min(p.z for p in pts)
     span_x = max(p.x for p in pts) - min(p.x for p in pts)
-    log("exported %s — re-imported %d meshes, height %.3f m, x-span %.3f m"
-        % (os.path.relpath(out, REPO_ROOT), len(back), height, span_x))
-    if abs(height - 1.898) > 0.12:
-        fail("exported figure is %.3f m, expected ~1.898 — the pose or the scale "
-             "did not survive the export" % height)
-    if span_x > 1.4:
+    log("exported %s — re-imported %d meshes, height %.3f m (%.2f voxels), "
+        "x-span %.3f m" % (os.path.relpath(out, REPO_ROOT), len(back), height,
+                           height / 0.20, span_x))
+    if abs(height - EXPORT_HEIGHT_M) > 0.01:
+        fail("exported figure is %.3f m, expected %.3f — the pose or the scale "
+             "did not survive the export" % (height, EXPORT_HEIGHT_M))
+    if span_x > 1.4 * (EXPORT_HEIGHT_M / 1.898):
         fail("exported figure spans %.3f m in X — that is the T-POSE (1.76 m "
              "span), so export_apply did not bake the pose in" % span_x)
     return out

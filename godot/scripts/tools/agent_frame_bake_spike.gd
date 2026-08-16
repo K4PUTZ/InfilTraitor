@@ -10,8 +10,10 @@
 ##    scale, visually tuned, not derived from a formula" — correct for a grenade,
 ##    and disqualifying here: the whole point of putting the agent in the scene is
 ##    to judge his PROPORTIONS, and a scale tuned by eye would make that judgement
-##    circular. §4.7 fixes the figure at 1.898 m with 1 voxel = 0.20 m, and
-##    QUICK_REFERENCE fixes VOXEL_STEP_PX at 20, so the frame's pixels-per-metre
+##    circular. §4.7 fixes 1 voxel at 0.20 m (the figure ships at 2.00 m = 10.0
+##    voxels, the Director's 2026-08-16 call — see p2_grip_spike.py's
+##    scale_to_target_height for what that costs), and QUICK_REFERENCE fixes
+##    VOXEL_STEP_PX at 20, so the frame's pixels-per-metre
 ##    is pinned at 20 / (0.20 * cos 30) = 115.47 and nothing else reproduces the
 ##    game's size. The source GLB is authored in real metres, so MESH_SCALE is
 ##    1.0 and ORTHO_SIZE follows from the viewport. The bake then MEASURES the
@@ -55,7 +57,7 @@ const CAMERA_DISTANCE := 12.0
 ## --- The derived scale chain. See note 1 in the header. ---
 const VOXEL_M := 0.20
 const VOXEL_STEP_PX := 20.0
-const FIGURE_HEIGHT_M := 1.898
+const FIGURE_HEIGHT_M := 2.00
 const VIEWPORT_SIZE := Vector2i(256, 256)
 const MESH_SCALE := 1.0
 ## Fails the bake if a 0.20 m rise does not draw as VOXEL_STEP_PX. A quarter of a

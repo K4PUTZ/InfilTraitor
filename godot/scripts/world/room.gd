@@ -3687,9 +3687,24 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ##
 ## This does NOT replace `agent.gd`'s vector placeholder — see AgentProbeProp's
 ## header for what the probe deliberately is not.
+## Director, 2026-08-16: *"coloca ele próximo do bloco de concreto, pra gente
+## comparar e ver se ele tem aprox. 10 voxels de altura em standing com chapéu."*
+## The concrete wall (gu 2,2 - 4,2) is one SLICE = 8 voxels tall, which makes it
+## the measuring stick: a 10-voxel figure beside it must stand exactly 1.25x its
+## height.
+##
+## Cell (2,5) rather than something adjacent, and the first attempt is why: at
+## (3,4) the block drew straight over his upper body. This prop sorts as level-0
+## geometry ON PURPOSE (AgentProbeProp: OCC-03's always-on-top rule is agent-only
+## and copying it onto a prop is the D22-FOLLOWUP mistake), so anything that
+## overlaps him on screen correctly hides him — which is right for the game and
+## useless for a height comparison. (2,5) is the same "2 GU south, clear of the
+## block instead of hugging it" standard the Director already set for
+## TEST_ZONE_GRENADE_GUS, and it puts both silhouettes whole in one frame, which
+## is what measuring needs.
 const TEST_ZONE_AGENT_PROBE_GUS: Array[Vector2i] = [
-	Vector2i(6, 7),   ## open floor, clear of every wall
-	Vector2i(3, 3),   ## one GU south of the concrete wall (gu 2,2 - 4,2)
+	Vector2i(2, 5),   ## in front of the concrete wall — the height comparison
+	Vector2i(7, 7),   ## open floor, nothing competing with the silhouette
 ]
 
 ## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for

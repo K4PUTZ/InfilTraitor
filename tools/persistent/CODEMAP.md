@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**207 scripts · 57841 lines total** (under `godot/scripts/`)
+**207 scripts · 57861 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -849,7 +849,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 257 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 278 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -859,6 +859,7 @@ extends `ConfirmationDialog` · 64 lines
 - `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
+- `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
 - `SPRITE_SCALE` = `1.0`
 
 ---
@@ -4565,7 +4566,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4815 lines
+extends `Node2D` · 4814 lines
 
 `godot/scripts/world/room.gd`
 

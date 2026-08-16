@@ -42,6 +42,8 @@ extends Sprite2D
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const DIRECTIONS := ["N", "E", "S", "W"]
+## The yaw each baked frame was rendered at, matching agent_frame_bake_spike.gd.
+const YAW_BY_DIRECTION := {"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}
 
 ## See note 1. Not a knob.
 const SPRITE_SCALE := 1.0
@@ -92,6 +94,14 @@ var _color_frames: Dictionary = {}
 var _normal_frames: Dictionary = {}
 var _anchor_px: Vector2 = Vector2.ZERO
 var _frames_dir: String = FRAMES_DIR
+## The agent's OWN facing, independent of the room's perspective. §4.6 is
+## explicit that what reaches the screen is `facing - perspective`, cyclic, so a
+## figure facing N in a room viewed from E shows a different frame than one
+## facing E. Until now this prop only ever tracked the perspective, which is
+## correct for a grenade and wrong for a character — and it is why four probes in
+## one room all showed the same face. Director, 2026-08-16: "coloca o boneco 4x
+## na cena para a gente avaliar todas as faces."
+var _facing: String = "N"
 
 var _cam_right := Vector3.ZERO
 var _cam_up := Vector3.ZERO
@@ -121,6 +131,7 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i,
 	gu_cell = p_gu_cell
 	base_cell = p_base_cell
 	_frames_dir = String(cfg.get("frames_dir", FRAMES_DIR))
+	_facing = String(cfg.get("facing", "N"))
 
 	if not _load_anchor():
 		return
@@ -191,7 +202,17 @@ func _apply_z_index() -> void:
 		z_index = ground_layer.z_index
 
 
-func _apply_direction(direction: String) -> void:
+## `perspective` is the room's; the frame shown is the composition of it with the
+## agent's own facing, which is what §4.6 defines. With facing "N" this reduces
+## to the old behaviour exactly.
+func _apply_direction(perspective: String) -> void:
+	var yaw: float = float(YAW_BY_DIRECTION.get(perspective, 0.0)) \
+		+ float(YAW_BY_DIRECTION.get(_facing, 0.0))
+	var direction: String = "N"
+	for d: String in DIRECTIONS:
+		if is_equal_approx(fposmod(float(YAW_BY_DIRECTION[d]) - yaw, 360.0), 0.0):
+			direction = d
+			break
 	if not _color_frames.has(direction):
 		return
 	texture = _color_frames[direction]

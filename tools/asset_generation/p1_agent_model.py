@@ -115,7 +115,10 @@ MATS = {
     # offset: at this albedo an additive lift would vanish under one light and
     # blow out under another, while a ratio keeps the same relationship in both.
     "seam_hi": (0.050, 0.052, 0.063, 1.0),  # 2.5x — a fold catching the light
-    "seam_lo": (0.008, 0.008, 0.011, 1.0),  # 0.4x — the shade inside a crease
+    # 0.65x, not 0.4x. At 0.4x these read as hard black BARS rather than as
+    # fabric — a fold is a gradient and a cut edge is not, and the four-frame
+    # comparison showed the difference plainly. Softened 2026-08-16.
+    "seam_lo": (0.013, 0.013, 0.017, 1.0),
     "shirt":   (0.86, 0.87, 0.90, 1.0),
     "skin":    (0.72, 0.55, 0.42, 1.0),
     "hat":     (0.020, 0.020, 0.025, 1.0),  # applied 2026-08-16
@@ -314,19 +317,25 @@ def build_segments(z):
     segs.append(("hips", prism("seg_hips", (0, 0, zh), (0, 0, zh + HIP_H - g),
                                HIP_W, CHEST_D * 0.92, HIP_W * 0.88,
                                CHEST_D * 0.84, "suit")))
+    # JACKET, not torso. Director, 2026-08-16: "a roupa está muito colada no
+    # corpo e não parece um terno." The old waist pinched to HIP_W*0.80 and the
+    # chest tapered like a ribcage — that is a BODY, and a body in a dark
+    # material reads as a wetsuit. Tailoring does the opposite of anatomy: it
+    # holds a near-straight line from chest to hem, stands off the waist, and
+    # carries the shoulder past the joint. Every number below moved outward.
     segs.append(("spine", prism("seg_abdomen", (0, 0, zh + HIP_H),
                                 (0, 0, zc - g),
-                                HIP_W * 0.80, CHEST_D * 0.78,
-                                HIP_W * 0.90, CHEST_D * 0.86, "suit")))
+                                HIP_W * 0.98, CHEST_D * 0.92,
+                                HIP_W * 1.04, CHEST_D * 0.98, "suit")))
     segs.append(("chest", prism("seg_chest", (0, 0, zc), (0, 0, zn - g),
-                                HIP_W * 0.92, CHEST_D * 0.88,
-                                SHOULDER_W * 1.00, CHEST_D, "suit")))
+                                HIP_W * 1.06, CHEST_D * 1.02,
+                                SHOULDER_W * 1.09, CHEST_D * 1.06, "suit")))
     # Jacket hem: a short flare below the waist, the strongest "wearing a suit"
     # silhouette cue that costs almost nothing.
-    segs.append(("spine", prism("seg_jacket_hem", (0, 0, zh + HIP_H * 0.55),
-                                (0, 0, zh + HIP_H + ABDOMEN_H * 0.45),
-                                HIP_W * 1.16, CHEST_D * 1.06,
-                                HIP_W * 0.86, CHEST_D * 0.80, "suit")))
+    segs.append(("spine", prism("seg_jacket_hem", (0, 0, zh + HIP_H * 0.30),
+                                (0, 0, zh + HIP_H + ABDOMEN_H * 0.60),
+                                HIP_W * 1.24, CHEST_D * 1.14,
+                                HIP_W * 1.02, CHEST_D * 0.96, "suit")))
     # Shirt V, INSET so its outer face is flush with the chest rather than
     # floating in front of it, plus a collar at the neck.
     shirt_t = 0.016
@@ -378,14 +387,14 @@ def build_segments(z):
                      prism("seg_upperarm_%s" % side,
                            (sh_x + sx * g, 0, z["z_shoulder"]),
                            (x1 - sx * g, 0, z["z_shoulder"]),
-                           LIMB_W * 1.04, LIMB_W * 1.04,
-                           LIMB_W * 0.90, LIMB_W * 0.90, "suit")))
+                           LIMB_W * 1.22, LIMB_W * 1.22,
+                           LIMB_W * 1.10, LIMB_W * 1.10, "suit")))
         segs.append(("forearm_%s" % side,
                      prism("seg_forearm_%s" % side,
                            (x1 + sx * g, 0, z["z_shoulder"]),
                            (x2 - sx * g, 0, z["z_shoulder"]),
-                           LIMB_W * 0.88, LIMB_W * 0.88,
-                           LIMB_W * 0.74, LIMB_W * 0.78, "suit")))
+                           LIMB_W * 1.06, LIMB_W * 1.06,
+                           LIMB_W * 0.88, LIMB_W * 0.92, "suit")))
         segs.append(("hand_%s" % side,
                      prism("seg_hand_%s" % side,
                            (x2 + sx * g, 0, z["z_shoulder"]),
@@ -445,87 +454,134 @@ def build_segments(z):
 
 def build_creases(z):
     """Folds and creases in the clothing — the near-black suit's ONLY source of
-    volume.
+    volume, and now on the BACK as well as the front.
 
-    Director, 2026-08-16: *"o que pode ajudar com o volume são dobrinhas e vincos
-    na roupa, com shades marcando os contornos."* That is the right answer to a
-    real constraint rather than a decoration: at a 0.02 albedo the runtime's
-    lit-to-shadowed range spans about 2..9 of 255, so the lighting can no longer
-    describe form, and the two additive levers that could have (specular, D28's
-    outline) were both declined in the same instruction — *"tecido não tem
-    reflexo duro, somente manchas opacas."*
+    Director, 2026-08-16: *"o vinco é bom, pode ser um pouco mais fina a linha.
+    Precisa estar nas costas também para criar mais coerência."*
 
-    So each crease works on TWO channels at once, and it needs both:
-      - as GEOMETRY it breaks the surface normal, which the normal-map bake
-        captures and the runtime relights, and it notches the silhouette;
-      - as an ALBEDO edge it stays visible even where the lighting is flat,
-        which at this value is most places.
+    WHY THE BACK MATTERS, and it is measured rather than assumed: diffing the
+    baked frames showed the first crease set covering 9.9% of the figure in frame
+    S and 0.7% in frame N — a 14x gap, because every crease was a front feature
+    and N/E are the facings that show the agent's back. In half the room's
+    perspectives he was a flat black shape. Back coverage is worth more here than
+    any amount of extra contrast on the front.
 
-    SIZED FOR THE SHIP SIZE, not for a viewport. At 115.47 px per screen-metre a
-    crease under ~0.02 m cannot resolve to even two pixels, so every one here is
-    0.018-0.026 m — a real fabric fold, and the smallest thing that can read.
-    Anything finer would be authored, invisible, and paid for in RAM.
+    LINE WEIGHT: thinned from 0.020-0.026 to 0.014-0.018 on the Director's call.
+    That is close to the floor — at 115.47 px per screen-metre, 0.014 m resolves
+    to about 1.6 px, and anything below one pixel is authored, invisible, and
+    still paid for in RAM.
+
+    Each crease still works on two channels: as geometry it breaks the surface
+    normal (captured by the normal bake, relit at runtime) and notches the
+    silhouette; as an albedo edge it survives where the lighting is flat, which
+    at a 0.02 albedo is most places.
     """
     segs = []
     zh, zc, zn = z["z_hip"], z["z_chest"], z["z_neck"]
     zs = z["z_shoulder"]
 
-    # Lapel V — the strongest tailoring cue on the chest, and the one place a
-    # LIGHTER seam belongs: a lapel folds outward, so it catches light.
+    # --- FRONT -------------------------------------------------------------
+    # Lapel V — the strongest tailoring cue, and the one place a LIGHTER seam
+    # belongs: a lapel folds outward, so it catches light.
     for sx in (1.0, -1.0):
         segs.append(("chest", prism("seg_lapel_%s" % ("L" if sx > 0 else "R"),
-                                    (sx * 0.058, 0.100, zn - 0.055),
-                                    (sx * 0.016, 0.093, zc + 0.05),
-                                    0.026, 0.020, 0.022, 0.016,
+                                    (sx * 0.050, 0.112, zn - 0.045),
+                                    (sx * 0.020, 0.107, zc + 0.13),
+                                    0.018, 0.015, 0.015, 0.013,
                                     "seam_hi", bevel=0.003)))
 
-    # The jacket's front opening, from the button down through the hem. A crease
-    # that goes IN, so it takes the darker seam.
-    segs.append(("spine", prism("seg_jacket_open", (0, 0.094, zc + 0.05),
-                                (0, 0.099, zh + HIP_H * 0.60),
-                                0.022, 0.018, 0.020, 0.016,
+    # The jacket's front opening, button down through the hem.
+    segs.append(("spine", prism("seg_jacket_open", (0, 0.106, zc + 0.05),
+                                (0, 0.112, zh + HIP_H * 0.45),
+                                0.015, 0.013, 0.014, 0.012,
                                 "seam_lo", bevel=0.003)))
 
-    # A shade band under the jacket hem — the contour the Director asked for,
-    # marking where the jacket ends against the trousers.
+    # Shade band under the jacket hem: where the jacket ends against the
+    # trousers. Thinner than the first pass, which read as a belt.
     segs.append(("spine", prism("seg_hem_shade",
-                                (0, 0.098, zh + HIP_H * 0.55 - 0.008),
-                                (0, 0.098, zh + HIP_H * 0.55 + 0.010),
-                                HIP_W * 1.14, 0.022, HIP_W * 1.14, 0.022,
+                                (0, 0.108, zh + HIP_H * 0.30 - 0.006),
+                                (0, 0.108, zh + HIP_H * 0.30 + 0.008),
+                                HIP_W * 1.20, 0.016, HIP_W * 1.20, 0.016,
+                                "seam_lo", bevel=0.003)))
+
+    # --- BACK --------------------------------------------------------------
+    # Centre back seam, collar to hem. On a real jacket this is the line that
+    # tells you it is tailored rather than draped.
+    segs.append(("chest", prism("seg_back_seam_up", (0, -0.106, zn - 0.04),
+                                (0, -0.104, zc + 0.02),
+                                0.016, 0.014, 0.015, 0.013,
+                                "seam_hi", bevel=0.003)))
+    segs.append(("spine", prism("seg_back_seam_lo", (0, -0.102, zc + 0.02),
+                                (0, -0.110, zh + HIP_H * 0.30),
+                                0.015, 0.013, 0.014, 0.012,
+                                "seam_hi", bevel=0.003)))
+
+    # The yoke — the horizontal panel line across the shoulder blades. This is
+    # what breaks the back's flat mass into two faces.
+    segs.append(("chest", prism("seg_back_yoke",
+                                (0, -0.104, zn - 0.115),
+                                (0, -0.104, zn - 0.100),
+                                SHOULDER_W * 0.86, 0.016,
+                                SHOULDER_W * 0.86, 0.016,
+                                "seam_lo", bevel=0.003)))
+
+    # The vent — the slit at the bottom of the back of the jacket.
+    segs.append(("spine", prism("seg_back_vent",
+                                (0, -0.110, zh + HIP_H * 0.30),
+                                (0, -0.108, zh + HIP_H * 0.72),
+                                0.014, 0.014, 0.013, 0.013,
                                 "seam_lo", bevel=0.003)))
 
     for side, sx in (("L", 1.0), ("R", -1.0)):
         hip_x = sx * HIP_W * 0.5
         z_knee = zh - THIGH_L
 
-        # The trouser crease, front of the leg, top to bottom. Pressed fabric
-        # catches light along the fold, so it is the lighter seam.
+        # Trouser crease, front of the leg. Pressed fabric catches light.
         segs.append(("thigh_%s" % side,
                      prism("seg_crease_thigh_%s" % side,
-                           (hip_x, 0.062, zh - 0.03), (hip_x, 0.053, z_knee + 0.02),
-                           0.020, 0.016, 0.018, 0.014, "seam_hi", bevel=0.003)))
+                           (hip_x, 0.068, zh - 0.03), (hip_x, 0.058, z_knee + 0.02),
+                           0.015, 0.013, 0.014, 0.012, "seam_hi", bevel=0.003)))
         segs.append(("shin_%s" % side,
                      prism("seg_crease_shin_%s" % side,
-                           (hip_x, 0.057, z_knee - 0.02), (hip_x, 0.042, 0.20),
-                           0.018, 0.014, 0.016, 0.012, "seam_hi", bevel=0.003)))
+                           (hip_x, 0.062, z_knee - 0.02), (hip_x, 0.046, 0.20),
+                           0.014, 0.012, 0.013, 0.011, "seam_hi", bevel=0.003)))
 
-        # The knee break — fabric bunching above the knee. Darker: it folds in.
+        # And the same seam down the BACK of the leg, which is what makes the
+        # trouser read as a tube of cloth from every facing rather than from two.
+        segs.append(("thigh_%s" % side,
+                     prism("seg_seam_thigh_back_%s" % side,
+                           (hip_x, -0.066, zh - 0.03), (hip_x, -0.056, z_knee + 0.02),
+                           0.015, 0.013, 0.014, 0.012, "seam_hi", bevel=0.003)))
+        segs.append(("shin_%s" % side,
+                     prism("seg_seam_shin_back_%s" % side,
+                           (hip_x, -0.060, z_knee - 0.02), (hip_x, -0.044, 0.20),
+                           0.014, 0.012, 0.013, 0.011, "seam_hi", bevel=0.003)))
+
+        # Knee break — fabric bunching above the knee.
         segs.append(("shin_%s" % side,
                      prism("seg_knee_fold_%s" % side,
-                           (hip_x, 0.055, z_knee - 0.055),
-                           (hip_x, 0.055, z_knee - 0.037),
-                           LIMB_W * 1.10, 0.020, LIMB_W * 1.10, 0.020,
+                           (hip_x, 0.060, z_knee - 0.055),
+                           (hip_x, 0.060, z_knee - 0.042),
+                           LIMB_W * 1.06, 0.016, LIMB_W * 1.06, 0.016,
                            "seam_lo", bevel=0.003)))
 
-        # Shoulder seam, running along the top of the sleeve. In T-pose the arm
-        # lies along +/-X, so this runs along the bone and follows it into every
-        # pose for free.
+        # Shoulder seam along the top of the sleeve, plus the cuff line — the
+        # two seams that make a sleeve read as tailored rather than as a tube.
         x0 = sx * SHOULDER_W * 0.5
+        x1 = x0 + sx * UPPERARM_L
+        x2 = x1 + sx * FOREARM_L
         segs.append(("upperarm_%s" % side,
                      prism("seg_sleeve_seam_%s" % side,
-                           (x0 + sx * 0.02, 0.0, zs + 0.050),
-                           (x0 + sx * (UPPERARM_L - 0.02), 0.0, zs + 0.046),
-                           0.020, 0.018, 0.018, 0.016, "seam_hi", bevel=0.003)))
+                           (x0 + sx * 0.02, 0.0, zs + 0.064),
+                           (x0 + sx * (UPPERARM_L - 0.02), 0.0, zs + 0.060),
+                           0.016, 0.014, 0.015, 0.013, "seam_hi", bevel=0.003)))
+        segs.append(("forearm_%s" % side,
+                     prism("seg_cuff_%s" % side,
+                           (x2 - sx * 0.045, 0.0, zs),
+                           (x2 - sx * 0.030, 0.0, zs),
+                           LIMB_W * 1.02, LIMB_W * 1.02,
+                           LIMB_W * 1.02, LIMB_W * 1.02,
+                           "seam_lo", bevel=0.003)))
 
     log("creases: %d fold/seam parts" % len(segs))
     return segs

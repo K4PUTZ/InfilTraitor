@@ -3724,17 +3724,16 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## picture instead of in an opinion.
 ##
 ## Row 6 = the current matte treatment. Row 8 = both additive levers pushed.
+## FOUR AGENTS, ONE PER FACING (Director, 2026-08-16: "coloca o boneco 4x na cena
+## para a gente avaliar todas as faces"). They differ only in the agent's OWN
+## facing — §4.6's `facing - perspective` — so one capture shows every side of
+## the figure under the same light instead of four captures showing the same
+## side. Spread two GU apart so no silhouette touches its neighbour.
 const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = [
-	## THE CREASE CONTROL (Director, 2026-08-16). The near-black suit was ratified
-	## from the bracket, and with specular and the outline both declined
-	## ("tecido não tem reflexo duro, somente manchas opacas") the figure's only
-	## remaining source of volume is the fold/seam geometry p1_agent_model.py's
-	## build_creases() adds. So the two figures below are the SAME model, same
-	## palette, same lighting, differing in exactly one thing — whether those 12
-	## parts exist — because a crease set judged against the memory of an earlier
-	## capture is judged against nothing.
-	{"cell": Vector2i(4, 6), "dir": "agent_nocrease"},
-	{"cell": Vector2i(6, 6), "dir": "agent_creases"},
+	{"cell": Vector2i(3, 6), "dir": "agent_frames", "facing": "N"},
+	{"cell": Vector2i(6, 6), "dir": "agent_frames", "facing": "E"},
+	{"cell": Vector2i(3, 9), "dir": "agent_frames", "facing": "S"},
+	{"cell": Vector2i(6, 9), "dir": "agent_frames", "facing": "W"},
 ]
 
 ## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for

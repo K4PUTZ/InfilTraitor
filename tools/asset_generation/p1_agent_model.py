@@ -454,10 +454,63 @@ def build_segments(z):
     # P1_NO_CREASES=1 builds the same figure without the fold/seam family, so the
     # creases' contribution can be judged against its own control instead of
     # against a memory of the previous capture.
+    segs.extend(build_backpack(z))
     if os.environ.get("P1_NO_CREASES") != "1":
         segs.extend(build_creases(z))
     else:
         log("creases: SKIPPED (P1_NO_CREASES=1) — this is the control")
+    return segs
+
+
+def build_backpack(z):
+    """The small pack on the agent's back.
+
+    Director, 2026-08-16: *"uma mochilinha nas costas, que vai ser de onde ele
+    vai tirar o sobretudo/capuz e demais gadgets, e guardar o chapéu."*
+
+    THIS IS NOT A NEW MECHANIC — it is the missing object in one that was already
+    ratified. D53's costume flip describes the hat as *stowed "numa mochila"*,
+    and that row records the stow as costing NOTHING to author: the hat is a
+    `head` layer switched off, not stowed geometry. What was missing was the
+    container the fiction refers to. Giving it a body changes no budget term:
+    §4.3 already has `back_upper` carrying the hood and the overcoat (D37/D43),
+    and §8 classes a rigid adornment on a socket as ADDITIVE, never
+    multiplicative.
+
+    SIZED TO STAY OUT OF THE WAY OF TWO THINGS. It stops below the shoulder-blade
+    yoke so the back creases added earlier today still read — the back was a flat
+    black shape until those landed and the pack must not undo it — and it is
+    shallow enough (0.11 m) that it does not blow out the figure's silhouette in
+    the side facings, where a deep pack would read as a hunch rather than as kit.
+    """
+    segs = []
+    zc, zn = z["z_chest"], z["z_neck"]
+    back = -CHEST_D * 0.53          ## just proud of the jacket's back face
+    z_top = zn - 0.16
+    z_bot = zc - 0.06
+
+    # The body of the pack. Slightly narrower at the bottom so it reads as a
+    # flap-over satchel rather than as a box.
+    segs.append(("chest", prism("seg_pack", (0, back - 0.055, z_bot),
+                                (0, back - 0.050, z_top),
+                                0.185, 0.082, 0.235, 0.112,
+                                "suit", bevel=0.010)))
+    # The flap's lower edge — the line that says "this opens".
+    segs.append(("chest", prism("seg_pack_flap", (0, back - 0.112, z_top - 0.085),
+                                (0, back - 0.112, z_top - 0.070),
+                                0.225, 0.020, 0.225, 0.020,
+                                "seam_lo", bevel=0.003)))
+    # Shoulder straps, over the top of each shoulder and onto the chest. Two
+    # narrow bars are the whole reason the pack reads as WORN instead of as a
+    # block parked behind the figure.
+    for sx in (1.0, -1.0):
+        side = "L" if sx > 0 else "R"
+        segs.append(("chest", prism("seg_pack_strap_%s" % side,
+                                    (sx * 0.078, back - 0.030, z_top - 0.010),
+                                    (sx * 0.070, CHEST_D * 0.52, zc + 0.11),
+                                    0.030, 0.018, 0.026, 0.016,
+                                    "seam_hi", bevel=0.003)))
+    log("backpack: %d parts" % len(segs))
     return segs
 
 

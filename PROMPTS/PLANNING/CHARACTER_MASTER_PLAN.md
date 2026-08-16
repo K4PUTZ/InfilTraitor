@@ -11,7 +11,7 @@ and 4, which were stubs, not designs.
 |---|---|
 | **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
 | **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets (**8 with `head`, added by D53**). Its ART is superseded; its RIG is the base |
-| **Part 2** — minimum viable agent | 🟡 **STARTED 2026-08-16 — the three-grip spike is RUN**, 24 frames at true ship size, awaiting the Director's eye. Promoted by D55; the design dependency D48 was protecting is discharged by D52 (style) and D53 (costume), not ignored. Unblocks firearm aim mode + W-PRECOOK |
+| **Part 2** — minimum viable agent | 🟡 **IN PROGRESS.** Grip spike RUN and the **MOCKUP CLOSED 2026-08-16** — the agent stands in PLAYGROUND at a gated 10.0 voxels, near-black, relit by the room, four facings in one frame. `agent.gd`'s placeholder is still there, so §10's definition of done is explicitly NOT claimed. Unblocks firearm aim mode + W-PRECOOK |
 | **Part 8** — showcase model | ⏸ **DEFERRED by D55**, and may ship as 2D. Its preparation stands: start scene BUILT, D49/D50/D51 unchanged |
 
 **Phase rule (D54):** Alpha closes the character's **mechanics**; detail and
@@ -886,7 +886,8 @@ Part 0  Tests                     ✅ CLOSED — S1 + S2 both answered
 Part 1  Base model + rig          ✅ BUILT — skeleton/sockets/scale survive;
                                      8 sockets after D53 added `head`.
                                      Its ART is superseded, its RIG is the base
-Part 2  MINIMUM VIABLE AGENT      🟡 STARTED. Grip spike RUN 2026-08-16 (below).
+Part 2  MINIMUM VIABLE AGENT      🟡 IN PROGRESS. Grip spike RUN + MOCKUP CLOSED
+                                     2026-08-16 (both below).
                                      idle + 3 grips x 4 yaws, baked,
                                      on screen, replacing the vector placeholder
                                      Hand bar is D56: pose-capable, not correct
@@ -1046,6 +1047,55 @@ because the body's own depth projects into screen-Y too.
 
 **Still open after the spike**, and it does not block the build: whether
 `lowered` and `ready` stay two grips for long guns.
+
+### 🟢 The MOCKUP — CLOSED 2026-08-16. He is in the room.
+
+Evidence: `Screenshots/history/p2_mockup_final.png` (four facings at 3×) and
+`p2_mockup_final_scene.png`. The chain, all of it on rails that already existed:
+
+```
+p2_grip_spike.py P2_EXPORT_GLB   posed figure + weapon -> a static GLB
+agent_frame_bake_spike.gd        4 perspectives, albedo + normal, windowed
+AgentProbeProp                   lean sibling of GrenadeProp, relit, anchored
+room.gd TEST_ZONE_AGENT_PROBE_*  four agents, one per facing
+```
+
+**What this deliberately is NOT: Part 2's definition of done.** `agent.gd`'s
+vector placeholder is untouched and still the playable agent. §10 says Part 2
+closes when that placeholder is GONE. This is the art and pipeline foundation
+that had to be true first.
+
+**The load-bearing results, each measured rather than judged:**
+
+| | |
+|---|---|
+| **Scale is derived, not tuned** | Every sibling bake carries "first-guess world scale, visually tuned" — disqualifying here, since a scale nudged until it looked right would answer the proportion question with itself. `MESH_SCALE` 1.0, `ORTHO_SIZE` from `VOXEL_STEP_PX`, gated on the game's own invariant: a 0.20 m rise measured **20.000 px** |
+| **Ten voxels** | 2.000 m exactly, Director's call. Verified end to end — export 2.000 m, bake 20.000 px/voxel, on-screen hat band implying sprite scale **1.012** vs 1.000 |
+| **The palette never left Blender** | `p1_agent_model.py` authored colour via `diffuse_color` — the VIEWPORT value. Workbench reads it; the glTF exporter does not. Every character render this project had judged was showing colours that could not ship. First bake: mean RGB (234,233,233), **53.3% pure white** |
+| **The washed-out fix was specular, not brightness** | Lit faces at (182,183,199) with 7.8% clipped against a (138,138,150) albedo, and hue collapsing from b−r +12 to +5. The white specular term blew highlights *and* desaturated. After: (137,137,152), **0.4% clipped**, hue intact |
+| **Near-black is legible, and it is a design advantage** | Multiplicative light compresses a 0.02 albedo's whole range; volume must come from geometry and albedo edges, not gradient. Director: infiltration *wants* him hard to see, and posture still reads |
+| **The creases' problem was facing, not dose** | 59 changed px in frame N vs **879 in S** — a 14× gap, because every crease was a front feature and N/E show the back. Fixed by authoring the back, not by amplifying the front |
+
+**Decisions the Director settled here**, all pending registration as D-rows in
+`ACTOR_MASTER_PLAN`: the suit family is near-black and applies to shoe and hat;
+specular is **out** for this character (*"tecido não tem reflexo duro"*); volume
+comes from folds and seams; the joints carry the suit's colour but keep their own
+material; **DEV VISION tints those joints yellow**; and the pack D53's costume
+already referred to now exists as geometry on `back_upper`.
+
+**⚠️ One ratified number was moved and the cost is stated, not absorbed.** §4.7
+records the BODY at 1.80 m = 9.00 voxels and `s2_posture_scale.py` VERIFIED the
+posture bands against it. Scaling the whole figure to 10.0 voxels carries the body
+to 1.897 m (9.48). That verification no longer describes this asset. The
+alternative that preserves it — raising only the hat, the question
+`agent_sculpt_start.blend` already draws as two labelled lines — is one constant
+away.
+
+**The honest limit, since the Director named the ideal.** This is a prism figure
+with seam lines in its albedo, not a garment whose panel edges create the lit and
+unlit faces on their own. That *"modelo mais fiel"* is not what this is. Within
+*"não precisamos de nada super detalhado"* it reads as a suit from all four
+sides, which is what a mockup owes; D54 puts the rest in Beta.
 
 ---
 

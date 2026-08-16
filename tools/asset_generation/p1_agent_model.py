@@ -486,8 +486,12 @@ def build_backpack(z):
     segs = []
     zc, zn = z["z_chest"], z["z_neck"]
     back = -CHEST_D * 0.53          ## just proud of the jacket's back face
-    z_top = zn - 0.16
-    z_bot = zc - 0.06
+    # Raised 0.04 m on the Director's call, 2026-08-16 ("um pouquinho mais pra
+    # cima"). The ceiling is not taste: the shoulder-blade yoke sits at
+    # zn - 0.115, and the pack must stay under it or it swallows the one crease
+    # that breaks up the back's flat mass. z_top = zn - 0.12 lands just below it.
+    z_top = zn - 0.12
+    z_bot = zc - 0.02
 
     # The body of the pack. Slightly narrower at the bottom so it reads as a
     # flap-over satchel rather than as a box.

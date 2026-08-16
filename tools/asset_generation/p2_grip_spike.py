@@ -579,6 +579,38 @@ def materialise_for_export():
     return fixed
 
 
+def override_suit_value(value):
+    """Repaint the suit (jacket + trousers) to a given brightness, keeping its
+    hue, for the near-black bracket.
+
+    Director, 2026-08-16: *"digamos que a gente queira que o terno dele seja bem
+    escuro, quase totalmente preto mas ainda distinguindo o volume com a
+    iluminação."* Whether that is possible is a question about the RUNTIME, not
+    about Blender, so the only honest way to answer it is to bake several suit
+    values and read them under the room's real light — hence a parameter rather
+    than an edit.
+
+    The suit's authored colour is (0.26, 0.27, 0.34): a charcoal with a blue
+    cast. Scaling all three channels by the same factor preserves that cast
+    exactly, so the bracket varies ONE thing. `suit_lo` (the trousers, a shade
+    under the jacket) keeps its relationship for the same reason."""
+    if value is None:
+        return
+    for name, authored in (("suit", (0.26, 0.27, 0.34)),
+                           ("suit_lo", (0.19, 0.20, 0.26))):
+        m = bpy.data.materials.get(name)
+        if m is None:
+            fail("material %s missing — cannot run the suit bracket" % name)
+        k = value / 0.26          ## the jacket is the reference channel
+        rgba = (authored[0] * k, authored[1] * k, authored[2] * k, 1.0)
+        m.diffuse_color = rgba
+        bsdf = m.node_tree.nodes.get("Principled BSDF") if m.node_tree else None
+        if bsdf is not None:
+            bsdf.inputs["Base Color"].default_value = rgba
+        log("suit bracket: %-8s -> (%.3f, %.3f, %.3f)"
+            % (name, rgba[0], rgba[1], rgba[2]))
+
+
 def scale_to_target_height(arm):
     """Scale the whole rig so the figure ships at EXPORT_HEIGHT_M.
 
@@ -646,9 +678,17 @@ def export_posed(arm, key, facing_name):
     place_weapon(root, grip_local, wscale, grip_world, aim)
 
     materialise_for_export()
+    suit_env = os.environ.get("P2_SUIT_VALUE", "")
+    suit = float(suit_env) if suit_env else None
+    override_suit_value(suit)
     scale_to_target_height(arm)
+    suffix = "" if suit is None else "_suit%03d" % int(round(suit * 1000))
+    # The SOURCE model's variant has to reach the filename too. It did not, and
+    # two exports of different models silently overwrote each other at the same
+    # path — caught only because the re-import mesh count changed from 49 to 37.
+    suffix += "" if _MODEL == "agent_base" else _MODEL.replace("agent_base", "")
     out = os.path.join(os.path.dirname(BLEND),
-                       "agent_posed_%s_%s.glb" % (weapon, grip_name))
+                       "agent_posed_%s_%s%s.glb" % (weapon, grip_name, suffix))
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=out, export_format="GLB",
                               export_apply=True, export_skins=False,

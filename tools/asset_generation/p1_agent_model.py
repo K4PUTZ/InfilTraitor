@@ -63,8 +63,9 @@ from mathutils import Vector
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT_DIR = os.path.join(REPO_ROOT, "ASSETS", "ISOMETRIC", "source_assets",
                        "imported_models", "agent")
-OUT_GLB = os.path.join(OUT_DIR, "agent_base.glb")
-OUT_BLEND = os.path.join(OUT_DIR, "agent_base.blend")
+_VARIANT = os.environ.get("P1_VARIANT", "")
+OUT_GLB = os.path.join(OUT_DIR, "agent_base%s.glb" % _VARIANT)
+OUT_BLEND = os.path.join(OUT_DIR, "agent_base%s.blend" % _VARIANT)
 
 # --- Proportions: CARRIED OVER VERBATIM from the mockup. See the docstring. ---
 HEIGHT = 1.80
@@ -95,17 +96,37 @@ FEDORA_CROWN_H = 0.115
 BEVEL_W = 0.008
 BALL_R = LIMB_W * 0.62
 
-# Albedo, graded bright at source -- see the docstring's §4.8 note.
+# Albedo. The suit family went NEAR-BLACK on 2026-08-16 (Director, after the
+# p2_suit_bracket capture: "o mais escuro de cima ficou ótimo [...] vamos aplicar
+# no sapato e no chapéu"), so the §4.8 note about grading bright at source now
+# applies only to the skin/shirt/sock/band group.
+#
+# WHAT GOING NEAR-BLACK COSTS, and it is why the crease geometry below exists:
+# the runtime relight is MULTIPLICATIVE (lit = albedo * (ambient + light)), so a
+# 0.02 albedo compresses the whole lit-to-shadowed range into roughly 2..9 of
+# 255. Volume can no longer come from the lighting's value gradient, so it has to
+# come from GEOMETRY and from albedo edges — the Director's own answer:
+# "o que pode ajudar com o volume são dobrinhas e vincos na roupa, com shades
+# marcando os contornos."
 MATS = {
-    "suit":    (0.26, 0.27, 0.34, 1.0),   # charcoal with a blue cast
-    "suit_lo": (0.19, 0.20, 0.26, 1.0),   # trousers, a shade under the jacket
+    "suit":    (0.020, 0.021, 0.026, 1.0),  # near-black, blue cast preserved
+    "suit_lo": (0.015, 0.016, 0.020, 1.0),  # trousers, a shade under the jacket
+    # The crease/fold family. Deliberately a MULTIPLE of the suit rather than an
+    # offset: at this albedo an additive lift would vanish under one light and
+    # blow out under another, while a ratio keeps the same relationship in both.
+    "seam_hi": (0.050, 0.052, 0.063, 1.0),  # 2.5x — a fold catching the light
+    "seam_lo": (0.008, 0.008, 0.011, 1.0),  # 0.4x — the shade inside a crease
     "shirt":   (0.86, 0.87, 0.90, 1.0),
     "skin":    (0.72, 0.55, 0.42, 1.0),
-    "hat":     (0.22, 0.22, 0.28, 1.0),
-    "band":    (0.62, 0.16, 0.18, 1.0),   # hatband: the one warm accent
-    "shoe":    (0.13, 0.12, 0.14, 1.0),
-    "joint":   (0.40, 0.41, 0.47, 1.0),   # exposed ball joints read as hardware
-    "sock":    (0.90, 0.90, 0.92, 1.0),   # the MJ white sock, above the shoe
+    "hat":     (0.020, 0.020, 0.025, 1.0),  # applied 2026-08-16
+    "band":    (0.62, 0.16, 0.18, 1.0),     # hatband: the one warm accent
+    "shoe":    (0.016, 0.015, 0.018, 1.0),  # applied 2026-08-16
+    # Same colour as the suit, still its OWN material. The Director asked to see
+    # the joints in the suit's material; giving them the suit material outright
+    # would make them unaddressable, and the next task on the list is tinting
+    # exactly these yellow for DEV VISION. Same value, separate handle.
+    "joint":   (0.020, 0.021, 0.026, 1.0),
+    "sock":    (0.90, 0.90, 0.92, 1.0),     # the MJ white sock, above the shoe
 }
 
 
@@ -412,6 +433,101 @@ def build_segments(z):
                            (hip_x, FOOT_L * 0.74, 0.010),
                            LIMB_W * 1.08, 0.024,
                            LIMB_W * 0.80, 0.020, "shoe", bevel=0.004)))
+    # P1_NO_CREASES=1 builds the same figure without the fold/seam family, so the
+    # creases' contribution can be judged against its own control instead of
+    # against a memory of the previous capture.
+    if os.environ.get("P1_NO_CREASES") != "1":
+        segs.extend(build_creases(z))
+    else:
+        log("creases: SKIPPED (P1_NO_CREASES=1) — this is the control")
+    return segs
+
+
+def build_creases(z):
+    """Folds and creases in the clothing — the near-black suit's ONLY source of
+    volume.
+
+    Director, 2026-08-16: *"o que pode ajudar com o volume são dobrinhas e vincos
+    na roupa, com shades marcando os contornos."* That is the right answer to a
+    real constraint rather than a decoration: at a 0.02 albedo the runtime's
+    lit-to-shadowed range spans about 2..9 of 255, so the lighting can no longer
+    describe form, and the two additive levers that could have (specular, D28's
+    outline) were both declined in the same instruction — *"tecido não tem
+    reflexo duro, somente manchas opacas."*
+
+    So each crease works on TWO channels at once, and it needs both:
+      - as GEOMETRY it breaks the surface normal, which the normal-map bake
+        captures and the runtime relights, and it notches the silhouette;
+      - as an ALBEDO edge it stays visible even where the lighting is flat,
+        which at this value is most places.
+
+    SIZED FOR THE SHIP SIZE, not for a viewport. At 115.47 px per screen-metre a
+    crease under ~0.02 m cannot resolve to even two pixels, so every one here is
+    0.018-0.026 m — a real fabric fold, and the smallest thing that can read.
+    Anything finer would be authored, invisible, and paid for in RAM.
+    """
+    segs = []
+    zh, zc, zn = z["z_hip"], z["z_chest"], z["z_neck"]
+    zs = z["z_shoulder"]
+
+    # Lapel V — the strongest tailoring cue on the chest, and the one place a
+    # LIGHTER seam belongs: a lapel folds outward, so it catches light.
+    for sx in (1.0, -1.0):
+        segs.append(("chest", prism("seg_lapel_%s" % ("L" if sx > 0 else "R"),
+                                    (sx * 0.058, 0.100, zn - 0.055),
+                                    (sx * 0.016, 0.093, zc + 0.05),
+                                    0.026, 0.020, 0.022, 0.016,
+                                    "seam_hi", bevel=0.003)))
+
+    # The jacket's front opening, from the button down through the hem. A crease
+    # that goes IN, so it takes the darker seam.
+    segs.append(("spine", prism("seg_jacket_open", (0, 0.094, zc + 0.05),
+                                (0, 0.099, zh + HIP_H * 0.60),
+                                0.022, 0.018, 0.020, 0.016,
+                                "seam_lo", bevel=0.003)))
+
+    # A shade band under the jacket hem — the contour the Director asked for,
+    # marking where the jacket ends against the trousers.
+    segs.append(("spine", prism("seg_hem_shade",
+                                (0, 0.098, zh + HIP_H * 0.55 - 0.008),
+                                (0, 0.098, zh + HIP_H * 0.55 + 0.010),
+                                HIP_W * 1.14, 0.022, HIP_W * 1.14, 0.022,
+                                "seam_lo", bevel=0.003)))
+
+    for side, sx in (("L", 1.0), ("R", -1.0)):
+        hip_x = sx * HIP_W * 0.5
+        z_knee = zh - THIGH_L
+
+        # The trouser crease, front of the leg, top to bottom. Pressed fabric
+        # catches light along the fold, so it is the lighter seam.
+        segs.append(("thigh_%s" % side,
+                     prism("seg_crease_thigh_%s" % side,
+                           (hip_x, 0.062, zh - 0.03), (hip_x, 0.053, z_knee + 0.02),
+                           0.020, 0.016, 0.018, 0.014, "seam_hi", bevel=0.003)))
+        segs.append(("shin_%s" % side,
+                     prism("seg_crease_shin_%s" % side,
+                           (hip_x, 0.057, z_knee - 0.02), (hip_x, 0.042, 0.20),
+                           0.018, 0.014, 0.016, 0.012, "seam_hi", bevel=0.003)))
+
+        # The knee break — fabric bunching above the knee. Darker: it folds in.
+        segs.append(("shin_%s" % side,
+                     prism("seg_knee_fold_%s" % side,
+                           (hip_x, 0.055, z_knee - 0.055),
+                           (hip_x, 0.055, z_knee - 0.037),
+                           LIMB_W * 1.10, 0.020, LIMB_W * 1.10, 0.020,
+                           "seam_lo", bevel=0.003)))
+
+        # Shoulder seam, running along the top of the sleeve. In T-pose the arm
+        # lies along +/-X, so this runs along the bone and follows it into every
+        # pose for free.
+        x0 = sx * SHOULDER_W * 0.5
+        segs.append(("upperarm_%s" % side,
+                     prism("seg_sleeve_seam_%s" % side,
+                           (x0 + sx * 0.02, 0.0, zs + 0.050),
+                           (x0 + sx * (UPPERARM_L - 0.02), 0.0, zs + 0.046),
+                           0.020, 0.018, 0.018, 0.016, "seam_hi", bevel=0.003)))
+
+    log("creases: %d fold/seam parts" % len(segs))
     return segs
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**207 scripts · 57832 lines total** (under `godot/scripts/`)
+**207 scripts · 57841 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -849,7 +849,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 250 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 257 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -4565,7 +4565,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4813 lines
+extends `Node2D` · 4815 lines
 
 `godot/scripts/world/room.gd`
 

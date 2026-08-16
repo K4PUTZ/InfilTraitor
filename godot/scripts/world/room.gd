@@ -3702,9 +3702,39 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## block instead of hugging it" standard the Director already set for
 ## TEST_ZONE_GRENADE_GUS, and it puts both silhouettes whole in one frame, which
 ## is what measuring needs.
-const TEST_ZONE_AGENT_PROBE_GUS: Array[Vector2i] = [
-	Vector2i(2, 5),   ## in front of the concrete wall — the height comparison
-	Vector2i(7, 7),   ## open floor, nothing competing with the silhouette
+## THE SUIT BRACKET (Director, 2026-08-16: *"digamos que a gente queira que o
+## terno dele seja bem escuro, quase totalmente preto mas ainda distinguindo o
+## volume com a iluminação"*).
+##
+## The obstacle is arithmetic, not taste. `flat_normal_relight` computes
+## `lit = albedo * (ambient + light * N·L) + specular`, and the light term is
+## MULTIPLICATIVE: darkening the albedo does not move the range, it SHRINKS it.
+## At the shipped 0.26 suit the form spans roughly 28..115 in value; at 0.02 that
+## entire span collapses into 2..9, so volume dies of compression rather than of
+## darkness. This is D31 in reverse — there, no runtime light could manufacture a
+## hue that was never baked; here, no runtime light can restore modelling the
+## albedo has already crushed.
+##
+## What does NOT shrink with the albedo are the ADDITIVE terms: `specular`, which
+## is how a black object is legible in the real world (we read it almost entirely
+## by its highlights), and D28's constant-colour outline, which exists because
+## "a arma está muito escura em relação ao fundo" — the same sentence a near-black
+## suit invites. So the bracket varies two axes, and it is bracketed PAST the
+## breaking point on purpose: 0.02 is there to fail, so the limit shows up in the
+## picture instead of in an opinion.
+##
+## Row 6 = the current matte treatment. Row 8 = both additive levers pushed.
+const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = [
+	## THE CREASE CONTROL (Director, 2026-08-16). The near-black suit was ratified
+	## from the bracket, and with specular and the outline both declined
+	## ("tecido não tem reflexo duro, somente manchas opacas") the figure's only
+	## remaining source of volume is the fold/seam geometry p1_agent_model.py's
+	## build_creases() adds. So the two figures below are the SAME model, same
+	## palette, same lighting, differing in exactly one thing — whether those 12
+	## parts exist — because a crease set judged against the memory of an earlier
+	## capture is judged against nothing.
+	{"cell": Vector2i(4, 6), "dir": "agent_nocrease"},
+	{"cell": Vector2i(6, 6), "dir": "agent_creases"},
 ]
 
 ## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for
@@ -3817,8 +3847,10 @@ func _populate_test_zone_if_playground() -> void:
 	if map_id == "PLAYGROUND":
 		for gu in TEST_ZONE_GRENADE_GUS:
 			_test_zone_controller.add_grenade(gu)
-		for gu in TEST_ZONE_AGENT_PROBE_GUS:
-			_test_zone_controller.add_agent_probe(gu)
+		for entry in TEST_ZONE_AGENT_PROBE_BRACKET:
+			var cfg: Dictionary = entry.duplicate()
+			cfg["frames_dir"] = "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/%s/" % entry["dir"]
+			_test_zone_controller.add_agent_probe(entry["cell"], cfg)
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
 		## The weapons bench: every row of TEST_ZONE_WEAPON_ROWS placed once per

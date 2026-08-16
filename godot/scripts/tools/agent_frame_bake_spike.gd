@@ -40,9 +40,21 @@
 ##     --script res://godot/scripts/tools/agent_frame_bake_spike.gd
 extends SceneTree
 
-const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_posed_shotgun_ready.glb"
-const OUT_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
-const ANCHOR_OUT_PATH := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/anchor.json"
+## Overridable so ONE script bakes every variant of the suit bracket — the
+## alternative is a copied file per value, which is how two bakes drift apart.
+##   AGENT_BAKE_MODEL=<res://...glb> AGENT_BAKE_OUT=<res://.../dir/> godot ...
+const DEFAULT_MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_posed_shotgun_ready.glb"
+const DEFAULT_OUT_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
+
+
+static func model_path() -> String:
+	var env := OS.get_environment("AGENT_BAKE_MODEL")
+	return env if env != "" else DEFAULT_MODEL_PATH
+
+
+static func out_dir() -> String:
+	var env := OS.get_environment("AGENT_BAKE_OUT")
+	return env if env != "" else DEFAULT_OUT_DIR
 
 ## Same convention as grenade_frame_bake_spike.gd: one render per ROOM
 ## perspective, matching PerspectiveMapper's own angle deltas, so the frame shown
@@ -105,12 +117,12 @@ func _init() -> void:
 	print("  the figure occludes %.1f px of vertical (%.2f voxels)" % [
 		expected_height_px(), FIGURE_HEIGHT_M / VOXEL_M])
 
-	if not ResourceLoader.exists(MODEL_PATH) and not FileAccess.file_exists(MODEL_PATH):
-		push_error("[AgentBake] posed model missing: %s — run p2_grip_spike.py with P2_EXPORT_GLB=shotgun:ready first" % MODEL_PATH)
+	if not ResourceLoader.exists(model_path()) and not FileAccess.file_exists(model_path()):
+		push_error("[AgentBake] posed model missing: %s — run p2_grip_spike.py with P2_EXPORT_GLB=shotgun:ready first" % model_path())
 		quit(1)
 		return
 
-	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
+	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir()))
 	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS:
 		push_error("[AgentBake] could not create output dir (error %d)" % dir_err)
 		quit(1)
@@ -127,7 +139,7 @@ func _init() -> void:
 			quit(1)
 			return
 
-	var anchor_file := FileAccess.open(ANCHOR_OUT_PATH, FileAccess.WRITE)
+	var anchor_file := FileAccess.open((out_dir() + "anchor.json"), FileAccess.WRITE)
 	anchor_file.store_string(JSON.stringify({
 		"anchor_px": [anchor_px.x, anchor_px.y],
 		"viewport_size": [VIEWPORT_SIZE.x, VIEWPORT_SIZE.y],
@@ -136,7 +148,7 @@ func _init() -> void:
 	}))
 	anchor_file.close()
 
-	print("\n[AgentBake] Done — %d pairs in %s, anchor_px=%s\n" % [DIRECTIONS.size(), OUT_DIR, anchor_px])
+	print("\n[AgentBake] Done — %d pairs in %s, anchor_px=%s\n" % [DIRECTIONS.size(), out_dir(), anchor_px])
 	quit(0)
 
 
@@ -180,8 +192,8 @@ func _render_direction(direction: String, object_yaw_deg: float) -> bool:
 			direction, white_fraction * 100.0, MAX_WHITE_FRACTION * 100.0])
 		return false
 
-	var color_path := "%sframe_%s_color.png" % [OUT_DIR, direction]
-	var normal_path := "%sframe_%s_normal.png" % [OUT_DIR, direction]
+	var color_path := "%sframe_%s_color.png" % [out_dir(), direction]
+	var normal_path := "%sframe_%s_normal.png" % [out_dir(), direction]
 	color_img.save_png(color_path)
 	normal_img.save_png(normal_path)
 	return true
@@ -334,9 +346,9 @@ func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
 func _load_model() -> Node:
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
-	var err := doc.append_from_file(MODEL_PATH, state)
+	var err := doc.append_from_file(model_path(), state)
 	if err != OK:
-		push_error("[AgentBake] failed to load %s (error %d)" % [MODEL_PATH, err])
+		push_error("[AgentBake] failed to load %s (error %d)" % [model_path(), err])
 		return null
 	return doc.generate_scene(state)
 

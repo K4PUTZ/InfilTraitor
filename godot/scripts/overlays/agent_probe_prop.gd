@@ -40,7 +40,6 @@ class_name AgentProbeProp
 extends Sprite2D
 
 const FRAMES_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
-const ANCHOR_PATH := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/anchor.json"
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const DIRECTIONS := ["N", "E", "S", "W"]
 
@@ -63,7 +62,14 @@ const SPRITE_SCALE := 1.0
 ## about the weapons ("dá pra aumentar um pouquinho a saturação e o contraste
 ## [...] sem refazer o bake?"), set slightly gentler than the bench's 1.3/1.15
 ## because this albedo starts with hue rather than needing it manufactured.
-const SPECULAR_STRENGTH := 0.10   ## wool, not gunmetal — was 0.4
+## ZERO, not merely low. Director, 2026-08-16, on seeing the additive row of the
+## suit bracket: *"sem o brilho em volta e nem o reflexo branco que deixa com
+## aparência de plástico. Tecido não tem reflexo duro, somente manchas opacas."*
+## That rules the specular lever OUT for this character rather than turning it
+## down — which also means the near-black suit's volume has to come from the
+## geometry and albedo edges built in p1_agent_model.py, since the two additive
+## terms the bracket offered are both now declined (the outline defaults to 0).
+const SPECULAR_STRENGTH := 0.0
 const AMBIENT := 0.42             ## was 0.55
 const SATURATION := 1.25
 const CONTRAST := 1.12
@@ -85,6 +91,7 @@ var _material: ShaderMaterial
 var _color_frames: Dictionary = {}
 var _normal_frames: Dictionary = {}
 var _anchor_px: Vector2 = Vector2.ZERO
+var _frames_dir: String = FRAMES_DIR
 
 var _cam_right := Vector3.ZERO
 var _cam_up := Vector3.ZERO
@@ -101,18 +108,27 @@ func _init() -> void:
 	_cam_toward_viewer = to_camera
 
 
-func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:
+## `cfg` is optional and every key falls back to the constants above. It exists
+## for the suit bracket (Director, 2026-08-16): several figures in one frame,
+## each on its own bake and its own additive treatment, so a near-black suit can
+## be judged against its neighbours instead of against a memory of the last
+## capture. Same per-instance reasoning D26 applied to FloatingCollectible when
+## its hardcoded shotgun paths turned out to describe only the shotgun.
+##   frames_dir · specular · ambient · saturation · contrast · outline
+func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i,
+		cfg: Dictionary = {}) -> void:
 	room = p_room
 	gu_cell = p_gu_cell
 	base_cell = p_base_cell
+	_frames_dir = String(cfg.get("frames_dir", FRAMES_DIR))
 
 	if not _load_anchor():
 		return
 	for direction: String in DIRECTIONS:
-		_color_frames[direction] = _load_texture_raw("%sframe_%s_color.png" % [FRAMES_DIR, direction])
-		_normal_frames[direction] = _load_texture_raw("%sframe_%s_normal.png" % [FRAMES_DIR, direction])
+		_color_frames[direction] = _load_texture_raw("%sframe_%s_color.png" % [_frames_dir, direction])
+		_normal_frames[direction] = _load_texture_raw("%sframe_%s_normal.png" % [_frames_dir, direction])
 		if _color_frames[direction] == null or _normal_frames[direction] == null:
-			push_error("[AgentProbeProp] frames missing for %s — run agent_frame_bake_spike.gd" % direction)
+			push_error("[AgentProbeProp] frames missing for %s in %s — run agent_frame_bake_spike.gd" % [direction, _frames_dir])
 			return
 
 	centered = false
@@ -124,10 +140,14 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:
 	## Opt in explicitly, the same contract outline_width and saturation already
 	## use: this shader is SHARED with the grenade and every weapon, so a default
 	## changed in the shader itself would silently restyle all of them.
-	_material.set_shader_parameter("specular_strength", SPECULAR_STRENGTH)
-	_material.set_shader_parameter("ambient", AMBIENT)
-	_material.set_shader_parameter("saturation", SATURATION)
-	_material.set_shader_parameter("contrast", CONTRAST)
+	_material.set_shader_parameter("specular_strength", float(cfg.get("specular", SPECULAR_STRENGTH)))
+	_material.set_shader_parameter("ambient", float(cfg.get("ambient", AMBIENT)))
+	_material.set_shader_parameter("saturation", float(cfg.get("saturation", SATURATION)))
+	_material.set_shader_parameter("contrast", float(cfg.get("contrast", CONTRAST)))
+	## D28's stroke. It is the OTHER additive lever: a constant-colour outline that
+	## does not scale with albedo, added precisely because "a arma está muito
+	## escura em relação ao fundo" — the same sentence a near-black suit invites.
+	_material.set_shader_parameter("outline_width", float(cfg.get("outline", 0.0)))
 	material = _material
 
 	_apply_direction(room._active_perspective)
@@ -137,13 +157,14 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:
 
 ## The anchor pixel the bake computed and wrote — see note 2.
 func _load_anchor() -> bool:
-	if not FileAccess.file_exists(ANCHOR_PATH):
-		push_error("[AgentProbeProp] %s missing — run agent_frame_bake_spike.gd first" % ANCHOR_PATH)
+	var anchor_path := _frames_dir + "anchor.json"
+	if not FileAccess.file_exists(anchor_path):
+		push_error("[AgentProbeProp] %s missing — run agent_frame_bake_spike.gd first" % anchor_path)
 		return false
-	var text := FileAccess.get_file_as_string(ANCHOR_PATH)
+	var text := FileAccess.get_file_as_string(anchor_path)
 	var parsed = JSON.parse_string(text)
 	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("anchor_px"):
-		push_error("[AgentProbeProp] %s is not a bake anchor file" % ANCHOR_PATH)
+		push_error("[AgentProbeProp] %s is not a bake anchor file" % anchor_path)
 		return false
 	var a: Array = parsed["anchor_px"]
 	_anchor_px = Vector2(float(a[0]), float(a[1]))

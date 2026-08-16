@@ -233,10 +233,10 @@ func add_grenade(gu_cell: Vector2i) -> void:
 ## uses — the view-space cell is stored converted to a base cell so rotation can
 ## follow it — because a figure that drifts off its tile on a perspective flip
 ## would corrupt the proportion judgement this probe exists for.
-func add_agent_probe(gu_cell: Vector2i) -> void:
+func add_agent_probe(gu_cell: Vector2i, cfg: Dictionary = {}) -> void:
 	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
 	var sprite := AgentProbePropClass.new()
-	sprite.setup(room, gu_cell, base_cell)
+	sprite.setup(room, gu_cell, base_cell, cfg)
 	sprite.position = room.agent._cell_to_world(gu_cell)
 	room.add_child(sprite)
 	_agent_probes.append({"gu_cell": gu_cell, "base_cell": base_cell, "sprite": sprite})

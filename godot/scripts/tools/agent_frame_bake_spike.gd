@@ -117,6 +117,19 @@ static func expected_height_px() -> float:
 	return figure_height_m() * cos(deg_to_rad(ELEVATION_DEG)) * px_per_screen_m()
 
 
+## The entry currently being baked. Set per model in the manifest loop; the
+## single-model path fills it from the environment. It exists because
+## `figure_height_m()` used to be the only source and a static env read cannot
+## describe a SEQUENCE, where every phase has its own measured height.
+var _model_path: String = ""
+var _out_dir: String = ""
+var _height_m: float = 0.0
+
+
+func expected_height_px_for(height_m: float) -> float:
+	return height_m * cos(deg_to_rad(ELEVATION_DEG)) * px_per_screen_m()
+
+
 func _init() -> void:
 	print("\n" + "=".repeat(78))
 	print("Agent frame bake — %d perspectives, DERIVED scale (%s)" % [DIRECTIONS.size(), Time.get_date_string_from_system()])
@@ -124,45 +137,102 @@ func _init() -> void:
 	print("  %.2f px per screen-metre -> ortho %.4f over %d px; a %.2f m voxel draws %.1f px" % [
 		px_per_screen_m(), ortho_size(), VIEWPORT_SIZE.y, VOXEL_M,
 		VOXEL_M * cos(deg_to_rad(ELEVATION_DEG)) * px_per_screen_m()])
+
+	## AGENT_BAKE_MANIFEST=<path to a p3_*_export.py manifest.json> bakes a whole
+	## SEQUENCE in ONE boot. The walk cycle is 8 phases and the single-model path
+	## would have cost 8 windowed Godot boots for work that shares a camera, a
+	## viewport and a scale chain. Each entry carries its own `out_dir` and its
+	## own MEASURED `height_m`, which is the only way the height gate survives a
+	## sequence: a walk bobs, so the phases are 9.72 to 10.02 voxels and a single
+	## expected height would reject most of them.
+	var manifest_path := OS.get_environment("AGENT_BAKE_MANIFEST")
+	var jobs: Array = []
+	if manifest_path != "":
+		jobs = _load_manifest(manifest_path)
+		if jobs.is_empty():
+			quit(1)
+			return
+	else:
+		jobs = [{"glb": model_path(), "out": out_dir(), "height": figure_height_m()}]
+
+	var ok_count := 0
+	for job: Dictionary in jobs:
+		var ok := await _bake_one(String(job["glb"]), String(job["out"]), float(job["height"]))
+		if not ok:
+			quit(1)
+			return
+		ok_count += 1
+
+	print("\n[AgentBake] Done — %d model(s) x %d perspectives\n" % [ok_count, DIRECTIONS.size()])
+	quit(0)
+
+
+## Reads the `postures` array every p3_*_export.py manifest writes: `glb` is
+## repo-relative, `out_dir` is a res:// path, `height_m` was measured off the
+## exported file. Loud-fails on a missing key rather than defaulting one, because
+## a defaulted height is a gate that passes everything.
+func _load_manifest(path: String) -> Array:
+	var text := FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		push_error("[AgentBake] manifest %s is missing or empty" % path)
+		return []
+	var parsed = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("postures"):
+		push_error("[AgentBake] %s is not a p3 export manifest (no `postures`)" % path)
+		return []
+	var jobs: Array = []
+	for entry in parsed["postures"]:
+		for required in ["glb", "out_dir", "height_m"]:
+			if not entry.has(required):
+				push_error("[AgentBake] manifest entry %s has no `%s`" % [entry, required])
+				return []
+		jobs.append({
+			"glb": "res://" + String(entry["glb"]),
+			"out": String(entry["out_dir"]),
+			"height": float(entry["height_m"]),
+		})
+	print("  manifest: %d model(s) from %s" % [jobs.size(), path])
+	return jobs
+
+
+func _bake_one(glb: String, out: String, height_m: float) -> bool:
+	_model_path = glb
+	_out_dir = out
+	_height_m = height_m
 	## The figure's vertical REACH — how many pixels of height it occludes, which
 	## is §4.7's 196 px number. NOT the silhouette's pixel height, which is larger
 	## because the body's depth projects into screen-Y too. See _render_direction.
-	print("  the figure occludes %.1f px of vertical (%.2f voxels)" % [
-		expected_height_px(), figure_height_m() / VOXEL_M])
+	print("\n  %s -> %s (%.3f m, occludes %.1f px of vertical)" % [
+		glb.get_file(), out, height_m, expected_height_px_for(height_m)])
 
-	if not ResourceLoader.exists(model_path()) and not FileAccess.file_exists(model_path()):
-		push_error("[AgentBake] posed model missing: %s — run p2_grip_spike.py with P2_EXPORT_GLB=shotgun:ready first" % model_path())
-		quit(1)
-		return
+	if not ResourceLoader.exists(glb) and not FileAccess.file_exists(glb):
+		push_error("[AgentBake] posed model missing: %s — run the matching p3_*_export.py first" % glb)
+		return false
 
-	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir()))
+	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
 	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS:
 		push_error("[AgentBake] could not create output dir (error %d)" % dir_err)
-		quit(1)
-		return
+		return false
 
 	var anchor_px: Vector2 = await _compute_anchor_px()
 	if anchor_px == Vector2.ZERO:
-		quit(1)
-		return
+		return false
 
 	for direction in DIRECTIONS:
 		var ok := await _render_direction(direction, YAW_BY_DIRECTION[direction])
 		if not ok:
-			quit(1)
-			return
+			return false
 
-	var anchor_file := FileAccess.open((out_dir() + "anchor.json"), FileAccess.WRITE)
+	var anchor_file := FileAccess.open((out + "anchor.json"), FileAccess.WRITE)
 	anchor_file.store_string(JSON.stringify({
 		"anchor_px": [anchor_px.x, anchor_px.y],
 		"viewport_size": [VIEWPORT_SIZE.x, VIEWPORT_SIZE.y],
 		"px_per_screen_m": px_per_screen_m(),
-		"expected_height_px": expected_height_px(),
+		"expected_height_px": expected_height_px_for(height_m),
 	}))
 	anchor_file.close()
-
-	print("\n[AgentBake] Done — %d pairs in %s, anchor_px=%s\n" % [DIRECTIONS.size(), out_dir(), anchor_px])
-	quit(0)
+	print("    anchor_px=%s" % anchor_px)
+	return true
 
 
 func _render_direction(direction: String, object_yaw_deg: float) -> bool:
@@ -205,8 +275,8 @@ func _render_direction(direction: String, object_yaw_deg: float) -> bool:
 			direction, white_fraction * 100.0, MAX_WHITE_FRACTION * 100.0])
 		return false
 
-	var color_path := "%sframe_%s_color.png" % [out_dir(), direction]
-	var normal_path := "%sframe_%s_normal.png" % [out_dir(), direction]
+	var color_path := "%sframe_%s_color.png" % [_out_dir, direction]
+	var normal_path := "%sframe_%s_normal.png" % [_out_dir, direction]
 	color_img.save_png(color_path)
 	normal_img.save_png(normal_path)
 	return true
@@ -254,8 +324,8 @@ func _compute_anchor_px() -> Vector2:
 
 	await process_frame
 	var aabb := _compute_aabb(model_root)
-	if abs(aabb.size.y - figure_height_m()) > 0.05:
-		push_error("[AgentBake] the model is %.3f m tall, expected %.3f — this is not the posed agent, or the export lost its scale" % [aabb.size.y, figure_height_m()])
+	if abs(aabb.size.y - _height_m) > 0.05:
+		push_error("[AgentBake] the model is %.3f m tall, expected %.3f — this is not the posed agent, or the export lost its scale" % [aabb.size.y, _height_m])
 		sub.queue_free()
 		return Vector2.ZERO
 	if abs(aabb.position.y) > 0.03:
@@ -359,9 +429,9 @@ func _render_pass(object_yaw_deg: float, normal_pass: bool) -> Image:
 func _load_model() -> Node:
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
-	var err := doc.append_from_file(model_path(), state)
+	var err := doc.append_from_file(_model_path, state)
 	if err != OK:
-		push_error("[AgentBake] failed to load %s (error %d)" % [model_path(), err])
+		push_error("[AgentBake] failed to load %s (error %d)" % [_model_path, err])
 		return null
 	return doc.generate_scene(state)
 

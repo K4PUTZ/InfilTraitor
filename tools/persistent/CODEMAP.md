@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58391 lines total** (under `godot/scripts/`)
+**208 scripts · 58652 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 341 lines
+`class_name DebugAgent` · extends `Node2D` · 377 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -49,7 +49,6 @@
 - `COVER_FULL_MULT` = `0.20`
 - `COVER_PARTIAL_MULT` = `0.55`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
-- `STEP_DURATION` = `0.13`
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
 - `SILHOUETTE_WIDTH` = `104.0`
@@ -69,6 +68,7 @@
 - `var sprite: AgentSprite = null`
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
+- `var step_duration: float = 0.13`
 
 **Public API**
 - `func throw_origin() -> Vector2:`
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 328 lines
+`class_name AgentSprite` · extends `Sprite2D` · 402 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -96,6 +96,8 @@
 **Constants / tuning**
 - `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
 - `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
+- `WALK_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"`
+- `WALK_PHASES` = `8`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
@@ -120,6 +122,8 @@
 - `func face_step(step: Vector2i) -> void:`
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func update_for_cell() -> void:`
+- `func set_walk_phase(progress01: float) -> void:`
+- `func stop_walking() -> void:`
 
 ---
 
@@ -2654,7 +2658,7 @@ extends `SceneTree` · 226 lines
 
 ### `agent_frame_bake_spike.gd`
 
-extends `SceneTree` · 401 lines
+extends `SceneTree` · 471 lines
 
 `godot/scripts/tools/agent_frame_bake_spike.gd`
 
@@ -2676,6 +2680,9 @@ extends `SceneTree` · 401 lines
 - `SCALE_TOLERANCE_PX` = `0.25`
 - `MAX_WHITE_FRACTION` = `0.10`
 - `NORMAL_BAKE_SHADER_CODE` = `"""`
+
+**Public API**
+- `func expected_height_px_for(height_m: float) -> float:`
 
 ---
 
@@ -4606,7 +4613,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4882 lines
+extends `Node2D` · 4963 lines
 
 `godot/scripts/world/room.gd`
 

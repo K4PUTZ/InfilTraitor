@@ -82,8 +82,20 @@ const COVER_FULL_MULT   := 0.20   ## detection probability when in full cover
 const COVER_PARTIAL_MULT := 0.55  ## partial cover (only 1 adjacent blocked)
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
-## Duration per tile step — snappy tactical feel.
-const STEP_DURATION := 0.13
+
+## Seconds to cross one GU.
+##
+## ⚠️ 0.13 IS MEASURED AS 12.3 m/s AND IS NOT A SETTLED NUMBER — §9 #12. One GU
+## is 1.60 m (VOXELS_PER_UNIT_AXIS 8 x 0.20 m), so 0.13 s is faster than the
+## 100 m world record. It is not a bug: it was tuned for a 44x61 px vector
+## diamond with no legs to contradict it. Part 2 gave the agent legs, so the
+## number now has something to contradict it, and the Director is judging it
+## blind (`p3_step_bracket.py`).
+##
+## A `var`, not a `const`, for two reasons: architecture rule 1 says stats are
+## vars, and the bracket has to sweep it at runtime through the same field the
+## game uses rather than through a parallel test-only path.
+var step_duration: float = 0.13
 
 ## The body/head colours that used to sit here went with the placeholder they
 ## existed for — the "replaced by sprites in M3+" that POSTURE_COLORS' own
@@ -148,6 +160,15 @@ const SILHOUETTE_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.3)  ## semi-transparent
 const SILHOUETTE_OUTLINE_WIDTH := 1.5
 
 var _path_queue: Array[Vector2i] = []
+
+## Progress through the current GU, 0 to 1, tweened by _step_next(). The setter
+## is where it reaches the sprite: one walk cycle per GU means this value IS the
+## cycle phase, so there is nothing to convert.
+var _walk_progress: float = 0.0:
+	set(value):
+		_walk_progress = value
+		if sprite != null:
+			sprite.set_walk_phase(value)
 
 
 func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:
@@ -254,6 +275,8 @@ func move_along_path(path: Array[Vector2i]) -> void:
 func _step_next() -> void:
 	if _path_queue.is_empty():
 		is_moving = false
+		if sprite != null:
+			sprite.stop_walking()
 		move_finished.emit(cell)
 		queue_redraw()
 		return
@@ -271,11 +294,24 @@ func _step_next() -> void:
 
 	cell = next_cell  ## logical cell advances immediately
 
+	## LINEAR, not EASE_IN_OUT, and that is the second half of §9 #12.
+	## `_step_next()` builds a fresh tween PER TILE, so an eased one made a
+	## five-GU path into five accelerate-decelerate cycles. With a diamond that
+	## reads fine. With legs it is the direct obstacle to the Director's
+	## *"movimentos únicos"*: the walk cadence is driven by distance, so an eased
+	## step would make the feet speed up and stall inside every single tile while
+	## the body glided. Linear per tile, chained end to end, is one constant-speed
+	## walk across the whole path — which is what a walk cycle assumes.
 	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(self, "position", _cell_to_world(next_cell), STEP_DURATION)
-	tween.finished.connect(func() -> void:
+	tween.set_trans(Tween.TRANS_LINEAR)
+	tween.set_parallel(true)
+	tween.tween_property(self, "position", _cell_to_world(next_cell), step_duration)
+	## One walk cycle per GU (p3_walk_export.py derives it from stride vs GU), so
+	## the step's own progress IS the cycle phase, tweened alongside the position
+	## rather than accumulated — nothing to drift over a long path.
+	_walk_progress = 0.0
+	tween.tween_property(self, "_walk_progress", 1.0, step_duration)
+	tween.chain().tween_callback(func() -> void:
 		step_finished.emit(next_cell)
 		queue_redraw()
 		_step_next()

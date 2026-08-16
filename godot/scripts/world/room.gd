@@ -3516,6 +3516,83 @@ func _unhandled_input(event: InputEvent) -> void:
 ## age ~7× too fast per frame and the filmstrip would lie about the effect the
 ## Director is trying to judge. `--fixed-fps` pins every delta to 1/60 s and
 ## makes the strip a faithful 60 fps read of all three beats at once.
+## CHARACTER Part 3 / §9 #12 — every frame of ONE walk, at one step duration.
+##
+## Feeds `p3_step_bracket.py`, which runs this once per candidate duration and
+## assembles the panels blind. The duration is swept through `agent.step_duration`
+## — the same field the game reads — rather than through a test-only path, so what
+## the Director judges is the real movement code at a different number.
+##
+## `--fixed-fps 60` is MANDATORY here for the same reason build_filmstrip.py
+## states it: grabbing the viewport every frame is a GPU→CPU readback that drags
+## real frame time to a crawl, and the step tween advances on DELTA. Without the
+## pin, every panel would play at the capture's speed instead of its own, which
+## is precisely the quantity under judgement.
+func _capture_walk_filmstrip() -> void:
+	var ms_env := OS.get_environment("INFILTRAITOR_WALK_STEP_MS")
+	var step_ms: float = float(ms_env) if ms_env.is_valid_float() else 130.0
+	var gus_env := OS.get_environment("INFILTRAITOR_WALK_GUS")
+	var gus: int = gus_env.to_int() if gus_env.is_valid_int() else 4
+	var out_name := OS.get_environment("INFILTRAITOR_WALK_OUT")
+	if out_name == "":
+		out_name = "walk_%04dms" % int(step_ms)
+
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/walk/" + out_name
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("frame_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	## A straight, walkable run of `gus` tiles. Tried in a fixed order and the
+	## first clear one wins, so every duration in the bracket walks the SAME path
+	## — four panels crossing different geometry would compare scenery, not speed.
+	var path: Array[Vector2i] = []
+	for dir: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+		var candidate: Array[Vector2i] = [agent.cell]
+		var clear := true
+		for i in range(1, gus + 1):
+			var c: Vector2i = agent.cell + dir * i
+			if not _is_cell_inside_room(c) or _blocked_cells.has(c):
+				clear = false
+				break
+			candidate.append(c)
+		if clear:
+			path = candidate
+			break
+	if path.is_empty():
+		push_error("[P3-WALK] no clear %d-GU run from %s in any direction" % [gus, agent.cell])
+		return
+
+	agent.step_duration = step_ms / 1000.0
+	if _camera_controller != null:
+		## Framed on the MIDDLE of the run, not on the agent, so the camera never
+		## moves during the capture. A camera that tracks would hide exactly the
+		## thing being judged: how fast the figure crosses the ground.
+		_camera_controller.focus_on(agent._cell_to_world(path[int(path.size() / 2)]))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(agent.cell, 12)
+	for _s in range(60):
+		await get_tree().process_frame
+
+	## Total frames the move will occupy at the pinned 60 fps, plus a short tail
+	## so the last panel shows him STOPPED rather than cutting mid-stride.
+	var frame_count: int = int(ceil(float(gus) * step_ms / 1000.0 * 60.0)) + 12
+	print("[P3-WALK] %s: %d GUs at %.0f ms -> %.2f m/s, %d frames" % [
+		out_name, gus, step_ms, 1.60 / (step_ms / 1000.0), frame_count])
+
+	agent.move_along_path(path)
+	for i in range(frame_count):
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		if img == null:
+			push_error("[P3-WALK] null viewport image at frame %d" % i)
+			continue
+		img.save_png("%s/frame_%03d.png" % [out_dir, i])
+	print("[P3-WALK] wrote %d frames to %s" % [frame_count, out_dir])
+
+
 func _capture_detonation_filmstrip() -> void:
 	var frames_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_FRAMES")
 	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
@@ -4112,6 +4189,10 @@ func _run_auto_screenshot_capture() -> void:
 			await get_tree().process_frame
 	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:
 		await _capture_detonation_filmstrip()
+		get_tree().quit(0)
+		return
+	elif capture_action == "walk_filmstrip" and agent != null:
+		await _capture_walk_filmstrip()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

@@ -308,13 +308,21 @@ def _setup_preview_camera():
     return cam
 
 
-def _render_previews(written, facing):
+def _render_previews(written, facing, out_dir=None):
     """Render each EXPORTED GLB, not the scene that produced it.
+
+    `out_dir` is a parameter and not this module's SHEET_DIR because
+    p3_walk_export.py calls this too, and reading the global put the walk's eight
+    phase renders into the postures' folder — the third time in one session that
+    two producers shared one output path. A caller that writes somewhere else
+    says so.
 
     The distinction is the point: `export_apply` silently doing nothing, or the
     palette failing to survive the exporter (the bug that cost the mockup session
     a whole bake — p2's materialise_for_export), are both invisible to a render
     of the live scene and both obvious here."""
+    dest = out_dir if out_dir is not None else SHEET_DIR
+    os.makedirs(dest, exist_ok=True)
     heights = {}
     for name, path in written:
         bpy.ops.wm.read_homefile(use_empty=True)
@@ -342,7 +350,7 @@ def _render_previews(written, facing):
             pivot.rotation_euler = (0.0, 0.0, math.radians(yaw))
             bpy.context.view_layer.update()
             bpy.context.scene.render.filepath = os.path.join(
-                SHEET_DIR, "%s_%s.png" % (name, facing[yaw]))
+                dest, "%s_%s.png" % (name, facing[yaw]))
             bpy.ops.render.render(write_still=True)
         log("%s: rendered %d facings from the exported GLB, which measures "
             "%.3f m (%.2f voxels)"

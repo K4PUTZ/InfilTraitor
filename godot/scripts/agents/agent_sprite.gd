@@ -48,6 +48,13 @@ const FRAMES_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_fra
 ## near-black pass precisely so this variant would be one env var away
 ## (p1_agent_model.py, P1_JOINTS_YELLOW=1).
 const FRAMES_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"
+## The walk cycle, one directory per phase. ONE CYCLE PER GU is derived rather
+## than chosen (p3_walk_export.py): a full cycle is two footfalls, a ~1.9 m
+## figure's footfall is ~0.80 m, and a GU is 1.60 m exactly — so the foot plants
+## on the tile boundary, every tile. That is also why the phase can be read
+## straight off the step's progress with no accumulator to drift.
+const WALK_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"
+const WALK_PHASES := 8
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const DIRECTIONS := ["N", "E", "S", "W"]
 const YAW_BY_DIRECTION := {"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}
@@ -97,6 +104,10 @@ var room: Node = null
 var _base_facing: String = "N"
 var _posture: String = "standing"
 var _dev_vision: bool = false
+var _walk_ready: bool = false
+## -1 when standing still. Any other value is an index into the walk cycle, and
+## the sprite shows that phase instead of the posture's idle frame.
+var _walk_phase: int = -1
 
 ## "<posture>" / "<posture>:dev" -> {"color": {dir: Texture}, "normal": {...},
 ## "anchor": Vector2}. Keyed with the dev flag rather than held in a second
@@ -189,13 +200,33 @@ func _set_key(name: String, dev: bool) -> String:
 
 
 func _ensure_posture(name: String, dev: bool = false) -> bool:
-	var key := _set_key(name, dev)
-	if _sets.has(key):
-		return true
 	if not POSTURE_DIRS.has(name):
 		push_error("[AgentSprite] unknown posture '%s' — expected one of %s" % [name, POSTURE_DIRS.keys()])
 		return false
-	var dir: String = (FRAMES_ROOT_DEV if dev else FRAMES_ROOT) + String(POSTURE_DIRS[name]) + "/"
+	return _ensure_set(_set_key(name, dev),
+		(FRAMES_ROOT_DEV if dev else FRAMES_ROOT) + String(POSTURE_DIRS[name]) + "/")
+
+
+## Every walk phase at once. Loaded on the FIRST step rather than at setup, and
+## then kept: the agent walks constantly, so the second load would be pure churn,
+## but a scene that never moves him should not pay for 8 phases x 4 facings.
+func _ensure_walk() -> bool:
+	if _walk_ready:
+		return true
+	for i in range(WALK_PHASES):
+		if not _ensure_set(_walk_key(i), WALK_ROOT + "phase%02d/" % i):
+			return false
+	_walk_ready = true
+	return true
+
+
+func _walk_key(phase_index: int) -> String:
+	return "walk%02d" % phase_index
+
+
+func _ensure_set(key: String, dir: String) -> bool:
+	if _sets.has(key):
+		return true
 	var anchor := _load_anchor(dir)
 	if anchor == Vector2.ZERO:
 		return false
@@ -205,7 +236,7 @@ func _ensure_posture(name: String, dev: bool = false) -> bool:
 		var c := _load_texture_raw("%sframe_%s_color.png" % [dir, direction])
 		var n := _load_texture_raw("%sframe_%s_normal.png" % [dir, direction])
 		if c == null or n == null:
-			push_error("[AgentSprite] posture '%s' is missing frame %s in %s — run p3_posture_export.py then agent_frame_bake_spike.gd" % [name, direction, dir])
+			push_error("[AgentSprite] frame set '%s' is missing direction %s in %s — run the matching p3_*_export.py then agent_frame_bake_spike.gd" % [key, direction, dir])
 			return false
 		colors[direction] = c
 		normals[direction] = n
@@ -254,10 +285,53 @@ func _compose(a: String, b: String) -> String:
 	return "N"
 
 
-func _refresh() -> void:
-	var entry: Dictionary = _sets.get(_set_key(_posture, _dev_vision), {})
-	if entry.is_empty():
+## `progress01` is how far through the CURRENT GU the agent is, 0 to 1. Because
+## one cycle is one GU exactly, that is also the cycle phase — no accumulator, so
+## nothing can drift out of step over a long path.
+##
+## The walk exists for STANDING only. A crouched or prone agent showing a walking
+## silhouette would be worse than a sliding one, so those keep their idle frame
+## and slide; crouch-walk and crawl are their own poses and are not built.
+func set_walk_phase(progress01: float) -> void:
+	if _posture != "standing":
 		return
+	if not _ensure_walk():
+		return
+	var index := int(floor(fposmod(progress01, 1.0) * float(WALK_PHASES))) % WALK_PHASES
+	if index == _walk_phase:
+		return
+	_walk_phase = index
+	_refresh()
+
+
+## Back to the posture's idle frame. Called when a move finishes.
+func stop_walking() -> void:
+	if _walk_phase == -1:
+		return
+	_walk_phase = -1
+	_refresh()
+
+
+func _refresh() -> void:
+	if _walk_phase >= 0 and _posture == "standing":
+		## The walk has no DEV VISION bake — the joint tint is a debug aid and
+		## losing it for the duration of a step is better than not shipping the
+		## cycle. Stated rather than silent, because a dev overlay that flickers
+		## off during motion looks like a bug in the overlay.
+		var walk_entry: Dictionary = _sets.get(_walk_key(_walk_phase), {})
+		if not walk_entry.is_empty():
+			_apply(walk_entry)
+			return
+	var entry: Dictionary = _sets.get(_set_key(_posture, _dev_vision), {})
+	if not entry.is_empty():
+		_apply(entry)
+
+
+## Show one frame set at the current facing. The ANCHOR comes from the set, not
+## from the sprite: the bake recentres every model on its own AABB, so a walk
+## that bobs 6 px has a different feet-pixel per phase (228.17 / 226.81 / 225.18
+## …). Reusing one anchor across the cycle would cancel the bob exactly.
+func _apply(entry: Dictionary) -> void:
 	var view_facing := _compose(_base_facing, _inverse_perspective())
 	var colors: Dictionary = entry["color"]
 	if not colors.has(view_facing):

@@ -1,0 +1,30 @@
+{
+  "question": "CHARACTER_MASTER_PLAN \u00a79 #12 \u2014 seconds per GU",
+  "gu_m": 1.6,
+  "gus_walked": 4,
+  "seed": 20260816,
+  "shipping_value_ms": 130,
+  "panels": [
+    {
+      "label": "A",
+      "step_ms": 950,
+      "speed_m_s": 1.68
+    },
+    {
+      "label": "B",
+      "step_ms": 560,
+      "speed_m_s": 2.86
+    },
+    {
+      "label": "C",
+      "step_ms": 130,
+      "speed_m_s": 12.31
+    },
+    {
+      "label": "D",
+      "step_ms": 320,
+      "speed_m_s": 5.0
+    }
+  ],
+  "method": "blind labels, randomised under a fixed seed with the slowest not last, judged on a figure with an authored distance-driven walk cycle"
+}

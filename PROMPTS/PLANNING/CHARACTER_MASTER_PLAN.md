@@ -1158,6 +1158,86 @@ invisible and a `push_warning` naming the two scripts that rebuild him. The
 guards are still red vector diamonds; that is Part 7, and the contrast on screen
 is now obvious.
 
+### 🟡 THE WALK CYCLE — BUILT 2026-08-16. Awaiting the Director's blind verdict.
+
+`p3_walk_export.py` → `agent_frame_bake_spike.gd` (manifest mode) →
+`AgentSprite.set_walk_phase()`. **8 phases × 4 facings**, and the agent walks
+them in the real game. Evidence: `Screenshots/history/p3_step_bracket_sheet.png`.
+
+**ONE CYCLE PER GU, DERIVED FROM THE GRID RATHER THAN TUNED ONTO IT.** A full
+walk cycle is two footfalls; a ~1.9 m figure's footfall is ~0.80 m, so a cycle
+covers ~1.60 m — and a GU is 1.60 m exactly. The foot therefore plants on the
+tile boundary, every tile, and the cycle phase is just the step's own progress
+with no accumulator to drift over a long path. It is also the correction to
+`s2_corner_render.py`'s `STRIDE_M = 0.80`, which took four footfalls per GU
+against a real figure's two — the defect that left the corner result PROVISIONAL.
+
+**Two fixes to `agent.gd`'s movement, both of them §9 #12's second half:**
+- `_step_next()` built a fresh **`EASE_IN_OUT`** tween per tile, so a five-GU
+  path was five accelerate-decelerate cycles. Harmless under a diamond; with a
+  distance-driven walk it makes the feet stall inside every tile while the body
+  glides. Now **LINEAR**, chained — one constant-speed walk across the path,
+  which is the Director's *"movimentos únicos"*.
+- `STEP_DURATION` is now `step_duration`, a **`var`** — architecture rule 1, and
+  the bracket has to sweep it through the field the game actually reads.
+
+**The knee bug, and why it is worth recording.** The first cycle drove the knee
+from the thigh's POSITION (`max(0, -sin)`), which leaves BOTH knees straight
+whenever the legs pass through vertical — so phase 0 and phase 4 of 8 came out
+**byte-identical** and the cycle silently collapsed into two identical
+half-cycles. That is `s2_corner_render.py`'s four-footfalls defect reached from
+the other direction. `cos` is the derivative of `sin`, so `max(0, cos)` is *"this
+is the leg swinging forward"* — the leg whose knee bends to clear the ground.
+Fixed, and verified by hashing: **8 distinct frames of 8**.
+
+**The bake now takes a MANIFEST.** `AGENT_BAKE_MANIFEST=<manifest.json>` bakes a
+whole sequence in one windowed boot instead of one boot per phase, and each entry
+carries its own **measured** height — which is the only way the height gate
+survives a sequence, because a walk bobs: the phases measure 9.72 to 10.02
+voxels, 6 px of bob at ship scale. Each phase also keeps its **own anchor**
+(228.17 / 226.81 / 225.18 …); reusing one across the cycle would cancel the bob
+exactly.
+
+**The walk is STANDING-only, stated rather than silent.** A crouched or prone
+agent showing a walking silhouette would be worse than a sliding one, so those
+keep their idle frame. Crouch-walk and crawl are their own poses and are not
+built. The walk also has no DEV VISION bake, so the yellow joints drop out for
+the duration of a step.
+
+**8 phases is NOT a ratified number.** It is the walk's counterpart of D46's
+in-between count and deserves its own blind bracket once the duration is settled.
+Eight is the classic walk-cycle count and reads at this figure's ship size.
+
+### 🟡 §9 #12 — the step duration, BLIND BRACKET DELIVERED 2026-08-16
+
+`p3_step_bracket.py` + room.gd's `walk_filmstrip` capture action. Four durations,
+each a real walk through the game's own movement code at `--fixed-fps 60`:
+
+| Blind | ms per GU | speed |
+|---|---:|---:|
+| A | 950 | 1.7 m/s |
+| B | 560 | 2.9 m/s |
+| C | **130** *(ships today)* | **12.3 m/s** |
+| D | 320 | 5.0 m/s |
+
+Evidence: `Screenshots/history/p3_step_bracket_blind.mp4` (untracked per
+`.gitignore:27`, regenerable from tracked sources), the still
+`p3_step_bracket_sheet.png`, and the tracked key `p3_step_bracket_blind_KEY.json`.
+
+**Every method rule here was paid for by the turn test.** The range is bracketed
+on BOTH sides — 130 ms is in the set precisely because it is indefensible, and
+950 ms because it is probably sluggish for a tactical game; labels are blind and
+the order randomised under a fixed seed; **the slowest is not last**; and,
+crucially, **the figure has legs**. That last one is the turn test's objection 3
+applied before the fact instead of after: a slide contains no discrete beat, so a
+sliding walk could only ever produce another monotonic preference. The walk cycle
+is distance-driven, so one asset is correct at every duration tested and nothing
+in the instrument presupposes the answer.
+
+**How to read the result:** a pick in the MIDDLE (B or D) is a real optimum. A
+pick at either END means the range still is not bracketed and this has to run
+again, wider — the same conclusion the turn test's first pass reached.
+
 ### What Part 1 delivered, and what of it survives D48
 
 `tools/asset_generation/p1_agent_model.py` — 20 bones, 36 rigid parts, 2432
@@ -1317,7 +1397,12 @@ the sculpt settles the hat's height deliberately instead of inheriting it.
 read correctly from `CAM_FRONT` and mirrored from `CAM_GAME`. Fine in an
 interactive session where the viewport orbits freely; noted so it is not
 mistaken for a bug.
-12. **`agent.gd`'s `STEP_DURATION` is 12.3 m/s** — measured 2026-08-15. One GU is
+12. 🟡 **BRACKETED AND DELIVERED 2026-08-16, awaiting the verdict** — see the
+    section above. Both halves of the finding are addressed: the duration is out
+    for blind judgement at 130 / 320 / 560 / 950 ms, and the per-tile
+    `EASE_IN_OUT` tween is already replaced by a chained LINEAR one. Original
+    text kept, because the measurement is what made it a question:
+    **`agent.gd`'s `STEP_DURATION` is 12.3 m/s** — measured 2026-08-15. One GU is
     1.60 m (`VOXELS_PER_UNIT_AXIS` 8 × 0.20 m) and the constant is 0.13 s, which
     is faster than the 100 m world record. Not a bug: it is a *"snappy tactical
     feel"* tuned for a 44×61 px vector diamond with no legs to contradict it. It

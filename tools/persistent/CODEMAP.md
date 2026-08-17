@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 59031 lines total** (under `godot/scripts/`)
+**208 scripts · 59068 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -157,7 +157,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1148 lines
+`class_name GuardEnemy` · extends `Node2D` · 1185 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -232,13 +232,6 @@
 - `func pick_next_patrol_cell( occupied_cells: Dictionary, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> Vector2i:`
 - `func move_to_cell_animated( new_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> void:`
 - `func move_along_path(path: Array[Vector2i]) -> void:`
-- `func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary) -> bool:`
-- `func receive_alert(known_cell: Vector2i, target_state: String) -> void:`
-- `func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:`
-- `func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:`
-- `func tick_state() -> void:`
-- `func choose_next_cell( occupied_cells: Dictionary, blocked_cells: Dictionary, blocked_edges: Dictionary, player_cell: Vector2i, room_size: Vector2i ) -> Vector2i:`
-- `func attach_sprite(p_room: Node) -> bool:`
 
 ---
 

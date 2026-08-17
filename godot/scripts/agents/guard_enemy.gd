@@ -204,17 +204,28 @@ func _process(delta: float) -> void:
 	## Body follows facing_angle_deg (discrete → continuous)
 	body_angle = _rotate_towards(body_angle, deg_to_rad(facing_angle_deg), TURN_SPEED, delta)
 
-	## Head/vision: follows the body by default, diverges with active attention
+	## Head/vision: follows the body by default, diverges with active attention.
+	##
+	## CONE-ANGLE-01 (Director, 2026-08-17: "o ângulo da orientação do inimigo
+	## parece estar deslocado 90° em relação ao overlay de detecção no chão").
+	## `vision_angle` is a GRID angle — 0 = North, the same convention as
+	## `facing_angle_deg`, `body_angle`, `_get_cone_tiles()`'s real detection test
+	## and `_draw()`'s nose line. It used to become a SCREEN angle here
+	## (`to_focus.angle()`, 0 = +X) while staying a grid angle on the default
+	## branch, and both draw functions then applied one fixed `+ 90.0` — which
+	## can be right for at most one of the two spaces and was wrong for the
+	## common one, drawing the cone a quarter-turn off the direction the guard
+	## actually sees in.
+	##
+	## Fixed by never leaving grid space: the attention target is a CELL, so the
+	## grid delta is available directly and needs no screen round-trip (which in
+	## an isometric projection is not a rotation at all — the 128/64 tile ratio
+	## makes it a non-uniform transform, so no constant offset could undo it).
 	var target_vision := body_angle
-	if attention.active() and is_instance_valid(floor_layer):
-		var target_world_pos: Vector2 = floor_layer.map_to_local(attention.target_cell) + visual_offset
-		var to_focus: Vector2 = (target_world_pos - position)
-		if to_focus.length_squared() > 1.0:
-			target_vision = to_focus.angle()
-			## In Godot's 2D isometric space, angle 0 rad is RIGHT (+X), PI/2 is DOWN (+Y).
-			## Our grid logical angle 0 deg is UP (-Y grid).
-			## to_focus.angle() gives us the visual angle in the Room (isometric).
-			## This is correct because vision_angle is used purely for visual drawing.
+	if attention.active():
+		var grid_delta: Vector2i = attention.target_cell - cell
+		if grid_delta != Vector2i.ZERO:
+			target_vision = atan2(float(grid_delta.x), float(-grid_delta.y))
 
 	vision_angle = _rotate_towards(vision_angle, target_vision, TURN_SPEED * 1.35, delta)
 
@@ -474,6 +485,25 @@ func _snap_to_8dir(v: Vector2i) -> Vector2i:
 	return Vector2i(sx, sy)
 
 
+## FACING-SYNC-01 (Director, 2026-08-17: "o ângulo da orientação do inimigo
+## parece estar deslocado 90° em relação ao overlay de detecção no chão").
+##
+## The baked figure had NO facing update after attach_sprite()'s single
+## `sprite.face_direction(facing)` — the body stayed frozen at whatever
+## direction the guard was born with (`facing` defaults to Vector2i.UP) while
+## `facing_angle_deg` -> `body_angle` -> `vision_angle` kept driving the cone
+## around the patrol route. The mismatch the Director measured as 90° is that
+## freeze, read at one moment of one route; it is not a constant offset.
+##
+## The player agent never had this bug because agent.gd calls
+## `sprite.face_step()` on every step. This is the guard's equivalent, placed on
+## the two funnels every `facing` write already passes through, so a future
+## caller that sets `facing` cannot forget it.
+func _sync_sprite_facing() -> void:
+	if sprite != null:
+		sprite.face_direction(facing)
+
+
 func _update_facing_angle() -> void:
 	if facing == Vector2i.UP:           facing_angle_deg = 0.0    ## N
 	elif facing == Vector2i(1, -1):     facing_angle_deg = 45.0   ## NE
@@ -483,6 +513,7 @@ func _update_facing_angle() -> void:
 	elif facing == Vector2i(-1, 1):     facing_angle_deg = 225.0  ## SW
 	elif facing == Vector2i.LEFT:       facing_angle_deg = 270.0  ## W
 	elif facing == Vector2i(-1, -1):    facing_angle_deg = 315.0  ## NW
+	_sync_sprite_facing()
 
 
 func _update_facing_from_angle() -> void:
@@ -504,6 +535,7 @@ func _update_facing_from_angle() -> void:
 			facing = Vector2i.LEFT
 		315:
 			facing = Vector2i(-1, -1)
+	_sync_sprite_facing()  ## FACING-SYNC-01 — see _sync_sprite_facing()
 	queue_redraw()
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
 	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
@@ -955,7 +987,12 @@ func _step_toward(
 func _draw_vision_tiles() -> void:
 	## Vision cone colored by probability — tile-by-tile (MUL blending)
 	var params: Dictionary = _get_cone_visual_params()
-	var visual_facing_deg := wrapf(rad_to_deg(vision_angle) + 90.0, 0.0, 360.0)
+	## CONE-ANGLE-01: no `+ 90.0`. `vision_angle` is a grid angle and
+	## _get_cone_tiles() reads grid angles — the offset made this overlay paint a
+	## cone a quarter-turn away from the tiles the guard can actually see, since
+	## the real detection call passes no facing at all and falls back to
+	## `facing_angle_deg`. The dev overlay was contradicting the gameplay.
+	var visual_facing_deg := wrapf(rad_to_deg(vision_angle), 0.0, 360.0)
 
 	var alpha_mult: float = params["alpha"]
 	var cone_tiles  := _get_cone_tiles(params["range"], fov_degrees, visual_facing_deg)
@@ -988,7 +1025,7 @@ func _draw_vision_tiles() -> void:
 func _draw_vision_smooth() -> void:
 	var params: Dictionary = _get_cone_visual_params()
 	var v_fov: float  = params["fov"]
-	var visual_facing_deg := wrapf(rad_to_deg(vision_angle) + 90.0, 0.0, 360.0)
+	var visual_facing_deg := wrapf(rad_to_deg(vision_angle), 0.0, 360.0)  ## CONE-ANGLE-01
 
 	var points := PackedVector2Array()
 	var colors  := PackedColorArray()

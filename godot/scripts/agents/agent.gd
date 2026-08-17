@@ -85,17 +85,24 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 ## Seconds to cross one GU.
 ##
-## ⚠️ 0.13 IS MEASURED AS 12.3 m/s AND IS NOT A SETTLED NUMBER — §9 #12. One GU
-## is 1.60 m (VOXELS_PER_UNIT_AXIS 8 x 0.20 m), so 0.13 s is faster than the
-## 100 m world record. It is not a bug: it was tuned for a 44x61 px vector
-## diamond with no legs to contradict it. Part 2 gave the agent legs, so the
-## number now has something to contradict it, and the Director is judging it
-## blind (`p3_step_bracket.py`).
+## ✅ SETTLED 2026-08-16 by blind judgement — §9 #12. **0.56 s per GU = 2.86 m/s.**
+## Director, on `p3_step_bracket_blind.mp4`: *"o ritmo é o B mesmo"*, B being the
+## 560 ms panel, chosen against 130 / 320 / 950 ms with the labels blind, the
+## order seeded, and the slowest deliberately not last.
 ##
-## A `var`, not a `const`, for two reasons: architecture rule 1 says stats are
-## vars, and the bracket has to sweep it at runtime through the same field the
-## game uses rather than through a parallel test-only path.
-var step_duration: float = 0.13
+## **The pick was INTERIOR to the range** — 320 ms was faster and 950 ms slower,
+## and both were rejected — which is what a real optimum looks like and what
+## neither position bias nor "more is always better" can produce. The range did
+## not need re-running wider.
+##
+## What it replaces: 0.13 s, which over a 1.60 m GU (VOXELS_PER_UNIT_AXIS 8 x
+## 0.20 m) is **12.3 m/s — faster than the 100 m world record**. That was never a
+## bug; it was tuned for a 44x61 px vector diamond with no legs to contradict it.
+## Part 2 gave the agent legs and the number stopped surviving contact with them.
+##
+## A `var`, not a `const`: architecture rule 1 says stats are vars, and the
+## bracket sweeps this exact field rather than a parallel test-only path.
+var step_duration: float = 0.56
 
 ## The body/head colours that used to sit here went with the placeholder they
 ## existed for — the "replaced by sprites in M3+" that POSTURE_COLORS' own

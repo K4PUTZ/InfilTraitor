@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58724 lines total** (under `godot/scripts/`)
+**208 scripts · 58731 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 377 lines
+`class_name DebugAgent` · extends `Node2D` · 384 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -68,7 +68,7 @@
 - `var sprite: AgentSprite = null`
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
-- `var step_duration: float = 0.13`
+- `var step_duration: float = 0.56`
 
 **Public API**
 - `func throw_origin() -> Vector2:`

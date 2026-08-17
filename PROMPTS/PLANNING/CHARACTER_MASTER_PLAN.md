@@ -1208,7 +1208,81 @@ the duration of a step.
 in-between count and deserves its own blind bracket once the duration is settled.
 Eight is the classic walk-cycle count and reads at this figure's ship size.
 
-### 🟡 §9 #12 — the step duration, BLIND BRACKET DELIVERED 2026-08-16
+### ✅ §9 #12 — THE STEP DURATION IS SETTLED: **0.56 s per GU, 2.86 m/s**
+
+Director, 2026-08-16, on the blind bracket: *"o ritmo é o B mesmo."* B was the
+**560 ms** panel. Applied to `agent.gd::step_duration`, replacing the 0.13 s that
+measured 12.3 m/s.
+
+**The pick was INTERIOR to the range** — 320 ms was faster and 950 ms slower, and
+both were rejected — which is what a real optimum looks like and what neither
+position bias nor "more is always better" can produce. Unlike the turn test's
+first pass, this range did not need re-running wider.
+
+The same message reported three defects, and all three were real. See the
+correction section below.
+
+### 🔴 THREE DEFECTS THE SAME JUDGEMENT EXPOSED — fixed 2026-08-16
+
+*"Ele está andando de costas e dobrando a perna errado. O crouch e o rastejo
+também estão esquisitos, provavelmente você precisa mudar a orientação."*
+
+The Director's diagnosis was right about the cause and right to group them; the
+grouping was only partly right about which posture had which fault.
+
+**1. The facing was 180° out on the E/W axis.** The hand-written step→frame table
+read the bake's frame names as compass directions. They are not: the bake names
+its frames after the room PERSPECTIVE it renders, and `measure_facings()` had
+already MEASURED yaw 0/90/180/270 as drawing NE/NW/SW/SE. So frame `"E"` draws
+the figure facing screen NW while step (1,0) moves him screen SE. `AgentSprite`
+now **derives** the table from the real `TileMapLayer` through `map_to_local` and
+scores it against the glossary's screen compass — all four fit at **1.000**, and
+(1,0) resolves to frame `W`. It loud-fails if two steps ever collapse onto one
+facing.
+
+**2. `face_step` composed the perspective with the wrong sign.** §4.6 makes the
+screen yaw `facing − perspective`, so recovering the base facing is
+`view + perspective`; it subtracted in both directions. Invisible at the default
+N perspective — which is every frame the bracket captured — and wrong by twice
+the rotation the moment the room turns.
+
+**3. The walk moonwalked, and no angle tuning could have fixed it.** Measured:
+the planted foot moved backward from phase 0 to 0.25 and then **forward** from
+0.25 to 0.5 with its z on the floor. *"The planted foot moves backward"* is a
+property of the foot's **path**, which joint angles only satisfy by coincidence.
+The walk is now solved from an authored foot trajectory — stance is a straight
+backward line, swing a lifted arc — through the **same two-bone IK the grips
+use**, generalised with a `chain` parameter rather than copied. **The hip drop is
+solved as the least that brings both ankles into reach, and that is now where the
+bob comes from** instead of a spine wiggle unrelated to the stride. New gate: the
+planted foot must never advance. It measures a flat **−0.200 m per phase**, four
+phases, then swaps feet — 8 × 0.200 = **1.60 m = STRIDE_M exactly**.
+
+**4. Prone was face-planting, and the height band was structurally blind to it** —
+a figure lying flat and a figure with its feet in the air are the same HEIGHT.
+Measured, the old pose put the head crown at **z=+0.102** with the hips at +0.333
+and the **feet at +0.404**: feet highest, head lowest. An exact −90° pitch makes
+the legs lie flat with no rotation at all (feet and hips both +0.178) and a
+*positive* neck/head lifts the face to **+0.392**. Three new gates now run on the
+solved pose of every posture: the crown is above the hips, no foot floats above
+the hips, and a lying figure is flat rather than piked.
+
+**One nuance worth keeping, because it corrects the Director's grouping:** the
+static crouch and prone captures were taken at the DEFAULT facing and never
+called `face_step`, so defect 1 did not affect them. Prone was independently
+broken (defect 4). The crouch's remaining oddity is its DEPTH, not its
+orientation — see below.
+
+### 🟡 The crouch's depth is the open one
+
+It ships at **5.60 voxels**, the centre of §4.7's 5.0–6.2 band. Probed
+2026-08-16: with the legs alone and the torso upright this rig reaches **6.17
+voxels at thigh −130 and 5.62 at −150**, so the whole band is available and the
+choice is purely how deep the crouch reads. At 5.60 the thighs are horizontal and
+the shins fold underneath, which reads closer to kneeling than to a tactical
+crouch. 6.10 is one constant away and still in spec.
+
+### (superseded) The bracket as delivered
 
 `p3_step_bracket.py` + room.gd's `walk_filmstrip` capture action. Four durations,
 each a real walk through the game's own movement code at `--fixed-fps 60`:
@@ -1397,11 +1471,11 @@ the sculpt settles the hat's height deliberately instead of inheriting it.
 read correctly from `CAM_FRONT` and mirrored from `CAM_GAME`. Fine in an
 interactive session where the viewport orbits freely; noted so it is not
 mistaken for a bug.
-12. 🟡 **BRACKETED AND DELIVERED 2026-08-16, awaiting the verdict** — see the
-    section above. Both halves of the finding are addressed: the duration is out
-    for blind judgement at 130 / 320 / 560 / 950 ms, and the per-tile
-    `EASE_IN_OUT` tween is already replaced by a chained LINEAR one. Original
-    text kept, because the measurement is what made it a question:
+12. ✅ **RESOLVED 2026-08-16 — 0.56 s per GU (2.86 m/s)**, settled by blind
+    judgement with the pick INTERIOR to the range. Both halves of the finding are
+    closed: the duration is applied to `agent.gd::step_duration`, and the
+    per-tile `EASE_IN_OUT` tween is a chained LINEAR one. Original text kept,
+    because the measurement is what made it a question:
     **`agent.gd`'s `STEP_DURATION` is 12.3 m/s** — measured 2026-08-15. One GU is
     1.60 m (`VOXELS_PER_UNIT_AXIS` 8 × 0.20 m) and the constant is 0.13 s, which
     is faster than the 100 m world record. Not a bug: it is a *"snappy tactical

@@ -41,6 +41,34 @@
 class_name AgentSprite
 extends Sprite2D
 
+## ============================================================================
+## 🚧 MOVEMENT MILESTONE — Director, 2026-08-16:
+##    *"Pode fazer todos os bakes só com a variante DEV por enquanto. Vamos
+##    fazer uma milestone só de movimentação, e só depois no final voltamos com
+##    o personagem normal."*
+##
+## While this is true, EVERY frame set resolves to the yellow-joint bake,
+## whatever the DEV VISION toggle says. That is deliberate and it is not a
+## convenience: baking one variant instead of two halves the cost of every
+## iteration, and the joints are the better instrument for judging motion — a
+## near-black figure hides its own articulation, which is the whole thing a walk
+## has to be judged on.
+##
+## IT FORCES THE ROUTE RATHER THAN FALLING BACK, and the difference is the point.
+## A silent "use dev if normal is missing" would let the normal bakes go STALE
+## while still rendering: iterate on the walk, re-bake only dev, and the normal
+## set keeps playing the OLD motion until someone flips the toggle weeks later
+## and sees animation nobody wrote. Routing everything through one root means the
+## normal frames are never shown, so they can never be quietly wrong.
+##
+## ⚠️ TO END THE MILESTONE: set this to false, then re-run BOTH variants —
+##    p3_posture_export.py and p3_walk_export.py with P3_DEV_ONLY=0, each
+##    followed by agent_frame_bake_spike.gd on the manifest it writes. The normal
+##    bakes on disk are older than the dev ones by construction; do not trust
+##    them.
+## ============================================================================
+const DEV_ONLY_MILESTONE := true
+
 const FRAMES_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
 ## The same three postures with only the `joint` material recoloured. Two bakes
 ## rather than a shader tint because the shader has no channel that says "this
@@ -182,6 +210,13 @@ func setup(p_room: Node) -> bool:
 	_material.set_shader_parameter("outline_width", 0.0)
 	material = _material
 
+	if DEV_ONLY_MILESTONE:
+		## Loud on purpose. A build that silently ships a debug-tinted character
+		## is a worse outcome than a noisy log during the milestone that asked
+		## for it.
+		push_warning("[AgentSprite] MOVEMENT MILESTONE: every frame set is the "
+			+ "yellow-joint DEV bake. Set DEV_ONLY_MILESTONE=false and re-bake "
+			+ "both variants to ship the normal character.")
 	if not _ensure_posture("standing"):
 		return false
 	if not _derive_frame_by_step():
@@ -291,12 +326,22 @@ func _set_key(name: String, dev: bool) -> String:
 	return name + (":dev" if dev else "")
 
 
+## The single seam the milestone switch acts on. Both roots go through here, so
+## there is exactly one place to look when asking "which bake am I seeing".
+func _posture_root(dev: bool) -> String:
+	return FRAMES_ROOT_DEV if (dev or DEV_ONLY_MILESTONE) else FRAMES_ROOT
+
+
+func _walk_root(dev: bool) -> String:
+	return WALK_ROOT_DEV if (dev or DEV_ONLY_MILESTONE) else WALK_ROOT
+
+
 func _ensure_posture(name: String, dev: bool = false) -> bool:
 	if not POSTURE_DIRS.has(name):
 		push_error("[AgentSprite] unknown posture '%s' — expected one of %s" % [name, POSTURE_DIRS.keys()])
 		return false
 	return _ensure_set(_set_key(name, dev),
-		(FRAMES_ROOT_DEV if dev else FRAMES_ROOT) + String(POSTURE_DIRS[name]) + "/")
+		_posture_root(dev) + String(POSTURE_DIRS[name]) + "/")
 
 
 ## Every walk phase at once. Loaded on the FIRST step rather than at setup, and
@@ -305,7 +350,7 @@ func _ensure_posture(name: String, dev: bool = false) -> bool:
 func _ensure_walk(dev: bool) -> bool:
 	if _walk_ready.get(dev, false):
 		return true
-	var root: String = WALK_ROOT_DEV if dev else WALK_ROOT
+	var root: String = _walk_root(dev)
 	if _walk_phases == 0:
 		var dir := DirAccess.open(root)
 		if dir == null:

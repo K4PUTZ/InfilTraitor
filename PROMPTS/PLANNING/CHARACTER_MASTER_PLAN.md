@@ -1272,6 +1272,47 @@ by frame, which is exactly what a walk needs to be judged on.
 `agent_frames_dev`. Two spellings of one idea is how a lookup quietly misses, so
 the walk now writes `_dev` too.
 
+### 🚧 MOVEMENT MILESTONE — dev-only bakes, 2026-08-16
+
+Director: *"Pode fazer todos os bakes só com a variante DEV por enquanto. Vamos
+fazer uma milestone só de movimentação, e só depois no final voltamos com o
+personagem normal."*
+
+Every bake is the yellow-joint variant until the milestone closes. Two switches,
+and **they have to flip together**:
+
+| Where | Switch | Effect |
+|---|---|---|
+| `AgentSprite` | `DEV_ONLY_MILESTONE := true` | every frame set resolves to a `_dev` root, whatever the DEV VISION toggle says |
+| `p3_posture_export.py` | `P3_DEV_ONLY` (defaults `1`) | `P2_MODEL` defaults to `agent_base_devjoints`, so no run can forget |
+
+**It FORCES the route rather than falling back, and that is the whole design.** A
+silent *"use dev if normal is missing"* would let the normal bakes go **stale
+while still rendering**: iterate the walk, re-bake only dev, and the normal set
+keeps playing motion nobody wrote until someone flips the toggle weeks later.
+Routing everything through one root means the normal frames are never shown, so
+they can never be quietly wrong. `AgentSprite.setup()` `push_warning`s once per
+load so a build cannot ship debug-tinted by accident.
+
+**Verified rather than assumed:** captured with the DEV VISION toggle explicitly
+**OFF**, the figure still measures **669 yellow-joint pixels** (mean RGB
+95, 86, 11). The routing overrides the toggle, which is exactly the claim.
+
+**⚠️ TO CLOSE THE MILESTONE:** flip `DEV_ONLY_MILESTONE` to `false`, then re-run
+`p3_posture_export.py` and `p3_walk_export.py` with `P3_DEV_ONLY=0`, each
+followed by `agent_frame_bake_spike.gd` on the manifest it writes. **The normal
+bakes on disk are older than the dev ones by construction — do not trust them.**
+
+One consequence to keep in view: the phase-count bracket and everything else
+judged during this milestone is judged on the *tinted* figure. That is an
+improvement for motion (the joints make articulation separable) and it is not a
+substitute for judging the shipping look, which returns at the end.
+
+One import-order hazard is recorded because it fails silently and with plausible
+filenames: `p2_grip_spike` reads `P2_MODEL` at **import** time, so
+`p3_posture_export` must be imported *before* it. `p3_walk_export.py` now states
+that in the import block rather than relying on luck.
+
 ### ✅ §9 #12 — THE STEP DURATION IS SETTLED: **0.56 s per GU, 2.86 m/s**
 
 Director, 2026-08-16, on the blind bracket: *"o ritmo é o B mesmo."* B was the

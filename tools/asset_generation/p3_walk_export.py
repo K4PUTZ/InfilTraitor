@@ -41,8 +41,12 @@ import bpy
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import p2_grip_spike as p2                                       # noqa: E402
+# ORDER MATTERS: p3_posture_export sets P2_MODEL for the movement milestone
+# (P3_DEV_ONLY) and p2_grip_spike reads it at IMPORT time to build its .blend
+# path. Importing p2 first would resolve the model before the milestone had a
+# say — and it would fail silently, with plausible filenames.
 import p3_posture_export as p3                                   # noqa: E402
+import p2_grip_spike as p2                                       # noqa: E402
 
 GRIP = os.environ.get("P3_GRIP", "lowered")
 WEAPON = os.environ.get("P3_WEAPON", "shotgun")

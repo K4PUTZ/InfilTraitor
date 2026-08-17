@@ -57,6 +57,23 @@ import bpy
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# --- 🚧 MOVEMENT MILESTONE, Director 2026-08-16 -------------------------------
+# *"Pode fazer todos os bakes só com a variante DEV por enquanto. Vamos fazer uma
+# milestone só de movimentação, e só depois no final voltamos com o personagem
+# normal."*
+#
+# So the DEFAULT model is the yellow-joint one. Set P3_DEV_ONLY=0 to author the
+# normal character again — that is the same switch `AgentSprite.DEV_ONLY_MILESTONE`
+# names, and both have to flip together at the end of the milestone.
+#
+# This must run BEFORE p2_grip_spike is imported: it reads P2_MODEL at import
+# time to build the .blend path, so setting the environment afterwards would pick
+# the model up one run too late — silently, and with the right filenames.
+DEV_ONLY = os.environ.get("P3_DEV_ONLY", "1") == "1"
+if DEV_ONLY and "P2_MODEL" not in os.environ:
+    os.environ["P2_MODEL"] = "agent_base_devjoints"
+
 import p2_grip_spike as p2                                       # noqa: E402
 
 GRIP = os.environ.get("P3_GRIP", "lowered")

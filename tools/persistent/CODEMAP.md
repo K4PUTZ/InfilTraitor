@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58779 lines total** (under `godot/scripts/`)
+**208 scripts · 58824 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,13 +87,14 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 517 lines
+`class_name AgentSprite` · extends `Sprite2D` · 562 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
 > CHARACTER_MASTER_PLAN Part 2 §10 — the baked figure ON the playable agent. This is the node that closes Part 2. `AgentProbeProp` put the figure in the room to be LOOKED at; this one puts it on the thing the player moves, which is the difference §10 draws between "the pipeline works" and done. It is a child of `DebugAgent` rather than a replacement for it, because the agent is a Node2D that owns grid state, tweening and signals, and none of that wants to become a Sprite2D. The agent keeps position; this keeps appearance. --- FOUR THINGS IT DOES THAT THE PROBE DOES NOT --- 1. THREE POSTURES, EACH ITS OWN BAKE WITH ITS OWN ANCHOR. The placeholder it replaces drew three shapes; a single standing sprite would have been a regression, not a swap. The anchors are NOT shared: the bake recentres each model on its own AABB, so the pixel its feet land on differs per posture (standing 227.99, crouch 184.00, prone 156.74 — measured, and read from each posture's own anchor.json rather than transcribed). 2. FACING, SNAPPED AT THE GU BOUNDARY (D47). Ordinary movement changes facing with no transition frames — the Director judged that blind on 2026-08-15, and it is the row that keeps the art budget at 744 body sets instead of 4608. So the facing is set once per step, from the step's own direction, and nothing interpolates. 3. FACING IS STORED IN BASE SPACE, NOT VIEW SPACE. A perspective flip rotates the room; an agent facing a wall must still face that wall afterwards. The cell round-trip through `_cell_to_base` already exists for exactly this reason and the facing has to make the same trip, or the figure would silently turn 90 degrees every time the Director rotated the view. 4. POSTURE FRAME SETS LOAD ON FIRST USE. D42 names RAM, not CPU, as this character's binding constraint. A session where the agent never goes prone should not pay for the prone bake. Everything else — the relight shader, the perspective-aware light mapping (D22), the ground-contact anchoring, the raw-PNG loader — is `AgentProbeProp`'s behaviour, and the duplication between the two files is real and known. The probe stays the single-pose bracket rig it was built as; this is the shipping path.
 
 **Constants / tuning**
+- `DEV_ONLY_MILESTONE` = `true`
 - `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
 - `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
 - `WALK_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"`

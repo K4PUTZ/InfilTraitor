@@ -10,10 +10,19 @@
 ## GDScript has no in-process hook to catch its own script errors, so the
 ## arbiter has to sit OUTSIDE the Godot process — the same reasoning
 ## project_lint.py already applies to parse/compile errors. This runner
-## executes a selftest and fails it if EITHER:
+## executes a selftest and fails it if ANY of:
 ##   - the process exits non-zero (the selftest's own fail counter), OR
 ##   - any "SCRIPT ERROR" line appears in the combined output (runtime
-##     script errors included, which the bare run silently survives).
+##     script errors included, which the bare run silently survives), OR
+##   - anything is still alive at exit — "ObjectDB instances leaked at exit"
+##     or "resources still in use at exit" (LEAK-GATE-01, 2026-08-17), OR
+##   - the engine crashes during teardown (Main::cleanup).
+##
+## The last two were added the day the Slab/Voxel reference cycle was fixed.
+## Both symptoms had been printing on real runs for months — one ignored by
+## this runner, one tolerated by it as "engine cleanup, not the suite" — and
+## between them they hid a leak costing 301 MB per map build. A check the
+## arbiter declines to enforce is not a check.
 ##
 ## push_error() output ("ERROR: ...") is deliberately NOT a failure signal:
 ## loud-fail selftests (B6) exercise push_error paths on purpose. A SCRIPT
@@ -109,17 +118,38 @@ def run_one(godot: str, script_rel: str) -> dict:
     ## before this check matters.
     ran_and_passed = "PASS" in output
 
+    ## LEAK-GATE-01 (2026-08-17): an object still alive when the process exits
+    ## is a FAILURE, not a footnote. This is the check whose absence let the
+    ## Slab/Voxel reference cycle hide for months — it printed
+    ## "ObjectDB instances leaked at exit" on every single run while the runner
+    ## only ever looked at the exit code and SCRIPT ERROR lines, so nobody read
+    ## it. A leaked Slab/Voxel graph cost 301 MB per map build (LEAK-CYCLE-01);
+    ## the whole point of fixing that was to be able to hold this line.
+    ##
+    ## Both spellings matter: the ObjectDB warning covers Objects/RefCounteds,
+    ## and "resources still in use" covers Resources (scripts, images) pinned by
+    ## them. Neither needs --verbose to appear.
+    leaked = ("ObjectDB instances leaked at exit" in output
+              or "resources still in use at exit" in output)
+
     ## Engine teardown crash AFTER the verdict, observed 2026-08-01 with
     ## bake_selftest.gd: "RESULT: 19 PASS, 0 FAIL" ... then
     ## "handle_crash: Program crashed with signal 11" inside Main::cleanup
     ## (ObjectDB::cleanup of leaked GDScriptInstances), exit code flaky
-    ## (0 or -6 across runs). The suite itself completed; tolerated as
-    ## clean-with-warning ONLY when the crash is in Main::cleanup and the
-    ## PASS banner made it out first.
+    ## (0 or -6 across runs). Tolerated for months as "engine cleanup, not the
+    ## suite" — it was neither. Root-caused 2026-08-17: bake_selftest.gd was the
+    ## only selftest that called Engine.set_meta() without a matching
+    ## remove_meta(), so engine metadata still held a MockRegistry (an inner
+    ## class of that script) at unregister_core_types(); clearing it destroyed a
+    ## GDScriptInstance whose GDScript was already gone. Two remove_meta() calls
+    ## ended it. No selftest crashes at teardown any more, so the tolerance is
+    ## gone: a teardown crash now FAILS the run like any other crash. It is
+    ## still detected separately, purely so the report can name it.
     teardown_crash = ("handle_crash" in output and "Main::cleanup" in output)
-    exit_ok = (exit_code == 0) or (teardown_crash and ran_and_passed)
+    exit_ok = (exit_code == 0)
 
-    ok = exit_ok and not script_errors and not timed_out and ran_and_passed
+    ok = (exit_ok and not script_errors and not timed_out and ran_and_passed
+          and not leaked and not teardown_crash)
     return {
         "script": script_rel,
         "ok": ok,
@@ -127,6 +157,7 @@ def run_one(godot: str, script_rel: str) -> dict:
         "timed_out": timed_out,
         "script_errors": script_errors,
         "teardown_crash": teardown_crash,
+        "leaked": leaked,
         "elapsed": elapsed,
         "output": output,
     }
@@ -180,15 +211,24 @@ def main() -> int:
         result = run_one(godot, script)
         name = os.path.basename(script)
         if result["ok"]:
-            note = "  ⚠ teardown crash after PASS (engine cleanup, not the suite)" \
-                if result["teardown_crash"] else ""
-            print("  ✓ %-42s %.1fs%s" % (name, result["elapsed"], note))
+            print("  ✓ %-42s %.1fs" % (name, result["elapsed"]))
         else:
             failures.append(result)
-            reason = ("TIMEOUT after %ds" % TIMEOUT_S) if result["timed_out"] else \
-                ("exit %d" % result["exit_code"] if not result["script_errors"]
-                 else "exit %d + %d SCRIPT ERROR line(s)" % (result["exit_code"], len(result["script_errors"])))
-            print("  ✗ %-42s %.1fs — %s" % (name, result["elapsed"], reason))
+            ## Name every reason, not just the first: a leak and a crash at the
+            ## same exit are the same underlying fault often enough that showing
+            ## one and hiding the other sends the reader down the wrong path.
+            reasons = []
+            if result["timed_out"]:
+                reasons.append("TIMEOUT after %ds" % TIMEOUT_S)
+            else:
+                reasons.append("exit %d" % result["exit_code"])
+            if result["script_errors"]:
+                reasons.append("%d SCRIPT ERROR line(s)" % len(result["script_errors"]))
+            if result["leaked"]:
+                reasons.append("LEAKED objects at exit (see LEAK-GATE-01)")
+            if result["teardown_crash"]:
+                reasons.append("teardown crash in Main::cleanup")
+            print("  ✗ %-42s %.1fs — %s" % (name, result["elapsed"], " + ".join(reasons)))
             for line in result["script_errors"][:5]:
                 print("      %s" % line)
             ## The selftest's own tail usually names which assertion failed.

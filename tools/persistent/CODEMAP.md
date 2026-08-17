@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58975 lines total** (under `godot/scripts/`)
+**208 scripts · 59031 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2716,7 +2716,7 @@ extends `SceneTree` · 430 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 338 lines
+extends `SceneTree` · 351 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
@@ -3009,7 +3009,7 @@ extends `SceneTree` · 186 lines
 
 ### `decal_seam_selftest.gd`
 
-extends `SceneTree` · 328 lines
+extends `SceneTree` · 338 lines
 
 `godot/scripts/tools/decal_seam_selftest.gd`
 
@@ -3336,7 +3336,7 @@ extends `SceneTree` · 263 lines
 
 ### `half_voxel_seam_selftest.gd`
 
-extends `SceneTree` · 262 lines
+extends `SceneTree` · 268 lines
 
 `godot/scripts/tools/half_voxel_seam_selftest.gd`
 
@@ -4622,7 +4622,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4975 lines
+extends `Node2D` · 5002 lines
 
 `godot/scripts/world/room.gd`
 

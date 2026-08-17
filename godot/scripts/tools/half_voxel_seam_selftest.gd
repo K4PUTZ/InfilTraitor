@@ -166,6 +166,7 @@ func test_set_voxel_cell_end_to_end_picks_the_half_voxel_composite() -> void:
 		_fail("a repeat call re-composited: source_id %d -> %d, cache size %d" % [
 			placed_source_id, second_source_id, renderer.get_damage_composite_cache().size()])
 
+	edge_stub.free()  ## LEAK-GATE-01: bare Object is not refcounted — free it or it leaks to exit
 	renderer.queue_free()
 	print("")
 
@@ -176,7 +177,9 @@ func test_cracked_still_goes_through_full_voxel_path_not_half() -> void:
 	_stub_baked_wall(renderer, Color(0.6, 0.55, 0.5, 1.0))
 	var pos := Vector2i(2, 2)
 
-	renderer._set_voxel_cell(pos, 0, "concrete_bullet_cracked_left_0", Object.new(), Vector2i.ZERO, 0)
+	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
+	renderer._set_voxel_cell(pos, 0, "concrete_bullet_cracked_left_0", edge_stub, Vector2i.ZERO, 0)
+	edge_stub.free()
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_cracked_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_cracked_left_0")
 
@@ -230,6 +233,7 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	else:
 		_fail("ceiling DENTED resolved to %d, expected the generic ceiling compositor to catch it (composites/ id is %d)" % [ceiling_got, ceiling_generic_id])
 
+	edge_stub.free()  ## LEAK-GATE-01: bare Object is not refcounted — free it or it leaks to exit
 	renderer.queue_free()
 	print("")
 
@@ -250,7 +254,9 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	renderer._baked_lookup = miss_stub
 
 	var pos := Vector2i(9, 1)
-	renderer._set_voxel_cell(pos, 0, "wood_bullet_dented_right_0", Object.new(), Vector2i.ZERO, 0)
+	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
+	renderer._set_voxel_cell(pos, 0, "wood_bullet_dented_right_0", edge_stub, Vector2i.ZERO, 0)
+	edge_stub.free()
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("wood_bullet_dented_right_0")
 	if got != -1 and got != generic_id:

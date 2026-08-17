@@ -159,8 +159,12 @@ func test_composite_applies_tint_and_pastes_the_real_decal() -> void:
 	_stub_baked_wall(renderer, tint)
 
 	var plan := VoxelRendererClass._full_voxel_decal_plan("concrete_bullet_cracked_left_0")
+	## LEAK-GATE-01: named so it can be freed — a bare Object is not refcounted
+	## and an inline Object.new() argument survives to exit.
+	var edge_stub := Object.new()
 	var entry := renderer._composite_full_voxel_decal(
-		plan, "concrete_bullet_cracked_left_0", Object.new(), 0, Vector2i.ZERO, 0, Vector2i(5, 5))
+		plan, "concrete_bullet_cracked_left_0", edge_stub, 0, Vector2i.ZERO, 0, Vector2i(5, 5))
+	edge_stub.free()
 
 	if entry.is_empty():
 		_fail("composite returned {} — expected a real entry (decal_bullet_concrete_0.png must exist on disk)")
@@ -232,6 +236,7 @@ func test_composite_is_idempotent() -> void:
 		_fail("repeat call did not hit the cache: first=%s second=%s size=%d->%.d" % [
 			first, second, size_after_first, cache.size()])
 
+	edge_stub.free()  ## LEAK-GATE-01: bare Object is not refcounted — free it or it leaks to exit
 	renderer.queue_free()
 	print("")
 
@@ -256,6 +261,7 @@ func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:
 		_fail("placed source_id (%d) fell back to the generic path (generic id %d) instead of compositing" % [
 			placed_source_id, generic_concrete_id])
 
+	edge_stub.free()  ## LEAK-GATE-01: bare Object is not refcounted — free it or it leaks to exit
 	renderer.queue_free()
 	print("")
 
@@ -294,6 +300,8 @@ func test_dented_and_non_impact_names_are_unaffected() -> void:
 		_fail("expected a real composited atom, got %d (flat concrete is %d)" % [
 			floor_source_id, flat_concrete_id])
 
+	edge_stub.free()  ## LEAK-GATE-01: bare Object is not refcounted — free it or it leaks to exit
+	renderer.queue_free()
 	print("")
 
 
@@ -316,7 +324,9 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	renderer._baked_lookup = miss_stub
 
 	var pos := Vector2i(9, 9)
-	renderer._set_voxel_cell(pos, 0, "stone_blast_cracked_all_0", Object.new(), Vector2i.ZERO, 0)
+	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
+	renderer._set_voxel_cell(pos, 0, "stone_blast_cracked_all_0", edge_stub, Vector2i.ZERO, 0)
+	edge_stub.free()
 	var got := renderer.get_layer(0).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("stone_blast_cracked_all_0")
 	if got != -1 and got != generic_id:

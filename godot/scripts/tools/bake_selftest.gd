@@ -76,6 +76,19 @@ func _init() -> void:
 	test_real_voxel_atoms_loadable()
 	test_master_strip_dimensions()
 
+	## Hand the mock registry back before quitting. Engine metadata outlives
+	## this script: at unregister_core_types() the engine clears its own
+	## metadata Variants, which destroys a MockRegistry (an inner class of THIS
+	## script) whose GDScript may already be gone — ~GDScriptInstance() then
+	## dereferences freed memory and the process dies with signal 11 inside
+	## ObjectDB::cleanup(), after the PASS banner. That is the "teardown crash
+	## after PASS" run_selftests.py has tolerated since 2026-08-01. It was never
+	## an engine bug: this was the only selftest that set engine metadata and
+	## never removed it (roof_bake_selftest.gd and floor_zone_bake_selftest.gd
+	## both balance theirs, and neither crashes).
+	Engine.remove_meta("GLOBAL_MATERIAL_REGISTRY")
+	Engine.remove_meta("BAKE_TEST_REGISTRY")
+
 	# Report
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])

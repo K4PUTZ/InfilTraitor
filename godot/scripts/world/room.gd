@@ -3606,6 +3606,30 @@ func _capture_walk_filmstrip() -> void:
 	print("[P3-WALK] wrote %d frames to %s" % [frame_count, out_dir])
 
 
+## Give the dev-capture actions something to detonate. PLAYGROUND stopped
+## shipping floor grenades on 2026-08-17 when they were retired (Director:
+## "vamos fazer os testes com o agente mesmo"), and that silently killed both
+## capture tools that index them: P-FILM wrote zero frames, and the four-view
+## rotation-persistence capture detonated nothing. Between them the project lost
+## its frame-by-frame view of a blast AND its check that crater/soot survive a
+## rotation.
+##
+## Seeded here rather than by putting grenades back on the map: every caller is
+## an env-gated dev-capture action the player never reaches, so the retirement
+## stands untouched for real play. The cells come from TEST_ZONE_GRENADE_GUS —
+## the constant the reform deliberately kept for its calibration history — and
+## they are still correct: verified against maps/PLAYGROUND.map.json that the
+## four material walls remain at gu 2-4/7-9/12-14/17-19 on row 2, unmoved when
+## the board grew 24x16 -> 44x22.
+func _seed_dev_grenades_if_empty(tag: String) -> void:
+	if _test_zone_controller == null or not _test_zone_controller._grenades.is_empty():
+		return
+	for seed_gu in TEST_ZONE_GRENADE_GUS:
+		_test_zone_controller.add_grenade(seed_gu)
+	print("[%s] seeded %d dev grenade(s) — PLAYGROUND no longer ships them" % [
+		tag, _test_zone_controller._grenades.size()])
+
+
 func _capture_detonation_filmstrip() -> void:
 	var frames_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_FRAMES")
 	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
@@ -3620,6 +3644,8 @@ func _capture_detonation_filmstrip() -> void:
 		for f in existing.get_files():
 			if f.begins_with("frame_") and f.ends_with(".png"):
 				existing.remove(f)
+
+	_seed_dev_grenades_if_empty("P-FILM")
 
 	if tz_index < 0 or tz_index >= _test_zone_controller._grenades.size():
 		push_error("[P-FILM] grenade index %d out of range (%d placed)" % [
@@ -4171,6 +4197,7 @@ func _run_auto_screenshot_capture() -> void:
 		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _test_zone_controller != null:
 			var detonate_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
 			var detonate_index := detonate_index_env.to_int() if detonate_index_env.is_valid_int() else 0
+			_seed_dev_grenades_if_empty("CAPTURE-VIEWS")
 			_test_zone_controller.open_menu_for(detonate_index)
 			_test_zone_controller.detonate_active()
 			for _j in range(45):

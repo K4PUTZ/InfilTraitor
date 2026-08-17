@@ -54,7 +54,14 @@ const FRAMES_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent
 ## on the tile boundary, every tile. That is also why the phase can be read
 ## straight off the step's progress with no accumulator to drift.
 const WALK_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"
-const WALK_PHASES := 8
+## How many phases the bake actually wrote. COUNTED, never assumed: it was a
+## hardcoded 8 and the Director called the result *"engasgado"* — at the ratified
+## 560 ms per GU that is one frame every 70 ms, 14.3 Hz, less than half D46's
+## 30 Hz. Raising the bake to 32 while a constant here still said 8 would have
+## shown three quarters of the new frames to nobody.
+var _walk_phases: int = 0
+## Bracket-only subsampling; 0 means show every baked phase.
+var _walk_quantise: int = 0
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 const DIRECTIONS := ["N", "E", "S", "W"]
 const YAW_BY_DIRECTION := {"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}
@@ -285,7 +292,19 @@ func _ensure_posture(name: String, dev: bool = false) -> bool:
 func _ensure_walk() -> bool:
 	if _walk_ready:
 		return true
-	for i in range(WALK_PHASES):
+	if _walk_phases == 0:
+		var dir := DirAccess.open(WALK_ROOT)
+		if dir == null:
+			push_error("[AgentSprite] %s missing — run p3_walk_export.py then agent_frame_bake_spike.gd" % WALK_ROOT)
+			return false
+		for name: String in dir.get_directories():
+			if name.begins_with("phase"):
+				_walk_phases += 1
+		if _walk_phases == 0:
+			push_error("[AgentSprite] %s holds no phase directories" % WALK_ROOT)
+			return false
+		print_debug("[AgentSprite] walk cycle: %d phases baked" % _walk_phases)
+	for i in range(_walk_phases):
 		if not _ensure_set(_walk_key(i), WALK_ROOT + "phase%02d/" % i):
 			return false
 	_walk_ready = true
@@ -364,12 +383,26 @@ func _compose(a: String, b: String, sign: float = -1.0) -> String:
 ## The walk exists for STANDING only. A crouched or prone agent showing a walking
 ## silhouette would be worse than a sliding one, so those keep their idle frame
 ## and slide; crouch-walk and crawl are their own poses and are not built.
+## Show only `n` of the baked phases, evenly spaced. 0 restores all of them.
+##
+## This is how the frame COUNT gets bracketed without re-baking: 32 subsamples
+## exactly to 16 and 8, so the panels differ only in how many of the SAME poses
+## are shown. The turn's in-between bracket had to re-render each option, which
+## meant the compared clips were never guaranteed identical apart from the
+## variable under test.
+func set_walk_phase_quantise(n: int) -> void:
+	_walk_quantise = n
+	_walk_phase = -1
+
+
 func set_walk_phase(progress01: float) -> void:
 	if _posture != "standing":
 		return
 	if not _ensure_walk():
 		return
-	var index := int(floor(fposmod(progress01, 1.0) * float(WALK_PHASES))) % WALK_PHASES
+	var buckets: int = _walk_phases if _walk_quantise <= 0 else _walk_quantise
+	var bucket := int(floor(fposmod(progress01, 1.0) * float(buckets))) % buckets
+	var index: int = (bucket * _walk_phases) / buckets
 	if index == _walk_phase:
 		return
 	_walk_phase = index

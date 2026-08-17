@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58731 lines total** (under `godot/scripts/`)
+**208 scripts · 58769 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 474 lines
+`class_name AgentSprite` · extends `Sprite2D` · 507 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -97,7 +97,6 @@
 - `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
 - `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
 - `WALK_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"`
-- `WALK_PHASES` = `8`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
@@ -124,6 +123,7 @@
 - `func face_step(step: Vector2i) -> void:`
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func update_for_cell() -> void:`
+- `func set_walk_phase_quantise(n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
 
@@ -4615,7 +4615,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 4963 lines
+extends `Node2D` · 4968 lines
 
 `godot/scripts/world/room.gd`
 

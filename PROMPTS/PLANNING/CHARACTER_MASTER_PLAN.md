@@ -1204,9 +1204,48 @@ keep their idle frame. Crouch-walk and crawl are their own poses and are not
 built. The walk also has no DEV VISION bake, so the yellow joints drop out for
 the duration of a step.
 
-**8 phases is NOT a ratified number.** It is the walk's counterpart of D46's
-in-between count and deserves its own blind bracket once the duration is settled.
-Eight is the classic walk-cycle count and reads at this figure's ship size.
+### 🟡 REFINED 2026-08-16 — *"mecânico e engasgado"* had two separate causes
+
+Director, on the corrected walk: *"Está bem melhor agora, mas ainda parece
+mecânico e engasgado. Precisamos de mais frames intermediários e mais refinamento
+na animação."* Two complaints, two different fixes.
+
+**"Engasgado" is a number, not an impression.** 8 phases across the ratified
+560 ms GU is one frame every 70 ms — **14.3 Hz**, less than half D46's ratified
+**30 Hz** authoring rate for this character's motion. Raised to **32 phases =
+57 Hz**, and `AgentSprite` now COUNTS the baked phase directories instead of
+carrying a hardcoded 8, which would have shown three quarters of the new frames
+to nobody.
+
+**32 is chosen so the count can be bracketed without re-baking**: it subsamples
+exactly to 16 (29 Hz) and 8 (14 Hz), so the panels differ only in how many of the
+*same* poses are shown. The turn's in-between bracket had to re-render each
+option and so could never guarantee that.
+
+**"Mecânico" is the motion's shape, and more frames would not have fixed it.**
+Four things a leg does that a scissor does not:
+
+| | |
+|---|---|
+| **The foot ROLLS** | Heel strike → flat → toe off, with the ankle HIGHER at both ends because the foot is pivoting on heel and then toe. The first version held one ankle height and one foot angle for the whole stance — a stilt. It pays for itself twice: the raised ankle at the extremes is exactly where the leg was most over-stretched, so the solved hip drop fell from a capped **0.160 m to 0.140 m** |
+| **The swing is EASED** | smoothstep, zero velocity at both ends, so the hand-off into stance is invisible. The stance stays exactly LINEAR — the foot is on the floor and the body passes over it, so easing there would be the foot sliding |
+| **The head holds still** | It counter-rotates the bob. The single strongest cue that a figure is alive rather than driven |
+| **The shoulders counter-rotate** | Small (3.5°), because both hands are on a shotgun and the weapon swings with them |
+
+**The moonwalk gate had to be rewritten, and it caught itself.** It identified
+the planted foot as *the lower one*, which is right for a flat foot and wrong the
+moment the foot rolls: at heel strike the TOE is the highest part of the planted
+foot, so the gate started calling the swinging leg planted and failed on its
+rise (+0.0233 m). It now takes the stance foot from the authored PATH and
+measures the real contact point — whichever of heel or toe is on the floor.
+Passes at **0.00000 m**.
+
+**The phase count is still not ratified** — it is the walk's counterpart of D46's
+in-between count. Blind bracket delivered: `p3_walk_frames_blind.mp4`, 8 / 16 /
+32 subsampled from one bake, labels blind, order seeded with the largest not
+last, key in `p3_walk_frames_blind_KEY.json`. **The cost is real and worth
+stating: 32 phases × 4 facings is 3.2 MB of bakes against 0.8 MB at 8**, so
+picking 16 if it is indistinguishable from 32 halves that.
 
 ### ✅ §9 #12 — THE STEP DURATION IS SETTLED: **0.56 s per GU, 2.86 m/s**
 

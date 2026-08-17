@@ -3566,6 +3566,11 @@ func _capture_walk_filmstrip() -> void:
 		return
 
 	agent.step_duration = step_ms / 1000.0
+	## INFILTRAITOR_WALK_PHASES subsamples the baked cycle, so the frame COUNT can
+	## be bracketed against the identical poses instead of a re-bake.
+	var phases_env := OS.get_environment("INFILTRAITOR_WALK_PHASES")
+	if phases_env.is_valid_int() and agent.sprite != null:
+		agent.sprite.set_walk_phase_quantise(phases_env.to_int())
 	if _camera_controller != null:
 		## Framed on the MIDDLE of the run, not on the agent, so the camera never
 		## moves during the capture. A camera that tracks would hide exactly the

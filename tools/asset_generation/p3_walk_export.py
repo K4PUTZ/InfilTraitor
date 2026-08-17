@@ -47,12 +47,19 @@ import p3_posture_export as p3                                   # noqa: E402
 GRIP = os.environ.get("P3_GRIP", "lowered")
 WEAPON = os.environ.get("P3_WEAPON", "shotgun")
 
-## How many samples of the cycle get baked. NOT a ratified number: it is the
-## walk's counterpart of D46's in-between count, and it deserves its own blind
-## bracket once the duration is settled. Eight is the classic walk-cycle count
-## and reads at the size this figure ships at; it is a starting point that the
-## same machinery can re-run at any other value.
-PHASES = int(os.environ.get("P3_WALK_PHASES", "8"))
+## How many samples of the cycle get baked.
+##
+## 32, RAISED FROM 8 ON 2026-08-16 because the Director called the walk
+## *"engasgado"* and that word has a number behind it: at the ratified 560 ms per
+## GU, 8 phases is one frame every 70 ms — **14.3 Hz**, less than half D46's
+## ratified 30 Hz authoring rate for this character's motion. 32 phases is
+## 17.5 ms, **57 Hz**.
+##
+## 32 is chosen so the count itself can be BRACKETED without re-baking: it
+## subsamples exactly to 16 (29 Hz) and 8 (14 Hz), so a comparison of frame
+## counts varies only how many of the SAME poses are shown. That is the property
+## the turn's in-between bracket did not have and had to re-render for.
+PHASES = int(os.environ.get("P3_WALK_PHASES", "32"))
 
 ## Metres per FULL cycle (two footfalls) — see the docstring. One GU.
 STRIDE_M = 1.60
@@ -64,9 +71,27 @@ STRIDE_M = 1.60
 DUTY = 0.60
 ## Peak toe clearance during the swing.
 SWING_LIFT_M = 0.075
-## The arms counter-swing. Degrees, and the only part of this file still authored
-## as an angle — the arms are overwritten by the weapon IK anyway (D40).
-ARM_DEG = 18.0
+
+## --- REFINEMENT, added 2026-08-16 after the Director called the first walk
+## --- *"mecânico e engasgado"*. Choppiness is the frame count (see PHASES);
+## --- these are the other half — the things a leg does that a scissor does not.
+##
+## THE FOOT ROLLS. A real stance is heel-strike, flat, toe-off, and the ankle is
+## HIGHER at both ends because the foot is pivoting on its heel and then on its
+## toe. The first version held one ankle height and one foot angle for the whole
+## stance, which is a stilt, not a foot. This also pays for itself twice: the
+## raised ankle at the extremes is exactly where the leg was most over-stretched,
+## so the hip drop the solver needs comes down with it.
+ROLL_RISE_M = 0.055
+HEEL_STRIKE_PITCH = 0.42       ## toe up, at the start of stance
+TOE_OFF_PITCH = -0.62          ## heel up, at the end of stance
+SWING_TOE_PITCH = 0.30
+## The head holds still while the body bobs under it — the single strongest cue
+## that a figure is alive rather than driven. Degrees per metre of hip drop.
+HEAD_STABILISE_DEG_PER_M = 46.0
+## The shoulders counter-rotate against the hips. Small, because both hands are
+## on a shotgun (D40's `lowered`) and the weapon would swing with them.
+TORSO_TWIST_DEG = 3.5
 
 OUT_DIR = os.path.join(p2.REPO_ROOT, "ASSETS", "ISOMETRIC", "source_assets",
                        "imported_models", "agent", "walk")
@@ -106,18 +131,25 @@ def foot_target(phase01, side, ankle_z):
     half = STRIDE_M * DUTY * 0.5
     if ph < DUTY:
         t = ph / DUTY
-        return half - 2.0 * half * t, ankle_z
+        ## STANCE. The y term stays exactly linear — the foot is on the floor and
+        ## the body passes over it at constant speed, so any easing here would be
+        ## the foot sliding. The z term is the ROLL: the ankle pivots up over the
+        ## heel at the start and over the toe at the end, and is lowest flat in
+        ## the middle. (2t-1)^2 is that curve, 1 at both ends and 0 at the centre.
+        rise = ROLL_RISE_M * (2.0 * t - 1.0) ** 2
+        pitch = HEEL_STRIKE_PITCH + (TOE_OFF_PITCH - HEEL_STRIKE_PITCH) * t
+        return half - 2.0 * half * t, ankle_z + rise, pitch, True
+    ## SWING. Eased, because a swinging leg accelerates away from the ground and
+    ## decelerates into the next strike; the first version moved it at a constant
+    ## rate, which is the other half of "mechanical". smoothstep is the cheapest
+    ## curve with zero velocity at both ends, which is what makes the hand-off
+    ## into the stance invisible.
     t = (ph - DUTY) / (1.0 - DUTY)
-    return -half + 2.0 * half * t, ankle_z + SWING_LIFT_M * math.sin(math.pi * t)
-
-
-def arm_bones(phase01):
-    """The counter-swing. The LEFT arm goes with the RIGHT leg."""
-    out = {}
-    for side, offset in (("L", 0.0), ("R", 0.5)):
-        swing = math.sin(2.0 * math.pi * (phase01 + offset))
-        out["upperarm_%s" % side] = (-ARM_DEG * swing, 0.0, 0.0)
-    return out
+    e = t * t * (3.0 - 2.0 * t)
+    return (-half + 2.0 * half * e,
+            ankle_z + SWING_LIFT_M * math.sin(math.pi * t),
+            SWING_TOE_PITCH * math.sin(math.pi * t),
+            False)
 
 
 def solve_hip_drop(arm, targets, reach, cap=0.16):
@@ -166,34 +198,41 @@ def make_walk_posture(name, phase01):
         rest_root = rig.pose.bones["root"].matrix.copy()
         chest_before = rig.pose.bones["chest"].matrix.copy()
 
-        for bone_name, xyz in arm_bones(phase01).items():
-            p3._set_euler(rig, bone_name, xyz)
-        bpy.context.view_layer.update()
-
         ## Read off the rig, never from module constants — a re-proportioned
         ## model must re-solve rather than silently drift.
         ankle_z = rig.data.bones["foot_L"].head_local.z
         reach = rig.data.bones["thigh_L"].length + rig.data.bones["shin_L"].length
         hip_x = {s: rig.data.bones["thigh_%s" % s].head_local.x for s in ("L", "R")}
 
+        legs = {}
         targets = []
         for side in ("L", "R"):
-            y, z = foot_target(phase01, side, ankle_z)
+            y, z, pitch, planted = foot_target(phase01, side, ankle_z)
+            legs[side] = (pitch, planted)
             targets.append(Vector((hip_x[side], y, z)))
 
         drop = solve_hip_drop(rig, targets, reach)
+
+        ## The torso counter-rotates against the stride, and the head cancels the
+        ## bob. Both are applied BEFORE the leg IK because the legs hang off the
+        ## hips: posing the spine afterwards would move the feet off the targets
+        ## the solver just hit.
+        stride_swing = math.sin(2.0 * math.pi * phase01)
+        p3._set_euler(rig, "chest", (0.0, 0.0, TORSO_TWIST_DEG * stride_swing))
+        p3._set_euler(rig, "neck", (-HEAD_STABILISE_DEG_PER_M * drop * 0.5, 0.0, 0.0))
+        p3._set_euler(rig, "head", (-HEAD_STABILISE_DEG_PER_M * drop * 0.5, 0.0, 0.0))
+        bpy.context.view_layer.update()
+
         p3._place_root(rig, rest_root, Matrix.Translation(Vector((0.0, 0.0, -drop))))
 
         worst_err = 0.0
         for side, target in zip(("L", "R"), targets):
-            _, z = foot_target(phase01, side, ankle_z)
-            planted = z <= ankle_z + 1e-6
-            ## Knees bend FORWARD, so the pole is forward. The foot points along
-            ## the travel direction, toe slightly down when planted and up
-            ## through the swing — which is what a heel strike looks like.
-            foot_dir = (0.0, 1.0, -0.18) if planted else (0.0, 1.0, 0.30)
+            pitch, _planted = legs[side]
+            ## Knees bend FORWARD, so the pole is forward. The foot's own pitch
+            ## comes from the roll curve rather than from a planted/swing flag —
+            ## that flag was the stilt.
             err, _clamped, _k = p2.two_bone_ik(
-                rig, side, target, (0.0, 1.0, -0.25), foot_dir,
+                rig, side, target, (0.0, 1.0, -0.25), (0.0, 1.0, pitch),
                 chain=p2.LEG_CHAIN, assist=False)
             worst_err = max(worst_err, err)
 
@@ -242,36 +281,54 @@ def verify_no_moonwalk():
     0.25 and then FORWARD from 0.25 to 0.5, its z falling to the floor the whole
     time. That is a foot on the ground sliding forward under the body, and this
     check reports it as a number instead of as an impression."""
-    rig = p3._open_rig()
     log("=" * 70)
-    log("moonwalk gate — the planted foot's travel, per phase")
+    log("moonwalk gate — the stance foot's CONTACT POINT, per phase")
     samples = []
     for i in range(PHASES):
         phase01 = float(i) / float(PHASES)
         rig = p3._open_rig()
         make_walk_posture("check%02d" % i, phase01)["apply"](rig)
         bpy.context.view_layer.update()
-        feet = {}
+        row = {}
         for side in ("L", "R"):
+            ## WHICH FOOT IS PLANTED COMES FROM THE PATH, NOT FROM z. The first
+            ## version of this gate picked the LOWER foot, which is right for a
+            ## flat foot and wrong the moment the foot rolls: at heel strike the
+            ## TOE is the highest part of the planted foot, so the gate started
+            ## reporting the swinging leg as planted and failed on its rise.
+            _y, _z, _pitch, planted = foot_target(phase01, side, 0.0)
             pb = rig.pose.bones["foot_%s" % side]
-            feet[side] = pb.matrix @ Vector((0.0, pb.length, 0.0))   ## the toe
-        planted = "L" if feet["L"].z < feet["R"].z else "R"
-        samples.append((i, planted, feet[planted].y, feet[planted].z))
+            heel = pb.matrix.to_translation()
+            toe = pb.matrix @ Vector((0.0, pb.length, 0.0))
+            ## The CONTACT is whichever end is on the floor — heel early in the
+            ## stance, toe late. That is the point that must not slide.
+            contact = heel if heel.z <= toe.z else toe
+            row[side] = (planted, contact, "heel" if heel.z <= toe.z else "toe")
+        samples.append(row)
 
     worst = 0.0
-    for k in range(len(samples)):
-        i, side, y, z = samples[k]
-        j, side_n, y_n, _z = samples[(k + 1) % len(samples)]
-        moved = "" if side_n != side else "%+.4f" % (y_n - y)
-        if side_n == side and y_n - y > 1e-4:
-            worst = max(worst, y_n - y)
-        log("  phase %d: planted %s at y=%+.3f z=%+.3f  -> next %s" % (
-            i, side, y, z, moved if moved else "(swaps to %s)" % side_n))
+    worst_at = ""
+    for i in range(PHASES):
+        nxt = (i + 1) % PHASES
+        for side in ("L", "R"):
+            planted, contact, part = samples[i][side]
+            planted_n, contact_n, part_n = samples[nxt][side]
+            if not (planted and planted_n and part == part_n):
+                continue          ## swinging, or the foot rolled onto its toe
+            moved = contact_n.y - contact.y
+            if moved > worst:
+                worst, worst_at = moved, "%s at phase %d->%d on its %s" % (
+                    side, i, nxt, part)
+    ## EARNED, not picked. With a rolling foot the contact transfers from heel to
+    ## toe partway through the stance, and the two are 0.14 m apart on this rig;
+    ## only motion of ONE contact point is compared, and the measured worst is
+    ## reported below. A flat 5 mm allows for the solver's own round-off and
+    ## nothing more — the defect this gate was written for measured +23 mm.
     if worst > 0.005:
-        fail("the planted foot moves FORWARD by up to %.4f m — the figure is "
-             "moonwalking. The foot path or the solve lost the stance "
-             "constraint." % worst)
-    log("  PASS — the planted foot never advances (worst %+.5f m)" % worst)
+        fail("the stance foot's contact point moves FORWARD by %.4f m (%s) — "
+             "the figure is moonwalking." % (worst, worst_at))
+    log("  PASS — no stance contact advances (worst %+.5f m%s)"
+        % (worst, ", " + worst_at if worst_at else ""))
 
 
 def main():

@@ -61,6 +61,7 @@
 - RESUMO_SESSAO_2026-08-15_STYLE_COSTUME_PART2.md
 - RESUMO_SESSAO_2026-08-15_TURN_CORNER_TPOSE.md
 - RESUMO_SESSAO_2026-08-16_MOCKUP_MODEL_FOUNDATION.md
+- RESUMO_SESSAO_2026-08-16_PART2_SWAP_AND_WALK.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -68,7 +69,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 149
+- GDScript modules: 150
 - Test scripts: 43
 - Known maps: 3
 - Shipped facade files: 0
@@ -78,11 +79,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 - d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
 - 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
 - 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
 - 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
-- 0dc11df2 [DOCS] Session close 0.9.98 — sectioned dome, P-WARM, and the soot reform
 <!-- AUTO:END version_history -->
 
 ---

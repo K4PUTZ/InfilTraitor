@@ -24,6 +24,19 @@ Brainstorm"), `main` at `ce40e79f`.
 
 ---
 
+> ## ✅ THE PIPELINE IS PROVEN — Director, 2026-08-16
+>
+> *"Está ficando muito bom. […] para a nossa intenção aqui de avaliar proporção e
+> viabilidade da nossa pipeline de criação, já serve esse mecanismo. Então
+> podemos concluir que nosso workflow vai funcionar."*
+>
+> Rig → posed GLB → Godot bake → relit sprite → the playable agent, at three
+> postures, four facings and a 32-phase walk, gated end to end. **Proportion and
+> viability are closed questions.** What remains is the QUALITY of the motion —
+> *"ainda parece mecânico, falta molejo"* — and that is now
+> [`MOVEMENT_MASTER_PLAN.md`](MOVEMENT_MASTER_PLAN.md)'s subject, not this
+> document's. This plan keeps the figure; that one keeps what the figure does.
+
 ## 0. Ownership boundary — read before editing either document
 
 | Document | Owns | Wins on |

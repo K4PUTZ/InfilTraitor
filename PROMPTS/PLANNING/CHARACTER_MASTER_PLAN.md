@@ -1244,8 +1244,33 @@ Passes at **0.00000 m**.
 in-between count. Blind bracket delivered: `p3_walk_frames_blind.mp4`, 8 / 16 /
 32 subsampled from one bake, labels blind, order seeded with the largest not
 last, key in `p3_walk_frames_blind_KEY.json`. **The cost is real and worth
-stating: 32 phases × 4 facings is 3.2 MB of bakes against 0.8 MB at 8**, so
-picking 16 if it is indistinguishable from 32 halves that.
+stating: 32 phases × 4 facings is 4.2 MB of bakes plus 3.2 MB for the DEV VISION
+variant**, so picking 16 if it is indistinguishable from 32 halves both.
+
+### ✅ DEV VISION now survives the walk — 2026-08-16
+
+Director: *"vamos fazer os testes com dev vision ligado para ver as junções
+amarelas."* That request found a gap this plan had **declared rather than
+fixed**: the walk had no yellow-joint bake, so the joints vanished for the
+duration of every step and returned when the agent stopped. Written down as a
+known limitation, which was the wrong call — a debug mode that switches itself
+off during the motion being debugged is worse than no debug mode, because it
+reads as a bug in the overlay.
+
+The 32 phases are now baked twice, and `AgentSprite` keys the walk's readiness on
+the dev flag so the two cycles load **independently** — a session that never
+opens DEV VISION never pays for the second set (D42: RAM is the constraint).
+Toggling mid-stride swaps the live set rather than waiting for the next step.
+
+Evidence: `p3_walk_cycle_dev.png` (a full cycle in motion) and
+`p3_postures_dev.png` (the three postures). The joints make the articulation
+legible for the first time — knee, hip, elbow and ankle are all separable frame
+by frame, which is exactly what a walk needs to be judged on.
+
+**One naming trap closed on the way:** `p3_walk_export.py` was writing
+`agent_walk_devjoints` (echoing the model's own suffix) while the postures wrote
+`agent_frames_dev`. Two spellings of one idea is how a lookup quietly misses, so
+the walk now writes `_dev` too.
 
 ### ✅ §9 #12 — THE STEP DURATION IS SETTLED: **0.56 s per GU, 2.86 m/s**
 

@@ -1,6 +1,7 @@
 {
   "question": "CHARACTER_MASTER_PLAN \u2014 walk cycle phase count",
   "step_ms": 560,
+  "dev_vision": true,
   "note": "32 baked; 16 and 8 are exact subsamples of the SAME poses",
   "panels": [
     {

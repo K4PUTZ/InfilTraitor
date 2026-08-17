@@ -54,6 +54,13 @@ const FRAMES_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent
 ## on the tile boundary, every tile. That is also why the phase can be read
 ## straight off the step's progress with no accumulator to drift.
 const WALK_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"
+## The walk's yellow-joint variant. It did NOT exist at first, and the gap was
+## declared rather than fixed: with DEV VISION on, the joints vanished for the
+## duration of every step and came back when the agent stopped, which reads as a
+## bug in the overlay rather than as a missing bake. Director, 2026-08-16:
+## *"vamos fazer os testes com dev vision ligado para ver as junções amarelas"* —
+## the debug mode is only useful if it survives the thing being debugged.
+const WALK_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk_dev/"
 ## How many phases the bake actually wrote. COUNTED, never assumed: it was a
 ## hardcoded 8 and the Director called the result *"engasgado"* — at the ratified
 ## 560 ms per GU that is one frame every 70 ms, 14.3 Hz, less than half D46's
@@ -130,7 +137,9 @@ var room: Node = null
 var _base_facing: String = "N"
 var _posture: String = "standing"
 var _dev_vision: bool = false
-var _walk_ready: bool = false
+## Keyed by the dev flag: the normal and yellow-joint cycles load independently,
+## so a session that never opens DEV VISION never pays for its 32 phases.
+var _walk_ready: Dictionary = {}
 ## -1 when standing still. Any other value is an index into the walk cycle, and
 ## the sprite shows that phase instead of the posture's idle frame.
 var _walk_phase: int = -1
@@ -264,6 +273,10 @@ func set_dev_vision(enabled: bool) -> void:
 	if enabled and not _ensure_posture(_posture, true):
 		return
 	_dev_vision = enabled
+	## A walk already in flight has to swap frame sets too, or the tint only
+	## appears once the agent next starts moving.
+	if _walk_phase >= 0:
+		_ensure_walk(enabled)
 	_refresh()
 
 
@@ -289,30 +302,31 @@ func _ensure_posture(name: String, dev: bool = false) -> bool:
 ## Every walk phase at once. Loaded on the FIRST step rather than at setup, and
 ## then kept: the agent walks constantly, so the second load would be pure churn,
 ## but a scene that never moves him should not pay for 8 phases x 4 facings.
-func _ensure_walk() -> bool:
-	if _walk_ready:
+func _ensure_walk(dev: bool) -> bool:
+	if _walk_ready.get(dev, false):
 		return true
+	var root: String = WALK_ROOT_DEV if dev else WALK_ROOT
 	if _walk_phases == 0:
-		var dir := DirAccess.open(WALK_ROOT)
+		var dir := DirAccess.open(root)
 		if dir == null:
-			push_error("[AgentSprite] %s missing — run p3_walk_export.py then agent_frame_bake_spike.gd" % WALK_ROOT)
+			push_error("[AgentSprite] %s missing — run p3_walk_export.py then agent_frame_bake_spike.gd" % root)
 			return false
 		for name: String in dir.get_directories():
 			if name.begins_with("phase"):
 				_walk_phases += 1
 		if _walk_phases == 0:
-			push_error("[AgentSprite] %s holds no phase directories" % WALK_ROOT)
+			push_error("[AgentSprite] %s holds no phase directories" % root)
 			return false
 		print_debug("[AgentSprite] walk cycle: %d phases baked" % _walk_phases)
 	for i in range(_walk_phases):
-		if not _ensure_set(_walk_key(i), WALK_ROOT + "phase%02d/" % i):
+		if not _ensure_set(_walk_key(i, dev), root + "phase%02d/" % i):
 			return false
-	_walk_ready = true
+	_walk_ready[dev] = true
 	return true
 
 
-func _walk_key(phase_index: int) -> String:
-	return "walk%02d" % phase_index
+func _walk_key(phase_index: int, dev: bool) -> String:
+	return "walk%02d%s" % [phase_index, ":dev" if dev else ""]
 
 
 func _ensure_set(key: String, dir: String) -> bool:
@@ -398,7 +412,7 @@ func set_walk_phase_quantise(n: int) -> void:
 func set_walk_phase(progress01: float) -> void:
 	if _posture != "standing":
 		return
-	if not _ensure_walk():
+	if not _ensure_walk(_dev_vision):
 		return
 	var buckets: int = _walk_phases if _walk_quantise <= 0 else _walk_quantise
 	var bucket := int(floor(fposmod(progress01, 1.0) * float(buckets))) % buckets
@@ -419,11 +433,7 @@ func stop_walking() -> void:
 
 func _refresh() -> void:
 	if _walk_phase >= 0 and _posture == "standing":
-		## The walk has no DEV VISION bake — the joint tint is a debug aid and
-		## losing it for the duration of a step is better than not shipping the
-		## cycle. Stated rather than silent, because a dev overlay that flickers
-		## off during motion looks like a bug in the overlay.
-		var walk_entry: Dictionary = _sets.get(_walk_key(_walk_phase), {})
+		var walk_entry: Dictionary = _sets.get(_walk_key(_walk_phase, _dev_vision), {})
 		if not walk_entry.is_empty():
 			_apply(walk_entry)
 			return

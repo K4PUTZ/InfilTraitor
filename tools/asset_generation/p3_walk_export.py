@@ -384,9 +384,13 @@ def main():
             name="phase%02d" % w["index"],
             phase=round(w["phase"], 5),
             glb=os.path.relpath(w["glb"], p2.REPO_ROOT).replace(os.sep, "/"),
+            ## `_dev`, matching p3_posture_export.py's `agent_frames_dev` rather
+            ## than echoing the model's own `_devjoints` suffix — AgentSprite
+            ## looks up ONE dev root per asset family, and two spellings of the
+            ## same idea is how a lookup quietly misses.
             out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
                     "agent_walk%s/phase%02d/"
-                    % (p2._MODEL.replace("agent_base", ""), w["index"]),
+                    % ("_dev" if p2._MODEL != "agent_base" else "", w["index"]),
             height_m=round(heights["phase%02d" % w["index"]], 4),
             voxels=round(heights["phase%02d" % w["index"]] / p3.VOXEL_M, 2),
         ) for w in written],

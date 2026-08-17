@@ -193,7 +193,68 @@ vamos aproveitar que já temos o personagem empunhando a arma, e finalizar:"*
 | 4 | **A shot that MISSES and hits a wall**, no combat yet | `WEAPON_MASTER_PLAN` D27/D30 | The miss path is **built and shipped** — on the bench, which has *"no turn and no shooter"*. What is new is firing it from the AGENT |
 | 5 | **Close the destruction milestone** + glass, fabric, cardboard | `DESTRUCTION_MASTER_PLAN` | That plan is **CLOSED (2026-08-13)**, so this REOPENS it. Glass was deferred with a stated reason (D32: no DENTED/CRACKED tier, cracks become a future multi-voxel system); **fabric and cardboard are entirely new materials** |
 
-This document resumes when those close.
+### 6.1 ✅ SCOPED DOWN by the Director, same day — and it collapses to three
+
+Asked where to start given that items 1, 2 and 4 all hang off an aim mode that is
+ratified but unbuilt, the Director **removed the dependency instead of ordering
+around it**:
+
+> *"Isso já é coisa da fase de combate, o que a gente quer testar agora é só a
+> mecânica de mirar da GU A para a GU B e o tiro acertar a parede C atrás. Pra
+> isso só precisamos de um inimigo em qualquer posição, e ao clicar nele +
+> 'disparar', como fizemos com a granada, o agente atira, e por falta de outra
+> opção, erra sempre o alvo (por enquanto)."*
+
+**That is D25 literally** — a shot always targets an actor picked through the
+contextual menu — and the interaction pattern already exists on `GrenadeProp`.
+D32's aim mode (the `S` key, Tab-cycled targets, class name and hit percentage on
+screen) is combat-phase surface and is NOT being built now.
+
+| Was | Now |
+|---|---|
+| 1 · W-PRECOOK | ⏸ **back to D30's own home**: the last item of the combat milestone, once a real aim window exists to hide inside. Not mocked. |
+| 2 · firing + decorative projectile | **merged with 4** — one path: shooter → miss → wall |
+| 3 · enemy variant | **promoted**: the shoot test needs something to click |
+| 4 · miss hits the wall | merged into 2. The miss path is already shipped; what is new is that it leaves a **shooter** instead of a static bench prop |
+| 5 · destruction materials | scoped in §6.2 |
+
+**"Erra sempre" is a scaffold with an expiry**, and it is worth naming as one: the
+hit roll (D12) and its forceable dev override (D21) are the real mechanism, and
+always-miss stands in for them only until there is something to hit for. It is
+the honest choice today — a hit needs damage on an actor, which is Part 9 — but
+it must not quietly become the design.
+
+### 6.2 ✅ Destruction scope — Director, 2026-08-16
+
+> *"Vamos construir o vidro agora, que é mais trabalhoso, e botar fogo/buracos de
+> bala em papelão e tecido. A partir daí a gente já tem uma base bem sólida para
+> construir os cenários e trabalhar mais no personagem."*
+
+- **Glass** — the laborious one. D32 already ruled it gets **no DENTED/CRACKED
+  tier**, its cracks becoming a future multi-voxel system; that ruling is the
+  starting point, not something to rediscover.
+- **Cardboard and fabric** — **fire** and bullet holes.
+- **Brick is OUT**, with a reason: *"entra quase na categoria de concreto,
+  mudando um pouco a resistência, então não tem muita importância agora."*
+- **A dedicated materials milestone comes later** — so this pass closes
+  destruction, it does not try to finish materials.
+
+### 6.3 🔴 A milestone the Director surfaced while answering — INTERFACE
+
+Recorded here because it was raised in passing and would otherwise be lost:
+
+> *"Tem outra milestone que eu estou adiando faz tempo que é a interface. Estamos
+> fazendo tudo improvisado usando teclas, tipo G para granada, mas a gente vai ter
+> que perder um tempo em algum momento para criar botões e um sistema lógico
+> coerente, principalmente para testar no celular."*
+
+**The game is mobile-first portrait** (`DESIGN_MASTER_PLAN`), and every control
+added so far is a desktop key: `G` for grenade, `1/2/3`+`S` designed for weapons
+(D31, which already says the keys are *"the desktop mirror of on-screen controls,
+not the primary interface"*). The debt is that the thing they mirror does not
+exist. Not this milestone's work; named so it stops being invisible.
+
+This document resumes when §6's items close.
 
 ---
 

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.103 · **Updated:** 2026-08-16 · **Branch:** main
+**Version:** 0.9.103 · **Updated:** 2026-08-17 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -60,6 +60,7 @@
 - RESUMO_SESSAO_2026-08-14_CHARACTER_PERSONA_AND_PART0.md
 - RESUMO_SESSAO_2026-08-15_STYLE_COSTUME_PART2.md
 - RESUMO_SESSAO_2026-08-15_TURN_CORNER_TPOSE.md
+- RESUMO_SESSAO_2026-08-16_17_MOVEMENT_AND_THE_ENEMY.md
 - RESUMO_SESSAO_2026-08-16_MOCKUP_MODEL_FOUNDATION.md
 - RESUMO_SESSAO_2026-08-16_PART2_SWAP_AND_WALK.md
 <!-- AUTO:END pending_prompts -->
@@ -595,6 +596,53 @@ the blast from "the waves fire" to something that reads right. Full record:
   brightness and then drops), so the yellow is a flash and the red arrives fast
   AND bright. Easing the hue alone would have produced a red that was already dim
   on arrival. `e_ember03_vivid_red_70f_2026-08-13.png`.
+- ✅ **0.9.104 "Alpha Movement Foundation"** — **the placeholder is gone and the
+  agent walks.** Part 2 §10 closed: `agent.gd::_draw()`'s three posture diamonds
+  and head circle are DELETED, and `AgentSprite` draws the baked figure at three
+  postures × four facings under the room's real light registry. A **32-phase
+  distance-driven walk cycle** runs at the ratified **0.56 s per GU** (D61,
+  settled blind with the pick INTERIOR to the range, replacing a constant that
+  measured 12.3 m/s). **D62 ratifies the whole creation pipeline** — proportion
+  and viability are closed questions. **The guard is the same mesh in another
+  palette** (D63), which cashes D34's free-colour claim; what separates them at
+  ship size is the removal of the agent's white shirt, white sock and red hatband,
+  measured at 49.5 levels of mean separation on an identical 8961-px silhouette.
+  **Five defects the session found by measuring rather than looking, each of
+  which would otherwise have shipped:** the crouch band was reachable with the
+  legs alone all along (6.17 voxels at thigh −130) and my "unreachable" claim was
+  my own reference pose; a knee driven by POSITION left phases 0 and 4 of 8
+  byte-identical; the walk MOONWALKED, and no angle tuning could fix it because
+  *"the planted foot moves backward"* is a property of the foot's PATH — rebuilt
+  as an authored trajectory solved through the same two-bone IK the weapon grips
+  use; prone was FACE-PLANTING with its feet the highest part of the figure, and
+  the height band was structurally blind to it (a body lying flat and a body
+  upside down are the same height); and the step→frame table, hand-written by
+  reading the bake's frame names as compass directions, was **180° out** — the
+  Director saw it as *"andando de costas"*, and it is derived from the real
+  TileMapLayer now, all four fitting at 1.000. **The moonwalk gate caught
+  itself** when the foot-roll refinement landed: it identified the planted foot
+  as the lower one, which is wrong the moment a foot rolls, because at heel
+  strike the toe is the highest part of the planted foot. **Twice the defective
+  instrument was mine** — a yellow-pixel counter calibrated for full-brightness
+  yellow reported 4 px where the real answer was 669, and a "warm accent" metric
+  meant to find the red hatband was measuring the shotgun's wooden stock.
+  Evidence: `p3_agent_and_enemy.png`, `p3_walk_cycle_dev.png`,
+  `p3_postures_dev.png`, `p3_step_bracket_sheet.png`.
+- ⚠️ **Open, and none of it blocking:** the crouch ships at 5.60 voxels and the
+  Director called it *"esquisito"* (the band allows up to 6.17 with the legs
+  alone); the walk's phase count has a blind bracket delivered and no verdict;
+  Part 7 owes D41's head turn and a real APPEARANCE difference, which is geometry
+  and must be priced; and **two switches are SUSPENDED and must flip back
+  together** when the movement milestone opens —
+  `AgentSprite.DEV_ONLY_MILESTONE` and `P3_DEV_ONLY`.
+- 📋 **Two plans opened/reopened rather than executed**, at the Director's
+  instruction: `MOVEMENT_MASTER_PLAN` (the motion is not situational — the agent
+  is a stealth infiltrator, M1–M5, key poses first, research before authoring)
+  and `DESTRUCTION_MASTER_PLAN`, reopened for glass plus fire and bullet holes on
+  cardboard and fabric. **The seam for both was already built and left empty on
+  purpose:** glass is registered and ratified DESTROYED-only with its non-local
+  break already listed as open, and `MaterialResistanceTable` carries a
+  `flammability` column whose comment names cardboard and fabric by name.
 - ✅ **0.9.102 "Alpha Character Brainstorm"** — the character went from *designed*
   to *building*. **Part 0 CLOSED**, **Part 1 BUILT**, and six decisions ratified
   (D46–D51). **The method finding outranks the character one:** every sighted
@@ -624,10 +672,13 @@ the blast from "the waves fire" to something that reads right. Full record:
   hard is the judgement a script cannot make. Evidence:
   `p1_agent_tpose_sheet.png`, `p1_sculpt_spike_comparison.png`,
   `p8_sculpt_start_scene.png`.
-- ⚠️ **Also measured, owned by Part 3:** `agent.gd`'s `STEP_DURATION` is
-  **12.3 m/s** over a 1.60 m GU — a constant tuned for a legless 44×61 px vector
-  diamond — and `_step_next()` builds a fresh `EASE_IN_OUT` tween *per tile*, so
-  a five-GU path is five accelerate-decelerate cycles rather than one walk.
+- ✅ **RESOLVED 2026-08-16 (was ⚠️, owned by Part 3):** `agent.gd`'s
+  `STEP_DURATION` measured **12.3 m/s** over a 1.60 m GU — a constant tuned for a
+  legless 44×61 px vector diamond — and `_step_next()` built a fresh
+  `EASE_IN_OUT` tween *per tile*, so a five-GU path was five accelerate-decelerate
+  cycles rather than one walk. **Both halves are closed**: the duration is
+  **0.56 s per GU (2.86 m/s)**, settled by blind bracket with the pick INTERIOR
+  to the range, and the tween is LINEAR and chained.
 - ⚠️ **Open:** the crack decal art barely survives the downsample to a voxel
   face — a faint tonal patch rather than a fracture. Art, not wiring.
 - ✅ **The muzzle sequence reads** (E-SPARK-03 / E-MUZZLE-02, 2026-08-13).
@@ -916,9 +967,13 @@ post-demo.~~ **The character is now the active work** — the Director lifted
 `ACTOR_MASTER_PLAN` D18's living-beings deferral on 2026-08-13: *"Agora chegou a
 hora de produzir realmente o personagem."*
 
-The agent on screen today is still a **44×61 px vector silhouette**
-(`agent.gd`, `SILHOUETTE_WIDTH`/`SILHOUETTE_HEIGHT`) — no sprite, no pose, no
-frames.
+~~The agent on screen today is still a **44×61 px vector silhouette**~~
+**FALSE as of 2026-08-16.** The agent is a **baked sprite**: three postures, four
+facings, a 32-phase walk, relit by the room's own light registry. The measured
+on-screen silhouette is **104 × 222 px**, and `occlusion_set.gd` was re-synced
+from 22/61 to match — the old pair understated him 3.6× in height, so a wall
+tower overlapping his head triggered no ghost at all. The guard is the same mesh
+in another palette.
 
 What already exists to build on, all proven on *objects* rather than characters:
 - **The bake rig** — `actor_frame_bake_spike.gd`: N rotation frames from the

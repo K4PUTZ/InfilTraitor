@@ -59,11 +59,16 @@ much of it applies here, which is less than it looks),
 
 ## 1. Why this plan exists
 
-The agent today is **a 44×61 px vector box outline** drawn by `_draw()`
-(`godot/scripts/agents/agent.gd`), with three posture shapes, no facing, and no
-connection to any art pipeline. There is nothing to inherit and nothing to
-extend — the character is the last major system in the game with no
-representation at all.
+**Written 2026-08-14, and its premise is now history — kept because it is what
+the plan was answering.** *The agent today is a 44×61 px vector box outline drawn
+by `_draw()` (`godot/scripts/agents/agent.gd`), with three posture shapes, no
+facing, and no connection to any art pipeline. There is nothing to inherit and
+nothing to extend — the character is the last major system in the game with no
+representation at all.*
+
+**As of 2026-08-16 that `_draw()` is gone**, and the pipeline the plan asked for
+is Director-ratified as working (see the banner above). What the plan is
+answering now is quality and coverage, not existence.
 
 Three things are waiting on it, and none of them is cosmetic:
 
@@ -1171,8 +1176,9 @@ and `occlusion_set_test.gd` (outside the selftest glob) passes 5/5 against it.
 **Known and stated:** the baked frames are gitignored under D50's rule — the
 recipe is versioned, the exports are not. A fresh clone boots with the agent
 invisible and a `push_warning` naming the two scripts that rebuild him. The
-guards are still red vector diamonds; that is Part 7, and the contrast on screen
-is now obvious.
+guards were still red vector diamonds when this was written — **Part 7 closed
+that half the next day**, and the diamond survives only as the fallback for a
+missing bake.
 
 ### 🟡 THE WALK CYCLE — BUILT 2026-08-16. Awaiting the Director's blind verdict.
 

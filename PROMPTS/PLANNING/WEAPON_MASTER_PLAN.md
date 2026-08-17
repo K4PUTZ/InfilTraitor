@@ -744,6 +744,102 @@ effect *there*. Deliberately last: it depends on the AI/perception work that
 
 ---
 
+## 6c. 🟡 NEXT WAVE — THE AGENT SHOOTS (planned 2026-08-17, not started)
+
+**Director, 2026-08-16, scoping it down from a full aim mode:**
+
+> *"O que a gente quer testar agora é só a mecânica de mirar da GU A para a GU B
+> e o tiro acertar a parede C atrás. Pra isso só precisamos de um inimigo em
+> qualquer posição, e ao clicar nele + 'disparar', como fizemos com a granada, o
+> agente atira, e por falta de outra opção, erra sempre o alvo (por enquanto)."*
+
+**This is §5c's aim mode DEFERRED, not delivered.** D31's slots and `S` key and
+D32's Tab-cycled targets with a visible hit percentage are combat-phase surface
+and are explicitly NOT in this wave. What IS in it is **D25 literally** — a shot
+always targets an actor, picked through the same contextual menu the grenade
+already uses — which is the mechanism D32 later replaced *as a UI* while leaving
+its principle untouched.
+
+### What already exists, and what genuinely does not
+
+Checked 2026-08-17 rather than assumed, because most of this wave is **wiring
+built code to a new caller**, not new code:
+
+| Piece | State |
+|---|---|
+| The miss trajectory (D15/D25: origin→target, continue to the wall) | ✅ shipped |
+| `apply_point_impact()` — one projectile, one impact voxel, D30's `punch` ladder | ✅ shipped |
+| `select_cone_pellet_impacts()` — the shotgun's N independent pellets | ✅ shipped |
+| Bullet marks, face-local soot, half-voxels, the whole decal pipeline | ✅ shipped (D28/D32/D33) |
+| A contextual menu with an action that fires (`DetonateContextMenu`) | ✅ shipped, for grenades |
+| An enemy to click | ✅ as of 2026-08-16 — one guard in PLAYGROUND |
+| **A SHOOTER** | ❌ the bench fires from a static prop with *"no turn and no shooter"* |
+| **A projectile you can SEE** | ❌ and it amends a ratified row — see below |
+
+**The single sentence that describes this wave:** everything downstream of a
+miss is built and has been shipping since July; what is missing is that it has
+never been triggered *by an actor at a position*, and nothing has ever been drawn
+between the muzzle and the wall.
+
+### ⚠️ It amends D21, and the amendment should be explicit
+
+D21 ratified: *"the projectile does not exist in the scene — no travel, no
+per-frame simulation, only its consequences are drawn (animations are later)."*
+The Director now asks for *"projéteis decorativos saindo"*. **"Later" is now.**
+
+The amendment is narrow and worth stating narrowly: the projectile becomes
+**visible**, not **simulated**. It still resolves instantly and statistically
+(D12, D21, D22); what is added is decoration drawn along a trajectory that was
+already computed. Nothing about the hit roll, the impact point or the
+determinism story changes. If a future change lets the drawn projectile decide
+where it lands, that is a different decision and D21 should be re-opened for it.
+
+### The parts, in dependency order
+
+**Part A — the shot leaves an ACTOR.** Give the shot an origin that is the
+agent's own muzzle rather than a bench prop's. `agent.gd` already exposes
+`throw_origin()` and `throw_launch_height()` for the grenade arc, derived from
+`HEAD_OFFSET` per posture — the muzzle is the same class of anchor and should
+not become a second, independently-drifting copy. The weapon socket (`hand_R`,
+§4.3) is where it actually is.
+
+**Part B — the contextual menu gains "disparar".** The grenade's menu is the
+pattern and the Director named it as the pattern. Open question B1 below.
+
+**Part C — always-miss, wired through the REAL roll.** The scaffold must not
+bypass D12; it should force the roll's outcome the way D21's dev override
+already describes (*"a dev override forces 0% or 100% so a scenario replays"*).
+Forcing the existing mechanism keeps the eventual hit path one flag away;
+short-circuiting around it would build a second code path to delete later.
+
+**Part D — the decorative projectile.** Muzzle → impact point, along the
+already-computed trajectory. D14's per-projectile independence means a shotgun
+draws N of them, and that falls out for free if the drawing is per-projectile.
+
+**Part E — evidence.** A real capture of the agent firing at the guard, the
+round missing, and the wall behind taking D30's ladder. Per this project's own
+rules, a bench screenshot does not substitute.
+
+### Open questions for this wave
+
+1. **B1 — does "disparar" belong on the ENEMY's menu or the AGENT's?** The
+   grenade's menu opens on the *thrown object*. A shot has a shooter and a
+   target, and the Director's phrasing (*"ao clicar nele + disparar"*) points at
+   the enemy's. Worth confirming before building, because it decides where the
+   action lives when there are several enemies.
+2. **B2 — which weapon fires?** D31 gives the agent three slots and
+   `DESIGN_MASTER_PLAN` §10.2 gives him exactly ONE weapon per mission — a
+   collision §7c Q1 already records. This wave can dodge it by firing whatever
+   the figure is holding (the shotgun, D40's `lowered` grip), and should say so
+   rather than quietly picking.
+3. **B3 — what happens with no wall behind the target?** D15 says the round is
+   void and nothing happens. That is a legitimate outcome and the capture should
+   include one, or the wave proves only the lucky case.
+4. **B4 — does the agent need a FIRING pose?** He currently holds `lowered`.
+   D40's three grips exist precisely for this, and `aimed` is the one the grip
+   spike found unmistakable. Cheap (it is one more posture bake) but it is a
+   pose decision, so it is the Director's.
+
 ## 6b. Shotgun calibration — measured, PAUSED awaiting Director instructions
 
 **Stale distance, 2026-07-30**: the bench moved the shotgun from y=4 to y=6

@@ -916,7 +916,10 @@ Part 5  Silhouette classes        3-4 dressed bodies from §10.1's 7 tiers
                                      (D53's two disguise states are NOT two of
                                      them — see §4.5)
 Part 6  Second archetype          mesh retarget onto Part 1's skeleton, never a new rig
-Part 7  Guards                    tint/uniform variant + authored head turn (D41)
+Part 7  Guards                    🟡 HALF DONE 2026-08-16 — the palette variant
+                                     ships and is on the guard; the authored head
+                                     turn (D41) and any real APPEARANCE change
+                                     are not. See below
 Part 8  SHOWCASE MODEL            ⏸ DEFERRED (D55), and may ship as 2D.
                                      Preparation stands: start scene BUILT
                                      (`p8_sculpt_start_scene.py` ->
@@ -1429,6 +1432,61 @@ in the instrument presupposes the answer.
 **How to read the result:** a pick in the MIDDLE (B or D) is a real optimum. A
 pick at either END means the range still is not bracketed and this has to run
 again, wider — the same conclusion the turn test's first pass reached.
+
+### 🟡 Part 7 — the enemy palette, DONE 2026-08-16. The appearance half is not.
+
+Evidence: `Screenshots/history/p3_agent_and_enemy.png` (both figures in one
+in-game frame) and `p3_enemy_palette.png` (the two bakes isolated).
+
+**D34's claim was that a faction is a colour change and colour is nearly free.
+This cashes it**: one rig, one mesh, one renderer, a different `frame_family`.
+`p1_agent_model.py` gains `P1_PALETTE`, with the crease family DERIVED from the
+palette's own suit value rather than retyped — MATS already records why that
+relationship has to be a ratio at this albedo.
+
+**What separates two figures at ship size is not the suit's hue**, and this is
+the finding worth keeping. The agent is near-black by ratified design, so an
+enemy that is merely a different near-black is the same silhouette in practice.
+What reads is his three high-contrast SIGNATURES against that darkness — the
+white shirt (0.86), the white sock (0.90) and the red hatband, §4.8's *"one warm
+accent"*. The enemy palette removes all three and moves its single accent to dull
+brass.
+
+| Measured on the baked frames | |
+|---|---|
+| Silhouette | **8961 opaque px both** — identical, confirming one mesh |
+| Mean RGB | agent (56,55,58) vs enemy (86,90,77) — **49.5 levels apart** |
+| Near-white signature px | **693 → 243**, the remainder being the WEAPON, which no palette recolours |
+
+⚠️ **One measurement is recorded as worthless rather than dropped.** A "warm
+accent" count came back 385 vs 342 — nearly equal, which looks like the red
+hatband surviving the swap. It did not; the metric was picking up the shotgun's
+wooden stock. The conclusion rests on the other two rows.
+
+**Two structural defects found on the way, both of the silent kind:**
+1. **The bake family was a BINARY test** — *is this `agent_base` or the dev one* —
+   which stopped being true the moment a third variant existed. A binary test does
+   not fail on a third case; it picks one, so the enemy's frames would have
+   overwritten the agent's dev bake under plausible filenames. It is a mapping now.
+2. **No map had a single guard.** All five read zero, so the swap was built and
+   **unexercised** — and a claim without the real path is not a claim. One
+   two-waypoint patrol added to PLAYGROUND; two is the MINIMUM `MapCompiler`
+   accepts and a shorter route is dropped *silently*.
+
+**`AgentSprite.face_direction()` exists for the guards and not for the agent:**
+`guard_enemy.gd` snaps its facing to EIGHT directions while D44 fixes the art at
+four permanently, so a diagonal guard facing has no frame and never will. Taking
+the dominant axis is the honest reduction, and it lives in one place rather than
+in every caller that happens to hold an 8-way direction.
+
+**What Part 7 still owes**, stated so "guards are done" is not read into this:
+- **D41's authored head turn** — untouched.
+- **A real APPEARANCE difference.** The Director asked for *"outra aparência e
+  cores"*; this delivers the colours. A different hat or silhouette is geometry,
+  which is the axis D34 says multiplies, and it must be priced rather than
+  assumed cheap.
+- The guard's red diamond survives as the **fallback** for a missing bake, so a
+  guard is never invisible on the map.
 
 ### What Part 1 delivered, and what of it survives D48
 

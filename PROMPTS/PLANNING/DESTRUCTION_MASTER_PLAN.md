@@ -17,6 +17,68 @@
 > always deferred (cover rule, noise-on-digging, rubble-as-terrain,
 > breach-as-clue). Glass belongs to the **materials milestone**.
 
+> ## 🟡 REOPENED 2026-08-16 — for the destructive MATERIALS, and only those
+>
+> Director: *"Nós vamos fazer agora só os materiais destrutivos, pra fechar essa
+> milestone de destruição. […] Basicamente vamos construir o vidro agora, que é
+> mais trabalhoso, e botar fogo/buracos de bala em papelão e tecido. A partir daí
+> a gente já tem uma base bem sólida para construir os cenários e trabalhar mais
+> no personagem."*
+>
+> **This reverses one line of the closing note above**, and the reversal is
+> deliberate rather than an oversight: that note sent *"Glass […] to the materials
+> milestone"*. Glass now comes forward to close destruction instead, because the
+> thing it unblocks is **building scenarios**, which everything else waits on.
+>
+> **Brick is explicitly OUT**, with the Director's reason: *"entra quase na
+> categoria de concreto, mudando um pouco a resistência, então não tem muita
+> importância agora."* A dedicated **materials milestone still comes later** — this
+> pass closes DESTRUCTION, it does not try to finish materials.
+>
+> ### The seam for both was already built and left empty on purpose
+>
+> Checked 2026-08-17 rather than assumed:
+>
+> - **Glass is already registered and already ratified.** D22 fixed it as
+>   **DESTROYED-only** — *"não vai ter dented; é buraco feito, ou não feito"* —
+>   with dent/crack forced to `0.0` so the rule reads as intentional data rather
+>   than an unlisted material, and `destroy_factor` set high as a first-pass
+>   placeholder. D32 reaffirmed it gets no DENTED/CRACKED tier at all.
+>   **What is genuinely missing is the one thing that makes glass glass**, and
+>   this document already names it as open (§7 item 4): the cascade beyond the
+>   normal ring falloff — *"grandes chances de levar vários voxels em volta, ou
+>   quebrar a janela inteira"*. That is why the Director calls it *"mais
+>   trabalhoso"*: every other material's damage is local, and a window is not.
+> - **Fabric and cardboard have a column waiting.** `MaterialResistanceTable`
+>   carries `DEFAULT_FLAMMABILITY` with a comment that names them by name —
+>   *"cardboard, fabric, awnings that block light until they burn"* — and states
+>   it is *"the column those materials will fill in, nothing more"*. The gate
+>   semantics are already fixed: `0.0` means does not catch at all, above that
+>   scales how long the glow lives, wood is the reference at 1.0.
+>
+> **So this wave is: one hard problem (glass's non-local break) and one column to
+> fill (flammability, plus bullet holes on two soft materials).** Sizing it as
+> three equal materials would be wrong.
+>
+> ### Questions to settle before authoring, not during
+>
+> 1. **What is a "whole window"?** Glass's cascade needs a notion of a connected
+>    pane. Voxels have no grouping today; the wall's own `Edge`/slice structure is
+>    the nearest existing thing. Whether a pane is derived from contiguous glass
+>    voxels or authored in the mapfile is a design question with a cost
+>    difference, and it is the one that decides how big this is.
+> 2. **Does a shot through glass keep travelling?** D28 already rules that a
+>    fully-penetrated path leaves no mark anywhere. Glass is the first material
+>    where penetration is the *expected* case rather than the extreme one.
+> 3. **What does "fogo" mean mechanically for fabric/cardboard?** The existing
+>    ember is a decorative glow with a lifetime. Burning *through* — the Director's
+>    own wider intent quoted in the table — *"light wood walls that burn through
+>    into a new passage"* — is a destructive state change and a much bigger claim.
+>    Which of the two this wave delivers should be stated up front.
+> 4. **Do fabric and cardboard block light before they burn?** The table's comment
+>    says *"awnings that block light until they burn"*, which couples this to
+>    `LIGHT_MASTER_PLAN`. Out of scope unless the Director wants it in.
+
 **Status:** ✅ **CLOSED 2026-08-13** — previously: 🟡 **UNBLOCKED, 2026-07-26.** Paused at Alpha
 Grenade Foundation, 2026-07-22, precisely because "every voxel currently
 renders fully lit regardless of damage, so a crater's depth/shape reads as

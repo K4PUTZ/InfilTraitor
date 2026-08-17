@@ -160,6 +160,21 @@ const CONTRAST := 1.12
 const LIGHT_INTENSITY_SCALE := 0.60
 const LIGHT_INTENSITY_MAX := 1.30
 
+## Bracket-only, per-family override of the light RESPONSE (never `ambient` —
+## that governs the shadow read, which the Director approved as-is for the
+## white bracket). The base constants above are tuned so the near-black suit's
+## lit facets never clip; a bright suit has far less headroom before clipping
+## white, and needs its own response to read as "vivid white on lit facets,
+## the current tone in shadow" rather than either flat grey or a blown-out
+## sheet. Isolated per family so it touches nothing about the agent's or the
+## shipped enemy's own look. Director, 2026-08-17, explicit: "Pode isolar se
+## achar necessário."
+const LIGHT_RESPONSE_OVERRIDE := {
+	"_test_white": {"scale": 1.00, "max": 2.20},
+}
+var _light_intensity_scale := LIGHT_INTENSITY_SCALE
+var _light_intensity_max := LIGHT_INTENSITY_MAX
+
 ## Must match agent_frame_bake_spike.gd — D26: a different angle breaks the light
 ## maths silently.
 const ELEVATION_DEG := 30.0
@@ -212,6 +227,10 @@ func setup(p_room: Node) -> bool:
 	room = p_room
 	centered = false
 	scale = Vector2.ONE * SPRITE_SCALE
+
+	var response: Dictionary = LIGHT_RESPONSE_OVERRIDE.get(frame_family, {})
+	_light_intensity_scale = response.get("scale", LIGHT_INTENSITY_SCALE)
+	_light_intensity_max = response.get("max", LIGHT_INTENSITY_MAX)
 
 	_material = ShaderMaterial.new()
 	_material.shader = load(SHADER_PATH)
@@ -583,7 +602,7 @@ func _update_light_uniform() -> void:
 
 	_material.set_shader_parameter("light_dir", light_dir_view)
 	_material.set_shader_parameter("light_intensity",
-		clampf(best_energy * LIGHT_INTENSITY_SCALE, 0.0, LIGHT_INTENSITY_MAX))
+		clampf(best_energy * _light_intensity_scale, 0.0, _light_intensity_max))
 
 
 ## CLI-baked PNGs never went through the editor's import scan, so plain load()

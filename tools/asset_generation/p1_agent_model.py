@@ -193,6 +193,47 @@ PALETTES = {
         "shoe":  (0.038, 0.036, 0.030, 1.0),
         "sock":  (0.150, 0.155, 0.130, 1.0),   # the MJ white sock is the AGENT's
     }),
+    # Director, 2026-08-17: a deliberately drastic light-clothing bracket, to see
+    # how a near-white suit reads under the SAME runtime light model that made the
+    # near-black one work (D59). BRACKET ONLY — not a shipped faction.
+    #
+    # WHY THIS DOES NOT CALL _with_seams(). That helper's 2.5x/0.65x ratios are
+    # calibrated for D59's near-black suit, where 2.5x still lands inside [0,1].
+    # At this suit's brightness 2.5x clips straight to (1,1,1) on every fold, which
+    # would make every crease pure white regardless of the suit's own hue — the
+    # exact MAX_WHITE_FRACTION failure agent_frame_bake_spike.gd's albedo gate
+    # exists to catch (§4.8 / D31). So the crease family is typed directly here as
+    # a modest offset instead of a ratio, matching a real fold on a light fabric
+    # (a soft highlight, a soft shadow) rather than blowing out.
+    #
+    # ITERATION 2 (2026-08-17, Director: "está escura ainda, queremos um branco
+    # mais vivo... precisa separar do chão"). The runtime shader is MULTIPLICATIVE
+    # (lit = albedo * (ambient + light)) and its ambient/intensity constants are
+    # shared with the agent's own near-black suit — not touched here, since that
+    # is a scene-wide lever, not a palette one. The only lever a palette bracket
+    # owns is the albedo itself, so it goes up again: 0.80 -> 0.92. Re-verified
+    # against the SAME MAX_WHITE_FRACTION=0.10 gate that stopped a 2.5x multiplier
+    # from being usable here in the first place.
+    "test_white": {
+        "suit":    (0.92, 0.92, 0.94, 1.0),    # vivid near-white, blue-grey cast kept
+        "suit_lo": (0.87, 0.87, 0.89, 1.0),    # trousers, a shade under the jacket
+        "seam_hi": (0.97, 0.97, 0.98, 1.0),    # a fold catching the light — offset, not 2.5x
+        "seam_lo": (0.55, 0.55, 0.59, 1.0),    # a shadowed fold — offset, not 0.65x
+        "joint":   (0.92, 0.92, 0.94, 1.0),    # same value as suit, own material handle
+        "shirt":   (0.95, 0.95, 0.97, 1.0),    # a shade brighter than the suit, as on the agent
+        "skin":    (0.72, 0.55, 0.42, 1.0),    # unchanged from the agent
+        "hat":     (0.92, 0.92, 0.94, 1.0),
+        "band":    (0.62, 0.16, 0.18, 1.0),    # keep the one warm accent for legibility
+        "shoe":    (0.10, 0.10, 0.11, 1.0),    # dark shoe against the light suit, on purpose
+        "sock":    (0.95, 0.95, 0.97, 1.0),    # matches the brighter shirt
+        # Pinstripe — the volume cue for a suit too bright to rely on shading
+        # gradients (the inverse of D59's near-black problem: THAT suit compresses
+        # its lit range near black and gets volume from geometry+albedo edges;
+        # THIS one has plenty of lit range but nothing to break up its flat mass).
+        # A clearly darker line, not an offset — a real pinstripe is high-contrast
+        # against its cloth, unlike a subtle fold.
+        "stripe":  (0.30, 0.30, 0.33, 1.0),
+    },
 }
 
 _PALETTE = os.environ.get("P1_PALETTE", "")
@@ -519,6 +560,10 @@ def build_segments(z):
         segs.extend(build_creases(z))
     else:
         log("creases: SKIPPED (P1_NO_CREASES=1) — this is the control")
+    # Bracket-only: the pinstripe's volume cue belongs to the too-bright-to-shade
+    # test_white palette, not to every faction that ever calls this script.
+    if _PALETTE == "test_white":
+        segs.extend(build_pinstripes(z))
     return segs
 
 
@@ -710,6 +755,52 @@ def build_creases(z):
                            "seam_lo", bevel=0.003)))
 
     log("creases: %d fold/seam parts" % len(segs))
+    return segs
+
+
+def build_pinstripes(z):
+    """Vertical pinstripes on the torso — BRACKET-ONLY (P1_PALETTE=test_white),
+    called nowhere else. See the "test_white" palette comment: a near-white suit
+    has plenty of lit range but nothing to break up its flat mass, the opposite
+    problem D59's near-black suit solved with creases. A pinstripe is a stronger,
+    higher-contrast cue than a fold and reads at both channels a crease does
+    (an albedo edge AND a normal-map edge), so it is built the same way — thin
+    tapered prisms bound to the "chest" bone, front AND back from the same
+    lesson build_creases() already paid for (2026-08-16: a front-only cue leaves
+    the figure flat in the two facings that show his back).
+
+    Each stripe spans the full abdomen+chest mass in ONE prism rather than one
+    per torso segment — an approximation of the two-segment taper, not an exact
+    match, but the torso's own segments differ by only a few centimetres of
+    width and a visible seam between two stripe halves would cost more
+    coherence than the taper mismatch does.
+    """
+    segs = []
+    zh, zc, zn = z["z_hip"], z["z_chest"], z["z_neck"]
+    g = JOINT_GAP
+
+    # Same bottom boundary seg_abdomen's own p0 uses (build_segments), so the
+    # stripe sits on the real torso mass rather than a re-guessed number.
+    z_bottom, z_top = zh + HIP_H, zn - g
+    w_bottom, w_top = HIP_W * 0.98, SHOULDER_W * 1.09
+    d_bottom, d_top = CHEST_D * 0.92, CHEST_D * 1.06
+
+    # Fractions of the local half-width, centre gap left for the existing
+    # jacket-open/back-seam lines so a stripe never overlaps them.
+    fractions = (-0.85, -0.55, -0.28, 0.28, 0.55, 0.85)
+
+    for face, sy in (("front", 1.0), ("back", -1.0)):
+        for i, f in enumerate(fractions):
+            x_bottom = f * (w_bottom * 0.5) * 0.90
+            x_top = f * (w_top * 0.5) * 0.90
+            y_bottom = sy * (d_bottom * 0.5) * 1.02
+            y_top = sy * (d_top * 0.5) * 0.98
+            segs.append(("chest", prism(
+                "seg_stripe_%s_%d" % (face, i),
+                (x_bottom, y_bottom, z_bottom), (x_top, y_top, z_top),
+                0.010, 0.010, 0.010, 0.010, "stripe", bevel=0.003)))
+
+    log("pinstripes: %d stripe parts" % len(segs))
     return segs
 
 

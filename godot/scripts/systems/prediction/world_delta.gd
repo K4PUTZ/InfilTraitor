@@ -172,7 +172,10 @@ func is_blast_of(voxel) -> bool:
 ## `parent_container` is deliberately **null**: nothing here should ever write to
 ## a projected voxel, and a write would take `Voxel._set_dirty()` straight into a
 ## null dereference instead of silently bumping the real container's dirty count.
-## Loud, per the project's B6 rule.
+## Loud, per the project's B6 rule. LEAK-CYCLE-01 changed how Voxel stores that
+## back-reference (an instance id, no longer the object) without changing this:
+## null still lands on id 0, `instance_from_id(0)` still resolves to null, and a
+## write still dies on the same loud SCRIPT ERROR. Verified, not assumed.
 ##
 ## Returns the ORIGINAL voxel — no allocation — when this Delta does not change
 ## it, since a copy would be identical by definition.

@@ -42,9 +42,11 @@ class JunctionColumn:
 	var edge_b_id: String         ## second edge's ID — BAKE-FIX-06: for neighbor voxel resolution
 	var voxels: Array[Voxel]      ## the voxel objects
 	var dirty_count: int = 0      ## E-JUNCTION-01: sum of child Voxel dirty flags — Voxel's own
-	                               ## contract (see voxel.gd's _parent_container doc) needs
-	                               ## increment_dirty()/decrement_dirty()/id on whatever owns it,
-	                               ## the same as Slice/Slab already provide.
+	                               ## contract (see voxel.gd's _parent_container_id doc) needs
+	                               ## increment_dirty()/decrement_dirty() on whatever owns it,
+	                               ## the same as Slice/Slab already provide. LEAK-CYCLE-01: the
+	                               ## voxels point back by instance id, so this column must stay
+	                               ## alive (room._junction_columns holds it) while they are used.
 
 	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = "", p_face_a: int = 0, p_face_b: int = 1, p_edge_a_id: String = "", p_edge_b_id: String = ""):
 		id = "JCOL_%d_%d" % [p_gu.x, p_gu.y]

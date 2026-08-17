@@ -328,7 +328,11 @@ func test_variant_selects_distinct_names() -> void:
 		_fail("variants collapsed to %d name(s): %s" % [seen.size(), seen.keys()])
 
 	## Round-trip through the Voxel, which is what the renderer actually reads.
-	var voxel := Voxel.new(Vector2i(3, 4), 2, _StubContainer.new())
+	## LEAK-CYCLE-01: the stub needs its own local. Voxel holds its container by
+	## instance id, so an inline _StubContainer.new() would be freed the moment
+	## the constructor returned and set_damage() would call into a dead object.
+	var stub := _StubContainer.new()
+	var voxel := Voxel.new(Vector2i(3, 4), 2, stub)
 	voxel.set_damage(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.RIGHT, 2)
 	if voxel.damage_variant == 2:
 		_pass("Voxel.set_damage() stored variant 2")
@@ -481,7 +485,9 @@ func test_metal_and_wood_do_not_crack() -> void:
 
 
 ## Voxel needs a container for dirty propagation; this is the minimum contract
-## it actually calls (see Voxel._parent_container's own doc).
+## it actually calls (see Voxel._parent_container_id's own doc). LEAK-CYCLE-01:
+## a Voxel does NOT keep its container alive, so callers must hold the stub in a
+## named local for as long as they touch the voxel.
 class _StubContainer:
 	var id: String = "STUB"
 	func increment_dirty() -> void: pass

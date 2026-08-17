@@ -4,8 +4,15 @@
 ## voxel has no edge, so it gets this container instead — same dirty-count/TIC-skip
 ## contract as Slice, none of the edge-specific fields (face, edge_id).
 ## Floor, ceiling and interior cutaway are ONE class: a ceiling is a Slab at a
-## different level/role, not a different type. See voxel.gd's Voxel._parent_container
-## for why Voxel is shared unmodified between Slice and Slab.
+## different level/role, not a different type. See voxel.gd's
+## Voxel._parent_container_id for why Voxel is shared unmodified between Slice
+## and Slab, and why it points back by instance id rather than by reference.
+##
+## LEAK-CYCLE-01: a Slab owns its `voxels` strongly and they point back weakly,
+## so dropping the Slab frees the whole cluster. Whoever builds a Slab must keep
+## it alive for as long as its voxels are in use — SlabRegistry does that for
+## every real Slab; a fixture that hands out voxels without their Slab has to
+## anchor the Slab itself.
 class_name Slab
 
 enum Role { FLOOR, CEILING, INTERIOR }

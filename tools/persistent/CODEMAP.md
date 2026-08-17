@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58922 lines total** (under `godot/scripts/`)
+**208 scripts · 58975 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -692,7 +692,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 166 lines
+`class_name JunctionResolver` · 168 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -702,11 +702,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 104 lines
+`class_name Slab` · 111 lines
 
 `godot/scripts/geometry/slab.gd`
 
-> Geometry Module — Slab: horizontal voxel container (floor, ceiling, interior) DESTRUCTION_MASTER_PLAN D1: the container sibling of Slice for the horizontal plane. A wall voxel belongs to a Slice which belongs to an Edge; a floor/ceiling voxel has no edge, so it gets this container instead — same dirty-count/TIC-skip contract as Slice, none of the edge-specific fields (face, edge_id). Floor, ceiling and interior cutaway are ONE class: a ceiling is a Slab at a different level/role, not a different type. See voxel.gd's Voxel._parent_container for why Voxel is shared unmodified between Slice and Slab.
+> Geometry Module — Slab: horizontal voxel container (floor, ceiling, interior) DESTRUCTION_MASTER_PLAN D1: the container sibling of Slice for the horizontal plane. A wall voxel belongs to a Slice which belongs to an Edge; a floor/ceiling voxel has no edge, so it gets this container instead — same dirty-count/TIC-skip contract as Slice, none of the edge-specific fields (face, edge_id). Floor, ceiling and interior cutaway are ONE class: a ceiling is a Slab at a different level/role, not a different type. See voxel.gd's Voxel._parent_container_id for why Voxel is shared unmodified between Slice and Slab, and why it points back by instance id rather than by reference. LEAK-CYCLE-01: a Slab owns its `voxels` strongly and they point back weakly, so dropping the Slab frees the whole cluster. Whoever builds a Slab must keep it alive for as long as its voxels are in use — SlabRegistry does that for every real Slab; a fixture that hands out voxels without their Slab has to anchor the Slab itself.
 
 **Public vars**
 - `var id: String`
@@ -799,7 +799,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 132 lines
+`class_name Voxel` · 151 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -2364,7 +2364,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 202 lines
+`class_name WorldDelta` · extends `RefCounted` · 205 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2771,7 +2771,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2169 lines
+extends `SceneTree` · 2185 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3908,7 +3908,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 488 lines
+extends `SceneTree` · 494 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 

@@ -18,6 +18,16 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 var passed: int = 0
 var failed: int = 0
 
+## LEAK-CYCLE-01: anchors every Slab handed out by _synthetic_voxels(), which
+## returns the voxels and not their container. Voxel holds its container by
+## instance id now, so nothing else here would keep these alive and the first
+## set_damage() would hit a freed container. Production has the same
+## requirement and already meets it — SlabRegistry owns real Slabs, EdgeRegistry
+## owns real Slices — so this array is the fixture's stand-in for the registry,
+## not a workaround. Before the fix the container survived only because the
+## cycle made it immortal, which is exactly the bug.
+var _fixture_slabs: Array = []
+
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
@@ -673,6 +683,7 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 	## One 28×28 quadrant: distances 0..~38 cover core, rim, band, and beyond.
 	var make_patch := func() -> Array:
 		var slab := Slab.new("DENT_PATCH", Vector2i.ZERO, Slab.Role.FLOOR, 0, "earth")
+		_fixture_slabs.append(slab)  ## LEAK-CYCLE-01 — see _fixture_slabs
 		var out: Array = []
 		for x in range(28):
 			for y in range(28):
@@ -1148,6 +1159,7 @@ func test_crater_dent_varies_by_real_floor_material_wood_vs_concrete() -> void:
 	const MAX_R := 17.0
 	var make_patch := func(mat: String) -> Array:
 		var slab := Slab.new("WOOD_FLOOR_TEST", Vector2i.ZERO, Slab.Role.FLOOR, 0, mat)
+		_fixture_slabs.append(slab)  ## LEAK-CYCLE-01 — see _fixture_slabs
 		var out: Array = []
 		for x in range(28):
 			for y in range(28):
@@ -1190,6 +1202,7 @@ func test_deep_layer_gate_blocks_floor_deep_level() -> void:
 	var epicenter := Vector2i(5, 5)
 	var make_deep_patch := func() -> Array:
 		var slab := Slab.new("DEEP_GATE_TEST", Vector2i.ZERO, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, "concrete")
+		_fixture_slabs.append(slab)  ## LEAK-CYCLE-01 — see _fixture_slabs
 		var out: Array = []
 		for x in range(10):
 			for y in range(10):
@@ -1232,6 +1245,7 @@ func test_slab_pierce_multiplier_scales_destruction() -> void:
 	var epicenter := Vector2i(0, 0)
 	var make_patch := func() -> Array:
 		var slab := Slab.new("PIERCE_TEST", Vector2i.ZERO, Slab.Role.CEILING, 0, "concrete")
+		_fixture_slabs.append(slab)  ## LEAK-CYCLE-01 — see _fixture_slabs
 		var out: Array = []
 		for x in range(20):
 			for y in range(20):
@@ -1273,6 +1287,7 @@ func _count_destroyed(voxels: Array) -> int:
 func _synthetic_voxels(count: int) -> Array:
 	var voxels: Array = []
 	var slab := Slab.new("DUMMY", Vector2i.ZERO, Slab.Role.FLOOR, -1, "earth")
+	_fixture_slabs.append(slab)
 	for i in range(count):
 		voxels.append(Voxel.new(Vector2i(i, 0), i, slab))
 	return voxels
@@ -2147,6 +2162,7 @@ func test_crater_crack_follows_crack_factor_and_respects_d32_6() -> void:
 ## tiers are measured on identical geometry.
 func _crater_patch(slab_id: String, material: String) -> Array:
 	var slab := Slab.new(slab_id, Vector2i.ZERO, Slab.Role.FLOOR, 0, material)
+	_fixture_slabs.append(slab)  ## LEAK-CYCLE-01 — see _fixture_slabs
 	var out: Array = []
 	for x in range(28):
 		for y in range(28):

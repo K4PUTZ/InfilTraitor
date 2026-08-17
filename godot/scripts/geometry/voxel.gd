@@ -65,19 +65,38 @@ var damage_variant: int = 0
 ## decal choice.
 var damage_substrate: int = 0
 
-## Back-reference for dirty propagation. Untyped on purpose: D1
-## (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared by wall voxels
-## (parent = Slice, owned by an Edge) and floor/ceiling/interior voxels (parent =
-## Slab, D1 — no edge). GDScript has no shared interface type, so this holds
-## either; both implement increment_dirty()/decrement_dirty()/id, which is the
-## only contract Voxel actually needs from its container.
-var _parent_container
+## Back-reference for dirty propagation, held as an INSTANCE ID and never as a
+## reference. D1 (DESTRUCTION_MASTER_PLAN) makes Voxel the single class shared
+## by wall voxels (parent = Slice, owned by an Edge), floor/ceiling/interior
+## voxels (parent = Slab, D1 — no edge) and junction columns (parent =
+## JunctionColumn, E-JUNCTION-01). GDScript has no shared interface type, so
+## whatever this resolves to is duck-typed; increment_dirty()/decrement_dirty()
+## is the entire contract Voxel needs from its container.
+##
+## LEAK-CYCLE-01 (2026-08-17): this used to hold the container object itself,
+## which closed a reference cycle — the container holds `voxels`, each Voxel
+## held the container back — and Godot's RefCounted has no cycle collector, so
+## neither side's refcount ever reached zero. Nothing external kept them alive;
+## each container plus its voxels was a self-sustaining island that outlived
+## the room, the registry and every other owner. Measured on the real
+## PLAYGROUND build/free path: 2232 Slabs / 143 392 Voxels retained ~301 MB
+## per build, growing linearly across rebuilds (301 → 602 → 907 MB over three
+## rounds) and reclaiming 0.02 MB. Storing the id instead breaks the cycle by
+## construction, everywhere the pattern is used, at zero extra allocation —
+## the alternative (a WeakRef per Voxel) would have cost 143 392 extra objects.
+##
+## Every container is owned by something that outlives its voxels — Slabs by
+## SlabRegistry, Slices by EdgeRegistry, JunctionColumns by room's own array —
+## so the id always resolves while the graph is in use. A Voxel deliberately
+## built with no container (WorldDelta.project_voxel()'s projected copy) keeps
+## id 0, and a write to one still dies loudly on the null, exactly as before.
+var _parent_container_id: int = 0
 
 
 func _init(p_grid_pos: Vector2i, p_level: int, parent_container):
 	grid_pos = p_grid_pos
 	level = p_level
-	_parent_container = parent_container
+	_parent_container_id = 0 if parent_container == null else parent_container.get_instance_id()
 
 
 ## Set visibility; no-op if unchanged; propagates dirty upward
@@ -118,14 +137,14 @@ func set_damage(new_state: int, from_blast: bool = false,
 func clear_dirty() -> void:
 	if dirty:
 		dirty = false
-		_parent_container.decrement_dirty()
+		instance_from_id(_parent_container_id).decrement_dirty()
 
 
 ## Internal: mark dirty and propagate
 func _set_dirty() -> void:
 	if not dirty:
 		dirty = true
-		_parent_container.increment_dirty()
+		instance_from_id(_parent_container_id).increment_dirty()
 
 
 func _to_string() -> String:

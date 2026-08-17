@@ -4,13 +4,13 @@
   "id": "PLAYGROUND",
   "meta": {
     "title": "Destruction Test Zone",
-    "description": "One short wall per material (concrete/metal/stone/wood), a placeholder grenade in front of each (TestZoneController) \u2014 rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+    "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) — glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. Board enlarged and a light added over the guard's patrol area the same session. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
   },
   "sections": {
     "board": {
       "inner_size": [
-        24,
-        16
+        44,
+        22
       ],
       "buffer": 1,
       "floor_tile": "floor_SE",
@@ -148,8 +148,8 @@
             0
           ],
           "size": [
-            24,
-            16
+            44,
+            22
           ],
           "material": "concrete"
         },
@@ -244,6 +244,13 @@
           "height_class": 4,
           "radius": 10,
           "intensity": 1.2
+        },
+        {
+          "x": 15,
+          "y": 10,
+          "height_class": 3,
+          "radius": 8,
+          "intensity": 1.15
         }
       ]
     }

@@ -3952,9 +3952,14 @@ func _populate_test_zone_if_playground() -> void:
 	_floating_collectible = null
 	if _weapon_bench_controller != null:
 		_weapon_bench_controller.clear()
+	## The weapons bench and the floor grenades were RETIRED here 2026-08-17
+	## (Director: "vamos fazer os testes com o agente mesmo, então não
+	## precisamos mais desse esquema") — firing now goes through the agent
+	## himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. Left as dead
+	## constants below (TEST_ZONE_GRENADE_GUS, TEST_ZONE_WEAPON_ROWS,
+	## TEST_ZONE_WALL_GU_X) rather than deleted: they carry real calibration
+	## history (§6b's shotgun row-distance derivation) other docs still cite.
 	if map_id == "PLAYGROUND":
-		for gu in TEST_ZONE_GRENADE_GUS:
-			_test_zone_controller.add_grenade(gu)
 		for entry in TEST_ZONE_AGENT_PROBE_BRACKET:
 			var cfg: Dictionary = entry.duplicate()
 			cfg["frames_dir"] = "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/%s/" % entry["dir"]
@@ -3965,22 +3970,6 @@ func _populate_test_zone_if_playground() -> void:
 		if _vision_controller != null:
 			_test_zone_controller.set_agent_probes_dev_vision(_vision_controller.dev_vision)
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
-
-		## The weapons bench: every row of TEST_ZONE_WEAPON_ROWS placed once per
-		## wall material. Static-facing mode reuses the collectible's own bake
-		## and class — a prop that points instead of spinning is the same
-		## flipbook frozen on the frame matching its aim, so no gun needs a
-		## second bake just to stand still (see FloatingCollectible's header).
-		for weapon in TEST_ZONE_WEAPON_ROWS:
-			for gu_x in TEST_ZONE_WALL_GU_X:
-				_weapon_bench_controller.add_weapon(
-					Vector2i(gu_x, int(weapon["row_y"])),
-					String(weapon["facing"]),
-					String(weapon["id"]),
-					String(weapon["frames_dir"]),
-					float(weapon["sprite_scale"]),
-					float(weapon["shadow_scale_factor"]),
-				)
 
 		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per baked object.
 		## Moved out of the bench (Director, 2026-07-29: collectibles get their
@@ -4011,10 +4000,7 @@ func _populate_test_zone_if_playground() -> void:
 
 		## Same shape as "[Room] N tiles registered" — a placement summary that
 		## can be checked from a log instead of counted off a screenshot.
-		print("[TestZone] bench: %d weapons (%d rows x %d columns), %d pickups, %d grenades" %
-			[TEST_ZONE_WEAPON_ROWS.size() * TEST_ZONE_WALL_GU_X.size(),
-			TEST_ZONE_WEAPON_ROWS.size(), TEST_ZONE_WALL_GU_X.size(),
-			_collectibles.size(), TEST_ZONE_GRENADE_GUS.size()])
+		print("[TestZone] %d pickups" % _collectibles.size())
 
 
 
@@ -4245,6 +4231,13 @@ func _run_auto_screenshot_capture() -> void:
 			_set_perspective(persp_env)
 			for _p in range(10):
 				await get_tree().process_frame
+		## The bench was retired from PLAYGROUND 2026-08-17 (see
+		## _populate_test_zone_if_playground()) — this capture action now has no
+		## weapons to index and must say so rather than index an empty array.
+		if _weapon_bench_controller._weapons.is_empty():
+			push_warning("[SCREENSHOT-HOOK-01] weapon_menu/weapon_fire: the bench is retired on PLAYGROUND, nothing to capture")
+			get_tree().quit(1)
+			return
 		var wi_env := OS.get_environment("INFILTRAITOR_CAPTURE_WEAPON_INDEX")
 		var wi := wi_env.to_int() if wi_env.is_valid_int() else 0
 		if wi < 0 or wi >= _weapon_bench_controller._weapons.size():
@@ -4332,6 +4325,12 @@ func _run_auto_screenshot_capture() -> void:
 		for _c in range(5):
 			await get_tree().process_frame
 		if capture_action != "test_zone_view":
+			## The floor grenades were retired from PLAYGROUND 2026-08-17 (see
+			## _populate_test_zone_if_playground()) — nothing to click any more.
+			if _test_zone_controller._grenades.is_empty():
+				push_warning("[SCREENSHOT-HOOK-01] %s: the floor grenades are retired on PLAYGROUND, nothing to capture" % capture_action)
+				get_tree().quit(1)
+				return
 			## D22-INPUT-01: click the GU floor cell, not the sprite.
 			var g_cell: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
 			var click := InputEventMouseButton.new()

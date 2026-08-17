@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.103 · **Updated:** 2026-08-17 · **Branch:** main
+**Version:** 0.9.104 · **Updated:** 2026-08-17 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -80,11 +80,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
 - a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 - d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
 - 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
 - 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
-- 01c41e0e ALPHA EXPLOSION REFINEMENT 0.9.99 - choreographer/z-index/junction fixes, doc sweep
 <!-- AUTO:END version_history -->
 
 ---

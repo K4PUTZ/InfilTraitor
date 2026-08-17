@@ -287,14 +287,26 @@ def shoulder_assist(arm, side, target, max_k=0.7):
     return hi
 
 
-def two_bone_ik(arm, side, target, pole, hand_dir):
-    """Place the elbow analytically so the WRIST reaches `target`.
+## The default chain is the ARM. `chain` exists so p3_walk_export.py can solve
+## the LEG against an authored foot path with this same solver instead of a
+## second copy of the law of cosines — the walk needs exactly the property the
+## grips needed: the pose is derived from where the end effector must BE.
+ARM_CHAIN = ("upperarm_%s", "forearm_%s", "hand_%s")
+LEG_CHAIN = ("thigh_%s", "shin_%s", "foot_%s")
+
+
+def two_bone_ik(arm, side, target, pole, hand_dir, chain=ARM_CHAIN, assist=True):
+    """Place the middle joint analytically so the END JOINT reaches `target`.
 
     Law of cosines on the real bone lengths read off the armature — never the
     module constants, so a re-proportioned model cannot silently desync this.
-    Returns the achieved wrist error in metres for the caller to gate on."""
-    up_name, fo_name, hd_name = ("upperarm_%s" % side, "forearm_%s" % side,
-                                 "hand_%s" % side)
+    Returns the achieved end-joint error in metres for the caller to gate on.
+
+    `assist=False` skips the shoulder rotation, which has no counterpart on the
+    leg: the arm's reach problem is solved by bringing the shoulder forward, and
+    the leg's is solved by DROPPING THE HIPS, which moves both legs at once and
+    therefore belongs to the caller rather than to one side's solve."""
+    up_name, fo_name, hd_name = (chain[0] % side, chain[1] % side, chain[2] % side)
     a = arm.data.bones[up_name].length
     b = arm.data.bones[fo_name].length
 
@@ -303,7 +315,7 @@ def two_bone_ik(arm, side, target, pole, hand_dir):
     for n in (up_name, fo_name, hd_name):
         arm.pose.bones[n].matrix_basis.identity()
     bpy.context.view_layer.update()
-    k = shoulder_assist(arm, side, target)
+    k = shoulder_assist(arm, side, target) if assist else 0.0
     shoulder = arm.pose.bones[up_name].matrix.to_translation()
 
     to_t = Vector(target) - shoulder

@@ -134,7 +134,42 @@ def _place_root(arm, rest_root, mat):
 SHIP_SCALE = p2.EXPORT_HEIGHT_M / 1.898
 
 
+def _gate_anatomy(name, arm, lying):
+    """Invariants a posed HUMAN must satisfy, checked on the solved pose.
+
+    They exist because the first prone failed both and nothing caught it: the
+    height band passed (2.87 voxels, comfortably inside 2.0–3.2) and the export
+    gates passed, because a figure lying face-down and a figure face-planting
+    with its feet in the air are the same HEIGHT. A band cannot see orientation.
+    Measured, not judged — the numbers are printed either way."""
+    def z_of(bone_name):
+        return arm.pose.bones[bone_name].matrix.to_translation().z
+    head = arm.pose.bones["head"]
+    crown = (head.matrix @ Vector((0.0, head.length, 0.0))).z
+    hips = z_of("hips")
+    feet = [z_of("foot_L"), z_of("foot_R")]
+    log("%s: crown %+.3f, hips %+.3f, feet %+.3f/%+.3f"
+        % (name, crown, hips, feet[0], feet[1]))
+
+    ## True of every posture: the head is the top of a person.
+    if crown <= hips:
+        fail("%s: the head crown (%.3f) is at or BELOW the hips (%.3f) — the "
+             "figure is upside down or face-planting" % (name, crown, hips))
+    ## True of every posture: you stand, crouch and lie ON your feet, so no foot
+    ## may float above the hips.
+    if max(feet) > hips + 0.02:
+        fail("%s: a foot (%.3f) is above the hips (%.3f) — the legs are pointing "
+             "the wrong way" % (name, max(feet), hips))
+    ## Lying down specifically: the body is FLAT, so the feet sit at the hips'
+    ## height rather than below them.
+    if lying and abs(max(feet) - hips) > 0.06:
+        fail("%s: lying down, but the feet (%.3f) are %.3f m off the hips "
+             "(%.3f) — the body is piked, not flat"
+             % (name, max(feet), abs(max(feet) - hips), hips))
+
+
 def make_posture(name, bones, pitch_deg=0.0, centre_xy=False, solve_depth=False,
+                 lying=False,
                  grip=None, aim=None, band_vox=(0.0, 99.0), span_x_max_m=1.4):
     """Build the `posture` dict p2_grip_spike.export_posed consumes.
 
@@ -213,6 +248,7 @@ def make_posture(name, bones, pitch_deg=0.0, centre_xy=False, solve_depth=False,
             k = 1.0
 
         height, fix, foot = pose_at(k)
+        _gate_anatomy(name, arm, lying)
         log("%s: posed height %.3f m -> ships %.3f m (%.2f voxels); "
             "footprint %.2f x %.2f m (arms still in T here — the grip is solved "
             "after this); ground correction %s"
@@ -268,17 +304,28 @@ POSTURES = {
         band_vox=(5.0, 6.2),
         span_x_max_m=1.1,
     ),
+    # ⚠️ REBUILT 2026-08-16 after the Director called it *"esquisito"*. The first
+    # version was upside down in the two ways that matter, and MEASURED rather
+    # than argued: at pitch -92 with those leg angles the head crown sat at
+    # z=+0.102 while the hips were at +0.333 and the FEET at +0.404 — the feet
+    # were the highest part of the figure and the head the lowest. On screen that
+    # read as someone face-planting, not as someone lying prone.
+    #
+    # Every angle below was picked off a measured comparison, not adjusted by
+    # eye: an exact -90 pitch puts the body axis truly horizontal, so the legs
+    # need NO rotation at all to lie flat (feet and hips both land at +0.178),
+    # and a POSITIVE neck/head lifts the face (head crown +0.392) where the
+    # negative one buried it (+0.101). The invariants are gated below so this
+    # cannot silently invert again.
     "prone": make_posture(
         "prone",
         bones={
-            "neck": (-28, 0, 0),
-            "head": (-20, 0, 0),
-            "thigh_L": (6, 0, 0), "thigh_R": (6, 0, 0),
-            "shin_L": (-18, 0, 0), "shin_R": (-18, 0, 0),
-            "foot_L": (24, 0, 0), "foot_R": (24, 0, 0),
+            "neck": (30, 0, 0),
+            "head": (22, 0, 0),
         },
-        pitch_deg=-92.0,
+        pitch_deg=-90.0,
         centre_xy=True,
+        lying=True,
         # See note 3. The carried aim points into the floor; this one runs along
         # the body, muzzle forward and barely above the ground, which is what a
         # prone figure with a long gun actually looks like.
@@ -432,7 +479,15 @@ def main():
             voxel_m=VOXEL_M,
             grip="%s/%s" % (WEAPON, GRIP),
             facings={str(k): v for k, v in facing.items()},
-            postures=[dict(name=n, glb=os.path.relpath(p, p2.REPO_ROOT),
+            postures=[dict(name=n,
+                           glb=os.path.relpath(p, p2.REPO_ROOT).replace(os.sep, "/"),
+                           ## So `AGENT_BAKE_MANIFEST` bakes all three in ONE
+                           ## windowed boot, the same contract p3_walk_export.py
+                           ## writes. The dev-joint variant goes to its own root
+                           ## because AgentSprite loads it as a separate set.
+                           out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
+                                   "agent_frames%s/%s/"
+                                   % ("_dev" if p2._MODEL != "agent_base" else "", n),
                            height_m=round(heights[n], 4),
                            voxels=round(heights[n] / VOXEL_M, 2))
                       for n, p in written],

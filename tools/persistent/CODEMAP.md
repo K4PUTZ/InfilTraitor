@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 58652 lines total** (under `godot/scripts/`)
+**208 scripts · 58724 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 402 lines
+`class_name AgentSprite` · extends `Sprite2D` · 474 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -102,7 +102,9 @@
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
 - `POSTURE_DIRS` = `{"standing": "standing", "crouch": "crouch", "prone": "prone"}`
-- `FACING_BY_STEP` = `{ Vector2i(0, -1): "N", Vector2i(1, 0): "E", Vector2i(0, 1): "S", Vector2i(-1, 0): "W", }`
+- `SCREEN_COMPASS_BY_FRAME` = `{"N": "NE", "E": "NW", "S": "SW", "W": "SE"}`
+- `COMPASS_SCREEN` = `{ "NE": Vector2(0.894, -0.447), "SE": Vector2(0.894, 0.447), "SW": Vector2(-0.894, 0.447), "NW": Vector2(-0.894, -0.447), }`
+- `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
 - `SPRITE_SCALE` = `1.0`
 - `SPECULAR_STRENGTH` = `0.0`
 - `AMBIENT` = `0.42`

@@ -65,18 +65,37 @@ const YAW_BY_DIRECTION := {"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}
 ## dependency one-way.
 const POSTURE_DIRS := {"standing": "standing", "crouch": "crouch", "prone": "prone"}
 
-## The grid step that produces each facing. The four baked yaws come out as the
-## diamond's EDGES (NE/SE/SW/NW measured, not asserted — p2_grip_spike.py's
-## measure_facings loud-fails if they ever come out as the vertices instead), and
-## the edges are the grid axes, which is exactly the set of directions a
-## tile-stepping character can walk in. So this mapping is total: every legal
-## step has a baked frame, and no step falls between two.
-const FACING_BY_STEP := {
-	Vector2i(0, -1): "N",
-	Vector2i(1, 0): "E",
-	Vector2i(0, 1): "S",
-	Vector2i(-1, 0): "W",
+## WHICH SCREEN DIRECTION EACH BAKED FRAME FACES. Measured in Blender by
+## `p2_grip_spike.measure_facings()`, which projects the figure's own forward
+## vector through the real camera at each yaw and loud-fails if the four ever
+## come out as the diamond's VERTICES instead of its edges. The bake names its
+## frames after the room PERSPECTIVE it renders (yaw 0/90/180/-90 = N/E/S/W), and
+## those names are not compass facings of the figure — which is exactly the trap
+## below was written to avoid.
+const SCREEN_COMPASS_BY_FRAME := {"N": "NE", "E": "NW", "S": "SW", "W": "SE"}
+
+## DIRECTION_GLOSSARY §2/§3 as SCREEN deltas, same table p2_grip_spike.py scores
+## against. These are the glossary's own values, NOT unit diagonals: on a 2:1
+## diamond a 45-degree world direction draws at 26.57 degrees, so (0.894, -0.447)
+## fits NE at 1.000 where (0.707, -0.707) fits at 0.949.
+const COMPASS_SCREEN := {
+	"NE": Vector2(0.894, -0.447), "SE": Vector2(0.894, 0.447),
+	"SW": Vector2(-0.894, 0.447), "NW": Vector2(-0.894, -0.447),
 }
+
+const STEPS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+
+## Grid step -> baked frame name. DERIVED at setup from the real TileMapLayer,
+## never written out by hand.
+##
+## ⚠️ IT WAS WRITTEN OUT BY HAND FIRST, AND IT WAS WRONG. The hand-written table
+## paired step (1,0) with frame "E", reading the frame names as compass
+## directions. They are not: frame "E" is the yaw that draws the figure facing
+## screen NW, while step (1,0) moves him screen SE — 180 degrees out, which is
+## why the Director's first look reported him *"andando de costas"*. Deriving it
+## from `map_to_local` makes the table a measurement of the tilemap the game
+## actually has, so it cannot disagree with the floor the agent walks on.
+var _frame_by_step: Dictionary = {}
 
 ## Derived, not tuned: the bake pins one texel to one screen pixel (a 0.20 m rise
 ## measured 20.000 px against VOXEL_STEP_PX), so any scale but 1.0 breaks it.
@@ -149,9 +168,56 @@ func setup(p_room: Node) -> bool:
 
 	if not _ensure_posture("standing"):
 		return false
+	if not _derive_frame_by_step():
+		return false
 	_refresh()
 	set_process(true)
 	return true
+
+
+## Measure, for each of the four grid steps, which way it actually moves the
+## agent ON SCREEN, and pair it with the baked frame that faces that way.
+##
+## `map_to_local` is the same call `DebugAgent._cell_to_world()` uses to place
+## him, so this reads the exact geometry he walks on rather than a remembered
+## convention. Loud-fails if two steps resolve to one frame — that would mean the
+## tilemap is no longer a 2:1 diamond and every facing in the game is a guess.
+func _derive_frame_by_step() -> bool:
+	var layer: TileMapLayer = (get_parent() as Node2D).get("floor_layer")
+	if layer == null:
+		push_error("[AgentSprite] the agent has no floor_layer — cannot derive the step facings")
+		return false
+	var frame_of_compass := {}
+	for frame: String in SCREEN_COMPASS_BY_FRAME:
+		frame_of_compass[SCREEN_COMPASS_BY_FRAME[frame]] = frame
+
+	var origin := layer.map_to_local(Vector2i.ZERO)
+	_frame_by_step.clear()
+	for step: Vector2i in STEPS:
+		var delta := (layer.map_to_local(step) - origin).normalized()
+		var best := ""
+		var best_fit := -2.0
+		for compass: String in COMPASS_SCREEN:
+			var fit: float = delta.dot((COMPASS_SCREEN[compass] as Vector2).normalized())
+			if fit > best_fit:
+				best_fit = fit
+				best = compass
+		_frame_by_step[step] = frame_of_compass[best]
+		print_debug("[AgentSprite] step %s draws %s -> screen %s (fit %.3f) -> frame %s" % [
+			step, delta, best, best_fit, _frame_by_step[step]])
+	if _frame_by_step.values().size() != STEPS.size() \
+			or Array(_frame_by_step.values()).duplicate().size() != _dedup(_frame_by_step.values()).size():
+		push_error("[AgentSprite] the four grid steps did not resolve to four distinct facings (%s) — the floor is not a 2:1 diamond" % _frame_by_step)
+		return false
+	return true
+
+
+static func _dedup(values: Array) -> Array:
+	var seen := []
+	for v in values:
+		if not seen.has(v):
+			seen.append(v)
+	return seen
 
 
 ## Called by the agent when its posture changes. Takes a NAME, not the enum —
@@ -167,11 +233,17 @@ func set_posture_name(name: String) -> void:
 
 ## D47's snap. `step` is the grid delta the agent is about to walk, in VIEW
 ## space; it is converted to base space so a later perspective flip preserves it.
+##
+## §4.6 defines what reaches the screen as `facing − perspective`, so going the
+## other way is `base = view + perspective`. The first version SUBTRACTED here as
+## well as in `_refresh()`, which double-counts: at the default N perspective the
+## yaw is 0 and the error is invisible, and it turns the figure the wrong way by
+## twice the rotation the moment the Director rotates the room. Invisible in the
+## step bracket for exactly that reason — every panel was captured at N.
 func face_step(step: Vector2i) -> void:
-	if not FACING_BY_STEP.has(step):
+	if not _frame_by_step.has(step):
 		return
-	var view_facing: String = FACING_BY_STEP[step]
-	_base_facing = _compose(view_facing, _inverse_perspective())
+	_base_facing = _compose(String(_frame_by_step[step]), _inverse_perspective(), 1.0)
 	_refresh()
 
 
@@ -274,11 +346,11 @@ func _inverse_perspective() -> String:
 	return String(room._active_perspective)
 
 
-## Compose two compass directions by adding their yaws, cyclically. §4.6 defines
-## what reaches the screen as `facing - perspective`; storing the base facing and
-## re-composing on every refresh is the same relationship read the other way.
-func _compose(a: String, b: String) -> String:
-	var yaw: float = float(YAW_BY_DIRECTION.get(a, 0.0)) - float(YAW_BY_DIRECTION.get(b, 0.0))
+## `a` rotated by `sign * b`, cyclically, as frame names. §4.6 defines what
+## reaches the screen as `facing - perspective` (sign −1, the default, used by
+## `_refresh`); `face_step` needs the inverse and passes +1.
+func _compose(a: String, b: String, sign: float = -1.0) -> String:
+	var yaw: float = float(YAW_BY_DIRECTION.get(a, 0.0)) + sign * float(YAW_BY_DIRECTION.get(b, 0.0))
 	for d: String in DIRECTIONS:
 		if is_equal_approx(fposmod(float(YAW_BY_DIRECTION[d]) - yaw, 360.0), 0.0):
 			return d

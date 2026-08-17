@@ -1093,6 +1093,16 @@ func attach_sprite(p_room: Node) -> bool:
 	var s := AgentSprite.new()
 	s.name = "EnemySprite"
 	s.frame_family = "_enemy"
+	## WHITE-AMBIENT-01 bracket knob, dev-only: dress the guard in another baked
+	## palette family without editing this line between runs. A bracket compared
+	## across separate edits is a bracket compared across separate binaries, and
+	## the previous white pass was judged that way. Any family under
+	## actor_bakes/agent_frames<family>/ works; "_test_white" is the one this
+	## bracket exists for. Unset = the shipped enemy, untouched.
+	var family_env := OS.get_environment("INFILTRAITOR_ENEMY_FAMILY")
+	if family_env != "":
+		s.frame_family = family_env
+		print("[GuardEnemy] WHITE-AMBIENT-01 bracket: frame_family='%s'" % family_env)
 	add_child(s)
 	if not s.setup(p_room):
 		s.queue_free()

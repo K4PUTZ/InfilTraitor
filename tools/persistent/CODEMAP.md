@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 59068 lines total** (under `godot/scripts/`)
+**208 scripts · 59102 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 616 lines
+`class_name AgentSprite` · extends `Sprite2D` · 640 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -113,7 +113,7 @@
 - `CONTRAST` = `1.12`
 - `LIGHT_INTENSITY_SCALE` = `0.60`
 - `LIGHT_INTENSITY_MAX` = `1.30`
-- `LIGHT_RESPONSE_OVERRIDE` = `{ "_test_white": {"scale": 1.00, "max": 2.20}, }`
+- `LIGHT_RESPONSE_OVERRIDE` = `{ "_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.42}, }`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_DEG` = `45.0`
 
@@ -157,7 +157,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1185 lines
+`class_name GuardEnemy` · extends `Node2D` · 1195 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 

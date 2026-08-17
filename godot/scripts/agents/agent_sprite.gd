@@ -160,20 +160,34 @@ const CONTRAST := 1.12
 const LIGHT_INTENSITY_SCALE := 0.60
 const LIGHT_INTENSITY_MAX := 1.30
 
-## Bracket-only, per-family override of the light RESPONSE (never `ambient` —
-## that governs the shadow read, which the Director approved as-is for the
-## white bracket). The base constants above are tuned so the near-black suit's
-## lit facets never clip; a bright suit has far less headroom before clipping
-## white, and needs its own response to read as "vivid white on lit facets,
-## the current tone in shadow" rather than either flat grey or a blown-out
-## sheet. Isolated per family so it touches nothing about the agent's or the
-## shipped enemy's own look. Director, 2026-08-17, explicit: "Pode isolar se
-## achar necessário."
+## Bracket-only, per-family override of the light response. The base constants
+## above are tuned so the near-black suit's lit facets never clip; a bright suit
+## has far less headroom before clipping white, and needs its own response to
+## read as "vivid white on lit facets, the current tone in shadow" rather than
+## either flat grey or a blown-out sheet. Isolated per family so it touches
+## nothing about the agent's or the shipped enemy's own look. Director,
+## 2026-08-17, explicit: "Pode isolar se achar necessário."
+##
+## WHITE-AMBIENT-01 (2026-08-17): `ambient` joined `scale`/`max` here, which the
+## previous pass deliberately excluded. The reason it has to: the runtime shader
+## is `lit = albedo * (ambient + ndotl * light_intensity)`, so on any facet the
+## light does not reach (ndotl ~ 0) the whole expression collapses to
+## `albedo * ambient`. At the shipped ambient of 0.42 a 0.92 albedo — already at
+## the ceiling MAX_WHITE_FRACTION allows — renders 0.386, which the 1.12 contrast
+## pulls to 0.37, DARKER than PLAYGROUND's ~0.55-0.65 floor. That is the exact
+## "branco virou cinza igual ao chão" the Director reported, and no palette or
+## light-response value can reach it, because both sit on the other side of a
+## multiply by zero. Only `ambient` moves the unlit read.
+##
+## It stays PER FAMILY rather than global: `ambient` is a scene-wide lever shared
+## with the agent's near-black suit, where 0.42 is ratified and raising it would
+## wash out the character the whole look was built around.
 const LIGHT_RESPONSE_OVERRIDE := {
-	"_test_white": {"scale": 1.00, "max": 2.20},
+	"_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.42},
 }
 var _light_intensity_scale := LIGHT_INTENSITY_SCALE
 var _light_intensity_max := LIGHT_INTENSITY_MAX
+var _ambient := AMBIENT
 
 ## Must match agent_frame_bake_spike.gd — D26: a different angle breaks the light
 ## maths silently.
@@ -231,13 +245,23 @@ func setup(p_room: Node) -> bool:
 	var response: Dictionary = LIGHT_RESPONSE_OVERRIDE.get(frame_family, {})
 	_light_intensity_scale = response.get("scale", LIGHT_INTENSITY_SCALE)
 	_light_intensity_max = response.get("max", LIGHT_INTENSITY_MAX)
+	_ambient = response.get("ambient", AMBIENT)
+	## WHITE-AMBIENT-01 bracket knob. Dev-only, env-driven, so a comparison sheet
+	## across ambient values comes from ONE binary and one map — editing a const
+	## between runs would rebuild the project each time and invite an unnoticed
+	## second difference between the frames being compared.
+	var ambient_env := OS.get_environment("INFILTRAITOR_SPRITE_AMBIENT")
+	if ambient_env.is_valid_float():
+		_ambient = clampf(ambient_env.to_float(), 0.0, 1.0)
+		print("[AgentSprite] WHITE-AMBIENT-01 bracket: family '%s' ambient=%.2f"
+			% [frame_family, _ambient])
 
 	_material = ShaderMaterial.new()
 	_material.shader = load(SHADER_PATH)
 	## Opt in explicitly: this shader is SHARED with the grenade and every weapon,
 	## so relying on its defaults would restyle all of them the day one is tuned.
 	_material.set_shader_parameter("specular_strength", SPECULAR_STRENGTH)
-	_material.set_shader_parameter("ambient", AMBIENT)
+	_material.set_shader_parameter("ambient", _ambient)
 	_material.set_shader_parameter("saturation", SATURATION)
 	_material.set_shader_parameter("contrast", CONTRAST)
 	_material.set_shader_parameter("outline_width", 0.0)

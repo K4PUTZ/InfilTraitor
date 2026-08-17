@@ -2140,6 +2140,14 @@ func _spawn_guards(enemy_defs: Array) -> void:
 			int(entry.get("start_index", 0))
 		)
 		
+		## CHARACTER Part 7: the baked enemy figure, same swap the agent took.
+		## Idempotent and non-fatal — a guard with no bake keeps its vector
+		## diamond rather than vanishing from the map mid-mission.
+		if not guard.attach_sprite(self):
+			push_warning("[Room] guard '%s' has no baked figure — run "
+				% guard.enemy_id
+				+ "p1_agent_model.py with P1_PALETTE=enemy, then "
+				+ "p3_posture_export.py and agent_frame_bake_spike.gd")
 		_guard_coordinator.register_guard(guard)
 		_guards.append(guard)
 

@@ -394,7 +394,7 @@ def main():
             ## same idea is how a lookup quietly misses.
             out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
                     "agent_walk%s/phase%02d/"
-                    % ("_dev" if p2._MODEL != "agent_base" else "", w["index"]),
+                    % (p3.bake_family(p2._MODEL), w["index"]),
             height_m=round(heights["phase%02d" % w["index"]], 4),
             voxels=round(heights["phase%02d" % w["index"]] / p3.VOXEL_M, 2),
         ) for w in written],

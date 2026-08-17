@@ -150,6 +150,66 @@ if _JOINTS_YELLOW:
     MATS["joint"] = (0.92, 0.78, 0.10, 1.0)
 
 
+# --- P1_PALETTE: the same body in another faction's clothes ------------------
+#
+# Director, 2026-08-16: *"gerar uma versão do boneco diferente como inimigo, com
+# outra aparência e cores."* This is the COLOURS half, and it is the half D34
+# says should be nearly free — one skeleton, one mesh, a different palette.
+# The APPEARANCE half (a different hat, a different silhouette) is a separate
+# claim with a separate price and is deliberately not smuggled in here.
+#
+# WHAT ACTUALLY SEPARATES TWO FIGURES AT 200 px, and it is not the suit's hue.
+# The agent is near-black by ratified design, so an enemy that is merely a
+# different near-black is the same silhouette in practice. What reads is his
+# three high-contrast SIGNATURES against that darkness — the white shirt (0.86),
+# the white sock (0.90) and the red hatband (0.62, "the one warm accent"). The
+# enemy palette's job is therefore to REMOVE those and put its own single accent
+# somewhere else, not to recolour the suit and hope.
+#
+# The seam family stays a MULTIPLE of the suit rather than a copied literal, for
+# the reason MATS already states: at this albedo a ratio survives both lights
+# where an offset survives neither. A new palette that typed its own seam values
+# would break that relationship silently.
+def _with_seams(base):
+    """Derive the crease family from the palette's own suit value."""
+    suit = base["suit"]
+    base.setdefault("suit_lo", tuple(c * 0.76 for c in suit[:3]) + (1.0,))
+    base["seam_hi"] = tuple(min(1.0, c * 2.5) for c in suit[:3]) + (1.0,)
+    base["seam_lo"] = tuple(c * 0.65 for c in suit[:3]) + (1.0,)
+    base.setdefault("joint", suit)
+    return base
+
+
+PALETTES = {
+    # A guard in drab olive fatigues: no white linen, no white sock, no red
+    # band. The single accent moves to the SHOULDER of the uniform, which is
+    # the one place a hunched infiltrator's silhouette does not overlap.
+    "enemy": _with_seams({
+        "suit":  (0.085, 0.098, 0.070, 1.0),   # olive drab, ~4x the agent's value
+        "shirt": (0.190, 0.200, 0.165, 1.0),   # a drab undershirt, NOT white linen
+        "skin":  (0.66, 0.50, 0.38, 1.0),
+        "hat":   (0.095, 0.105, 0.075, 1.0),
+        "band":  (0.30, 0.26, 0.11, 1.0),      # dull brass, not the agent's red
+        "shoe":  (0.038, 0.036, 0.030, 1.0),
+        "sock":  (0.150, 0.155, 0.130, 1.0),   # the MJ white sock is the AGENT's
+    }),
+}
+
+_PALETTE = os.environ.get("P1_PALETTE", "")
+if _PALETTE:
+    if _PALETTE not in PALETTES:
+        raise SystemExit("[P1-MODEL][FAIL] P1_PALETTE=%s is not one of %s"
+                         % (_PALETTE, sorted(PALETTES)))
+    MATS.update(PALETTES[_PALETTE])
+    # The dev tint outranks the palette on purpose: DEV VISION exists to make
+    # articulation legible, and it has to do that on every faction.
+    if _JOINTS_YELLOW:
+        MATS["joint"] = (0.92, 0.78, 0.10, 1.0)
+    log_palette = _PALETTE
+else:
+    log_palette = "agent"
+
+
 def material(key):
     if key in bpy.data.materials:
         return bpy.data.materials[key]

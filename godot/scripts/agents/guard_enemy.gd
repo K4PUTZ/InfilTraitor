@@ -61,6 +61,10 @@ var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0
 var facing: Vector2i = Vector2i.UP
+## The baked figure. Null until attach_sprite() succeeds; every call site guards
+## on it, and _draw() falls back to the vector diamond so a missing bake leaves a
+## visible guard rather than an invisible one.
+var sprite: AgentSprite = null
 var state: String = STATE_PATROL
 var state_timer: int = 0
 var last_known_agent_cell: Vector2i = INVALID_CELL
@@ -1035,6 +1039,32 @@ func _draw_vision_smooth() -> void:
 	_vision_smooth_node.draw_polygon(points, colors)
 
 
+## CHARACTER Part 7 — the enemy is the SAME figure in another faction's palette.
+##
+## D34 says a faction should be a colour change and colour should be nearly free.
+## This is that claim being cashed: one rig, one mesh, one renderer, a different
+## `frame_family`. What actually separates the two at ship size is NOT the suit's
+## hue — the agent is near-black by ratified design, so a differently-dark suit is
+## the same silhouette. It is his three high-contrast SIGNATURES: the white shirt,
+## the white sock and the red hatband. The enemy palette removes all three.
+## Measured on the baked frames: identical silhouette (8961 opaque px both), mean
+## RGB (56,55,58) vs (86,90,77) — 49.5 levels apart — and near-white pixels
+## falling 693 -> 243, the remainder being the weapon, which no palette recolours.
+func attach_sprite(p_room: Node) -> bool:
+	if sprite != null:
+		return true
+	var s := AgentSprite.new()
+	s.name = "EnemySprite"
+	s.frame_family = "_enemy"
+	add_child(s)
+	if not s.setup(p_room):
+		s.queue_free()
+		return false
+	sprite = s
+	sprite.face_direction(facing)
+	return true
+
+
 func _draw() -> void:
 	var shadow := PackedVector2Array([
 		Vector2(0.0, -10.0),
@@ -1044,15 +1074,22 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(shadow, COLOR_SHADOW)
 
-	var body := PackedVector2Array([
-		Vector2(0.0, -54.0),
-		Vector2(20.0, -30.0),
-		Vector2(0.0, -8.0),
-		Vector2(-20.0, -30.0),
-	])
-	draw_colored_polygon(body, COLOR_BODY)
-	draw_polyline(body + PackedVector2Array([body[0]]), COLOR_BODY_DARK, 3.0)
-	draw_circle(Vector2(0.0, -62.0), 9.0, COLOR_HEAD)
+	## The red diamond and its head circle are GONE when the baked figure is
+	## present — the same swap agent.gd took for Part 2 §10. They stay as the
+	## fallback for a missing bake so a guard is never invisible on the map.
+	if sprite == null:
+		var body := PackedVector2Array([
+			Vector2(0.0, -54.0),
+			Vector2(20.0, -30.0),
+			Vector2(0.0, -8.0),
+			Vector2(-20.0, -30.0),
+		])
+		draw_colored_polygon(body, COLOR_BODY)
+		draw_polyline(body + PackedVector2Array([body[0]]), COLOR_BODY_DARK, 3.0)
+		draw_circle(Vector2(0.0, -62.0), 9.0, COLOR_HEAD)
+
+	if not dev_vision:
+		return
 
 	var p1 := Vector2(0.0, -82.0)
 	var fang := deg_to_rad(facing_angle_deg)

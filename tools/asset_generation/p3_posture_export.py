@@ -86,10 +86,26 @@ WEAPON = os.environ.get("P3_WEAPON", "shotgun")
 SHEET_DIR = os.path.join(p2.REPO_ROOT, "Screenshots",
                          "p3_postures" + p2._MODEL.replace("agent_base", ""))
 
+
 # §4.7, as the Director stated it: standing slightly taller than a slice,
 # crouched *"5 or 6 voxels"*, prone 2-3 voxels of cover. Voxels, because that is
 # the unit the spec is written in; metres are derived at 0.20 m per voxel.
 VOXEL_M = 0.20
+
+
+# Which bake family a source model writes into. It was a BINARY test — "is this
+# agent_base, or is it the dev one" — which stopped being true the moment a third
+# variant existed (the enemy, 2026-08-16). A binary test does not fail when a
+# third case appears; it silently picks one of the two, and the enemy's frames
+# would have overwritten the agent's dev bake with plausible filenames.
+BAKE_FAMILY = {"": "", "_devjoints": "_dev"}
+
+
+def bake_family(model_name):
+    suffix = model_name.replace("agent_base", "")
+    if suffix in BAKE_FAMILY:
+        return BAKE_FAMILY[suffix]
+    return suffix          # e.g. "_enemy" keeps its own root
 
 
 def log(m):
@@ -503,8 +519,7 @@ def main():
                            ## writes. The dev-joint variant goes to its own root
                            ## because AgentSprite loads it as a separate set.
                            out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
-                                   "agent_frames%s/%s/"
-                                   % ("_dev" if p2._MODEL != "agent_base" else "", n),
+                                   "agent_frames%s/%s/" % (bake_family(p2._MODEL), n),
                            height_m=round(heights[n], 4),
                            voxels=round(heights[n] / VOXEL_M, 2))
                       for n, p in written],

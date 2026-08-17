@@ -67,7 +67,14 @@ extends Sprite2D
 ##    bakes on disk are older than the dev ones by construction; do not trust
 ##    them.
 ## ============================================================================
-const DEV_ONLY_MILESTONE := true
+## ⏸ SUSPENDED 2026-08-17 for the five items that precede the movement
+## milestone. The dev-only rule was there to halve the cost of iterating on
+## MOTION; the next three items are weapons, an enemy variant and destruction
+## materials, so it buys nothing — and it actively breaks the enemy variant,
+## whose whole subject is *"outra aparência e cores"*. Judging an appearance
+## through a debug tint is circular. Flip back to `true` when the movement
+## milestone opens.
+const DEV_ONLY_MILESTONE := false
 
 const FRAMES_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
 ## The same three postures with only the `joint` material recoloured. Two bakes
@@ -157,6 +164,13 @@ const LIGHT_INTENSITY_MAX := 1.30
 ## maths silently.
 const ELEVATION_DEG := 30.0
 const AZIMUTH_DEG := 45.0
+
+## Which baked family this sprite draws from: "" for the agent, "_enemy" for a
+## guard. Set BEFORE setup(). It exists because D34's claim — that a faction is a
+## colour change and colour is nearly free — is only true if one renderer can be
+## pointed at two palettes; a second sprite class per faction would have made the
+## claim false by construction.
+var frame_family: String = ""
 
 var room: Node = null
 
@@ -291,6 +305,23 @@ func set_posture_name(name: String) -> void:
 ## yaw is 0 and the error is invisible, and it turns the figure the wrong way by
 ## twice the rotation the moment the Director rotates the room. Invisible in the
 ## step bracket for exactly that reason — every panel was captured at N.
+## Face an arbitrary direction, reduced to the nearest of the four baked ones.
+##
+## The GUARDS need this and the agent does not: `guard_enemy.gd` snaps its facing
+## to EIGHT directions, and D44 fixes the art at FOUR permanently — a diagonal is
+## two orthogonal GU steps, which is the ruling that stops the budget growing. So
+## a diagonal guard facing has no frame and never will; taking its dominant axis
+## is the honest reduction, and doing it here means the rule lives in one place
+## instead of in every caller that happens to have an 8-way direction.
+func face_direction(dir: Vector2i) -> void:
+	if dir == Vector2i.ZERO:
+		return
+	if absi(dir.x) >= absi(dir.y):
+		face_step(Vector2i(signi(dir.x), 0))
+	else:
+		face_step(Vector2i(0, signi(dir.y)))
+
+
 func face_step(step: Vector2i) -> void:
 	if not _frame_by_step.has(step):
 		return
@@ -329,11 +360,15 @@ func _set_key(name: String, dev: bool) -> String:
 ## The single seam the milestone switch acts on. Both roots go through here, so
 ## there is exactly one place to look when asking "which bake am I seeing".
 func _posture_root(dev: bool) -> String:
-	return FRAMES_ROOT_DEV if (dev or DEV_ONLY_MILESTONE) else FRAMES_ROOT
+	if dev or DEV_ONLY_MILESTONE:
+		return FRAMES_ROOT_DEV
+	return FRAMES_ROOT.trim_suffix("/") + frame_family + "/"
 
 
 func _walk_root(dev: bool) -> String:
-	return WALK_ROOT_DEV if (dev or DEV_ONLY_MILESTONE) else WALK_ROOT
+	if dev or DEV_ONLY_MILESTONE:
+		return WALK_ROOT_DEV
+	return WALK_ROOT.trim_suffix("/") + frame_family + "/"
 
 
 func _ensure_posture(name: String, dev: bool = false) -> bool:

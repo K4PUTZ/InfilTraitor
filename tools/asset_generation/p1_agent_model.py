@@ -234,6 +234,26 @@ PALETTES = {
         # against its cloth, unlike a subtle fold.
         "stripe":  (0.30, 0.30, 0.33, 1.0),
     },
+    # Enemy with white blazer, black pants — Director, 2026-08-18: blazer branco,
+    # calça preta (não branca), sem chapéu. Based on test_white for the jacket,
+    # but keeps the agent's dark pants for contrast.
+    "enemy_white": {
+        "suit":    (0.92, 0.92, 0.94, 1.0),    # white blazer from test_white
+        "suit_lo": (0.020, 0.021, 0.026, 1.0), # BLACK pants — agent's original
+        "seam_hi": (0.97, 0.97, 0.98, 1.0),    # white jacket folds
+        "seam_lo": (0.55, 0.55, 0.59, 1.0),    # jacket shadows
+        "joint":   (0.92, 0.92, 0.94, 1.0),
+        "shirt":   (0.190, 0.200, 0.165, 1.0), # drab undershirt from enemy
+        "skin":    (0.66, 0.50, 0.38, 1.0),    # enemy skin
+        "hat":     (0.095, 0.105, 0.075, 1.0), # not used — bare-headed
+        "band":    (0.30, 0.26, 0.11, 1.0),
+        "shoe":    (0.038, 0.036, 0.030, 1.0), # enemy dark shoe
+        "sock":    (0.150, 0.155, 0.130, 1.0), # enemy sock
+        # Facial features — simple stylized geometry to differentiate front/back
+        "hair":    (0.08, 0.06, 0.05, 1.0),    # dark brown/black hair
+        "beard":   (0.10, 0.08, 0.07, 1.0),    # slightly lighter beard
+        "eye":     (0.95, 0.95, 0.96, 1.0),    # white of eyes
+    },
 }
 
 _PALETTE = os.environ.get("P1_PALETTE", "")
@@ -463,6 +483,45 @@ def build_segments(z):
     # Head: cranium wide, jaw narrower.
     segs.append(("head", prism("seg_head", (0, 0, zhd), (0, 0, zhd + HEAD_H - g),
                                0.145, 0.165, 0.165, 0.175, "skin")))
+    
+    # FACIAL FEATURES — simple stylized geometry (enemy_white only)
+    # Director, 2026-08-18: rosto estilizado simples + cabelo curto com barba,
+    # para diferenciar frente e trás da cabeça
+    _has_face = _PALETTE == "enemy_white"
+    if _has_face:
+        # Eyes — two small discs on the front of the face
+        eye_z = zhd + HEAD_H * 0.55
+        eye_y = 0.085  # forward from center
+        segs.append(("head", disc("seg_eye_L", (0.035, eye_y, eye_z),
+                                  0.018, 0.012, "eye", verts=12, top_scale=1.0)))
+        segs.append(("head", disc("seg_eye_R", (-0.035, eye_y, eye_z),
+                                  0.018, 0.012, "eye", verts=12, top_scale=1.0)))
+        
+        # Nose — small prism protruding forward
+        nose_z = zhd + HEAD_H * 0.48
+        segs.append(("head", prism("seg_nose", (0, eye_y, nose_z - 0.020),
+                                   (0, eye_y + 0.020, nose_z),
+                                   0.022, 0.018, 0.020, 0.016, "skin", bevel=0.003)))
+        
+        # Hair — short cropped hair on top and back of head
+        hair_z = zhd + HEAD_H * 0.75
+        segs.append(("head", disc("seg_hair_top", (0, 0, zhd + HEAD_H - g - 0.005),
+                                  0.170, 0.045, "hair", verts=16, top_scale=0.88)))
+        # Hair back/sides
+        segs.append(("head", prism("seg_hair_back", (0, -0.080, zhd + HEAD_H * 0.40),
+                                   (0, -0.080, zhd + HEAD_H * 0.95),
+                                   0.155, 0.030, 0.145, 0.030, "hair", bevel=0.004)))
+        
+        # Beard — stylized geometry around jaw
+        beard_z = zhd + HEAD_H * 0.25
+        segs.append(("head", disc("seg_beard_chin", (0, 0.070, beard_z),
+                                  0.065, 0.050, "beard", verts=12, top_scale=0.75)))
+        # Beard sides
+        for side, sx in (("L", 1.0), ("R", -1.0)):
+            segs.append(("head", prism("seg_beard_%s" % side,
+                                       (sx * 0.055, 0.050, beard_z),
+                                       (sx * 0.065, 0.045, beard_z + 0.055),
+                                       0.038, 0.035, 0.032, 0.030, "beard", bevel=0.003)))
 
     # Fedora. Brim disc with a raised outer curl, tapered crown, hatband.
     #
@@ -480,7 +539,8 @@ def build_segments(z):
     # what carry the direction on an untextured head. Accepted for now — *"o
     # inimigo não tem rosto ainda, mas vamos melhorar os modelos depois, e vai
     # ser mais fácil de entender."* Revisit when the face lands, not before.
-    _wants_hat = _PALETTE not in ("enemy",)
+    # UPDATE 2026-08-18: enemy_white now HAS a face (stylized) and is bare-headed.
+    _wants_hat = _PALETTE not in ("enemy", "enemy_white")
     if os.environ.get("P1_NO_HAT") == "1":
         _wants_hat = False
     elif os.environ.get("P1_FORCE_HAT") == "1":

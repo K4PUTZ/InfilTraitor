@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 59109 lines total** (under `godot/scripts/`)
+**208 scripts · 60015 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 647 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1066 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -103,6 +103,10 @@
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
 - `POSTURE_DIRS` = `{"standing": "standing", "crouch": "crouch", "prone": "prone"}`
+- `LAYER_ROOTS` = `{ "head": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_head", "hat": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_hat", }`
+- `LAYERS_BY_FAMILY` = `{"": ["head", "hat"], "_dev": ["head", "hat"]}`
+- `LAYERS_DEFAULT` = `["head"]`
+- `HEAD_YAW_LIMIT_DEG` = `60.0`
 - `SCREEN_COMPASS_BY_FRAME` = `{"N": "NE", "E": "NW", "S": "SW", "W": "SE"}`
 - `COMPASS_SCREEN` = `{ "NE": Vector2(0.894, -0.447), "SE": Vector2(0.894, 0.447), "SW": Vector2(-0.894, 0.447), "NW": Vector2(-0.894, -0.447), }`
 - `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
@@ -131,6 +135,8 @@
 - `func set_walk_phase_quantise(n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
+- `func set_head_yaw_grid_deg(grid_deg: float) -> void:`
+- `func clear_head_yaw() -> void:`
 
 ---
 
@@ -157,7 +163,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1195 lines
+`class_name GuardEnemy` · extends `Node2D` · 1211 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -2660,7 +2666,7 @@ extends `SceneTree` · 226 lines
 
 ### `agent_frame_bake_spike.gd`
 
-extends `SceneTree` · 471 lines
+extends `SceneTree` · 942 lines
 
 `godot/scripts/tools/agent_frame_bake_spike.gd`
 
@@ -2682,6 +2688,12 @@ extends `SceneTree` · 471 lines
 - `SCALE_TOLERANCE_PX` = `0.25`
 - `MAX_WHITE_FRACTION` = `0.10`
 - `NORMAL_BAKE_SHADER_CODE` = `"""`
+- `NO_RECENTRE_OVERRIDE` = `INF`
+- `NECK_MESH_NAME` = `"seg_neck"`
+- `HEAD_MESH_NAME` = `"seg_head"`
+- `DEFAULT_LAYER_YAWS` = `24`
+- `VERIFY_CANVAS` = `Vector2i(512, 512)`
+- `VERIFY_MAX_MISMATCH_FRACTION` = `0.015`
 
 **Public API**
 - `func expected_height_px_for(height_m: float) -> float:`

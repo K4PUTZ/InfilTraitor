@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.104 · **Updated:** 2026-08-17 · **Branch:** main
+**Version:** 0.9.104 · **Updated:** 2026-08-18 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,6 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
+- BAKE_ORDER_CHARACTER_LAYERS.md
 - D33_RUNTIME_DECAL_COMPOSITING.md
 - ENGINE_PERFORMANCE_REVIEW.md
 - INVESTIGACAO_EXPLOSAO_2026-08-04.md
@@ -63,6 +64,7 @@
 - RESUMO_SESSAO_2026-08-16_17_MOVEMENT_AND_THE_ENEMY.md
 - RESUMO_SESSAO_2026-08-16_MOCKUP_MODEL_FOUNDATION.md
 - RESUMO_SESSAO_2026-08-16_PART2_SWAP_AND_WALK.md
+- RESUMO_SESSAO_2026-08-17_LEAK_CYCLE_AND_CHARACTER_LAYERS.md
 - RESUMO_SESSAO_2026-08-17_WHITE_BRACKET_PLAYGROUND_REFORM.md
 <!-- AUTO:END pending_prompts -->
 

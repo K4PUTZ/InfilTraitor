@@ -363,18 +363,42 @@ def main():
         ## solver then overwrites for the weapon hand — which is correct, and is
         ## why the one-handed idle arm is not used here.
         posture = make_walk_posture("phase%02d" % i, phase01)
-        out = p2.export_posed(arm, key, export_facing, posture=posture)
+        parts_out = {}
+        out = p2.export_posed(arm, key, export_facing, posture=posture,
+                              parts=p3.PARTS, parts_out=parts_out)
         ## export_posed writes beside the .blend; move it into the walk folder so
         ## one manifest describes one sequence.
         dest = os.path.join(OUT_DIR, "walk_%02d.glb" % i)
         os.replace(out, dest)
-        written.append(dict(index=i, phase=phase01, glb=dest))
+        ## THE WALK SHIPS HEADLESS TOO. It has to: a walking body that kept its
+        ## baked head would draw a second head under the layer for the whole
+        ## duration of every step, and come right again the moment the agent
+        ## stopped — which reads as a bug in the layer, not in the walk.
+        if "body" not in parts_out:
+            fail("phase %d exported no `body` part — the layer split failed" % i)
+        body_dest = os.path.join(OUT_DIR, "walk_%02d_body.glb" % i)
+        os.replace(parts_out["body"], body_dest)
+        ## The head and hat subsets are exported per phase only so that
+        ## export_posed's partition gate has something to check at EVERY phase —
+        ## the head layer itself is baked once, from the standing reference. They
+        ## are deleted rather than kept so nothing downstream can mistake a
+        ## per-phase head for a shipping asset.
+        for extra in ("head", "hat"):
+            if extra in parts_out and os.path.isfile(parts_out[extra]):
+                os.remove(parts_out[extra])
+        written.append(dict(index=i, phase=phase01, glb=dest, body=body_dest))
 
     log("=" * 70)
     os.makedirs(SHEET_DIR, exist_ok=True)
+    ## The preview sheet renders the WHOLE figure — that is what a human looks at
+    ## to judge a walk. The heights the Godot bake gates on come from the headless
+    ## bodies that actually ship, measured separately.
     heights = p3._render_previews(
         [("phase%02d" % w["index"], w["glb"]) for w in written], facing,
         out_dir=SHEET_DIR)
+    body_heights = {}
+    for w in written:
+        body_heights["phase%02d" % w["index"]] = p3._measure_glb_height(w["body"])
 
     manifest = dict(
         phases=PHASES,
@@ -387,7 +411,9 @@ def main():
         postures=[dict(
             name="phase%02d" % w["index"],
             phase=round(w["phase"], 5),
-            glb=os.path.relpath(w["glb"], p2.REPO_ROOT).replace(os.sep, "/"),
+            glb=os.path.relpath(w["body"], p2.REPO_ROOT).replace(os.sep, "/"),
+            headless=True,
+            figure_height_m=round(heights["phase%02d" % w["index"]], 4),
             ## `_dev`, matching p3_posture_export.py's `agent_frames_dev` rather
             ## than echoing the model's own `_devjoints` suffix — AgentSprite
             ## looks up ONE dev root per asset family, and two spellings of the
@@ -395,8 +421,8 @@ def main():
             out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
                     "agent_walk%s/phase%02d/"
                     % (p3.bake_family(p2._MODEL), w["index"]),
-            height_m=round(heights["phase%02d" % w["index"]], 4),
-            voxels=round(heights["phase%02d" % w["index"]] / p3.VOXEL_M, 2),
+            height_m=round(body_heights["phase%02d" % w["index"]], 4),
+            voxels=round(body_heights["phase%02d" % w["index"]] / p3.VOXEL_M, 2),
         ) for w in written],
     )
     os.makedirs(SHEET_DIR, exist_ok=True)

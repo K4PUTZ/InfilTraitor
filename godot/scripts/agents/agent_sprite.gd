@@ -114,6 +114,52 @@ const YAW_BY_DIRECTION := {"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}
 ## dependency one-way.
 const POSTURE_DIRS := {"standing": "standing", "crouch": "crouch", "prone": "prone"}
 
+## --- THE LAYER SYSTEM (CHARACTER_MASTER_PLAN 4.3) ---------------------------
+##
+## A layer is a second sprite drawn OVER the body from the same bake camera, so
+## the head can turn without the body's four facings multiplying by the head's
+## yaw sweep. `p3_head_turn_spike.py` measured the premise rather than assuming
+## it: the head layer at one absolute yaw is 0 of 126 000 pixels different under
+## a body at 0 deg and at 90 deg, so head art is indexed by ABSOLUTE YAW and
+## shared across all four body facings.
+##
+## REGISTRATION IS BY CONSTRUCTION, NOT BY A TUNED OFFSET. The bake renders every
+## layer from the same fixed camera into the same 256x256 frame, and applies the
+## BODY's Y-recentring to the layer instead of the layer's own. Two frames of the
+## same posed scene therefore agree pixel for pixel, and the only per-frame
+## numbers the runtime needs are the crop origin (D42: an uncropped head is ~38 MB
+## a family, a cropped one ~3 MB) and the neck socket, which carries the head
+## through poses that move it — the walk's bob above all.
+const LAYER_ROOTS := {
+	"head": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_head",
+	"hat": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_hat",
+}
+
+## Which layers a baked family ships. The hat is opt-in and the head is not: every
+## character has one, while the enemy goes bare-headed by the Director's call
+## (2026-08-17) and the agent's fedora is D53's costume flip.
+##
+## An unlisted family gets the head only. That is the safe default rather than a
+## guess: a bracket family (`_test_white`) is a palette of the agent's own model,
+## so its head bake exists whenever the agent's does, and a missing hat is a
+## configuration this file must not turn into a crash.
+const LAYERS_BY_FAMILY := {"": ["head", "hat"], "_dev": ["head", "hat"]}
+const LAYERS_DEFAULT := ["head"]
+
+## How far the head may turn away from the body THE ART DRAWS — not from the
+## guard's true `facing_angle_deg`. The neck is measured against the shoulders and
+## the shoulders are what the frame shows, so the drawn body is the only reference
+## that means anything on screen. Settled at +-60 on 2026-08-17 as the sweep the
+## bake covers.
+##
+## A CONSEQUENCE WORTH KNOWING, because it is a feature and reads like a bug: the
+## body snaps to FOUR facings (D44) while `guard_enemy.facing_angle_deg` has
+## EIGHT, so a guard facing NE is drawn facing N or E. His head then sits at the
+## real 45 deg, inside this limit, and the head becomes the carrier of the facing
+## precision the body permanently lost. The head is meant to disagree with the
+## body; that is what makes a diagonal readable at all.
+const HEAD_YAW_LIMIT_DEG := 60.0
+
 ## WHICH SCREEN DIRECTION EACH BAKED FRAME FACES. Measured in Blender by
 ## `p2_grip_spike.measure_facings()`, which projects the figure's own forward
 ## vector through the real camera at each yaw and loud-fails if the four ever
@@ -222,12 +268,43 @@ var _walk_ready: Dictionary = {}
 ## the sprite shows that phase instead of the posture's idle frame.
 var _walk_phase: int = -1
 
+## Layer name -> the child Sprite2D that draws it. Children draw AFTER their
+## parent in Godot, so head-over-body needs no z_index at all — which matters
+## because OCC-03's always-on-top policy belongs to the agent, and a z_index here
+## would fight it.
+var _layer_nodes: Dictionary = {}
+var _layer_materials: Dictionary = {}
+## "<layer>:<posture_group>" -> {"frames": Array, "step_deg": float,
+## "base_socket": Vector2}. Loaded on first use, like the postures, for D42.
+var _layer_sets: Dictionary = {}
+## Which layers this family declares AND has on disk. Empty until setup().
+var _layers: Array = []
+## The head's absolute yaw in BASE space, same space and same reason as
+## `_base_facing`. Untouched until something drives it; until then the head
+## tracks the body and the layer is a silent pass-through.
+var _base_head_yaw_deg: float = 0.0
+var _has_head_yaw: bool = false
+## Grid angle -> baked yaw, DERIVED from `_frame_by_step` at setup so it cannot
+## disagree with the floor the agent walks on. See _derive_grid_yaw_mapping().
+var _grid_yaw_origin: float = 0.0
+var _grid_yaw_sign: float = 1.0
+## What `_apply` last drew, so a head-yaw change can move the layers without
+## re-resolving the body frame every time `vision_angle` twitches.
+var _current_entry: Dictionary = {}
+var _current_view_facing: String = "N"
+## Per layer, the frame index last assigned. `vision_angle` changes every frame
+## and the baked yaw changes every 15 deg of it; without this the sprite would
+## swap textures ~60x a second to show the same image.
+var _layer_frame_shown: Dictionary = {}
+
 ## "<posture>" / "<posture>:dev" -> {"color": {dir: Texture}, "normal": {...},
 ## "anchor": Vector2}. Keyed with the dev flag rather than held in a second
 ## dictionary so that "which frames am I showing" is one lookup and cannot
 ## disagree with itself.
 var _sets: Dictionary = {}
 var _material: ShaderMaterial
+var _last_light_dir: Vector3 = Vector3.ZERO
+var _last_light_intensity: float = -1.0
 
 var _cam_right := Vector3.ZERO
 var _cam_up := Vector3.ZERO
@@ -263,16 +340,9 @@ func setup(p_room: Node) -> bool:
 		print("[AgentSprite] WHITE-AMBIENT-01 bracket: family '%s' ambient=%.2f"
 			% [frame_family, _ambient])
 
-	_material = ShaderMaterial.new()
-	_material.shader = load(SHADER_PATH)
-	## Opt in explicitly: this shader is SHARED with the grenade and every weapon,
-	## so relying on its defaults would restyle all of them the day one is tuned.
-	_material.set_shader_parameter("specular_strength", SPECULAR_STRENGTH)
-	_material.set_shader_parameter("ambient", _ambient)
-	_material.set_shader_parameter("saturation", SATURATION)
-	_material.set_shader_parameter("contrast", CONTRAST)
-	_material.set_shader_parameter("outline_width", 0.0)
+	_material = _make_material()
 	material = _material
+	_build_layer_nodes()
 
 	if DEV_ONLY_MILESTONE:
 		## Loud on purpose. A build that silently ships a debug-tinted character
@@ -284,6 +354,10 @@ func setup(p_room: Node) -> bool:
 	if not _ensure_posture("standing"):
 		return false
 	if not _derive_frame_by_step():
+		return false
+	if not _derive_grid_yaw_mapping():
+		return false
+	if not _resolve_layers():
 		return false
 	_refresh()
 	set_process(true)
@@ -393,6 +467,10 @@ func set_dev_vision(enabled: bool) -> void:
 	## appears once the agent next starts moving.
 	if _walk_phase >= 0:
 		_ensure_walk(enabled)
+	## The layer set is per dev state as well: the dev bake is a different family
+	## on disk, so which layers exist has to be asked again rather than carried
+	## over from the normal one.
+	_resolve_layers()
 	_refresh()
 
 
@@ -462,8 +540,8 @@ func _walk_key(phase_index: int, dev: bool) -> String:
 func _ensure_set(key: String, dir: String) -> bool:
 	if _sets.has(key):
 		return true
-	var anchor := _load_anchor(dir)
-	if anchor == Vector2.ZERO:
+	var meta := _load_anchor(dir)
+	if meta.is_empty():
 		return false
 	var colors := {}
 	var normals := {}
@@ -475,7 +553,11 @@ func _ensure_set(key: String, dir: String) -> bool:
 			return false
 		colors[direction] = c
 		normals[direction] = n
-	_sets[key] = {"color": colors, "normal": normals, "anchor": anchor}
+	_sets[key] = {
+		"color": colors, "normal": normals,
+		"anchor": meta["anchor"], "head_socket": meta["head_socket"],
+		"headless": meta["headless"],
+	}
 	return true
 
 
@@ -489,17 +571,36 @@ func _ensure_set(key: String, dir: String) -> bool:
 ## camera aimed at the model, so it lands near the middle-bottom of the frame —
 ## 227.99, 184.00 and 156.74 for the three postures. The frame's top-left corner
 ## is not a value it can legitimately take.
-func _load_anchor(dir: String) -> Vector2:
+func _load_anchor(dir: String) -> Dictionary:
 	var path := dir + "anchor.json"
 	if not FileAccess.file_exists(path):
 		push_error("[AgentSprite] %s missing — run agent_frame_bake_spike.gd for this posture" % path)
-		return Vector2.ZERO
+		return {}
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("anchor_px"):
 		push_error("[AgentSprite] %s is not a bake anchor file" % path)
-		return Vector2.ZERO
+		return {}
 	var a: Array = parsed["anchor_px"]
-	return Vector2(float(a[0]), float(a[1]))
+	var anchor := Vector2(float(a[0]), float(a[1]))
+	if anchor == Vector2.ZERO:
+		push_error("[AgentSprite] %s carries the bake's own failure sentinel (0,0)" % path)
+		return {}
+	## WHERE THE HEAD ATTACHES, in this frame's pixels — the top centre of
+	## `seg_neck`, measured by the bake through the same camera. It is what lets
+	## ONE head image set serve a pose that moves the head: the crouch lowers it,
+	## the walk bobs it, and the layer follows by a per-frame delta instead of by
+	## a second bake. Absent on a body baked before the layer system, which is
+	## exactly the state `headless` below describes as safe.
+	var sockets := {}
+	if parsed.has("head_socket_px"):
+		for direction: String in (parsed["head_socket_px"] as Dictionary):
+			var v: Array = parsed["head_socket_px"][direction]
+			sockets[direction] = Vector2(float(v[0]), float(v[1]))
+	return {
+		"anchor": anchor,
+		"head_socket": sockets,
+		"headless": bool(parsed.get("headless", false)),
+	}
 
 
 ## The room's perspective, as the compass name whose yaw undoes it.
@@ -585,6 +686,306 @@ func _apply(entry: Dictionary) -> void:
 	offset = -(entry["anchor"] as Vector2)
 	if _material != null:
 		_material.set_shader_parameter("normal_tex", (entry["normal"] as Dictionary)[view_facing])
+	_current_entry = entry
+	_current_view_facing = view_facing
+	## The body frame changed, so every layer has to be re-placed even if its own
+	## yaw did not: the anchor, the crop and the socket are all per body frame.
+	_layer_frame_shown.clear()
+	_apply_layers()
+
+
+## ============================================================================
+## THE LAYER SYSTEM
+## ============================================================================
+
+func _make_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load(SHADER_PATH)
+	## Opt in explicitly: this shader is SHARED with the grenade and every weapon,
+	## so relying on its defaults would restyle all of them the day one is tuned.
+	mat.set_shader_parameter("specular_strength", SPECULAR_STRENGTH)
+	mat.set_shader_parameter("ambient", _ambient)
+	mat.set_shader_parameter("saturation", SATURATION)
+	mat.set_shader_parameter("contrast", CONTRAST)
+	mat.set_shader_parameter("outline_width", 0.0)
+	return mat
+
+
+## One child Sprite2D per declared layer, created hidden. Built before the frames
+## are known because the NODES are cheap and their existence is what lets
+## `_resolve_layers` turn a layer on without touching the scene tree mid-frame.
+func _build_layer_nodes() -> void:
+	for layer: String in LAYERS_BY_FAMILY.get(frame_family, LAYERS_DEFAULT):
+		var node := Sprite2D.new()
+		node.name = layer.capitalize() + "Layer"
+		node.centered = false
+		node.visible = false
+		var mat := _make_material()
+		node.material = mat
+		add_child(node)
+		_layer_nodes[layer] = node
+		_layer_materials[layer] = mat
+
+
+func _layer_root(layer: String, dev: bool) -> String:
+	if dev or DEV_ONLY_MILESTONE:
+		return String(LAYER_ROOTS[layer]) + "_dev/"
+	return String(LAYER_ROOTS[layer]) + frame_family + "/"
+
+
+## Which layers this family has ON DISK. Whether a given FRAME uses them is a
+## separate question, answered per frame set in `_apply_layers` — see there.
+func _resolve_layers() -> bool:
+	_layers.clear()
+	for layer: String in LAYERS_BY_FAMILY.get(frame_family, LAYERS_DEFAULT):
+		if DirAccess.dir_exists_absolute(
+				ProjectSettings.globalize_path(_layer_root(layer, _dev_vision))):
+			_layers.append(layer)
+	for layer: String in _layer_nodes:
+		(_layer_nodes[layer] as Sprite2D).visible = false
+	return true
+
+
+## Grid angle -> baked yaw, as an origin and a handedness.
+##
+## DERIVED from `_frame_by_step`, which is itself measured off the real
+## TileMapLayer, for the same reason that table is: a hand-written mapping between
+## the guard's grid angles and the bake's yaws is exactly the kind of table that
+## was wrong the first time and drew the figure walking backwards. The four steps
+## are already paired with their frames; this only reads the pairing as a line
+## instead of as four points, and then checks the other two points lie on it.
+func _derive_grid_yaw_mapping() -> bool:
+	var north := Vector2i(0, -1)
+	var east := Vector2i(1, 0)
+	if not _frame_by_step.has(north) or not _frame_by_step.has(east):
+		push_error("[AgentSprite] the step table has no N/E entry — cannot derive the head yaw mapping")
+		return false
+	_grid_yaw_origin = float(YAW_BY_DIRECTION[_frame_by_step[north]])
+	var east_yaw := float(YAW_BY_DIRECTION[_frame_by_step[east]])
+	_grid_yaw_sign = signf(wrapf(east_yaw - _grid_yaw_origin, -180.0, 180.0))
+	if is_zero_approx(_grid_yaw_sign):
+		push_error("[AgentSprite] N and E resolve to the same yaw — the step table is degenerate")
+		return false
+	for probe: Array in [[Vector2i(0, 1), 180.0], [Vector2i(-1, 0), 270.0]]:
+		var step: Vector2i = probe[0]
+		var grid_deg: float = probe[1]
+		var actual := float(YAW_BY_DIRECTION[_frame_by_step[step]])
+		var drift := wrapf(_grid_yaw_origin + _grid_yaw_sign * grid_deg - actual, -180.0, 180.0)
+		if absf(drift) > 0.5:
+			push_error("[AgentSprite] grid %.0f deg maps to yaw %.1f but step %s bakes %.1f — the yaw mapping is not a rotation" % [
+				grid_deg, _grid_yaw_origin + _grid_yaw_sign * grid_deg, step, actual])
+			return false
+	print_debug("[AgentSprite] head yaw mapping: grid 0 -> yaw %.0f, handedness %+.0f" % [
+		_grid_yaw_origin, _grid_yaw_sign])
+	return true
+
+
+## Which head image set a posture uses — its OWN, for the two that have one.
+##
+## STANDING AND CROUCH DO NOT SHARE. They were meant to, on the reasoning that the
+## head is the same object at the same orientation and only its position moves —
+## which the crouch's own pose refutes: it pitches the neck 14 deg and the head
+## bone inherits it, so the crouched head is a different picture and no offset can
+## rotate one into the other. Two cropped sets cost 0.34 MB, so the sharing was
+## never worth defending; the SOCKET still earns its place, for the walk, where
+## the standing set is reused across 32 phases that bob.
+##
+## PRONE HAS NO LAYER AT ALL and keeps its head baked into the body. A prone head
+## is pitched ~-92 deg, so turning it is a rotation about the spine — roughly
+## HORIZONTAL after that pitch — while the bake produces its yaws by spinning the
+## head mesh about the WORLD vertical. For an upright head those are the same
+## rotation and for a prone one they are not. It costs nothing to opt out: guards
+## have no posture at all, so no head-turn behaviour can reach a prone figure.
+##
+## The WALK is standing, so it resolves here to the standing set and rides the
+## socket delta.
+func _layer_group_for_posture(posture: String) -> String:
+	match posture:
+		"standing", "crouch":
+			return posture
+		_:
+			return ""
+
+
+func _layer_set_key(layer: String, group: String, dev: bool) -> String:
+	return "%s:%s%s" % [layer, group, ":dev" if dev else ""]
+
+
+## One yaw-indexed image set, loaded whole on first use (D42: a session where no
+## head ever turns should still pay for it once, because the alternative is a
+## texture load inside a turn).
+func _ensure_layer_set(layer: String, group: String, dev: bool) -> bool:
+	var key := _layer_set_key(layer, group, dev)
+	if _layer_sets.has(key):
+		return not (_layer_sets[key] as Dictionary).is_empty()
+	var dir := _layer_root(layer, dev) + group + "/"
+	var path := dir + "layer.json"
+	if not FileAccess.file_exists(path):
+		push_error("[AgentSprite] %s missing — run the %s layer bake for this family" % [path, layer])
+		_layer_sets[key] = {}
+		return false
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("frames") or not parsed.has("base_socket_px"):
+		push_error("[AgentSprite] %s is not a layer manifest" % path)
+		_layer_sets[key] = {}
+		return false
+
+	## THE COUNT COMES FROM DISK. Never a constant — `_walk_phases` was hardcoded
+	## at 8 against a 32-phase bake and showed three quarters of the frames to
+	## nobody. The yaw step follows from the count, and the manifest's own step is
+	## then a CHECK rather than a second source of truth.
+	var raw_frames: Array = parsed["frames"]
+	if raw_frames.is_empty():
+		push_error("[AgentSprite] %s lists no frames" % path)
+		_layer_sets[key] = {}
+		return false
+	var step := 360.0 / float(raw_frames.size())
+	if parsed.has("yaw_step_deg") and absf(float(parsed["yaw_step_deg"]) - step) > 0.01:
+		push_error("[AgentSprite] %s says step %.3f deg but ships %d frames (=%.3f deg) — the sweep is not a full circle" % [
+			path, float(parsed["yaw_step_deg"]), raw_frames.size(), step])
+		_layer_sets[key] = {}
+		return false
+
+	var frames: Array = []
+	for i in range(raw_frames.size()):
+		var f: Dictionary = raw_frames[i]
+		var yaw := float(f["yaw"])
+		if absf(wrapf(yaw - float(i) * step, -180.0, 180.0)) > 0.01:
+			push_error("[AgentSprite] %s frame %d is yaw %.1f, expected %.1f — the sweep is not uniform" % [
+				path, i, yaw, float(i) * step])
+			_layer_sets[key] = {}
+			return false
+		var stem := "%syaw_%03d" % [dir, int(round(fposmod(yaw, 360.0)))]
+		var color := _load_texture_raw(stem + "_color.png")
+		var normal := _load_texture_raw(stem + "_normal.png")
+		if color == null or normal == null:
+			_layer_sets[key] = {}
+			return false
+		var o: Array = f["origin_px"]
+		frames.append({"color": color, "normal": normal,
+			"origin": Vector2(float(o[0]), float(o[1]))})
+	## PER DIRECTION, never one point: a pose that leans (the crouch does, by 14
+	## deg of neck pitch) puts the neck off the figure's yaw axis, where it orbits
+	## as the body turns. Standing measures 0 px of spread between the four and
+	## the crouch measures 17 — collapsing them to a mean would place the crouched
+	## head up to 17 px from its own neck.
+	var base_sockets := {}
+	for direction: String in (parsed["base_socket_px"] as Dictionary):
+		var b: Array = parsed["base_socket_px"][direction]
+		base_sockets[direction] = Vector2(float(b[0]), float(b[1]))
+	_layer_sets[key] = {
+		"frames": frames, "step_deg": step, "base_socket": base_sockets,
+	}
+	print_debug("[AgentSprite] layer '%s/%s': %d yaws at %.1f deg" % [layer, group, frames.size(), step])
+	return true
+
+
+## The head's yaw ON SCREEN, in the bake's own convention, already clamped.
+##
+## The clamp lives HERE and not where the yaw is set, so it re-evaluates against
+## whichever facing the current perspective draws. Clamping at the setter would
+## freeze a limit measured against a body the room has since rotated away from.
+func _head_view_yaw() -> float:
+	var body_yaw: float = float(YAW_BY_DIRECTION.get(_current_view_facing, 0.0))
+	if not _has_head_yaw:
+		return body_yaw
+	var raw := _base_head_yaw_deg - float(YAW_BY_DIRECTION.get(_inverse_perspective(), 0.0))
+	return body_yaw + clampf(wrapf(raw - body_yaw, -180.0, 180.0),
+		-HEAD_YAW_LIMIT_DEG, HEAD_YAW_LIMIT_DEG)
+
+
+## Where the head is looking, as a GRID angle in degrees — 0 = North, +90 = East,
+## the same convention as `guard_enemy.facing_angle_deg` and `vision_angle`, and
+## the same one `_get_cone_tiles()` tests detection in. Taking a grid angle rather
+## than a screen one is the whole lesson of CONE-ANGLE-01: in an isometric
+## projection screen and grid are not a rotation apart, so no constant offset
+## converts between them and anything that leaves grid space arrives wrong.
+##
+## Stored in BASE space like the facing, so a perspective flip leaves the guard
+## looking at the same wall.
+func set_head_yaw_grid_deg(grid_deg: float) -> void:
+	_base_head_yaw_deg = _grid_yaw_origin + _grid_yaw_sign * grid_deg \
+		+ float(YAW_BY_DIRECTION.get(_inverse_perspective(), 0.0))
+	_has_head_yaw = true
+	_apply_layers()
+
+
+## Back to the head following the body.
+func clear_head_yaw() -> void:
+	if not _has_head_yaw:
+		return
+	_has_head_yaw = false
+	_apply_layers()
+
+
+## Place every layer over the body frame `_apply` last drew.
+##
+## THE OFFSET IS THREE TERMS AND EACH IS MEASURED, none tuned:
+##   -anchor      the body's own ground-contact pixel, so the layer shares the
+##                body's frame of reference exactly
+##   +origin      where this yaw's crop sat in the uncropped 256x256 bake, which
+##                is what makes cropping free rather than a registration problem
+##   +delta       body socket - the socket the layer was baked against; zero for
+##                the reference posture, non-zero for a crouch (the head is lower)
+##                and per phase for a walk (the head bobs)
+## THE BODY FRAME DECIDES, PER SET, NOT THIS FILE AND NOT ONE GLOBAL FLAG.
+## `headless` comes out of each bake's own anchor.json, so a frame set and its
+## layers can never disagree about which of the two is carrying the skull:
+##
+##   set has a head + no layers   -> the behaviour before layers existed
+##   set has a head + layers      -> layers OFF for that set; drawing them would
+##                                   show two heads
+##   set headless   + layers      -> the layer system, shipping
+##   set headless   + no layers   -> FATAL (B6). A headless character is a bug to
+##                                   see immediately, not a mode to degrade into.
+##
+## Per SET rather than once at setup because the re-bake is not atomic: postures
+## can ship headless while the walk's 32 phases still carry their baked heads, and
+## that intermediate state now renders correctly instead of showing two heads for
+## the duration of every step.
+func _apply_layers() -> void:
+	if _current_entry.is_empty():
+		return
+	if not bool(_current_entry.get("headless", false)):
+		for layer: String in _layer_nodes:
+			(_layer_nodes[layer] as Sprite2D).visible = false
+		return
+	if _layers.is_empty():
+		push_error(("[AgentSprite] a HEADLESS body frame is showing but no layer bake "
+			+ "exists under %s — the character has no head. Run the layer bake "
+			+ "(PROMPTS/BAKE_ORDER_CHARACTER_LAYERS.md).") % _layer_root("head", _dev_vision))
+		return
+	var group := _layer_group_for_posture(_posture)
+	var yaw := _head_view_yaw()
+	var sockets: Dictionary = _current_entry.get("head_socket", {})
+	var anchor: Vector2 = _current_entry["anchor"]
+	for layer: String in _layers:
+		var node: Sprite2D = _layer_nodes[layer]
+		if group == "":
+			node.visible = false
+			continue
+		if not _ensure_layer_set(layer, group, _dev_vision):
+			node.visible = false
+			continue
+		var set_data: Dictionary = _layer_sets[_layer_set_key(layer, group, _dev_vision)]
+		var frames: Array = set_data["frames"]
+		var index: int = int(round(fposmod(yaw, 360.0) / float(set_data["step_deg"]))) % frames.size()
+		node.visible = true
+		## `vision_angle` moves every frame; the baked yaw moves every 15 deg of
+		## it. Without this the sprite would reassign the same three textures
+		## sixty times a second per actor on screen.
+		if _layer_frame_shown.get(layer, -1) == index:
+			continue
+		_layer_frame_shown[layer] = index
+		var frame: Dictionary = frames[index]
+		var delta := Vector2.ZERO
+		var bases: Dictionary = set_data["base_socket"]
+		if sockets.has(_current_view_facing) and bases.has(_current_view_facing):
+			delta = (sockets[_current_view_facing] as Vector2) \
+				- (bases[_current_view_facing] as Vector2)
+		node.texture = frame["color"]
+		node.offset = -anchor + (frame["origin"] as Vector2) + delta
+		(_layer_materials[layer] as ShaderMaterial).set_shader_parameter("normal_tex", frame["normal"])
 
 
 func _process(_delta: float) -> void:
@@ -614,7 +1015,7 @@ func _update_light_uniform() -> void:
 			best_light = light
 
 	if best_light == null:
-		_material.set_shader_parameter("light_intensity", 0.0)
+		_set_light_uniforms(_last_light_dir, 0.0)
 		return
 
 	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
@@ -631,9 +1032,27 @@ func _update_light_uniform() -> void:
 		light_dir_world.dot(_cam_toward_viewer)
 	).normalized()
 
-	_material.set_shader_parameter("light_dir", light_dir_view)
-	_material.set_shader_parameter("light_intensity",
+	_set_light_uniforms(light_dir_view,
 		clampf(best_energy * _light_intensity_scale, 0.0, _light_intensity_max))
+
+
+## One light, every layer. The body and its layers are one figure, so a layer lit
+## differently from the body would read as a seam rather than as a head.
+##
+## It also SKIPS UNCHANGED VALUES, and that is not micro-tuning: this runs every
+## frame for every actor on screen, and with layers the naive version tripled the
+## uniform writes for a light that moves once a turn.
+func _set_light_uniforms(dir_view: Vector3, intensity: float) -> void:
+	if dir_view.is_equal_approx(_last_light_dir) and is_equal_approx(intensity, _last_light_intensity):
+		return
+	_last_light_dir = dir_view
+	_last_light_intensity = intensity
+	_material.set_shader_parameter("light_dir", dir_view)
+	_material.set_shader_parameter("light_intensity", intensity)
+	for layer: String in _layer_materials:
+		var mat: ShaderMaterial = _layer_materials[layer]
+		mat.set_shader_parameter("light_dir", dir_view)
+		mat.set_shader_parameter("light_intensity", intensity)
 
 
 ## CLI-baked PNGs never went through the editor's import scan, so plain load()

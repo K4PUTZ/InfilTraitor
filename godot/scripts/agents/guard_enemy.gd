@@ -229,6 +229,22 @@ func _process(delta: float) -> void:
 
 	vision_angle = _rotate_towards(vision_angle, target_vision, TURN_SPEED * 1.35, delta)
 
+	## THE HEAD LAYER, driven by the angle that was ALREADY here. `vision_angle`
+	## is the guard's real line of sight — it is what `_get_cone_tiles()` tests
+	## detection against — so pointing the baked head at it makes the art show the
+	## thing the simulation is doing, rather than a second animation that merely
+	## agrees with it most of the time.
+	##
+	## It is passed as a GRID angle, and `AgentSprite` keeps it in grid space all
+	## the way to the frame index. CONE-ANGLE-01 was exactly this conversion done
+	## once, in the wrong direction, and the cost was a quarter-turn error nobody
+	## saw for months because the overlay and the body disagreed silently.
+	##
+	## No-ops until the head bake lands: with no layers on disk `AgentSprite`
+	## resolves an empty layer list and this costs one is_empty() per frame.
+	if sprite != null:
+		sprite.set_head_yaw_grid_deg(rad_to_deg(vision_angle))
+
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
 	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 	queue_redraw()

@@ -256,6 +256,38 @@ Consequences worth knowing before authoring a palette:
 
 ---
 
+## 6b. Layers — the head and the hat, added 2026-08-18
+
+A layer is a second sprite drawn over the body from **this same camera into this
+same 256×256 frame**. It exists so the head can turn without multiplying the
+body's four facings by the head's yaw sweep — `p3_head_turn_spike.py` measured the
+premise: the head layer at one absolute yaw is **0 of 126 000 pixels** different
+under a body at 0° and at 90°, so head art is indexed by absolute yaw and shared
+across all four facings.
+
+Three things make a layer register, and none of them is a tuned offset:
+
+1. **The parts come out of ONE posed export.** `p2.export_posed(..., parts=...)`
+   writes the full figure, then the headless body, the head and the hat, before
+   its verification re-import. A partition gate refuses a split that drops or
+   duplicates a mesh.
+2. **The layer inherits the BODY's Y recentring**, read back out of the body's own
+   `anchor.json` (`recentre_y_m`), never its own — a head centred on itself lands
+   in the middle of the frame instead of on its neck.
+3. **The frames are cropped to their alpha box**, and the crop origin is written
+   per frame. Measured 50–70× smaller than the uncropped frame; D42 names RAM as
+   this character's binding constraint.
+
+`anchor.json` gained `recentre_y_m`, `head_socket_px` (per direction, the top
+centre of `seg_neck`) and `headless`. **`headless` is per frame set and is what
+`AgentSprite` reads to decide whether to draw layers at all** — so a re-bake need
+not be atomic: postures can ship headless while the walk still carries its baked
+heads, and both render correctly.
+
+The registration gate runs automatically at the end of the same Godot boot; see
+[`PROMPTS/BAKE_ORDER_CHARACTER_LAYERS.md`](../../PROMPTS/BAKE_ORDER_CHARACTER_LAYERS.md)
+for the commands, the measured figures and what each printed line means.
+
 ## 7. Verification — what to check before calling a bake done
 
 1. **Stage 2 gates already ran**: height band, X-span (catches an un-posed

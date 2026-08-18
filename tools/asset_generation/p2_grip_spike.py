@@ -676,7 +676,7 @@ def scale_to_target_height(arm):
         "— see this function's note" % (1.80 * factor, 1.80 * factor / 0.20))
 
 
-def export_posed(arm, key, facing_name, posture=None):
+def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None):
     """Write ONE posed figure + weapon as a static GLB, for the Godot bake.
 
     Why static rather than rigged: `actor_frame_bake_spike.gd` loads a single
@@ -706,6 +706,21 @@ def export_posed(arm, key, facing_name, posture=None):
                       the spec.
         span_x_max_m  the T-pose guard's ceiling; a prone figure legitimately
                       spans more than a standing one.
+
+    `parts` is the LAYER SYSTEM's hook and is OPTIONAL in exactly the same sense
+    `posture` is: omitted, every line below runs as it did before it existed. It
+    is a dict of `name -> {"only": (...)}` or `name -> {"exclude": (...)}` of MESH
+    names, and each entry writes a second GLB holding just that subset.
+
+    WHY IT LIVES HERE AND NOT IN A CALLER. The subsets have to come from the SAME
+    posed, materialised, scaled scene as the full figure, and they have to be
+    taken BEFORE the verification re-import puts a second copy of every mesh in
+    the scene. That is a two-line window inside this function, and it is the whole
+    reason a headless body and its head layer register pixel for pixel instead of
+    approximately: they are two views of one export, not two exports.
+
+    Paths land in `parts_out` (a dict the caller passes in) rather than in the
+    return value, so no existing call site changes shape.
     """
     weapon, grip_name = key
     spec = WEAPONS[weapon]
@@ -761,6 +776,43 @@ def export_posed(arm, key, facing_name, posture=None):
     bpy.ops.export_scene.gltf(filepath=out, export_format="GLB",
                               export_apply=True, export_skins=False,
                               export_yup=True)
+
+    if parts:
+        meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+        total = len(meshes)
+        covered = 0
+        for pname, spec in parts.items():
+            if "only" in spec:
+                chosen = [o for o in meshes if o.name in set(spec["only"])]
+            else:
+                chosen = [o for o in meshes if o.name not in set(spec["exclude"])]
+            if not chosen:
+                # A missing HAT is a configuration (the enemy is bare-headed by
+                # the Director's 2026-08-17 call), so it is skipped and said out
+                # loud. A missing BODY or HEAD is not, and the caller's sum check
+                # below turns it into a failure.
+                log("part %r: no meshes matched — skipped" % pname)
+                continue
+            bpy.ops.object.select_all(action="DESELECT")
+            for o in chosen:
+                o.select_set(True)
+            ppath = out[:-4] + "_%s.glb" % pname
+            bpy.ops.export_scene.gltf(filepath=ppath, export_format="GLB",
+                                      export_apply=True, export_skins=False,
+                                      export_yup=True, use_selection=True)
+            covered += len(chosen)
+            if parts_out is not None:
+                parts_out[pname] = ppath
+            log("part %r: %d/%d meshes -> %s"
+                % (pname, len(chosen), total, os.path.relpath(ppath, REPO_ROOT)))
+        # THE PARTITION GATE. body + head + hat must account for every mesh
+        # exactly once. A head silently left on the body would pass every other
+        # check in this file and then draw two heads on screen; a mesh in neither
+        # subset would vanish from the game with nothing to point at.
+        if covered != total:
+            fail("the parts cover %d meshes but the figure has %d — the split is "
+                 "not a partition, so the layers would double or drop geometry"
+                 % (covered, total))
 
     # Verify the EXPORT, not the scene it came from — export_apply silently
     # doing nothing would leave a T-posed figure on disk while every check above

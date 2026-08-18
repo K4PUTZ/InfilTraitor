@@ -369,6 +369,63 @@ POSTURES = {
 }
 ORDER = ["standing", "crouch", "prone"]
 
+# --- THE LAYER SPLIT (CHARACTER_MASTER_PLAN 4.3, bake order 2026-08-17) --------
+#
+# Every posture is exported THREE times from one posed scene: the body without a
+# head, the head alone, the fedora alone. `p2.export_posed`'s partition gate
+# refuses a split that drops or duplicates a mesh.
+#
+# WHICH OF THE THREE SHIPS IS PER POSTURE, and prone is the one that differs:
+#
+#   standing, crouch -> the HEADLESS body ships, and the head is a layer indexed
+#                       by absolute yaw. EACH GETS ITS OWN IMAGE SET.
+#
+#                       Sharing one was the plan, and the crouch's own pose
+#                       refutes it: POSTURES["crouch"] pitches `neck` by 14 deg,
+#                       which the head bone inherits, so the crouched head is
+#                       tilted forward and is simply a different picture. On a
+#                       ~35 px head that is ~4 px at the extremes, and no socket
+#                       offset can undo a rotation. The saving was never the
+#                       point either — a cropped head set is 0.17 MB, so two of
+#                       them cost less than a rounding error against the walk's
+#                       67 MB of body phases.
+#   prone            -> the FULL figure ships, head included, and there is no
+#                       layer at all. A prone head is pitched ~-92 deg, so a head
+#                       turn is a rotation about the spine — which after that
+#                       pitch is roughly HORIZONTAL. The bake produces its yaws by
+#                       spinning the head mesh about the WORLD vertical, and for a
+#                       pitched head that is a swing through a cone, not a turn.
+#                       The identity the 24-frame economy rests on stops holding,
+#                       so prone opts out. It costs nothing: guards have no
+#                       posture at all, so no head-turn behaviour can reach it.
+HAT_MESHES = ("seg_fedora_brim", "seg_fedora_curl", "seg_fedora_band",
+              "seg_fedora_crown")
+HEAD_MESHES = ("seg_head",)
+PARTS = {
+    "body": {"exclude": HEAD_MESHES + HAT_MESHES},
+    "head": {"only": HEAD_MESHES},
+    "hat": {"only": HAT_MESHES},
+}
+# Which postures ship the headless body and get a layer of their own.
+LAYERED = ("standing", "crouch")
+
+POSTURE_OUT = ("res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
+               "agent_frames%s/%s/")
+LAYER_OUT = ("res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
+             "agent_%s%s/%s/")
+
+# HOW FINE THE SWEEP IS, and it is a knob rather than a constant on purpose.
+#
+# 24 yaws is 15 deg a step. A 90 deg head turn at the guard's own rate takes
+# ~600 ms, so 15 deg steps show 6 images in that time — 10 Hz, against D46's 30 Hz
+# authoring rate. Whether that reads as a turn or as a stutter is a JUDGEMENT, and
+# it is cheap to change the answer: the head frames are cropped to their own alpha
+# box (~4% of a 256x256 frame), so doubling the sweep to 48 costs single-digit
+# megabytes while the walk's 32 uncropped body phases cost 67. Raise it here, re-
+# run the head/hat bake alone, look at the result. Nothing downstream is pinned to
+# 24 — AgentSprite counts what is on disk.
+LAYER_YAWS = int(os.environ.get("P3_LAYER_YAWS", "24"))
+
 
 # Wider than p2's 232x256 for one measured reason: the prone figure's own
 # footprint is 1.85 m, which draws 214 px, and a cropped posture is exactly what
@@ -473,6 +530,53 @@ def _open_rig():
     return arm
 
 
+def _measure_glb_height(path):
+    """Re-import a written GLB and measure it.
+
+    The same discipline `_render_previews` uses and for the same reason: the
+    number the Godot bake gates on has to be measured off the SHIPPED file. A
+    headless body is roughly 0.19 m shorter than the figure that was posed, and
+    handing the bake the posed figure's height would fail every frame of it.
+    """
+    bpy.ops.wm.read_homefile(use_empty=True)
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [bpy.data.objects[k] for k in set(bpy.data.objects.keys()) - before]
+    pts = [o.matrix_world @ v.co for o in new if o.type == "MESH"
+           for v in o.data.vertices]
+    if not pts:
+        fail("%s re-imports with no geometry" % os.path.basename(path))
+    return max(p.z for p in pts) - min(p.z for p in pts)
+
+
+def _layer_entries(parts_by_posture):
+    """The `layers` block of the manifest — one entry per posture per layer.
+
+    A MISSING HAT IS NOT AN ERROR. The enemy palette ships bare-headed by the
+    Director's 2026-08-17 call, so `parts_out` simply has no `hat` key and this
+    says so and moves on. A missing HEAD is another matter and is caught in
+    main(), where the headless body it would have to accompany is chosen.
+    """
+    fam = bake_family(p2._MODEL)
+    entries = []
+    for posture in LAYERED:
+        for layer in ("head", "hat"):
+            path = parts_by_posture[posture].get(layer)
+            if path is None:
+                log("layer %r/%r: nothing exported for palette %r — skipped"
+                    % (posture, layer, p2._MODEL))
+                continue
+            entries.append(dict(
+                layer=layer,
+                posture=posture,
+                glb=os.path.relpath(path, p2.REPO_ROOT).replace(os.sep, "/"),
+                out_dir=LAYER_OUT % (layer, fam, posture),
+                base_dir=POSTURE_OUT % (fam, posture),
+                yaws=LAYER_YAWS,
+            ))
+    return entries
+
+
 def main():
     if not os.path.isfile(p2.BLEND):
         fail("model missing: %s — run p1_agent_model.py first" % p2.BLEND)
@@ -495,15 +599,37 @@ def main():
     export_facing = facing[p2.YAWS[0]]
 
     written = []
+    parts_by_posture = {}
     for name in ORDER:
         log("=" * 70)
         log("posture: %s" % name)
         arm = _open_rig()
-        out = p2.export_posed(arm, key, export_facing, posture=POSTURES[name])
+        parts_out = {}
+        out = p2.export_posed(arm, key, export_facing, posture=POSTURES[name],
+                              parts=PARTS, parts_out=parts_out)
         written.append((name, out))
+        parts_by_posture[name] = parts_out
 
     log("=" * 70)
     heights = _render_previews(written, facing)
+
+    # The SHIPPING file per posture, and its own measured height. A headless body
+    # is ~0.19 m shorter than the figure the preview sheet shows, and the Godot
+    # bake gates on the height it is TOLD — so telling it the full figure's
+    # height would reject every headless body it was handed.
+    shipping = {}
+    for name in ORDER:
+        if name in LAYERED:
+            path = parts_by_posture[name].get("body")
+            if path is None:
+                fail("posture %r exported no `body` part — the layer split failed"
+                     % name)
+        else:
+            path = dict(written)[name]
+        shipping[name] = (path, _measure_glb_height(path))
+        log("%s ships %s at %.4f m (%.2f voxels)"
+            % (name, os.path.basename(shipping[name][0]), shipping[name][1],
+               shipping[name][1] / VOXEL_M))
 
     with open(os.path.join(SHEET_DIR, "manifest.json"), "w") as fh:
         json.dump(dict(
@@ -513,28 +639,53 @@ def main():
             grip="%s/%s" % (WEAPON, GRIP),
             facings={str(k): v for k, v in facing.items()},
             postures=[dict(name=n,
-                           glb=os.path.relpath(p, p2.REPO_ROOT).replace(os.sep, "/"),
+                           glb=os.path.relpath(shipping[n][0],
+                                               p2.REPO_ROOT).replace(os.sep, "/"),
                            ## So `AGENT_BAKE_MANIFEST` bakes all three in ONE
                            ## windowed boot, the same contract p3_walk_export.py
                            ## writes. The dev-joint variant goes to its own root
                            ## because AgentSprite loads it as a separate set.
-                           out_dir="res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
-                                   "agent_frames%s/%s/" % (bake_family(p2._MODEL), n),
-                           height_m=round(heights[n], 4),
-                           voxels=round(heights[n] / VOXEL_M, 2))
-                      for n, p in written],
+                           out_dir=POSTURE_OUT % (bake_family(p2._MODEL), n),
+                           height_m=round(shipping[n][1], 4),
+                           voxels=round(shipping[n][1] / VOXEL_M, 2),
+                           headless=n in LAYERED,
+                           figure_height_m=round(heights[n], 4))
+                      for n in ORDER],
+            ## Baked AFTER the bodies, in the same boot, and registered against
+            ## the reference posture's own anchor.json — which is why the order
+            ## inside this file matters and is asserted in the bake.
+            layers=_layer_entries(parts_by_posture),
+            ## The composite gate, run automatically at the end of the same Godot
+            ## boot: headless body + head + hat, against a bake of the WHOLE
+            ## figure. `glb` is deliberately the full posed figure — the only
+            ## thing the layers can honestly be checked against.
+            verify=[
+                dict(glb=os.path.relpath(dict(written)[posture],
+                                         p2.REPO_ROOT).replace(os.sep, "/"),
+                     height_m=round(heights[posture], 4),
+                     body_dir=POSTURE_OUT % (bake_family(p2._MODEL), posture),
+                     layer_dirs=[e["out_dir"] for e in _layer_entries(parts_by_posture)
+                                 if e["posture"] == posture])
+                for posture in LAYERED],
         ), fh, indent=2)
 
     log("=" * 70)
-    log("next: python3 tools/asset_generation/p3_posture_sheet.py, then the bakes "
-        "below — the heights are the MEASURED ones, so copy the lines rather than "
-        "the numbers:")
-    for name, out in written:
-        log("  AGENT_BAKE_MODEL=res://%s \\"
-            % os.path.relpath(out, p2.REPO_ROOT).replace(os.sep, "/"))
-        log("  AGENT_BAKE_OUT=res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
-            "agent_frames/%s/ \\" % name)
-        log("  AGENT_BAKE_HEIGHT_M=%.3f" % heights[name])
+    # ONE COMMAND, AND IT IS THE MANIFEST. What used to print here was a
+    # per-posture AGENT_BAKE_MODEL line, and it was wrong in three ways at once
+    # by the time the layers landed: it named the FULL figure where the headless
+    # body ships, it hardcoded `agent_frames/` and so sent every non-default
+    # palette into the agent's own directory (the trap the pipeline doc's 8
+    # already records), and it cannot express a layer or the verification pass at
+    # all. A printed command that has to be kept in sync with the manifest beside
+    # it is a second source of truth; there is now one.
+    log("next: python3 tools/asset_generation/p3_posture_sheet.py, then ONE "
+        "windowed Godot boot bakes the bodies, the layers and the registration "
+        "check together:")
+    log("  AGENT_BAKE_MANIFEST=%s \\"
+        % os.path.relpath(os.path.join(SHEET_DIR, "manifest.json"), p2.REPO_ROOT))
+    log("  /Applications/Godot.app/Contents/MacOS/Godot --path . "
+        "--position 4000,4000 \\")
+    log("    --script res://godot/scripts/tools/agent_frame_bake_spike.gd")
 
 
 if __name__ == "__main__":

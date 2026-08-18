@@ -504,13 +504,17 @@ def build_segments(z):
                                    0.022, 0.018, 0.020, 0.016, "skin", bevel=0.003)))
         
         # Hair — short cropped hair on top and back of head
-        hair_z = zhd + HEAD_H * 0.75
-        segs.append(("head", disc("seg_hair_top", (0, 0, zhd + HEAD_H - g - 0.005),
-                                  0.170, 0.045, "hair", verts=16, top_scale=0.88)))
-        # Hair back/sides
-        segs.append(("head", prism("seg_hair_back", (0, -0.080, zhd + HEAD_H * 0.40),
-                                   (0, -0.080, zhd + HEAD_H * 0.95),
-                                   0.155, 0.030, 0.145, 0.030, "hair", bevel=0.004)))
+        # FIXED 2026-08-18: cabelo estava atrás da cabeça em certos ângulos.
+        # O disco do topo agora está NO topo (sem offset negativo) e o prism
+        # traseiro começa mais alto (0.60 vs 0.40) para cobrir a parte de trás
+        # sem ficar abaixo da linha dos olhos.
+        segs.append(("head", disc("seg_hair_top", (0, 0, zhd + HEAD_H - g),
+                                  0.172, 0.048, "hair", verts=16, top_scale=0.90)))
+        # Hair back/sides — Y=-0.075 (um pouco para frente de -0.080) e começa
+        # em 60% da altura (acima do nariz) até 98% (quase o topo)
+        segs.append(("head", prism("seg_hair_back", (0, -0.075, zhd + HEAD_H * 0.60),
+                                   (0, -0.075, zhd + HEAD_H * 0.98),
+                                   0.158, 0.032, 0.150, 0.028, "hair", bevel=0.004)))
         
         # Beard — stylized geometry around jaw
         beard_z = zhd + HEAD_H * 0.25

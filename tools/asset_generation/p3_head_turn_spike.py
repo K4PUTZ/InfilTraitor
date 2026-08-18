@@ -60,7 +60,15 @@ ORTHO = 2.15
 ## neck does comfortably and is deliberately wider than the final range is likely
 ## to be: a bracket that stops at the plausible answer cannot show where the
 ## answer stops being plausible.
-YAW_MIN, YAW_MAX = -75.0, 75.0
+##
+## The SHIPPING range is +-60 at a 15 deg step (9 frames per posture), chosen
+## 2026-08-17 when the Director answered "tudo certo" without picking one: the
+## head leads the body by at most one or two of _do_idle_behavior()'s 45 deg
+## steps, so +-60 covers the divergence the guard AI can actually produce, and
+## +-75 only existed to put the bracket past its own breaking point. Both ends
+## stay overridable so widening it later costs a flag, not an edit.
+YAW_MIN = float(os.environ.get("P3_YAW_MIN", "-60"))
+YAW_MAX = float(os.environ.get("P3_YAW_MAX", "60"))
 YAW_STEP = float(os.environ.get("P3_YAW_STEP", "15"))
 
 HAT_PARTS = ("seg_fedora_brim", "seg_fedora_curl", "seg_fedora_band", "seg_fedora_crown")
@@ -162,7 +170,7 @@ def yaws():
     return out
 
 
-def head_independence(arm):
+def head_independence(arm, hat_parts):
     """The load-bearing measurement: same head yaw, two different body yaws.
 
     Renders the head layer alone at head-yaw 0 with the body at 0 deg and again
@@ -177,7 +185,7 @@ def head_independence(arm):
         ## the SAME absolute yaw under both body orientations — that is the
         ## condition a layer would actually ship under.
         set_head_yaw(arm, -body)
-        show_only(set(HEAD_PARTS) | set(HAT_PARTS))
+        show_only(set(HEAD_PARTS) | set(hat_parts))
         p = os.path.join(OUT_DIR, "indep_body%03d.png" % int(body))
         render(p)
         results.append(p)
@@ -195,14 +203,22 @@ def main():
     arm = find_armature()
 
     present = {ob.name for ob in bpy.data.objects if ob.type == "MESH"}
-    missing = [n for n in HEAD_PARTS + HAT_PARTS if n not in present]
-    if missing:
-        raise SystemExit("[P3-HEAD][FAIL] expected head/hat parts absent: %s" % missing)
+    ## The HEAD is mandatory — without it there is nothing to sweep and a silent
+    ## empty render would look like a working spike. The HAT is not: since
+    ## 2026-08-17 the enemy palette ships bare-headed on purpose, so a missing
+    ## fedora is a configuration, not a fault. Failing on it (as this did on its
+    ## first run against agent_base_enemy) would have made the tool refuse the
+    ## exact model the Director just asked for.
+    missing_head = [n for n in HEAD_PARTS if n not in present]
+    if missing_head:
+        raise SystemExit("[P3-HEAD][FAIL] head parts absent: %s" % missing_head)
+    hat_parts = tuple(n for n in HAT_PARTS if n in present)
+    log("hat: %s" % ("%d parts" % len(hat_parts) if hat_parts else "NONE — bare-headed model"))
 
     ys = yaws()
     log("sweep %s deg .. %s deg, step %s -> %d frames" % (YAW_MIN, YAW_MAX, YAW_STEP, len(ys)))
 
-    head_and_hat = set(HEAD_PARTS) | set(HAT_PARTS)
+    head_and_hat = set(HEAD_PARTS) | set(hat_parts)
     for y in ys:
         tag = "%+04d" % int(y)
         set_head_yaw(arm, y)
@@ -216,13 +232,14 @@ def main():
         show_only(set(HEAD_PARTS))
         render(os.path.join(OUT_DIR, "sweep_nohat_%s.png" % tag))
 
-        show_only(set(HAT_PARTS))
-        render(os.path.join(OUT_DIR, "sweep_hat_%s.png" % tag))
+        if hat_parts:
+            show_only(set(hat_parts))
+            render(os.path.join(OUT_DIR, "sweep_hat_%s.png" % tag))
 
     set_head_yaw(arm, 0.0)
     show_only(None)
     log("independence check: same head yaw under two body yaws")
-    head_independence(arm)
+    head_independence(arm, hat_parts)
 
     log("wrote %d frames to %s" % (len(ys) * 4 + 2, OUT_DIR))
 

@@ -465,19 +465,43 @@ def build_segments(z):
                                0.145, 0.165, 0.165, 0.175, "skin")))
 
     # Fedora. Brim disc with a raised outer curl, tapered crown, hatband.
-    brim_z = zhd + HEAD_H * 0.62
-    segs.append(("head", disc("seg_fedora_brim", (0, 0, brim_z),
-                              FEDORA_BRIM_R, 0.018, "hat", top_scale=0.90)))
-    segs.append(("head", disc("seg_fedora_curl", (0, 0, brim_z + 0.016),
-                              FEDORA_BRIM_R * 0.99, 0.014, "hat",
-                              top_scale=0.86)))
-    segs.append(("head", disc("seg_fedora_band", (0, 0, brim_z + 0.034),
-                              FEDORA_CROWN_R * 1.06, 0.030, "band",
-                              top_scale=1.0)))
-    segs.append(("head", disc("seg_fedora_crown",
-                              (0, 0, brim_z + 0.034 + FEDORA_CROWN_H * 0.5),
-                              FEDORA_CROWN_R, FEDORA_CROWN_H, "hat",
-                              top_scale=0.82)))
+    #
+    # THE HAT IS A LAYER, NOT PART OF THE SKULL. Director, 2026-08-17: *"o chapéu
+    # também precisa ser separado porque ele vai mudar no agente. E o inimigo
+    # poderia estar sem chapéu... vamos seguir sem chapéu."* D53's costume flip
+    # already treats the hat as a `head` layer switched off rather than as stowed
+    # geometry; this is that treatment reaching the model script. The four parts
+    # stay bound to the `head` bone so they ride the head-turn sweep
+    # (p3_head_turn_spike.py measured them separable — head, hat and head+hat all
+    # render independently at the same yaw).
+    #
+    # The enemy ships bare-headed with the Director's eyes open: the same spike
+    # showed the turn reads far more weakly without the brim and band, which are
+    # what carry the direction on an untextured head. Accepted for now — *"o
+    # inimigo não tem rosto ainda, mas vamos melhorar os modelos depois, e vai
+    # ser mais fácil de entender."* Revisit when the face lands, not before.
+    _wants_hat = _PALETTE not in ("enemy",)
+    if os.environ.get("P1_NO_HAT") == "1":
+        _wants_hat = False
+    elif os.environ.get("P1_FORCE_HAT") == "1":
+        _wants_hat = True
+    if _wants_hat:
+        brim_z = zhd + HEAD_H * 0.62
+        segs.append(("head", disc("seg_fedora_brim", (0, 0, brim_z),
+                                  FEDORA_BRIM_R, 0.018, "hat", top_scale=0.90)))
+        segs.append(("head", disc("seg_fedora_curl", (0, 0, brim_z + 0.016),
+                                  FEDORA_BRIM_R * 0.99, 0.014, "hat",
+                                  top_scale=0.86)))
+        segs.append(("head", disc("seg_fedora_band", (0, 0, brim_z + 0.034),
+                                  FEDORA_CROWN_R * 1.06, 0.030, "band",
+                                  top_scale=1.0)))
+        segs.append(("head", disc("seg_fedora_crown",
+                                  (0, 0, brim_z + 0.034 + FEDORA_CROWN_H * 0.5),
+                                  FEDORA_CROWN_R, FEDORA_CROWN_H, "hat",
+                                  top_scale=0.82)))
+    else:
+        log("fedora: SKIPPED (palette=%r) — bare-headed by Director's call"
+            % (_PALETTE or "default"))
 
     for side, sx in (("L", 1.0), ("R", -1.0)):
         sh_x = sx * SHOULDER_W * 0.5

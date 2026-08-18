@@ -180,6 +180,28 @@ YAWS = [0, 90, 180, 270]
 ## Part 1's own 1.898 m so its measured numbers stay comparable.
 EXPORT_HEIGHT_M = 2.00
 
+## THE SCALE FACTOR AND THE EXPECTED HEIGHT ARE NOT THE SAME NUMBER, and
+## conflating them is what breaks the moment a variant differs in silhouette.
+##
+## HAT-LAYER-01 (2026-08-17): the enemy now ships bare-headed (Director: "vamos
+## seguir sem chapéu"), and a fedora is 7.6 cm of total height — measured, both
+## models: agent_base 1.8978 m, agent_base_enemy 1.8220 m. Scaling the hatless
+## figure UP to 2.00 m would have given the guard the same total height as the
+## agent by making his BODY bigger, which is a different person, not a different
+## hat. D34's "one mesh, one scale, a faction is a palette" says the body scale
+## is shared and the hat is what varies.
+##
+## So `scale_to_target_height()` keeps the FIXED canonical factor (2.00 / 1.898,
+## the agent's own), every variant's body comes out identical, and a hatless
+## figure legitimately ships shorter — 1.8220 * (2.00/1.898) = 1.920 m.
+##
+## The height GATE then has to be told that, or it refuses a correct model. It
+## stays a real gate rather than adopting whatever it measures: the CALLER
+## declares the height it expects and the export refuses anything else — the same
+## contract agent_frame_bake_spike.gd's own AGENT_BAKE_HEIGHT_M already uses.
+EXPECTED_STANDING_HEIGHT_M = float(
+    os.environ.get("P2_EXPECTED_HEIGHT_M", EXPORT_HEIGHT_M))
+
 # DIRECTION_GLOSSARY §2/§3, as SCREEN directions. The compass is vertex-aligned
 # — N/E/S/W are the diamond's vertices (straight up/right/down/left) and
 # NE/SE/SW/NW are its edges, which are the grid axes and therefore the
@@ -753,8 +775,8 @@ def export_posed(arm, key, facing_name, posture=None):
     height = max(p.z for p in pts) - min(p.z for p in pts)
     span_x = max(p.x for p in pts) - min(p.x for p in pts)
     floor = min(p.z for p in pts)
-    band = ((EXPORT_HEIGHT_M - 0.01, EXPORT_HEIGHT_M + 0.01) if posture is None
-            else posture["band_m"])
+    band = ((EXPECTED_STANDING_HEIGHT_M - 0.01, EXPECTED_STANDING_HEIGHT_M + 0.01)
+            if posture is None else posture["band_m"])
     span_max = (1.4 * (EXPORT_HEIGHT_M / 1.898) if posture is None
                 else posture["span_x_max_m"])
     log("exported %s — re-imported %d meshes, height %.3f m (%.2f voxels), "

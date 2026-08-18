@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 60015 lines total** (under `godot/scripts/`)
+**208 scripts · 60023 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1066 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1074 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -104,7 +104,7 @@
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
 - `POSTURE_DIRS` = `{"standing": "standing", "crouch": "crouch", "prone": "prone"}`
 - `LAYER_ROOTS` = `{ "head": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_head", "hat": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_hat", }`
-- `LAYERS_BY_FAMILY` = `{"": ["head", "hat"], "_dev": ["head", "hat"]}`
+- `LAYERS_BY_FAMILY` = `{ "": ["head", "hat"], "_dev": ["head", "hat"], "_enemy": ["head"], "_enemy_white": ["head"], }`
 - `LAYERS_DEFAULT` = `["head"]`
 - `HEAD_YAW_LIMIT_DEG` = `60.0`
 - `SCREEN_COMPASS_BY_FRAME` = `{"N": "NE", "E": "NW", "S": "SW", "W": "SE"}`

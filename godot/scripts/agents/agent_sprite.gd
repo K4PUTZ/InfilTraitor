@@ -143,7 +143,15 @@ const LAYER_ROOTS := {
 ## guess: a bracket family (`_test_white`) is a palette of the agent's own model,
 ## so its head bake exists whenever the agent's does, and a missing hat is a
 ## configuration this file must not turn into a crash.
-const LAYERS_BY_FAMILY := {"": ["head", "hat"], "_dev": ["head", "hat"]}
+##
+## UPDATE 2026-08-18: enemy_white added — white blazer variant with stylized face
+## (eyes, nose, short hair, beard), bare-headed like enemy.
+const LAYERS_BY_FAMILY := {
+	"": ["head", "hat"],
+	"_dev": ["head", "hat"],
+	"_enemy": ["head"],
+	"_enemy_white": ["head"],
+}
 const LAYERS_DEFAULT := ["head"]
 
 ## How far the head may turn away from the body THE ART DRAWS — not from the

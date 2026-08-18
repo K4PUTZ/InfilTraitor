@@ -183,7 +183,14 @@ const LIGHT_INTENSITY_MAX := 1.30
 ## with the agent's near-black suit, where 0.42 is ratified and raising it would
 ## wash out the character the whole look was built around.
 const LIGHT_RESPONSE_OVERRIDE := {
-	"_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.42},
+	## 0.75 is the Director's pick from the WHITE-AMBIENT-01 bracket (2026-08-17),
+	## and the pick is the THIRD step, not the brightest: *"vamos ficar com o
+	## terceiro, pra não correr o risco de ficar estourado em algumas telas."*
+	## Measured on PLAYGROUND — floor around the guard spans luma 85 (shadow side)
+	## to 146 (lit side); 0.75 puts the suit at 174, clear of the whole range by
+	## +28, while 0.90 reached 212 and visibly flattened the folds. Headroom
+	## against an over-bright display was the deciding factor, not contrast.
+	"_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75},
 }
 var _light_intensity_scale := LIGHT_INTENSITY_SCALE
 var _light_intensity_max := LIGHT_INTENSITY_MAX

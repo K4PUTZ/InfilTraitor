@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 59102 lines total** (under `godot/scripts/`)
+**208 scripts · 59109 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -87,7 +87,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 640 lines
+`class_name AgentSprite` · extends `Sprite2D` · 647 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -113,7 +113,7 @@
 - `CONTRAST` = `1.12`
 - `LIGHT_INTENSITY_SCALE` = `0.60`
 - `LIGHT_INTENSITY_MAX` = `1.30`
-- `LIGHT_RESPONSE_OVERRIDE` = `{ "_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.42}, }`
+- `LIGHT_RESPONSE_OVERRIDE` = `{ ## 0.75 is the Director's pick from the WHITE-AMBIENT-01 bracket (2026-08-17), ## and the pick is the THIRD step, not the brightest: *"vamos ficar com o ## terceiro, pra não correr o risco de ficar estourado em algumas telas."* ## Measured on PLAYGROUND — floor around the guard spans luma 85 (shadow side) ## to 146 (lit side); 0.75 puts the suit at 174, clear of the whole range by ## +28, while 0.90 reached 212 and visibly flattened the folds. Headroom ## against an over-bright display was the deciding factor, not contrast. "_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75}, }`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_DEG` = `45.0`
 

@@ -555,7 +555,31 @@ def build_segments(z):
     # P1_NO_CREASES=1 builds the same figure without the fold/seam family, so the
     # creases' contribution can be judged against its own control instead of
     # against a memory of the previous capture.
-    segs.extend(build_backpack(z))
+    # THE BACKPACK IS THE AGENT'S, NOT EVERY FIGURE'S. Director, 2026-08-17:
+    # *"vejo que o inimigo também está com a mochila."* It was built
+    # unconditionally, so every palette that reuses this mesh inherited it —
+    # including the guard, who has no fiction for it. build_backpack()'s own
+    # docstring names the fiction it belongs to: D53's costume flip, the pack the
+    # agent draws the overcoat/hood from and stows the hat in. A guard carrying
+    # the infiltrator's gadget bag is a silhouette telling the player something
+    # false.
+    #
+    # Palette-conditional, matching the idiom build_pinstripes() already uses two
+    # lines down, plus an explicit env override for brackets. This is the stopgap
+    # that makes the guard correct TODAY; it is not the parts-separation the
+    # Director asked for ("queremos todas as partes separadas... sem aumentar
+    # demais o número de frames"), which is a renderer-side layer system and a
+    # CHARACTER_MASTER_PLAN decision, not a model-script flag.
+    _wants_pack = _PALETTE not in ("enemy",)
+    if os.environ.get("P1_NO_BACKPACK") == "1":
+        _wants_pack = False
+    elif os.environ.get("P1_FORCE_BACKPACK") == "1":
+        _wants_pack = True
+    if _wants_pack:
+        segs.extend(build_backpack(z))
+    else:
+        log("backpack: SKIPPED (palette=%r) — the pack is the agent's own gear"
+            % (_PALETTE or "default"))
     if os.environ.get("P1_NO_CREASES") != "1":
         segs.extend(build_creases(z))
     else:
@@ -800,7 +824,69 @@ def build_pinstripes(z):
                 (x_bottom, y_bottom, z_bottom), (x_top, y_top, z_top),
                 0.010, 0.010, 0.010, 0.010, "stripe", bevel=0.003)))
 
-    log("pinstripes: %d stripe parts" % len(segs))
+    # SLEEVES AND TROUSERS. Director, 2026-08-17: *"os risquinhos no terno
+    # ficaram esquisitos, precisam estar na roupa toda, não só em algumas
+    # áreas."* The first pass striped the torso alone, which does not read as a
+    # pinstripe SUIT — it reads as a striped bib over plain sleeves and plain
+    # trousers, and the mismatch is loudest exactly where the limb meets the
+    # body. A real pinstripe runs the length of every tailored panel.
+    #
+    # Each stripe binds to the LIMB'S OWN BONE, not to "chest": a sleeve stripe
+    # parented to the torso would stay behind when the arm poses, and this
+    # figure's arms move in every posture (D40's lowered grip, the crouch
+    # transform, prone's own override). Same reason build_creases() binds per
+    # segment.
+    #
+    # Fewer stripes per limb than on the torso, and that is proportion rather
+    # than economy: the torso carries 6 per face across ~0.42 m of width, so
+    # matching that density on a 0.10 m limb would put the lines closer together
+    # than the bake's own texel grid can resolve, and they would alias into a
+    # flat grey band — the failure the MAX_WHITE_FRACTION gate exists to prevent
+    # in the other direction.
+    limb_fracs = (-0.42, 0.42)
+    for side, sx in (("L", 1.0), ("R", -1.0)):
+        sh_x = sx * SHOULDER_W * 0.5
+        x1 = sh_x + sx * UPPERARM_L
+        x2 = x1 + sx * FOREARM_L
+
+        # Sleeves: the arm runs along X in the T-pose, so a stripe runs along X
+        # too and is offset around the sleeve's cross-section (Y = front/back,
+        # Z = up/down on the tube).
+        for arm_bone, xa, xb, wa, wb in (
+                ("upperarm_%s" % side, sh_x + sx * g, x1 - sx * g, 1.22, 1.10),
+                ("forearm_%s" % side, x1 + sx * g, x2 - sx * g, 1.06, 0.90)):
+            for face, sy in (("front", 1.0), ("back", -1.0)):
+                for i, f in enumerate(limb_fracs):
+                    za = z["z_shoulder"] + f * (LIMB_W * wa * 0.5) * 0.86
+                    zb = z["z_shoulder"] + f * (LIMB_W * wb * 0.5) * 0.86
+                    ya = sy * (LIMB_W * wa * 0.5) * 1.02
+                    yb = sy * (LIMB_W * wb * 0.5) * 1.02
+                    segs.append((arm_bone, prism(
+                        "seg_stripe_%s_%s_%d" % (arm_bone, face, i),
+                        (xa, ya, za), (xb, yb, zb),
+                        0.008, 0.008, 0.008, 0.008, "stripe", bevel=0.002)))
+
+        # Trousers: the leg runs along Z. Stops at z_crop, where the trouser is
+        # cropped and the white sock takes over (the MJ read) — a stripe running
+        # on past that would be a stripe painted on the sock.
+        hip_x = sx * HIP_W * 0.5
+        z_knee = z["z_hip"] - THIGH_L
+        z_crop = FOOT_H + SHIN_L * 0.26
+        for leg_bone, za, zb, wa, wb in (
+                ("thigh_%s" % side, z["z_hip"] - g, z_knee + g, 1.26, 1.06),
+                ("shin_%s" % side, z_knee - g, z_crop, 1.12, 0.80)):
+            for face, sy in (("front", 1.0), ("back", -1.0)):
+                for i, f in enumerate(limb_fracs):
+                    xa = hip_x + f * (LIMB_W * wa * 0.5) * 0.86
+                    xb = hip_x + f * (LIMB_W * wb * 0.5) * 0.86
+                    ya = sy * (LIMB_W * wa * 0.5) * 1.02
+                    yb = sy * (LIMB_W * wb * 0.5) * 1.02
+                    segs.append((leg_bone, prism(
+                        "seg_stripe_%s_%s_%d" % (leg_bone, face, i),
+                        (xa, ya, za), (xb, yb, zb),
+                        0.008, 0.008, 0.008, 0.008, "stripe", bevel=0.002)))
+
+    log("pinstripes: %d stripe parts (torso + sleeves + trousers)" % len(segs))
     return segs
 
 

@@ -85,6 +85,7 @@ of docs rotted.
 - **[ASSET_MAP.md](technical/ASSET_MAP.md)** · **[TEXTURE_CATALOG.md](technical/TEXTURE_CATALOG.md)**
 - **[INPUT_REFERENCE.md](technical/INPUT_REFERENCE.md)** · **[LOCALIZATION_REFERENCE.md](technical/LOCALIZATION_REFERENCE.md)**
 - **[lighting_authoring_pipeline.md](pipelines/lighting_authoring_pipeline.md)**
+- **[character_bake_pipeline.md](pipelines/character_bake_pipeline.md)** — Blender model → posed GLB → Godot frame bake. Every env var, the height gate, and the eight traps it has already cost.
 
 ## History
 

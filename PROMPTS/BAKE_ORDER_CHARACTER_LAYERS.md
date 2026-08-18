@@ -16,9 +16,9 @@ all character bakes. This file adds the layer-specific ones.
 |---|---|---|---|---|
 | agent `""` | ✅ headless (standing, crouch) | ✅ 24 yaws × 2 postures | ✅ 24 × 2 | ✅ worst **1.20 %** |
 | enemy `_enemy` | ✅ headless (standing, crouch) | ✅ 24 × 2 | — bare-headed | ✅ worst **1.20 %** |
-| walk `agent_walk` | ⬜ **still head-ful** | n/a | n/a | — |
-| dev `_dev` | ⬜ still head-ful | ⬜ | ⬜ | — |
-| bracket `_test_white` | ⬜ still head-ful | ⬜ | ⬜ | — |
+| walk `agent_walk` | ✅ headless (32 phases) | reuses standing | reuses standing | — |
+| dev `_dev` | ✅ headless (standing, crouch, prone) | ✅ 24 × 2 | ✅ 24 × 2 | ✅ worst **1.20 %** |
+| bracket `_test_white` | ✅ headless (standing, crouch, prone) | ✅ 24 × 2 | ✅ 24 × 2 | ✅ worst **1.18 %** |
 
 **Nothing is broken by the unfinished rows.** `AgentSprite` reads `headless` out
 of *each frame set's own* `anchor.json` and turns the layers on per set, so a
@@ -228,3 +228,14 @@ evenly around the whole outline, feet and shotgun included, with balanced counts
 2. `python3 tools/persistent/run_selftests.py` — the arbiter (35 clean today).
 3. The VERIFY block above, green, for every layered posture.
 4. Look at the figure in the game, not only at the numbers.
+
+---
+
+## ✅ COMPLETED 2026-08-18
+
+All five families baked headless with head/hat layers and verified:
+- **walk** (32 phases): headless bodies reuse standing head layers
+- **dev** (standing, crouch, prone + 4 layer sets): worst 1.20% / 0.88%
+- **white bracket** (standing, crouch, prone + 4 layer sets): worst 1.18% / 0.88%
+
+Gates passed: `project_lint.py` clean, `check_invariants.py` OK, `gen_codemap.py --check` OK, `run_selftests.py` 35 clean / 0 failed.

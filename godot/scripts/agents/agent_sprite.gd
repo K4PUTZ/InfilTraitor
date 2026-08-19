@@ -96,6 +96,19 @@ const WALK_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/
 ## *"vamos fazer os testes com dev vision ligado para ver as junções amarelas"* —
 ## the debug mode is only useful if it survives the thing being debugged.
 const WALK_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk_dev/"
+## The grenade throw (Director, 2026-08-19). One directory per SEQUENCE, one per
+## PHASE inside it — `agent_throw/standing_raise/phase00/`. Two sequences ship:
+## `raise` (idle -> cocked, held at its last frame for the whole aim) and
+## `release` (cocked -> wind -> throw -> follow-through -> idle).
+##
+## THE CANCEL IS NOT A THIRD DIRECTORY. It is `raise` played backwards, which is
+## the Director's own instruction (*"aproveitar os frames em reverso"*) and is
+## also the only way to guarantee the arm takes the same path down that it took
+## up — a separately authored cancel can drift from the raise it undoes.
+const THROW_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw/"
+const THROW_ROOT_DEV := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw_dev/"
+const THROW_RAISE := "raise"
+const THROW_RELEASE := "release"
 ## How many phases the bake actually wrote. COUNTED, never assumed: it was a
 ## hardcoded 8 and the Director called the result *"engasgado"* — at the ratified
 ## 560 ms per GU that is one frame every 70 ms, 14.3 Hz, less than half D46's
@@ -282,6 +295,25 @@ var frame_family: String = ""
 ## is caught and refused, and a raw assignment would send `_ensure_posture()`
 ## looking for a directory nobody baked.
 var grip: String = ""
+
+## --- Throw playback state ---------------------------------------------------
+## `_throw_seq` is "" when no throw is on screen. `_throw_reversed` plays the
+## RAISE backwards, which is the cancel. `_throw_hold` freezes on the last frame
+## instead of ending — that is the aim, and it is the state the figure spends
+## most of its time in.
+var _throw_seq: String = ""
+var _throw_t: float = 0.0
+var _throw_seconds: float = 0.0
+var _throw_reversed: bool = false
+var _throw_hold: bool = false
+var _throw_phases: Dictionary = {}      ## "<posture>_<seq>" -> phase count
+var _throw_ready: Dictionary = {}       ## "<posture>_<seq>:dev" -> bool
+
+## Emitted at the phase the grenade actually leaves the hand, so the thrower can
+## start the arc ON that frame instead of guessing an offset. Wired to the
+## RELEASE key's own index rather than to a time: retiming the animation must not
+## silently retime the throw.
+signal throw_released
 
 var room: Node = null
 
@@ -608,6 +640,139 @@ func _ensure_walk(dev: bool) -> bool:
 	return true
 
 
+## --- The throw -------------------------------------------------------------
+
+func _throw_root(dev: bool) -> String:
+	if dev or DEV_ONLY_MILESTONE:
+		return THROW_ROOT_DEV
+	return THROW_ROOT.trim_suffix("/") + frame_family + "/"
+
+
+func _throw_group(sequence: String) -> String:
+	return "%s_%s" % [_posture, sequence]
+
+
+func _throw_key(sequence: String, phase_index: int, dev: bool) -> String:
+	return "throw:%s:%02d%s" % [_throw_group(sequence), phase_index,
+		":dev" if dev else ""]
+
+
+## Load every phase of one sequence. COUNTED off disk, never assumed — the phase
+## count is a knob in p3_throw_export.py (P3_THROW_RAISE_PHASES) and a constant
+## here would go stale the first time it is turned.
+func _ensure_throw(sequence: String, dev: bool) -> bool:
+	var group := _throw_group(sequence)
+	var ready_key := "%s%s" % [group, ":dev" if dev else ""]
+	if _throw_ready.get(ready_key, false):
+		return true
+	var root: String = _throw_root(dev) + group + "/"
+	if not _throw_phases.has(group):
+		var dir := DirAccess.open(root)
+		if dir == null:
+			## A documented fallback, not a broken install: only the STANDING
+			## throw is baked (Director, 2026-08-19 — crouch and prone postures
+			## are still being refined). A crouched agent throwing simply does
+			## not animate yet, and saying so beats a hard failure that would
+			## stop the grenade working at all.
+			push_warning("[AgentSprite] no throw bake at %s — this posture does not animate its throw yet. Export it with p3_throw_export.py once its base posture is refined." % root)
+			return false
+		var count := 0
+		for name: String in dir.get_directories():
+			if name.begins_with("phase"):
+				count += 1
+		if count == 0:
+			push_error("[AgentSprite] %s holds no phase directories" % root)
+			return false
+		_throw_phases[group] = count
+		print_debug("[AgentSprite] throw '%s': %d phases baked" % [group, count])
+	for i in range(int(_throw_phases[group])):
+		if not _ensure_set(_throw_key(sequence, i, dev), root + "phase%02d/" % i):
+			return false
+	_throw_ready[ready_key] = true
+	return true
+
+
+## Start a throw sequence. `hold` freezes the last frame (the aim); `reversed`
+## plays it backwards (the cancel). Returns false when the posture has no bake.
+func play_throw(sequence: String, seconds: float, hold: bool = false,
+		reversed_playback: bool = false) -> bool:
+	if not _ensure_throw(sequence, _dev_vision):
+		return false
+	_throw_seq = sequence
+	_throw_seconds = maxf(seconds, 0.001)
+	_throw_t = 0.0
+	_throw_hold = hold
+	_throw_reversed = reversed_playback
+	set_process(true)
+	_refresh()
+	return true
+
+
+func stop_throw() -> void:
+	if _throw_seq == "":
+		return
+	_throw_seq = ""
+	_throw_hold = false
+	_throw_reversed = false
+	_refresh()
+
+
+func is_throwing() -> bool:
+	return _throw_seq != ""
+
+
+## Which phase index is on screen right now. Clamped rather than wrapped: a throw
+## is a one-shot, not a cycle, and wrapping would restart the arm mid-flight.
+func _throw_phase_index() -> int:
+	var group := _throw_group(_throw_seq)
+	var count: int = int(_throw_phases.get(group, 0))
+	if count <= 0:
+		return -1
+	var u: float = clampf(_throw_t / _throw_seconds, 0.0, 1.0)
+	if _throw_reversed:
+		u = 1.0 - u
+	return clampi(int(round(u * float(count - 1))), 0, count - 1)
+
+
+func _advance_throw(delta: float) -> void:
+	if _throw_seq == "":
+		return
+	var before := _throw_phase_index()
+	_throw_t += delta
+	if _throw_t >= _throw_seconds:
+		if _throw_hold:
+			_throw_t = _throw_seconds
+		else:
+			_throw_t = _throw_seconds
+			var finished := _throw_seq
+			_refresh()
+			_emit_release_if_crossed(before, _throw_phase_index(), finished)
+			stop_throw()
+			return
+	_refresh()
+	_emit_release_if_crossed(before, _throw_phase_index(), _throw_seq)
+
+
+## THE RELEASE FRAME IS DERIVED FROM THE KEY LIST, not from a hardcoded index.
+## KEYS_RELEASE in p3_throw_export.py is [COCKED, WIND, RELEASE, FOLLOW, IDLE] —
+## the grenade leaves on the third of five keys, so it leaves at 2/4 = HALF way
+## through the sequence whatever the phase count is sampled at. Expressing it as
+## the fraction rather than as "phase 5 of 10" is what keeps it correct when the
+## sampling knob is turned.
+const THROW_RELEASE_FRACTION: float = 0.5
+
+
+func _emit_release_if_crossed(before: int, after: int, sequence: String) -> void:
+	if sequence != THROW_RELEASE or before < 0 or after < 0 or _throw_reversed:
+		return
+	var count: int = int(_throw_phases.get(_throw_group(sequence), 0))
+	if count <= 1:
+		return
+	var release_index: int = int(round(THROW_RELEASE_FRACTION * float(count - 1)))
+	if before < release_index and after >= release_index:
+		throw_released.emit()
+
+
 func _walk_key(phase_index: int, dev: bool) -> String:
 	return "walk%02d%s" % [phase_index, ":dev" if dev else ""]
 
@@ -738,6 +903,17 @@ func stop_walking() -> void:
 
 
 func _refresh() -> void:
+	## THE THROW OUTRANKS EVERYTHING. It is a one-shot the player triggered, and
+	## a walk phase or an idle posture drawn over it would make the arm snap back
+	## mid-motion. Checked first for that reason and not by accident of ordering.
+	if _throw_seq != "":
+		var idx := _throw_phase_index()
+		if idx >= 0:
+			var throw_entry: Dictionary = _sets.get(
+				_throw_key(_throw_seq, idx, _dev_vision), {})
+			if not throw_entry.is_empty():
+				_apply(throw_entry)
+				return
 	if _walk_phase >= 0 and _posture == "standing":
 		var walk_entry: Dictionary = _sets.get(_walk_key(_walk_phase, _dev_vision), {})
 		if not walk_entry.is_empty():
@@ -1085,7 +1261,8 @@ func _apply_layers() -> void:
 		(_layer_materials[layer] as ShaderMaterial).set_shader_parameter("normal_tex", frame["normal"])
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_advance_throw(delta)
 	_update_light_uniform()
 
 

@@ -79,6 +79,12 @@ const GUARD_TOP_PX: float = 72.0
 const GRIP_AIMED: String = "_aimed"
 const GRIP_LOWERED: String = ""
 
+## How many DRAWN FRAMES the rounds get to cross before the wall reacts. A frame
+## count, not a duration: see the note in fire_at_active() for why a duration is
+## exactly the thing that failed here. 8 frames at 60 Hz is ~0.13 s, which is
+## TracerOverlay.HOLD_S — the flight, and nothing more.
+const TRACER_FLIGHT_FRAMES: int = 8
+
 var room = null
 var _active_guard_index: int = -1
 
@@ -247,11 +253,44 @@ func fire_at_active() -> void:
 	var pellets_landed: int = 0
 	var punch_log: Array = []
 	var is_line: bool = weapon_def.delivery == WeaponDef.DELIVERY_LINE
+
+	## ── RESOLVE FIRST, THEN FLY, THEN BREAK ────────────────────────────────
+	## The pellet loop used to do all three in one pass, and the DECORATIVE
+	## PROJECTILE was invisible because of it. Measured 2026-08-19:
+	## TracerOverlay._draw() ran exactly TWICE for a shot, at age 0.000 s and
+	## 0.141 s — a single frame 141 ms long. The firearm path pays ~310 ms of
+	## synchronous CPU at the trigger (WEAPON_MASTER_PLAN §0's W-PRECOOK
+	## measurement, technical_debt 16), so the tracer's whole 0.14 s flight
+	## elapsed INSIDE one stalled frame and the round was only ever drawn
+	## already arrived.
+	##
+	## Splitting the pass fixes it without waiting for W-PRECOOK, and the split
+	## is the more correct order anyway — Director, 2026-08-19: *"Daí rolamos o
+	## dado, e é só soltar a animação do clarão, fumacinha, etc."* Flash, then
+	## the round crosses, then the wall reacts. `resolve_pellet_voxel()` is a
+	## lookup and mutates nothing, so moving it ahead of the flight changes no
+	## outcome; `apply_point_impact()` is the mutation and stays after.
+	var resolved_picks: Array = []
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
 			pellet_picks[i], room._edge_registry, "%s:%d" % [salt, i])
 		if resolved.is_empty():
 			continue
+		resolved_picks.append({"index": i, "resolved": resolved})
+		_draw_tracer(muzzle_world, pellet_picks[i])
+
+	## Let the rounds cross. Frame-counted rather than timed, because what has to
+	## elapse is FRAMES DRAWN — the whole defect above was time passing without
+	## any being drawn.
+	for _f in range(TRACER_FLIGHT_FRAMES):
+		await room.get_tree().process_frame
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+		push_warning("[AgentShotController] room went away mid-flight (map reload?) — shot abandoned")
+		return
+
+	for entry in resolved_picks:
+		var i: int = int(entry["index"])
+		var resolved: Dictionary = entry["resolved"]
 		pellets_landed += 1
 		var slice: Slice = resolved["slice"]
 		## D30: one coefficient decides tier, neighbour count and cascade, and
@@ -271,11 +310,6 @@ func fire_at_active() -> void:
 			room._edge_registry, "%s:%d" % [salt, i],
 			weapon_def.step_multipliers if is_line else [],
 			origin_gu)
-		## ── PART D: the decorative projectile, one per pellet ───────────────
-		## D14's per-projectile independence falls out for free because the
-		## drawing is per-projectile: a shotgun draws N streaks because it
-		## resolved N pellets, not because anything here counts them.
-		_draw_tracer(muzzle_world, pellet_picks[i])
 		for v in touched:
 			_index_voxel(cell_to_voxel, v)
 			if v.damage_state != Voxel.DamageState.DESTROYED:
@@ -371,6 +405,7 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
 		return
 	var impact_world: Vector2 = _gu_centre_world(pick["gu"])
 	if impact_world == Vector2.ZERO:
+		push_warning("[AgentShotController] tracer skipped — GU %s has no world position" % pick["gu"])
 		return
 	room._tracer_overlay.add_tracer(muzzle_world, impact_world)
 

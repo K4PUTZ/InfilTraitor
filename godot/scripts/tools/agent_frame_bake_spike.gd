@@ -83,7 +83,33 @@ const CAMERA_DISTANCE := 12.0
 const VOXEL_M := 0.20
 const VOXEL_STEP_PX := 20.0
 const FIGURE_HEIGHT_M := 2.00
-const VIEWPORT_SIZE := Vector2i(256, 256)
+## THE CANVAS, NOT THE SCALE. `AGENT_BAKE_VIEWPORT="WxH"` enlarges it, and doing
+## so is safe by construction: `px_per_screen_m()` derives from VOXEL_STEP_PX and
+## the camera elevation and never reads this, while `ortho_size()` divides by it —
+## so a taller viewport shows MORE WORLD at the identical pixel scale. Frames stay
+## registered because anchor.json records both the viewport and the measured
+## anchor, and AgentSprite positions off the anchor.
+##
+## It exists because the THROW bake needs it: a raised arm reaches 0.160 m past
+## the standing crown and the figure hit the top edge of a 256-tall frame, which
+## the crop gate below correctly refused. Enlarging is the honest fix — the
+## alternative is a pose that fits, which is a pose chosen by the canvas.
+##
+## Kept at 256x256 by default so every existing bake is byte-identical, and only
+## the height is raised for the throw: RAM is D42's named constraint and a wider
+## frame would cost on both axes for a figure that did not grow sideways.
+static var VIEWPORT_SIZE := _viewport_from_env()
+
+
+static func _viewport_from_env() -> Vector2i:
+	var raw := OS.get_environment("AGENT_BAKE_VIEWPORT")
+	if raw == "":
+		return Vector2i(256, 256)
+	var parts := raw.split("x")
+	if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+		push_error("[AgentBake] AGENT_BAKE_VIEWPORT=%s is not 'WxH'" % raw)
+		return Vector2i(256, 256)
+	return Vector2i(parts[0].to_int(), parts[1].to_int())
 const MESH_SCALE := 1.0
 ## Fails the bake if a 0.20 m rise does not draw as VOXEL_STEP_PX. A quarter of a
 ## pixel is projection round-off, not slack.

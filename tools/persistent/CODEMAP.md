@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 61029 lines total** (under `godot/scripts/`)
+**211 scripts · 61485 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 436 lines
+`class_name DebugAgent` · extends `Node2D` · 497 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -52,6 +52,9 @@
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
 - `MUZZLE_DROP_FRACTION` = `0.18`
+- `THROW_RAISE_SECONDS` = `0.18`
+- `THROW_RELEASE_SECONDS` = `0.40`
+- `THROW_CANCEL_SECONDS` = `0.12`
 - `SILHOUETTE_WIDTH` = `104.0`
 - `SILHOUETTE_HEIGHT` = `222.0`
 - `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
@@ -74,6 +77,9 @@
 **Public API**
 - `func throw_origin() -> Vector2:`
 - `func muzzle_origin() -> Vector2:`
+- `func play_throw_raise() -> bool:`
+- `func play_throw_cancel() -> bool:`
+- `func play_throw_release() -> bool:`
 - `func set_grip(name: String) -> void:`
 - `func throw_launch_height() -> float:`
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
@@ -90,7 +96,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1163 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1340 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -102,6 +108,10 @@
 - `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
 - `WALK_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"`
 - `WALK_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk_dev/"`
+- `THROW_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw/"`
+- `THROW_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw_dev/"`
+- `THROW_RAISE` = `"raise"`
+- `THROW_RELEASE` = `"release"`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 - `DIRECTIONS` = `["N", "E", "S", "W"]`
 - `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
@@ -1617,7 +1627,7 @@ extends `Node2D` · 110 lines
 
 ### `tracer_overlay.gd`
 
-`class_name TracerOverlay` · extends `Node2D` · 105 lines
+`class_name TracerOverlay` · extends `Node2D` · 132 lines
 
 `godot/scripts/overlays/tracer_overlay.gd`
 
@@ -1626,13 +1636,6 @@ extends `Node2D` · 110 lines
 - `TAIL_COLOR` = `Color(1.0, 0.62, 0.22, 0.55)`
 - `CORE_WIDTH_PX` = `2.0`
 - `TAIL_WIDTH_PX` = `4.0`
-- `HOLD_S` = `0.14`
-- `FADE_S` = `0.16`
-- `STREAK_FRACTION` = `0.35`
-
-**Public API**
-- `func add_tracer(from: Vector2, to: Vector2) -> void:`
-- `func clear_tracers() -> void:`
 
 ---
 
@@ -2694,7 +2697,7 @@ extends `SceneTree` · 226 lines
 
 ### `agent_frame_bake_spike.gd`
 
-extends `SceneTree` · 942 lines
+extends `SceneTree` · 968 lines
 
 `godot/scripts/tools/agent_frame_bake_spike.gd`
 
@@ -2711,7 +2714,6 @@ extends `SceneTree` · 942 lines
 - `VOXEL_M` = `0.20`
 - `VOXEL_STEP_PX` = `20.0`
 - `FIGURE_HEIGHT_M` = `2.00`
-- `VIEWPORT_SIZE` = `Vector2i(256, 256)`
 - `MESH_SCALE` = `1.0`
 - `SCALE_TOLERANCE_PX` = `0.25`
 - `MAX_WHITE_FRACTION` = `0.10`
@@ -4313,7 +4315,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 407 lines
+`class_name AgentShotController` · 442 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4405,7 +4407,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1344 lines
+`class_name TestZoneController` · 1407 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4423,10 +4425,14 @@ extends `Node2D` · 34 lines
 **Public vars**
 - `var room: Node`
 - `var throw_range_gu: float = 7.0`
+- `var throw_range_penalty_gu: Dictionary = { DebugAgent.Posture.STANDING: 0.0, DebugAgent.Posture.CROUCHING: 2.0, DebugAgent.Posture.PRONE: 4.0, }`
 - `var aim_dome_radius_gu: float = 2.0`
 - `var throw_duration_s: float = 0.6`
 - `var grenade_cook_s: float = 1.0`
 - `var throw_prediction_timeout_s: float = 1.0`
+
+**Public API**
+- `func effective_throw_range_gu() -> float:`
 
 ---
 
@@ -4674,7 +4680,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 5194 lines
+extends `Node2D` · 5261 lines
 
 `godot/scripts/world/room.gd`
 

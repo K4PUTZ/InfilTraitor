@@ -63,6 +63,34 @@ var _targeting_target_gu: Vector2i = Vector2i.ZERO
 ## space between two rings and meant nothing on the board.
 var throw_range_gu: float = 7.0
 
+## POSTURE PENALTIES (Director, 2026-08-19: *"deitar e atirar a granada (com
+## penalidades de distância)"*).
+##
+## Whole numbers, for the reason the note above gives about `throw_range_gu`
+## itself: the perimeter ellipse only means anything at integer cell radii, and a
+## penalty that produced 4.9 would draw a ring through empty space. So the
+## penalty is expressed as CELLS SUBTRACTED rather than as a multiplier — a
+## multiplier is the natural way to write it and would quietly reintroduce the
+## fractional radius this overlay was already burned by.
+##
+## Placeholders, like every balancing row in this project: a crouched thrower
+## loses reach, a prone one loses most of it. Nothing is calibrated against
+## anything yet, and D6 makes these levers rather than constants.
+var throw_range_penalty_gu: Dictionary = {
+	DebugAgent.Posture.STANDING: 0.0,
+	DebugAgent.Posture.CROUCHING: 2.0,
+	DebugAgent.Posture.PRONE: 4.0,
+}
+
+
+## The reach this agent actually has right now. Floored at 1 GU: a prone agent
+## throwing a grenade badly is a design outcome, a prone agent unable to throw at
+## all is a silently disabled action.
+func effective_throw_range_gu() -> float:
+	var penalty: float = float(throw_range_penalty_gu.get(
+		room.agent.posture, 0.0))
+	return maxf(throw_range_gu - penalty, 1.0)
+
 ## Radius of the aim dome, in GAME UNITS. Deliberately NOT derived from
 ## `bomb_def.ring_multipliers.size()`: the dome is the readable shape of the
 ## blast, and the per-cell truth of how far it reaches is what the shrapnel rays
@@ -370,6 +398,11 @@ func enter_grenade_mode() -> void:
 		return
 	_targeting_mode = true
 	_targeting_target_gu = room.agent.cell + DEFAULT_TARGET_OFFSET
+	## Director, 2026-08-19: *"Quando o jogador selecionar a GU [...] o agente já
+	## mira."* The arm comes up the moment targeting opens and HOLDS there for the
+	## whole aim — `hold: true` freezes the raise on its last frame, which is the
+	## cocked pose. By the time the player commits, the throw is already loaded.
+	room.agent.play_throw_raise()
 	_update_grenade_targeting_display()
 
 
@@ -448,11 +481,17 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## the line drawing it is a dev tool.
 	if room._throw_perimeter_overlay != null:
 		if dev:
-			room._throw_perimeter_overlay.show_perimeter(agent_pos, throw_range_gu)
+			room._throw_perimeter_overlay.show_perimeter(agent_pos,
+				effective_throw_range_gu())
 		else:
 			room._throw_perimeter_overlay.clear()
 
 	_targeting_target_gu = _clamp_gu_to_throw_range(cell, origin_gu)
+	## He faces what he is about to throw at, and re-faces when the aim moves.
+	## `face_direction()` owns the reduction to D44's four facings, so an
+	## arbitrary GU delta is the right thing to hand it.
+	if room.agent.sprite != null and _targeting_target_gu != origin_gu:
+		room.agent.sprite.face_direction(_targeting_target_gu - origin_gu)
 	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
 
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
@@ -523,6 +562,15 @@ func execute_grenade_throw() -> void:
 	_prof("RELEASE — throw starts, pre-production starts")
 
 	_begin_preproduction(target_gu)
+	## THE ARC WAITS FOR THE HAND. The release sequence emits `throw_released` at
+	## the phase the grenade actually leaves — derived from the key list, not from
+	## a hardcoded frame — so the projectile and the arm agree even if the
+	## animation is retimed. `await` on a signal that may never fire would hang
+	## the throw, so a posture with no throw bake (crouch/prone, still being
+	## refined) returns false and the arc starts immediately, exactly as it did
+	## before this animation existed.
+	if room.agent.play_throw_release():
+		await room.agent.sprite.throw_released
 	_start_grenade_throw_animation(target_gu, grenade)
 
 
@@ -532,6 +580,11 @@ func cancel_targeting() -> void:
 		return
 	_targeting_mode = false
 	_targeting_grenade_index = -1
+	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de
+	## repente."* The arm comes back down along the same path it went up, because
+	## this IS the raise sequence played backwards — see AgentSprite's THROW_ROOT
+	## note for why the cancel is not its own bake.
+	room.agent.play_throw_cancel()
 	_cleanup_grenade_targeting_ui()
 
 
@@ -588,9 +641,15 @@ func _damaging_rings(gu_rings: Dictionary, bomb_def) -> Dictionary:
 func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vector2i:
 	var delta := Vector2(target_gu - origin_gu)
 	var distance_gu: float = delta.length()
-	if distance_gu <= throw_range_gu:
+	if distance_gu <= effective_throw_range_gu():
 		return target_gu
-	return origin_gu + Vector2i((delta / distance_gu * throw_range_gu).round())
+	## The CLAMP has to scale by the EFFECTIVE range, not the base one. Reading
+	## `throw_range_gu` here while the test two lines up reads the effective range
+	## would let an out-of-range target snap to a cell the agent cannot reach —
+	## the penalty would shrink the ring and change nothing about where the
+	## grenade lands, which is the worst of both.
+	return origin_gu + Vector2i(
+		(delta / distance_gu * effective_throw_range_gu()).round())
 
 
 ## T-ARC: fly the grenade along its arc, then detonate where it lands.
@@ -669,6 +728,10 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## curves below are anchored to what happens at 1, so nothing is quantised and
 	## nothing is clamped from underneath — a 1 GU lob really does roll almost
 	## nothing, and that is the physics, not a floor.
+	## Deliberately the BASE range, not the effective one: this is how fast the
+	## grenade flies for a given distance, and a 3 GU throw should look like a
+	## 3 GU throw whether the thrower is standing or prone. Normalising by the
+	## penalised range would make every prone throw fly at full speed.
 	var speed_ratio: float = clampf(distance_gu / maxf(throw_range_gu, 0.001), 0.0, 1.0)
 	var settle_forward_s: float = arc.settle_duration_at_max_range(grenade_cook_s) * speed_ratio
 	var settle_back_s: float = settle_forward_s * arc.roll_back_duration_ratio

@@ -32,20 +32,41 @@ const TAIL_WIDTH_PX: float = 4.0
 ## Seconds a streak stays fully lit before it starts fading, and how long the
 ## fade itself takes. Short on purpose: a tracer that outlives the muzzle flash
 ## reads as a laser rather than a round in flight.
-## MEASURED, then raised. At 0.05 s the streak crossed the whole map in three
-## frames at 60 Hz and the evidence capture caught it already parked against the
-## far wall — a projectile the player cannot see is not decoration, it is a
-## rounding error. 0.14 s puts the flight at ~8 frames, which is short enough to
-## read as a round and long enough to read at all.
-const HOLD_S: float = 0.14
-const FADE_S: float = 0.16
+## ⚠️ THE FLIGHT IS COUNTED IN DRAWN FRAMES, NOT IN SECONDS, and the seconds
+## version is why this comment is long.
+##
+## v1 aged the streak by `delta`. Measured 2026-08-19 by printing `_draw()`'s own
+## call log: for one shot it ran TWICE, at age 0.000 s and age 0.141 s. A single
+## frame had lasted 141 ms — the firearm path pays ~310 ms of synchronous CPU at
+## the trigger (§0's W-PRECOOK measurement, technical_debt 16) — so the entire
+## 0.14 s flight elapsed inside one stalled frame and the round was only ever
+## drawn already arrived. Splitting the controller's resolve/flight/impact passes
+## helped and did not fix it: the stall simply moved to the next frame, ages went
+## 0.000 -> 0.139, and the streak was parked again.
+##
+## A DURATION IS THE WRONG UNIT FOR THIS. What has to elapse is not time, it is
+## PICTURES OF THE ROUND IN DIFFERENT PLACES, and a frame that takes 141 ms
+## produces exactly one of those however much time it spends. Counting frames
+## makes the projectile immune to the stall by construction instead of by hoping
+## the stall gets fixed — and it stays correct after W-PRECOOK lands, because 8
+## frames is 8 frames at any frame rate the game actually ships at.
+##
+## The cost of the choice, stated: on a slow machine the tracer flies for longer
+## in wall-clock terms. For decoration that is the right trade — a projectile
+## nobody sees is worth nothing, and one that lingers 50 ms extra is worth
+## nearly the same as one that does not.
+const HOLD_FRAMES: int = 8
+const FADE_FRAMES: int = 7
 
-## How much of the segment the drawn streak occupies, as a fraction — a round is
-## a streak, not a line connecting two dots, so it is drawn as the LAST slice of
-## the path travelling outward rather than the whole span at once.
-const STREAK_FRACTION: float = 0.35
+const STREAK_FRACTION: float = 0.16
 
-## Each entry: {"from": Vector2, "to": Vector2, "age": float}. World space, the
+## The projectile's own bright head — what makes it read as a ROUND leaving the
+## gun rather than as a streak that happens to be moving. Drawn as a filled dot
+## at the leading end, over the tail.
+const HEAD_RADIUS_PX: float = 2.6
+const HEAD_COLOR := Color(1.0, 0.97, 0.86, 1.0)
+
+## Each entry: {"from": Vector2, "to": Vector2, "frames": int}. World space, the
 ## same space the overlay's own transform is in.
 var _streaks: Array = []
 
@@ -60,7 +81,7 @@ func _ready() -> void:
 func add_tracer(from: Vector2, to: Vector2) -> void:
 	if from == to:
 		return
-	_streaks.append({"from": from, "to": to, "age": 0.0})
+	_streaks.append({"from": from, "to": to, "frames": 0})
 	set_process(true)
 	queue_redraw()
 
@@ -71,11 +92,11 @@ func clear_tracers() -> void:
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var alive: Array = []
 	for s in _streaks:
-		s["age"] = float(s["age"]) + delta
-		if float(s["age"]) < HOLD_S + FADE_S:
+		s["frames"] = int(s["frames"]) + 1
+		if int(s["frames"]) < HOLD_FRAMES + FADE_FRAMES:
 			alive.append(s)
 	_streaks = alive
 	if _streaks.is_empty():
@@ -85,21 +106,27 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	for s in _streaks:
-		var age: float = float(s["age"])
-		## Alpha holds, then ramps down. Explicit float division throughout —
+		var frames: int = int(s["frames"])
+		## Alpha holds, then ramps down. Explicit float conversion throughout —
 		## an INTEGER_DIVISION warning here would be a real bug in the ramp.
 		var alpha: float = 1.0
-		if age > HOLD_S:
-			alpha = clampf(1.0 - (age - HOLD_S) / FADE_S, 0.0, 1.0)
+		if frames > HOLD_FRAMES:
+			alpha = clampf(1.0 - float(frames - HOLD_FRAMES) / float(FADE_FRAMES),
+				0.0, 1.0)
 		var from: Vector2 = s["from"]
 		var to: Vector2 = s["to"]
 		## The streak travels: its trailing end walks from the muzzle to the
 		## impact across the hold, so the round reads as leaving the barrel
 		## rather than as a wire strung between two points for a moment.
-		var travel: float = clampf(age / maxf(HOLD_S, 0.0001), 0.0, 1.0)
+		var travel: float = clampf(float(frames) / float(HOLD_FRAMES), 0.0, 1.0)
 		var head: Vector2 = from.lerp(to, travel)
 		var tail: Vector2 = from.lerp(to, maxf(travel - STREAK_FRACTION, 0.0))
 		if head == tail:
 			continue
 		draw_line(tail, head, Color(TAIL_COLOR, TAIL_COLOR.a * alpha), TAIL_WIDTH_PX)
 		draw_line(tail, head, Color(CORE_COLOR, CORE_COLOR.a * alpha), CORE_WIDTH_PX)
+		## The head last, so nothing is drawn over it. It shrinks as the round
+		## fades instead of only dimming — a dot that dims stays a dot, and this
+		## one should read as going away.
+		draw_circle(head, HEAD_RADIUS_PX * maxf(alpha, 0.35),
+			Color(HEAD_COLOR, HEAD_COLOR.a * alpha))

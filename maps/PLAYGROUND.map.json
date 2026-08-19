@@ -1,258 +1,288 @@
 {
-  "format": "infiltraitor-map",
-  "schema_version": 3,
-  "id": "PLAYGROUND",
-  "meta": {
-    "title": "Destruction Test Zone",
-    "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) — glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. Board enlarged and a light added over the guard's patrol area the same session. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "PLAYGROUND",
+ "meta": {
+  "title": "Destruction Test Zone",
+  "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) — glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN §6c, built 2026-08-19), not a static bench prop. 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) — shooting each one tests a different impact angle and travel distance against a different material, which one guard on a patrol could never cover. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter, not because these guards should roam away from the block they are there to stand in front of. Agent moved to (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+ },
+ "sections": {
+  "board": {
+   "inner_size": [
+    44,
+    22
+   ],
+   "buffer": 1,
+   "floor_tile": "floor_SE",
+   "v": 1
   },
-  "sections": {
-    "board": {
-      "inner_size": [
-        44,
-        22
-      ],
-      "buffer": 1,
-      "floor_tile": "floor_SE",
-      "v": 1
+  "actors": {
+   "agent_start": [
+    10,
+    15
+   ],
+   "guards": [
+    [
+     [
+      8,
+      11
+     ],
+     [
+      7,
+      11
+     ]
+    ],
+    [
+     [
+      9,
+      8
+     ],
+     [
+      9,
+      9
+     ]
+    ],
+    [
+     [
+      12,
+      5
+     ],
+     [
+      12,
+      6
+     ]
+    ],
+    [
+     [
+      17,
+      4
+     ],
+     [
+      16,
+      4
+     ]
+    ]
+   ],
+   "v": 1
+  },
+  "blocks": {
+   "items": [
+    {
+     "gu": [
+      2,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
     },
-    "actors": {
-      "agent_start": [
-        12,
-        13
-      ],
-      "guards": [
-        [
-          [
-            15,
-            11
-          ],
-          [
-            15,
-            9
-          ]
-        ]
-      ],
-      "v": 1
+    {
+     "gu": [
+      3,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
     },
-    "blocks": {
-      "items": [
-        {
-          "gu": [
-            2,
-            2
-          ],
-          "material": "concrete",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            3,
-            2
-          ],
-          "material": "concrete",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            4,
-            2
-          ],
-          "material": "concrete",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            7,
-            2
-          ],
-          "material": "metal",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            8,
-            2
-          ],
-          "material": "metal",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            9,
-            2
-          ],
-          "material": "metal",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            12,
-            2
-          ],
-          "material": "stone",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            13,
-            2
-          ],
-          "material": "stone",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            14,
-            2
-          ],
-          "material": "stone",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            17,
-            2
-          ],
-          "material": "wood",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            18,
-            2
-          ],
-          "material": "wood",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            19,
-            2
-          ],
-          "material": "wood",
-          "storeys": 2
-        }
-      ],
-      "v": 1
+    {
+     "gu": [
+      4,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
     },
-    "props": {
-      "items": [],
-      "v": 1
+    {
+     "gu": [
+      7,
+      2
+     ],
+     "material": "metal",
+     "storeys": 2
     },
-    "floor_zones": {
-      "items": [
-        {
-          "gu": [
-            0,
-            0
-          ],
-          "size": [
-            44,
-            22
-          ],
-          "material": "concrete"
-        },
-        {
-          "gu": [
-            2,
-            4
-          ],
-          "size": [
-            3,
-            3
-          ],
-          "material": "concrete"
-        },
-        {
-          "gu": [
-            7,
-            4
-          ],
-          "size": [
-            3,
-            3
-          ],
-          "material": "metal"
-        },
-        {
-          "gu": [
-            12,
-            4
-          ],
-          "size": [
-            3,
-            3
-          ],
-          "material": "stone"
-        },
-        {
-          "gu": [
-            17,
-            4
-          ],
-          "size": [
-            3,
-            3
-          ],
-          "material": "wood"
-        }
-      ],
-      "v": 2
+    {
+     "gu": [
+      8,
+      2
+     ],
+     "material": "metal",
+     "storeys": 2
     },
-    "damage_materials": {
-      "materials": [
-        "concrete",
-        "metal",
-        "stone",
-        "wood"
-      ],
-      "v": 1
+    {
+     "gu": [
+      9,
+      2
+     ],
+     "material": "metal",
+     "storeys": 2
     },
-    "legacy_compiler": {
-      "wall_height": 1,
-      "access_points": [],
-      "dividers": [],
-      "v": 1,
-      "lights": [
-        {
-          "x": 5,
-          "y": 3,
-          "height_class": 4,
-          "radius": 7,
-          "intensity": 1.0,
-          "flicker": true,
-          "flicker_interval": 0.6
-        },
-        {
-          "x": 16,
-          "y": 3,
-          "height_class": 4,
-          "radius": 6,
-          "intensity": 0.9
-        },
-        {
-          "x": 11,
-          "y": 10,
-          "height_class": 2,
-          "radius": 7,
-          "intensity": 1.0
-        },
-        {
-          "x": 10,
-          "y": 9,
-          "height_class": 4,
-          "radius": 10,
-          "intensity": 1.2
-        },
-        {
-          "x": 15,
-          "y": 10,
-          "height_class": 3,
-          "radius": 8,
-          "intensity": 1.15
-        }
-      ]
+    {
+     "gu": [
+      12,
+      2
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      2
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      2
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      2
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      2
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      2
+     ],
+     "material": "wood",
+     "storeys": 2
     }
+   ],
+   "v": 1
+  },
+  "props": {
+   "items": [],
+   "v": 1
+  },
+  "floor_zones": {
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      44,
+      22
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      2,
+      4
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      7,
+      4
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "material": "metal"
+    },
+    {
+     "gu": [
+      12,
+      4
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "material": "stone"
+    },
+    {
+     "gu": [
+      17,
+      4
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "material": "wood"
+    }
+   ],
+   "v": 2
+  },
+  "damage_materials": {
+   "materials": [
+    "concrete",
+    "metal",
+    "stone",
+    "wood"
+   ],
+   "v": 1
+  },
+  "legacy_compiler": {
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "v": 1,
+   "lights": [
+    {
+     "x": 5,
+     "y": 3,
+     "height_class": 4,
+     "radius": 7,
+     "intensity": 1.0,
+     "flicker": true,
+     "flicker_interval": 0.6
+    },
+    {
+     "x": 16,
+     "y": 3,
+     "height_class": 4,
+     "radius": 6,
+     "intensity": 0.9
+    },
+    {
+     "x": 11,
+     "y": 10,
+     "height_class": 2,
+     "radius": 7,
+     "intensity": 1.0
+    },
+    {
+     "x": 10,
+     "y": 9,
+     "height_class": 4,
+     "radius": 10,
+     "intensity": 1.2
+    },
+    {
+     "x": 15,
+     "y": 10,
+     "height_class": 3,
+     "radius": 8,
+     "intensity": 1.15
+    }
+   ]
   }
+ }
 }

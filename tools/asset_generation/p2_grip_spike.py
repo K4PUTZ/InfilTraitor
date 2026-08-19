@@ -172,6 +172,60 @@ ORDER = [("shotgun", "lowered"), ("shotgun", "ready"), ("shotgun", "aimed"),
 IDLE_L = dict(upperarm=(0.13, 0.06, -0.99), forearm=(0.02, 0.22, -0.97),
               hand=(0.0, 0.30, -0.95))
 
+# --- The thrown prop (2026-08-19) ------------------------------------------
+#
+# A grenade is not a weapon in this pipeline's sense and deliberately does not
+# join WEAPONS: `import_weapon()` FAILS unless the model's longest axis is X,
+# which is a real and useful gate for a barrel and meaningless for a sphere.
+# Scaling a near-cube by "its longest axis" would pick whichever of three
+# near-equal numbers won by a rounding error, and the pose would inherit that.
+#
+# So it gets its own three lines: scale by the largest dimension to a stated
+# real-world size, and hang it off the hand. No aim vector, because a sphere has
+# no forward.
+GRENADE_GLB = os.path.join(REPO_ROOT, "ASSETS", "ISOMETRIC", "source_assets",
+                           "imported_models", "quaternius_grenade", "Grenade.glb")
+GRENADE_SIZE_M = 0.11          # a hand grenade's long dimension, near enough
+
+
+def import_grenade(size_m=GRENADE_SIZE_M):
+    """Import the grenade and return (root, created_objects), scaled to size."""
+    if not os.path.isfile(GRENADE_GLB):
+        fail("grenade missing: %s" % GRENADE_GLB)
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=GRENADE_GLB)
+    new = [bpy.data.objects[k] for k in set(bpy.data.objects.keys()) - before]
+    meshes = [o for o in new if o.type == "MESH"]
+    if not meshes:
+        fail("Grenade.glb imported no mesh")
+    pts = [m.matrix_world @ v.co for m in meshes for v in m.data.vertices]
+    mn = Vector((min(p[i] for p in pts) for i in range(3)))
+    mx = Vector((max(p[i] for p in pts) for i in range(3)))
+    scale = size_m / max(mx - mn)
+    root = bpy.data.objects.new("GrenadeRoot", None)
+    bpy.context.collection.objects.link(root)
+    for o in [o for o in new if o.parent is None or o.parent not in new]:
+        o.parent = root
+        o.matrix_parent_inverse = Matrix.Identity(4)
+    root.scale = (scale, scale, scale)
+    log("Grenade.glb: measured %.3f u -> scale %.4f for %.3f m"
+        % (max(mx - mn), scale, size_m))
+    return root, new
+
+
+def seat_in_hand(root, arm, bone_name="hand_L"):
+    """Put a prop at a hand bone's midpoint, in the armature's own space.
+
+    The MIDPOINT rather than the head or the tail: the head is the wrist and the
+    tail is the fingertips, and a grenade held in a fist sits between them. Read
+    from the posed bone, so it follows whatever the arm is doing this phase
+    instead of needing a per-phase offset table.
+    """
+    pb = arm.pose.bones[bone_name]
+    root.parent = arm
+    root.matrix_parent_inverse = Matrix.Identity(4)
+    root.location = arm.matrix_world @ ((pb.head + pb.tail) * 0.5)
+
 YAWS = [0, 90, 180, 270]
 
 ## The height the EXPORTED figure ships at — 10.0 voxels at §4.7's 0.20 m.
@@ -676,7 +730,8 @@ def scale_to_target_height(arm):
         "— see this function's note" % (1.80 * factor, 1.80 * factor / 0.20))
 
 
-def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None):
+def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None,
+                 left_arm=None, hand_prop=None, height_band=None, tag=None):
     """Write ONE posed figure + weapon as a static GLB, for the Godot bake.
 
     Why static rather than rigged: `actor_frame_bake_spike.gd` loads a single
@@ -746,18 +801,28 @@ def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None
     root.matrix_parent_inverse = Matrix.Identity(4)
     socket_off = arm.data.bones["hand_R"].length * 0.5
     err_r, _, _ = two_bone_ik(arm, "R", grip_world - aim * socket_off, g["pole_r"], aim)
-    if spec["two_handed"]:
+    ## `left_arm` FORCES the one-handed branch, and that is the whole point of
+    ## it: a throw needs the left hand FREE while the right keeps the shotgun,
+    ## and the shotgun declares itself two-handed. Without the override a thrown
+    ## grenade would be held by a hand that is also gripping the pump.
+    if spec["two_handed"] and left_arm is None:
         err_l, _, _ = two_bone_ik(arm, "L",
                                   grip_world + aim * grip_to_fore_m - aim * socket_off,
                                   g["pole_l"], aim)
     else:
-        for part, d in (("upperarm", IDLE_L["upperarm"]), ("forearm", IDLE_L["forearm"]),
-                        ("hand", IDLE_L["hand"])):
-            aim_bone(arm, "%s_L" % part, d)
+        pose_l = left_arm if left_arm is not None else IDLE_L
+        for part in ("upperarm", "forearm", "hand"):
+            aim_bone(arm, "%s_L" % part, pose_l[part])
         err_l = 0.0
     if err_r > 0.02 or err_l > 0.02:
         fail("export pose did not reach (R %.4f L %.4f)" % (err_r, err_l))
     place_weapon(root, grip_local, wscale, grip_world, aim)
+    ## The thrown prop rides the POSED hand, so it is seated after the arm solve
+    ## and before the scale pass — `scale_to_target_height()` scales the whole
+    ## armature and its children together, which is what keeps the grenade the
+    ## right size relative to the fist at ship scale.
+    if hand_prop is not None:
+        seat_in_hand(hand_prop, arm)
 
     materialise_for_export()
     suit_env = os.environ.get("P2_SUIT_VALUE", "")
@@ -770,6 +835,15 @@ def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None
     # path — caught only because the re-import mesh count changed from 49 to 37.
     suffix += "" if _MODEL == "agent_base" else _MODEL.replace("agent_base", "")
     suffix += "" if posture is None else "_%s" % posture["name"]
+    # ...and so does the ANIMATION PHASE, for the third time this pipeline has
+    # been bitten by one filename serving two exports. p3_throw_export.py calls
+    # this function 16 times in a row with the same weapon, grip and posture and
+    # a different LEFT ARM each time; without `tag` all sixteen land on
+    # `agent_posed_shotgun_lowered.glb`, every manifest entry points at the same
+    # file, and the bake dutifully renders sixteen copies of the last phase.
+    # Caught by reading the export log, not by any gate: nothing fails, the
+    # heights even vary, and only the paths are identical.
+    suffix += "" if tag is None else "_%s" % tag
     out = os.path.join(os.path.dirname(BLEND),
                        "agent_posed_%s_%s%s.glb" % (weapon, grip_name, suffix))
     bpy.ops.object.select_all(action="SELECT")
@@ -827,8 +901,16 @@ def export_posed(arm, key, facing_name, posture=None, parts=None, parts_out=None
     height = max(p.z for p in pts) - min(p.z for p in pts)
     span_x = max(p.x for p in pts) - min(p.x for p in pts)
     floor = min(p.z for p in pts)
-    band = ((EXPECTED_STANDING_HEIGHT_M - 0.01, EXPECTED_STANDING_HEIGHT_M + 0.01)
-            if posture is None else posture["band_m"])
+    ## `height_band` lets a CALLER declare a band the posture table cannot know.
+    ## The throw needs it: its poses raise the left arm above the head, so the
+    ## figure legitimately measures TALLER than the standing 2.000 m the default
+    ## band pins — while the legs, torso and head are the standing figure
+    ## untouched. Still a real gate; the caller states what it expects and the
+    ## export refuses anything else, which is this file's existing contract, not
+    ## an exemption from it.
+    band = height_band if height_band is not None else (
+        (EXPECTED_STANDING_HEIGHT_M - 0.01, EXPECTED_STANDING_HEIGHT_M + 0.01)
+        if posture is None else posture["band_m"])
     span_max = (1.4 * (EXPORT_HEIGHT_M / 1.898) if posture is None
                 else posture["span_x_max_m"])
     log("exported %s — re-imported %d meshes, height %.3f m (%.2f voxels), "

@@ -3682,7 +3682,13 @@ func _capture_agent_shot() -> void:
 	if agent == null or _guards.is_empty():
 		push_error("[AGENT-SHOT-CAPTURE] needs an agent AND at least one guard — PLAYGROUND ships one of each.")
 		return
-	var guard = _guards[0]
+	var guard_env_idx := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
+	var guard_idx: int = guard_env_idx.to_int() if guard_env_idx.is_valid_int() else 0
+	if guard_idx < 0 or guard_idx >= _guards.size():
+		push_error("[AGENT-SHOT-CAPTURE] guard index %d out of range (%d on the map)"
+			% [guard_idx, _guards.size()])
+		return
+	var guard = _guards[guard_idx]
 	var agent_env := OS.get_environment("INFILTRAITOR_SHOT_AGENT_CELL")
 	if agent_env != "":
 		var ap := agent_env.split(",")
@@ -3814,6 +3820,56 @@ func _save_shot_frame(dir_path: String, file_name: String) -> void:
 	var full := "%s/%s" % [dir_path, file_name]
 	img.save_png(full)
 	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
+
+
+## The throw ANIMATION, frame by frame, in one boot. Same reasoning P-FILM's own
+## header gives for the detonation strip: a sequence stitched from separate boots
+## is not the sequence, and a per-frame claim about motion cannot be made from a
+## single screenshot.
+##
+## No `--fixed-fps` requirement here, unlike P-FILM: the throw's phase is driven
+## by accumulated delta against a duration, so it is frame-rate independent by
+## construction and the strip cannot age it wrongly. The RANDOMNESS that forces
+## P-FILM's fixed FPS lives in the blast's embers, which this strip never reaches.
+func _capture_throw_filmstrip() -> void:
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_throw"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("throw_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	_seed_dev_grenades_if_empty("THROW-FILM")
+	if _camera_controller != null and agent != null:
+		_camera_controller.focus_on(agent._cell_to_world(agent.cell))
+	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
+	_camera_controller.set_zoom_for_capture(
+		zoom_env.to_float() if zoom_env.is_valid_float() else 1.10)
+	if _fow_controller != null:
+		_fow_controller.reveal_around(agent.cell, 16)
+	for _i in range(15):
+		await get_tree().process_frame
+
+	## Every frame is taken through the REAL flow — enter targeting, then throw —
+	## not by calling play_throw() directly. What is being checked is that the
+	## animation is reached by the actions a player takes.
+	_test_zone_controller.enter_grenade_mode()
+	var frames_env := OS.get_environment("INFILTRAITOR_THROW_FRAMES")
+	var count: int = frames_env.to_int() if frames_env.is_valid_int() else 30
+	var shot := 0
+	for i in range(count):
+		## Fire the throw a third of the way in, so the strip opens on the HELD
+		## aim (which is what the player stares at) and then shows the release.
+		if i == int(float(count) / 3.0):
+			_test_zone_controller.execute_grenade_throw()
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		if img != null:
+			img.save_png("%s/throw_%02d.png" % [out_dir, shot])
+			shot += 1
+		await get_tree().process_frame
+	print("[THROW-FILM] wrote %d frames to %s" % [shot, out_dir])
 
 
 func _capture_detonation_filmstrip() -> void:
@@ -4050,12 +4106,19 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## facing — §4.6's `facing - perspective` — so one capture shows every side of
 ## the figure under the same light instead of four captures showing the same
 ## side. Spread two GU apart so no silhouette touches its neighbour.
-const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = [
-	{"cell": Vector2i(3, 6), "dir": "agent_frames", "facing": "N"},
-	{"cell": Vector2i(6, 6), "dir": "agent_frames", "facing": "E"},
-	{"cell": Vector2i(3, 9), "dir": "agent_frames", "facing": "S"},
-	{"cell": Vector2i(6, 9), "dir": "agent_frames", "facing": "W"},
-]
+## RETIRED 2026-08-19, Director: *"Vamos tirar as cópias do agente e deixar só o
+## principal."* The four probes were a four-facing reference board from when the
+## baked figure was new and needed checking against itself; the playable agent
+## now shows every facing by walking, and four motionless duplicates of him
+## standing in the middle of the destruction test zone are scenery that gets in
+## the way of the thing being tested.
+##
+## The CONSTANT stays and the loop that reads it stays, both empty: the probe
+## machinery (TestZoneController.add_agent_probe, its dev-vision sync) is a
+## working instrument for exactly this kind of check, and deleting a tool because
+## today's board does not need it is how it has to be rebuilt from memory next
+## time. Put cells back here to bring the board back.
+const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = []
 
 ## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for
 ## real destruction calibration — "a bancada está muito cheia [...] vai ser
@@ -4399,6 +4462,10 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif capture_action == "throw_filmstrip" and _test_zone_controller != null:
+		await _capture_throw_filmstrip()
+		get_tree().quit(0)
+		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
 	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:

@@ -133,8 +133,34 @@ const HEAD_OFFSET: Dictionary = {
 ## Where a thrown object leaves this agent, in the same space as `position` —
 ## roughly arm height, which the head marker already stands for. Crouching and
 ## prone throws start correspondingly lower, for free.
+##
+## ⚠️ FIXED 2026-08-19, and the fix CHANGES A SHIPPED ARC on purpose. This used to
+## read HEAD_OFFSET directly — vectors tuned on 2026-08-10 (T-ARC) against the
+## vector DIAMOND placeholder, which this class stopped drawing on 2026-08-16.
+## They put the launch point 64 px up where the baked figure's real drawn reach
+## is ~169 px, so the grenade left the agent's WAIST. The same staleness was
+## caught on the muzzle first (§6c), fixed there alone, and flagged here rather
+## than fixed because moving a tuned ballistic arc deserved its own pass. This is
+## that pass: the Director asked for the throw to be built properly, and building
+## a throw ANIMATION on top of a launch point that misses the hand by 100 px
+## would bake the error into the pose work.
+##
+## Both readers of this move together — `throw_launch_height()` below returns the
+## same vector's magnitude, so the arc's asymmetry stays consistent with where it
+## now starts. HEAD_OFFSET survives as the pre-load fallback only.
 func throw_origin() -> Vector2:
-	return position + HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
+	return position + _head_anchor()
+
+
+## The measured head anchor, or the placeholder constant when no frame set is
+## loaded yet. ONE function, because the throw, the arc's launch height and the
+## muzzle must never disagree about where this figure's hands are.
+func _head_anchor() -> Vector2:
+	if sprite != null:
+		var measured: Vector2 = sprite.head_offset_px()
+		if measured != Vector2.ZERO:
+			return measured
+	return HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
 
 
 ## WEAPON_MASTER_PLAN §6c Part A — where a SHOT leaves this agent, in the same
@@ -165,17 +191,53 @@ const MUZZLE_DROP_FRACTION: float = 0.18
 ## So the muzzle asks the SPRITE, which reads its own bake's `anchor_px` and
 ## `head_socket_px` per posture — the same numbers the head layer is registered
 ## against, so the flash cannot drift from the head it is supposed to be beside.
-## HEAD_OFFSET remains the fallback for the frames before a set is loaded, and
-## `throw_origin()` above still uses it: correcting the GRENADE's launch point
-## changes a shipped, tuned arc, which is a separate change with its own
-## verification and is NOT this wave's to make.
+## HEAD_OFFSET remains the fallback for the frames before a set is loaded.
+## `throw_origin()` was corrected the same way on 2026-08-19 — see its own note
+## for why that one waited for a reason to move a tuned arc.
 func muzzle_origin() -> Vector2:
-	var head: Vector2 = Vector2.ZERO
-	if sprite != null:
-		head = sprite.head_offset_px()
-	if head == Vector2.ZERO:
-		head = HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
+	var head: Vector2 = _head_anchor()
 	return position + head - Vector2(0.0, head.y * MUZZLE_DROP_FRACTION)
+
+
+## --- The grenade throw (Director, 2026-08-19) --------------------------------
+##
+## Three passthroughs rather than one with a mode argument, because the three are
+## triggered from genuinely different moments in the grenade flow (aim opens, aim
+## cancels, throw commits) and a single entry point would make every caller
+## restate which of them it meant.
+##
+## The DURATIONS live in p3_throw_export.py's manifest as `seconds` per sequence,
+## because the frame count and the playback rate are one decision — see that
+## file's RAISE_SECONDS note. These constants mirror it; if the export's numbers
+## change, these follow.
+const THROW_RAISE_SECONDS: float = 0.18
+const THROW_RELEASE_SECONDS: float = 0.40
+## The cancel is FASTER than the raise, on the Director's own word — *"bem
+## rapidinho, só pra não sumir de repente."* It is the same frames in reverse, so
+## only the duration differs.
+const THROW_CANCEL_SECONDS: float = 0.12
+
+
+## Raise the arm and HOLD the cocked pose for the whole aim.
+func play_throw_raise() -> bool:
+	if sprite == null:
+		return false
+	return sprite.play_throw(AgentSprite.THROW_RAISE, THROW_RAISE_SECONDS, true)
+
+
+## Put it back down along the same path, quickly.
+func play_throw_cancel() -> bool:
+	if sprite == null:
+		return false
+	return sprite.play_throw(AgentSprite.THROW_RAISE, THROW_CANCEL_SECONDS,
+		false, true)
+
+
+## Throw. Emits `sprite.throw_released` on the frame the grenade leaves the hand.
+func play_throw_release() -> bool:
+	if sprite == null:
+		return false
+	return sprite.play_throw(AgentSprite.THROW_RELEASE, THROW_RELEASE_SECONDS)
 
 
 ## WEAPON_MASTER_PLAN §6c / B4 — raise or lower the held weapon.
@@ -194,8 +256,7 @@ func set_grip(name: String) -> void:
 ## on peaks before halfway and falls longer than it rose, and that asymmetry is
 ## the whole difference between a real throw and a symmetric bow.
 func throw_launch_height() -> float:
-	var offset: Vector2 = HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
-	return absf(offset.y)
+	return absf(_head_anchor().y)
 
 ## The standing character's on-screen extent (O7 stroke clips to this).
 ##

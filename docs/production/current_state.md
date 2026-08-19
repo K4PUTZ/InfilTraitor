@@ -67,6 +67,7 @@
 - RESUMO_SESSAO_2026-08-17_LEAK_CYCLE_AND_CHARACTER_LAYERS.md
 - RESUMO_SESSAO_2026-08-17_WHITE_BRACKET_PLAYGROUND_REFORM.md
 - RESUMO_SESSAO_2026-08-18_HEAD_LAYER_PLUMBING.md
+- RESUMO_SESSAO_2026-08-19_AGENT_SHOOTS.md
 - RESUMO_SESSAO_2026-08-19_ALPHA_ENEMY_HAIR.md
 <!-- AUTO:END pending_prompts -->
 
@@ -75,7 +76,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 150
+- GDScript modules: 153
 - Test scripts: 43
 - Known maps: 3
 - Shipped facade files: 0

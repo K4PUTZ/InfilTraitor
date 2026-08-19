@@ -2277,7 +2277,22 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 ## D-ARCH-01: No buffering needed — damage applies in a single frame via tile swap,
 ## so VFX is dispatched directly as the voxel_destroyed signal fires.
 func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) -> void:
+	_vfx_destroy_count += 1
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
+
+
+## DIAGNOSTIC (2026-08-19). Counts voxel_destroyed dispatches so a capture can
+## prove whether a shot re-fires VFX for voxels an EARLIER grenade already
+## destroyed. Kept because the count is the only honest way to tell "the smoke
+## looks wrong" apart from "the smoke IS wrong": the effect is transient and a
+## screenshot of it cannot be compared against anything.
+var _vfx_destroy_count: int = 0
+
+
+func _vfx_count_take() -> int:
+	var n := _vfx_destroy_count
+	_vfx_destroy_count = 0
+	return n
 
 
 ## E-NATIVE-01 (Director, 2026-08-09) — the detonation's visible core, built from
@@ -2659,6 +2674,86 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## PERF-03 — `geometry_only` is forwarded to VoxelLightField.build(); see its
 ## doc for the contract. Defaults false, so the `lighting_rebuilt` signal
 ## connection (which passes no arguments) keeps the full, unconditional rebuild.
+## W-PRECOOK / §0 Route 2 — the SCOPED repaint, for a firearm.
+##
+## THE MEASUREMENT THAT PRODUCED THIS, because it contradicts the hypothesis it
+## was asked for under. The Director's read was that a shot stalls because it is
+## *"processando a destruição na parede"*. Instrumented on the real map:
+##
+##     [AGENT-SHOT-PROF] resolve+apply 1.32 ms · repaint 581.10 ms · 23 voxel(s)
+##     [REPAINT-PROF] occupancy 28.4 · soot 141.4 · field.build 11.2 · apply 399.7
+##
+## Damage resolution is 1.3 ms — 0.2% of the shot. Pre-computing it, which is
+## what the grenade's P-COOK does, would save nothing measurable. The cost is
+## `apply_light_field()` walking every placed cell on a 44x22 board.
+##
+## VL-03 already built the scoped version and measured it (~75 ms against
+## ~590 ms for a light toggle, 88% off); nothing had pointed the FIREARM at it.
+## This does. `_placed_by_gu` is built by the last full pass, which the boot
+## always runs, and a GU it does not know about is a silent no-op there by
+## design — so the scope must be generous, and the soot reach is why it is.
+func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
+	if gus.is_empty():
+		_repaint_voxel_light_buckets(true)
+		return
+	if _voxel_renderer == null or _lighting_controller == null:
+		return
+	var registry = _lighting_controller.get_light_registry()
+	if registry == null:
+		return
+	if _voxel_light_field == null:
+		_voxel_light_field = VoxelLightField.new()
+	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var soot_faces: Dictionary = {}
+	## The FIELD is still built map-wide, and that is not laziness: D24 derives
+	## soot from which voxels are absent ANYWHERE, so a scoped snapshot would be
+	## a second soot producer — the exact drift SOOT_MASTER_PLAN §1.2 found
+	## between two of them. Only the APPLY is scoped, which is where the time is.
+	_voxel_light_field.build(
+			registry.get_active_lights(),
+			_lighting_controller.get_shadow_results(),
+			top_wall_level,
+			_voxel_renderer.build_occupancy(),
+			_build_soot_snapshot(soot_faces),
+			_under_structure,
+			soot_faces,
+			true)
+	_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus)
+	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
+	## the state a full one would have — the same class of claim PERF-03's
+	## equivalence probe guards for incremental invalidation, and the same class
+	## of drift SOOT_MASTER_PLAN §1.2 caught between two soot producers. This is
+	## how the 581 -> 210 ms win is EARNED rather than asserted: snapshot every
+	## cell's alternative, force the full apply, snapshot again, count. Env-gated
+	## because it costs a full repaint on top of the scoped one.
+	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
+		var before: Dictionary = _perf_snapshot_alts()
+		_voxel_renderer.apply_light_field(_voxel_light_field)
+		var after: Dictionary = _perf_snapshot_alts()
+		var differ: int = 0
+		for k in after:
+			if before.get(k, -12345) != after[k]:
+				differ += 1
+		print("[SHOT-SCOPE] %d cells checked, %d differ from a full apply (scope %d GUs)"
+			% [after.size(), differ, gus.size()])
+
+
+## How far a shot's repaint has to reach past the GUs it actually hit. D24
+## derives soot up to 3 rings from an absent voxel, so a hole changes the look of
+## cells three GUs away and a scope tighter than this leaves a visible seam.
+const SHOT_REPAINT_SOOT_RINGS: int = 3
+
+
+## The GU scope for a shot: every impact GU, grown by the soot reach.
+func shot_repaint_scope(impact_gus: Array) -> Array:
+	var scope: Dictionary = {}
+	for gu in impact_gus:
+		for dx in range(-SHOT_REPAINT_SOOT_RINGS, SHOT_REPAINT_SOOT_RINGS + 1):
+			for dy in range(-SHOT_REPAINT_SOOT_RINGS, SHOT_REPAINT_SOOT_RINGS + 1):
+				scope[(gu as Vector2i) + Vector2i(dx, dy)] = true
+	return scope.keys()
+
+
 func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 	if _voxel_renderer == null or _lighting_controller == null:
 		return
@@ -2674,16 +2769,31 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 	## vision modes, selftests) and the per-face triples the renderer packs into
 	## each cell's modulate alpha.
 	var soot_faces: Dictionary = {}
+	## W-PRECOOK profiling seam, env-gated like every other standing dev probe in
+	## this function. §0's routes are chosen from WHERE the repaint's time goes,
+	## and the only figures on record are from the retired bench in August.
+	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
+	var _t0: int = Time.get_ticks_usec()
+	var occupancy: Dictionary = _voxel_renderer.build_occupancy()
+	var _t1: int = Time.get_ticks_usec()
+	var soot: Dictionary = _build_soot_snapshot(soot_faces)
+	var _t2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
-			_voxel_renderer.build_occupancy(),
-			_build_soot_snapshot(soot_faces),
+			occupancy,
+			soot,
 			_under_structure,
 			soot_faces,
 			geometry_only)
+	var _t3: int = Time.get_ticks_usec()
 	_voxel_renderer.apply_light_field(_voxel_light_field)
+	if _prof:
+		print("[REPAINT-PROF] occupancy %.1f · soot %.1f · field.build %.1f · apply %.1f ms (geometry_only=%s)"
+			% [float(_t1 - _t0) / 1000.0, float(_t2 - _t1) / 1000.0,
+			float(_t3 - _t2) / 1000.0,
+			float(Time.get_ticks_usec() - _t3) / 1000.0, geometry_only])
 	## PERF-03 equivalence probe — env-gated (INFILTRAITOR_LIGHT_EQUIV_PROBE=1),
 	## same standing-dev-tool precedent as INFILTRAITOR_FACE_SOOT_DIAG above.
 	## Snapshots every cell's alternative, forces a full rebuild, and reports
@@ -3464,6 +3574,33 @@ func _unhandled_input(event: InputEvent) -> void:
 	## the previously selected tile"; touch devices have no right button, so
 	## this branch is desktop-only by nature.
 	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+		## ── AIM MODE OWNS THE RIGHT BUTTON, AND WALKING IS OFF ──────────────
+		## Director, 2026-08-19: *"quando entra no modo mira, tanto de granadas
+		## quanto de armas, o comando para andar com o botão direito tem que ser
+		## desabilitado, e volta depois que o tiro for dado ou cancelado"*, and
+		## *"No celular é um tap pra selecionar e outro pra confirmar, podemos
+		## padronizar assim também no desktop, usando o botão direito"*.
+		##
+		## So one button drives the whole flow: first right-click picks the GU,
+		## a second on the SAME GU throws. Standardising desktop on the mobile
+		## two-tap is not merely tidiness — it means the aim flow has one
+		## description instead of two that can drift apart per platform.
+		##
+		## The branch RETURNS unconditionally, including when the click resolved
+		## to nothing: that is the "walking is disabled" half. Falling through to
+		## the move fallback is exactly what used to send the agent walking
+		## across the board mid-aim.
+		##
+		## The WEAPON's aim needs no case here — it is a modal context menu, and
+		## the guard at the top of this function already swallows every click
+		## while `_context_menu.visible`.
+		if _test_zone_controller != null and _test_zone_controller.is_targeting():
+			var aim_cell := _screen_to_tile(mb.position)
+			if aim_cell != INVALID_CELL:
+				_test_zone_controller.handle_targeting_click(aim_cell)
+			get_viewport().set_input_as_handled()
+			return
+
 		## TEST-ZONE placeholder (2026-07-21): right-click on a detonatable test
 		## prop opens the context menu instead of moving the agent there.
 		##
@@ -3524,10 +3661,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		## selected cell again walks (handle_tile_click). On desktop the left
 		## button only ever selects; movement lives on the right button.
 		if cell != INVALID_CELL:
-			## T-TAP: while a throw is being aimed the left button belongs to it —
-			## first click aims, a second on the same GU throws. Checked before
-			## selection/movement on purpose: during targeting there is nothing
-			## else the click could sensibly mean.
+			## T-TAP: while a throw is being aimed the LEFT button also belongs
+			## to it — this is the TOUCH path, where the emulated left tap is the
+			## only button there is. On desktop the same flow now lives on the
+			## right button (see the right-button branch above, and the
+			## Director's 2026-08-19 standardisation); both routes call the same
+			## `handle_targeting_click()`, so select-then-confirm behaves
+			## identically whichever device is driving it.
 			if _test_zone_controller != null \
 					and _test_zone_controller.handle_targeting_click(cell):
 				get_viewport().set_input_as_handled()
@@ -3820,6 +3960,44 @@ func _save_shot_frame(dir_path: String, file_name: String) -> void:
 	var full := "%s/%s" % [dir_path, file_name]
 	img.save_png(full)
 	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
+
+
+## The Director's report, made measurable (2026-08-19): *"digamos que eu joguei
+## duas granadas no chao. Quando eu der o primeiro tiro com a shotgun, todos os
+## voxels afetados pelas explosoes soltam fumaca novamente."*
+##
+## Throws N grenades, then fires one shot, and prints the `voxel_destroyed`
+## dispatch count for each. A shot that only destroys its own voxels dispatches a
+## number in single digits; a shot that re-fires every voxel the grenades already
+## destroyed dispatches hundreds. That difference is the whole claim, and it
+## cannot be read off a screenshot because smoke is transient.
+func _capture_grenade_then_shot() -> void:
+	_seed_dev_grenades_if_empty("VFX-LEAK")
+	if _fow_controller != null and agent != null:
+		_fow_controller.reveal_around(agent.cell, 24)
+	for _i in range(12):
+		await get_tree().process_frame
+
+	var count_env := OS.get_environment("INFILTRAITOR_VFXLEAK_GRENADES")
+	var grenades: int = count_env.to_int() if count_env.is_valid_int() else 2
+	for g in range(grenades):
+		_vfx_count_take()
+		_test_zone_controller.open_menu_for(g)
+		_test_zone_controller.detonate_active()
+		for _j in range(150):
+			await get_tree().process_frame
+		print("[VFX-LEAK] grenade %d: %d voxel_destroyed dispatch(es)"
+			% [g, _vfx_count_take()])
+
+	if _guards.is_empty() or _agent_shot_controller == null:
+		push_error("[VFX-LEAK] needs a guard and the shot controller")
+		return
+	_vfx_count_take()
+	_agent_shot_controller.open_menu_for(0)
+	await _agent_shot_controller.fire_at_active()
+	for _k in range(90):
+		await get_tree().process_frame
+	print("[VFX-LEAK] the shot: %d voxel_destroyed dispatch(es)" % _vfx_count_take())
 
 
 ## The throw ANIMATION, frame by frame, in one boot. Same reasoning P-FILM's own
@@ -4462,6 +4640,10 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif capture_action == "grenade_then_shot" and _test_zone_controller != null:
+		await _capture_grenade_then_shot()
+		get_tree().quit(0)
+		return
 	elif capture_action == "throw_filmstrip" and _test_zone_controller != null:
 		await _capture_throw_filmstrip()
 		get_tree().quit(0)

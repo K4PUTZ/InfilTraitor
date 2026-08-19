@@ -235,6 +235,7 @@ func fire_at_active() -> void:
 	if aim_world != Vector2.ZERO:
 		room.spawn_muzzle_flash(muzzle_world, aim_world.normalized())
 
+	var prof_t0: int = Time.get_ticks_usec()
 	var pellet_picks: Array = []
 	if weapon_def.delivery == WeaponDef.DELIVERY_LINE:
 		var line_hit := BlastCalculatorClass.select_line_impact(
@@ -270,6 +271,9 @@ func fire_at_active() -> void:
 	## the round crosses, then the wall reacts. `resolve_pellet_voxel()` is a
 	## lookup and mutates nothing, so moving it ahead of the flight changes no
 	## outcome; `apply_point_impact()` is the mutation and stays after.
+	## Declared before the resolve loop because the RENDER pass below needs it to
+	## scope its repaint, and the profile print needs it after that.
+	var impact_gus: Dictionary = {}
 	var resolved_picks: Array = []
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
@@ -279,6 +283,7 @@ func fire_at_active() -> void:
 		resolved_picks.append({"index": i, "resolved": resolved})
 		_draw_tracer(muzzle_world, pellet_picks[i])
 
+	var prof_resolve_ms: float = float(Time.get_ticks_usec() - prof_t0) / 1000.0
 	## Let the rounds cross. Frame-counted rather than timed, because what has to
 	## elapse is FRAMES DRAWN — the whole defect above was time passing without
 	## any being drawn.
@@ -327,7 +332,6 @@ func fire_at_active() -> void:
 	## C behind the target" is the entire geometric claim this wave exists to
 	## test. It is also what an unattended capture needs in order to frame the
 	## damage instead of the shooter.
-	var impact_gus: Dictionary = {}
 	for pick in pellet_picks:
 		impact_gus[pick["gu"]] = true
 	## The TIER TALLY, not just the voxel count. "24 pellets landed" and "the wall
@@ -377,9 +381,23 @@ func fire_at_active() -> void:
 		return
 	## PERF-03: a shot changes geometry and soot only, never a light or a shadow
 	## result — same contract the bench and the grenade repaint under.
-	if room.has_method("_repaint_voxel_light_buckets"):
+	var prof_repaint0: int = Time.get_ticks_usec()
+	## SCOPED, not map-wide. See Room._repaint_voxel_light_buckets_scoped() for
+	## the measurement: the full apply walks every placed cell on the board and
+	## is ~400 ms of the shot's ~581, for 23 voxels of actual damage.
+	if room.has_method("_repaint_voxel_light_buckets_scoped"):
+		room._repaint_voxel_light_buckets_scoped(
+			room.shot_repaint_scope(impact_gus.keys()))
+	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
+	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
 	room._destruction_render_busy = false
+	## W-PROF-01, on the AGENT path this time. §0's routes are chosen from these
+	## two numbers, so they are printed rather than assumed — the figures it was
+	## scheduled on (resolve 1 ms, repaint ~310 ms) are from the retired bench in
+	## August and deserve re-measuring before anything is built on them.
+	print_debug("[AGENT-SHOT-PROF] resolve+apply %.2f ms cpu · repaint %.2f ms cpu · %d voxel(s)"
+		% [prof_resolve_ms, prof_repaint_ms, cell_to_voxel.size()])
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

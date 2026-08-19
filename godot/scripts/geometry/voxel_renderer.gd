@@ -2545,8 +2545,26 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 	else:
 		# Clear cell
 		if voxel.level < _voxel_layers.size():
+			## ⚠️ THE SIGNAL MEANS "A VOXEL JUST DISAPPEARED", NOT "WE PROCESSED A
+			## DESTROYED VOXEL", and conflating the two cost a real bug.
+			##
+			## Measured 2026-08-19, on the Director's report that firing a shot
+			## re-smoked every voxel two earlier grenades had destroyed: two
+			## grenades dispatched 0 `voxel_destroyed` (the choreographer paints
+			## its own cells and never emits), and the next shot dispatched 498 —
+			## while destroying 5 voxels of its own. The blast's voxels were still
+			## flagged dirty, the shot's pass is the only unfiltered one in the
+			## game, and it re-emitted for every one of them.
+			##
+			## The flag leak is fixed at its source too (see
+			## TestZoneController's commit site), but this guard is what makes the
+			## whole CLASS impossible: re-processing an already-erased cell is now
+			## a no-op instead of a second explosion of VFX, whatever leaves a
+			## stale flag in future.
+			var already_gone: bool = _voxel_layers[voxel.level] 				.get_cell_source_id(voxel.grid_pos) == -1
 			_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
-			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+			if not already_gone:
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
 
 
 ## Slab-side counterpart to process_dirty() — DESTRUCTION_MASTER_PLAN Part 3.
@@ -2648,8 +2666,12 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 	else:
 		var layer := get_layer(voxel.level)
 		if layer != null:
+			## Same idempotence guard as the slice path — see its note. A floor
+			## or roof voxel erased twice is one destruction, not two.
+			var was_there: bool = layer.get_cell_source_id(voxel.grid_pos) != -1
 			layer.erase_cell(voxel.grid_pos)
-			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+			if was_there:
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 
 
 ## D11 — how long one async render batch may run before yielding a frame.

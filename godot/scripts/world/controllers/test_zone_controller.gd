@@ -40,6 +40,13 @@ var _agent_probes: Array[Dictionary] = []
 
 ## T-MODE: targeting mode active (grenade selected, waiting for target)
 var _targeting_mode: bool = false
+
+
+## Public, because room.gd's input router has to know whether AIM MODE owns the
+## right button this frame. Reading `_targeting_mode` across the boundary would
+## make a private field part of the contract.
+func is_targeting() -> bool:
+	return _targeting_mode
 var _targeting_grenade_index: int = -1
 ## The cell the throw will actually use — ALREADY CLAMPED to throw range. The
 ## first pass kept no such state: the preview clamped `room._hovered_cell` for
@@ -509,10 +516,28 @@ func _set_targeting_target(cell: Vector2i) -> void:
 		room._throw_arc_overlay.set_launch_height(room.agent.throw_launch_height())
 		room._throw_arc_overlay.show_arc(room.agent.throw_origin(), target_pos)
 
+	## ⚠️ PRE-PRODUCTION STARTS HERE NOW, not on the throw.
+	##
+	## The Director asked (2026-08-19) to confirm whether the grenade pre-computes
+	## *"assim que o jogador aperta G e seleciona a GU"*. It did NOT: the line
+	## below used to end *"the expensive part is `_begin_preproduction()`, which
+	## stays on the throw"*, and `execute_grenade_throw()` was its only caller in
+	## this flow. So the aim window — the seconds a human spends reading the dome
+	## and deciding — was being spent on overlays while the ~190 ms of prediction
+	## waited for the confirm.
+	##
+	## Moving it here is what P-COOK was designed for and says so in its own
+	## header: the trigger is *"hover, or first tap on a GU"*. It is safe to
+	## re-trigger, because `_begin_preproduction()` cancels and re-keys against
+	## `PredictionCache` — which is exactly the cycling/cancellation shape §0
+	## says the cache already solves. `execute_grenade_throw()` still calls it
+	## too: the target can change between the select and the confirm, and a
+	## second call on an unchanged target is a cache hit rather than a re-run.
+	_begin_preproduction(_targeting_target_gu)
+
 	## The SAME wall-aware BFS the real blast floods with feeds both the rays and
 	## the highlighted footprint, so a cell the grenade cannot reach gets neither.
-	## Cheap enough to redo per hover: `max_ring` is 3, so this walks ~25 cells —
-	## the expensive part is `_begin_preproduction()`, which stays on the throw.
+	## Cheap enough to redo per hover: `max_ring` is 3, so this walks ~25 cells.
 	var gu_rings := _damaging_rings(BlastCalculatorClass.flood_gu_rings(
 		_targeting_target_gu, bomb_def, _blocked_edges_dict(), room._blocked_cells), bomb_def)
 
@@ -1271,6 +1296,31 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			voxel.damage_substrate)
 	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
 		job.delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
+
+	## ⚠️ THE BLAST OWNS ITS OWN RENDERING, SO IT MUST DROP ITS OWN FLAGS.
+	##
+	## `set_damage()` marks every written voxel dirty, and `dirty` means exactly
+	## one thing: SOMEBODY STILL HAS TO RENDER THIS. For a blast nobody does —
+	## `DetonationChoreographer` writes `erase_cell()`/`set_cell()` straight to
+	## the TileMapLayers from its pre-built plan and never touches the dirty
+	## pipeline (its own `_apply_entry()` header says so). So the flags stayed
+	## set forever, and the next unfiltered `process_dirty_async()` — which only
+	## the FIREARM path ever calls — walked the whole backlog and re-emitted
+	## `voxel_destroyed` for every destroyed voxel in it.
+	##
+	## Measured before the fix (`INFILTRAITOR_CAPTURE_ACTION=grenade_then_shot`):
+	##     grenade 0: 0 dispatches · grenade 1: 0 · THE SHOT: 498
+	## against 5 voxels the shot actually destroyed. That is the Director's
+	## report exactly — *"todos os voxels afetados pelas explosões soltam fumaça
+	## novamente"*.
+	##
+	## Cleared HERE, at the commit, rather than after the choreographer finishes:
+	## the moment the plan exists the choreographer owns these pixels, and a shot
+	## fired DURING the playback would otherwise hit the same backlog in a
+	## smaller window. `touched_voxels` is the exact written set, so this is not a
+	## blanket clear — a flag set by anything else survives it.
+	for voxel in job.delta.touched_voxels:
+		voxel.clear_dirty()
 	var waves: Dictionary = job.delta.waves
 	## §5.2: the world just moved, so every cached prediction — including this
 	## one — is now stale. AFTER the commit, never before.

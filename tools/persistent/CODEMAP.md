@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 61510 lines total** (under `godot/scripts/`)
+**211 scripts · 61782 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -815,7 +815,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3277 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3299 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -4315,7 +4315,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 442 lines
+`class_name AgentShotController` · 460 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4407,7 +4407,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1407 lines
+`class_name TestZoneController` · 1457 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4432,6 +4432,7 @@ extends `Node2D` · 34 lines
 - `var throw_prediction_timeout_s: float = 1.0`
 
 **Public API**
+- `func is_targeting() -> bool:`
 - `func effective_throw_range_gu() -> float:`
 
 ---
@@ -4680,7 +4681,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 5261 lines
+extends `Node2D` · 5443 lines
 
 `godot/scripts/world/room.gd`
 

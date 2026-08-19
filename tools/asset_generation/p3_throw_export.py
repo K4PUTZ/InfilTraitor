@@ -113,19 +113,37 @@ FOLLOW = dict(upperarm=(0.20, 0.84, 0.05),
               forearm=(0.12, 0.90, -0.42),
               hand=(0.06, 0.84, -0.54))
 
-## RAISE: idle -> cocked. Played FORWARD to enter the aim, BACKWARD to cancel it
-## (Director: *"bem rapidinho, só pra não sumir de repente"*).
-KEYS_RAISE = [IDLE, COCKED]
-## RELEASE: cocked -> wind -> release -> follow-through -> idle. Ends AT idle so
-## no separate return sequence exists to drift from this one.
-KEYS_RELEASE = [COCKED, WIND, RELEASE, FOLLOW, IDLE]
+## --- Key TIMING. A throw is not uniform in time, and this is where that lives.
+##
+## ⚠️ THIS WAS A COMMENT BEFORE IT WAS CODE. `sample()`'s docstring claimed the
+## release "spends its keys unevenly" while `sample()` spaced them evenly — a
+## description of behaviour that did not exist. Caught by measuring the animation
+## frame by frame and asking why the motion ramped and then stopped dead.
+##
+## Each entry is (pose, t) with t in 0..1 along the sequence. Uniform spacing
+## makes every segment take the same time, which for a throw is wrong in the way
+## that matters most: the RELEASE covers the largest distance and must cover it
+## in the least time, because that contrast IS what reads as force. Anticipation
+## before it and recovery after it are what make the snap legible.
+##
+##   0.00 -> 0.30   cocked to wind-up: SLOW. Anticipation.
+##   0.30 -> 0.42   wind-up to release: FAST. The biggest movement, 12% of the
+##                  time. This is the throw.
+##   0.42 -> 0.60   release to follow-through: the arm carries past.
+##   0.60 -> 1.00   follow-through to idle: SLOW. Settling.
+KEYS_RAISE = [(IDLE, 0.0), (COCKED, 1.0)]
+KEYS_RELEASE = [(COCKED, 0.00), (WIND, 0.30), (RELEASE, 0.42),
+                (FOLLOW, 0.60), (IDLE, 1.00)]
 
 ## How many frames each sequence is sampled at. Knobs, not constants — the same
 ## reasoning p3_posture_export.py's LAYER_YAWS carries: raising the count costs a
 ## re-run and nothing downstream is pinned to it, because AgentSprite counts what
 ## is on disk.
 RAISE_PHASES = int(os.environ.get("P3_THROW_RAISE_PHASES", "6"))
-RELEASE_PHASES = int(os.environ.get("P3_THROW_RELEASE_PHASES", "10"))
+## 12 over RELEASE_SECONDS is 30 Hz, which is D46's ratified authoring rate. It
+## was 10 (25 Hz) and the walk's own history is the reason to care: the Director
+## called an 8-phase walk *"engasgado"* at 14.3 Hz.
+RELEASE_PHASES = int(os.environ.get("P3_THROW_RELEASE_PHASES", "12"))
 
 ## Seconds each sequence plays for. Authored here rather than in GDScript because
 ## the frame COUNT and the DURATION are one decision — 6 frames over 0.18 s is
@@ -191,23 +209,29 @@ def lerp3(a, b, t):
 
 
 def sample(keys, t01, hold_last=False):
-    """The pose at `t01` along a key list, eased between neighbours.
+    """The pose at `t01` along a TIMED key list, eased between neighbours.
+
+    `keys` is [(pose, t), ...] with t ascending in 0..1. The timing is what makes
+    a throw read as a throw rather than as an arm sweeping at constant speed —
+    see the KEYS_RELEASE note above.
 
     `hold_last` exists for the RAISE sequence: its final frame IS the held aim
     pose, and a sampled sequence that never quite reaches its last key would
     leave the hold visibly short of the pose the cancel starts from.
     """
     if len(keys) == 1:
-        return keys[0]
-    span = len(keys) - 1
-    x = min(max(t01, 0.0), 1.0) * span
-    i = min(int(math.floor(x)), span - 1)
-    local = ease(x - i)
-    if hold_last and t01 >= 1.0:
-        return keys[-1]
-    a, b = keys[i], keys[i + 1]
-    return {part: lerp3(a[part], b[part], local)
-            for part in ("upperarm", "forearm", "hand")}
+        return keys[0][0]
+    t = min(max(t01, 0.0), 1.0)
+    if hold_last and t >= 1.0:
+        return keys[-1][0]
+    for i in range(len(keys) - 1):
+        (a, ta), (b, tb) = keys[i], keys[i + 1]
+        if t <= tb or i == len(keys) - 2:
+            span = max(tb - ta, 1e-6)
+            local = ease((t - ta) / span)
+            return {part: lerp3(a[part], b[part], local)
+                    for part in ("upperarm", "forearm", "hand")}
+    return keys[-1][0]
 
 
 def phase_list(keys, count, hold_last=False):

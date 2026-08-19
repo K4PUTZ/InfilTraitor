@@ -306,6 +306,9 @@ var _throw_t: float = 0.0
 var _throw_seconds: float = 0.0
 var _throw_reversed: bool = false
 var _throw_hold: bool = false
+## Latches once per release so the crossing check and the end-of-sequence
+## guarantee below cannot both fire and throw two grenades.
+var _throw_released_sent: bool = false
 var _throw_phases: Dictionary = {}      ## "<posture>_<seq>" -> phase count
 var _throw_ready: Dictionary = {}       ## "<posture>_<seq>:dev" -> bool
 
@@ -703,6 +706,7 @@ func play_throw(sequence: String, seconds: float, hold: bool = false,
 	_throw_t = 0.0
 	_throw_hold = hold
 	_throw_reversed = reversed_playback
+	_throw_released_sent = false
 	set_process(true)
 	_refresh()
 	return true
@@ -737,18 +741,38 @@ func _throw_phase_index() -> int:
 func _advance_throw(delta: float) -> void:
 	if _throw_seq == "":
 		return
+	## A HELD SEQUENCE IS A FROZEN IMAGE, so it must stop costing anything.
+	## Without this the aim redrew every frame for as long as the player took to
+	## decide: `_refresh()` reassigns the texture and offset, clears
+	## `_layer_frame_shown` and re-places the head and hat layers — real work,
+	## 60 times a second, to produce the identical picture. The aim is the state
+	## this character spends the MOST time in, so it is the worst place to leave
+	## a per-frame no-op.
+	if _throw_hold and _throw_t >= _throw_seconds:
+		return
 	var before := _throw_phase_index()
 	_throw_t += delta
 	if _throw_t >= _throw_seconds:
+		_throw_t = _throw_seconds
 		if _throw_hold:
-			_throw_t = _throw_seconds
-		else:
-			_throw_t = _throw_seconds
-			var finished := _throw_seq
 			_refresh()
-			_emit_release_if_crossed(before, _throw_phase_index(), finished)
-			stop_throw()
 			return
+		var finished := _throw_seq
+		_refresh()
+		_emit_release_if_crossed(before, _throw_phase_index(), finished)
+		## GUARANTEED, NOT MERELY LIKELY. `execute_grenade_throw()` AWAITS
+		## `throw_released`, so a release sequence that ends without ever
+		## emitting it does not degrade — it hangs the throw forever and the
+		## grenade is never thrown. Every early return in
+		## `_emit_release_if_crossed()` (a one-phase sequence, a posture swapped
+		## mid-flight, a phase index that cannot resolve) is such a path. This
+		## line closes all of them at once: by the end of a release, the round
+		## has left the hand by definition.
+		if finished == THROW_RELEASE and not _throw_reversed and not _throw_released_sent:
+			_throw_released_sent = true
+			throw_released.emit()
+		stop_throw()
+		return
 	_refresh()
 	_emit_release_if_crossed(before, _throw_phase_index(), _throw_seq)
 
@@ -769,7 +793,8 @@ func _emit_release_if_crossed(before: int, after: int, sequence: String) -> void
 	if count <= 1:
 		return
 	var release_index: int = int(round(THROW_RELEASE_FRACTION * float(count - 1)))
-	if before < release_index and after >= release_index:
+	if before < release_index and after >= release_index and not _throw_released_sent:
+		_throw_released_sent = true
 		throw_released.emit()
 
 

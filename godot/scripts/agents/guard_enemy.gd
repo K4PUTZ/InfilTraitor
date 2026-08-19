@@ -1108,9 +1108,11 @@ func attach_sprite(p_room: Node) -> bool:
 		return true
 	var s := AgentSprite.new()
 	s.name = "EnemySprite"
-	## TEMPORARY 2026-08-18: changed to _enemy_white for testing the white blazer
-	## variant. Revert to "_enemy" after confirming it works.
-	s.frame_family = "_enemy_white"  # was: "_enemy"
+	## Alpha enemy variant (2026-08-19): white blazer with stylized facial features
+	## (hair, beard, eyes, nose) to differentiate front/back. Inherits light
+	## response from test_white (ambient 0.75) to prevent the "branco virou cinza"
+	## issue. The faceless dark-suit _enemy palette remains in the repo.
+	s.frame_family = "_enemy_white"
 	## WHITE-AMBIENT-01 bracket knob, dev-only: dress the guard in another baked
 	## palette family without editing this line between runs. A bracket compared
 	## across separate edits is a bracket compared across separate binaries, and

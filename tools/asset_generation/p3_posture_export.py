@@ -400,7 +400,9 @@ ORDER = ["standing", "crouch", "prone"]
 #                       posture at all, so no head-turn behaviour can reach it.
 HAT_MESHES = ("seg_fedora_brim", "seg_fedora_curl", "seg_fedora_band",
               "seg_fedora_crown")
-HEAD_MESHES = ("seg_head",)
+HEAD_MESHES = ("seg_head", "seg_hair_top", "seg_hair_back",
+               "seg_eye_L", "seg_eye_R", "seg_nose",
+               "seg_beard_chin", "seg_beard_L", "seg_beard_R")
 PARTS = {
     "body": {"exclude": HEAD_MESHES + HAT_MESHES},
     "head": {"only": HEAD_MESHES},

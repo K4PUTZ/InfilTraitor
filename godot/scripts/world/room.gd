@@ -2742,6 +2742,8 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 			% [float(_s1 - _s0) / 1000.0, float(_s2 - _s1) / 1000.0,
 			float(_s3 - _s2) / 1000.0,
 			float(Time.get_ticks_usec() - _s3) / 1000.0, gus.size(), include_soot])
+		print("[SCOPED-PROF]   cells written: %d · TileSet alternatives minted: %d"
+			% [_voxel_renderer._scoped_writes, _voxel_renderer._alts_minted])
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
 	## the state a full one would have — the same class of claim PERF-03's
 	## equivalence probe guards for incremental invalidation, and the same class
@@ -2771,6 +2773,11 @@ const SHOT_REPAINT_SOOT_RINGS: int = 3
 ## holds. Mirrors DetonationChoreographer's `soot_fade_steps` /
 ## `soot_fade_frames_per_step` so a bullet's soot and a blast's arrive at the
 ## same rate — two fades at different speeds read as two different materials.
+## A/B SWITCH, and it exists because the first answer was wrong. Deferring the
+## soot cut the trigger frame's CPU but ADDED five stalls of 240-420 ms behind
+## it — measured by frame, not by function, which is the measurement that should
+## have been taken first. `INFILTRAITOR_SHOT_SOOT_DEFER=1` turns it back on.
+var shot_soot_deferred: bool = OS.get_environment("INFILTRAITOR_SHOT_SOOT_DEFER") == "1"
 var shot_soot_fade_steps: int = 4
 var shot_soot_fade_frames_per_step: int = 2
 
@@ -4038,6 +4045,89 @@ func _save_shot_frame(dir_path: String, file_name: String) -> void:
 	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
 
 
+## THE SHOT, FRAME BY FRAME, WITH EACH FRAME'S OWN DURATION.
+##
+## Built 2026-08-19 on the Director's report that everything stutters. Per-phase
+## CPU profiling said the trigger frame fell from 581 ms to ~94 ms, and the
+## report says it got WORSE — which is exactly the shape a profile cannot see:
+## deferring work does not delete it, and a stall broken into six stalls across
+## six frames can read worse than one long one. Only a per-FRAME timeline shows
+## that, so this prints one line per frame and saves one PNG per frame.
+##
+## The number that matters is the frame DELTA, not the CPU inside any one
+## function: a 60 Hz frame is 16.7 ms, and anything above that is a frame the
+## player did not get.
+func _capture_shot_filmstrip() -> void:
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_shot"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("shot_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	if _guards.is_empty():
+		push_error("[SHOT-FILM] needs a guard")
+		return
+	var idx_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
+	var guard_idx: int = idx_env.to_int() if idx_env.is_valid_int() else 0
+	guard_idx = clampi(guard_idx, 0, _guards.size() - 1)
+	if _camera_controller != null and agent != null:
+		_camera_controller.focus_on(agent._cell_to_world(
+			(agent.cell + _guards[guard_idx].cell) / 2))
+	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
+	_camera_controller.set_zoom_for_capture(
+		zoom_env.to_float() if zoom_env.is_valid_float() else 0.5)
+	if _fow_controller != null:
+		_fow_controller.reveal_around(agent.cell, 26)
+	for _i in range(15):
+		await get_tree().process_frame
+
+	var frames_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FRAMES")
+	var count: int = frames_env.to_int() if frames_env.is_valid_int() else 40
+	var save_images: bool = OS.get_environment("INFILTRAITOR_SHOT_FILM_SAVE") == "1"
+	var fire_at: int = 6
+	var last_us: int = Time.get_ticks_usec()
+	var over_budget: int = 0
+	var worst_ms: float = 0.0
+	## The MENU opens well before the trigger, exactly as a player does it. The
+	## first version opened and fired on the same frame and charged the trigger
+	## with the one-off cost of loading the `aimed` grip's textures — a real cost,
+	## but one that belongs to the aim, not to the shot.
+	var menu_at: int = 1
+	for i in range(count):
+		if i == menu_at:
+			_agent_shot_controller.open_menu_for(guard_idx)
+		if i == fire_at:
+			_agent_shot_controller.fire_at_active()
+		await RenderingServer.frame_post_draw
+		var now_us: int = Time.get_ticks_usec()
+		var ms: float = float(now_us - last_us) / 1000.0
+		last_us = now_us
+		if ms > 17.0:
+			over_budget += 1
+		worst_ms = maxf(worst_ms, ms)
+		print("[SHOT-FILM] frame %02d  %7.1f ms%s" % [i, ms,
+			"   <-- FIRE" if i == fire_at else (
+			"   <-- MENU" if i == menu_at else (
+			"   <-- DROPPED" if ms > 17.0 else ""))])
+		## ⚠️ SAVING A PNG COSTS ~180 ms, SO THE TIMED PASS MUST NOT SAVE ONE.
+		## The first version of this harness saved every frame and reported 187 ms
+		## and 184 ms for the two frames BEFORE the trigger — a flat baseline that
+		## is the encoder, not the game. A frame-timing harness that pays 180 ms
+		## per frame cannot measure a 90 ms stall; it can only measure itself.
+		## `INFILTRAITOR_SHOT_FILM_SAVE=1` turns the images back on for a run
+		## where the PICTURES are what is wanted and the timings are known junk.
+		if save_images:
+			var img := get_viewport().get_texture().get_image()
+			if img != null:
+				img.save_png("%s/shot_%02d.png" % [out_dir, i])
+		await get_tree().process_frame
+	print("[SHOT-FILM] %d of %d frames over 17 ms; worst %.1f ms%s" %
+		[over_budget, count, worst_ms,
+		"  (TIMINGS INVALID — images were saved)" if save_images else ""])
+
+
 ## The Director's report, made measurable (2026-08-19): *"digamos que eu joguei
 ## duas granadas no chao. Quando eu der o primeiro tiro com a shotgun, todos os
 ## voxels afetados pelas explosoes soltam fumaca novamente."*
@@ -4716,6 +4806,10 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif capture_action == "shot_filmstrip" and _agent_shot_controller != null:
+		await _capture_shot_filmstrip()
+		get_tree().quit(0)
+		return
 	elif capture_action == "grenade_then_shot" and _test_zone_controller != null:
 		await _capture_grenade_then_shot()
 		get_tree().quit(0)

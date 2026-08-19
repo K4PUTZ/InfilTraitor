@@ -1526,6 +1526,7 @@ func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
 	if _minted_light_alts.has(key):
 		return
 	_minted_light_alts[key] = true
+	_alts_minted += 1
 	var source: TileSetAtlasSource = _tileset.get_source(source_id)
 	if source == null:
 		return
@@ -2451,9 +2452,24 @@ func apply_light_field(field) -> void:
 ## `steps-1` down to 0 fades soot in from a field built ONCE, instead of
 ## rebuilding the field per step — the rebuild is the expensive half (a map-wide
 ## soot snapshot), and doing it N times would cost more than not deferring at all.
+## Cells actually written by the last scoped apply. The CPU inside this function
+## is not the whole cost — every `set_cell` also makes the TileMapLayer resubmit,
+## and that lands in the frame outside any profiler scope here. Counting the
+## writes is how that invisible half gets a number.
+var _scoped_writes: int = 0
+
+## How many TileSet ALTERNATIVES were actually created. `create_alternative_tile`
+## rebuilds the TileSet, and that cost lands in the frame outside any profiler
+## scope in this file — the suspected other half of the shot's impact frame
+## (258 ms of measured work inside a 522 ms frame).
+var _alts_minted: int = 0
+
+
 func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 	if field == null or gus.is_empty():
 		return
+	_scoped_writes = 0
+	_alts_minted = 0
 	var gu_set: Dictionary = {}
 	for gu in gus:
 		gu_set[gu] = true
@@ -2483,6 +2499,7 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
 			_ensure_light_alt(source_id, atlas_coords, alt_id)
 			layer.set_cell(cell, source_id, atlas_coords, alt_id)
+			_scoped_writes += 1
 	## Ghosted cells inside the affected GUs: retarget their stored alternative
 	## too (same reasoning as apply_light_field()'s ghost retarget loop), so
 	## un-ghosting later shows the bucket this toggle produced, not a stale one.

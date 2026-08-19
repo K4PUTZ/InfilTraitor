@@ -283,7 +283,11 @@ func fire_at_active() -> void:
 		resolved_picks.append({"index": i, "resolved": resolved})
 		_draw_tracer(muzzle_world, pellet_picks[i])
 
+	## NOTE THE NAME. This is RESOLVE only — the apply loop runs after the flight
+	## and was silently outside every earlier measurement, which is how ~250 ms of
+	## the impact frame went unaccounted for.
 	var prof_resolve_ms: float = float(Time.get_ticks_usec() - prof_t0) / 1000.0
+	var prof_apply0: int = 0
 	## Let the rounds cross. Frame-counted rather than timed, because what has to
 	## elapse is FRAMES DRAWN — the whole defect above was time passing without
 	## any being drawn.
@@ -293,6 +297,8 @@ func fire_at_active() -> void:
 		push_warning("[AgentShotController] room went away mid-flight (map reload?) — shot abandoned")
 		return
 
+	var prof_tail0: int = Time.get_ticks_usec()
+	prof_apply0 = Time.get_ticks_usec()
 	for entry in resolved_picks:
 		var i: int = int(entry["index"])
 		var resolved: Dictionary = entry["resolved"]
@@ -323,6 +329,7 @@ func fire_at_active() -> void:
 					_impact_vfx_done[vkey] = true
 					room.dispatch_impact_vfx(v.grid_pos, v.level, slice.material)
 
+	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
 	## (D15). That is a legitimate outcome, not a failure, so it is reported
 	## rather than warned about — the capture for this wave is required to
@@ -371,6 +378,7 @@ func fire_at_active() -> void:
 	## rules are WeaponBenchController's, copied because they are properties of
 	## this pipeline rather than of that caller.
 	room._destruction_render_busy = true
+	var prof_render0: int = Time.get_ticks_usec()
 	await room._voxel_renderer.process_dirty_async(room._edge_registry)
 	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
 		push_warning("[AgentShotController] room went away mid-shot (map reload?) — render pass abandoned")
@@ -381,6 +389,7 @@ func fire_at_active() -> void:
 		return
 	## PERF-03: a shot changes geometry and soot only, never a light or a shadow
 	## result — same contract the bench and the grenade repaint under.
+	var prof_render_ms: float = float(Time.get_ticks_usec() - prof_render0) / 1000.0
 	var prof_repaint0: int = Time.get_ticks_usec()
 	## SCOPED, not map-wide. See Room._repaint_voxel_light_buckets_scoped() for
 	## the measurement: the full apply walks every placed cell on the board and
@@ -390,7 +399,8 @@ func fire_at_active() -> void:
 		## SOOT DEFERRED. Geometry and lighting land now; the soot follows across
 		## frames with a fade (Director, 2026-08-19). This is what takes the
 		## map-wide soot snapshot — 141 ms of the shot — off the trigger frame.
-		room._repaint_voxel_light_buckets_scoped(repaint_scope, false)
+		room._repaint_voxel_light_buckets_scoped(repaint_scope,
+			not room.shot_soot_deferred)
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
@@ -399,13 +409,21 @@ func fire_at_active() -> void:
 	## two numbers, so they are printed rather than assumed — the figures it was
 	## scheduled on (resolve 1 ms, repaint ~310 ms) are from the retired bench in
 	## August and deserve re-measuring before anything is built on them.
-	print_debug("[AGENT-SHOT-PROF] resolve+apply %.2f ms cpu · repaint %.2f ms cpu · %d voxel(s)"
-		% [prof_resolve_ms, prof_repaint_ms, cell_to_voxel.size()])
+	## THE WHOLE TAIL, against the sum of its parts. The impact frame measured
+	## ~520 ms while the parts summed to ~253 — so either something between the
+	## probes is expensive, or the cost is engine-side and outside this function
+	## entirely. This line is what tells those two apart.
+	print_debug("[AGENT-SHOT-PROF] TAIL TOTAL %.2f ms (post-flight, wall)"
+		% [float(Time.get_ticks_usec() - prof_tail0) / 1000.0])
+	print_debug("[AGENT-SHOT-PROF] resolve %.2f · apply+vfx %.2f · render-pass %.2f · repaint %.2f ms · %d voxel(s)"
+		% [prof_resolve_ms, prof_apply_ms, prof_render_ms, prof_repaint_ms,
+		cell_to_voxel.size()])
 
 	## NOT awaited. The shot is over; the soot is decoration arriving late, and
 	## making the caller wait for it would put the cost straight back on the
 	## path this whole change exists to clear.
-	room.fade_in_scoped_soot(repaint_scope)
+	if room.shot_soot_deferred:
+		room.fade_in_scoped_soot(repaint_scope)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

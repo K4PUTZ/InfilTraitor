@@ -267,6 +267,22 @@ const AZIMUTH_DEG := 45.0
 ## claim false by construction.
 var frame_family: String = ""
 
+## WHICH GRIP THE FIGURE IS HOLDING — D40's third axis, and the reason the
+## `aimed` bake is reachable at all.
+##
+## D40: the weapon layer indexes on the GRIP (lowered / ready / aimed), and many
+## poses share one — *"idle, walk and turn are all lowered."* `lowered` is the
+## empty string because it is what ships and what every directory on disk is
+## named without a suffix; any other grip appends its own, exactly as
+## `frame_family` does one level up. That symmetry is deliberate: the bake side
+## (p3_posture_export.py's GRIP_SUFFIX) derives its directory names the same way,
+## so the two halves cannot drift into disagreeing about a path.
+##
+## Set through `set_grip()`, never directly — the setter is where a missing bake
+## is caught and refused, and a raw assignment would send `_ensure_posture()`
+## looking for a directory nobody baked.
+var grip: String = ""
+
 var room: Node = null
 
 ## The agent's facing in BASE space — see note 3. Starts N, which is what the
@@ -422,6 +438,39 @@ static func _dedup(values: Array) -> Array:
 	return seen
 
 
+## Swap the held grip — "" for `lowered` (what ships), "_aimed" for the firing
+## pose, and whatever else gets baked later.
+##
+## REFUSES rather than fails hard when the bake is absent, and that asymmetry
+## against `set_posture_name()` is deliberate. A missing POSTURE is a broken
+## install: the agent has to stand, crouch and lie down, so there is no sane
+## fallback and push_error is right. A missing GRIP is cosmetic — the figure
+## keeps holding the weapon the way it already was, and the shot resolves
+## identically either way — so it is the documented-fallback case the project's
+## error contract assigns to push_warning. The enemy families are exactly this:
+## `_enemy_white` has no `_aimed` bake, and a guard that someday fires must warn
+## once, not stop rendering.
+func set_grip(name: String) -> void:
+	if name == grip:
+		return
+	var previous: String = grip
+	grip = name
+	if not _ensure_posture(_posture, _dev_vision):
+		grip = previous
+		push_warning("[AgentSprite] no '%s' grip bake for family '%s' — keeping '%s'. Bake it with P3_GRIP=%s (see docs/pipelines/character_bake_pipeline.md)."
+			% [name if name != "" else "lowered", frame_family,
+			previous if previous != "" else "lowered",
+			name.trim_prefix("_") if name != "" else "lowered"])
+		return
+	_resolve_layers()
+	_refresh()
+	## PRINTED, because "which bake am I seeing" was answered wrong twice in one
+	## session by looking at a screenshot. The resolved root is the only
+	## unambiguous answer and it costs one line per grip change, not per frame.
+	print_debug("[AgentSprite] grip -> %s (%s)"
+		% [name if name != "" else "lowered", _posture_root(_dev_vision)])
+
+
 ## Called by the agent when its posture changes. Takes a NAME, not the enum —
 ## see POSTURE_DIRS.
 func set_posture_name(name: String) -> void:
@@ -494,16 +543,29 @@ func update_for_cell() -> void:
 	_refresh()
 
 
+## THE GRIP BELONGS IN THE CACHE KEY, and leaving it out is a silent bug rather
+## than a slow one: `_ensure_set()` early-returns on a key it already holds, so
+## two grips sharing one slot means whichever loaded FIRST is what gets drawn
+## forever — `set_grip()` would report success, `_refresh()` would redraw, and
+## the figure would never change pose. Found by capture on 2026-08-19, on the
+## first frame that was supposed to show the weapon coming up.
 func _set_key(name: String, dev: bool) -> String:
-	return name + (":dev" if dev else "")
+	return name + grip + (":dev" if dev else "")
 
 
 ## The single seam the milestone switch acts on. Both roots go through here, so
 ## there is exactly one place to look when asking "which bake am I seeing".
+## THE DEV ROOT CARRIES THE GRIP TOO, and the version that did not was worse
+## than a missing feature: dev vision is ON at boot, so `set_grip("_aimed")`
+## resolved to `agent_frames_dev/` — a directory with no grip variants — loaded
+## the frames that were already there, and returned SUCCESS. The figure never
+## changed pose, nothing warned, and the capture taken to prove the new pose was
+## really a photograph of the old one. Applying the suffix on both branches makes
+## the missing bake reachable by `set_grip()`'s own push_warning instead.
 func _posture_root(dev: bool) -> String:
 	if dev or DEV_ONLY_MILESTONE:
-		return FRAMES_ROOT_DEV
-	return FRAMES_ROOT.trim_suffix("/") + frame_family + "/"
+		return FRAMES_ROOT_DEV.trim_suffix("/") + grip + "/"
+	return FRAMES_ROOT.trim_suffix("/") + frame_family + grip + "/"
 
 
 func _walk_root(dev: bool) -> String:
@@ -740,10 +802,29 @@ func _build_layer_nodes() -> void:
 		_layer_materials[layer] = mat
 
 
+## Where the figure's HEAD sits, in this node's own local pixels, measured from
+## the bake rather than transcribed from it.
+##
+## The bake writes both numbers into anchor.json: `anchor_px` is the projection
+## of the feet and `head_socket_px` is the head. The gap between them is the
+## figure's real drawn reach, and it is per-posture — a crouched figure's head is
+## lower for reasons no constant can track. Vector2.ZERO when no set is loaded,
+## which callers must treat as "no measurement", never as "the origin".
+func head_offset_px() -> Vector2:
+	if _current_entry.is_empty():
+		return Vector2.ZERO
+	var sockets: Dictionary = _current_entry.get("head_socket", {})
+	if sockets.is_empty():
+		return Vector2.ZERO
+	var anchor: Vector2 = _current_entry["anchor"]
+	var socket: Vector2 = sockets.get(_current_view_facing, sockets.values()[0])
+	return (socket - anchor) * SPRITE_SCALE
+
+
 func _layer_root(layer: String, dev: bool) -> String:
 	if dev or DEV_ONLY_MILESTONE:
-		return String(LAYER_ROOTS[layer]) + "_dev/"
-	return String(LAYER_ROOTS[layer]) + frame_family + "/"
+		return String(LAYER_ROOTS[layer]) + "_dev" + grip + "/"
+	return String(LAYER_ROOTS[layer]) + frame_family + grip + "/"
 
 
 ## Which layers this family has ON DISK. Whether a given FRAME uses them is a
@@ -820,8 +901,11 @@ func _layer_group_for_posture(posture: String) -> String:
 			return ""
 
 
+## Same reasoning as _set_key(): the head and hat layers are baked per grip too
+## (agent_head_aimed/, agent_hat_aimed/), so they need the grip in their key or
+## the aimed body would be drawn wearing the lowered pose's head.
 func _layer_set_key(layer: String, group: String, dev: bool) -> String:
-	return "%s:%s%s" % [layer, group, ":dev" if dev else ""]
+	return "%s:%s%s%s" % [layer, group, grip, ":dev" if dev else ""]
 
 
 ## One yaw-indexed image set, loaded whole on first use (D42: a session where no

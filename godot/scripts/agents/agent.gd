@@ -137,6 +137,58 @@ func throw_origin() -> Vector2:
 	return position + HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
 
 
+## WEAPON_MASTER_PLAN §6c Part A — where a SHOT leaves this agent, in the same
+## space as `position`.
+##
+## Derived from the same HEAD_OFFSET anchor `throw_origin()` uses, and that is
+## the point of the function existing at all: §6c names the risk in so many
+## words — the muzzle *"is the same class of anchor and should not become a
+## second, independently-drifting copy."* Two hand-tuned "where the weapon is"
+## constants would disagree the first time a posture's shape is tuned, and the
+## disagreement would show as a tracer that starts somewhere the figure is not.
+##
+## MUZZLE_DROP_FRACTION is the one honest difference between a throw and a shot:
+## a grenade leaves from above the shoulder, a shouldered weapon's barrel sits a
+## little below the head. A fraction rather than a pixel figure, so it holds for
+## every posture and every future silhouette.
+const MUZZLE_DROP_FRACTION: float = 0.18
+
+## ⚠️ HEAD_OFFSET IS NOT USED HERE, AND THAT IS THE POINT.
+##
+## Those three vectors were tuned on 2026-08-10 (T-ARC) against the vector
+## DIAMOND placeholder — a figure this class stopped drawing on 2026-08-16, when
+## SILHOUETTE_WIDTH/HEIGHT below were corrected from 44x61 to the baked 104x222
+## and HEAD_OFFSET was not. Reading them costs 64 px where the real drawn reach
+## is ~169 px, and the first capture of a shot showed exactly that: the muzzle
+## flash went off at the agent's WAIST while the barrel sat at his shoulder.
+##
+## So the muzzle asks the SPRITE, which reads its own bake's `anchor_px` and
+## `head_socket_px` per posture — the same numbers the head layer is registered
+## against, so the flash cannot drift from the head it is supposed to be beside.
+## HEAD_OFFSET remains the fallback for the frames before a set is loaded, and
+## `throw_origin()` above still uses it: correcting the GRENADE's launch point
+## changes a shipped, tuned arc, which is a separate change with its own
+## verification and is NOT this wave's to make.
+func muzzle_origin() -> Vector2:
+	var head: Vector2 = Vector2.ZERO
+	if sprite != null:
+		head = sprite.head_offset_px()
+	if head == Vector2.ZERO:
+		head = HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
+	return position + head - Vector2(0.0, head.y * MUZZLE_DROP_FRACTION)
+
+
+## WEAPON_MASTER_PLAN §6c / B4 — raise or lower the held weapon.
+##
+## A passthrough rather than state of its own: the grip is a property of what is
+## DRAWN, and the sprite already owns the "which bake am I showing" question
+## (frame_family, posture, dev vision all live there). Duplicating it here would
+## make two answers to that question possible.
+func set_grip(name: String) -> void:
+	if sprite != null:
+		sprite.set_grip(name)
+
+
 ## How far above the floor that origin is, in pixels. The ballistic arc needs it
 ## as a number and not just as a point: a throw released above the plane it lands
 ## on peaks before halfway and falls longer than it rose, and that asymmetry is

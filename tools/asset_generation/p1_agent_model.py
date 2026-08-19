@@ -261,6 +261,28 @@ if _PALETTE:
     if _PALETTE not in PALETTES:
         raise SystemExit("[P1-MODEL][FAIL] P1_PALETTE=%s is not one of %s"
                          % (_PALETTE, sorted(PALETTES)))
+    # A PALETTE WITHOUT A VARIANT OVERWRITES THE AGENT'S OWN MODEL, and this is
+    # a loud fail because it already happened silently.
+    #
+    # `P1_PALETTE` and `P1_VARIANT` were independent: the palette decides WHAT
+    # is built (enemy_white is bare-headed and carries a face; the agent is
+    # hatted and has neither), and the variant decides WHERE it is written. Run
+    # 2026-08-18 22:52 set the first and not the second, so the enemy landed on
+    # `agent_base.blend` — the PLAYER's file — and measured identical to
+    # `agent_base_enemy_white.blend` the next day: same 0.92 blazer, same face,
+    # same missing fedora. Nothing failed at the time; the player's source model
+    # was simply gone, and would have surfaced as a hat popping off the moment
+    # anyone re-baked him.
+    #
+    # Refusing is deliberate over auto-deriving the variant from the palette:
+    # the caller declares where its output goes, the same contract
+    # p2_grip_spike.py's export path and p3's bake_family() already use.
+    if not _VARIANT:
+        raise SystemExit(
+            "[P1-MODEL][FAIL] P1_PALETTE=%s with no P1_VARIANT would write the "
+            "palette's model over agent_base.blend — the PLAYER's own source. "
+            "Pass P1_VARIANT=_%s (or an explicit variant) to name its own file."
+            % (_PALETTE, _PALETTE))
     MATS.update(PALETTES[_PALETTE])
     # The dev tint outranks the palette on purpose: DEV VISION exists to make
     # articulation legible, and it has to do that on every faction.

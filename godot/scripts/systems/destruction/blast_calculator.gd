@@ -197,9 +197,24 @@ static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angl
 ## max_steps is a clean miss, void, nothing happens, per D15). Deterministic
 ## via the project's standard FNV-1a hash (no RNG, D22): each pellet's angle
 ## is hashed from (salt, pellet index), not sampled from an RNG.
+## `aim_offset_deg` (§6c Part A, 2026-08-19) BIASES the cone's centre line off
+## `facing_delta`, instead of the cone always being centred on the grid axis.
+##
+## It exists because a shot fired BY AN ACTOR aims at another ACTOR, and two
+## actors are almost never on a shared grid axis — the PLAYGROUND pair sit at
+## (12,13) and (15,11), a delta of (3,-2). Every caller before this one fired
+## from a static prop whose facing WAS an axis by construction, which is why the
+## parameter is new rather than missing.
+##
+## Deliberately a bias on the existing angle term rather than a new ray walker:
+## `_walk_pellet_ray()` already steers by an angle off a forward axis (that is
+## what the cone's own spread is), so an off-axis aim is the same machinery with
+## a non-zero centre. Default 0.0 leaves every existing caller bit-identical —
+## and the hash inputs are untouched, so B4 determinism is unaffected.
 static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector2i,
 		half_angle_deg: float, max_steps: int, projectile_count: int,
-		blocked_edges: Dictionary, blocked_cells: Dictionary, salt: String) -> Array:
+		blocked_edges: Dictionary, blocked_cells: Dictionary, salt: String,
+		aim_offset_deg: float = 0.0) -> Array:
 	var picks: Array = []
 	if facing_delta == Vector2i.ZERO or projectile_count <= 0:
 		return picks
@@ -236,7 +251,7 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 		var rho_key: String = "%s:PELLET_RHO:%d" % [salt, i]
 		var theta: float = TAU * float(FacadeSampler._fnv1a_hash(theta_key) % 10000) / 10000.0
 		var rho: float = sqrt(float(FacadeSampler._fnv1a_hash(rho_key) % 10000) / 10000.0)
-		var angle_deg: float = half_angle_deg * rho * cos(theta)
+		var angle_deg: float = aim_offset_deg + half_angle_deg * rho * cos(theta)
 		var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, deg_to_rad(angle_deg),
 			max_steps, blocked_edges, blocked_cells)
 		if not hit.is_empty():
@@ -509,16 +524,21 @@ static func select_face_neighbours(slice: Slice, voxel_index: int, count: int,
 ## max_steps without meeting anything (a miss into the void, D26: it keeps
 ## travelling, it does not stop at a range limit).
 static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
-		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary) -> Dictionary:
+		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary,
+		aim_offset_deg: float = 0.0) -> Dictionary:
 	if facing_delta == Vector2i.ZERO:
 		return {}
 	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
-	var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, 0.0, max_steps,
-		blocked_edges, blocked_cells)
+	var hit := _walk_pellet_ray(source_gu, facing_delta, lateral,
+		deg_to_rad(aim_offset_deg), max_steps, blocked_edges, blocked_cells)
 	if hit.is_empty():
 		return {}
-	## Chebyshev distance is exact here: a zero-angle walk only ever steps
-	## along `facing_delta`, so the GU delta is a pure multiple of it.
+	## Chebyshev distance, and it is EXACT ONLY ON AXIS. A zero-angle walk steps
+	## purely along `facing_delta`, so the GU delta is a multiple of it and the
+	## max-component distance is the real one. An off-axis aim also drifts along
+	## `lateral`, and there the same expression is the Chebyshev distance of a
+	## genuinely 2-D delta — still the right quantity for the penetration term,
+	## which counts GU steps, but no longer a pure multiple of anything.
 	var delta: Vector2i = hit["gu"] - source_gu
 	hit["steps"] = maxi(absi(delta.x), absi(delta.y))
 	return hit

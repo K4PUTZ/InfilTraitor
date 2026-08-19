@@ -744,7 +744,71 @@ effect *there*. Deliberately last: it depends on the AI/perception work that
 
 ---
 
-## 6c. 🟡 NEXT WAVE — THE AGENT SHOOTS (planned 2026-08-17, not started)
+## 6c. ✅ BUILT 2026-08-19 — THE AGENT SHOOTS (planned 2026-08-17)
+
+**Parts A–E all landed. B1–B4 answered by the Director the same day** (B1: the
+action lives on the ENEMY's menu; B2: he fires what he holds, the shotgun; B3:
+see below — it is UNREACHABLE, and that is measured; B4: the `aimed` grip was
+baked and wired). Evidence:
+`Screenshots/history/shot_stone_{1_aim,2_tracer,3_damage}.png` and
+`shot_ctrl_3_damage.png` (the control).
+
+**Measured on the real map, through the real click path** — a synthetic
+right-click into `_unhandled_input()` and a parsed Enter through the focused
+Button, never a direct call to the controller:
+
+    [AGENT-SHOT] from=(10, 8) at=(13, 4) outcome=MISS(forced) axis=(0, -1)
+                 offset=36.9 deg landed=24/24 impacts=[(14, 4), (13, 4)]
+                 voxels=15 tiers={ 3: 15 }
+
+15 voxels DENTED on the stone wall behind the target. **The damage was confirmed
+by a CONTROL run**, not by looking at the screenshot: same boot, same camera
+path, same binary, cancelling the menu instead of firing — 2 161 strongly-changed
+pixels in a bbox that lands on the struck face. The control exists because the
+first read of the uncontrolled capture was WRONG: the marks are real but
+low-contrast on a busy stone facade, and "15 voxels changed state" and "a mark
+you can see" are different claims.
+
+**B3 — the void case is UNREACHABLE in-game, and that is a measurement rather
+than a skipped criterion.** `MapCompiler` is the only place the buffer is applied
+(architecture rule 7) and it blocks every tile outside the playable segment, so
+every map is fully enclosed. PLAYGROUND is 44x22 inner with `buffer: 1`, and
+`PELLET_FLOOD_MAX_STEPS` is 40 — a ray fired from anywhere reaches a perimeter
+wall before exhausting its walk. Measured by trying: a shot across the open east
+half from (30,16) travelled ~14 GU into the boundary at x=44,
+`landed=24/24, tiers={3: 19, 2: 6}`. D15's void path IS covered by selftest
+(`test_line_impact_is_straight_and_measures_distance` and
+`test_aim_offset_steers_the_shot_off_axis` both assert `{}` for a ray into open
+space), but no capture on any existing map can show it. It needs a map with an
+opening, or a `max_steps` below the board's half-width.
+
+**Four defects found BY CAPTURE that no gate caught**, all fixed here:
+1. `p3_posture_export.py` keyed its bake directories on the MODEL only, so
+   `P3_GRIP=aimed` would have overwritten the shipped `lowered` frames — the
+   ones idle, walk and turn draw from. The grip now reaches the directory
+   (`GRIP_SUFFIX`); `lowered` keeps the bare name, so nothing shipped moved.
+2. `AgentSprite._set_key()` omitted the grip, so both grips shared one cache
+   slot and whichever loaded first was drawn forever — `set_grip()` reported
+   success and the figure never changed pose.
+3. `_posture_root()` ignored the grip on the DEV branch. Dev vision is ON at
+   boot, so the raise silently resolved to `agent_frames_dev/` and did nothing.
+   Both branches carry it now, and the dev `_aimed` bake exists.
+4. `muzzle_origin()` first derived from `HEAD_OFFSET`, tuned in 2026-08-10
+   against the vector DIAMOND placeholder and never corrected when the baked
+   figure landed — 64 px against a real drawn reach of ~169 px. The flash went
+   off at the agent's WAIST. It now reads `anchor_px`/`head_socket_px` from the
+   bake. **`throw_origin()` still uses the stale constant** — correcting the
+   grenade's launch point changes a shipped, tuned arc and is a separate change
+   with its own verification.
+
+**One thing added beyond the parts, named rather than smuggled:** the agent
+TURNS toward his target before raising the weapon. The first capture made the
+omission read as a bug in the shot rather than as a missing nicety.
+
+---
+
+### The original plan, as written 2026-08-17 (nothing below retracted)
+
 
 **Director, 2026-08-16, scoping it down from a full aim mode:**
 

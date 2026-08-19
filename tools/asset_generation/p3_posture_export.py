@@ -79,12 +79,27 @@ import p2_grip_spike as p2                                       # noqa: E402
 GRIP = os.environ.get("P3_GRIP", "lowered")
 WEAPON = os.environ.get("P3_WEAPON", "shotgun")
 
+# THE GRIP REACHES THE OUTPUT DIRECTORY, and it did not until 2026-08-19.
+#
+# The posed GLBs were always grip-namespaced (`agent_posed_shotgun_lowered*`),
+# so the export half of this script was safe. The BAKE half was not: both the
+# sheet directory and POSTURE_OUT/LAYER_OUT keyed on the MODEL alone, so
+# `P3_GRIP=aimed` would have written its frames straight over the shipped
+# `lowered` ones — the frames idle, walk and turn are drawn from — and its
+# manifest over theirs. Exactly the collision the P2_MODEL comment above
+# records, one axis across.
+#
+# `lowered` keeps the bare name because it is what ships and nothing downstream
+# should move; every other grip earns a suffix.
+GRIP_SUFFIX = "" if GRIP == "lowered" else "_" + GRIP
+
 # The model variant reaches the directory name. It did not at first, and the
 # DEV VISION run silently overwrote the normal run's frames AND its manifest —
 # the same class of collision p2_grip_spike.py's export path had already been
 # bitten by, where two exports of different models landed on one filename.
 SHEET_DIR = os.path.join(p2.REPO_ROOT, "Screenshots",
-                         "p3_postures" + p2._MODEL.replace("agent_base", ""))
+                         "p3_postures" + p2._MODEL.replace("agent_base", "")
+                         + GRIP_SUFFIX)
 
 
 # §4.7, as the Director stated it: standing slightly taller than a slice,
@@ -106,6 +121,16 @@ def bake_family(model_name):
     if suffix in BAKE_FAMILY:
         return BAKE_FAMILY[suffix]
     return suffix          # e.g. "_enemy" keeps its own root
+
+
+def out_family(model_name):
+    """The bake directory's family token: the MODEL's, plus the GRIP's.
+
+    Deliberately separate from bake_family(): p3_walk_export.py imports that one
+    and the walk is `lowered` by definition (D40), so widening it there would
+    have moved the walk's frames for no reason.
+    """
+    return bake_family(model_name) + GRIP_SUFFIX
 
 
 def log(m):
@@ -559,7 +584,7 @@ def _layer_entries(parts_by_posture):
     says so and moves on. A missing HEAD is another matter and is caught in
     main(), where the headless body it would have to accompany is chosen.
     """
-    fam = bake_family(p2._MODEL)
+    fam = out_family(p2._MODEL)
     entries = []
     for posture in LAYERED:
         for layer in ("head", "hat"):
@@ -647,7 +672,7 @@ def main():
                            ## windowed boot, the same contract p3_walk_export.py
                            ## writes. The dev-joint variant goes to its own root
                            ## because AgentSprite loads it as a separate set.
-                           out_dir=POSTURE_OUT % (bake_family(p2._MODEL), n),
+                           out_dir=POSTURE_OUT % (out_family(p2._MODEL), n),
                            height_m=round(shipping[n][1], 4),
                            voxels=round(shipping[n][1] / VOXEL_M, 2),
                            headless=n in LAYERED,
@@ -665,7 +690,7 @@ def main():
                 dict(glb=os.path.relpath(dict(written)[posture],
                                          p2.REPO_ROOT).replace(os.sep, "/"),
                      height_m=round(heights[posture], 4),
-                     body_dir=POSTURE_OUT % (bake_family(p2._MODEL), posture),
+                     body_dir=POSTURE_OUT % (out_family(p2._MODEL), posture),
                      layer_dirs=[e["out_dir"] for e in _layer_entries(parts_by_posture)
                                  if e["posture"] == posture])
                 for posture in LAYERED],

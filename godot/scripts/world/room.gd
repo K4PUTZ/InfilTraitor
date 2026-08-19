@@ -14,6 +14,9 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
 const WeaponBenchControllerClass = preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")
+## WEAPON_MASTER_PLAN §6c — the agent shoots. Separate from the bench controller
+## above, which fires from a static prop; see agent_shot_controller.gd's header.
+const AgentShotControllerClass = preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")
 const DetonateContextMenuClass = preload("res://godot/scripts/ui/detonate_context_menu.gd")
 const ModalStackClass = preload("res://godot/scripts/ui/modal_stack.gd")
 const WorldMarkersOverlayControllerClass = preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")
@@ -454,6 +457,11 @@ var _floating_collectible: Node = null
 ## TEST-ZONE weapons bench (2026-07-29): static, aimed, right-click-firable
 ## weapon props — see TEST_ZONE_WEAPON_ROWS and WeaponBenchController.
 var _weapon_bench_controller: WeaponBenchControllerClass = null
+## §6c: right-click an ENEMY to open "Atirar" (B1, Director 2026-08-19 — the
+## action lives on the target's menu, not the shooter's).
+var _agent_shot_controller: AgentShotControllerClass = null
+## §6c Part D: the decorative projectile. Amends D21 — visible, never simulated.
+var _tracer_overlay: TracerOverlay = null
 var _context_menu: DetonateContextMenuClass = null
 ## ESC-STACK-01: see modal_stack.gd — single source of truth for what Escape
 ## targets next (main menu, controls sub-panel, the grenade context menu, ...).
@@ -1299,6 +1307,11 @@ func _ready() -> void:
 	## are now passed in per open (DetonateContextMenu.open_at).
 	_test_zone_controller = TestZoneControllerClass.new(self)
 	_weapon_bench_controller = WeaponBenchControllerClass.new(self)
+	## §6c: same shared menu instance, a third verb. The bench is retired from
+	## PLAYGROUND but its controller stays constructed — the menu contract is
+	## per-open (open_at), so an unused controller costs nothing and removing it
+	## would be an unrequested cleanup of code that still carries §6b's history.
+	_agent_shot_controller = AgentShotControllerClass.new(self)
 	_context_menu = DetonateContextMenuClass.new()
 	$HUD.add_child(_context_menu)
 	_context_menu.cancelled.connect(_cancel_prop_menus)
@@ -1307,6 +1320,13 @@ func _ready() -> void:
 	_context_menu.opened.connect(func(): _modal_stack.push(_cancel_context_menu))
 	_context_menu.closed.connect(func(): _modal_stack.remove(_cancel_context_menu))
 	_populate_test_zone_if_playground()
+
+	## §6c Part D: the tracer overlay. Added to the ROOM rather than the HUD so
+	## it lives in world space — the muzzle and the impact are both world points,
+	## and a HUD child would need both converted every frame instead of once.
+	var TracerOverlayClass = preload("res://godot/scripts/overlays/tracer_overlay.gd")
+	_tracer_overlay = TracerOverlayClass.new()
+	add_child(_tracer_overlay)
 
 	## Dev 04: Create and setup trail overlay
 	var TrailOverlayClass = preload("res://godot/scripts/overlays/trail_overlay.gd")
@@ -3472,6 +3492,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			_weapon_bench_controller.open_menu_for(weapon_index)
 			get_viewport().set_input_as_handled()
 			return
+		## §6c / B1: right-click an ENEMY opens "Atirar" instead of walking the
+		## agent onto him. Checked LAST of the three prop routes and before the
+		## move fallback: the grenades and the bench are consumable test props
+		## that a click should prefer, and a guard's cell is never a legal move
+		## target anyway (it is in the navigation blocked set), so this branch
+		## takes a click that would otherwise have been silently discarded.
+		var guard_index := -1
+		if _agent_shot_controller != null:
+			guard_index = _agent_shot_controller.hit_test(mb.position)
+		if guard_index != -1:
+			_agent_shot_controller.open_menu_for(guard_index)
+			get_viewport().set_input_as_handled()
+			return
 		var move_target := _screen_to_tile(mb.position)
 		if move_target != INVALID_CELL:
 			_selection_controller.handle_move_click(move_target)
@@ -3628,6 +3661,159 @@ func _seed_dev_grenades_if_empty(tag: String) -> void:
 		_test_zone_controller.add_grenade(seed_gu)
 	print("[%s] seeded %d dev grenade(s) — PLAYGROUND no longer ships them" % [
 		tag, _test_zone_controller._grenades.size()])
+
+
+## WEAPON_MASTER_PLAN §6c Part E — the evidence capture for "the agent shoots".
+##
+## Drives the REAL click path, not the controller's methods: a synthetic
+## right-click through _unhandled_input() at the guard's own hit-test cell, then
+## a parsed Enter InputEventKey through the focused Button. Same standing
+## precedent, and the same reason, as test_zone_detonate — calling
+## fire_at_active() directly would prove the damage pipeline works and say
+## nothing about whether the menu can be reached.
+##
+## Both actor cells are overridable because the wave's whole claim is
+## geometric ("GU A to GU B, and the wall C behind it"), and the guard PATROLS —
+## an unattended capture that let him wander would photograph a different shot
+## every run. INFILTRAITOR_SHOT_AGENT_CELL / INFILTRAITOR_SHOT_GUARD_CELL pin
+## both ends; unset, it fires from wherever the two actors happen to stand,
+## which is the honest default for a "does this work at all" run.
+func _capture_agent_shot() -> void:
+	if agent == null or _guards.is_empty():
+		push_error("[AGENT-SHOT-CAPTURE] needs an agent AND at least one guard — PLAYGROUND ships one of each.")
+		return
+	var guard = _guards[0]
+	var agent_env := OS.get_environment("INFILTRAITOR_SHOT_AGENT_CELL")
+	if agent_env != "":
+		var ap := agent_env.split(",")
+		if ap.size() == 2:
+			agent.set_cell(Vector2i(ap[0].to_int(), ap[1].to_int()))
+	## GuardEnemy has NO set_cell() — that is the Agent's API, and assuming the
+	## two actors shared it cost one real run to find out (the SCRIPT ERROR
+	## aborted the rest of this function and the process still exited 0, exactly
+	## the trap CLAUDE.md's selftest rule describes). A guard's cell is placed by
+	## its own two fields plus the world transform, the same three lines
+	## `setup()` and `reset_to_route_start()` both use.
+	var guard_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_CELL")
+	if guard_env != "":
+		var gp := guard_env.split(",")
+		if gp.size() == 2:
+			guard.cell = Vector2i(gp[0].to_int(), gp[1].to_int())
+			guard.position = guard._cell_to_world(guard.cell)
+			guard.queue_redraw()
+
+	## Frame BOTH actors: a capture centred on either one alone cannot show the
+	## trajectory, which is the thing being verified.
+	var mid: Vector2i = (agent.cell + guard.cell) / 2
+	if _camera_controller != null:
+		_camera_controller.focus_on(agent._cell_to_world(mid))
+	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
+	if zoom_env.is_valid_float() and _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom_env.to_float())
+	if _fow_controller != null:
+		_fow_controller.reveal_around(mid, 24)
+	_recompute_occlusion()
+	for _i in range(12):
+		await get_tree().process_frame
+
+	print("[AGENT-SHOT-CAPTURE] agent at %s, guard at %s" % [agent.cell, guard.cell])
+	## NAMED, not auto_-prefixed. Screenshots/history/ rotates to the 50 most
+	## recent `auto_` files and never touches anything else, so a capture meant to
+	## be CITED has to opt out of the rotation by not carrying that prefix —
+	## measured 2026-08-03, when 16 of 23 cited captures had already been pruned.
+	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(shot_dir)
+	var tag := OS.get_environment("INFILTRAITOR_SHOT_TAG")
+	if tag == "":
+		tag = "default"
+
+	## The real right-click, at the guard's own GU floor cell — the hitbox
+	## AgentShotController.hit_test() actually reads.
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_RIGHT
+	click.pressed = true
+	click.position = _tile_to_screen_center(guard.cell)
+	_unhandled_input(click)
+	for _j in range(12):
+		await get_tree().process_frame
+	if _context_menu == null or not _context_menu.visible:
+		push_error("[AGENT-SHOT-CAPTURE] the right-click did not open a menu on the guard — B1's routing is not reaching AgentShotController.hit_test().")
+		return
+	## FRAME 1 — the menu open on the ENEMY (B1) and the weapon UP (B4). Taken
+	## before the trigger because both are true only while the menu is open: the
+	## shot itself resolves in a single frame and lowers the weapon on its way
+	## out.
+	await _save_shot_frame(shot_dir, "shot_%s_1_aim.png" % tag)
+
+	## INFILTRAITOR_SHOT_CONTROL=1 — the CONTROL run: everything identical up to
+	## and including the menu, then Escape instead of Enter. It exists because
+	## "15 voxels DENTED" and "a mark you can see" are different claims, and the
+	## stone facade is busy enough that squinting at one screenshot cannot tell
+	## them apart. Two frames from the same boot, the same camera path and the
+	## same binary differ ONLY by the shot, so a diff over the wall region is a
+	## measurement rather than an impression.
+	var control := OS.get_environment("INFILTRAITOR_SHOT_CONTROL") == "1"
+	var fire_key: Key = KEY_ESCAPE if control else KEY_ENTER
+	if control:
+		print("[AGENT-SHOT-CAPTURE] CONTROL run — cancelling instead of firing")
+	var key_down := InputEventKey.new()
+	key_down.keycode = fire_key
+	key_down.pressed = true
+	Input.parse_input_event(key_down)
+	var key_up := InputEventKey.new()
+	key_up.keycode = fire_key
+	key_up.pressed = false
+	Input.parse_input_event(key_up)
+
+	## Long enough for the frame-spread render pass to finish and the damage to
+	## be on screen. The TRACER is deliberately gone by then (it lives ~0.2 s):
+	## a capture of the streak needs a much shorter wait, which is what
+	## INFILTRAITOR_SHOT_WAIT_FRAMES is for.
+	## FRAME 2 — the decorative projectile in flight (Part D). TracerOverlay
+	## holds for 0.05 s and fades over 0.16 s, so this frame has to be taken
+	## early or there is nothing to photograph; the number is derived from those
+	## two constants rather than guessed.
+	var tracer_env := OS.get_environment("INFILTRAITOR_SHOT_TRACER_FRAMES")
+	var tracer_wait: int = tracer_env.to_int() if tracer_env.is_valid_int() else 4
+	for _t in range(maxi(tracer_wait, 0)):
+		await get_tree().process_frame
+	await _save_shot_frame(shot_dir, "shot_%s_2_tracer.png" % tag)
+
+	## FRAME 3 — the damage, once the frame-spread render pass has landed it.
+	var wait_env := OS.get_environment("INFILTRAITOR_SHOT_WAIT_FRAMES")
+	var wait: int = wait_env.to_int() if wait_env.is_valid_int() else 90
+	for _k in range(maxi(wait, 0)):
+		await get_tree().process_frame
+	## Reframe onto the impact before the last frame: the wall the round reached
+	## is often nowhere near the shooter (D26 — a miss keeps travelling), and a
+	## capture centred on the shooter proves the shot happened while showing none
+	## of what it did.
+	var impact_env := OS.get_environment("INFILTRAITOR_SHOT_IMPACT_CELL")
+	if impact_env != "" and _camera_controller != null:
+		var ip := impact_env.split(",")
+		if ip.size() == 2:
+			_camera_controller.focus_on(agent._cell_to_world(
+				Vector2i(ip[0].to_int(), ip[1].to_int())))
+			var iz := OS.get_environment("INFILTRAITOR_SHOT_IMPACT_ZOOM")
+			if iz.is_valid_float():
+				_camera_controller.set_zoom_for_capture(iz.to_float())
+			for _f in range(20):
+				await get_tree().process_frame
+	await _save_shot_frame(shot_dir, "shot_%s_3_damage.png" % tag)
+
+
+## One named capture frame for the §6c evidence set. Separate from
+## _capture_screenshot_to_file() because that one owns the Shift+P destination
+## and this one must land in history/ under a name the rotation ignores.
+func _save_shot_frame(dir_path: String, file_name: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if img == null:
+		push_error("[AGENT-SHOT-CAPTURE] null viewport image for %s" % file_name)
+		return
+	var full := "%s/%s" % [dir_path, file_name]
+	img.save_png(full)
+	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
 
 
 func _capture_detonation_filmstrip() -> void:
@@ -4213,6 +4399,8 @@ func _run_auto_screenshot_capture() -> void:
 		_hud_controller.show_busted()
 		for _j in range(20):
 			await get_tree().process_frame
+	elif capture_action == "agent_shot" and _agent_shot_controller != null:
+		await _capture_agent_shot()
 	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:
 		await _capture_detonation_filmstrip()
 		get_tree().quit(0)
@@ -4961,14 +5149,18 @@ func _cancel_context_menu() -> void:
 	_cancel_prop_menus()
 
 
-## WEAPON-FIRE-01: one menu serves two prop types, so cancelling has to clear
-## whichever one armed it. Both cancels are idempotent (each early-returns when
-## it has no active index), so calling both unconditionally is safe and avoids a
-## second "which controller opened this" variable that could go stale.
+## WEAPON-FIRE-01: one menu serves several prop types, so cancelling has to
+## clear whichever one armed it. Every cancel is idempotent (each early-returns
+## when it has no active index), so calling them all unconditionally is safe and
+## avoids a "which controller opened this" variable that could go stale.
+##
+## §6c added the third: the agent's shot, armed from an ENEMY rather than a prop.
 func _cancel_prop_menus() -> void:
 	_test_zone_controller.cancel_active()
 	if _weapon_bench_controller != null:
 		_weapon_bench_controller.cancel_active()
+	if _agent_shot_controller != null:
+		_agent_shot_controller.cancel_active()
 
 func _on_screenshot_requested() -> void:
 	print_debug("[ROOM] Handler: screenshot requested (Shift+P)")

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**208 scripts · 60032 lines total** (under `godot/scripts/`)
+**211 scripts · 61029 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,11 +17,11 @@
 - **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 384 lines
+`class_name DebugAgent` · extends `Node2D` · 436 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -51,6 +51,7 @@
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
+- `MUZZLE_DROP_FRACTION` = `0.18`
 - `SILHOUETTE_WIDTH` = `104.0`
 - `SILHOUETTE_HEIGHT` = `222.0`
 - `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
@@ -72,6 +73,8 @@
 
 **Public API**
 - `func throw_origin() -> Vector2:`
+- `func muzzle_origin() -> Vector2:`
+- `func set_grip(name: String) -> void:`
 - `func throw_launch_height() -> float:`
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
 - `func attach_sprite(p_room: Node) -> bool:`
@@ -87,7 +90,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1079 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1163 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -123,18 +126,12 @@
 
 **Public vars**
 - `var frame_family: String = ""`
-- `var room: Node = null`
 
 **Public API**
-- `func setup(p_room: Node) -> bool:`
-- `func set_posture_name(name: String) -> void:`
-- `func face_direction(dir: Vector2i) -> void:`
-- `func face_step(step: Vector2i) -> void:`
-- `func set_dev_vision(enabled: bool) -> void:`
-- `func update_for_cell() -> void:`
 - `func set_walk_phase_quantise(n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
+- `func head_offset_px() -> Vector2:`
 - `func set_head_yaw_grid_deg(grid_deg: float) -> void:`
 - `func clear_head_yaw() -> void:`
 
@@ -1618,6 +1615,27 @@ extends `Node2D` · 110 lines
 
 ---
 
+### `tracer_overlay.gd`
+
+`class_name TracerOverlay` · extends `Node2D` · 105 lines
+
+`godot/scripts/overlays/tracer_overlay.gd`
+
+**Constants / tuning**
+- `CORE_COLOR` = `Color(1.0, 0.93, 0.72, 0.95)`
+- `TAIL_COLOR` = `Color(1.0, 0.62, 0.22, 0.55)`
+- `CORE_WIDTH_PX` = `2.0`
+- `TAIL_WIDTH_PX` = `4.0`
+- `HOLD_S` = `0.14`
+- `FADE_S` = `0.16`
+- `STREAK_FRACTION` = `0.35`
+
+**Public API**
+- `func add_tracer(from: Vector2, to: Vector2) -> void:`
+- `func clear_tracers() -> void:`
+
+---
+
 ### `trail_overlay.gd`
 
 extends `Node2D` · 43 lines
@@ -1758,7 +1776,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1515 lines
+`class_name BlastCalculator` · 1535 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1858,6 +1876,16 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `RES_MATERIALS_DIR` = `"res://materials"`
 - `USER_MATERIALS_DIR` = `"user://materials"`
+
+---
+
+### `shot_hit_roll.gd`
+
+`class_name ShotHitRoll` · 70 lines
+
+`godot/scripts/systems/destruction/shot_hit_roll.gd`
+
+> ShotHitRoll — WEAPON_MASTER_PLAN D12's FIRST roll: does the shot hit the actor it was aimed at? The second roll (how much damage) is ShotPunchTable's and has shipped since 2026-08-02; this is the half that never existed. WHY IT EXISTS AS A REAL SEAM RATHER THAN AN `if false`. §6c Part C, in the Director's own scoping of this wave: the agent *"erra sempre o alvo (por enquanto)"* — but the always-miss has to run THROUGH the roll and force its outcome, not around it. A caller that skipped straight to the wall-damage path would be a second code path to delete the day the hit lands, and the deletion is the part that goes wrong. Forcing the outcome instead means the hit path is one enum away. WHAT IS DELIBERATELY NOT HERE. D12 is explicit that hittability is a STATS concern decoupled from what the sprite looks like: agent skill, cover, shadow, weapon level, powerups. None of those stats exist on any actor yet, so `chance_for()` below is a single named seam returning a placeholder, in the same spirit as WeaponBenchController._agent_skill() — one obvious place for the real terms to land, rather than a literal smeared across call sites. D32 will make the number player-facing (the cyclable target list's hit percentage). That is combat-phase surface and explicitly NOT this wave; the function it will read is this one. Tunables are `static var`, never `const` — architecture rule 1, and this file is a balancing lever like every other table beside it.
 
 ---
 
@@ -2776,7 +2804,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2185 lines
+extends `SceneTree` · 2252 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2839,6 +2867,7 @@ extends `SceneTree` · 2185 lines
 - `func test_cone_spread_is_a_disc_not_a_line() -> void:`
 - `func test_no_shipped_weapon_reaches_the_cascade() -> void:`
 - `func test_line_impact_is_straight_and_measures_distance() -> void:`
+- `func test_aim_offset_steers_the_shot_off_axis() -> void:`
 - `func test_pellet_selection_is_deterministic() -> void:`
 - `func test_carved_side_faces_the_blast() -> void:`
 - `func test_carved_side_survives_rotation() -> void:`
@@ -4282,6 +4311,24 @@ extends `Node2D` · 34 lines
 
 ---
 
+### `agent_shot_controller.gd`
+
+`class_name AgentShotController` · 407 lines
+
+`godot/scripts/world/controllers/agent_shot_controller.gd`
+
+> AgentShotController — WEAPON_MASTER_PLAN §6c: THE AGENT SHOOTS. The Director's own scoping of the wave (2026-08-16): *"O que a gente quer testar agora é só a mecânica de mirar da GU A para a GU B e o tiro acertar a parede C atrás. Pra isso só precisamos de um inimigo em qualquer posição, e ao clicar nele + 'disparar', como fizemos com a granada, o agente atira, e por falta de outra opção, erra sempre o alvo (por enquanto)."* THIS IS D25 LITERALLY — a shot always targets an ACTOR, picked through the same contextual menu the grenade already uses. It is NOT §5c's aim mode: D31's weapon slots and `S` key and D32's Tab-cycled target list with a visible hit percentage are combat-phase surface, explicitly out of this wave. D32 later replaces this menu AS A UI while leaving D25's principle untouched, so nothing here is written to survive it — the parts worth keeping are the roll (ShotHitRoll), the origin (Agent.muzzle_origin()) and the off-axis aim (BlastCalculator's aim_offset_deg), all of which live outside this file. WHAT IT REUSES RATHER THAN REBUILDS, which is most of it: §6c's own audit found that everything downstream of a miss shipped in July. The pellet selection, the impact resolution, D30's punch ladder, the bullet marks, the face-local soot and the whole decal pipeline are called here exactly as WeaponBenchController calls them. What is genuinely new is that a shot now leaves an ACTOR AT A POSITION and that something is drawn between the muzzle and the wall. WHY IT IS A SECOND CONTROLLER AND NOT A BRANCH INSIDE WeaponBenchController: that one owns static props placed on a bench — it holds `_weapons` rows with their own GU cells, facings and shot counters, and PLAYGROUND retired every one of them on 2026-08-17. Threading an actor through its prop model would have meant a fake prop standing in for the agent, which is the substitution this project's evidence rules ban. The bench file stays as it is, unused by PLAYGROUND but intact for its calibration history (§6b).
+
+**Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `WEAPON_ID` = `"shotgun"`
+
+**Public API**
+- `func cancel_active() -> void:`
+- `func fire_at_active() -> void:`
+
+---
+
 ### `debug_tools_controller.gd`
 
 `class_name DebugToolsController` · 189 lines
@@ -4627,7 +4674,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 5002 lines
+extends `Node2D` · 5194 lines
 
 `godot/scripts/world/room.gd`
 
@@ -4645,6 +4692,7 @@ extends `Node2D` · 5002 lines
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
 - `WeaponBenchControllerClass` = `preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")`
+- `AgentShotControllerClass` = `preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")`
 - `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
 - `ModalStackClass` = `preload("res://godot/scripts/ui/modal_stack.gd")`
 - `WorldMarkersOverlayControllerClass` = `preload("res://godot/scripts/world/controllers/world_markers_overlay_controller.gd")`

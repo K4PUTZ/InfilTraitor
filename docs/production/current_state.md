@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.104 · **Updated:** 2026-08-18 · **Branch:** main
+**Version:** 0.9.104 · **Updated:** 2026-08-19 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -67,6 +67,7 @@
 - RESUMO_SESSAO_2026-08-17_LEAK_CYCLE_AND_CHARACTER_LAYERS.md
 - RESUMO_SESSAO_2026-08-17_WHITE_BRACKET_PLAYGROUND_REFORM.md
 - RESUMO_SESSAO_2026-08-18_HEAD_LAYER_PLUMBING.md
+- RESUMO_SESSAO_2026-08-19_ALPHA_ENEMY_HAIR.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

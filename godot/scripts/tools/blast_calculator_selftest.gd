@@ -76,6 +76,7 @@ func _init() -> void:
 	test_punch_coefficient_ordering()
 	test_no_shipped_weapon_reaches_the_cascade()
 	test_line_impact_is_straight_and_measures_distance()
+	test_aim_offset_steers_the_shot_off_axis()
 	test_cone_spread_is_a_disc_not_a_line()
 	test_pellet_selection_is_deterministic()
 	## DESTRUCTION_MASTER_PLAN D25 (2026-07-31) — carved half-voxels.
@@ -1714,6 +1715,72 @@ func test_line_impact_is_straight_and_measures_distance() -> void:
 	else:
 		_fail("straight_ok=%s (hit=%s) deterministic_ok=%s miss_ok=%s" %
 			[straight_ok, hit, deterministic_ok, miss_ok])
+	print("")
+
+
+## §6c Part A (2026-08-19) — `aim_offset_deg`, the term that lets a shot fired BY
+## AN ACTOR aim at another ACTOR that is not on a shared grid axis.
+##
+## The test that actually matters is the DEFAULT one: every caller written before
+## this parameter existed passes nothing, and all of them must stay bit-identical
+## or the parameter is a silent behaviour change to the shipped bench path
+## instead of an addition.
+func test_aim_offset_steers_the_shot_off_axis() -> void:
+	print("TEST: §6c aim_offset_deg biases the cone/ray off the grid axis, and defaults to a no-op")
+	_wide_wall_registry(1, 2, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 10)
+
+	## 1. DEFAULT IS A NO-OP. Explicit 0.0 must equal the omitted argument, for
+	##    both shapes — this is the backwards-compatibility claim itself.
+	var line_omitted := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, blocked, {})
+	var line_zero := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, blocked, {}, 0.0)
+	var cone_omitted := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "AIM_OFFSET_DEFAULT")
+	var cone_zero := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "AIM_OFFSET_DEFAULT", 0.0)
+	var default_ok: bool = line_omitted == line_zero and cone_omitted.size() == cone_zero.size()
+	if default_ok:
+		for i in range(cone_omitted.size()):
+			if cone_omitted[i]["gu"] != cone_zero[i]["gu"] \
+					or cone_omitted[i]["face"] != cone_zero[i]["face"]:
+				default_ok = false
+				break
+
+	## 2. A NON-ZERO OFFSET ACTUALLY MOVES THE IMPACT, and moves it the way the
+	##    sign says. Firing NE from (5,5) into the wall north of row 2 lands at
+	##    x=5 dead on axis; `lateral` for NE=(0,-1) is (1,0), so a POSITIVE
+	##    offset must drift the impact toward +x and a negative one toward -x.
+	##    Asserting the DIRECTION and not just "it differs" is the point — a sign
+	##    error here aims every actor's shot at the mirror image of its target.
+	var pos := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, blocked, {}, 25.0)
+	var neg := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, blocked, {}, -25.0)
+	var on_axis_x: int = int(line_omitted["gu"].x) if not line_omitted.is_empty() else -999
+	var pos_ok: bool = not pos.is_empty() and int(pos["gu"].x) > on_axis_x
+	var neg_ok: bool = not neg.is_empty() and int(neg["gu"].x) < on_axis_x
+
+	## 3. STILL DETERMINISTIC. The offset is applied to the angle AFTER the hash,
+	##    so B4's FNV-1a determinism must survive it untouched.
+	var det_a := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "AIM_OFFSET_DET", 18.0)
+	var det_b := BlastCalculatorClass.select_cone_pellet_impacts(
+		Vector2i(5, 5), NE, 25.0, 40, 8, blocked, {}, "AIM_OFFSET_DET", 18.0)
+	var det_ok: bool = det_a.size() == det_b.size()
+	if det_ok:
+		for i in range(det_a.size()):
+			if det_a[i]["gu"] != det_b[i]["gu"] or det_a[i]["face"] != det_b[i]["face"]:
+				det_ok = false
+				break
+
+	if default_ok and pos_ok and neg_ok and det_ok:
+		_pass("default is bit-identical to 0.0 for CONE and LINE; +25 deg drifts to x=%d and -25 deg to x=%d around the on-axis x=%d; offset picks stay deterministic" %
+			[int(pos["gu"].x), int(neg["gu"].x), on_axis_x])
+	else:
+		_fail("default_ok=%s pos_ok=%s (%s) neg_ok=%s (%s) det_ok=%s on_axis_x=%d" %
+			[default_ok, pos_ok, pos, neg_ok, neg, det_ok, on_axis_x])
 	print("")
 
 

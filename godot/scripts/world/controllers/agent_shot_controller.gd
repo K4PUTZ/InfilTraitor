@@ -385,9 +385,12 @@ func fire_at_active() -> void:
 	## SCOPED, not map-wide. See Room._repaint_voxel_light_buckets_scoped() for
 	## the measurement: the full apply walks every placed cell on the board and
 	## is ~400 ms of the shot's ~581, for 23 voxels of actual damage.
+	var repaint_scope: Array = room.shot_repaint_scope(impact_gus.keys())
 	if room.has_method("_repaint_voxel_light_buckets_scoped"):
-		room._repaint_voxel_light_buckets_scoped(
-			room.shot_repaint_scope(impact_gus.keys()))
+		## SOOT DEFERRED. Geometry and lighting land now; the soot follows across
+		## frames with a fade (Director, 2026-08-19). This is what takes the
+		## map-wide soot snapshot — 141 ms of the shot — off the trigger frame.
+		room._repaint_voxel_light_buckets_scoped(repaint_scope, false)
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
@@ -398,6 +401,11 @@ func fire_at_active() -> void:
 	## August and deserve re-measuring before anything is built on them.
 	print_debug("[AGENT-SHOT-PROF] resolve+apply %.2f ms cpu · repaint %.2f ms cpu · %d voxel(s)"
 		% [prof_resolve_ms, prof_repaint_ms, cell_to_voxel.size()])
+
+	## NOT awaited. The shot is over; the soot is decoration arriving late, and
+	## making the caller wait for it would put the cost straight back on the
+	## path this whole change exists to clear.
+	room.fade_in_scoped_soot(repaint_scope)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

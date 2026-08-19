@@ -2692,7 +2692,14 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## This does. `_placed_by_gu` is built by the last full pass, which the boot
 ## always runs, and a GU it does not know about is a silent no-op there by
 ## design — so the scope must be generous, and the soot reach is why it is.
-func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
+## `include_soot=false` skips `_build_soot_snapshot()` entirely — the map-wide
+## walk that measured 141 ms of the shot's remaining ~210. It is skippable at all
+## only because of the Director's 2026-08-19 ruling: *"a fuligem pode ser
+## processada depois do fato, desde que apareça com fade in, e não de repente."*
+## Geometry and lighting are still exact; only the soot is missing, and
+## `fade_in_scoped_soot()` below brings it in afterwards.
+func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
+		soot_lighten: int = 0) -> void:
 	if gus.is_empty():
 		_repaint_voxel_light_buckets(true)
 		return
@@ -2709,16 +2716,32 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 	## soot from which voxels are absent ANYWHERE, so a scoped snapshot would be
 	## a second soot producer — the exact drift SOOT_MASTER_PLAN §1.2 found
 	## between two of them. Only the APPLY is scoped, which is where the time is.
+	## The FIELD is still built map-wide when soot is included, and that is not
+	## laziness: D24 derives soot from which voxels are absent ANYWHERE, so a
+	## scoped snapshot would be a second soot producer — the exact drift
+	## SOOT_MASTER_PLAN §1.2 found between two of them. Only the APPLY is scoped.
+	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
+	var _s0: int = Time.get_ticks_usec()
+	var soot: Dictionary = _build_soot_snapshot(soot_faces) if include_soot else {}
+	var _s1: int = Time.get_ticks_usec()
+	var occ: Dictionary = _voxel_renderer.build_occupancy()
+	var _s2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
-			_voxel_renderer.build_occupancy(),
-			_build_soot_snapshot(soot_faces),
+			occ,
+			soot,
 			_under_structure,
 			soot_faces,
 			true)
-	_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus)
+	var _s3: int = Time.get_ticks_usec()
+	_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
+	if _sp:
+		print("[SCOPED-PROF] soot %.1f · occupancy %.1f · field.build %.1f · apply %.1f ms (%d GUs, soot=%s)"
+			% [float(_s1 - _s0) / 1000.0, float(_s2 - _s1) / 1000.0,
+			float(_s3 - _s2) / 1000.0,
+			float(Time.get_ticks_usec() - _s3) / 1000.0, gus.size(), include_soot])
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
 	## the state a full one would have — the same class of claim PERF-03's
 	## equivalence probe guards for incremental invalidation, and the same class
@@ -2742,6 +2765,59 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 ## derives soot up to 3 rings from an absent voxel, so a hole changes the look of
 ## cells three GUs away and a scope tighter than this leaves a visible seam.
 const SHOT_REPAINT_SOOT_RINGS: int = 3
+
+
+## How many rungs the deferred soot fades in over, and how many frames each rung
+## holds. Mirrors DetonationChoreographer's `soot_fade_steps` /
+## `soot_fade_frames_per_step` so a bullet's soot and a blast's arrive at the
+## same rate — two fades at different speeds read as two different materials.
+var shot_soot_fade_steps: int = 4
+var shot_soot_fade_frames_per_step: int = 2
+
+
+## Bring the deferred soot in, across frames, WITHOUT blocking the shot.
+##
+## The field is built ONCE here (the expensive map-wide snapshot) and then
+## applied `steps` times at descending `soot_lighten`. Rebuilding per step would
+## cost more than never deferring, which is the trap this shape avoids.
+##
+## The first build is awaited on its own frame so the shot's own repaint has
+## already been presented — deferring the work and then doing it in the same
+## frame would move the stall, not remove it.
+func fade_in_scoped_soot(gus: Array) -> void:
+	if gus.is_empty() or _voxel_renderer == null:
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(_voxel_renderer):
+		return
+	var steps: int = maxi(shot_soot_fade_steps, 1)
+	## Build once, at the FAINTEST rung, then walk down to full strength.
+	_repaint_voxel_light_buckets_scoped(gus, true, steps - 1)
+	print_debug("[SHOT-SOOT] fade starts — %d step(s) over %d GUs"
+		% [steps, gus.size()])
+	for step in range(steps - 2, -1, -1):
+		for _f in range(maxi(shot_soot_fade_frames_per_step, 1)):
+			await get_tree().process_frame
+		if not is_instance_valid(_voxel_renderer):
+			return
+		## Re-APPLY only. `_voxel_light_field` still holds the sooty field the
+		## line above built, so each rung is a scoped set_cell pass and not a
+		## second map-wide snapshot.
+		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, step)
+	## THE END-STATE GATE. Deferring soot is only legitimate if the board ENDS
+	## where a full, immediate repaint would have put it — a fade that settles on
+	## the wrong picture is worse than a stall. Same probe as the scoped apply's,
+	## run at the bottom of the ladder where `soot_lighten` is 0.
+	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
+		var before: Dictionary = _perf_snapshot_alts()
+		_voxel_renderer.apply_light_field(_voxel_light_field)
+		var after: Dictionary = _perf_snapshot_alts()
+		var differ: int = 0
+		for k in after:
+			if before.get(k, -12345) != after[k]:
+				differ += 1
+		print("[SHOT-SOOT] settled: %d cells checked, %d differ from a full apply"
+			% [after.size(), differ])
 
 
 ## The GU scope for a shot: every impact GU, grown by the soot reach.

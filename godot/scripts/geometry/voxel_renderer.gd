@@ -2441,7 +2441,17 @@ func apply_light_field(field) -> void:
 ## more open-area light touches far fewer voxels and costs proportionally
 ## less. Silently no-ops for a GU the index doesn't know about (nothing was
 ## ever placed there).
-func apply_light_field_gus(field, gus: Array) -> void:
+## `soot_lighten` (W-SOOT-01, 2026-08-19) tones every face DOWN by that many
+## rungs before writing, clamped at clean — the same ladder
+## DetonationChoreographer._lightened() walks for the blast's soot fade.
+##
+## It exists so soot can arrive AFTER the fact without arriving suddenly, which
+## is the Director's own condition: *"a fuligem pode ser processada depois do
+## fato, desde que apareça com fade in, e não de repente."* Stepping it from
+## `steps-1` down to 0 fades soot in from a field built ONCE, instead of
+## rebuilding the field per step — the rebuild is the expensive half (a map-wide
+## soot snapshot), and doing it N times would cost more than not deferring at all.
+func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 	if field == null or gus.is_empty():
 		return
 	var gu_set: Dictionary = {}
@@ -2462,8 +2472,12 @@ func apply_light_field_gus(field, gus: Array) -> void:
 			var prev_alt: int = layer.get_cell_alternative_tile(cell)
 			## FACE-SOOT-01: the whole id is the comparison now — the same light bucket
 			## with different per-face soot is a different tile.
+			var soot_code: int = field.face_soot_code(cell, level)
+			if soot_lighten > 0:
+				soot_code = VoxelLightField.encode_face_soot(_lighten_faces(
+					VoxelLightField.decode_face_soot(soot_code), soot_lighten))
 			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
-					field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+					soot_code, decode_light_flipped(prev_alt))
 			if alt_id == prev_alt:
 				continue
 			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
@@ -2480,6 +2494,17 @@ func apply_light_field_gus(field, gus: Array) -> void:
 			record["prev_alt"] = encode_voxel_alt(
 					field.bucket_for(cell, record["level"]),
 					field.face_soot_code(cell, record["level"]), flipped)
+
+
+## One rung down the soot ladder: every face `by` tones fainter, clamped at
+## clean. A face already clean stays clean, so a cell only fades on the faces it
+## is actually going to be dirty on. Deliberately identical in behaviour to
+## DetonationChoreographer._lightened() — the blast and the firearm must fade the
+## same way or the two look like different materials.
+static func _lighten_faces(faces: Vector3i, by: int) -> Vector3i:
+	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
+	return Vector3i(mini(faces.x + by, clean), mini(faces.y + by, clean),
+		mini(faces.z + by, clean))
 
 
 func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: bool = false) -> void:

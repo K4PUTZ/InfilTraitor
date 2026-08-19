@@ -245,6 +245,11 @@ const LIGHT_RESPONSE_OVERRIDE := {
 	## +28, while 0.90 reached 212 and visibly flattened the folds. Headroom
 	## against an over-bright display was the deciding factor, not contrast.
 	"_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75},
+	## UPDATE 2026-08-18: enemy_white uses the same white blazer, so inherits the
+	## same light response values. Without this, ambient 0.42 makes the 0.92 albedo
+	## render as 0.386 in unlit areas — DARKER than PLAYGROUND's floor (~0.55-0.65),
+	## the "branco virou cinza igual ao chão" issue.
+	"_enemy_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75},
 }
 var _light_intensity_scale := LIGHT_INTENSITY_SCALE
 var _light_intensity_max := LIGHT_INTENSITY_MAX

@@ -90,11 +90,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 2f47876b [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
 - f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
 - a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 - d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
 - 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
-- 767bc60f [DOCS] Session close 0.9.100 — E-CONTRAST-01/02/03 swept
 <!-- AUTO:END version_history -->
 
 ---

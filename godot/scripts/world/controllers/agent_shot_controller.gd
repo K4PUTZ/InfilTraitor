@@ -96,7 +96,31 @@ var room = null
 var _active_guard_index: int = -1
 
 
+## Voxel.DamageState -> the word the tier print uses. The enum's own ordering is
+## INTACT/CRACKED/DESTROYED/DENTED, which reads as a typo when printed raw.
+const _TIER_NAME: Dictionary = {
+	Voxel.DamageState.CRACKED: "CRACKED",
+	Voxel.DamageState.DENTED: "DENTED",
+	Voxel.DamageState.DESTROYED: "DESTROYED",
+}
+
+
+## W-TUNE-01 (Director, 2026-08-20): *"vamos trocar a arma pelo fuzil e testar
+## novamente, seguido da pistola."*
+##
+## A DEV SWITCH, not D31's weapon slots. `WEAPON_ID` above is still the declared
+## default and the §6c scoping is unchanged — this only lets a capture run fire
+## `assault_rifle` or `pistol` without editing the file, which is what comparing
+## three weapons on the same four walls requires. It is also, incidentally, the
+## exact seam D31 will replace when the player gets to choose.
+var _weapon_id: String = WEAPON_ID
+
+
 func _init(room_ref) -> void:
+	var env := OS.get_environment("INFILTRAITOR_SHOT_WEAPON")
+	if env != "":
+		_weapon_id = env
+		print("[AGENT-SHOT] weapon overridden to '%s' by INFILTRAITOR_SHOT_WEAPON" % env)
 	room = room_ref
 
 
@@ -132,6 +156,19 @@ func open_menu_for(index: int) -> void:
 	if guard == null or not is_instance_valid(guard):
 		return
 	_active_guard_index = index
+	## ⚠️ THE MENU IS THE FIRST THING THAT HAPPENS, AND THAT IS THE POINT.
+	##
+	## Director, 2026-08-20: *"o lag está acontecendo no momento do clique com o
+	## botão direito no inimigo. Me parece que a gente poderia chamar o menu
+	## imediatamente no clique sobre o inimigo, e depois iniciar o cálculo."*
+	##
+	## Opening it costs 0.3 ms (measured); everything below it used to run first.
+	## The weight was `set_grip()` — 146 ms of a 160 ms frame, on the first aim of
+	## a session — and W-LOAD-02 moved those frames to the map load, so what is
+	## left after this line is ~5 ms. Both halves matter: the ordering makes the
+	## menu independent of whatever the rest of this function ever grows into.
+	room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
+		"ui.context_menu.fire", fire_at_active)
 	## The weapon comes up when the target is picked, not when the trigger is
 	## pulled — the menu being open IS the moment the player has committed to a
 	## target, the same moment the grenade path uses to start pre-production.
@@ -148,8 +185,6 @@ func open_menu_for(index: int) -> void:
 		if room.agent.sprite != null:
 			room.agent.sprite.face_direction(guard.cell - room.agent.cell)
 		room.agent.set_grip(GRIP_AIMED)
-	room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
-		"ui.context_menu.fire", fire_at_active)
 	## W-PRECOOK: the target is picked, so the warm starts NOW. Everything below
 	## is a PREDICTION — nothing is committed and nothing is drawn — so a player
 	## who cancels loses only the work, and one who changes target re-keys it.
@@ -169,7 +204,7 @@ func _begin_precook(guard) -> void:
 	var agent = room.agent
 	if agent == null or not is_instance_valid(agent) or room._edge_registry == null:
 		return
-	var weapon_def = Registries.get_weapon_registry().get_weapon(WEAPON_ID)
+	var weapon_def = Registries.get_weapon_registry().get_weapon(_weapon_id)
 	if weapon_def == null:
 		return
 	var plan := _build_shot_plan(agent.cell, guard.cell, weapon_def)
@@ -197,10 +232,24 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 	var lateral := Vector2i(-forward.y, forward.x)
 	var offset: float = rad_to_deg(atan2(aim.dot(Vector2(lateral)),
 		aim.dot(Vector2(forward))))
-	var picks: Array = BlastCalculatorClass.select_cone_pellet_impacts(
-		origin_gu, forward, weapon_def.cone_half_angle_deg,
-		PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
-		_blocked_edges_dict(), room._blocked_cells, salt, offset)
+	## THE SAME DELIVERY BRANCH fire_at_active() takes, and it has to be. The plan
+	## was cone-only while the shotgun was the only weapon; the moment
+	## INFILTRAITOR_SHOT_WEAPON can name a LINE weapon, a cone-only plan predicts a
+	## spray of 24 pellets for a shot that fires one round — every warmed
+	## alternative wrong, and the impact frame paying for all of them again.
+	var is_line: bool = weapon_def.delivery == WeaponDef.DELIVERY_LINE
+	var picks: Array = []
+	if is_line:
+		var line_hit := BlastCalculatorClass.select_line_impact(
+			origin_gu, forward, PELLET_FLOOD_MAX_STEPS,
+			_blocked_edges_dict(), room._blocked_cells, offset)
+		if not line_hit.is_empty():
+			picks.append(line_hit)
+	else:
+		picks = BlastCalculatorClass.select_cone_pellet_impacts(
+			origin_gu, forward, weapon_def.cone_half_angle_deg,
+			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
+			_blocked_edges_dict(), room._blocked_cells, salt, offset)
 	var destroyed: Dictionary = {}
 	var damaged: Array = []
 	var variant_cells: Array = []
@@ -225,12 +274,13 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 		## not know about was a cell whose occupancy, whose soot and whose ATOM the
 		## warm got wrong.
 		##
-		## `[]` for step_multipliers mirrors fire_at_active()'s non-LINE branch —
-		## WEAPON_ID declares CONE, and for a cone that table means distance, not
-		## depth (see apply_point_impact()'s own note).
+		## step_multipliers mirrors fire_at_active()'s own branch: for a LINE weapon
+		## the table is D1's PENETRATION axis, for a cone it means distance and has
+		## no business attenuating depth (see apply_point_impact()'s note).
 		for entry in BlastCalculatorClass.plan_point_impact(
 				slice, int(resolved["voxel_index"]), punch, room._edge_registry,
-				"%s:%d" % [salt, i], [], origin_gu):
+				"%s:%d" % [salt, i],
+				weapon_def.step_multipliers if is_line else [], origin_gu):
 			var v: Voxel = entry["voxel"]
 			## DESTROYED changes occupancy (what the light field is built from);
 			## DENTED and CRACKED do not, but they DO feed the soot derivation
@@ -296,15 +346,15 @@ func fire_at_active() -> void:
 	if room._destruction_render_busy:
 		push_warning("[AgentShotController] shot ignored — a destruction render pass is still running.")
 		return
-	var weapon_def = Registries.get_weapon_registry().get_weapon(WEAPON_ID)
+	var weapon_def = Registries.get_weapon_registry().get_weapon(_weapon_id)
 	if weapon_def == null:
-		push_error("[AgentShotController] no WeaponDef for id '%s'" % WEAPON_ID)
+		push_error("[AgentShotController] no WeaponDef for id '%s'" % _weapon_id)
 		cancel_active()
 		return
 	if weapon_def.delivery != WeaponDef.DELIVERY_CONE \
 			and weapon_def.delivery != WeaponDef.DELIVERY_LINE:
 		push_error("[AgentShotController] '%s' declares delivery %s — only CONE and LINE are implemented (WEAPON_MASTER_PLAN Part 2 / Part 3b)." %
-			[WEAPON_ID, weapon_def.delivery])
+			[_weapon_id, weapon_def.delivery])
 		cancel_active()
 		return
 	if room._edge_registry == null or room._slab_registry == null:
@@ -382,6 +432,13 @@ func fire_at_active() -> void:
 			_blocked_edges_dict(), room._blocked_cells, salt, aim_offset_deg)
 
 	var cell_to_voxel: Dictionary = {}
+	## W-TUNE-01: the tier tally is only readable PER MATERIAL. A shot walks a
+	## cone across whatever happens to be in front of it, and "8 destroyed, 23
+	## dented" says nothing about whether the ladder is right — metal and wood sit
+	## three resistance rows apart and are supposed to answer differently. Every
+	## calibration question the Director has asked about this ladder is a
+	## per-material question, so the print answers in those terms.
+	var cell_to_material: Dictionary = {}
 	var _impact_vfx_done: Dictionary = {}
 	var pellets_landed: int = 0
 	var punch_log: Array = []
@@ -455,6 +512,7 @@ func fire_at_active() -> void:
 			origin_gu)
 		for v in touched:
 			_index_voxel(cell_to_voxel, v)
+			cell_to_material[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slice.material
 			if v.damage_state != Voxel.DamageState.DESTROYED:
 				var vkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 				if not _impact_vfx_done.has(vkey):
@@ -480,13 +538,23 @@ func fire_at_active() -> void:
 	## resulting states is what tells a capture-that-shows-nothing apart from a
 	## shot-that-did-nothing.
 	var tiers: Dictionary = {}
+	var by_material: Dictionary = {}
 	for key in cell_to_voxel:
 		var tv: Voxel = cell_to_voxel[key]
 		tiers[tv.damage_state] = int(tiers.get(tv.damage_state, 0)) + 1
+		var mat: String = String(cell_to_material.get(key, "?"))
+		if not by_material.has(mat):
+			by_material[mat] = {"CRACKED": 0, "DENTED": 0, "DESTROYED": 0}
+		by_material[mat][_TIER_NAME.get(tv.damage_state, "?")] += 1
 	print_debug("[AGENT-SHOT] from=%s at=%s outcome=MISS(forced) axis=%s offset=%.1f deg landed=%d/%d impacts=%s voxels=%d tiers=%s punch=%s" %
 		[origin_gu, target_gu, forward, aim_offset_deg,
 		pellets_landed, pellet_picks.size(), impact_gus.keys(),
 		cell_to_voxel.size(), tiers, punch_log])
+	for mat in by_material:
+		var row: Dictionary = by_material[mat]
+		print_debug("[AGENT-SHOT-TIER] %-9s cracked=%2d dented=%2d destroyed=%2d  (resistance %.2f)"
+			% [mat, row["CRACKED"], row["DENTED"], row["DESTROYED"],
+			ShotPunchTable.resistance(mat)])
 
 	## PREDICTION_MASTER_PLAN §5.2 — a shot is a committed mutation, so every
 	## cached blast prediction is now stale.

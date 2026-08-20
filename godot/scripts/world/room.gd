@@ -908,6 +908,15 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_warning("[Room] the agent's baked figure is unavailable — run "
 			+ "p3_posture_export.py and agent_frame_bake_spike.gd")
 	agent.set_dev_vision(_vision_controller.dev_vision)
+	## W-LOAD-02: the AIMED grip's frames, loaded here instead of on the click
+	## that opens the fire menu. Measured 2026-08-20: the first set_grip("_aimed")
+	## cost 146 ms of a 160 ms frame, and that frame is the one the player judges
+	## the menu's responsiveness by. Best-effort and silent on a missing bake —
+	## AgentShotController.open_menu_for() still calls set_grip(), which is the
+	## loud path. Director's rule for this session: everything that can be loaded
+	## at the start, is.
+	if agent.sprite != null:
+		agent.sprite.preload_grip(AgentShotControllerClass.GRIP_AIMED)
 
 	# OCC-03: Agent renders above all voxel layers, below dev hover label (z=200)
 	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
@@ -2736,6 +2745,12 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 			soot_faces,
 			true)
 	var _s3: int = Time.get_ticks_usec()
+	## W-TUNE-01: the same readout the map-wide repaint has always had, on the
+	## path a SHOT actually takes. Without it the diagnostic answered a question
+	## nobody was asking — it ran at boot, where there is no damage, and reported
+	## "sooted voxels=0" for every shot ever fired through here.
+	if include_soot and OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
+		_print_face_soot_diagnostics(soot_faces)
 	_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
 	if _sp:
 		print("[SCOPED-PROF] soot %.1f · occupancy %.1f · field.build %.1f · apply %.1f ms (%d GUs, soot=%s)"
@@ -4228,9 +4243,18 @@ func _capture_shot_filmstrip() -> void:
 	var idx_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
 	var guard_idx: int = idx_env.to_int() if idx_env.is_valid_int() else 0
 	guard_idx = clampi(guard_idx, 0, _guards.size() - 1)
+	## W-TUNE-01: the sheet's SUBJECT is selectable, because the two things worth
+	## watching are 12 GU apart. Centred between shooter and target (the default)
+	## the figure and the muzzle flash read and the wall does not; the round is
+	## gone before it arrives by design (TRACER_FLIGHT_FRAMES), so a wall-centred
+	## sheet shows the damage and the smoke and no projectile. Pick per question.
+	var focus_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FOCUS")
 	if _camera_controller != null and agent != null:
-		_camera_controller.focus_on(agent._cell_to_world(
-			(agent.cell + _guards[guard_idx].cell) / 2))
+		var focus_cell: Vector2i = (agent.cell + _guards[guard_idx].cell) / 2
+		var fp := focus_env.split(",")
+		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
+			focus_cell = Vector2i(fp[0].to_int(), fp[1].to_int())
+		_camera_controller.focus_on(agent._cell_to_world(focus_cell))
 	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
 	_camera_controller.set_zoom_for_capture(
 		zoom_env.to_float() if zoom_env.is_valid_float() else 0.5)

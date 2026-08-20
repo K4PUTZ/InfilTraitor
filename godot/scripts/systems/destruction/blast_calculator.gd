@@ -1520,7 +1520,25 @@ static func scorch_floor_cell(out_snapshot: Dictionary, out_faces: Dictionary,
 ## min-wins (_write_face_rings' own semantics), so a voxel that ALSO happens
 ## to sit beside a real hole keeps that stronger ring — self-soot only fills
 ## in where nothing stronger already applies.
-const SELF_SOOT_RING := 2
+static var SELF_SOOT_RING: int = 2
+
+## W-TUNE-01 (Director, 2026-08-20): a BULLET's own-face soot is one rung darker
+## than a blast's. *"[o metal] está com zero fuligem, seria legal ter uma
+## lembrança de fuligem também."*
+##
+## It was not zero — measured, a shotgun on metal scorches 18 voxels — but all 18
+## sat at ring 2, the faintest tone there is, on a bright metal facade, and the
+## Director read that as nothing at all. Ring 1 is the "lembrança": still faint,
+## now legible.
+##
+## SPLIT from the blast's value rather than sharing it, because the blast was not
+## what was being judged and a grenade's rim marks have no reason to change. The
+## two are one line apart so the asymmetry is impossible to miss.
+##
+## It matters more after the ladder change above than it would have before: with
+## concrete and stone no longer breaking, self-soot is now the ONLY soot those
+## materials get, so this rung is what a shotgun's mark on a wall looks like.
+static var SELF_SOOT_RING_BULLET: int = 1
 
 
 ## Which face(s) a damaged (DENTED/CRACKED, not DESTROYED) voxel's own faint
@@ -1543,17 +1561,19 @@ static func _self_soot_faces(damage_state: int, blast_sourced: bool, carved_side
 		return clean
 	if damage_state == Voxel.DamageState.CRACKED and blast_sourced:
 		return Vector3i(SELF_SOOT_RING, SELF_SOOT_RING, SELF_SOOT_RING)
+	## W-TUNE-01: a bullet scorches its own face one rung darker than a blast rim.
+	var ring: int = SELF_SOOT_RING if blast_sourced else SELF_SOOT_RING_BULLET
 	match carved_side:
 		Voxel.CarvedSide.LEFT:
-			return Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, SELF_SOOT_RING)   ## SW
+			return Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, ring)   ## SW
 		Voxel.CarvedSide.RIGHT:
-			return Vector3i(FACE_SOOT_CLEAN, SELF_SOOT_RING, FACE_SOOT_CLEAN)   ## SE
+			return Vector3i(FACE_SOOT_CLEAN, ring, FACE_SOOT_CLEAN)   ## SE
 		Voxel.CarvedSide.TOP:
-			return Vector3i(SELF_SOOT_RING, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## top (floor)
+			return Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## top (floor)
 		Voxel.CarvedSide.BOTTOM:
 			return clean   ## ceiling underside — never visible
 		_:
-			return Vector3i(SELF_SOOT_RING, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## NONE -> top, matches the flat mark
+			return Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## NONE -> top, matches the flat mark
 
 
 ## Applies _self_soot_faces() for every voxel in `voxels` (expected: every

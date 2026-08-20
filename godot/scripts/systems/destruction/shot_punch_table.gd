@@ -48,7 +48,34 @@ static var DEFAULT_RESISTANCE: float = 1.3
 ## uma marca de bala"*), so there is deliberately no "nothing happened" rung —
 ## below CRACK_MAX is the floor, not a miss.
 static var PUNCH_DENT_MIN: float = 0.30      ## below this: CRACKED (simple mark)
-static var PUNCH_DESTROY_MIN: float = 0.60   ## below this: DENTED (sunken mark)
+## W-TUNE-01 (Director, 2026-08-20): 0.60 -> 1.05. *"Queremos mais denteds e
+## crackeds. O metal ficou bom, é meio nessa proporção aí de denteds."*
+##
+## MEASURED per material on PLAYGROUND, one 24-pellet shotgun each, before the
+## change (the four blocks the map keeps side by side for exactly this):
+##
+##   metal     cracked  5  dented 13  destroyed  0     punch 0.28-0.39
+##   stone     cracked  0  dented 18  destroyed  0     punch 0.39-0.62
+##   concrete  cracked  0  dented 23  destroyed  8     punch 0.47-0.66
+##   wood      cracked  0  dented 20  destroyed 20     punch 0.51-1.08
+##
+## Metal is the Director's reference and it is the material NO shotgun pellet
+## can destroy — its whole band sits under the old threshold. Raising the
+## threshold to 1.05 puts concrete and stone in the same place and leaves wood,
+## the soft outlier, breaking on its best ~17% of pellets. Metal and every
+## CRACKED/DENTED boundary are untouched by construction: PUNCH_DENT_MIN did not
+## move, and raising PUNCH_DENT_MIN is what WOULD have broken metal (its band
+## straddles 0.30, so any lift there flips it to mostly-cracked).
+##
+## Soot follows for free, which is the other half of the same request — D24
+## derives scorch from ABSENT voxels, so fewer holes is less soot at the source.
+## Measured after, same four shots: metal 5/13/0 (unchanged, as intended),
+## stone 0/18/0, concrete 0/22/0, wood 0/20/4; sooted voxels concrete 258 -> 22,
+## stone 63 -> 22, wood 498 -> 142, metal 18 -> 18.
+##
+## THE ONE NUMBER TO MOVE if a shotgun should breach concrete again. Lower it
+## toward 0.66 and concrete's best pellets start punching through.
+static var PUNCH_DESTROY_MIN: float = 1.05   ## below this: DENTED (sunken mark)
 
 ## Neighbour destruction (D30.1): neighbours are DESTROYED or untouched, and
 ## NEVER take a mark of their own — that stays the projectile's alone. Count

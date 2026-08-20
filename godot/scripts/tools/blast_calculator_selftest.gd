@@ -1904,18 +1904,32 @@ func test_self_soot_faces_dented_lateral_sides() -> void:
 	print("[SOOT-SELF-1] A DENTED voxel's own faint soot lands on its carved lateral face only\n")
 
 	var left := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.LEFT)
-	var expected_left := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING)
+	var expected_left := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING_BULLET)
 	if left == expected_left:
-		_pass("LEFT -> SW faint only, top/SE clean (%s)" % left)
+		_pass("LEFT (bullet) -> SW faint only, top/SE clean (%s)" % left)
 	else:
 		_fail("LEFT -> %s, expected %s" % [left, expected_left])
 
 	var right := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.RIGHT)
 	var expected_right := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN)
 	if right == expected_right:
-		_pass("RIGHT -> SE faint only, top/SW clean (%s) — blast-sourced DENTED behaves the same as bullet" % right)
+		_pass("RIGHT (blast) -> SE faint only, top/SW clean (%s)" % right)
 	else:
 		_fail("RIGHT -> %s, expected %s" % [right, expected_right])
+
+	## W-TUNE-01: this test USED to assert that "blast-sourced DENTED behaves the
+	## same as bullet", and that is exactly the invariant the Director's
+	## 2026-08-20 note broke on purpose — a bullet's own-face soot is one rung
+	## darker so a shotgun mark on metal reads as *"uma lembrança de fuligem"*
+	## instead of nothing. Asserting the RELATIONSHIP rather than either number
+	## keeps both halves honest: a future retune may move the tones, but a bullet
+	## that stops being darker than a blast rim is a regression, not a retune.
+	if BlastCalculatorClass.SELF_SOOT_RING_BULLET < BlastCalculatorClass.SELF_SOOT_RING:
+		_pass("a bullet's self-soot is strictly darker than a blast's (ring %d vs %d — lower is darker)"
+			% [BlastCalculatorClass.SELF_SOOT_RING_BULLET, BlastCalculatorClass.SELF_SOOT_RING])
+	else:
+		_fail("bullet self-soot ring %d is not darker than the blast's %d"
+			% [BlastCalculatorClass.SELF_SOOT_RING_BULLET, BlastCalculatorClass.SELF_SOOT_RING])
 
 	print("")
 
@@ -1959,7 +1973,7 @@ func test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top() -> void:
 	print("[SOOT-SELF-4] A bullet CRACKED voxel with no known side falls back to the top face, same as its flat mark\n")
 
 	var faces := BlastCalculatorClass._self_soot_faces(Voxel.DamageState.CRACKED, false, Voxel.CarvedSide.NONE)
-	var expected := Vector3i(BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	var expected := Vector3i(BlastCalculatorClass.SELF_SOOT_RING_BULLET, BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.FACE_SOOT_CLEAN)
 	if faces == expected:
 		_pass("bullet CRACKED, no side -> top face faint only (%s)" % faces)
 	else:
@@ -2000,12 +2014,12 @@ func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:
 
 	var f = faces.get(0, {}).get(Vector2i(5, 5))
 	var s = snapshot.get(0, {}).get(Vector2i(5, 5), -1)
-	var expected_faces := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING, BlastCalculatorClass.FACE_SOOT_CLEAN)
-	if f == expected_faces and int(s) == BlastCalculatorClass.SELF_SOOT_RING:
-		_pass("lone dent (RIGHT) -> faces %s, isotropic ring %d — no longer perfectly clean" % [f, s])
+	var expected_faces := Vector3i(BlastCalculatorClass.FACE_SOOT_CLEAN, BlastCalculatorClass.SELF_SOOT_RING_BULLET, BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if f == expected_faces and int(s) == BlastCalculatorClass.SELF_SOOT_RING_BULLET:
+		_pass("lone dent (RIGHT, bullet) -> faces %s, isotropic ring %d — no longer perfectly clean" % [f, s])
 	else:
 		_fail("lone dent -> faces %s (expected %s), isotropic ring %s (expected %d)"
-			% [f, expected_faces, s, BlastCalculatorClass.SELF_SOOT_RING])
+			% [f, expected_faces, s, BlastCalculatorClass.SELF_SOOT_RING_BULLET])
 
 	print("")
 

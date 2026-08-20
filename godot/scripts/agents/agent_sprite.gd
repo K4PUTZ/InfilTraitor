@@ -506,6 +506,45 @@ func set_grip(name: String) -> void:
 		% [name if name != "" else "lowered", _posture_root(_dev_vision)])
 
 
+## W-LOAD-02 (2026-08-20) — load a grip's frames WITHOUT switching to it.
+##
+## D42's own argument, one trigger earlier. That decision loads a whole yaw set
+## at once because "a texture load inside a turn" is the thing to avoid; a
+## texture load inside the CLICK that opens the fire menu is the same defect
+## wearing a different hat. Measured on PLAYGROUND: the first
+## `set_grip("_aimed")` cost **146 ms of a 160 ms frame** — four body frames
+## (colour + normal) plus the head and hat layer sets, all still on disk at the
+## moment the player right-clicks an enemy.
+##
+## Director, 2026-08-20: *"tudo que a gente puder carregar no início é melhor.
+## Esse tempo de load vai ter uma barrinha."*
+##
+## Loads and changes NOTHING that is drawn: `grip` is restored before returning,
+## and neither `_resolve_layers()` nor `_refresh()` is called. Best-effort by
+## design — a family with no bake for this grip returns false quietly, because
+## `set_grip()` is still the loud path that tells the Director a bake is missing
+## (and it would say so at the wrong moment if this warned at load too).
+func preload_grip(name: String) -> bool:
+	if name == grip:
+		return true
+	var previous: String = grip
+	grip = name
+	var ok: bool = false
+	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(_posture_root(_dev_vision))):
+		ok = _ensure_posture(_posture, _dev_vision)
+		## The head and hat sets are keyed by grip too (see _layer_set_key), so the
+		## body alone would leave half the cost on the click.
+		if ok:
+			var group := _layer_group_for_posture(_posture)
+			if group != "":
+				for layer: String in LAYERS_BY_FAMILY.get(frame_family, LAYERS_DEFAULT):
+					if DirAccess.dir_exists_absolute(
+							ProjectSettings.globalize_path(_layer_root(layer, _dev_vision))):
+						_ensure_layer_set(layer, group, _dev_vision)
+	grip = previous
+	return ok
+
+
 ## Called by the agent when its posture changes. Takes a NAME, not the enum —
 ## see POSTURE_DIRS.
 func set_posture_name(name: String) -> void:

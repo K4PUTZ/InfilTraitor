@@ -23,10 +23,22 @@
 ##     would misrepresent the exact effect being judged. `--fixed-fps` pins
 ##     every delta to 1/60 s.
 ##
+## THE SHOT MODE (W-TUNE-01, 2026-08-20) does the same job for a FIREARM, and
+## the two rules above survive intact for a different reason each: one shot per
+## boot because the pellet salt is keyed on `room._world_revision` and a second
+## shot rolls a different cone; `--fixed-fps 60` because the smoke and the soot
+## fade age on delta while the tile swap is frame-driven, exactly as for a blast.
+##
+## Note what a shot-mode sheet CANNOT show: the tracer never reaches the wall
+## (TRACER_FLIGHT_FRAMES — it is gone before the impact frame, deliberately), so
+## a sheet focused on the wall shows the damage and the smoke and no projectile.
+## `--focus` picks which of the two is the subject.
+##
 ## Usage:
 ##     python3 tools/persistent/build_filmstrip.py
 ##     python3 tools/persistent/build_filmstrip.py --frames 30 --grenade 2 --cols 5
 ##     python3 tools/persistent/build_filmstrip.py --no-crop     # full frames
+##     python3 tools/persistent/build_filmstrip.py --shot shotgun --guard 0 --focus 5,4
 ##
 ## Output: Screenshots/filmstrip/filmstrip.png (plus the raw frames beside it).
 ## `Screenshots/` is gitignored apart from `history/`, so a strip worth keeping
@@ -107,9 +119,42 @@ def run_capture(root, godot, frames, grenade):
     return combined
 
 
-def build_sheet(frame_dir, out_path, cols, crop):
+def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom):
+    env = os.environ.copy()
+    env["INFILTRAITOR_AUTO_SCREENSHOT"] = "1"
+    env["INFILTRAITOR_CAPTURE_ACTION"] = "shot_filmstrip"
+    env["INFILTRAITOR_SHOT_FILM_SAVE"] = "1"
+    env["INFILTRAITOR_SHOT_FILM_FRAMES"] = str(frames)
+    env["INFILTRAITOR_SHOT_WEAPON"] = weapon
+    env["INFILTRAITOR_SHOT_GUARD_INDEX"] = str(guard)
+    env["INFILTRAITOR_SHOT_ZOOM"] = str(zoom)
+    if focus:
+        env["INFILTRAITOR_SHOT_FILM_FOCUS"] = focus
+
+    cmd = [
+        godot,
+        "--path", root,
+        "--position", OFFSCREEN_POSITION,
+        "--fixed-fps", "60",       # see the header — this is load-bearing
+        "--disable-vsync",
+    ]
+    print("[P-FILM] capturing %d frames (%s, guard %d) ..." % (frames, weapon, guard))
+    try:
+        res = subprocess.run(cmd, cwd=root, env=env, capture_output=True,
+                             text=True, timeout=PROCESS_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        print("[P-FILM] capture exceeded %ds — killed" % PROCESS_TIMEOUT_SECONDS)
+        return None
+    combined = res.stdout + res.stderr
+    for line in combined.splitlines():
+        if line.startswith("[AGENT-SHOT-TIER]") or line.startswith("[AGENT-SHOT]"):
+            print("   " + line.strip()[:150])
+    return combined
+
+
+def build_sheet(frame_dir, out_path, cols, crop, prefix="frame_"):
     names = sorted(f for f in os.listdir(frame_dir)
-                   if f.startswith("frame_") and f.endswith(".png"))
+                   if f.startswith(prefix) and f.endswith(".png"))
     if not names:
         print("[P-FILM] no frames found in %s" % frame_dir)
         return False
@@ -137,7 +182,7 @@ def build_sheet(frame_dir, out_path, cols, crop):
         x = PAD + c * (tw + PAD)
         y = PAD + r * (th + LABEL_H + PAD)
         sheet.paste(im, (x, y))
-        idx = name[len("frame_"):-len(".png")].lstrip("0") or "0"
+        idx = name[len(prefix):-len(".png")].lstrip("0") or "0"
         draw.text((x + 3, y + th + 4), "frame %s" % idx, fill=FG)
 
     sheet.save(out_path)
@@ -156,24 +201,47 @@ def main():
                     help="keep whole frames instead of a centre crop on the blast")
     ap.add_argument("--stitch-only", action="store_true",
                     help="re-stitch the frames already on disk, no capture")
+    ap.add_argument("--shot", metavar="WEAPON",
+                    help="firearm mode: one shot with this weapon id "
+                         "(shotgun, assault_rifle, pistol, ...) instead of a grenade")
+    ap.add_argument("--guard", type=int, default=0,
+                    help="shot mode: target guard index "
+                         "(PLAYGROUND: 0 concrete, 1 metal, 2 stone, 3 wood)")
+    ap.add_argument("--focus", default="",
+                    help="shot mode: 'x,y' GU the camera centres on "
+                         "(default: midway between shooter and target)")
+    ap.add_argument("--zoom", type=float, default=0.5,
+                    help="shot mode: capture zoom")
     args = ap.parse_args()
 
     root = repo_root()
-    frame_dir = os.path.join(root, "Screenshots", "filmstrip")
-    out_path = os.path.join(frame_dir, "filmstrip.png")
+    if args.shot:
+        frame_dir = os.path.join(root, "Screenshots", "filmstrip_shot")
+        out_path = os.path.join(frame_dir, "filmstrip_%s.png" % args.shot)
+        prefix = "shot_"
+    else:
+        frame_dir = os.path.join(root, "Screenshots", "filmstrip")
+        out_path = os.path.join(frame_dir, "filmstrip.png")
+        prefix = "frame_"
 
     if not args.stitch_only:
         godot = find_godot()
         if godot is None:
             print("[P-FILM] Godot binary not found")
             return 1
-        if run_capture(root, godot, args.frames, args.grenade) is None:
+        if args.shot:
+            ok = run_shot_capture(root, godot, args.frames, args.shot,
+                                  args.guard, args.focus, args.zoom)
+        else:
+            ok = run_capture(root, godot, args.frames, args.grenade)
+        if ok is None:
             return 1
 
     if not os.path.isdir(frame_dir):
         print("[P-FILM] %s does not exist — did the capture run?" % frame_dir)
         return 1
-    return 0 if build_sheet(frame_dir, out_path, args.cols, not args.no_crop) else 1
+    return 0 if build_sheet(frame_dir, out_path, args.cols,
+                            not args.no_crop, prefix) else 1
 
 
 if __name__ == "__main__":

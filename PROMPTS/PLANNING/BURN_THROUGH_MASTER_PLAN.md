@@ -203,18 +203,19 @@ Ordered so that nothing is built on an unverified assumption.
 | Task | What | Blocked by |
 |---|---|---|
 | ~~**A0**~~ | ~~Director ratifies §2's option A/B/C~~ — ✅ **CLOSED 2026-08-21, option C** | — |
-| **A0b** | Build the per-material cascade table; retire the selftest's `glass` exclusion | — |
-| **A1** | Register `brick` + `plywood`: material JSONs, `RESISTANCE`, `DESTROY_MIN`, `BASE_MATERIALS`, `VOXEL_MATERIALS`, `canonical_voxel_atom_for()` aliases | facades |
-| **A2** | Same for `cardboard` + `fabric` | facades, A0 |
+| ~~**A0b**~~ | ~~per-material cascade table; retire the `glass` exclusion~~ — ✅ **DONE `25cf8b6a`**. `CASCADE_MIN` is a floor-lifting exception table; the selftest now measures 10 materials against their own ceilings as a ratio, no exclusions | — |
+| ~~**A1**~~ | ~~register `brick` + `plywood`~~ — ✅ **DONE `25cf8b6a`**, and it did NOT need the facades: registration is inert until a map places a block. Real boot registers both with zero errors | — |
+| ~~**A2**~~ | ~~same for `cardboard` + `fabric`~~ — ✅ **DONE `25cf8b6a`**. `glass` also gained the `base_color`/`pattern_algorithm`/`has_facade` it was the only material missing | — |
 | **B1** | **Measure the free win.** Force one fabric voxel to `DESTROYED`, capture the light field against a same-boot control, confirm §1 | A2 |
 | **B2** | Place all four as real blocks in PLAYGROUND (reserved today at gu x=22-24 / 27-29 / 32-34 / 37-39), run `roof_bake_selftest` — this is where a missing facade shows up as 520 missing roof entries | A1, A2 |
 | **C0** | Answer §3.1–3.5 with the Director; write v0.2 of this plan | B2 |
 | **C1+** | Build the propagation — **prop-first** (§3b), per-material curves, blast-sourced | C0 |
 | **D** | **Glass, last** — its own non-local pane break. Separate brief; see §5 | — |
 
-**A1 and A2 are inert until B2**: registering a material that nothing places
-changes no pixel. That is deliberate — it means the registration can land the
-moment the art does, without waiting on §3.
+**A1 and A2 were inert until B2**, and that turned out to be exactly right:
+registering a material that nothing places changes no pixel, so all three
+tasks landed *before* the art rather than after it. **B2 is now the next
+blocking step and it needs the facades.**
 
 ---
 

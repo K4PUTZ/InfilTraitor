@@ -2555,7 +2555,7 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 ## `still_valid` is still honoured — the caller can cancel between the field
 ## build and this — but there is deliberately no per-frame budget any more.
 func warm_light_alts_for_gus(field, gus: Array, tree: SceneTree,
-		still_valid: Callable) -> int:
+		still_valid: Callable, extra_placements: Array = []) -> int:
 	if field == null or gus.is_empty():
 		return 0
 	var minted: int = 0
@@ -2580,6 +2580,32 @@ func warm_light_alts_for_gus(field, gus: Array, tree: SceneTree,
 			var before: int = _alts_minted
 			_ensure_light_alt(source_id, layer.get_cell_atlas_coords(cell), alt_id)
 			minted += _alts_minted - before
+
+	## ⚠️ THE LOOP ABOVE CANNOT SEE THE ATOMS THE SHOT IS ABOUT TO CREATE.
+	##
+	## It reads the coords each cell has NOW, and a DENTED or CRACKED voxel does
+	## not keep them — it moves to a damage-VARIANT atom, whose light alternative
+	## is therefore minted for the first time on the frame the wall breaks.
+	## Measured 2026-08-19: 17 such mints on the impact frame and 19 more on the
+	## soot pass, and because the TileSet rebuild is charged once per FRAME THAT
+	## MINTS, those 17 cost the same rebuild 412 would have.
+	##
+	## `extra_placements` is that future, resolved by the caller through
+	## VoxelRenderer.resolve_damage_swap_for() from a
+	## BlastCalculator.plan_point_impact() entry:
+	## {"level": int, "cell": Vector2i, "source_id": int, "atlas_coords": Vector2i}.
+	##
+	## `flipped` is FALSE by construction rather than by assumption:
+	## apply_damage_voxel_swap() places the variant at alternative 0, so the
+	## repaint that follows it reads prev_alt = 0 and carries no flip.
+	for placement in extra_placements:
+		var plevel: int = int(placement["level"])
+		var pcell: Vector2i = placement["cell"]
+		var palt: int = encode_voxel_alt(field.bucket_for(pcell, plevel),
+				field.face_soot_code(pcell, plevel), false)
+		var pbefore: int = _alts_minted
+		_ensure_light_alt(int(placement["source_id"]), placement["atlas_coords"], palt)
+		minted += _alts_minted - pbefore
 	return minted
 
 
@@ -3245,6 +3271,14 @@ func clear() -> void:
 ## The four MATERIALS sources (ids assigned once in _build_voxel_tileset()) are untouched.
 
 
+## Thin wrapper: the same resolution, reading the tuple off a live Voxel. This
+## is what every RENDER path calls, because by then the damage is written.
+func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
+	return resolve_damage_swap_for(container, voxel.damage_state,
+		voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
+		voxel.damage_substrate)
+
+
 ## D-ARCH-01: Apply damage to a voxel by swapping tile IDs (no runtime compositing).
 ## Called immediately after voxel.set_damage() to render the damage mark.
 ## Looks up a pre-baked damage variant and swaps the cell's tile in one call;
@@ -3269,9 +3303,10 @@ func clear() -> void:
 ## it always misses and falls back exactly as it does today.
 ##
 ## Parameters:
-##   voxel: the Voxel object with damage_state/is_blast/carved_side/variant/
-##     substrate set
 ##   container: the Slice or Slab this voxel belongs to
+##   damage_state/is_blast/carved_side/variant/substrate: set_damage()'s own
+##     five arguments, in order — read off a live Voxel by the wrapper, or
+##     PREDICTED by BlastCalculator.plan_point_impact() before the shot.
 ##
 ## Returns: {"source_id":int, "atlas_coords":Vector2i} on a hit, {} on a miss
 ## (registry uninitialized, unknown container type, or no registered variant
@@ -3285,7 +3320,17 @@ func clear() -> void:
 ## same lookup the live D-ARCH-01 render path uses, so the two can never
 ## disagree about which atom a given (voxel, container) resolves to. Pure
 ## extraction, same reasoning as Task 3's vertical_ring_for() split.
-func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
+##
+## W-PRECOOK-02 (2026-08-19) — the same lookup with the damage tuple passed IN
+## rather than read off a Voxel, so a caller can ask WHICH ATOM a voxel WILL
+## land on before anything is written to it. That is the shot's warm: a DENTED
+## voxel moves to a damage-variant atom, and the light alternative for that atom
+## is otherwise minted on the frame the wall breaks.
+##
+## The five arguments after `container` are set_damage()'s own five, in order —
+## the same shape BlastCalculator.plan_point_impact() emits.
+func resolve_damage_swap_for(container, damage_state: int, is_blast: bool,
+		carved_side: int, variant: int, substrate: int) -> Dictionary:
 	if _damage_variant_registry == null:
 		return {}  # Registry not initialized, cannot swap
 
@@ -3293,8 +3338,8 @@ func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
 	var material_for_key: String
 	var element_class: String
 	if container is Slice:
-		render_material = damage_variant_material(container.material, voxel.damage_state,
-			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+		render_material = damage_variant_material(container.material, damage_state,
+			is_blast, carved_side, variant)
 		material_for_key = container.material
 		element_class = "WALL"
 	elif container is Slab:
@@ -3312,11 +3357,11 @@ func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
 			## halves of the key finally agree on which material this is.
 			material_for_key = container.material
 			render_material = floor_damage_material(material_for_key,
-				voxel.damage_state, voxel.damage_is_blast,
-				voxel.damage_carved_side, voxel.damage_variant)
+				damage_state, is_blast,
+				carved_side, variant)
 			element_class = "FLOOR"
 		elif container.role == Slab.Role.CEILING:
-			if voxel.damage_carved_side == Voxel.CarvedSide.TOP:
+			if carved_side == Voxel.CarvedSide.TOP:
 				## D16 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — a roof
 				## struck from ABOVE (D15's roof-throw) carves its TOP face,
 				## the same signal apply_crater_damage()'s _roll_floor_dent()
@@ -3339,24 +3384,24 @@ func resolve_damage_voxel_swap(voxel: Voxel, container) -> Dictionary:
 				## GU — the same value the key uses, computed first so the two
 				## cannot drift.
 				render_material = floor_damage_material(material_for_key,
-					voxel.damage_state, voxel.damage_is_blast,
-					voxel.damage_carved_side, voxel.damage_variant)
+					damage_state, is_blast,
+					carved_side, variant)
 				element_class = "FLOOR"
 			else:
-				render_material = damage_variant_material(container.material, voxel.damage_state,
-					voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+				render_material = damage_variant_material(container.material, damage_state,
+					is_blast, carved_side, variant)
 				material_for_key = container.material
 				element_class = "CEILING"
 		else:
-			render_material = damage_variant_material(container.material, voxel.damage_state,
-				voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			render_material = damage_variant_material(container.material, damage_state,
+				is_blast, carved_side, variant)
 			material_for_key = container.material
 			element_class = "INTERIOR"
 	else:
 		return {}  # Unknown container type
 
 	var variant_key := VoxelVariantRegistryClass.make_variant_key(
-		element_class, material_for_key, render_material, voxel.damage_substrate)
+		element_class, material_for_key, render_material, substrate)
 	return _damage_variant_registry.get_variant(variant_key)
 
 

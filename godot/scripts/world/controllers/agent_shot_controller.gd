@@ -176,12 +176,18 @@ func _begin_precook(guard) -> void:
 	if plan.is_empty():
 		return
 	room.begin_shot_precook(plan["destroyed"], plan["damaged"],
-		room.shot_repaint_scope(plan["impact_gus"]))
+		room.shot_repaint_scope(plan["impact_gus"]), plan["variant_cells"])
 
 
-## PURE. Returns {"destroyed": Dictionary[Vector3i], "impact_gus": Array} for the
-## shot that WOULD be fired, writing nothing. The two consumers are the precook
-## above and, one day, D32's hit-percentage readout.
+## PURE. The shot that WOULD be fired, as data, writing nothing:
+##   "destroyed"     Dictionary[Vector3i] — every voxel the ladder would remove
+##   "damaged"       Array of plan_point_impact() entries — the DENTED/CRACKED
+##                   ones, tuple included, for the predicted self-soot
+##   "variant_cells" Array of {"level","cell","source_id","atlas_coords"} — the
+##                   atoms those damaged voxels will MOVE to
+##   "impact_gus"    Array[Vector2i]
+## The two consumers are the precook above and, one day, D32's hit-percentage
+## readout.
 func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> Dictionary:
 	if origin_gu == target_gu:
 		return {}
@@ -197,6 +203,7 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 		_blocked_edges_dict(), room._blocked_cells, salt, offset)
 	var destroyed: Dictionary = {}
 	var damaged: Array = []
+	var variant_cells: Array = []
 	var gus: Dictionary = {}
 	for i in range(picks.size()):
 		gus[picks[i]["gu"]] = true
@@ -208,18 +215,48 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 		var punch: float = ShotPunchTable.compute(
 			weapon_def.punch, slice.material, ShotPunchTable.SKILL_NEUTRAL,
 			1.0, "%s:%d" % [salt, i])
-		## DESTROYED changes occupancy (what the light field is built from);
-		## DENTED and CRACKED do not, but they DO feed the soot derivation
-		## (D33-SOOT-01), and soot is part of the alternative id. Omitting them
-		## left 13 cells with the wrong predicted soot — and 13 misses cost a
-		## whole TileSet rebuild, the same as 412 would.
-		var v: Voxel = slice.voxels[int(resolved["voxel_index"])]
-		var state: int = ShotPunchTable.damage_state_for(punch)
-		if state == Voxel.DamageState.DESTROYED:
-			destroyed[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-		elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
-			damaged.append(v)
-	return {"destroyed": destroyed, "damaged": damaged, "impact_gus": gus.keys()}
+		## ⚠️ THE WHOLE LADDER, NOT JUST THE VOXEL THE PELLET NAMED.
+		##
+		## This used to read `damage_state_for(punch)` on the resolved voxel alone
+		## and call that the prediction. D30's ladder touches more than that: a
+		## DESTROYED hit takes neighbours with it (D30.1) and penetrates into the
+		## sibling slice (D16's second layer), and the shot the plan is predicting
+		## reports 31 touched voxels for 24 pellets. Every one of those the plan did
+		## not know about was a cell whose occupancy, whose soot and whose ATOM the
+		## warm got wrong.
+		##
+		## `[]` for step_multipliers mirrors fire_at_active()'s non-LINE branch —
+		## WEAPON_ID declares CONE, and for a cone that table means distance, not
+		## depth (see apply_point_impact()'s own note).
+		for entry in BlastCalculatorClass.plan_point_impact(
+				slice, int(resolved["voxel_index"]), punch, room._edge_registry,
+				"%s:%d" % [salt, i], [], origin_gu):
+			var v: Voxel = entry["voxel"]
+			## DESTROYED changes occupancy (what the light field is built from);
+			## DENTED and CRACKED do not, but they DO feed the soot derivation
+			## (D33-SOOT-01), and soot is part of the alternative id.
+			if int(entry["state"]) == Voxel.DamageState.DESTROYED:
+				destroyed[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+				continue
+			damaged.append(entry)
+			## ...and a DENTED or CRACKED voxel also MOVES to another atom, whose
+			## light alternative is a fresh mint on the impact frame unless it is
+			## warmed here. An empty resolve is the D33 runtime-composite fallback
+			## (registry miss): its atlas coords are allocated while rendering, so
+			## there is nothing to warm ahead of time and it is skipped rather than
+			## guessed at.
+			if room._voxel_renderer == null:
+				continue
+			var swap: Dictionary = room._voxel_renderer.resolve_damage_swap_for(
+				entry["container"], int(entry["state"]), bool(entry["is_blast"]),
+				int(entry["carved_side"]), int(entry["variant"]),
+				int(entry["substrate"]))
+			if swap.is_empty():
+				continue
+			variant_cells.append({"level": v.level, "cell": v.grid_pos,
+				"source_id": swap["source_id"], "atlas_coords": swap["atlas_coords"]})
+	return {"destroyed": destroyed, "damaged": damaged,
+		"variant_cells": variant_cells, "impact_gus": gus.keys()}
 
 
 ## ONE definition of the shot's salt, because the precook and the real shot must

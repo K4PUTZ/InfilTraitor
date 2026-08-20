@@ -437,6 +437,40 @@ static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 		step_multipliers: Array = [],
 		shooter_gu: Vector2i = NO_EPICENTER_BIAS) -> Array:
 	var touched: Array = []
+	for entry in plan_point_impact(slice, voxel_index, punch, edge_registry, salt,
+			step_multipliers, shooter_gu):
+		var v: Voxel = entry["voxel"]
+		v.set_damage(int(entry["state"]), bool(entry["is_blast"]),
+			int(entry["carved_side"]), int(entry["variant"]), int(entry["substrate"]))
+		touched.append(v)
+	return touched
+
+
+## PURE. Exactly what apply_point_impact() above WOULD do, as data — one entry
+## per voxel it would touch, in the same order, carrying the exact damage tuple
+## it would write. Not a single voxel is mutated here.
+##
+## W-PRECOOK-02 (2026-08-19): the shot's warm has to know WHICH ATOM each
+## damaged voxel is about to land on. A DENTED or CRACKED voxel does not keep
+## its atlas coords — it moves to the damage VARIANT atom, and the light
+## alternative for THAT atom is a fresh mint on the very frame the wall breaks
+## (measured: 17 of them, one TileSet rebuild, ~250 ms). Resolving the atom
+## needs the real tuple — state, carved side, decal variant, substrate — and an
+## earlier attempt that GUESSED it warmed 11 alternatives the shot did not want
+## while still missing the 13 it did.
+##
+## So the ladder lives here, once, and the applier above is a loop over its
+## result. That is the whole point: a prediction that runs the same code cannot
+## disagree with what happens, and there is no second copy to drift.
+##
+## Entry: {"voxel": Voxel, "container": Slice, "state": int, "is_blast": bool,
+## "carved_side": int, "variant": int, "substrate": int} — the five fields after
+## `container` are set_damage()'s five arguments, in order.
+static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
+		edge_registry: EdgeRegistry, salt: String,
+		step_multipliers: Array = [],
+		shooter_gu: Vector2i = NO_EPICENTER_BIAS) -> Array:
+	var plan: Array = []
 	var current_slice := slice
 	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
 		if current_slice == null or voxel_index < 0 or voxel_index >= current_slice.voxels.size():
@@ -444,33 +478,39 @@ static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 		var current_punch: float = punch \
 			* ShotPunchTable.penetration_multiplier(step_multipliers, depth)
 		var voxel: Voxel = current_slice.voxels[voxel_index]
-		touched.append(voxel)
 		var state: int = ShotPunchTable.damage_state_for(current_punch)
 		if state != Voxel.DamageState.DESTROYED:
 			## CRACKED or DENTED — the projectile's own mark, bullet family
 			## (from_blast stays false, D23), on the face the shot came from
 			## (D32.4), with one of the three authored decals (D32.5).
-			voxel.set_damage(state, false,
-				carved_side_for(voxel.grid_pos, false, shooter_gu),
-				decal_variant_for(salt, voxel_index, depth),
-				substrate_for(salt, voxel_index, depth))
+			plan.append({"voxel": voxel, "container": current_slice,
+				"state": state, "is_blast": false,
+				"carved_side": carved_side_for(voxel.grid_pos, false, shooter_gu),
+				"variant": decal_variant_for(salt, voxel_index, depth),
+				"substrate": substrate_for(salt, voxel_index, depth)})
 			break
-		voxel.set_damage(Voxel.DamageState.DESTROYED)
+		plan.append(_destroyed_plan_entry(voxel, current_slice))
 		var sibling := edge_registry.sibling_slice(current_slice.id)
 		## D30.1: neighbours of the hole go too, but never marked.
 		var neighbour_count: int = ShotPunchTable.neighbour_count_for(current_punch)
 		var cascade_neighbours: bool = current_punch >= ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH
 		for ni in select_face_neighbours(current_slice, voxel_index, neighbour_count,
 				"%s:NEIGHBOUR:%d" % [salt, depth]):
-			var nv: Voxel = current_slice.voxels[ni]
-			nv.set_damage(Voxel.DamageState.DESTROYED)
-			touched.append(nv)
+			plan.append(_destroyed_plan_entry(current_slice.voxels[ni], current_slice))
 			if cascade_neighbours and sibling != null and ni < sibling.voxels.size():
-				var sv: Voxel = sibling.voxels[ni]
-				sv.set_damage(Voxel.DamageState.DESTROYED)
-				touched.append(sv)
+				plan.append(_destroyed_plan_entry(sibling.voxels[ni], sibling))
 		current_slice = sibling
-	return touched
+	return plan
+
+
+## The five set_damage() arguments a DESTROYED voxel gets, spelled out. They are
+## set_damage()'s own defaults — written here rather than defaulted so the plan
+## entry is a complete description of the call, and a reader never has to go and
+## check what a bare set_damage(DESTROYED) leaves behind.
+static func _destroyed_plan_entry(voxel: Voxel, container) -> Dictionary:
+	return {"voxel": voxel, "container": container,
+		"state": Voxel.DamageState.DESTROYED, "is_blast": false,
+		"carved_side": Voxel.CarvedSide.NONE, "variant": 0, "substrate": 0}
 
 
 ## The up-to-8 face-plane neighbours of `voxel_index` inside its own Slice,
@@ -1397,7 +1437,7 @@ static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
 		weapon_cells: Array, damaged_voxels: Array,
 		blast_rings: int, weapon_rings: int,
 		out_snapshot: Dictionary, out_faces: Dictionary,
-		also_visible: Dictionary = {}) -> void:
+		also_visible: Dictionary = {}, predicted_damaged: Array = []) -> void:
 	var blast_snapshot: Dictionary = {}
 	var blast_faces: Dictionary = {}
 	derive_soot_rings(cell_to_voxel, blast_cells, blast_rings,
@@ -1409,6 +1449,8 @@ static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
 	merge_soot_field(out_snapshot, out_faces, blast_snapshot, blast_faces)
 	merge_soot_field(out_snapshot, out_faces, weapon_snapshot, weapon_faces)
 	apply_self_soot(damaged_voxels, out_snapshot, out_faces)
+	## W-PRECOOK-02: damage the caller knows is coming but has not written yet.
+	apply_self_soot_predicted(predicted_damaged, out_snapshot, out_faces)
 
 
 ## Merges one scratch soot pass into a snapshot/face pair, min-wins per cell and
@@ -1522,14 +1564,42 @@ static func _self_soot_faces(damage_state: int, blast_sourced: bool, carved_side
 ## Call AFTER derive_soot_rings() so a stronger nearby-hole ring always wins.
 static func apply_self_soot(voxels: Array, out_snapshot: Dictionary, out_faces: Dictionary) -> void:
 	for v in voxels:
-		var faces := _self_soot_faces(v.damage_state, v.damage_is_blast, v.damage_carved_side)
-		if faces == Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN):
-			continue
-		_write_face_rings(out_faces, v.level, v.grid_pos, faces, true)
-		var ring: int = mini(faces.x, mini(faces.y, faces.z))
-		if not out_snapshot.has(v.level):
-			out_snapshot[v.level] = {}
-		var level_map: Dictionary = out_snapshot[v.level]
-		var existing: int = int(level_map.get(v.grid_pos, 99))
-		if ring < existing:
-			level_map[v.grid_pos] = ring
+		_write_self_soot(v.level, v.grid_pos, v.damage_state, v.damage_is_blast,
+			v.damage_carved_side, out_snapshot, out_faces)
+
+
+## W-PRECOOK-02 (2026-08-19) — the same thing for damage that has NOT HAPPENED
+## YET, from plan_point_impact() entries rather than from live Voxels.
+##
+## It exists because the shot's warm has to predict the SOOTY world, and reading
+## the tuple off the Voxel is exactly what cannot work before the shot: the
+## voxel is still INTACT, `_self_soot_faces()` returns clean for INTACT, and the
+## whole prediction silently degrades to "no self-soot anywhere". That is not a
+## hypothetical — `room._build_soot_snapshot()`'s `predict_damaged` list was
+## being fed live Voxels and contributed exactly nothing for that reason, which
+## is why the soot pass still minted 19 alternatives of its own.
+static func apply_self_soot_predicted(entries: Array, out_snapshot: Dictionary,
+		out_faces: Dictionary) -> void:
+	for e in entries:
+		var v: Voxel = e["voxel"]
+		_write_self_soot(v.level, v.grid_pos, int(e["state"]), bool(e["is_blast"]),
+			int(e["carved_side"]), out_snapshot, out_faces)
+
+
+## One damaged voxel's faint own-face soot, merged into the pair of out-params
+## min-wins. Shared by the live and the predicted entry points above so the two
+## can only ever scorch a mark the same way.
+static func _write_self_soot(level: int, grid_pos: Vector2i, damage_state: int,
+		blast_sourced: bool, carved_side: int,
+		out_snapshot: Dictionary, out_faces: Dictionary) -> void:
+	var faces := _self_soot_faces(damage_state, blast_sourced, carved_side)
+	if faces == Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN):
+		return
+	_write_face_rings(out_faces, level, grid_pos, faces, true)
+	var ring: int = mini(faces.x, mini(faces.y, faces.z))
+	if not out_snapshot.has(level):
+		out_snapshot[level] = {}
+	var level_map: Dictionary = out_snapshot[level]
+	var existing: int = int(level_map.get(grid_pos, 99))
+	if ring < existing:
+		level_map[grid_pos] = ring

@@ -2870,11 +2870,11 @@ var _shot_precook_minted: int = 0
 
 ## Begin warming. Returns immediately; `await shot_precook_ready()` to join.
 func begin_shot_precook(predict_destroyed: Dictionary, predict_damaged: Array,
-		scope_gus: Array) -> void:
+		scope_gus: Array, variant_cells: Array = []) -> void:
 	_shot_precook_token += 1
 	_shot_precook_done = false
 	_run_shot_precook(_shot_precook_token, predict_destroyed, predict_damaged,
-		scope_gus)
+		scope_gus, variant_cells)
 
 
 func cancel_shot_precook() -> void:
@@ -2892,7 +2892,7 @@ func shot_precook_ready() -> void:
 
 
 func _run_shot_precook(token: int, predict_destroyed: Dictionary,
-		predict_damaged: Array, scope_gus: Array) -> void:
+		predict_damaged: Array, scope_gus: Array, variant_cells: Array = []) -> void:
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
@@ -2946,7 +2946,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 			return
 		_shot_precook_minted += await _voxel_renderer.warm_light_alts_for_gus(
 			field, scope_gus, get_tree(),
-			func(): return token == _shot_precook_token)
+			func(): return token == _shot_precook_token, variant_cells)
 	if token != _shot_precook_token:
 		return
 	_shot_precook_done = true
@@ -3156,9 +3156,21 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	for predicted in predict_weapon_cells:
 		if not weapon_cells.has(predicted):
 			weapon_cells.append(predicted)
-	for dv in predict_damaged:
-		if not damaged_voxels.has(dv):
-			damaged_voxels.append(dv)
+	## W-PRECOOK-02: `predict_damaged` carries plan_point_impact() ENTRIES, not
+	## Voxels, and it has to. The voxel a shot is about to dent is still INTACT
+	## right now, and `apply_self_soot()` reads the tuple off the object — so the
+	## previous version of this loop, which appended live Voxels, contributed
+	## nothing at all and left the predicted world un-sooted exactly where the
+	## shot was going to scorch it. Any voxel the prediction covers is dropped
+	## from the live list, so a re-hit voxel scorches from its FUTURE face rather
+	## than merging its old one in.
+	var predicted_keys: Dictionary = {}
+	for entry in predict_damaged:
+		var pv: Voxel = entry["voxel"]
+		predicted_keys[Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)] = true
+	if not predicted_keys.is_empty():
+		damaged_voxels = damaged_voxels.filter(func(dv):
+			return not predicted_keys.has(Vector3i(dv.grid_pos.x, dv.grid_pos.y, dv.level)))
 	## E-JUNCTION-01 (2026-08-13): wall-junction corner columns. Explosions
 	## already dent/crack/destroy them (see DetonationPlanBuilder's own
 	## PHASE_JUNCTIONS); firearms deliberately still don't (a shot's aim
@@ -3181,7 +3193,7 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	var snapshot: Dictionary = {}
 	BlastCalculator.build_soot_field(cell_to_voxel, blast_cells, weapon_cells,
 			damaged_voxels, blast_soot_rings + blast_soot_feather_rings,
-			weapon_soot_rings, snapshot, out_faces)
+			weapon_soot_rings, snapshot, out_faces, {}, predict_damaged)
 
 	## VL-D2: the revealed crater-floor soot (non-Voxel cells), through the same
 	## helper the detonation path uses for the same kind of cell.

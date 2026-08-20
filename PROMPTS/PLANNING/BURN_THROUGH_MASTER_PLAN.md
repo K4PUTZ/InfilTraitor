@@ -1,7 +1,8 @@
 # BURN_THROUGH_MASTER_PLAN
-## Fire that opens a passage — cardboard, fabric, plywood — v0.1
+## Fire that opens a passage — cardboard, fabric, plywood — v0.2
 
-**Status:** 🟡 **v0.1 — captured brief, ratified in shape, not yet executable.**
+**Status:** 🟡 **v0.2 — the fire is DESCRIBED (§3b) and the cascade ceiling is
+RATIFIED (§2, option C); the propagation mechanism is still unbuilt.**
 **Written:** 2026-08-21, against `a7763792`.
 **Reopens:** `DESTRUCTION_MASTER_PLAN`'s 2026-08-16 materials wave, question 3.
 **Companions:** `DESTRUCTION_MASTER_PLAN` (owns how anything becomes broken
@@ -95,8 +96,13 @@ a band. Adding four more materials widens the RESISTANCE span further and makes
 a global cascade threshold worse, not merely unchanged. C also retires the glass
 exclusion instead of adding four siblings to it.
 
-**This is a design decision and is NOT taken here.** Task A0 is the Director
-ratifying A, B or C.
+> ### ✅ RATIFIED 2026-08-21 — option C
+>
+> Director: *"Vamos com o teto por material."* The cascade ceiling becomes a
+> per-material table on the `DESTROY_MIN` pattern, `NEIGHBOUR_CASCADE_PUNCH`
+> stays as the fallback for an unlisted material, and the selftest's `glass`
+> exclusion is retired in the same change — it becomes a row, not a `continue`.
+> **A0 is closed.**
 
 ---
 
@@ -127,19 +133,83 @@ The mechanism is not designed yet. These are the questions, not the answers.
 
 ---
 
+## 3b. The fire, as the Director described it (2026-08-21)
+
+Verbatim design, transcribed before it is turned into anything. This is §3.3's
+answer arriving ahead of the rest, and it is **per material** — the three do not
+share a curve.
+
+> *"os mais moles não vão destruir muito mais durante os tiros, mas na explosão
+> o fogo 'pega'"*
+
+**The first rule, and it reframes everything below: softness is a FIRE
+property, not a bullet property.** A shot through cardboard is still just a
+shot. What the soft materials change is what a *detonation* does to them. This
+usefully shrinks §2's calibration worry: their resistance rows do not have to
+carry the drama.
+
+| Material | Behaviour | Passage |
+|---|---|---|
+| **fabric** (tecido) | Fire catches and burns **fast**, consuming everything; an ember remains **only at the edges**, then goes out | **Always** opens |
+| **cardboard** (papelão) | A flame first **rises up** the material, then it is consumed by embers **more slowly** than fabric | **Always** opens |
+| **plywood** (madeirite) | Burns for a while, turns to ember, then goes out | **Conditional** — see below |
+
+**Plywood is the only one with a spatial rule**, and it is the interesting one:
+*"abre passagem se a granada for bem na base da parede, queimando vários voxels;
+se for mais distante queima menos."* So plywood's burn extent is a function of
+the blast's **proximity to the wall's base** — which is a geometric input the
+detonation already has (the ring/radius model, and the epicentre bias
+`carved_side_for()` already consumes). Fabric and cardboard ignore it.
+
+### The scope statement that should govern the whole milestone
+
+> *"Na realidade esses materiais vão ser mais usados em caixas, tapumes,
+> andaimes, toldos, e outros elementos decorativos que vão ser destruídos. Mas
+> podem eventualmente serem usados para bloquear/desbloquear caminhos."*
+
+**These are PROP materials first and wall materials second.** That is a
+different centre of gravity than §4's staging assumed, and it is good news for
+sizing:
+
+- A prop is already built from dictionary materials — `PropDef.material_zones`,
+  e.g. `props/crate_full.json` is `{"default": "wood"}`. A cardboard crate is
+  that file with one word changed. **No new art and no new schema.**
+- So "burning a crate" and "burning a wall" are the same mechanism over the
+  same voxels, and the prop case is the one to build and demo FIRST — it is
+  small, self-contained, and it is what the material is actually for.
+- Blocking/unblocking a path is real but **occasional**. It should not drive the
+  design of the propagation; it falls out of voxels going `DESTROYED`.
+
+⚠️ **One known gap this walks into.** ART_SPECIFICATIONS §5 records that the v1
+prop renderer **ignores `layers` and renders props as solid GU blocks**, and
+that pinning the row/level ordering is an ART-01 deliverable. A burning awning
+(toldo) is a thin, non-solid shape. So the prop-first route is blocked on
+renderer v2 for anything that is not a solid block — a crate works today, a
+toldo does not. Size C1 against that, or scope v1 to solid props.
+
+### What is still open after this
+
+§3.1 (what ignites it — does a bullet, or only a blast?), §3.3's spread budget
+for the wall case, and §3.4/§3.5 (damage to actors, noise) remain unanswered.
+The Director's description is entirely about **blast-sourced** fire, which is a
+strong hint that the answer to §3.1 is "explosions only, for now".
+
+---
+
 ## 4. Staging
 
 Ordered so that nothing is built on an unverified assumption.
 
 | Task | What | Blocked by |
 |---|---|---|
-| **A0** | Director ratifies §2's option A/B/C | — |
+| ~~**A0**~~ | ~~Director ratifies §2's option A/B/C~~ — ✅ **CLOSED 2026-08-21, option C** | — |
+| **A0b** | Build the per-material cascade table; retire the selftest's `glass` exclusion | — |
 | **A1** | Register `brick` + `plywood`: material JSONs, `RESISTANCE`, `DESTROY_MIN`, `BASE_MATERIALS`, `VOXEL_MATERIALS`, `canonical_voxel_atom_for()` aliases | facades |
 | **A2** | Same for `cardboard` + `fabric` | facades, A0 |
 | **B1** | **Measure the free win.** Force one fabric voxel to `DESTROYED`, capture the light field against a same-boot control, confirm §1 | A2 |
 | **B2** | Place all four as real blocks in PLAYGROUND (reserved today at gu x=22-24 / 27-29 / 32-34 / 37-39), run `roof_bake_selftest` — this is where a missing facade shows up as 520 missing roof entries | A1, A2 |
 | **C0** | Answer §3.1–3.5 with the Director; write v0.2 of this plan | B2 |
-| **C1+** | Build the propagation | C0 |
+| **C1+** | Build the propagation — **prop-first** (§3b), per-material curves, blast-sourced | C0 |
 | **D** | **Glass, last** — its own non-local pane break. Separate brief; see §5 | — |
 
 **A1 and A2 are inert until B2**: registering a material that nothing places

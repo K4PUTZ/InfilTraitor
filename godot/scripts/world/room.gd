@@ -4251,10 +4251,21 @@ func _capture_shot_filmstrip() -> void:
 	## with the one-off cost of loading the `aimed` grip's textures — a real cost,
 	## but one that belongs to the aim, not to the shot.
 	var menu_at: int = 1
+	## A SECOND SHOT, on demand, because "expensive" and "expensive ONCE" are
+	## different findings and no single-shot timeline can tell them apart. The
+	## impact frame still costs ~300 ms with 80 ms of CPU in it and zero
+	## alternatives minted (W-PRECOOK-02), so the remaining time is engine-side —
+	## and the two candidates, a first GPU upload of the damage-variant page and a
+	## first particle-material compile, are BOTH one-offs that would vanish on a
+	## second shot. INFILTRAITOR_SHOT_FILM_SECOND_AT=<frame> opens the menu again
+	## at that frame and fires five frames later, exactly as the first one does.
+	var second_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_SECOND_AT")
+	var menu2_at: int = second_env.to_int() if second_env.is_valid_int() else -1
+	var fire2_at: int = (menu2_at + fire_at - menu_at) if menu2_at >= 0 else -1
 	for i in range(count):
-		if i == menu_at:
+		if i == menu_at or i == menu2_at:
 			_agent_shot_controller.open_menu_for(guard_idx)
-		if i == fire_at:
+		if i == fire_at or i == fire2_at:
 			_agent_shot_controller.fire_at_active()
 		await RenderingServer.frame_post_draw
 		var now_us: int = Time.get_ticks_usec()
@@ -4265,8 +4276,10 @@ func _capture_shot_filmstrip() -> void:
 		worst_ms = maxf(worst_ms, ms)
 		print("[SHOT-FILM] frame %02d  %7.1f ms%s" % [i, ms,
 			"   <-- FIRE" if i == fire_at else (
+			"   <-- FIRE 2" if i == fire2_at else (
 			"   <-- MENU" if i == menu_at else (
-			"   <-- DROPPED" if ms > 17.0 else ""))])
+			"   <-- MENU 2" if i == menu2_at else (
+			"   <-- DROPPED" if ms > 17.0 else ""))))])
 		## ⚠️ SAVING A PNG COSTS ~180 ms, SO THE TIMED PASS MUST NOT SAVE ONE.
 		## The first version of this harness saved every frame and reported 187 ms
 		## and 184 ms for the two frames BEFORE the trigger — a flat baseline that

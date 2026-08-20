@@ -1,5 +1,14 @@
 # WEAPON_MASTER_PLAN
-## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.1
+## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.2
+
+**v1.2 (2026-08-20) — W-PRECOOK is BUILT; §0 carries what it found.** The
+deferral below did its job and is now history, not status: §6c supplied the
+shooter and the aim window D30 was waiting for, and the pre-production shipped in
+`ed465ac7` + `83e78d11`. The headline is not the speed, it is that **the
+measurement in §0 named the wrong cost** — the destruction resolves in 1.3 ms and
+the real bill is `create_alternative_tile()`, charged **once per FRAME THAT MINTS,
+not per mint**. Read §0's status block before touching anything in this
+subsystem. Nothing in v1.1 is retracted.
 
 **v1.1 (2026-08-13) — the shooter arrives, the optimization moves.**
 **W-PRECOOK (§0) is DEFERRED** — out of "next session", into the **last item of
@@ -75,7 +84,47 @@ weapons exist, and what shape of effect does each one put into the world.**
 
 ---
 
-## 0. Firearm pre-production (W-PRECOOK) — ⏸ DEFERRED to the optimization milestone
+## 0. Firearm pre-production (W-PRECOOK) — ✅ BUILT 2026-08-19/20
+
+> **Status, ahead of everything below.** The deferral held until the agent existed
+> and held a weapon, exactly as D30 required; §6c then supplied the shooter and
+> the aim window, and W-PRECOOK shipped in `ed465ac7` with W-PRECOOK-02
+> (`83e78d11`) closing the last of it. **Everything in this section stays as
+> written** — the measurement, the contrast with the blast, both candidate
+> routes — because the deferral reasoning is still the record of why it waited.
+> What follows is only what the build found.
+>
+> **The measurement below named the wrong cost, and finding that out was the
+> work.** `repaint ~310 ms` is real, but pre-computing the *destruction* saves
+> none of it: damage resolution is 1.3 ms, 0.2% of a shot. The cost is
+> `create_alternative_tile()`, and:
+>
+> ⚠️ **THE TILESET REBUILD IS CHARGED ONCE PER FRAME THAT MINTS, NOT PER MINT.**
+>
+> 412 mints in one frame cost ~264 ms; 442 spread over 11 frames cost ~205 ms
+> *each*. So the warm mints in ONE frame, during the aim, against the world as it
+> will be — and any change that spreads minting is a regression however
+> reasonable it sounds.
+>
+> **What W-PRECOOK-02 added:** `BlastCalculator.plan_point_impact()`, D30's ladder
+> as a PURE plan that `apply_point_impact()` then applies, so the warm can resolve
+> which damage-VARIANT atom each voxel will move to
+> (`VoxelRenderer.resolve_damage_swap_for()`) instead of guessing it. Mints after
+> the warm: **36 → 0**.
+>
+> **Per-frame result on PLAYGROUND, `INFILTRAITOR_CAPTURE_ACTION=shot_filmstrip`,
+> `--fixed-fps 60`:** trigger frame 10 ms (no lag at the button), the projectile
+> flies at frame rate, then the aim warm ~500 ms, the impact 303 ms, the soot
+> 230 ms.
+>
+> **And the impact frame's residue is a ONE-OFF, measured rather than argued.**
+> With `INFILTRAITOR_SHOT_FILM_SECOND_AT=<frame>` the same boot fires twice: the
+> FIRST impact frame is 303 ms against 79 ms of CPU, the SECOND is **82 ms**
+> against 69 ms. ~225 ms of first-use engine cost — the damage-variant page's
+> first GPU upload and the impact VFX's first material compile are the two
+> candidates — and it is paid once per session, not once per shot. The soot pass
+> is the opposite: 230 ms then 225 ms, CPU-bound on the map-wide snapshot (142 ms,
+> and it must stay map-wide — D24).
 
 > **Scheduled and deferred on the same day, 2026-08-13.** This section was
 > written that morning under the heading *"NEXT SESSION — firearm

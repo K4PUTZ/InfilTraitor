@@ -37,9 +37,13 @@ static var RESISTANCE: Dictionary = {
 	"metal": 2.2,
 	"stone": 1.6,
 	"concrete": 1.3,
-	"wood": 0.8,
-	"glass": 0.4,
+	"brick": 1.15,
 	"earth": 1.0,
+	"wood": 0.8,
+	"plywood": 0.6,
+	"glass": 0.4,
+	"cardboard": 0.35,
+	"fabric": 0.3,
 }
 static var DEFAULT_RESISTANCE: float = 1.3
 
@@ -82,6 +86,28 @@ static var DESTROY_MIN: Dictionary = {
 	"wood": 1.03,      ## the soft outlier: a pistol goes through, buckshot tears
 	"glass": 0.30,     ## shatters to anything that reaches it
 	"earth": 0.75,
+	## MAT-REG-01 (2026-08-21). These four are NOT hand-tuned against captures
+	## the way the six above were — they are DERIVED, and the derivation is the
+	## Director's own spec: *"os mais moles não vão destruir muito mais durante
+	## os tiros, mas na explosão o fogo pega."* Softness is a FIRE property here,
+	## not a bullet property.
+	##
+	## `punch` already divides by RESISTANCE, so halving a material's resistance
+	## doubles its punch and would double what a shot destroys. Scaling the
+	## breach threshold by the SAME factor cancels exactly that, holding the
+	## destroyed fraction near its calibrated reference while the material still
+	## marks more easily. Two references, one per family:
+	##
+	##     soft:    dm = 1.03 * 0.80 / r   (from wood)
+	##     mineral: dm = 0.63 * 1.30 / r   (from concrete)
+	##
+	## They are placeholders in the same sense every row here is — the Director
+	## calibrates against real captures once the facades land and the blocks are
+	## placed. What they are NOT is a guess at what looks right.
+	"brick": 0.71,     ## mineral, from concrete: 0.63 * 1.30/1.15
+	"plywood": 1.37,   ## soft, from wood: 1.03 * 0.80/0.60
+	"cardboard": 2.35, ## soft, from wood: 1.03 * 0.80/0.35
+	"fabric": 2.75,    ## soft, from wood: 1.03 * 0.80/0.30
 }
 ## Fallback for a material with no row, and the value every non-firearm caller
 ## of damage_state_for() still gets. Between stone and earth on purpose: an
@@ -120,6 +146,50 @@ static var PENETRATION_FALLOFF: float = 0.5
 ## the real JSONs, so adding a stronger weapon fails the suite rather than
 ## silently turning every rifle into a bazooka.
 static var NEIGHBOUR_CASCADE_PUNCH: float = 5.0
+
+## ⚠️ THE CEILING ABOVE IS A FALLBACK NOW, NOT THE RULE — A0b, Director-ratified
+## 2026-08-21: *"Vamos com o teto por material."*
+##
+## WHY ONE GLOBAL NUMBER STOPPED WORKING, arithmetically rather than by taste.
+## The arsenal's worst case is an elite sniper at point blank with max luck:
+##
+##     3.0 (PUNCH_GAIN) x 0.70 (sniper) x 1.4 (SKILL_ELITE) x 1.0 x 1.20 (LUCK_MAX)
+##       = 3.528, then divided by the material's RESISTANCE
+##
+## So ANY material with RESISTANCE below 3.528 / 5.0 = **0.706** reaches the
+## ceiling with a shipped weapon, which is exactly what D30.2 says must not
+## happen. That was already true before this table existed: `glass` sits at
+## resistance 0.4 -> punch 8.82, and the selftest carried a hardcoded
+## `if material == "glass": continue` with the note that the exclusion goes the
+## day glass gets a real rule. Adding cardboard (0.35), fabric (0.3) and plywood
+## (0.6) would have grown that exclusion list to five and left the pin pinning
+## nothing.
+##
+## THIS IS A FLOOR-LIFTING EXCEPTION TABLE, NOT A REPLACEMENT, and that
+## distinction is the whole design. Only materials whose worst case exceeds the
+## global 5.0 get a row; metal, stone, concrete, brick and wood are ABSENT on
+## purpose, so W-TUNE-02's calibrated matrix is untouched by this change.
+##
+## It deliberately does NOT scale as 1/resistance. Doing so would cancel the
+## resistance term outright and make every material need the same weapon to
+## crater, which is the opposite of the point — a bazooka should open cardboard
+## more readily than steel. Each row is its own worst case plus ~15% headroom
+## (the same margin the global 5.0 already had over wood's 4.41), so softness
+## still buys you the cascade earlier: on these numbers cardboard cascades to a
+## weapon roughly 2.7x weaker than metal does.
+static var CASCADE_MIN: Dictionary = {
+	"plywood": 6.8,    ## worst case 5.88 (3.528/0.60)
+	"glass": 10.2,     ## worst case 8.82 (3.528/0.40) — retires the selftest exclusion
+	"cardboard": 11.6, ## worst case 10.08 (3.528/0.35)
+	"fabric": 13.5,    ## worst case 11.76 (3.528/0.30)
+}
+
+
+## The punch at which a projectile's DESTROYED neighbours cascade into the
+## second layer, for `material`. See CASCADE_MIN for why this is per material
+## and why most materials are deliberately not in it.
+static func cascade_min(material: String) -> float:
+	return float(CASCADE_MIN.get(material, NEIGHBOUR_CASCADE_PUNCH))
 
 ## D30.4 — luck is a spread on DESTRUCTION, never on hit/miss (that is a
 ## separate roll the Director explicitly told us not to conflate). Its job is to

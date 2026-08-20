@@ -199,9 +199,18 @@ colour allowed** (B2 does not bind decals), **3 variants per family per
 material**, at
 `ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png`.
 
-Without them a material falls back to D25's shared fracture, which is real,
-shipped and looks correct — so these are never a blocker for landing a
-material.
+Without them a material still takes a **real, visible mark**, via the
+material-agnostic GENERIC family (`decal_generic_bullet_dented_*`,
+`decal_generic_blast_crack_*` — 12 files, already on disk) composited onto that
+material's own flat atom. That path resolves through `MATERIALS.find()`, which
+is exactly why registration in `BASE_MATERIALS` matters.
+
+> Correction, 2026-08-21: an earlier revision of this section said the fallback
+> was "D25's shared fracture". That is the FLOOR path (`floor_damage_material()`
+> routing to `IMPACT_FLOOR_MATERIAL`); for a WALL, `_decal_material()` returns
+> `""` for an unlisted material and the generic family above is what actually
+> draws the mark. Same conclusion — decals are never a blocker — different
+> mechanism.
 
 Worth having eventually, and only these:
 

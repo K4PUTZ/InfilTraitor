@@ -65,8 +65,12 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 ## `voxel_earth.png` — resolved through BakePolicy.canonical_voxel_atom_for(),
 ## which owns that aliasing and explains why variant 0 is a valid canonical
 ## alpha source.
+## MAT-REG-01: brick/cardboard/fabric/plywood APPENDED. Each resolves through
+## BakePolicy.canonical_voxel_atom_for() to voxel_concrete.png, so this adds no
+## missing-file push_error — the registration is inert until a map places one.
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
-	"grass", "dirt", "gravel", "sand", "earth"]
+	"grass", "dirt", "gravel", "sand", "earth",
+	"brick", "cardboard", "fabric", "plywood"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);

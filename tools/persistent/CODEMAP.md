@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 63108 lines total** (under `godot/scripts/`)
+**211 scripts · 63221 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -827,7 +827,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3461 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3469 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1666,7 +1666,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1224 lines
+`class_name BakeCompositor` · 1228 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1706,11 +1706,14 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 102 lines
+`class_name BakePolicy` · 116 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
 > BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Texture assignment (material ID + surface class → texture ID) - Variant seeding (edge + material → [0, 4) variant) D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): texture identity is a (material, surface_class) pair, mechanically derived — no per-material dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same source) always resolves to `facade_<id>`. A missing asset (e.g. a material with no wall facade) is handled the same way it always was: TextureResolver.resolve() falls back to Tier.NONE and every caller already treats that as "fall back to the generic atlas". D34/E-SEAM-01 (Director, 2026-08-08) — **amends D20's SLAB half.** D20 sent EVERY floor zone down the `slab_<id>` photographic path, which is what made a concrete floor unable to read as the same material as a concrete wall (they were literally different art: `facade_concrete` grayscale+tinted vs `slab_concrete`, an unrelated ground photo at WHITE). The Director's model instead: **a floor is a roof at the base of the scene** — same bake, same grayscale source, same multiply tint, so wall/roof/floor of one material all read as that material. Which family a SLAB request resolves to is therefore derived from the MATERIAL, not from the surface alone: has_facade == true  -> `facade_<id>`, the SLICE family (concrete, metal, stone, wood today) has_facade == false -> `slab_<id>`, the photographic exception, kept on purpose for organic/wild ground (grass, dirt, sand, gravel) where hue IS the material identity and a grayscale source cannot carry it `has_facade` is consulted for SLAB only; SLICE resolves to `facade_<id>` regardless. This also retires the never-read `MaterialDef.slab_full_color` flag — the same split is derivable from `has_facade`, so there is no second field to keep in sync with it (E-SEAM-03).
+
+**Constants / tuning**
+- `CANONICAL_ATOM_ALIASES` = `{ "earth": "earth_0", "brick": "concrete", "cardboard": "concrete", "fabric": "concrete", "plywood": "concrete", }`
 
 ---
 
@@ -1791,7 +1794,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1666 lines
+`class_name BlastCalculator` · 1669 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1906,7 +1909,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 234 lines
+`class_name ShotPunchTable` · 304 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -2818,7 +2821,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2340 lines
+extends `SceneTree` · 2354 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 

@@ -1734,32 +1734,46 @@ func test_no_shipped_weapon_reaches_the_cascade() -> void:
 			return
 		var def := WeaponDef.from_json(data)
 		for material in ShotPunchTable.RESISTANCE:
-			## GLASS IS EXCLUDED, with a measured reason rather than a hunch:
-			## at resistance 0.4 a sniper reaches punch 8.82 on it, far past the
-			## threshold. That is not a mis-calibration of the ladder — D22
-			## ratified glass as DESTROYED-only ("não vai ter dented; é buraco
-			## feito, ou não feito") and explicitly DEFERRED its wider-cascade
-			## destruction behaviour, so a pane shattering through both layers
-			## is the specified outcome, not the wall-crater case D30.2 is
-			## about. Flagged to the Director as an open calibration item; if
-			## glass ever gets its own destruction rule this exclusion goes.
-			if material == "glass":
-				continue
+			## ⚠️ THE GLASS EXCLUSION IS GONE, and its removal is the POINT of
+			## A0b rather than a side effect. This loop used to carry a hardcoded
+			## `if material == "glass": continue`, because at resistance 0.4 a
+			## sniper reaches punch 8.82 against a global ceiling of 5.0 — and
+			## that comment ended with "if glass ever gets its own destruction
+			## rule this exclusion goes". Adding cardboard (0.35), fabric (0.3)
+			## and plywood (0.6) would have grown it to four siblings, at which
+			## point the test pins nothing.
+			##
+			## Now every material is measured against ITS OWN ceiling
+			## (ShotPunchTable.cascade_min), so the property under test is the one
+			## D30.2 actually states — no shipped weapon craters ANY material —
+			## and it is now genuinely checked for the soft ones instead of
+			## skipped. The headroom is what is being pinned: a future heavy
+			## weapon must be able to reach these, so this reports the closest
+			## approach rather than merely passing.
 			## Worst case: elite agent, point blank (step 0), luckiest roll.
 			var p: float = ShotPunchTable.PUNCH_GAIN * def.punch \
 				* ShotPunchTable.SKILL_ELITE \
 				* ShotPunchTable.cone_distance_multiplier(def.step_multipliers, 0) \
 				* ShotPunchTable.LUCK_MAX \
 				/ ShotPunchTable.resistance(material)
-			if p > worst:
-				worst = p
-				worst_label = "%s on %s" % [def.id, material]
-	if worst > 0.0 and worst < ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH:
-		_pass("arsenal worst case is %s at punch %.2f, below the %.2f cascade threshold" %
-			[worst_label, worst, ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH])
+			## Normalised: how close this weapon gets to THIS material's ceiling.
+			## Comparing raw punch across materials is meaningless once the
+			## ceiling varies — fabric's 11.76 is further from its own 13.5 than
+			## wood's 4.41 is from 5.0.
+			var ratio: float = p / maxf(ShotPunchTable.cascade_min(material), 0.001)
+			if ratio > worst:
+				worst = ratio
+				worst_label = "%s on %s (punch %.2f vs ceiling %.2f)" % \
+					[def.id, material, p, ShotPunchTable.cascade_min(material)]
+	## `worst` is now a RATIO to each material's own ceiling, so 1.0 is the
+	## threshold for every material at once and the number is comparable across
+	## a table that is no longer flat.
+	if worst > 0.0 and worst < 1.0:
+		_pass("arsenal worst case is %s — %.0f%% of that material's own ceiling, over %d materials with no exclusions" %
+			[worst_label, worst * 100.0, ShotPunchTable.RESISTANCE.size()])
 	else:
-		_fail("worst case %s reached punch %.2f, at or above the %.2f cascade threshold" %
-			[worst_label, worst, ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH])
+		_fail("worst case %s reached %.0f%% of its material's ceiling — at or above it" %
+			[worst_label, worst * 100.0])
 	print("")
 
 

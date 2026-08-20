@@ -64,10 +64,18 @@ const VOXEL_SOURCE_ID: int = 0
 ## surface palette for the UNZONED ground and stay exactly as they were.
 ## APPENDED, never inserted: MATERIALS[0] is the last-resort fallback and every
 ## other index is looked up by name, so order changes are gratuitous risk.
+## MAT-REG-01 (2026-08-21): the four newcomers are APPENDED, obeying the rule
+## the comment above already states — MATERIALS[0] is the last-resort fallback
+## and every other index is looked up by name, so an insertion is gratuitous
+## risk. Registration here is what makes the material-agnostic GENERIC MARK path
+## reachable for them (`_resolve_flat_material_atom()` resolves through
+## MATERIALS.find()), which is why a material with no authored decal family
+## still takes a visible bullet mark.
 const BASE_MATERIALS: Array[String] = [
 	"concrete", "metal", "stone", "wood", "glass",
 	"earth_0", "earth_1", "earth_2", "earth_3", "earth_4", "earth_5", "earth_6", "earth_7",
 	"earth",
+	"brick", "cardboard", "fabric", "plywood",
 ]
 
 ## D32 — the four wall materials the Director authors decals for. Glass is

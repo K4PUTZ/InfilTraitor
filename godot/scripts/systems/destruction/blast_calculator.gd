@@ -534,7 +534,10 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		var sibling := edge_registry.sibling_slice(current_slice.id)
 		## D30.1: neighbours of the hole go too, but never marked.
 		var neighbour_count: int = ShotPunchTable.neighbour_count_for(current_punch, blowout)
-		var cascade_neighbours: bool = current_punch >= ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH
+		## A0b: the ceiling is the MATERIAL's, read from the slice for the same
+		## reason destroy_min() is — the sibling at depth 1 is the same wall and
+		## must answer with the same number.
+		var cascade_neighbours: bool = current_punch >= ShotPunchTable.cascade_min(current_slice.material)
 		for ni in select_face_neighbours(current_slice, voxel_index, neighbour_count,
 				"%s:NEIGHBOUR:%d" % [salt, depth]):
 			plan.append(_destroyed_plan_entry(current_slice.voxels[ni], current_slice, depth))

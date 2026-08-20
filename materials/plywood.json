@@ -1,0 +1,14 @@
+{
+  "id": "plywood",
+  "destroy_factor": 0.8,
+  "dent_factor": 0.22,
+  "crack_factor": 0.0,
+  "flammability": 1.1,
+  "base_color": [
+    0.78,
+    0.63,
+    0.42
+  ],
+  "pattern_algorithm": "wood",
+  "has_facade": true
+}

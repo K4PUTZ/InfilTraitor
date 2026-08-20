@@ -1,0 +1,14 @@
+{
+  "id": "brick",
+  "destroy_factor": 0.35,
+  "dent_factor": 0.18,
+  "crack_factor": 0.12,
+  "flammability": 0.0,
+  "base_color": [
+    0.55,
+    0.29,
+    0.22
+  ],
+  "pattern_algorithm": "stone",
+  "has_facade": true
+}

@@ -1,0 +1,14 @@
+{
+  "id": "cardboard",
+  "destroy_factor": 0.9,
+  "dent_factor": 0.15,
+  "crack_factor": 0.0,
+  "flammability": 1.4,
+  "base_color": [
+    0.7,
+    0.55,
+    0.36
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true
+}

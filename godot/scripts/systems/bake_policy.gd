@@ -90,10 +90,24 @@ static func texture_for_material(material_id: String, surface_class: int,
 ## `materials/` is an INPUT directory (ASSET-LAYOUT-01, "never overwritten"),
 ## and a duplicate file there would be a derived artifact masquerading as
 ## authored art.
+## MAT-REG-01 (2026-08-21): the four newcomers alias to concrete's atom, for
+## the reason already recorded above rather than a new one. ALPHA IS THE ONLY
+## CHANNEL A CANONICAL ATOM'S MASKING READS, and all 17 shipped atoms are 32x36
+## with byte-identical alpha (measured, md5 884d98981cee) — so a per-material
+## file would be 17 copies of one silhouette, and `materials/` is an INPUT
+## directory where a derived duplicate would masquerade as authored art.
+## `glass` is absent because voxel_glass.png genuinely exists.
+const CANONICAL_ATOM_ALIASES: Dictionary = {
+	"earth": "earth_0",
+	"brick": "concrete",
+	"cardboard": "concrete",
+	"fabric": "concrete",
+	"plywood": "concrete",
+}
+
+
 static func canonical_voxel_atom_for(material_id: String) -> String:
-	if material_id == "earth":
-		return "earth_0"
-	return material_id
+	return String(CANONICAL_ATOM_ALIASES.get(material_id, material_id))
 
 
 ## Deterministic variant selection. Stable across runs: NEVER uses instance identity.

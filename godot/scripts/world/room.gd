@@ -2791,6 +2791,23 @@ var shot_soot_fade_frames_per_step: int = 2
 ## The first build is awaited on its own frame so the shot's own repaint has
 ## already been presented — deferring the work and then doing it in the same
 ## frame would move the stall, not remove it.
+## The soot, once, after everything else. See the caller's note for why this is
+## a single pass rather than a fade.
+##
+## The first frame is yielded first so the impact — tile swap, smoke — has been
+## PRESENTED before this runs. Deferring the work and then doing it in the same
+## frame would move the stall, not remove it; that mistake was made once already
+## in this file's history.
+func apply_scoped_soot(gus: Array) -> void:
+	if gus.is_empty() or _voxel_renderer == null:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(_voxel_renderer):
+		return
+	_repaint_voxel_light_buckets_scoped(gus, true, 0)
+
+
 func fade_in_scoped_soot(gus: Array) -> void:
 	if gus.is_empty() or _voxel_renderer == null:
 		return
@@ -2904,24 +2921,36 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	var field = _voxel_light_field
 	var soot_faces: Dictionary = {}
 	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
-	field.build(
-			registry.get_active_lights(),
-			_lighting_controller.get_shadow_results(),
-			top_wall_level,
-			_voxel_renderer.build_occupancy(predict_destroyed),
-			_build_soot_snapshot(soot_faces, predict_destroyed.keys(),
-				predict_damaged),
-			_under_structure,
-			soot_faces,
-			true)
-	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
-		return
-	_shot_precook_minted = await _voxel_renderer.warm_light_alts_for_gus(
-		field, scope_gus, get_tree(), func(): return token == _shot_precook_token)
+	var occupancy: Dictionary = _voxel_renderer.build_occupancy(predict_destroyed)
+	var lights: Array = registry.get_active_lights()
+	var shadows = _lighting_controller.get_shadow_results()
+
+	## ⚠️ TWO WORLDS ARE WARMED, NOT ONE, AND BOTH IN THIS SAME FRAME.
+	##
+	## The shot now paints in two stages — the impact repaint runs WITHOUT soot
+	## (the Director took it out of that frame entirely) and a later pass adds it.
+	## Those two stages need DIFFERENT alternatives, because soot is part of the
+	## alternative id. Warming only the sooty world left the impact minting 40 of
+	## its own: a warm that predicts the wrong world is no warm at all.
+	##
+	## Both are minted here because the TileSet rebuild is charged once per FRAME
+	## THAT MINTS — so two worlds in one frame cost one rebuild, and splitting
+	## them across two frames would cost two.
+	_shot_precook_minted = 0
+	for with_soot in [false, true]:
+		field.build(lights, shadows, top_wall_level, occupancy,
+				_build_soot_snapshot(soot_faces, predict_destroyed.keys(),
+					predict_damaged) if with_soot else {},
+				_under_structure, soot_faces, true)
+		if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+			return
+		_shot_precook_minted += await _voxel_renderer.warm_light_alts_for_gus(
+			field, scope_gus, get_tree(),
+			func(): return token == _shot_precook_token)
 	if token != _shot_precook_token:
 		return
 	_shot_precook_done = true
-	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot"
+	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot (soot-free + sooty)"
 		% _shot_precook_minted)
 
 

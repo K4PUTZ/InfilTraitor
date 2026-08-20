@@ -83,6 +83,13 @@ const GRIP_LOWERED: String = ""
 ## count, not a duration: see the note in fire_at_active() for why a duration is
 ## exactly the thing that failed here. 8 frames at 60 Hz is ~0.13 s, which is
 ## TracerOverlay.HOLD_S — the flight, and nothing more.
+## How many DRAWN FRAMES the rounds get before the wall reacts. A frame count,
+## not a duration: see fire_at_active()'s note for why a duration is exactly the
+## thing that failed here.
+##
+## `TracerOverlay.HOLD_FRAMES + FADE_FRAMES` must not exceed this — the round has
+## to be GONE before the impact frame, or a stall freezes it in mid-air. See that
+## file's own note; the two constants are one decision in two places.
 const TRACER_FLIGHT_FRAMES: int = 8
 
 var room = null
@@ -484,11 +491,12 @@ func fire_at_active() -> void:
 	## is ~400 ms of the shot's ~581, for 23 voxels of actual damage.
 	var repaint_scope: Array = room.shot_repaint_scope(impact_gus.keys())
 	if room.has_method("_repaint_voxel_light_buckets_scoped"):
-		## SOOT DEFERRED. Geometry and lighting land now; the soot follows across
-		## frames with a fade (Director, 2026-08-19). This is what takes the
-		## map-wide soot snapshot — 141 ms of the shot — off the trigger frame.
-		room._repaint_voxel_light_buckets_scoped(repaint_scope,
-			not room.shot_soot_deferred)
+		## ⚠️ NO SOOT HERE, EVER. Director, 2026-08-19: *"A fuligem vamos tirar da
+		## conta totalmente. Só vamos começar a calcular a fuligem depois que o
+		## impacto já foi, os tiles trocaram, e a fumacinha está saindo da
+		## parede."* The map-wide snapshot is ~140 ms and this frame already
+		## carries the tile swap and the smoke; soot has no business in it.
+		room._repaint_voxel_light_buckets_scoped(repaint_scope, false)
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
@@ -507,11 +515,14 @@ func fire_at_active() -> void:
 		% [prof_resolve_ms, prof_apply_ms, prof_render_ms, prof_repaint_ms,
 		cell_to_voxel.size()])
 
-	## NOT awaited. The shot is over; the soot is decoration arriving late, and
-	## making the caller wait for it would put the cost straight back on the
-	## path this whole change exists to clear.
-	if room.shot_soot_deferred:
-		room.fade_in_scoped_soot(repaint_scope)
+	## NOT awaited, and deliberately LAST. The tiles have swapped and the smoke is
+	## out; the soot is the only thing left, and the Director has ruled that a lag
+	## here is acceptable — *"Se der lag nesse momento, OK."* It is a SINGLE pass,
+	## not a fade: each fade rung writes a different soot code, so each rung mints
+	## a fresh set of alternatives, and the TileSet rebuild is charged per FRAME
+	## THAT MINTS. A four-step fade therefore costs four rebuilds — measured at
+	## 240-420 ms each, which is how the fade turned one stall into five.
+	room.apply_scoped_soot(repaint_scope)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

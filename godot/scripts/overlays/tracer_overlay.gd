@@ -55,8 +55,24 @@ const TAIL_WIDTH_PX: float = 4.0
 ## in wall-clock terms. For decoration that is the right trade — a projectile
 ## nobody sees is worth nothing, and one that lingers 50 ms extra is worth
 ## nearly the same as one that does not.
-const HOLD_FRAMES: int = 8
-const FADE_FRAMES: int = 7
+## ⚠️ THE ROUND MUST BE GONE BEFORE THE IMPACT FRAME, and that is a hard
+## constraint rather than a look preference.
+##
+## Director, 2026-08-19: *"O projétil, exatamente pelo fato de que ele é
+## decorativo, tem que sair sempre em tempo real. E não precisa ir até o fim,
+## pode sumir no meio do caminho. O importante é sair da arma junto com o
+## clarão."*
+##
+## HOLD + FADE was 15 frames while `AgentShotController.TRACER_FLIGHT_FRAMES` is
+## 8, so the heavy impact frame landed while the streak was still on screen — and
+## a decorative round frozen in mid-air is the single most obvious symptom of a
+## stall. 5 + 3 = 8 makes the round leave the barrel, cross what it crosses, and
+## VANISH before anything expensive runs. It does not reach the wall, by the
+## Director's own permission; leaving the gun with the flash is what it is for.
+##
+## KEEP THE SUM <= TRACER_FLIGHT_FRAMES. If that constant changes, this must.
+const HOLD_FRAMES: int = 5
+const FADE_FRAMES: int = 3
 
 const STREAK_FRACTION: float = 0.16
 

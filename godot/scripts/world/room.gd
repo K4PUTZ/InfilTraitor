@@ -2960,9 +2960,8 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 				_under_structure, soot_faces, true)
 		if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
 			return
-		_shot_precook_minted += await _voxel_renderer.warm_light_alts_for_gus(
-			field, scope_gus, get_tree(),
-			func(): return token == _shot_precook_token, variant_cells)
+		_shot_precook_minted += _voxel_renderer.warm_light_alts_for_gus(
+			field, scope_gus, variant_cells)
 	if token != _shot_precook_token:
 		return
 	_shot_precook_done = true

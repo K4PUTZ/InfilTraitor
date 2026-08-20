@@ -79,6 +79,23 @@ const GUARD_TOP_PX: float = 72.0
 const GRIP_AIMED: String = "_aimed"
 const GRIP_LOWERED: String = ""
 
+## W-WEAPON-01 (Director, 2026-08-20): *"Vamos trocar a arma empunhada, conforme
+## o número for selecionado."* Weapon id -> the bake-directory suffix
+## AgentSprite.weapon takes. The shotgun maps to "" because its posed GLBs are
+## the ones that shipped and their directories carry no weapon segment — the
+## same "the default earns no suffix" rule p3_posture_export.py applies to grips.
+##
+## ⚠️ ONLY THE SHOTGUN ROW HAS ART TODAY. The rifle and pistol rows name
+## directories that do not exist yet, and set_weapon_bake() warns once and keeps
+## the shotgun pose. That is the honest state: the WEAPON changes (ladder,
+## pre-cook, ballistics all switch), the FIGURE does not, until the bakes in
+## PROMPTS/BAKE_ORDER_WEAPON_GRIPS.md are run.
+const WEAPON_BAKE_SUFFIX: Dictionary = {
+	"shotgun": "",
+	"assault_rifle": "_rifle",
+	"pistol": "_pistol",
+}
+
 ## How many DRAWN FRAMES the rounds get to cross before the wall reacts. A frame
 ## count, not a duration: see the note in fire_at_active() for why a duration is
 ## exactly the thing that failed here. 8 frames at 60 Hz is ~0.13 s, which is
@@ -140,6 +157,12 @@ func set_weapon(weapon_id: String) -> void:
 		return
 	_weapon_id = weapon_id
 	print_debug("[AGENT-SHOT] weapon -> %s" % weapon_id)
+	## The FIGURE follows the choice, or says why it cannot. Unknown ids fall back
+	## to the shotgun suffix rather than to a guess: a weapon nobody has baked and
+	## a weapon nobody has named should look the same, which is "the one that
+	## exists".
+	if room.agent != null and is_instance_valid(room.agent) and room.agent.sprite != null:
+		room.agent.sprite.set_weapon_bake(String(WEAPON_BAKE_SUFFIX.get(weapon_id, "")))
 	if _active_guard_index < 0:
 		return
 	var guards: Array = room._guards
@@ -676,7 +699,15 @@ func fire_at_active() -> void:
 	## a fresh set of alternatives, and the TileSet rebuild is charged per FRAME
 	## THAT MINTS. A four-step fade therefore costs four rebuilds — measured at
 	## 240-420 ms each, which is how the fade turned one stall into five.
-	room.apply_scoped_soot(repaint_scope)
+	## The A/B the last session left behind, ACTUALLY WIRED. `shot_soot_deferred`
+	## was declared, documented as *"INFILTRAITOR_SHOT_SOOT_DEFER=1 turns it back
+	## on"*, and read by nobody — so the switch did nothing and the fade it names
+	## was unreachable code. A lever that silently does nothing is worse than no
+	## lever: the next person to try it concludes the fade is harmless.
+	if room.shot_soot_deferred:
+		room.fade_in_scoped_soot(repaint_scope)
+	else:
+		room.apply_scoped_soot(repaint_scope)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

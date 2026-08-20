@@ -506,6 +506,37 @@ func set_grip(name: String) -> void:
 		% [name if name != "" else "lowered", _posture_root(_dev_vision)])
 
 
+## W-WEAPON-01 — swap the HELD weapon's bake. `name` is the suffix ("" for the
+## shipped shotgun, "_rifle", "_pistol"), not a weapon id: AgentShotController
+## owns that mapping, this owns the directory.
+##
+## Falls back to the shotgun bake when a weapon has no frames, and says so ONCE
+## per weapon rather than on every key press. The fallback is deliberate and not
+## a silent one: the mechanic (keys, ladder, pre-cook) is finished and testable
+## today, the art is a Blender run that has not happened, and a hard failure here
+## would take the working half down with the missing one. B6's loud-fail is
+## honoured by the warning, not by refusing to draw a figure.
+func set_weapon_bake(name: String) -> bool:
+	if name == weapon:
+		return true
+	var previous: String = weapon
+	weapon = name
+	if not _ensure_posture(_posture, _dev_vision):
+		weapon = previous
+		if not _weapon_bake_warned.has(name):
+			_weapon_bake_warned[name] = true
+			push_warning(("[AgentSprite] no '%s' weapon bake for family '%s' — the figure keeps "
+				+ "the shotgun pose. Bake it with P3_WEAPON=%s (see "
+				+ "PROMPTS/BAKE_ORDER_WEAPON_GRIPS.md).")
+				% [name.trim_prefix("_"), frame_family, name.trim_prefix("_")])
+		return false
+	_resolve_layers()
+	_refresh()
+	print_debug("[AgentSprite] weapon -> %s (%s)"
+		% [name.trim_prefix("_") if name != "" else "shotgun", _posture_root(_dev_vision)])
+	return true
+
+
 ## W-LOAD-02 (2026-08-20) — load a grip's frames WITHOUT switching to it.
 ##
 ## D42's own argument, one trigger earlier. That decision loads a whole yaw set
@@ -623,8 +654,27 @@ func update_for_cell() -> void:
 ## forever — `set_grip()` would report success, `_refresh()` would redraw, and
 ## the figure would never change pose. Found by capture on 2026-08-19, on the
 ## first frame that was supposed to show the weapon coming up.
+## W-WEAPON-01 (Director, 2026-08-20): *"Vamos trocar a arma empunhada, conforme
+## o número for selecionado."* Which weapon the figure is HOLDING, as a
+## bake-directory suffix — "" is the shipped shotgun bake, every other weapon
+## earns one, exactly the rule p3_posture_export.py's GRIP_SUFFIX already uses
+## for grips ("" for lowered, "_" + name for the rest).
+##
+## ⚠️ ONLY THE SHOTGUN IS BAKED. The posed GLBs are all
+## `agent_posed_shotgun_*` — the agent has never been posed holding a rifle or a
+## pistol, and no amount of code makes those frames exist. This plumbing is the
+## half that can be built here: the seam, the cache keys, and a loud fallback to
+## the shotgun bake. See PROMPTS/BAKE_ORDER_WEAPON_GRIPS.md for the run that
+## fills it in; the day those directories land, nothing here changes.
+var weapon: String = ""
+
+## Weapon suffixes already reported missing, so the warning fires ONCE each
+## instead of on every press of the key.
+var _weapon_bake_warned: Dictionary = {}
+
+
 func _set_key(name: String, dev: bool) -> String:
-	return name + grip + (":dev" if dev else "")
+	return name + weapon + grip + (":dev" if dev else "")
 
 
 ## The single seam the milestone switch acts on. Both roots go through here, so
@@ -638,8 +688,8 @@ func _set_key(name: String, dev: bool) -> String:
 ## the missing bake reachable by `set_grip()`'s own push_warning instead.
 func _posture_root(dev: bool) -> String:
 	if dev or DEV_ONLY_MILESTONE:
-		return FRAMES_ROOT_DEV.trim_suffix("/") + grip + "/"
-	return FRAMES_ROOT.trim_suffix("/") + frame_family + grip + "/"
+		return FRAMES_ROOT_DEV.trim_suffix("/") + weapon + grip + "/"
+	return FRAMES_ROOT.trim_suffix("/") + frame_family + weapon + grip + "/"
 
 
 func _walk_root(dev: bool) -> String:
@@ -1063,8 +1113,8 @@ func head_offset_px() -> Vector2:
 
 func _layer_root(layer: String, dev: bool) -> String:
 	if dev or DEV_ONLY_MILESTONE:
-		return String(LAYER_ROOTS[layer]) + "_dev" + grip + "/"
-	return String(LAYER_ROOTS[layer]) + frame_family + grip + "/"
+		return String(LAYER_ROOTS[layer]) + "_dev" + weapon + grip + "/"
+	return String(LAYER_ROOTS[layer]) + frame_family + weapon + grip + "/"
 
 
 ## Which layers this family has ON DISK. Whether a given FRAME uses them is a
@@ -1145,7 +1195,7 @@ func _layer_group_for_posture(posture: String) -> String:
 ## (agent_head_aimed/, agent_hat_aimed/), so they need the grip in their key or
 ## the aimed body would be drawn wearing the lowered pose's head.
 func _layer_set_key(layer: String, group: String, dev: bool) -> String:
-	return "%s:%s%s%s" % [layer, group, grip, ":dev" if dev else ""]
+	return "%s:%s%s%s%s" % [layer, group, weapon, grip, ":dev" if dev else ""]
 
 
 ## One yaw-indexed image set, loaded whole on first use (D42: a session where no

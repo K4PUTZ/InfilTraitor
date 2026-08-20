@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 62913 lines total** (under `godot/scripts/`)
+**211 scripts · 62998 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -96,7 +96,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1404 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1454 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -133,11 +133,23 @@
 - `LIGHT_RESPONSE_OVERRIDE` = `{ ## 0.75 is the Director's pick from the WHITE-AMBIENT-01 bracket (2026-08-17), ## and the pick is the THIRD step, not the brightest: *"vamos ficar com o ## terceiro, pra não correr o risco de ficar estourado em algumas telas."* ## Measured on PLAYGROUND — floor around the guard spans luma 85 (shadow side) ## to 146 (lit side); 0.75 puts the suit at 174, clear of the whole range by ## +28, while 0.90 reached 212 and visibly flattened the folds. Headroom ## against an over-bright display was the deciding factor, not contrast. "_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75}, ## UPDATE 2026-08-18: enemy_white uses the same white blazer, so inherits the ## same light response values. Without this, ambient 0.42 makes the 0.92 albedo ## render as 0.386 in unlit areas — DARKER than PLAYGROUND's floor (~0.55-0.65), ## the "branco virou cinza igual ao chão" issue. "_enemy_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75}, }`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_DEG` = `45.0`
+- `THROW_RELEASE_FRACTION` = `0.5`
 
 **Public vars**
 - `var frame_family: String = ""`
+- `var weapon: String = ""`
 
 **Public API**
+- `func set_weapon_bake(name: String) -> bool:`
+- `func preload_grip(name: String) -> bool:`
+- `func set_posture_name(name: String) -> void:`
+- `func face_direction(dir: Vector2i) -> void:`
+- `func face_step(step: Vector2i) -> void:`
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func update_for_cell() -> void:`
+- `func play_throw(sequence: String, seconds: float, hold: bool = false, reversed_playback: bool = false) -> bool:`
+- `func stop_throw() -> void:`
+- `func is_throwing() -> bool:`
 - `func set_walk_phase_quantise(n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
@@ -815,7 +827,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3456 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3461 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -4315,7 +4327,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 739 lines
+`class_name AgentShotController` · 770 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4682,7 +4694,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 5832 lines
+extends `Node2D` · 5831 lines
 
 `godot/scripts/world/room.gd`
 

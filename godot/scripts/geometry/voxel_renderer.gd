@@ -2552,10 +2552,15 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 ## rebuild). So the rule for this whole subsystem is: mint as much as possible in
 ## as FEW frames as possible, ideally one.
 ##
-## `still_valid` is still honoured — the caller can cancel between the field
-## build and this — but there is deliberately no per-frame budget any more.
-func warm_light_alts_for_gus(field, gus: Array, tree: SceneTree,
-		still_valid: Callable, extra_placements: Array = []) -> int:
+## IT DOES NOT YIELD, AND SO IT CANNOT BE CANCELLED. An earlier signature took a
+## `SceneTree` and a `still_valid` Callable, and its doc claimed cancellation was
+## "still honoured" — it was not, and could not be: once the budgeted, frame-
+## spread version was removed (it was the regression above) there is no point
+## inside this function at which a caller could interleave. Both parameters were
+## dropped rather than left as a promise nothing keeps. Cancellation lives where
+## it can actually happen, in Room._run_shot_precook()'s token checks around
+## this call.
+func warm_light_alts_for_gus(field, gus: Array, extra_placements: Array = []) -> int:
 	if field == null or gus.is_empty():
 		return 0
 	var minted: int = 0

@@ -93,13 +93,25 @@ WEAPON = os.environ.get("P3_WEAPON", "shotgun")
 # should move; every other grip earns a suffix.
 GRIP_SUFFIX = "" if GRIP == "lowered" else "_" + GRIP
 
+# W-WEAPON-01 (2026-08-20): the WEAPON reaches the output directory too, and for
+# the identical reason one axis over. `P3_WEAPON` has existed here since this
+# script was written and is validated against p2.ORDER, but nothing carried it
+# into POSTURE_OUT/LAYER_OUT — so `P3_WEAPON=pistol` would have written the
+# pistol's frames straight over the shipped shotgun ones and its manifest over
+# theirs. Same collision the GRIP comment above records, third instance.
+#
+# `shotgun` keeps the bare name because it is what ships (every posed GLB is
+# `agent_posed_shotgun_*`) and nothing downstream should move; every other weapon
+# earns a suffix, which is exactly what AgentSprite.weapon expects to find.
+WEAPON_SUFFIX = "" if WEAPON == "shotgun" else "_" + WEAPON
+
 # The model variant reaches the directory name. It did not at first, and the
 # DEV VISION run silently overwrote the normal run's frames AND its manifest —
 # the same class of collision p2_grip_spike.py's export path had already been
 # bitten by, where two exports of different models landed on one filename.
 SHEET_DIR = os.path.join(p2.REPO_ROOT, "Screenshots",
                          "p3_postures" + p2._MODEL.replace("agent_base", "")
-                         + GRIP_SUFFIX)
+                         + WEAPON_SUFFIX + GRIP_SUFFIX)
 
 
 # §4.7, as the Director stated it: standing slightly taller than a slice,
@@ -124,13 +136,18 @@ def bake_family(model_name):
 
 
 def out_family(model_name):
-    """The bake directory's family token: the MODEL's, plus the GRIP's.
+    """The bake directory's family token: the MODEL's, plus the WEAPON's and the
+    GRIP's, in that order.
+
+    The order is not free: AgentSprite builds the same path as
+    `frame_family + weapon + grip`, and a directory assembled in any other order
+    is a directory the game will not look in.
 
     Deliberately separate from bake_family(): p3_walk_export.py imports that one
     and the walk is `lowered` by definition (D40), so widening it there would
     have moved the walk's frames for no reason.
     """
-    return bake_family(model_name) + GRIP_SUFFIX
+    return bake_family(model_name) + WEAPON_SUFFIX + GRIP_SUFFIX
 
 
 def log(m):

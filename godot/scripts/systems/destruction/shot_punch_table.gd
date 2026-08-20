@@ -79,7 +79,7 @@ static var DESTROY_MIN: Dictionary = {
 	"metal": 0.55,     ## a rifle round defeats sheet metal; a pistol only dents it
 	"stone": 0.80,     ## the rifle opens it, the shotgun and pistol never do
 	"concrete": 0.63,  ## buckshot breaches on its best 3 pellets of 24
-	"wood": 1.00,      ## the soft outlier: a pistol goes through, buckshot tears
+	"wood": 1.03,      ## the soft outlier: a pistol goes through, buckshot tears
 	"glass": 0.30,     ## shatters to anything that reaches it
 	"earth": 0.75,
 }

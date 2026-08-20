@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 62747 lines total** (under `godot/scripts/`)
+**211 scripts · 62913 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1779,7 +1779,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1625 lines
+`class_name BlastCalculator` · 1633 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1894,7 +1894,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 201 lines
+`class_name ShotPunchTable` · 234 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -1904,7 +1904,7 @@ extends `Node2D` · 43 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 101 lines
+`class_name WeaponDef` · 114 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -2806,7 +2806,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2266 lines
+extends `SceneTree` · 2282 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -4315,7 +4315,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 690 lines
+`class_name AgentShotController` · 739 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4360,7 +4360,7 @@ extends `Node2D` · 34 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 217 lines
+`class_name InputController` · 238 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -4378,6 +4378,7 @@ extends `Node2D` · 34 lines
 - `signal grenade_mode_requested`
 - `signal grenade_throw_requested`
 - `signal grenade_cancel_requested`
+- `signal weapon_select_requested(weapon_id: String)`
 
 **Public vars**
 - `var room: Node`
@@ -4681,7 +4682,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 5806 lines
+extends `Node2D` · 5832 lines
 
 `godot/scripts/world/room.gd`
 

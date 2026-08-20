@@ -1487,16 +1487,32 @@ func test_point_impact_cascades_only_on_full_destroy() -> void:
 		and slice.voxels[12].damage_state == Voxel.DamageState.DENTED \
 		and sib.voxels[12].damage_state == Voxel.DamageState.INTACT
 
-	## Mid punch: centre destroys and cascades, but neighbours must NOT reach
-	## the second layer (this is the D30.2 "not frequent" guarantee).
+	## Mid punch: the round goes through and the hole NARROWS behind it.
+	##
+	## W-TUNE-02 (2026-08-20) changed what this half can assert. It used to demand
+	## `sib_destroyed_mid <= 1` — no neighbours at all in layer 2 — which held only
+	## because NEIGHBOUR_PUNCH_START (1.0) sat above every attenuated depth-1
+	## punch. The Director's spec now asks for exactly what that forbade: *"o fuzil
+	## perfura e pode destruir uns 5 voxels na primeira slice e até 3 na segunda"*,
+	## and three in the second slice IS a centre plus two neighbours.
+	##
+	## What D30.2 actually guarantees is still here and still tested: below
+	## NEIGHBOUR_CASCADE_PUNCH the second layer is damaged by the round that
+	## reached it — attenuated, so its hole is SMALLER — rather than receiving a
+	## copy of the first layer's neighbour pattern. That is the difference the
+	## heavy case below measures.
 	_reset_slice_pair(slice, sib)
 	BlastCalculatorClass.apply_point_impact(slice, 12, 1.6, registry, "CASCADE_MID")
 	var sib_destroyed_mid := 0
 	for i in range(sib.voxels.size()):
 		if sib.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
 			sib_destroyed_mid += 1
+	var face_destroyed_mid := 0
+	for i in range(slice.voxels.size()):
+		if slice.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
+			face_destroyed_mid += 1
 	var mid_ok: bool = slice.voxels[12].damage_state == Voxel.DamageState.DESTROYED \
-		and sib_destroyed_mid <= 1
+		and sib_destroyed_mid >= 1 and sib_destroyed_mid < face_destroyed_mid
 
 	## Above NEIGHBOUR_CASCADE_PUNCH: the crater goes through — neighbours
 	## reach the second layer too.
@@ -1506,11 +1522,11 @@ func test_point_impact_cascades_only_on_full_destroy() -> void:
 	for i in range(sib.voxels.size()):
 		if sib.voxels[i].damage_state == Voxel.DamageState.DESTROYED:
 			sib_destroyed_heavy += 1
-	var heavy_ok: bool = sib_destroyed_heavy > 1
+	var heavy_ok: bool = sib_destroyed_heavy > sib_destroyed_mid
 
 	if mark_ok and mid_ok and heavy_ok:
-		_pass("punch 0.4 -> mark only, no cascade; punch 1.6 -> centre through (%d in layer 2); punch 6.0 -> neighbours through too (%d in layer 2)" %
-			[sib_destroyed_mid, sib_destroyed_heavy])
+		_pass("punch 0.4 -> mark only, no cascade; punch 1.6 -> through, hole narrows (%d in layer 1, %d in layer 2); punch 6.0 -> the whole crater goes through (%d in layer 2)" %
+			[face_destroyed_mid, sib_destroyed_mid, sib_destroyed_heavy])
 	else:
 		_fail("mark_ok=%s mid_ok=%s (layer2=%d) heavy_ok=%s (layer2=%d)" %
 			[mark_ok, mid_ok, sib_destroyed_mid, heavy_ok, sib_destroyed_heavy])

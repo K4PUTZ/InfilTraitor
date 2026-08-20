@@ -62,6 +62,18 @@ var punch: float = 1.0
 ## (apply_point_impact()). Default 1 covers every single-projectile weapon
 ## without needing the field in every JSON.
 var projectile_count: int = 1
+## W-TUNE-02 (Director, 2026-08-20): how much of the neighbouring wall goes with
+## this round's hole, as a share of ShotPunchTable's punch-driven ramp. 1.0 is a
+## round that fragments what it breaches (a rifle); 0.0 is one that punches a
+## clean single-voxel hole (a pistol — and each individual shotgun pellet, whose
+## character is 24 separate marks, not one crater).
+##
+## It is a WEAPON axis rather than a function of punch because punch cannot
+## express it: a pistol in wood and a rifle in concrete land in overlapping punch
+## bands, and the Director wants one voxel from the first and five from the
+## second. Default 1.0 keeps every definition written before this field exactly
+## as destructive as it was.
+var blowout: float = 1.0
 var gameplay: Dictionary = {}
 var tags: Array[String] = []
 
@@ -86,6 +98,7 @@ static func from_json(data: Dictionary) -> WeaponDef:
 	def.destroy_multiplier = float(data.get("destroy_multiplier", 1.0))
 	def.punch = float(data.get("punch", def.destroy_multiplier))
 	def.projectile_count = int(data.get("projectile_count", 1))
+	def.blowout = float(data.get("blowout", 1.0))
 	def.gameplay = data.get("gameplay", {})
 
 	def.tags = []

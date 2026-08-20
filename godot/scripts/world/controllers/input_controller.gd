@@ -15,6 +15,12 @@ signal pause_requested
 signal grenade_mode_requested
 signal grenade_throw_requested
 signal grenade_cancel_requested
+## W-TUNE-02 (Director, 2026-08-20): *"Vamos implementar mudanças de arma usando
+## teclas: 1 - Fuzil, 2 - Pistola, 3 - Shotgun, 4 - Granada (o mesmo que G)."*
+## Carries the weapon id rather than a slot number: the slot is the KEY's
+## business and the id is the game's, and D31 will re-map which key holds what
+## without this signal changing shape.
+signal weapon_select_requested(weapon_id: String)
 var room: Node
 var _camera_controller: Node = null
 
@@ -136,6 +142,21 @@ func _handle_key_action(key: InputEventKey) -> void:
 		peek_initiated.emit()
 		if viewport:
 			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_weapon_rifle"):
+		weapon_select_requested.emit("assault_rifle")
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_weapon_pistol"):
+		weapon_select_requested.emit("pistol")
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_weapon_shotgun"):
+		weapon_select_requested.emit("shotgun")
+		if viewport:
+			viewport.set_input_as_handled()
+	## 4 is bound to this SAME action as G rather than to a branch of its own —
+	## the Director asked for *"o mesmo que G"*, and one action with two events is
+	## the only shape where that stays true after a rebind.
 	elif key.is_action_pressed("ui_grenade_mode"):
 		print_debug("[INPUT] Grenade mode requested")
 		grenade_mode_requested.emit()

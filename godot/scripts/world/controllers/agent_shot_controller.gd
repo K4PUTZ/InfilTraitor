@@ -117,11 +117,39 @@ var _weapon_id: String = WEAPON_ID
 
 
 func _init(room_ref) -> void:
+	room = room_ref
 	var env := OS.get_environment("INFILTRAITOR_SHOT_WEAPON")
 	if env != "":
 		_weapon_id = env
 		print("[AGENT-SHOT] weapon overridden to '%s' by INFILTRAITOR_SHOT_WEAPON" % env)
-	room = room_ref
+
+
+## Switch the firearm. Loud on an unknown id and a no-op on the current one.
+##
+## RE-KEYS AN OPEN AIM, which is the whole reason this is not a one-line setter:
+## the W-PRECOOK warm is keyed on the weapon (its picks, its punch ladder, its
+## penetration table), so changing weapons with a target already selected leaves
+## a warm predicting the wrong shot entirely. Cancelling and re-running the
+## prediction costs the aim window, which is exactly the window it is meant to
+## be spent in.
+func set_weapon(weapon_id: String) -> void:
+	if weapon_id == _weapon_id:
+		return
+	if Registries.get_weapon_registry().get_weapon(weapon_id) == null:
+		push_error("[AgentShotController] no WeaponDef for id '%s' — weapon unchanged" % weapon_id)
+		return
+	_weapon_id = weapon_id
+	print_debug("[AGENT-SHOT] weapon -> %s" % weapon_id)
+	if _active_guard_index < 0:
+		return
+	var guards: Array = room._guards
+	if _active_guard_index >= guards.size():
+		return
+	var guard = guards[_active_guard_index]
+	if guard == null or not is_instance_valid(guard):
+		return
+	room.cancel_shot_precook()
+	_begin_precook(guard)
 
 
 ## Index into room._guards of the guard standing on the clicked GU cell, or -1.
@@ -280,7 +308,8 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 		for entry in BlastCalculatorClass.plan_point_impact(
 				slice, int(resolved["voxel_index"]), punch, room._edge_registry,
 				"%s:%d" % [salt, i],
-				weapon_def.step_multipliers if is_line else [], origin_gu):
+				weapon_def.step_multipliers if is_line else [], origin_gu,
+				weapon_def.blowout):
 			var v: Voxel = entry["voxel"]
 			## DESTROYED changes occupancy (what the light field is built from);
 			## DENTED and CRACKED do not, but they DO feed the soot derivation
@@ -439,6 +468,7 @@ func fire_at_active() -> void:
 	## calibration question the Director has asked about this ladder is a
 	## per-material question, so the print answers in those terms.
 	var cell_to_material: Dictionary = {}
+	var cell_to_depth: Dictionary = {}
 	var _impact_vfx_done: Dictionary = {}
 	var pellets_landed: int = 0
 	var punch_log: Array = []
@@ -505,19 +535,34 @@ func fire_at_active() -> void:
 		## D32.4: the SHOOTER's GU decides which face the mark lands on — without
 		## it apply_point_impact() leaves carved_side NONE and the bullet hole
 		## renders on the voxel's top diamond.
-		var touched := BlastCalculatorClass.apply_point_impact(
-			slice, resolved["voxel_index"], punch,
+		## W-TUNE-02: `blowout` is the weapon's own hole-widening share — see
+		## WeaponDef.blowout. Passed rather than defaulted because the shotgun and
+		## the pistol both declare 0.0 and would otherwise crater like a rifle.
+		var plan_entries := BlastCalculatorClass.plan_point_impact(
+			slice, int(resolved["voxel_index"]), punch,
 			room._edge_registry, "%s:%d" % [salt, i],
 			weapon_def.step_multipliers if is_line else [],
-			origin_gu)
-		for v in touched:
-			_index_voxel(cell_to_voxel, v)
-			cell_to_material[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slice.material
-			if v.damage_state != Voxel.DamageState.DESTROYED:
-				var vkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
-				if not _impact_vfx_done.has(vkey):
-					_impact_vfx_done[vkey] = true
-					room.dispatch_impact_vfx(v.grid_pos, v.level, slice.material)
+			origin_gu, weapon_def.blowout)
+		var touched: Array = []
+		for pe in plan_entries:
+			var pv: Voxel = pe["voxel"]
+			pv.set_damage(int(pe["state"]), bool(pe["is_blast"]),
+				int(pe["carved_side"]), int(pe["variant"]), int(pe["substrate"]))
+			touched.append(pv)
+			var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
+			## The DEPTH is the Director's own vocabulary for calibrating this —
+			## *"uns 5 voxels na primeira slice e até 3 na segunda"* — so the report
+			## has to carry it. Min-wins: a voxel reached at both depths (only
+			## possible through D30.2's cascade) belongs to the shallower one.
+			var d: int = int(pe["depth"])
+			if not cell_to_depth.has(pkey) or d < int(cell_to_depth[pkey]):
+				cell_to_depth[pkey] = d
+			_index_voxel(cell_to_voxel, pv)
+			cell_to_material[pkey] = slice.material
+			if pv.damage_state != Voxel.DamageState.DESTROYED:
+				if not _impact_vfx_done.has(pkey):
+					_impact_vfx_done[pkey] = true
+					room.dispatch_impact_vfx(pv.grid_pos, pv.level, slice.material)
 
 	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
@@ -542,7 +587,8 @@ func fire_at_active() -> void:
 	for key in cell_to_voxel:
 		var tv: Voxel = cell_to_voxel[key]
 		tiers[tv.damage_state] = int(tiers.get(tv.damage_state, 0)) + 1
-		var mat: String = String(cell_to_material.get(key, "?"))
+		var mat: String = "%s:s%d" % [String(cell_to_material.get(key, "?")),
+			int(cell_to_depth.get(key, 0)) + 1]
 		if not by_material.has(mat):
 			by_material[mat] = {"CRACKED": 0, "DENTED": 0, "DESTROYED": 0}
 		by_material[mat][_TIER_NAME.get(tv.damage_state, "?")] += 1
@@ -550,11 +596,14 @@ func fire_at_active() -> void:
 		[origin_gu, target_gu, forward, aim_offset_deg,
 		pellets_landed, pellet_picks.size(), impact_gus.keys(),
 		cell_to_voxel.size(), tiers, punch_log])
-	for mat in by_material:
+	var tier_keys: Array = by_material.keys()
+	tier_keys.sort()
+	for mat in tier_keys:
 		var row: Dictionary = by_material[mat]
-		print_debug("[AGENT-SHOT-TIER] %-9s cracked=%2d dented=%2d destroyed=%2d  (resistance %.2f)"
+		var bare: String = String(mat).split(":")[0]
+		print_debug("[AGENT-SHOT-TIER] %-12s cracked=%2d dented=%2d destroyed=%2d  (resist %.2f, breach %.2f)"
 			% [mat, row["CRACKED"], row["DENTED"], row["DESTROYED"],
-			ShotPunchTable.resistance(mat)])
+			ShotPunchTable.resistance(bare), ShotPunchTable.destroy_min(bare)])
 
 	## PREDICTION_MASTER_PLAN §5.2 — a shot is a committed mutation, so every
 	## cached blast prediction is now stale.

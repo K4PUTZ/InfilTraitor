@@ -48,42 +48,60 @@ static var DEFAULT_RESISTANCE: float = 1.3
 ## uma marca de bala"*), so there is deliberately no "nothing happened" rung —
 ## below CRACK_MAX is the floor, not a miss.
 static var PUNCH_DENT_MIN: float = 0.30      ## below this: CRACKED (simple mark)
-## W-TUNE-01 (Director, 2026-08-20): 0.60 -> 1.05. *"Queremos mais denteds e
-## crackeds. O metal ficou bom, é meio nessa proporção aí de denteds."*
+
+## ⚠️ BREACHING IS A SEPARATE MATERIAL PROPERTY FROM MARKING, and collapsing the
+## two into one divisor is what made every weapon read the same on every wall.
 ##
-## MEASURED per material on PLAYGROUND, one 24-pellet shotgun each, before the
-## change (the four blocks the map keeps side by side for exactly this):
+## W-TUNE-02 (Director, 2026-08-20): *"Metal e pedra precisamos diferenciar fuzil
+## de pistol, não dá pros dois deixarem a mesma marca... O importante é
+## diferenciar as armas em cada material, de maneira que não fiquem sempre
+## iguais."*
 ##
-##   metal     cracked  5  dented 13  destroyed  0     punch 0.28-0.39
-##   stone     cracked  0  dented 18  destroyed  0     punch 0.39-0.62
-##   concrete  cracked  0  dented 23  destroyed  8     punch 0.47-0.66
-##   wood      cracked  0  dented 20  destroyed 20     punch 0.51-1.08
+## WHY ONE GLOBAL NUMBER COULD NOT DO IT, measured rather than argued. `punch`
+## already divides by RESISTANCE, so one threshold was supposed to serve every
+## material. It cannot, because LUCK spans only 1.41x (0.85..1.20) while
+## RESISTANCE spans 2.75x (0.8..2.2): each material's punch band is NARROW and
+## the four bands barely overlap, so any single threshold falls either entirely
+## above a band or entirely below it. You get 0% or 100%, never "a few". Real
+## bands, one shotgun pellet: metal [0.28,0.39] · stone [0.38,0.54] ·
+## concrete [0.47,0.67] · wood [0.77,1.08]. A threshold that gives concrete the
+## three holes the Director asked for (0.64) puts EVERY wood pellet through.
 ##
-## Metal is the Director's reference and it is the material NO shotgun pellet
-## can destroy — its whole band sits under the old threshold. Raising the
-## threshold to 1.05 puts concrete and stone in the same place and leaves wood,
-## the soft outlier, breaking on its best ~17% of pellets. Metal and every
-## CRACKED/DENTED boundary are untouched by construction: PUNCH_DENT_MIN did not
-## move, and raising PUNCH_DENT_MIN is what WOULD have broken metal (its band
-## straddles 0.30, so any lift there flips it to mostly-cracked).
+## So RESISTANCE keeps meaning "how much punch does a mark on this cost", and
+## this table means "how much punch does a HOLE in it cost" — two questions the
+## same wall is entitled to answer differently. Concrete resists marking less
+## than stone but breaches at a similar cost; wood marks easily and breaches
+## easily; metal dents under anything and opens only to a rifle.
 ##
-## Soot follows for free, which is the other half of the same request — D24
-## derives scorch from ABSENT voxels, so fewer holes is less soot at the source.
-## Measured after, same four shots: metal 5/13/0 (unchanged, as intended),
-## stone 0/18/0, concrete 0/22/0, wood 0/20/4; sooted voxels concrete 258 -> 22,
-## stone 63 -> 22, wood 498 -> 142, metal 18 -> 18.
-##
-## THE ONE NUMBER TO MOVE if a shotgun should breach concrete again. Lower it
-## toward 0.66 and concrete's best pellets start punching through.
-static var PUNCH_DESTROY_MIN: float = 1.05   ## below this: DENTED (sunken mark)
+## Calibrated against the four PLAYGROUND blocks with the three shipped
+## firearms — see the matrix in the session summary, not a formula.
+static var DESTROY_MIN: Dictionary = {
+	"metal": 0.55,     ## a rifle round defeats sheet metal; a pistol only dents it
+	"stone": 0.80,     ## the rifle opens it, the shotgun and pistol never do
+	"concrete": 0.63,  ## buckshot breaches on its best 3 pellets of 24
+	"wood": 1.00,      ## the soft outlier: a pistol goes through, buckshot tears
+	"glass": 0.30,     ## shatters to anything that reaches it
+	"earth": 0.75,
+}
+## Fallback for a material with no row, and the value every non-firearm caller
+## of damage_state_for() still gets. Between stone and earth on purpose: an
+## unlisted material should be hard to breach, not free.
+static var PUNCH_DESTROY_MIN: float = 0.80
 
 ## Neighbour destruction (D30.1): neighbours are DESTROYED or untouched, and
 ## NEVER take a mark of their own — that stays the projectile's alone. Count
 ## ramps linearly from 0 at NEIGHBOUR_PUNCH_START to all 8 at
 ## NEIGHBOUR_PUNCH_FULL, so "up to 8 voxels around" is the natural ceiling of a
 ## voxel's own 3x3 face patch rather than an arbitrary cap.
-static var NEIGHBOUR_PUNCH_START: float = 1.0
-static var NEIGHBOUR_PUNCH_FULL: float = 2.5
+## W-TUNE-02: retuned together with WeaponDef.blowout below. The ramp now starts
+## well under 1.0 because the weapons that must NOT widen a hole are held out of
+## it by `blowout`, not by the threshold — which is the only way to satisfy both
+## halves of the Director's spec at once. The conflict, in one line: a pistol in
+## wood (punch 0.89-1.26) must take ONE voxel, and a rifle in concrete (punch
+## 0.98-1.39) must take FIVE. The two bands overlap, so no function of punch
+## alone can separate them.
+static var NEIGHBOUR_PUNCH_START: float = 0.65
+static var NEIGHBOUR_PUNCH_FULL: float = 1.60
 static var MAX_NEIGHBOURS: int = 8
 
 ## The second layer (the sibling slice's matching voxel) sees a reduced punch —
@@ -123,6 +141,13 @@ static var SKILL_ELITE: float = 1.4
 
 static func resistance(material: String) -> float:
 	return float(RESISTANCE.get(material, DEFAULT_RESISTANCE))
+
+
+## W-TUNE-02: the punch a single projectile needs to BREACH `material`, as
+## opposed to merely mark it. See DESTROY_MIN's own note for why this is not
+## derivable from resistance().
+static func destroy_min(material: String) -> float:
+	return float(DESTROY_MIN.get(material, PUNCH_DESTROY_MIN))
 
 
 ## Deterministic per-shot luck in [LUCK_MIN, LUCK_MAX], from the same FNV-1a
@@ -184,18 +209,26 @@ static func compute(weapon_punch: float, material: String, skill: float,
 
 
 ## punch -> DamageState for the IMPACT voxel (never for neighbours).
-static func damage_state_for(punch: float) -> int:
+## `breach_min` is the material's own DESTROY_MIN; the default keeps every
+## caller that has no material in hand on the global fallback.
+static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN) -> int:
 	if punch < PUNCH_DENT_MIN:
 		return Voxel.DamageState.CRACKED
-	if punch < PUNCH_DESTROY_MIN:
+	if punch < breach_min:
 		return Voxel.DamageState.DENTED
 	return Voxel.DamageState.DESTROYED
 
 
 ## punch -> how many of the 8 face-plane neighbours go with it.
-static func neighbour_count_for(punch: float) -> int:
-	if punch < NEIGHBOUR_PUNCH_START:
+##
+## W-TUNE-02: `blowout` is the WEAPON's share of this — 1.0 for a round that
+## fragments the wall around its hole (a rifle), 0.0 for one that punches a
+## clean single-voxel hole (a pistol, and each individual shotgun pellet). It is
+## a separate axis because punch alone cannot express it: see
+## NEIGHBOUR_PUNCH_START's note for the two overlapping bands that force it.
+static func neighbour_count_for(punch: float, blowout: float = 1.0) -> int:
+	if punch < NEIGHBOUR_PUNCH_START or blowout <= 0.0:
 		return 0
 	var span: float = maxf(NEIGHBOUR_PUNCH_FULL - NEIGHBOUR_PUNCH_START, 0.001)
 	var t: float = clampf((punch - NEIGHBOUR_PUNCH_START) / span, 0.0, 1.0)
-	return clampi(int(roundf(t * float(MAX_NEIGHBOURS))), 0, MAX_NEIGHBOURS)
+	return clampi(int(roundf(t * float(MAX_NEIGHBOURS) * blowout)), 0, MAX_NEIGHBOURS)

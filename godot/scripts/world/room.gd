@@ -1266,6 +1266,7 @@ func _ready() -> void:
 	_input_controller.screenshot_requested.connect(_on_screenshot_requested)
 	_input_controller.pause_requested.connect(_on_pause_requested)
 	_input_controller.grenade_mode_requested.connect(_on_grenade_mode_requested)
+	_input_controller.weapon_select_requested.connect(_on_weapon_select_requested)
 	_input_controller.grenade_throw_requested.connect(_on_grenade_throw_requested)
 	_input_controller.grenade_cancel_requested.connect(_on_grenade_cancel_requested)
 
@@ -4263,6 +4264,23 @@ func _capture_shot_filmstrip() -> void:
 	for _i in range(15):
 		await get_tree().process_frame
 
+	## W-TUNE-02: prove the WEAPON KEYS, not just the env override. The override
+	## sets `_weapon_id` directly and would pass whether or not the InputMap
+	## action, the signal and set_weapon() are wired at all; parsing the real digit
+	## key exercises every link in that chain, and the tier print then says which
+	## weapon actually fired. 1 rifle · 2 pistol · 3 shotgun.
+	var wkey_env := OS.get_environment("INFILTRAITOR_SHOT_WEAPON_KEY")
+	if wkey_env.is_valid_int():
+		var wk_down := InputEventKey.new()
+		wk_down.keycode = KEY_0 + wkey_env.to_int()
+		wk_down.pressed = true
+		Input.parse_input_event(wk_down)
+		var wk_up := InputEventKey.new()
+		wk_up.keycode = KEY_0 + wkey_env.to_int()
+		wk_up.pressed = false
+		Input.parse_input_event(wk_up)
+		await get_tree().process_frame
+
 	var frames_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FRAMES")
 	var count: int = frames_env.to_int() if frames_env.is_valid_int() else 40
 	var save_images: bool = OS.get_environment("INFILTRAITOR_SHOT_FILM_SAVE") == "1"
@@ -5728,6 +5746,14 @@ func is_grenade_targeting() -> bool:
 
 
 ## T-MODE (Phase B): G key to enter grenade targeting mode
+## W-TUNE-02: keys 1/2/3 pick the firearm. Routed through the controller rather
+## than written here so the re-keying of an open aim (see set_weapon()) cannot be
+## forgotten by a second caller.
+func _on_weapon_select_requested(weapon_id: String) -> void:
+	if _agent_shot_controller != null:
+		_agent_shot_controller.set_weapon(weapon_id)
+
+
 func _on_grenade_mode_requested() -> void:
 	if _test_zone_controller != null:
 		_test_zone_controller.enter_grenade_mode()

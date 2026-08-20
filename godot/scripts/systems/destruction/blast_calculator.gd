@@ -435,10 +435,11 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 		edge_registry: EdgeRegistry, salt: String,
 		step_multipliers: Array = [],
-		shooter_gu: Vector2i = NO_EPICENTER_BIAS) -> Array:
+		shooter_gu: Vector2i = NO_EPICENTER_BIAS,
+		blowout: float = 1.0) -> Array:
 	var touched: Array = []
 	for entry in plan_point_impact(slice, voxel_index, punch, edge_registry, salt,
-			step_multipliers, shooter_gu):
+			step_multipliers, shooter_gu, blowout):
 		var v: Voxel = entry["voxel"]
 		v.set_damage(int(entry["state"]), bool(entry["is_blast"]),
 			int(entry["carved_side"]), int(entry["variant"]), int(entry["substrate"]))
@@ -463,13 +464,16 @@ static func apply_point_impact(slice: Slice, voxel_index: int, punch: float,
 ## result. That is the whole point: a prediction that runs the same code cannot
 ## disagree with what happens, and there is no second copy to drift.
 ##
-## Entry: {"voxel": Voxel, "container": Slice, "state": int, "is_blast": bool,
-## "carved_side": int, "variant": int, "substrate": int} — the five fields after
-## `container` are set_damage()'s five arguments, in order.
+## Entry: {"voxel": Voxel, "container": Slice, "depth": int, "state": int,
+## "is_blast": bool, "carved_side": int, "variant": int, "substrate": int} — the
+## five fields after `depth` are set_damage()'s five arguments, in order, and
+## `depth` is which SLICE of the wall it lands in (0 = the struck face, 1 = the
+## sibling behind it), which is the vocabulary the Director calibrates in.
 static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		edge_registry: EdgeRegistry, salt: String,
 		step_multipliers: Array = [],
-		shooter_gu: Vector2i = NO_EPICENTER_BIAS) -> Array:
+		shooter_gu: Vector2i = NO_EPICENTER_BIAS,
+		blowout: float = 1.0) -> Array:
 	var plan: Array = []
 	var current_slice := slice
 	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
@@ -478,27 +482,31 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		var current_punch: float = punch \
 			* ShotPunchTable.penetration_multiplier(step_multipliers, depth)
 		var voxel: Voxel = current_slice.voxels[voxel_index]
-		var state: int = ShotPunchTable.damage_state_for(current_punch)
+		## W-TUNE-02: the BREACH threshold is the material's, not a global one, and
+		## it is read from the slice rather than passed in — the sibling slice at
+		## depth 1 is the same wall and must answer with the same number.
+		var state: int = ShotPunchTable.damage_state_for(current_punch,
+			ShotPunchTable.destroy_min(current_slice.material))
 		if state != Voxel.DamageState.DESTROYED:
 			## CRACKED or DENTED — the projectile's own mark, bullet family
 			## (from_blast stays false, D23), on the face the shot came from
 			## (D32.4), with one of the three authored decals (D32.5).
-			plan.append({"voxel": voxel, "container": current_slice,
+			plan.append({"voxel": voxel, "container": current_slice, "depth": depth,
 				"state": state, "is_blast": false,
 				"carved_side": carved_side_for(voxel.grid_pos, false, shooter_gu),
 				"variant": decal_variant_for(salt, voxel_index, depth),
 				"substrate": substrate_for(salt, voxel_index, depth)})
 			break
-		plan.append(_destroyed_plan_entry(voxel, current_slice))
+		plan.append(_destroyed_plan_entry(voxel, current_slice, depth))
 		var sibling := edge_registry.sibling_slice(current_slice.id)
 		## D30.1: neighbours of the hole go too, but never marked.
-		var neighbour_count: int = ShotPunchTable.neighbour_count_for(current_punch)
+		var neighbour_count: int = ShotPunchTable.neighbour_count_for(current_punch, blowout)
 		var cascade_neighbours: bool = current_punch >= ShotPunchTable.NEIGHBOUR_CASCADE_PUNCH
 		for ni in select_face_neighbours(current_slice, voxel_index, neighbour_count,
 				"%s:NEIGHBOUR:%d" % [salt, depth]):
-			plan.append(_destroyed_plan_entry(current_slice.voxels[ni], current_slice))
+			plan.append(_destroyed_plan_entry(current_slice.voxels[ni], current_slice, depth))
 			if cascade_neighbours and sibling != null and ni < sibling.voxels.size():
-				plan.append(_destroyed_plan_entry(sibling.voxels[ni], sibling))
+				plan.append(_destroyed_plan_entry(sibling.voxels[ni], sibling, depth + 1))
 		current_slice = sibling
 	return plan
 
@@ -507,8 +515,8 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 ## set_damage()'s own defaults — written here rather than defaulted so the plan
 ## entry is a complete description of the call, and a reader never has to go and
 ## check what a bare set_damage(DESTROYED) leaves behind.
-static func _destroyed_plan_entry(voxel: Voxel, container) -> Dictionary:
-	return {"voxel": voxel, "container": container,
+static func _destroyed_plan_entry(voxel: Voxel, container, depth: int) -> Dictionary:
+	return {"voxel": voxel, "container": container, "depth": depth,
 		"state": Voxel.DamageState.DESTROYED, "is_blast": false,
 		"carved_side": Voxel.CarvedSide.NONE, "variant": 0, "substrate": 0}
 

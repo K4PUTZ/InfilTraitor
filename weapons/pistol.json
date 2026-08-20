@@ -1,10 +1,23 @@
 {
   "id": "pistol",
   "delivery": "LINE",
-  "step_multipliers": [1.0, 0.9, 0.75, 0.55],
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
   "destroy_multiplier": 0.25,
-  "punch": 0.25,
+  "punch": 0.28,
   "projectile_count": 1,
-  "gameplay": { "class": "firearm", "range_band": "short" },
-  "tags": ["firearm", "pistol", "sidearm"]
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "pistol",
+    "sidearm"
+  ],
+  "blowout": 0.0
 }

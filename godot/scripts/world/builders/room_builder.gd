@@ -1037,6 +1037,35 @@ func _initialize_damage_variant_registry(declared_materials: Array, floor_materi
 		var baker = DamageVariantBakerClass.new(
 			room._voxel_renderer, registry, _get_material_registry(), _bake_compositor)
 		baker.bake_all(declared, floors)
+		## ⚠️ THE PAGE IS UPLOADED HERE, DURING THE LOAD, ON PURPOSE.
+		##
+		## `bake_all()` blits every atom into a 2048x2048 page Image and marks the
+		## page dirty; `store()` only marks, and the GPU upload waits for a
+		## flush_dirty_pages(). Nothing flushed at load, so the bill fell on the
+		## FIRST render path that flushes — which in a normal session is the frame
+		## the player's first shot breaks a wall. One `ImageTexture.update()` of
+		## 16 MB, ~215 ms, on the frame the wall reacts.
+		##
+		## Measured 2026-08-20, PLAYGROUND, --fixed-fps 60, two shots in one boot
+		## (INFILTRAITOR_SHOT_FILM_SECOND_AT): the first impact frame cost 303 ms
+		## with 79 ms of CPU in it and ZERO alternatives minted, while the SECOND
+		## cost 82 ms — the difference is this upload, paid once and never again.
+		## Bisected rather than guessed: disabling the repaint left the first frame
+		## at 229 ms and the second at 14 ms, so the cost was neither the light
+		## repaint nor the impact VFX (~29 ms), and there was nothing else in the
+		## frame it could be.
+		##
+		## Director, 2026-08-20: *"tudo que a gente puder carregar no início é
+		## melhor. Esse tempo de load vai ter uma barrinha, com porcentagem, e é um
+		## custo necessário que o jogador vai pagar quando iniciar o app."*
+		var flush_t0: int = Time.get_ticks_usec()
+		var pages: int = room._voxel_renderer.flush_damage_composite_pages()
+		if pages > 0:
+			## Printed with its cost, in the same shape as "[ROOM] Bake complete":
+			## this is load time the player pays behind a progress bar, and a number
+			## nobody can see is a number nobody can budget.
+			print("[ROOM] Uploaded %d damage-composite page(s) at load in %d ms — off the first shot's impact frame"
+				% [pages, int(float(Time.get_ticks_usec() - flush_t0) / 1000.0)])
 	room._voxel_renderer.set_damage_variant_registry(registry)
 	print("[ROOM] Initialized damage variant registry (%d atoms)" % registry.size())
 

@@ -114,17 +114,26 @@ weapons exist, and what shape of effect does each one put into the world.**
 >
 > **Per-frame result on PLAYGROUND, `INFILTRAITOR_CAPTURE_ACTION=shot_filmstrip`,
 > `--fixed-fps 60`:** trigger frame 10 ms (no lag at the button), the projectile
-> flies at frame rate, then the aim warm ~500 ms, the impact 303 ms, the soot
-> 230 ms.
+> flies at frame rate, then the aim warm ~500 ms, the impact **87 ms**, the soot
+> ~228 ms.
 >
-> **And the impact frame's residue is a ONE-OFF, measured rather than argued.**
-> With `INFILTRAITOR_SHOT_FILM_SECOND_AT=<frame>` the same boot fires twice: the
-> FIRST impact frame is 303 ms against 79 ms of CPU, the SECOND is **82 ms**
-> against 69 ms. ~225 ms of first-use engine cost — the damage-variant page's
-> first GPU upload and the impact VFX's first material compile are the two
-> candidates — and it is paid once per session, not once per shot. The soot pass
-> is the opposite: 230 ms then 225 ms, CPU-bound on the map-wide snapshot (142 ms,
-> and it must stay map-wide — D24).
+> **The impact frame's residue was a ONE-OFF, and W-LOAD-01 moved it to the load.**
+> Found by firing twice in one boot (`INFILTRAITOR_SHOT_FILM_SECOND_AT=<frame>`):
+> the FIRST impact frame cost 303 ms against 79 ms of CPU, the SECOND 82 ms
+> against 69 ms. Bisected with temporary probes — without the light repaint the
+> first frame was still 229 ms and the second 14 ms; without the impact VFX it was
+> 296 ms — so it was the tile swap, and specifically
+> `DamageCompositeCache`'s 2048x2048 page: `bake_all()` blits 318 atoms into it at
+> load and marks it dirty, `store()` only marks, and **nothing flushed at load**,
+> so the 16 MB `ImageTexture.update()` fell on the frame the first shot broke a
+> wall. `room_builder._initialize_damage_variant_registry()` now flushes right
+> after the bake — 2 ms there, ~215 ms off the impact frame, and no measurable
+> growth in total load time.
+>
+> **The soot pass is the opposite and is genuinely per-shot:** ~230 ms then
+> ~225 ms, CPU-bound on the map-wide snapshot (142 ms, and it must stay map-wide —
+> D24). It is the largest remaining per-shot cost; the aim warm (~500 ms, inside
+> the aiming window by the Director's own rule) is the largest number overall.
 
 > **Scheduled and deferred on the same day, 2026-08-13.** This section was
 > written that morning under the heading *"NEXT SESSION — firearm

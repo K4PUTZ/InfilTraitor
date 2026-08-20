@@ -2827,6 +2827,104 @@ func fade_in_scoped_soot(gus: Array) -> void:
 			% [after.size(), differ])
 
 
+## --- W-PRECOOK: the shot's pre-production --------------------------------
+##
+## Director, 2026-08-19: *"Quando o jogador selecionar algum alvo a gente já
+## começa a calcular a destruição dos tiros. Mas se ele clicar em 'disparar' a
+## gente só solta a animação depois que tudo estiver processado. É melhor dar o
+## lag depois que clica no botão do que no meio da execução."*
+##
+## WHAT IS ACTUALLY PRE-COOKED, and it is not what the name suggests. The
+## destruction itself resolves in 1.5 ms; pre-computing it saves nothing. The
+## measured cost of a shot is **412 `create_alternative_tile()` calls** — the
+## TileSet rebuild that lands on the impact frame and that no profiler inside
+## the shot could see (see the SHOT-FILM measurements). So what this warms is the
+## ALTERNATIVE CACHE, by building the light field for the world as it will be
+## after the shot and touching every alternative that world will need.
+##
+## WHY IT IS SAFE TO DO SPECULATIVELY: minting is idempotent and cached in
+## `_minted_light_alts`. A prediction that is wrong costs a cache miss, never a
+## wrong picture — `_ensure_light_alt()` still mints on demand at apply time.
+## Nothing is committed, nothing is drawn, and cancelling is just dropping it.
+var _shot_precook_token: int = 0
+var _shot_precook_done: bool = false
+var _shot_precook_minted: int = 0
+
+
+## Begin warming. Returns immediately; `await shot_precook_ready()` to join.
+func begin_shot_precook(predict_destroyed: Dictionary, predict_damaged: Array,
+		scope_gus: Array) -> void:
+	_shot_precook_token += 1
+	_shot_precook_done = false
+	_run_shot_precook(_shot_precook_token, predict_destroyed, predict_damaged,
+		scope_gus)
+
+
+func cancel_shot_precook() -> void:
+	_shot_precook_token += 1
+	_shot_precook_done = false
+
+
+## Block until the warm finishes. The Director's *"o lag depois que clica no
+## botão"* — this is where that lag lives, and it is only a lag at all when the
+## player confirms faster than the warm completes.
+func shot_precook_ready() -> void:
+	var token: int = _shot_precook_token
+	while not _shot_precook_done and token == _shot_precook_token:
+		await get_tree().process_frame
+
+
+func _run_shot_precook(token: int, predict_destroyed: Dictionary,
+		predict_damaged: Array, scope_gus: Array) -> void:
+	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
+		_shot_precook_done = true
+		return
+	var registry = _lighting_controller.get_light_registry()
+	if registry == null:
+		_shot_precook_done = true
+		return
+	## One frame first, so the menu that just opened gets to draw before this
+	## starts. Warming inside the click's own frame would move the stall onto the
+	## action that is supposed to hide it.
+	await get_tree().process_frame
+	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+		return
+
+	## ⚠️ THE SHARED FIELD, NOT A FRESH ONE. `VoxelLightField` invalidates
+	## incrementally against its own previous state; a `new()` one has none and
+	## rebuilds the whole map — measured at 1450 ms in the first version of this
+	## warm, which is the boot repaint's cost paid inside the aim window.
+	##
+	## Reusing the live field is safe because nothing reads it between here and
+	## the shot: `_repaint_voxel_light_buckets_scoped()` rebuilds it from real
+	## state before the apply, so the predicted contents left here are always
+	## overwritten before they can reach a pixel.
+	if _voxel_light_field == null:
+		_voxel_light_field = VoxelLightField.new()
+	var field = _voxel_light_field
+	var soot_faces: Dictionary = {}
+	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	field.build(
+			registry.get_active_lights(),
+			_lighting_controller.get_shadow_results(),
+			top_wall_level,
+			_voxel_renderer.build_occupancy(predict_destroyed),
+			_build_soot_snapshot(soot_faces, predict_destroyed.keys(),
+				predict_damaged),
+			_under_structure,
+			soot_faces,
+			true)
+	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+		return
+	_shot_precook_minted = await _voxel_renderer.warm_light_alts_for_gus(
+		field, scope_gus, get_tree(), func(): return token == _shot_precook_token)
+	if token != _shot_precook_token:
+		return
+	_shot_precook_done = true
+	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot"
+		% _shot_precook_minted)
+
+
 ## The GU scope for a shot: every impact GU, grown by the soot reach.
 func shot_repaint_scope(impact_gus: Array) -> Array:
 	var scope: Dictionary = {}
@@ -3000,7 +3098,18 @@ var blast_soot_feather_rings: int = 2
 
 ## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
 ## triples for every voxel this pass scorches (see BlastCalculator).
-func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
+## `predict_weapon_cells` (W-PRECOOK, 2026-08-19): extra Vector3i seeds treated
+## as firearm-made holes that do not exist yet. Same purpose as
+## `build_occupancy(predict_destroyed)` — see its note — and the same safety: a
+## wrong guess only costs a cache miss.
+## `predict_damaged` are Voxels the shot will DENT or CRACK. They matter to the
+## warm even though they are not holes: D33-SOOT-01 feeds dented/cracked voxels
+## into the soot derivation, so leaving them out of the prediction changed 13
+## cells' soot codes — and 13 misses cost a whole TileSet rebuild, exactly as
+## much as 412 would.
+func _build_soot_snapshot(out_faces: Dictionary = {},
+		predict_weapon_cells: Array = [],
+		predict_damaged: Array = []) -> Dictionary:
 	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
 	## PERF-02 B3: seeds split by what made the hole. Voxel.damage_is_blast
 	## already carries that distinction — nothing new has to be recorded.
@@ -3015,6 +3124,12 @@ func _build_soot_snapshot(out_faces: Dictionary = {}) -> Dictionary:
 		for slab in _slab_registry.all_slabs():
 			for v in slab.voxels:
 				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+	for predicted in predict_weapon_cells:
+		if not weapon_cells.has(predicted):
+			weapon_cells.append(predicted)
+	for dv in predict_damaged:
+		if not damaged_voxels.has(dv):
+			damaged_voxels.append(dv)
 	## E-JUNCTION-01 (2026-08-13): wall-junction corner columns. Explosions
 	## already dent/crack/destroy them (see DetonationPlanBuilder's own
 	## PHASE_JUNCTIONS); firearms deliberately still don't (a shot's aim

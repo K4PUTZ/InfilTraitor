@@ -1527,6 +1527,8 @@ func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
 		return
 	_minted_light_alts[key] = true
 	_alts_minted += 1
+	if _mint_trace:
+		print("[MINT] source=%d coords=%s alt=%d" % [source_id, coords, alt_id])
 	var source: TileSetAtlasSource = _tileset.get_source(source_id)
 	if source == null:
 		return
@@ -2363,11 +2365,22 @@ func _restore_ghosted_cells() -> void:
 ## The renderer owns the tilemaps, so it owns this snapshot; a Dictionary set
 ## keeps the field's neighbour probes O(1) instead of a TileMap API call each.
 ## Includes negative (floor/slab) levels so floor craters shade like wall ones.
-func build_occupancy() -> Dictionary:
+## `predict_destroyed` (W-PRECOOK, 2026-08-19) omits cells a shot is ABOUT to
+## destroy, so the caller can build the light field for the world as it will be
+## rather than as it is. Empty = the live world, which is every existing caller.
+##
+## It exists to warm the TileSet alternative cache during the aim window: the
+## measured cost of a shot is 412 `create_alternative_tile()` calls landing on
+## the impact frame, and an alternative minted early is one not minted late.
+## A WRONG prediction costs nothing but a cache miss — `_ensure_light_alt()`
+## still mints on demand — which is why this is safe to do speculatively.
+func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 	var occupancy: Dictionary = {}
 	for level in range(_voxel_layers.size()):
 		var level_set: Dictionary = {}
 		for cell in _voxel_layers[level].get_used_cells():
+			if predict_destroyed.has(Vector3i(cell.x, cell.y, level)):
+				continue
 			level_set[cell] = true
 		occupancy[level] = level_set
 	for level in _negative_voxel_layers.keys():
@@ -2463,6 +2476,9 @@ var _scoped_writes: int = 0
 ## scope in this file — the suspected other half of the shot's impact frame
 ## (258 ms of measured work inside a 522 ms frame).
 var _alts_minted: int = 0
+## INFILTRAITOR_MINT_TRACE=1 prints every alternative actually created. The count
+## alone cannot say WHY a warm missed; the (coords, alt) pair can.
+var _mint_trace: bool = OS.get_environment("INFILTRAITOR_MINT_TRACE") == "1"
 
 
 func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
@@ -2511,6 +2527,60 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			record["prev_alt"] = encode_voxel_alt(
 					field.bucket_for(cell, record["level"]),
 					field.face_soot_code(cell, record["level"]), flipped)
+
+
+## W-PRECOOK — mint every TileSet alternative the given field would need inside
+## `gus`, WITHOUT writing a single cell. Returns how many were actually created.
+##
+## This is the whole point of the shot's pre-production: `create_alternative_tile()`
+## rebuilds the TileSet and is the measured cost of firing (412 calls, ~264 ms
+## outside any profiler scope in the shot). Doing them during the aim window
+## leaves the impact frame with plain `set_cell()` calls against alternatives
+## that already exist.
+##
+## ⚠️ MINTS IN ONE FRAME, AND SPREADING IT IS THE WRONG INSTINCT.
+##
+## `create_alternative_tile()` makes the TileSet rebuild, and MEASURED
+## 2026-08-19 that rebuild is charged ONCE PER FRAME THAT MINTS, not once per
+## mint. A first version budgeted 4 ms and yielded — 442 alternatives spread over
+## ~11 frames, and every one of those frames cost ~205 ms instead of 16. Roughly
+## 2 s of stutter to avoid a single 200 ms one.
+##
+## The same measurement explains two earlier mysteries at a stroke: the impact
+## frame's unaccounted ~264 ms (412 mints, one rebuild) and why the soot fade was
+## catastrophic (four steps, each re-minting in its own frames, each paying a
+## rebuild). So the rule for this whole subsystem is: mint as much as possible in
+## as FEW frames as possible, ideally one.
+##
+## `still_valid` is still honoured — the caller can cancel between the field
+## build and this — but there is deliberately no per-frame budget any more.
+func warm_light_alts_for_gus(field, gus: Array, tree: SceneTree,
+		still_valid: Callable) -> int:
+	if field == null or gus.is_empty():
+		return 0
+	var minted: int = 0
+	for gu in gus:
+		var placements = _placed_by_gu.get(gu)
+		if placements == null:
+			continue
+		for entry in placements:
+			var level: int = entry["level"]
+			var cell: Vector2i = entry["cell"]
+			var layer: TileMapLayer = get_layer(level)
+			if layer == null:
+				continue
+			var source_id: int = layer.get_cell_source_id(cell)
+			if source_id == -1:
+				continue
+			var prev_alt: int = layer.get_cell_alternative_tile(cell)
+			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
+					field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+			if alt_id == prev_alt:
+				continue
+			var before: int = _alts_minted
+			_ensure_light_alt(source_id, layer.get_cell_atlas_coords(cell), alt_id)
+			minted += _alts_minted - before
+	return minted
 
 
 ## One rung down the soot ladder: every face `by` tones fainter, clamped at

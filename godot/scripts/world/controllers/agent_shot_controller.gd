@@ -143,13 +143,87 @@ func open_menu_for(index: int) -> void:
 		room.agent.set_grip(GRIP_AIMED)
 	room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
 		"ui.context_menu.fire", fire_at_active)
+	## W-PRECOOK: the target is picked, so the warm starts NOW. Everything below
+	## is a PREDICTION — nothing is committed and nothing is drawn — so a player
+	## who cancels loses only the work, and one who changes target re-keys it.
+	_begin_precook(guard)
 
 
 ## Idempotent, and lowers the weapon. Reached from three directions — the menu's
 ## own Cancelar, room.gd's outside-click/Escape path, and the end of a shot — so
 ## the weapon coming back down cannot be forgotten on any one of them.
+## Predict this shot's destroyed voxels and warm the alternative cache for them.
+##
+## The prediction runs the SAME functions the shot will — same salt, same picks,
+## same punch ladder — so it does not have to be trusted: it is deterministic by
+## construction, and where it is wrong it costs a cache miss and nothing else.
+## `apply_point_impact()` is never called here, so no voxel is written.
+func _begin_precook(guard) -> void:
+	var agent = room.agent
+	if agent == null or not is_instance_valid(agent) or room._edge_registry == null:
+		return
+	var weapon_def = Registries.get_weapon_registry().get_weapon(WEAPON_ID)
+	if weapon_def == null:
+		return
+	var plan := _build_shot_plan(agent.cell, guard.cell, weapon_def)
+	if plan.is_empty():
+		return
+	room.begin_shot_precook(plan["destroyed"], plan["damaged"],
+		room.shot_repaint_scope(plan["impact_gus"]))
+
+
+## PURE. Returns {"destroyed": Dictionary[Vector3i], "impact_gus": Array} for the
+## shot that WOULD be fired, writing nothing. The two consumers are the precook
+## above and, one day, D32's hit-percentage readout.
+func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> Dictionary:
+	if origin_gu == target_gu:
+		return {}
+	var salt := _salt_for(origin_gu, target_gu)
+	var aim: Vector2 = Vector2(target_gu - origin_gu)
+	var forward: Vector2i = _nearest_axis(aim)
+	var lateral := Vector2i(-forward.y, forward.x)
+	var offset: float = rad_to_deg(atan2(aim.dot(Vector2(lateral)),
+		aim.dot(Vector2(forward))))
+	var picks: Array = BlastCalculatorClass.select_cone_pellet_impacts(
+		origin_gu, forward, weapon_def.cone_half_angle_deg,
+		PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
+		_blocked_edges_dict(), room._blocked_cells, salt, offset)
+	var destroyed: Dictionary = {}
+	var damaged: Array = []
+	var gus: Dictionary = {}
+	for i in range(picks.size()):
+		gus[picks[i]["gu"]] = true
+		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
+			picks[i], room._edge_registry, "%s:%d" % [salt, i])
+		if resolved.is_empty():
+			continue
+		var slice: Slice = resolved["slice"]
+		var punch: float = ShotPunchTable.compute(
+			weapon_def.punch, slice.material, ShotPunchTable.SKILL_NEUTRAL,
+			1.0, "%s:%d" % [salt, i])
+		## DESTROYED changes occupancy (what the light field is built from);
+		## DENTED and CRACKED do not, but they DO feed the soot derivation
+		## (D33-SOOT-01), and soot is part of the alternative id. Omitting them
+		## left 13 cells with the wrong predicted soot — and 13 misses cost a
+		## whole TileSet rebuild, the same as 412 would.
+		var v: Voxel = slice.voxels[int(resolved["voxel_index"])]
+		var state: int = ShotPunchTable.damage_state_for(punch)
+		if state == Voxel.DamageState.DESTROYED:
+			destroyed[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+		elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
+			damaged.append(v)
+	return {"destroyed": destroyed, "damaged": damaged, "impact_gus": gus.keys()}
+
+
+## ONE definition of the shot's salt, because the precook and the real shot must
+## roll identically or the prediction warms the wrong alternatives.
+func _salt_for(origin_gu: Vector2i, target_gu: Vector2i) -> String:
+	return "AGENTSHOT_%s_%s_%d" % [origin_gu, target_gu, room._world_revision]
+
+
 func cancel_active() -> void:
 	_active_guard_index = -1
+	room.cancel_shot_precook()
 	if room != null and is_instance_valid(room) and room.agent != null \
 			and is_instance_valid(room.agent):
 		room.agent.set_grip(GRIP_LOWERED)
@@ -200,7 +274,7 @@ func fire_at_active() -> void:
 		cancel_active()
 		return
 
-	var salt: String = "AGENTSHOT_%s_%s_%d" % [origin_gu, target_gu, room._world_revision]
+	var salt: String = _salt_for(origin_gu, target_gu)
 
 	## ── PART C: THE ROLL IS REAL, AND ITS OUTCOME IS FORCED ────────────────
 	## §6c is explicit that the scaffold must not bypass D12. It does not: the
@@ -226,6 +300,20 @@ func fire_at_active() -> void:
 	var lateral := Vector2i(-forward.y, forward.x)
 	var aim_offset_deg: float = rad_to_deg(atan2(
 		aim.dot(Vector2(lateral)), aim.dot(Vector2(forward))))
+
+	## ── THE LAG GOES HERE, ON PURPOSE ──────────────────────────────────────
+	## Director, 2026-08-19: *"se ele clicar em 'disparar' a gente só solta a
+	## animação depois que tudo estiver processado. É melhor dar o lag depois que
+	## clica no botão do que no meio da execução."*
+	##
+	## So the warm started at target selection is JOINED here, before a single
+	## frame of animation plays. When the player takes longer to read the menu
+	## than the warm takes — the normal case — this returns immediately and there
+	## is no lag at all. When they slam the button, they wait once, here, with
+	## nothing on screen half-finished.
+	await room.shot_precook_ready()
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+		return
 
 	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —
 	## the barrel does not wait to find out what it hit. The origin is the

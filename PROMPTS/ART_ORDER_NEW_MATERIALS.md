@@ -150,3 +150,66 @@ work rather than its polish, and the destruction plan explicitly lists them as
 Brick I will treat as concrete's neighbour on the resistance ladder (its
 original descoping reason was *"entra quase na categoria de concreto, mudando um
 pouco a resistência"*) unless you want it to read differently.
+
+---
+
+## 6. The definitive checklist (Director asked, 2026-08-21)
+
+*"me manda uma lista do que eu preciso fornecer: facade_fabric, slab, etc"*
+
+### REQUIRED — 5 files, and that is the whole list
+
+All in `ASSETS/TEXTURES/defaults/`, all **1024×512, grayscale, no alpha**:
+
+- [ ] `facade_brick.png`
+- [ ] `facade_cardboard.png`
+- [ ] `facade_fabric.png`
+- [ ] `facade_plywood.png`
+- [ ] `facade_glass.png`
+
+Then reimport, then `python3 tools/persistent/check_facade.py --all`.
+
+### NOT required — with the evidence for each
+
+- **`slab_<id>.png` — NO.** `BakePolicy.texture_for_material()` returns
+  `slab_for_material()` **only when `has_facade == false`**, which is the
+  photographic exception kept for organic ground (grass, dirt, sand, gravel)
+  where hue *is* the identity. Every material here is structural and gets
+  `has_facade: true`, so its facade serves wall, roof AND floor.
+  **Proof it is dead weight:** `slab_concrete.png`, `slab_metal.png`,
+  `slab_stone.png` and `slab_wood.png` all exist on disk *and are never read*,
+  because those four materials have `has_facade: true`. Authoring
+  `slab_fabric.png` would produce a fifth unused file.
+- **`voxel_<id>.png` — NO.** See §2. Aliased in code.
+- **`roof_<id>.png` — NO.** See §2. Roofs reproject the wall facade.
+- **Prop art (caixas, tapumes, andaimes, toldos) — NO.** A prop is built from
+  **dictionary materials**, not from its own texture: `PropDef.material_zones`,
+  and `props/crate_full.json` is literally `{"default": "wood"}`. A cardboard
+  crate is that file with one word changed. The prop's SHAPE is JSON
+  (`size_vox` + `layers`), its SURFACE is the material's facade.
+  ⚠️ But see the gap: ART_SPEC §5 records that the v1 prop renderer **ignores
+  `layers` and renders props as solid GU blocks**. A crate works today; a
+  toldo (thin, non-solid) needs renderer v2 (ART-01).
+- **`_2` variants — NO.** No variant system exists.
+
+### OPTIONAL, and genuinely later — damage decals
+
+Per §7 of `ART_SPECIFICATIONS.md`: **256×256, square, alpha REQUIRED, full
+colour allowed** (B2 does not bind decals), **3 variants per family per
+material**, at
+`ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png`.
+
+Without them a material falls back to D25's shared fracture, which is real,
+shipped and looks correct — so these are never a blocker for landing a
+material.
+
+Worth having eventually, and only these:
+
+| Family | Materials | Files | Why not the rest |
+|---|---|---|---|
+| `bullet` | cardboard, fabric, plywood, brick | 12 | The Director's own ask — *"buracos de bala em papelão e tecido"*. A bullet hole in fabric reads nothing like one in concrete |
+| `dent` | brick, plywood | 6 | Soft materials tear rather than dent; glass has no DENTED tier at all (D22) |
+| `crack` | brick | 3 | D32.6 — only rigid mineral materials fracture |
+
+**Glass gets none**: D22 ratified it as DESTROYED-only, *"não vai ter dented; é
+buraco feito, ou não feito"*.

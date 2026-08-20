@@ -482,6 +482,39 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		var current_punch: float = punch \
 			* ShotPunchTable.penetration_multiplier(step_multipliers, depth)
 		var voxel: Voxel = current_slice.voxels[voxel_index]
+		## ⚠️ A HOLE IS NOT A TARGET. The round goes THROUGH it and the slice
+		## behind takes the shot instead; without this the ladder below re-marks a
+		## voxel that is already gone.
+		##
+		## FOUND ON THE REAL PATH, not reasoned: two shotgun shots at PLAYGROUND's
+		## wood block in one boot (INFILTRAITOR_SHOT_FILM_SECOND_AT=30) and the
+		## second wrote DESTROYED -> DENTED on two voxels the first had opened, with
+		## `visible` left false. The salt carries `room._world_revision`, which the
+		## first shot bumps, so consecutive shots at the SAME target roll different
+		## luck — measured 1.11 then 0.96 against wood's breach of 1.03, i.e. above
+		## the threshold and then below it, on the same wall.
+		##
+		## `set_damage()` deliberately does not clamp — the segment-rewind system
+		## has to be able to walk a voxel back — so the check belongs to whoever
+		## knows a hole when it sees one, which is this ladder.
+		##
+		## WHAT IT DID AND DID NOT BREAK, checked rather than assumed. Nothing
+		## healed on screen: `_process_dirty_slice_voxel()` branches on
+		## `voxel.visible`, not on the tier, and the soot BFS
+		## (`_write_face_rings`'s caller below) is guarded the same way. What it
+		## corrupted was the COUNTS — the second shot reported `wood:s1 dented=19`
+		## with two of the nineteen being holes — and WEAPON_MASTER_PLAN's
+		## calibration matrix is read straight off that print. It also threw impact
+		## sparks at open air.
+		##
+		## Passing through invents nothing: D28 already rules that a fully-
+		## penetrated path leaves no mark anywhere, and an existing hole IS that
+		## path. The sibling still pays depth 1's penetration multiplier, which is
+		## conservative — a round crossing air should arguably keep its punch — and
+		## is left as the ratified ladder rather than retuned here.
+		if voxel.damage_state == Voxel.DamageState.DESTROYED:
+			current_slice = edge_registry.sibling_slice(current_slice.id)
+			continue
 		## W-TUNE-02: the BREACH threshold is the material's, not a global one, and
 		## it is read from the slice rather than passed in — the sibling slice at
 		## depth 1 is the same wall and must answer with the same number.

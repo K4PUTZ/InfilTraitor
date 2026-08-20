@@ -614,7 +614,20 @@ func fire_at_active() -> void:
 			int(cell_to_depth.get(key, 0)) + 1]
 		if not by_material.has(mat):
 			by_material[mat] = {"CRACKED": 0, "DENTED": 0, "DESTROYED": 0}
-		by_material[mat][_TIER_NAME.get(tv.damage_state, "?")] += 1
+		## `_TIER_NAME` covers the three tiers a shot can produce, and INTACT is
+		## not one of them — but this row is initialised with those three keys and
+		## a bare `dict[missing] += 1` is a hard runtime error, not a zero. So the
+		## unknown tier gets counted under a key that EXISTS and says so, rather
+		## than taking the tier print down with it: a diagnostic must not be the
+		## thing that crashes the shot it is diagnosing.
+		var tier_name: String = String(_TIER_NAME.get(tv.damage_state, ""))
+		if tier_name == "":
+			push_warning("[AgentShotController] voxel %s ended a shot in tier %d, which no rung of the ladder produces — counted as UNKNOWN."
+				% [tv.grid_pos, tv.damage_state])
+			tier_name = "UNKNOWN"
+		if not by_material[mat].has(tier_name):
+			by_material[mat][tier_name] = 0
+		by_material[mat][tier_name] += 1
 	print_debug("[AGENT-SHOT] from=%s at=%s outcome=MISS(forced) axis=%s offset=%.1f deg landed=%d/%d impacts=%s voxels=%d tiers=%s punch=%s" %
 		[origin_gu, target_gu, forward, aim_offset_deg,
 		pellets_landed, pellet_picks.size(), impact_gus.keys(),
@@ -624,9 +637,15 @@ func fire_at_active() -> void:
 	for mat in tier_keys:
 		var row: Dictionary = by_material[mat]
 		var bare: String = String(mat).split(":")[0]
-		print_debug("[AGENT-SHOT-TIER] %-12s cracked=%2d dented=%2d destroyed=%2d  (resist %.2f, breach %.2f)"
+		## An UNKNOWN bucket only exists if the warning above fired; printing it
+		## unconditionally would put a permanent "unknown=0" on a line the Director
+		## reads a calibration matrix off.
+		var unknown: String = ""
+		if int(row.get("UNKNOWN", 0)) > 0:
+			unknown = "  unknown=%d" % int(row["UNKNOWN"])
+		print_debug("[AGENT-SHOT-TIER] %-12s cracked=%2d dented=%2d destroyed=%2d  (resist %.2f, breach %.2f)%s"
 			% [mat, row["CRACKED"], row["DENTED"], row["DESTROYED"],
-			ShotPunchTable.resistance(bare), ShotPunchTable.destroy_min(bare)])
+			ShotPunchTable.resistance(bare), ShotPunchTable.destroy_min(bare), unknown])
 
 	## PREDICTION_MASTER_PLAN §5.2 — a shot is a committed mutation, so every
 	## cached blast prediction is now stale.

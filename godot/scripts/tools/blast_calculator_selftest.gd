@@ -73,6 +73,7 @@ func _init() -> void:
 	test_point_impact_marks_only_the_impact_voxel()
 	test_point_impact_neighbour_ladder()
 	test_point_impact_cascades_only_on_full_destroy()
+	test_point_impact_never_re_marks_an_existing_hole()
 	test_punch_coefficient_ordering()
 	test_no_shipped_weapon_reaches_the_cascade()
 	test_line_impact_is_straight_and_measures_distance()
@@ -1530,6 +1531,63 @@ func test_point_impact_cascades_only_on_full_destroy() -> void:
 	else:
 		_fail("mark_ok=%s mid_ok=%s (layer2=%d) heavy_ok=%s (layer2=%d)" %
 			[mark_ok, mid_ok, sib_destroyed_mid, heavy_ok, sib_destroyed_heavy])
+	print("")
+
+
+## A HOLE IS NOT A TARGET — the regression pin for a bug that shipped and was
+## caught on the real map, not here.
+##
+## Two shotgun shots at PLAYGROUND's wood block in one boot wrote
+## DESTROYED -> DENTED on two voxels the first shot had already opened. The salt
+## carries `room._world_revision`, which every shot bumps, so consecutive shots at
+## one target roll different luck — measured 1.11 then 0.96 against wood's breach
+## of 1.03 — and nothing between the ladder and `set_damage()` (which must not
+## clamp: the segment-rewind system has to be able to walk a voxel back) checked
+## whether the voxel was still there.
+##
+## This test drives the exact sequence: destroy, then hit the same index with a
+## punch that would only mark. The hole must stay a hole, and the round must
+## arrive at the slice behind it — which is what the real fix's counts showed
+## (`wood:s1 dented` 19 -> 17, `wood:s2 dented` 2 -> 4).
+func test_point_impact_never_re_marks_an_existing_hole() -> void:
+	print("TEST: an already-DESTROYED voxel is a hole the round passes THROUGH, never a surface it re-marks")
+	var registry := EdgeRegistry.new()
+	var edges: Array = [Edge.between(Vector2i(9, 1), Vector2i(9, 2), 1, "wood")]
+	SliceGenerator.generate(edges, registry)
+	var slice: Slice = registry.get_slice("SLICE_9_2_NE")
+	var sib := registry.sibling_slice(slice.id)
+	if slice == null or sib == null:
+		_fail("Could not resolve the synthetic wood Slice pair")
+		print("")
+		return
+
+	## Shot 1: hard enough to breach. blowout 0.0 keeps the hole to one voxel, so
+	## the second shot's target is unambiguous.
+	BlastCalculatorClass.apply_point_impact(
+		slice, 12, 2.0, registry, "HOLE_FIRST", [], BlastCalculatorClass.NO_EPICENTER_BIAS, 0.0)
+	var opened: bool = slice.voxels[12].damage_state == Voxel.DamageState.DESTROYED
+	var sib_before: int = sib.voxels[12].damage_state
+
+	## Shot 2: same index, a punch that can only MARK. Pre-fix this wrote DENTED
+	## over the hole; post-fix it must skip the hole entirely.
+	var touched := BlastCalculatorClass.apply_point_impact(
+		slice, 12, 0.4, registry, "HOLE_SECOND", [], BlastCalculatorClass.NO_EPICENTER_BIAS, 0.0)
+	var hole_held: bool = slice.voxels[12].damage_state == Voxel.DamageState.DESTROYED
+	## ...and the round is not swallowed: it reaches the slice behind and marks it.
+	var reached_sibling: bool = sib.voxels[12].damage_state != sib_before \
+		and sib.voxels[12].damage_state != Voxel.DamageState.INTACT
+	var no_hole_entry: bool = true
+	for v in touched:
+		if v == slice.voxels[12]:
+			no_hole_entry = false
+
+	if opened and hole_held and reached_sibling and no_hole_entry:
+		_pass("the hole stayed DESTROYED, the plan carried no entry for it, and the round marked the slice behind (state %d)"
+			% sib.voxels[12].damage_state)
+	else:
+		_fail("opened=%s hole_held=%s (state %d) reached_sibling=%s (state %d) no_hole_entry=%s" %
+			[opened, hole_held, slice.voxels[12].damage_state,
+			reached_sibling, sib.voxels[12].damage_state, no_hole_entry])
 	print("")
 
 

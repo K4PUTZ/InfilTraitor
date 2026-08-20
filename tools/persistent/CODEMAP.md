@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 62998 lines total** (under `godot/scripts/`)
+**211 scripts · 63108 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1791,7 +1791,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1633 lines
+`class_name BlastCalculator` · 1666 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2818,7 +2818,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2282 lines
+extends `SceneTree` · 2340 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -2877,6 +2877,7 @@ extends `SceneTree` · 2282 lines
 - `func test_point_impact_marks_only_the_impact_voxel() -> void:`
 - `func test_point_impact_neighbour_ladder() -> void:`
 - `func test_point_impact_cascades_only_on_full_destroy() -> void:`
+- `func test_point_impact_never_re_marks_an_existing_hole() -> void:`
 - `func test_punch_coefficient_ordering() -> void:`
 - `func test_cone_spread_is_a_disc_not_a_line() -> void:`
 - `func test_no_shipped_weapon_reaches_the_cascade() -> void:`
@@ -4327,7 +4328,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 770 lines
+`class_name AgentShotController` · 789 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

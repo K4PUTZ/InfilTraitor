@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.104 · **Updated:** 2026-08-20 · **Branch:** main
+**Version:** 0.9.105 · **Updated:** 2026-08-20 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -14,6 +14,7 @@
 
 <!-- AUTO:BEGIN pending_prompts -->
 - BAKE_ORDER_CHARACTER_LAYERS.md
+- BAKE_ORDER_WEAPON_GRIPS.md
 - D33_RUNTIME_DECAL_COMPOSITING.md
 - ENGINE_PERFORMANCE_REVIEW.md
 - INVESTIGACAO_EXPLOSAO_2026-08-04.md
@@ -71,6 +72,7 @@
 - RESUMO_SESSAO_2026-08-19_ALPHA_ENEMY_HAIR.md
 - RESUMO_SESSAO_2026-08-19_SHOT_PERFORMANCE.md
 - RESUMO_SESSAO_2026-08-19_THROW_ANIMATION.md
+- RESUMO_SESSAO_2026-08-20_PRECOOK_AND_WEAPON_CHARACTER.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -203,6 +203,46 @@ readings were not.
 *(Raw-bake ratio; confirming it against the in-game drawn sprite is a task, not
 an assumption.)*
 
+### 3.2a ✅ BUILT — `PassageQuery`, and the one policy question it refused to decide
+
+`godot/scripts/geometry/passage_query.gd`. Pure: reads `Voxel.damage_state`,
+writes nothing, so a prediction can ask it about a hypothetical world exactly the
+way the committed one is asked.
+
+- `passage_class(edge, registry) -> NONE | CROUCH | STANDING`
+- `clear_storeys(edge, registry) -> Array[int]`, ascending
+
+**Written half-thickness-safe on day one**, at no cost: it iterates
+`registry.slices_of_edge()` — *the storey-faces that EXIST* — rather than naming
+`slice_a` and `slice_b`. A fabric panel with one face will satisfy "both sides
+clear" by clearing the one it has. Pinned by a test that removes a sibling the
+way the builder eventually will (unregistered, backref cleared) rather than by
+pre-destroying it, which §3.2b forbids and which would have made the test assert
+nothing.
+
+**Proven on the real map, not only in fixtures** — the M3-1 burn probe reports
+`passage_class` over the fabric block's 8 edges before and after:
+
+```
+passage_class over 8 edges (baseline):              { "NONE": 8 }
+passage_class over 8 edges (after the object burn): { "STANDING": 8 }
+```
+
+And the 15 fixture assertions were proven able to fail, against two real breaks:
+dropping the adjacency requirement (1 failure — "storeys 0 and 2 → STANDING") and
+dropping the every-face requirement (8 failures, starting with an intact wall
+reporting STANDING).
+
+⚠️ **OPEN, and deliberately not decided in code: must a passage reach the
+ground?** The query answers geometry, not reachability — it reports that an
+opening of a given size exists *somewhere* in the wall, and `clear_storeys()`
+says where. Two clear storeys at heights 2 and 3 are geometrically STANDING and
+practically a hole in the sky. The Director's own sentence covers both cases —
+*"passar agachado (ou transpor uma janela)"* — a window is exactly a passage that
+does **not** reach the ground, so a blanket "storey 0 only" rule would delete
+window traversal. **Whoever wires movement to this needs a ruling**; the data to
+apply it is already exposed rather than baked in.
+
 ### 3.2b Half-thickness elements — the architectural news
 
 > *"Em geral, vamos fazer elementos com pano, papelão, vidro e madeirite usando
@@ -419,7 +459,7 @@ frame.
 |---|---|---|
 | ~~**M3-0**~~ | ~~pin §3.2's unit~~ — ✅ **CLOSED**: the unit is the STOREY, not the level; and §3.3's tick is `delta` for v1 | — |
 | ~~**M3-1**~~ | ~~Measure §3.4's free win~~ — ✅ **CLOSED 2026-08-21**: the visual field is free (control 0, one voxel 2, object 262, all brighter); the lamp's shadow is NOT (3 burnt GUs still in `_blocked_cells`) | — |
-| **M3-2** | `passage_class(edge) -> NONE\|CROUCH\|STANDING` as a pure query over storey-faces + selftest | M3-0 |
+| ~~**M3-2**~~ | ~~`passage_class()`~~ — ✅ **BUILT 2026-08-21**, `godot/scripts/geometry/passage_query.gd`, 15 assertions + real-map evidence (NONE ×8 → STANDING ×8) | M3-0 |
 | **M3-2b** | **Half-thickness elements** (§3.2b) — one storey-face per edge, mapfile-expressed, NOT faked by pre-destroying a side | M3-2 |
 | **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only (object-scoped, no spread logic) | M3-1, M3-2b |
 | **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
@@ -558,7 +598,7 @@ No task list until the study lands.
 | 1 | **M2b** — the nine brick PNGs | **Director (art)** |
 | 2 | **M2c** — wire `brick` into `IMPACT_DECAL_MATERIALS`/`IMPACT_CRACK_MATERIALS` + manifest + capture | M2b |
 | ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
-| 4 | **M3-2** — `passage_class()` + selftest | M3-0 |
+| ✅ | **M3-2** — `passage_class()` + selftest | done |
 | 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
 | 5 | **M3-3** — fabric + cardboard burn (object-scoped, delta tick) | M3-1, M3-2b |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |

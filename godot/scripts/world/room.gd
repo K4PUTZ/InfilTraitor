@@ -4221,6 +4221,9 @@ func _capture_agent_shot() -> void:
 ##
 ## `INFILTRAITOR_BURN_PROBE_MATERIAL` picks the material (default fabric — the
 ## one the Director says burns entirely and fastest).
+var _burn_probe_targets: Array = []
+
+
 func _capture_light_burn_probe() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -4236,6 +4239,7 @@ func _capture_light_burn_probe() -> void:
 	if targets.is_empty():
 		push_error("[BURN-PROBE] no slice of material %r on this map." % material)
 		return
+	_burn_probe_targets = targets
 	var voxel_total: int = 0
 	for slice in targets:
 		voxel_total += slice.voxels.size()
@@ -4266,6 +4270,7 @@ func _capture_light_burn_probe() -> void:
 
 	var base: Dictionary = _burn_probe_snapshot()
 	print("[BURN-PROBE] baseline: %d placed cells" % base.size())
+	_burn_probe_passages("baseline")
 
 	## CONTROL — the same full rebuild, with nothing destroyed. Any non-zero
 	## here and every number below it is noise wearing a value.
@@ -4398,6 +4403,12 @@ func _capture_light_burn_probe() -> void:
 			others[k] = int(others.get(k, 0)) + alive2
 	print("[BURN-PROBE] still standing in the same GUs %s: %s" % [burnt_gus.keys(), others])
 
+	## M3-2 ON THE REAL MAP. A green selftest does not mean the feature fires on
+	## a real map (CLAUDE.md, and the floor-dent path is the standing example),
+	## and the passage query's fixtures are synthetic by design. This asks the
+	## real EdgeRegistry, after a real object burn, what the wall now offers.
+	_burn_probe_passages("after the object burn", targets)
+
 	## THE HALF OF §3.4 THAT IS NOT FREE, checked in the same boot rather than
 	## argued. The VOXEL light field reads occupancy; the LAMP's shadow does not
 	## — ShadowProjector runs on `_blocked_cells`, a GU-resolution structure
@@ -4424,6 +4435,28 @@ func _capture_light_burn_probe() -> void:
 ## voxels and moved `cells_gone` by ZERO, because the flags were consumed before
 ## anything drew. Reported to the Director rather than fixed inside a
 ## measurement task.
+## M3-2 ON THE REAL MAP. A green selftest does not mean the feature fires on a
+## real map (CLAUDE.md, and the floor-dent path is the standing example) — the
+## passage query's own fixtures are synthetic by design. This asks the real
+## EdgeRegistry, before and after a real burn, what the wall offers.
+func _burn_probe_passages(label: String, slices: Array = []) -> void:
+	var pool: Array = slices
+	if pool.is_empty():
+		pool = _burn_probe_targets
+	var tally: Dictionary = {}
+	var seen: Dictionary = {}
+	for slice in pool:
+		if seen.has(slice.edge_id):
+			continue
+		seen[slice.edge_id] = true
+		var e: Edge = _edge_registry.get_edge(slice.edge_id)
+		if e == null:
+			continue
+		var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(e, _edge_registry))
+		tally[pc] = int(tally.get(pc, 0)) + 1
+	print("[BURN-PROBE] passage_class over %d edges (%s): %s" % [seen.size(), label, tally])
+
+
 func _burn_probe_render() -> void:
 	_voxel_renderer.process_dirty(_edge_registry)
 	if _slab_registry != null:

@@ -350,8 +350,60 @@ and no coupling to `LIGHT_MASTER_PLAN`** — it is a property of burning being
 real destruction. Bump `room.bump_world_revision()` on every burn tick or
 predictions go stale (`PREDICTION_MASTER_PLAN` §5.2).
 
-⚠️ Read off the code, not measured. **Task M3-1 is the measurement**, against a
-same-boot control.
+### ✅ M3-1 — MEASURED 2026-08-21, and the claim is half right
+
+`INFILTRAITOR_CAPTURE_ACTION=light_burn_probe` (`room.gd::_capture_light_burn_probe`),
+four passes in ONE boot on PLAYGROUND's fabric block:
+
+```
+CONTROL   (nothing destroyed)      cells_gone=   0  bucket_changed=  0
+ONE VOXEL ((247, 24) lvl 0)        cells_gone=   1  bucket_changed=  2  (brighter 2 / darker 0)
+WALLS     (2047 more voxels)       cells_gone=1984  bucket_changed=260  (brighter 260 / darker 0)
+OBJECT    (+1672 slab voxels)      cells_gone=3080  bucket_changed=262  (brighter 262 / darker 0)
+```
+
+**The control reports 0**, which is what makes the other three numbers mean
+anything. **The visual half of §3.4 is CONFIRMED**: a single destroyed voxel
+moves the light field with no opacity state and no coupling to
+`LIGHT_MASTER_PLAN`, and every cell it moves gets *brighter*. Captures:
+`burn_fabric_1_intact.png` → `burn_fabric_3_object.png`.
+
+**But the lamp's shadow does not move at all.** Measured in the same boot:
+
+```
+shadow map after the burn: 3 of the burnt GUs are STILL in _blocked_cells [(31,3), (32,3), (33,3)]
+```
+
+`ShadowProjector` runs on `_blocked_cells` / `_obstacle_heights`, a
+**GU-resolution** structure `RoomBuilder` builds and `LightingController` re-feeds
+only on a rebuild. Nothing in the destruction path touches it. So *"cardboard
+blocks light until it burns"* is free for the **visual shading** and **not free**
+for the **cast shadow** — a burnt-away wall still throws one. That is a task M3-3
+owns and did not know it had.
+*(Canon note: this is not a contradiction of "visual brightness ≠ tactical
+visibility" — it is that split showing up as work. The visual side came free
+because it reads occupancy; the tactical side did not because it does not.)*
+
+**Two more findings, both from looking at the capture rather than the code:**
+
+- **"Burns entirely" cannot be expressed as "destroy the edges."** A fabric block
+  is 16 `Slice`s *plus* `FLOOR` (1152 voxels) and `CEILING` (520) `Slab`s. The
+  first run destroyed every fabric Slice and photographed a block still standing.
+  M3-3's object scope has to span **both registries**.
+- **An object that burns entirely leaves its JUNCTION COLUMNS standing.** Four
+  dark posts survive with 0 fabric voxels left, proven against a
+  `INFILTRAITOR_SKIP_JUNCTIONS=1` control run where they vanish
+  (`burn_fabric_nojunc_3_object.png`). This is the same side-blindness §3.2c
+  already flagged for half-thickness elements — `JunctionResolver` is
+  edge-derived and never looks at a slice — arriving from the other direction.
+
+⚠️ **A note on reading these captures.** `voxel_destroyed` fires per voxel and
+room.gd dispatches it to the smoke/debris overlays, so erasing 3 080 cells in one
+frame raises a dust cloud that HIDES the hole it is announcing. Three runs
+photographed a pale mass where the wall had been; it took the census (0 fabric
+voxels intact, 3 080 cells gone) to establish the geometry really was gone. The
+probe now waits `INFILTRAITOR_BURN_PROBE_SETTLE_FRAMES` (240) before the last
+frame.
 
 ### 3.5 Explicitly OUT of M3 v1
 
@@ -366,7 +418,7 @@ same-boot control.
 | # | Task | Depends on |
 |---|---|---|
 | ~~**M3-0**~~ | ~~pin §3.2's unit~~ — ✅ **CLOSED**: the unit is the STOREY, not the level; and §3.3's tick is `delta` for v1 | — |
-| **M3-1** | Measure §3.4's free win: force one fabric voxel DESTROYED, capture the light field vs a same-boot control | — |
+| ~~**M3-1**~~ | ~~Measure §3.4's free win~~ — ✅ **CLOSED 2026-08-21**: the visual field is free (control 0, one voxel 2, object 262, all brighter); the lamp's shadow is NOT (3 burnt GUs still in `_blocked_cells`) | — |
 | **M3-2** | `passage_class(edge) -> NONE\|CROUCH\|STANDING` as a pure query over storey-faces + selftest | M3-0 |
 | **M3-2b** | **Half-thickness elements** (§3.2b) — one storey-face per edge, mapfile-expressed, NOT faked by pre-destroying a side | M3-2 |
 | **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only (object-scoped, no spread logic) | M3-1, M3-2b |
@@ -505,7 +557,7 @@ No task list until the study lands.
 | ✅ | **M2a** — the brick art order + `check_decal.py`, earned before the art | done |
 | 1 | **M2b** — the nine brick PNGs | **Director (art)** |
 | 2 | **M2c** — wire `brick` into `IMPACT_DECAL_MATERIALS`/`IMPACT_CRACK_MATERIALS` + manifest + capture | M2b |
-| 3 | **M3-1** — measure the light win | — |
+| ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
 | 4 | **M3-2** — `passage_class()` + selftest | M3-0 |
 | 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
 | 5 | **M3-3** — fabric + cardboard burn (object-scoped, delta tick) | M3-1, M3-2b |

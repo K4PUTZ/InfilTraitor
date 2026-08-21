@@ -4205,6 +4205,268 @@ func _capture_agent_shot() -> void:
 ## One named capture frame for the §6c evidence set. Separate from
 ## _capture_screenshot_to_file() because that one owns the Shift+P destination
 ## and this one must land in history/ under a name the rotation ignores.
+## MATERIALS_MASTER_PLAN M3-1 — the measurement §3.4 asks for.
+##
+## §3.4 claims the "cardboard blocks light until it burns" behaviour is FREE:
+## light never reads `damage_state`, `build_occupancy()` is built from
+## `get_used_cells()`, and a DESTROYED voxel has its cell erased — so burning is
+## already an opacity change and needs no coupling to LIGHT_MASTER_PLAN. That
+## claim was READ OFF THE CODE and marked as such. This runs it.
+##
+## Three passes in ONE boot, because a count of changed cells means nothing
+## without knowing what the instrument reports when nothing happened:
+##   CONTROL   rebuild the light field, change nothing. Must report 0.
+##   ONE VOXEL destroy a single voxel of a soft wall. Must report > 0.
+##   WHOLE     destroy every voxel of that material. The milestone's real case.
+##
+## `INFILTRAITOR_BURN_PROBE_MATERIAL` picks the material (default fabric — the
+## one the Director says burns entirely and fastest).
+func _capture_light_burn_probe() -> void:
+	if _voxel_renderer == null or _edge_registry == null:
+		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
+		return
+	var material := OS.get_environment("INFILTRAITOR_BURN_PROBE_MATERIAL")
+	if material == "":
+		material = "fabric"
+
+	var targets: Array = []
+	for slice in _edge_registry.all_slices():
+		if slice.material == material:
+			targets.append(slice)
+	if targets.is_empty():
+		push_error("[BURN-PROBE] no slice of material %r on this map." % material)
+		return
+	var voxel_total: int = 0
+	for slice in targets:
+		voxel_total += slice.voxels.size()
+	print("[BURN-PROBE] material=%s slices=%d voxels=%d" % [material, targets.size(), voxel_total])
+
+	## Frame the wall, so the two captures are comparable and show the thing.
+	## voxel_to_gu() is not optional here: a Slice's voxels carry VOXEL grid
+	## coordinates (8 per GU axis), so handing grid_pos straight to
+	## _cell_to_world() aims the camera roughly eight boards away — which is
+	## exactly what the first run of this probe photographed, an empty screen.
+	var focus: Vector2i = Vector2i.ZERO
+	if not targets[0].voxels.is_empty():
+		focus = GeometryCoords.voxel_to_gu(targets[0].voxels[0].grid_pos)
+	if agent != null and _camera_controller != null:
+		_camera_controller.focus_on(agent._cell_to_world(focus))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(focus, 24)
+	_recompute_occlusion()
+	for _i in range(12):
+		await get_tree().process_frame
+
+	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(shot_dir)
+	var tag := OS.get_environment("INFILTRAITOR_SHOT_TAG")
+	if tag == "":
+		tag = material
+	await _save_shot_frame(shot_dir, "burn_%s_1_intact.png" % tag)
+
+	var base: Dictionary = _burn_probe_snapshot()
+	print("[BURN-PROBE] baseline: %d placed cells" % base.size())
+
+	## CONTROL — the same full rebuild, with nothing destroyed. Any non-zero
+	## here and every number below it is noise wearing a value.
+	_repaint_voxel_light_buckets(false)
+	await get_tree().process_frame
+	_burn_probe_report("CONTROL   (nothing destroyed)", base, _burn_probe_snapshot())
+
+	## ONE VOXEL — §3.4's own wording. The sharpest form of the question: does
+	## the field move at all for a single erased cell, with no opacity state?
+	var one: Array = [BlastCalculator.damage_entry(
+		targets[0].voxels[0], Voxel.DamageState.DESTROYED, false)]
+	BlastCalculator.commit_damage(one)
+	bump_world_revision()
+	_burn_probe_render()
+	_repaint_voxel_light_buckets(false)
+	await get_tree().process_frame
+	var after_one: Dictionary = _burn_probe_snapshot()
+	_burn_probe_report("ONE VOXEL (%s lvl %d)" % [targets[0].voxels[0].grid_pos,
+		targets[0].voxels[0].level], base, after_one)
+
+	## WALLS — every Slice of this material. "fabric burns entirely, always"
+	## (§3.1) is the case the milestone actually needs.
+	var wall_entries: Array = []
+	for slice in targets:
+		for v in slice.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				wall_entries.append(BlastCalculator.damage_entry(
+					v, Voxel.DamageState.DESTROYED, false))
+	BlastCalculator.commit_damage(wall_entries)
+	bump_world_revision()
+	_burn_probe_render()
+	_repaint_voxel_light_buckets(false)
+	for _j in range(6):
+		await get_tree().process_frame
+	_burn_probe_report("WALLS     (%d more voxels)" % wall_entries.size(),
+		base, _burn_probe_snapshot())
+	await _save_shot_frame(shot_dir, "burn_%s_2_walls.png" % tag)
+
+	## OBJECT — and the reason there is a fourth pass at all. The first run of
+	## this probe destroyed every fabric SLICE and photographed a block that was
+	## still standing: a block's interior fill and its roof are SLABS
+	## (Slab.Role.INTERIOR / CEILING), which no Slice contains. "Burns entirely"
+	## therefore cannot be expressed as "destroy the edges" — M3-3 needs an
+	## object scope that spans both registries. Found by looking at the capture,
+	## not by reading the code.
+	var slab_entries: Array = []
+	var by_role: Dictionary = {}
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			if slab.material != material:
+				continue
+			var role_name: String = Slab.role_name(slab.role)
+			by_role[role_name] = int(by_role.get(role_name, 0)) + slab.voxels.size()
+			for v in slab.voxels:
+				if v.damage_state != Voxel.DamageState.DESTROYED:
+					slab_entries.append(BlastCalculator.damage_entry(
+						v, Voxel.DamageState.DESTROYED, false))
+	print("[BURN-PROBE] %s slabs by role: %s" % [material, by_role])
+	BlastCalculator.commit_damage(slab_entries)
+	bump_world_revision()
+	_burn_probe_render()
+	_repaint_voxel_light_buckets(false)
+	for _k in range(6):
+		await get_tree().process_frame
+	_burn_probe_report("OBJECT    (+%d slab voxels)" % slab_entries.size(),
+		base, _burn_probe_snapshot())
+
+	## ⚠️ WAIT FOR THE SMOKE, or the capture photographs the wrong thing.
+	## `VoxelRenderer.voxel_destroyed` fires per voxel and room.gd dispatches it
+	## to the smoke/spark/debris overlays — so erasing 3 080 cells in one frame
+	## raises a dust cloud that HIDES the hole it is announcing. The first three
+	## runs of this probe produced a pale mass exactly where the wall had been,
+	## and it took a census (0 fabric voxels intact, 3 080 cells gone) to
+	## establish that the geometry really was gone and the mass was VFX.
+	var settle_env := OS.get_environment("INFILTRAITOR_BURN_PROBE_SETTLE_FRAMES")
+	var settle: int = settle_env.to_int() if settle_env.is_valid_int() else 240
+	for _s in range(maxi(settle, 0)):
+		await get_tree().process_frame
+	await _save_shot_frame(shot_dir, "burn_%s_3_object.png" % tag)
+
+	## What is LEFT of the object, counted rather than eyeballed — the capture
+	## still shows a pale mass where the block was, and "that is the interior"
+	## is a guess until something counts it.
+	var left_slice: int = 0
+	var left_slab: int = 0
+	for slice in _edge_registry.all_slices():
+		if slice.material != material:
+			continue
+		for v in slice.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				left_slice += 1
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			if slab.material != material:
+				continue
+			for v in slab.voxels:
+				if v.damage_state != Voxel.DamageState.DESTROYED:
+					left_slab += 1
+	print("[BURN-PROBE] %s voxels still intact after the object burn: slices=%d slabs=%d"
+		% [material, left_slice, left_slab])
+
+	## ...and WHAT ELSE stands in the same GUs. Zero fabric voxels left and a
+	## pale mass still on screen means the remainder belongs to a container
+	## carrying a DIFFERENT material id, which is a fact about how a block is
+	## composed and worth having in writing.
+	var burnt_gus: Dictionary = {}
+	for slice in targets:
+		if not slice.voxels.is_empty():
+			burnt_gus[GeometryCoords.voxel_to_gu(slice.voxels[0].grid_pos)] = true
+	var others: Dictionary = {}
+	for slice in _edge_registry.all_slices():
+		if slice.voxels.is_empty():
+			continue
+		if not burnt_gus.has(GeometryCoords.voxel_to_gu(slice.voxels[0].grid_pos)):
+			continue
+		var alive: int = 0
+		for v in slice.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				alive += 1
+		others["SLICE:" + slice.material] = int(others.get("SLICE:" + slice.material, 0)) + alive
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			if not burnt_gus.has(slab.gu_cell):
+				continue
+			var alive2: int = 0
+			for v in slab.voxels:
+				if v.damage_state != Voxel.DamageState.DESTROYED:
+					alive2 += 1
+			var k: String = "SLAB:%s:%s" % [slab.material, Slab.role_name(slab.role)]
+			others[k] = int(others.get(k, 0)) + alive2
+	print("[BURN-PROBE] still standing in the same GUs %s: %s" % [burnt_gus.keys(), others])
+
+	## THE HALF OF §3.4 THAT IS NOT FREE, checked in the same boot rather than
+	## argued. The VOXEL light field reads occupancy; the LAMP's shadow does not
+	## — ShadowProjector runs on `_blocked_cells`, a GU-resolution structure
+	## built by RoomBuilder and re-fed only on a rebuild. If the wall's GUs are
+	## still in it after every voxel is gone, then "light passes through the
+	## burnt wall" is true of the visual shading and false of the cast shadow.
+	var still_blocked: Array = []
+	for slice in targets:
+		if slice.voxels.is_empty():
+			continue
+		var gu: Vector2i = GeometryCoords.voxel_to_gu(slice.voxels[0].grid_pos)
+		if _blocked_cells.has(gu) and not still_blocked.has(gu):
+			still_blocked.append(gu)
+	print("[BURN-PROBE] shadow map after the burn: %d of the burnt GUs are STILL in _blocked_cells %s"
+		% [still_blocked.size(), still_blocked])
+
+
+## ⚠️ The probe renders through the RENDERER, not through `_tic_voxel_system()`,
+## and that is a correction rather than a preference. `_tic_voxel_system()` calls
+## `_tic_slab_system()`, which CLEARS every slab's dirty flags **without
+## rendering them** — its comment still says "_slab_registry stays empty until
+## Part 2, so dirty_slabs() is always []", which stopped being true when floors
+## and roofs became slabs. Measured here: the OBJECT pass destroyed 1672 slab
+## voxels and moved `cells_gone` by ZERO, because the flags were consumed before
+## anything drew. Reported to the Director rather than fixed inside a
+## measurement task.
+func _burn_probe_render() -> void:
+	_voxel_renderer.process_dirty(_edge_registry)
+	if _slab_registry != null:
+		_voxel_renderer.process_dirty_slabs(_slab_registry)
+
+
+## Every placed cell's light bucket, keyed by (x, y, level). The fixed set is
+## the BASELINE's — a cell that stops existing is reported as removed rather
+## than silently dropping out of the comparison, which is the difference between
+## "the light changed" and "the geometry did".
+func _burn_probe_snapshot() -> Dictionary:
+	var out: Dictionary = {}
+	if _voxel_light_field == null:
+		return out
+	for level in range(_voxel_renderer._voxel_layers.size()):
+		for cell in _voxel_renderer._voxel_layers[level].get_used_cells():
+			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
+	for level in _voxel_renderer._negative_voxel_layers.keys():
+		for cell in _voxel_renderer._negative_voxel_layers[level].get_used_cells():
+			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
+	return out
+
+
+func _burn_probe_report(label: String, base: Dictionary, now: Dictionary) -> void:
+	var removed: int = 0
+	var changed: int = 0
+	var brighter: int = 0
+	var darker: int = 0
+	for key in base:
+		if not now.has(key):
+			removed += 1
+			continue
+		if now[key] == base[key]:
+			continue
+		changed += 1
+		if int(now[key]) > int(base[key]):
+			brighter += 1
+		else:
+			darker += 1
+	print("[BURN-PROBE] %-34s cells_gone=%4d  bucket_changed=%4d  (brighter %d / darker %d)"
+		% [label, removed, changed, brighter, darker])
+
+
 func _save_shot_frame(dir_path: String, file_name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
@@ -5030,6 +5292,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
+	elif capture_action == "light_burn_probe":
+		await _capture_light_burn_probe()
+		get_tree().quit(0)
+		return
 	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:
 		await _capture_detonation_filmstrip()
 		get_tree().quit(0)

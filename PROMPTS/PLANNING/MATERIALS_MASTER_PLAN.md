@@ -1,8 +1,11 @@
 # MATERIALS_MASTER_PLAN
-## The materials milestone — burn, breach, see through, and flow — v1.0
+## The materials milestone — burn, breach, see through, and flow — v1.1
 
-**Status:** 🟡 **v1.0 — the design is captured and ordered; M1 is the only part
-already built.** One open sub-question (§3.2), flagged rather than guessed.
+**Status:** 🟡 **v1.1 — the design is captured and ordered; M1 is the only part
+already built.** §3.2 (the passage rule) and §3.3 (the tick) were both RESOLVED
+by the Director on 2026-08-21, and the first answer added a new structural
+requirement — **half-thickness elements, §3.2b** — that the engine cannot do
+today.
 **Written:** 2026-08-21, against `b9a46b15`.
 **Supersedes:** `BURN_THROUGH_MASTER_PLAN` (v0.2), which becomes this document's
 §4 — that plan was opened before the Director described the full wave, and a
@@ -133,49 +136,94 @@ Two structural notes that fall out of this:
   honoured in `DESTROY_MIN`, which is derived to hold the destroyed fraction
   near its calibrated reference — see `shot_punch_table.gd`.
 
-### 3.2 The passage rule — ratified in intent, ONE number open
+### 3.2 The passage rule — ✅ RESOLVED 2026-08-21, and it corrected the question
 
-> *"A passagem pra existir precisa ter pelo menos 1 par de slices desobstruídas
-> na base das GUs — o agente se agaixa, e entra. Se conseguir abrir 2 pares
-> verticais (panos, papelão), o agente consegue entrar em pé."*
+> Director: *"uma parede comum é feita de um par de slices, uma em cada GU
+> anexas. Para o agente passar agachado (ou transpor uma janela), é necessário
+> que as duas estejam desobstruídas. Se tiver 4 slices destruídas (2 pares
+> empilhados), o agente consegue entrar em pé."*
 
-So: **1 → crouch, 2 → standing**, measured at the base, and the pair is the
-front/back pair (a *through-pair*, §1) rather than two neighbours on one face.
+**All three readings offered above were wrong**, because they assumed the unit
+that stacks is a voxel LEVEL. It is a **STOREY**.
 
-⚠️ **What "1 pair" spans horizontally and vertically is NOT yet pinned, and the
-answer changes how hard a passage is to make by a large factor.** §1's
-measurement is why this cannot be guessed: a level is **1/8 of a storey**, and
-the agent is authored *"standing slightly taller than a slice"* — so one level
-is roughly a quarter of the agent's height. Read literally, "1 pair" = one cell
-through = an opening ~¼ agent tall and ⅛ GU wide, which nothing crouches
-through. The intent is clearly larger than the literal reading, so the unit
-needs naming. Candidates:
+⚠️ **VOCABULARY COLLISION, and it caused the wrong question.** The Director's
+"slice" is *one storey of wall on one GU face*. The code's `Slice` class is the
+**whole** wall face of a GU across `storey_count` storeys (128 voxels for 2
+storeys). They are not the same object, and this plan now says **storey-face**
+for the Director's unit and `Slice` for the class.
 
-| Reading | "1 pair" means | Crouch opening | Comment |
-|---|---|---|---|
-| **A** | one whole LEVEL of the base row, both slices (8 cells × 2) | ⅛ storey tall, full GU wide | A letterbox — wide and very short |
-| **B** | one whole STOREY of the wall, both slices (64 × 2) | full storey | Then "2 pares" = two storeys, and standing needs a two-storey hole |
-| **C** (recommended) | a contiguous block **4 levels tall** through both slices | ~half agent height | Matches "crouch" physically; "2 pairs" = 8 levels = one storey = standing |
+**The rule, unambiguously:**
 
-**C is a recommendation, not a decision.** It is the only reading where the
-words *crouch* and *standing* map onto real proportions, but it invents a
-number (4) the Director did not say. **This is the one thing M3 cannot start
-without.**
+| Opening | Requirement | Agent |
+|---|---|---|
+| **CROUCH** (and window traversal) | both storey-faces of the pair clear, 1 storey tall | crouches through |
+| **STANDING** | 4 storey-faces clear — 2 stacked pairs, 2 storeys tall | walks through |
 
-Independent of which reading wins, the rule is a **pure query over committed
-state**, which is worth stating because it makes it cheap and testable:
-`passage_class(edge) -> NONE | CROUCH | STANDING`, reading `damage_state ==
-DESTROYED` across the two sibling slices. No new storage, no new writer, and it
-can be selftested against a synthetic slice pair long before fire exists.
+**Measured, so the rule is checked and not merely transcribed:** the baked agent
+figure is **222 px** against `WALL_FLOOR_STEP_PX = 158` — **1.41 storeys tall**.
+A one-storey opening is 0.71 of him (crouch), a two-storey opening is 1.41x him
+(standing). The Director's numbers are physically coherent, which the level-based
+readings were not.
+*(Raw-bake ratio; confirming it against the in-game drawn sprite is a task, not
+an assumption.)*
 
-### 3.3 What is a tick
+### 3.2b Half-thickness elements — the architectural news
 
-The game is turn-based. `TacticalTurnManager` already emits
-`player_turn_started` and `enemy_phase_started`. **Fire advances on turn
-boundaries, not on `delta`** — a stealth game whose fire spreads in real time
-while the player thinks is a different game, and a per-turn burn is legible and
-predictable in a way a timer is not. (Recommendation carried from the previous
-plan; still unratified, but nothing contradicts it.)
+> *"Em geral, vamos fazer elementos com pano, papelão, vidro e madeirite usando
+> apenas 1 slice. Vai ser 'meia espessura' de parede, escolhendo uma das duas
+> GUs pra posicionar, preferencialmente na de dentro, considerando o contexto de
+> um bloco/aposento. Então no caso de uma janela de vidro, ela não é dupla como o
+> resto da parede, só cobre uma slice, e fica outra slice livre no vão da janela,
+> criando um pouquinho de profundidade."*
+
+**This is the largest single item in the milestone and it is not fire.** Soft
+materials and glass are **half-thickness**: one storey-face only, placed on one
+of the two GUs — preferably the INNER one, in the context of a block/room. A
+glass window covers one face and leaves the opposite face empty inside the
+opening, which is what gives the reveal its depth.
+
+⚠️ **The engine cannot do this today.** `SliceGenerator.generate()` creates
+**both** slices for every edge, unconditionally — `_create_slice(edge, true)`
+then `_create_slice(edge, false)`, with no per-side gate anywhere. Verified by
+reading the function, not inferred. Every wall in the game is full thickness by
+construction.
+
+What that implies, and why it is worth doing properly rather than faking:
+
+- **Faking it by pre-destroying one side is wrong.** A DESTROYED voxel is a
+  hole with soot, damage atoms and a destruction history; an *absent* voxel is
+  geometry that was never there. Conflating them would corrupt every census, the
+  soot derivation (D24 derives scorch from ABSENT voxels) and the passage query.
+- **It simplifies the passage rule for exactly these materials.** A
+  half-thickness element has only one storey-face, so "both clear" is satisfied
+  by destroying the one that exists. Fabric and cardboard opening a crouch
+  passage becomes structural rather than lucky.
+- **It needs a mapfile expression** — which side an edge's element sits on — and
+  `MAPFILE_REFERENCE`'s versioned-section contract is the place for it.
+
+**New task M3-2b**, ahead of the fire work it enables.
+
+### 3.3 What is a tick — ✅ DECIDED 2026-08-21: delta, for now
+
+> Director: *"Eu gosto da ideia de ir avançando, mas pra isso o fogo precisa
+> ficar existindo em looping enquanto o jogador pensa, pra não ficar congelado. É
+> ousado, mas pode ficar bom. Por enquanto temos apenas eventos que disparam e
+> acabam, então o delta seria o mais apropriado. Mas podemos testar essa
+> proposta."*
+
+**v1 advances on `delta`**, and the reasoning is the honest one rather than the
+tidy one: the previous recommendation here was turn-based, and the Director's
+objection defeats it — a per-turn fire that is *frozen* between turns does not
+read as fire. Making it read right during the player's thinking time is a
+**looping, continuously-alive effect**, and every VFX this project has is a
+fire-and-forget event that starts and ends. Building the looping variant is a
+bigger claim than building fire.
+
+**So the turn-based version is a PROPOSAL to test, not a rejected option** —
+Director: *"podemos testar essa proposta"*. The seam to keep open: whatever
+advances the burn should be one function called from one place, so swapping
+`_process(delta)` for `player_turn_started` is an edit at that call site rather
+than a rewrite. Do not scatter delta arithmetic through the burn state.
 
 ### 3.4 What is already free
 
@@ -201,10 +249,11 @@ same-boot control.
 
 | # | Task | Depends on |
 |---|---|---|
-| **M3-0** | Pin §3.2's unit with the Director | — |
+| ~~**M3-0**~~ | ~~pin §3.2's unit~~ — ✅ **CLOSED**: the unit is the STOREY, not the level; and §3.3's tick is `delta` for v1 | — |
 | **M3-1** | Measure §3.4's free win: force one fabric voxel DESTROYED, capture the light field vs a same-boot control | — |
-| **M3-2** | `passage_class(edge)` as a pure query + selftest on a synthetic slice pair | M3-0 |
-| **M3-3** | Burn state + the turn tick; fabric and cardboard only (object-scoped, no spread logic) | M3-1 |
+| **M3-2** | `passage_class(edge) -> NONE\|CROUCH\|STANDING` as a pure query over storey-faces + selftest | M3-0 |
+| **M3-2b** | **Half-thickness elements** (§3.2b) — one storey-face per edge, mapfile-expressed, NOT faked by pre-destroying a side | M3-2 |
+| **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only (object-scoped, no spread logic) | M3-1, M3-2b |
 | **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
 
@@ -327,7 +376,8 @@ No task list until the study lands.
 | 2 | **M2** — 21 decal files + `IMPACT_DECAL_MATERIALS` | art |
 | 3 | **M3-1** — measure the light win | — |
 | 4 | **M3-2** — `passage_class()` + selftest | M3-0 |
-| 5 | **M3-3** — fabric + cardboard burn (object-scoped) | M3-1 |
+| 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
+| 5 | **M3-3** — fabric + cardboard burn (object-scoped, delta tick) | M3-1, M3-2b |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
 | 8 | **M4a** — glass blend mode (its own layer) | — |

@@ -289,6 +289,57 @@ column read as its default **with no error anywhere**. This is CLAUDE.md's
 floor-dent case exactly, and the reason `[E-BURN]` prints a count rather than
 staying silent.
 
+### ✅ 3.1c BUILT 2026-08-21 — M3-4, plywood, and the threshold it exposed
+
+> Director: *"uma granada bem na base da parede abre passagem; mais longe queima
+> menos."*
+
+Plywood is the only material with a spatial rule (§3.1), and it needed **no new
+data**: every ember entry already carries `r`, its horizontal radius from the
+epicentre. A partial burner's consumption is scaled by a radial falloff over
+`BURN_RADIAL_REACH_VOXELS`.
+
+**No separate "is it at the base" term, deliberately.** A grenade is on the
+FLOOR — the Director's own point when settling the passage rule — so the cells
+nearest it ARE the base cells, by geometry. Radial falloff produces "the base
+opens, higher up burns less" with no level rule to tune, and the upward
+attenuation is already in the ember wave (`EMBER_CLIMB_DECAY`).
+
+**`burn_consumption` 1.0 means UNCONDITIONAL**, which is the whole semantics of
+the column: §3.1 makes fabric and cardboard *object-scoped, not radius-scoped*,
+so 1.0 burns wherever it caught, and anything BELOW 1.0 is a base probability the
+position modulates. One number, two behaviours, no second flag.
+
+Measured on the real map, plywood, three grenade positions:
+
+```
+gu (34,3) — at the wall's corner    148 of 233 lit (64%)   base storey 60/64 cells open
+gu (35,4) — one GU further           99 of 304 lit (33%)
+gu (35,5) — two GU further           78 of 326 lit (24%)   base storey 11/64 cells open
+```
+
+*"Mais longe queima menos"*, monotonically.
+
+#### ⚠️ AND THE HALF THAT DOES NOT WORK — `passage_class()` is too strict
+
+The other half of the sentence is *"abre passagem"*, and it does not:
+
+```
+passage over 6 burnt edge(s): { "NONE": 6 } · widest base storey 60/64 cells open
+```
+
+**The wall is 94% gone at the base and the query still says NONE**, because four
+voxels survive and `passage_class()` requires EVERY cell of the storey-face
+clear. That bar was read off *"é necessário que as duas estejam desobstruídas"* —
+but the Director's wording on 2026-08-21 is narrower and post-dates the query:
+*"precisa ter uma certa passagem livre **o suficiente para o agente passar**,
+agachado ou em pé."* Enough clearance for a person, not a demolished GU.
+
+**The spatial rule is not the problem — the threshold is.** 60/64 against 11/64
+is a gap almost any threshold separates, so this is one number from the Director
+rather than a redesign. `PassageQuery.clear_cells_in_storey()` measures it and is
+already wired into the fire-out line, so every future run reports it.
+
 ### 3.2a ✅ BUILT — `PassageQuery`, and the one policy question it refused to decide
 
 `godot/scripts/geometry/passage_query.gd`. Pure: reads `Voxel.damage_state`,
@@ -682,7 +733,7 @@ frame.
 | ~~**M3-2**~~ | ~~`passage_class()`~~ — ✅ **BUILT 2026-08-21**, `godot/scripts/geometry/passage_query.gd`, 15 assertions + real-map evidence (NONE ×8 → STANDING ×8) | M3-0 |
 | ~~**M3-2b**~~ | ~~Half-thickness elements~~ — ✅ **BUILT 2026-08-21**, §3.2d. Mapfile `panels` section; the junction column stays side-blind and is the Director's call | M3-2 |
 | ~~**M3-3**~~ | ~~Burn state + a delta tick~~ — ✅ **BUILT 2026-08-21**, §3.1b. Fabric 100%/1.9s, cardboard 100%/3.5s, plywood 35%, wood untouched | M3-1, M3-2b |
-| **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
+| ~~**M3-4**~~ | ~~Plywood~~ — ✅ **BUILT 2026-08-21**, §3.1c. Radial falloff on the `r` every ember entry already carries; 64% consumed at the wall's corner vs 24% two GU out | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
 
 ---
@@ -821,7 +872,7 @@ No task list until the study lands.
 | ✅ | **M3-2** — `passage_class()` + selftest | done |
 | ✅ | **M3-2b** — half-thickness elements (the milestone's largest single item, and it was not fire) | done |
 | ✅ | **M3-3** — fabric + cardboard burn, on the blast's survivors, delta tick | done |
-| 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
+| ✅ | **M3-4** — plywood burn (radial falloff; ⚠️ opens 60/64 and still reports NONE — see §3.1c) | done |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
 | 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |
 | 9 | **M4b** — glass pane break + `HOLE_ONLY_MATERIALS` + the INTACT branch | design |

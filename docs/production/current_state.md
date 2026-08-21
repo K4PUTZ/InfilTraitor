@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.106 · **Updated:** 2026-08-20 · **Branch:** main
+**Version:** 0.9.106 · **Updated:** 2026-08-21 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -13,6 +13,7 @@
 ### Pending Prompts
 
 <!-- AUTO:BEGIN pending_prompts -->
+- ART_ORDER_BRICK_DECALS.md
 - ART_ORDER_NEW_MATERIALS.md
 - BAKE_ORDER_CHARACTER_LAYERS.md
 - BAKE_ORDER_WEAPON_GRIPS.md
@@ -82,8 +83,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 153
-- Test scripts: 43
+- GDScript modules: 154
+- Test scripts: 44
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17
@@ -92,11 +93,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 173f21cd ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
 - 2f47876b [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
 - f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
 - a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 - d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
-- 1d20aa34 ALPHA EMBER TUNING 0.9.101 - E-EMBER-03 fast yellow-to-red ramp, doc sweep
 <!-- AUTO:END version_history -->
 
 ---

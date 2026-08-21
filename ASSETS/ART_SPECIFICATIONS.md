@@ -270,7 +270,7 @@ the same division of labour `bake_compositor.gd` already has with facades.
 
 | Property | Specification |
 |---|---|
-| File | `ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png` |
+| File | `ASSETS/materials/<id>/decals/decal_<family>_<material>_<n>.png` |
 | Dimensions | **256×256 px, square** — 16× the pinned `TEX_AUTHORING_N` density |
 | Aspect | **Square, always.** A voxel face is square in flat space. The ×20/16 vertical stretch onto a lateral face is applied by the generator, never by the art (§1) |
 | Alpha | **Required.** The decal is a mark on a face, not a face — everything outside the mark is transparent. Its alpha is clamped to the substrate's silhouette on composite (invariant B3): a decal can never enlarge a voxel |
@@ -331,7 +331,7 @@ generated from the material's own atom. Not read by the runtime any more
 instead — `HalfVoxelCompositor`), kept as authored INPUT art per
 ASSET-LAYOUT-01's own rule regardless.
 
-`voxels/manifest.json` is the machine-readable copy of the counts above
+`ASSETS/materials/manifest.json` is the machine-readable copy of the counts above
 and is what runtime reads for variant discovery — never a directory scan,
 which does not survive export packing.
 
@@ -341,7 +341,7 @@ overwrites. **There is no OUTPUT folder any more** — `composites/` (a pure,
 always-rebuilt derivative) was retired in D33 Part 4c (2026-08-03): every
 damage mark composites LIVE at room-load time now, straight from these three
 INPUT folders, never pre-baked to a file. The rule and the reasoning live in
-that tree's own `ASSETS/ISOMETRIC/source_assets/voxels/README.md`
+that tree's own `ASSETS/materials/README.md`
 (ASSET-LAYOUT-01).
 
 **After dropping new art**, run the generator and let Godot reimport before

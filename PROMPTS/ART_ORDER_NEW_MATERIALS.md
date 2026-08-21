@@ -200,7 +200,7 @@ Then reimport, then `python3 tools/persistent/check_facade.py --all`.
 Per §7 of `ART_SPECIFICATIONS.md`: **256×256, square, alpha REQUIRED, full
 colour allowed** (B2 does not bind decals), **3 variants per family per
 material**, at
-`ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png`.
+`ASSETS/materials/<id>/decals/decal_<family>_<material>_<n>.png`.
 
 Without them a material still takes a **real, visible mark**, via the
 material-agnostic GENERIC family (`decal_generic_bullet_dented_*`,

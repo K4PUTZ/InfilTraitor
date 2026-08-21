@@ -3,6 +3,8 @@
 **For:** the Director, who is authoring the art.
 **Written:** 2026-08-21, against commit `9b66d869`.
 **Material:** `brick` (tijolo), and **only** brick.
+**⚠️ Paths updated 2026-08-21** by ASSET_TREE_REFORM — the art tree is now one
+folder per material. Author into `ASSETS/materials/brick/decals/`.
 **Closes:** `MATERIALS_MASTER_PLAN` M2a.
 
 > Every number in §1 was measured on the 45 SHIPPED decals with
@@ -20,15 +22,15 @@ concreto."* Concrete is the only wall material that claims all three families,
 so "the style of concrete" is a complete set:
 
 ```
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_bullet_brick_0.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_bullet_brick_1.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_bullet_brick_2.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_dent_brick_0.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_dent_brick_1.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_dent_brick_2.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_crack_brick_0.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_crack_brick_1.png
-ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_crack_brick_2.png
+ASSETS/materials/brick/decals/decal_bullet_brick_0.png
+ASSETS/materials/brick/decals/decal_bullet_brick_1.png
+ASSETS/materials/brick/decals/decal_bullet_brick_2.png
+ASSETS/materials/brick/decals/decal_dent_brick_0.png
+ASSETS/materials/brick/decals/decal_dent_brick_1.png
+ASSETS/materials/brick/decals/decal_dent_brick_2.png
+ASSETS/materials/brick/decals/decal_crack_brick_0.png
+ASSETS/materials/brick/decals/decal_crack_brick_1.png
+ASSETS/materials/brick/decals/decal_crack_brick_2.png
 ```
 
 **256 × 256 px · square · RGBA with real transparency · full colour allowed.**
@@ -46,7 +48,7 @@ own crack/hole algorithm, not decals.
 
 | Property | Value | How I know |
 |---|---|---|
-| Path | `.../voxels/decals/decal_<family>_<material>_<n>.png` | The runtime COMPOSES this name; it never scans the directory (a scan does not survive export packing) |
+| Path | `ASSETS/materials/<id>/decals/decal_<family>_<material>_<n>.png` | The runtime COMPOSES this name; it never scans the directory (a scan does not survive export packing) |
 | Dimensions | **256 × 256, square** | All 45 shipped decals measured at exactly 256×256 |
 | Alpha | **REQUIRED, and it must be real** | All 45 are RGBA. This is the opposite of the facade rule: a facade's alpha is DISCARDED (B3), a decal IS its alpha |
 | Colour | **Full colour allowed** | B2 binds facade/pattern sources only. In practice most shipped decals are near-grey (avg RGB 90–174) and read as soot/chipping |

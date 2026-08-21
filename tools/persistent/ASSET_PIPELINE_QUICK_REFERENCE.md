@@ -20,7 +20,7 @@ Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   → 
 ```
 
 Voxel atoms have no `.tres` output — `VoxelRenderer._build_voxel_tileset()`
-reads `source_assets/voxels/` and builds the TileSet in memory on every room
+reads `ASSETS/materials/<id>/` and builds the TileSet in memory on every room
 load. No separate build step, no baked resource on disk.
 
 ---
@@ -31,7 +31,7 @@ load. No separate build step, no baked resource on disk.
 pipeline DOES with a file, not by what it depicts; full rule in that tree's own
 `README.md`):
 ```
-ASSETS/ISOMETRIC/source_assets/voxels/
+ASSETS/materials/<id>/
 ├── materials/     INPUT   one 32×36 atom per material (16 px top + 20 px side)
 ├── halves/        INPUT   carved substrates, 4 per material (left/right/top/bottom)
 ├── decals/        INPUT   the marks you paint, 256×256 RGBA (+ broken faces, template)
@@ -97,7 +97,7 @@ ATOM = vstack(TOP, SIDE)
 
 There is no voxel TileSet builder or `.tres` to run — `VoxelRenderer.setup()`
 calls `_build_voxel_tileset()` every room load, which scans
-`source_assets/voxels/` and builds the atlas in memory from the current PNGs.
+`ASSETS/materials/<id>/` and builds the atlas in memory from the current PNGs.
 (`build_voxel_tileset.gd` / `tileset_voxels.tres` existed at one point as a
 pre-baked alternative but were never wired to anything — retired 2026-07-29,
 confirmed zero runtime callers.)

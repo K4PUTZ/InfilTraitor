@@ -221,7 +221,7 @@ Atoms de voxel não carregam sufixo direcional — o posicionamento direcional �
 por coordenada no `TileMapLayer`, não por asset separado por direção.
 
 ```
-source_assets/voxels/
+ASSETS/materials/<id>/
 ├── voxel_concrete.png     ← 32×36 px (16 top face + 20 side face), direction-agnostic
 ├── voxel_metal.png
 ├── voxel_stone.png

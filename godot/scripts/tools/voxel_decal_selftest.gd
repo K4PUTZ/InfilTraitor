@@ -149,10 +149,10 @@ func _check_shape(name: String, decal_family: String, decal_material: String, va
 	## ASSET_TREE_REFORM: the template's first arg is the material FOLDER.
 	var photo_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
 		decal_material, decal_family, decal_material, variant]
-	if not ResourceLoader.exists(photo_path):
+	if not FileAccess.file_exists(photo_path):
 		missing.append(photo_path)
 	var generic_path: String = VoxelRendererClass.GENERIC_MARK_TEMPLATE % [generic_kind, variant]
-	if not ResourceLoader.exists(generic_path):
+	if not FileAccess.file_exists(generic_path):
 		missing.append(generic_path)
 
 
@@ -300,7 +300,7 @@ func test_floor_dent_uses_the_real_material_art() -> void:
 		var decal_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
 			plan["base_material"], plan["decal_family"],
 			plan["base_material"], plan["variant"]]
-		if ResourceLoader.exists(decal_path) or FileAccess.file_exists(decal_path):
+		if FileAccess.file_exists(decal_path):
 			_pass("%s floor dent -> '%s' -> %s (real asset on disk)" % [
 				material, name, decal_path.get_file()])
 		else:

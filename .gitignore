@@ -52,6 +52,21 @@ REFERENCES/
 ASSETS/*
 !ASSETS/ART_SPECIFICATIONS.md
 
+# MATERIAL DATA ROWS STAY VERSIONED (ASSET_TREE_REFORM, 2026-08-21).
+# The reform moved `materials/<id>.json` into `ASSETS/materials/<id>/` so a
+# material is ONE folder — but those rows were TRACKED at the repo root, and
+# ASSETS/* would have silently dropped every balance number out of version
+# control. They are hand-tuned data, not a generated binary, so they are
+# re-included here. The ART in the same folders stays ignored, unchanged.
+# Each level has to be re-included separately: git cannot re-include a file
+# whose parent directory is excluded.
+!ASSETS/materials/
+ASSETS/materials/*
+!ASSETS/materials/*/
+ASSETS/materials/*/*
+!ASSETS/materials/*/*.json
+!ASSETS/materials/manifest.json
+
 # SCULPT SOURCES ARE VERSIONED (Director ruling 2026-08-15, ACTOR D50).
 # Every character asset until now was produced by a headless generator, so the
 # RECIPE was the versioned artifact and nothing was lost by ignoring ASSETS/.

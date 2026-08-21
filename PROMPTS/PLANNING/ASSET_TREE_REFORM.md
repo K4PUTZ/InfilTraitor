@@ -1,10 +1,20 @@
 # ASSET_TREE_REFORM
-## One folder per material — v1.0, ratified and in progress
+## One folder per material — v1.1, DONE
 
-**Status:** 🟢 **IN PROGRESS.** Director ratified all three §3/§6 questions on
-2026-08-21: **only the folders move** (filenames unchanged), **do it now** before
-the brick art is authored, and the `brics/` duplicates get **deleted**. Family 1
-(facades + slabs) is DONE and gated.
+**Status:** ✅ **DONE, 2026-08-21.** All six families landed. Director ratified
+all three questions: **only the folders move** (filenames unchanged), **do it
+now** before the brick art is authored, and the `brics/` duplicates get
+**deleted**.
+
+**Proof that nothing was lost**, and it is the claim that matters most given §0:
+every PNG was hashed before and after.
+
+```
+backed up (excluding brics): 99 unique (name, md5)
+present after the move:      99
+MISSING after the move: 0
+NEW after the move:     0
+```
 **Written:** 2026-08-21, against `7c7fb6ec`.
 **Asked for by the Director, 2026-08-21:** *"reorganizar todos os materiais,
 texturas, decals, artes, facades, etc., numa árvore lógica coerente, e atualizar
@@ -221,7 +231,38 @@ migrated.
 | **3** | Half atoms | 17 | **none** — zero code references | pending |
 | **4** | Decals | 45 | `voxel_renderer.gd`, `check_decal.py`, `manifest.json` | pending |
 | **5** | JSON rows | 14 | `material_registry.gd`, `material_resistance_table.gd` | pending |
-| **6** | Invariant selftest + docs + delete `brics/` | — | new selftest | pending |
+| **6** | Invariant selftest + docs + delete `brics/` | — | new selftest | ✅ **DONE** |
+
+## 7. What the reform found on its way through
+
+Three defects, none of them the reform's own — it just walked past them:
+
+- **`_tic_slab_system()` eats slab dirty flags** (found by M3-1, reported, not
+  fixed).
+- **The 363-atom gate is necessary and not sufficient.** It reported 0 differing
+  while eight earth-variant atoms were failing to load; B6's loud-fail caught
+  those. See `BakePolicy.material_folder_for_atom()`.
+- **`voxel_decal_selftest` could not detect a missing decal.** It asked
+  `ResourceLoader.exists(p) or FileAccess.file_exists(p)`, and `ResourceLoader`
+  answers from the compiled `.ctex`, which outlives its source. Measured on one
+  deleted file, same binary:
+
+  ```
+  OLD (lenient): RESULT: 37 PASS, 0 FAIL      <- did not notice
+  NEW (strict):  RESULT: 36 PASS, 1 FAIL      <- names the file
+  ```
+
+  Tightened to `FileAccess.file_exists()` alone, which surfaced no pre-existing
+  failures. This is check_facade.py's dest_files-vs-mtime lesson in a second
+  costume: `or`-ing a lenient predicate with a strict one is strictly weaker than
+  either.
+
+**Still flagged, not touched:** ten orphan `.import` sidecars whose source PNGs
+were renamed away by D20 long before this reform (five in `ASSETS/TEXTURES/`
+`defaults/`, five in the old `voxels/materials/`), plus twelve more in the old
+`voxels/decals/` for `decal_generic_*_cut_*` / `_solid_*` PNGs that never existed
+in the backup either. All dead by construction — Godot ignores an `.import` with
+no source — but deleting is the Director's call.
 
 **Every family's gate is the same three:** `project_lint.py`, the full selftest
 suite, and the 363-atom export diff against the baseline.

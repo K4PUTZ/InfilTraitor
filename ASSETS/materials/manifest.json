@@ -1,0 +1,34 @@
+{
+  "generated_by": "tools/asset_generation/generate_voxel.py",
+  "decal_canvas": {
+    "author_width": 256,
+    "author_height": 256,
+    "square": true,
+    "canon_density_texels_per_voxel": 16,
+    "lateral_native": [
+      16,
+      20
+    ],
+    "top_native": [
+      16,
+      16
+    ]
+  },
+  "variant_count": 3,
+  "materials": [
+    "concrete",
+    "metal",
+    "stone",
+    "wood"
+  ],
+  "floor_material": "earth",
+  "families": [
+    "bullet",
+    "dent",
+    "crack"
+  ],
+  "crack_materials": [
+    "concrete",
+    "stone"
+  ]
+}

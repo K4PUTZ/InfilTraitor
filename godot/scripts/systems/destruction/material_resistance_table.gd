@@ -19,7 +19,7 @@
 ## constants; expect these to be retuned once real captures show the effect.
 class_name MaterialResistanceTable
 
-const RES_MATERIALS_DIR := "res://materials"
+const RES_MATERIALS_DIR := "res://ASSETS/materials"
 const USER_MATERIALS_DIR := "user://materials"
 
 ## D22 (Director, 2026-07-30): every material can reach every tier — no
@@ -143,16 +143,25 @@ static func _ensure_loaded() -> void:
 	_scan_dir(USER_MATERIALS_DIR)
 
 
+## ASSET_TREE_REFORM (2026-08-21): one folder per material, so a row lives at
+## `<root>/<id>/<id>.json` beside that material's art rather than in a flat
+## directory of 14 files.
+##
+## The walk is deliberately ONE level and name-matched — it opens `concrete/` and
+## looks for `concrete.json`, not for any `*.json` it can find. A recursive glob
+## would happily load a stray copy left in the wrong folder, and D21's whole
+## point is one row per material with no duplicates: the `ground_concrete` /
+## `concrete` disagreement is exactly what a lenient scan re-creates.
 static func _scan_dir(dir_path: String) -> void:
 	var dir := DirAccess.open(dir_path)
 	if dir == null:
 		return
 
 	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if fname.ends_with(".json"):
-			var file := FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
+	var entry := dir.get_next()
+	while entry != "":
+		if dir.current_is_dir() and not entry.begins_with("."):
+			var file := FileAccess.open(dir_path.path_join(entry).path_join(entry + ".json"), FileAccess.READ)
 			if file:
 				var text := file.get_as_text()
 				file.close()
@@ -166,4 +175,4 @@ static func _scan_dir(dir_path: String) -> void:
 							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
 							"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
 						}
-		fname = dir.get_next()
+		entry = dir.get_next()

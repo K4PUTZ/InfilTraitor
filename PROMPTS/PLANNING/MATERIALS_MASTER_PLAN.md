@@ -76,7 +76,7 @@ identically — `index i` is the same physical cell on both faces (verified
 Spec is `ART_SPECIFICATIONS.md` §7 and does not change: **256×256, square, alpha
 REQUIRED, full colour allowed** (B2 does not bind decals), **3 variants per
 family per material**, at
-`ASSETS/ISOMETRIC/source_assets/voxels/decals/decal_<family>_<material>_<n>.png`.
+`ASSETS/materials/<id>/decals/decal_<family>_<material>_<n>.png`.
 
 **A material with no authored family is NOT unmarked.** It falls to the
 material-agnostic GENERIC family (`decal_generic_bullet_dented_*`,

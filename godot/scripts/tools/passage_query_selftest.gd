@@ -34,7 +34,10 @@ func _init() -> void:
 	test_both_sides_of_one_storey_is_crouch()
 	test_two_stacked_storeys_is_standing()
 	test_two_unstacked_storeys_is_only_crouch()
-	test_one_surviving_voxel_closes_the_passage()
+	test_incomplete_destruction_still_opens_a_passage()
+	test_scattered_damage_is_not_a_passage()
+	test_a_column_is_clear_only_through_its_full_height()
+	test_standing_needs_the_two_runs_to_OVERLAP()
 	test_half_thickness_edge_opens_on_its_only_face()
 	test_clear_storeys_reports_where_ascending()
 
@@ -158,30 +161,89 @@ func test_two_unstacked_storeys_is_only_crouch() -> void:
 	print("")
 
 
-func test_one_surviving_voxel_closes_the_passage() -> void:
-	print("TEST: one surviving voxel in an otherwise open storey-face closes it")
-	## The sharpest form of "clear". A storey-face is 64 voxels; leaving one
-	## standing has to read as NONE, or a wall with a single stubborn column
-	## reports a doorway.
-	var w := _wall(2)
-	var faces: Array = _both_faces(w)
-	for f in faces:
-		for voxel in f.voxels:
-			if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) != 0:
+## Destroy storey `storey` on every face, EXCEPT the given face positions.
+func _clear_storey_except(fixture: Dictionary, storey: int, keep_positions: Array) -> void:
+	var width: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for slice in _both_faces(fixture):
+		for i in range(slice.voxels.size()):
+			var voxel: Voxel = slice.voxels[i]
+			if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) != storey:
+				continue
+			if keep_positions.has(i % width):
 				continue
 			voxel.set_damage(Voxel.DamageState.DESTROYED, false)
+
+
+func test_incomplete_destruction_still_opens_a_passage() -> void:
+	print("TEST: a passage is an OPENING, not a demolition (Director, 2026-08-21)")
+	## *"Vamos habilitar passagens em destruição incompleta, não precisa estar
+	## totalmente destruído, desde que tenha uma lógica visual razoável."*
+	##
+	## The bar this replaced never fired on the real map: a grenade at a plywood
+	## wall's base left the storey 60 of 64 cells open and the query still said
+	## NONE, because four voxels survived.
+	var w := _wall(2)
+	_clear_storey_except(w, 0, [7])
+	_check(w, PassageQueryClass.PassageClass.CROUCH,
+		"7 of 8 columns clear, one intact column left standing")
+	print("")
+
+
+func test_scattered_damage_is_not_a_passage() -> void:
+	print("TEST: SCATTERED damage is not a passage — contiguity is the visual logic")
+	## The assertion that stops the new rule from being a bare percentage. Both
+	## walls below lose the SAME NUMBER of cells; only one of them is a doorway.
+	var scattered := _wall(2)
+	_clear_storey_except(scattered, 0, [1, 3, 5, 7])
+	_check(scattered, PassageQueryClass.PassageClass.NONE,
+		"4 of 8 columns clear but ALTERNATING — the widest run is 1")
+
+	var contiguous := _wall(2)
+	_clear_storey_except(contiguous, 0, [4, 5, 6, 7])
+	_check(contiguous, PassageQueryClass.PassageClass.CROUCH,
+		"the same 4 columns clear, ADJACENT this time")
+	print("")
+
+
+func test_a_column_is_clear_only_through_its_full_height() -> void:
+	print("TEST: a column counts only when the WHOLE storey height is clear")
+	## Otherwise a knee-high gap the length of the wall would read as a doorway.
+	var w := _wall(2)
+	_clear_storey_except(w, 0, [])
 	_check(w, PassageQueryClass.PassageClass.CROUCH, "storey 0 fully open")
 
-	## Put ONE voxel back. set_damage() does not clamp (the segment-rewind system
-	## needs to walk a voxel back), which is exactly what makes this expressible.
-	var survivor: Voxel = null
-	for voxel in faces[0].voxels:
-		if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) == 0:
-			survivor = voxel
-			break
-	survivor.set_damage(Voxel.DamageState.DENTED, false)
+	## Put one voxel back in each of the 8 columns, at different heights: every
+	## cell but eight is still gone, and not one column is clear through.
+	var width: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for slice in _both_faces(w):
+		for i in range(slice.voxels.size()):
+			var voxel: Voxel = slice.voxels[i]
+			if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) != 0:
+				continue
+			var position: int = i % width
+			var level_in_storey: int = int(float(i) / float(width))
+			if level_in_storey == position:
+				voxel.set_damage(Voxel.DamageState.DENTED, false)
 	_check(w, PassageQueryClass.PassageClass.NONE,
-		"one voxel at %s restored to DENTED" % survivor.grid_pos)
+		"one survivor per column, on a diagonal — 56 of 64 cells gone, no column clear through")
+	print("")
+
+
+func test_standing_needs_the_two_runs_to_OVERLAP() -> void:
+	print("TEST: STANDING needs the two storeys' openings to LINE UP")
+	## Two wide gaps at opposite ends of the wall are two crouch holes, not
+	## something to walk through upright.
+	var offset := _wall(2)
+	_clear_storey_except(offset, 0, [4, 5, 6, 7])
+	_clear_storey_except(offset, 1, [0, 1, 2, 3])
+	_check(offset, PassageQueryClass.PassageClass.CROUCH,
+		"storey 0 open on the left, storey 1 open on the right — no continuous opening")
+
+	var aligned := _wall(2)
+	_clear_storey_except(aligned, 0, [4, 5, 6, 7])
+	_clear_storey_except(aligned, 1, [4, 5, 6, 7])
+	_check(aligned, PassageQueryClass.PassageClass.STANDING,
+		"the same 4 columns on both storeys — one opening, two storeys tall")
 	print("")
 
 

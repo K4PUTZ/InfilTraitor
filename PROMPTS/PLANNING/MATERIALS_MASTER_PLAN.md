@@ -320,7 +320,46 @@ gu (35,5) — two GU further           78 of 326 lit (24%)   base storey 11/64 c
 
 *"Mais longe queima menos"*, monotonically.
 
-#### ⚠️ AND THE HALF THAT DOES NOT WORK — `passage_class()` is too strict
+#### ✅ RESOLVED the same day — a passage is an OPENING, not a demolition
+
+> Director: *"Vamos habilitar passagens em destruição incompleta, não precisa
+> estar totalmente destruído, desde que tenha uma lógica visual razoável."*
+
+**"Lógica visual razoável" is taken literally, and it is what keeps this from
+being a bare percentage.** A passage is a **contiguous run of face positions
+where the WHOLE storey height is clear**, at least
+`PassageQuery.PASSAGE_MIN_WIDTH_POSITIONS` (4 of 8) wide. Sixty scattered cells
+are damage; four adjacent columns you can see daylight through are a doorway, and
+a count alone cannot tell those apart.
+
+Three rules fall out, each pinned by a test that fails without it:
+
+| | |
+|---|---|
+| **Contiguity** | 4 clear columns ALTERNATING → NONE. The same 4 ADJACENT → CROUCH |
+| **Full height** | one survivor per column on a diagonal — 56 of 64 cells gone, no column clear through → NONE |
+| **Overlap** | storey 0 open on the left and storey 1 open on the right is two crouch holes → CROUCH, not STANDING |
+
+**The width is not derived from the sprite, and the reason is stated rather than
+dressed up.** The baked agent measures 104 × 187 px (N facing, standing), but
+converting sprite pixels to face POSITIONS runs through the 30°/45° projection
+where a horizontal span mixes two world axes — there is no clean ratio to quote.
+So: a GU face is 8 positions, the agent occupies one GU, and HALF a face is an
+opening nobody would mistake for damage. It is a `var` (Rule 1) because it is a
+stat.
+
+**The Director's sentence now works end to end, measured on the real map:**
+
+```
+grenade at the wall's corner (34,3)   { "CROUCH": 2, "NONE": 4 }   base storey 60/64 open
+two GU further out          (35,5)   { "NONE": 2 }                base storey 11/64 open
+```
+
+*"Uma granada bem na base da parede abre passagem; mais longe queima menos"* —
+both halves. And the regression that mattered: intact walls still report
+**NONE ×10** on PLAYGROUND, so the looser rule did not open anything by accident.
+
+#### ⚠️ The bar this replaced, kept for the record
 
 The other half of the sentence is *"abre passagem"*, and it does not:
 

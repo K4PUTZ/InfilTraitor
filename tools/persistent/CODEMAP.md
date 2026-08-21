@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**217 scripts · 65561 lines total** (under `godot/scripts/`)
+**217 scripts · 65709 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -727,7 +727,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `passage_query.gd`
 
-`class_name PassageQuery` · 142 lines
+`class_name PassageQuery` · 228 lines
 
 `godot/scripts/geometry/passage_query.gd`
 
@@ -3734,7 +3734,7 @@ extends `SceneTree` · 171 lines
 
 ### `passage_query_selftest.gd`
 
-extends `SceneTree` · 238 lines
+extends `SceneTree` · 300 lines
 
 `godot/scripts/tools/passage_query_selftest.gd`
 
@@ -3753,7 +3753,10 @@ extends `SceneTree` · 238 lines
 - `func test_both_sides_of_one_storey_is_crouch() -> void:`
 - `func test_two_stacked_storeys_is_standing() -> void:`
 - `func test_two_unstacked_storeys_is_only_crouch() -> void:`
-- `func test_one_surviving_voxel_closes_the_passage() -> void:`
+- `func test_incomplete_destruction_still_opens_a_passage() -> void:`
+- `func test_scattered_damage_is_not_a_passage() -> void:`
+- `func test_a_column_is_clear_only_through_its_full_height() -> void:`
+- `func test_standing_needs_the_two_runs_to_OVERLAP() -> void:`
 - `func test_half_thickness_edge_opens_on_its_only_face() -> void:`
 - `func test_clear_storeys_reports_where_ascending() -> void:`
 

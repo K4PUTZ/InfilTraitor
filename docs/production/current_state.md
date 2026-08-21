@@ -76,6 +76,7 @@
 - RESUMO_SESSAO_2026-08-19_THROW_ANIMATION.md
 - RESUMO_SESSAO_2026-08-20_PRECOOK_AND_WEAPON_CHARACTER.md
 - RESUMO_SESSAO_2026-08-21_ALPHA_MATERIALS_MASTERPLAN.md
+- RESUMO_SESSAO_2026-08-21_MATERIALS_AND_ASSET_TREE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -84,7 +85,7 @@
 **Code & Test Inventory**
 
 - GDScript modules: 154
-- Test scripts: 44
+- Test scripts: 45
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

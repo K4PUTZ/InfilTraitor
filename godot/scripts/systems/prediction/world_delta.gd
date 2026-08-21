@@ -69,9 +69,15 @@ var damage: Array = []
 ## `DebrisOverlay`/`SmokeSparkOverlay`, exactly the way `smoke` hands a puff over.
 ## They ride here anyway because both have to arrive WITH the expanding front
 ## that produced them, and the queue is what carries that ordering.
+## M3-3 (2026-08-21): `burn` is the one wave that is NOT playback. Every other
+## kind here paints or spawns something in the frames right after the commit;
+## `burn` is a SCHEDULE of world mutations the room plays out over the seconds
+## afterwards — {voxel, cell, level, at} — because the whole point of fire is
+## that it does not all happen in one frame. It rides in `waves` because it is
+## produced by the same pure pass and has to arrive with the front that lit it.
 var waves: Dictionary = {
 	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {},
-	"debris": {}, "soot": {},
+	"debris": {}, "soot": {}, "burn": {},
 }
 
 ## §3.4 — the cheap summary. A consumer that only needs "how much of this cover

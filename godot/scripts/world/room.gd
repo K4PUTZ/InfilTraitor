@@ -3692,10 +3692,60 @@ func _collect_all_voxel_cells() -> Array:
 func _process(_delta: float) -> void:
 	# Update temporal lighting effects (flicker, pulse, rotation)
 	_update_temporal_lights(_delta)
+	_advance_burn(_delta)
 	
 	_update_vision_fog()
 	if _has_moving_guards():
 		_update_enemy_visibility()
+
+
+## MATERIALS_MASTER_PLAN M3-3 — fire, and the only place it advances.
+##
+## §3.3 (Director, 2026-08-21): the tick is `delta` for v1, because a per-turn
+## fire FROZEN while the player thinks does not read as fire. The turn-based
+## variant is a live proposal, not a rejected option — so the whole of fire's
+## time-stepping is this one call, and swapping it for `player_turn_started` is
+## an edit here rather than a rewrite.
+##
+## The scheduler decides WHICH voxels are due; this commits them, because
+## `commit_damage()` is the single writer the destruction pipeline has
+## (DESTRUCTION_MASTER_PLAN §3) and fire must not become a second one.
+var _burn_scheduler: BurnScheduler = BurnScheduler.new()
+
+
+func start_burn(burn_wave: Dictionary) -> void:
+	_burn_scheduler.schedule(burn_wave)
+
+
+func _advance_burn(delta: float) -> void:
+	if not _burn_scheduler.is_burning():
+		return
+	var due: Array = _burn_scheduler.advance(delta)
+	if due.is_empty():
+		return
+	var entries: Array = []
+	for voxel in due:
+		## from_blast TRUE: the fire is the blast's own consequence, and D24
+		## derives scorch from ABSENT voxels by provenance. A burnt-away voxel
+		## that claimed to be a bullet hole would scorch with the wrong soot.
+		entries.append(BlastCalculator.damage_entry(voxel, Voxel.DamageState.DESTROYED, true))
+	BlastCalculator.commit_damage(entries)
+	## PREDICTION_MASTER_PLAN §5.2 — a burn tick is a committed mutation, so
+	## every cached blast prediction is now stale. Missing this is the one bug
+	## that would not show up until a SECOND grenade behaved as if the first
+	## fire had never happened.
+	bump_world_revision()
+	## VL-PERSIST: fire's holes must survive a perspective flip like any other.
+	for voxel in due:
+		record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
+			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
+			voxel.damage_substrate)
+	_burn_probe_render()
+	_repaint_voxel_light_buckets(false)
+	if not _burn_scheduler.is_burning():
+		print_debug("[E-BURN] fire out — %d of %d scheduled voxel(s) consumed over %.2fs"
+			% [_burn_scheduler.consumed_count(), _burn_scheduler.scheduled_count(),
+			_burn_scheduler.elapsed()])
 
 
 ## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)

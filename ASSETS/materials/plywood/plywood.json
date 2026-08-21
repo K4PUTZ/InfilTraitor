@@ -10,5 +10,6 @@
     0.42
   ],
   "pattern_algorithm": "wood",
-  "has_facade": true
+  "has_facade": true,
+  "burn_consumption": 0.35
 }

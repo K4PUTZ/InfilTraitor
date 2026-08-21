@@ -10,5 +10,6 @@
     0.36
   ],
   "pattern_algorithm": "flat",
-  "has_facade": true
+  "has_facade": true,
+  "burn_consumption": 1.0
 }

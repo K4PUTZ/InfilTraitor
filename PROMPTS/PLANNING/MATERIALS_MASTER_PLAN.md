@@ -239,6 +239,56 @@ readings were not.
 *(Raw-bake ratio; confirming it against the in-game drawn sprite is a task, not
 an assumption.)*
 
+### ✅ 3.1b BUILT 2026-08-21 — M3-3, and the ember wave turned out to be most of it
+
+**Fire was already half built and nobody had noticed.** `_build_ember_wave()` +
+`_climb_from()` in the pure plan already do exactly what §3.1's motion asks for:
+FNV-1a rolls (*"mais ou menos aleatória"*), a creep that climbs ONE level at a
+time and stops at the first level that does not catch (*"subindo para os voxels
+mais próximos"*), and a duration that decays per rung (*"apaga e vira brasa"*).
+What was missing was **consumption** — the lit voxels glowed and left their
+geometry standing.
+
+| Piece | Where |
+|---|---|
+| `burn_consumption` column + reader | `materials/<id>.json`, `MaterialResistanceTable`, `MaterialDef` |
+| `waves["burn"]` — `{voxel, cell, level, at}`, deterministic | `detonation_plan_builder.gd::_maybe_burn()` |
+| The clock, writing nothing | `burn_scheduler.gd` |
+| THE ONE ADVANCE CALL (§3.3) | `room.gd::_advance_burn()` |
+| 11 assertions, hole-guard proven load-bearing | `burn_scheduler_selftest.gd` |
+
+**The burn has its own deterministic timeline and does NOT read the ember's.**
+`EmberOverlay.add_ember()` rolls its glow with `randf_range()`; hanging a world
+MUTATION on that would make two captures of the same detonation destroy different
+voxels. The glow is the LOOK, consumption is the MECHANIC.
+
+**Measured on the real map**, and it is §3.1's table:
+
+```
+FABRIC     340 of 340 lit (100%) — consumed over 1.90s
+CARDBOARD  308 of 308 lit (100%) — consumed over 3.51s
+PLYWOOD    113 of 326 lit  (35%) — last at 2.63s
+WOOD       0 — VL-D4's look untouched, byte for byte
+BRICK      0 — does not catch
+```
+
+Fabric entire and fastest, cardboard entire but slower, plywood partial. The two
+controls hold.
+
+**And a filmstrip isolates the FIRE from the blast**, which is the claim that
+needed proving: `burn_fabric_a_postblast.png` (frame 35 — the fabric floor and
+block are INTACT, the grenade was 3 GU away) → `burn_fabric_c_consumed.png`
+(frame 115 — a crater, the block's corner eaten, and a tongue of fire climbing
+the wall). Everything between those two frames is fire.
+
+⚠️ **The bug this cost, and the print that caught it.** The first real run
+reported `[E-BURN] 0` on **every** material including fabric at consumption 1.0.
+`MaterialResistanceTable._scan_dir()` builds its row as an explicit whitelist of
+four keys — adding a column to the JSON without adding it there makes the new
+column read as its default **with no error anywhere**. This is CLAUDE.md's
+floor-dent case exactly, and the reason `[E-BURN]` prints a count rather than
+staying silent.
+
 ### 3.2a ✅ BUILT — `PassageQuery`, and the one policy question it refused to decide
 
 `godot/scripts/geometry/passage_query.gd`. Pure: reads `Voxel.damage_state`,
@@ -599,7 +649,7 @@ frame.
 | ~~**M3-1**~~ | ~~Measure §3.4's free win~~ — ✅ **CLOSED 2026-08-21**: the visual field is free (control 0, one voxel 2, object 262, all brighter); the lamp's shadow is NOT (3 burnt GUs still in `_blocked_cells`) | — |
 | ~~**M3-2**~~ | ~~`passage_class()`~~ — ✅ **BUILT 2026-08-21**, `godot/scripts/geometry/passage_query.gd`, 15 assertions + real-map evidence (NONE ×8 → STANDING ×8) | M3-0 |
 | ~~**M3-2b**~~ | ~~Half-thickness elements~~ — ✅ **BUILT 2026-08-21**, §3.2d. Mapfile `panels` section; the junction column stays side-blind and is the Director's call | M3-2 |
-| **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only. **Runs on the blast's SURVIVORS (§3.1a), not on an intact object** — extends `_build_ember_wave`'s existing "surviving combustible voxels edging this blast's holes". Needs a new `burn_consumption` column: `flammability` is glow DURATION, not how much is eaten | M3-1, M3-2b |
+| ~~**M3-3**~~ | ~~Burn state + a delta tick~~ — ✅ **BUILT 2026-08-21**, §3.1b. Fabric 100%/1.9s, cardboard 100%/3.5s, plywood 35%, wood untouched | M3-1, M3-2b |
 | **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
 
@@ -738,7 +788,7 @@ No task list until the study lands.
 | ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
 | ✅ | **M3-2** — `passage_class()` + selftest | done |
 | ✅ | **M3-2b** — half-thickness elements (the milestone's largest single item, and it was not fire) | done |
-| 5 | **M3-3** — fabric + cardboard burn (on the blast's survivors, delta tick, new `burn_consumption` column) | M3-1, M3-2b |
+| ✅ | **M3-3** — fabric + cardboard burn, on the blast's survivors, delta tick | done |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
 | 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |

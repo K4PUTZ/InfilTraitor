@@ -1283,6 +1283,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		for line in job.profile_lines():
 			print("[P-SLICE]   " + line)
 		print(room._prediction_cache.stats_line())
+	## M3-3: hand the burn schedule to the room. AFTER the commit, because the
+	## scheduler drops any voxel this blast already destroyed and it can only
+	## know that once the Delta has been written.
+	room.start_burn(job.delta.waves.get("burn", {}))
 	_prof("CENSUS — print_census done")
 	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
 	var rec0: int = Time.get_ticks_usec()

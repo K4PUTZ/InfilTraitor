@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**215 scripts · 64894 lines total** (under `godot/scripts/`)
+**217 scripts · 65403 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,8 +18,8 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, burn_scheduler.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, burn_scheduler_selftest.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1867,6 +1867,25 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `burn_scheduler.gd`
+
+`class_name BurnScheduler` · 109 lines
+
+`godot/scripts/systems/destruction/burn_scheduler.gd`
+
+> BurnScheduler — MATERIALS_MASTER_PLAN M3-3. The clock fire burns on. `DetonationPlanBuilder` decides WHICH voxels burn away and WHEN, inside the pure plan (`waves["burn"]`, entries of `{voxel, cell, level, at}`). This holds that schedule and answers one question per frame: which of them are due now. ⚠️ IT WRITES NOTHING. `advance()` returns the voxels whose time has come and the caller commits them — `BlastCalculator.commit_damage()` stays the single writer (DESTRUCTION_MASTER_PLAN §3), and a scheduler that reached for Voxels itself would be a second one. It also makes the whole class testable headless with no room, no renderer and no registries. §3.3, Director 2026-08-21: the tick is `delta` for v1 — *"o fogo precisa ficar existindo em looping enquanto o jogador pensa, pra não ficar congelado"* — and the turn-based variant stays a live proposal. **That swap is this file's whole design constraint**: every piece of delta arithmetic lives in `advance()`, so moving to per-turn advancement is changing WHO calls it and with what, not rewriting the burn. Nothing else in the codebase should ever add its own `_burn_elapsed`.
+
+**Public API**
+- `func schedule(burn_wave: Dictionary) -> void:`
+- `func advance(delta: float) -> Array:`
+- `func is_burning() -> bool:`
+- `func cancel() -> void:`
+- `func scheduled_count() -> int:`
+- `func consumed_count() -> int:`
+- `func elapsed() -> float:`
+
+---
+
 ### `detonation_choreographer.gd`
 
 `class_name DetonationChoreographer` · extends `RefCounted` · 754 lines
@@ -1879,7 +1898,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1498 lines
+`class_name DetonationPlanBuilder` · 1579 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1901,7 +1920,7 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 178 lines
+`class_name MaterialResistanceTable` · 214 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -2286,7 +2305,7 @@ extends `Node2D` · 43 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 171 lines
+`class_name MaterialRegistry` · 177 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -2425,7 +2444,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 205 lines
+`class_name WorldDelta` · extends `RefCounted` · 211 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2442,7 +2461,7 @@ extends `Node2D` · 43 lines
 
 **Public vars**
 - `var damage: Array = []`
-- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, }`
+- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, "burn": {}, }`
 - `var census: Dictionary = {}`
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
@@ -2966,6 +2985,31 @@ extends `SceneTree` · 342 lines
 - `TILE_PROPS` = `{ # Floor "floor":                  {walkable=true,  cover=false, interactive=false}, "floorHalf":              {walkable=true,  cover=false, interactive=false}, "floorQuarter":           {walkable=true,  cover=false, interactive=false}, # Solid blocks "block":                  {walkable=false, cover=true,  interactive=false}, "blockHalf":              {walkable=false, cover=true,  interactive=false}, "blockAngle":             {walkable=false, cover=true,  interactive=false}, "blockQuarter":           {walkable=false, cover=true,  interactive=false}, # Walls "wall":                   {walkable=false, cover=true,  interactive=false}, "wallHalf":               {walkable=false, cover=true,  interactive=false}, "wallCorner":             {walkable=false, cover=true,  interactive=false}, "wallCornerHalf":         {walkable=false, cover=true,  interactive=false}, "wallCurve":              {walkable=false, cover=true,  interactive=false}, "wallCurveHalf":          {walkable=false, cover=true,  interactive=false}, "wallBattlement":         {walkable=false, cover=true,  interactive=false}, # Windows "window":                 {walkable=false, cover=false, interactive=false}, "windowLeft":             {walkable=false, cover=false, interactive=false}, "windowMiddle":           {walkable=false, cover=false, interactive=false}, "windowRight":            {walkable=false, cover=false, interactive=false}, # Doors / passages "doorClosed":             {walkable=false, cover=false, interactive=true}, "doorOpen":               {walkable=true,  cover=false, interactive=true}, "doorway":                {walkable=true,  cover=false, interactive=false}, "doorwayBottom":          {walkable=true,  cover=false, interactive=false}, "doorwayCenter":          {walkable=true,  cover=false, interactive=false}, "doorwayLeft":            {walkable=true,  cover=false, interactive=false}, "doorwayLeftBottom":      {walkable=true,  cover=false, interactive=false}, "doorwayMiddle":          {walkable=true,  cover=false, interactive=false}, "doorwayMiddleBottom":    {walkable=true,  cover=false, interactive=false}, "doorwayRight":           {walkable=true,  cover=false, interactive=false}, "doorwayRightBottom":     {walkable=true,  cover=false, interactive=false}, # Cover props "crate":                  {walkable=false, cover=true,  interactive=true}, # Structural details "column":                 {walkable=false, cover=false, interactive=false}, "columnBlocks":           {walkable=false, cover=false, interactive=false}, "columnCorner":           {walkable=false, cover=false, interactive=false}, "pole":                   {walkable=false, cover=false, interactive=false}, "poleGroup":              {walkable=false, cover=false, interactive=false}, "fence":                  {walkable=false, cover=false, interactive=false}, # Slopes / ramps "slope":                  {walkable=true,  cover=false, interactive=false}, "slopeHalf":              {walkable=true,  cover=false, interactive=false}, "slopeQuarter":           {walkable=true,  cover=false, interactive=false}, "slopeSmall":             {walkable=true,  cover=false, interactive=false}, "sloperCornerInner":      {walkable=true,  cover=false, interactive=false}, "sloperCornerOuter":      {walkable=true,  cover=false, interactive=false}, # Stairs "stairs":                 {walkable=true,  cover=false, interactive=false}, "stairsCornerInner":      {walkable=true,  cover=false, interactive=false}, "stairsCornerOuter":      {walkable=true,  cover=false, interactive=false}, "stairsOpen":             {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerInner":  {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerOuter":  {walkable=true,  cover=false, interactive=false}, "steps":                  {walkable=true,  cover=false, interactive=false}, "ladder":                 {walkable=true,  cover=false, interactive=true}, # Slabs / platforms "slab":                   {walkable=true,  cover=false, interactive=false}, "slabHalf":               {walkable=true,  cover=false, interactive=false}, "slabAngle":              {walkable=true,  cover=false, interactive=false}, "slabQuarter":            {walkable=true,  cover=false, interactive=false}, # Switches / triggers "switchFloorOff":         {walkable=true,  cover=false, interactive=true}, "switchFloorOn":          {walkable=true,  cover=false, interactive=true}, "switchWallOff":          {walkable=false, cover=false, interactive=true}, "switchWallOn":           {walkable=false, cover=false, interactive=true}, # Direction markers "arrow":                  {walkable=true,  cover=false, interactive=false}, "arrowWall":              {walkable=false, cover=false, interactive=false}, }`
 - `EDGE_ALIGNED_PREFIXES` = `[ "arrowWall", "door", "fence", "switchWall", "wall", "window", ]`
 - `EDGE_ALIGNED_EXCLUSIONS` = `[ "wallCorner", "wallCornerHalf", "wallCurve", "wallCurveHalf", "wallBattlement", ]`
+
+---
+
+### `burn_scheduler_selftest.gd`
+
+extends `SceneTree` · 217 lines
+
+`godot/scripts/tools/burn_scheduler_selftest.gd`
+
+> MATERIALS_MASTER_PLAN M3-3 — BurnScheduler selftest. Rodar: python3 tools/persistent/run_selftests.py --only burn_scheduler The scheduler is the clock fire burns on: `DetonationPlanBuilder` decides which voxels burn away and when (pure, hashed, replayable), and this walks that schedule one `advance()` at a time. What is worth pinning, and why each one would hurt: - **advance() WRITES NOTHING.** It returns the due voxels and the room commits them, so `commit_damage()` stays the single writer. A scheduler that destroyed voxels itself would be a second one, and would also be untestable without a room. - **A hole is not a target.** The blast that lit the fire may already have destroyed a scheduled voxel; re-marking it is the defect W-FIX-01 closed on the shot path, and `set_damage()` still does not clamp on purpose. - **ONE advance call** (§3.3). All the delta arithmetic lives in it, so swapping `_process(delta)` for `player_turn_started` is a call-site edit. A test that advanced by wall-clock or by frame count would quietly bless a second timeline.
+
+**Constants / tuning**
+- `BurnSchedulerClass` = `preload("res://godot/scripts/systems/destruction/burn_scheduler.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_nothing_scheduled_is_never_burning() -> void:`
+- `func test_voxels_come_due_in_time_order() -> void:`
+- `func test_advance_writes_nothing() -> void:`
+- `func test_an_already_destroyed_voxel_is_skipped() -> void:`
+- `func test_ring_grouping_does_not_survive_as_ordering() -> void:`
+- `func test_cancel_drops_the_schedule() -> void:`
 
 ---
 
@@ -4520,7 +4564,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1457 lines
+`class_name TestZoneController` · 1461 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4794,7 +4838,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 6173 lines
+extends `Node2D` · 6223 lines
 
 `godot/scripts/world/room.gd`
 

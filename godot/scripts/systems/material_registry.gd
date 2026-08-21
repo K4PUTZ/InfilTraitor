@@ -55,6 +55,7 @@ class MaterialDef:
 	## inspector/debug view of a MaterialDef is not missing a column the
 	## destruction side acts on.
 	var flammability: float = 0.0
+	var burn_consumption: float = 0.0   ## M3-3 — how much of what catches burns away
 	## Whether this material has a SLICE (wall) facade at all — false for the
 	## floor-only materials (grass/dirt/gravel/sand today), which have no
 	## `facade_<id>` asset and only ever render via the SLAB path.
@@ -100,6 +101,11 @@ class MaterialDef:
 		def.dent_factor = float(data.get("dent_factor", 0.0))
 		def.crack_factor = float(data.get("crack_factor", 0.0))
 		def.flammability = float(data.get("flammability", 0.0))
+		## M3-3: the AMOUNT axis. Parsed here as well as in
+		## MaterialResistanceTable for D21's reason — one file per material, two
+		## readers, no duplicated data. This reader serves render/inspection; the
+		## table's serves destruction and runs autoload-free in selftests.
+		def.burn_consumption = float(data.get("burn_consumption", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
 		return def
 

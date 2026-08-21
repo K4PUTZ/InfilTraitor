@@ -419,6 +419,10 @@ static func _phase_setup(s: Dictionary) -> void:
 	## voxel on the map to phase 4, which §8.8 already measures as 66% of the
 	## build's whole cost.
 	s["flammable_cells"] = {}
+	## M3-3: the AMOUNT axis, alongside flammability's SPEED axis. Same shape and
+	## same reason — one table lookup per CONTAINER, a dictionary write only for
+	## the materials that actually burn away.
+	s["burn_cells"] = {}
 	## E-DEBRIS-01: which materials throw dust/sparks/chips and how often, as
 	## plain data from the caller (`Room.blast_debris_policy()`). It travels in
 	## `ctx` for the same reason `blast_soot_rings` does — the material→effect
@@ -634,6 +638,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 	var under_structure: Dictionary = s["under_structure"]
 	var derive_us: bool = bool(s["derive_under_structure"])
 	var flammable_cells: Dictionary = s["flammable_cells"]
+	var burn_cells: Dictionary = s["burn_cells"]
 	var chunk: int = WALK_CHUNK
 	var ci: int = int(s["cursor"])
 	var vi: int = int(s["sub"])
@@ -651,6 +656,8 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 		## the D19 reform had already outlawed, not a look to reproduce.
 		var flammability: float = MaterialResistanceTable.flammability(
 			_material_name(entry[0]))
+		var consumption: float = MaterialResistanceTable.burn_consumption(
+			_material_name(entry[0]))
 		while vi < voxels.size():
 			var v: Voxel = voxels[vi]
 			vi += 1
@@ -666,6 +673,8 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 			cell_to_voxel[key] = v
 			if flammability > 0.0:
 				flammable_cells[key] = flammability
+				if consumption > 0.0:
+					burn_cells[key] = consumption
 			if not vis or state == Voxel.DamageState.DESTROYED:
 				var from_blast: bool = bool(p[WorldDelta.P_BLAST]) if touched else v.damage_is_blast
 				if from_blast:
@@ -1086,6 +1095,8 @@ static func _build_ember_wave(s: Dictionary) -> void:
 					"climb": 0,
 					"r": _radius_of(neighbour.grid_pos, epicenter),
 				})
+				_maybe_burn(s, neighbour, ring, EMBER_SEED_STAGGER_S * _hash_unit(
+					"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability)
 				_climb_from(ncell, ring, s, seen, waves["ember"])
 
 
@@ -1145,7 +1156,43 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 			"climb": step,
 			"r": _radius_of(voxel.grid_pos, epicenter),
 		})
+		_maybe_burn(s, voxel, ring, EMBER_CLIMB_DELAY_S * float(step), flammability)
 		chance *= EMBER_CLIMB_DECAY
+
+
+## M3-3 — a lit voxel that will be CONSUMED, and when.
+##
+## Appends to `waves["burn"]`, which is a WAVE rather than a damage entry on the
+## Delta on purpose: `delta.commit()` writes the whole blast in one frame, and
+## the whole point of fire is that it does not. The burn is a SCHEDULE the room
+## plays out afterwards, one `advance()` call at a time.
+##
+## The roll is FNV-1a per cell, never randf(), for `_climb_from()`'s own stated
+## reason — this runs inside build_plan(), whose output the prediction layer
+## caches and the filmstrip replays.
+##
+## Only reaches materials with `burn_consumption > 0`, so wood's ratified VL-D4
+## look is untouched: it still glows and leaves its geometry standing.
+static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
+		lit_at: float, flammability: float) -> void:
+	var burn_cells: Dictionary = s["burn_cells"]
+	var key := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
+	var consumption: float = float(burn_cells.get(key, 0.0))
+	if consumption <= 0.0:
+		return
+	if _hash_unit("BURNROLL", voxel.grid_pos, voxel.level) > consumption:
+		return
+	var jitter: float = 1.0 - BURN_LIFE_JITTER \
+		+ 2.0 * BURN_LIFE_JITTER * _hash_unit("BURNLIFE", voxel.grid_pos, voxel.level)
+	var life: float = BURN_BASE_LIFE_S * maxf(flammability, 0.01) * jitter
+	_append(s["waves"]["burn"], ring, {
+		"voxel": voxel,
+		"cell": voxel.grid_pos,
+		"level": voxel.level,
+		## Absolute seconds from the moment the schedule starts, so the room can
+		## advance a single clock rather than track per-entry state.
+		"at": lit_at + life,
+	})
 
 
 ## How far a creep may reach above the voxel that lit it, and how willingly.
@@ -1153,6 +1200,25 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 ## per-difficulty stats — Rule 1 governs STATS, and a climb ceiling is the same
 ## kind of constant as EMBER_NEIGHBOURS. Tuning happens on the Director's eye
 ## via the filmstrip, which is why they are named rather than inlined.
+## M3-3 — how long a lit voxel takes to burn AWAY, as opposed to how long its
+## ember GLOWS.
+##
+## ⚠️ DELIBERATELY NOT READ OFF THE EMBER'S LIFETIME, and the reason is
+## measurable: `EmberOverlay.add_ember()` rolls its duration with
+## `randf_range(min_glow_duration, max_glow_duration)`. Hanging a world MUTATION
+## on that would make two captures of the same detonation destroy different
+## voxels — the exact non-determinism CLAUDE.md's pixel-diff discipline costs 36
+## 733 pixels to discover. The glow is the LOOK; consumption is the MECHANIC, and
+## the mechanic gets its own timeline, rolled from FNV-1a inside this pure
+## builder like every other decision here.
+##
+## Scaled by the material's `flammability`, which is its SPEED axis — fabric 0.6
+## flares and is gone, cardboard 1.4 smoulders. That is §3.1's "cardboard burns
+## everything too, slightly slower overall than fabric", expressed with the
+## number that already meant it.
+const BURN_BASE_LIFE_S: float = 1.4
+const BURN_LIFE_JITTER: float = 0.45   ## ±45%, so a patch does not vanish in one frame
+
 const EMBER_CLIMB_MAX_LEVELS: int = 3
 const EMBER_CLIMB_CHANCE: float = 0.55       ## chance the first level above catches
 const EMBER_CLIMB_DECAY: float = 0.55        ## each further level is this much likelier to stop
@@ -1304,6 +1370,21 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 		ember_total += (delta.waves["ember"][ring] as Array).size()
 	print("[E-EMBER] %d ember(s) queued — surviving combustible voxels edging this blast's holes"
 		% ember_total)
+	## M3-3, reported for the same reason and with the same trap in mind: a burn
+	## count of zero on a map that HAS a consuming material is the finding, not
+	## the absence of a print.
+	var burn_total: int = 0
+	var burn_last: float = 0.0
+	for ring in delta.waves.get("burn", {}).keys():
+		for entry in delta.waves["burn"][ring]:
+			burn_total += 1
+			burn_last = maxf(burn_last, float(entry.get("at", 0.0)))
+	if burn_total > 0:
+		print("[E-BURN] %d voxel(s) scheduled to burn AWAY, last at %.2fs — of %d lit (%.0f%%)"
+			% [burn_total, burn_last, ember_total,
+			100.0 * float(burn_total) / maxf(float(ember_total), 1.0)])
+	else:
+		print("[E-BURN] 0 — nothing this blast lit has burn_consumption > 0")
 	## E-DEBRIS-01, per effect for the same reason the census is per material: a
 	## single total would hide one effect being structurally unreachable, and only
 	## a DESTROYED voxel throws debris.

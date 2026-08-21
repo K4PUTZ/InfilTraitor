@@ -102,6 +102,28 @@ const DEFAULT_CRACK_FACTOR := 0.0
 ## materials will fill in, nothing more.
 const DEFAULT_FLAMMABILITY := 0.0
 
+## M3-3 (Director, 2026-08-21): *"Alguns materiais queimam um pouco e apagam, e
+## outros são mais consumidos, como o papelão e o pano."*
+##
+## ⚠️ THIS IS A SECOND AXIS AND IT HAD TO BE, which is the finding that produced
+## it. `flammability` is NOT how much burns away — its own note above defines it
+## as a multiplier on how long the ember GLOWS, wood the 1.0 reference. On the
+## shipped table that reads wood 1.0 · plywood 1.1 · cardboard 1.4 · **fabric
+## 0.6**, so fabric — one of the two the Director names as MOST consumed —
+## carries the lowest number there. Deriving consumption from it would have made
+## cloth the least consumed material in the game.
+##
+## The split that survives both readings: `flammability` is the SPEED axis (a
+## short glow is a fast burn — fabric flares and is gone, cardboard smoulders),
+## and this is the AMOUNT axis. Read together they say exactly what §3.1's table
+## says: fabric burns fastest and entirely, cardboard entirely but slower,
+## plywood partially.
+##
+## 0..1, read as the probability that an ember-lit voxel is CONSUMED rather than
+## merely scorched. 0.0 keeps a material's pre-M3-3 behaviour byte for byte,
+## which is why wood is 0.0 — VL-D4's look is ratified and this must not move it.
+const DEFAULT_BURN_CONSUMPTION := 0.0
+
 ## Lazily loaded, cached on first access. Non-const by construction (D21) —
 ## a `const` here would be exactly the violation this rewrite closes.
 static var _table: Dictionary = {}
@@ -118,6 +140,11 @@ static func dent_factor(material: String) -> float:
 
 static func crack_factor(material: String) -> float:
 	return float(_row(material).get("crack_factor", DEFAULT_CRACK_FACTOR))
+
+
+## M3-3 — how much of what catches actually burns away. See DEFAULT_BURN_CONSUMPTION.
+static func burn_consumption(material: String) -> float:
+	return clampf(float(_row(material).get("burn_consumption", DEFAULT_BURN_CONSUMPTION)), 0.0, 1.0)
 
 
 ## E-EMBER-01. See DEFAULT_FLAMMABILITY for what the number means.
@@ -169,10 +196,19 @@ static func _scan_dir(dir_path: String) -> void:
 				if typeof(parsed) == TYPE_DICTIONARY:
 					var id := String(parsed.get("id", ""))
 					if not id.is_empty():
+						## ⚠️ THIS DICT IS AN EXPLICIT WHITELIST, not a copy of the
+						## row, and adding a column to the JSON without adding it
+						## HERE makes the new column read as its default with no
+						## error anywhere. Cost of learning that: M3-3's first
+						## real run reported `[E-BURN] 0` on every material,
+						## including fabric at burn_consumption 1.0 — the exact
+						## shape of CLAUDE.md's floor-dent case, and the reason
+						## that print exists at all.
 						_table[id] = {
 							"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
 							"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
 							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
 							"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
+							"burn_consumption": float(parsed.get("burn_consumption", DEFAULT_BURN_CONSUMPTION)),
 						}
 		entry = dir.get_next()

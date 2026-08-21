@@ -38,7 +38,9 @@ except ImportError:
     sys.exit(2)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULTS_DIR = os.path.join(REPO_ROOT, "ASSETS", "TEXTURES", "defaults")
+## ASSET_TREE_REFORM (2026-08-21): one folder per material. `--all` walks the
+## per-material tree instead of one flat directory.
+MATERIALS_ROOT = os.path.join(REPO_ROOT, "ASSETS", "materials")
 
 ## Pinned in bake_compositor.gd. A facade is authored FLAT at 16 texels/voxel:
 ## 1024/16 = 64 voxel columns, 512/16 = 32 voxel rows = 4 storeys. Never
@@ -156,13 +158,17 @@ def main():
         return 2
 
     if args == ["--all"]:
-        paths = sorted(
-            os.path.join(DEFAULTS_DIR, f)
-            for f in os.listdir(DEFAULTS_DIR)
-            if f.startswith("facade_") and f.endswith(".png")
-        )
+        paths = []
+        for material in sorted(os.listdir(MATERIALS_ROOT)) if os.path.isdir(MATERIALS_ROOT) else []:
+            mdir = os.path.join(MATERIALS_ROOT, material)
+            if not os.path.isdir(mdir):
+                continue
+            paths.extend(sorted(
+                os.path.join(mdir, f) for f in os.listdir(mdir)
+                if f.startswith("facade_") and f.endswith(".png")
+            ))
         if not paths:
-            print("[FACADE] no facade_*.png found in %s" % DEFAULTS_DIR)
+            print("[FACADE] no facade_*.png found under %s" % MATERIALS_ROOT)
             return 1
     else:
         paths = args

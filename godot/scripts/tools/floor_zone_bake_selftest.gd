@@ -269,7 +269,7 @@ func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) ->
 	print("[TEST 3] Atom top-diamonds equal a direct ISOTROPIC 1024x1024 floor-plane read; full_color forces WHITE modulate")
 	var atlas = fx["atlas"]
 	var compositor = fx["compositor"]
-	var resolved = fx["resolver"].resolve("slab_grass")
+	var resolved = fx["resolver"].resolve("slab_grass", "grass")
 	if resolved == null or resolved.image == null:
 		_fail("slab_grass unresolvable — cannot pixel-check")
 		return

@@ -1,7 +1,10 @@
 # ASSET_TREE_REFORM
-## One folder per material — plan, v0.1 (awaiting the Director's ruling on §3)
+## One folder per material — v1.0, ratified and in progress
 
-**Status:** 🟠 **PLAN ONLY. Nothing has been moved.**
+**Status:** 🟢 **IN PROGRESS.** Director ratified all three §3/§6 questions on
+2026-08-21: **only the folders move** (filenames unchanged), **do it now** before
+the brick art is authored, and the `brics/` duplicates get **deleted**. Family 1
+(facades + slabs) is DONE and gated.
 **Written:** 2026-08-21, against `7c7fb6ec`.
 **Asked for by the Director, 2026-08-21:** *"reorganizar todos os materiais,
 texturas, decals, artes, facades, etc., numa árvore lógica coerente, e atualizar
@@ -9,6 +12,47 @@ o código… tudo que for relativo a concreto deve estar na pasta
 `assets/materials/concrete/`… Isso é importante porque vamos ter muitas trocas de
 artes ao longo da vida útil do game, e fazer essa mudança precisa ser trivial e
 bem fácil de encontrar… com calma e com cuidado, pra não quebrar nada."*
+
+---
+
+## 0. ⚠️ THE FINDING THAT CHANGED THE METHOD — the art is not in the repo
+
+`git mv` failed on the very first file:
+
+```
+fatal: not under version control, source=ASSETS/TEXTURES/defaults/facade_brick.png
+```
+
+`.gitignore:52` excludes `ASSETS/*` by an explicit Director decision
+(2026-07-16, *"heavy binaries stay local"*), with re-includes only for
+`ART_SPECIFICATIONS.md` and the sculpt sources. **Not one of the 99 material PNGs
+is tracked.** Measured: `git ls-files` returns 0 PNGs for all four asset folders.
+
+Three consequences, all of which shaped how this reform is being done:
+
+1. **There is no `git checkout` undo.** A full filesystem backup was taken before
+   anything moved — 123 files, aggregate PNG md5 `fcc8110b1ab78c8290d65b3e237c9af1`.
+2. **The moves are invisible to the repo.** A second machine that pulls the code
+   flip without moving its own files gets `Tier.NONE` on every material, which
+   renders something and reports nothing. So the move ships as a committed,
+   idempotent tool — `tools/asset_generation/migrate_asset_tree.py` — and running
+   it is a required step on any other machine. (This matters: heavy bakes run on
+   a second machine by standing practice.)
+3. **The acceptance gate cannot be "git shows no diff".** It has to be behavioural.
+
+### The gate, earned before it was trusted
+
+`INFILTRAITOR_CAPTURE_ACTION=export_atoms` dumps every baked damage atom to
+`Screenshots/atoms/`. Two runs of the **same** code, before touching anything:
+
+```
+atoms: 363 vs 363 · missing 0 · new 0 · CONTENT DIFFER: 0
+```
+
+**Byte-identical across boots**, so a non-zero diff afterwards means the reform
+changed something. This is a far sharper instrument than a screenshot: every atom
+is a facade crop composited and tinted, so a material that silently fell back to
+the generic atlas changes dozens of them at once.
 
 ---
 
@@ -163,15 +207,24 @@ does not exist today and is the reason `glass` rendered wrong for months.
 
 Nothing here is clever; the care is all in the sequencing.
 
-| # | Stage | Gate that must pass before the next |
-|---|---|---|
-| **0** | **Write the inventory as a machine-readable manifest** — every file, its current path, its destination. The migration script reads it; nothing is moved by a wildcard | the manifest lists exactly the counted files, no more |
-| **1** | Teach `TextureResolver`, `BakeCompositor`, `VoxelRenderer`, `EarthVariantSelector` to take a material folder, **still pointing at the old locations** | full selftests + a real-map capture identical to a same-boot control |
-| **2** | Move the files (PNG **and** its `.import` sidecar together), then `godot --headless --import` | `check_facade.py --all` · `check_decal.py --all` · both must be green, and they are the gates that catch a silent miss |
-| **3** | Flip the roots to `ASSETS/materials/` | full selftests + `tile_anatomy_audit` + a real-map capture diffed against stage 1's |
-| **4** | `materials/<id>.json` into its folder, and mirror the shape on `user://` | `material_reform_selftest` |
-| **5** | The new invariant: every registered material has a folder and vice versa | a selftest, run red by removing one folder |
-| **6** | Docs: `ART_SPECIFICATIONS`, both art orders, `ASSET_PIPELINE_QUICK_REFERENCE`, `docs/README` | no dead links |
+**Revised after §0.** The original staging (`code accepts both` → `move` →
+`flip roots`) is abandoned: it requires a window where the art could live in two
+places, which §3 rejects on its own terms. The work is split **by asset family**
+instead — each family is independently movable, and each lands as one commit that
+moves the files, flips its code and passes the gates, so the tree is never half
+migrated.
+
+| # | Family | Files | Code it touches | Status |
+|---|---|---|---|---|
+| **1** | Facades + slabs | 18 | `texture_resolver.gd`, `bake_compositor.gd` ×2, `check_facade.py` | ✅ **DONE** — atom gate 0/363 |
+| **2** | Voxel atoms | 17 | `bake_compositor.gd`, `voxel_renderer.gd`, `earth_variant_selector.gd`, `generate_voxel.py` | pending |
+| **3** | Half atoms | 17 | **none** — zero code references | pending |
+| **4** | Decals | 45 | `voxel_renderer.gd`, `check_decal.py`, `manifest.json` | pending |
+| **5** | JSON rows | 14 | `material_registry.gd`, `material_resistance_table.gd` | pending |
+| **6** | Invariant selftest + docs + delete `brics/` | — | new selftest | pending |
+
+**Every family's gate is the same three:** `project_lint.py`, the full selftest
+suite, and the 363-atom export diff against the baseline.
 
 **Stage 2 is the dangerous one, and the danger is specific.** A PNG's `.import`
 sidecar records the source path; moving the PNG without it, or without

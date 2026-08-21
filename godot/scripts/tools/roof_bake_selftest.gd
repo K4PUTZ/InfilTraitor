@@ -252,7 +252,7 @@ func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:
 	print("[TEST 3] Atom top-diamonds equal a direct ISOTROPIC roof-plane read at the projected offset")
 	var atlas = fx["atlas"]
 	var compositor = fx["compositor"]
-	var resolved = fx["resolver"].resolve("facade_concrete")
+	var resolved = fx["resolver"].resolve("facade_concrete", "concrete")
 	if resolved == null or resolved.image == null:
 		_fail("facade_concrete unresolvable — cannot pixel-check")
 		return

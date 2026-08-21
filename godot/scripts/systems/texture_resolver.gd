@@ -17,8 +17,18 @@ class ResolvedTexture:
 
 const MAX_FILE_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 
+## ASSET_TREE_REFORM (Director, 2026-08-21): one folder per material. Both tiers
+## nest the same way, so a downloadable material pack is a DIRECTORY on either
+## side rather than files scattered through a flat folder shared with every other
+## material — which is the seam the procedural per-playthrough vision runs on.
+##
+## ⚠️ The user tier stays under `user://textures/` and is NOT renamed to
+## `user://materials/`: that path is already taken by
+## MaterialResistanceTable.USER_MATERIALS_DIR, which reads the JSON rows. Two
+## different things under one name is the `ground_concrete`/`concrete`
+## duplicate-row bug waiting to happen again.
 var tex_user_dir: String = "user://textures/"
-var tex_default_dir: String = "res://ASSETS/TEXTURES/defaults/"
+var tex_default_dir: String = "res://ASSETS/materials/"
 var log_lines: PackedStringArray = []
 
 ## Constructor with optional path overrides (for testing)
@@ -32,21 +42,39 @@ func _init(p_user_dir: String = "", p_default_dir: String = "") -> void:
 ## Single entry point: resolve a texture by ID.
 ## Returns ResolvedTexture with image (or null) and tier.
 ## Logs evidence at every step.
-func resolve(texture_id: String) -> ResolvedTexture:
+##
+## ASSET_TREE_REFORM: `material_folder` is the subdirectory the art lives in —
+## `resolve("facade_concrete", "concrete")` reads
+## `res://ASSETS/materials/concrete/facade_concrete.png`.
+##
+## ⚠️ IT IS A PARAMETER RATHER THAN SOMETHING DERIVED FROM `texture_id`, and the
+## reason is measurable rather than stylistic: the id and the folder look
+## redundant (`facade_concrete` in `concrete/`) but they are not the same string
+## in every case this function serves. `texture_resolver_selftest.gd` resolves
+## `facade_stone_base`, `facade_rgb_bad`, `facade_wrong_dims` out of flat temp
+## directories, and splitting the id would send those looking in `stone_base/`.
+## Defaulting to "" keeps every such caller — and any future non-material texture
+## — on the flat lookup they already have.
+##
+## The production callers are BakeCompositor's two `resolver.resolve()` sites,
+## both of which have the material in hand. A site that forgets to pass it gets
+## Tier.NONE, which renders silently wrong — so the acceptance gate for this
+## reform is the 363-atom export diff, not a screenshot.
+func resolve(texture_id: String, material_folder: String = "") -> ResolvedTexture:
 	_log("")  # blank line for readability
-	_log("Attempting to resolve: %s" % texture_id)
+	_log("Attempting to resolve: %s (folder %s)" % [texture_id, material_folder if material_folder != "" else "<flat>"])
 	
 	# Attempt user:// tier (try PNG first, then WebP)
 	for ext in [".png", ".webp"]:
-		var user_path := tex_user_dir.path_join(texture_id + ext)
+		var user_path := _tier_path(tex_user_dir, material_folder, texture_id + ext)
 		var img := _try_load_and_validate(user_path, "USER")
 		if img:
 			_log("[RESOLVER] %s resolved from USER%s (dims %dx%d)" % [texture_id, ext, img.get_width(), img.get_height()])
 			return ResolvedTexture.new(img, Tier.USER)
 	
-	# Attempt res://ASSETS/TEXTURES/defaults/ tier (try PNG first, then WebP)
+	# Attempt res://ASSETS/materials/ tier (try PNG first, then WebP)
 	for ext in [".png", ".webp"]:
-		var default_path := tex_default_dir.path_join(texture_id + ext)
+		var default_path := _tier_path(tex_default_dir, material_folder, texture_id + ext)
 		var img := _try_load_and_validate(default_path, "DEFAULT")
 		if img:
 			_log("[RESOLVER] %s resolved from DEFAULT%s (dims %dx%d)" % [texture_id, ext, img.get_width(), img.get_height()])
@@ -55,6 +83,15 @@ func resolve(texture_id: String) -> ResolvedTexture:
 	# Fallback: material-only
 	_log("[RESOLVER] %s UNRESOLVED; wall will use MATERIAL-ONLY rendering" % texture_id)
 	return ResolvedTexture.new(null, Tier.NONE)
+
+
+## <tier dir>/<material folder>/<file>, or <tier dir>/<file> when no folder was
+## given. One helper so the two tiers cannot drift apart — the whole point of the
+## reform is that they nest identically.
+func _tier_path(tier_dir: String, material_folder: String, file_name: String) -> String:
+	if material_folder == "":
+		return tier_dir.path_join(file_name)
+	return tier_dir.path_join(material_folder).path_join(file_name)
 
 
 ## Try to load and validate an image from the given path.

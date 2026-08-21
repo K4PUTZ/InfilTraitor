@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**213 scripts · 64035 lines total** (under `godot/scripts/`)
+**213 scripts · 64078 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1676,7 +1676,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1234 lines
+`class_name BakeCompositor` · 1240 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -2546,7 +2546,7 @@ extends `Node` · 156 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 178 lines
+`class_name TextureResolver` · 215 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -2557,11 +2557,11 @@ extends `Node` · 156 lines
 
 **Public vars**
 - `var tex_user_dir: String = "user://textures/"`
-- `var tex_default_dir: String = "res://ASSETS/TEXTURES/defaults/"`
+- `var tex_default_dir: String = "res://ASSETS/materials/"`
 - `var log_lines: PackedStringArray = []`
 
 **Public API**
-- `func resolve(texture_id: String) -> ResolvedTexture:`
+- `func resolve(texture_id: String, material_folder: String = "") -> ResolvedTexture:`
 - `func get_log() -> PackedStringArray:`
 - `func get_log_string() -> String:`
 

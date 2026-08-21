@@ -76,7 +76,7 @@ Registration is mechanical, not a table: `BakePolicy.texture_for_material()`
 derives `facade_<material>` from the material id (the old `DEFAULT_FACADES`
 dict is gone, D20). To add a facade for a material:
 
-1. Drop `facade_<material>.png` in `ASSETS/TEXTURES/defaults/`.
+1. Drop `facade_<material>.png` in `ASSETS/materials/<id>/`.
 2. Set `has_facade: true` and a real `base_color` in `materials/<material>.json`
    — left at the WHITE default, MULTIPLY leaves the wall grayscale.
 3. **Let Godot reimport it.** `TextureResolver` resolves through

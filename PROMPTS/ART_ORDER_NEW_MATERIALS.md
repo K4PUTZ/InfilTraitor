@@ -5,6 +5,9 @@
 **Materials:** `brick` (tijolo) · `cardboard` (papelão) · `fabric` (tecido) ·
 `plywood` (madeirite) · `glass` (vidro).
 
+> ⚠️ **Paths updated 2026-08-21 by ASSET_TREE_REFORM** — the art moved to one
+> folder per material. The files themselves are unchanged and were not re-authored.
+>
 > **Every number below was measured on the shipped files, not read off a
 > spec.** Where this document and `ASSETS/ART_SPECIFICATIONS.md` disagree, that
 > file is the canon and this one is the bug — but §1's measurements are the
@@ -17,11 +20,11 @@
 **You author exactly ONE file per material.** Five PNGs, all the same shape:
 
 ```
-ASSETS/TEXTURES/defaults/facade_brick.png
-ASSETS/TEXTURES/defaults/facade_cardboard.png
-ASSETS/TEXTURES/defaults/facade_fabric.png
-ASSETS/TEXTURES/defaults/facade_plywood.png
-ASSETS/TEXTURES/defaults/facade_glass.png
+ASSETS/materials/brick/facade_brick.png
+ASSETS/materials/cardboard/facade_cardboard.png
+ASSETS/materials/fabric/facade_fabric.png
+ASSETS/materials/plywood/facade_plywood.png
+ASSETS/materials/glass/facade_glass.png
 ```
 
 **1024 × 512 px · grayscale (R == G == B on every pixel) · no alpha.**
@@ -35,7 +38,7 @@ what I am building against this.
 
 | Property | Value | How I know |
 |---|---|---|
-| Path | `ASSETS/TEXTURES/defaults/facade_<id>.png` | `BakePolicy.facade_for_material()` returns `"facade_" + material_id`, literally — no table, no registration step |
+| Path | `ASSETS/materials/<id>/facade_<id>.png` | `BakePolicy.facade_for_material()` returns `"facade_" + material_id`, literally — no table, no registration step |
 | Dimensions | **1024 × 512** | All 8 shipped facades measured at exactly 1024×512 |
 | Colour | **Grayscale, R == G == B** | All 8 measured at 0.00% non-grayscale over 10 878 sampled pixels. Invariant B2 |
 | Alpha | **None.** Fully opaque | Invariant B3 — the silhouette's alpha comes from the canonical voxel atom, never from facade art |
@@ -110,7 +113,7 @@ Run this on any delivery before telling me it is ready. It is the same check I
 will run, and it answers the silent-failure mode directly.
 
 ```bash
-python3 tools/persistent/check_facade.py ASSETS/TEXTURES/defaults/facade_brick.png
+python3 tools/persistent/check_facade.py ASSETS/materials/brick/facade_brick.png
 ```
 
 I am shipping that script alongside this order. It reports, per file: exact
@@ -159,7 +162,7 @@ pouco a resistência"*) unless you want it to read differently.
 
 ### REQUIRED — 5 files, and that is the whole list
 
-All in `ASSETS/TEXTURES/defaults/`, all **1024×512, grayscale, no alpha**:
+One per material folder under `ASSETS/materials/`, all **1024×512, grayscale, no alpha**:
 
 - [ ] `facade_brick.png`
 - [ ] `facade_cardboard.png`

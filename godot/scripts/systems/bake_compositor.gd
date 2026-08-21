@@ -236,7 +236,11 @@ func bake(map_spec: Dictionary, resolver) -> BakedAtlas:
 	for combo in combos:
 		var facade_id = combo[1]
 		if not facades_by_id.has(facade_id):
-			var resolved = resolver.resolve(facade_id)
+			## ASSET_TREE_REFORM: combo[0] is the material id, which is also the
+			## folder its art lives in. Passing it is not optional — omitting it
+			## resolves Tier.NONE and the surface falls back to the generic atlas
+			## with no error at all.
+			var resolved = resolver.resolve(facade_id, combo[0])
 			if resolved != null and resolved.tier != resolver.Tier.NONE:
 				facades_by_id[facade_id] = resolved.image
 
@@ -744,7 +748,9 @@ func _compose_roof_pages(atlas_result: BakedAtlas, roof_specs: Array, facades_by
 			continue
 		var facade = facades_by_id.get(facade_id)
 		if facade == null and resolver != null:
-			var resolved = resolver.resolve(facade_id)
+			## ASSET_TREE_REFORM — see the wall path above for why the folder is
+			## passed rather than derived.
+			var resolved = resolver.resolve(facade_id, material_id)
 			if resolved != null and resolved.tier != resolver.Tier.NONE:
 				facade = resolved.image
 				facades_by_id[facade_id] = facade

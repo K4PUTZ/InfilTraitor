@@ -55,7 +55,9 @@ python3 tools/asset_generation/generate_voxel.py
 ```
 
 There is deliberately **no `bakes/` folder** — no baked voxel exists on disk;
-`BakeSystem` composes atlas pages in memory from `ASSETS/TEXTURES/defaults/`.
+`BakeSystem` composes atlas pages in memory from `ASSETS/materials/<id>/`
+(ASSET_TREE_REFORM, 2026-08-21 — one folder per material; was
+`ASSETS/TEXTURES/defaults/`).
 Runtime damage compositing (`DamageCompositeCache`, D33) is also
 in-memory-only and also writes nothing to disk here — distinct systems, same
 "nothing is ever baked to a file" property.

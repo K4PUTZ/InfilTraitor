@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.105 · **Updated:** 2026-08-20 · **Branch:** main
+**Version:** 0.9.106 · **Updated:** 2026-08-20 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -74,6 +74,7 @@
 - RESUMO_SESSAO_2026-08-19_SHOT_PERFORMANCE.md
 - RESUMO_SESSAO_2026-08-19_THROW_ANIMATION.md
 - RESUMO_SESSAO_2026-08-20_PRECOOK_AND_WEAPON_CHARACTER.md
+- RESUMO_SESSAO_2026-08-21_ALPHA_MATERIALS_MASTERPLAN.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

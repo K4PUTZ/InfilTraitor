@@ -248,6 +248,22 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 	var enemy_defs := _build_enemy_defs(spec.get("patrols", []), offset, agent_start_raw, blocked_map, map_size)
 
+	## --- half-thickness panels (M3-2b) ---------------------------------------
+	## Offset-adjusted here and nowhere else (architecture Rule 7: maps use
+	## internal coords, the buffer is applied only in MapCompiler). The face
+	## string travels as authored; EdgeExtractor resolves it to a Face and builds
+	## the one-sided Edge, because that is where every other edge is born.
+	var panel_instances: Array[Dictionary] = []
+	for panel: Dictionary in spec.get("panels", []):
+		var panel_gu: Vector2i = Vector2i(panel.get("gu", Vector2i.ZERO))
+		panel_instances.append({
+			"gu_cell": panel_gu + offset,
+			"face": String(panel.get("face", "")),
+			"material": String(panel.get("material", "glass")),
+			"storeys": maxi(1, int(panel.get("storeys", 1))),
+			"start_storey": maxi(0, int(panel.get("start_storey", 0))),
+		})
+
 	var result: Dictionary = {
 		"size":             map_size,
 		"buffer":           buffer,                ## tile margin per edge; used by room.gd for voxel layer alignment
@@ -261,6 +277,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
 		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
+		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,

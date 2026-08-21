@@ -4279,6 +4279,17 @@ func _capture_light_burn_probe() -> void:
 	var focus: Vector2i = Vector2i.ZERO
 	if not targets[0].voxels.is_empty():
 		focus = GeometryCoords.voxel_to_gu(targets[0].voxels[0].grid_pos)
+	## A material can now own geometry in more than one place — a block AND a
+	## half-thickness panel elsewhere on the board (M3-2b) — so "the first slice
+	## of this material" is no longer a useful frame on its own.
+	var focus_env := OS.get_environment("INFILTRAITOR_BURN_PROBE_FOCUS")
+	if focus_env != "":
+		var fp := focus_env.split(",")
+		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
+			focus = Vector2i(fp[0].to_int(), fp[1].to_int())
+	var zoom_env2 := OS.get_environment("INFILTRAITOR_BURN_PROBE_ZOOM")
+	if zoom_env2.is_valid_float() and _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom_env2.to_float())
 	if agent != null and _camera_controller != null:
 		_camera_controller.focus_on(agent._cell_to_world(focus))
 	if _fow_controller != null:

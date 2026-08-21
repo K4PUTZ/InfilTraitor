@@ -9,6 +9,7 @@ static func register_all(registry) -> void:
 	register_blocks(registry)
 	register_floor_zones(registry)
 	register_damage_materials(registry)
+	register_panels(registry)
 	register_props(registry)
 	register_actors(registry)
 	register_legacy_compiler(registry)
@@ -157,6 +158,47 @@ static func register_damage_materials(registry) -> void:
 		func() -> Dictionary:
 			return { "materials": [] }
 	))
+
+## panels: HALF-THICKNESS elements (MATERIALS_MASTER_PLAN §3.2b, M3-2b).
+##
+## One storey-face on ONE of the two GUs an edge separates — a glass window pane,
+## a curtain, a cardboard partition, a plywood board over a doorway. A normal
+## wall is two faces (D16); a panel is one, and the empty face opposite is what
+## gives a window reveal its depth.
+##
+## ⚠️ `gu` IS THE SIDE, and that is the whole schema decision. The panel names the
+## ABSOLUTE cell its face sits on, plus which way that face points. It does NOT
+## carry a boolean like `side_a`, because `Edge._init()` swaps gu_a/gu_b when the
+## face points NW or NE — a boolean would silently mean different things for
+## different walls depending on which way the author drew them. An absolute cell
+## survives the swap; `Edge.set_occupied_gu()` resolves it afterwards.
+##
+## Shape: {"gu": [x, y], "face": "NW"|"NE"|"SE"|"SW", "material": "glass",
+##         "storeys": 1, "start_storey": 0}
+## `gu` is in INTERNAL map coords like every other section — the buffer is
+## applied only in MapCompiler (architecture Rule 7).
+static func register_panels(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	var normalise := func(raw: Dictionary) -> Dictionary:
+		var items = raw.get("items", [])
+		for item in items:
+			if not item.has("storeys"):
+				item["storeys"] = 1
+			if not item.has("start_storey"):
+				item["start_storey"] = 0
+			if not item.has("material"):
+				item["material"] = "glass"
+		return { "items": items }
+	registry.register(SectionOwner.new(
+		"panels",
+		1,
+		normalise,
+		normalise,
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
 
 static func register_props(registry) -> void:
 	var SectionOwner = registry.SectionOwner

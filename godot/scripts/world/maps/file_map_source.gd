@@ -116,6 +116,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 		runtime["damage_materials"] = damage_materials_section["materials"]
 
 	# --- Props section: now translatable (PROP-01 implementation) -----------
+	# --- Panels section: half-thickness elements (M3-2b), same coercion path --
+	var panels_section = sections.get("panels", {})
+	if panels_section.get("items", []).size() > 0:
+		runtime["panels"] = _convert_from_json_compatible(panels_section["items"])
+
 	var props_section = sections.get("props", {})
 	if props_section.get("items", []).size() > 0:
 		var voxel_props: Array = []

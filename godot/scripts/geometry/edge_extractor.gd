@@ -173,6 +173,60 @@ static func extract(compiled: Dictionary) -> Dictionary:
 		
 		# Create final edge with correct storey count and start_storey
 		var final_edge := Edge.new(edge_template.gu_a, edge_template.gu_b, storey_count, edge_template.material, start_storey)
+		## M3-2b: the side has to be re-applied here. The third pass REBUILDS the
+		## Edge to attach storey_count/start_storey, so anything set on the
+		## template would be silently dropped — the same class of loss the
+		## `edge_template` indirection has always risked, just newly reachable.
+		if group.has("occupied_gu"):
+			final_edge.set_occupied_gu(group["occupied_gu"])
 		result["edges"].append(final_edge)
-	
+
+	_extract_panels(compiled, edge_groups, result)
+
 	return result
+
+
+## M3-2b — HALF-THICKNESS PANELS: a window pane, a curtain, a cardboard
+## partition. One storey-face on ONE of the two GUs, authored as an absolute
+## cell plus the face it points along.
+##
+## Emitted here rather than as a tile, because a panel is not a tile: it is a
+## FACE, and every other edge in this file is born from geometry that already
+## occupies a cell. A panel occupies none — that is the point of it.
+##
+## ⚠️ A panel whose edge ALREADY EXISTS is a loud failure, not a merge. Authoring
+## a pane inside a wall that is already there is a mistake with two plausible
+## meanings ("make that wall half thickness" vs "add a pane"), and guessing
+## between them is exactly how the `ground_concrete`/`concrete` duplicate-row bug
+## read at the time. `edge_groups` is keyed by `edge.id`, so the collision is
+## detectable for free.
+static func _extract_panels(compiled: Dictionary, edge_groups: Dictionary, result: Dictionary) -> void:
+	var panels: Array = compiled.get("panel_instances", [])
+	if panels.is_empty():
+		return
+	for panel in panels:
+		if not (panel is Dictionary):
+			continue
+		var gu: Vector2i = Vector2i(panel.get("gu_cell", Vector2i.ZERO))
+		var face_name: String = String(panel.get("face", "")).to_upper()
+		if face_name not in _EDGE_BY_SUFFIX:
+			push_error("[EdgeExtractor] panel at %s: unknown face %r — expected NW/NE/SE/SW" % [gu, face_name])
+			continue
+		var face: int = _EDGE_BY_SUFFIX[face_name]
+		var neighbour: Vector2i = gu + Face.delta(face)
+		var storeys: int = maxi(1, int(panel.get("storeys", 1)))
+		var start_storey: int = maxi(0, int(panel.get("start_storey", 0)))
+		var material: String = String(panel.get("material", "glass"))
+
+		var edge := Edge.between(gu, neighbour, storeys, material, start_storey)
+		if edge_groups.has(edge.id):
+			push_error("[EdgeExtractor] panel at %s face %s collides with an existing wall edge (%s) — a pane cannot share a face with a wall. Remove one, or make the wall itself the panel."
+				% [gu, face_name, edge.id])
+			continue
+		## The authored cell, resolved AFTER Edge.between()'s canonicalisation.
+		## This is the line the whole schema decision exists to make correct.
+		if not edge.set_occupied_gu(gu):
+			continue
+		edge_groups[edge.id] = {"edge_template": edge, "min_storey": start_storey,
+			"max_storey": start_storey + storeys - 1, "occupied_gu": gu}
+		result["edges"].append(edge)

@@ -19,15 +19,26 @@ static func generate(edges: Array, registry: EdgeRegistry) -> void:
 		# anywhere in the codebase before this fix.
 		registry.register_edge(edge)
 
-		# Create slice A (on gu_a, face_a)
-		var slice_a := _create_slice(edge, true, registry)
-		if slice_a:
-			registry.register_slice(slice_a)
-		
-		# Create slice B (on gu_b, face_b)
-		var slice_b := _create_slice(edge, false, registry)
-		if slice_b:
-			registry.register_slice(slice_b)
+		## MATERIALS_MASTER_PLAN §3.2b — THE HALF-THICKNESS GATE, and this is the
+		## only place a Slice is ever born, which is why the change is two `if`s
+		## rather than a sweep. Before this, `generate()` called _create_slice()
+		## twice unconditionally and EVERY wall in the game was full thickness by
+		## construction.
+		##
+		## `occupies_a()`/`occupies_b()` rather than a raw enum comparison: the
+		## edge resolved the author's ABSOLUTE GU CELL to a side back in
+		## `set_occupied_gu()`, after canonicalisation, so by the time we get here
+		## the swap has already been accounted for and there is nothing left to
+		## get wrong.
+		if edge.occupies_a():
+			var slice_a := _create_slice(edge, true, registry)
+			if slice_a:
+				registry.register_slice(slice_a)
+
+		if edge.occupies_b():
+			var slice_b := _create_slice(edge, false, registry)
+			if slice_b:
+				registry.register_slice(slice_b)
 
 
 ## Internal: create one slice with its voxels

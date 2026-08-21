@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**214 scripts · 64404 lines total** (under `godot/scripts/`)
+**215 scripts · 64894 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -568,7 +568,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 84 lines
+`class_name Edge` · 157 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -585,15 +585,21 @@ extends `ConfirmationDialog` · 64 lines
 - `var material: String`
 - `var slice_a_id: String = ""`
 - `var slice_b_id: String = ""`
+- `var occupied_sides: int = OccupiedSides.BOTH`
 
 **Public API**
+- `func set_occupied_gu(gu_cell: Vector2i) -> bool:`
+- `func occupied_gu() -> Vector2i:`
+- `func occupies_a() -> bool:`
+- `func occupies_b() -> bool:`
+- `func is_half_thickness() -> bool:`
 - `func key_string() -> String:`
 
 ---
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 178 lines
+`class_name EdgeExtractor` · 232 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -817,7 +823,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice_generator.gd`
 
-`class_name SliceGenerator` · 90 lines
+`class_name SliceGenerator` · 101 lines
 
 `godot/scripts/geometry/slice_generator.gd`
 
@@ -3379,6 +3385,32 @@ extends `SceneTree` · 227 lines
 
 ---
 
+### `half_thickness_selftest.gd`
+
+extends `SceneTree` · 277 lines
+
+`godot/scripts/tools/half_thickness_selftest.gd`
+
+> MATERIALS_MASTER_PLAN M3-2b — half-thickness elements. Rodar: python3 tools/persistent/run_selftests.py --only half_thickness A normal wall is two voxels thick (D16): one storey-face on each of the two adjacent GUs. Fabric, cardboard, glass and plywood are HALF thickness — one face only. A glass window covers one face and leaves the opposite face empty inside the opening, which is what gives the reveal its depth. What this suite exists to catch, in order of how badly each would hurt: 1. THE CANONICALISATION TRAP. `Edge._init()` SWAPS gu_a and gu_b when the face points NW or NE. So a boolean "side_a" on the mapfile would mean different things for different walls depending on which way the author drew them — correct at the author's end, wrong after a normalisation nobody remembers. The side must be an ABSOLUTE GU CELL, and test 1 is the proof that it survives the swap where a boolean would not. 2. Exactly one slice is BORN. Not two-then-destroy-one: a DESTROYED voxel is a hole with soot and a history, an ABSENT one is geometry that never existed, and every census, D24's soot-from-absence derivation and PassageQuery read the difference. 3. The consumers tolerate a missing sibling — the shot ladder, the passage query, and the junction resolver, each of which reaches for "the other side" in its own way.
+
+**Constants / tuning**
+- `PassageQueryClass` = `preload("res://godot/scripts/geometry/passage_query.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_absolute_cell_survives_the_canonicalisation_swap() -> void:`
+- `func test_only_one_slice_is_born() -> void:`
+- `func test_full_thickness_is_unchanged_by_default() -> void:`
+- `func test_sibling_lookup_returns_null_cleanly() -> void:`
+- `func test_point_impact_terminates_without_a_sibling() -> void:`
+- `func test_passage_opens_on_the_only_face() -> void:`
+- `func test_junction_resolver_survives_a_half_thickness_edge() -> void:`
+
+---
+
 ### `half_voxel_compositor_equality_selftest.gd`
 
 extends `SceneTree` · 263 lines
@@ -4657,7 +4689,7 @@ extends `Node2D` · 34 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 156 lines
+`class_name FileMapSource` · extends `RefCounted` · 161 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -4691,7 +4723,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 362 lines
+`class_name MapCompiler` · extends `RefCounted` · 379 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -4752,7 +4784,7 @@ extends `Node2D` · 34 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 207 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 249 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -4762,7 +4794,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 6162 lines
+extends `Node2D` · 6173 lines
 
 `godot/scripts/world/room.gd`
 

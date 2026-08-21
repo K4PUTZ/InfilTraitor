@@ -403,6 +403,58 @@ geometry that was never there. Conflating them corrupts the per-material census,
 D24's soot derivation (which derives scorch from ABSENT voxels), and the passage
 query itself. The slice must never be created.
 
+### ✅ 3.2d BUILT 2026-08-21 — what landed, and the one thing that did not
+
+| Piece | Where |
+|---|---|
+| `Edge.occupied_sides` + `set_occupied_gu()` / `occupied_gu()` / `occupies_a/b()` / `is_half_thickness()` | `edge.gd` |
+| The gate — the only place a `Slice` is born | `slice_generator.gd`, two `if`s |
+| `panels` mapfile section, v1 | `map_sections_v1.gd` |
+| Buffer applied once (Rule 7) | `map_compiler.gd` → `panel_instances` |
+| One-faced edges emitted | `edge_extractor.gd::_extract_panels()` |
+| 14 assertions, gate proven load-bearing | `half_thickness_selftest.gd` |
+
+**The schema is `{"gu": [x, y], "face": "NW|NE|SE|SW", "material", "storeys",
+"start_storey"}`** — the panel names the ABSOLUTE cell its face sits on. The
+selftest proves why in one assertion: an edge drawn from (5,5) toward (4,5) has
+its cells SWAPPED by `_init()`, so a `side_a: true` field would have put the pane
+on **(4,5)** — the cell the author did not mean, silently. The absolute cell
+survives the swap because the swap moves the labels, not the cells.
+
+**A panel whose edge already exists fails LOUDLY** rather than merging. Authoring
+a pane inside an existing wall has two plausible meanings ("make that wall half
+thickness" / "add a pane"), and guessing between them is how the
+`ground_concrete`/`concrete` duplicate-row bug read at the time.
+
+**Proven on the real map**, three panels on PLAYGROUND (`burn_panel_1_intact.png`
+→ `burn_panel_3_object.png`): two 2-storey glass panes and a 1-storey fabric
+panel, standing in open floor beside the full-thickness blocks so the thinness is
+directly comparable. The glass block plus its two panes is **18 slices / 2 304
+voxels** where a full-thickness pair would be 20 / 2 560 — the two panes
+contribute one face each, not two.
+
+And the payoff, measured rather than argued:
+
+```
+passage_class over 10 edges (baseline):              { "NONE": 10 }
+passage_class over 10 edges (after the object burn): { "STANDING": 10 }
+```
+
+The two half-thickness edges are in that ten. **They open by clearing the ONE face
+they have** — structural, not lucky, which is exactly what §3.2b promised.
+
+⚠️ **STILL OPEN — the junction column.** `JunctionResolver` iterates
+`all_edges()` and reads `face_a`/`face_b`; it never looks at a slice, so it is
+side-blind and will emit a FULL corner column beside a half-thickness panel. The
+selftest pins that it does not crash and reports the count; the *decision* —
+skip the column, or halve it — is the Director's and is not made here.
+
+*(Corrected while building: §3.2c listed `voxel_renderer.gd:1892`'s neighbour
+lookup as the first thing to fix, on the grounds that its final fallback
+`get_slice(neighbor_edge.slice_b_id)` has no null branch. Read again on the real
+line, the very next statement is `if slice:` — it is guarded, and degrades to the
+generic tile. The claim was wrong; nothing needed fixing there.)*
+
 #### How it gets proven
 
 - A selftest generating a half-thickness edge and asserting: one slice
@@ -546,7 +598,7 @@ frame.
 | ~~**M3-0**~~ | ~~pin §3.2's unit~~ — ✅ **CLOSED**: the unit is the STOREY, not the level; and §3.3's tick is `delta` for v1 | — |
 | ~~**M3-1**~~ | ~~Measure §3.4's free win~~ — ✅ **CLOSED 2026-08-21**: the visual field is free (control 0, one voxel 2, object 262, all brighter); the lamp's shadow is NOT (3 burnt GUs still in `_blocked_cells`) | — |
 | ~~**M3-2**~~ | ~~`passage_class()`~~ — ✅ **BUILT 2026-08-21**, `godot/scripts/geometry/passage_query.gd`, 15 assertions + real-map evidence (NONE ×8 → STANDING ×8) | M3-0 |
-| **M3-2b** | **Half-thickness elements** (§3.2b) — one storey-face per edge, mapfile-expressed, NOT faked by pre-destroying a side | M3-2 |
+| ~~**M3-2b**~~ | ~~Half-thickness elements~~ — ✅ **BUILT 2026-08-21**, §3.2d. Mapfile `panels` section; the junction column stays side-blind and is the Director's call | M3-2 |
 | **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only. **Runs on the blast's SURVIVORS (§3.1a), not on an intact object** — extends `_build_ember_wave`'s existing "surviving combustible voxels edging this blast's holes". Needs a new `burn_consumption` column: `flammability` is glow DURATION, not how much is eaten | M3-1, M3-2b |
 | **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
@@ -685,7 +737,7 @@ No task list until the study lands.
 | 2 | **M2c** — wire `brick` into `IMPACT_DECAL_MATERIALS`/`IMPACT_CRACK_MATERIALS` + manifest + capture | M2b |
 | ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
 | ✅ | **M3-2** — `passage_class()` + selftest | done |
-| 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
+| ✅ | **M3-2b** — half-thickness elements (the milestone's largest single item, and it was not fire) | done |
 | 5 | **M3-3** — fabric + cardboard burn (on the blast's survivors, delta tick, new `burn_consumption` column) | M3-1, M3-2b |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |

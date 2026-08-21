@@ -13,6 +13,26 @@ var material: String           ## material type: "concrete", "metal", "stone", "
 var slice_a_id: String = ""    ## backfilled by registry after slice A created
 var slice_b_id: String = ""    ## backfilled by registry after slice B created
 
+## MATERIALS_MASTER_PLAN §3.2b — HALF-THICKNESS ELEMENTS.
+##
+## A normal wall is two voxels thick (D16): one storey-face on each of the two
+## adjacent GUs. Fabric, cardboard, glass and plywood are **half thickness** —
+## one face only, on one of the two GUs, preferably the inner one in the context
+## of a room. A glass window covers one face and leaves the opposite face empty
+## inside the opening, and that emptiness is what gives the reveal its depth.
+##
+## ⚠️ NEVER FAKE THIS BY PRE-DESTROYING ONE SIDE. A DESTROYED voxel is a hole
+## with soot, a damage atom and a history; an ABSENT voxel is geometry that was
+## never there. Conflating them corrupts the per-material census, D24's
+## soot-from-absence derivation, and `PassageQuery` itself. The slice must never
+## be created — which is why this lives on Edge, the only input SliceGenerator
+## reads.
+enum OccupiedSides { BOTH, A_ONLY, B_ONLY }
+
+## Default BOTH, so every edge that existed before this field is unchanged by
+## construction rather than by an audit.
+var occupied_sides: int = OccupiedSides.BOTH
+
 
 func _init(p_gu_a: Vector2i, p_gu_b: Vector2i, p_storey_count: int = 1, p_material: String = "concrete", p_start_storey: int = 0):
 	gu_a = p_gu_a
@@ -65,6 +85,59 @@ static func between(cell_1: Vector2i, cell_2: Vector2i, p_storey_count: int = 1,
 		push_error("Edge.between: canonicalization failed to set face_a ∈ {SE, SW}. face_a=%d" % edge.face_a)
 	
 	return edge
+
+
+## §3.2c — resolve an AUTHORED ABSOLUTE GU CELL to a side, AFTER canonicalisation.
+##
+## ⚠️ THIS IS WHY THE MAPFILE MUST NOT CARRY A BOOLEAN. `_init()` canonicalises:
+## if the face points NW or NE it SWAPS gu_a and gu_b so that gu_a sorts first
+## and face_a ∈ {SE, SW}. So `slice_a` is not "the side the author meant" — it is
+## whichever GU won the sort. A `side_a: true` field on the mapfile would
+## therefore mean different things for different walls, silently, depending on
+## which way the author drew them. That is the same defect class as the
+## `P3_WEAPON`/`GRIP_SUFFIX` output collisions: a value correct at the author's
+## end and wrong after a normalisation nobody remembers.
+##
+## An absolute cell survives the swap, because the swap moves the labels and not
+## the cells. Returns false and changes nothing if the cell is not one of the
+## two — a typo in a mapfile must not silently pick a side.
+func set_occupied_gu(gu_cell: Vector2i) -> bool:
+	if gu_cell == gu_a:
+		occupied_sides = OccupiedSides.A_ONLY
+		return true
+	if gu_cell == gu_b:
+		occupied_sides = OccupiedSides.B_ONLY
+		return true
+	push_error("[Edge] %s: occupied GU %s is neither gu_a %s nor gu_b %s — leaving both sides occupied."
+		% [id, gu_cell, gu_a, gu_b])
+	return false
+
+
+## The absolute GU cell this edge's geometry sits on, or a sentinel when both do.
+## The inverse of set_occupied_gu(), so a round trip through a mapfile is
+## expressible without the caller re-deriving the canonicalisation.
+func occupied_gu() -> Vector2i:
+	match occupied_sides:
+		OccupiedSides.A_ONLY:
+			return gu_a
+		OccupiedSides.B_ONLY:
+			return gu_b
+		_:
+			return Vector2i(-1, -1)
+
+
+func occupies_a() -> bool:
+	return occupied_sides != OccupiedSides.B_ONLY
+
+
+func occupies_b() -> bool:
+	return occupied_sides != OccupiedSides.A_ONLY
+
+
+## True when this edge carries only one storey-face — a window pane, a curtain,
+## a cardboard panel. Reads better at call sites than comparing the enum.
+func is_half_thickness() -> bool:
+	return occupied_sides != OccupiedSides.BOTH
 
 
 ## Canonical string identity for hashing (baking, sampling).

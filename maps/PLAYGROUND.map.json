@@ -4,7 +4,7 @@
   "id": "PLAYGROUND",
   "meta": {
     "title": "Destruction Test Zone",
-    "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) \u2014 glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN \u00a76c, built 2026-08-19), not a static bench prop. 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) \u2014 shooting each one tests a different impact angle and travel distance against a different material, which one guard on a patrol could never cover. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter, not because these guards should roam away from the block they are there to stand in front of. Agent moved to (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+    "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) — glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN §6c, built 2026-08-19), not a static bench prop. 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) — shooting each one tests a different impact angle and travel distance against a different material, which one guard on a patrol could never cover. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter, not because these guards should roam away from the block they are there to stand in front of. Agent moved to (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
   },
   "sections": {
     "board": {
@@ -512,7 +512,39 @@
           "intensity": 0.95
         }
       ]
+    },
+    "panels": {
+      "items": [
+        {
+          "gu": [
+            25,
+            8
+          ],
+          "face": "SE",
+          "material": "glass",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            29,
+            8
+          ],
+          "face": "SW",
+          "material": "glass",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            33,
+            8
+          ],
+          "face": "SE",
+          "material": "fabric",
+          "storeys": 1
+        }
+      ],
+      "v": 1
     }
   },
-  "description": "One short wall per material for destruction testing. The four calibrated blocks (concrete/metal/stone/wood) sit at gu x=2/7/12/17 with one guard each at a different distance. 2026-08-21 (MAT-BLOCK-01): brick, cardboard, fabric, plywood and glass are now REAL BLOCKS at gu x=22/26/30/34/38, y=2, 3 wide, 2 storeys, each with a matching 3x3 floor zone at y=4 so the same facade is exercised on the SLAB path too (D34). They were reserved open floor until the Director delivered the five facades; the step is 4 rather than the reserved layout's 5 because a fifth material (plywood/madeirite) was added and five 3-wide blocks at step 5 would run past the 44-wide board. GLASS IS PLACED DELIBERATELY: ROOF_BAKE_LEAK_2026-08-17.md pulled it back to reserved after 520 roof voxels came up with no baked lookup entry, and the cause was that glass had no facade at all rather than a missing roof family \u2014 placing it now is the test of that diagnosis. Its DESTRUCTION rule (the non-local pane break) is still deferred. Weapon bench and floor grenades retired 2026-08-17: firing goes through the agent himself (WEAPON_MASTER_PLAN 6c, built 2026-08-19). 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) - shooting each one tests a different impact angle and travel distance against a different material. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter. Agent at (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+  "description": "One short wall per material for destruction testing. The four calibrated blocks (concrete/metal/stone/wood) sit at gu x=2/7/12/17 with one guard each at a different distance. 2026-08-21 (MAT-BLOCK-01): brick, cardboard, fabric, plywood and glass are now REAL BLOCKS at gu x=22/26/30/34/38, y=2, 3 wide, 2 storeys, each with a matching 3x3 floor zone at y=4 so the same facade is exercised on the SLAB path too (D34). They were reserved open floor until the Director delivered the five facades; the step is 4 rather than the reserved layout's 5 because a fifth material (plywood/madeirite) was added and five 3-wide blocks at step 5 would run past the 44-wide board. GLASS IS PLACED DELIBERATELY: ROOF_BAKE_LEAK_2026-08-17.md pulled it back to reserved after 520 roof voxels came up with no baked lookup entry, and the cause was that glass had no facade at all rather than a missing roof family — placing it now is the test of that diagnosis. Its DESTRUCTION rule (the non-local pane break) is still deferred. Weapon bench and floor grenades retired 2026-08-17: firing goes through the agent himself (WEAPON_MASTER_PLAN 6c, built 2026-08-19). 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) - shooting each one tests a different impact angle and travel distance against a different material. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter. Agent at (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
 }

@@ -203,6 +203,86 @@ What that implies, and why it is worth doing properly rather than faking:
 
 **New task M3-2b**, ahead of the fire work it enables.
 
+### 3.2c How the builder does it — the technical design
+
+Written against the real chain (`edge_extractor` → `Edge` → `SliceGenerator` →
+`EdgeRegistry`), every claim below read from the code rather than assumed.
+
+#### The trap that decides the data shape
+
+`Edge._init()` **canonicalises**: if the face points NW or NE it **swaps `gu_a`
+and `gu_b`** so that `gu_a` is lexicographically smaller and `face_a ∈ {SE,
+SW}`. So `slice_a` is *not* "the side the author was thinking of" — it is
+whichever GU won the sort.
+
+⚠️ **A boolean `side_a` field on the mapfile would therefore mean different
+things for different walls**, silently, depending on which way the author drew
+it. This is the same class of defect as the `P3_WEAPON`/`GRIP_SUFFIX` output
+collisions: a value that is correct at the author's end and wrong after a
+normalisation nobody remembers.
+
+**So the mapfile expresses the side as an ABSOLUTE GU CELL** — "the face lives
+on GU (x, y)" — and `Edge` resolves it to a/b **after** canonicalisation. The
+author's meaning survives the swap because the cell survives it.
+
+#### The change, file by file
+
+| File | Change |
+|---|---|
+| `edge.gd` | New `var occupied_sides: int` (both / a-only / b-only), plus a resolver that takes the authored GU cell and answers after canonicalisation. Default = both, so every existing edge is unchanged by construction |
+| `slice_generator.gd` | The gate. `generate()` today calls `_create_slice(edge, true)` then `_create_slice(edge, false)` unconditionally; each becomes conditional on `edge.occupied_sides`. **This is the only place a slice is born**, which is why the change is small |
+| `edge_extractor.gd` | Carry the authored side through the `edge_groups` dedup. Note it dedups by `edge.id`, so two authored entries for one edge must agree or fail loudly |
+| MAPFILE | A new versioned section (or a field on the existing wall/block entries), per `MAPFILE_REFERENCE`'s owner-registered contract. Unknown sections round-trip verbatim, so old maps are unaffected |
+
+#### What already tolerates a missing sibling — checked, not hoped
+
+- **`EdgeRegistry.sibling_slice()` returns null cleanly.** When `slice_b_id` is
+  empty, `get_slice("")` is null and the function returns null without reaching
+  its `push_error` (which only fires when a slice is not part of its own edge).
+- **Both real consumers already null-check.** `sibling_slice()` has exactly two
+  non-selftest callers, both in `blast_calculator.gd`'s point-impact path
+  (`plan_point_impact`), and both are already guarded — `current_slice == null`
+  breaks the depth loop, and the cascade is behind `sibling != null`.
+- **`all_slices()` iterates what is registered**, so an absent slice is simply
+  absent everywhere it is consumed (`room.gd` ×4, `room_builder`,
+  `detonation_plan_builder`).
+
+#### What does NOT tolerate it — the real work
+
+1. **`voxel_renderer.gd:1892`** resolves a neighbour's slice with
+   `... else registry.get_slice(neighbor_edge.slice_b_id)` as its final fallback.
+   With a half-thickness neighbour that returns **null**, and the expression has
+   no null branch. First thing to fix, and the first thing to selftest.
+2. **Junction columns are edge-derived and side-blind.** `JunctionResolver.resolve()`
+   iterates `registry.all_edges()` and reads `edge.face_a/face_b`; it never looks
+   at slices. So a half-thickness element still produces a **full** corner
+   column, which will read as a full-thickness stub beside a half-thickness
+   panel. Needs a decision: skip the column, or half it too.
+3. **Occlusion and the passage query** must both be written against
+   "the storey-faces that EXIST", not "both storey-faces". For a half-thickness
+   element `passage_class()` is satisfied by the one face that exists — which is
+   the point: fabric and cardboard open a crouch passage structurally rather
+   than luckily.
+
+#### The rule that must not be broken
+
+**Do not fake half thickness by pre-destroying one side.** A `DESTROYED` voxel
+is a hole with soot, a damage atom and a history; an **absent** voxel is
+geometry that was never there. Conflating them corrupts the per-material census,
+D24's soot derivation (which derives scorch from ABSENT voxels), and the passage
+query itself. The slice must never be created.
+
+#### How it gets proven
+
+- A selftest generating a half-thickness edge and asserting: one slice
+  registered, `sibling_slice()` null, `plan_point_impact()` still terminates,
+  `passage_class()` answers CROUCH on one destroyed storey-face.
+- A **real capture** of a glass window on PLAYGROUND showing the empty opposite
+  face inside the opening — the depth the Director asked for is a visual claim
+  and needs a visual proof.
+- `roof_bake_selftest` re-run: a half-thickness wall changes roof lookup
+  coverage, which is exactly what that test measures.
+
 ### 3.3 What is a tick — ✅ DECIDED 2026-08-21: delta, for now
 
 > Director: *"Eu gosto da ideia de ir avançando, mas pra isso o fogo precisa

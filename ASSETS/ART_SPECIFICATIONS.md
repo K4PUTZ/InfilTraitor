@@ -89,9 +89,30 @@ dict is gone, D20). To add a facade for a material:
    one today) and the id to `BakeCompositor.VOXEL_MATERIALS` and
    `VoxelRenderer.BASE_MATERIALS`.
 
-Current materials with a facade: `concrete`, `stone`, `wood`, `metal`, `earth`
-(D35, delivered 2026-08-08 — walls, blocks and roofs of earth render through
-the same grayscale + multiply path as every other structural material).
+Current materials with a facade — **ten** since 2026-08-21: `concrete`, `stone`,
+`wood`, `metal`, `earth` (D35, delivered 2026-08-08 — walls, blocks and roofs of
+earth render through the same grayscale + multiply path as every other
+structural material), plus `brick`, `cardboard`, `fabric`, `plywood` and
+`glass` (MAT-ORDER-01/MAT-BLOCK-01, delivered by the Director 2026-08-21).
+
+> **The gate is now a script, not a habit:**
+> `python3 tools/persistent/check_facade.py --all` — dimensions, per-pixel
+> grayscale, alpha (reported, never failed: B3 discards it), and whether the
+> compiled `.ctex` the `.import` sidecar names actually exists. Earned before it
+> was trusted: its first version failed two SHIPPED facades that render
+> correctly, so the gate was wrong rather than the art.
+
+> **A material needs ONLY this file.** Measured 2026-08-21 and worth stating
+> here because it looks like three requirements: all 17 voxel atoms are 32×36
+> with **byte-identical alpha**, so a new id is aliased in
+> `BakePolicy.CANONICAL_ATOM_ALIASES` instead of getting a file; and roofs
+> reproject the wall facade (§3 is still PLANNED). ⚠️ Registration is **two**
+> lists, not one: `VoxelRenderer.BASE_MATERIALS` *and*
+> `BakeCompositor.VOXEL_MATERIALS`. `glass` sat in the first and not the second
+> for months — invisible until a glass block was finally placed, at which point
+> B6 fired *"no canonical voxel atom for 'glass' — will render unmasked
+> rectangles"*. A material in one list and not the other renders, and renders
+> wrong.
 
 > Step 3 is not hypothetical. The first `facade_earth.png` delivery was
 > rejected at load for being full-colour (100% of sampled pixels over the
@@ -256,7 +277,7 @@ the same division of labour `bake_compositor.gd` already has with facades.
 | Color | Full color allowed (these are not facade/pattern sources, so B2 does not bind them) |
 | Families | `bullet` (firearms), `dent` (explosions, on half voxels), `crack` (explosions, on whole voxels) |
 | Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
-| Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. Glass and brick deferred (glass gets no DENTED/CRACKED tier at all — destroyed or intact) |
+| Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. **Brick is no longer deferred** — 2026-08-21 it became a real material and is scheduled in `MATERIALS_MASTER_PLAN` M2, along with `cardboard`, `fabric` and `plywood`. Glass still gets none (D22: no DENTED/CRACKED tier at all — destroyed or intact) |
 
 **Which material needs which family — 33 files total:**
 

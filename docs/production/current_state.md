@@ -579,8 +579,10 @@ the blast from "the waves fire" to something that reads right. Full record:
   would double every puff against the staged smoke waves. The ember is now a
   real `ember` wave played inside the expanding front, gated on a new
   **`flammability` column in the material table** rather than a hardcoded wood
-  check — today only wood is combustible; cardboard, fabric and light wood are
-  the materials milestone. Real PLAYGROUND detonation: **290 embers** against
+  check — today only wood is combustible; cardboard, fabric and plywood are the
+  materials milestone, which as of 2026-08-21 is **planned and ordered**
+  (`PROMPTS/PLANNING/MATERIALS_MASTER_PLAN.md`) with all four combustibles
+  registered and rendering. Real PLAYGROUND detonation: **290 embers** against
   `FLOOR/wood destroyed 137` + `WALL/wood destroyed 38`
   (`e_ember01_wood_embers_settled_2026-08-13.png`).
 - ✅ **The ember became a fire that cools** (E-EMBER-02, same day). The Director

@@ -17,6 +17,26 @@
 > always deferred (cover rule, noise-on-digging, rubble-as-terrain,
 > breach-as-clue). Glass belongs to the **materials milestone**.
 
+> ## ➡️ THAT REOPENING NOW LIVES IN `MATERIALS_MASTER_PLAN.md` (2026-08-21)
+>
+> The section below reopened this plan for the destructive materials. That work
+> has since become its own milestone — six ordered parts, of which this section
+> anticipated two — and it is owned by
+> [`MATERIALS_MASTER_PLAN.md`](MATERIALS_MASTER_PLAN.md). **Read this for the
+> reasoning; read that for what to do next.**
+>
+> Two things it said are now superseded by the Director rather than by drift:
+> **brick is IN** (it was descoped here as *"quase concreto"*, and was delivered
+> as a real material on 2026-08-21), and the questions this section listed as
+> *"settle before authoring"* are all ANSWERED there — ignition is explosions
+> only, fabric/cardboard burn entirely, plywood burns upward and is gated on
+> proximity to the wall's base, and the passage unit is the STOREY.
+>
+> Its own framing also turned out to be the wrong size: *"one hard problem and
+> one column to fill"* missed that **half-thickness elements** — soft materials
+> and glass occupying a single storey-face — are the largest single item, and
+> that `SliceGenerator` cannot build one today.
+
 > ## 🟡 REOPENED 2026-08-16 — for the destructive MATERIALS, and only those
 >
 > Director: *"Nós vamos fazer agora só os materiais destrutivos, pra fechar essa

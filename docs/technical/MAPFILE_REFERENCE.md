@@ -18,6 +18,16 @@ map persistence system; the archived plan holds the full decision rationale
 | `godot/scripts/world/maps/persistence/map_sections_v1.gd` | Built-in section owner definitions (see table below). |
 | `godot/scripts/tools/map_lint.gd` | Headless validator over both map folders + golden round-trip (load→save→compare) for shipped maps. |
 
+> **Planned owner, not yet registered (2026-08-21):** `MATERIALS_MASTER_PLAN`
+> §3.2c needs a way for a wall to declare that it occupies only **one** of its
+> two storey-faces (half-thickness fabric/cardboard/glass/plywood elements).
+> ⚠️ It must express the side as an **absolute GU cell**, never as an `a`/`b`
+> flag: `Edge._init()` swaps `gu_a`/`gu_b` during canonicalisation, so a side
+> flag means different things for different walls depending on which way the
+> author drew them. Old maps are unaffected — the default is both faces, and
+> unknown sections round-trip verbatim per the contract below.
+
+
 ## File locations & shipped maps
 
 - `res://maps/*.map.json` — shipped maps. Currently: `PLAYGROUND`, `SIGMA_01`,

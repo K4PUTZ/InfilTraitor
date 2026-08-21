@@ -1096,7 +1096,8 @@ static func _build_ember_wave(s: Dictionary) -> void:
 					"r": _radius_of(neighbour.grid_pos, epicenter),
 				})
 				_maybe_burn(s, neighbour, ring, EMBER_SEED_STAGGER_S * _hash_unit(
-					"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability)
+					"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability,
+					_radius_of(neighbour.grid_pos, epicenter))
 				_climb_from(ncell, ring, s, seen, waves["ember"])
 
 
@@ -1156,7 +1157,8 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 			"climb": step,
 			"r": _radius_of(voxel.grid_pos, epicenter),
 		})
-		_maybe_burn(s, voxel, ring, EMBER_CLIMB_DELAY_S * float(step), flammability)
+		_maybe_burn(s, voxel, ring, EMBER_CLIMB_DELAY_S * float(step), flammability,
+			_radius_of(voxel.grid_pos, epicenter))
 		chance *= EMBER_CLIMB_DECAY
 
 
@@ -1174,13 +1176,23 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 ## Only reaches materials with `burn_consumption > 0`, so wood's ratified VL-D4
 ## look is untouched: it still glows and leaves its geometry standing.
 static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
-		lit_at: float, flammability: float) -> void:
+		lit_at: float, flammability: float, entry_radius: float = 0.0) -> void:
 	var burn_cells: Dictionary = s["burn_cells"]
 	var key := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
 	var consumption: float = float(burn_cells.get(key, 0.0))
 	if consumption <= 0.0:
 		return
-	if _hash_unit("BURNROLL", voxel.grid_pos, voxel.level) > consumption:
+	## ⚠️ 1.0 IS UNCONDITIONAL, and that is the whole semantics of the column.
+	## §3.1: *"'Burns entirely' makes fabric and cardboard OBJECT-scoped, not
+	## radius-scoped… the old 'how far does it spread' question only ever applied
+	## to plywood."* So a material at 1.0 burns wherever it caught, and anything
+	## BELOW 1.0 is a base probability the position then modulates. One number,
+	## two behaviours, and no second flag to keep in sync with the first.
+	var effective: float = consumption
+	if consumption < 1.0:
+		var reach: float = 1.0 - float(entry_radius) / BURN_RADIAL_REACH_VOXELS
+		effective = consumption * clampf(reach, 0.0, 1.0)
+	if _hash_unit("BURNROLL", voxel.grid_pos, voxel.level) > effective:
 		return
 	var jitter: float = 1.0 - BURN_LIFE_JITTER \
 		+ 2.0 * BURN_LIFE_JITTER * _hash_unit("BURNLIFE", voxel.grid_pos, voxel.level)
@@ -1216,6 +1228,22 @@ static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 ## flares and is gone, cardboard 1.4 smoulders. That is §3.1's "cardboard burns
 ## everything too, slightly slower overall than fabric", expressed with the
 ## number that already meant it.
+## M3-4 — plywood's spatial rule, and the ONLY material property that is
+## position-dependent (§3.1: *"Plywood is the complex one and the only one with a
+## spatial rule"*).
+##
+## Director: *"uma granada bem na base da parede abre passagem; mais longe queima
+## menos."* The reach below is in VOXELS of horizontal radius from the
+## epicentre — the `r` every ember entry already carries.
+##
+## ⚠️ NO SEPARATE "IS IT AT THE BASE" TERM, deliberately. A grenade is on the
+## FLOOR — the Director's own point when settling the passage rule — so the cells
+## closest to it are the base cells by geometry. A radial falloff therefore
+## produces "the base opens, higher up burns less" without a level rule to tune,
+## and the upward attenuation is already in the ember wave (EMBER_CLIMB_DECAY
+## makes each rung likelier to stop).
+const BURN_RADIAL_REACH_VOXELS: float = 26.0
+
 const BURN_BASE_LIFE_S: float = 1.4
 const BURN_LIFE_JITTER: float = 0.45   ## ±45%, so a patch does not vanish in one frame
 

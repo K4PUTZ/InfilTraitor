@@ -93,6 +93,14 @@ var damage_substrate: int = 0
 var _parent_container_id: int = 0
 
 
+## The container's instance id, or 0. Public accessor because M3-4 needs to ask
+## "which wall did the fire eat into" from the room, and reaching into a private
+## field from there is how the cross-file write in `room_builder.gd` came to be
+## deleted as unused in the first place (2026-07-12).
+func container_id() -> int:
+	return _parent_container_id
+
+
 func _init(p_grid_pos: Vector2i, p_level: int, parent_container):
 	grid_pos = p_grid_pos
 	level = p_level

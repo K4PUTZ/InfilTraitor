@@ -98,6 +98,37 @@ static func clear_storeys(edge: Edge, registry: EdgeRegistry) -> Array[int]:
 	return out
 
 
+## DIAGNOSTIC — how OPEN a storey is, as a count of through-cells out of the 64
+## in a storey-face (8 face positions x 8 levels).
+##
+## `passage_class()` asks a yes/no question with a very high bar: EVERY cell of
+## the storey clear on every face that exists. M3-4 measured a base grenade on
+## plywood and got NONE, so "how close was it" became the question that matters,
+## and a boolean cannot answer it. A cell counts only when it is clear on every
+## storey-face the edge has — the same "both sides" rule, per cell.
+static func clear_cells_in_storey(edge: Edge, registry: EdgeRegistry, storey: int) -> int:
+	if edge == null or registry == null:
+		return 0
+	var faces: Array = registry.slices_of_edge(edge.id)
+	if faces.is_empty():
+		return 0
+	var intact: Dictionary = {}   ## index -> true if ANY face still has geometry
+	var present: Dictionary = {}
+	for slice in faces:
+		for i in range(slice.voxels.size()):
+			var voxel: Voxel = slice.voxels[i]
+			if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) != storey:
+				continue
+			present[i] = true
+			if voxel.damage_state != Voxel.DamageState.DESTROYED:
+				intact[i] = true
+	var open_cells: int = 0
+	for i in present:
+		if not intact.has(i):
+			open_cells += 1
+	return open_cells
+
+
 ## Human-readable, for diagnostics and selftest output. Not a player-facing
 ## string — those go through `tr()` (CLAUDE.md), and nothing shows this to a
 ## player yet.

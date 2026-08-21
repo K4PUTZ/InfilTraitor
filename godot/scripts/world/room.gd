@@ -3711,6 +3711,9 @@ func _process(_delta: float) -> void:
 ## `commit_damage()` is the single writer the destruction pipeline has
 ## (DESTRUCTION_MASTER_PLAN §3) and fire must not become a second one.
 var _burn_scheduler: BurnScheduler = BurnScheduler.new()
+## Slice edge ids the fire has eaten into, so "did it open a way through" can be
+## answered when the fire goes out.
+var _burn_touched_edges: Dictionary = {}
 
 
 func start_burn(burn_wave: Dictionary) -> void:
@@ -3742,10 +3745,30 @@ func _advance_burn(delta: float) -> void:
 			voxel.damage_substrate)
 	_burn_probe_render()
 	_repaint_voxel_light_buckets(false)
+	## M3-4 — the other half of the Director's sentence. "mais longe queima menos"
+	## is a count; *"uma granada bem na base da parede abre passagem"* is a
+	## PASSAGE, and only PassageQuery can answer that. Collected as the fire eats
+	## rather than re-walked at the end: a burnt voxel's container is reachable
+	## here and nowhere cheaper.
+	for voxel in due:
+		var container = instance_from_id(voxel.container_id()) if voxel.container_id() != 0 else null
+		if container is Slice:
+			_burn_touched_edges[container.edge_id] = true
+
 	if not _burn_scheduler.is_burning():
-		print_debug("[E-BURN] fire out — %d of %d scheduled voxel(s) consumed over %.2fs"
+		var tally: Dictionary = {}
+		var best_open: int = 0
+		for edge_id in _burn_touched_edges:
+			var e: Edge = _edge_registry.get_edge(edge_id) if _edge_registry != null else null
+			if e == null:
+				continue
+			var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(e, _edge_registry))
+			tally[pc] = int(tally.get(pc, 0)) + 1
+			best_open = maxi(best_open, PassageQuery.clear_cells_in_storey(e, _edge_registry, 0))
+		print_debug("[E-BURN] fire out — %d of %d scheduled voxel(s) consumed over %.2fs · passage over %d burnt edge(s): %s · widest base storey %d/64 cells open"
 			% [_burn_scheduler.consumed_count(), _burn_scheduler.scheduled_count(),
-			_burn_scheduler.elapsed()])
+			_burn_scheduler.elapsed(), _burn_touched_edges.size(), tally, best_open])
+		_burn_touched_edges.clear()
 
 
 ## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)

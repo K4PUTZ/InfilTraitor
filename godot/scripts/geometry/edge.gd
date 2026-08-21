@@ -126,6 +126,17 @@ func occupied_gu() -> Vector2i:
 			return Vector2i(-1, -1)
 
 
+## Does this edge have a storey-face on `gu_cell`? False for the cell a
+## half-thickness element left empty, and false for a cell that is not one of
+## the edge's two at all.
+func occupies_cell(gu_cell: Vector2i) -> bool:
+	if gu_cell == gu_a:
+		return occupies_a()
+	if gu_cell == gu_b:
+		return occupies_b()
+	return false
+
+
 func occupies_a() -> bool:
 	return occupied_sides != OccupiedSides.B_ONLY
 

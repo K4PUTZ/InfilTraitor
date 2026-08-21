@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**217 scripts · 65403 lines total** (under `godot/scripts/`)
+**217 scripts · 65471 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -568,7 +568,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 157 lines
+`class_name Edge` · 168 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -590,6 +590,7 @@ extends `ConfirmationDialog` · 64 lines
 **Public API**
 - `func set_occupied_gu(gu_cell: Vector2i) -> bool:`
 - `func occupied_gu() -> Vector2i:`
+- `func occupies_cell(gu_cell: Vector2i) -> bool:`
 - `func occupies_a() -> bool:`
 - `func occupies_b() -> bool:`
 - `func is_half_thickness() -> bool:`
@@ -716,7 +717,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 168 lines
+`class_name JunctionResolver` · 196 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -3431,7 +3432,7 @@ extends `SceneTree` · 227 lines
 
 ### `half_thickness_selftest.gd`
 
-extends `SceneTree` · 277 lines
+extends `SceneTree` · 306 lines
 
 `godot/scripts/tools/half_thickness_selftest.gd`
 

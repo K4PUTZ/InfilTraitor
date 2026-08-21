@@ -493,11 +493,43 @@ passage_class over 10 edges (after the object burn): { "STANDING": 10 }
 The two half-thickness edges are in that ten. **They open by clearing the ONE face
 they have** — structural, not lucky, which is exactly what §3.2b promised.
 
-⚠️ **STILL OPEN — the junction column.** `JunctionResolver` iterates
-`all_edges()` and reads `face_a`/`face_b`; it never looks at a slice, so it is
-side-blind and will emit a FULL corner column beside a half-thickness panel. The
-selftest pins that it does not crash and reports the count; the *decision* —
-skip the column, or halve it — is the Director's and is not made here.
+### ✅ RESOLVED 2026-08-21 — the corner column, and why "inside" never had to be defined
+
+> Director: *"Não tem coluna de junção em meias espessuras se estiverem nas GUs
+> de dentro do aposento. A junção é justamente pra completar as slices de fora,
+> nas esquinas, afetando a GU da ponta. Se a meia espessura for nas GUs de fora,
+> a coluna extra se faz necessária. Podemos habilitar as duas coisas, ou forçar a
+> ser sempre pra dentro. **O problema é definir "dentro" quando não for um
+> aposento regular.**"*
+
+**Both are enabled, and the stated problem does not have to be solved.** Read off
+`JunctionResolver.resolve()`: it finds an ELBOW — the GU that owns both faces —
+and places the column at `gu + delta(fa) + delta(fb)`, the diagonal *"outside
+both walls"*. So the column always completes the two **outer** storey-faces,
+those on `gu + delta(face)`, and never the ones on the elbow itself.
+
+**That makes "inside" the ELBOW, not the room.** Every junction has one by
+construction. An irregular room, an L of free-standing panels, a corridor, a
+tent — all answer the same way, locally, and no room has to be identified
+anywhere. The rule is two lines:
+
+```gdscript
+if not edge_a.occupies_cell(gu + Face.delta(fa)): continue
+if not edge_b.occupies_cell(gu + Face.delta(fb)): continue
+```
+
+Both legs must supply an outer face, because a corner needs two faces to be a
+corner. Pinned by three cases, and the middle one fails without the rule:
+
+```
+two full-thickness legs                → 1 column   (unchanged — the control)
+one leg half-thickness on the ELBOW    → 0 columns  (nothing outside to complete)
+one leg half-thickness on the OUTER GU → 1 column   (the corner is real)
+```
+
+*(This also retires §3.2c's "JunctionResolver is side-blind" as an open item. It
+was — the fix is that it now asks the edge, not the slice, which costs no extra
+lookup.)*
 
 *(Corrected while building: §3.2c listed `voxel_renderer.gd:1892`'s neighbour
 lookup as the first thing to fix, on the grounds that its final fallback

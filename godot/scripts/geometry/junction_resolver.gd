@@ -148,6 +148,34 @@ static func resolve(registry: EdgeRegistry) -> Array:
 					var d: Vector2i = Face.delta(fa) + Face.delta(fb)
 					var diagonal_cell: Vector2i = gu + d
 
+					## ⚠️ M3-2b — HALF-THICKNESS, and the rule is LOCAL.
+					##
+					## Director, 2026-08-21: *"Não tem coluna de junção em meias
+					## espessuras se estiverem nas GUs de dentro do aposento. A
+					## junção é justamente pra completar as slices de fora, nas
+					## esquinas… Se a meia espessura for nas GUs de fora, a coluna
+					## extra se faz necessária. O problema é definir 'dentro'
+					## quando não for um aposento regular."*
+					##
+					## **That problem does not have to be solved.** The column
+					## completes the two OUTER storey-faces where they meet — the
+					## ones on `gu + delta(fa)` and `gu + delta(fb)`, never the
+					## ones on `gu` itself, which is why `diagonal_cell` is the
+					## far side. So "inside" is not a property of the room: it is
+					## `gu`, the elbow, and every junction already knows its own.
+					## An irregular room, an L of free-standing panels and a
+					## corridor all answer it the same way, locally, with no
+					## notion of a room anywhere.
+					##
+					## Both legs must supply an outer face, because a corner needs
+					## two faces to have a corner. A half-thickness element on the
+					## INNER cell supplies none, and the notch it would fill was
+					## never opened.
+					if not edge_a.occupies_cell(gu + Face.delta(fa)):
+						continue
+					if not edge_b.occupies_cell(gu + Face.delta(fb)):
+						continue
+
 					# Compute storey span: from min(start_storey) to max(start_storey + storey_count)
 					var min_start := mini(edge_a.start_storey, edge_b.start_storey)
 					var max_end := maxi(edge_a.start_storey + edge_a.storey_count, edge_b.start_storey + edge_b.storey_count)

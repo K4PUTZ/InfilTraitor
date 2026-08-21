@@ -240,30 +240,59 @@ func test_passage_opens_on_the_only_face() -> void:
 
 
 func test_junction_resolver_survives_a_half_thickness_edge() -> void:
-	print("TEST: [7] JunctionResolver runs on an L where one leg is half thickness")
-	## §3.2c's open item, measured rather than assumed: JunctionResolver iterates
-	## all_edges() and reads face_a/face_b — it never looks at a slice, so it is
-	## SIDE-BLIND and will still emit a full corner column beside a half-thickness
-	## panel. What this test pins is that it does not CRASH and that the column
-	## count is reported, so whoever decides "skip it or halve it" has the number.
+	print("TEST: [7] the corner column follows the OUTER face — and 'inside' is the ELBOW, not the room")
+	## Director, 2026-08-21: *"Não tem coluna de junção em meias espessuras se
+	## estiverem nas GUs de dentro do aposento… Se a meia espessura for nas GUs
+	## de fora, a coluna extra se faz necessária. O problema é definir 'dentro'
+	## quando não for um aposento regular."*
+	##
+	## The three cases below are what makes that problem go away. A junction
+	## column completes the two OUTER storey-faces where they meet — the ones on
+	## `gu + delta(face)`, never the ones on the elbow `gu` itself. So "inside"
+	## is the elbow, every junction has one by construction, and no room — regular
+	## or not — has to be identified for the rule to answer.
+	var elbow := Vector2i(4, 5)
+	var outer_se := Vector2i(5, 5)   ## across the SE face
+	var outer_sw := Vector2i(4, 6)   ## across the SW face
+
+	## (a) BOTH FULL — the control. If this ever stops producing a column, the
+	## rule has eaten the behaviour it was supposed to leave alone.
+	var full_count: int = _junction_count(elbow, outer_se, outer_sw, Vector2i(-1, -1))
+	if full_count == 1:
+		_pass("two full-thickness legs → 1 column (unchanged)")
+	else:
+		_fail("two full-thickness legs → %d column(s), expected 1" % full_count)
+
+	## (b) HALF THICKNESS ON THE INNER CELL — the elbow. The outer face it would
+	## have completed was never built, so the notch does not exist.
+	var inner_count: int = _junction_count(elbow, outer_se, outer_sw, elbow)
+	if inner_count == 0:
+		_pass("one leg half-thickness on the ELBOW → 0 columns (nothing outside to complete)")
+	else:
+		_fail("one leg half-thickness on the elbow → %d column(s), expected 0" % inner_count)
+
+	## (c) HALF THICKNESS ON THE OUTER CELL. The outer face is the one that
+	## survives, so the corner is real and still needs filling.
+	var outer_count: int = _junction_count(elbow, outer_se, outer_sw, outer_se)
+	if outer_count == 1:
+		_pass("one leg half-thickness on the OUTER cell → 1 column (the corner is real)")
+	else:
+		_fail("one leg half-thickness on the outer cell → %d column(s), expected 1" % outer_count)
+	print("")
+
+
+## An L of two edges at `elbow`, with the SE leg optionally made half thickness
+## on `occupied` (pass (-1,-1) for both legs full). Returns the column count.
+func _junction_count(elbow: Vector2i, outer_se: Vector2i, outer_sw: Vector2i,
+		occupied: Vector2i) -> int:
 	var registry := EdgeRegistry.new()
 	_fixtures.append(registry)
-	var full := Edge.between(Vector2i(4, 5), Vector2i(4, 6), 2, "concrete")
-	var half := _swapped_edge(Vector2i(5, 5), Vector2i(4, 5), 2, "glass")
-	half.set_occupied_gu(Vector2i(5, 5))
-	SliceGenerator.generate([full, half], registry)
-
-	var columns: Array = JunctionResolver.resolve(registry)
-	_pass("resolve() returned %d column(s) without faulting" % columns.size())
-
-	var half_material := 0
-	for column in columns:
-		if column.material == "glass":
-			half_material += 1
-	print("      (of those, %d derive from the half-thickness edge — §3.2c's open"
-		% half_material)
-	print("       'skip the column or halve it' decision, still the Director's)")
-	print("")
+	var leg_se := Edge.between(elbow, outer_se, 2, "glass")
+	var leg_sw := Edge.between(elbow, outer_sw, 2, "concrete")
+	if occupied != Vector2i(-1, -1):
+		leg_se.set_occupied_gu(occupied)
+	SliceGenerator.generate([leg_se, leg_sw], registry)
+	return JunctionResolver.resolve(registry).size()
 
 
 ## One 2-storey half-thickness edge whose pane sits on the AUTHORED cell (5,5),

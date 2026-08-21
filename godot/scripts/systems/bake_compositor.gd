@@ -68,9 +68,15 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 ## MAT-REG-01: brick/cardboard/fabric/plywood APPENDED. Each resolves through
 ## BakePolicy.canonical_voxel_atom_for() to voxel_concrete.png, so this adds no
 ## missing-file push_error — the registration is inert until a map places one.
+## `glass` was MISSING here until 2026-08-21 and it was not an oversight of this
+## change — it had never been in the list. It went unnoticed because glass had
+## never been placed as a real block: the moment MAT-BLOCK-01 placed one, B6
+## fired exactly as designed — "no canonical voxel atom for 'glass' — will render
+## unmasked rectangles" — even though voxel_glass.png has been on disk all along.
+## A material in BASE_MATERIALS but not here renders, and renders WRONG.
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
 	"grass", "dirt", "gravel", "sand", "earth",
-	"brick", "cardboard", "fabric", "plywood"]
+	"brick", "cardboard", "fabric", "plywood", "glass"]
 const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);

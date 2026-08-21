@@ -207,15 +207,21 @@ Ordered so that nothing is built on an unverified assumption.
 | ~~**A1**~~ | ~~register `brick` + `plywood`~~ — ✅ **DONE `25cf8b6a`**, and it did NOT need the facades: registration is inert until a map places a block. Real boot registers both with zero errors | — |
 | ~~**A2**~~ | ~~same for `cardboard` + `fabric`~~ — ✅ **DONE `25cf8b6a`**. `glass` also gained the `base_color`/`pattern_algorithm`/`has_facade` it was the only material missing | — |
 | **B1** | **Measure the free win.** Force one fabric voxel to `DESTROYED`, capture the light field against a same-boot control, confirm §1 | A2 |
-| **B2** | Place all four as real blocks in PLAYGROUND (reserved today at gu x=22-24 / 27-29 / 32-34 / 37-39), run `roof_bake_selftest` — this is where a missing facade shows up as 520 missing roof entries | A1, A2 |
+| ~~**B2**~~ | ~~place them as real blocks and run `roof_bake_selftest`~~ — ✅ **DONE**. All FIVE placed at gu x=22/26/30/34/38 (step 4, not the reserved 5 — plywood was a late addition and five 3-wide blocks would run past the 44-wide board). `roof_bake_selftest` PASSES with glass placed, which **closes ROOF_BAKE_LEAK_2026-08-17's second finding**: the 520 missing roof entries were a missing FACADE, not a missing roof family | — |
 | **C0** | Answer §3.1–3.5 with the Director; write v0.2 of this plan | B2 |
 | **C1+** | Build the propagation — **prop-first** (§3b), per-material curves, blast-sourced | C0 |
 | **D** | **Glass, last** — its own non-local pane break. Separate brief; see §5 | — |
 
-**A1 and A2 were inert until B2**, and that turned out to be exactly right:
-registering a material that nothing places changes no pixel, so all three
-tasks landed *before* the art rather than after it. **B2 is now the next
-blocking step and it needs the facades.**
+**The facades arrived 2026-08-21 and A1/A2/B2 all closed the same day.** What
+placing the blocks found, and nothing else could have: `glass` had **never** been
+in `BakeCompositor.VOXEL_MATERIALS`, so B6 fired *"no canonical voxel atom for
+'glass' — will render unmasked rectangles"* even though `voxel_glass.png` had
+been on disk for months. A material in `BASE_MATERIALS` but not in
+`VOXEL_MATERIALS` renders, and renders WRONG. It went unseen because glass had
+never been placed.
+
+**The next blocking step is C0** — answering §3.1/§3.3/§3.4/§3.5 so the
+propagation can be designed. Nothing else is waiting on art.
 
 ---
 

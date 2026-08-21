@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 63221 lines total** (under `godot/scripts/`)
+**211 scripts · 63227 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1666,7 +1666,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1228 lines
+`class_name BakeCompositor` · 1234 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 

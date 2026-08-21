@@ -96,13 +96,22 @@ def check(path):
     ## silhouette's alpha comes from the canonical voxel atom, so whatever a
     ## facade carries in that channel is discarded. A gate that fails known-good
     ## art is measuring the wrong thing.
+    ##
+    ## It reports the COUNT, not just the minimum, because the minimum alone
+    ## cannot tell four stray export pixels from a genuinely transparent half of
+    ## the image. Measured on facade_plywood.png: min alpha 0, but only 4 fully
+    ## transparent pixels out of 524 288 — noise, not a design.
     if "A" in im.getbands():
         alpha = im.convert("RGBA").getchannel("A")
         lo, _hi = alpha.getextrema()
         if lo < 255:
-            notes.append("note: alpha channel dips to %d. Harmless — B3 discards "
-                         "facade alpha — but it means the export carried a channel "
-                         "nothing reads." % lo)
+            hist = alpha.histogram()
+            fully = hist[0]
+            partial = total - hist[255] - fully
+            notes.append("note: alpha dips to %d — %d fully transparent px (%.2f%%), "
+                         "%d partial. Harmless, B3 discards facade alpha; flagged only "
+                         "because the export carried a channel nothing reads."
+                         % (lo, fully, 100.0 * fully / total, partial))
 
     ## 4. Imported. The silent killer: TextureResolver goes through
     ## ResourceLoader.exists(), so an un-imported PNG is invisible to the bake.

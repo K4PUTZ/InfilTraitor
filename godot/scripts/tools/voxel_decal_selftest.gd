@@ -38,6 +38,7 @@ func _init() -> void:
 	test_shooter_gu_resolves_a_real_side()
 	test_a_blast_never_resolves_to_a_bullet_mark()
 	test_metal_and_wood_do_not_crack()
+	test_hole_only_materials_get_no_decal_family()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -480,6 +481,46 @@ func test_metal_and_wood_do_not_crack() -> void:
 			_fail("%s should still crack but resolved to %s" % [material, resolved])
 		if MaterialResistanceTable.crack_factor(material) <= 0.0:
 			_fail("%s is listed as a cracking material but its crack_factor is 0.0" % material)
+
+	print("")
+
+
+func test_hole_only_materials_get_no_decal_family() -> void:
+	print("[11] MAT-SOFT-01 — a hole-only material never gets a decal family\n")
+
+	## The guard against a well-meaning future edit, and it guards the ART side
+	## specifically. ShotPunchTable.HOLE_ONLY_MATERIALS already makes fabric,
+	## cardboard and plywood incapable of reaching CRACKED or DENTED; adding one
+	## of them to IMPACT_DECAL_MATERIALS would not break anything visibly — it
+	## would just commission 3 files per family that nothing can ever resolve.
+	## Director, 2026-08-21: *"não vamos ter decals nos materiais moles."*
+	for material in ShotPunchTable.HOLE_ONLY_MATERIALS:
+		if VoxelRendererClass.IMPACT_DECAL_MATERIALS.has(material):
+			_fail("%s is in IMPACT_DECAL_MATERIALS, but it can never reach a marked tier" % material)
+		else:
+			_pass("%s has no decal family, which matches its two-state tier rule" % material)
+		if VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+			_fail("%s is listed as a cracking material" % material)
+
+	## ...and the same assertion from the other end, with test [7]'s own
+	## predicate: the PHOTOGRAPHIC path is the only one that ends in a variant
+	## index, so a name carrying `_1` means 3 files per family were commissioned.
+	## The legacy full-voxel name a hole-only material falls back to is not a
+	## failure here — it is unreachable, because HOLE_ONLY_MATERIALS means these
+	## tiers can never be produced in the first place. What this pins is that
+	## nobody added the ART without noticing the tier can never fire.
+	var composed: Array[String] = []
+	for material in ShotPunchTable.HOLE_ONLY_MATERIALS:
+		for state in [Voxel.DamageState.CRACKED, Voxel.DamageState.DENTED]:
+			for blast in [true, false]:
+				var resolved: String = VoxelRendererClass.damage_variant_material(
+					material, state, blast, Voxel.CarvedSide.LEFT, 1)
+				if resolved.ends_with("_1"):
+					composed.append("%s tier %d blast=%s -> %s" % [material, state, blast, resolved])
+	if composed.is_empty():
+		_pass("no hole-only material composes a variant decal name, over 3 materials x 2 tiers x 2 causes")
+	else:
+		_fail("a hole-only material composed a variant decal name: %s" % ", ".join(composed))
 
 	print("")
 

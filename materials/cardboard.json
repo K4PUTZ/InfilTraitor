@@ -1,7 +1,7 @@
 {
   "id": "cardboard",
   "destroy_factor": 0.9,
-  "dent_factor": 0.15,
+  "dent_factor": 0.0,
   "crack_factor": 0.0,
   "flammability": 1.4,
   "base_color": [

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**211 scripts · 63227 lines total** (under `godot/scripts/`)
+**211 scripts · 63387 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1794,7 +1794,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1669 lines
+`class_name BlastCalculator` · 1672 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1909,7 +1909,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 304 lines
+`class_name ShotPunchTable` · 354 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -2821,7 +2821,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2354 lines
+extends `SceneTree` · 2420 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3960,7 +3960,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 494 lines
+extends `SceneTree` · 535 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 

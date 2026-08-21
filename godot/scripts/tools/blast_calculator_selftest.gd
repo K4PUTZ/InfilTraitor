@@ -104,6 +104,8 @@ func _init() -> void:
 	test_crater_crack_absent_without_weights()
 	test_crater_crack_bands_and_severity_ladder()
 	test_crater_crack_follows_crack_factor_and_respects_d32_6()
+	## MAT-SOFT-01 (Director, 2026-08-21) — the soft materials' tier rule.
+	test_soft_materials_never_take_a_mark()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -2352,3 +2354,67 @@ func _would_dent(container_id: String, voxel, d: float, max_radius: float,
 		return false
 	var key := "%s:FLOORDENT:%d,%d,%d" % [container_id, voxel.grid_pos.x, voxel.grid_pos.y, voxel.level]
 	return float(FacadeSampler._fnv1a_hash(key) % 10000) / 10000.0 < dent_p
+
+
+## MAT-SOFT-01 (Director, 2026-08-21): *"Não vamos ter decals nos materiais
+## moles porque eles não ficam cracked e nem dented, apenas furam ou queimam."*
+##
+## The ruling is usually read as an ART decision, and it is not: the tier data
+## underneath it promised dents. fabric/cardboard/plywood shipped with
+## dent_factor 0.10/0.15/0.22, and a material with no authored decal family is
+## NOT unmarked — it falls to the GENERIC family
+## (VoxelRenderer._generic_flat_mark_plan), so a blast was marking cardboard
+## with a grey dent nobody had asked for.
+##
+## Two halves, and both must hold or the ruling is only half true:
+##   - the BLAST side, which reads MaterialResistanceTable's factors;
+##   - the SHOT side, where damage_state_for()'s CRACKED floor is BELOW every
+##     breach threshold, so a soft material could not have reached DESTROYED on
+##     a weak hit no matter what its breach number said.
+## The Director's answer to the second (2026-08-21) is "sempre fura": a soft
+## material has exactly two states, INTACT and DESTROYED.
+func test_soft_materials_never_take_a_mark() -> void:
+	print("TEST: MAT-SOFT-01 - fabric/cardboard/plywood are hole-or-nothing: no CRACKED, no DENTED, on either the blast or the shot path")
+
+	var offenders: Array[String] = []
+	var summary: Array[String] = []
+	for material in ShotPunchTable.HOLE_ONLY_MATERIALS:
+		var dent: float = MaterialResistanceTableClass.dent_factor(material)
+		var crack: float = MaterialResistanceTableClass.crack_factor(material)
+		summary.append("%s dent %.2f crack %.2f" % [material, dent, crack])
+		if dent > 0.0 or crack > 0.0:
+			offenders.append(material)
+	if offenders.is_empty():
+		_pass("blast side: every hole-only material has dent_factor and crack_factor at 0 — %s" % ", ".join(summary))
+	else:
+		_fail("blast side: %s still carry a dent/crack factor (%s), so a blast marks them"
+			% [", ".join(offenders), ", ".join(summary)])
+
+	## The sweep deliberately starts BELOW PUNCH_DENT_MIN (0.30), because that is
+	## the rung the breach threshold cannot reach: damage_state_for() returns
+	## CRACKED there before it ever looks at breach_min, so lowering the
+	## threshold to zero would not have been enough on its own.
+	var marked: Array[String] = []
+	var sweep: Array[float] = [0.0, 0.01, 0.1, 0.29, 0.30, 0.5, 1.0, 2.0, 2.74, 2.75, 5.0, 12.0]
+	for material in ShotPunchTable.HOLE_ONLY_MATERIALS:
+		for punch in sweep:
+			var state: int = ShotPunchTable.damage_state_for(punch,
+				ShotPunchTable.destroy_min(material), material)
+			if state != Voxel.DamageState.DESTROYED:
+				marked.append("%s at punch %.2f -> %d" % [material, punch, state])
+	if marked.is_empty():
+		_pass("shot side: %d punch levels from %.2f to %.2f, over %d materials, and every one is a hole"
+			% [sweep.size(), sweep[0], sweep[sweep.size() - 1], ShotPunchTable.HOLE_ONLY_MATERIALS.size()])
+	else:
+		_fail("shot side: a soft material took a mark instead of a hole — %s" % ", ".join(marked))
+
+	## The guard against the change being undone by a well-meaning edit: a hard
+	## material passing through this branch must be UNTOUCHED, or the ruling has
+	## quietly retuned the calibrated arsenal.
+	var control: int = ShotPunchTable.damage_state_for(0.5, ShotPunchTable.destroy_min("concrete"), "concrete")
+	if control == Voxel.DamageState.DENTED:
+		_pass("control: concrete at punch 0.50 against breach %.2f is still DENTED — the hard materials are untouched"
+			% ShotPunchTable.destroy_min("concrete"))
+	else:
+		_fail("control: concrete at punch 0.50 returned %d, not DENTED — the hard ladder moved" % control)
+	print("")

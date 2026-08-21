@@ -518,8 +518,11 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## W-TUNE-02: the BREACH threshold is the material's, not a global one, and
 		## it is read from the slice rather than passed in — the sibling slice at
 		## depth 1 is the same wall and must answer with the same number.
+		## MAT-SOFT-01: the material goes in as well as its threshold, because a
+		## hole-only material's rule is a TIER capability that no threshold can
+		## express — see ShotPunchTable.HOLE_ONLY_MATERIALS.
 		var state: int = ShotPunchTable.damage_state_for(current_punch,
-			ShotPunchTable.destroy_min(current_slice.material))
+			ShotPunchTable.destroy_min(current_slice.material), current_slice.material)
 		if state != Voxel.DamageState.DESTROYED:
 			## CRACKED or DENTED — the projectile's own mark, bullet family
 			## (from_blast stays false, D23), on the face the shot came from

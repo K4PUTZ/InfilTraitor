@@ -1,7 +1,7 @@
 {
   "id": "fabric",
   "destroy_factor": 0.95,
-  "dent_factor": 0.1,
+  "dent_factor": 0.0,
   "crack_factor": 0.0,
   "flammability": 0.6,
   "base_color": [

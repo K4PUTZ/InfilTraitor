@@ -105,14 +105,52 @@ static var DESTROY_MIN: Dictionary = {
 	## calibrates against real captures once the facades land and the blocks are
 	## placed. What they are NOT is a guess at what looks right.
 	"brick": 0.71,     ## mineral, from concrete: 0.63 * 1.30/1.15
-	"plywood": 1.37,   ## soft, from wood: 1.03 * 0.80/0.60
-	"cardboard": 2.35, ## soft, from wood: 1.03 * 0.80/0.35
-	"fabric": 2.75,    ## soft, from wood: 1.03 * 0.80/0.30
+	##
+	## MAT-SOFT-01 (2026-08-21) RETIRED the other three derived rows — plywood
+	## 1.37, cardboard 2.35, fabric 2.75, all `1.03 * 0.80/r` from wood. They are
+	## gone rather than zeroed because HOLE_ONLY_MATERIALS is now the single
+	## source of that rule and destroy_min() answers 0.0 from it; a row here as
+	## well would be a second place to change and a second place to forget. The
+	## derivation itself was not wrong — it held the destroyed FRACTION near
+	## wood's calibrated reference — it was answering a question the Director has
+	## since closed differently: a soft material has no below-breach case at all.
 }
 ## Fallback for a material with no row, and the value every non-firearm caller
 ## of damage_state_for() still gets. Between stone and earth on purpose: an
 ## unlisted material should be hard to breach, not free.
 static var PUNCH_DESTROY_MIN: float = 0.80
+
+## MAT-SOFT-01 (Director, 2026-08-21): *"Não vamos ter decals nos materiais moles
+## porque eles não ficam cracked e nem dented, apenas furam ou queimam."*
+##
+## A material listed here has exactly TWO states under a projectile — INTACT and
+## DESTROYED. It is not an art omission dressed up as data: a material with no
+## authored decal family is NOT unmarked, it falls to the material-agnostic
+## GENERIC family (VoxelRenderer._generic_flat_mark_plan), so leaving the tiers
+## alone would have kept marking cardboard with a grey dent the Director had
+## just ruled out.
+##
+## WHY THE THRESHOLD ALONE COULD NOT EXPRESS IT, which is the whole reason this
+## array exists instead of three more rows in DESTROY_MIN. damage_state_for()
+## returns CRACKED below PUNCH_DENT_MIN *before* it ever reads breach_min, so a
+## breach of 0.0 still leaves the CRACKED floor underneath it — a weak hit on
+## fabric would have gone on marking. The rule is a TIER capability, and the
+## threshold is downstream of it.
+##
+## Director, same session, on what a weak hit does: **"sempre fura"** — a round
+## that reaches fabric, cardboard or plywood goes through it. There is no
+## below-breach case for these three, which is why destroy_min() answers 0.0 for
+## them and their derived DESTROY_MIN rows were retired rather than kept as dead
+## data disagreeing with this array.
+##
+## ⚠️ GLASS IS NOT HERE, deliberately. D22 gives it the same "no mark" half but
+## the OTHER answer to the weak hit — *"é buraco feito, ou não feito"* — which
+## needs an INTACT return this ladder has never produced and whose callers do not
+## yet handle. Glass is M4b in MATERIALS_MASTER_PLAN, explicitly last, with its
+## own crack/hole algorithm; it joins this mechanism there. Until then its
+## recorded contradiction (a far shotgun pellet CRACKS glass) stands recorded,
+## not silently half-fixed.
+static var HOLE_ONLY_MATERIALS: Array[String] = ["fabric", "cardboard", "plywood"]
 
 ## Neighbour destruction (D30.1): neighbours are DESTROYED or untouched, and
 ## NEVER take a mark of their own — that stays the projectile's alone. Count
@@ -217,6 +255,12 @@ static func resistance(material: String) -> float:
 ## opposed to merely mark it. See DESTROY_MIN's own note for why this is not
 ## derivable from resistance().
 static func destroy_min(material: String) -> float:
+	## MAT-SOFT-01: a hole-only material always breaches, so its threshold is
+	## zero rather than absent — the fallback (0.80) would make the shot
+	## diagnostic print a number that contradicts the tier the same shot
+	## produced, and that print is what the Director calibrates off.
+	if HOLE_ONLY_MATERIALS.has(material):
+		return 0.0
 	return float(DESTROY_MIN.get(material, PUNCH_DESTROY_MIN))
 
 
@@ -281,7 +325,13 @@ static func compute(weapon_punch: float, material: String, skill: float,
 ## punch -> DamageState for the IMPACT voxel (never for neighbours).
 ## `breach_min` is the material's own DESTROY_MIN; the default keeps every
 ## caller that has no material in hand on the global fallback.
-static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN) -> int:
+static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN,
+		material: String = "") -> int:
+	## MAT-SOFT-01 — ahead of the CRACKED floor, because that floor is exactly
+	## what a breach threshold cannot reach. `material` defaults to "" so every
+	## caller that has no material in hand keeps the ladder it always had.
+	if HOLE_ONLY_MATERIALS.has(material):
+		return Voxel.DamageState.DESTROYED
 	if punch < PUNCH_DENT_MIN:
 		return Voxel.DamageState.CRACKED
 	if punch < breach_min:

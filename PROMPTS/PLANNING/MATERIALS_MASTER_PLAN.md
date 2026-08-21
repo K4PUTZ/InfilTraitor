@@ -160,6 +160,42 @@ Per material, and the three do **not** share a curve:
 detonation already computes distance-from-epicentre per cell (the ring model)
 and `carved_side_for()` already consumes epicentre bias, so the input exists.
 
+### 3.1a What fire actually operates on — the REMNANT (Director, 2026-08-21)
+
+> *"o fogo precisa acontecer de maneira mais ou menos aleatória, subindo para os
+> voxels mais próximos, apaga e vira brasa… Na prática panos vão ser cortinas,
+> véus, toldos, coisas pequenas que vão entrar em combustão, e a maior parte já
+> vai ser destruída no momento que a granada explode. Então o que queima na
+> realidade é o que sobrar. Alguns materiais queimam um pouco e apagam, e outros
+> são mais consumidos, como o papelão e o pano."*
+
+**This resizes M3-3 downward, which is the useful part.** A fabric object is a
+curtain, a veil, an awning — small — and **the blast has already destroyed most of
+it before fire starts**. Fire is not a second destruction pass over an intact
+object; it runs on the SURVIVORS at the edge of the hole. That is already the
+shape the ember wave has (`_build_ember_wave` collects *"surviving combustible
+voxels edging this blast's holes"*), so M3-3 extends an existing seam rather than
+opening a new one.
+
+The motion, restated so it is not re-derived: **somewhat random, climbing to the
+NEAREST voxels, then it goes out and becomes ember.** Not a modelled flame front.
+
+⚠️ **CONSUMPTION IS A SECOND AXIS, AND IT DOES NOT EXIST YET.** *"Alguns materiais
+queimam um pouco e apagam, e outros são mais consumidos"* is a statement about HOW
+MUCH is eaten. `flammability` is not that number — its own doc comment defines it
+as a multiplier on **how long the ember GLOWS**, with wood the 1.0 reference. The
+two disagree today, measurably:
+
+```
+wood 1.0 · plywood 1.1 · cardboard 1.4 · fabric 0.6
+```
+
+Fabric is one of the two the Director names as *most* consumed and carries the
+**lowest** number on the table — which is defensible for glow duration (cloth
+flares and is gone) and simply silent about consumption. **M3-3 needs its own
+`burn_consumption` column**; reading consumption off `flammability` would make
+fabric the least consumed material in the game.
+
 Two structural notes that fall out of this:
 
 - **"Burns entirely" makes fabric and cardboard object-scoped, not
@@ -233,15 +269,34 @@ dropping the adjacency requirement (1 failure — "storeys 0 and 2 → STANDING"
 dropping the every-face requirement (8 failures, starting with an intact wall
 reporting STANDING).
 
-⚠️ **OPEN, and deliberately not decided in code: must a passage reach the
-ground?** The query answers geometry, not reachability — it reports that an
-opening of a given size exists *somewhere* in the wall, and `clear_storeys()`
-says where. Two clear storeys at heights 2 and 3 are geometrically STANDING and
-practically a hole in the sky. The Director's own sentence covers both cases —
-*"passar agachado (ou transpor uma janela)"* — a window is exactly a passage that
-does **not** reach the ground, so a blanket "storey 0 only" rule would delete
-window traversal. **Whoever wires movement to this needs a ruling**; the data to
-apply it is already exposed rather than baked in.
+### ✅ RESOLVED 2026-08-21 — a passage does NOT have to reach the ground
+
+> Director: *"A passagem pode ser numa slice um pouco mais alta, não precisa
+> necessariamente ser no chão. Mas normalmente nesse caso vai ser uma abertura que
+> já existe, fechada por vidro, ou madeira, ou pano, etc. A abertura no material
+> duro já existe. Então a granada destrói essas barreiras e o jogador passa pela
+> janela. Porém, uma granada perto de um material mole vai estar necessariamente
+> no chão. Por isso a abertura vai ficar naquela parte da parede, e precisa ter
+> uma certa passagem livre o suficiente para o agente passar, agachado ou em pé."*
+
+**`PassageQuery` needs no change** — it was already written to answer geometry
+and let the caller ask about height, and that turns out to be the right shape.
+The ruling adds the *reason*, which is worth more than the rule:
+
+- **A raised passage is a WINDOW, and a window is authored, not blasted.** The
+  opening in the hard wall already exists in the map; what the grenade destroys
+  is the **barrier filling it** — glass, wood, fabric. So a raised CROUCH result
+  is not a hole in the sky, it is a window with its pane gone.
+- **A blast-made opening is at the base by physics, not by rule.** A grenade
+  beside a soft material is *on the floor*, so the hole it opens is in the bottom
+  storey. Nothing has to enforce "storey 0" — the geometry produces it.
+- **The requirement is only that the clearance be enough**, crouched or standing,
+  which is exactly what `passage_class()` returns.
+
+⚠️ **This makes M3-2b (half-thickness) the load-bearing item it already looked
+like**, and for a sharper reason than depth: *a window IS a half-thickness element
+filling an authored opening in a full-thickness wall*. Without it there is no way
+to express the thing the Director just described.
 
 ### 3.2b Half-thickness elements — the architectural news
 
@@ -433,9 +488,21 @@ because it reads occupancy; the tactical side did not because it does not.)*
 - **An object that burns entirely leaves its JUNCTION COLUMNS standing.** Four
   dark posts survive with 0 fabric voxels left, proven against a
   `INFILTRAITOR_SKIP_JUNCTIONS=1` control run where they vanish
-  (`burn_fabric_nojunc_3_object.png`). This is the same side-blindness §3.2c
-  already flagged for half-thickness elements — `JunctionResolver` is
-  edge-derived and never looks at a slice — arriving from the other direction.
+  (`burn_fabric_nojunc_3_object.png`).
+
+  ✅ **NOT A DEFECT — Director, 2026-08-21:** *"o que sobra do pano (e outros) são
+  as colunas extras das esquinas, que em situações normais não vão existir. Não
+  vamos fazer um quarteirão de pano, a não ser talvez numa tenda, e aí de qualquer
+  maneira sobrar uma estrutura faz sentido."* A corner column only exists where two
+  walls of that material MEET, and nothing is built as a block of fabric. Where one
+  legitimately is — a tent — a surviving frame is the correct read, not a bug. The
+  measurement stands as a description of PLAYGROUND's test block, which is a
+  3-GU block precisely because it is a test rig.
+
+  What this does NOT retire is §3.2c's separate point: `JunctionResolver` is
+  edge-derived and side-blind, so a **half-thickness** panel still gets a
+  full-thickness corner column. That one is still open, and is about width rather
+  than survival.
 
 ⚠️ **A note on reading these captures.** `voxel_destroyed` fires per voxel and
 room.gd dispatches it to the smoke/debris overlays, so erasing 3 080 cells in one
@@ -461,7 +528,7 @@ frame.
 | ~~**M3-1**~~ | ~~Measure §3.4's free win~~ — ✅ **CLOSED 2026-08-21**: the visual field is free (control 0, one voxel 2, object 262, all brighter); the lamp's shadow is NOT (3 burnt GUs still in `_blocked_cells`) | — |
 | ~~**M3-2**~~ | ~~`passage_class()`~~ — ✅ **BUILT 2026-08-21**, `godot/scripts/geometry/passage_query.gd`, 15 assertions + real-map evidence (NONE ×8 → STANDING ×8) | M3-0 |
 | **M3-2b** | **Half-thickness elements** (§3.2b) — one storey-face per edge, mapfile-expressed, NOT faked by pre-destroying a side | M3-2 |
-| **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only (object-scoped, no spread logic) | M3-1, M3-2b |
+| **M3-3** | Burn state + a delta tick behind ONE advance call; fabric and cardboard only. **Runs on the blast's SURVIVORS (§3.1a), not on an intact object** — extends `_build_ember_wave`'s existing "surviving combustible voxels edging this blast's holes". Needs a new `burn_consumption` column: `flammability` is glow DURATION, not how much is eaten | M3-1, M3-2b |
 | **M3-4** | Plywood: upward spread, ember phase, edge propagation, base-proximity gating | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
 
@@ -600,7 +667,7 @@ No task list until the study lands.
 | ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
 | ✅ | **M3-2** — `passage_class()` + selftest | done |
 | 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
-| 5 | **M3-3** — fabric + cardboard burn (object-scoped, delta tick) | M3-1, M3-2b |
+| 5 | **M3-3** — fabric + cardboard burn (on the blast's survivors, delta tick, new `burn_consumption` column) | M3-1, M3-2b |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
 | 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |

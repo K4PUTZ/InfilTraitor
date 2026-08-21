@@ -1,8 +1,20 @@
 # BURN_THROUGH_MASTER_PLAN
 ## Fire that opens a passage — cardboard, fabric, plywood — v0.2
 
-**Status:** 🟡 **v0.2 — the fire is DESCRIBED (§3b) and the cascade ceiling is
-RATIFIED (§2, option C); the propagation mechanism is still unbuilt.**
+> ## ⬆️ SUPERSEDED 2026-08-21 by [`MATERIALS_MASTER_PLAN.md`](MATERIALS_MASTER_PLAN.md)
+>
+> This plan was opened before the Director described the full materials wave.
+> Fire turned out to be one of five parts (decals, fire, glass, voxel props,
+> fluids), and a plan named after one part is the wrong container for all of
+> them. **Nothing here is retracted** — §2's cascade-ceiling arithmetic and §3b's
+> per-material fire curves are carried into MATERIALS_MASTER_PLAN §3 in
+> substance, and the tasks this document closed (A0, A0b, A1, A2, B2) stay closed.
+>
+> Read this one for the reasoning; read the new one for what to do next.
+
+**Status:** ⬆️ **SUPERSEDED — v0.2 was the last live revision.** The fire was
+DESCRIBED (§3b) and the cascade ceiling RATIFIED (§2, option C); the propagation
+mechanism is still unbuilt and now lives in MATERIALS_MASTER_PLAN §3.
 **Written:** 2026-08-21, against `a7763792`.
 **Reopens:** `DESTRUCTION_MASTER_PLAN`'s 2026-08-16 materials wave, question 3.
 **Companions:** `DESTRUCTION_MASTER_PLAN` (owns how anything becomes broken

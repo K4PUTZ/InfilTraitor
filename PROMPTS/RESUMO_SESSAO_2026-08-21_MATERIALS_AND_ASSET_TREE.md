@@ -192,3 +192,63 @@ labelled as weak rather than quietly counted.
 - **The rifle's and pistol's posed frames** —
   [`BAKE_ORDER_WEAPON_GRIPS.md`](BAKE_ORDER_WEAPON_GRIPS.md).
 - **The aim warm is ~500 ms**, still the largest number in a shot.
+
+---
+
+# PART TWO — the milestone's build half (same day)
+
+**Commits:** `6626d7f7`, `801fa203`, `7c111f38`, `05740c8d`, `d05d0c1a`,
+`786cd72a`, `5b3d5a36`, `dc150d2f`, `8847683d` — all pushed to `main`.
+**Gates at close:** lint 216 ✅ · selftests **39 clean / 0 failed** ✅ ·
+invariants ✅ · CODEMAP ✅.
+
+## Where the milestone stands
+
+| | |
+|---|---|
+| ✅ | M1 · M3-0 · M3-1 · M3-2 · **M3-2b half-thickness** · **M3-3 fire** · **M3-4 plywood** · M3-5 (tooled) · MAT-SOFT-01 · MAT-CHIP-01 · ASSET_TREE_REFORM |
+| 🟡 | **M2b — the nine brick decals.** The Director is authoring them; the order's paths already point at the new tree |
+| ⬜ | M4 glass (LAST, by decision) · M5 voxel props · M6 fluid research |
+
+## What landed
+
+**M3-2b — half-thickness.** The mapfile's `panels` section names an ABSOLUTE GU
+CELL, never a boolean, and one selftest assertion is the whole argument: an edge
+drawn from (5,5) toward (4,5) has its cells swapped by `_init()`, so `side_a:
+true` would have put the pane on the wrong cell silently. Three panels stand on
+PLAYGROUND. `passage_class` over the glass edges goes NONE ×10 → STANDING ×10,
+and the two half-thickness edges are in that ten.
+
+**M3-3 — fire, and it was already half built.** `_build_ember_wave()` +
+`_climb_from()` already did §3.1's motion. What was missing was consumption.
+Fabric 340/340 in 1.90 s, cardboard 308/308 in 3.51 s, plywood 35%, wood 0. The
+burn has its own deterministic timeline because the ember's is `randf_range()`.
+
+**M3-4 — plywood by distance**, with no new data: the `r` every ember entry
+already carried. 64% at the wall's corner, 24% two GU out.
+
+**The passage rule became an OPENING** (Director): a contiguous run of positions,
+full storey height, ≥ 4 of 8 wide. Contiguity is what stops it being a
+percentage — 4 alternating columns are damage, 4 adjacent are a doorway.
+
+**The junction column** answered the Director's "how do I define *inside*" by not
+needing to: the column completes the OUTER faces, so "inside" is the ELBOW, which
+every junction has by construction.
+
+## The three bugs the work walked into
+
+1. **`MaterialResistanceTable._scan_dir()` is an explicit whitelist.** Adding
+   `burn_consumption` to the JSON without adding it there made every material
+   read 0.0 with **no error anywhere** — `[E-BURN] 0` on fabric at 1.0.
+2. **`voxel_decal_selftest` could not see a missing decal.** `ResourceLoader.
+   exists(p) or FileAccess.file_exists(p)` is weaker than either alone.
+3. **§3.2c was wrong about `voxel_renderer.gd:1892`** — the null branch it said
+   was missing is the very next line.
+
+## Open, and the Director's to answer
+
+- **M2b**, the nine brick PNGs.
+- The matrix's `lit`/`burns` columns are BLAST TOTALS, not per-material; making
+  the two prints per-material is the real fix.
+- §4.2's "a far shotgun pellet CRACKS glass" does not reproduce at the matrix's
+  distance — it needs the far end of the ladder.

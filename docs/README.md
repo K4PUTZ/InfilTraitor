@@ -121,4 +121,9 @@ philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
 - `tools/persistent/run_selftests.py` — runs every `*_selftest.gd` and fails a
   run on any `SCRIPT ERROR`. The arbiter for selftests: a bare `godot --script`
   run can print one and still exit 0.
+- `tools/persistent/check_facade.py` · `check_decal.py` — the two ART acceptance
+  gates. Both exist because their failure mode is SILENT: a rejected facade
+  falls back to the generic atlas and a mis-delivered decal renders nothing, and
+  neither reports an error. Both were earned against the shipped art before
+  being trusted.
 - `tools/persistent/QUICK_REFERENCE.md` · `ASSET_PIPELINE_QUICK_REFERENCE.md`

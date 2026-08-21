@@ -1,12 +1,15 @@
 # MATERIALS_MASTER_PLAN
-## The materials milestone — burn, breach, see through, and flow — v1.1
+## The materials milestone — burn, breach, see through, and flow — v1.2
 
-**Status:** 🟡 **v1.1 — the design is captured and ordered; M1 is the only part
-already built.** §3.2 (the passage rule) and §3.3 (the tick) were both RESOLVED
-by the Director on 2026-08-21, and the first answer added a new structural
-requirement — **half-thickness elements, §3.2b** — that the engine cannot do
-today.
-**Written:** 2026-08-21, against `b9a46b15`.
+**Status:** 🟡 **v1.2 — the design is captured and ordered; M1 and the soft
+materials' tier rule are built.** §3.2 (the passage rule) and §3.3 (the tick)
+were RESOLVED by the Director on 2026-08-21, and the first answer added a new
+structural requirement — **half-thickness elements, §3.2b** — that the engine
+cannot do today. Later the same day the Director cut M2 from 21 files to 9
+(§2), which turned out to be a code-and-data change rather than an art one, and
+moved glass to the back of the queue whole.
+**Written:** 2026-08-21, against `b9a46b15`; v1.2 the same day against
+`9b66d869`.
 **Supersedes:** `BURN_THROUGH_MASTER_PLAN` (v0.2), which becomes this document's
 §4 — that plan was opened before the Director described the full wave, and a
 plan named after one of five parts is the wrong container. Nothing in it is
@@ -15,7 +18,8 @@ verbatim in substance.
 **Companions:** `DESTRUCTION_MASTER_PLAN` (owns how anything becomes broken
 voxels), `VOXEL_LIGHT_MASTER_PLAN` (the ember, the light field),
 `docs/systems/LIGHT_MASTER_PLAN.md`, `ASSETS/ART_SPECIFICATIONS.md` (§7 decals),
-`PROMPTS/ART_ORDER_NEW_MATERIALS.md` (the five facades, delivered 2026-08-21).
+`PROMPTS/ART_ORDER_NEW_MATERIALS.md` (the five facades, delivered 2026-08-21),
+`PROMPTS/ART_ORDER_BRICK_DECALS.md` (the nine brick decals, open).
 
 ---
 
@@ -28,9 +32,9 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | Part | What | Size |
 |---|---|---|
 | **M1** | The five materials exist, render, and break | ✅ **DONE** |
-| **M2** | Decals — the marks each material takes | Small, art-led |
+| **M2** | Decals — the marks each material takes | Small, art-led. **9 files, brick only** |
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
-| **M4** | Glass: seeing through it, and breaking it non-locally | Medium + one hard rendering question |
+| **M4** | Glass: seeing through it, and breaking it non-locally | Medium + one hard rendering question. **LAST, by decision** |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
 | **M6** | Fluids (water/lava) | **Research first, unscoped** |
 
@@ -80,24 +84,56 @@ material-agnostic GENERIC family (`decal_generic_bullet_dented_*`,
 material's own flat atom. That path resolves through `MATERIALS.find()`, which
 is why `BASE_MATERIALS` registration matters. So M2 is quality, never a blocker.
 
-**21 files, and only these:**
+### ✅ RESOLVED 2026-08-21 — 21 files became NINE, and the reason has teeth
+
+> Director: *"Não vamos ter decals nos materiais moles porque eles não ficam
+> cracked e nem dented, apenas furam ou queimam. Com exceção do vidro, que é um
+> caso à parte, precisa de um algoritmo próprio para rachados e buracos, e vamos
+> deixar por último. O tijolo vamos criar normalmente, seguindo o estilo do
+> concreto."*
+
+**Nine files, and only these:**
 
 | Family | Materials | Files | Why not the rest |
 |---|---|---|---|
-| `bullet` | cardboard, fabric, plywood, brick | 12 | The Director's own ask. A hole in fabric reads nothing like one in concrete |
-| `dent` | brick, plywood | 6 | Soft materials tear rather than dent |
-| `crack` | brick | 3 | D32.6 — only rigid mineral materials fracture |
+| `bullet` | brick | 3 | Brick follows concrete exactly — the Director's own words |
+| `dent` | brick | 3 | Same |
+| `crack` | brick | 3 | D32.6 — only rigid mineral materials fracture, and brick is one |
 
-Glass gets none: D22, DESTROYED-only.
+Order: [`ART_ORDER_BRICK_DECALS.md`](../ART_ORDER_BRICK_DECALS.md).
 
-**M2 tasks:** author → `check_facade.py`-equivalent measurement → add each
-material to `VoxelRenderer.IMPACT_DECAL_MATERIALS` → capture.
+**fabric, cardboard and plywood get nothing, structurally** — MAT-SOFT-01,
+landed the same day. The ruling reads as an art decision and is not one: the
+tier data underneath was *promising dents* (dent_factor 0.10/0.15/0.22), and a
+material with no authored family is NOT unmarked — it falls to the GENERIC
+family, so a blast was marking cardboard with a grey dent nobody ordered. These
+three now have exactly two states, INTACT and DESTROYED, in code
+(`ShotPunchTable.HOLE_ONLY_MATERIALS`) and in data (`dent_factor` 0.0). Art for
+them would be files nothing can load.
+
+Measured on the real map, both sides from one binary via a stash, same cells,
+identical punch list:
+
+```
+BEFORE  fabric:s1  cracked=0 dented=17 destroyed= 1   (breach 2.75)
+AFTER   fabric:s1  cracked=0 dented= 0 destroyed=18   (breach 0.00)
+```
+
+**Glass gets none and is deferred WHOLE** — see M4b. It is the one material
+whose "no decals" has a different cause: not that it cannot be marked, but that
+its marks need their own crack/hole algorithm.
+
+**M2 tasks:** author → `check_decal.py --material brick` → add `brick` to
+`VoxelRenderer.IMPACT_DECAL_MATERIALS` **and** `IMPACT_CRACK_MATERIALS` → update
+`voxels/manifest.json` → capture the before/after pair.
 
 ⚠️ `IMPACT_DECAL_MATERIALS` is currently `["concrete", "metal", "stone",
-"wood"]`, and its comment still says *"glass and brick deferred"*. Adding a
-material there without its 3×N files on disk is a silent miss, not an error —
-the same failure class as a rejected facade. Add the id **only** once the files
-measure clean.
+"wood"]`. Adding a material there without its 3×N files on disk is a silent
+miss, not an error — the same failure class as a rejected facade. **That is now
+gated**: `tools/persistent/check_decal.py` (built 2026-08-21) cross-reads the
+constant and fails the mismatch in both directions, alongside the 256×256 /
+alpha / imported / 3-variants checks. It passes all 45 shipped decals unchanged
+and was run red on five real failure modes.
 
 ---
 
@@ -389,6 +425,18 @@ Two smaller items already found and carried:
   DENTED band exactly empty. Ratified behaviour arriving by accident rather
   than by construction.
 
+**Both are STILL OPEN, and deliberately so.** MAT-SOFT-01 built the mechanism
+that fixes them — `HOLE_ONLY_MATERIALS` makes "this material cannot be marked" a
+tier capability rather than a threshold — and glass was left out of the array on
+purpose. D22 gives glass the same *no-mark* half but the **other** answer to a
+weak hit: *"é buraco feito, ou não feito"*, where the soft materials always
+fura. "Not made" needs an **INTACT** return that `damage_state_for()` has never
+produced and whose callers do not handle (`plan_point_impact()` would append a
+plan entry for a tier meaning "nothing happened"). That is one more branch than
+this milestone's soft-material ruling needed, on the material the Director
+explicitly put last. **M4b adds glass to `HOLE_ONLY_MATERIALS` and the INTACT
+branch together**, or neither.
+
 ---
 
 ## 5. M5 — Voxel props
@@ -452,19 +500,33 @@ No task list until the study lands.
 | Order | Task | Blocked by |
 |---|---|---|
 | ✅ | **M1** — five materials register, render, break, and are lit | done |
-| 1 | **M3-0** — pin the passage unit (§3.2) | Director |
-| 2 | **M2** — 21 decal files + `IMPACT_DECAL_MATERIALS` | art |
+| ✅ | **M3-0** — pin the passage unit (§3.2) — the STOREY | done |
+| ✅ | **MAT-SOFT-01** — soft materials are hole-or-nothing, in code and data | done |
+| ✅ | **M2a** — the brick art order + `check_decal.py`, earned before the art | done |
+| 1 | **M2b** — the nine brick PNGs | **Director (art)** |
+| 2 | **M2c** — wire `brick` into `IMPACT_DECAL_MATERIALS`/`IMPACT_CRACK_MATERIALS` + manifest + capture | M2b |
 | 3 | **M3-1** — measure the light win | — |
 | 4 | **M3-2** — `passage_class()` + selftest | M3-0 |
 | 4b | **M3-2b** — half-thickness elements (the milestone's largest single item, and it is not fire) | M3-2 |
 | 5 | **M3-3** — fabric + cardboard burn (object-scoped, delta tick) | M3-1, M3-2b |
 | 6 | **M3-4** — plywood burn (upward, ember, edges, base-gated) | M3-3 |
 | 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
-| 8 | **M4a** — glass blend mode (its own layer) | — |
-| 9 | **M4b** — glass pane break | design |
+| 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |
+| 9 | **M4b** — glass pane break + `HOLE_ONLY_MATERIALS` + the INTACT branch | design |
 | 10 | **M5** — voxel prop class | M3, renderer v2 |
 | 11 | **M6** — fluid research | — |
 
-**M2 and M3-1 can run in parallel with M3-0**, and M4a is independent of all of
-it — if the Director wants something visible early, glass's blend mode is the
-one part of this plan that changes a screenshot without waiting on anything.
+**Glass moved to the end of the queue on 2026-08-21**, Director's call: it is
+*"um caso à parte"* needing its own crack/hole algorithm. M4a used to be the
+"something visible without waiting" item and no longer is — **M3-1 and M3-2 are
+now the two that need nothing from anyone**, and M3-2b is the critical path.
+
+⚠️ **One measurement this milestone owes itself.** MAT-SOFT-01 moved fabric from
+19 voxels lost per shotgun burst to **36**, and plywood to 38, because every
+pellet now breaches and takes its neighbours *and* the sibling slice. That is
+the honest consequence of *"sempre fura"* and it is not obviously wrong for a
+shotgun against cloth — but `neighbour_count_for()` reads RAW punch, which for
+fabric (resistance 0.30) is ~7 against `NEIGHBOUR_PUNCH_FULL` 1.60, i.e. pinned
+at all 8 neighbours for every weapon in the arsenal. **Whether a PISTOL should
+also erase 9 voxels of cloth is a calibration question, and it belongs to M3-5's
+matrix**, where it can be measured per weapon rather than guessed at here.

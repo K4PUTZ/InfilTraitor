@@ -14,7 +14,10 @@ class_name EarthVariantSelector
 
 const VARIANT_COUNT: int = 8
 
-const ASSET_PATH_TEMPLATE: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_earth_%d.png"
+## ASSET_TREE_REFORM (2026-08-21) — the eight earth variants are one material's
+## art, so they live together in earth's own folder rather than looking like
+## eight materials in a flat directory.
+const ASSET_PATH_TEMPLATE: String = "res://ASSETS/materials/earth/voxel_earth_%d.png"
 
 
 ## Deterministic variant index in [0, VARIANT_COUNT) for one voxel position.

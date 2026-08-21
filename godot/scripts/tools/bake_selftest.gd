@@ -9,10 +9,12 @@ const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const BakedTileLookupClass = preload("res://godot/scripts/systems/baked_tile_lookup.gd")
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
-const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
+## ASSET_TREE_REFORM (2026-08-21) — mirrors BakeCompositor.VOXEL_PATH_TEMPLATE.
+const VOXEL_PATH_TEMPLATE = "res://ASSETS/materials/%s/voxel_%s.png"
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood"]
 
 class SimplePattern:
@@ -186,7 +188,12 @@ func test_B3_alpha_from_canonical() -> void:
 		var strip = baked_atlas.strips[strip_key]
 		var material_id: String = strip.material_id
 
-		var texture: Texture2D = load(VoxelRendererClass.VOXEL_ASSET_TEMPLATE % material_id)
+		## ASSET_TREE_REFORM: the template now takes folder AND stem, and B3's
+		## whole point is that this loads through VoxelRenderer's OWN path rather
+		## than a second copy of it — so it has to follow the same folder rule.
+		var atom_id: String = BakePolicyClass.canonical_voxel_atom_for(material_id)
+		var texture: Texture2D = load(VoxelRendererClass.VOXEL_ASSET_TEMPLATE % [
+			BakePolicyClass.material_folder_for_atom(atom_id), atom_id])
 		var canonical: Image = texture.get_image() if texture else null
 
 		if canonical == null:
@@ -300,7 +307,7 @@ func test_real_voxel_atoms_loadable() -> void:
 
 	var all_loadable = true
 	for material in VOXEL_MATERIALS:
-		var path = VOXEL_BASE_PATH + material + ".png"
+		var path = VOXEL_PATH_TEMPLATE % [material, material]
 		var img = Image.new()
 		var err = img.load(path)
 		

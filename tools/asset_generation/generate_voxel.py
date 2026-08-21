@@ -7,7 +7,7 @@ Gera um PNG 32×36 px por material (átomo de voxel para tileset_voxels.tres).
 Executar da raiz do projeto:
     python3 tools/asset_generation/generate_voxel.py
 
-Output: ASSETS/ISOMETRIC/source_assets/voxels/voxel_{material}.png
+Output: ASSETS/materials/{material}/voxel_{material}.png
 
 GEOMETRY (deve coincidir com constantes voxel em VOXEL-02):
     TILE_W  = 32   VOXEL_TILE_SIZE.x
@@ -92,8 +92,24 @@ VOXEL_ROOT = Path("ASSETS/ISOMETRIC/source_assets/voxels")
 # composites/ (a pure, always-rebuilt derivative) is gone as of D33 Part 4c
 # (2026-08-03) — every shape it used to hold composites LIVE at runtime
 # instead. See the tree's README.md.
-MATERIAL_OUTPUT_DIR = VOXEL_ROOT / "materials"
-HALF_OUTPUT_DIR = VOXEL_ROOT / "halves"
+## ASSET_TREE_REFORM (2026-08-21): outputs go to one folder per material.
+## These stay as names rather than paths because the destination now depends on
+## WHICH material is being written — see material_dir()/half_dir() below.
+MATERIALS_ROOT = Path("ASSETS/materials")
+
+
+def material_dir(material: str) -> Path:
+    """ASSETS/materials/<id>/ — created on demand."""
+    d = MATERIALS_ROOT / material
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def half_dir(material: str) -> Path:
+    """ASSETS/materials/<id>/halves/ — created on demand."""
+    d = MATERIALS_ROOT / material / "halves"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 IMPACT_MATERIALS: list[str] = ["concrete", "metal", "stone", "wood"]
 
 
@@ -953,8 +969,10 @@ GROUND_MATERIALS: dict[str, tuple[int, int, int]] = {
 
 # ---------------------------------------------------------------------------
 # Output (relativo à raiz do projecto)
+#
+# ASSET_TREE_REFORM (2026-08-21): there is no single OUTPUT_DIR any more —
+# each atom goes to its own material's folder via material_dir()/half_dir().
 # ---------------------------------------------------------------------------
-OUTPUT_DIR = MATERIAL_OUTPUT_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -1014,28 +1032,29 @@ def generate_voxel_atom(base_color: tuple[int, int, int]) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
+    ## ASSET_TREE_REFORM: every atom lands in its own material's folder. The
+    ## eight earth VARIANTS are one material's art, so they share earth/ rather
+    ## than looking like eight materials.
     for material, base_color in MATERIALS.items():
         img  = generate_voxel_atom(base_color)
-        path = OUTPUT_DIR / f"voxel_{material}.png"
+        path = material_dir(material) / f"voxel_{material}.png"
         img.save(path, "PNG")
         print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
 
     for index, base_color in enumerate(EARTH_VARIANTS):
         img  = generate_voxel_atom(base_color)
-        path = OUTPUT_DIR / f"voxel_earth_{index}.png"
+        path = material_dir("earth") / f"voxel_earth_{index}.png"
         img.save(path, "PNG")
         print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
 
     for material, base_color in GROUND_MATERIALS.items():
         img  = generate_voxel_atom(base_color)
-        path = OUTPUT_DIR / f"voxel_{material}.png"
+        path = material_dir(material) / f"voxel_{material}.png"
         img.save(path, "PNG")
         print(f"  ✓ {path}  ({img.size[0]}×{img.size[1]} px, {img.mode})")
 
     total = len(MATERIALS) + len(EARTH_VARIANTS) + len(GROUND_MATERIALS)
-    print(f"\n✓ {total} voxel atom(s) → {OUTPUT_DIR}/")
+    print(f"\n✓ {total} voxel atom(s) → {MATERIALS_ROOT}/<id>/")
 
     # D33 Part 4c (2026-08-03): the D22/D32/D25/FLOOR-DENT-01 composite-writing
     # stages that used to run here (impact-mark placeholders, blast-mark
@@ -1046,8 +1065,6 @@ def main() -> None:
     # generic fallback texture still gets written below, inside
     # build_decal_family() — that one is real decals/ INPUT art (ASSET-LAYOUT-01),
     # not a composite derivative.
-    HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     build_decal_family()
 
     print("Próximo: VOXEL-02 — criar tileset_voxels.tres + constantes voxel")
@@ -1075,7 +1092,6 @@ def build_decal_family() -> None:
     now instead (VoxelRenderer's baked and generic branches).
     """
     DECAL_DIR.mkdir(parents=True, exist_ok=True)
-    HALF_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     template_path = DECAL_DIR / DECAL_TEMPLATE_NAME
     generate_decal_template().save(template_path, "PNG")
@@ -1141,7 +1157,7 @@ def build_decal_family() -> None:
     written_halves = 0
     for material in IMPACT_MATERIALS:
         for side in HALF_SIDES:
-            path = HALF_OUTPUT_DIR / (HALF_NAME % (material, side))
+            path = half_dir(material) / (HALF_NAME % (material, side))
             if path.exists():
                 halves[(material, side)] = Image.open(path).convert("RGBA")
                 kept_halves += 1
@@ -1151,14 +1167,14 @@ def build_decal_family() -> None:
             halves[(material, side)] = img
             written_halves += 1
     print(f"  ✓ {written_halves} half voxel(s) written, "
-          f"{kept_halves} authored half voxel(s) kept → {HALF_OUTPUT_DIR}/")
+          f"{kept_halves} authored half voxel(s) kept → {MATERIALS_ROOT}/<id>/halves/")
 
     # D33 Part 4c: the earth floor's own half voxel ("top" side — the one
     # ground material that dents, FLOOR-DENT-01) is not part of the
     # IMPACT_MATERIALS loop above (earth isn't a wall material), so it still
     # needs writing here as halves/ INPUT art even though nothing composites
     # it into a static file anymore.
-    earth_half_path = HALF_OUTPUT_DIR / (HALF_NAME % ("earth", "top"))
+    earth_half_path = half_dir("earth") / (HALF_NAME % ("earth", "top"))
     if not earth_half_path.exists():
         generate_half_voxel(EARTH_VARIANTS[0], "top").save(earth_half_path, "PNG")
         print(f"  ✓ {earth_half_path}  (earth floor half voxel)")

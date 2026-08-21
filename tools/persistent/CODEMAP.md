@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**213 scripts · 64078 lines total** (under `godot/scripts/`)
+**213 scripts · 64136 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -837,7 +837,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3469 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3480 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1676,7 +1676,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1240 lines
+`class_name BakeCompositor` · 1244 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1716,7 +1716,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 116 lines
+`class_name BakePolicy` · 145 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
@@ -1976,7 +1976,7 @@ extends `Node2D` · 43 lines
 
 ### `earth_variant_selector.gd`
 
-`class_name EarthVariantSelector` · 33 lines
+`class_name EarthVariantSelector` · 36 lines
 
 `godot/scripts/systems/earth_variant_selector.gd`
 
@@ -1984,7 +1984,7 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `VARIANT_COUNT` = `8`
-- `ASSET_PATH_TEMPLATE` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_earth_%d.png"`
+- `ASSET_PATH_TEMPLATE` = `"res://ASSETS/materials/earth/voxel_earth_%d.png"`
 
 ---
 
@@ -2776,7 +2776,7 @@ extends `SceneTree` · 430 lines
 
 ### `bake_selftest.gd`
 
-extends `SceneTree` · 351 lines
+extends `SceneTree` · 358 lines
 
 `godot/scripts/tools/bake_selftest.gd`
 
@@ -2787,9 +2787,10 @@ extends `SceneTree` · 351 lines
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
 - `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
+- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
+- `VOXEL_PATH_TEMPLATE` = `"res://ASSETS/materials/%s/voxel_%s.png"`
 - `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
 
 **Public vars**
@@ -3510,7 +3511,7 @@ extends `SceneTree` · 322 lines
 
 ### `material_reform_selftest.gd`
 
-extends `SceneTree` · 489 lines
+extends `SceneTree` · 493 lines
 
 `godot/scripts/tools/material_reform_selftest.gd`
 

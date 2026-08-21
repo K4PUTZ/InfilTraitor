@@ -136,7 +136,13 @@ static func _static_init() -> void:
 ## moved off it (Parts 3a-3d for baked cells, Part 4b for flat/generic ones).
 ## Full layout: ASSETS/ISOMETRIC/source_assets/voxels/README.md.
 const VOXEL_ASSET_ROOT: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/"
-const VOXEL_ASSET_TEMPLATE: String = VOXEL_ASSET_ROOT + "materials/voxel_%s.png"
+## ASSET_TREE_REFORM (2026-08-21): one folder per material. The material id
+## appears TWICE — once as the folder, once in the filename — because the
+## Director's ruling is that only the folders move: a file still says what it is
+## when it is out of its directory, which is the cheap defence against art being
+## hand-dropped into the wrong place (a wrong atom fails silently).
+const MATERIAL_ASSET_ROOT: String = "res://ASSETS/materials/"
+const VOXEL_ASSET_TEMPLATE: String = MATERIAL_ASSET_ROOT + "%s/voxel_%s.png"
 
 ## D33 Part 3a — the RAW decal art (family, material, variant), same folder
 ## and filename shape generate_voxel.py's build_decal_family() authors into
@@ -1728,7 +1734,12 @@ func _build_voxel_tileset() -> void:
 		## from the CANONICAL atom's filename — they differ only for `earth`,
 		## which ships as eight variants and has no unsuffixed file (see
 		## BakePolicy.canonical_voxel_atom_for()).
-		var asset_path := VOXEL_ASSET_TEMPLATE % BakePolicyClass.canonical_voxel_atom_for(material_name)
+		## The canonical atom id is BOTH the folder and the filename stem: an
+		## aliased material (brick -> concrete, D34) reads concrete's atom out of
+		## concrete's own folder, which is what "alias" has always meant.
+		var atom_id := BakePolicyClass.canonical_voxel_atom_for(material_name)
+		var asset_path := VOXEL_ASSET_TEMPLATE % [
+			BakePolicyClass.material_folder_for_atom(atom_id), atom_id]
 
 		var texture := load(asset_path)
 		if not texture:

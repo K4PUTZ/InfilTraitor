@@ -110,6 +110,35 @@ static func canonical_voxel_atom_for(material_id: String) -> String:
 	return String(CANONICAL_ATOM_ALIASES.get(material_id, material_id))
 
 
+## ASSET_TREE_REFORM (2026-08-21) — which FOLDER under `ASSETS/materials/` holds
+## an atom id's art. Usually the id itself, and there is exactly one exception.
+##
+## ⚠️ FOUND BY THE LOUD-FAIL CONTRACT, NOT BY THE ACCEPTANCE GATE, which is the
+## reason this is a named function instead of a `%s/%s` template inlined at two
+## call sites. `EarthVariantSelector` addresses the eight ground variants as
+## pseudo-materials `earth_0`..`earth_7`, so the naive "folder = atom id" built
+## `ASSETS/materials/earth_0/voxel_earth_0.png` and every one of the eight failed:
+##
+##     ERROR: VoxelRenderer: missing texture for material 'earth_7'
+##            at res://ASSETS/materials/earth_7/voxel_earth_7.png
+##
+## The 363-atom export diff reported **0 differing** through all of it — the
+## damage-atom bake never touches the floor variant path — so the gate is
+## necessary and not sufficient, and B6 is what actually caught this.
+##
+## The eight variants are ONE material's art. The rule is the same one the
+## migration script uses when filing them, which is why they are together in
+## `earth/`: strip a trailing `_<digits>`.
+static func material_folder_for_atom(atom_id: String) -> String:
+	var cut: int = atom_id.rfind("_")
+	if cut <= 0:
+		return atom_id
+	var tail: String = atom_id.substr(cut + 1)
+	if tail.is_valid_int():
+		return atom_id.substr(0, cut)
+	return atom_id
+
+
 ## Deterministic variant selection. Stable across runs: NEVER uses instance identity.
 static func variant_for(edge, material_id: String) -> int:
 	var edge_key: String = edge.key_string() if edge.has_method("key_string") else str(edge)

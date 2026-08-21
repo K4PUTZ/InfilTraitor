@@ -77,7 +77,9 @@ const PAGE_H: int = 576                     # (64*32/128) tile rows × 36 px
 const VOXEL_MATERIALS = ["concrete", "metal", "stone", "wood",
 	"grass", "dirt", "gravel", "sand", "earth",
 	"brick", "cardboard", "fabric", "plywood", "glass"]
-const VOXEL_BASE_PATH = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"
+## ASSET_TREE_REFORM (2026-08-21) — one folder per material; the atom id is both
+## the folder and the filename stem. Mirrors VoxelRenderer.VOXEL_ASSET_TEMPLATE.
+const VOXEL_PATH_TEMPLATE = "res://ASSETS/materials/%s/voxel_%s.png"
 
 ## MasterStrip kept for API compatibility (strips dictionary consumers);
 ## atoms are no longer individually materialized on the hot path.
@@ -170,7 +172,9 @@ func _load_real_voxel_atoms() -> void:
 	for material in VOXEL_MATERIALS:
 		## D35: keyed by MATERIAL id, loaded from the CANONICAL atom's filename —
 		## the two differ only for `earth` (see BakePolicy's own doc comment).
-		var path = VOXEL_BASE_PATH + BakePolicyClass.canonical_voxel_atom_for(material) + ".png"
+		var atom_id: String = BakePolicyClass.canonical_voxel_atom_for(material)
+		var path = VOXEL_PATH_TEMPLATE % [
+			BakePolicyClass.material_folder_for_atom(atom_id), atom_id]
 		var texture: Texture2D = load(path)
 		if texture == null:
 			push_error("[BAKE] Failed to load texture resource: %s" % path)

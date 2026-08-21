@@ -436,14 +436,18 @@ func test_8_earth_is_a_buildable_material() -> void:
 	## The canonical atom: alias resolves, file exists, and the alpha it
 	## contributes really is interchangeable (B3's whole premise for the alias).
 	var stem: String = BakePolicyClass.canonical_voxel_atom_for("earth")
-	var earth_path: String = "res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_%s.png" % stem
+	## ASSET_TREE_REFORM: the folder is not always the atom id — `earth_0` lives in
+	## `earth/`. BakePolicy.material_folder_for_atom() owns that rule, and asking
+	## it here is what keeps this test measuring the real lookup.
+	var earth_path: String = "res://ASSETS/materials/%s/voxel_%s.png" % [
+		BakePolicyClass.material_folder_for_atom(stem), stem]
 	if stem != "earth" and ResourceLoader.exists(earth_path):
 		_pass("canonical atom alias earth -> '%s' resolves to a real file" % stem)
 	else:
 		_fail("canonical atom for earth resolved to '%s' (%s), which does not exist" % [stem, earth_path])
 
 	var earth_img: Image = load(earth_path).get_image() if ResourceLoader.exists(earth_path) else null
-	var concrete_img: Image = load("res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_concrete.png").get_image()
+	var concrete_img: Image = load("res://ASSETS/materials/concrete/voxel_concrete.png").get_image()
 	if earth_img != null and concrete_img != null:
 		earth_img = earth_img.duplicate(); earth_img.convert(Image.FORMAT_RGBA8)
 		concrete_img = concrete_img.duplicate(); concrete_img.convert(Image.FORMAT_RGBA8)

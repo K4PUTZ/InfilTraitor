@@ -149,13 +149,19 @@ const VOXEL_ASSET_TEMPLATE: String = MATERIAL_ASSET_ROOT + "%s/voxel_%s.png"
 ## (DECAL_NAME = "decal_%s_%s_%d.png"). Composited at runtime onto the baked
 ## atom instead of loading a pre-composited voxel_%s.png from composites/ —
 ## _full_voxel_decal_plan()/_composite_full_voxel_decal() below are the seam.
-const DECAL_NAME_TEMPLATE: String = VOXEL_ASSET_ROOT + "decals/decal_%s_%s_%d.png"
+## ASSET_TREE_REFORM (2026-08-21): a material's decals live with the rest of its
+## art. Args are (material folder, family, material, variant) — the material
+## appears twice for the Director's ratified reason: only the FOLDERS moved, so
+## a decal still names itself when it is out of its directory.
+const DECAL_NAME_TEMPLATE: String = MATERIAL_ASSET_ROOT + "%s/decals/decal_%s_%s_%d.png"
 ## D33 Part 4a — the material-agnostic VECTOR mark decals (kind, variant),
 ## same folder generate_voxel.py's build_decal_family() writes
 ## GENERIC_MARK_KINDS into. Loaded by _load_decal_image() exactly like the
 ## photographic family above — same cache, same "missing file -> {} -> fall
 ## through" contract — only the template and the kind space differ.
-const GENERIC_MARK_TEMPLATE: String = VOXEL_ASSET_ROOT + "decals/decal_generic_%s_%d.png"
+## The material-agnostic family (D25) belongs to no material, so it gets a folder
+## that cannot collide with one — the leading underscore is deliberate.
+const GENERIC_MARK_TEMPLATE: String = MATERIAL_ASSET_ROOT + "_generic/decals/decal_generic_%s_%d.png"
 ## "_blast_dented"/"_blast_cracked" already end with "_dented"/"_cracked", so
 ## they match the first two suffixes below without needing their own entries.
 ## D25's carved half-voxels do NOT — they end in the carved side — so each of
@@ -999,7 +1005,8 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 	if resolved.is_empty():
 		return {}
 
-	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["base_material"],
+		plan["decal_family"], plan["base_material"], plan["variant"]]
 	var decal_image := _load_decal_image(decal_path)
 	if decal_image == null:
 		return {}
@@ -1164,7 +1171,8 @@ func _composite_half_voxel_decal(plan: Dictionary, material_name: String, edge,
 	var half_substrate := HalfVoxelCompositorClass.build_half_voxel_substrate(
 		resolved["image"], cut_fill, plan["side"])
 
-	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["base_material"],
+		plan["decal_family"], plan["base_material"], plan["variant"]]
 	var decal_image := _load_decal_image(decal_path)
 	if decal_image == null:
 		return {}
@@ -1215,7 +1223,8 @@ func _composite_floor_sunk_decal(plan: Dictionary, material_name: String, zone_m
 
 	var floor_substrate := HalfVoxelCompositorClass.build_floor_sunk_substrate(resolved["image"])
 
-	var decal_path := DECAL_NAME_TEMPLATE % [plan["decal_family"], plan["base_material"], plan["variant"]]
+	var decal_path := DECAL_NAME_TEMPLATE % [plan["base_material"],
+		plan["decal_family"], plan["base_material"], plan["variant"]]
 	var decal_image := _load_decal_image(decal_path)
 	if decal_image == null:
 		return {}

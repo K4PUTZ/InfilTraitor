@@ -58,7 +58,14 @@ except ImportError:
     sys.exit(2)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DECAL_DIR = os.path.join(REPO_ROOT, "ASSETS", "ISOMETRIC", "source_assets", "voxels", "decals")
+## ASSET_TREE_REFORM (2026-08-21): one folder per material, decals in
+## `<material>/decals/`. The material-agnostic family lives in `_generic/`.
+MATERIALS_ROOT = os.path.join(REPO_ROOT, "ASSETS", "materials")
+GENERIC_MATERIAL = "_generic"
+
+
+def decal_dir(material):
+    return os.path.join(MATERIALS_ROOT, material, "decals")
 RENDERER = os.path.join(REPO_ROOT, "godot", "scripts", "geometry", "voxel_renderer.gd")
 
 ## §7, pinned: 256x256 is 16x the canonical TEX_AUTHORING_N density, and square
@@ -270,7 +277,7 @@ def check_material(material):
     all_ok = True
     found_any = False
     for family in FAMILIES:
-        paths = [os.path.join(DECAL_DIR, "decal_%s_%s_%d.png" % (family, material, i))
+        paths = [os.path.join(decal_dir(material), "decal_%s_%s_%d.png" % (family, material, i))
                  for i in range(VARIANT_COUNT)]
         present = [p for p in paths if os.path.exists(p)]
         if not present:
@@ -344,13 +351,17 @@ def main():
         return 0 if ok else 1
 
     if args == ["--all"]:
-        paths = sorted(
-            os.path.join(DECAL_DIR, f)
-            for f in os.listdir(DECAL_DIR)
-            if f.startswith("decal_") and f.endswith(".png")
-        )
+        paths = []
+        for material in sorted(os.listdir(MATERIALS_ROOT)) if os.path.isdir(MATERIALS_ROOT) else []:
+            ddir = decal_dir(material)
+            if not os.path.isdir(ddir):
+                continue
+            paths.extend(sorted(
+                os.path.join(ddir, f) for f in os.listdir(ddir)
+                if f.startswith("decal_") and f.endswith(".png")
+            ))
         if not paths:
-            print("[DECAL] no decal_*.png found in %s" % DECAL_DIR)
+            print("[DECAL] no decal_*.png found under %s" % MATERIALS_ROOT)
             return 1
     else:
         paths = args

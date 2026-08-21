@@ -16,7 +16,10 @@ extends SceneTree
 
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
-const MANIFEST_PATH := "res://ASSETS/ISOMETRIC/source_assets/voxels/manifest.json"
+## ASSET_TREE_REFORM (2026-08-21): the manifest describes the decal CONTRACT
+## (canvas, variant count, which families exist), not any one material's art, so
+## it sits at the root of the material tree rather than inside a material folder.
+const MANIFEST_PATH := "res://ASSETS/materials/manifest.json"
 
 var passed: int = 0
 var failed: int = 0
@@ -143,7 +146,9 @@ func _check_shape(name: String, decal_family: String, decal_material: String, va
 		generic_kind: String, _checked: int, missing: Array[String], unrecognised: Array[String]) -> void:
 	if not VoxelRendererClass._is_impact_mark(name):
 		unrecognised.append(name)
-	var photo_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [decal_family, decal_material, variant]
+	## ASSET_TREE_REFORM: the template's first arg is the material FOLDER.
+	var photo_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
+		decal_material, decal_family, decal_material, variant]
 	if not ResourceLoader.exists(photo_path):
 		missing.append(photo_path)
 	var generic_path: String = VoxelRendererClass.GENERIC_MARK_TEMPLATE % [generic_kind, variant]
@@ -293,7 +298,8 @@ func test_floor_dent_uses_the_real_material_art() -> void:
 			continue
 		## The file the compositor will actually open, derived the same way.
 		var decal_path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
-			plan["decal_family"], plan["base_material"], plan["variant"]]
+			plan["base_material"], plan["decal_family"],
+			plan["base_material"], plan["variant"]]
 		if ResourceLoader.exists(decal_path) or FileAccess.file_exists(decal_path):
 			_pass("%s floor dent -> '%s' -> %s (real asset on disk)" % [
 				material, name, decal_path.get_file()])

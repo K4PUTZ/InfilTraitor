@@ -359,7 +359,10 @@ DECAL_AUTHOR_SIZE = TEX_AUTHORING_N * DECAL_AUTHOR_MULTIPLE   # 256, square
 DECAL_AUTHOR_W = DECAL_AUTHOR_SIZE
 DECAL_AUTHOR_H = DECAL_AUTHOR_SIZE
 
-DECAL_DIR = VOXEL_ROOT / "decals"
+## ASSET_TREE_REFORM: the GENERIC family is material-agnostic (D25) and lives
+## under `_generic/`. Per-material decals are authored by hand, never generated
+## here, so this is the only decal directory the generator writes to.
+DECAL_DIR = MATERIALS_ROOT / "_generic" / "decals"
 DECAL_TEMPLATE_NAME = f"TEMPLATE_decal_{DECAL_AUTHOR_W}x{DECAL_AUTHOR_H}.png"
 DECAL_NAME = "decal_%s_%s_%d.png"           # family, material, variant
 DECAL_FAMILIES: tuple[str, ...] = ("bullet", "dent", "crack")
@@ -376,7 +379,7 @@ HALF_NAME = "voxel_%s_half_%s.png"          # material, side
 HALF_SIDES: tuple[str, ...] = ("left", "right", "top", "bottom")
 
 MANIFEST_NAME = "manifest.json"
-MANIFEST_DIR = VOXEL_ROOT
+MANIFEST_DIR = MATERIALS_ROOT
 
 # Decal targets as (origin, u_end, v_end, native): u runs along the face's own
 # horizontal edge, v straight down it, and `native` is that face's size in FLAT

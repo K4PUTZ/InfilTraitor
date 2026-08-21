@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**213 scripts · 64136 lines total** (under `godot/scripts/`)
+**213 scripts · 64151 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -837,7 +837,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3480 lines
+`class_name VoxelRenderer` · extends `Node2D` · 3489 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3998,7 +3998,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 535 lines
+extends `SceneTree` · 541 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
@@ -4006,7 +4006,7 @@ extends `SceneTree` · 535 lines
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `MANIFEST_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/manifest.json"`
+- `MANIFEST_PATH` = `"res://ASSETS/materials/manifest.json"`
 
 **Public vars**
 - `var passed: int = 0`

@@ -504,6 +504,25 @@ because it reads occupancy; the tactical side did not because it does not.)*
   full-thickness corner column. That one is still open, and is about width rather
   than survival.
 
+  ✅ **And the older column bug — grenades not destroying them — is CONFIRMED
+  fixed for every material, by measurement rather than by inference.** The
+  Director recalled fixing it while working with wood and thought it *probably*
+  generalised. `_phase_junctions()` passes `column.material` straight into the
+  same `simulate_container_damage()` ring model, which reads generic; the real
+  blast agrees, on two materials neither of which is wood:
+
+  ```
+  JUNCTION/brick     destroyed  0 · dented  0 · cracked  1     (a mineral marks)
+  JUNCTION/plywood   destroyed  4 · dented  0 · cracked  0     (a soft one only holes)
+  ```
+
+  ⚠️ **And a trap for whoever measures this next:** wood and the three soft
+  materials showed **no JUNCTION row at all** from the standard grenade cell
+  (2 GU out), which reads exactly like "junctions are broken for this material".
+  It is distance, not material — moving the grenade to the block's corner
+  (gu 34,3) produced the plywood row above. A missing census row is not evidence
+  of an inert path; it is evidence the blast did not reach.
+
 ⚠️ **A note on reading these captures.** `voxel_destroyed` fires per voxel and
 room.gd dispatches it to the smoke/debris overlays, so erasing 3 080 cells in one
 frame raises a dust cloud that HIDES the hole it is announcing. Three runs

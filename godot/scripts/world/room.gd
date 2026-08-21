@@ -2636,7 +2636,14 @@ func blast_debris_policy() -> Dictionary:
 			## material list rather than on `flammability`, because a chip is
 			## about how a material BREAKS, not whether it burns. Glass will
 			## want chips and no ember; that stays expressible.
-			"materials": ["wood"],
+			##
+			## Director, 2026-08-21: *"Pode pôr lascas só no madeirite. Papelão
+			## não."* Plywood is wood in sheets and splinters like it; cardboard
+			## tears into flaps, which is a different debris shape and does not
+			## get this effect just for being soft. That the list is a list —
+			## and not `flammability > 0` — is precisely what lets those two
+			## soft materials disagree here.
+			"materials": ["wood", "plywood"],
 			"chance": vfx_chip_chance * s,
 			"count_min": vfx_chip_count_min,
 			"count_max": vfx_chip_count_max,
@@ -4048,10 +4055,29 @@ func _capture_walk_filmstrip() -> void:
 ## they are still correct: verified against maps/PLAYGROUND.map.json that the
 ## four material walls remain at gu 2-4/7-9/12-14/17-19 on row 2, unmoved when
 ## the board grew 24x16 -> 44x22.
+## `INFILTRAITOR_GRENADE_GUS="34,5;27,5"` overrides the seeded cells.
+##
+## TEST_ZONE_GRENADE_GUS covers the four HARD walls only (gu 3/8/13/18 on row 5),
+## which is its calibration history and stays untouched. The five newer materials
+## sit at gu 22..40 and no dev capture could reach them — so verifying anything
+## about a blast on fabric, cardboard, plywood, brick or glass meant editing a
+## constant. This is the same env-gated dev seam the rest of this file uses.
 func _seed_dev_grenades_if_empty(tag: String) -> void:
 	if _test_zone_controller == null or not _test_zone_controller._grenades.is_empty():
 		return
-	for seed_gu in TEST_ZONE_GRENADE_GUS:
+	var cells: Array = TEST_ZONE_GRENADE_GUS
+	var env := OS.get_environment("INFILTRAITOR_GRENADE_GUS")
+	if env != "":
+		var parsed: Array = []
+		for pair in env.split(";", false):
+			var xy := pair.split(",")
+			if xy.size() == 2 and xy[0].strip_edges().is_valid_int() and xy[1].strip_edges().is_valid_int():
+				parsed.append(Vector2i(xy[0].strip_edges().to_int(), xy[1].strip_edges().to_int()))
+			else:
+				push_warning("[%s] INFILTRAITOR_GRENADE_GUS: cannot parse %r — expected \"x,y;x,y\"" % [tag, pair])
+		if not parsed.is_empty():
+			cells = parsed
+	for seed_gu in cells:
 		_test_zone_controller.add_grenade(seed_gu)
 	print("[%s] seeded %d dev grenade(s) — PLAYGROUND no longer ships them" % [
 		tag, _test_zone_controller._grenades.size()])
@@ -5469,9 +5495,15 @@ func _run_auto_screenshot_capture() -> void:
 			await get_tree().process_frame
 		if capture_action != "test_zone_view":
 			## The floor grenades were retired from PLAYGROUND 2026-08-17 (see
-			## _populate_test_zone_if_playground()) — nothing to click any more.
+			## _populate_test_zone_if_playground()), so this action seeds its own
+			## — the same fix P-FILM and the four-view capture already carry, and
+			## this is the third and last caller that was left warning-and-quit.
+			## It matters more than the others: this is the only capture path
+			## that reaches DetonationPlanBuilder.print_census(), which is where
+			## the per-surface/material tally (including JUNCTION) is read.
+			_seed_dev_grenades_if_empty("SCREENSHOT-HOOK-01")
 			if _test_zone_controller._grenades.is_empty():
-				push_warning("[SCREENSHOT-HOOK-01] %s: the floor grenades are retired on PLAYGROUND, nothing to capture" % capture_action)
+				push_warning("[SCREENSHOT-HOOK-01] %s: no grenade to detonate" % capture_action)
 				get_tree().quit(1)
 				return
 			## D22-INPUT-01: click the GU floor cell, not the sprite.

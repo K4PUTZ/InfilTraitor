@@ -122,6 +122,13 @@ philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
 - `tools/persistent/run_selftests.py` — runs every `*_selftest.gd` and fails a
   run on any `SCRIPT ERROR`. The arbiter for selftests: a bare `godot --script`
   run can print one and still exit 0.
+- `tools/persistent/build_material_matrix.py` — M3-5: one grenade and one shot on
+  every material, as a table, from real boots of the real map. The numbers it
+  prints had been assembled by hand half a dozen times across the materials
+  milestone, each time from a different ad-hoc command line — which is how two
+  runs stop being comparable. Geometry is read from the mapfile, never hardcoded:
+  the material blocks have moved twice, and a table pointing at where they used
+  to be reports zeroes that look like findings.
 - `tools/persistent/check_facade.py` · `check_decal.py` — the two ART acceptance
   gates. Both exist because their failure mode is SILENT: a rejected facade
   falls back to the generic atlas and a mis-delivered decal renders nothing, and

@@ -773,7 +773,7 @@ frame.
 | ~~**M3-2b**~~ | ~~Half-thickness elements~~ — ✅ **BUILT 2026-08-21**, §3.2d. Mapfile `panels` section; the junction column stays side-blind and is the Director's call | M3-2 |
 | ~~**M3-3**~~ | ~~Burn state + a delta tick~~ — ✅ **BUILT 2026-08-21**, §3.1b. Fabric 100%/1.9s, cardboard 100%/3.5s, plywood 35%, wood untouched | M3-1, M3-2b |
 | ~~**M3-4**~~ | ~~Plywood~~ — ✅ **BUILT 2026-08-21**, §3.1c. Radial falloff on the `r` every ember entry already carries; 64% consumed at the wall's corner vs 24% two GU out | M3-3 |
-| **M3-5** | **Grenade and shot test matrix** on PLAYGROUND's five blocks — the census print per material, plus a filmstrip per material (`build_filmstrip.py`) | M3-4 |
+| **M3-5** | **Grenade and shot test matrix** — ✅ **TOOLED 2026-08-21**: `tools/persistent/build_material_matrix.py`, one grenade + one shot per material from real boots, geometry read from the mapfile. The per-material FILMSTRIP half waits on M2's decals | M3-4 |
 
 ---
 
@@ -912,7 +912,7 @@ No task list until the study lands.
 | ✅ | **M3-2b** — half-thickness elements (the milestone's largest single item, and it was not fire) | done |
 | ✅ | **M3-3** — fabric + cardboard burn, on the blast's survivors, delta tick | done |
 | ✅ | **M3-4** — plywood burn (radial falloff; ⚠️ opens 60/64 and still reports NONE — see §3.1c) | done |
-| 7 | **M3-5** — grenade + shot test matrix, filmstrip per material | M3-4, M2 |
+| 🟡 | **M3-5** — the matrix is a tool now; the filmstrip half waits on M2's decals | M2 |
 | 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |
 | 9 | **M4b** — glass pane break + `HOLE_ONLY_MATERIALS` + the INTACT branch | design |
 | 10 | **M5** — voxel prop class | M3, renderer v2 |

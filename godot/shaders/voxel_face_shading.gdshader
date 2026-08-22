@@ -153,8 +153,45 @@ uniform float soot_clean_mult = 1.0;
 // anyway, so they simply take no soot.
 uniform float soot_alpha_floor : hint_range(0.0, 0.5) = 0.02;
 
+// PERF-P2 (2026-08-22) — THE SOOT CODE NOW ARRIVES PER CELL, NOT PER ALTERNATIVE.
+//
+// It used to ride in the alternative's `modulate.a`, which meant every distinct
+// (bucket, soot) pair was a separate TileSet alternative and every soot change
+// minted tiles and rebuilt the TileSet. PERFORMANCE_MASTER_PLAN §1.4: 12 buckets
+// x 125 soot codes x 2 flips = up to 3 000 alternatives per tile. Read from a
+// per-LEVEL data texture instead, one texel per cell, and a soot change becomes
+// a pixel write.
+//
+// HOW THE CELL IS RECOVERED — proven by PERF-SPIKE-01 before any of this was
+// designed (see the plan's §3):
+//   · cell -> local position is exactly AFFINE on every voxel layer (0.000000 px
+//     error out to cell (350,350); basis e1 (16,8), e2 (-16,8), det 256);
+//   · each LEVEL is its own TileMapLayer, so the third dimension disappears and
+//     `VERTEX` being layer-local makes layer.position cancel;
+//   · the fragment's offset inside its own quad is exactly `local` below, so
+//     `VERTEX - local` is the quad's TOP-LEFT and is CONSTANT across the quad.
+//     That last one is what matters: all THREE faces of a voxel must resolve to
+//     ONE cell, and this is why they do.
+//   · quad top-left = map_to_local(cell) + (-16, -28), the same rect the
+//     renderer builds — not a number invented here.
+uniform sampler2D cell_soot : filter_nearest, repeat_disable, hint_default_white;
+uniform vec2 cell_soot_size = vec2(512.0, 512.0);
+// 1/32 and 1/16 written out: Godot rejects a division in a uniform default.
+uniform vec2 inv_basis_row0 = vec2(0.03125, 0.0625);
+uniform vec2 inv_basis_row1 = vec2(-0.03125, 0.0625);
+uniform vec2 quad_to_map = vec2(0.0, 20.0);
+
+varying vec2 v_vertex;
+
+void vertex() {
+	v_vertex = VERTEX;
+}
+
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
+	vec2 cell = floor(vec2(
+		dot(inv_basis_row0, v_vertex - local + quad_to_map),
+		dot(inv_basis_row1, v_vertex - local + quad_to_map)) + 0.5);
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
 	vec2 half_top = vec2(atom_size.x * 0.5, top_face_h * 0.5);
@@ -177,7 +214,15 @@ void fragment() {
 	float tex_a = texture(TEXTURE, UV).a;
 	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
-		float code = floor((COLOR.a / tex_a) * 125.0 + 0.5) - 1.0;
+		// A cell outside the data texture reads CLEAN rather than wrapping —
+		// repeat_disable plus hint_default_white already give 255, which the
+		// clamp below folds onto 124 (clean), but the explicit bounds test is
+		// what makes that a decision rather than a coincidence.
+		float code = 124.0;
+		if (cell.x >= 0.0 && cell.y >= 0.0
+				&& cell.x < cell_soot_size.x && cell.y < cell_soot_size.y) {
+			code = floor(texture(cell_soot, (cell + vec2(0.5)) / cell_soot_size).r * 255.0 + 0.5);
+		}
 		code = clamp(code, 0.0, 124.0);
 		// top*25 + se*5 + sw, selected by the face index resolved above.
 		if (sep_index < 0.5) {

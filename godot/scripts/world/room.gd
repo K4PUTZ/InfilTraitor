@@ -4593,7 +4593,7 @@ func _capture_cell_index_spike() -> void:
 	var mode_env := OS.get_environment("INFILTRAITOR_SPIKE_MODE")
 	var mode: float = float(mode_env.to_int()) if mode_env.is_valid_int() else 0.0
 	if mode > 0.0:
-		var mat: ShaderMaterial = _voxel_renderer._get_face_shading_material()
+		var mat: ShaderMaterial = _voxel_renderer._get_layer_material(0)
 		if mat == null:
 			print("[SPIKE] no shading material — cannot drive gate 2")
 			print("[SPIKE] ---- end ----")

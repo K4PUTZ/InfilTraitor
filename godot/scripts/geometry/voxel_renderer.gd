@@ -2474,9 +2474,16 @@ func apply_light_field(field) -> void:
 	for cell in _ghosted_cells.keys():
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
+			var ghost_soot: int = field.face_soot_code(cell, record["level"])
+			## PERF-P2: the cell is erased right now, but un-ghosting restores it
+			## from this record — and the soot plane is where its scorch lives.
+			_write_cell_soot(int(record["level"]), cell, ghost_soot)
 			record["prev_alt"] = encode_voxel_alt(
 					field.bucket_for(cell, record["level"]),
-					field.face_soot_code(cell, record["level"]), flipped)
+					ghost_soot, flipped)
+	## PERF-P2 — ONE upload per level per repaint, at the end, after the ghost
+	## records have had their say. Never one upload per cell.
+	flush_cell_soot()
 
 
 ## VL-03 — repaint ONLY the cells inside the given GU cells, using the index
@@ -2542,6 +2549,11 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			if soot_lighten > 0:
 				soot_code = VoxelLightField.encode_face_soot(_lighten_faces(
 					VoxelLightField.decode_face_soot(soot_code), soot_lighten))
+			## PERF-P2 — BEFORE the alt comparison, deliberately. Once soot stops
+			## riding in the alternative id, a soot-only change leaves `alt_id`
+			## equal to `prev_alt`, and a write placed after the `continue` would
+			## be skipped exactly when it is the only thing that changed.
+			_write_cell_soot(level, cell, soot_code)
 			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
 					soot_code, decode_light_flipped(prev_alt))
 			if alt_id == prev_alt:
@@ -2558,9 +2570,14 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			continue
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
+			var ghost_soot: int = field.face_soot_code(cell, record["level"])
+			## PERF-P2: the cell is erased right now, but un-ghosting restores it
+			## from this record — and the soot plane is where its scorch lives.
+			_write_cell_soot(int(record["level"]), cell, ghost_soot)
 			record["prev_alt"] = encode_voxel_alt(
 					field.bucket_for(cell, record["level"]),
-					field.face_soot_code(cell, record["level"]), flipped)
+					ghost_soot, flipped)
+	flush_cell_soot()
 
 
 ## W-PRECOOK — mint every TileSet alternative the given field would need inside
@@ -2668,8 +2685,11 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 			_placed_by_gu[gu].append({"level": level, "cell": cell})
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
 		## FACE-SOOT-01: see apply_light_field_gus() — compare the whole id.
+		var full_soot: int = field.face_soot_code(cell, level)
+		## PERF-P2 — before the comparison, for apply_light_field_gus()'s reason.
+		_write_cell_soot(level, cell, full_soot)
 		var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
-				field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+				full_soot, decode_light_flipped(prev_alt))
 		if alt_id == prev_alt:
 			continue
 		var source_id: int = layer.get_cell_source_id(cell)
@@ -2979,24 +2999,98 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## z-index formula has exactly one owner; the two callers differ only in
 ## WHERE they file the result (_voxel_layers vs _negative_voxel_layers),
 ## never in HOW a layer is built.
-## FACE-READ-01 — one shared ShaderMaterial for every voxel layer. Built lazily
-## and reused: the shader is stateless (its uniforms are global tuning, not
-## per-layer), so N layers share one material and one pipeline.
-var _face_shading_material: ShaderMaterial
+## FACE-READ-01 — the per-face shading material.
+##
+## ⚠️ PERF-P2 (2026-08-22): this used to be ONE material shared by every voxel
+## layer, on the stated grounds that *"the shader is stateless (its uniforms are
+## global tuning, not per-layer)"*. That stopped being true the moment the SOOT
+## CODE moved out of the alternative id and into a per-LEVEL data texture — the
+## texture IS a per-layer uniform. So there is now one material per level, all
+## sharing the same compiled Shader resource; the tuning uniforms keep their
+## defaults on every one of them.
+var _layer_materials: Dictionary = {}   ## level -> ShaderMaterial
 
 
-func _get_face_shading_material() -> ShaderMaterial:
-	if _face_shading_material != null:
-		return _face_shading_material
+## PERF-P2 — the per-cell soot plane: one R8 texture per LEVEL, one texel per
+## cell, carrying the same 0..124 base-5 face code the alternative's alpha used
+## to carry (top*25 + se*5 + sw, 4 = clean per face, 124 = fully clean).
+##
+## WHY A TEXTURE AT ALL, and it is not "because textures are fast": a
+## TileMapLayer has exactly one per-cell channel — the alternative id — and
+## every distinct (bucket, soot) pair spent one. PERFORMANCE_MASTER_PLAN §1.4:
+## up to 3 000 alternatives per tile, each a `create_alternative_tile()` and a
+## TileSet rebuild charged once per FRAME THAT MINTS.
+##
+## Sized by a CONSTANT and loud-failing past it (B6) rather than growing: a
+## silently-clamped cell would render clean soot with no error, which is exactly
+## the failure mode this project keeps paying for. 512 covers a 64x64 GU board;
+## PLAYGROUND is 46x24 with its buffer.
+const SOOT_TEX_SIZE: int = 512
+var _soot_images: Dictionary = {}     ## level -> Image (FORMAT_R8)
+var _soot_textures: Dictionary = {}   ## level -> ImageTexture
+var _soot_dirty: Dictionary = {}      ## level -> true, cleared by flush_cell_soot()
+var _soot_out_of_range_reported: bool = false
+
+
+func _soot_image_for(level: int) -> Image:
+	if _soot_images.has(level):
+		return _soot_images[level]
+	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_R8)
+	## CLEAN, not zero. Zero is "ring 0 on all three faces" — the darkest scorch
+	## there is — so an unvisited cell would come up black.
+	img.fill(Color8(FACE_SOOT_CODE_CLEAN, 0, 0, 255))
+	_soot_images[level] = img
+	_soot_textures[level] = ImageTexture.create_from_image(img)
+	return img
+
+
+## Record one cell's soot code. Cheap and idempotent: an unchanged code does not
+## dirty the level, so a repaint that only moves light uploads nothing.
+func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
+	if cell.x < 0 or cell.y < 0 or cell.x >= SOOT_TEX_SIZE or cell.y >= SOOT_TEX_SIZE:
+		if not _soot_out_of_range_reported:
+			_soot_out_of_range_reported = true
+			push_error("[VoxelRenderer] PERF-P2: cell %s is outside the %dx%d soot plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
+		return
+	var img := _soot_image_for(level)
+	var c: int = clampi(code, 0, FACE_SOOT_CODE_CLEAN)
+	if img.get_pixel(cell.x, cell.y).r8 == c:
+		return
+	img.set_pixel(cell.x, cell.y, Color8(c, 0, 0, 255))
+	_soot_dirty[level] = true
+
+
+## Upload whatever changed. Returns how many levels were re-uploaded — one
+## upload per level per repaint, never one per cell.
+func flush_cell_soot() -> int:
+	if _soot_dirty.is_empty():
+		return 0
+	var n: int = 0
+	for level in _soot_dirty.keys():
+		var tex = _soot_textures.get(level)
+		if tex != null:
+			(tex as ImageTexture).update(_soot_images[level])
+			n += 1
+	_soot_dirty.clear()
+	return n
+
+
+func _get_layer_material(level: int) -> ShaderMaterial:
+	if _layer_materials.has(level):
+		return _layer_materials[level]
 	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
 	if shader == null:
 		## B6 loud-fail: silently rendering undifferentiated voxels is exactly
 		## the class of bug this project keeps paying for.
 		push_error("[VoxelRenderer] FACE-READ-01: voxel_face_shading.gdshader failed to load — voxel faces will render flat")
 		return null
-	_face_shading_material = ShaderMaterial.new()
-	_face_shading_material.shader = shader
-	return _face_shading_material
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	_soot_image_for(level)
+	mat.set_shader_parameter("cell_soot", _soot_textures[level])
+	mat.set_shader_parameter("cell_soot_size", Vector2(float(SOOT_TEX_SIZE), float(SOOT_TEX_SIZE)))
+	_layer_materials[level] = mat
+	return mat
 
 
 func _build_voxel_layer_node(level: int) -> TileMapLayer:
@@ -3005,7 +3099,7 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	layer.name = "voxel_layer_%d" % level
 	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
 	## material-only and the baked tile paths — see the shader's own header.
-	layer.material = _get_face_shading_material()
+	layer.material = _get_layer_material(level)
 
 	# E1 equation from Transform Canon (SLICE-00)
 	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):

@@ -4,7 +4,7 @@
   "id": "PLAYGROUND",
   "meta": {
     "title": "Destruction Test Zone",
-    "description": "One short wall per material (concrete/metal/stone/wood) for destruction testing. brick/cardboard/fabric/glass are RESERVED as open floor at gu x=22-24/27-29/32-34/37-39 until each is fully implemented (DESTRUCTION_MASTER_PLAN's reopening) — glass has wall/floor/resistance support but NOT roof-bake coverage (confirmed 2026-08-17: PROMPTS/AUDITS/ROOF_BAKE_LEAK_2026-08-17.md, 520 missing roof lookup entries), so it stays reserved alongside the other three rather than half-built. Weapon bench and floor grenades retired 2026-08-17: firing now goes through the agent himself (WEAPON_MASTER_PLAN §6c, built 2026-08-19), not a static bench prop. 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) — shooting each one tests a different impact angle and travel distance against a different material, which one guard on a patrol could never cover. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter, not because these guards should roam away from the block they are there to stand in front of. Agent moved to (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
+    "description": "One short wall trio per material at gu y=2, a 3x3 floor zone of the same material at y=4..6, and an overhead light at y=3: concrete x=2, metal x=7, stone x=12, wood x=17, brick x=22, cardboard x=26, fabric x=30, plywood x=34, glass x=38. All nine are BUILT (MATERIALS_MASTER_PLAN M1/M2/M3, 2026-08-21) — the earlier 'RESERVED as open floor' note described a state that ended with the 44x22 reform. The `panels` section adds three half-thickness test elements at y=8 (glass SE at 25, glass SW at 29, fabric SE at 33). The agent starts between the two half-thickness glass panes, central enough that throw_range_gu 7 reaches the brick, cardboard and fabric trios without walking, and every material trio has a guard patrolling its own floor zone, so a shot that misses lands on the material under test."
   },
   "sections": {
     "board": {
@@ -18,8 +18,8 @@
     },
     "actors": {
       "agent_start": [
-        10,
-        15
+        27,
+        9
       ],
       "guards": [
         [
@@ -60,6 +60,56 @@
           [
             16,
             4
+          ]
+        ],
+        [
+          [
+            22,
+            5
+          ],
+          [
+            24,
+            5
+          ]
+        ],
+        [
+          [
+            26,
+            5
+          ],
+          [
+            28,
+            5
+          ]
+        ],
+        [
+          [
+            30,
+            5
+          ],
+          [
+            32,
+            5
+          ]
+        ],
+        [
+          [
+            34,
+            5
+          ],
+          [
+            36,
+            5
+          ]
+        ],
+        [
+          [
+            38,
+            5
+          ],
+          [
+            40,
+            5
           ]
         ]
       ],

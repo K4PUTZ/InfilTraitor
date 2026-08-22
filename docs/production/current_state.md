@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.106 · **Updated:** 2026-08-21 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-08-21 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -120,7 +120,12 @@ The **Voxel Render Plane** replaces the legacy `WallContainer` + `Image.blend_re
 
 ✅ **Geometry & Asset Generation (VOXEL-01)**
 - Voxel PNG tiles regenerated with correct 3D isometric geometry (32×36 px, 3 visible faces: top + left + right)
-- 4 materials supported: concrete, metal, stone, wood
+- **14 materials registered, 10 with a facade** (2026-08-21): concrete, metal, stone,
+  wood, earth, brick, cardboard, fabric, plywood, glass — plus the floor-only
+  grass/dirt/gravel/sand. ⚠️ This line said "4 materials" until the materials
+  milestone; the LIVE roster is the folder set under `ASSETS/materials/`, which
+  `material_tree_selftest` checks against the registry in both directions.
+  Per-material behaviour (marks, fire, thickness) is `MATERIALS_MASTER_PLAN`.
 - Diamond top face (bright), left/right side faces (darkened 80%)
 - All tiles visually validated in Godot
 

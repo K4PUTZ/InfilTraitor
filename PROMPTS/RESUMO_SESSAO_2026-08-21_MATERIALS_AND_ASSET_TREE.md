@@ -18,16 +18,10 @@ machine run `python3 tools/asset_generation/migrate_asset_tree.py --apply`, then
 `--import`, then both gates. Skipping that gives `Tier.NONE` on every material,
 which renders something and reports nothing.
 
-**Open and waiting on the Director:**
-1. **M2b — the nine brick decals** (`PROMPTS/ART_ORDER_BRICK_DECALS.md`, paths
-   already point at the new tree). The only thing blocking M2.
-2. **Does a passage have to reach the ground?** (§3.2a) — `passage_class()`
-   answers geometry, not reachability, and deliberately did not decide this.
-3. **Ten orphan `.import` sidecars** in the old folders, dead by construction,
-   left alone because deleting is the Director's call.
-
-**Next unblocked build task: M3-2b, half-thickness elements** — still the
-milestone's largest single item, and still not fire.
+> ⚠️ **THIS BLOCK IS SUPERSEDED — see PART THREE at the end of this file.**
+> Everything numbered below was answered or built later the same day. It is kept
+> because the reasoning that produced each answer is in the sections it points
+> at, not because any of it is still open.
 
 ---
 
@@ -252,3 +246,76 @@ every junction has by construction.
   the two prints per-material is the real fix.
 - §4.2's "a far shotgun pellet CRACKS glass" does not reproduce at the matrix's
   distance — it needs the far end of the ladder.
+
+
+---
+
+# PART THREE — the session closes · ALPHA BRICK DECALS 0.9.107
+
+**Commits since Part Two:** `9dae395a` and this one.
+**Gates at close:** lint 217 ✅ · selftests **39 clean / 0 failed** ✅ ·
+invariants ✅ · CODEMAP ✅ · `check_decal --all` 54/54 ✅ ·
+`check_facade --all` 10/10 ✅.
+
+## Read this first if you are resuming
+
+**THREE OF THE MILESTONE'S SIX PARTS ARE BUILT** — M1 (the five materials), M2
+(the nine brick decals) and **all of M3** (fire, half-thickness, the passage
+rule, plywood's spatial rule, the matrix tool).
+
+**What is left, and none of it is blocked on the Director:**
+
+| | |
+|---|---|
+| **M4** | Glass — `a` the blend mode, `b` its own crack/hole algorithm. **LAST, by explicit decision** |
+| **M5** | Voxel props — blocked on renderer v2 (`ART_SPECIFICATIONS` §5: the v1 prop renderer ignores `layers`) |
+| **M6** | Fluids — a RESEARCH task; the study is the deliverable, four required answers in §6 |
+
+**Open for CALIBRATION, not construction** — the Director's eye, deferred by
+them: the fire's and destruction's numbers, and how present the decals read at
+play zoom. `build_material_matrix.py` and `build_atom_sheet.py` are the two
+instruments for those.
+
+⚠️ **The material art tree moved this session.** `ASSETS/*` is gitignored, so the
+file moves are NOT in the repo: on any other machine run
+`python3 tools/asset_generation/migrate_asset_tree.py --apply`, then `--import`,
+then both gates. Skipping it gives `Tier.NONE` on every material — which renders
+something and reports nothing.
+
+## M2c — the decals landed, and the gate cried wolf (`9dae395a`)
+
+Two of the nine (`decal_crack_brick_1/2`) are PALETTE PNGs carrying transparency
+in a tRNS chunk. `check_decal.py` asked `"A" in im.getbands()` and rejected them.
+Checked rather than reported back:
+
+```
+Pillow, source:    mode=P  tRNS=True    88.1% / 90.8% transparent
+Godot, IMPORTED:   format=5 (RGBA8)     89.4% / 91.1% fully transparent
+```
+
+**The art was right and the gate was wrong** — check_facade.py's own first-run
+mistake arriving a THIRD time. The question is "is the IMAGE transparent", never
+"does the FILE have an alpha band". Re-earned rather than merely relaxed: it
+still fails RGB-opaque, an empty canvas, and a palette file with NO tRNS.
+
+Acceptance, and the shape is the point — same shot, same cells as the control:
+
+```
+BEFORE  brick:s1  cracked=0 dented=15 destroyed=8
+AFTER   brick:s1  cracked=0 dented=15 destroyed=8
+30 193 differing pixels of 921 600
+```
+
+Identical mechanics, changed appearance. A decal must not move a single count.
+
+## The three rules this session added to the project's habits
+
+1. **A green gate is not proof.** The 363-atom diff reported 0 while eight
+   earth-variant assets were failing to load; B6's loud-fail caught it.
+2. **Never OR a lenient predicate with a strict one.** `ResourceLoader.exists(p)
+   or FileAccess.file_exists(p)` is weaker than either alone, and made
+   `voxel_decal_selftest` unable to see a deleted decal.
+3. **A whitelist dict silently defaults a new column.**
+   `MaterialResistanceTable._scan_dir()` builds its row from four named keys;
+   adding `burn_consumption` to the JSON without adding it there made every
+   material read 0.0 with no error anywhere.

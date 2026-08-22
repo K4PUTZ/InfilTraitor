@@ -1,8 +1,11 @@
 # MATERIALS_MASTER_PLAN
-## The materials milestone — burn, breach, see through, and flow — v1.2
+## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟡 **v1.2 — the design is captured and ordered; M1 and the soft
-materials' tier rule are built.** §3.2 (the passage rule) and §3.3 (the tick)
+**Status:** 🟢 **v1.3 — THREE OF SIX PARTS BUILT: M1, M2 and all of M3.**
+M4 (glass, LAST by decision), M5 (voxel props, blocked on renderer v2) and M6
+(fluid research) remain. Two things are open for CALIBRATION rather than
+construction, both the Director's eye: the fire's and destruction's numbers, and
+how present the decals should read at play zoom. §3.2 (the passage rule) and §3.3 (the tick)
 were RESOLVED by the Director on 2026-08-21, and the first answer added a new
 structural requirement — **half-thickness elements, §3.2b** — that the engine
 cannot do today. Later the same day the Director cut M2 from 21 files to 9

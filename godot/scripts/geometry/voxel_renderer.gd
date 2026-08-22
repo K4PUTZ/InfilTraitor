@@ -2471,9 +2471,76 @@ func columns_with_structure() -> Dictionary:
 var _placed_by_gu: Dictionary = {}
 
 
+## PERF-P3 measurement seam — WHAT IS THE MAP-WIDE APPLY ACTUALLY MADE OF?
+##
+## `INFILTRAITOR_APPLY_SPLIT_PROBE=1`. PERFORMANCE_MASTER_PLAN §1.2 charges
+## ~1 080 ms to `apply` and P3 proposes to remove it by making a light change a
+## pixel write. That is only true of the part that IS `set_cell()` +
+## `_ensure_light_alt()`. Nothing on record split the term, so P3's size was
+## being estimated against a figure that includes work P3 cannot reach.
+##
+## THREE PHASES, ordered so each one can only measure itself:
+##
+##   A · WARM — touch `field.bucket_for()` on every placed cell and nothing
+##       else. VoxelLightField caches per (cell, level) and derives on FIRST
+##       TOUCH (`_compute_bucket` -> `_lamp_intensity` x `_static_factor`), so
+##       whichever pass runs first is charged the whole derivation. Paying it
+##       here is what stops it from hiding inside the apply.
+##   B · APPLY — the real pass, field cache already warm: walk + `set_cell()`
+##       + minting.
+##   C · APPLY AGAIN — every cell is now at its target alternative, so every one
+##       takes the `continue`. This is the WALK alone.
+##
+## B minus C is the write-and-mint half, and it is the only half P3 removes.
+##
+## An earlier version of this probe ran only B and C and called C "walk only".
+## It is not: C is walk plus a WARM field cache, and B was carrying the
+## derivation. That version reported 760 ms of "writes+mints" on a repaint that
+## wrote zero cells and minted zero alternatives — the number was real, the name
+## on it was wrong, and phase A is what gives it its own name.
+var _apply_cells_seen: int = 0
+var _apply_cells_written: int = 0
+
+
 func apply_light_field(field) -> void:
 	if field == null:
 		return
+	if OS.get_environment("INFILTRAITOR_APPLY_SPLIT_PROBE") == "1":
+		_apply_split_probe(field)
+		return
+	_apply_light_field_pass(field)
+
+
+func _apply_split_probe(field) -> void:
+	var warm_t0: int = Time.get_ticks_usec()
+	for level in range(_voxel_layers.size()):
+		for cell in _voxel_layers[level].get_used_cells():
+			field.bucket_for(cell, level)
+	for level in _negative_voxel_layers.keys():
+		for cell in (_negative_voxel_layers[level] as TileMapLayer).get_used_cells():
+			field.bucket_for(cell, level)
+	var warm_us: int = Time.get_ticks_usec() - warm_t0
+	var mints_before: int = _minted_light_alts.size()
+	var b0: int = Time.get_ticks_usec()
+	_apply_light_field_pass(field)
+	var b_us: int = Time.get_ticks_usec() - b0
+	var seen: int = _apply_cells_seen
+	var written: int = _apply_cells_written
+	var minted: int = _minted_light_alts.size() - mints_before
+	var c0: int = Time.get_ticks_usec()
+	_apply_light_field_pass(field)
+	var c_us: int = Time.get_ticks_usec() - c0
+	print("[APPLY-SPLIT] %d cells · derivation %.1f ms · apply %.1f ms (%d written, %d minted) · walk-only %.1f ms · writes+mints %.1f ms"
+		% [seen, float(warm_us) / 1000.0, float(b_us) / 1000.0, written, minted,
+		float(c_us) / 1000.0, float(b_us - c_us) / 1000.0])
+	if _apply_cells_written != 0:
+		push_warning("[APPLY-SPLIT] the walk-only pass wrote %d cell(s) — it is not walk-only, so the split above is not trustworthy"
+			% _apply_cells_written)
+
+
+func _apply_light_field_pass(field) -> void:
+	_apply_cells_seen = 0
+	_apply_cells_written = 0
 	_placed_by_gu.clear()
 	for level in range(_voxel_layers.size()):
 		_apply_light_to_layer(_voxel_layers[level], level, field, true)
@@ -2686,6 +2753,7 @@ static func _lighten_faces(faces: Vector3i, by: int) -> Vector3i:
 
 func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: bool = false) -> void:
 	for cell in layer.get_used_cells():
+		_apply_cells_seen += 1
 		if do_index:
 			var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 			if not _placed_by_gu.has(gu):
@@ -2706,6 +2774,7 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 		## actually needs it.
 		_ensure_light_alt(source_id, atlas_coords, alt_id)
 		layer.set_cell(cell, source_id, atlas_coords, alt_id)
+		_apply_cells_written += 1
 
 
 ## Process dirty slices only (TIC optimization)

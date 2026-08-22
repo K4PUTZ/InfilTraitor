@@ -176,6 +176,11 @@ uniform float soot_alpha_floor : hint_range(0.0, 0.5) = 0.02;
 //     renderer builds — not a number invented here.
 uniform sampler2D cell_soot : filter_nearest, repeat_disable, hint_default_white;
 uniform vec2 cell_soot_size = vec2(512.0, 512.0);
+// The map's buffer puts real geometry at NEGATIVE voxel cells — the seams
+// between GUs resolve to things like (-8, 8) — so the plane is indexed from an
+// origin, not from zero. Measured, not assumed: indexing from zero dropped ~12%
+// of a frame's fragments onto the clean fallback.
+uniform vec2 cell_plane_origin = vec2(64.0, 64.0);
 // 1/32 and 1/16 written out: Godot rejects a division in a uniform default.
 uniform vec2 inv_basis_row0 = vec2(0.03125, 0.0625);
 uniform vec2 inv_basis_row1 = vec2(-0.03125, 0.0625);
@@ -219,9 +224,10 @@ void fragment() {
 		// clamp below folds onto 124 (clean), but the explicit bounds test is
 		// what makes that a decision rather than a coincidence.
 		float code = 124.0;
-		if (cell.x >= 0.0 && cell.y >= 0.0
-				&& cell.x < cell_soot_size.x && cell.y < cell_soot_size.y) {
-			code = floor(texture(cell_soot, (cell + vec2(0.5)) / cell_soot_size).r * 255.0 + 0.5);
+		vec2 pcell = cell + cell_plane_origin;
+		if (pcell.x >= 0.0 && pcell.y >= 0.0
+				&& pcell.x < cell_soot_size.x && pcell.y < cell_soot_size.y) {
+			code = floor(texture(cell_soot, (pcell + vec2(0.5)) / cell_soot_size).r * 255.0 + 0.5);
 		}
 		code = clamp(code, 0.0, 124.0);
 		// top*25 + se*5 + sw, selected by the face index resolved above.

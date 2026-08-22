@@ -3033,6 +3033,19 @@ var _layer_materials: Dictionary = {}   ## level -> ShaderMaterial
 ## silently-clamped cell would render clean soot with no error, which is exactly
 ## the failure mode this project keeps paying for. 512 covers a 64x64 GU board;
 ## PLAYGROUND is 46x24 with its buffer.
+## ⚠️ CELLS GO NEGATIVE, and the first version of this plane did not know that.
+##
+## The map's BUFFER (Rule 7 — applied only in MapCompiler) puts real geometry at
+## negative voxel coordinates: measured by making the shader print its recovered
+## cell, the fragments along every GU seam resolve to cells like (-8, 8). Indexed
+## from zero, ~110 000 fragments of a 921 600-pixel frame — about 12% — fell
+## outside the plane and silently took the "clean" fallback, which is invisible
+## exactly until something near them is sooty. That is the shape of bug this
+## project keeps paying for, and it shipped in PERF-P2.
+##
+## So the plane carries an ORIGIN: everything indexes `cell + ORIGIN`, and the
+## shader is passed the same offset.
+const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
 const SOOT_TEX_SIZE: int = 512
 var _soot_images: Dictionary = {}     ## level -> Image (FORMAT_R8)
 var _soot_textures: Dictionary = {}   ## level -> ImageTexture
@@ -3055,16 +3068,17 @@ func _soot_image_for(level: int) -> Image:
 ## Record one cell's soot code. Cheap and idempotent: an unchanged code does not
 ## dirty the level, so a repaint that only moves light uploads nothing.
 func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
-	if cell.x < 0 or cell.y < 0 or cell.x >= SOOT_TEX_SIZE or cell.y >= SOOT_TEX_SIZE:
+	var p := cell + SOOT_PLANE_ORIGIN
+	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
 		if not _soot_out_of_range_reported:
 			_soot_out_of_range_reported = true
 			push_error("[VoxelRenderer] PERF-P2: cell %s is outside the %dx%d soot plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
 		return
 	var img := _soot_image_for(level)
 	var c: int = clampi(code, 0, FACE_SOOT_CODE_CLEAN)
-	if img.get_pixel(cell.x, cell.y).r8 == c:
+	if img.get_pixel(p.x, p.y).r8 == c:
 		return
-	img.set_pixel(cell.x, cell.y, Color8(c, 0, 0, 255))
+	img.set_pixel(p.x, p.y, Color8(c, 0, 0, 255))
 	_soot_dirty[level] = true
 
 
@@ -3074,11 +3088,12 @@ func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
 ## decide whether a blast changes a cell's scorch at all, now that the answer is
 ## no longer visible in the alternative id.
 func cell_soot_at(level: int, cell: Vector2i) -> int:
-	if cell.x < 0 or cell.y < 0 or cell.x >= SOOT_TEX_SIZE or cell.y >= SOOT_TEX_SIZE:
+	var p := cell + SOOT_PLANE_ORIGIN
+	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
 		return FACE_SOOT_CODE_CLEAN
 	if not _soot_images.has(level):
 		return FACE_SOOT_CODE_CLEAN
-	return (_soot_images[level] as Image).get_pixel(cell.x, cell.y).r8
+	return (_soot_images[level] as Image).get_pixel(p.x, p.y).r8
 
 
 func flush_cell_soot() -> int:
@@ -3108,6 +3123,8 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 	_soot_image_for(level)
 	mat.set_shader_parameter("cell_soot", _soot_textures[level])
 	mat.set_shader_parameter("cell_soot_size", Vector2(float(SOOT_TEX_SIZE), float(SOOT_TEX_SIZE)))
+	mat.set_shader_parameter("cell_plane_origin",
+		Vector2(float(SOOT_PLANE_ORIGIN.x), float(SOOT_PLANE_ORIGIN.y)))
 	_layer_materials[level] = mat
 	return mat
 

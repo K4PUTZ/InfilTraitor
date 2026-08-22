@@ -198,6 +198,47 @@ Against **~1 080 ms** for the map-wide apply it would replace.
 upload" means *not charged here*, not *free*. The real figure is a FRAME TIME in
 a built system, and P4 owes it.
 
+### 3.1 ⚠️ P3 was attempted on 2026-08-22 and REVERTED — what the attempt measured
+
+The change itself was small and went in cleanly: the plane grew a second channel
+(R = soot, G = bucket), the ladder went to the shader as `uniform float
+bucket_lum[12]`, and the alternative id was left carrying nothing but the flip
+(`alt_for_flip()`), which makes minting **zero** because `_ensure_light_alt()`
+already returns early on 0 and TRANSFORM_FLIP_H.
+
+**The picture came out visibly wrong** — the board crushed to near-black with the
+lit cones still correct — so it was reverted whole. P2 is unaffected and stands.
+
+RULED OUT BY MEASUREMENT, not by reading:
+
+- **the uniform**: `bucket_lum` reads back as the exact 12-value ladder;
+- **the data**: the plane was compared against the light field on 300 real placed
+  cells across three levels — **0 wrong**.
+
+WHAT THE `lum`-ONLY DEBUG RENDER ACTUALLY SHOWS: large flat regions of the
+correct value, plus **white sawteeth along atom edges**. White is 1.0, which in
+that build is either bucket 11 (the fill value — a cell never written) or the
+`in_plane ? … : 1.0` fallback. So the leading suspect is those fragments taking
+the out-of-plane branch or reading an unwritten texel — **not** the cell
+recovery.
+
+⚠️ **AND A CORRECTION TO THE FIRST READING OF THAT EVIDENCE.** `fract(cellf)`
+measured 0.03–0.28 instead of 0, which looked like the recovery being broken and
+was the reason for reverting. It is not sufficient evidence: every one of those
+values is **below 0.5**, so `floor(cellf + 0.5)` rounds to the same integer
+regardless. P2's own detonation gate is positive evidence the other way — max
+delta 4 means **no cell resolved to the wrong soot ring anywhere**, which a
+broken recovery could not produce. The offset is real and worth eliminating, but
+it is not what broke P3.
+
+**What gate 2 could NOT have caught, and this is the lesson for the next
+attempt.** A parity checkerboard is invariant under a CONSTANT cell offset: shift
+every cell by one and the picture is an equally perfect checkerboard. Gate 2
+proved "one cell per quad, consistent across the lattice" — it never proved "the
+RIGHT cell". The next attempt needs a gate that can only pass for the correct
+mapping: paint `cell.x mod 3` and `cell.y mod 3` into separate channels and check
+a KNOWN cell's screen position against a value computed in GDScript.
+
 ---
 
 ## 4. What this does NOT solve, stated up front
@@ -292,7 +333,7 @@ exactly the shape P3 will have to trust.
 |---|---|---|---|
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
 | ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
-| **P3** | ⬅️ **NEXT. The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
+| **P3** | ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1.** **The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P5** | The DERIVATION layer — the ~210 ms of map-wide walking (soot snapshot, occupancy, field). Only now, for §4's reason | P4 | Large |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |

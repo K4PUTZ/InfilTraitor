@@ -3714,6 +3714,12 @@ var _burn_scheduler: BurnScheduler = BurnScheduler.new()
 ## Slice edge ids the fire has eaten into, so "did it open a way through" can be
 ## answered when the fire goes out.
 var _burn_touched_edges: Dictionary = {}
+## MAT-PERF-02 — every GU the fire has eaten into, accumulated across the whole
+## burn so the SOOT can be painted once at the end instead of once per frame.
+## Each soot rung writes a different soot code and therefore mints a fresh set of
+## TileSet alternatives, and the rebuild is charged per FRAME THAT MINTS — so
+## eleven sooty frames cost eleven rebuilds for a picture only the last one keeps.
+var _burn_soot_gus: Dictionary = {}
 
 ## MAT-PERF-01 — the burn's own profiler, `INFILTRAITOR_BURN_PROFILE=1`,
 ## env-gated like every other standing dev probe in this file.
@@ -3736,21 +3742,73 @@ var _burn_prof_voxels: int = 0
 var _burn_prof_total_us: int = 0
 var _burn_prof_repaint_us: int = 0
 var _burn_prof_first_us: int = 0
+## Alternatives minted across the whole burn. The TileSet rebuild they trigger is
+## charged per FRAME THAT MINTS and lands OUTSIDE any probe inside _advance_burn
+## — the engine flushes it after the frame's script work — so a gap between the
+## function's own total and the wall clock is read against this number.
+var _burn_prof_alts_at_start: int = 0
+
+## MAT-PERF-02 — HOW OFTEN THE FIRE MAY COMMIT, and this is a correctness
+## requirement of the scoped repaint rather than a second optimisation.
+##
+## Every committing frame mints TileSet alternatives, and the rebuild they
+## trigger is charged once per FRAME THAT MINTS. Before the scoped repaint the
+## burn got 11 committing frames — but only because each one cost ~1.3 s, so the
+## fire's whole schedule elapsed in eleven of them. Measured with the repaint
+## removed entirely, the SAME fire got **27**. Cheaper frames buy more of them,
+## which is the one shape this renderer punishes: a fire that ran at 60 fps
+## would commit ~114 times and pay ~114 rebuilds.
+##
+## So the cadence is pinned in SECONDS, not frames — the rate the fire eats at is
+## a property of the fire, and it must not change with the machine it runs on.
+## 0.20 s gives a 1.9-second burn about nine bites, which is also what reads as
+## something being eaten rather than deleted.
+const BURN_COMMIT_INTERVAL_S: float = 0.20
+var _burn_commit_accum: float = 0.0
+var _burn_pending: Array = []
 
 
 func start_burn(burn_wave: Dictionary) -> void:
 	_burn_scheduler.schedule(burn_wave)
+	_burn_commit_accum = 0.0
+	_burn_pending.clear()
 
 
 func _advance_burn(delta: float) -> void:
-	if not _burn_scheduler.is_burning():
+	if not _burn_scheduler.is_burning() and _burn_pending.is_empty():
 		return
-	var due: Array = _burn_scheduler.advance(delta)
+	_burn_pending.append_array(_burn_scheduler.advance(delta))
+	_burn_commit_accum += maxf(delta, 0.0)
+	## The LAST batch always flushes, whatever the accumulator says — otherwise a
+	## fire whose final voxels land inside an unfinished interval never reports
+	## itself out and its holes never appear.
+	var final_batch: bool = not _burn_scheduler.is_burning()
+	if _burn_pending.is_empty():
+		return
+	if _burn_commit_accum < BURN_COMMIT_INTERVAL_S and not final_batch:
+		return
+	_burn_commit_accum = 0.0
+	var due: Array = []
+	for voxel in _burn_pending:
+		## Re-checked at COMMIT time, not at schedule time: a voxel can be
+		## destroyed by something else while it waits in the batch, and re-marking
+		## a hole is the defect W-FIX-01 closed on the shot path.
+		if is_instance_valid(voxel) and voxel.damage_state != Voxel.DamageState.DESTROYED:
+			due.append(voxel)
+	_burn_pending.clear()
 	if due.is_empty():
+		## Everything in the batch was already a hole. The fire is still OVER, so
+		## the soot it owes from earlier batches is still owed — clearing the set
+		## here without painting it would lose every scorch mark the burn earned.
+		if final_batch and not _burn_soot_gus.is_empty():
+			_burn_soot_gus.clear()
+			_burn_final_repaint()
 		return
 	var prof_t0: int = Time.get_ticks_usec() if _burn_prof else 0
 	if _burn_prof and _burn_prof_frames == 0:
 		_burn_prof_first_us = prof_t0
+		_burn_prof_alts_at_start = _voxel_renderer.minted_light_alt_count() \
+			if _voxel_renderer != null else 0
 	var entries: Array = []
 	for voxel in due:
 		## from_blast TRUE: the fire is the blast's own consequence, and D24
@@ -3769,8 +3827,30 @@ func _advance_burn(delta: float) -> void:
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 			voxel.damage_substrate)
 	_burn_probe_render()
+	## MAT-PERF-02 — SCOPED AND SOOT-FREE, the shape the firearm moved to on
+	## 2026-08-19 and that fire never inherited. `_repaint_voxel_light_buckets
+	## (false)` used to stand here, and MAT-PERF-01 measured what it cost: 11
+	## committing frames x ~1290 ms = 14 264 ms of a 14 281 ms burn, for a fire
+	## whose own schedule spans 1.90 s.
+	##
+	## Two separate savings, and they are not the same one twice:
+	##   - the APPLY (~1080 ms) walked every placed cell on the 44x22 board;
+	##     scoped, it walks the GUs the fire actually ate plus the light reach.
+	##   - the SOOT SNAPSHOT (~146 ms) is the map-wide walk, skipped entirely per
+	##     frame and paid ONCE when the fire goes out (Director, 2026-08-19: *"a
+	##     fuligem pode ser processada depois do fato, desde que apareça com fade
+	##     in, e não de repente"* — the same ruling the shot deferred under).
+	##
+	## The growth is `shot_repaint_scope()`'s, reused rather than re-derived: it
+	## is a GU-set grown by SHOT_REPAINT_SOOT_RINGS, which is a property of how
+	## far light and soot reach on this board, not of firearms.
+	var burn_gus: Dictionary = {}
+	for voxel in due:
+		var gu: Vector2i = GeometryCoords.voxel_to_gu(voxel.grid_pos)
+		burn_gus[gu] = true
+		_burn_soot_gus[gu] = true
 	var prof_repaint_t0: int = Time.get_ticks_usec() if _burn_prof else 0
-	_repaint_voxel_light_buckets(false)
+	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(burn_gus.keys()), false)
 	if _burn_prof:
 		_burn_prof_repaint_us += Time.get_ticks_usec() - prof_repaint_t0
 	## M3-4 — the other half of the Director's sentence. "mais longe queima menos"
@@ -3803,16 +3883,78 @@ func _advance_burn(delta: float) -> void:
 			_burn_scheduler.elapsed(), _burn_touched_edges.size(), tally, best_open])
 		_burn_touched_edges.clear()
 		if _burn_prof:
-			print("[BURN-PROF] %d committing frame(s) · %d voxel(s) · %.0f ms inside _advance_burn, %.0f ms of it the map-wide repaint · %.0f ms wall clock for a fire whose own schedule spans %.2fs"
+			var prof_alts: int = (_voxel_renderer.minted_light_alt_count() \
+				- _burn_prof_alts_at_start) if _voxel_renderer != null else 0
+			print("[BURN-PROF] %d committing frame(s) · %d voxel(s) · %.0f ms inside _advance_burn, %.0f ms of it the scoped repaint · %.0f ms wall clock (%d TileSet alternative(s) minted, rebuild charged outside this probe) for a fire whose own schedule spans %.2fs"
 				% [_burn_prof_frames, _burn_prof_voxels,
 				float(_burn_prof_total_us) / 1000.0,
 				float(_burn_prof_repaint_us) / 1000.0,
 				float(Time.get_ticks_usec() - _burn_prof_first_us) / 1000.0,
-				_burn_scheduler.elapsed()])
+				prof_alts, _burn_scheduler.elapsed()])
 			_burn_prof_frames = 0
 			_burn_prof_voxels = 0
 			_burn_prof_total_us = 0
 			_burn_prof_repaint_us = 0
+		## THE SOOT, once, after the last voxel is gone. Not awaited and
+		## deliberately last, exactly like the shot's own tail — apply_scoped_soot()
+		## yields two frames of its own first, so the holes are on screen before
+		## the scorch under them is computed.
+		##
+		## A single pass, never fade_in_scoped_soot(): each fade rung mints its own
+		## alternatives, which is how the shot's four-step fade turned one stall
+		## into five.
+		if not _burn_soot_gus.is_empty():
+			_burn_soot_gus.clear()
+			_burn_final_repaint()
+
+
+## MAT-PERF-02 — WHAT THE FIRE DOES WHEN IT GOES OUT, and why it is a FULL
+## repaint rather than the shot's scoped soot pass.
+##
+## During the burn every committing frame repaints SCOPED and SOOT-FREE, which is
+## where the 14 264 ms -> ~700 ms came from. That leaves two debts, and one
+## payment settles both: the deferred soot, and a residue the scoped apply leaves
+## behind. So the fire ends with ONE map-wide repaint — ~1.3 s, once, against the
+## ~14.3 s it used to pay every burn — and the board is exact BY CONSTRUCTION
+## rather than by argument.
+##
+## ⚠️ THE RESIDUE IS REAL AND IS NOT THE DEFERRED SOOT. Measured with the gate
+## below, fabric at gu (31,5): after `apply_scoped_soot()` had run to completion,
+## **198 cells still differed from a full repaint, every one of them on negative
+## (floor) levels**, almost all of them by one to five shades of soot. What was
+## ruled OUT, each by measurement rather than reasoning:
+##
+##   · scope size — identical 198 at 3, 6 and 10 rings of growth, at rising cost;
+##   · a stale `_placed_by_gu` — all 198 are IN the index and IN the scope;
+##   · field staleness — two consecutive full repaints differ by 0, and none of
+##     the 198 matched the live field before the rebuild, so the apply skipped
+##     them rather than writing an outdated value;
+##   · the apply not reaching negative levels — instrumented, it VISITS 9 286
+##     negative-level cells and skips only 314 as erased.
+##
+## Which leaves `alt_id == prev_alt` or the mint, and neither has been proven.
+## **The cause is open and it is MAT-PERF-03's**, worth ~1.3 s if it closes. The
+## shot path has the same scoped apply and has never had this counted.
+func _burn_final_repaint() -> void:
+	## Two frames first, so the last holes are PRESENTED before this runs.
+	## Deferring the work and then doing it in the same frame moves the stall
+	## instead of removing it — the mistake this file's history already records.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(_voxel_renderer):
+		return
+	var before: Dictionary = _perf_snapshot_alts() if _burn_prof else {}
+	var t0: int = Time.get_ticks_usec()
+	_repaint_voxel_light_buckets(false)
+	if not _burn_prof:
+		return
+	var after: Dictionary = _perf_snapshot_alts()
+	var differ: int = 0
+	for k in after:
+		if before.get(k, -12345) != after[k]:
+			differ += 1
+	print("[BURN-PROF] final repaint %.0f ms · corrected %d of %d cell(s) the scoped burn frames left stale"
+		% [float(Time.get_ticks_usec() - t0) / 1000.0, differ, after.size()])
 
 
 ## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)

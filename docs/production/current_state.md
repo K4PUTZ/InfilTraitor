@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-08-21 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-08-22 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -94,11 +94,11 @@
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
+- 39e59bee ALPHA BRICK DECALS 0.9.107 - three of six parts built, and every gate that lied got fixed
 - 173f21cd ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
 - 2f47876b [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
 - f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
 - a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
-- d06cb1c5 ALPHA CHARACTER BRAINSTORM 0.9.102 - turn/corner settled, T-pose built, Part 8 unblocked, doc sweep
 <!-- AUTO:END version_history -->
 
 ---

@@ -32,7 +32,7 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | Part | What | Size |
 |---|---|---|
 | **M1** | The five materials exist, render, and break | ✅ **DONE** |
-| **M2** | Decals — the marks each material takes | Small, art-led. **9 files, brick only** |
+| **M2** | Decals — the marks each material takes | ✅ **DONE 2026-08-21** — 9 files, brick only |
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
 | **M4** | Glass: seeing through it, and breaking it non-locally | Medium + one hard rendering question. **LAST, by decision** |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
@@ -905,8 +905,8 @@ No task list until the study lands.
 | ✅ | **M3-0** — pin the passage unit (§3.2) — the STOREY | done |
 | ✅ | **MAT-SOFT-01** — soft materials are hole-or-nothing, in code and data | done |
 | ✅ | **M2a** — the brick art order + `check_decal.py`, earned before the art | done |
-| 1 | **M2b** — the nine brick PNGs | **Director (art)** |
-| 2 | **M2c** — wire `brick` into `IMPACT_DECAL_MATERIALS`/`IMPACT_CRACK_MATERIALS` + manifest + capture | M2b |
+| ✅ | **M2b** — the nine brick PNGs, delivered 2026-08-21 | done |
+| ✅ | **M2c** — `brick` wired into both constants + manifest; same shot, same counts, 30 193 differing pixels | done |
 | ✅ | **M3-1** — measure the light win — the visual half is free, the cast shadow is not | done |
 | ✅ | **M3-2** — `passage_class()` + selftest | done |
 | ✅ | **M3-2b** — half-thickness elements (the milestone's largest single item, and it was not fire) | done |

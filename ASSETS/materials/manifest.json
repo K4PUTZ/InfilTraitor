@@ -19,7 +19,8 @@
     "concrete",
     "metal",
     "stone",
-    "wood"
+    "wood",
+    "brick"
   ],
   "floor_material": "earth",
   "families": [
@@ -29,6 +30,7 @@
   ],
   "crack_materials": [
     "concrete",
-    "stone"
+    "stone",
+    "brick"
   ]
 }

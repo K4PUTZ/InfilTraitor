@@ -221,45 +221,52 @@ def check(path):
             if w != h else ""
         notes.append("dimensions %dx%d, expected %dx%d%s" % (w, h, DECAL_W, DECAL_H, extra))
 
-    ## 3. Alpha REQUIRED — the one place this gate is strictly harsher than the
-    ## facade gate, and for the opposite reason. A facade's alpha is discarded
-    ## (B3 takes the silhouette from the canonical atom); a decal IS its alpha.
-    ## Without it the mark is an opaque square that replaces the face.
-    if "A" not in im.getbands():
+    ## 3. TRANSPARENCY REQUIRED — the one place this gate is strictly harsher
+    ## than the facade gate, and for the opposite reason. A facade's alpha is
+    ## discarded (B3 takes the silhouette from the canonical atom); a decal IS
+    ## its transparency. Without it the mark is an opaque square that replaces
+    ## the face.
+    ##
+    ## ⚠️ THE QUESTION IS "IS THE IMAGE TRANSPARENT", NOT "DOES THE FILE HAVE AN
+    ## ALPHA BAND", and the difference cost this gate a false rejection. The
+    ## first version asked `"A" in im.getbands()` and failed two of the nine
+    ## delivered brick cracks — PALETTE PNGs carrying their transparency in a
+    ## tRNS chunk, which is an ordinary export. Godot decodes them to RGBA8 with
+    ## it intact: measured on the IMPORTED textures, 89.4% and 91.1% of their
+    ## pixels are fully transparent. The art was right and the gate was wrong,
+    ## which is check_facade.py's own first-run mistake arriving a third time.
+    ## Convert first, then ask.
+    alpha = im.convert("RGBA").getchannel("A")
+    hist = alpha.histogram()
+    total = w * h
+    opaque_px = total - hist[0]
+    coverage = 100.0 * opaque_px / total
+    peak = alpha.getextrema()[1]
+
+    ## 4. Coverage, at the two extremes only. The upper one is what now catches a
+    ## genuinely opaque delivery: a file with no transparency AT ALL reads 100%
+    ## here whether or not it has an alpha band, which is the property that
+    ## actually matters.
+    if coverage < COVERAGE_FLOOR:
         ok = False
-        notes.append("no alpha channel — §7 requires it. Everything outside the "
-                     "mark must be transparent, or the decal covers the whole face")
-        coverage = 100.0
-        peak = 255
-    else:
-        alpha = im.convert("RGBA").getchannel("A")
-        hist = alpha.histogram()
-        total = w * h
-        opaque_px = total - hist[0]
-        coverage = 100.0 * opaque_px / total
-        peak = alpha.getextrema()[1]
+        notes.append("effectively empty — %.2f%% of the canvas carries any alpha. "
+                     "A blank decal renders nothing and reports no error"
+                     % coverage)
+    elif coverage > COVERAGE_CEILING:
+        ok = False
+        notes.append("fully opaque — %.2f%% of the canvas is solid, so this is a "
+                     "face, not a mark on one" % coverage)
 
-        ## 4. Coverage, at the two extremes only.
-        if coverage < COVERAGE_FLOOR:
-            ok = False
-            notes.append("effectively empty — %.2f%% of the canvas carries any alpha. "
-                         "A blank decal renders nothing and reports no error"
-                         % coverage)
-        elif coverage > COVERAGE_CEILING:
-            ok = False
-            notes.append("fully opaque — %.2f%% of the canvas carries alpha, so this "
-                         "is a face, not a mark on one" % coverage)
-
-        ## 5. Peak opacity — reported. Measured on the shipped concrete family:
-        ## bullet 150/204/179, dent 194/254/179, crack 204/255/179. Two thirds of
-        ## the reference art never reaches 255 on purpose.
-        ## Suppressed when the canvas is empty: "peaks at alpha 0, so it tints
-        ## rather than replaces" is true and useless, and a gate that prints
-        ## reassurance next to a failure is training the reader to skim.
-        if 0 < peak < 255:
-            notes.append("note: peaks at alpha %d, so the mark TINTS the face rather "
-                         "than replacing it — matches the shipped art, not a defect"
-                         % peak)
+    ## 5. Peak opacity — reported. Measured on the shipped concrete family:
+    ## bullet 150/204/179, dent 194/254/179, crack 204/255/179. Two thirds of
+    ## the reference art never reaches 255 on purpose.
+    ## Suppressed when the canvas is empty: "peaks at alpha 0, so it tints
+    ## rather than replaces" is true and useless, and a gate that prints
+    ## reassurance next to a failure is training the reader to skim.
+    if 0 < peak < 255:
+        notes.append("note: peaks at alpha %d, so the mark TINTS the face rather "
+                     "than replacing it — matches the shipped art, not a defect"
+                     % peak)
 
     ## 6. Imported.
     for n in _import_notes(path):

@@ -81,7 +81,11 @@ const BASE_MATERIALS: Array[String] = [
 ## D32 — the four wall materials the Director authors decals for. Glass is
 ## absent by D22 (DESTROYED-only) and brick is deferred; both were the
 ## Director's explicit call on 2026-08-02 ("vidro e tijolo deixa pra depois").
-const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood"]
+## M2c (2026-08-21): `brick` joins, its nine decals delivered and measured. The
+## comment this replaced said "glass and brick deferred" — glass still is, and by
+## a different rule: D22 gives it no marked tier at all, so it is not waiting on
+## art (MATERIALS_MASTER_PLAN M4b).
+const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood", "brick"]
 ## Fixed at three by the Director, same session. Must match `variant_count` in
 ## voxels/manifest.json — asserted by voxel_decal_selftest.gd rather than
 ## trusted, because a mismatch fails as a silent MATERIALS.find() miss.
@@ -107,7 +111,9 @@ const IMPACT_FLOOR_MATERIAL: String = "earth"
 ## and wood, and voxel_decal_selftest asserts the two agree. Bullets are NOT
 ## gated by this: a firearm's CRACKED tier is a bullet mark on the struck face,
 ## which every material gets.
-const IMPACT_CRACK_MATERIALS: Array[String] = ["concrete", "stone"]
+## D32.6 — only rigid MINERAL materials fracture; metal and wood dent instead.
+## Brick is one (crack_factor 0.12), so it cracks like concrete and stone.
+const IMPACT_CRACK_MATERIALS: Array[String] = ["concrete", "stone", "brick"]
 
 ## D33 Part 4c: used to be built by _static_init() appending
 ## impact_decal_names()'s ~97 generated names on top of BASE_MATERIALS —

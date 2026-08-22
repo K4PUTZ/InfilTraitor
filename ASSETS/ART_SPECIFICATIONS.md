@@ -279,23 +279,32 @@ the same division of labour `bake_compositor.gd` already has with facades.
 | Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
 | Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. **Brick is no longer deferred** — 2026-08-21 it became a real material and is scheduled in `MATERIALS_MASTER_PLAN` M2 (`PROMPTS/ART_ORDER_BRICK_DECALS.md`). **`cardboard`, `fabric` and `plywood` get NONE, ever** — MAT-SOFT-01 (Director, 2026-08-21) gives them exactly two states, INTACT and DESTROYED (`ShotPunchTable.HOLE_ONLY_MATERIALS`), so a decal for them is a file nothing can load. Glass still gets none (D22: no DENTED/CRACKED tier at all — destroyed or intact) and is deferred whole to M4b |
 
-**Which material needs which family — 33 files on disk today, 42 when brick
-lands:**
+**Which material needs which family — 42 files, all delivered:**
 
 | Family | Materials | Files | Why not the others |
 |---|---|---|---|
-| `bullet` | concrete, metal, stone, wood (+ **brick**, ordered) | 12 (→15) | Firearms hit walls only |
-| `dent` | concrete, metal, stone, wood, **earth** (+ **brick**, ordered) | 15 (→18) | `earth` is the shared floor dent every ground material routes to (D26) |
-| `crack` | concrete, stone (+ **brick**, ordered) | 6 (→9) | D32.6 — metal and wood do not fracture, only dent or take bullets. Brick does: it is a rigid mineral material |
+| `bullet` | concrete, metal, stone, wood, **brick** | 15 | Firearms hit walls only |
+| `dent` | concrete, metal, stone, wood, **earth**, **brick** | 18 | `earth` is the shared floor dent every ground material routes to (D26) |
+| `crack` | concrete, stone, **brick** | 9 | D32.6 — metal and wood do not fracture, only dent or take bullets. Brick does: it is a rigid mineral material |
+
+**Brick landed 2026-08-21** (M2c). Delivered, gated, and wired into both
+`IMPACT_DECAL_MATERIALS` and `IMPACT_CRACK_MATERIALS`. The soft materials get
+none, ever (MAT-SOFT-01); glass gets none by D22 and is not waiting on art.
 
 **The acceptance gate for a delivery is `tools/persistent/check_decal.py`**
 (built 2026-08-21, the decal counterpart to `check_facade.py`). It checks the
 filename, 256×256, that the alpha channel exists and the canvas is neither empty
 nor fully opaque, that the file is IMPORTED, that all 3 variants of a family are
 present, and — with `--material <id>` — that `IMPACT_DECAL_MATERIALS` and the
-files on disk agree **in both directions**. It passes all 45 shipped decals
-unchanged; the "material wired with no art" mismatch it exists to catch is a
-silent miss on screen, never an error.
+files on disk agree **in both directions**. The "material wired with no art"
+mismatch it exists to catch is a silent miss on screen, never an error.
+
+⚠️ **It asks whether the IMAGE is transparent, not whether the FILE has an alpha
+band**, and that distinction is not academic: two of the nine delivered brick
+cracks are **palette PNGs with a tRNS chunk** — an ordinary export, which Godot
+decodes to RGBA8 with the transparency intact (measured on the imported
+textures: 89.4% and 91.1% of pixels fully transparent). The gate's first version
+rejected them. **A palette PNG with transparency is valid decal art.**
 
 An explosion never produces a bullet hole (D32.7), so `dent` and `crack` must
 read as chipped/fractured, never as a round puncture — at 16×20 px on screen a

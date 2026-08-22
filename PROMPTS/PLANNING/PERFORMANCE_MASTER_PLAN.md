@@ -217,14 +217,26 @@ deliberately, and the ghost store is the one with real teeth.
 It has to stay in the alternative id. So alternatives do not disappear — they go
 from up to 3 000 per tile to **2**, and they stop changing when the light does.
 
-### 5.3 The shader change is not free, and main is deliberately untouched
+### 5.3 The shader change is nearly free — measured twice, and the first number misled
 
-Adding a `vertex()` stage to the shipped shader moved **14 pixels of 921 600
-(max channel delta 5)** with the spike DISABLED — a real, if tiny, change, and
-the residue-class face separation (mod 3, FACE-READ-03) is exactly what a
-precision shift flips. So the spike's shader lives at
-`godot/shaders/experimental/voxel_face_shading_cellindex.gdshader` and is swapped
-in at runtime by the probe only. **P1 owns that decision explicitly.**
+The spike's shader, with the spike DISABLED, moved **14 pixels of 921 600 (max
+channel delta 5)**. That number was attributed to the added `vertex()` stage and
+it was wrong. Isolated afterwards — vertex stage and varying ONLY, no cell
+maths, no branch:
+
+```
+VERTEX STAGE ALONE: 1 differing pixel, max delta 1
+```
+
+So the cost of giving this shader a vertex stage is nil, and the 14 pixels came
+from the spike's own fragment code. The residue-class face separation (mod 3,
+FACE-READ-03) is still what turns a sub-LSB precision shift into a visible
+integer, so any change here gets a `--fixed-fps 60` A/B and a stated number,
+never a "should be identical".
+
+`godot/shaders/experimental/voxel_face_shading_cellindex.gdshader` holds the
+proven code and is swapped in at runtime by the probe; main's shader is
+untouched until P2 lands the consumer.
 
 ### 5.4 RAM
 
@@ -235,9 +247,25 @@ re-measure, not to assume.
 ### 5.5 A capture harness fact this spike had to establish
 
 A plain boot capture of PLAYGROUND is **NOT deterministic**: two boots of
-identical code differ by **34 252 pixels** (the map has a flickering lamp and
-temporal lights advance on delta). With `--fixed-fps 60` the same pair differs by
-**0**. Any pixel-diff gate in this plan must use it, or it is measuring the lamp.
+identical code differ by **34 252 pixels**. With `--fixed-fps 60` the same pair
+differs by **0**. Any pixel-diff gate in this plan must use it.
+
+⚠️ **And the obvious culprit is not the culprit.** The map carries `"flicker":
+true` on the lamp at (5,3), which made the flickering lamp the natural
+explanation — it is wrong twice over. Measured: **0 of 12 active lights have
+`flicker_enabled`**, because `LightingController._setup_lights_from_layout()`
+deliberately does not honour the map's `flicker` key (*"Flicker disabled while
+the destruction visual system is rebuilt — brightness variation was contaminating
+diagnostic captures"*). The differing pixels, masked and looked at, fall
+**exactly on the guards' vision cones** and their stippled fill. MAT-MAP-01 went
+from 4 guards to 9, so this session enlarged the non-deterministic area itself.
+
+Two consequences worth carrying: removing the lamp from the map would change
+nothing, and **the VL-03 incremental temporal repaint in
+`Room._update_temporal_lights()` is currently unreachable** — `changed_lights` is
+always empty, so the whole "repaint only the changed light's influence set" path
+has never run on a real map. It is correct code waiting for a caller, and it is
+exactly the shape P3 will have to trust.
 
 ---
 
@@ -245,8 +273,8 @@ temporal lights advance on delta). With `--fixed-fps 60` the same pair differs b
 
 | # | Task | Depends on | Size |
 |---|---|---|---|
-| **P1** | Land cell recovery in `voxel_face_shading.gdshader` — the varying, the inverse-basis uniforms, and an explicit ruling on §5.3's 14 pixels | spike ✅ | Small |
-| **P2** | **Soot** moves to the data texture, and the alternative id stops carrying it. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect. Gate: a fired shot and a burn look identical (`--fixed-fps 60`) | P1 | Medium |
+| ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
+| **P2** | **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
 | **P3** | **The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P5** | The DERIVATION layer — the ~210 ms of map-wide walking (soot snapshot, occupancy, field). Only now, for §4's reason | P4 | Large |

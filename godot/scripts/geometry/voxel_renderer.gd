@@ -617,6 +617,17 @@ const SOOT_ALT_FLIP_BASE: int = LIGHT_BUCKET_COUNT * FACE_SOOT_CODE_COUNT
 
 
 ## (bucket, per-face soot code, flipped) → alternative id. Single source of truth.
+## PERF-P2b — the alternative id carries BUCKET AND FLIP ONLY.
+##
+## `soot_code` is still a parameter and is still folded into the layout, but the
+## only value any caller passes is FACE_SOOT_CODE_CLEAN: the per-face scorch now
+## lives in the per-level soot plane (`_write_cell_soot()`), sampled by
+## `voxel_face_shading.gdshader`. The layout is UNCHANGED on purpose — SOOT_ALT_
+## FLIP_BASE, `decode_light_bucket()` and `decode_light_flipped()` all keep
+## working bit-for-bit, so nothing downstream had to learn a new id.
+##
+## What changed is the SIZE of the space actually used: 12 buckets x 125 soot
+## codes x 2 flips = up to 3 000 alternatives per tile becomes 12 x 2 = 24.
 static func encode_voxel_alt(bucket: int, soot_code: int, flipped: bool) -> int:
 	var b: int = clampi(bucket, 0, LIGHT_BUCKET_COUNT - 1)
 	var slot: int = FACE_SOOT_CODE_CLEAN - clampi(soot_code, 0, FACE_SOOT_CODE_COUNT - 1)
@@ -2478,9 +2489,8 @@ func apply_light_field(field) -> void:
 			## PERF-P2: the cell is erased right now, but un-ghosting restores it
 			## from this record — and the soot plane is where its scorch lives.
 			_write_cell_soot(int(record["level"]), cell, ghost_soot)
-			record["prev_alt"] = encode_voxel_alt(
-					field.bucket_for(cell, record["level"]),
-					ghost_soot, flipped)
+			record["prev_alt"] = encode_light_alt(
+					field.bucket_for(cell, record["level"]), flipped)
 	## PERF-P2 — ONE upload per level per repaint, at the end, after the ghost
 	## records have had their say. Never one upload per cell.
 	flush_cell_soot()
@@ -2554,8 +2564,8 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			## equal to `prev_alt`, and a write placed after the `continue` would
 			## be skipped exactly when it is the only thing that changed.
 			_write_cell_soot(level, cell, soot_code)
-			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
-					soot_code, decode_light_flipped(prev_alt))
+			var alt_id: int = encode_light_alt(field.bucket_for(cell, level),
+					decode_light_flipped(prev_alt))
 			if alt_id == prev_alt:
 				continue
 			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
@@ -2574,9 +2584,8 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			## PERF-P2: the cell is erased right now, but un-ghosting restores it
 			## from this record — and the soot plane is where its scorch lives.
 			_write_cell_soot(int(record["level"]), cell, ghost_soot)
-			record["prev_alt"] = encode_voxel_alt(
-					field.bucket_for(cell, record["level"]),
-					ghost_soot, flipped)
+			record["prev_alt"] = encode_light_alt(
+					field.bucket_for(cell, record["level"]), flipped)
 	flush_cell_soot()
 
 
@@ -2629,8 +2638,8 @@ func warm_light_alts_for_gus(field, gus: Array, extra_placements: Array = []) ->
 			if source_id == -1:
 				continue
 			var prev_alt: int = layer.get_cell_alternative_tile(cell)
-			var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
-					field.face_soot_code(cell, level), decode_light_flipped(prev_alt))
+			var alt_id: int = encode_light_alt(field.bucket_for(cell, level),
+					decode_light_flipped(prev_alt))
 			if alt_id == prev_alt:
 				continue
 			var before: int = _alts_minted
@@ -2657,8 +2666,7 @@ func warm_light_alts_for_gus(field, gus: Array, extra_placements: Array = []) ->
 	for placement in extra_placements:
 		var plevel: int = int(placement["level"])
 		var pcell: Vector2i = placement["cell"]
-		var palt: int = encode_voxel_alt(field.bucket_for(pcell, plevel),
-				field.face_soot_code(pcell, plevel), false)
+		var palt: int = encode_light_alt(field.bucket_for(pcell, plevel), false)
 		var pbefore: int = _alts_minted
 		_ensure_light_alt(int(placement["source_id"]), placement["atlas_coords"], palt)
 		minted += _alts_minted - pbefore
@@ -2688,8 +2696,8 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 		var full_soot: int = field.face_soot_code(cell, level)
 		## PERF-P2 — before the comparison, for apply_light_field_gus()'s reason.
 		_write_cell_soot(level, cell, full_soot)
-		var alt_id: int = encode_voxel_alt(field.bucket_for(cell, level),
-				full_soot, decode_light_flipped(prev_alt))
+		var alt_id: int = encode_light_alt(field.bucket_for(cell, level),
+				decode_light_flipped(prev_alt))
 		if alt_id == prev_alt:
 			continue
 		var source_id: int = layer.get_cell_source_id(cell)
@@ -3062,6 +3070,17 @@ func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
 
 ## Upload whatever changed. Returns how many levels were re-uploaded — one
 ## upload per level per repaint, never one per cell.
+## What the plane currently says about one cell. The plan builder needs it to
+## decide whether a blast changes a cell's scorch at all, now that the answer is
+## no longer visible in the alternative id.
+func cell_soot_at(level: int, cell: Vector2i) -> int:
+	if cell.x < 0 or cell.y < 0 or cell.x >= SOOT_TEX_SIZE or cell.y >= SOOT_TEX_SIZE:
+		return FACE_SOOT_CODE_CLEAN
+	if not _soot_images.has(level):
+		return FACE_SOOT_CODE_CLEAN
+	return (_soot_images[level] as Image).get_pixel(cell.x, cell.y).r8
+
+
 func flush_cell_soot() -> int:
 	if _soot_dirty.is_empty():
 		return 0

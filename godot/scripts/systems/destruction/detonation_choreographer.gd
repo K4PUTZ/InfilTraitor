@@ -483,49 +483,48 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 ## whole ladder; one landing on tone 3 arrives in a single step), which reads as
 ## soot settling rather than as a uniform dissolve.
 ##
-## EVERY step's alternative is minted BEFORE the first one is drawn. That is the
-## P-WARM lesson for the third time: `create_alternative_tile()` mutates the
-## shared TileSet, so ANY frame that mints one pays a full rebuild — ~105 ms,
-## flat, regardless of how many. One pass up front costs that once; minting per
-## step would cost it per step.
+## ⚠️ PERF-P2b — THIS NO LONGER MINTS ANYTHING, and the paragraph it replaces is
+## worth keeping in mind: it used to say *"EVERY step's alternative is minted
+## BEFORE the first one is drawn… `create_alternative_tile()` mutates the shared
+## TileSet, so ANY frame that mints one pays a full rebuild — ~105 ms, flat."*
+## That was the P-WARM lesson applied correctly to an architecture that made it
+## necessary. With the scorch in its own plane a fade step is a PIXEL WRITE: no
+## alternative, no rebuild, no ladder to pre-mint.
+##
+## The comment above about why the ramp lives in the ring codes rather than a
+## shader uniform also stops being the reason it was — that argument was *"the
+## uniform is global to the material every voxel layer shares"*, and the soot
+## plane is per cell. The discrete ladder is kept anyway because it is the LOOK
+## the Director ratified, and changing it here would be a look change smuggled
+## into a performance commit.
+##
+## The bucket still travels in the alternative, so each entry's `alt` is applied
+## ONCE up front; only the scorch walks.
 func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 		frame_index: int) -> int:
 	if entries.is_empty():
 		return frame_index
 	var steps: int = maxi(soot_fade_steps, 1)
 
-	## Every (entry, step) alt, resolved and minted in one pass.
-	var ladder: Array = []
+	var faces: Array = []
 	for entry: Dictionary in entries:
-		var target_alt: int = int(entry["alt"])
-		var bucket: int = VoxelRenderer.decode_light_bucket(target_alt)
-		var flipped: bool = VoxelRenderer.decode_light_flipped(target_alt)
-		var faces: Vector3i = VoxelLightField.decode_face_soot(
-			VoxelRenderer.decode_face_soot_code(target_alt))
-		var per_step: Array = []
-		var previous: int = -1
-		for step: int in range(steps):
-			var lighten: int = steps - 1 - step
-			var alt: int = VoxelRenderer.encode_voxel_alt(bucket,
-				VoxelLightField.encode_face_soot(_lightened(faces, lighten)), flipped)
-			## A step that changes nothing is a set_cell nobody can see.
-			per_step.append(-1 if alt == previous else alt)
-			if alt != previous:
-				voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt)
-			previous = alt
-		ladder.append(per_step)
+		faces.append(VoxelLightField.decode_face_soot(
+			int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))))
+		var layer0: TileMapLayer = voxel_renderer.get_layer(entry["level"])
+		if layer0 == null:
+			continue
+		var alt0: int = int(entry["alt"])
+		if layer0.get_cell_alternative_tile(entry["cell"]) != alt0:
+			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt0)
+			layer0.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt0)
 
 	for step: int in range(steps):
 		var painted: int = 0
+		var lighten: int = steps - 1 - step
 		for i: int in range(entries.size()):
-			var alt: int = int(ladder[i][step])
-			if alt < 0:
-				continue
 			var entry: Dictionary = entries[i]
-			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if layer == null:
-				continue
-			layer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt)
+			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
+				VoxelLightField.encode_face_soot(_lightened(faces[i], lighten)))
 			painted += 1
 		_flush(voxel_renderer)
 		frame_index += 1
@@ -636,6 +635,9 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 				return 0
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
 			elayer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
+			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
+			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
+				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
 			return 1
 		"dented", "cracked", "soot":
 			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
@@ -649,6 +651,8 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			## fully resolved).
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
 			layer2.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
+			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
+				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
 			return 1
 		"smoke":
 			if smoke_overlay == null:
@@ -751,4 +755,6 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
 func _flush(voxel_renderer) -> void:
 	voxel_renderer.flush_damage_composite_pages()
+	## PERF-P2b: one soot upload per flushed frame, never one per cell.
+	voxel_renderer.flush_cell_soot()
 

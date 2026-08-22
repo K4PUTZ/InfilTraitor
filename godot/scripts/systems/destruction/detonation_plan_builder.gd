@@ -855,7 +855,8 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				_count(census, wave_key, container, resolved["baked"])
 				_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
-					"alt": alt, "r": _radius_of(voxel.grid_pos, epicenter)})
+					"alt": alt, "soot": field.face_soot_code(voxel.grid_pos, voxel.level),
+					"r": _radius_of(voxel.grid_pos, epicenter)})
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0
@@ -884,6 +885,7 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 			var alt := _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
 				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
+				"soot": field.face_soot_code(e["grid_pos"], e["level"]),
 				"r": _radius_of(e["grid_pos"], epicenter)})
 		if not waves["destroy"].has(ring):
 			waves["destroy"][ring] = []
@@ -946,12 +948,21 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 				if source_id != -1:
 					var prev_alt: int = layer.get_cell_alternative_tile(cell)
 					var alt := _alt_for(field, cell, level, prev_alt)
-					## Equal alt = nothing this blast changes here, no wave entry.
-					if alt != prev_alt:
+					var soot_code: int = field.face_soot_code(cell, level)
+					## ⚠️ PERF-P2b — THE COMPARISON HAD TO GROW A SECOND HALF.
+					## It used to read "equal alt = nothing this blast changes
+					## here", and that was true only while the alt carried soot.
+					## With scorch in its own plane, a cell whose SOOT changes and
+					## whose bucket does not now compares equal — which is every
+					## cell this wave exists for. Left alone, the soot wave would
+					## have come out EMPTY with no error anywhere.
+					if alt != prev_alt \
+							or soot_code != voxel_renderer.cell_soot_at(level, cell):
 						_append(waves["soot"], ring, {"cell": cell, "level": level,
 							"source_id": source_id,
 							"atlas_coords": layer.get_cell_atlas_coords(cell),
-							"alt": alt, "r": _radius_of(cell, epicenter)})
+							"alt": alt, "soot": soot_code,
+							"r": _radius_of(cell, epicenter)})
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0
@@ -1459,11 +1470,12 @@ static func _resolve_expose_below(slab: Slab, voxel_renderer: VoxelRendererClass
 ## (junction-mirror half-voxels bake their own H-flip into `base_alt` — the
 ## SAME technique VoxelRenderer._apply_light_to_layer() uses on `prev_alt`,
 ## just fed the fresh resolve's own alt instead of a live read).
+## PERF-P2b: the alt is bucket + flip; the SOOT the same cell will wear travels
+## beside it as its own entry field, because it no longer fits in an id.
 static func _alt_for(field: VoxelLightFieldClass, cell: Vector2i, level: int, base_alt: int) -> int:
 	var bucket: int = field.bucket_for(cell, level)
-	var soot_code: int = field.face_soot_code(cell, level)
 	var flipped: bool = VoxelRendererClass.decode_light_flipped(base_alt)
-	return VoxelRendererClass.encode_voxel_alt(bucket, soot_code, flipped)
+	return VoxelRendererClass.encode_light_alt(bucket, flipped)
 
 
 static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:

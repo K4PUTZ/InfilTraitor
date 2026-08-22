@@ -4509,6 +4509,186 @@ func _capture_agent_shot() -> void:
 var _burn_probe_targets: Array = []
 
 
+## PERF-SPIKE-01 — CAN A SHADER RECOVER WHICH CELL IT IS DRAWING?
+##
+## The Director's architecture question (2026-08-22) is whether per-cell visual
+## state can leave the TileSet and live in a DATA TEXTURE the existing voxel
+## shader samples — which would make light and soot writes into pixel writes
+## instead of `create_alternative_tile()` calls, and make the apply O(changed)
+## instead of O(every placed cell).
+##
+## `voxel_face_shading.gdshader` today knows only ATLAS coordinates
+## (`UV / TEXTURE_PIXEL_SIZE`). It has no idea which cell it is on. This probe
+## answers the first question that has to be true before anything is designed:
+##
+##   is cell -> local position AFFINE on a real voxel layer?
+##
+## If it is, the shader can invert it with a 2x2 matrix passed as a uniform, and
+## each level being its own TileMapLayer removes the third dimension for free.
+## If it is STAGGERED (Godot offsets alternate rows/columns for some isometric
+## layouts) it is not invertible that way and the whole route needs rethinking.
+##
+## Printed, never asserted into a pass: this is a spike, and its output is meant
+## to be read by a person deciding whether to open a master plan.
+func _capture_cell_index_spike() -> void:
+	print("[SPIKE] ---- PERF-SPIKE-01: cell index recoverability ----")
+	if _voxel_renderer == null:
+		print("[SPIKE] no renderer")
+		return
+	var levels: Array = []
+	for i in range(_voxel_renderer.get_layer_count()):
+		levels.append(i)
+	for k in _voxel_renderer._negative_voxel_layers.keys():
+		levels.append(k)
+	print("[SPIKE] layers: %d positive + %d negative" % [
+		_voxel_renderer.get_layer_count(),
+		_voxel_renderer._negative_voxel_layers.size()])
+	for level in [0, 1, levels.min()]:
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer == null:
+			continue
+		var o: Vector2 = layer.map_to_local(Vector2i(0, 0))
+		var e1: Vector2 = layer.map_to_local(Vector2i(1, 0)) - o
+		var e2: Vector2 = layer.map_to_local(Vector2i(0, 1)) - o
+		## AFFINITY, tested where a stagger would show: odd cells on both axes,
+		## and a far corner where an accumulated half-offset could not hide.
+		var worst: float = 0.0
+		var worst_cell := Vector2i.ZERO
+		for tx in [0, 1, 2, 3, 7, 16, 41, 100, 247, 350]:
+			for ty in [0, 1, 2, 3, 7, 16, 41, 100, 247, 350]:
+				var c := Vector2i(tx, ty)
+				var predicted: Vector2 = o + e1 * float(tx) + e2 * float(ty)
+				var actual: Vector2 = layer.map_to_local(c)
+				var err: float = (predicted - actual).length()
+				if err > worst:
+					worst = err
+					worst_cell = c
+		print("[SPIKE] level %d · layer.position %s · origin %s · e1 %s · e2 %s"
+			% [level, layer.position, o, e1, e2])
+		print("[SPIKE]   affine? worst error %.6f px over 100 cells (worst at %s) — %s"
+			% [worst, worst_cell, "AFFINE" if worst < 0.001 else "NOT AFFINE (staggered)"])
+		var det: float = e1.x * e2.y - e1.y * e2.x
+		print("[SPIKE]   basis determinant %.4f — %s"
+			% [det, "invertible" if absf(det) > 0.0001 else "SINGULAR, not invertible"])
+		if absf(det) > 0.0001:
+			## Round-trip a real placed cell through the inverse the shader would use.
+			var cells: Array = layer.get_used_cells()
+			var checked: int = 0
+			var bad: int = 0
+			for c2 in cells:
+				if checked >= 200:
+					break
+				checked += 1
+				var lp: Vector2 = layer.map_to_local(c2) - o
+				var inv_x: float = (lp.x * e2.y - lp.y * e2.x) / det
+				var inv_y: float = (lp.y * e1.x - lp.x * e1.y) / det
+				if roundi(inv_x) != c2.x or roundi(inv_y) != c2.y:
+					bad += 1
+			print("[SPIKE]   inverse round-trip on real placed cells: %d checked, %d wrong"
+				% [checked, bad])
+	## GATE 2 — drive the shader's recovered cell and let a capture judge it.
+	## INFILTRAITOR_SPIKE_MODE: 2 = parity paint (is the recovery aligned to real
+	## voxel edges?), 1 = sample a real data texture (does the per-cell fetch
+	## work at all?).
+	var mode_env := OS.get_environment("INFILTRAITOR_SPIKE_MODE")
+	var mode: float = float(mode_env.to_int()) if mode_env.is_valid_int() else 0.0
+	if mode > 0.0:
+		var mat: ShaderMaterial = _voxel_renderer._get_face_shading_material()
+		if mat == null:
+			print("[SPIKE] no shading material — cannot drive gate 2")
+			print("[SPIKE] ---- end ----")
+			return
+		## THE EXPERIMENTAL SHADER IS SWAPPED IN AT RUNTIME, and only here.
+		## `voxel_face_shading.gdshader` on main is untouched on purpose: adding a
+		## vertex() stage to it moved 14 pixels of 921 600 (max channel delta 5)
+		## with the spike DISABLED — a real, if tiny, visual change, and the
+		## residue-class face separation (mod 3) is exactly the kind of thing a
+		## precision shift flips. Landing that belongs to the master plan, with
+		## its own decision, not to a probe.
+		var spike_shader = load("res://godot/shaders/experimental/voxel_face_shading_cellindex.gdshader")
+		if spike_shader == null:
+			print("[SPIKE] experimental shader missing — gate 2 cannot run")
+			print("[SPIKE] ---- end ----")
+			return
+		mat.shader = spike_shader
+		## A checkerboard, one texel per CELL. Nearest-filtered and never
+		## repeated, so a misaligned fetch cannot be smoothed into looking right.
+		var size: int = 512
+		var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+		for y in range(size):
+			for x in range(size):
+				var v: float = 1.0 if (x + y) % 2 == 0 else 0.40
+				img.set_pixel(x, y, Color(v, v, v, 1.0))
+		mat.set_shader_parameter("cell_data", ImageTexture.create_from_image(img))
+		mat.set_shader_parameter("cell_data_size", Vector2(size, size))
+		mat.set_shader_parameter("spike_cell_mode", mode)
+		print("[SPIKE] gate 2 armed — spike_cell_mode=%.0f, %dx%d nearest data texture"
+			% [mode, size, size])
+		for _f in range(20):
+			await get_tree().process_frame
+		var vp := get_viewport()
+		var shot := vp.get_texture().get_image()
+		var out := "Screenshots/spike_cell_index_mode%d.png" % int(mode)
+		shot.save_png(out)
+		print("[SPIKE] capture written: %s" % out)
+	## GATE 3 — WHAT DOES CHANGING THE DATA COST? The whole promise of the route
+	## is that a light or soot change becomes a PIXEL WRITE instead of a
+	## create_alternative_tile() call. That is only worth anything if the write
+	## itself is cheap, so it gets a number rather than an assumption.
+	##
+	## Sized to the real board, one texture per LEVEL, because each level is its
+	## own TileMapLayer and therefore its own 2D problem.
+	var cells_x: int = (_room_size.x + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var cells_y: int = (_room_size.y + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var level_count: int = _voxel_renderer.get_layer_count() \
+		+ _voxel_renderer._negative_voxel_layers.size()
+	var imgs: Array = []
+	var texs: Array = []
+	var t_build: int = Time.get_ticks_usec()
+	for _i in range(level_count):
+		var im := Image.create(cells_x, cells_y, false, Image.FORMAT_RGBA8)
+		imgs.append(im)
+		texs.append(ImageTexture.create_from_image(im))
+	print("[SPIKE] data textures: %d level(s) of %dx%d RGBA8 = %.1f MB · built in %.1f ms"
+		% [level_count, cells_x, cells_y,
+		float(level_count * cells_x * cells_y * 4) / 1048576.0,
+		float(Time.get_ticks_usec() - t_build) / 1000.0])
+
+	## (a) the realistic case: ONE level's worth of cells rewritten and uploaded.
+	var t1: int = Time.get_ticks_usec()
+	var im0: Image = imgs[0]
+	for y in range(cells_y):
+		for x in range(cells_x):
+			im0.set_pixel(x, y, Color(0.5, 0.25, 0.0, 1.0))
+	var t2: int = Time.get_ticks_usec()
+	(texs[0] as ImageTexture).update(im0)
+	var t3: int = Time.get_ticks_usec()
+	print("[SPIKE] ONE level, every cell: %.1f ms to fill (%d set_pixel) + %.1f ms to upload"
+		% [float(t2 - t1) / 1000.0, cells_x * cells_y, float(t3 - t2) / 1000.0])
+
+	## (b) the cheap path the real system would take — a scoped patch. Godot has
+	## no partial upload for ImageTexture, so the upload is whole-image either
+	## way; only the CPU fill scales with how much changed.
+	var t4: int = Time.get_ticks_usec()
+	for y in range(64):
+		for x in range(64):
+			im0.set_pixel(x, y, Color(0.9, 0.1, 0.0, 1.0))
+	var t5: int = Time.get_ticks_usec()
+	(texs[0] as ImageTexture).update(im0)
+	var t6: int = Time.get_ticks_usec()
+	print("[SPIKE] a 64x64 cell patch: %.1f ms to fill + %.1f ms to upload (upload is whole-image; Godot has no partial ImageTexture update)"
+		% [float(t5 - t4) / 1000.0, float(t6 - t5) / 1000.0])
+
+	## (c) the worst case the current architecture pays every full repaint:
+	## EVERY level re-uploaded.
+	var t7: int = Time.get_ticks_usec()
+	for i in range(level_count):
+		(texs[i] as ImageTexture).update(imgs[i])
+	print("[SPIKE] ALL %d levels re-uploaded: %.1f ms — compare with the map-wide apply at ~1080 ms and 2179 mints per burn"
+		% [level_count, float(Time.get_ticks_usec() - t7) / 1000.0])
+	print("[SPIKE] ---- end ----")
+
+
 func _capture_light_burn_probe() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -5621,6 +5801,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
+	elif capture_action == "cell_index_spike":
+		await _capture_cell_index_spike()
+		get_tree().quit(0)
+		return
 	elif capture_action == "light_burn_probe":
 		await _capture_light_burn_probe()
 		get_tree().quit(0)

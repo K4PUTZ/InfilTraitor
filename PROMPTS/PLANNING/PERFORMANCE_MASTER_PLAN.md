@@ -1,8 +1,10 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v1.0 — the spike PASSED all three gates on real geometry.**
-Nothing is built yet. §6 is the task order; §5 is what could still sink it.
+**Status:** 🟢 **v1.1 — P2 IS BUILT (2026-08-22). Soot no longer touches the
+TileSet.** A burn mints 150 alternatives instead of 2 175, at 0 differing pixels
+on both the blast and the shot paths. P3 (the light bucket) is next and is the
+large one. §6 is the task order; §5 is what could still sink it.
 **Written:** 2026-08-22, against `12225c84`, at the Director's instruction —
 *"vamos testar primeiro, e se estiver tudo OK pode abrir esse masterplan de
 performance"*.
@@ -45,6 +47,21 @@ All from 2026-08-22, real boots of the real map, fabric block at gu (31,5).
 
 For a fire whose own schedule spans **1.90 s**. MAT-PERF-02 removed the
 map-wide repaint from the burn's frames; it did not remove the repaint.
+
+### 1.1b ⚠️ What P2 measured, including the part that corrects §1.2 below
+
+```
+TileSet alternatives minted during one burn:   2 175  ->  150   (-93%)
+cells the scoped frames left stale:            1 288  ->  135
+picture, real detonation, harness earned:      0 differing pixels (blast AND shot)
+```
+
+**And the burn's wall clock did not move** — 2 734 ms before, 2 776 ms after. So
+§1.2's reading of the ~2 000 ms outside `_advance_burn` as *"2 179 mints, and the
+rebuild they trigger"* **is wrong**, and it was mine. Mints fell 93% and the time
+stayed. Whatever that time is, it is not the TileSet rebuild; P4 owes the real
+frame-time attribution and the honest statement today is that it is unexplained.
+The two figures that DID move are the ones P3 inherits.
 
 ### 1.2 Where the remaining time is
 
@@ -274,8 +291,8 @@ exactly the shape P3 will have to trust.
 | # | Task | Depends on | Size |
 |---|---|---|---|
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
-| **P2** | **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
-| **P3** | **The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
+| ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
+| **P3** | ⬅️ **NEXT. The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P5** | The DERIVATION layer — the ~210 ms of map-wide walking (soot snapshot, occupancy, field). Only now, for §4's reason | P4 | Large |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |

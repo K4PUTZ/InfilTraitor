@@ -3715,6 +3715,28 @@ var _burn_scheduler: BurnScheduler = BurnScheduler.new()
 ## answered when the fire goes out.
 var _burn_touched_edges: Dictionary = {}
 
+## MAT-PERF-01 — the burn's own profiler, `INFILTRAITOR_BURN_PROFILE=1`,
+## env-gated like every other standing dev probe in this file.
+##
+## It exists because the burn is charged PER FRAME THAT COMMITS, and the figure
+## that matters is not what one repaint costs but how many of them ONE FIRE pays
+## for. `[REPAINT-PROF]` already printed the former; nothing printed the latter,
+## which is how a 1.9-second fire cost fourteen seconds with every individual
+## number looking ordinary.
+##
+## Measured on the real map before any fix, fabric at gu (31,5): 11 committing
+## frames, 340 voxels, ~1290 ms each — occupancy 30 + soot 146 + field 33 +
+## apply 1080. That apply is the map-wide `apply_light_field()` walk the FIREARM
+## path stopped paying on 2026-08-19 (the scoped repaint + W-PRECOOK); fire got
+## neither, so it still pays the pre-scoped shot's whole cost, once per frame,
+## for as long as it burns.
+var _burn_prof: bool = OS.get_environment("INFILTRAITOR_BURN_PROFILE") == "1"
+var _burn_prof_frames: int = 0
+var _burn_prof_voxels: int = 0
+var _burn_prof_total_us: int = 0
+var _burn_prof_repaint_us: int = 0
+var _burn_prof_first_us: int = 0
+
 
 func start_burn(burn_wave: Dictionary) -> void:
 	_burn_scheduler.schedule(burn_wave)
@@ -3726,6 +3748,9 @@ func _advance_burn(delta: float) -> void:
 	var due: Array = _burn_scheduler.advance(delta)
 	if due.is_empty():
 		return
+	var prof_t0: int = Time.get_ticks_usec() if _burn_prof else 0
+	if _burn_prof and _burn_prof_frames == 0:
+		_burn_prof_first_us = prof_t0
 	var entries: Array = []
 	for voxel in due:
 		## from_blast TRUE: the fire is the blast's own consequence, and D24
@@ -3744,7 +3769,10 @@ func _advance_burn(delta: float) -> void:
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 			voxel.damage_substrate)
 	_burn_probe_render()
+	var prof_repaint_t0: int = Time.get_ticks_usec() if _burn_prof else 0
 	_repaint_voxel_light_buckets(false)
+	if _burn_prof:
+		_burn_prof_repaint_us += Time.get_ticks_usec() - prof_repaint_t0
 	## M3-4 — the other half of the Director's sentence. "mais longe queima menos"
 	## is a count; *"uma granada bem na base da parede abre passagem"* is a
 	## PASSAGE, and only PassageQuery can answer that. Collected as the fire eats
@@ -3754,6 +3782,11 @@ func _advance_burn(delta: float) -> void:
 		var container = instance_from_id(voxel.container_id()) if voxel.container_id() != 0 else null
 		if container is Slice:
 			_burn_touched_edges[container.edge_id] = true
+
+	if _burn_prof:
+		_burn_prof_frames += 1
+		_burn_prof_voxels += due.size()
+		_burn_prof_total_us += Time.get_ticks_usec() - prof_t0
 
 	if not _burn_scheduler.is_burning():
 		var tally: Dictionary = {}
@@ -3769,6 +3802,17 @@ func _advance_burn(delta: float) -> void:
 			% [_burn_scheduler.consumed_count(), _burn_scheduler.scheduled_count(),
 			_burn_scheduler.elapsed(), _burn_touched_edges.size(), tally, best_open])
 		_burn_touched_edges.clear()
+		if _burn_prof:
+			print("[BURN-PROF] %d committing frame(s) · %d voxel(s) · %.0f ms inside _advance_burn, %.0f ms of it the map-wide repaint · %.0f ms wall clock for a fire whose own schedule spans %.2fs"
+				% [_burn_prof_frames, _burn_prof_voxels,
+				float(_burn_prof_total_us) / 1000.0,
+				float(_burn_prof_repaint_us) / 1000.0,
+				float(Time.get_ticks_usec() - _burn_prof_first_us) / 1000.0,
+				_burn_scheduler.elapsed()])
+			_burn_prof_frames = 0
+			_burn_prof_voxels = 0
+			_burn_prof_total_us = 0
+			_burn_prof_repaint_us = 0
 
 
 ## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)

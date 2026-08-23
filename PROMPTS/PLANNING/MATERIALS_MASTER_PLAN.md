@@ -781,7 +781,8 @@ frame.
 | ~~**M3-3**~~ | ~~Burn state + a delta tick~~ — ✅ **BUILT 2026-08-21**, §3.1b. Fabric 100%/1.9s, cardboard 100%/3.5s, plywood 35%, wood untouched | M3-1, M3-2b |
 | ~~**M3-4**~~ | ~~Plywood~~ — ✅ **BUILT 2026-08-21**, §3.1c. Radial falloff on the `r` every ember entry already carries; 64% consumed at the wall's corner vs 24% two GU out | M3-3 |
 | **M3-5** | **Grenade and shot test matrix** — ✅ **TOOLED 2026-08-21**: `tools/persistent/build_material_matrix.py`, one grenade + one shot per material from real boots, geometry read from the mapfile. The per-material FILMSTRIP half waits on M2's decals | M3-4 |
-| ⚠️ **M3-6** | **Lateral propagation** — fire spreading sideways through a wall's internal slices, and chaining from consumed voxels (Director, 2026-08-22). **REGISTERED HERE 2026-08-23**: it had been carried in session summaries and in `PERFORMANCE_MASTER_PLAN` for two days without ever reaching the plan that owns it. ⚠️ **Sequenced AFTER PERF P7** — see `PERFORMANCE_MASTER_PLAN` §8.5: embers are spawned one per affected voxel and the spawn is O(N²), so M3-6 scales the fire's largest per-frame term linearly and its spawn cost quadratically. Judging this feature's LOOK through a frame time its own voxel count made worse is the trap §4 of that plan names | M3-3, PERF P7 |
+| ⚠️ **M3-5b** | **SOFT MATERIALS ARE PROPS, NOT WALLS** — Director, 2026-08-23: *"não vão ser usados em paredes inteiras, esses materiais vão ser mais usados como cortinas, caixas e objetos decorativos."* Fabric and cardboard leave the wall vocabulary; the blast takes the object and the fire consumes the REMNANT (§3.1a) rather than a whole surface. Built as **F3/F4/F5** of `PERFORMANCE_MASTER_PLAN` §9 — a fire's cost is `duration / 0.20 s` committing frames, so a shorter burn is a LINEAR cut on the dominant term | — |
+| ⚠️ **M3-6** | **Lateral propagation** — fire spreading sideways through a wall's internal slices, and chaining from consumed voxels (Director, 2026-08-22). **REGISTERED HERE 2026-08-23**: it had been carried in session summaries and in `PERFORMANCE_MASTER_PLAN` for two days without ever reaching the plan that owns it. ⚠️ **M3-5b LARGELY RETIRES THIS RISK** — if these materials are curtains and boxes, the multiplication has nowhere to run. Originally: ⚠️ **Sequenced AFTER PERF P7** — see `PERFORMANCE_MASTER_PLAN` §8.5: embers are spawned one per affected voxel and the spawn is O(N²), so M3-6 scales the fire's largest per-frame term linearly and its spawn cost quadratically. Judging this feature's LOOK through a frame time its own voxel count made worse is the trap §4 of that plan names | M3-3, PERF P7 |
 | **M3-7** | **The per-material passage table as a measured acceptance** — carried from the session summaries, same registration gap as M3-6 | M3-2, M3-6 |
 
 ---
@@ -922,7 +923,8 @@ No task list until the study lands.
 | ✅ | **M3-3** — fabric + cardboard burn, on the blast's survivors, delta tick | done |
 | ✅ | **M3-4** — plywood burn (radial falloff; ⚠️ opens 60/64 and still reports NONE — see §3.1c) | done |
 | 🟡 | **M3-5** — the matrix is a tool now; the filmstrip half waits on M2's decals | M2 |
-| ⚠️ | **M3-6** — lateral propagation through internal slices (§3.6) | PERF P7 |
+| 🟢 | **M3-5b** — soft materials become props, not walls (§3.6) | PERF §9 F3/F4/F5 |
+| ⚠️ | **M3-6** — lateral propagation through internal slices (§3.6) | PERF §9 |
 | | **M3-7** — the per-material passage table, measured | M3-6 |
 | 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |
 | 9 | **M4b** — glass pane break + `HOLE_ONLY_MATERIALS` + the INTACT branch | design |

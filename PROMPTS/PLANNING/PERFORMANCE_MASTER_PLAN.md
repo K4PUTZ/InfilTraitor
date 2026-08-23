@@ -1,7 +1,18 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🔴 **v1.9 — THE CELL RECOVERY IS NOT PER-TILE (§8.22), AND IT SHIPS.**
+**Status:** 🟢 **v2.0 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK.** The
+Director's proposal (suspend the light repaint during the burn, carry the fire's
+light as an overlay glow, shorten what soft materials burn, and make fabric and
+cardboard PROPS rather than walls) is aimed at the exact term §8.15 isolated:
+**~90% of a committing frame is light** — ~224 ms of rebuild plus ~89 ms of
+repaint out of ~350. F1 removes both at once and needs none of P3, the MultiMesh
+or the recovery fix. Projected ~6 300 -> ~2 200 ms, to be confirmed by §9.6 and not
+before. **Working mode, at the Director's instruction: build F1-F5 as one block,
+verify ONCE (§9.5 is the acceptance list, written first).**
+Still open and explicitly not in the block (§9.4): P3 built-and-gated-off (§8.19),
+the shipped cell-recovery defect (§8.22), P7b, the 32 layers.
+Earlier: 🔴 **v1.9 — THE CELL RECOVERY IS NOT PER-TILE (§8.22), AND IT SHIPS.**
 16.4% of adjacent voxel fragments recover a DIFFERENT cell where a per-tile
 recovery would change ~3%, and 10.8% of drawn fragments read a plane texel that
 was never written. P3 is built and correct (§8.19) — its data is per-cell exact and
@@ -1342,3 +1353,154 @@ into the thousands while the floor's atlas is small.
 **Recorded as the open question, not as a conclusion.** The instruments that
 answer it now exist and are cheap: mode 2 (recovered cell), mode 3 (plane G with a
 sentinel fill), `INFILTRAITOR_FLAT_LIGHT`, and the per-cell census.
+
+---
+
+# 9. THE FIRE WORK ORDER — build the whole block, verify once
+
+**Opened 2026-08-23 at the Director's instruction**, and the instruction includes
+the working mode: *"Coloca isso no plano, vamos formalizar todo o processo antes.
+Priorizando fazer tudo que for necessário primeiro, e depois testando o resultado.
+Já perdemos muito tempo medindo."*
+
+**So this section is a WORK ORDER, not an investigation.** §§1–8 measured; this
+builds. F1–F5 land as one block and §9.6 is the single verification pass. No
+intermediate measurement runs, no stopping between items to re-derive a number
+that is already written down above.
+
+⚠️ **What that changes and what it does not.** It changes the CADENCE — one
+verification instead of one per step. It does not change the standard: §9.6 is a
+real pass with real numbers and a real capture, and if it fails, it fails out loud.
+
+## 9.1 Where the Director's proposal came from, and why it outranks everything above
+
+Director, 2026-08-23: *"Se a gente suspender a atualização da luz durante o fogo
+ganhamos processamento? Por exemplo aplicando um clarão em volta do fogo e mantendo
+aquela região estática?"* — and, on the materials: *"a explosão pode destruir mais
+voxels de uma vez e queimar só o final do tecido e do papelão… esses materiais vão
+ser mais usados como cortinas, caixas e objetos decorativos."*
+
+Against §8.15's decomposition of a committing frame, that proposal is aimed
+exactly at the term that dominates:
+
+| inside one committing frame | ms | removed by |
+|---|---|---|
+| the TileSet rebuild the light repaint's minting triggers | **~224** | **F1** |
+| the scoped light repaint itself | **~89** | **F1** |
+| everything else (commit, geometry, the frame's own VFX) | ~36 | — |
+| | **~350** | |
+
+**~90% of a committing frame is light.** F1 removes both terms at once, because
+the rebuild exists only as a consequence of the repaint.
+
+Projected (from §8.15's measured parts, to be confirmed by §9.6 and not before):
+
+```
+today   13 x 350 ms = 4 550   + ~1 800 (non-committing)  + ~870 (final repaint)  = ~6 300 ms
+F1      13 x  ~36   =  ~470   + ~1 800                   + ~870                  = ~2 200 ms
+```
+
+**And F1 needs no new architecture.** P3, the MultiMesh, and the cell-recovery
+defect are all still real and all still open — F1 simply does not depend on any of
+them.
+
+## 9.2 The five items
+
+### F1 — the burn stops repainting light
+
+`_advance_burn()` stops calling `_repaint_voxel_light_buckets_scoped()` on its
+committing frames. Geometry still commits and holes still appear on schedule —
+that is `commit_damage()` plus the renderer's own erase, and neither is light.
+Light catches up in the ONE map-wide repaint the fire already ends with
+(`_burn_final_repaint()`, MAT-PERF-02).
+
+Consequences to honour rather than discover:
+- **Soot is already deferred** — burn frames pass `include_soot = false` and
+  `_burn_soot_gus` accumulates for the final pass. F1 does not change that.
+- **The occlusion ghost store** must not be left holding a stale `prev_alt` for a
+  cell the burn erased; check before assuming.
+- **`bump_world_revision()`** still fires per commit, so predictions stay honest.
+
+### F2 — the fire's own glow, as an overlay
+
+The region stops relighting, so the fire has to carry its own light or the burn
+reads as holes appearing in a dead wall. A warm glow around the burning voxels,
+drawn as a **CanvasItem overlay** — not voxel state, not a light, not an
+alternative. Nothing it does can mint.
+
+⚠️ **It goes on the existing VFX overlay path, and §8.8 measured what that path
+costs**: `draw_*` submission is 95% of a `_draw`. So F2 is written for MultiMesh
+or for a small fixed number of primitives from the start — a per-voxel
+`draw_circle` glow would spend a slice of what F1 just saved.
+
+Look is the Director's: extent, colour, whether it pulses, whether it fades with
+the fire.
+
+### F3 — soft materials burn only their remnant
+
+*"queimar só o final do tecido e do papelão."* Fewer committing frames come from a
+SHORTER fire, not from fewer voxels — the cadence is
+`BURN_COMMIT_INTERVAL_S = 0.20 s`, so the count is duration/0.20 and nothing else.
+This is therefore a direct, linear cut on the dominant term.
+
+Needs one number the Director owns: **how much of a soft object the blast takes
+outright versus what is left to burn.** Stated as a starting default so the work is
+not blocked: the blast takes the object and the fire consumes the REMNANT, which
+§3.1a already calls the thing fire operates on.
+
+### F4 — the blast destroys more in one frame
+
+Moving voxels out of the burn schedule and into the blast moves them from MANY
+committing frames into ONE. Same total destruction, a fraction of the rebuilds.
+
+### F5 — fabric and cardboard become props, not walls
+
+Director: *"não vão ser usados em paredes inteiras… cortinas, caixas e objetos
+decorativos."* A map/authoring change in PLAYGROUND and a `MATERIALS_MASTER_PLAN`
+scope correction.
+
+⚠️ **This retires a risk rather than accepting one.** §8.5 sequenced M3-6 (lateral
+propagation) behind the performance work because it multiplies burning voxels. If
+these materials are curtains and boxes, that multiplication has nowhere to run and
+the risk mostly evaporates — record it in MATERIALS rather than leaving §8.5
+standing as written.
+
+## 9.3 Order
+
+F1 → F3 → F4 → F2 → F5. F1 first because everything else is measured against it;
+F2 after F3/F4 because the glow should be authored against the fire's final
+timing, not the current one.
+
+## 9.4 What this block explicitly does NOT do
+
+- **P3** stays built and gated off (§8.19). F1 removes its urgency for the FIRE;
+  it still pays on every shot and blast, and it stays a real architecture item.
+- **The cell-recovery defect (§8.22)** is untouched and still ships. It affects
+  P2's soot, which is sparse enough to be invisible, and it blocks P3. Open.
+- **P7b (MultiMesh)** stays open; F2 is written not to make it worse.
+- **The 32 `TileMapLayer`s' 19 ms/frame** stays open.
+
+## 9.5 Acceptance criteria, written BEFORE the work
+
+Stated now so §9.6 has something to check rather than something to narrate.
+
+1. A fabric fire's wall clock is **under 3 000 ms** (from ~6 300).
+2. A committing frame is **under 60 ms** (from ~350).
+3. **Zero TileSet alternatives minted during the burn's committing frames** —
+   `[BURN-PROF] … alternative(s) minted` reads 0.
+4. The holes still appear on the fire's own schedule: `[E-BURN] … consumed over
+   N.NNs` unchanged in shape, and a filmstrip shows the wall opening progressively
+   rather than all at once.
+5. The board after the fire is **visually identical to the board after the fire
+   today** — the final repaint is unchanged, so the END STATE must be. A pixel diff
+   at `--fixed-fps 60` against a same-binary control, and a stated number.
+6. Gates: lint, selftests, invariants, CODEMAP.
+
+⚠️ **Criterion 5 is the one that can fail quietly.** F1 removes intermediate
+relighting; if anything other than the final repaint was depending on those
+intermediate passes, the end state drifts and only a pixel diff will say so.
+
+## 9.6 Verification — once, at the end
+
+One pass, covering all six criteria above, with pasted output and a real capture.
+Not per item, not deferred, not narrated as expected.

@@ -1,7 +1,12 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v2.0 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK.** The
+**Status:** 🟢 **v2.1 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK. §9.7 revises
+it on the Director's answers: F1 becomes a light-repaint CADENCE pinned in seconds
+rather than a suspension, and there is NO glow system — the FIRE BECOMES A LIGHT on
+that same tick, because a glow that lights faces and a glow that is cheap are the
+same trade re-entered from the other side. F3 is 70/30.**
+Earlier: **v2.0 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK.** The
 Director's proposal (suspend the light repaint during the burn, carry the fire's
 light as an overlay glow, shorten what soft materials burn, and make fabric and
 cardboard PROPS rather than walls) is aimed at the exact term §8.15 isolated:
@@ -1504,3 +1509,94 @@ intermediate passes, the end state drifts and only a pixel diff will say so.
 
 One pass, covering all six criteria above, with pasted output and a real capture.
 Not per item, not deferred, not narrated as expected.
+
+## 9.7 REVISED — the Director's answers, and F1 becomes a TICK rather than a suspension
+
+Director, 2026-08-23, answering §9.2:
+
+> *"F3 — Vamos testar inicialmente uns 70% da area afetada, e queima o que sobrar.
+> F2 — Pode propor como preferir. Nao precisa necessariamente ter um clarão, eu
+> pensei nisso mais pra delimitar onde começa e termina a suspensão da luz… mas não
+> podemos trocar 6 por meia dúzia, tem que ser uma vantagem. Pensando no resto do
+> sistema, poderíamos limitar o paint da luz por ticks, criando um caso à parte para
+> iluminação piscando."*
+
+**The tick idea supersedes F1's suspension, and it is better on three counts.**
+
+### F1 (revised) — the light repaint gets a CADENCE, pinned in SECONDS
+
+Not "off during the fire" but **`LIGHT_REPAINT_INTERVAL_S`** — a repaint happens
+at most once per interval, whatever asks for it. The burn's committing frames then
+mint on a handful of frames instead of all thirteen.
+
+⚠️ **Pinned in SECONDS, not frames, and that is not a style choice.**
+`BURN_COMMIT_INTERVAL_S` carries the same rule and the same comment explains why:
+cheaper frames buy MORE of them, so a frame-counted budget silently spends itself
+back the moment the frame gets faster. This project has already paid for that once.
+
+What it costs, from §8.15's measured parts (projection, §9.6 confirms):
+
+```
+today                13 x 350 ms                       = 4 550 ms
+suspend entirely     13 x  ~36                          =  ~470 ms
+tick at 1.0 s         3 x 350 + 10 x ~36                = ~1 410 ms
+```
+
+The tick is ~940 ms dearer than a full suspension and **buys back the thing the
+suspension was going to need a glow to hide**: the region keeps relighting, just
+coarsely. It is also a SYSTEM policy rather than a fire special case — which is
+what makes flicker its natural second caller.
+
+### F2 (revised) — NO separate glow overlay, and here is the "6 por meia dúzia"
+
+The Director's caution is exactly right, and it has a sharp form:
+
+- a glow drawn as a **CanvasItem overlay** is cheap and **cannot light faces** — it
+  draws ON TOP of the voxels, it does not change their shading;
+- a glow that genuinely **lights nearer faces** has to go through the voxel light
+  field, which is the per-cell path whose repaint and mint F1 just removed.
+
+**So "a glow that lights faces" and "a glow that is cheap" are the same trade F1
+is making, re-entered from the other side.** Building both is trading 6 for half a
+dozen, precisely as the Director said.
+
+**The proposal: there is no glow system. The FIRE BECOMES A LIGHT**, and it
+repaints on F1's tick like everything else. One mechanism, not two: it lights
+nearer faces properly, it can pulse (the pulse is a light property, not a new
+system), and it costs exactly one tick — which is already budgeted.
+
+And it lands on a seam that already exists and has **never run**: §5.5 recorded
+that `Room._update_temporal_lights()`'s VL-03 incremental repaint is unreachable
+because `changed_lights` is always empty — *"correct code waiting for a caller."*
+A fire is that caller, and so is the flicker the Director wants as its own case.
+
+⚠️ **Staged, because that path is unproven:**
+- **F2a** — the tick alone, no fire light. The ember overlay already carries the
+  fire's own read, so this is shippable on its own.
+- **F2b** — the fire registers as a real light on the tick. If VL-03's incremental
+  path does not hold up, F2b is DROPPED and F2a stands. It must not block the block.
+
+### F3 (revised) — 70/30
+
+**The blast destroys 70% of the affected area outright; the fire burns the
+remaining 30%.** Director's number, to be tuned against the look.
+
+Its value is duration, not voxel count: the committing-frame count is
+`duration / BURN_COMMIT_INTERVAL_S`, so a fire with 30% of the fuel finishes sooner
+and pays proportionally fewer rebuilds. F3 and F1 multiply rather than overlap.
+
+### 9.7a Acceptance, amended
+
+§9.5's criteria stand, with two changes:
+
+- **Criterion 1** becomes **under 3 500 ms** (from ~6 300). The tick is dearer than
+  the suspension it replaces, and the acceptance number moves with the design
+  rather than the design being trimmed to fit the number.
+- **Criterion 3** becomes: alternatives minted during the burn are **bounded by the
+  tick** — at most one minting frame per `LIGHT_REPAINT_INTERVAL_S` — instead of
+  zero. Zero was the suspension's number and is no longer the design.
+
+### 9.7b Order, amended
+
+**F1 → F3 → F4 → F2a → F2b (attempt) → F5.** F2b last inside the block because it
+is the only item allowed to fail without failing the block.

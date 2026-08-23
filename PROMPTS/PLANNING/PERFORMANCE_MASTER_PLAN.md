@@ -1,7 +1,15 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟠 **v1.8 — P3 IS BUILT AND GATED OFF (§8.19). Its DATA is verified
+**Status:** 🔴 **v1.9 — THE CELL RECOVERY IS NOT PER-TILE (§8.22), AND IT SHIPS.**
+16.4% of adjacent voxel fragments recover a DIFFERENT cell where a per-tile
+recovery would change ~3%, and 10.8% of drawn fragments read a plane texel that
+was never written. P3 is built and correct (§8.19) — its data is per-cell exact and
+its arithmetic is provably identical (flat-light A/B: 0 px) — and it is blocked by a
+defect that predates it. **§8.23: this is P2's recovery too, shipped since P2, and
+soot hid it by being sparse.** Root cause still open (§8.24); the atlas grid,
+`layer_origin`, float rounding, the CPU data and the arithmetic are all ruled out
+BY MEASUREMENT. Earlier: **v1.8 — P3 IS BUILT AND GATED OFF (§8.19). Its DATA is verified
 end to end — the alternative space collapses to `{11: 205704}`, i.e. ZERO light
 alternatives, and the GPU sampler reads the full bucket spread — but the frame is
 wrong: 165 754 px against a control proven at 0, on WALL FACADES, and the on/off
@@ -1235,3 +1243,102 @@ histogram collapsing to a single value IS zero minting, which §8.15 measured at
 on wall fragments.** That is a smaller, sharper question than §3.3's floor
 residual, and it now has an instrument that answers in a picture rather than in a
 containment statistic.
+
+### 8.22 🔴 THE CELL RECOVERY IS NOT PER-TILE — and that is a SHIPPED defect, not a P3 one (2026-08-23)
+
+Chasing §8.19's wrong buckets produced a diagnosis that is bigger than P3. In
+order, each step killing the hypothesis before it:
+
+**1. The CPU data is perfect.** The census gained a PER-CELL comparison (the first
+version compared only histograms, which matched exactly and read as a pass):
+
+```
+[P3-CENSUS] PER-CELL disagreement (plane vs alt id): 0 of 205704 (0.0000%)
+```
+
+**2. The arithmetic is identical.** `INFILTRAITOR_FLAT_LIGHT=1` flattens
+`bucket_luminance` to all 1.00 on BOTH delivery paths, so no fragment's value can
+depend on WHICH bucket it read:
+
+```
+FLAT LIGHT   P3=1 vs P3=0:  0 px
+```
+
+So every face factor, the soot, the residue snap and the modulate path agree
+exactly. **The entire difference is which bucket value reaches a fragment.**
+
+**3. Nothing structural is misaligned.** Measured, not read:
+
+- `debug_atlas_alignment()` — **55 sources, 0 misaligned** to the shader's
+  `mod(32, 36)` grid (margins and region+separation are multiples of the atom).
+- `debug_layer_origin_drift()` — **0 layers** whose `layer_origin` uniform no
+  longer matches `get_global_transform().origin`.
+- Snapping the quad origin to the pixel lattice before inverting changed the
+  result by **exactly 0 pixels** (165 754 before and after), so the float32
+  residue was never near a rounding boundary either.
+
+**4. The plane's fill became a SENTINEL, and that is what finally spoke.** G is
+filled with `BUCKET_UNWRITTEN = 255` instead of bucket 11, so "never written" stops
+being the same byte as "genuinely full lit" — the exact ambiguity that let §3.3's
+`hint_default_white` and PERF-P2's ~110 000 clean-fallback fragments hide. Debug
+paint mode 3, real boot:
+
+```
+G=255 -> 75 119 px (10.83% of all drawn voxel fragments)   <-- NEVER WRITTEN
+```
+
+**A drawn fragment belongs to a placed cell by construction, and all 205 704
+placed cells have a written bucket.** So those fragments recovered a cell that is
+not the cell that drew them.
+[`p3_unwritten_mask.png`](../../Screenshots/history/p3_unwritten_mask.png).
+
+**5. And the recovery is not per-tile at all.** Debug paint mode 2 paints the
+recovered cell itself; adjacent opaque voxel fragments were then compared
+directly ([`p3_recovered_cells.png`](../../Screenshots/history/p3_recovered_cells.png)):
+
+```
+682 989 adjacent horizontal pairs, both voxel fragments
+  same recovered cell : 571 011 (83.6%)
+  DIFFERENT           : 111 978 (16.4%)
+expected if the recovery were per-TILE: one change per 32 px, ~3%
+```
+
+Among the never-written fragments specifically, **46 285 of 46 300 disagree with
+their immediate neighbour** — jumps of 2–3 cells across a single pixel.
+
+**The recovery varies WITHIN a tile, and it is supposed to be constant across
+one.** §3.2's whole mechanism is that `VERTEX - local` is the quad's top-left and
+therefore per-tile; that premise does not hold on the real board.
+
+### ⚠️ 8.23 This is P2's recovery too, and P2 is SHIPPED
+
+`voxel_face_shading.gdshader` has ONE cell recovery and P2's soot has been riding
+it since it landed. The soot gates passed at 0 differing pixels because **soot is
+sparse**: a fragment that reads the wrong cell almost always reads a cell with no
+soot either, and clean-vs-clean is invisible. Light has no such mercy — every cell
+has a bucket, so the same defect that soot hid, light renders.
+
+That reframes three earlier entries:
+
+- **§3.3's floor residual is not a gate artefact.** §8.18 retired the gate on the
+  reasoning that it might be measuring its own reconstruction; §8.20 already
+  withdrew that, and this closes it — the recovery is genuinely wrong, and the
+  gate was reporting a real thing all along.
+- **§8.20's "two different populations" still stands** (13.7% overlap), and now has
+  a mechanism: the gate judges CONTAINMENT, which a within-tile wobble often
+  survives, while light is wrong the moment the cell changes at all.
+- **P3 is not blocked by P3.** Nothing in §8.19's plumbing is wrong. It is blocked
+  by a defect that predates it and currently ships.
+
+### 8.24 What is NOT yet known
+
+**The root cause.** Ruled out by measurement above: the atlas grid, `layer_origin`,
+float32 rounding at the quad origin, the CPU data, and the arithmetic. What
+remains untested is what `v_vertex` and `UV` actually carry per fragment on a
+batched `TileMapLayer` — the varying's interpolation and its precision on the
+wall sheets specifically, which are 2 048-atom pages whose atlas coordinates run
+into the thousands while the floor's atlas is small.
+
+**Recorded as the open question, not as a conclusion.** The instruments that
+answer it now exist and are cheap: mode 2 (recovered cell), mode 3 (plane G with a
+sentinel fill), `INFILTRAITOR_FLAT_LIGHT`, and the per-cell census.

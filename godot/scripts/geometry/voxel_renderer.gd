@@ -572,9 +572,30 @@ const LIGHT_BUCKET_COUNT: int = 12
 ## gentle, and why a freshly exposed crater floor is given
 ## BlastCalculator.EXPOSED_FLOOR_SOOT_RING soot on reveal — that is what
 ## actually governs whether its layers read apart.
-var bucket_luminance: Array[float] = [
-	0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
-]
+## Still a `var` (Rule 1 — stats are never `const`); the initialiser is a function
+## only so the diagnostic below can take effect BEFORE the first mint or the first
+## layer material, which is the one thing a later assignment could not do.
+var bucket_luminance: Array[float] = _initial_bucket_luminance()
+
+
+static func _initial_bucket_luminance() -> Array[float]:
+	var ladder: Array[float] = [
+		0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
+	]
+	if OS.get_environment("INFILTRAITOR_FLAT_LIGHT") == "1":
+		for i in range(ladder.size()):
+			ladder[i] = 1.0
+		print("[P3-DIAG] INFILTRAITOR_FLAT_LIGHT — bucket_luminance flattened to 1.00 on BOTH paths")
+	return ladder
+
+## PERF-P3 DIAGNOSTIC — `INFILTRAITOR_FLAT_LIGHT=1` flattens the ladder to all
+## 1.00, for BOTH delivery paths at once: `_ensure_light_alt()` bakes it into the
+## modulate and `_get_layer_material()` pushes the same array to the shader.
+##
+## It is a DISCRIMINATOR, not a feature. With every bucket worth the same, the
+## VALUE a fragment ends up with can no longer depend on WHICH bucket it read —
+## so if P3-on and P3-off still disagree under it, the difference is structural
+## and is not the cell lookup; and if they agree, the lookup is the whole story.
 
 ## PERF-P3 — THE LIGHT BUCKET LEAVES THE ALTERNATIVE ID.
 ##
@@ -3184,6 +3205,10 @@ var _layer_materials: Dictionary = {}   ## level -> ShaderMaterial
 ##
 ## So the plane carries an ORIGIN: everything indexes `cell + ORIGIN`, and the
 ## shader is passed the same offset.
+## PERF-P3 — the G-channel value meaning "no bucket was ever written here".
+## Deliberately outside 0..LIGHT_BUCKET_COUNT-1 so it can never be mistaken for a
+## real bucket; the shader clamps it to full-lit for rendering.
+const BUCKET_UNWRITTEN: int = 255
 const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
 const SOOT_TEX_SIZE: int = 512
 ## PERF-P3: FORMAT_RG8 — R = the per-face soot code (0..124), G = the light
@@ -3199,13 +3224,18 @@ func _soot_image_for(level: int) -> Image:
 	if _soot_images.has(level):
 		return _soot_images[level]
 	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_RG8)
-	## CLEAN and FULL-LIT, not zero — on both channels, for the same reason.
-	## Zero soot is "ring 0 on all three faces", the darkest scorch there is; and
-	## bucket 0 is the darkest light there is (`bucket_luminance[0]` = 0.12), so a
-	## cell that is never written would come up black twice over. Bucket
-	## LIGHT_BUCKET_COUNT-1 is full lit — see `encode_voxel_alt()`, where that is
-	## the bucket whose raw id is 0, i.e. the base tile.
-	img.fill(Color8(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1, 0, 255))
+	## R = CLEAN, not zero: zero soot is "ring 0 on all three faces", the darkest
+	## scorch there is, so an unvisited cell would come up black.
+	##
+	## G = **BUCKET_UNWRITTEN (255), a SENTINEL, not bucket 11.** Filling with 11
+	## would render an unwritten cell full-lit, which is the correct PICTURE and a
+	## terrible diagnostic: "never written" and "genuinely full lit" would be the
+	## same byte, and this project has now paid twice for a fallback that folds a
+	## missing value onto a legitimate one (§3.3's `hint_default_white` reading as
+	## clean; PERF-P2 shipping ~110 000 fragments silently taking the clean
+	## fallback). The shader still CLAMPS 255 down to 11, so the picture is
+	## unchanged — but the plane, and debug paint mode 3, can now tell them apart.
+	img.fill(Color8(FACE_SOOT_CODE_CLEAN, BUCKET_UNWRITTEN, 0, 255))
 	_soot_images[level] = img
 	_soot_textures[level] = ImageTexture.create_from_image(img)
 	return img
@@ -3257,9 +3287,9 @@ func _write_cell_bucket(level: int, cell: Vector2i, bucket: int) -> void:
 func cell_bucket_at(level: int, cell: Vector2i) -> int:
 	var p := cell + SOOT_PLANE_ORIGIN
 	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
-		return LIGHT_BUCKET_COUNT - 1
+		return BUCKET_UNWRITTEN
 	if not _soot_images.has(level):
-		return LIGHT_BUCKET_COUNT - 1
+		return BUCKET_UNWRITTEN
 	return (_soot_images[level] as Image).get_pixel(p.x, p.y).g8
 
 
@@ -3289,7 +3319,7 @@ func cell_soot_at(level: int, cell: Vector2i) -> int:
 ## after running.
 func debug_fill_cell_plane(level: int, value: int) -> void:
 	var img := _soot_image_for(level)
-	img.fill(Color8(clampi(value, 0, 255), LIGHT_BUCKET_COUNT - 1, 0, 255))
+	img.fill(Color8(clampi(value, 0, 255), BUCKET_UNWRITTEN, 0, 255))
 	_soot_dirty[level] = true
 
 
@@ -3395,6 +3425,8 @@ func debug_bucket_census() -> Dictionary:
 	var plane_hist: Dictionary = {}
 	var alt_hist: Dictionary = {}
 	var cells: int = 0
+	var disagree: int = 0
+	var mism: Array = []
 	var layers: Array = []
 	for level in range(_voxel_layers.size()):
 		layers.append([level, _voxel_layers[level]])
@@ -3411,8 +3443,82 @@ func debug_bucket_census() -> Dictionary:
 			plane_hist[b] = int(plane_hist.get(b, 0)) + 1
 			var ab: int = decode_light_bucket(layer.get_cell_alternative_tile(cell))
 			alt_hist[ab] = int(alt_hist.get(ab, 0)) + 1
+			## ⚠️ PER-CELL, not just per-histogram. Two histograms can match
+			## exactly while every cell in them is wrong — the first version of
+			## this census compared only the totals and read as a pass.
+			if ab != b:
+				disagree += 1
+				if mism.size() < 8:
+					mism.append({"level": level, "cell": cell, "plane": b, "alt": ab})
 	return {"cells": cells, "plane": plane_hist, "alt": alt_hist,
+		"disagree": disagree, "samples": mism,
 		"levels_with_image": _soot_images.size()}
+
+
+## PERF-P3 — IS EVERY ATOM ALIGNED TO THE `mod` GRID THE SHADER ASSUMES?
+##
+## `voxel_face_shading.gdshader` recovers the atom-local pixel as
+## `mod(UV / TEXTURE_PIXEL_SIZE, atom_size)`, which is only the atom-local pixel
+## if every tile's region starts at a multiple of `atom_size` in the atlas. Godot
+## puts a tile at `margins + coords * (texture_region_size + separation)`, so the
+## condition is that margins AND (region + separation) are both multiples of
+## (32, 36). §3.3 checked the region SIZE and never checked the origin.
+##
+## A misaligned source makes `mod` WRAP inside a single quad, which splits one
+## quad across two recovered cells — and the recovery is supposed to be per-tile.
+func debug_atlas_alignment() -> Dictionary:
+	var bad: Array = []
+	var checked: int = 0
+	if _tileset == null:
+		return {"checked": 0, "bad": bad}
+	for i in range(_tileset.get_source_count()):
+		var sid: int = _tileset.get_source_id(i)
+		var src := _tileset.get_source(sid) as TileSetAtlasSource
+		if src == null:
+			continue
+		checked += 1
+		var m: Vector2i = src.margins
+		var sep: Vector2i = src.separation
+		var reg: Vector2i = src.texture_region_size
+		var pitch: Vector2i = reg + sep
+		var ok: bool = (m.x % 32 == 0 and m.y % 36 == 0
+			and pitch.x % 32 == 0 and pitch.y % 36 == 0)
+		if not ok and bad.size() < 12:
+			bad.append({"source": sid, "margins": m, "separation": sep,
+				"region": reg, "pitch": pitch})
+	return {"checked": checked, "bad": bad}
+
+
+## PERF-P3 — DOES EACH LAYER'S `layer_origin` UNIFORM STILL MATCH THE LAYER?
+##
+## It is captured once, in `_build_voxel_layer_node()`, right after `add_child()`.
+## Anything that MOVES a layer afterwards — a changed `_visual_grid_offset`, a
+## `debug_nudge`, a reparent, a rotation that rebuilds geometry — leaves the
+## uniform describing where the layer USED to be, and the shader then recovers a
+## cell offset by exactly that drift. A whole layer reading cells that hold no
+## voxel is what that looks like on screen.
+func debug_layer_origin_drift() -> Array:
+	var out: Array = []
+	var pairs: Array = []
+	for level in range(_voxel_layers.size()):
+		pairs.append([level, _voxel_layers[level]])
+	for level in _negative_voxel_layers.keys():
+		pairs.append([level, _negative_voxel_layers[level]])
+	for pair in pairs:
+		var level: int = pair[0]
+		var layer: TileMapLayer = pair[1]
+		if layer == null:
+			continue
+		var mat := layer.material as ShaderMaterial
+		if mat == null:
+			continue
+		var stored = mat.get_shader_parameter("layer_origin")
+		var actual: Vector2 = layer.get_global_transform().origin
+		var drift: Vector2 = actual - (stored if stored != null else Vector2.ZERO)
+		if drift.length() > 0.001:
+			out.append({"level": level, "stored": stored, "actual": actual,
+				"drift": drift})
+	return out
 
 
 func flush_cell_soot() -> int:

@@ -6567,8 +6567,21 @@ func _run_auto_screenshot_capture() -> void:
 	if OS.get_environment("INFILTRAITOR_P3_CENSUS") == "1" and _voxel_renderer != null:
 		var bc: Dictionary = _voxel_renderer.debug_bucket_census()
 		print("[P3-CENSUS] %d placed cell(s) · %d level image(s)" % [bc["cells"], bc["levels_with_image"]])
+		var drift: Array = _voxel_renderer.debug_layer_origin_drift()
+		print("[P3-CENSUS] LAYER-ORIGIN DRIFT — %d layer(s) whose uniform no longer matches the layer" % drift.size())
+		for e in drift:
+			print("[P3-CENSUS]   %s" % [e])
+		var al: Dictionary = _voxel_renderer.debug_atlas_alignment()
+		print("[P3-CENSUS] ATLAS ALIGNMENT — %d source(s) checked · %d misaligned to the shader's mod(32,36) grid" % [al["checked"], (al["bad"] as Array).size()])
+		for e in al["bad"]:
+			print("[P3-CENSUS]   %s" % [e])
 		print("[P3-CENSUS] PLANE bucket histogram: %s" % [bc["plane"]])
 		print("[P3-CENSUS] ALT-id bucket histogram: %s" % [bc["alt"]])
+		print("[P3-CENSUS] PER-CELL disagreement (plane vs alt id): %d of %d (%.4f%%)"
+			% [bc["disagree"], bc["cells"],
+			100.0 * float(bc["disagree"]) / maxf(float(bc["cells"]), 1.0)])
+		if not (bc["samples"] as Array).is_empty():
+			print("[P3-CENSUS] samples: %s" % [bc["samples"]])
 	## PERF-P3 — drive the shader's G-channel debug paint (mode 3) for a capture
 	## whose R channel IS the bucket the sampler read.
 	var paint_env := OS.get_environment("INFILTRAITOR_CELL_PAINT_MODE")

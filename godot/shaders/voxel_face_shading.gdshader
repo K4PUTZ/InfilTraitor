@@ -252,9 +252,24 @@ void vertex() {
 
 void fragment() {
 	vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
+	// PERF-P3 — SNAP THE QUAD ORIGIN TO THE PIXEL LATTICE BEFORE INVERTING.
+	//
+	// `v_vertex - local` is the quad's top-left, and in exact arithmetic it is
+	// always an INTEGER layer-space point: map_to_local() returns integers and the
+	// quad offset (region/2 + texture_origin) is integral too. In float32 it is
+	// not, and the error is not uniform across the board — `local` comes from
+	// `mod(UV / TEXTURE_PIXEL_SIZE, atom_size)`, whose input is an atlas pixel
+	// coordinate. The floor's atlas is small; a baked WALL sheet carries 2 048
+	// atoms, so its coordinates run into the thousands, where a float32 mantissa
+	// leaves ~1e-4 and `mod` of a large value keeps very little of it.
+	//
+	// The `+ 0.5` below then turns that residue into a whole-cell error wherever
+	// the fraction lands near a rounding boundary — which is why P3 rendered a
+	// neighbour's light bucket on WALL facades and not on the floor.
+	vec2 quad_tl = floor(v_vertex - local + 0.5);
 	vec2 cell = floor(vec2(
-		dot(inv_basis_row0, v_vertex - local + quad_to_map),
-		dot(inv_basis_row1, v_vertex - local + quad_to_map)) + 0.5);
+		dot(inv_basis_row0, quad_tl + quad_to_map),
+		dot(inv_basis_row1, quad_tl + quad_to_map)) + 0.5);
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
 	vec2 half_top = vec2(atom_size.x * 0.5, top_face_h * 0.5);
@@ -289,7 +304,10 @@ void fragment() {
 	if (p3_enabled > 0.5) {
 		// A cell outside the plane reads FULL LIT, matching the fill and matching
 		// what an unwritten cell meant under the alternative path (the base tile).
-		int b = in_plane ? int(floor(plane.g * 255.0 + 0.5)) : 11;
+		// 255 is BUCKET_UNWRITTEN, the plane's sentinel; the clamp folds it (and an
+		// out-of-plane fragment) onto full-lit, which is what the alternative path
+		// rendered for a cell nothing had touched.
+		int b = in_plane ? int(floor(plane.g * 255.0 + 0.5)) : 255;
 		f *= bucket_lum[clamp(b, 0, 11)];
 	}
 

@@ -1086,3 +1086,45 @@ script work, which no probe inside the repaint could ever see.
 
 **§8.2's freeze is hereby retracted on measurement, not on preference.** It was
 taken on the best number available at the time; §8.15 is a better one.
+
+
+### 8.18 ❌ §3.3's NAMED LEAD IS DEAD, and the gate stops being P3's gatekeeper (2026-08-23)
+
+§3.3 ended on one lead: `debug_cell_quad_rect()` falls back to `texture_origin`
+(0, 0) when `get_tile_data()` returns null, every tile here carries (0, 10), and a
+silent 10 px error sits squarely inside the observed 2–8 px spread. `alt 0` and
+`TRANSFORM_FLIP_H` are native tiles no `create_alternative_tile()` ever produced,
+which made them the obvious suspects.
+
+`VoxelRenderer.debug_tiledata_census()`, run inside the gate:
+
+```
+[P3-GATE] TILEDATA CENSUS — 205704 placed cell(s) · 0 resolve to NULL TileData (0.00%)
+          nulls by alt id: { } · texture_origin histogram: { (0, 10): 205704 }
+```
+
+**Zero.** The lead is dead, and the gate still reads:
+
+```
+judged 893 145 px · INSIDE 732 442 (82.007%) · OUTSIDE 160 703
+inside% per level: L-1 81%(822 643) · L0 98% · L1 100% · L2 98% · L3 100% · L4 98% ...
+```
+
+Two things worth carrying:
+
+- **The residual is the FLOOR and nothing else.** L-1 is 822 643 of 893 145 judged
+  pixels (92%) at 81%; every wall level is 96–100% on samples of 2–6 k.
+- **The wall levels alternate by parity** — even 96–98%, odd 100%, without exception
+  across 16 levels. Unexplained, on small samples, recorded rather than chased.
+
+**DECISION: the gate stops blocking P3.** It compares the shader's recovery against
+a RECONSTRUCTION of Godot's draw rect, so a disagreement accuses both equally, and
+two sessions have now gone into deciding which. P3's own failure mode is directly
+observable in a rendered frame — §3.1's attempt was diagnosed from a picture, not
+from this gate — and that attempt predates BOTH cell-recovery fixes (`20389fc1`
+negative cells, `6d88886c` the quadrant). The cheaper decisive test is to re-attempt
+P3 on the fixed recovery and look.
+
+This is a change of instrument, not a claim that the recovery is fine. If P3's
+picture is right, the gate was measuring its own reconstruction error; if it is
+wrong, the debug render diagnoses it with a recovery that is now two fixes better.

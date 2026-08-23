@@ -3222,6 +3222,57 @@ func debug_cell_quad_rect(level: int, cell: Vector2i) -> Rect2:
 	return Rect2(layer.map_to_local(cell) - region * 0.5 - origin, region)
 
 
+## PERF-P3-GATE §3.3 — THE CENSUS THAT TESTS THE GATE ITSELF.
+##
+## §3.3's residual (floor 81% against walls 96-100%) named one remaining lead: the
+## gate's reference rect is a RECONSTRUCTION of Godot's draw rect, and
+## `debug_cell_quad_rect()` falls back to `texture_origin` (0, 0) whenever
+## `get_tile_data()` returns null. Every tile on this map carries (0, 10), so a
+## null is a silent 10 px error — squarely inside the observed 2-8 px spread.
+##
+## `alt 0` and `TRANSFORM_FLIP_H` are NATIVE Godot tiles that no
+## `create_alternative_tile()` ever produced (see `_ensure_light_alt()`), which is
+## exactly the population most likely to answer null. This counts it instead of
+## arguing about it: how many placed cells resolve TileData, how many do not, and
+## which alternative ids the nulls belong to.
+func debug_tiledata_census() -> Dictionary:
+	var total: int = 0
+	var nulls: int = 0
+	var null_by_alt: Dictionary = {}
+	var origins: Dictionary = {}
+	for level in range(_voxel_layers.size()):
+		total += _census_level(_voxel_layers[level], null_by_alt, origins)
+	for level in _negative_voxel_layers.keys():
+		total += _census_level(_negative_voxel_layers[level], null_by_alt, origins)
+	for alt in null_by_alt.keys():
+		nulls += int(null_by_alt[alt])
+	return {"total": total, "nulls": nulls, "null_by_alt": null_by_alt,
+		"origins": origins}
+
+
+func _census_level(layer: TileMapLayer, null_by_alt: Dictionary,
+		origins: Dictionary) -> int:
+	if layer == null or layer.tile_set == null:
+		return 0
+	var n: int = 0
+	for cell in layer.get_used_cells():
+		var source_id: int = layer.get_cell_source_id(cell)
+		if source_id == -1:
+			continue
+		var src := layer.tile_set.get_source(source_id) as TileSetAtlasSource
+		if src == null:
+			continue
+		n += 1
+		var alt: int = layer.get_cell_alternative_tile(cell)
+		var td: TileData = src.get_tile_data(layer.get_cell_atlas_coords(cell), alt)
+		if td == null:
+			null_by_alt[alt] = int(null_by_alt.get(alt, 0)) + 1
+		else:
+			var o: Vector2i = td.texture_origin
+			origins[o] = int(origins.get(o, 0)) + 1
+	return n
+
+
 func flush_cell_soot() -> int:
 	if _soot_dirty.is_empty():
 		return 0

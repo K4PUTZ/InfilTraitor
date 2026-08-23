@@ -5387,6 +5387,12 @@ func _capture_cell_index_gate() -> void:
 	print("[P3-GATE] INTERIOR pixels (all 4 neighbours claim the same cell): %d · inside %d (%.3f%%) — seam pixels are the rest"
 		% [interior_n, interior_in, 100.0 * float(interior_in) / float(maxi(interior_n, 1))])
 	print("[P3-GATE] mask: Screenshots/history/p3_gate_mask.png")
+	## §3.3's lead, measured before the verdict it might explain.
+	var census: Dictionary = _voxel_renderer.debug_tiledata_census()
+	print("[P3-GATE] TILEDATA CENSUS — %d placed cell(s) · %d resolve to NULL TileData (%.2f%%) · nulls by alt id: %s · texture_origin histogram: %s"
+		% [census["total"], census["nulls"],
+		100.0 * float(census["nulls"]) / maxf(float(census["total"]), 1.0),
+		census["null_by_alt"], census["origins"]])
 	print("[P3-GATE] VERDICT: %s" % ("PASS — every judged pixel lies inside the quad of the cell it claims"
 		if outside == 0 and judged > 0
 		else "FAIL — pixels claim a cell whose quad they are not in"))

@@ -701,10 +701,10 @@ win"* — pointed the other way.
 
 | # | Task | Gate | Size |
 |---|---|---|---|
-| **P7a** | **MEASURE, before any rewrite.** Under `--disable-vsync`, on the same real fire §3.4 used (354 voxels, fabric at gu 31,3): split the 25.1 ms between canvas-command submission and the GDScript loop itself, by timing `_draw` from the inside and by a no-op `_draw` variant that keeps the loop and drops the `draw_*`. Also time `add_ember`'s spawn frame against §8.4 | a stated ms split, and a verdict on §8.3's hypothesis that can be NO | Small |
+| ✅ **P7a** | **DONE 2026-08-23 — §8.8. Submission is 95.1% of `_draw`, the loop 4.9%; §8.3 CONFIRMED and item 1 of §3.4d needs no ruling. ⚠️ And §8.8b: the same run bounds P7 at −3.8% of the fire's WALL CLOCK against −42.8% of its FRAME TIME.** Earlier: **MEASURE, before any rewrite.** Under `--disable-vsync`, on the same real fire §3.4 used (354 voxels, fabric at gu 31,3): split the 25.1 ms between canvas-command submission and the GDScript loop itself, by timing `_draw` from the inside and by a no-op `_draw` variant that keeps the loop and drops the `draw_*`. Also time `add_ember`'s spawn frame against §8.4 | a stated ms split, and a verdict on §8.3's hypothesis that can be NO | Small |
 | **P7b** | The `MultiMesh` conversion, **ember first** — the largest population, the simplest particle (two circles), and the one M3-6 multiplies | 0 differing pixels at `--fixed-fps 60` against a same-binary control (§5.5), and a stated ms/frame delta | Medium |
 | **P7c** | debris, smoke/spark, shrapnel — only if P7b's measured delta earns them, one at a time, each with its own pixel gate | as P7b | Medium |
-| **P7d** | §8.4's running min/max, if P7a measured it as real | the spawn frame's ms, before and after | Small |
+| ❌ **P7d** | **DROPPED 2026-08-23 — §8.9.** Measured at 11 ms across the whole fire. Real, quadratic, and 0.2% | — | — |
 
 ⚠️ **`explosion_flash_overlay` is explicitly OUT of P7.** Two whole-screen
 `draw_rect`s are two commands, not two-per-particle; it is on §3.4's list only
@@ -719,3 +719,105 @@ because it was hidden alongside the other four in one experiment.
 - **§3.4c's permanent +43%.** Still recorded, still not fixed.
 - **The derivation** — the rest of P5, unchanged and still open: the walk
   (458 ms), the soot snapshot (146 ms), occupancy (31 ms).
+
+### 8.8 ✅ P7a MEASURED (2026-08-23) — §8.3 is CONFIRMED, and the NOOP run is also an UPPER BOUND that changes what P7 is worth
+
+Two runs, same binary, same fire, `--disable-vsync`, `INFILTRAITOR_VFX_DRAW_PROBE=1`,
+the second adding `INFILTRAITOR_VFX_DRAW_NOOP=1`:
+
+```
+INFILTRAITOR_AUTO_SCREENSHOT=1 INFILTRAITOR_CAPTURE_ACTION=test_zone_detonate \
+INFILTRAITOR_GRENADE_GUS="31,3" INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400 \
+INFILTRAITOR_BURN_PROFILE=1 INFILTRAITOR_VFX_DRAW_PROBE=1 \
+godot --path . --disable-vsync
+```
+
+Both runs report the SAME fire — `354 of 354 scheduled voxel(s) consumed`, 14
+committing frames, 394/397 alternatives minted — so the two are comparable.
+
+```
+FULL (loop + submission)   17.15 ms/frame in _draw()   1 726.0 command(s)/frame
+NOOP (loop alone)           0.92 ms/frame in _draw()   1 909.4 command(s)/frame
+```
+
+The two windows caught different frame counts (41 vs 69), so the honest
+denominator is the COMMAND, not the frame:
+
+| | µs per canvas command |
+|---|---|
+| FULL | 9.94 |
+| NOOP | 0.48 |
+| **submission** | **9.45** |
+
+Normalised back to FULL's 1 726 commands/frame:
+
+| term | ms/frame | share |
+|---|---|---|
+| the per-particle GDScript loop | **0.83** | 4.9% |
+| **`draw_*` submission** | **16.32** | **95.1%** |
+| total `_draw()` | 17.15 | |
+
+**§8.3's hypothesis is CONFIRMED, and it is not close.** The cost is the delivery
+channel, exactly as §0 says of the TileSet. A `MultiMesh` removes the 16.32 and
+keeps the 0.83. **Item 1 of §3.4d is therefore NOT a LOOK decision** — the
+particles, their count and their appearance are all innocent, and the Director's
+ruling is not needed to fix it.
+
+### ⚠️ 8.8b — and the same run bounds what fixing it can BUY
+
+The NOOP run is not only the control. It is **P7's ceiling**: every VFX draw
+call removed, which is strictly more than MultiMesh can save.
+
+```
+                frames   mean frame    fire wall clock
+FULL               41      154.6 ms         6 337 ms
+NOOP               69       88.4 ms         6 098 ms
+                          -42.8%             -3.8%
+```
+
+**The fire did not get shorter. It got more frames.** `BURN_COMMIT_INTERVAL_S`
+pins the fire's cadence in SECONDS (deliberately — see `_advance_burn`'s comment,
+and MAT-PERF-02's reasoning that *"cheaper frames buy more of them"*), so making a
+frame cheaper buys frame rate and not duration. Removing **all** VFX drawing moved
+a 6.3-second fire by **239 ms**.
+
+So the two readings of *"empacamos no fogo"* want different work:
+
+- **"the fire is a slideshow"** — 6.5 fps → 11.3 fps, a **43% cut in frame time**.
+  P7 is the right fix and it is large.
+- **"the fire takes 6.3 s for a 3.3 s effect"** — P7 is worth **3.8%**. The wall
+  clock is somewhere else, and the biggest single pieces this run names are the
+  14 committing frames (1 286 ms inside `_advance_burn`, 1 265 of it the scoped
+  repaint) and the final repaint (898 ms), which together are ~2.2 s of 6.3 s.
+
+⚠️ **The remaining ~4 s is NOT attributed and this section does not guess at it.**
+§3.4's voxel layers (19 ms) and guards (5 ms) account for roughly 1 s across 41
+frames. What is left is unexplained, and writing down a plausible candidate here
+(the 394 mints' TileSet rebuild is the obvious one) is exactly the move §1.2 made
+and §1.1b had to retract.
+
+**One cross-check that did hold.** §3.4 measured the VFX at 25.1 ms of a 64.0 ms
+frame by HIDING them — 39%. This run's NOOP removes 66.2 ms of a 154.6 ms frame —
+43%. The absolute scales differ (this run's camera frames gu (10,4) while the fire
+is at (31,3); `test_zone_detonate` overrides the focus env var), so only the
+PROPORTIONS are comparable — and they agree. Note also that 66.2 ms ≫ the 16.32 ms
+of submission: the difference is GPU rasterization of ~1 726 circles per frame,
+which `_draw()`'s own clock cannot see and MultiMesh also removes.
+
+### 8.9 ❌ P7d IS DROPPED — §8.4's O(N²) is real and does not matter
+
+Measured on the same runs, identically in both:
+
+```
+add_ember: 354 call(s), 11.19 ms total (31.6 us/call)
+```
+
+**11 ms across the whole fire.** The quadratic is real — it is right there in the
+per-call figure rising with the live set — but at today's populations it is 0.2%
+of the fire and 1.3% of a single committing frame. M3-6 multiplying the voxel
+count 4x would make it ~180 ms, still not worth a change.
+
+**Recorded as measured-and-declined, not as pending.** §8.4 asked for a number
+before a fix and this is the number; if M3-6 ever pushes the count an order of
+magnitude the running min/max is a ten-line change and this section is the
+trigger.

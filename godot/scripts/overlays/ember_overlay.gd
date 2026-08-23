@@ -194,8 +194,16 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		rise: float = 0.0, duration_scale: float = 1.0,
 		delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0,
 		smoke_on_death: bool = true) -> void:
+	## PERF-P7a §8.4 — `_height_bias()` walks every ember already alive, so
+	## spawning N of them is O(N^2). Timed here rather than inferred: it is a
+	## one-off at the spawn frame, which is exactly why §3.4's per-frame hiding
+	## experiments could not have seen it.
+	var probe_t0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
 	var base_duration: float = duration if duration > 0.0 else randf_range(min_glow_duration, max_glow_duration)
 	var final_duration: float = base_duration * maxf(duration_scale, 0.01) * _height_bias(world_pos.y)
+	if VfxDrawProbe.enabled:
+		VfxDrawProbe.spawn_us += Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.spawn_n += 1
 	_embers.append({
 		"pos": world_pos,
 		"vel": velocity,
@@ -301,6 +309,13 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	## PERF-P7a (VfxDrawProbe): `submit` is hoisted into a local so the
+	## per-particle test is a bool read that costs the SAME in both probe modes
+	## and cancels in the FULL - NOOP subtraction. Two commands per ember.
+	var probing: bool = VfxDrawProbe.enabled
+	var submit: bool = not VfxDrawProbe.noop
+	var probe_t0: int = Time.get_ticks_usec() if probing else 0
+	var drawn: int = 0
 	for e in _embers:
 		## E-EMBER-02: an ember still counting down its delay is not on fire yet
 		## and draws nothing at all.
@@ -314,10 +329,16 @@ func _draw() -> void:
 		var hot := ember_color_at(e, t)
 		var core := hot
 		core.a *= alpha
-		draw_circle(e["pos"], e["radius"], core)
 		var halo := hot
 		halo.a *= alpha * halo_alpha_factor
-		draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
+		drawn += 1
+		if submit:
+			draw_circle(e["pos"], e["radius"], core)
+			draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
+	if probing:
+		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.particles += drawn
+		VfxDrawProbe.commands += drawn * 2
 
 
 ## Discard every in-flight glow (map load/reload — see class doc: nothing here

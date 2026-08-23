@@ -149,6 +149,14 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle
+	## test costs the same in both modes and cancels in FULL - NOOP. Dust is the
+	## heaviest of the four — 7-12 commands per CLOUD, not per particle.
+	var probing: bool = VfxDrawProbe.enabled
+	var submit: bool = not VfxDrawProbe.noop
+	var probe_t0: int = Time.get_ticks_usec() if probing else 0
+	var drawn: int = 0
+	var cmds: int = 0
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
 		var delay: float = d["delay"]
@@ -171,8 +179,11 @@ func _draw() -> void:
 			alpha = pow(1.0 - st, dust_fade_power)
 		var c: Color = d["color"]
 		c.a = minf(c.a * alpha * dust_alpha_gain, 1.0)
+		drawn += 1
+		cmds += (d["specks"] as Array).size()
 		for offset in d["specks"]:
-			draw_circle(pos + offset, dust_speck_radius, c)
+			if submit:
+				draw_circle(pos + offset, dust_speck_radius, c)
 
 	for chip in _chips:
 		var pos: Vector2 = chip["pos"]
@@ -188,7 +199,14 @@ func _draw() -> void:
 		var rot: float = chip["rotation"]
 		for corner in [Vector2(-half_w, -half_h), Vector2(half_w, -half_h), Vector2(half_w, half_h), Vector2(-half_w, half_h)]:
 			points.append(pos + corner.rotated(rot))
-		draw_colored_polygon(points, c)
+		drawn += 1
+		cmds += 1
+		if submit:
+			draw_colored_polygon(points, c)
+	if probing:
+		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.particles += drawn
+		VfxDrawProbe.commands += cmds
 
 
 ## Discard every in-flight dust/chip (map load/reload) — same reasoning as

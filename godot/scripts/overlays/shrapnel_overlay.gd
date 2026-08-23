@@ -103,12 +103,26 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle
+	## test costs the same in both modes and cancels in FULL - NOOP.
+	var probing: bool = VfxDrawProbe.enabled
+	var submit: bool = not VfxDrawProbe.noop
+	var probe_t0: int = Time.get_ticks_usec() if probing else 0
+	var drawn: int = 0
+	var cmds: int = 0
 	for frag in _frags:
 		var t: float = frag["elapsed"] / frag["lifetime"]
 		var alpha: float = 1.0 - t  ## linear fade
 		var c: Color = frag["color"]
 		c.a *= alpha
-		draw_circle(frag["pos"], glow_radius, c)
+		drawn += 1
+		cmds += 1
+		if submit:
+			draw_circle(frag["pos"], glow_radius, c)
+	if probing:
+		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.particles += drawn
+		VfxDrawProbe.commands += cmds
 
 
 func clear() -> void:

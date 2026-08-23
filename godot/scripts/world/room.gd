@@ -3751,6 +3751,12 @@ func _process(_delta: float) -> void:
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))])
+			## PERF-P7a — the VFX `_draw` split, printed beside the frame time it is
+			## a share of. Empty unless INFILTRAITOR_VFX_DRAW_PROBE=1; see
+			## VfxDrawProbe for what the FULL/NOOP difference does and does not mean.
+			var vfx_line: String = VfxDrawProbe.take_line(_frame_probe_n)
+			if vfx_line != "":
+				print(vfx_line)
 			_frame_probe_n = 0
 			_frame_probe_us = 0
 
@@ -3854,6 +3860,10 @@ var _burn_pending: Array = []
 
 
 func start_burn(burn_wave: Dictionary) -> void:
+	## PERF-P7a — the VFX window is the FIRE, so it starts here. Without this it
+	## would carry the boot and the blast that lit the fire, and the blast is the
+	## single densest VFX moment in the game.
+	VfxDrawProbe.reset()
 	_burn_scheduler.schedule(burn_wave)
 	_burn_commit_accum = 0.0
 	_burn_pending.clear()
@@ -4009,6 +4019,10 @@ func _advance_burn(delta: float) -> void:
 				float(_burn_prof_repaint_us) / 1000.0,
 				float(Time.get_ticks_usec() - _burn_prof_first_us) / 1000.0,
 				prof_alts, _burn_scheduler.elapsed()])
+			## PERF-P7a — the VFX overlays' `_draw`, over exactly these frames.
+			var vfx_burn_line: String = VfxDrawProbe.take_line(_burn_prof_frame_total)
+			if vfx_burn_line != "":
+				print(vfx_burn_line)
 			_burn_prof_frames = 0
 			_burn_prof_voxels = 0
 			_burn_prof_total_us = 0

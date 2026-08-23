@@ -198,6 +198,13 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle
+	## test costs the same in both modes and cancels in FULL - NOOP.
+	var probing: bool = VfxDrawProbe.enabled
+	var submit: bool = not VfxDrawProbe.noop
+	var probe_t0: int = Time.get_ticks_usec() if probing else 0
+	var drawn: int = 0
+	var cmds: int = 0
 	for s in _smoke:
 		if float(s.get("delay", 0.0)) > 0.0:
 			continue
@@ -206,7 +213,10 @@ func _draw() -> void:
 		var c: Color = s["color"]
 		c.a *= alpha
 		var radius: float = lerp(float(s["start_radius"]), float(s["end_radius"]), t)
-		draw_circle(s["pos"], radius, c)
+		drawn += 1
+		cmds += 1
+		if submit:
+			draw_circle(s["pos"], radius, c)
 
 	for p in _sparks:
 		var t: float = p["elapsed"] / p["duration"]
@@ -215,7 +225,10 @@ func _draw() -> void:
 		var vel: Vector2 = p["vel"]
 		if vel.length() <= 0.01:
 			c.a *= alpha
-			draw_line(p["pos"], p["pos"], c, spark_width)
+			drawn += 1
+			cmds += 1
+			if submit:
+				draw_line(p["pos"], p["pos"], c, spark_width)
 			continue
 		## E-SPARK-02: the streak is walked back from the head in segments, each
 		## dimmer and thinner than the last. Length follows SPEED, so a fast
@@ -226,13 +239,20 @@ func _draw() -> void:
 		var reach: float = spark_trail_length * clampf(
 			vel.length() / maxf(spark_speed_max, 0.001), 0.25, 1.0)
 		var segs: int = maxi(spark_trail_segments, 1)
+		drawn += 1
+		cmds += segs
 		for i in range(segs):
 			var a0: float = float(i) / float(segs)
 			var a1: float = float(i + 1) / float(segs)
 			var seg := c
 			seg.a = c.a * alpha * lerpf(1.0, spark_trail_tail_alpha, a0)
-			draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
-				seg, spark_width * lerpf(1.0, 0.35, a0))
+			if submit:
+				draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
+					seg, spark_width * lerpf(1.0, 0.35, a0))
+	if probing:
+		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.particles += drawn
+		VfxDrawProbe.commands += cmds
 
 
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as

@@ -184,7 +184,7 @@ uniform vec2 cell_plane_origin = vec2(64.0, 64.0);
 // 1/32 and 1/16 written out: Godot rejects a division in a uniform default.
 uniform vec2 inv_basis_row0 = vec2(0.03125, 0.0625);
 uniform vec2 inv_basis_row1 = vec2(-0.03125, 0.0625);
-uniform vec2 quad_to_map = vec2(16.0, 28.0);
+uniform vec2 quad_to_map = vec2(0.0, 20.0);
 
 // PERF-P3 GATE — paint the recovered cell's RAW plane byte, so a capture can be
 // checked against a position computed in GDScript. 0.0 = off, and off is the
@@ -205,10 +205,32 @@ uniform vec2 quad_to_map = vec2(16.0, 28.0);
 // never written, which is a false answer rather than a missing one.
 uniform float cell_debug_paint : hint_range(0.0, 1.0) = 0.0;
 
+// PERF-P5 — the layer's own origin in canvas space, set per level by
+// VoxelRenderer._build_voxel_layer_node(). See vertex() for why it exists.
+uniform vec2 layer_origin = vec2(0.0);
+
 varying vec2 v_vertex;
 
 void vertex() {
-	v_vertex = VERTEX;
+	// ⚠️ `VERTEX` ALONE IS NOT LAYER-LOCAL, and the whole cell recovery below
+	// depends on a coordinate that is.
+	//
+	// A TileMapLayer batches its tiles into quadrants of `rendering_quadrant_size`
+	// cells (default 16) and pushes each quadrant's own transform, so plain
+	// VERTEX is QUADRANT-local: the recovery read `cell mod 16`, measured as a
+	// clean wrap in a scan of the painted cell (... (14,7) (-2,7) ...).
+	//
+	// Forcing one quadrant per layer fixes that and COSTS TOO MUCH — with a
+	// single quadrant every `set_cell()` rebuilds the whole layer's draw list,
+	// measured at 15 928 ms of burn wall clock against 10 986 ms at the default
+	// 16, a 45% regression on the one event this project has spent two sessions
+	// making cheaper.
+	//
+	// MODEL_MATRIX carries the quadrant transform folded in, so this is
+	// canvas-space and therefore quadrant-independent; subtracting the layer's
+	// own origin puts it back in layer space, which is what the inverse of
+	// map_to_local() expects. Quadrants stay at the engine default.
+	v_vertex = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - layer_origin;
 }
 
 void fragment() {

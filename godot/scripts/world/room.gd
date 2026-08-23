@@ -2780,7 +2780,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 		var after: Dictionary = _perf_snapshot_alts()
 		var differ: int = 0
 		for k in after:
-			if before.get(k, -12345) != after[k]:
+			if before.get(k, PERF_SNAPSHOT_MISSING) != after[k]:
 				differ += 1
 		print("[SHOT-SCOPE] %d cells checked, %d differ from a full apply (scope %d GUs)"
 			% [after.size(), differ, gus.size()])
@@ -2861,7 +2861,7 @@ func fade_in_scoped_soot(gus: Array) -> void:
 		var after: Dictionary = _perf_snapshot_alts()
 		var differ: int = 0
 		for k in after:
-			if before.get(k, -12345) != after[k]:
+			if before.get(k, PERF_SNAPSHOT_MISSING) != after[k]:
 				differ += 1
 		print("[SHOT-SOOT] settled: %d cells checked, %d differ from a full apply"
 			% [after.size(), differ])
@@ -3043,7 +3043,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 		var _snap_b: Dictionary = _perf_snapshot_alts()
 		var _diff: int = 0
 		for k in _snap_b:
-			if _snap_a.get(k, -12345) != _snap_b[k]:
+			if _snap_a.get(k, PERF_SNAPSHOT_MISSING) != _snap_b[k]:
 				_diff += 1
 		print("[LIGHT-EQUIV] %d cells, %d differ" % [_snap_b.size(), _diff])
 	if OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
@@ -3054,16 +3054,31 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 ## probe above. Reads both layer stores the renderer keeps (positive wall
 ## levels and the negative floor/background ones), so "every cell" really is
 ## every cell and not just the walls.
+## ⚠️ THE SOOT HALF IS NOT OPTIONAL. Until PERF-P2 a cell's whole visual state
+## WAS its alternative id, so snapshotting the id was snapshotting everything.
+## P2 moved soot into the per-cell plane and this function was not told, which
+## left all three probes that depend on it — the shot's scope gate, the light
+## equivalence probe and the burn's "corrected N cells" — structurally unable to
+## see a soot difference. That is the same blindness that let P2 ship a broken
+## cell recovery behind a "0 differing pixels" gate (PERFORMANCE_MASTER_PLAN
+## §3.2), and it is why the value is a PAIR now.
+const PERF_SNAPSHOT_MISSING: Vector2i = Vector2i(-1, -1)
+
+
 func _perf_snapshot_alts() -> Dictionary:
 	var out: Dictionary = {}
 	for level in range(_voxel_renderer._voxel_layers.size()):
 		var layer: TileMapLayer = _voxel_renderer._voxel_layers[level]
 		for cell in layer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = layer.get_cell_alternative_tile(cell)
+			out[Vector3i(cell.x, cell.y, level)] = Vector2i(
+				layer.get_cell_alternative_tile(cell),
+				_voxel_renderer.cell_soot_at(level, cell))
 	for level in _voxel_renderer._negative_voxel_layers.keys():
 		var nlayer: TileMapLayer = _voxel_renderer._negative_voxel_layers[level]
 		for cell in nlayer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = nlayer.get_cell_alternative_tile(cell)
+			out[Vector3i(cell.x, cell.y, level)] = Vector2i(
+				nlayer.get_cell_alternative_tile(cell),
+				_voxel_renderer.cell_soot_at(level, cell))
 	return out
 
 
@@ -3945,13 +3960,30 @@ func _burn_final_repaint() -> void:
 		return
 	var before: Dictionary = _perf_snapshot_alts() if _burn_prof else {}
 	var t0: int = Time.get_ticks_usec()
-	_repaint_voxel_light_buckets(false)
+	## PERF-P5a — geometry_only, and it is a statement of fact rather than an
+	## optimisation flag: a fire changes occupancy and soot, and touches no
+	## light, no shadow, no top_wall_level and no cover. That is exactly the
+	## precondition VoxelLightField.build() documents.
+	##
+	## What it buys is the whole DERIVATION. With geometry_only FALSE the build
+	## empties _bucket_cache and _static_factor_cache, so the apply that follows
+	## re-derives every one of the board's 205 704 cells on first touch —
+	## measured at 754 ms by INFILTRAITOR_APPLY_SPLIT_PROBE, against ~1 400 ms
+	## for this whole repaint. The scoped burn frames already ran with the
+	## incremental path, so _stale_cells() invalidates the fire's own
+	## neighbourhood and the cache answers for the rest of the map.
+	##
+	## The correction this pass exists to make is UNAFFECTED: the walk over every
+	## placed cell lives in apply_light_field() and does not care what build()
+	## kept. Verified with INFILTRAITOR_LIGHT_EQUIV_PROBE=1, which now compares
+	## soot as well as the alternative id.
+	_repaint_voxel_light_buckets(true)
 	if not _burn_prof:
 		return
 	var after: Dictionary = _perf_snapshot_alts()
 	var differ: int = 0
 	for k in after:
-		if before.get(k, -12345) != after[k]:
+		if before.get(k, PERF_SNAPSHOT_MISSING) != after[k]:
 			differ += 1
 	print("[BURN-PROF] final repaint %.0f ms · corrected %d of %d cell(s) the scoped burn frames left stale"
 		% [float(Time.get_ticks_usec() - t0) / 1000.0, differ, after.size()])

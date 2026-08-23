@@ -3259,25 +3259,6 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.tile_set = _tileset
 	layer.name = "voxel_layer_%d" % level
-	## PERF-P2/P3 — ONE RENDERING QUADRANT, and the cell recovery depends on it.
-	##
-	## A TileMapLayer batches its tiles into quadrants of `rendering_quadrant_size`
-	## cells (default 16) and pushes each quadrant's own transform, which makes
-	## `VERTEX` QUADRANT-local rather than layer-local. The shader inverts
-	## `map_to_local()` on `VERTEX - local`, so with the default it recovers
-	## `cell mod 16` — measured directly by painting the recovered cell: a
-	## horizontal scan reads ... (13,8) (14,7) (-2,7) (-1,6) ..., a clean wrap of
-	## exactly 16.
-	##
-	## That is why PERF-SPIKE-01's parity checkerboard passed and proved nothing:
-	## a per-quadrant offset is invisible to a parity test, which is invariant
-	## under exactly this. It is also the real explanation for PERF-P2-FIX's "12%
-	## of fragments fall outside the plane" — not the map buffer putting geometry
-	## at negative cells (PLAYGROUND has none), but the quadrant-local recovery
-	## going negative near every quadrant boundary.
-	## Sized from the plane, not from a magic number: both must cover the whole
-	## board, so they are one decision rather than two that can drift apart.
-	layer.rendering_quadrant_size = SOOT_TEX_SIZE
 	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
 	## material-only and the baked tile paths — see the shader's own header.
 	layer.material = _get_layer_material(level)
@@ -3320,6 +3301,13 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 
 	# Add to scene tree
 	add_child(layer)
+	## PERF-P5 — the shader recovers a cell from a LAYER-LOCAL position, and what
+	## its vertex stage can see is canvas space (see voxel_face_shading.gdshader).
+	## This is the offset between the two. Set AFTER add_child so the global
+	## transform is real rather than the pre-parented one.
+	var lmat := layer.material as ShaderMaterial
+	if lmat != null:
+		lmat.set_shader_parameter("layer_origin", layer.get_global_transform().origin)
 	return layer
 
 

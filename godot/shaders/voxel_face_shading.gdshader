@@ -184,7 +184,26 @@ uniform vec2 cell_plane_origin = vec2(64.0, 64.0);
 // 1/32 and 1/16 written out: Godot rejects a division in a uniform default.
 uniform vec2 inv_basis_row0 = vec2(0.03125, 0.0625);
 uniform vec2 inv_basis_row1 = vec2(-0.03125, 0.0625);
-uniform vec2 quad_to_map = vec2(0.0, 20.0);
+uniform vec2 quad_to_map = vec2(16.0, 28.0);
+
+// PERF-P3 GATE — paint the recovered cell's RAW plane byte, so a capture can be
+// checked against a position computed in GDScript. 0.0 = off, and off is the
+// shipping value.
+//
+// WHY IT LIVES IN THIS SHADER AND NOT IN A COPY: PERF-SPIKE-01 ran its gates
+// against `experimental/voxel_face_shading_cellindex.gdshader`, and a gate that
+// audits a copy proves things about the copy. The recovery this branch reads is
+// the SAME `cell` the soot lookup below uses — there is nothing between them to
+// drift. The cost of the branch is measured, not assumed (see the P3-GATE
+// commit): a uniform that never changes is a scalar the driver folds, and the
+// A/B at --fixed-fps 60 is what says so in pixels.
+//
+// The output is deliberately not a colour: R = the plane byte at the recovered
+// cell, G = 0 and B = 255 as a signature (so a HUD or agent pixel cannot be
+// mistaken for a marked voxel), and alpha is hard 0 or 1 — an antialiased edge
+// blending a code with what is behind it would read back as a value that was
+// never written, which is a false answer rather than a missing one.
+uniform float cell_debug_paint : hint_range(0.0, 1.0) = 0.0;
 
 varying vec2 v_vertex;
 
@@ -217,6 +236,7 @@ void fragment() {
 	}
 
 	float tex_a = texture(TEXTURE, UV).a;
+
 	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
 		// A cell outside the data texture reads CLEAN rather than wrapping —
@@ -252,4 +272,39 @@ void fragment() {
 	}
 	// Alpha carried data, not transparency — hand back the real silhouette.
 	COLOR.a = tex_a;
+
+	// PERF-P3 GATE (see the uniform above). LAST, and as an overwrite rather
+	// than an early exit, because Godot rejects `return` inside fragment().
+	// Reads the plane RAW — no clamp to the 0..124 soot range — since the gate
+	// issues codes the soot encoding has no room for, and clamping them would
+	// fold different cells onto one value and hide the very confusion being
+	// tested for.
+	if (cell_debug_paint > 0.5) {
+		vec2 dcell = cell + cell_plane_origin;
+		float dcode = 0.0;
+		if (dcell.x >= 0.0 && dcell.y >= 0.0
+				&& dcell.x < cell_soot_size.x && dcell.y < cell_soot_size.y) {
+			dcode = floor(texture(cell_soot, (dcell + vec2(0.5)) / cell_soot_size).r * 255.0 + 0.5);
+		}
+		COLOR = vec4(dcode / 255.0, 0.0, 1.0, step(0.99, tex_a));
+	}
+	// Mode 2 paints the RECOVERED CELL ITSELF, EXACTLY, with no plane lookup in
+	// the way. R and G carry the low byte of x and y; BLUE carries both high
+	// bytes, biased so a negative recovery is representable rather than folded
+	// onto a positive cell:
+	//
+	//   B = 64 + (x + 512) / 256 + 8 * ((y + 512) / 256)
+	//
+	// The bias is not decoration. An earlier version painted x mod 256 alone and
+	// left the reader to decide between x and x + 256 by asking which one held a
+	// voxel — on a board with a continuous floor BOTH always do, so it picked
+	// the low one every time and reported 0% correct on a mapping that may well
+	// have been right. B >= 64 also marks "a voxel drew this", which is what
+	// separates the board from the cleared background.
+	if (cell_debug_paint > 1.5) {
+		float bx = clamp(floor((cell.x + 512.0) / 256.0), 0.0, 7.0);
+		float by = clamp(floor((cell.y + 512.0) / 256.0), 0.0, 7.0);
+		COLOR = vec4(mod(cell.x, 256.0) / 255.0, mod(cell.y, 256.0) / 255.0,
+			(64.0 + bx + 8.0 * by) / 255.0, step(0.99, tex_a));
+	}
 }

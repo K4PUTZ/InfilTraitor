@@ -3165,6 +3165,63 @@ func cell_soot_at(level: int, cell: Vector2i) -> int:
 	return (_soot_images[level] as Image).get_pixel(p.x, p.y).r8
 
 
+## PERF-P3 GATE — the cell plane as a WRITE-ANYTHING scratch surface.
+##
+## `_write_cell_soot()` clamps to the 0..124 soot code space and skips a write
+## that does not change the byte. Both are right for soot and wrong for the
+## gate: the gate needs codes that are unique per marked cell (so a pixel can
+## name the cell it came from) and it needs the fill to actually land. These
+## three are the only writers that bypass that, they are only ever called from
+## `Room._capture_cell_index_gate()`, and they leave the plane meaningless for
+## soot — the gate boot is a throwaway process and never renders a real frame
+## after running.
+func debug_fill_cell_plane(level: int, value: int) -> void:
+	var img := _soot_image_for(level)
+	img.fill(Color8(clampi(value, 0, 255), 0, 0, 255))
+	_soot_dirty[level] = true
+
+
+## Drive the shader's gate branch on EVERY level at once. A level whose material
+## was never built is not skipped quietly — it cannot have drawn anything, so it
+## has no cells for the gate to mark either.
+func debug_set_cell_paint(on: bool) -> void:
+	debug_set_cell_paint_mode(1.0 if on else 0.0)
+
+
+## 0 = off (the shipping value), 1 = paint the plane byte at the recovered cell,
+## 2 = paint the recovered cell itself (x and y mod 256).
+func debug_set_cell_paint_mode(mode: float) -> void:
+	for level in _layer_materials.keys():
+		(_layer_materials[level] as ShaderMaterial).set_shader_parameter(
+			"cell_debug_paint", mode)
+
+
+## The rect one cell's quad occupies in LAYER-LOCAL space, taken from Godot's
+## own numbers rather than from the shader's constants.
+##
+## This is the whole reason the gate can be trusted: `quad_to_map` in the shader
+## encodes `map_to_local(cell) + (-16, -28)` as a literal, and a gate that
+## checked the shader against that same literal would be checking the shader
+## against itself. Here the offset comes from `texture_region_size` and the
+## TileData's own `texture_origin`, read off the live TileSet — so if the two
+## ever disagree, the gate is what says so.
+func debug_cell_quad_rect(level: int, cell: Vector2i) -> Rect2:
+	var layer: TileMapLayer = get_layer(level)
+	if layer == null:
+		return Rect2()
+	var source_id: int = layer.get_cell_source_id(cell)
+	if source_id == -1:
+		return Rect2()
+	var src := layer.tile_set.get_source(source_id) as TileSetAtlasSource
+	if src == null:
+		return Rect2()
+	var region: Vector2 = Vector2(src.texture_region_size)
+	var td: TileData = src.get_tile_data(layer.get_cell_atlas_coords(cell),
+			layer.get_cell_alternative_tile(cell))
+	var origin: Vector2 = Vector2(td.texture_origin) if td != null else Vector2.ZERO
+	return Rect2(layer.map_to_local(cell) - region * 0.5 - origin, region)
+
+
 func flush_cell_soot() -> int:
 	if _soot_dirty.is_empty():
 		return 0
@@ -3202,6 +3259,25 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var layer := TileMapLayer.new()
 	layer.tile_set = _tileset
 	layer.name = "voxel_layer_%d" % level
+	## PERF-P2/P3 — ONE RENDERING QUADRANT, and the cell recovery depends on it.
+	##
+	## A TileMapLayer batches its tiles into quadrants of `rendering_quadrant_size`
+	## cells (default 16) and pushes each quadrant's own transform, which makes
+	## `VERTEX` QUADRANT-local rather than layer-local. The shader inverts
+	## `map_to_local()` on `VERTEX - local`, so with the default it recovers
+	## `cell mod 16` — measured directly by painting the recovered cell: a
+	## horizontal scan reads ... (13,8) (14,7) (-2,7) (-1,6) ..., a clean wrap of
+	## exactly 16.
+	##
+	## That is why PERF-SPIKE-01's parity checkerboard passed and proved nothing:
+	## a per-quadrant offset is invisible to a parity test, which is invariant
+	## under exactly this. It is also the real explanation for PERF-P2-FIX's "12%
+	## of fragments fall outside the plane" — not the map buffer putting geometry
+	## at negative cells (PLAYGROUND has none), but the quadrant-local recovery
+	## going negative near every quadrant boundary.
+	## Sized from the plane, not from a magic number: both must cover the whole
+	## board, so they are one decision rather than two that can drift apart.
+	layer.rendering_quadrant_size = SOOT_TEX_SIZE
 	## FACE-READ-01: per-face shading, the one seam that reaches BOTH the
 	## material-only and the baked tile paths — see the shader's own header.
 	layer.material = _get_layer_material(level)

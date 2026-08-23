@@ -4689,6 +4689,331 @@ func _capture_cell_index_spike() -> void:
 	print("[SPIKE] ---- end ----")
 
 
+## PERF-P3 GATE — hide every CanvasItem/CanvasLayer that is not the voxel
+## renderer's own subtree. Gate-only; see the call site for why it has to be
+## this blunt.
+func _debug_hide_all_but_voxels(node: Node) -> void:
+	for child in node.get_children():
+		if child == _voxel_renderer:
+			continue
+		## Never hide an ancestor of the voxel renderer — that would take the
+		## thing being photographed down with the overlays.
+		if _voxel_renderer != null and _voxel_renderer.is_ancestor_of(child):
+			_debug_hide_all_but_voxels(child)
+			continue
+		if child.is_ancestor_of(_voxel_renderer):
+			_debug_hide_all_but_voxels(child)
+			continue
+		if child is CanvasItem:
+			(child as CanvasItem).visible = false
+			continue
+		if child is CanvasLayer:
+			(child as CanvasLayer).visible = false
+			continue
+		_debug_hide_all_but_voxels(child)
+
+
+## PERF-P3 GATE — decode one pixel's self-declared (level, cell), or null.
+##
+## Capture A's signature is (level + 100, 0, 255) — its G is always 0 because the
+## whole level's plane carries one value, which is what makes the LEVEL readout
+## survive even a completely broken cell recovery. Capture B's G CARRIES cell.y
+## and its B carries both high bytes biased by 2, so only B's range can be
+## tested there. Requiring g == 0 on B threw away 875 896 pixels of 921 600 in an
+## earlier run and left twenty claims that looked like a catastrophic failure and
+## were an analysis bug.
+func _p3_gate_claim(pl: Color, pc: Color):
+	if pl.g8 != 0 or pl.b8 != 255 or pc.b8 < 64 or pc.b8 > 127:
+		return null
+	var hi: int = pc.b8 - 64
+	@warning_ignore("integer_division")
+	var hy: int = hi / 8
+	return Vector3i(pl.r8 - 100, pc.r8 + 256 * ((hi % 8) - 2), pc.g8 + 256 * (hy - 2))
+
+
+## PERF-P3 GATE — a cell's quad in VIEWPORT pixels, AT THE MOMENT OF THE CALL.
+##
+## This must never be cached across a frame wait. The camera eases toward its
+## target, so a rect computed during setup and compared against a capture taken
+## twenty frames later is measuring the camera, not the shader — measured, that
+## mistake produced a recovery "offset" of 1 to 3 cells with a spread, which
+## reads exactly like a real mapping bug and is not one.
+func _p3_gate_rect(level: int, cell: Vector2i) -> Rect2:
+	var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+	if layer == null:
+		return Rect2()
+	var local: Rect2 = _voxel_renderer.debug_cell_quad_rect(level, cell)
+	if local.size == Vector2.ZERO:
+		return Rect2()
+	var xf: Transform2D = layer.get_global_transform_with_canvas()
+	var tl: Vector2 = xf * local.position
+	var br: Vector2 = xf * (local.position + local.size)
+	return Rect2(tl, br - tl)
+
+
+## PERF-P3 GATE — DOES THE SHADER RECOVER THE *RIGHT* CELL?
+##
+## `INFILTRAITOR_CAPTURE_ACTION=cell_index_gate`.
+##
+## PERF-SPIKE-01's gate 2 painted the recovered cell's PARITY and read the
+## checkerboard as proof. It is not: a parity checkerboard is INVARIANT under a
+## constant cell offset — shift every cell by one and the picture is an equally
+## perfect checkerboard. It proved "one cell per quad, consistent on the
+## lattice" and never "the RIGHT cell", and PERFORMANCE_MASTER_PLAN §3.1 records
+## that weakness as the reason P3 was reverted without knowing what was wrong.
+##
+## THE SHAPE THAT CANNOT PASS FOR THE WRONG MAPPING — every pixel names itself.
+##
+##   capture A · the plane is filled with `level + 100` and the shader paints
+##              what it read, so each pixel names the LEVEL whose layer drew it;
+##   capture B · the shader paints the recovered CELL (x and y mod 256);
+##
+## and then the only question asked is: does this pixel lie inside the quad of
+## the (level, cell) IT CLAIMS TO BE? That rect is computed from
+## `map_to_local()`, `texture_region_size` and the TileData's `texture_origin` —
+## Godot's own numbers, never the shader's `quad_to_map` literal, so the gate
+## cannot be checking the shader against itself.
+##
+## ⚠️ WHY NOT THE OBVIOUS SHAPE, which was built first and thrown away: marking
+## N known cells with unique codes and looking for them. It requires knowing
+## which cell OWNS a pixel, and in an isometric scene that is exactly what you
+## do not know — a wall to the south covers the floor to the north, so a sample
+## at a cell's own diamond centre routinely belongs to some other cell entirely.
+## Measured, that version reported recovery "offsets" of (31, -80) and (46, -81)
+## cells with a broad spread. Those numbers were occlusion, not the shader. The
+## self-describing form has no ownership assumption in it at all, and it judges
+## every pixel of the frame instead of 200 samples.
+##
+## It is ONE-SIDED on purpose: a pixel is never required to exist, only to be
+## where it says it is.
+func _capture_cell_index_gate() -> void:
+	print("[P3-GATE] ---- cell recovery, absolute position ----")
+	if _voxel_renderer == null:
+		push_error("[P3-GATE] no voxel renderer.")
+		return
+	if _fow_controller != null and agent != null:
+		_fow_controller.reveal_around(agent.cell, 32)
+	## EVERYTHING THAT IS NOT A VOXEL LAYER GOES AWAY, and this is not tidiness.
+	##
+	## MEASURED: with the overlays up, 325 059 pixels of the board came back as
+	## (3, 9, 255) and (6, 18, 255) instead of the (value, 0, 255) the shader
+	## writes — an ADDITIVE overlay, at two densities, sitting on the floor. That
+	## does not merely hide the answer, it CORRUPTS it: a byte of 5 reads back as
+	## 8 or 11, which is another cell's answer. Four runs of this gate reported
+	## "0 of 200 marked cells visible" and the cause was this, not the mapping
+	## the gate exists to judge.
+	##
+	## So the gate photographs a frame holding the voxel layers and nothing else.
+	## The boot quits straight afterwards and never renders a real frame, which
+	## is what makes something this violent acceptable here.
+	_debug_hide_all_but_voxels(self)
+	_debug_hide_all_but_voxels(get_tree().root)
+	var zoom_env := OS.get_environment("INFILTRAITOR_P3_GATE_ZOOM")
+	if _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(
+			zoom_env.to_float() if zoom_env.is_valid_float() else 1.5)
+	var focus_env := OS.get_environment("INFILTRAITOR_P3_GATE_FOCUS")
+	if focus_env != "" and agent != null and _camera_controller != null:
+		var fp := focus_env.split(",")
+		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
+			agent.set_cell(Vector2i(fp[0].to_int(), fp[1].to_int()))
+			_camera_controller.focus_on(agent._cell_to_world(agent.cell))
+	_recompute_occlusion()
+	for _i in range(20):
+		await get_tree().process_frame
+
+	var vp := get_viewport()
+	var levels: Array = []
+	for i in range(_voxel_renderer.get_layer_count()):
+		levels.append(i)
+	for k in _voxel_renderer._negative_voxel_layers.keys():
+		levels.append(k)
+	levels.sort()
+
+	## WHAT THE TILESET ACTUALLY CONTAINS. The shader hard-codes the quad offset
+	## as `quad_to_map = (0, 20)`, which is `region/2 + texture_origin` for a
+	## 32x36 atom at origin (0, 10). Any source or tile that disagrees is a
+	## systematic error the shader cannot see, so the gate states the real
+	## inventory rather than trusting the constant.
+	var origins: Dictionary = {}
+	var regions: Dictionary = {}
+	for si in range(_voxel_renderer._tileset.get_source_count()):
+		var src := _voxel_renderer._tileset.get_source(
+			_voxel_renderer._tileset.get_source_id(si)) as TileSetAtlasSource
+		if src == null:
+			continue
+		regions[src.texture_region_size] = int(regions.get(src.texture_region_size, 0)) + 1
+		for ti in range(src.get_tiles_count()):
+			var tc: Vector2i = src.get_tile_id(ti)
+			var td0: TileData = src.get_tile_data(tc, 0)
+			if td0 != null:
+				origins[td0.texture_origin] = int(origins.get(td0.texture_origin, 0)) + 1
+	print("[P3-GATE] tileset: region sizes %s · texture_origins %s" % [regions, origins])
+
+	## CAPTURE A — which LEVEL drew each pixel. `level + 100` is never 0 and
+	## never collides across -8..15, so a pixel that carries no level is a pixel
+	## no voxel layer drew.
+	for level in levels:
+		if _voxel_renderer.get_layer(level) != null:
+			_voxel_renderer.debug_fill_cell_plane(level, level + 100)
+	_voxel_renderer.flush_cell_soot()
+	_voxel_renderer.debug_set_cell_paint(true)
+	for _i in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_level := vp.get_texture().get_image()
+
+	## CAPTURE B — which CELL the shader recovered, straight out of the fragment
+	## maths with no plane lookup between it and the pixel.
+	_voxel_renderer.debug_set_cell_paint_mode(2.0)
+	for _i in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_cell := vp.get_texture().get_image()
+	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(shot_dir)
+	if img_level == null or img_cell == null:
+		push_error("[P3-GATE] null viewport image.")
+		return
+	img_cell.save_png("%s/p3_gate_recovered_cells.png" % shot_dir)
+
+	## PASS 1 — collect the distinct (level, cell) each pixel CLAIMS, and resolve
+	## each claim's quad ONCE. Grouping first is what keeps this affordable: the
+	## per-claim work (map_to_local, the TileSet lookup, the canvas transform)
+	## runs once per claim instead of once per pixel.
+	var rect_of: Dictionary = {}    ## Vector3i(level, cx, cy) -> Rect2
+	var no_voxel: Dictionary = {}   ## claims naming a cell that holds nothing
+	var unpainted: int = 0
+	var w: int = img_cell.get_width()
+	var h: int = img_cell.get_height()
+	for y in range(h):
+		for x in range(w):
+			var key = _p3_gate_claim(img_level.get_pixel(x, y), img_cell.get_pixel(x, y))
+			if key == null:
+				continue
+			if rect_of.has(key) or no_voxel.has(key):
+				continue
+			var layer: TileMapLayer = _voxel_renderer.get_layer(key.x)
+			if layer == null or layer.get_cell_source_id(Vector2i(key.y, key.z)) == -1:
+				## A claim on a cell that holds no voxel is itself an answer — a
+				## fragment recovered somewhere nothing is placed — so it is
+				## counted apart rather than quietly repaired into a nearby cell
+				## that does exist.
+				no_voxel[key] = true
+				continue
+			rect_of[key] = _p3_gate_rect(key.x, Vector2i(key.y, key.z))
+
+	## PASS 2 — judge every pixel on its own. Deliberately NOT per claim: a claim
+	## covers ~1 650 pixels at this zoom, and an earlier version that failed the
+	## whole claim on one stray pixel reported 0.000% correct without being able
+	## to say whether the mapping was off by a cell or by a pixel of antialiasing.
+	var judged: int = 0
+	var inside: int = 0
+	var outside: int = 0
+	var homeless: int = 0
+	var worst_d: float = 0.0
+	var worst_key = null
+	var worst_pt := Vector2.ZERO
+	var offenders: Dictionary = {}
+	var shifts: Dictionary = {}
+	## A MASK, because a percentage cannot say WHERE. Green = the pixel is inside
+	## the quad it claims, red = it is not, blue = it claims a cell holding no
+	## voxel. A thin red outline around every atom is a boundary rule; a red FACE
+	## is a face rule; red in patches is neither.
+	var mask := Image.create(w, h, false, Image.FORMAT_RGB8)
+	var by_level_in: Dictionary = {}
+	var by_level_out: Dictionary = {}
+	for y in range(h):
+		for x in range(w):
+			var key = _p3_gate_claim(img_level.get_pixel(x, y), img_cell.get_pixel(x, y))
+			if key == null:
+				unpainted += 1
+				continue
+			if no_voxel.has(key):
+				homeless += 1
+				mask.set_pixel(x, y, Color(0.1, 0.2, 1.0))
+				continue
+			var rect: Rect2 = rect_of[key]
+			if rect.size == Vector2.ZERO:
+				homeless += 1
+				mask.set_pixel(x, y, Color(0.1, 0.2, 1.0))
+				continue
+			judged += 1
+			var pt := Vector2(float(x) + 0.5, float(y) + 0.5)
+			## grow(1.0) is a one-pixel rounding allowance on the rect, not a
+			## tolerance on the answer: a whole-cell error is 16 px or more here,
+			## so nothing this gate looks for can hide inside one pixel.
+			if rect.grow(1.0).has_point(pt):
+				inside += 1
+				by_level_in[key.x] = int(by_level_in.get(key.x, 0)) + 1
+				mask.set_pixel(x, y, Color(0.0, 0.8, 0.2))
+				continue
+			by_level_out[key.x] = int(by_level_out.get(key.x, 0)) + 1
+			mask.set_pixel(x, y, Color(1.0, 0.0, 0.0))
+			outside += 1
+			offenders[key] = int(offenders.get(key, 0)) + 1
+			## HOW FAR outside, bucketed. This is the statistic that separates a
+			## boundary/rounding artefact from a whole-cell error: one atom is
+			## 32 x 36 world pixels, so anything under ~2 px is the edge of a
+			## quad and anything past ~16 px is a different cell entirely. An
+			## earlier version histogrammed the offset from the quad's TOP-LEFT
+			## in cell units and learned nothing — for a pixel anywhere inside a
+			## quad that offset already spans (0..3, -1..2), so it could not tell
+			## inside from outside at all.
+			var d: float = maxf(
+				maxf(rect.position.x - pt.x, pt.x - (rect.position.x + rect.size.x)),
+				maxf(rect.position.y - pt.y, pt.y - (rect.position.y + rect.size.y)))
+			var sc: float = maxf(rect.size.x / 32.0, 0.0001)
+			var dw: float = d / sc
+			var bucket: int = 0 if dw < 2.0 else (1 if dw < 8.0 else (2 if dw < 16.0 else (3 if dw < 36.0 else 4)))
+			shifts[bucket] = int(shifts.get(bucket, 0)) + 1
+			if d > worst_d:
+				worst_d = d
+				worst_key = key
+				worst_pt = pt
+
+	print("[P3-GATE] frame %dx%d · %d px carried no voxel answer · %d claim(s) resolved, %d naming an empty cell"
+		% [w, h, unpainted, rect_of.size(), no_voxel.size()])
+	print("[P3-GATE] judged %d px · INSIDE their own quad %d (%.3f%%) · OUTSIDE %d · on empty cells %d px"
+		% [judged, inside, 100.0 * float(inside) / float(maxi(judged, 1)), outside, homeless])
+	if outside > 0 and worst_key != null:
+		var wr: Rect2 = rect_of[worst_key]
+		print("[P3-GATE] worst pixel: %s claims level %d cell (%d, %d), whose quad is %s — %.1f px away"
+			% [worst_pt, worst_key.x, worst_key.y, worst_key.z, wr, worst_d])
+		var names: Array = ["<2px (quad edge)", "2-8px", "8-16px",
+			"16-36px (one atom)", ">36px"]
+		var shift_txt: Array = []
+		for b in range(5):
+			if shifts.has(b):
+				shift_txt.append("%s: %.1f%%" % [names[b],
+					100.0 * float(shifts[b]) / float(maxi(outside, 1))])
+		print("[P3-GATE] how far the OUTSIDE pixels miss by, in WORLD px: %s"
+			% ", ".join(shift_txt))
+		var ranked: Array = offenders.keys()
+		ranked.sort_custom(func(a, b): return int(offenders[a]) > int(offenders[b]))
+		for k in ranked.slice(0, mini(5, ranked.size())):
+			print("[P3-GATE]   level %d cell (%d, %d): %d px outside its quad %s"
+				% [k.x, k.y, k.z, int(offenders[k]), rect_of[k]])
+	mask.save_png("%s/p3_gate_mask.png" % shot_dir)
+	var lv_txt: Array = []
+	var lv_keys: Array = by_level_in.keys()
+	for k in by_level_out.keys():
+		if not lv_keys.has(k):
+			lv_keys.append(k)
+	lv_keys.sort()
+	for k in lv_keys:
+		var i0: int = int(by_level_in.get(k, 0))
+		var o0: int = int(by_level_out.get(k, 0))
+		lv_txt.append("L%d %.0f%%(%d)" % [k, 100.0 * float(i0) / float(maxi(i0 + o0, 1)), i0 + o0])
+	print("[P3-GATE] inside%% per level: %s" % ", ".join(lv_txt))
+	print("[P3-GATE] mask: Screenshots/history/p3_gate_mask.png")
+	print("[P3-GATE] VERDICT: %s" % ("PASS — every judged pixel lies inside the quad of the cell it claims"
+		if outside == 0 and judged > 0
+		else "FAIL — pixels claim a cell whose quad they are not in"))
+	print("[P3-GATE] capture: Screenshots/history/p3_gate_recovered_cells.png")
+	print("[P3-GATE] ---- end ----")
+
+
 func _capture_light_burn_probe() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -5803,6 +6128,10 @@ func _run_auto_screenshot_capture() -> void:
 		await _capture_agent_shot()
 	elif capture_action == "cell_index_spike":
 		await _capture_cell_index_spike()
+		get_tree().quit(0)
+		return
+	elif capture_action == "cell_index_gate":
+		await _capture_cell_index_gate()
 		get_tree().quit(0)
 		return
 	elif capture_action == "light_burn_probe":

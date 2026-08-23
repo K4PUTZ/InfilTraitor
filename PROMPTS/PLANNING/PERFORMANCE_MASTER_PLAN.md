@@ -1,7 +1,15 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟠 **v1.3 — P5a IS BUILT (§3.4), and the fire's real cost turns out not to be the destruction system at all.** Earlier: **v1.2 — TWO CORRECTIONS, BOTH MEASURED (2026-08-22).**
+**Status:** 🟠 **v1.4 — THIS PLAN RE-SCOPES ITSELF (§8). Its own thesis was
+falsified by its own instruments:** the fire's cost is 80% draw submission, not
+per-cell state, so **§3.3 and P3 FREEZE where they are** (documented, nothing
+reverted) and **P7 — the VFX delivery channel — goes first**. §8.3 argues the
+25 ms/frame parked *"awaiting a ruling"* is probably not a LOOK decision at all,
+and §8.6's P7a is the measurement that confirms or kills that before anything is
+rewritten. §8.5 is why this runs ahead of MATERIALS M3-6 rather than after it.
+Earlier: **v1.3 — P5a IS BUILT (§3.4), and the fire's real cost turns out not to
+be the destruction system at all.** Earlier: **v1.2 — TWO CORRECTIONS, BOTH MEASURED (2026-08-22).**
 **(a) P3's premise was wrong by ~40x** — the map-wide apply is derivation plus a
 walk, and the writes-and-mints half that P3 removes is 0.7–30 ms of ~1 200 on
 every repaint after the boot (§1.5). P5 now runs BEFORE P3, Director-ratified.
@@ -548,8 +556,9 @@ exactly the shape P3 will have to trust.
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
 | ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
 | ✅ **P-GATE** | **DONE 2026-08-22** — the gate §3.1 asked for, plus the two defects it found (§3.2). Its own residual (§3.3) is open and blocks P3 | P2 | Medium |
+| 🟢 **P7** | ⬆️ **NEXT, added 2026-08-23 — §8. The VFX delivery channel.** 80% of the fire's per-frame excess is draw submission (25.1 ms VFX + 19.0 ms voxel layers of 55.1). One ember per affected voxel, 2 `draw_circle` each, and M3-6 multiplies that count — §8.5. **P7a MEASURES before anything is rewritten** and may return NO (§8.3) | — | Medium |
 | 🟡 **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement. P5a IS DONE (§3.4): the burn's final repaint 1630 → 866 ms at 0 cells differing.** Open: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms), and §3.4's cost centre: the VFX overlays' `_draw` (25 ms/frame) and the voxel layers (19 ms/frame), now fully attributed. The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
-| **P3** | ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and now BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
+| ❄️ **P3** | **FROZEN 2026-08-23 (§8.2b)** — measured at ~0 for a burn or a shot today, so the §3.3 residual that blocks it is not worth unblocking yet. Earlier: ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |
 
@@ -571,3 +580,142 @@ an emergency. **MATERIALS_MASTER_PLAN M3-6** (fire propagating through the wall'
 internal slices, laterally, and chaining from consumed voxels — Director,
 2026-08-22) is the next FEATURE and is not blocked by this plan; it will simply
 be more comfortable to judge after P3.
+
+---
+
+## 8. P7 — THE VFX DELIVERY CHANNEL, and why this plan re-scopes itself
+
+**Added 2026-08-23, v1.4.** The Director's reading, opening the session:
+*"empacamos na questão do fogo e entramos numa espiral de performance que
+parece estar cada vez abrindo mais buracos novos"* — then, on the diagnosis
+below: *"pode seguir na ordem que achar mais adequada, mas deixe o plano
+registrado."* This section is that registration.
+
+### 8.1 The ledger this plan has been keeping against itself
+
+Nothing here is new measurement. It is the existing measurements read together,
+which had not been done:
+
+| § | what it measured | what it cost this plan's premise |
+|---|---|---|
+| 1.3 | soot is 4.8% of the alternative space | the first suspect, cleared |
+| 1.1b | P2 cut mints 93%; wall clock 2 734 → 2 776 ms | mints are not time |
+| 1.5 | the half P3 removes is 0.7–30 ms of ~1 200 | P3's premise, off by ~40x |
+| 3.4 | the fire is 45% VFX `_draw`, 34% voxel layers, 9% guards, **11% `_advance_burn`** | the cost is not per-cell state at all |
+| 3.4b | the "16.7 ms baseline" was the 60 Hz pace | every sub-cap reading here |
+
+**The plan's own thesis — per-cell visual state in TileSet alternatives is the
+cost centre — has been falsified by the plan's own instruments.** P3 and P4 are
+its two "Large" items and §1.5 measured them at ~0 for the burn and the shot
+today. What survives of them is the boot (692 ms, 49 947 mints) and the
+architecture, and both are real; neither is urgent.
+
+Meanwhile **44 of the fire's 55 ms/frame excess — 80% — is draw submission**:
+the VFX overlays (25.1 ms) plus the 32 voxel `TileMapLayer`s (19.0 ms). §3.4d
+already ranked them and called them *"a THIRD cost centre this plan did not know
+it had"*. The correct response to that sentence was to re-scope, not to continue
+down §6.
+
+### 8.2 The two decisions this section makes
+
+**(a) §3.3 and P3 FREEZE where they are.** The floor residual (81% against
+96–100% on the walls) is characterised, documented, and blocks P3 only. P3 was
+measured at ~0 value for a burn or a shot today. Chasing the floor's last 18% is
+paying full price to unblock the thing whose value the measurement withdrew.
+Nothing is reverted and nothing is deleted — §3.3 stays exactly as written, as
+the entry point for whenever the boot's 692 ms becomes the thing that matters.
+
+**(b) P7 goes first**, ahead of the rest of P5.
+
+### 8.3 ⚠️ The ruling §3.4d asked for may not be a ruling at all
+
+§3.4d item 1 is parked *"AWAITING A RULING"* because fixing 25 ms/frame of
+`draw_*` was taken to mean fewer particles — a LOOK decision. Read against the
+real code, that framing is probably wrong, and if it is, the largest single term
+in the fire needs no decision from the Director at all.
+
+What the five overlays actually do, per frame, per particle, in GDScript:
+
+| overlay | per frame | source |
+|---|---|---|
+| ember | **2 `draw_circle`** per ember (core + halo) | [`ember_overlay.gd:317`](../../godot/scripts/overlays/ember_overlay.gd) |
+| debris | **7–12 `draw_circle`** per dust cloud, + one `draw_colored_polygon` per chip | [`debris_overlay.gd:175`](../../godot/scripts/overlays/debris_overlay.gd) |
+| smoke/spark | 1 `draw_circle` per blob; per spark, a `draw_line` **per trail segment** | [`smoke_spark_overlay.gd:209`](../../godot/scripts/overlays/smoke_spark_overlay.gd) |
+| shrapnel | 1 `draw_circle` per fragment | [`shrapnel_overlay.gd:111`](../../godot/scripts/overlays/shrapnel_overlay.gd) |
+| flash | 2 `draw_rect`, whole-screen | [`explosion_flash_overlay.gd:192`](../../godot/scripts/overlays/explosion_flash_overlay.gd) |
+
+And the population is not a tuning constant — it is the destruction plan.
+[`detonation_choreographer.gd:701`](../../godot/scripts/systems/destruction/detonation_choreographer.gd)
+spawns **one ember per affected voxel** (`return 1` per entry). 354 burning
+voxels is 354 embers is 708 `draw_circle` per frame, each of which builds a
+polygon of tens of vertices as its own canvas command.
+
+**This is the same shape of defect this plan already diagnosed once.** §0's
+sentence is *"the reason a cosmetic effect can cost seconds"* is the DELIVERY
+CHANNEL, not the effect. Here the channel is `CanvasItem.draw_*`, one command per
+particle per frame, and the effect riding it is innocent.
+
+**The hypothesis, stated as a hypothesis:** a `MultiMeshInstance2D` per overlay,
+carrying per-instance transform (position, and scale as the radius) and
+per-instance colour, draws the SAME particles, at the SAME count, with the SAME
+look, in ~1 draw call — and the per-frame GDScript becomes one loop filling a
+`PackedFloat32Array` assigned to `multimesh.buffer` in a single call, instead of
+N method calls into the canvas. If that holds, item 1 of §3.4d stops being a
+look decision and becomes pure optimisation, exactly like items 2 and 3.
+
+⚠️ **It is unproven, and this project does not build on plausible.** P7a below is
+the measurement that confirms or kills it, and it runs before anything is
+rewritten. The honest failure mode: the per-frame buffer fill is still N
+iterations of GDScript, so if the cost turns out to be in the loop rather than in
+the canvas commands, MultiMesh buys much less than this section assumes. That is
+what P7a is for.
+
+### 8.4 A second finding, from the same read — the spawn is O(N²)
+
+`EmberOverlay.add_ember()` calls `_height_bias(world_pos.y)`
+([`ember_overlay.gd:198`](../../godot/scripts/overlays/ember_overlay.gd)), which
+walks **every ember already alive** to normalise the new one's height against
+them. Spawning N embers is therefore N(N−1)/2 dictionary reads — ~62 000 for
+today's 354-voxel fire.
+
+This is NOT the 25 ms/frame (it is a one-off at the spawn frame, and §3.4's
+hiding experiments would not have caught it). It is registered here because it
+is quadratic in exactly the quantity M3-6 multiplies, and because the fix is
+cheap: the bias needs the min/max of the live set, which is a running pair, not a
+walk. Unmeasured so far — P7a picks it up.
+
+### 8.5 Why this ordering, and not "finish the fire first"
+
+**MATERIALS M3-6 — fire propagating laterally through internal slices — is the
+next feature, and it multiplies the number of burning voxels.** §8.3 establishes
+that embers are one-per-voxel and §8.4 that the spawn is quadratic in that count.
+So M3-6 scales the fire's single largest per-frame term linearly and its spawn
+cost quadratically.
+
+Building M3-6 first means judging the propagation's LOOK through a frame time
+that its own voxel count made worse. That is the same trap §4 named — *"optimising
+the masked term first is how a project ends up with two half-measurements and no
+win"* — pointed the other way.
+
+### 8.6 P7 task order
+
+| # | Task | Gate | Size |
+|---|---|---|---|
+| **P7a** | **MEASURE, before any rewrite.** Under `--disable-vsync`, on the same real fire §3.4 used (354 voxels, fabric at gu 31,3): split the 25.1 ms between canvas-command submission and the GDScript loop itself, by timing `_draw` from the inside and by a no-op `_draw` variant that keeps the loop and drops the `draw_*`. Also time `add_ember`'s spawn frame against §8.4 | a stated ms split, and a verdict on §8.3's hypothesis that can be NO | Small |
+| **P7b** | The `MultiMesh` conversion, **ember first** — the largest population, the simplest particle (two circles), and the one M3-6 multiplies | 0 differing pixels at `--fixed-fps 60` against a same-binary control (§5.5), and a stated ms/frame delta | Medium |
+| **P7c** | debris, smoke/spark, shrapnel — only if P7b's measured delta earns them, one at a time, each with its own pixel gate | as P7b | Medium |
+| **P7d** | §8.4's running min/max, if P7a measured it as real | the spawn frame's ms, before and after | Small |
+
+⚠️ **`explosion_flash_overlay` is explicitly OUT of P7.** Two whole-screen
+`draw_rect`s are two commands, not two-per-particle; it is on §3.4's list only
+because it was hidden alongside the other four in one experiment.
+
+### 8.7 What P7 does NOT touch
+
+- **The voxel layers' 19.0 ms** (§3.4d item 2). Real, second-largest, and
+  architectural — 32 `TileMapLayer` nodes, each its own `CanvasItem` doing its
+  own culling every frame. It gets its own item after P7, measured, not now.
+- **The guards' 5.0 ms** (§3.4d item 3).
+- **§3.4c's permanent +43%.** Still recorded, still not fixed.
+- **The derivation** — the rest of P5, unchanged and still open: the walk
+  (458 ms), the soot snapshot (146 ms), occupancy (31 ms).

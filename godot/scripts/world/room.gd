@@ -3831,6 +3831,18 @@ var _burn_prof_frame_max_us: int = 0
 ## at the top of frame N covers the work of frame N-1, so the attribution needs
 ## to remember whether THAT frame committed, not this one.
 var _burn_prof_prev_committed: bool = false
+## PERF-P7b-TWOFIRES — the split that decides §8.11. The two-fires run showed a
+## committing frame costing 343 ms with 693 mints and 348 ms with 274, so the cost
+## does not scale with HOW MANY alternatives a frame mints. The candidate left is
+## that the TileSet rebuild is charged once per frame that mints AT ALL — which is
+## only a MEASUREMENT if the committing frames that mint NOTHING are separated out
+## and turn out to be cheap.
+var _burn_prof_prev_minted: bool = false
+var _burn_prof_mint_mark: int = 0
+var _burn_prof_mint_gap_us: int = 0
+var _burn_prof_mint_gaps: int = 0
+var _burn_prof_nomint_gap_us: int = 0
+var _burn_prof_nomint_gaps: int = 0
 var _burn_prof_commit_gap_us: int = 0
 var _burn_prof_commit_gaps: int = 0
 var _burn_prof_idle_gap_us: int = 0
@@ -3874,6 +3886,35 @@ func start_burn(burn_wave: Dictionary) -> void:
 	## would carry the boot and the blast that lit the fire, and the blast is the
 	## single densest VFX moment in the game.
 	VfxDrawProbe.reset()
+	## PERF-P7b-TWOFIRES — ⚠️ THE BURN PROFILER ONLY EVER RESET HALF OF ITSELF.
+	## Its end-of-fire block zeroes the committing-frame counters (`_burn_prof_frames`,
+	## `_burn_prof_voxels`, `_burn_prof_total_us`, `_burn_prof_repaint_us`) and NONE
+	## of the frame-time ones. That was invisible while a boot only ever held one
+	## fire. It stops being invisible the moment a second one runs, and the worst of
+	## them is `_burn_prof_last_frame_us`: left standing, the many idle seconds
+	## between two fires are charged to the second fire as ONE frame, which lands in
+	## the non-committing bucket and destroys exactly the split §8.10 is built on.
+	## Reset here, where a fire begins, rather than at the end of the previous one —
+	## a fire that never ends leaves nothing stale for the next.
+	if _burn_prof:
+		_burn_prof_last_frame_us = 0
+		_burn_prof_frame_total = 0
+		_burn_prof_frame_us = 0
+		_burn_prof_frame_max_us = 0
+		_burn_prof_all_frames_us = 0
+		_burn_prof_lights_us = 0
+		_burn_prof_fog_us = 0
+		_burn_prof_vis_us = 0
+		_burn_prof_commit_gap_us = 0
+		_burn_prof_commit_gaps = 0
+		_burn_prof_mint_gap_us = 0
+		_burn_prof_mint_gaps = 0
+		_burn_prof_nomint_gap_us = 0
+		_burn_prof_nomint_gaps = 0
+		_burn_prof_prev_minted = false
+		_burn_prof_idle_gap_us = 0
+		_burn_prof_idle_gaps = 0
+		_burn_prof_prev_committed = false
 	_burn_scheduler.schedule(burn_wave)
 	_burn_commit_accum = 0.0
 	_burn_pending.clear()
@@ -3902,14 +3943,21 @@ func _advance_burn(delta: float) -> void:
 			if _burn_prof_prev_committed:
 				_burn_prof_commit_gap_us += gap
 				_burn_prof_commit_gaps += 1
+				if _burn_prof_prev_minted:
+					_burn_prof_mint_gap_us += gap
+					_burn_prof_mint_gaps += 1
+				else:
+					_burn_prof_nomint_gap_us += gap
+					_burn_prof_nomint_gaps += 1
 			else:
 				_burn_prof_idle_gap_us += gap
 				_burn_prof_idle_gaps += 1
 			_burn_prof_frame_max_us = maxi(_burn_prof_frame_max_us, gap)
 		_burn_prof_last_frame_us = now_us
-		## Cleared AFTER the gap is attributed: from here on the flag describes
+		## Cleared AFTER the gap is attributed: from here on the flags describe
 		## THIS frame, which has not committed yet and may never.
 		_burn_prof_prev_committed = false
+		_burn_prof_prev_minted = false
 	_burn_pending.append_array(_burn_scheduler.advance(delta))
 	_burn_commit_accum += maxf(delta, 0.0)
 	## The LAST batch always flushes, whatever the accumulator says — otherwise a
@@ -3986,6 +4034,10 @@ func _advance_burn(delta: float) -> void:
 	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(burn_gus.keys()), false)
 	if _burn_prof:
 		_burn_prof_repaint_us += Time.get_ticks_usec() - prof_repaint_t0
+		## Did THIS committing frame mint anything at all? The scoped repaint is what
+		## mints, so the question is only answerable after it has run.
+		_burn_prof_prev_minted = (_voxel_renderer != null
+			and _voxel_renderer.minted_light_alt_count() > _burn_prof_mint_mark)
 	## M3-4 — the other half of the Director's sentence. "mais longe queima menos"
 	## is a count; *"uma granada bem na base da parede abre passagem"* is a
 	## PASSAGE, and only PassageQuery can answer that. Collected as the fire eats
@@ -3999,6 +4051,8 @@ func _advance_burn(delta: float) -> void:
 	if _burn_prof:
 		_burn_prof_frames += 1
 		_burn_prof_prev_committed = true
+		_burn_prof_mint_mark = _voxel_renderer.minted_light_alt_count() \
+			if _voxel_renderer != null else 0
 		_burn_prof_voxels += due.size()
 		_burn_prof_total_us += Time.get_ticks_usec() - prof_t0
 
@@ -4047,12 +4101,24 @@ func _advance_burn(delta: float) -> void:
 				_burn_prof_idle_gaps,
 				float(_burn_prof_idle_gap_us) / 1000.0 / float(maxi(_burn_prof_idle_gaps, 1)),
 				float(_burn_prof_idle_gap_us) / 1000.0])
+			print("[BURN-PROF] MINT-SPLIT — committing frames that MINTED: %d x %.0f ms = %.0f ms · committing frames that minted NOTHING: %d x %.0f ms = %.0f ms"
+				% [_burn_prof_mint_gaps,
+				float(_burn_prof_mint_gap_us) / 1000.0 / float(maxi(_burn_prof_mint_gaps, 1)),
+				float(_burn_prof_mint_gap_us) / 1000.0,
+				_burn_prof_nomint_gaps,
+				float(_burn_prof_nomint_gap_us) / 1000.0 / float(maxi(_burn_prof_nomint_gaps, 1)),
+				float(_burn_prof_nomint_gap_us) / 1000.0])
 			## PERF-P7a — the VFX overlays' `_draw`, over exactly these frames.
 			var vfx_burn_line: String = VfxDrawProbe.take_line(_burn_prof_frame_total)
 			if vfx_burn_line != "":
 				print(vfx_burn_line)
 			_burn_prof_commit_gap_us = 0
 			_burn_prof_commit_gaps = 0
+			_burn_prof_mint_gap_us = 0
+			_burn_prof_mint_gaps = 0
+			_burn_prof_nomint_gap_us = 0
+			_burn_prof_nomint_gaps = 0
+			_burn_prof_prev_minted = false
 			_burn_prof_idle_gap_us = 0
 			_burn_prof_idle_gaps = 0
 			_burn_prof_prev_committed = false
@@ -5231,6 +5297,94 @@ func _capture_cell_index_gate() -> void:
 	print("[P3-GATE] ---- end ----")
 
 
+## PERF-P7b §8.11 — TWO FIRES IN ONE BOOT, and the only question it answers.
+##
+## §8.10 measured 267 ms per committing frame running OUTSIDE `_advance_burn`,
+## which is 51% of a fire. The obvious candidate is the TileSet rebuild the ~396
+## minted alternatives trigger. §8.11 refused to assert that, because §1.1b already
+## measured mints falling 93% with the wall clock unmoved, and this is the test
+## that decides it:
+##
+##   a cost that is MINTING is paid once   -> fire 2 mints few and gets cheap
+##   a cost that is the REPAINT is paid every time -> fire 2 costs the same
+##
+## ⚠️ **The two fires cannot be the same fire.** Fabric burns 100% (`[E-BURN] 354
+## of 354`), so a second grenade at the first one's cell finds no fuel. They are
+## instead two grenades on OPPOSITE SIDES of the same fabric blocks (gu x=30..32,
+## y=2 on PLAYGROUND): same material, comparable voxel counts, different faces.
+## Same material is what matters — the alternative space is keyed on (source,
+## atlas coords) x light bucket x flip, so fire 2 asks for alternatives fire 1
+## already minted. Different faces mean the LIGHT BUCKETS differ somewhat, so a
+## partial drop in mints is expected and the per-committing-frame cost is the
+## figure to read, never the totals.
+##
+## `INFILTRAITOR_TWO_FIRES_GUS="31,3;31,1"` overrides the cells.
+func _capture_two_fires() -> void:
+	if _test_zone_controller == null:
+		push_error("[TWO-FIRES] needs the test zone controller.")
+		return
+	if not _burn_prof:
+		push_error("[TWO-FIRES] run with INFILTRAITOR_BURN_PROFILE=1 — the whole point is the profiler's per-fire report.")
+		return
+	var gus_env := OS.get_environment("INFILTRAITOR_TWO_FIRES_GUS")
+	if gus_env == "":
+		gus_env = "31,3;31,1"
+	## Seeded through the SAME env var every other dev capture uses, so the
+	## grenades land where _seed_dev_grenades_if_empty() puts them and the indices
+	## below are its own ordering rather than an assumption about it.
+	OS.set_environment("INFILTRAITOR_GRENADE_GUS", gus_env)
+	_seed_dev_grenades_if_empty("TWO-FIRES")
+	if _test_zone_controller._grenades.size() < 2:
+		push_error("[TWO-FIRES] need 2 grenades, seeded %d from %r" % [
+			_test_zone_controller._grenades.size(), gus_env])
+		return
+	print("[TWO-FIRES] cells=%s" % gus_env)
+
+	for i in range(2):
+		var cell: Vector2i = _test_zone_controller._grenades[i]["gu_cell"]
+		if _camera_controller != null and agent != null:
+			_camera_controller.focus_on(agent._cell_to_world(cell))
+		if _fow_controller != null:
+			_fow_controller.reveal_around(cell, 24)
+		for _c in range(10):
+			await get_tree().process_frame
+		var minted_before: int = _voxel_renderer.minted_light_alt_count() \
+			if _voxel_renderer != null else 0
+		print("[TWO-FIRES] ===== FIRE %d at %s · %d alternative(s) already minted =====" % [
+			i + 1, cell, minted_before])
+		## ⚠️ Index `i`, NOT 0. The first version of this assumed detonating a
+		## grenade removes it from `_grenades` so the next one becomes the new 0 —
+		## it does not, and fire 2 re-detonated fire 1's own cell and reported
+		## "no fuel in range" against a wall it had already eaten.
+		_test_zone_controller.open_menu_for(i)
+		_test_zone_controller.detonate_active()
+		## Wait for the fire to actually START before waiting for it to end —
+		## the burn wave is scheduled by the detonation's own choreography, not
+		## synchronously by detonate_active(), and polling is_burning() straight
+		## away would read "not burning" and skip the fire entirely.
+		var armed: bool = false
+		for _w in range(240):
+			await get_tree().process_frame
+			if _burn_scheduler.is_burning():
+				armed = true
+				break
+		if not armed:
+			push_error("[TWO-FIRES] fire %d never started — no fuel in range of %s?" % [i + 1, cell])
+			return
+		## The report prints when the LAST voxel is consumed, and the final repaint
+		## lands after it, so this waits past both.
+		for _w2 in range(1200):
+			await get_tree().process_frame
+			if not _burn_scheduler.is_burning() and _burn_pending.is_empty():
+				break
+		for _s in range(90):
+			await get_tree().process_frame
+		var minted_after: int = _voxel_renderer.minted_light_alt_count() \
+			if _voxel_renderer != null else 0
+		print("[TWO-FIRES] ===== FIRE %d DONE · minted %d new alternative(s) (%d -> %d) =====" % [
+			i + 1, minted_after - minted_before, minted_before, minted_after])
+
+
 func _capture_light_burn_probe() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -6349,6 +6503,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "cell_index_gate":
 		await _capture_cell_index_gate()
+		get_tree().quit(0)
+		return
+	elif capture_action == "two_fires":
+		await _capture_two_fires()
 		get_tree().quit(0)
 		return
 	elif capture_action == "light_burn_probe":

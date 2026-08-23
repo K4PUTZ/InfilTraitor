@@ -1,7 +1,15 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟠 **v1.5 — THE FIRE IS 69% TWELVE FRAMES (§8.10), and half of it
+**Status:** 🟠 **v1.6 — §8.11 IS ANSWERED AND THE ANSWER IS NO (§8.12): a
+committing frame costs ~350 ms whether it mints 694 alternatives or 275.** The
+fire's dominant term does not count mints, which is also why P2 cut them 93% for
+nothing (§1.1b). ⚠️ The follow-up probe returned NULL and says so (§8.12b) — every
+committing frame mints, so the control group is empty and "one rebuild per minting
+frame" cannot be separated here; the pre-mint experiment is what settles it, and
+P3 is the only change in this plan that produces a committing frame minting
+nothing. §8.13 is a profiler reset defect that would have corrupted this run.
+Earlier: **v1.5 — THE FIRE IS 69% TWELVE FRAMES (§8.10), and half of it
 runs outside every function this project has instrumented.** P7a is done and
 confirmed its mechanism (submission is 95.1% of `_draw`, §8.8) — but the same run
 capped P7 at 3.8% of the fire's wall clock, and the frame-kind split says why: the
@@ -891,3 +899,93 @@ the REPAINT. It did not measure the 267 ms per committing frame that no probe in
 this plan has ever been inside. The freeze stands until the two-fires run says
 otherwise — but §8.2's reasoning is now known to rest on a term that was never
 measured, and that has to be written down rather than discovered again later.
+
+### 8.12 ✅ §8.11 ANSWERED (2026-08-23) — it is NOT the mints, and a committing frame costs ~350 ms whatever it does
+
+`INFILTRAITOR_CAPTURE_ACTION=two_fires` (`Room._capture_two_fires()`). Two
+grenades on OPPOSITE sides of the same fabric blocks — fabric burns 100%, so the
+same fire cannot be run twice, and the second fire needs its own fuel.
+
+```
+INFILTRAITOR_AUTO_SCREENSHOT=1 INFILTRAITOR_CAPTURE_ACTION=two_fires \
+INFILTRAITOR_BURN_PROFILE=1 godot --path . --disable-vsync
+```
+
+| | fire 1 (31,3) | fire 2 (31,1) | |
+|---|---|---|---|
+| voxels consumed | 354 | 202 | **−43%** |
+| alternatives minted | 694 | 275 | **−60%** |
+| committing frames | 12 | 13 | — |
+| **ms per committing frame** | **363** | **349** | **−4%** |
+| non-committing | 31 × 63.1 ms | 29 × 58.1 ms | |
+| fire wall clock | 6 310 ms | 6 223 ms | −1.4% |
+
+Corroborated by the previous run of the same capture: 343 ms and 348 ms. Across
+both runs a committing frame costs **343, 346, 349, 363 ms** while the work inside
+it varies by 60%.
+
+**The answer to §8.11 is NO.** The 267 ms is not proportional to minting. A fire
+that minted 60% fewer alternatives and ate 43% fewer voxels paid the same price per
+committing frame. This is also consistent with §1.1b, which is the point: P2 cut
+mints 93% and the wall clock did not move, and the reason is that **the cost does
+not count mints.**
+
+### ⚠️ 8.12b — the second probe returned NULL, and that is reported rather than buried
+
+The obvious refinement is that the TileSet rebuild is charged once per frame that
+mints AT ALL, regardless of how many — the reading MAT-PERF-02's cadence comment
+and the standing note on `_burn_prof_alts_at_start` both already carry. A
+MINT-SPLIT probe was built to test it, separating committing frames that minted
+from committing frames that minted nothing:
+
+```
+FIRE 1  MINTED: 12 x 363 ms   minted NOTHING: 0 x 0 ms
+FIRE 2  MINTED: 13 x 349 ms   minted NOTHING: 0 x 0 ms
+```
+
+**Every committing frame mints. The control group is empty, so the probe cannot
+answer its question** — "one rebuild per minting frame" and "some fixed cost per
+committing frame" are indistinguishable on this data, and no amount of re-running
+this capture will separate them.
+
+Isolating it requires a committing frame that mints ZERO, which this map cannot
+produce from a fire: fire 2 still minted 275 across 13 frames. The two things that
+DO produce it are the two things already in this plan — **W-PRECOOK's pre-minting
+(built, for the shot) and P3/P4 (which removes minting by construction)**. So the
+next step is not another measurement of the fire; it is to pre-mint a fire's
+alternatives the way the shot already does, and read the committing frame again.
+
+### 8.13 ⚠️ A defect found while building this, and it would have corrupted the result
+
+`_advance_burn`'s end-of-fire block reset **four** counters (`_burn_prof_frames`,
+`_burn_prof_voxels`, `_burn_prof_total_us`, `_burn_prof_repaint_us`) and left
+**eight** standing, including `_burn_prof_last_frame_us`. Invisible for as long as
+a boot only ever held one fire.
+
+With two fires in a boot, the several idle seconds between them would have been
+read as ONE frame gap and charged to fire 2's non-committing bucket — destroying
+exactly the split §8.10 is built on. Found by reading the reset block before
+trusting it, not by the numbers looking wrong; a poisoned run here would have
+looked entirely plausible.
+
+Fixed in `start_burn()` rather than at the end of a fire, so a fire that never
+finishes cannot leave anything stale for the next one.
+
+### 8.14 Where P7 and P3 stand after all of this
+
+| term | measured | share of the fire |
+|---|---|---|
+| 12–13 committing frames @ ~350 ms | 4 352–4 538 ms | **~70%** |
+| ~30 non-committing frames @ ~60 ms | 1 685–1 958 ms | ~30% |
+| — of which VFX `_draw` submission | 16.3 ms/frame | 8% of the fire |
+
+- **P7b (MultiMesh) — still ON HOLD.** Confirmed mechanism (§8.8, 95% submission)
+  and real for FRAME RATE (−42.8%, §8.8b), but it lives in the 30% and its wall-clock
+  ceiling is 3.8%. Worth building; not worth building first.
+- **P3 — the freeze is now questionable in the other direction.** §8.2 froze it on
+  §1.5's measurement of the REPAINT. §8.12 has now measured that the fire's dominant
+  term is a per-committing-frame cost that ignores mint volume, and §8.12b cannot
+  separate it from the rebuild because every committing frame mints. **P3 is the
+  only change in this plan that makes a committing frame mint nothing.** That is not
+  a decision to unfreeze it — it is the pre-mint experiment §8.12b names, which is
+  cheap and settles it either way.

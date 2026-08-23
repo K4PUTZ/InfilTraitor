@@ -1,7 +1,13 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟠 **v1.4 — THIS PLAN RE-SCOPES ITSELF (§8). Its own thesis was
+**Status:** 🟠 **v1.5 — THE FIRE IS 69% TWELVE FRAMES (§8.10), and half of it
+runs outside every function this project has instrumented.** P7a is done and
+confirmed its mechanism (submission is 95.1% of `_draw`, §8.8) — but the same run
+capped P7 at 3.8% of the fire's wall clock, and the frame-kind split says why: the
+VFX lives in the cheap 31%. **P7b is ON HOLD behind §8.11's two-fires run**, which
+is cheap, decisive, and may put P3 back on the table. Earlier: **v1.4 — THIS PLAN
+RE-SCOPES ITSELF (§8). Its own thesis was
 falsified by its own instruments:** the fire's cost is 80% draw submission, not
 per-cell state, so **§3.3 and P3 FREEZE where they are** (documented, nothing
 reverted) and **P7 — the VFX delivery channel — goes first**. §8.3 argues the
@@ -556,7 +562,7 @@ exactly the shape P3 will have to trust.
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
 | ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
 | ✅ **P-GATE** | **DONE 2026-08-22** — the gate §3.1 asked for, plus the two defects it found (§3.2). Its own residual (§3.3) is open and blocks P3 | P2 | Medium |
-| 🟢 **P7** | ⬆️ **NEXT, added 2026-08-23 — §8. The VFX delivery channel.** 80% of the fire's per-frame excess is draw submission (25.1 ms VFX + 19.0 ms voxel layers of 55.1). One ember per affected voxel, 2 `draw_circle` each, and M3-6 multiplies that count — §8.5. **P7a MEASURES before anything is rewritten** and may return NO (§8.3) | — | Medium |
+| ⏸️ **P7** | **P7a DONE and P7b ON HOLD 2026-08-23 — §8.10.** 69% of the fire is 12 committing frames at 359 ms each, and the VFX lives in the cheap 31%; P7b's ceiling is 3.8% of wall clock (§8.8b). **§8.11's two-fires run comes first.** Earlier: ⬆️ **NEXT, added 2026-08-23 — §8. The VFX delivery channel.** 80% of the fire's per-frame excess is draw submission (25.1 ms VFX + 19.0 ms voxel layers of 55.1). One ember per affected voxel, 2 `draw_circle` each, and M3-6 multiplies that count — §8.5. **P7a MEASURES before anything is rewritten** and may return NO (§8.3) | — | Medium |
 | 🟡 **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement. P5a IS DONE (§3.4): the burn's final repaint 1630 → 866 ms at 0 cells differing.** Open: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms), and §3.4's cost centre: the VFX overlays' `_draw` (25 ms/frame) and the voxel layers (19 ms/frame), now fully attributed. The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
 | ❄️ **P3** | **FROZEN 2026-08-23 (§8.2b)** — measured at ~0 for a burn or a shot today, so the §3.3 residual that blocks it is not worth unblocking yet. Earlier: ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
@@ -821,3 +827,67 @@ count 4x would make it ~180 ms, still not worth a change.
 before a fix and this is the number; if M3-6 ever pushes the count an order of
 magnitude the running min/max is a ten-line change and this section is the
 trigger.
+
+### 8.10 ✅ THE FIRE'S WALL CLOCK, SPLIT BY FRAME KIND (2026-08-23) — and it is not the VFX, and it is not `_advance_burn`
+
+`_advance_burn`'s own docstring has claimed since MAT-PERF-04 that the profiler
+*"splits it by whether the frame committed, because those are two different costs
+and averaging them together is how the last three sessions kept missing this."*
+**The code never did the split.** It accumulated one total and printed one mean.
+PERF-P7a-ATTRIB implements what the comment always described — the gap read at the
+top of frame N is frame N−1's work, so the attribution remembers whether THAT
+frame committed.
+
+Same fire, same flags as §8.8:
+
+```
+[BURN-PROF] frames during the fire: 43 · mean 144.9 ms · total 6231 ms — of which 13 committed
+[BURN-PROF] ATTRIB — committing frames: 12 x 359 ms = 4311 ms · NON-committing frames: 31 x 62.0 ms = 1921 ms
+[BURN-PROF] 13 committing frame(s) · 1194 ms inside _advance_burn, 1174 ms of it the scoped repaint
+```
+
+| | frames | ms each | total | share of the fire |
+|---|---|---|---|---|
+| **committing** | 12 | **359** | **4 311 ms** | **69.2%** |
+| non-committing | 31 | 62.0 | 1 921 ms | 30.8% |
+
+And inside a committing frame, `_advance_burn` is 1 194 ms over 13 of them — about
+**92 ms of the 359**. So:
+
+```
+per committing frame:   359 ms
+  _advance_burn          92 ms   (of which the scoped repaint is ~90)
+  OUTSIDE it            267 ms   <- x12 = 3 204 ms = 51% of the whole fire
+```
+
+**Half the fire is spent outside every function this project has instrumented, on
+the 12 frames that commit.** §3.4 said *"the 185 frames that commit nothing cost
+more than the 14 that do"* — measured this way, on this run, **the opposite is
+true**: the committing frames are 69% and each one is 5.8x a non-committing one.
+Both readings came from real runs; §3.4 read a mean where this reads the split,
+and a mean over two populations 5.8x apart describes neither.
+
+**This explains §8.8b's ceiling.** The VFX lives in the CHEAP 31% — 17.08 ms of
+`_draw` on a 62 ms non-committing frame. Removing all of it cannot touch the 69%,
+which is why the NOOP run bought 3.8% of wall clock while halving the mean frame.
+
+### 8.11 The next measurement, named but NOT guessed at
+
+What runs outside `_advance_burn` on a frame that COMMITS, and not on one that
+does not, is where 51% of this fire is. The obvious candidate is the TileSet
+rebuild the 396 minted alternatives trigger — **and this section deliberately does
+not assert that**, because §1.1b already measured mints falling 93% with the wall
+clock unmoved, and asserting a plausible mechanism without measuring it is exactly
+what §1.2 did and had to retract.
+
+**The test is cheap and decisive, and this project already owns it:** fire the same
+fire TWICE in one boot. A cost that is minting is paid once and the second fire is
+cheap; a cost that is the repaint is paid every time. Nothing here should be built
+until that run exists.
+
+⚠️ **And it moves P3 back onto the table.** P3 was frozen in §8.2 on §1.5's finding
+that the writes-and-mints half is 0.7–30 ms of ~1 200 on a repaint. That measured
+the REPAINT. It did not measure the 267 ms per committing frame that no probe in
+this plan has ever been inside. The freeze stands until the two-fires run says
+otherwise — but §8.2's reasoning is now known to rest on a term that was never
+measured, and that has to be written down rather than discovered again later.

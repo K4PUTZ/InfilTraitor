@@ -3825,6 +3825,16 @@ var _burn_prof_last_frame_us: int = 0
 var _burn_prof_frame_total: int = 0
 var _burn_prof_frame_us: int = 0
 var _burn_prof_frame_max_us: int = 0
+## PERF-P7a-ATTRIB — the split the docstring below has always CLAIMED and the
+## code never did: a frame that commits and a frame that does not are two
+## different costs, and their mean is a number describing neither. The gap read
+## at the top of frame N covers the work of frame N-1, so the attribution needs
+## to remember whether THAT frame committed, not this one.
+var _burn_prof_prev_committed: bool = false
+var _burn_prof_commit_gap_us: int = 0
+var _burn_prof_commit_gaps: int = 0
+var _burn_prof_idle_gap_us: int = 0
+var _burn_prof_idle_gaps: int = 0
 var _burn_prof_all_frames_us: int = 0
 var _burn_prof_lights_us: int = 0
 var _burn_prof_fog_us: int = 0
@@ -3888,8 +3898,18 @@ func _advance_burn(delta: float) -> void:
 			var gap: int = now_us - _burn_prof_last_frame_us
 			_burn_prof_frame_total += 1
 			_burn_prof_frame_us += gap
+			## The gap just read is the PREVIOUS frame's work.
+			if _burn_prof_prev_committed:
+				_burn_prof_commit_gap_us += gap
+				_burn_prof_commit_gaps += 1
+			else:
+				_burn_prof_idle_gap_us += gap
+				_burn_prof_idle_gaps += 1
 			_burn_prof_frame_max_us = maxi(_burn_prof_frame_max_us, gap)
 		_burn_prof_last_frame_us = now_us
+		## Cleared AFTER the gap is attributed: from here on the flag describes
+		## THIS frame, which has not committed yet and may never.
+		_burn_prof_prev_committed = false
 	_burn_pending.append_array(_burn_scheduler.advance(delta))
 	_burn_commit_accum += maxf(delta, 0.0)
 	## The LAST batch always flushes, whatever the accumulator says — otherwise a
@@ -3978,6 +3998,7 @@ func _advance_burn(delta: float) -> void:
 
 	if _burn_prof:
 		_burn_prof_frames += 1
+		_burn_prof_prev_committed = true
 		_burn_prof_voxels += due.size()
 		_burn_prof_total_us += Time.get_ticks_usec() - prof_t0
 
@@ -4019,10 +4040,22 @@ func _advance_burn(delta: float) -> void:
 				float(_burn_prof_repaint_us) / 1000.0,
 				float(Time.get_ticks_usec() - _burn_prof_first_us) / 1000.0,
 				prof_alts, _burn_scheduler.elapsed()])
+			print("[BURN-PROF] ATTRIB — committing frames: %d x %.0f ms = %.0f ms · NON-committing frames: %d x %.1f ms = %.0f ms"
+				% [_burn_prof_commit_gaps,
+				float(_burn_prof_commit_gap_us) / 1000.0 / float(maxi(_burn_prof_commit_gaps, 1)),
+				float(_burn_prof_commit_gap_us) / 1000.0,
+				_burn_prof_idle_gaps,
+				float(_burn_prof_idle_gap_us) / 1000.0 / float(maxi(_burn_prof_idle_gaps, 1)),
+				float(_burn_prof_idle_gap_us) / 1000.0])
 			## PERF-P7a — the VFX overlays' `_draw`, over exactly these frames.
 			var vfx_burn_line: String = VfxDrawProbe.take_line(_burn_prof_frame_total)
 			if vfx_burn_line != "":
 				print(vfx_burn_line)
+			_burn_prof_commit_gap_us = 0
+			_burn_prof_commit_gaps = 0
+			_burn_prof_idle_gap_us = 0
+			_burn_prof_idle_gaps = 0
+			_burn_prof_prev_committed = false
 			_burn_prof_frames = 0
 			_burn_prof_voxels = 0
 			_burn_prof_total_us = 0

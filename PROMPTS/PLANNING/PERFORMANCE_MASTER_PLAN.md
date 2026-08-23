@@ -1,7 +1,16 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟠 **v1.6 — §8.11 IS ANSWERED AND THE ANSWER IS NO (§8.12): a
+**Status:** 🟢 **v1.7 — THE TERM IS ISOLATED (§8.15). A committing frame that
+mints costs ~360 ms; one that mints NOTHING costs ~126 ms. The difference is ONE
+TileSet rebuild per frame, ~240 ms, and it does not count alternatives — 7 frames
+minting 24 between them still paid 367 ms each.** That is ~3.1 s of a ~6.3 s fire,
+the largest term this plan has ever isolated, and it is why P2 cut mints 93% for
+nothing (§1.1b). **§8.2's freeze on P3 is RETRACTED on measurement (§8.16) — P3 is
+the only change here that makes a committing frame mint nothing.** §8.17 is the
+order. The burn precook is the INSTRUMENT that isolated this, not a fix: its warm
+costs as much as it saves, and it stays env-gated off.
+Earlier: **v1.6 — §8.11 IS ANSWERED AND THE ANSWER IS NO (§8.12): a
 committing frame costs ~350 ms whether it mints 694 alternatives or 275.** The
 fire's dominant term does not count mints, which is also why P2 cut them 93% for
 nothing (§1.1b). ⚠️ The follow-up probe returned NULL and says so (§8.12b) — every
@@ -572,7 +581,7 @@ exactly the shape P3 will have to trust.
 | ✅ **P-GATE** | **DONE 2026-08-22** — the gate §3.1 asked for, plus the two defects it found (§3.2). Its own residual (§3.3) is open and blocks P3 | P2 | Medium |
 | ⏸️ **P7** | **P7a DONE and P7b ON HOLD 2026-08-23 — §8.10.** 69% of the fire is 12 committing frames at 359 ms each, and the VFX lives in the cheap 31%; P7b's ceiling is 3.8% of wall clock (§8.8b). **§8.11's two-fires run comes first.** Earlier: ⬆️ **NEXT, added 2026-08-23 — §8. The VFX delivery channel.** 80% of the fire's per-frame excess is draw submission (25.1 ms VFX + 19.0 ms voxel layers of 55.1). One ember per affected voxel, 2 `draw_circle` each, and M3-6 multiplies that count — §8.5. **P7a MEASURES before anything is rewritten** and may return NO (§8.3) | — | Medium |
 | 🟡 **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement. P5a IS DONE (§3.4): the burn's final repaint 1630 → 866 ms at 0 cells differing.** Open: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms), and §3.4's cost centre: the VFX overlays' `_draw` (25 ms/frame) and the voxel layers (19 ms/frame), now fully attributed. The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
-| ❄️ **P3** | **FROZEN 2026-08-23 (§8.2b)** — measured at ~0 for a burn or a shot today, so the §3.3 residual that blocks it is not worth unblocking yet. Earlier: ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
+| 🟢 **P3** | ⬆️ **UNFROZEN 2026-08-23 (§8.16) — NEXT.** §8.15 measured the term P3 removes at ~240 ms x ~13 committing frames per fire; §8.2's freeze rested on §1.5, which timed the repaint and could not see a cost the engine charges after the frame's script work. Earlier: **FROZEN 2026-08-23 (§8.2b)** — measured at ~0 for a burn or a shot today, so the §3.3 residual that blocks it is not worth unblocking yet. Earlier: ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |
 
@@ -989,3 +998,91 @@ finishes cannot leave anything stale for the next one.
   only change in this plan that makes a committing frame mint nothing.** That is not
   a decision to unfreeze it — it is the pre-mint experiment §8.12b names, which is
   cheap and settles it either way.
+
+### 8.15 ✅ THE CONTROL GROUP EXISTS NOW, AND IT ANSWERS §8.12b (2026-08-23)
+
+`Room._burn_precook()`, `INFILTRAITOR_BURN_PRECOOK=1` — W-PRECOOK's warm, pointed
+at a fire. The whole burn wave is known at `start_burn()`, so the fire's world is
+available before its first frame. **Soot-free only**, because `_advance_burn`
+repaints each committing frame with `include_soot = false`.
+
+Warming only the FINAL world was not enough — 11 of 12 committing frames still
+minted, because a fire's intermediate worlds are not its destination. So the warm
+walks the schedule in N stages (`INFILTRAITOR_BURN_PRECOOK_STAGES`), all inside one
+frame, since the rebuild is charged per frame that mints.
+
+```
+INFILTRAITOR_AUTO_SCREENSHOT=1 INFILTRAITOR_CAPTURE_ACTION=two_fires \
+INFILTRAITOR_BURN_PROFILE=1 INFILTRAITOR_BURN_PRECOOK=1 \
+INFILTRAITOR_BURN_PRECOOK_STAGES=16 godot --path . --disable-vsync
+```
+
+**MINT-SPLIT, fire 2, 16 stages — the control group is no longer empty:**
+
+```
+committing frames that MINTED:          7 x 367 ms = 2 568 ms
+committing frames that minted NOTHING:  6 x 126 ms =   755 ms
+```
+
+Three independent samples of a non-minting committing frame, across two runs and
+both fires: **112 ms · 126 ms · 131 ms.** Against ~360 ms for a minting one.
+
+| a committing frame | ms |
+|---|---|
+| that mints | **~360** |
+| that mints nothing | **~126** |
+| **the minting** | **~240** |
+
+### ⚠️ And it is ONE rebuild per frame, not per alternative — measured inside a single run
+
+This is the part that closes it. In that same fire 2, **the 7 minting frames minted
+24 alternatives between them** — about 3.4 each — **and still cost 367 ms apiece**,
+the same as fire 1's frames minting 50+ each. §8.12 established volume-independence
+ACROSS fires; this establishes it WITHIN one, against frames that mint almost
+nothing at all.
+
+**So the fire's dominant term is one TileSet rebuild per committing frame, ~240 ms,
+and it does not care how many alternatives that frame mints.** That is exactly what
+MAT-PERF-02's cadence comment and `technical_debt`'s standing note always said, now
+measured on the burn instead of inferred from the shot.
+
+It also explains, finally and completely, why §1.1b found P2 cutting mints 93% for
+no wall clock at all: **P2 reduced the count on frames that were going to rebuild
+anyway.**
+
+### 8.16 What this is worth, and why the precook is NOT the fix
+
+A fire has ~13 committing frames. At ~240 ms of rebuild each, **the rebuild is
+~3.1 s of a ~6.3 s fire — roughly half of it**, and it is the single largest term
+this plan has ever isolated.
+
+Measured end to end on fire 2 (ATTRIB totals, same capture):
+
+```
+no precook        13 committing x 349 ms = 4 538   + 1 685 idle  = 6 223 ms
+16-stage precook  13 committing x 256 ms = 3 323   + 1 913 idle  = 5 236 ms   -16%
+```
+
+⚠️ **But the warm itself costs 1 207–1 223 ms**, and that is not a rounding error —
+it is a fire's worth of saving spent to buy a fire's worth of saving. As shipped,
+`_burn_precook()` is roughly break-even, and it is kept as the **instrument that
+isolated the term**, not as a fix. It is env-gated off by default.
+
+**The fix that does not pay for itself twice is P3.** P3 is the only change in this
+plan that makes a committing frame mint nothing at all — not by minting earlier,
+but by removing the alternative as the delivery channel. §8.2 froze P3 on §1.5's
+measurement that the writes-and-mints half of a REPAINT is 0.7–30 ms of ~1 200.
+That measurement was correct and it was about the wrong thing: the cost is not in
+the repaint's own timings, it is the rebuild the engine charges AFTER the frame's
+script work, which no probe inside the repaint could ever see.
+
+### 8.17 ⏭️ The order this leaves
+
+| | task | why |
+|---|---|---|
+| 1 | **UNFREEZE P3**, and with it §3.3's floor residual which blocks it | ~240 ms x ~13 frames x every fire, plus the same term on every shot and blast. The largest isolated term in this plan |
+| 2 | **P7b** (MultiMesh) | mechanism confirmed (§8.8), −42.8% frame time, 3.8% wall clock. Real, and second |
+| 3 | MATERIALS **M3-6** | after 1, per §8.5 — it multiplies burning voxels, hence committing frames |
+
+**§8.2's freeze is hereby retracted on measurement, not on preference.** It was
+taken on the best number available at the time; §8.15 is a better one.

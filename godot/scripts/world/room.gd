@@ -3881,6 +3881,100 @@ var _burn_commit_accum: float = 0.0
 var _burn_pending: Array = []
 
 
+## PERF-P7c §8.12b — PRE-MINT A FIRE'S ALTERNATIVES, the way W-PRECOOK does the
+## shot's. `INFILTRAITOR_BURN_PRECOOK=1`.
+##
+## This exists to settle one measurement, and it is written as a real seam because
+## if it works it IS the fix. §8.12 established that a committing frame costs
+## ~350 ms whether it mints 694 alternatives or 275, and §8.12b established that
+## the follow-up probe cannot separate "one rebuild per minting frame" from "a
+## fixed cost per committing frame" — because every committing frame mints, so
+## there is no control group. **A committing frame that mints ZERO is the control
+## group**, and this manufactures one.
+##
+## ⚠️ SOOT-FREE ONLY, and that is not a shortcut. `_advance_burn` repaints each
+## committing frame with `include_soot = false` (the soot is deferred to the one
+## final repaint, MAT-PERF-02), so a committing frame asks for exactly the
+## soot-free world. W-PRECOOK warms TWO worlds because the shot paints in two
+## stages; the fire's committing frames only ever paint one. Warming the sooty
+## world here would mint alternatives no committing frame asks for, and — worse —
+## `_build_soot_snapshot()`'s predict argument is `predict_weapon_cells`, which
+## would give a fire's holes WEAPON provenance where D24 says they are blast.
+##
+## ⚠️ The whole burn wave is known at schedule time, which is why this can exist
+## at all: the fire's FINAL world is available before its first frame. Intermediate
+## states are NOT warmed, so whatever the fire still mints is the measure of how
+## much the ramp differs from the destination — which is itself the number §8.12b
+## wants.
+##
+## Speculative and safe for the same reason W-PRECOOK is: minting is idempotent
+## and cached, nothing is committed, and `_repaint_voxel_light_buckets_scoped()`
+## rebuilds the field from real state before every apply.
+func _burn_precook(burn_wave: Dictionary) -> void:
+	if _voxel_renderer == null or _lighting_controller == null:
+		return
+	var registry = _lighting_controller.get_light_registry()
+	if registry == null:
+		push_warning("[BURN-PRECOOK] no light registry — nothing warmed.")
+		return
+	var t0: int = Time.get_ticks_usec()
+	## STAGES — warming only the FINAL world left 11 of 12 committing frames still
+	## minting, because a fire's intermediate worlds are not its destination: light
+	## buckets change as each batch of voxels disappears, so a frame halfway through
+	## asks for alternatives that neither the intact board nor the burnt one needs.
+	## Walking the schedule in N stages warms the ramp as well as the end.
+	##
+	## All stages are warmed in THIS frame on purpose: the TileSet rebuild is charged
+	## once per frame that mints, so N stages in one frame cost one rebuild and N
+	## stages across N frames would cost N.
+	var stages_env := OS.get_environment("INFILTRAITOR_BURN_PRECOOK_STAGES")
+	var stages: int = maxi(stages_env.to_int(), 1) if stages_env.is_valid_int() else 1
+	var entries: Array = []
+	var gus: Dictionary = {}
+	var max_at: float = 0.0
+	for ring in burn_wave.keys():
+		for entry in burn_wave[ring]:
+			entries.append(entry)
+			max_at = maxf(max_at, float(entry.get("at", 0.0)))
+			var v = entry.get("voxel")
+			if v != null and is_instance_valid(v):
+				gus[GeometryCoords.voxel_to_gu(v.grid_pos)] = true
+	if entries.is_empty():
+		return
+	entries.sort_custom(func(a, b) -> bool:
+		return float(a.get("at", 0.0)) < float(b.get("at", 0.0)))
+	## The SAME scope the committing frames use, reused rather than re-derived —
+	## a warm over a different set than the apply asks for is not a warm.
+	var scope: Array = shot_repaint_scope(gus.keys())
+	if _voxel_light_field == null:
+		_voxel_light_field = VoxelLightField.new()
+	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var lights: Array = registry.get_active_lights()
+	var shadows = _lighting_controller.get_shadow_results()
+	var minted: int = 0
+	var predict_destroyed: Dictionary = {}
+	var cursor: int = 0
+	for stage in range(1, stages + 1):
+		var cutoff: float = max_at * float(stage) / float(stages)
+		## The LAST stage takes everything, so floating-point drift on `cutoff`
+		## can never leave the final world unwarmed.
+		while cursor < entries.size() and (stage == stages
+				or float(entries[cursor].get("at", 0.0)) <= cutoff):
+			var e: Dictionary = entries[cursor]
+			var cell: Vector2i = e.get("cell", Vector2i.ZERO)
+			predict_destroyed[Vector3i(cell.x, cell.y, int(e.get("level", 0)))] = true
+			cursor += 1
+		var soot_faces: Dictionary = {}
+		_voxel_light_field.build(lights, shadows, top_wall_level,
+			_voxel_renderer.build_occupancy(predict_destroyed),
+			{}, _under_structure, soot_faces, true)
+		minted += _voxel_renderer.warm_light_alts_for_gus(
+			_voxel_light_field, scope, [])
+	print("[BURN-PRECOOK] %d alternative(s) minted ahead of the fire · %d stage(s) · %d scheduled voxel(s) over %d GU(s) · warm took %.0f ms"
+		% [minted, stages, entries.size(), scope.size(),
+		float(Time.get_ticks_usec() - t0) / 1000.0])
+
+
 func start_burn(burn_wave: Dictionary) -> void:
 	## PERF-P7a — the VFX window is the FIRE, so it starts here. Without this it
 	## would carry the boot and the blast that lit the fire, and the blast is the
@@ -3915,6 +4009,9 @@ func start_burn(burn_wave: Dictionary) -> void:
 		_burn_prof_idle_gap_us = 0
 		_burn_prof_idle_gaps = 0
 		_burn_prof_prev_committed = false
+		_burn_prof_prev_minted = false
+	if OS.get_environment("INFILTRAITOR_BURN_PRECOOK") == "1":
+		_burn_precook(burn_wave)
 	_burn_scheduler.schedule(burn_wave)
 	_burn_commit_accum = 0.0
 	_burn_pending.clear()

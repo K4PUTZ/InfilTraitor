@@ -4876,6 +4876,21 @@ func _capture_cell_index_gate() -> void:
 		push_error("[P3-GATE] null viewport image.")
 		return
 	img_cell.save_png("%s/p3_gate_recovered_cells.png" % shot_dir)
+	## BOTH captures and the exact per-level transform are written out, so the
+	## analysis can be re-run and re-cut offline without another four-minute
+	## boot. The transform is printed rather than re-derived because a reader
+	## that re-derives it is a second copy of the thing under test.
+	img_level.save_png("%s/p3_gate_levels.png" % shot_dir)
+	for level in levels:
+		var lay: TileMapLayer = _voxel_renderer.get_layer(level)
+		if lay == null:
+			continue
+		var xf0: Transform2D = lay.get_global_transform_with_canvas()
+		print("[P3-GATE-XF] level %d origin %s e1 %s e2 %s canvas_o %s canvas_x %s canvas_y %s"
+			% [level, lay.map_to_local(Vector2i.ZERO),
+			lay.map_to_local(Vector2i(1, 0)) - lay.map_to_local(Vector2i.ZERO),
+			lay.map_to_local(Vector2i(0, 1)) - lay.map_to_local(Vector2i.ZERO),
+			xf0.origin, xf0.x, xf0.y])
 
 	## PASS 1 — collect the distinct (level, cell) each pixel CLAIMS, and resolve
 	## each claim's quad ONCE. Grouping first is what keeps this affordable: the
@@ -4916,6 +4931,8 @@ func _capture_cell_index_gate() -> void:
 	var worst_pt := Vector2.ZERO
 	var offenders: Dictionary = {}
 	var shifts: Dictionary = {}
+	var interior_n: int = 0
+	var interior_in: int = 0
 	## A MASK, because a percentage cannot say WHERE. Green = the pixel is inside
 	## the quad it claims, red = it is not, blue = it claims a cell holding no
 	## voxel. A thin red outline around every atom is a boundary rule; a red FACE
@@ -4939,12 +4956,28 @@ func _capture_cell_index_gate() -> void:
 				mask.set_pixel(x, y, Color(0.1, 0.2, 1.0))
 				continue
 			judged += 1
+			## INTERIOR vs SEAM. A pixel whose four neighbours all claim the same
+			## (level, cell) sits inside a recovered quad rather than on the
+			## boundary between two. The distinction decides what a residual
+			## MEANS: if every interior pixel is right and only the seams are
+			## ragged, the mapping is correct and the artefact is a boundary
+			## rule; if interior pixels are wrong, the mapping still is.
+			var interior: bool = false
+			if x > 0 and y > 0 and x < w - 1 and y < h - 1:
+				interior = (_p3_gate_claim(img_level.get_pixel(x - 1, y), img_cell.get_pixel(x - 1, y)) == key
+					and _p3_gate_claim(img_level.get_pixel(x + 1, y), img_cell.get_pixel(x + 1, y)) == key
+					and _p3_gate_claim(img_level.get_pixel(x, y - 1), img_cell.get_pixel(x, y - 1)) == key
+					and _p3_gate_claim(img_level.get_pixel(x, y + 1), img_cell.get_pixel(x, y + 1)) == key)
+			if interior:
+				interior_n += 1
 			var pt := Vector2(float(x) + 0.5, float(y) + 0.5)
 			## grow(1.0) is a one-pixel rounding allowance on the rect, not a
 			## tolerance on the answer: a whole-cell error is 16 px or more here,
 			## so nothing this gate looks for can hide inside one pixel.
 			if rect.grow(1.0).has_point(pt):
 				inside += 1
+				if interior:
+					interior_in += 1
 				by_level_in[key.x] = int(by_level_in.get(key.x, 0)) + 1
 				mask.set_pixel(x, y, Color(0.0, 0.8, 0.2))
 				continue
@@ -5006,6 +5039,8 @@ func _capture_cell_index_gate() -> void:
 		var o0: int = int(by_level_out.get(k, 0))
 		lv_txt.append("L%d %.0f%%(%d)" % [k, 100.0 * float(i0) / float(maxi(i0 + o0, 1)), i0 + o0])
 	print("[P3-GATE] inside%% per level: %s" % ", ".join(lv_txt))
+	print("[P3-GATE] INTERIOR pixels (all 4 neighbours claim the same cell): %d · inside %d (%.3f%%) — seam pixels are the rest"
+		% [interior_n, interior_in, 100.0 * float(interior_in) / float(maxi(interior_n, 1))])
 	print("[P3-GATE] mask: Screenshots/history/p3_gate_mask.png")
 	print("[P3-GATE] VERDICT: %s" % ("PASS — every judged pixel lies inside the quad of the cell it claims"
 		if outside == 0 and judged > 0

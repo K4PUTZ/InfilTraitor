@@ -1,10 +1,14 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v1.1 — P2 IS BUILT (2026-08-22). Soot no longer touches the
-TileSet.** A burn mints 150 alternatives instead of 2 175, at 0 differing pixels
-on both the blast and the shot paths. P3 (the light bucket) is next and is the
-large one. §6 is the task order; §5 is what could still sink it.
+**Status:** 🟠 **v1.2 — TWO CORRECTIONS, BOTH MEASURED (2026-08-22).**
+**(a) P3's premise was wrong by ~40x** — the map-wide apply is derivation plus a
+walk, and the writes-and-mints half that P3 removes is 0.7–30 ms of ~1 200 on
+every repaint after the boot (§1.5). P5 now runs BEFORE P3, Director-ratified.
+**(b) The cell recovery was reading `cell mod 16`, minus one cell** — so P2's
+soot has been landing on the wrong cell since it shipped, and its gates could not
+see it (§3.2). Both defects are fixed; a residual on the floor is open and blocks
+P3, not P5. §6 is the task order; §5 is what could still sink it.
 **Written:** 2026-08-22, against `12225c84`, at the Director's instruction —
 *"vamos testar primeiro, e se estiver tudo OK pode abrir esse masterplan de
 performance"*.
@@ -74,6 +78,38 @@ The two figures that DID move are the ones P3 inherits.
   alternatives minted, and the rebuild they trigger is charged once per FRAME
   THAT MINTS.
 - **soot derivation 146 ms** — the map-wide walk over every Slice and Slab.
+
+### 1.5 ⚠️ WHAT THE APPLY IS ACTUALLY MADE OF — and it inverts §4
+
+`INFILTRAITOR_APPLY_SPLIT_PROBE=1` (`VoxelRenderer._apply_split_probe()`). Three
+phases ordered so each can only measure itself: WARM forces the light field's
+lazy per-cell derivation, APPLY runs against a warm cache, APPLY AGAIN is the
+walk alone because every cell is already at its target.
+
+Real PLAYGROUND boot, post-P2, 205 704 placed cells:
+
+| repaint | derivation | walk | **writes + mints** |
+|---|---|---|---|
+| boot | 753.9 ms | 458.3 ms | **692.1 ms** (189 343 written, 49 947 minted) |
+| CONTROL, nothing destroyed | 744.5 | 443.2 | **29.6 ms** (0 written, 0 minted) |
+| ONE VOXEL destroyed | 754.9 | 467.2 | **1.5 ms** |
+| WALLS, 2 111 voxels | 758.1 | 477.2 | **0.7 ms** |
+
+**On every repaint after the boot — the ones a burn and a shot actually pay — the
+half P3 removes is 0.7 to 30 ms out of ~1 200.** The rest is `bucket_for()`'s
+first-touch derivation plus the walk over every placed cell, and P3 touches
+neither.
+
+**This inverts §4's reason for deferring P5.** That section defers the derivation
+layer because "today it is masked by a delivery cost five times larger". The
+delivery cost is not five times larger; it is ~40x SMALLER. The masked term was
+the one being deferred.
+
+What P3 is still worth, stated so the ledger is honest rather than to rescue it:
+the boot's 692 ms and its 49 947 mints, the shot path's mints (the whole reason
+W-PRECOOK exists), and the architecture — a future effect becomes a channel, not
+a multiplier on the alternative space. None of that is a burn or a shot getting
+faster today.
 
 ### 1.3 ⚠️ The soot hypothesis was tested and is WRONG, and that matters
 
@@ -241,6 +277,92 @@ a KNOWN cell's screen position against a value computed in GDScript.
 
 ---
 
+### 3.2 ✅ THE GATE EXISTS, AND IT FOUND TWO REAL DEFECTS (2026-08-22)
+
+`INFILTRAITOR_CAPTURE_ACTION=cell_index_gate` (`Room._capture_cell_index_gate()`).
+
+**The shape, and why this one cannot pass for the wrong mapping.** Every pixel
+names itself. Capture A fills each level's plane with `level + 100` and paints
+what the shader read, so a pixel names the LEVEL that drew it — robust even to a
+totally broken cell recovery, because the whole level carries one value. Capture
+B paints the recovered CELL exactly. The only question asked is whether a pixel
+lies inside the quad of the (level, cell) IT CLAIMS, with that rect built from
+`map_to_local()`, `texture_region_size` and the TileData's own `texture_origin` —
+Godot's numbers, never the shader's `quad_to_map` literal.
+
+⚠️ **The obvious shape was built first and thrown away.** Marking N known cells
+with unique codes needs to know which cell OWNS a pixel, and in an isometric
+scene that is exactly what you do not know — a wall to the south covers the floor
+to the north. It reported recovery "offsets" of (31, -80) and (46, -81) cells
+with a broad spread; those numbers were occlusion. Two further hours went to
+things that were not the mapping either: an ADDITIVE floor overlay corrupting the
+readback (325 059 px came back as (3, 9, 255) instead of (code, 0, 255)), and an
+analysis that required `g == 0` on a capture whose green channel carries data.
+
+**DEFECT 1 — the rendering quadrant.** `TileMapLayer` batches tiles into
+quadrants of `rendering_quadrant_size` cells (default **16**) and pushes each
+quadrant's own transform, which makes `VERTEX` QUADRANT-local. The shader inverts
+`map_to_local()` on `VERTEX - local`, so it recovered `cell mod 16`. Measured by
+painting the recovered cell: a horizontal scan reads `... (13,8) (14,7) (-2,7)
+(-1,6) ...`, a clean wrap of exactly 16. **This is why PERF-SPIKE-01's parity
+checkerboard passed** — a per-quadrant offset is exactly what parity is invariant
+under. Fixed: one quadrant per layer, sized from `SOOT_TEX_SIZE`.
+
+**DEFECT 2 — the quadrant origin.** With one quadrant its position is
+`map_to_local(cell 0,0)` = (16, 8), not zero, so `VERTEX` is still short by one
+cell step. `quad_to_map` (0, 20) → **(16, 28)**.
+
+```
+recovery correct:  ~0%  ->  42% (quadrant)  ->  82% (origin)
+per level:  walls L0..L15  96-100%   ·   floor L-1  81%
+```
+
+**AND THIS CORRECTS PERF-P2-FIX.** That commit read "12% of fragments fall
+outside the plane" as the map buffer putting geometry at negative cells.
+PLAYGROUND has no negative cells; the negatives were the quadrant-local recovery
+going negative near every quadrant boundary. `SOOT_PLANE_ORIGIN` did not fix
+that — it moved those fragments off the clean fallback and onto a WRONG TEXEL
+inside the plane, which is worse, because it looks like an answer.
+
+**So P2's soot was reading the wrong cell, and here is why its gates were blind:**
+
+```
+boot, no soot anywhere:        0 differing pixels
+real detonation, soot present: 38 743 px differ, max channel delta 81
+control, same code twice:      0 differing pixels  (the diff is earned)
+```
+
+With the plane uniformly clean, reading the wrong cell returns the right answer.
+Every P2 gate that ran on a clean board was structurally incapable of failing.
+Evidence: `Screenshots/history/p3_quadrant_soot_{before,after}.png`.
+
+### 3.3 ⚠️ STILL OPEN — the floor's last 18%, and it blocks P3
+
+The walls are 96–100%; the floor is 81% and it is 92% of the pixels on screen.
+Characterised, not guessed:
+
+- the misses are **±1 cell in all eight directions, roughly evenly** — a boundary
+  effect, NOT a constant shift (a shift would be one bucket);
+- 65% land 2–8 world px outside their claimed quad, none past 16;
+- `Screenshots/history/p3_gate_mask.png` shows them as regular wedges at the
+  left and right VERTICES of the floor diamonds, plus hairlines;
+- **interior pixels** (all four neighbours claiming the same cell) are 84.6%,
+  so it is not only seams — there are solid interior patches;
+- ruled out by measurement: the TileSet is uniform (all 55 sources region
+  (32, 36), all 32 907 tiles `texture_origin` (0, 10)); snapping `local` to the
+  texel grid changed nothing (81.985% vs 82.007%) and was reverted;
+- ruled out earlier: H-flip inverting `UV.x` — real mechanically, but PLAYGROUND
+  mints **0** flipped alternatives, so no cell on this map is flipped.
+
+Containment ought to hold for every drawn fragment by construction, so a
+violation means the computed rect is not Godot's draw rect for that tile. The
+next lead is the per-cell alternative: `debug_cell_quad_rect()` reads TileData
+for the cell's ACTUAL alternative, and a `get_tile_data()` that returns null for
+a transform-only id would silently give `texture_origin` (0, 0) — a 10 px error,
+inside the observed spread.
+
+**P5 does not depend on any of this.** The residual blocks P3 only.
+
 ## 4. What this does NOT solve, stated up front
 
 **The derivation stays.** `_build_soot_snapshot()` still walks every Slice and
@@ -333,9 +455,10 @@ exactly the shape P3 will have to trust.
 |---|---|---|---|
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
 | ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
-| **P3** | ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1.** **The light bucket** moves. This is the one that kills the alternative space and the map-wide apply | P2 | Large |
+| ✅ **P-GATE** | **DONE 2026-08-22** — the gate §3.1 asked for, plus the two defects it found (§3.2). Its own residual (§3.3) is open and blocks P3 | P2 | Medium |
+| **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement.** The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
+| **P3** | ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and now BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
-| **P5** | The DERIVATION layer — the ~210 ms of map-wide walking (soot snapshot, occupancy, field). Only now, for §4's reason | P4 | Large |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |
 
 ### Explicitly OUT

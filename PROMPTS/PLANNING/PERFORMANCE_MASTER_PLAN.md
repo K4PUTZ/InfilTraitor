@@ -406,13 +406,54 @@ Where the fire's ~48 ms/frame goes, measured by removal rather than by reading:
 | those overlays' `_process` | ~0 ms | `set_process(false)` on top of hiding changed nothing |
 | `_advance_burn`, ALL frames | 6.0 ms | timed from the caller; its own counter only ever accumulated on the 14 frames that COMMIT |
 | the rest of `Room._process` | ~0.1 ms | temporal lights, vision fog, enemy visibility, each timed |
-| **unattributed** | **~23 ms** | outside `Room._process` and outside those overlays |
+| **the VOXEL LAYERS** | **19.0 ms** | hiding the 32 `TileMapLayer`s: 64.0 → 45.0 ms |
+| the guards | 5.0 ms | hiding the 9 of them: 64.0 → 59.0 ms |
 
 So a 3.33 s fire costs 11 s of wall clock, and **the destruction system is not
 what makes it expensive** — 1.2 s of 12.8 s is `_advance_burn`, and the 185
-frames that commit nothing cost more than the 14 that do. Roughly half of the
-excess is the particle overlays' `_draw`; the other half is not yet located and
-is the next thing to measure, not to guess at.
+frames that commit nothing cost more than the 14 that do.
+
+**THE ATTRIBUTION CLOSES.** 25.1 + 19.0 + 5.0 + 6.0 = **55.1 ms**, against a
+measured excess of 64.0 − 8.9 = **55.1 ms**. (Each term is a hiding experiment
+run on its own, so they are only additive to the extent the costs are
+independent; that they sum exactly is evidence they are.)
+
+### ⚠️ 3.4b — EVERY NUMBER UNDER 16.7 ms IN THIS PLAN WAS THE 60 Hz PACE
+
+Found while chasing the term above, and it invalidates the way half of these
+figures were read. With the voxel layers, the VFX, the guards, the agent and the
+entire UI hidden — **90 draw calls, 0.3 ms of renderer CPU** — the frame probe
+still reported **16.7 ms/frame**. The idle board is not 16.7 ms; it is **8.9 ms**
+under `--disable-vsync`. The cap never touched the fire's own numbers (they are
+far above it), but it means "baseline 16.7 ms" was a floor wearing a measurement.
+
+**Any frame-time work in this project runs with `--disable-vsync`.**
+
+And a second correction from the same chase: an earlier run that hid everything
+but the voxel layers and reported a 17 ms fire frame **had no fire in it** —
+hiding the UI before the detonation broke the synthetic click path the capture
+drives. It is only a measurement if the event actually happened.
+
+### 3.4c — a detonation makes the board permanently more expensive
+
+```
+before any blast:        8.9 ms/frame ·  4 206 draw calls · render cpu 2.0 ms
+after the blast + fire: 12.7 ms/frame · 13 145 draw calls · render cpu 4.3 ms
+```
+
++43% per frame, forever, from one grenade — the damage variants split the
+batches. Small beside the fire's 55 ms, and it never comes back down, so it
+compounds with every blast a mission takes. Recorded here rather than fixed.
+
+### 3.4d — where a fix would go, ranked by what was measured
+
+1. **The VFX overlays' `_draw` — 25 ms/frame, 45% of it.** Per-particle GDScript
+   `draw_*` calls. Their `_process` costs nothing, so it is purely submission.
+2. **The voxel layers — 19 ms/frame.** 13 145 draw calls after a blast.
+3. **The guards — 5 ms/frame** across nine of them.
+
+None of this is P3's, and none of it is the derivation. It is a THIRD cost
+centre this plan did not know it had.
 
 ## 4. What this does NOT solve, stated up front
 
@@ -507,7 +548,7 @@ exactly the shape P3 will have to trust.
 | ~~**P1**~~ | ~~Land cell recovery on its own~~ — **FOLDED INTO P2, 2026-08-22.** Landing the recovery with no consumer is dead code by construction, and this project has already paid for built-but-never-triggered features twice (the noise indicator, the exposure labels; and the VL-03 incremental temporal repaint below). §5.3's measurement removed the only reason to stage it separately: the vertex stage costs 1 pixel, not 14 | — | — |
 | ✅ **P2** | **DONE 2026-08-22** (`fdbd3258` + `2268d3ac`), staged as P2a reader / P2b writer so a broken pixel would name its own half. **Soot** moves to the data texture — cell recovery, the data texture and its first consumer, together. Smallest real passenger, and it validates the whole pipeline end to end because soot is ALREADY a shader effect (it rides in `modulate.a` and `voxel_face_shading.gdshader` decodes it). The alternative id stops carrying soot. Gate: a fired shot and a burn look identical at `--fixed-fps 60`, and the burn's mint count drops | spike ✅ | Medium |
 | ✅ **P-GATE** | **DONE 2026-08-22** — the gate §3.1 asked for, plus the two defects it found (§3.2). Its own residual (§3.3) is open and blocks P3 | P2 | Medium |
-| 🟡 **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement. P5a IS DONE (§3.4): the burn's final repaint 1630 → 866 ms at 0 cells differing.** Open: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms), and §3.4's unattributed ~23 ms/frame — which is now the biggest single number on the board. The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
+| 🟡 **P5** | ⬆️ **MOVED AHEAD OF P3, Director-ratified 2026-08-22, on §1.5's measurement. P5a IS DONE (§3.4): the burn's final repaint 1630 → 866 ms at 0 cells differing.** Open: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms), and §3.4's cost centre: the VFX overlays' `_draw` (25 ms/frame) and the voxel layers (19 ms/frame), now fully attributed. The DERIVATION layer: `bucket_for()`'s first-touch derivation (754 ms) and the walk over every placed cell (458 ms). This is where the map-wide repaint's ~1 200 ms actually is. `VoxelLightField._stale_cells()` already has the incremental shape and, per §5.5, has never run on a real map | — | Large |
 | **P3** | ⚠️ **ATTEMPTED AND REVERTED 2026-08-22 — see §3.1**, and now BLOCKED on §3.3. **The light bucket** moves. Worth the boot's 692 ms and 49 947 mints and the architecture, NOT a faster burn today (§1.5) | P5, §3.3 | Large |
 | **P4** | Retire the alternative-id encoding and the mint cache; re-measure the burn AND the shot, and get §3's real GPU frame time | P3 | Medium |
 | **P6** | MAT-PERF-03's 198 stale floor cells — carried here from MAT-PERF-02 because P3 may delete the mechanism that causes them | P3 | Unknown |

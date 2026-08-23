@@ -3708,22 +3708,46 @@ func _collect_all_voxel_cells() -> Array:
 ## second. "Performance is the standing priority" is unanswerable without a
 ## baseline: the burn profiler can say a fire frame costs 64 ms and still not say
 ## whether that is the fire or the board, and the difference decides what to fix.
+##
+## ⚠️ **RUN IT WITH `--disable-vsync` OR EVERY NUMBER UNDER 16.7 ms IS A LIE.**
+## Measured 2026-08-22: with the voxel layers, the VFX, the guards, the agent and
+## the whole UI hidden — 90 draw calls, 0.3 ms of renderer CPU — this still
+## reported 16.7 ms/frame. That is the 60 Hz pace, not the work. The real idle
+## board is **8.9 ms**, and half of one session's "baseline" figures were the cap
+## wearing a number. Above the cap the readings are honest, which is why the
+## fire's 64 ms was never affected.
+##
+## `render cpu` / `render gpu` come from the engine's own viewport measurement
+## and are the only way to split what is left into DRAWING and OTHER SCRIPTS —
+## note that a CanvasItem's `_draw()` is NOT counted in render cpu (measured: the
+## VFX overlays cost 25 ms/frame and moved it by nothing).
 var _frame_probe: bool = OS.get_environment("INFILTRAITOR_FRAME_PROBE") == "1"
 var _frame_probe_n: int = 0
 var _frame_probe_us: int = 0
 var _frame_probe_last: int = 0
+var _frame_probe_armed: bool = false
 
 
 func _process(_delta: float) -> void:
 	if _frame_probe:
 		var t_now: int = Time.get_ticks_usec()
+		if not _frame_probe_armed:
+			_frame_probe_armed = true
+			## The engine's own renderer timing, which is the only thing that can
+			## split "everything outside Room._process" into DRAWING and OTHER
+			## SCRIPTS. Off by default because measuring it costs a GPU sync.
+			RenderingServer.viewport_set_measure_render_time(
+				get_viewport().get_viewport_rid(), true)
 		if _frame_probe_last > 0:
 			_frame_probe_n += 1
 			_frame_probe_us += t_now - _frame_probe_last
 		_frame_probe_last = t_now
 		if _frame_probe_n >= 60:
-			print("[FRAME-PROBE] %.1f ms/frame · %d draw call(s) · %d primitive(s) · %d object(s)"
+			var vrid: RID = get_viewport().get_viewport_rid()
+			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s)"
 				% [float(_frame_probe_us) / 1000.0 / float(_frame_probe_n),
+				RenderingServer.viewport_get_measured_render_time_cpu(vrid),
+				RenderingServer.viewport_get_measured_render_time_gpu(vrid),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))])

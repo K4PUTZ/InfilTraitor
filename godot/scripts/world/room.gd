@@ -3704,14 +3704,51 @@ func _collect_all_voxel_cells() -> Array:
 	return voxel_cells
 
 
+## PERF — a standing frame probe, `INFILTRAITOR_FRAME_PROBE=1`, printing once a
+## second. "Performance is the standing priority" is unanswerable without a
+## baseline: the burn profiler can say a fire frame costs 64 ms and still not say
+## whether that is the fire or the board, and the difference decides what to fix.
+var _frame_probe: bool = OS.get_environment("INFILTRAITOR_FRAME_PROBE") == "1"
+var _frame_probe_n: int = 0
+var _frame_probe_us: int = 0
+var _frame_probe_last: int = 0
+
+
 func _process(_delta: float) -> void:
+	if _frame_probe:
+		var t_now: int = Time.get_ticks_usec()
+		if _frame_probe_last > 0:
+			_frame_probe_n += 1
+			_frame_probe_us += t_now - _frame_probe_last
+		_frame_probe_last = t_now
+		if _frame_probe_n >= 60:
+			print("[FRAME-PROBE] %.1f ms/frame · %d draw call(s) · %d primitive(s) · %d object(s)"
+				% [float(_frame_probe_us) / 1000.0 / float(_frame_probe_n),
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))])
+			_frame_probe_n = 0
+			_frame_probe_us = 0
+
 	# Update temporal lighting effects (flicker, pulse, rotation)
+	## Every step of this function is timed on EVERY frame under the burn
+	## profiler. The burn's own counter only accumulated on frames that COMMIT,
+	## so the 185 frames of a fire that commit nothing were invisible to it — and
+	## those are where the fire's wall clock actually goes.
+	var _t_a: int = Time.get_ticks_usec() if _burn_prof else 0
 	_update_temporal_lights(_delta)
+	var _t_b: int = Time.get_ticks_usec() if _burn_prof else 0
 	_advance_burn(_delta)
-	
+	var _t_c: int = Time.get_ticks_usec() if _burn_prof else 0
 	_update_vision_fog()
+	var _t_d: int = Time.get_ticks_usec() if _burn_prof else 0
 	if _has_moving_guards():
 		_update_enemy_visibility()
+	if _burn_prof:
+		_burn_prof_lights_us += _t_b - _t_a
+		_burn_prof_all_frames_us += _t_c - _t_b
+		_burn_prof_fog_us += _t_d - _t_c
+		_burn_prof_vis_us += Time.get_ticks_usec() - _t_d
 
 
 ## MATERIALS_MASTER_PLAN M3-3 — fire, and the only place it advances.
@@ -3753,6 +3790,15 @@ var _burn_soot_gus: Dictionary = {}
 ## for as long as it burns.
 var _burn_prof: bool = OS.get_environment("INFILTRAITOR_BURN_PROFILE") == "1"
 var _burn_prof_frames: int = 0
+## MAT-PERF-04 frame-time probe — see the block at the top of _advance_burn().
+var _burn_prof_last_frame_us: int = 0
+var _burn_prof_frame_total: int = 0
+var _burn_prof_frame_us: int = 0
+var _burn_prof_frame_max_us: int = 0
+var _burn_prof_all_frames_us: int = 0
+var _burn_prof_lights_us: int = 0
+var _burn_prof_fog_us: int = 0
+var _burn_prof_vis_us: int = 0
 var _burn_prof_voxels: int = 0
 var _burn_prof_total_us: int = 0
 var _burn_prof_repaint_us: int = 0
@@ -3792,6 +3838,24 @@ func start_burn(burn_wave: Dictionary) -> void:
 func _advance_burn(delta: float) -> void:
 	if not _burn_scheduler.is_burning() and _burn_pending.is_empty():
 		return
+	## MAT-PERF-04 — FRAME TIME, not function CPU.
+	##
+	## The burn profiler reports what happens INSIDE this function, and on a real
+	## fire that came to 1 261 ms against 11 012 ms of wall clock. The missing ten
+	## seconds are not here, so no amount of profiling here can find them: they
+	## are spread over the frames that commit NOTHING. This measures the frame
+	## itself — the gap between consecutive calls, which is one frame because
+	## _process() calls this once per frame — and splits it by whether the frame
+	## committed, because those are two different costs and averaging them
+	## together is how the last three sessions kept missing this.
+	if _burn_prof:
+		var now_us: int = Time.get_ticks_usec()
+		if _burn_prof_last_frame_us > 0:
+			var gap: int = now_us - _burn_prof_last_frame_us
+			_burn_prof_frame_total += 1
+			_burn_prof_frame_us += gap
+			_burn_prof_frame_max_us = maxi(_burn_prof_frame_max_us, gap)
+		_burn_prof_last_frame_us = now_us
 	_burn_pending.append_array(_burn_scheduler.advance(delta))
 	_burn_commit_accum += maxf(delta, 0.0)
 	## The LAST batch always flushes, whatever the accumulator says — otherwise a
@@ -3900,6 +3964,21 @@ func _advance_burn(delta: float) -> void:
 		if _burn_prof:
 			var prof_alts: int = (_voxel_renderer.minted_light_alt_count() \
 				- _burn_prof_alts_at_start) if _voxel_renderer != null else 0
+			print("[BURN-PROF] _process during the fire, per frame: temporal lights %.1f · _advance_burn %.1f · vision fog %.1f · enemy visibility %.1f ms"
+				% [float(_burn_prof_lights_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1)),
+				float(_burn_prof_all_frames_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1)),
+				float(_burn_prof_fog_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1)),
+				float(_burn_prof_vis_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1))])
+			print("[BURN-PROF] _advance_burn across ALL %d frames: %.0f ms (%.1f ms/frame) — the committing frames account for %.0f ms of it"
+				% [_burn_prof_frame_total,
+				float(_burn_prof_all_frames_us) / 1000.0,
+				float(_burn_prof_all_frames_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1)),
+				float(_burn_prof_total_us) / 1000.0])
+			print("[BURN-PROF] frames during the fire: %d · mean %.1f ms · max %.0f ms · total %.0f ms — of which %d committed"
+				% [_burn_prof_frame_total,
+				float(_burn_prof_frame_us) / 1000.0 / float(maxi(_burn_prof_frame_total, 1)),
+				float(_burn_prof_frame_max_us) / 1000.0,
+				float(_burn_prof_frame_us) / 1000.0, _burn_prof_frames])
 			print("[BURN-PROF] %d committing frame(s) · %d voxel(s) · %.0f ms inside _advance_burn, %.0f ms of it the scoped repaint · %.0f ms wall clock (%d TileSet alternative(s) minted, rebuild charged outside this probe) for a fire whose own schedule spans %.2fs"
 				% [_burn_prof_frames, _burn_prof_voxels,
 				float(_burn_prof_total_us) / 1000.0,

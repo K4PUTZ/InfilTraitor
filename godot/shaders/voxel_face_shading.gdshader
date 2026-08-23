@@ -205,6 +205,23 @@ uniform vec2 quad_to_map = vec2(0.0, 20.0);
 // never written, which is a false answer rather than a missing one.
 uniform float cell_debug_paint : hint_range(0.0, 1.0) = 0.0;
 
+// PERF-P3 — THE LIGHT BUCKET, READ FROM THE PLANE'S G CHANNEL.
+//
+// It used to arrive baked into the TileData modulate of a per-(bucket, soot)
+// alternative, which is why a light change minted tiles and rebuilt the whole
+// TileSet — measured at ~240 ms per committing frame of a fire, regardless of how
+// many alternatives that frame minted (PERFORMANCE_MASTER_PLAN §8.15).
+//
+// `bucket_lum` is VoxelRenderer.bucket_luminance, pushed as a uniform so the
+// ladder has exactly ONE definition; `p3_enabled` is 0.0 when the alternative
+// path is live, so the same shader serves both sides of the A/B in one binary.
+//
+// ⚠️ The multiply MOVED, so this is not bit-identical to the old path: the
+// modulate was quantised to 8 bits before the shader saw it, and this multiplies
+// in float. FACE-READ-03's residue snap below absorbs most of the difference.
+uniform float bucket_lum[12];
+uniform float p3_enabled : hint_range(0.0, 1.0) = 0.0;
+
 // PERF-P5 — the layer's own origin in canvas space, set per level by
 // VoxelRenderer._build_voxel_layer_node(). See vertex() for why it exists.
 uniform vec2 layer_origin = vec2(0.0);
@@ -259,18 +276,30 @@ void fragment() {
 
 	float tex_a = texture(TEXTURE, UV).a;
 
+	// PERF-P3 — the plane fetch, hoisted out of the soot branch below because the
+	// LIGHT applies to every fragment while soot only applies above the alpha
+	// floor. One texture() call now serves both channels.
+	vec2 pcell = cell + cell_plane_origin;
+	bool in_plane = pcell.x >= 0.0 && pcell.y >= 0.0
+			&& pcell.x < cell_soot_size.x && pcell.y < cell_soot_size.y;
+	vec2 plane = in_plane
+			? texture(cell_soot, (pcell + vec2(0.5)) / cell_soot_size).rg
+			: vec2(1.0, 1.0);
+
+	if (p3_enabled > 0.5) {
+		// A cell outside the plane reads FULL LIT, matching the fill and matching
+		// what an unwritten cell meant under the alternative path (the base tile).
+		int b = in_plane ? int(floor(plane.g * 255.0 + 0.5)) : 11;
+		f *= bucket_lum[clamp(b, 0, 11)];
+	}
+
 	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
 		// A cell outside the data texture reads CLEAN rather than wrapping —
 		// repeat_disable plus hint_default_white already give 255, which the
 		// clamp below folds onto 124 (clean), but the explicit bounds test is
 		// what makes that a decision rather than a coincidence.
-		float code = 124.0;
-		vec2 pcell = cell + cell_plane_origin;
-		if (pcell.x >= 0.0 && pcell.y >= 0.0
-				&& pcell.x < cell_soot_size.x && pcell.y < cell_soot_size.y) {
-			code = floor(texture(cell_soot, (pcell + vec2(0.5)) / cell_soot_size).r * 255.0 + 0.5);
-		}
+		float code = in_plane ? floor(plane.r * 255.0 + 0.5) : 124.0;
 		code = clamp(code, 0.0, 124.0);
 		// top*25 + se*5 + sw, selected by the face index resolved above.
 		if (sep_index < 0.5) {
@@ -310,6 +339,14 @@ void fragment() {
 		}
 		COLOR = vec4(dcode / 255.0, 0.0, 1.0, step(0.99, tex_a));
 	}
+	// Mode 3 (PERF-P3) paints the plane's G channel — the LIGHT BUCKET, as the
+	// GPU sees it. The CPU-side census can say the Image holds the right buckets
+	// and still not answer whether the sampler agrees, which is the only question
+	// when the data is right and the picture is not.
+	if (cell_debug_paint > 2.5) {
+		float g = in_plane ? floor(plane.g * 255.0 + 0.5) : 255.0;
+		COLOR = vec4(g / 255.0, 0.0, 1.0, step(0.99, tex_a));
+	}
 	// Mode 2 paints the RECOVERED CELL ITSELF, EXACTLY, with no plane lookup in
 	// the way. R and G carry the low byte of x and y; BLUE carries both high
 	// bytes, biased so a negative recovery is representable rather than folded
@@ -323,7 +360,9 @@ void fragment() {
 	// the low one every time and reported 0% correct on a mapping that may well
 	// have been right. B >= 64 also marks "a voxel drew this", which is what
 	// separates the board from the cleared background.
-	if (cell_debug_paint > 1.5) {
+	// Bounded ABOVE as well: mode 3 sits past this one, and an unbounded `> 1.5`
+	// would let mode 2 overwrite it.
+	if (cell_debug_paint > 1.5 && cell_debug_paint < 2.5) {
 		float bx = clamp(floor((cell.x + 512.0) / 256.0), 0.0, 7.0);
 		float by = clamp(floor((cell.y + 512.0) / 256.0), 0.0, 7.0);
 		COLOR = vec4(mod(cell.x, 256.0) / 255.0, mod(cell.y, 256.0) / 255.0,

@@ -1,7 +1,14 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v1.7 — THE TERM IS ISOLATED (§8.15). A committing frame that
+**Status:** 🟠 **v1.8 — P3 IS BUILT AND GATED OFF (§8.19). Its DATA is verified
+end to end — the alternative space collapses to `{11: 205704}`, i.e. ZERO light
+alternatives, and the GPU sampler reads the full bucket spread — but the frame is
+wrong: 165 754 px against a control proven at 0, on WALL FACADES, and the on/off
+ratios are ratios of `bucket_luminance`, so the two paths apply DIFFERENT BUCKETS
+to the same pixel.** §8.20 withdraws §8.18 and shows the gate's residual and P3's
+are only 13.7% the same pixels — the floor and the walls, not one phenomenon.
+Earlier: **v1.7 — THE TERM IS ISOLATED (§8.15). A committing frame that
 mints costs ~360 ms; one that mints NOTHING costs ~126 ms. The difference is ONE
 TileSet rebuild per frame, ~240 ms, and it does not count alternatives — 7 frames
 minting 24 between them still paid 367 ms each.** That is ~3.1 s of a ~6.3 s fire,
@@ -1128,3 +1135,103 @@ P3 on the fixed recovery and look.
 This is a change of instrument, not a claim that the recovery is fine. If P3's
 picture is right, the gate was measuring its own reconstruction error; if it is
 wrong, the debug render diagnoses it with a recovery that is now two fixes better.
+
+### 8.19 🟠 P3 IS BUILT AND GATED OFF — the data is right, the picture is not (2026-08-23)
+
+The whole change, and it is small because P2 already established the shape:
+
+- the cell plane goes `FORMAT_R8` → **`FORMAT_RG8`**, R = soot code, G = light
+  bucket, both writers read-modify-write so neither channel erases the other;
+- `encode_light_alt()` returns **`alt_for_flip()`** under the switch — 0 or
+  `TRANSFORM_FLIP_H`, both NATIVE tiles `_ensure_light_alt()` already refuses to
+  mint, so minting goes to zero without that function changing;
+- every apply site writes the bucket **before** the `alt_id == prev_alt`
+  comparison, for the exact reason P2's comment gives about soot: once the bucket
+  leaves the id, a light-only change leaves the id EQUAL and the caller
+  `continue`s;
+- the ghost store (§5.1's "reader with real teeth") keeps the plane in step;
+- the shader reads G and applies `uniform float bucket_lum[12]`.
+
+**The mechanism works.** `INFILTRAITOR_P3_CENSUS=1`, real boot:
+
+```
+P3 ON   205 704 cells · PLANE  {0:49805, 1:32653, 2:47504, 3:15569, ... 11:16361}
+                        ALT-id {11: 205704}          <- ZERO light alternatives
+P3 OFF  205 704 cells · PLANE  {0:49805, 1:32653, ...}   (identical)
+                        ALT-id {0:49805, 1:32653, ...}   (identical)
+```
+
+The alternative space collapses to nothing and the plane carries the same
+distribution the ids used to. And the GPU agrees — debug paint mode 3 paints the
+sampler's own G byte:
+
+```
+G byte 0:8478 1:15307 2:20072 3:20243 4:42474 5:70707 6:3198 7:33215
+       8:35788 9:18613 10:77330 11:348241 12:23
+```
+
+### ⚠️ But the frame is wrong, and the ratios say exactly how
+
+```
+CONTROL   P3 off  vs  committed HEAD :        0 px      <- the A/B is honest
+          P3 on   vs  committed HEAD :  165 754 px (17.985%), max delta 105
+```
+
+- Every delta is a **multiple of 3** — FACE-READ-03's residue snap — so nothing
+  here is antialiasing or filtering.
+- The differences are on **WALL FACADES**, tracing the window rows.
+  [`p3_bucket_mismatch_mask.png`](../../Screenshots/history/p3_bucket_mismatch_mask.png)
+  (red = P3 brighter, 106 967 px; blue = darker, 58 787 px). The floor is almost
+  entirely unchanged.
+- **The on/off RATIOS are ratios of `bucket_luminance` entries**: 2.12 = 0.85/0.40,
+  2.50 = 1.00/0.40, 2.09 = 0.69/0.33, 0.55 = 0.47/0.85, 0.92 = 0.92/1.00.
+
+**So the two paths apply DIFFERENT BUCKETS to the same pixel.** Not different
+arithmetic on the same bucket — a different bucket. The alternative path takes it
+from the tile, which is always that cell's own; P3 takes it from the plane at the
+cell the SHADER RECOVERED. Where those disagree, P3 renders a neighbour's light.
+
+### 8.20 ⚠️ §8.18's decision was wrong, and the two residuals are NOT the same one
+
+§8.18 stopped letting the gate block P3, reasoning that a disagreement between the
+shader's recovery and a reconstructed draw rect accuses both equally. **The picture
+has now implicated the recovery independently**, so that call has to be withdrawn.
+
+But the obvious next inference is also wrong, and it was tested rather than
+assumed. The two percentages are near-identical — 17.985% of the frame against the
+gate's 17.99% of judged pixels — which invites treating them as one phenomenon.
+Overlaid pixel by pixel:
+
+```
+gate-OUTSIDE and P3-differs : 22 043
+gate-OUTSIDE only           : 138 660
+P3-differs only             : 143 711
+→ only 13.7% of the gate's failing pixels also differ under P3
+```
+
+**Two different populations.** The gate fails on the FLOOR; P3 fails on the WALLS.
+The percentage match is a coincidence and is recorded here so nobody spends a
+session rediscovering that it is one.
+
+There is a reading that fits both: **a mis-recovered cell only becomes VISIBLE
+where neighbouring cells hold different buckets.** A floor is large areas of one
+bucket, so recovery errors there are invisible in the frame and only a gate can
+see them; a wall column stacks contrasting buckets, so errors show as exactly the
+banding on the facades. That predicts the gate under-reports the walls and the
+picture under-reports the floor, which is what both instruments did. **Stated as
+the working hypothesis, not as a finding** — it has not been tested.
+
+### 8.21 Where P3 stands
+
+**Built, complete, and `INFILTRAITOR_P3=1` to opt in. Default OFF, so nothing
+broken ships.** The switch stays: it puts both sides of the A/B in one binary and
+one map, which is stricter than §5.5's stash-and-rerun.
+
+What it is worth is unchanged and now has a second confirmation — the ALT-id
+histogram collapsing to a single value IS zero minting, which §8.15 measured at
+~240 ms per committing frame, ~3.1 s of a ~6.3 s fire.
+
+**The one thing standing between here and that: the cell recovery has to be right
+on wall fragments.** That is a smaller, sharper question than §3.3's floor
+residual, and it now has an instrument that answers in a picture rather than in a
+containment statistic.

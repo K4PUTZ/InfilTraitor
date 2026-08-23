@@ -6561,6 +6561,21 @@ func _run_auto_screenshot_capture() -> void:
 			for _j in range(4):
 				await get_tree().process_frame
 
+	## PERF-P3 — what the cell plane actually holds, before any capture action
+	## disturbs it. Printed rather than asserted: the question at this stage is
+	## whether the bucket reaches the plane at all.
+	if OS.get_environment("INFILTRAITOR_P3_CENSUS") == "1" and _voxel_renderer != null:
+		var bc: Dictionary = _voxel_renderer.debug_bucket_census()
+		print("[P3-CENSUS] %d placed cell(s) · %d level image(s)" % [bc["cells"], bc["levels_with_image"]])
+		print("[P3-CENSUS] PLANE bucket histogram: %s" % [bc["plane"]])
+		print("[P3-CENSUS] ALT-id bucket histogram: %s" % [bc["alt"]])
+	## PERF-P3 — drive the shader's G-channel debug paint (mode 3) for a capture
+	## whose R channel IS the bucket the sampler read.
+	var paint_env := OS.get_environment("INFILTRAITOR_CELL_PAINT_MODE")
+	if paint_env.is_valid_float() and _voxel_renderer != null:
+		_voxel_renderer.debug_set_cell_paint_mode(paint_env.to_float())
+		for _pj in range(6):
+			await get_tree().process_frame
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
 		## VL-PERSIST verification: detonate a grenade first, then capture all four

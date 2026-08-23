@@ -576,6 +576,35 @@ var bucket_luminance: Array[float] = [
 	0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 ]
 
+## PERF-P3 — THE LIGHT BUCKET LEAVES THE ALTERNATIVE ID.
+##
+## With this on, `encode_light_alt()` returns the FLIP and nothing else, the
+## bucket is written to the cell plane's G channel, and `_ensure_light_alt()`
+## early-returns on every id it is handed — so a light change mints NOTHING and
+## triggers no TileSet rebuild. §8.15 measured that rebuild at ~240 ms per
+## committing frame of a fire, ~3.1 s of a ~6.3 s burn, blind to how many
+## alternatives the frame mints.
+##
+## ⚠️ **DEFAULT OFF — P3 DOES NOT RENDER CORRECTLY YET (§8.19).** Opt IN with
+## `INFILTRAITOR_P3=1`. The plumbing below is complete and its DATA is verified
+## end to end; what is not verified is the picture.
+##
+## Measured 2026-08-23, `--fixed-fps 60`, PLAYGROUND, against a control proven at
+## **0 differing pixels** (P3 off is bit-identical to the committed build):
+##
+##   P3 on vs shipped:  165 754 px differ (17.985%), max channel delta 105
+##
+## Every delta is a multiple of 3 (FACE-READ-03's residue snap), the differences
+## sit on WALL FACADES rather than the floor, and the on/off RATIOS are ratios of
+## `bucket_luminance` entries — 2.12 = 0.85/0.40, 2.50 = 1.00/0.40, 0.55 =
+## 0.47/0.85. **So the two paths are applying DIFFERENT BUCKETS to the same
+## pixel**, which makes this a cell-recovery mismatch and not an arithmetic one.
+##
+## The switch stays because it is the instrument: it puts both sides in ONE binary
+## and one map, which is a stricter form of what §5.5 asks for than stashing the
+## diff.
+static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") == "1"
+
 
 ## FACE-SOOT-01 — the alternative id now carries (light bucket × per-face soot
 ## code × flip), not just (bucket × flip). One flat run per flip state:
@@ -645,8 +674,26 @@ static func _decode_alt_raw(alt: int) -> int:
 
 
 ## VL-01: (bucket, flipped) → alternative id, for callers with no soot to carry.
+##
+## PERF-P3: under `P3_CELL_BUCKET` the bucket does not travel here at all — the
+## id carries the FLIP and nothing else. Both returned values (0 and
+## TRANSFORM_FLIP_H) are NATIVE Godot tiles that `_ensure_light_alt()` already
+## refuses to mint, so minting goes to zero without that function changing.
+##
+## ⚠️ Callers must write the bucket to the plane BEFORE their `alt_id == prev_alt`
+## comparison. Once the bucket leaves the id, a light-only change leaves the id
+## EQUAL and the caller `continue`s — which is correct, and is exactly why the
+## write cannot sit after it. PERF-P2 hit this first with soot and the comment at
+## each site says so.
 static func encode_light_alt(bucket: int, flipped: bool) -> int:
+	if P3_CELL_BUCKET:
+		return alt_for_flip(flipped)
 	return encode_voxel_alt(bucket, FACE_SOOT_CODE_CLEAN, flipped)
+
+
+## The flip, as an alternative id, with no visual state attached.
+static func alt_for_flip(flipped: bool) -> int:
+	return TileSetAtlasSource.TRANSFORM_FLIP_H if flipped else 0
 
 
 ## VL-01: alternative id → light bucket (0..LIGHT_BUCKET_COUNT-1).
@@ -2556,8 +2603,15 @@ func _apply_light_field_pass(field) -> void:
 			## PERF-P2: the cell is erased right now, but un-ghosting restores it
 			## from this record — and the soot plane is where its scorch lives.
 			_write_cell_soot(int(record["level"]), cell, ghost_soot)
-			record["prev_alt"] = encode_light_alt(
-					field.bucket_for(cell, record["level"]), flipped)
+			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
+			## store as the reader with real teeth — it remembers `prev_alt` to
+			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
+			## record alone no longer describes the cell, so the plane has to be
+			## kept in step here or an un-ghosted cell comes back lit by whatever
+			## the plane last happened to hold.
+			var ghost_bucket: int = field.bucket_for(cell, record["level"])
+			_write_cell_bucket(int(record["level"]), cell, ghost_bucket)
+			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
 	## PERF-P2 — ONE upload per level per repaint, at the end, after the ghost
 	## records have had their say. Never one upload per cell.
 	flush_cell_soot()
@@ -2631,7 +2685,13 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			## equal to `prev_alt`, and a write placed after the `continue` would
 			## be skipped exactly when it is the only thing that changed.
 			_write_cell_soot(level, cell, soot_code)
-			var alt_id: int = encode_light_alt(field.bucket_for(cell, level),
+			## PERF-P3 — the bucket, for the identical reason and in the same
+			## place: once it leaves the alternative id, a light-only change
+			## leaves `alt_id` equal to `prev_alt` and the `continue` below
+			## fires. The write has to be on this side of it.
+			var bucket: int = field.bucket_for(cell, level)
+			_write_cell_bucket(level, cell, bucket)
+			var alt_id: int = encode_light_alt(bucket,
 					decode_light_flipped(prev_alt))
 			if alt_id == prev_alt:
 				continue
@@ -2651,8 +2711,15 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			## PERF-P2: the cell is erased right now, but un-ghosting restores it
 			## from this record — and the soot plane is where its scorch lives.
 			_write_cell_soot(int(record["level"]), cell, ghost_soot)
-			record["prev_alt"] = encode_light_alt(
-					field.bucket_for(cell, record["level"]), flipped)
+			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
+			## store as the reader with real teeth — it remembers `prev_alt` to
+			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
+			## record alone no longer describes the cell, so the plane has to be
+			## kept in step here or an un-ghosted cell comes back lit by whatever
+			## the plane last happened to hold.
+			var ghost_bucket: int = field.bucket_for(cell, record["level"])
+			_write_cell_bucket(int(record["level"]), cell, ghost_bucket)
+			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
 	flush_cell_soot()
 
 
@@ -2764,7 +2831,10 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 		var full_soot: int = field.face_soot_code(cell, level)
 		## PERF-P2 — before the comparison, for apply_light_field_gus()'s reason.
 		_write_cell_soot(level, cell, full_soot)
-		var alt_id: int = encode_light_alt(field.bucket_for(cell, level),
+		## PERF-P3 — see apply_light_field_gus(): before the comparison.
+		var full_bucket: int = field.bucket_for(cell, level)
+		_write_cell_bucket(level, cell, full_bucket)
+		var alt_id: int = encode_light_alt(full_bucket,
 				decode_light_flipped(prev_alt))
 		if alt_id == prev_alt:
 			continue
@@ -3116,7 +3186,10 @@ var _layer_materials: Dictionary = {}   ## level -> ShaderMaterial
 ## shader is passed the same offset.
 const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
 const SOOT_TEX_SIZE: int = 512
-var _soot_images: Dictionary = {}     ## level -> Image (FORMAT_R8)
+## PERF-P3: FORMAT_RG8 — R = the per-face soot code (0..124), G = the light
+## bucket (0..11). One texel per cell, one texture per level. Both writers do a
+## read-modify-write so neither channel can erase the other.
+var _soot_images: Dictionary = {}     ## level -> Image (FORMAT_RG8)
 var _soot_textures: Dictionary = {}   ## level -> ImageTexture
 var _soot_dirty: Dictionary = {}      ## level -> true, cleared by flush_cell_soot()
 var _soot_out_of_range_reported: bool = false
@@ -3125,10 +3198,14 @@ var _soot_out_of_range_reported: bool = false
 func _soot_image_for(level: int) -> Image:
 	if _soot_images.has(level):
 		return _soot_images[level]
-	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_R8)
-	## CLEAN, not zero. Zero is "ring 0 on all three faces" — the darkest scorch
-	## there is — so an unvisited cell would come up black.
-	img.fill(Color8(FACE_SOOT_CODE_CLEAN, 0, 0, 255))
+	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_RG8)
+	## CLEAN and FULL-LIT, not zero — on both channels, for the same reason.
+	## Zero soot is "ring 0 on all three faces", the darkest scorch there is; and
+	## bucket 0 is the darkest light there is (`bucket_luminance[0]` = 0.12), so a
+	## cell that is never written would come up black twice over. Bucket
+	## LIGHT_BUCKET_COUNT-1 is full lit — see `encode_voxel_alt()`, where that is
+	## the bucket whose raw id is 0, i.e. the base tile.
+	img.fill(Color8(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1, 0, 255))
 	_soot_images[level] = img
 	_soot_textures[level] = ImageTexture.create_from_image(img)
 	return img
@@ -3145,10 +3222,45 @@ func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
 		return
 	var img := _soot_image_for(level)
 	var c: int = clampi(code, 0, FACE_SOOT_CODE_CLEAN)
-	if img.get_pixel(p.x, p.y).r8 == c:
+	var was: Color = img.get_pixel(p.x, p.y)
+	if was.r8 == c:
 		return
-	img.set_pixel(p.x, p.y, Color8(c, 0, 0, 255))
+	## PERF-P3: G is the light bucket and belongs to `_write_cell_bucket()` —
+	## carried through unchanged rather than rewritten, so a soot pass cannot
+	## silently relight a cell.
+	img.set_pixel(p.x, p.y, Color8(c, was.g8, 0, 255))
 	_soot_dirty[level] = true
+
+
+## PERF-P3 — record one cell's light bucket. The exact counterpart of
+## `_write_cell_soot()`, down to the idempotence: an unchanged bucket does not
+## dirty the level, so a repaint that only moves soot uploads nothing.
+func _write_cell_bucket(level: int, cell: Vector2i, bucket: int) -> void:
+	var p := cell + SOOT_PLANE_ORIGIN
+	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+		if not _soot_out_of_range_reported:
+			_soot_out_of_range_reported = true
+			push_error("[VoxelRenderer] PERF-P3: cell %s is outside the %dx%d cell plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
+		return
+	var img := _soot_image_for(level)
+	var b: int = clampi(bucket, 0, LIGHT_BUCKET_COUNT - 1)
+	var was: Color = img.get_pixel(p.x, p.y)
+	if was.g8 == b:
+		return
+	img.set_pixel(p.x, p.y, Color8(was.r8, b, 0, 255))
+	_soot_dirty[level] = true
+
+
+## What the plane currently says about one cell's light bucket — the counterpart
+## of `cell_soot_at()`, and the record P3 leaves in place of the alternative id
+## (§5.1: something has to keep BEING that record).
+func cell_bucket_at(level: int, cell: Vector2i) -> int:
+	var p := cell + SOOT_PLANE_ORIGIN
+	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+		return LIGHT_BUCKET_COUNT - 1
+	if not _soot_images.has(level):
+		return LIGHT_BUCKET_COUNT - 1
+	return (_soot_images[level] as Image).get_pixel(p.x, p.y).g8
 
 
 ## Upload whatever changed. Returns how many levels were re-uploaded — one
@@ -3177,7 +3289,7 @@ func cell_soot_at(level: int, cell: Vector2i) -> int:
 ## after running.
 func debug_fill_cell_plane(level: int, value: int) -> void:
 	var img := _soot_image_for(level)
-	img.fill(Color8(clampi(value, 0, 255), 0, 0, 255))
+	img.fill(Color8(clampi(value, 0, 255), LIGHT_BUCKET_COUNT - 1, 0, 255))
 	_soot_dirty[level] = true
 
 
@@ -3189,7 +3301,8 @@ func debug_set_cell_paint(on: bool) -> void:
 
 
 ## 0 = off (the shipping value), 1 = paint the plane byte at the recovered cell,
-## 2 = paint the recovered cell itself (x and y mod 256).
+## 2 = paint the recovered cell itself (x and y mod 256), 3 = paint the plane's
+## G channel, i.e. the LIGHT BUCKET as the SAMPLER sees it (PERF-P3).
 func debug_set_cell_paint_mode(mode: float) -> void:
 	for level in _layer_materials.keys():
 		(_layer_materials[level] as ShaderMaterial).set_shader_parameter(
@@ -3273,6 +3386,35 @@ func _census_level(layer: TileMapLayer, null_by_alt: Dictionary,
 	return n
 
 
+## PERF-P3 — is the bucket actually IN the plane? Histograms what the plane holds
+## against what the alternative id says, over every placed cell. Under P3 the id
+## carries only the flip, so `alt_bucket` collapses to one value and the PLANE is
+## the only record — which is precisely the claim that needs a census rather than
+## a reading of the code.
+func debug_bucket_census() -> Dictionary:
+	var plane_hist: Dictionary = {}
+	var alt_hist: Dictionary = {}
+	var cells: int = 0
+	var layers: Array = []
+	for level in range(_voxel_layers.size()):
+		layers.append([level, _voxel_layers[level]])
+	for level in _negative_voxel_layers.keys():
+		layers.append([level, _negative_voxel_layers[level]])
+	for pair in layers:
+		var level: int = pair[0]
+		var layer: TileMapLayer = pair[1]
+		if layer == null:
+			continue
+		for cell in layer.get_used_cells():
+			cells += 1
+			var b: int = cell_bucket_at(level, cell)
+			plane_hist[b] = int(plane_hist.get(b, 0)) + 1
+			var ab: int = decode_light_bucket(layer.get_cell_alternative_tile(cell))
+			alt_hist[ab] = int(alt_hist.get(ab, 0)) + 1
+	return {"cells": cells, "plane": plane_hist, "alt": alt_hist,
+		"levels_with_image": _soot_images.size()}
+
+
 func flush_cell_soot() -> int:
 	if _soot_dirty.is_empty():
 		return 0
@@ -3302,6 +3444,12 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 	mat.set_shader_parameter("cell_soot_size", Vector2(float(SOOT_TEX_SIZE), float(SOOT_TEX_SIZE)))
 	mat.set_shader_parameter("cell_plane_origin",
 		Vector2(float(SOOT_PLANE_ORIGIN.x), float(SOOT_PLANE_ORIGIN.y)))
+	## PERF-P3 — the ladder has ONE definition and this is how it reaches the
+	## shader. `bucket_luminance` is a `var` (Rule 1), and its existing contract is
+	## that changes take effect on the next map load / rotation — unchanged here,
+	## because that is also when layer materials are built.
+	mat.set_shader_parameter("bucket_lum", PackedFloat32Array(bucket_luminance))
+	mat.set_shader_parameter("p3_enabled", 1.0 if P3_CELL_BUCKET else 0.0)
 	_layer_materials[level] = mat
 	return mat
 

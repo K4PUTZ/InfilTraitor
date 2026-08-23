@@ -1,7 +1,8 @@
 # RESUMO_SESSAO — 2026-08-22 · THE CELL GATE, AND WHERE THE FIRE'S TIME REALLY GOES
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-22_BURN_PERF_AND_CELL_PLANE.md`
-**Commits:** `e25d25bc`, `6d88886c`, `a90f8f3c`, `2e224825`, `dbb2a95e` — all pushed to `main`.
+**Commits:** `e25d25bc`, `6d88886c`, `a90f8f3c`, `2e224825`, `dbb2a95e`,
+`3c6ece19`, `009e9625` — all pushed to `main`.
 **Gates at close:** lint 216 ✅ · selftests **39 clean / 0 failed** ✅ ·
 invariants ✅ · CODEMAP ✅.
 
@@ -11,9 +12,13 @@ invariants ✅ · CODEMAP ✅.
 
 The Director ratified a reordering: **gate → P5 → P3**. The gate is built and
 found two shipped defects. P5a is done. **P3 is blocked** on the gate's residual
-(§3.3 of the plan). The biggest number on the board is now
-[`PERFORMANCE_MASTER_PLAN`](PLANNING/PERFORMANCE_MASTER_PLAN.md) §3.4's
-unattributed ~23 ms/frame during a fire.
+(§3.3 of the plan), and that is **where work resumes** — it needs no decision.
+
+One thing IS waiting on the Director: §3.4d's VFX term (25 ms/frame), because
+fixing it changes how fire LOOKS. See "Next" at the bottom.
+
+⚠️ Before running any frame-time measurement, read §4's cap warning: the 16.7 ms
+"baseline" this project has been quoting is the 60 Hz pace, not the work.
 
 ## 1. P3's premise was wrong by ~40x (`e25d25bc`)
 
@@ -65,36 +70,70 @@ carries the quadrant transform folded in) minus a new `layer_origin` uniform —
 quadrant-independent, engine defaults kept, 0 differing pixels against the
 one-quadrant build.
 
-## 4. The fire's real cost (`dbb2a95e`)
+## 4. The fire's real cost, fully attributed (`dbb2a95e`, `009e9625`)
 
-```
-baseline, no fire:     16.7 ms/frame ·  4 206 draw calls
-during the fire:       64.5 ms/frame · 13 145 draw calls
-after the fire ends:   16.7 ms/frame · 13 145 draw calls   <- SAME draw calls
-```
+Each term is its own hiding experiment on a real fire (354 voxels, fabric at
+gu 31,3), run with `--disable-vsync`:
 
-| term | per frame |
-|---|---|
-| VFX overlay **drawing** | ~24 ms |
-| those overlays' `_process` | ~0 ms |
-| `_advance_burn`, ALL frames | 6.0 ms |
-| rest of `Room._process` | ~0.1 ms |
-| **unattributed** | **~23 ms** |
+| term | ms/frame | measured by |
+|---|---|---|
+| VFX overlays' `_draw` | **25.1** | hiding the five: 64.0 → 38.9 |
+| the 32 voxel `TileMapLayer`s | **19.0** | hiding them: 64.0 → 45.0 |
+| the 9 guards | **5.0** | hiding them: 64.0 → 59.0 |
+| `_advance_burn`, ALL frames | **6.0** | timed from the caller |
+| | **55.1** | vs a measured excess of 64.0 − 8.9 = **55.1** |
+
+The terms are only additive if the costs are independent; **that they sum exactly
+is the evidence that they are.** The voxel layers were the last group left
+untested and they were the answer.
 
 A 3.33 s fire spends 12 841 ms in frames, and **the destruction system is 1.2 s
 of it**. The 185 frames that commit nothing cost more than the 14 that do.
 
-⚠️ `Performance.TIME_PROCESS` reported 316 ms on a 64 ms frame — it is not
-measuring the frame; caller-side timing replaced it.
+### ⚠️ Every number under 16.7 ms in this repo was the 60 Hz pace
+
+With the voxel layers, the VFX, the guards, the agent and the whole UI hidden —
+**90 draw calls, 0.3 ms of renderer CPU** — the frame probe still read
+**16.7 ms/frame**. The idle board is **8.9 ms** under `--disable-vsync`. The
+fire's own figures sit far above the cap and were never affected, which is
+exactly why this stayed invisible until something was measured BELOW it.
+
+**Any frame-time work in this project runs with `--disable-vsync`.**
+
+Two more traps, recorded so they are not re-run: `Performance.TIME_PROCESS`
+reported 316 ms on a 64 ms frame; and a CanvasItem's `_draw()` is NOT counted in
+the engine's `render cpu` (the VFX cost 25 ms/frame and moved it by nothing).
+
+And one invalid measurement caught: an earlier run that hid everything but the
+voxel layers and reported a 17 ms fire frame **had no fire in it** — hiding the
+UI before the detonation broke the synthetic click path the capture drives. It is
+only a measurement if the event actually happened.
+
+### A detonation makes the board permanently more expensive
+
+```
+before any blast:        8.9 ms/frame ·  4 206 draw calls · render cpu 2.0 ms
+after the blast + fire: 12.7 ms/frame · 13 145 draw calls · render cpu 4.3 ms
+```
+
++43% per frame, forever, from one grenade — the damage variants split the
+batches. Small beside the fire's 55 ms, and it compounds with every blast a
+mission takes. Measured and left alone (§3.4c).
 
 ---
 
-## Next, in order
+## Next, in order — the Director's ratified sequence
 
-1. **§3.4's ~23 ms/frame** — the largest single number, and unattributed.
-   Half the fire's excess is particle `_draw`; this is the other half.
-2. **§3.3's floor residual** — the only thing blocking P3.
-3. The rest of P5: the walk (458 ms), the soot snapshot (146 ms), occupancy (31 ms).
+1. ⏸️ **AWAITING A RULING: the VFX overlays' `_draw`, 25 ms/frame.** The largest
+   single term. Fixing it means fewer particles or batching `draw_*`, which is a
+   LOOK decision, not a repair — so it needs Director sign-off before anyone
+   touches it. The other two terms (voxel layers 19 ms, guards 5 ms) are pure
+   optimisation and need no ruling.
+2. **§3.3's floor residual** — the gate reads 81% on the floor against 96–100%
+   on the walls, and it is the only thing blocking P3. **This is where work
+   resumes**; it needs no decision from anyone.
+3. The rest of P5: the walk (458 ms), the soot snapshot (146 ms), occupancy
+   (31 ms).
 
 ## Carried forward, unrelated
 

@@ -3812,6 +3812,10 @@ var _burn_touched_edges: Dictionary = {}
 ## TileSet alternatives, and the rebuild is charged per FRAME THAT MINTS — so
 ## eleven sooty frames cost eleven rebuilds for a picture only the last one keeps.
 var _burn_soot_gus: Dictionary = {}
+## MAT-PERF-03 — the GUs the fire just painted, kept past the clear so the
+## residue probe can ask what a SCOPED ending would have left behind. The set is
+## cleared before `_burn_final_repaint()` runs and the probe needs it after.
+var _burn_last_soot_gus: Array = []
 
 ## MAT-PERF-01 — the burn's own profiler, `INFILTRAITOR_BURN_PROFILE=1`,
 ## env-gated like every other standing dev probe in this file.
@@ -4109,6 +4113,7 @@ func _advance_burn(delta: float) -> void:
 		## the soot it owes from earlier batches is still owed — clearing the set
 		## here without painting it would lose every scorch mark the burn earned.
 		if final_batch and not _burn_soot_gus.is_empty():
+			_burn_last_soot_gus = _burn_soot_gus.keys()
 			_burn_soot_gus.clear()
 			_burn_final_repaint()
 		return
@@ -4287,6 +4292,7 @@ func _advance_burn(delta: float) -> void:
 		## alternatives, which is how the shot's four-step fade turned one stall
 		## into five.
 		if not _burn_soot_gus.is_empty():
+			_burn_last_soot_gus = _burn_soot_gus.keys()
 			_burn_soot_gus.clear()
 			_burn_final_repaint()
 
@@ -4318,6 +4324,64 @@ func _advance_burn(delta: float) -> void:
 ## Which leaves `alt_id == prev_alt` or the mint, and neither has been proven.
 ## **The cause is open and it is MAT-PERF-03's**, worth ~1.3 s if it closes. The
 ## shot path has the same scoped apply and has never had this counted.
+## MAT-PERF-03's probe — see the caller. Runs a SCOPED repaint over the fire's own
+## GUs, snapshots, then the map-wide one, and reports every cell they disagree on
+## together with the two facts that can explain it: was the cell in `_placed_by_gu`
+## BEFORE the full pass, and was its GU inside the scope.
+func _burn_residue_probe() -> void:
+	if _voxel_renderer == null or _burn_last_soot_gus.is_empty():
+		push_warning("[BURN-RESIDUE] nothing to probe — no GUs recorded for this fire.")
+		return
+	var scope: Array = shot_repaint_scope(_burn_last_soot_gus)
+	var scope_set: Dictionary = {}
+	for gu in scope:
+		scope_set[gu] = true
+	## The index AS IT STANDS, before anything rebuilds it.
+	var indexed: Dictionary = {}
+	for gu in _voxel_renderer._placed_by_gu.keys():
+		for entry in _voxel_renderer._placed_by_gu[gu]:
+			indexed[Vector3i(entry["cell"].x, entry["cell"].y, entry["level"])] = true
+	_repaint_voxel_light_buckets_scoped(scope, true, 0)
+	var scoped_snap: Dictionary = _perf_snapshot_alts()
+	_repaint_voxel_light_buckets(true)
+	var full_snap: Dictionary = _perf_snapshot_alts()
+	var differ: int = 0
+	var not_indexed: int = 0
+	var out_of_scope: int = 0
+	var indexed_and_in_scope: int = 0
+	var neg_level: int = 0
+	var samples: Array = []
+	for k in full_snap.keys():
+		if scoped_snap.get(k, PERF_SNAPSHOT_MISSING) == full_snap[k]:
+			continue
+		differ += 1
+		if k.z < 0:
+			neg_level += 1
+		var gu2 := GeometryCoords.voxel_to_gu(Vector2i(k.x, k.y))
+		var was_indexed: bool = indexed.has(k)
+		var in_scope: bool = scope_set.has(gu2)
+		if not was_indexed:
+			not_indexed += 1
+		elif not in_scope:
+			out_of_scope += 1
+		else:
+			indexed_and_in_scope += 1
+		if samples.size() < 8:
+			samples.append("%s gu %s indexed=%s in_scope=%s scoped %s -> full %s" % [
+				k, gu2, was_indexed, in_scope, scoped_snap.get(k, PERF_SNAPSHOT_MISSING),
+				full_snap[k]])
+	print("[BURN-RESIDUE] scope %d GU(s) · %d cell(s) differ between a scoped ending and the map-wide one · %d of them on negative levels"
+		% [scope.size(), differ, neg_level])
+	print("[BURN-RESIDUE]   NOT in _placed_by_gu before the full pass: %d · in the index but OUTSIDE the scope: %d · indexed AND in scope: %d"
+		% [not_indexed, out_of_scope, indexed_and_in_scope])
+	for smp in samples:
+		print("[BURN-RESIDUE]   %s" % smp)
+	print("[BURN-RESIDUE] VERDICT: %s" % (
+		"the residue is cells the scoped apply CANNOT SEE — _placed_by_gu is rebuilt only by the full pass"
+		if not_indexed > out_of_scope and not_indexed > indexed_and_in_scope
+		else "the residue is NOT index membership — it survives inside the indexed, in-scope set"))
+
+
 func _burn_final_repaint() -> void:
 	## Two frames first, so the last holes are PRESENTED before this runs.
 	## Deferring the work and then doing it in the same frame moves the stall
@@ -4326,6 +4390,23 @@ func _burn_final_repaint() -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(_voxel_renderer):
 		return
+	## MAT-PERF-03 — WHAT WOULD A SCOPED ENDING ACTUALLY LEAVE WRONG?
+	##
+	## `INFILTRAITOR_BURN_RESIDUE_PROBE=1`. MAT-PERF-02 measured 198 stale cells
+	## after a scoped soot pass, every one on a negative (floor) level, and ruled
+	## out scope size, a stale `_placed_by_gu`, field staleness and the apply's
+	## reach — leaving *"`alt_id == prev_alt` or the mint, and neither has been
+	## proven"*. This asks the question again with the index membership read
+	## BEFORE the full pass rebuilds it, which is the one ordering that can make a
+	## stale index look present.
+	##
+	## `_apply_light_field_pass()` CLEARS and rebuilds `_placed_by_gu`; the scoped
+	## apply only ever READS it. So a cell placed since the last full pass — a
+	## crater floor revealed by the blast is exactly that, and exactly a negative
+	## level — is invisible to the scoped apply and cannot be found in the index
+	## afterwards either, because by then it is back in.
+	if OS.get_environment("INFILTRAITOR_BURN_RESIDUE_PROBE") == "1":
+		_burn_residue_probe()
 	var before: Dictionary = _perf_snapshot_alts() if _burn_prof else {}
 	var t0: int = Time.get_ticks_usec()
 	## PERF-P5a — geometry_only, and it is a statement of fact rather than an

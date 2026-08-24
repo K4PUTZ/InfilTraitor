@@ -2071,3 +2071,110 @@ moved** anywhere near fire 1.
 | 1 | **residual 2** — the fire's map-wide final repaint lands INSIDE the blast's own soot fade (`fade 1/4 · 2/4 · 3/4 · final repaint · fade 4/4`) | real, harmless as measured: step 4 writes `lighten = 0`, the true target. Ordering to tidy, not a defect |
 | 2 | **§9.11** — `forget_ghost_record()`, still not reproduced | needs a capture that walks the agent; unchanged |
 | 3 | **MAT-PERF-03** — the final repaint's 651 ms map-wide apply correcting 0.73% of cells | §9.12. The fire's largest remaining term |
+
+## 10. THE STALL — the fire's longest frame, and what is actually in it (2026-08-24)
+
+Director, 2026-08-24: *"visualmente me parece que está tudo ok. O problema é só
+esse travamento mesmo, tem um dos frames que está demorando bastante."*
+
+**Which frame, measured rather than assumed.** Across a whole fire the profiler
+reports `frames during the fire: 21 · mean 88.8 ms · max 266 ms`, and then
+`final repaint 1 058 ms`. **The map-wide final repaint is the longest frame in the
+game by a factor of four**, and everything below is about that one frame.
+
+### 10.1 ✅ It is the WALK — not the mint, not the writes, not the derivation
+
+`INFILTRAITOR_APPLY_SPLIT_PROBE=1`, the fire's own final repaint, both fires:
+
+```
+205 384 cells · derivation 70.1 ms · apply 646.2 ms (96 written, 64 minted)
+              · walk-only 608.8 ms · writes+mints 37.4 ms
+205 163 cells · derivation 67.5 ms · apply 610.6 ms (254 written, 22 minted)
+              · walk-only 613.8 ms · writes+mints -3.3 ms
+```
+
+**~610 ms of the ~640 ms apply is the walk**, and the pass writes **96 cells out of
+205 384** — 0.05%. Every hypothesis this plan has spent months on — the TileSet
+rebuild (§8.15), the mint count (§1.1b), the soot snapshot (§8.8) — is priced here
+at 37 ms and −3 ms. Two samples, one negative: the writes and the mints are inside
+the noise of the walk they sit in.
+
+This also retires the pre-cook question for good (§9.12): **no amount of pre-minting
+shortens a walk.**
+
+### 10.2 🔴 MAT-PERF-02's TWO "RULED OUT" CAUSES ARE THE ACTUAL CAUSES
+
+MAT-PERF-02 recorded the residue that forces the ending to be map-wide — 198 cells,
+all on negative levels — and ruled out, by measurement: scope size, **a stale
+`_placed_by_gu` (*"all 198 are IN the index and IN the scope"*)**, field staleness,
+and the apply's reach. *"Which leaves `alt_id == prev_alt` or the mint, and neither
+has been proven."*
+
+It is neither. `INFILTRAITOR_BURN_RESIDUE_PROBE=1` runs a scoped ending, snapshots,
+runs the map-wide one, snapshots, and asks of every disagreeing cell the two
+questions that can explain it — **reading index membership BEFORE the full pass
+rebuilds it**, which is the one ordering that makes a stale index look present:
+
+```
+fire 1   scope 94 GU · 47 cell(s) differ · 47 on negative levels
+         NOT in _placed_by_gu before the full pass: 47 · indexed but OUT of scope: 0
+         · indexed AND in scope: 0
+
+fire 2   scope 87 GU · 72 cell(s) differ · 52 on negative levels
+         NOT in _placed_by_gu before the full pass: 45 · indexed but OUT of scope: 27
+         · indexed AND in scope: 0
+```
+
+**0 of 119 are indexed and in scope.** The residue is two causes, both previously
+dismissed:
+
+- **`_placed_by_gu` is rebuilt ONLY by `_apply_light_field_pass()`, and the scoped
+  apply only ever READS it.** A cell placed since the last full pass — *a crater
+  floor revealed by the blast is exactly that, and exactly a negative level* — is
+  invisible to the scoped apply. It cannot be caught after the fact either,
+  because by then the full pass has put it back in the index. That is how the
+  original measurement got the answer backwards.
+- **The board drifts wherever an earlier SCOPED apply did not reach.** Fire 2's 27
+  out-of-scope cells sit at gu (29,3) — fire ONE's crater, six GUs away, moved by
+  blast 2's light (§9.11c measured a blast moving a crater's light eight GUs off).
+  Growing the ring count could never fix the unindexed majority, which is exactly
+  why *"identical 198 at 3, 6 and 10 rings"* read as ruling scope out.
+
+### 10.3 ⏭️ THE FIX THIS POINTS AT — the apply is driven by the field's own dirty set
+
+`VoxelLightField.build(geometry_only = true)` **already computes exactly the set the
+apply needs**, and then throws it away:
+
+```gdscript
+var stale: Dictionary = {}
+if geometry_only:
+    stale = _stale_cells(occupancy, soot)
+...
+for key in stale:
+    _bucket_cache.erase(key)
+    _static_factor_cache.erase(key)
+```
+
+`_stale_cells()` is derived by INVERTING what `_static_factor()` reads — Chebyshev 1
+in XY and levels `L-2 .. L+1` around every occupancy change, plus exactly
+`(cell, level)` for every soot change. Its correctness already has a standing gate:
+`INFILTRAITOR_LIGHT_EQUIV_PROBE=1` reports **`205 381 cells, 0 differ`** on both
+fires, which is the statement that a value can only change if its cache was
+invalidated — i.e. **changed ⟹ in the stale set**, which is precisely the guarantee
+an apply driven by that set requires.
+
+So the proposal, for ratification rather than built:
+
+1. `VoxelLightField` keeps its stale set and exposes it.
+2. `VoxelRenderer.apply_light_field_cells(field, cells)` — the identical per-cell
+   body, over that set instead of `get_used_cells()` map-wide. It touches
+   `_placed_by_gu` not at all, so **cause 1 of §10.2 stops existing** rather than
+   being patched.
+3. `_placed_by_gu` becomes incrementally maintained at the placement site, so every
+   OTHER scoped consumer (the shot, the blast) stops inheriting the same defect.
+4. The gate is the probe that found this: stale-driven ending vs map-wide ending
+   must differ by **0 cells**, or it does not ship.
+
+**Expected: ~610 ms off the longest frame in the game**, with the walk falling from
+205 384 cells to the low hundreds. Not built — §"No design decisions or new systems
+without Director sign-off".

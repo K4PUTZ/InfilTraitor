@@ -2178,3 +2178,66 @@ So the proposal, for ratification rather than built:
 **Expected: ~610 ms off the longest frame in the game**, with the walk falling from
 205 384 cells to the low hundreds. Not built — §"No design decisions or new systems
 without Director sign-off".
+
+### 10.4 ✅ BUILT — the fire's ending walks the work, and the longest frame drops 72%
+
+```
+                        map-wide ending    stale-driven ending
+  fire 1 final repaint       1 024 ms            282 ms
+  fire 2 final repaint         984 ms            297 ms
+  fire 1, frames + ending    2 773 ms          1 999 ms      -28%
+```
+
+**THE GATE, and it is the one that counts: `0 of 205 379 cell(s) differ from a
+map-wide ending`, both fires**, measured in-process on the same boot by
+`INFILTRAITOR_BURN_END_GATE=1` — snapshot after the stale-driven ending, force the
+map-wide pass, snapshot again, count.
+
+⚠️ **The pixel diff is NOT the gate here, and saying so is the point.** Two boots of
+the SAME code differ by **22 967 pixels**; the A/B differed by 228. The 228 is
+noise wearing a number — exactly what this project's own rule warns about — and the
+cause is structural: `BURN_COMMIT_INTERVAL_S` is pinned in SECONDS, so without
+`--fixed-fps` real frame times decide which voxels commit on which frame, and the
+ending's own speed-up changes them (42 frames vs 40). The CPU gate compares cell
+state rather than a rendering of it, on one boot, and is the stronger instrument.
+
+### Three defects, each found by the gate refusing to pass
+
+The first version failed by **200 cells**. Each fix was made only after the gate
+named the cells that survived the previous one.
+
+**1. `_placed_by_gu` was rebuilt only by the full pass** (§10.2). Now maintained
+incrementally by `_index_placed()`, backed by a `_placed_index` membership set so
+an incremental add is O(1). A cell-driven pass indexes what it visits, so the fix
+cannot rot the index it stops rebuilding.
+
+**2. The choreographer writes the board behind the light field's back** — 200 of
+the first failure. `DetonationChoreographer` is documented as *"the ONLY place a
+plan ever reaches `set_cell()`"*, and it writes the plan's own alternative and
+scorch straight onto the layer. The stale set rests on *"a cell whose value changed
+was invalidated in the field"*, which covers every change the FIELD causes and none
+that a direct write causes. `VoxelRenderer.note_external_write()` is the writer
+naming what it wrote; the next full-coverage apply unions it in and clears it.
+**The map-wide walk WAS this bookkeeping, done by brute force every time.**
+
+**3. `_stale_cells()` diffed the ring map and never the face triples** — the last 7.
+Its own doc is right that soot reaches the BUCKET only through the jitter
+exemption, but the renderer does not write a bucket alone: it writes
+`face_soot_code()`, which reads `_face_soot`. A cell whose per-face triple moved
+while its isotropic ring stayed put was invisible. Harmless while every apply was
+map-wide and re-derived everything; silently skipped the moment an apply is driven
+by the set.
+
+### ⚠️ Two pre-existing findings this surfaced, both measured against a stashed HEAD
+
+Neither is caused by this change — `grenade_then_shot` reports them identically
+with the work stashed:
+
+- **`[SHOT-SCOPE] 206 491 cells checked, 3 144 differ from a full apply`.** The SHOT
+  path has the same defect family the fire just shed, and at 3 144 cells it is
+  larger. §10.3's step 3 aimed at this; it is now the next item and it is a
+  correctness bug, not only a perf one.
+- **§9.11's dispatch figures no longer reproduce.** The plan records `grenade 0 →
+  350 dispatch(es)`; the capture now reports **0**, and `the shot` reports 1 against
+  3. Something between 2026-08-23 and today changed what that capture measures.
+  The citation is stale and any argument resting on those numbers has to be re-run.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**219 scripts · 68511 lines total** (under `godot/scripts/`)
+**219 scripts · 68748 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -852,7 +852,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4101 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4224 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1905,7 +1905,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 797 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 805 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -2275,7 +2275,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 605 lines
+`class_name VoxelLightField` · extends `RefCounted` · 669 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -4858,7 +4858,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8050 lines
+extends `Node2D` · 8092 lines
 
 `godot/scripts/world/room.gd`
 

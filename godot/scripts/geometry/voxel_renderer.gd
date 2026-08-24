@@ -2571,6 +2571,29 @@ func columns_with_structure() -> Dictionary:
 ## the index wouldn't already know about; any geometry change is followed by a
 ## full repaint anyway, which rebuilds this index from scratch.
 var _placed_by_gu: Dictionary = {}
+## PERF-10 §10.2 — O(1) membership for the index above, so a cell can be added
+## incrementally without scanning its GU's list. Cleared and rebuilt with it.
+var _placed_index: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> true
+
+## PERF-10 — CELLS WRITTEN TO THE BOARD BY SOMEONE OTHER THAN AN APPLY PASS.
+##
+## The stale-driven apply rests on "a cell whose value changed was invalidated in
+## VoxelLightField, therefore it is in the stale set". That property covers every
+## change the FIELD causes and none that a direct board write causes — and
+## `DetonationChoreographer` is documented as *"the ONLY place a plan ever reaches
+## set_cell()"*, writing the plan's own alternative and scorch straight onto the
+## layer. Measured: without this the ending's gate failed by 200 cells, every one
+## of them a cell the blast's own wave had written.
+##
+## So the writer names what it wrote, and the next full-coverage apply unions it
+## into the set it walks. This is the seam that lets the map-wide walk retire —
+## the walk WAS this bookkeeping, done by brute force every time.
+var _externally_written: Dictionary = {}   ## Vector3i(cell.x, cell.y, level) -> true
+
+
+## See `_externally_written`. Called by whoever writes a cell outside an apply.
+func note_external_write(level: int, cell: Vector2i) -> void:
+	_externally_written[Vector3i(cell.x, cell.y, level)] = true
 
 
 ## PERF-P3 measurement seam — WHAT IS THE MAP-WIDE APPLY ACTUALLY MADE OF?
@@ -2644,6 +2667,7 @@ func _apply_light_field_pass(field) -> void:
 	_apply_cells_seen = 0
 	_apply_cells_written = 0
 	_placed_by_gu.clear()
+	_placed_index.clear()
 	for level in range(_voxel_layers.size()):
 		_apply_light_to_layer(_voxel_layers[level], level, field, true)
 	for level in _negative_voxel_layers.keys():
@@ -2670,6 +2694,13 @@ func _apply_light_field_pass(field) -> void:
 	## PERF-P2 — ONE upload per level per repaint, at the end, after the ghost
 	## records have had their say. Never one upload per cell.
 	flush_cell_soot()
+	## PERF-10 — this pass repainted every cell there is, so it repainted every
+	## cell the accumulator names. `apply_light_field_gus()` deliberately does NOT
+	## do this: it covers some GUs, and the staleness outside them is exactly what
+	## the accumulator exists to remember.
+	if field.has_method("clear_stale_accum"):
+		field.clear_stale_accum()
+	_externally_written.clear()
 
 
 ## VL-03 — repaint ONLY the cells inside the given GU cells, using the index
@@ -2706,6 +2737,101 @@ var _alts_minted: int = 0
 ## INFILTRAITOR_MINT_TRACE=1 prints every alternative actually created. The count
 ## alone cannot say WHY a warm missed; the (coords, alt) pair can.
 var _mint_trace: bool = OS.get_environment("INFILTRAITOR_MINT_TRACE") == "1"
+
+
+## PERF-10 §10.2 — `_placed_by_gu` MEMBERSHIP, in O(1).
+##
+## The index was rebuilt only by the full pass and only ever READ by the scoped
+## one, so a cell placed since that pass — a crater floor revealed by a blast is
+## exactly that — was invisible to every scoped apply. The residue probe measured
+## 92 of 119 disagreeing cells as never-indexed. Maintaining it wherever cells are
+## visited is what stops that class existing, and the membership set is what makes
+## an incremental add cheap enough to do unconditionally.
+func _index_placed(level: int, cell: Vector2i) -> void:
+	var key := Vector3i(cell.x, cell.y, level)
+	if _placed_index.has(key):
+		return
+	_placed_index[key] = true
+	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
+	if not _placed_by_gu.has(gu):
+		_placed_by_gu[gu] = []
+	_placed_by_gu[gu].append({"level": level, "cell": cell})
+
+
+## PERF-10 — THE APPLY, DRIVEN BY THE FIELD'S OWN STALE SET.
+##
+## Identical per-cell body to `_apply_light_to_layer()`; the only difference is
+## which cells it visits. §10.1 priced the map-wide pass at ~610 ms of walk to
+## write 96 cells of 205 384 — the writes and the mints together came to 37 ms,
+## and -3 ms on a second sample. The walk IS the stall, so the fix is to walk the
+## work instead of the board.
+##
+## Correctness rests on one property, and it already has a standing gate:
+## `VoxelLightField._stale_cells()` erases exactly the cache entries the incoming
+## occupancy and soot invalidate, so a cell whose value CHANGES must have been
+## invalidated — otherwise `bucket_for()` would have returned the old cached
+## number and `INFILTRAITOR_LIGHT_EQUIV_PROBE` would not report `0 differ`. So
+## **changed implies in the set**, which is what driving an apply from it needs.
+##
+## ⚠️ It indexes what it visits (see `_index_placed()`), because a cell-driven
+## pass never rebuilds `_placed_by_gu` the way the map-wide one does, and letting
+## the index rot would trade this stall for §10.2's defect.
+func apply_light_field_cells(field, cells: Dictionary) -> void:
+	if field == null:
+		return
+	_apply_cells_seen = 0
+	_apply_cells_written = 0
+	## The field's stale set plus every cell written behind its back. Unioned into
+	## a local so the caller's dictionary is never mutated.
+	var visit: Dictionary = {}
+	for k in cells.keys():
+		visit[k] = true
+	for k in _externally_written.keys():
+		visit[k] = true
+	for key in visit.keys():
+		var level: int = key.z
+		var layer: TileMapLayer = get_layer(level)
+		if layer == null:
+			continue
+		var cell := Vector2i(key.x, key.y)
+		var source_id: int = layer.get_cell_source_id(cell)
+		if source_id == -1:
+			continue   ## erased — destroyed, or ghosted and handled below
+		_apply_cells_seen += 1
+		_index_placed(level, cell)
+		var prev_alt: int = layer.get_cell_alternative_tile(cell)
+		var full_soot: int = field.face_soot_code(cell, level)
+		## PERF-P2/P3 — both writes BEFORE the alt comparison, for the reason
+		## `apply_light_field_gus()` spells out: once soot and bucket left the
+		## alternative id, a change in either leaves `alt_id == prev_alt`.
+		_write_cell_soot(level, cell, full_soot)
+		var full_bucket: int = field.bucket_for(cell, level)
+		_write_cell_bucket(level, cell, full_bucket)
+		var alt_id: int = encode_light_alt(full_bucket,
+				decode_light_flipped(prev_alt))
+		if alt_id == prev_alt:
+			continue
+		var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
+		_ensure_light_alt(source_id, atlas_coords, alt_id)
+		layer.set_cell(cell, source_id, atlas_coords, alt_id)
+		_apply_cells_written += 1
+	## Ghost records, restricted to the same set. A record outside it keeps its
+	## stored alternative, and that is correct by the same property the walk rests
+	## on: a bucket that did not change needs no retarget.
+	for gcell in _ghosted_cells.keys():
+		for record in _ghosted_cells[gcell]:
+			var glevel: int = int(record["level"])
+			if not visit.has(Vector3i(gcell.x, gcell.y, glevel)):
+				continue
+			var flipped: bool = decode_light_flipped(record["prev_alt"])
+			var ghost_soot: int = field.face_soot_code(gcell, glevel)
+			_write_cell_soot(glevel, gcell, ghost_soot)
+			var ghost_bucket: int = field.bucket_for(gcell, glevel)
+			_write_cell_bucket(glevel, gcell, ghost_bucket)
+			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
+	flush_cell_soot()
+	field.clear_stale_accum()
+	_externally_written.clear()
 
 
 func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
@@ -2877,10 +3003,7 @@ func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: boo
 	for cell in layer.get_used_cells():
 		_apply_cells_seen += 1
 		if do_index:
-			var gu := Vector2i(cell.x >> 3, cell.y >> 3)
-			if not _placed_by_gu.has(gu):
-				_placed_by_gu[gu] = []
-			_placed_by_gu[gu].append({"level": level, "cell": cell})
+			_index_placed(level, cell)
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
 		## FACE-SOOT-01: see apply_light_field_gus() — compare the whole id.
 		var full_soot: int = field.face_soot_code(cell, level)

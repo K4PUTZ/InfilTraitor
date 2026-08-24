@@ -550,6 +550,7 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 		if layer0.get_cell_alternative_tile(entry["cell"]) != alt0:
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt0)
 			layer0.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt0)
+			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 	print("[E-FUME] soot fade: %d of %d entry cell(s) already carry their target scorch and are NOT ramped (§9.11a)"
 		% [skipped, entries.size()])
 
@@ -562,6 +563,7 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 			var entry: Dictionary = entries[i]
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
 				VoxelLightField.encode_face_soot(_lightened(faces[i], lighten)))
+			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			painted += 1
 		_flush(voxel_renderer)
 		frame_index += 1
@@ -663,6 +665,7 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			if layer == null:
 				return 0
 			layer.erase_cell(entry["cell"])
+			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"expose":
 			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —
@@ -675,6 +678,10 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
 				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
+			## PERF-10: this bypassed the light field, so the field's stale set
+			## cannot know the cell moved. Say so, or the next stale-driven apply
+			## walks past a cell only a map-wide walk would have corrected.
+			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"dented", "cracked", "soot":
 			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
@@ -690,6 +697,7 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			layer2.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
 				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
+			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"smoke":
 			if smoke_overlay == null:

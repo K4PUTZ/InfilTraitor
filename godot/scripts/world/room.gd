@@ -2996,7 +2996,8 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 	return scope.keys()
 
 
-func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
+func _repaint_voxel_light_buckets(geometry_only: bool = false,
+		stale_driven: bool = false) -> void:
 	if _voxel_renderer == null or _lighting_controller == null:
 		return
 	var registry = _lighting_controller.get_light_registry()
@@ -3030,7 +3031,19 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false) -> void:
 			soot_faces,
 			geometry_only)
 	var _t3: int = Time.get_ticks_usec()
-	_voxel_renderer.apply_light_field(_voxel_light_field)
+	## PERF-10 — WALK THE WORK, NOT THE BOARD.
+	##
+	## §10.1: the map-wide apply is ~610 ms of walk to write 96 cells of 205 384,
+	## and the writes and mints inside it come to 37 ms. The field's own stale set
+	## already names those cells (see VoxelLightField._stale_accum), so when it is
+	## valid this walks it instead. `has_stale_subset()` false means a cache-clearing
+	## build just happened and no subset describes the work — the map-wide pass is
+	## then the correct answer, not a fallback.
+	if stale_driven and _voxel_light_field.has_stale_subset():
+		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
+			_voxel_light_field.stale_cells())
+	else:
+		_voxel_renderer.apply_light_field(_voxel_light_field)
 	if _prof:
 		print("[REPAINT-PROF] occupancy %.1f · soot %.1f · field.build %.1f · apply %.1f ms (geometry_only=%s)"
 			% [float(_t1 - _t0) / 1000.0, float(_t2 - _t1) / 1000.0,
@@ -4426,7 +4439,36 @@ func _burn_final_repaint() -> void:
 	## placed cell lives in apply_light_field() and does not care what build()
 	## kept. Verified with INFILTRAITOR_LIGHT_EQUIV_PROBE=1, which now compares
 	## soot as well as the alternative id.
-	_repaint_voxel_light_buckets(true)
+	## PERF-10 — the fire's ending is the frame the Director named, and it is the
+	## first caller to take the stale-driven path. `INFILTRAITOR_BURN_MAPWIDE_END=1`
+	## forces the old map-wide ending back for an A/B, which is how the 0-cell gate
+	## below is run at all.
+	_repaint_voxel_light_buckets(true,
+		OS.get_environment("INFILTRAITOR_BURN_MAPWIDE_END") != "1")
+	var end_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	## PERF-10 THE GATE. A stale-driven ending is only legitimate if it leaves the
+	## board where the map-wide one would have — the same claim, and the same
+	## shape of proof, as `_repaint_voxel_light_buckets_scoped()`'s scope gate.
+	## Snapshot, force the map-wide pass, snapshot again, count. Env-gated because
+	## it costs the very repaint this change exists to stop paying.
+	if OS.get_environment("INFILTRAITOR_BURN_END_GATE") == "1":
+		var gate_a: Dictionary = _perf_snapshot_alts()
+		_repaint_voxel_light_buckets(true, false)
+		var gate_b: Dictionary = _perf_snapshot_alts()
+		var gate_differ: int = 0
+		var gate_samples: Array = []
+		for k in gate_b:
+			if gate_a.get(k, PERF_SNAPSHOT_MISSING) != gate_b[k]:
+				gate_differ += 1
+				if gate_samples.size() < 8:
+					gate_samples.append("%s %s -> %s" % [k,
+						gate_a.get(k, PERF_SNAPSHOT_MISSING), gate_b[k]])
+		for gs in gate_samples:
+			print("[BURN-END-GATE]   %s" % gs)
+		print("[BURN-END-GATE] %d of %d cell(s) differ from a map-wide ending · ending took %.0f ms · VERDICT: %s"
+			% [gate_differ, gate_b.size(), end_ms,
+			"PASS — the stale set named every cell that needed writing"
+			if gate_differ == 0 else "FAIL — the stale set is not sufficient"])
 	if not _burn_prof:
 		return
 	var after: Dictionary = _perf_snapshot_alts()
@@ -4435,7 +4477,7 @@ func _burn_final_repaint() -> void:
 		if before.get(k, PERF_SNAPSHOT_MISSING) != after[k]:
 			differ += 1
 	print("[BURN-PROF] final repaint %.0f ms · corrected %d of %d cell(s) the scoped burn frames left stale"
-		% [float(Time.get_ticks_usec() - t0) / 1000.0, differ, after.size()])
+		% [end_ms, differ, after.size()])
 
 
 ## Update temporal state for all lights and trigger rebuilds if needed (L-IMP-06)

@@ -141,6 +141,26 @@ var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
 var _face_soot: Dictionary = {}
 var _under_structure: Dictionary = {}      ## {Vector2i: true} floor cols under structure (VL-D3)
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
+
+## PERF-10 — THE STALE SET, ACCUMULATED, so an apply can be driven by it.
+##
+## `build(geometry_only)` already computes exactly which cached cells the incoming
+## occupancy/soot invalidate (`_stale_cells()`), uses it to erase cache entries and
+## then throws it away. §10.1 measured the map-wide apply at ~610 ms of WALK to
+## write 96 cells of 205 384, so that discarded set is the difference between a
+## walk over the board and a walk over the work.
+##
+## ⚠️ ACCUMULATED, NOT PER-BUILD, and that is the whole correctness argument. A
+## fire runs many scoped builds before its final repaint, and each one's stale set
+## is only the delta since the PREVIOUS build. The final repaint's job is to fix
+## staleness accumulated across all of them, so the set has to be a union — reset
+## only when something actually repaints every cell it names.
+##
+## `_stale_total` means "everything is stale": a non-geometry_only build cleared
+## the caches wholesale, so no subset describes the work and the caller must fall
+## back to the map-wide apply. It is the honest answer, not a failure.
+var _stale_accum: Dictionary = {}          ## Vector3i -> true, since the last full apply
+var _stale_total: bool = true              ## true = no subset is valid; walk everything
 var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
 ## VL-03 — surface_factor × soot_factor × under_structure_factor for one voxel,
 ## cached SEPARATELY from the lamp term and NOT cleared by clear_caches(). None
@@ -187,7 +207,14 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		geometry_only: bool = false) -> void:
 	var stale: Dictionary = {}
 	if geometry_only:
-		stale = _stale_cells(occupancy, soot)
+		stale = _stale_cells(occupancy, soot, face_soot)
+		for skey in stale:
+			_stale_accum[skey] = true
+	else:
+		## Every cache is about to be dropped, so every cell is stale and the
+		## accumulator cannot describe the work any more.
+		_stale_total = true
+		_stale_accum.clear()
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
 	_occupancy = occupancy
@@ -224,7 +251,8 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 ##  - the soot term enters only through _compute_bucket()'s micro-jitter
 ##    exemption, at exactly (cell, level) with no neighbourhood — soot has not
 ##    been part of _static_factor since FACE-SOOT-01.
-func _stale_cells(occupancy: Dictionary, soot: Dictionary) -> Dictionary:
+func _stale_cells(occupancy: Dictionary, soot: Dictionary,
+		face_soot: Dictionary = {}) -> Dictionary:
 	var stale: Dictionary = {}
 	for level in _union_keys(_occupancy, occupancy):
 		var before: Variant = _occupancy.get(level)
@@ -243,7 +271,43 @@ func _stale_cells(occupancy: Dictionary, soot: Dictionary) -> Dictionary:
 			continue
 		for cell in _symmetric_difference(before_soot, after_soot):
 			stale[Vector3i(cell.x, cell.y, level)] = true
+	## PERF-10 — ⚠️ AND THE FACE TRIPLES, WHICH THIS USED TO MISS ENTIRELY.
+	##
+	## The paragraph above is right that soot reaches the BUCKET only through the
+	## jitter exemption. But `VoxelRenderer` does not write a bucket alone — it
+	## writes `field.face_soot_code(cell, level)`, which reads `_face_soot`, and a
+	## cell whose per-face triple moves while its isotropic RING stays put was
+	## invisible here. Harmless while every apply was map-wide and re-derived
+	## every cell anyway; the moment an apply is driven by this set, those cells
+	## are silently skipped. Measured: exactly 7 of them survived the union with
+	## the choreographer's own writes, every one a clean-to-sooted face change.
+	for level in _union_keys(_face_soot, face_soot):
+		var before_faces: Variant = _face_soot.get(level)
+		var after_faces: Variant = face_soot.get(level)
+		if before_faces == after_faces:
+			continue
+		for cell in _symmetric_difference(before_faces, after_faces):
+			stale[Vector3i(cell.x, cell.y, level)] = true
 	return stale
+
+
+## PERF-10 — the accumulated stale set, or the statement that no subset is valid.
+## `has_stale_subset()` false means a caller MUST use the map-wide apply.
+func has_stale_subset() -> bool:
+	return not _stale_total
+
+
+func stale_cells() -> Dictionary:
+	return _stale_accum
+
+
+## Called by whichever apply just repainted every cell the set names — the
+## map-wide one (which repaints strictly more) or the stale-driven one. A SCOPED
+## apply must never call this: it covered some GUs, and the staleness outside them
+## is exactly what the accumulator exists to remember.
+func clear_stale_accum() -> void:
+	_stale_accum.clear()
+	_stale_total = false
 
 
 static func _union_keys(a: Dictionary, b: Dictionary) -> Array:

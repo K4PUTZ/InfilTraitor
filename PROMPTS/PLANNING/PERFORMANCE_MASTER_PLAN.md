@@ -1952,3 +1952,56 @@ two independent instruments.**
    [BURN-PROF] final repaint 1 059 ms · soot fade step 4/4`. F6 made the fire fast
    enough to finish before the fade that started it. Ordering, and it is the most
    likely author of residual 1.
+
+### 9.12 ❌ F9 IS DROPPED — its recorded blocker is moot, and the pre-cook is aimed at the wrong term (2026-08-24)
+
+F9 was carried as *"the whole fire in the pre-cook. Blocked: `_build_soot_snapshot()`
+takes `predict_weapon_cells` only, and a burn's holes are BLAST provenance."*
+
+**That blocker describes nothing that still exists.** PERF-P2 moved the scorch into
+its own per-cell plane, and `VoxelRenderer.warm_light_alts_for_gus()` mints on
+`encode_light_alt(field.bucket_for(cell, level), decode_light_flipped(prev_alt))` —
+**soot is not an input to it at all**. Warming "the sooty world" was never the thing
+F9 needed, so the provenance objection cannot block it. The pre-cook has been
+soot-free on purpose and correct that way since it was written.
+
+**But measured on today's build (post-F8), the pre-cook does not pay.** Fire 1,
+fabric at gu (31,3), `INFILTRAITOR_BURN_PRECOOK_STAGES=16`:
+
+```
+                          no precook     16-stage precook
+  frames during the fire   1 865 ms         1 815 ms
+  committing frames        5 x 137          5 x 133
+  of them, MINTING         3 x 193          4 x 153
+  final repaint            1 058 ms         1 058 ms
+  ---------------------------------------------------
+  the fire                 2 923 ms         2 873 ms
+  the warm itself                —        + 1 201 ms
+  what the player waits    2 923 ms       4 074 ms  (+39%)
+```
+
+50 ms is inside this harness's noise, and the warm costs 1 201 ms of stall inside
+`start_burn()`. §8.16 called the pre-cook *"roughly break-even… kept as the
+instrument that isolated the term, not as a fix"* — after F8 it is not even that.
+**It stays env-gated OFF and F9 is dropped as specified**, not deferred.
+
+### ⚠️ And the fire's largest term is now the FINAL REPAINT, which no pre-cook can touch
+
+`INFILTRAITOR_REPAINT_PROFILE=1`, the same run:
+
+```
+[REPAINT-PROF] occupancy 30.6 · soot 154.7 · field.build 63.7 · apply 651.0 ms
+[BURN-PROF]    final repaint 1 058 ms · corrected 1 492 of 205 381 cell(s)
+```
+
+**1 058 ms of a 2 923 ms fire — 36% of it, and the single largest term left.** Of
+that, `apply_light_field()` is 651 ms walking every one of 205 381 placed cells to
+correct **1 492 of them, 0.73%**. Pre-minting cannot shorten a walk; at best it
+removes the one ~240 ms rebuild inside it (§8.15).
+
+That walk is map-wide for one stated reason, MAT-PERF-02's: the scoped burn frames
+leave a residue a scoped pass cannot fix, **and the cause of that residue is still
+open and still MAT-PERF-03's** — 198 cells, every one on a negative (floor) level,
+with scope size, a stale `_placed_by_gu`, field staleness and the apply's reach all
+ruled out by measurement. Closing it is what would let the fire end scoped, and it
+is worth ~650 ms per fire. **That is the fire's next item, not the pre-cook.**

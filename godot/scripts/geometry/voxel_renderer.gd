@@ -2456,6 +2456,40 @@ func _snapshot_cells() -> Dictionary:
 ## OCC-02: put every ghosted cell back to the exact alternative it had before we touched
 ## it. Reading the remembered value — not recomputing it — is what keeps occlusion a pure
 ## view layer over whatever placement decided (baked or generic).
+## OCC-GHOST-DESTROY — A DESTROYED VOXEL HAS NOTHING TO RESTORE, and not saying so
+## is how one voxel gets destroyed TWICE.
+##
+## `_ghosted_cells` remembers a cell's exact placement so un-ghosting can put it
+## back. If the voxel is destroyed WHILE ghosted, that memory becomes a promise to
+## re-create geometry that no longer exists — and `_restore_ghosted_cells()` keeps
+## the promise, because it restores from the saved record precisely so it does not
+## have to consult live layer state (OCC-21).
+##
+## The sequence behind the reported defect (Director, 2026-08-23: *"algumas areas
+## queimam e soltam fumaça uma segunda vez"*):
+##
+##   1. occlusion ghosts a cell — erased, placement remembered
+##   2. a blast destroys that voxel: `process_dirty()` erases it, sees
+##      `already_gone`, and correctly does NOT emit `voxel_destroyed`
+##   3. the agent moves on and `_restore_ghosted_cells()` PUTS THE CELL BACK
+##   4. the next dirty pass finds geometry there, erases it, and emits
+##      `voxel_destroyed` — smoke, debris and sparks for a voxel that died in an
+##      earlier blast
+##
+## ⚠️ The emit guards at both erase sites are CORRECT and are not the bug: in step
+## 4 the cell really was there. The flag was never finalised, and this finalises it
+## at the moment of destruction — the only place that knows.
+func forget_ghost_record(cell: Vector2i, level: int) -> void:
+	var records = _ghosted_cells.get(cell)
+	if records == null:
+		return
+	for i in range(records.size() - 1, -1, -1):
+		if int(records[i]["level"]) == level:
+			records.remove_at(i)
+	if (records as Array).is_empty():
+		_ghosted_cells.erase(cell)
+
+
 func _restore_ghosted_cells() -> void:
 	for cell in _ghosted_cells.keys():
 		for record in _ghosted_cells[cell]:
@@ -2928,6 +2962,8 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			## stale flag in future.
 			var already_gone: bool = _voxel_layers[voxel.level] 				.get_cell_source_id(voxel.grid_pos) == -1
 			_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
+			## See forget_ghost_record(): a destroyed voxel must not be restorable.
+			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if not already_gone:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
 
@@ -3035,6 +3071,8 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			## or roof voxel erased twice is one destruction, not two.
 			var was_there: bool = layer.get_cell_source_id(voxel.grid_pos) != -1
 			layer.erase_cell(voxel.grid_pos)
+			## See forget_ghost_record(): a destroyed voxel must not be restorable.
+			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if was_there:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 

@@ -1777,3 +1777,62 @@ queimam e soltam fumaça uma segunda vez"* — need the strip read against the s
 fire's own frames, and the standing lead is theirs: a dirty flag finalised in the
 wrong place, with `voxel_destroyed` firing again on a re-render and the smoke
 following it.
+
+## 9.11 🟠 THE DOUBLE-SMOKE MECHANISM — found by reading, NOT yet reproduced
+
+The Director's lead was right about the shape: *"a gente ja teve um caso assim
+antes onde a dirty flag nao era finalizada no lugar certo e a fumaça acontecia
+duas vezes."*
+
+**The mechanism, read out of the code:**
+
+```
+1. occlusion ghosts a cell — erased, its placement remembered in _ghosted_cells
+2. a blast destroys that voxel: process_dirty() erases it, sees `already_gone`,
+   and correctly does NOT emit voxel_destroyed
+3. the agent moves on and _restore_ghosted_cells() PUTS THE CELL BACK — it
+   restores from the saved record precisely so it need not consult live layer
+   state (OCC-21), so it cannot know the voxel died
+4. the next dirty pass finds geometry there, erases it, and emits
+   voxel_destroyed — smoke, debris and sparks for a voxel killed in an
+   earlier blast
+```
+
+⚠️ **Both emit guards are CORRECT and are not the bug.** In step 4 the cell really
+was there. The ghost record is what was never finalised.
+
+**The fix:** `forget_ghost_record(cell, level)`, called at both erase sites — a
+destroyed voxel stops being restorable at the moment it dies, which is the only
+place that knows.
+
+### ⚠️ But this is NOT closed, and the reason is the honest one
+
+**No red-before-green on the real symptom.** The one existing diagnostic that
+counts dispatches was run both ways:
+
+```
+                         WITH the fix        WITHOUT the fix
+grenade 0                350 dispatch(es)    350 dispatch(es)
+grenade 1                184                 184
+the shot                   3                   3
+```
+
+**Identical.** `grenade_then_shot` never moves the agent, so occlusion never ghosts
+the walls it blows up, and step 1 of the sequence above never happens. The capture
+cannot see this defect, and matching numbers here are evidence of nothing.
+
+So the fix is **a correctness fix on a mechanism read out of the code**, not a
+demonstrated repair of the reported symptom. Recorded that way deliberately: this
+project's rule is that *"fixing a reported bug needs red-before-green on the REAL
+symptom, not a constructed stand-in"*, and shipping it as closed would be exactly
+the claim that rule exists to stop.
+
+**What the repro needs:** a capture that (1) walks the agent so the target wall is
+ghosted, (2) detonates, (3) walks the agent away so `_restore_ghosted_cells()`
+runs, (4) detonates again — and counts dispatches at each step. Steps 1 and 3 are
+the ones no existing capture does.
+
+**And the soot half is still unexplained.** *"toda a fuligem está sendo repintada"*
+is consistent with the map-wide `_burn_final_repaint()` doing exactly what
+MAT-PERF-02 designed it to do, which would make it correct-but-visible rather than
+a defect — that has not been established either way.

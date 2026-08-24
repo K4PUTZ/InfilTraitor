@@ -48,27 +48,34 @@ func _fail(msg: String) -> void:
 
 
 func test_negative_layer_creation_and_lookup() -> void:
+	## LEVEL-RENUMBER — this half of the file still said `-1`, and it PASSED, which
+	## is the problem: with the ground plane at PLAYABLE_LEVEL, level -1 is eighty-
+	## one levels below it rather than "the floor top", so the test was asserting a
+	## true but meaningless thing. The property under test is unchanged — a level
+	## BELOW the ground plane is created on demand, retrievably, idempotently — and
+	## it is now expressed against the level that actually is the floor top.
 	print("[1] _ensure_negative_voxel_layer() creates a real, retrievable layer\n")
 
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
+	var below: int = GeometryCoords.FLOOR_TOP_LEVEL
 
-	if renderer.get_layer(-1) != null:
-		_fail("get_layer(-1) should be null before anything ensures it")
+	if renderer.get_layer(below) != null:
+		_fail("get_layer(floor top) should be null before anything ensures it")
 	else:
-		_pass("get_layer(-1) is null before it's ensured (nothing pre-created)")
+		_pass("get_layer(floor top) is null before it's ensured (nothing pre-created)")
 
-	renderer._ensure_negative_voxel_layer(-1)
-	var layer: TileMapLayer = renderer.get_layer(-1)
+	renderer._ensure_negative_voxel_layer(below)
+	var layer: TileMapLayer = renderer.get_layer(below)
 	if layer != null:
-		_pass("get_layer(-1) returns a real TileMapLayer after ensuring it")
+		_pass("get_layer(floor top) returns a real TileMapLayer after ensuring it")
 	else:
-		_fail("get_layer(-1) still null after _ensure_negative_voxel_layer(-1)")
+		_fail("get_layer(floor top) still null after ensuring it")
 
-	renderer._ensure_negative_voxel_layer(-1)
-	if renderer.get_layer(-1) == layer:
-		_pass("Calling _ensure_negative_voxel_layer(-1) again is a no-op (same node, not a new one)")
+	renderer._ensure_negative_voxel_layer(below)
+	if renderer.get_layer(below) == layer:
+		_pass("Ensuring the same sub-ground level again is a no-op (same node, not a new one)")
 	else:
 		_fail("Second ensure call replaced the layer instead of reusing it")
 
@@ -122,23 +129,27 @@ func test_negative_level_position_and_zindex_formula() -> void:
 ## D18: negative levels are never auto-filled contiguously — ensuring -3
 ## must NOT silently create -1 and -2 along the way.
 func test_lazy_not_contiguous() -> void:
-	print("[3] Lazy reveal — ensuring level -3 does not create -1 or -2\n")
+	## LEVEL-RENUMBER — the same D18 contract, addressed from the ground stack.
+	## The three levels are the floor top and the two beneath it, which is what
+	## `-1 / -2 / -3` used to name.
+	print("[3] Lazy reveal — ensuring the third ground level does not create the two above it\n")
 
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
+	var top: int = GeometryCoords.FLOOR_TOP_LEVEL
 
-	renderer._ensure_negative_voxel_layer(-3)
+	renderer._ensure_negative_voxel_layer(top - 2)
 
-	if renderer.get_layer(-1) == null and renderer.get_layer(-2) == null:
-		_pass("Levels -1 and -2 remain unbuilt after only -3 was ensured")
+	if renderer.get_layer(top) == null and renderer.get_layer(top - 1) == null:
+		_pass("The floor top and the level below it remain unbuilt after only the third was ensured")
 	else:
-		_fail("Ensuring -3 leaked into building -1 and/or -2 — violates D18's lazy contract")
+		_fail("Ensuring the third ground level leaked into building the two above it — violates D18's lazy contract")
 
-	if renderer.get_layer(-3) != null:
-		_pass("Level -3 itself exists, as requested")
+	if renderer.get_layer(top - 2) != null:
+		_pass("The third ground level itself exists, as requested")
 	else:
-		_fail("Level -3 was not created despite being explicitly ensured")
+		_fail("The third ground level was not created despite being explicitly ensured")
 
 	renderer.queue_free()
 	print("")
@@ -154,8 +165,11 @@ func test_positive_pipeline_unaffected() -> void:
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 
-	renderer._ensure_negative_voxel_layer(-1)
-	renderer._ensure_negative_voxel_layer(-2)
+	## LEVEL-RENUMBER — the two ground levels, present so the test can prove walls
+	## are placed WITHOUT them being disturbed. Their identity is what matters, not
+	## the literals that used to name them.
+	renderer._ensure_negative_voxel_layer(GeometryCoords.FLOOR_TOP_LEVEL)
+	renderer._ensure_negative_voxel_layer(GeometryCoords.FLOOR_DEEP_LEVEL)
 
 	renderer.render_block(Vector2i(0, 0), 0, 1, "concrete")
 
@@ -193,12 +207,14 @@ func test_slab_render_routes_negative_level_correctly() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(3, 3)
-	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, -1, "earth", registry)
+	## LEVEL-RENUMBER — a FLOOR slab belongs on the floor top, which is what `-1`
+	## named before the ground plane moved.
+	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
 	renderer.render_slab(slab)
 
-	var layer: TileMapLayer = renderer.get_layer(-1)
+	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 	if layer == null:
-		_fail("render_slab() with slab.level=-1 did not create the negative layer")
+		_fail("render_slab() on the floor top did not create its layer")
 		renderer.queue_free()
 		print("")
 		return

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**219 scripts · 69011 lines total** (under `godot/scripts/`)
+**219 scripts · 69027 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3660,7 +3660,7 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 244 lines
+extends `SceneTree` · 260 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 

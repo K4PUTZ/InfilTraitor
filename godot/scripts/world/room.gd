@@ -2737,7 +2737,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 		return
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
-	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var top_wall_level: int = _voxel_renderer.top_wall_level()
 	var soot_faces: Dictionary = {}
 	## The FIELD is still built map-wide, and that is not laziness: D24 derives
 	## soot from which voxels are absent ANYWHERE, so a scoped snapshot would be
@@ -2979,7 +2979,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 		_voxel_light_field = VoxelLightField.new()
 	var field = _voxel_light_field
 	var soot_faces: Dictionary = {}
-	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var top_wall_level: int = _voxel_renderer.top_wall_level()
 	var occupancy: Dictionary = _voxel_renderer.build_occupancy(predict_destroyed)
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
@@ -3033,7 +3033,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		_voxel_light_field = VoxelLightField.new()
 	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
 	## 8-storey ceiling-fixture height — see VoxelLightField.build().
-	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var top_wall_level: int = _voxel_renderer.top_wall_level()
 	## FACE-SOOT-01: one derivation feeds both — the isotropic ring map (probes,
 	## vision modes, selftests) and the per-face triples the renderer packs into
 	## each cell's modulate alpha.
@@ -3116,17 +3116,14 @@ const PERF_SNAPSHOT_MISSING: Vector2i = Vector2i(-1, -1)
 
 func _perf_snapshot_alts() -> Dictionary:
 	var out: Dictionary = {}
-	for level in range(_voxel_renderer._voxel_layers.size()):
-		var layer: TileMapLayer = _voxel_renderer._voxel_layers[level]
+	## LEVEL-RENUMBER — one store, so one loop. This function is the reason the
+	## unification is worth doing: it is the project's most-cited probe and it was
+	## two near-identical halves, either of which could have been forgotten.
+	for level in _voxel_renderer.level_keys():
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
 		for cell in layer.get_used_cells():
 			out[Vector3i(cell.x, cell.y, level)] = Vector2i(
 				layer.get_cell_alternative_tile(cell),
-				_voxel_renderer.cell_soot_at(level, cell))
-	for level in _voxel_renderer._negative_voxel_layers.keys():
-		var nlayer: TileMapLayer = _voxel_renderer._negative_voxel_layers[level]
-		for cell in nlayer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = Vector2i(
-				nlayer.get_cell_alternative_tile(cell),
 				_voxel_renderer.cell_soot_at(level, cell))
 	return out
 
@@ -4021,7 +4018,7 @@ func _burn_precook(burn_wave: Dictionary) -> void:
 	var scope: Array = shot_repaint_scope(gus.keys())
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
-	var top_wall_level: int = maxi(_voxel_renderer.get_layer_count() - 1, 0)
+	var top_wall_level: int = _voxel_renderer.top_wall_level()
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
 	var minted: int = 0
@@ -5084,14 +5081,10 @@ func _capture_cell_index_spike() -> void:
 	if _voxel_renderer == null:
 		print("[SPIKE] no renderer")
 		return
-	var levels: Array = []
-	for i in range(_voxel_renderer.get_layer_count()):
-		levels.append(i)
-	for k in _voxel_renderer._negative_voxel_layers.keys():
-		levels.append(k)
-	print("[SPIKE] layers: %d positive + %d negative" % [
+	var levels: Array = _voxel_renderer.level_keys()
+	print("[SPIKE] layers: %d wall + %d below the ground plane" % [
 		_voxel_renderer.get_layer_count(),
-		_voxel_renderer._negative_voxel_layers.size()])
+		levels.size() - _voxel_renderer.get_layer_count()])
 	for level in [0, 1, levels.min()]:
 		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
 		if layer == null:
@@ -5189,8 +5182,7 @@ func _capture_cell_index_spike() -> void:
 	## own TileMapLayer and therefore its own 2D problem.
 	var cells_x: int = (_room_size.x + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
 	var cells_y: int = (_room_size.y + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
-	var level_count: int = _voxel_renderer.get_layer_count() \
-		+ _voxel_renderer._negative_voxel_layers.size()
+	var level_count: int = _voxel_renderer.level_keys().size()
 	var imgs: Array = []
 	var texs: Array = []
 	var t_build: int = Time.get_ticks_usec()
@@ -5372,12 +5364,7 @@ func _capture_cell_index_gate() -> void:
 		await get_tree().process_frame
 
 	var vp := get_viewport()
-	var levels: Array = []
-	for i in range(_voxel_renderer.get_layer_count()):
-		levels.append(i)
-	for k in _voxel_renderer._negative_voxel_layers.keys():
-		levels.append(k)
-	levels.sort()
+	var levels: Array = _voxel_renderer.level_keys()
 
 	## WHAT THE TILESET ACTUALLY CONTAINS. The shader hard-codes the quad offset
 	## as `quad_to_map = (0, 20)`, which is `region/2 + texture_origin` for a
@@ -5785,11 +5772,7 @@ func _capture_level_census() -> void:
 	var shift_env := OS.get_environment("INFILTRAITOR_CENSUS_LEVEL_SHIFT")
 	var shift: int = shift_env.to_int() if shift_env.is_valid_int() else 0
 	var lines: Array = []
-	var levels: Array = []
-	for level in range(_voxel_renderer._voxel_layers.size()):
-		levels.append(level)
-	for level in _voxel_renderer._negative_voxel_layers.keys():
-		levels.append(level)
+	var levels: Array = _voxel_renderer.level_keys()
 	for level in levels:
 		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
 		if layer == null:
@@ -6414,11 +6397,8 @@ func _burn_probe_snapshot() -> Dictionary:
 	var out: Dictionary = {}
 	if _voxel_light_field == null:
 		return out
-	for level in range(_voxel_renderer._voxel_layers.size()):
-		for cell in _voxel_renderer._voxel_layers[level].get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
-	for level in _voxel_renderer._negative_voxel_layers.keys():
-		for cell in _voxel_renderer._negative_voxel_layers[level].get_used_cells():
+	for level in _voxel_renderer.level_keys():
+		for cell in (_voxel_renderer.get_layer(level) as TileMapLayer).get_used_cells():
 			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
 	return out
 

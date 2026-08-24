@@ -240,16 +240,13 @@ func _pick_source_gu(built: Dictionary) -> Vector2i:
 ## floor layer this renderer holds — the ground truth test_3 diffs against.
 func _snapshot_layers(renderer) -> Dictionary:
 	var out: Dictionary = {}
-	for level in range(renderer._voxel_layers.size()):
-		var layer: TileMapLayer = renderer._voxel_layers[level]
+	## LEVEL-RENUMBER — one store, one loop. The wall and floor halves were
+	## identical apart from where they read the layer from.
+	for level in renderer.level_keys():
+		var layer: TileMapLayer = renderer.get_layer(level)
 		for cell in layer.get_used_cells():
 			out[Vector3i(cell.x, cell.y, level)] = [layer.get_cell_source_id(cell),
 				layer.get_cell_atlas_coords(cell), layer.get_cell_alternative_tile(cell)]
-	for level in renderer._negative_voxel_layers.keys():
-		var nlayer: TileMapLayer = renderer._negative_voxel_layers[level]
-		for cell in nlayer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = [nlayer.get_cell_source_id(cell),
-				nlayer.get_cell_atlas_coords(cell), nlayer.get_cell_alternative_tile(cell)]
 	return out
 
 

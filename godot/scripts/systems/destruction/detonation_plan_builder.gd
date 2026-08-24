@@ -790,7 +790,7 @@ static func _phase_light(s: Dictionary) -> void:
 	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
 	var field := VoxelLightFieldClass.new()
 	field.build(ctx.get("lights", []), ctx.get("shadow_results", []),
-		maxi(voxel_renderer.get_layer_count() - 1, 0),
+		voxel_renderer.top_wall_level(),
 		s["occupancy"], s["soot_snapshot"], s["under_structure"], s["soot_faces"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()

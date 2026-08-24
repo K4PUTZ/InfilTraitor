@@ -743,22 +743,60 @@ var _ghosted_cells: Dictionary = {}
 ## Z-index base for wall layers (from room.gd context)
 var _wall_base_z_index: int = 10
 
-## Array of TileMapLayers [level_0, level_1, ...] — walls/blocks/props, unchanged
-## by D17. Positive levels only; never touched by the floor work below.
-var _voxel_layers: Array[TileMapLayer] = []
+## LEVEL-RENUMBER stage A — ONE store, keyed by level, sparse.
+##
+## This replaces `_voxel_layers` (an Array of positive levels) and
+## `_negative_voxel_layers` (a Dictionary of negative ones). D17's note explained
+## the split honestly: *"GDScript's `array[-1]` means 'last element', not 'grow
+## downward', so unifying storage would mean every one of _voxel_layers' many
+## existing 0-indexed callers would need to learn to ignore negative keys."*
+##
+## That reasoning was right, and the Director's renumber is what retires it —
+## with no level below zero there is nothing for an index to collide with. Stage A
+## unifies the store while the numbering is UNCHANGED, so the census can prove the
+## refactor alone changes nothing; stage B then moves the numbers.
+##
+## What the split cost was not correctness but repetition: every map-wide walk in
+## this file and in `room.gd` came in pairs, one loop for each store, and a walk
+## that forgot its second half was a silent bug with no symptom until someone
+## looked at the right voxel.
+var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
 
-## DESTRUCTION D17/D18: floor/background layers, keyed by their true (negative)
-## level. A SEPARATE dictionary rather than folding into _voxel_layers above —
-## on purpose, not an oversight: GDScript's `array[-1]` means "last element",
-## not "grow downward", so unifying storage would mean every one of
-## _voxel_layers' many existing 0-indexed callers (walls, junctions, props,
-## occlusion) would need to learn to ignore negative keys. Keeping floor levels
-## in their own dictionary means ALL of that positive-level code needs zero
-## changes — D17's whole point. get_layer()/_set_voxel_cell() are the two
-## routing points that make the split invisible to every other caller.
-## Never contiguous-from-zero (D18: lazy reveal) — a level exists here only
-## once something has actually built it.
-var _negative_voxel_layers: Dictionary = {}
+## LEVEL-RENUMBER — the ground plane: the lowest level that counts as WALL rather
+## than floor/bedrock. Stage A keeps it at 0 so the numbering is untouched; stage B
+## moves it to GeometryCoords.PLAYABLE_LEVEL and every level with it. Every
+## "is this a wall level" test in this file goes through here, so stage B is one
+## constant rather than a sweep of sign checks.
+var _ground_plane_level: int = 0
+
+
+## Every built level, ascending. The single replacement for the paired
+## positive-then-negative walks this file used to be full of.
+func level_keys() -> Array:
+	var out: Array = _layers.keys()
+	out.sort()
+	return out
+
+
+## Built levels at or above the ground plane — walls, blocks, props. D18's lazy
+## reveal means floor levels are sparse, so this is not "the rest of the array".
+func wall_level_keys() -> Array:
+	var out: Array = []
+	for level in level_keys():
+		if level >= _ground_plane_level:
+			out.append(level)
+	return out
+
+
+func ground_plane_level() -> int:
+	return _ground_plane_level
+
+
+## The highest built WALL level, as a level number — not a count. Overhead lamps
+## anchor to it (VoxelLightField.build()), so it has to be the real level.
+func top_wall_level() -> int:
+	var walls: Array = wall_level_keys()
+	return walls[walls.size() - 1] if not walls.is_empty() else _ground_plane_level
 
 ## FLOOR-DEPTH-02 (Director, 2026-07-28): depth → tone. With all three ground
 ## levels wearing the same zone texture (D20), a crater lost every cue that it
@@ -1673,11 +1711,7 @@ func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
 ## levels (floor/background) route to _negative_voxel_layers; this is the
 ## single point that makes the split storage invisible to every caller.
 func get_layer(level: int) -> TileMapLayer:
-	if level < 0:
-		return _negative_voxel_layers.get(level)
-	if level >= _voxel_layers.size():
-		return null
-	return _voxel_layers[level]
+	return _layers.get(level)
 
 
 ## FLOAT-PROP-Z-01 — sentinel for "this GU has no wall/block geometry at all".
@@ -1727,8 +1761,10 @@ func classify_geometry_over_rect(center_voxel: Vector2i, world_rect: Rect2, radi
 			var nearer: bool = (vx + vy) > ref_depth
 			## Top-down, stopping at this cell's highest OVERLAPPING voxel: that
 			## one carries the greatest z the cell can contribute.
-			for level in range(_voxel_layers.size() - 1, -1, -1):
-				var layer: TileMapLayer = _voxel_layers[level]
+			var _walls_desc: Array = wall_level_keys()
+			_walls_desc.reverse()
+			for level in _walls_desc:
+				var layer: TileMapLayer = _layers[level]
 				if layer == null:
 					continue
 				if layer.get_cell_source_id(cell) == -1:
@@ -1767,17 +1803,17 @@ func voxel_world_position(grid_pos: Vector2i, level: int) -> Vector2:
 ## Positive (wall) levels only, unchanged by D17 — occlusion's column scan has
 ## no reason to know about floor levels below it.
 func get_layer_count() -> int:
-	return _voxel_layers.size()
+	return wall_level_keys().size()
 
 
 ## OCC-03: Get the highest z_index across all voxel layers (used to render agent above all geometry).
 ## Returns: z_index of the topmost voxel layer, or WALL_BASE_Z_INDEX if no layers yet.
 func get_max_voxel_z_index() -> int:
-	if _voxel_layers.is_empty():
+	var walls: Array = wall_level_keys()
+	if walls.is_empty():
 		return _wall_base_z_index
-	# Each layer has z_index = _wall_base_z_index + level
-	# Topmost layer is at index (_voxel_layers.size() - 1)
-	return _wall_base_z_index + (_voxel_layers.size() - 1)
+	# Each layer has z_index = _wall_base_z_index + (level - ground plane)
+	return _wall_base_z_index + (top_wall_level() - _ground_plane_level)
 
 
 ## Cells placed by the last render() pass. Reset at the top of every render().
@@ -1800,9 +1836,7 @@ func get_placed_cell_count() -> int:
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:
 	debug_nudge += delta
-	for layer in _voxel_layers:
-		layer.position += delta
-	for layer in _negative_voxel_layers.values():
+	for layer in _layers.values():
 		layer.position += delta
 
 
@@ -1971,7 +2005,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 				if junction_result and junction_result.source_id_int >= 0:
 					_diag_total_cells += 1
 					_diag_baked_hits += 1
-					_voxel_layers[level].set_cell(column.voxel_pos, junction_result.source_id_int, junction_result.atlas_coords, 0)
+					(_layers[level] as TileMapLayer).set_cell(column.voxel_pos, junction_result.source_id_int, junction_result.atlas_coords, 0)
 					continue
 
 			# BAKE-FIX-06: Find neighboring wall voxel and mirror its atom
@@ -2025,7 +2059,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 					atlas_coords = Vector2i.ZERO
 				
 				# Set the cell with H-flipped alternative
-				var layer: TileMapLayer = _voxel_layers[level]
+				var layer: TileMapLayer = _layers[level]
 				layer.set_cell(column.voxel_pos, source_id, atlas_coords, alternative_id)
 			else:
 				# No neighbor found: render flat material-only
@@ -2381,14 +2415,16 @@ func apply_occlusion(occluded: Dictionary) -> void:
 		## pushing the visible roof edge one voxel deeper (a ~4-px roofline seam
 		## against the wireframe's top cap). Missing max_level (older callers,
 		## tests) keeps the historical erase-to-top behavior.
-		var max_level: int = int(entry.get("max_level", _voxel_layers.size() - 1))
+		var max_level: int = int(entry.get("max_level", top_wall_level()))
 		## OCC-21 dropped tile-alternative ghosting for erase+wireframe-fill (see
 		## below) — `entry["ring"]` is no longer read here; ring-based visuals now
 		## live entirely in occlusion_slice_panel.gd/occlusion_wireframe_overlay.gd.
 		var restore_records: Array = []
 
-		for level in range(min_level, mini(max_level + 1, _voxel_layers.size())):
-			var layer: TileMapLayer = _voxel_layers[level]
+		for level in range(min_level, max_level + 1):
+			var layer: TileMapLayer = _layers.get(level)
+			if layer == null:
+				continue
 			var source_id: int = layer.get_cell_source_id(cell)
 			if source_id == -1:
 				continue  ## nothing placed at this level of the column
@@ -2451,8 +2487,8 @@ func verify_ghost_roundtrip(occluded: Dictionary) -> bool:
 ## OCC-02: (level, cell) → [source_id, atlas_coords, alternative] for every placed cell.
 func _snapshot_cells() -> Dictionary:
 	var snap: Dictionary = {}
-	for level in range(_voxel_layers.size()):
-		var layer: TileMapLayer = _voxel_layers[level]
+	for level in wall_level_keys():
+		var layer: TileMapLayer = _layers[level]
 		for cell in layer.get_used_cells():
 			snap[[level, cell]] = [
 				layer.get_cell_source_id(cell),
@@ -2503,9 +2539,9 @@ func _restore_ghosted_cells() -> void:
 	for cell in _ghosted_cells.keys():
 		for record in _ghosted_cells[cell]:
 			var level: int = record["level"]
-			if level >= _voxel_layers.size():
+			if not _layers.has(level):
 				continue
-			var layer: TileMapLayer = _voxel_layers[level]
+			var layer: TileMapLayer = _layers[level]
 			## OCC-21: restore from saved placement data, not current layer state
 			## (the cell was erased, so layer queries would return -1)
 			layer.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
@@ -2532,18 +2568,18 @@ func _restore_ghosted_cells() -> void:
 ## still mints on demand — which is why this is safe to do speculatively.
 func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 	var occupancy: Dictionary = {}
-	for level in range(_voxel_layers.size()):
+	## ⚠️ ONE loop, and the prediction now reaches FLOOR levels too. The paired
+	## version applied `predict_destroyed` to positive levels only and rebuilt
+	## negative ones verbatim — so a predicted crater floor stayed solid in the
+	## predicted occupancy. Harmless while the prediction only ever named wall
+	## cells; a latent wrong answer the moment it did not.
+	for level in level_keys():
 		var level_set: Dictionary = {}
-		for cell in _voxel_layers[level].get_used_cells():
+		for cell in (_layers[level] as TileMapLayer).get_used_cells():
 			if predict_destroyed.has(Vector3i(cell.x, cell.y, level)):
 				continue
 			level_set[cell] = true
 		occupancy[level] = level_set
-	for level in _negative_voxel_layers.keys():
-		var neg_set: Dictionary = {}
-		for cell in _negative_voxel_layers[level].get_used_cells():
-			neg_set[cell] = true
-		occupancy[level] = neg_set
 	## Cells hidden by occlusion are erased from the tilemap but are still SOLID
 	## geometry — omitting them would make every ghosted column read as a cavity
 	## and light up its neighbours the moment the agent walked past.
@@ -2563,8 +2599,8 @@ func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 ## so it reflects the ORIGINAL cover, not the post-blast state.
 func columns_with_structure() -> Dictionary:
 	var cols: Dictionary = {}
-	for level in range(_voxel_layers.size()):
-		for cell in _voxel_layers[level].get_used_cells():
+	for level in wall_level_keys():
+		for cell in (_layers[level] as TileMapLayer).get_used_cells():
 			cols[cell] = true
 	return cols
 
@@ -2647,11 +2683,8 @@ func apply_light_field(field) -> void:
 
 func _apply_split_probe(field) -> void:
 	var warm_t0: int = Time.get_ticks_usec()
-	for level in range(_voxel_layers.size()):
-		for cell in _voxel_layers[level].get_used_cells():
-			field.bucket_for(cell, level)
-	for level in _negative_voxel_layers.keys():
-		for cell in (_negative_voxel_layers[level] as TileMapLayer).get_used_cells():
+	for level in level_keys():
+		for cell in (_layers[level] as TileMapLayer).get_used_cells():
 			field.bucket_for(cell, level)
 	var warm_us: int = Time.get_ticks_usec() - warm_t0
 	var mints_before: int = _minted_light_alts.size()
@@ -2677,10 +2710,8 @@ func _apply_light_field_pass(field) -> void:
 	_apply_cells_written = 0
 	_placed_by_gu.clear()
 	_placed_index.clear()
-	for level in range(_voxel_layers.size()):
-		_apply_light_to_layer(_voxel_layers[level], level, field, true)
-	for level in _negative_voxel_layers.keys():
-		_apply_light_to_layer(_negative_voxel_layers[level], level, field, true)
+	for level in level_keys():
+		_apply_light_to_layer(_layers[level], level, field, true)
 	## Occluded cells are ERASED right now (OCC-21) and will come back from
 	## _ghosted_cells records — retarget each stored alternative so releasing
 	## occlusion cannot resurrect a stale bucket.
@@ -3075,7 +3106,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 	else:
 		# Clear cell
-		if voxel.level < _voxel_layers.size():
+		if _layers.has(voxel.level):
 			## ⚠️ THE SIGNAL MEANS "A VOXEL JUST DISAPPEARED", NOT "WE PROCESSED A
 			## DESTROYED VOXEL", and conflating the two cost a real bug.
 			##
@@ -3092,8 +3123,9 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			## whole CLASS impossible: re-processing an already-erased cell is now
 			## a no-op instead of a second explosion of VFX, whatever leaves a
 			## stale flag in future.
-			var already_gone: bool = _voxel_layers[voxel.level] 				.get_cell_source_id(voxel.grid_pos) == -1
-			_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
+			var _vlayer: TileMapLayer = _layers[voxel.level]
+			var already_gone: bool = _vlayer.get_cell_source_id(voxel.grid_pos) == -1
+			_vlayer.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
 			## See forget_ghost_record(): a destroyed voxel must not be restorable.
 			forget_ghost_record(voxel.grid_pos, voxel.level)
@@ -3555,10 +3587,8 @@ func debug_tiledata_census() -> Dictionary:
 	var nulls: int = 0
 	var null_by_alt: Dictionary = {}
 	var origins: Dictionary = {}
-	for level in range(_voxel_layers.size()):
-		total += _census_level(_voxel_layers[level], null_by_alt, origins)
-	for level in _negative_voxel_layers.keys():
-		total += _census_level(_negative_voxel_layers[level], null_by_alt, origins)
+	for level in level_keys():
+		total += _census_level(_layers[level], null_by_alt, origins)
 	for alt in null_by_alt.keys():
 		nulls += int(null_by_alt[alt])
 	return {"total": total, "nulls": nulls, "null_by_alt": null_by_alt,
@@ -3600,10 +3630,8 @@ func debug_bucket_census() -> Dictionary:
 	var disagree: int = 0
 	var mism: Array = []
 	var layers: Array = []
-	for level in range(_voxel_layers.size()):
-		layers.append([level, _voxel_layers[level]])
-	for level in _negative_voxel_layers.keys():
-		layers.append([level, _negative_voxel_layers[level]])
+	for level in level_keys():
+		layers.append([level, _layers[level]])
 	for pair in layers:
 		var level: int = pair[0]
 		var layer: TileMapLayer = pair[1]
@@ -3672,10 +3700,8 @@ func debug_atlas_alignment() -> Dictionary:
 func debug_layer_origin_drift() -> Array:
 	var out: Array = []
 	var pairs: Array = []
-	for level in range(_voxel_layers.size()):
-		pairs.append([level, _voxel_layers[level]])
-	for level in _negative_voxel_layers.keys():
-		pairs.append([level, _negative_voxel_layers[level]])
+	for level in level_keys():
+		pairs.append([level, _layers[level]])
 	for pair in pairs:
 		var level: int = pair[0]
 		var layer: TileMapLayer = pair[1]
@@ -3788,10 +3814,13 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	return layer
 
 
+## LEVEL-RENUMBER — `storey_count` is a COUNT of wall levels, kept as such because
+## every caller computes it from `storey_count * LEVELS_PER_STOREY`. It ensures the
+## contiguous run from the ground plane upward; `_ensure_layer()` is the per-level
+## form the sparse floor levels need.
 func _ensure_voxel_layers(storey_count: int) -> void:
-	while _voxel_layers.size() < storey_count:
-		var level := _voxel_layers.size()
-		_voxel_layers.append(_build_voxel_layer_node(level))
+	for i in range(storey_count):
+		_ensure_layer(_ground_plane_level + i)
 
 
 ## D17/D18: negative levels are never contiguous-from-zero and rarely all
@@ -3801,12 +3830,20 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 ## purpose: that shape would invite building a contiguous run nobody asked
 ## for, which is precisely what D18 forbids.
 func _ensure_negative_voxel_layer(level: int) -> void:
-	if level >= 0:
-		push_error("VoxelRenderer._ensure_negative_voxel_layer: level %d is not negative" % level)
+	if level >= _ground_plane_level:
+		push_error("VoxelRenderer._ensure_negative_voxel_layer: level %d is not below the ground plane (%d)"
+			% [level, _ground_plane_level])
 		return
-	if _negative_voxel_layers.has(level):
+	_ensure_layer(level)
+
+
+## LEVEL-RENUMBER — the one creation seam. Idempotent, and sparse by construction:
+## D18's lazy reveal means a level exists only once something has built it, which
+## a Dictionary expresses directly where an Array had to be grown contiguously.
+func _ensure_layer(level: int) -> void:
+	if _layers.has(level):
 		return
-	_negative_voxel_layers[level] = _build_voxel_layer_node(level)
+	_layers[level] = _build_voxel_layer_node(level)
 
 
 ## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
@@ -4026,9 +4063,7 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 
 ## Clear all layers and voxels
 func clear() -> void:
-	for layer in _voxel_layers:
-		layer.clear()
-	for layer in _negative_voxel_layers.values():
+	for layer in _layers.values():
 		layer.clear()
 	## OCC-02: the cells those records point at no longer exist. Keeping them would make
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
@@ -4231,5 +4266,5 @@ func prune_baked_sources() -> void:
 
 func _to_string() -> String:
 	return "VoxelRenderer{layers=%d, negative_layers=%d, tileset=%s}" % [
-		_voxel_layers.size(), _negative_voxel_layers.size(), "valid" if _tileset else "null"
+		wall_level_keys().size(), _layers.size() - wall_level_keys().size(), "valid" if _tileset else "null"
 	]

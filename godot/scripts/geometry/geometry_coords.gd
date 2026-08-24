@@ -18,6 +18,28 @@ const VOXEL_STOREY_HEIGHT_PX: float = 160.0
 ## Canonical per VOXEL_MASTER_PLAN.md line 85: "8 voxels × 8 levels = 64 VoxelRefs per slice"
 const LEVELS_PER_STOREY: int = 8
 
+## LEVEL-RENUMBER (Director, 2026-08-24): *"seria melhor a gente só usar valores
+## positivos e convencionar que o andar 10 vai ser sempre o jogável, o que for pra
+## cima vai ser 11 em diante e temos até o andar 0 para criar possibilidades de
+## efeitos subterrâneos."*
+##
+## EVERY render level is now >= 0. The playable storey is 10, so its voxel levels
+## are 80..87; the ground beneath it is storey 9 (72..79), and storeys 0..8 are
+## unbuilt headroom for underground work. Upper storeys count on from 11.
+##
+## What this buys is not a bug fix — the residue that made §10.2 look like a
+## negative-level problem was `_placed_by_gu` staleness, and renumbering would not
+## have prevented it. What the SIGN cost was a second store: `_voxel_layers` was an
+## Array and `_negative_voxel_layers` a Dictionary, `get_layer()` branched between
+## them, and every map-wide walk had to remember to iterate both. One non-negative
+## axis is one Array and one index.
+##
+## ⚠️ NOT a mapfile concern: `.map.json` stores no level at all (checked — zero
+## `level` keys, zero negative numbers), so this is a runtime numbering change with
+## no migration and no section version bump.
+const PLAYABLE_STOREY: int = 10
+const PLAYABLE_LEVEL: int = PLAYABLE_STOREY * LEVELS_PER_STOREY
+
 ## Texture authoring resolution: flat texels per voxel
 ## Pinned by BAKE-01 Tile Anatomy Audit; example N=16 → 1024×512 facades, 128×128 slices
 ## DO NOT use hardcoded multiples (64*N, 32*N); always reference this constant.

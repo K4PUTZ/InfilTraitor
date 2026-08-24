@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**219 scripts · 68860 lines total** (under `godot/scripts/`)
+**219 scripts · 68894 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -661,7 +661,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 86 lines
+`class_name GeometryCoords` · 108 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -673,6 +673,8 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_STEP_PX` = `20.0`
 - `VOXEL_STOREY_HEIGHT_PX` = `160.0`
 - `LEVELS_PER_STOREY` = `8`
+- `PLAYABLE_STOREY` = `10`
+- `PLAYABLE_LEVEL` = `PLAYABLE_STOREY * LEVELS_PER_STOREY`
 - `TEX_AUTHORING_N` = `16`
 - `VOXEL_ATOM_W` = `32`
 - `VOXEL_ATOM_H` = `36`
@@ -852,7 +854,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4235 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4270 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3214,7 +3216,7 @@ extends `SceneTree` · 441 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 864 lines
+extends `SceneTree` · 861 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4858,7 +4860,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8193 lines
+extends `Node2D` · 8173 lines
 
 `godot/scripts/world/room.gd`
 

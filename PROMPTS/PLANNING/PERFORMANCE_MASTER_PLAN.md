@@ -5,8 +5,10 @@
 `_advance_burn` is 11 ms, and the post-fire board is 0 pixels different.** The burn's
 OWN region stops relighting for the burn's OWN duration — not F1's global cadence,
 which the Director rejected — with a one-quad shader wash hiding the boundary. The
-two-grenade filmstrip exists (§9.10). ⚠️ The Director's reported bug (soot repainted
-wholesale, some areas smoking twice) is NOT diagnosed yet.
+two-grenade filmstrip exists (§9.10). ⚠️ The Director's reported bug is NOT diagnosed, and
+§9.11a corrects the repro: TWO grenades on DIFFERENT blocks, where the second
+blast changes the FIRST one's soot. The ghost-restore mechanism found in §9.11 is
+a real defect but almost certainly not that one.
 Earlier: **v2.2 — THE FIRE BLOCK SHIPPED (§9.8): 6 276 -> 3 142 ms, span
 3.34 -> 1.42 s, rebuilds 13 -> 4, and the post-fire board is 0 pixels different.**
 F1 (the light tick) was BUILT, MEASURED and then REJECTED by the Director on look —
@@ -1836,3 +1838,37 @@ the ones no existing capture does.
 is consistent with the map-wide `_burn_final_repaint()` doing exactly what
 MAT-PERF-02 designed it to do, which would make it correct-but-visible rather than
 a defect — that has not been established either way.
+
+### 9.11a ⚠️ THE REPRO, CORRECTED BY THE DIRECTOR — and it is NOT the ghost path
+
+2026-08-23, closing: *"são duas granadas em locais diferentes, por exemplo no bloco
+de pano e depois no de madeirite. A segunda explosão influencia na fuligem da
+primeira."*
+
+**That is a different defect from §9.11's**, and §9.11's ghost-restore mechanism is
+almost certainly not it — nothing in that sequence needs a second blast anywhere,
+let alone one across the map. §9.11's fix stands on its own merits (a destroyed
+voxel must not be restorable) and its "not reproduced" status is unchanged; it just
+stops being a candidate explanation for what the Director actually saw.
+
+**The lead this points at instead, stated as a lead:** `_build_soot_snapshot()` is
+MAP-WIDE by design, and D24 derives soot from which voxels are ABSENT anywhere. So
+blast 2's holes join the seed set that blast 1's region is re-derived against, and
+`_burn_final_repaint()` is map-wide too — it re-applies the whole board. The
+scoped-repaint comment says exactly why the snapshot cannot be scoped: *"a scoped
+snapshot would be a second soot producer — the exact drift SOOT_MASTER_PLAN §1.2
+found between two of them."*
+
+So the question tomorrow is a fork, and both branches are real:
+- the re-derivation is CORRECT and blast 1's soot legitimately deepens because the
+  board genuinely has more holes in it — visible, not broken; or
+- something in the derivation is seed-count or order dependent and blast 1's region
+  comes back DIFFERENT rather than merely darker.
+
+**What settles it:** two grenades on different materials (fabric, then plywood),
+capture the board after each, and diff the FIRST block's region alone. §9.10's
+two-grenade capture already does everything except place them on different blocks
+and mask the diff to the first crater.
+
+**Deferred to 2026-08-24 at the Director's instruction** — *"vamos testar com mais
+detalhes amanha."*

@@ -1,7 +1,13 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v2.2 — THE FIRE BLOCK SHIPPED (§9.8): 6 276 -> 3 142 ms, span
+**Status:** 🟢 **v2.3 — F8 SHIPPED (§9.9): the fire is 6 276 -> 1 885 ms (-70%),
+`_advance_burn` is 11 ms, and the post-fire board is 0 pixels different.** The burn's
+OWN region stops relighting for the burn's OWN duration — not F1's global cadence,
+which the Director rejected — with a one-quad shader wash hiding the boundary. The
+two-grenade filmstrip exists (§9.10). ⚠️ The Director's reported bug (soot repainted
+wholesale, some areas smoking twice) is NOT diagnosed yet.
+Earlier: **v2.2 — THE FIRE BLOCK SHIPPED (§9.8): 6 276 -> 3 142 ms, span
 3.34 -> 1.42 s, rebuilds 13 -> 4, and the post-fire board is 0 pixels different.**
 F1 (the light tick) was BUILT, MEASURED and then REJECTED by the Director on look —
 the light has to stay responsive — so the span became the lever instead (F6), the
@@ -1702,3 +1708,72 @@ shadow projection, another map-scale computation. That is the Director's *"troca
 por meia dúzia"* exactly. **F5** (fabric and cardboard authored as props) is
 deliberately held back: it changes the map, which would make this comparison
 incomparable.
+
+## 9.9 ✅ F8 — the fire's own region stops relighting, and the burn is 1.9 s
+
+Director, 2026-08-23: *"embora a gente não vá trabalhar por tics, continuamos
+querendo suspender a atualização da area de luz na região com fogo, usando o clarão
+pra disfarçar a borda… o maior problema é o lag mesmo, tudo fica travando."*
+
+**F8 is NOT F1, and the distinction is the whole design.** F1 was a GLOBAL cadence
+and was rejected because the light has to stay responsive. F8 is confined to the
+burn's own GUs and the burn's own duration — the burn's repaint was ALREADY scoped
+to the fire's GUs, so this simply does not run it, and every other light in the game
+is untouched.
+
+```
+fire 1, same fire throughout (354 voxels, fabric at gu 31,3)
+
+                       original   after F3/F4/F6   after F8
+  fire wall clock       6 276 ms      3 142 ms     1 885 ms     -70%
+  _advance_burn         1 268 ms        691 ms        11 ms
+    of it the repaint   1 247 ms        679 ms         0 ms
+  committing frames   13 x ~346      6 (5 x 423)   6 (5 x 140)
+  span                   3.34 s        1.42 s        1.31 s
+```
+
+**`_advance_burn` is 11 ms.** The destruction system was never the cost; the light
+it asked for was, and §8.15 said so before any of this was built.
+
+**Criterion 5 — PASS, 0 differing pixels**, `--fixed-fps 60`, F8 against the same
+build with F8 off, same map, same grenade, both captured after the fire. The
+map-wide `_burn_final_repaint()` still runs, so the end state is unchanged by
+construction and this is the measurement that says the construction held.
+
+### The glow, and what it is NOT
+
+`FireGlowOverlay` — **one `draw_rect` and a fragment shader**, never a primitive per
+voxel. §8.8 measured the existing VFX overlays at 95% `draw_*` submission, so a glow
+built the usual way would have spent a slice of exactly what F8 saved: the
+Director's *"trocar 6 por meia dúzia"*. It does not light faces, deliberately —
+anything that does goes back through the per-cell path F8 just suspended.
+
+⚠️ **A defect I introduced while chasing one.** The first version called
+`release()` beside the final repaint, and a fire has TWO end paths — that one, and
+the early return when the last batch is already all holes. A fire ending the other
+way left the wash on screen permanently. It is released where the fire is DECLARED
+OUT now. Recorded because it is the same class of bug as the one being investigated,
+committed while investigating it.
+
+## 9.10 ✅ P-FILM-2 — the two-grenade filmstrip exists
+
+`INFILTRAITOR_FILMSTRIP_SECOND_AT=<frame>` fires a second grenade partway through
+the strip, so both blasts and both fires land on ONE continuous timeline.
+
+```
+INFILTRAITOR_GRENADE_GUS="31,3;31,1" INFILTRAITOR_FILMSTRIP_SECOND_AT=55 \
+INFILTRAITOR_FILMSTRIP_SECOND_INDEX=1 \
+python3 tools/persistent/build_filmstrip.py --frames 120 --grenade 0 --cols 10
+```
+
+[`twogrenade_filmstrip.png`](../../Screenshots/history/twogrenade_filmstrip.png) —
+kept under a non-`auto_` name so the rotation cannot take it.
+
+⚠️ **The reported bug is NOT diagnosed yet.** The strip reads cleanly on the first
+blast and fire; the washed-out tiles around frames 42–47 are the second blast's
+NEGATIVE FLASH (`explosion_flash_overlay`), not the glow and not a defect. The
+Director's symptoms — *"toda a fuligem está sendo repintada"* and *"algumas areas
+queimam e soltam fumaça uma segunda vez"* — need the strip read against the second
+fire's own frames, and the standing lead is theirs: a dirty flag finalised in the
+wrong place, with `voxel_destroyed` firing again on a re-render and the smoke
+following it.

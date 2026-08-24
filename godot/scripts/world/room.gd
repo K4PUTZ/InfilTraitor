@@ -31,6 +31,7 @@ const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_ove
 const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
+const FireGlowOverlayClass = preload("res://godot/scripts/overlays/fire_glow_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
 const ExplosionFlashOverlayClass = preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")
@@ -517,6 +518,9 @@ const AIM_Z_RAYS: int = 103
 const AIM_Z_ARC: int = 104
 const AIM_Z_GRENADE: int = 105
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
+## PERF-F8 — the wash that hides the edge of the region BURN_SUSPEND_REGION_LIGHT
+## freezes. One quad, never a primitive per voxel — see the class doc.
+var _fire_glow_overlay: FireGlowOverlay = null
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
 var _explosion_flash_overlay: ExplosionFlashOverlay = null  ## E-FLASH-01 — 4-frame fireball + white flash frame
@@ -1125,6 +1129,8 @@ func _ready() -> void:
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
 	_ember_overlay = EmberOverlayClass.new()
 	add_child(_ember_overlay)
+	_fire_glow_overlay = FireGlowOverlayClass.new()
+	add_child(_fire_glow_overlay)
 
 	## VFX-01: smoke/spark (above-floor) and dust/chip (floor-level) VFX for
 	## VoxelRenderer.voxel_destroyed — same deferred z-assignment as above.
@@ -2275,6 +2281,10 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_explosion_flash_overlay.set_negative_z_index(max_voxel_z_index + 7)
 	if _ember_overlay != null:
 		_ember_overlay.z_index = max_voxel_z_index + 5
+	if _fire_glow_overlay != null:
+		## UNDER the embers, over the voxels: it is a wash on the geometry, not a
+		## light in front of the fire's own particles.
+		_fire_glow_overlay.z_index = max_voxel_z_index + 4
 
 
 ## VFX-01: dispatch VoxelRenderer.voxel_destroyed to the smoke/spark/debris
@@ -3876,6 +3886,26 @@ var _burn_prof_alts_at_start: int = 0
 ## a property of the fire, and it must not change with the machine it runs on.
 ## 0.20 s gives a 1.9-second burn about nine bites, which is also what reads as
 ## something being eaten rather than deleted.
+## PERF-F8 — THE FIRE'S OWN REGION STOPS RELIGHTING WHILE IT BURNS.
+##
+## ⚠️ NOT F1, AND THE DIFFERENCE IS THE WHOLE POINT. F1 was a GLOBAL cadence —
+## every repaint in the game got coarser — and the Director rejected it: *"não
+## vamos trabalhar a luz por tics, ela precisa ser mais rapida."* This is confined
+## to the burn's OWN GUs and to the burn's OWN duration. Everything outside the
+## fire relights exactly as fast as it does today, because the burn's repaint was
+## already scoped to the fire's GUs and this simply does not run it.
+##
+## Director, 2026-08-23: *"continuamos querendo suspender a atualização da area de
+## luz na região com fogo, usando o clarão pra disfarçar a borda."* The glow is
+## `FireGlowOverlay` and it exists to hide the boundary between the frozen region
+## and the live light around it — one quad and a shader, never a primitive per
+## voxel (§8.8 measured that path at 95% submission).
+##
+## The end state is unchanged BY CONSTRUCTION: `_burn_final_repaint()` is map-wide
+## and still runs, so the board the fire leaves is the board it always left. That
+## is criterion 5, and it is what a pixel diff has to confirm.
+const BURN_SUSPEND_REGION_LIGHT: bool = true
+
 const BURN_COMMIT_INTERVAL_S: float = 0.20
 var _burn_commit_accum: float = 0.0
 var _burn_pending: Array = []
@@ -4128,7 +4158,23 @@ func _advance_burn(delta: float) -> void:
 		burn_gus[gu] = true
 		_burn_soot_gus[gu] = true
 	var prof_repaint_t0: int = Time.get_ticks_usec() if _burn_prof else 0
-	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(burn_gus.keys()), false)
+	## PERF-F8 — the wash covers what the freeze covers, grown as the fire eats.
+	if BURN_SUSPEND_REGION_LIGHT and _fire_glow_overlay != null and agent != null:
+		var gr := Rect2()
+		var first := true
+		for gu in burn_gus.keys():
+			var wp: Vector2 = agent._cell_to_world(gu)
+			if first:
+				gr = Rect2(wp, Vector2.ZERO)
+				first = false
+			else:
+				gr = gr.expand(wp)
+		if not first:
+			_fire_glow_overlay.cover(gr)
+	## The GUs are still collected (the glow is sized from them, and the final
+	## repaint still owes them soot) — only the per-frame relight is skipped.
+	if not BURN_SUSPEND_REGION_LIGHT:
+		_repaint_voxel_light_buckets_scoped(shot_repaint_scope(burn_gus.keys()), false)
 	if _burn_prof:
 		_burn_prof_repaint_us += Time.get_ticks_usec() - prof_repaint_t0
 		## Did THIS committing frame mint anything at all? The scoped repaint is what
@@ -4163,6 +4209,15 @@ func _advance_burn(delta: float) -> void:
 			var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(e, _edge_registry))
 			tally[pc] = int(tally.get(pc, 0)) + 1
 			best_open = maxi(best_open, PassageQuery.clear_cells_in_storey(e, _edge_registry, 0))
+		## PERF-F8 — ⚠️ RELEASED HERE, where the fire is DECLARED OUT, and not
+		## beside the final repaint. There are TWO paths that end a fire: this one,
+		## and the early return taken when the last batch is already all holes. The
+		## first version of this only released on one of them, so a fire ending the
+		## other way left the wash on screen for good — which is the same class of
+		## defect as the one being chased (a flag finalised in the wrong place),
+		## introduced while chasing it.
+		if _fire_glow_overlay != null:
+			_fire_glow_overlay.release()
 		print_debug("[E-BURN] fire out — %d of %d scheduled voxel(s) consumed over %.2fs · passage over %d burnt edge(s): %s · widest base storey %d/64 cells open"
 			% [_burn_scheduler.consumed_count(), _burn_scheduler.scheduled_count(),
 			_burn_scheduler.elapsed(), _burn_touched_edges.size(), tally, best_open])
@@ -6020,6 +6075,20 @@ func _capture_detonation_filmstrip() -> void:
 	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
 	var index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
 	var tz_index: int = index_env.to_int() if index_env.is_valid_int() else 2
+	## P-FILM-2 (Director, 2026-08-23) — *"vamos implementar essas mudanças que
+	## conversamos e fazer o filmstrip com as duas granadas, e aí vai ficar tudo
+	## mais claro."* A SECOND grenade fired partway through the strip, so the sheet
+	## carries both blasts on ONE continuous timeline. That is the case the report
+	## is about: soot repainting wholesale, and *"algumas areas queimam e soltam
+	## fumaça uma segunda vez"* — the shape of a dirty flag cleared in the wrong
+	## place, which frame-by-frame is exactly what can show it.
+	##
+	## Frame index, not seconds, because the strip's own axis is frames.
+	## Empty/absent = the original single-grenade strip, unchanged.
+	var second_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_SECOND_AT")
+	var second_at: int = second_env.to_int() if second_env.is_valid_int() else -1
+	var second_index_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_SECOND_INDEX")
+	var second_index: int = second_index_env.to_int() if second_index_env.is_valid_int() else 1
 
 	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip"
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -6088,6 +6157,23 @@ func _capture_detonation_filmstrip() -> void:
 	## it. `frame_post_draw` fires after the draw actually completes, so every
 	## grab matches the frame it belongs to and no frames are spent.
 	for i in range(frame_count):
+		## P-FILM-2 — the second grenade, on the frame it was asked for. Fired
+		## BEFORE the grab so the tile that names the frame is the one that
+		## carries it, and through the same close-then-detonate order as the
+		## first: the menu must be gone before the blast's own visuals play.
+		if second_at >= 0 and i == second_at:
+			if second_index >= 0 and second_index < _test_zone_controller._grenades.size():
+				print("[P-FILM] second grenade at frame %d, gu=%s" % [
+					i, _test_zone_controller._grenades[second_index]["gu_cell"]])
+				_test_zone_controller.open_menu_for(second_index)
+				if _context_menu != null:
+					_context_menu.close()
+				if _blast_wireframe_overlay != null:
+					_blast_wireframe_overlay.clear()
+				_test_zone_controller.detonate_active()
+			else:
+				push_warning("[P-FILM] second grenade index %d out of range (%d placed)" % [
+					second_index, _test_zone_controller._grenades.size()])
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
 		if img == null:

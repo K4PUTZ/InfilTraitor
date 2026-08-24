@@ -5445,7 +5445,10 @@ func _capture_two_fires() -> void:
 
 	for i in range(2):
 		var cell: Vector2i = _test_zone_controller._grenades[i]["gu_cell"]
-		if _camera_controller != null and agent != null:
+		## ⚠️ FRAMED ONCE, on the FIRST fire only. Re-aiming for fire 2 would move
+		## the camera between the two captures and make every pixel differ, which
+		## is precisely the comparison this capture exists to make.
+		if i == 0 and _camera_controller != null and agent != null:
 			_camera_controller.focus_on(agent._cell_to_world(cell))
 		if _fow_controller != null:
 			_fow_controller.reveal_around(cell, 24)
@@ -5461,6 +5464,15 @@ func _capture_two_fires() -> void:
 		## "no fuel in range" against a wall it had already eaten.
 		_test_zone_controller.open_menu_for(i)
 		_test_zone_controller.detonate_active()
+		## ⚠️ THE MENU DOES NOT CLOSE ITSELF ON THIS PATH, and the reason is this
+		## capture, not the game: `DetonateContextMenu._on_action_pressed()` calls
+		## close() before invoking the confirm callback, and calling
+		## `detonate_active()` directly bypasses the button entirely (the same
+		## bypass `_take_prediction()`'s comment already names). Left open, the
+		## panel sits in every frame this capture saves and reads as a game defect
+		## in the diff — which is exactly how it was misread once.
+		if _context_menu != null:
+			_context_menu.close()
 		## Wait for the fire to actually START before waiting for it to end —
 		## the burn wave is scheduled by the detonation's own choreography, not
 		## synchronously by detonate_active(), and polling is_burning() straight
@@ -5486,6 +5498,13 @@ func _capture_two_fires() -> void:
 			if _voxel_renderer != null else 0
 		print("[TWO-FIRES] ===== FIRE %d DONE · minted %d new alternative(s) (%d -> %d) =====" % [
 			i + 1, minted_after - minted_before, minted_before, minted_after])
+		## The board after EACH fire, framed identically both times (the camera is
+		## moved before fire 1 and never again), so the two are diffable. This is
+		## how "a second blast re-activates the FIRST one's voxels" is caught: the
+		## region of crater 1 must not change between the two frames.
+		var tf_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+		DirAccess.make_dir_recursive_absolute(tf_dir)
+		await _save_shot_frame(tf_dir, "twofires_after_%d.png" % (i + 1))
 
 
 func _capture_light_burn_probe() -> void:

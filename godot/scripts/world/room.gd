@@ -7250,7 +7250,30 @@ func _show_screenshot_toast(message: String) -> void:
 
 ## ── INPUT-01: Signal handlers for InputController ──────────────────────────
 
+## PERF-F7 — THE AGENT IS LOCKED WHILE THE ACTION THAT SPENT ITS AP RESOLVES.
+##
+## Director, 2026-08-23: *"o agente fica livre durante o lag da queima, quando na
+## realidade, pela natureza do jogo ser por turnos, ele deve ficar travado até o
+## fim do evento que originou o gasto dos AP (no caso jogar a granada). Então esse
+## fogo é a continuação da explosão."*
+##
+## This is a TURN-STRUCTURE correction, not a performance one, and it changes what
+## the burn's wall clock MEANS: it stops being background time the player can act
+## through and becomes the tail of the grenade's own resolution. That is also why
+## F6 shortened the fire — under this rule every millisecond of burn is a
+## millisecond the player is waiting.
+##
+## Scope is deliberately narrow: AGENT ACTIONS only. The camera, the view mode,
+## pause, screenshots and the debug tools stay live, because locking those would
+## make a resolving turn feel like a frozen game rather than a busy one.
+func is_resolving_action() -> bool:
+	return _burn_scheduler.is_burning() or not _burn_pending.is_empty()
+
+
 func _on_posture_lower_requested() -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	print_debug("[ROOM] Handler: posture lower")
 	## Z lowers: STANDING -> CROUCHING -> PRONE
 	var next_posture := agent.posture
@@ -7264,6 +7287,9 @@ func _on_posture_lower_requested() -> void:
 
 
 func _on_posture_raise_requested() -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	print_debug("[ROOM] Handler: posture raise")
 	## X raises: PRONE -> CROUCHING -> STANDING
 	var next_posture := agent.posture
@@ -7293,12 +7319,18 @@ func _on_view_mode_requested(mode: String) -> void:
 
 
 func _on_peek_initiated() -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	print_debug("[ROOM] Handler: peek initiated")
 	## P: set peek pending flag
 	_peek_pending = true
 
 
 func _on_movement_input_requested(direction: Vector2i, is_large_step: bool) -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	print_debug("[ROOM] Handler: movement %s (large_step=%s)" % [direction, is_large_step])
 	## Arrow keys: dual-purpose (nudge or peek, decided by state)
 	if _debug_tools_controller.is_nudge_mode_active():
@@ -7369,17 +7401,26 @@ func is_grenade_targeting() -> bool:
 ## than written here so the re-keying of an open aim (see set_weapon()) cannot be
 ## forgotten by a second caller.
 func _on_weapon_select_requested(weapon_id: String) -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	if _agent_shot_controller != null:
 		_agent_shot_controller.set_weapon(weapon_id)
 
 
 func _on_grenade_mode_requested() -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	if _test_zone_controller != null:
 		_test_zone_controller.enter_grenade_mode()
 
 
 ## T-GRENADE: Enter key to throw grenade
 func _on_grenade_throw_requested() -> void:
+	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
+	if is_resolving_action():
+		return
 	if _test_zone_controller != null:
 		_test_zone_controller.execute_grenade_throw()
 

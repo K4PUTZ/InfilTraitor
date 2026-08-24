@@ -8,13 +8,13 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**217 scripts · 66865 lines total** (under `godot/scripts/`)
+**218 scripts · 67765 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
-- **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, voxel_ruler_overlay.gd
+- **debug/** — atom_sheet_debug.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
@@ -488,6 +488,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ---
 
+### `vfx_draw_probe.gd`
+
+`class_name VfxDrawProbe` · extends `RefCounted` · 98 lines
+
+`godot/scripts/debug/vfx_draw_probe.gd`
+
+---
+
 ### `voxel_ruler_overlay.gd`
 
 `class_name VoxelRulerOverlay` · extends `Node2D` · 103 lines
@@ -844,7 +852,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 3758 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4063 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1038,7 +1046,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 200 lines
+`class_name DebrisOverlay` · extends `Node2D` · 218 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -1114,7 +1122,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 329 lines
+`class_name EmberOverlay` · extends `Node2D` · 350 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1461,7 +1469,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_overlay.gd`
 
-`class_name ShrapnelOverlay` · extends `Node2D` · 117 lines
+`class_name ShrapnelOverlay` · extends `Node2D` · 131 lines
 
 `godot/scripts/overlays/shrapnel_overlay.gd`
 
@@ -1509,7 +1517,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 244 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 264 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1899,7 +1907,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1619 lines
+`class_name DetonationPlanBuilder` · 1666 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -4842,7 +4850,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 7115 lines
+extends `Node2D` · 7492 lines
 
 `godot/scripts/world/room.gd`
 

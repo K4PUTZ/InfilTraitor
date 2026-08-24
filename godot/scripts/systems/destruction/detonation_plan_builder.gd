@@ -1186,6 +1186,34 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 ##
 ## Only reaches materials with `burn_consumption > 0`, so wood's ratified VL-D4
 ## look is untouched: it still glows and leaves its geometry standing.
+## PERF-F3/F4 — HOW MUCH THE BLAST TAKES OUTRIGHT, and how much is left to burn.
+##
+## Director, 2026-08-23: *"a explosão pode destruir mais voxels de uma vez e queimar
+## só o final do tecido e do papelão… vamos testar inicialmente uns 70% da area
+## afetada, e queima o que sobrar"* — soft materials are curtains, boxes and props,
+## not whole walls (MATERIALS M3-5b), so a fire's job is the REMNANT (§3.1a) rather
+## than the surface.
+##
+## ⚠️ IMPLEMENTED IN THE SCHEDULE, NOT IN THE RESISTANCE MODEL. The `destroy` wave
+## is CHOREOGRAPHY; the actual damage comes from `delta.state_of(voxel)`, i.e. from
+## BlastCalculator. Forcing 70% through there would mean editing the resistance
+## model to get a scheduling outcome, which is the wrong lever and puts the
+## destruction selftests at risk for a tuning number. Instead the share lands in
+## the fire's FIRST batch (`at = lit_at`), which is one committing frame and reads
+## as the blast having taken it.
+##
+## ⚠️ AND IT IS NOT WHERE THE PERFORMANCE WIN COMES FROM. The committing-frame
+## COUNT is the fire's duration over BURN_COMMIT_INTERVAL_S, and the 30% remnant
+## still spans the same window — so this cuts the WORK inside a frame (~36 ms of
+## ~350) and not the number of frames. PERF §9's F1 is what carries the win; this
+## carries the design, and less total burn work with it.
+##
+## A `static var` rather than a const: it is a STAT the Director tunes (Rule 1),
+## and the roll is FNV-1a per cell for the same reason every other roll here is —
+## build_plan() is pure and its output is cached and replayed.
+static var blast_takes_share: float = 0.70
+
+
 static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 		lit_at: float, flammability: float, entry_radius: float = 0.0) -> void:
 	var burn_cells: Dictionary = s["burn_cells"]
@@ -1208,6 +1236,12 @@ static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 	var jitter: float = 1.0 - BURN_LIFE_JITTER \
 		+ 2.0 * BURN_LIFE_JITTER * _hash_unit("BURNLIFE", voxel.grid_pos, voxel.level)
 	var life: float = BURN_BASE_LIFE_S * maxf(flammability, 0.01) * jitter
+	## PERF-F3/F4 — the blast's share goes in the FIRST batch. Its own hash domain
+	## ("BURNSHARE"), so changing this split cannot shift which voxels burn at all
+	## (BURNROLL) or how long the survivors take (BURNLIFE) — three independent
+	## rolls, so one can be tuned without disturbing the other two.
+	if _hash_unit("BURNSHARE", voxel.grid_pos, voxel.level) < blast_takes_share:
+		life = 0.0
 	_append(s["waves"]["burn"], ring, {
 		"voxel": voxel,
 		"cell": voxel.grid_pos,
@@ -1255,16 +1289,29 @@ static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 ## makes each rung likelier to stop).
 const BURN_RADIAL_REACH_VOXELS: float = 26.0
 
-const BURN_BASE_LIFE_S: float = 1.4
-const BURN_LIFE_JITTER: float = 0.45   ## ±45%, so a patch does not vanish in one frame
+## PERF-F6 (Director, 2026-08-23) — *"vamos seguir e deixar o fogo mais rápido e
+## volátil"*, and it is the lever that replaces the rejected light tick.
+##
+## WHY THE SPAN IS WHAT COSTS. A fire's committing frames are
+## `span / BURN_COMMIT_INTERVAL_S` and each one repaints the light, so the SPAN is
+## the whole bill — 3.0 s of fire is ~15 rebuilds whatever the voxel count. The
+## previous values put a wall's span at ~3.3 s, and most of that was not `life` at
+## all: `EMBER_CLIMB_DELAY_S` staggers the flame UP the wall and dominated.
+##
+## Faster AND more volatile, so the two read as one change rather than as a fire
+## that simply got shorter: the base life comes down hard, the jitter goes UP so
+## the patch dies unevenly, and the climb and seed staggers come down with them.
+## Look values — the Director tunes these on a filmstrip, not on argument.
+const BURN_BASE_LIFE_S: float = 0.55
+const BURN_LIFE_JITTER: float = 0.60   ## ±60% — volatility, and it still cannot vanish in one frame
 
 const EMBER_CLIMB_MAX_LEVELS: int = 3
 const EMBER_CLIMB_CHANCE: float = 0.55       ## chance the first level above catches
 const EMBER_CLIMB_DECAY: float = 0.55        ## each further level is this much likelier to stop
 const EMBER_CLIMB_LIFE_DECAY: float = 0.7    ## each rung burns out sooner than the one below
-const EMBER_CLIMB_DELAY_S: float = 0.28      ## base stagger per level climbed
+const EMBER_CLIMB_DELAY_S: float = 0.10      ## PERF-F6: base stagger per level climbed (was 0.28 — this dominated the span)
 const EMBER_CLIMB_DELAY_JITTER: float = 0.55 ## +/- fraction of that stagger, per cell
-const EMBER_SEED_STAGGER_S: float = 0.45     ## window the seeds' own ignitions spread across
+const EMBER_SEED_STAGGER_S: float = 0.20     ## PERF-F6: window the seeds' own ignitions spread across (was 0.45)
 
 
 const EMBER_NEIGHBOURS: Array[Vector3i] = [

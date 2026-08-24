@@ -1,7 +1,15 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v2.1 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK. §9.7 revises
+**Status:** 🟢 **v2.2 — THE FIRE BLOCK SHIPPED (§9.8): 6 276 -> 3 142 ms, span
+3.34 -> 1.42 s, rebuilds 13 -> 4, and the post-fire board is 0 pixels different.**
+F1 (the light tick) was BUILT, MEASURED and then REJECTED by the Director on look —
+the light has to stay responsive — so the span became the lever instead (F6), the
+blast takes 70% (F3/F4), and the agent is now locked while its own grenade resolves
+(F7), which is what makes the burn's wall clock the player's wait. Acceptance is
+scored honestly: criterion 2 FAILED and is recorded as failed, because it belonged
+to the design that was rejected. F2 dropped with a reason; F5 held back.
+Earlier: **v2.1 — §9 IS A WORK ORDER, AND IT IS THE ACTIVE WORK. §9.7 revises
 it on the Director's answers: F1 becomes a light-repaint CADENCE pinned in seconds
 rather than a suspension, and there is NO glow system — the FIRE BECOMES A LIGHT on
 that same tick, because a glow that lights faces and a glow that is cheap are the
@@ -1600,3 +1608,97 @@ and pays proportionally fewer rebuilds. F3 and F1 multiply rather than overlap.
 
 **F1 → F3 → F4 → F2a → F2b (attempt) → F5.** F2b last inside the block because it
 is the only item allowed to fail without failing the block.
+
+## 9.8 ✅ THE BLOCK IS BUILT AND VERIFIED — and F1 was REJECTED on look before it shipped
+
+Director, 2026-08-23, after seeing F1's measurement: *"não vamos trabalhar a luz por
+tics, ela precisa ser mais rapida. Ok, vamos seguir e deixar o fogo mais rápido e
+volátil."* And, changing what the burn's wall clock MEANS:
+
+> *"o agente fica livre durante o lag da queima, quando na realidade, pela natureza
+> do jogo ser por turnos, ele deve ficar travado até o fim do evento que originou o
+> gasto dos AP (no caso jogar a granada). Então esse fogo é a continuação da
+> explosão."*
+
+**F1 (the light tick) is REVERTED.** It worked — measured below — and it was
+rejected because the light has to stay responsive. The measurement is kept because
+it is the thing that says how much the light costs, and it will be true again the
+next time someone proposes coarsening it:
+
+```
+F1 at a 1.0 s tick, fire 1:  6 276 -> 4 027 ms · committing frames 13 x 346 -> 12 x 139
+                             frames that MINT 13 -> 5 · a non-minting commit costs 45 ms
+```
+
+⚠️ And it exposed the ceiling that made it the wrong lever anyway: with the
+committing frames 62% cheaper, the NON-committing frames grew from 28 to 44 and
+became 58% of the fire. **Cheaper frames buy more frames** — the same effect
+`BURN_COMMIT_INTERVAL_S`'s comment records and §8.8b measured on the VFX.
+
+### What shipped instead
+
+**F6 — the fire is faster and more volatile.** The span is the bill: committing
+frames are `span / BURN_COMMIT_INTERVAL_S`. And most of the old span was not the
+burn life at all — `EMBER_CLIMB_DELAY_S` staggers the flame UP the wall and
+dominated it.
+
+```
+BURN_BASE_LIFE_S    1.4  -> 0.55      EMBER_CLIMB_DELAY_S   0.28 -> 0.10
+BURN_LIFE_JITTER    0.45 -> 0.60      EMBER_SEED_STAGGER_S  0.45 -> 0.20
+```
+
+**F3/F4 — 70/30**, implemented in the SCHEDULE rather than the resistance model:
+the `destroy` wave is choreography and the real damage comes from
+`BlastCalculator`, so forcing a share through there would mean editing resistance
+to get a scheduling outcome. The blast's share lands in the fire's first batch, on
+its own FNV-1a domain (`BURNSHARE`) so tuning it cannot disturb which voxels burn
+(`BURNROLL`) or how long the survivors take (`BURNLIFE`).
+
+**F7 — agent actions are locked while the burn resolves.** `is_resolving_action()`,
+guarded on movement, both postures, peek, grenade mode, grenade throw and weapon
+select. Camera, view mode, pause, screenshots and debug tools stay live on purpose:
+locking those makes a resolving turn feel frozen rather than busy.
+
+### The numbers, fire 1, same fire throughout (354 voxels, fabric at gu 31,3)
+
+| | before | after |
+|---|---|---|
+| fire span | 3.34 s | **1.42 s** |
+| **wall clock** | ~6 276 ms | **3 142 ms** (−50%) |
+| frames during the fire | 43 | **18** |
+| committing frames | 13 × ~346 ms = 4 458 | **6** (5 gaps × 423) = **2 115** (−53%) |
+| non-committing | 31 × 65 ms = 1 837 | 13 × 79 ms = **1 026** |
+| frames that MINT (= rebuilds) | 13 | **4** |
+
+### Acceptance, scored honestly
+
+1. **Wall clock under 3 500 ms — PASS. 3 142 ms**, from ~6 276.
+2. **A committing frame under 60 ms — FAIL, 423 ms.** ⚠️ **This criterion belonged
+   to F1's suspension**, which the Director rejected; with the light repainting
+   every commit, a committing frame cannot be cheap. F6 makes them FEWER and fatter
+   instead — 6 × 423 beats 13 × 346 — so the criterion is wrong for the shipped
+   design rather than the design failing it. **Recorded as failed rather than
+   rewritten to fit.**
+3. **Mints bounded by the tick — N/A.** The tick is gone. What did move is the
+   rebuild count: **13 minting frames → 4.**
+4. **Holes appear progressively — PASS by construction**, 6 batches across 1.42 s.
+   ⚠️ **No filmstrip was run**, so this is structural, not photographed.
+5. **End state identical — PASS. 0 differing pixels**, `--fixed-fps 60`, block vs
+   HEAD, both post-fire.
+6. **Gates — PASS.** lint 216 · selftests 39 clean / 0 failed · invariants · CODEMAP.
+
+⚠️ **F7's behaviour is NOT verified.** The guards are placed and compile, and the
+capture paths still drive the fire (they enter through `_unhandled_input` and the
+test-zone controller, not through the guarded handlers) — but no run has actually
+pressed a movement key during a burn and confirmed it was refused. Stated as built,
+not as proven.
+
+### Still not done in this block
+
+**F2 (any glow) is dropped**, and with a reason rather than by omission: a
+CanvasItem overlay cannot light faces, and anything that DOES light faces goes
+through the per-cell path — and F2b's fire-as-a-light would additionally trigger
+shadow projection, another map-scale computation. That is the Director's *"trocar 6
+por meia dúzia"* exactly. **F5** (fabric and cardboard authored as props) is
+deliberately held back: it changes the map, which would make this comparison
+incomparable.

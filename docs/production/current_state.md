@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-08-22 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-08-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -79,6 +79,7 @@
 - RESUMO_SESSAO_2026-08-21_MATERIALS_AND_ASSET_TREE.md
 - RESUMO_SESSAO_2026-08-22_BURN_PERF_AND_CELL_PLANE.md
 - RESUMO_SESSAO_2026-08-22_CELL_GATE_AND_P5A.md
+- RESUMO_SESSAO_2026-08-23_FIRE_PERF_AND_P3.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -86,7 +87,7 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 155
+- GDScript modules: 157
 - Test scripts: 47
 - Known maps: 3
 - Shipped facade files: 0

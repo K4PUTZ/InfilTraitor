@@ -5497,6 +5497,14 @@ func _capture_two_fires() -> void:
 			_test_zone_controller._grenades.size(), gus_env])
 		return
 	print("[TWO-FIRES] cells=%s" % gus_env)
+	## §9.11a — THE SOOT CENSUS, one per fire. The board captures below are the
+	## Director-facing evidence; this is the exact one. A pixel diff cannot tell
+	## "blast 1's region came back different" from "the camera framed a flame
+	## differently", and it cannot say by how many shades. `_perf_snapshot_alts()`
+	## already returns (alternative id, packed soot code) for every placed cell,
+	## which is precisely the pair a re-derivation would disturb.
+	var tf_census: Array = []
+	var tf_cells: Array = []
 
 	for i in range(2):
 		var cell: Vector2i = _test_zone_controller._grenades[i]["gu_cell"]
@@ -5509,6 +5517,16 @@ func _capture_two_fires() -> void:
 			_fow_controller.reveal_around(cell, 24)
 		for _c in range(10):
 			await get_tree().process_frame
+		## Where this fire lands ON SCREEN, so the board diff can be read without
+		## guessing. A pixel diff of the two boards shows one red mass, and which
+		## fire it belongs to is not decidable by eye — the first read of it very
+		## nearly mistook fire 2's crater for fire 1's.
+		if agent != null:
+			## `_cell_to_world()` is what `focus_on()` consumes, so it is already
+			## the space the canvas transform maps to screen.
+			var screen_pos: Vector2 = get_viewport().get_canvas_transform() \
+				* agent._cell_to_world(cell)
+			print("[TWO-FIRES] fire %d gu %s is at screen %s" % [i + 1, cell, screen_pos])
 		var minted_before: int = _voxel_renderer.minted_light_alt_count() \
 			if _voxel_renderer != null else 0
 		print("[TWO-FIRES] ===== FIRE %d at %s · %d alternative(s) already minted =====" % [
@@ -5535,6 +5553,7 @@ func _capture_two_fires() -> void:
 		var armed: bool = false
 		for _w in range(240):
 			await get_tree().process_frame
+			_tf_watch_frame()
 			if _burn_scheduler.is_burning():
 				armed = true
 				break
@@ -5545,10 +5564,12 @@ func _capture_two_fires() -> void:
 		## lands after it, so this waits past both.
 		for _w2 in range(1200):
 			await get_tree().process_frame
+			_tf_watch_frame()
 			if not _burn_scheduler.is_burning() and _burn_pending.is_empty():
 				break
 		for _s in range(90):
 			await get_tree().process_frame
+			_tf_watch_frame()
 		var minted_after: int = _voxel_renderer.minted_light_alt_count() \
 			if _voxel_renderer != null else 0
 		print("[TWO-FIRES] ===== FIRE %d DONE · minted %d new alternative(s) (%d -> %d) =====" % [
@@ -5560,6 +5581,294 @@ func _capture_two_fires() -> void:
 		var tf_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
 		DirAccess.make_dir_recursive_absolute(tf_dir)
 		await _save_shot_frame(tf_dir, "twofires_after_%d.png" % (i + 1))
+		tf_census.append(_perf_snapshot_alts())
+		tf_cells.append(cell)
+		## §9.11a, SECOND READING — *"toda a fuligem está sendo repintada"* is a
+		## sentence about a repaint being SEEN, not necessarily about a different
+		## end state, and the end-state census above cannot tell the two apart. So
+		## after fire 1 settles, arm a per-frame watch over fire 1's own region and
+		## let it run through the whole of fire 2. A flicker shows up as a frame
+		## where those cells disagree with the settled value and then agree again.
+		if i == 0:
+			_tf_watch_arm(tf_census[0], cell)
+	_tf_watch_report()
+	_report_two_fires_soot_drift(tf_census, tf_cells)
+
+
+## §9.11a WATCH — fire 1's own region, sampled EVERY FRAME through fire 2.
+##
+## The end-state census answers *"did blast 2 leave blast 1's region different"*.
+## This answers the other half of the same report — *"toda a fuligem está sendo
+## repintada"* — which is a claim about a repaint being visible, and would leave
+## the end state untouched. A cell that goes clean and comes back is invisible to
+## any before/after comparison and unmistakable here.
+##
+## Only the cells within `TF_WATCH_GU` of grenade 1 are watched, taken off the
+## settled census so the watch set and the reference values come from the same
+## read. ⚠️ This is a diagnostic: it re-reads a few thousand cells per frame, so a
+## run with it armed is NOT a run whose burn timings mean anything.
+const TF_WATCH_GU: int = 3
+var _tf_watch: Dictionary = {}       ## Vector3i -> Vector2i, the settled value
+var _tf_watch_frames: int = 0
+var _tf_watch_worst: int = 0
+var _tf_watch_worst_frame: int = -1
+var _tf_watch_dirty_frames: int = 0
+var _tf_watch_sample: String = ""
+## ⚠️ THE RADIUS ALONE CANNOT ANSWER THE QUESTION IT WAS ARMED FOR. At 3 GU the
+## watch set reaches GU 34, which is blast 2's OWN block, so "fire 1's region
+## flickered" would be true of a set that includes fire 2's crater. The union of
+## every cell that ever disagreed, histogrammed by GU, is what says whether the
+## fabric block itself moved — and it needs no radius at all.
+var _tf_watch_union: Dictionary = {}    ## Vector3i -> true
+var _tf_watch_gu_a: Vector2i = Vector2i.ZERO
+
+
+func _tf_watch_arm(settled: Dictionary, gu_a: Vector2i) -> void:
+	_tf_watch.clear()
+	for key in settled.keys():
+		var g := GeometryCoords.voxel_to_gu(Vector2i(key.x, key.y))
+		if maxi(absi(g.x - gu_a.x), absi(g.y - gu_a.y)) <= TF_WATCH_GU:
+			_tf_watch[key] = settled[key]
+	_tf_watch_frames = 0
+	_tf_watch_worst = 0
+	_tf_watch_worst_frame = -1
+	_tf_watch_dirty_frames = 0
+	_tf_watch_sample = ""
+	_tf_watch_union.clear()
+	_tf_watch_gu_a = gu_a
+	print("[TWO-FIRES-WATCH] armed on %d cell(s) within %d GU of %s" % [
+		_tf_watch.size(), TF_WATCH_GU, gu_a])
+
+
+func _tf_watch_frame() -> void:
+	if _tf_watch.is_empty() or _voxel_renderer == null:
+		return
+	_tf_watch_frames += 1
+	var differ: int = 0
+	var first: String = ""
+	for key in _tf_watch.keys():
+		var layer: TileMapLayer = _voxel_renderer.get_layer(key.z)
+		if layer == null:
+			continue
+		var cell := Vector2i(key.x, key.y)
+		var now := Vector2i(layer.get_cell_alternative_tile(cell),
+			_voxel_renderer.cell_soot_at(key.z, cell))
+		if now != _tf_watch[key]:
+			differ += 1
+			## The value it took, and when — a flicker's direction is the whole
+			## diagnosis and a boolean cannot carry it.
+			if not _tf_watch_union.has(key):
+				_tf_watch_union[key] = [now, _tf_watch_frames, _tf_watch_frames]
+			else:
+				(_tf_watch_union[key] as Array)[2] = _tf_watch_frames
+			if first == "":
+				first = "%s %s -> %s" % [key, _tf_watch[key], now]
+	if differ == 0:
+		return
+	_tf_watch_dirty_frames += 1
+	if differ > _tf_watch_worst:
+		_tf_watch_worst = differ
+		_tf_watch_worst_frame = _tf_watch_frames
+		_tf_watch_sample = first
+
+
+func _tf_watch_report() -> void:
+	if _tf_watch.is_empty():
+		return
+	print("[TWO-FIRES-WATCH] %d frame(s) sampled over fire 2 · %d frame(s) where fire 1's region disagreed with its settled value"
+		% [_tf_watch_frames, _tf_watch_dirty_frames])
+	if _tf_watch_dirty_frames == 0:
+		print("[TWO-FIRES-WATCH] VERDICT: fire 1's region never flickers — it is not repainted visibly by blast 2 at any frame.")
+	else:
+		print("[TWO-FIRES-WATCH] worst frame %d with %d cell(s) differing · e.g. %s"
+			% [_tf_watch_worst_frame, _tf_watch_worst, _tf_watch_sample])
+		## ⚠️ AND A CELL THAT CHANGED FOR GOOD IS NOT A FLICKER. Blast 2 legitimately
+		## re-soots its own surroundings, and such a cell disagrees with fire 1's
+		## settled value on every frame after it changes — the first version of this
+		## report counted those as flicker and inflated it. The split is made by
+		## re-reading each cell NOW: back to its settled value means it flickered and
+		## returned, still different means it simply moved.
+		var flick_gu: Dictionary = {}
+		var perm_gu: Dictionary = {}
+		var flick_n: int = 0
+		var perm_n: int = 0
+		var flick_samples: Array = []
+		for key in _tf_watch_union.keys():
+			var g := GeometryCoords.voxel_to_gu(Vector2i(key.x, key.y))
+			var lay: TileMapLayer = _voxel_renderer.get_layer(key.z)
+			if lay == null:
+				continue
+			var c := Vector2i(key.x, key.y)
+			var now2 := Vector2i(lay.get_cell_alternative_tile(c),
+				_voxel_renderer.cell_soot_at(key.z, c))
+			if now2 == _tf_watch[key]:
+				flick_gu[g] = int(flick_gu.get(g, 0)) + 1
+				flick_n += 1
+				if flick_samples.size() < 10:
+					var rec: Array = _tf_watch_union[key]
+					flick_samples.append("%s settled %s -> %s on frames %d..%d, back to %s" % [
+						key, _tf_watch[key], rec[0], rec[1], rec[2], now2])
+			else:
+				perm_gu[g] = int(perm_gu.get(g, 0)) + 1
+				perm_n += 1
+		var rows: Array = flick_gu.keys()
+		rows.sort_custom(func(p, q) -> bool: return flick_gu[p] > flick_gu[q])
+		print("[TWO-FIRES-WATCH] %d cell(s) disagreed at least once — %d FLICKERED and came back, %d changed for good"
+			% [_tf_watch_union.size(), flick_n, perm_n])
+		print("[TWO-FIRES-WATCH] the FLICKER, by GU (these end exactly where they started):")
+		for r in rows:
+			print("[TWO-FIRES-WATCH]   gu %s : %d cell(s) · %d GU from fire 1 · %d permanent here" % [
+				r, flick_gu[r],
+				maxi(absi((r as Vector2i).x - _tf_watch_gu_a.x),
+					absi((r as Vector2i).y - _tf_watch_gu_a.y)),
+				int(perm_gu.get(r, 0))])
+		for fs in flick_samples:
+			print("[TWO-FIRES-WATCH]   flicker %s" % fs)
+		print("[TWO-FIRES-WATCH] VERDICT: fire 1's region IS disturbed mid-flight even though it settles back — that is the visible repaint.")
+
+
+## §9.11a — DID THE SECOND BLAST CHANGE THE FIRST ONE'S SOOT?
+##
+## The Director's report, 2026-08-23: *"são duas granadas em locais diferentes,
+## por exemplo no bloco de pano e depois no de madeirite. A segunda explosão
+## influencia na fuligem da primeira."*
+##
+## The fork this has to settle, and both branches are real:
+##   · the re-derivation is CORRECT and blast 1's region legitimately deepens,
+##     because `_build_soot_snapshot()` is map-wide by design and D24 derives soot
+##     from which voxels are ABSENT anywhere — visible, not broken; or
+##   · the derivation is seed-count or order dependent and blast 1's region comes
+##     back DIFFERENT rather than merely darker.
+##
+## Branch 1 has a hard geometric prediction and that is what makes this decidable:
+## a soot ring reaches `blast_soot_rings + blast_soot_feather_rings` = 6 VOXEL
+## cells, and one GU is `VOXELS_PER_UNIT_AXIS` = 8 of them. Two blocks two GUs
+## apart are 16+ cells apart, so blast 2's seeds CANNOT legitimately reach blast
+## 1's region. Any change out there is branch 2.
+##
+## Cells are partitioned by GU distance to each grenade, because the census keys
+## are voxel grid positions (`layer.set_cell(grid_pos, ...)` — cell IS grid_pos)
+## and `GeometryCoords.voxel_to_gu()` is the conversion the rest of the file uses.
+func _report_two_fires_soot_drift(census: Array, cells: Array) -> void:
+	if census.size() < 2 or cells.size() < 2:
+		push_warning("[TWO-FIRES-SOOT] need two censuses — got %d." % census.size())
+		return
+	var before: Dictionary = census[0]
+	var after: Dictionary = census[1]
+	var gu_a: Vector2i = cells[0]
+	var gu_b: Vector2i = cells[1]
+	var reach_gu: int = int(ceil(float(blast_soot_rings + blast_soot_feather_rings)
+		/ float(GeometryCoords.VOXELS_PER_UNIT_AXIS)))
+	## Counters, per region. "near 1" is blast 1's own neighbourhood.
+	var n_total: int = 0
+	var n_changed: int = 0
+	var near1_changed: int = 0
+	var near1_soot: int = 0
+	var near1_alt_only: int = 0
+	var near1_darker: int = 0
+	var near1_lighter: int = 0
+	var near2_changed: int = 0
+	var far_changed: int = 0
+	var gone: int = 0
+	var appeared: int = 0
+	var samples: Array = []
+	for key in after.keys():
+		n_total += 1
+		var gu := GeometryCoords.voxel_to_gu(Vector2i(key.x, key.y))
+		var d1: int = maxi(absi(gu.x - gu_a.x), absi(gu.y - gu_a.y))
+		var d2: int = maxi(absi(gu.x - gu_b.x), absi(gu.y - gu_b.y))
+		if not before.has(key):
+			appeared += 1
+			continue
+		var b: Vector2i = before[key]
+		var a: Vector2i = after[key]
+		if b == a:
+			continue
+		n_changed += 1
+		if d1 <= reach_gu:
+			near1_changed += 1
+			if b.y != a.y:
+				near1_soot += 1
+				## Lower packed code = darker (ring 0 is the seed itself,
+				## FACE_SOOT_CLEAN is the top of the space).
+				if a.y < b.y:
+					near1_darker += 1
+				else:
+					near1_lighter += 1
+			else:
+				near1_alt_only += 1
+			if samples.size() < 12:
+				samples.append("%s alt %d->%d soot %d->%d" % [key, b.x, a.x, b.y, a.y])
+		elif d2 <= reach_gu:
+			near2_changed += 1
+		else:
+			far_changed += 1
+	for key in before.keys():
+		if not after.has(key):
+			gone += 1
+	print("[TWO-FIRES-SOOT] ---- §9.11a · did blast 2 move blast 1's soot? ----")
+	print("[TWO-FIRES-SOOT] grenade 1 gu %s · grenade 2 gu %s · %d GU apart · soot reach %d cell(s) = %d GU"
+		% [gu_a, gu_b, maxi(absi(gu_b.x - gu_a.x), absi(gu_b.y - gu_a.y)),
+		blast_soot_rings + blast_soot_feather_rings, reach_gu])
+	print("[TWO-FIRES-SOOT] census: %d cell(s) after fire 2 · %d changed since fire 1 · %d appeared · %d gone"
+		% [n_total, n_changed, appeared, gone])
+	print("[TWO-FIRES-SOOT] NEAR FIRE 1 (<=%d GU): %d changed — %d with a different soot code (%d darker, %d lighter), %d alternative-id only"
+		% [reach_gu, near1_changed, near1_soot, near1_darker, near1_lighter, near1_alt_only])
+	print("[TWO-FIRES-SOOT] NEAR FIRE 2 (<=%d GU): %d changed · ELSEWHERE: %d changed"
+		% [reach_gu, near2_changed, far_changed])
+	## ⚠️ THE RADIUS ABOVE IS THE SOOT REACH, NOT THE CRATER. A blast's own block
+	## is three GUs wide on PLAYGROUND, so two thirds of blast 1's own region fall
+	## OUTSIDE `reach_gu` and land in "ELSEWHERE" — the first run of this reported
+	## 0 near fire 1 and 807 elsewhere, and the 807 is the number that matters.
+	## The histogram is what makes the question answerable without picking a
+	## radius at all: it says WHERE the changed cells are, in GUs.
+	##
+	## ⚠️ AND SOOT IS THE ONLY DECISIVE COLUMN. A blast changes occupancy, so it
+	## changes SHADOW, so a far-away alternative id changing is legitimate and
+	## expected. A far-away SOOT CODE changing is not: soot is a bounded BFS from
+	## holes and cannot reach past `blast_soot_rings + blast_soot_feather_rings`.
+	## The two are split everywhere below for exactly that reason.
+	var per_gu: Dictionary = {}
+	var per_gu_soot: Dictionary = {}
+	var far_soot: int = 0
+	for key in after.keys():
+		if not before.has(key) or before[key] == after[key]:
+			continue
+		var g := GeometryCoords.voxel_to_gu(Vector2i(key.x, key.y))
+		per_gu[g] = int(per_gu.get(g, 0)) + 1
+		if (before[key] as Vector2i).y != (after[key] as Vector2i).y:
+			per_gu_soot[g] = int(per_gu_soot.get(g, 0)) + 1
+			## Blast 2's own block is 1 GU from its grenade on PLAYGROUND and its
+			## soot reaches `reach_gu` beyond that, so anything past that sum is
+			## outside every legitimate mechanism.
+			if maxi(absi(g.x - gu_b.x), absi(g.y - gu_b.y)) > 1 + reach_gu:
+				far_soot += 1
+				if samples.size() < 12:
+					samples.append("%s alt %d->%d soot %d->%d (%d GU from fire 2)" % [
+						key, (before[key] as Vector2i).x, (after[key] as Vector2i).x,
+						(before[key] as Vector2i).y, (after[key] as Vector2i).y,
+						maxi(absi(g.x - gu_b.x), absi(g.y - gu_b.y))])
+	var gu_rows: Array = per_gu.keys()
+	gu_rows.sort_custom(func(p, q) -> bool: return per_gu[p] > per_gu[q])
+	var shown: int = mini(gu_rows.size(), 20)
+	print("[TWO-FIRES-SOOT] changed cells by GU (top %d of %d GU(s) touched) — 'soot' is the subset whose soot code moved:" % [
+		shown, gu_rows.size()])
+	for r in range(shown):
+		var g2: Vector2i = gu_rows[r]
+		print("[TWO-FIRES-SOOT]   gu %s : %d cell(s), %d soot · %d GU from fire 1, %d from fire 2" % [
+			g2, per_gu[g2], int(per_gu_soot.get(g2, 0)),
+			maxi(absi(g2.x - gu_a.x), absi(g2.y - gu_a.y)),
+			maxi(absi(g2.x - gu_b.x), absi(g2.y - gu_b.y))])
+	print("[TWO-FIRES-SOOT] SOOT CODES that moved further than %d GU from fire 2 — beyond every legitimate reach: %d"
+		% [1 + reach_gu, far_soot])
+	for s in samples:
+		print("[TWO-FIRES-SOOT]   sample %s" % s)
+	print("[TWO-FIRES-SOOT] VERDICT: %s" % (
+		"blast 1's region is UNTOUCHED by blast 2 — the report is not this path"
+		if near1_changed == 0
+		else "blast 1's region CHANGED after a blast %d GU away — soot cannot reach that far, so this is a re-derivation difference"
+			% maxi(absi(gu_b.x - gu_a.x), absi(gu_b.y - gu_a.y))))
+	print("[TWO-FIRES-SOOT] ---- end ----")
 
 
 func _capture_light_burn_probe() -> void:

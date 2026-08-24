@@ -506,10 +506,43 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 		return frame_index
 	var steps: int = maxi(soot_fade_steps, 1)
 
+	## §9.11a — ⚠️ AND THE ENTRY LIST IS NOT "THE CELLS THIS BLAST IS CHANGING".
+	##
+	## The note above justifies the ring-code ladder over a shader uniform on the
+	## grounds that a uniform *"would first wipe every existing scorch on the map
+	## to clean and bring the lot back, so an older crater would visibly flash"*.
+	## That failure mode shipped anyway, through the entry list rather than the
+	## uniform, and it is the Director's report of 2026-08-23: *"são duas granadas
+	## em locais diferentes… a segunda explosão influencia na fuligem da primeira."*
+	##
+	## `DetonationPlanBuilder._phase_soot_wave()` walks the WHOLE-MAP soot snapshot
+	## and admits a cell when `alt != prev_alt` **OR** its soot code moved. A blast
+	## changes occupancy, so it changes shadow, so the light bucket of a cell in an
+	## OLD crater on the far side of the map moves — and that cell enters the wave
+	## on the alt half of that OR with its soot completely unchanged. The ramp then
+	## lightens it to near-clean and walks it back, which is a flash of exactly the
+	## kind the design chose this mechanism to avoid.
+	##
+	## Measured on PLAYGROUND, fabric at gu (31,3) then plywood at gu (35,3), four
+	## GUs apart — the Director's own repro: **180 cells in fire 1's crater went
+	## from soot 25-30 to 118-123 (near clean) for five frames and back to exactly
+	## their old value**, 0 of them permanently changed. The end state is identical,
+	## which is why every before/after instrument this plan has built reported
+	## nothing at all.
+	##
+	## The fix is one line of intent: a cell whose scorch is ALREADY its target has
+	## nothing to fade. Its `alt` is applied up front by the loop below, same as
+	## before, so the light correction the wave exists to carry still lands — only
+	## the ramp is skipped, and only for cells the ramp had no business touching.
 	var faces: Array = []
+	var ramped: Array = []
+	var skipped: int = 0
 	for entry: Dictionary in entries:
-		faces.append(VoxelLightField.decode_face_soot(
-			int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))))
+		var target: int = int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
+		faces.append(VoxelLightField.decode_face_soot(target))
+		ramped.append(voxel_renderer.cell_soot_at(int(entry["level"]), entry["cell"]) != target)
+		if not ramped[ramped.size() - 1]:
+			skipped += 1
 		var layer0: TileMapLayer = voxel_renderer.get_layer(entry["level"])
 		if layer0 == null:
 			continue
@@ -517,11 +550,15 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 		if layer0.get_cell_alternative_tile(entry["cell"]) != alt0:
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt0)
 			layer0.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt0)
+	print("[E-FUME] soot fade: %d of %d entry cell(s) already carry their target scorch and are NOT ramped (§9.11a)"
+		% [skipped, entries.size()])
 
 	for step: int in range(steps):
 		var painted: int = 0
 		var lighten: int = steps - 1 - step
 		for i: int in range(entries.size()):
+			if not ramped[i]:
+				continue
 			var entry: Dictionary = entries[i]
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
 				VoxelLightField.encode_face_soot(_lightened(faces[i], lighten)))

@@ -1872,3 +1872,83 @@ and mask the diff to the first crater.
 
 **Deferred to 2026-08-24 at the Director's instruction** — *"vamos testar com mais
 detalhes amanha."*
+
+### 9.11b ✅ §9.11a ANSWERED — the Director was right, and every before/after instrument was blind to it (2026-08-24)
+
+Two grenades on different blocks, the Director's own repro: **fabric at gu (31,3),
+then plywood at gu (35,3)**, four GUs apart, through
+`INFILTRAITOR_CAPTURE_ACTION=two_fires` with `INFILTRAITOR_TWO_FIRES_GUS`.
+
+**§9.11a's fork is answered NEITHER way, because it was the wrong fork.** The end
+state is untouched:
+
+```
+[TWO-FIRES-SOOT] census: 205 162 cell(s) · 2 149 changed since fire 1
+[TWO-FIRES-SOOT] NEAR FIRE 1: 0 changed — 0 soot codes, 0 alternative ids
+```
+
+and the board diff agrees — with `INFILTRAITOR_VFX_DRAW_NOOP=1` to take the
+drifting smoke out of the picture, all 50 680 differing pixels sit in fire 2's own
+block ([`twofires_after_1.png`](../../Screenshots/history/twofires_after_1.png) /
+`_2`). Blast 1's region is bit-identical afterwards.
+
+**The report is about the FLIGHT, not the destination.** *"Toda a fuligem está
+sendo repintada"* is a sentence about a repaint being SEEN. Armed on fire 1's
+settled region and sampled every frame through the whole of fire 2:
+
+```
+[TWO-FIRES-WATCH] 1 287 cell(s) disagreed at least once
+                  — 180 FLICKERED and came back, 1 107 changed for good
+  the flicker, by GU:  (31,3) 28 · (29,3) 27 · (32,4) 23 · (30,3) 23 · (32,3) 20
+                       (31,4) 17 · (31,2) 16 · (32,2) 15 · (30,4) 12 · (30,2) 3
+                       — every one 0-2 GU from fire 1, 0 permanent in any of them
+  e.g. (262,23,0) settled soot 26 -> 119 on frames 55..59, back to 26
+```
+
+**Fire 1's crater goes to near-clean for five frames and comes back exactly.** The
+1 107 permanent changes are all fire 2's own (gu 33-34). This is why §9.11's
+diagnostic returned identical numbers both ways, and why a pixel diff of the two
+boards says nothing happened: **nothing did happen, to the end state.**
+
+### The mechanism, and the design note that predicted it
+
+`DetonationChoreographer._fade_in_soot()`'s own header rejects a `soot_strength`
+shader uniform because it *"would first wipe every existing scorch on the map to
+clean and bring the lot back, so an older crater would visibly flash"*, and claims
+the ring-code ladder *"fades only the cells this blast is changing, and touches
+nothing else."*
+
+**The second half is false, through the entry list rather than the uniform.**
+`DetonationPlanBuilder._phase_soot_wave()` walks the WHOLE-MAP soot snapshot — by
+design, §"Scope is the whole map… so a pre-existing hole elsewhere keeps its
+scorch" — and admits a cell when `alt != prev_alt` **OR** its soot code moved. A
+blast changes occupancy, so it changes shadow, so the light bucket of a cell in an
+old crater across the map moves; that cell enters the wave on the **alt** half of
+that OR, **with its soot completely unchanged**, and the ramp lightens it to
+near-clean and walks it back.
+
+**The fix:** a cell whose scorch already equals its target is not ramped. Its
+`alt` is still applied up front, so the light correction the wave carries still
+lands; only the ramp is skipped, and only where it had no business.
+
+```
+red    (262,23,0) settled soot 26 -> 119 for frames 55..59, back to 26
+green  [E-FUME] soot fade: 180 of 2 123 entry cell(s) already carry their
+                 target scorch and are NOT ramped
+       (262,23,0) settled soot 26 -> 26   for frames 55..59
+```
+
+**180 skipped, against 180 measured flickering — the same cells, counted twice by
+two independent instruments.**
+
+### ⚠️ Two residuals, both found by this and neither fixed
+
+1. **The ALT still flickers.** Post-fix the same cells read `alt 9 -> 7 -> 9` over
+   frames 55..59: the wave applies the plan's PREDICTED bucket, and something
+   later restores the true one. A 2-bucket brightness wobble on an old crater is
+   visible. Not the reported symptom, same family, unmeasured as to cause.
+2. **The fire's map-wide final repaint lands INSIDE the blast's own soot fade.**
+   From the green log, fire 2: `soot fade step 1/4 · 2/4 · 3/4 ·
+   [BURN-PROF] final repaint 1 059 ms · soot fade step 4/4`. F6 made the fire fast
+   enough to finish before the fade that started it. Ordering, and it is the most
+   likely author of residual 1.

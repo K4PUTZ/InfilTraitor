@@ -177,7 +177,7 @@ func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 		roof_slabs.append(roof_slab)
 		renderer.render_slab_solid(roof_slab)
 
-	var block_layer: TileMapLayer = renderer.get_layer(0)
+	var block_layer: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 	var roof_layer_8: TileMapLayer = renderer.get_layer(8)
 	var roof_layer_9: TileMapLayer = renderer.get_layer(9)
 

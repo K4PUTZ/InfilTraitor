@@ -466,7 +466,10 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 	while i < ids.size():
 		var slice: Slice = edge_registry.get_slice(ids[i])
 		var base_ring: int = affected[ids[i]]
-		var base_level: int = slice.start_storey * GeometryCoords.LEVELS_PER_STOREY
+		## LEVEL-RENUMBER — a real level, because `simulate_container_damage()`
+		## subtracts it from `voxel.level`. Unshifted it made every offset ~80, the
+		## ring lookup ran off its table and the blast damaged NOTHING.
+		var base_level: int = GeometryCoords.storey_level_base(slice.start_storey)
 		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			slice.voxels, slice.id, slice.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
@@ -502,7 +505,7 @@ static func _phase_junctions(s: Dictionary, deadline: int) -> void:
 	while i < ids.size():
 		var column = junction_by_id[ids[i]]
 		var base_ring: int = affected[ids[i]]
-		var base_level: int = column.start_storey * GeometryCoords.LEVELS_PER_STOREY
+		var base_level: int = GeometryCoords.storey_level_base(column.start_storey)
 		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			column.voxels, column.id, column.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,

@@ -370,7 +370,7 @@ func test_4_real_playground_local_keys_and_step_borders() -> void:
 	for b in solid_block_instances:
 		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
 		var b_size: Vector2i = b.get("size", Vector2i.ONE)
-		var b_level: int = int(b.get("storeys", 1)) * GeometryCoordsClass.LEVELS_PER_STOREY
+		var b_level: int = GeometryCoordsClass.storey_level_base(int(b.get("storeys", 1)))
 		for ox in range(b_size.x):
 			for oy in range(b_size.y):
 				level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
@@ -388,7 +388,7 @@ func test_4_real_playground_local_keys_and_step_borders() -> void:
 		var size: Vector2i = block_instance.get("size", Vector2i.ONE)
 		var storeys: int = int(block_instance.get("storeys", 1))
 		var material: String = String(block_instance.get("material", "concrete"))
-		var base_level: int = storeys * GeometryCoordsClass.LEVELS_PER_STOREY
+		var base_level: int = GeometryCoordsClass.storey_level_base(storeys)
 		for rx in range(size.x):
 			for ry in range(size.y):
 				var gu := gu_base + Vector2i(rx, ry)
@@ -472,7 +472,7 @@ func test_5_rotated_view_roofs_follow_structures() -> void:
 		var material: String = String(b.get("material", "concrete"))
 		var rot_gu := Vector2i(base_size.y - gu.y - size.y, gu.x)
 		var rot_size := Vector2i(size.y, size.x)
-		var base_level: int = storeys * GeometryCoordsClass.LEVELS_PER_STOREY
+		var base_level: int = GeometryCoordsClass.storey_level_base(storeys)
 		for rx in range(rot_size.x):
 			for ry in range(rot_size.y):
 				var slab_id := "SLAB_%d_%d_%s_%d" % [rot_gu.x + rx, rot_gu.y + ry, Slab.role_name(Slab.Role.CEILING), base_level]

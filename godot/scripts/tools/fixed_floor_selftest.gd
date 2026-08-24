@@ -54,11 +54,15 @@ func test_fixed_level_places_correct_cells() -> void:
 	renderer.setup(Vector2.ZERO)
 
 	var gu := Vector2i(2, 5)
-	renderer.render_fixed_earth_level(gu, -4)
+	## LEVEL-RENUMBER: the same fixed earth level, addressed from the ground stack
+	## instead of from zero. The expected variant below stays `-4` on purpose —
+	## `variant_for()` is fed the level RELATIVE to the ground plane, so its input
+	## is unchanged and B4's pinned hash keeps producing the same answer.
+	renderer.render_fixed_earth_level(gu, GeometryCoords.FLOOR_TOP_LEVEL - 3)
 
-	var layer: TileMapLayer = renderer.get_layer(-4)
+	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL - 3)
 	if layer == null:
-		_fail("Level -4 was not created")
+		_fail("The fourth fixed earth level was not created")
 		renderer.queue_free()
 		print("")
 		return

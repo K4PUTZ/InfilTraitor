@@ -321,7 +321,7 @@ func test_metal_container_produces_cracked_not_destroyed() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "metal", 0, 0, false, [1.0, 0.5],
+		slice.voxels, slice.id, "metal", 0, GeometryCoords.PLAYABLE_LEVEL, false, [1.0, 0.5],
 		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var destroyed := 0
@@ -361,7 +361,7 @@ func test_damage_tiers_are_mutually_exclusive() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "concrete", 0, 0, false, [1.0, 0.5],
+		slice.voxels, slice.id, "concrete", 0, GeometryCoords.PLAYABLE_LEVEL, false, [1.0, 0.5],
 		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var counts := {
@@ -396,7 +396,7 @@ func test_wood_container_mostly_destroyed_at_ring_zero() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "wood", 0, 0, false, [1.0, 0.5],
+		slice.voxels, slice.id, "wood", 0, GeometryCoords.PLAYABLE_LEVEL, false, [1.0, 0.5],
 		[1.0, 0.5], [1.0, 0.5], [1.0, 0.5])
 
 	var destroyed := 0
@@ -449,11 +449,11 @@ func test_ring_beyond_range_untouched() -> void:
 	# Bomb only has rings [1.0] (max_ring=0) -> everything above storey 0 must
 	# be skipped entirely (still INTACT), not clamped to ring 0's multiplier.
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "wood", 0, 0, false, [1.0], [1.0], [1.0], [1.0])
+		slice.voxels, slice.id, "wood", 0, GeometryCoords.PLAYABLE_LEVEL, false, [1.0], [1.0], [1.0], [1.0])
 
 	var top_storey_touched := false
 	for voxel in slice.voxels:
-		if voxel.level >= 2 * GeometryCoords.LEVELS_PER_STOREY and voxel.damage_state != Voxel.DamageState.INTACT:
+		if voxel.level >= GeometryCoords.storey_level_base(2) and voxel.damage_state != Voxel.DamageState.INTACT:
 			top_storey_touched = true
 
 	if top_storey_touched:
@@ -1049,16 +1049,18 @@ func test_ring3_reached_but_zero_weighted() -> void:
 		return
 
 	BlastCalculatorClass.apply_container_damage(
-		slice.voxels, slice.id, "concrete", 0, 0, false, frag.ring_multipliers,
+		slice.voxels, slice.id, "concrete", 0, GeometryCoords.PLAYABLE_LEVEL, false, frag.ring_multipliers,
 		frag.destroy_ring_weights, frag.dent_ring_weights, frag.crack_ring_weights)
 
 	var ring0_damaged := 0
 	var ring3_damaged := 0
 	for voxel in slice.voxels:
 		var touched: bool = voxel.damage_state != Voxel.DamageState.INTACT
-		if voxel.level < GeometryCoords.LEVELS_PER_STOREY:
+		## LEVEL-RENUMBER — these bucket a voxel by which STOREY of the wall it is
+		## on, so they compare against the ground plane, not against zero.
+		if voxel.level < GeometryCoords.storey_level_base(1):
 			if touched: ring0_damaged += 1
-		elif voxel.level >= 3 * GeometryCoords.LEVELS_PER_STOREY:
+		elif voxel.level >= GeometryCoords.storey_level_base(3):
 			if touched: ring3_damaged += 1
 
 	if ring0_damaged > 0 and ring3_damaged == 0:
@@ -1090,14 +1092,14 @@ func test_vertical_falloff_identical_for_wall_and_roof() -> void:
 			continue
 
 		BlastCalculatorClass.apply_container_damage(
-			slice.voxels, slice.id, "concrete", 0, 0, is_roof, [1.0, 0.0],
+			slice.voxels, slice.id, "concrete", 0, GeometryCoords.PLAYABLE_LEVEL, is_roof, [1.0, 0.0],
 			[1.0, 0.0], [1.0, 0.0], [1.0, 0.0])
 
 		var storey0_damaged := 0
 		var storey1_damaged := 0
 		for voxel in slice.voxels:
 			var touched: bool = voxel.damage_state != Voxel.DamageState.INTACT
-			if voxel.level < GeometryCoords.LEVELS_PER_STOREY:
+			if voxel.level < GeometryCoords.storey_level_base(1):
 				if touched: storey0_damaged += 1
 			else:
 				if touched: storey1_damaged += 1

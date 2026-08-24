@@ -40,6 +40,15 @@ const LEVELS_PER_STOREY: int = 8
 const PLAYABLE_STOREY: int = 10
 const PLAYABLE_LEVEL: int = PLAYABLE_STOREY * LEVELS_PER_STOREY
 
+
+## The bottom render level of a BUILDING storey — storey 0 being the one the agent
+## walks on. Every wall, junction and roof level in the project is derived from
+## this, deliberately through one function: the offset has to be applied at every
+## origination point or at none, and `start_storey * LEVELS_PER_STOREY` spelled out
+## six times is six chances to apply it five times.
+static func storey_level_base(storey_index: int) -> int:
+	return PLAYABLE_LEVEL + storey_index * LEVELS_PER_STOREY
+
 ## Texture authoring resolution: flat texels per voxel
 ## Pinned by BAKE-01 Tile Anatomy Audit; example N=16 → 1024×512 facades, 128×128 slices
 ## DO NOT use hardcoded multiples (64*N, 32*N); always reference this constant.
@@ -62,8 +71,12 @@ const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 ##                          bake: the two structural planes are the "concrete".
 ##   -3 .. -8               fixed cosmetic ground (no Slab, no Voxel), plain
 ##                          earth — the dirt UNDER the concrete.
-const FLOOR_TOP_LEVEL: int = -1
-const FLOOR_DEEP_LEVEL: int = -2
+## LEVEL-RENUMBER — the ground stack is now expressed as an offset DOWN from the
+## playable storey rather than as negative absolutes. The relationships (top is one
+## below the walkable plane, deep is two, fixed earth runs to eight) are unchanged;
+## only the origin moved, so the ground now occupies storey 9.
+const FLOOR_TOP_LEVEL: int = PLAYABLE_LEVEL - 1
+const FLOOR_DEEP_LEVEL: int = PLAYABLE_LEVEL - 2
 ## Deepest level that gets the floor zone's baked texture instead of the
 ## earth-variant hash.
 ##

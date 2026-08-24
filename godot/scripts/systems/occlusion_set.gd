@@ -179,7 +179,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	for column in junction_columns:
 		if not (ring_by_edge_id.has(column.edge_a_id) and ring_by_edge_id.has(column.edge_b_id)):
 			continue
-		var col_base_level: int = column.start_storey * GeometryCoordsMod.LEVELS_PER_STOREY
+		var col_base_level: int = GeometryCoordsMod.storey_level_base(column.start_storey)
 		var col_max_level: int = col_base_level + column.storey_count * GeometryCoordsMod.LEVELS_PER_STOREY - 1
 		var col_ghost_start: int = mini(col_base_level + BASE_VISIBLE_LEVELS, col_max_level + 1)
 		## OCC-26: junction fillers cap their erase at their own top as well.
@@ -591,8 +591,15 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 
 		## y_top is the SMALLER value (higher storeys sit higher on screen);
 		## y_bottom is the LARGER value (ground level, nearer the bottom of screen).
-		var y_bottom := center_depth * VOXEL_HALF_H - float(min_level) * GeometryCoordsMod.VOXEL_STEP_PX
-		var y_top := center_depth * VOXEL_HALF_H - float(max_level + 1) * GeometryCoordsMod.VOXEL_STEP_PX
+		## LEVEL-RENUMBER — a level becomes a SCREEN Y here, so it has to be the
+		## level relative to the ground plane, exactly as the layer's own position
+		## is. Left absolute, a wall's screen rectangle lands eighty levels off and
+		## the overlap test against the agent answers a question about a different
+		## wall — measured as 2 112 cells ghosted that the baseline never ghosts.
+		var rel_min := float(min_level - GeometryCoordsMod.PLAYABLE_LEVEL)
+		var rel_max := float(max_level - GeometryCoordsMod.PLAYABLE_LEVEL)
+		var y_bottom := center_depth * VOXEL_HALF_H - rel_min * GeometryCoordsMod.VOXEL_STEP_PX
+		var y_top := center_depth * VOXEL_HALF_H - (rel_max + 1.0) * GeometryCoordsMod.VOXEL_STEP_PX
 
 		## OCC-10: fixed always-visible base band — this edge's own bottom
 		## BASE_VISIBLE_LEVELS levels are left untouched (full opacity); ghosting

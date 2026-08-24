@@ -222,8 +222,9 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 					if actual_source_id < VoxelRendererClass.MATERIALS.size():
 						mismatches += 1
 				else:
-					var expected_variant: int = EarthVariantSelector.variant_for(
-							voxel_pos, GeometryCoordsClass.FLOOR_TOP_LEVEL)
+					var expected_variant: int = EarthVariantSelector.variant_for(voxel_pos,
+							GeometryCoordsClass.FLOOR_TOP_LEVEL
+								- GeometryCoordsClass.PLAYABLE_LEVEL)
 					var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
 					if actual_source_id != expected_source_id:
 						mismatches += 1
@@ -270,7 +271,7 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	## (5,5) is safely inside) has only the top level, still lazy.
 	var corner_gu := Vector2i(0, 0)
 	var corner_levels_built := 0
-	for level in range(-8, 0):
+	for level in range(GeometryCoords.FLOOR_TOP_LEVEL - 7, GeometryCoords.PLAYABLE_LEVEL):
 		if voxel_renderer.get_layer(level) != null:
 			var l: TileMapLayer = voxel_renderer.get_layer(level)
 			if l.get_cell_source_id(GeometryCoordsClass.gu_to_voxel_origin(corner_gu)) >= 0:
@@ -282,7 +283,7 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 
 	var interior_gu := Vector2i(5, 5)
 	var interior_fixed_built := false
-	for level in range(-8, -1):  # -8..-2, the fixed levels
+	for level in range(GeometryCoords.FLOOR_TOP_LEVEL - 7, GeometryCoords.FLOOR_TOP_LEVEL):  # the fixed levels
 		var l: TileMapLayer = voxel_renderer.get_layer(level)
 		if l != null and l.get_cell_source_id(GeometryCoordsClass.gu_to_voxel_origin(interior_gu)) >= 0:
 			interior_fixed_built = true

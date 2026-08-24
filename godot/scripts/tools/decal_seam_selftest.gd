@@ -68,7 +68,7 @@ func _new_renderer() -> VoxelRenderer:
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	renderer._ensure_voxel_layers(1)
+	renderer._ensure_voxel_layers(1)   ## LEVEL-RENUMBER: the ground wall level, now GeometryCoords.PLAYABLE_LEVEL
 	return renderer
 
 
@@ -248,9 +248,9 @@ func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:
 	var edge_stub := Object.new()
 	var grid_pos := Vector2i(7, 3)
 
-	renderer._set_voxel_cell(grid_pos, 0, "concrete_bullet_cracked_left_1", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(grid_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_cracked_left_1", edge_stub, Vector2i.ZERO, 0)
 
-	var layer := renderer.get_layer(0)
+	var layer := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 	var placed_source_id := layer.get_cell_source_id(grid_pos)
 	var generic_concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_cracked_left_1")
 
@@ -290,8 +290,8 @@ func test_dented_and_non_impact_names_are_unaffected() -> void:
 	var edge_stub := Object.new()
 
 	var floor_pos := Vector2i(1, 1)
-	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_1", edge_stub, Vector2i.ZERO, 0)
-	var floor_source_id := renderer.get_layer(0).get_cell_source_id(floor_pos)
+	renderer._set_voxel_cell(floor_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_blast_dented_top_1", edge_stub, Vector2i.ZERO, 0)
+	var floor_source_id := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(floor_pos)
 	var flat_concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
 	if floor_source_id != -1 and floor_source_id != flat_concrete_id:
 		_pass("concrete's own floor dent composites (source_id %d), not the last-resort flat concrete (%d)" % [
@@ -325,9 +325,9 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 
 	var pos := Vector2i(9, 9)
 	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
-	renderer._set_voxel_cell(pos, 0, "stone_blast_cracked_all_0", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "stone_blast_cracked_all_0", edge_stub, Vector2i.ZERO, 0)
 	edge_stub.free()
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("stone_blast_cracked_all_0")
 	if got != -1 and got != generic_id:
 		_pass("no baked atom -> resolves via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])

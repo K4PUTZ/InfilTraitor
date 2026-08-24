@@ -137,7 +137,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	for b in solid_block_instances:
 		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
 		var b_size: Vector2i = b.get("size", Vector2i.ONE)
-		var b_level: int = int(b.get("storeys", 1)) * GeometryCoordsClass.LEVELS_PER_STOREY
+		var b_level: int = GeometryCoordsClass.storey_level_base(int(b.get("storeys", 1)))
 		for ox in range(b_size.x):
 			for oy in range(b_size.y):
 				roof_level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
@@ -155,7 +155,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 		var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
 		var block_storeys: int = int(block_instance.get("storeys", 1))
 		var block_material: String = String(block_instance.get("material", "concrete"))
-		var roof_base_level: int = block_storeys * GeometryCoordsClass.LEVELS_PER_STOREY
+		var roof_base_level: int = GeometryCoordsClass.storey_level_base(block_storeys)
 		var expected_source_id: int = VoxelRendererClass.MATERIALS.find(block_material)
 
 		for rx in range(block_size.x):
@@ -253,7 +253,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	var sample_block: Dictionary = solid_block_instances[0]
 	var sample_gu: Vector2i = sample_block.get("gu_cell", Vector2i.ZERO)
 	var sample_storeys: int = int(sample_block.get("storeys", 1))
-	var sample_level: int = sample_storeys * GeometryCoordsClass.LEVELS_PER_STOREY
+	var sample_level: int = GeometryCoordsClass.storey_level_base(sample_storeys)
 	var sample_slab_id := "SLAB_%d_%d_%s_%d" % [sample_gu.x, sample_gu.y, Slab.role_name(Slab.Role.CEILING), sample_level]
 	var sample_slab: Slab = room._slab_registry.get_slab(sample_slab_id)
 	if sample_slab != null:

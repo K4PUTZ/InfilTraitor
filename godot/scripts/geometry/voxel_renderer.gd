@@ -767,7 +767,7 @@ var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
 ## moves it to GeometryCoords.PLAYABLE_LEVEL and every level with it. Every
 ## "is this a wall level" test in this file goes through here, so stage B is one
 ## constant rather than a sweep of sign checks.
-var _ground_plane_level: int = 0
+var _ground_plane_level: int = GeometryCoords.PLAYABLE_LEVEL
 
 
 ## Every built level, ascending. The single replacement for the paired
@@ -790,6 +790,34 @@ func wall_level_keys() -> Array:
 
 func ground_plane_level() -> int:
 	return _ground_plane_level
+
+
+## LEVEL-RENUMBER — A RENDER LEVEL IS NOT A FACADE SHEET ROW, and conflating them
+## is what the renumber exposed.
+##
+## `BakedTileLookup` indexes a facade page BY LEVEL: level 0 is the sheet's bottom
+## row and each level up advances the atlas window, wrapping rows. That axis has
+## its own origin — zero — and always did; it only ever coincided with the render
+## level because the render level also started at zero.
+##
+## Measured when it did not: with the ground plane at 80 the lookup read level 80
+## as sheet row 16, so the wall's first two levels rendered another storey's
+## texture and levels 82 and up fell off the page entirely — **2 112 cells gone,
+## silently, with no warning and no script error**, because a resolve that finds
+## nothing simply places nothing.
+##
+## Same class as `bake_compositor.gd`'s `start_level` and `room_builder`'s
+## `level_start`/`level_end`: texture space, origin zero, never shifted.
+##
+## ⚠️ AND THE BAKE SHEET IS NOT THE ONLY AXIS LIKE THIS. Every level-keyed HASH in
+## the project has the same property, and invariant **B4 pins them**: the earth
+## variant (`EarthVariantSelector.variant_for`) and the generic damage mark
+## (`_generic_variant_for`) both multiply the level into an FNV-style mix, so
+## feeding them an absolute level would silently repaint the ground with different
+## variants. Measured: **52 224 floor cells changed source id** before this was
+## applied to them — a board that looks fine and is not the one that was there.
+func relative_level(level: int) -> int:
+	return level - _ground_plane_level
 
 
 ## The highest built WALL level, as a level number — not a count. Overhead lamps
@@ -1152,7 +1180,7 @@ func _composite_full_voxel_decal(plan: Dictionary, material_name: String, edge,
 ## {} on any kind of miss (no baked atom here, unbaked map, BakeConfig off) —
 ## the caller's signal to fall through to the generic path.
 func _resolve_tinted_baked_atom(edge, slice_face: int, voxel_xy: Vector2i, level: int) -> Dictionary:
-	return _tint_baked_atom(_baked_lookup.resolve(edge, slice_face, voxel_xy, level))
+	return _tint_baked_atom(_baked_lookup.resolve(edge, slice_face, voxel_xy, relative_level(level)))
 
 
 ## D33 Part 3c: the flat/edge-less counterpart — zoned FLOOR materials AND
@@ -1486,7 +1514,7 @@ func _composite_generic_flat_mark(plan: Dictionary, material_name: String,
 		kind = "bullet_dented" if plan["dented"] else "bullet_cracked"
 	else:
 		kind = "blast_dent" if plan["dented"] else "blast_crack"
-	var variant := _generic_variant_for(grid_pos, level)
+	var variant := _generic_variant_for(grid_pos, relative_level(level))
 	var decal_image := _load_decal_image(GENERIC_MARK_TEMPLATE % [kind, variant])
 	if decal_image == null:
 		return {}
@@ -1954,7 +1982,12 @@ func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, materia
 	var voxel_positions: Array[Vector2i] = GeometryCoords.gu_voxels(gu_cell)
 	
 	# Render each voxel at each level in the span
-	for level in range(start_level * GeometryCoords.LEVELS_PER_STOREY, (start_level + storey_span) * GeometryCoords.LEVELS_PER_STOREY):
+	## LEVEL-RENUMBER — `start_level` is a STOREY index despite its name (see the
+	## docstring: "start_level=0 reproduces the old ground-anchored behavior"), so
+	## it goes through the same origination helper every other storey does. Callers
+	## keep passing 0 for the ground storey and keep meaning it.
+	for level in range(GeometryCoords.storey_level_base(start_level),
+			GeometryCoords.storey_level_base(start_level + storey_span)):
 		for voxel_pos in voxel_positions:
 			_set_voxel_cell(voxel_pos, level, material_name)
 
@@ -1980,13 +2013,13 @@ func _render_slice(slice: Slice, edge = null) -> void:
 ## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
 func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: EdgeRegistry = null) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
-	_ensure_voxel_layers(column.start_storey * GeometryCoords.LEVELS_PER_STOREY + column.storey_count * GeometryCoords.LEVELS_PER_STOREY)
+	_ensure_voxel_layers((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
 
 	# Determine actual material to use (override if set, otherwise derived)
 	var actual_material = column.override_material if column.override_material != "" else column.material
 	
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
-		var level: int = column.start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
+		var level: int = GeometryCoords.storey_level_base(column.start_storey) + level_offset
 
 		# Case 1: No facade (render flat material-only)
 		if not column.facade_enabled:
@@ -2001,7 +2034,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 			if _baked_lookup == null:
 				_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
 			if _bake_config and _bake_config.enabled:
-				var junction_result = _baked_lookup.resolve_junction(column.voxel_pos, level)
+				var junction_result = _baked_lookup.resolve_junction(column.voxel_pos, relative_level(level))
 				if junction_result and junction_result.source_id_int >= 0:
 					_diag_total_cells += 1
 					_diag_baked_hits += 1
@@ -2031,7 +2064,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 					var slice = registry.get_slice(neighbor_edge.slice_a_id) if registry.get_slice(neighbor_edge.slice_a_id) and neighbor_voxel in registry.get_slice(neighbor_edge.slice_a_id).voxels else registry.get_slice(neighbor_edge.slice_b_id)
 					
 					if slice:
-						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy, level)
+						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy, relative_level(level))
 						if result and result.source_id_int >= 0:
 							source_id = result.source_id_int
 							atlas_coords = result.atlas_coords
@@ -2138,7 +2171,11 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 		_diag_null_edge_cells += 1
 
 	if not is_impact_mark and _bake_config and _bake_config.enabled and edge != null:
-		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, level)
+		## LEVEL-RENUMBER — sheet space, not render space. See `sheet_level()`.
+		## This is the MAIN wall placement path and the last of the four to be
+		## found: the first sweep missed it because it sits inside
+		## `_set_voxel_cell()` rather than beside the other three.
+		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, relative_level(level))
 
 		if result and result.source_id_int >= 0:
 			source_id = result.source_id_int
@@ -3227,7 +3264,8 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 				voxel.damage_state, voxel.damage_is_blast,
 				voxel.damage_carved_side, voxel.damage_variant)
 			if earth_material == "":
-				earth_material = "earth_%d" % EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+				earth_material = "earth_%d" % EarthVariantSelector.variant_for(
+					voxel.grid_pos, relative_level(voxel.level))
 			_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
 	else:
 		var layer := get_layer(voxel.level)
@@ -3777,7 +3815,12 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
 	layer.position = Vector2(
 		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
-		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(level)
+		## LEVEL-RENUMBER — RELATIVE, and this is the one the cell census could
+		## never have caught: it records what each cell holds, not where its layer
+		## sits. Left absolute, every layer would draw eighty steps too high and
+		## the whole board would leave the screen, with a byte-identical census.
+		## The gate grew a `pos=` column the moment this was found.
+		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y 			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level))
 	)
 
 	# Set rendering parameters
@@ -3791,14 +3834,19 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	# z=9, burying all of them (first visible casualty: AP perimeter, Director
 	# 2026-07-16). Formula: level+1 puts the walkable top face (-1) at z=0 and
 	# bedrock (-8..-2) at -7..-1; floor_layer (legacy plane) sits below at -9.
-	layer.z_index = (_wall_base_z_index + level) if level >= 0 else (level + 1)
+	## LEVEL-RENUMBER — the same two bands, addressed from the ground plane instead
+	## of from zero. `rel` is the old level number: 0 for the wall base, -1 for the
+	## walkable top face, -8 for the deepest bedrock, so both branches below are
+	## byte-for-byte the arithmetic they were and the census can prove it.
+	var rel: int = level - _ground_plane_level
+	layer.z_index = (_wall_base_z_index + rel) if rel >= 0 else (rel + 1)
 	layer.visible = true
 
 	## FLOOR-DEPTH-02: one tone step per level down. Positive (wall) levels are
 	## never touched — depth is a ground concept, and a wall's own stack already
 	## reads through its facade shading.
-	if level < 0:
-		var depth_index: int = mini(-level - 1, FLOOR_DEPTH_DIM.size() - 1)
+	if rel < 0:
+		var depth_index: int = mini(-rel - 1, FLOOR_DEPTH_DIM.size() - 1)
 		var dim: float = FLOOR_DEPTH_DIM[depth_index]
 		layer.modulate = Color(dim, dim, dim, 1.0)
 
@@ -3870,10 +3918,7 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 	# All of one Slab's voxels share slab.level (SlabGenerator.generate()'s
 	# invariant) — one layer to ensure, not a min/max scan. D17: negative
 	# (floor) levels route to the negative-only ensure function.
-	if slab.level < 0:
-		_ensure_negative_voxel_layer(slab.level)
-	else:
-		_ensure_voxel_layers(slab.level + 1)
+	_ensure_layer(slab.level)
 
 	# Floor-zone bake: a Slab whose material isn't the "earth" sentinel was
 	# assigned a zone material by room_builder.gd's flood-fill (texture_anchor
@@ -3916,7 +3961,8 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 	for voxel in slab.voxels:
 		if not voxel.visible:
 			continue
-		var variant_index: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+		var variant_index: int = EarthVariantSelector.variant_for(
+			voxel.grid_pos, relative_level(voxel.level))
 		var material_name: String = "earth_%d" % variant_index
 		var result2 := _set_voxel_cell(voxel.grid_pos, voxel.level, material_name,
 				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
@@ -3955,10 +4001,7 @@ func reveal_floor_slab(slab: Slab, apply: bool = true) -> Array:
 func render_slab_solid(slab: Slab) -> void:
 	if slab.voxels.is_empty():
 		return
-	if slab.level < 0:
-		_ensure_negative_voxel_layer(slab.level)
-	else:
-		_ensure_voxel_layers(slab.level + 1)
+	_ensure_layer(slab.level)
 
 	# ROOF-BAKE-01/02c: ceiling slabs try the flat baked lookup (dedicated
 	# roof pages keyed by STRUCTURE-LOCAL offset = grid_pos − texture_anchor,
@@ -3999,10 +4042,7 @@ func render_slab_solid(slab: Slab) -> void:
 ## is true).
 func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
 	var resolved: Array = []
-	if level < 0:
-		_ensure_negative_voxel_layer(level)
-	else:
-		_ensure_voxel_layers(level + 1)
+	_ensure_layer(level)
 
 	if _bake_config == null:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -4025,7 +4065,8 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true)
 		return resolved
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-		var variant_index: int = EarthVariantSelector.variant_for(voxel_pos, level)
+		var variant_index: int = EarthVariantSelector.variant_for(
+			voxel_pos, relative_level(level))
 		var result2 := _set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index,
 				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
 		if not apply and not result2.is_empty():

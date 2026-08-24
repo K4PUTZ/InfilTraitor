@@ -3738,8 +3738,13 @@ func _collect_all_voxel_cells() -> Array:
 	if _voxel_renderer == null:
 		return voxel_cells
 	
-	# Iterate through all voxel levels and collect used cells
-	for level in range(8):  # GeometryCoords.LEVELS_PER_STOREY = 8
+	## LEVEL-RENUMBER — was `range(8)`, which read the first storey only and
+	## contradicted this function's own docstring ("all voxel cells currently
+	## placed"). The renumber forced the question: those eight hardcoded indices
+	## address nothing at all once the ground plane moves. Corrected to the
+	## renderer's own level list rather than re-based to the new origin, because
+	## the docstring was right and the loop was wrong. Feeds one debug count.
+	for level in _voxel_renderer.level_keys():
 		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
 		if layer != null:
 			var used_cells := layer.get_used_cells()
@@ -4249,7 +4254,11 @@ func _advance_burn(delta: float) -> void:
 				continue
 			var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(e, _edge_registry))
 			tally[pc] = int(tally.get(pc, 0)) + 1
-			best_open = maxi(best_open, PassageQuery.clear_cells_in_storey(e, _edge_registry, 0))
+			## LEVEL-RENUMBER — the storey the agent walks on is 10 now, not 0.
+			## PassageQuery groups by `floor(level / LEVELS_PER_STOREY)`, so the
+			## number it answers to moved with the levels.
+			best_open = maxi(best_open, PassageQuery.clear_cells_in_storey(
+				e, _edge_registry, GeometryCoords.PLAYABLE_STOREY))
 		## PERF-F8 — ⚠️ RELEASED HERE, where the fire is DECLARED OUT, and not
 		## beside the final repaint. There are TWO paths that end a fire: this one,
 		## and the early return taken when the last batch is already all holes. The
@@ -5794,8 +5803,12 @@ func _capture_level_census() -> void:
 		var layer2: TileMapLayer = _voxel_renderer.get_layer(level)
 		if layer2 == null:
 			continue
-		meta.append("LAYER %d z=%d mod=%.4f cells=%d" % [
-			level + shift, layer2.z_index, layer2.modulate.r,
+		## ⚠️ `pos` was added after the renumber proved a cell census cannot see a
+		## layer that moved: every cell held the right value and the whole board
+		## would have drawn eighty steps off screen. A gate that cannot fail on the
+		## thing being changed is not a gate.
+		meta.append("LAYER %d z=%d mod=%.4f pos=%.2f cells=%d" % [
+			level + shift, layer2.z_index, layer2.modulate.r, layer2.position.y,
 			layer2.get_used_cells().size()])
 	meta.sort()
 	var out_path := OS.get_environment("INFILTRAITOR_CENSUS_OUT")

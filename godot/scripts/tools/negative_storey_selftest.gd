@@ -88,11 +88,13 @@ func test_negative_level_position_and_zindex_formula() -> void:
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO, 10)
 
-	renderer._ensure_voxel_layers(1)          # level 0 (wall base)
-	renderer._ensure_negative_voxel_layer(-1) # level -1 (floor top)
+	## LEVEL-RENUMBER — the same two layers, named by what they ARE rather than by
+	## a sign: the wall base is PLAYABLE_LEVEL and the floor top is one below it.
+	renderer._ensure_voxel_layers(1)                            # the wall base
+	renderer._ensure_layer(GeometryCoords.FLOOR_TOP_LEVEL)      # the floor top
 
-	var level0: TileMapLayer = renderer.get_layer(0)
-	var level_neg1: TileMapLayer = renderer.get_layer(-1)
+	var level0: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
+	var level_neg1: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 
 	# VOXEL_STEP_PX * level, position.y = ... - VOXEL_STEP_PX * level.
 	# level -1 => -VOXEL_STEP_PX * -1 = +VOXEL_STEP_PX => Y increases (moves down).
@@ -106,7 +108,9 @@ func test_negative_level_position_and_zindex_formula() -> void:
 	## at z=0) so the floor-painted overlay ecosystem (shadows z=1 .. selection
 	## z=7) draws above the floor and below the walls again. Walls keep
 	## wall_base_z_index + level. See _build_voxel_layer_node.
-	if level_neg1.z_index == (-1) + 1 and level0.z_index == 10 + 0:
+	## The floor slot is still `relative + 1` and the wall band still
+	## `wall_base + relative`; only the origin of `relative` moved.
+	if level_neg1.z_index == 0 and level0.z_index == 10:
 		_pass("z_index: level 0 = %d (wall_base + level), level -1 = %d (floor slot: level + 1)" % [level0.z_index, level_neg1.z_index])
 	else:
 		_fail("z_index mismatch: level0=%d (want 10) level_neg1=%d (want 0)" % [level0.z_index, level_neg1.z_index])
@@ -155,7 +159,7 @@ func test_positive_pipeline_unaffected() -> void:
 
 	renderer.render_block(Vector2i(0, 0), 0, 1, "concrete")
 
-	var wall_layer: TileMapLayer = renderer.get_layer(0)
+	var wall_layer: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 	var placed := 0
 	if wall_layer != null:
 		for voxel_pos in GeometryCoordsClass.gu_voxels(Vector2i(0, 0)):
@@ -201,7 +205,8 @@ func test_slab_render_routes_negative_level_correctly() -> void:
 
 	var mismatches := 0
 	for voxel in slab.voxels:
-		var expected_variant: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+		var expected_variant: int = EarthVariantSelector.variant_for(voxel.grid_pos,
+			voxel.level - GeometryCoords.PLAYABLE_LEVEL)
 		var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
 		var actual_source_id: int = layer.get_cell_source_id(voxel.grid_pos)
 		if actual_source_id != expected_source_id:
@@ -212,7 +217,7 @@ func test_slab_render_routes_negative_level_correctly() -> void:
 	else:
 		_fail("%d/64 cells mismatched on the negative-level Slab" % mismatches)
 
-	if renderer.get_layer(0) == null:
+	if renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL) == null:
 		_pass("No positive layer was created as a side effect of rendering a negative-level Slab")
 	else:
 		_fail("Rendering a negative-level Slab unexpectedly created a positive layer 0")

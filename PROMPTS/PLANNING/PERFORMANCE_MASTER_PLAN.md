@@ -2294,3 +2294,79 @@ stale-driven and pays the whole debt. **The shot ends at 0.**
   fire 1 final repaint   1 024 ms -> 280 ms      gate: 0 of 205 381 cells
   fire 2 final repaint     984 ms -> 295 ms      gate: 0 of 205 160 cells
 ```
+
+## 11. THE STOREY RENUMBER — every level is non-negative, and the playable storey is 10
+
+Director, 2026-08-24: *"seria melhor a gente só usar valores positivos e convencionar
+que o andar 10 vai ser sempre o jogável… e temos até o andar 0 para criar
+possibilidades de efeitos subterrâneos."*
+
+⚠️ **The premise needed one correction first, and it was mine to make.** §10.2's
+residue was reported as "47 of them on negative levels", which reads as the sign
+being at fault. It was not: the probe's discriminator was `indexed=false`, and a
+revealed crater floor is a *newly placed* cell that happens to live downstairs.
+**Renumbering would not have prevented that bug.** What the SIGN actually cost was a
+second store — `_voxel_layers` an Array, `_negative_voxel_layers` a Dictionary,
+`get_layer()` branching between them, and every map-wide walk arriving in pairs.
+
+**Done in two stages so the gate could isolate each**, and `PLAYABLE_STOREY = 10`,
+`PLAYABLE_LEVEL = 80` are the only new constants. The ground stack becomes storey 9,
+the walls become storeys 10, 11 and 12.
+
+### 11.1 The gate had to be earned, and then widened
+
+`INFILTRAITOR_CAPTURE_ACTION=level_census` dumps every placed cell (source, atlas,
+alternative, soot) plus each layer's z_index, modulate and position, sorted;
+`INFILTRAITOR_CENSUS_LEVEL_SHIFT=-80` subtracts the offset so a renumbered board
+compares line for line. Two boots of unchanged code are byte-identical — proven
+before use, because §10.4 had just measured the pixel harness at 22 967 px of noise.
+
+⚠️ **And the first version of it could not have failed.** It recorded what each cell
+HOLDS and not where its layer SITS. `_build_voxel_layer_node()` positions a layer at
+`-VOXEL_STEP_PX * level`; left absolute, every layer would draw eighty steps up and
+the whole board would leave the screen **with a byte-identical census**. Found by
+accident while chasing something else. `pos=` was added and the baseline re-taken.
+
+### 11.2 A RENDER LEVEL IS NOT A TEXTURE ROW, and this cost four separate bugs
+
+The lesson repeated until it was written down: several axes are *indexed by level*
+and have their own origin at zero. `VoxelRenderer.relative_level()` is the single
+conversion, and each of these was found by the gate refusing to pass:
+
+| axis confused with a render level | measured cost |
+|---|---|
+| `BakedTileLookup` sheet rows — 4 call sites, the last being the MAIN wall path inside `_set_voxel_cell()` | 2 112 cells absent, **no warning, no error** — a resolve that finds nothing places nothing |
+| `EarthVariantSelector` / `_generic_variant_for` — level-keyed hashes **pinned by invariant B4** | 52 224 floor cells with a different source id |
+| light height classes (`0/2/4/6` were heights above the walkable plane, not levels) | 13 668 cells with a wrong light bucket |
+| `OcclusionSet`'s level → screen Y | 2 112 cells ghosted that the baseline never ghosts |
+
+`bake_compositor.gd`'s `start_level` and `room_builder`'s junction `level_start`
+were correctly left alone — texture space, origin zero. The second of those was
+shifted and reverted once the consumer was read: `_mirror_index(level, SHEET_ROWS)`.
+
+### 11.3 What the CENSUS could never have caught, and the selftests did
+
+The census is a boot snapshot: it detonates nothing and moves nobody. The suite
+found a **real production bug** the gate is structurally blind to —
+`DetonationPlanBuilder._phase_slices()` computed `base_level` from
+`start_storey * LEVELS_PER_STOREY` unshifted, so `simulate_container_damage()` saw
+offsets of ~80, the ring lookup ran off its table and **a grenade damaged nothing at
+all**. Its siblings in the junction branch and in `OcclusionSet` went the same way.
+
+`PassageQuery` groups by `floor(level / LEVELS_PER_STOREY)`, so the storey it answers
+to moved with the levels — a deliberate, Director-ratified semantic change, and
+`room.gd`'s caller asks for `PLAYABLE_STOREY` now instead of `0`.
+
+⚠️ **A blanket regex over the fixtures was wrong twice**, and the suite caught both:
+`_synthetic_voxels()` numbers its voxels 0..N literally, so those calls keep
+`base_level = 0`. A fixture's own numbering is what it must match, not the map's.
+
+### 11.4 Result
+
+```
+205 704 placed cells · 32 layers · shift -80 · 0 script errors
+██ IDENTICAL to the pre-renumber baseline ██
+   source, atlas, alternative, soot, z_index, modulate AND layer position
+
+selftests 39 clean / 0 failed · invariants ✅ · fire end gate 0 and 0
+```

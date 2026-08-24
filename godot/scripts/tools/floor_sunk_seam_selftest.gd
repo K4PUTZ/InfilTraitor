@@ -60,7 +60,7 @@ func _new_renderer() -> VoxelRenderer:
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	renderer._ensure_voxel_layers(1)
+	renderer._ensure_voxel_layers(1)   ## LEVEL-RENUMBER: the ground wall level, now GeometryCoords.PLAYABLE_LEVEL
 	return renderer
 
 
@@ -123,9 +123,9 @@ func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:
 	_stub_baked_floor(renderer, Color(0.5, 0.6, 0.4, 1.0))
 	var grid_pos := Vector2i(6, 2)
 
-	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
+	renderer._set_voxel_cell(grid_pos, GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
 
-	var layer := renderer.get_layer(0)
+	var layer := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 	var placed_source_id := layer.get_cell_source_id(grid_pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_0")
 
@@ -135,7 +135,7 @@ func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:
 		_fail("placed source_id (%d) fell back to generic (%d) instead of the floor composite" % [placed_source_id, generic_id])
 
 	## Idempotency, same discipline as 3a/3b.
-	renderer._set_voxel_cell(grid_pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
+	renderer._set_voxel_cell(grid_pos, GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true, "grass")
 	if layer.get_cell_source_id(grid_pos) == placed_source_id and renderer.get_damage_composite_cache().size() == 1:
 		_pass("a repeat call hit the cache (still 1 entry)")
 	else:
@@ -150,7 +150,7 @@ func test_resolve_flat_receives_the_real_zone_material_not_the_pseudo_name() -> 
 	var renderer := _new_renderer()
 	var stub := _stub_baked_floor(renderer, Color.WHITE)
 
-	renderer._set_voxel_cell(Vector2i(1, 1), 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "concrete")
+	renderer._set_voxel_cell(Vector2i(1, 1), GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "concrete")
 
 	if stub.last_flat_material_id == "concrete":
 		_pass("resolve_flat() received the real zone material (\"concrete\")")
@@ -175,8 +175,8 @@ func test_empty_zone_material_falls_through_to_generic() -> void:
 
 	## No zone_material passed (default "") — matches a plain, never-baked
 	## earth floor, which has no facade to preserve in the first place.
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true)
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_0", null, Vector2i.ZERO, 0, true)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_0")
 	if got != -1 and got != generic_id:
 		_pass("no zone_material -> resolves via the generic floor compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
@@ -197,8 +197,8 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 	renderer._baked_lookup = miss_stub
 
 	var pos := Vector2i(8, 8)
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_1", null, Vector2i.ZERO, 0, true, "sand")
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_1", null, Vector2i.ZERO, 0, true, "sand")
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_1")
 	if got != -1 and got != generic_id:
 		_pass("no baked zone -> resolves via the generic floor compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])

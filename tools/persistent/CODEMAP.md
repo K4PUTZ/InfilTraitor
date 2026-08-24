@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**219 scripts · 68894 lines total** (under `godot/scripts/`)
+**219 scripts · 69011 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -661,7 +661,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 108 lines
+`class_name GeometryCoords` · 121 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -679,8 +679,8 @@ extends `ConfirmationDialog` · 64 lines
 - `VOXEL_ATOM_W` = `32`
 - `VOXEL_ATOM_H` = `36`
 - `VOXEL_TILE_H` = `16`
-- `FLOOR_TOP_LEVEL` = `-1`
-- `FLOOR_DEEP_LEVEL` = `-2`
+- `FLOOR_TOP_LEVEL` = `PLAYABLE_LEVEL - 1`
+- `FLOOR_DEEP_LEVEL` = `PLAYABLE_LEVEL - 2`
 
 ---
 
@@ -854,7 +854,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4270 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4311 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1917,7 +1917,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1666 lines
+`class_name DetonationPlanBuilder` · 1669 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2277,7 +2277,7 @@ extends `Node2D` · 43 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 669 lines
+`class_name VoxelLightField` · extends `RefCounted` · 675 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -2389,7 +2389,7 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 876 lines
+`class_name OcclusionSet` · 883 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -2876,7 +2876,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2420 lines
+extends `SceneTree` · 2422 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3264,7 +3264,7 @@ extends `SceneTree` · 173 lines
 
 ### `fixed_floor_selftest.gd`
 
-extends `SceneTree` · 170 lines
+extends `SceneTree` · 174 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
@@ -3288,7 +3288,7 @@ extends `SceneTree` · 170 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 295 lines
+extends `SceneTree` · 296 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -3337,7 +3337,7 @@ extends `SceneTree` · 209 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 521 lines
+extends `SceneTree` · 524 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -3356,7 +3356,7 @@ extends `SceneTree` · 521 lines
 - `ATOM_W` = `32`
 - `ATOM_H` = `36`
 - `V_MARGIN` = `32`
-- `FLOOR_TOP_LEVEL` = `-1`
+- `FLOOR_TOP_LEVEL` = `GeometryCoords.FLOOR_TOP_LEVEL`
 - `FLOOR_TARGET_H` = `1024`
 
 **Public vars**
@@ -3450,7 +3450,7 @@ extends `SceneTree` · 227 lines
 
 ### `half_thickness_selftest.gd`
 
-extends `SceneTree` · 306 lines
+extends `SceneTree` · 307 lines
 
 `godot/scripts/tools/half_thickness_selftest.gd`
 
@@ -3660,7 +3660,7 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 239 lines
+extends `SceneTree` · 244 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
@@ -3752,7 +3752,7 @@ extends `SceneTree` · 171 lines
 
 ### `passage_query_selftest.gd`
 
-extends `SceneTree` · 300 lines
+extends `SceneTree` · 304 lines
 
 `godot/scripts/tools/passage_query_selftest.gd`
 
@@ -4005,7 +4005,7 @@ extends `SceneTree` · 223 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 296 lines
+extends `SceneTree` · 297 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
@@ -4468,7 +4468,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1232 lines
+`class_name RoomBuilder` · 1245 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -4860,7 +4860,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8173 lines
+extends `Node2D` · 8186 lines
 
 `godot/scripts/world/room.gd`
 

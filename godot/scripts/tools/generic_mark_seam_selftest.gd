@@ -57,7 +57,7 @@ func _new_renderer_bake_off() -> VoxelRenderer:
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	renderer._ensure_voxel_layers(1)
+	renderer._ensure_voxel_layers(1)   ## LEVEL-RENUMBER: the ground wall level, now GeometryCoords.PLAYABLE_LEVEL
 	renderer._bake_config = load("res://godot/scripts/systems/bake_config.gd")
 	renderer._bake_config.enabled = false
 	return renderer
@@ -113,8 +113,8 @@ func test_flat_mark_resolves_with_bake_off() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(1, 1)
 
-	renderer._set_voxel_cell(pos, 0, "concrete_dented", null, Vector2i.ZERO, 0)
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_dented", null, Vector2i.ZERO, 0)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_dented")
 	if got != -1 and got != generic_id:
 		_pass("resolved via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
@@ -134,16 +134,16 @@ func test_flat_mark_dented_has_a_true_alpha_cut_cracked_does_not() -> void:
 	## for dented) would still pass every id-level check in this file.
 	var renderer := _new_renderer_bake_off()
 
-	renderer._set_voxel_cell(Vector2i(2, 2), 0, "concrete_dented", null, Vector2i.ZERO, 0)
-	var dented_entry := renderer.get_damage_composite_cache().resolve("2,2,0,concrete_dented")
+	renderer._set_voxel_cell(Vector2i(2, 2), GeometryCoords.PLAYABLE_LEVEL, "concrete_dented", null, Vector2i.ZERO, 0)
+	var dented_entry := renderer.get_damage_composite_cache().resolve("2,2,%d,concrete_dented" % GeometryCoords.PLAYABLE_LEVEL)
 	var dented_page := renderer.get_damage_composite_cache().get_page_image(0)
 	var dented_origin: Vector2i = dented_entry["atlas_coords"] * Vector2i(32, 36)
 	## Top-face centre (16, 8) — _MARK_CENTER in generate_voxel.py / the
 	## authoring canvas centre projected through FACE_TOP.
 	var dented_center := dented_page.get_pixel(dented_origin.x + 16, dented_origin.y + 8)
 
-	renderer._set_voxel_cell(Vector2i(3, 3), 0, "concrete_cracked", null, Vector2i.ZERO, 0)
-	var cracked_entry := renderer.get_damage_composite_cache().resolve("3,3,0,concrete_cracked")
+	renderer._set_voxel_cell(Vector2i(3, 3), GeometryCoords.PLAYABLE_LEVEL, "concrete_cracked", null, Vector2i.ZERO, 0)
+	var cracked_entry := renderer.get_damage_composite_cache().resolve("3,3,%d,concrete_cracked" % GeometryCoords.PLAYABLE_LEVEL)
 	var cracked_page := renderer.get_damage_composite_cache().get_page_image(0)
 	var cracked_origin: Vector2i = cracked_entry["atlas_coords"] * Vector2i(32, 36)
 	var cracked_center := cracked_page.get_pixel(cracked_origin.x + 16, cracked_origin.y + 8)
@@ -174,16 +174,16 @@ func test_full_voxel_cracked_resolves_with_bake_off() -> void:
 	## _composite_generic_full_voxel_cracked() closes that gap.
 	var renderer := _new_renderer_bake_off()
 
-	renderer._set_voxel_cell(Vector2i(10, 10), 0, "concrete_bullet_cracked_left_0", null, Vector2i.ZERO, 0)
-	var bullet_got := renderer.get_layer(0).get_cell_source_id(Vector2i(10, 10))
+	renderer._set_voxel_cell(Vector2i(10, 10), GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_cracked_left_0", null, Vector2i.ZERO, 0)
+	var bullet_got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(Vector2i(10, 10))
 	var bullet_generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_cracked_left_0")
 	if bullet_got != -1 and bullet_got != bullet_generic_id:
 		_pass("bullet_cracked_left resolved via the generic compositor (source_id %d), not the composites/ id (%d)" % [bullet_got, bullet_generic_id])
 	else:
 		_fail("bullet_cracked_left resolved to %d, expected the generic compositor (composites/ id is %d)" % [bullet_got, bullet_generic_id])
 
-	renderer._set_voxel_cell(Vector2i(11, 11), 0, "concrete_blast_cracked_all_1", null, Vector2i.ZERO, 0)
-	var blast_got := renderer.get_layer(0).get_cell_source_id(Vector2i(11, 11))
+	renderer._set_voxel_cell(Vector2i(11, 11), GeometryCoords.PLAYABLE_LEVEL, "concrete_blast_cracked_all_1", null, Vector2i.ZERO, 0)
+	var blast_got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(Vector2i(11, 11))
 	var blast_generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_blast_cracked_all_1")
 	if blast_got != -1 and blast_got != blast_generic_id:
 		_pass("blast_cracked_all resolved via the generic compositor (source_id %d), not the composites/ id (%d)" % [blast_got, blast_generic_id])
@@ -199,8 +199,8 @@ func test_half_voxel_wall_resolves_with_bake_off() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(4, 4)
 
-	renderer._set_voxel_cell(pos, 0, "concrete_bullet_dented_left_0", null, Vector2i.ZERO, 0)
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_dented_left_0", null, Vector2i.ZERO, 0)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_dented_left_0")
 	if got != -1 and got != generic_id:
 		_pass("resolved via the generic half-voxel compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
@@ -223,8 +223,8 @@ func test_half_voxel_variant_threading_is_not_collapsed() -> void:
 	var pos := Vector2i(5, 5)
 	var tiles: Dictionary = {}
 	for variant in range(3):
-		renderer._set_voxel_cell(pos, 0, "concrete_bullet_dented_left_%d" % variant, null, Vector2i.ZERO, 0)
-		var layer := renderer.get_layer(0)
+		renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_dented_left_%d" % variant, null, Vector2i.ZERO, 0)
+		var layer := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 		var tile := Vector3i(layer.get_cell_source_id(pos), layer.get_cell_atlas_coords(pos).x, layer.get_cell_atlas_coords(pos).y)
 		tiles[tile] = true
 
@@ -242,8 +242,8 @@ func test_floor_sunk_resolves_with_bake_off() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(6, 6)
 
-	renderer._set_voxel_cell(pos, 0, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "grass")
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "earth_blast_dented_top_2", null, Vector2i.ZERO, 0, true, "grass")
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("earth_blast_dented_top_2")
 	if got != -1 and got != generic_id:
 		_pass("resolved via the generic floor compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
@@ -259,8 +259,8 @@ func test_ceiling_resolves_with_bake_off_no_decal_needed() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(7, 7)
 
-	renderer._set_voxel_cell(pos, 0, "stone_blast_dented_bottom", null, Vector2i.ZERO, 0, true)
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "stone_blast_dented_bottom", null, Vector2i.ZERO, 0, true)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("stone_blast_dented_bottom")
 	if got != -1 and got != generic_id:
 		_pass("resolved via the generic ceiling compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])
@@ -276,10 +276,10 @@ func test_composite_is_idempotent() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(8, 8)
 
-	renderer._set_voxel_cell(pos, 0, "concrete_dented", null, Vector2i.ZERO, 0)
-	var first_id := renderer.get_layer(0).get_cell_source_id(pos)
-	renderer._set_voxel_cell(pos, 0, "concrete_dented", null, Vector2i.ZERO, 0)
-	var second_id := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_dented", null, Vector2i.ZERO, 0)
+	var first_id := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_dented", null, Vector2i.ZERO, 0)
+	var second_id := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 
 	if first_id == second_id and renderer.get_damage_composite_cache().size() == 1:
 		_pass("repeat call hit the cache (still 1 entry, same source_id %d)" % first_id)
@@ -295,8 +295,8 @@ func test_non_impact_material_is_unaffected() -> void:
 	var renderer := _new_renderer_bake_off()
 	var pos := Vector2i(9, 9)
 
-	renderer._set_voxel_cell(pos, 0, "concrete", null, Vector2i.ZERO, 0)
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete", null, Vector2i.ZERO, 0)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var expected: int = VoxelRendererClass.MATERIALS.find("concrete")
 	if got == expected:
 		_pass("a clean material name resolves straight to its own MATERIALS id (%d), untouched" % expected)

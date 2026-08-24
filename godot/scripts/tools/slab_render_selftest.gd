@@ -56,7 +56,7 @@ func test_slab_generator_produces_64_voxels() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(2, 2)
-	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, 0, "earth", registry)
+	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
 
 	if slab.voxels.size() == 64:
 		_pass("Generated Slab has 64 voxels (VOXELS_PER_UNIT_AXIS^2)")
@@ -99,12 +99,12 @@ func test_render_slab_places_cells_matching_the_hash() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(0, 0)
-	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, 0, "earth", registry)
+	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
 	renderer.render_slab(slab)
 
-	var layer: TileMapLayer = renderer.get_layer(0)
+	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 	if layer == null:
-		_fail("Layer 0 was not created by render_slab()")
+		_fail("The floor level was not created by render_slab()")
 		renderer.queue_free()
 		print("")
 		return
@@ -113,7 +113,8 @@ func test_render_slab_places_cells_matching_the_hash() -> void:
 	var checked := 0
 	for voxel in slab.voxels:
 		checked += 1
-		var expected_variant: int = EarthVariantSelector.variant_for(voxel.grid_pos, voxel.level)
+		var expected_variant: int = EarthVariantSelector.variant_for(voxel.grid_pos,
+			voxel.level - GeometryCoords.PLAYABLE_LEVEL)
 		var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
 		var actual_source_id: int = layer.get_cell_source_id(voxel.grid_pos)
 		if actual_source_id != expected_source_id:
@@ -138,10 +139,10 @@ func test_render_slab_idempotent() -> void:
 	renderer.setup(Vector2.ZERO)
 
 	var registry := SlabRegistry.new()
-	var slab := SlabGenerator.generate(Vector2i(1, 0), Slab.Role.FLOOR, 0, "earth", registry)
+	var slab := SlabGenerator.generate(Vector2i(1, 0), Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
 
 	renderer.render_slab(slab)
-	var layer: TileMapLayer = renderer.get_layer(0)
+	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 	var first_pass: Array = []
 	for voxel in slab.voxels:
 		first_pass.append(layer.get_cell_source_id(voxel.grid_pos))
@@ -170,7 +171,7 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(4, 4)
 	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, 1, "earth", registry)   # destructible level
-	var bottom_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, 0, "earth", registry) # fixed bedrock level
+	var bottom_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry) # fixed bedrock level
 
 	if top_slab.id != bottom_slab.id:
 		_pass("Top and bottom Slabs at the same GU have distinct ids (%s vs %s)" % [top_slab.id, bottom_slab.id])
@@ -240,7 +241,7 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 		renderer.setup(Vector2.ZERO)
 
 		var registry := SlabRegistry.new()
-		var slab := SlabGenerator.generate(Vector2i(0, 0), Slab.Role.FLOOR, 0, material, registry)
+		var slab := SlabGenerator.generate(Vector2i(0, 0), Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, material, registry)
 		renderer.render_slab(slab)
 
 		var placed: Array[Vector3i] = []   # (source_id, atlas_x, atlas_y) per variant
@@ -249,7 +250,7 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 			target.set_damage(Voxel.DamageState.DENTED, true, Voxel.CarvedSide.TOP, variant)
 			renderer.process_dirty_slabs(registry)
 
-			var layer: TileMapLayer = renderer.get_layer(0)
+			var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 			var actual_id: int = layer.get_cell_source_id(target.grid_pos)
 			var actual_coords: Vector2i = layer.get_cell_atlas_coords(target.grid_pos)
 			placed.append(Vector3i(actual_id, actual_coords.x, actual_coords.y))
@@ -283,7 +284,7 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 		## Index past the voxels the variant loop above damaged — voxels[0..2]
 		## are all DENTED now, so the old voxels[1] would no longer be intact.
 		var neighbour: Voxel = slab.voxels[VoxelRendererClass.IMPACT_DECAL_VARIANTS]
-		var neighbour_layer: TileMapLayer = renderer.get_layer(0)
+		var neighbour_layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
 		var neighbour_id: int = neighbour_layer.get_cell_source_id(neighbour.grid_pos)
 		var neighbour_coords: Vector2i = neighbour_layer.get_cell_atlas_coords(neighbour.grid_pos)
 		var neighbour_tile := Vector3i(neighbour_id, neighbour_coords.x, neighbour_coords.y)

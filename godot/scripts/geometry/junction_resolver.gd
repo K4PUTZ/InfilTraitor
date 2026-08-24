@@ -70,7 +70,7 @@ class JunctionColumn:
 		## position, stacked).
 		voxels = []
 		for level_offset in range(storey_count * GeometryCoords.LEVELS_PER_STOREY):
-			var level: int = start_storey * GeometryCoords.LEVELS_PER_STOREY + level_offset
+			var level: int = GeometryCoords.storey_level_base(start_storey) + level_offset
 			voxels.append(Voxel.new(voxel_pos, level, self))
 
 	func increment_dirty() -> void:

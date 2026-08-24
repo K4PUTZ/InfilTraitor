@@ -41,7 +41,10 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const ATOM_W: int = 32
 const ATOM_H: int = 36
 const V_MARGIN: int = 32
-const FLOOR_TOP_LEVEL: int = -1  ## mirrors room_builder.gd
+## LEVEL-RENUMBER — was a hand-copied `-1`. A mirrored constant that does not
+## follow the thing it mirrors is a second producer, which is the drift this
+## project keeps paying for; it reads the real one now.
+const FLOOR_TOP_LEVEL: int = GeometryCoords.FLOOR_TOP_LEVEL  ## mirrors room_builder.gd
 const FLOOR_TARGET_H: int = 1024  ## mirrors bake_compositor.gd's FACADE_W (isotropic floor plane)
 
 class MockMaterial:

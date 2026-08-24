@@ -462,7 +462,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		for block_instance: Dictionary in layout.get("solid_block_instances", []):
 			var occ_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var occ_size: Vector2i = block_instance.get("size", Vector2i.ONE)
-			var occ_level: int = maxi(1, int(block_instance.get("storeys", 1))) * GeometryCoords.LEVELS_PER_STOREY
+			var occ_level: int = GeometryCoords.storey_level_base(maxi(1, int(block_instance.get("storeys", 1))))
 			for ox in range(occ_size.x):
 				for oy in range(occ_size.y):
 					roof_level_by_gu[occ_gu_base + Vector2i(ox, oy)] = occ_level
@@ -499,7 +499,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
 			var block_storeys: int = int(block_instance.get("storeys", 1))
 			var block_material: String = String(block_instance.get("material", "concrete"))
-			var roof_base_level: int = block_storeys * GeometryCoords.LEVELS_PER_STOREY
+			## ⚠️ Takes the offset TOGETHER with `occ_level` above: the two are
+			## compared against each other in the border tests below, and this one
+			## is additionally a real render level. Shifting one without the other
+			## would leave the comparisons intact and the placement wrong, or the
+			## reverse — which is exactly the half-right this helper exists to stop.
+			var roof_base_level: int = GeometryCoords.storey_level_base(block_storeys)
 
 			for rx in range(block_size.x):
 				for ry in range(block_size.y):
@@ -857,6 +862,14 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 			"facade_id": BakePolicyClass.facade_for_material(jc_material),
 			"col_x": jc.voxel_pos.x - run_x["edges"][0].gu_a.x * 8,
 			"col_y": jc.voxel_pos.y - run_y["edges"][0].gu_a.y * 8,
+			## ⚠️ NOT SHIFTED, and this is the exception that proves the rule.
+			## LEVEL-RENUMBER moved every RENDER level by PLAYABLE_LEVEL; these two
+			## are not render levels. BakeCompositor feeds them to
+			## `_mirror_index(level, SHEET_ROWS)` — a row index into the facade
+			## sheet, texture space, origin zero — exactly like
+			## `bake_compositor.gd`'s own `start_level`. Shifting them by 80 sent
+			## the junction bake looking for rows that do not exist and cost 2 112
+			## cells, silently and with no warning anywhere.
 			"level_start": jc.start_storey * GeometryCoords.LEVELS_PER_STOREY,
 			"level_end": (jc.start_storey + jc.storey_count) * GeometryCoords.LEVELS_PER_STOREY,
 		})

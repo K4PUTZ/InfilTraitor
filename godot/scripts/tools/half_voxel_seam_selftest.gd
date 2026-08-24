@@ -53,7 +53,7 @@ func _new_renderer() -> VoxelRenderer:
 	var renderer := VoxelRendererClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	renderer._ensure_voxel_layers(1)
+	renderer._ensure_voxel_layers(1)   ## LEVEL-RENUMBER: the ground wall level, now GeometryCoords.PLAYABLE_LEVEL
 	return renderer
 
 
@@ -145,9 +145,9 @@ func test_set_voxel_cell_end_to_end_picks_the_half_voxel_composite() -> void:
 	var edge_stub := Object.new()
 	var grid_pos := Vector2i(4, 6)
 
-	renderer._set_voxel_cell(grid_pos, 0, "concrete_bullet_dented_left_1", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(grid_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_dented_left_1", edge_stub, Vector2i.ZERO, 0)
 
-	var layer := renderer.get_layer(0)
+	var layer := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
 	var placed_source_id := layer.get_cell_source_id(grid_pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_dented_left_1")
 
@@ -158,7 +158,7 @@ func test_set_voxel_cell_end_to_end_picks_the_half_voxel_composite() -> void:
 
 	## Idempotency, same as Part 3a's own check — a second identical call must
 	## be a cache hit (same source_id/atlas_coords), not a fresh composite.
-	renderer._set_voxel_cell(grid_pos, 0, "concrete_bullet_dented_left_1", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(grid_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_dented_left_1", edge_stub, Vector2i.ZERO, 0)
 	var second_source_id := layer.get_cell_source_id(grid_pos)
 	if second_source_id == placed_source_id and renderer.get_damage_composite_cache().size() == 1:
 		_pass("a repeat _set_voxel_cell() call hit the cache (still 1 entry)")
@@ -178,9 +178,9 @@ func test_cracked_still_goes_through_full_voxel_path_not_half() -> void:
 	var pos := Vector2i(2, 2)
 
 	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
-	renderer._set_voxel_cell(pos, 0, "concrete_bullet_cracked_left_0", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_bullet_cracked_left_0", edge_stub, Vector2i.ZERO, 0)
 	edge_stub.free()
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_cracked_id: int = VoxelRendererClass.MATERIALS.find("concrete_bullet_cracked_left_0")
 
 	if got != -1 and got != generic_cracked_id:
@@ -206,8 +206,8 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	## — _half_voxel_decal_plan() still returns {} for a "_top_" name, so the
 	## WALL branch correctly never claims it.
 	var floor_pos := Vector2i(1, 1)
-	renderer._set_voxel_cell(floor_pos, 0, "concrete_blast_dented_top_0", edge_stub, Vector2i.ZERO, 0)
-	var floor_got := renderer.get_layer(0).get_cell_source_id(floor_pos)
+	renderer._set_voxel_cell(floor_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_blast_dented_top_0", edge_stub, Vector2i.ZERO, 0)
+	var floor_got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(floor_pos)
 	var flat_concrete_id: int = VoxelRendererClass.MATERIALS.find("concrete")
 	if floor_got != -1 and floor_got != flat_concrete_id:
 		_pass("floor DENTED composites through the floor-sunk path (source_id %d), not the wall branch and not flat concrete (%d)" % [
@@ -225,8 +225,8 @@ func test_floor_and_ceiling_dented_are_unaffected() -> void:
 	## (_half_voxel_decal_plan returns {} for "_blast_dented_bottom" — ceiling
 	## is not, and never was, a bug in that branch). Not a regression.
 	var ceiling_pos := Vector2i(3, 3)
-	renderer._set_voxel_cell(ceiling_pos, 0, "concrete_blast_dented_bottom", edge_stub, Vector2i.ZERO, 0)
-	var ceiling_got := renderer.get_layer(0).get_cell_source_id(ceiling_pos)
+	renderer._set_voxel_cell(ceiling_pos, GeometryCoords.PLAYABLE_LEVEL, "concrete_blast_dented_bottom", edge_stub, Vector2i.ZERO, 0)
+	var ceiling_got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(ceiling_pos)
 	var ceiling_generic_id: int = VoxelRendererClass.MATERIALS.find("concrete_blast_dented_bottom")
 	if ceiling_got != -1 and ceiling_got != ceiling_generic_id:
 		_pass("ceiling DENTED resolves via Part 4b's generic ceiling compositor (source_id %d), not the wall branch and not the untouched generic id (%d)" % [ceiling_got, ceiling_generic_id])
@@ -255,9 +255,9 @@ func test_no_baked_atom_falls_through_to_generic() -> void:
 
 	var pos := Vector2i(9, 1)
 	var edge_stub := Object.new()  ## LEAK-GATE-01: named so it can be freed
-	renderer._set_voxel_cell(pos, 0, "wood_bullet_dented_right_0", edge_stub, Vector2i.ZERO, 0)
+	renderer._set_voxel_cell(pos, GeometryCoords.PLAYABLE_LEVEL, "wood_bullet_dented_right_0", edge_stub, Vector2i.ZERO, 0)
 	edge_stub.free()
-	var got := renderer.get_layer(0).get_cell_source_id(pos)
+	var got := renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL).get_cell_source_id(pos)
 	var generic_id: int = VoxelRendererClass.MATERIALS.find("wood_bullet_dented_right_0")
 	if got != -1 and got != generic_id:
 		_pass("no baked atom -> resolves via the generic vector compositor (source_id %d), not the composites/ id (%d)" % [got, generic_id])

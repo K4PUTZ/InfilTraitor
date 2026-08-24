@@ -419,7 +419,7 @@ func _static_factor(cell: Vector2i, level: int) -> float:
 	## from it makes the cache MORE reusable, not less, since a detonation no
 	## longer has to invalidate the light bucket of every voxel it scorches.
 	## VL-D3: floor that was under a wall reads darker once exposed.
-	if level < 0 and _under_structure.has(cell):
+	if level < GeometryCoords.PLAYABLE_LEVEL and _under_structure.has(cell):
 		factor *= under_structure_factor
 	_static_factor_cache[key] = factor
 	return factor
@@ -646,16 +646,22 @@ func _falloff(d: float, radius: float) -> float:
 ## Q1 (Director-ratified 2026-07-23): height_class → anchor voxel level.
 ## OVERHEAD anchors at the ceiling of the map's fixture height (max_floors from
 ## the compiled layout — same source the ceiling_lift formula uses).
+## LEVEL-RENUMBER — these four are HEIGHTS ABOVE THE WALKABLE PLANE, not level
+## numbers, and they were only ever written as 0/2/4/6 because the plane sat at
+## zero. `_lamp_intensity()` takes `level - _anchor_level(light)`, so leaving them
+## absolute would put every lamp eighty levels below the geometry it lights —
+## measured at 13 668 cells with a changed light bucket before this was fixed.
+## The default branch is already a real level and stays one.
 func _anchor_level(light) -> int:
 	match light.height_class:
 		LightSource.HEIGHT_FLOOR:
-			return 0
+			return GeometryCoords.PLAYABLE_LEVEL
 		LightSource.HEIGHT_LOW_COVER:
-			return 2
+			return GeometryCoords.PLAYABLE_LEVEL + 2
 		LightSource.HEIGHT_HUMAN:
-			return 4
+			return GeometryCoords.PLAYABLE_LEVEL + 4
 		LightSource.HEIGHT_TALL_STRUCTURE:
-			return 6
+			return GeometryCoords.PLAYABLE_LEVEL + 6
 		_:
 			return _top_wall_level
 

@@ -229,7 +229,8 @@ func test_passage_opens_on_the_only_face() -> void:
 		_fail("intact panel → %s" % PassageQueryClass.class_name_of(before))
 
 	for voxel in lone.voxels:
-		if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) == 0:
+		if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) \
+				== GeometryCoords.PLAYABLE_STOREY:
 			voxel.set_damage(Voxel.DamageState.DESTROYED, false)
 	var after: int = PassageQueryClass.passage_class(fx["edge"], fx["registry"])
 	if after == PassageQueryClass.PassageClass.CROUCH:

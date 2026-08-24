@@ -5758,6 +5758,79 @@ func _capture_two_fires() -> void:
 	_report_two_fires_soot_drift(tf_census, tf_cells)
 
 
+## LEVEL-RENUMBER — THE GATE, and it has to be earned before it means anything.
+##
+## The storey renumber (Director, 2026-08-24: *"seria melhor a gente só usar valores
+## positivos… o andar 10 vai ser sempre o jogável"*) must leave the board IDENTICAL
+## apart from a constant added to every level. A pixel diff cannot say that: two
+## boots of the same code were measured 22 967 pixels apart (§10.4), because the
+## fire's cadence is pinned in seconds. This dumps the board itself instead —
+## every placed cell, with everything that decides how it draws — so the check is
+## an exact comparison of state rather than of a rendering of it.
+##
+## `INFILTRAITOR_CENSUS_LEVEL_SHIFT=-80` subtracts the offset back out, which is
+## what lets a renumbered board be compared against a pre-renumber baseline line
+## for line. Sorted, so the file order cannot itself be the difference.
+##
+## ⚠️ Run it TWICE on unchanged code first. A census that is not reproducible
+## boot-to-boot is not a gate, it is a number that looks like one.
+func _capture_level_census() -> void:
+	if _voxel_renderer == null:
+		push_error("[CENSUS] no voxel renderer.")
+		return
+	## The board settles over several frames (bakes, the first full repaint), and
+	## a census taken before it has is a census of a construction site.
+	for _w in range(90):
+		await get_tree().process_frame
+	var shift_env := OS.get_environment("INFILTRAITOR_CENSUS_LEVEL_SHIFT")
+	var shift: int = shift_env.to_int() if shift_env.is_valid_int() else 0
+	var lines: Array = []
+	var levels: Array = []
+	for level in range(_voxel_renderer._voxel_layers.size()):
+		levels.append(level)
+	for level in _voxel_renderer._negative_voxel_layers.keys():
+		levels.append(level)
+	for level in levels:
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer == null:
+			continue
+		for cell in layer.get_used_cells():
+			var atlas: Vector2i = layer.get_cell_atlas_coords(cell)
+			lines.append("%d %d %d %d %d %d %d %d" % [
+				level + shift, cell.x, cell.y,
+				layer.get_cell_source_id(cell), atlas.x, atlas.y,
+				layer.get_cell_alternative_tile(cell),
+				_voxel_renderer.cell_soot_at(level, cell)])
+	lines.sort()
+	## The layer-level state a cell's own row cannot carry: z_index decides what
+	## draws over what, and modulate is FLOOR_DEPTH_02's per-level tone. Both are
+	## derived from the level number, so both are exactly what a renumber can
+	## break silently.
+	var meta: Array = []
+	for level in levels:
+		var layer2: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer2 == null:
+			continue
+		meta.append("LAYER %d z=%d mod=%.4f cells=%d" % [
+			level + shift, layer2.z_index, layer2.modulate.r,
+			layer2.get_used_cells().size()])
+	meta.sort()
+	var out_path := OS.get_environment("INFILTRAITOR_CENSUS_OUT")
+	if out_path == "":
+		out_path = ProjectSettings.globalize_path("res://") + "Screenshots/history/level_census.txt"
+	var f := FileAccess.open(out_path, FileAccess.WRITE)
+	if f == null:
+		push_error("[CENSUS] cannot write %s" % out_path)
+		return
+	for m in meta:
+		f.store_line(m)
+	for l in lines:
+		f.store_line(l)
+	f.close()
+	print("[CENSUS] %d placed cell(s) over %d layer(s), level shift %d -> %s"
+		% [lines.size(), meta.size(), shift, out_path])
+
+
 ## §9.11a WATCH — fire 1's own region, sampled EVERY FRAME through fire 2.
 ##
 ## The end-state census answers *"did blast 2 leave blast 1's region different"*.
@@ -7262,6 +7335,8 @@ func _run_auto_screenshot_capture() -> void:
 		await _capture_cell_index_gate()
 		get_tree().quit(0)
 		return
+	elif capture_action == "level_census":
+		await _capture_level_census()
 	elif capture_action == "two_fires":
 		await _capture_two_fires()
 		get_tree().quit(0)

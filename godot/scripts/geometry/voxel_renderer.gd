@@ -2279,6 +2279,14 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	if not apply:
 		return {"source_id": source_id, "atlas_coords": atlas_coords, "alternative_id": alternative_id}
 	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
+	## PERF-10 — THE PLACEMENT SEAM IS ALSO A BOARD WRITE THE LIGHT FIELD CANNOT
+	## SEE. Rule 8 makes this the only way a Wall or Slab voxel reaches the
+	## tilemap, which is exactly why the note belongs here rather than at each of
+	## its callers: damage variants, re-renders after destruction and the shot's
+	## own dirty pass all funnel through it, and none of them move occupancy or
+	## soot in a way `_stale_cells()` could notice. Measured: the SHOT's scoped
+	## repaint left 3 144 cells disagreeing with a full apply without this.
+	note_external_write(level, grid_pos)
 	return {}
 
 
@@ -2398,6 +2406,7 @@ func apply_occlusion(occluded: Dictionary) -> void:
 				"prev_alt": prev_alt
 			})
 			layer.erase_cell(cell)
+			note_external_write(level, cell)
 
 		if not restore_records.is_empty():
 			_ghosted_cells[cell] = restore_records
@@ -3085,6 +3094,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			## stale flag in future.
 			var already_gone: bool = _voxel_layers[voxel.level] 				.get_cell_source_id(voxel.grid_pos) == -1
 			_voxel_layers[voxel.level].erase_cell(voxel.grid_pos)
+			note_external_write(voxel.level, voxel.grid_pos)
 			## See forget_ghost_record(): a destroyed voxel must not be restorable.
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if not already_gone:
@@ -3194,6 +3204,7 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			## or roof voxel erased twice is one destruction, not two.
 			var was_there: bool = layer.get_cell_source_id(voxel.grid_pos) != -1
 			layer.erase_cell(voxel.grid_pos)
+			note_external_write(voxel.level, voxel.grid_pos)
 			## See forget_ghost_record(): a destroyed voxel must not be restorable.
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if was_there:

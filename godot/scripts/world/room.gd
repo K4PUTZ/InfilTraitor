@@ -2769,7 +2769,33 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 	## "sooted voxels=0" for every shot ever fired through here.
 	if include_soot and OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
 		_print_face_soot_diagnostics(soot_faces)
-	_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
+	## PERF-10 §10.5 — the SHOT takes the fire's route too, and for correctness
+	## before speed. `INFILTRAITOR_SHOT_SCOPE_PROBE=1` measured this path leaving
+	## **3 144 cells** disagreeing with a full apply: a GU scope answers "repaint
+	## where I hit", and the board's staleness is not confined to where anything
+	## was hit — §9.11c watched a blast move a crater's light eight GUs away.
+	##
+	## The stale set answers the right question instead, and `soot_lighten` is the
+	## one case it cannot serve: a fade rung re-applies the SAME field at a
+	## different tone over the shot's own GUs, which is a look mechanic rather than
+	## a correction, and the set does not describe it. That path keeps the GU walk.
+	##
+	## ⚠️ AND `include_soot` IS A PRECONDITION, NOT A DETAIL. A soot-free field
+	## answers "clean" for every cell, which is right for the caller's OWN GUs (it
+	## deliberately defers their scorch) and catastrophic anywhere else: driven by
+	## the stale set it would assert clean across every sooted cell on the board
+	## and wipe the map's scorch until the next sooty repaint — the Director's
+	## §9.11a symptom exactly, rebuilt from the other end.
+	##
+	## No caller does that TODAY: the burn's soot-free repaint sits behind
+	## `BURN_SUSPEND_REGION_LIGHT` (F8) and does not run, and measuring found 0
+	## soot-free scoped repaints in a two-fire capture. That is a reason to write
+	## the guard, not a reason to skip it — F8 is one constant away from being off.
+	if include_soot and soot_lighten == 0 and _voxel_light_field.has_stale_subset():
+		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
+			_voxel_light_field.stale_cells())
+	else:
+		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
 	if _sp:
 		print("[SCOPED-PROF] soot %.1f · occupancy %.1f · field.build %.1f · apply %.1f ms (%d GUs, soot=%s)"
 			% [float(_s1 - _s0) / 1000.0, float(_s2 - _s1) / 1000.0,

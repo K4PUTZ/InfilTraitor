@@ -2241,3 +2241,56 @@ with the work stashed:
   350 dispatch(es)`; the capture now reports **0**, and `the shot` reports 1 against
   3. Something between 2026-08-23 and today changed what that capture measures.
   The citation is stale and any argument resting on those numbers has to be re-run.
+
+### 10.5 ✅ THE SHOT TAKES THE SAME ROUTE — 3 144 stale cells to 0 (2026-08-24)
+
+`[SHOT-SCOPE] 206 491 cells checked, 3 144 differ from a full apply` was §10.4's
+parting finding, verified against a stashed HEAD so it is not this work's doing.
+**It is a correctness bug, not a speed one**: a GU scope answers *"repaint where I
+hit"*, and the board's staleness is not confined to where anything was hit —
+§9.11c watched a blast move a crater's light eight GUs away.
+
+The shot's soot pass now runs off the same stale set the fire's ending does:
+
+```
+                              before      after
+  SHOT-SCOPE, soot pass       3 144         0
+  shot repaint (no probe)    81.7 ms    75.4 ms
+```
+
+**The speed is not the point and the numbers say so** — the GU-scoped apply was
+already cheap. What changed is that the board ends where a full apply would leave
+it, every shot, instead of accumulating.
+
+### The seam this needed, and why it belongs at the placement site
+
+`VoxelRenderer._set_voxel_cell()` now calls `note_external_write()`. Rule 8 makes
+it the only way a Wall or Slab voxel reaches the tilemap, which is precisely why
+the note belongs there and not at its callers: damage variants, re-renders after
+destruction and the shot's own dirty pass all funnel through it, and none of them
+move occupancy or soot in a way `_stale_cells()` could see. The three `erase_cell()`
+sites are noted for the same reason.
+
+### ⚠️ `include_soot` is a PRECONDITION on the stale-driven route
+
+A soot-free field answers "clean" for every cell. That is right for the caller's
+OWN GUs — it defers their scorch deliberately — and catastrophic anywhere else:
+driven by the stale set it would assert clean across every sooted cell on the board
+and wipe the map's scorch until the next sooty repaint. **That is the Director's
+§9.11a symptom rebuilt from the other end.**
+
+No caller does that today, and the measurement is what says so rather than the
+reading: **0 soot-free scoped repaints in a whole two-fire capture**, because the
+burn's one sits behind `BURN_SUSPEND_REGION_LIGHT` (F8) and never runs. That is a
+reason to write the guard, not to skip it — F8 is one constant away from being off.
+
+With the guard, the shot's FIRST pass (geometry, soot-free) keeps the GU route and
+leaves 3 144 cells stale for a few frames; its SECOND pass (the soot pass) is
+stale-driven and pays the whole debt. **The shot ends at 0.**
+
+### Where the fire stands after all of it
+
+```
+  fire 1 final repaint   1 024 ms -> 280 ms      gate: 0 of 205 381 cells
+  fire 2 final repaint     984 ms -> 295 ms      gate: 0 of 205 160 cells
+```

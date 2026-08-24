@@ -5558,8 +5558,22 @@ func _capture_two_fires() -> void:
 				armed = true
 				break
 		if not armed:
-			push_error("[TWO-FIRES] fire %d never started — no fuel in range of %s?" % [i + 1, cell])
-			return
+			## §9.11b RESIDUAL 1 — A SECOND BLAST WITH NO FIRE IS THE CONTROL GROUP,
+			## so this stopped being fatal. The alt residual's two readings differ on
+			## exactly one thing: whether the fire that FOLLOWS blast 2 is what moves
+			## the light back. Put blast 2 on a material whose flammability is 0
+			## (brick, stone, concrete, metal on PLAYGROUND) and the fire is removed
+			## from the sequence without removing anything else.
+			##
+			## Only tolerated for the SECOND cell — a run whose first fire never
+			## starts has nothing to watch and is a mis-seeded capture, not a control.
+			if i == 0:
+				push_error("[TWO-FIRES] fire 1 never started — no fuel in range of %s?" % cell)
+				return
+			push_warning("[TWO-FIRES] fire 2 never started at %s — CONTROL RUN: blast without a burn." % cell)
+			for _nb in range(150):
+				await get_tree().process_frame
+				_tf_watch_frame()
 		## The report prints when the LAST voxel is consumed, and the final repaint
 		## lands after it, so this waits past both.
 		for _w2 in range(1200):
@@ -5621,6 +5635,7 @@ var _tf_watch_sample: String = ""
 ## fabric block itself moved — and it needs no radius at all.
 var _tf_watch_union: Dictionary = {}    ## Vector3i -> true
 var _tf_watch_gu_a: Vector2i = Vector2i.ZERO
+var _tf_alt_probe: bool = false
 
 
 func _tf_watch_arm(settled: Dictionary, gu_a: Vector2i) -> void:
@@ -5636,6 +5651,7 @@ func _tf_watch_arm(settled: Dictionary, gu_a: Vector2i) -> void:
 	_tf_watch_sample = ""
 	_tf_watch_union.clear()
 	_tf_watch_gu_a = gu_a
+	_tf_alt_probe = OS.get_environment("INFILTRAITOR_TWO_FIRES_ALT_PROBE") == "1"
 	print("[TWO-FIRES-WATCH] armed on %d cell(s) within %d GU of %s" % [
 		_tf_watch.size(), TF_WATCH_GU, gu_a])
 
@@ -5666,6 +5682,53 @@ func _tf_watch_frame() -> void:
 	if differ == 0:
 		return
 	_tf_watch_dirty_frames += 1
+	## §9.11b RESIDUAL 1 — IS THE WAVE'S ALTERNATIVE RIGHT OR WRONG?
+	##
+	## The soot half is fixed; the same cells still read a different LIGHT bucket
+	## for the same five frames and come back. Two readings, and only a
+	## measurement separates them: either the blast's predicted field is wrong
+	## about a cell four GUs away, or it is right and the fire's own final repaint
+	## legitimately undoes it. So on the FIRST disturbed frame, force the map-wide
+	## repaint — the authority — and see which way it moves them. If it restores
+	## the settled value, the plan's bucket was wrong.
+	##
+	## One-shot and env-gated: it commits a real 1 s repaint, so a run with it on
+	## is a diagnostic run and nothing else.
+	if _tf_alt_probe and _tf_watch_dirty_frames == 1:
+		_tf_alt_probe = false
+		## ⚠️ ONLY THE CELLS ACTUALLY DISTURBED RIGHT NOW. The first version of this
+		## probe compared all 13 005 watched cells and reported "12 874 left as the
+		## blast wrote them" — a majority made almost entirely of cells the blast
+		## never touched. A control group that large drowns the measurement.
+		var before_probe: Dictionary = {}
+		for key2 in _tf_watch.keys():
+			var l2: TileMapLayer = _voxel_renderer.get_layer(key2.z)
+			if l2 == null:
+				continue
+			var alt_now: int = l2.get_cell_alternative_tile(Vector2i(key2.x, key2.y))
+			if alt_now != (_tf_watch[key2] as Vector2i).x:
+				before_probe[key2] = alt_now
+		_repaint_voxel_light_buckets(false)
+		var restored: int = 0
+		var confirmed: int = 0
+		var moved_elsewhere: int = 0
+		for key2 in before_probe.keys():
+			var l3: TileMapLayer = _voxel_renderer.get_layer(key2.z)
+			if l3 == null:
+				continue
+			var after_probe: int = l3.get_cell_alternative_tile(Vector2i(key2.x, key2.y))
+			if after_probe == before_probe[key2]:
+				confirmed += 1
+			elif after_probe == (_tf_watch[key2] as Vector2i).x:
+				restored += 1
+			else:
+				moved_elsewhere += 1
+		print("[TWO-FIRES-ALT] %d cell(s) had a disturbed bucket on that frame · a full map-wide repaint then: %d RESTORED to the settled value, %d left as the blast wrote them, %d moved somewhere else"
+			% [before_probe.size(), restored, confirmed, moved_elsewhere])
+		print("[TWO-FIRES-ALT] VERDICT: %s" % (
+			"the blast's predicted bucket is WRONG — the authority disagrees with it immediately"
+			if restored > moved_elsewhere else
+			"the blast's bucket stands — the light genuinely moved, and something later undoes it"))
 	if differ > _tf_watch_worst:
 		_tf_watch_worst = differ
 		_tf_watch_worst_frame = _tf_watch_frames

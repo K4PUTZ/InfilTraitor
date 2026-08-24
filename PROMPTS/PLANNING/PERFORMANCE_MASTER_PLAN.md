@@ -2005,3 +2005,69 @@ open and still MAT-PERF-03's** — 198 cells, every one on a negative (floor) le
 with scope size, a stale `_placed_by_gu`, field staleness and the apply's reach all
 ruled out by measurement. Closing it is what would let the fire end scoped, and it
 is worth ~650 ms per fire. **That is the fire's next item, not the pre-cook.**
+
+### 9.11c ✅ RESIDUAL 1 IS NOT A DEFECT — the light is right at both ends, and a control run proves it (2026-08-24)
+
+§9.11b left the alt wobbling `9 -> 7 -> 9` over frames 55..59 on the same cells
+whose soot had just been fixed. Two readings, and both were plausible: the blast's
+predicted bucket is wrong, or it is right and something later undoes it.
+
+**Three measurements, in the order they were taken.**
+
+**1. The blast's bucket is right.** `INFILTRAITOR_TWO_FIRES_ALT_PROBE=1` forces the
+map-wide repaint — the authority — on the first disturbed frame and asks which way
+it moves the disturbed cells:
+
+```
+59 cell(s) had a disturbed bucket on that frame · a full map-wide repaint then:
+   0 RESTORED to the settled value, 59 left as the blast wrote them, 0 moved elsewhere
+```
+
+⚠️ The first version of this probe compared all 13 005 WATCHED cells and reported
+"12 874 left as the blast wrote them" — a majority made almost entirely of cells
+the blast never touched. **A control group that large drowns the measurement**;
+it is scoped to the actually-disturbed cells now.
+
+**2. The end state is right too.** `INFILTRAITOR_LIGHT_EQUIV_PROBE=1` on both
+fires' final repaints: `[LIGHT-EQUIV] 205 381 cells, 0 differ` and `205 160 cells,
+0 differ`. The `geometry_only` path agrees exactly with a full rebuild, so the
+stale-cache hypothesis — the obvious one, and the one this probe exists to catch —
+is dead.
+
+**3. So the world changed twice, and a control run says so directly.** The two
+readings differ on one thing: whether the burn that FOLLOWS blast 2 is what moves
+the light back. Put blast 2 on a material whose flammability is 0 and the fire
+leaves the sequence without anything else leaving with it — `_capture_two_fires()`
+now tolerates a second blast that never ignites and says so, instead of aborting.
+
+```
+fabric gu (31,3), then BRICK gu (23,3) — a blast with no burn
+
+  [TWO-FIRES-WATCH] 184 cell(s) disagreed — 0 FLICKERED, 184 changed for good
+  [TWO-FIRES-SOOT]  NEAR FIRE 1: 157 changed — 0 soot codes, 157 alternative-id only
+```
+
+**Nothing flickers when there is no second fire.** The blast changes the distant
+crater's light and it STAYS changed. In the plywood run the burn that followed
+changed the world a second time and the light followed it back.
+
+**Verdict: residual 1 is the light being correct at every instant**, not a stale
+value and not a wrong prediction. What remains is a look question — a five-frame
+brightness wobble on a distant crater — and it is the Director's, not a bug.
+
+**And the control carries a finding worth keeping on its own:** a blast permanently
+moves the light of a crater **eight GUs away** — 157 cells, alternative id only,
+soot untouched. Light in this game is global, which is the fact F8's region
+suspension trades against and the reason F1's global cadence was rejected on look.
+
+**The soot fix holds in the control too:** `[E-FUME] soot fade: 184 of 1 768 entry
+cell(s) already carry their target scorch and are NOT ramped`, and **0 soot codes
+moved** anywhere near fire 1.
+
+### ⏭️ What §9.11's family leaves open
+
+| | item | state |
+|---|---|---|
+| 1 | **residual 2** — the fire's map-wide final repaint lands INSIDE the blast's own soot fade (`fade 1/4 · 2/4 · 3/4 · final repaint · fade 4/4`) | real, harmless as measured: step 4 writes `lighten = 0`, the true target. Ordering to tidy, not a defect |
+| 2 | **§9.11** — `forget_ghost_record()`, still not reproduced | needs a capture that walks the agent; unchanged |
+| 3 | **MAT-PERF-03** — the final repaint's 651 ms map-wide apply correcting 0.73% of cells | §9.12. The fire's largest remaining term |

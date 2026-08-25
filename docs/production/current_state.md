@@ -80,6 +80,7 @@
 - RESUMO_SESSAO_2026-08-22_BURN_PERF_AND_CELL_PLANE.md
 - RESUMO_SESSAO_2026-08-22_CELL_GATE_AND_P5A.md
 - RESUMO_SESSAO_2026-08-23_FIRE_PERF_AND_P3.md
+- RESUMO_SESSAO_2026-08-24_STALL_AND_LEVEL_RENUMBER.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -485,6 +486,12 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 > cost is `_repaint_voxel_light_buckets()`, ~310 ms of synchronous CPU for nine
 > voxels, against 0.5 ms for a 453-voxel blast that pre-computes during the
 > throw. Full measurement and the two candidate routes: `WEAPON_MASTER_PLAN` §0.
+>
+> ⚠️ **That figure is history now (2026-08-24).** A shot's repaint is **75 ms**
+> (`PERFORMANCE_MASTER_PLAN` §10.5), and the same section fixed what the number
+> was hiding: the shot's scoped repaint used to leave **3 144 cells** disagreeing
+> with a full apply, every time. The fire's map-wide ending went 1 024 → 282 ms in
+> §10.4. The term behind all three was never the mint — it was the WALK.
 
 ✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
 camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:

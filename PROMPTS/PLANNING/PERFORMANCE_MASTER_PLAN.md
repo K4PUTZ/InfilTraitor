@@ -2414,16 +2414,24 @@ nothing else. *The overshoot is the light system in its entirety.*
 `E-WAVE`'s own numbers say it more sharply than the fire's do. The destruction
 wave applies 2 820 cells in **five frames** and its own apply is ~1.1 ms:
 
+⚠️ **The wave is INSIDE the fire's window, not before it.** `start_burn()` is
+called from `_start_detonation_sequence()` immediately after the commit and
+BEFORE the wave animates, so the burn profiler's window already contains
+`E-WAVE`'s frames. A first draft of this section added the two and overstated the
+event by ~1 s; the table below does not.
+
 | phase, fire 1 | shipped | light off | |
 |---|---|---|---|
-| `E-PLAN` census | 386 ms | 397 ms | — |
-| `E-WAVE` (5 frames, 2 820 cells) | **1 021 ms** | **173 ms** | **−83%** |
-| fire | 1 928 ms | 1 319 ms | −32% |
-| final repaint | 283 ms | 0 ms | −100% |
-| **trigger → settled** | **~3 620 ms** | **~1 890 ms** | **−48%** |
+| `E-PLAN` census (before the burn) | 386 ms | 397 ms | — |
+| fire window (contains the wave + the soot fade) | 1 928 ms | 1 319 ms | −32% |
+| ↳ of which `E-WAVE`, 5 frames, 2 820 cells | **1 021 ms** | **173 ms** | **−83%** |
+| final repaint (after) | 283 ms | 0 ms | −100% |
+| **census → settled** | **~2 597 ms** | **~1 716 ms** | **−34%** |
 
-The wave spends **1 021 ms to do 6 ms of its own work.** Everything between its
-five frames is the light repaint.
+The sharpest line is the indented one. The wave applies 2 820 cells in five
+frames, its own apply is ~1.1 ms a frame, and it holds **1 021 of the fire's
+1 928 ms** — better than half the event, to do 6 ms of its own work. Everything
+between its five frames is the light repaint.
 
 ### 12.3 ⚠️ THE BAKE IS NOT A COST — TURNING IT OFF COSTS ~900 ms PER BLAST
 
@@ -2484,11 +2492,13 @@ repaint.**
 | worst frame | 271 ms | **58 ms** | 59 ms |
 | fire wall clock | 1 928 ms | **1 352 ms** | 1 319 ms |
 | final repaint | 283 ms | **281 ms** | 0 ms |
-| **trigger → settled** | **~3 620 ms** | **~2 200 ms** | ~1 890 ms |
+| **census → settled** | **~2 597 ms** | **~2 033 ms** | ~1 716 ms |
 
-Every row lands on the ablation's value to within noise. **P3 buys −39% of the
-whole event with the lighting intact and its data verified per-cell at 0
-disagreements in 205 704 (§8.22 step 1).**
+Every row lands on the ablation's value to within noise **except the final
+repaint**, which P3 does not touch. **P3 buys −22% of the event and −79% of the
+worst frame with the lighting intact** and its data verified per-cell at 0
+disagreements in 205 704 (§8.22 step 1). Take the final repaint out — §10.3's
+route is what sharpens it — and P3 is within 3% of the full ablation.
 
 **The residue is the final repaint, and only that.** 281 ms of it survives P3
 because it is a map-walk, not a mint — §10.4 already took it from 1 024 ms to 283
@@ -2508,5 +2518,5 @@ and §10.3's stale-driven route is what is left to sharpen.
 residual. P3's cell recovery is 96–100% correct on walls and **82% on the floor**,
 which is 92% of the pixels on screen; the misses are a ±1-cell boundary effect,
 characterised in §3.3 and NOT explained. §8.18's named lead is dead and §8.20
-separates the two residuals. **That defect, alone, is now worth 1.4 s per
-detonation.**
+separates the two residuals. **That defect, alone, is now worth ~0.56 s per
+detonation on top of a worst frame cut from 271 ms to 58.**

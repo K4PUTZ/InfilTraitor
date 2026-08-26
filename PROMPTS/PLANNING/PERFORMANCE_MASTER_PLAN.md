@@ -2909,3 +2909,137 @@ scoped snapshot becomes a SECOND soot producer — the exact drift SOOT_MASTER_P
 §1.2 found between two of them. The real answer is an INCREMENTAL soot map
 maintained as voxels are destroyed instead of re-derived from scratch, and that is
 a new system rather than a tuning pass. **Director's call before it is built.**
+
+---
+
+# 13. THE CONSEQUENCE BLOCK — the ending becomes a beat (2026-08-26)
+
+§12 closed the wave: the event is fast and the frame is cheap. §13 is what the
+Director asked for once it was, and it is **look first, performance second** —
+though the two turned out to be the same work.
+
+## 13.1 The measurement that shrank the job
+
+P5's target was the final repaint's soot snapshot, 154 ms. Split before rewriting
+(`INFILTRAITOR_SOOT_SPLIT=1`):
+
+```
+index walk        126 ms   (215 432 voxels visited to find ~2 000 seeds)
+build_soot_field   17-35 ms
+```
+
+**82% is the WALK, not the propagation.** So the BFS stays and only the index
+becomes incremental — a far smaller change than "replace the soot producer".
+
+## 13.2 ✅ THE INCREMENTAL SOOT INDEX
+
+`Voxel.set_damage()` records the cell KEY of every real damage transition;
+`_build_soot_snapshot()` keeps the walk's result and folds only the dirty cells.
+
+⚠️ **KEYS, NEVER VOXEL REFERENCES.** A static Array of Voxels would resurrect the
+ownership cycle removed on 2026-08-17 and the leak gate would fail on it.
+
+```
+index walk     151 -> 1.2 ms
+soot           154 -> 18.9 ms
+final repaint  286 -> 149 ms
+               (occupancy 39.3 · soot 18.9 · field.build 67.2 · apply 24.0)
+```
+
+Invalidated on **map load, room reset and perspective change**.
+`INFILTRAITOR_SOOT_GATE=1` re-derives everything the slow way and compares.
+
+### ⚠️ Two real defects, both found by the gate refusing to pass
+
+- **A CELL KEY IS NOT UNIQUE.** A junction column's voxel can share
+  `(grid_pos, level)` with a slice's. The walk has always tolerated it —
+  `cell_to_voxel` keeps whichever is walked LAST while the seed lists append
+  EVERY qualifying voxel — so a key can be a seed because of voxel A while the
+  map holds voxel B. The first index stored one voxel per key and answered for
+  the wrong object: **3 destroyed junction voxels reported as intact.** Collision
+  keys are now recorded and the fold is the OR over all voxels at the key.
+- **The index was stored with PREDICTIONS folded in.** `predict_weapon_cells`
+  describes holes that do not exist yet; caching them as the board caches a guess
+  about the future.
+
+## 13.3 ✅ THE CONSEQUENCE BEAT — and it reverses F1 on new grounds
+
+Director: *"o jogo por turno não exige que a física seja aplicada imediatamente…
+a alteração no cenário por uma atividade do agente recebe ainda mais destaque ao
+final do evento, assumindo como uma demonstração das consequências da ação."*
+
+⚠️ **F1 was REJECTED on look in §9.8** — freezing light mid-event read as a bug.
+What changed is not the freeze but that something is now DONE with it.
+
+⚠️ **And most of the freeze already existed.** Measured: there is NO light repaint
+during the destruction wave at all, and F8 already froze the fire's region. What
+was actually wrong was the SOOT's position.
+
+```
+decals -> holes -> expose -> debris -> embers -> smoke
+-> the fire burns out
+-> soot arrives    (0.5 s — 4 steps x 8 frames)
+-> light arrives   (2.0 s — 12 steps x 10 frames)
+```
+
+Order is the point: **soot, then light.** Scorch is what the light reveals.
+
+## 13.4 ✅ THE HOLE OPENS CLEAN, AND THE DECALS LEAD IT
+
+Director: *"a cena nasce suja e depois fica limpa… quando cavamos o buraco já tem
+uma fuligem sendo aplicada imediatamente."*
+
+**Correct, and §13.3's beat is what exposed it.** `expose` and the decal entries
+carried a `soot` field and wrote it the instant the front reached the cell, so a
+hole opened already scorched — then the end ramp lightened those same cells and
+walked them back. Before the beat the fade ran seconds earlier and hid the wipe.
+The wave now writes CLEAN and the scorch exists in exactly one place.
+
+⚠️ **`KIND_RADIUS_BIAS` IS INVERTED FROM WHAT IT SAID.** `destroy` led at −0.60
+with the marks following at −0.30/−0.20, so a hole opened into un-marked
+neighbours and the dents caught up behind the front — *"não podem ser uma segunda
+wave que entra depois"*. Now `dented` −0.70, `cracked` −0.65: a cell is already
+marked when the hole beside it opens.
+
+### The light ramp, and the refactor deliberately NOT done
+
+The ramp lets the existing repaint compute the answer and **replays the
+transition** — record where the moving cells are, let the normal path run, record
+where they ended, rewind, walk across. Splitting
+`_repaint_voxel_light_buckets()` into derive/apply halves would have been the
+"clean" way and was refused: that function is the most heavily measured in
+`room.gd` and every note in it is a number. Nothing is presented between the
+apply and the rewind, so the final state never flashes.
+Measured: **709 cells moving of 3 377, derive 147 ms.**
+
+⚠️ **The ramp only exists under P3** — intermediate buckets go to the cell plane,
+which is where the bucket lives only once it has left the alternative id. With
+P3 off it applies instantly and says so rather than pretending.
+
+## 13.5 ✅ E-FRAG-02 — the metal leaves first
+
+Director: *"mais escuros, e voar muito mais rápido para mais longe… o frame
+negativo já tem que acontecer logo em seguida."* Colour (0.20,0.20,0.22) →
+(0.05,0.05,0.06); velocity 400 → 1 600 px/s; reach 160-320 → 720-1360 px; a
+subtle trail reusing the spark-streak shape.
+
+⚠️ **The ORDER was inverted**: shrapnel spawned after all seven flash frames, so
+the flash was over before a fragment existed. Metal now leaves first and the
+negative peak lands one frame later (5 flash frames, not 7). Director's verdict
+on the result: *"os estilhaços parecem ok."*
+
+## 13.6 ✅ SAVE-01 — the plumbing, and what must never be in it
+
+**No save system existed.** `SaveState` captures and restores `_base_damage` and
+`_crater_floor_soot` as versioned, loud-failing JSON, with `clear_run_state()`
+carrying the Director's *"limpar em caso de reset, morte"* in one place.
+
+⚠️ **The incremental soot index is deliberately NOT saved.** It is a CACHE keyed
+by live `Voxel` references; a saved copy would deserialise into pointers at
+objects that no longer exist. It rebuilds on the first snapshot after a load.
+
+Two process notes worth keeping: `validate()` is split from `restore()` because
+the refusal path `push_error`s by design (B6) and `run_selftests.py` reads any
+`push_error` as a suite failure — a test of the refusal would have reported the
+suite broken while proving it worked. And a selftest's banner must contain the
+literal `PASS`; *"all checks passed"* is not it.

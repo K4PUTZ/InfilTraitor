@@ -31,13 +31,37 @@ class_name ShrapnelOverlay
 ##    over a bright fire needs — the same reasoning EmberOverlay's bright ADD
 ##    embers do NOT share, so this is not "copy the sibling class".
 
+## E-FRAG-02 (Director, 2026-08-26): *"os estilhaços estão muito claros, precisam
+## ser mais escuros, e voar muito mais rápido para mais longe (podem deixar um
+## rastro bem sutil)... Tem que ser um estouro de metais voando com o clarão junto
+## mesmo, essa é a única parte realista da granada."*
+##
+## All look values, all `var` (Rule 1), all tuned on a filmstrip rather than on
+## argument. The reach is `max_velocity * lifetime` and BOTH went up: 400 px/s
+## over 0.4-0.8 s reached 160-320 px, which on this board is barely out of the
+## crater. 1600 px/s over 0.45-0.85 s reaches 720-1360 px — off the visible board,
+## which is the point of "muito mais longe".
 var glow_radius: float = 16.0             ## px, angular size of fragment
-var min_lifetime: float = 0.4             ## seconds, fastest-fading shard
-var max_lifetime: float = 0.8             ## seconds, slowest-fading shard
-var max_velocity: float = 400.0           ## px/s, outward blast speed
+var min_lifetime: float = 0.45            ## seconds, fastest-fading shard
+var max_lifetime: float = 0.85            ## seconds, slowest-fading shard
+var max_velocity: float = 1600.0          ## px/s — was 400; "voar muito mais rápido"
 
 var frag_count: int = 12                  ## tunable: "gomos" order of magnitude
-var frag_color: Color = Color(0.2, 0.2, 0.22, 1.0)  ## dark iron
+## Was (0.20, 0.20, 0.22) — read as grey against the fire. Iron in silhouette
+## against a flash is nearly black; the flash is what makes it visible, not its
+## own value.
+var frag_color: Color = Color(0.05, 0.05, 0.06, 1.0)  ## dark iron
+
+## The trail — *"podem deixar um rastro bem sutil"*. Walked back from the head in
+## segments, each dimmer and thinner, exactly as SmokeSparkOverlay's spark streak
+## does; the shape is proven and a second mechanism for the same idea would be
+## gratuitous. SUBTLE is the whole brief: the head alpha is already fading, and
+## the trail starts at a fraction of it.
+var trail_length: float = 46.0            ## px behind the head at full speed
+var trail_segments: int = 4
+var trail_head_alpha: float = 0.34        ## fraction of the fragment's own alpha
+var trail_tail_alpha: float = 0.0         ## faded to nothing at the far end
+var trail_width: float = 5.0              ## px at the head, tapering back
 
 var _frags: Array = []
 ## [{"pos", "elapsed", "lifetime", "velocity", "color", "alpha_func"}]
@@ -124,6 +148,27 @@ func _draw() -> void:
 		cmds += 1
 		if submit:
 			draw_circle(frag["pos"], glow_radius, c)
+		## E-FRAG-02 — the subtle trail. Drawn AFTER the head so the head stays
+		## the darkest point of the fragment, and skipped entirely once the
+		## fragment has slowed or nearly died, where a streak would read as a
+		## smear rather than as speed.
+		var vel: Vector2 = frag["vel"]
+		var speed: float = vel.length()
+		if trail_segments > 0 and speed > 1.0 and alpha > 0.02:
+			var dir: Vector2 = vel / speed
+			## Length follows SPEED, so a fragment reports its own motion instead
+			## of wearing a fixed decoration.
+			var reach: float = trail_length * clampf(speed / maxf(max_velocity, 0.001), 0.0, 1.0)
+			cmds += trail_segments
+			if submit:
+				for i in range(trail_segments):
+					var a0: float = float(i) / float(trail_segments)
+					var a1: float = float(i + 1) / float(trail_segments)
+					var seg := c
+					seg.a = c.a * lerpf(trail_head_alpha, trail_tail_alpha, a0)
+					draw_line(frag["pos"] - dir * reach * a0,
+						frag["pos"] - dir * reach * a1,
+						seg, trail_width * lerpf(1.0, 0.25, a0))
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.

@@ -127,10 +127,38 @@ func set_visible(v: bool) -> void:
 ## D32: variant rides the same read-once rule for the same reason — a second
 ## hit on an already-marked voxel must not swap the art out from under it.
 ## D3/§3.3: substrate rides the same rule for the same reason.
+## §13.2 — EVERY DAMAGE CHANGE, AS A CELL KEY.
+##
+## `Room._build_soot_snapshot()` used to find its seeds by walking all 215 432
+## voxels on the board, measured at **126 ms of the final repaint's 283**. The
+## walk exists only to answer "which cells are damaged", and this is the one
+## function that can change that answer — so it records it instead, and the
+## snapshot reads the record.
+##
+## ⚠️ **KEYS, NEVER VOXEL REFERENCES.** A `Voxel` deliberately does not keep its
+## container alive (it holds it by instance id), so a static Array of Voxels here
+## would resurrect exactly the ownership cycle that was removed on 2026-08-17 —
+## and the selftest leak gate would fail on it. A `Vector3i` retains nothing.
+##
+## Cleared by the consumer, not here: `Room` clears it once it has folded the
+## batch in. `Engine`-level static, so a map reload must reset it — `reset()`.
+static var soot_dirty: Dictionary = {}
+
+
+## Map load, reset, death, perspective rebuild — anything that throws the board
+## away. Leaving stale keys behind would fold a previous map's cells into the
+## next one's soot seeds.
+static func reset_soot_dirty() -> void:
+	soot_dirty.clear()
+
+
 func set_damage(new_state: int, from_blast: bool = false,
 		carved_side: int = CarvedSide.NONE, variant: int = 0, substrate: int = 0) -> void:
 	if damage_state == new_state:
 		return
+	## Recorded BEFORE the early-return above can no longer fire — i.e. only for
+	## real transitions, which is exactly when a seed's membership can move.
+	soot_dirty[Vector3i(grid_pos.x, grid_pos.y, level)] = true
 	damage_state = new_state
 	damage_is_blast = from_blast
 	damage_carved_side = carved_side

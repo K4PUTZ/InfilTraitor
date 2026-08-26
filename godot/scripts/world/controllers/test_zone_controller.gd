@@ -1338,35 +1338,42 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	_prof("BEAT 1 ends — fire-only lead served (%d of %d frame(s) owed)" % [
 		maxi(burst_lead_frames - cook_frames, 0), burst_lead_frames])
 
-	## Beat 2 — E-SHARD: camera-facing shard that becomes the negative flash.
-	## Replaces STROBE_SEQUENCE entirely (WHITE frames never used anymore).
-	## One frame leaving the grenade (small, black) → 2 frames growing/desaturating
-	## toward grey → holds at full negative (1.0) for 1 frame → 3 frames fade
-	## to normal (1.0 → 0.0).
+	## Beat 2 — E-FRAG-02 (Director, 2026-08-26): *"Tem que ser um estouro de
+	## metais voando com o clarão junto mesmo."*
+	##
+	## ⚠️ THE ORDER WAS INVERTED, and that is what the note was about. The metal
+	## used to spawn AFTER all seven flash frames had already played out, so the
+	## flash was over before a single fragment existed and the two beats read as
+	## two separate events. The shrapnel now leaves FIRST, on the same frame the
+	## flash begins, and the negative peak lands one frame later — *"o frame
+	## negativo já tem que acontecer logo em seguida"* — instead of three frames
+	## of ramp later.
+	var frag0: int = Time.get_ticks_usec()
+	if room._shrapnel_overlay != null:
+		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
+	_prof("FRAG — spawn_shrapnel %.2f ms (BEFORE the flash now)" % [
+		float(Time.get_ticks_usec() - frag0) / 1000.0])
+
 	var flash_overlay = room._explosion_flash_overlay
 	if flash_overlay != null:
-		## Shard frames 1-3: growing approach (strobe animates 0 → 1)
-		for i in range(3):
-			flash_overlay.strobe_negative_amount = float(i + 1) / 3.0
-			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
-			await room.get_tree().process_frame
-		## Peak frame: full negative
+		## ONE approach frame instead of three: the metal is already in flight, so
+		## a long ramp only delays the bang it is supposed to be part of.
+		flash_overlay.strobe_negative_amount = 0.5
+		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+		await room.get_tree().process_frame
+		## Peak, on frame 2.
 		flash_overlay.strobe_negative_amount = 1.0
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 		await room.get_tree().process_frame
-		## Shard frames 5-7: fading out (strobe animates 1.0 → 0)
+		## The fade is UNCHANGED at three frames — it is what keeps the strobe
+		## from reading as a single dropped frame, and nothing asked for it to
+		## move.
 		for i in range(3):
 			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			await room.get_tree().process_frame
 		flash_overlay.clear()
-	_prof("BEAT 2 ends — 7 shard/flash frames held")
-
-	## E-FRAG: shrapnel from affected cells
-	var frag0: int = Time.get_ticks_usec()
-	if room._shrapnel_overlay != null:
-		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
-	_prof("FRAG — spawn_shrapnel %.2f ms" % [float(Time.get_ticks_usec() - frag0) / 1000.0])
+	_prof("BEAT 2 ends — metal away, then 5 flash frames (was 7 flash frames, then metal)")
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
 	## Beat 3 — destruction, clean.

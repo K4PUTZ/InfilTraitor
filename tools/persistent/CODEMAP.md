@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**221 scripts · 69794 lines total** (under `godot/scripts/`)
+**221 scripts · 70140 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -860,7 +860,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 159 lines
+`class_name Voxel` · 187 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -1513,17 +1513,22 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_overlay.gd`
 
-`class_name ShrapnelOverlay` · extends `Node2D` · 140 lines
+`class_name ShrapnelOverlay` · extends `Node2D` · 185 lines
 
 `godot/scripts/overlays/shrapnel_overlay.gd`
 
 **Public vars**
 - `var glow_radius: float = 16.0`
-- `var min_lifetime: float = 0.4`
-- `var max_lifetime: float = 0.8`
-- `var max_velocity: float = 400.0`
+- `var min_lifetime: float = 0.45`
+- `var max_lifetime: float = 0.85`
+- `var max_velocity: float = 1600.0`
 - `var frag_count: int = 12`
-- `var frag_color: Color = Color(0.2, 0.2, 0.22, 1.0)`
+- `var frag_color: Color = Color(0.05, 0.05, 0.06, 1.0)`
+- `var trail_length: float = 46.0`
+- `var trail_segments: int = 4`
+- `var trail_head_alpha: float = 0.34`
+- `var trail_tail_alpha: float = 0.0`
+- `var trail_width: float = 5.0`
 
 **Public API**
 - `func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> void:`
@@ -4620,7 +4625,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1461 lines
+`class_name TestZoneController` · 1468 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4894,7 +4899,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8395 lines
+extends `Node2D` · 8661 lines
 
 `godot/scripts/world/room.gd`
 

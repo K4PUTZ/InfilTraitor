@@ -793,6 +793,9 @@ const WHISTLE_RADIUS := 3
 ## Loads (or reloads) the given map into the already-initialized room. Safe to call
 ## after _ready() — used by _ready() itself and by the F2 debug panel.
 func load_map(new_map_id: String, new_seed: int = 0) -> void:
+	## §13.2 — a new board means new Voxel objects; every key the index holds
+	## points at the old ones. FIRST, before anything can consult it.
+	invalidate_soot_index("map load: %s" % new_map_id)
 	map_id = new_map_id
 	if new_map_id == "PROCEDURAL":
 		level_seed = new_seed
@@ -1533,6 +1536,9 @@ func _set_perspective(direction: String) -> void:
 	var has_selected := _selected_cell != INVALID_CELL
 	var base_selected := _cell_to_base(_selected_cell, prev_direction) if has_selected else INVALID_CELL
 
+	## §13.2 — a rotation re-projects every cell, so both the keys AND the Voxel
+	## objects behind them change. The index cannot survive it.
+	invalidate_soot_index("perspective -> %s" % direction)
 	_active_perspective = direction
 	## §2.4 lists the active perspective as a real input: carved sides and every
 	## other screen-space read resolve differently after a rotation, and the
@@ -2085,6 +2091,12 @@ func _refresh_tactical_state() -> void:
 
 ## ID-02: Full memory flush — resets all state when the room needs to restart
 func _reset_room_state() -> void:
+	## §13.2 (Director, 2026-08-26: *"lembrar de limpar em caso de reset, morte,
+	## etc"*). A reset restores voxels to intact, and every seed the index holds
+	## describes damage that no longer exists. The crater-floor soot goes with it
+	## for the same reason.
+	invalidate_soot_index("room reset")
+	_crater_floor_soot.clear()
 	## Zero the global alert
 	_alert_meter = 0
 
@@ -3251,20 +3263,67 @@ var blast_soot_feather_rings: int = 2
 func _build_soot_snapshot(out_faces: Dictionary = {},
 		predict_weapon_cells: Array = [],
 		predict_damaged: Array = []) -> Dictionary:
+	## §13.1 — WHICH HALF OF THIS COSTS? `INFILTRAITOR_SOOT_SPLIT=1`.
+	##
+	## The final repaint's 283 ms is occupancy 39 · soot 154 · field.build 66 ·
+	## apply 24, and "soot 154" is this function. It does two very different
+	## things: an INDEX WALK over every voxel on the map, and a BFS ring
+	## propagation from the seeds that walk found. An incremental soot map is a
+	## different design depending on which one is the 154 — caching the index is
+	## small, replacing the propagation is not — so the split is measured before
+	## anything is rewritten.
+	var _ss: bool = OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1"
+	var _ss0: int = Time.get_ticks_usec()
+	## §13.2 — THE INCREMENTAL INDEX.
+	##
+	## Measured: the walk below is **126 ms of the final repaint's 283**, and it
+	## visits 215 432 voxels to find ~2 000 seeds. Neither half of what it produces
+	## actually changes every frame:
+	##
+	##   · `cell_to_voxel` is the MAP. It changes when geometry is rebuilt — a map
+	##     load or a perspective rotation — and not when anything is damaged.
+	##   · the SEEDS change only when a voxel's damage state changes, which is
+	##     exactly what `Voxel.soot_dirty` now records (see its note).
+	##
+	## So the walk runs once per board, and after that only the dirty cells are
+	## re-classified. `INFILTRAITOR_SOOT_GATE=1` re-derives everything the slow way
+	## and compares — because a soot producer that drifts from the real one is the
+	## precise failure SOOT_MASTER_PLAN §1.2 documents, and it is invisible until
+	## someone looks at the right voxel.
+	_soot_walk_dupes = {}
+	var _reuse: bool = (_soot_index_cache_valid
+		and not _soot_index_cache.is_empty()
+		and predict_weapon_cells.is_empty() and predict_damaged.is_empty())
+	if _reuse:
+		_soot_fold_dirty()
+	else:
+		_soot_index_cache = {}
+		_soot_index_cache_valid = false
 	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
 	## PERF-02 B3: seeds split by what made the hole. Voxel.damage_is_blast
 	## already carries that distinction — nothing new has to be recorded.
 	var blast_cells: Array = []          ## Vector3i seeds, bomb-made holes
 	var weapon_cells: Array = []         ## Vector3i seeds, firearm-made holes
 	var damaged_voxels: Array = []       ## D33-SOOT-01: DENTED/CRACKED, not destroyed
-	if _edge_registry != null:
-		for slice in _edge_registry.all_slices():
-			for v in slice.voxels:
-				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
-	if _slab_registry != null:
-		for slab in _slab_registry.all_slabs():
-			for v in slab.voxels:
-				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+	if _reuse:
+		cell_to_voxel = _soot_index_cache["cells"]
+		blast_cells = (_soot_index_cache["blast"] as Dictionary).keys()
+		weapon_cells = (_soot_index_cache["weapon"] as Dictionary).keys()
+		for k in (_soot_index_cache["damaged"] as Dictionary).keys():
+			var dv = cell_to_voxel.get(k)
+			if dv != null:
+				damaged_voxels.append(dv)
+	else:
+		if _edge_registry != null:
+			for slice in _edge_registry.all_slices():
+				for v in slice.voxels:
+					_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
+						damaged_voxels, v, _soot_walk_dupes)
+		if _slab_registry != null:
+			for slab in _slab_registry.all_slabs():
+				for v in slab.voxels:
+					_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
+						damaged_voxels, v, _soot_walk_dupes)
 	for predicted in predict_weapon_cells:
 		if not weapon_cells.has(predicted):
 			weapon_cells.append(predicted)
@@ -3293,15 +3352,29 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## like its neighbours, or it reads as an untouched island inside a
 	## blackened room. Indexing it here is what lets derive_soot_rings() see
 	## it at all, regardless of which weapon made the nearby hole.
-	for column in _junction_columns:
-		for v in column.voxels:
-			_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels, v)
+	if not _reuse:
+		for column in _junction_columns:
+			for v in column.voxels:
+				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
+					damaged_voxels, v, _soot_walk_dupes)
+		## The walk just produced the authoritative answer — keep it, and from here
+		## on maintain it instead of recomputing it.
+		##
+		## ⚠️ NOT when a PREDICTION is folded in. `predict_weapon_cells` and
+		## `predict_damaged` describe holes and dents that DO NOT EXIST YET; the
+		## appends and the filter above have already mixed them into these lists,
+		## and storing that as the authoritative index would cache a guess about
+		## the future as if it were the board. `_reuse` is already false on those
+		## passes; this is the other half of the same rule.
+		if predict_weapon_cells.is_empty() and predict_damaged.is_empty():
+			_soot_store_index(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels)
 
 	## S-DEDUP: the sequence lives in BlastCalculator.build_soot_field() now —
 	## the same call the detonation path makes, so a repaint and a detonation
 	## cannot disagree about what soot IS. `also_visible` is deliberately not
 	## passed: by repaint time the crater floor is genuinely visible, so there is
 	## nothing to promise about the future.
+	var _ss1: int = Time.get_ticks_usec()
 	var snapshot: Dictionary = {}
 	BlastCalculator.build_soot_field(cell_to_voxel, blast_cells, weapon_cells,
 			damaged_voxels, blast_soot_rings + blast_soot_feather_rings,
@@ -3324,6 +3397,14 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## is exercised by a real firearm shot and was pixel-diffed; this block was
 	## reasoned about, not measured, and is flagged as such rather than folded
 	## into the same claim.
+	var _ss2: int = Time.get_ticks_usec()
+	if _ss:
+		print("[SOOT-SPLIT] index walk %.1f ms (%d voxel(s) indexed · seeds: %d blast, %d weapon, %d damaged) · build_soot_field %.1f ms (%d cell(s) out)"
+			% [float(_ss1 - _ss0) / 1000.0, cell_to_voxel.size(),
+			blast_cells.size(), weapon_cells.size(), damaged_voxels.size(),
+			float(_ss2 - _ss1) / 1000.0, snapshot.size()])
+	if OS.get_environment("INFILTRAITOR_SOOT_GATE") == "1":
+		_soot_gate_check()
 	for level in _crater_floor_soot.keys():
 		for cell in _crater_floor_soot[level].keys():
 			BlastCalculator.scorch_floor_cell(snapshot, out_faces, level, cell,
@@ -3331,9 +3412,194 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	return snapshot
 
 
+## §13.2 — THE INCREMENTAL SOOT INDEX.
+##
+## `cells` is the board (Vector3i -> Voxel); `blast`, `weapon` and `damaged` are
+## SETS of Vector3i rather than the Arrays the walk produces, because membership
+## has to move both ways: a voxel that was DENTED and is now DESTROYED leaves one
+## set and joins another, and an Array cannot un-append.
+var _soot_index_cache: Dictionary = {}
+var _soot_index_cache_valid: bool = false
+## Collision keys found by the last full walk — see `_index_soot_voxel()`.
+var _soot_walk_dupes: Dictionary = {}
+
+
+## Anything that throws the board away invalidates this: a map load, a reset, a
+## death, a perspective rotation that rebuilds geometry. Called rather than
+## inferred — a cache that decides for itself when it is stale is how a second
+## soot producer gets born (SOOT_MASTER_PLAN §1.2).
+func invalidate_soot_index(reason: String = "") -> void:
+	_soot_index_cache = {}
+	_soot_index_cache_valid = false
+	Voxel.reset_soot_dirty()
+	if reason != "" and OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1":
+		print("[SOOT-INDEX] invalidated — %s" % reason)
+
+
+func _soot_store_index(cell_to_voxel: Dictionary, blast_cells: Array,
+		weapon_cells: Array, damaged_voxels: Array) -> void:
+	var blast: Dictionary = {}
+	for k in blast_cells:
+		blast[k] = true
+	var weapon: Dictionary = {}
+	for k in weapon_cells:
+		weapon[k] = true
+	var damaged: Dictionary = {}
+	for v in damaged_voxels:
+		damaged[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+	_soot_index_cache = {"cells": cell_to_voxel, "blast": blast,
+		"weapon": weapon, "damaged": damaged, "dupes": _soot_walk_dupes}
+	_soot_index_cache_valid = true
+	Voxel.reset_soot_dirty()
+
+
+## Re-classify only the cells whose damage state actually moved. Same predicate
+## as `_index_soot_voxel()` — deliberately the same three lines rather than a
+## paraphrase, because a paraphrase is how two producers drift.
+func _soot_fold_dirty() -> void:
+	if Voxel.soot_dirty.is_empty():
+		return
+	var cells: Dictionary = _soot_index_cache["cells"]
+	var blast: Dictionary = _soot_index_cache["blast"]
+	var weapon: Dictionary = _soot_index_cache["weapon"]
+	var damaged: Dictionary = _soot_index_cache["damaged"]
+	var dupes: Dictionary = _soot_index_cache.get("dupes", {})
+	for key in Voxel.soot_dirty.keys():
+		var v = cells.get(key)
+		if v == null:
+			## A cell the index has never seen — geometry built after the walk.
+			## Cannot be classified without the Voxel, so the cache is no longer
+			## a complete answer and says so instead of guessing.
+			_soot_index_cache_valid = false
+			continue
+		blast.erase(key)
+		weapon.erase(key)
+		damaged.erase(key)
+		## EVERY voxel at this key, not just the one the map kept — see
+		## `_index_soot_voxel()`'s note. Membership is the OR over all of them,
+		## which is exactly what the walk's per-voxel appends produce.
+		for w in (dupes.get(key, [v]) as Array):
+			if not w.visible or w.damage_state == Voxel.DamageState.DESTROYED:
+				if w.damage_is_blast:
+					blast[key] = true
+				else:
+					weapon[key] = true
+			elif w.damage_state == Voxel.DamageState.DENTED or w.damage_state == Voxel.DamageState.CRACKED:
+				damaged[key] = true
+	Voxel.reset_soot_dirty()
+
+
+## §13.2 GATE — `INFILTRAITOR_SOOT_GATE=1`.
+##
+## Re-derives the seeds the slow way and compares them to what the incremental
+## index holds. This is the only thing standing between "faster" and "a second
+## soot producer", which is the exact defect SOOT_MASTER_PLAN §1.2 records, and
+## it is invisible in a picture until someone looks at the right voxel.
+##
+## Costs a full walk while enabled, hence the gate.
+func _soot_gate_check() -> void:
+	if not _soot_index_cache_valid or _soot_index_cache.is_empty():
+		print("[SOOT-GATE] index not valid this pass — nothing to compare")
+		return
+	var c2v: Dictionary = {}
+	var b: Array = []
+	var w: Array = []
+	var d: Array = []
+	if _edge_registry != null:
+		for slice in _edge_registry.all_slices():
+			for v in slice.voxels:
+				_index_soot_voxel(c2v, b, w, d, v)
+	if _slab_registry != null:
+		for slab in _slab_registry.all_slabs():
+			for v in slab.voxels:
+				_index_soot_voxel(c2v, b, w, d, v)
+	for column in _junction_columns:
+		for v in column.voxels:
+			_index_soot_voxel(c2v, b, w, d, v)
+	var want_b: Dictionary = {}
+	for k in b:
+		want_b[k] = true
+	var want_w: Dictionary = {}
+	for k in w:
+		want_w[k] = true
+	var want_d: Dictionary = {}
+	for v in d:
+		want_d[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+	var diffs: int = _soot_gate_diff("blast", _soot_index_cache["blast"], want_b) \
+		+ _soot_gate_diff("weapon", _soot_index_cache["weapon"], want_w) \
+		+ _soot_gate_diff("damaged", _soot_index_cache["damaged"], want_d) \
+		+ _soot_gate_diff("cells", _soot_index_cache["cells"], c2v)
+	print("[SOOT-GATE] %s — %d disagreement(s) against a full walk (%d cells, %d/%d/%d seeds)"
+		% ["PASS" if diffs == 0 else "FAIL", diffs, c2v.size(),
+		want_b.size(), want_w.size(), want_d.size()])
+
+
+## Which of the incremental index's three sets currently claims a cell, if any.
+func _soot_gate_where(k: Vector3i) -> String:
+	var parts: Array = []
+	for name in ["blast", "weapon", "damaged"]:
+		if (_soot_index_cache[name] as Dictionary).has(k):
+			parts.append(name)
+	if not (_soot_index_cache["cells"] as Dictionary).has(k):
+		parts.append("NOT IN cells")
+	return "nothing" if parts.is_empty() else ", ".join(parts)
+
+
+## What the real Voxel says right now, so a disagreement can be read against the
+## predicate rather than guessed at.
+func _soot_gate_state(k: Vector3i) -> String:
+	var v = (_soot_index_cache["cells"] as Dictionary).get(k)
+	if v == null:
+		return "no voxel in the index"
+	return "state=%d blast=%s visible=%s dirty_pending=%s" % [
+		v.damage_state, v.damage_is_blast, v.visible,
+		Voxel.soot_dirty.has(k)]
+
+
+func _soot_gate_diff(name: String, have: Dictionary, want: Dictionary) -> int:
+	var n: int = 0
+	for k in want.keys():
+		if not have.has(k):
+			n += 1
+			if n <= 3:
+				## WHERE the cell actually sits matters more than that it is
+				## absent: missing-from-blast but present-in-weapon is a
+				## classification bug, missing everywhere is a MISSED WRITE, and
+				## the fix is different for each.
+				print("[SOOT-GATE]   %s MISSING %s — incremental has it in: %s · voxel now: %s"
+					% [name, k, _soot_gate_where(k), _soot_gate_state(k)])
+	for k in have.keys():
+		if not want.has(k):
+			n += 1
+			if n <= 6:
+				print("[SOOT-GATE]   %s EXTRA %s" % [name, k])
+	return n
+
+
+## ⚠️ §13.2 — A CELL KEY IS NOT UNIQUE, and that cost the incremental index a
+## wrong answer before the gate caught it.
+##
+## A junction column's voxel can occupy the same (grid_pos, level) as a slice's.
+## This function has always tolerated that: `cell_to_voxel[key]` keeps whichever
+## voxel is walked LAST, while the seed lists get an append for EVERY qualifying
+## voxel — so a key can be a blast seed because of voxel A while the map holds
+## voxel B. The first incremental index stored one voxel per key and re-classified
+## from it, which silently answered for the wrong object: measured, **3 destroyed
+## junction voxels reported as intact**, found by `INFILTRAITOR_SOOT_GATE=1`.
+##
+## `dupes` records every voxel at a key that already had one, so the fold can
+## re-classify from ALL of them. Only collision keys are stored, so it is a
+## handful of entries rather than a second copy of the board.
 func _index_soot_voxel(cell_to_voxel: Dictionary, blast_cells: Array,
-		weapon_cells: Array, damaged_voxels: Array, v: Voxel) -> void:
+		weapon_cells: Array, damaged_voxels: Array, v: Voxel,
+		dupes: Dictionary = {}) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	if cell_to_voxel.has(key) and cell_to_voxel[key] != v:
+		var lst: Array = dupes.get(key, [])
+		if not lst.has(cell_to_voxel[key]):
+			lst.append(cell_to_voxel[key])
+		lst.append(v)
+		dupes[key] = lst
 	cell_to_voxel[key] = v
 	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
 		if v.damage_is_blast:

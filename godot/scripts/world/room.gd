@@ -5384,6 +5384,25 @@ func _capture_cell_index_gate() -> void:
 		await get_tree().process_frame
 
 	var vp := get_viewport()
+
+	## §12.9 — THE PLAIN FRAME, BEFORE ANY DEBUG PAINT TOUCHES IT.
+	##
+	## P3's picture has to be judged against a control, and the BOOT capture cannot
+	## serve: two identical boots were measured **3 366 px apart** (the agent, the
+	## fog and the temporal lights all move), which is a noise floor no 4%
+	## difference can be read through. This frame is deterministic by construction
+	## — `_debug_hide_all_but_voxels()` has already removed everything that
+	## animates, the camera is pinned, and the scene quits straight after — so
+	## `INFILTRAITOR_P3=0` against `=1` on THIS image is an earned comparison.
+	var shot_dir0 := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(shot_dir0)
+	await RenderingServer.frame_post_draw
+	var img_plain := vp.get_texture().get_image()
+	if img_plain != null:
+		img_plain.save_png("%s/p3_gate_plain.png" % shot_dir0)
+		print("[P3-GATE] plain frame: Screenshots/history/p3_gate_plain.png (no debug paint · P3=%s)"
+			% [VoxelRenderer.P3_CELL_BUCKET])
+
 	var levels: Array = _voxel_renderer.level_keys()
 
 	## WHAT THE TILESET ACTUALLY CONTAINS. The shader hard-codes the quad offset

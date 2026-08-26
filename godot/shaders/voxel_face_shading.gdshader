@@ -228,6 +228,22 @@ uniform vec2 layer_origin = vec2(0.0);
 
 varying vec2 v_vertex;
 
+// §12.9 — THE QUAD'S OWN CORNER, CARRIED FLAT.
+//
+// `local` used to come from `mod(UV / TEXTURE_PIXEL_SIZE, atom_size)`, and `mod`
+// is DISCONTINUOUS at the atlas region boundary: a fragment that belongs to
+// region R but samples at or past R + 32 folds to ~0, and the recovered quad
+// lands one quad width away. §12.8 measured that — 95.4% of the floor's wrong
+// pixels within 8 px of a `mod` boundary, against a 3.2% error rate in true
+// interiors — after ruling out float32 residue (exactly 0), off-grid atlas
+// origins (none) and multi-cell tile spans (none).
+//
+// `flat` takes the PROVOKING VERTEX's value, so every fragment of a triangle
+// receives one corner of its own quad, exactly, with no atlas arithmetic in the
+// path at all. Which corner is driver-dependent and is resolved below from the
+// fragment's own position rather than assumed — see fragment().
+varying flat vec2 v_corner;
+
 void vertex() {
 	// ⚠️ `VERTEX` ALONE IS NOT LAYER-LOCAL, and the whole cell recovery below
 	// depends on a coordinate that is.
@@ -248,6 +264,8 @@ void vertex() {
 	// own origin puts it back in layer space, which is what the inverse of
 	// map_to_local() expects. Quadrants stay at the engine default.
 	v_vertex = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - layer_origin;
+	// Same value, taken flat — see the varying's note.
+	v_corner = v_vertex;
 }
 
 void fragment() {
@@ -266,7 +284,19 @@ void fragment() {
 	// The `+ 0.5` below then turns that residue into a whole-cell error wherever
 	// the fraction lands near a rounding boundary — which is why P3 rendered a
 	// neighbour's light bucket on WALL facades and not on the floor.
-	vec2 quad_tl = floor(v_vertex - local + 0.5);
+	// §12.9 — WHICH CORNER `v_corner` IS, decided by this fragment, not assumed.
+	//
+	// Relative to the quad's TOP-LEFT a fragment sits in [0, 32) x [0, 36). So a
+	// NEGATIVE component of `v_vertex - v_corner` can only mean the provoking
+	// vertex was the right (or bottom) corner, and the top-left is one quad width
+	// (or height) back. This is exact for every fragment of the quad and needs
+	// neither the lattice nor the atlas — which matters, because the lattice
+	// CANNOT decide it: (32, 0) is `e1 - e2`, a legitimate cell step of (+1, -1),
+	// and that is precisely the ambiguity the old `mod` was losing to.
+	vec2 corner_shift = vec2(
+		(v_vertex.x - v_corner.x) < 0.0 ? atom_size.x : 0.0,
+		(v_vertex.y - v_corner.y) < 0.0 ? atom_size.y : 0.0);
+	vec2 quad_tl = floor(v_corner - corner_shift + 0.5);
 	vec2 cell = floor(vec2(
 		dot(inv_basis_row0, quad_tl + quad_to_map),
 		dot(inv_basis_row1, quad_tl + quad_to_map)) + 0.5);

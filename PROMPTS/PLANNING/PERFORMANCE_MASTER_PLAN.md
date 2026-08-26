@@ -2632,3 +2632,85 @@ corners are `quad_tl + {(0,0), (32,0), (0,36), (32,36)}`. The lattice constraint
 Y — but **(32, 0) IS a lattice vector** (it is `e1 - e2`, i.e. cell delta (+1,−1)),
 so geometry alone cannot disambiguate X. That ambiguity is the same one the bug
 exploits, and it needs a decision rather than a guess.
+
+## 12.9 ✅ FIXED — the quad's corner is carried FLAT, and the gate reads 100.000% (2026-08-26)
+
+§12.8 localised the bug to `mod`'s discontinuity at the atlas region boundary and
+named one obstacle to the obvious fix: carrying the quad origin from the vertex
+shader means depending on WHICH corner is the provoking vertex, which is
+driver-dependent, and the lattice cannot disambiguate X because **(32, 0) is
+`e1 - e2`** — a legitimate cell step of (+1, −1).
+
+**The fragment can decide what the lattice cannot.** Relative to its own quad's
+TOP-LEFT a fragment always sits in [0, 32) × [0, 36). So a negative component of
+`v_vertex - v_corner` can only mean the provoking vertex was the right (or bottom)
+corner:
+
+```glsl
+varying flat vec2 v_corner;                 // vertex(): v_corner = v_vertex
+
+vec2 corner_shift = vec2(
+    (v_vertex.x - v_corner.x) < 0.0 ? atom_size.x : 0.0,
+    (v_vertex.y - v_corner.y) < 0.0 ? atom_size.y : 0.0);
+vec2 quad_tl = floor(v_corner - corner_shift + 0.5);
+```
+
+No `mod`, no atlas arithmetic, no `local` in the recovery path at all — and
+therefore no boundary for a fragment to fall the wrong side of.
+
+### THE GATE, AND TWO INDEPENDENT CONFIRMATIONS
+
+```
+before:  judged 893 145 px · INSIDE 732 442 (82.007%) · 313 claims naming an EMPTY cell (28 455 px)
+after :  judged 921 600 px · INSIDE 921 600 (100.000%) · OUTSIDE 0 · on empty cells 0
+         every level 100% — L79 (floor) included
+         VERDICT: PASS
+```
+
+⚠️ **A green gate is not proof, and the denominator moved**, so it was checked
+twice more, both reconstruction-free:
+
+- **Bounding box per recovered cell** (§12.8's own test): floor **1 325 oversized
+  → 0**, walls **8 → 0**. Not one recovered cell spans more than one quad.
+- **The empty-cell claims.** 28 455 px used to name cells that do not exist; now
+  **zero**. A wrong recovery had to invent cells, and there are none left to invent.
+
+### ✅ AND P3's PICTURE IS NOW CORRECT — on an EARNED comparison
+
+§8.19 gated P3 off because its picture was wrong (165 754 px, 17.985%, max channel
+delta 105). ⚠️ **The boot capture cannot judge this** — two identical boots measured
+**3 366 px apart** (the agent, the fog and the temporal lights all move), a noise
+floor no small difference reads through. The gate's frame is deterministic by
+construction, so `p3_gate_plain.png` is captured there, before any debug paint:
+
+```
+CONTROL  P3 off vs P3 off :     0 px   <-- the diff is EARNED
+TEST     P3 off vs P3 on  :   415 px (0.0450%) · max channel delta 3
+```
+
+**Max channel delta 3 is one FACE-READ-03 residue step** — the documented,
+expected consequence of the multiply moving from an 8-bit-quantised modulate into
+float, which this shader's own uniform note predicts. It is not a defect.
+
+### The win, re-measured with the fixed shader
+
+| fire 1 | shipped | **P3 on, recovery fixed** |
+|---|---|---|
+| `E-PLAN` census | 386 ms | 388 ms |
+| `E-WAVE`, 5 frames / 2 820 cells | **1 021 ms** | **171 ms** |
+| committing frames | 5 × 140 ms | **6 × 53 ms** |
+| non-committing frames | 17 × 72.3 ms | **25 × 40.1 ms** |
+| worst frame | **271 ms** | **58 ms** |
+| fire wall clock | 1 928 ms | **1 320 ms** |
+| final repaint | 283 ms | 287 ms |
+| **census → settled** | **~2 597 ms** | **~1 995 ms** |
+
+Identical to §12.6's numbers, which were taken with the recovery still broken —
+minting was already zero there, so the fix costs nothing and buys correctness.
+
+**§3.3 and §8.22 are CLOSED.** What is left of the light's bill is the final
+repaint (~287 ms), which is a map-walk and not a mint; §10.3's stale-driven route
+is where that gets sharpened.
+
+⏭️ **P3 still defaults OFF.** Flipping the default is a Director call, and it wants
+a look pass on a real detonation first — the gate judges geometry, not taste.

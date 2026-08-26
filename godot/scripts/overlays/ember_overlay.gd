@@ -284,6 +284,8 @@ func _height_bias(y: float) -> float:
 
 
 func _process(delta: float) -> void:
+	## §12.12 — this overlay's per-frame aging walk, priced.
+	var _pp0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
 	if _embers.is_empty():
 		set_process(false)
 		return
@@ -319,6 +321,9 @@ func _process(delta: float) -> void:
 	_embers = alive
 	queue_redraw()
 
+
+	if VfxDrawProbe.enabled:
+		VfxDrawProbe.note_process(&"EmberOverlay", Time.get_ticks_usec() - _pp0)
 
 func _draw() -> void:
 	## PERF-P7a (VfxDrawProbe): `submit` is hoisted into a local so the

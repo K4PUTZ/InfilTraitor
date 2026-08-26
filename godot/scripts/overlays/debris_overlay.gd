@@ -121,6 +121,8 @@ func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> vo
 
 
 func _process(delta: float) -> void:
+	## §12.12 — this overlay's per-frame aging walk, priced.
+	var _pp0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
 	if _dust.is_empty() and _chips.is_empty():
 		set_process(false)
 		return
@@ -148,6 +150,26 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+	if VfxDrawProbe.enabled:
+		VfxDrawProbe.note_process(&"DebrisOverlay", Time.get_ticks_usec() - _pp0)
+
+## PERF-P7c (§12.12) — the dust SPECKS are `draw_circle` and are this overlay's
+## bulk (`cmds += specks.size()` against one command per chip), so they take the
+## same `CircleField` the puffs and embers took. The CHIPS stay on
+## `draw_colored_polygon`: a rotated quad is not a circle, and at one command each
+## they are not what costs.
+##
+## No `material` on this node, so MIX — and `behind` keeps the dust under the
+## chips, which is the order `_draw()` has always used.
+var _dust_field: CircleField = null
+
+
+func _ready() -> void:
+	if SmokeSparkOverlay.P7B_MULTIMESH:
+		_dust_field = CircleField.new()
+		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
+
+
 func _draw() -> void:
 	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle
 	## test costs the same in both modes and cancels in FULL - NOOP. Dust is the
@@ -157,6 +179,14 @@ func _draw() -> void:
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
 	var cmds: int = 0
+	var mm: CircleField = _dust_field
+	if mm != null:
+		## Upper bound: every dust entry's specks. Over-reserving costs one resize
+		## on the first big frame and nothing afterwards.
+		var cap: int = 0
+		for d0 in _dust:
+			cap += (d0["specks"] as Array).size()
+		mm.begin(cap)
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
 		var delay: float = d["delay"]
@@ -183,7 +213,12 @@ func _draw() -> void:
 		cmds += (d["specks"] as Array).size()
 		for offset in d["specks"]:
 			if submit:
-				draw_circle(pos + offset, dust_speck_radius, c)
+				if mm != null:
+					mm.push(pos + offset, dust_speck_radius, c)
+				else:
+					draw_circle(pos + offset, dust_speck_radius, c)
+	if mm != null:
+		mm.flush()
 
 	for chip in _chips:
 		var pos: Vector2 = chip["pos"]
@@ -216,6 +251,8 @@ func _draw() -> void:
 ## Discard every in-flight dust/chip (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _dust_field != null:
+		_dust_field.clear()
 	_dust.clear()
 	_chips.clear()
 	set_process(false)

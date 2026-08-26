@@ -74,6 +74,23 @@ static var spawn_n: int = 0
 static var per_overlay: Dictionary = {}
 
 
+## §12.12 — the overlays' `_process`, which NOTHING has ever measured.
+##
+## Every number this class has produced is about `_draw()`. But each overlay also
+## walks its whole particle array once per frame to age it and rebuild a survivor
+## list, and with ~1 900 live particles that is a GDScript loop nobody has priced.
+## After P7b the `_draw` side is 3.5 ms of a ~19.5 ms fire frame and the voxel
+## layers measured at ~0, so the remainder has to be somewhere — this is the first
+## place to look rather than the last.
+static var proc_us: Dictionary = {}
+
+
+static func note_process(who: StringName, us: int) -> void:
+	if not enabled:
+		return
+	proc_us[who] = int(proc_us.get(who, 0)) + us
+
+
 ## One overlay's contribution, folded in at the end of its own `_draw()`.
 static func note(who: StringName, us: int, cmds: int) -> void:
 	if not enabled:
@@ -107,6 +124,12 @@ static func take_line(frames: int) -> String:
 			who, float(e["us"]) / 1000.0 / float(frames),
 			float(e["cmds"]) / float(frames),
 			100.0 * float(e["us"]) / maxf(float(draw_us), 1.0)]
+	var pnames: Array = proc_us.keys()
+	pnames.sort_custom(func(a, b): return int(proc_us[a]) > int(proc_us[b]))
+	for who in pnames:
+		line += "\n[VFX-DRAW-PROBE]   _process %-14s %6.2f ms/frame" % [
+			who, float(proc_us[who]) / 1000.0 / float(frames)]
+	proc_us.clear()
 	per_overlay.clear()
 	draw_us = 0
 	particles = 0
@@ -125,3 +148,4 @@ static func reset() -> void:
 	spawn_us = 0
 	spawn_n = 0
 	per_overlay.clear()
+	proc_us.clear()

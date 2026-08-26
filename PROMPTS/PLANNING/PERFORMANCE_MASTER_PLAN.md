@@ -2830,3 +2830,82 @@ under 10 000. A gate that cannot fail is not a gate.
 `DebrisOverlay` is now the largest remaining row (1.29–2.42 ms, 37–57% of what is
 left of `_draw`). That is P7c, and it is small. The frame's remaining ~19.5 ms is
 no longer dominated by the VFX.
+
+## 12.12 ✅ P7c, and the frame's last 15 ms found by ELIMINATION (2026-08-26)
+
+**P7c — debris.** The dust specks are `draw_circle` and are the overlay's bulk
+(`cmds += specks.size()` against one command per chip), so they took the same
+`CircleField`. The CHIPS stayed on `draw_colored_polygon` — a rotated quad is not
+a circle and at one command each they are not what costs.
+
+```
+DebrisOverlay   1.29 -> 0.09 ms/frame   (-93%)
+_draw() total   3.53 -> 2.38 ms/frame
+```
+
+### Where the rest of the frame is NOT
+
+With P3 + P7b + P7c a fire frame is ~17.6 ms. Two candidates the plan had named
+were tested and both are dead:
+
+- ❌ **The voxel layers.** §8.7 recorded them at 19.0 ms/frame and reserved an
+  item for them "after P7". `INFILTRAITOR_HIDE_VOXELS=1` (new) removes all 32
+  layers: the fire frame goes **19.5 → 19.7 ms — no change at all.** That 19.0 ms
+  was measured when the TileSet carried ~50 000 alternatives; **P3 already paid
+  it.** The frame probe's ~12 000 draw calls per frame are real and cost ~4.4 ms
+  of engine `render cpu`, which is not where the time is either.
+- ❌ **The overlays' `_process` aging walks**, which nothing had ever measured —
+  every previous number in `VfxDrawProbe` was about `_draw()`. Now split:
+  SmokeSpark 0.95 · Ember 0.20 · Debris 0.01 · Shrapnel 0.00 = **1.16 ms/frame.**
+
+Accounted for a 17.6 ms fire frame: `render cpu` 4.4 · VFX `_draw` 2.38 · VFX
+`_process` 1.16 · voxel layers ~0. **The ~9 ms remainder is the board's own idle
+baseline** (§`_frame_probe`'s doc measured the idle board at 8.9 ms), not
+anything the fire adds. That is a different, larger subject than this wave.
+
+⚠️ **A measurement was discarded, and the reason is recorded.** A quadrant-size
+sweep was launched and its second run booted while these overlay files were being
+edited — the log is full of parse errors from a half-written tree. Killed and not
+used. Never edit source while a capture is in flight.
+
+## 12.13 ✅ THE WAVE IS SHIPPED — P3 and P7b default ON, and the last stall is named
+
+Both flip to **default ON**, opt OUT with `INFILTRAITOR_P3=0` / `INFILTRAITOR_P7B=0`.
+The opt-outs are kept rather than deleted: they put both sides of the A/B in ONE
+binary and one map, which §5.5 argues is stricter than stashing and re-running.
+
+**One boot each, same binary, the Director's own two-grenade repro:**
+
+| fire 1 | opt-out (the old build) | **shipped** | |
+|---|---|---|---|
+| `E-WAVE`, 5 frames / 2 820 cells | 1 018 ms | **108 ms** | **−89%** |
+| mean frame | 86.1 ms | **17.6 ms** | **12 → 57 fps** |
+| worst frame | 267 ms | **31 ms** | **−88%** |
+| committing frames | 5 × 138 ms | 6 × 21 ms | −85% |
+| fire wall clock | 1 979 ms | **1 320 ms** | −33% |
+| final repaint | 288 ms | 286 ms | unchanged |
+| **fire, end to end** | **2 267 ms** | **1 606 ms** | **−29%** |
+
+Fire 2 agrees: 2 079 → 1 416 ms, worst frame 273 → 44 ms.
+
+Gates at the flip: lint ✅ · selftests **39 clean / 0 failed** ✅ · invariants ✅ ·
+cell recovery **100.000% PASS** ✅ · circle gate **0/921 600 px PASS** ✅.
+
+### ⏭️ THE ONE THING LEFT, and it is P5 rather than a loose end
+
+The final repaint is the last stall in the event, and it is now fully attributed:
+
+```
+occupancy 39.0 · soot 154.2 · field.build 65.6 · apply 23.9 ms   = 283 ms
+```
+
+**The APPLY is solved** — 23.9 ms of 283, down from the 646 ms §10.1 measured. What
+remains is the map-wide DERIVATION, which §8.7 explicitly kept out of P7 and which
+P5 owns: the soot snapshot alone is 154 ms (§8.7 recorded 146 — unchanged).
+
+⚠️ **And it is not a scoping problem.** `_repaint_voxel_light_buckets_scoped()`'s
+own note says why: D24 derives soot from which voxels are absent ANYWHERE, so a
+scoped snapshot becomes a SECOND soot producer — the exact drift SOOT_MASTER_PLAN
+§1.2 found between two of them. The real answer is an INCREMENTAL soot map
+maintained as voxels are destroyed instead of re-derived from scratch, and that is
+a new system rather than a tuning pass. **Director's call before it is built.**

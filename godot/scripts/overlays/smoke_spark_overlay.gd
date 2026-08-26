@@ -22,7 +22,10 @@ class_name SmokeSparkOverlay
 ## instead of one canvas command each. Opt IN with `INFILTRAITOR_P7B=1` while the
 ## pixel gate is being earned — the same one-binary A/B `INFILTRAITOR_P3` uses,
 ## which is stricter than stashing the change and re-running (§5.5).
-static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") == "1"
+## §12.13 — DEFAULT ON since 2026-08-26. Opt OUT with `INFILTRAITOR_P7B=0`.
+## Earned on the static `circle_gate`: 0 of 921 600 px differ between the two
+## paths. The opt-out stays for the same one-binary A/B reason P3's does.
+static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") != "0"
 
 var _puff_field: CircleField = null
 
@@ -183,6 +186,8 @@ func add_sparks(pos: Vector2, count: int, color: Color,
 
 
 func _process(delta: float) -> void:
+	## §12.12 — this overlay's per-frame aging walk, priced.
+	var _pp0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
 	if _smoke.is_empty() and _sparks.is_empty():
 		set_process(false)
 		return
@@ -216,6 +221,9 @@ func _process(delta: float) -> void:
 
 	queue_redraw()
 
+
+	if VfxDrawProbe.enabled:
+		VfxDrawProbe.note_process(&"SmokeSparkOverlay", Time.get_ticks_usec() - _pp0)
 
 func _draw() -> void:
 	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle

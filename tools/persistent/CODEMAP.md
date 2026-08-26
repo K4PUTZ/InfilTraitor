@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**221 scripts · 69681 lines total** (under `godot/scripts/`)
+**221 scripts · 69794 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -506,7 +506,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `vfx_draw_probe.gd`
 
-`class_name VfxDrawProbe` · extends `RefCounted` · 127 lines
+`class_name VfxDrawProbe` · extends `RefCounted` · 151 lines
 
 `godot/scripts/debug/vfx_draw_probe.gd`
 
@@ -870,7 +870,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4414 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4448 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1082,7 +1082,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 222 lines
+`class_name DebrisOverlay` · extends `Node2D` · 259 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -1158,7 +1158,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 377 lines
+`class_name EmberOverlay` · extends `Node2D` · 382 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1513,7 +1513,7 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_overlay.gd`
 
-`class_name ShrapnelOverlay` · extends `Node2D` · 135 lines
+`class_name ShrapnelOverlay` · extends `Node2D` · 140 lines
 
 `godot/scripts/overlays/shrapnel_overlay.gd`
 
@@ -1561,7 +1561,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 313 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 321 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 

@@ -88,6 +88,8 @@ func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> 
 
 
 func _process(delta: float) -> void:
+	## §12.12 — this overlay's per-frame aging walk, priced.
+	var _pp0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
 	if _frags.is_empty():
 		set_process(false)
 		return
@@ -101,6 +103,9 @@ func _process(delta: float) -> void:
 	_frags = alive
 	queue_redraw()
 
+
+	if VfxDrawProbe.enabled:
+		VfxDrawProbe.note_process(&"ShrapnelOverlay", Time.get_ticks_usec() - _pp0)
 
 func _draw() -> void:
 	## PERF-P7a (VfxDrawProbe): `submit` hoisted into a local so the per-particle

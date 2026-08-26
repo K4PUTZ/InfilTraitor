@@ -624,7 +624,17 @@ static func _initial_bucket_luminance() -> Array[float]:
 ## The switch stays because it is the instrument: it puts both sides in ONE binary
 ## and one map, which is a stricter form of what §5.5 asks for than stashing the
 ## diff.
-static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") == "1"
+## §12.13 — DEFAULT ON since 2026-08-26. Opt OUT with `INFILTRAITOR_P3=0`.
+##
+## It shipped gated OFF while §3.3's floor residual was open. §12.9 closed it: the
+## cell recovery reads 100.000% on every level, two reconstruction-free
+## instruments agree, and the picture differs from the alternative path by 415 px
+## at max channel delta 3 — one FACE-READ-03 residue step, against a 0-px control.
+##
+## The opt-out is kept rather than deleted: it is what puts both sides of the A/B
+## in ONE binary and one map, which §5.5 argues is stricter than stashing the
+## change and re-running, and every future light-path measurement wants it.
+static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
@@ -3925,6 +3935,30 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 		## The gate grew a `pos=` column the moment this was found.
 		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y 			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level))
 	)
+
+	## §12.12 — TWO INSTRUMENTS FOR THE FRAME'S LAST 15 ms, both default absent.
+	##
+	## With P3 and P7b in, a fire frame is ~20 ms of which the engine's own
+	## `render cpu` is 4.4 and the VFX `_draw()` is 3.5. The rest is unattributed,
+	## and the frame probe reports **~12 000 draw calls** — one per rendering
+	## quadrant per layer, across 32 layers.
+	##
+	## `INFILTRAITOR_HIDE_VOXELS=1` prices the layers by removing them, the same
+	## way §3.4 priced the VFX. The board is meaningless under it; the frame time
+	## is not.
+	##
+	## `INFILTRAITOR_QUADRANT=<n>` sweeps `rendering_quadrant_size`. ⚠️ A previous
+	## attempt at ONE quadrant per layer measured a **45% regression** (15 928 ms
+	## of burn against 10 986) because every `set_cell()` then rebuilds the whole
+	## layer's draw list — see `voxel_face_shading.gdshader`'s `vertex()`. That
+	## measurement predates P3, which removed the minting and most of the writes,
+	## so the trade-off is worth RE-measuring rather than assuming. It is a sweep,
+	## not a fix, until a number says otherwise.
+	var quad_env := OS.get_environment("INFILTRAITOR_QUADRANT")
+	if quad_env.is_valid_int():
+		layer.rendering_quadrant_size = maxi(quad_env.to_int(), 1)
+	if OS.get_environment("INFILTRAITOR_HIDE_VOXELS") == "1":
+		layer.visible = false
 
 	# Set rendering parameters
 	layer.y_sort_origin = 1

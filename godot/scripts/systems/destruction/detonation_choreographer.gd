@@ -297,10 +297,38 @@ func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 ## and every non-detonation caller wants.
 var consequence_room = null
 
+## §13.4 — THE WAVE LEAVES CLEAN GEOMETRY.
+##
+## Director, 2026-08-26: *"a cena nasce suja e depois fica limpa… quando cavamos o
+## buraco já tem uma fuligem sendo aplicada imediatamente. Temos que desligar e
+## fazer só o buraco limpo."*
+##
+## They are right and the beat is what exposed it. `expose` and the decal entries
+## both carry a `soot` field and were writing it the instant the front reached the
+## cell — so a hole opened already scorched. The ramp at the end then lightens
+## those same cells to near-clean and walks them back, which under §13.3's
+## deferred beat is a long dirty stretch followed by a visible wipe-and-refill.
+## Before the beat the fade ran seconds earlier and hid it.
+##
+## With this on, the wave writes CLEAN and the scorch exists in exactly one place:
+## the consequence beat. Set from `consequence_room` at `start()`.
+var wave_soot_clean: bool = false
+
+
+## The scorch a wave entry should write RIGHT NOW — its own, or clean.
+func _wave_soot(entry: Dictionary) -> int:
+	if wave_soot_clean:
+		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
+	return int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
+
 
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 		precomputed_queue: Array = []) -> void:
 	_t0_ms = Time.get_ticks_msec()
+	## §13.4 — clean geometry during the wave whenever a beat is going to carry
+	## the scorch. Read once, here, so `_apply_entry()` is a member read per cell
+	## rather than a null check per cell.
+	wave_soot_clean = (consequence_room != null and consequence_room.consequence_beat)
 	_waves_done = 0
 	var queue: Array = precomputed_queue if not precomputed_queue.is_empty() \
 		else flatten_plan(plan)
@@ -365,11 +393,23 @@ static func flatten_plan(plan: Dictionary) -> Array:
 ## E-EMBER-01: the ember sits between the mark and the smoke. It cannot lead the
 ## hole that produced it (its own seed is a `destroy` entry, at -0.60), and it
 ## must precede the soot it is drawn on top of and eventually reveals.
+## §13.4 (Director, 2026-08-26): *"o ideal é começar com os decals e depois
+## remover os demais… Eles tem que estar presentes no lugar do voxel destruído
+## imediatamente, não podem ser uma segunda wave que entra depois."*
+##
+## ⚠️ THE ORDER IS INVERTED FROM WHAT THIS TABLE USED TO SAY. `destroy` led at
+## -0.60 and the marks followed at -0.30/-0.20, so a hole opened into un-marked
+## neighbours and the dents and cracks caught up behind the front — a second wave,
+## exactly as described. The marks now LEAD: a cell is already dented or cracked
+## when the hole beside it opens.
+##
+## The comment above about "the hole opens, then what it exposed appears, then the
+## dents register" described the old order and is superseded here.
 const KIND_RADIUS_BIAS: Dictionary = {
+	"dented": -0.70,
+	"cracked": -0.65,
 	"destroy": -0.60,
 	"expose": -0.50,
-	"dented": -0.30,
-	"cracked": -0.20,
 	"ember": -0.10,
 	## E-DEBRIS-01: debris is thrown BY the hole opening, so it rides just behind
 	## the destroy step that produced it and ahead of the smoke that hangs after.
@@ -483,7 +523,10 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 			% [steps, soot_fade_frames_per_step])
 		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
 		## Soot FIRST, then light — scorch is what the light is about to reveal.
-		consequence_room.play_consequence_light()
+		## AWAITED: the light now takes ~2 s (§13.4) and `finished` is what clears
+		## `_active_choreographer`, so returning early would drop the only strong
+		## reference to this object while a coroutine of its own is still running.
+		await consequence_room.play_consequence_light()
 	else:
 		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
 
@@ -706,7 +749,7 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			elayer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
 			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
+				_wave_soot(entry))
 			## PERF-10: this bypassed the light field, so the field's stale set
 			## cannot know the cell moved. Say so, or the next stale-driven apply
 			## walks past a cell only a map-wide walk would have corrected.
@@ -725,7 +768,7 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
 			layer2.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN)))
+				_wave_soot(entry))
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"smoke":

@@ -4749,6 +4749,16 @@ var consequence_beat: bool = OS.get_environment("INFILTRAITOR_CONSEQUENCE") != "
 ## 0.5 s, ratified by the Director. A look value (Rule 1) — tuned on a filmstrip.
 var consequence_soot_seconds: float = 0.5
 
+## §13.4 — *"A atualização da luz que eu coloquei como tempo explícito pode durar
+## uns 2 segundos, iniciando depois que a fuligem aparecer."* The light does not
+## snap any more; it arrives. A look value, same rule.
+var consequence_light_seconds: float = 2.0
+## Twelve rungs is the whole bucket ladder, so a cell whose light moves the full
+## range steps through every value it passes and one that moves a single rung
+## flips once. Cells still land TOGETHER — the ramp is a lerp toward the target,
+## not a per-cell countdown — which is what keeps it reading as one event.
+var consequence_light_steps: int = 12
+
 
 ## Returns when the destruction this blast started has fully settled — the fire
 ## out and its last batch committed. Immediate when nothing caught.
@@ -4778,10 +4788,85 @@ func play_consequence_light() -> void:
 		return
 	_consequence_light_done = true
 	_consequence_pending = false
+
+	## §13.4 — THE LIGHT ARRIVES OVER ~2 s, and the trick is to let the existing
+	## repaint compute the answer and then REPLAY the transition.
+	##
+	## The alternative was to split `_repaint_voxel_light_buckets()` into a derive
+	## half and an apply half so the ramp could sit between them. That function is
+	## the most heavily documented in this file and every one of its notes is a
+	## measurement; carving it up to add a look feature would put all of that at
+	## risk for no gain. Instead: record where the moving cells are NOW, let the
+	## normal path run to completion, record where they ENDED, then rewind and walk
+	## them across. Nothing is presented in between — there is no `await` between
+	## the apply and the rewind — so the final state never flashes.
+	##
+	## ⚠️ THIS RAMP ONLY EXISTS UNDER P3. The intermediate buckets are written to
+	## the cell plane (`_write_cell_bucket`), which is where the bucket lives only
+	## once it has left the alternative id. With `INFILTRAITOR_P3=0` the plane is
+	## not what the shader reads, so the ramp would be invisible — the code below
+	## detects that and applies instantly rather than pretending.
+	var moved: Dictionary = {}
+	if _voxel_light_field != null and _voxel_light_field.has_stale_subset():
+		for k in _voxel_light_field.stale_cells().keys():
+			moved[k] = true
+	for k in _voxel_renderer._externally_written.keys():
+		moved[k] = true
+	var from_bucket: Dictionary = {}
+	for k in moved.keys():
+		from_bucket[k] = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+
 	var t0: int = Time.get_ticks_usec()
 	_repaint_voxel_light_buckets(true, true)
-	print("[CONSEQUENCE] light restored — %.1f ms" % [
-		float(Time.get_ticks_usec() - t0) / 1000.0])
+	var derive_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+
+	if not VoxelRenderer.P3_CELL_BUCKET or moved.is_empty():
+		print("[CONSEQUENCE] light restored instantly — %.1f ms (%s)" % [derive_ms,
+			"P3 off, no plane to ramp" if not VoxelRenderer.P3_CELL_BUCKET
+			else "nothing moved"])
+		return
+
+	var to_bucket: Dictionary = {}
+	var changed: int = 0
+	for k in moved.keys():
+		var b: int = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+		to_bucket[k] = b
+		if b != int(from_bucket[k]):
+			changed += 1
+	var steps: int = maxi(consequence_light_steps, 1)
+	var frames_per_step: int = maxi(
+		int(ceil(consequence_light_seconds * 60.0 / float(steps))), 1)
+	print("[CONSEQUENCE] light ramp — %d cell(s) moving of %d · %d step(s) x %d frame(s) · derive %.1f ms"
+		% [changed, moved.size(), steps, frames_per_step, derive_ms])
+
+	for step in range(steps):
+		var t: float = float(step) / float(steps)
+		for k in moved.keys():
+			var f: int = int(from_bucket[k])
+			var to: int = int(to_bucket[k])
+			if f == to:
+				continue
+			## BUCKET_UNWRITTEN means the cell had no bucket to come FROM — a
+			## crater floor the blast just revealed. Ramping out of a sentinel
+			## would walk it through the whole ladder from a value that never
+			## described anything, so it simply arrives.
+			if f == VoxelRenderer.BUCKET_UNWRITTEN:
+				continue
+			_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y),
+				int(round(lerpf(float(f), float(to), t))))
+		_voxel_renderer.flush_cell_soot()
+		for _h in range(frames_per_step):
+			await get_tree().process_frame
+		if not is_instance_valid(_voxel_renderer):
+			return
+
+	## The last step is the REAL value, written from `to` rather than from a lerp
+	## that rounds to it — a ramp that ends one rung off would leave the board
+	## permanently wrong, and nothing downstream would ever correct it.
+	for k in moved.keys():
+		_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y), int(to_bucket[k]))
+	_voxel_renderer.flush_cell_soot()
+	print("[CONSEQUENCE] light landed")
 
 
 ## Set while a beat owns the ending, so the burn's own final repaint stands down.

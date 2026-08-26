@@ -2520,3 +2520,115 @@ which is 92% of the pixels on screen; the misses are a ±1-cell boundary effect,
 characterised in §3.3 and NOT explained. §8.18's named lead is dead and §8.20
 separates the two residuals. **That defect, alone, is now worth ~0.56 s per
 detonation on top of a worst frame cut from 271 ms to 58.**
+
+---
+
+## 12.8 🔎 §3.3's FLOOR RESIDUAL — three hypotheses dead, the gate exonerated, the bug localised (2026-08-26)
+
+Director's call after §12.7: attack the residual rather than tune the cadence.
+
+**Baseline re-taken on current HEAD first**, because every number in §3.3/§8.18/§8.22
+predates the storey renumber (2026-08-24), which moved every layer's Y:
+
+```
+judged 893 145 px · INSIDE 732 442 (82.007%) · OUTSIDE 160 703
+L79 (floor) 81% (822 643 px) · L80 98% · L81 100% · L82 98% ...
+```
+
+**Byte-identical to §8.18.** The renumber changed nothing here, and the parity
+alternation across wall levels survives it. Deterministic across three boots.
+
+### What is now DEAD, each killed by a measurement rather than an argument
+
+**1. ❌ float32 precision — the hypothesis the shader's own comment records.**
+Debug paint **mode 5** (new) paints `|q - round(q)|` for `q = v_vertex - local`,
+the quantity `floor(q + 0.5)` is about to round. Ground-truth-free by construction.
+
+```
+FLOOR n=822 643 · residue byte 0-31: 100.0%
+WALL  n= 98 957 · residue byte 0-31: 100.0%
+```
+
+**The residue is zero everywhere, on both surfaces.** The rounding is nowhere near
+a boundary, so no amount of snapping could ever have helped — which retroactively
+explains §3.3's snapping attempt moving the gate by 0.02 points. `quad_tl` is an
+exact integer. It is simply the WRONG exact integer.
+
+**2. ❌ Atlas origin off-grid.** `debug_atlas_alignment()` infers alignment from
+each SOURCE's declared `margins` and `region + separation`. `debug_tile_atlas_origins()`
+(new) stops inferring and reads `margins + coords * (region + separation)` for every
+**placed cell**, histogrammed mod (32, 36), per level. **Not one cell off-grid.**
+
+**3. ❌ Multi-cell atlas spans.** A tile spanning several atlas cells would make
+`mod` wrap in the quad's INTERIOR, invisible to every check here. Measured
+`get_tile_size_in_atlas()` per placed cell: **every tile is 1×1.**
+
+### ✅ AND THE GATE IS EXONERATED — §8.18's decision is withdrawn on evidence
+
+§8.18 stopped letting the gate block P3 because it compares the shader against a
+*reconstruction* of Godot's draw rect, so a disagreement accuses both. **A
+reconstruction-free test settles it.** Every pixel recovering the same cell must
+fit inside ONE quad (38.4 × 43.2 screen px at this zoom). No model of ownership,
+no rect, no camera:
+
+```
+FLOOR: 2 450 distinct recovered cells · 1 325 OVERSIZED (54.1%)
+       worst — cell (204, 74) spans 65 x 39 px = 1.69 quads
+WALL :   478 distinct recovered cells ·     8 OVERSIZED (1.7%)
+       worst — 1.04 quads, i.e. rounding
+```
+
+**The shader really does hand one cell to pixels from two different quads.** The
+gate was right; §8.20's suspicion that §8.18 was wrong is confirmed.
+
+### Where the bug IS — the `mod` boundary, on a clean enrichment curve
+
+Debug paint **mode 6** (new) paints `local` itself. Distance from the nearest
+`mod` boundary against the failure mask, floor only:
+
+| window | share of ALL wrong px | wrong-rate NEAR | wrong-rate FAR |
+|---|---|---|---|
+| 0.5 px | 13.6% | 44.5% | 17.8% |
+| 1.5 px | 36.4% | 40.9% | 14.9% |
+| 4.0 px | 74.1% | 34.0% | 8.7% |
+| **8.0 px** | **95.4%** | 25.7% | **3.2%** |
+
+Monotone in both directions. **95% of the floor's wrong pixels sit within 8 px of a
+`mod` boundary, and a true interior fragment is wrong only 3.2% of the time.** A
+scanline dissection of the worst cell shows it directly: `local.x` jumps −17.12
+between two tiles while the recovered cell does not change, leaving two `quad_tl`
+values **18 layer px apart — which is not a lattice vector**, so at least one of
+them is not a real quad origin.
+
+### The structural correlate of floor-vs-wall
+
+`debug_tile_atlas_origins()` also inventories the texture behind each placed cell:
+
+```
+LEVEL 79 (floor): { (32, 36): 8 704 · (4096, 1152): 57 344 · (4096, 180): 4 608 }
+LEVEL 80 (wall) : { (4096, 2376): 2 232 · (4096, 108): 1 016 · (4096, 72): 8 · (4096, 36): 32 }
+```
+
+Every region is (32, 36) and every texture size is an exact multiple of the atom,
+so this is not a misalignment. It is a **density** difference: the floor is a
+continuous field of heavily overlapping quads, so most of a floor tile is covered
+by its neighbours and a large share of its *visible* fragments are the thin slivers
+at its own edge — exactly where `mod` is ambiguous. A wall shows large
+uninterrupted faces, so its edge fragments are a small fraction of its pixels.
+That is why the same shader is 98% on walls and 81% on the floor.
+
+### ⏭️ OPEN — the fix needs a decision, and it is not a small one
+
+`local` is `mod(UV / TEXTURE_PIXEL_SIZE, atom_size)`, and `mod` is **discontinuous
+at the region boundary**. A fragment that belongs to region R but samples at or
+past `R + 32` folds to ~0, and `quad_tl` lands one quad width away.
+
+**The definitive fix is to stop deriving `local` from the atlas at all** and carry
+the quad's origin from the vertex shader as a `flat` varying — exact, no `mod`, no
+residue, no boundary. **One obstacle is real and is stated rather than waved at:**
+which corner is the provoking vertex is driver-dependent, and the four candidate
+corners are `quad_tl + {(0,0), (32,0), (0,36), (32,36)}`. The lattice constraint
+(`qx ≡ 0 mod 16`, `qy ≡ 0 mod 8`, matching parity) rejects the two that differ in
+Y — but **(32, 0) IS a lattice vector** (it is `e1 - e2`, i.e. cell delta (+1,−1)),
+so geometry alone cannot disambiguate X. That ambiguity is the same one the bug
+exploits, and it needs a decision rather than a guess.

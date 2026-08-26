@@ -5432,6 +5432,31 @@ func _capture_cell_index_gate() -> void:
 		push_error("[P3-GATE] null viewport image.")
 		return
 	img_cell.save_png("%s/p3_gate_recovered_cells.png" % shot_dir)
+
+	## CAPTURE C (§12.8) — THE RESIDUE, in the SAME frame setup as A and B.
+	##
+	## Taken here rather than in its own boot on purpose: the camera eases toward
+	## its target and `_debug_hide_all_but_voxels()` has already run, so a residue
+	## map captured anywhere else would be of a different frame than the recovery
+	## it is meant to explain. See `_p3_gate_rect()`'s note on exactly this trap.
+	_voxel_renderer.debug_set_cell_paint_mode(5.0)
+	for _i in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_res := vp.get_texture().get_image()
+	if img_res != null:
+		img_res.save_png("%s/p3_gate_residue.png" % shot_dir)
+		print("[P3-GATE] residue: Screenshots/history/p3_gate_residue.png (R,G = |q - round(q)| x2)")
+
+	## CAPTURE D (§12.8) — `local`, for the same frame. See mode 6's note.
+	_voxel_renderer.debug_set_cell_paint_mode(6.0)
+	for _i in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_local := vp.get_texture().get_image()
+	if img_local != null:
+		img_local.save_png("%s/p3_gate_local.png" % shot_dir)
+		print("[P3-GATE] local: Screenshots/history/p3_gate_local.png (R = local.x*8, G = local.y*7)")
 	## BOTH captures and the exact per-level transform are written out, so the
 	## analysis can be re-run and re-cut offline without another four-minute
 	## boot. The transform is printed rather than re-derived because a reader
@@ -7285,6 +7310,30 @@ func _run_auto_screenshot_capture() -> void:
 			100.0 * float(bc["disagree"]) / maxf(float(bc["cells"]), 1.0)])
 		if not (bc["samples"] as Array).is_empty():
 			print("[P3-CENSUS] samples: %s" % [bc["samples"]])
+		## §12.8 — the shader's precondition, tested on the tiles that DRAW.
+		var ao: Dictionary = _voxel_renderer.debug_tile_atlas_origins()
+		for lv in ao.keys():
+			var h: Dictionary = (ao[lv] as Dictionary)["origin_mod"]
+			var sp: Dictionary = (ao[lv] as Dictionary)["atlas_span"]
+			var bad_n: int = 0
+			for k in h.keys():
+				if k != Vector2i.ZERO:
+					bad_n += int(h[k])
+			if bad_n > 0 or h.size() > 1:
+				print("[P3-CENSUS] ATLAS ORIGIN mod(32,36), level %d: %s  <-- %d cell(s) OFF-GRID"
+					% [lv, h, bad_n])
+			var rg: Dictionary = (ao[lv] as Dictionary)["regions"]
+			var tx: Dictionary = (ao[lv] as Dictionary)["tex_sizes"]
+			if rg.size() > 1 or tx.size() > 1 or lv == _voxel_renderer.level_keys()[0]:
+				print("[P3-CENSUS] LEVEL %d — region(w,h,source): %s · texture sizes: %s"
+					% [lv, rg, tx])
+			var span_bad: int = 0
+			for k in sp.keys():
+				if k != Vector2i.ONE:
+					span_bad += int(sp[k])
+			if span_bad > 0 or sp.size() > 1:
+				print("[P3-CENSUS] ATLAS SPAN, level %d: %s  <-- %d cell(s) span MORE than one atlas cell"
+					% [lv, sp, span_bad])
 	## PERF-P3 — drive the shader's G-channel debug paint (mode 3) for a capture
 	## whose R channel IS the bucket the sampler read.
 	var paint_env := OS.get_environment("INFILTRAITOR_CELL_PAINT_MODE")

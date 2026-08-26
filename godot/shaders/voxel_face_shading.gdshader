@@ -386,4 +386,37 @@ void fragment() {
 		COLOR = vec4(mod(cell.x, 256.0) / 255.0, mod(cell.y, 256.0) / 255.0,
 			(64.0 + bx + 8.0 * by) / 255.0, step(0.99, tex_a));
 	}
+	// Mode 5 (§12.8) — THE RESIDUE `floor(x + 0.5)` IS ABOUT TO ROUND.
+	//
+	// `v_vertex - local` is an INTEGER layer-space point in exact arithmetic, so
+	// the distance from the nearest integer is pure error. The block above this
+	// one predicts that error and blames float32 in `local`; §3.3 tried snapping
+	// `local` and moved the gate by 0.02 points, which kills the fix but not the
+	// diagnosis — a residue in `v_vertex` snapping cannot reach would behave the
+	// same way. NOBODY HAS MEASURED THE RESIDUE ITSELF, on either surface.
+	//
+	// R and G carry |q - round(q)| for x and y, scaled by 2 so the byte spans the
+	// full 0..0.5 range a rounding boundary lives in: 0 is exact, 255 is sitting
+	// exactly on the flip. Ground-truth-free by construction — it needs no model
+	// of which cell owns a pixel, which is what every earlier instrument here
+	// needed and got wrong at least once.
+	// Mode 6 (§12.8) — `local` ITSELF, the atom-local pixel offset.
+	//
+	// Mode 5 proved the residue is exactly 0, which kills float32 as the cause
+	// and leaves only one way for the recovery to be wrong: `local` is an exact
+	// integer that is exactly WRONG, i.e. `mod` is wrapping on the wrong period.
+	// R = local.x * 8 and G = local.y * 7 spread 0..31 and 0..35 over most of a
+	// byte, so a scanline read gives the WRAP PERIOD directly — which is the one
+	// property `debug_atlas_alignment()` infers from the TileSet's declared
+	// margins and pitch instead of observing in the rendered pixel.
+	if (cell_debug_paint > 5.5 && cell_debug_paint < 6.5) {
+		COLOR = vec4(clamp(local.x * 8.0 / 255.0, 0.0, 1.0),
+			clamp(local.y * 7.0 / 255.0, 0.0, 1.0), 1.0, step(0.99, tex_a));
+	}
+	if (cell_debug_paint > 4.5 && cell_debug_paint < 5.5) {
+		vec2 q = v_vertex - local;
+		vec2 res = abs(q - floor(q + 0.5));
+		COLOR = vec4(clamp(res.x * 2.0, 0.0, 1.0), clamp(res.y * 2.0, 0.0, 1.0),
+			1.0, step(0.99, tex_a));
+	}
 }

@@ -3768,6 +3768,68 @@ func debug_atlas_alignment() -> Dictionary:
 	return {"checked": checked, "bad": bad}
 
 
+## PERF-P3 §12.8 — THE ATLAS ORIGIN OF EVERY TILE THAT ACTUALLY DRAWS.
+##
+## `debug_atlas_alignment()` above checks the SOURCE's declared `margins` and
+## `region + separation`, and concludes every tile must therefore land on the
+## shader's `mod(32, 36)` grid. That is an inference, and mode 6 contradicted it
+## in the rendered pixel: along one scanline, inside a run where `local.x` ramped
+## continuously, `local.y` moved by exactly 8.
+##
+## So this stops inferring and reads the real thing — per PLACED CELL, the atlas
+## origin Godot will use, `margins + coords * (region + separation)` — and
+## histograms it modulo the atom. Anything other than (0, 0) is a tile whose
+## `mod` wraps INSIDE its own quad, which splits one quad across two recovered
+## cells and is exactly the failure the gate has been reporting as a floor
+## residual.
+##
+## Keyed by level, because the whole point is that the floor and the walls differ.
+func debug_tile_atlas_origins() -> Dictionary:
+	var by_level: Dictionary = {}
+	if _tileset == null:
+		return by_level
+	for level in level_keys():
+		var layer: TileMapLayer = _layers[level]
+		if layer == null:
+			continue
+		var hist: Dictionary = {}
+		var spans: Dictionary = {}
+		var regions: Dictionary = {}
+		var texsizes: Dictionary = {}
+		for cell in layer.get_used_cells():
+			var sid: int = layer.get_cell_source_id(cell)
+			if sid == -1:
+				continue
+			var src := _tileset.get_source(sid) as TileSetAtlasSource
+			if src == null:
+				continue
+			var coords: Vector2i = layer.get_cell_atlas_coords(cell)
+			var pitch: Vector2i = src.texture_region_size + src.separation
+			var origin: Vector2i = src.margins + coords * pitch
+			var key := Vector2i(origin.x % 32, origin.y % 36)
+			hist[key] = int(hist.get(key, 0)) + 1
+			## §12.8 — HOW MANY ATLAS CELLS THIS TILE SPANS.
+			## `texture_region_size` is the size of ONE atlas cell; a tile may span
+			## several (`set_tile_size_in_atlas`), and then its DRAWN region is
+			## bigger than `atom_size` and the shader's `mod` wraps INSIDE the quad
+			## — in the interior, where no boundary test can see it. Never checked.
+			var span: Vector2i = src.get_tile_size_in_atlas(coords)
+			var skey := Vector2i(span.x, span.y)
+			spans[skey] = int(spans.get(skey, 0)) + 1
+			## §12.8 — the REGION SIZE the tiles on THIS level actually use, and the
+			## texture they use it against. The gate reports both per SOURCE; a level
+			## that mixes two of them is invisible there and fatal here, because
+			## `atom_size` is one global uniform for every layer.
+			var rk := Vector3i(src.texture_region_size.x, src.texture_region_size.y, sid)
+			regions[rk] = int(regions.get(rk, 0)) + 1
+			var tex: Texture2D = src.texture
+			var tk := Vector2i(tex.get_width(), tex.get_height()) if tex != null else Vector2i(-1, -1)
+			texsizes[tk] = int(texsizes.get(tk, 0)) + 1
+		by_level[level] = {"origin_mod": hist, "atlas_span": spans,
+			"regions": regions, "tex_sizes": texsizes}
+	return by_level
+
+
 ## PERF-P3 — DOES EACH LAYER'S `layer_origin` UNIFORM STILL MATCH THE LAYER?
 ##
 ## It is captured once, in `_build_voxel_layer_node()`, right after `add_child()`.

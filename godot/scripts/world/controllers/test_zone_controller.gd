@@ -1389,6 +1389,12 @@ func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 	## E-EMBER-01 / E-SMOKE-TINT-01: the two VFX targets that are not on
 	## `start()`'s signature — the ember overlay VL-D4's per-voxel glow needs, and
 	## the per-material smoke tints only a MaterialRegistry owner can resolve.
+	## §13.3 — hands the choreographer the Room that owns the consequence beat, so
+	## the soot ramp waits for the destruction to settle instead of firing the
+	## instant the front finishes. Null for every other caller, which keeps the
+	## old immediate behaviour for the selftests.
+	choreographer.consequence_room = room
+	room.begin_consequence_beat()
 	choreographer.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
 		room._debris_overlay, room.blast_debris_palette())
 	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,

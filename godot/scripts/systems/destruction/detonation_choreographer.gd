@@ -292,6 +292,12 @@ func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 ## can least afford it. Empty means "not warmed", and this flattens it itself:
 ## `detonate_active()`'s right-click path never runs pre-production, and the
 ## selftests drive `flatten_plan()` directly.
+## §13.3 — the Room that owns the consequence beat. Null keeps the old behaviour
+## (the soot ramp runs the instant the wave ends), which is what every selftest
+## and every non-detonation caller wants.
+var consequence_room = null
+
+
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 		precomputed_queue: Array = []) -> void:
 	_t0_ms = Time.get_ticks_msec()
@@ -456,7 +462,30 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 	var soot_entries: Array = []
 	for ring: int in plan.get("soot", {}).keys():
 		soot_entries.append_array(plan["soot"][ring])
-	frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
+
+	## §13.3 — THE BEAT. The ramp used to run right here, the instant the front
+	## finished, which is *during* the fire the same blast just lit: decals landed
+	## clean and the scorch arrived while things were still burning. It now waits
+	## for the destruction to settle, and the light follows it.
+	if consequence_room != null and consequence_room.consequence_beat:
+		var steps: int = maxi(soot_fade_steps, 1)
+		## 0.5 s spread over the ladder that already exists — the LOOK stays the
+		## one already ratified, only the tempo changes. Rounded UP, so the beat is
+		## never shorter than the number the Director ratified.
+		soot_fade_frames_per_step = maxi(
+			int(ceil(consequence_room.consequence_soot_seconds * 60.0 / float(steps))), 1)
+		print("[CONSEQUENCE] front done — waiting for the destruction to settle")
+		await consequence_room.await_destruction_settled()
+		if not is_instance_valid(voxel_renderer):
+			finished.emit()
+			return
+		print("[CONSEQUENCE] soot ramp — %d step(s) x %d frame(s)"
+			% [steps, soot_fade_frames_per_step])
+		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
+		## Soot FIRST, then light — scorch is what the light is about to reveal.
+		consequence_room.play_consequence_light()
+	else:
+		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
 
 	_waves_done = frame_index
 	finished.emit()

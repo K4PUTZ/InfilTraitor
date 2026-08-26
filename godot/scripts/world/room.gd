@@ -4722,7 +4722,92 @@ func _burn_residue_probe() -> void:
 		else "the residue is NOT index membership — it survives inside the indexed, in-scope set"))
 
 
+## §13.3 — THE CONSEQUENCE BEAT (Director, 2026-08-26).
+##
+## *"o jogo por turno não exige que a física seja aplicada imediatamente, ela pode
+## acontecer de maneira lúdica mais acentuada, de forma que a alteração no cenário
+## por uma atividade do agente receba ainda mais destaque ao final do evento,
+## assumindo como uma demonstração das consequências da ação."*
+##
+## ⚠️ **THIS REVERSES F1's REJECTION, and on new grounds rather than by forgetting
+## it.** F1 was rejected on LOOK in §9.8: freezing light mid-event read as a bug.
+## The Director's argument here is that a turn-based game has no physics deadline,
+## so the change of scene becomes a deliberate closing beat instead of a stutter —
+## the freeze is the same, what changed is that something is now DONE with it.
+##
+## And most of the freeze already existed. Measured 2026-08-26: there is NO light
+## repaint during the destruction wave at all — the choreographer writes cells
+## directly — and F8 already freezes the fire's own region. What was actually
+## wrong was the SOOT's position: `_fade_in_soot()` ran the moment the wave ended,
+## which is *during* the fire, so decals appeared clean and scorch arrived while
+## things were still burning. It now runs at the end, and the light follows it.
+##
+## Order is the whole point and is stated once: **soot, then light.** Scorch is
+## what the light is about to reveal.
+var consequence_beat: bool = OS.get_environment("INFILTRAITOR_CONSEQUENCE") != "0"
+
+## 0.5 s, ratified by the Director. A look value (Rule 1) — tuned on a filmstrip.
+var consequence_soot_seconds: float = 0.5
+
+
+## Returns when the destruction this blast started has fully settled — the fire
+## out and its last batch committed. Immediate when nothing caught.
+##
+## ⚠️ `start_burn()` runs BEFORE the wave (see `_start_detonation_sequence()`), so
+## by the time a caller reaches here the scheduler already knows whether there is
+## fuel. A poll that ran earlier would read "not burning" and return at once.
+func await_destruction_settled() -> void:
+	var guard: int = 0
+	while (_burn_scheduler != null and _burn_scheduler.is_burning()) \
+			or not _burn_pending.is_empty():
+		await get_tree().process_frame
+		guard += 1
+		## A fire that never ends must not hang the beat forever — 30 s at 60 fps.
+		## Loud, because it would mean the scheduler is stuck, not that the beat is.
+		if guard > 1800:
+			push_warning("[CONSEQUENCE] destruction never settled after %d frames — running the beat anyway" % guard)
+			return
+
+
+## The light half, run by the choreographer once its soot ramp has landed. Kept
+## here rather than inlined there because the repaint is the Room's, and because
+## `_burn_final_repaint()` has to know not to do it twice.
+func play_consequence_light() -> void:
+	if not is_instance_valid(_voxel_renderer):
+		_consequence_pending = false
+		return
+	_consequence_light_done = true
+	_consequence_pending = false
+	var t0: int = Time.get_ticks_usec()
+	_repaint_voxel_light_buckets(true, true)
+	print("[CONSEQUENCE] light restored — %.1f ms" % [
+		float(Time.get_ticks_usec() - t0) / 1000.0])
+
+
+## Set while a beat owns the ending, so the burn's own final repaint stands down.
+var _consequence_light_done: bool = false
+var _consequence_pending: bool = false
+
+
+## Called by the detonation as it hands the wave to the choreographer. From here
+## until the beat lands, the fire's own final repaint is NOT the ending — the beat
+## is — and doing it twice would spend the map-wide repaint twice and land the
+## light before the scorch, which is the exact order this exists to fix.
+func begin_consequence_beat() -> void:
+	if not consequence_beat:
+		return
+	_consequence_pending = true
+	_consequence_light_done = false
+
+
 func _burn_final_repaint() -> void:
+	## §13.3 — STAND DOWN when a consequence beat owns the ending. The beat is
+	## waiting on exactly the condition that brought us here (the fire settling),
+	## and it will run the soot ramp and THEN the light. Repainting now would put
+	## the light before the scorch and pay the map-wide pass twice.
+	if _consequence_pending:
+		print("[CONSEQUENCE] fire out — the beat owns the ending, burn repaint stands down")
+		return
 	## Two frames first, so the last holes are PRESENTED before this runs.
 	## Deferring the work and then doing it in the same frame moves the stall
 	## instead of removing it — the mistake this file's history already records.

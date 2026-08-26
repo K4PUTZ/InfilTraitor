@@ -64,7 +64,7 @@ GODOT_CANDIDATES = [
 
 # Generous: a filmstrip run boots the map, bakes, and then does a full GPU
 # readback per frame. Not the expected exit path — the scene quits itself.
-PROCESS_TIMEOUT_SECONDS = 300
+PROCESS_TIMEOUT_SECONDS = 900
 OFFSCREEN_POSITION = "4000,4000"
 
 # The capture action centres the camera on the grenade, so the blast is at
@@ -152,6 +152,53 @@ def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom):
     return combined
 
 
+def build_video(frame_dir, out_path, fps, prefix="frame_"):
+    """P-VID (Director, 2026-08-26): *"o ideal na verdade era a gente trabalhar
+    com video pra poder analisar esse flow."*
+
+    A sheet can only hold so many tiles, so it covers the first fraction of a
+    second and the Director's report is about what happens LATER — the fire, not
+    the blast. Frames are already captured one per drawn frame; this just encodes
+    them instead of tiling them.
+
+    ⚠️ WHAT THIS VIDEO IS AND IS NOT. The capture runs under `--fixed-fps 60`
+    (mandatory — see the header), so every frame is exactly 1/60 s of SIMULATED
+    time and encoding at 60 fps plays the event back at its DESIGNED speed. That
+    is the right instrument for judging flow and timing, and it is the WRONG one
+    for judging lag: the real build does not hit 60 fps during a fire, and the
+    per-frame GPU readback this capture performs would dominate the wall clock
+    anyway. Read the lag off `INFILTRAITOR_BURN_PROFILE=1`, never off this file.
+
+    `--fps` below the capture rate is slow motion, not a slower game.
+    """
+    names = sorted(f for f in os.listdir(frame_dir)
+                   if f.startswith(prefix) and f.endswith(".png"))
+    if not names:
+        print("[P-VID] no frames found in %s" % frame_dir)
+        return False
+    ff = shutil.which("ffmpeg")
+    if ff is None:
+        print("[P-VID] ffmpeg not found on PATH — cannot encode")
+        return False
+    # A glob pattern rather than %03d: the capture's numbering starts at 0 and
+    # ffmpeg's sequence reader is fussy about that, while glob never is.
+    cmd = [ff, "-y", "-framerate", str(fps),
+           "-pattern_type", "glob", "-i", os.path.join(frame_dir, prefix + "*.png"),
+           # yuv420p + even dimensions, so the file plays in QuickTime and in a
+           # browser rather than only in ffplay.
+           "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
+           out_path]
+    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if res.returncode != 0:
+        print("[P-VID] ffmpeg failed:\n" + res.stderr[-1500:])
+        return False
+    secs = len(names) / float(fps)
+    print("[P-VID] video: %s  (%d frames @ %d fps = %.2fs)"
+          % (out_path, len(names), fps, secs))
+    return True
+
+
 def build_sheet(frame_dir, out_path, cols, crop, prefix="frame_"):
     names = sorted(f for f in os.listdir(frame_dir)
                    if f.startswith(prefix) and f.endswith(".png"))
@@ -210,9 +257,20 @@ def main():
     ap.add_argument("--focus", default="",
                     help="shot mode: 'x,y' GU the camera centres on "
                          "(default: midway between shooter and target)")
+    ap.add_argument("--video", action="store_true",
+                    help="encode the frames to mp4 instead of tiling a sheet (P-VID)")
+    ap.add_argument("--fps", type=int, default=60,
+                    help="playback rate of --video. The capture is always 60 "
+                         "simulated fps, so a lower value here is SLOW MOTION")
     ap.add_argument("--zoom", type=float, default=0.5,
                     help="shot mode: capture zoom")
     args = ap.parse_args()
+
+    # A sheet is limited by how many tiles stay readable; a video is not, and the
+    # event the Director wants to see is ~2.5 s of fire rather than the blast's
+    # opening. So video mode covers the whole event unless asked otherwise.
+    if args.video and "--frames" not in sys.argv:
+        args.frames = 180          # 3.0 s at the capture's fixed 60 fps
 
     root = repo_root()
     if args.shot:
@@ -240,6 +298,10 @@ def main():
     if not os.path.isdir(frame_dir):
         print("[P-FILM] %s does not exist — did the capture run?" % frame_dir)
         return 1
+    if args.video:
+        vid = os.path.join(frame_dir, os.path.splitext(
+            os.path.basename(out_path))[0] + ".mp4")
+        return 0 if build_video(frame_dir, vid, args.fps, prefix) else 1
     return 0 if build_sheet(frame_dir, out_path, args.cols,
                             not args.no_crop, prefix) else 1
 

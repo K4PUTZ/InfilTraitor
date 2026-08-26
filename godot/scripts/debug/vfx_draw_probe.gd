@@ -65,6 +65,24 @@ static var commands: int = 0
 static var spawn_us: int = 0
 static var spawn_n: int = 0
 
+## §12.10 — THE SPLIT BY OVERLAY, because P7b converts ONE of the four.
+##
+## The counters above are global, so they price "the VFX" and cannot say what
+## share of it `EmberOverlay` is — and P7b's whole scope is the ember. Sizing a
+## Medium rewrite off a number that belongs to four overlays is the mistake §1.2
+## made with the soot. Keyed by overlay name -> {"us": int, "cmds": int}.
+static var per_overlay: Dictionary = {}
+
+
+## One overlay's contribution, folded in at the end of its own `_draw()`.
+static func note(who: StringName, us: int, cmds: int) -> void:
+	if not enabled:
+		return
+	var e: Dictionary = per_overlay.get(who, {"us": 0, "cmds": 0})
+	e["us"] = int(e["us"]) + us
+	e["cmds"] = int(e["cmds"]) + cmds
+	per_overlay[who] = e
+
 
 ## One line for the FRAME-PROBE, then reset. Returns "" when the probe is off so
 ## the caller can concatenate unconditionally.
@@ -80,6 +98,16 @@ static func take_line(frames: int) -> String:
 	if spawn_n > 0:
 		line += "\n[VFX-DRAW-PROBE] add_ember: %d call(s), %.2f ms total (%.1f us/call) — §8.4's O(N^2)" % [
 			spawn_n, float(spawn_us) / 1000.0, float(spawn_us) / float(spawn_n)]
+	## §12.10 — sorted by cost, so the line reads as a ranking rather than a dump.
+	var names: Array = per_overlay.keys()
+	names.sort_custom(func(a, b): return int(per_overlay[a]["us"]) > int(per_overlay[b]["us"]))
+	for who in names:
+		var e: Dictionary = per_overlay[who]
+		line += "\n[VFX-DRAW-PROBE]   %-18s %6.2f ms/frame · %7.1f cmd/frame · %5.1f%% of _draw" % [
+			who, float(e["us"]) / 1000.0 / float(frames),
+			float(e["cmds"]) / float(frames),
+			100.0 * float(e["us"]) / maxf(float(draw_us), 1.0)]
+	per_overlay.clear()
 	draw_us = 0
 	particles = 0
 	commands = 0
@@ -96,3 +124,4 @@ static func reset() -> void:
 	commands = 0
 	spawn_us = 0
 	spawn_n = 0
+	per_overlay.clear()

@@ -125,11 +125,23 @@ var _embers: Array = []
 
 var _smoke_overlay: SmokeSparkOverlay = null  ## optional — puff-on-extinguish target
 
+## PERF-P7b (§12.10) — two `draw_circle` per ember, 24.0% of the whole VFX
+## `_draw()` before the puffs moved and 64.3% after. Same `CircleField` the smoke
+## uses; opt IN with `INFILTRAITOR_P7B=1`.
+var _field: CircleField = null
+
 
 func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	material = mat
+	if SmokeSparkOverlay.P7B_MULTIMESH:
+		_field = CircleField.new()
+		## ADD, matching the material above. `behind` is not needed and is not
+		## passed: additive compositing is order-independent, so core-then-halo
+		## and halo-then-core produce the same pixels — which is also why the two
+		## can share ONE instance buffer instead of needing two passes.
+		_field.attach(self, CanvasItemMaterial.BLEND_MODE_ADD)
 
 
 ## Wire the overlay that receives a small puff when an ember burns out.
@@ -316,6 +328,9 @@ func _draw() -> void:
 	var submit: bool = not VfxDrawProbe.noop
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
+	var mm: CircleField = _field
+	if mm != null:
+		mm.begin(_embers.size() * 2)
 	for e in _embers:
 		## E-EMBER-02: an ember still counting down its delay is not on fire yet
 		## and draws nothing at all.
@@ -333,18 +348,30 @@ func _draw() -> void:
 		halo.a *= alpha * halo_alpha_factor
 		drawn += 1
 		if submit:
-			draw_circle(e["pos"], e["radius"], core)
-			draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
+			if mm != null:
+				mm.push(e["pos"], e["radius"], core)
+				mm.push(e["pos"], e["radius"] * e["halo_scale"], halo)
+			else:
+				draw_circle(e["pos"], e["radius"], core)
+				draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
+	if mm != null:
+		mm.flush()
 	if probing:
-		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		## §12.10 — timed ONCE and folded into both the global counters and this
+		## overlay's own row, so the split can never disagree with the total.
+		var probe_us: int = Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.draw_us += probe_us
 		VfxDrawProbe.particles += drawn
 		VfxDrawProbe.commands += drawn * 2
+		VfxDrawProbe.note(&"EmberOverlay", probe_us, drawn * 2)
 
 
 ## Discard every in-flight glow (map load/reload — see class doc: nothing here
 ## is state a reload needs to restore, but stale positions from the PREVIOUS
 ## map would be meaningless in the new one).
 func clear() -> void:
+	if _field != null:
+		_field.clear()
 	_embers.clear()
 	set_process(false)
 	queue_redraw()

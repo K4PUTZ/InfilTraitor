@@ -17,6 +17,26 @@ class_name SmokeSparkOverlay
 ## here: CanvasItemMaterial.blend_mode is per-node, and smoke needs normal
 ## blend (additive smoke reads as glowing gas, not soot).
 
+## PERF-P7b (§12.10) — the puffs are 68.9% of the whole VFX `_draw()` and they are
+## `draw_circle`, so they go through `CircleField` (one MultiMesh, one draw call)
+## instead of one canvas command each. Opt IN with `INFILTRAITOR_P7B=1` while the
+## pixel gate is being earned — the same one-binary A/B `INFILTRAITOR_P3` uses,
+## which is stricter than stashing the change and re-running (§5.5).
+static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") == "1"
+
+var _puff_field: CircleField = null
+
+
+func _ready() -> void:
+	if P7B_MULTIMESH:
+		_puff_field = CircleField.new()
+		## MIX, not ADD: this overlay deliberately has no CanvasItemMaterial, and
+		## the class doc says why — "additive smoke reads as glowing gas, not
+		## soot". `behind` keeps the puffs under the sparks, where `_draw()` put
+		## them.
+		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
+
+
 ## Tuning — all `var` (Rule 1).
 
 ## --- Smoke ---
@@ -205,6 +225,17 @@ func _draw() -> void:
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
 	var cmds: int = 0
+	## §12.10b — the two populations are timed APART. They are one overlay and two
+	## completely different conversions: a puff is a `draw_circle`, one command,
+	## the same primitive the ember uses; a spark is a chain of `draw_line`
+	## segments. Which of them carries this overlay's 69% decides P7b's scope, and
+	## the overlay-level row cannot say.
+	var puff_us: int = 0
+	var puff_cmds: int = 0
+	var puff_t0: int = Time.get_ticks_usec() if probing else 0
+	var mm: CircleField = _puff_field
+	if mm != null:
+		mm.begin(_smoke.size())
 	for s in _smoke:
 		if float(s.get("delay", 0.0)) > 0.0:
 			continue
@@ -216,8 +247,19 @@ func _draw() -> void:
 		drawn += 1
 		cmds += 1
 		if submit:
-			draw_circle(s["pos"], radius, c)
+			if mm != null:
+				mm.push(s["pos"], radius, c)
+			else:
+				draw_circle(s["pos"], radius, c)
+	## ONE engine call for every puff pushed. Outside the loop by definition —
+	## flushing per particle would reintroduce exactly the per-particle cost this
+	## replaces, with a buffer upload instead of a canvas command.
+	if mm != null:
+		mm.flush()
 
+	if probing:
+		puff_us = Time.get_ticks_usec() - puff_t0
+		puff_cmds = cmds
 	for p in _sparks:
 		var t: float = p["elapsed"] / p["duration"]
 		var alpha: float = pow(1.0 - t, spark_fade_power)
@@ -250,14 +292,21 @@ func _draw() -> void:
 				draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
 					seg, spark_width * lerpf(1.0, 0.35, a0))
 	if probing:
-		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		## §12.10 — timed ONCE and folded into both the global counters and this
+		## overlay's own row, so the split can never disagree with the total.
+		var probe_us: int = Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.draw_us += probe_us
 		VfxDrawProbe.particles += drawn
 		VfxDrawProbe.commands += cmds
+		VfxDrawProbe.note(&"SmokeSpark/puffs", puff_us, puff_cmds)
+		VfxDrawProbe.note(&"SmokeSpark/sparks", probe_us - puff_us, cmds - puff_cmds)
 
 
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _puff_field != null:
+		_puff_field.clear()
 	_smoke.clear()
 	_sparks.clear()
 	set_process(false)

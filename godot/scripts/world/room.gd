@@ -987,6 +987,24 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
+	## §12.11 — A DETERMINISTIC RNG, so a VFX pixel gate can exist at all.
+	##
+	## §8.6 asks P7b for "0 differing pixels against a same-binary control", and
+	## that gate was unreachable: `spawn_blast_burst()` and every particle roll use
+	## the GLOBAL RNG, and two identical filmstrip boots were measured **25 855 px
+	## apart** — a floor no conversion could be judged through. (`randomize()` is
+	## never called anywhere in this project, so the stream starts from Godot's own
+	## default; what varies is how many draws happen before the blast.)
+	##
+	## `INFILTRAITOR_RNG_SEED=<n>` pins it. FIRST statement in `_ready()`, before
+	## anything can consume a number, or the seed describes a different point in
+	## the stream than it did last run. Dev instrument, default absent — a shipped
+	## build must keep its variety.
+	var seed_env := OS.get_environment("INFILTRAITOR_RNG_SEED")
+	if seed_env.is_valid_int():
+		seed(seed_env.to_int())
+		print("[RNG] seeded %d — particle rolls are reproducible this boot" % seed_env.to_int())
+
 	## ESC-STACK-01: created before any modal (menu panels, context menu) so
 	## every wiring below can push/pop into it unconditionally.
 	_modal_stack = ModalStackClass.new()
@@ -5347,6 +5365,116 @@ func _p3_gate_rect(level: int, cell: Vector2i) -> Rect2:
 ##
 ## It is ONE-SIDED on purpose: a pixel is never required to exist, only to be
 ## where it says it is.
+## PERF-P7b §12.11 — DOES `CircleField` RASTERIZE LIKE `draw_circle`?
+##
+## `INFILTRAITOR_CAPTURE_ACTION=circle_gate`.
+##
+## §8.6 asks P7b for "0 differing pixels at --fixed-fps 60 against a same-binary
+## control", and ⚠️ **that gate is unreachable on a detonation, for a reason that
+## is not the conversion's fault.** The prediction cook is budgeted in
+## MILLISECONDS (`job.step(cook_budget_ms)`), so how many frames it takes depends
+## on the machine — 42, 43, 47 and 48 frames were all observed across boots of the
+## same binary. The blast therefore lands on a different frame index every run, and
+## tile N of one sheet is a different MOMENT than tile N of another. Measured: two
+## identical filmstrip boots differ by **219 234 px**, and `INFILTRAITOR_RNG_SEED`
+## does not help because the RNG was never the variable.
+##
+## So the gate moves to the question the conversion actually raises — does the
+## MultiMesh path put the same pixels on screen as `draw_circle`? — and asks it on
+## a STATIC scene where nothing can drift: the same fixed circles, no fire, no
+## cook, no randomness, both paths in one boot.
+func _capture_circle_gate() -> void:
+	print("[CIRCLE-GATE] ---- CircleField vs draw_circle, static scene ----")
+	_debug_hide_all_but_voxels(self)
+	_debug_hide_all_but_voxels(get_tree().root)
+	## ⚠️ A `CanvasLayer`, NOT a child of Room — and this is not tidiness.
+	##
+	## The first version added the probe under Room at local (50, 50). Room is in
+	## WORLD space and the capture camera sits near canvas origin (-2144, -2611),
+	## so every circle was drawn thousands of pixels off screen. The gate then
+	## compared two identical frames of empty floor and reported **0 differing
+	## pixels · VERDICT PASS** — a gate that passed because nothing was tested.
+	## A CanvasLayer draws in SCREEN space, where the viewport is.
+	var host := CanvasLayer.new()
+	add_child(host)
+	var probe := CircleGateProbe.new()
+	host.add_child(probe)
+	for _i in range(6):
+		await get_tree().process_frame
+
+	## THE SANITY FRAME, first: the probe hidden. Path A must differ from THIS by
+	## a lot, or the gate is measuring an empty scene against itself again.
+	probe.visible = false
+	for _i in range(4):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_none := get_viewport().get_texture().get_image()
+	probe.visible = true
+
+	## PATH A — one `draw_circle` per circle, exactly as the overlays did.
+	probe.use_field = false
+	probe.queue_redraw()
+	for _i in range(4):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_a := get_viewport().get_texture().get_image()
+
+	## PATH B — the same circles through `CircleField`.
+	probe.use_field = true
+	probe.queue_redraw()
+	for _i in range(4):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img_b := get_viewport().get_texture().get_image()
+
+	if img_a == null or img_b == null:
+		push_error("[CIRCLE-GATE] null viewport image.")
+		host.queue_free()
+		return
+	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(shot_dir)
+	img_a.save_png("%s/circle_gate_draw.png" % shot_dir)
+	img_b.save_png("%s/circle_gate_multimesh.png" % shot_dir)
+
+	var w: int = img_a.get_width()
+	var h: int = img_a.get_height()
+	var differ: int = 0
+	var max_delta: int = 0
+	var lit: int = 0
+	for y in range(h):
+		for x in range(w):
+			var ca: Color = img_a.get_pixel(x, y)
+			var cb: Color = img_b.get_pixel(x, y)
+			if ca.r8 != 0 or ca.g8 != 0 or ca.b8 != 0:
+				lit += 1
+			var d: int = maxi(maxi(absi(ca.r8 - cb.r8), absi(ca.g8 - cb.g8)),
+				absi(ca.b8 - cb.b8))
+			if d != 0:
+				differ += 1
+				max_delta = maxi(max_delta, d)
+	## THE ANTI-VACUUM CHECK. Counted against the probe-hidden frame, so "the
+	## circles are on screen" is measured rather than assumed.
+	var painted: int = 0
+	if img_none != null:
+		for y2 in range(h):
+			for x2 in range(w):
+				if img_none.get_pixel(x2, y2) != img_a.get_pixel(x2, y2):
+					painted += 1
+	print("[CIRCLE-GATE] %d circle(s) · %d px painted by the probe (vs a hidden-probe frame)"
+		% [probe.circle_count(), painted])
+	if painted < 10000:
+		push_error("[CIRCLE-GATE] the probe painted %d px — it is not on screen, and a 0-pixel result here would mean NOTHING" % painted)
+		host.queue_free()
+		return
+	print("[CIRCLE-GATE] %d non-black px in path A" % lit)
+	print("[CIRCLE-GATE] %d of %d px differ (%.4f%%) · max channel delta %d"
+		% [differ, w * h, 100.0 * float(differ) / float(w * h), max_delta])
+	print("[CIRCLE-GATE] VERDICT: %s" % ["PASS — pixel-identical"
+		if differ == 0 else "FAIL — the two paths do not rasterize the same"])
+	print("[CIRCLE-GATE] captures: Screenshots/history/circle_gate_{draw,multimesh}.png")
+	host.queue_free()
+
+
 func _capture_cell_index_gate() -> void:
 	print("[P3-GATE] ---- cell recovery, absolute position ----")
 	if _voxel_renderer == null:
@@ -7403,6 +7531,8 @@ func _run_auto_screenshot_capture() -> void:
 		await _capture_cell_index_spike()
 		get_tree().quit(0)
 		return
+	elif capture_action == "circle_gate":
+		await _capture_circle_gate()
 	elif capture_action == "cell_index_gate":
 		await _capture_cell_index_gate()
 		get_tree().quit(0)

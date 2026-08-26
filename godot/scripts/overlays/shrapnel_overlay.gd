@@ -120,9 +120,13 @@ func _draw() -> void:
 		if submit:
 			draw_circle(frag["pos"], glow_radius, c)
 	if probing:
-		VfxDrawProbe.draw_us += Time.get_ticks_usec() - probe_t0
+		## §12.10 — timed ONCE and folded into both the global counters and this
+		## overlay's own row, so the split can never disagree with the total.
+		var probe_us: int = Time.get_ticks_usec() - probe_t0
+		VfxDrawProbe.draw_us += probe_us
 		VfxDrawProbe.particles += drawn
 		VfxDrawProbe.commands += cmds
+		VfxDrawProbe.note(&"ShrapnelOverlay", probe_us, cmds)
 
 
 func clear() -> void:

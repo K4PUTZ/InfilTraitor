@@ -2738,3 +2738,95 @@ from frame 0 onward is the fire and smoke accumulating, not P3: frame 0 is
 can be measured now says yes — the gate PASSes at 100.000%, the picture differs by
 one residue step, the strip cannot tell the two apart, and the win is ~600 ms per
 detonation with the worst frame cut 271 → 58 ms.
+
+## 12.10 ✅ P7b BUILT — and §8.6 was pointing at the wrong overlay (2026-08-26)
+
+Director's call after §12.9: attack P7b. Re-measured the ceiling on the **P3**
+build first, because every number in §8.8b predates it:
+
+| fire 1 | VFX full | VFX noop (ceiling) | |
+|---|---|---|---|
+| mean frame | 42.7 ms | **16.1 ms** | **−62%** |
+| fire wall clock | 1 368 ms | 1 322 ms | −3% |
+
+§8.8b's shape holds and is now sharper: **the VFX are 62% of the frame and 3% of
+the duration.** Which is exactly the Director's remaining complaint — the stall is
+gone (§12.9) and what is left is sustained frame rate.
+
+### ⚠️ §8.6's "ember first — the largest population" is WRONG, measured
+
+`VfxDrawProbe` gained a per-overlay split (and a puffs/sparks split inside
+`SmokeSparkOverlay`, which the overlay-level row could not show):
+
+| population | ms/frame | cmd/frame | share | primitive |
+|---|---|---|---|---|
+| **SmokeSpark/puffs** | **13.26** | 1 325 | **68.9%** | `draw_circle` |
+| EmberOverlay | 4.61 | 450 | 24.0% | `draw_circle` ×2 |
+| DebrisOverlay | 1.29 | 139 | 6.7% | |
+| ShrapnelOverlay | 0.05 | 5 | 0.3% | |
+| SmokeSpark/sparks | 0.02 | 46 | **0.1%** | `draw_line` |
+
+The puffs are the largest by three to one. Ember is second. **Both draw the same
+primitive**, so P7b became ONE shared helper (`CircleField`) serving both — 92.9%
+of the cost — rather than the per-overlay rewrite §8.6 sketched.
+
+**And the sparks are the control that names the mechanism.** 46 `draw_line`
+commands cost 0.4 µs each; 1 325 `draw_circle` commands cost 10 µs each. **The
+cost is per-VERTEX, not per-command** — a filled circle is a tessellated polygon
+rebuilt on the CPU every frame, a line is two vertices.
+
+### Result
+
+```
+                        before          after       
+_draw() total        19.24 ms/frame   3.53 ms/frame   -82%
+  SmokeSpark/puffs   13.26            1.51            -89%
+  EmberOverlay        4.61            0.64            -86%
+fire 1 mean frame    42.4 ms          19.5 ms         -54%   (24 -> 51 fps)
+fire 1 worst frame   55 ms            31 ms
+fire 1 wall clock    1 315 ms         1 328 ms        unchanged, as predicted
+```
+
+⚠️ **THIS DOES NOT REDUCE OVERDRAW, and §8.8b says otherwise.** The same circles
+cover the same pixels with the same blend, so GPU fill is untouched; what P7b
+removes is CPU submission. §8.8b's "MultiMesh also removes [the rasterization]"
+is wrong and is corrected here. Fewer or smaller particles remains a LOOK
+decision and remains the Director's.
+
+### ⚠️ 12.11 The pixel gate §8.6 asked for is UNREACHABLE on a detonation — and why
+
+§8.6: *"0 differing pixels at `--fixed-fps 60` against a same-binary control"*.
+Two identical filmstrip boots differ by **219 234 px**. `INFILTRAITOR_RNG_SEED`
+was added to pin the particle rolls and **did not help, because the RNG was never
+the variable**: the prediction cook is budgeted in MILLISECONDS
+(`job.step(cook_budget_ms)`), so it takes 42, 43, 47 or 48 frames depending on the
+machine, and the blast lands on a different frame index every run. **Tile N of one
+sheet is a different MOMENT than tile N of another.** No frame-indexed diff over a
+detonation can be a gate while that is true.
+
+So the gate moved to the question the conversion actually raises — *does the
+MultiMesh path put the same pixels on screen as `draw_circle`?* —
+`INFILTRAITOR_CAPTURE_ACTION=circle_gate`: 220 fixed circles, overlapping,
+additive, fractional centres, radii 4–26 px, both paths in ONE boot, no fire and
+no cook to drift.
+
+```
+220 circle(s) · 158 835 px painted by the probe (vs a hidden-probe frame)
+0 of 921 600 px differ (0.0000%) · max channel delta 0
+VERDICT: PASS — pixel-identical
+```
+
+⚠️ **The first run of this gate PASSED VACUOUSLY and the lesson is kept.** The
+probe was a `Node2D` under Room at local (50, 50); Room is world space and the
+capture camera sits near canvas origin (−2144, −2611), so every circle was drawn
+thousands of pixels off screen and the gate compared two identical frames of empty
+floor — **0 differing pixels, VERDICT PASS, nothing tested.** Found by looking at
+the capture. The probe is now a `CanvasLayer` (screen space) and the gate counts
+the pixels the probe actually painted against a hidden-probe frame, failing loudly
+under 10 000. A gate that cannot fail is not a gate.
+
+### ⏭️ What P7b leaves
+
+`DebrisOverlay` is now the largest remaining row (1.29–2.42 ms, 37–57% of what is
+left of `_draw`). That is P7c, and it is small. The frame's remaining ~19.5 ms is
+no longer dominated by the VFX.

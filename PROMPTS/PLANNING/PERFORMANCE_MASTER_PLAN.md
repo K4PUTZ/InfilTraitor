@@ -2712,5 +2712,29 @@ minting was already zero there, so the fix costs nothing and buys correctness.
 repaint (~287 ms), which is a map-walk and not a mint; §10.3's stale-driven route
 is where that gets sharpened.
 
-⏭️ **P3 still defaults OFF.** Flipping the default is a Director call, and it wants
-a look pass on a real detonation first — the gate judges geometry, not taste.
+### The look pass — and ⚠️ THE FILMSTRIP CANNOT JUDGE THIS, which is itself the answer
+
+Director asked for a filmstrip with P3 on. Built, `--fixed-fps 60`, one detonation
+at gu (13,5), 24 frames, P3 off and P3 on. **A third strip was run as a control**,
+P3 off against P3 off, because the two sides come from separate boots:
+
+```
+CONTROL  P3 off vs P3 off :  25 855 px (1.26%) · max delta 200
+TEST     P3 off vs P3 on  :  24 939 px (1.22%) · max delta 218
+```
+
+**The control is LARGER than the test.** Two runs of the SAME code differ more
+than P3 differs from no-P3, so the whole 1.22% is boot-to-boot noise and P3 is
+invisible in the strip. (The sheets are also LANCZOS-downscaled ~2:1 from a 0.55
+centre crop, which amplifies any sub-pixel difference — a second reason not to
+read a number off them.) The per-frame diff climbing monotonically 258 → 1 737 px
+from frame 0 onward is the fire and smoke accumulating, not P3: frame 0 is
+*before* the blast and already differs.
+
+**The precision answer stays §12.9's**: 415 px at max channel delta 3 against a
+0-px control, on the gate's deterministic frame. The strips are for the eye.
+
+⏭️ **P3 still defaults OFF, and flipping it is a Director call.** Everything that
+can be measured now says yes — the gate PASSes at 100.000%, the picture differs by
+one residue step, the strip cannot tell the two apart, and the win is ~600 ms per
+detonation with the worst frame cut 271 → 58 ms.

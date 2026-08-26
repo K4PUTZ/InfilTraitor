@@ -2727,6 +2727,11 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## `fade_in_scoped_soot()` below brings it in afterwards.
 func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 		soot_lighten: int = 0) -> void:
+	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. Gated HERE, above the
+	## delegation to the map-wide sibling, so the scoped path cannot reach it and
+	## pay a full repaint on an ablation run.
+	if VoxelRenderer.LIGHT_DISABLED:
+		return
 	if gus.is_empty():
 		_repaint_voxel_light_buckets(true)
 		return
@@ -3024,6 +3029,12 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 
 func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		stale_driven: bool = false) -> void:
+	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. The apply entries return on
+	## their own, but the three map-wide DERIVATIONS below (build_occupancy,
+	## _build_soot_snapshot, VoxelLightField.build) are callers, not callees, and
+	## would still run. This is where they stop.
+	if VoxelRenderer.LIGHT_DISABLED:
+		return
 	if _voxel_renderer == null or _lighting_controller == null:
 		return
 	var registry = _lighting_controller.get_light_registry()

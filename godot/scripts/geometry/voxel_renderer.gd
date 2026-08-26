@@ -627,6 +627,35 @@ static func _initial_bucket_luminance() -> Array[float]:
 static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") == "1"
 
 
+## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
+##
+## Director, 2026-08-26: *"eu queria testar desligando essas duas features por
+## default ... e rodando o game só com materiais básicos e voxels, sem
+## iluminação"*. A DISCRIMINATOR, not a feature, and not a look mode — the same
+## standing of instrument as `INFILTRAITOR_FLAT_LIGHT` and `INFILTRAITOR_P3`
+## above, and the exact light-side counterpart of `INFILTRAITOR_FAST_BOOT`
+## (which does this for the bake).
+##
+## `INFILTRAITOR_FLAT_LIGHT` is NOT this. It flattens `bucket_luminance` to 1.00
+## and every cell still derives its bucket, still writes both planes, still mints
+## its alternative and still pays the map-wide walk — it changes the PICTURE and
+## not one microsecond of the work. This removes the work:
+##
+##   · `Room._repaint_voxel_light_buckets()` and its scoped sibling return at the
+##     top, so `build_occupancy()`, `_build_soot_snapshot()` and
+##     `VoxelLightField.build()` never run;
+##   · all three `apply_light_field*()` entries return, so the walk over every
+##     placed cell — 609 ms of the 646 ms measured in §10.1 — never happens;
+##   · `_ensure_light_alt()` returns, so no light alternative is ever minted and
+##     the TileSet rebuild that §8.15 priced at ~240 ms per committing frame has
+##     nothing to rebuild for.
+##
+## Every voxel therefore sits at alternative 0: its base atom, unlit, unsooted.
+## The board is WRONG on purpose. Nothing about this is shippable and no gate,
+## census or pixel diff taken under it means anything about the real build.
+static var LIGHT_DISABLED: bool = OS.get_environment("INFILTRAITOR_NO_LIGHT") == "1"
+
+
 ## FACE-SOOT-01 — the alternative id now carries (light bucket × per-face soot
 ## code × flip), not just (bucket × flip). One flat run per flip state:
 ##
@@ -1694,6 +1723,10 @@ func minted_light_alt_count() -> int:
 
 
 func _ensure_light_alt(source_id: int, coords: Vector2i, alt_id: int) -> void:
+	## ABLATION — see LIGHT_DISABLED. Minting is gated here rather than only at
+	## the apply sites because DetonationChoreographer mints directly.
+	if LIGHT_DISABLED:
+		return
 	if alt_id == 0 or alt_id == TileSetAtlasSource.TRANSFORM_FLIP_H:
 		return
 	var key := Vector4i(source_id, coords.x, coords.y, alt_id)
@@ -2710,6 +2743,8 @@ var _apply_cells_written: int = 0
 
 
 func apply_light_field(field) -> void:
+	if LIGHT_DISABLED:
+		return
 	if field == null:
 		return
 	if OS.get_environment("INFILTRAITOR_APPLY_SPLIT_PROBE") == "1":
@@ -2854,6 +2889,8 @@ func _index_placed(level: int, cell: Vector2i) -> void:
 ## pass never rebuilds `_placed_by_gu` the way the map-wide one does, and letting
 ## the index rot would trade this stall for §10.2's defect.
 func apply_light_field_cells(field, cells: Dictionary) -> void:
+	if LIGHT_DISABLED:
+		return
 	if field == null:
 		return
 	_apply_cells_seen = 0
@@ -2912,6 +2949,8 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 
 
 func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
+	if LIGHT_DISABLED:
+		return
 	if field == null or gus.is_empty():
 		return
 	_scoped_writes = 0
@@ -3013,6 +3052,8 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 ## it can actually happen, in Room._run_shot_precook()'s token checks around
 ## this call.
 func warm_light_alts_for_gus(field, gus: Array, extra_placements: Array = []) -> int:
+	if LIGHT_DISABLED:
+		return 0
 	if field == null or gus.is_empty():
 		return 0
 	var minted: int = 0

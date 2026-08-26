@@ -2370,3 +2370,143 @@ to moved with the levels — a deliberate, Director-ratified semantic change, an
 
 selftests 39 clean / 0 failed · invariants ✅ · fire end gate 0 and 0
 ```
+
+---
+
+## 12. THE ABLATION — what turning each system OFF actually buys (2026-08-26)
+
+**The Director's hypothesis, in their words:** *"eu tenho a impressão que esse
+problema decorre do nosso sistema de iluminação e/ou baking system, combinados.
+Então eu queria testar desligando essas duas features por default."*
+
+Built as `INFILTRAITOR_NO_LIGHT=1` (new — the light-side counterpart of the
+`INFILTRAITOR_FAST_BOOT=1` that already existed for the bake) and run against the
+Director's own two-grenade repro, fabric at gu (31,3) then plywood at gu (35,3),
+through `INFILTRAITOR_CAPTURE_ACTION=two_fires`.
+
+**The hypothesis is HALF right, and the wrong half is wrong in the opposite
+direction: the bake is not a cost, it is a saving.**
+
+### 12.1 The fire, six configurations, one board
+
+| run | fire | designed span | wall clock | worst frame | mints |
+|---|---|---|---|---|---|
+| **baseline** | 1 | 1.38 s | **2 211 ms** | **271 ms** | 301 |
+| | 2 | 1.18 s | **2 079 ms** | **275 ms** | 451 |
+| vfx-noop | 1 | 1.37 s | 2 095 ms | 236 ms | 301 |
+| | 2 | 1.17 s | 1 959 ms | 248 ms | 451 |
+| bake-off | 1 | 1.41 s | 2 109 ms | 244 ms | **59** |
+| | 2 | 1.20 s | 1 914 ms | 242 ms | **60** |
+| **light-off** | 1 | 1.38 s | **1 319 ms** | **59 ms** | **0** |
+| | 2 | 1.20 s | **1 140 ms** | **68 ms** | **0** |
+| bare (light+bake off) | 1 | 1.38 s | 1 389 ms | 218 ms | 0 |
+| | 2 | 1.21 s | 1 224 ms | 220 ms | 0 |
+| floor (+vfx-noop) | 1 | 1.37 s | 1 383 ms | 221 ms | 0 |
+| | 2 | 1.18 s | 1 181 ms | 218 ms | 0 |
+
+**Read the first two columns together.** The fire's schedule is designed to span
+1.38 s and the shipped build takes 2 211 ms to play it — a **60% overshoot**. With
+the light system removed it takes **1 319 ms**, which is the designed span and
+nothing else. *The overshoot is the light system in its entirety.*
+
+### 12.2 And the whole event, not just the fire
+
+`E-WAVE`'s own numbers say it more sharply than the fire's do. The destruction
+wave applies 2 820 cells in **five frames** and its own apply is ~1.1 ms:
+
+| phase, fire 1 | shipped | light off | |
+|---|---|---|---|
+| `E-PLAN` census | 386 ms | 397 ms | — |
+| `E-WAVE` (5 frames, 2 820 cells) | **1 021 ms** | **173 ms** | **−83%** |
+| fire | 1 928 ms | 1 319 ms | −32% |
+| final repaint | 283 ms | 0 ms | −100% |
+| **trigger → settled** | **~3 620 ms** | **~1 890 ms** | **−48%** |
+
+The wave spends **1 021 ms to do 6 ms of its own work.** Everything between its
+five frames is the light repaint.
+
+### 12.3 ⚠️ THE BAKE IS NOT A COST — TURNING IT OFF COSTS ~900 ms PER BLAST
+
+`INFILTRAITOR_FAST_BOOT=1` takes the mints from 301 to 59 and buys **5%** of the
+fire's wall clock. That much was only a null result. This is not:
+
+```
+E-PLAN census, bake ON :  386.1 ms · 414.0 ms
+E-PLAN census, bake OFF: 1325.9 ms · 1110.7 ms   (+243%)
+```
+
+Four samples across two runs, both fires, consistent. The mechanism is D33 Part
+4c: with the bake off, every decal that would have been resolved from a
+pre-composited atlas is composited **live** in `_set_voxel_cell()` instead. It is
+also where the bare runs' otherwise unexplained 218–221 ms worst frame comes from
+— light-off ALONE peaks at 59 ms.
+
+**So "turn both off" is not a direction. Turning the bake off is a regression.**
+
+### 12.4 The VFX are a frame-rate problem, not a duration problem
+
+`INFILTRAITOR_VFX_DRAW_NOOP=1` more than doubles the frame rate during the fire
+(87.6 → 39.4 ms/frame, 22 frames → 46) and moves the wall clock by **5%**. This
+independently re-confirms §8.8 and the standing note that MultiMesh *"buys frame
+rate, not wall clock"* — and it means simplifying the effects, which the Director
+explicitly offered (*"nenhuma granada faz isso na vida real"*), would not shorten
+a single event.
+
+### 12.5 ⚠️ AN IDLE FRAME IS 32 ms MORE EXPENSIVE WITH THE LIGHT ON
+
+The number no existing section predicts. A **non-committing** frame of the fire
+runs no light code at all — `BURN-PROF` prices the whole of `_process` on those
+frames at ~0.5 ms — yet:
+
+```
+non-committing frames, shipped  :  17 x 72.3 ms
+non-committing frames, light off:  25 x 40.4 ms
+```
+
+Thirty-two milliseconds a frame, on frames that do nothing, recovered by removing
+a system that does not run on them. The board carries **49 947 TileSet
+alternatives** when fire 1 starts and ~0 under the ablation, so the suspect was
+the alternative count itself — §2's thesis, reached from an angle nothing in this
+plan had measured from.
+
+### 12.6 ✅ P3 IS THE WHOLE ANSWER — measured, not argued
+
+`INFILTRAITOR_P3=1` is the discriminator §12.5 asked for: the light system stays
+whole and correct, and only the minting goes to zero. It does not just explain the
+idle frame. **It recovers the entire ablation, everywhere except the final
+repaint.**
+
+| fire 1 | shipped | **P3 on** | light OFF |
+|---|---|---|---|
+| `E-WAVE` (5 frames) | 1 021 ms | **168 ms** | 173 ms |
+| committing frames | 5 x 140 ms | **6 x 51 ms** | 6 x 51 ms |
+| non-committing frames | 17 x 72.3 ms | **26 x 40.2 ms** | 25 x 40.4 ms |
+| worst frame | 271 ms | **58 ms** | 59 ms |
+| fire wall clock | 1 928 ms | **1 352 ms** | 1 319 ms |
+| final repaint | 283 ms | **281 ms** | 0 ms |
+| **trigger → settled** | **~3 620 ms** | **~2 200 ms** | ~1 890 ms |
+
+Every row lands on the ablation's value to within noise. **P3 buys −39% of the
+whole event with the lighting intact and its data verified per-cell at 0
+disagreements in 205 704 (§8.22 step 1).**
+
+**The residue is the final repaint, and only that.** 281 ms of it survives P3
+because it is a map-walk, not a mint — §10.4 already took it from 1 024 ms to 283
+and §10.3's stale-driven route is what is left to sharpen.
+
+### 12.7 What this settles, and what it does not
+
+**Settled:**
+- Turning the light system off is not a direction to ship — it is the measurement
+  that priced it. `INFILTRAITOR_NO_LIGHT=1` stays as an instrument, default OFF.
+- Turning the BAKE off is a regression (§12.3) and must not be pursued.
+- Simplifying the VFX buys frame rate and no wall clock (§12.4).
+- **The whole lighting bill is recoverable without touching the design**, and the
+  code that recovers it is already written.
+
+**Not settled — and it is the ONLY thing between here and the win:** §3.3's floor
+residual. P3's cell recovery is 96–100% correct on walls and **82% on the floor**,
+which is 92% of the pixels on screen; the misses are a ±1-cell boundary effect,
+characterised in §3.3 and NOT explained. §8.18's named lead is dead and §8.20
+separates the two residuals. **That defect, alone, is now worth 1.4 s per
+detonation.**
